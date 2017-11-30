@@ -1,0 +1,2 @@
+[run]
+omit = sagemaker/tests/*, sagemaker/tensorflow/tensorflow_serving/*

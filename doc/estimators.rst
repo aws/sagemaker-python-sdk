@@ -1,0 +1,10 @@
+Estimators
+--------------------
+
+A high level interface for SageMaker training
+
+.. autoclass:: sagemaker.estimator.Estimator
+    :members:
+    :undoc-members:
+    :show-inheritance:
+    :inherited-members:

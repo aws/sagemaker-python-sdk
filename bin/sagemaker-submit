@@ -1,0 +1,59 @@
+#!/usr/bin/env python
+# Copyright 2017 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License"). You
+# may not use this file except in compliance with the License. A copy of
+# the License is located at
+#
+#     http://aws.amazon.com/apache2.0/
+#
+# or in the "license" file accompanying this file. This file is
+# distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF
+# ANY KIND, either express or implied. See the License for the specific
+# language governing permissions and limitations under the License.
+import argparse
+import json
+
+import sagemaker
+
+if __name__ == '__main__':
+    # TODO: integrate with custom/user-defined frameworks?
+    frameworks = {'mxnet': sagemaker.MxNet,
+                  'tensorflow': sagemaker.TensorFlow}
+
+    parser = argparse.ArgumentParser(description='Submit a job for learning in AWS')
+    parser.add_argument('-f', '--framework', dest='framework', help='The framework to use for training',
+                        required=True, choices=frameworks.keys())
+    parser.add_argument('--role', help='The role for accessing user data', default=None)
+    # TODO: will also need a way to specify the hyperparameters directly, rather than through a file.
+    # Should this use the same argument name or a separate one?
+    parser.add_argument('-hp', '--hyperparameters', dest='hyperparameters_file', help='hyperparameters json file',
+                        default=None)
+    parser.add_argument('-it', '--instance-type', dest='instance_type',
+                        help='The EC2 instance type to use for training',
+                        default='c4.4xlarge')
+    parser.add_argument('-ic', '--instance-count', dest='instance_count',
+                        help='The number of EC2 instances to use for training',
+                        default=1)
+    parser.add_argument('-s', '--script', dest='script', help='Local path of the script file to run on SageMaker training.',
+                        required=True)
+    parser.add_argument('-d', '--directory', dest='directory',
+                        help='Local path of the directory containing the files to use ' +
+                             'when running on SageMaker training. Script name must also be specified via -s.',
+                        default=None)
+    parser.add_argument('data', help='S3 location of the data to be used for training')
+    args = parser.parse_args()
+
+    if args.hyperparameters_file:
+        with open(args.hyperparameters_file, 'r') as hf:
+            hyperparameters = json.load(hf)
+    else:
+        hyperparameters = {}
+
+    estimator = frameworks[args.framework](entry_point=args.script,
+                                           source_dir=args.directory,
+                                           role=args.role,
+                                           hyperparameters=hyperparameters,
+                                           instance_count=args.instance_count,
+                                           instance_type=args.instance_type)
+    estimator.fit(sagemaker.s3_input(args.data))
