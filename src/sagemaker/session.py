@@ -16,25 +16,18 @@ import logging
 import re
 
 import os
-import pkg_resources
-import platform
 import sys
 import time
 
 import boto3
-import botocore
 import json
 import six
 from botocore.exceptions import ClientError
 
+from sagemaker.user_agent import prepend_user_agent
 from sagemaker.utils import name_from_image
 import sagemaker.logs
 
-
-SDK_VERSION = pkg_resources.require('sagemaker')[0].version
-OS_NAME = platform.system()
-OS_VERSION = platform.release()
-PYTHON_VERSION = '{}.{}.{}'.format(sys.version_info.major, sys.version_info.minor, sys.version_info.micro)
 
 logging.basicConfig()
 LOGGER = logging.getLogger('sagemaker')
@@ -81,14 +74,11 @@ class Session(object):
         if region is None:
             raise ValueError('Must setup local AWS configuration with a region supported by SageMaker.')
 
-        user_agent_string = 'AWS-SageMaker-Python-SDK/{} Python/{} {}/{} Boto3/{} Botocore/{}'\
-            .format(SDK_VERSION, PYTHON_VERSION, OS_NAME, OS_VERSION, boto3.__version__, botocore.__version__)
-
         self.sagemaker_client = sagemaker_client or self.boto_session.client('sagemaker')
-        self.sagemaker_client._client_config.user_agent = user_agent_string
+        prepend_user_agent(self.sagemaker_client)
 
         self.sagemaker_runtime_client = sagemaker_runtime_client or self.boto_session.client('runtime.sagemaker')
-        self.sagemaker_runtime_client._client_config.user_agent = user_agent_string
+        prepend_user_agent(self.sagemaker_runtime_client)
 
     @property
     def boto_region_name(self):
