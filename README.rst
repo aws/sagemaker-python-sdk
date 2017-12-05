@@ -662,7 +662,7 @@ MXNet Training Examples
 
 Amazon provides several example Jupyter notebooks that demonstrate end-to-end training on Amazon SageMaker using MXNet. Please refer to:
 
-https://github.com/awslabs/amazon-sagemaker-examples/sagemaker-python-sdk
+https://github.com/awslabs/amazon-sagemaker-examples/tree/master/sagemaker-python-sdk
 
 
 These are also availble in SageMaker Notebook Instance hosted Jupyter notebooks under the "sample notebooks" folder.
