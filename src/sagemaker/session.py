@@ -16,20 +16,17 @@ import logging
 import re
 
 import os
-import pkg_resources
 import sys
 import time
 
 import boto3
-import botocore.session
 import json
 import six
 from botocore.exceptions import ClientError
 
+from sagemaker.user_agent import prepend_user_agent
 from sagemaker.utils import name_from_image
 import sagemaker.logs
-
-SDK_VERSION = pkg_resources.require('sagemaker')[0].version
 
 
 logging.basicConfig()
@@ -71,30 +68,17 @@ class Session(object):
                 If not provided, one will be created using this instance's ``boto_session``.
         """
         self._default_bucket = None
-
-        if boto_session is None:
-            botocore_session = self._botocore_session_with_user_agent()
-            self.boto_session = boto3.Session(botocore_session=botocore_session)
-        else:
-            self.boto_session = boto_session
+        self.boto_session = boto_session or boto3.Session()
 
         region = self.boto_session.region_name
         if region is None:
             raise ValueError('Must setup local AWS configuration with a region supported by SageMaker.')
 
         self.sagemaker_client = sagemaker_client or self.boto_session.client('sagemaker')
+        prepend_user_agent(self.sagemaker_client)
+
         self.sagemaker_runtime_client = sagemaker_runtime_client or self.boto_session.client('runtime.sagemaker')
-
-    def _botocore_session_with_user_agent(self):
-        botocore_session = botocore.session.get_session()
-
-        # Some information is appended automatically, so this creates a user agent string that looks like
-        # 'AWS-SageMaker-Python-SDK/1.0/1.7.45 Python/3.6.2 Darwin/15.6.0 Boto3/1.4.7 Botocore/1.7.45'
-        botocore_session.user_agent_name = 'AWS-SageMaker-Python-SDK/{}'.format(SDK_VERSION)
-        botocore_session.user_agent_extra = 'Boto3/{} Botocore/{}'.format(boto3.__version__,
-                                                                          botocore_session.user_agent_version)
-
-        return botocore_session
+        prepend_user_agent(self.sagemaker_runtime_client)
 
     @property
     def boto_region_name(self):
