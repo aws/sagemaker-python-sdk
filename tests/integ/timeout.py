@@ -70,4 +70,4 @@ def timeout_and_delete_endpoint_by_name(endpoint_name, sagemaker_session, second
             yield [t]
         finally:
             sagemaker_session.delete_endpoint(endpoint_name)
-            LOGGER.info('deleted endpoint')
+            LOGGER.info('deleted endpoint {}'.format(endpoint_name))
