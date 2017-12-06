@@ -11,16 +11,17 @@
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
 import gzip
-import os
 import pickle
 import sys
-import pytest  # noqa
+
 import boto3
+import os
+
 import sagemaker
 from sagemaker import KMeans, KMeansModel
-
+from sagemaker.utils import name_from_base
 from tests.integ import DATA_DIR, REGION
-from tests.integ.timeout import timeout
+from tests.integ.timeout import timeout, timeout_and_delete_endpoint_by_name
 
 
 def test_kmeans():
@@ -49,15 +50,13 @@ def test_kmeans():
 
         kmeans.fit(kmeans.record_set(train_set[0][:100]))
 
-    with timeout(minutes=15):
+    endpoint_name = name_from_base('kmeans')
+    with timeout_and_delete_endpoint_by_name(endpoint_name, sagemaker_session, minutes=15):
         model = KMeansModel(kmeans.model_data, role='SageMakerRole', sagemaker_session=sagemaker_session)
-        predictor = model.deploy(1, 'ml.c4.xlarge')
+        predictor = model.deploy(1, 'ml.c4.xlarge', endpoint_name=endpoint_name)
         result = predictor.predict(train_set[0][:10])
 
-        try:
-            assert len(result) == 10
-            for record in result:
-                assert record.label["closest_cluster"] is not None
-                assert record.label["distance_to_cluster"] is not None
-        finally:
-            sagemaker_session.delete_endpoint(predictor.endpoint)
+        assert len(result) == 10
+        for record in result:
+            assert record.label["closest_cluster"] is not None
+            assert record.label["distance_to_cluster"] is not None
