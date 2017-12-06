@@ -605,7 +605,7 @@ class Session(object):
         # Notes:
         # - The JOB_COMPLETE state forces us to do an extra pause and read any items that got to Cloudwatch after
         #   the job was marked complete.
-
+        seconds_since_last_describe_job_call = 30
         while True:
             if len(stream_names) < instance_count:
                 # Log streams are created whenever a container starts writing to stdout/err, so this list
@@ -645,8 +645,12 @@ class Session(object):
 
             if state == LogState.JOB_COMPLETE:
                 state = LogState.COMPLETE
+            elif seconds_since_last_describe_job_call < 30:
+                seconds_since_last_describe_job_call += max(poll, 1)
             else:
                 description = self.sagemaker_client.describe_training_job(TrainingJobName=job_name)
+                seconds_since_last_describe_job_call = 0
+
                 status = description['TrainingJobStatus']
 
                 if status == 'Completed' or status == 'Failed':
