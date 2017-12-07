@@ -41,5 +41,5 @@ def test_cifar(sagemaker_session):
         estimator.fit(inputs)
         print('job succeeded: {}'.format(estimator.latest_training_job.name))
 
-    with timeout_and_delete_endpoint(estimator=estimator, minutes=15):
+    with timeout_and_delete_endpoint(estimator=estimator, minutes=20):
         estimator.deploy(initial_instance_count=1, instance_type='ml.c4.xlarge')
