@@ -19,9 +19,10 @@ import boto3
 import numpy as np
 import sagemaker
 from sagemaker.amazon.linear_learner import LinearLearner, LinearLearnerModel
+from sagemaker.utils import name_from_base
 
 from tests.integ import DATA_DIR, REGION
-from tests.integ.timeout import timeout
+from tests.integ.timeout import timeout, timeout_and_delete_endpoint_by_name
 
 
 def test_linear_learner():
@@ -72,15 +73,14 @@ def test_linear_learner():
         ll.num_point_for_scala = 10000
         ll.fit(ll.record_set(train_set[0][:200], train_set[1][:200]))
 
-    with timeout(minutes=15):
-        model = LinearLearnerModel(ll.model_data, role='SageMakerRole', sagemaker_session=sagemaker_session)
-        predictor = model.deploy(1, 'ml.c4.xlarge')
+    endpoint_name = name_from_base('linear-learner')
+    with timeout_and_delete_endpoint_by_name(endpoint_name, sagemaker_session, minutes=15):
 
-        try:
-            result = predictor.predict(train_set[0][0:100])
-            assert len(result) == 100
-            for record in result:
-                assert record.label["predicted_label"] is not None
-                assert record.label["score"] is not None
-        finally:
-            sagemaker_session.delete_endpoint(predictor.endpoint)
+        model = LinearLearnerModel(ll.model_data, role='SageMakerRole', sagemaker_session=sagemaker_session)
+        predictor = model.deploy(1, 'ml.c4.xlarge', endpoint_name=endpoint_name)
+
+        result = predictor.predict(train_set[0][0:100])
+        assert len(result) == 100
+        for record in result:
+            assert record.label["predicted_label"] is not None
+            assert record.label["score"] is not None

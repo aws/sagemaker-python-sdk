@@ -18,9 +18,10 @@ import pytest  # noqa
 import boto3
 import sagemaker
 import sagemaker.amazon.pca
+from sagemaker.utils import name_from_base
 
 from tests.integ import DATA_DIR, REGION
-from tests.integ.timeout import timeout
+from tests.integ.timeout import timeout, timeout_and_delete_endpoint_by_name
 
 
 def test_pca():
@@ -42,16 +43,15 @@ def test_pca():
         pca.extra_components = 5
         pca.fit(pca.record_set(train_set[0][:100]))
 
-    with timeout(minutes=15):
+    endpoint_name = name_from_base('pca')
+    with timeout_and_delete_endpoint_by_name(endpoint_name, sagemaker_session, minutes=15):
         pca_model = sagemaker.amazon.pca.PCAModel(model_data=pca.model_data, role='SageMakerRole',
                                                   sagemaker_session=sagemaker_session)
-        predictor = pca_model.deploy(initial_instance_count=1, instance_type="ml.c4.xlarge")
+        predictor = pca_model.deploy(initial_instance_count=1, instance_type="ml.c4.xlarge",
+                                     endpoint_name=endpoint_name)
 
-        try:
-            result = predictor.predict(train_set[0][:5])
+        result = predictor.predict(train_set[0][:5])
 
-            assert len(result) == 5
-            for record in result:
-                assert record.label["projection"] is not None
-        finally:
-            sagemaker_session.delete_endpoint(predictor.endpoint)
+        assert len(result) == 5
+        for record in result:
+            assert record.label["projection"] is not None

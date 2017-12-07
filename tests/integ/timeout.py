@@ -12,6 +12,9 @@
 # language governing permissions and limitations under the License.
 import signal
 from contextlib import contextmanager
+import logging
+
+LOGGER = logging.getLogger('timeout')
 
 
 class TimeoutError(Exception):
@@ -48,3 +51,23 @@ def timeout(seconds=0, minutes=0, hours=0):
         yield
     finally:
         signal.alarm(0)
+
+
+@contextmanager
+def timeout_and_delete_endpoint(estimator, seconds=0, minutes=0, hours=0):
+    with timeout(seconds=seconds, minutes=minutes, hours=hours) as t:
+        try:
+            yield [t]
+        finally:
+            estimator.delete_endpoint()
+            LOGGER.info('deleted endpoint')
+
+
+@contextmanager
+def timeout_and_delete_endpoint_by_name(endpoint_name, sagemaker_session, seconds=0, minutes=0, hours=0):
+    with timeout(seconds=seconds, minutes=minutes, hours=hours) as t:
+        try:
+            yield [t]
+        finally:
+            sagemaker_session.delete_endpoint(endpoint_name)
+            LOGGER.info('deleted endpoint {}'.format(endpoint_name))
