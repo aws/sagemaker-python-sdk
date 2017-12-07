@@ -311,7 +311,8 @@ def test_logs_for_job_no_wait_on_running(cw, sagemaker_session_ready_lifecycle):
 
 
 @patch('sagemaker.logs.ColorWrap')
-def test_logs_for_job_full_lifecycle(cw, sagemaker_session_full_lifecycle):
+@patch('time.time', side_effect=[0, 30, 60, 90, 120, 150, 180])
+def test_logs_for_job_full_lifecycle(time, cw, sagemaker_session_full_lifecycle):
     ims = sagemaker_session_full_lifecycle
     ims.logs_for_job(JOB_NAME, wait=True, poll=0)
     assert ims.sagemaker_client.describe_training_job.call_args_list == [call(TrainingJobName=JOB_NAME,)] * 3
