@@ -74,7 +74,7 @@ def test_linear_learner():
         ll.fit(ll.record_set(train_set[0][:200], train_set[1][:200]))
 
     endpoint_name = name_from_base('linear-learner')
-    with timeout_and_delete_endpoint_by_name(endpoint_name, sagemaker_session, minutes=15):
+    with timeout_and_delete_endpoint_by_name(endpoint_name, sagemaker_session, minutes=20):
 
         model = LinearLearnerModel(ll.model_data, role='SageMakerRole', sagemaker_session=sagemaker_session)
         predictor = model.deploy(1, 'ml.c4.xlarge', endpoint_name=endpoint_name)

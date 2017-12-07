@@ -51,7 +51,7 @@ def test_kmeans():
         kmeans.fit(kmeans.record_set(train_set[0][:100]))
 
     endpoint_name = name_from_base('kmeans')
-    with timeout_and_delete_endpoint_by_name(endpoint_name, sagemaker_session, minutes=15):
+    with timeout_and_delete_endpoint_by_name(endpoint_name, sagemaker_session, minutes=20):
         model = KMeansModel(kmeans.model_data, role='SageMakerRole', sagemaker_session=sagemaker_session)
         predictor = model.deploy(1, 'ml.c4.xlarge', endpoint_name=endpoint_name)
         result = predictor.predict(train_set[0][:10])
