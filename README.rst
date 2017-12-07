@@ -1,9 +1,16 @@
+.. image:: branding/icon/sagemaker-banner.png
+    :height: 100px
+    :alt: SageMaker
+
+====================
 SageMaker Python SDK
 ====================
 
 SageMaker Python SDK is an open source library for training and deploying machine learning models on Amazon SageMaker.
 
 With the SDK, you can train and deploy models using popular deep learning frameworks: **Apache MXNet** and **TensorFlow**. You can also train and deploy models with **Amazon algorithms**, these are scalable implementations of core machine learning algorithms that are optimized for SageMaker and GPU training. If you have **your own algorithms** built into SageMaker compatible Docker containers, you can train and host models using these as well.
+
+For detailed API reference please go to: `Read the Docs <https://readthedocs.org/projects/sagemaker/>`_
 
 Table of Contents
 -----------------
@@ -1418,6 +1425,20 @@ Amazon SageMaker provides several built-in machine learning algorithms that you 
 The full list of algorithms is available on the AWS website: https://docs.aws.amazon.com/sagemaker/latest/dg/algos.html
 
 SageMaker Python SDK includes Estimator wrappers for the AWS K-means, Principal Components Analysis, and Liner Learner algorithms. 
+
+Definition and usage
+~~~~~~~~~~~~~~~~~~~~
+Estimators that wrap Amazon's built-in algorithms define algorithm's hyperparameters with defaults. When a default is not possible you need to provide the value during construction:
+
+- ``KMean`` Estimator requires parameter ``k`` to define number of clusters
+- ``PCA`` Estimator requires parameter ``num_components`` to define number of principal components
+
+Interaction is identical as any other Estimators.
+
+Predictions support
+~~~~~~~~~~~~~~~~~~~
+Calling inference on deployed Amazon's built-in algorithms you must follow specific input format. By default this library creates a predictor that allows to use just numpy data.
+Data is converted so that ``application/x-recordio-protobuf`` input format is used. Received response is deserialized from the protobuf and provided as result from the ``predict`` call.
 
 
 BYO Docker Containers with SageMaker Estimators
