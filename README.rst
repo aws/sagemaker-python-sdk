@@ -78,7 +78,7 @@ Building Sphinx docs
 
     make html
 
-You can edit the templates for any of the pages in the docs by editing the .rst files in the “doc" directory and then running “``make html``" again.
+You can edit the templates for any of the pages in the docs by editing the .rst files in the "doc" directory and then running "``make html``" again.
 
 
 SageMaker Python SDK Overview
