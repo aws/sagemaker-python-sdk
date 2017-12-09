@@ -78,7 +78,7 @@ Building Sphinx docs
 
     make html
 
-You can edit the templates for any of the pages in the docs by editing the .rst files in the “doc” directory and then running “``make html``” again.
+You can edit the templates for any of the pages in the docs by editing the .rst files in the “doc" directory and then running “``make html``" again.
 
 
 SageMaker Python SDK Overview
@@ -139,9 +139,9 @@ When you run your script on SageMaker via the ``MXNet`` Estimator, SageMaker inj
    created. This is discussed in more detail below.
 -  ``channel_input_dirs (dict[string,string])``: A collection of
    directories containing training data. When you run training, you can
-   partition your training data into different logical “channels”.
-   Depending on your problem, some common channel ideas are: “train”,
-   “test”, “evaluation” or “images’,”labels“.
+   partition your training data into different logical "channels".
+   Depending on your problem, some common channel ideas are: "train",
+   "test", "evaluation" or "images’,"labels".
 -  ``output_data_dir (str)``: A directory where your training script can
    write data that will be moved to s3 after training is complete.
 -  ``num_gpus (int)``: The number of GPU devices available on your
@@ -182,7 +182,7 @@ You can import both ``mxnet`` and ``numpy`` in your training script. When your s
 Running an MXNet training script in SageMaker
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-You run MXNet training scripts on SageMaker by creating ``MXNet`` Estimators. SageMaker training of your script is invoked when you call ``fit`` on an ``MXNet`` Estimator. The following code sample shows how you train a custom MXNet script “train.py”.
+You run MXNet training scripts on SageMaker by creating ``MXNet`` Estimators. SageMaker training of your script is invoked when you call ``fit`` on an ``MXNet`` Estimator. The following code sample shows how you train a custom MXNet script "train.py".
 
 .. code:: python
 
@@ -369,7 +369,7 @@ After your ``train`` function completes, SageMaker will invoke ``save`` with the
 
 **Note: How to save Gluon models with SageMaker**
 
-If your train function returns a Gluon API ``net`` object as its model, you’ll need to write your own ``save`` function. You will want to serialize the ``net`` parameters. Saving ``net`` parameters is covered in the `Serialization section <http://gluon.mxnet.io/chapter03_deep-neural-networks/serialization.html>`__ of the collaborative Gluon deep-learning book `“The Straight Dope” <http://gluon.mxnet.io/index.html>`__.
+If your train function returns a Gluon API ``net`` object as its model, you’ll need to write your own ``save`` function. You will want to serialize the ``net`` parameters. Saving ``net`` parameters is covered in the `Serialization section <http://gluon.mxnet.io/chapter03_deep-neural-networks/serialization.html>`__ of the collaborative Gluon deep-learning book `"The Straight Dope" <http://gluon.mxnet.io/index.html>`__.
 
 Deploying MXNet models
 ~~~~~~~~~~~~~~~~~~~~~~
@@ -482,11 +482,11 @@ Input processing
 
 When an InvokeEndpoint operation is made against an Endpoint running a SageMaker MXNet model server, the model server receives two pieces of information:
 
--  The request Content-Type, for example “application/json”
+-  The request Content-Type, for example "application/json"
 -  The request data body, a byte array which is at most 5 MB (5 \* 1024
    \* 1024 bytes) in size.
 
-The SageMaker MXNet model server will invoke an “input_fn” function in your training script, passing in this information. If you define an ``input_fn`` function definition, it should return an object that can be passed to ``predict_fn`` and have the following signature:
+The SageMaker MXNet model server will invoke an "input_fn" function in your training script, passing in this information. If you define an ``input_fn`` function definition, it should return an object that can be passed to ``predict_fn`` and have the following signature:
 
 .. code:: python
 
@@ -566,7 +566,7 @@ The ``output_fn`` has the following signature:
 Where ``prediction`` is the result of invoking ``predict_fn`` and
 ``content_type`` is the InvokeEndpoint requested response content-type. The function should return a byte array of data serialized to content_type.
 
-The default implementation expects ``prediction`` to be an ``NDArray`` and can serialize the result to either JSON or CSV. It accepts response content types of “application/json” and “text/csv”.
+The default implementation expects ``prediction`` to be an ``NDArray`` and can serialize the result to either JSON or CSV. It accepts response content types of "application/json" and "text/csv".
 
 Distributed MXNet training
 ~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -642,18 +642,18 @@ The MXNetModel constructor takes the following arguments:
    custom code will be uploaded to. If not specified, will use the
    SageMaker default bucket created by sagemaker.Session.
 -  ``sagemaker_session (sagemaker.Session):`` The SageMaker Session
-   object, used for SageMaker interaction“”"
+   object, used for SageMaker interaction"""
 
 Your model data must be a .tar.gz file in S3. SageMaker Training Job model data is saved to .tar.gz files in S3, however if you have local data you want to deploy, you can prepare the data yourself.
 
-Assuming you have a local directory containg your model data named “my_model” you can tar and gzip compress the file and upload to S3 using the following commands:
+Assuming you have a local directory containg your model data named "my_model" you can tar and gzip compress the file and upload to S3 using the following commands:
 
 ::
 
     tar -czf model.tar.gz my_model
     aws s3 cp model.tar.gz s3://my-bucket/my-path/model.tar.gz
 
-This uploads the contents of my_model to a gzip compressed tar file to S3 in the bucket “my-bucket”, with the key “my-path/model.tar.gz”.
+This uploads the contents of my_model to a gzip compressed tar file to S3 in the bucket "my-bucket", with the key "my-path/model.tar.gz".
 
 To run this command, you’ll need the aws cli tool installed. Please refer to our `FAQ <#FAQ>`__ for more information on installing this.
 
