@@ -211,7 +211,7 @@ The following are required arguments to the ``MXNet`` constructor. When you crea
 -  ``train_instance_count`` Number of Amazon EC2 instances to use for
    training.
 -  ``train_instance_type`` Type of EC2 instance to use for training, for
-   example, ‘ml.c4.xlarge'.
+   example, 'ml.c4.xlarge'.
 
 Optional arguments
 ''''''''''''''''''
@@ -231,12 +231,12 @@ The following are optional arguments. When you create an ``MXNet`` object, you c
    model training code.
 -  ``train_volume_size`` Size in GB of the EBS volume to use for storing
    input data during training. Must be large enough to store training
-   data if input_mode=‘File' is used (which is the default).
+   data if input_mode='File' is used (which is the default).
 -  ``train_max_run`` Timeout in hours for training, after which Amazon
    SageMaker terminates the job regardless of its current status.
 -  ``input_mode`` The input mode that the algorithm supports. Valid
-   modes: ‘File' - Amazon SageMaker copies the training dataset from the
-   s3 location to a directory in the Docker container. ‘Pipe' - Amazon
+   modes: 'File' - Amazon SageMaker copies the training dataset from the
+   s3 location to a directory in the Docker container. 'Pipe' - Amazon
    SageMaker streams data directly from s3 to the container via a Unix
    named pipe.
 -  ``output_path`` s3 location where you want the training result (model
@@ -1059,7 +1059,7 @@ The following are required arguments to the TensorFlow constructor.
 -  ``train_instance_count (int)`` Number of Amazon EC2 instances to use for
    training.
 -  ``train_instance_type (str)`` Type of EC2 instance to use for training, for
-   example, ‘ml.c4.xlarge'.
+   example, 'ml.c4.xlarge'.
 - ``training_steps (int)`` Perform this many steps of training. ``None``, means train forever. 
 - ``evaluation_steps (int)`` Perform this many steps of evaluation. ``None``, means
   that evaluation runs until input from ``eval_input_fn`` is exhausted (or another exception is raised).
