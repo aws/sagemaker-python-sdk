@@ -10,7 +10,10 @@
 # distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
+import pickle
+
 import boto3
+import numpy as np
 import os
 import pytest
 
@@ -19,10 +22,32 @@ from sagemaker.tensorflow import TensorFlow
 from tests.integ import DATA_DIR, REGION
 from tests.integ.timeout import timeout_and_delete_endpoint, timeout
 
+PICKLE_CONTENT_TYPE = "application/python-pickle"
+
 
 @pytest.fixture(scope='module')
 def sagemaker_session():
     return Session(boto_session=boto3.Session(region_name=REGION))
+
+
+class PickleSerializer(object):
+    def __init__(self):
+        self.content_type = PICKLE_CONTENT_TYPE
+
+    def __call__(self, data):
+        return pickle.dumps(data)
+
+
+class PickleDeserializer(object):
+    def __init__(self):
+        self.accept = PICKLE_CONTENT_TYPE
+
+    def __call__(self, stream, content_type):
+        try:
+            data = stream.read().decode()
+            return pickle.loads(data)
+        finally:
+            stream.close()
 
 
 def test_cifar(sagemaker_session):
@@ -42,4 +67,11 @@ def test_cifar(sagemaker_session):
         print('job succeeded: {}'.format(estimator.latest_training_job.name))
 
     with timeout_and_delete_endpoint(estimator=estimator, minutes=20):
-        estimator.deploy(initial_instance_count=1, instance_type='ml.c4.xlarge')
+        predictor = estimator.deploy(initial_instance_count=1, instance_type='ml.p2.xlarge')
+        predictor.serializer = PickleSerializer()
+        predictor.deserializer = PickleDeserializer()
+
+        data = np.random.randn(32, 32, 3)
+        predict_response = predictor.predict(data)
+
+        assert len(predict_response.outputs['probabilities'].float_val) == 10

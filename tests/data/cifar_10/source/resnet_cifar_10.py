@@ -2,6 +2,8 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+import pickle
+
 import resnet_model
 import tensorflow as tf
 
@@ -106,21 +108,19 @@ def model_fn(features, labels, mode, params):
 
 
 def serving_input_fn(hyperpameters):
-    feature_spec = {INPUT_TENSOR_NAME: tf.FixedLenFeature(dtype=tf.float32, shape=(32, 32, 3))}
-    return tf.estimator.export.build_parsing_serving_input_receiver_fn(feature_spec)()
+    inputs = {INPUT_TENSOR_NAME: tf.placeholder(tf.float32, [None, 32, 32, 3])}
+    return tf.estimator.export.ServingInputReceiver(inputs, inputs)
 
 
-def train_input_fn(training_dir, hyperpameters):
-    return input_fn(tf.estimator.ModeKeys.TRAIN,
-                    batch_size=BATCH_SIZE, data_dir=training_dir)
+def train_input_fn(training_dir, hyperparameters):
+    return _input_fn(tf.estimator.ModeKeys.TRAIN, batch_size=BATCH_SIZE)
 
 
-def eval_input_fn(training_dir, hyperpameters):
-    return input_fn(tf.estimator.ModeKeys.EVAL,
-                    batch_size=BATCH_SIZE, data_dir=training_dir)
+def eval_input_fn(training_dir, hyperparameters):
+    return _input_fn(tf.estimator.ModeKeys.EVAL, batch_size=BATCH_SIZE)
 
 
-def input_fn(mode, batch_size, data_dir):
+def _input_fn(mode, batch_size):
     input_shape = [batch_size, HEIGHT, WIDTH, DEPTH]
     images = tf.truncated_normal(
         input_shape,
@@ -138,3 +138,12 @@ def input_fn(mode, batch_size, data_dir):
     labels = tf.contrib.framework.local_variable(labels, name='labels')
 
     return {INPUT_TENSOR_NAME: images}, labels
+
+
+def input_fn(serialized_data, content_type):
+    data = pickle.loads(serialized_data)
+    return data
+
+
+def output_fn(data, accepts):
+    return pickle.dumps(data)
