@@ -78,7 +78,7 @@ Building Sphinx docs
 
     make html
 
-You can edit the templates for any of the pages in the docs by editing the .rst files in the “doc” directory and then running “``make html``” again.
+You can edit the templates for any of the pages in the docs by editing the .rst files in the "doc" directory and then running "``make html``" again.
 
 
 SageMaker Python SDK Overview
@@ -109,7 +109,7 @@ With MXNet Estimators, you can train and host MXNet models on Amazon SageMaker.
 Training with MXNet
 ~~~~~~~~~~~~~~~~~~~
 
-Training MXNet models using ``MXNet`` Estimators is a two-step process. First, you prepare your training script, then second, you run this on SageMaker via an ``MXNet`` Estimator. You should prepare your script in a separate source file than the notebook, terminal session, or source file you’re using to submit the script to SageMaker via an ``MXNet`` Estimator.
+Training MXNet models using ``MXNet`` Estimators is a two-step process. First, you prepare your training script, then second, you run this on SageMaker via an ``MXNet`` Estimator. You should prepare your script in a separate source file than the notebook, terminal session, or source file you're using to submit the script to SageMaker via an ``MXNet`` Estimator.
 
 Suppose that you already have an MXNet training script called
 ``mxnet-train.py``. You can run this script in SageMaker as follows:
@@ -122,7 +122,7 @@ Suppose that you already have an MXNet training script called
 
 Where the s3 url is a path to your training data, within Amazon S3. The constructor keyword arguments define how SageMaker runs your training script and are discussed, in detail, in a later section.
 
-In the following sections, we’ll discuss how to prepare a training script for execution on SageMaker, then how to run that script on SageMaker using an ``MXNet`` Estimator.
+In the following sections, we'll discuss how to prepare a training script for execution on SageMaker, then how to run that script on SageMaker using an ``MXNet`` Estimator.
 
 Preparing the MXNet training script
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -135,13 +135,13 @@ When you run your script on SageMaker via the ``MXNet`` Estimator, SageMaker inj
    to SageMaker TrainingJob that runs your MXNet training script. You
    can use this to pass hyperparameters to your training script.
 -  ``input_data_config (dict[string,dict])``: The SageMaker TrainingJob
-   InputDataConfig object, that’s set when the SageMaker TrainingJob is
+   InputDataConfig object, that's set when the SageMaker TrainingJob is
    created. This is discussed in more detail below.
 -  ``channel_input_dirs (dict[string,string])``: A collection of
    directories containing training data. When you run training, you can
-   partition your training data into different logical “channels”.
-   Depending on your problem, some common channel ideas are: “train”,
-   “test”, “evaluation” or “images’,”labels“.
+   partition your training data into different logical "channels".
+   Depending on your problem, some common channel ideas are: "train",
+   "test", "evaluation" or "images',"labels".
 -  ``output_data_dir (str)``: A directory where your training script can
    write data that will be moved to s3 after training is complete.
 -  ``num_gpus (int)``: The number of GPU devices available on your
@@ -161,7 +161,7 @@ A training script that takes advantage of all arguments would have the following
               num_gpus, num_cpus, hosts, current_host):
         pass
 
-You don’t have to use all the arguments, arguments you don’t care about can be ignored by including ``**kwargs``.
+You don't have to use all the arguments, arguments you don't care about can be ignored by including ``**kwargs``.
 
 .. code:: python
 
@@ -170,7 +170,7 @@ You don’t have to use all the arguments, arguments you don’t care about can 
         pass
 
 **Note: Writing a training script that imports correctly**
-When SageMaker runs your training script, it imports it as a Python module and then invokes ``train`` on the imported module. Consequently, you should not include any statements that won’t execute successfully in SageMaker when your module is imported. For example, don’t attempt to open any local files in top-level statements in your training script. 
+When SageMaker runs your training script, it imports it as a Python module and then invokes ``train`` on the imported module. Consequently, you should not include any statements that won't execute successfully in SageMaker when your module is imported. For example, don't attempt to open any local files in top-level statements in your training script. 
 
 If you want to run your training script locally via the Python interpreter, look at using a ``___name__ == '__main__'`` guard, discussed in more detail here: https://stackoverflow.com/questions/419163/what-does-if-name-main-do .
 
@@ -182,7 +182,7 @@ You can import both ``mxnet`` and ``numpy`` in your training script. When your s
 Running an MXNet training script in SageMaker
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-You run MXNet training scripts on SageMaker by creating ``MXNet`` Estimators. SageMaker training of your script is invoked when you call ``fit`` on an ``MXNet`` Estimator. The following code sample shows how you train a custom MXNet script “train.py”.
+You run MXNet training scripts on SageMaker by creating ``MXNet`` Estimators. SageMaker training of your script is invoked when you call ``fit`` on an ``MXNet`` Estimator. The following code sample shows how you train a custom MXNet script "train.py".
 
 .. code:: python
 
@@ -211,7 +211,7 @@ The following are required arguments to the ``MXNet`` constructor. When you crea
 -  ``train_instance_count`` Number of Amazon EC2 instances to use for
    training.
 -  ``train_instance_type`` Type of EC2 instance to use for training, for
-   example, ‘ml.c4.xlarge’.
+   example, 'ml.c4.xlarge'.
 
 Optional arguments
 ''''''''''''''''''
@@ -231,12 +231,12 @@ The following are optional arguments. When you create an ``MXNet`` object, you c
    model training code.
 -  ``train_volume_size`` Size in GB of the EBS volume to use for storing
    input data during training. Must be large enough to store training
-   data if input_mode=‘File’ is used (which is the default).
+   data if input_mode='File' is used (which is the default).
 -  ``train_max_run`` Timeout in hours for training, after which Amazon
    SageMaker terminates the job regardless of its current status.
 -  ``input_mode`` The input mode that the algorithm supports. Valid
-   modes: ‘File’ - Amazon SageMaker copies the training dataset from the
-   s3 location to a directory in the Docker container. ‘Pipe’ - Amazon
+   modes: 'File' - Amazon SageMaker copies the training dataset from the
+   s3 location to a directory in the Docker container. 'Pipe' - Amazon
    SageMaker streams data directly from s3 to the container via a Unix
    named pipe.
 -  ``output_path`` s3 location where you want the training result (model
@@ -292,7 +292,7 @@ Just as you enable training by defining a ``train`` function in your training sc
 
 SageMaker provides a default implementation of ``save`` that works with MXNet Module API ``Module`` objects. If your training script does not define a ``save`` function, then the default ``save`` function will be invoked on the return-value of your ``train`` function.
 
-The following script demonstrates how to return a model from train, that’s compatible with the default ``save`` function.
+The following script demonstrates how to return a model from train, that's compatible with the default ``save`` function.
 
 .. code:: python
 
@@ -325,7 +325,7 @@ After your training job is complete, your model data will available in the s3 ``
 MXNet Module serialization in SageMaker
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-If you train function returns a ``Module`` object, it will be serialized by the default Module serialization system, unless you’ve specified a custom ``save`` function.
+If you train function returns a ``Module`` object, it will be serialized by the default Module serialization system, unless you've specified a custom ``save`` function.
 
 The default serialization system generates three files:
 
@@ -369,7 +369,7 @@ After your ``train`` function completes, SageMaker will invoke ``save`` with the
 
 **Note: How to save Gluon models with SageMaker**
 
-If your train function returns a Gluon API ``net`` object as its model, you’ll need to write your own ``save`` function. You will want to serialize the ``net`` parameters. Saving ``net`` parameters is covered in the `Serialization section <http://gluon.mxnet.io/chapter03_deep-neural-networks/serialization.html>`__ of the collaborative Gluon deep-learning book `“The Straight Dope” <http://gluon.mxnet.io/index.html>`__.
+If your train function returns a Gluon API ``net`` object as its model, you'll need to write your own ``save`` function. You will want to serialize the ``net`` parameters. Saving ``net`` parameters is covered in the `Serialization section <http://gluon.mxnet.io/chapter03_deep-neural-networks/serialization.html>`__ of the collaborative Gluon deep-learning book `"The Straight Dope" <http://gluon.mxnet.io/index.html>`__.
 
 Deploying MXNet models
 ~~~~~~~~~~~~~~~~~~~~~~
@@ -408,9 +408,9 @@ As with MXNet training, you configure the MXNet model server by defining functio
 Model loading
 ^^^^^^^^^^^^^
 
-Before a model can be served, it must be loaded. The SageMaker model server loads your model by invoking a ``model_fn`` function on your training script. If you don’t provide a ``model_fn`` function, SageMaker will use a default ``model_fn`` function. The default function works with MXNet Module model objects, saved via the default ``save`` function.
+Before a model can be served, it must be loaded. The SageMaker model server loads your model by invoking a ``model_fn`` function on your training script. If you don't provide a ``model_fn`` function, SageMaker will use a default ``model_fn`` function. The default function works with MXNet Module model objects, saved via the default ``save`` function.
 
-If you wrote a custom ``save`` function then you may need to write a custom ``model_fn`` function. If your save function serializes ``Module`` objects under the same format as the default ``save`` function, then you won’t need to write a custom model_fn function. If you do write a ``model_fn`` function must have the following signature:
+If you wrote a custom ``save`` function then you may need to write a custom ``model_fn`` function. If your save function serializes ``Module`` objects under the same format as the default ``save`` function, then you won't need to write a custom model_fn function. If you do write a ``model_fn`` function must have the following signature:
 
 .. code:: python
 
@@ -482,11 +482,11 @@ Input processing
 
 When an InvokeEndpoint operation is made against an Endpoint running a SageMaker MXNet model server, the model server receives two pieces of information:
 
--  The request Content-Type, for example “application/json”
+-  The request Content-Type, for example "application/json"
 -  The request data body, a byte array which is at most 5 MB (5 \* 1024
    \* 1024 bytes) in size.
 
-The SageMaker MXNet model server will invoke an “input_fn” function in your training script, passing in this information. If you define an ``input_fn`` function definition, it should return an object that can be passed to ``predict_fn`` and have the following signature:
+The SageMaker MXNet model server will invoke an "input_fn" function in your training script, passing in this information. If you define an ``input_fn`` function definition, it should return an object that can be passed to ``predict_fn`` and have the following signature:
 
 .. code:: python
 
@@ -496,7 +496,7 @@ Where ``request_body`` is a byte buffer, ``request_content_type`` is a Python st
 
 The SageMaker MXNet model server provides a default implementation of ``input_fn``. This function deserializes JSON or CSV encoded data into an MXNet ``NDArrayIter`` `(external API docs) <https://mxnet.incubator.apache.org/api/python/io.html#mxnet.io.NDArrayIter>`__ multi-dimensional array iterator. This works with the default ``predict_fn`` implementation, which expects an ``NDArrayIter`` as input.
 
-Default json deserialization requires ``request_body`` contain a single json list. Sending multiple json objects within the same ``request_body`` is not supported. The list must have a dimensionality compatible with the MXNet ``net`` or ``Module`` object. Specifically, after the list is loaded, it’s either padded or split to fit the first dimension of the model input shape. The list’s shape must be identical to the model’s input shape, for all dimensions after the first.
+Default json deserialization requires ``request_body`` contain a single json list. Sending multiple json objects within the same ``request_body`` is not supported. The list must have a dimensionality compatible with the MXNet ``net`` or ``Module`` object. Specifically, after the list is loaded, it's either padded or split to fit the first dimension of the model input shape. The list's shape must be identical to the model's input shape, for all dimensions after the first.
 
 Default csv deserialization requires ``request_body`` contain one or more lines of CSV numerical data. The data is loaded into a two-dimensional array, where each line break defines the boundaries of the first dimension. This two-dimensional array is then re-shaped to be compatible with the shape expected by the model object. Specifically, the first dimension is kept unchanged, but the second dimension is reshaped to be consistent with the shape of all dimensions in the model, following the first dimension.
 
@@ -566,7 +566,7 @@ The ``output_fn`` has the following signature:
 Where ``prediction`` is the result of invoking ``predict_fn`` and
 ``content_type`` is the InvokeEndpoint requested response content-type. The function should return a byte array of data serialized to content_type.
 
-The default implementation expects ``prediction`` to be an ``NDArray`` and can serialize the result to either JSON or CSV. It accepts response content types of “application/json” and “text/csv”.
+The default implementation expects ``prediction`` to be an ``NDArray`` and can serialize the result to either JSON or CSV. It accepts response content types of "application/json" and "text/csv".
 
 Distributed MXNet training
 ~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -642,20 +642,20 @@ The MXNetModel constructor takes the following arguments:
    custom code will be uploaded to. If not specified, will use the
    SageMaker default bucket created by sagemaker.Session.
 -  ``sagemaker_session (sagemaker.Session):`` The SageMaker Session
-   object, used for SageMaker interaction“”"
+   object, used for SageMaker interaction"""
 
 Your model data must be a .tar.gz file in S3. SageMaker Training Job model data is saved to .tar.gz files in S3, however if you have local data you want to deploy, you can prepare the data yourself.
 
-Assuming you have a local directory containg your model data named “my_model” you can tar and gzip compress the file and upload to S3 using the following commands:
+Assuming you have a local directory containg your model data named "my_model" you can tar and gzip compress the file and upload to S3 using the following commands:
 
 ::
 
     tar -czf model.tar.gz my_model
     aws s3 cp model.tar.gz s3://my-bucket/my-path/model.tar.gz
 
-This uploads the contents of my_model to a gzip compressed tar file to S3 in the bucket “my-bucket”, with the key “my-path/model.tar.gz”.
+This uploads the contents of my_model to a gzip compressed tar file to S3 in the bucket "my-bucket", with the key "my-path/model.tar.gz".
 
-To run this command, you’ll need the aws cli tool installed. Please refer to our `FAQ <#FAQ>`__ for more information on installing this.
+To run this command, you'll need the aws cli tool installed. Please refer to our `FAQ <#FAQ>`__ for more information on installing this.
 
 MXNet Training Examples
 ~~~~~~~~~~~~~~~~~~~~~~~
@@ -1059,7 +1059,7 @@ The following are required arguments to the TensorFlow constructor.
 -  ``train_instance_count (int)`` Number of Amazon EC2 instances to use for
    training.
 -  ``train_instance_type (str)`` Type of EC2 instance to use for training, for
-   example, ‘ml.c4.xlarge’.
+   example, 'ml.c4.xlarge'.
 - ``training_steps (int)`` Perform this many steps of training. ``None``, means train forever. 
 - ``evaluation_steps (int)`` Perform this many steps of evaluation. ``None``, means
   that evaluation runs until input from ``eval_input_fn`` is exhausted (or another exception is raised).
@@ -1444,15 +1444,15 @@ FAQ
 I want to train a SageMaker Estimator with local data, how do I do this?
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-You’ll need to upload the data to S3 before training. You can use the AWS Command Line Tool (the aws cli) to achieve this.
+You'll need to upload the data to S3 before training. You can use the AWS Command Line Tool (the aws cli) to achieve this.
 
-If you don’t have the aws cli, you can install it using pip:
+If you don't have the aws cli, you can install it using pip:
 
 ::
 
     pip install awscli --upgrade --user
 
-If you don’t have pip or want to learn more about installing the aws cli, please refer to the official `Amazon aws cli installation guide <http://docs.aws.amazon.com/cli/latest/userguide/installing.html>`__.
+If you don't have pip or want to learn more about installing the aws cli, please refer to the official `Amazon aws cli installation guide <http://docs.aws.amazon.com/cli/latest/userguide/installing.html>`__.
 
 Once you have the aws cli installed, you can upload a directory of files to S3 with the following command:
 
