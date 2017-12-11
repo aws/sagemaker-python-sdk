@@ -1378,7 +1378,7 @@ An example of ``output_fn`` for the accept type "application/python-pickle" can 
     import numpy as np
 
     def output_fn(prediction_result, accepts):
-        """An output_fn that dumps a pickled numpy as response"""
+        """An output_fn that dumps a pickled object as response"""
         if request_content_type == "application/python-pickle":
             return np.dumps(prediction_result)
         else:
