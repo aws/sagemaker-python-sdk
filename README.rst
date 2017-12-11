@@ -1380,13 +1380,13 @@ An example of ``output_fn`` for the accept type "application/python-pickle" can 
     def output_fn(prediction_result, accepts):
         """An output_fn that dumps a pickled numpy as response"""
         if request_content_type == "application/python-pickle":
-            return np.dumps(data)
+            return np.dumps(prediction_result)
         else:
             # Handle other content-types here or raise an Exception
             # if the content type is not supported.
             pass  
 
-A example with the ``input_fn`` and ``output_fn`` above can be find in
+A example with ``input_fn`` and ``output_fn`` above can be found in
 `here <https://github.com/aws/sagemaker-python-sdk/blob/master/tests/data/cifar_10/source/resnet_cifar_10.py#L143>`_.
 
 SageMaker TensorFlow Docker containers

@@ -22,7 +22,7 @@ from sagemaker.tensorflow import TensorFlow
 from tests.integ import DATA_DIR, REGION
 from tests.integ.timeout import timeout_and_delete_endpoint, timeout
 
-PICKLE_CONTENT_TYPE = "application/python-pickle"
+PICKLE_CONTENT_TYPE = 'application/python-pickle'
 
 
 @pytest.fixture(scope='module')

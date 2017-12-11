@@ -113,14 +113,14 @@ def serving_input_fn(hyperpameters):
 
 
 def train_input_fn(training_dir, hyperparameters):
-    return _input_fn(tf.estimator.ModeKeys.TRAIN, batch_size=BATCH_SIZE)
+    return _generate_synthetic_data(tf.estimator.ModeKeys.TRAIN, batch_size=BATCH_SIZE)
 
 
 def eval_input_fn(training_dir, hyperparameters):
-    return _input_fn(tf.estimator.ModeKeys.EVAL, batch_size=BATCH_SIZE)
+    return _generate_synthetic_data(tf.estimator.ModeKeys.EVAL, batch_size=BATCH_SIZE)
 
 
-def _input_fn(mode, batch_size):
+def _generate_synthetic_data(mode, batch_size):
     input_shape = [batch_size, HEIGHT, WIDTH, DEPTH]
     images = tf.truncated_normal(
         input_shape,
@@ -141,8 +141,7 @@ def _input_fn(mode, batch_size):
 
 
 def input_fn(serialized_data, content_type):
-    data = pickle.loads(serialized_data)
-    return data
+    return pickle.loads(serialized_data)
 
 
 def output_fn(data, accepts):
