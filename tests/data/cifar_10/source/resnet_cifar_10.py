@@ -142,7 +142,3 @@ def _generate_synthetic_data(mode, batch_size):
 
 def input_fn(serialized_data, content_type):
     return pickle.loads(serialized_data)
-
-
-def output_fn(data, accepts):
-    return pickle.dumps(data)

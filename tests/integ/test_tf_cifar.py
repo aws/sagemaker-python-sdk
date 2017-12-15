@@ -35,19 +35,7 @@ class PickleSerializer(object):
         self.content_type = PICKLE_CONTENT_TYPE
 
     def __call__(self, data):
-        return pickle.dumps(data)
-
-
-class PickleDeserializer(object):
-    def __init__(self):
-        self.accept = PICKLE_CONTENT_TYPE
-
-    def __call__(self, stream, content_type):
-        try:
-            data = stream.read().decode()
-            return pickle.loads(data)
-        finally:
-            stream.close()
+        return pickle.dumps(data, protocol=2)
 
 
 def test_cifar(sagemaker_session):
@@ -69,9 +57,8 @@ def test_cifar(sagemaker_session):
     with timeout_and_delete_endpoint(estimator=estimator, minutes=20):
         predictor = estimator.deploy(initial_instance_count=1, instance_type='ml.p2.xlarge')
         predictor.serializer = PickleSerializer()
-        predictor.deserializer = PickleDeserializer()
+        predictor.content_type = PICKLE_CONTENT_TYPE
 
         data = np.random.randn(32, 32, 3)
         predict_response = predictor.predict(data)
-
-        assert len(predict_response.outputs['probabilities'].float_val) == 10
+        assert len(predict_response['outputs']['probabilities']['floatVal']) == 10
