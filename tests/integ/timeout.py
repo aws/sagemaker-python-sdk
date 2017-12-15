@@ -14,6 +14,8 @@ import signal
 from contextlib import contextmanager
 import logging
 
+from botocore.exceptions import ClientError
+
 LOGGER = logging.getLogger('timeout')
 
 
@@ -59,8 +61,13 @@ def timeout_and_delete_endpoint(estimator, seconds=0, minutes=0, hours=0):
         try:
             yield [t]
         finally:
-            estimator.delete_endpoint()
-            LOGGER.info('deleted endpoint')
+            try:
+                estimator.delete_endpoint()
+                LOGGER.info('deleted endpoint')
+            except ClientError as ce:
+                if ce.response['Error']['Code'] == 'ValidationException':
+                    # avoids the inner exception to be overwritten
+                    pass
 
 
 @contextmanager
@@ -69,5 +76,10 @@ def timeout_and_delete_endpoint_by_name(endpoint_name, sagemaker_session, second
         try:
             yield [t]
         finally:
-            sagemaker_session.delete_endpoint(endpoint_name)
-            LOGGER.info('deleted endpoint {}'.format(endpoint_name))
+            try:
+                sagemaker_session.delete_endpoint(endpoint_name)
+                LOGGER.info('deleted endpoint {}'.format(endpoint_name))
+            except ClientError as ce:
+                if ce.response['Error']['Code'] == 'ValidationException':
+                    # avoids the inner exception to be overwritten
+                    pass

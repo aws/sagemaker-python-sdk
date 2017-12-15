@@ -44,7 +44,7 @@ def test_pca():
         pca.fit(pca.record_set(train_set[0][:100]))
 
     endpoint_name = name_from_base('pca')
-    with timeout_and_delete_endpoint_by_name(endpoint_name, sagemaker_session, minutes=15):
+    with timeout_and_delete_endpoint_by_name(endpoint_name, sagemaker_session, minutes=20):
         pca_model = sagemaker.amazon.pca.PCAModel(model_data=pca.model_data, role='SageMakerRole',
                                                   sagemaker_session=sagemaker_session)
         predictor = pca_model.deploy(initial_instance_count=1, instance_type="ml.c4.xlarge",
