@@ -1365,11 +1365,11 @@ An example of ``input_fn`` for the content-type "application/python-pickle" can 
 
     import numpy as np
 
-    def input_fn(data, content_type):
-        """An input_fn that loads a pickled numpy array"""
+    def input_fn(serialized_input, content_type):
+        """An input_fn that loads a pickled object"""
         if request_content_type == "application/python-pickle":
-            array = np.load(StringIO(request_body))
-            return array.reshape(model.data_shpaes[0])
+            deserialized_input = pickle.loads(serialized_input)
+            return deserialized_input
         else:
             # Handle other content-types here or raise an Exception
             # if the content type is not supported.
@@ -1384,14 +1384,17 @@ An example of ``output_fn`` for the accept type "application/python-pickle" can 
 
     import numpy as np
 
-    def output_fn(data, accepts):
-        """An output_fn that dumps a pickled numpy as response"""
+    def output_fn(prediction_result, accepts):
+        """An output_fn that dumps a pickled object as response"""
         if request_content_type == "application/python-pickle":
-            return np.dumps(data)
+            return np.dumps(prediction_result)
         else:
             # Handle other content-types here or raise an Exception
             # if the content type is not supported.
             pass  
+
+A example with ``input_fn`` and ``output_fn`` above can be found in
+`here <https://github.com/aws/sagemaker-python-sdk/blob/master/tests/data/cifar_10/source/resnet_cifar_10.py#L143>`_.
 
 SageMaker TensorFlow Docker containers
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
