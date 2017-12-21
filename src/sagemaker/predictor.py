@@ -246,7 +246,7 @@ class _JsonSerializer(object):
         if hasattr(data, 'read'):
             return _json_serialize_from_buffer(data)
 
-        raise ValueError("Unable to handle input format: ".format(type(data)))
+        raise ValueError("Unable to handle input format: {}".format(type(data)))
 
 
 json_serializer = _JsonSerializer()
