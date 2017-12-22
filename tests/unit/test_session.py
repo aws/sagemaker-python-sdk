@@ -331,8 +331,7 @@ def test_create_model_from_job(sagemaker_session):
         ModelName='jobname',
         PrimaryContainer={
             'Environment': {}, 'ModelDataUrl': 's3://sagemaker-123/output/jobname/model/model.tar.gz',
-            'Image': 'myimage'},
-        SupplementalContainers=[])
+            'Image': 'myimage'})
 
 
 def test_create_model_from_job_with_image(sagemaker_session):
@@ -353,15 +352,6 @@ def test_create_model_from_job_with_container_def(sagemaker_session):
     assert c_def['Image'] == 'some-image'
     assert c_def['ModelDataUrl'] == 'some-data'
     assert c_def['Environment'] == {'a': 'b'}
-
-
-def test_create_model_from_job_with_supplemental_containers(sagemaker_session):
-    ims = sagemaker_session
-    ims.sagemaker_client.describe_training_job.return_value = COMPLETED_DESCRIBE_JOB_RESULT
-    ims.create_model_from_job(JOB_NAME, supplemental_containers=[sagemaker.container_def('some-image')])
-    [create_model_call] = ims.sagemaker_client.create_model.call_args_list
-    [c_def] = create_model_call[1]['SupplementalContainers']
-    assert c_def['Image'] == 'some-image'
 
 
 def test_endpoint_from_production_variants(sagemaker_session):
