@@ -108,8 +108,8 @@ def write_numpy_to_dense_tensor(file, array, labels=None):
         _write_recordio(file, record.SerializeToString())
 
 
-def write_numpy_to_sparse_tensor(file, array, labels=None):
-    """Writes a numpy array to a dense tensor"""
+def write_spmatrix_to_sparse_tensor(file, array, labels=None):
+    """Writes a scipy sparse matrix to a sparse tensor"""
 
     if not issparse(array):
         raise TypeError("Array must be sparse")
