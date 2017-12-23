@@ -238,7 +238,7 @@ class Session(object):
         LOGGER.debug('train request: {}'.format(json.dumps(train_request, indent=4)))
         self.sagemaker_client.create_training_job(**train_request)
 
-    def create_model(self, name, role, primary_container, supplemental_containers=None):
+    def create_model(self, name, role, primary_container):
         """Create an Amazon SageMaker ``Model``.
 
         Specify the S3 location of the model artifacts and Docker image containing
@@ -253,36 +253,27 @@ class Session(object):
             primary_container (str or dict[str, str]): Docker image which defines the inference code.
                 You can also specify the return value of ``sagemaker.container_def()``, which is used to create
                 more advanced container configurations, including model containers which need artifacts from S3.
-            supplemental_containers (list[str or dict[str, str]]): List of Docker images which define
-                additional containers that need to be run in addition to the primary container (default: None).
-                You can also specify the return values of ``sagemaker.container_def()``, which the API uses to create
-                more advanced container configurations, including model containers which need artifacts from S3.
 
         Returns:
             str: Name of the Amazon SageMaker ``Model`` created.
         """
         role = self.expand_role(role)
         primary_container = _expand_container_def(primary_container)
-        if supplemental_containers is None:
-            supplemental_containers = []
-        supplemental_containers = [_expand_container_def(sc) for sc in supplemental_containers]
         LOGGER.info('Creating model with name: {}'.format(name))
         LOGGER.debug("create_model request: {}".format({
             'name': name,
             'role': role,
-            'primary_container': primary_container,
-            'supplemental_containers': supplemental_containers
+            'primary_container': primary_container
         }))
 
         self.sagemaker_client.create_model(ModelName=name,
                                            PrimaryContainer=primary_container,
-                                           SupplementalContainers=supplemental_containers,
                                            ExecutionRoleArn=role)
 
         return name
 
     def create_model_from_job(self, training_job_name, name=None, role=None, primary_container_image=None,
-                              model_data_url=None, env={}, supplemental_containers=None):
+                              model_data_url=None, env={}):
         """Create an Amazon SageMaker ``Model`` from a SageMaker Training Job.
 
         Args:
@@ -296,8 +287,6 @@ class Session(object):
             model_data_url (str): S3 location of the model data (default: None). If None, defaults to
                 the ``ModelS3Artifacts`` of ``training_job_name``.
             env (dict[string,string]): Model environment variables (default: {}).
-            supplemental_containers (list[dict[str, str]]): A list of supplemental Docker containers
-                (default: None). Defines the ``SupplementalContainers`` property on the created ``Model``.
 
         Returns:
             str: The name of the created ``Model``.
@@ -309,7 +298,7 @@ class Session(object):
             primary_container_image or training_job['AlgorithmSpecification']['TrainingImage'],
             model_data_url=model_data_url or training_job['ModelArtifacts']['S3ModelArtifacts'],
             env=env)
-        return self.create_model(name, role, primary_container, supplemental_containers)
+        return self.create_model(name, role, primary_container)
 
     def create_endpoint_config(self, name, model_name, initial_instance_count, instance_type):
         """Create an Amazon SageMaker endpoint configuration.

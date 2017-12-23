@@ -36,24 +36,14 @@ def sagemaker_session():
 
 
 def test_create_model(sagemaker_session):
-    supplemental_containers = [FULL_CONTAINER_DEF, FULL_CONTAINER_DEF]
 
-    returned_name = sagemaker_session.create_model(name=MODEL_NAME, role=ROLE, primary_container=FULL_CONTAINER_DEF,
-                                                   supplemental_containers=supplemental_containers)
+    returned_name = sagemaker_session.create_model(name=MODEL_NAME, role=ROLE, primary_container=FULL_CONTAINER_DEF)
 
     assert returned_name == MODEL_NAME
     sagemaker_session.sagemaker_client.create_model.assert_called_once_with(
         ModelName=MODEL_NAME,
         PrimaryContainer=FULL_CONTAINER_DEF,
-        SupplementalContainers=supplemental_containers,
         ExecutionRoleArn=EXPANDED_ROLE)
-
-
-def test_create_model_no_supplemental_containers(sagemaker_session):
-    sagemaker_session.create_model(name=MODEL_NAME, role=ROLE, primary_container=FULL_CONTAINER_DEF)
-
-    _1, _2, create_model_kwargs = sagemaker_session.sagemaker_client.create_model.mock_calls[0]
-    assert create_model_kwargs['SupplementalContainers'] == []
 
 
 def test_create_model_expand_primary_container(sagemaker_session):
@@ -61,19 +51,6 @@ def test_create_model_expand_primary_container(sagemaker_session):
 
     _1, _2, create_model_kwargs = sagemaker_session.sagemaker_client.create_model.mock_calls[0]
     assert create_model_kwargs['PrimaryContainer'] == {'Environment': {}, 'Image': IMAGE}
-
-
-def test_create_model_expand_supplemental_containers(sagemaker_session):
-    supp_image1 = 'suppimage1'
-    supp_image2 = 'suppimage2'
-    supplemental_containers = [supp_image1, supp_image2]
-
-    sagemaker_session.create_model(name=MODEL_NAME, role=ROLE, primary_container=IMAGE,
-                                   supplemental_containers=supplemental_containers)
-
-    expected = [{'Environment': {}, 'Image': supp_image1}, {'Environment': {}, 'Image': supp_image2}]
-    _1, _2, create_model_kwargs = sagemaker_session.sagemaker_client.create_model.mock_calls[0]
-    assert create_model_kwargs['SupplementalContainers'] == expected
 
 
 def test_create_endpoint_config(sagemaker_session):
