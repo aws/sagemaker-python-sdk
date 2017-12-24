@@ -648,6 +648,9 @@ class Session(object):
             if dot:
                 print()
             print('===== Job Complete =====')
+            # Customers are not billed for hardware provisioning, so billable time is less than total time
+            billable_time = (description['TrainingEndTime'] - description['TrainingStartTime']) * instance_count
+            print('Billable seconds:', int(billable_time.total_seconds()) + 1)
 
 
 def container_def(image, model_data_url=None, env=None):
