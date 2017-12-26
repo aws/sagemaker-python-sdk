@@ -1,8 +1,9 @@
 import os
-from setuptools import setup, find_packages
 from glob import glob
 from os.path import basename
 from os.path import splitext
+
+from setuptools import setup, find_packages
 
 
 def read(fname):
@@ -36,4 +37,8 @@ setup(name="sagemaker",
       extras_require={
           'test': ['tox', 'flake8', 'pytest', 'pytest-cov', 'pytest-xdist',
                    'mock', 'tensorflow>=1.3.0', 'contextlib2']},
+
+      entry_points={
+          'console_scripts': ['sagemaker=sagemaker.cli.main:main'],
+      }
       )
