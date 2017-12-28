@@ -86,7 +86,7 @@ class Model(object):
         """
         container_def = self.prepare_container_def(instance_type)
         model_name = self.name or name_from_image(container_def['Image'])
-        self.sagemaker_session.create_model(model_name, self.role, container_def, [])
+        self.sagemaker_session.create_model(model_name, self.role, container_def)
         production_variant = sagemaker.production_variant(model_name, instance_type, initial_instance_count)
         self.endpoint_name = endpoint_name or model_name
         self.sagemaker_session.endpoint_from_production_variants(self.endpoint_name, [production_variant])
