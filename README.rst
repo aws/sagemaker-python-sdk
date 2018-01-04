@@ -1522,6 +1522,7 @@ http://sagemaker.readthedocs.io/en/latest/sagemaker.mxnet.html#mxnet-predictor
 Example code using the TensorFlow predictor:
 
 ::
+
     from sagemaker.tensorflow import TensorFlowPredictor
     
     predictor = TensorFlowPredictor('myexistingendpoint')
