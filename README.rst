@@ -1506,3 +1506,24 @@ Once you have the aws cli installed, you can upload a directory of files to S3 w
     aws s3 cp /tmp/foo/ s3://bucket/path
 
 You can read more about using the aws cli for manipulating S3 resources in the `AWS cli command reference <http://docs.aws.amazon.com/cli/latest/reference/s3/index.html>`__.
+
+
+How do I make predictions against an existing endpoint?
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Create a Predictor object and provide it your endpoint name. Then, simply call its predict() method with your input.
+
+You can either use the generic RealTimePredictor class, which by default does not perform any serialization/deserialization transformations on your input, but can be configured to do so through constructor arguments:
+http://sagemaker.readthedocs.io/en/latest/predictors.html
+
+Or you can use the TensorFlow / MXNet specific predictor classes, which have default serialization/deserialization logic:
+http://sagemaker.readthedocs.io/en/latest/sagemaker.tensorflow.html#tensorflow-predictor
+http://sagemaker.readthedocs.io/en/latest/sagemaker.mxnet.html#mxnet-predictor
+
+Example code using the TensorFlow predictor:
+
+::
+
+    from sagemaker.tensorflow import TensorFlowPredictor
+    
+    predictor = TensorFlowPredictor('myexistingendpoint')
+    result = predictor.predict(['my request body'])
