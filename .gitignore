@@ -19,3 +19,4 @@ examples/tensorflow/distributed_mnist/data
 *.iml
 doc/_build
 **/.DS_Store
+venv/
