@@ -46,3 +46,4 @@ def istype(expected):
 isint = istype(int)
 isbool = istype(bool)
 isnumber = istype(numbers.Number)  # noqa
+isfloat = istype(float)

@@ -19,7 +19,7 @@ from sagemaker.amazon.pca import PCA
 from sagemaker.amazon.amazon_estimator import upload_numpy_to_s3_shards, _build_shards, registry
 
 
-COMMON_ARGS = {'role': 'myrole', 'train_instance_count': 1, 'train_instance_type': 'ml.c4.xlarge'}
+COMMON_TRAIN_ARGS = {'role': 'myrole', 'train_instance_count': 1, 'train_instance_type': 'ml.c4.xlarge'}
 
 REGION = "us-west-2"
 BUCKET_NAME = "Some-Bucket"
@@ -60,39 +60,43 @@ def sagemaker_session():
 
 
 def test_init(sagemaker_session):
-    pca = PCA(num_components=55, sagemaker_session=sagemaker_session, **COMMON_ARGS)
+    pca = PCA(num_components=55, default_mini_batch_size=10,
+              sagemaker_session=sagemaker_session, **COMMON_TRAIN_ARGS)
     assert pca.num_components == 55
+    assert pca.default_mini_batch_size == 10
 
 
 def test_init_all_pca_hyperparameters(sagemaker_session):
-    pca = PCA(num_components=55, algorithm_mode='randomized',
+    pca = PCA(num_components=55, default_mini_batch_size=10, algorithm_mode='randomized',
               subtract_mean=True, extra_components=33, sagemaker_session=sagemaker_session,
-              **COMMON_ARGS)
+              **COMMON_TRAIN_ARGS)
     assert pca.num_components == 55
+    assert pca.default_mini_batch_size == 10
     assert pca.algorithm_mode == 'randomized'
     assert pca.extra_components == 33
 
 
 def test_init_estimator_args(sagemaker_session):
-    pca = PCA(num_components=1, train_max_run=1234, sagemaker_session=sagemaker_session,
-              data_location='s3://some-bucket/some-key/', **COMMON_ARGS)
-    assert pca.train_instance_type == COMMON_ARGS['train_instance_type']
-    assert pca.train_instance_count == COMMON_ARGS['train_instance_count']
-    assert pca.role == COMMON_ARGS['role']
+    pca = PCA(num_components=1, train_max_run=1234, default_mini_batch_size=10,
+              sagemaker_session=sagemaker_session, data_location='s3://some-bucket/some-key/', **COMMON_TRAIN_ARGS)
+    assert pca.train_instance_type == COMMON_TRAIN_ARGS['train_instance_type']
+    assert pca.train_instance_count == COMMON_TRAIN_ARGS['train_instance_count']
+    assert pca.role == COMMON_TRAIN_ARGS['role']
     assert pca.train_max_run == 1234
     assert pca.data_location == 's3://some-bucket/some-key/'
 
 
 def test_data_location_validation(sagemaker_session):
-    pca = PCA(num_components=2, sagemaker_session=sagemaker_session, **COMMON_ARGS)
+    pca = PCA(num_components=2, default_mini_batch_size=10,
+              sagemaker_session=sagemaker_session, **COMMON_TRAIN_ARGS)
     with pytest.raises(ValueError):
         pca.data_location = "nots3://abcd/efgh"
 
 
 def test_pca_hyperparameters(sagemaker_session):
-    pca = PCA(num_components=55, algorithm_mode='randomized',
+    pca = PCA(num_components=55, default_mini_batch_size=10, algorithm_mode='randomized',
               subtract_mean=True, extra_components=33, sagemaker_session=sagemaker_session,
-              **COMMON_ARGS)
+              **COMMON_TRAIN_ARGS)
     assert pca.hyperparameters() == dict(
         num_components='55',
         extra_components='33',
@@ -101,7 +105,8 @@ def test_pca_hyperparameters(sagemaker_session):
 
 
 def test_image(sagemaker_session):
-    pca = PCA(num_components=55, sagemaker_session=sagemaker_session, **COMMON_ARGS)
+    pca = PCA(num_components=55, default_mini_batch_size=10,
+              sagemaker_session=sagemaker_session, **COMMON_TRAIN_ARGS)
     assert pca.train_image() == registry('us-west-2') + '/pca:1'
 
 
@@ -111,9 +116,9 @@ def test_fit_ndarray(time, sagemaker_session):
     mock_object = Mock()
     mock_s3.Object = Mock(return_value=mock_object)
     sagemaker_session.boto_session.resource = Mock(return_value=mock_s3)
-    kwargs = dict(COMMON_ARGS)
+    kwargs = dict(COMMON_TRAIN_ARGS)
     kwargs['train_instance_count'] = 3
-    pca = PCA(num_components=55, sagemaker_session=sagemaker_session,
+    pca = PCA(num_components=55, default_mini_batch_size=10, sagemaker_session=sagemaker_session,
               data_location='s3://{}/key-prefix/'.format(BUCKET_NAME), **kwargs)
     train = [[1.0, 2.0, 3.0], [4.0, 5.0, 6.0], [7.0, 8.0, 8.0], [44.0, 55.0, 66.0]]
     labels = [99, 85, 87, 2]

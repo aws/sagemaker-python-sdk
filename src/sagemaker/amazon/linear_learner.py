@@ -60,7 +60,7 @@ class LinearLearner(AmazonAlgorithmEstimatorBase):
     unbias_label = hp('unbias_label', isbool, 'A boolean')
     num_point_for_scalar = hp('num_point_for_scalar', (isint, gt(0)), 'An integer greater-than 0')
 
-    def __init__(self, role, train_instance_count, train_instance_type, predictor_type='binary_classifier',
+    def __init__(self, role, train_instance_count, train_instance_type, predictor_type,
                  binary_classifier_model_selection_criteria=None, target_recall=None, target_precision=None,
                  positive_example_weight_mult=None, epochs=None, use_bias=None, num_models=None,
                  num_calibration_samples=None, init_method=None, init_scale=None, init_sigma=None, init_bias=None,

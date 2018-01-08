@@ -33,8 +33,8 @@ class KMeans(AmazonAlgorithmEstimatorBase):
     epochs = hp('epochs', (gt(0), isint), 'An integer greater-than 0')
     center_factor = hp('extra_center_factor', (gt(0), isint), 'An integer greater-than 0')
 
-    def __init__(self, role, train_instance_count, train_instance_type, k, init_method=None,
-                 max_iterations=None, tol=None, num_trials=None, local_init_method=None,
+    def __init__(self, role, train_instance_count, train_instance_type, k, default_mini_batch_size=5000,
+                 init_method=None, max_iterations=None, tol=None, num_trials=None, local_init_method=None,
                  half_life_time_size=None, epochs=None, center_factor=None, **kwargs):
         """
         A k-means clustering :class:`~sagemaker.amazon.AmazonAlgorithmEstimatorBase`. Finds k clusters of data in an
@@ -67,6 +67,7 @@ class KMeans(AmazonAlgorithmEstimatorBase):
             train_instance_count (int): Number of Amazon EC2 instances to use for training.
             train_instance_type (str): Type of EC2 instance to use for training, for example, 'ml.c4.xlarge'.
             k (int): The number of clusters to produce.
+            default_mini_batch_size (int): Default size of mini-batch used for training.
             init_method (str): How to initialize cluster locations. One of 'random' or 'kmeans++'.
             max_iterations (int): Maximum iterations for Lloyds EM procedure in the local kmeans used in finalize stage.
             tol (int): Tolerance for change in ssd for early stopping in local kmeans.
@@ -83,7 +84,8 @@ class KMeans(AmazonAlgorithmEstimatorBase):
                 reduce the number of centers to ``k`` when finalizing
             **kwargs: base class keyword argument values.
         """
-        super(KMeans, self).__init__(role, train_instance_count, train_instance_type, **kwargs)
+        super(KMeans, self).__init__(role, train_instance_count, train_instance_type,
+                                     default_mini_batch_size, **kwargs)
         self.k = k
         self.init_method = init_method
         self.max_iterations = max_iterations

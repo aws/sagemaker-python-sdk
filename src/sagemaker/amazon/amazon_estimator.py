@@ -28,15 +28,16 @@ class AmazonAlgorithmEstimatorBase(EstimatorBase):
     """Base class for Amazon first-party Estimator implementations. This class isn't intended
     to be instantiated directly."""
 
-    MAX_DEFAULT_BATCH_SIZE = 500
-
     feature_dim = hp('feature_dim', (validation.isint, validation.gt(0)))
     mini_batch_size = hp('mini_batch_size', (validation.isint, validation.gt(0)))
 
-    def __init__(self, role, train_instance_count, train_instance_type, data_location=None, **kwargs):
+    def __init__(self, role, train_instance_count, train_instance_type,
+                 default_mini_batch_size=None, data_location=None, **kwargs):
         """Initialize an AmazonAlgorithmEstimatorBase.
 
         Args:
+            default_mini_batch_size (int): Default size of mini-batch used for training set for algorithms that
+                require this parameter.
             data_location (str or None): The s3 prefix to upload RecordSet objects to, expressed as an
                 S3 url. For example "s3://example-bucket/some-key-prefix/". Objects will be
                 saved in a unique sub-directory of the specified location. If None, a default
@@ -44,6 +45,7 @@ class AmazonAlgorithmEstimatorBase(EstimatorBase):
         super(AmazonAlgorithmEstimatorBase, self).__init__(role, train_instance_count, train_instance_type,
                                                            **kwargs)
 
+        self.default_mini_batch_size = default_mini_batch_size
         default_location = "s3://{}/sagemaker-record-sets/".format(self.sagemaker_session.default_bucket())
         data_location = data_location or default_location
         self.data_location = data_location
@@ -87,10 +89,9 @@ class AmazonAlgorithmEstimatorBase(EstimatorBase):
             mini_batch_size (int or None): The size of each mini-batch to use when training. If None, a
                 default value will be used.
         """
-        default_mini_batch_size = min(self.MAX_DEFAULT_BATCH_SIZE,
-                                      max(1, int(records.num_records / self.train_instance_count)))
-        self.mini_batch_size = mini_batch_size or default_mini_batch_size
+        self.mini_batch_size = mini_batch_size or self.default_mini_batch_size
         self.feature_dim = records.feature_dim
+
         data = {records.channel: s3_input(records.s3_data, distribution='ShardedByS3Key',
                                           s3_data_type=records.s3_data_type)}
         super(AmazonAlgorithmEstimatorBase, self).fit(data, **kwargs)
