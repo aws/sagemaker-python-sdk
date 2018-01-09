@@ -1,0 +1,29 @@
+=========
+CHANGELOG
+=========
+
+1.0.2
+=====
+
+* feature: Estimators: add support for Amazon FactorizationMachines algorithm
+* feature: Tests: add training failure tests for TF and MXNet
+* feature: Documentation: show how to make predictions against existing endpoint
+* feature: Estimators: implement write_spmatrix_to_sparse_tensor to support any scipy.sparse matrix
+
+
+1.0.1
+=====
+
+* api-change: Model: Remove support for 'supplemental_containers' when creating Model
+* feature: Documentation: multiple updates
+* feature: Tests: ignore tests data in tox.ini, increase timeout for endpoint creation, capture exceptions during endpoint deletion, tests for input-output functions
+* feature: Logging: change to describe job every 30s when showing logs
+* feature: Session: use custom user agent at all times
+* feature: Setup: add travis file
+
+
+1.0.0
+=====
+
+* Initial commit
+
