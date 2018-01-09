@@ -11,20 +11,21 @@
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
 import gzip
-import os
 import pickle
 import sys
-import pytest  # noqa
-import boto3
-import sagemaker
-import sagemaker.amazon.pca
-from sagemaker.utils import name_from_base
 
+import boto3
+import os
+
+import sagemaker
+from sagemaker import FactorizationMachines, FactorizationMachinesModel
+from sagemaker.utils import name_from_base
 from tests.integ import DATA_DIR, REGION
 from tests.integ.timeout import timeout, timeout_and_delete_endpoint_by_name
 
 
-def test_pca():
+def test_factorization_machines():
+
     with timeout(minutes=15):
         sagemaker_session = sagemaker.Session(boto_session=boto3.Session(region_name=REGION))
         data_path = os.path.join(DATA_DIR, 'one_p_mnist', 'mnist.pkl.gz')
@@ -34,24 +35,22 @@ def test_pca():
         with gzip.open(data_path, 'rb') as f:
             train_set, _, _ = pickle.load(f, **pickle_args)
 
-        pca = sagemaker.amazon.pca.PCA(role='SageMakerRole', train_instance_count=1,
-                                       train_instance_type='ml.m4.xlarge', default_mini_batch_size=500,
-                                       num_components=48, sagemaker_session=sagemaker_session, base_job_name='test-pca')
+        fm = FactorizationMachines(role='SageMakerRole', train_instance_count=1,
+                                   train_instance_type='ml.c4.xlarge',
+                                   num_factors=10, predictor_type='regressor',
+                                   default_mini_batch_size=100,
+                                   epochs=2, clip_gradient=1e2, eps=0.001, rescale_grad=1.0/100,
+                                   sagemaker_session=sagemaker_session, base_job_name='test-fm')
 
-        pca.algorithm_mode = 'randomized'
-        pca.subtract_mean = True
-        pca.extra_components = 5
-        pca.fit(pca.record_set(train_set[0][:100]))
+        # training labels must be 'float32'
+        fm.fit(fm.record_set(train_set[0][:200], train_set[1][:200].astype('float32')))
 
-    endpoint_name = name_from_base('pca')
+    endpoint_name = name_from_base('fm')
     with timeout_and_delete_endpoint_by_name(endpoint_name, sagemaker_session, minutes=20):
-        pca_model = sagemaker.amazon.pca.PCAModel(model_data=pca.model_data, role='SageMakerRole',
-                                                  sagemaker_session=sagemaker_session)
-        predictor = pca_model.deploy(initial_instance_count=1, instance_type="ml.c4.xlarge",
-                                     endpoint_name=endpoint_name)
+        model = FactorizationMachinesModel(fm.model_data, role='SageMakerRole', sagemaker_session=sagemaker_session)
+        predictor = model.deploy(1, 'ml.c4.xlarge', endpoint_name=endpoint_name)
+        result = predictor.predict(train_set[0][:10])
 
-        result = predictor.predict(train_set[0][:5])
-
-        assert len(result) == 5
+        assert len(result) == 10
         for record in result:
-            assert record.label["projection"] is not None
+            assert record.label["score"] is not None

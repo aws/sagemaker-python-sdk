@@ -39,8 +39,8 @@ def test_linear_learner():
         train_set[1][100:200] = 0
         train_set = train_set[0], train_set[1].astype(np.dtype('float32'))
 
-        ll = LinearLearner('SageMakerRole', 1, 'ml.c4.2xlarge', base_job_name='test-linear-learner',
-                           sagemaker_session=sagemaker_session)
+        ll = LinearLearner('SageMakerRole', 1, 'ml.c4.2xlarge', predictor_type='binary_classifier',
+                           base_job_name='test-linear-learner', sagemaker_session=sagemaker_session)
         ll.binary_classifier_model_selection_criteria = 'accuracy'
         ll.target_reacall = 0.5
         ll.target_precision = 0.5
@@ -71,7 +71,7 @@ def test_linear_learner():
         ll.unbias_data = True
         ll.unbias_label = False
         ll.num_point_for_scala = 10000
-        ll.fit(ll.record_set(train_set[0][:200], train_set[1][:200]))
+        ll.fit(ll.record_set(train_set[0][:200], train_set[1][:200]), mini_batch_size=100)
 
     endpoint_name = name_from_base('linear-learner')
     with timeout_and_delete_endpoint_by_name(endpoint_name, sagemaker_session, minutes=20):
