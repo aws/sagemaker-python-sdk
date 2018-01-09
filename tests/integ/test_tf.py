@@ -19,6 +19,8 @@ from sagemaker.tensorflow import TensorFlow
 from tests.integ import DATA_DIR, REGION
 from tests.integ.timeout import timeout_and_delete_endpoint, timeout
 
+DATA_PATH = os.path.join(DATA_DIR, 'iris', 'data')
+
 
 @pytest.fixture(scope='module')
 def sagemaker_session():
@@ -28,7 +30,6 @@ def sagemaker_session():
 def test_tf(sagemaker_session):
     with timeout(minutes=15):
         script_path = os.path.join(DATA_DIR, 'iris', 'iris-dnn-classifier.py')
-        data_path = os.path.join(DATA_DIR, 'iris', 'data')
 
         estimator = TensorFlow(entry_point=script_path,
                                role='SageMakerRole',
@@ -40,7 +41,7 @@ def test_tf(sagemaker_session):
                                sagemaker_session=sagemaker_session,
                                base_job_name='test-tf')
 
-        inputs = estimator.sagemaker_session.upload_data(path=data_path, key_prefix='integ-test-data/tf_iris')
+        inputs = estimator.sagemaker_session.upload_data(path=DATA_PATH, key_prefix='integ-test-data/tf_iris')
         estimator.fit(inputs)
         print('job succeeded: {}'.format(estimator.latest_training_job.name))
 
@@ -49,3 +50,22 @@ def test_tf(sagemaker_session):
 
         result = json_predictor.predict([6.4, 3.2, 4.5, 1.5])
         print('predict result: {}'.format(result))
+
+
+def test_failed_tf_training(sagemaker_session):
+    with timeout(minutes=15):
+        script_path = os.path.join(DATA_DIR, 'iris', 'failure_script.py')
+        estimator = TensorFlow(entry_point=script_path,
+                               role='SageMakerRole',
+                               training_steps=1,
+                               evaluation_steps=1,
+                               hyperparameters={'input_tensor_name': 'inputs'},
+                               train_instance_count=1,
+                               train_instance_type='ml.c4.xlarge',
+                               sagemaker_session=sagemaker_session)
+
+        inputs = estimator.sagemaker_session.upload_data(path=DATA_PATH, key_prefix='integ-test-data/tf-failure')
+
+        with pytest.raises(ValueError) as e:
+            estimator.fit(inputs)
+        assert 'This failure is expected' in str(e.value)
