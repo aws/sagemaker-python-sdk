@@ -171,10 +171,9 @@ class Session(object):
                 # If this bucket is already being concurrently created, we don't need to create it again.
                 pass
             elif error_code == 'TooManyBuckets':
+                # Succeed if the default bucket exists
                 try:
                     s3.meta.client.head_bucket(Bucket=default_bucket)
-                    LOGGER.info('S3 bucket {} already exists'.format(
-                        default_bucket))
                     pass
                 except ClientError:
                     raise
