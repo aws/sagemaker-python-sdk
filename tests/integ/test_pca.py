@@ -35,7 +35,7 @@ def test_pca():
             train_set, _, _ = pickle.load(f, **pickle_args)
 
         pca = sagemaker.amazon.pca.PCA(role='SageMakerRole', train_instance_count=1,
-                                       train_instance_type='ml.m4.xlarge', default_mini_batch_size=500,
+                                       train_instance_type='ml.m4.xlarge',
                                        num_components=48, sagemaker_session=sagemaker_session, base_job_name='test-pca')
 
         pca.algorithm_mode = 'randomized'

@@ -22,6 +22,8 @@ class PCA(AmazonAlgorithmEstimatorBase):
 
     repo = 'pca:1'
 
+    DEFAULT_MINI_BATCH_SIZE = 500
+
     num_components = hp(name='num_components', validate=lambda x: x > 0 and isinstance(x, int),
                         validation_message='Value must be an integer greater than zero')
     algorithm_mode = hp(name='algorithm_mode', validate=lambda x: x in ['regular', 'stable', 'randomized'],
@@ -31,7 +33,7 @@ class PCA(AmazonAlgorithmEstimatorBase):
     extra_components = hp(name='extra_components', validate=lambda x: x >= 0 and isinstance(x, int),
                           validation_message="Value must be an integer greater than or equal to 0")
 
-    def __init__(self, role, train_instance_count, train_instance_type, num_components, default_mini_batch_size,
+    def __init__(self, role, train_instance_count, train_instance_type, num_components,
                  algorithm_mode=None, subtract_mean=None, extra_components=None, **kwargs):
         """A Principal Components Analysis (PCA) :class:`~sagemaker.amazon.amazon_estimator.AmazonAlgorithmEstimatorBase`.
 
@@ -66,7 +68,6 @@ class PCA(AmazonAlgorithmEstimatorBase):
             train_instance_count (int): Number of Amazon EC2 instances to use for training.
             train_instance_type (str): Type of EC2 instance to use for training, for example, 'ml.c4.xlarge'.
             num_components(int): The number of principal components. Must be greater than zero.
-            default_mini_batch_size (int): Default size of mini-batch used for training.
             algorithm_mode (str): Mode for computing the principal components. One of 'regular', 'stable' or
                 'randomized'.
             subtract_mean (bool): Whether the data should be unbiased both during train and at inference.
@@ -75,8 +76,7 @@ class PCA(AmazonAlgorithmEstimatorBase):
                 to the maximum of 10 and num_components will be used. Valid for randomized mode only.
             **kwargs: base class keyword argument values.
         """
-        super(PCA, self).__init__(role, train_instance_count, train_instance_type,
-                                  default_mini_batch_size, **kwargs)
+        super(PCA, self).__init__(role, train_instance_count, train_instance_type, **kwargs)
         self.num_components = num_components
         self.algorithm_mode = algorithm_mode
         self.subtract_mean = subtract_mean
@@ -87,6 +87,13 @@ class PCA(AmazonAlgorithmEstimatorBase):
         s3 model data produced by this Estimator."""
 
         return PCAModel(self.model_data, self.role, sagemaker_session=self.sagemaker_session)
+
+    def fit(self, records, mini_batch_size=None, **kwargs):
+        # mini_batch_size is a required parameter
+        default_mini_batch_size = min(self.DEFAULT_MINI_BATCH_SIZE,
+                                      max(1, int(records.num_records / self.train_instance_count)))
+        use_mini_batch_size = mini_batch_size or default_mini_batch_size
+        super(PCA, self).fit(records, use_mini_batch_size, **kwargs)
 
 
 class PCAPredictor(RealTimePredictor):

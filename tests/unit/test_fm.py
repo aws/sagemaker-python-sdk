@@ -62,7 +62,7 @@ def test_all_hyperparameters(sagemaker_session):
                                bias_init_value=2.002, linear_init_method='constant', linear_init_scale=0.02,
                                linear_init_sigma=0.003, linear_init_value=1.0, factors_init_method='normal',
                                factors_init_scale=1.101, factors_init_sigma=1.202, factors_init_value=1.303,
-                                **ALL_REQ_ARGS)
+                               **ALL_REQ_ARGS)
     assert fm.hyperparameters() == dict(
         num_factors=str(ALL_REQ_ARGS['num_factors']),
         predictor_type=ALL_REQ_ARGS['predictor_type'],

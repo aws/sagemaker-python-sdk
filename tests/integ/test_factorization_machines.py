@@ -38,7 +38,6 @@ def test_factorization_machines():
         fm = FactorizationMachines(role='SageMakerRole', train_instance_count=1,
                                    train_instance_type='ml.c4.xlarge',
                                    num_factors=10, predictor_type='regressor',
-                                   default_mini_batch_size=100,
                                    epochs=2, clip_gradient=1e2, eps=0.001, rescale_grad=1.0/100,
                                    sagemaker_session=sagemaker_session, base_job_name='test-fm')
 

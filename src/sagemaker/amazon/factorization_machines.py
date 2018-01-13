@@ -13,7 +13,7 @@
 from sagemaker.amazon.amazon_estimator import AmazonAlgorithmEstimatorBase, registry
 from sagemaker.amazon.common import numpy_to_record_serializer, record_deserializer
 from sagemaker.amazon.hyperparameter import Hyperparameter as hp  # noqa
-from sagemaker.amazon.validation import gt, isin, isint, ge, isfloat
+from sagemaker.amazon.validation import gt, isin, isint, ge, isnumber
 from sagemaker.predictor import RealTimePredictor
 from sagemaker.model import Model
 from sagemaker.session import Session
@@ -27,30 +27,30 @@ class FactorizationMachines(AmazonAlgorithmEstimatorBase):
     predictor_type = hp('predictor_type', isin('binary_classifier', 'regressor'),
                         'Value "binary_classifier" or "regressor"')
     epochs = hp('epochs', (gt(0), isint), "An integer greater than 0")
-    clip_gradient = hp('clip_gradient', isfloat, "A float value")
-    eps = hp('eps', isfloat, "A float value")
-    rescale_grad = hp('rescale_grad', isfloat, "A float value")
-    bias_lr = hp('bias_lr', (ge(0), isfloat), "A non-negative float")
-    linear_lr = hp('linear_lr', (ge(0), isfloat), "A non-negative float")
-    factors_lr = hp('factors_lr', (ge(0), isfloat), "A non-negative float")
-    bias_wd = hp('bias_wd', (ge(0), isfloat), "A non-negative float")
-    linear_wd = hp('linear_wd', (ge(0), isfloat), "A non-negative float")
-    factors_wd = hp('factors_wd', (ge(0), isfloat), "A non-negative float")
+    clip_gradient = hp('clip_gradient', isnumber, "A float value")
+    eps = hp('eps', isnumber, "A float value")
+    rescale_grad = hp('rescale_grad', isnumber, "A float value")
+    bias_lr = hp('bias_lr', (ge(0), isnumber), "A non-negative float")
+    linear_lr = hp('linear_lr', (ge(0), isnumber), "A non-negative float")
+    factors_lr = hp('factors_lr', (ge(0), isnumber), "A non-negative float")
+    bias_wd = hp('bias_wd', (ge(0), isnumber), "A non-negative float")
+    linear_wd = hp('linear_wd', (ge(0), isnumber), "A non-negative float")
+    factors_wd = hp('factors_wd', (ge(0), isnumber), "A non-negative float")
     bias_init_method = hp('bias_init_method', isin('normal', 'uniform', 'constant'),
                           'Value "normal", "uniform" or "constant"')
-    bias_init_scale = hp('bias_init_scale', (ge(0), isfloat), "A non-negative float")
-    bias_init_sigma = hp('bias_init_sigma', (ge(0), isfloat), "A non-negative float")
-    bias_init_value = hp('bias_init_value', isfloat, "A float value")
+    bias_init_scale = hp('bias_init_scale', (ge(0), isnumber), "A non-negative float")
+    bias_init_sigma = hp('bias_init_sigma', (ge(0), isnumber), "A non-negative float")
+    bias_init_value = hp('bias_init_value', isnumber, "A float value")
     linear_init_method = hp('linear_init_method', isin('normal', 'uniform', 'constant'),
                             'Value "normal", "uniform" or "constant"')
-    linear_init_scale = hp('linear_init_scale', (ge(0), isfloat), "A non-negative float")
-    linear_init_sigma = hp('linear_init_sigma', (ge(0), isfloat), "A non-negative float")
-    linear_init_value = hp('linear_init_value', isfloat, "A float value")
+    linear_init_scale = hp('linear_init_scale', (ge(0), isnumber), "A non-negative float")
+    linear_init_sigma = hp('linear_init_sigma', (ge(0), isnumber), "A non-negative float")
+    linear_init_value = hp('linear_init_value', isnumber, "A float value")
     factors_init_method = hp('factors_init_method', isin('normal', 'uniform', 'constant'),
                              'Value "normal", "uniform" or "constant"')
-    factors_init_scale = hp('factors_init_scale', (ge(0), isfloat), "A non-negative float")
-    factors_init_sigma = hp('factors_init_sigma', (ge(0), isfloat), "A non-negative float")
-    factors_init_value = hp('factors_init_value', isfloat, "A float value")
+    factors_init_scale = hp('factors_init_scale', (ge(0), isnumber), "A non-negative float")
+    factors_init_sigma = hp('factors_init_sigma', (ge(0), isnumber), "A non-negative float")
+    factors_init_value = hp('factors_init_value', isnumber, "A float value")
 
     def __init__(self, role, train_instance_count, train_instance_type,
                  num_factors, predictor_type,

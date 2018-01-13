@@ -23,6 +23,8 @@ class LinearLearner(AmazonAlgorithmEstimatorBase):
 
     repo = 'linear-learner:1'
 
+    DEFAULT_MINI_BATCH_SIZE = 1000
+
     binary_classifier_model_selection_criteria = hp('binary_classifier_model_selection_criteria',
                                                     isin('accuracy', 'f1', 'precision_at_target_recall',
                                                          'recall_at_target_precision', 'cross_entropy_loss'))
@@ -60,7 +62,7 @@ class LinearLearner(AmazonAlgorithmEstimatorBase):
     unbias_label = hp('unbias_label', isbool, 'A boolean')
     num_point_for_scalar = hp('num_point_for_scalar', (isint, gt(0)), 'An integer greater-than 0')
 
-    def __init__(self, role, train_instance_count, train_instance_type, predictor_type,
+    def __init__(self, role, train_instance_count, train_instance_type, predictor_type='binary_classifier',
                  binary_classifier_model_selection_criteria=None, target_recall=None, target_precision=None,
                  positive_example_weight_mult=None, epochs=None, use_bias=None, num_models=None,
                  num_calibration_samples=None, init_method=None, init_scale=None, init_sigma=None, init_bias=None,
@@ -190,6 +192,13 @@ class LinearLearner(AmazonAlgorithmEstimatorBase):
         s3 model data produced by this Estimator."""
 
         return LinearLearnerModel(self, self.model_data, self.role, self.sagemaker_session)
+
+    def fit(self, records, mini_batch_size=None, **kwargs):
+        # mini_batch_size can't be greater than number of records or training job fails
+        default_mini_batch_size = min(self.DEFAULT_MINI_BATCH_SIZE,
+                                      max(1, int(records.num_records / self.train_instance_count)))
+        use_mini_batch_size = mini_batch_size or default_mini_batch_size
+        super(LinearLearner, self).fit(records, use_mini_batch_size, **kwargs)
 
 
 class LinearLearnerPredictor(RealTimePredictor):
