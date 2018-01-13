@@ -6,6 +6,7 @@ CHANGELOG
 =====
 
 * feature: Estimators: add support for Amazon FactorizationMachines algorithm
+* feature: Session: Correctly handle TooManyBuckets error_code in default_bucket method
 * feature: Tests: add training failure tests for TF and MXNet
 * feature: Documentation: show how to make predictions against existing endpoint
 * feature: Estimators: implement write_spmatrix_to_sparse_tensor to support any scipy.sparse matrix
