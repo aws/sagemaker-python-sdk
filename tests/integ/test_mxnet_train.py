@@ -70,3 +70,20 @@ def test_deploy_model(mxnet_training_job, sagemaker_session):
 
         data = numpy.zeros(shape=(1, 1, 28, 28))
         predictor.predict(data)
+
+
+def test_failed_training_job(sagemaker_session):
+    with timeout(minutes=15):
+        script_path = os.path.join(DATA_DIR, 'mxnet_mnist', 'failure_script.py')
+        data_path = os.path.join(DATA_DIR, 'mxnet_mnist')
+
+        mx = MXNet(entry_point=script_path, role='SageMakerRole',
+                   train_instance_count=1, train_instance_type='ml.c4.xlarge',
+                   sagemaker_session=sagemaker_session)
+
+        train_input = mx.sagemaker_session.upload_data(path=os.path.join(data_path, 'train'),
+                                                       key_prefix='integ-test-data/mxnet_mnist/train-failure')
+
+        with pytest.raises(ValueError) as e:
+            mx.fit(train_input)
+        assert 'This failure is expected' in str(e.value)
