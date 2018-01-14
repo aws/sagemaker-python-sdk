@@ -5,6 +5,8 @@ import logging
 import sys
 
 import sagemaker
+import sagemaker.cli.mxnet
+import sagemaker.cli.tensorflow
 
 logger = logging.getLogger(__name__)
 
