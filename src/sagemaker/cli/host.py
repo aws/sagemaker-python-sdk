@@ -48,7 +48,6 @@ class HostingCommand(object):
 
         with tarfile.open(archive, mode='w:gz') as t:
             t.add(src, arcname=arcname)
-        t.close()
         return archive
 
     def create_model(self, model_url):
