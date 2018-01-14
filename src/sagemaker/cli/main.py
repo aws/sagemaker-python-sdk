@@ -20,7 +20,8 @@ def parse_arguments(args):
     common_parser.add_argument('--data', help='path to training data or model files', type=str, default='./data')
     common_parser.add_argument('--script', help='path to script', type=str, default='./script.py')
     common_parser.add_argument('--job-name', help='job or endpoint name', type=str, default=None)
-    common_parser.add_argument('--bucket-name', help='S3 bucket', type=str, default=None)
+    common_parser.add_argument('--bucket-name', help='S3 bucket for training/model data and script files',
+                               type=str, default=None)
     common_parser.add_argument('--role-name', help='SageMaker execution role name', type=str,
                                default='AmazonSageMakerFullAccess')
     common_parser.add_argument('--python', help='python version', type=str, default='py2')
