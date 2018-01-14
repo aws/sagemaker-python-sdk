@@ -10,53 +10,66 @@ logger = logging.getLogger(__name__)
 
 
 def parse_arguments(args):
-    # common arguments
+    parser = argparse.ArgumentParser(description='Launch SageMaker training jobs or hosting endpoints')
+    parser.set_defaults(func=lambda x: parser.print_usage())
+
+    # common args for training/hosting/all frameworks
     common_parser = argparse.ArgumentParser(add_help=False)
-
-    # image-related settings
-    image_mtx = common_parser.add_mutually_exclusive_group(required=True)
-    image_mtx.add_argument('--tf', help='use a TensorFlow container image', action='store_true')
-    image_mtx.add_argument('--mx', help='use an MXNet container image', action='store_true')
-
-    # path to data and script files
     common_parser.add_argument('--data', help='path to training data or model files', type=str, default='./data')
     common_parser.add_argument('--script', help='path to script', type=str, default='./script.py')
     common_parser.add_argument('--job-name', help='job or endpoint name', type=str, default=None)
     common_parser.add_argument('--bucket-name', help='S3 bucket', type=str, default=None)
     common_parser.add_argument('--role-name', help='SageMaker execution role name', type=str,
                                default='AmazonSageMakerFullAccess')
+    common_parser.add_argument('--python', help='python version', type=str, default='py2')
 
     instance_group = common_parser.add_argument_group('instance settings')
     instance_group.add_argument('--instance-type', type=str, help='instance type', default='ml.m4.xlarge')
     instance_group.add_argument('--instance-count', type=int, help='instance count', default=1)
 
-    image_group = common_parser.add_argument_group('other container image settings')
-    image_group.add_argument('--python', help='python version (mxnet only)', type=str, default='py2')
-
-    parser = argparse.ArgumentParser(description='Launch SageMaker training jobs or hosting endpoints')
-    parser.set_defaults(func=lambda x: parser.print_usage())
-
-    log_group = parser.add_argument_group('log settings')
+    log_group = common_parser.add_argument_group('optional log settings')
     log_group.add_argument('--log-level', help='log level for this command', type=str, default='info')
     log_group.add_argument('--botocore-log-level', help='log level for botocore', type=str, default='warning')
 
-    subparsers = parser.add_subparsers()
-    train_parser = subparsers.add_parser('train', help='start a training job', parents=[common_parser])
-    train_group = train_parser.add_argument_group('training settings')
-    train_group.add_argument('--hyperparameters', help='path to training hyperparameters file',
-                             type=str, default='./hyperparameters.json')
-    train_group.add_argument('--training-steps',
-                             help='number of training steps (tensorflow only)', type=int, default=None)
-    train_group.add_argument('--evaluation-steps',
-                             help='number of evaluation steps (tensorflow only)', type=int, default=None)
-    train_parser.set_defaults(mode='train')
-    train_parser.set_defaults(func=sagemaker.cli.train)
+    # common training args
+    common_train_parser = argparse.ArgumentParser(add_help=False)
+    common_train_parser.add_argument('--hyperparameters', help='path to training hyperparameters file',
+                                     type=str, default='./hyperparameters.json')
 
-    host_parser = subparsers.add_parser('host', help='start a hosting endpoint', parents=[common_parser])
-    host_group = host_parser.add_argument_group('hosting settings')
-    host_group.add_argument('--env', help='hosting environment variable(s)', type=str, nargs='*', default=[])
-    train_parser.set_defaults(mode='host')
-    host_parser.set_defaults(func=sagemaker.cli.host)
+    # common hosting args
+    common_host_parser = argparse.ArgumentParser(add_help=False)
+    common_host_parser.add_argument('--env', help='hosting environment variable(s)', type=str, nargs='*', default=[])
+
+    subparsers = parser.add_subparsers()
+
+    # framework/algo subcommands
+    mxnet_parser = subparsers.add_parser('mxnet', help='use MXNet', parents=[])
+    mxnet_subparsers = mxnet_parser.add_subparsers()
+    mxnet_train_parser = mxnet_subparsers.add_parser('train',
+                                                     help='start a training job',
+                                                     parents=[common_parser, common_train_parser])
+    mxnet_train_parser.set_defaults(func=sagemaker.cli.mxnet.train)
+
+    mxnet_host_parser = mxnet_subparsers.add_parser('host',
+                                                    help='start a hosting endpoint',
+                                                    parents=[common_parser, common_host_parser])
+    mxnet_host_parser.set_defaults(func=sagemaker.cli.mxnet.host)
+
+    tensorflow_parser = subparsers.add_parser('tensorflow', help='use TensorFlow', parents=[])
+    tensorflow_subparsers = tensorflow_parser.add_subparsers()
+    tensorflow_train_parser = tensorflow_subparsers.add_parser('train',
+                                                               help='start a training job',
+                                                               parents=[common_parser, common_train_parser])
+    tensorflow_train_parser.add_argument('--training-steps',
+                                         help='number of training steps (tensorflow only)', type=int, default=None)
+    tensorflow_train_parser.add_argument('--evaluation-steps',
+                                         help='number of evaluation steps (tensorflow only)', type=int, default=None)
+    tensorflow_train_parser.set_defaults(func=sagemaker.cli.tensorflow.train)
+
+    tensorflow_host_parser = tensorflow_subparsers.add_parser('host',
+                                                              help='start a hosting endpoint',
+                                                              parents=[common_parser, common_host_parser])
+    tensorflow_host_parser.set_defaults(func=sagemaker.cli.tensorflow.host)
 
     return parser.parse_args(args)
 

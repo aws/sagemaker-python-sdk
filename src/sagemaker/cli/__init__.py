@@ -1,4 +1,4 @@
-from sagemaker.cli.host import host
-from sagemaker.cli.train import train
+import sagemaker.cli.mxnet
+import sagemaker.cli.tensorflow
 
-__all__ = [host, train]
+__all__ = [mxnet, tensorflow]
