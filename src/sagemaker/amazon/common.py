@@ -15,6 +15,7 @@ import struct
 import sys
 
 import numpy as np
+from scipy.sparse import issparse
 
 from sagemaker.amazon.record_pb2 import Record
 
@@ -64,6 +65,24 @@ def _write_label_tensor(resolved_type, record, scalar):
         record.label["values"].float32_tensor.values.extend([scalar])
 
 
+def _write_keys_tensor(resolved_type, record, vector):
+    if resolved_type == "Int32":
+        record.features["values"].int32_tensor.keys.extend(vector)
+    elif resolved_type == "Float64":
+        record.features["values"].float64_tensor.keys.extend(vector)
+    elif resolved_type == "Float32":
+        record.features["values"].float32_tensor.keys.extend(vector)
+
+
+def _write_shape(resolved_type, record, scalar):
+    if resolved_type == "Int32":
+        record.features["values"].int32_tensor.shape.extend([scalar])
+    elif resolved_type == "Float64":
+        record.features["values"].float64_tensor.shape.extend([scalar])
+    elif resolved_type == "Float32":
+        record.features["values"].float32_tensor.shape.extend([scalar])
+
+
 def write_numpy_to_dense_tensor(file, array, labels=None):
     """Writes a numpy array to a dense tensor"""
 
@@ -86,6 +105,46 @@ def write_numpy_to_dense_tensor(file, array, labels=None):
         _write_feature_tensor(resolved_type, record, vector)
         if labels is not None:
             _write_label_tensor(resolved_label_type, record, labels[index])
+        _write_recordio(file, record.SerializeToString())
+
+
+def write_spmatrix_to_sparse_tensor(file, array, labels=None):
+    """Writes a scipy sparse matrix to a sparse tensor"""
+
+    if not issparse(array):
+        raise TypeError("Array must be sparse")
+
+    # Validate shape of array and labels, resolve array and label types
+    if not len(array.shape) == 2:
+        raise ValueError("Array must be a Matrix")
+    if labels is not None:
+        if not len(labels.shape) == 1:
+            raise ValueError("Labels must be a Vector")
+        if labels.shape[0] not in array.shape:
+            raise ValueError("Label shape {} not compatible with array shape {}".format(
+                             labels.shape, array.shape))
+        resolved_label_type = _resolve_type(labels.dtype)
+    resolved_type = _resolve_type(array.dtype)
+
+    csr_array = array.tocsr()
+    n_rows, n_cols = csr_array.shape
+
+    record = Record()
+    for row_idx in range(n_rows):
+        record.Clear()
+        row = csr_array.getrow(row_idx)
+        # Write values
+        _write_feature_tensor(resolved_type, record, row.data)
+        # Write keys
+        _write_keys_tensor(resolved_type, record, row.indices.astype(np.uint64))
+
+        # Write labels
+        if labels is not None:
+            _write_label_tensor(resolved_label_type, record, labels[row_idx])
+
+        # Write shape
+        _write_shape(resolved_type, record, n_cols)
+
         _write_recordio(file, record.SerializeToString())
 
 
