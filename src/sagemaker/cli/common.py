@@ -97,4 +97,4 @@ class TrainCommand(object):
         estimator.fit(data_url)
         logger.debug('code location: {}'.format(estimator.uploaded_code.s3_prefix))
         logger.debug('model location: {}{}/output/model.tar.gz'.format(estimator.output_path,
-                                                                      estimator._current_job_name))
+                                                                       estimator._current_job_name))

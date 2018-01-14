@@ -1,7 +1,6 @@
 import pytest
-from mock import Mock, MagicMock, patch
-
 import sagemaker.cli.main as cli
+from mock import patch
 
 COMMON_ARGS = '--data mydata --script myscript --job-name myjob --bucket-name mybucket --role-name myrole ' + \
               '--python py3 --instance-type myinstance --instance-count 2'
