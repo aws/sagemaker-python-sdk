@@ -2,7 +2,7 @@ import pytest
 import sagemaker.cli.main as cli
 from mock import patch
 
-COMMON_ARGS = '--data mydata --script myscript --job-name myjob --bucket-name mybucket --role-name myrole ' + \
+COMMON_ARGS = '--role-name myrole --data mydata --script myscript --job-name myjob --bucket-name mybucket ' + \
               '--python py3 --instance-type myinstance --instance-count 2'
 
 TRAIN_ARGS = '--hyperparameters myhyperparameters.json'
@@ -17,7 +17,6 @@ def assert_common_defaults(args):
     assert args.script == './script.py'
     assert args.job_name is None
     assert args.bucket_name is None
-    assert args.role_name is 'AmazonSageMakerFullAccess'
     assert args.python == 'py2'
     assert args.instance_type == 'ml.m4.xlarge'
     assert args.instance_count == 1
@@ -55,7 +54,7 @@ def assert_host_non_defaults(args):
 
 
 def test_args_mxnet_train_defaults():
-    args = cli.parse_arguments('mxnet train'.split())
+    args = cli.parse_arguments('mxnet train --role-name role'.split())
     assert_common_defaults(args)
     assert_train_defaults(args)
     assert args.func.__module__ == 'sagemaker.cli.mxnet'
@@ -63,7 +62,7 @@ def test_args_mxnet_train_defaults():
 
 
 def test_args_mxnet_train_non_defaults():
-    args = cli.parse_arguments('mxnet train {} {} {}'
+    args = cli.parse_arguments('mxnet train --role-name role {} {} {}'
                                .format(COMMON_ARGS, TRAIN_ARGS, LOG_ARGS)
                                .split())
     assert_common_non_defaults(args)
@@ -73,7 +72,7 @@ def test_args_mxnet_train_non_defaults():
 
 
 def test_args_mxnet_host_defaults():
-    args = cli.parse_arguments('mxnet host'.split())
+    args = cli.parse_arguments('mxnet host --role-name role'.split())
     assert_common_defaults(args)
     assert_host_defaults(args)
     assert args.func.__module__ == 'sagemaker.cli.mxnet'
@@ -81,7 +80,7 @@ def test_args_mxnet_host_defaults():
 
 
 def test_args_mxnet_host_non_defaults():
-    args = cli.parse_arguments('mxnet host {} {} {}'
+    args = cli.parse_arguments('mxnet host --role-name role {} {} {}'
                                .format(COMMON_ARGS, HOST_ARGS, LOG_ARGS)
                                .split())
     assert_common_non_defaults(args)
@@ -91,7 +90,7 @@ def test_args_mxnet_host_non_defaults():
 
 
 def test_args_tensorflow_train_defaults():
-    args = cli.parse_arguments('tensorflow train'.split())
+    args = cli.parse_arguments('tensorflow train --role-name role'.split())
     assert_common_defaults(args)
     assert_train_defaults(args)
     assert args.training_steps is None
@@ -101,7 +100,7 @@ def test_args_tensorflow_train_defaults():
 
 
 def test_args_tensorflow_train_non_defaults():
-    args = cli.parse_arguments('tensorflow train --training-steps 10 --evaluation-steps 5 {} {} {}'
+    args = cli.parse_arguments('tensorflow train --role-name role --training-steps 10 --evaluation-steps 5 {} {} {}'
                                .format(COMMON_ARGS, TRAIN_ARGS, LOG_ARGS)
                                .split())
     assert_common_non_defaults(args)
@@ -113,7 +112,7 @@ def test_args_tensorflow_train_non_defaults():
 
 
 def test_args_tensorflow_host_defaults():
-    args = cli.parse_arguments('tensorflow host'.split())
+    args = cli.parse_arguments('tensorflow host --role-name role'.split())
     assert_common_defaults(args)
     assert_host_defaults(args)
     assert args.func.__module__ == 'sagemaker.cli.tensorflow'
@@ -121,7 +120,7 @@ def test_args_tensorflow_host_defaults():
 
 
 def test_args_tensorflow_host_non_defaults():
-    args = cli.parse_arguments('tensorflow host {} {} {}'
+    args = cli.parse_arguments('tensorflow host --role-name role {} {} {}'
                                .format(COMMON_ARGS, HOST_ARGS, LOG_ARGS)
                                .split())
     assert_common_non_defaults(args)
@@ -132,7 +131,7 @@ def test_args_tensorflow_host_non_defaults():
 
 def test_args_invalid_framework():
     with pytest.raises(SystemExit):
-        cli.parse_arguments('fakeframework train'.split())
+        cli.parse_arguments('fakeframework train --role-name role'.split())
 
 
 def test_args_invalid_subcommand():
@@ -142,28 +141,28 @@ def test_args_invalid_subcommand():
 
 def test_args_invalid_args():
     with pytest.raises(SystemExit):
-        cli.parse_arguments('tensorflow train --notdata foo'.split())
+        cli.parse_arguments('tensorflow train --role-name role --notdata foo'.split())
 
 
 def test_args_invalid_mxnet_python():
     with pytest.raises(SystemExit):
-        cli.parse_arguments('mxnet train nython py2'.split())
+        cli.parse_arguments('mxnet train --role-name role nython py2'.split())
 
 
 def test_args_invalid_host_args_in_train():
     with pytest.raises(SystemExit):
-        cli.parse_arguments('mxnet train --env FOO=bar'.split())
+        cli.parse_arguments('mxnet train --role-name role --env FOO=bar'.split())
 
 
 def test_args_invalid_train_args_in_host():
     with pytest.raises(SystemExit):
-        cli.parse_arguments('tensorflow host --hyperparameters foo.json'.split())
+        cli.parse_arguments('tensorflow host --role-name role --hyperparameters foo.json'.split())
 
 
 @patch('sagemaker.mxnet.estimator.MXNet')
 @patch('sagemaker.Session')
 def test_mxnet_train(session, estimator):
-    args = cli.parse_arguments('mxnet train'.split())
+    args = cli.parse_arguments('mxnet train --role-name role'.split())
     args.func(args)
     session.return_value.upload_data.assert_called()
     estimator.assert_called()
@@ -174,7 +173,7 @@ def test_mxnet_train(session, estimator):
 @patch('sagemaker.cli.common.HostCommand.upload_model')
 @patch('sagemaker.Session')
 def test_mxnet_host(session, upload_model, model):
-    args = cli.parse_arguments('mxnet host'.split())
+    args = cli.parse_arguments('mxnet host --role-name role'.split())
     args.func(args)
     session.assert_called()
     upload_model.assert_called()
