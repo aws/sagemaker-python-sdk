@@ -1,4 +1,4 @@
 #!/bin/bash
 
 python ./download_training_data.py
-sagemaker train --mx
+sagemaker mxnet train --role-name <your-sagemaker-execution-role>

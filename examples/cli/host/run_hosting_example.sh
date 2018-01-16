@@ -1,3 +1,3 @@
 #!/bin/bash
 
-sagemaker host --mx
+sagemaker mxnet host --role-name <your-sagemaker-execution-role>
