@@ -1,3 +1,15 @@
+# Copyright 2017 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License"). You
+# may not use this file except in compliance with the License. A copy of
+# the License is located at
+#
+#     http://aws.amazon.com/apache2.0/
+#
+# or in the "license" file accompanying this file. This file is
+# distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF
+# ANY KIND, either express or implied. See the License for the specific
+# language governing permissions and limitations under the License.
 from __future__ import absolute_import
 
 import argparse
@@ -9,6 +21,9 @@ import sagemaker.cli.mxnet
 import sagemaker.cli.tensorflow
 
 logger = logging.getLogger(__name__)
+
+DEFAULT_LOG_LEVEL = 'info'
+DEFAULT_BOTOCORE_LOG_LEVEL = 'warning'
 
 
 def parse_arguments(args):
@@ -28,10 +43,6 @@ def parse_arguments(args):
     instance_group = common_parser.add_argument_group('instance settings')
     instance_group.add_argument('--instance-type', type=str, help='instance type', default='ml.m4.xlarge')
     instance_group.add_argument('--instance-count', type=int, help='instance count', default=1)
-
-    log_group = common_parser.add_argument_group('optional log settings')
-    log_group.add_argument('--log-level', help='log level for this command', type=str, default='info')
-    log_group.add_argument('--botocore-log-level', help='log level for botocore', type=str, default='warning')
 
     # common training args
     common_train_parser = argparse.ArgumentParser(add_help=False)
@@ -72,6 +83,11 @@ def parse_arguments(args):
                                                               help='start a hosting endpoint',
                                                               parents=[common_parser, common_host_parser])
     tensorflow_host_parser.set_defaults(func=sagemaker.cli.tensorflow.host)
+
+    log_group = parser.add_argument_group('optional log settings')
+    log_group.add_argument('--log-level', help='log level for this command', type=str, default=DEFAULT_LOG_LEVEL)
+    log_group.add_argument('--botocore-log-level', help='log level for botocore', type=str,
+                           default=DEFAULT_BOTOCORE_LOG_LEVEL)
 
     return parser.parse_args(args)
 

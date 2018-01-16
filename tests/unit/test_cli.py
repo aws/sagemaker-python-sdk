@@ -1,3 +1,15 @@
+# Copyright 2017 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License"). You
+# may not use this file except in compliance with the License. A copy of
+# the License is located at
+#
+#     http://aws.amazon.com/apache2.0/
+#
+# or in the "license" file accompanying this file. This file is
+# distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF
+# ANY KIND, either express or implied. See the License for the specific
+# language governing permissions and limitations under the License.
 import pytest
 import sagemaker.cli.main as cli
 from mock import patch
@@ -62,8 +74,8 @@ def test_args_mxnet_train_defaults():
 
 
 def test_args_mxnet_train_non_defaults():
-    args = cli.parse_arguments('mxnet train --role-name role {} {} {}'
-                               .format(COMMON_ARGS, TRAIN_ARGS, LOG_ARGS)
+    args = cli.parse_arguments('{} mxnet train --role-name role {} {}'
+                               .format(LOG_ARGS, COMMON_ARGS, TRAIN_ARGS)
                                .split())
     assert_common_non_defaults(args)
     assert_train_non_defaults(args)
@@ -80,8 +92,8 @@ def test_args_mxnet_host_defaults():
 
 
 def test_args_mxnet_host_non_defaults():
-    args = cli.parse_arguments('mxnet host --role-name role {} {} {}'
-                               .format(COMMON_ARGS, HOST_ARGS, LOG_ARGS)
+    args = cli.parse_arguments('{} mxnet host --role-name role {} {}'
+                               .format(LOG_ARGS, COMMON_ARGS, HOST_ARGS)
                                .split())
     assert_common_non_defaults(args)
     assert_host_non_defaults(args)
@@ -100,8 +112,8 @@ def test_args_tensorflow_train_defaults():
 
 
 def test_args_tensorflow_train_non_defaults():
-    args = cli.parse_arguments('tensorflow train --role-name role --training-steps 10 --evaluation-steps 5 {} {} {}'
-                               .format(COMMON_ARGS, TRAIN_ARGS, LOG_ARGS)
+    args = cli.parse_arguments('{} tensorflow train --role-name role --training-steps 10 --evaluation-steps 5 {} {}'
+                               .format(LOG_ARGS, COMMON_ARGS, TRAIN_ARGS)
                                .split())
     assert_common_non_defaults(args)
     assert_train_non_defaults(args)
@@ -120,8 +132,8 @@ def test_args_tensorflow_host_defaults():
 
 
 def test_args_tensorflow_host_non_defaults():
-    args = cli.parse_arguments('tensorflow host --role-name role {} {} {}'
-                               .format(COMMON_ARGS, HOST_ARGS, LOG_ARGS)
+    args = cli.parse_arguments('{} tensorflow host --role-name role {} {}'
+                               .format(LOG_ARGS, COMMON_ARGS, HOST_ARGS)
                                .split())
     assert_common_non_defaults(args)
     assert_host_non_defaults(args)
