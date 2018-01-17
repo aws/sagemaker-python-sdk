@@ -22,6 +22,8 @@ class PCA(AmazonAlgorithmEstimatorBase):
 
     repo = 'pca:1'
 
+    DEFAULT_MINI_BATCH_SIZE = 500
+
     num_components = hp(name='num_components', validate=lambda x: x > 0 and isinstance(x, int),
                         validation_message='Value must be an integer greater than zero')
     algorithm_mode = hp(name='algorithm_mode', validate=lambda x: x in ['regular', 'stable', 'randomized'],
@@ -85,6 +87,13 @@ class PCA(AmazonAlgorithmEstimatorBase):
         s3 model data produced by this Estimator."""
 
         return PCAModel(self.model_data, self.role, sagemaker_session=self.sagemaker_session)
+
+    def fit(self, records, mini_batch_size=None, **kwargs):
+        # mini_batch_size is a required parameter
+        default_mini_batch_size = min(self.DEFAULT_MINI_BATCH_SIZE,
+                                      max(1, int(records.num_records / self.train_instance_count)))
+        use_mini_batch_size = mini_batch_size or default_mini_batch_size
+        super(PCA, self).fit(records, use_mini_batch_size, **kwargs)
 
 
 class PCAPredictor(RealTimePredictor):

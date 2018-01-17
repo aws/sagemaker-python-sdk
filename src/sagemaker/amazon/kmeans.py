@@ -99,6 +99,9 @@ class KMeans(AmazonAlgorithmEstimatorBase):
         s3 model data produced by this Estimator."""
         return KMeansModel(self.model_data, self.role, self.sagemaker_session)
 
+    def fit(self, records, mini_batch_size=5000, **kwargs):
+        super(KMeans, self).fit(records, mini_batch_size, **kwargs)
+
     def hyperparameters(self):
         """Return the SageMaker hyperparameters for training this KMeans Estimator"""
         hp = dict(force_dense='True')  # KMeans requires this hp to fit on Record objects

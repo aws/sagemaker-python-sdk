@@ -28,8 +28,6 @@ class AmazonAlgorithmEstimatorBase(EstimatorBase):
     """Base class for Amazon first-party Estimator implementations. This class isn't intended
     to be instantiated directly."""
 
-    MAX_DEFAULT_BATCH_SIZE = 500
-
     feature_dim = hp('feature_dim', (validation.isint, validation.gt(0)))
     mini_batch_size = hp('mini_batch_size', (validation.isint, validation.gt(0)))
 
@@ -87,10 +85,9 @@ class AmazonAlgorithmEstimatorBase(EstimatorBase):
             mini_batch_size (int or None): The size of each mini-batch to use when training. If None, a
                 default value will be used.
         """
-        default_mini_batch_size = min(self.MAX_DEFAULT_BATCH_SIZE,
-                                      max(1, int(records.num_records / self.train_instance_count)))
-        self.mini_batch_size = mini_batch_size or default_mini_batch_size
         self.feature_dim = records.feature_dim
+        self.mini_batch_size = mini_batch_size
+
         data = {records.channel: s3_input(records.s3_data, distribution='ShardedByS3Key',
                                           s3_data_type=records.s3_data_type)}
         super(AmazonAlgorithmEstimatorBase, self).fit(data, **kwargs)
