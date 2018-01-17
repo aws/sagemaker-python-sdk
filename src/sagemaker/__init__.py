@@ -16,6 +16,7 @@ from sagemaker import estimator
 from sagemaker.amazon.kmeans import KMeans, KMeansModel, KMeansPredictor
 from sagemaker.amazon.pca import PCA, PCAModel, PCAPredictor
 from sagemaker.amazon.linear_learner import LinearLearner, LinearLearnerModel, LinearLearnerPredictor
+from sagemaker.amazon.image_classification import ImageClassification, ImageClassificationModel, ImageClassificationPredictor
 
 from sagemaker.model import Model
 from sagemaker.predictor import RealTimePredictor
@@ -27,5 +28,6 @@ from sagemaker.session import get_execution_role
 
 
 __all__ = [estimator, KMeans, KMeansModel, KMeansPredictor, PCA, PCAModel, PCAPredictor, LinearLearner,
-           LinearLearnerModel, LinearLearnerPredictor, Model, RealTimePredictor, Session,
+           LinearLearnerModel, LinearLearnerPredictor, Model, RealTimePredictor, Session, 
+           ImageClassification, ImageClassificationModel, ImageClassificationPredictor,
            container_def, s3_input, production_variant, get_execution_role]

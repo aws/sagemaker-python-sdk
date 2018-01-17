@@ -30,6 +30,10 @@ def lt(maximum):
         return value < maximum
     return validate
 
+def le(maximum):
+    def validate(value):
+        return value <= maximum
+    return validate
 
 def isin(*expected):
     def validate(value):
@@ -45,4 +49,5 @@ def istype(expected):
 
 isint = istype(int)
 isbool = istype(bool)
+isstr = istype(str)
 isnumber = istype(numbers.Number)  # noqa
