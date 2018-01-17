@@ -45,18 +45,16 @@ def test_image_classification():
         download('http://data.mxnet.io/data/caltech-256/caltech-256-60-train.rec')
         upload_to_s3('train', 'caltech-256-60-train.rec', sagemaker_session.default_bucket())
         download('http://data.mxnet.io/data/caltech-256/caltech-256-60-val.rec')
-        upload_to_s3('validation', 'caltech-256-60-val.rec', sagemaker_session.default_bucket())
+        upload_to_s3('validation', 'caltech-256-60-val.rec', sagemaker_session.default_bucket())  
         ic = ImageClassification(role='SageMakerRole', train_instance_count=1,
-                        train_instance_type='ml.c4.xlarge', data_location = 's3://' + sagemaker_session.default_bucket(),
+                        train_instance_type='ml.p3.2xlarge', data_location = 's3://' + sagemaker_session.default_bucket(),
                         num_classes=257, num_training_samples=15420, epochs = 1, image_shape= '3,32,32',
                         sagemaker_session=sagemaker_session, base_job_name='test-ic')
 
         ic.epochs = 1
         records = []
-        records.append(ic.s3_record_set( 'train', channel = 'train'))
-        records.append(ic.s3_record_set( 'validation', channel = 'validation'))    
-        import pdb
-        pdb.set_trace()           
+        records.append(ic.s3_record_set( 'training', channel = 'train'))
+        records.append(ic.s3_record_set( 'validation', channel = 'validation'))               
         ic.fit(records)
     """
     endpoint_name = name_from_base('ic')

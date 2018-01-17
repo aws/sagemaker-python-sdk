@@ -147,13 +147,13 @@ class AmazonS3AlgorithmEstimatorBase(AmazonAlgorithmEstimatorBase):
             mini_batch_size (int or None): The size of each mini-batch to use when training. If None, a
                 default value will be used.
         """
-        default_mini_batch_size = self.MAX_DEFAULT_BATCH_SIZE
+        default_mini_batch_size = 32
         self.mini_batch_size = mini_batch_size or default_mini_batch_size
-        #self.feature_dim = records.feature_dim
+        #self.feature_dim = records.feature_dim    
         data = {}
         for record in records:
-            data = {record.channel: s3_input(record.s3_data, distribution=distribution,
-                                          s3_data_type=record.s3_data_type)}
+            data[record.channel] = s3_input(record.s3_data, distribution=distribution,
+                                          s3_data_type=record.s3_data_type)
         super(AmazonAlgorithmEstimatorBase, self).fit(data, **kwargs)
 
     def s3_record_set(self, s3_loc, channel="train" ):
@@ -166,7 +166,7 @@ class AmazonS3AlgorithmEstimatorBase(AmazonAlgorithmEstimatorBase):
         Returns:
             RecordSet: A RecordSet referencing the encoded, uploading training and label data.
         """
-        return RecordSet(s3_loc, channel=channel) 
+        return RecordSet(self.data_location + '/' + s3_loc, channel=channel) 
 
 class RecordSet(object):
 
