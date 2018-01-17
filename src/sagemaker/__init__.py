@@ -30,6 +30,8 @@ from sagemaker.session import get_execution_role
 
 
 __all__ = [estimator, KMeans, KMeansModel, KMeansPredictor, PCA, PCAModel, PCAPredictor, LinearLearner,
-           LinearLearnerModel, LinearLearnerPredictor, Model, RealTimePredictor, Session, 
+           LinearLearnerModel, LinearLearnerPredictor,
+           FactorizationMachines, FactorizationMachinesModel, FactorizationMachinesPredictor,
+           Model, RealTimePredictor, Session,
            ImageClassification, ImageClassificationModel, ImageClassificationPredictor,
            container_def, s3_input, production_variant, get_execution_role ]
