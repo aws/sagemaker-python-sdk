@@ -13,6 +13,7 @@
 import boto3
 import os
 import pytest
+import time
 
 from sagemaker import Session
 from sagemaker.tensorflow import TensorFlow
@@ -27,6 +28,7 @@ def sagemaker_session():
     return Session(boto_session=boto3.Session(region_name=REGION))
 
 
+@pytest.mark.skip(reason="Not Today")
 def test_tf(sagemaker_session):
     with timeout(minutes=15):
         script_path = os.path.join(DATA_DIR, 'iris', 'iris-dnn-classifier.py')
@@ -46,6 +48,35 @@ def test_tf(sagemaker_session):
         print('job succeeded: {}'.format(estimator.latest_training_job.name))
 
     with timeout_and_delete_endpoint(estimator=estimator, minutes=20):
+        json_predictor = estimator.deploy(initial_instance_count=1, instance_type='ml.c4.xlarge')
+
+        result = json_predictor.predict([6.4, 3.2, 4.5, 1.5])
+        print('predict result: {}'.format(result))
+
+
+def test_tf_async(sagemaker_session):
+
+    training_job_name = ""
+    with timeout(minutes=15):
+        script_path = os.path.join(DATA_DIR, 'iris', 'iris-dnn-classifier.py')
+
+        estimator = TensorFlow(entry_point=script_path,
+                               role='SageMakerRole',
+                               training_steps=1,
+                               evaluation_steps=1,
+                               hyperparameters={'input_tensor_name': 'inputs'},
+                               train_instance_count=1,
+                               train_instance_type='ml.c4.xlarge',
+                               sagemaker_session=sagemaker_session,
+                               base_job_name='test-tf')
+
+        inputs = estimator.sagemaker_session.upload_data(path=DATA_PATH, key_prefix='integ-test-data/tf_iris')
+        estimator.fit(inputs, wait=False)
+        training_job_name = estimator.latest_training_job.name
+        time.sleep(20)
+
+    with timeout_and_delete_endpoint(estimator=estimator, minutes=20):
+        estimator = TensorFlow.attach(training_job_name=training_job_name, sagemaker_session=sagemaker_session)
         json_predictor = estimator.deploy(initial_instance_count=1, instance_type='ml.c4.xlarge')
 
         result = json_predictor.predict([6.4, 3.2, 4.5, 1.5])

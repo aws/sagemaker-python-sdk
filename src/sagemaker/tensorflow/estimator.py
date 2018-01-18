@@ -20,7 +20,6 @@ import os
 import sagemaker.tensorflow
 from sagemaker.estimator import Framework
 from sagemaker.fw_utils import create_image_uri, framework_name_from_image
-from sagemaker.session import Session
 from sagemaker.tensorflow.model import TensorFlowModel
 
 logging.basicConfig()
@@ -166,48 +165,19 @@ class TensorFlow(Framework):
             fit_super()
 
     @classmethod
-    def attach(cls, training_job_name, sagemaker_session=None):
-        """Attach to an existing training job.
-
-        Create an ``Estimator`` bound to an existing training job. After attaching, if
-        the training job is in a Complete status, it can be ``deploy``ed to create
-        a SageMaker ``Endpoint`` and return a ``Predictor``.
-
-        If the training job is in progress, attach will block and display log messages
-        from the training job, until the training job completes.
-
-        Args:
-            training_job_name (str): The name of the training job to attach to.
-            sagemaker_session (sagemaker.session.Session): Session object which manages interactions with
-                Amazon SageMaker APIs and any other AWS services needed. If not specified, the estimator creates one
-                using the default AWS configuration chain.
-
-        Returns:
-            sagemaker.tensorflow.estimator.TensorFlow: ``Estimator`` with the attached training job.
-
-        Raises:
-            ValueError: If `training_job_name` is None or the image name does not match the framework.
-        """
-        sagemaker_session = sagemaker_session or Session()
-
-        if training_job_name is None:
-            raise ValueError("must specify training_job name")
-
-        job_details = sagemaker_session.sagemaker_client.describe_training_job(TrainingJobName=training_job_name)
-        init_params, hp, image = cls._prepare_estimator_params_from_job_description(job_details)
-
-        updated_params = cls._update_init_params(hp, ['checkpoint_path', 'training_steps', 'evaluation_steps'])
+    def _from_training_job(cls, init_params, hyperparameters, image, sagemaker_session):
+        updated_params = cls._update_init_params(hyperparameters,
+                                                 ['checkpoint_path', 'training_steps', 'evaluation_steps'])
         init_params.update(updated_params)
-
-        init_params.update({'hyperparameters': hp})
 
         framework, py_version = framework_name_from_image(image)
         init_params.update({'py_version': py_version})
+        training_job_name = init_params['base_job_name']
 
         if framework != cls.__framework_name__:
             raise ValueError("Training job: {} didn't use image for requested framework".format(training_job_name))
 
-        return super(TensorFlow, cls).attach(training_job_name=None, sagemaker_session=sagemaker_session, **init_params)
+        return super(TensorFlow, cls)._from_training_job(init_params, hyperparameters, image, sagemaker_session)
 
     def train_image(self):
         """Return the Docker image to use for training.

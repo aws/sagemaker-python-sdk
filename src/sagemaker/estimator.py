@@ -152,8 +152,47 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):
         self.latest_training_job = _TrainingJob.start_new(self, inputs)
         if wait:
             self.latest_training_job.wait(logs=logs)
+
+
+    @classmethod
+    def _from_training_job(cls, init_params, hyperparameters, image, sagemaker_session):
+        raise NotImplementedError()
+
+    @classmethod
+    def attach(cls, training_job_name, sagemaker_session=None, **kwargs):
+        """Attach to an existing training job.
+
+        Create an Estimator bound to an existing training job. After attaching, if
+        the training job has a Complete status, it can be ``deploy()`` ed to create
+        a SageMaker Endpoint and return a ``Predictor``.
+
+        If the training job is in progress, attach will block and display log messages
+        from the training job, until the training job completes.
+
+        Args:
+            training_job_name (str): The name of the training job to attach to.
+            sagemaker_session (sagemaker.session.Session): Session object which manages interactions with
+                Amazon SageMaker APIs and any other AWS services needed. If not specified, the estimator creates one
+                using the default AWS configuration chain.
+            **kwargs: Additional kwargs passed to the :class:`~sagemaker.estimator.Estimator` constructor.
+
+        Returns:
+            sagemaker.estimator.Framework: ``Estimator`` with the attached training job.
+        """
+        sagemaker_session = sagemaker_session or Session()
+
+        if training_job_name is not None:
+            job_details = sagemaker_session.sagemaker_client.describe_training_job(TrainingJobName=training_job_name)
+            init_params, hp, image = cls._prepare_estimator_params_from_job_description(job_details)
+
         else:
-            raise NotImplemented('Asynchronous fit not available')
+            raise ValueError('must specify training_job name')
+
+        estimator = cls._from_training_job(init_params, hp, image, sagemaker_session)
+        estimator.latest_training_job = _TrainingJob(sagemaker_session=sagemaker_session,
+                                                     training_job_name=init_params['base_job_name'])
+        estimator.latest_training_job.wait()
+        return estimator
 
     def deploy(self, initial_instance_count, instance_type, endpoint_name=None, **kwargs):
         """Deploy the trained model to an Amazon SageMaker endpoint and return a ``sagemaker.RealTimePredictor`` object.
@@ -528,56 +567,24 @@ class Framework(EstimatorBase):
         return self._json_encode_hyperparameters(self._hyperparameters)
 
     @classmethod
-    def attach(cls, training_job_name, sagemaker_session=None, **kwargs):
-        """Attach to an existing training job.
-
-        Create an Estimator bound to an existing training job. After attaching, if
-        the training job has a Complete status, it can be ``deploy()`` ed to create
-        a SageMaker Endpoint and return a ``Predictor``.
-
-        If the training job is in progress, attach will block and display log messages
-        from the training job, until the training job completes.
-
-        Args:
-            training_job_name (str): The name of the training job to attach to.
-            sagemaker_session (sagemaker.session.Session): Session object which manages interactions with
-                Amazon SageMaker APIs and any other AWS services needed. If not specified, the estimator creates one
-                using the default AWS configuration chain.
-            **kwargs: Additional kwargs passed to the :class:`~sagemaker.estimator.Estimator` constructor.
-
-        Returns:
-            sagemaker.estimator.Framework: ``Estimator`` with the attached training job.
-        """
-        sagemaker_session = sagemaker_session or Session()
-
-        if training_job_name is not None:
-            job_details = sagemaker_session.sagemaker_client.describe_training_job(TrainingJobName=training_job_name)
-            init_params, hp, _ = cls._prepare_estimator_params_from_job_description(job_details)
-
-        else:
-            # this case is only valid when called from inheriting class and then the class must declare framework
-            if not hasattr(cls, '__framework_name__'):
-                raise ValueError('must specify training_job name')
-            init_params = dict(kwargs)
-            hp = init_params.pop('hyperparameters')
+    def _from_training_job(cls, init_params, hyperparameters, image, sagemaker_session):
 
         # parameters for framework classes
         framework_init_params = dict()
-        framework_init_params['entry_point'] = json.loads(hp.get(SCRIPT_PARAM_NAME))
-        framework_init_params['source_dir'] = json.loads(hp.get(DIR_PARAM_NAME))
-        framework_init_params['enable_cloudwatch_metrics'] = json.loads(hp.get(CLOUDWATCH_METRICS_PARAM_NAME))
-        framework_init_params['container_log_level'] = json.loads(hp.get(CONTAINER_LOG_LEVEL_PARAM_NAME))
+        framework_init_params['entry_point'] = json.loads(hyperparameters.get(SCRIPT_PARAM_NAME))
+        framework_init_params['source_dir'] = json.loads(hyperparameters.get(DIR_PARAM_NAME))
+        framework_init_params['enable_cloudwatch_metrics'] = json.loads(
+            hyperparameters.get(CLOUDWATCH_METRICS_PARAM_NAME))
+        framework_init_params['container_log_level'] = json.loads(
+            hyperparameters.get(CONTAINER_LOG_LEVEL_PARAM_NAME))
 
         # drop json and remove other SageMaker specific additions
-        hyperparameters = {entry: json.loads(hp[entry]) for entry in hp}
-        framework_init_params['hyperparameters'] = hyperparameters
+        hp_map = {entry: json.loads(hyperparameters[entry]) for entry in hyperparameters}
+        framework_init_params['hyperparameters'] = hp_map
 
         init_params.update(framework_init_params)
 
         estimator = cls(sagemaker_session=sagemaker_session, **init_params)
-        estimator.latest_training_job = _TrainingJob(sagemaker_session=sagemaker_session,
-                                                     training_job_name=init_params['base_job_name'])
-        estimator.latest_training_job.wait()
         estimator.uploaded_code = UploadedCode(estimator.source_dir, estimator.entry_point)
         return estimator
 

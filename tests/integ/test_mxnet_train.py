@@ -58,6 +58,39 @@ def test_attach_deploy(mxnet_training_job, sagemaker_session):
         predictor.predict(data)
 
 
+def test_async_fit(sagemaker_session):
+
+    training_job_name = ""
+    endpoint_name = 'test-mxnet-attach-deploy-{}'.format(int(time.time()))
+
+    with timeout(minutes=15):
+        script_path = os.path.join(DATA_DIR, 'mxnet_mnist', 'mnist.py')
+        data_path = os.path.join(DATA_DIR, 'mxnet_mnist')
+
+        mx = MXNet(entry_point=script_path, role='SageMakerRole',
+                   train_instance_count=1, train_instance_type='ml.c4.xlarge',
+                   sagemaker_session=sagemaker_session)
+
+        train_input = mx.sagemaker_session.upload_data(path=os.path.join(data_path, 'train'),
+                                                       key_prefix='integ-test-data/mxnet_mnist/train')
+        test_input = mx.sagemaker_session.upload_data(path=os.path.join(data_path, 'test'),
+                                                      key_prefix='integ-test-data/mxnet_mnist/test')
+
+        mx.fit({'train': train_input, 'test': test_input}, wait=False)
+        training_job_name = mx.latest_training_job.name
+
+        print("Waiting to re-attach to the training job: %s" % training_job_name)
+        time.sleep(20)
+
+    with timeout_and_delete_endpoint_by_name(endpoint_name, sagemaker_session, minutes=20):
+        print("Re-attaching now to: %s" % training_job_name)
+        estimator = MXNet.attach(training_job_name=training_job_name, sagemaker_session=sagemaker_session)
+        predictor = estimator.deploy(1, 'ml.m4.xlarge', endpoint_name=endpoint_name)
+        data = numpy.zeros(shape=(1, 1, 28, 28))
+        predictor.predict(data)
+
+
+
 def test_deploy_model(mxnet_training_job, sagemaker_session):
     endpoint_name = 'test-mxnet-deploy-model-{}'.format(int(time.time()))
 
