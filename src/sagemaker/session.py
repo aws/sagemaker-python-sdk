@@ -127,8 +127,7 @@ class Session(object):
         s3 = self.boto_session.resource('s3')
 
         for local_path, s3_key in files:
-            with open(local_path, 'rb') as f:
-                s3.Object(bucket, s3_key).put(Body=f)
+            s3.Object(bucket, s3_key).upload_file(local_path)
 
         s3_uri = 's3://{}/{}'.format(bucket, key_prefix)
         # If a specific file was used as input (instead of a directory), we return the full S3 key
