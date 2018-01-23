@@ -49,7 +49,7 @@ class MXNet(Framework):
             py_version (str): Python version you want to use for executing your model training code (default: 'py2').
                               One of 'py2' or 'py3'.
             image (str): The container image to use for training. It is the repository URI and tag of the container
-                image stored in AWS ECR: <accound_id>.dkr.ecr.<region>.amazonaws.com/<repo-name>:<tag>. The default 
+                image stored in AWS ECR: <accound_id>.dkr.ecr.<region>.amazonaws.com/<repo-name>:<tag>. The default
                 value is None, where a framework provided by SageMaker will be used.
             **kwargs: Additional kwargs passed to the :class:`~sagemaker.estimator.Framework` constructor.
         """
@@ -67,7 +67,8 @@ class MXNet(Framework):
             str: The URI of the Docker image.
         """
         return self.image or create_image_uri(self.sagemaker_session.boto_session.region_name, self.__framework_name__,
-                                              self.train_instance_type, py_version=self.py_version, tag=sagemaker.mxnet.DOCKER_TAG)
+                                              self.train_instance_type, py_version=self.py_version,
+                                              tag=sagemaker.mxnet.DOCKER_TAG)
 
     def create_model(self, model_server_workers=None):
         """Create a SageMaker ``MXNetModel`` object that can be deployed to an ``Endpoint``.
