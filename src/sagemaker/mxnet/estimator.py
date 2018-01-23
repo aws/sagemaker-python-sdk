@@ -48,7 +48,9 @@ class MXNet(Framework):
                 to convert them before training.
             py_version (str): Python version you want to use for executing your model training code (default: 'py2').
                               One of 'py2' or 'py3'.
-            image (str): The container image to use for training (default: None).
+            image (str): The container image to use for training. It is the repository URI and tag of the container
+                image stored in AWS ECR: <accound_id>.dkr.ecr.<region>.amazonaws.com/<repo-name>:<tag>. The default 
+                value is None, where a framework provided by SageMaker will be used.
             **kwargs: Additional kwargs passed to the :class:`~sagemaker.estimator.Framework` constructor.
         """
         super(MXNet, self).__init__(entry_point, source_dir, hyperparameters, **kwargs)
