@@ -22,7 +22,7 @@ class MXNet(Framework):
 
     __framework_name__ = "mxnet"
 
-    def __init__(self, entry_point, source_dir=None, hyperparameters=None, py_version='py2', image_name=None, **kwargs):
+    def __init__(self, entry_point, source_dir=None, hyperparameters=None, py_version='py2', image=None, **kwargs):
         """
         This ``Estimator`` executes an MXNet script in a managed MXNet execution environment, within a SageMaker
         Training Job. The managed MXNet environment is an Amazon-built Docker container that executes functions
