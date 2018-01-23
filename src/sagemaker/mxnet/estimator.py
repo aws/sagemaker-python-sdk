@@ -48,11 +48,12 @@ class MXNet(Framework):
                 to convert them before training.
             py_version (str): Python version you want to use for executing your model training code (default: 'py2').
                               One of 'py2' or 'py3'.
+            image (str): The container image to use for training (default: None).
             **kwargs: Additional kwargs passed to the :class:`~sagemaker.estimator.Framework` constructor.
         """
         super(MXNet, self).__init__(entry_point, source_dir, hyperparameters, **kwargs)
         self.py_version = py_version
-        self.image_name = image_name
+        self.image = image
 
     def train_image(self):
         """Return the Docker image to use for training.
@@ -63,8 +64,8 @@ class MXNet(Framework):
         Returns:
             str: The URI of the Docker image.
         """
-        return self.image_name or create_image_uri(self.sagemaker_session.boto_session.region_name, self.__framework_name__,
-                                                   self.train_instance_type, py_version=self.py_version, tag=sagemaker.mxnet.DOCKER_TAG)
+        return self.image or create_image_uri(self.sagemaker_session.boto_session.region_name, self.__framework_name__,
+                                              self.train_instance_type, py_version=self.py_version, tag=sagemaker.mxnet.DOCKER_TAG)
 
     def create_model(self, model_server_workers=None):
         """Create a SageMaker ``MXNetModel`` object that can be deployed to an ``Endpoint``.
