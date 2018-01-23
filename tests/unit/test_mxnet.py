@@ -31,6 +31,7 @@ INSTANCE_TYPE = 'ml.c4.4xlarge'
 IMAGE_NAME = 'sagemaker-mxnet-py2-cpu'
 JOB_NAME = '{}-{}'.format(IMAGE_NAME, TIMESTAMP)
 FULL_IMAGE_URI = '520713654638.dkr.ecr.us-west-2.amazonaws.com/{}:{}'.format(IMAGE_NAME, DOCKER_TAG)
+CUSTOM_IMAGE_URI = '780728360657.dkr.ecr.us-west-2.amazonaws.com/{}:{}'.format(IMAGE_NAME, DOCKER_TAG)
 ROLE = 'Dummy'
 REGION = 'us-west-2'
 GPU = 'ml.p2.xlarge'
@@ -129,6 +130,14 @@ def test_train_image_default(sagemaker_session):
                train_instance_count=INSTANCE_COUNT, train_instance_type=INSTANCE_TYPE)
 
     assert FULL_IMAGE_URI in mx.train_image()
+
+
+def test_train_image_non_default(sagemaker_session):
+    mx = MXNet(entry_point=SCRIPT_PATH, role=ROLE, sagemaker_session=sagemaker_session,
+               train_instance_count=INSTANCE_COUNT, train_instance_type=INSTANCE_TYPE,
+               image=CUSTOM_IMAGE_URI)
+
+    assert CUSTOM_IMAGE_URI in mx.train_image()
 
 
 def test_attach(sagemaker_session):
