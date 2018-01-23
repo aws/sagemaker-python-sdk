@@ -2,6 +2,14 @@
 CHANGELOG
 =========
 
+1.0.3
+=====
+
+* feature: Estimators: add support for Amazon LDA algorithm
+* feature: Documentation: Update TensorFlow examples following API change
+* feature: Session: Support multi-part uploads
+
+
 1.0.2
 =====
 

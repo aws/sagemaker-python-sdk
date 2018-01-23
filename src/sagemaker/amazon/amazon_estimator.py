@@ -10,6 +10,7 @@
 # distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
+import boto3
 import json
 import logging
 import tempfile
@@ -18,6 +19,7 @@ from sagemaker.amazon import validation
 from sagemaker.amazon.hyperparameter import Hyperparameter as hp  # noqa
 from sagemaker.amazon.common import write_numpy_to_dense_tensor
 from sagemaker.estimator import EstimatorBase
+from sagemaker.fw_utils import parse_s3_url
 from sagemaker.session import s3_input
 from sagemaker.utils import sagemaker_timestamp
 
@@ -47,7 +49,7 @@ class AmazonAlgorithmEstimatorBase(EstimatorBase):
         self.data_location = data_location
 
     def train_image(self):
-        return registry(self.sagemaker_session.boto_region_name) + "/" + type(self).repo
+        return registry(self.sagemaker_session.boto_region_name, type(self).__name__) + "/" + type(self).repo
 
     def hyperparameters(self):
         return hp.serialize_all(self)
@@ -152,6 +154,61 @@ class RecordSet(object):
         """Return an unambiguous representation of this RecordSet"""
         return str((RecordSet, self.__dict__))
 
+    @staticmethod
+    def from_s3(data_path, num_records, feature_dim, channel='train'):
+        """
+        Create instance of the class given S3 path. It prepares the manifest file with all files found at the location.
+
+        Args:
+            data_path: S3 path to files
+            num_records: Number of records at S3 location
+            feature_dim: Number of features in each of the files
+            channel: Name of the data channel
+
+        Returns:
+            Instance of RecordSet that can be used when calling
+            :meth:`~sagemaker.amazon.amazon_estimator.AmazonAlgorithmEstimatorBase.fit`
+        """
+        s3 = boto3.client('s3')
+
+        if not data_path.endswith('/'):
+            data_path = data_path + '/'
+
+        bucket, prefix = parse_s3_url(data_path)
+
+        all_files = []
+        next_token = None
+        more = True
+        while more:
+            list_req = {
+                'Bucket': bucket,
+                'Prefix': prefix
+            }
+            if next_token is not None:
+                list_req.update({'ContinuationToken': next_token})
+            objects = s3.list_objects_v2(**list_req)
+            more = objects['IsTruncated']
+            if more:
+                next_token = objects['NextContinuationToken']
+            files_list = objects.get('Contents', None)
+            if files_list is None:
+                continue
+            long_names = [content['Key'] for content in files_list]
+            files = [file.split(prefix)[1] for file in long_names]
+            [all_files.append(f) for f in files]
+
+        if len(all_files) == 0:
+            raise ValueError("S3 location:{} doesn't have any files".format(data_path))
+        manifest_key = prefix + ".amazon.manifest"
+        manifest_str = json.dumps([{'prefix': data_path}] + all_files)
+
+        s3.put_object(Bucket=bucket, Body=manifest_str.encode('utf-8'), Key=manifest_key)
+
+        return RecordSet("s3://{}/{}".format(bucket, manifest_key),
+                         num_records=num_records,
+                         feature_dim=feature_dim,
+                         channel=channel)
+
 
 def _build_shards(num_shards, array):
     if num_shards < 1:
@@ -200,12 +257,22 @@ def upload_numpy_to_s3_shards(num_shards, s3, bucket, key_prefix, array, labels=
             raise ex
 
 
-def registry(region_name):
+def registry(region_name, algorithm=None):
     """Return docker registry for the given AWS region"""
-    account_id = {
-        "us-east-1": "382416733822",
-        "us-east-2": "404615174143",
-        "us-west-2": "174872318107",
-        "eu-west-1": "438346466558"
-    }[region_name]
+    if algorithm in [None, "PCA", "KMeans", "LinearLearner", "FactorizationMachines"]:
+        account_id = {
+            "us-east-1": "382416733822",
+            "us-east-2": "404615174143",
+            "us-west-2": "174872318107",
+            "eu-west-1": "438346466558"
+        }[region_name]
+    elif algorithm in ["LDA"]:
+        account_id = {
+            "us-east-1": "766337827248",
+            "us-east-2": "999911452149",
+            "us-west-2": "266724342769",
+            "eu-west-1": "999678624901"
+        }[region_name]
+    else:
+        raise ValueError("Algorithm class:{} doesn't have mapping to account_id with images".format(algorithm))
     return "{}.dkr.ecr.{}.amazonaws.com".format(account_id, region_name)
