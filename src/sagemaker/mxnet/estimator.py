@@ -22,7 +22,7 @@ class MXNet(Framework):
 
     __framework_name__ = "mxnet"
 
-    def __init__(self, entry_point, source_dir=None, hyperparameters=None, py_version='py2', **kwargs):
+    def __init__(self, entry_point, source_dir=None, hyperparameters=None, py_version='py2', image_name=None, **kwargs):
         """
         This ``Estimator`` executes an MXNet script in a managed MXNet execution environment, within a SageMaker
         Training Job. The managed MXNet environment is an Amazon-built Docker container that executes functions
@@ -52,6 +52,7 @@ class MXNet(Framework):
         """
         super(MXNet, self).__init__(entry_point, source_dir, hyperparameters, **kwargs)
         self.py_version = py_version
+        self.image_name = image_name
 
     def train_image(self):
         """Return the Docker image to use for training.
@@ -62,8 +63,8 @@ class MXNet(Framework):
         Returns:
             str: The URI of the Docker image.
         """
-        return create_image_uri(self.sagemaker_session.boto_session.region_name, self.__framework_name__,
-                                self.train_instance_type, py_version=self.py_version, tag=sagemaker.mxnet.DOCKER_TAG)
+        return self.image_name or create_image_uri(self.sagemaker_session.boto_session.region_name, self.__framework_name__,
+                                                   self.train_instance_type, py_version=self.py_version, tag=sagemaker.mxnet.DOCKER_TAG)
 
     def create_model(self, model_server_workers=None):
         """Create a SageMaker ``MXNetModel`` object that can be deployed to an ``Endpoint``.
