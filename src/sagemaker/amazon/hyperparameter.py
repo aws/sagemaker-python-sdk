@@ -36,9 +36,10 @@ class Hyperparameter(object):
     def validate(self, value):
         if value is None:  # We allow assignment from None, but Nones are not sent to training.
             return
+
         for valid in self.validation:
             if not valid(value):
-                error_message = "Invalid hyperparameter value {}".format(value)
+                error_message = "Invalid hyperparameter value {} for {}".format(value, self.name)
                 if self.validation_message:
                     error_message = error_message + ". Expecting: " + self.validation_message
                 raise ValueError(error_message)
@@ -51,6 +52,7 @@ class Hyperparameter(object):
 
     def __set__(self, obj, value):
         """Validate the supplied value and set this hyperparameter to value"""
+        value = self.data_type(value)
         self.validate(value)
         if '_hyperparameters' not in dir(obj):
             obj._hyperparameters = dict()

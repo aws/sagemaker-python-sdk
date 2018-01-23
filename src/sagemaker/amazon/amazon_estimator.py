@@ -28,8 +28,8 @@ class AmazonAlgorithmEstimatorBase(EstimatorBase):
     """Base class for Amazon first-party Estimator implementations. This class isn't intended
     to be instantiated directly."""
 
-    feature_dim = hp('feature_dim', (validation.isint, validation.gt(0)))
-    mini_batch_size = hp('mini_batch_size', (validation.isint, validation.gt(0)))
+    feature_dim = hp('feature_dim', validation.gt(0), data_type=int)
+    mini_batch_size = hp('mini_batch_size', validation.gt(0), data_type=int)
 
     def __init__(self, role, train_instance_count, train_instance_type, data_location=None, **kwargs):
         """Initialize an AmazonAlgorithmEstimatorBase.
