@@ -16,7 +16,7 @@ from sagemaker.amazon.hyperparameter import Hyperparameter
 
 class Test(object):
 
-    blank = Hyperparameter(name="some-name")
+    blank = Hyperparameter(name="some-name", data_type=int)
     elizabeth = Hyperparameter(name='elizabeth')
     validated = Hyperparameter(name="validated", validate=lambda value: value > 55, data_type=int)
 
@@ -70,5 +70,5 @@ def test_from_string():
     x.validated = value
     from_api = str(value)
 
-    x.validated = Test.__dict__["validated"].data_type(from_api)
+    x.validated = from_api
     assert x.validated == value

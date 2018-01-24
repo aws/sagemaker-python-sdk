@@ -52,7 +52,7 @@ class Hyperparameter(object):
 
     def __set__(self, obj, value):
         """Validate the supplied value and set this hyperparameter to value"""
-        value = self.data_type(value)
+        value = None if value is None else self.data_type(value)
         self.validate(value)
         if '_hyperparameters' not in dir(obj):
             obj._hyperparameters = dict()
