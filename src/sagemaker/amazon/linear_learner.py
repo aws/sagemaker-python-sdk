@@ -13,7 +13,7 @@
 from sagemaker.amazon.amazon_estimator import AmazonAlgorithmEstimatorBase, registry
 from sagemaker.amazon.common import numpy_to_record_serializer, record_deserializer
 from sagemaker.amazon.hyperparameter import Hyperparameter as hp  # noqa
-from sagemaker.amazon.validation import isin, gt, lt, isbool
+from sagemaker.amazon.validation import isin, gt, lt
 from sagemaker.predictor import RealTimePredictor
 from sagemaker.model import Model
 from sagemaker.session import Session
@@ -35,7 +35,7 @@ class LinearLearner(AmazonAlgorithmEstimatorBase):
     epochs = hp('epochs', gt(0), "An integer greater-than 0", int)
     predictor_type = hp('predictor_type', isin('binary_classifier', 'regressor'),
                         'One of "binary_classifier" or "regressor"', str)
-    use_bias = hp('use_bias', isbool, "Either True or False", bool)
+    use_bias = hp('use_bias', (), "Either True or False", bool)
     num_models = hp('num_models', gt(0), "An integer greater-than 0", int)
     num_calibration_samples = hp('num_calibration_samples', gt(0), "An integer greater-than 0", int)
     init_method = hp('init_method', isin('uniform', 'normal'), 'One of "uniform" or "normal"', str)
