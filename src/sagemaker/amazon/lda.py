@@ -84,7 +84,7 @@ class LDA(AmazonAlgorithmEstimatorBase):
         self.tol = tol
 
     def create_model(self):
-        """Return a :class:`~sagemaker.amazon.FactorizationMachinesModel` referencing the latest
+        """Return a :class:`~sagemaker.amazon.LDAModel` referencing the latest
         s3 model data produced by this Estimator."""
 
         return LDAModel(self.model_data, self.role, sagemaker_session=self.sagemaker_session)
