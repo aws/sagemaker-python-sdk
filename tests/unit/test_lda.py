@@ -83,7 +83,7 @@ def test_image(sagemaker_session):
 
 def test_num_topics_validation_fail_type(sagemaker_session):
     with pytest.raises(ValueError):
-        LDA(num_topics=-1, sagemaker_session=sagemaker_session, **COMMON_TRAIN_ARGS)
+        LDA(num_topics='other', sagemaker_session=sagemaker_session, **COMMON_TRAIN_ARGS)
 
 
 def test_num_topics_validation_fail_value(sagemaker_session):
@@ -98,7 +98,7 @@ def test_alpha0_validation_fail_type(sagemaker_session):
 
 def test_max_restarts_validation_fail_type(sagemaker_session):
     with pytest.raises(ValueError):
-        LDA(max_restarts=0, sagemaker_session=sagemaker_session, **ALL_REQ_ARGS)
+        LDA(max_restarts='other', sagemaker_session=sagemaker_session, **ALL_REQ_ARGS)
 
 
 def test_max_restarts_validation_fail_type2(sagemaker_session):
@@ -113,7 +113,7 @@ def test_max_restarts_validation_fail_value(sagemaker_session):
 
 def test_max_iterations_validation_fail_type(sagemaker_session):
     with pytest.raises(ValueError):
-        LDA(max_iterations=0, sagemaker_session=sagemaker_session, **ALL_REQ_ARGS)
+        LDA(max_iterations='other', sagemaker_session=sagemaker_session, **ALL_REQ_ARGS)
 
 
 def test_max_iterations_validation_fail_type2(sagemaker_session):
@@ -128,7 +128,7 @@ def test_max_iterations_validation_fail_value(sagemaker_session):
 
 def test_tol_validation_fail_type(sagemaker_session):
     with pytest.raises(ValueError):
-        LDA(tol=-1, sagemaker_session=sagemaker_session, **ALL_REQ_ARGS)
+        LDA(tol='other', sagemaker_session=sagemaker_session, **ALL_REQ_ARGS)
 
 
 def test_tol_validation_fail_value(sagemaker_session):

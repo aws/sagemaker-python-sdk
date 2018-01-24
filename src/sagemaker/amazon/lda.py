@@ -23,11 +23,11 @@ class LDA(AmazonAlgorithmEstimatorBase):
 
     repo = 'lda:1'
 
-    num_topics = hp('num_topics', (gt(0), isint), 'An integer greater than zero')
+    num_topics = hp('num_topics', (isint, gt(0)), 'An integer greater than zero')
     alpha0 = hp('alpha0', isnumber, "A float value")
-    max_restarts = hp('max_restarts', (gt(0), isint), 'An integer greater than zero')
-    max_iterations = hp('max_iterations', (gt(0), isint), 'An integer greater than zero')
-    tol = hp('tol', (gt(0), isnumber), "A positive float")
+    max_restarts = hp('max_restarts', (isint, gt(0)), 'An integer greater than zero')
+    max_iterations = hp('max_iterations', (isint, gt(0)), 'An integer greater than zero')
+    tol = hp('tol', (isnumber, gt(0)), "A positive float")
 
     def __init__(self, role, train_instance_type, num_topics,
                  alpha0=None, max_restarts=None, max_iterations=None, tol=None, **kwargs):
