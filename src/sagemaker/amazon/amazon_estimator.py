@@ -124,12 +124,13 @@ class AmazonAlgorithmEstimatorBase(EstimatorBase):
         logger.debug("Created manifest file {}".format(manifest_s3_file))
         return RecordSet(manifest_s3_file, num_records=train.shape[0], feature_dim=train.shape[1], channel=channel)
 
+
 class AmazonS3AlgorithmEstimatorBase(AmazonAlgorithmEstimatorBase):
-    """Base class for Amazon first-party Estimator implementations. This class ins't
-    intended to be instantiated directly. This is difference from the base class 
+    """Base class for Amazon first-party Estimator implementations. This class isn't
+    intended to be instantiated directly. This is difference from the base class
     because this class handles S3 data"""
 
-    def fit(self, records, mini_batch_size=None, distribution = 'ShardedByS3Key', **kwargs):
+    def fit(self, records, mini_batch_size=None, distribution='ShardedByS3Key', **kwargs):
         """Fit this Estimator on serialized Record objects, stored in S3.
 
         ``records`` should be a list of instances of :class:`~RecordSet`. This defines a collection of
@@ -142,21 +143,20 @@ class AmazonS3AlgorithmEstimatorBase(AmazonAlgorithmEstimatorBase):
         from :class:`~numpy.ndarray` arrays.
 
         Args:
-            records (list): This is a list of :class:`~RecordSet` items The list of records to train 
+            records (list): This is a list of :class:`~RecordSet` items The list of records to train
                     this ``Estimator`` will depend on each algorithm and type of input data.
             mini_batch_size (int or None): The size of each mini-batch to use when training. If None, a
-                default value will be used.
+                    default value will be used.
         """
         default_mini_batch_size = 32
         self.mini_batch_size = mini_batch_size or default_mini_batch_size
-        #self.feature_dim = records.feature_dim    
         data = {}
         for record in records:
             data[record.channel] = s3_input(record.s3_data, distribution=distribution,
-                                          s3_data_type=record.s3_data_type)
+                                    s3_data_type=record.s3_data_type)
         super(AmazonAlgorithmEstimatorBase, self).fit(data, **kwargs)
 
-    def s3_record_set(self, s3_loc, channel="train" ):
+    def s3_record_set(self, s3_loc, channel="train"):
         """Build a  :class:`~RecordSet` from a S3 location with data in it.
 
         Args:
@@ -168,6 +168,7 @@ class AmazonS3AlgorithmEstimatorBase(AmazonAlgorithmEstimatorBase):
         """
         return RecordSet(self.data_location + '/' + s3_loc, channel=channel) 
 
+# Re-write a new recordset class for s3 objects. 
 class RecordSet(object):
 
     def __init__(self, s3_data, num_records = None, feature_dim = None, s3_data_type='ManifestFile', channel='train'):
