@@ -30,7 +30,7 @@ def test_lda():
         data_filename = 'nips-train_1.pbr'
         data_path = os.path.join(DATA_DIR, 'lda', data_filename)
 
-        with open(data_path, 'r') as f:
+        with open(data_path, 'rb') as f:
             all_records = read_records(f)
 
         # all records must be same
