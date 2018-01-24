@@ -10,7 +10,6 @@
 # distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
-import numbers
 
 
 def gt(minimum):
@@ -41,8 +40,3 @@ def istype(expected):
     def validate(value):
         return isinstance(value, expected)
     return validate
-
-
-isint = istype(int)
-isbool = istype(bool)
-isnumber = istype(numbers.Number)  # noqa
