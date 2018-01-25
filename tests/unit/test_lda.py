@@ -116,11 +116,6 @@ def test_max_iterations_validation_fail_type(sagemaker_session):
         LDA(max_iterations='other', sagemaker_session=sagemaker_session, **ALL_REQ_ARGS)
 
 
-def test_max_iterations_validation_fail_type2(sagemaker_session):
-    with pytest.raises(ValueError):
-        LDA(max_iterations=1.1, sagemaker_session=sagemaker_session, **ALL_REQ_ARGS)
-
-
 def test_max_iterations_validation_fail_value(sagemaker_session):
     with pytest.raises(ValueError):
         LDA(max_iterations=0, sagemaker_session=sagemaker_session, **ALL_REQ_ARGS)

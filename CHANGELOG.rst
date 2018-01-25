@@ -6,6 +6,7 @@ CHANGELOG
 =====
 
 * feature: Estimators: add support for Amazon LDA algorithm
+* feature: Hyperparameters: Add data_type to hyperparameters
 * feature: Documentation: Update TensorFlow examples following API change
 * feature: Session: Support multi-part uploads
 
