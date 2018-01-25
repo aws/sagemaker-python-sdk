@@ -57,7 +57,7 @@ def test_tf(sagemaker_session):
 def test_tf_async(sagemaker_session):
 
     training_job_name = ""
-    with timeout(minutes=15):
+    with timeout(minutes=5):
         script_path = os.path.join(DATA_DIR, 'iris', 'iris-dnn-classifier.py')
 
         estimator = TensorFlow(entry_point=script_path,
@@ -75,7 +75,7 @@ def test_tf_async(sagemaker_session):
         training_job_name = estimator.latest_training_job.name
         time.sleep(20)
 
-    with timeout_and_delete_endpoint(estimator=estimator, minutes=20):
+    with timeout_and_delete_endpoint(estimator=estimator, minutes=35):
         estimator = TensorFlow.attach(training_job_name=training_job_name, sagemaker_session=sagemaker_session)
         json_predictor = estimator.deploy(initial_instance_count=1, instance_type='ml.c4.xlarge')
 

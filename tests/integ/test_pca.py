@@ -63,10 +63,11 @@ def test_pca():
 def test_async_pca():
 
     training_job_name = ""
-    endpoint_name = name_from_base('kmeans')
+    endpoint_name = name_from_base('async_pca')
+    sagemaker_session = sagemaker.Session(boto_session=boto3.Session(region_name=REGION))
 
-    with timeout(minutes=15):
-        sagemaker_session = sagemaker.Session(boto_session=boto3.Session(region_name=REGION))
+    with timeout(minutes=20):
+
         data_path = os.path.join(DATA_DIR, 'one_p_mnist', 'mnist.pkl.gz')
         pickle_args = {} if sys.version_info.major == 2 else {'encoding': 'latin1'}
 

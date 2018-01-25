@@ -63,7 +63,7 @@ def test_async_fit(sagemaker_session):
     training_job_name = ""
     endpoint_name = 'test-mxnet-attach-deploy-{}'.format(int(time.time()))
 
-    with timeout(minutes=15):
+    with timeout(minutes=5):
         script_path = os.path.join(DATA_DIR, 'mxnet_mnist', 'mnist.py')
         data_path = os.path.join(DATA_DIR, 'mxnet_mnist')
 
@@ -82,7 +82,7 @@ def test_async_fit(sagemaker_session):
         print("Waiting to re-attach to the training job: %s" % training_job_name)
         time.sleep(20)
 
-    with timeout_and_delete_endpoint_by_name(endpoint_name, sagemaker_session, minutes=20):
+    with timeout_and_delete_endpoint_by_name(endpoint_name, sagemaker_session, minutes=35):
         print("Re-attaching now to: %s" % training_job_name)
         estimator = MXNet.attach(training_job_name=training_job_name, sagemaker_session=sagemaker_session)
         predictor = estimator.deploy(1, 'ml.m4.xlarge', endpoint_name=endpoint_name)

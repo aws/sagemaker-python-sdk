@@ -14,10 +14,10 @@ import gzip
 import os
 import pickle
 import sys
+import time
 import pytest  # noqa
 import boto3
 import numpy as np
-from datetime import time
 
 import sagemaker
 from sagemaker.amazon.linear_learner import LinearLearner, LinearLearnerModel
@@ -88,13 +88,14 @@ def test_linear_learner():
             assert record.label["score"] is not None
 
 
-def test_async_linear_learner(sagemaker_session):
+def test_async_linear_learner():
 
     training_job_name = ""
     endpoint_name = 'test-linear-learner-async-{}'.format(int(time.time()))
+    sagemaker_session = sagemaker.Session(boto_session=boto3.Session(region_name=REGION))
 
-    with timeout(minutes=15):
-        sagemaker_session = sagemaker.Session(boto_session=boto3.Session(region_name=REGION))
+    with timeout(minutes=5):
+
         data_path = os.path.join(DATA_DIR, 'one_p_mnist', 'mnist.pkl.gz')
         pickle_args = {} if sys.version_info.major == 2 else {'encoding': 'latin1'}
 
@@ -144,7 +145,7 @@ def test_async_linear_learner(sagemaker_session):
         print("Waiting to re-attach to the training job: %s" % training_job_name)
         time.sleep(20)
 
-    with timeout_and_delete_endpoint_by_name(endpoint_name, sagemaker_session, minutes=20):
+    with timeout_and_delete_endpoint_by_name(endpoint_name, sagemaker_session, minutes=35):
         estimator = LinearLearner.attach(training_job_name=training_job_name, sagemaker_session=sagemaker_session)
         model = LinearLearnerModel(estimator.model_data, role='SageMakerRole', sagemaker_session=sagemaker_session)
         predictor = model.deploy(1, 'ml.c4.xlarge', endpoint_name=endpoint_name)

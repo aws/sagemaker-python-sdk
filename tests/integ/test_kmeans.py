@@ -24,10 +24,7 @@ from sagemaker.utils import name_from_base
 from tests.integ import DATA_DIR, REGION
 from tests.integ.timeout import timeout, timeout_and_delete_endpoint_by_name
 
-import pytest
 
-
-@pytest.mark.skip(reason="no way of currently testing this")
 def test_kmeans():
 
     with timeout(minutes=15):
@@ -71,7 +68,7 @@ def test_async_kmeans():
     training_job_name = ""
     endpoint_name = name_from_base('kmeans')
 
-    with timeout(minutes=15):
+    with timeout(minutes=5):
         sagemaker_session = sagemaker.Session(boto_session=boto3.Session(region_name=REGION))
         data_path = os.path.join(DATA_DIR, 'one_p_mnist', 'mnist.pkl.gz')
         pickle_args = {} if sys.version_info.major == 2 else {'encoding': 'latin1'}
@@ -100,7 +97,7 @@ def test_async_kmeans():
         time.sleep(20)
         print("attaching now...")
 
-    with timeout_and_delete_endpoint_by_name(endpoint_name, sagemaker_session, minutes=20):
+    with timeout_and_delete_endpoint_by_name(endpoint_name, sagemaker_session, minutes=35):
         estimator = KMeans.attach(training_job_name=training_job_name, sagemaker_session=sagemaker_session)
         model = KMeansModel(estimator.model_data, role='SageMakerRole', sagemaker_session=sagemaker_session)
         predictor = model.deploy(1, 'ml.c4.xlarge', endpoint_name=endpoint_name)
