@@ -87,6 +87,7 @@ def test_linear_learner():
             assert record.label["predicted_label"] is not None
             assert record.label["score"] is not None
 
+
 def test_async_linear_learner(sagemaker_session):
 
     training_job_name = ""

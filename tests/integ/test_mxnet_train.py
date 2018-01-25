@@ -90,7 +90,6 @@ def test_async_fit(sagemaker_session):
         predictor.predict(data)
 
 
-
 def test_deploy_model(mxnet_training_job, sagemaker_session):
     endpoint_name = 'test-mxnet-deploy-model-{}'.format(int(time.time()))
 

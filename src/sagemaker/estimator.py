@@ -153,13 +153,12 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):
         if wait:
             self.latest_training_job.wait(logs=logs)
 
-
     @classmethod
     def _from_training_job(cls, init_params, hyperparameters, image, sagemaker_session):
         raise NotImplementedError()
 
     @classmethod
-    def attach(cls, training_job_name, sagemaker_session=None, **kwargs):
+    def attach(cls, training_job_name, sagemaker_session=None):
         """Attach to an existing training job.
 
         Create an Estimator bound to an existing training job. After attaching, if
