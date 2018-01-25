@@ -82,6 +82,33 @@ def test_tf_async(sagemaker_session):
         print('predict result: {}'.format(result))
 
 
+def test_tf_with_requirements(sagemaker_session):
+    with timeout(minutes=15):
+        source_dir = os.path.join(DATA_DIR, 'iris')
+
+        estimator = TensorFlow(entry_point='iris-dnn-classifier-with-requirements.py',
+                               source_dir=source_dir,
+                               requirements='requirements.txt',
+                               role='SageMakerRole',
+                               training_steps=1,
+                               evaluation_steps=1,
+                               hyperparameters={'input_tensor_name': 'inputs'},
+                               train_instance_count=1,
+                               train_instance_type='ml.c4.xlarge',
+                               sagemaker_session=sagemaker_session,
+                               base_job_name='test-tf')
+
+        inputs = estimator.sagemaker_session.upload_data(path=DATA_PATH, key_prefix='integ-test-data/tf_iris')
+        estimator.fit(inputs)
+        print('job succeeded: {}'.format(estimator.latest_training_job.name))
+
+    with timeout_and_delete_endpoint(estimator=estimator, minutes=20):
+        json_predictor = estimator.deploy(initial_instance_count=1, instance_type='ml.c4.xlarge')
+
+        result = json_predictor.predict([6.4, 3.2, 4.5, 1.5])
+        print('predict result: {}'.format(result))
+
+
 def test_failed_tf_training(sagemaker_session):
     with timeout(minutes=15):
         script_path = os.path.join(DATA_DIR, 'iris', 'failure_script.py')
