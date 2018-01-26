@@ -152,6 +152,9 @@ class TensorFlow(Framework):
         def fit_super():
             super(TensorFlow, self).fit(inputs, wait, logs, job_name)
 
+        if run_tensorboard_locally and wait is False:
+            raise ValueError("Tensorboard is not supported with async fit")
+
         if run_tensorboard_locally:
             tensorboard = Tensorboard(self)
             tensorboard.validate_requirements()

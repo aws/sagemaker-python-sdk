@@ -63,7 +63,7 @@ def test_pca():
 def test_async_pca():
 
     training_job_name = ""
-    endpoint_name = name_from_base('async_pca')
+    endpoint_name = name_from_base('pca')
     sagemaker_session = sagemaker.Session(boto_session=boto3.Session(region_name=REGION))
 
     with timeout(minutes=20):

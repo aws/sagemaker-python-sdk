@@ -59,7 +59,7 @@ def test_factorization_machines():
 def test_async_factorization_machines():
 
     training_job_name = ""
-    endpoint_name = name_from_base('factorization_machines')
+    endpoint_name = name_from_base('factorizationMachines')
     sagemaker_session = sagemaker.Session(boto_session=boto3.Session(region_name=REGION))
 
     with timeout(minutes=5):
