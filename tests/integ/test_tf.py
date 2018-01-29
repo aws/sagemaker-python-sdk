@@ -48,8 +48,13 @@ def test_tf(sagemaker_session):
     with timeout_and_delete_endpoint(estimator=estimator, minutes=20):
         json_predictor = estimator.deploy(initial_instance_count=1, instance_type='ml.c4.xlarge')
 
-        result = json_predictor.predict([6.4, 3.2, 4.5, 1.5])
-        print('predict result: {}'.format(result))
+        features = [6.4, 3.2, 4.5, 1.5]
+        dict_result = json_predictor.predict({'inputs': features})
+        print('predict result: {}'.format(dict_result))
+        list_result = json_predictor.predict(features)
+        print('predict result: {}'.format(list_result))
+
+        assert dict_result == list_result
 
 
 def test_failed_tf_training(sagemaker_session):
