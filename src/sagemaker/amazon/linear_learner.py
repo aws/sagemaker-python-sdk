@@ -21,7 +21,8 @@ from sagemaker.session import Session
 
 class LinearLearner(AmazonAlgorithmEstimatorBase):
 
-    repo = 'linear-learner:1'
+    alg_name = 'linear-learner'
+    alg_version = 1
 
     DEFAULT_MINI_BATCH_SIZE = 1000
 
@@ -226,7 +227,8 @@ class LinearLearnerModel(Model):
 
     def __init__(self, model_data, role, sagemaker_session=None):
         sagemaker_session = sagemaker_session or Session()
-        image = registry(sagemaker_session.boto_session.region_name) + "/" + LinearLearner.repo
+        repo = '{}:{}'.format(LinearLearner.alg_name, LinearLearner.alg_version)
+        image = registry(sagemaker_session.boto_session.region_name) + "/" + repo
         super(LinearLearnerModel, self).__init__(model_data, image, role,
                                                  predictor_cls=LinearLearnerPredictor,
                                                  sagemaker_session=sagemaker_session)

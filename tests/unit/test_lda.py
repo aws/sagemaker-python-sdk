@@ -11,7 +11,7 @@
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
 import pytest
-from mock import Mock
+from mock import Mock, patch
 
 from sagemaker.amazon.lda import LDA, LDAPredictor
 from sagemaker.amazon.amazon_estimator import registry, RecordSet
@@ -78,7 +78,7 @@ def test_all_hyperparameters(sagemaker_session):
 
 def test_image(sagemaker_session):
     lda = LDA(sagemaker_session=sagemaker_session, **ALL_REQ_ARGS)
-    assert lda.train_image() == registry(REGION, LDA.__name__) + '/lda:1'
+    assert lda.train_image() == registry(REGION, "lda") + '/lda:1'
 
 
 def test_num_topics_validation_fail_type(sagemaker_session):
@@ -134,7 +134,7 @@ def test_tol_validation_fail_value(sagemaker_session):
 PREFIX = "prefix"
 BASE_TRAIN_CALL = {
     'hyperparameters': {},
-    'image': registry(REGION, LDA.__name__) + '/lda:1',
+    'image': registry(REGION, "lda") + '/lda:1',
     'input_config': [{
         'DataSource': {
             'S3DataSource': {
@@ -163,21 +163,18 @@ HP_TRAIN_CALL = dict(BASE_TRAIN_CALL)
 HP_TRAIN_CALL.update({'hyperparameters': STRINGIFIED_HYPERPARAMS})
 
 
-def test_call_fit(sagemaker_session):
+@patch("sagemaker.amazon.amazon_estimator.AmazonAlgorithmEstimatorBase.fit")
+def test_call_fit(base_fit, sagemaker_session):
     lda = LDA(base_job_name="lda", sagemaker_session=sagemaker_session, **ALL_REQ_ARGS)
 
     data = RecordSet("s3://{}/{}".format(BUCKET_NAME, PREFIX), num_records=1, feature_dim=FEATURE_DIM, channel='train')
+
     lda.fit(data, MINI_BATCH_SZIE)
 
-    sagemaker_session.train.assert_called_once()
-    assert len(sagemaker_session.train.call_args[0]) == 0
-    args = sagemaker_session.train.call_args[1]
-    assert args['job_name'].startswith("lda")
-
-    args.pop('job_name')
-    args.pop('role')
-
-    assert args == HP_TRAIN_CALL
+    base_fit.assert_called_once()
+    assert len(base_fit.call_args[0]) == 2
+    assert base_fit.call_args[0][0] == data
+    assert base_fit.call_args[0][1] == MINI_BATCH_SZIE
 
 
 def test_call_fit_none_mini_batch_size(sagemaker_session):
@@ -194,8 +191,9 @@ def test_call_fit_wrong_type_mini_batch_size(sagemaker_session):
 
     data = RecordSet("s3://{}/{}".format(BUCKET_NAME, PREFIX), num_records=1, feature_dim=FEATURE_DIM,
                      channel='train')
+
     with pytest.raises(ValueError):
-        lda.fit(data, 1.1)
+        lda.fit(data, "some")
 
 
 def test_call_fit_wrong_value_mini_batch_size(sagemaker_session):
@@ -213,7 +211,7 @@ def test_model_image(sagemaker_session):
     lda.fit(data, MINI_BATCH_SZIE)
 
     model = lda.create_model()
-    assert model.image == registry(REGION, LDA.__name__) + '/lda:1'
+    assert model.image == registry(REGION, "lda") + '/lda:1'
 
 
 def test_predictor_type(sagemaker_session):

@@ -21,13 +21,14 @@ from sagemaker.session import Session
 
 class LDA(AmazonAlgorithmEstimatorBase):
 
-    repo = 'lda:1'
+    alg_name = 'lda'
+    alg_version = 1
 
     num_topics = hp('num_topics', gt(0), 'An integer greater than zero', int)
-    alpha0 = hp('alpha0', (), "A float value", float)
+    alpha0 = hp('alpha0', gt(0), 'A positive float', float)
     max_restarts = hp('max_restarts', gt(0), 'An integer greater than zero', int)
     max_iterations = hp('max_iterations', gt(0), 'An integer greater than zero', int)
-    tol = hp('tol', (gt(0)), "A positive float", float)
+    tol = hp('tol', gt(0), 'A positive float', float)
 
     def __init__(self, role, train_instance_type, num_topics,
                  alpha0=None, max_restarts=None, max_iterations=None, tol=None, **kwargs):
@@ -67,11 +68,12 @@ class LDA(AmazonAlgorithmEstimatorBase):
                 the inference code might use the IAM role, if accessing AWS resource.
             train_instance_type (str): Type of EC2 instance to use for training, for example, 'ml.c4.xlarge'.
             num_topics (int): The number of topics for LDA to find within the data.
-            alpha0 (float): Initial guess for the concentration parameter
-            max_restarts (int): The number of restarts to perform during the Alternating Least Squares (ALS)
+            alpha0 (float): Optional. Initial guess for the concentration parameter
+            max_restarts (int): Optional. The number of restarts to perform during the Alternating Least Squares (ALS)
                 spectral decomposition phase of the algorithm.
-            max_iterations (int): The maximum number of iterations to perform during the ALS phase of the algorithm.
-            tol (float): Target error tolerance for the ALS phase of the algorithm.
+            max_iterations (int): Optional. The maximum number of iterations to perform during the
+                ALS phase of the algorithm.
+            tol (float): Optional. Target error tolerance for the ALS phase of the algorithm.
             **kwargs: base class keyword argument values.
         """
 
@@ -90,12 +92,9 @@ class LDA(AmazonAlgorithmEstimatorBase):
         return LDAModel(self.model_data, self.role, sagemaker_session=self.sagemaker_session)
 
     def fit(self, records, mini_batch_size, **kwargs):
-        # mini_batch_size is required
+        # mini_batch_size is required, prevent explicit calls with None
         if mini_batch_size is None:
             raise ValueError("mini_batch_size must be set")
-        if not isinstance(mini_batch_size, int) or mini_batch_size < 1:
-            raise ValueError("mini_batch_size must be positive integer")
-
         super(LDA, self).fit(records, mini_batch_size, **kwargs)
 
 
@@ -122,6 +121,7 @@ class LDAModel(Model):
 
     def __init__(self, model_data, role, sagemaker_session=None):
         sagemaker_session = sagemaker_session or Session()
-        image = registry(sagemaker_session.boto_session.region_name, LDA.__name__) + "/" + LDA.repo
+        repo = '{}:{}'.format(LDA.alg_name, LDA.alg_version)
+        image = registry(sagemaker_session.boto_session.region_name, LDA.alg_name) + "/" + repo
         super(LDAModel, self).__init__(model_data, image, role, predictor_cls=LDAPredictor,
                                        sagemaker_session=sagemaker_session)
