@@ -16,9 +16,8 @@ import os
 
 import sagemaker
 from sagemaker import LDA, LDAModel
-from sagemaker.amazon.amazon_estimator import RecordSet
 from sagemaker.amazon.common import read_records
-from sagemaker.utils import name_from_base, sagemaker_timestamp
+from sagemaker.utils import name_from_base
 from tests.integ import DATA_DIR, REGION
 from tests.integ.timeout import timeout, timeout_and_delete_endpoint_by_name
 
