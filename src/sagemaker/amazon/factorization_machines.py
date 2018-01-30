@@ -21,8 +21,8 @@ from sagemaker.session import Session
 
 class FactorizationMachines(AmazonAlgorithmEstimatorBase):
 
-    alg_name = 'factorization-machines'
-    alg_version = 1
+    repo_name = 'factorization-machines'
+    repo_version = 1
 
     num_factors = hp('num_factors', gt(0), 'An integer greater than zero', int)
     predictor_type = hp('predictor_type', isin('binary_classifier', 'regressor'),
@@ -195,8 +195,8 @@ class FactorizationMachinesModel(Model):
 
     def __init__(self, model_data, role, sagemaker_session=None):
         sagemaker_session = sagemaker_session or Session()
-        repo = '{}:{}'.format(FactorizationMachines.alg_name, FactorizationMachines.alg_version)
-        image = registry(sagemaker_session.boto_session.region_name) + "/" + repo
+        repo = '{}:{}'.format(FactorizationMachines.repo_name, FactorizationMachines.repo_version)
+        image = '{}/{}'.format(registry(sagemaker_session.boto_session.region_name), repo)
         super(FactorizationMachinesModel, self).__init__(model_data,
                                                          image,
                                                          role,

@@ -47,8 +47,8 @@ class AmazonAlgorithmEstimatorBase(EstimatorBase):
         self.data_location = data_location
 
     def train_image(self):
-        repo = '{}:{}'.format(type(self).alg_name, type(self).alg_version)
-        return registry(self.sagemaker_session.boto_region_name, type(self).alg_name) + "/" + repo
+        repo = '{}:{}'.format(type(self).repo_name, type(self).repo_version)
+        return '{}/{}'.format(registry(self.sagemaker_session.boto_region_name, type(self).repo_name), repo)
 
     def hyperparameters(self):
         return hp.serialize_all(self)
@@ -126,11 +126,11 @@ class AmazonAlgorithmEstimatorBase(EstimatorBase):
         logger.debug("Created manifest file {}".format(manifest_s3_file))
         return RecordSet(manifest_s3_file, num_records=train.shape[0], feature_dim=train.shape[1], channel=channel)
 
-    def record_set_from_local_files(self, data_path, num_records, feature_dim, channel="train"):
+    def record_set_from_local_files(self, dir_path, num_records, feature_dim, channel="train"):
         """Build a :class:`~RecordSet` by pointing to local files.
 
         Args:
-            data_path (string): Path to local file to be uploaded for training.
+            dir_path (string): Path to local directory from where the files shall be uploaded.
             num_records (int): Number of records in all the files
             feature_dim (int): Number of features in the data set
             channel (str): The SageMaker TrainingJob channel this RecordSet should be assigned to.
@@ -143,7 +143,7 @@ class AmazonAlgorithmEstimatorBase(EstimatorBase):
         key_prefix = key_prefix + '{}-{}'.format(type(self).__name__, sagemaker_timestamp())
         key_prefix = key_prefix.lstrip('/')
         logger.debug('Uploading to bucket {} and key_prefix {}'.format(bucket, key_prefix))
-        uploaded_location = self.sagemaker_session.upload_data(path=data_path, key_prefix=key_prefix)
+        uploaded_location = self.sagemaker_session.upload_data(path=dir_path, key_prefix=key_prefix)
         return RecordSet(uploaded_location, num_records, feature_dim, s3_data_type='S3Prefix', channel=channel)
 
 

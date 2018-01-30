@@ -21,8 +21,8 @@ from sagemaker.session import Session
 
 class LDA(AmazonAlgorithmEstimatorBase):
 
-    alg_name = 'lda'
-    alg_version = 1
+    repo_name = 'lda'
+    repo_version = 1
 
     num_topics = hp('num_topics', gt(0), 'An integer greater than zero', int)
     alpha0 = hp('alpha0', gt(0), 'A positive float', float)
@@ -121,7 +121,7 @@ class LDAModel(Model):
 
     def __init__(self, model_data, role, sagemaker_session=None):
         sagemaker_session = sagemaker_session or Session()
-        repo = '{}:{}'.format(LDA.alg_name, LDA.alg_version)
-        image = registry(sagemaker_session.boto_session.region_name, LDA.alg_name) + "/" + repo
+        repo = '{}:{}'.format(LDA.repo_name, LDA.repo_version)
+        image = '{}/{}'.format(registry(sagemaker_session.boto_session.region_name, LDA.repo_name), repo)
         super(LDAModel, self).__init__(model_data, image, role, predictor_cls=LDAPredictor,
                                        sagemaker_session=sagemaker_session)

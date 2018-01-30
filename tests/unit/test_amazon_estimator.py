@@ -18,6 +18,7 @@ import numpy as np
 from sagemaker.amazon.pca import PCA
 from sagemaker.amazon.amazon_estimator import upload_numpy_to_s3_shards, _build_shards, registry
 
+from tests.unit import DATA_DIR
 
 COMMON_ARGS = {'role': 'myrole', 'train_instance_count': 1, 'train_instance_type': 'ml.c4.xlarge'}
 
@@ -153,3 +154,27 @@ def test_upload_numpy_to_s3_shards():
     mock_s3.Object.assert_has_calls([call(BUCKET_NAME, 'key-prefix/matrix_0.pbr')])
     mock_s3.Object.assert_has_calls([call(BUCKET_NAME, 'key-prefix/matrix_1.pbr')])
     mock_s3.Object.assert_has_calls([call(BUCKET_NAME, 'key-prefix/matrix_2.pbr')])
+
+
+@patch('time.strftime', return_value=TIMESTAMP)
+def test_record_set_from_local_files(time, sagemaker_session):
+    rec_count = 10
+    feature_count = 15
+    destination = "some place"
+    key = "location"
+
+    sagemaker_session.upload_data = Mock(name='upload_data', return_value=destination)
+
+    # test the returned object
+    pca = PCA(num_components=55, sagemaker_session=sagemaker_session,
+              data_location='s3://{}/{}'.format(BUCKET_NAME, key), **COMMON_ARGS)
+
+    data_set = pca.record_set_from_local_files(DATA_DIR, rec_count, feature_count)
+
+    assert (data_set.feature_dim == feature_count)
+    assert (data_set.num_records == rec_count)
+    assert (data_set.s3_data_type == 'S3Prefix')
+    assert (data_set.s3_data == destination)
+
+    expected_key_prefix = '{}/{}-{}'.format(key, "PCA", TIMESTAMP)
+    sagemaker_session.upload_data.assert_called_with(path=DATA_DIR, key_prefix=expected_key_prefix)
