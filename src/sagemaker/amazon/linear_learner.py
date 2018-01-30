@@ -13,7 +13,7 @@
 from sagemaker.amazon.amazon_estimator import AmazonAlgorithmEstimatorBase, registry
 from sagemaker.amazon.common import numpy_to_record_serializer, record_deserializer
 from sagemaker.amazon.hyperparameter import Hyperparameter as hp  # noqa
-from sagemaker.amazon.validation import isin, gt, lt, isint, isbool, isnumber
+from sagemaker.amazon.validation import isin, gt, lt
 from sagemaker.predictor import RealTimePredictor
 from sagemaker.model import Model
 from sagemaker.session import Session
@@ -27,40 +27,41 @@ class LinearLearner(AmazonAlgorithmEstimatorBase):
 
     binary_classifier_model_selection_criteria = hp('binary_classifier_model_selection_criteria',
                                                     isin('accuracy', 'f1', 'precision_at_target_recall',
-                                                         'recall_at_target_precision', 'cross_entropy_loss'))
-    target_recall = hp('target_recall', (gt(0), lt(1)), "A float in (0,1)")
-    target_precision = hp('target_precision', (gt(0), lt(1)), "A float in (0,1)")
-    positive_example_weight_mult = hp('positive_example_weight_mult', gt(0), "A float greater than 0")
-    epochs = hp('epochs', (gt(0), isint), "An integer greater-than 0")
+                                                         'recall_at_target_precision', 'cross_entropy_loss'),
+                                                    data_type=str)
+    target_recall = hp('target_recall', (gt(0), lt(1)), "A float in (0,1)", float)
+    target_precision = hp('target_precision', (gt(0), lt(1)), "A float in (0,1)", float)
+    positive_example_weight_mult = hp('positive_example_weight_mult', gt(0), "A float greater than 0", float)
+    epochs = hp('epochs', gt(0), "An integer greater-than 0", int)
     predictor_type = hp('predictor_type', isin('binary_classifier', 'regressor'),
-                        'One of "binary_classifier" or "regressor"')
-    use_bias = hp('use_bias', isbool, "Either True or False")
-    num_models = hp('num_models', (gt(0), isint), "An integer greater-than 0")
-    num_calibration_samples = hp('num_calibration_samples', (gt(0), isint), "An integer greater-than 0")
-    init_method = hp('init_method', isin('uniform', 'normal'), 'One of "uniform" or "normal"')
-    init_scale = hp('init_scale', (gt(-1), lt(1)), 'A float in (-1, 1)')
-    init_sigma = hp('init_sigma', (gt(0), lt(1)), 'A float in (0, 1)')
-    init_bias = hp('init_bias', isnumber, 'A number')
-    optimizer = hp('optimizer', isin('sgd', 'adam', 'auto'), 'One of "sgd", "adam" or "auto')
+                        'One of "binary_classifier" or "regressor"', str)
+    use_bias = hp('use_bias', (), "Either True or False", bool)
+    num_models = hp('num_models', gt(0), "An integer greater-than 0", int)
+    num_calibration_samples = hp('num_calibration_samples', gt(0), "An integer greater-than 0", int)
+    init_method = hp('init_method', isin('uniform', 'normal'), 'One of "uniform" or "normal"', str)
+    init_scale = hp('init_scale', (gt(-1), lt(1)), 'A float in (-1, 1)', float)
+    init_sigma = hp('init_sigma', (gt(0), lt(1)), 'A float in (0, 1)', float)
+    init_bias = hp('init_bias', (), 'A number', float)
+    optimizer = hp('optimizer', isin('sgd', 'adam', 'auto'), 'One of "sgd", "adam" or "auto', str)
     loss = hp('loss', isin('logistic', 'squared_loss', 'absolute_loss', 'auto'),
-              '"logistic", "squared_loss", "absolute_loss" or"auto"')
-    wd = hp('wd', (gt(0), lt(1)), 'A float in (0,1)')
-    l1 = hp('l1', (gt(0), lt(1)), 'A float in (0,1)')
-    momentum = hp('momentum', (gt(0), lt(1)), 'A float in (0,1)')
-    learning_rate = hp('learning_rate', (gt(0), lt(1)), 'A float in (0,1)')
-    beta_1 = hp('beta_1', (gt(0), lt(1)), 'A float in (0,1)')
-    beta_2 = hp('beta_1', (gt(0), lt(1)), 'A float in (0,1)')
-    bias_lr_mult = hp('bias_lr_mult', gt(0), 'A float greater-than 0')
-    bias_wd_mult = hp('bias_wd_mult', gt(0), 'A float greater-than 0')
-    use_lr_scheduler = hp('use_lr_scheduler', isbool, 'A boolean')
-    lr_scheduler_step = hp('lr_scheduler_step', (gt(0), isint), 'An integer greater-than 0')
-    lr_scheduler_factor = hp('lr_scheduler_factor', (gt(0), lt(1)), 'A float in (0,1)')
-    lr_scheduler_minimum_lr = hp('lr_scheduler_minimum_lr', gt(0), 'A float greater-than 0')
-    normalize_data = hp('normalize_data', isbool, 'A boolean')
-    normalize_label = hp('normalize_label', isbool, 'A boolean')
-    unbias_data = hp('unbias_data', isbool, 'A boolean')
-    unbias_label = hp('unbias_label', isbool, 'A boolean')
-    num_point_for_scalar = hp('num_point_for_scalar', (isint, gt(0)), 'An integer greater-than 0')
+              '"logistic", "squared_loss", "absolute_loss" or"auto"', str)
+    wd = hp('wd', (gt(0), lt(1)), 'A float in (0,1)', float)
+    l1 = hp('l1', (gt(0), lt(1)), 'A float in (0,1)', float)
+    momentum = hp('momentum', (gt(0), lt(1)), 'A float in (0,1)', float)
+    learning_rate = hp('learning_rate', (gt(0), lt(1)), 'A float in (0,1)', float)
+    beta_1 = hp('beta_1', (gt(0), lt(1)), 'A float in (0,1)', float)
+    beta_2 = hp('beta_1', (gt(0), lt(1)), 'A float in (0,1)', float)
+    bias_lr_mult = hp('bias_lr_mult', gt(0), 'A float greater-than 0', float)
+    bias_wd_mult = hp('bias_wd_mult', gt(0), 'A float greater-than 0', float)
+    use_lr_scheduler = hp('use_lr_scheduler', (), 'A boolean', bool)
+    lr_scheduler_step = hp('lr_scheduler_step', gt(0), 'An integer greater-than 0', int)
+    lr_scheduler_factor = hp('lr_scheduler_factor', (gt(0), lt(1)), 'A float in (0,1)', float)
+    lr_scheduler_minimum_lr = hp('lr_scheduler_minimum_lr', gt(0), 'A float greater-than 0', float)
+    normalize_data = hp('normalize_data', (), 'A boolean', bool)
+    normalize_label = hp('normalize_label', (), 'A boolean', bool)
+    unbias_data = hp('unbias_data', (), 'A boolean', bool)
+    unbias_label = hp('unbias_label', (), 'A boolean', bool)
+    num_point_for_scalar = hp('num_point_for_scalar', gt(0), 'An integer greater-than 0', int)
 
     def __init__(self, role, train_instance_count, train_instance_type, predictor_type='binary_classifier',
                  binary_classifier_model_selection_criteria=None, target_recall=None, target_precision=None,
