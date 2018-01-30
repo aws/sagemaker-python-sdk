@@ -83,6 +83,18 @@ class MXNet(Framework):
 
     @classmethod
     def _from_training_job(cls, init_params, hyperparameters, image, sagemaker_session):
+        """Create an Estimator from existing training job data.
+
+        Args:
+            init_params (dict): The init_params the training job was created with.
+            hyperparameters (dict):  The hyperparameters the training job was created with.
+            image (str): Container image (if any) the training job was created with
+            sagemaker_session (sagemaker.session.Session): A sagemaker Session to pass to the estimator.
+
+        Returns: An instance of the calling Estimator Class.
+
+        """
+
         framework, py_version = framework_name_from_image(image)
         init_params.update({'py_version': py_version})
 

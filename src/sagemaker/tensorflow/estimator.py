@@ -169,6 +169,18 @@ class TensorFlow(Framework):
 
     @classmethod
     def _from_training_job(cls, init_params, hyperparameters, image, sagemaker_session):
+        """Create an Estimator from existing training job data.
+
+        Args:
+            init_params (dict): The init_params the training job was created with.
+            hyperparameters (dict):  The hyperparameters the training job was created with.
+            image (str): Container image (if any) the training job was created with
+            sagemaker_session (sagemaker.session.Session): A sagemaker Session to pass to the estimator.
+
+        Returns: An instance of the calling Estimator Class.
+
+        """
+
         updated_params = cls._update_init_params(hyperparameters,
                                                  ['checkpoint_path', 'training_steps', 'evaluation_steps'])
         init_params.update(updated_params)

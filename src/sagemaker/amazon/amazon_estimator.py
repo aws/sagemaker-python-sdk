@@ -66,11 +66,21 @@ class AmazonAlgorithmEstimatorBase(EstimatorBase):
 
     @classmethod
     def _from_training_job(cls, init_params, hyperparameters, image, sagemaker_session):
+        """Create an Estimator from existing training job data.
+
+        Args:
+            init_params (dict): The init_params the training job was created with.
+            hyperparameters (dict):  The hyperparameters the training job was created with.
+            image (str): Container image (if any) the training job was created with
+            sagemaker_session (sagemaker.session.Session): A sagemaker Session to pass to the estimator.
+
+        Returns: An instance of the calling Estimator Class.
+
+        """
 
         # The hyperparam names may not be the same as the class attribute that holds them,
         # for instance: local_lloyd_init_method is called local_init_method. We need to map these
         # and pass the correct name to the constructor.
-
         for attribute, value in cls.__dict__.items():
             if isinstance(value, hp):
                 if value.name in hyperparameters:

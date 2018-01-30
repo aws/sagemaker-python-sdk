@@ -155,14 +155,26 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):
 
     @classmethod
     def _from_training_job(cls, init_params, hyperparameters, image, sagemaker_session):
+        """Create an Estimator from existing training job data.
+
+        Args:
+            init_params (dict): The init_params the training job was created with.
+            hyperparameters (dict):  The hyperparameters the training job was created with.
+            image (str): Container image (if any) the training job was created with
+            sagemaker_session (sagemaker.session.Session): A sagemaker Session to pass to the estimator.
+
+        Returns: An instance of the calling Estimator Class.
+
+        """
         raise NotImplementedError()
 
     @classmethod
     def attach(cls, training_job_name, sagemaker_session=None):
         """Attach to an existing training job.
 
-        Create an Estimator bound to an existing training job. After attaching, if
-        the training job has a Complete status, it can be ``deploy()`` ed to create
+        Create an Estimator bound to an existing training job, each subclass is responsible to implement
+        ``from_training_job()`` as this method delegates the actual Estimator creation to it. After
+        attaching, if the training job has a Complete status, it can be ``deploy()`` ed to create
         a SageMaker Endpoint and return a ``Predictor``.
 
         If the training job is in progress, attach will block and display log messages
@@ -173,17 +185,22 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):
             sagemaker_session (sagemaker.session.Session): Session object which manages interactions with
                 Amazon SageMaker APIs and any other AWS services needed. If not specified, the estimator creates one
                 using the default AWS configuration chain.
-            **kwargs: Additional kwargs passed to the :class:`~sagemaker.estimator.Estimator` constructor.
+
+        Examples:
+            >>> my_estimator.fit(wait=False)
+            >>> training_job_name = my_estimator.latest_training_job.name
+            Later on:
+            >>> attached_estimator = Estimator.attach(training_job_name)
+            >>> attached_estimator.deploy()
 
         Returns:
-            sagemaker.estimator.Framework: ``Estimator`` with the attached training job.
+            Instance of the calling ``Estimator`` Class with the attached training job.
         """
         sagemaker_session = sagemaker_session or Session()
 
-        if training_job_name is not None:
+        if training_job_name:
             job_details = sagemaker_session.sagemaker_client.describe_training_job(TrainingJobName=training_job_name)
             init_params, hp, image = cls._prepare_estimator_params_from_job_description(job_details)
-
         else:
             raise ValueError('must specify training_job name')
 
@@ -460,6 +477,25 @@ class Estimator(EstimatorBase):
         return Model(self.model_data, image or self.train_image(), self.role, sagemaker_session=self.sagemaker_session,
                      predictor_cls=predictor_cls, **kwargs)
 
+    @classmethod
+    def _from_training_job(cls, init_params, hyperparameters, image, sagemaker_session):
+        """Create an Estimator from existing training job data.
+
+        Args:
+            init_params (dict): The init_params the training job was created with.
+            hyperparameters (dict):  The hyperparameters the training job was created with.
+            image (str): Container image (if any) the training job was created with
+            sagemaker_session (sagemaker.session.Session): A sagemaker Session to pass to the estimator.
+
+        Returns: An instance of the calling Estimator Class.
+
+        """
+
+        estimator = cls(sagemaker_session=sagemaker_session, **init_params)
+        cls.set_hyperparameters(**hyperparameters)
+
+        return estimator
+
 
 class Framework(EstimatorBase):
     """Base class that cannot be instantiated directly.
@@ -567,6 +603,17 @@ class Framework(EstimatorBase):
 
     @classmethod
     def _from_training_job(cls, init_params, hyperparameters, image, sagemaker_session):
+        """Create an Estimator from existing training job data.
+
+        Args:
+            init_params (dict): The init_params the training job was created with.
+            hyperparameters (dict):  The hyperparameters the training job was created with.
+            image (str): Container image (if any) the training job was created with
+            sagemaker_session (sagemaker.session.Session): A sagemaker Session to pass to the estimator.
+
+        Returns: An instance of the calling Estimator Class.
+
+        """
 
         # parameters for framework classes
         framework_init_params = dict()
@@ -578,8 +625,8 @@ class Framework(EstimatorBase):
             hyperparameters.get(CONTAINER_LOG_LEVEL_PARAM_NAME))
 
         # drop json and remove other SageMaker specific additions
-        hp_map = {entry: json.loads(hyperparameters[entry]) for entry in hyperparameters}
-        framework_init_params['hyperparameters'] = hp_map
+        deserialized_hps = {entry: json.loads(hyperparameters[entry]) for entry in hyperparameters}
+        framework_init_params['hyperparameters'] = deserialized_hps
 
         init_params.update(framework_init_params)
 
