@@ -23,6 +23,7 @@ from sagemaker.utils import sagemaker_timestamp
 
 logger = logging.getLogger(__name__)
 
+
 class AmazonAlgorithmEstimatorBase(EstimatorBase):
     """Base class for Amazon first-party Estimator implementations. This class isn't intended
     to be instantiated directly."""
@@ -83,6 +84,7 @@ class AmazonAlgorithmEstimatorBase(EstimatorBase):
             records (:class:`~RecordSet`): The records to train this ``Estimator`` on
             mini_batch_size (int or None): The size of each mini-batch to use when training. If None, a
                 default value will be used.
+            distribution (s3 distribution type): S3 Distribution.
         """
         self.feature_dim = records.feature_dim
         self.mini_batch_size = mini_batch_size
@@ -168,6 +170,7 @@ class AmazonS3AlgorithmEstimatorBase(AmazonAlgorithmEstimatorBase):
         """
         return RecordSet(self.data_location + '/' + s3_loc, channel=channel) 
 
+
 # Re-write a new recordset class for s3 objects. 
 class RecordSet(object):
 
@@ -241,19 +244,16 @@ def upload_numpy_to_s3_shards(num_shards, s3, bucket, key_prefix, array, labels=
         finally:
             raise ex
 
-def registry(region_name, algorithm = None):
-    """Return docker registry for the given AWS region
-    
-        Args:
-            algorithm (str): Provide the algorithm to get the docker back"""
-    if algorithm is None:
+
+def registry(region_name, algorithm=None):
+    """Return docker registry for the given AWS region"""
+    if algorithm in [None, "pca", "kmeans", "linear-learner", "factorization-machines"]:
         account_id = {
             "us-east-1": "382416733822",
             "us-east-2": "404615174143",
             "us-west-2": "174872318107",
             "eu-west-1": "438346466558"
         }[region_name]
-        return "{}.dkr.ecr.{}.amazonaws.com".format(account_id, region_name)
     elif algorithm in ['image_classification']:
         account_id = {
             "us-east-1": "811284229777",
@@ -261,4 +261,13 @@ def registry(region_name, algorithm = None):
             "us-west-2": "433757028032",
             "eu-west-1": "685385470294"
         }[region_name]
-        return "{}.dkr.ecr.{}.amazonaws.com".format(account_id, region_name)                
+    elif algorithm in ["lda"]:
+        account_id = {
+            "us-east-1": "766337827248",
+            "us-east-2": "999911452149",
+            "us-west-2": "266724342769",
+            "eu-west-1": "999678624901"
+        }[region_name]
+    else:
+        raise ValueError("Algorithm class:{} doesn't have mapping to account_id with images".format(algorithm))
+    return "{}.dkr.ecr.{}.amazonaws.com".format(account_id, region_name)
