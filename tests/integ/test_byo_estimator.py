@@ -154,3 +154,5 @@ def test_async_byo_estimator():
         assert len(result['predictions']) == 10
         for prediction in result['predictions']:
             assert prediction['score'] is not None
+
+        assert estimator.train_image() == image_name

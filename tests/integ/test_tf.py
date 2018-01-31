@@ -28,7 +28,6 @@ def sagemaker_session():
     return Session(boto_session=boto3.Session(region_name=REGION))
 
 
-@pytest.mark.skip(reason="Not Today")
 def test_tf(sagemaker_session):
     with timeout(minutes=15):
         script_path = os.path.join(DATA_DIR, 'iris', 'iris-dnn-classifier.py')

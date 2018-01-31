@@ -11,11 +11,10 @@
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
 import logging
+import os
 import subprocess
 import tempfile
 import threading
-
-import os
 
 import sagemaker.tensorflow
 from sagemaker.estimator import Framework
@@ -168,31 +167,32 @@ class TensorFlow(Framework):
             fit_super()
 
     @classmethod
-    def _from_training_job(cls, init_params, hyperparameters, image, sagemaker_session):
-        """Create an Estimator from existing training job data.
+    def _prepare_init_params_from_job_description(cls, job_details):
+        """Convert the job description to init params that can be handled by the class constructor
 
         Args:
-            init_params (dict): The init_params the training job was created with.
-            hyperparameters (dict):  The hyperparameters the training job was created with.
-            image (str): Container image (if any) the training job was created with
-            sagemaker_session (sagemaker.session.Session): A sagemaker Session to pass to the estimator.
+            job_details: the returned job details from a describe_training_job API call.
 
-        Returns: An instance of the calling Estimator Class.
+        Returns:
+             dictionary: The transformed init_params
 
         """
+        init_params = super(TensorFlow, cls)._prepare_init_params_from_job_description(job_details)
 
-        updated_params = cls._update_init_params(hyperparameters,
-                                                 ['checkpoint_path', 'training_steps', 'evaluation_steps'])
-        init_params.update(updated_params)
+        # Move some of the tensorflow specific init params from hyperparameters into the main init params.
+        for argument in ['checkpoint_path', 'training_steps', 'evaluation_steps']:
+            value = init_params['hyperparameters'].pop(argument, None)
+            if value is not None:
+                init_params[argument] = value
 
-        framework, py_version = framework_name_from_image(image)
-        init_params.update({'py_version': py_version})
+        framework, py_version = framework_name_from_image(init_params.pop('image'))
+        init_params['py_version'] = py_version
+
         training_job_name = init_params['base_job_name']
-
         if framework != cls.__framework_name__:
             raise ValueError("Training job: {} didn't use image for requested framework".format(training_job_name))
 
-        return super(TensorFlow, cls)._from_training_job(init_params, hyperparameters, image, sagemaker_session)
+        return init_params
 
     def train_image(self):
         """Return the Docker image to use for training.

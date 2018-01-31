@@ -65,28 +65,29 @@ class AmazonAlgorithmEstimatorBase(EstimatorBase):
         self._data_location = data_location
 
     @classmethod
-    def _from_training_job(cls, init_params, hyperparameters, image, sagemaker_session):
-        """Create an Estimator from existing training job data.
+    def _prepare_init_params_from_job_description(cls, job_details):
+        """Convert the job description to init params that can be handled by the class constructor
 
         Args:
-            init_params (dict): The init_params the training job was created with.
-            hyperparameters (dict):  The hyperparameters the training job was created with.
-            image (str): Container image (if any) the training job was created with
-            sagemaker_session (sagemaker.session.Session): A sagemaker Session to pass to the estimator.
+            job_details: the returned job details from a describe_training_job API call.
 
-        Returns: An instance of the calling Estimator Class.
+        Returns:
+             dictionary: The transformed init_params
 
         """
+        init_params = super(AmazonAlgorithmEstimatorBase, cls)._prepare_init_params_from_job_description(job_details)
 
         # The hyperparam names may not be the same as the class attribute that holds them,
         # for instance: local_lloyd_init_method is called local_init_method. We need to map these
         # and pass the correct name to the constructor.
         for attribute, value in cls.__dict__.items():
             if isinstance(value, hp):
-                if value.name in hyperparameters:
-                    init_params[attribute] = hyperparameters[value.name]
+                if value.name in init_params['hyperparameters']:
+                    init_params[attribute] = init_params['hyperparameters'][value.name]
 
-        return cls(sagemaker_session=sagemaker_session, **init_params)
+        del init_params['hyperparameters']
+        del init_params['image']
+        return init_params
 
     def fit(self, records, mini_batch_size=None, **kwargs):
         """Fit this Estimator on serialized Record objects, stored in S3.
