@@ -20,7 +20,8 @@ from sagemaker.session import Session
 
 class PCA(AmazonAlgorithmEstimatorBase):
 
-    repo = 'pca:1'
+    repo_name = 'pca'
+    repo_version = 1
 
     DEFAULT_MINI_BATCH_SIZE = 500
 
@@ -118,6 +119,7 @@ class PCAModel(Model):
 
     def __init__(self, model_data, role, sagemaker_session=None):
         sagemaker_session = sagemaker_session or Session()
-        image = registry(sagemaker_session.boto_session.region_name) + "/" + PCA.repo
+        repo = '{}:{}'.format(PCA.repo_name, PCA.repo_version)
+        image = '{}/{}'.format(registry(sagemaker_session.boto_session.region_name), repo)
         super(PCAModel, self).__init__(model_data, image, role, predictor_cls=PCAPredictor,
                                        sagemaker_session=sagemaker_session)

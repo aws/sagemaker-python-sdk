@@ -15,6 +15,7 @@ from __future__ import absolute_import
 from sagemaker import estimator
 from sagemaker.amazon.kmeans import KMeans, KMeansModel, KMeansPredictor
 from sagemaker.amazon.pca import PCA, PCAModel, PCAPredictor
+from sagemaker.amazon.lda import LDA, LDAModel, LDAPredictor
 from sagemaker.amazon.linear_learner import LinearLearner, LinearLearnerModel, LinearLearnerPredictor
 from sagemaker.amazon.factorization_machines import FactorizationMachines, FactorizationMachinesModel
 from sagemaker.amazon.factorization_machines import FactorizationMachinesPredictor
@@ -30,6 +31,7 @@ from sagemaker.session import get_execution_role
 
 __all__ = [estimator, KMeans, KMeansModel, KMeansPredictor, PCA, PCAModel, PCAPredictor, LinearLearner,
            LinearLearnerModel, LinearLearnerPredictor,
+           LDA, LDAModel, LDAPredictor,
            FactorizationMachines, FactorizationMachinesModel, FactorizationMachinesPredictor,
            Model, RealTimePredictor, Session,
            container_def, s3_input, production_variant, get_execution_role]
