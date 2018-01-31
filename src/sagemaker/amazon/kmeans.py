@@ -21,7 +21,8 @@ from sagemaker.session import Session
 
 class KMeans(AmazonAlgorithmEstimatorBase):
 
-    repo = 'kmeans:1'
+    repo_name = 'kmeans'
+    repo_version = 1
 
     k = hp('k', gt(1), 'An integer greater-than 1', int)
     init_method = hp('init_method', isin('random', 'kmeans++'), 'One of "random", "kmeans++"', str)
@@ -132,6 +133,7 @@ class KMeansModel(Model):
 
     def __init__(self, model_data, role, sagemaker_session=None):
         sagemaker_session = sagemaker_session or Session()
-        image = registry(sagemaker_session.boto_session.region_name) + "/" + KMeans.repo
+        repo = '{}:{}'.format(KMeans.repo_name, KMeans.repo_version)
+        image = '{}/{}'.format(registry(sagemaker_session.boto_session.region_name), repo)
         super(KMeansModel, self).__init__(model_data, image, role, predictor_cls=KMeansPredictor,
                                           sagemaker_session=sagemaker_session)
