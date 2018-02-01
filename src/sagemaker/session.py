@@ -522,8 +522,8 @@ class Session(object):
     def expand_role(self, role):
         """Expand an IAM role name into an ARN.
 
-        If the role is already in the form of an ARN, then the role is simply returned. Otherwise, the role
-        is formatted as an ARN, using the current account as the IAM role's AWS account.
+        If the role is already in the form of an ARN, then the role is simply returned. Otherwise we retrieve the full
+        ARN and return it.
 
         Args:
             role (str): An AWS IAM role (either name or full ARN).
@@ -534,8 +534,7 @@ class Session(object):
         if '/' in role:
             return role
         else:
-            account = self.boto_session.client('sts').get_caller_identity()['Account']
-            return 'arn:aws:iam::{}:role/{}'.format(account, role)
+            return boto3.resource("iam").Role(role).arn
 
     def get_caller_identity_arn(self):
         """Returns the ARN user or role whose credentials are used to call the API.
