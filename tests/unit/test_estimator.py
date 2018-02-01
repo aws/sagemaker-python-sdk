@@ -70,6 +70,12 @@ class DummyFramework(Framework):
     def create_model(self):
         return DummyFrameworkModel(self.sagemaker_session)
 
+    @classmethod
+    def _prepare_init_params_from_job_description(cls, job_details):
+        init_params = super(DummyFramework, cls)._prepare_init_params_from_job_description(job_details)
+        init_params.pop("image", None)
+        return init_params
+
 
 class DummyFrameworkModel(FrameworkModel):
 
@@ -249,12 +255,6 @@ def test_attach_framework(sagemaker_session):
     assert framework_estimator.hyperparameters()['training_steps'] == '100'
     assert framework_estimator.source_dir == 's3://some/sourcedir.tar.gz'
     assert framework_estimator.entry_point == 'iris-dnn-classifier.py'
-
-
-def test_attach_no_job_name_framework(sagemaker_session):
-    with pytest.raises(ValueError) as error:
-        Framework.attach(training_job_name=None, sagemaker_session=sagemaker_session)
-    assert 'must specify training_job name' in str(error)
 
 
 def test_fit_then_fit_again(sagemaker_session):

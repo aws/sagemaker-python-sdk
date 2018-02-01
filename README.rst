@@ -97,7 +97,7 @@ SageMaker Python SDK provides several high-level abstractions for working with A
 - **Estimators**: Encapsulate training on SageMaker. Can be ``fit()`` to run training, then the resulting model ``deploy()`` ed to a SageMaker Endpoint.
 - **Models**: Encapsulate built ML models. Can be ``deploy()`` ed to a SageMaker Endpoint.
 - **Predictors**: Provide real-time inference and transformation using Python data-types against a SageMaker Endpoint.
-- **Session**: Provides a collection of convience methods for working with SageMaker resources.
+- **Session**: Provides a collection of convenience methods for working with SageMaker resources.
 
 Estimator and Model implementations for MXNet, TensorFlow, and Amazon ML algorithms are included. There's also an Estimator that runs SageMaker compatible custom Docker containers, allowing you to run your own ML algorithms via SageMaker Python SDK.
 
@@ -1150,6 +1150,7 @@ Optional arguments
 
 -  ``wait (bool)``: Defaults to True, whether to block and wait for the
    training script to complete before returning.
+   If set to False, it will return immediately, and can later be attached to.
 -  ``logs (bool)``: Defaults to True, whether to show logs produced by training
    job in the Python session. Only meaningful when wait is True.
 - ``run_tensorboard_locally (bool)``: Defaults to False. Executes TensorBoard in a different
@@ -1178,8 +1179,24 @@ the ``TensorFlow`` estimator parameter ``training_steps`` is finished or when th
 job execution time reaches the ``TensorFlow`` estimator parameter ``train_max_run``.
 
 When the training job finishes, a `TensorFlow serving <https://www.tensorflow.org/serving/serving_basic>`_
-with the result of the training is generated and saved to the S3 location define by
+with the result of the training is generated and saved to the S3 location defined by
 the ``TensorFlow`` estimator parameter ``output_path``.
+
+
+If the ``wait=False`` flag is passed to ``fit``, then it will return immediately. The training job will continue running
+asynchronously. At a later time, a Tensorflow Estimator can be obtained by attaching to the existing training job. If
+the training job is not finished it will start showing the standard output of training and wait until it completes.
+After attaching, the estimator can be deployed as usual.
+
+.. code:: python
+
+    tf_estimator.fit(your_input_data, wait=False)
+    training_job_name = tf_estimator.latest_training_job.name
+
+    # after some time, or in a separate python notebook, we can attach to it again.
+
+    tf_estimator = TensorFlow.attach(training_job_name=training_job_name)
+
 
 The evaluation process
 """"""""""""""""""""""
@@ -1243,6 +1260,8 @@ It takes a few minutes to provision containers and start the training job. Tenso
 You can access TensorBoard locally at http://localhost:6006 or using your SakeMaker workspace at
 `https*workspace_base_url*proxy/6006/ <proxy/6006/>`_ (TensorBoard will not work if you forget to put the slash,
 '/', in end of the url). If TensorBoard started on a different port, adjust these URLs to match.
+
+Note that TensorBoard is not supported when passing wait=False to ``fit``.
 
 
 Deploying TensorFlow Serving models
