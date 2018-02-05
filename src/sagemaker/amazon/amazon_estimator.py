@@ -65,6 +65,31 @@ class AmazonAlgorithmEstimatorBase(EstimatorBase):
             data_location = data_location + '/'
         self._data_location = data_location
 
+    @classmethod
+    def _prepare_init_params_from_job_description(cls, job_details):
+        """Convert the job description to init params that can be handled by the class constructor
+
+        Args:
+            job_details: the returned job details from a describe_training_job API call.
+
+        Returns:
+             dictionary: The transformed init_params
+
+        """
+        init_params = super(AmazonAlgorithmEstimatorBase, cls)._prepare_init_params_from_job_description(job_details)
+
+        # The hyperparam names may not be the same as the class attribute that holds them,
+        # for instance: local_lloyd_init_method is called local_init_method. We need to map these
+        # and pass the correct name to the constructor.
+        for attribute, value in cls.__dict__.items():
+            if isinstance(value, hp):
+                if value.name in init_params['hyperparameters']:
+                    init_params[attribute] = init_params['hyperparameters'][value.name]
+
+        del init_params['hyperparameters']
+        del init_params['image']
+        return init_params
+
     def fit(self, records, mini_batch_size=None, **kwargs):
         """Fit this Estimator on serialized Record objects, stored in S3.
 
