@@ -127,12 +127,33 @@ class AmazonAlgorithmEstimatorBase(EstimatorBase):
         return RecordSet(manifest_s3_file, num_records=train.shape[0], feature_dim=train.shape[1], channel=channel)
 
 
-class AmazonS3AlgorithmEstimatorBase(AmazonAlgorithmEstimatorBase):
+class AmazonS3AlgorithmEstimatorBase(EstimatorBase):
     """Base class for Amazon first-party Estimator implementations. This class isn't
     intended to be instantiated directly. This is difference from the base class
     because this class handles S3 data"""
 
-    def fit(self, records, mini_batch_size=None, distribution='ShardedByS3Key', **kwargs):
+    """Base class for Amazon first-party Estimator implementations. This class isn't intended
+    to be instantiated directly."""
+
+    mini_batch_size = hp('mini_batch_size', (validation.isint, validation.gt(0)))
+
+    def __init__(self, role, train_instance_count, train_instance_type, algorithm, **kwargs):
+        """Initialize an AmazonAlgorithmEstimatorBase.
+
+        Args:
+            algortihm (str): Use one of the supported algorithms
+                """
+        super(AmazonS3AlgorithmEstimatorBase, self).__init__(role, train_instance_count, train_instance_type,
+                                                             **kwargs)
+        self.algorithm = algorithm
+
+    def train_image(self):
+        return registry(self.sagemaker_session.boto_region_name, algorithm=self.algorithm) + "/" + type(self).repo
+
+    def hyperparameters(self):
+        return hp.serialize_all(self)
+
+    def fit(self, s3set, mini_batch_size=None, distribution='ShardedByS3Key', **kwargs):
         """Fit this Estimator on serialized Record objects, stored in S3.
 
         ``records`` should be a list of instances of :class:`~RecordSet`. This defines a collection of
@@ -145,33 +166,59 @@ class AmazonS3AlgorithmEstimatorBase(AmazonAlgorithmEstimatorBase):
         from :class:`~numpy.ndarray` arrays.
 
         Args:
-            records (list): This is a list of :class:`~RecordSet` items The list of records to train
+            s3set (list): This is a list of :class:`~S3Set` items The list of records to train
                     this ``Estimator`` will depend on each algorithm and type of input data.
+            distribution (str): The s3 distribution of data.
             mini_batch_size (int or None): The size of each mini-batch to use when training. If None, a
                     default value will be used.
         """
         default_mini_batch_size = 32
         self.mini_batch_size = mini_batch_size or default_mini_batch_size
         data = {}
-        for record in records:
-            data[record.channel] = s3_input(record.s3_data, distribution=distribution,
-                                    s3_data_type=record.s3_data_type)
-        super(AmazonAlgorithmEstimatorBase, self).fit(data, **kwargs)
+        for item in s3set:
+            data[item.channel] = s3_input(item.s3_location, distribution=item.distribution,
+                                          content_type=item.content_type,
+                                          s3_data_type=item.s3_data_type)
+        super(AmazonS3AlgorithmEstimatorBase, self).fit(data, **kwargs)
 
-    def s3_record_set(self, s3_loc, channel="train"):
+    def s3_record_set(self, s3_loc, content_type, channel="train"):
         """Build a  :class:`~RecordSet` from a S3 location with data in it.
 
         Args:
             s3_loc (str): A s3 bucket where data is located
             channel (str): The SageMaker TrainingJob channel this RecordSet should be assigned to.
-
+            content_type (str): Content type of the data.
         Returns:
             RecordSet: A RecordSet referencing the encoded, uploading training and label data.
         """
-        return RecordSet(self.data_location + '/' + s3_loc, channel=channel) 
+        return S3Set(s3_loc, content_type=content_type, channel=channel)
 
 
-# Re-write a new recordset class for s3 objects. 
+class S3Set (object):
+    def __init__(self, s3_location, content_type = None, s3_data_type='S3Prefix', distribution = 'FullyReplicated', channel='train'):
+        """A collection of Amazon :class:~`Record` objects serialized and stored in S3.
+
+        Args:
+            s3_location (str): The S3 location of the training data
+            distribution (str): The s3 distribution of data.
+            content_type (str): Mandatory content type of the data.
+            s3_data_type (str): Valid values: 'S3Prefix', 'ManifestFile'. If 'S3Prefix', ``s3_data`` defines
+                a prefix of s3 objects to train on. All objects with s3 keys beginning with ``s3_data`` will
+                be used to train. If 'ManifestFile', then ``s3_data`` defines a single s3 manifest file, listing
+                each s3 object to train on.
+            channel (str): The SageMaker Training Job channel this RecordSet should be bound to
+        """
+        self.s3_location = s3_location
+        self.distribution = distribution
+        self.s3_data_type = s3_data_type
+        self.channel = channel
+        self.content_type = content_type
+
+    def __repr__(self):
+        """Return an unambiguous representation of this S3Set"""
+        return str((S3Set, self.__dict__))
+
+
 class RecordSet(object):
 
     def __init__(self, s3_data, num_records = None, feature_dim = None, s3_data_type='ManifestFile', channel='train'):
@@ -208,6 +255,7 @@ def _build_shards(num_shards, array):
     shards = [array[i * shard_size:i * shard_size + shard_size] for i in range(num_shards - 1)]
     shards.append(array[(num_shards - 1) * shard_size:])
     return shards
+
 
 def upload_numpy_to_s3_shards(num_shards, s3, bucket, key_prefix, array, labels=None):
     """Upload the training ``array`` and ``labels`` arrays to ``num_shards`` s3 objects,

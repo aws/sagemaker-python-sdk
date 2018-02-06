@@ -11,8 +11,9 @@
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
 from sagemaker.amazon.amazon_estimator import AmazonS3AlgorithmEstimatorBase, registry
+from sagemaker.amazon.common import file_to_image_serializer, response_deserializer
 from sagemaker.amazon.hyperparameter import Hyperparameter as hp  # noqa
-from sagemaker.amazon.validation import gt, isin, isint, ge, isstr, lt, le
+from sagemaker.amazon.validation import gt, isin, isint, ge, isstr, le
 from sagemaker.predictor import RealTimePredictor
 from sagemaker.model import Model
 from sagemaker.session import Session
@@ -20,42 +21,44 @@ from sagemaker.session import Session
 
 class ImageClassification(AmazonS3AlgorithmEstimatorBase):
 
-    repo = 'image-classification:latest'
+    repo='image-classification:latest'
 
     num_classes = hp('num_classes', (gt(1), isint), 'num_classes should be an integer greater-than 1')
-    num_training_samples = hp('num_training_samples', (gt(1), isint), 'num_training_samples should be an integer greater-than 1')
-    use_pretrained_model = hp('use_pretrained_model', (isin(0, 1), isint), 'use_pretrained_model should be in the set, [0,1]')
-    checkpoint_frequency = hp('checkpoint_frequency', (ge(1), isint), 'checkpoint_frequency should be an integer greater-than 1')
-    num_layers = hp('num_layers', (isin(18, 34, 50, 101, 152, 200, 20, 32, 44, 56, 110), isint), \
+    num_training_samples = hp('num_training_samples', (gt(1), isint),
+                              'num_training_samples should be an integer greater-than 1')
+    use_pretrained_model = hp('use_pretrained_model', (isin(0, 1), isint),
+                              'use_pretrained_model should be in the set, [0,1]')
+    checkpoint_frequency = hp('checkpoint_frequency', (ge(1), isint),
+                              'checkpoint_frequency should be an integer greater-than 1')
+    num_layers = hp('num_layers', (isin(18, 34, 50, 101, 152, 200, 20, 32, 44, 56, 110), isint),
                     'num_layers should be in the set [18, 34, 50, 101, 152, 200, 20, 32, 44, 56, 110]' )
     resize = hp('resize', (gt(1), isint), 'resize should be an integer greater-than 1')
     epochs = hp('epochs', (ge(1), isint), 'epochs should be an integer greater-than 1')
     learning_rate = hp('learning_rate', (gt(0)), 'learning_rate shoudl be a floating point greater than 0' )
-    lr_schedule_factor = hp ('lr_schedule_factor', (gt(0)), 'lr_schedule_factor should be a floating point greater than 0')
-    lr_scheduler_step = hp ('lr_scheduler_step' ,(isstr), 'lr_scheduler_step should be a string input.')
-    optimizer = hp ('optimizer', (isin('sgd', 'adam', 'rmsprop', 'nag')), \
-                                'Should be one optimizer among the list sgd, adam, rmsprop, or nag.')
-    momentum = hp ('momentum', (ge(0), le(1)), 'momentum is expected in the range 0, 1')
-    weight_decay = hp ('weight_decay', (ge(0), le(1)), 'weight_decay in range 0 , 1 ')
-    beta_1 = hp ('beta_1',  (ge(0), le(1)), 'beta_1 shoud be in range 0, 1')
-    beta_2 = hp ('beta_2',  (ge(0), le(1)), 'beta_2 should be in the range 0, 1')
-    eps = hp ('eps',  (gt(0), le(1)), 'eps should be in the range 0, 1')
-    gamma = hp ('gamma',  (ge(0), le(1)), 'gamma should be in the range 0, 1')
-    mini_batch_size = hp ('mini_batch_size',  (gt(0)), 'mini_batch_size should be an integer greater than 0')
-    image_shape = hp ('image_shape',  (isstr), 'image_shape is expected to be a string')
-    augmentation_type = hp ('beta_1',  (isin ('crop', 'crop_color', 'crop_color_transform')), \
-                                                'beta_1 must be from one option offered')
-    top_k = hp ('top_k', (ge(1), isint), 'top_k should be greater than or equal to 1')
-    kv_store = hp ('kv_store',  (isin ('dist_sync', 'dist_async' )), 'Can be dist_sync or dist_async')
-    
+    lr_scheduler_factor = hp('lr_scheduler_factor', (gt(0)),
+                            'lr_schedule_factor should be a floating point greater than 0')
+    lr_scheduler_step = hp('lr_scheduler_step',(isstr), 'lr_scheduler_step should be a string input.')
+    optimizer = hp('optimizer', (isin('sgd', 'adam', 'rmsprop', 'nag')),
+                   'Should be one optimizer among the list sgd, adam, rmsprop, or nag.')
+    momentum = hp('momentum', (ge(0), le(1)), 'momentum is expected in the range 0, 1')
+    weight_decay = hp('weight_decay', (ge(0), le(1)), 'weight_decay in range 0 , 1 ')
+    beta_1 = hp('beta_1',  (ge(0), le(1)), 'beta_1 should be in range 0, 1')
+    beta_2 = hp('beta_2',  (ge(0), le(1)), 'beta_2 should be in the range 0, 1')
+    eps = hp('eps',  (gt(0), le(1)), 'eps should be in the range 0, 1')
+    gamma = hp('gamma',  (ge(0), le(1)), 'gamma should be in the range 0, 1')
+    mini_batch_size = hp('mini_batch_size',  (gt(0)), 'mini_batch_size should be an integer greater than 0')
+    image_shape = hp('image_shape',  (isstr), 'image_shape is expected to be a string')
+    augmentation_type = hp('beta_1',  (isin ('crop', 'crop_color', 'crop_color_transform')),
+                           'beta_1 must be from one option offered')
+    top_k = hp('top_k', (ge(1), isint), 'top_k should be greater than or equal to 1')
+    kv_store=hp ('kv_store',  (isin ('dist_sync', 'dist_async' )), 'Can be dist_sync or dist_async')
 
-
-    def __init__(self, role, train_instance_count, train_instance_type, num_classes, num_training_samples, resize = None,
-                    lr_scheduler_step = None, use_pretrained_model = 0, checkpoint_frequency = 1 , num_layers = 152, 
-                    epochs = 30, learning_rate = 0.1, 
-                    lr_schedule_factor = 0.1, optimizer = 'sgd', momentum = 0., weight_decay = 0.0001, beta_1 = 0.9,
-                    beta_2 = 0.999, eps = 1e-8, gamma = 0.9 , mini_batch_size = 32 , image_shape = '3,224,224', 
-                    augmentation_type = None, top_k = None, kv_store = None, **kwargs):
+    def __init__(self, role, train_instance_count, train_instance_type, num_classes, num_training_samples, resize=None,
+                 lr_scheduler_step=None, use_pretrained_model=0, checkpoint_frequency=1 , num_layers=18,
+                 epochs=30, learning_rate=0.1,
+                 lr_schedule_factor=0.1, optimizer='sgd', momentum=0., weight_decay=0.0001, beta_1=0.9,
+                 beta_2=0.999, eps=1e-8, gamma=0.9 , mini_batch_size=32 , image_shape='3,224,224', 
+                 augmentation_type=None, top_k=None, kv_store=None, **kwargs):
         """
         An Image classification algorithm :class:`~sagemaker.amazon.AmazonAlgorithmEstimatorBase`. Learns a classifier model that 
 
@@ -88,22 +91,25 @@ class ImageClassification(AmazonS3AlgorithmEstimatorBase):
             use_pretrained_model (int): Flag to indicate whether to use pre-trained model for training. 
                                 If set to `1`, then the pretrained model with the corresponding number 
                                 of layers is loaded and used for training. Only the top FC layer are 
-                                reinitialized with random weights. Otherwise, the network is trained from scratch. Default value: 0
+                                reinitialized with random weights. Otherwise, the network is trained from scratch.
+                                Default value: 0
             checkpoint_frequency (int): Period to store model parameters (in number of epochs). Default value: 1
-            num_layers (int): Number of layers for the network. For data with large image size (for example, 224x224 - like ImageNet), 
-                                we suggest selecting the number of layers from the set [18, 34, 50, 101, 152, 200]. For data with small 
-                                image size (for example, 28x28 - like CFAR), we suggest selecting the number of layers from the 
-                                set [20, 32, 44, 56, 110]. The number of layers in each set is based on the ResNet paper. 
-                                For transfer learning, the number of layers defines the architecture of base network and hence 
-                                can only be selected from the set [18, 34, 50, 101, 152, 200]. Default value: 152
-            resize (int): Resize the image before using it for training. The images are resized so that the shortest side is of this 
-                            parameter. If the parameter is not set, then the training data is used as such without resizing. 
-                            Note: This option is available only for inputs specified as application/x-image content-type in 
-                            training and validation channels.
+            num_layers (int): Number of layers for the network. For data with large image size (for example, 224x224 -
+                              like ImageNet), we suggest selecting the number of layers from the set [18, 34, 50, 101,
+                              152, 200]. For data with small image size (for example, 28x28 - like CFAR), we suggest
+                              selecting the number of layers from the set [20, 32, 44, 56, 110]. The number of layers
+                              in each set is based on the ResNet paper. For transfer learning, the number of layers
+                              defines the architecture of base network and hence can only be selected from the set
+                              [18, 34, 50, 101, 152, 200]. Default value: 152
+            resize (int): Resize the image before using it for training. The images are resized so that the shortest
+                          side is of this parameter. If the parameter is not set, then the training data is used as such
+                          without resizing.
+                          Note: This option is available only for inputs specified as application/x-image content-type in
+                          training and validation channels.
             epochs (int): Number of training epochs. Default value: 30
             learning_rate (float): Initial learning rate. Float. Range in [0, 1]. Default value: 0.1
             lr_scheduler_factor (flaot): The ratio to reduce learning rate used in conjunction with the `lr_scheduler_step` parameter, 
-                                defined as `lr_new = lr_old * lr_scheduler_factor`. Valid values: Float. Range in [0, 1]. Default value: 0.1
+                                defined as `lr_new=lr_old * lr_scheduler_factor`. Valid values: Float. Range in [0, 1]. Default value: 0.1
             lr_scheduler_step (str): The epochs at which to reduce the learning rate. As explained in the ``lr_scheduler_factor`` parameter, the 
                                 learning rate is reduced by ``lr_scheduler_factor`` at these epochs. For example, if the value is set 
                                 to "10, 20", then the learning rate is reduced by ``lr_scheduler_factor`` after 10th epoch and again by 
@@ -144,28 +150,29 @@ class ImageClassification(AmazonS3AlgorithmEstimatorBase):
                                          machine and the weight updates are atomic. However, the order is not guaranteed.                    
             **kwargs: base class keyword argument values.
         """
-        super(ImageClassification, self).__init__(role, train_instance_count, train_instance_type, **kwargs)
+        super(ImageClassification, self).__init__(role, train_instance_count, train_instance_type,
+                                                  algorithm='image_classification', **kwargs)
         self.num_classes = num_classes
         self.num_training_samples = num_training_samples
         self.resize = resize
         self.lr_scheduler_step = lr_scheduler_step
         self.use_pretrained_model = use_pretrained_model
         self.checkpoint_frequency = checkpoint_frequency
-        self.num_layers = num_layers 
+        self.num_layers = num_layers
         self.epochs = epochs
         self.learning_rate = learning_rate
         self.lr_schedule_factor = lr_schedule_factor
-        self.optimizetr = optimizer 
+        self.optimizer = optimizer
         self.momentum = momentum
         self.weight_decay = weight_decay
         self.beta_1 = beta_1
         self.beta_2 = beta_2
         self.eps = eps
         self.gamma = gamma
-        self.mini_batch_size = mini_batch_size 
-        self.image_shape = image_shape 
-        self.augmentation_type = augmentation_type 
-        self.top_k = top_k 
+        self.mini_batch_size = mini_batch_size
+        self.image_shape = image_shape
+        self.augmentation_type = augmentation_type
+        self.top_k = top_k
         self.kv_store = kv_store
 
     def create_model(self):
@@ -175,7 +182,7 @@ class ImageClassification(AmazonS3AlgorithmEstimatorBase):
 
     def hyperparameters(self):
         """Return the SageMaker hyperparameters for training this ImageClassification Estimator"""
-        hp = dict(force_dense='True') # Not sure what this is.
+        hp = dict()
         hp.update(super(ImageClassification, self).hyperparameters())
         return hp
 
@@ -189,17 +196,20 @@ class ImageClassificationPredictor(RealTimePredictor):
     ``predict()`` returns """
 
     def __init__(self, endpoint, sagemaker_session=None):
-        super(ImageClassifcationPredictor, self).__init__(endpoint, sagemaker_session, serializer=numpy_to_record_serializer(),
-                                              deserializer=record_deserializer(), content_type = 'application/x-image')
+        super(ImageClassificationPredictor, self).__init__(endpoint, sagemaker_session,
+                                                           serializer=file_to_image_serializer(),
+                                                           deserializer=response_deserializer(),
+                                                           content_type='application/x-image')
 
 
 class ImageClassificationModel(Model):
     """Reference KMeans s3 model data. Calling :meth:`~sagemaker.model.Model.deploy` creates an Endpoint and return
-    a Predictor to performs k-means cluster assignment."""
+    a Predictor to performs classification assignment."""
 
     def __init__(self, model_data, role, sagemaker_session=None):
         sagemaker_session = sagemaker_session or Session()
-        image = registry(sagemaker_session.boto_session.region_name, algorithm = 'image_classification') + \
-                                                         "/" + ImageClassification.repo
-        super(ImageClassificationModel, self).__init__(model_data, image, role, predictor_cls=ImageClassificationPredictor,
-                                          sagemaker_session=sagemaker_session)
+        image = registry(sagemaker_session.boto_session.region_name, algorithm='image_classification') + \
+                "/" + ImageClassification.repo
+        super(ImageClassificationModel, self).__init__(model_data, image, role,
+                                                       predictor_cls=ImageClassificationPredictor,
+                                                       sagemaker_session=sagemaker_session)

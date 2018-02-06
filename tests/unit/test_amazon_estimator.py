@@ -68,6 +68,7 @@ def test_s3_init(sagemaker_session):
     ic = ImageClassification(epochs=12, num_classes=2, num_training_samples=2,
                              sagemaker_session=sagemaker_session, **COMMON_ARGS)
     assert ic.epochs == 12
+    assert ic.num_classes == 2
 
 
 def test_init_all_pca_hyperparameters(sagemaker_session):
@@ -138,6 +139,10 @@ def test_ic_hyperparameters(sagemaker_session):
 def test_image(sagemaker_session):
     pca = PCA(num_components=55, sagemaker_session=sagemaker_session, **COMMON_ARGS)
     assert pca.train_image() == registry('us-west-2') + '/pca:1'
+    ic = ImageClassification(data_location='s3://some-bucket/some-key/',
+                             num_classes=257, num_training_samples=15420, epochs=1,
+                             image_shape='3,32,32', sagemaker_session=sagemaker_session,
+                             **COMMON_ARGS)
 
 
 @patch('time.strftime', return_value=TIMESTAMP)

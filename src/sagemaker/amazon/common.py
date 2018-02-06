@@ -16,7 +16,7 @@ import sys
 
 import numpy as np
 from scipy.sparse import issparse
-
+import json
 from sagemaker.amazon.record_pb2 import Record
 
 
@@ -35,6 +35,17 @@ class numpy_to_record_serializer(object):
         return buf
 
 
+class file_to_image_serializer(object):
+
+    def __init__(self, content_type='application/x-image'):
+        self.content_type = content_type
+
+    def __call__(self, file):
+        with open(file, 'rb') as f:
+            payload = f.read()
+            payload = bytearray(payload)
+        return payload
+
 class record_deserializer(object):
 
     def __init__(self, accept='application/x-recordio-protobuf'):
@@ -45,6 +56,15 @@ class record_deserializer(object):
             return read_records(stream)
         finally:
             stream.close()
+
+
+class response_deserializer(object):
+
+    def __init__(self, accept='application/json'):
+        self.accept = accept
+
+    def __call__(self, stream, content_type=None):
+        return json.loads(stream)
 
 
 def _write_feature_tensor(resolved_type, record, vector):
