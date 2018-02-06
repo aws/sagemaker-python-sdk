@@ -34,8 +34,8 @@ def sagemaker_session():
 def test_upload_data_absolute_dir(sagemaker_session):
     result_s3_uri = sagemaker_session.upload_data(UPLOAD_DATA_TESTS_FILES_DIR)
 
-    uploaded_files = [kwargs['Body'].name for name, args, kwargs in sagemaker_session.boto_session.mock_calls
-                      if name == 'resource().Object().put']
+    uploaded_files = [args[0] for name, args, kwargs in sagemaker_session.boto_session.mock_calls
+                      if name == 'resource().Object().upload_file']
     assert result_s3_uri == 's3://{}/data'.format(BUCKET_NAME)
     assert len(uploaded_files) == 4
     for file in uploaded_files:
@@ -45,8 +45,8 @@ def test_upload_data_absolute_dir(sagemaker_session):
 def test_upload_data_absolute_file(sagemaker_session):
     result_s3_uri = sagemaker_session.upload_data(UPLOAD_DATA_TESTS_SINGLE_FILE)
 
-    uploaded_files = [kwargs['Body'].name for name, args, kwargs in sagemaker_session.boto_session.mock_calls
-                      if name == 'resource().Object().put']
+    uploaded_files = [args[0] for name, args, kwargs in sagemaker_session.boto_session.mock_calls
+                      if name == 'resource().Object().upload_file']
     assert result_s3_uri == 's3://{}/data/{}'.format(BUCKET_NAME, SINGLE_FILE_NAME)
     assert len(uploaded_files) == 1
     assert os.path.exists(uploaded_files[0])

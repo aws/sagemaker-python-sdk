@@ -13,7 +13,7 @@
 from sagemaker.amazon.amazon_estimator import AmazonAlgorithmEstimatorBase, registry
 from sagemaker.amazon.common import numpy_to_record_serializer, record_deserializer
 from sagemaker.amazon.hyperparameter import Hyperparameter as hp  # noqa
-from sagemaker.amazon.validation import gt, isin, isint, ge
+from sagemaker.amazon.validation import gt, isin, ge
 from sagemaker.predictor import RealTimePredictor
 from sagemaker.model import Model
 from sagemaker.session import Session
@@ -21,17 +21,18 @@ from sagemaker.session import Session
 
 class KMeans(AmazonAlgorithmEstimatorBase):
 
-    repo = 'kmeans:1'
+    repo_name = 'kmeans'
+    repo_version = 1
 
-    k = hp('k', (gt(1), isint), 'An integer greater-than 1')
-    init_method = hp('init_method', isin('random', 'kmeans++'), 'One of "random", "kmeans++"')
-    max_iterations = hp('local_lloyd_max_iterations', (gt(0), isint), 'An integer greater-than 0')
-    tol = hp('local_lloyd_tol', (gt(0), isint), 'An integer greater-than 0')
-    num_trials = hp('local_lloyd_num_trials', (gt(0), isint), 'An integer greater-than 0')
-    local_init_method = hp('local_lloyd_init_method', isin('random', 'kmeans++'), 'One of "random", "kmeans++"')
-    half_life_time_size = hp('half_life_time_size', (ge(0), isint), 'An integer greater-than-or-equal-to 0')
-    epochs = hp('epochs', (gt(0), isint), 'An integer greater-than 0')
-    center_factor = hp('extra_center_factor', (gt(0), isint), 'An integer greater-than 0')
+    k = hp('k', gt(1), 'An integer greater-than 1', int)
+    init_method = hp('init_method', isin('random', 'kmeans++'), 'One of "random", "kmeans++"', str)
+    max_iterations = hp('local_lloyd_max_iterations', gt(0), 'An integer greater-than 0', int)
+    tol = hp('local_lloyd_tol', gt(0), 'An integer greater-than 0', int)
+    num_trials = hp('local_lloyd_num_trials', gt(0), 'An integer greater-than 0', int)
+    local_init_method = hp('local_lloyd_init_method', isin('random', 'kmeans++'), 'One of "random", "kmeans++"', str)
+    half_life_time_size = hp('half_life_time_size', ge(0), 'An integer greater-than-or-equal-to 0', int)
+    epochs = hp('epochs', gt(0), 'An integer greater-than 0', int)
+    center_factor = hp('extra_center_factor', gt(0), 'An integer greater-than 0', int)
 
     def __init__(self, role, train_instance_count, train_instance_type, k, init_method=None,
                  max_iterations=None, tol=None, num_trials=None, local_init_method=None,
@@ -132,6 +133,7 @@ class KMeansModel(Model):
 
     def __init__(self, model_data, role, sagemaker_session=None):
         sagemaker_session = sagemaker_session or Session()
-        image = registry(sagemaker_session.boto_session.region_name) + "/" + KMeans.repo
+        repo = '{}:{}'.format(KMeans.repo_name, KMeans.repo_version)
+        image = '{}/{}'.format(registry(sagemaker_session.boto_session.region_name), repo)
         super(KMeansModel, self).__init__(model_data, image, role, predictor_cls=KMeansPredictor,
                                           sagemaker_session=sagemaker_session)

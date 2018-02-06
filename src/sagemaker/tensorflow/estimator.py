@@ -11,16 +11,14 @@
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
 import logging
+import os
 import subprocess
 import tempfile
 import threading
 
-import os
-
 import sagemaker.tensorflow
 from sagemaker.estimator import Framework
 from sagemaker.fw_utils import create_image_uri, framework_name_from_image
-from sagemaker.session import Session
 from sagemaker.tensorflow.model import TensorFlowModel
 
 logging.basicConfig()
@@ -153,6 +151,9 @@ class TensorFlow(Framework):
         def fit_super():
             super(TensorFlow, self).fit(inputs, wait, logs, job_name)
 
+        if run_tensorboard_locally and wait is False:
+            raise ValueError("Tensorboard is not supported with async fit")
+
         if run_tensorboard_locally:
             tensorboard = Tensorboard(self)
             tensorboard.validate_requirements()
@@ -166,48 +167,32 @@ class TensorFlow(Framework):
             fit_super()
 
     @classmethod
-    def attach(cls, training_job_name, sagemaker_session=None):
-        """Attach to an existing training job.
-
-        Create an ``Estimator`` bound to an existing training job. After attaching, if
-        the training job is in a Complete status, it can be ``deploy``ed to create
-        a SageMaker ``Endpoint`` and return a ``Predictor``.
-
-        If the training job is in progress, attach will block and display log messages
-        from the training job, until the training job completes.
+    def _prepare_init_params_from_job_description(cls, job_details):
+        """Convert the job description to init params that can be handled by the class constructor
 
         Args:
-            training_job_name (str): The name of the training job to attach to.
-            sagemaker_session (sagemaker.session.Session): Session object which manages interactions with
-                Amazon SageMaker APIs and any other AWS services needed. If not specified, the estimator creates one
-                using the default AWS configuration chain.
+            job_details: the returned job details from a describe_training_job API call.
 
         Returns:
-            sagemaker.tensorflow.estimator.TensorFlow: ``Estimator`` with the attached training job.
+             dictionary: The transformed init_params
 
-        Raises:
-            ValueError: If `training_job_name` is None or the image name does not match the framework.
         """
-        sagemaker_session = sagemaker_session or Session()
+        init_params = super(TensorFlow, cls)._prepare_init_params_from_job_description(job_details)
 
-        if training_job_name is None:
-            raise ValueError("must specify training_job name")
+        # Move some of the tensorflow specific init params from hyperparameters into the main init params.
+        for argument in ['checkpoint_path', 'training_steps', 'evaluation_steps']:
+            value = init_params['hyperparameters'].pop(argument, None)
+            if value is not None:
+                init_params[argument] = value
 
-        job_details = sagemaker_session.sagemaker_client.describe_training_job(TrainingJobName=training_job_name)
-        init_params, hp, image = cls._prepare_estimator_params_from_job_description(job_details)
+        framework, py_version = framework_name_from_image(init_params.pop('image'))
+        init_params['py_version'] = py_version
 
-        updated_params = cls._update_init_params(hp, ['checkpoint_path', 'training_steps', 'evaluation_steps'])
-        init_params.update(updated_params)
-
-        init_params.update({'hyperparameters': hp})
-
-        framework, py_version = framework_name_from_image(image)
-        init_params.update({'py_version': py_version})
-
+        training_job_name = init_params['base_job_name']
         if framework != cls.__framework_name__:
             raise ValueError("Training job: {} didn't use image for requested framework".format(training_job_name))
 
-        return super(TensorFlow, cls).attach(training_job_name=None, sagemaker_session=sagemaker_session, **init_params)
+        return init_params
 
     def train_image(self):
         """Return the Docker image to use for training.
