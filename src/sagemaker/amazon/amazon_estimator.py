@@ -132,9 +132,6 @@ class AmazonS3AlgorithmEstimatorBase(EstimatorBase):
     intended to be instantiated directly. This is difference from the base class
     because this class handles S3 data"""
 
-    """Base class for Amazon first-party Estimator implementations. This class isn't intended
-    to be instantiated directly."""
-
     mini_batch_size = hp('mini_batch_size', (validation.isint, validation.gt(0)))
 
     def __init__(self, role, train_instance_count, train_instance_type, algorithm, **kwargs):
