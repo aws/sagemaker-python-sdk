@@ -26,7 +26,7 @@ class NTM(AmazonAlgorithmEstimatorBase):
 
     num_topics = hp('num_topics', (ge(2), le(1000)), 'An integer in [2, 1000]', int)
     encoder_layers = hp(name='encoder_layers', validation_message='A comma separated list of '
-                                                                  'positive integers or "auto"', data_type=list)
+                                                                  'positive integers', data_type=list)
     epochs = hp('epochs', (ge(1), le(100)), 'An integer in [1, 100]', int)
     encoder_layers_activation = hp('encoder_layers_activation', isin('sigmoid', 'tanh', 'relu'),
                                    'One of "sigmoid", "tanh" or "relu"', str)
@@ -112,9 +112,6 @@ class NTM(AmazonAlgorithmEstimatorBase):
         return NTMModel(self.model_data, self.role, sagemaker_session=self.sagemaker_session)
 
     def fit(self, records, mini_batch_size, **kwargs):
-        # mini_batch_size is required, prevent explicit calls with None
-        if mini_batch_size is None:
-            raise ValueError("mini_batch_size must be set")
         super(NTM, self).fit(records, mini_batch_size, **kwargs)
 
 

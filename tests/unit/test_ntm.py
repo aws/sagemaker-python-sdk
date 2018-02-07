@@ -66,12 +66,12 @@ def test_init_required_named(sagemaker_session):
 
 def test_all_hyperparameters(sagemaker_session):
     ntm = NTM(sagemaker_session=sagemaker_session,
-              encoder_layers=[1, 2, 'auto'], epochs=3, encoder_layers_activation='tanh', optimizer='sgd',
+              encoder_layers=[1, 2, 3], epochs=3, encoder_layers_activation='tanh', optimizer='sgd',
               tolerance=0.05, num_patience_epochs=2, batch_norm=False, rescale_gradient=0.5, clip_gradient=0.5,
               weight_decay=0.5, learning_rate=0.5, **ALL_REQ_ARGS)
     assert ntm.hyperparameters() == dict(
         num_topics=str(ALL_REQ_ARGS['num_topics']),
-        encoder_layers="[1, 2, 'auto']",
+        encoder_layers='[1, 2, 3]',
         epochs='3',
         encoder_layers_activation='tanh',
         optimizer='sgd',
@@ -95,9 +95,14 @@ def test_num_topics_validation_fail_type(sagemaker_session):
         NTM(num_topics='other', sagemaker_session=sagemaker_session, **COMMON_TRAIN_ARGS)
 
 
-def test_num_topics_validation_fail_value(sagemaker_session):
+def test_num_topics_validation_fail_value_lower(sagemaker_session):
     with pytest.raises(ValueError):
         NTM(num_topics=0, sagemaker_session=sagemaker_session, **COMMON_TRAIN_ARGS)
+
+
+def test_num_topics_validation_fail_value_upper(sagemaker_session):
+    with pytest.raises(ValueError):
+        NTM(num_topics=10000, sagemaker_session=sagemaker_session, **COMMON_TRAIN_ARGS)
 
 
 def test_encoder_layers_validation_fail_type(sagemaker_session):
@@ -110,9 +115,14 @@ def test_epochs_validation_fail_type(sagemaker_session):
         NTM(epochs='other', sagemaker_session=sagemaker_session, **ALL_REQ_ARGS)
 
 
-def test_epochs_validation_fail_value(sagemaker_session):
+def test_epochs_validation_fail_value_lower(sagemaker_session):
     with pytest.raises(ValueError):
         NTM(epochs=0, sagemaker_session=sagemaker_session, **ALL_REQ_ARGS)
+
+
+def test_epochs_validation_fail_value_upper(sagemaker_session):
+    with pytest.raises(ValueError):
+        NTM(epochs=1000, sagemaker_session=sagemaker_session, **ALL_REQ_ARGS)
 
 
 def test_encoder_layers_activation_validation_fail_type(sagemaker_session):
@@ -140,9 +150,14 @@ def test_tolerance_validation_fail_type(sagemaker_session):
         NTM(tolerance='other', sagemaker_session=sagemaker_session, **ALL_REQ_ARGS)
 
 
-def test_tolerance_validation_fail_value(sagemaker_session):
+def test_tolerance_validation_fail_value_lower(sagemaker_session):
     with pytest.raises(ValueError):
         NTM(tolerance=0, sagemaker_session=sagemaker_session, **ALL_REQ_ARGS)
+
+
+def test_tolerance_validation_fail_value_upper(sagemaker_session):
+    with pytest.raises(ValueError):
+        NTM(tolerance=0.5, sagemaker_session=sagemaker_session, **ALL_REQ_ARGS)
 
 
 def test_num_patience_epochs_validation_fail_type(sagemaker_session):
@@ -150,9 +165,14 @@ def test_num_patience_epochs_validation_fail_type(sagemaker_session):
         NTM(num_patience_epochs='other', sagemaker_session=sagemaker_session, **ALL_REQ_ARGS)
 
 
-def test_num_patience_epochs_validation_fail_value(sagemaker_session):
+def test_num_patience_epochs_validation_fail_value_lower(sagemaker_session):
     with pytest.raises(ValueError):
         NTM(num_patience_epochs=0, sagemaker_session=sagemaker_session, **ALL_REQ_ARGS)
+
+
+def test_num_patience_epochs_validation_fail_value_upper(sagemaker_session):
+    with pytest.raises(ValueError):
+        NTM(num_patience_epochs=100, sagemaker_session=sagemaker_session, **ALL_REQ_ARGS)
 
 
 def test_rescale_gradient_fail_type(sagemaker_session):
@@ -160,9 +180,14 @@ def test_rescale_gradient_fail_type(sagemaker_session):
         NTM(rescale_gradient='other', sagemaker_session=sagemaker_session, **ALL_REQ_ARGS)
 
 
-def test_rescale_gradient_validation_fail_value(sagemaker_session):
+def test_rescale_gradient_validation_fail_value_lower(sagemaker_session):
     with pytest.raises(ValueError):
         NTM(rescale_gradient=0, sagemaker_session=sagemaker_session, **ALL_REQ_ARGS)
+
+
+def test_rescale_gradient_validation_fail_value_upper(sagemaker_session):
+    with pytest.raises(ValueError):
+        NTM(rescale_gradient=10, sagemaker_session=sagemaker_session, **ALL_REQ_ARGS)
 
 
 def test_clip_gradient_fail_type(sagemaker_session):
@@ -180,7 +205,12 @@ def test_weight_decay_fail_type(sagemaker_session):
         NTM(weight_decay='other', sagemaker_session=sagemaker_session, **ALL_REQ_ARGS)
 
 
-def test_weight_decay_validation_fail_value(sagemaker_session):
+def test_weight_decay_validation_fail_value_lower(sagemaker_session):
+    with pytest.raises(ValueError):
+        NTM(weight_decay=-1, sagemaker_session=sagemaker_session, **ALL_REQ_ARGS)
+
+
+def test_weight_decay_validation_fail_value_upper(sagemaker_session):
     with pytest.raises(ValueError):
         NTM(weight_decay=2, sagemaker_session=sagemaker_session, **ALL_REQ_ARGS)
 
@@ -190,7 +220,12 @@ def test_learning_rate_fail_type(sagemaker_session):
         NTM(learning_rate='other', sagemaker_session=sagemaker_session, **ALL_REQ_ARGS)
 
 
-def test_learning_rate_validation_fail_value(sagemaker_session):
+def test_learning_rate_validation_fail_value_lower(sagemaker_session):
+    with pytest.raises(ValueError):
+        NTM(learning_rate=0, sagemaker_session=sagemaker_session, **ALL_REQ_ARGS)
+
+
+def test_learning_rate_validation_fail_value_upper(sagemaker_session):
     with pytest.raises(ValueError):
         NTM(learning_rate=2, sagemaker_session=sagemaker_session, **ALL_REQ_ARGS)
 
@@ -221,10 +256,6 @@ BASE_TRAIN_CALL = {
 
 FEATURE_DIM = 10
 MINI_BATCH_SIZE = 200
-HYPERPARAMS = {'num_topics': NUM_TOPICS, 'feature_dim': FEATURE_DIM, 'mini_batch_size': MINI_BATCH_SIZE}
-STRINGIFIED_HYPERPARAMS = dict([(x, str(y)) for x, y in HYPERPARAMS.items()])
-HP_TRAIN_CALL = dict(BASE_TRAIN_CALL)
-HP_TRAIN_CALL.update({'hyperparameters': STRINGIFIED_HYPERPARAMS})
 
 
 @patch("sagemaker.amazon.amazon_estimator.AmazonAlgorithmEstimatorBase.fit")
@@ -246,8 +277,7 @@ def test_call_fit_none_mini_batch_size(sagemaker_session):
 
     data = RecordSet("s3://{}/{}".format(BUCKET_NAME, PREFIX), num_records=1, feature_dim=FEATURE_DIM,
                      channel='train')
-    with pytest.raises(ValueError):
-        ntm.fit(data, None)
+    ntm.fit(data, None)
 
 
 def test_call_fit_wrong_type_mini_batch_size(sagemaker_session):

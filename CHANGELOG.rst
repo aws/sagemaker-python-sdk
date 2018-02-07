@@ -2,6 +2,13 @@
 CHANGELOG
 =========
 
+1.0.4
+=====
+
+* feature: Estimators: add support for Amazon Neural Topic Model(NTM) algorithm
+* feature: Estimators: add support for async fit
+* bug-fix: Estimators: fix estimator role expansion
+
 1.0.3
 =====
 

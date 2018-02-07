@@ -13,16 +13,15 @@
 import boto3
 import numpy as np
 import os
-from six.moves.urllib.parse import urlparse
 
 import sagemaker
 from sagemaker import NTM, NTMModel
-from sagemaker.amazon.amazon_estimator import RecordSet
 from sagemaker.amazon.common import read_records
-from sagemaker.utils import name_from_base, sagemaker_timestamp
+from sagemaker.utils import name_from_base
 
 from tests.integ import DATA_DIR, REGION
 from tests.integ.timeout import timeout, timeout_and_delete_endpoint_by_name
+from tests.integ.record_set import prepare_record_set_from_local_files
 
 
 def test_ntm():
@@ -41,9 +40,9 @@ def test_ntm():
         ntm = NTM(role='SageMakerRole', train_instance_count=1, train_instance_type='ml.c4.xlarge', num_topics=10,
                   sagemaker_session=sagemaker_session, base_job_name='test-ntm')
 
-        record_set = _prepare_record_set_from_local_files(data_path, ntm.data_location,
-                                                          len(all_records), feature_num, sagemaker_session)
-        ntm.fit(record_set, 100)
+        record_set = prepare_record_set_from_local_files(data_path, ntm.data_location,
+                                                         len(all_records), feature_num, sagemaker_session)
+        ntm.fit(record_set, None)
 
     endpoint_name = name_from_base('ntm')
     with timeout_and_delete_endpoint_by_name(endpoint_name, sagemaker_session, minutes=20):
@@ -55,23 +54,4 @@ def test_ntm():
 
         assert len(result) == 1
         for record in result:
-            assert record.label["topic_mixture"] is not None
-
-
-def _prepare_record_set_from_local_files(dir_path, destination, num_records, feature_dim, sagemaker_session):
-    """Build a :class:`~RecordSet` by pointing to local files.
-
-    Args:
-        dir_path (string): Path to local directory from where the files shall be uploaded.
-        destination (string): S3 path to upload the file to.
-        num_records (int): Number of records in all the files
-        feature_dim (int): Number of features in the data set
-        sagemaker_session (sagemaker.session.Session): Session object to manage interactions with Amazon SageMaker APIs.
-    Returns:
-        RecordSet: A RecordSet specified by S3Prefix to to be used in training.
-    """
-    key_prefix = urlparse(destination).path
-    key_prefix = key_prefix + '{}-{}'.format("testfiles", sagemaker_timestamp())
-    key_prefix = key_prefix.lstrip('/')
-    uploaded_location = sagemaker_session.upload_data(path=dir_path, key_prefix=key_prefix)
-    return RecordSet(uploaded_location, num_records, feature_dim, s3_data_type='S3Prefix')
+            assert record.label["topic_weights"] is not None
