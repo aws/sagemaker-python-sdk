@@ -195,17 +195,9 @@ class Session(object):
                     a directory in the Docker container.
                 * 'Pipe' - Amazon SageMaker streams data directly from S3 to the container via a Unix-named pipe.
 
-            input_config (str or dict or sagemaker.session.s3_input): Information about the training data.
-                This can be one of three types:
-
-                * (str) - the S3 location where training data is saved.
-                * (dict[str, str] or dict[str, sagemaker.session.s3_input]) - If using multiple channels for
-                    training data, you can specify a dict mapping channel names
-                    to strings or :func:`~sagemaker.session.s3_input` objects.
-                * (sagemaker.session.s3_input) - channel configuration for S3 data sources that can provide
-                    additional information about the training dataset. See :func:`sagemaker.session.s3_input`
-                    for full details.
-
+            input_config (list): A list of Channel objects. Each channel is a named input source. Please refer to
+                 the format details described:
+                 https://botocore.readthedocs.io/en/latest/reference/services/sagemaker.html#SageMaker.Client.create_training_job
             role (str): An AWS IAM role (either name or full ARN). The Amazon SageMaker training jobs and APIs
                 that create Amazon SageMaker endpoints use this role to access training data and model artifacts.
                 You must grant sufficient permissions to this role.
