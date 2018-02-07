@@ -39,7 +39,7 @@ You can install from source by cloning this repository and issuing a pip install
 
     git clone https://github.com/aws/sagemaker-python-sdk.git
     python setup.py sdist
-    pip install dist/sagemaker-1.0.3.tar.gz
+    pip install dist/sagemaker-1.0.4.tar.gz
 
 Supported Python versions
 ~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -1447,7 +1447,7 @@ Amazon SageMaker provides several built-in machine learning algorithms that you 
 
 The full list of algorithms is available on the AWS website: https://docs.aws.amazon.com/sagemaker/latest/dg/algos.html
 
-SageMaker Python SDK includes Estimator wrappers for the AWS K-means, Principal Components Analysis, Linear Learner, Factorization Machines and LDA algorithms.
+SageMaker Python SDK includes Estimator wrappers for the AWS K-means, Principal Components Analysis(PCA), Linear Learner, Factorization Machines, Latent Dirichlet Allocation(LDA) and Neural Topic Model(NTM) algorithms.
 
 Definition and usage
 ~~~~~~~~~~~~~~~~~~~~

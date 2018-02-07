@@ -49,3 +49,4 @@ Amazon provides implementations of some common machine learning algortithms opti
     sagemaker.amazon.amazon_estimator
     factorization_machines
     lda
+    ntm
