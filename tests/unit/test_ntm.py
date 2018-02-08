@@ -277,7 +277,7 @@ def test_call_fit_none_mini_batch_size(sagemaker_session):
 
     data = RecordSet("s3://{}/{}".format(BUCKET_NAME, PREFIX), num_records=1, feature_dim=FEATURE_DIM,
                      channel='train')
-    ntm.fit(data, None)
+    ntm.fit(data)
 
 
 def test_call_fit_wrong_type_mini_batch_size(sagemaker_session):
