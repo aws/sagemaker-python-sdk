@@ -6,6 +6,8 @@ CHANGELOG
 =====
 
 * feature: Estimators: add support for Amazon Neural Topic Model(NTM) algorithm
+* feature: Documentation: Fix description of an argument of sagemaker.session.train
+* feature: Documentation: Add FM and LDA to the documentation
 * feature: Estimators: add support for async fit
 * bug-fix: Estimators: fix estimator role expansion
 
