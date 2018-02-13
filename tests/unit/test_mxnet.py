@@ -1,4 +1,4 @@
-# Copyright 2017 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright 2017-2018 Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -110,7 +110,7 @@ def test_mxnet(strftime, sagemaker_session):
              'SAGEMAKER_ENABLE_CLOUDWATCH_METRICS': 'false',
              'SAGEMAKER_REGION': 'us-west-2',
              'SAGEMAKER_CONTAINER_LOG_LEVEL': '20'},
-            'Image': '520713654638.dkr.ecr.us-west-2.amazonaws.com/sagemaker-mxnet-py2-gpu:1.0',
+            'Image': '520713654638.dkr.ecr.us-west-2.amazonaws.com/sagemaker-mxnet-py2-gpu:1.1',
             'ModelDataUrl': 's3://m/m.tar.gz'} == model.prepare_container_def(GPU)
 
     assert 'cpu' in model.prepare_container_def(CPU)['Image']
@@ -134,7 +134,7 @@ def test_train_image_default(sagemaker_session):
 def test_attach(sagemaker_session):
     returned_job_description = {'AlgorithmSpecification':
                                 {'TrainingInputMode': 'File',
-                                 'TrainingImage': '1.dkr.ecr.us-west-2.amazonaws.com/sagemaker-mxnet-py2-cpu:1.0.4'},
+                                 'TrainingImage': '1.dkr.ecr.us-west-2.amazonaws.com/sagemaker-mxnet-py2-cpu:1.1.0'},
                                 'HyperParameters':
                                     {'sagemaker_submit_directory': '"s3://some/sourcedir.tar.gz"',
                                      'sagemaker_program': '"iris-dnn-classifier.py"',
@@ -176,7 +176,7 @@ def test_attach(sagemaker_session):
 def test_attach_wrong_framework(sagemaker_session):
     rjd = {'AlgorithmSpecification':
            {'TrainingInputMode': 'File',
-            'TrainingImage': '1.dkr.ecr.us-west-2.amazonaws.com/sagemaker-tensorflow-py2-cpu:1.0.4'},
+            'TrainingImage': '1.dkr.ecr.us-west-2.amazonaws.com/sagemaker-tensorflow-py2-cpu:1.1.0'},
            'HyperParameters':
                {'sagemaker_submit_directory': '"s3://some/sourcedir.tar.gz"',
                 'checkpoint_path': '"s3://other/1508872349"',

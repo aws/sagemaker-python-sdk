@@ -1,4 +1,4 @@
-# Copyright 2017 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright 2017-2018 Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -10,9 +10,9 @@
 # distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
-import sagemaker
 from sagemaker.estimator import Framework
 from sagemaker.fw_utils import create_image_uri, framework_name_from_image
+from sagemaker.mxnet.defaults import DOCKER_TAG
 from sagemaker.mxnet.model import MXNetModel
 
 
@@ -21,7 +21,8 @@ class MXNet(Framework):
 
     __framework_name__ = "mxnet"
 
-    def __init__(self, entry_point, source_dir=None, hyperparameters=None, py_version='py2', **kwargs):
+    def __init__(self, entry_point, source_dir=None, hyperparameters=None, py_version='py2',
+                 docker_tag=DOCKER_TAG, **kwargs):
         """
         This ``Estimator`` executes an MXNet script in a managed MXNet execution environment, within a SageMaker
         Training Job. The managed MXNet environment is an Amazon-built Docker container that executes functions
@@ -47,10 +48,14 @@ class MXNet(Framework):
                 to convert them before training.
             py_version (str): Python version you want to use for executing your model training code (default: 'py2').
                               One of 'py2' or 'py3'.
+            docker_tag (str): ECR docker image tag, which denotes the image version you want to use for executing
+                your model training code. Available versions are: '1.0' which installs MXNet 0.12,
+                '1.1' which installs MXNet 1.0.
             **kwargs: Additional kwargs passed to the :class:`~sagemaker.estimator.Framework` constructor.
         """
         super(MXNet, self).__init__(entry_point, source_dir, hyperparameters, **kwargs)
         self.py_version = py_version
+        self.docker_tag = docker_tag
 
     def train_image(self):
         """Return the Docker image to use for training.
@@ -62,7 +67,7 @@ class MXNet(Framework):
             str: The URI of the Docker image.
         """
         return create_image_uri(self.sagemaker_session.boto_session.region_name, self.__framework_name__,
-                                self.train_instance_type, py_version=self.py_version, tag=sagemaker.mxnet.DOCKER_TAG)
+                                self.train_instance_type, py_version=self.py_version, tag=self.docker_tag)
 
     def create_model(self, model_server_workers=None):
         """Create a SageMaker ``MXNetModel`` object that can be deployed to an ``Endpoint``.

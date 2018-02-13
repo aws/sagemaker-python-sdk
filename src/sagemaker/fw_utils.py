@@ -1,4 +1,4 @@
-# Copyright 2017 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright 2017-2018 Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -28,7 +28,7 @@ instantiated with positional or keyword arguments.
 """
 
 
-def create_image_uri(region, framework, instance_type, py_version='py2', tag='1.0', account='520713654638'):
+def create_image_uri(region, framework, instance_type, py_version='py2', tag='1.1', account='520713654638'):
     """Return the ECR URI of an image.
 
     Args:
@@ -36,7 +36,7 @@ def create_image_uri(region, framework, instance_type, py_version='py2', tag='1.
         framework (str): framework used by the image.
         instance_type (str): EC2 instance type. Used to determine whether to use the CPU image or GPU image.
         py_version (str): Python version. (default: 'py2')
-        tag (str): ECR image tag, which denotes the image version. (default: '1.0')
+        tag (str): ECR image tag, which denotes the image version. (default: '1.1')
         account (str): AWS account that contains the image. (default: '520713654638')
 
     Returns:

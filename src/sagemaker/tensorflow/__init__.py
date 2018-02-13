@@ -1,4 +1,4 @@
-# Copyright 2017 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright 2017-2018 Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -25,9 +25,8 @@ if LooseVersion(tensorflow.__version__) < LooseVersion("1.3.0"):
     message = 'Tensorflow version must be >= 1.3.0. Current version: {}'.format(tensorflow.__version__)
     raise AssertionError(message)
 
+from sagemaker.tensorflow.defaults import DOCKER_TAG  # noqa: E402
 from sagemaker.tensorflow.estimator import TensorFlow  # noqa: E402
 from sagemaker.tensorflow.model import TensorFlowModel, TensorFlowPredictor  # noqa: E402
 
-DOCKER_TAG = "1.0"
-
-__all__ = [TensorFlow, TensorFlowModel, TensorFlowPredictor]
+__all__ = [DOCKER_TAG, TensorFlow, TensorFlowModel, TensorFlowPredictor]
