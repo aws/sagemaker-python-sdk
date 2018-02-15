@@ -12,7 +12,7 @@
 # language governing permissions and limitations under the License.
 from sagemaker.amazon.amazon_estimator import AmazonS3AlgorithmEstimatorBase, registry
 from sagemaker.amazon.common import file_to_image_serializer, response_deserializer
-from sagemaker.amazon.hyperparameter import Hyperparameter as hp  # noqa
+from sagemaker.amazon.hyperparameter import Hyperparameter as hp
 from sagemaker.amazon.validation import gt, isin, isint, ge, isstr, le
 from sagemaker.predictor import RealTimePredictor
 from sagemaker.model import Model
@@ -20,44 +20,43 @@ from sagemaker.session import Session
 
 
 class ImageClassification(AmazonS3AlgorithmEstimatorBase):
-
-    repo='image-classification:latest'
+    repo = 'image-classification:latest'
 
     num_classes = hp('num_classes', (gt(1), isint), 'num_classes should be an integer greater-than 1')
-    num_training_samples = hp('num_training_samples', (gt(1), isint),
-                              'num_training_samples should be an integer greater-than 1')
-    use_pretrained_model = hp('use_pretrained_model', (isin(0, 1), isint),
-                              'use_pretrained_model should be in the set, [0,1]')
-    checkpoint_frequency = hp('checkpoint_frequency', (ge(1), isint),
-                              'checkpoint_frequency should be an integer greater-than 1')
-    num_layers = hp('num_layers', (isin(18, 34, 50, 101, 152, 200, 20, 32, 44, 56, 110), isint),
-                    'num_layers should be in the set [18, 34, 50, 101, 152, 200, 20, 32, 44, 56, 110]' )
+    num_training_samples = hp('num_training_samples', (gt(1)),
+                              'num_training_samples should be an integer greater-than 1', int)
+    use_pretrained_model = hp('use_pretrained_model', (isin(0, 1), ),
+                              'use_pretrained_model should be in the set, [0,1]', int)
+    checkpoint_frequency = hp('checkpoint_frequency', (ge(1), ),
+                              'checkpoint_frequency should be an integer greater-than 1', int)
+    num_layers = hp('num_layers', (isin(18, 34, 50, 101, 152, 200, 20, 32, 44, 56, 110), ),
+                    'num_layers should be in the set [18, 34, 50, 101, 152, 200, 20, 32, 44, 56, 110]', int)
     resize = hp('resize', (gt(1), isint), 'resize should be an integer greater-than 1')
     epochs = hp('epochs', (ge(1), isint), 'epochs should be an integer greater-than 1')
-    learning_rate = hp('learning_rate', (gt(0)), 'learning_rate shoudl be a floating point greater than 0' )
+    learning_rate = hp('learning_rate', (gt(0)), 'learning_rate shoudl be a floating point greater than 0')
     lr_scheduler_factor = hp('lr_scheduler_factor', (gt(0)),
-                            'lr_schedule_factor should be a floating point greater than 0')
-    lr_scheduler_step = hp('lr_scheduler_step',(isstr), 'lr_scheduler_step should be a string input.')
+                             'lr_schedule_factor should be a floating point greater than 0')
+    lr_scheduler_step = hp('lr_scheduler_step', (isstr), 'lr_scheduler_step should be a string input.')
     optimizer = hp('optimizer', (isin('sgd', 'adam', 'rmsprop', 'nag')),
                    'Should be one optimizer among the list sgd, adam, rmsprop, or nag.')
     momentum = hp('momentum', (ge(0), le(1)), 'momentum is expected in the range 0, 1')
     weight_decay = hp('weight_decay', (ge(0), le(1)), 'weight_decay in range 0 , 1 ')
-    beta_1 = hp('beta_1',  (ge(0), le(1)), 'beta_1 should be in range 0, 1')
-    beta_2 = hp('beta_2',  (ge(0), le(1)), 'beta_2 should be in the range 0, 1')
-    eps = hp('eps',  (gt(0), le(1)), 'eps should be in the range 0, 1')
-    gamma = hp('gamma',  (ge(0), le(1)), 'gamma should be in the range 0, 1')
-    mini_batch_size = hp('mini_batch_size',  (gt(0)), 'mini_batch_size should be an integer greater than 0')
-    image_shape = hp('image_shape',  (isstr), 'image_shape is expected to be a string')
-    augmentation_type = hp('beta_1',  (isin ('crop', 'crop_color', 'crop_color_transform')),
+    beta_1 = hp('beta_1', (ge(0), le(1)), 'beta_1 should be in range 0, 1')
+    beta_2 = hp('beta_2', (ge(0), le(1)), 'beta_2 should be in the range 0, 1')
+    eps = hp('eps', (gt(0), le(1)), 'eps should be in the range 0, 1')
+    gamma = hp('gamma', (ge(0), le(1)), 'gamma should be in the range 0, 1')
+    mini_batch_size = hp('mini_batch_size', (gt(0)), 'mini_batch_size should be an integer greater than 0')
+    image_shape = hp('image_shape', (isstr), 'image_shape is expected to be a string')
+    augmentation_type = hp('beta_1', (isin('crop', 'crop_color', 'crop_color_transform')),
                            'beta_1 must be from one option offered')
     top_k = hp('top_k', (ge(1), isint), 'top_k should be greater than or equal to 1')
-    kv_store=hp ('kv_store',  (isin ('dist_sync', 'dist_async' )), 'Can be dist_sync or dist_async')
+    kv_store = hp('kv_store', (isin('dist_sync', 'dist_async')), 'Can be dist_sync or dist_async')
 
     def __init__(self, role, train_instance_count, train_instance_type, num_classes, num_training_samples, resize=None,
-                 lr_scheduler_step=None, use_pretrained_model=0, checkpoint_frequency=1 , num_layers=18,
+                 lr_scheduler_step=None, use_pretrained_model=0, checkpoint_frequency=1, num_layers=18,
                  epochs=30, learning_rate=0.1,
                  lr_schedule_factor=0.1, optimizer='sgd', momentum=0., weight_decay=0.0001, beta_1=0.9,
-                 beta_2=0.999, eps=1e-8, gamma=0.9 , mini_batch_size=32 , image_shape='3,224,224', 
+                 beta_2=0.999, eps=1e-8, gamma=0.9, mini_batch_size=32, image_shape='3,224,224',
                  augmentation_type=None, top_k=None, kv_store=None, **kwargs):
         """
         An Image classification algorithm :class:`~sagemaker.amazon.AmazonAlgorithmEstimatorBase`. Learns a classifier model that 
