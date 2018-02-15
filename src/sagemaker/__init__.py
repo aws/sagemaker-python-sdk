@@ -35,4 +35,5 @@ __all__ = [estimator, KMeans, KMeansModel, KMeansPredictor, PCA, PCAModel, PCAPr
            LinearLearnerModel, LinearLearnerPredictor,
            LDA, LDAModel, LDAPredictor,
            FactorizationMachines, FactorizationMachinesModel, FactorizationMachinesPredictor,
+           ImageClassification, ImageClassificationModel, ImageClassificationPredictor
            container_def, s3_input, production_variant, get_execution_role]
