@@ -25,11 +25,11 @@ class ImageClassification(AmazonS3AlgorithmEstimatorBase):
     num_classes = hp('num_classes', (gt(1)), 'num_classes should be an integer greater-than 1', int)
     num_training_samples = hp('num_training_samples', (gt(1)),
                               'num_training_samples should be an integer greater-than 1', int)
-    use_pretrained_model = hp('use_pretrained_model', (isin(0, 1), ),
+    use_pretrained_model = hp('use_pretrained_model', (isin(0, 1),),
                               'use_pretrained_model should be in the set, [0,1]', int)
-    checkpoint_frequency = hp('checkpoint_frequency', (ge(1), ),
+    checkpoint_frequency = hp('checkpoint_frequency', (ge(1),),
                               'checkpoint_frequency should be an integer greater-than 1', int)
-    num_layers = hp('num_layers', (isin(18, 34, 50, 101, 152, 200, 20, 32, 44, 56, 110), ),
+    num_layers = hp('num_layers', (isin(18, 34, 50, 101, 152, 200, 20, 32, 44, 56, 110),),
                     'num_layers should be in the set [18, 34, 50, 101, 152, 200, 20, 32, 44, 56, 110]', int)
     resize = hp('resize', (gt(1)), 'resize should be an integer greater-than 1', int)
     epochs = hp('epochs', (ge(1)), 'epochs should be an integer greater-than 1', int)
@@ -44,7 +44,7 @@ class ImageClassification(AmazonS3AlgorithmEstimatorBase):
     beta_1 = hp('beta_1', (ge(0), le(1)), 'beta_1 should be in range 0, 1', float)
     beta_2 = hp('beta_2', (ge(0), le(1)), 'beta_2 should be in the range 0, 1', float)
     eps = hp('eps', (gt(0), le(1)), 'eps should be in the range 0, 1', float)
-    gamma = hp('gamma', (ge(0), le(1)), 'gamma should be in the range 0, 1', float )
+    gamma = hp('gamma', (ge(0), le(1)), 'gamma should be in the range 0, 1', float)
     mini_batch_size = hp('mini_batch_size', (gt(0)), 'mini_batch_size should be an integer greater than 0', int)
     image_shape = hp('image_shape', (), 'image_shape is expected to be a string', str)
     augmentation_type = hp('augmentation_type', (isin('crop', 'crop_color', 'crop_color_transform')),
@@ -85,13 +85,13 @@ class ImageClassification(AmazonS3AlgorithmEstimatorBase):
             train_instance_type (str): Type of EC2 instance to use for training, for example, 'ml.c4.xlarge'.
             num_classes (int): Number of output classes. This parameter defines the dimensions of the network output
                          and is typically set to the number of classes in the dataset.
-            num_training_samples (int): Number of training examples in the input dataset. If there is a 
-                                mismatch between this value and the number of samples in the training 
-                                set, then the behavior of the lr_scheduler_step parameter is undefined 
+            num_training_samples (int): Number of training examples in the input dataset. If there is a
+                                mismatch between this value and the number of samples in the training
+                                set, then the behavior of the lr_scheduler_step parameter is undefined
                                 and distributed training accuracy might be affected.
-            use_pretrained_model (int): Flag to indicate whether to use pre-trained model for training. 
-                                If set to `1`, then the pretrained model with the corresponding number 
-                                of layers is loaded and used for training. Only the top FC layer are 
+            use_pretrained_model (int): Flag to indicate whether to use pre-trained model for training.
+                                If set to `1`, then the pretrained model with the corresponding number
+                                of layers is loaded and used for training. Only the top FC layer are
                                 reinitialized with random weights. Otherwise, the network is trained from scratch.
                                 Default value: 0
             checkpoint_frequency (int): Period to store model parameters (in number of epochs). Default value: 1
@@ -136,7 +136,7 @@ class ImageClassification(AmazonS3AlgorithmEstimatorBase):
                                    mini_batch_size/num_gpu training samples. For the multi-machine training in
                                    dist_sync mode, the actual batch size is mini_batch_size*number of machines.
                                    See MXNet docs for more details. Default value: 32
-            image_shape	(str): The input image dimensions, which is the same size as the input layer of the network. 
+            image_shape	(str): The input image dimensions, which is the same size as the input layer of the network. \
                                 The format is defined as 'num_channels, height, width'. The image dimension can take on
                                 any value as the network can handle varied dimensions of the input. However, there may
                                 be memory constraints if a larger image dimension is used. Typical image dimensions for
@@ -152,7 +152,7 @@ class ImageClassification(AmazonS3AlgorithmEstimatorBase):
                                             rotation, shear, and aspect ratio variations are applied to the image.
                                             The maximum angle of rotation is 10 degrees, the maximum shear ratio is 0.1,
                                              and the maximum aspect changing ratio is 0.25.
-            top_k (int): Report the top-k accuracy during training. This parameter has to be greater than 1, 
+            top_k (int): Report the top-k accuracy during training. This parameter has to be greater than 1,
                             since the top-1 training accuracy is the same as the regular training accuracy that has
                             already been reported.
             kv_store (str): Weight update synchronization mode during distributed training. The weight updates can be
@@ -228,8 +228,8 @@ class ImageClassificationModel(Model):
 
     def __init__(self, model_data, role, sagemaker_session=None):
         sagemaker_session = sagemaker_session or Session()
-        image = registry(sagemaker_session.boto_session.region_name, algorithm='image_classification') + \
-                "/" + ImageClassification.repo
+        image = registry(sagemaker_session.boto_session.region_name,
+                         'image_classification') + "/" + ImageClassification.repo
         super(ImageClassificationModel, self).__init__(model_data, image, role,
                                                        predictor_cls=ImageClassificationPredictor,
                                                        sagemaker_session=sagemaker_session)

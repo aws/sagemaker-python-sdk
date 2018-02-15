@@ -21,7 +21,6 @@ from sagemaker.amazon.record_pb2 import Record
 
 
 class numpy_to_record_serializer(object):
-
     def __init__(self, content_type='application/x-recordio-protobuf'):
         self.content_type = content_type
 
@@ -36,7 +35,6 @@ class numpy_to_record_serializer(object):
 
 
 class file_to_image_serializer(object):
-
     def __init__(self, content_type='application/x-image'):
         self.content_type = content_type
 
@@ -46,8 +44,8 @@ class file_to_image_serializer(object):
             payload = bytearray(payload)
         return payload
 
-class record_deserializer(object):
 
+class record_deserializer(object):
     def __init__(self, accept='application/x-recordio-protobuf'):
         self.accept = accept
 
@@ -59,7 +57,6 @@ class record_deserializer(object):
 
 
 class response_deserializer(object):
-
     def __init__(self, accept='application/json'):
         self.accept = accept
 
@@ -114,7 +111,7 @@ def write_numpy_to_dense_tensor(file, array, labels=None):
             raise ValueError("Labels must be a Vector")
         if labels.shape[0] not in array.shape:
             raise ValueError("Label shape {} not compatible with array shape {}".format(
-                             labels.shape, array.shape))
+                labels.shape, array.shape))
         resolved_label_type = _resolve_type(labels.dtype)
     resolved_type = _resolve_type(array.dtype)
 
@@ -142,7 +139,7 @@ def write_spmatrix_to_sparse_tensor(file, array, labels=None):
             raise ValueError("Labels must be a Vector")
         if labels.shape[0] not in array.shape:
             raise ValueError("Label shape {} not compatible with array shape {}".format(
-                             labels.shape, array.shape))
+                labels.shape, array.shape))
         resolved_label_type = _resolve_type(labels.dtype)
     resolved_type = _resolve_type(array.dtype)
 
@@ -202,7 +199,7 @@ def _write_recordio(f, data):
 
 
 def _read_recordio(f):
-    while(True):
+    while (True):
         try:
             read_kmagic, = struct.unpack('I', f.read(4))
         except struct.error:
