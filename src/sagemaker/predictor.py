@@ -240,7 +240,12 @@ class _JsonSerializer(object):
         if isinstance(data, list):
             if not len(data) > 0:
                 raise ValueError("empty array can't be serialized")
-            return _json_serialize_python_array(data)
+            return _json_serialize_python_object(data)
+
+        if isinstance(data, dict):
+            if not len(data.keys()) > 0:
+                raise ValueError("empty dictionary can't be serialized")
+            return _json_serialize_python_object(data)
 
         # files and buffers
         if hasattr(data, 'read'):
@@ -254,10 +259,10 @@ json_serializer = _JsonSerializer()
 
 def _json_serialize_numpy_array(data):
     # numpy arrays can't be serialized but we know they have uniform type
-    return _json_serialize_python_array(data.tolist())
+    return _json_serialize_python_object(data.tolist())
 
 
-def _json_serialize_python_array(data):
+def _json_serialize_python_object(data):
     return _json_serialize_object(data)
 
 
