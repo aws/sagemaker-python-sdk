@@ -684,21 +684,19 @@ SageMaker runs MXNet Estimator scripts in either Python 2.7 or Python 3.5. You c
 
 Your MXNet training script will be run on version 1.0.0 (by default) or 0.12 of MXNet, built for either GPU or CPU use. The decision to use the GPU or CPU version of MXNet is made by the ``train_instance_type``, set on the MXNet constructor. If you choose a GPU instance type, your training job will be run on a GPU version of MXNet. If you choose a CPU instance type, your training job will be run on a CPU version of MXNet. Similarly, when you call deploy, specifying a GPU or CPU deploy_instance_type, will control which MXNet build your Endpoint runs.
 
-The MXNet Docker container version 1.0 has the following dependencies installed:
--  Python 2.7 or Python 3.5, depending on the ``py_version`` argument on
-   the MXNet constructor.
--  MXNet 0.12, built for either GPU or CPU, depending on the instance
-   type for training or deploying.
--  CUDA 9.0
--  numpy 1.12
+The MXNet Docker container have the following dependencies installed:
 
-The MXNet Docker container version 1.1 has the following dependencies installed:
--  Python 2.7 or Python 3.5, depending on the ``py_version`` argument on
-   the MXNet constructor.
--  MXNet 1.0.0, built for either GPU or CPU, depending on the instance
-   type for training or deploying.
--  CUDA 9.0
--  numpy 1.13.3
++-------------------------+-------------+-------------+
+| Dependencies            | Version 1.0 | Version 1.1 |
++-------------------------+-------------+-------------+
+| Python                  |   2.7 or 3.5|   2.7 or 3.5|
++-------------------------+-------------+-------------+
+| MXNet                   |        0.12 |       1.0.0 |
++-------------------------+-------------+-------------+
+| CUDA                    |         9.0 |         9.0 |
++-------------------------+-------------+-------------+
+| numpy                   |        1.12 |      1.13.3 |
++-------------------------+-------------+-------------+
 
 The Docker images extend Ubuntu 16.04.
 
@@ -1428,43 +1426,45 @@ A example with ``input_fn`` and ``output_fn`` above can be found in
 SageMaker TensorFlow Docker containers
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-The TensorFlow Docker container version 1.0 supports Python 2.7. The Docker container has the following Python modules installed:
-- awscli 1.12.1
-- boto3 1.4.7
-- botocore 1.5.92
-- futures 2.2.0
-- gevent 1.2.2
-- grpcio 1.7.0
-- numpy 1.13.3
-- pandas 0.21.0
-- protobuf 3.4.0
-- requests 2.14.2
-- scikit-learn 0.19.1
-- scipy 1.0.0
-- six 1.10.0
-- sklearn 0.0
-- tensorflow 1.4.1
-- tensorflow-serving-api 1.4.0
-- tensorflow-tensorboard 0.4.0
+The TensorFlow Docker containers support Python 2.7 and have the following Python modules installed:
 
-The TensorFlow Docker container version 1.1 supports Python 2.7. The Docker container has the following Python modules installed:
-- awscli 1.14.35
-- boto3 1.5.22
-- botocore 1.8.36
-- futures 2.2.0
-- gevent 1.2.2
-- grpcio 1.9.0
-- numpy 1.14.0
-- pandas 0.22.0
-- protobuf 3.5.1
-- requests 2.18.4
-- scikit-learn 0.19.1
-- scipy 1.0.0
-- six 1.10.0
-- sklearn 0.0
-- tensorflow 1.5.0
-- tensorflow-serving-api 1.5.0
-- tensorflow-tensorboard 1.5.1
++------------------------+-------------+-------------+
+| Dependencies           | Version 1.0 | Version 1.1 |
++------------------------+-------------+-------------+
+| awscli                 |      1.12.1 |     1.14.35 |
++------------------------+-------------+-------------+
+| boto3                  |       1.4.7 |      1.5.22 |
++------------------------+-------------+-------------+
+| botocore               |      1.5.92 |      1.8.36 |
++------------------------+-------------+-------------+
+| futures                |       2.2.0 |       2.2.0 |
++------------------------+-------------+-------------+
+| gevent                 |       1.2.2 |       1.2.2 |
++------------------------+-------------+-------------+
+| grpcio                 |       1.7.0 |       1.9.0 |
++------------------------+-------------+-------------+
+| numpy                  |      1.13.3 |      1.14.0 |
++------------------------+-------------+-------------+
+| pandas                 |      0.21.0 |      0.22.0 |
++------------------------+-------------+-------------+
+| protobuf               |       3.4.0 |       3.5.1 |
++------------------------+-------------+-------------+
+| requests               |      2.14.2 |      2.18.4 |
++------------------------+-------------+-------------+
+| scikit-learn           |      0.19.1 |      0.19.1 |
++------------------------+-------------+-------------+
+| scipy                  |       1.0.0 |       1.0.0 |
++------------------------+-------------+-------------+
+| six                    |      1.10.0 |      1.10.0 |
++------------------------+-------------+-------------+
+| sklearn                |         0.0 |         0.0 |
++------------------------+-------------+-------------+
+| tensorflow             |       1.4.1 |       1.5.0 |
++------------------------+-------------+-------------+
+| tensorflow-serving-api |       1.4.0 |       1.5.0 |
++------------------------+-------------+-------------+
+| tensorflow-tensorboard |       0.4.0 |       1.5.1 |
++------------------------+-------------+-------------+
 
 The Docker images extend Ubuntu 16.04.
 
