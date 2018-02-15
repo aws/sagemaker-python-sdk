@@ -505,7 +505,10 @@ def test_call_fit_calculate_batch_size_1(base_fit, sagemaker_session):
 def test_call_fit_calculate_batch_size_2(base_fit, sagemaker_session):
     lr = LinearLearner(base_job_name="lr", sagemaker_session=sagemaker_session, **REQ_ARGS)
 
-    data = RecordSet("s3://{}/{}".format(BUCKET_NAME, PREFIX), num_records=10000, feature_dim=FEATURE_DIM, channel='train')
+    data = RecordSet("s3://{}/{}".format(BUCKET_NAME, PREFIX),
+                     num_records=10000,
+                     feature_dim=FEATURE_DIM,
+                     channel='train')
 
     lr.fit(data)
 
@@ -515,12 +518,14 @@ def test_call_fit_calculate_batch_size_2(base_fit, sagemaker_session):
     assert base_fit.call_args[0][1] == DEFAULT_MINI_BATCH_SIZE
 
 
-
 @patch("sagemaker.amazon.amazon_estimator.AmazonAlgorithmEstimatorBase.fit")
 def test_call_fit_pass_batch_size(base_fit, sagemaker_session):
     lr = LinearLearner(base_job_name="lr", sagemaker_session=sagemaker_session, **REQ_ARGS)
 
-    data = RecordSet("s3://{}/{}".format(BUCKET_NAME, PREFIX), num_records=10000, feature_dim=FEATURE_DIM, channel='train')
+    data = RecordSet("s3://{}/{}".format(BUCKET_NAME, PREFIX),
+                     num_records=10000,
+                     feature_dim=FEATURE_DIM,
+                     channel='train')
 
     lr.fit(data, 10)
 
