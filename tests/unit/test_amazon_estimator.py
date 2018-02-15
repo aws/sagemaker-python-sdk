@@ -81,7 +81,7 @@ def test_init_all_pca_hyperparameters(sagemaker_session):
 
 
 def test_init_all_ic_hyperparameters(sagemaker_session):
-    ic = ImageClassification(data_location='s3://some-bucket/some-key/',
+    ic = ImageClassification(
                              num_classes=257, num_training_samples=15420, epochs=1,
                              image_shape='3,32,32', sagemaker_session=sagemaker_session,
                              **COMMON_ARGS)
@@ -101,14 +101,13 @@ def test_init_estimator_args(sagemaker_session):
 
 
 def test_init_s3estimator_args(sagemaker_session):
-    ic = ImageClassification(data_location='s3://some-bucket/some-key/',
+    ic = ImageClassification(
                              num_classes=257, num_training_samples=15420, epochs=1,
                              image_shape='3,32,32', sagemaker_session=sagemaker_session,
                              **COMMON_ARGS)
     assert ic.train_instance_type == COMMON_ARGS['train_instance_type']
     assert ic.train_instance_count == COMMON_ARGS['train_instance_count']
     assert ic.role == COMMON_ARGS['role']
-    assert ic.data_location == 's3://some-bucket/some-key/'
 
 
 def test_data_location_validation(sagemaker_session):
@@ -127,9 +126,8 @@ def test_pca_hyperparameters(sagemaker_session):
         subtract_mean='True',
         algorithm_mode='randomized')
 
-
 def test_ic_hyperparameters(sagemaker_session):
-    ic = ImageClassification(data_location='s3://some-bucket/some-key/',
+    ic = ImageClassification(
                              num_classes=257, num_training_samples=15420, epochs=1,
                              image_shape='3,32,32', sagemaker_session=sagemaker_session,
                              **COMMON_ARGS)
@@ -139,7 +137,7 @@ def test_ic_hyperparameters(sagemaker_session):
 def test_image(sagemaker_session):
     pca = PCA(num_components=55, sagemaker_session=sagemaker_session, **COMMON_ARGS)
     assert pca.train_image() == registry('us-west-2') + '/pca:1'
-    ic = ImageClassification(data_location='s3://some-bucket/some-key/',
+    ic = ImageClassification(
                              num_classes=257, num_training_samples=15420, epochs=1,
                              image_shape='3,32,32', sagemaker_session=sagemaker_session,
                              **COMMON_ARGS)

@@ -44,8 +44,3 @@ def istype(expected):
     def validate(value):
         return isinstance(value, expected)
     return validate
-
-isint = istype(int)
-isbool = istype(bool)
-isstr = istype(str)
-isnumber = istype(numbers.Number)  # noqa

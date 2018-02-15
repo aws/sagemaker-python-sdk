@@ -13,7 +13,7 @@
 from sagemaker.amazon.amazon_estimator import AmazonS3AlgorithmEstimatorBase, registry
 from sagemaker.amazon.common import file_to_image_serializer, response_deserializer
 from sagemaker.amazon.hyperparameter import Hyperparameter as hp
-from sagemaker.amazon.validation import gt, isin, isint, ge, isstr, le
+from sagemaker.amazon.validation import gt, isin, ge, le
 from sagemaker.predictor import RealTimePredictor
 from sagemaker.model import Model
 from sagemaker.session import Session
@@ -33,24 +33,24 @@ class ImageClassification(AmazonS3AlgorithmEstimatorBase):
                     'num_layers should be in the set [18, 34, 50, 101, 152, 200, 20, 32, 44, 56, 110]', int)
     resize = hp('resize', (gt(1)), 'resize should be an integer greater-than 1', int)
     epochs = hp('epochs', (ge(1)), 'epochs should be an integer greater-than 1', int)
-    learning_rate = hp('learning_rate', (gt(0)), 'learning_rate shoudl be a floating point greater than 0')
+    learning_rate = hp('learning_rate', (gt(0)), 'learning_rate should be a floating point greater than 0', float)
     lr_scheduler_factor = hp('lr_scheduler_factor', (gt(0)),
-                             'lr_schedule_factor should be a floating point greater than 0')
+                             'lr_schedule_factor should be a floating point greater than 0', float)
     lr_scheduler_step = hp('lr_scheduler_step', (), 'lr_scheduler_step should be a string input.', str)
     optimizer = hp('optimizer', (isin('sgd', 'adam', 'rmsprop', 'nag')),
-                   'Should be one optimizer among the list sgd, adam, rmsprop, or nag.')
-    momentum = hp('momentum', (ge(0), le(1)), 'momentum is expected in the range 0, 1')
-    weight_decay = hp('weight_decay', (ge(0), le(1)), 'weight_decay in range 0 , 1 ')
-    beta_1 = hp('beta_1', (ge(0), le(1)), 'beta_1 should be in range 0, 1')
-    beta_2 = hp('beta_2', (ge(0), le(1)), 'beta_2 should be in the range 0, 1')
-    eps = hp('eps', (gt(0), le(1)), 'eps should be in the range 0, 1')
-    gamma = hp('gamma', (ge(0), le(1)), 'gamma should be in the range 0, 1')
-    mini_batch_size = hp('mini_batch_size', (gt(0)), 'mini_batch_size should be an integer greater than 0')
+                   'Should be one optimizer among the list sgd, adam, rmsprop, or nag.', str)
+    momentum = hp('momentum', (ge(0), le(1)), 'momentum is expected in the range 0, 1', float)
+    weight_decay = hp('weight_decay', (ge(0), le(1)), 'weight_decay in range 0 , 1 ', float)
+    beta_1 = hp('beta_1', (ge(0), le(1)), 'beta_1 should be in range 0, 1', float)
+    beta_2 = hp('beta_2', (ge(0), le(1)), 'beta_2 should be in the range 0, 1', float)
+    eps = hp('eps', (gt(0), le(1)), 'eps should be in the range 0, 1', float)
+    gamma = hp('gamma', (ge(0), le(1)), 'gamma should be in the range 0, 1', float )
+    mini_batch_size = hp('mini_batch_size', (gt(0)), 'mini_batch_size should be an integer greater than 0', int)
     image_shape = hp('image_shape', (), 'image_shape is expected to be a string', str)
-    augmentation_type = hp('beta_1', (isin('crop', 'crop_color', 'crop_color_transform')),
-                           'beta_1 must be from one option offered')
+    augmentation_type = hp('augmentation_type', (isin('crop', 'crop_color', 'crop_color_transform')),
+                           'augmentation type must be from one option offered', str)
     top_k = hp('top_k', (ge(1)), 'top_k should be greater than or equal to 1', int)
-    kv_store = hp('kv_store', (isin('dist_sync', 'dist_async')), 'Can be dist_sync or dist_async')
+    kv_store = hp('kv_store', (isin('dist_sync', 'dist_async')), 'Can be dist_sync or dist_async', str)
 
     def __init__(self, role, train_instance_count, train_instance_type, num_classes, num_training_samples, resize=None,
                  lr_scheduler_step=None, use_pretrained_model=0, checkpoint_frequency=1, num_layers=18,
