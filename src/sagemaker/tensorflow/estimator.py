@@ -190,8 +190,9 @@ class TensorFlow(Framework):
             if value is not None:
                 init_params[argument] = value
 
-        framework, py_version = framework_name_from_image(init_params.pop('image'))
+        framework, py_version, docker_tag = framework_name_from_image(init_params.pop('image'))
         init_params['py_version'] = py_version
+        init_params['docker_tag'] = docker_tag
 
         training_job_name = init_params['base_job_name']
         if framework != cls.__framework_name__:

@@ -134,7 +134,7 @@ def test_train_image_default(sagemaker_session):
 def test_attach(sagemaker_session):
     returned_job_description = {'AlgorithmSpecification':
                                 {'TrainingInputMode': 'File',
-                                 'TrainingImage': '1.dkr.ecr.us-west-2.amazonaws.com/sagemaker-mxnet-py2-cpu:1.1.0'},
+                                 'TrainingImage': '1.dkr.ecr.us-west-2.amazonaws.com/sagemaker-mxnet-py2-cpu:1.0'},
                                 'HyperParameters':
                                     {'sagemaker_submit_directory': '"s3://some/sourcedir.tar.gz"',
                                      'sagemaker_program': '"iris-dnn-classifier.py"',
@@ -161,6 +161,7 @@ def test_attach(sagemaker_session):
     estimator = MXNet.attach(training_job_name='neo', sagemaker_session=sagemaker_session)
     assert estimator.latest_training_job.job_name == 'neo'
     assert estimator.py_version == 'py2'
+    assert estimator.docker_tag == '1.0'
     assert estimator.role == 'arn:aws:iam::366:role/SageMakerRole'
     assert estimator.train_instance_count == 1
     assert estimator.train_max_run == 24 * 60 * 60
@@ -176,7 +177,7 @@ def test_attach(sagemaker_session):
 def test_attach_wrong_framework(sagemaker_session):
     rjd = {'AlgorithmSpecification':
            {'TrainingInputMode': 'File',
-            'TrainingImage': '1.dkr.ecr.us-west-2.amazonaws.com/sagemaker-tensorflow-py2-cpu:1.1.0'},
+            'TrainingImage': '1.dkr.ecr.us-west-2.amazonaws.com/sagemaker-tensorflow-py2-cpu:1.1'},
            'HyperParameters':
                {'sagemaker_submit_directory': '"s3://some/sourcedir.tar.gz"',
                 'checkpoint_path': '"s3://other/1508872349"',

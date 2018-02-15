@@ -114,19 +114,19 @@ def framework_name_from_image(image_name):
             str: The Python version
     """
     # image name format: <account>.dkr.ecr.<region>.amazonaws.com/sagemaker-<framework>-<py_ver>-<device>:<tag>
-    sagemaker_pattern = re.compile('^(\d+)(\.)dkr(\.)ecr(\.)(.+)(\.)amazonaws.com(/)(.*)(:)(.*)$')
+    sagemaker_pattern = re.compile('^(\d+)(\.)dkr(\.)ecr(\.)(.+)(\.)amazonaws.com(/)(.*:.*)$')
     sagemaker_match = sagemaker_pattern.match(image_name)
     if sagemaker_match is None:
-        return None, None
+        return None, None, None
     else:
-        # extract framework and python version
-        name_pattern = re.compile('^sagemaker-(tensorflow|mxnet)-(py2|py3)-(cpu|gpu)$')
+        # extract framework, python version and image version
+        name_pattern = re.compile('^sagemaker-(tensorflow|mxnet)-(py2|py3)-(cpu|gpu):(1.[0..1])$')
         name_match = name_pattern.match(sagemaker_match.group(8))
 
         if name_match is None:
-            return None, None
+            return None, None, None
         else:
-            return name_match.group(1), name_match.group(2)
+            return name_match.group(1), name_match.group(2), name_match.group(4)
 
 
 def parse_s3_url(url):

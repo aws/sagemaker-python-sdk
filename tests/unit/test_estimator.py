@@ -220,7 +220,7 @@ def test_enable_cloudwatch_metrics(sagemaker_session):
 def test_attach_framework(sagemaker_session):
     returned_job_description = {'AlgorithmSpecification':
                                 {'TrainingInputMode': 'File',
-                                 'TrainingImage': '1.dkr.ecr.us-west-2.amazonaws.com/sagemaker-other-py2-cpu:1.0.4'},
+                                 'TrainingImage': '1.dkr.ecr.us-west-2.amazonaws.com/sagemaker-other-py2-cpu:1.0'},
                                 'HyperParameters':
                                     {'sagemaker_submit_directory': '"s3://some/sourcedir.tar.gz"',
                                      'checkpoint_path': '"s3://other/1508872349"',
@@ -325,15 +325,27 @@ def test_init_with_source_dir_s3(strftime, sagemaker_session):
 
 
 def test_framework_name_from_framework_image():
-    framework, py_ver = framework_name_from_image('123.dkr.ecr.us-west-2.amazonaws.com/sagemaker-mxnet-py2-gpu:1')
+    framework, py_ver, image_ver = \
+        framework_name_from_image('123.dkr.ecr.us-west-2.amazonaws.com/sagemaker-mxnet-py2-gpu:1.0')
     assert framework == 'mxnet'
     assert py_ver == 'py2'
+    assert image_ver == '1.0'
 
 
 def test_framework_name_from_other():
-    framework, py_ver = framework_name_from_image('123.dkr.ecr.us-west-2.amazonaws.com/sagemaker-myown-py2-gpu:1')
+    framework, py_ver, image_ver = \
+        framework_name_from_image('123.dkr.ecr.us-west-2.amazonaws.com/sagemaker-myown-py2-gpu:1.0')
     assert framework is None
     assert py_ver is None
+    assert image_ver is None
+
+
+def test_framework_name_from_image_wrong_version():
+    framework, py_ver, image_ver = \
+        framework_name_from_image('123.dkr.ecr.us-west-2.amazonaws.com/sagemaker-mxnet-py2-gpu:1.5')
+    assert framework is None
+    assert py_ver is None
+    assert image_ver is None
 
 
 # _TrainingJob 'utils'
