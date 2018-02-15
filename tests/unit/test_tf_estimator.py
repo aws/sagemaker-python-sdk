@@ -16,12 +16,12 @@ import json
 import os
 import pytest
 from mock import Mock, patch
-import sagemaker
 from sagemaker.model import MODEL_SERVER_WORKERS_PARAM_NAME
 from sagemaker.session import s3_input
 from sagemaker.tensorflow import TensorFlow, DOCKER_TAG
 from sagemaker.fw_utils import create_image_uri
 from sagemaker.tensorflow import TensorFlowPredictor, TensorFlowModel
+from tests import SAGEMAKER_IMAGE_VERSION
 
 DATA_DIR = os.path.join(os.path.dirname(__file__), '..', 'data')
 SCRIPT_PATH = os.path.join(DATA_DIR, 'dummy_script.py')
@@ -37,8 +37,9 @@ ROLE = 'Dummy'
 REGION = 'us-west-2'
 
 IMAGE_URI_FORMAT_STRING = "520713654638.dkr.ecr.{}.amazonaws.com/{}:{}"
-FULL_CPU_IMAGE_URI = IMAGE_URI_FORMAT_STRING.format(REGION, CPU_IMAGE_NAME, DOCKER_TAG)
-FULL_GPU_IMAGE_URI = IMAGE_URI_FORMAT_STRING.format(REGION, GPU_IMAGE_NAME, DOCKER_TAG)
+FULL_CPU_IMAGE_URI = IMAGE_URI_FORMAT_STRING.format(REGION, CPU_IMAGE_NAME, SAGEMAKER_IMAGE_VERSION)
+FULL_GPU_IMAGE_URI = IMAGE_URI_FORMAT_STRING.format(REGION, GPU_IMAGE_NAME, SAGEMAKER_IMAGE_VERSION)
+DEFAULT_CPU_IMAGE_URI = IMAGE_URI_FORMAT_STRING.format(REGION, CPU_IMAGE_NAME, DOCKER_TAG)
 
 CREATE_TRAIN_JOB = {'image': FULL_CPU_IMAGE_URI,
                     'input_mode': 'File',
@@ -102,6 +103,7 @@ def _build_tf(sagemaker_session, train_instance_type=None, checkpoint_path=None,
                       checkpoint_path=checkpoint_path,
                       enable_cloudwatch_metrics=enable_cloudwatch_metrics,
                       base_job_name=base_job_name,
+                      docker_tag=SAGEMAKER_IMAGE_VERSION,
                       **kwargs)
 
 
@@ -152,7 +154,8 @@ def test_tf_deploy_model_server_workers_unset(sagemaker_session):
 @patch('time.time', return_value=TIME)
 def test_tf(time, strftime, sagemaker_session):
     tf = TensorFlow(entry_point=SCRIPT_PATH, role=ROLE, sagemaker_session=sagemaker_session, training_steps=1000,
-                    evaluation_steps=10, train_instance_count=INSTANCE_COUNT, train_instance_type=INSTANCE_TYPE)
+                    evaluation_steps=10, train_instance_count=INSTANCE_COUNT, train_instance_type=INSTANCE_TYPE,
+                    docker_tag=SAGEMAKER_IMAGE_VERSION)
 
     inputs = 's3://mybucket/train'
 
@@ -178,8 +181,7 @@ def test_tf(time, strftime, sagemaker_session):
              'SAGEMAKER_REGION': 'us-west-2',
              'SAGEMAKER_CONTAINER_LOG_LEVEL': '20'
              },
-            'Image': create_image_uri('us-west-2', "tensorflow", GPU_IMAGE_NAME, "py2",
-                                      sagemaker.tensorflow.DOCKER_TAG),
+            'Image': create_image_uri('us-west-2', "tensorflow", GPU_IMAGE_NAME, "py2", SAGEMAKER_IMAGE_VERSION),
             'ModelDataUrl': 's3://m/m.tar.gz'} == model.prepare_container_def(GPU_IMAGE_NAME)
 
     assert 'cpu' in model.prepare_container_def(CPU_IMAGE_NAME)['Image']
@@ -194,7 +196,8 @@ def test_tf(time, strftime, sagemaker_session):
 @patch('os.access', return_value=False)
 def test_run_tensorboard_locally_without_tensorboard_binary(time, strftime, popen, call, access, sagemaker_session):
     tf = TensorFlow(entry_point=SCRIPT_PATH, role=ROLE, sagemaker_session=sagemaker_session,
-                    train_instance_count=INSTANCE_COUNT, train_instance_type=INSTANCE_TYPE)
+                    train_instance_count=INSTANCE_COUNT, train_instance_type=INSTANCE_TYPE,
+                    docker_tag=SAGEMAKER_IMAGE_VERSION)
 
     with pytest.raises(EnvironmentError) as error:
         tf.fit(inputs='s3://mybucket/train', run_tensorboard_locally=True)
@@ -216,7 +219,8 @@ def test_model(sagemaker_session):
 @patch('os.access', side_effect=[False, True])
 def test_run_tensorboard_locally_without_awscli_binary(time, strftime, popen, call, access, sagemaker_session):
     tf = TensorFlow(entry_point=SCRIPT_PATH, role=ROLE, sagemaker_session=sagemaker_session,
-                    train_instance_count=INSTANCE_COUNT, train_instance_type=INSTANCE_TYPE)
+                    train_instance_count=INSTANCE_COUNT, train_instance_type=INSTANCE_TYPE,
+                    docker_tag=SAGEMAKER_IMAGE_VERSION)
 
     with pytest.raises(EnvironmentError) as error:
         tf.fit(inputs='s3://mybucket/train', run_tensorboard_locally=True)
@@ -233,7 +237,8 @@ def test_run_tensorboard_locally_without_awscli_binary(time, strftime, popen, ca
 @pytest.mark.skip(reason="this test fails sometimes and it needs further investigation")
 def test_run_tensorboard_locally(time, strftime, popen, call, access, sagemaker_session):
     tf = TensorFlow(entry_point=SCRIPT_PATH, role=ROLE, sagemaker_session=sagemaker_session,
-                    train_instance_count=INSTANCE_COUNT, train_instance_type=INSTANCE_TYPE)
+                    train_instance_count=INSTANCE_COUNT, train_instance_type=INSTANCE_TYPE,
+                    docker_tag=SAGEMAKER_IMAGE_VERSION)
 
     tf.fit(inputs='s3://mybucket/train', run_tensorboard_locally=True)
 
@@ -253,7 +258,8 @@ def test_run_tensorboard_locally(time, strftime, popen, call, access, sagemaker_
 @pytest.mark.skip(reason="this test fails sometimes and it needs further investigation")
 def test_run_tensorboard_locally_port_in_use(time, strftime, popen, call, access, socket, sagemaker_session):
     tf = TensorFlow(entry_point=SCRIPT_PATH, role=ROLE, sagemaker_session=sagemaker_session,
-                    train_instance_count=INSTANCE_COUNT, train_instance_type=INSTANCE_TYPE)
+                    train_instance_count=INSTANCE_COUNT, train_instance_type=INSTANCE_TYPE,
+                    docker_tag=SAGEMAKER_IMAGE_VERSION)
 
     popen().poll.side_effect = [True, False]
 
@@ -302,15 +308,21 @@ def test_tf_checkpoint_set(sagemaker_session):
 
 
 def test_train_image_default(sagemaker_session):
-    tf = _build_tf(sagemaker_session)
+    tf = TensorFlow(entry_point=SCRIPT_PATH,
+                    role=ROLE,
+                    sagemaker_session=sagemaker_session,
+                    train_instance_count=INSTANCE_COUNT,
+                    train_instance_type=INSTANCE_TYPE)
 
-    assert FULL_CPU_IMAGE_URI in tf.train_image()
+    assert DEFAULT_CPU_IMAGE_URI in tf.train_image()
 
 
 def test_attach(sagemaker_session):
+    training_image = '1.dkr.ecr.us-west-2.amazonaws.com/sagemaker-tensorflow-py2-cpu:{}'\
+        .format(SAGEMAKER_IMAGE_VERSION)
     rjd = {'AlgorithmSpecification':
            {'TrainingInputMode': 'File',
-            'TrainingImage': '1.dkr.ecr.us-west-2.amazonaws.com/sagemaker-tensorflow-py2-cpu:1.0'},
+            'TrainingImage': training_image},
            'HyperParameters':
                {'sagemaker_submit_directory': '"s3://some/sourcedir.tar.gz"',
                 'checkpoint_path': '"s3://other/1508872349"',
@@ -336,7 +348,7 @@ def test_attach(sagemaker_session):
     estimator = TensorFlow.attach(training_job_name='neo', sagemaker_session=sagemaker_session)
     assert estimator.latest_training_job.job_name == 'neo'
     assert estimator.py_version == 'py2'
-    assert estimator.docker_tag == '1.0'
+    assert estimator.docker_tag == SAGEMAKER_IMAGE_VERSION
     assert estimator.role == 'arn:aws:iam::366:role/SageMakerRole'
     assert estimator.train_instance_count == 1
     assert estimator.train_max_run == 24 * 60 * 60

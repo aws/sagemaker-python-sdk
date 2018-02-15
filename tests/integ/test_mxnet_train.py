@@ -19,6 +19,7 @@ import pytest
 from sagemaker import Session
 from sagemaker.mxnet.estimator import MXNet
 from sagemaker.mxnet.model import MXNetModel
+from tests import SAGEMAKER_IMAGE_VERSION
 
 from tests.integ import DATA_DIR, REGION
 from tests.integ.timeout import timeout, timeout_and_delete_endpoint_by_name
@@ -37,7 +38,7 @@ def mxnet_training_job(sagemaker_session):
 
         mx = MXNet(entry_point=script_path, role='SageMakerRole',
                    train_instance_count=1, train_instance_type='ml.c4.xlarge',
-                   sagemaker_session=sagemaker_session)
+                   sagemaker_session=sagemaker_session, docker_tag=SAGEMAKER_IMAGE_VERSION)
 
         train_input = mx.sagemaker_session.upload_data(path=os.path.join(data_path, 'train'),
                                                        key_prefix='integ-test-data/mxnet_mnist/train')
@@ -69,7 +70,7 @@ def test_async_fit(sagemaker_session):
 
         mx = MXNet(entry_point=script_path, role='SageMakerRole',
                    train_instance_count=1, train_instance_type='ml.c4.xlarge',
-                   sagemaker_session=sagemaker_session)
+                   sagemaker_session=sagemaker_session, docker_tag=SAGEMAKER_IMAGE_VERSION)
 
         train_input = mx.sagemaker_session.upload_data(path=os.path.join(data_path, 'train'),
                                                        key_prefix='integ-test-data/mxnet_mnist/train')
@@ -111,7 +112,7 @@ def test_failed_training_job(sagemaker_session):
 
         mx = MXNet(entry_point=script_path, role='SageMakerRole',
                    train_instance_count=1, train_instance_type='ml.c4.xlarge',
-                   sagemaker_session=sagemaker_session)
+                   sagemaker_session=sagemaker_session, docker_tag=SAGEMAKER_IMAGE_VERSION)
 
         train_input = mx.sagemaker_session.upload_data(path=os.path.join(data_path, 'train'),
                                                        key_prefix='integ-test-data/mxnet_mnist/train-failure')

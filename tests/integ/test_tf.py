@@ -17,6 +17,7 @@ import time
 
 from sagemaker import Session
 from sagemaker.tensorflow import TensorFlow
+from tests import SAGEMAKER_IMAGE_VERSION
 from tests.integ import DATA_DIR, REGION
 from tests.integ.timeout import timeout_and_delete_endpoint, timeout
 
@@ -40,7 +41,8 @@ def test_tf(sagemaker_session):
                                train_instance_count=1,
                                train_instance_type='ml.c4.xlarge',
                                sagemaker_session=sagemaker_session,
-                               base_job_name='test-tf')
+                               base_job_name='test-tf',
+                               docker_tag=SAGEMAKER_IMAGE_VERSION)
 
         inputs = estimator.sagemaker_session.upload_data(path=DATA_PATH, key_prefix='integ-test-data/tf_iris')
         estimator.fit(inputs)
@@ -67,7 +69,8 @@ def test_tf_async(sagemaker_session):
                                train_instance_count=1,
                                train_instance_type='ml.c4.xlarge',
                                sagemaker_session=sagemaker_session,
-                               base_job_name='test-tf')
+                               base_job_name='test-tf',
+                               docker_tag=SAGEMAKER_IMAGE_VERSION)
 
         inputs = estimator.sagemaker_session.upload_data(path=DATA_PATH, key_prefix='integ-test-data/tf_iris')
         estimator.fit(inputs, wait=False)
@@ -92,7 +95,8 @@ def test_failed_tf_training(sagemaker_session):
                                hyperparameters={'input_tensor_name': 'inputs'},
                                train_instance_count=1,
                                train_instance_type='ml.c4.xlarge',
-                               sagemaker_session=sagemaker_session)
+                               sagemaker_session=sagemaker_session,
+                               docker_tag=SAGEMAKER_IMAGE_VERSION)
 
         inputs = estimator.sagemaker_session.upload_data(path=DATA_PATH, key_prefix='integ-test-data/tf-failure')
 

@@ -19,6 +19,7 @@ import pytest
 
 from sagemaker import Session
 from sagemaker.tensorflow import TensorFlow
+from tests import SAGEMAKER_IMAGE_VERSION
 from tests.integ import DATA_DIR, REGION
 from tests.integ.timeout import timeout_and_delete_endpoint, timeout
 
@@ -48,7 +49,8 @@ def test_cifar(sagemaker_session):
                                training_steps=20, evaluation_steps=5,
                                train_instance_count=2, train_instance_type='ml.p2.xlarge',
                                sagemaker_session=sagemaker_session,
-                               base_job_name='test-cifar')
+                               base_job_name='test-cifar',
+                               docker_tag=SAGEMAKER_IMAGE_VERSION)
 
         inputs = estimator.sagemaker_session.upload_data(path=dataset_path, key_prefix='data/cifar10')
         estimator.fit(inputs)

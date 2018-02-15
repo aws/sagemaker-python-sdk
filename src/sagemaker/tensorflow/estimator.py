@@ -227,8 +227,8 @@ class TensorFlow(Framework):
         return TensorFlowModel(self.model_data, self.role, self.entry_point, source_dir=self.source_dir,
                                enable_cloudwatch_metrics=self.enable_cloudwatch_metrics, name=self._current_job_name,
                                container_log_level=self.container_log_level, code_location=self.code_location,
-                               py_version=self.py_version, model_server_workers=model_server_workers,
-                               sagemaker_session=self.sagemaker_session)
+                               py_version=self.py_version, docker_tag=self.docker_tag,
+                               model_server_workers=model_server_workers, sagemaker_session=self.sagemaker_session)
 
     def hyperparameters(self):
         """Return hyperparameters used by your custom TensorFlow code during model training."""

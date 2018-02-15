@@ -20,6 +20,7 @@ from mock import patch
 
 from sagemaker.mxnet import MXNet, DOCKER_TAG
 from sagemaker.mxnet import MXNetPredictor, MXNetModel
+from tests import SAGEMAKER_IMAGE_VERSION
 
 DATA_DIR = os.path.join(os.path.dirname(__file__), '..', 'data')
 SCRIPT_PATH = os.path.join(DATA_DIR, 'dummy_script.py')
@@ -28,14 +29,18 @@ TIME = 1507167947
 BUCKET_NAME = 'mybucket'
 INSTANCE_COUNT = 1
 INSTANCE_TYPE = 'ml.c4.4xlarge'
-IMAGE_NAME = 'sagemaker-mxnet-py2-cpu'
-JOB_NAME = '{}-{}'.format(IMAGE_NAME, TIMESTAMP)
-FULL_IMAGE_URI = '520713654638.dkr.ecr.us-west-2.amazonaws.com/{}:{}'.format(IMAGE_NAME, DOCKER_TAG)
+CPU_IMAGE_NAME = 'sagemaker-mxnet-py2-cpu'
+GPU_IMAGE_NAME = 'sagemaker-mxnet-py2-gpu'
+JOB_NAME = '{}-{}'.format(CPU_IMAGE_NAME, TIMESTAMP)
+IMAGE_URI_FORMAT_STRING = '520713654638.dkr.ecr.us-west-2.amazonaws.com/{}:{}'
+FULL_CPU_IMAGE_URI = IMAGE_URI_FORMAT_STRING.format(CPU_IMAGE_NAME, SAGEMAKER_IMAGE_VERSION)
+FULL_GPU_IMAGE_URI = IMAGE_URI_FORMAT_STRING.format(GPU_IMAGE_NAME, SAGEMAKER_IMAGE_VERSION)
+DEFAULT_IMAGE_URI = IMAGE_URI_FORMAT_STRING.format(CPU_IMAGE_NAME, DOCKER_TAG)
 ROLE = 'Dummy'
 REGION = 'us-west-2'
 GPU = 'ml.p2.xlarge'
 CPU = 'ml.c4.xlarge'
-CREATE_TRAIN_JOB = {'image': FULL_IMAGE_URI,
+CREATE_TRAIN_JOB = {'image': FULL_CPU_IMAGE_URI,
                     'input_mode': 'File',
                     'input_config': [{
                         'ChannelName': 'training',
@@ -84,7 +89,8 @@ def sagemaker_session():
 @patch('time.strftime', return_value=TIMESTAMP)
 def test_mxnet(strftime, sagemaker_session):
     mx = MXNet(entry_point=SCRIPT_PATH, role=ROLE, sagemaker_session=sagemaker_session,
-               train_instance_count=INSTANCE_COUNT, train_instance_type=INSTANCE_TYPE)
+               train_instance_count=INSTANCE_COUNT, train_instance_type=INSTANCE_TYPE,
+               docker_tag=SAGEMAKER_IMAGE_VERSION)
 
     inputs = 's3://mybucket/train'
 
@@ -110,7 +116,7 @@ def test_mxnet(strftime, sagemaker_session):
              'SAGEMAKER_ENABLE_CLOUDWATCH_METRICS': 'false',
              'SAGEMAKER_REGION': 'us-west-2',
              'SAGEMAKER_CONTAINER_LOG_LEVEL': '20'},
-            'Image': '520713654638.dkr.ecr.us-west-2.amazonaws.com/sagemaker-mxnet-py2-gpu:1.1',
+            'Image': FULL_GPU_IMAGE_URI,
             'ModelDataUrl': 's3://m/m.tar.gz'} == model.prepare_container_def(GPU)
 
     assert 'cpu' in model.prepare_container_def(CPU)['Image']
@@ -128,13 +134,15 @@ def test_train_image_default(sagemaker_session):
     mx = MXNet(entry_point=SCRIPT_PATH, role=ROLE, sagemaker_session=sagemaker_session,
                train_instance_count=INSTANCE_COUNT, train_instance_type=INSTANCE_TYPE)
 
-    assert FULL_IMAGE_URI in mx.train_image()
+    assert DEFAULT_IMAGE_URI in mx.train_image()
 
 
 def test_attach(sagemaker_session):
+    training_image = '1.dkr.ecr.us-west-2.amazonaws.com/sagemaker-mxnet-py2-cpu:{}' \
+        .format(SAGEMAKER_IMAGE_VERSION)
     returned_job_description = {'AlgorithmSpecification':
                                 {'TrainingInputMode': 'File',
-                                 'TrainingImage': '1.dkr.ecr.us-west-2.amazonaws.com/sagemaker-mxnet-py2-cpu:1.0'},
+                                 'TrainingImage': training_image},
                                 'HyperParameters':
                                     {'sagemaker_submit_directory': '"s3://some/sourcedir.tar.gz"',
                                      'sagemaker_program': '"iris-dnn-classifier.py"',
@@ -161,7 +169,7 @@ def test_attach(sagemaker_session):
     estimator = MXNet.attach(training_job_name='neo', sagemaker_session=sagemaker_session)
     assert estimator.latest_training_job.job_name == 'neo'
     assert estimator.py_version == 'py2'
-    assert estimator.docker_tag == '1.0'
+    assert estimator.docker_tag == SAGEMAKER_IMAGE_VERSION
     assert estimator.role == 'arn:aws:iam::366:role/SageMakerRole'
     assert estimator.train_instance_count == 1
     assert estimator.train_max_run == 24 * 60 * 60
