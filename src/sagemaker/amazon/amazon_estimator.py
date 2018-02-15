@@ -318,7 +318,7 @@ def upload_numpy_to_s3_shards(num_shards, s3, bucket, key_prefix, array, labels=
 
 def registry(region_name, algorithm=None):
     """Return docker registry for the given AWS region"""
-    if algorithm in [None, "pca", "kmeans", "linear-learner", "factorization-machines"]:
+    if algorithm in [None, "pca", "kmeans", "linear-learner", "factorization-machines", "ntm"]:
         account_id = {
             "us-east-1": "382416733822",
             "us-east-2": "404615174143",
