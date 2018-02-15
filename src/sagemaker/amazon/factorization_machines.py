@@ -13,7 +13,7 @@
 from sagemaker.amazon.amazon_estimator import AmazonAlgorithmEstimatorBase, registry
 from sagemaker.amazon.common import numpy_to_record_serializer, record_deserializer
 from sagemaker.amazon.hyperparameter import Hyperparameter as hp  # noqa
-from sagemaker.amazon.validation import gt, isin, isint, ge, isnumber
+from sagemaker.amazon.validation import gt, isin, ge
 from sagemaker.predictor import RealTimePredictor
 from sagemaker.model import Model
 from sagemaker.session import Session
@@ -21,36 +21,37 @@ from sagemaker.session import Session
 
 class FactorizationMachines(AmazonAlgorithmEstimatorBase):
 
-    repo = 'factorization-machines:1'
+    repo_name = 'factorization-machines'
+    repo_version = 1
 
-    num_factors = hp('num_factors', (gt(0), isint), 'An integer greater than zero')
+    num_factors = hp('num_factors', gt(0), 'An integer greater than zero', int)
     predictor_type = hp('predictor_type', isin('binary_classifier', 'regressor'),
-                        'Value "binary_classifier" or "regressor"')
-    epochs = hp('epochs', (gt(0), isint), "An integer greater than 0")
-    clip_gradient = hp('clip_gradient', isnumber, "A float value")
-    eps = hp('eps', isnumber, "A float value")
-    rescale_grad = hp('rescale_grad', isnumber, "A float value")
-    bias_lr = hp('bias_lr', (ge(0), isnumber), "A non-negative float")
-    linear_lr = hp('linear_lr', (ge(0), isnumber), "A non-negative float")
-    factors_lr = hp('factors_lr', (ge(0), isnumber), "A non-negative float")
-    bias_wd = hp('bias_wd', (ge(0), isnumber), "A non-negative float")
-    linear_wd = hp('linear_wd', (ge(0), isnumber), "A non-negative float")
-    factors_wd = hp('factors_wd', (ge(0), isnumber), "A non-negative float")
+                        'Value "binary_classifier" or "regressor"', str)
+    epochs = hp('epochs', gt(0), "An integer greater than 0", int)
+    clip_gradient = hp('clip_gradient', (), "A float value", float)
+    eps = hp('eps', (), "A float value", float)
+    rescale_grad = hp('rescale_grad', (), "A float value", float)
+    bias_lr = hp('bias_lr', ge(0), "A non-negative float", float)
+    linear_lr = hp('linear_lr', ge(0), "A non-negative float", float)
+    factors_lr = hp('factors_lr', ge(0), "A non-negative float", float)
+    bias_wd = hp('bias_wd', ge(0), "A non-negative float", float)
+    linear_wd = hp('linear_wd', ge(0), "A non-negative float", float)
+    factors_wd = hp('factors_wd', ge(0), "A non-negative float", float)
     bias_init_method = hp('bias_init_method', isin('normal', 'uniform', 'constant'),
-                          'Value "normal", "uniform" or "constant"')
-    bias_init_scale = hp('bias_init_scale', (ge(0), isnumber), "A non-negative float")
-    bias_init_sigma = hp('bias_init_sigma', (ge(0), isnumber), "A non-negative float")
-    bias_init_value = hp('bias_init_value', isnumber, "A float value")
+                          'Value "normal", "uniform" or "constant"', str)
+    bias_init_scale = hp('bias_init_scale', ge(0), "A non-negative float", float)
+    bias_init_sigma = hp('bias_init_sigma', ge(0), "A non-negative float", float)
+    bias_init_value = hp('bias_init_value', (), "A float value", float)
     linear_init_method = hp('linear_init_method', isin('normal', 'uniform', 'constant'),
-                            'Value "normal", "uniform" or "constant"')
-    linear_init_scale = hp('linear_init_scale', (ge(0), isnumber), "A non-negative float")
-    linear_init_sigma = hp('linear_init_sigma', (ge(0), isnumber), "A non-negative float")
-    linear_init_value = hp('linear_init_value', isnumber, "A float value")
+                            'Value "normal", "uniform" or "constant"', str)
+    linear_init_scale = hp('linear_init_scale', ge(0), "A non-negative float", float)
+    linear_init_sigma = hp('linear_init_sigma', ge(0), "A non-negative float", float)
+    linear_init_value = hp('linear_init_value', (), "A float value", float)
     factors_init_method = hp('factors_init_method', isin('normal', 'uniform', 'constant'),
-                             'Value "normal", "uniform" or "constant"')
-    factors_init_scale = hp('factors_init_scale', (ge(0), isnumber), "A non-negative float")
-    factors_init_sigma = hp('factors_init_sigma', (ge(0), isnumber), "A non-negative float")
-    factors_init_value = hp('factors_init_value', isnumber, "A float value")
+                             'Value "normal", "uniform" or "constant"', str)
+    factors_init_scale = hp('factors_init_scale', ge(0), "A non-negative float", float)
+    factors_init_sigma = hp('factors_init_sigma', ge(0), "A non-negative float", float)
+    factors_init_value = hp('factors_init_value', (), "A float value", float)
 
     def __init__(self, role, train_instance_count, train_instance_type,
                  num_factors, predictor_type,
@@ -194,7 +195,8 @@ class FactorizationMachinesModel(Model):
 
     def __init__(self, model_data, role, sagemaker_session=None):
         sagemaker_session = sagemaker_session or Session()
-        image = registry(sagemaker_session.boto_session.region_name) + "/" + FactorizationMachines.repo
+        repo = '{}:{}'.format(FactorizationMachines.repo_name, FactorizationMachines.repo_version)
+        image = '{}/{}'.format(registry(sagemaker_session.boto_session.region_name), repo)
         super(FactorizationMachinesModel, self).__init__(model_data,
                                                          image,
                                                          role,
