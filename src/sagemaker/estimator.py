@@ -22,7 +22,7 @@ from sagemaker.fw_utils import tar_and_upload_dir
 from sagemaker.fw_utils import parse_s3_url
 from sagemaker.fw_utils import UploadedCode
 from sagemaker.model import Model
-from sagemaker.model import (SCRIPT_PARAM_NAME, REQUIREMENTS_PARAM_NAME, DIR_PARAM_NAME, CLOUDWATCH_METRICS_PARAM_NAME,
+from sagemaker.model import (SCRIPT_PARAM_NAME, DIR_PARAM_NAME, CLOUDWATCH_METRICS_PARAM_NAME,
                              CONTAINER_LOG_LEVEL_PARAM_NAME, JOB_NAME_PARAM_NAME, SAGEMAKER_REGION_PARAM_NAME)
 from sagemaker.predictor import RealTimePredictor
 from sagemaker.session import Session
@@ -512,8 +512,8 @@ class Framework(EstimatorBase):
     such as training/deployment images and predictor instances.
     """
 
-    def __init__(self, entry_point, source_dir=None, requirements='', hyperparameters=None,
-                 enable_cloudwatch_metrics=False, container_log_level=logging.INFO, code_location=None, **kwargs):
+    def __init__(self, entry_point, source_dir=None, hyperparameters=None, enable_cloudwatch_metrics=False,
+                 container_log_level=logging.INFO, code_location=None, **kwargs):
         """Base class initializer. Subclasses which override ``__init__`` should invoke ``super()``
 
         Args:
@@ -522,8 +522,6 @@ class Framework(EstimatorBase):
             source_dir (str): Path (absolute or relative) to a directory with any other training
                 source code dependencies aside from tne entry point file (default: None). Structure within this
                 directory are preserved when training on Amazon SageMaker.
-            requirements (str): Path to a ``requirements.txt`` file (default: None). The path should be relative to
-                ``source_dir``.
             hyperparameters (dict): Hyperparameters that will be used for training (default: None).
                 The hyperparameters are made accessible as a dict[str, str] to the training code on SageMaker.
                 For convenience, this accepts other types for keys and values, but ``str()`` will be called
@@ -543,7 +541,6 @@ class Framework(EstimatorBase):
         self.container_log_level = container_log_level
         self._hyperparameters = hyperparameters or {}
         self.code_location = code_location
-        self.requirements = requirements
 
     def fit(self, inputs, wait=True, logs=True, job_name=None):
         """Train a model using the input training dataset.
@@ -595,7 +592,6 @@ class Framework(EstimatorBase):
         # Modify hyperparameters in-place to add the URLs to the uploaded code.
         self._hyperparameters[DIR_PARAM_NAME] = self.uploaded_code.s3_prefix
         self._hyperparameters[SCRIPT_PARAM_NAME] = self.uploaded_code.script_name
-        self._hyperparameters[REQUIREMENTS_PARAM_NAME] = self.requirements
         self._hyperparameters[CLOUDWATCH_METRICS_PARAM_NAME] = self.enable_cloudwatch_metrics
         self._hyperparameters[CONTAINER_LOG_LEVEL_PARAM_NAME] = self.container_log_level
         self._hyperparameters[JOB_NAME_PARAM_NAME] = self._current_job_name

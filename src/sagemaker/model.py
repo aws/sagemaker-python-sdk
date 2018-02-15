@@ -95,7 +95,6 @@ class Model(object):
 
 
 SCRIPT_PARAM_NAME = 'sagemaker_program'
-REQUIREMENTS_PARAM_NAME = 'sagemaker_requirements'
 DIR_PARAM_NAME = 'sagemaker_submit_directory'
 CLOUDWATCH_METRICS_PARAM_NAME = 'sagemaker_enable_cloudwatch_metrics'
 CONTAINER_LOG_LEVEL_PARAM_NAME = 'sagemaker_container_log_level'
@@ -110,9 +109,9 @@ class FrameworkModel(Model):
     This class hosts user-defined code in S3 and sets code location and configuration in model environment variables.
     """
 
-    def __init__(self, model_data, image, role, entry_point, requirements='', source_dir=None, predictor_cls=None,
-                 env=None, name=None, enable_cloudwatch_metrics=False, container_log_level=logging.INFO,
-                 code_location=None, sagemaker_session=None):
+    def __init__(self, model_data, image, role, entry_point, source_dir=None, predictor_cls=None, env=None, name=None,
+                 enable_cloudwatch_metrics=False, container_log_level=logging.INFO, code_location=None,
+                 sagemaker_session=None):
         """Initialize a ``FrameworkModel``.
 
         Args:
@@ -124,8 +123,6 @@ class FrameworkModel(Model):
             source_dir (str): Path (absolute or relative) to a directory with any other training
                 source code dependencies aside from tne entry point file (default: None). Structure within this
                 directory will be preserved when training on SageMaker.
-            requirements (str): Path to a ``requirements.txt`` file (default: None). The path should be relative to
-                ``source_dir``.
             predictor_cls (callable[string, sagemaker.session.Session]): A function to call to create
                a predictor (default: None). If not None, ``deploy`` will return the result of invoking
                this function on the created endpoint name.
@@ -144,7 +141,6 @@ class FrameworkModel(Model):
         super(FrameworkModel, self).__init__(model_data, image, role, predictor_cls=predictor_cls, env=env, name=name,
                                              sagemaker_session=sagemaker_session)
         self.entry_point = entry_point
-        self.requirements = requirements
         self.source_dir = source_dir
         self.enable_cloudwatch_metrics = enable_cloudwatch_metrics
         self.container_log_level = container_log_level
@@ -178,7 +174,6 @@ class FrameworkModel(Model):
 
     def _framework_env_vars(self):
         return {SCRIPT_PARAM_NAME.upper(): self.uploaded_code.script_name,
-                REQUIREMENTS_PARAM_NAME.upper(): self.requirements,
                 DIR_PARAM_NAME.upper(): self.uploaded_code.s3_prefix,
                 CLOUDWATCH_METRICS_PARAM_NAME.upper(): str(self.enable_cloudwatch_metrics).lower(),
                 CONTAINER_LOG_LEVEL_PARAM_NAME.upper(): str(self.container_log_level),

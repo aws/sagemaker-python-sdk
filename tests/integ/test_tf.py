@@ -88,7 +88,7 @@ def test_tf_with_requirements(sagemaker_session):
 
         estimator = TensorFlow(entry_point='iris-dnn-classifier-with-requirements.py',
                                source_dir=source_dir,
-                               requirements='requirements.txt',
+                               requirements_file='requirements.txt',
                                role='SageMakerRole',
                                training_steps=1,
                                evaluation_steps=1,

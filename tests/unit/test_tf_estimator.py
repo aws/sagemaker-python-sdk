@@ -25,6 +25,7 @@ from sagemaker.tensorflow import TensorFlowPredictor, TensorFlowModel
 
 DATA_DIR = os.path.join(os.path.dirname(__file__), '..', 'data')
 SCRIPT_PATH = os.path.join(DATA_DIR, 'dummy_script.py')
+REQUIREMENTS_FILE = 'requirements.txt'
 TIMESTAMP = '2017-11-06-14:14:15.673'
 TIME = 1510006209.073025
 BUCKET_NAME = 'mybucket'
@@ -71,7 +72,8 @@ CREATE_TRAIN_JOB = {'image': FULL_CPU_IMAGE_URI,
                         'sagemaker_container_log_level': str(logging.INFO),
                         'sagemaker_job_name': json.dumps(JOB_NAME),
                         'checkpoint_path': json.dumps('s3://{}/{}/checkpoints'.format(BUCKET_NAME, JOB_NAME)),
-                        'sagemaker_region': '"us-west-2"'
+                        'sagemaker_region': '"us-west-2"',
+                        'sagemaker_requirements': '"{}"'.format(REQUIREMENTS_FILE),
                     },
                     'stop_condition': {
                         'MaxRuntimeInSeconds': 24 * 60 * 60
@@ -93,6 +95,7 @@ def sagemaker_session():
 def _build_tf(sagemaker_session, train_instance_type=None, checkpoint_path=None, enable_cloudwatch_metrics=False,
               base_job_name=None, training_steps=None, evalutation_steps=None, **kwargs):
     return TensorFlow(entry_point=SCRIPT_PATH,
+                      requirements_file=REQUIREMENTS_FILE,
                       training_steps=training_steps,
                       evaluation_steps=evalutation_steps,
                       role=ROLE,
@@ -152,7 +155,8 @@ def test_tf_deploy_model_server_workers_unset(sagemaker_session):
 @patch('time.time', return_value=TIME)
 def test_tf(time, strftime, sagemaker_session):
     tf = TensorFlow(entry_point=SCRIPT_PATH, role=ROLE, sagemaker_session=sagemaker_session, training_steps=1000,
-                    evaluation_steps=10, train_instance_count=INSTANCE_COUNT, train_instance_type=INSTANCE_TYPE)
+                    evaluation_steps=10, train_instance_count=INSTANCE_COUNT, train_instance_type=INSTANCE_TYPE,
+                    requirements_file=REQUIREMENTS_FILE)
 
     inputs = 's3://mybucket/train'
 
@@ -174,6 +178,7 @@ def test_tf(time, strftime, sagemaker_session):
     assert {'Environment':
             {'SAGEMAKER_SUBMIT_DIRECTORY': 's3://{}/{}/sourcedir.tar.gz'.format(BUCKET_NAME, JOB_NAME),
              'SAGEMAKER_PROGRAM': 'dummy_script.py',
+             'SAGEMAKER_REQUIREMENTS': 'requirements.txt',
              'SAGEMAKER_ENABLE_CLOUDWATCH_METRICS': 'false',
              'SAGEMAKER_REGION': 'us-west-2',
              'SAGEMAKER_CONTAINER_LOG_LEVEL': '20'
