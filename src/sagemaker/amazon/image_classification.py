@@ -22,7 +22,7 @@ from sagemaker.session import Session
 class ImageClassification(AmazonS3AlgorithmEstimatorBase):
     repo = 'image-classification:latest'
 
-    num_classes = hp('num_classes', (gt(1), isint), 'num_classes should be an integer greater-than 1')
+    num_classes = hp('num_classes', (gt(1)), 'num_classes should be an integer greater-than 1', int)
     num_training_samples = hp('num_training_samples', (gt(1)),
                               'num_training_samples should be an integer greater-than 1', int)
     use_pretrained_model = hp('use_pretrained_model', (isin(0, 1), ),
@@ -31,12 +31,12 @@ class ImageClassification(AmazonS3AlgorithmEstimatorBase):
                               'checkpoint_frequency should be an integer greater-than 1', int)
     num_layers = hp('num_layers', (isin(18, 34, 50, 101, 152, 200, 20, 32, 44, 56, 110), ),
                     'num_layers should be in the set [18, 34, 50, 101, 152, 200, 20, 32, 44, 56, 110]', int)
-    resize = hp('resize', (gt(1), isint), 'resize should be an integer greater-than 1')
-    epochs = hp('epochs', (ge(1), isint), 'epochs should be an integer greater-than 1')
+    resize = hp('resize', (gt(1)), 'resize should be an integer greater-than 1', int)
+    epochs = hp('epochs', (ge(1)), 'epochs should be an integer greater-than 1', int)
     learning_rate = hp('learning_rate', (gt(0)), 'learning_rate shoudl be a floating point greater than 0')
     lr_scheduler_factor = hp('lr_scheduler_factor', (gt(0)),
                              'lr_schedule_factor should be a floating point greater than 0')
-    lr_scheduler_step = hp('lr_scheduler_step', (isstr), 'lr_scheduler_step should be a string input.')
+    lr_scheduler_step = hp('lr_scheduler_step', (), 'lr_scheduler_step should be a string input.', str)
     optimizer = hp('optimizer', (isin('sgd', 'adam', 'rmsprop', 'nag')),
                    'Should be one optimizer among the list sgd, adam, rmsprop, or nag.')
     momentum = hp('momentum', (ge(0), le(1)), 'momentum is expected in the range 0, 1')
@@ -46,10 +46,10 @@ class ImageClassification(AmazonS3AlgorithmEstimatorBase):
     eps = hp('eps', (gt(0), le(1)), 'eps should be in the range 0, 1')
     gamma = hp('gamma', (ge(0), le(1)), 'gamma should be in the range 0, 1')
     mini_batch_size = hp('mini_batch_size', (gt(0)), 'mini_batch_size should be an integer greater than 0')
-    image_shape = hp('image_shape', (isstr), 'image_shape is expected to be a string')
+    image_shape = hp('image_shape', (), 'image_shape is expected to be a string', str)
     augmentation_type = hp('beta_1', (isin('crop', 'crop_color', 'crop_color_transform')),
                            'beta_1 must be from one option offered')
-    top_k = hp('top_k', (ge(1), isint), 'top_k should be greater than or equal to 1')
+    top_k = hp('top_k', (ge(1)), 'top_k should be greater than or equal to 1', int)
     kv_store = hp('kv_store', (isin('dist_sync', 'dist_async')), 'Can be dist_sync or dist_async')
 
     def __init__(self, role, train_instance_count, train_instance_type, num_classes, num_training_samples, resize=None,
@@ -59,19 +59,21 @@ class ImageClassification(AmazonS3AlgorithmEstimatorBase):
                  beta_2=0.999, eps=1e-8, gamma=0.9, mini_batch_size=32, image_shape='3,224,224',
                  augmentation_type=None, top_k=None, kv_store=None, **kwargs):
         """
-        An Image classification algorithm :class:`~sagemaker.amazon.AmazonAlgorithmEstimatorBase`. Learns a classifier model that 
+        An Image classification algorithm :class:`~sagemaker.amazon.AmazonAlgorithmEstimatorBase`. Learns a classifier
+        model that
 
         This Estimator may be fit via calls to
         :meth:`~sagemaker.amazon.amazon_estimator.AmazonS3AlgorithmEstimatorBase.fit`
 
         After this Estimator is fit, model data is stored in S3. The model may be deployed to an Amazon SageMaker
         Endpoint by invoking :meth:`~sagemaker.amazon.estimator.EstimatorBase.deploy`. As well as deploying an Endpoint,
-        ``deploy`` returns a :class:`~sagemaker.amazon.kmeans.ImageClassificationPredictor` object that can be used to label
-        assignment, using the trained model hosted in the SageMaker Endpoint.
+        ``deploy`` returns a :class:`~sagemaker.amazon.kmeans.ImageClassificationPredictor` object that can be used to
+        label assignment, using the trained model hosted in the SageMaker Endpoint.
 
         ImageClassification Estimators can be configured by setting hyperparameters. The available hyperparameters for
-        ImageClassification are documented below. For further information on the AWS ImageClassification algorithm, please consult AWS technical
-        documentation: https://docs.aws.amazon.com/sagemaker/latest/dg/IC-Hyperparameter.html
+        ImageClassification are documented below. For further information on the AWS ImageClassification algorithm,
+        please consult AWS technical documentation:
+        https://docs.aws.amazon.com/sagemaker/latest/dg/IC-Hyperparameter.html
 
         Args:
             role (str): An AWS IAM role (either name or full ARN). The Amazon SageMaker training jobs and
@@ -103,50 +105,69 @@ class ImageClassification(AmazonS3AlgorithmEstimatorBase):
             resize (int): Resize the image before using it for training. The images are resized so that the shortest
                           side is of this parameter. If the parameter is not set, then the training data is used as such
                           without resizing.
-                          Note: This option is available only for inputs specified as application/x-image content-type in
-                          training and validation channels.
+                          Note: This option is available only for inputs specified as application/x-image content-type
+                          in training and validation channels.
             epochs (int): Number of training epochs. Default value: 30
             learning_rate (float): Initial learning rate. Float. Range in [0, 1]. Default value: 0.1
-            lr_scheduler_factor (flaot): The ratio to reduce learning rate used in conjunction with the `lr_scheduler_step` parameter, 
-                                defined as `lr_new=lr_old * lr_scheduler_factor`. Valid values: Float. Range in [0, 1]. Default value: 0.1
-            lr_scheduler_step (str): The epochs at which to reduce the learning rate. As explained in the ``lr_scheduler_factor`` parameter, the 
-                                learning rate is reduced by ``lr_scheduler_factor`` at these epochs. For example, if the value is set 
-                                to "10, 20", then the learning rate is reduced by ``lr_scheduler_factor`` after 10th epoch and again by 
-                                ``lr_scheduler_factor`` after 20th epoch. The epochs are delimited by ",".
-            optimizer (str): The optimizer types. For more details of the parameters for the optimizers, please refer to MXNet's API. 
-                             Valid values: One of sgd, adam, rmsprop, or nag. Default value: `sgd`.
-            momentum (float): The momentum for sgd and nag, ignored for other optimizers. Valid values: Float. Range in [0, 1]. Default value: 0
-            weight_decay (float): The coefficient weight decay for sgd and nag, ignored for other optimizers. Range in [0, 1]. Default value: 0.0001
-            beta_1 (float): The beta1 for adam, in other words, exponential decay rate for the first moment estimates. Range in [0, 1]. Default value: 0.9
-            beta_2 (float): The beta2 for adam, in other words, exponential decay rate for the second moment estimates. Range in [0, 1]. Default value: 0.999
-            eps	(float): The epsilon for adam and rmsprop. It is usually set to a small value to avoid division by 0. Range in [0, 1]. Default value: 1e-8 
-            gamma (float): The gamma for rmsprop. A decay factor of moving average of the squared gradient. Range in [0, 1]. Default value: 0.9
-            mini_batch_size	(int): The batch size for training. In a single-machine multi-GPU setting, each GPU handles mini_batch_size/num_gpu 
-                                training samples. For the multi-machine training in dist_sync mode, the actual batch size is mini_batch_size*number 
-                                of machines. See MXNet docs for more details. Default value: 32
+            lr_scheduler_factor (flaot): The ratio to reduce learning rate used in conjunction with the
+                                `lr_scheduler_step` parameter, defined as `lr_new=lr_old * lr_scheduler_factor`.
+                                Valid values: Float. Range in [0, 1]. Default value: 0.1
+            lr_scheduler_step (str): The epochs at which to reduce the learning rate. As explained in the
+                                ``lr_scheduler_factor`` parameter, the learning rate is reduced by
+                                ``lr_scheduler_factor`` at these epochs. For example, if the value is set
+                                to "10, 20", then the learning rate is reduced by ``lr_scheduler_factor`` after 10th
+                                epoch and again by ``lr_scheduler_factor`` after 20th epoch. The epochs are delimited
+                                by ",".
+            optimizer (str): The optimizer types. For more details of the parameters for the optimizers, please refer to
+                             MXNet's API. Valid values: One of sgd, adam, rmsprop, or nag. Default value: `sgd`.
+            momentum (float): The momentum for sgd and nag, ignored for other optimizers. Valid values: Float. Range in
+                              [0, 1]. Default value: 0
+            weight_decay (float): The coefficient weight decay for sgd and nag, ignored for other optimizers.
+                                  Range in [0, 1]. Default value: 0.0001
+            beta_1 (float): The beta1 for adam, in other words, exponential decay rate for the first moment estimates.
+                            Range in [0, 1]. Default value: 0.9
+            beta_2 (float): The beta2 for adam, in other words, exponential decay rate for the second moment estimates.
+                            Range in [0, 1]. Default value: 0.999
+            eps	(float): The epsilon for adam and rmsprop. It is usually set to a small value to avoid division by 0.
+                         Range in [0, 1]. Default value: 1e-8
+            gamma (float): The gamma for rmsprop. A decay factor of moving average of the squared gradient.
+                           Range in [0, 1]. Default value: 0.9
+            mini_batch_size	(int): The batch size for training. In a single-machine multi-GPU setting, each GPU handles
+                                   mini_batch_size/num_gpu training samples. For the multi-machine training in
+                                   dist_sync mode, the actual batch size is mini_batch_size*number of machines.
+                                   See MXNet docs for more details. Default value: 32
             image_shape	(str): The input image dimensions, which is the same size as the input layer of the network. 
-                                The format is defined as 'num_channels, height, width'. The image dimension can take on any value as the 
-                                network can handle varied dimensions of the input. However, there may be memory constraints if a larger image 
-                                dimension is used. Typical image dimensions for image classification are '3, 224, 224'. This is similar to the ImageNet dataset.
+                                The format is defined as 'num_channels, height, width'. The image dimension can take on
+                                any value as the network can handle varied dimensions of the input. However, there may
+                                be memory constraints if a larger image dimension is used. Typical image dimensions for
+                                image classification are '3, 224, 224'. This is similar to the ImageNet dataset.
                                 Default value: ‘3, 224, 224’
-            augmentation_type: (str): Data augmentation type. The input images can be augmented in multiple ways as specified below.
+            augmentation_type: (str): Data augmentation type. The input images can be augmented in multiple ways as
+                                      specified below.
                                 'crop' - Randomly crop the image and flip the image horizontally
-                                'crop_color' - In addition to ‘crop’, three random values in the range [-36, 36], [-50, 50], and [-50, 50] 
-                                            are added to the corresponding Hue-Saturation-Lightness channels respectively
-                                'crop_color_transform': In addition to crop_color, random transformations, including rotation, 
-                                            shear, and aspect ratio variations are applied to the image. The maximum angle of rotation 
-                                            is 10 degrees, the maximum shear ratio is 0.1, and the maximum aspect changing ratio is 0.25.
+                                'crop_color' - In addition to ‘crop’, three random values in the range [-36, 36],
+                                            [-50, 50], and [-50, 50]
+                                            are added to the corresponding Hue-Saturation-Lightness channels resptly.
+                                'crop_color_transform': In addition to crop_color, random transformations, including
+                                            rotation, shear, and aspect ratio variations are applied to the image.
+                                            The maximum angle of rotation is 10 degrees, the maximum shear ratio is 0.1,
+                                             and the maximum aspect changing ratio is 0.25.
             top_k (int): Report the top-k accuracy during training. This parameter has to be greater than 1, 
-                            since the top-1 training accuracy is the same as the regular training accuracy that has already been reported.
-            kv_store (str): Weight update synchronization mode during distributed training. The weight updates can be updated either synchronously 
-                                or asynchronously across machines. Synchronous updates typically provide better accuracy than asynchronous 
-                                updates but can be slower. See distributed training in MXNet for more details. This parameter is not applicable 
+                            since the top-1 training accuracy is the same as the regular training accuracy that has
+                            already been reported.
+            kv_store (str): Weight update synchronization mode during distributed training. The weight updates can be
+                                updated either synchronously  or asynchronously across machines. Synchronous updates
+                                typically provide better accuracy than asynchronous updates but can be slower.
+                                See distributed training in MXNet for more details. This parameter is not applicable
                                 to single machine training.
-                                'dist_sync' -  The gradients are synchronized after every batch with all the workers. With dist_sync,
-                                         batch-size now means the batch size used on each machine. So if there are n machines and we use 
+                                'dist_sync' -  The gradients are synchronized after every batch with all the workers.
+                                                With dist_sync,
+                                         batch-size now means the batch size used on each machine. So if there are n
+                                         machines and we use
                                          batch size b, then dist_sync behaves like local with batch size n*b
-                                'dist_async'- Performs asynchronous updates. The weights are updated whenever gradients are received from any
-                                         machine and the weight updates are atomic. However, the order is not guaranteed.                    
+                                'dist_async'- Performs asynchronous updates. The weights are updated whenever gradients
+                                         are received from any machine and the weight updates are atomic. However, the
+                                         order is not guaranteed.
             **kwargs: base class keyword argument values.
         """
         super(ImageClassification, self).__init__(role, train_instance_count, train_instance_type,

@@ -217,8 +217,9 @@ class AmazonS3AlgorithmEstimatorBase(EstimatorBase):
         return S3Set(s3_loc, content_type=content_type, channel=channel)
 
 
-class S3Set (object):
-    def __init__(self, s3_location, content_type = None, s3_data_type='S3Prefix', distribution = 'FullyReplicated', channel='train'):
+class S3Set(object):
+    def __init__(self, s3_location, content_type=None, s3_data_type='S3Prefix', distribution='FullyReplicated',
+                 channel='train'):
         """A collection of Amazon :class:~`Record` objects serialized and stored in S3.
 
         Args:
@@ -243,8 +244,7 @@ class S3Set (object):
 
 
 class RecordSet(object):
-
-    def __init__(self, s3_data, num_records = None, feature_dim = None, s3_data_type='ManifestFile', channel='train'):
+    def __init__(self, s3_data, num_records=None, feature_dim=None, s3_data_type='ManifestFile', channel='train'):
         """A collection of Amazon :class:~`Record` objects serialized and stored in S3.
 
         Args:
