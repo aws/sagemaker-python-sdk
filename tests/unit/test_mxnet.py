@@ -201,9 +201,3 @@ def test_attach_wrong_framework(sagemaker_session):
     with pytest.raises(ValueError) as error:
         MXNet.attach(training_job_name='neo', sagemaker_session=sagemaker_session)
     assert "didn't use image for requested framework" in str(error)
-
-
-def test_attach_no_job_name(sagemaker_session):
-    with pytest.raises(ValueError) as error:
-        MXNet.attach(training_job_name=None, sagemaker_session=sagemaker_session)
-    assert "must specify training_job name" in str(error)

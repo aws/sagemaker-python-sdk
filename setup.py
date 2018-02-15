@@ -1,8 +1,9 @@
 import os
-from setuptools import setup, find_packages
 from glob import glob
 from os.path import basename
 from os.path import splitext
+
+from setuptools import setup, find_packages
 
 
 def read(fname):
@@ -10,7 +11,7 @@ def read(fname):
 
 
 setup(name="sagemaker",
-      version="1.0.2",
+      version="1.0.3",
       description="Open source library for training and deploying models on Amazon SageMaker.",
       packages=find_packages('src'),
       package_dir={'': 'src'},
@@ -36,4 +37,8 @@ setup(name="sagemaker",
       extras_require={
           'test': ['tox', 'flake8', 'pytest', 'pytest-cov', 'pytest-xdist',
                    'mock', 'tensorflow>=1.3.0', 'contextlib2']},
+
+      entry_points={
+          'console_scripts': ['sagemaker=sagemaker.cli.main:main'],
+      }
       )

@@ -16,6 +16,7 @@ import sys
 
 import boto3
 import os
+import time
 
 import sagemaker
 from sagemaker import KMeans, KMeansModel
@@ -53,6 +54,52 @@ def test_kmeans():
     endpoint_name = name_from_base('kmeans')
     with timeout_and_delete_endpoint_by_name(endpoint_name, sagemaker_session, minutes=20):
         model = KMeansModel(kmeans.model_data, role='SageMakerRole', sagemaker_session=sagemaker_session)
+        predictor = model.deploy(1, 'ml.c4.xlarge', endpoint_name=endpoint_name)
+        result = predictor.predict(train_set[0][:10])
+
+        assert len(result) == 10
+        for record in result:
+            assert record.label["closest_cluster"] is not None
+            assert record.label["distance_to_cluster"] is not None
+
+
+def test_async_kmeans():
+
+    training_job_name = ""
+    endpoint_name = name_from_base('kmeans')
+
+    with timeout(minutes=5):
+        sagemaker_session = sagemaker.Session(boto_session=boto3.Session(region_name=REGION))
+        data_path = os.path.join(DATA_DIR, 'one_p_mnist', 'mnist.pkl.gz')
+        pickle_args = {} if sys.version_info.major == 2 else {'encoding': 'latin1'}
+
+        # Load the data into memory as numpy arrays
+        with gzip.open(data_path, 'rb') as f:
+            train_set, _, _ = pickle.load(f, **pickle_args)
+
+        kmeans = KMeans(role='SageMakerRole', train_instance_count=1,
+                        train_instance_type='ml.c4.xlarge',
+                        k=10, sagemaker_session=sagemaker_session, base_job_name='test-kmeans')
+
+        kmeans.init_method = 'random'
+        kmeans.max_iterators = 1
+        kmeans.tol = 1
+        kmeans.num_trials = 1
+        kmeans.local_init_method = 'kmeans++'
+        kmeans.half_life_time_size = 1
+        kmeans.epochs = 1
+        kmeans.center_factor = 1
+
+        kmeans.fit(kmeans.record_set(train_set[0][:100]), wait=False)
+        training_job_name = kmeans.latest_training_job.name
+
+        print("Detached from training job. Will re-attach in 20 seconds")
+        time.sleep(20)
+        print("attaching now...")
+
+    with timeout_and_delete_endpoint_by_name(endpoint_name, sagemaker_session, minutes=35):
+        estimator = KMeans.attach(training_job_name=training_job_name, sagemaker_session=sagemaker_session)
+        model = KMeansModel(estimator.model_data, role='SageMakerRole', sagemaker_session=sagemaker_session)
         predictor = model.deploy(1, 'ml.c4.xlarge', endpoint_name=endpoint_name)
         result = predictor.predict(train_set[0][:10])
 

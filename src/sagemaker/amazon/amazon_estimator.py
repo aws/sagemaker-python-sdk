@@ -28,8 +28,8 @@ class AmazonAlgorithmEstimatorBase(EstimatorBase):
     """Base class for Amazon first-party Estimator implementations. This class isn't intended
     to be instantiated directly."""
 
-    feature_dim = hp('feature_dim', (validation.isint, validation.gt(0)))
-    mini_batch_size = hp('mini_batch_size', (validation.isint, validation.gt(0)))
+    feature_dim = hp('feature_dim', validation.gt(0), data_type=int)
+    mini_batch_size = hp('mini_batch_size', validation.gt(0), data_type=int)
 
     def __init__(self, role, train_instance_count, train_instance_type, data_location=None, **kwargs):
         """Initialize an AmazonAlgorithmEstimatorBase.
@@ -47,7 +47,8 @@ class AmazonAlgorithmEstimatorBase(EstimatorBase):
         self.data_location = data_location
 
     def train_image(self):
-        return registry(self.sagemaker_session.boto_region_name) + "/" + type(self).repo
+        repo = '{}:{}'.format(type(self).repo_name, type(self).repo_version)
+        return '{}/{}'.format(registry(self.sagemaker_session.boto_region_name, type(self).repo_name), repo)
 
     def hyperparameters(self):
         return hp.serialize_all(self)
@@ -63,6 +64,31 @@ class AmazonAlgorithmEstimatorBase(EstimatorBase):
         if data_location[-1] != '/':
             data_location = data_location + '/'
         self._data_location = data_location
+
+    @classmethod
+    def _prepare_init_params_from_job_description(cls, job_details):
+        """Convert the job description to init params that can be handled by the class constructor
+
+        Args:
+            job_details: the returned job details from a describe_training_job API call.
+
+        Returns:
+             dictionary: The transformed init_params
+
+        """
+        init_params = super(AmazonAlgorithmEstimatorBase, cls)._prepare_init_params_from_job_description(job_details)
+
+        # The hyperparam names may not be the same as the class attribute that holds them,
+        # for instance: local_lloyd_init_method is called local_init_method. We need to map these
+        # and pass the correct name to the constructor.
+        for attribute, value in cls.__dict__.items():
+            if isinstance(value, hp):
+                if value.name in init_params['hyperparameters']:
+                    init_params[attribute] = init_params['hyperparameters'][value.name]
+
+        del init_params['hyperparameters']
+        del init_params['image']
+        return init_params
 
     def fit(self, records, mini_batch_size=None, **kwargs):
         """Fit this Estimator on serialized Record objects, stored in S3.
@@ -131,9 +157,6 @@ class AmazonS3AlgorithmEstimatorBase(EstimatorBase):
     """Base class for Amazon first-party Estimator implementations. This class isn't
     intended to be instantiated directly. This is difference from the base class
     because this class handles S3 data"""
-
-    """Base class for Amazon first-party Estimator implementations. This class isn't intended
-    to be instantiated directly."""
 
     mini_batch_size = hp('mini_batch_size', (validation.isint, validation.gt(0)))
 
