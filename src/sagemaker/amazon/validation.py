@@ -34,6 +34,12 @@ def le(maximum):
         return value <= maximum
     return validate
 
+def le(maximum):
+    def validate(value):
+        return value <= maximum
+    return validate
+
+
 def isin(*expected):
     def validate(value):
         return value in expected
