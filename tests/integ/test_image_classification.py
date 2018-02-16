@@ -21,6 +21,7 @@ from tests.integ import REGION
 from tests.integ.timeout import timeout, timeout_and_delete_endpoint_by_name
 from six.moves.urllib.request import urlretrieve
 
+
 def download(url):
     filename = url.split("/")[-1]
     if not os.path.exists(filename):
