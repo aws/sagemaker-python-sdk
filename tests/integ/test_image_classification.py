@@ -19,13 +19,12 @@ from sagemaker import ImageClassification, ImageClassificationModel
 from sagemaker.utils import name_from_base
 from tests.integ import REGION
 from tests.integ.timeout import timeout, timeout_and_delete_endpoint_by_name
-import urllib
-
+from six.moves.urllib.request import urlretrieve
 
 def download(url):
     filename = url.split("/")[-1]
     if not os.path.exists(filename):
-        urllib.request.urlretrieve(url, filename)
+        urlretrieve(url, filename)
 
 
 def upload_to_s3(channel, file, bucket):
