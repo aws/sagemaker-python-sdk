@@ -14,7 +14,6 @@ import sagemaker
 from sagemaker.estimator import Framework
 from sagemaker.fw_utils import create_image_uri, framework_name_from_image
 from sagemaker.mxnet.model import MXNetModel
-from sagemaker.session import Session
 
 
 class MXNet(Framework):
@@ -83,42 +82,23 @@ class MXNet(Framework):
                           sagemaker_session=self.sagemaker_session)
 
     @classmethod
-    def attach(cls, training_job_name, sagemaker_session=None):
-        """Attach to an existing training job.
-
-        Create an ``Estimator`` bound to an existing training job. After attaching, if
-        the training job is in a Complete status, it can be ``deploy``ed to create
-        a SageMaker ``Endpoint`` and return a ``Predictor``.
-
-        If the training job is in progress, attach will block and display log messages
-        from the training job, until the training job completes.
+    def _prepare_init_params_from_job_description(cls, job_details):
+        """Convert the job description to init params that can be handled by the class constructor
 
         Args:
-            training_job_name (str): The name of the training job to attach to.
-            sagemaker_session (sagemaker.session.Session): Session object which manages interactions with
-                Amazon SageMaker APIs and any other AWS services needed. If not specified, the estimator creates one
-                using the default AWS configuration chain.
+            job_details: the returned job details from a describe_training_job API call.
 
         Returns:
-            sagemaker.mxnet.estimator.MXNet: ``Estimator`` with the attached training job.
+             dictionary: The transformed init_params
 
-        Raises:
-            ValueError: If `training_job_name` is None or the image name does not match the framework.
         """
-        sagemaker_session = sagemaker_session or Session()
+        init_params = super(MXNet, cls)._prepare_init_params_from_job_description(job_details)
+        framework, py_version = framework_name_from_image(init_params.pop('image'))
 
-        if training_job_name is None:
-            raise ValueError("must specify training_job name")
-
-        job_details = sagemaker_session.sagemaker_client.describe_training_job(TrainingJobName=training_job_name)
-        init_params, hp, image = cls._prepare_estimator_params_from_job_description(job_details)
-
-        init_params.update({'hyperparameters': hp})
-
-        framework, py_version = framework_name_from_image(image)
-        init_params.update({'py_version': py_version})
+        init_params['py_version'] = py_version
+        training_job_name = init_params['base_job_name']
 
         if framework != cls.__framework_name__:
             raise ValueError("Training job: {} didn't use image for requested framework".format(training_job_name))
 
-        return super(MXNet, cls).attach(training_job_name=None, sagemaker_session=sagemaker_session, **init_params)
+        return init_params

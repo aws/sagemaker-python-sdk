@@ -28,10 +28,8 @@ class AmazonAlgorithmEstimatorBase(EstimatorBase):
     """Base class for Amazon first-party Estimator implementations. This class isn't intended
     to be instantiated directly."""
 
-    MAX_DEFAULT_BATCH_SIZE = 500
-
-    feature_dim = hp('feature_dim', (validation.isint, validation.gt(0)))
-    mini_batch_size = hp('mini_batch_size', (validation.isint, validation.gt(0)))
+    feature_dim = hp('feature_dim', validation.gt(0), data_type=int)
+    mini_batch_size = hp('mini_batch_size', validation.gt(0), data_type=int)
 
     def __init__(self, role, train_instance_count, train_instance_type, data_location=None, **kwargs):
         """Initialize an AmazonAlgorithmEstimatorBase.
@@ -49,7 +47,8 @@ class AmazonAlgorithmEstimatorBase(EstimatorBase):
         self.data_location = data_location
 
     def train_image(self):
-        return registry(self.sagemaker_session.boto_region_name) + "/" + type(self).repo
+        repo = '{}:{}'.format(type(self).repo_name, type(self).repo_version)
+        return '{}/{}'.format(registry(self.sagemaker_session.boto_region_name, type(self).repo_name), repo)
 
     def hyperparameters(self):
         return hp.serialize_all(self)
@@ -65,6 +64,31 @@ class AmazonAlgorithmEstimatorBase(EstimatorBase):
         if data_location[-1] != '/':
             data_location = data_location + '/'
         self._data_location = data_location
+
+    @classmethod
+    def _prepare_init_params_from_job_description(cls, job_details):
+        """Convert the job description to init params that can be handled by the class constructor
+
+        Args:
+            job_details: the returned job details from a describe_training_job API call.
+
+        Returns:
+             dictionary: The transformed init_params
+
+        """
+        init_params = super(AmazonAlgorithmEstimatorBase, cls)._prepare_init_params_from_job_description(job_details)
+
+        # The hyperparam names may not be the same as the class attribute that holds them,
+        # for instance: local_lloyd_init_method is called local_init_method. We need to map these
+        # and pass the correct name to the constructor.
+        for attribute, value in cls.__dict__.items():
+            if isinstance(value, hp):
+                if value.name in init_params['hyperparameters']:
+                    init_params[attribute] = init_params['hyperparameters'][value.name]
+
+        del init_params['hyperparameters']
+        del init_params['image']
+        return init_params
 
     def fit(self, records, mini_batch_size=None, **kwargs):
         """Fit this Estimator on serialized Record objects, stored in S3.
@@ -87,10 +111,9 @@ class AmazonAlgorithmEstimatorBase(EstimatorBase):
             mini_batch_size (int or None): The size of each mini-batch to use when training. If None, a
                 default value will be used.
         """
-        default_mini_batch_size = min(self.MAX_DEFAULT_BATCH_SIZE,
-                                      max(1, int(records.num_records / self.train_instance_count)))
-        self.mini_batch_size = mini_batch_size or default_mini_batch_size
         self.feature_dim = records.feature_dim
+        self.mini_batch_size = mini_batch_size
+
         data = {records.channel: s3_input(records.s3_data, distribution='ShardedByS3Key',
                                           s3_data_type=records.s3_data_type)}
         super(AmazonAlgorithmEstimatorBase, self).fit(data, **kwargs)
@@ -203,12 +226,22 @@ def upload_numpy_to_s3_shards(num_shards, s3, bucket, key_prefix, array, labels=
             raise ex
 
 
-def registry(region_name):
+def registry(region_name, algorithm=None):
     """Return docker registry for the given AWS region"""
-    account_id = {
-        "us-east-1": "382416733822",
-        "us-east-2": "404615174143",
-        "us-west-2": "174872318107",
-        "eu-west-1": "438346466558"
-    }[region_name]
+    if algorithm in [None, "pca", "kmeans", "linear-learner", "factorization-machines", "ntm"]:
+        account_id = {
+            "us-east-1": "382416733822",
+            "us-east-2": "404615174143",
+            "us-west-2": "174872318107",
+            "eu-west-1": "438346466558"
+        }[region_name]
+    elif algorithm in ["lda"]:
+        account_id = {
+            "us-east-1": "766337827248",
+            "us-east-2": "999911452149",
+            "us-west-2": "266724342769",
+            "eu-west-1": "999678624901"
+        }[region_name]
+    else:
+        raise ValueError("Algorithm class:{} doesn't have mapping to account_id with images".format(algorithm))
     return "{}.dkr.ecr.{}.amazonaws.com".format(account_id, region_name)
