@@ -180,9 +180,9 @@ COMPLETED_DESCRIBE_JOB_RESULT.update(
     }})
 # TrainingStartTime and TrainingEndTime are for billable seconds calculation
 COMPLETED_DESCRIBE_JOB_RESULT.update(
-    {'TrainingStartTime': datetime.datetime(2018, 2, 17, 7, 15, 0, 103000, tzinfo=tzlocal())})
+    {'TrainingStartTime': datetime.datetime(2018, 2, 17, 7, 15, 0, 103000)})
 COMPLETED_DESCRIBE_JOB_RESULT.update(
-    {'TrainingEndTime': datetime.datetime(2018, 2, 17, 7, 19, 34, 953000, tzinfo=tzlocal())})
+    {'TrainingEndTime': datetime.datetime(2018, 2, 17, 7, 19, 34, 953000)})
 IN_PROGRESS_DESCRIBE_JOB_RESULT = dict(DEFAULT_EXPECTED_TRAIN_JOB_ARGS)
 IN_PROGRESS_DESCRIBE_JOB_RESULT.update({'TrainingJobStatus': 'InProgress'})
 
