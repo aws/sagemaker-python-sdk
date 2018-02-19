@@ -117,8 +117,8 @@ class TensorFlow(Framework):
             checkpoint_path (str): Identifies S3 location where checkpoint data during model training can be
                 saved (default: None). For distributed model training, this parameter is required.
             py_version (str): Python version you want to use for executing your model training code (default: 'py2').
-            requirements_file (str): Path to a ``requirements.txt`` file (default: ''). The path should be relative to
-                ``source_dir``.
+            requirements_file (str): Path to a ``requirements.txt`` file (default: ''). The path should be within and
+                relative to ``source_dir``.
             **kwargs: Additional kwargs passed to the Framework constructor.
         """
         super(TensorFlow, self).__init__(**kwargs)
