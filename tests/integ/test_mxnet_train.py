@@ -19,6 +19,7 @@ import pytest
 from sagemaker import Session
 from sagemaker.mxnet.estimator import MXNet
 from sagemaker.mxnet.model import MXNetModel
+from sagemaker.utils import sagemaker_timestamp
 
 from tests.integ import DATA_DIR, REGION
 from tests.integ.timeout import timeout, timeout_and_delete_endpoint_by_name
@@ -49,7 +50,7 @@ def mxnet_training_job(sagemaker_session):
 
 
 def test_attach_deploy(mxnet_training_job, sagemaker_session):
-    endpoint_name = 'test-mxnet-attach-deploy-{}'.format(int(time.time()))
+    endpoint_name = 'test-mxnet-attach-deploy-{}'.format(sagemaker_timestamp())
 
     with timeout_and_delete_endpoint_by_name(endpoint_name, sagemaker_session, minutes=20):
         estimator = MXNet.attach(mxnet_training_job, sagemaker_session=sagemaker_session)
@@ -61,7 +62,7 @@ def test_attach_deploy(mxnet_training_job, sagemaker_session):
 def test_async_fit(sagemaker_session):
 
     training_job_name = ""
-    endpoint_name = 'test-mxnet-attach-deploy-{}'.format(int(time.time()))
+    endpoint_name = 'test-mxnet-attach-deploy-{}'.format(sagemaker_timestamp())
 
     with timeout(minutes=5):
         script_path = os.path.join(DATA_DIR, 'mxnet_mnist', 'mnist.py')
@@ -91,7 +92,7 @@ def test_async_fit(sagemaker_session):
 
 
 def test_deploy_model(mxnet_training_job, sagemaker_session):
-    endpoint_name = 'test-mxnet-deploy-model-{}'.format(int(time.time()))
+    endpoint_name = 'test-mxnet-deploy-model-{}'.format(sagemaker_timestamp())
 
     with timeout_and_delete_endpoint_by_name(endpoint_name, sagemaker_session, minutes=20):
         desc = sagemaker_session.sagemaker_client.describe_training_job(TrainingJobName=mxnet_training_job)
