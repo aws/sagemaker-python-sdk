@@ -66,7 +66,7 @@ def test_async_pca():
     endpoint_name = name_from_base('pca')
     sagemaker_session = sagemaker.Session(boto_session=boto3.Session(region_name=REGION))
 
-    with timeout(minutes=20):
+    with timeout(minutes=5):
 
         data_path = os.path.join(DATA_DIR, 'one_p_mnist', 'mnist.pkl.gz')
         pickle_args = {} if sys.version_info.major == 2 else {'encoding': 'latin1'}
@@ -88,7 +88,7 @@ def test_async_pca():
         print("Detached from training job. Will re-attach in 20 seconds")
         time.sleep(20)
 
-    with timeout_and_delete_endpoint_by_name(endpoint_name, sagemaker_session, minutes=20):
+    with timeout_and_delete_endpoint_by_name(endpoint_name, sagemaker_session, minutes=35):
         estimator = sagemaker.amazon.pca.PCA.attach(training_job_name=training_job_name,
                                                     sagemaker_session=sagemaker_session)
 

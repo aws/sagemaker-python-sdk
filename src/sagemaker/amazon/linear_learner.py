@@ -51,7 +51,7 @@ class LinearLearner(AmazonAlgorithmEstimatorBase):
     momentum = hp('momentum', (gt(0), lt(1)), 'A float in (0,1)', float)
     learning_rate = hp('learning_rate', (gt(0), lt(1)), 'A float in (0,1)', float)
     beta_1 = hp('beta_1', (gt(0), lt(1)), 'A float in (0,1)', float)
-    beta_2 = hp('beta_1', (gt(0), lt(1)), 'A float in (0,1)', float)
+    beta_2 = hp('beta_2', (gt(0), lt(1)), 'A float in (0,1)', float)
     bias_lr_mult = hp('bias_lr_mult', gt(0), 'A float greater-than 0', float)
     bias_wd_mult = hp('bias_wd_mult', gt(0), 'A float greater-than 0', float)
     use_lr_scheduler = hp('use_lr_scheduler', (), 'A boolean', bool)
@@ -62,7 +62,7 @@ class LinearLearner(AmazonAlgorithmEstimatorBase):
     normalize_label = hp('normalize_label', (), 'A boolean', bool)
     unbias_data = hp('unbias_data', (), 'A boolean', bool)
     unbias_label = hp('unbias_label', (), 'A boolean', bool)
-    num_point_for_scalar = hp('num_point_for_scalar', gt(0), 'An integer greater-than 0', int)
+    num_point_for_scaler = hp('num_point_for_scaler', gt(0), 'An integer greater-than 0', int)
 
     def __init__(self, role, train_instance_count, train_instance_type, predictor_type='binary_classifier',
                  binary_classifier_model_selection_criteria=None, target_recall=None, target_precision=None,
@@ -71,7 +71,7 @@ class LinearLearner(AmazonAlgorithmEstimatorBase):
                  optimizer=None, loss=None, wd=None, l1=None, momentum=None, learning_rate=None, beta_1=None,
                  beta_2=None, bias_lr_mult=None, bias_wd_mult=None, use_lr_scheduler=None, lr_scheduler_step=None,
                  lr_scheduler_factor=None, lr_scheduler_minimum_lr=None, normalize_data=None,
-                 normalize_label=None, unbias_data=None, unbias_label=None, num_point_for_scalar=None, **kwargs):
+                 normalize_label=None, unbias_data=None, unbias_label=None, num_point_for_scaler=None, **kwargs):
         """An :class:`Estimator` for binary classification and regression.
 
         Amazon SageMaker Linear Learner provides a solution for both classification and regression problems, allowing
@@ -186,14 +186,14 @@ class LinearLearner(AmazonAlgorithmEstimatorBase):
         self.normalize_data = normalize_data
         self.normalize_label = normalize_label
         self.unbias_data = unbias_data
-        self.ubias_label = unbias_label
-        self.num_point_for_scaler = num_point_for_scalar
+        self.unbias_label = unbias_label
+        self.num_point_for_scaler = num_point_for_scaler
 
     def create_model(self):
         """Return a :class:`~sagemaker.amazon.kmeans.LinearLearnerModel` referencing the latest
         s3 model data produced by this Estimator."""
 
-        return LinearLearnerModel(self, self.model_data, self.role, self.sagemaker_session)
+        return LinearLearnerModel(self.model_data, self.role, self.sagemaker_session)
 
     def fit(self, records, mini_batch_size=None, **kwargs):
         # mini_batch_size can't be greater than number of records or training job fails
