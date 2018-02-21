@@ -19,8 +19,10 @@ from sagemaker.utils import name_from_image
 
 
 class TensorFlowPredictor(RealTimePredictor):
-    """A ``RealTimePredictor`` for inference against MXNet ``Endpoint``s."""
+    """A ``RealTimePredictor`` for inference against TensorFlow ``Endpoint``s.
 
+    This is able to serialize Python lists, dictionaries, and numpy arrays to multidimensional tensors for MXNet
+    inference"""
     def __init__(self, endpoint_name, sagemaker_session=None):
         """Initialize an ``TensorFlowPredictor``.
 
