@@ -21,7 +21,7 @@ import numpy as np
 
 import sagemaker
 from sagemaker.amazon.linear_learner import LinearLearner, LinearLearnerModel
-from sagemaker.utils import name_from_base
+from sagemaker.utils import name_from_base, sagemaker_timestamp
 
 from tests.integ import DATA_DIR, REGION
 from tests.integ.timeout import timeout, timeout_and_delete_endpoint_by_name
@@ -90,7 +90,7 @@ def test_linear_learner():
 def test_async_linear_learner():
 
     training_job_name = ""
-    endpoint_name = 'test-linear-learner-async-{}'.format(int(time.time()))
+    endpoint_name = 'test-linear-learner-async-{}'.format(sagemaker_timestamp())
     sagemaker_session = sagemaker.Session(boto_session=boto3.Session(region_name=REGION))
 
     with timeout(minutes=5):
