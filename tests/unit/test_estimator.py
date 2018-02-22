@@ -325,15 +325,18 @@ def test_init_with_source_dir_s3(strftime, sagemaker_session):
 
 
 def test_framework_name_from_framework_image():
-    framework, py_ver = framework_name_from_image('123.dkr.ecr.us-west-2.amazonaws.com/sagemaker-mxnet-py2-gpu:1')
+    image_name = '123.dkr.ecr.us-west-2.amazonaws.com/sagemaker-mxnet-py2-gpu:2.5.6-gpu-py2'
+    framework, py_ver, tag = framework_name_from_image(image_name)
     assert framework == 'mxnet'
     assert py_ver == 'py2'
+    assert tag == '2.5.6-gpu-py2'
 
 
 def test_framework_name_from_other():
-    framework, py_ver = framework_name_from_image('123.dkr.ecr.us-west-2.amazonaws.com/sagemaker-myown-py2-gpu:1')
+    framework, py_ver, tag = framework_name_from_image('123.dkr.ecr.us-west-2.amazonaws.com/sagemaker-myown-py2-gpu:1')
     assert framework is None
     assert py_ver is None
+    assert tag is None
 
 
 # _TrainingJob 'utils'

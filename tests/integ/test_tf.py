@@ -1,4 +1,4 @@
-# Copyright 2017 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright 2017-2018 Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -28,12 +28,13 @@ def sagemaker_session():
     return Session(boto_session=boto3.Session(region_name=REGION))
 
 
-def test_tf(sagemaker_session):
+def test_tf(sagemaker_session, tf_version):
     with timeout(minutes=15):
         script_path = os.path.join(DATA_DIR, 'iris', 'iris-dnn-classifier.py')
 
         estimator = TensorFlow(entry_point=script_path,
                                role='SageMakerRole',
+                               framework_version=tf_version,
                                training_steps=1,
                                evaluation_steps=1,
                                hyperparameters={'input_tensor_name': 'inputs'},
@@ -53,7 +54,7 @@ def test_tf(sagemaker_session):
         print('predict result: {}'.format(result))
 
 
-def test_tf_async(sagemaker_session):
+def test_tf_async(sagemaker_session, tf_version):
 
     training_job_name = ""
     with timeout(minutes=5):
@@ -61,6 +62,7 @@ def test_tf_async(sagemaker_session):
 
         estimator = TensorFlow(entry_point=script_path,
                                role='SageMakerRole',
+                               framework_version=tf_version,
                                training_steps=1,
                                evaluation_steps=1,
                                hyperparameters={'input_tensor_name': 'inputs'},
@@ -82,11 +84,12 @@ def test_tf_async(sagemaker_session):
         print('predict result: {}'.format(result))
 
 
-def test_failed_tf_training(sagemaker_session):
+def test_failed_tf_training(sagemaker_session, tf_version):
     with timeout(minutes=15):
         script_path = os.path.join(DATA_DIR, 'iris', 'failure_script.py')
         estimator = TensorFlow(entry_point=script_path,
                                role='SageMakerRole',
+                               framework_version=tf_version,
                                training_steps=1,
                                evaluation_steps=1,
                                hyperparameters={'input_tensor_name': 'inputs'},
