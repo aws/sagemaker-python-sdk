@@ -38,14 +38,14 @@ class PickleSerializer(object):
         return pickle.dumps(data, protocol=2)
 
 
-def test_cifar(sagemaker_session, tf_version):
+def test_cifar(sagemaker_session, tf_full_version):
     with timeout(minutes=15):
         script_path = os.path.join(DATA_DIR, 'cifar_10', 'source')
 
         dataset_path = os.path.join(DATA_DIR, 'cifar_10', 'data')
 
         estimator = TensorFlow(entry_point='resnet_cifar_10.py', source_dir=script_path, role='SageMakerRole',
-                               framework_version=tf_version, training_steps=20, evaluation_steps=5,
+                               framework_version=tf_full_version, training_steps=20, evaluation_steps=5,
                                train_instance_count=2, train_instance_type='ml.p2.xlarge',
                                sagemaker_session=sagemaker_session,
                                base_job_name='test-cifar')

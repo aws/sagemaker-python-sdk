@@ -90,6 +90,31 @@ def _create_train_job(version):
             }}
 
 
+def test_create_model(sagemaker_session, mxnet_version):
+    container_log_level = '"logging.INFO"'
+    source_dir = 's3://mybucket/source'
+    enable_cloudwatch_metrics = 'true'
+    mx = MXNet(entry_point=SCRIPT_PATH, role=ROLE, sagemaker_session=sagemaker_session,
+               train_instance_count=INSTANCE_COUNT, train_instance_type=INSTANCE_TYPE,
+               framework_version=mxnet_version, container_log_level=container_log_level,
+               base_job_name='job', source_dir=source_dir, enable_cloudwatch_metrics=enable_cloudwatch_metrics)
+
+    job_name = 'new_name'
+    mx.fit(inputs='s3://mybucket/train', job_name='new_name')
+    model = mx.create_model()
+    mx.container_log_level
+
+    assert model.sagemaker_session == sagemaker_session
+    assert model.framework_version == mxnet_version
+    assert model.py_version == mx.py_version
+    assert model.entry_point == SCRIPT_PATH
+    assert model.role == ROLE
+    assert model.name == job_name
+    assert model.container_log_level == container_log_level
+    assert model.source_dir == source_dir
+    assert model.enable_cloudwatch_metrics == enable_cloudwatch_metrics
+
+
 @patch('time.strftime', return_value=TIMESTAMP)
 def test_mxnet(strftime, sagemaker_session, mxnet_version):
     mx = MXNet(entry_point=SCRIPT_PATH, role=ROLE, sagemaker_session=sagemaker_session,
@@ -129,9 +154,9 @@ def test_mxnet(strftime, sagemaker_session, mxnet_version):
     assert isinstance(predictor, MXNetPredictor)
 
 
-def test_model(sagemaker_session, mxnet_version):
+def test_model(sagemaker_session):
     model = MXNetModel("s3://some/data.tar.gz", role=ROLE, entry_point=SCRIPT_PATH,
-                       framework_version=mxnet_version, sagemaker_session=sagemaker_session)
+                       sagemaker_session=sagemaker_session)
     predictor = model.deploy(1, GPU)
     assert isinstance(predictor, MXNetPredictor)
 

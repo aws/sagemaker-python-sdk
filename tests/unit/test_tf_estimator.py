@@ -98,7 +98,7 @@ def _create_train_job(tf_version):
             }}
 
 
-def _build_tf(sagemaker_session, framework_version, train_instance_type=None,
+def _build_tf(sagemaker_session, framework_version=defaults.TF_VERSION, train_instance_type=None,
               checkpoint_path=None, enable_cloudwatch_metrics=False, base_job_name=None,
               training_steps=None, evalutation_steps=None, **kwargs):
     return TensorFlow(entry_point=SCRIPT_PATH,
@@ -139,8 +139,8 @@ def test_tf_support_gpu_instances(sagemaker_session, tf_version):
     assert tf.train_image() == _get_full_gpu_image_uri(tf_version)
 
 
-def test_tf_deploy_model_server_workers(sagemaker_session, tf_version):
-    tf = _build_tf(sagemaker_session, tf_version)
+def test_tf_deploy_model_server_workers(sagemaker_session):
+    tf = _build_tf(sagemaker_session)
     tf.fit(inputs=s3_input('s3://mybucket/train'))
 
     tf.deploy(initial_instance_count=1, instance_type='ml.c2.2xlarge', model_server_workers=2)
@@ -149,13 +149,38 @@ def test_tf_deploy_model_server_workers(sagemaker_session, tf_version):
         MODEL_SERVER_WORKERS_PARAM_NAME.upper()]
 
 
-def test_tf_deploy_model_server_workers_unset(sagemaker_session, tf_version):
-    tf = _build_tf(sagemaker_session, tf_version)
+def test_tf_deploy_model_server_workers_unset(sagemaker_session):
+    tf = _build_tf(sagemaker_session)
     tf.fit(inputs=s3_input('s3://mybucket/train'))
 
     tf.deploy(initial_instance_count=1, instance_type='ml.c2.2xlarge')
 
     assert MODEL_SERVER_WORKERS_PARAM_NAME.upper() not in sagemaker_session.method_calls[3][1][2]['Environment']
+
+
+def test_create_model(sagemaker_session, tf_version):
+    container_log_level = '"logging.INFO"'
+    source_dir = 's3://mybucket/source'
+    enable_cloudwatch_metrics = 'true'
+    tf = TensorFlow(entry_point=SCRIPT_PATH, role=ROLE, sagemaker_session=sagemaker_session,
+                    training_steps=1000, evaluation_steps=10, train_instance_count=INSTANCE_COUNT,
+                    train_instance_type=INSTANCE_TYPE, framework_version=tf_version,
+                    container_log_level=container_log_level, base_job_name='job',
+                    source_dir=source_dir, enable_cloudwatch_metrics=enable_cloudwatch_metrics)
+
+    job_name = 'doing something'
+    tf.fit(inputs='s3://mybucket/train', job_name=job_name)
+    model = tf.create_model()
+
+    assert model.sagemaker_session == sagemaker_session
+    assert model.framework_version == tf_version
+    assert model.py_version == tf.py_version
+    assert model.entry_point == SCRIPT_PATH
+    assert model.role == ROLE
+    assert model.name == job_name
+    assert model.container_log_level == container_log_level
+    assert model.source_dir == source_dir
+    assert model.enable_cloudwatch_metrics == enable_cloudwatch_metrics
 
 
 @patch('time.strftime', return_value=TIMESTAMP)
@@ -202,11 +227,9 @@ def test_tf(time, strftime, sagemaker_session, tf_version):
 @patch('subprocess.Popen')
 @patch('subprocess.call')
 @patch('os.access', return_value=False)
-def test_run_tensorboard_locally_without_tensorboard_binary(time, strftime, popen, call, access,
-                                                            sagemaker_session, tf_version):
+def test_run_tensorboard_locally_without_tensorboard_binary(time, strftime, popen, call, access, sagemaker_session):
     tf = TensorFlow(entry_point=SCRIPT_PATH, role=ROLE, sagemaker_session=sagemaker_session,
-                    train_instance_count=INSTANCE_COUNT, train_instance_type=INSTANCE_TYPE,
-                    framework_version=tf_version)
+                    train_instance_count=INSTANCE_COUNT, train_instance_type=INSTANCE_TYPE)
 
     with pytest.raises(EnvironmentError) as error:
         tf.fit(inputs='s3://mybucket/train', run_tensorboard_locally=True)
@@ -216,7 +239,7 @@ def test_run_tensorboard_locally_without_tensorboard_binary(time, strftime, pope
 
 def test_model(sagemaker_session, tf_version):
     model = TensorFlowModel("s3://some/data.tar.gz", role=ROLE, entry_point=SCRIPT_PATH,
-                            sagemaker_session=sagemaker_session, framework_version=tf_version)
+                            sagemaker_session=sagemaker_session)
     predictor = model.deploy(1, GPU_IMAGE_NAME)
     assert isinstance(predictor, TensorFlowPredictor)
 
@@ -226,11 +249,9 @@ def test_model(sagemaker_session, tf_version):
 @patch('subprocess.Popen')
 @patch('subprocess.call')
 @patch('os.access', side_effect=[False, True])
-def test_run_tensorboard_locally_without_awscli_binary(time, strftime, popen, call, access,
-                                                       sagemaker_session, tf_version):
+def test_run_tensorboard_locally_without_awscli_binary(time, strftime, popen, call, access, sagemaker_session):
     tf = TensorFlow(entry_point=SCRIPT_PATH, role=ROLE, sagemaker_session=sagemaker_session,
-                    train_instance_count=INSTANCE_COUNT, train_instance_type=INSTANCE_TYPE,
-                    framework_version=tf_version)
+                    train_instance_count=INSTANCE_COUNT, train_instance_type=INSTANCE_TYPE)
 
     with pytest.raises(EnvironmentError) as error:
         tf.fit(inputs='s3://mybucket/train', run_tensorboard_locally=True)
@@ -245,10 +266,9 @@ def test_run_tensorboard_locally_without_awscli_binary(time, strftime, popen, ca
 @patch('time.strftime', return_value=TIMESTAMP)
 @patch('time.time', return_value=TIME)
 @pytest.mark.skip(reason="this test fails sometimes and it needs further investigation")
-def test_run_tensorboard_locally(time, strftime, popen, call, access, sagemaker_session, tf_version):
+def test_run_tensorboard_locally(time, strftime, popen, call, access, sagemaker_session):
     tf = TensorFlow(entry_point=SCRIPT_PATH, role=ROLE, sagemaker_session=sagemaker_session,
-                    train_instance_count=INSTANCE_COUNT, train_instance_type=INSTANCE_TYPE,
-                    framework_version=tf_version)
+                    train_instance_count=INSTANCE_COUNT, train_instance_type=INSTANCE_TYPE)
 
     tf.fit(inputs='s3://mybucket/train', run_tensorboard_locally=True)
 
@@ -266,11 +286,9 @@ def test_run_tensorboard_locally(time, strftime, popen, call, access, sagemaker_
 @patch('time.strftime', return_value=TIMESTAMP)
 @patch('time.time', return_value=TIME)
 @pytest.mark.skip(reason="this test fails sometimes and it needs further investigation")
-def test_run_tensorboard_locally_port_in_use(time, strftime, popen, call, access, socket,
-                                             sagemaker_session, tf_version):
+def test_run_tensorboard_locally_port_in_use(time, strftime, popen, call, access, socket, sagemaker_session):
     tf = TensorFlow(entry_point=SCRIPT_PATH, role=ROLE, sagemaker_session=sagemaker_session,
-                    train_instance_count=INSTANCE_COUNT, train_instance_type=INSTANCE_TYPE,
-                    framework_version=tf_version)
+                    train_instance_count=INSTANCE_COUNT, train_instance_type=INSTANCE_TYPE)
 
     popen().poll.side_effect = [True, False]
 
@@ -283,9 +301,9 @@ def test_run_tensorboard_locally_port_in_use(time, strftime, popen, call, access
                           stderr=-1, stdout=-1)
 
 
-def test_tf_checkpoint_not_set(sagemaker_session, tf_version):
+def test_tf_checkpoint_not_set(sagemaker_session):
     job_name = "sagemaker-tensorflow-py2-gpu-2017-10-24-14-12-09"
-    tf = _build_tf(sagemaker_session, tf_version, checkpoint_path=None, base_job_name=job_name,
+    tf = _build_tf(sagemaker_session, checkpoint_path=None, base_job_name=job_name,
                    output_path="s3://{}/".format(sagemaker_session.default_bucket()))
     tf.fit(inputs=s3_input('s3://mybucket/train'), job_name=job_name)
 
@@ -293,28 +311,28 @@ def test_tf_checkpoint_not_set(sagemaker_session, tf_version):
     assert tf.hyperparameters()['checkpoint_path'] == expected_result
 
 
-def test_tf_training_and_evaluation_steps_not_set(sagemaker_session, tf_version):
+def test_tf_training_and_evaluation_steps_not_set(sagemaker_session):
     job_name = "sagemaker-tensorflow-py2-gpu-2017-10-24-14-12-09"
     output_path = "s3://{}/output/{}/".format(sagemaker_session.default_bucket(), job_name)
 
-    tf = _build_tf(sagemaker_session, tf_version, training_steps=None, evalutation_steps=None, output_path=output_path)
+    tf = _build_tf(sagemaker_session, training_steps=None, evalutation_steps=None, output_path=output_path)
     tf.fit(inputs=s3_input('s3://mybucket/train'))
     assert tf.hyperparameters()['training_steps'] == 'null'
     assert tf.hyperparameters()['evaluation_steps'] == 'null'
 
 
-def test_tf_training_and_evaluation_steps(sagemaker_session, tf_version):
+def test_tf_training_and_evaluation_steps(sagemaker_session):
     job_name = "sagemaker-tensorflow-py2-gpu-2017-10-24-14-12-09"
     output_path = "s3://{}/output/{}/".format(sagemaker_session.default_bucket(), job_name)
 
-    tf = _build_tf(sagemaker_session, tf_version, training_steps=123, evalutation_steps=456, output_path=output_path)
+    tf = _build_tf(sagemaker_session, training_steps=123, evalutation_steps=456, output_path=output_path)
     tf.fit(inputs=s3_input('s3://mybucket/train'))
     assert tf.hyperparameters()['training_steps'] == '123'
     assert tf.hyperparameters()['evaluation_steps'] == '456'
 
 
-def test_tf_checkpoint_set(sagemaker_session, tf_version):
-    tf = _build_tf(sagemaker_session, tf_version, checkpoint_path='s3://my_checkpoint_bucket')
+def test_tf_checkpoint_set(sagemaker_session):
+    tf = _build_tf(sagemaker_session, checkpoint_path='s3://my_checkpoint_bucket')
     assert tf.hyperparameters()['checkpoint_path'] == json.dumps("s3://my_checkpoint_bucket")
 
 
