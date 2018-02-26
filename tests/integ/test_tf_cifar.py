@@ -51,7 +51,7 @@ def test_cifar(sagemaker_session, tf_full_version):
                                base_job_name='test-cifar')
 
         inputs = estimator.sagemaker_session.upload_data(path=dataset_path, key_prefix='data/cifar10')
-        estimator.fit(inputs)
+        estimator.fit(inputs, logs=False)
         print('job succeeded: {}'.format(estimator.latest_training_job.name))
 
     with timeout_and_delete_endpoint(estimator=estimator, minutes=20):

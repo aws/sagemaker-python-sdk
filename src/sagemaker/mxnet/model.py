@@ -21,7 +21,8 @@ from sagemaker.utils import name_from_image
 class MXNetPredictor(RealTimePredictor):
     """A RealTimePredictor for inference against MXNet Endpoints.
 
-    This is able to serialize Python lists and numpy arrays to multidimensional tensors for MXNet inference."""
+    This is able to serialize Python lists, dictionaries, and numpy arrays to multidimensional tensors for MXNet
+    inference."""
 
     def __init__(self, endpoint_name, sagemaker_session=None):
         """Initialize an ``MXNetPredictor``.
