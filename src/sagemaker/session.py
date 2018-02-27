@@ -28,7 +28,6 @@ from sagemaker.user_agent import prepend_user_agent
 from sagemaker.utils import name_from_image
 import sagemaker.logs
 
-
 logging.basicConfig()
 LOGGER = logging.getLogger('sagemaker')
 LOGGER.setLevel(logging.INFO)
@@ -147,7 +146,7 @@ class Session(object):
             return self._default_bucket
 
         s3 = self.boto_session.resource('s3')
-        account = self.boto_session.client('sts').get_caller_identity()['Account']
+        account = self.aws_account()
         region = self.boto_session.region_name
         default_bucket = 'sagemaker-{}-{}'.format(region, account)
 
@@ -182,6 +181,9 @@ class Session(object):
         self._default_bucket = default_bucket
 
         return self._default_bucket
+
+    def aws_account(self):
+        return self.boto_session.client('sts').get_caller_identity()['Account']
 
     def train(self, image, input_mode, input_config, role, job_name, output_config,
               resource_config, hyperparameters, stop_condition):
@@ -561,7 +563,7 @@ class Session(object):
         status = description['TrainingJobStatus']
 
         stream_names = []  # The list of log streams
-        positions = {}     # The current position in each stream, map of stream name -> position
+        positions = {}  # The current position in each stream, map of stream name -> position
         client = self.boto_session.client('logs')
         log_group = '/aws/sagemaker/TrainingJobs'
 
@@ -726,7 +728,7 @@ class s3_input(object):
         See AWS documentation on the ``CreateTrainingJob`` API for more details on the parameters.
 
         Args:
-            s3_data (str): Defines the location of s3 data to train on.
+            s3_data (str|s3_input): Defines the location of s3 data to train on.
             distribution (str): Valid values: 'FullyReplicated', 'ShardedByS3Key'
                 (default: 'FullyReplicated').
             compression (str): Valid values: 'Gzip', 'Bzip2', 'Lzop' (default: None).
@@ -738,22 +740,68 @@ class s3_input(object):
                 each s3 object to train on. The Manifest file format is described in the SageMaker API documentation:
                 https://docs.aws.amazon.com/sagemaker/latest/dg/API_S3DataSource.html
         """
-        self.config = {
+        if isinstance(s3_data, s3_input):
+            # just a shallow copy
+            self.__dict__.update(s3_data.__dict__)
+        elif isinstance(s3_data, (str, unicode)):
+            self.uri = s3_data
+            self.uri_prefix = s3_data[5:]
+            self.distribution = distribution
+            self.compression = compression
+            self.content_type = content_type
+            self.record_wrapping = record_wrapping
+            self.s3_data_type = s3_data_type
+        else:
+            raise ValueError('Cannot format input {}. Expecting one of str or s3_input'.format(input))
+
+    @property
+    def config(self):
+        config_map = {
             'DataSource': {
                 'S3DataSource': {
-                    'S3DataDistributionType': distribution,
-                    'S3DataType': s3_data_type,
-                    'S3Uri': s3_data
+                    'S3DataDistributionType': self.distribution,
+                    'S3DataType': self.s3_data_type,
+                    'S3Uri': self.uri
                 }
             }
         }
 
-        if compression is not None:
-            self.config['CompressionType'] = compression
-        if content_type is not None:
-            self.config['ContentType'] = content_type
-        if record_wrapping is not None:
-            self.config['RecordWrapperType'] = record_wrapping
+        if self.compression is not None:
+            config_map['CompressionType'] = self.compression
+        if self.content_type is not None:
+            config_map['ContentType'] = self.content_type
+        if self.record_wrapping is not None:
+            config_map['RecordWrapperType'] = self.record_wrapping
+
+        return config_map
+
+
+class Inputs(object):
+
+    def __init__(self, inputs, sagemaker_session):
+        _inputs = inputs if isinstance(inputs, dict) else {'training': inputs}
+        self._input_dict = {k: s3_input(v) for k, v in _inputs.items()}
+
+        self.sagemaker_session = sagemaker_session
+
+    def channels(self):
+        channels = []
+        for channel_name, channel_s3_input in self._input_dict.items():
+            channel_config = channel_s3_input.config
+            channel_config['ChannelName'] = channel_name
+            channels.append(channel_config)
+        return channels
+
+    def upload_data(self, prefix):
+        dict = self._input_dict
+
+        for channel in dict.keys():
+            path = dict[channel].uri
+            if isinstance(path, (str, unicode)) and not path.startswith('s3://'):
+                print('Uploading {}'.format(path))
+                s3_path = self.sagemaker_session.upload_data(path=path, key_prefix=prefix)
+                print('Uploaded {} to {}'.format(path, s3_path))
+                dict[channel].uri = s3_path
 
 
 def _deployment_entity_exists(describe_fn):

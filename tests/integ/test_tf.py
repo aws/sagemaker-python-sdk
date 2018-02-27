@@ -42,7 +42,7 @@ def test_tf(sagemaker_session):
                                sagemaker_session=sagemaker_session,
                                base_job_name='test-tf')
 
-        inputs = estimator.sagemaker_session.upload_data(path=DATA_PATH, key_prefix='integ-test-data/tf_iris')
+        inputs = estimator.sagemaker_session.upload_data(data_s3_prefix)
         estimator.fit(inputs)
         print('job succeeded: {}'.format(estimator.latest_training_job.name))
 
@@ -74,7 +74,7 @@ def test_tf_async(sagemaker_session):
                                sagemaker_session=sagemaker_session,
                                base_job_name='test-tf')
 
-        inputs = estimator.sagemaker_session.upload_data(path=DATA_PATH, key_prefix='integ-test-data/tf_iris')
+        inputs = estimator.sagemaker_session.upload_data(data_s3_prefix)
         estimator.fit(inputs, wait=False)
         training_job_name = estimator.latest_training_job.name
         time.sleep(20)
@@ -99,7 +99,7 @@ def test_failed_tf_training(sagemaker_session):
                                train_instance_type='ml.c4.xlarge',
                                sagemaker_session=sagemaker_session)
 
-        inputs = estimator.sagemaker_session.upload_data(path=DATA_PATH, key_prefix='integ-test-data/tf-failure')
+        inputs = estimator.sagemaker_session.upload_data(data_s3_prefix)
 
         with pytest.raises(ValueError) as e:
             estimator.fit(inputs)

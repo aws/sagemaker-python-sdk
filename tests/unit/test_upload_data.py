@@ -32,7 +32,7 @@ def sagemaker_session():
 
 
 def test_upload_data_absolute_dir(sagemaker_session):
-    result_s3_uri = sagemaker_session.upload_data(UPLOAD_DATA_TESTS_FILES_DIR)
+    result_s3_uri = sagemaker_session.upload_data(data_s3_prefix)
 
     uploaded_files = [args[0] for name, args, kwargs in sagemaker_session.boto_session.mock_calls
                       if name == 'resource().Object().upload_file']
@@ -43,7 +43,7 @@ def test_upload_data_absolute_dir(sagemaker_session):
 
 
 def test_upload_data_absolute_file(sagemaker_session):
-    result_s3_uri = sagemaker_session.upload_data(UPLOAD_DATA_TESTS_SINGLE_FILE)
+    result_s3_uri = sagemaker_session.upload_data(data_s3_prefix)
 
     uploaded_files = [args[0] for name, args, kwargs in sagemaker_session.boto_session.mock_calls
                       if name == 'resource().Object().upload_file']

@@ -102,7 +102,7 @@ def test_sagemaker_s3_uri_invalid(sagemaker_session):
         t = DummyFramework(entry_point=SCRIPT_PATH, role=ROLE, sagemaker_session=sagemaker_session,
                            train_instance_count=INSTANCE_COUNT, train_instance_type=INSTANCE_TYPE)
         t.fit('thisdoesntstartwiths3')
-    assert 'must be a valid S3 URI' in str(error)
+    assert 'must be a valid S3 URI or a valid filesystem ' in str(error)
 
 
 @patch('time.strftime', return_value=TIMESTAMP)

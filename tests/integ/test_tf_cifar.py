@@ -50,7 +50,7 @@ def test_cifar(sagemaker_session):
                                sagemaker_session=sagemaker_session,
                                base_job_name='test-cifar')
 
-        inputs = estimator.sagemaker_session.upload_data(path=dataset_path, key_prefix='data/cifar10')
+        inputs = estimator.sagemaker_session.upload_data(data_s3_prefix)
         estimator.fit(inputs, logs=False)
         print('job succeeded: {}'.format(estimator.latest_training_job.name))
 

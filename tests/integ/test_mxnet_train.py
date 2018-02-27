@@ -40,10 +40,8 @@ def mxnet_training_job(sagemaker_session):
                    train_instance_count=1, train_instance_type='ml.c4.xlarge',
                    sagemaker_session=sagemaker_session)
 
-        train_input = mx.sagemaker_session.upload_data(path=os.path.join(data_path, 'train'),
-                                                       key_prefix='integ-test-data/mxnet_mnist/train')
-        test_input = mx.sagemaker_session.upload_data(path=os.path.join(data_path, 'test'),
-                                                      key_prefix='integ-test-data/mxnet_mnist/test')
+        train_input = mx.sagemaker_session.upload_data(data_s3_prefix)
+        test_input = mx.sagemaker_session.upload_data(data_s3_prefix)
 
         mx.fit({'train': train_input, 'test': test_input})
         return mx.latest_training_job.name
@@ -72,10 +70,8 @@ def test_async_fit(sagemaker_session):
                    train_instance_count=1, train_instance_type='ml.c4.xlarge',
                    sagemaker_session=sagemaker_session)
 
-        train_input = mx.sagemaker_session.upload_data(path=os.path.join(data_path, 'train'),
-                                                       key_prefix='integ-test-data/mxnet_mnist/train')
-        test_input = mx.sagemaker_session.upload_data(path=os.path.join(data_path, 'test'),
-                                                      key_prefix='integ-test-data/mxnet_mnist/test')
+        train_input = mx.sagemaker_session.upload_data(data_s3_prefix)
+        test_input = mx.sagemaker_session.upload_data(data_s3_prefix)
 
         mx.fit({'train': train_input, 'test': test_input}, wait=False)
         training_job_name = mx.latest_training_job.name
@@ -114,8 +110,7 @@ def test_failed_training_job(sagemaker_session):
                    train_instance_count=1, train_instance_type='ml.c4.xlarge',
                    sagemaker_session=sagemaker_session)
 
-        train_input = mx.sagemaker_session.upload_data(path=os.path.join(data_path, 'train'),
-                                                       key_prefix='integ-test-data/mxnet_mnist/train-failure')
+        train_input = mx.sagemaker_session.upload_data(data_s3_prefix)
 
         with pytest.raises(ValueError) as e:
             mx.fit(train_input)

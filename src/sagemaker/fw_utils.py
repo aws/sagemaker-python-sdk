@@ -28,26 +28,8 @@ instantiated with positional or keyword arguments.
 """
 
 
-def create_image_uri(region, framework, instance_type, py_version='py2', tag='1.0', account='520713654638'):
-    """Return the ECR URI of an image.
-
-    Args:
-        region (str): AWS region where the image is uploaded.
-        framework (str): framework used by the image.
-        instance_type (str): EC2 instance type. Used to determine whether to use the CPU image or GPU image.
-        py_version (str): Python version. (default: 'py2')
-        tag (str): ECR image tag, which denotes the image version. (default: '1.0')
-        account (str): AWS account that contains the image. (default: '520713654638')
-
-    Returns:
-        str: The appropriate image URI based on the given parameters.
-    """
-    device_version = 'cpu'
-    # Instance types that start with G, P are GPU powered: https://aws.amazon.com/ec2/instance-types/
-    if instance_type[3] in ['g', 'p']:
-        device_version = 'gpu'
-    return "{}.dkr.ecr.{}.amazonaws.com/sagemaker-{}-{}-{}:{}" \
-        .format(account, region, framework, py_version, device_version, tag)
+def create_image_uri(region, account, framework, tag):
+    return "{}.dkr.ecr.{}.amazonaws.com/sagemaker-{}:{}".format(account, region, framework, tag)
 
 
 def tar_and_upload_dir(session, bucket, s3_key_prefix, script, directory):

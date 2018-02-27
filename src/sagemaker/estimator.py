@@ -16,17 +16,18 @@ import json
 import logging
 from abc import ABCMeta
 from abc import abstractmethod
-from six import with_metaclass, string_types
+from os.path import join
+from six import with_metaclass
 
 from sagemaker.fw_utils import tar_and_upload_dir
 from sagemaker.fw_utils import parse_s3_url
 from sagemaker.fw_utils import UploadedCode
+from sagemaker.local_session import LocalSession
 from sagemaker.model import Model
 from sagemaker.model import (SCRIPT_PARAM_NAME, DIR_PARAM_NAME, CLOUDWATCH_METRICS_PARAM_NAME,
                              CONTAINER_LOG_LEVEL_PARAM_NAME, JOB_NAME_PARAM_NAME, SAGEMAKER_REGION_PARAM_NAME)
 from sagemaker.predictor import RealTimePredictor
-from sagemaker.session import Session
-from sagemaker.session import s3_input
+from sagemaker.session import Session, Inputs
 from sagemaker.utils import base_name_from_image, name_from_base
 
 
@@ -42,7 +43,7 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):
 
     def __init__(self, role, train_instance_count, train_instance_type,
                  train_volume_size=30, train_max_run=24 * 60 * 60, input_mode='File',
-                 output_path=None, output_kms_key=None, base_job_name=None, sagemaker_session=None):
+                 output_path=None, output_kms_key=None, base_job_name=None, sagemaker_session=None, local_mode=False):
         """Initialize an ``EstimatorBase`` instance.
 
         Args:
@@ -78,7 +79,12 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):
         self.train_volume_size = train_volume_size
         self.train_max_run = train_max_run
         self.input_mode = input_mode
-        self.sagemaker_session = sagemaker_session or Session()
+        self.local_mode = local_mode
+
+        if self.local_mode:
+            self.sagemaker_session = LocalSession()
+        else:
+            self.sagemaker_session = sagemaker_session or Session()
         self.base_job_name = base_job_name
         self._current_job_name = None
         self.output_path = output_path
@@ -288,9 +294,9 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):
         Raises:
             ValueError: If the endpoint does not exist.
         """
+        self.sagemaker_session.delete_endpoint(self.latest_training_job.name)
         if self.latest_training_job is None:
             raise ValueError('Endpoint was not created yet')
-        self.sagemaker_session.delete_endpoint(self.latest_training_job.name)
 
 
 class _TrainingJob(object):
@@ -303,14 +309,13 @@ class _TrainingJob(object):
         """Create a new Amazon SageMaker training job from the estimator.
 
         Args:
-            estimator (sagemaker.estimator.Framework): Estimator object created by the user.
+            estimator (sagemaker.estimator.EstimatorBase): Estimator object created by the user.
             inputs (str): Parameters used when called  :meth:`~sagemaker.estimator.EstimatorBase.fit`.
 
         Returns:
             sagemaker.estimator.Framework: Constructed object that captures all information about the started job.
         """
 
-        input_config = _TrainingJob._format_inputs_to_input_config(inputs)
         role = estimator.sagemaker_session.expand_role(estimator.role)
         output_config = _TrainingJob._prepare_output_config(estimator.output_path, estimator.output_kms_key)
         resource_config = _TrainingJob._prepare_resource_config(estimator.train_instance_count,
@@ -321,43 +326,19 @@ class _TrainingJob(object):
         if estimator.hyperparameters() is not None:
             hyperparameters = {str(k): str(v) for (k, v) in estimator.hyperparameters().items()}
 
+        inputs = Inputs(inputs, estimator.sagemaker_session)
+
+        if not estimator.local_mode:
+            data_s3_prefix = join(estimator._current_job_name, 'data')
+            inputs.upload_data(data_s3_prefix)
+
         estimator.sagemaker_session.train(image=estimator.train_image(), input_mode=estimator.input_mode,
-                                          input_config=input_config, role=role, job_name=estimator._current_job_name,
+                                          input_config=inputs.channels(), role=role,
+                                          job_name=estimator._current_job_name,
                                           output_config=output_config, resource_config=resource_config,
                                           hyperparameters=hyperparameters, stop_condition=stop_condition)
 
         return cls(estimator.sagemaker_session, estimator._current_job_name)
-
-    @staticmethod
-    def _format_inputs_to_input_config(inputs):
-        input_dict = {}
-        if isinstance(inputs, string_types):
-            input_dict['training'] = _TrainingJob._format_s3_uri_input(inputs)
-        elif isinstance(inputs, s3_input):
-            input_dict['training'] = inputs
-        elif isinstance(inputs, dict):
-            for k, v in inputs.items():
-                input_dict[k] = _TrainingJob._format_s3_uri_input(v)
-        else:
-            raise ValueError('Cannot format input {}. Expecting one of str, dict or s3_input'.format(inputs))
-
-        channels = []
-        for channel_name, channel_s3_input in input_dict.items():
-            channel_config = channel_s3_input.config.copy()
-            channel_config['ChannelName'] = channel_name
-            channels.append(channel_config)
-        return channels
-
-    @staticmethod
-    def _format_s3_uri_input(input):
-        if isinstance(input, str):
-            if not input.startswith('s3://'):
-                raise ValueError('Training input data must be a valid S3 URI and must start with "s3://"')
-            return s3_input(input)
-        if isinstance(input, s3_input):
-            return input
-        else:
-            raise ValueError('Cannot format input {}. Expecting one of str or s3_input'.format(input))
 
     @staticmethod
     def _prepare_output_config(s3_path, kms_key_id):
@@ -483,6 +464,7 @@ class Estimator(EstimatorBase):
         if predictor_cls is None:
             def predict_wrapper(endpoint, session):
                 return RealTimePredictor(endpoint, session, serializer, deserializer, content_type, accept)
+
             predictor_cls = predict_wrapper
 
         return Model(self.model_data, image or self.train_image(), self.role, sagemaker_session=self.sagemaker_session,
@@ -678,30 +660,3 @@ class Framework(EstimatorBase):
                 value = json.loads(value)
                 updated_params[argument] = value
         return updated_params
-
-
-def _s3_uri_prefix(channel_name, s3_data):
-    if isinstance(s3_data, s3_input):
-        s3_uri = s3_data.config['DataSource']['S3DataSource']['S3Uri']
-    else:
-        s3_uri = s3_data
-    if not s3_uri.startswith('s3://'):
-        raise ValueError('Expecting an s3 uri. Got {}'.format(s3_uri))
-    return {channel_name: s3_uri[5:]}
-
-
-# E.g. 's3://bucket/data' would return 'bucket/data'.
-# Also accepts other valid input types, e.g. dict and s3_input.
-def _s3_uri_without_prefix_from_input(input_data):
-    # Unpack an input_config object from a dict if a dict was passed in.
-    if isinstance(input_data, dict):
-        response = {}
-        for channel_name, channel_s3_uri in input_data.items():
-            response.update(_s3_uri_prefix(channel_name, channel_s3_uri))
-        return response
-    elif isinstance(input_data, str):
-        return _s3_uri_prefix('training', input_data)
-    elif isinstance(input_data, s3_input):
-        return _s3_uri_prefix('training', input_data)
-    else:
-        raise ValueError('Unrecognized type for S3 input data config - not str or s3_input: {}'.format(input_data))
