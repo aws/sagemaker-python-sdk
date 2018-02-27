@@ -29,6 +29,7 @@ CHANGELOG
 * feature: Hyperparameters: add data_type to hyperparameters
 * feature: Documentation: update TensorFlow examples following API change
 * feature: Session: support multi-part uploads
+* feature: add new SageMaker CLI
 
 
 1.0.2
