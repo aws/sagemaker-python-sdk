@@ -17,7 +17,6 @@ import pytest
 from mock import Mock, patch
 
 from sagemaker.estimator import Estimator, Framework, _TrainingJob
-from sagemaker.fw_utils import framework_name_from_image
 from sagemaker.session import s3_input
 from sagemaker.model import FrameworkModel
 from sagemaker.predictor import RealTimePredictor
@@ -322,18 +321,6 @@ def test_init_with_source_dir_s3(strftime, sagemaker_session):
 
     actual_hyperparameter = sagemaker_session.method_calls[1][2]['hyperparameters']
     assert actual_hyperparameter == expected_hyperparameters
-
-
-def test_framework_name_from_framework_image():
-    framework, py_ver = framework_name_from_image('123.dkr.ecr.us-west-2.amazonaws.com/sagemaker-mxnet-py2-gpu:1')
-    assert framework == 'mxnet'
-    assert py_ver == 'py2'
-
-
-def test_framework_name_from_other():
-    framework, py_ver = framework_name_from_image('123.dkr.ecr.us-west-2.amazonaws.com/sagemaker-myown-py2-gpu:1')
-    assert framework is None
-    assert py_ver is None
 
 
 # _TrainingJob 'utils'

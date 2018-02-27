@@ -2,12 +2,18 @@
 CHANGELOG
 =========
 
+1.1.0
+=====
+
+* feature: Estimators: add support for TensorFlow-1.5.0
+* feature: Estimators: add support for MXNet-1.0.0
+
 1.0.4
 =====
 
 * feature: Estimators: add support for Amazon Neural Topic Model(NTM) algorithm
-* feature: Documentation: Fix description of an argument of sagemaker.session.train
-* feature: Documentation: Add FM and LDA to the documentation
+* feature: Documentation: fix description of an argument of sagemaker.session.train
+* feature: Documentation: add FM and LDA to the documentation
 * feature: Estimators: add support for async fit
 * bug-fix: Estimators: fix estimator role expansion
 
@@ -15,16 +21,16 @@ CHANGELOG
 =====
 
 * feature: Estimators: add support for Amazon LDA algorithm
-* feature: Hyperparameters: Add data_type to hyperparameters
-* feature: Documentation: Update TensorFlow examples following API change
-* feature: Session: Support multi-part uploads
+* feature: Hyperparameters: add data_type to hyperparameters
+* feature: Documentation: update TensorFlow examples following API change
+* feature: Session: support multi-part uploads
 
 
 1.0.2
 =====
 
 * feature: Estimators: add support for Amazon FactorizationMachines algorithm
-* feature: Session: Correctly handle TooManyBuckets error_code in default_bucket method
+* feature: Session: correctly handle TooManyBuckets error_code in default_bucket method
 * feature: Tests: add training failure tests for TF and MXNet
 * feature: Documentation: show how to make predictions against existing endpoint
 * feature: Estimators: implement write_spmatrix_to_sparse_tensor to support any scipy.sparse matrix

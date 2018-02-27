@@ -39,7 +39,7 @@ You can install from source by cloning this repository and issuing a pip install
 
     git clone https://github.com/aws/sagemaker-python-sdk.git
     python setup.py sdist
-    pip install dist/sagemaker-1.0.4.tar.gz
+    pip install dist/sagemaker-1.1.0.tar.gz
 
 Supported Python versions
 ~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -114,6 +114,8 @@ MXNet SageMaker Estimators
 
 With MXNet Estimators, you can train and host MXNet models on Amazon SageMaker.
 
+Supported versions of MXNet: ``1.0.0``, ``0.12.1``.
+
 Training with MXNet
 ~~~~~~~~~~~~~~~~~~~
 
@@ -185,7 +187,7 @@ If you want to run your training script locally via the Python interpreter, look
 Using MXNet and numpy
 ^^^^^^^^^^^^^^^^^^^^^
 
-You can import both ``mxnet`` and ``numpy`` in your training script. When your script runs in SageMaker, it will run with access to MXNet version 0.12 and numpy version 1.12.0. For more information on the environment your script runs in, please see `SageMaker MXNet Containers <#sagemaker-mxnet-containers>`__.
+You can import both ``mxnet`` and ``numpy`` in your training script. When your script runs in SageMaker, it will run with access to MXNet version 1.0.0 and numpy version 1.13.3 by default. For more information on the environment your script runs in, please see `SageMaker MXNet Containers <#sagemaker-mxnet-containers>`__.
 
 Running an MXNet training script in SageMaker
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -682,18 +684,23 @@ When training and deploying training scripts, SageMaker runs your Python script 
 
 SageMaker runs MXNet Estimator scripts in either Python 2.7 or Python 3.5. You can select the Python version by passing a ``py_version`` keyword arg to the MXNet Estimator constructor. Setting this to ``py2`` (the default) will cause your training script to be run on Python 2.7. Setting this to ``py3`` will cause your training script to be run on Python 3.5. This Python version applies to both the Training Job, created by fit, and the Endpoint, created by deploy.
 
-Your MXNet training script will be run on version 0.12 of MXNet, built for either GPU or CPU use. The decision to use the GPU or CPU version of MXNet is made by the train_instance_type, set on the MXNet constructor. If you choose a GPU instance type, your training job will be run on a GPU version of MXNet. If you choose a CPU instance type, your training job will be run on a CPU version of MXNet. Similarly, when you call deploy, specifying a GPU or CPU deploy_instance_type, will control which MXNet build your Endpoint runs.
+Your MXNet training script will be run on version 1.0.0 (by default) or 0.12 of MXNet, built for either GPU or CPU use. The decision to use the GPU or CPU version of MXNet is made by the ``train_instance_type``, set on the MXNet constructor. If you choose a GPU instance type, your training job will be run on a GPU version of MXNet. If you choose a CPU instance type, your training job will be run on a CPU version of MXNet. Similarly, when you call deploy, specifying a GPU or CPU deploy_instance_type, will control which MXNet build your Endpoint runs.
 
-Each Docker container has the following dependencies installed:
+The Docker images have the following dependencies installed:
 
--  Python 2.7 or Python 3.5, depending on the ``py_version`` argument on
-   the MXNet constructor.
--  MXNet 0.12, built for either GPU or CPU, depending on the instance
-   type for training or deploying.
--  CUDA 9.0
--  numpy 1.12
++-------------------------+--------------+-------------+
+| Dependencies            | MXNet 0.12.1 | MXNet 1.0.0 |
++-------------------------+--------------+-------------+
+| Python                  |   2.7 or 3.5 |   2.7 or 3.5|
++-------------------------+--------------+-------------+
+| CUDA                    |          9.0 |         9.0 |
++-------------------------+--------------+-------------+
+| numpy                   |       1.13.3 |      1.13.3 |
++-------------------------+--------------+-------------+
 
 The Docker images extend Ubuntu 16.04.
+
+You can select version of MXNet by passing a ``framework_version`` keyword arg to the MXNet Estimator constructor. Currently supported versions are ``1.0.0`` and ``0.12.1``. You can also set ``framework_version`` to ``1.0 (default)`` or ``0.12`` which will cause your training script to be run on the latest supported MXNet 1.0 or 0.12 versions respectively.
 
 TensorFlow SageMaker Estimators
 -------------------------------
@@ -701,6 +708,8 @@ TensorFlow SageMaker Estimators
 TensorFlow SageMaker Estimators allow you to run your own TensorFlow
 training algorithms on SageMaker Learner, and to host your own TensorFlow
 models on SageMaker Hosting.
+
+Supported versions of TensorFlow: ``1.4.1``, ``1.5.0``.
 
 Training with TensorFlow
 ~~~~~~~~~~~~~~~~~~~~~~~~
@@ -735,7 +744,7 @@ Preparing the TensorFlow training script
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Your TensorFlow training script must be a **Python 2.7** source file. The current supported TensorFlow
-version is **1.4.0**. This training script **must contain** the following functions:
+versions are **1.5.0 (default)** and **1.4.1**. This training script **must contain** the following functions:
 
 - ``model_fn``: defines the model that will be trained.
 - ``train_input_fn``: preprocess and load training data.
@@ -1419,27 +1428,49 @@ A example with ``input_fn`` and ``output_fn`` above can be found in
 SageMaker TensorFlow Docker containers
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-The TensorFlow Docker container supports Python 2.7. The Docker container has the following Python modules installed:
-- awscli 1.12.1
-- boto3 1.4.7
-- botocore 1.5.92
-- futures 2.2.0
-- gevent 1.2.2
-- grpcio 1.7.0
-- numpy 1.13.3
-- pandas 0.21.0
-- protobuf 3.4.0
-- requests 2.14.2
-- scikit-learn 0.19.1
-- scipy 1.0.0
-- six 1.10.0
-- sklearn 0.0
-- tensorflow 1.4.0
-- tensorflow-serving-api 1.4.0
-- tensorflow-tensorboard 0.4.0rc2
+The TensorFlow Docker images support Python 2.7 and have the following Python modules installed:
+
++------------------------+------------------+------------------+
+| Dependencies           | tensorflow 1.4.1 | tensorflow 1.5.0 |
++------------------------+------------------+------------------+
+| awscli                 |           1.12.1 |          1.14.35 |
++------------------------+------------------+------------------+
+| boto3                  |            1.4.7 |           1.5.22 |
++------------------------+------------------+------------------+
+| botocore               |           1.5.92 |           1.8.36 |
++------------------------+------------------+------------------+
+| futures                |            2.2.0 |            2.2.0 |
++------------------------+------------------+------------------+
+| gevent                 |            1.2.2 |            1.2.2 |
++------------------------+------------------+------------------+
+| grpcio                 |            1.7.0 |            1.9.0 |
++------------------------+------------------+------------------+
+| numpy                  |           1.13.3 |           1.14.0 |
++------------------------+------------------+------------------+
+| pandas                 |           0.21.0 |           0.22.0 |
++------------------------+------------------+------------------+
+| protobuf               |            3.4.0 |            3.5.1 |
++------------------------+------------------+------------------+
+| requests               |           2.14.2 |           2.18.4 |
++------------------------+------------------+------------------+
+| scikit-learn           |           0.19.1 |           0.19.1 |
++------------------------+------------------+------------------+
+| scipy                  |            1.0.0 |            1.0.0 |
++------------------------+------------------+------------------+
+| six                    |           1.10.0 |           1.10.0 |
++------------------------+------------------+------------------+
+| sklearn                |              0.0 |              0.0 |
++------------------------+------------------+------------------+
+| tensorflow             |            1.4.1 |            1.5.0 |
++------------------------+------------------+------------------+
+| tensorflow-serving-api |            1.4.0 |            1.5.0 |
++------------------------+------------------+------------------+
+| tensorflow-tensorboard |            0.4.0 |            1.5.1 |
++------------------------+------------------+------------------+
 
 The Docker images extend Ubuntu 16.04.
 
+You can select version of TensorFlow by passing a ``framework_version`` keyword arg to the TensorFlow Estimator constructor. Currently supported versions are ``1.5.0`` and ``1.4.1``. You can also set ``framework_version`` to ``1.5 (default)`` or ``1.4`` which will cause your training script to be run on the latest supported TensorFlow 1.5 or 1.4 versions respectively.
 
 AWS SageMaker Estimators
 ------------------------
