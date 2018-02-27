@@ -7,6 +7,11 @@ CHANGELOG
 
 * feature: Estimators: add support for TensorFlow-1.5.0
 * feature: Estimators: add support for MXNet-1.0.0
+* feature: Tests: use ``sagemaker_timestamp`` when creating endpoint names in integration tests
+* feature: Session: print out billable seconds after training completes
+* bug-fix: Estimators: fix LinearLearner and add unit tests
+* bug-fix: Tests: fix timeouts for PCA async integration test
+* feature: Predictors: allow ``predictor.predict()`` in the JSON serializer to accept dictionaries
 
 1.0.4
 =====
@@ -51,4 +56,3 @@ CHANGELOG
 =====
 
 * Initial commit
-
