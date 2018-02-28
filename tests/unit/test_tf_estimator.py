@@ -10,18 +10,18 @@
 # distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
-import logging
-
 import json
+import logging
 import os
+
 import pytest
 from mock import Mock, patch
+
 import sagemaker
+from sagemaker.fw_utils import create_image_uri
 from sagemaker.model import MODEL_SERVER_WORKERS_PARAM_NAME
 from sagemaker.session import s3_input
-from sagemaker.tensorflow import TensorFlow, DOCKER_TAG
-from sagemaker.fw_utils import create_image_uri
-from sagemaker.tensorflow import TensorFlowPredictor, TensorFlowModel
+from sagemaker.tensorflow import TensorFlow, TensorFlowPredictor, TensorFlowModel, DOCKER_TAG
 
 DATA_DIR = os.path.join(os.path.dirname(__file__), '..', 'data')
 SCRIPT_PATH = os.path.join(DATA_DIR, 'dummy_script.py')
