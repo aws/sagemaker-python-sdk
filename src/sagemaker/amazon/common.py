@@ -11,12 +11,12 @@
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
 import io
+import json
 import struct
 import sys
 
 import numpy as np
 from scipy.sparse import issparse
-import json
 from sagemaker.amazon.record_pb2 import Record
 
 
@@ -199,7 +199,7 @@ def _write_recordio(f, data):
 
 
 def _read_recordio(f):
-    while (True):
+    while(True):
         try:
             read_kmagic, = struct.unpack('I', f.read(4))
         except struct.error:

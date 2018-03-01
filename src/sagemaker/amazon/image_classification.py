@@ -1,4 +1,4 @@
-# Copyright 2017 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright 2018 Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -12,10 +12,10 @@
 # language governing permissions and limitations under the License.
 from sagemaker.amazon.amazon_estimator import AmazonS3AlgorithmEstimatorBase, registry
 from sagemaker.amazon.common import file_to_image_serializer, response_deserializer
-from sagemaker.amazon.hyperparameter import Hyperparameter as hp
 from sagemaker.amazon.validation import gt, isin, ge, le
-from sagemaker.predictor import RealTimePredictor
+from sagemaker.amazon.hyperparameter import Hyperparameter as hp
 from sagemaker.model import Model
+from sagemaker.predictor import RealTimePredictor
 from sagemaker.session import Session
 
 
@@ -59,8 +59,7 @@ class ImageClassification(AmazonS3AlgorithmEstimatorBase):
                  beta_2=0.999, eps=1e-8, gamma=0.9, mini_batch_size=32, image_shape='3,224,224',
                  augmentation_type=None, top_k=None, kv_store=None, **kwargs):
         """
-        An Image classification algorithm :class:`~sagemaker.amazon.AmazonAlgorithmEstimatorBase`. Learns a classifier
-        model that
+        An Image classification algorithm :class:`~sagemaker.amazon.AmazonAlgorithmEstimatorBase`.
 
         This Estimator may be fit via calls to
         :meth:`~sagemaker.amazon.amazon_estimator.AmazonS3AlgorithmEstimatorBase.fit`
@@ -80,7 +79,6 @@ class ImageClassification(AmazonS3AlgorithmEstimatorBase):
                 APIs that create Amazon SageMaker endpoints use this role to access
                 training data and model artifacts. After the endpoint is created,
                 the inference code might use the IAM role, if accessing AWS resource.
-                For more information, see <link>???.
             train_instance_count (int): Number of Amazon EC2 instances to use for training.
             train_instance_type (str): Type of EC2 instance to use for training, for example, 'ml.c4.xlarge'.
             num_classes (int): Number of output classes. This parameter defines the dimensions of the network output
@@ -132,7 +130,7 @@ class ImageClassification(AmazonS3AlgorithmEstimatorBase):
                          Range in [0, 1]. Default value: 1e-8
             gamma (float): The gamma for rmsprop. A decay factor of moving average of the squared gradient.
                            Range in [0, 1]. Default value: 0.9
-            mini_batch_size	(int): The batch size for training. In a single-machine multi-GPU setting, each GPU handles
+            mini_batch_size (int): The batch size for training. In a single-machine multi-GPU setting, each GPU handles
                                    mini_batch_size/num_gpu training samples. For the multi-machine training in
                                    dist_sync mode, the actual batch size is mini_batch_size*number of machines.
                                    See MXNet docs for more details. Default value: 32
@@ -142,7 +140,7 @@ class ImageClassification(AmazonS3AlgorithmEstimatorBase):
                                 be memory constraints if a larger image dimension is used. Typical image dimensions for
                                 image classification are '3, 224, 224'. This is similar to the ImageNet dataset.
                                 Default value: ‘3, 224, 224’
-            augmentation_type: (str): Data augmentation type. The input images can be augmented in multiple ways as
+            augmentation_type (str): Data augmentation type. The input images can be augmented in multiple ways as
                                       specified below.
                                 'crop' - Randomly crop the image and flip the image horizontally
                                 'crop_color' - In addition to ‘crop’, three random values in the range [-36, 36],
@@ -151,23 +149,23 @@ class ImageClassification(AmazonS3AlgorithmEstimatorBase):
                                 'crop_color_transform': In addition to crop_color, random transformations, including
                                             rotation, shear, and aspect ratio variations are applied to the image.
                                             The maximum angle of rotation is 10 degrees, the maximum shear ratio is 0.1,
-                                             and the maximum aspect changing ratio is 0.25.
+                                            and the maximum aspect changing ratio is 0.25.
             top_k (int): Report the top-k accuracy during training. This parameter has to be greater than 1,
                             since the top-1 training accuracy is the same as the regular training accuracy that has
                             already been reported.
             kv_store (str): Weight update synchronization mode during distributed training. The weight updates can be
-                                updated either synchronously  or asynchronously across machines. Synchronous updates
-                                typically provide better accuracy than asynchronous updates but can be slower.
-                                See distributed training in MXNet for more details. This parameter is not applicable
-                                to single machine training.
-                                'dist_sync' -  The gradients are synchronized after every batch with all the workers.
-                                                With dist_sync,
-                                         batch-size now means the batch size used on each machine. So if there are n
-                                         machines and we use
-                                         batch size b, then dist_sync behaves like local with batch size n*b
-                                'dist_async'- Performs asynchronous updates. The weights are updated whenever gradients
-                                         are received from any machine and the weight updates are atomic. However, the
-                                         order is not guaranteed.
+                            updated either synchronously  or asynchronously across machines. Synchronous updates
+                            typically provide better accuracy than asynchronous updates but can be slower.
+                            See distributed training in MXNet for more details. This parameter is not applicable
+                            to single machine training.
+                            'dist_sync' -  The gradients are synchronized after every batch with all the workers.
+                                            With dist_sync,
+                                     batch-size now means the batch size used on each machine. So if there are n
+                                     machines and we use
+                                     batch size b, then dist_sync behaves like local with batch size n*b
+                            'dist_async'- Performs asynchronous updates. The weights are updated whenever gradients
+                                     are received from any machine and the weight updates are atomic. However, the
+                                     order is not guaranteed.
             **kwargs: base class keyword argument values.
         """
         super(ImageClassification, self).__init__(role, train_instance_count, train_instance_type,
@@ -211,9 +209,7 @@ class ImageClassificationPredictor(RealTimePredictor):
     """Assigns input vectors to their closest cluster in a ImageClassification model.
 
     The implementation of :meth:`~sagemaker.predictor.RealTimePredictor.predict` in this
-    `RealTimePredictor` requires a `x-image` as input.
-
-    ``predict()`` returns """
+    `RealTimePredictor` requires a `x-image` as input."""
 
     def __init__(self, endpoint, sagemaker_session=None):
         super(ImageClassificationPredictor, self).__init__(endpoint, sagemaker_session,
@@ -223,8 +219,8 @@ class ImageClassificationPredictor(RealTimePredictor):
 
 
 class ImageClassificationModel(Model):
-    """Reference KMeans s3 model data. Calling :meth:`~sagemaker.model.Model.deploy` creates an Endpoint and return
-    a Predictor to performs classification assignment."""
+    """Reference ImageClassification s3 model data. Calling :meth:`~sagemaker.model.Model.deploy` creates an Endpoint and
+     return a Predictor to performs classification assignment."""
 
     def __init__(self, model_data, role, sagemaker_session=None):
         sagemaker_session = sagemaker_session or Session()

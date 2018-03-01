@@ -164,7 +164,7 @@ class AmazonS3AlgorithmEstimatorBase(EstimatorBase):
         """Initialize an AmazonAlgorithmEstimatorBase.
 
         Args:
-            algortihm (str): Use one of the supported algorithms
+            algorithm (str): Use one of the supported algorithms
                 """
         super(AmazonS3AlgorithmEstimatorBase, self).__init__(role, train_instance_count, train_instance_type,
                                                              **kwargs)
