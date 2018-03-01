@@ -31,12 +31,12 @@ def sagemaker_session():
 
 
 @pytest.fixture(scope='module')
-def mxnet_training_job(sagemaker_session):
+def mxnet_training_job(sagemaker_session, mxnet_full_version):
     with timeout(minutes=15):
         script_path = os.path.join(DATA_DIR, 'mxnet_mnist', 'mnist.py')
         data_path = os.path.join(DATA_DIR, 'mxnet_mnist')
 
-        mx = MXNet(entry_point=script_path, role='SageMakerRole',
+        mx = MXNet(entry_point=script_path, role='SageMakerRole', framework_version=mxnet_full_version,
                    train_instance_count=1, train_instance_type='ml.c4.xlarge',
                    sagemaker_session=sagemaker_session)
 
@@ -59,7 +59,7 @@ def test_attach_deploy(mxnet_training_job, sagemaker_session):
         predictor.predict(data)
 
 
-def test_async_fit(sagemaker_session):
+def test_async_fit(sagemaker_session, mxnet_full_version):
 
     training_job_name = ""
     endpoint_name = 'test-mxnet-attach-deploy-{}'.format(sagemaker_timestamp())
@@ -68,7 +68,7 @@ def test_async_fit(sagemaker_session):
         script_path = os.path.join(DATA_DIR, 'mxnet_mnist', 'mnist.py')
         data_path = os.path.join(DATA_DIR, 'mxnet_mnist')
 
-        mx = MXNet(entry_point=script_path, role='SageMakerRole',
+        mx = MXNet(entry_point=script_path, role='SageMakerRole', framework_version=mxnet_full_version,
                    train_instance_count=1, train_instance_type='ml.c4.xlarge',
                    sagemaker_session=sagemaker_session)
 
@@ -105,12 +105,12 @@ def test_deploy_model(mxnet_training_job, sagemaker_session):
         predictor.predict(data)
 
 
-def test_failed_training_job(sagemaker_session):
+def test_failed_training_job(sagemaker_session, mxnet_full_version):
     with timeout(minutes=15):
         script_path = os.path.join(DATA_DIR, 'mxnet_mnist', 'failure_script.py')
         data_path = os.path.join(DATA_DIR, 'mxnet_mnist')
 
-        mx = MXNet(entry_point=script_path, role='SageMakerRole',
+        mx = MXNet(entry_point=script_path, role='SageMakerRole', framework_version=mxnet_full_version,
                    train_instance_count=1, train_instance_type='ml.c4.xlarge',
                    sagemaker_session=sagemaker_session)
 
