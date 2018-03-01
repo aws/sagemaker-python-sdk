@@ -17,7 +17,6 @@ import os
 import pytest
 from mock import Mock, patch
 
-import sagemaker
 from sagemaker.fw_utils import create_image_uri
 from sagemaker.model import MODEL_SERVER_WORKERS_PARAM_NAME
 from sagemaker.session import s3_input
@@ -103,10 +102,10 @@ def _create_train_job(tf_version):
 
 def _build_tf(sagemaker_session, framework_version=defaults.TF_VERSION, train_instance_type=None,
               checkpoint_path=None, enable_cloudwatch_metrics=False, base_job_name=None,
-              training_steps=None, evalutation_steps=None, **kwargs):
+              training_steps=None, evaluation_steps=None, **kwargs):
     return TensorFlow(entry_point=SCRIPT_PATH,
                       training_steps=training_steps,
-                      evaluation_steps=evalutation_steps,
+                      evaluation_steps=evaluation_steps,
                       framework_version=framework_version,
                       role=ROLE,
                       sagemaker_session=sagemaker_session,
