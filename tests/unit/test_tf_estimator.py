@@ -24,8 +24,9 @@ from sagemaker.session import s3_input
 from sagemaker.tensorflow import TensorFlow, TensorFlowPredictor, TensorFlowModel, DOCKER_TAG
 
 DATA_DIR = os.path.join(os.path.dirname(__file__), '..', 'data')
-SCRIPT_PATH = os.path.join(DATA_DIR, 'dummy_script.py')
-REQUIREMENTS_FILE = 'requirements.txt'
+SCRIPT_FILE = 'dummy_script.py'
+SCRIPT_PATH = os.path.join(DATA_DIR, SCRIPT_FILE)
+REQUIREMENTS_FILE = 'dummy_requirements.txt'
 TIMESTAMP = '2017-11-06-14:14:15.673'
 TIME = 1510006209.073025
 BUCKET_NAME = 'mybucket'
@@ -93,11 +94,10 @@ def sagemaker_session():
 
 
 def _build_tf(sagemaker_session, train_instance_type=None, checkpoint_path=None, enable_cloudwatch_metrics=False,
-              base_job_name=None, training_steps=None, evalutation_steps=None, **kwargs):
+              base_job_name=None, training_steps=None, evaluation_steps=None, **kwargs):
     return TensorFlow(entry_point=SCRIPT_PATH,
-                      requirements_file=REQUIREMENTS_FILE,
                       training_steps=training_steps,
-                      evaluation_steps=evalutation_steps,
+                      evaluation_steps=evaluation_steps,
                       role=ROLE,
                       sagemaker_session=sagemaker_session,
                       train_instance_count=INSTANCE_COUNT,
@@ -151,12 +151,26 @@ def test_tf_deploy_model_server_workers_unset(sagemaker_session):
     assert MODEL_SERVER_WORKERS_PARAM_NAME.upper() not in sagemaker_session.method_calls[3][1][2]['Environment']
 
 
+def test_tf_invalid_requirements_path(sagemaker_session):
+    requirements_file = '/foo/bar/requirements.txt'
+    with pytest.raises(ValueError) as e:
+        _build_tf(sagemaker_session, requirements_file=requirements_file, source_dir=DATA_DIR)
+    assert 'Requirements file {} is not a path relative to source_dir.'.format(requirements_file) in str(e.value)
+
+
+def test_tf_nonexistent_requirements_path(sagemaker_session):
+    requirements_file = 'nonexistent_requirements.txt'
+    with pytest.raises(ValueError) as e:
+        _build_tf(sagemaker_session, requirements_file=requirements_file, source_dir=DATA_DIR)
+    assert 'Requirements file {} does not exist.'.format(requirements_file) in str(e.value)
+
+
 @patch('time.strftime', return_value=TIMESTAMP)
 @patch('time.time', return_value=TIME)
 def test_tf(time, strftime, sagemaker_session):
-    tf = TensorFlow(entry_point=SCRIPT_PATH, role=ROLE, sagemaker_session=sagemaker_session, training_steps=1000,
+    tf = TensorFlow(entry_point=SCRIPT_FILE, role=ROLE, sagemaker_session=sagemaker_session, training_steps=1000,
                     evaluation_steps=10, train_instance_count=INSTANCE_COUNT, train_instance_type=INSTANCE_TYPE,
-                    requirements_file=REQUIREMENTS_FILE)
+                    requirements_file=REQUIREMENTS_FILE, source_dir=DATA_DIR)
 
     inputs = 's3://mybucket/train'
 
@@ -178,7 +192,7 @@ def test_tf(time, strftime, sagemaker_session):
     assert {'Environment':
             {'SAGEMAKER_SUBMIT_DIRECTORY': 's3://{}/{}/sourcedir.tar.gz'.format(BUCKET_NAME, JOB_NAME),
              'SAGEMAKER_PROGRAM': 'dummy_script.py',
-             'SAGEMAKER_REQUIREMENTS': 'requirements.txt',
+             'SAGEMAKER_REQUIREMENTS': 'dummy_requirements.txt',
              'SAGEMAKER_ENABLE_CLOUDWATCH_METRICS': 'false',
              'SAGEMAKER_REGION': 'us-west-2',
              'SAGEMAKER_CONTAINER_LOG_LEVEL': '20'
@@ -285,7 +299,7 @@ def test_tf_training_and_evaluation_steps_not_set(sagemaker_session):
     job_name = "sagemaker-tensorflow-py2-gpu-2017-10-24-14-12-09"
     output_path = "s3://{}/output/{}/".format(sagemaker_session.default_bucket(), job_name)
 
-    tf = _build_tf(sagemaker_session, training_steps=None, evalutation_steps=None, output_path=output_path)
+    tf = _build_tf(sagemaker_session, training_steps=None, evaluation_steps=None, output_path=output_path)
     tf.fit(inputs=s3_input('s3://mybucket/train'))
     assert tf.hyperparameters()['training_steps'] == 'null'
     assert tf.hyperparameters()['evaluation_steps'] == 'null'
@@ -295,7 +309,7 @@ def test_tf_training_and_evaluation_steps(sagemaker_session):
     job_name = "sagemaker-tensorflow-py2-gpu-2017-10-24-14-12-09"
     output_path = "s3://{}/output/{}/".format(sagemaker_session.default_bucket(), job_name)
 
-    tf = _build_tf(sagemaker_session, training_steps=123, evalutation_steps=456, output_path=output_path)
+    tf = _build_tf(sagemaker_session, training_steps=123, evaluation_steps=456, output_path=output_path)
     tf.fit(inputs=s3_input('s3://mybucket/train'))
     assert tf.hyperparameters()['training_steps'] == '123'
     assert tf.hyperparameters()['evaluation_steps'] == '456'

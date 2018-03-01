@@ -126,7 +126,22 @@ class TensorFlow(Framework):
         self.py_version = py_version
         self.training_steps = training_steps
         self.evaluation_steps = evaluation_steps
+
+        self._validate_requirements_file(requirements_file)
         self.requirements_file = requirements_file
+
+    def _validate_requirements_file(self, requirements_file):
+        if not requirements_file:
+            return
+
+        if not self.source_dir:
+            raise ValueError('Must specify source_dir along with a requirements file.')
+
+        if os.path.isabs(requirements_file):
+            raise ValueError('Requirements file {} is not a path relative to source_dir.'.format(requirements_file))
+
+        if not os.path.exists(os.path.join(self.source_dir, requirements_file)):
+            raise ValueError('Requirements file {} does not exist.'.format(requirements_file))
 
     def fit(self, inputs, wait=True, logs=True, job_name=None, run_tensorboard_locally=False):
         """Train a model using the input training dataset.
