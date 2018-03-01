@@ -1091,6 +1091,8 @@ you can specify these as keyword arguments.
    other training source code dependencies aside from the entry point
    file. Structure within this directory will be preserved when training
    on SageMaker.
+-  ``requirements_file (str)`` Path to a ``requirements.txt`` file. The path should
+   be within and relative to ``source_dir``.
 -  ``hyperparameters (dict[str,ANY])`` Hyperparameters that will be used for training.
    Will be made accessible as a dict[] to the training code on
    SageMaker. Some hyperparameters will be interpreted by TensorFlow and can be use to
