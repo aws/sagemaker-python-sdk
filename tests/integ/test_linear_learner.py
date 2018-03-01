@@ -21,7 +21,7 @@ import numpy as np
 
 import sagemaker
 from sagemaker.amazon.linear_learner import LinearLearner, LinearLearnerModel
-from sagemaker.utils import name_from_base
+from sagemaker.utils import name_from_base, sagemaker_timestamp
 
 from tests.integ import DATA_DIR, REGION
 from tests.integ.timeout import timeout, timeout_and_delete_endpoint_by_name
@@ -44,7 +44,7 @@ def test_linear_learner():
         ll = LinearLearner('SageMakerRole', 1, 'ml.c4.2xlarge', base_job_name='test-linear-learner',
                            sagemaker_session=sagemaker_session)
         ll.binary_classifier_model_selection_criteria = 'accuracy'
-        ll.target_reacall = 0.5
+        ll.target_recall = 0.5
         ll.target_precision = 0.5
         ll.positive_example_weight_mult = 0.1
         ll.epochs = 1
@@ -72,14 +72,13 @@ def test_linear_learner():
         ll.normalize_label = False
         ll.unbias_data = True
         ll.unbias_label = False
-        ll.num_point_for_scala = 10000
+        ll.num_point_for_scaler = 10000
         ll.fit(ll.record_set(train_set[0][:200], train_set[1][:200]))
 
     endpoint_name = name_from_base('linear-learner')
     with timeout_and_delete_endpoint_by_name(endpoint_name, sagemaker_session, minutes=20):
 
-        model = LinearLearnerModel(ll.model_data, role='SageMakerRole', sagemaker_session=sagemaker_session)
-        predictor = model.deploy(1, 'ml.c4.xlarge', endpoint_name=endpoint_name)
+        predictor = ll.deploy(1, 'ml.c4.xlarge', endpoint_name=endpoint_name)
 
         result = predictor.predict(train_set[0][0:100])
         assert len(result) == 100
@@ -91,7 +90,7 @@ def test_linear_learner():
 def test_async_linear_learner():
 
     training_job_name = ""
-    endpoint_name = 'test-linear-learner-async-{}'.format(int(time.time()))
+    endpoint_name = 'test-linear-learner-async-{}'.format(sagemaker_timestamp())
     sagemaker_session = sagemaker.Session(boto_session=boto3.Session(region_name=REGION))
 
     with timeout(minutes=5):
@@ -110,7 +109,7 @@ def test_async_linear_learner():
         ll = LinearLearner('SageMakerRole', 1, 'ml.c4.2xlarge', base_job_name='test-linear-learner',
                            sagemaker_session=sagemaker_session)
         ll.binary_classifier_model_selection_criteria = 'accuracy'
-        ll.target_reacall = 0.5
+        ll.target_recall = 0.5
         ll.target_precision = 0.5
         ll.positive_example_weight_mult = 0.1
         ll.epochs = 1
@@ -138,7 +137,7 @@ def test_async_linear_learner():
         ll.normalize_label = False
         ll.unbias_data = True
         ll.unbias_label = False
-        ll.num_point_for_scala = 10000
+        ll.num_point_for_scaler = 10000
         ll.fit(ll.record_set(train_set[0][:200], train_set[1][:200]), wait=False)
         training_job_name = ll.latest_training_job.name
 
