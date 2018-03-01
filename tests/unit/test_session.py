@@ -16,6 +16,7 @@ import six
 from mock import Mock, patch, call
 import sagemaker
 from sagemaker import s3_input, Session, get_execution_role
+import datetime
 
 from botocore.exceptions import ClientError
 
@@ -177,6 +178,11 @@ COMPLETED_DESCRIBE_JOB_RESULT.update(
     {'ModelArtifacts': {
         'S3ModelArtifacts': S3_OUTPUT + '/model/model.tar.gz'
     }})
+# TrainingStartTime and TrainingEndTime are for billable seconds calculation
+COMPLETED_DESCRIBE_JOB_RESULT.update(
+    {'TrainingStartTime': datetime.datetime(2018, 2, 17, 7, 15, 0, 103000)})
+COMPLETED_DESCRIBE_JOB_RESULT.update(
+    {'TrainingEndTime': datetime.datetime(2018, 2, 17, 7, 19, 34, 953000)})
 IN_PROGRESS_DESCRIBE_JOB_RESULT = dict(DEFAULT_EXPECTED_TRAIN_JOB_ARGS)
 IN_PROGRESS_DESCRIBE_JOB_RESULT.update({'TrainingJobStatus': 'InProgress'})
 
