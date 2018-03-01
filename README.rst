@@ -1092,7 +1092,9 @@ you can specify these as keyword arguments.
    file. Structure within this directory will be preserved when training
    on SageMaker.
 -  ``requirements_file (str)`` Path to a ``requirements.txt`` file. The path should
-   be within and relative to ``source_dir``.
+   be within and relative to ``source_dir``. This is a file containing a list of items to be
+   installed using pip install. Details on the format can be found in the
+   `Pip User Guide <https://pip.pypa.io/en/stable/reference/pip_install/#requirements-file-format>`_.
 -  ``hyperparameters (dict[str,ANY])`` Hyperparameters that will be used for training.
    Will be made accessible as a dict[] to the training code on
    SageMaker. Some hyperparameters will be interpreted by TensorFlow and can be use to

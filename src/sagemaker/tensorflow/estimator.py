@@ -121,7 +121,8 @@ class TensorFlow(Framework):
             framework_version (str): TensorFlow version you want to use for executing your model training code.
                 List of supported versions https://github.com/aws/sagemaker-python-sdk#tensorflow-sagemaker-estimators
             requirements_file (str): Path to a ``requirements.txt`` file (default: ''). The path should be within and
-                relative to ``source_dir``.
+                relative to ``source_dir``. Details on the format can be found in the
+                `Pip User Guide <https://pip.pypa.io/en/stable/reference/pip_install/#requirements-file-format>`_.
             **kwargs: Additional kwargs passed to the Framework constructor.
         """
         super(TensorFlow, self).__init__(**kwargs)
