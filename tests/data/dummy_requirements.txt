@@ -1,0 +1,1 @@
+fake-requirement-for-unit-tests==1.0.0

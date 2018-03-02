@@ -108,8 +108,8 @@ class TensorFlow(Framework):
 
     __framework_name__ = 'tensorflow'
 
-    def __init__(self, training_steps=None, evaluation_steps=None, checkpoint_path=None, py_version="py2",
-                 framework_version=TF_VERSION, **kwargs):
+    def __init__(self, training_steps=None, evaluation_steps=None, checkpoint_path=None, py_version='py2',
+                 framework_version=TF_VERSION, requirements_file='', **kwargs):
         """Initialize an ``TensorFlow`` estimator.
         Args:
             training_steps (int): Perform this many steps of training. `None`, the default means train forever.
@@ -120,6 +120,9 @@ class TensorFlow(Framework):
             py_version (str): Python version you want to use for executing your model training code (default: 'py2').
             framework_version (str): TensorFlow version you want to use for executing your model training code.
                 List of supported versions https://github.com/aws/sagemaker-python-sdk#tensorflow-sagemaker-estimators
+            requirements_file (str): Path to a ``requirements.txt`` file (default: ''). The path should be within and
+                relative to ``source_dir``. Details on the format can be found in the
+                `Pip User Guide <https://pip.pypa.io/en/stable/reference/pip_install/#requirements-file-format>`_.
             **kwargs: Additional kwargs passed to the Framework constructor.
         """
         super(TensorFlow, self).__init__(**kwargs)
@@ -128,6 +131,22 @@ class TensorFlow(Framework):
         self.framework_version = framework_version
         self.training_steps = training_steps
         self.evaluation_steps = evaluation_steps
+
+        self._validate_requirements_file(requirements_file)
+        self.requirements_file = requirements_file
+
+    def _validate_requirements_file(self, requirements_file):
+        if not requirements_file:
+            return
+
+        if not self.source_dir:
+            raise ValueError('Must specify source_dir along with a requirements file.')
+
+        if os.path.isabs(requirements_file):
+            raise ValueError('Requirements file {} is not a path relative to source_dir.'.format(requirements_file))
+
+        if not os.path.exists(os.path.join(self.source_dir, requirements_file)):
+            raise ValueError('Requirements file {} does not exist.'.format(requirements_file))
 
     def fit(self, inputs, wait=True, logs=True, job_name=None, run_tensorboard_locally=False):
         """Train a model using the input training dataset.
@@ -228,11 +247,13 @@ class TensorFlow(Framework):
             sagemaker.tensorflow.model.TensorFlowModel: A SageMaker ``TensorFlowModel`` object.
                 See :func:`~sagemaker.tensorflow.model.TensorFlowModel` for full details.
         """
+        env = {'SAGEMAKER_REQUIREMENTS': self.requirements_file}
         return TensorFlowModel(self.model_data, self.role, self.entry_point, source_dir=self.source_dir,
-                               enable_cloudwatch_metrics=self.enable_cloudwatch_metrics, name=self._current_job_name,
-                               container_log_level=self.container_log_level, code_location=self.code_location,
-                               py_version=self.py_version, framework_version=self.framework_version,
-                               model_server_workers=model_server_workers, sagemaker_session=self.sagemaker_session)
+                               enable_cloudwatch_metrics=self.enable_cloudwatch_metrics, env=env,
+                               name=self._current_job_name, container_log_level=self.container_log_level,
+                               code_location=self.code_location, py_version=self.py_version,
+                               framework_version=self.framework_version, model_server_workers=model_server_workers,
+                               sagemaker_session=self.sagemaker_session)
 
     def hyperparameters(self):
         """Return hyperparameters used by your custom TensorFlow code during model training."""
@@ -243,7 +264,8 @@ class TensorFlow(Framework):
 
         additional_hyperparameters = {'checkpoint_path': self.checkpoint_path,
                                       'training_steps': self.training_steps,
-                                      'evaluation_steps': self.evaluation_steps}
+                                      'evaluation_steps': self.evaluation_steps,
+                                      'sagemaker_requirements': self.requirements_file}
 
         hyperparameters.update(Framework._json_encode_hyperparameters(additional_hyperparameters))
         return hyperparameters
