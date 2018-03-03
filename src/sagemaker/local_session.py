@@ -10,16 +10,13 @@
 # distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
-import StringIO
 import datetime
 
-import requests
 import urllib3
 from botocore.exceptions import ClientError
-from botocore.response import StreamingBody
 
+from sagemaker.image import train, serve
 from sagemaker.session import Session
-from sagemaker_container_sdk.image import train, serve
 
 
 class LocalSagemakerClient(object):
