@@ -1,4 +1,4 @@
-# Copyright 2017 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright 2017-2018 Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -16,9 +16,10 @@ import subprocess
 import tempfile
 import threading
 
-import sagemaker.tensorflow
 from sagemaker.estimator import Framework
-from sagemaker.fw_utils import create_image_uri, framework_name_from_image
+from sagemaker.fw_utils import create_image_uri, framework_name_from_image, framework_version_from_tag
+
+from sagemaker.tensorflow.defaults import TF_VERSION
 from sagemaker.tensorflow.model import TensorFlowModel
 
 logging.basicConfig()
@@ -107,7 +108,8 @@ class TensorFlow(Framework):
 
     __framework_name__ = 'tensorflow'
 
-    def __init__(self, training_steps=None, evaluation_steps=None, checkpoint_path=None, py_version="py2", **kwargs):
+    def __init__(self, training_steps=None, evaluation_steps=None, checkpoint_path=None, py_version='py2',
+                 framework_version=TF_VERSION, requirements_file='', **kwargs):
         """Initialize an ``TensorFlow`` estimator.
         Args:
             training_steps (int): Perform this many steps of training. `None`, the default means train forever.
@@ -116,13 +118,35 @@ class TensorFlow(Framework):
             checkpoint_path (str): Identifies S3 location where checkpoint data during model training can be
                 saved (default: None). For distributed model training, this parameter is required.
             py_version (str): Python version you want to use for executing your model training code (default: 'py2').
+            framework_version (str): TensorFlow version you want to use for executing your model training code.
+                List of supported versions https://github.com/aws/sagemaker-python-sdk#tensorflow-sagemaker-estimators
+            requirements_file (str): Path to a ``requirements.txt`` file (default: ''). The path should be within and
+                relative to ``source_dir``. Details on the format can be found in the
+                `Pip User Guide <https://pip.pypa.io/en/stable/reference/pip_install/#requirements-file-format>`_.
             **kwargs: Additional kwargs passed to the Framework constructor.
         """
         super(TensorFlow, self).__init__(**kwargs)
         self.checkpoint_path = checkpoint_path
         self.py_version = py_version
+        self.framework_version = framework_version
         self.training_steps = training_steps
         self.evaluation_steps = evaluation_steps
+
+        self._validate_requirements_file(requirements_file)
+        self.requirements_file = requirements_file
+
+    def _validate_requirements_file(self, requirements_file):
+        if not requirements_file:
+            return
+
+        if not self.source_dir:
+            raise ValueError('Must specify source_dir along with a requirements file.')
+
+        if os.path.isabs(requirements_file):
+            raise ValueError('Requirements file {} is not a path relative to source_dir.'.format(requirements_file))
+
+        if not os.path.exists(os.path.join(self.source_dir, requirements_file)):
+            raise ValueError('Requirements file {} does not exist.'.format(requirements_file))
 
     def fit(self, inputs, wait=True, logs=True, job_name=None, run_tensorboard_locally=False):
         """Train a model using the input training dataset.
@@ -185,8 +209,14 @@ class TensorFlow(Framework):
             if value is not None:
                 init_params[argument] = value
 
-        framework, py_version = framework_name_from_image(init_params.pop('image'))
+        framework, py_version, tag = framework_name_from_image(init_params.pop('image'))
         init_params['py_version'] = py_version
+
+        # We switched image tagging scheme from regular image version (e.g. '1.0') to more expressive
+        # containing framework version, device type and python version (e.g. '1.5-gpu-py2').
+        # For backward compatibility map deprecated image tag '1.0' to a '1.4' framework version
+        # otherwise extract framework version from the tag itself.
+        init_params['framework_version'] = '1.4' if tag == '1.0' else framework_version_from_tag(tag)
 
         training_job_name = init_params['base_job_name']
         if framework != cls.__framework_name__:
@@ -204,8 +234,7 @@ class TensorFlow(Framework):
             str: The URI of the Docker image.
         """
         return create_image_uri(self.sagemaker_session.boto_session.region_name, self.__framework_name__,
-                                self.train_instance_type, py_version=self.py_version,
-                                tag=sagemaker.tensorflow.DOCKER_TAG)
+                                self.train_instance_type, self.framework_version, py_version=self.py_version)
 
     def create_model(self, model_server_workers=None):
         """Create a SageMaker ``TensorFlowModel`` object that can be deployed to an ``Endpoint``.
@@ -218,10 +247,12 @@ class TensorFlow(Framework):
             sagemaker.tensorflow.model.TensorFlowModel: A SageMaker ``TensorFlowModel`` object.
                 See :func:`~sagemaker.tensorflow.model.TensorFlowModel` for full details.
         """
+        env = {'SAGEMAKER_REQUIREMENTS': self.requirements_file}
         return TensorFlowModel(self.model_data, self.role, self.entry_point, source_dir=self.source_dir,
-                               enable_cloudwatch_metrics=self.enable_cloudwatch_metrics, name=self._current_job_name,
-                               container_log_level=self.container_log_level, code_location=self.code_location,
-                               py_version=self.py_version, model_server_workers=model_server_workers,
+                               enable_cloudwatch_metrics=self.enable_cloudwatch_metrics, env=env,
+                               name=self._current_job_name, container_log_level=self.container_log_level,
+                               code_location=self.code_location, py_version=self.py_version,
+                               framework_version=self.framework_version, model_server_workers=model_server_workers,
                                sagemaker_session=self.sagemaker_session)
 
     def hyperparameters(self):
@@ -233,7 +264,8 @@ class TensorFlow(Framework):
 
         additional_hyperparameters = {'checkpoint_path': self.checkpoint_path,
                                       'training_steps': self.training_steps,
-                                      'evaluation_steps': self.evaluation_steps}
+                                      'evaluation_steps': self.evaluation_steps,
+                                      'sagemaker_requirements': self.requirements_file}
 
         hyperparameters.update(Framework._json_encode_hyperparameters(additional_hyperparameters))
         return hyperparameters
