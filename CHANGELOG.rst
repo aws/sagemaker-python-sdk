@@ -2,7 +2,7 @@
 CHANGELOG
 =========
 
-1.1.dev1
+1.1.1
 ========
 
 * feature: Estimators: add ``requirements.txt`` support for TensorFlow
