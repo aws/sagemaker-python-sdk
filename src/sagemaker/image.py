@@ -31,6 +31,7 @@ def train(algorithm_specification, input_data_config, resource_config, hyperpara
     instance_count = resource_config['InstanceCount']
 
     hosts = _host_names(instance_count)
+    master = hosts[0]
 
     optml = _opt_folder()
     tmpdir = abspath(optml)
@@ -65,20 +66,21 @@ def train(algorithm_specification, input_data_config, resource_config, hyperpara
 
     _write_compose_file(content, tmpdir)
 
-    logger.info("training dir: \n{}".format(str(_check_output(['ls', '-lR', tmpdir]).decode('utf-8'))))
+    logger.info("training dir: \n{}".format(_check_output(['ls', '-lR', tmpdir])))
 
     command = _compose(tmpdir, instance_type)
     print(_check_output(command))
     _cleanup()
 
+    # Grab the model artifacts from the master node [ This works for TF, but we need to revisit it
+    # for MXNet and possibly other frameworks ].
     s3_model_artifacts = join(tmpdir, 's3_model_artifacts')
-    for host in hosts:
-        volumes = content['services'][str(host)]['volumes']
+    volumes = content['services'][str(master)]['volumes']
 
-        for volume in volumes:
-            container_dir, host_dir = volume.split(':')
-            if host_dir == '/opt/ml/model':
-                shutil.copytree(container_dir, s3_model_artifacts)
+    for volume in volumes:
+        container_dir, host_dir = volume.split(':')
+        if host_dir == '/opt/ml/model':
+            shutil.copytree(container_dir, s3_model_artifacts)
 
     return s3_model_artifacts
 
@@ -118,15 +120,16 @@ def _is_s3_path(uri):
 
 def _cleanup():
     _chain_docker_cmds('docker images -f dangling=true -q', 'docker rmi -f')
-    _check_output('docker network prune'.split(' '))
+    _check_output('docker network prune -f'.split(' '))
 
 
 def _chain_docker_cmds(cmd, cmd2):
-    docker_tags = _check_output(cmd.split(' ')).split('\n')
+    output = _check_output(cmd)
+    docker_tags = output.split('\n')
 
     if any(docker_tags):
         try:
-            _check_output(cmd2.split(' ') + docker_tags, stderr=STDOUT)
+            _check_output(cmd2.split() + docker_tags, stderr=STDOUT)
         except CalledProcessError:
             pass
 
@@ -162,7 +165,19 @@ def _check_output(cmd, *popenargs, **kwargs):
     if isinstance(cmd, str):
         cmd = cmd.split(" ")
     _print_cmd(cmd, *popenargs, **kwargs)
-    return subprocess.check_output(cmd, *popenargs, **kwargs)
+    success = True
+    try:
+        output = subprocess.check_output(cmd, *popenargs, **kwargs)
+    except subprocess.CalledProcessError as e:
+        output = e.output
+        success = False
+
+    output = output.decode("utf-8")
+    print(output)
+    if not success:
+        raise Exception("Failed to run %s" % ",".join(cmd))
+
+    return output
 
 
 def _print_cmd(cmd, *popenargs, **kwargs):

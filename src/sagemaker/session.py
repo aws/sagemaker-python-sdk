@@ -743,7 +743,7 @@ class s3_input(object):
         if isinstance(s3_data, s3_input):
             # just a shallow copy
             self.__dict__.update(s3_data.__dict__)
-        elif isinstance(s3_data, (str, unicode)):
+        elif isinstance(s3_data, six.string_types):
             self.uri = s3_data
             self.uri_prefix = s3_data[5:]
             self.distribution = distribution

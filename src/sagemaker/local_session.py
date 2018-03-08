@@ -11,6 +11,7 @@
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
 import datetime
+import time
 
 import urllib3
 from botocore.exceptions import ClientError
@@ -68,6 +69,31 @@ class LocalSagemakerClient(object):
         self.container = serve(self.primary_container, self.variants[0])
         self.container.up()
         self.created_endpoint = True
+
+        i = 0
+        http = urllib3.PoolManager()
+        while True:
+            i += 1
+
+            if i > 1:
+                time.sleep(1)
+
+            if i >= 10:
+                print("Giving up, endpoint didn't launch correctly")
+                return
+
+            print("Checking if endpoint is up, attempt: %s" % i)
+            try:
+                r = http.request('GET', "http://localhost:8080/ping")
+                if r.status != 200:
+                    print("Container still not up, got: %s" % r.status)
+                    continue
+            except:
+                print("Container still not up")
+                continue
+            print("Container is up")
+            return
+
 
     def delete_endpoint(self, EndpointName):
         self.container.down()
