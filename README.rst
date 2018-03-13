@@ -1139,7 +1139,7 @@ You need to add them inside the hyperparameters dictionary in the
 -  ``eval_hooks (list)`` A list of `SessionRunHook` hooks to pass during evaluation.
 -  ``eval_delay_secs (int)`` Start evaluating after waiting for this many seconds.
 -  ``continuous_eval_throttle_secs (int)`` Do not re-evaluate unless the last evaluation was started at least this many seconds ago.
--  ``min_eval_frequency (int)`` The minimum number of steps between evaluations. Of course, evaluation does not occur if no new snapshot is available, hence, this is the minimum. If 0, the evaluation will only happen after training. If None, defaults to default is 1000.
+-  ``min_eval_frequency (int)`` The minimum number of steps between evaluations. Of course, evaluation does not occur if no new snapshot is available, hence, this is the minimum. If 0, the evaluation will only happen after training. If None, defaults to 1000.
 -  ``delay_workers_by_global_step (bool)`` if ``True`` delays training workers based on global step instead of time.
 - ``train_steps_per_iteration (int)`` Perform this many (integer) number of train steps for each training-evaluation iteration. With a small value, the model will be evaluated more frequently with more checkpoints saved.
 
