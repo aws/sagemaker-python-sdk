@@ -379,7 +379,7 @@ class Estimator(EstimatorBase):
     def __init__(self, image_name, role, train_instance_count, train_instance_type,
                  train_volume_size=30, train_max_run=24 * 60 * 60, input_mode='File',
                  output_path=None, output_kms_key=None, base_job_name=None, sagemaker_session=None,
-                 hyperparameters=None):
+                 hyperparameters=None, local_mode=False):
         """Initialize an ``Estimator`` instance.
 
         Args:
@@ -414,10 +414,11 @@ class Estimator(EstimatorBase):
             hyperparameters (dict): Dictionary containing the hyperparameters to initialize this estimator with.
         """
         self.image_name = image_name
-        self.hyperparam_dict = hyperparameters.copy() if hyperparameters else {}
+        self._hyperparameters = hyperparameters or {}
+
         super(Estimator, self).__init__(role, train_instance_count, train_instance_type,
                                         train_volume_size, train_max_run, input_mode,
-                                        output_path, output_kms_key, base_job_name, sagemaker_session)
+                                        output_path, output_kms_key, base_job_name, sagemaker_session, local_mode)
 
     def train_image(self):
         """
@@ -428,16 +429,16 @@ class Estimator(EstimatorBase):
         """
         return self.image_name
 
-    def set_hyperparameters(self, **kwargs):
-        for k, v in kwargs.items():
-            self.hyperparam_dict[k] = v
-
     def hyperparameters(self):
-        """Returns the hyperparameters as a dictionary to use for training.
+        """Return the hyperparameters as a dictionary to use for training.
 
-       The fit() method, that does the model training, calls this method to find the hyperparameters you specified.
+               The fit() method, that does the model training, calls this method to find the hyperparameters you specified.
+
+
+        Returns:
+            dict[str, str]: The hyperparameters.
         """
-        return self.hyperparam_dict
+        return _json_encode_hyperparameters(self._hyperparameters)
 
     def create_model(self, image=None, predictor_cls=None, serializer=None, deserializer=None,
                      content_type=None, accept=None, **kwargs):
@@ -589,7 +590,7 @@ class Framework(EstimatorBase):
         Returns:
             dict[str, str]: The hyperparameters.
         """
-        return self._json_encode_hyperparameters(self._hyperparameters)
+        return _json_encode_hyperparameters(self._hyperparameters)
 
     @classmethod
     def _prepare_init_params_from_job_description(cls, job_details):
@@ -647,10 +648,6 @@ class Framework(EstimatorBase):
         estimator.uploaded_code = UploadedCode(estimator.source_dir, estimator.entry_point)
         return estimator
 
-    @staticmethod
-    def _json_encode_hyperparameters(hyperparameters):
-        return {str(k): json.dumps(v) for (k, v) in hyperparameters.items()}
-
     @classmethod
     def _update_init_params(cls, hp, tf_arguments):
         updated_params = {}
@@ -660,3 +657,7 @@ class Framework(EstimatorBase):
                 value = json.loads(value)
                 updated_params[argument] = value
         return updated_params
+
+
+def _json_encode_hyperparameters(hyperparameters):
+    return {str(k): json.dumps(v) for (k, v) in hyperparameters.items()}
