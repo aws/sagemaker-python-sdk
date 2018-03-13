@@ -42,8 +42,8 @@ class AmazonAlgorithmEstimatorBase(EstimatorBase):
         super(AmazonAlgorithmEstimatorBase, self).__init__(role, train_instance_count, train_instance_type,
                                                            **kwargs)
 
-        default_location = "s3://{}/sagemaker-record-sets/".format(self.sagemaker_session.default_bucket())
-        data_location = data_location or default_location
+        data_location = data_location or "s3://{}/sagemaker-record-sets/".format(
+            self.sagemaker_session.default_bucket())
         self.data_location = data_location
 
     def train_image(self):
