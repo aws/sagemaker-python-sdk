@@ -18,7 +18,6 @@ import numpy as np
 from sagemaker.amazon.pca import PCA
 from sagemaker.amazon.amazon_estimator import upload_numpy_to_s3_shards, _build_shards, registry
 
-
 COMMON_ARGS = {'role': 'myrole', 'train_instance_count': 1, 'train_instance_type': 'ml.c4.xlarge'}
 
 REGION = "us-west-2"

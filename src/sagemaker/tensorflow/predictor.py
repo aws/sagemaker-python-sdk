@@ -32,7 +32,7 @@ class _TFProtobufSerializer(object):
         self.content_type = CONTENT_TYPE_OCTET_STREAM
 
     def __call__(self, data):
-        # isintance does not work here because a same protobuf message can be imported from a different module.
+        # isinstance does not work here because a same protobuf message can be imported from a different module.
         # for example sagemaker.tensorflow.tensorflow_serving.regression_pb2 and tensorflow_serving.apis.regression_pb2
         predict_type = data.__class__.__name__
 

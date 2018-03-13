@@ -20,18 +20,18 @@ from sagemaker.session import Session
 
 class PCA(AmazonAlgorithmEstimatorBase):
 
-    repo = 'pca:1'
+    repo_name = 'pca'
+    repo_version = 1
 
     DEFAULT_MINI_BATCH_SIZE = 500
 
-    num_components = hp(name='num_components', validate=lambda x: x > 0 and isinstance(x, int),
-                        validation_message='Value must be an integer greater than zero')
+    num_components = hp(name='num_components', validate=lambda x: x > 0,
+                        validation_message='Value must be an integer greater than zero', data_type=int)
     algorithm_mode = hp(name='algorithm_mode', validate=lambda x: x in ['regular', 'stable', 'randomized'],
-                        validation_message='Value must be one of "regular", "stable", "randomized"')
-    subtract_mean = hp(name='subtract_mean', validate=lambda x: isinstance(x, bool),
-                       validation_message='Value must be a boolean')
-    extra_components = hp(name='extra_components', validate=lambda x: x >= 0 and isinstance(x, int),
-                          validation_message="Value must be an integer greater than or equal to 0")
+                        validation_message='Value must be one of "regular", "stable", "randomized"', data_type=str)
+    subtract_mean = hp(name='subtract_mean', validation_message='Value must be a boolean', data_type=bool)
+    extra_components = hp(name='extra_components', validate=lambda x: x >= 0,
+                          validation_message="Value must be an integer greater than or equal to 0", data_type=int)
 
     def __init__(self, role, train_instance_count, train_instance_type, num_components,
                  algorithm_mode=None, subtract_mean=None, extra_components=None, **kwargs):
@@ -119,6 +119,7 @@ class PCAModel(Model):
 
     def __init__(self, model_data, role, sagemaker_session=None):
         sagemaker_session = sagemaker_session or Session()
-        image = registry(sagemaker_session.boto_session.region_name) + "/" + PCA.repo
+        repo = '{}:{}'.format(PCA.repo_name, PCA.repo_version)
+        image = '{}/{}'.format(registry(sagemaker_session.boto_session.region_name), repo)
         super(PCAModel, self).__init__(model_data, image, role, predictor_cls=PCAPredictor,
                                        sagemaker_session=sagemaker_session)

@@ -17,7 +17,6 @@ import pytest
 from mock import Mock, patch
 
 from sagemaker.estimator import Estimator, Framework, _TrainingJob
-from sagemaker.fw_utils import framework_name_from_image
 from sagemaker.session import s3_input
 from sagemaker.model import FrameworkModel
 from sagemaker.predictor import RealTimePredictor
@@ -69,6 +68,12 @@ class DummyFramework(Framework):
 
     def create_model(self):
         return DummyFrameworkModel(self.sagemaker_session)
+
+    @classmethod
+    def _prepare_init_params_from_job_description(cls, job_details):
+        init_params = super(DummyFramework, cls)._prepare_init_params_from_job_description(job_details)
+        init_params.pop("image", None)
+        return init_params
 
 
 class DummyFrameworkModel(FrameworkModel):
@@ -251,12 +256,6 @@ def test_attach_framework(sagemaker_session):
     assert framework_estimator.entry_point == 'iris-dnn-classifier.py'
 
 
-def test_attach_no_job_name_framework(sagemaker_session):
-    with pytest.raises(ValueError) as error:
-        Framework.attach(training_job_name=None, sagemaker_session=sagemaker_session)
-    assert 'must specify training_job name' in str(error)
-
-
 def test_fit_then_fit_again(sagemaker_session):
     fw = DummyFramework(entry_point=SCRIPT_PATH, role=ROLE, sagemaker_session=sagemaker_session,
                         train_instance_count=INSTANCE_COUNT, train_instance_type=INSTANCE_TYPE,
@@ -322,18 +321,6 @@ def test_init_with_source_dir_s3(strftime, sagemaker_session):
 
     actual_hyperparameter = sagemaker_session.method_calls[1][2]['hyperparameters']
     assert actual_hyperparameter == expected_hyperparameters
-
-
-def test_framework_name_from_framework_image():
-    framework, py_ver = framework_name_from_image('123.dkr.ecr.us-west-2.amazonaws.com/sagemaker-mxnet-py2-gpu:1')
-    assert framework == 'mxnet'
-    assert py_ver == 'py2'
-
-
-def test_framework_name_from_other():
-    framework, py_ver = framework_name_from_image('123.dkr.ecr.us-west-2.amazonaws.com/sagemaker-myown-py2-gpu:1')
-    assert framework is None
-    assert py_ver is None
 
 
 # _TrainingJob 'utils'
