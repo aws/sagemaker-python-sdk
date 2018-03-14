@@ -2,6 +2,11 @@
 CHANGELOG
 =========
 
+1.1.2
+=======
+
+* bug-fix: AmazonEstimators: do not call create bucket if data location is provided
+
 1.1.1
 ========
 
