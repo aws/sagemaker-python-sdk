@@ -6,6 +6,14 @@
 SageMaker Python SDK
 ====================
 
+.. image:: https://travis-ci.org/aws/sagemaker-python-sdk.svg?branch=master
+   :target: https://travis-ci.org/aws/sagemaker-python-sdk
+   :alt: Build Status
+
+.. image:: https://codecov.io/gh/aws/sagemaker-python-sdk/branch/master/graph/badge.svg
+   :target: https://codecov.io/gh/aws/sagemaker-python-sdk
+   :alt: CodeCov
+
 SageMaker Python SDK is an open source library for training and deploying machine learning models on Amazon SageMaker.
 
 With the SDK, you can train and deploy models using popular deep learning frameworks: **Apache MXNet** and **TensorFlow**. You can also train and deploy models with **Amazon algorithms**, these are scalable implementations of core machine learning algorithms that are optimized for SageMaker and GPU training. If you have **your own algorithms** built into SageMaker compatible Docker containers, you can train and host models using these as well.
