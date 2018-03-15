@@ -221,7 +221,11 @@ def _download_folder(bucket_name, prefix, target, session=None):
         except:
             pass
 
-        obj.download_file(file_path)
+        try:
+            obj.download_file(file_path)
+        except OSError as e:
+            if e.errno == 21: # it is a directory
+                pass
 
 
 def _compose(tmpdir, instance_type, detached=False):

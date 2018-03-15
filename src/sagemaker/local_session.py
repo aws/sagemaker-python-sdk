@@ -31,7 +31,7 @@ class LocalSagemakerClient(object):
         self.created_endpoint = False
 
     def create_training_job(self, TrainingJobName, AlgorithmSpecification, RoleArn, InputDataConfig, OutputDataConfig,
-                            ResourceConfig, StoppingCondition, HyperParameters, Tags=None):
+                            ResourceConfig, StoppingCondition, HyperParameters={}, Tags=None):
         self.train_instance_count = ResourceConfig['InstanceCount']
 
         self.s3_model_artifacts = train(AlgorithmSpecification, InputDataConfig, ResourceConfig, HyperParameters,
@@ -90,7 +90,6 @@ class LocalSagemakerClient(object):
                 print("Container still not up")
 
             time.sleep(1)
-
 
     def delete_endpoint(self, EndpointName):
         self.container.down()

@@ -223,7 +223,7 @@ class Session(object):
                 'TrainingImage': image,
                 'TrainingInputMode': input_mode
             },
-            # 'HyperParameters': hyperparameters,
+            'HyperParameters': hyperparameters or {},
             'InputDataConfig': input_config,
             'OutputDataConfig': output_config,
             'TrainingJobName': job_name,
@@ -232,8 +232,6 @@ class Session(object):
             "RoleArn": role,
         }
 
-        if hyperparameters and len(hyperparameters) > 0:
-            train_request['HyperParameters'] = hyperparameters
         LOGGER.info('Creating training-job with name: {}'.format(job_name))
         LOGGER.debug('train request: {}'.format(json.dumps(train_request, indent=4)))
         self.sagemaker_client.create_training_job(**train_request)
