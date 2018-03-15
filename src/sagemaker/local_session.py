@@ -75,9 +75,6 @@ class LocalSagemakerClient(object):
         while True:
             i += 1
 
-            if i > 1:
-                time.sleep(1)
-
             if i >= 10:
                 print("Giving up, endpoint didn't launch correctly")
                 return
@@ -87,12 +84,12 @@ class LocalSagemakerClient(object):
                 r = http.request('GET', "http://localhost:8080/ping")
                 if r.status != 200:
                     print("Container still not up, got: %s" % r.status)
-                    continue
+                else:
+                    return
             except:
                 print("Container still not up")
-                continue
-            print("Container is up")
-            return
+
+            time.sleep(1)
 
 
     def delete_endpoint(self, EndpointName):

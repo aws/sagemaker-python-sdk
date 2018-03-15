@@ -11,6 +11,7 @@ import boto3
 import docker
 import os
 import yaml
+import sys
 from os.path import join, abspath, dirname
 
 CONTAINER_PREFIX = "algo"
@@ -69,7 +70,7 @@ def train(algorithm_specification, input_data_config, resource_config, hyperpara
     logger.info("training dir: \n{}".format(_check_output(['ls', '-lR', tmpdir])))
 
     command = _compose(tmpdir, instance_type)
-    print(_check_output(command))
+    _stream_output(command)
     _cleanup()
 
     # Grab the model artifacts from the master node [ This works for TF, but we need to revisit it
@@ -124,8 +125,7 @@ def _cleanup():
 
 
 def _chain_docker_cmds(cmd, cmd2):
-    output = _check_output(cmd)
-    docker_tags = output.split('\n')
+    docker_tags = _check_output(cmd).split('\n')
 
     if any(docker_tags):
         try:
@@ -161,6 +161,24 @@ def _check_call(cmd, *popenargs, **kwargs):
     return subprocess.check_call(cmd, *popenargs, **kwargs)
 
 
+def _stream_output(cmd, *popenargs, **kwargs):
+    if isinstance(cmd, str):
+        cmd = cmd.split(" ")
+    #_print_cmd(cmd, *popenargs, **kwargs)
+    process = subprocess.Popen(cmd, stdout=subprocess.PIPE)
+    exit_code = None
+    while exit_code is None:
+        stdout = process.stdout.readline().decode("utf-8")
+        sys.stdout.write(stdout)
+
+        exit_code = process.poll()
+
+    if exit_code != 0:
+        raise Exception("Failed to run %s, exit code: %s" % (",".join(cmd), exit_code))
+
+    return exit_code
+
+
 def _check_output(cmd, *popenargs, **kwargs):
     if isinstance(cmd, str):
         cmd = cmd.split(" ")
@@ -173,7 +191,6 @@ def _check_output(cmd, *popenargs, **kwargs):
         success = False
 
     output = output.decode("utf-8")
-    print(output)
     if not success:
         raise Exception("Failed to run %s" % ",".join(cmd))
 
