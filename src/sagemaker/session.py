@@ -756,6 +756,32 @@ class s3_input(object):
             self.config['RecordWrapperType'] = record_wrapping
 
 
+class Inputs(object):
+
+    def __init__(self, inputs, sagemaker_session):
+        _inputs = inputs if isinstance(inputs, dict) else {'training': inputs}
+        self._input_dict = {k: s3_input(v) for k, v in _inputs.items()}
+
+        self.sagemaker_session = sagemaker_session
+
+    def channels(self):
+        channels = []
+        for channel_name, channel_s3_input in self._input_dict.items():
+            channel_config = channel_s3_input.config
+            channel_config['ChannelName'] = channel_name
+            channels.append(channel_config)
+        return channels
+
+    def upload_data(self, prefix):
+        dict = self._input_dict
+
+        for channel in dict.keys():
+            path = dict[channel].uri
+            if isinstance(path, (str, unicode)) and not path.startswith('s3://'):
+                s3_path = self.sagemaker_session.upload_data(path=path, key_prefix=prefix)
+                dict[channel].uri = s3_path
+
+
 def _deployment_entity_exists(describe_fn):
     try:
         describe_fn()

@@ -32,7 +32,8 @@ setup(name="sagemaker",
       ],
 
       # Declare minimal set for installation
-      install_requires=['boto3>=1.4.8', 'numpy>=1.9.0', 'protobuf>=3.1', 'scipy>=1.0.0'],
+      install_requires=['boto3>=1.4.8', 'numpy>=1.9.0', 'protobuf>=3.1', 'scipy>=1.0.0', 'urllib3>=1.2',
+                        'PyYAML>=3.2'],
 
       extras_require={
           'test': ['tox', 'flake8', 'pytest', 'pytest-cov', 'pytest-xdist',
