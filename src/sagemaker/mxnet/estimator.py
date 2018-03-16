@@ -1,4 +1,4 @@
-# Copyright 2017 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright 2017-2018 Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -10,11 +10,10 @@
 # distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
-import sagemaker
 from sagemaker.estimator import Framework
-from sagemaker.fw_utils import create_image_uri, framework_name_from_image
+from sagemaker.fw_utils import create_image_uri, framework_name_from_image, framework_version_from_tag
+from sagemaker.mxnet.defaults import MXNET_VERSION
 from sagemaker.mxnet.model import MXNetModel
-from sagemaker.session import Session
 
 
 class MXNet(Framework):
@@ -22,7 +21,8 @@ class MXNet(Framework):
 
     __framework_name__ = "mxnet"
 
-    def __init__(self, entry_point, source_dir=None, hyperparameters=None, py_version='py2', **kwargs):
+    def __init__(self, entry_point, source_dir=None, hyperparameters=None, py_version='py2',
+                 framework_version=MXNET_VERSION, **kwargs):
         """
         This ``Estimator`` executes an MXNet script in a managed MXNet execution environment, within a SageMaker
         Training Job. The managed MXNet environment is an Amazon-built Docker container that executes functions
@@ -48,10 +48,13 @@ class MXNet(Framework):
                 to convert them before training.
             py_version (str): Python version you want to use for executing your model training code (default: 'py2').
                               One of 'py2' or 'py3'.
+            framework_version (str): MXNet version you want to use for executing your model training code.
+                List of supported versions https://github.com/aws/sagemaker-python-sdk#mxnet-sagemaker-estimators
             **kwargs: Additional kwargs passed to the :class:`~sagemaker.estimator.Framework` constructor.
         """
         super(MXNet, self).__init__(entry_point, source_dir, hyperparameters, **kwargs)
         self.py_version = py_version
+        self.framework_version = framework_version
 
     def train_image(self):
         """Return the Docker image to use for training.
@@ -63,7 +66,8 @@ class MXNet(Framework):
             str: The URI of the Docker image.
         """
         return create_image_uri(self.sagemaker_session.boto_session.region_name, self.__framework_name__,
-                                self.train_instance_type, py_version=self.py_version, tag=sagemaker.mxnet.DOCKER_TAG)
+                                self.train_instance_type, framework_version=self.framework_version,
+                                py_version=self.py_version)
 
     def create_model(self, model_server_workers=None):
         """Create a SageMaker ``MXNetModel`` object that can be deployed to an ``Endpoint``.
@@ -79,46 +83,34 @@ class MXNet(Framework):
         return MXNetModel(self.model_data, self.role, self.entry_point, source_dir=self.source_dir,
                           enable_cloudwatch_metrics=self.enable_cloudwatch_metrics, name=self._current_job_name,
                           container_log_level=self.container_log_level, code_location=self.code_location,
-                          py_version=self.py_version, model_server_workers=model_server_workers,
-                          sagemaker_session=self.sagemaker_session)
+                          py_version=self.py_version, framework_version=self.framework_version,
+                          model_server_workers=model_server_workers, sagemaker_session=self.sagemaker_session)
 
     @classmethod
-    def attach(cls, training_job_name, sagemaker_session=None):
-        """Attach to an existing training job.
-
-        Create an ``Estimator`` bound to an existing training job. After attaching, if
-        the training job is in a Complete status, it can be ``deploy``ed to create
-        a SageMaker ``Endpoint`` and return a ``Predictor``.
-
-        If the training job is in progress, attach will block and display log messages
-        from the training job, until the training job completes.
+    def _prepare_init_params_from_job_description(cls, job_details):
+        """Convert the job description to init params that can be handled by the class constructor
 
         Args:
-            training_job_name (str): The name of the training job to attach to.
-            sagemaker_session (sagemaker.session.Session): Session object which manages interactions with
-                Amazon SageMaker APIs and any other AWS services needed. If not specified, the estimator creates one
-                using the default AWS configuration chain.
+            job_details: the returned job details from a describe_training_job API call.
 
         Returns:
-            sagemaker.mxnet.estimator.MXNet: ``Estimator`` with the attached training job.
+             dictionary: The transformed init_params
 
-        Raises:
-            ValueError: If `training_job_name` is None or the image name does not match the framework.
         """
-        sagemaker_session = sagemaker_session or Session()
+        init_params = super(MXNet, cls)._prepare_init_params_from_job_description(job_details)
+        framework, py_version, tag = framework_name_from_image(init_params.pop('image'))
 
-        if training_job_name is None:
-            raise ValueError("must specify training_job name")
+        init_params['py_version'] = py_version
 
-        job_details = sagemaker_session.sagemaker_client.describe_training_job(TrainingJobName=training_job_name)
-        init_params, hp, image = cls._prepare_estimator_params_from_job_description(job_details)
+        # We switched image tagging scheme from regular image version (e.g. '1.0') to more expressive
+        # containing framework version, device type and python version (e.g. '0.12-gpu-py2').
+        # For backward compatibility map deprecated image tag '1.0' to a '0.12' framework version
+        # otherwise extract framework version from the tag itself.
+        init_params['framework_version'] = '0.12' if tag == '1.0' else framework_version_from_tag(tag)
 
-        init_params.update({'hyperparameters': hp})
-
-        framework, py_version = framework_name_from_image(image)
-        init_params.update({'py_version': py_version})
+        training_job_name = init_params['base_job_name']
 
         if framework != cls.__framework_name__:
             raise ValueError("Training job: {} didn't use image for requested framework".format(training_job_name))
 
-        return super(MXNet, cls).attach(training_job_name=None, sagemaker_session=sagemaker_session, **init_params)
+        return init_params

@@ -28,6 +28,4 @@ if LooseVersion(tensorflow.__version__) < LooseVersion("1.3.0"):
 from sagemaker.tensorflow.estimator import TensorFlow  # noqa: E402
 from sagemaker.tensorflow.model import TensorFlowModel, TensorFlowPredictor  # noqa: E402
 
-DOCKER_TAG = "1.0"
-
 __all__ = [TensorFlow, TensorFlowModel, TensorFlowPredictor]

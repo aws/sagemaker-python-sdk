@@ -1,4 +1,4 @@
-# Copyright 2017 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright 2017-2018 Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -38,20 +38,20 @@ class PickleSerializer(object):
         return pickle.dumps(data, protocol=2)
 
 
-def test_cifar(sagemaker_session):
+def test_cifar(sagemaker_session, tf_full_version):
     with timeout(minutes=15):
         script_path = os.path.join(DATA_DIR, 'cifar_10', 'source')
 
         dataset_path = os.path.join(DATA_DIR, 'cifar_10', 'data')
 
         estimator = TensorFlow(entry_point='resnet_cifar_10.py', source_dir=script_path, role='SageMakerRole',
-                               training_steps=20, evaluation_steps=5,
+                               framework_version=tf_full_version, training_steps=20, evaluation_steps=5,
                                train_instance_count=2, train_instance_type='ml.p2.xlarge',
                                sagemaker_session=sagemaker_session,
                                base_job_name='test-cifar')
 
         inputs = estimator.sagemaker_session.upload_data(path=dataset_path, key_prefix='data/cifar10')
-        estimator.fit(inputs)
+        estimator.fit(inputs, logs=False)
         print('job succeeded: {}'.format(estimator.latest_training_job.name))
 
     with timeout_and_delete_endpoint(estimator=estimator, minutes=20):

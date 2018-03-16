@@ -39,7 +39,7 @@ You can install from source by cloning this repository and issuing a pip install
 
     git clone https://github.com/aws/sagemaker-python-sdk.git
     python setup.py sdist
-    pip install dist/sagemaker-1.0.0.tar.gz
+    pip install dist/sagemaker-1.1.2.tar.gz
 
 Supported Python versions
 ~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -97,7 +97,7 @@ SageMaker Python SDK provides several high-level abstractions for working with A
 - **Estimators**: Encapsulate training on SageMaker. Can be ``fit()`` to run training, then the resulting model ``deploy()`` ed to a SageMaker Endpoint.
 - **Models**: Encapsulate built ML models. Can be ``deploy()`` ed to a SageMaker Endpoint.
 - **Predictors**: Provide real-time inference and transformation using Python data-types against a SageMaker Endpoint.
-- **Session**: Provides a collection of convience methods for working with SageMaker resources.
+- **Session**: Provides a collection of convenience methods for working with SageMaker resources.
 
 Estimator and Model implementations for MXNet, TensorFlow, and Amazon ML algorithms are included. There's also an Estimator that runs SageMaker compatible custom Docker containers, allowing you to run your own ML algorithms via SageMaker Python SDK.
 
@@ -113,6 +113,8 @@ MXNet SageMaker Estimators
 --------------------------
 
 With MXNet Estimators, you can train and host MXNet models on Amazon SageMaker.
+
+Supported versions of MXNet: ``1.0.0``, ``0.12.1``.
 
 Training with MXNet
 ~~~~~~~~~~~~~~~~~~~
@@ -185,7 +187,7 @@ If you want to run your training script locally via the Python interpreter, look
 Using MXNet and numpy
 ^^^^^^^^^^^^^^^^^^^^^
 
-You can import both ``mxnet`` and ``numpy`` in your training script. When your script runs in SageMaker, it will run with access to MXNet version 0.12 and numpy version 1.12.0. For more information on the environment your script runs in, please see `SageMaker MXNet Containers <#sagemaker-mxnet-containers>`__.
+You can import both ``mxnet`` and ``numpy`` in your training script. When your script runs in SageMaker, it will run with access to MXNet version 1.0.0 and numpy version 1.13.3 by default. For more information on the environment your script runs in, please see `SageMaker MXNet Containers <#sagemaker-mxnet-containers>`__.
 
 Running an MXNet training script in SageMaker
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -682,18 +684,23 @@ When training and deploying training scripts, SageMaker runs your Python script 
 
 SageMaker runs MXNet Estimator scripts in either Python 2.7 or Python 3.5. You can select the Python version by passing a ``py_version`` keyword arg to the MXNet Estimator constructor. Setting this to ``py2`` (the default) will cause your training script to be run on Python 2.7. Setting this to ``py3`` will cause your training script to be run on Python 3.5. This Python version applies to both the Training Job, created by fit, and the Endpoint, created by deploy.
 
-Your MXNet training script will be run on version 0.12 of MXNet, built for either GPU or CPU use. The decision to use the GPU or CPU version of MXNet is made by the train_instance_type, set on the MXNet constructor. If you choose a GPU instance type, your training job will be run on a GPU version of MXNet. If you choose a CPU instance type, your training job will be run on a CPU version of MXNet. Similarly, when you call deploy, specifying a GPU or CPU deploy_instance_type, will control which MXNet build your Endpoint runs.
+Your MXNet training script will be run on version 1.0.0 (by default) or 0.12 of MXNet, built for either GPU or CPU use. The decision to use the GPU or CPU version of MXNet is made by the ``train_instance_type``, set on the MXNet constructor. If you choose a GPU instance type, your training job will be run on a GPU version of MXNet. If you choose a CPU instance type, your training job will be run on a CPU version of MXNet. Similarly, when you call deploy, specifying a GPU or CPU deploy_instance_type, will control which MXNet build your Endpoint runs.
 
-Each Docker container has the following dependencies installed:
+The Docker images have the following dependencies installed:
 
--  Python 2.7 or Python 3.5, depending on the ``py_version`` argument on
-   the MXNet constructor.
--  MXNet 0.12, built for either GPU or CPU, depending on the instance
-   type for training or deploying.
--  CUDA 9.0
--  numpy 1.12
++-------------------------+--------------+-------------+
+| Dependencies            | MXNet 0.12.1 | MXNet 1.0.0 |
++-------------------------+--------------+-------------+
+| Python                  |   2.7 or 3.5 |   2.7 or 3.5|
++-------------------------+--------------+-------------+
+| CUDA                    |          9.0 |         9.0 |
++-------------------------+--------------+-------------+
+| numpy                   |       1.13.3 |      1.13.3 |
++-------------------------+--------------+-------------+
 
 The Docker images extend Ubuntu 16.04.
+
+You can select version of MXNet by passing a ``framework_version`` keyword arg to the MXNet Estimator constructor. Currently supported versions are ``1.0.0`` and ``0.12.1``. You can also set ``framework_version`` to ``1.0 (default)`` or ``0.12`` which will cause your training script to be run on the latest supported MXNet 1.0 or 0.12 versions respectively.
 
 TensorFlow SageMaker Estimators
 -------------------------------
@@ -701,6 +708,8 @@ TensorFlow SageMaker Estimators
 TensorFlow SageMaker Estimators allow you to run your own TensorFlow
 training algorithms on SageMaker Learner, and to host your own TensorFlow
 models on SageMaker Hosting.
+
+Supported versions of TensorFlow: ``1.4.1``, ``1.5.0``.
 
 Training with TensorFlow
 ~~~~~~~~~~~~~~~~~~~~~~~~
@@ -718,7 +727,7 @@ follows:
 
   from sagemaker.tensorflow import TensorFlow
 
-  tf_estimator = TensorFlow('tf-train.py', role='SageMakerRole',
+  tf_estimator = TensorFlow(entry_point='tf-train.py', role='SageMakerRole',
                             training_steps=10000, evaluation_steps=100,
                             train_instance_count=1, train_instance_type='ml.p2.xlarge')
   tf_estimator.fit('s3://bucket/path/to/training/data')
@@ -735,7 +744,7 @@ Preparing the TensorFlow training script
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Your TensorFlow training script must be a **Python 2.7** source file. The current supported TensorFlow
-version is **1.4.0**. This training script **must contain** the following functions:
+versions are **1.5.0 (default)** and **1.4.1**. This training script **must contain** the following functions:
 
 - ``model_fn``: defines the model that will be trained.
 - ``train_input_fn``: preprocess and load training data.
@@ -1043,7 +1052,7 @@ The following code sample shows how to train a custom TensorFlow script 'tf-trai
 
   from sagemaker.tensorflow import TensorFlow
 
-  tf_estimator = TensorFlow('tf-train.py', role='SageMakerRole',
+  tf_estimator = TensorFlow(entry_point='tf-train.py', role='SageMakerRole',
                             training_steps=10000, evaluation_steps=100,
                             train_instance_count=1, train_instance_type='ml.p2.xlarge')
   tf_estimator.fit('s3://bucket/path/to/training/data')
@@ -1083,6 +1092,10 @@ you can specify these as keyword arguments.
    other training source code dependencies aside from the entry point
    file. Structure within this directory will be preserved when training
    on SageMaker.
+-  ``requirements_file (str)`` Path to a ``requirements.txt`` file. The path should
+   be within and relative to ``source_dir``. This is a file containing a list of items to be
+   installed using pip install. Details on the format can be found in the
+   `Pip User Guide <https://pip.pypa.io/en/stable/reference/pip_install/#requirements-file-format>`_.
 -  ``hyperparameters (dict[str,ANY])`` Hyperparameters that will be used for training.
    Will be made accessible as a dict[] to the training code on
    SageMaker. Some hyperparameters will be interpreted by TensorFlow and can be use to
@@ -1127,7 +1140,7 @@ You need to add them inside the hyperparameters dictionary in the
 -  ``eval_hooks (list)`` A list of `SessionRunHook` hooks to pass during evaluation.
 -  ``eval_delay_secs (int)`` Start evaluating after waiting for this many seconds.
 -  ``continuous_eval_throttle_secs (int)`` Do not re-evaluate unless the last evaluation was started at least this many seconds ago.
--  ``min_eval_frequency (int)`` The minimum number of steps between evaluations. Of course, evaluation does not occur if no new snapshot is available, hence, this is the minimum. If 0, the evaluation will only happen after training. If None, defaults to default is 1000.
+-  ``min_eval_frequency (int)`` The minimum number of steps between evaluations. Of course, evaluation does not occur if no new snapshot is available, hence, this is the minimum. If 0, the evaluation will only happen after training. If None, defaults to 1000.
 -  ``delay_workers_by_global_step (bool)`` if ``True`` delays training workers based on global step instead of time.
 - ``train_steps_per_iteration (int)`` Perform this many (integer) number of train steps for each training-evaluation iteration. With a small value, the model will be evaluated more frequently with more checkpoints saved.
 
@@ -1151,6 +1164,7 @@ Optional arguments
 
 -  ``wait (bool)``: Defaults to True, whether to block and wait for the
    training script to complete before returning.
+   If set to False, it will return immediately, and can later be attached to.
 -  ``logs (bool)``: Defaults to True, whether to show logs produced by training
    job in the Python session. Only meaningful when wait is True.
 - ``run_tensorboard_locally (bool)``: Defaults to False. Executes TensorBoard in a different
@@ -1179,8 +1193,24 @@ the ``TensorFlow`` estimator parameter ``training_steps`` is finished or when th
 job execution time reaches the ``TensorFlow`` estimator parameter ``train_max_run``.
 
 When the training job finishes, a `TensorFlow serving <https://www.tensorflow.org/serving/serving_basic>`_
-with the result of the training is generated and saved to the S3 location define by
+with the result of the training is generated and saved to the S3 location defined by
 the ``TensorFlow`` estimator parameter ``output_path``.
+
+
+If the ``wait=False`` flag is passed to ``fit``, then it will return immediately. The training job will continue running
+asynchronously. At a later time, a Tensorflow Estimator can be obtained by attaching to the existing training job. If
+the training job is not finished it will start showing the standard output of training and wait until it completes.
+After attaching, the estimator can be deployed as usual.
+
+.. code:: python
+
+    tf_estimator.fit(your_input_data, wait=False)
+    training_job_name = tf_estimator.latest_training_job.name
+
+    # after some time, or in a separate python notebook, we can attach to it again.
+
+    tf_estimator = TensorFlow.attach(training_job_name=training_job_name)
+
 
 The evaluation process
 """"""""""""""""""""""
@@ -1244,6 +1274,8 @@ It takes a few minutes to provision containers and start the training job. Tenso
 You can access TensorBoard locally at http://localhost:6006 or using your SakeMaker workspace at
 `https*workspace_base_url*proxy/6006/ <proxy/6006/>`_ (TensorBoard will not work if you forget to put the slash,
 '/', in end of the url). If TensorBoard started on a different port, adjust these URLs to match.
+
+Note that TensorBoard is not supported when passing wait=False to ``fit``.
 
 
 Deploying TensorFlow Serving models
@@ -1401,27 +1433,49 @@ A example with ``input_fn`` and ``output_fn`` above can be found in
 SageMaker TensorFlow Docker containers
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-The TensorFlow Docker container supports Python 2.7. The Docker container has the following Python modules installed:
-- awscli 1.12.1
-- boto3 1.4.7
-- botocore 1.5.92
-- futures 2.2.0
-- gevent 1.2.2
-- grpcio 1.7.0
-- numpy 1.13.3
-- pandas 0.21.0
-- protobuf 3.4.0
-- requests 2.14.2
-- scikit-learn 0.19.1
-- scipy 1.0.0
-- six 1.10.0
-- sklearn 0.0
-- tensorflow 1.4.0
-- tensorflow-serving-api 1.4.0
-- tensorflow-tensorboard 0.4.0rc2
+The TensorFlow Docker images support Python 2.7 and have the following Python modules installed:
+
++------------------------+------------------+------------------+
+| Dependencies           | tensorflow 1.4.1 | tensorflow 1.5.0 |
++------------------------+------------------+------------------+
+| awscli                 |           1.12.1 |          1.14.35 |
++------------------------+------------------+------------------+
+| boto3                  |            1.4.7 |           1.5.22 |
++------------------------+------------------+------------------+
+| botocore               |           1.5.92 |           1.8.36 |
++------------------------+------------------+------------------+
+| futures                |            2.2.0 |            2.2.0 |
++------------------------+------------------+------------------+
+| gevent                 |            1.2.2 |            1.2.2 |
++------------------------+------------------+------------------+
+| grpcio                 |            1.7.0 |            1.9.0 |
++------------------------+------------------+------------------+
+| numpy                  |           1.13.3 |           1.14.0 |
++------------------------+------------------+------------------+
+| pandas                 |           0.21.0 |           0.22.0 |
++------------------------+------------------+------------------+
+| protobuf               |            3.4.0 |            3.5.1 |
++------------------------+------------------+------------------+
+| requests               |           2.14.2 |           2.18.4 |
++------------------------+------------------+------------------+
+| scikit-learn           |           0.19.1 |           0.19.1 |
++------------------------+------------------+------------------+
+| scipy                  |            1.0.0 |            1.0.0 |
++------------------------+------------------+------------------+
+| six                    |           1.10.0 |           1.10.0 |
++------------------------+------------------+------------------+
+| sklearn                |              0.0 |              0.0 |
++------------------------+------------------+------------------+
+| tensorflow             |            1.4.1 |            1.5.0 |
++------------------------+------------------+------------------+
+| tensorflow-serving-api |            1.4.0 |            1.5.0 |
++------------------------+------------------+------------------+
+| tensorflow-tensorboard |            0.4.0 |            1.5.1 |
++------------------------+------------------+------------------+
 
 The Docker images extend Ubuntu 16.04.
 
+You can select version of TensorFlow by passing a ``framework_version`` keyword arg to the TensorFlow Estimator constructor. Currently supported versions are ``1.5.0`` and ``1.4.1``. You can also set ``framework_version`` to ``1.5 (default)`` or ``1.4`` which will cause your training script to be run on the latest supported TensorFlow 1.5 or 1.4 versions respectively.
 
 AWS SageMaker Estimators
 ------------------------
@@ -1429,11 +1483,11 @@ Amazon SageMaker provides several built-in machine learning algorithms that you 
 
 The full list of algorithms is available on the AWS website: https://docs.aws.amazon.com/sagemaker/latest/dg/algos.html
 
-SageMaker Python SDK includes Estimator wrappers for the AWS K-means, Principal Components Analysis, and Linear Learner algorithms.
+SageMaker Python SDK includes Estimator wrappers for the AWS K-means, Principal Components Analysis(PCA), Linear Learner, Factorization Machines, Latent Dirichlet Allocation(LDA) and Neural Topic Model(NTM) algorithms.
 
 Definition and usage
 ~~~~~~~~~~~~~~~~~~~~
-Estimators that wrap Amazon's built-in algorithms define algorithm's hyperparameters with defaults. When a default is not possible you need to provide the value during construction:
+Estimators that wrap Amazon's built-in algorithms define algorithm's hyperparameters with defaults. When a default is not possible you need to provide the value during construction, e.g.:
 
 - ``KMeans`` Estimator requires parameter ``k`` to define number of clusters
 - ``PCA`` Estimator requires parameter ``num_components`` to define number of principal components
