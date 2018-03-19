@@ -922,9 +922,10 @@ More details on how to create input functions can be find in `Building Input Fun
 Creating a ``serving_input_fn``
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-During training, ``train_input_fn`` ingests data and prepares it for use by the model.
-At the end of training, similarly, ``serving_input_fn`` is used to create the model that
-is exported for TensorFlow Serving. This function has the following purposes:
+``serving_input_fn`` is used to define the shapes and types of the inputs
+the model accepts when the model is exported for Tensorflow Serving. ``serving_input_fn`` is called
+at the end of model training and is not called during inference. (If you'd like to preprocess inference data,
+please see ``input_fn``). This function has the following purposes:
 
 - To add placeholders to the graph that the serving system will feed with inference requests.
 - To add any additional ops needed to convert data from the input format into the feature Tensors
