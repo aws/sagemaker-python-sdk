@@ -10,24 +10,16 @@
 # distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
+import os
 import pickle
 
-import boto3
 import numpy as np
-import os
-import pytest
 
-from sagemaker import Session
 from sagemaker.tensorflow import TensorFlow
-from tests.integ import DATA_DIR, REGION
+from tests.integ import DATA_DIR
 from tests.integ.timeout import timeout_and_delete_endpoint, timeout
 
 PICKLE_CONTENT_TYPE = 'application/python-pickle'
-
-
-@pytest.fixture(scope='module')
-def sagemaker_session():
-    return Session(boto_session=boto3.Session(region_name=REGION))
 
 
 class PickleSerializer(object):

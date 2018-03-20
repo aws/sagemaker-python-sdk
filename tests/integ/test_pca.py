@@ -16,20 +16,14 @@ import pickle
 import sys
 import time
 
-import pytest  # noqa
-import boto3
-
-import sagemaker
 import sagemaker.amazon.pca
 from sagemaker.utils import name_from_base
-
-from tests.integ import DATA_DIR, REGION
+from tests.integ import DATA_DIR
 from tests.integ.timeout import timeout, timeout_and_delete_endpoint_by_name
 
 
-def test_pca():
+def test_pca(sagemaker_session):
     with timeout(minutes=15):
-        sagemaker_session = sagemaker.Session(boto_session=boto3.Session(region_name=REGION))
         data_path = os.path.join(DATA_DIR, 'one_p_mnist', 'mnist.pkl.gz')
         pickle_args = {} if sys.version_info.major == 2 else {'encoding': 'latin1'}
 
@@ -60,14 +54,11 @@ def test_pca():
             assert record.label["projection"] is not None
 
 
-def test_async_pca():
-
+def test_async_pca(sagemaker_session):
     training_job_name = ""
     endpoint_name = name_from_base('pca')
-    sagemaker_session = sagemaker.Session(boto_session=boto3.Session(region_name=REGION))
 
     with timeout(minutes=5):
-
         data_path = os.path.join(DATA_DIR, 'one_p_mnist', 'mnist.pkl.gz')
         pickle_args = {} if sys.version_info.major == 2 else {'encoding': 'latin1'}
 

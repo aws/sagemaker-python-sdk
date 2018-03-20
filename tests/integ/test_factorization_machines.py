@@ -11,24 +11,19 @@
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
 import gzip
+import os
 import pickle
 import sys
 import time
 
-import boto3
-import os
-
-import sagemaker
 from sagemaker import FactorizationMachines, FactorizationMachinesModel
 from sagemaker.utils import name_from_base
-from tests.integ import DATA_DIR, REGION
+from tests.integ import DATA_DIR
 from tests.integ.timeout import timeout, timeout_and_delete_endpoint_by_name
 
 
-def test_factorization_machines():
-
+def test_factorization_machines(sagemaker_session):
     with timeout(minutes=15):
-        sagemaker_session = sagemaker.Session(boto_session=boto3.Session(region_name=REGION))
         data_path = os.path.join(DATA_DIR, 'one_p_mnist', 'mnist.pkl.gz')
         pickle_args = {} if sys.version_info.major == 2 else {'encoding': 'latin1'}
 
@@ -56,14 +51,11 @@ def test_factorization_machines():
             assert record.label["score"] is not None
 
 
-def test_async_factorization_machines():
-
+def test_async_factorization_machines(sagemaker_session):
     training_job_name = ""
     endpoint_name = name_from_base('factorizationMachines')
-    sagemaker_session = sagemaker.Session(boto_session=boto3.Session(region_name=REGION))
 
     with timeout(minutes=5):
-
         data_path = os.path.join(DATA_DIR, 'one_p_mnist', 'mnist.pkl.gz')
         pickle_args = {} if sys.version_info.major == 2 else {'encoding': 'latin1'}
 

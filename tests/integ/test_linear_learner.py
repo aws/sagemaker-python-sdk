@@ -15,21 +15,17 @@ import os
 import pickle
 import sys
 import time
-import pytest  # noqa
-import boto3
+
 import numpy as np
 
-import sagemaker
 from sagemaker.amazon.linear_learner import LinearLearner, LinearLearnerModel
 from sagemaker.utils import name_from_base, sagemaker_timestamp
-
-from tests.integ import DATA_DIR, REGION
+from tests.integ import DATA_DIR
 from tests.integ.timeout import timeout, timeout_and_delete_endpoint_by_name
 
 
-def test_linear_learner():
+def test_linear_learner(sagemaker_session):
     with timeout(minutes=15):
-        sagemaker_session = sagemaker.Session(boto_session=boto3.Session(region_name=REGION))
         data_path = os.path.join(DATA_DIR, 'one_p_mnist', 'mnist.pkl.gz')
         pickle_args = {} if sys.version_info.major == 2 else {'encoding': 'latin1'}
 
@@ -87,14 +83,11 @@ def test_linear_learner():
             assert record.label["score"] is not None
 
 
-def test_async_linear_learner():
-
+def test_async_linear_learner(sagemaker_session):
     training_job_name = ""
     endpoint_name = 'test-linear-learner-async-{}'.format(sagemaker_timestamp())
-    sagemaker_session = sagemaker.Session(boto_session=boto3.Session(region_name=REGION))
 
     with timeout(minutes=5):
-
         data_path = os.path.join(DATA_DIR, 'one_p_mnist', 'mnist.pkl.gz')
         pickle_args = {} if sys.version_info.major == 2 else {'encoding': 'latin1'}
 
