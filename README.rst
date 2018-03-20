@@ -6,6 +6,14 @@
 SageMaker Python SDK
 ====================
 
+.. image:: https://travis-ci.org/aws/sagemaker-python-sdk.svg?branch=master
+   :target: https://travis-ci.org/aws/sagemaker-python-sdk
+   :alt: Build Status
+
+.. image:: https://codecov.io/gh/aws/sagemaker-python-sdk/branch/master/graph/badge.svg
+   :target: https://codecov.io/gh/aws/sagemaker-python-sdk
+   :alt: CodeCov
+
 SageMaker Python SDK is an open source library for training and deploying machine learning models on Amazon SageMaker.
 
 With the SDK, you can train and deploy models using popular deep learning frameworks: **Apache MXNet** and **TensorFlow**. You can also train and deploy models with **Amazon algorithms**, these are scalable implementations of core machine learning algorithms that are optimized for SageMaker and GPU training. If you have **your own algorithms** built into SageMaker compatible Docker containers, you can train and host models using these as well.
@@ -39,7 +47,7 @@ You can install from source by cloning this repository and issuing a pip install
 
     git clone https://github.com/aws/sagemaker-python-sdk.git
     python setup.py sdist
-    pip install dist/sagemaker-1.1.0.tar.gz
+    pip install dist/sagemaker-1.1.2.tar.gz
 
 Supported Python versions
 ~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -914,9 +922,10 @@ More details on how to create input functions can be find in `Building Input Fun
 Creating a ``serving_input_fn``
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-During training, ``train_input_fn`` ingests data and prepares it for use by the model.
-At the end of training, similarly, ``serving_input_fn`` is used to create the model that
-is exported for TensorFlow Serving. This function has the following purposes:
+``serving_input_fn`` is used to define the shapes and types of the inputs
+the model accepts when the model is exported for Tensorflow Serving. ``serving_input_fn`` is called
+at the end of model training and is not called during inference. (If you'd like to preprocess inference data,
+please see ``input_fn``). This function has the following purposes:
 
 - To add placeholders to the graph that the serving system will feed with inference requests.
 - To add any additional ops needed to convert data from the input format into the feature Tensors
@@ -1139,7 +1148,7 @@ You need to add them inside the hyperparameters dictionary in the
 -  ``eval_hooks (list)`` A list of `SessionRunHook` hooks to pass during evaluation.
 -  ``eval_delay_secs (int)`` Start evaluating after waiting for this many seconds.
 -  ``continuous_eval_throttle_secs (int)`` Do not re-evaluate unless the last evaluation was started at least this many seconds ago.
--  ``min_eval_frequency (int)`` The minimum number of steps between evaluations. Of course, evaluation does not occur if no new snapshot is available, hence, this is the minimum. If 0, the evaluation will only happen after training. If None, defaults to default is 1000.
+-  ``min_eval_frequency (int)`` The minimum number of steps between evaluations. Of course, evaluation does not occur if no new snapshot is available, hence, this is the minimum. If 0, the evaluation will only happen after training. If None, defaults to 1000.
 -  ``delay_workers_by_global_step (bool)`` if ``True`` delays training workers based on global step instead of time.
 - ``train_steps_per_iteration (int)`` Perform this many (integer) number of train steps for each training-evaluation iteration. With a small value, the model will be evaluated more frequently with more checkpoints saved.
 
