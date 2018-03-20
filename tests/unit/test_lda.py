@@ -132,35 +132,8 @@ def test_tol_validation_fail_value(sagemaker_session):
 
 
 PREFIX = "prefix"
-BASE_TRAIN_CALL = {
-    'hyperparameters': {},
-    'image': registry(REGION, "lda") + '/lda:1',
-    'input_config': [{
-        'DataSource': {
-            'S3DataSource': {
-                'S3DataDistributionType': 'ShardedByS3Key',
-                'S3DataType': 'ManifestFile',
-                'S3Uri': 's3://{}/{}'.format(BUCKET_NAME, PREFIX)
-            }
-        },
-        'ChannelName': 'train'
-    }],
-    'input_mode': 'File',
-    'output_config': {'S3OutputPath': 's3://{}/'.format(BUCKET_NAME)},
-    'resource_config': {
-        'InstanceCount': TRAIN_INSTANCE_COUNT,
-        'InstanceType': TRAIN_INSTANCE_TYPE,
-        'VolumeSizeInGB': 30
-    },
-    'stop_condition': {'MaxRuntimeInSeconds': 86400}
-}
-
 FEATURE_DIM = 10
 MINI_BATCH_SZIE = 200
-HYPERPARAMS = {'num_topics': NUM_TOPICS, 'feature_dim': FEATURE_DIM, 'mini_batch_size': MINI_BATCH_SZIE}
-STRINGIFIED_HYPERPARAMS = dict([(x, str(y)) for x, y in HYPERPARAMS.items()])
-HP_TRAIN_CALL = dict(BASE_TRAIN_CALL)
-HP_TRAIN_CALL.update({'hyperparameters': STRINGIFIED_HYPERPARAMS})
 
 
 @patch("sagemaker.amazon.amazon_estimator.AmazonAlgorithmEstimatorBase.fit")

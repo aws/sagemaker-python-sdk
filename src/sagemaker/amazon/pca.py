@@ -13,6 +13,7 @@
 from sagemaker.amazon.amazon_estimator import AmazonAlgorithmEstimatorBase, registry
 from sagemaker.amazon.common import numpy_to_record_serializer, record_deserializer
 from sagemaker.amazon.hyperparameter import Hyperparameter as hp  # noqa
+from sagemaker.amazon.validation import gt, ge, isin
 from sagemaker.predictor import RealTimePredictor
 from sagemaker.model import Model
 from sagemaker.session import Session
@@ -25,13 +26,11 @@ class PCA(AmazonAlgorithmEstimatorBase):
 
     DEFAULT_MINI_BATCH_SIZE = 500
 
-    num_components = hp(name='num_components', validate=lambda x: x > 0,
-                        validation_message='Value must be an integer greater than zero', data_type=int)
-    algorithm_mode = hp(name='algorithm_mode', validate=lambda x: x in ['regular', 'stable', 'randomized'],
-                        validation_message='Value must be one of "regular", "stable", "randomized"', data_type=str)
+    num_components = hp('num_components', gt(0), 'Value must be an integer greater than zero', int)
+    algorithm_mode = hp('algorithm_mode', isin('regular', 'stable', 'randomized'),
+                        'Value must be one of "regular", "stable", "randomized"', str)
     subtract_mean = hp(name='subtract_mean', validation_message='Value must be a boolean', data_type=bool)
-    extra_components = hp(name='extra_components', validate=lambda x: x >= 0,
-                          validation_message="Value must be an integer greater than or equal to 0", data_type=int)
+    extra_components = hp('extra_components', ge(0), "Value must be an integer greater than or equal to 0", int)
 
     def __init__(self, role, train_instance_count, train_instance_type, num_components,
                  algorithm_mode=None, subtract_mean=None, extra_components=None, **kwargs):
