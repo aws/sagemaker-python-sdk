@@ -48,8 +48,9 @@ def test_tf(sagemaker_session, tf_full_version):
         print('job succeeded: {}'.format(estimator.latest_training_job.name))
 
     endpoint_name = estimator.latest_training_job.name
-    with timeout_and_delete_endpoint_by_name(endpoint_name=endpoint_name, sagemaker_session=sagemaker_session, minutes=20):
-        json_predictor = estimator.deploy(initial_instance_count=1, instance_type='ml.c4.xlarge', endpoint_name=endpoint_name)
+    with timeout_and_delete_endpoint_by_name(endpoint_name, sagemaker_session, minutes=20):
+        json_predictor = estimator.deploy(initial_instance_count=1, instance_type='ml.c4.xlarge',
+                                          endpoint_name=endpoint_name)
 
         features = [6.4, 3.2, 4.5, 1.5]
         dict_result = json_predictor.predict({'inputs': features})
@@ -83,9 +84,10 @@ def test_tf_async(sagemaker_session, tf_full_version):
         time.sleep(20)
 
     endpoint_name = training_job_name
-    with timeout_and_delete_endpoint_by_name(endpoint_name=endpoint_name, sagemaker_session=sagemaker_session, minutes=35):
+    with timeout_and_delete_endpoint_by_name(endpoint_name, sagemaker_session, minutes=35):
         estimator = TensorFlow.attach(training_job_name=training_job_name, sagemaker_session=sagemaker_session)
-        json_predictor = estimator.deploy(initial_instance_count=1, instance_type='ml.c4.xlarge', endpoint_name=endpoint_name)
+        json_predictor = estimator.deploy(initial_instance_count=1, instance_type='ml.c4.xlarge',
+                                          endpoint_name=endpoint_name)
 
         result = json_predictor.predict([6.4, 3.2, 4.5, 1.5])
         print('predict result: {}'.format(result))

@@ -55,7 +55,7 @@ def test_cifar(sagemaker_session, tf_full_version):
         print('job succeeded: {}'.format(estimator.latest_training_job.name))
 
     endpoint_name = estimator.latest_training_job.name
-    with timeout_and_delete_endpoint_by_name(endpoint_name=endpoint_name, sagemaker_session=sagemaker_session, minutes=20):
+    with timeout_and_delete_endpoint_by_name(endpoint_name, sagemaker_session, minutes=20):
         predictor = estimator.deploy(initial_instance_count=1, instance_type='ml.p2.xlarge')
         predictor.serializer = PickleSerializer()
         predictor.content_type = PICKLE_CONTENT_TYPE
