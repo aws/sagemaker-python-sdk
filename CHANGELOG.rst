@@ -2,6 +2,13 @@
 CHANGELOG
 =========
 
+1.1.3
+=======
+
+* bug-fix: AmazonEstimators: fix type of tol hyper-parameter in kmeans to float
+* bug-fix: AmazonEstimators: add missing hyper-parameters eval_metrics in kmeans
+* unit-test: AmazonEstimators: update unit tests of kmeans, pca, factorization machines, lda and ntm
+
 1.1.2
 =======
 
