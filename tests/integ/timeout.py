@@ -76,7 +76,8 @@ def _cleanup_endpoint_logs(endpoint_name, sagemaker_session):
     try:
         # print out logs before deletion for debuggability
         LOGGER.info('cloudwatch logs for log group {}:'.format(log_group))
-        logs = AWSLogs(log_group_name=log_group, log_stream_name='ALL', start='1d')
+        logs = AWSLogs(log_group_name=log_group, log_stream_name='ALL', start='1d',
+                       aws_region=sagemaker_session.boto_session.region_name)
         logs.list_logs()
 
         cwl_client = sagemaker_session.boto_session.client('logs')
