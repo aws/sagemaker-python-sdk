@@ -18,7 +18,6 @@ import numpy as np
 from sagemaker.amazon.pca import PCA
 from sagemaker.amazon.amazon_estimator import upload_numpy_to_s3_shards, _build_shards, registry
 
-
 COMMON_ARGS = {'role': 'myrole', 'train_instance_count': 1, 'train_instance_type': 'ml.c4.xlarge'}
 
 REGION = "us-west-2"
@@ -87,6 +86,13 @@ def test_data_location_validation(sagemaker_session):
     pca = PCA(num_components=2, sagemaker_session=sagemaker_session, **COMMON_ARGS)
     with pytest.raises(ValueError):
         pca.data_location = "nots3://abcd/efgh"
+
+
+def test_data_location_does_not_call_default_bucket(sagemaker_session):
+    data_location = "s3://my-bucket/path/"
+    pca = PCA(num_components=2, sagemaker_session=sagemaker_session, data_location=data_location, **COMMON_ARGS)
+    assert pca.data_location == data_location
+    assert not sagemaker_session.default_bucket.called
 
 
 def test_pca_hyperparameters(sagemaker_session):

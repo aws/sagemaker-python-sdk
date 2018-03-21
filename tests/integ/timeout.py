@@ -13,7 +13,7 @@
 import signal
 from contextlib import contextmanager
 import logging
-
+from awslogs.core import AWSLogs
 from botocore.exceptions import ClientError
 
 LOGGER = logging.getLogger('timeout')
@@ -56,21 +56,6 @@ def timeout(seconds=0, minutes=0, hours=0):
 
 
 @contextmanager
-def timeout_and_delete_endpoint(estimator, seconds=0, minutes=0, hours=0):
-    with timeout(seconds=seconds, minutes=minutes, hours=hours) as t:
-        try:
-            yield [t]
-        finally:
-            try:
-                estimator.delete_endpoint()
-                LOGGER.info('deleted endpoint')
-            except ClientError as ce:
-                if ce.response['Error']['Code'] == 'ValidationException':
-                    # avoids the inner exception to be overwritten
-                    pass
-
-
-@contextmanager
 def timeout_and_delete_endpoint_by_name(endpoint_name, sagemaker_session, seconds=0, minutes=0, hours=0):
     with timeout(seconds=seconds, minutes=minutes, hours=hours) as t:
         try:
@@ -79,7 +64,25 @@ def timeout_and_delete_endpoint_by_name(endpoint_name, sagemaker_session, second
             try:
                 sagemaker_session.delete_endpoint(endpoint_name)
                 LOGGER.info('deleted endpoint {}'.format(endpoint_name))
+                _cleanup_endpoint_logs(endpoint_name, sagemaker_session)
             except ClientError as ce:
                 if ce.response['Error']['Code'] == 'ValidationException':
                     # avoids the inner exception to be overwritten
                     pass
+
+
+def _cleanup_endpoint_logs(endpoint_name, sagemaker_session):
+    log_group = '/aws/sagemaker/Endpoints/{}'.format(endpoint_name)
+    try:
+        # print out logs before deletion for debuggability
+        LOGGER.info('cloudwatch logs for log group {}:'.format(log_group))
+        logs = AWSLogs(log_group_name=log_group, log_stream_name='ALL', start='1d',
+                       aws_region=sagemaker_session.boto_session.region_name)
+        logs.list_logs()
+
+        cwl_client = sagemaker_session.boto_session.client('logs')
+        cwl_client.delete_log_group(logGroupName=log_group)
+        LOGGER.info('deleted cloudwatch log group: {}'.format(log_group))
+    except Exception:
+        LOGGER.exception('Failure occurred while cleaning up cloudwatch log group %s. ' +
+                         'Swallowing exception but printing stacktrace for debugging.', log_group)

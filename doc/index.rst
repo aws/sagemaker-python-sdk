@@ -38,7 +38,7 @@ A managed environment for TensorFlow training and hosting on Amazon SageMaker
 
 SageMaker First-Party Algorithms
 --------------------------------
-Amazon provides implementations of some common machine learning algortithms optimized for GPU archicture and massive datasets.
+Amazon provides implementations of some common machine learning algortithms optimized for GPU architecture and massive datasets.
 
 .. toctree::
     :maxdepth: 2
@@ -46,3 +46,7 @@ Amazon provides implementations of some common machine learning algortithms opti
     kmeans
     pca
     linear_learner
+    sagemaker.amazon.amazon_estimator
+    factorization_machines
+    lda
+    ntm

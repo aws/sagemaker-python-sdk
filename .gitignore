@@ -21,3 +21,4 @@ doc/_build
 **/.DS_Store
 venv/
 *~
+.pytest_cache/

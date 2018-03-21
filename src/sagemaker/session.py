@@ -195,17 +195,9 @@ class Session(object):
                     a directory in the Docker container.
                 * 'Pipe' - Amazon SageMaker streams data directly from S3 to the container via a Unix-named pipe.
 
-            input_config (str or dict or sagemaker.session.s3_input): Information about the training data.
-                This can be one of three types:
-
-                * (str) - the S3 location where training data is saved.
-                * (dict[str, str] or dict[str, sagemaker.session.s3_input]) - If using multiple channels for
-                    training data, you can specify a dict mapping channel names
-                    to strings or :func:`~sagemaker.session.s3_input` objects.
-                * (sagemaker.session.s3_input) - channel configuration for S3 data sources that can provide
-                    additional information about the training dataset. See :func:`sagemaker.session.s3_input`
-                    for full details.
-
+            input_config (list): A list of Channel objects. Each channel is a named input source. Please refer to
+                 the format details described:
+                 https://botocore.readthedocs.io/en/latest/reference/services/sagemaker.html#SageMaker.Client.create_training_job
             role (str): An AWS IAM role (either name or full ARN). The Amazon SageMaker training jobs and APIs
                 that create Amazon SageMaker endpoints use this role to access training data and model artifacts.
                 You must grant sufficient permissions to this role.
@@ -522,8 +514,8 @@ class Session(object):
     def expand_role(self, role):
         """Expand an IAM role name into an ARN.
 
-        If the role is already in the form of an ARN, then the role is simply returned. Otherwise, the role
-        is formatted as an ARN, using the current account as the IAM role's AWS account.
+        If the role is already in the form of an ARN, then the role is simply returned. Otherwise we retrieve the full
+        ARN and return it.
 
         Args:
             role (str): An AWS IAM role (either name or full ARN).
@@ -534,8 +526,7 @@ class Session(object):
         if '/' in role:
             return role
         else:
-            account = self.boto_session.client('sts').get_caller_identity()['Account']
-            return 'arn:aws:iam::{}:role/{}'.format(account, role)
+            return boto3.resource("iam").Role(role).arn
 
     def get_caller_identity_arn(self):
         """Returns the ARN user or role whose credentials are used to call the API.
@@ -654,6 +645,9 @@ class Session(object):
             if dot:
                 print()
             print('===== Job Complete =====')
+            # Customers are not billed for hardware provisioning, so billable time is less than total time
+            billable_time = (description['TrainingEndTime'] - description['TrainingStartTime']) * instance_count
+            print('Billable seconds:', int(billable_time.total_seconds()) + 1)
 
 
 def container_def(image, model_data_url=None, env=None):
