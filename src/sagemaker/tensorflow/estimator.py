@@ -38,7 +38,6 @@ class Tensorboard(threading.Thread):
         threading.Thread.__init__(self)
         self.event = threading.Event()
         self.estimator = estimator
-        self._aws_sync_dir = tempfile.mkdtemp()
         self.logdir = logdir or tempfile.mkdtemp()
 
     @staticmethod
@@ -123,11 +122,12 @@ class Tensorboard(threading.Thread):
         LOGGER.info('TensorBoard 0.1.7 at http://localhost:{}'.format(port))
         while not self.estimator.checkpoint_path:
             self.event.wait(1)
-        while not self.event.is_set():
-            args = ['aws', 's3', 'sync', self.estimator.checkpoint_path, self._aws_sync_dir]
-            subprocess.call(args, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-            self._sync_directories(self._aws_sync_dir, self.logdir)
-            self.event.wait(10)
+        with tempfile.TemporaryDirectory() as aws_sync_dir:
+            while not self.event.is_set():
+                args = ['aws', 's3', 'sync', self.estimator.checkpoint_path, aws_sync_dir]
+                subprocess.call(args, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+                self._sync_directories(aws_sync_dir, self.logdir)
+                self.event.wait(10)
         tensorboard_process.terminate()
 
 
