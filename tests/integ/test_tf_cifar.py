@@ -20,7 +20,7 @@ import pytest
 from sagemaker import Session
 from sagemaker.tensorflow import TensorFlow
 from tests.integ import DATA_DIR, REGION
-from tests.integ.timeout import timeout_and_delete_endpoint, timeout
+from tests.integ.timeout import timeout_and_delete_endpoint_by_name, timeout
 
 PICKLE_CONTENT_TYPE = 'application/python-pickle'
 
@@ -54,7 +54,8 @@ def test_cifar(sagemaker_session, tf_full_version):
         estimator.fit(inputs, logs=False)
         print('job succeeded: {}'.format(estimator.latest_training_job.name))
 
-    with timeout_and_delete_endpoint(estimator=estimator, minutes=20):
+    endpoint_name = estimator.latest_training_job.name
+    with timeout_and_delete_endpoint_by_name(endpoint_name, sagemaker_session, minutes=20):
         predictor = estimator.deploy(initial_instance_count=1, instance_type='ml.p2.xlarge')
         predictor.serializer = PickleSerializer()
         predictor.content_type = PICKLE_CONTENT_TYPE
