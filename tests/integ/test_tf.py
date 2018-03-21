@@ -17,7 +17,7 @@ import pytest
 
 from sagemaker.tensorflow import TensorFlow
 from tests.integ import DATA_DIR
-from tests.integ.timeout import timeout_and_delete_endpoint, timeout
+from tests.integ.timeout import timeout_and_delete_endpoint_by_name, timeout
 
 DATA_PATH = os.path.join(DATA_DIR, 'iris', 'data')
 
@@ -37,12 +37,14 @@ def test_tf(sagemaker_session, tf_full_version):
                                sagemaker_session=sagemaker_session,
                                base_job_name='test-tf')
 
-        inputs = estimator.sagemaker_session.upload_data(path=DATA_PATH, key_prefix='integ-test-data/tf_iris')
+        inputs = sagemaker_session.upload_data(path=DATA_PATH, key_prefix='integ-test-data/tf_iris')
         estimator.fit(inputs)
         print('job succeeded: {}'.format(estimator.latest_training_job.name))
 
-    with timeout_and_delete_endpoint(estimator=estimator, minutes=20):
-        json_predictor = estimator.deploy(initial_instance_count=1, instance_type='ml.c4.xlarge')
+    endpoint_name = estimator.latest_training_job.name
+    with timeout_and_delete_endpoint_by_name(endpoint_name, sagemaker_session, minutes=20):
+        json_predictor = estimator.deploy(initial_instance_count=1, instance_type='ml.c4.xlarge',
+                                          endpoint_name=endpoint_name)
 
         features = [6.4, 3.2, 4.5, 1.5]
         dict_result = json_predictor.predict({'inputs': features})
@@ -74,9 +76,11 @@ def test_tf_async(sagemaker_session, tf_full_version):
         training_job_name = estimator.latest_training_job.name
         time.sleep(20)
 
-    with timeout_and_delete_endpoint(estimator=estimator, minutes=35):
+    endpoint_name = training_job_name
+    with timeout_and_delete_endpoint_by_name(endpoint_name, sagemaker_session, minutes=35):
         estimator = TensorFlow.attach(training_job_name=training_job_name, sagemaker_session=sagemaker_session)
-        json_predictor = estimator.deploy(initial_instance_count=1, instance_type='ml.c4.xlarge')
+        json_predictor = estimator.deploy(initial_instance_count=1, instance_type='ml.c4.xlarge',
+                                          endpoint_name=endpoint_name)
 
         result = json_predictor.predict([6.4, 3.2, 4.5, 1.5])
         print('predict result: {}'.format(result))
