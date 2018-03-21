@@ -11,24 +11,19 @@
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
 import gzip
+import os
 import pickle
 import sys
-
-import boto3
-import os
 import time
 
-import sagemaker
 from sagemaker import KMeans, KMeansModel
 from sagemaker.utils import name_from_base
-from tests.integ import DATA_DIR, REGION
+from tests.integ import DATA_DIR
 from tests.integ.timeout import timeout, timeout_and_delete_endpoint_by_name
 
 
-def test_kmeans():
-
+def test_kmeans(sagemaker_session):
     with timeout(minutes=15):
-        sagemaker_session = sagemaker.Session(boto_session=boto3.Session(region_name=REGION))
         data_path = os.path.join(DATA_DIR, 'one_p_mnist', 'mnist.pkl.gz')
         pickle_args = {} if sys.version_info.major == 2 else {'encoding': 'latin1'}
 
@@ -63,13 +58,11 @@ def test_kmeans():
             assert record.label["distance_to_cluster"] is not None
 
 
-def test_async_kmeans():
-
+def test_async_kmeans(sagemaker_session):
     training_job_name = ""
     endpoint_name = name_from_base('kmeans')
 
     with timeout(minutes=5):
-        sagemaker_session = sagemaker.Session(boto_session=boto3.Session(region_name=REGION))
         data_path = os.path.join(DATA_DIR, 'one_p_mnist', 'mnist.pkl.gz')
         pickle_args = {} if sys.version_info.major == 2 else {'encoding': 'latin1'}
 

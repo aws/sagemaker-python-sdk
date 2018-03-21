@@ -13,21 +13,14 @@
 import os
 import time
 
-import boto3
 import numpy
 import pytest
-from sagemaker import Session
+
 from sagemaker.mxnet.estimator import MXNet
 from sagemaker.mxnet.model import MXNetModel
 from sagemaker.utils import sagemaker_timestamp
-
-from tests.integ import DATA_DIR, REGION
+from tests.integ import DATA_DIR
 from tests.integ.timeout import timeout, timeout_and_delete_endpoint_by_name
-
-
-@pytest.fixture(scope='module')
-def sagemaker_session():
-    return Session(boto_session=boto3.Session(region_name=REGION))
 
 
 @pytest.fixture(scope='module')

@@ -2,13 +2,18 @@
 CHANGELOG
 =========
 
+1.1.dev3
+========
+
+* feature: Tests: create configurable ``sagemaker_session`` pytest fixture for all integration tests
+
 1.1.2
-=======
+=====
 
 * bug-fix: AmazonEstimators: do not call create bucket if data location is provided
 
 1.1.1
-========
+=====
 
 * feature: Estimators: add ``requirements.txt`` support for TensorFlow
 

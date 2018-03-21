@@ -13,20 +13,26 @@
 import gzip
 import io
 import json
-import numpy as np
 import os
 import pickle
 import sys
 
 import boto3
+import numpy as np
+import pytest
 
 import sagemaker
-from sagemaker.estimator import Estimator
 from sagemaker.amazon.amazon_estimator import registry
 from sagemaker.amazon.common import write_numpy_to_dense_tensor
+from sagemaker.estimator import Estimator
 from sagemaker.utils import name_from_base
-from tests.integ import DATA_DIR, REGION
+from tests.integ import DATA_DIR
 from tests.integ.timeout import timeout, timeout_and_delete_endpoint_by_name
+
+
+@pytest.fixture(scope='module')
+def region(sagemaker_session):
+    return sagemaker_session.boto_session.region_name
 
 
 def fm_serializer(data):
@@ -36,7 +42,7 @@ def fm_serializer(data):
     return json.dumps(js)
 
 
-def test_byo_estimator():
+def test_byo_estimator(sagemaker_session, region):
     """Use Factorization Machines algorithm as an example here.
 
     First we need to prepare data for training. We take standard data set, convert it to the
@@ -47,10 +53,9 @@ def test_byo_estimator():
     Default predictor is updated with json serializer and deserializer.
 
     """
-    image_name = registry(REGION) + "/factorization-machines:1"
+    image_name = registry(region) + "/factorization-machines:1"
 
     with timeout(minutes=15):
-        sagemaker_session = sagemaker.Session(boto_session=boto3.Session(region_name=REGION))
         data_path = os.path.join(DATA_DIR, 'one_p_mnist', 'mnist.pkl.gz')
         pickle_args = {} if sys.version_info.major == 2 else {'encoding': 'latin1'}
 
@@ -100,13 +105,12 @@ def test_byo_estimator():
             assert prediction['score'] is not None
 
 
-def test_async_byo_estimator():
-    image_name = registry(REGION) + "/factorization-machines:1"
+def test_async_byo_estimator(sagemaker_session, region):
+    image_name = registry(region) + "/factorization-machines:1"
     endpoint_name = name_from_base('byo')
     training_job_name = ""
 
     with timeout(minutes=5):
-        sagemaker_session = sagemaker.Session(boto_session=boto3.Session(region_name=REGION))
         data_path = os.path.join(DATA_DIR, 'one_p_mnist', 'mnist.pkl.gz')
         pickle_args = {} if sys.version_info.major == 2 else {'encoding': 'latin1'}
 

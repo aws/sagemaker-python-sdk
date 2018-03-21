@@ -10,22 +10,16 @@
 # distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
-import boto3
 import os
-import pytest
 import time
 
-from sagemaker import Session
+import pytest
+
 from sagemaker.tensorflow import TensorFlow
-from tests.integ import DATA_DIR, REGION
+from tests.integ import DATA_DIR
 from tests.integ.timeout import timeout_and_delete_endpoint_by_name, timeout
 
 DATA_PATH = os.path.join(DATA_DIR, 'iris', 'data')
-
-
-@pytest.fixture(scope='module')
-def sagemaker_session():
-    return Session(boto_session=boto3.Session(region_name=REGION))
 
 
 def test_tf(sagemaker_session, tf_full_version):
@@ -62,7 +56,6 @@ def test_tf(sagemaker_session, tf_full_version):
 
 
 def test_tf_async(sagemaker_session, tf_full_version):
-
     training_job_name = ""
     with timeout(minutes=5):
         script_path = os.path.join(DATA_DIR, 'iris', 'iris-dnn-classifier.py')
