@@ -25,12 +25,12 @@ COMMON_TRAIN_ARGS = {'role': ROLE, 'train_instance_count': TRAIN_INSTANCE_COUNT,
                      'train_instance_type': TRAIN_INSTANCE_TYPE}
 ALL_REQ_ARGS = dict({'k': K}, **COMMON_TRAIN_ARGS)
 
-REGION = "us-west-2"
-BUCKET_NAME = "Some-Bucket"
+REGION = 'us-west-2'
+BUCKET_NAME = 'Some-Bucket'
 
 DESCRIBE_TRAINING_JOB_RESULT = {
     'ModelArtifacts': {
-        'S3ModelArtifacts': "s3://bucket/model.tar.gz"
+        'S3ModelArtifacts': 's3://bucket/model.tar.gz'
     }
 }
 
@@ -85,119 +85,84 @@ def test_all_hyperparameters(sagemaker_session):
 
 def test_image(sagemaker_session):
     kmeans = KMeans(sagemaker_session=sagemaker_session, **ALL_REQ_ARGS)
-    assert kmeans.train_image() == registry(REGION, "kmeans") + '/kmeans:1'
+    assert kmeans.train_image() == registry(REGION, 'kmeans') + '/kmeans:1'
 
 
-def test_k_validation_fail_type(sagemaker_session):
+@pytest.mark.parametrize('required_hyper_parameters, value', [
+    ('k', 'string')
+])
+def test_required_hyper_parameters_type(sagemaker_session, required_hyper_parameters, value):
     with pytest.raises(ValueError):
-        KMeans(k='invalid', sagemaker_session=sagemaker_session, **COMMON_TRAIN_ARGS)
+        test_params = ALL_REQ_ARGS.copy()
+        test_params[required_hyper_parameters] = value
+        KMeans(sagemaker_session=sagemaker_session, **test_params)
 
 
-def test_k_validation_fail_value(sagemaker_session):
+@pytest.mark.parametrize('required_hyper_parameters, value', [
+    ('k', 0)
+])
+def test_required_hyper_parameters_value(sagemaker_session, required_hyper_parameters, value):
     with pytest.raises(ValueError):
-        KMeans(k=0, sagemaker_session=sagemaker_session, **COMMON_TRAIN_ARGS)
+        test_params = ALL_REQ_ARGS.copy()
+        test_params[required_hyper_parameters] = value
+        KMeans(sagemaker_session=sagemaker_session, **test_params)
 
 
-def test_init_method_validation_fail_type(sagemaker_session):
-    with pytest.raises(ValueError):
-        KMeans(init_method=0, sagemaker_session=sagemaker_session, **ALL_REQ_ARGS)
-
-
-def test_init_method_validation_fail_value(sagemaker_session):
-    with pytest.raises(ValueError):
-        KMeans(init_method='invalid', sagemaker_session=sagemaker_session, **ALL_REQ_ARGS)
-
-
-def test_max_iterations_validation_fail_type(sagemaker_session):
-    with pytest.raises(ValueError):
-        KMeans(max_iterations='invalid', sagemaker_session=sagemaker_session, **ALL_REQ_ARGS)
-
-
-def test_max_iterations_validation_fail_value(sagemaker_session):
-    with pytest.raises(ValueError):
-        KMeans(max_iterations=0, sagemaker_session=sagemaker_session, **ALL_REQ_ARGS)
-
-
-def test_tol_validation_fail_type(sagemaker_session):
-    with pytest.raises(ValueError):
-        KMeans(tol='invalid', sagemaker_session=sagemaker_session, **ALL_REQ_ARGS)
-
-
-def test_tol_validation_fail_value_lower(sagemaker_session):
-    with pytest.raises(ValueError):
-        KMeans(tol=-0.1, sagemaker_session=sagemaker_session, **ALL_REQ_ARGS)
-
-
-def test_tol_validation_fail_value_upper(sagemaker_session):
-    with pytest.raises(ValueError):
-        KMeans(tol=1.1, sagemaker_session=sagemaker_session, **ALL_REQ_ARGS)
-
-
-def test_num_trials_validation_fail_type(sagemaker_session):
-    with pytest.raises(ValueError):
-        KMeans(num_trials='invalid', sagemaker_session=sagemaker_session, **ALL_REQ_ARGS)
-
-
-def test_num_trials_validation_fail_value(sagemaker_session):
-    with pytest.raises(ValueError):
-        KMeans(num_trials=0, sagemaker_session=sagemaker_session, **ALL_REQ_ARGS)
-
-
-def test_local_init_method_validation_fail_type(sagemaker_session):
-    with pytest.raises(ValueError):
-        KMeans(local_init_method=0, sagemaker_session=sagemaker_session, **ALL_REQ_ARGS)
-
-
-def test_local_init_method_validation_fail_value(sagemaker_session):
-    with pytest.raises(ValueError):
-        KMeans(local_init_method='invalid', sagemaker_session=sagemaker_session, **ALL_REQ_ARGS)
-
-
-def test_half_life_time_size_validation_fail_type(sagemaker_session):
-    with pytest.raises(ValueError):
-        KMeans(half_life_time_size='invalid', sagemaker_session=sagemaker_session, **ALL_REQ_ARGS)
-
-
-def test_half_life_time_size_validation_fail_value(sagemaker_session):
-    with pytest.raises(ValueError):
-        KMeans(half_life_time_size=-1, sagemaker_session=sagemaker_session, **ALL_REQ_ARGS)
-
-
-def test_epochs_validation_fail_type(sagemaker_session):
-    with pytest.raises(ValueError):
-        KMeans(epochs='invalid', sagemaker_session=sagemaker_session, **ALL_REQ_ARGS)
-
-
-def test_epochs_validation_fail_value(sagemaker_session):
-    with pytest.raises(ValueError):
-        KMeans(epochs=0, sagemaker_session=sagemaker_session, **ALL_REQ_ARGS)
-
-
-def test_center_factor_validation_fail_type(sagemaker_session):
-    with pytest.raises(ValueError):
-        KMeans(center_factor='invalid', sagemaker_session=sagemaker_session, **ALL_REQ_ARGS)
-
-
-def test_center_factor_validation_fail_value(sagemaker_session):
-    with pytest.raises(ValueError):
-        KMeans(center_factor=0, sagemaker_session=sagemaker_session, **ALL_REQ_ARGS)
-
-
-def test_eval_metrics_validation_fail_type(sagemaker_session):
+@pytest.mark.parametrize('iterable_hyper_parameters, value', [
+    ('eval_metrics', 0)
+])
+def test_iterable_hyper_parameters_type(sagemaker_session, iterable_hyper_parameters, value):
     with pytest.raises(TypeError):
-        KMeans(eval_metrics=0, sagemaker_session=sagemaker_session, **ALL_REQ_ARGS)
+        test_params = ALL_REQ_ARGS.copy()
+        test_params.update({iterable_hyper_parameters: value})
+        KMeans(sagemaker_session=sagemaker_session, **test_params)
 
 
-PREFIX = "prefix"
+@pytest.mark.parametrize('optional_hyper_parameters, value', [
+    ('init_method', 0),
+    ('max_iterations', 'string'),
+    ('tol', 'string'),
+    ('num_trials', 'string'),
+    ('local_init_method', 0),
+    ('half_life_time_size', 'string'),
+    ('epochs', 'string'),
+    ('center_factor', 'string')
+])
+def test_optional_hyper_parameters_type(sagemaker_session, optional_hyper_parameters, value):
+    with pytest.raises(ValueError):
+        test_params = ALL_REQ_ARGS.copy()
+        test_params.update({optional_hyper_parameters: value})
+        KMeans(sagemaker_session=sagemaker_session, **test_params)
+
+
+@pytest.mark.parametrize('optional_hyper_parameters, value', [
+    ('init_method', 'string'),
+    ('max_iterations', 0),
+    ('tol', -0.1),
+    ('tol', 1.1),
+    ('num_trials', 0),
+    ('local_init_method', 'string'),
+    ('half_life_time_size', -1),
+    ('epochs', 0),
+    ('center_factor', 0)
+])
+def test_optional_hyper_parameters_value(sagemaker_session, optional_hyper_parameters, value):
+    with pytest.raises(ValueError):
+        test_params = ALL_REQ_ARGS.copy()
+        test_params.update({optional_hyper_parameters: value})
+        KMeans(sagemaker_session=sagemaker_session, **test_params)
+
+
+PREFIX = 'prefix'
 FEATURE_DIM = 10
 MINI_BATCH_SIZE = 200
 
 
-@patch("sagemaker.amazon.amazon_estimator.AmazonAlgorithmEstimatorBase.fit")
+@patch('sagemaker.amazon.amazon_estimator.AmazonAlgorithmEstimatorBase.fit')
 def test_call_fit(base_fit, sagemaker_session):
-    kmeans = KMeans(base_job_name="kmeans", sagemaker_session=sagemaker_session, **ALL_REQ_ARGS)
+    kmeans = KMeans(base_job_name='kmeans', sagemaker_session=sagemaker_session, **ALL_REQ_ARGS)
 
-    data = RecordSet("s3://{}/{}".format(BUCKET_NAME, PREFIX), num_records=1, feature_dim=FEATURE_DIM, channel='train')
+    data = RecordSet('s3://{}/{}'.format(BUCKET_NAME, PREFIX), num_records=1, feature_dim=FEATURE_DIM, channel='train')
 
     kmeans.fit(data, MINI_BATCH_SIZE)
 
@@ -208,27 +173,27 @@ def test_call_fit(base_fit, sagemaker_session):
 
 
 def test_call_fit_none_mini_batch_size(sagemaker_session):
-    kmeans = KMeans(base_job_name="kmeans", sagemaker_session=sagemaker_session, **ALL_REQ_ARGS)
+    kmeans = KMeans(base_job_name='kmeans', sagemaker_session=sagemaker_session, **ALL_REQ_ARGS)
 
-    data = RecordSet("s3://{}/{}".format(BUCKET_NAME, PREFIX), num_records=1, feature_dim=FEATURE_DIM,
+    data = RecordSet('s3://{}/{}'.format(BUCKET_NAME, PREFIX), num_records=1, feature_dim=FEATURE_DIM,
                      channel='train')
     kmeans.fit(data)
 
 
 def test_call_fit_wrong_type_mini_batch_size(sagemaker_session):
-    kmeans = KMeans(base_job_name="kmeans", sagemaker_session=sagemaker_session, **ALL_REQ_ARGS)
+    kmeans = KMeans(base_job_name='kmeans', sagemaker_session=sagemaker_session, **ALL_REQ_ARGS)
 
-    data = RecordSet("s3://{}/{}".format(BUCKET_NAME, PREFIX), num_records=1, feature_dim=FEATURE_DIM,
+    data = RecordSet('s3://{}/{}'.format(BUCKET_NAME, PREFIX), num_records=1, feature_dim=FEATURE_DIM,
                      channel='train')
 
     with pytest.raises((TypeError, ValueError)):
-        kmeans.fit(data, "some")
+        kmeans.fit(data, 'some')
 
 
 def test_call_fit_wrong_value_mini_batch_size(sagemaker_session):
-    kmeans = KMeans(base_job_name="kmeans", sagemaker_session=sagemaker_session, **ALL_REQ_ARGS)
+    kmeans = KMeans(base_job_name='kmeans', sagemaker_session=sagemaker_session, **ALL_REQ_ARGS)
 
-    data = RecordSet("s3://{}/{}".format(BUCKET_NAME, PREFIX), num_records=1, feature_dim=FEATURE_DIM,
+    data = RecordSet('s3://{}/{}'.format(BUCKET_NAME, PREFIX), num_records=1, feature_dim=FEATURE_DIM,
                      channel='train')
     with pytest.raises(ValueError):
         kmeans.fit(data, 0)
@@ -236,16 +201,16 @@ def test_call_fit_wrong_value_mini_batch_size(sagemaker_session):
 
 def test_model_image(sagemaker_session):
     kmeans = KMeans(sagemaker_session=sagemaker_session, **ALL_REQ_ARGS)
-    data = RecordSet("s3://{}/{}".format(BUCKET_NAME, PREFIX), num_records=1, feature_dim=FEATURE_DIM, channel='train')
+    data = RecordSet('s3://{}/{}'.format(BUCKET_NAME, PREFIX), num_records=1, feature_dim=FEATURE_DIM, channel='train')
     kmeans.fit(data, MINI_BATCH_SIZE)
 
     model = kmeans.create_model()
-    assert model.image == registry(REGION, "kmeans") + '/kmeans:1'
+    assert model.image == registry(REGION, 'kmeans') + '/kmeans:1'
 
 
 def test_predictor_type(sagemaker_session):
     kmeans = KMeans(sagemaker_session=sagemaker_session, **ALL_REQ_ARGS)
-    data = RecordSet("s3://{}/{}".format(BUCKET_NAME, PREFIX), num_records=1, feature_dim=FEATURE_DIM, channel='train')
+    data = RecordSet('s3://{}/{}'.format(BUCKET_NAME, PREFIX), num_records=1, feature_dim=FEATURE_DIM, channel='train')
     kmeans.fit(data, MINI_BATCH_SIZE)
     model = kmeans.create_model()
     predictor = model.deploy(1, TRAIN_INSTANCE_TYPE)

@@ -90,144 +90,77 @@ def test_image(sagemaker_session):
     assert ntm.train_image() == registry(REGION, "ntm") + '/ntm:1'
 
 
-def test_num_topics_validation_fail_type(sagemaker_session):
+@pytest.mark.parametrize('required_hyper_parameters, value', [
+    ('num_topics', 'string')
+])
+def test_required_hyper_parameters_type(sagemaker_session, required_hyper_parameters, value):
     with pytest.raises(ValueError):
-        NTM(num_topics='other', sagemaker_session=sagemaker_session, **COMMON_TRAIN_ARGS)
+        test_params = ALL_REQ_ARGS.copy()
+        test_params[required_hyper_parameters] = value
+        NTM(sagemaker_session=sagemaker_session, **test_params)
 
 
-def test_num_topics_validation_fail_value_lower(sagemaker_session):
+@pytest.mark.parametrize('required_hyper_parameters, value', [
+    ('num_topics', 0),
+    ('num_topics', 10000)
+])
+def test_required_hyper_parameters_value(sagemaker_session, required_hyper_parameters, value):
     with pytest.raises(ValueError):
-        NTM(num_topics=0, sagemaker_session=sagemaker_session, **COMMON_TRAIN_ARGS)
+        test_params = ALL_REQ_ARGS.copy()
+        test_params[required_hyper_parameters] = value
+        NTM(sagemaker_session=sagemaker_session, **test_params)
 
 
-def test_num_topics_validation_fail_value_upper(sagemaker_session):
-    with pytest.raises(ValueError):
-        NTM(num_topics=10000, sagemaker_session=sagemaker_session, **COMMON_TRAIN_ARGS)
-
-
-def test_encoder_layers_validation_fail_type(sagemaker_session):
+@pytest.mark.parametrize('iterable_hyper_parameters, value', [
+    ('encoder_layers', 0)
+])
+def test_iterable_hyper_parameters_type(sagemaker_session, iterable_hyper_parameters, value):
     with pytest.raises(TypeError):
-        NTM(encoder_layers=0, sagemaker_session=sagemaker_session, **ALL_REQ_ARGS)
+        test_params = ALL_REQ_ARGS.copy()
+        test_params.update({iterable_hyper_parameters: value})
+        NTM(sagemaker_session=sagemaker_session, **test_params)
 
 
-def test_epochs_validation_fail_type(sagemaker_session):
+@pytest.mark.parametrize('optional_hyper_parameters, value', [
+    ('epochs', 'string'),
+    ('encoder_layers_activation', 0),
+    ('optimizer', 0),
+    ('tolerance', 'string'),
+    ('num_patience_epochs', 'string'),
+    ('rescale_gradient', 'string'),
+    ('clip_gradient', 'string'),
+    ('weight_decay', 'string'),
+    ('learning_rate', 'string')
+])
+def test_optional_hyper_parameters_type(sagemaker_session, optional_hyper_parameters, value):
     with pytest.raises(ValueError):
-        NTM(epochs='other', sagemaker_session=sagemaker_session, **ALL_REQ_ARGS)
+        test_params = ALL_REQ_ARGS.copy()
+        test_params.update({optional_hyper_parameters: value})
+        NTM(sagemaker_session=sagemaker_session, **test_params)
 
 
-def test_epochs_validation_fail_value_lower(sagemaker_session):
+@pytest.mark.parametrize('optional_hyper_parameters, value', [
+    ('epochs', 0),
+    ('epochs', 1000),
+    ('encoder_layers_activation', 'string'),
+    ('optimizer', 'string'),
+    ('tolerance', 0),
+    ('tolerance', 0.5),
+    ('num_patience_epochs', 0),
+    ('num_patience_epochs', 100),
+    ('rescale_gradient', 0),
+    ('rescale_gradient', 10),
+    ('clip_gradient', 0),
+    ('weight_decay', -1),
+    ('weight_decay', 2),
+    ('learning_rate', 0),
+    ('learning_rate', 2)
+])
+def test_optional_hyper_parameters_value(sagemaker_session, optional_hyper_parameters, value):
     with pytest.raises(ValueError):
-        NTM(epochs=0, sagemaker_session=sagemaker_session, **ALL_REQ_ARGS)
-
-
-def test_epochs_validation_fail_value_upper(sagemaker_session):
-    with pytest.raises(ValueError):
-        NTM(epochs=1000, sagemaker_session=sagemaker_session, **ALL_REQ_ARGS)
-
-
-def test_encoder_layers_activation_validation_fail_type(sagemaker_session):
-    with pytest.raises(ValueError):
-        NTM(encoder_layers_activation=0, sagemaker_session=sagemaker_session, **ALL_REQ_ARGS)
-
-
-def test_encoder_layers_activation_validation_fail_value(sagemaker_session):
-    with pytest.raises(ValueError):
-        NTM(encoder_layers_activation='other', sagemaker_session=sagemaker_session, **ALL_REQ_ARGS)
-
-
-def test_optimizer_validation_fail_type(sagemaker_session):
-    with pytest.raises(ValueError):
-        NTM(optimizer=0, sagemaker_session=sagemaker_session, **ALL_REQ_ARGS)
-
-
-def test_optimizer_validation_fail_value(sagemaker_session):
-    with pytest.raises(ValueError):
-        NTM(optimizer='other', sagemaker_session=sagemaker_session, **ALL_REQ_ARGS)
-
-
-def test_tolerance_validation_fail_type(sagemaker_session):
-    with pytest.raises(ValueError):
-        NTM(tolerance='other', sagemaker_session=sagemaker_session, **ALL_REQ_ARGS)
-
-
-def test_tolerance_validation_fail_value_lower(sagemaker_session):
-    with pytest.raises(ValueError):
-        NTM(tolerance=0, sagemaker_session=sagemaker_session, **ALL_REQ_ARGS)
-
-
-def test_tolerance_validation_fail_value_upper(sagemaker_session):
-    with pytest.raises(ValueError):
-        NTM(tolerance=0.5, sagemaker_session=sagemaker_session, **ALL_REQ_ARGS)
-
-
-def test_num_patience_epochs_validation_fail_type(sagemaker_session):
-    with pytest.raises(ValueError):
-        NTM(num_patience_epochs='other', sagemaker_session=sagemaker_session, **ALL_REQ_ARGS)
-
-
-def test_num_patience_epochs_validation_fail_value_lower(sagemaker_session):
-    with pytest.raises(ValueError):
-        NTM(num_patience_epochs=0, sagemaker_session=sagemaker_session, **ALL_REQ_ARGS)
-
-
-def test_num_patience_epochs_validation_fail_value_upper(sagemaker_session):
-    with pytest.raises(ValueError):
-        NTM(num_patience_epochs=100, sagemaker_session=sagemaker_session, **ALL_REQ_ARGS)
-
-
-def test_rescale_gradient_fail_type(sagemaker_session):
-    with pytest.raises(ValueError):
-        NTM(rescale_gradient='other', sagemaker_session=sagemaker_session, **ALL_REQ_ARGS)
-
-
-def test_rescale_gradient_validation_fail_value_lower(sagemaker_session):
-    with pytest.raises(ValueError):
-        NTM(rescale_gradient=0, sagemaker_session=sagemaker_session, **ALL_REQ_ARGS)
-
-
-def test_rescale_gradient_validation_fail_value_upper(sagemaker_session):
-    with pytest.raises(ValueError):
-        NTM(rescale_gradient=10, sagemaker_session=sagemaker_session, **ALL_REQ_ARGS)
-
-
-def test_clip_gradient_fail_type(sagemaker_session):
-    with pytest.raises(ValueError):
-        NTM(clip_gradient='other', sagemaker_session=sagemaker_session, **ALL_REQ_ARGS)
-
-
-def test_clip_gradient_validation_fail_value(sagemaker_session):
-    with pytest.raises(ValueError):
-        NTM(clip_gradient=0, sagemaker_session=sagemaker_session, **ALL_REQ_ARGS)
-
-
-def test_weight_decay_fail_type(sagemaker_session):
-    with pytest.raises(ValueError):
-        NTM(weight_decay='other', sagemaker_session=sagemaker_session, **ALL_REQ_ARGS)
-
-
-def test_weight_decay_validation_fail_value_lower(sagemaker_session):
-    with pytest.raises(ValueError):
-        NTM(weight_decay=-1, sagemaker_session=sagemaker_session, **ALL_REQ_ARGS)
-
-
-def test_weight_decay_validation_fail_value_upper(sagemaker_session):
-    with pytest.raises(ValueError):
-        NTM(weight_decay=2, sagemaker_session=sagemaker_session, **ALL_REQ_ARGS)
-
-
-def test_learning_rate_fail_type(sagemaker_session):
-    with pytest.raises(ValueError):
-        NTM(learning_rate='other', sagemaker_session=sagemaker_session, **ALL_REQ_ARGS)
-
-
-def test_learning_rate_validation_fail_value_lower(sagemaker_session):
-    with pytest.raises(ValueError):
-        NTM(learning_rate=0, sagemaker_session=sagemaker_session, **ALL_REQ_ARGS)
-
-
-def test_learning_rate_validation_fail_value_upper(sagemaker_session):
-    with pytest.raises(ValueError):
-        NTM(learning_rate=2, sagemaker_session=sagemaker_session, **ALL_REQ_ARGS)
+        test_params = ALL_REQ_ARGS.copy()
+        test_params.update({optional_hyper_parameters: value})
+        NTM(sagemaker_session=sagemaker_session, **test_params)
 
 
 PREFIX = "prefix"

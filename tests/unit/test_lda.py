@@ -24,12 +24,12 @@ NUM_TOPICS = 3
 COMMON_TRAIN_ARGS = {'role': ROLE, 'train_instance_type': TRAIN_INSTANCE_TYPE}
 ALL_REQ_ARGS = dict({'num_topics': NUM_TOPICS}, **COMMON_TRAIN_ARGS)
 
-REGION = "us-west-2"
-BUCKET_NAME = "Some-Bucket"
+REGION = 'us-west-2'
+BUCKET_NAME = 'Some-Bucket'
 
 DESCRIBE_TRAINING_JOB_RESULT = {
     'ModelArtifacts': {
-        'S3ModelArtifacts': "s3://bucket/model.tar.gz"
+        'S3ModelArtifacts': 's3://bucket/model.tar.gz'
     }
 }
 
@@ -78,69 +78,64 @@ def test_all_hyperparameters(sagemaker_session):
 
 def test_image(sagemaker_session):
     lda = LDA(sagemaker_session=sagemaker_session, **ALL_REQ_ARGS)
-    assert lda.train_image() == registry(REGION, "lda") + '/lda:1'
+    assert lda.train_image() == registry(REGION, 'lda') + '/lda:1'
 
 
-def test_num_topics_validation_fail_type(sagemaker_session):
+@pytest.mark.parametrize('required_hyper_parameters, value', [
+    ('num_topics', 'string')
+])
+def test_required_hyper_parameters_type(sagemaker_session, required_hyper_parameters, value):
     with pytest.raises(ValueError):
-        LDA(num_topics='other', sagemaker_session=sagemaker_session, **COMMON_TRAIN_ARGS)
+        test_params = ALL_REQ_ARGS.copy()
+        test_params[required_hyper_parameters] = value
+        LDA(sagemaker_session=sagemaker_session, **test_params)
 
 
-def test_num_topics_validation_fail_value(sagemaker_session):
+@pytest.mark.parametrize('required_hyper_parameters, value', [
+    ('num_topics', 0)
+])
+def test_required_hyper_parameters_value(sagemaker_session, required_hyper_parameters, value):
     with pytest.raises(ValueError):
-        LDA(num_topics=0, sagemaker_session=sagemaker_session, **COMMON_TRAIN_ARGS)
+        test_params = ALL_REQ_ARGS.copy()
+        test_params[required_hyper_parameters] = value
+        LDA(sagemaker_session=sagemaker_session, **test_params)
 
 
-def test_alpha0_validation_fail_type(sagemaker_session):
+@pytest.mark.parametrize('optional_hyper_parameters, value', [
+    ('alpha0', 'string'),
+    ('max_restarts', 'string'),
+    ('max_iterations', 'string'),
+    ('tol', 'string')
+])
+def test_optional_hyper_parameters_type(sagemaker_session, optional_hyper_parameters, value):
     with pytest.raises(ValueError):
-        LDA(alpha0='other', sagemaker_session=sagemaker_session, **ALL_REQ_ARGS)
+        test_params = ALL_REQ_ARGS.copy()
+        test_params.update({optional_hyper_parameters: value})
+        LDA(sagemaker_session=sagemaker_session, **test_params)
 
 
-def test_max_restarts_validation_fail_type(sagemaker_session):
+@pytest.mark.parametrize('optional_hyper_parameters, value', [
+    ('max_restarts', 0),
+    ('max_iterations', 0),
+    ('tol', 0)
+])
+def test_optional_hyper_parameters_value(sagemaker_session, optional_hyper_parameters, value):
     with pytest.raises(ValueError):
-        LDA(max_restarts='other', sagemaker_session=sagemaker_session, **ALL_REQ_ARGS)
+        test_params = ALL_REQ_ARGS.copy()
+        test_params.update({optional_hyper_parameters: value})
+        LDA(sagemaker_session=sagemaker_session, **test_params)
 
 
-def test_max_restarts_validation_fail_type2(sagemaker_session):
-    with pytest.raises(ValueError):
-        LDA(max_restarts=0.1, sagemaker_session=sagemaker_session, **ALL_REQ_ARGS)
-
-
-def test_max_restarts_validation_fail_value(sagemaker_session):
-    with pytest.raises(ValueError):
-        LDA(max_restarts=0, sagemaker_session=sagemaker_session, **ALL_REQ_ARGS)
-
-
-def test_max_iterations_validation_fail_type(sagemaker_session):
-    with pytest.raises(ValueError):
-        LDA(max_iterations='other', sagemaker_session=sagemaker_session, **ALL_REQ_ARGS)
-
-
-def test_max_iterations_validation_fail_value(sagemaker_session):
-    with pytest.raises(ValueError):
-        LDA(max_iterations=0, sagemaker_session=sagemaker_session, **ALL_REQ_ARGS)
-
-
-def test_tol_validation_fail_type(sagemaker_session):
-    with pytest.raises(ValueError):
-        LDA(tol='other', sagemaker_session=sagemaker_session, **ALL_REQ_ARGS)
-
-
-def test_tol_validation_fail_value(sagemaker_session):
-    with pytest.raises(ValueError):
-        LDA(tol=0, sagemaker_session=sagemaker_session, **ALL_REQ_ARGS)
-
-
-PREFIX = "prefix"
+PREFIX = 'prefix'
 FEATURE_DIM = 10
 MINI_BATCH_SZIE = 200
 
 
-@patch("sagemaker.amazon.amazon_estimator.AmazonAlgorithmEstimatorBase.fit")
+@patch('sagemaker.amazon.amazon_estimator.AmazonAlgorithmEstimatorBase.fit')
 def test_call_fit(base_fit, sagemaker_session):
-    lda = LDA(base_job_name="lda", sagemaker_session=sagemaker_session, **ALL_REQ_ARGS)
+    lda = LDA(base_job_name='lda', sagemaker_session=sagemaker_session, **ALL_REQ_ARGS)
 
-    data = RecordSet("s3://{}/{}".format(BUCKET_NAME, PREFIX), num_records=1, feature_dim=FEATURE_DIM, channel='train')
+    data = RecordSet('s3://{}/{}'.format(BUCKET_NAME, PREFIX), num_records=1, feature_dim=FEATURE_DIM, channel='train')
 
     lda.fit(data, MINI_BATCH_SZIE)
 
@@ -151,28 +146,28 @@ def test_call_fit(base_fit, sagemaker_session):
 
 
 def test_call_fit_none_mini_batch_size(sagemaker_session):
-    lda = LDA(base_job_name="lda", sagemaker_session=sagemaker_session, **ALL_REQ_ARGS)
+    lda = LDA(base_job_name='lda', sagemaker_session=sagemaker_session, **ALL_REQ_ARGS)
 
-    data = RecordSet("s3://{}/{}".format(BUCKET_NAME, PREFIX), num_records=1, feature_dim=FEATURE_DIM,
+    data = RecordSet('s3://{}/{}'.format(BUCKET_NAME, PREFIX), num_records=1, feature_dim=FEATURE_DIM,
                      channel='train')
     with pytest.raises(ValueError):
         lda.fit(data, None)
 
 
 def test_call_fit_wrong_type_mini_batch_size(sagemaker_session):
-    lda = LDA(base_job_name="lda", sagemaker_session=sagemaker_session, **ALL_REQ_ARGS)
+    lda = LDA(base_job_name='lda', sagemaker_session=sagemaker_session, **ALL_REQ_ARGS)
 
-    data = RecordSet("s3://{}/{}".format(BUCKET_NAME, PREFIX), num_records=1, feature_dim=FEATURE_DIM,
+    data = RecordSet('s3://{}/{}'.format(BUCKET_NAME, PREFIX), num_records=1, feature_dim=FEATURE_DIM,
                      channel='train')
 
     with pytest.raises(ValueError):
-        lda.fit(data, "some")
+        lda.fit(data, 'some')
 
 
 def test_call_fit_wrong_value_mini_batch_size(sagemaker_session):
-    lda = LDA(base_job_name="lda", sagemaker_session=sagemaker_session, **ALL_REQ_ARGS)
+    lda = LDA(base_job_name='lda', sagemaker_session=sagemaker_session, **ALL_REQ_ARGS)
 
-    data = RecordSet("s3://{}/{}".format(BUCKET_NAME, PREFIX), num_records=1, feature_dim=FEATURE_DIM,
+    data = RecordSet('s3://{}/{}'.format(BUCKET_NAME, PREFIX), num_records=1, feature_dim=FEATURE_DIM,
                      channel='train')
     with pytest.raises(ValueError):
         lda.fit(data, 0)
@@ -180,16 +175,16 @@ def test_call_fit_wrong_value_mini_batch_size(sagemaker_session):
 
 def test_model_image(sagemaker_session):
     lda = LDA(sagemaker_session=sagemaker_session, **ALL_REQ_ARGS)
-    data = RecordSet("s3://{}/{}".format(BUCKET_NAME, PREFIX), num_records=1, feature_dim=FEATURE_DIM, channel='train')
+    data = RecordSet('s3://{}/{}'.format(BUCKET_NAME, PREFIX), num_records=1, feature_dim=FEATURE_DIM, channel='train')
     lda.fit(data, MINI_BATCH_SZIE)
 
     model = lda.create_model()
-    assert model.image == registry(REGION, "lda") + '/lda:1'
+    assert model.image == registry(REGION, 'lda') + '/lda:1'
 
 
 def test_predictor_type(sagemaker_session):
     lda = LDA(sagemaker_session=sagemaker_session, **ALL_REQ_ARGS)
-    data = RecordSet("s3://{}/{}".format(BUCKET_NAME, PREFIX), num_records=1, feature_dim=FEATURE_DIM, channel='train')
+    data = RecordSet('s3://{}/{}'.format(BUCKET_NAME, PREFIX), num_records=1, feature_dim=FEATURE_DIM, channel='train')
     lda.fit(data, MINI_BATCH_SZIE)
     model = lda.create_model()
     predictor = model.deploy(1, TRAIN_INSTANCE_TYPE)

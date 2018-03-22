@@ -25,12 +25,12 @@ COMMON_TRAIN_ARGS = {'role': ROLE, 'train_instance_count': TRAIN_INSTANCE_COUNT,
                      'train_instance_type': TRAIN_INSTANCE_TYPE}
 ALL_REQ_ARGS = dict({'num_components': NUM_COMPONENTS}, **COMMON_TRAIN_ARGS)
 
-REGION = "us-west-2"
-BUCKET_NAME = "Some-Bucket"
+REGION = 'us-west-2'
+BUCKET_NAME = 'Some-Bucket'
 
 DESCRIBE_TRAINING_JOB_RESULT = {
     'ModelArtifacts': {
-        'S3ModelArtifacts': "s3://bucket/model.tar.gz"
+        'S3ModelArtifacts': 's3://bucket/model.tar.gz'
     }
 }
 
@@ -66,10 +66,10 @@ def test_init_required_named(sagemaker_session):
 
 def test_all_hyperparameters(sagemaker_session):
     pca = PCA(sagemaker_session=sagemaker_session,
-              algorithm_mode='stable', subtract_mean='True', extra_components=1, **ALL_REQ_ARGS)
+              algorithm_mode='regular', subtract_mean='True', extra_components=1, **ALL_REQ_ARGS)
     assert pca.hyperparameters() == dict(
         num_components=str(ALL_REQ_ARGS['num_components']),
-        algorithm_mode='stable',
+        algorithm_mode='regular',
         subtract_mean='True',
         extra_components='1'
     )
@@ -77,49 +77,60 @@ def test_all_hyperparameters(sagemaker_session):
 
 def test_image(sagemaker_session):
     pca = PCA(sagemaker_session=sagemaker_session, **ALL_REQ_ARGS)
-    assert pca.train_image() == registry(REGION, "pca") + '/pca:1'
+    assert pca.train_image() == registry(REGION, 'pca') + '/pca:1'
 
 
-def test_num_components_validation_fail_type(sagemaker_session):
+@pytest.mark.parametrize('required_hyper_parameters, value', [
+    ('num_components', 'string')
+])
+def test_required_hyper_parameters_type(sagemaker_session, required_hyper_parameters, value):
     with pytest.raises(ValueError):
-        PCA(num_components='invalid', sagemaker_session=sagemaker_session, **COMMON_TRAIN_ARGS)
+        test_params = ALL_REQ_ARGS.copy()
+        test_params[required_hyper_parameters] = value
+        PCA(sagemaker_session=sagemaker_session, **test_params)
 
 
-def test_num_components_validation_fail_value_lower(sagemaker_session):
+@pytest.mark.parametrize('required_hyper_parameters, value', [
+    ('num_components', 0)
+])
+def test_required_hyper_parameters_value(sagemaker_session, required_hyper_parameters, value):
     with pytest.raises(ValueError):
-        PCA(num_components=0, sagemaker_session=sagemaker_session, **COMMON_TRAIN_ARGS)
+        test_params = ALL_REQ_ARGS.copy()
+        test_params[required_hyper_parameters] = value
+        PCA(sagemaker_session=sagemaker_session, **test_params)
 
 
-def test_algorithm_mode_fail_type(sagemaker_session):
+@pytest.mark.parametrize('optional_hyper_parameters, value', [
+    ('algorithm_mode', 0),
+    ('extra_components', 'string')
+])
+def test_optional_hyper_parameters_type(sagemaker_session, optional_hyper_parameters, value):
     with pytest.raises(ValueError):
-        PCA(algorithm_mode=0, sagemaker_session=sagemaker_session, **ALL_REQ_ARGS)
+        test_params = ALL_REQ_ARGS.copy()
+        test_params.update({optional_hyper_parameters: value})
+        PCA(sagemaker_session=sagemaker_session, **test_params)
 
 
-def test_algorithm_mode_validation_fail_value(sagemaker_session):
+@pytest.mark.parametrize('optional_hyper_parameters, value', [
+    ('algorithm_mode', 'string')
+])
+def test_optional_hyper_parameters_value(sagemaker_session, optional_hyper_parameters, value):
     with pytest.raises(ValueError):
-        PCA(algorithm_mode='invalid', sagemaker_session=sagemaker_session, **ALL_REQ_ARGS)
+        test_params = ALL_REQ_ARGS.copy()
+        test_params.update({optional_hyper_parameters: value})
+        PCA(sagemaker_session=sagemaker_session, **test_params)
 
 
-def test_extra_components_fail_type(sagemaker_session):
-    with pytest.raises(ValueError):
-        PCA(extra_components='invalid', sagemaker_session=sagemaker_session, **ALL_REQ_ARGS)
-
-
-def test_extra_components_validation_fail_value(sagemaker_session):
-    with pytest.raises(ValueError):
-        PCA(extra_components=-1, sagemaker_session=sagemaker_session, **ALL_REQ_ARGS)
-
-
-PREFIX = "prefix"
+PREFIX = 'prefix'
 FEATURE_DIM = 10
 MINI_BATCH_SIZE = 200
 
 
-@patch("sagemaker.amazon.amazon_estimator.AmazonAlgorithmEstimatorBase.fit")
+@patch('sagemaker.amazon.amazon_estimator.AmazonAlgorithmEstimatorBase.fit')
 def test_call_fit(base_fit, sagemaker_session):
-    pca = PCA(base_job_name="pca", sagemaker_session=sagemaker_session, **ALL_REQ_ARGS)
+    pca = PCA(base_job_name='pca', sagemaker_session=sagemaker_session, **ALL_REQ_ARGS)
 
-    data = RecordSet("s3://{}/{}".format(BUCKET_NAME, PREFIX), num_records=1, feature_dim=FEATURE_DIM, channel='train')
+    data = RecordSet('s3://{}/{}'.format(BUCKET_NAME, PREFIX), num_records=1, feature_dim=FEATURE_DIM, channel='train')
 
     pca.fit(data, MINI_BATCH_SIZE)
 
@@ -130,35 +141,35 @@ def test_call_fit(base_fit, sagemaker_session):
 
 
 def test_call_fit_none_mini_batch_size(sagemaker_session):
-    pca = PCA(base_job_name="pca", sagemaker_session=sagemaker_session, **ALL_REQ_ARGS)
+    pca = PCA(base_job_name='pca', sagemaker_session=sagemaker_session, **ALL_REQ_ARGS)
 
-    data = RecordSet("s3://{}/{}".format(BUCKET_NAME, PREFIX), num_records=1, feature_dim=FEATURE_DIM,
+    data = RecordSet('s3://{}/{}'.format(BUCKET_NAME, PREFIX), num_records=1, feature_dim=FEATURE_DIM,
                      channel='train')
     pca.fit(data)
 
 
 def test_call_fit_wrong_type_mini_batch_size(sagemaker_session):
-    pca = PCA(base_job_name="pca", sagemaker_session=sagemaker_session, **ALL_REQ_ARGS)
+    pca = PCA(base_job_name='pca', sagemaker_session=sagemaker_session, **ALL_REQ_ARGS)
 
-    data = RecordSet("s3://{}/{}".format(BUCKET_NAME, PREFIX), num_records=1, feature_dim=FEATURE_DIM,
+    data = RecordSet('s3://{}/{}'.format(BUCKET_NAME, PREFIX), num_records=1, feature_dim=FEATURE_DIM,
                      channel='train')
 
     with pytest.raises((TypeError, ValueError)):
-        pca.fit(data, "some")
+        pca.fit(data, 'some')
 
 
 def test_model_image(sagemaker_session):
     pca = PCA(sagemaker_session=sagemaker_session, **ALL_REQ_ARGS)
-    data = RecordSet("s3://{}/{}".format(BUCKET_NAME, PREFIX), num_records=1, feature_dim=FEATURE_DIM, channel='train')
+    data = RecordSet('s3://{}/{}'.format(BUCKET_NAME, PREFIX), num_records=1, feature_dim=FEATURE_DIM, channel='train')
     pca.fit(data, MINI_BATCH_SIZE)
 
     model = pca.create_model()
-    assert model.image == registry(REGION, "pca") + '/pca:1'
+    assert model.image == registry(REGION, 'pca') + '/pca:1'
 
 
 def test_predictor_type(sagemaker_session):
     pca = PCA(sagemaker_session=sagemaker_session, **ALL_REQ_ARGS)
-    data = RecordSet("s3://{}/{}".format(BUCKET_NAME, PREFIX), num_records=1, feature_dim=FEATURE_DIM, channel='train')
+    data = RecordSet('s3://{}/{}'.format(BUCKET_NAME, PREFIX), num_records=1, feature_dim=FEATURE_DIM, channel='train')
     pca.fit(data, MINI_BATCH_SIZE)
     model = pca.create_model()
     predictor = model.deploy(1, TRAIN_INSTANCE_TYPE)
