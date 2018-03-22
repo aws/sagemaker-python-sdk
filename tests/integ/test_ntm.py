@@ -10,24 +10,20 @@
 # distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
-import boto3
-import numpy as np
 import os
 
-import sagemaker
+import numpy as np
+
 from sagemaker import NTM, NTMModel
 from sagemaker.amazon.common import read_records
 from sagemaker.utils import name_from_base
-
-from tests.integ import DATA_DIR, REGION
+from tests.integ import DATA_DIR
 from tests.integ.timeout import timeout, timeout_and_delete_endpoint_by_name
 from tests.integ.record_set import prepare_record_set_from_local_files
 
 
-def test_ntm():
-
+def test_ntm(sagemaker_session):
     with timeout(minutes=15):
-        sagemaker_session = sagemaker.Session(boto_session=boto3.Session(region_name=REGION))
         data_path = os.path.join(DATA_DIR, 'ntm')
         data_filename = 'nips-train_1.pbr'
 

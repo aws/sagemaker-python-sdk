@@ -10,24 +10,16 @@
 # distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
+import os
 import pickle
 
-import boto3
 import numpy as np
-import os
-import pytest
 
-from sagemaker import Session
 from sagemaker.tensorflow import TensorFlow
-from tests.integ import DATA_DIR, REGION
-from tests.integ.timeout import timeout_and_delete_endpoint, timeout
+from tests.integ import DATA_DIR
+from tests.integ.timeout import timeout_and_delete_endpoint_by_name, timeout
 
 PICKLE_CONTENT_TYPE = 'application/python-pickle'
-
-
-@pytest.fixture(scope='module')
-def sagemaker_session():
-    return Session(boto_session=boto3.Session(region_name=REGION))
 
 
 class PickleSerializer(object):
@@ -54,7 +46,8 @@ def test_cifar(sagemaker_session, tf_full_version):
         estimator.fit(inputs, logs=False)
         print('job succeeded: {}'.format(estimator.latest_training_job.name))
 
-    with timeout_and_delete_endpoint(estimator=estimator, minutes=20):
+    endpoint_name = estimator.latest_training_job.name
+    with timeout_and_delete_endpoint_by_name(endpoint_name, sagemaker_session, minutes=20):
         predictor = estimator.deploy(initial_instance_count=1, instance_type='ml.p2.xlarge')
         predictor.serializer = PickleSerializer()
         predictor.content_type = PICKLE_CONTENT_TYPE
