@@ -72,7 +72,7 @@ class KMeans(AmazonAlgorithmEstimatorBase):
             k (int): The number of clusters to produce.
             init_method (str): How to initialize cluster locations. One of 'random' or 'kmeans++'.
             max_iterations (int): Maximum iterations for Lloyds EM procedure in the local kmeans used in finalize stage.
-            tol (int): Tolerance for change in ssd for early stopping in local kmeans.
+            tol (float): Tolerance for change in ssd for early stopping in local kmeans.
             num_trials (int): Local version is run multiple times and the one with the best loss is chosen. This
                               determines how many times.
             local_init_method (str): Initialization method for local version. One of 'random', 'kmeans++'
