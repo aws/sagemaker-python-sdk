@@ -10,8 +10,10 @@
 # distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
+import contextlib
 import logging
 import os
+import shutil
 import subprocess
 import tempfile
 import threading
@@ -24,6 +26,18 @@ from sagemaker.tensorflow.model import TensorFlowModel
 
 logging.basicConfig()
 LOGGER = logging.getLogger('sagemaker')
+
+
+@contextlib.contextmanager
+def temporary_directory():
+    """Context manager for a temporary directory. This is similar to
+    tempfile.TemporaryDirectory in python>=3.2.
+    """
+    name = tempfile.mkdtemp()
+    try:
+        yield name
+    finally:
+        shutil.rmtree(name)
 
 
 class Tensorboard(threading.Thread):
@@ -125,7 +139,7 @@ class Tensorboard(threading.Thread):
         LOGGER.info('TensorBoard 0.1.7 at http://localhost:{}'.format(port))
         while not self.estimator.checkpoint_path:
             self.event.wait(1)
-        with tempfile.TemporaryDirectory() as aws_sync_dir:
+        with temporary_directory() as aws_sync_dir:
             while not self.event.is_set():
                 args = ['aws', 's3', 'sync', self.estimator.checkpoint_path, aws_sync_dir]
                 subprocess.call(args, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
