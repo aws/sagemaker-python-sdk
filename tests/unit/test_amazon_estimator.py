@@ -16,6 +16,7 @@ import numpy as np
 
 # Use PCA as a test implementation of AmazonAlgorithmEstimator
 from sagemaker.amazon.pca import PCA
+from sagemaker.amazon.image_classification import ImageClassification
 from sagemaker.amazon.amazon_estimator import upload_numpy_to_s3_shards, _build_shards, registry
 
 COMMON_ARGS = {'role': 'myrole', 'train_instance_count': 1, 'train_instance_type': 'ml.c4.xlarge'}
@@ -63,6 +64,13 @@ def test_init(sagemaker_session):
     assert pca.num_components == 55
 
 
+def test_s3_init(sagemaker_session):
+    ic = ImageClassification(epochs=12, num_classes=2, num_training_samples=2,
+                             sagemaker_session=sagemaker_session, **COMMON_ARGS)
+    assert ic.epochs == 12
+    assert ic.num_classes == 2
+
+
 def test_init_all_pca_hyperparameters(sagemaker_session):
     pca = PCA(num_components=55, algorithm_mode='randomized',
               subtract_mean=True, extra_components=33, sagemaker_session=sagemaker_session,
@@ -70,6 +78,16 @@ def test_init_all_pca_hyperparameters(sagemaker_session):
     assert pca.num_components == 55
     assert pca.algorithm_mode == 'randomized'
     assert pca.extra_components == 33
+
+
+def test_init_all_ic_hyperparameters(sagemaker_session):
+    ic = ImageClassification(
+        num_classes=257, num_training_samples=15420, epochs=1,
+        image_shape='3,32,32', sagemaker_session=sagemaker_session,
+        **COMMON_ARGS)
+    assert ic.num_classes == 257
+    assert ic.num_training_samples == 15420
+    assert ic.image_shape == '3,32,32'
 
 
 def test_init_estimator_args(sagemaker_session):
@@ -80,6 +98,16 @@ def test_init_estimator_args(sagemaker_session):
     assert pca.role == COMMON_ARGS['role']
     assert pca.train_max_run == 1234
     assert pca.data_location == 's3://some-bucket/some-key/'
+
+
+def test_init_s3estimator_args(sagemaker_session):
+    ic = ImageClassification(
+        num_classes=257, num_training_samples=15420, epochs=1,
+        image_shape='3,32,32', sagemaker_session=sagemaker_session,
+        **COMMON_ARGS)
+    assert ic.train_instance_type == COMMON_ARGS['train_instance_type']
+    assert ic.train_instance_count == COMMON_ARGS['train_instance_count']
+    assert ic.role == COMMON_ARGS['role']
 
 
 def test_data_location_validation(sagemaker_session):
@@ -106,9 +134,22 @@ def test_pca_hyperparameters(sagemaker_session):
         algorithm_mode='randomized')
 
 
+def test_ic_hyperparameters(sagemaker_session):
+    ic = ImageClassification(
+        num_classes=257, num_training_samples=15420, epochs=1,
+        image_shape='3,32,32', sagemaker_session=sagemaker_session,
+        **COMMON_ARGS)
+    assert isinstance(ic.hyperparameters(), dict)
+
+
 def test_image(sagemaker_session):
     pca = PCA(num_components=55, sagemaker_session=sagemaker_session, **COMMON_ARGS)
     assert pca.train_image() == registry('us-west-2') + '/pca:1'
+    ic = ImageClassification(
+        num_classes=257, num_training_samples=15420, epochs=1,
+        image_shape='3,32,32', sagemaker_session=sagemaker_session,
+        **COMMON_ARGS)
+    assert ic.train_image() == registry('us-west-2', 'image_classification') + '/image-classification:latest'
 
 
 @patch('time.strftime', return_value=TIMESTAMP)

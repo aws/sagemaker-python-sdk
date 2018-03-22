@@ -17,6 +17,8 @@ from sagemaker.amazon.kmeans import KMeans, KMeansModel, KMeansPredictor
 from sagemaker.amazon.pca import PCA, PCAModel, PCAPredictor
 from sagemaker.amazon.lda import LDA, LDAModel, LDAPredictor
 from sagemaker.amazon.linear_learner import LinearLearner, LinearLearnerModel, LinearLearnerPredictor
+from sagemaker.amazon.image_classification import ImageClassification, ImageClassificationModel
+from sagemaker.amazon.image_classification import ImageClassificationPredictor
 from sagemaker.amazon.factorization_machines import FactorizationMachines, FactorizationMachinesModel
 from sagemaker.amazon.factorization_machines import FactorizationMachinesPredictor
 from sagemaker.amazon.ntm import NTM, NTMModel, NTMPredictor
@@ -34,5 +36,6 @@ __all__ = [estimator, KMeans, KMeansModel, KMeansPredictor, PCA, PCAModel, PCAPr
            LinearLearnerModel, LinearLearnerPredictor,
            LDA, LDAModel, LDAPredictor,
            FactorizationMachines, FactorizationMachinesModel, FactorizationMachinesPredictor,
+           ImageClassification, ImageClassificationModel, ImageClassificationPredictor,
            Model, NTM, NTMModel, NTMPredictor, RealTimePredictor, Session,
            container_def, s3_input, production_variant, get_execution_role]

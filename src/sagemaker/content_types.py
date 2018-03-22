@@ -13,3 +13,5 @@
 CONTENT_TYPE_JSON = 'application/json'
 CONTENT_TYPE_CSV = 'text/csv'
 CONTENT_TYPE_OCTET_STREAM = 'application/octet-stream'
+CONTENT_TYPE_IMAGES = 'application/x-image'
+CONTENT_TYPE_RECORDIO = 'application/x-recordio'

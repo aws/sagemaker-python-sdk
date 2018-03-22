@@ -309,7 +309,6 @@ class _TrainingJob(object):
         Returns:
             sagemaker.estimator.Framework: Constructed object that captures all information about the started job.
         """
-
         input_config = _TrainingJob._format_inputs_to_input_config(inputs)
         role = estimator.sagemaker_session.expand_role(estimator.role)
         output_config = _TrainingJob._prepare_output_config(estimator.output_path, estimator.output_kms_key)

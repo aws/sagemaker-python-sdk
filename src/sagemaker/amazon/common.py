@@ -11,17 +11,16 @@
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
 import io
+import json
 import struct
 import sys
 
 import numpy as np
 from scipy.sparse import issparse
-
 from sagemaker.amazon.record_pb2 import Record
 
 
 class numpy_to_record_serializer(object):
-
     def __init__(self, content_type='application/x-recordio-protobuf'):
         self.content_type = content_type
 
@@ -35,8 +34,18 @@ class numpy_to_record_serializer(object):
         return buf
 
 
-class record_deserializer(object):
+class file_to_image_serializer(object):
+    def __init__(self, content_type='application/x-image'):
+        self.content_type = content_type
 
+    def __call__(self, file):
+        with open(file, 'rb') as f:
+            payload = f.read()
+            payload = bytearray(payload)
+        return payload
+
+
+class record_deserializer(object):
     def __init__(self, accept='application/x-recordio-protobuf'):
         self.accept = accept
 
@@ -45,6 +54,14 @@ class record_deserializer(object):
             return read_records(stream)
         finally:
             stream.close()
+
+
+class response_deserializer(object):
+    def __init__(self, accept='application/json'):
+        self.accept = accept
+
+    def __call__(self, stream, content_type=None):
+        return json.loads(stream)
 
 
 def _write_feature_tensor(resolved_type, record, vector):
@@ -94,7 +111,7 @@ def write_numpy_to_dense_tensor(file, array, labels=None):
             raise ValueError("Labels must be a Vector")
         if labels.shape[0] not in array.shape:
             raise ValueError("Label shape {} not compatible with array shape {}".format(
-                             labels.shape, array.shape))
+                labels.shape, array.shape))
         resolved_label_type = _resolve_type(labels.dtype)
     resolved_type = _resolve_type(array.dtype)
 
@@ -122,7 +139,7 @@ def write_spmatrix_to_sparse_tensor(file, array, labels=None):
             raise ValueError("Labels must be a Vector")
         if labels.shape[0] not in array.shape:
             raise ValueError("Label shape {} not compatible with array shape {}".format(
-                             labels.shape, array.shape))
+                labels.shape, array.shape))
         resolved_label_type = _resolve_type(labels.dtype)
     resolved_type = _resolve_type(array.dtype)
 
