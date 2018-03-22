@@ -55,11 +55,8 @@ def same_dirs(a, b):
     right = sorted(comp.right_list)
     if left != common or right != common:
         return False
-    for fname in comp.common_files:
-        left_file = os.path.join(a, fname)
-        right_file = os.path.join(b, fname)
-        if not filecmp.cmp(left_file, right_file):
-            return False
+    if len(comp.diff_files):
+        return False
     for subdir in comp.common_dirs:
         left_subdir = os.path.join(a, subdir)
         right_subdir = os.path.join(b, subdir)
