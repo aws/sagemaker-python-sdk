@@ -49,9 +49,13 @@ class Tensorboard(threading.Thread):
     @staticmethod
     def _sync_directories(from_directory, to_directory):
         """Sync to_directory with from_directory by copying each file in
-        to_directory with new contents. Why do this? Because TensorBoard picks
-        up temp files from `aws s3 sync` and then stops reading the correct
-        tfevent files. This is probably related to tensorflow/tensorboard#349.
+        to_directory with new contents. Files in to_directory will be
+        overwritten by files of the same name in from_directory. We need to
+        keep two copies of the log directory because otherwise TensorBoard
+        picks up temp files from `aws s3 sync` and then stops reading the
+        correct tfevent files. We walk the directory and copy each file
+        individually because the directory that TensorBoard watches needs to
+        always exist.
 
         Args:
             from_directory (str): The directory with updated files.
