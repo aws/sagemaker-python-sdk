@@ -15,7 +15,7 @@ import os
 import random
 import shutil
 
-from sagemaker.tensorflow.estimator import temporary_directory, Tensorboard
+from sagemaker.tensorflow.estimator import Tensorboard
 
 
 def create_test_directory(directory, variable_content="hello world"):
@@ -68,7 +68,7 @@ def same_dirs(a, b):
 
 
 def test_to_directory_doesnt_exist():
-    with temporary_directory() as from_dir:
+    with Tensorboard._temporary_directory() as from_dir:
         create_test_directory(from_dir)
         to_dir = './not_a_real_place_{}'.format(random.getrandbits(64))
         Tensorboard._sync_directories(from_dir, to_dir)
@@ -77,17 +77,19 @@ def test_to_directory_doesnt_exist():
 
 
 def test_only_root_of_to_directory_exists():
-    with temporary_directory() as from_dir, temporary_directory() as to_dir:
-        create_test_directory(from_dir)
-        assert not same_dirs(from_dir, to_dir)
-        Tensorboard._sync_directories(from_dir, to_dir)
-        assert same_dirs(from_dir, to_dir)
+    with Tensorboard._temporary_directory() as from_dir:
+        with Tensorboard._temporary_directory() as to_dir:
+            create_test_directory(from_dir)
+            assert not same_dirs(from_dir, to_dir)
+            Tensorboard._sync_directories(from_dir, to_dir)
+            assert same_dirs(from_dir, to_dir)
 
 
 def test_files_are_overwritten_when_they_already_exist():
-    with temporary_directory() as from_dir, temporary_directory() as to_dir:
-        create_test_directory(from_dir)
-        create_test_directory(to_dir, "foo bar")
-        assert not same_dirs(from_dir, to_dir)
-        Tensorboard._sync_directories(from_dir, to_dir)
-        assert same_dirs(from_dir, to_dir)
+    with Tensorboard._temporary_directory() as from_dir:
+        with Tensorboard._temporary_directory() as to_dir:
+            create_test_directory(from_dir)
+            create_test_directory(to_dir, "foo bar")
+            assert not same_dirs(from_dir, to_dir)
+            Tensorboard._sync_directories(from_dir, to_dir)
+            assert same_dirs(from_dir, to_dir)

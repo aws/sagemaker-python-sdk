@@ -28,18 +28,6 @@ logging.basicConfig()
 LOGGER = logging.getLogger('sagemaker')
 
 
-@contextlib.contextmanager
-def temporary_directory():
-    """Context manager for a temporary directory. This is similar to
-    tempfile.TemporaryDirectory in python>=3.2.
-    """
-    name = tempfile.mkdtemp()
-    try:
-        yield name
-    finally:
-        shutil.rmtree(name)
-
-
 class Tensorboard(threading.Thread):
     def __init__(self, estimator, logdir=None):
         """Initialize ``Tensorboard`` instance.
@@ -88,6 +76,18 @@ class Tensorboard(threading.Thread):
                 to_file = os.path.join(to_root, fname)
                 with open(from_file, 'rb') as a, open(to_file, 'wb') as b:
                     b.write(a.read())
+
+    @staticmethod
+    @contextlib.contextmanager
+    def _temporary_directory():
+        """Context manager for a temporary directory. This is similar to
+        tempfile.TemporaryDirectory in python>=3.2.
+        """
+        name = tempfile.mkdtemp()
+        try:
+            yield name
+        finally:
+            shutil.rmtree(name)
 
     def validate_requirements(self):
         """Ensure that TensorBoard and the AWS CLI are installed.
@@ -139,7 +139,7 @@ class Tensorboard(threading.Thread):
         LOGGER.info('TensorBoard 0.1.7 at http://localhost:{}'.format(port))
         while not self.estimator.checkpoint_path:
             self.event.wait(1)
-        with temporary_directory() as aws_sync_dir:
+        with self._temporary_directory() as aws_sync_dir:
             while not self.event.is_set():
                 args = ['aws', 's3', 'sync', self.estimator.checkpoint_path, aws_sync_dir]
                 subprocess.call(args, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
