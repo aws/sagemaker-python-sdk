@@ -11,17 +11,15 @@
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
 import filecmp
-import pytest
 import os
 import random
 import shutil
-import tempfile
 
 from sagemaker.tensorflow.estimator import temporary_directory, Tensorboard
 
 
 def create_test_directory(directory, variable_content="hello world"):
-    """Create dummy data for testing TensorBoard._sync_directories with the
+    """Create dummy data for testing Tensorboard._sync_directories with the
     following structure:
 
     <directory>
