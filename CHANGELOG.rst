@@ -5,7 +5,7 @@ CHANGELOG
 1.1.dev3
 ========
 
-* feature: TensorFlow: TensorBoard launched from run_tensorboard_locally=True now correctly displays updated data from training
+* bug-fix: TensorFlow: TensorBoard launched from run_tensorboard_locally=True now correctly displays updated data from training
 * feature: Tests: create configurable ``sagemaker_session`` pytest fixture for all integration tests
 * bug-fix: AmazonEstimators: fix inaccurate hyper-parameters in kmeans, pca and linear learner
 
