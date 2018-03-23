@@ -38,13 +38,11 @@ def test_linear_learner(sagemaker_session):
         train_set = train_set[0], train_set[1].astype(np.dtype('float32'))
 
         ll = LinearLearner('SageMakerRole', 1, 'ml.c4.2xlarge', base_job_name='test-linear-learner',
-                           sagemaker_session=sagemaker_session)
+                           predictor_type='binary_classifier', sagemaker_session=sagemaker_session)
         ll.binary_classifier_model_selection_criteria = 'accuracy'
         ll.target_recall = 0.5
         ll.target_precision = 0.5
-        ll.positive_example_weight_mult = 0.1
         ll.epochs = 1
-        ll.predictor_type = 'binary_classifier'
         ll.use_bias = True
         ll.num_models = 1
         ll.num_calibration_samples = 1
@@ -100,13 +98,11 @@ def test_async_linear_learner(sagemaker_session):
         train_set = train_set[0], train_set[1].astype(np.dtype('float32'))
 
         ll = LinearLearner('SageMakerRole', 1, 'ml.c4.2xlarge', base_job_name='test-linear-learner',
-                           sagemaker_session=sagemaker_session)
+                           predictor_type='binary_classifier', sagemaker_session=sagemaker_session)
         ll.binary_classifier_model_selection_criteria = 'accuracy'
         ll.target_recall = 0.5
         ll.target_precision = 0.5
-        ll.positive_example_weight_mult = 0.1
         ll.epochs = 1
-        ll.predictor_type = 'binary_classifier'
         ll.use_bias = True
         ll.num_models = 1
         ll.num_calibration_samples = 1

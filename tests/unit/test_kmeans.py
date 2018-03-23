@@ -13,16 +13,17 @@
 import pytest
 from mock import Mock, patch
 
-from sagemaker.amazon.lda import LDA, LDAPredictor
+from sagemaker.amazon.kmeans import KMeans, KMeansPredictor
 from sagemaker.amazon.amazon_estimator import registry, RecordSet
 
 ROLE = 'myrole'
 TRAIN_INSTANCE_COUNT = 1
 TRAIN_INSTANCE_TYPE = 'ml.c4.xlarge'
-NUM_TOPICS = 3
+K = 2
 
-COMMON_TRAIN_ARGS = {'role': ROLE, 'train_instance_type': TRAIN_INSTANCE_TYPE}
-ALL_REQ_ARGS = dict({'num_topics': NUM_TOPICS}, **COMMON_TRAIN_ARGS)
+COMMON_TRAIN_ARGS = {'role': ROLE, 'train_instance_count': TRAIN_INSTANCE_COUNT,
+                     'train_instance_type': TRAIN_INSTANCE_TYPE}
+ALL_REQ_ARGS = dict({'k': K}, **COMMON_TRAIN_ARGS)
 
 REGION = 'us-west-2'
 BUCKET_NAME = 'Some-Bucket'
@@ -47,146 +48,171 @@ def sagemaker_session():
 
 
 def test_init_required_positional(sagemaker_session):
-    lda = LDA(ROLE, TRAIN_INSTANCE_TYPE, NUM_TOPICS, sagemaker_session=sagemaker_session)
-    assert lda.role == ROLE
-    assert lda.train_instance_count == TRAIN_INSTANCE_COUNT
-    assert lda.train_instance_type == TRAIN_INSTANCE_TYPE
-    assert lda.num_topics == NUM_TOPICS
+    kmeans = KMeans(ROLE, TRAIN_INSTANCE_COUNT, TRAIN_INSTANCE_TYPE, K, sagemaker_session=sagemaker_session)
+    assert kmeans.role == ROLE
+    assert kmeans.train_instance_count == TRAIN_INSTANCE_COUNT
+    assert kmeans.train_instance_type == TRAIN_INSTANCE_TYPE
+    assert kmeans.k == K
 
 
 def test_init_required_named(sagemaker_session):
-    lda = LDA(sagemaker_session=sagemaker_session, **ALL_REQ_ARGS)
+    kmeans = KMeans(sagemaker_session=sagemaker_session, **ALL_REQ_ARGS)
 
-    assert lda.role == COMMON_TRAIN_ARGS['role']
-    assert lda.train_instance_count == TRAIN_INSTANCE_COUNT
-    assert lda.train_instance_type == COMMON_TRAIN_ARGS['train_instance_type']
-    assert lda.num_topics == ALL_REQ_ARGS['num_topics']
+    assert kmeans.role == COMMON_TRAIN_ARGS['role']
+    assert kmeans.train_instance_count == TRAIN_INSTANCE_COUNT
+    assert kmeans.train_instance_type == COMMON_TRAIN_ARGS['train_instance_type']
+    assert kmeans.k == ALL_REQ_ARGS['k']
 
 
 def test_all_hyperparameters(sagemaker_session):
-    lda = LDA(sagemaker_session=sagemaker_session,
-              alpha0=2.2, max_restarts=3, max_iterations=10, tol=3.3,
-              **ALL_REQ_ARGS)
-    assert lda.hyperparameters() == dict(
-        num_topics=str(ALL_REQ_ARGS['num_topics']),
-        alpha0='2.2',
-        max_restarts='3',
-        max_iterations='10',
-        tol='3.3',
+    kmeans = KMeans(sagemaker_session=sagemaker_session, init_method='random', max_iterations=3, tol=0.5,
+                    num_trials=5, local_init_method='kmeans++', half_life_time_size=0, epochs=10, center_factor=2,
+                    eval_metrics=['msd', 'ssd'], **ALL_REQ_ARGS)
+    assert kmeans.hyperparameters() == dict(
+        k=str(ALL_REQ_ARGS['k']),
+        init_method='random',
+        local_lloyd_max_iterations='3',
+        local_lloyd_tol='0.5',
+        local_lloyd_num_trials='5',
+        local_lloyd_init_method='kmeans++',
+        half_life_time_size='0',
+        epochs='10',
+        extra_center_factor='2',
+        eval_metrics='[\'msd\', \'ssd\']',
+        force_dense='True'
     )
 
 
 def test_image(sagemaker_session):
-    lda = LDA(sagemaker_session=sagemaker_session, **ALL_REQ_ARGS)
-    assert lda.train_image() == registry(REGION, 'lda') + '/lda:1'
+    kmeans = KMeans(sagemaker_session=sagemaker_session, **ALL_REQ_ARGS)
+    assert kmeans.train_image() == registry(REGION, 'kmeans') + '/kmeans:1'
 
 
 @pytest.mark.parametrize('required_hyper_parameters, value', [
-    ('num_topics', 'string')
+    ('k', 'string')
 ])
 def test_required_hyper_parameters_type(sagemaker_session, required_hyper_parameters, value):
     with pytest.raises(ValueError):
         test_params = ALL_REQ_ARGS.copy()
         test_params[required_hyper_parameters] = value
-        LDA(sagemaker_session=sagemaker_session, **test_params)
+        KMeans(sagemaker_session=sagemaker_session, **test_params)
 
 
 @pytest.mark.parametrize('required_hyper_parameters, value', [
-    ('num_topics', 0)
+    ('k', 0)
 ])
 def test_required_hyper_parameters_value(sagemaker_session, required_hyper_parameters, value):
     with pytest.raises(ValueError):
         test_params = ALL_REQ_ARGS.copy()
         test_params[required_hyper_parameters] = value
-        LDA(sagemaker_session=sagemaker_session, **test_params)
+        KMeans(sagemaker_session=sagemaker_session, **test_params)
+
+
+@pytest.mark.parametrize('iterable_hyper_parameters, value', [
+    ('eval_metrics', 0)
+])
+def test_iterable_hyper_parameters_type(sagemaker_session, iterable_hyper_parameters, value):
+    with pytest.raises(TypeError):
+        test_params = ALL_REQ_ARGS.copy()
+        test_params.update({iterable_hyper_parameters: value})
+        KMeans(sagemaker_session=sagemaker_session, **test_params)
 
 
 @pytest.mark.parametrize('optional_hyper_parameters, value', [
-    ('alpha0', 'string'),
-    ('max_restarts', 'string'),
+    ('init_method', 0),
     ('max_iterations', 'string'),
-    ('tol', 'string')
+    ('tol', 'string'),
+    ('num_trials', 'string'),
+    ('local_init_method', 0),
+    ('half_life_time_size', 'string'),
+    ('epochs', 'string'),
+    ('center_factor', 'string')
 ])
 def test_optional_hyper_parameters_type(sagemaker_session, optional_hyper_parameters, value):
     with pytest.raises(ValueError):
         test_params = ALL_REQ_ARGS.copy()
         test_params.update({optional_hyper_parameters: value})
-        LDA(sagemaker_session=sagemaker_session, **test_params)
+        KMeans(sagemaker_session=sagemaker_session, **test_params)
 
 
 @pytest.mark.parametrize('optional_hyper_parameters, value', [
-    ('max_restarts', 0),
+    ('init_method', 'string'),
     ('max_iterations', 0),
-    ('tol', 0)
+    ('tol', -0.1),
+    ('tol', 1.1),
+    ('num_trials', 0),
+    ('local_init_method', 'string'),
+    ('half_life_time_size', -1),
+    ('epochs', 0),
+    ('center_factor', 0)
 ])
 def test_optional_hyper_parameters_value(sagemaker_session, optional_hyper_parameters, value):
     with pytest.raises(ValueError):
         test_params = ALL_REQ_ARGS.copy()
         test_params.update({optional_hyper_parameters: value})
-        LDA(sagemaker_session=sagemaker_session, **test_params)
+        KMeans(sagemaker_session=sagemaker_session, **test_params)
 
 
 PREFIX = 'prefix'
 FEATURE_DIM = 10
-MINI_BATCH_SZIE = 200
+MINI_BATCH_SIZE = 200
 
 
 @patch('sagemaker.amazon.amazon_estimator.AmazonAlgorithmEstimatorBase.fit')
 def test_call_fit(base_fit, sagemaker_session):
-    lda = LDA(base_job_name='lda', sagemaker_session=sagemaker_session, **ALL_REQ_ARGS)
+    kmeans = KMeans(base_job_name='kmeans', sagemaker_session=sagemaker_session, **ALL_REQ_ARGS)
 
     data = RecordSet('s3://{}/{}'.format(BUCKET_NAME, PREFIX), num_records=1, feature_dim=FEATURE_DIM, channel='train')
 
-    lda.fit(data, MINI_BATCH_SZIE)
+    kmeans.fit(data, MINI_BATCH_SIZE)
 
     base_fit.assert_called_once()
     assert len(base_fit.call_args[0]) == 2
     assert base_fit.call_args[0][0] == data
-    assert base_fit.call_args[0][1] == MINI_BATCH_SZIE
+    assert base_fit.call_args[0][1] == MINI_BATCH_SIZE
 
 
 def test_call_fit_none_mini_batch_size(sagemaker_session):
-    lda = LDA(base_job_name='lda', sagemaker_session=sagemaker_session, **ALL_REQ_ARGS)
+    kmeans = KMeans(base_job_name='kmeans', sagemaker_session=sagemaker_session, **ALL_REQ_ARGS)
 
     data = RecordSet('s3://{}/{}'.format(BUCKET_NAME, PREFIX), num_records=1, feature_dim=FEATURE_DIM,
                      channel='train')
-    with pytest.raises(ValueError):
-        lda.fit(data, None)
+    kmeans.fit(data)
 
 
 def test_call_fit_wrong_type_mini_batch_size(sagemaker_session):
-    lda = LDA(base_job_name='lda', sagemaker_session=sagemaker_session, **ALL_REQ_ARGS)
+    kmeans = KMeans(base_job_name='kmeans', sagemaker_session=sagemaker_session, **ALL_REQ_ARGS)
 
     data = RecordSet('s3://{}/{}'.format(BUCKET_NAME, PREFIX), num_records=1, feature_dim=FEATURE_DIM,
                      channel='train')
 
-    with pytest.raises(ValueError):
-        lda.fit(data, 'some')
+    with pytest.raises((TypeError, ValueError)):
+        kmeans.fit(data, 'some')
 
 
 def test_call_fit_wrong_value_mini_batch_size(sagemaker_session):
-    lda = LDA(base_job_name='lda', sagemaker_session=sagemaker_session, **ALL_REQ_ARGS)
+    kmeans = KMeans(base_job_name='kmeans', sagemaker_session=sagemaker_session, **ALL_REQ_ARGS)
 
     data = RecordSet('s3://{}/{}'.format(BUCKET_NAME, PREFIX), num_records=1, feature_dim=FEATURE_DIM,
                      channel='train')
     with pytest.raises(ValueError):
-        lda.fit(data, 0)
+        kmeans.fit(data, 0)
 
 
 def test_model_image(sagemaker_session):
-    lda = LDA(sagemaker_session=sagemaker_session, **ALL_REQ_ARGS)
+    kmeans = KMeans(sagemaker_session=sagemaker_session, **ALL_REQ_ARGS)
     data = RecordSet('s3://{}/{}'.format(BUCKET_NAME, PREFIX), num_records=1, feature_dim=FEATURE_DIM, channel='train')
-    lda.fit(data, MINI_BATCH_SZIE)
+    kmeans.fit(data, MINI_BATCH_SIZE)
 
-    model = lda.create_model()
-    assert model.image == registry(REGION, 'lda') + '/lda:1'
+    model = kmeans.create_model()
+    assert model.image == registry(REGION, 'kmeans') + '/kmeans:1'
 
 
 def test_predictor_type(sagemaker_session):
-    lda = LDA(sagemaker_session=sagemaker_session, **ALL_REQ_ARGS)
+    kmeans = KMeans(sagemaker_session=sagemaker_session, **ALL_REQ_ARGS)
     data = RecordSet('s3://{}/{}'.format(BUCKET_NAME, PREFIX), num_records=1, feature_dim=FEATURE_DIM, channel='train')
-    lda.fit(data, MINI_BATCH_SZIE)
-    model = lda.create_model()
+    kmeans.fit(data, MINI_BATCH_SIZE)
+    model = kmeans.create_model()
     predictor = model.deploy(1, TRAIN_INSTANCE_TYPE)
 
-    assert isinstance(predictor, LDAPredictor)
+    assert isinstance(predictor, KMeansPredictor)

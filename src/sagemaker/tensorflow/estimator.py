@@ -10,8 +10,10 @@
 # distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
+import contextlib
 import logging
 import os
+import shutil
 import subprocess
 import tempfile
 import threading
@@ -45,6 +47,47 @@ class Tensorboard(threading.Thread):
             os.access(os.path.join(path, cmd), os.X_OK)
             for path in os.environ["PATH"].split(os.pathsep)
         )
+
+    @staticmethod
+    def _sync_directories(from_directory, to_directory):
+        """Sync to_directory with from_directory by copying each file in
+        to_directory with new contents. Files in to_directory will be
+        overwritten by files of the same name in from_directory. We need to
+        keep two copies of the log directory because otherwise TensorBoard
+        picks up temp files from `aws s3 sync` and then stops reading the
+        correct tfevent files. We walk the directory and copy each file
+        individually because the directory that TensorBoard watches needs to
+        always exist.
+
+        Args:
+            from_directory (str): The directory with updated files.
+            to_directory (str): The directory to be synced.
+        """
+        if not os.path.exists(to_directory):
+            os.mkdir(to_directory)
+        for root, dirs, files in os.walk(from_directory):
+            to_root = root.replace(from_directory, to_directory)
+            for directory in dirs:
+                to_child_dir = os.path.join(to_root, directory)
+                if not os.path.exists(to_child_dir):
+                    os.mkdir(to_child_dir)
+            for fname in files:
+                from_file = os.path.join(root, fname)
+                to_file = os.path.join(to_root, fname)
+                with open(from_file, 'rb') as a, open(to_file, 'wb') as b:
+                    b.write(a.read())
+
+    @staticmethod
+    @contextlib.contextmanager
+    def _temporary_directory():
+        """Context manager for a temporary directory. This is similar to
+        tempfile.TemporaryDirectory in python>=3.2.
+        """
+        name = tempfile.mkdtemp()
+        try:
+            yield name
+        finally:
+            shutil.rmtree(name)
 
     def validate_requirements(self):
         """Ensure that TensorBoard and the AWS CLI are installed.
@@ -96,10 +139,12 @@ class Tensorboard(threading.Thread):
         LOGGER.info('TensorBoard 0.1.7 at http://localhost:{}'.format(port))
         while not self.estimator.checkpoint_path:
             self.event.wait(1)
-        while not self.event.is_set():
-            args = ['aws', 's3', 'sync', self.estimator.checkpoint_path, self.logdir]
-            subprocess.call(args, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-            self.event.wait(10)
+        with self._temporary_directory() as aws_sync_dir:
+            while not self.event.is_set():
+                args = ['aws', 's3', 'sync', self.estimator.checkpoint_path, aws_sync_dir]
+                subprocess.call(args, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+                self._sync_directories(aws_sync_dir, self.logdir)
+                self.event.wait(10)
         tensorboard_process.terminate()
 
 

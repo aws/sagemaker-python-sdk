@@ -95,22 +95,6 @@ def test_data_location_does_not_call_default_bucket(sagemaker_session):
     assert not sagemaker_session.default_bucket.called
 
 
-def test_pca_hyperparameters(sagemaker_session):
-    pca = PCA(num_components=55, algorithm_mode='randomized',
-              subtract_mean=True, extra_components=33, sagemaker_session=sagemaker_session,
-              **COMMON_ARGS)
-    assert pca.hyperparameters() == dict(
-        num_components='55',
-        extra_components='33',
-        subtract_mean='True',
-        algorithm_mode='randomized')
-
-
-def test_image(sagemaker_session):
-    pca = PCA(num_components=55, sagemaker_session=sagemaker_session, **COMMON_ARGS)
-    assert pca.train_image() == registry('us-west-2') + '/pca:1'
-
-
 @patch('time.strftime', return_value=TIMESTAMP)
 def test_fit_ndarray(time, sagemaker_session):
     mock_s3 = Mock()
