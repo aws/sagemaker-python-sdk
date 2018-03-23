@@ -48,7 +48,8 @@ def boto_config(request):
 def sagemaker_session(sagemaker_client_config, sagemaker_runtime_config, boto_config):
     boto_session = boto3.Session(**boto_config) if boto_config else boto3.Session(region_name=DEFAULT_REGION)
     sagemaker_client = boto_session.client('sagemaker', **sagemaker_client_config) if sagemaker_client_config else None
-    runtime_client = boto_session.client('sagemaker-runtime', **sagemaker_runtime_config) if sagemaker_runtime_config else None
+    runtime_client = (boto_session.client('sagemaker-runtime', **sagemaker_runtime_config) if sagemaker_runtime_config
+                      else None)
 
     return Session(boto_session=boto_session,
                    sagemaker_client=sagemaker_client,
