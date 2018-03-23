@@ -32,7 +32,6 @@ class LinearLearner(AmazonAlgorithmEstimatorBase):
                                                     data_type=str)
     target_recall = hp('target_recall', (gt(0), lt(1)), "A float in (0,1)", float)
     target_precision = hp('target_precision', (gt(0), lt(1)), "A float in (0,1)", float)
-    positive_example_weight_mult = hp('positive_example_weight_mult', gt(0), "A float greater than 0", float)
     epochs = hp('epochs', gt(0), "An integer greater-than 0", int)
     predictor_type = hp('predictor_type', isin('binary_classifier', 'regressor'),
                         'One of "binary_classifier" or "regressor"', str)
@@ -64,9 +63,9 @@ class LinearLearner(AmazonAlgorithmEstimatorBase):
     unbias_label = hp('unbias_label', (), 'A boolean', bool)
     num_point_for_scaler = hp('num_point_for_scaler', gt(0), 'An integer greater-than 0', int)
 
-    def __init__(self, role, train_instance_count, train_instance_type, predictor_type='binary_classifier',
+    def __init__(self, role, train_instance_count, train_instance_type, predictor_type,
                  binary_classifier_model_selection_criteria=None, target_recall=None, target_precision=None,
-                 positive_example_weight_mult=None, epochs=None, use_bias=None, num_models=None,
+                 epochs=None, use_bias=None, num_models=None,
                  num_calibration_samples=None, init_method=None, init_scale=None, init_sigma=None, init_bias=None,
                  optimizer=None, loss=None, wd=None, l1=None, momentum=None, learning_rate=None, beta_1=None,
                  beta_2=None, bias_lr_mult=None, bias_wd_mult=None, use_lr_scheduler=None, lr_scheduler_step=None,
@@ -114,8 +113,6 @@ class LinearLearner(AmazonAlgorithmEstimatorBase):
                 precision_at_target_recall.
             target_precision (float): Target precision. Only applicable if binary_classifier_model_selection_criteria
                 is recall_at_target_precision.
-            positive_example_weight_mult (float): The importance weight of positive examples is multiplied by this
-                constant. Useful for skewed datasets. Only applies for classification tasks.
             epochs (int): The maximum number of passes to make over the training data.
             use_bias (bool): Whether to include a bias field
             num_models (int): Number of models to train in parallel. If not set, the number of parallel models to
@@ -160,7 +157,6 @@ class LinearLearner(AmazonAlgorithmEstimatorBase):
         self.binary_classifier_model_selection_criteria = binary_classifier_model_selection_criteria
         self.target_recall = target_recall
         self.target_precision = target_precision
-        self.positive_example_weight_mult = positive_example_weight_mult
         self.epochs = epochs
         self.use_bias = use_bias
         self.num_models = num_models
