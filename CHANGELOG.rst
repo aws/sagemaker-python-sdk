@@ -2,11 +2,12 @@
 CHANGELOG
 =========
 
-1.1.dev3
+1.1.3
 ========
 
 * feature: Tests: create configurable ``sagemaker_session`` pytest fixture for all integration tests
 * bug-fix: AmazonEstimators: fix inaccurate hyper-parameters in kmeans, pca and linear learner
+* feature: Add new hyperparameters for linear learner.
 
 1.1.2
 =====
