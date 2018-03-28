@@ -13,14 +13,13 @@
 from sagemaker.amazon.amazon_estimator import AmazonAlgorithmEstimatorBase, registry
 from sagemaker.amazon.common import numpy_to_record_serializer, record_deserializer
 from sagemaker.amazon.hyperparameter import Hyperparameter as hp  # noqa
-from sagemaker.amazon.validation import isin, gt, lt
+from sagemaker.amazon.validation import isin, gt, lt, ge
 from sagemaker.predictor import RealTimePredictor
 from sagemaker.model import Model
 from sagemaker.session import Session
 
 
 class LinearLearner(AmazonAlgorithmEstimatorBase):
-
     repo_name = 'linear-learner'
     repo_version = 1
 
@@ -32,6 +31,8 @@ class LinearLearner(AmazonAlgorithmEstimatorBase):
                                                     data_type=str)
     target_recall = hp('target_recall', (gt(0), lt(1)), "A float in (0,1)", float)
     target_precision = hp('target_precision', (gt(0), lt(1)), "A float in (0,1)", float)
+    positive_example_weight_mult = hp('positive_example_weight_mult', (),
+                                      "A float greater than 0 or 'auto' or 'balanced'", str)
     epochs = hp('epochs', gt(0), "An integer greater-than 0", int)
     predictor_type = hp('predictor_type', isin('binary_classifier', 'regressor'),
                         'One of "binary_classifier" or "regressor"', str)
@@ -39,20 +40,21 @@ class LinearLearner(AmazonAlgorithmEstimatorBase):
     num_models = hp('num_models', gt(0), "An integer greater-than 0", int)
     num_calibration_samples = hp('num_calibration_samples', gt(0), "An integer greater-than 0", int)
     init_method = hp('init_method', isin('uniform', 'normal'), 'One of "uniform" or "normal"', str)
-    init_scale = hp('init_scale', (gt(-1), lt(1)), 'A float in (-1, 1)', float)
-    init_sigma = hp('init_sigma', (gt(0), lt(1)), 'A float in (0, 1)', float)
+    init_scale = hp('init_scale', gt(0), 'A float greater-than 0', float)
+    init_sigma = hp('init_sigma', gt(0), 'A float greater-than 0', float)
     init_bias = hp('init_bias', (), 'A number', float)
     optimizer = hp('optimizer', isin('sgd', 'adam', 'auto'), 'One of "sgd", "adam" or "auto', str)
     loss = hp('loss', isin('logistic', 'squared_loss', 'absolute_loss', 'auto'),
-              '"logistic", "squared_loss", "absolute_loss" or"auto"', str)
-    wd = hp('wd', (gt(0), lt(1)), 'A float in (0,1)', float)
-    l1 = hp('l1', (gt(0), lt(1)), 'A float in (0,1)', float)
-    momentum = hp('momentum', (gt(0), lt(1)), 'A float in (0,1)', float)
-    learning_rate = hp('learning_rate', (gt(0), lt(1)), 'A float in (0,1)', float)
-    beta_1 = hp('beta_1', (gt(0), lt(1)), 'A float in (0,1)', float)
-    beta_2 = hp('beta_2', (gt(0), lt(1)), 'A float in (0,1)', float)
+              '"logistic", "squared_loss", "absolute_loss", "hinge_loss", "eps_insensitive_squared_loss", '
+              '"eps_insensitive_absolute_loss", "quantile_loss", "huber_loss" or "auto"', str)
+    wd = hp('wd', ge(0), 'A float greater-than or equal to 0', float)
+    l1 = hp('l1', ge(0), 'A float greater-than or equal to 0', float)
+    momentum = hp('momentum', (ge(0), lt(1)), 'A float in [0,1)', float)
+    learning_rate = hp('learning_rate', gt(0), 'A float greater-than or equal to 0', float)
+    beta_1 = hp('beta_1', (ge(0), lt(1)), 'A float in [0,1)', float)
+    beta_2 = hp('beta_2', (ge(0), lt(1)), 'A float in [0,1)', float)
     bias_lr_mult = hp('bias_lr_mult', gt(0), 'A float greater-than 0', float)
-    bias_wd_mult = hp('bias_wd_mult', gt(0), 'A float greater-than 0', float)
+    bias_wd_mult = hp('bias_wd_mult', ge(0), 'A float greater-than or equal to 0', float)
     use_lr_scheduler = hp('use_lr_scheduler', (), 'A boolean', bool)
     lr_scheduler_step = hp('lr_scheduler_step', gt(0), 'An integer greater-than 0', int)
     lr_scheduler_factor = hp('lr_scheduler_factor', (gt(0), lt(1)), 'A float in (0,1)', float)
@@ -62,15 +64,23 @@ class LinearLearner(AmazonAlgorithmEstimatorBase):
     unbias_data = hp('unbias_data', (), 'A boolean', bool)
     unbias_label = hp('unbias_label', (), 'A boolean', bool)
     num_point_for_scaler = hp('num_point_for_scaler', gt(0), 'An integer greater-than 0', int)
+    margin = hp('margin', ge(0), 'A float greater-than or equal to 0', float)
+    quantile = hp('quantile', (gt(0), lt(1)), 'A float in (0,1)', float)
+    loss_insensitivity = hp('loss_insensitivity', gt(0), 'A float greater-than 0', float)
+    huber_delta = hp('huber_delta', ge(0), 'A float greater-than or equal to 0', float)
+    early_stopping_patience = hp('early_stopping_patience', gt(0), 'An integer greater-than 0', int)
+    early_stopping_tolerance = hp('early_stopping_tolerance', gt(0), 'A float greater-than 0', float)
 
     def __init__(self, role, train_instance_count, train_instance_type, predictor_type,
                  binary_classifier_model_selection_criteria=None, target_recall=None, target_precision=None,
-                 epochs=None, use_bias=None, num_models=None,
+                 positive_example_weight_mult=None, epochs=None, use_bias=None, num_models=None,
                  num_calibration_samples=None, init_method=None, init_scale=None, init_sigma=None, init_bias=None,
                  optimizer=None, loss=None, wd=None, l1=None, momentum=None, learning_rate=None, beta_1=None,
                  beta_2=None, bias_lr_mult=None, bias_wd_mult=None, use_lr_scheduler=None, lr_scheduler_step=None,
                  lr_scheduler_factor=None, lr_scheduler_minimum_lr=None, normalize_data=None,
-                 normalize_label=None, unbias_data=None, unbias_label=None, num_point_for_scaler=None, **kwargs):
+                 normalize_label=None, unbias_data=None, unbias_label=None, num_point_for_scaler=None, margin=None,
+                 quantile=None, loss_insensitivity=None, huber_delta=None, early_stopping_patience=None,
+                 early_stopping_tolerance=None, **kwargs):
         """An :class:`Estimator` for binary classification and regression.
 
         Amazon SageMaker Linear Learner provides a solution for both classification and regression problems, allowing
@@ -113,6 +123,8 @@ class LinearLearner(AmazonAlgorithmEstimatorBase):
                 precision_at_target_recall.
             target_precision (float): Target precision. Only applicable if binary_classifier_model_selection_criteria
                 is recall_at_target_precision.
+            positive_example_weight_mult (float): The importance weight of positive examples is multiplied by this
+               constant. Useful for skewed datasets. Only applies for classification tasks.
             epochs (int): The maximum number of passes to make over the training data.
             use_bias (bool): Whether to include a bias field
             num_models (int): Number of models to train in parallel. If not set, the number of parallel models to
@@ -125,7 +137,8 @@ class LinearLearner(AmazonAlgorithmEstimatorBase):
             init_sigma (float): For "normal" init, the standard-deviation.
             init_bias (float):  Initial weight for bias term
             optimizer (str): One of 'sgd', 'adam' or 'auto'
-            loss (str): One of  'logistic', 'squared_loss', 'absolute_loss' or 'auto'
+            loss (str): One of  'logistic', 'squared_loss', 'absolute_loss', 'hinge_loss',
+            'eps_insensitive_squared_loss', 'eps_insensitive_absolute_loss', 'quantile_loss', 'huber_loss' or 'auto'
             wd (float): L2 regularization parameter i.e. the weight decay parameter. Use 0 for no L2 regularization.
             l1 (float): L1 regularization parameter. Use 0 for no L1 regularization.
             momentum (float): Momentum parameter of sgd optimizer.
@@ -150,6 +163,20 @@ class LinearLearner(AmazonAlgorithmEstimatorBase):
             ubias_label (bool): If true, labels are modified to have mean 0.0.
             num_point_for_scaler (int): The number of data points to use for calculating the normalizing  and
                 unbiasing terms.
+            margin (float):  the margin for hinge_loss.
+            quantile (float): Quantile for quantile loss. For quantile q, the model will attempt to produce
+            predictions such that true_label < prediction with probability q.
+            loss_insensitivity (float): Parameter for epsilon insensitive loss type. During training and metric
+            evaluation, any error smaller than this is considered to be zero.
+            huber_delta (float): Parameter for Huber loss. During training and metric evaluation, compute L2 loss for
+            errors smaller than delta and L1 loss for errors larger than delta.
+            early_stopping_patience (int): the number of epochs to wait before ending training if no improvement is
+            made. The improvement is training loss if validation data is not provided, or else it is the validation
+            loss or the binary classification model selection criteria like accuracy, f1-score etc. To disable early
+            stopping, set early_stopping_patience to a value larger than epochs.
+            early_stopping_tolerance (float):  Relative tolerance to measure an improvement in loss. If the ratio of
+            the improvement in loss divided by the previous best loss is smaller than this value, early stopping will
+            consider the improvement to be zero.
             **kwargs: base class keyword argument values.
         """
         super(LinearLearner, self).__init__(role, train_instance_count, train_instance_type, **kwargs)
@@ -157,6 +184,7 @@ class LinearLearner(AmazonAlgorithmEstimatorBase):
         self.binary_classifier_model_selection_criteria = binary_classifier_model_selection_criteria
         self.target_recall = target_recall
         self.target_precision = target_precision
+        self.positive_example_weight_mult = positive_example_weight_mult
         self.epochs = epochs
         self.use_bias = use_bias
         self.num_models = num_models
@@ -184,6 +212,12 @@ class LinearLearner(AmazonAlgorithmEstimatorBase):
         self.unbias_data = unbias_data
         self.unbias_label = unbias_label
         self.num_point_for_scaler = num_point_for_scaler
+        self.margin = margin
+        self.quantile = quantile
+        self.loss_insensitivity = loss_insensitivity
+        self.huber_delta = huber_delta
+        self.early_stopping_patience = early_stopping_patience
+        self.early_stopping_tolerance = early_stopping_tolerance
 
     def create_model(self):
         """Return a :class:`~sagemaker.amazon.kmeans.LinearLearnerModel` referencing the latest
