@@ -40,8 +40,8 @@ GPU = 'ml.p2.xlarge'
 CPU = 'ml.c4.xlarge'
 
 
-@pytest.fixture()
-def sagemaker_session():
+@pytest.fixture(name='sagemaker_session')
+def fixture_sagemaker_session():
     boto_mock = Mock(name='boto_session', region_name=REGION)
     ims = Mock(name='sagemaker_session', boto_session=boto_mock)
     ims.sagemaker_client.describe_training_job = Mock(return_value={'ModelArtifacts':

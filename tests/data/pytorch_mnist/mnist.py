@@ -8,7 +8,6 @@ import torch.optim as optim
 import torch.utils.data
 import torch.utils.data.distributed
 from torchvision import datasets, transforms
-from torch.autograd import Variable
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
@@ -36,50 +35,26 @@ class Net(nn.Module):
         return F.log_softmax(x, dim=1)
 
 
-def _load_hyperparameters(hyperparameters):
-    logger.info("Load hyperparameters")
-    # backend for distributed training (default: None')
-    backend = hyperparameters.get('backend', None)
-    # batch size for training (default: 64)
-    batch_size = hyperparameters.get('batch_size', 60)
-    # batch size for testing (default: 1000)
-    test_batch_size = hyperparameters.get('test_batch_size', 1000)
-    # number of epochs to train (default: 10)
-    epochs = hyperparameters.get('epochs', 3)
-    # learning rate (default: 0.01)
-    lr = hyperparameters.get('lr', 0.01)
-    # SGD momentum (default: 0.5)
-    momentum = hyperparameters.get('momentum', 0.5)
-    # random seed (default: 1)
-    seed = hyperparameters.get('seed', 1)
-    # how many batches to wait before logging training status
-    log_interval = hyperparameters.get('log_interval', 100)
-    logger.info(
-        'backend: {}, batch_size: {}, test_batch_size: {}, '.format(backend, batch_size, test_batch_size) +
-        'epochs: {}, lr: {}, momentum: {}, seed: {}, log_interval: {}'.format(epochs, lr, momentum, seed, log_interval)
-    )
-    return backend, batch_size, test_batch_size, epochs, lr, momentum, seed, log_interval
-
-
-def _get_train_data_loader(batch_size, training_dir, is_distributed, **kwargs):
+def _get_train_data_loader(training_dir, is_distributed, **kwargs):
     logger.info("Get train data loader")
     dataset = datasets.MNIST(training_dir, train=True, transform=transforms.Compose([
         transforms.ToTensor(),
         transforms.Normalize((0.1307,), (0.3081,))
     ]))
     train_sampler = torch.utils.data.distributed.DistributedSampler(dataset) if is_distributed else None
-    return torch.utils.data.DataLoader(dataset, batch_size=batch_size, shuffle=train_sampler is None,
-                                       sampler=train_sampler, **kwargs)
+    train_loader = torch.utils.data.DataLoader(dataset, batch_size=64, shuffle=train_sampler is None,
+                                               sampler=train_sampler, **kwargs)
+    return train_sampler, train_loader
 
 
-def _get_test_data_loader(test_batch_size, training_dir, **kwargs):
+def _get_test_data_loader(training_dir, **kwargs):
     logger.info("Get test data loader")
     return torch.utils.data.DataLoader(
         datasets.MNIST(training_dir, train=False, transform=transforms.Compose([
             transforms.ToTensor(),
             transforms.Normalize((0.1307,), (0.3081,))
         ])),
-        batch_size=test_batch_size, shuffle=True, **kwargs)
+        batch_size=1000, shuffle=True, **kwargs)
 
 
 def _average_gradients(model):
@@ -90,19 +65,18 @@ def _average_gradients(model):
         param.grad.data /= size
 
 
-def train(channel_input_dirs, num_gpus, hosts, host_rank, master_addr, master_port, hyperparameters):
+def train(channel_input_dirs, num_gpus, hosts, host_rank, master_addr, master_port):
     training_dir = channel_input_dirs['training']
-    backend, batch_size, test_batch_size, epochs, lr, momentum, \
-    seed, log_interval = _load_hyperparameters(hyperparameters)
-    is_distributed = hosts > 1 and backend is not None
-    logger.debug("Distributed training - {}".format(is_distributed))
+    world_size = len(hosts)
+    is_distributed = world_size > 1
+    logger.debug("Number of hosts {}. Distributed training - {}".format(world_size, is_distributed))
     cuda = num_gpus > 0
     logger.debug("Number of gpus available - {}".format(num_gpus))
     kwargs = {'num_workers': 1, 'pin_memory': True} if cuda else {}
 
     if is_distributed:
         # Initialize the distributed environment.
-        world_size = len(hosts)
+        backend = 'gloo'
         os.environ['WORLD_SIZE'] = str(world_size)
         os.environ['MASTER_ADDR'] = master_addr
         os.environ['MASTER_PORT'] = master_port
@@ -112,12 +86,13 @@ def train(channel_input_dirs, num_gpus, hosts, host_rank, master_addr, master_po
             dist.get_rank(), torch.cuda.is_available(), num_gpus))
 
     # set the seed for generating random numbers
+    seed = 1
     torch.manual_seed(seed)
     if cuda:
         torch.cuda.manual_seed(seed)
 
-    train_loader = _get_train_data_loader(batch_size, training_dir, is_distributed, **kwargs)
-    test_loader = _get_test_data_loader(test_batch_size, training_dir, **kwargs)
+    train_sampler, train_loader = _get_train_data_loader(training_dir, is_distributed, **kwargs)
+    test_loader = _get_test_data_loader(training_dir, **kwargs)
 
     logger.debug("Processes {}/{} ({:.0f}%) of train data".format(
         len(train_loader.sampler), len(train_loader.dataset),
@@ -130,28 +105,43 @@ def train(channel_input_dirs, num_gpus, hosts, host_rank, master_addr, master_po
     ))
 
     model = Net()
-    if cuda:
-        model.cuda()
+    if is_distributed and cuda:
+        # multi-machine multi-gpu case
+        logger.debug("Multi-machine multi-gpu: using DistributedDataParallel.")
+        model = torch.nn.parallel.DistributedDataParallel(model.cuda())
+    elif cuda:
+        # single-machine multi-gpu case
+        logger.debug("Single-machine multi-gpu: using DataParallel().cuda().")
+        model = torch.nn.DataParallel(model.cuda()).cuda()
+    else:
+        # single-machine or multi-machine cpu case
+        logger.debug("Single-machine/multi-machine cpu: using DataParallel.")
+        model = torch.nn.DataParallel(model)
 
-    optimizer = optim.SGD(model.parameters(), lr=lr, momentum=momentum)
+    optimizer = optim.SGD(model.parameters(), lr=0.1, momentum=0.5)
 
+    epochs = 3
+    log_interval = 100
     for epoch in range(1, epochs + 1):
+        if is_distributed:
+            train_sampler.set_epoch(epoch)
         model.train()
         for batch_idx, (data, target) in enumerate(train_loader, 1):
             if cuda:
-                data, target = data.cuda(), target.cuda()
-            data, target = Variable(data), Variable(target)
+                data, target = data.cuda(async=True), target.cuda(async=True)
+            data, target = torch.autograd.Variable(data), torch.autograd.Variable(target)
             optimizer.zero_grad()
             output = model(data)
             loss = F.nll_loss(output, target)
             loss.backward()
-            if is_distributed:
+            if is_distributed and not cuda:
+                # average gradients manually for multi-machine cpu case only
                 _average_gradients(model)
             optimizer.step()
             if batch_idx % log_interval == 0:
-                logger.debug('Train Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}'.format(
+                logger.debug('Train Epoch: {} [{}/{} ({:.0f}%)] Loss: {:.6f}'.format(
                     epoch, batch_idx * len(data), len(train_loader.sampler),
-                           100. * batch_idx / len(train_loader), loss.data[0]))
+                    100. * batch_idx / len(train_loader), loss.data[0]))
         test(model, test_loader, cuda)
     return model
 
@@ -163,10 +153,10 @@ def test(model, test_loader, cuda):
     for data, target in test_loader:
         if cuda:
             data, target = data.cuda(), target.cuda()
-        data, target = Variable(data, volatile=True), Variable(target)
+        data, target = torch.autograd.Variable(data, volatile=True), torch.autograd.Variable(target)
         output = model(data)
-        test_loss += F.nll_loss(output, target, size_average=False).data[0] # sum up batch loss
-        pred = output.data.max(1, keepdim=True)[1] # get the index of the max log-probability
+        test_loss += F.nll_loss(output, target, size_average=False).data[0]  # sum up batch loss
+        pred = output.data.max(1, keepdim=True)[1]  # get the index of the max log-probability
         correct += pred.eq(target.data.view_as(pred)).long().cpu().sum()
 
     test_loss /= len(test_loader.dataset)
