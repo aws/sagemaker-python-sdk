@@ -42,6 +42,7 @@ def test_linear_learner(sagemaker_session):
         ll.binary_classifier_model_selection_criteria = 'accuracy'
         ll.target_recall = 0.5
         ll.target_precision = 0.5
+        ll.positive_example_weight_mult = 0.1
         ll.epochs = 1
         ll.use_bias = True
         ll.num_models = 1
@@ -67,6 +68,12 @@ def test_linear_learner(sagemaker_session):
         ll.unbias_data = True
         ll.unbias_label = False
         ll.num_point_for_scaler = 10000
+        ll.margin = 1.0
+        ll.quantile = 0.5
+        ll.loss_insensitivity = 0.1
+        ll.huber_delta = 0.1
+        ll.early_stopping_tolerance = 0.0001
+        ll.early_stopping_patience = 3
         ll.fit(ll.record_set(train_set[0][:200], train_set[1][:200]))
 
     endpoint_name = name_from_base('linear-learner')
@@ -102,6 +109,7 @@ def test_async_linear_learner(sagemaker_session):
         ll.binary_classifier_model_selection_criteria = 'accuracy'
         ll.target_recall = 0.5
         ll.target_precision = 0.5
+        ll.positive_example_weight_mult = 0.1
         ll.epochs = 1
         ll.use_bias = True
         ll.num_models = 1
@@ -127,6 +135,12 @@ def test_async_linear_learner(sagemaker_session):
         ll.unbias_data = True
         ll.unbias_label = False
         ll.num_point_for_scaler = 10000
+        ll.margin = 1.0
+        ll.quantile = 0.5
+        ll.loss_insensitivity = 0.1
+        ll.huber_delta = 0.1
+        ll.early_stopping_tolerance = 0.0001
+        ll.early_stopping_patience = 3
         ll.fit(ll.record_set(train_set[0][:200], train_set[1][:200]), wait=False)
         training_job_name = ll.latest_training_job.name
 

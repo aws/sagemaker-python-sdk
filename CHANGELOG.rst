@@ -2,12 +2,13 @@
 CHANGELOG
 =========
 
-1.1.dev3
+1.1.3
 ========
 
 * bug-fix: TensorFlow: Display updated data correctly for TensorBoard launched from ``run_tensorboard_locally=True``
 * feature: Tests: create configurable ``sagemaker_session`` pytest fixture for all integration tests
 * bug-fix: AmazonEstimators: fix inaccurate hyper-parameters in kmeans, pca and linear learner
+* feature: Add new hyperparameters for linear learner.
 
 1.1.2
 =====
