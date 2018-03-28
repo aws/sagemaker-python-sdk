@@ -123,7 +123,7 @@ def framework_name_from_image(image_name):
         return None, None, None
     else:
         # extract framework, python version and image tag
-        name_pattern = re.compile('^sagemaker-(tensorflow|mxnet)-(py2|py3)-(cpu|gpu):(.*)$')
+        name_pattern = re.compile('^sagemaker-(tensorflow|mxnet|pytorch)-(py2|py3)-(cpu|gpu):(.*)$')
 
         name_match = name_pattern.match(sagemaker_match.group(8))
 
