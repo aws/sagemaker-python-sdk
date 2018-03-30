@@ -2,6 +2,10 @@
 CHANGELOG
 =========
 
+1.1.dev4
+========
+* feature: Frameworks: Use more idiomatic ECR repository naming scheme
+
 1.1.3
 ========
 
