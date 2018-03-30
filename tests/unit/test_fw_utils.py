@@ -123,7 +123,17 @@ def test_tar_and_upload_dir_not_s3(sagemaker_session):
     assert result == UploadedCode('s3://{}/{}/sourcedir.tar.gz'.format(bucket, s3_key_prefix), script)
 
 
-def test_framework_name_from_framework_image():
+def test_framework_name_from_image_mxnet():
+    image_name = '123.dkr.ecr.us-west-2.amazonaws.com/sagemaker-mxnet:1.1-gpu-py3'
+    assert ('mxnet', 'py3', '1.1-gpu-py3') == framework_name_from_image(image_name)
+
+
+def test_framework_name_from_image_tf():
+    image_name = '123.dkr.ecr.us-west-2.amazonaws.com/sagemaker-tensorflow:1.6-cpu-py2'
+    assert ('tensorflow', 'py2', '1.6-cpu-py2') == framework_name_from_image(image_name)
+
+
+def test_legacy_name_from_framework_image():
     image_name = '123.dkr.ecr.us-west-2.amazonaws.com/sagemaker-mxnet-py3-gpu:2.5.6-gpu-py2'
     framework, py_ver, tag = framework_name_from_image(image_name)
     assert framework == 'mxnet'
@@ -131,28 +141,28 @@ def test_framework_name_from_framework_image():
     assert tag == '2.5.6-gpu-py2'
 
 
-def test_framework_name_from_wrong_framework():
+def test_legacy_name_from_wrong_framework():
     framework, py_ver, tag = framework_name_from_image('123.dkr.ecr.us-west-2.amazonaws.com/sagemaker-myown-py2-gpu:1')
     assert framework is None
     assert py_ver is None
     assert tag is None
 
 
-def test_framework_name_from_wrong_python():
+def test_legacy_name_from_wrong_python():
     framework, py_ver, tag = framework_name_from_image('123.dkr.ecr.us-west-2.amazonaws.com/sagemaker-myown-py4-gpu:1')
     assert framework is None
     assert py_ver is None
     assert tag is None
 
 
-def test_framework_name_from_wrong_device():
+def test_legacy_name_from_wrong_device():
     framework, py_ver, tag = framework_name_from_image('123.dkr.ecr.us-west-2.amazonaws.com/sagemaker-myown-py4-gpu:1')
     assert framework is None
     assert py_ver is None
     assert tag is None
 
 
-def test_framework_name_from_image_any_tag():
+def test_legacy_name_from_image_any_tag():
     image_name = '123.dkr.ecr.us-west-2.amazonaws.com/sagemaker-tensorflow-py2-cpu:any-tag'
     framework, py_ver, tag = framework_name_from_image(image_name)
     assert framework == 'tensorflow'

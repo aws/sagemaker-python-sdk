@@ -119,8 +119,11 @@ def framework_name_from_image(image_name):
     """Extract the framework and Python version from the image name.
 
     Args:
-        image_name (str): Image URI, which should take the form
-            '<account>.dkr.ecr.<region>.amazonaws.com/sagemaker-<framework>-<py_ver>-<device>:<tag>'
+        image_name (str): Image URI, which should either of the forms:
+            legacy:
+            '<account>.dkr.ecr.<region>.amazonaws.com/sagemaker-<framework>-<py_ver>-<device>:<fw_version>'
+            current:
+            '<account>.dkr.ecr.<region>.amazonaws.com/sagemaker-<framework>:<fw_version>-<device>-<py_ver>'
 
     Returns:
         tuple: A tuple containing:
@@ -135,14 +138,19 @@ def framework_name_from_image(image_name):
         return None, None, None
     else:
         # extract framework, python version and image tag
-        name_pattern = re.compile('^sagemaker-(tensorflow|mxnet)-(py2|py3)-(cpu|gpu):(.*)$')
-
+        # We must support both the legacy and current image name format.
+        name_pattern = re.compile('^sagemaker-(tensorflow|mxnet):(.*?)-(.*?)-(py2|py3)$')
+        legacy_name_pattern = re.compile('^sagemaker-(tensorflow|mxnet)-(py2|py3)-(cpu|gpu):(.*)$')
         name_match = name_pattern.match(sagemaker_match.group(8))
+        legacy_match = legacy_name_pattern.match(sagemaker_match.group(8))
 
-        if name_match is None:
-            return None, None, None
+        if name_match is not None:
+            fw, ver, device, py = name_match.group(1), name_match.group(2), name_match.group(3), name_match.group(4)
+            return fw, py, '{}-{}-{}'.format(ver, device, py)
+        elif legacy_match is not None:
+            return legacy_match.group(1), legacy_match.group(2), legacy_match.group(4)
         else:
-            return name_match.group(1), name_match.group(2), name_match.group(4)
+            return None, None, None
 
 
 def framework_version_from_tag(image_tag):
