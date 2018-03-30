@@ -119,11 +119,13 @@ def framework_name_from_image(image_name):
     """Extract the framework and Python version from the image name.
 
     Args:
-        image_name (str): Image URI, which should either of the forms:
+        image_name (str): Image URI, which should be one of the following forms:
             legacy:
-            '<account>.dkr.ecr.<region>.amazonaws.com/sagemaker-<framework>-<py_ver>-<device>:<fw_version>'
+            '<account>.dkr.ecr.<region>.amazonaws.com/sagemaker-<fw>-<py_ver>-<device>:<container_version>'
+            legacy:
+            '<account>.dkr.ecr.<region>.amazonaws.com/sagemaker-<fw>-<py_ver>-<device>:<fw_version>-<device>-<py_ver>'
             current:
-            '<account>.dkr.ecr.<region>.amazonaws.com/sagemaker-<framework>:<fw_version>-<device>-<py_ver>'
+            '<account>.dkr.ecr.<region>.amazonaws.com/sagemaker-<fw>:<fw_version>-<device>-<py_ver>'
 
     Returns:
         tuple: A tuple containing:
