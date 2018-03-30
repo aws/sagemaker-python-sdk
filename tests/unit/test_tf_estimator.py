@@ -409,6 +409,54 @@ def test_attach(sagemaker_session, tf_version):
     assert estimator.checkpoint_path == 's3://other/1508872349'
 
 
+def test_attach_new_repo_name(sagemaker_session, tf_version):
+    training_image = '520713654638.dkr.ecr.us-west-2.amazonaws.com/sagemaker-tensorflow:{}-cpu-py2'.format(tf_version)
+    rjd = {'AlgorithmSpecification':
+           {'TrainingInputMode': 'File',
+            'TrainingImage': training_image},
+           'HyperParameters':
+               {'sagemaker_submit_directory': '"s3://some/sourcedir.tar.gz"',
+                'checkpoint_path': '"s3://other/1508872349"',
+                'sagemaker_program': '"iris-dnn-classifier.py"',
+                'sagemaker_enable_cloudwatch_metrics': 'false',
+                'sagemaker_container_log_level': '"logging.INFO"',
+                'sagemaker_job_name': '"neo"',
+                'training_steps': '100',
+                'evaluation_steps': '10'},
+           'RoleArn': 'arn:aws:iam::366:role/SageMakerRole',
+           'ResourceConfig':
+               {'VolumeSizeInGB': 30,
+                'InstanceCount': 1,
+                'InstanceType': 'ml.c4.xlarge'},
+           'StoppingCondition': {'MaxRuntimeInSeconds': 24 * 60 * 60},
+           'TrainingJobName': 'neo',
+           'TrainingJobStatus': 'Completed',
+           'OutputDataConfig': {'KmsKeyId': '',
+                                'S3OutputPath': 's3://place/output/neo'},
+           'TrainingJobOutput': {'S3TrainingJobOutput': 's3://here/output.tar.gz'}}
+    sagemaker_session.sagemaker_client.describe_training_job = Mock(name='describe_training_job', return_value=rjd)
+
+    estimator = TensorFlow.attach(training_job_name='neo', sagemaker_session=sagemaker_session)
+    assert estimator.latest_training_job.job_name == 'neo'
+    assert estimator.py_version == 'py2'
+    assert estimator.framework_version == tf_version
+    assert estimator.role == 'arn:aws:iam::366:role/SageMakerRole'
+    assert estimator.train_instance_count == 1
+    assert estimator.train_max_run == 24 * 60 * 60
+    assert estimator.input_mode == 'File'
+    assert estimator.training_steps == 100
+    assert estimator.evaluation_steps == 10
+    assert estimator.input_mode == 'File'
+    assert estimator.base_job_name == 'neo'
+    assert estimator.output_path == 's3://place/output/neo'
+    assert estimator.output_kms_key == ''
+    assert estimator.hyperparameters()['training_steps'] == '100'
+    assert estimator.source_dir == 's3://some/sourcedir.tar.gz'
+    assert estimator.entry_point == 'iris-dnn-classifier.py'
+    assert estimator.checkpoint_path == 's3://other/1508872349'
+    assert estimator.train_image() == training_image
+
+
 def test_attach_old_container(sagemaker_session):
     training_image = '1.dkr.ecr.us-west-2.amazonaws.com/sagemaker-tensorflow-py2-cpu:1.0'
     rjd = {'AlgorithmSpecification':
