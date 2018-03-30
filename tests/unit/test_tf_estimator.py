@@ -31,9 +31,8 @@ TIME = 1510006209.073025
 BUCKET_NAME = 'mybucket'
 INSTANCE_COUNT = 1
 INSTANCE_TYPE = 'ml.c4.4xlarge'
-CPU_IMAGE_NAME = 'sagemaker-tensorflow-py2-cpu'
-GPU_IMAGE_NAME = 'sagemaker-tensorflow-py2-gpu'
-JOB_NAME = '{}-{}'.format(CPU_IMAGE_NAME, TIMESTAMP)
+IMAGE_REPO_NAME = 'sagemaker-tensorflow'
+JOB_NAME = '{}-{}'.format(IMAGE_REPO_NAME, TIMESTAMP)
 ROLE = 'Dummy'
 REGION = 'us-west-2'
 DOCKER_TAG = '1.0'
@@ -53,11 +52,11 @@ def sagemaker_session():
 
 
 def _get_full_cpu_image_uri(version):
-    return IMAGE_URI_FORMAT_STRING.format(REGION, CPU_IMAGE_NAME, version, 'cpu', 'py2')
+    return IMAGE_URI_FORMAT_STRING.format(REGION, IMAGE_REPO_NAME, version, 'cpu', 'py2')
 
 
 def _get_full_gpu_image_uri(version):
-    return IMAGE_URI_FORMAT_STRING.format(REGION, GPU_IMAGE_NAME, version, 'gpu', 'py2')
+    return IMAGE_URI_FORMAT_STRING.format(REGION, IMAGE_REPO_NAME, version, 'gpu', 'py2')
 
 
 def _create_train_job(tf_version):
@@ -231,11 +230,11 @@ def test_tf(time, strftime, sagemaker_session, tf_version):
              'SAGEMAKER_REGION': 'us-west-2',
              'SAGEMAKER_CONTAINER_LOG_LEVEL': '20'
              },
-            'Image': create_image_uri('us-west-2', "tensorflow", GPU_IMAGE_NAME, tf_version, "py2"),
-            'ModelDataUrl': 's3://m/m.tar.gz'} == model.prepare_container_def(GPU_IMAGE_NAME)
+            'Image': create_image_uri('us-west-2', "tensorflow", INSTANCE_TYPE, tf_version, "py2"),
+            'ModelDataUrl': 's3://m/m.tar.gz'} == model.prepare_container_def(INSTANCE_TYPE)
 
-    assert 'cpu' in model.prepare_container_def(CPU_IMAGE_NAME)['Image']
-    predictor = tf.deploy(1, GPU_IMAGE_NAME)
+    assert 'cpu' in model.prepare_container_def(INSTANCE_TYPE)['Image']
+    predictor = tf.deploy(1, INSTANCE_TYPE)
     assert isinstance(predictor, TensorFlowPredictor)
 
 
@@ -257,7 +256,7 @@ def test_run_tensorboard_locally_without_tensorboard_binary(time, strftime, pope
 def test_model(sagemaker_session, tf_version):
     model = TensorFlowModel("s3://some/data.tar.gz", role=ROLE, entry_point=SCRIPT_PATH,
                             sagemaker_session=sagemaker_session)
-    predictor = model.deploy(1, GPU_IMAGE_NAME)
+    predictor = model.deploy(1, INSTANCE_TYPE)
     assert isinstance(predictor, TensorFlowPredictor)
 
 
@@ -408,6 +407,54 @@ def test_attach(sagemaker_session, tf_version):
     assert estimator.source_dir == 's3://some/sourcedir.tar.gz'
     assert estimator.entry_point == 'iris-dnn-classifier.py'
     assert estimator.checkpoint_path == 's3://other/1508872349'
+
+
+def test_attach_new_repo_name(sagemaker_session, tf_version):
+    training_image = '520713654638.dkr.ecr.us-west-2.amazonaws.com/sagemaker-tensorflow:{}-cpu-py2'.format(tf_version)
+    rjd = {'AlgorithmSpecification':
+           {'TrainingInputMode': 'File',
+            'TrainingImage': training_image},
+           'HyperParameters':
+               {'sagemaker_submit_directory': '"s3://some/sourcedir.tar.gz"',
+                'checkpoint_path': '"s3://other/1508872349"',
+                'sagemaker_program': '"iris-dnn-classifier.py"',
+                'sagemaker_enable_cloudwatch_metrics': 'false',
+                'sagemaker_container_log_level': '"logging.INFO"',
+                'sagemaker_job_name': '"neo"',
+                'training_steps': '100',
+                'evaluation_steps': '10'},
+           'RoleArn': 'arn:aws:iam::366:role/SageMakerRole',
+           'ResourceConfig':
+               {'VolumeSizeInGB': 30,
+                'InstanceCount': 1,
+                'InstanceType': 'ml.c4.xlarge'},
+           'StoppingCondition': {'MaxRuntimeInSeconds': 24 * 60 * 60},
+           'TrainingJobName': 'neo',
+           'TrainingJobStatus': 'Completed',
+           'OutputDataConfig': {'KmsKeyId': '',
+                                'S3OutputPath': 's3://place/output/neo'},
+           'TrainingJobOutput': {'S3TrainingJobOutput': 's3://here/output.tar.gz'}}
+    sagemaker_session.sagemaker_client.describe_training_job = Mock(name='describe_training_job', return_value=rjd)
+
+    estimator = TensorFlow.attach(training_job_name='neo', sagemaker_session=sagemaker_session)
+    assert estimator.latest_training_job.job_name == 'neo'
+    assert estimator.py_version == 'py2'
+    assert estimator.framework_version == tf_version
+    assert estimator.role == 'arn:aws:iam::366:role/SageMakerRole'
+    assert estimator.train_instance_count == 1
+    assert estimator.train_max_run == 24 * 60 * 60
+    assert estimator.input_mode == 'File'
+    assert estimator.training_steps == 100
+    assert estimator.evaluation_steps == 10
+    assert estimator.input_mode == 'File'
+    assert estimator.base_job_name == 'neo'
+    assert estimator.output_path == 's3://place/output/neo'
+    assert estimator.output_kms_key == ''
+    assert estimator.hyperparameters()['training_steps'] == '100'
+    assert estimator.source_dir == 's3://some/sourcedir.tar.gz'
+    assert estimator.entry_point == 'iris-dnn-classifier.py'
+    assert estimator.checkpoint_path == 's3://other/1508872349'
+    assert estimator.train_image() == training_image
 
 
 def test_attach_old_container(sagemaker_session):
