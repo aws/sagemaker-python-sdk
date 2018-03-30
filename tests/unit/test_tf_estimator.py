@@ -31,9 +31,8 @@ TIME = 1510006209.073025
 BUCKET_NAME = 'mybucket'
 INSTANCE_COUNT = 1
 INSTANCE_TYPE = 'ml.c4.4xlarge'
-CPU_IMAGE_NAME = 'sagemaker-tensorflow-py2-cpu'
-GPU_IMAGE_NAME = 'sagemaker-tensorflow-py2-gpu'
-JOB_NAME = '{}-{}'.format(CPU_IMAGE_NAME, TIMESTAMP)
+IMAGE_REPO_NAME = 'sagemaker-tensorflow'
+JOB_NAME = '{}-{}'.format(IMAGE_REPO_NAME, TIMESTAMP)
 ROLE = 'Dummy'
 REGION = 'us-west-2'
 DOCKER_TAG = '1.0'
@@ -53,11 +52,11 @@ def sagemaker_session():
 
 
 def _get_full_cpu_image_uri(version):
-    return IMAGE_URI_FORMAT_STRING.format(REGION, CPU_IMAGE_NAME, version, 'cpu', 'py2')
+    return IMAGE_URI_FORMAT_STRING.format(REGION, IMAGE_REPO_NAME, version, 'cpu', 'py2')
 
 
 def _get_full_gpu_image_uri(version):
-    return IMAGE_URI_FORMAT_STRING.format(REGION, GPU_IMAGE_NAME, version, 'gpu', 'py2')
+    return IMAGE_URI_FORMAT_STRING.format(REGION, IMAGE_REPO_NAME, version, 'gpu', 'py2')
 
 
 def _create_train_job(tf_version):
@@ -231,11 +230,11 @@ def test_tf(time, strftime, sagemaker_session, tf_version):
              'SAGEMAKER_REGION': 'us-west-2',
              'SAGEMAKER_CONTAINER_LOG_LEVEL': '20'
              },
-            'Image': create_image_uri('us-west-2', "tensorflow", GPU_IMAGE_NAME, tf_version, "py2"),
-            'ModelDataUrl': 's3://m/m.tar.gz'} == model.prepare_container_def(GPU_IMAGE_NAME)
+            'Image': create_image_uri('us-west-2', "tensorflow", INSTANCE_TYPE, tf_version, "py2"),
+            'ModelDataUrl': 's3://m/m.tar.gz'} == model.prepare_container_def(INSTANCE_TYPE)
 
-    assert 'cpu' in model.prepare_container_def(CPU_IMAGE_NAME)['Image']
-    predictor = tf.deploy(1, GPU_IMAGE_NAME)
+    assert 'cpu' in model.prepare_container_def(INSTANCE_TYPE)['Image']
+    predictor = tf.deploy(1, INSTANCE_TYPE)
     assert isinstance(predictor, TensorFlowPredictor)
 
 
@@ -257,7 +256,7 @@ def test_run_tensorboard_locally_without_tensorboard_binary(time, strftime, pope
 def test_model(sagemaker_session, tf_version):
     model = TensorFlowModel("s3://some/data.tar.gz", role=ROLE, entry_point=SCRIPT_PATH,
                             sagemaker_session=sagemaker_session)
-    predictor = model.deploy(1, GPU_IMAGE_NAME)
+    predictor = model.deploy(1, INSTANCE_TYPE)
     assert isinstance(predictor, TensorFlowPredictor)
 
 

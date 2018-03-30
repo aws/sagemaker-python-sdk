@@ -28,28 +28,40 @@ instantiated with positional or keyword arguments.
 """
 
 
-def create_image_uri(region, framework, instance_type, framework_version, py_version, account='520713654638'):
+def create_image_uri(region, framework, instance_type, framework_version, py_version, account='520713654638',
+                     optimized_families=[]):
     """Return the ECR URI of an image.
 
     Args:
         region (str): AWS region where the image is uploaded.
         framework (str): framework used by the image.
-        instance_type (str): EC2 instance type. Used to determine whether to use the CPU image or GPU image.
+        instance_type (str): SageMaker instance type. Used to determine device type (cpu/gpu/family-specific optimized).
         framework_version (str): The version of the framework.
         py_version (str): Python version. One of 'py2' or 'py3'.
         account (str): AWS account that contains the image. (default: '520713654638')
+        optimized_families (str): Instance families for which there exist specific optimized images.
 
     Returns:
         str: The appropriate image URI based on the given parameters.
     """
-    device_type = 'cpu'
-    # Instance types that start with G, P are GPU powered: https://aws.amazon.com/sagemaker/pricing/instance-types/
-    if instance_type[3] in ['g', 'p']:
+
+    if not instance_type.startswith('ml.'):
+        raise ValueError('{} is not a valid SageMaker instance type. See: '
+                         'https://aws.amazon.com/sagemaker/pricing/instance-types/'.format(instance_type))
+    family = instance_type.split('.')[1]
+
+    # For some frameworks, we have optimized images for specific families, e.g c5 or p3. In those cases,
+    # we use the family name in the image tag. In other cases, we use 'cpu' or 'gpu'.
+    if family in optimized_families:
+        device_type = family
+    elif family[0] in ['g', 'p']:
         device_type = 'gpu'
+    else:
+        device_type = 'cpu'
 
     tag = "{}-{}-{}".format(framework_version, device_type, py_version)
-    return "{}.dkr.ecr.{}.amazonaws.com/sagemaker-{}-{}-{}:{}" \
-        .format(account, region, framework, py_version, device_type, tag)
+    return "{}.dkr.ecr.{}.amazonaws.com/sagemaker-{}:{}" \
+        .format(account, region, framework, tag)
 
 
 def tar_and_upload_dir(session, bucket, s3_key_prefix, script, directory):

@@ -37,18 +37,39 @@ def sagemaker_session():
 
 
 def test_create_image_uri_cpu():
-    image_uri = create_image_uri('mars-south-3', 'mlfw', 'any-non-gpu-device', '1.0rc', 'py2', '23')
-    assert image_uri == '23.dkr.ecr.mars-south-3.amazonaws.com/sagemaker-mlfw-py2-cpu:1.0rc-cpu-py2'
+    image_uri = create_image_uri('mars-south-3', 'mlfw', 'ml.c4.large', '1.0rc', 'py2', '23')
+    assert image_uri == '23.dkr.ecr.mars-south-3.amazonaws.com/sagemaker-mlfw:1.0rc-cpu-py2'
 
 
 def test_create_image_uri_gpu():
     image_uri = create_image_uri('mars-south-3', 'mlfw', 'ml.p3.2xlarge', '1.0rc', 'py3', '23')
-    assert image_uri == '23.dkr.ecr.mars-south-3.amazonaws.com/sagemaker-mlfw-py3-gpu:1.0rc-gpu-py3'
+    assert image_uri == '23.dkr.ecr.mars-south-3.amazonaws.com/sagemaker-mlfw:1.0rc-gpu-py3'
 
 
 def test_create_image_uri_default_account():
     image_uri = create_image_uri('mars-south-3', 'mlfw', 'ml.p3.2xlarge', '1.0rc', 'py3')
-    assert image_uri == '520713654638.dkr.ecr.mars-south-3.amazonaws.com/sagemaker-mlfw-py3-gpu:1.0rc-gpu-py3'
+    assert image_uri == '520713654638.dkr.ecr.mars-south-3.amazonaws.com/sagemaker-mlfw:1.0rc-gpu-py3'
+
+
+def test_invalid_instance_type():
+    # instance type is missing 'ml.' prefix
+    with pytest.raises(ValueError):
+        create_image_uri('mars-south-3', 'mlfw', 'p3.2xlarge', '1.0.0', 'py3')
+
+
+def test_optimized_family():
+    image_uri = create_image_uri('mars-south-3', 'mlfw', 'ml.p3.2xlarge', '1.0.0', 'py3', optimized_families=['c5', 'p3'])
+    assert image_uri == '520713654638.dkr.ecr.mars-south-3.amazonaws.com/sagemaker-mlfw:1.0.0-p3-py3'
+
+
+def test_unoptimized_cpu_family():
+    image_uri = create_image_uri('mars-south-3', 'mlfw', 'ml.m4.xlarge', '1.0.0', 'py3', optimized_families=['c5', 'p3'])
+    assert image_uri == '520713654638.dkr.ecr.mars-south-3.amazonaws.com/sagemaker-mlfw:1.0.0-cpu-py3'
+
+
+def test_unoptimized_gpu_family():
+    image_uri = create_image_uri('mars-south-3', 'mlfw', 'ml.p2.xlarge', '1.0.0', 'py3', optimized_families=['c5', 'p3'])
+    assert image_uri == '520713654638.dkr.ecr.mars-south-3.amazonaws.com/sagemaker-mlfw:1.0.0-gpu-py3'
 
 
 def test_tar_and_upload_dir_s3(sagemaker_session):

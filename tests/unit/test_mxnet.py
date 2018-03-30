@@ -30,7 +30,7 @@ TIME = 1507167947
 BUCKET_NAME = 'mybucket'
 INSTANCE_COUNT = 1
 INSTANCE_TYPE = 'ml.c4.4xlarge'
-IMAGE_CPU_NAME = 'sagemaker-mxnet-py2-cpu'
+IMAGE_CPU_NAME = 'sagemaker-mxnet'
 JOB_NAME = '{}-{}'.format(IMAGE_CPU_NAME, TIMESTAMP)
 FULL_IMAGE_URI = '520713654638.dkr.ecr.us-west-2.amazonaws.com/{}:{}-cpu-py2'
 ROLE = 'Dummy'
@@ -138,10 +138,10 @@ def test_mxnet(strftime, sagemaker_session, mxnet_version):
 
     model = mx.create_model()
 
-    expected_image_base = '520713654638.dkr.ecr.us-west-2.amazonaws.com/sagemaker-mxnet-py2-gpu:{}-gpu-py2'
+    expected_image_base = '520713654638.dkr.ecr.us-west-2.amazonaws.com/sagemaker-mxnet:{}-gpu-py2'
     assert {'Environment':
             {'SAGEMAKER_SUBMIT_DIRECTORY':
-             's3://mybucket/sagemaker-mxnet-py2-cpu-{}/sourcedir.tar.gz'.format(TIMESTAMP),
+             's3://mybucket/sagemaker-mxnet-{}/sourcedir.tar.gz'.format(TIMESTAMP),
              'SAGEMAKER_PROGRAM': 'dummy_script.py',
              'SAGEMAKER_ENABLE_CLOUDWATCH_METRICS': 'false',
              'SAGEMAKER_REGION': 'us-west-2',
