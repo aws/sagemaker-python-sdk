@@ -58,17 +58,20 @@ def test_invalid_instance_type():
 
 
 def test_optimized_family():
-    image_uri = create_image_uri('mars-south-3', 'mlfw', 'ml.p3.2xlarge', '1.0.0', 'py3', optimized_families=['c5', 'p3'])
+    image_uri = create_image_uri('mars-south-3', 'mlfw', 'ml.p3.2xlarge', '1.0.0', 'py3',
+                                 optimized_families=['c5', 'p3'])
     assert image_uri == '520713654638.dkr.ecr.mars-south-3.amazonaws.com/sagemaker-mlfw:1.0.0-p3-py3'
 
 
 def test_unoptimized_cpu_family():
-    image_uri = create_image_uri('mars-south-3', 'mlfw', 'ml.m4.xlarge', '1.0.0', 'py3', optimized_families=['c5', 'p3'])
+    image_uri = create_image_uri('mars-south-3', 'mlfw', 'ml.m4.xlarge', '1.0.0', 'py3',
+                                 optimized_families=['c5', 'p3'])
     assert image_uri == '520713654638.dkr.ecr.mars-south-3.amazonaws.com/sagemaker-mlfw:1.0.0-cpu-py3'
 
 
 def test_unoptimized_gpu_family():
-    image_uri = create_image_uri('mars-south-3', 'mlfw', 'ml.p2.xlarge', '1.0.0', 'py3', optimized_families=['c5', 'p3'])
+    image_uri = create_image_uri('mars-south-3', 'mlfw', 'ml.p2.xlarge', '1.0.0', 'py3',
+                                 optimized_families=['c5', 'p3'])
     assert image_uri == '520713654638.dkr.ecr.mars-south-3.amazonaws.com/sagemaker-mlfw:1.0.0-gpu-py3'
 
 
