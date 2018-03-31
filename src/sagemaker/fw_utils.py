@@ -47,11 +47,7 @@ def create_image_uri(region, framework, instance_type, framework_version, py_ver
 
     # Handle Local Mode
     if instance_type.startswith('local'):
-        if instance_type == 'local':
-            device_type = 'cpu'
-        elif instance_type == 'local_gpu':
-            device_type = 'gpu'
-
+        device_type = 'cpu' if instance_type == 'local' else 'gpu'
     elif not instance_type.startswith('ml.'):
         raise ValueError('{} is not a valid SageMaker instance type. See: '
                          'https://aws.amazon.com/sagemaker/pricing/instance-types/'.format(instance_type))

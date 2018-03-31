@@ -25,10 +25,23 @@ logger.setLevel(logging.WARNING)
 
 
 class LocalSagemakerClient(object):
+    """A SageMakerClient that implements the API calls locally.
+
+    Used for doing local training and hosting local endpoints. It still needs access to
+    a boto client to interact with S3 but it won't perform any SageMaker call.
+
+    Implements the methods with the same signature as the boto SageMakerClient.
+    """
     def __init__(self, sagemaker_session=None):
+        """Initialize a LocalSageMakerClient.
+
+        Args:
+            sagemaker_session (sagemaker.session.Session): a session to use to read configurations
+                from, and use its boto client.
+        """
         self.train_container = None
         self.serve_container = None
-        self.sagemaker_session = sagemaker_session
+        self.sagemaker_session = sagemaker_session or LocalSession()
         self.s3_model_artifacts = None
         self.model_name = None
         self.primary_container = None
@@ -44,6 +57,14 @@ class LocalSagemakerClient(object):
         self.s3_model_artifacts = self.train_container.train(InputDataConfig, HyperParameters)
 
     def describe_training_job(self, TrainingJobName):
+        """Describe a local traininig job.
+
+        Args:
+            TrainingJobName (str): Not used in this implmentation.
+
+        Returns: (dict) DescribeTrainingJob Response.
+
+        """
         response = {'ResourceConfig': {'InstanceCount': self.train_container.instance_count},
                     'TrainingJobStatus': 'Completed',
                     'TrainingStartTime': datetime.datetime.now(),
@@ -80,15 +101,18 @@ class LocalSagemakerClient(object):
 
         i = 0
         http = urllib3.PoolManager()
+        serving_port = 8080
+        if self.sagemaker_session.config and 'local' in self.sagemaker_session.config:
+            serving_port = self.sagemaker_session.config['local'].get('serving_port', 8080)
+        endpoint_url = "http://localhost:%s/ping" % serving_port
         while True:
             i += 1
-
             if i >= 10:
                 raise RuntimeError("Giving up, endpoint: %s didn't launch correctly" % EndpointName)
 
             logger.info("Checking if endpoint is up, attempt: %s" % i)
             try:
-                r = http.request('GET', "http://localhost:8080/ping")
+                r = http.request('GET', endpoint_url)
                 if r.status != 200:
                     logger.info("Container still not up, got: %s" % r.status)
                 else:
@@ -103,11 +127,25 @@ class LocalSagemakerClient(object):
 
 
 class LocalSagemakerRuntimeClient(object):
-    def __init__(self):
+    """A SageMaker Runtime client that calls a local endpoint only.
+
+    """
+    def __init__(self, config=None):
+        """Initializes a LocalSageMakerRuntimeClient
+
+        Args:
+            config (dict): Optional configuration for this client. In particular only
+                the local port is read.
+        """
         self.http = urllib3.PoolManager()
+        self.serving_port = 8080
+        if config and 'local' in config:
+            self.serving_port = config['local'].get('serving_port', 8080)
 
     def invoke_endpoint(self, Body, EndpointName, ContentType, Accept):
-        r = self.http.request('POST', "http://localhost:8080/invocations", body=Body, preload_content=False,
+        url = "http://localhost:%s/invocations" % self.serving_port
+        logger.error("invoking on: %s" % url)
+        r = self.http.request('POST', url, body=Body, preload_content=False,
                               headers={'Content-type': ContentType, 'Accept': Accept})
 
         return {'Body': r, 'ContentType': Accept}
@@ -119,4 +157,4 @@ class LocalSession(Session):
         super(LocalSession, self).__init__(boto_session)
 
         self.sagemaker_client = LocalSagemakerClient(self)
-        self.sagemaker_runtime_client = LocalSagemakerRuntimeClient()
+        self.sagemaker_runtime_client = LocalSagemakerRuntimeClient(self.config)

@@ -10,15 +10,18 @@
 # distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
+import errno
 import json
 import logging
 import os
 import platform
+import shlex
 import shutil
 import subprocess
 import sys
 import tempfile
 from subprocess import Popen, STDOUT, CalledProcessError
+from six.moves.urllib.parse import urlparse
 from time import sleep
 
 import yaml
@@ -31,8 +34,26 @@ logger.setLevel(logging.WARNING)
 
 
 class SageMakerContainer(object):
+    """Handle the lifecycle and configuration of a local docker container execution.
+
+    This class is responsible for creating the directories and configuration files that
+    the docker containers will use for either training or serving.
+    """
 
     def __init__(self, instance_type, instance_count, image, sagemaker_session=None):
+        """Initialize a SageMakerContainer instance
+
+        It uses a :class:`sagemaker.session.Session` for general interaction with user configuration
+        such as getting the default sagemaker S3 bucket. However this class does not call any of the
+        SageMaker APIs.
+
+        Args:
+            instance_type (str): The instance type to use. Either 'local' or 'local_gpu'
+            instance_count (int): The number of instances to create.
+            image (str): docker image to use.
+            sagemaker_session (sagemaker.session.Session): a sagemaker session to use when interacting
+                with SageMaker.
+        """
         from sagemaker.local_session import LocalSession
         self.sagemaker_session = sagemaker_session or LocalSession()
         self.instance_type = instance_type
@@ -41,6 +62,11 @@ class SageMakerContainer(object):
         self.hosts = ['{}-{}'.format(CONTAINER_PREFIX, i) for i in range(1, self.instance_count + 1)]
         self.container_root = None
         self.container = None
+        # set the local config. This is optional and will use reasonable defaults
+        # if not present.
+        self.local_config = None
+        if self.sagemaker_session.config and 'local'in self.sagemaker_session.config:
+            self.local_config = self.sagemaker_session.config['local']
 
     def train(self, input_data_config, hyperparameters):
         """Run a training job locally using docker-compose.
@@ -52,11 +78,10 @@ class SageMakerContainer(object):
         Returns (str): Location of the trained model.
 
         """
-        self.container_root = _create_tmp_folder()
+        self.container_root = self._create_tmp_folder()
 
         data_dir = tempfile.mkdtemp()
         bucket_name = self.sagemaker_session.default_bucket()
-        bucket_name_with_prefix = 's3://{}/'.format(bucket_name)
         volumes = []
 
         # Set up the channels for the containers. For local data we will
@@ -64,7 +89,8 @@ class SageMakerContainer(object):
         # first.
         for channel in input_data_config:
             uri = channel['DataSource']['S3DataSource']['S3Uri']
-            key = uri[len(bucket_name_with_prefix):]
+            parsed_uri = urlparse(uri)
+            key = parsed_uri.path.lstrip('/')
 
             channel_name = channel['ChannelName']
             channel_dir = os.path.join(data_dir, channel_name)
@@ -75,10 +101,10 @@ class SageMakerContainer(object):
             else:
                 volumes.append(Volume(uri, channel=channel_name))
 
-        # Create the docker compose files for each container that we will create
+        # Create the configuration files for each container that we will create
         # Each container will map the additional local volumes (if any).
         for host in self.hosts:
-            _prepare_config_file_directory(self.container_root, host)
+            _create_config_file_directories(self.container_root, host)
             self.write_config_files(host, hyperparameters, input_data_config)
             shutil.copytree(data_dir, os.path.join(self.container_root, host, 'input', 'data'))
 
@@ -88,6 +114,14 @@ class SageMakerContainer(object):
         _cleanup()
 
         s3_model_artifacts = self.retrieve_model_artifacts(compose_data)
+
+        # free up the training data directory as it may contain
+        # lots of data downloaded from S3. This doesn't delete any local
+        # data that was just mounted to the container.
+        shutil.rmtree(data_dir)
+        # Also free the container config files.
+        for host in self.hosts:
+            shutil.rmtree(os.path.join(self.container_root, host))
         return s3_model_artifacts
 
     def serve(self, primary_container):
@@ -95,13 +129,13 @@ class SageMakerContainer(object):
         Args:
             primary_container (dict): dictionary containing the container runtime settings
                 for serving. Expected keys:
-                - 'ModelDataUrl' pointing to either an s3 location or a local file
+                - 'ModelDataUrl' pointing to a local file
                 - 'Environment' a dictionary of environment variables to be passed to the hosting container.
 
         """
         logger.info("serving")
 
-        self.container_root = _create_tmp_folder()
+        self.container_root = self._create_tmp_folder()
         logger.info('creating hosting dir in {}'.format(self.container_root))
 
         model_dir = primary_container['ModelDataUrl']
@@ -115,7 +149,7 @@ class SageMakerContainer(object):
 
         self._generate_compose_file('serve', additional_env_vars=env_vars)
         compose_command = self._compose()
-        self.container = _Container(self.container_root, compose_command)
+        self.container = Container(self.container_root, compose_command)
         self.container.up()
 
     def stop_serving(self):
@@ -125,6 +159,7 @@ class SageMakerContainer(object):
         """
         if self.container:
             self.container.down()
+        shutil.rmtree(self.container_root)
 
     def retrieve_model_artifacts(self, compose_data):
         """Get the model artifacts from all the container nodes.
@@ -163,7 +198,7 @@ class SageMakerContainer(object):
             hyperparameters (dict): Hyperparameters for training.
             input_data_config (dict): Training input channels to be used for training.
 
-        Returns:
+        Returns: None
 
         """
 
@@ -202,18 +237,35 @@ class SageMakerContainer(object):
         bucket = s3.Bucket(bucket_name)
 
         for obj_sum in bucket.objects.filter(Prefix=prefix):
-
             obj = s3.Object(obj_sum.bucket_name, obj_sum.key)
             file_path = os.path.join(target, obj_sum.key[len(prefix) + 1:])
 
             try:
                 os.makedirs(os.path.dirname(file_path))
-            except os.error:
+            except OSError as exc:
+                if exc.errno != errno.EEXIST:
+                    raise
                 pass
 
             obj.download_file(file_path)
 
     def _generate_compose_file(self, command, additional_volumes=None, additional_env_vars=None):
+        """Writes a config file describing a training/hosting  environment.
+
+        This method generates a docker compose configuration file, it has an entry for each container
+        that will be created (based on self.hosts). it calls
+        :meth:~sagemaker.local_session.SageMakerContainer._create_docker_host to generate the config
+        for each individual container.
+
+        Args:
+            command (str): either 'train' or 'serve'
+            additional_volumes (list): a list of volumes that will be mapped to the containers
+            additional_env_vars (dict): a dictionary with additional environment variables to be
+                passed on to the containers.
+
+        Returns: (dict) A dictionary representation of the configuration that was written.
+
+        """
         session = self.sagemaker_session.boto_session
         additional_env_vars = additional_env_vars or []
         additional_volumes = additional_volumes or {}
@@ -267,7 +319,7 @@ class SageMakerContainer(object):
         return command
 
     def _create_docker_host(self, host, environment, optml_subdirs, command, volumes):
-        optml_volumes = self._optml_volumes(host, optml_subdirs)
+        optml_volumes = self._build_optml_volumes(host, optml_subdirs)
         optml_volumes.extend(volumes)
 
         host_config = {
@@ -279,36 +331,49 @@ class SageMakerContainer(object):
             'command': command
         }
 
+        serving_port = 8080 if self.local_config is None else self.local_config.get('serving_port', 8080)
         if command == 'serve':
             host_config.update({
                 'ports': [
-                    '8080:8080'
+                    '%s:8080' % serving_port
                 ]
             })
 
         return host_config
 
-    def _optml_volumes(self, host, subdirs, single_model_dir=False):
-        """
+    def _create_tmp_folder(self):
+        root_dir = None
+        if self.local_config and 'container_root' in self.local_config:
+            root_dir = os.path.abspath(self.local_config['container_root'])
+
+        dir = tempfile.mkdtemp(dir=root_dir)
+        os.mkdir(os.path.join(dir, 'output'))
+
+        # Docker cannot mount Mac OS /var folder properly see
+        # https://forums.docker.com/t/var-folders-isnt-mounted-properly/9600
+        # Only apply this workaround if the user didn't provide an alternate storage root dir.
+        if root_dir is None and platform.system() == 'Darwin':
+            dir = '/private{}'.format(dir)
+
+        logger.error("Using: %s as root" % os.path.abspath(dir))
+        return os.path.abspath(dir)
+
+    def _build_optml_volumes(self, host, subdirs):
+        """Generate a list of :class:`~sagemaker.local_session.Volume` required for the container to start.
+
         It takes a folder with the necessary files for training and creates a list of opt volumes that
         the Container needs to start.
-        If args.single_model_dir is True, all the hosts will point the opt/ml/model subdir to the first container.
-        That is useful for distributed training, so all the containers can read and write the same checkpoints.
 
-        :param opt_root_folder: root folder with the contents to be mapped to the container
-        :param host: host name of the container
-        :param subdirs: list of subdirs that will be mapped. Example: ['input', 'output', 'model']
-        :return:
+        Args:
+            host (str): container for which the volumes will be generated.
+            subdirs (list): list of subdirectories that will be mapped. For example: ['input', 'output', 'model']
+
+        Returns: (list) List of :class:`~sagemaker.local_session.Volume`
         """
         volumes = []
 
-        # If it is single mode dir we want to map the same model dir and share between hosts
-        if single_model_dir:
-            host_dir = os.path.join(self.container_root, 'algo-1/model')
-            volume = Volume(host_dir, '/opt/ml/model')
-            volumes.append(volume)
-        else:
-            # else we want to add model to the list of subdirs so it will be created for each container.
+        # Ensure that model is in the subdirs
+        if 'model' not in subdirs:
             subdirs.add('model')
 
         for subdir in subdirs:
@@ -320,7 +385,7 @@ class SageMakerContainer(object):
         return volumes
 
 
-class _Container(object):
+class Container(object):
     def __init__(self, tmpdir, command, startup_delay=5):
         self.command = command
         self.compose_file = os.path.join(tmpdir, DOCKER_COMPOSE_FILENAME)
@@ -337,9 +402,20 @@ class _Container(object):
 
 
 class Volume(object):
+    """Represent a Volume that will be mapped to a container.
+
+    """
 
     def __init__(self, host_dir, container_dir=None, channel=None):
-        # that is necessary because docker cannot mount mac temp folders.
+        """Create a Volume instance
+
+        the container path can be provided as a container_dir or as a channel name but not both.
+        Args:
+            host_dir (str): path to the volume data in the host
+            container_dir (str): path inside the container that host_dir will be mapped to
+            channel (str): channel name that the host_dir represents. It will be mapped as
+                /opt/ml/input/data/<channel> in the container.
+        """
         if not container_dir and not channel:
             raise ValueError('Either container_dir or channel must be declared.')
 
@@ -347,30 +423,26 @@ class Volume(object):
             raise ValueError('container_dir and channel cannot be declared together.')
 
         self.container_dir = container_dir if container_dir else os.path.join('/opt/ml/input/data', channel)
-
-        self.host_dir = os.path.join('/private', host_dir) if host_dir.startswith('/var') else host_dir
+        self.host_dir = host_dir
+        if os.name == 'Darwin' and host_dir.startswith('/var'):
+            self.host_dir = os.path.join('/private', host_dir)
 
         self.map = '{}:{}'.format(self.host_dir, self.container_dir)
 
 
 def _cleanup():
-    _chain_docker_cmds('docker images -f dangling=true -q', 'docker rmi -f')
-    _check_output('docker network prune -f'.split(' '))
-
-
-def _chain_docker_cmds(cmd, cmd2):
-    docker_tags = _check_output(cmd).split('\n')
-
-    if any(docker_tags):
-        try:
-            _check_output(cmd2.split() + docker_tags, stderr=STDOUT)
-        except CalledProcessError:
-            pass
+    docker_tags = _check_output('docker images -f dangling=true -q').split('\n')
+    docker_clean = 'docker rmi -f' + ' '.join(docker_tags)
+    try:
+        _check_output(docker_clean)
+    except CalledProcessError:
+        pass
+    _check_output('docker network prune -f')
 
 
 def _stream_output(cmd):
     if isinstance(cmd, str):
-        cmd = cmd.split(" ")
+        cmd = shlex.split(cmd)
     process = subprocess.Popen(cmd, stdout=subprocess.PIPE)
     exit_code = None
     while exit_code is None:
@@ -387,7 +459,7 @@ def _stream_output(cmd):
 
 def _check_output(cmd, *popenargs, **kwargs):
     if isinstance(cmd, str):
-        cmd = cmd.split(" ")
+        cmd = shlex.split(cmd)
 
     success = True
     try:
@@ -398,22 +470,13 @@ def _check_output(cmd, *popenargs, **kwargs):
 
     output = output.decode("utf-8")
     if not success:
+        logger.error("Command output: %s" % output)
         raise Exception("Failed to run %s" % ",".join(cmd))
 
     return output
 
 
-def _create_tmp_folder():
-    tmp = tempfile.mkdtemp()
-    os.mkdir(os.path.join(tmp, 'output'))
-
-    # Docker cannot mount Mac OS /var folder properly see
-    # https://forums.docker.com/t/var-folders-isnt-mounted-properly/9600
-    dir = '/private{}'.format(tmp) if platform.system() == 'Darwin' else tmp
-    return os.path.abspath(dir)
-
-
-def _prepare_config_file_directory(root, host):
+def _create_config_file_directories(root, host):
     for d in ['input', 'input/config', 'output', 'model']:
         os.makedirs(os.path.join(root, host, d))
 

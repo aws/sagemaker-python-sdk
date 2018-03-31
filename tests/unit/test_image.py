@@ -68,7 +68,7 @@ def test_write_config_file(LocalSession, tmpdir):
     sagemaker_container.container_root = str(tmpdir.mkdir('container-root'))
     host = "algo-1"
 
-    sagemaker.image._prepare_config_file_directory(sagemaker_container.container_root, host)
+    sagemaker.image._create_config_file_directories(sagemaker_container.container_root, host)
 
     container_root = sagemaker_container.container_root
     config_file_root = os.path.join(container_root, host, 'input', 'config')
@@ -181,7 +181,8 @@ def test_check_output():
 @patch('sagemaker.image._cleanup')
 def test_train(LocalSession, _stream_output, _cleanup, tmpdir, sagemaker_session):
 
-    with patch('sagemaker.image._create_tmp_folder', return_value=str(tmpdir.mkdir('container-root'))):
+    with patch('sagemaker.image.SageMakerContainer._create_tmp_folder',
+               return_value=str(tmpdir.mkdir('container-root'))):
 
         instance_count = 2
         image = 'my-image'
@@ -205,12 +206,13 @@ def test_train(LocalSession, _stream_output, _cleanup, tmpdir, sagemaker_session
                 assert config['services'][h]['command'] == 'train'
 
 
-@patch('sagemaker.image._Container.up')
+@patch('sagemaker.image.Container.up')
 @patch('shutil.copy')
 @patch('shutil.copytree')
 def test_serve(up, copy, copytree, tmpdir, sagemaker_session):
 
-    with patch('sagemaker.image._create_tmp_folder', return_value=str(tmpdir.mkdir('container-root'))):
+    with patch('sagemaker.image.SageMakerContainer._create_tmp_folder',
+               return_value=str(tmpdir.mkdir('container-root'))):
 
         image = 'my-image'
         sagemaker_container = SageMakerContainer('local', 1, image, sagemaker_session=sagemaker_session)

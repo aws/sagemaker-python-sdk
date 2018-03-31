@@ -22,6 +22,7 @@ import time
 import boto3
 import json
 import six
+import yaml
 from botocore.exceptions import ClientError
 
 from sagemaker.user_agent import prepend_user_agent
@@ -79,6 +80,12 @@ class Session(object):
 
         self.sagemaker_runtime_client = sagemaker_runtime_client or self.boto_session.client('runtime.sagemaker')
         prepend_user_agent(self.sagemaker_runtime_client)
+
+        sagemaker_config_file = os.path.join(os.path.expanduser('~'), '.sagemaker', 'config.yaml')
+        if os.path.exists(sagemaker_config_file):
+            self.config = yaml.load(open(sagemaker_config_file, 'r'))
+        else:
+            self.config = None
 
     @property
     def boto_region_name(self):
@@ -754,32 +761,6 @@ class s3_input(object):
             self.config['ContentType'] = content_type
         if record_wrapping is not None:
             self.config['RecordWrapperType'] = record_wrapping
-
-
-class Inputs(object):
-
-    def __init__(self, inputs, sagemaker_session):
-        _inputs = inputs if isinstance(inputs, dict) else {'training': inputs}
-        self._input_dict = {k: s3_input(v) for k, v in _inputs.items()}
-
-        self.sagemaker_session = sagemaker_session
-
-    def channels(self):
-        channels = []
-        for channel_name, channel_s3_input in self._input_dict.items():
-            channel_config = channel_s3_input.config
-            channel_config['ChannelName'] = channel_name
-            channels.append(channel_config)
-        return channels
-
-    def upload_data(self, prefix):
-        dict = self._input_dict
-
-        for channel in dict.keys():
-            path = dict[channel].uri
-            if isinstance(path, six.string_types) and not path.startswith('s3://'):
-                s3_path = self.sagemaker_session.upload_data(path=path, key_prefix=prefix)
-                dict[channel].uri = s3_path
 
 
 def _deployment_entity_exists(describe_fn):
