@@ -27,7 +27,8 @@ BAD_RESPONSE.status = 502
 
 
 @patch('sagemaker.image.SageMakerContainer.train', return_value="/some/path/to/model")
-def test_create_training_job(train):
+@patch('sagemaker.local_session.LocalSession')
+def test_create_training_job(train, LocalSession):
     local_sagemaker_client = sagemaker.local_session.LocalSagemakerClient()
 
     instance_count = 2
@@ -100,7 +101,8 @@ def test_describe_endpoint():
 
 @patch('sagemaker.image.SageMakerContainer.serve')
 @patch('urllib3.PoolManager.request', return_value=OK_RESPONSE)
-def test_create_endpoint(serve, request):
+@patch('sagemaker.local_session.LocalSession')
+def test_create_endpoint(serve, request, LocalSession):
     local_sagemaker_client = sagemaker.local_session.LocalSagemakerClient()
     local_sagemaker_client.variants = [{'InstanceType': 'ml.c4.99xlarge', 'InitialInstanceCount': 10}]
     local_sagemaker_client.primary_container = {'ModelDataUrl': '/some/model/path',
@@ -114,7 +116,8 @@ def test_create_endpoint(serve, request):
 
 @patch('sagemaker.image.SageMakerContainer.serve')
 @patch('urllib3.PoolManager.request', return_value=BAD_RESPONSE)
-def test_create_endpoint_fails(serve, request):
+@patch('sagemaker.local_session.LocalSession')
+def test_create_endpoint_fails(serve, request, LocalSession):
     local_sagemaker_client = sagemaker.local_session.LocalSagemakerClient()
     local_sagemaker_client.variants = [{'InstanceType': 'ml.c4.99xlarge', 'InitialInstanceCount': 10}]
     local_sagemaker_client.primary_container = {'ModelDataUrl': '/some/model/path',

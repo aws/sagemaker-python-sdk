@@ -533,6 +533,7 @@ def test_generic_to_deploy(sagemaker_session):
     assert predictor.sagemaker_session == sagemaker_session
 
 
+@patch('sagemaker.estimator.LocalSession')
 def test_local_mode(sagemaker_session):
     e = Estimator(IMAGE_NAME, ROLE, INSTANCE_COUNT, 'local', output_path='s3://bucket/prefix',
                   sagemaker_session=sagemaker_session)
@@ -547,9 +548,9 @@ def test_local_mode(sagemaker_session):
     assert e3.local_mode is False
 
 
-def test_distributed_gpu_local_mode(sagemaker_session):
+@patch('sagemaker.estimator.LocalSession')
+def test_distributed_gpu_local_mode(LocalSession):
     with pytest.raises(RuntimeError):
-        Estimator(IMAGE_NAME, ROLE, 3, 'local_gpu', output_path='s3://bucket/prefix',
-                  sagemaker_session=sagemaker_session)
+        Estimator(IMAGE_NAME, ROLE, 3, 'local_gpu', output_path='s3://bucket/prefix')
 
 #################################################################################

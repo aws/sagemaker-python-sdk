@@ -23,7 +23,6 @@ from sagemaker.amazon.ntm import NTM, NTMModel, NTMPredictor
 
 from sagemaker.model import Model
 from sagemaker.predictor import RealTimePredictor
-from sagemaker.local_session import LocalSession
 from sagemaker.session import Session
 from sagemaker.session import container_def
 from sagemaker.session import production_variant
@@ -35,5 +34,5 @@ __all__ = [estimator, KMeans, KMeansModel, KMeansPredictor, PCA, PCAModel, PCAPr
            LinearLearnerModel, LinearLearnerPredictor,
            LDA, LDAModel, LDAPredictor,
            FactorizationMachines, FactorizationMachinesModel, FactorizationMachinesPredictor,
-           Model, NTM, NTMModel, NTMPredictor, RealTimePredictor, LocalSession, Session,
+           Model, NTM, NTMModel, NTMPredictor, RealTimePredictor, Session,
            container_def, s3_input, production_variant, get_execution_role]

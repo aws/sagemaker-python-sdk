@@ -61,7 +61,8 @@ def sagemaker_session():
     return ims
 
 
-def test_write_config_file(tmpdir):
+@patch('sagemaker.local_session.LocalSession')
+def test_write_config_file(LocalSession, tmpdir):
 
     sagemaker_container = SageMakerContainer('local', 2, 'my-image')
     sagemaker_container.container_root = str(tmpdir.mkdir('container-root'))
@@ -101,7 +102,8 @@ def test_write_config_file(tmpdir):
         assert channel['ChannelName'] in input_data_config_data
 
 
-def test_retrieve_artifacts(tmpdir):
+@patch('sagemaker.local_session.LocalSession')
+def test_retrieve_artifacts(LocalSession, tmpdir):
     sagemaker_container = SageMakerContainer('local', 2, 'my-image')
     sagemaker_container.container_root = str(tmpdir.mkdir('container-root'))
 
@@ -174,8 +176,9 @@ def test_check_output():
     assert output == msg
 
 
-@patch('sagemaker.image._stream_output', return_value=None)
-def test_train(_stream_output, tmpdir, sagemaker_session):
+@patch('sagemaker.local_session.LocalSession')
+@patch('sagemaker.image._stream_output')
+def test_train(_stream_output, LocalSession, tmpdir, sagemaker_session):
 
     with patch('sagemaker.image._create_tmp_folder', return_value=str(tmpdir.mkdir('container-root'))):
 
