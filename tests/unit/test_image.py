@@ -178,7 +178,8 @@ def test_check_output():
 
 @patch('sagemaker.local_session.LocalSession')
 @patch('sagemaker.image._stream_output')
-def test_train(_stream_output, LocalSession, tmpdir, sagemaker_session):
+@patch('sagemaker.image._cleanup')
+def test_train(LocalSession, _stream_output, _cleanup, tmpdir, sagemaker_session):
 
     with patch('sagemaker.image._create_tmp_folder', return_value=str(tmpdir.mkdir('container-root'))):
 
