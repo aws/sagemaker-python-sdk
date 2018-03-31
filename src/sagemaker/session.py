@@ -777,7 +777,7 @@ class Inputs(object):
 
         for channel in dict.keys():
             path = dict[channel].uri
-            if isinstance(path, (str, unicode)) and not path.startswith('s3://'):
+            if isinstance(path, six.string_types) and not path.startswith('s3://'):
                 s3_path = self.sagemaker_session.upload_data(path=path, key_prefix=prefix)
                 dict[channel].uri = s3_path
 
