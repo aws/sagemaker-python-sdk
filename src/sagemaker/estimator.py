@@ -21,7 +21,7 @@ from six import with_metaclass, string_types
 from sagemaker.fw_utils import tar_and_upload_dir
 from sagemaker.fw_utils import parse_s3_url
 from sagemaker.fw_utils import UploadedCode
-from sagemaker.local_session import LocalSession
+from sagemaker.local.local_session import LocalSession
 from sagemaker.model import Model
 from sagemaker.model import (SCRIPT_PARAM_NAME, DIR_PARAM_NAME, CLOUDWATCH_METRICS_PARAM_NAME,
                              CONTAINER_LOG_LEVEL_PARAM_NAME, JOB_NAME_PARAM_NAME, SAGEMAKER_REGION_PARAM_NAME)

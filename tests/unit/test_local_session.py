@@ -26,10 +26,10 @@ BAD_RESPONSE = urllib3.HTTPResponse()
 BAD_RESPONSE.status = 502
 
 
-@patch('sagemaker.image.SageMakerContainer.train', return_value="/some/path/to/model")
-@patch('sagemaker.local_session.LocalSession')
+@patch('sagemaker.local.image._SageMakerContainer.train', return_value="/some/path/to/model")
+@patch('sagemaker.local.local_session.LocalSession')
 def test_create_training_job(train, LocalSession):
-    local_sagemaker_client = sagemaker.local_session.LocalSagemakerClient()
+    local_sagemaker_client = sagemaker.local.local_session.LocalSagemakerClient()
 
     instance_count = 2
     image = "my-docker-image:1.0"
@@ -61,9 +61,9 @@ def test_create_training_job(train, LocalSession):
     assert response['ModelArtifacts']['S3ModelArtifacts'] == expected['ModelArtifacts']['S3ModelArtifacts']
 
 
-@patch('sagemaker.local_session.LocalSession')
+@patch('sagemaker.local.local_session.LocalSession')
 def test_create_model(LocalSession):
-    local_sagemaker_client = sagemaker.local_session.LocalSagemakerClient()
+    local_sagemaker_client = sagemaker.local.local_session.LocalSagemakerClient()
     model_name = "my-model"
     primary_container = {'ModelDataUrl': '/some/model/path', 'Environment': {'env1': 1, 'env2': 'b'}}
     execution_role_arn = 'arn:aws:iam::111111111111:role/ExpandedRole'
@@ -75,9 +75,9 @@ def test_create_model(LocalSession):
     assert local_sagemaker_client.role_arn == execution_role_arn
 
 
-@patch('sagemaker.local_session.LocalSession')
+@patch('sagemaker.local.local_session.LocalSession')
 def test_describe_endpoint_config(LocalSession):
-    local_sagemaker_client = sagemaker.local_session.LocalSagemakerClient()
+    local_sagemaker_client = sagemaker.local.local_session.LocalSagemakerClient()
 
     # No Endpoint Config Created
     with pytest.raises(ClientError):
@@ -87,27 +87,27 @@ def test_describe_endpoint_config(LocalSession):
     assert local_sagemaker_client.describe_endpoint_config('my-endpoint-config')
 
 
-@patch('sagemaker.local_session.LocalSession')
+@patch('sagemaker.local.local_session.LocalSession')
 def test_create_endpoint_config(LocalSession):
-    local_sagemaker_client = sagemaker.local_session.LocalSagemakerClient()
+    local_sagemaker_client = sagemaker.local.local_session.LocalSagemakerClient()
     production_variants = [{'InstanceType': 'ml.c4.99xlarge', 'InitialInstanceCount': 10}]
     local_sagemaker_client.create_endpoint_config('my-endpoint-config', production_variants)
 
     assert local_sagemaker_client.variants == production_variants
 
 
-@patch('sagemaker.local_session.LocalSession')
+@patch('sagemaker.local.local_session.LocalSession')
 def test_describe_endpoint(LocalSession):
-    local_sagemaker_client = sagemaker.local_session.LocalSagemakerClient()
+    local_sagemaker_client = sagemaker.local.local_session.LocalSagemakerClient()
     response = local_sagemaker_client.describe_endpoint('my-endpoint')
     assert 'EndpointStatus' in response
 
 
-@patch('sagemaker.image.SageMakerContainer.serve')
+@patch('sagemaker.local.image._SageMakerContainer.serve')
 @patch('urllib3.PoolManager.request', return_value=OK_RESPONSE)
-@patch('sagemaker.local_session.LocalSession')
+@patch('sagemaker.local.local_session.LocalSession')
 def test_create_endpoint(serve, request, LocalSession):
-    local_sagemaker_client = sagemaker.local_session.LocalSagemakerClient()
+    local_sagemaker_client = sagemaker.local.local_session.LocalSagemakerClient()
     local_sagemaker_client.variants = [{'InstanceType': 'ml.c4.99xlarge', 'InitialInstanceCount': 10}]
     local_sagemaker_client.primary_container = {'ModelDataUrl': '/some/model/path',
                                                 'Environment': {'env1': 1, 'env2': 'b'},
@@ -118,11 +118,11 @@ def test_create_endpoint(serve, request, LocalSession):
     assert local_sagemaker_client.created_endpoint
 
 
-@patch('sagemaker.image.SageMakerContainer.serve')
+@patch('sagemaker.local.image._SageMakerContainer.serve')
 @patch('urllib3.PoolManager.request', return_value=BAD_RESPONSE)
-@patch('sagemaker.local_session.LocalSession')
+@patch('sagemaker.local.local_session.LocalSession')
 def test_create_endpoint_fails(serve, request, LocalSession):
-    local_sagemaker_client = sagemaker.local_session.LocalSagemakerClient()
+    local_sagemaker_client = sagemaker.local.local_session.LocalSagemakerClient()
     local_sagemaker_client.variants = [{'InstanceType': 'ml.c4.99xlarge', 'InitialInstanceCount': 10}]
     local_sagemaker_client.primary_container = {'ModelDataUrl': '/some/model/path',
                                                 'Environment': {'env1': 1, 'env2': 'b'},

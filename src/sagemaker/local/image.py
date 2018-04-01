@@ -33,7 +33,7 @@ logger = logging.getLogger(__name__)
 logger.setLevel(logging.WARNING)
 
 
-class SageMakerContainer(object):
+class _SageMakerContainer(object):
     """Handle the lifecycle and configuration of a local docker container execution.
 
     This class is responsible for creating the directories and configuration files that
@@ -54,7 +54,7 @@ class SageMakerContainer(object):
             sagemaker_session (sagemaker.session.Session): a sagemaker session to use when interacting
                 with SageMaker.
         """
-        from sagemaker.local_session import LocalSession
+        from sagemaker.local.local_session import LocalSession
         self.sagemaker_session = sagemaker_session or LocalSession()
         self.instance_type = instance_type
         self.instance_count = instance_count
@@ -65,7 +65,7 @@ class SageMakerContainer(object):
         # set the local config. This is optional and will use reasonable defaults
         # if not present.
         self.local_config = None
-        if self.sagemaker_session.config and 'local'in self.sagemaker_session.config:
+        if self.sagemaker_session.config and 'local' in self.sagemaker_session.config:
             self.local_config = self.sagemaker_session.config['local']
 
     def train(self, input_data_config, hyperparameters):
@@ -76,11 +76,11 @@ class SageMakerContainer(object):
             hyperparameters (dict): The HyperParameters for the training job.
 
         Returns (str): Location of the trained model.
-
         """
         self.container_root = self._create_tmp_folder()
+        os.mkdir(os.path.join(self.container_root, 'output'))
 
-        data_dir = tempfile.mkdtemp()
+        data_dir = self._create_tmp_folder()
         bucket_name = self.sagemaker_session.default_bucket()
         volumes = []
 
@@ -99,7 +99,7 @@ class SageMakerContainer(object):
             if uri.lower().startswith("s3://"):
                 self._download_folder(bucket_name, key, channel_dir)
             else:
-                volumes.append(Volume(uri, channel=channel_name))
+                volumes.append(_Volume(uri, channel=channel_name))
 
         # Create the configuration files for each container that we will create
         # Each container will map the additional local volumes (if any).
@@ -110,8 +110,7 @@ class SageMakerContainer(object):
 
         compose_data = self._generate_compose_file('train', additional_volumes=volumes)
         compose_command = self._compose()
-        _stream_output(compose_command)
-        _cleanup()
+        _execute_and_stream_output(compose_command)
 
         s3_model_artifacts = self.retrieve_model_artifacts(compose_data)
 
@@ -122,6 +121,8 @@ class SageMakerContainer(object):
         # Also free the container config files.
         for host in self.hosts:
             shutil.rmtree(os.path.join(self.container_root, host))
+
+        self._cleanup()
         return s3_model_artifacts
 
     def serve(self, primary_container):
@@ -149,7 +150,7 @@ class SageMakerContainer(object):
 
         self._generate_compose_file('serve', additional_env_vars=env_vars)
         compose_command = self._compose()
-        self.container = Container(self.container_root, compose_command)
+        self.container = _HostingContainer(compose_command)
         self.container.up()
 
     def stop_serving(self):
@@ -159,6 +160,8 @@ class SageMakerContainer(object):
         """
         if self.container:
             self.container.down()
+            self._cleanup()
+        # for serving we can delete everything in the container root.
         shutil.rmtree(self.container_root)
 
     def retrieve_model_artifacts(self, compose_data):
@@ -231,9 +234,9 @@ class SageMakerContainer(object):
                     os.mkdir(os.path.join(target_path, dir))
 
     def _download_folder(self, bucket_name, prefix, target):
-        session = self.sagemaker_session.boto_session
+        boto_session = self.sagemaker_session.boto_session
 
-        s3 = session.resource('s3')
+        s3 = boto_session.resource('s3')
         bucket = s3.Bucket(bucket_name)
 
         for obj_sum in bucket.objects.filter(Prefix=prefix):
@@ -266,13 +269,13 @@ class SageMakerContainer(object):
         Returns: (dict) A dictionary representation of the configuration that was written.
 
         """
-        session = self.sagemaker_session.boto_session
+        boto_session = self.sagemaker_session.boto_session
         additional_env_vars = additional_env_vars or []
         additional_volumes = additional_volumes or {}
         environment = []
         optml_dirs = set()
 
-        aws_creds = _aws_credentials(session)
+        aws_creds = _aws_credentials(boto_session)
         if aws_creds is not None:
             environment.extend(aws_creds)
 
@@ -292,10 +295,10 @@ class SageMakerContainer(object):
             'services': services
         }
 
-        filename = os.path.join(self.container_root, DOCKER_COMPOSE_FILENAME)
+        docker_compose_path = os.path.join(self.container_root, DOCKER_COMPOSE_FILENAME)
         yaml_content = yaml.dump(content, default_flow_style=False)
         logger.info('docker compose file: \n{}'.format(yaml_content))
-        with open(filename, 'w') as f:
+        with open(docker_compose_path, 'w') as f:
             f.write(yaml_content)
 
         return content
@@ -347,7 +350,6 @@ class SageMakerContainer(object):
             root_dir = os.path.abspath(self.local_config['container_root'])
 
         dir = tempfile.mkdtemp(dir=root_dir)
-        os.mkdir(os.path.join(dir, 'output'))
 
         # Docker cannot mount Mac OS /var folder properly see
         # https://forums.docker.com/t/var-folders-isnt-mounted-properly/9600
@@ -355,7 +357,6 @@ class SageMakerContainer(object):
         if root_dir is None and platform.system() == 'Darwin':
             dir = '/private{}'.format(dir)
 
-        logger.error("Using: %s as root" % os.path.abspath(dir))
         return os.path.abspath(dir)
 
     def _build_optml_volumes(self, host, subdirs):
@@ -379,29 +380,37 @@ class SageMakerContainer(object):
         for subdir in subdirs:
             host_dir = os.path.join(self.container_root, host, subdir)
             container_dir = '/opt/ml/{}'.format(subdir)
-            volume = Volume(host_dir, container_dir)
+            volume = _Volume(host_dir, container_dir)
             volumes.append(volume)
 
         return volumes
 
+    def _cleanup(self):
+        docker_tags = _check_output('docker images -f dangling=true -q').split('\n')
+        if any(docker_tags):
+            docker_clean = 'docker rmi -f ' + ' '.join(docker_tags)
+            try:
+                _check_output(docker_clean)
+            except CalledProcessError:
+                logger.warning("Failed to cleanup remaining docker containers")
+        _check_output('docker network prune -f')
 
-class Container(object):
-    def __init__(self, tmpdir, command, startup_delay=5):
+
+class _HostingContainer(object):
+    def __init__(self, command, startup_delay=5):
         self.command = command
-        self.compose_file = os.path.join(tmpdir, DOCKER_COMPOSE_FILENAME)
         self.startup_delay = startup_delay
-        self._process = None
+        self.process = None
 
     def up(self):
-        self._process = Popen(self.command)
+        self.process = Popen(self.command)
         sleep(self.startup_delay)
 
     def down(self):
-        self._process.terminate()
-        _cleanup()
+        self.process.terminate()
 
 
-class Volume(object):
+class _Volume(object):
     """Represent a Volume that will be mapped to a container.
 
     """
@@ -424,23 +433,20 @@ class Volume(object):
 
         self.container_dir = container_dir if container_dir else os.path.join('/opt/ml/input/data', channel)
         self.host_dir = host_dir
-        if os.name == 'Darwin' and host_dir.startswith('/var'):
+        if platform.system() == 'Darwin' and host_dir.startswith('/var'):
             self.host_dir = os.path.join('/private', host_dir)
 
         self.map = '{}:{}'.format(self.host_dir, self.container_dir)
 
 
-def _cleanup():
-    docker_tags = _check_output('docker images -f dangling=true -q').split('\n')
-    docker_clean = 'docker rmi -f' + ' '.join(docker_tags)
-    try:
-        _check_output(docker_clean)
-    except CalledProcessError:
-        pass
-    _check_output('docker network prune -f')
+def _execute_and_stream_output(cmd):
+    """Execute a command and stream the output to stdout
 
+    Args:
+        cmd(str or List): either a string or a List (in Popen Format) with the command to execute.
 
-def _stream_output(cmd):
+    Returns (int): command exit code
+    """
     if isinstance(cmd, str):
         cmd = shlex.split(cmd)
     process = subprocess.Popen(cmd, stdout=subprocess.PIPE)

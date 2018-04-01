@@ -12,12 +12,13 @@
 # language governing permissions and limitations under the License.
 import datetime
 import logging
+import platform
 import time
 
 import urllib3
 from botocore.exceptions import ClientError
 
-from sagemaker.image import SageMakerContainer
+from sagemaker.local.image import _SageMakerContainer
 from sagemaker.session import Session
 
 logger = logging.getLogger(__name__)
@@ -51,8 +52,8 @@ class LocalSagemakerClient(object):
     def create_training_job(self, TrainingJobName, AlgorithmSpecification, RoleArn, InputDataConfig, OutputDataConfig,
                             ResourceConfig, StoppingCondition, HyperParameters, Tags=None):
 
-        self.train_container = SageMakerContainer(ResourceConfig['InstanceType'], ResourceConfig['InstanceCount'],
-                                                  AlgorithmSpecification['TrainingImage'], self.sagemaker_session)
+        self.train_container = _SageMakerContainer(ResourceConfig['InstanceType'], ResourceConfig['InstanceCount'],
+                                                   AlgorithmSpecification['TrainingImage'], self.sagemaker_session)
 
         self.s3_model_artifacts = self.train_container.train(InputDataConfig, HyperParameters)
 
@@ -94,8 +95,8 @@ class LocalSagemakerClient(object):
     def create_endpoint(self, EndpointName, EndpointConfigName):
         instance_type = self.variants[0]['InstanceType']
         instance_count = self.variants[0]['InitialInstanceCount']
-        self.serve_container = SageMakerContainer(instance_type, instance_count,
-                                                  self.primary_container['Image'], self.sagemaker_session)
+        self.serve_container = _SageMakerContainer(instance_type, instance_count,
+                                                   self.primary_container['Image'], self.sagemaker_session)
         self.serve_container.serve(self.primary_container)
         self.created_endpoint = True
 
@@ -144,7 +145,6 @@ class LocalSagemakerRuntimeClient(object):
 
     def invoke_endpoint(self, Body, EndpointName, ContentType, Accept):
         url = "http://localhost:%s/invocations" % self.serving_port
-        logger.error("invoking on: %s" % url)
         r = self.http.request('POST', url, body=Body, preload_content=False,
                               headers={'Content-type': ContentType, 'Accept': Accept})
 
@@ -156,5 +156,7 @@ class LocalSession(Session):
     def __init__(self, boto_session=None):
         super(LocalSession, self).__init__(boto_session)
 
+        if platform.system() == 'Windows':
+            logger.warning("Windows Support for Local Mode is Experimental")
         self.sagemaker_client = LocalSagemakerClient(self)
         self.sagemaker_runtime_client = LocalSagemakerRuntimeClient(self.config)

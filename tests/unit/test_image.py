@@ -18,7 +18,7 @@ import yaml
 from mock import patch, Mock
 
 import sagemaker
-from sagemaker.image import SageMakerContainer
+from sagemaker.local.image import _SageMakerContainer
 
 BUCKET_NAME = 'mybucket'
 EXPANDED_ROLE = 'arn:aws:iam::111111111111:role/ExpandedRole'
@@ -61,14 +61,14 @@ def sagemaker_session():
     return ims
 
 
-@patch('sagemaker.local_session.LocalSession')
+@patch('sagemaker.local.local_session.LocalSession')
 def test_write_config_file(LocalSession, tmpdir):
 
-    sagemaker_container = SageMakerContainer('local', 2, 'my-image')
+    sagemaker_container = _SageMakerContainer('local', 2, 'my-image')
     sagemaker_container.container_root = str(tmpdir.mkdir('container-root'))
     host = "algo-1"
 
-    sagemaker.image._create_config_file_directories(sagemaker_container.container_root, host)
+    sagemaker.local.image._create_config_file_directories(sagemaker_container.container_root, host)
 
     container_root = sagemaker_container.container_root
     config_file_root = os.path.join(container_root, host, 'input', 'config')
@@ -102,9 +102,9 @@ def test_write_config_file(LocalSession, tmpdir):
         assert channel['ChannelName'] in input_data_config_data
 
 
-@patch('sagemaker.local_session.LocalSession')
+@patch('sagemaker.local.local_session.LocalSession')
 def test_retrieve_artifacts(LocalSession, tmpdir):
-    sagemaker_container = SageMakerContainer('local', 2, 'my-image')
+    sagemaker_container = _SageMakerContainer('local', 2, 'my-image')
     sagemaker_container.container_root = str(tmpdir.mkdir('container-root'))
 
     volume1 = os.path.join(sagemaker_container.container_root, 'algo-1/output/')
@@ -153,45 +153,45 @@ def test_stream_output():
 
     # it should raise an exception if the command fails
     with pytest.raises(Exception):
-        sagemaker.image._stream_output(['ls', '/some/unknown/path'])
+        sagemaker.local.image._execute_and_stream_output(['ls', '/some/unknown/path'])
 
-    exit_code = sagemaker.image._stream_output(['echo', 'hello'])
+    exit_code = sagemaker.local.image._execute_and_stream_output(['echo', 'hello'])
     assert exit_code == 0
 
-    exit_code = sagemaker.image._stream_output('echo hello!!!')
+    exit_code = sagemaker.local.image._execute_and_stream_output('echo hello!!!')
     assert exit_code == 0
 
 
 def test_check_output():
 
     with pytest.raises(Exception):
-        sagemaker.image._check_output(['ls', '/some/unknown/path'])
+        sagemaker.local.image._check_output(['ls', '/some/unknown/path'])
 
     msg = 'hello!'
 
-    output = sagemaker.image._check_output(['echo', msg]).strip()
+    output = sagemaker.local.image._check_output(['echo', msg]).strip()
     assert output == msg
 
-    output = sagemaker.image._check_output("echo %s" % msg).strip()
+    output = sagemaker.local.image._check_output("echo %s" % msg).strip()
     assert output == msg
 
 
-@patch('sagemaker.local_session.LocalSession')
-@patch('sagemaker.image._stream_output')
-@patch('sagemaker.image._cleanup')
-def test_train(LocalSession, _stream_output, _cleanup, tmpdir, sagemaker_session):
+@patch('sagemaker.local.local_session.LocalSession')
+@patch('sagemaker.local.image._execute_and_stream_output')
+@patch('sagemaker.local.image._cleanup')
+def test_train(LocalSession, _execute_and_stream_output, _cleanup, tmpdir, sagemaker_session):
 
-    with patch('sagemaker.image.SageMakerContainer._create_tmp_folder',
+    with patch('sagemaker.local.image._SageMakerContainer._create_tmp_folder',
                return_value=str(tmpdir.mkdir('container-root'))):
 
         instance_count = 2
         image = 'my-image'
-        sagemaker_container = SageMakerContainer('local', instance_count, image, sagemaker_session=sagemaker_session)
+        sagemaker_container = _SageMakerContainer('local', instance_count, image, sagemaker_session=sagemaker_session)
         sagemaker_container.train(INPUT_DATA_CONFIG, HYPERPARAMETERS)
 
         docker_compose_file = os.path.join(sagemaker_container.container_root, 'docker-compose.yaml')
 
-        call_args = _stream_output.call_args[0][0]
+        call_args = _execute_and_stream_output.call_args[0][0]
         assert call_args is not None
 
         expected = ['docker-compose', '-f', docker_compose_file, 'up', '--build', '--abort-on-container-exit']
@@ -206,20 +206,20 @@ def test_train(LocalSession, _stream_output, _cleanup, tmpdir, sagemaker_session
                 assert config['services'][h]['command'] == 'train'
 
 
-@patch('sagemaker.image.Container.up')
+@patch('sagemaker.local.image._HostingContainer.up')
 @patch('shutil.copy')
 @patch('shutil.copytree')
 def test_serve(up, copy, copytree, tmpdir, sagemaker_session):
 
-    with patch('sagemaker.image.SageMakerContainer._create_tmp_folder',
+    with patch('sagemaker.local.image._SageMakerContainer._create_tmp_folder',
                return_value=str(tmpdir.mkdir('container-root'))):
 
         image = 'my-image'
-        sagemaker_container = SageMakerContainer('local', 1, image, sagemaker_session=sagemaker_session)
+        sagemaker_container = _SageMakerContainer('local', 1, image, sagemaker_session=sagemaker_session)
         primary_container = {'ModelDataUrl': '/some/model/path', 'Environment': {'env1': 1, 'env2': 'b'}}
 
         sagemaker_container.serve(primary_container)
-        docker_compose_file = sagemaker_container.container.compose_file
+        docker_compose_file = os.path.join(sagemaker_container.container_root, 'docker-compose.yaml')
 
         with open(docker_compose_file, 'r') as f:
             config = yaml.load(f)
