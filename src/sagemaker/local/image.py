@@ -20,7 +20,7 @@ import shutil
 import subprocess
 import sys
 import tempfile
-from subprocess import Popen, CalledProcessError
+from subprocess import Popen
 from six.moves.urllib.parse import urlparse
 from time import sleep
 
@@ -386,13 +386,6 @@ class _SageMakerContainer(object):
         return volumes
 
     def _cleanup(self):
-        docker_tags = _check_output('docker images -f dangling=true -q').split('\n')
-        if any(docker_tags):
-            docker_clean = 'docker rmi -f ' + ' '.join(docker_tags)
-            try:
-                _check_output(docker_clean)
-            except CalledProcessError:
-                logger.warning("Failed to cleanup remaining docker containers")
         _check_output('docker network prune -f')
 
 

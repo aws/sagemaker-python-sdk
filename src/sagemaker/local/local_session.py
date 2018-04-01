@@ -55,6 +55,12 @@ class LocalSagemakerClient(object):
         self.train_container = _SageMakerContainer(ResourceConfig['InstanceType'], ResourceConfig['InstanceCount'],
                                                    AlgorithmSpecification['TrainingImage'], self.sagemaker_session)
 
+        for channel in InputDataConfig:
+            data_distribution = channel['DataSource']['S3DataSource']['S3DataDistributionType']
+            if data_distribution != 'FullyReplicated':
+                raise RuntimeError("DataDistribution: %s is not currently supported in Local Mode" %
+                                   data_distribution)
+
         self.s3_model_artifacts = self.train_container.train(InputDataConfig, HyperParameters)
 
     def describe_training_job(self, TrainingJobName):
