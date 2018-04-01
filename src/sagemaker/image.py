@@ -20,7 +20,7 @@ import shutil
 import subprocess
 import sys
 import tempfile
-from subprocess import Popen, STDOUT, CalledProcessError
+from subprocess import Popen, CalledProcessError
 from six.moves.urllib.parse import urlparse
 from time import sleep
 
