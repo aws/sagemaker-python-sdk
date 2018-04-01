@@ -2,7 +2,7 @@
 CHANGELOG
 =========
 
-1.1.4
+1.2.0
 ========
 
 * feature: Estimators: add support for TensorFlow 1.6.0
