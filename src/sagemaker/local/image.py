@@ -120,9 +120,16 @@ class _SageMakerContainer(object):
         shutil.rmtree(data_dir)
         # Also free the container config files.
         for host in self.hosts:
-            shutil.rmtree(os.path.join(self.container_root, host))
+            container_config_path = os.path.join(self.container_root, host)
+            try:
+                shutil.rmtree(container_config_path)
+            except OSError:
+                logger.warning("Failed to delete: %s Please remove it manually." % container_config_path)
 
         self._cleanup()
+        # Print our Job Complete line to have a simmilar experience to training on SageMaker where you
+        # see this line at the end.
+        print('===== Job Complete =====')
         return s3_model_artifacts
 
     def serve(self, primary_container):
@@ -162,7 +169,10 @@ class _SageMakerContainer(object):
             self.container.down()
             self._cleanup()
         # for serving we can delete everything in the container root.
-        shutil.rmtree(self.container_root)
+        try:
+            shutil.rmtree(self.container_root)
+        except OSError:
+            logger.warning("Failed to delete: %s Please remove it manually." % self.container_root)
 
     def retrieve_model_artifacts(self, compose_data):
         """Get the model artifacts from all the container nodes.
@@ -185,9 +195,9 @@ class _SageMakerContainer(object):
             volumes = compose_data['services'][str(host)]['volumes']
 
             for volume in volumes:
-                container_dir, host_dir = volume.split(':')
-                if host_dir == '/opt/ml/model':
-                    self._recursive_copy(container_dir, s3_model_artifacts)
+                host_dir, container_dir = volume.split(':')
+                if container_dir == '/opt/ml/model':
+                    self._recursive_copy(host_dir, s3_model_artifacts)
 
         return s3_model_artifacts
 
@@ -304,7 +314,7 @@ class _SageMakerContainer(object):
         return content
 
     def _compose(self, detached=False):
-        compose_cmd = 'nvidia-docker-compose' if self.instance_type == "local_gpu" else 'docker-compose'
+        compose_cmd = 'docker-compose'
 
         command = [
             compose_cmd,
