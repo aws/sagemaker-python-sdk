@@ -61,7 +61,8 @@ def test_create_training_job(train, LocalSession):
     assert response['ModelArtifacts']['S3ModelArtifacts'] == expected['ModelArtifacts']['S3ModelArtifacts']
 
 
-def test_create_model():
+@patch('sagemaker.local_session.LocalSession')
+def test_create_model(LocalSession):
     local_sagemaker_client = sagemaker.local_session.LocalSagemakerClient()
     model_name = "my-model"
     primary_container = {'ModelDataUrl': '/some/model/path', 'Environment': {'env1': 1, 'env2': 'b'}}
@@ -74,7 +75,8 @@ def test_create_model():
     assert local_sagemaker_client.role_arn == execution_role_arn
 
 
-def test_describe_endpoint_config():
+@patch('sagemaker.local_session.LocalSession')
+def test_describe_endpoint_config(LocalSession):
     local_sagemaker_client = sagemaker.local_session.LocalSagemakerClient()
 
     # No Endpoint Config Created
@@ -85,7 +87,8 @@ def test_describe_endpoint_config():
     assert local_sagemaker_client.describe_endpoint_config('my-endpoint-config')
 
 
-def test_create_endpoint_config():
+@patch('sagemaker.local_session.LocalSession')
+def test_create_endpoint_config(LocalSession):
     local_sagemaker_client = sagemaker.local_session.LocalSagemakerClient()
     production_variants = [{'InstanceType': 'ml.c4.99xlarge', 'InitialInstanceCount': 10}]
     local_sagemaker_client.create_endpoint_config('my-endpoint-config', production_variants)
@@ -93,7 +96,8 @@ def test_create_endpoint_config():
     assert local_sagemaker_client.variants == production_variants
 
 
-def test_describe_endpoint():
+@patch('sagemaker.local_session.LocalSession')
+def test_describe_endpoint(LocalSession):
     local_sagemaker_client = sagemaker.local_session.LocalSagemakerClient()
     response = local_sagemaker_client.describe_endpoint('my-endpoint')
     assert 'EndpointStatus' in response
