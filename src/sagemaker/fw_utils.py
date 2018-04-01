@@ -45,19 +45,23 @@ def create_image_uri(region, framework, instance_type, framework_version, py_ver
         str: The appropriate image URI based on the given parameters.
     """
 
-    if not instance_type.startswith('ml.'):
+    # Handle Local Mode
+    if instance_type.startswith('local'):
+        device_type = 'cpu' if instance_type == 'local' else 'gpu'
+    elif not instance_type.startswith('ml.'):
         raise ValueError('{} is not a valid SageMaker instance type. See: '
                          'https://aws.amazon.com/sagemaker/pricing/instance-types/'.format(instance_type))
-    family = instance_type.split('.')[1]
-
-    # For some frameworks, we have optimized images for specific families, e.g c5 or p3. In those cases,
-    # we use the family name in the image tag. In other cases, we use 'cpu' or 'gpu'.
-    if family in optimized_families:
-        device_type = family
-    elif family[0] in ['g', 'p']:
-        device_type = 'gpu'
     else:
-        device_type = 'cpu'
+        family = instance_type.split('.')[1]
+
+        # For some frameworks, we have optimized images for specific families, e.g c5 or p3. In those cases,
+        # we use the family name in the image tag. In other cases, we use 'cpu' or 'gpu'.
+        if family in optimized_families:
+            device_type = family
+        elif family[0] in ['g', 'p']:
+            device_type = 'gpu'
+        else:
+            device_type = 'cpu'
 
     tag = "{}-{}-{}".format(framework_version, device_type, py_version)
     return "{}.dkr.ecr.{}.amazonaws.com/sagemaker-{}:{}" \

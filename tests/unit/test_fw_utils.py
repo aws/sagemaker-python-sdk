@@ -40,9 +40,15 @@ def test_create_image_uri_cpu():
     image_uri = create_image_uri('mars-south-3', 'mlfw', 'ml.c4.large', '1.0rc', 'py2', '23')
     assert image_uri == '23.dkr.ecr.mars-south-3.amazonaws.com/sagemaker-mlfw:1.0rc-cpu-py2'
 
+    image_uri = create_image_uri('mars-south-3', 'mlfw', 'local', '1.0rc', 'py2', '23')
+    assert image_uri == '23.dkr.ecr.mars-south-3.amazonaws.com/sagemaker-mlfw:1.0rc-cpu-py2'
+
 
 def test_create_image_uri_gpu():
     image_uri = create_image_uri('mars-south-3', 'mlfw', 'ml.p3.2xlarge', '1.0rc', 'py3', '23')
+    assert image_uri == '23.dkr.ecr.mars-south-3.amazonaws.com/sagemaker-mlfw:1.0rc-gpu-py3'
+
+    image_uri = create_image_uri('mars-south-3', 'mlfw', 'local_gpu', '1.0rc', 'py3', '23')
     assert image_uri == '23.dkr.ecr.mars-south-3.amazonaws.com/sagemaker-mlfw:1.0rc-gpu-py3'
 
 

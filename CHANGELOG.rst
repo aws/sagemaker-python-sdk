@@ -5,6 +5,7 @@ CHANGELOG
 1.1.dev4
 ========
 * feature: Frameworks: Use more idiomatic ECR repository naming scheme
+* feature: Add Support for Local Mode
 
 1.1.3
 ========
