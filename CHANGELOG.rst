@@ -2,6 +2,11 @@
 CHANGELOG
 =========
 
+1.2.dev1
+========
+
+* bug-fix: AmazonEstimators: fix valid range of hyper-parameter 'loss' in linear learner
+
 1.2.0
 ========
 

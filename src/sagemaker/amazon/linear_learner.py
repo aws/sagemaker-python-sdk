@@ -44,13 +44,14 @@ class LinearLearner(AmazonAlgorithmEstimatorBase):
     init_sigma = hp('init_sigma', gt(0), 'A float greater-than 0', float)
     init_bias = hp('init_bias', (), 'A number', float)
     optimizer = hp('optimizer', isin('sgd', 'adam', 'auto'), 'One of "sgd", "adam" or "auto', str)
-    loss = hp('loss', isin('logistic', 'squared_loss', 'absolute_loss', 'auto'),
+    loss = hp('loss', isin('logistic', 'squared_loss', 'absolute_loss', 'hinge_loss', 'eps_insensitive_squared_loss',
+                           'eps_insensitive_absolute_loss', 'quantile_loss', 'huber_loss', 'auto'),
               '"logistic", "squared_loss", "absolute_loss", "hinge_loss", "eps_insensitive_squared_loss", '
               '"eps_insensitive_absolute_loss", "quantile_loss", "huber_loss" or "auto"', str)
     wd = hp('wd', ge(0), 'A float greater-than or equal to 0', float)
     l1 = hp('l1', ge(0), 'A float greater-than or equal to 0', float)
     momentum = hp('momentum', (ge(0), lt(1)), 'A float in [0,1)', float)
-    learning_rate = hp('learning_rate', gt(0), 'A float greater-than or equal to 0', float)
+    learning_rate = hp('learning_rate', gt(0), 'A float greater-than 0', float)
     beta_1 = hp('beta_1', (ge(0), lt(1)), 'A float in [0,1)', float)
     beta_2 = hp('beta_2', (ge(0), lt(1)), 'A float in [0,1)', float)
     bias_lr_mult = hp('bias_lr_mult', gt(0), 'A float greater-than 0', float)
