@@ -166,3 +166,8 @@ class LocalSession(Session):
             logger.warning("Windows Support for Local Mode is Experimental")
         self.sagemaker_client = LocalSagemakerClient(self)
         self.sagemaker_runtime_client = LocalSagemakerRuntimeClient(self.config)
+
+    def logs_for_job(self, job_name, wait=False, poll=5):
+        # override logs_for_job() as it doesn't need to perform any action
+        # on local mode.
+        pass
