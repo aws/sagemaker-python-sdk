@@ -2,6 +2,10 @@
 CHANGELOG
 =========
 
+1.2.1
+========
+* bug-fix: Change Local Mode to use the default docker bridge
+
 1.2.0
 ========
 
