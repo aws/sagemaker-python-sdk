@@ -488,7 +488,10 @@ def _delete_tree(path):
     try:
         shutil.rmtree(path)
     except OSError as exc:
-        # handle permission denied gracefully. Any other error we will raise the exception up.
+        # on Linux, when docker writes to any mounted volume, it uses the container's user. In most cases
+        # this is root. When the container exits and we try to delete them we can't because root owns those
+        # files. We expect this to happen, so we handle EACCESS. Any other error we will raise the
+        # exception up.
         if exc.errno == errno.EACCES:
             logger.warning("Failed to delete: %s Please remove it manually." % path)
         else:
