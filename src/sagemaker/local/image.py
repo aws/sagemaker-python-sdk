@@ -15,8 +15,10 @@ import json
 import logging
 import os
 import platform
+import random
 import shlex
 import shutil
+import string
 import subprocess
 import sys
 import tempfile
@@ -59,7 +61,10 @@ class _SageMakerContainer(object):
         self.instance_type = instance_type
         self.instance_count = instance_count
         self.image = image
-        self.hosts = ['{}-{}'.format(CONTAINER_PREFIX, i) for i in range(1, self.instance_count + 1)]
+        # Since we are using a single docker network, Generate a random suffix to attach to the container names.
+        #  This way multiple jobs can run in parallel.
+        suffix = ''.join(random.choice(string.ascii_uppercase + string.digits) for _ in range(5))
+        self.hosts = ['{}-{}-{}'.format(CONTAINER_PREFIX, i, suffix) for i in range(1, self.instance_count + 1)]
         self.container_root = None
         self.container = None
         # set the local config. This is optional and will use reasonable defaults
@@ -296,7 +301,11 @@ class _SageMakerContainer(object):
         content = {
             # Some legacy hosts only support the 2.1 format.
             'version': '2.1',
-            'services': services
+            'services': services,
+            'networks': {
+                'sagemaker-local': {'name' : 'sagemaker-local'}
+            }
+
         }
 
         docker_compose_path = os.path.join(self.container_root, DOCKER_COMPOSE_FILENAME)
@@ -336,7 +345,11 @@ class _SageMakerContainer(object):
             'volumes': [v.map for v in optml_volumes],
             'environment': environment,
             'command': command,
-            'network_mode': 'bridge'
+            'networks': {
+                'sagemaker-local': {
+                    'aliases': [host]
+                }
+            }
         }
 
         serving_port = 8080 if self.local_config is None else self.local_config.get('serving_port', 8080)
@@ -391,7 +404,8 @@ class _SageMakerContainer(object):
         return volumes
 
     def _cleanup(self):
-        _check_output('docker network prune -f')
+        # we don't need to cleanup anything at the moment
+        pass
 
 
 class _HostingContainer(object):

@@ -4,7 +4,7 @@ CHANGELOG
 
 1.2.1
 ========
-* bug-fix: Change Local Mode to use the default docker bridge
+* bug-fix: Change Local Mode to use a sagemaker-local docker network
 
 1.2.0
 ========
