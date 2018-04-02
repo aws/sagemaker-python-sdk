@@ -117,12 +117,16 @@ class _SageMakerContainer(object):
         # free up the training data directory as it may contain
         # lots of data downloaded from S3. This doesn't delete any local
         # data that was just mounted to the container.
-        shutil.rmtree(data_dir)
+        _delete_tree(data_dir)
         # Also free the container config files.
         for host in self.hosts:
-            shutil.rmtree(os.path.join(self.container_root, host))
+            container_config_path = os.path.join(self.container_root, host)
+            _delete_tree(container_config_path)
 
         self._cleanup()
+        # Print our Job Complete line to have a simmilar experience to training on SageMaker where you
+        # see this line at the end.
+        print('===== Job Complete =====')
         return s3_model_artifacts
 
     def serve(self, primary_container):
@@ -162,7 +166,7 @@ class _SageMakerContainer(object):
             self.container.down()
             self._cleanup()
         # for serving we can delete everything in the container root.
-        shutil.rmtree(self.container_root)
+        _delete_tree(self.container_root)
 
     def retrieve_model_artifacts(self, compose_data):
         """Get the model artifacts from all the container nodes.
@@ -185,9 +189,9 @@ class _SageMakerContainer(object):
             volumes = compose_data['services'][str(host)]['volumes']
 
             for volume in volumes:
-                container_dir, host_dir = volume.split(':')
-                if host_dir == '/opt/ml/model':
-                    self._recursive_copy(container_dir, s3_model_artifacts)
+                host_dir, container_dir = volume.split(':')
+                if container_dir == '/opt/ml/model':
+                    self._recursive_copy(host_dir, s3_model_artifacts)
 
         return s3_model_artifacts
 
@@ -304,7 +308,7 @@ class _SageMakerContainer(object):
         return content
 
     def _compose(self, detached=False):
-        compose_cmd = 'nvidia-docker-compose' if self.instance_type == "local_gpu" else 'docker-compose'
+        compose_cmd = 'docker-compose'
 
         command = [
             compose_cmd,
@@ -478,6 +482,21 @@ def _check_output(cmd, *popenargs, **kwargs):
 def _create_config_file_directories(root, host):
     for d in ['input', 'input/config', 'output', 'model']:
         os.makedirs(os.path.join(root, host, d))
+
+
+def _delete_tree(path):
+    try:
+        shutil.rmtree(path)
+    except OSError as exc:
+        # on Linux, when docker writes to any mounted volume, it uses the container's user. In most cases
+        # this is root. When the container exits and we try to delete them we can't because root owns those
+        # files. We expect this to happen, so we handle EACCESS. Any other error we will raise the
+        # exception up.
+        if exc.errno == errno.EACCES:
+            logger.warning("Failed to delete: %s Please remove it manually." % path)
+        else:
+            logger.error("Failed to delete: %s" % path)
+            raise
 
 
 def _aws_credentials(session):
