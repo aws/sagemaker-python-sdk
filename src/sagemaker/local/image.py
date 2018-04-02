@@ -335,7 +335,8 @@ class _SageMakerContainer(object):
             'tty': True,
             'volumes': [v.map for v in optml_volumes],
             'environment': environment,
-            'command': command
+            'command': command,
+            'network_mode': 'bridge'
         }
 
         serving_port = 8080 if self.local_config is None else self.local_config.get('serving_port', 8080)
