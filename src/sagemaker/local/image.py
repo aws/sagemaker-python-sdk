@@ -117,14 +117,11 @@ class _SageMakerContainer(object):
         # free up the training data directory as it may contain
         # lots of data downloaded from S3. This doesn't delete any local
         # data that was just mounted to the container.
-        shutil.rmtree(data_dir)
+        _delete_tree(data_dir)
         # Also free the container config files.
         for host in self.hosts:
             container_config_path = os.path.join(self.container_root, host)
-            try:
-                shutil.rmtree(container_config_path)
-            except OSError:
-                logger.warning("Failed to delete: %s Please remove it manually." % container_config_path)
+            _delete_tree(container_config_path)
 
         self._cleanup()
         # Print our Job Complete line to have a simmilar experience to training on SageMaker where you
@@ -169,10 +166,7 @@ class _SageMakerContainer(object):
             self.container.down()
             self._cleanup()
         # for serving we can delete everything in the container root.
-        try:
-            shutil.rmtree(self.container_root)
-        except OSError:
-            logger.warning("Failed to delete: %s Please remove it manually." % self.container_root)
+        _delete_tree(self.container_root)
 
     def retrieve_model_artifacts(self, compose_data):
         """Get the model artifacts from all the container nodes.
@@ -488,6 +482,18 @@ def _check_output(cmd, *popenargs, **kwargs):
 def _create_config_file_directories(root, host):
     for d in ['input', 'input/config', 'output', 'model']:
         os.makedirs(os.path.join(root, host, d))
+
+
+def _delete_tree(path):
+    try:
+        shutil.rmtree(path)
+    except OSError as exc:
+        # handle permission denied gracefully. Any other error we will raise the exception up.
+        if exc.errno == errno.EACCES:
+            logger.warning("Failed to delete: %s Please remove it manually." % path)
+        else:
+            logger.error("Failed to delete: %s" % path)
+            raise
 
 
 def _aws_credentials(session):
