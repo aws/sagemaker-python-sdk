@@ -55,14 +55,12 @@ def test_tf(sagemaker_session, tf_full_version):
         assert dict_result == list_result
 
 
-def test_tf_async(sagemaker_session, tf_full_version):
-    training_job_name = ""
+def test_tf_async(sagemaker_session):
     with timeout(minutes=5):
         script_path = os.path.join(DATA_DIR, 'iris', 'iris-dnn-classifier.py')
 
         estimator = TensorFlow(entry_point=script_path,
                                role='SageMakerRole',
-                               framework_version=tf_full_version,
                                training_steps=1,
                                evaluation_steps=1,
                                hyperparameters={'input_tensor_name': 'inputs'},

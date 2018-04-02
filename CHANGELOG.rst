@@ -2,10 +2,13 @@
 CHANGELOG
 =========
 
-1.1.dev4
+1.2.0
 ========
-* feature: Frameworks: Use more idiomatic ECR repository naming scheme
+
 * feature: Add Support for Local Mode
+* feature: Estimators: add support for TensorFlow 1.6.0
+* feature: Estimators: add support for MXNet 1.1.0
+* feature: Frameworks: Use more idiomatic ECR repository naming scheme
 
 1.1.3
 ========
