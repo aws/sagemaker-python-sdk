@@ -10,6 +10,7 @@
 # distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
+import base64
 import errno
 import json
 import logging
@@ -115,6 +116,8 @@ class _SageMakerContainer(object):
 
         compose_data = self._generate_compose_file('train', additional_volumes=volumes)
         compose_command = self._compose()
+
+        _ecr_login_if_needed(self.sagemaker_session.boto_session, self.image)
         _execute_and_stream_output(compose_command)
 
         s3_model_artifacts = self.retrieve_model_artifacts(compose_data)
@@ -156,6 +159,8 @@ class _SageMakerContainer(object):
                 shutil.copytree(model_dir, os.path.join(self.container_root, h, 'model'))
 
         env_vars = ['{}={}'.format(k, v) for k, v in primary_container['Environment'].items()]
+
+        _ecr_login_if_needed(self.sagemaker_session.boto_session, self.image)
 
         self._generate_compose_file('serve', additional_env_vars=env_vars)
         compose_command = self._compose()
@@ -303,7 +308,7 @@ class _SageMakerContainer(object):
             'version': '2.1',
             'services': services,
             'networks': {
-                'sagemaker-local': {'name' : 'sagemaker-local'}
+                'sagemaker-local': {'name': 'sagemaker-local'}
             }
 
         }
@@ -540,3 +545,24 @@ def _aws_credentials(session):
 def _write_json_file(filename, content):
     with open(filename, 'w') as f:
         json.dump(content, f)
+
+
+def _ecr_login_if_needed(boto_session, image):
+    # Only ECR images need login
+    if not ('dkr.ecr' in image and 'amazonaws.com' in image):
+        return
+
+    # do we have the image?
+    if _check_output('docker images -q %s' % image).strip():
+        return
+
+    ecr = boto_session.client('ecr')
+    auth = ecr.get_authorization_token(registryIds=[image.split('.')[0]])
+    authorization_data = auth['authorizationData'][0]
+
+    raw_token = base64.b64decode(authorization_data['authorizationToken'])
+    token = raw_token.decode('utf-8').strip('AWS:')
+    ecr_url = auth['authorizationData'][0]['proxyEndpoint']
+
+    cmd = "docker login -u AWS -p %s %s" % (token, ecr_url)
+    subprocess.check_output(cmd, shell=True)
