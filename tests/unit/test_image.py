@@ -10,6 +10,7 @@
 # distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
+import base64
 import json
 import os
 
@@ -105,6 +106,7 @@ def test_write_config_file(LocalSession, tmpdir):
 @patch('sagemaker.local.local_session.LocalSession')
 def test_retrieve_artifacts(LocalSession, tmpdir):
     sagemaker_container = _SageMakerContainer('local', 2, 'my-image')
+    sagemaker_container.hosts = ['algo-1', 'algo-2']  # avoid any randomness
     sagemaker_container.container_root = str(tmpdir.mkdir('container-root'))
 
     volume1 = os.path.join(sagemaker_container.container_root, 'algo-1/output/')
@@ -227,3 +229,53 @@ def test_serve(up, copy, copytree, tmpdir, sagemaker_session):
             for h in sagemaker_container.hosts:
                 assert config['services'][h]['image'] == image
                 assert config['services'][h]['command'] == 'serve'
+
+
+def test_ecr_login_non_ecr():
+    session_mock = Mock()
+    sagemaker.local.image._ecr_login_if_needed(session_mock, 'ubuntu')
+
+    session_mock.assert_not_called()
+
+
+@patch('sagemaker.local.image._check_output', return_value='123451324')
+def test_ecr_login_image_exists(_check_output):
+    session_mock = Mock()
+
+    image = '520713654638.dkr.ecr.us-east-1.amazonaws.com/image-i-have:1.0'
+    sagemaker.local.image._ecr_login_if_needed(session_mock, image)
+
+    session_mock.assert_not_called()
+    _check_output.assert_called()
+
+
+@patch('subprocess.check_output', return_value=''.encode('utf-8'))
+def test_ecr_login_needed(check_output):
+    session_mock = Mock()
+
+    token = 'very-secure-token'
+    token_response = 'AWS:%s' % token
+    b64_token = base64.b64encode(token_response.encode('utf-8'))
+    response = {
+        u'authorizationData':
+            [
+                {
+                    u'authorizationToken': b64_token,
+                    u'proxyEndpoint': u'https://520713654638.dkr.ecr.us-east-1.amazonaws.com'
+                }
+            ],
+        'ResponseMetadata':
+            {
+                'RetryAttempts': 0,
+                'HTTPStatusCode': 200,
+                'RequestId': '25b2ac63-36bf-11e8-ab6a-e5dc597d2ad9',
+            }
+    }
+    session_mock.client('ecr').get_authorization_token.return_value = response
+    image = '520713654638.dkr.ecr.us-east-1.amazonaws.com/image-i-need:1.1'
+    sagemaker.local.image._ecr_login_if_needed(session_mock, image)
+
+    expected_command = 'docker login -u AWS -p %s https://520713654638.dkr.ecr.us-east-1.amazonaws.com' % token
+
+    check_output.assert_called_with(expected_command, shell=True)
+    session_mock.client('ecr').get_authorization_token.assert_called_with(registryIds=['520713654638'])
