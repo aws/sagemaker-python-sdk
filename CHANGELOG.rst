@@ -2,10 +2,15 @@
 CHANGELOG
 =========
 
-1.2.dev1
-========
+1.2.2
+=====
 
 * bug-fix: Estimators: fix valid range of hyper-parameter 'loss' in linear learner
+
+1.2.1
+=====
+
+* bug-fix: Change Local Mode to use a sagemaker-local docker network
 
 1.2.0
 =====
