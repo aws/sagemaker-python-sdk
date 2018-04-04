@@ -1152,15 +1152,23 @@ These hyperparameters are used by TensorFlow to fine tune the training.
 You need to add them inside the hyperparameters dictionary in the
 ``TensorFlow`` estimator constructor.
 
+**All versions**
+
 -  ``save_summary_steps (int)`` Save summaries every this many steps.
 -  ``save_checkpoints_secs (int)`` Save checkpoints every this many seconds. Can not be specified with ``save_checkpoints_steps``.
 -  ``save_checkpoints_steps (int)`` Save checkpoints every this many steps. Can not be specified with ``save_checkpoints_secs``.
 -  ``keep_checkpoint_max (int)`` The maximum number of recent checkpoint files to keep. As new files are created, older files are deleted. If None or 0, all checkpoint files are kept. Defaults to 5 (that is, the 5 most recent checkpoint files are kept.)
 -  ``keep_checkpoint_every_n_hours (int)`` Number of hours between each checkpoint to be saved. The default value of 10,000 hours effectively disables the feature.
 -  ``log_step_count_steps (int)`` The frequency, in number of global steps, that the global step/sec will be logged during training.
+
+**TensorFlow 1.6 and up**
+
+- ``start_delay_secs (int)`` See docs for this parameter in `tf.estimator.EvalSpec <https://www.tensorflow.org/api_docs/python/tf/estimator/EvalSpec>`_.
+- ``throttle_secs (int)`` See docs for this parameter in `tf.estimator.EvalSpec <https://www.tensorflow.org/api_docs/python/tf/estimator/EvalSpec>`_.
+
+**TensorFlow 1.4 and 1.5**
+
 -  ``eval_metrics (dict)`` ``dict`` of string, metric function. If `None`, default set is used. This should be ``None`` if the ``estimator`` is `tf.estimator.Estimator <https://www.tensorflow.org/api_docs/python/tf/estimator/Estimator>`_. If metrics are provided they will be *appended* to the default set.
--  ``train_monitors (list)`` A list of monitors to pass during training.
--  ``eval_hooks (list)`` A list of `SessionRunHook` hooks to pass during evaluation.
 -  ``eval_delay_secs (int)`` Start evaluating after waiting for this many seconds.
 -  ``continuous_eval_throttle_secs (int)`` Do not re-evaluate unless the last evaluation was started at least this many seconds ago.
 -  ``min_eval_frequency (int)`` The minimum number of steps between evaluations. Of course, evaluation does not occur if no new snapshot is available, hence, this is the minimum. If 0, the evaluation will only happen after training. If None, defaults to 1000.
