@@ -22,22 +22,22 @@ MNIST_SCRIPT = os.path.join(MNIST_DIR, 'mnist.py')
 
 
 @pytest.fixture(scope='module', name='pytorch_training_job')
-def fixture_training_job(sagemaker_session, pytorch_full_version):
+def fixture_training_job(sagemaker_session, pytorch_full_version, instance_type):
     with timeout(minutes=15):
         pytorch = PyTorch(entry_point=MNIST_SCRIPT, role='SageMakerRole', framework_version=pytorch_full_version,
-                          train_instance_count=1, train_instance_type='ml.c4.xlarge',
+                          train_instance_count=1, train_instance_type=instance_type,
                           sagemaker_session=sagemaker_session)
 
         pytorch.fit({'training': _upload_training_data(pytorch)})
         return pytorch.latest_training_job.name
 
 
-def test_sync_fit(sagemaker_session, pytorch_full_version):
+def test_sync_fit(sagemaker_session, pytorch_full_version, instance_type):
     training_job_name = ""
 
     with timeout(minutes=15):
         pytorch = PyTorch(entry_point=MNIST_SCRIPT, role='SageMakerRole', framework_version=pytorch_full_version,
-                          train_instance_count=1, train_instance_type='ml.c4.xlarge',
+                          train_instance_count=1, train_instance_type=instance_type,
                           sagemaker_session=sagemaker_session)
 
         pytorch.fit({'training': _upload_training_data(pytorch)})
@@ -47,12 +47,12 @@ def test_sync_fit(sagemaker_session, pytorch_full_version):
         PyTorch.attach(training_job_name, sagemaker_session=sagemaker_session)
 
 
-def test_async_fit(sagemaker_session, pytorch_full_version):
+def test_async_fit(sagemaker_session, pytorch_full_version, instance_type):
     training_job_name = ""
 
     with timeout(minutes=10):
         pytorch = PyTorch(entry_point=MNIST_SCRIPT, role='SageMakerRole', framework_version=pytorch_full_version,
-                          train_instance_count=1, train_instance_type='ml.c4.xlarge',
+                          train_instance_count=1, train_instance_type=instance_type,
                           sagemaker_session=sagemaker_session)
 
         pytorch.fit({'training': _upload_training_data(pytorch)}, wait=False)
@@ -66,12 +66,12 @@ def test_async_fit(sagemaker_session, pytorch_full_version):
         PyTorch.attach(training_job_name=training_job_name, sagemaker_session=sagemaker_session)
 
 
-def test_failed_training_job(sagemaker_session, pytorch_full_version):
+def test_failed_training_job(sagemaker_session, pytorch_full_version, instance_type):
     script_path = os.path.join(MNIST_DIR, 'failure_script.py')
 
     with timeout(minutes=15):
         pytorch = PyTorch(entry_point=script_path, role='SageMakerRole', framework_version=pytorch_full_version,
-                          train_instance_count=1, train_instance_type='ml.c4.xlarge',
+                          train_instance_count=1, train_instance_type=instance_type,
                           sagemaker_session=sagemaker_session)
 
         with pytest.raises(ValueError) as e:
