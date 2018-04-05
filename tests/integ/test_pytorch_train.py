@@ -14,9 +14,8 @@ import os
 import time
 import pytest
 from sagemaker.pytorch.estimator import PyTorch
-from sagemaker.utils import sagemaker_timestamp
 from tests.integ import DATA_DIR
-from tests.integ.timeout import timeout, timeout_and_delete_endpoint_by_name
+from tests.integ.timeout import timeout
 
 MNIST_DIR = os.path.join(DATA_DIR, 'pytorch_mnist')
 MNIST_SCRIPT = os.path.join(MNIST_DIR, 'mnist.py')
@@ -33,16 +32,23 @@ def fixture_training_job(sagemaker_session, pytorch_full_version):
         return pytorch.latest_training_job.name
 
 
-def test_attach_deploy(pytorch_training_job, sagemaker_session):
-    endpoint_name = 'test-pytorch-attach-deploy-{}'.format(sagemaker_timestamp())
+def test_sync_fit(sagemaker_session, pytorch_full_version):
+    training_job_name = ""
 
-    with timeout_and_delete_endpoint_by_name(endpoint_name, sagemaker_session, minutes=20):
-        PyTorch.attach(pytorch_training_job, sagemaker_session=sagemaker_session)
+    with timeout(minutes=15):
+        pytorch = PyTorch(entry_point=MNIST_SCRIPT, role='SageMakerRole', framework_version=pytorch_full_version,
+                          train_instance_count=1, train_instance_type='ml.c4.xlarge',
+                          sagemaker_session=sagemaker_session)
+
+        pytorch.fit({'training': _upload_training_data(pytorch)})
+        training_job_name =  pytorch.latest_training_job.name
+
+    with timeout(minutes=20):
+        PyTorch.attach(training_job_name, sagemaker_session=sagemaker_session)
 
 
 def test_async_fit(sagemaker_session, pytorch_full_version):
     training_job_name = ""
-    endpoint_name = 'test-pytorch-attach-deploy-{}'.format(sagemaker_timestamp())
 
     with timeout(minutes=10):
         pytorch = PyTorch(entry_point=MNIST_SCRIPT, role='SageMakerRole', framework_version=pytorch_full_version,
@@ -55,7 +61,7 @@ def test_async_fit(sagemaker_session, pytorch_full_version):
         print("Waiting to re-attach to the training job: %s" % training_job_name)
         time.sleep(20)
 
-    with timeout_and_delete_endpoint_by_name(endpoint_name, sagemaker_session, minutes=35):
+    with timeout(minutes=35):
         print("Re-attaching now to: %s" % training_job_name)
         PyTorch.attach(training_job_name=training_job_name, sagemaker_session=sagemaker_session)
 
