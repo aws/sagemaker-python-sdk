@@ -31,7 +31,7 @@ class PickleSerializer(object):
 
 
 def test_cifar(sagemaker_session, tf_full_version):
-    with timeout(minutes=15):
+    with timeout(minutes=20):
         script_path = os.path.join(DATA_DIR, 'cifar_10', 'source')
 
         dataset_path = os.path.join(DATA_DIR, 'cifar_10', 'data')
