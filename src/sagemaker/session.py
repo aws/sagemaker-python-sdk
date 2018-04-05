@@ -22,6 +22,7 @@ import time
 import boto3
 import json
 import six
+import yaml
 from botocore.exceptions import ClientError
 
 from sagemaker.user_agent import prepend_user_agent
@@ -79,6 +80,12 @@ class Session(object):
 
         self.sagemaker_runtime_client = sagemaker_runtime_client or self.boto_session.client('runtime.sagemaker')
         prepend_user_agent(self.sagemaker_runtime_client)
+
+        sagemaker_config_file = os.path.join(os.path.expanduser('~'), '.sagemaker', 'config.yaml')
+        if os.path.exists(sagemaker_config_file):
+            self.config = yaml.load(open(sagemaker_config_file, 'r'))
+        else:
+            self.config = None
 
     @property
     def boto_region_name(self):

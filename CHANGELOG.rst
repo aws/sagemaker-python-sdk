@@ -2,17 +2,36 @@
 CHANGELOG
 =========
 
-1.1.dev3
-========
+1.2.2
+=====
+
+* bug-fix: Estimators: fix valid range of hyper-parameter 'loss' in linear learner
+
+1.2.1
+=====
+
+* bug-fix: Change Local Mode to use a sagemaker-local docker network
+
+1.2.0
+=====
+
+* feature: Add Support for Local Mode
+* feature: Estimators: add support for TensorFlow 1.6.0
+* feature: Estimators: add support for MXNet 1.1.0
+* feature: Frameworks: Use more idiomatic ECR repository naming scheme
+
+1.1.3
+=====
 
 * bug-fix: TensorFlow: Display updated data correctly for TensorBoard launched from ``run_tensorboard_locally=True``
 * feature: Tests: create configurable ``sagemaker_session`` pytest fixture for all integration tests
-* bug-fix: AmazonEstimators: fix inaccurate hyper-parameters in kmeans, pca and linear learner
+* bug-fix: Estimators: fix inaccurate hyper-parameters in kmeans, pca and linear learner
+* feature: Estimators: Add new hyperparameters for linear learner.
 
 1.1.2
 =====
 
-* bug-fix: AmazonEstimators: do not call create bucket if data location is provided
+* bug-fix: Estimators: do not call create bucket if data location is provided
 
 1.1.1
 =====

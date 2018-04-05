@@ -70,24 +70,27 @@ def test_all_hyperparameters(sagemaker_session):
     lr = LinearLearner(sagemaker_session=sagemaker_session,
                        binary_classifier_model_selection_criteria='accuracy',
                        target_recall=0.5, target_precision=0.6,
-                       epochs=1, use_bias=True, num_models=5,
-                       num_calibration_samples=6, init_method='uniform', init_scale=-0.1, init_sigma=0.001,
+                       positive_example_weight_mult=0.1, epochs=1, use_bias=True, num_models=5,
+                       num_calibration_samples=6, init_method='uniform', init_scale=0.1, init_sigma=0.001,
                        init_bias=0, optimizer='sgd', loss='logistic', wd=0.4, l1=0.04, momentum=0.1,
                        learning_rate=0.001, beta_1=0.2, beta_2=0.03, bias_lr_mult=5.5, bias_wd_mult=6.6,
                        use_lr_scheduler=False, lr_scheduler_step=2, lr_scheduler_factor=0.03,
                        lr_scheduler_minimum_lr=0.001, normalize_data=False, normalize_label=True,
-                       unbias_data=True, unbias_label=False, num_point_for_scaler=3,
-                       **ALL_REQ_ARGS)
+                       unbias_data=True, unbias_label=False, num_point_for_scaler=3, margin=1.0,
+                       quantile=0.5, loss_insensitivity=0.1, huber_delta=0.1, early_stopping_patience=3,
+                       early_stopping_tolerance=0.001, **ALL_REQ_ARGS)
 
     assert lr.hyperparameters() == dict(
         predictor_type='binary_classifier', binary_classifier_model_selection_criteria='accuracy',
-        target_recall='0.5', target_precision='0.6', epochs='1',
+        target_recall='0.5', target_precision='0.6', positive_example_weight_mult='0.1', epochs='1',
         use_bias='True', num_models='5', num_calibration_samples='6', init_method='uniform',
-        init_scale='-0.1', init_sigma='0.001', init_bias='0.0', optimizer='sgd', loss='logistic',
+        init_scale='0.1', init_sigma='0.001', init_bias='0.0', optimizer='sgd', loss='logistic',
         wd='0.4', l1='0.04', momentum='0.1', learning_rate='0.001', beta_1='0.2', beta_2='0.03',
         bias_lr_mult='5.5', bias_wd_mult='6.6', use_lr_scheduler='False', lr_scheduler_step='2',
         lr_scheduler_factor='0.03', lr_scheduler_minimum_lr='0.001', normalize_data='False',
-        normalize_label='True', unbias_data='True', unbias_label='False', num_point_for_scaler='3',
+        normalize_label='True', unbias_data='True', unbias_label='False', num_point_for_scaler='3', margin='1.0',
+        quantile='0.5', loss_insensitivity='0.1', huber_delta='0.1', early_stopping_patience='3',
+        early_stopping_tolerance='0.001',
     )
 
 
@@ -150,7 +153,13 @@ def test_iterable_hyper_parameters_type(sagemaker_session, iterable_hyper_parame
     ('lr_scheduler_step', 'string'),
     ('lr_scheduler_factor', 'string'),
     ('lr_scheduler_minimum_lr', 'string'),
-    ('num_point_for_scaler', 'string')
+    ('num_point_for_scaler', 'string'),
+    ('margin', 'string'),
+    ('quantile', 'string'),
+    ('loss_insensitivity', 'string'),
+    ('huber_delta', 'string'),
+    ('early_stopping_patience', 'string'),
+    ('early_stopping_tolerance', 'string')
 ])
 def test_optional_hyper_parameters_type(sagemaker_session, optional_hyper_parameters, value):
     with pytest.raises(ValueError):
@@ -169,31 +178,30 @@ def test_optional_hyper_parameters_type(sagemaker_session, optional_hyper_parame
     ('num_models', 0),
     ('num_calibration_samples', 0),
     ('init_method', 'string'),
-    ('init_scale', -1),
-    ('init_scale', 1),
+    ('init_scale', 0),
     ('init_sigma', 0),
-    ('init_sigma', 1),
     ('optimizer', 'string'),
     ('loss', 'string'),
-    ('wd', 0),
-    ('wd', 1),
-    ('l1', 0),
-    ('l1', 1),
-    ('momentum', 0),
+    ('wd', -1),
+    ('l1', -1),
     ('momentum', 1),
     ('learning_rate', 0),
-    ('learning_rate', 1),
-    ('beta_1', 0),
     ('beta_1', 1),
-    ('beta_2', 0),
     ('beta_2', 1),
     ('bias_lr_mult', 0),
-    ('bias_wd_mult', 0),
+    ('bias_wd_mult', -1),
     ('lr_scheduler_step', 0),
     ('lr_scheduler_factor', 0),
     ('lr_scheduler_factor', 1),
     ('lr_scheduler_minimum_lr', 0),
-    ('num_point_for_scaler', 0)
+    ('num_point_for_scaler', 0),
+    ('margin', -1),
+    ('quantile', 0),
+    ('quantile', 1),
+    ('loss_insensitivity', 0),
+    ('huber_delta', -1),
+    ('early_stopping_patience', 0),
+    ('early_stopping_tolerance', 0)
 ])
 def test_optional_hyper_parameters_value(sagemaker_session, optional_hyper_parameters, value):
     with pytest.raises(ValueError):

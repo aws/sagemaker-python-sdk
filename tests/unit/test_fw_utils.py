@@ -37,18 +37,48 @@ def sagemaker_session():
 
 
 def test_create_image_uri_cpu():
-    image_uri = create_image_uri('mars-south-3', 'mlfw', 'any-non-gpu-device', '1.0rc', 'py2', '23')
-    assert image_uri == '23.dkr.ecr.mars-south-3.amazonaws.com/sagemaker-mlfw-py2-cpu:1.0rc-cpu-py2'
+    image_uri = create_image_uri('mars-south-3', 'mlfw', 'ml.c4.large', '1.0rc', 'py2', '23')
+    assert image_uri == '23.dkr.ecr.mars-south-3.amazonaws.com/sagemaker-mlfw:1.0rc-cpu-py2'
+
+    image_uri = create_image_uri('mars-south-3', 'mlfw', 'local', '1.0rc', 'py2', '23')
+    assert image_uri == '23.dkr.ecr.mars-south-3.amazonaws.com/sagemaker-mlfw:1.0rc-cpu-py2'
 
 
 def test_create_image_uri_gpu():
     image_uri = create_image_uri('mars-south-3', 'mlfw', 'ml.p3.2xlarge', '1.0rc', 'py3', '23')
-    assert image_uri == '23.dkr.ecr.mars-south-3.amazonaws.com/sagemaker-mlfw-py3-gpu:1.0rc-gpu-py3'
+    assert image_uri == '23.dkr.ecr.mars-south-3.amazonaws.com/sagemaker-mlfw:1.0rc-gpu-py3'
+
+    image_uri = create_image_uri('mars-south-3', 'mlfw', 'local_gpu', '1.0rc', 'py3', '23')
+    assert image_uri == '23.dkr.ecr.mars-south-3.amazonaws.com/sagemaker-mlfw:1.0rc-gpu-py3'
 
 
 def test_create_image_uri_default_account():
     image_uri = create_image_uri('mars-south-3', 'mlfw', 'ml.p3.2xlarge', '1.0rc', 'py3')
-    assert image_uri == '520713654638.dkr.ecr.mars-south-3.amazonaws.com/sagemaker-mlfw-py3-gpu:1.0rc-gpu-py3'
+    assert image_uri == '520713654638.dkr.ecr.mars-south-3.amazonaws.com/sagemaker-mlfw:1.0rc-gpu-py3'
+
+
+def test_invalid_instance_type():
+    # instance type is missing 'ml.' prefix
+    with pytest.raises(ValueError):
+        create_image_uri('mars-south-3', 'mlfw', 'p3.2xlarge', '1.0.0', 'py3')
+
+
+def test_optimized_family():
+    image_uri = create_image_uri('mars-south-3', 'mlfw', 'ml.p3.2xlarge', '1.0.0', 'py3',
+                                 optimized_families=['c5', 'p3'])
+    assert image_uri == '520713654638.dkr.ecr.mars-south-3.amazonaws.com/sagemaker-mlfw:1.0.0-p3-py3'
+
+
+def test_unoptimized_cpu_family():
+    image_uri = create_image_uri('mars-south-3', 'mlfw', 'ml.m4.xlarge', '1.0.0', 'py3',
+                                 optimized_families=['c5', 'p3'])
+    assert image_uri == '520713654638.dkr.ecr.mars-south-3.amazonaws.com/sagemaker-mlfw:1.0.0-cpu-py3'
+
+
+def test_unoptimized_gpu_family():
+    image_uri = create_image_uri('mars-south-3', 'mlfw', 'ml.p2.xlarge', '1.0.0', 'py3',
+                                 optimized_families=['c5', 'p3'])
+    assert image_uri == '520713654638.dkr.ecr.mars-south-3.amazonaws.com/sagemaker-mlfw:1.0.0-gpu-py3'
 
 
 def test_tar_and_upload_dir_s3(sagemaker_session):
@@ -99,7 +129,17 @@ def test_tar_and_upload_dir_not_s3(sagemaker_session):
     assert result == UploadedCode('s3://{}/{}/sourcedir.tar.gz'.format(bucket, s3_key_prefix), script)
 
 
-def test_framework_name_from_framework_image():
+def test_framework_name_from_image_mxnet():
+    image_name = '123.dkr.ecr.us-west-2.amazonaws.com/sagemaker-mxnet:1.1-gpu-py3'
+    assert ('mxnet', 'py3', '1.1-gpu-py3') == framework_name_from_image(image_name)
+
+
+def test_framework_name_from_image_tf():
+    image_name = '123.dkr.ecr.us-west-2.amazonaws.com/sagemaker-tensorflow:1.6-cpu-py2'
+    assert ('tensorflow', 'py2', '1.6-cpu-py2') == framework_name_from_image(image_name)
+
+
+def test_legacy_name_from_framework_image():
     image_name = '123.dkr.ecr.us-west-2.amazonaws.com/sagemaker-mxnet-py3-gpu:2.5.6-gpu-py2'
     framework, py_ver, tag = framework_name_from_image(image_name)
     assert framework == 'mxnet'
@@ -107,28 +147,28 @@ def test_framework_name_from_framework_image():
     assert tag == '2.5.6-gpu-py2'
 
 
-def test_framework_name_from_wrong_framework():
+def test_legacy_name_from_wrong_framework():
     framework, py_ver, tag = framework_name_from_image('123.dkr.ecr.us-west-2.amazonaws.com/sagemaker-myown-py2-gpu:1')
     assert framework is None
     assert py_ver is None
     assert tag is None
 
 
-def test_framework_name_from_wrong_python():
+def test_legacy_name_from_wrong_python():
     framework, py_ver, tag = framework_name_from_image('123.dkr.ecr.us-west-2.amazonaws.com/sagemaker-myown-py4-gpu:1')
     assert framework is None
     assert py_ver is None
     assert tag is None
 
 
-def test_framework_name_from_wrong_device():
+def test_legacy_name_from_wrong_device():
     framework, py_ver, tag = framework_name_from_image('123.dkr.ecr.us-west-2.amazonaws.com/sagemaker-myown-py4-gpu:1')
     assert framework is None
     assert py_ver is None
     assert tag is None
 
 
-def test_framework_name_from_image_any_tag():
+def test_legacy_name_from_image_any_tag():
     image_name = '123.dkr.ecr.us-west-2.amazonaws.com/sagemaker-tensorflow-py2-cpu:any-tag'
     framework, py_ver, tag = framework_name_from_image(image_name)
     assert framework == 'tensorflow'
