@@ -15,6 +15,7 @@ import logging
 import json
 import os
 import pytest
+import sys
 from mock import Mock
 from mock import patch
 
@@ -30,9 +31,9 @@ TIME = 1507167947
 BUCKET_NAME = 'mybucket'
 INSTANCE_COUNT = 1
 INSTANCE_TYPE = 'ml.c4.4xlarge'
-CPU_IMAGE_NAME = 'sagemaker-pytorch-py2-cpu'
-GPU_IMAGE_NAME = 'sagemaker-pytorch-py2-gpu'
-JOB_NAME = '{}-{}'.format(CPU_IMAGE_NAME, TIMESTAMP)
+PYTHON_VERSION = 'py' + str(sys.version_info.major)
+IMAGE_NAME = 'sagemaker-pytorch'
+JOB_NAME = '{}-{}'.format(IMAGE_NAME, TIMESTAMP)
 IMAGE_URI_FORMAT_STRING = "520713654638.dkr.ecr.{}.amazonaws.com/{}:{}-{}-{}"
 ROLE = 'Dummy'
 REGION = 'us-west-2'
@@ -52,11 +53,11 @@ def fixture_sagemaker_session():
 
 
 def _get_full_cpu_image_uri(version):
-    return IMAGE_URI_FORMAT_STRING.format(REGION, CPU_IMAGE_NAME, version, 'cpu', 'py2')
+    return IMAGE_URI_FORMAT_STRING.format(REGION, IMAGE_NAME, version, 'cpu', PYTHON_VERSION)
 
 
 def _get_full_gpu_image_uri(version):
-    return IMAGE_URI_FORMAT_STRING.format(REGION, GPU_IMAGE_NAME, version, 'gpu', 'py2')
+    return IMAGE_URI_FORMAT_STRING.format(REGION, IMAGE_NAME, version, 'gpu', PYTHON_VERSION)
 
 
 def _pytorch_estimator(sagemaker_session, framework_version=defaults.PYTORCH_VERSION, train_instance_type=None,
@@ -156,15 +157,15 @@ def test_pytorch(strftime, sagemaker_session, pytorch_version):
 
     model = pytorch.create_model()
 
-    expected_image_base = '520713654638.dkr.ecr.us-west-2.amazonaws.com/sagemaker-pytorch-py2-gpu:{}-gpu-py2'
+    expected_image_base = '520713654638.dkr.ecr.us-west-2.amazonaws.com/sagemaker-pytorch:{}-gpu-{}'
     assert {'Environment':
             {'SAGEMAKER_SUBMIT_DIRECTORY':
-             's3://mybucket/sagemaker-pytorch-py2-cpu-{}/sourcedir.tar.gz'.format(TIMESTAMP),
+             's3://mybucket/sagemaker-pytorch-{}/sourcedir.tar.gz'.format(TIMESTAMP),
              'SAGEMAKER_PROGRAM': 'dummy_script.py',
              'SAGEMAKER_ENABLE_CLOUDWATCH_METRICS': 'false',
              'SAGEMAKER_REGION': 'us-west-2',
              'SAGEMAKER_CONTAINER_LOG_LEVEL': '20'},
-            'Image': expected_image_base.format(pytorch_version),
+            'Image': expected_image_base.format(pytorch_version, PYTHON_VERSION),
             'ModelDataUrl': 's3://m/m.tar.gz'} == model.prepare_container_def(GPU)
 
     assert 'cpu' in model.prepare_container_def(CPU)['Image']
@@ -186,7 +187,7 @@ def test_train_image_default(sagemaker_session):
     assert _get_full_cpu_image_uri(defaults.PYTORCH_VERSION) in pytorch.train_image()
 
 
-def test_pytorch_support_cpu_instances(sagemaker_session, pytorch_version):
+def test_train_image_cpu_instances(sagemaker_session, pytorch_version):
     pytorch = _pytorch_estimator(sagemaker_session, pytorch_version, train_instance_type='ml.c2.2xlarge')
     assert pytorch.train_image() == _get_full_cpu_image_uri(pytorch_version)
 
@@ -197,7 +198,7 @@ def test_pytorch_support_cpu_instances(sagemaker_session, pytorch_version):
     assert pytorch.train_image() == _get_full_cpu_image_uri(pytorch_version)
 
 
-def test_pytorch_support_gpu_instances(sagemaker_session, pytorch_version):
+def test_train_image_gpu_instances(sagemaker_session, pytorch_version):
     pytorch = _pytorch_estimator(sagemaker_session, pytorch_version, train_instance_type='ml.g2.2xlarge')
     assert pytorch.train_image() == _get_full_gpu_image_uri(pytorch_version)
 
@@ -206,7 +207,8 @@ def test_pytorch_support_gpu_instances(sagemaker_session, pytorch_version):
 
 
 def test_attach(sagemaker_session, pytorch_version):
-    training_image = '1.dkr.ecr.us-west-2.amazonaws.com/sagemaker-pytorch-py2-cpu:{}-cpu-py2'.format(pytorch_version)
+    training_image = '1.dkr.ecr.us-west-2.amazonaws.com/sagemaker-pytorch:{}-cpu-{}'.format(pytorch_version,
+                                                                                            PYTHON_VERSION)
     returned_job_description = {'AlgorithmSpecification':
                                 {'TrainingInputMode': 'File',
                                  'TrainingImage': training_image},
@@ -235,7 +237,7 @@ def test_attach(sagemaker_session, pytorch_version):
 
     estimator = PyTorch.attach(training_job_name='neo', sagemaker_session=sagemaker_session)
     assert estimator.latest_training_job.job_name == 'neo'
-    assert estimator.py_version == 'py2'
+    assert estimator.py_version == PYTHON_VERSION
     assert estimator.framework_version == pytorch_version
     assert estimator.role == 'arn:aws:iam::366:role/SageMakerRole'
     assert estimator.train_instance_count == 1
@@ -277,11 +279,3 @@ def test_attach_wrong_framework(sagemaker_session):
     with pytest.raises(ValueError) as error:
         PyTorch.attach(training_job_name='neo', sagemaker_session=sagemaker_session)
     assert "didn't use image for requested framework" in str(error)
-
-
-def test_create_image():
-    pass
-
-
-def test_prepare_container_def():
-    pass
