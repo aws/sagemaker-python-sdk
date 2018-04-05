@@ -277,3 +277,11 @@ def test_attach_wrong_framework(sagemaker_session):
     with pytest.raises(ValueError) as error:
         PyTorch.attach(training_job_name='neo', sagemaker_session=sagemaker_session)
     assert "didn't use image for requested framework" in str(error)
+
+
+def test_create_image():
+    pass
+
+
+def test_prepare_container_def():
+    pass
