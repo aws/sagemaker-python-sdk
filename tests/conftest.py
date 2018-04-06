@@ -56,21 +56,21 @@ def sagemaker_session(sagemaker_client_config, sagemaker_runtime_config, boto_co
                    sagemaker_runtime_client=runtime_client)
 
 
-@pytest.fixture(scope='module', params=["1.4", "1.4.1", "1.5", "1.5.0"])
+@pytest.fixture(scope='module', params=['1.4', '1.4.1', '1.5', '1.5.0', '1.6', '1.6.0'])
 def tf_version(request):
     return request.param
 
 
-@pytest.fixture(scope='module', params=["0.12", "0.12.1", "1.0", "1.0.0"])
+@pytest.fixture(scope='module', params=['0.12', '0.12.1', '1.0', '1.0.0', '1.1', '1.1.0'])
 def mxnet_version(request):
     return request.param
 
 
-@pytest.fixture(scope='module', params=["1.4.1", "1.5.0"])
+@pytest.fixture(scope='module', params=['1.4.1', '1.5.0', '1.6.0'])
 def tf_full_version(request):
     return request.param
 
 
-@pytest.fixture(scope='module', params=["0.12.1", "1.0.0"])
+@pytest.fixture(scope='module', params=['0.12.1', '1.0.0', '1.1.0'])
 def mxnet_full_version(request):
     return request.param

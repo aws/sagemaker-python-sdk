@@ -21,6 +21,7 @@ from six import with_metaclass, string_types
 from sagemaker.fw_utils import tar_and_upload_dir
 from sagemaker.fw_utils import parse_s3_url
 from sagemaker.fw_utils import UploadedCode
+from sagemaker.local.local_session import LocalSession
 from sagemaker.model import Model
 from sagemaker.model import (SCRIPT_PARAM_NAME, DIR_PARAM_NAME, CLOUDWATCH_METRICS_PARAM_NAME,
                              CONTAINER_LOG_LEVEL_PARAM_NAME, JOB_NAME_PARAM_NAME, SAGEMAKER_REGION_PARAM_NAME)
@@ -78,7 +79,17 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):
         self.train_volume_size = train_volume_size
         self.train_max_run = train_max_run
         self.input_mode = input_mode
-        self.sagemaker_session = sagemaker_session or Session()
+
+        if self.train_instance_type in ('local', 'local_gpu'):
+            self.local_mode = True
+            if self.train_instance_type == 'local_gpu' and self.train_instance_count > 1:
+                raise RuntimeError("Distributed Training in Local GPU is not supported")
+
+            self.sagemaker_session = LocalSession()
+        else:
+            self.local_mode = False
+            self.sagemaker_session = sagemaker_session or Session()
+
         self.base_job_name = base_job_name
         self._current_job_name = None
         self.output_path = output_path
@@ -303,7 +314,7 @@ class _TrainingJob(object):
         """Create a new Amazon SageMaker training job from the estimator.
 
         Args:
-            estimator (sagemaker.estimator.Framework): Estimator object created by the user.
+            estimator (sagemaker.estimator.EstimatorBase): Estimator object created by the user.
             inputs (str): Parameters used when called  :meth:`~sagemaker.estimator.EstimatorBase.fit`.
 
         Returns:
