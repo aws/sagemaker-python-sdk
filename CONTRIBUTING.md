@@ -17,7 +17,7 @@ reported the issue. Please try to include as much information as you can. Detail
 * A reproducible test case or series of steps
 * The version of our code being used
 * Any modifications you've made relevant to the bug
-* Anything unusual about your environment or deployment
+* A description of your environment or deployment
 
 
 ## Contributing via Pull Requests
@@ -31,10 +31,12 @@ To send us a pull request, please:
 
 1. Fork the repository.
 2. Modify the source; please focus on the specific change you are contributing. If you also reformat all the code, it will be hard for us to focus on your change.
-3. Ensure local tests pass.
-4. Commit to your fork using clear commit messages.
-5. Send us a pull request, answering any default questions in the pull request interface.
-6. Pay attention to any automated CI failures reported in the pull request, and stay involved in the conversation.
+3. Include unit tests when you contribute new features or make bug fixes, as they help to a) prove that your code works correctly, and b) guard against future breaking changes to lower the maintenance cost.
+4. Ensure local tests pass.
+5. Update the [changelog](https://github.com/aws/sagemaker-python-sdk/blob/master/CHANGELOG.rst) with a description of your changes for any code contribution.
+6. Commit to your fork using [clear and imperative commit messages](https://chris.beams.io/posts/git-commit/).
+7. Send us a pull request, answering any default questions in the pull request interface.
+8. Pay attention to any automated CI failures reported in the pull request, and stay involved in the conversation.
 
 GitHub provides additional document on [forking a repository](https://help.github.com/articles/fork-a-repo/) and 
 [creating a pull request](https://help.github.com/articles/creating-a-pull-request/).
