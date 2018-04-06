@@ -13,6 +13,7 @@
 from sagemaker.amazon.amazon_estimator import AmazonAlgorithmEstimatorBase, registry
 from sagemaker.amazon.common import numpy_to_record_serializer, record_deserializer
 from sagemaker.amazon.hyperparameter import Hyperparameter as hp  # noqa
+from sagemaker.amazon.validation import gt, isin
 from sagemaker.predictor import RealTimePredictor
 from sagemaker.model import Model
 from sagemaker.session import Session
@@ -20,17 +21,18 @@ from sagemaker.session import Session
 
 class PCA(AmazonAlgorithmEstimatorBase):
 
-    repo = 'pca:1'
+    repo_name = 'pca'
+    repo_version = 1
 
     DEFAULT_MINI_BATCH_SIZE = 500
 
-    num_components = hp(name='num_components', validate=lambda x: x > 0,
-                        validation_message='Value must be an integer greater than zero', data_type=int)
-    algorithm_mode = hp(name='algorithm_mode', validate=lambda x: x in ['regular', 'stable', 'randomized'],
-                        validation_message='Value must be one of "regular", "stable", "randomized"', data_type=str)
+    num_components = hp('num_components', gt(0), 'Value must be an integer greater than zero', int)
+    algorithm_mode = hp('algorithm_mode', isin('regular', 'randomized'),
+                        'Value must be one of "regular" and "randomized"', str)
     subtract_mean = hp(name='subtract_mean', validation_message='Value must be a boolean', data_type=bool)
-    extra_components = hp(name='extra_components', validate=lambda x: x >= 0,
-                          validation_message="Value must be an integer greater than or equal to 0", data_type=int)
+    extra_components = hp(name='extra_components',
+                          validation_message="Value must be an integer greater than or equal to 0, or -1.",
+                          data_type=int)
 
     def __init__(self, role, train_instance_count, train_instance_type, num_components,
                  algorithm_mode=None, subtract_mean=None, extra_components=None, **kwargs):
@@ -67,12 +69,13 @@ class PCA(AmazonAlgorithmEstimatorBase):
             train_instance_count (int): Number of Amazon EC2 instances to use for training.
             train_instance_type (str): Type of EC2 instance to use for training, for example, 'ml.c4.xlarge'.
             num_components(int): The number of principal components. Must be greater than zero.
-            algorithm_mode (str): Mode for computing the principal components. One of 'regular', 'stable' or
+            algorithm_mode (str): Mode for computing the principal components. One of 'regular' or
                 'randomized'.
             subtract_mean (bool): Whether the data should be unbiased both during train and at inference.
             extra_components (int): As the value grows larger, the solution becomes more accurate but the
-                runtime and memory consumption increase linearly. If this value is unset, then a default value equal
-                to the maximum of 10 and num_components will be used. Valid for randomized mode only.
+                runtime and memory consumption increase linearly. If this value is unset or set to -1,
+                then a default value equal to the maximum of 10 and num_components will be used.
+                Valid for randomized mode only.
             **kwargs: base class keyword argument values.
         """
         super(PCA, self).__init__(role, train_instance_count, train_instance_type, **kwargs)
@@ -118,6 +121,7 @@ class PCAModel(Model):
 
     def __init__(self, model_data, role, sagemaker_session=None):
         sagemaker_session = sagemaker_session or Session()
-        image = registry(sagemaker_session.boto_session.region_name) + "/" + PCA.repo
+        repo = '{}:{}'.format(PCA.repo_name, PCA.repo_version)
+        image = '{}/{}'.format(registry(sagemaker_session.boto_session.region_name), repo)
         super(PCAModel, self).__init__(model_data, image, role, predictor_cls=PCAPredictor,
                                        sagemaker_session=sagemaker_session)

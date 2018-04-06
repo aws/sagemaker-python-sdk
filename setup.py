@@ -11,7 +11,7 @@ def read(fname):
 
 
 setup(name="sagemaker",
-      version="1.0.2",
+      version="1.2.2",
       description="Open source library for training and deploying models on Amazon SageMaker.",
       packages=find_packages('src'),
       package_dir={'': 'src'},
@@ -32,11 +32,12 @@ setup(name="sagemaker",
       ],
 
       # Declare minimal set for installation
-      install_requires=['boto3>=1.4.8', 'numpy>=1.9.0', 'protobuf>=3.1', 'scipy>=1.0.0'],
+      install_requires=['boto3>=1.4.8', 'numpy>=1.9.0', 'protobuf>=3.1', 'scipy>=1.0.0', 'urllib3>=1.2',
+                        'PyYAML>=3.2'],
 
       extras_require={
           'test': ['tox', 'flake8', 'pytest', 'pytest-cov', 'pytest-xdist',
-                   'mock', 'tensorflow>=1.3.0', 'contextlib2']},
+                   'mock', 'tensorflow>=1.3.0', 'contextlib2', 'awslogs']},
 
       entry_points={
           'console_scripts': ['sagemaker=sagemaker.cli.main:main'],

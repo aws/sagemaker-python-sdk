@@ -13,7 +13,7 @@
 from sagemaker.amazon.amazon_estimator import AmazonAlgorithmEstimatorBase, registry
 from sagemaker.amazon.common import numpy_to_record_serializer, record_deserializer
 from sagemaker.amazon.hyperparameter import Hyperparameter as hp  # noqa
-from sagemaker.amazon.validation import gt, isin, ge
+from sagemaker.amazon.validation import gt, isin, ge, le
 from sagemaker.predictor import RealTimePredictor
 from sagemaker.model import Model
 from sagemaker.session import Session
@@ -21,21 +21,24 @@ from sagemaker.session import Session
 
 class KMeans(AmazonAlgorithmEstimatorBase):
 
-    repo = 'kmeans:1'
+    repo_name = 'kmeans'
+    repo_version = 1
 
     k = hp('k', gt(1), 'An integer greater-than 1', int)
     init_method = hp('init_method', isin('random', 'kmeans++'), 'One of "random", "kmeans++"', str)
     max_iterations = hp('local_lloyd_max_iterations', gt(0), 'An integer greater-than 0', int)
-    tol = hp('local_lloyd_tol', gt(0), 'An integer greater-than 0', int)
+    tol = hp('local_lloyd_tol', (ge(0), le(1)), 'An float in [0, 1]', float)
     num_trials = hp('local_lloyd_num_trials', gt(0), 'An integer greater-than 0', int)
     local_init_method = hp('local_lloyd_init_method', isin('random', 'kmeans++'), 'One of "random", "kmeans++"', str)
     half_life_time_size = hp('half_life_time_size', ge(0), 'An integer greater-than-or-equal-to 0', int)
     epochs = hp('epochs', gt(0), 'An integer greater-than 0', int)
     center_factor = hp('extra_center_factor', gt(0), 'An integer greater-than 0', int)
+    eval_metrics = hp(name='eval_metrics', validation_message='A comma separated list of "msd" or "ssd"',
+                      data_type=list)
 
     def __init__(self, role, train_instance_count, train_instance_type, k, init_method=None,
                  max_iterations=None, tol=None, num_trials=None, local_init_method=None,
-                 half_life_time_size=None, epochs=None, center_factor=None, **kwargs):
+                 half_life_time_size=None, epochs=None, center_factor=None, eval_metrics=None, **kwargs):
         """
         A k-means clustering :class:`~sagemaker.amazon.AmazonAlgorithmEstimatorBase`. Finds k clusters of data in an
         unlabeled dataset.
@@ -69,7 +72,7 @@ class KMeans(AmazonAlgorithmEstimatorBase):
             k (int): The number of clusters to produce.
             init_method (str): How to initialize cluster locations. One of 'random' or 'kmeans++'.
             max_iterations (int): Maximum iterations for Lloyds EM procedure in the local kmeans used in finalize stage.
-            tol (int): Tolerance for change in ssd for early stopping in local kmeans.
+            tol (float): Tolerance for change in ssd for early stopping in local kmeans.
             num_trials (int): Local version is run multiple times and the one with the best loss is chosen. This
                               determines how many times.
             local_init_method (str): Initialization method for local version. One of 'random', 'kmeans++'
@@ -81,6 +84,9 @@ class KMeans(AmazonAlgorithmEstimatorBase):
             epochs (int): Number of passes done over the training data.
             center_factor(int): The algorithm will create ``num_clusters * extra_center_factor`` as it runs and
                 reduce the number of centers to ``k`` when finalizing
+            eval_metrics(list): JSON list of metrics types to be used for reporting the score for the model.
+                Allowed values are "msd" Means Square Error, "ssd": Sum of square distance. If test data is provided,
+                the score shall be reported in terms of all requested metrics.
             **kwargs: base class keyword argument values.
         """
         super(KMeans, self).__init__(role, train_instance_count, train_instance_type, **kwargs)
@@ -93,6 +99,7 @@ class KMeans(AmazonAlgorithmEstimatorBase):
         self.half_life_time_size = half_life_time_size
         self.epochs = epochs
         self.center_factor = center_factor
+        self.eval_metrics = eval_metrics
 
     def create_model(self):
         """Return a :class:`~sagemaker.amazon.kmeans.KMeansModel` referencing the latest
@@ -132,6 +139,7 @@ class KMeansModel(Model):
 
     def __init__(self, model_data, role, sagemaker_session=None):
         sagemaker_session = sagemaker_session or Session()
-        image = registry(sagemaker_session.boto_session.region_name) + "/" + KMeans.repo
+        repo = '{}:{}'.format(KMeans.repo_name, KMeans.repo_version)
+        image = '{}/{}'.format(registry(sagemaker_session.boto_session.region_name), repo)
         super(KMeansModel, self).__init__(model_data, image, role, predictor_cls=KMeansPredictor,
                                           sagemaker_session=sagemaker_session)

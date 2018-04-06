@@ -1,4 +1,4 @@
-# Copyright 2017 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright 2017-2018 Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -28,26 +28,44 @@ instantiated with positional or keyword arguments.
 """
 
 
-def create_image_uri(region, framework, instance_type, py_version='py2', tag='1.0', account='520713654638'):
+def create_image_uri(region, framework, instance_type, framework_version, py_version, account='520713654638',
+                     optimized_families=[]):
     """Return the ECR URI of an image.
 
     Args:
         region (str): AWS region where the image is uploaded.
         framework (str): framework used by the image.
-        instance_type (str): EC2 instance type. Used to determine whether to use the CPU image or GPU image.
-        py_version (str): Python version. (default: 'py2')
-        tag (str): ECR image tag, which denotes the image version. (default: '1.0')
+        instance_type (str): SageMaker instance type. Used to determine device type (cpu/gpu/family-specific optimized).
+        framework_version (str): The version of the framework.
+        py_version (str): Python version. One of 'py2' or 'py3'.
         account (str): AWS account that contains the image. (default: '520713654638')
+        optimized_families (str): Instance families for which there exist specific optimized images.
 
     Returns:
         str: The appropriate image URI based on the given parameters.
     """
-    device_version = 'cpu'
-    # Instance types that start with G, P are GPU powered: https://aws.amazon.com/ec2/instance-types/
-    if instance_type[3] in ['g', 'p']:
-        device_version = 'gpu'
-    return "{}.dkr.ecr.{}.amazonaws.com/sagemaker-{}-{}-{}:{}" \
-        .format(account, region, framework, py_version, device_version, tag)
+
+    # Handle Local Mode
+    if instance_type.startswith('local'):
+        device_type = 'cpu' if instance_type == 'local' else 'gpu'
+    elif not instance_type.startswith('ml.'):
+        raise ValueError('{} is not a valid SageMaker instance type. See: '
+                         'https://aws.amazon.com/sagemaker/pricing/instance-types/'.format(instance_type))
+    else:
+        family = instance_type.split('.')[1]
+
+        # For some frameworks, we have optimized images for specific families, e.g c5 or p3. In those cases,
+        # we use the family name in the image tag. In other cases, we use 'cpu' or 'gpu'.
+        if family in optimized_families:
+            device_type = family
+        elif family[0] in ['g', 'p']:
+            device_type = 'gpu'
+        else:
+            device_type = 'cpu'
+
+    tag = "{}-{}-{}".format(framework_version, device_type, py_version)
+    return "{}.dkr.ecr.{}.amazonaws.com/sagemaker-{}:{}" \
+        .format(account, region, framework, tag)
 
 
 def tar_and_upload_dir(session, bucket, s3_key_prefix, script, directory):
@@ -105,28 +123,54 @@ def framework_name_from_image(image_name):
     """Extract the framework and Python version from the image name.
 
     Args:
-        image_name (str): Image URI, which should take the form
-            '<account>.dkr.ecr.<region>.amazonaws.com/sagemaker-<framework>-<py_ver>-<device>:<tag>'
+        image_name (str): Image URI, which should be one of the following forms:
+            legacy:
+            '<account>.dkr.ecr.<region>.amazonaws.com/sagemaker-<fw>-<py_ver>-<device>:<container_version>'
+            legacy:
+            '<account>.dkr.ecr.<region>.amazonaws.com/sagemaker-<fw>-<py_ver>-<device>:<fw_version>-<device>-<py_ver>'
+            current:
+            '<account>.dkr.ecr.<region>.amazonaws.com/sagemaker-<fw>:<fw_version>-<device>-<py_ver>'
 
     Returns:
         tuple: A tuple containing:
             str: The framework name
             str: The Python version
+            str: The image tag
     """
     # image name format: <account>.dkr.ecr.<region>.amazonaws.com/sagemaker-<framework>-<py_ver>-<device>:<tag>
-    sagemaker_pattern = re.compile('^(\d+)(\.)dkr(\.)ecr(\.)(.+)(\.)amazonaws.com(/)(.*)(:)(.*)$')
+    sagemaker_pattern = re.compile('^(\d+)(\.)dkr(\.)ecr(\.)(.+)(\.)amazonaws.com(/)(.*:.*)$')
     sagemaker_match = sagemaker_pattern.match(image_name)
     if sagemaker_match is None:
-        return None, None
+        return None, None, None
     else:
-        # extract framework and python version
-        name_pattern = re.compile('^sagemaker-(tensorflow|mxnet)-(py2|py3)-(cpu|gpu)$')
+        # extract framework, python version and image tag
+        # We must support both the legacy and current image name format.
+        name_pattern = re.compile('^sagemaker-(tensorflow|mxnet):(.*?)-(.*?)-(py2|py3)$')
+        legacy_name_pattern = re.compile('^sagemaker-(tensorflow|mxnet)-(py2|py3)-(cpu|gpu):(.*)$')
         name_match = name_pattern.match(sagemaker_match.group(8))
+        legacy_match = legacy_name_pattern.match(sagemaker_match.group(8))
 
-        if name_match is None:
-            return None, None
+        if name_match is not None:
+            fw, ver, device, py = name_match.group(1), name_match.group(2), name_match.group(3), name_match.group(4)
+            return fw, py, '{}-{}-{}'.format(ver, device, py)
+        elif legacy_match is not None:
+            return legacy_match.group(1), legacy_match.group(2), legacy_match.group(4)
         else:
-            return name_match.group(1), name_match.group(2)
+            return None, None, None
+
+
+def framework_version_from_tag(image_tag):
+    """Extract the framework version from the image tag.
+
+    Args:
+        image_tag (str): Image tag, which should take the form '<framework_version>-<device>-<py_version>'
+
+    Returns:
+        str: The framework version.
+    """
+    tag_pattern = re.compile('^(.*)-(cpu|gpu)-(py2|py3)$')
+    tag_match = tag_pattern.match(image_tag)
+    return None if tag_match is None else tag_match.group(1)
 
 
 def parse_s3_url(url):

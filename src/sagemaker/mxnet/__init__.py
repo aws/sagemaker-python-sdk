@@ -1,4 +1,4 @@
-# Copyright 2017 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright 2017-2018 Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -14,5 +14,3 @@ from sagemaker.mxnet.estimator import MXNet
 from sagemaker.mxnet.model import MXNetModel, MXNetPredictor
 
 __all__ = [MXNet, MXNetModel, MXNetPredictor]
-
-DOCKER_TAG = "1.0"

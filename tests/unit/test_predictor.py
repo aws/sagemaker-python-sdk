@@ -51,10 +51,24 @@ def test_json_serializer_python_array():
     assert result == '[1, 2, 3]'
 
 
+def test_json_serializer_python_dictionary():
+    d = {"gender": "m", "age": 22, "city": "Paris"}
+
+    result = json_serializer(d)
+
+    assert json.loads(result) == d
+
+
 def test_json_serializer_python_invalid_empty():
     with pytest.raises(ValueError) as error:
         json_serializer([])
     assert "empty array" in str(error)
+
+
+def test_json_serializer_python_dictionary_invalid_empty():
+    with pytest.raises(ValueError) as error:
+        json_serializer({})
+    assert "empty dictionary" in str(error)
 
 
 def test_json_serializer_csv_buffer():
