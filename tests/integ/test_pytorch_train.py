@@ -41,10 +41,11 @@ def test_sync_fit(sagemaker_session, pytorch_full_version, instance_type):
                           sagemaker_session=sagemaker_session)
 
         pytorch.fit({'training': _upload_training_data(pytorch)})
-        training_job_name =  pytorch.latest_training_job.name
+        training_job_name = pytorch.latest_training_job.name
 
-    with timeout(minutes=20):
-        PyTorch.attach(training_job_name, sagemaker_session=sagemaker_session)
+    if not _is_local_mode(instance_type):
+        with timeout(minutes=20):
+            PyTorch.attach(training_job_name, sagemaker_session=sagemaker_session)
 
 
 def test_async_fit(sagemaker_session, pytorch_full_version, instance_type):
@@ -61,9 +62,10 @@ def test_async_fit(sagemaker_session, pytorch_full_version, instance_type):
         print("Waiting to re-attach to the training job: %s" % training_job_name)
         time.sleep(20)
 
-    with timeout(minutes=35):
-        print("Re-attaching now to: %s" % training_job_name)
-        PyTorch.attach(training_job_name=training_job_name, sagemaker_session=sagemaker_session)
+    if not _is_local_mode(instance_type):
+        with timeout(minutes=35):
+            print("Re-attaching now to: %s" % training_job_name)
+            PyTorch.attach(training_job_name=training_job_name, sagemaker_session=sagemaker_session)
 
 
 def test_failed_training_job(sagemaker_session, pytorch_full_version, instance_type):
@@ -82,3 +84,7 @@ def test_failed_training_job(sagemaker_session, pytorch_full_version, instance_t
 def _upload_training_data(pytorch):
     return pytorch.sagemaker_session.upload_data(path=os.path.join(MNIST_DIR, 'training'),
                                                  key_prefix='integ-test-data/pytorch_mnist/training')
+
+
+def _is_local_mode(instance_type):
+    return instance_type == 'local'
