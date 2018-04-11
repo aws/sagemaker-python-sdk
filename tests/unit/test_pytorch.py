@@ -52,18 +52,19 @@ def fixture_sagemaker_session():
     return ims
 
 
-def _get_full_cpu_image_uri(version):
-    return IMAGE_URI_FORMAT_STRING.format(REGION, IMAGE_NAME, version, 'cpu', PYTHON_VERSION)
+def _get_full_cpu_image_uri(version, py_version=PYTHON_VERSION):
+    return IMAGE_URI_FORMAT_STRING.format(REGION, IMAGE_NAME, version, 'cpu', py_version)
 
 
-def _get_full_gpu_image_uri(version):
-    return IMAGE_URI_FORMAT_STRING.format(REGION, IMAGE_NAME, version, 'gpu', PYTHON_VERSION)
+def _get_full_gpu_image_uri(version, py_version=PYTHON_VERSION):
+    return IMAGE_URI_FORMAT_STRING.format(REGION, IMAGE_NAME, version, 'gpu', py_version)
 
 
 def _pytorch_estimator(sagemaker_session, framework_version=defaults.PYTORCH_VERSION, train_instance_type=None,
                        enable_cloudwatch_metrics=False, base_job_name=None, **kwargs):
     return PyTorch(entry_point=SCRIPT_PATH,
                    framework_version=framework_version,
+                   py_version=PYTHON_VERSION,
                    role=ROLE,
                    sagemaker_session=sagemaker_session,
                    train_instance_count=INSTANCE_COUNT,
@@ -138,7 +139,7 @@ def test_create_model(sagemaker_session, pytorch_version):
 def test_pytorch(strftime, sagemaker_session, pytorch_version):
     pytorch = PyTorch(entry_point=SCRIPT_PATH, role=ROLE, sagemaker_session=sagemaker_session,
                       train_instance_count=INSTANCE_COUNT, train_instance_type=INSTANCE_TYPE,
-                      framework_version=pytorch_version)
+                      framework_version=pytorch_version, py_version=PYTHON_VERSION)
 
     inputs = 's3://mybucket/train'
 
@@ -184,7 +185,7 @@ def test_train_image_default(sagemaker_session):
     pytorch = PyTorch(entry_point=SCRIPT_PATH, role=ROLE, sagemaker_session=sagemaker_session,
                       train_instance_count=INSTANCE_COUNT, train_instance_type=INSTANCE_TYPE)
 
-    assert _get_full_cpu_image_uri(defaults.PYTORCH_VERSION) in pytorch.train_image()
+    assert _get_full_cpu_image_uri(defaults.PYTORCH_VERSION, defaults.PYTHON_VERSION) in pytorch.train_image()
 
 
 def test_train_image_cpu_instances(sagemaker_session, pytorch_version):

@@ -12,7 +12,7 @@
 # language governing permissions and limitations under the License.
 from sagemaker.estimator import Framework
 from sagemaker.fw_utils import create_image_uri, framework_name_from_image, framework_version_from_tag
-from sagemaker.pytorch.defaults import PYTORCH_VERSION
+from sagemaker.pytorch.defaults import PYTORCH_VERSION, PYTHON_VERSION
 from sagemaker.pytorch.model import PyTorchModel
 
 
@@ -21,7 +21,7 @@ class PyTorch(Framework):
 
     __framework_name__ = "pytorch"
 
-    def __init__(self, entry_point, source_dir=None, hyperparameters=None, py_version='py2',
+    def __init__(self, entry_point, source_dir=None, hyperparameters=None, py_version=PYTHON_VERSION,
                  framework_version=PYTORCH_VERSION, **kwargs):
         """
         This ``Estimator`` executes an PyTorch script in a managed PyTorch execution environment, within a SageMaker
@@ -46,7 +46,7 @@ class PyTorch(Framework):
                 The hyperparameters are made accessible as a dict[str, str] to the training code on SageMaker.
                 For convenience, this accepts other types for keys and values, but ``str()`` will be called
                 to convert them before training.
-            py_version (str): Python version you want to use for executing your model training code (default: 'py2').
+            py_version (str): Python version you want to use for executing your model training code (default: 'py3').
                               One of 'py2' or 'py3'.
             framework_version (str): PyTorch version you want to use for executing your model training code.
                 List of supported versions https://github.com/aws/sagemaker-python-sdk#pytorch-sagemaker-estimators
@@ -81,10 +81,10 @@ class PyTorch(Framework):
                 See :func:`~sagemaker.pytorch.model.PyTorchModel` for full details.
         """
         return PyTorchModel(self.model_data, self.role, self.entry_point, source_dir=self.source_dir,
-                          enable_cloudwatch_metrics=self.enable_cloudwatch_metrics, name=self._current_job_name,
-                          container_log_level=self.container_log_level, code_location=self.code_location,
-                          py_version=self.py_version, framework_version=self.framework_version,
-                          model_server_workers=model_server_workers, sagemaker_session=self.sagemaker_session)
+                            enable_cloudwatch_metrics=self.enable_cloudwatch_metrics, name=self._current_job_name,
+                            container_log_level=self.container_log_level, code_location=self.code_location,
+                            py_version=self.py_version, framework_version=self.framework_version,
+                            model_server_workers=model_server_workers, sagemaker_session=self.sagemaker_session)
 
     @classmethod
     def _prepare_init_params_from_job_description(cls, job_details):

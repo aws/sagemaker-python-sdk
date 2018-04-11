@@ -13,7 +13,7 @@
 import sagemaker
 from sagemaker.fw_utils import create_image_uri
 from sagemaker.model import FrameworkModel, MODEL_SERVER_WORKERS_PARAM_NAME
-from sagemaker.pytorch.defaults import PYTORCH_VERSION
+from sagemaker.pytorch.defaults import PYTORCH_VERSION, PYTHON_VERSION
 from sagemaker.predictor import RealTimePredictor, json_serializer, json_deserializer
 from sagemaker.utils import name_from_image
 
@@ -41,8 +41,9 @@ class PyTorchModel(FrameworkModel):
 
     __framework_name__ = 'pytorch'
 
-    def __init__(self, model_data, role, entry_point, image=None, py_version='py2', framework_version=PYTORCH_VERSION,
-                 predictor_cls=PyTorchPredictor, model_server_workers=None, **kwargs):
+    def __init__(self, model_data, role, entry_point, image=None, py_version=PYTHON_VERSION,
+                 framework_version=PYTORCH_VERSION, predictor_cls=PyTorchPredictor,
+                 model_server_workers=None, **kwargs):
         """Initialize an PyTorchModel.
 
         Args:
@@ -54,7 +55,7 @@ class PyTorchModel(FrameworkModel):
             entry_point (str): Path (absolute or relative) to the Python source file which should be executed
                 as the entry point to model hosting. This should be compatible with either Python 2.7 or Python 3.5.
             image (str): A Docker image URI (default: None). If not specified, a default image for PyTorch will be used.
-            py_version (str): Python version you want to use for executing your model training code (default: 'py2').
+            py_version (str): Python version you want to use for executing your model training code (default: 'py3').
             framework_version (str): PyTorch version you want to use for executing your model training code.
             predictor_cls (callable[str, sagemaker.session.Session]): A function to call to create a predictor
                 with an endpoint name and SageMaker ``Session``. If specified, ``deploy()`` returns the result of
@@ -63,8 +64,7 @@ class PyTorchModel(FrameworkModel):
                 If None, server will use one worker per vCPU.
             **kwargs: Keyword arguments passed to the ``FrameworkModel`` initializer.
         """
-        super(PyTorchModel, self).__init__(model_data, image, role, entry_point, predictor_cls=predictor_cls,
-                                         **kwargs)
+        super(PyTorchModel, self).__init__(model_data, image, role, entry_point, predictor_cls=predictor_cls, **kwargs)
         self.py_version = py_version
         self.framework_version = framework_version
         self.model_server_workers = model_server_workers

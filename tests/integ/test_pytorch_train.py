@@ -68,12 +68,13 @@ def test_async_fit(sagemaker_session, pytorch_full_version, instance_type):
             PyTorch.attach(training_job_name=training_job_name, sagemaker_session=sagemaker_session)
 
 
-def test_failed_training_job(sagemaker_session, pytorch_full_version, instance_type):
+# TODO(nadiaya): Run against local mode when errors will be propagated
+def test_failed_training_job(sagemaker_session, pytorch_full_version):
     script_path = os.path.join(MNIST_DIR, 'failure_script.py')
 
     with timeout(minutes=15):
         pytorch = PyTorch(entry_point=script_path, role='SageMakerRole', framework_version=pytorch_full_version,
-                          train_instance_count=1, train_instance_type=instance_type,
+                          train_instance_count=1, train_instance_type='ml.c4.xlarge',
                           sagemaker_session=sagemaker_session)
 
         with pytest.raises(ValueError) as e:
