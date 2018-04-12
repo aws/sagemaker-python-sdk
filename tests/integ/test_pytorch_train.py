@@ -32,8 +32,10 @@ def fixture_training_job(sagemaker_session, pytorch_full_version, instance_type)
         return pytorch.latest_training_job.name
 
 
-def test_sync_fit(sagemaker_session, pytorch_full_version, instance_type):
+def test_sync_fit(sagemaker_session, pytorch_full_version):
     training_job_name = ""
+    # TODO: add tests against local mode when it's ready to be used
+    instance_type = 'ml.p2.xlarge'
 
     with timeout(minutes=15):
         pytorch = PyTorch(entry_point=MNIST_SCRIPT, role='SageMakerRole', framework_version=pytorch_full_version,
@@ -48,8 +50,10 @@ def test_sync_fit(sagemaker_session, pytorch_full_version, instance_type):
             PyTorch.attach(training_job_name, sagemaker_session=sagemaker_session)
 
 
-def test_async_fit(sagemaker_session, pytorch_full_version, instance_type):
+def test_async_fit(sagemaker_session, pytorch_full_version):
     training_job_name = ""
+    # TODO: add tests against local mode when it's ready to be used
+    instance_type = 'ml.c4.xlarge'
 
     with timeout(minutes=10):
         pytorch = PyTorch(entry_point=MNIST_SCRIPT, role='SageMakerRole', framework_version=pytorch_full_version,
