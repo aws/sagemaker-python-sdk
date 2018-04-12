@@ -16,7 +16,7 @@ import os
 
 import pytest
 import yaml
-from mock import patch, Mock
+from mock import call, patch, Mock, ANY
 
 import sagemaker
 from sagemaker.local.image import _SageMakerContainer
@@ -40,7 +40,7 @@ INPUT_DATA_CONFIG = [
             'S3DataSource': {
                 'S3DataDistributionType': 'FullyReplicated',
                 'S3DataType': 'S3Prefix',
-                'S3Uri': 's3://foo/bar'
+                'S3Uri': 's3://my-own-bucket/prefix'
             }
         }
     }
@@ -54,12 +54,12 @@ def sagemaker_session():
     boto_mock.client('sts').get_caller_identity.return_value = {'Account': '123'}
     boto_mock.resource('s3').Bucket(BUCKET_NAME).objects.filter.return_value = []
 
-    ims = sagemaker.Session(boto_session=boto_mock, sagemaker_client=Mock())
+    sms = sagemaker.Session(boto_session=boto_mock, sagemaker_client=Mock())
 
-    ims.default_bucket = Mock(name='default_bucket', return_value=BUCKET_NAME)
-    ims.expand_role = Mock(return_value=EXPANDED_ROLE)
+    sms.default_bucket = Mock(name='default_bucket', return_value=BUCKET_NAME)
+    sms.expand_role = Mock(return_value=EXPANDED_ROLE)
 
-    return ims
+    return sms
 
 
 @patch('sagemaker.local.local_session.LocalSession')
@@ -181,7 +181,8 @@ def test_check_output():
 @patch('sagemaker.local.local_session.LocalSession')
 @patch('sagemaker.local.image._execute_and_stream_output')
 @patch('sagemaker.local.image._SageMakerContainer._cleanup')
-def test_train(LocalSession, _execute_and_stream_output, _cleanup, tmpdir, sagemaker_session):
+@patch('sagemaker.local.image._SageMakerContainer._download_folder')
+def test_train(_download_folder, _cleanup, _execute_and_stream_output, LocalSession, tmpdir, sagemaker_session):
 
     with patch('sagemaker.local.image._SageMakerContainer._create_tmp_folder',
                side_effect=[str(tmpdir.mkdir('container-root')), str(tmpdir.mkdir('data'))]):
@@ -190,6 +191,15 @@ def test_train(LocalSession, _execute_and_stream_output, _cleanup, tmpdir, sagem
         image = 'my-image'
         sagemaker_container = _SageMakerContainer('local', instance_count, image, sagemaker_session=sagemaker_session)
         sagemaker_container.train(INPUT_DATA_CONFIG, HYPERPARAMETERS)
+
+        download_folder_calls = []
+        for channel in INPUT_DATA_CONFIG:
+            s3_uri = channel['DataSource']['S3DataSource']['S3Uri']
+            if 's3://' in s3_uri:
+                bucket, prefix = s3_uri.replace('s3://', '').split('/')
+                download_folder_calls.append(call(bucket, prefix, ANY))
+        _download_folder.assert_called()
+        _download_folder.assert_has_calls(download_folder_calls)
 
         docker_compose_file = os.path.join(sagemaker_container.container_root, 'docker-compose.yaml')
 
