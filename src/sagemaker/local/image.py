@@ -87,7 +87,6 @@ class _SageMakerContainer(object):
         os.mkdir(os.path.join(self.container_root, 'output'))
 
         data_dir = self._create_tmp_folder()
-        bucket_name = self.sagemaker_session.default_bucket()
         volumes = []
 
         # Set up the channels for the containers. For local data we will
@@ -102,7 +101,8 @@ class _SageMakerContainer(object):
             channel_dir = os.path.join(data_dir, channel_name)
             os.mkdir(channel_dir)
 
-            if uri.lower().startswith("s3://"):
+            if parsed_uri.scheme == 's3':
+                bucket_name = parsed_uri.netloc
                 self._download_folder(bucket_name, key, channel_dir)
             else:
                 volumes.append(_Volume(uri, channel=channel_name))
