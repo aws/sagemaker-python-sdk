@@ -15,7 +15,8 @@ class Mock(MagicMock):
 
 
 MOCK_MODULES = ['tensorflow', 'tensorflow.core', 'tensorflow.core.framework', 'tensorflow.python',
-                'tensorflow.python.framework', 'tensorflow_serving', 'tensorflow_serving.apis']
+                'tensorflow.python.framework', 'tensorflow_serving', 'tensorflow_serving.apis',
+                'numpy', 'scipy']
 sys.modules.update((mod_name, Mock()) for mod_name in MOCK_MODULES)
 
 version = '1.2.2'
