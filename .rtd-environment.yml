@@ -4,3 +4,6 @@ dependencies:
     - python>=3
     - numpy
     - scipy
+
+python:
+    setup_py_install: true
