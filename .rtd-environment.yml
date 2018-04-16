@@ -1,0 +1,5 @@
+name: sagemaker
+
+dependencies:
+    - numpy
+    - scipy
