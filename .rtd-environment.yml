@@ -1,3 +1,5 @@
+# Conda environment file used by our custom ReadTheDocs environment.
+
 name: sagemaker
 
 dependencies:
