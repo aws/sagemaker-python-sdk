@@ -1,5 +1,6 @@
 name: sagemaker
 
 dependencies:
+    - python>=3
     - numpy
     - scipy
