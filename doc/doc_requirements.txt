@@ -1,6 +1,0 @@
-boto3
-numpy
-protobuf
-scipy
-urllib3
-PyYAML
