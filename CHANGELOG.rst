@@ -2,7 +2,7 @@
 CHANGELOG
 =========
 
-1.2.3-dev
+1.2.3
 =========
 * bug-fix: Fix local mode not using the right s3 bucket
 
