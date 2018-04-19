@@ -556,7 +556,7 @@ class Session(object):
 
         Args:
             job_name (str): Name of the training job to display the logs for.
-            wait (bool): Whether to keep looking for new log entries until the job completes (default: True).
+            wait (bool): Whether to keep looking for new log entries until the job completes (default: False).
             poll (int): The interval in seconds between polling for new log entries and job completion (default: 5).
 
         Raises:
