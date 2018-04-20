@@ -47,7 +47,7 @@ def test_kmeans(sagemaker_session):
         kmeans.fit(kmeans.record_set(train_set[0][:100]))
 
     endpoint_name = name_from_base('kmeans')
-    with timeout_and_delete_endpoint_by_name(endpoint_name, sagemaker_session, minutes=20):
+    with timeout_and_delete_endpoint_by_name(endpoint_name, sagemaker_session):
         model = KMeansModel(kmeans.model_data, role='SageMakerRole', sagemaker_session=sagemaker_session)
         predictor = model.deploy(1, 'ml.c4.xlarge', endpoint_name=endpoint_name)
         result = predictor.predict(train_set[0][:10])
@@ -90,7 +90,7 @@ def test_async_kmeans(sagemaker_session):
         time.sleep(20)
         print("attaching now...")
 
-    with timeout_and_delete_endpoint_by_name(endpoint_name, sagemaker_session, minutes=35):
+    with timeout_and_delete_endpoint_by_name(endpoint_name, sagemaker_session):
         estimator = KMeans.attach(training_job_name=training_job_name, sagemaker_session=sagemaker_session)
         model = KMeansModel(estimator.model_data, role='SageMakerRole', sagemaker_session=sagemaker_session)
         predictor = model.deploy(1, 'ml.c4.xlarge', endpoint_name=endpoint_name)
