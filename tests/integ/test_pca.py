@@ -41,7 +41,7 @@ def test_pca(sagemaker_session):
         pca.fit(pca.record_set(train_set[0][:100]))
 
     endpoint_name = name_from_base('pca')
-    with timeout_and_delete_endpoint_by_name(endpoint_name, sagemaker_session, minutes=20):
+    with timeout_and_delete_endpoint_by_name(endpoint_name, sagemaker_session):
         pca_model = sagemaker.amazon.pca.PCAModel(model_data=pca.model_data, role='SageMakerRole',
                                                   sagemaker_session=sagemaker_session)
         predictor = pca_model.deploy(initial_instance_count=1, instance_type="ml.c4.xlarge",
@@ -79,7 +79,7 @@ def test_async_pca(sagemaker_session):
         print("Detached from training job. Will re-attach in 20 seconds")
         time.sleep(20)
 
-    with timeout_and_delete_endpoint_by_name(endpoint_name, sagemaker_session, minutes=35):
+    with timeout_and_delete_endpoint_by_name(endpoint_name, sagemaker_session):
         estimator = sagemaker.amazon.pca.PCA.attach(training_job_name=training_job_name,
                                                     sagemaker_session=sagemaker_session)
 
