@@ -41,7 +41,7 @@ def test_ntm(sagemaker_session):
         ntm.fit(record_set, None)
 
     endpoint_name = name_from_base('ntm')
-    with timeout_and_delete_endpoint_by_name(endpoint_name, sagemaker_session, minutes=20):
+    with timeout_and_delete_endpoint_by_name(endpoint_name, sagemaker_session):
         model = NTMModel(ntm.model_data, role='SageMakerRole', sagemaker_session=sagemaker_session)
         predictor = model.deploy(1, 'ml.c4.xlarge', endpoint_name=endpoint_name)
 

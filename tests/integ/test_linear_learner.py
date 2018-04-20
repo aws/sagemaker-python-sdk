@@ -77,7 +77,7 @@ def test_linear_learner(sagemaker_session):
         ll.fit(ll.record_set(train_set[0][:200], train_set[1][:200]))
 
     endpoint_name = name_from_base('linear-learner')
-    with timeout_and_delete_endpoint_by_name(endpoint_name, sagemaker_session, minutes=20):
+    with timeout_and_delete_endpoint_by_name(endpoint_name, sagemaker_session):
 
         predictor = ll.deploy(1, 'ml.c4.xlarge', endpoint_name=endpoint_name)
 
@@ -147,7 +147,7 @@ def test_async_linear_learner(sagemaker_session):
         print("Waiting to re-attach to the training job: %s" % training_job_name)
         time.sleep(20)
 
-    with timeout_and_delete_endpoint_by_name(endpoint_name, sagemaker_session, minutes=35):
+    with timeout_and_delete_endpoint_by_name(endpoint_name, sagemaker_session):
         estimator = LinearLearner.attach(training_job_name=training_job_name, sagemaker_session=sagemaker_session)
         model = LinearLearnerModel(estimator.model_data, role='SageMakerRole', sagemaker_session=sagemaker_session)
         predictor = model.deploy(1, 'ml.c4.xlarge', endpoint_name=endpoint_name)
