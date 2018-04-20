@@ -91,7 +91,7 @@ def test_byo_estimator(sagemaker_session, region):
 
     endpoint_name = name_from_base('byo')
 
-    with timeout_and_delete_endpoint_by_name(endpoint_name, sagemaker_session, minutes=20):
+    with timeout_and_delete_endpoint_by_name(endpoint_name, sagemaker_session):
         model = estimator.create_model()
         predictor = model.deploy(1, 'ml.m4.xlarge', endpoint_name=endpoint_name)
         predictor.serializer = fm_serializer
@@ -145,7 +145,7 @@ def test_async_byo_estimator(sagemaker_session, region):
         estimator.fit({'train': s3_train_data}, wait=False)
         training_job_name = estimator.latest_training_job.name
 
-    with timeout_and_delete_endpoint_by_name(endpoint_name, sagemaker_session, minutes=30):
+    with timeout_and_delete_endpoint_by_name(endpoint_name, sagemaker_session):
         estimator = Estimator.attach(training_job_name=training_job_name, sagemaker_session=sagemaker_session)
         model = estimator.create_model()
         predictor = model.deploy(1, 'ml.m4.xlarge', endpoint_name=endpoint_name)
