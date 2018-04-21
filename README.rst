@@ -47,7 +47,7 @@ You can install from source by cloning this repository and issuing a pip install
 
     git clone https://github.com/aws/sagemaker-python-sdk.git
     python setup.py sdist
-    pip install dist/sagemaker-1.2.2.tar.gz
+    pip install dist/sagemaker-1.2.3.tar.gz
 
 Supported Python versions
 ~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -56,7 +56,8 @@ SageMaker Python SDK is tested on: \* Python 2.7 \* Python 3.5
 
 Licensing
 ~~~~~~~~~
-SageMaker Python SDK is licensed under the Apache 2.0 License. It is copyright 2017 Amazon.com, Inc. or its affiliates. All Rights Reserved. The license is available at:  http://aws.amazon.com/apache2.0/
+SageMaker Python SDK is licensed under the Apache 2.0 License. It is copyright 2018 Amazon.com, Inc. or its affiliates. All Rights Reserved. The license is available at:  
+http://aws.amazon.com/apache2.0/
 
 Running tests
 ~~~~~~~~~~~~~

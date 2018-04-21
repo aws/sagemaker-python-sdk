@@ -11,7 +11,7 @@ def read(fname):
 
 
 setup(name="sagemaker",
-      version="1.2.pytorch",
+      version="1.3.dev",
       description="Open source library for training and deploying models on Amazon SageMaker.",
       packages=find_packages('src'),
       package_dir={'': 'src'},
