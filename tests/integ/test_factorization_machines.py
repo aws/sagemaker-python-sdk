@@ -41,7 +41,7 @@ def test_factorization_machines(sagemaker_session):
         fm.fit(fm.record_set(train_set[0][:200], train_set[1][:200].astype('float32')))
 
     endpoint_name = name_from_base('fm')
-    with timeout_and_delete_endpoint_by_name(endpoint_name, sagemaker_session, minutes=20):
+    with timeout_and_delete_endpoint_by_name(endpoint_name, sagemaker_session):
         model = FactorizationMachinesModel(fm.model_data, role='SageMakerRole', sagemaker_session=sagemaker_session)
         predictor = model.deploy(1, 'ml.c4.xlarge', endpoint_name=endpoint_name)
         result = predictor.predict(train_set[0][:10])
@@ -77,7 +77,7 @@ def test_async_factorization_machines(sagemaker_session):
         time.sleep(20)
         print("attaching now...")
 
-    with timeout_and_delete_endpoint_by_name(endpoint_name, sagemaker_session, minutes=35):
+    with timeout_and_delete_endpoint_by_name(endpoint_name, sagemaker_session):
         estimator = FactorizationMachines.attach(training_job_name=training_job_name,
                                                  sagemaker_session=sagemaker_session)
         model = FactorizationMachinesModel(estimator.model_data, role='SageMakerRole',
