@@ -23,6 +23,7 @@ import boto3
 import json
 import six
 import yaml
+import botocore.config
 from botocore.exceptions import ClientError
 
 from sagemaker.user_agent import prepend_user_agent
@@ -549,7 +550,7 @@ class Session(object):
         role = re.sub(r'^(.+)sts::(\d+):assumed-role/(.+?)/.*$', r'\1iam::\2:role/\3', assumed_role)
         return role
 
-    def logs_for_job(self, job_name, wait=False, poll=5):  # noqa: C901 - suppress complexity warning for this method
+    def logs_for_job(self, job_name, wait=False, poll=10):  # noqa: C901 - suppress complexity warning for this method
         """Display the logs for a given training job, optionally tailing them until the
         job is complete. If the output is a tty or a Jupyter cell, it will be color-coded
         based on which instance the log entry is from.
@@ -569,7 +570,11 @@ class Session(object):
 
         stream_names = []  # The list of log streams
         positions = {}     # The current position in each stream, map of stream name -> position
-        client = self.boto_session.client('logs')
+
+        # Increase retries allowed (from default of 4), as we don't want waiting for a training job
+        # to be interrupted by a transient exception.
+        config = botocore.config.Config(retries={'max_attempts': 15})
+        client = self.boto_session.client('logs', config=config)
         log_group = '/aws/sagemaker/TrainingJobs'
 
         job_already_completed = True if status == 'Completed' or status == 'Failed' else False
