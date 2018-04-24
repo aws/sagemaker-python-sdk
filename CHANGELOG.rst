@@ -2,6 +2,11 @@
 CHANGELOG
 =========
 
+1.2.4-dev
+=====
+
+* feature: Estimators: add support for Amazon Random Cut Forest algorithm
+
 1.2.3
 =========
 * bug-fix: Fix local mode not using the right s3 bucket
