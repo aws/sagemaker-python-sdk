@@ -85,7 +85,7 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):
             if self.train_instance_type == 'local_gpu' and self.train_instance_count > 1:
                 raise RuntimeError("Distributed Training in Local GPU is not supported")
 
-            self.sagemaker_session = LocalSession()
+            self.sagemaker_session = sagemaker_session or LocalSession()
         else:
             self.local_mode = False
             self.sagemaker_session = sagemaker_session or Session()
