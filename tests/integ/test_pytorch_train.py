@@ -45,6 +45,12 @@ def test_sync_fit_deploy(pytorch_training_job, sagemaker_session):
         data = numpy.zeros(shape=(1, 1, 28, 28))
         predictor.predict(data)
 
+        batch_size = 100
+        data = numpy.rand(shape=(100, 1, 28, 28))
+        output = predictor.predict(data)
+
+        assert numpy.asarray(output).shape == (batch_size, 10)
+
 
 def test_deploy_model(pytorch_training_job, sagemaker_session):
     endpoint_name = 'test-pytorch-deploy-model-{}'.format(sagemaker_timestamp())
@@ -55,8 +61,11 @@ def test_deploy_model(pytorch_training_job, sagemaker_session):
         model = PyTorchModel(model_data, 'SageMakerRole', entry_point=MNIST_SCRIPT, sagemaker_session=sagemaker_session)
         predictor = model.deploy(1, 'ml.m4.xlarge', endpoint_name=endpoint_name)
 
-        data = numpy.zeros(shape=(1, 1, 28, 28))
-        predictor.predict(data)
+        batch_size = 100
+        data = numpy.rand(shape=(100, 1, 28, 28))
+        output = predictor.predict(data)
+
+        assert numpy.asarray(output).shape == (batch_size, 10)
 
 
 def test_async_fit_deploy(sagemaker_session, pytorch_full_version):
@@ -80,8 +89,12 @@ def test_async_fit_deploy(sagemaker_session, pytorch_full_version):
             print("Re-attaching now to: %s" % training_job_name)
             estimator = PyTorch.attach(training_job_name=training_job_name, sagemaker_session=sagemaker_session)
             predictor = estimator.deploy(1, instance_type, endpoint_name=endpoint_name)
-            data = numpy.zeros(shape=(1, 1, 28, 28))
-            predictor.predict(data)
+
+            batch_size = 100
+            data = numpy.rand(shape=(100, 1, 28, 28))
+            output = predictor.predict(data)
+
+            assert numpy.asarray(output).shape == (batch_size, 10)
 
 
 # TODO(nadiaya): Run against local mode when errors will be propagated
