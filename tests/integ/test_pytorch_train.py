@@ -46,7 +46,7 @@ def test_sync_fit_deploy(pytorch_training_job, sagemaker_session):
         predictor.predict(data)
 
         batch_size = 100
-        data = numpy.rand(shape=(100, 1, 28, 28))
+        data = numpy.random.rand(batch_size, 1, 28, 28)
         output = predictor.predict(data)
 
         assert numpy.asarray(output).shape == (batch_size, 10)
@@ -62,7 +62,7 @@ def test_deploy_model(pytorch_training_job, sagemaker_session):
         predictor = model.deploy(1, 'ml.m4.xlarge', endpoint_name=endpoint_name)
 
         batch_size = 100
-        data = numpy.rand(shape=(100, 1, 28, 28))
+        data = numpy.random.rand(batch_size, 1, 28, 28)
         output = predictor.predict(data)
 
         assert numpy.asarray(output).shape == (batch_size, 10)
@@ -91,7 +91,7 @@ def test_async_fit_deploy(sagemaker_session, pytorch_full_version):
             predictor = estimator.deploy(1, instance_type, endpoint_name=endpoint_name)
 
             batch_size = 100
-            data = numpy.rand(shape=(100, 1, 28, 28))
+            data = numpy.random.rand(batch_size, 1, 28, 28)
             output = predictor.predict(data)
 
             assert numpy.asarray(output).shape == (batch_size, 10)
