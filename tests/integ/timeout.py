@@ -79,10 +79,6 @@ def _cleanup_endpoint_logs(endpoint_name, sagemaker_session):
         logs = AWSLogs(log_group_name=log_group, log_stream_name='ALL', start='1d',
                        aws_region=sagemaker_session.boto_session.region_name)
         logs.list_logs()
-
-        cwl_client = sagemaker_session.boto_session.client('logs')
-        cwl_client.delete_log_group(logGroupName=log_group)
-        LOGGER.info('deleted cloudwatch log group: {}'.format(log_group))
     except Exception:
         LOGGER.exception('Failure occurred while cleaning up cloudwatch log group %s. ' +
                          'Swallowing exception but printing stacktrace for debugging.', log_group)
