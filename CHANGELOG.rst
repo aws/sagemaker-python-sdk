@@ -2,7 +2,7 @@
 CHANGELOG
 =========
 
-1.2.4-dev
+1.2.4
 =====
 
 * feature: Estimators: add support for Amazon Random Cut Forest algorithm
