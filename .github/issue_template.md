@@ -1,7 +1,7 @@
 Please fill out the form below.
 
 ### System Information
-- **Framework(e.g. TensorFlow) / Algorithm(e.g. KMeans)**:
+- **Framework (e.g. TensorFlow) / Algorithm (e.g. KMeans)**:
 - **Framework Version**:
 - **Python Version**:
 - **CPU or GPU**:
