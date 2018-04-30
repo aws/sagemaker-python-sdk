@@ -163,3 +163,10 @@ def test(model, test_loader, cuda):
     logger.debug('Test set: Average loss: {:.4f}, Accuracy: {}/{} ({:.0f}%)\n'.format(
         test_loss, correct, len(test_loader.dataset),
         100. * correct / len(test_loader.dataset)))
+
+
+def model_fn(model_dir):
+    model = torch.nn.DataParallel(Net())
+    with open(os.path.join(model_dir, 'model'), 'rb') as f:
+        model.load_state_dict(torch.load(f))
+    return model
