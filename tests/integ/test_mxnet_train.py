@@ -42,6 +42,7 @@ def mxnet_training_job(sagemaker_session, mxnet_full_version):
         return mx.latest_training_job.name
 
 
+@pytest.mark.continuous_testing
 def test_attach_deploy(mxnet_training_job, sagemaker_session):
     endpoint_name = 'test-mxnet-attach-deploy-{}'.format(sagemaker_timestamp())
 
@@ -52,7 +53,6 @@ def test_attach_deploy(mxnet_training_job, sagemaker_session):
         predictor.predict(data)
 
 
-@pytest.mark.continuous_testing
 def test_deploy_model(mxnet_training_job, sagemaker_session):
     endpoint_name = 'test-mxnet-deploy-model-{}'.format(sagemaker_timestamp())
 
