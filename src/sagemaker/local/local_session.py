@@ -56,7 +56,14 @@ class LocalSagemakerClient(object):
                                                    AlgorithmSpecification['TrainingImage'], self.sagemaker_session)
 
         for channel in InputDataConfig:
-            data_distribution = channel['DataSource']['S3DataSource']['S3DataDistributionType']
+
+            if channel['DataSource'] and 'S3DataSource' in channel['DataSource']:
+                data_distribution = channel['DataSource']['S3DataSource']['S3DataDistributionType']
+            elif channel['DataSource'] and 'FileDataSource' in channel['DataSource']:
+                data_distribution = channel['DataSource']['FileDataSource']['FileDataDistributionType']
+            else:
+                raise ValueError('Need channel[\'DataSource\'] to have [\'S3DataSource\'] or [\'FileDataSource\']')
+
             if data_distribution != 'FullyReplicated':
                 raise RuntimeError("DataDistribution: %s is not currently supported in Local Mode" %
                                    data_distribution)
@@ -64,7 +71,7 @@ class LocalSagemakerClient(object):
         self.s3_model_artifacts = self.train_container.train(InputDataConfig, HyperParameters)
 
     def describe_training_job(self, TrainingJobName):
-        """Describe a local traininig job.
+        """Describe a local training job.
 
         Args:
             TrainingJobName (str): Not used in this implmentation.
@@ -171,3 +178,43 @@ class LocalSession(Session):
         # override logs_for_job() as it doesn't need to perform any action
         # on local mode.
         pass
+
+# TODO Naming consistent with session.s3_input. May want to change both
+# (e.g. S3Input and FileInput)
+class file_input(object):
+    """Amazon SageMaker channel configuration for FILE data sources, used in local mode.
+
+    Attributes:
+        config (dict[str, dict]): A SageMaker ``DataSource`` referencing a SageMaker ``S3DataSource``.
+    """
+
+    def __init__(self, fileUri):
+        """Create a definition for input data used by an SageMaker training job in local mode.
+        """
+
+        """TODO Keeping this consistent with s3_input data structure. May be
+        better to have a Type key under DataSource, but that really would mess
+        with the standard implementation....
+        """
+
+        self.config = {
+            'DataSource': {
+                'FileDataSource': {
+                    # TODO Ok to hardcode this here or allow input?
+                    'FileDataDistributionType': 'FullyReplicated',
+                    'FileUri': fileUri
+                }
+            }
+        }
+
+        # As per docs, leave unset in FILE mode
+        # if compression is not None:
+        #     self.config['CompressionType'] = compression
+
+        # if content_type is not None:
+        #     self.config['ContentType'] = content_type
+
+        # As per docs, leave unset in FILE mode
+        # if record_wrapping is not None:
+        #     self.config['RecordWrapperType'] = record_wrapping
+
