@@ -11,12 +11,14 @@
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
 import numpy as np
+import pytest
 
 from sagemaker import RandomCutForest, RandomCutForestModel
 from sagemaker.utils import name_from_base
 from tests.integ.timeout import timeout, timeout_and_delete_endpoint_by_name
 
 
+@pytest.mark.continuous_testing
 def test_randomcutforest(sagemaker_session):
     with timeout(minutes=15):
         # Generate a thousand 14-dimensional datapoints.
