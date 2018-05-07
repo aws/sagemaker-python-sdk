@@ -14,6 +14,7 @@ import os
 import pickle
 
 import numpy as np
+import pytest
 
 from sagemaker.tensorflow import TensorFlow
 from tests.integ import DATA_DIR
@@ -30,6 +31,7 @@ class PickleSerializer(object):
         return pickle.dumps(data, protocol=2)
 
 
+@pytest.mark.continuous_testing
 def test_cifar(sagemaker_session, tf_full_version):
     with timeout(minutes=20):
         script_path = os.path.join(DATA_DIR, 'cifar_10', 'source')
