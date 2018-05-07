@@ -27,10 +27,9 @@ INPUT_DATA_CONFIG = [
     {
         'ChannelName': 'a',
         'DataSource': {
-            'S3DataSource': {
-                'S3DataDistributionType': 'FullyReplicated',
-                'S3DataType': 'S3Prefix',
-                'S3Uri': '/tmp/source1'
+            'FileDataSource': {
+                'FileDataDistributionType': 'FullyReplicated',
+                'FileUri': 'file:///tmp/source1'
             }
         }
     },

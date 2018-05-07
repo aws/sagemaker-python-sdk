@@ -12,7 +12,6 @@
 # language governing permissions and limitations under the License.
 from __future__ import print_function, absolute_import
 
-import os
 import json
 import logging
 from abc import ABCMeta
@@ -22,7 +21,6 @@ from six import with_metaclass, string_types
 from sagemaker.fw_utils import tar_and_upload_dir
 from sagemaker.fw_utils import parse_s3_url
 from sagemaker.fw_utils import UploadedCode
-
 from sagemaker.local.local_session import LocalSession, file_input
 
 from sagemaker.model import Model
@@ -30,10 +28,8 @@ from sagemaker.model import (SCRIPT_PARAM_NAME, DIR_PARAM_NAME, CLOUDWATCH_METRI
                              CONTAINER_LOG_LEVEL_PARAM_NAME, JOB_NAME_PARAM_NAME, SAGEMAKER_REGION_PARAM_NAME)
 
 from sagemaker.predictor import RealTimePredictor
-
 from sagemaker.session import Session
 from sagemaker.session import s3_input
-
 from sagemaker.utils import base_name_from_image, name_from_base
 
 
@@ -382,7 +378,8 @@ class _TrainingJob(object):
             elif input.startswith('file://'):
                 return file_input(input)
             else:
-                raise ValueError('Training input data must be a valid S3 or FILE URI and must start with "s3://" or "file://"')
+                raise ValueError('Training input data must be a valid S3 or FILE URI: must start with "s3://" or '
+                                 '"file://"')
         elif isinstance(input, s3_input):
             return input
         elif isinstance(input, file_input):

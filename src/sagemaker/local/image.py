@@ -93,7 +93,6 @@ class _SageMakerContainer(object):
         # mount the local directory to the container. For S3 Data we will download the S3 data
         # first.
         for channel in input_data_config:
-
             if channel['DataSource'] and 'S3DataSource' in channel['DataSource']:
                 uri = channel['DataSource']['S3DataSource']['S3Uri']
             elif channel['DataSource'] and 'FileDataSource' in channel['DataSource']:
@@ -112,9 +111,7 @@ class _SageMakerContainer(object):
                 bucket_name = parsed_uri.netloc
                 self._download_folder(bucket_name, key, channel_dir)
             elif parsed_uri.scheme == 'file':
-                # TODO Check why this is file:/... and not file:///...
-                # TODO use the parsed_uri.xxx and use os.path.join
-                path = uri.lstrip('file:')
+                path = parsed_uri.path
                 volumes.append(_Volume(path, channel=channel_name))
             else:
                 raise ValueError('Unknown URI scheme {}'.format(parsed_uri.scheme))
