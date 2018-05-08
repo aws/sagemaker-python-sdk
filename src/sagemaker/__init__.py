@@ -20,6 +20,7 @@ from sagemaker.amazon.linear_learner import LinearLearner, LinearLearnerModel, L
 from sagemaker.amazon.factorization_machines import FactorizationMachines, FactorizationMachinesModel
 from sagemaker.amazon.factorization_machines import FactorizationMachinesPredictor
 from sagemaker.amazon.ntm import NTM, NTMModel, NTMPredictor
+from sagemaker.amazon.randomcutforest import RandomCutForest, RandomCutForestModel, RandomCutForestPredictor
 
 from sagemaker.local.local_session import LocalSession
 
@@ -36,5 +37,6 @@ __all__ = [estimator, KMeans, KMeansModel, KMeansPredictor, PCA, PCAModel, PCAPr
            LinearLearnerModel, LinearLearnerPredictor,
            LDA, LDAModel, LDAPredictor,
            FactorizationMachines, FactorizationMachinesModel, FactorizationMachinesPredictor,
+           RandomCutForest, RandomCutForestModel, RandomCutForestPredictor,
            Model, NTM, NTMModel, NTMPredictor, RealTimePredictor, Session, LocalSession,
            container_def, s3_input, production_variant, get_execution_role]

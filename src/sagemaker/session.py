@@ -212,8 +212,10 @@ class Session(object):
             job_name (str): Name of the training job being created.
             output_config (dict): The S3 URI where you want to store the training results and optional KMS key ID.
             resource_config (dict): Contains values for ResourceConfig:
-            instance_count (int): Number of EC2 instances to use for training.
-            instance_type (str): Type of EC2 instance to use for training, for example, 'ml.c4.xlarge'.
+                * instance_count (int): Number of EC2 instances to use for training.
+                    The key in resource_config is 'InstanceCount'.
+                * instance_type (str): Type of EC2 instance to use for training, for example, 'ml.c4.xlarge'.
+                    The key in resource_config is 'InstanceType'.
             hyperparameters (dict): Hyperparameters for model training. The hyperparameters are made accessible as
                 a dict[str, str] to the training code on SageMaker. For convenience, this accepts other types for
                 keys and values, but ``str()`` will be called to convert them before training.
@@ -557,7 +559,7 @@ class Session(object):
 
         Args:
             job_name (str): Name of the training job to display the logs for.
-            wait (bool): Whether to keep looking for new log entries until the job completes (default: True).
+            wait (bool): Whether to keep looking for new log entries until the job completes (default: False).
             poll (int): The interval in seconds between polling for new log entries and job completion (default: 5).
 
         Raises:

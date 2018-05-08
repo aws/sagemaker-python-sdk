@@ -22,6 +22,7 @@ from tests.integ.timeout import timeout_and_delete_endpoint_by_name, timeout
 DATA_PATH = os.path.join(DATA_DIR, 'iris', 'data')
 
 
+@pytest.mark.continuous_testing
 def test_tf(sagemaker_session, tf_full_version):
     with timeout(minutes=15):
         script_path = os.path.join(DATA_DIR, 'iris', 'iris-dnn-classifier.py')
