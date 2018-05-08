@@ -13,6 +13,7 @@
 import os
 
 import numpy as np
+import pytest
 
 from sagemaker import LDA, LDAModel
 from sagemaker.amazon.common import read_records
@@ -22,6 +23,7 @@ from tests.integ.timeout import timeout, timeout_and_delete_endpoint_by_name
 from tests.integ.record_set import prepare_record_set_from_local_files
 
 
+@pytest.mark.continuous_testing
 def test_lda(sagemaker_session):
     with timeout(minutes=15):
         data_path = os.path.join(DATA_DIR, 'lda')

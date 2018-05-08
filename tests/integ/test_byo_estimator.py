@@ -42,6 +42,7 @@ def fm_serializer(data):
     return json.dumps(js)
 
 
+@pytest.mark.continuous_testing
 def test_byo_estimator(sagemaker_session, region):
     """Use Factorization Machines algorithm as an example here.
 

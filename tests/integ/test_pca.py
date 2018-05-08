@@ -16,12 +16,15 @@ import pickle
 import sys
 import time
 
+import pytest
+
 import sagemaker.amazon.pca
 from sagemaker.utils import name_from_base
 from tests.integ import DATA_DIR
 from tests.integ.timeout import timeout, timeout_and_delete_endpoint_by_name
 
 
+@pytest.mark.continuous_testing
 def test_pca(sagemaker_session):
     with timeout(minutes=15):
         data_path = os.path.join(DATA_DIR, 'one_p_mnist', 'mnist.pkl.gz')

@@ -23,6 +23,7 @@ import boto3
 import json
 import six
 import yaml
+import botocore.config
 from botocore.exceptions import ClientError
 
 from sagemaker.user_agent import prepend_user_agent
@@ -211,8 +212,10 @@ class Session(object):
             job_name (str): Name of the training job being created.
             output_config (dict): The S3 URI where you want to store the training results and optional KMS key ID.
             resource_config (dict): Contains values for ResourceConfig:
-            instance_count (int): Number of EC2 instances to use for training.
-            instance_type (str): Type of EC2 instance to use for training, for example, 'ml.c4.xlarge'.
+                * instance_count (int): Number of EC2 instances to use for training.
+                    The key in resource_config is 'InstanceCount'.
+                * instance_type (str): Type of EC2 instance to use for training, for example, 'ml.c4.xlarge'.
+                    The key in resource_config is 'InstanceType'.
             hyperparameters (dict): Hyperparameters for model training. The hyperparameters are made accessible as
                 a dict[str, str] to the training code on SageMaker. For convenience, this accepts other types for
                 keys and values, but ``str()`` will be called to convert them before training.
@@ -549,14 +552,14 @@ class Session(object):
         role = re.sub(r'^(.+)sts::(\d+):assumed-role/(.+?)/.*$', r'\1iam::\2:role/\3', assumed_role)
         return role
 
-    def logs_for_job(self, job_name, wait=False, poll=5):  # noqa: C901 - suppress complexity warning for this method
+    def logs_for_job(self, job_name, wait=False, poll=10):  # noqa: C901 - suppress complexity warning for this method
         """Display the logs for a given training job, optionally tailing them until the
         job is complete. If the output is a tty or a Jupyter cell, it will be color-coded
         based on which instance the log entry is from.
 
         Args:
             job_name (str): Name of the training job to display the logs for.
-            wait (bool): Whether to keep looking for new log entries until the job completes (default: True).
+            wait (bool): Whether to keep looking for new log entries until the job completes (default: False).
             poll (int): The interval in seconds between polling for new log entries and job completion (default: 5).
 
         Raises:
@@ -569,7 +572,11 @@ class Session(object):
 
         stream_names = []  # The list of log streams
         positions = {}     # The current position in each stream, map of stream name -> position
-        client = self.boto_session.client('logs')
+
+        # Increase retries allowed (from default of 4), as we don't want waiting for a training job
+        # to be interrupted by a transient exception.
+        config = botocore.config.Config(retries={'max_attempts': 15})
+        client = self.boto_session.client('logs', config=config)
         log_group = '/aws/sagemaker/TrainingJobs'
 
         job_already_completed = True if status == 'Completed' or status == 'Failed' else False
