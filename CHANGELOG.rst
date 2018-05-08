@@ -2,6 +2,10 @@
 CHANGELOG
 =========
 
+1.2.5-dev
+=========
+* feature: Local Mode: add support for local training data using file://
+
 1.2.4
 =====
 
