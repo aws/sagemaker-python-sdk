@@ -13,4 +13,4 @@
 from sagemaker.mxnet.estimator import MXNet
 from sagemaker.mxnet.model import MXNetModel, MXNetPredictor
 
-__all__ = [MXNet, MXNetModel, MXNetPredictor]
+__all__ = ['MXNet', 'MXNetModel', 'MXNetPredictor']

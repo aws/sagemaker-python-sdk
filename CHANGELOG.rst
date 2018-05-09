@@ -2,8 +2,11 @@
 CHANGELOG
 =========
 
-1.2.5-dev
-=========
+
+1.2.dev5
+========
+
+* bug-fix: Change module names to string type in __all__
 * feature: Local Mode: add support for local training data using file://
 
 1.2.4
@@ -12,7 +15,8 @@ CHANGELOG
 * feature: Estimators: add support for Amazon Random Cut Forest algorithm
 
 1.2.3
-=========
+=====
+
 * bug-fix: Fix local mode not using the right s3 bucket
 
 1.2.2
