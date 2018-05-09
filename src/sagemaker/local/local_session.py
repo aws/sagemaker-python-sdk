@@ -56,7 +56,14 @@ class LocalSagemakerClient(object):
                                                    AlgorithmSpecification['TrainingImage'], self.sagemaker_session)
 
         for channel in InputDataConfig:
-            data_distribution = channel['DataSource']['S3DataSource']['S3DataDistributionType']
+
+            if channel['DataSource'] and 'S3DataSource' in channel['DataSource']:
+                data_distribution = channel['DataSource']['S3DataSource']['S3DataDistributionType']
+            elif channel['DataSource'] and 'FileDataSource' in channel['DataSource']:
+                data_distribution = channel['DataSource']['FileDataSource']['FileDataDistributionType']
+            else:
+                raise ValueError('Need channel[\'DataSource\'] to have [\'S3DataSource\'] or [\'FileDataSource\']')
+
             if data_distribution != 'FullyReplicated':
                 raise RuntimeError("DataDistribution: %s is not currently supported in Local Mode" %
                                    data_distribution)
@@ -64,7 +71,7 @@ class LocalSagemakerClient(object):
         self.s3_model_artifacts = self.train_container.train(InputDataConfig, HyperParameters)
 
     def describe_training_job(self, TrainingJobName):
-        """Describe a local traininig job.
+        """Describe a local training job.
 
         Args:
             TrainingJobName (str): Not used in this implmentation.
@@ -171,3 +178,26 @@ class LocalSession(Session):
         # override logs_for_job() as it doesn't need to perform any action
         # on local mode.
         pass
+
+
+class file_input(object):
+    """Amazon SageMaker channel configuration for FILE data sources, used in local mode.
+
+    Attributes:
+        config (dict[str, dict]): A SageMaker ``DataSource`` referencing a SageMaker ``FileDataSource``.
+    """
+
+    def __init__(self, fileUri, content_type=None):
+        """Create a definition for input data used by an SageMaker training job in local mode.
+        """
+        self.config = {
+            'DataSource': {
+                'FileDataSource': {
+                    'FileDataDistributionType': 'FullyReplicated',
+                    'FileUri': fileUri
+                }
+            }
+        }
+
+        if content_type is not None:
+            self.config['ContentType'] = content_type

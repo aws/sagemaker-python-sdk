@@ -2,10 +2,12 @@
 CHANGELOG
 =========
 
+
 1.2.dev5
 ========
 
 * bug-fix: Change module names to string type in __all__
+* feature: Local Mode: add support for local training data using file://
 
 1.2.4
 =====

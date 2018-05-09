@@ -93,7 +93,13 @@ class _SageMakerContainer(object):
         # mount the local directory to the container. For S3 Data we will download the S3 data
         # first.
         for channel in input_data_config:
-            uri = channel['DataSource']['S3DataSource']['S3Uri']
+            if channel['DataSource'] and 'S3DataSource' in channel['DataSource']:
+                uri = channel['DataSource']['S3DataSource']['S3Uri']
+            elif channel['DataSource'] and 'FileDataSource' in channel['DataSource']:
+                uri = channel['DataSource']['FileDataSource']['FileUri']
+            else:
+                raise ValueError('Need channel[\'DataSource\'] to have [\'S3DataSource\'] or [\'FileDataSource\']')
+
             parsed_uri = urlparse(uri)
             key = parsed_uri.path.lstrip('/')
 
@@ -104,8 +110,11 @@ class _SageMakerContainer(object):
             if parsed_uri.scheme == 's3':
                 bucket_name = parsed_uri.netloc
                 self._download_folder(bucket_name, key, channel_dir)
+            elif parsed_uri.scheme == 'file':
+                path = parsed_uri.path
+                volumes.append(_Volume(path, channel=channel_name))
             else:
-                volumes.append(_Volume(uri, channel=channel_name))
+                raise ValueError('Unknown URI scheme {}'.format(parsed_uri.scheme))
 
         # Create the configuration files for each container that we will create
         # Each container will map the additional local volumes (if any).

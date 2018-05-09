@@ -101,7 +101,7 @@ def test_sagemaker_s3_uri_invalid(sagemaker_session):
         t = DummyFramework(entry_point=SCRIPT_PATH, role=ROLE, sagemaker_session=sagemaker_session,
                            train_instance_count=INSTANCE_COUNT, train_instance_type=INSTANCE_TYPE)
         t.fit('thisdoesntstartwiths3')
-    assert 'must be a valid S3 URI' in str(error)
+    assert 'must be a valid S3 or FILE URI' in str(error)
 
 
 @patch('time.strftime', return_value=TIMESTAMP)
@@ -427,9 +427,8 @@ def test_unsupported_type():
 
 
 def test_unsupported_type_in_dict():
-    with pytest.raises(ValueError) as error:
+    with pytest.raises(ValueError):
         _TrainingJob._format_inputs_to_input_config({'a': 66})
-    assert 'Expecting one of str or s3_input' in str(error)
 
 
 #################################################################################
