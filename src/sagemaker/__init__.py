@@ -33,10 +33,10 @@ from sagemaker.session import s3_input
 from sagemaker.session import get_execution_role
 
 
-__all__ = [estimator, KMeans, KMeansModel, KMeansPredictor, PCA, PCAModel, PCAPredictor, LinearLearner,
-           LinearLearnerModel, LinearLearnerPredictor,
-           LDA, LDAModel, LDAPredictor,
-           FactorizationMachines, FactorizationMachinesModel, FactorizationMachinesPredictor,
-           RandomCutForest, RandomCutForestModel, RandomCutForestPredictor,
-           Model, NTM, NTMModel, NTMPredictor, RealTimePredictor, Session, LocalSession,
-           container_def, s3_input, production_variant, get_execution_role]
+__all__ = ['estimator', 'KMeans', 'KMeansModel', 'KMeansPredictor', 'PCA', 'PCAModel', 'PCAPredictor', 'LinearLearner',
+           'LinearLearnerModel', 'LinearLearnerPredictor',
+           'LDA', 'LDAModel', 'LDAPredictor',
+           'FactorizationMachines', 'FactorizationMachinesModel', 'FactorizationMachinesPredictor',
+           'RandomCutForest', 'RandomCutForestModel', 'RandomCutForestPredictor',
+           'Model', 'NTM', 'NTMModel', 'NTMPredictor', 'RealTimePredictor', 'Session', 'LocalSession',
+           'container_def', 's3_input', 'production_variant', 'get_execution_role']

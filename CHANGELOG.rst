@@ -2,13 +2,19 @@
 CHANGELOG
 =========
 
+1.2.dev5
+========
+
+* bug-fix: Change module names to string type in __all__
+
 1.2.4
 =====
 
 * feature: Estimators: add support for Amazon Random Cut Forest algorithm
 
 1.2.3
-=========
+=====
+
 * bug-fix: Fix local mode not using the right s3 bucket
 
 1.2.2
