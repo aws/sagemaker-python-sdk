@@ -6,7 +6,7 @@ CHANGELOG
 ========
 
 * bug-fix: Change module names to string type in __all__
-* feature: Copy saving training output files in local mode
+* feature: Saving training output files in local mode
 
 1.2.4
 =====

@@ -195,10 +195,10 @@ class _SageMakerContainer(object):
         s3_artifacts = os.path.join(self.container_root, 's3_artifacts')
         os.mkdir(s3_artifacts)
 
-        s3_artifacts_model_dir = os.path.join(s3_artifacts, 'model')
-        s3_artifacts_output_dir = os.path.join(s3_artifacts, 'output')
-        os.mkdir(s3_artifacts_model_dir)
-        os.mkdir(s3_artifacts_output_dir)
+        s3_model_artifacts = os.path.join(s3_artifacts, 'model')
+        s3_output_artifacts = os.path.join(s3_artifacts, 'output')
+        os.mkdir(s3_model_artifacts)
+        os.mkdir(s3_output_artifacts)
 
         for host in self.hosts:
             volumes = compose_data['services'][str(host)]['volumes']
@@ -206,9 +206,9 @@ class _SageMakerContainer(object):
             for volume in volumes:
                 host_dir, container_dir = volume.split(':')
                 if container_dir == '/opt/ml/model':
-                    self._recursive_copy(host_dir, s3_artifacts_model_dir)
+                    self._recursive_copy(host_dir, s3_model_artifacts)
                 elif container_dir == '/opt/ml/output':
-                    self._recursive_copy(host_dir, s3_artifacts_output_dir)
+                    self._recursive_copy(host_dir, s3_output_artifacts)
 
         return s3_artifacts
 
