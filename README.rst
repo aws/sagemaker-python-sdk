@@ -187,7 +187,7 @@ For detailed examples of running docker in local mode, see:
 A few important notes:
 
 - Only one local mode endpoint can be running at a time
-- Since the data is pulled from S3 to your local environment, please ensure you have sufficient space.
+- If you are using s3 data as input, it will be pulled from S3 to your local environment, please ensure you have sufficient space.
 - If you run into problems, this is often due to different docker containers conflicting.  Killing these containers and re-running often solves your problems.
 - Local Mode requires docker-compose and `nvidia-docker2 <https://github.com/NVIDIA/nvidia-docker>`__ for ``local_gpu``.
 - Distributed training is not yet supported for ``local_gpu``.
