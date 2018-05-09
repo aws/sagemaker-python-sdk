@@ -14,13 +14,12 @@ from __future__ import print_function, absolute_import
 
 import json
 import logging
+import os
 from abc import ABCMeta
 from abc import abstractmethod
 from six import with_metaclass, string_types
 
-from sagemaker.fw_utils import tar_and_upload_dir
-from sagemaker.fw_utils import parse_s3_url
-from sagemaker.fw_utils import UploadedCode
+from sagemaker.fw_utils import tar_and_upload_dir, parse_s3_url, UploadedCode, validate_source_dir
 from sagemaker.local.local_session import LocalSession, file_input
 
 from sagemaker.model import Model
@@ -30,7 +29,7 @@ from sagemaker.model import (SCRIPT_PARAM_NAME, DIR_PARAM_NAME, CLOUDWATCH_METRI
 from sagemaker.predictor import RealTimePredictor
 from sagemaker.session import Session
 from sagemaker.session import s3_input
-from sagemaker.utils import base_name_from_image, name_from_base
+from sagemaker.utils import base_name_from_image, name_from_base, get_config_value
 
 
 class EstimatorBase(with_metaclass(ABCMeta, object)):
@@ -158,9 +157,14 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):
             base_name = self.base_job_name or base_name_from_image(self.train_image())
             self._current_job_name = name_from_base(base_name)
 
-        # if output_path was specified we use it otherwise initialize here
+        # if output_path was specified we use it otherwise initialize here.
+        # For Local Mode with no_internet=True we don't need an explicit output_path
         if self.output_path is None:
-            self.output_path = 's3://{}/'.format(self.sagemaker_session.default_bucket())
+            if self.local_mode and get_config_value('local.no_internet',
+                                                    self.sagemaker_session.config):
+                self.output_path = ''
+            else:
+                self.output_path = 's3://{}/'.format(self.sagemaker_session.default_bucket())
 
         self.latest_training_job = _TrainingJob.start_new(self, inputs)
         if wait:
@@ -604,6 +608,41 @@ class Framework(EstimatorBase):
             base_name = self.base_job_name or base_name_from_image(self.train_image())
             self._current_job_name = name_from_base(base_name)
 
+        # if there is no source dir, use the directory containing the entry point.
+        if self.source_dir is None:
+            self.source_dir = os.path.dirname(self.entry_point)
+        self.entry_point = os.path.basename(self.entry_point)
+
+        # validate source dir will raise a ValueError if there is something wrong with the
+        # source directory. We are intentionally not handling it because this is a critical error.
+        if self.source_dir and not self.source_dir.lower().startswith('s3://'):
+            validate_source_dir(self.entry_point, self.source_dir)
+
+        # if we are in local mode with no_internet=True. We want the container to just
+        # mount the source dir instead of uploading to S3.
+        if self.local_mode and get_config_value('local.no_internet', self.sagemaker_session.config):
+            code_dir = 'file://' + self.source_dir
+            script = self.entry_point
+        else:
+            self.uploaded_code = self._stage_user_code_in_s3()
+            code_dir = self.uploaded_code.s3_prefix
+            script = self.uploaded_code.script_name
+
+        # Modify hyperparameters in-place to point to the right code directory and script URIs
+        self._hyperparameters[DIR_PARAM_NAME] = code_dir
+        self._hyperparameters[SCRIPT_PARAM_NAME] = script
+        self._hyperparameters[CLOUDWATCH_METRICS_PARAM_NAME] = self.enable_cloudwatch_metrics
+        self._hyperparameters[CONTAINER_LOG_LEVEL_PARAM_NAME] = self.container_log_level
+        self._hyperparameters[JOB_NAME_PARAM_NAME] = self._current_job_name
+        self._hyperparameters[SAGEMAKER_REGION_PARAM_NAME] = self.sagemaker_session.region_name
+        super(Framework, self).fit(inputs, wait, logs, self._current_job_name)
+
+    def _stage_user_code_in_s3(self):
+        """ Upload the user training script to s3 and return the location.
+
+        Returns: s3 uri
+
+        """
         if self.code_location is None:
             code_bucket = self.sagemaker_session.default_bucket()
             code_s3_prefix = '{}/source'.format(self._current_job_name)
@@ -611,20 +650,11 @@ class Framework(EstimatorBase):
             code_bucket, key_prefix = parse_s3_url(self.code_location)
             code_s3_prefix = '{}/{}/source'.format(key_prefix, self._current_job_name)
 
-        self.uploaded_code = tar_and_upload_dir(session=self.sagemaker_session.boto_session,
-                                                bucket=code_bucket,
-                                                s3_key_prefix=code_s3_prefix,
-                                                script=self.entry_point,
-                                                directory=self.source_dir)
-
-        # Modify hyperparameters in-place to add the URLs to the uploaded code.
-        self._hyperparameters[DIR_PARAM_NAME] = self.uploaded_code.s3_prefix
-        self._hyperparameters[SCRIPT_PARAM_NAME] = self.uploaded_code.script_name
-        self._hyperparameters[CLOUDWATCH_METRICS_PARAM_NAME] = self.enable_cloudwatch_metrics
-        self._hyperparameters[CONTAINER_LOG_LEVEL_PARAM_NAME] = self.container_log_level
-        self._hyperparameters[JOB_NAME_PARAM_NAME] = self._current_job_name
-        self._hyperparameters[SAGEMAKER_REGION_PARAM_NAME] = self.sagemaker_session.boto_session.region_name
-        super(Framework, self).fit(inputs, wait, logs, self._current_job_name)
+        return tar_and_upload_dir(session=self.sagemaker_session.boto_session,
+                                  bucket=code_bucket,
+                                  s3_key_prefix=code_s3_prefix,
+                                  script=self.entry_point,
+                                  directory=self.source_dir)
 
     def hyperparameters(self):
         """Return the hyperparameters as a dictionary to use for training.

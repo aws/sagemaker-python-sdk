@@ -89,7 +89,7 @@ class DummyFrameworkModel(FrameworkModel):
 @pytest.fixture()
 def sagemaker_session():
     boto_mock = Mock(name='boto_session', region_name=REGION)
-    ims = Mock(name='sagemaker_session', boto_session=boto_mock)
+    ims = Mock(name='sagemaker_session', boto_session=boto_mock, region_name=REGION)
     ims.default_bucket = Mock(name='default_bucket', return_value=BUCKET_NAME)
     ims.sagemaker_client.describe_training_job = Mock(name='describe_training_job',
                                                       return_value=DESCRIBE_TRAINING_JOB_RESULT)

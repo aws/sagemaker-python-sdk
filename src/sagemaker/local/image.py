@@ -29,6 +29,9 @@ from time import sleep
 
 import yaml
 
+import sagemaker
+from sagemaker.utils import get_config_value
+
 CONTAINER_PREFIX = "algo"
 DOCKER_COMPOSE_FILENAME = 'docker-compose.yaml'
 
@@ -70,9 +73,7 @@ class _SageMakerContainer(object):
         self.container = None
         # set the local config. This is optional and will use reasonable defaults
         # if not present.
-        self.local_config = None
-        if self.sagemaker_session.config and 'local' in self.sagemaker_session.config:
-            self.local_config = self.sagemaker_session.config['local']
+        self.local_config = get_config_value('local', self.sagemaker_session.config)
 
     def train(self, input_data_config, hyperparameters):
         """Run a training job locally using docker-compose.
@@ -115,6 +116,13 @@ class _SageMakerContainer(object):
                 volumes.append(_Volume(path, channel=channel_name))
             else:
                 raise ValueError('Unknown URI scheme {}'.format(parsed_uri.scheme))
+
+        # If the training script directory is a local directory, mount it to the container.
+        training_dir = json.loads(hyperparameters[sagemaker.estimator.DIR_PARAM_NAME])
+        parsed_uri = urlparse(training_dir)
+        if parsed_uri.scheme == 'file':
+            print('appended Volume')
+            volumes.append(_Volume(parsed_uri.path, '/opt/ml/code'))
 
         # Create the configuration files for each container that we will create
         # Each container will map the additional local volumes (if any).
@@ -366,8 +374,9 @@ class _SageMakerContainer(object):
             }
         }
 
-        serving_port = 8080 if self.local_config is None else self.local_config.get('serving_port', 8080)
         if command == 'serve':
+            serving_port = get_config_value('local.serving_port',
+                                            self.sagemaker_session.config) or 8080
             host_config.update({
                 'ports': [
                     '%s:8080' % serving_port
@@ -377,9 +386,9 @@ class _SageMakerContainer(object):
         return host_config
 
     def _create_tmp_folder(self):
-        root_dir = None
-        if self.local_config and 'container_root' in self.local_config:
-            root_dir = os.path.abspath(self.local_config['container_root'])
+        root_dir = get_config_value('local.container_root', self.sagemaker_session.config)
+        if root_dir:
+            root_dir = os.path.abspath(root_dir)
 
         dir = tempfile.mkdtemp(dir=root_dir)
 

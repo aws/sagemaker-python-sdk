@@ -14,7 +14,7 @@ import inspect
 from mock import Mock
 import os
 from sagemaker.fw_utils import create_image_uri, framework_name_from_image, framework_version_from_tag
-from sagemaker.fw_utils import tar_and_upload_dir, parse_s3_url, UploadedCode
+from sagemaker.fw_utils import tar_and_upload_dir, parse_s3_url, UploadedCode, validate_source_dir
 import pytest
 
 
@@ -110,13 +110,11 @@ def test_tar_and_upload_dir_is_not_directory(sagemaker_session):
     assert 'is not a directory' in str(error)
 
 
-def test_tar_and_upload_dir_file_not_in_dir(sagemaker_session):
-    bucket = 'mybucker'
-    s3_key_prefix = 'something/source'
+def test_validate_source_dir_file_not_in_dir():
     script = ' !@#$%^&*() .myscript. !@#$%^&*() '
     directory = '.'
     with pytest.raises(ValueError) as error:
-        tar_and_upload_dir(sagemaker_session, bucket, s3_key_prefix, script, directory)
+        validate_source_dir(script, directory)
     assert 'No file named' in str(error)
 
 

@@ -278,7 +278,7 @@ class TensorFlow(Framework):
         Returns:
             str: The URI of the Docker image.
         """
-        return create_image_uri(self.sagemaker_session.boto_session.region_name, self.__framework_name__,
+        return create_image_uri(self.sagemaker_session.region_name, self.__framework_name__,
                                 self.train_instance_type, self.framework_version, py_version=self.py_version)
 
     def create_model(self, model_server_workers=None):

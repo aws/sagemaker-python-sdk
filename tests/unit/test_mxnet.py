@@ -42,7 +42,7 @@ CPU = 'ml.c4.xlarge'
 @pytest.fixture()
 def sagemaker_session():
     boto_mock = Mock(name='boto_session', region_name=REGION)
-    ims = Mock(name='sagemaker_session', boto_session=boto_mock)
+    ims = Mock(name='sagemaker_session', boto_session=boto_mock, region_name=REGION)
     ims.sagemaker_client.describe_training_job = Mock(return_value={'ModelArtifacts':
                                                                     {'S3ModelArtifacts': 's3://m/m.tar.gz'}})
     ims.default_bucket = Mock(name='default_bucket', return_value=BUCKET_NAME)

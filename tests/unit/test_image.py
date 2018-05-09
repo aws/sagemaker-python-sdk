@@ -21,6 +21,7 @@ from mock import call, patch, Mock
 import sagemaker
 from sagemaker.local.image import _SageMakerContainer
 
+REGION = 'us-west-2'
 BUCKET_NAME = 'mybucket'
 EXPANDED_ROLE = 'arn:aws:iam::111111111111:role/ExpandedRole'
 INPUT_DATA_CONFIG = [
@@ -44,12 +45,14 @@ INPUT_DATA_CONFIG = [
         }
     }
 ]
-HYPERPARAMETERS = {'a': 1, 'b': "bee"}
+HYPERPARAMETERS = {'a': 1,
+                   'b': 'bee',
+                   'sagemaker_submit_directory': json.dumps('s3://my_bucket/code')}
 
 
 @pytest.fixture()
 def sagemaker_session():
-    boto_mock = Mock(name='boto_session')
+    boto_mock = Mock(name='boto_session', region_name=REGION)
     boto_mock.client('sts').get_caller_identity.return_value = {'Account': '123'}
     boto_mock.resource('s3').Bucket(BUCKET_NAME).objects.filter.return_value = []
 
