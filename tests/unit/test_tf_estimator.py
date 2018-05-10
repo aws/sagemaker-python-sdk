@@ -42,14 +42,14 @@ IMAGE_URI_FORMAT_STRING = "520713654638.dkr.ecr.{}.amazonaws.com/{}:{}-{}-{}"
 @pytest.fixture()
 def sagemaker_session():
     boto_mock = Mock(name='boto_session', region_name=REGION)
-    ims = Mock(name='sagemaker_session', boto_session=boto_mock, region_name=REGION,
-               config=None, local_mode=False)
-    ims.default_bucket = Mock(name='default_bucket', return_value=BUCKET_NAME)
-    ims.expand_role = Mock(name="expand_role", return_value=ROLE)
-    ims.sagemaker_client.describe_training_job = Mock(return_value={'ModelArtifacts':
+    sms = Mock(name='sagemaker_session', boto_session=boto_mock,
+               boto_region_name=REGION, config=None, local_mode=False)
+    sms.default_bucket = Mock(name='default_bucket', return_value=BUCKET_NAME)
+    sms.expand_role = Mock(name="expand_role", return_value=ROLE)
+    sms.sagemaker_client.describe_training_job = Mock(return_value={'ModelArtifacts':
                                                                     {'S3ModelArtifacts': 's3://m/m.tar.gz'}
                                                                     })
-    return ims
+    return sms
 
 
 def _get_full_cpu_image_uri(version):

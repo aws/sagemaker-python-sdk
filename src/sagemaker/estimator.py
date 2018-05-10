@@ -20,7 +20,7 @@ from abc import abstractmethod
 from six import with_metaclass, string_types
 
 from sagemaker.fw_utils import tar_and_upload_dir, parse_s3_url, UploadedCode, validate_source_dir
-from sagemaker.local.local_session import LocalSession, file_input
+from sagemaker.local import LocalSession, file_input
 
 from sagemaker.model import Model
 from sagemaker.model import (SCRIPT_PARAM_NAME, DIR_PARAM_NAME, CLOUDWATCH_METRICS_PARAM_NAME,
@@ -155,10 +155,10 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):
             self._current_job_name = name_from_base(base_name)
 
         # if output_path was specified we use it otherwise initialize here.
-        # For Local Mode with no_internet=True we don't need an explicit output_path
+        # For Local Mode with local_code=True we don't need an explicit output_path
         if self.output_path is None:
-            no_internet = get_config_value('local.no_internet', self.sagemaker_session.config)
-            if self.sagemaker_session.local_mode and no_internet:
+            local_code = get_config_value('local.local_code', self.sagemaker_session.config)
+            if self.sagemaker_session.local_mode and local_code:
                 self.output_path = ''
             else:
                 self.output_path = 's3://{}/'.format(self.sagemaker_session.default_bucket())
@@ -610,10 +610,10 @@ class Framework(EstimatorBase):
         if self.source_dir and not self.source_dir.lower().startswith('s3://'):
             validate_source_dir(self.entry_point, self.source_dir)
 
-        # if we are in local mode with no_internet=True. We want the container to just
+        # if we are in local mode with local_code=True. We want the container to just
         # mount the source dir instead of uploading to S3.
-        no_internet = get_config_value('local.no_internet', self.sagemaker_session.config)
-        if self.sagemaker_session.local_mode and no_internet:
+        local_code = get_config_value('local.local_code', self.sagemaker_session.config)
+        if self.sagemaker_session.local_mode and local_code:
             # if there is no source dir, use the directory containing the entry point.
             if self.source_dir is None:
                 self.source_dir = os.path.dirname(self.entry_point)
@@ -632,7 +632,7 @@ class Framework(EstimatorBase):
         self._hyperparameters[CLOUDWATCH_METRICS_PARAM_NAME] = self.enable_cloudwatch_metrics
         self._hyperparameters[CONTAINER_LOG_LEVEL_PARAM_NAME] = self.container_log_level
         self._hyperparameters[JOB_NAME_PARAM_NAME] = self._current_job_name
-        self._hyperparameters[SAGEMAKER_REGION_PARAM_NAME] = self.sagemaker_session.region_name
+        self._hyperparameters[SAGEMAKER_REGION_PARAM_NAME] = self.sagemaker_session.boto_region_name
         super(Framework, self).fit(inputs, wait, logs, self._current_job_name)
 
     def _stage_user_code_in_s3(self):

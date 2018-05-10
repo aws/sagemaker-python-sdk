@@ -173,20 +173,13 @@ class LocalSession(Session):
             logger.warning("Windows Support for Local Mode is Experimental")
 
     def _initialize(self, boto_session, sagemaker_client, sagemaker_runtime_client):
-        """Initialize a boto session for this Local SageMaker Session."""
-        if get_config_value('local.no_internet', self.config):
-            # if no_internet is set to True in the config file then we won't create a boto_session
-            # this will make any component that defaults to using S3 utilize a local file instead.
-            self.boto_session = None
-            self.region_name = get_config_value('local.region_name', self.config)
-            if self.region_name is None:
-                raise ValueError('Must setup region_name in the sagemaker config file. See <Link to Readme Here>')
-        else:
-            self.boto_session = boto_session or boto3.Session()
-            self.region_name = self.boto_session.region_name
+        """Initialize this Local SageMaker Session."""
 
-            if self.region_name is None:
-                raise ValueError('Must setup local AWS configuration with a region supported by SageMaker.')
+        self.boto_session = boto_session or boto3.Session()
+        self._region_name = self.boto_session.region_name
+
+        if self._region_name is None:
+            raise ValueError('Must setup local AWS configuration with a region supported by SageMaker.')
 
         self.sagemaker_client = LocalSagemakerClient(self)
         self.sagemaker_runtime_client = LocalSagemakerRuntimeClient(self.config)

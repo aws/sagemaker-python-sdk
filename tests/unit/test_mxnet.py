@@ -43,7 +43,7 @@ CPU = 'ml.c4.xlarge'
 def sagemaker_session():
     boto_mock = Mock(name='boto_session', region_name=REGION)
     sms = Mock(name='sagemaker_session', boto_session=boto_mock,
-               region_name=REGION, config=None, local_mode=False)
+               boto_region_name=REGION, config=None, local_mode=False)
     sms.sagemaker_client.describe_training_job = Mock(return_value={'ModelArtifacts':
                                                                     {'S3ModelArtifacts': 's3://m/m.tar.gz'}})
     sms.default_bucket = Mock(name='default_bucket', return_value=BUCKET_NAME)

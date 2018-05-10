@@ -71,9 +71,6 @@ class _SageMakerContainer(object):
         self.hosts = ['{}-{}-{}'.format(CONTAINER_PREFIX, i, suffix) for i in range(1, self.instance_count + 1)]
         self.container_root = None
         self.container = None
-        # set the local config. This is optional and will use reasonable defaults
-        # if not present.
-        self.local_config = get_config_value('local', self.sagemaker_session.config)
 
     def train(self, input_data_config, hyperparameters):
         """Run a training job locally using docker-compose.
@@ -86,7 +83,10 @@ class _SageMakerContainer(object):
         """
         self.container_root = self._create_tmp_folder()
         os.mkdir(os.path.join(self.container_root, 'output'))
-        os.mkdir(os.path.join(self.container_root, 'shared'))
+        # A shared directory for all the containers. It is only mounted if the training script is
+        # Local.
+        shared_dir = os.path.join(self.container_root, 'shared')
+        os.mkdir(shared_dir)
 
         data_dir = self._create_tmp_folder()
         volumes = []
@@ -123,7 +123,8 @@ class _SageMakerContainer(object):
         parsed_uri = urlparse(training_dir)
         if parsed_uri.scheme == 'file':
             volumes.append(_Volume(parsed_uri.path, '/opt/ml/code'))
-            volumes.append(_Volume(os.path.join(self.container_root, 'shared'), '/opt/ml/shared'))
+            # Also mount a directory that all the containers can access.
+            volumes.append(_Volume(shared_dir, '/opt/ml/shared'))
 
         # Create the configuration files for each container that we will create
         # Each container will map the additional local volumes (if any).
@@ -144,6 +145,7 @@ class _SageMakerContainer(object):
         # lots of data downloaded from S3. This doesn't delete any local
         # data that was just mounted to the container.
         _delete_tree(data_dir)
+        _delete_tree(shared_dir)
         # Also free the container config files.
         for host in self.hosts:
             container_config_path = os.path.join(self.container_root, host)

@@ -87,8 +87,8 @@ class Session(object):
         """
         self.boto_session = boto_session or boto3.Session()
 
-        self.region_name = self.boto_session.region_name
-        if self.region_name is None:
+        self._region_name = self.boto_session.region_name
+        if self._region_name is None:
             raise ValueError('Must setup local AWS configuration with a region supported by SageMaker.')
 
         self.sagemaker_client = sagemaker_client or self.boto_session.client('sagemaker')
@@ -101,7 +101,7 @@ class Session(object):
 
     @property
     def boto_region_name(self):
-        return self.boto_session.region_name
+        return self._region_name
 
     def upload_data(self, path, bucket=None, key_prefix='data'):
         """Upload local file or directory to S3.

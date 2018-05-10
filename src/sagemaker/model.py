@@ -160,21 +160,21 @@ class FrameworkModel(Model):
         Returns:
             dict[str, str]: A container definition object usable with the CreateModel API.
         """
-        no_internet = get_config_value('local.no_internet', self.sagemaker_session.config)
-        if self.sagemaker_session.local_mode and no_internet:
-            self.uploaded_code = None
-        else:
-            self._upload_code(self.key_prefix or self.name or name_from_image(self.image))
+        self._upload_code(self.key_prefix or self.name or name_from_image(self.image))
         deploy_env = dict(self.env)
         deploy_env.update(self._framework_env_vars())
         return sagemaker.container_def(self.image, self.model_data, deploy_env)
 
     def _upload_code(self, key_prefix):
-        self.uploaded_code = tar_and_upload_dir(session=self.sagemaker_session.boto_session,
-                                                bucket=self.bucket or self.sagemaker_session.default_bucket(),
-                                                s3_key_prefix=key_prefix,
-                                                script=self.entry_point,
-                                                directory=self.source_dir)
+        local_code = get_config_value('local.local_code', self.sagemaker_session.config)
+        if self.sagemaker_session.local_mode and local_code:
+            self.uploaded_code = None
+        else:
+            self.uploaded_code = tar_and_upload_dir(session=self.sagemaker_session.boto_session,
+                                                    bucket=self.bucket or self.sagemaker_session.default_bucket(),
+                                                    s3_key_prefix=key_prefix,
+                                                    script=self.entry_point,
+                                                    directory=self.source_dir)
 
     def _framework_env_vars(self):
         if self.uploaded_code:
@@ -189,5 +189,5 @@ class FrameworkModel(Model):
             DIR_PARAM_NAME.upper(): dir_name,
             CLOUDWATCH_METRICS_PARAM_NAME.upper(): str(self.enable_cloudwatch_metrics).lower(),
             CONTAINER_LOG_LEVEL_PARAM_NAME.upper(): str(self.container_log_level),
-            SAGEMAKER_REGION_PARAM_NAME.upper(): self.sagemaker_session.region_name
+            SAGEMAKER_REGION_PARAM_NAME.upper(): self.sagemaker_session.boto_region_name
         }
