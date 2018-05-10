@@ -16,7 +16,7 @@ from sagemaker.model import FrameworkModel, MODEL_SERVER_WORKERS_PARAM_NAME
 from sagemaker.predictor import RealTimePredictor
 from sagemaker.tensorflow.defaults import TF_VERSION
 from sagemaker.tensorflow.predictor import tf_json_serializer, tf_json_deserializer
-from sagemaker.utils import name_from_image
+from sagemaker.utils import name_from_image, get_config_value
 
 
 class TensorFlowPredictor(RealTimePredictor):
@@ -83,11 +83,18 @@ class TensorFlowModel(FrameworkModel):
         """
         deploy_image = self.image
         if not deploy_image:
-            region_name = self.sagemaker_session.boto_session.region_name
+            region_name = self.sagemaker_session.region_name
             deploy_image = create_image_uri(region_name, self.__framework_name__, instance_type,
                                             self.framework_version, self.py_version)
+
         deploy_key_prefix = self.key_prefix or self.name or name_from_image(deploy_image)
-        self._upload_code(deploy_key_prefix)
+
+        no_internet = get_config_value('local.no_internet', self.sagemaker_session.config)
+        print('no_internet: %s  local_mode: %s' % (no_internet, self.sagemaker_session.local_mode))
+        if self.sagemaker_session.local_mode and no_internet:
+            self.uploaded_code = None
+        else:
+            self._upload_code(deploy_key_prefix)
         deploy_env = dict(self.env)
         deploy_env.update(self._framework_env_vars())
 

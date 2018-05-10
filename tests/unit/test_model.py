@@ -46,9 +46,10 @@ class DummyFrameworkModel(FrameworkModel):
 @pytest.fixture()
 def sagemaker_session():
     boto_mock = Mock(name='boto_session', region_name=REGION)
-    ims = Mock(name='sagemaker_session', boto_session=boto_mock)
-    ims.default_bucket = Mock(name='default_bucket', return_value=BUCKET_NAME)
-    return ims
+    sms = Mock(name='sagemaker_session', boto_session=boto_mock,
+               region_name=REGION, config=None, local_mode=False)
+    sms.default_bucket = Mock(name='default_bucket', return_value=BUCKET_NAME)
+    return sms
 
 
 @patch('tarfile.open')

@@ -226,7 +226,12 @@ def test_serve(up, copy, copytree, tmpdir, sagemaker_session):
 
         image = 'my-image'
         sagemaker_container = _SageMakerContainer('local', 1, image, sagemaker_session=sagemaker_session)
-        primary_container = {'ModelDataUrl': '/some/model/path', 'Environment': {'env1': 1, 'env2': 'b'}}
+        primary_container = {'ModelDataUrl': '/some/model/path',
+                             'Environment': {'env1': 1,
+                                             'env2': 'b',
+                                             'SAGEMAKER_SUBMIT_DIRECTORY': 's3://some/path'
+                                             }
+                             }
 
         sagemaker_container.serve(primary_container)
         docker_compose_file = os.path.join(sagemaker_container.container_root, 'docker-compose.yaml')

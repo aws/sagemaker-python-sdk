@@ -90,23 +90,19 @@ def test_tar_and_upload_dir_s3(sagemaker_session):
     assert result == UploadedCode('s3://m', 'mnist.py')
 
 
-def test_tar_and_upload_dir_does_not_exits(sagemaker_session):
-    bucket = 'mybucker'
-    s3_key_prefix = 'something/source'
+def test_validate_source_dir_does_not_exits(sagemaker_session):
     script = 'mnist.py'
     directory = ' !@#$%^&*()path probably in not there.!@#$%^&*()'
     with pytest.raises(ValueError) as error:
-        tar_and_upload_dir(sagemaker_session, bucket, s3_key_prefix, script, directory)
+        validate_source_dir(script, directory)
     assert 'does not exist' in str(error)
 
 
-def test_tar_and_upload_dir_is_not_directory(sagemaker_session):
-    bucket = 'mybucker'
-    s3_key_prefix = 'something/source'
+def test_validate_source_dir_is_not_directory(sagemaker_session):
     script = 'mnist.py'
     directory = inspect.getfile(inspect.currentframe())
     with pytest.raises(ValueError) as error:
-        tar_and_upload_dir(sagemaker_session, bucket, s3_key_prefix, script, directory)
+        validate_source_dir(script, directory)
     assert 'is not a directory' in str(error)
 
 

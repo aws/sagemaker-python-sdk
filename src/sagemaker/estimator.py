@@ -82,13 +82,10 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):
         self.input_mode = input_mode
 
         if self.train_instance_type in ('local', 'local_gpu'):
-            self.local_mode = True
             if self.train_instance_type == 'local_gpu' and self.train_instance_count > 1:
                 raise RuntimeError("Distributed Training in Local GPU is not supported")
-
             self.sagemaker_session = sagemaker_session or LocalSession()
         else:
-            self.local_mode = False
             self.sagemaker_session = sagemaker_session or Session()
 
         self.base_job_name = base_job_name
@@ -160,8 +157,8 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):
         # if output_path was specified we use it otherwise initialize here.
         # For Local Mode with no_internet=True we don't need an explicit output_path
         if self.output_path is None:
-            if self.local_mode and get_config_value('local.no_internet',
-                                                    self.sagemaker_session.config):
+            no_internet = get_config_value('local.no_internet', self.sagemaker_session.config)
+            if self.sagemaker_session.local_mode and no_internet:
                 self.output_path = ''
             else:
                 self.output_path = 's3://{}/'.format(self.sagemaker_session.default_bucket())
@@ -327,7 +324,7 @@ class _TrainingJob(object):
             sagemaker.estimator.Framework: Constructed object that captures all information about the started job.
         """
 
-        local_mode = estimator.local_mode
+        local_mode = estimator.sagemaker_session.local_mode
 
         # Allow file:// input only in local mode
         if isinstance(inputs, str) and inputs.startswith('file://'):
@@ -608,11 +605,6 @@ class Framework(EstimatorBase):
             base_name = self.base_job_name or base_name_from_image(self.train_image())
             self._current_job_name = name_from_base(base_name)
 
-        # if there is no source dir, use the directory containing the entry point.
-        if self.source_dir is None:
-            self.source_dir = os.path.dirname(self.entry_point)
-        self.entry_point = os.path.basename(self.entry_point)
-
         # validate source dir will raise a ValueError if there is something wrong with the
         # source directory. We are intentionally not handling it because this is a critical error.
         if self.source_dir and not self.source_dir.lower().startswith('s3://'):
@@ -620,7 +612,13 @@ class Framework(EstimatorBase):
 
         # if we are in local mode with no_internet=True. We want the container to just
         # mount the source dir instead of uploading to S3.
-        if self.local_mode and get_config_value('local.no_internet', self.sagemaker_session.config):
+        no_internet = get_config_value('local.no_internet', self.sagemaker_session.config)
+        if self.sagemaker_session.local_mode and no_internet:
+            # if there is no source dir, use the directory containing the entry point.
+            if self.source_dir is None:
+                self.source_dir = os.path.dirname(self.entry_point)
+            self.entry_point = os.path.basename(self.entry_point)
+
             code_dir = 'file://' + self.source_dir
             script = self.entry_point
         else:

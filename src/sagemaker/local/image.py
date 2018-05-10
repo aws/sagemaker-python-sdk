@@ -86,6 +86,7 @@ class _SageMakerContainer(object):
         """
         self.container_root = self._create_tmp_folder()
         os.mkdir(os.path.join(self.container_root, 'output'))
+        os.mkdir(os.path.join(self.container_root, 'shared'))
 
         data_dir = self._create_tmp_folder()
         volumes = []
@@ -121,8 +122,8 @@ class _SageMakerContainer(object):
         training_dir = json.loads(hyperparameters[sagemaker.estimator.DIR_PARAM_NAME])
         parsed_uri = urlparse(training_dir)
         if parsed_uri.scheme == 'file':
-            print('appended Volume')
             volumes.append(_Volume(parsed_uri.path, '/opt/ml/code'))
+            volumes.append(_Volume(os.path.join(self.container_root, 'shared'), '/opt/ml/shared'))
 
         # Create the configuration files for each container that we will create
         # Each container will map the additional local volumes (if any).
@@ -179,7 +180,16 @@ class _SageMakerContainer(object):
 
         _ecr_login_if_needed(self.sagemaker_session.boto_session, self.image)
 
-        self._generate_compose_file('serve', additional_env_vars=env_vars)
+        # If the user script was passed as a file:// mount it to the container.
+        script_dir = primary_container['Environment'][sagemaker.estimator.DIR_PARAM_NAME.upper()]
+        parsed_uri = urlparse(script_dir)
+        volumes = []
+        if parsed_uri.scheme == 'file':
+            volumes.append(_Volume(parsed_uri.path, '/opt/ml/code'))
+
+        self._generate_compose_file('serve',
+                                    additional_env_vars=env_vars,
+                                    additional_volumes=volumes)
         compose_command = self._compose()
         self.container = _HostingContainer(compose_command)
         self.container.up()
@@ -573,6 +583,10 @@ def _ecr_login_if_needed(boto_session, image):
     # do we have the image?
     if _check_output('docker images -q %s' % image).strip():
         return
+
+    if not boto_session:
+        raise RuntimeError('A boto session is required to login to ECR.'
+                           'Please pull the image: %s manually.' % image)
 
     ecr = boto_session.client('ecr')
     auth = ecr.get_authorization_token(registryIds=[image.split('.')[0]])

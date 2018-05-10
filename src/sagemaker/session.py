@@ -87,8 +87,8 @@ class Session(object):
         """
         self.boto_session = boto_session or boto3.Session()
 
-        self.region = self.boto_session.region_name
-        if self.region is None:
+        self.region_name = self.boto_session.region_name
+        if self.region_name is None:
             raise ValueError('Must setup local AWS configuration with a region supported by SageMaker.')
 
         self.sagemaker_client = sagemaker_client or self.boto_session.client('sagemaker')
@@ -96,6 +96,8 @@ class Session(object):
 
         self.sagemaker_runtime_client = sagemaker_runtime_client or self.boto_session.client('runtime.sagemaker')
         prepend_user_agent(self.sagemaker_runtime_client)
+
+        self.local_mode = False
 
     @property
     def boto_region_name(self):

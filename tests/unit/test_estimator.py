@@ -89,7 +89,8 @@ class DummyFrameworkModel(FrameworkModel):
 @pytest.fixture()
 def sagemaker_session():
     boto_mock = Mock(name='boto_session', region_name=REGION)
-    ims = Mock(name='sagemaker_session', boto_session=boto_mock, region_name=REGION)
+    ims = Mock(name='sagemaker_session', boto_session=boto_mock, region_name=REGION,
+               config=None, local_mode=False)
     ims.default_bucket = Mock(name='default_bucket', return_value=BUCKET_NAME)
     ims.sagemaker_client.describe_training_job = Mock(name='describe_training_job',
                                                       return_value=DESCRIBE_TRAINING_JOB_RESULT)
@@ -533,18 +534,26 @@ def test_generic_to_deploy(sagemaker_session):
 
 
 @patch('sagemaker.estimator.LocalSession')
-def test_local_mode(sagemaker_session):
-    e = Estimator(IMAGE_NAME, ROLE, INSTANCE_COUNT, 'local', output_path='s3://bucket/prefix',
-                  sagemaker_session=sagemaker_session)
-    assert e.local_mode is True
+@patch('sagemaker.estimator.Session')
+def test_local_mode(session_class, local_session_class):
+    local_session = Mock()
+    local_session.local_mode = True
 
-    e2 = Estimator(IMAGE_NAME, ROLE, INSTANCE_COUNT, 'local_gpu', output_path='s3://bucket/prefix',
-                   sagemaker_session=sagemaker_session)
-    assert e2.local_mode is True
+    session = Mock()
+    session.local_mode = False
 
-    e3 = Estimator(IMAGE_NAME, ROLE, INSTANCE_COUNT, INSTANCE_TYPE, output_path='s3://bucket/prefix',
-                   sagemaker_session=sagemaker_session)
-    assert e3.local_mode is False
+    local_session_class.return_value = local_session
+    session_class.return_value = session
+
+    e = Estimator(IMAGE_NAME, ROLE, INSTANCE_COUNT, 'local')
+    print(e.sagemaker_session.local_mode)
+    assert e.sagemaker_session.local_mode is True
+
+    e2 = Estimator(IMAGE_NAME, ROLE, INSTANCE_COUNT, 'local_gpu')
+    assert e2.sagemaker_session.local_mode is True
+
+    e3 = Estimator(IMAGE_NAME, ROLE, INSTANCE_COUNT, INSTANCE_TYPE)
+    assert e3.sagemaker_session.local_mode is False
 
 
 @patch('sagemaker.estimator.LocalSession')
