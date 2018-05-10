@@ -79,11 +79,7 @@ def validate_source_dir(script, directory):
         ValueError: If ``directory`` does not exist, is not a directory, or does not contain ``script``.
     """
     if directory:
-        if not os.path.exists(directory):
-            raise ValueError('"{}" does not exist.'.format(directory))
-        if not os.path.isdir(directory):
-            raise ValueError('"{}" is not a directory.'.format(directory))
-        if script not in os.listdir(directory):
+        if not os.path.isfile(os.path.join(directory, script)):
             raise ValueError('No file named "{}" was found in directory "{}".'.format(script, directory))
 
     return True

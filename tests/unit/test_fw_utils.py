@@ -93,25 +93,22 @@ def test_tar_and_upload_dir_s3(sagemaker_session):
 def test_validate_source_dir_does_not_exits(sagemaker_session):
     script = 'mnist.py'
     directory = ' !@#$%^&*()path probably in not there.!@#$%^&*()'
-    with pytest.raises(ValueError) as error:
+    with pytest.raises(ValueError):
         validate_source_dir(script, directory)
-    assert 'does not exist' in str(error)
 
 
 def test_validate_source_dir_is_not_directory(sagemaker_session):
     script = 'mnist.py'
     directory = inspect.getfile(inspect.currentframe())
-    with pytest.raises(ValueError) as error:
+    with pytest.raises(ValueError):
         validate_source_dir(script, directory)
-    assert 'is not a directory' in str(error)
 
 
 def test_validate_source_dir_file_not_in_dir():
     script = ' !@#$%^&*() .myscript. !@#$%^&*() '
     directory = '.'
-    with pytest.raises(ValueError) as error:
+    with pytest.raises(ValueError):
         validate_source_dir(script, directory)
-    assert 'No file named' in str(error)
 
 
 def test_tar_and_upload_dir_not_s3(sagemaker_session):
