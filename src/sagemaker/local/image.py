@@ -210,7 +210,7 @@ class _SageMakerContainer(object):
                 elif container_dir == '/opt/ml/output':
                     self._recursive_copy(host_dir, s3_output_artifacts)
 
-        return s3_artifacts
+        return s3_model_artifacts
 
     def write_config_files(self, host, hyperparameters, input_data_config):
         """Write the config files for the training containers.

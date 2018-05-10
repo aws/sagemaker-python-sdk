@@ -161,7 +161,8 @@ def test_retrieve_artifacts(LocalSession, tmpdir):
     for f in files4:
         open(os.path.join(volume2, f), 'a').close()
 
-    s3_artifacts = sagemaker_container.retrieve_artifacts(compose_data)
+    s3_model_artifacts = sagemaker_container.retrieve_artifacts(compose_data)
+    s3_artifacts = os.path.dirname(s3_model_artifacts)
 
     for f in expected:
         assert set(os.listdir(s3_artifacts)) == set(['model', 'output'])
