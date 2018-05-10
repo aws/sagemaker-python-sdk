@@ -1,4 +1,4 @@
-=========
+    =========
 CHANGELOG
 =========
 
@@ -8,6 +8,7 @@ CHANGELOG
 
 * bug-fix: Change module names to string type in __all__
 * feature: Local Mode: add support for local training data using file://
+* feature: Updated TensorFlow Serving api protobuf files
 
 1.2.4
 =====
