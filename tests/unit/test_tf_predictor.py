@@ -10,20 +10,22 @@
 # distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
-import sys
+from __future__ import absolute_import
 
 import io
 import json
+import sys
+
 import numpy as np
 import pytest
-import tensorflow as tf
 from google.protobuf import json_format
+import tensorflow as tf
 from mock import Mock
 from tensorflow.python.saved_model.signature_constants import DEFAULT_SERVING_SIGNATURE_DEF_KEY, PREDICT_INPUTS
 
 from sagemaker.predictor import RealTimePredictor
-from sagemaker.tensorflow.predictor import tf_serializer, tf_deserializer, tf_csv_serializer, tf_json_serializer, \
-    tf_json_deserializer
+from sagemaker.tensorflow.predictor import tf_csv_serializer, tf_deserializer, tf_json_deserializer, \
+    tf_json_serializer, tf_serializer
 from sagemaker.tensorflow.tensorflow_serving.apis import classification_pb2
 
 BUCKET_NAME = 'mybucket'
