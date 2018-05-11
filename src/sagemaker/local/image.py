@@ -29,6 +29,9 @@ from time import sleep
 
 import yaml
 
+import sagemaker
+from sagemaker.utils import get_config_value
+
 CONTAINER_PREFIX = "algo"
 DOCKER_COMPOSE_FILENAME = 'docker-compose.yaml'
 
@@ -68,11 +71,6 @@ class _SageMakerContainer(object):
         self.hosts = ['{}-{}-{}'.format(CONTAINER_PREFIX, i, suffix) for i in range(1, self.instance_count + 1)]
         self.container_root = None
         self.container = None
-        # set the local config. This is optional and will use reasonable defaults
-        # if not present.
-        self.local_config = None
-        if self.sagemaker_session.config and 'local' in self.sagemaker_session.config:
-            self.local_config = self.sagemaker_session.config['local']
 
     def train(self, input_data_config, hyperparameters):
         """Run a training job locally using docker-compose.
@@ -85,6 +83,10 @@ class _SageMakerContainer(object):
         """
         self.container_root = self._create_tmp_folder()
         os.mkdir(os.path.join(self.container_root, 'output'))
+        # A shared directory for all the containers. It is only mounted if the training script is
+        # Local.
+        shared_dir = os.path.join(self.container_root, 'shared')
+        os.mkdir(shared_dir)
 
         data_dir = self._create_tmp_folder()
         volumes = []
@@ -93,7 +95,13 @@ class _SageMakerContainer(object):
         # mount the local directory to the container. For S3 Data we will download the S3 data
         # first.
         for channel in input_data_config:
-            uri = channel['DataSource']['S3DataSource']['S3Uri']
+            if channel['DataSource'] and 'S3DataSource' in channel['DataSource']:
+                uri = channel['DataSource']['S3DataSource']['S3Uri']
+            elif channel['DataSource'] and 'FileDataSource' in channel['DataSource']:
+                uri = channel['DataSource']['FileDataSource']['FileUri']
+            else:
+                raise ValueError('Need channel[\'DataSource\'] to have [\'S3DataSource\'] or [\'FileDataSource\']')
+
             parsed_uri = urlparse(uri)
             key = parsed_uri.path.lstrip('/')
 
@@ -104,8 +112,19 @@ class _SageMakerContainer(object):
             if parsed_uri.scheme == 's3':
                 bucket_name = parsed_uri.netloc
                 self._download_folder(bucket_name, key, channel_dir)
+            elif parsed_uri.scheme == 'file':
+                path = parsed_uri.path
+                volumes.append(_Volume(path, channel=channel_name))
             else:
-                volumes.append(_Volume(uri, channel=channel_name))
+                raise ValueError('Unknown URI scheme {}'.format(parsed_uri.scheme))
+
+        # If the training script directory is a local directory, mount it to the container.
+        training_dir = json.loads(hyperparameters[sagemaker.estimator.DIR_PARAM_NAME])
+        parsed_uri = urlparse(training_dir)
+        if parsed_uri.scheme == 'file':
+            volumes.append(_Volume(parsed_uri.path, '/opt/ml/code'))
+            # Also mount a directory that all the containers can access.
+            volumes.append(_Volume(shared_dir, '/opt/ml/shared'))
 
         # Create the configuration files for each container that we will create
         # Each container will map the additional local volumes (if any).
@@ -126,6 +145,7 @@ class _SageMakerContainer(object):
         # lots of data downloaded from S3. This doesn't delete any local
         # data that was just mounted to the container.
         _delete_tree(data_dir)
+        _delete_tree(shared_dir)
         # Also free the container config files.
         for host in self.hosts:
             container_config_path = os.path.join(self.container_root, host)
@@ -162,7 +182,16 @@ class _SageMakerContainer(object):
 
         _ecr_login_if_needed(self.sagemaker_session.boto_session, self.image)
 
-        self._generate_compose_file('serve', additional_env_vars=env_vars)
+        # If the user script was passed as a file:// mount it to the container.
+        script_dir = primary_container['Environment'][sagemaker.estimator.DIR_PARAM_NAME.upper()]
+        parsed_uri = urlparse(script_dir)
+        volumes = []
+        if parsed_uri.scheme == 'file':
+            volumes.append(_Volume(parsed_uri.path, '/opt/ml/code'))
+
+        self._generate_compose_file('serve',
+                                    additional_env_vars=env_vars,
+                                    additional_volumes=volumes)
         compose_command = self._compose()
         self.container = _HostingContainer(compose_command)
         self.container.up()
@@ -364,8 +393,9 @@ class _SageMakerContainer(object):
             }
         }
 
-        serving_port = 8080 if self.local_config is None else self.local_config.get('serving_port', 8080)
         if command == 'serve':
+            serving_port = get_config_value('local.serving_port',
+                                            self.sagemaker_session.config) or 8080
             host_config.update({
                 'ports': [
                     '%s:8080' % serving_port
@@ -375,9 +405,9 @@ class _SageMakerContainer(object):
         return host_config
 
     def _create_tmp_folder(self):
-        root_dir = None
-        if self.local_config and 'container_root' in self.local_config:
-            root_dir = os.path.abspath(self.local_config['container_root'])
+        root_dir = get_config_value('local.container_root', self.sagemaker_session.config)
+        if root_dir:
+            root_dir = os.path.abspath(root_dir)
 
         dir = tempfile.mkdtemp(dir=root_dir)
 
@@ -562,6 +592,10 @@ def _ecr_login_if_needed(boto_session, image):
     # do we have the image?
     if _check_output('docker images -q %s' % image).strip():
         return
+
+    if not boto_session:
+        raise RuntimeError('A boto session is required to login to ECR.'
+                           'Please pull the image: %s manually.' % image)
 
     ecr = boto_session.client('ecr')
     auth = ecr.get_authorization_token(registryIds=[image.split('.')[0]])

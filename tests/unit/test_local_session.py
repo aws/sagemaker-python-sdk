@@ -35,7 +35,26 @@ def test_create_training_job(train, LocalSession):
     image = "my-docker-image:1.0"
 
     algo_spec = {'TrainingImage': image}
-    input_data_config = {}
+    input_data_config = [
+        {
+            'ChannelName': 'a',
+            'DataSource': {
+                'S3DataSource': {
+                    'S3DataDistributionType': 'FullyReplicated',
+                    'S3Uri': 's3://my_bucket/tmp/source1'
+                }
+            }
+        },
+        {
+            'ChannelName': 'b',
+            'DataSource': {
+                'FileDataSource': {
+                    'FileDataDistributionType': 'FullyReplicated',
+                    'FileUri': 'file:///tmp/source1'
+                }
+            }
+        }
+    ]
     output_data_config = {}
     resource_config = {'InstanceType': 'local', 'InstanceCount': instance_count}
     hyperparameters = {'a': 1, 'b': 'bee'}
@@ -59,6 +78,67 @@ def test_create_training_job(train, LocalSession):
     assert response['TrainingJobStatus'] == expected['TrainingJobStatus']
     assert response['ResourceConfig']['InstanceCount'] == expected['ResourceConfig']['InstanceCount']
     assert response['ModelArtifacts']['S3ModelArtifacts'] == expected['ModelArtifacts']['S3ModelArtifacts']
+
+
+@patch('sagemaker.local.image._SageMakerContainer.train', return_value="/some/path/to/model")
+@patch('sagemaker.local.local_session.LocalSession')
+def test_create_training_job_invalid_data_source(train, LocalSession):
+    local_sagemaker_client = sagemaker.local.local_session.LocalSagemakerClient()
+
+    instance_count = 2
+    image = "my-docker-image:1.0"
+
+    algo_spec = {'TrainingImage': image}
+
+    # InvalidDataSource is not supported. S3DataSource and FileDataSource are currently the only
+    # valid Data Sources. We expect a ValueError if we pass this input data config.
+    input_data_config = [{
+        'ChannelName': 'a',
+        'DataSource': {
+            'InvalidDataSource': {
+                'FileDataDistributionType': 'FullyReplicated',
+                'FileUri': 'ftp://myserver.com/tmp/source1'
+            }
+        }
+    }]
+
+    output_data_config = {}
+    resource_config = {'InstanceType': 'local', 'InstanceCount': instance_count}
+    hyperparameters = {'a': 1, 'b': 'bee'}
+
+    with pytest.raises(ValueError):
+        local_sagemaker_client.create_training_job("my-training-job", algo_spec, 'arn:my-role', input_data_config,
+                                                   output_data_config, resource_config, None, hyperparameters)
+
+
+@patch('sagemaker.local.image._SageMakerContainer.train', return_value="/some/path/to/model")
+@patch('sagemaker.local.local_session.LocalSession')
+def test_create_training_job_not_fully_replicated(train, LocalSession):
+    local_sagemaker_client = sagemaker.local.local_session.LocalSagemakerClient()
+
+    instance_count = 2
+    image = "my-docker-image:1.0"
+
+    algo_spec = {'TrainingImage': image}
+
+    # Local Mode only supports FullyReplicated as Data Distribution type.
+    input_data_config = [{
+        'ChannelName': 'a',
+        'DataSource': {
+            'S3DataSource': {
+                'S3DataDistributionType': 'ShardedByS3Key',
+                'S3Uri': 's3://my_bucket/tmp/source1'
+            }
+        }
+    }]
+
+    output_data_config = {}
+    resource_config = {'InstanceType': 'local', 'InstanceCount': instance_count}
+    hyperparameters = {'a': 1, 'b': 'bee'}
+
+    with pytest.raises(RuntimeError):
+        local_sagemaker_client.create_training_job("my-training-job", algo_spec, 'arn:my-role', input_data_config,
+                                                   output_data_config, resource_config, None, hyperparameters)
 
 
 @patch('sagemaker.local.local_session.LocalSession')
@@ -121,7 +201,8 @@ def test_create_endpoint(serve, request, LocalSession):
 @patch('sagemaker.local.image._SageMakerContainer.serve')
 @patch('urllib3.PoolManager.request', return_value=BAD_RESPONSE)
 @patch('sagemaker.local.local_session.LocalSession')
-def test_create_endpoint_fails(serve, request, LocalSession):
+@patch('time.sleep')
+def test_create_endpoint_fails(*args):
     local_sagemaker_client = sagemaker.local.local_session.LocalSagemakerClient()
     local_sagemaker_client.variants = [{'InstanceType': 'ml.c4.99xlarge', 'InitialInstanceCount': 10}]
     local_sagemaker_client.primary_container = {'ModelDataUrl': '/some/model/path',
@@ -130,3 +211,34 @@ def test_create_endpoint_fails(serve, request, LocalSession):
 
     with pytest.raises(RuntimeError):
         local_sagemaker_client.create_endpoint('my-endpoint', 'some-endpoint-config')
+
+
+def test_file_input_all_defaults():
+    prefix = 'pre'
+    actual = sagemaker.local.local_session.file_input(fileUri=prefix)
+    expected = \
+        {
+            'DataSource': {
+                'FileDataSource': {
+                    'FileDataDistributionType': 'FullyReplicated',
+                    'FileUri': prefix
+                }
+            }
+        }
+    assert actual.config == expected
+
+
+def test_file_input_content_type():
+    prefix = 'pre'
+    actual = sagemaker.local.local_session.file_input(fileUri=prefix, content_type='text/csv')
+    expected = \
+        {
+            'DataSource': {
+                'FileDataSource': {
+                    'FileDataDistributionType': 'FullyReplicated',
+                    'FileUri': prefix
+                }
+            },
+            'ContentType': 'text/csv'
+        }
+    assert actual.config == expected
