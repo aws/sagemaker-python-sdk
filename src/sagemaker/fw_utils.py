@@ -68,6 +68,23 @@ def create_image_uri(region, framework, instance_type, framework_version, py_ver
         .format(account, region, framework, tag)
 
 
+def validate_source_dir(script, directory):
+    """Validate that the source directory exists and it contains the user script
+
+    Args:
+        script (str):  Script filename.
+        directory (str): Directory containing the source file.
+
+    Raises:
+        ValueError: If ``directory`` does not exist, is not a directory, or does not contain ``script``.
+    """
+    if directory:
+        if not os.path.isfile(os.path.join(directory, script)):
+            raise ValueError('No file named "{}" was found in directory "{}".'.format(script, directory))
+
+    return True
+
+
 def tar_and_upload_dir(session, bucket, s3_key_prefix, script, directory):
     """Pack and upload source files to S3 only if directory is empty or local.
 
@@ -83,21 +100,13 @@ def tar_and_upload_dir(session, bucket, s3_key_prefix, script, directory):
 
     Returns:
         sagemaker.fw_utils.UserCode: An object with the S3 bucket and key (S3 prefix) and script name.
-
-    Raises:
-        ValueError: If ``directory`` does not exist, is not a directory, or does not contain ``script``.
     """
     if directory:
         if directory.lower().startswith("s3://"):
             return UploadedCode(s3_prefix=directory, script_name=os.path.basename(script))
-        if not os.path.exists(directory):
-            raise ValueError('"{}" does not exist.'.format(directory))
-        if not os.path.isdir(directory):
-            raise ValueError('"{}" is not a directory.'.format(directory))
-        if script not in os.listdir(directory):
-            raise ValueError('No file named "{}" was found in directory "{}".'.format(script, directory))
-        script_name = script
-        source_files = [os.path.join(directory, name) for name in os.listdir(directory)]
+        else:
+            script_name = script
+            source_files = [os.path.join(directory, name) for name in os.listdir(directory)]
     else:
         # If no directory is specified, the script parameter needs to be a valid relative path.
         os.path.exists(script)

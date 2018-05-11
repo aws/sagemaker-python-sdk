@@ -15,11 +15,13 @@ import logging
 import platform
 import time
 
+import boto3
 import urllib3
 from botocore.exceptions import ClientError
 
 from sagemaker.local.image import _SageMakerContainer
 from sagemaker.session import Session
+from sagemaker.utils import get_config_value
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.WARNING)
@@ -115,9 +117,7 @@ class LocalSagemakerClient(object):
 
         i = 0
         http = urllib3.PoolManager()
-        serving_port = 8080
-        if self.sagemaker_session.config and 'local' in self.sagemaker_session.config:
-            serving_port = self.sagemaker_session.config['local'].get('serving_port', 8080)
+        serving_port = get_config_value('local.serving_port', self.sagemaker_session.config) or 8080
         endpoint_url = "http://localhost:%s/ping" % serving_port
         while True:
             i += 1
@@ -153,8 +153,8 @@ class LocalSagemakerRuntimeClient(object):
         """
         self.http = urllib3.PoolManager()
         self.serving_port = 8080
-        if config and 'local' in config:
-            self.serving_port = config['local'].get('serving_port', 8080)
+        self.config = config
+        self.serving_port = get_config_value('local.serving_port', config) or 8080
 
     def invoke_endpoint(self, Body, EndpointName, ContentType, Accept):
         url = "http://localhost:%s/invocations" % self.serving_port
@@ -171,8 +171,19 @@ class LocalSession(Session):
 
         if platform.system() == 'Windows':
             logger.warning("Windows Support for Local Mode is Experimental")
+
+    def _initialize(self, boto_session, sagemaker_client, sagemaker_runtime_client):
+        """Initialize this Local SageMaker Session."""
+
+        self.boto_session = boto_session or boto3.Session()
+        self._region_name = self.boto_session.region_name
+
+        if self._region_name is None:
+            raise ValueError('Must setup local AWS configuration with a region supported by SageMaker.')
+
         self.sagemaker_client = LocalSagemakerClient(self)
         self.sagemaker_runtime_client = LocalSagemakerRuntimeClient(self.config)
+        self.local_mode = True
 
     def logs_for_job(self, job_name, wait=False, poll=5):
         # override logs_for_job() as it doesn't need to perform any action

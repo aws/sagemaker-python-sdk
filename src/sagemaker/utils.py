@@ -76,3 +76,17 @@ def debug(func):
         return func(*args, **kwargs)
 
     return wrapper
+
+
+def get_config_value(key_path, config):
+    if config is None:
+        return None
+
+    current_section = config
+    for key in key_path.split('.'):
+        if key in current_section:
+            current_section = current_section[key]
+        else:
+            return None
+
+    return current_section
