@@ -44,7 +44,8 @@ IMAGE_URI_FORMAT_STRING = "520713654638.dkr.ecr.{}.amazonaws.com/{}:{}-{}-{}"
 @pytest.fixture()
 def sagemaker_session():
     boto_mock = Mock(name='boto_session', region_name=REGION)
-    session = Mock(name='sagemaker_session', boto_session=boto_mock)
+    session = Mock(name='sagemaker_session', boto_session=boto_mock,
+                   boto_region_name=REGION, config=None, local_mode=False)
     session.default_bucket = Mock(name='default_bucket', return_value=BUCKET_NAME)
     session.expand_role = Mock(name="expand_role", return_value=ROLE)
     describe = {'ModelArtifacts': {'S3ModelArtifacts': 's3://m/m.tar.gz'}}
