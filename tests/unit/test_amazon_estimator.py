@@ -30,7 +30,8 @@ TIMESTAMP = '2017-11-06-14:14:15.671'
 @pytest.fixture()
 def sagemaker_session():
     boto_mock = Mock(name='boto_session', region_name=REGION)
-    sms = Mock(name='sagemaker_session', boto_session=boto_mock)
+    sms = Mock(name='sagemaker_session', boto_session=boto_mock,
+               region_name=REGION, config=None, local_mode=False)
     sms.boto_region_name = REGION
     sms.default_bucket = Mock(name='default_bucket', return_value=BUCKET_NAME)
     returned_job_description = {'AlgorithmSpecification': {'TrainingInputMode': 'File',

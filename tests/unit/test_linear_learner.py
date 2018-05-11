@@ -41,7 +41,8 @@ DESCRIBE_TRAINING_JOB_RESULT = {
 @pytest.fixture()
 def sagemaker_session():
     boto_mock = Mock(name='boto_session', region_name=REGION)
-    sms = Mock(name='sagemaker_session', boto_session=boto_mock)
+    sms = Mock(name='sagemaker_session', boto_session=boto_mock,
+               region_name=REGION, config=None, local_mode=False)
     sms.boto_region_name = REGION
     sms.default_bucket = Mock(name='default_bucket', return_value=BUCKET_NAME)
     sms.sagemaker_client.describe_training_job = Mock(name='describe_training_job',

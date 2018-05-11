@@ -91,11 +91,12 @@ class DummyFrameworkModel(FrameworkModel):
 @pytest.fixture()
 def sagemaker_session():
     boto_mock = Mock(name='boto_session', region_name=REGION)
-    ims = Mock(name='sagemaker_session', boto_session=boto_mock)
-    ims.default_bucket = Mock(name='default_bucket', return_value=BUCKET_NAME)
-    ims.sagemaker_client.describe_training_job = Mock(name='describe_training_job',
+    sms = Mock(name='sagemaker_session', boto_session=boto_mock,
+               boto_region_name=REGION, config=None, local_mode=False)
+    sms.default_bucket = Mock(name='default_bucket', return_value=BUCKET_NAME)
+    sms.sagemaker_client.describe_training_job = Mock(name='describe_training_job',
                                                       return_value=DESCRIBE_TRAINING_JOB_RESULT)
-    return ims
+    return sms
 
 
 def test_sagemaker_s3_uri_invalid(sagemaker_session):
@@ -141,6 +142,24 @@ BASE_HP = {
     'sagemaker_submit_directory': json.dumps('s3://mybucket/{}/source/sourcedir.tar.gz'.format(JOB_NAME)),
     'sagemaker_job_name': json.dumps(JOB_NAME)
 }
+
+
+def test_local_code_location():
+    config = {
+        'local': {
+            'local_code': True,
+            'region': 'us-west-2'
+        }
+    }
+    sms = Mock(name='sagemaker_session', boto_session=None,
+               boto_region_name=REGION, config=config, local_mode=True)
+    t = DummyFramework(entry_point=SCRIPT_PATH, role=ROLE, sagemaker_session=sms,
+                       train_instance_count=1, train_instance_type='local',
+                       base_job_name=IMAGE_NAME, hyperparameters={123: [456], 'learning_rate': 0.1})
+
+    t.fit('file:///data/file')
+    assert t.source_dir == DATA_DIR
+    assert t.entry_point == 'dummy_script.py'
 
 
 @patch('time.strftime', return_value=TIMESTAMP)
@@ -535,18 +554,26 @@ def test_generic_to_deploy(sagemaker_session):
 
 
 @patch('sagemaker.estimator.LocalSession')
-def test_local_mode(sagemaker_session):
-    e = Estimator(IMAGE_NAME, ROLE, INSTANCE_COUNT, 'local', output_path='s3://bucket/prefix',
-                  sagemaker_session=sagemaker_session)
-    assert e.local_mode is True
+@patch('sagemaker.estimator.Session')
+def test_local_mode(session_class, local_session_class):
+    local_session = Mock()
+    local_session.local_mode = True
 
-    e2 = Estimator(IMAGE_NAME, ROLE, INSTANCE_COUNT, 'local_gpu', output_path='s3://bucket/prefix',
-                   sagemaker_session=sagemaker_session)
-    assert e2.local_mode is True
+    session = Mock()
+    session.local_mode = False
 
-    e3 = Estimator(IMAGE_NAME, ROLE, INSTANCE_COUNT, INSTANCE_TYPE, output_path='s3://bucket/prefix',
-                   sagemaker_session=sagemaker_session)
-    assert e3.local_mode is False
+    local_session_class.return_value = local_session
+    session_class.return_value = session
+
+    e = Estimator(IMAGE_NAME, ROLE, INSTANCE_COUNT, 'local')
+    print(e.sagemaker_session.local_mode)
+    assert e.sagemaker_session.local_mode is True
+
+    e2 = Estimator(IMAGE_NAME, ROLE, INSTANCE_COUNT, 'local_gpu')
+    assert e2.sagemaker_session.local_mode is True
+
+    e3 = Estimator(IMAGE_NAME, ROLE, INSTANCE_COUNT, INSTANCE_TYPE)
+    assert e3.sagemaker_session.local_mode is False
 
 
 @patch('sagemaker.estimator.LocalSession')

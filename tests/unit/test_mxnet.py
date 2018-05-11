@@ -43,12 +43,14 @@ CPU = 'ml.c4.xlarge'
 @pytest.fixture()
 def sagemaker_session():
     boto_mock = Mock(name='boto_session', region_name=REGION)
-    ims = Mock(name='sagemaker_session', boto_session=boto_mock)
-    description = {'ModelArtifacts': {'S3ModelArtifacts': 's3://m/m.tar.gz'}}
-    ims.sagemaker_client.describe_training_job = Mock(return_value=description)
-    ims.default_bucket = Mock(name='default_bucket', return_value=BUCKET_NAME)
-    ims.expand_role = Mock(name="expand_role", return_value=ROLE)
-    return ims
+    session = Mock(name='sagemaker_session', boto_session=boto_mock,
+                   boto_region_name=REGION, config=None, local_mode=False)
+
+    describe = {'ModelArtifacts': {'S3ModelArtifacts': 's3://m/m.tar.gz'}}
+    session.sagemaker_client.describe_training_job = Mock(return_value=describe)
+    session.default_bucket = Mock(name='default_bucket', return_value=BUCKET_NAME)
+    session.expand_role = Mock(name="expand_role", return_value=ROLE)
+    return session
 
 
 def _get_full_image_uri(version):

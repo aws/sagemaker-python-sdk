@@ -85,10 +85,12 @@ class TensorFlowModel(FrameworkModel):
         """
         deploy_image = self.image
         if not deploy_image:
-            region_name = self.sagemaker_session.boto_session.region_name
+            region_name = self.sagemaker_session.boto_region_name
             deploy_image = create_image_uri(region_name, self.__framework_name__, instance_type,
                                             self.framework_version, self.py_version)
+
         deploy_key_prefix = self.key_prefix or self.name or name_from_image(deploy_image)
+
         self._upload_code(deploy_key_prefix)
         deploy_env = dict(self.env)
         deploy_env.update(self._framework_env_vars())

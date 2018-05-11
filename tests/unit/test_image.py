@@ -23,6 +23,7 @@ from mock import call, patch, Mock
 import sagemaker
 from sagemaker.local.image import _SageMakerContainer
 
+REGION = 'us-west-2'
 BUCKET_NAME = 'mybucket'
 EXPANDED_ROLE = 'arn:aws:iam::111111111111:role/ExpandedRole'
 INPUT_DATA_CONFIG = [
@@ -46,12 +47,18 @@ INPUT_DATA_CONFIG = [
         }
     }
 ]
-HYPERPARAMETERS = {'a': 1, 'b': "bee"}
+HYPERPARAMETERS = {'a': 1,
+                   'b': 'bee',
+                   'sagemaker_submit_directory': json.dumps('s3://my_bucket/code')}
+
+LOCAL_CODE_HYPERPARAMETERS = {'a': 1,
+                              'b': 2,
+                              'sagemaker_submit_directory': json.dumps('file:///tmp/code')}
 
 
 @pytest.fixture()
 def sagemaker_session():
-    boto_mock = Mock(name='boto_session')
+    boto_mock = Mock(name='boto_session', region_name=REGION)
     boto_mock.client('sts').get_caller_identity.return_value = {'Account': '123'}
     boto_mock.resource('s3').Bucket(BUCKET_NAME).objects.filter.return_value = []
 
@@ -215,6 +222,37 @@ def test_train(_download_folder, _cleanup, _execute_and_stream_output, LocalSess
                 assert config['services'][h]['command'] == 'train'
 
 
+@patch('sagemaker.local.local_session.LocalSession')
+@patch('sagemaker.local.image._execute_and_stream_output')
+@patch('sagemaker.local.image._SageMakerContainer._cleanup')
+@patch('sagemaker.local.image._SageMakerContainer._download_folder')
+def test_train_local_code(_download_folder, _cleanup, _execute_and_stream_output,
+                          _local_session, tmpdir, sagemaker_session):
+    directories = [str(tmpdir.mkdir('container-root')), str(tmpdir.mkdir('data'))]
+    with patch('sagemaker.local.image._SageMakerContainer._create_tmp_folder',
+               side_effect=directories):
+        instance_count = 2
+        image = 'my-image'
+        sagemaker_container = _SageMakerContainer('local', instance_count, image,
+                                                  sagemaker_session=sagemaker_session)
+
+        sagemaker_container.train(INPUT_DATA_CONFIG, LOCAL_CODE_HYPERPARAMETERS)
+
+        docker_compose_file = os.path.join(sagemaker_container.container_root,
+                                           'docker-compose.yaml')
+        shared_folder_path = os.path.join(sagemaker_container.container_root, 'shared')
+
+        with open(docker_compose_file, 'r') as f:
+            config = yaml.load(f)
+            assert len(config['services']) == instance_count
+            for h in sagemaker_container.hosts:
+                assert config['services'][h]['image'] == image
+                assert config['services'][h]['command'] == 'train'
+                volumes = config['services'][h]['volumes']
+                assert '%s:/opt/ml/code' % '/tmp/code' in volumes
+                assert '%s:/opt/ml/shared' % shared_folder_path in volumes
+
+
 @patch('sagemaker.local.image._HostingContainer.up')
 @patch('shutil.copy')
 @patch('shutil.copytree')
@@ -225,7 +263,12 @@ def test_serve(up, copy, copytree, tmpdir, sagemaker_session):
 
         image = 'my-image'
         sagemaker_container = _SageMakerContainer('local', 1, image, sagemaker_session=sagemaker_session)
-        primary_container = {'ModelDataUrl': '/some/model/path', 'Environment': {'env1': 1, 'env2': 'b'}}
+        primary_container = {'ModelDataUrl': '/some/model/path',
+                             'Environment': {'env1': 1,
+                                             'env2': 'b',
+                                             'SAGEMAKER_SUBMIT_DIRECTORY': 's3://some/path'
+                                             }
+                             }
 
         sagemaker_container.serve(primary_container)
         docker_compose_file = os.path.join(sagemaker_container.container_root, 'docker-compose.yaml')
@@ -236,6 +279,38 @@ def test_serve(up, copy, copytree, tmpdir, sagemaker_session):
             for h in sagemaker_container.hosts:
                 assert config['services'][h]['image'] == image
                 assert config['services'][h]['command'] == 'serve'
+
+
+@patch('sagemaker.local.image._HostingContainer.up')
+@patch('shutil.copy')
+@patch('shutil.copytree')
+def test_serve_local_code(up, copy, copytree, tmpdir, sagemaker_session):
+
+    with patch('sagemaker.local.image._SageMakerContainer._create_tmp_folder',
+               return_value=str(tmpdir.mkdir('container-root'))):
+
+        image = 'my-image'
+        sagemaker_container = _SageMakerContainer('local', 1, image, sagemaker_session=sagemaker_session)
+        primary_container = {'ModelDataUrl': '/some/model/path',
+                             'Environment': {'env1': 1,
+                                             'env2': 'b',
+                                             'SAGEMAKER_SUBMIT_DIRECTORY': 'file:///tmp/code'
+                                             }
+                             }
+
+        sagemaker_container.serve(primary_container)
+        docker_compose_file = os.path.join(sagemaker_container.container_root,
+                                           'docker-compose.yaml')
+
+        with open(docker_compose_file, 'r') as f:
+            config = yaml.load(f)
+
+            for h in sagemaker_container.hosts:
+                assert config['services'][h]['image'] == image
+                assert config['services'][h]['command'] == 'serve'
+
+                volumes = config['services'][h]['volumes']
+                assert '%s:/opt/ml/code' % '/tmp/code' in volumes
 
 
 @patch('os.makedirs')

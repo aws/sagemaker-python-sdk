@@ -22,6 +22,7 @@ import threading
 
 from sagemaker.estimator import Framework
 from sagemaker.fw_utils import create_image_uri, framework_name_from_image, framework_version_from_tag
+from sagemaker.utils import get_config_value
 
 from sagemaker.tensorflow.defaults import TF_VERSION
 from sagemaker.tensorflow.model import TensorFlowModel
@@ -280,7 +281,7 @@ class TensorFlow(Framework):
         Returns:
             str: The URI of the Docker image.
         """
-        return create_image_uri(self.sagemaker_session.boto_session.region_name, self.__framework_name__,
+        return create_image_uri(self.sagemaker_session.boto_region_name, self.__framework_name__,
                                 self.train_instance_type, self.framework_version, py_version=self.py_version)
 
     def create_model(self, model_server_workers=None):
@@ -307,7 +308,12 @@ class TensorFlow(Framework):
         hyperparameters = super(TensorFlow, self).hyperparameters()
 
         if not self.checkpoint_path:
-            self.checkpoint_path = os.path.join(self.output_path, self._current_job_name, 'checkpoints')
+            local_code = get_config_value('local.local_code', self.sagemaker_session.config)
+            if self.sagemaker_session.local_mode and local_code:
+                self.checkpoint_path = '/opt/ml/shared/checkpoints'
+            else:
+                self.checkpoint_path = os.path.join(self.output_path,
+                                                    self._current_job_name, 'checkpoints')
 
         additional_hyperparameters = {'checkpoint_path': self.checkpoint_path,
                                       'training_steps': self.training_steps,

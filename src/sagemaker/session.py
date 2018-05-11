@@ -70,10 +70,25 @@ class Session(object):
                 If not provided, one will be created using this instance's ``boto_session``.
         """
         self._default_bucket = None
+
+        sagemaker_config_file = os.path.join(os.path.expanduser('~'), '.sagemaker', 'config.yaml')
+        if os.path.exists(sagemaker_config_file):
+            self.config = yaml.load(open(sagemaker_config_file, 'r'))
+        else:
+            self.config = None
+
+        self._initialize(boto_session, sagemaker_client, sagemaker_runtime_client)
+
+    def _initialize(self, boto_session, sagemaker_client, sagemaker_runtime_client):
+        """Initialize this SageMaker Session.
+
+        Creates or uses a boto_session, sagemaker_client and sagemaker_runtime_client.
+        Sets the region_name.
+        """
         self.boto_session = boto_session or boto3.Session()
 
-        region = self.boto_session.region_name
-        if region is None:
+        self._region_name = self.boto_session.region_name
+        if self._region_name is None:
             raise ValueError('Must setup local AWS configuration with a region supported by SageMaker.')
 
         self.sagemaker_client = sagemaker_client or self.boto_session.client('sagemaker')
@@ -82,15 +97,11 @@ class Session(object):
         self.sagemaker_runtime_client = sagemaker_runtime_client or self.boto_session.client('runtime.sagemaker')
         prepend_user_agent(self.sagemaker_runtime_client)
 
-        sagemaker_config_file = os.path.join(os.path.expanduser('~'), '.sagemaker', 'config.yaml')
-        if os.path.exists(sagemaker_config_file):
-            self.config = yaml.load(open(sagemaker_config_file, 'r'))
-        else:
-            self.config = None
+        self.local_mode = False
 
     @property
     def boto_region_name(self):
-        return self.boto_session.region_name
+        return self._region_name
 
     def upload_data(self, path, bucket=None, key_prefix='data'):
         """Upload local file or directory to S3.

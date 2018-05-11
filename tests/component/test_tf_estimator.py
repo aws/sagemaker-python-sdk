@@ -36,7 +36,8 @@ SOURCE_DIR = 's3://fefergerger'
 @pytest.fixture()
 def sagemaker_session():
     boto_mock = Mock(name='boto_session', region_name=REGION)
-    ims = Mock(name='sagemaker_session', boto_session=boto_mock)
+    ims = Mock(name='sagemaker_session', boto_session=boto_mock, config=None,
+               local_mode=False, region_name=REGION)
     ims.default_bucket = Mock(name='default_bucket', return_value=BUCKET_NAME)
     ims.expand_role = Mock(name="expand_role", return_value=ROLE)
     ims.sagemaker_client.describe_training_job = Mock(return_value={'ModelArtifacts':
@@ -64,6 +65,7 @@ def test_deploy(sagemaker_session, tf_version):
          {'SAGEMAKER_ENABLE_CLOUDWATCH_METRICS': 'false',
           'SAGEMAKER_CONTAINER_LOG_LEVEL': '20',
           'SAGEMAKER_SUBMIT_DIRECTORY': SOURCE_DIR,
+          'SAGEMAKER_REQUIREMENTS': '',
           'SAGEMAKER_REGION': REGION,
           'SAGEMAKER_PROGRAM': SCRIPT},
          'Image': image,

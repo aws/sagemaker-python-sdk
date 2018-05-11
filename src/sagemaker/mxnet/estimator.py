@@ -67,7 +67,7 @@ class MXNet(Framework):
         Returns:
             str: The URI of the Docker image.
         """
-        return create_image_uri(self.sagemaker_session.boto_session.region_name, self.__framework_name__,
+        return create_image_uri(self.sagemaker_session.boto_region_name, self.__framework_name__,
                                 self.train_instance_type, framework_version=self.framework_version,
                                 py_version=self.py_version)
 

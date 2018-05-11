@@ -10,3 +10,9 @@
 # distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
+from __future__ import absolute_import
+
+from .local_session import (file_input, LocalSession, LocalSagemakerRuntimeClient,
+                            LocalSagemakerClient)
+
+__all__ = [file_input, LocalSession, LocalSagemakerClient, LocalSagemakerRuntimeClient]
