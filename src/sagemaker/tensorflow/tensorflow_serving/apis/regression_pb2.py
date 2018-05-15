@@ -21,7 +21,7 @@ DESCRIPTOR = _descriptor.FileDescriptor(
   name='tensorflow_serving/apis/regression.proto',
   package='tensorflow.serving',
   syntax='proto3',
-  serialized_pb=_b('\n(tensorflow_serving/apis/regression.proto\x12\x12tensorflow.serving\x1a#tensorflow_serving/apis/input.proto\x1a#tensorflow_serving/apis/model.proto\"\x1b\n\nRegression\x12\r\n\x05value\x18\x01 \x01(\x02\"G\n\x10RegressionResult\x12\x33\n\x0bregressions\x18\x01 \x03(\x0b\x32\x1e.tensorflow.serving.Regression\"p\n\x11RegressionRequest\x12\x31\n\nmodel_spec\x18\x01 \x01(\x0b\x32\x1d.tensorflow.serving.ModelSpec\x12(\n\x05input\x18\x02 \x01(\x0b\x32\x19.tensorflow.serving.Input\"J\n\x12RegressionResponse\x12\x34\n\x06result\x18\x01 \x01(\x0b\x32$.tensorflow.serving.RegressionResultB\x03\xf8\x01\x01\x62\x06proto3')
+  serialized_pb=_b('\n(tensorflow_serving/apis/regression.proto\x12\x12tensorflow.serving\x1a#tensorflow_serving/apis/input.proto\x1a#tensorflow_serving/apis/model.proto\"\x1b\n\nRegression\x12\r\n\x05value\x18\x01 \x01(\x02\"G\n\x10RegressionResult\x12\x33\n\x0bregressions\x18\x01 \x03(\x0b\x32\x1e.tensorflow.serving.Regression\"p\n\x11RegressionRequest\x12\x31\n\nmodel_spec\x18\x01 \x01(\x0b\x32\x1d.tensorflow.serving.ModelSpec\x12(\n\x05input\x18\x02 \x01(\x0b\x32\x19.tensorflow.serving.Input\"}\n\x12RegressionResponse\x12\x31\n\nmodel_spec\x18\x02 \x01(\x0b\x32\x1d.tensorflow.serving.ModelSpec\x12\x34\n\x06result\x18\x01 \x01(\x0b\x32$.tensorflow.serving.RegressionResultB\x03\xf8\x01\x01\x62\x06proto3')
   ,
   dependencies=[tensorflow__serving_dot_apis_dot_input__pb2.DESCRIPTOR,tensorflow__serving_dot_apis_dot_model__pb2.DESCRIPTOR,])
 
@@ -41,7 +41,7 @@ _REGRESSION = _descriptor.Descriptor(
       has_default_value=False, default_value=float(0),
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
-      options=None),
+      options=None, file=DESCRIPTOR),
   ],
   extensions=[
   ],
@@ -72,7 +72,7 @@ _REGRESSIONRESULT = _descriptor.Descriptor(
       has_default_value=False, default_value=[],
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
-      options=None),
+      options=None, file=DESCRIPTOR),
   ],
   extensions=[
   ],
@@ -103,14 +103,14 @@ _REGRESSIONREQUEST = _descriptor.Descriptor(
       has_default_value=False, default_value=None,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
-      options=None),
+      options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
       name='input', full_name='tensorflow.serving.RegressionRequest.input', index=1,
       number=2, type=11, cpp_type=10, label=1,
       has_default_value=False, default_value=None,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
-      options=None),
+      options=None, file=DESCRIPTOR),
   ],
   extensions=[
   ],
@@ -136,12 +136,19 @@ _REGRESSIONRESPONSE = _descriptor.Descriptor(
   containing_type=None,
   fields=[
     _descriptor.FieldDescriptor(
-      name='result', full_name='tensorflow.serving.RegressionResponse.result', index=0,
+      name='model_spec', full_name='tensorflow.serving.RegressionResponse.model_spec', index=0,
+      number=2, type=11, cpp_type=10, label=1,
+      has_default_value=False, default_value=None,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='result', full_name='tensorflow.serving.RegressionResponse.result', index=1,
       number=1, type=11, cpp_type=10, label=1,
       has_default_value=False, default_value=None,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
-      options=None),
+      options=None, file=DESCRIPTOR),
   ],
   extensions=[
   ],
@@ -155,12 +162,13 @@ _REGRESSIONRESPONSE = _descriptor.Descriptor(
   oneofs=[
   ],
   serialized_start=354,
-  serialized_end=428,
+  serialized_end=479,
 )
 
 _REGRESSIONRESULT.fields_by_name['regressions'].message_type = _REGRESSION
 _REGRESSIONREQUEST.fields_by_name['model_spec'].message_type = tensorflow__serving_dot_apis_dot_model__pb2._MODELSPEC
 _REGRESSIONREQUEST.fields_by_name['input'].message_type = tensorflow__serving_dot_apis_dot_input__pb2._INPUT
+_REGRESSIONRESPONSE.fields_by_name['model_spec'].message_type = tensorflow__serving_dot_apis_dot_model__pb2._MODELSPEC
 _REGRESSIONRESPONSE.fields_by_name['result'].message_type = _REGRESSIONRESULT
 DESCRIPTOR.message_types_by_name['Regression'] = _REGRESSION
 DESCRIPTOR.message_types_by_name['RegressionResult'] = _REGRESSIONRESULT
