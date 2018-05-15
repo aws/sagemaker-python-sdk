@@ -6,7 +6,7 @@ CHANGELOG
 1.2.dev5
 ========
 
-* bug-fix: Change module names to string type in __all__
+* bug-fix: Remove __all__ and add noqa in __init__
 * bug-fix: tensorflow-serving-api: SageMaker does not conflict with tensorflow-serving-api module version
 * feature: Local Mode: add support for local training data using file://
 * feature: Updated TensorFlow Serving api protobuf files
