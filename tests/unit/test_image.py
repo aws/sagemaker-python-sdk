@@ -117,34 +117,46 @@ def test_retrieve_artifacts(LocalSession, tmpdir):
     sagemaker_container.hosts = ['algo-1', 'algo-2']  # avoid any randomness
     sagemaker_container.container_root = str(tmpdir.mkdir('container-root'))
 
-    volume1 = os.path.join(sagemaker_container.container_root, 'algo-1/output/')
-    volume2 = os.path.join(sagemaker_container.container_root, 'algo-2/output/')
-    os.makedirs(volume1)
-    os.makedirs(volume2)
+    volume1 = os.path.join(sagemaker_container.container_root, 'algo-1')
+    volume2 = os.path.join(sagemaker_container.container_root, 'algo-2')
+    os.mkdir(volume1)
+    os.mkdir(volume2)
 
     compose_data = {
         'services': {
             'algo-1': {
-                'volumes': ['%s:/opt/ml/model' % volume1]
+                'volumes': ['%s:/opt/ml/model' % os.path.join(volume1, 'model'),
+                            '%s:/opt/ml/output' % os.path.join(volume1, 'output')]
             },
             'algo-2': {
-                'volumes': ['%s:/opt/ml/model' % volume2]
+                'volumes': ['%s:/opt/ml/model' % os.path.join(volume2, 'model'),
+                            '%s:/opt/ml/output' % os.path.join(volume2, 'output')]
             }
         }
     }
 
     dirs1 = ['model', 'model/data']
     dirs2 = ['model', 'model/data', 'model/tmp']
+    dirs3 = ['output', 'output/data']
+    dirs4 = ['output', 'output/data', 'output/log']
 
     files1 = ['model/data/model.json', 'model/data/variables.csv']
     files2 = ['model/data/model.json', 'model/data/variables2.csv', 'model/tmp/something-else.json']
+    files3 = ['output/data/loss.json', 'output/data/accuracy.json']
+    files4 = ['output/data/loss.json', 'output/data/accuracy2.json', 'output/log/warnings.txt']
 
     expected = ['model', 'model/data/', 'model/data/model.json', 'model/data/variables.csv',
-                'model/data/variables2.csv', 'model/tmp/something-else.json']
+                'model/data/variables2.csv', 'model/tmp/something-else.json', 'output', 'output/data', 'output/log',
+                'output/data/loss.json', 'output/data/accuracy.json', 'output/data/accuracy2.json',
+                'output/log/warnings.txt']
 
     for d in dirs1:
         os.mkdir(os.path.join(volume1, d))
     for d in dirs2:
+        os.mkdir(os.path.join(volume2, d))
+    for d in dirs3:
+        os.mkdir(os.path.join(volume1, d))
+    for d in dirs4:
         os.mkdir(os.path.join(volume2, d))
 
     # create all the files
@@ -152,11 +164,17 @@ def test_retrieve_artifacts(LocalSession, tmpdir):
         open(os.path.join(volume1, f), 'a').close()
     for f in files2:
         open(os.path.join(volume2, f), 'a').close()
+    for f in files3:
+        open(os.path.join(volume1, f), 'a').close()
+    for f in files4:
+        open(os.path.join(volume2, f), 'a').close()
 
-    s3_model_artifacts = sagemaker_container.retrieve_model_artifacts(compose_data)
+    s3_model_artifacts = sagemaker_container.retrieve_artifacts(compose_data)
+    s3_artifacts = os.path.dirname(s3_model_artifacts)
 
     for f in expected:
-        assert os.path.exists(os.path.join(s3_model_artifacts, f))
+        assert set(os.listdir(s3_artifacts)) == set(['model', 'output'])
+        assert os.path.exists(os.path.join(s3_artifacts, f))
 
 
 def test_stream_output():
