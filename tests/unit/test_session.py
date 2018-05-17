@@ -323,6 +323,7 @@ def test_logs_for_job_no_wait_stopped_job(cw, sagemaker_session_stopped):
     ims.sagemaker_client.describe_training_job.assert_called_once_with(TrainingJobName=JOB_NAME)
     cw().assert_called_with(0, 'hi there #1')
 
+
 @patch('sagemaker.logs.ColorWrap')
 def test_logs_for_job_wait_on_completed(cw, sagemaker_session_complete):
     ims = sagemaker_session_complete
