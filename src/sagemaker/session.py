@@ -404,7 +404,7 @@ class Session(object):
         """
         status = desc['TrainingJobStatus']
 
-        if status != 'Completed':
+        if status != 'Completed' and status != 'Stopped':
             reason = desc.get('FailureReason', '(No reason provided)')
             raise ValueError('Error training {}: {} Reason: {}'.format(job, status, reason))
 
