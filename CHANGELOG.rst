@@ -11,6 +11,7 @@ CHANGELOG
 * bug-fix: tensorflow-serving-api: SageMaker does not conflict with tensorflow-serving-api module version
 * feature: Local Mode: add support for local training data using file://
 * feature: Updated TensorFlow Serving api protobuf files
+* bug-fix: No longer poll for logs from stopped training jobs
 
 1.2.4
 =====
