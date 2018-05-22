@@ -26,6 +26,7 @@ from tests.integ.timeout import timeout
 
 DATA_PATH = os.path.join(DATA_DIR, 'iris', 'data')
 LOCK_PATH = os.path.join(DATA_DIR, 'local_mode_lock')
+DEFAULT_REGION = 'us-west-2'
 
 
 class LocalNoS3Session(LocalSession):
@@ -40,10 +41,10 @@ class LocalNoS3Session(LocalSession):
                     'local_code': True
                 }
         }
-        self._region_name = 'us-west-2'
+        self._region_name = DEFAULT_REGION
 
 
-def test_tf_local_mode(tf_full_version):
+def test_tf_local_mode(tf_full_version, sagemaker_local_session):
     local_mode_lock_fd = open(LOCK_PATH, 'w')
     local_mode_lock = local_mode_lock_fd.fileno()
     with timeout(minutes=5):
@@ -57,7 +58,8 @@ def test_tf_local_mode(tf_full_version):
                                hyperparameters={'input_tensor_name': 'inputs'},
                                train_instance_count=1,
                                train_instance_type='local',
-                               base_job_name='test-tf')
+                               base_job_name='test-tf',
+                               sagemaker_session=sagemaker_local_session)
 
         inputs = estimator.sagemaker_session.upload_data(path=DATA_PATH,
                                                          key_prefix='integ-test-data/tf_iris')
@@ -86,7 +88,7 @@ def test_tf_local_mode(tf_full_version):
         fcntl.lockf(local_mode_lock, fcntl.LOCK_UN)
 
 
-def test_tf_distributed_local_mode():
+def test_tf_distributed_local_mode(sagemaker_local_session):
     local_mode_lock_fd = open(LOCK_PATH, 'w')
     local_mode_lock = local_mode_lock_fd.fileno()
     with timeout(minutes=5):
@@ -99,7 +101,8 @@ def test_tf_distributed_local_mode():
                                hyperparameters={'input_tensor_name': 'inputs'},
                                train_instance_count=3,
                                train_instance_type='local',
-                               base_job_name='test-tf')
+                               base_job_name='test-tf',
+                               sagemaker_session=sagemaker_local_session)
 
         inputs = 'file://' + DATA_PATH
         estimator.fit(inputs)
@@ -128,7 +131,7 @@ def test_tf_distributed_local_mode():
         fcntl.lockf(local_mode_lock, fcntl.LOCK_UN)
 
 
-def test_tf_local_data():
+def test_tf_local_data(sagemaker_local_session):
     local_mode_lock_fd = open(LOCK_PATH, 'w')
     local_mode_lock = local_mode_lock_fd.fileno()
     with timeout(minutes=5):
@@ -141,7 +144,8 @@ def test_tf_local_data():
                                hyperparameters={'input_tensor_name': 'inputs'},
                                train_instance_count=1,
                                train_instance_type='local',
-                               base_job_name='test-tf')
+                               base_job_name='test-tf',
+                               sagemaker_session=sagemaker_local_session)
 
         inputs = 'file://' + DATA_PATH
         estimator.fit(inputs)
@@ -169,7 +173,6 @@ def test_tf_local_data():
         fcntl.lockf(local_mode_lock, fcntl.LOCK_UN)
 
 
-@pytest.mark.skip(reason='Latest images not released yet')
 def test_tf_local_data_local_script():
     local_mode_lock_fd = open(LOCK_PATH, 'w')
     local_mode_lock = local_mode_lock_fd.fileno()
@@ -214,7 +217,7 @@ def test_tf_local_data_local_script():
         fcntl.lockf(local_mode_lock, fcntl.LOCK_UN)
 
 
-def test_mxnet_local_mode():
+def test_mxnet_local_mode(sagemaker_local_session):
     local_mode_lock_fd = open(LOCK_PATH, 'w')
     local_mode_lock = local_mode_lock_fd.fileno()
 
@@ -222,7 +225,8 @@ def test_mxnet_local_mode():
     data_path = os.path.join(DATA_DIR, 'mxnet_mnist')
 
     mx = MXNet(entry_point=script_path, role='SageMakerRole',
-               train_instance_count=1, train_instance_type='local')
+               train_instance_count=1, train_instance_type='local',
+               sagemaker_session=sagemaker_local_session)
 
     train_input = mx.sagemaker_session.upload_data(path=os.path.join(data_path, 'train'),
                                                    key_prefix='integ-test-data/mxnet_mnist/train')

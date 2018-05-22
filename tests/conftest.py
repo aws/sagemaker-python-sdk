@@ -18,6 +18,7 @@ import boto3
 import pytest
 
 from sagemaker import Session
+from sagemaker.local import LocalSession
 
 DEFAULT_REGION = 'us-west-2'
 
@@ -56,6 +57,15 @@ def sagemaker_session(sagemaker_client_config, sagemaker_runtime_config, boto_co
     return Session(boto_session=boto_session,
                    sagemaker_client=sagemaker_client,
                    sagemaker_runtime_client=runtime_client)
+
+
+@pytest.fixture(scope='session')
+def sagemaker_local_session(boto_config):
+    if boto_config:
+        boto_session = boto3.Session(**boto_config)
+    else:
+        boto_session = boto3.Session(region_name=DEFAULT_REGION)
+    return LocalSession(boto_session=boto_session)
 
 
 @pytest.fixture(scope='module', params=['1.4', '1.4.1', '1.5', '1.5.0', '1.6', '1.6.0'])
