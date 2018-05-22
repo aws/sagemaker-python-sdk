@@ -44,7 +44,8 @@ class LocalNoS3Session(LocalSession):
                 'local':
                     {
                         'local_code': True,
-                        'region_name': DEFAULT_REGION
+                        'region_name': DEFAULT_REGION,
+                        'serving_port': 8081
                     }
             }
 
