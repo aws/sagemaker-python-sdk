@@ -14,11 +14,12 @@ from __future__ import absolute_import
 
 import fcntl
 import os
+import time
 
 import numpy
 import pytest
 
-from sagemaker.local import LocalSession
+from sagemaker.local import LocalSession, LocalSagemakerRuntimeClient, LocalSagemakerClient
 from sagemaker.mxnet import MXNet
 from sagemaker.tensorflow import TensorFlow
 from tests.integ import DATA_DIR
@@ -35,13 +36,22 @@ class LocalNoS3Session(LocalSession):
     """
     def __init__(self):
         super(LocalSession, self).__init__()
-        self.config = {
-            'local':
-                {
-                    'local_code': True
-                }
-        }
+
+    def _initialize(self, boto_session, sagemaker_client, sagemaker_runtime_client):
+        self.boto_session = None
+        if self.config is None:
+            self.config = {
+                'local':
+                    {
+                        'local_code': True,
+                        'region_name': DEFAULT_REGION
+                    }
+            }
+
         self._region_name = DEFAULT_REGION
+        self.sagemaker_client = LocalSagemakerClient(self)
+        self.sagemaker_runtime_client = LocalSagemakerRuntimeClient(self.config)
+        self.local_mode = True
 
 
 def test_tf_local_mode(tf_full_version, sagemaker_local_session):
@@ -85,6 +95,7 @@ def test_tf_local_mode(tf_full_version, sagemaker_local_session):
         assert dict_result == list_result
     finally:
         estimator.delete_endpoint()
+        time.sleep(5)
         fcntl.lockf(local_mode_lock, fcntl.LOCK_UN)
 
 
@@ -128,6 +139,7 @@ def test_tf_distributed_local_mode(sagemaker_local_session):
         assert dict_result == list_result
     finally:
         estimator.delete_endpoint()
+        time.sleep(5)
         fcntl.lockf(local_mode_lock, fcntl.LOCK_UN)
 
 
@@ -214,6 +226,7 @@ def test_tf_local_data_local_script():
         assert dict_result == list_result
     finally:
         estimator.delete_endpoint()
+        time.sleep(5)
         fcntl.lockf(local_mode_lock, fcntl.LOCK_UN)
 
 
@@ -245,6 +258,7 @@ def test_mxnet_local_mode(sagemaker_local_session):
         predictor.predict(data)
     finally:
         mx.delete_endpoint()
+        time.sleep(5)
         fcntl.lockf(local_mode_lock, fcntl.LOCK_UN)
 
 
@@ -275,4 +289,5 @@ def test_mxnet_local_data_local_script():
         predictor.predict(data)
     finally:
         mx.delete_endpoint()
+        time.sleep(5)
         fcntl.lockf(local_mode_lock, fcntl.LOCK_UN)
