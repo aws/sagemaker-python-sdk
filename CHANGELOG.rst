@@ -3,7 +3,7 @@ CHANGELOG
 =========
 
 
-1.2.dev5
+1.2.5
 ========
 
 * bug-fix: Change module names to string type in __all__

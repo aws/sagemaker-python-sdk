@@ -23,7 +23,7 @@ def read(fname):
 
 
 setup(name="sagemaker",
-      version="1.2.4",
+      version="1.2.5",
       description="Open source library for training and deploying models on Amazon SageMaker.",
       packages=find_packages('src'),
       package_dir={'': 'src'},
