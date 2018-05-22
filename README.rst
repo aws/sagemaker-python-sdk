@@ -56,7 +56,7 @@ SageMaker Python SDK is tested on: \* Python 2.7 \* Python 3.5
 
 Licensing
 ~~~~~~~~~
-SageMaker Python SDK is licensed under the Apache 2.0 License. It is copyright 2018 Amazon.com, Inc. or its affiliates. All Rights Reserved. The license is available at:  
+SageMaker Python SDK is licensed under the Apache 2.0 License. It is copyright 2018 Amazon.com, Inc. or its affiliates. All Rights Reserved. The license is available at:
 http://aws.amazon.com/apache2.0/
 
 Running tests
@@ -148,7 +148,7 @@ Local Mode
 ~~~~~~~~~~
 
 The SageMaker Python SDK now supports local mode, which allows you to create TensorFlow, MXNet and BYO estimators and
-deploy to your local environment. This is a great way to test your deep learning script before running in
+deploy to your local environment. This is a great way to test your deep learning script before running in
 SageMaker's managed training or hosting environments.
 
 We can take the example in  `Estimator Usage <#estimator-usage>`__ , and use either ``local`` or ``local_gpu`` as the
@@ -188,7 +188,7 @@ A few important notes:
 
 - Only one local mode endpoint can be running at a time
 - If you are using s3 data as input, it will be pulled from S3 to your local environment, please ensure you have sufficient space.
-- If you run into problems, this is often due to different docker containers conflicting.  Killing these containers and re-running often solves your problems.
+- If you run into problems, this is often due to different docker containers conflicting. Killing these containers and re-running often solves your problems.
 - Local Mode requires docker-compose and `nvidia-docker2 <https://github.com/NVIDIA/nvidia-docker>`__ for ``local_gpu``.
 - Distributed training is not yet supported for ``local_gpu``.
 
