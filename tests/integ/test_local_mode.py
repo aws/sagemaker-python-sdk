@@ -17,7 +17,6 @@ import os
 import time
 
 import numpy
-import pytest
 
 from sagemaker.local import LocalSession, LocalSagemakerRuntimeClient, LocalSagemakerClient
 from sagemaker.mxnet import MXNet
@@ -44,8 +43,7 @@ class LocalNoS3Session(LocalSession):
                 'local':
                     {
                         'local_code': True,
-                        'region_name': DEFAULT_REGION,
-                        'serving_port': 8081
+                        'region_name': DEFAULT_REGION
                     }
             }
 
@@ -263,7 +261,6 @@ def test_mxnet_local_mode(sagemaker_local_session):
         fcntl.lockf(local_mode_lock, fcntl.LOCK_UN)
 
 
-@pytest.mark.skip(reason='Latest images not released yet')
 def test_mxnet_local_data_local_script():
     local_mode_lock_fd = open(LOCK_PATH, 'w')
     local_mode_lock = local_mode_lock_fd.fileno()
