@@ -16,6 +16,7 @@ import fcntl
 import os
 import time
 
+import boto3
 import numpy
 
 from sagemaker.local import LocalSession, LocalSagemakerRuntimeClient, LocalSagemakerClient
@@ -37,7 +38,7 @@ class LocalNoS3Session(LocalSession):
         super(LocalSession, self).__init__()
 
     def _initialize(self, boto_session, sagemaker_client, sagemaker_runtime_client):
-        self.boto_session = None
+        self.boto_session = boto3.Session(region_name=DEFAULT_REGION)
         if self.config is None:
             self.config = {
                 'local':
