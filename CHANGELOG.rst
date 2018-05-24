@@ -2,6 +2,10 @@
 CHANGELOG
 =========
 
+1.3.0
+=======
+
+* feature: Add chainer
 
 1.2.5
 ========

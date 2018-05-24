@@ -68,6 +68,11 @@ def mxnet_version(request):
     return request.param
 
 
+@pytest.fixture(scope='module', params=['4.0', '4.0.0'])
+def chainer_version(request):
+    return request.param
+
+
 @pytest.fixture(scope='module', params=['1.4.1', '1.5.0', '1.6.0'])
 def tf_full_version(request):
     return request.param
@@ -75,4 +80,9 @@ def tf_full_version(request):
 
 @pytest.fixture(scope='module', params=['0.12.1', '1.0.0', '1.1.0'])
 def mxnet_full_version(request):
+    return request.param
+
+
+@pytest.fixture(scope='module', params=['4.0.0'])
+def chainer_full_version(request):
     return request.param
