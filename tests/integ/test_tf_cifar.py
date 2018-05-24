@@ -10,10 +10,13 @@
 # distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
+from __future__ import absolute_import
+
 import os
 import pickle
 
 import numpy as np
+import pytest
 
 from sagemaker.tensorflow import TensorFlow
 from tests.integ import DATA_DIR
@@ -30,6 +33,7 @@ class PickleSerializer(object):
         return pickle.dumps(data, protocol=2)
 
 
+@pytest.mark.continuous_testing
 def test_cifar(sagemaker_session, tf_full_version):
     with timeout(minutes=20):
         script_path = os.path.join(DATA_DIR, 'cifar_10', 'source')
@@ -37,7 +41,7 @@ def test_cifar(sagemaker_session, tf_full_version):
         dataset_path = os.path.join(DATA_DIR, 'cifar_10', 'data')
 
         estimator = TensorFlow(entry_point='resnet_cifar_10.py', source_dir=script_path, role='SageMakerRole',
-                               framework_version=tf_full_version, training_steps=20, evaluation_steps=5,
+                               framework_version=tf_full_version, training_steps=500, evaluation_steps=5,
                                train_instance_count=2, train_instance_type='ml.p2.xlarge',
                                sagemaker_session=sagemaker_session, train_max_run=20 * 60,
                                base_job_name='test-cifar')

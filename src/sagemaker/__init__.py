@@ -1,4 +1,4 @@
-# Copyright 2017 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright 2017-2018 Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -20,6 +20,7 @@ from sagemaker.amazon.linear_learner import LinearLearner, LinearLearnerModel, L
 from sagemaker.amazon.factorization_machines import FactorizationMachines, FactorizationMachinesModel
 from sagemaker.amazon.factorization_machines import FactorizationMachinesPredictor
 from sagemaker.amazon.ntm import NTM, NTMModel, NTMPredictor
+from sagemaker.amazon.randomcutforest import RandomCutForest, RandomCutForestModel, RandomCutForestPredictor
 
 from sagemaker.local.local_session import LocalSession
 
@@ -32,9 +33,10 @@ from sagemaker.session import s3_input
 from sagemaker.session import get_execution_role
 
 
-__all__ = [estimator, KMeans, KMeansModel, KMeansPredictor, PCA, PCAModel, PCAPredictor, LinearLearner,
-           LinearLearnerModel, LinearLearnerPredictor,
-           LDA, LDAModel, LDAPredictor,
-           FactorizationMachines, FactorizationMachinesModel, FactorizationMachinesPredictor,
-           Model, NTM, NTMModel, NTMPredictor, RealTimePredictor, Session, LocalSession,
-           container_def, s3_input, production_variant, get_execution_role]
+__all__ = ['estimator', 'KMeans', 'KMeansModel', 'KMeansPredictor', 'PCA', 'PCAModel', 'PCAPredictor', 'LinearLearner',
+           'LinearLearnerModel', 'LinearLearnerPredictor',
+           'LDA', 'LDAModel', 'LDAPredictor',
+           'FactorizationMachines', 'FactorizationMachinesModel', 'FactorizationMachinesPredictor',
+           'RandomCutForest', 'RandomCutForestModel', 'RandomCutForestPredictor',
+           'Model', 'NTM', 'NTMModel', 'NTMPredictor', 'RealTimePredictor', 'Session', 'LocalSession',
+           'container_def', 's3_input', 'production_variant', 'get_execution_role']

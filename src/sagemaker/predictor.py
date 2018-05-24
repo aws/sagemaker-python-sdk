@@ -1,4 +1,4 @@
-# Copyright 2017 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright 2017-2018 Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -16,9 +16,9 @@ import codecs
 import csv
 import json
 import numpy as np
-from six import StringIO
+from six import StringIO, BytesIO
 
-from sagemaker.content_types import CONTENT_TYPE_JSON, CONTENT_TYPE_CSV
+from sagemaker.content_types import CONTENT_TYPE_JSON, CONTENT_TYPE_CSV, CONTENT_TYPE_NPY
 from sagemaker.session import Session
 
 
@@ -297,18 +297,69 @@ class _JsonDeserializer(object):
 json_deserializer = _JsonDeserializer()
 
 
-class NumpyDeserializer(object):
-    def __init__(self, dtype=None):
-        self.accept = '{}, {}'.format(CONTENT_TYPE_CSV, CONTENT_TYPE_JSON)
+class _NumpyDeserializer(object):
+    def __init__(self, accept=CONTENT_TYPE_NPY, dtype=None):
+        self.accept = accept
         self.dtype = dtype
 
-    def __call__(self, stream, content_type):
+    def __call__(self, stream, content_type=CONTENT_TYPE_NPY):
+        """Decode from serialized data into a Numpy array.
+
+        Args:
+            stream (stream): The response stream to be deserialized.
+            content_type (str): The content type of the response. Can accept CSV, JSON, or NPY data.
+
+        Returns:
+            object: Body of the response deserialized into a Numpy array.
+        """
         try:
-            if content_type == 'text/csv':
-                return np.genfromtxt(stream, delimiter=',', dtype=self.dtype)
-            elif content_type == 'application/json':
+            if content_type == CONTENT_TYPE_CSV:
+                return np.genfromtxt(codecs.getreader('utf-8')(stream), delimiter=',', dtype=self.dtype)
+            elif content_type == CONTENT_TYPE_JSON:
                 return np.array(json.load(codecs.getreader('utf-8')(stream)), dtype=self.dtype)
-            else:
-                raise ValueError('Content type {} is not supported by the NumpyDeserializer'.format(content_type))
+            elif content_type == CONTENT_TYPE_NPY:
+                return np.load(BytesIO(stream.read()))
         finally:
             stream.close()
+
+
+numpy_deserializer = _NumpyDeserializer()
+
+
+class _NPYSerializer(object):
+    def __init__(self):
+        self.content_type = CONTENT_TYPE_NPY
+
+    def __call__(self, data, dtype=None):
+        """Serialize data into the request body in NPY format.
+
+        Args:
+            data (object): Data to be serialized. Can be a numpy array, list, file, or buffer.
+
+        Returns:
+            object: NPY serialized data used for the request.
+        """
+        if isinstance(data, np.ndarray):
+            if not data.size > 0:
+                raise ValueError("empty array can't be serialized")
+            return _npy_serialize(data)
+
+        if isinstance(data, list):
+            if not len(data) > 0:
+                raise ValueError("empty array can't be serialized")
+            return _npy_serialize(np.array(data, dtype))
+
+        # files and buffers. Assumed to hold npy-formatted data.
+        if hasattr(data, 'read'):
+            return data.read()
+
+        return _npy_serialize(np.array(data))
+
+
+def _npy_serialize(data):
+    buffer = BytesIO()
+    np.save(buffer, data)
+    return buffer.getvalue()
+
+
+npy_serializer = _NPYSerializer()

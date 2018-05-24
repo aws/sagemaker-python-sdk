@@ -10,6 +10,8 @@
 # distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
+from __future__ import absolute_import
+
 from sagemaker.estimator import Framework
 from sagemaker.fw_utils import create_image_uri, framework_name_from_image, framework_version_from_tag
 from sagemaker.mxnet.defaults import MXNET_VERSION
@@ -65,7 +67,7 @@ class MXNet(Framework):
         Returns:
             str: The URI of the Docker image.
         """
-        return create_image_uri(self.sagemaker_session.boto_session.region_name, self.__framework_name__,
+        return create_image_uri(self.sagemaker_session.boto_region_name, self.__framework_name__,
                                 self.train_instance_type, framework_version=self.framework_version,
                                 py_version=self.py_version)
 

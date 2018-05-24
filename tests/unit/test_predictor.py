@@ -1,4 +1,4 @@
-# Copyright 2017 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright 2017-2018 Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -10,6 +10,8 @@
 # distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
+from __future__ import absolute_import
+
 import io
 import json
 import os
@@ -20,7 +22,7 @@ import numpy as np
 
 from sagemaker.predictor import RealTimePredictor
 from sagemaker.predictor import json_serializer, json_deserializer, csv_serializer, BytesDeserializer, \
-    StringDeserializer, StreamDeserializer, NumpyDeserializer
+    StringDeserializer, StreamDeserializer, numpy_deserializer, npy_serializer, _NumpyDeserializer
 from tests.unit import DATA_DIR
 
 # testing serialization functions
@@ -183,39 +185,139 @@ def test_stream_deserializer():
     assert content_type == 'application/json'
 
 
+def test_npy_serializer_python_array():
+    array = [1, 2, 3]
+    result = npy_serializer(array)
+
+    assert np.array_equal(array, np.load(io.BytesIO(result)))
+
+
+def test_npy_serializer_python_array_with_dtype():
+    array = [1, 2, 3]
+    dtype = 'float16'
+
+    result = npy_serializer(array, dtype)
+
+    deserialized = np.load(io.BytesIO(result))
+    assert np.array_equal(array, deserialized)
+    assert deserialized.dtype == dtype
+
+
+def test_npy_serializer_numpy_valid_2_dimensional():
+    array = np.array([[1, 2, 3], [3, 4, 5]])
+    result = npy_serializer(array)
+
+    assert np.array_equal(array, np.load(io.BytesIO(result)))
+
+
+def test_npy_serializer_numpy_valid_multidimensional():
+    array = np.ones((10, 10, 10, 10))
+    result = npy_serializer(array)
+
+    assert np.array_equal(array, np.load(io.BytesIO(result)))
+
+
+def test_npy_serializer_numpy_valid_list_of_strings():
+    array = np.array(['one', 'two', 'three'])
+    result = npy_serializer(array)
+
+    assert np.array_equal(array, np.load(io.BytesIO(result)))
+
+
+def test_npy_serializer_from_buffer_or_file():
+    array = np.ones((2, 3))
+    stream = io.BytesIO()
+    np.save(stream, array)
+    stream.seek(0)
+
+    result = npy_serializer(stream)
+
+    assert np.array_equal(array, np.load(io.BytesIO(result)))
+
+
+def test_npy_serializer_object():
+    object = {1, 2, 3}
+
+    result = npy_serializer(object)
+
+    assert np.array_equal(np.array(object), np.load(io.BytesIO(result)))
+
+
+def test_npy_serializer_list_of_empty():
+    with pytest.raises(ValueError) as invalid_input:
+        npy_serializer(np.array([[], []]))
+
+    assert "empty array" in str(invalid_input)
+
+
+def test_npy_serializer_numpy_invalid_empty():
+    with pytest.raises(ValueError) as invalid_input:
+        npy_serializer(np.array([]))
+
+    assert "empty array" in str(invalid_input)
+
+
+def test_npy_serializer_python_invalid_empty():
+    with pytest.raises(ValueError) as error:
+        npy_serializer([])
+    assert "empty array" in str(error)
+
+
 def test_numpy_deser_from_csv():
-    arr = NumpyDeserializer()(io.BytesIO(b'1,2,3\n4,5,6'), 'text/csv')
+    arr = numpy_deserializer(io.BytesIO(b'1,2,3\n4,5,6'), 'text/csv')
     assert np.array_equal(arr, np.array([[1, 2, 3], [4, 5, 6]]))
 
 
 def test_numpy_deser_from_csv_ragged():
     with pytest.raises(ValueError) as error:
-        NumpyDeserializer()(io.BytesIO(b'1,2,3\n4,5,6,7'), 'text/csv')
+        numpy_deserializer(io.BytesIO(b'1,2,3\n4,5,6,7'), 'text/csv')
     assert "errors were detected" in str(error)
 
 
 def test_numpy_deser_from_csv_alpha():
-    arr = NumpyDeserializer(dtype='U5')(io.BytesIO(b'hello,2,3\n4,5,6'), 'text/csv')
+    arr = _NumpyDeserializer(dtype='U5')(io.BytesIO(b'hello,2,3\n4,5,6'), 'text/csv')
     assert np.array_equal(arr, np.array([['hello', 2, 3], [4, 5, 6]]))
 
 
 def test_numpy_deser_from_json():
-    arr = NumpyDeserializer()(io.BytesIO(b'[[1,2,3],\n[4,5,6]]'), 'application/json')
+    arr = numpy_deserializer(io.BytesIO(b'[[1,2,3],\n[4,5,6]]'), 'application/json')
     assert np.array_equal(arr, np.array([[1, 2, 3], [4, 5, 6]]))
 
 
 # Sadly, ragged arrays work fine in JSON (giving us a 1D array of Python lists
 def test_numpy_deser_from_json_ragged():
-    arr = NumpyDeserializer()(io.BytesIO(b'[[1,2,3],\n[4,5,6,7]]'), 'application/json')
+    arr = numpy_deserializer(io.BytesIO(b'[[1,2,3],\n[4,5,6,7]]'), 'application/json')
     assert np.array_equal(arr, np.array([[1, 2, 3], [4, 5, 6, 7]]))
 
 
 def test_numpy_deser_from_json_alpha():
-    arr = NumpyDeserializer(dtype='U5')(io.BytesIO(b'[["hello",2,3],\n[4,5,6]]'), 'application/json')
+    arr = _NumpyDeserializer(dtype='U5')(io.BytesIO(b'[["hello",2,3],\n[4,5,6]]'), 'application/json')
     assert np.array_equal(arr, np.array([['hello', 2, 3], [4, 5, 6]]))
 
 
+def test_numpy_deser_from_npy():
+    array = np.ones((2, 3))
+    stream = io.BytesIO()
+    np.save(stream, array)
+    stream.seek(0)
+
+    result = numpy_deserializer(stream)
+
+    assert np.array_equal(array, result)
+
+
+def test_numpy_deser_from_npy_object_array():
+    array = np.array(['one', 'two'])
+    stream = io.BytesIO()
+    np.save(stream, array)
+    stream.seek(0)
+
+    result = numpy_deserializer(stream)
+
+    assert np.array_equal(array, result)
+
 # testing 'predict' invocations
+
 
 ENDPOINT = 'mxnet_endpoint'
 BUCKET_NAME = 'mxnet_endpoint'

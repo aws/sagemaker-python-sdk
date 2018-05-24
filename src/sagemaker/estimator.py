@@ -1,4 +1,4 @@
-# Copyright 2017 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright 2017-2018 Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -14,21 +14,22 @@ from __future__ import print_function, absolute_import
 
 import json
 import logging
+import os
 from abc import ABCMeta
 from abc import abstractmethod
 from six import with_metaclass, string_types
 
-from sagemaker.fw_utils import tar_and_upload_dir
-from sagemaker.fw_utils import parse_s3_url
-from sagemaker.fw_utils import UploadedCode
-from sagemaker.local.local_session import LocalSession
+from sagemaker.fw_utils import tar_and_upload_dir, parse_s3_url, UploadedCode, validate_source_dir
+from sagemaker.local import LocalSession, file_input
+
 from sagemaker.model import Model
 from sagemaker.model import (SCRIPT_PARAM_NAME, DIR_PARAM_NAME, CLOUDWATCH_METRICS_PARAM_NAME,
                              CONTAINER_LOG_LEVEL_PARAM_NAME, JOB_NAME_PARAM_NAME, SAGEMAKER_REGION_PARAM_NAME)
+
 from sagemaker.predictor import RealTimePredictor
 from sagemaker.session import Session
 from sagemaker.session import s3_input
-from sagemaker.utils import base_name_from_image, name_from_base
+from sagemaker.utils import base_name_from_image, name_from_base, get_config_value
 
 
 class EstimatorBase(with_metaclass(ABCMeta, object)):
@@ -81,13 +82,10 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):
         self.input_mode = input_mode
 
         if self.train_instance_type in ('local', 'local_gpu'):
-            self.local_mode = True
             if self.train_instance_type == 'local_gpu' and self.train_instance_count > 1:
                 raise RuntimeError("Distributed Training in Local GPU is not supported")
-
-            self.sagemaker_session = LocalSession()
+            self.sagemaker_session = sagemaker_session or LocalSession()
         else:
-            self.local_mode = False
             self.sagemaker_session = sagemaker_session or Session()
 
         self.base_job_name = base_job_name
@@ -156,9 +154,14 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):
             base_name = self.base_job_name or base_name_from_image(self.train_image())
             self._current_job_name = name_from_base(base_name)
 
-        # if output_path was specified we use it otherwise initialize here
+        # if output_path was specified we use it otherwise initialize here.
+        # For Local Mode with local_code=True we don't need an explicit output_path
         if self.output_path is None:
-            self.output_path = 's3://{}/'.format(self.sagemaker_session.default_bucket())
+            local_code = get_config_value('local.local_code', self.sagemaker_session.config)
+            if self.sagemaker_session.local_mode and local_code:
+                self.output_path = ''
+            else:
+                self.output_path = 's3://{}/'.format(self.sagemaker_session.default_bucket())
 
         self.latest_training_job = _TrainingJob.start_new(self, inputs)
         if wait:
@@ -321,6 +324,13 @@ class _TrainingJob(object):
             sagemaker.estimator.Framework: Constructed object that captures all information about the started job.
         """
 
+        local_mode = estimator.sagemaker_session.local_mode
+
+        # Allow file:// input only in local mode
+        if isinstance(inputs, str) and inputs.startswith('file://'):
+            if not local_mode:
+                raise ValueError('File URIs are supported in local mode only. Please use a S3 URI instead.')
+
         input_config = _TrainingJob._format_inputs_to_input_config(inputs)
         role = estimator.sagemaker_session.expand_role(estimator.role)
         output_config = _TrainingJob._prepare_output_config(estimator.output_path, estimator.output_kms_key)
@@ -343,12 +353,14 @@ class _TrainingJob(object):
     def _format_inputs_to_input_config(inputs):
         input_dict = {}
         if isinstance(inputs, string_types):
-            input_dict['training'] = _TrainingJob._format_s3_uri_input(inputs)
+            input_dict['training'] = _TrainingJob._format_string_uri_input(inputs)
         elif isinstance(inputs, s3_input):
+            input_dict['training'] = inputs
+        elif isinstance(input, file_input):
             input_dict['training'] = inputs
         elif isinstance(inputs, dict):
             for k, v in inputs.items():
-                input_dict[k] = _TrainingJob._format_s3_uri_input(v)
+                input_dict[k] = _TrainingJob._format_string_uri_input(v)
         else:
             raise ValueError('Cannot format input {}. Expecting one of str, dict or s3_input'.format(inputs))
 
@@ -360,15 +372,21 @@ class _TrainingJob(object):
         return channels
 
     @staticmethod
-    def _format_s3_uri_input(input):
+    def _format_string_uri_input(input):
         if isinstance(input, str):
-            if not input.startswith('s3://'):
-                raise ValueError('Training input data must be a valid S3 URI and must start with "s3://"')
-            return s3_input(input)
-        if isinstance(input, s3_input):
+            if input.startswith('s3://'):
+                return s3_input(input)
+            elif input.startswith('file://'):
+                return file_input(input)
+            else:
+                raise ValueError('Training input data must be a valid S3 or FILE URI: must start with "s3://" or '
+                                 '"file://"')
+        elif isinstance(input, s3_input):
+            return input
+        elif isinstance(input, file_input):
             return input
         else:
-            raise ValueError('Cannot format input {}. Expecting one of str or s3_input'.format(input))
+            raise ValueError('Cannot format input {}. Expecting one of str, s3_input, or file_input'.format(input))
 
     @staticmethod
     def _prepare_output_config(s3_path, kms_key_id):
@@ -587,6 +605,42 @@ class Framework(EstimatorBase):
             base_name = self.base_job_name or base_name_from_image(self.train_image())
             self._current_job_name = name_from_base(base_name)
 
+        # validate source dir will raise a ValueError if there is something wrong with the
+        # source directory. We are intentionally not handling it because this is a critical error.
+        if self.source_dir and not self.source_dir.lower().startswith('s3://'):
+            validate_source_dir(self.entry_point, self.source_dir)
+
+        # if we are in local mode with local_code=True. We want the container to just
+        # mount the source dir instead of uploading to S3.
+        local_code = get_config_value('local.local_code', self.sagemaker_session.config)
+        if self.sagemaker_session.local_mode and local_code:
+            # if there is no source dir, use the directory containing the entry point.
+            if self.source_dir is None:
+                self.source_dir = os.path.dirname(self.entry_point)
+            self.entry_point = os.path.basename(self.entry_point)
+
+            code_dir = 'file://' + self.source_dir
+            script = self.entry_point
+        else:
+            self.uploaded_code = self._stage_user_code_in_s3()
+            code_dir = self.uploaded_code.s3_prefix
+            script = self.uploaded_code.script_name
+
+        # Modify hyperparameters in-place to point to the right code directory and script URIs
+        self._hyperparameters[DIR_PARAM_NAME] = code_dir
+        self._hyperparameters[SCRIPT_PARAM_NAME] = script
+        self._hyperparameters[CLOUDWATCH_METRICS_PARAM_NAME] = self.enable_cloudwatch_metrics
+        self._hyperparameters[CONTAINER_LOG_LEVEL_PARAM_NAME] = self.container_log_level
+        self._hyperparameters[JOB_NAME_PARAM_NAME] = self._current_job_name
+        self._hyperparameters[SAGEMAKER_REGION_PARAM_NAME] = self.sagemaker_session.boto_region_name
+        super(Framework, self).fit(inputs, wait, logs, self._current_job_name)
+
+    def _stage_user_code_in_s3(self):
+        """ Upload the user training script to s3 and return the location.
+
+        Returns: s3 uri
+
+        """
         if self.code_location is None:
             code_bucket = self.sagemaker_session.default_bucket()
             code_s3_prefix = '{}/source'.format(self._current_job_name)
@@ -594,20 +648,11 @@ class Framework(EstimatorBase):
             code_bucket, key_prefix = parse_s3_url(self.code_location)
             code_s3_prefix = '{}/{}/source'.format(key_prefix, self._current_job_name)
 
-        self.uploaded_code = tar_and_upload_dir(session=self.sagemaker_session.boto_session,
-                                                bucket=code_bucket,
-                                                s3_key_prefix=code_s3_prefix,
-                                                script=self.entry_point,
-                                                directory=self.source_dir)
-
-        # Modify hyperparameters in-place to add the URLs to the uploaded code.
-        self._hyperparameters[DIR_PARAM_NAME] = self.uploaded_code.s3_prefix
-        self._hyperparameters[SCRIPT_PARAM_NAME] = self.uploaded_code.script_name
-        self._hyperparameters[CLOUDWATCH_METRICS_PARAM_NAME] = self.enable_cloudwatch_metrics
-        self._hyperparameters[CONTAINER_LOG_LEVEL_PARAM_NAME] = self.container_log_level
-        self._hyperparameters[JOB_NAME_PARAM_NAME] = self._current_job_name
-        self._hyperparameters[SAGEMAKER_REGION_PARAM_NAME] = self.sagemaker_session.boto_session.region_name
-        super(Framework, self).fit(inputs, wait, logs, self._current_job_name)
+        return tar_and_upload_dir(session=self.sagemaker_session.boto_session,
+                                  bucket=code_bucket,
+                                  s3_key_prefix=code_s3_prefix,
+                                  script=self.entry_point,
+                                  directory=self.source_dir)
 
     def hyperparameters(self):
         """Return the hyperparameters as a dictionary to use for training.

@@ -1,4 +1,4 @@
-# Copyright 2017 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright 2017-2018 Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -70,10 +70,25 @@ class Session(object):
                 If not provided, one will be created using this instance's ``boto_session``.
         """
         self._default_bucket = None
+
+        sagemaker_config_file = os.path.join(os.path.expanduser('~'), '.sagemaker', 'config.yaml')
+        if os.path.exists(sagemaker_config_file):
+            self.config = yaml.load(open(sagemaker_config_file, 'r'))
+        else:
+            self.config = None
+
+        self._initialize(boto_session, sagemaker_client, sagemaker_runtime_client)
+
+    def _initialize(self, boto_session, sagemaker_client, sagemaker_runtime_client):
+        """Initialize this SageMaker Session.
+
+        Creates or uses a boto_session, sagemaker_client and sagemaker_runtime_client.
+        Sets the region_name.
+        """
         self.boto_session = boto_session or boto3.Session()
 
-        region = self.boto_session.region_name
-        if region is None:
+        self._region_name = self.boto_session.region_name
+        if self._region_name is None:
             raise ValueError('Must setup local AWS configuration with a region supported by SageMaker.')
 
         self.sagemaker_client = sagemaker_client or self.boto_session.client('sagemaker')
@@ -82,15 +97,11 @@ class Session(object):
         self.sagemaker_runtime_client = sagemaker_runtime_client or self.boto_session.client('runtime.sagemaker')
         prepend_user_agent(self.sagemaker_runtime_client)
 
-        sagemaker_config_file = os.path.join(os.path.expanduser('~'), '.sagemaker', 'config.yaml')
-        if os.path.exists(sagemaker_config_file):
-            self.config = yaml.load(open(sagemaker_config_file, 'r'))
-        else:
-            self.config = None
+        self.local_mode = False
 
     @property
     def boto_region_name(self):
-        return self.boto_session.region_name
+        return self._region_name
 
     def upload_data(self, path, bucket=None, key_prefix='data'):
         """Upload local file or directory to S3.
@@ -212,8 +223,10 @@ class Session(object):
             job_name (str): Name of the training job being created.
             output_config (dict): The S3 URI where you want to store the training results and optional KMS key ID.
             resource_config (dict): Contains values for ResourceConfig:
-            instance_count (int): Number of EC2 instances to use for training.
-            instance_type (str): Type of EC2 instance to use for training, for example, 'ml.c4.xlarge'.
+                * instance_count (int): Number of EC2 instances to use for training.
+                    The key in resource_config is 'InstanceCount'.
+                * instance_type (str): Type of EC2 instance to use for training, for example, 'ml.c4.xlarge'.
+                    The key in resource_config is 'InstanceType'.
             hyperparameters (dict): Hyperparameters for model training. The hyperparameters are made accessible as
                 a dict[str, str] to the training code on SageMaker. For convenience, this accepts other types for
                 keys and values, but ``str()`` will be called to convert them before training.
@@ -391,7 +404,7 @@ class Session(object):
         """
         status = desc['TrainingJobStatus']
 
-        if status != 'Completed':
+        if status != 'Completed' and status != 'Stopped':
             reason = desc.get('FailureReason', '(No reason provided)')
             raise ValueError('Error training {}: {} Reason: {}'.format(job, status, reason))
 
@@ -557,7 +570,7 @@ class Session(object):
 
         Args:
             job_name (str): Name of the training job to display the logs for.
-            wait (bool): Whether to keep looking for new log entries until the job completes (default: True).
+            wait (bool): Whether to keep looking for new log entries until the job completes (default: False).
             poll (int): The interval in seconds between polling for new log entries and job completion (default: 5).
 
         Raises:
@@ -577,7 +590,7 @@ class Session(object):
         client = self.boto_session.client('logs', config=config)
         log_group = '/aws/sagemaker/TrainingJobs'
 
-        job_already_completed = True if status == 'Completed' or status == 'Failed' else False
+        job_already_completed = True if status == 'Completed' or status == 'Failed' or status == 'Stopped' else False
 
         state = LogState.TAILING if wait and not job_already_completed else LogState.COMPLETE
         dot = False
@@ -649,7 +662,7 @@ class Session(object):
 
                 status = description['TrainingJobStatus']
 
-                if status == 'Completed' or status == 'Failed':
+                if status == 'Completed' or status == 'Failed' or status == 'Stopped':
                     state = LogState.JOB_COMPLETE
 
         if wait:

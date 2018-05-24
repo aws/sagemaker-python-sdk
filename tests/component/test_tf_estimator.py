@@ -1,4 +1,4 @@
-# Copyright 2018 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright 2017-2018 Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -10,6 +10,8 @@
 # distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
+from __future__ import absolute_import
+
 import pytest
 from mock import Mock
 from sagemaker.tensorflow import TensorFlow
@@ -34,7 +36,8 @@ SOURCE_DIR = 's3://fefergerger'
 @pytest.fixture()
 def sagemaker_session():
     boto_mock = Mock(name='boto_session', region_name=REGION)
-    ims = Mock(name='sagemaker_session', boto_session=boto_mock)
+    ims = Mock(name='sagemaker_session', boto_session=boto_mock, config=None,
+               local_mode=False, region_name=REGION)
     ims.default_bucket = Mock(name='default_bucket', return_value=BUCKET_NAME)
     ims.expand_role = Mock(name="expand_role", return_value=ROLE)
     ims.sagemaker_client.describe_training_job = Mock(return_value={'ModelArtifacts':
@@ -62,6 +65,7 @@ def test_deploy(sagemaker_session, tf_version):
          {'SAGEMAKER_ENABLE_CLOUDWATCH_METRICS': 'false',
           'SAGEMAKER_CONTAINER_LOG_LEVEL': '20',
           'SAGEMAKER_SUBMIT_DIRECTORY': SOURCE_DIR,
+          'SAGEMAKER_REQUIREMENTS': '',
           'SAGEMAKER_REGION': REGION,
           'SAGEMAKER_PROGRAM': SCRIPT},
          'Image': image,

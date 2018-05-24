@@ -1,4 +1,4 @@
-# Copyright 2017 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright 2017-2018 Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -10,6 +10,8 @@
 # distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
+from __future__ import absolute_import
+
 import json
 import logging
 import tempfile
@@ -228,7 +230,8 @@ def upload_numpy_to_s3_shards(num_shards, s3, bucket, key_prefix, array, labels=
 
 def registry(region_name, algorithm=None):
     """Return docker registry for the given AWS region"""
-    if algorithm in [None, "pca", "kmeans", "linear-learner", "factorization-machines", "ntm"]:
+    if algorithm in [None, "pca", "kmeans", "linear-learner", "factorization-machines", "ntm",
+                     "randomcutforest"]:
         account_id = {
             "us-east-1": "382416733822",
             "us-east-2": "404615174143",
