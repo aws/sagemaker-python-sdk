@@ -15,3 +15,4 @@ from __future__ import absolute_import
 CONTENT_TYPE_JSON = 'application/json'
 CONTENT_TYPE_CSV = 'text/csv'
 CONTENT_TYPE_OCTET_STREAM = 'application/octet-stream'
+CONTENT_TYPE_NPY = 'application/x-npy'

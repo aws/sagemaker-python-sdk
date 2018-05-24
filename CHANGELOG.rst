@@ -2,8 +2,12 @@
 CHANGELOG
 =========
 
+1.3.0
+=======
 
-1.2.dev5
+* feature: Add chainer
+
+1.2.5
 ========
 
 * bug-fix: Change module names to string type in __all__
