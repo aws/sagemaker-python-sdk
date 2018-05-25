@@ -74,7 +74,7 @@ def test_all_hyperparameters(sagemaker_session):
     assert kmeans.hyperparameters() == dict(
         k=str(ALL_REQ_ARGS['k']),
         init_method='random',
-        local_lloyd_max_iterations='3',
+        local_lloyd_max_iter='3',
         local_lloyd_tol='0.5',
         local_lloyd_num_trials='5',
         local_lloyd_init_method='kmeans++',

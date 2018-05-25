@@ -28,7 +28,7 @@ class KMeans(AmazonAlgorithmEstimatorBase):
 
     k = hp('k', gt(1), 'An integer greater-than 1', int)
     init_method = hp('init_method', isin('random', 'kmeans++'), 'One of "random", "kmeans++"', str)
-    max_iterations = hp('local_lloyd_max_iterations', gt(0), 'An integer greater-than 0', int)
+    max_iterations = hp('local_lloyd_max_iter', gt(0), 'An integer greater-than 0', int)
     tol = hp('local_lloyd_tol', (ge(0), le(1)), 'An float in [0, 1]', float)
     num_trials = hp('local_lloyd_num_trials', gt(0), 'An integer greater-than 0', int)
     local_init_method = hp('local_lloyd_init_method', isin('random', 'kmeans++'), 'One of "random", "kmeans++"', str)
