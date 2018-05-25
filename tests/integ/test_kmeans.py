@@ -59,7 +59,7 @@ def test_kmeans(sagemaker_session):
             epochs=str(kmeans.epochs),
             extra_center_factor=str(kmeans.center_factor),
             k=str(kmeans.k),
-            force_dense='True'
+            force_dense='True',
         )
 
         kmeans.fit(kmeans.record_set(train_set[0][:100]))
@@ -111,7 +111,7 @@ def test_async_kmeans(sagemaker_session):
             epochs=str(kmeans.epochs),
             extra_center_factor=str(kmeans.center_factor),
             k=str(kmeans.k),
-            force_dense='True'
+            force_dense='True',
         )
 
         kmeans.fit(kmeans.record_set(train_set[0][:100]), wait=False)

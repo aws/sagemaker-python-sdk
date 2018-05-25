@@ -82,7 +82,7 @@ def test_all_hyperparameters(sagemaker_session):
         epochs='10',
         extra_center_factor='2',
         eval_metrics='[\'msd\', \'ssd\']',
-        force_dense='True'
+        force_dense='True',
     )
 
 
