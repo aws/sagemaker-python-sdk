@@ -2,14 +2,25 @@
 CHANGELOG
 =========
 
-
-1.2.dev5
+1.3.dev1
 ========
 
 * bug-fix: Remove __all__ and add noqa in __init__
+
+1.3.0
+=====
+
+* feature: Add chainer
+
+1.2.5
+=====
+
+* bug-fix: Change module names to string type in __all__
+* feature: Save training output files in local mode
 * bug-fix: tensorflow-serving-api: SageMaker does not conflict with tensorflow-serving-api module version
 * feature: Local Mode: add support for local training data using file://
 * feature: Updated TensorFlow Serving api protobuf files
+* bug-fix: No longer poll for logs from stopped training jobs
 
 1.2.4
 =====

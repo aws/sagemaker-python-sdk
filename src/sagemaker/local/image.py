@@ -141,7 +141,7 @@ class _SageMakerContainer(object):
         _ecr_login_if_needed(self.sagemaker_session.boto_session, self.image)
         _execute_and_stream_output(compose_command)
 
-        s3_model_artifacts = self.retrieve_model_artifacts(compose_data)
+        s3_artifacts = self.retrieve_artifacts(compose_data)
 
         # free up the training data directory as it may contain
         # lots of data downloaded from S3. This doesn't delete any local
@@ -157,7 +157,7 @@ class _SageMakerContainer(object):
         # Print our Job Complete line to have a simmilar experience to training on SageMaker where you
         # see this line at the end.
         print('===== Job Complete =====')
-        return s3_model_artifacts
+        return s3_artifacts
 
     def serve(self, primary_container):
         """Host a local endpoint using docker-compose.
@@ -209,7 +209,7 @@ class _SageMakerContainer(object):
         # for serving we can delete everything in the container root.
         _delete_tree(self.container_root)
 
-    def retrieve_model_artifacts(self, compose_data):
+    def retrieve_artifacts(self, compose_data):
         """Get the model artifacts from all the container nodes.
 
         Used after training completes to gather the data from all the individual containers. As the
@@ -223,8 +223,13 @@ class _SageMakerContainer(object):
 
         """
         # Grab the model artifacts from all the Nodes.
-        s3_model_artifacts = os.path.join(self.container_root, 's3_model_artifacts')
+        s3_artifacts = os.path.join(self.container_root, 's3_artifacts')
+        os.mkdir(s3_artifacts)
+
+        s3_model_artifacts = os.path.join(s3_artifacts, 'model')
+        s3_output_artifacts = os.path.join(s3_artifacts, 'output')
         os.mkdir(s3_model_artifacts)
+        os.mkdir(s3_output_artifacts)
 
         for host in self.hosts:
             volumes = compose_data['services'][str(host)]['volumes']
@@ -233,6 +238,8 @@ class _SageMakerContainer(object):
                 host_dir, container_dir = volume.split(':')
                 if container_dir == '/opt/ml/model':
                     self._recursive_copy(host_dir, s3_model_artifacts)
+                elif container_dir == '/opt/ml/output':
+                    self._recursive_copy(host_dir, s3_output_artifacts)
 
         return s3_model_artifacts
 
