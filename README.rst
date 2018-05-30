@@ -1957,11 +1957,9 @@ You can provide your own implementations for these functions in your hosting scr
 If you omit any definition then the SageMaker Chainer model server will use its default implementation for that
 function.
 
-The ``RealTimePredictor`` used by Chainer in the SageMaker Python SDK serializes NumPy arrays to the NPY_ format
+The ``RealTimePredictor`` used by Chainer in the SageMaker Python SDK serializes NumPy arrays to the `NPY <https://docs.scipy.org/doc/numpy/neps/npy-format.html>`_ format
 by default, with Content-Type ``application/x-npy``. The SageMaker Chainer model server can deserialize NPY-formatted
 data (along with JSON and CSV data).
-
-.. _NPY https://docs.scipy.org/doc/numpy/neps/npy-format.html
 
 If you rely solely on the SageMaker Chainer model server defaults, you get the following functionality:
 
@@ -1998,7 +1996,7 @@ Where ``request_body`` is a byte buffer and ``request_content_type`` is a Python
 The SageMaker Chainer model server provides a default implementation of ``input_fn``.
 This function deserializes JSON, CSV, or NPY encoded data into a NumPy array.
 
-Default NPY deserialization requires ``request_body`` to follow the NPY_ format. For Chainer, the Python SDK
+Default NPY deserialization requires ``request_body`` to follow the `NPY <https://docs.scipy.org/doc/numpy/neps/npy-format.html>`_ format. For Chainer, the Python SDK
 defaults to sending prediction requests with this format.
 
 Default json deserialization requires ``request_body`` contain a single json list.
