@@ -2,11 +2,13 @@
 CHANGELOG
 =========
 
-1.3.dev1
-========
+1.4.0
+=====
 
 * bug-fix: Estimators: Change max_iterations hyperparameter key for KMeans
-* feature: Analytics functions for metrics in Training and HyperparameterTuning jobs
+* bug-fix: Local Mode: Show logs in Jupyter notebooks
+* feature: HyperparameterTuner: Add support for hyperparameter tuning jobs
+* feature: Analytics: Add functions for metrics in Training and Hyperparameter Tuning jobs
 
 1.3.0
 =====
