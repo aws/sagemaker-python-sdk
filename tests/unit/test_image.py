@@ -366,6 +366,14 @@ def test_download_folder(makedirs):
     calls = [call(os.path.join('/tmp', 'train/train_data.csv')),
              call(os.path.join('/tmp', 'train/validation_data.csv'))]
     obj_mock.download_file.assert_has_calls(calls)
+    obj_mock.reset_mock()
+
+    sagemaker_container._download_folder(BUCKET_NAME, '/prefix/', '/tmp')
+    obj_mock.download_file.assert_called()
+    calls = [call(os.path.join('/tmp', 'train/train_data.csv')),
+             call(os.path.join('/tmp', 'train/validation_data.csv'))]
+
+    obj_mock.download_file.assert_has_calls(calls)
 
 
 def test_ecr_login_non_ecr():
