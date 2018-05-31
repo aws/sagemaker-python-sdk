@@ -131,6 +131,7 @@ Here is an end to end example of how to use a SageMaker Estimator.
 
     # Configure an MXNet Estimator (no training happens yet)
     mxnet_estimator = MXNet('train.py',
+                            role="SageMakerRole",
                             train_instance_type='ml.p2.xlarge',
                             train_instance_count = 1)
 
@@ -162,6 +163,7 @@ instance type.
 
     # Configure an MXNet Estimator (no training happens yet)
     mxnet_estimator = MXNet('train.py',
+                            role="SageMakerRole",
                             train_instance_type='local',
                             train_instance_count=1)
 
@@ -286,6 +288,7 @@ You run MXNet training scripts on SageMaker by creating ``MXNet`` Estimators. Sa
 .. code:: python
 
     mxnet_estimator = MXNet("train.py",
+                            role="SageMakerRole",
                             train_instance_type="ml.p2.xlarge",
                             train_instance_count=1)
     mxnet_estimator.fit("s3://my_bucket/my_training_data/")
@@ -485,6 +488,7 @@ After calling ``fit``, you can call ``deploy`` on an ``MXNet`` Estimator to crea
 
     # Train my estimator
     mxnet_estimator = MXNet("train.py",
+                            role="SageMakerRole",
                             train_instance_type="ml.p2.xlarge",
                             train_instance_count=1)
     mxnet_estimator.fit("s3://my_bucket/my_training_data/")
@@ -763,7 +767,7 @@ Amazon provides several example Jupyter notebooks that demonstrate end-to-end tr
 
 https://github.com/awslabs/amazon-sagemaker-examples/tree/master/sagemaker-python-sdk
 
-These are also available in SageMaker Notebook Instance hosted Jupyter notebooks under the "sample notebooks" folder.
+These are also available in SageMaker Notebook Instance hosted Jupyter notebooks under the "SageMaker Examples" tab, under the "SageMaker Python SDK" category.
 
 
 SageMaker MXNet Containers
@@ -1689,6 +1693,7 @@ directories ('train' and 'test').
 .. code:: python
 
     chainer_estimator = Chainer("chainer-train.py",
+                            role="SageMakerRole",
                             train_instance_type="ml.p3.2xlarge",
                             train_instance_count=1,
                             hyperparameters = {'epochs': 20, 'batch-size': 64, 'learning-rate':0.1})
@@ -1855,6 +1860,7 @@ operation.
 
     # Train my estimator
     chainer_estimator = Chainer(entry_point="train_and_deploy.py",
+                            role="SageMakerRole",
                             train_instance_type="ml.p3.2xlarge",
                             train_instance_count=1)
     chainer_estimator.fit("s3://my_bucket/my_training_data/")
@@ -2188,7 +2194,7 @@ Please refer to:
 
 https://github.com/awslabs/amazon-sagemaker-examples/tree/master/sagemaker-python-sdk
 
-These are also available in SageMaker Notebook Instance hosted Jupyter notebooks under the "sample notebooks" folder.
+These are also available in SageMaker Notebook Instance hosted Jupyter notebooks under the "SageMaker Examples" tab, under the "SageMaker Python SDK" category.
 
 
 SageMaker Chainer Docker containers
