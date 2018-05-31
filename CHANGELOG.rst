@@ -2,13 +2,18 @@
 CHANGELOG
 =========
 
+1.3.dev1
+========
+
+* bug-fix: Estimators: Change max_iterations hyperparameter key for KMeans
+
 1.3.0
-=======
+=====
 
 * feature: Add chainer
 
 1.2.5
-========
+=====
 
 * bug-fix: Change module names to string type in __all__
 * feature: Save training output files in local mode
