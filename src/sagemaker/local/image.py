@@ -25,9 +25,9 @@ import string
 import subprocess
 import sys
 import tempfile
-from subprocess import Popen
+from fcntl import fcntl, F_GETFL, F_SETFL
 from six.moves.urllib.parse import urlparse
-from time import sleep
+from threading import Thread
 
 import yaml
 
@@ -91,42 +91,7 @@ class _SageMakerContainer(object):
         os.mkdir(shared_dir)
 
         data_dir = self._create_tmp_folder()
-        volumes = []
-
-        # Set up the channels for the containers. For local data we will
-        # mount the local directory to the container. For S3 Data we will download the S3 data
-        # first.
-        for channel in input_data_config:
-            if channel['DataSource'] and 'S3DataSource' in channel['DataSource']:
-                uri = channel['DataSource']['S3DataSource']['S3Uri']
-            elif channel['DataSource'] and 'FileDataSource' in channel['DataSource']:
-                uri = channel['DataSource']['FileDataSource']['FileUri']
-            else:
-                raise ValueError('Need channel[\'DataSource\'] to have [\'S3DataSource\'] or [\'FileDataSource\']')
-
-            parsed_uri = urlparse(uri)
-            key = parsed_uri.path.lstrip('/')
-
-            channel_name = channel['ChannelName']
-            channel_dir = os.path.join(data_dir, channel_name)
-            os.mkdir(channel_dir)
-
-            if parsed_uri.scheme == 's3':
-                bucket_name = parsed_uri.netloc
-                self._download_folder(bucket_name, key, channel_dir)
-            elif parsed_uri.scheme == 'file':
-                path = parsed_uri.path
-                volumes.append(_Volume(path, channel=channel_name))
-            else:
-                raise ValueError('Unknown URI scheme {}'.format(parsed_uri.scheme))
-
-        # If the training script directory is a local directory, mount it to the container.
-        training_dir = json.loads(hyperparameters[sagemaker.estimator.DIR_PARAM_NAME])
-        parsed_uri = urlparse(training_dir)
-        if parsed_uri.scheme == 'file':
-            volumes.append(_Volume(parsed_uri.path, '/opt/ml/code'))
-            # Also mount a directory that all the containers can access.
-            volumes.append(_Volume(shared_dir, '/opt/ml/shared'))
+        volumes = self._prepare_training_volumes(data_dir, input_data_config, hyperparameters)
 
         # Create the configuration files for each container that we will create
         # Each container will map the additional local volumes (if any).
@@ -139,7 +104,15 @@ class _SageMakerContainer(object):
         compose_command = self._compose()
 
         _ecr_login_if_needed(self.sagemaker_session.boto_session, self.image)
-        _execute_and_stream_output(compose_command)
+        process = subprocess.Popen(compose_command, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+
+        try:
+            _stream_output(process)
+        except RuntimeError as e:
+            # _stream_output() doesn't have the command line. We will handle the exception
+            # which contains the exit code and append the command line to it.
+            msg = "Failed to run: %s, %s" % (compose_command, e.message)
+            raise RuntimeError(msg)
 
         s3_artifacts = self.retrieve_artifacts(compose_data)
 
@@ -196,7 +169,7 @@ class _SageMakerContainer(object):
                                     additional_volumes=volumes)
         compose_command = self._compose()
         self.container = _HostingContainer(compose_command)
-        self.container.up()
+        self.container.start()
 
     def stop_serving(self):
         """Stop the serving container.
@@ -205,6 +178,7 @@ class _SageMakerContainer(object):
         """
         if self.container:
             self.container.down()
+            self.container.join()
             self._cleanup()
         # for serving we can delete everything in the container root.
         _delete_tree(self.container_root)
@@ -303,6 +277,47 @@ class _SageMakerContainer(object):
                 pass
 
             obj.download_file(file_path)
+
+    def _prepare_training_volumes(self, data_dir, input_data_config, hyperparameters):
+        shared_dir = os.path.join(self.container_root, 'shared')
+        volumes = []
+        # Set up the channels for the containers. For local data we will
+        # mount the local directory to the container. For S3 Data we will download the S3 data
+        # first.
+        for channel in input_data_config:
+            if channel['DataSource'] and 'S3DataSource' in channel['DataSource']:
+                uri = channel['DataSource']['S3DataSource']['S3Uri']
+            elif channel['DataSource'] and 'FileDataSource' in channel['DataSource']:
+                uri = channel['DataSource']['FileDataSource']['FileUri']
+            else:
+                raise ValueError('Need channel[\'DataSource\'] to have'
+                                 ' [\'S3DataSource\'] or [\'FileDataSource\']')
+
+            parsed_uri = urlparse(uri)
+            key = parsed_uri.path.lstrip('/')
+
+            channel_name = channel['ChannelName']
+            channel_dir = os.path.join(data_dir, channel_name)
+            os.mkdir(channel_dir)
+
+            if parsed_uri.scheme == 's3':
+                bucket_name = parsed_uri.netloc
+                self._download_folder(bucket_name, key, channel_dir)
+            elif parsed_uri.scheme == 'file':
+                path = parsed_uri.path
+                volumes.append(_Volume(path, channel=channel_name))
+            else:
+                raise ValueError('Unknown URI scheme {}'.format(parsed_uri.scheme))
+
+        # If the training script directory is a local directory, mount it to the container.
+        training_dir = json.loads(hyperparameters[sagemaker.estimator.DIR_PARAM_NAME])
+        parsed_uri = urlparse(training_dir)
+        if parsed_uri.scheme == 'file':
+            volumes.append(_Volume(parsed_uri.path, '/opt/ml/code'))
+            # Also mount a directory that all the containers can access.
+            volumes.append(_Volume(shared_dir, '/opt/ml/shared'))
+
+        return volumes
 
     def _generate_compose_file(self, command, additional_volumes=None, additional_env_vars=None):
         """Writes a config file describing a training/hosting  environment.
@@ -452,15 +467,23 @@ class _SageMakerContainer(object):
         pass
 
 
-class _HostingContainer(object):
-    def __init__(self, command, startup_delay=5):
+class _HostingContainer(Thread):
+    def __init__(self, command):
+        Thread.__init__(self)
         self.command = command
-        self.startup_delay = startup_delay
         self.process = None
 
-    def up(self):
-        self.process = Popen(self.command)
-        sleep(self.startup_delay)
+    def run(self):
+        self.process = subprocess.Popen(self.command,
+                                        stdout=subprocess.PIPE,
+                                        stderr=subprocess.PIPE)
+        try:
+            _stream_output(self.process)
+        except RuntimeError as e:
+            # _stream_output() doesn't have the command line. We will handle the exception
+            # which contains the exit code and append the command line to it.
+            msg = "Failed to run: %s, %s" % (self.command, e.message)
+            raise RuntimeError(msg)
 
     def down(self):
         self.process.terminate()
@@ -495,26 +518,41 @@ class _Volume(object):
         self.map = '{}:{}'.format(self.host_dir, self.container_dir)
 
 
-def _execute_and_stream_output(cmd):
-    """Execute a command and stream the output to stdout
+def _stream_output(process):
+    """Stream the output of a process to stdout
+
+    This function takes an existing process that will be polled for output. Both stdout and
+    stderr will be polled and both will be sent to sys.stdout.
 
     Args:
-        cmd(str or List): either a string or a List (in Popen Format) with the command to execute.
+        process(subprocess.Popen): a process that has been started with
+            stdout=PIPE and stderr=PIPE
 
-    Returns (int): command exit code
+    Returns (int): process exit code
     """
-    if isinstance(cmd, str):
-        cmd = shlex.split(cmd)
-    process = subprocess.Popen(cmd, stdout=subprocess.PIPE)
     exit_code = None
+
+    # Get the current flags for the  stderr file descriptor
+    # And add the NONBLOCK flag to allow us to read even if there is no data.
+    # Since usually stderr will be empty unless there is an error.
+    flags = fcntl(process.stderr, F_GETFL)  # get current process.stderr flags
+    fcntl(process.stderr, F_SETFL, flags | os.O_NONBLOCK)
+
     while exit_code is None:
         stdout = process.stdout.readline().decode("utf-8")
         sys.stdout.write(stdout)
+        try:
+            stderr = process.stderr.readline().decode("utf-8")
+            sys.stdout.write(stderr)
+        except IOError:
+            # If there is nothing to read on stderr we will get an IOError
+            # this is fine.
+            pass
 
         exit_code = process.poll()
 
     if exit_code != 0:
-        raise Exception("Failed to run %s, exit code: %s" % (",".join(cmd), exit_code))
+        raise RuntimeError("Process exited with code: %s" % exit_code)
 
     return exit_code
 
