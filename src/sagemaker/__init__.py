@@ -22,6 +22,7 @@ from sagemaker.amazon.factorization_machines import FactorizationMachinesPredict
 from sagemaker.amazon.ntm import NTM, NTMModel, NTMPredictor
 from sagemaker.amazon.randomcutforest import RandomCutForest, RandomCutForestModel, RandomCutForestPredictor
 
+from sagemaker.analytics import TrainingJobAnalytics, HyperparameterTuningJobAnalytics
 from sagemaker.local.local_session import LocalSession
 
 from sagemaker.model import Model
@@ -39,4 +40,5 @@ __all__ = ['estimator', 'KMeans', 'KMeansModel', 'KMeansPredictor', 'PCA', 'PCAM
            'FactorizationMachines', 'FactorizationMachinesModel', 'FactorizationMachinesPredictor',
            'RandomCutForest', 'RandomCutForestModel', 'RandomCutForestPredictor',
            'Model', 'NTM', 'NTMModel', 'NTMPredictor', 'RealTimePredictor', 'Session', 'LocalSession',
+           'TrainingJobAnalytics', 'HyperparameterTuningJobAnalytics',
            'container_def', 's3_input', 'production_variant', 'get_execution_role']

@@ -22,6 +22,8 @@ import datetime
 
 from botocore.exceptions import ClientError
 
+from sagemaker.session import _tuning_job_status
+
 REGION = 'us-west-2'
 
 
@@ -230,6 +232,40 @@ def test_train_pack_to_request(sagemaker_session):
         'create_training_job', (), DEFAULT_EXPECTED_TRAIN_JOB_ARGS)
 
 
+def test_stop_tuning_job(sagemaker_session):
+    sms = sagemaker_session
+    sms.sagemaker_client.stop_hyper_parameter_tuning_job = Mock(name='stop_hyper_parameter_tuning_job')
+
+    sagemaker_session.stop_tuning_job(JOB_NAME)
+    sms.sagemaker_client.stop_hyper_parameter_tuning_job.assert_called_once_with(HyperParameterTuningJobName=JOB_NAME)
+
+
+def test_stop_tuning_job_client_error_already_stopped(sagemaker_session):
+    sms = sagemaker_session
+    exception = ClientError({'Error': {'Code': 'ValidationException'}}, 'Operation')
+    sms.sagemaker_client.stop_hyper_parameter_tuning_job = Mock(name='stop_hyper_parameter_tuning_job',
+                                                                side_effect=exception)
+    sagemaker_session.stop_tuning_job(JOB_NAME)
+
+    sms.sagemaker_client.stop_hyper_parameter_tuning_job.assert_called_once_with(HyperParameterTuningJobName=JOB_NAME)
+
+
+def test_stop_tuning_job_client_error(sagemaker_session):
+    error_response = {'Error': {'Code': 'MockException', 'Message': 'MockMessage'}}
+    operation = 'Operation'
+    exception = ClientError(error_response, operation)
+
+    sms = sagemaker_session
+    sms.sagemaker_client.stop_hyper_parameter_tuning_job = Mock(name='stop_hyper_parameter_tuning_job',
+                                                                side_effect=exception)
+
+    with pytest.raises(ClientError) as e:
+        sagemaker_session.stop_tuning_job(JOB_NAME)
+
+    sms.sagemaker_client.stop_hyper_parameter_tuning_job.assert_called_once_with(HyperParameterTuningJobName=JOB_NAME)
+    assert 'An error occurred (MockException) when calling the Operation operation: MockMessage' in str(e)
+
+
 @patch('sys.stdout', new_callable=io.BytesIO if six.PY2 else io.StringIO)
 def test_color_wrap(bio):
     color_wrap = sagemaker.logs.ColorWrap()
@@ -417,3 +453,32 @@ def test_endpoint_from_production_variants(sagemaker_session):
                 'InitialVariantWeight': 1,
                 'InitialInstanceCount': 1,
                 'VariantName': 'AllTraffic'}])
+
+
+def test_wait_for_tuning_job(sagemaker_session):
+    hyperparameter_tuning_job_desc = {'HyperParameterTuningJobStatus': 'Completed'}
+    sagemaker_session.sagemaker_client.describe_hyper_parameter_tuning_job = Mock(
+        name='describe_hyper_parameter_tuning_job', return_value=hyperparameter_tuning_job_desc)
+
+    result = sagemaker_session.wait_for_tuning_job(JOB_NAME)
+    assert result['HyperParameterTuningJobStatus'] == 'Completed'
+
+
+def test_tune_job_status(sagemaker_session):
+    hyperparameter_tuning_job_desc = {'HyperParameterTuningJobStatus': 'Completed'}
+    sagemaker_session.sagemaker_client.describe_hyper_parameter_tuning_job = Mock(
+        name='describe_hyper_parameter_tuning_job', return_value=hyperparameter_tuning_job_desc)
+
+    result = _tuning_job_status(sagemaker_session.sagemaker_client, JOB_NAME)
+
+    assert result['HyperParameterTuningJobStatus'] == 'Completed'
+
+
+def test_tune_job_status_none(sagemaker_session):
+    hyperparameter_tuning_job_desc = {'HyperParameterTuningJobStatus': 'InProgress'}
+    sagemaker_session.sagemaker_client.describe_hyper_parameter_tuning_job = Mock(
+        name='describe_hyper_parameter_tuning_job', return_value=hyperparameter_tuning_job_desc)
+
+    result = _tuning_job_status(sagemaker_session.sagemaker_client, JOB_NAME)
+
+    assert result is None

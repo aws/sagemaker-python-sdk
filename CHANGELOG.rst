@@ -6,6 +6,7 @@ CHANGELOG
 ========
 
 * bug-fix: Estimators: Change max_iterations hyperparameter key for KMeans
+* feature: Analytics functions for metrics in Training and HyperparameterTuning jobs
 
 1.3.0
 =====

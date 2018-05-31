@@ -87,13 +87,11 @@ class RandomCutForest(AmazonAlgorithmEstimatorBase):
 
         return RandomCutForestModel(self.model_data, self.role, sagemaker_session=self.sagemaker_session)
 
-    def fit(self, records, mini_batch_size=None, **kwargs):
-        if mini_batch_size is None:
-            mini_batch_size = RandomCutForest.MINI_BATCH_SIZE
-        elif mini_batch_size != RandomCutForest.MINI_BATCH_SIZE:
+    def _prepare_for_training(self, records, mini_batch_size=MINI_BATCH_SIZE, job_name=None):
+        if mini_batch_size != self.MINI_BATCH_SIZE:
             raise ValueError("Random Cut Forest uses a fixed mini_batch_size of {}"
-                             .format(RandomCutForest.MINI_BATCH_SIZE))
-        super(RandomCutForest, self).fit(records, mini_batch_size, **kwargs)
+                             .format(self.MINI_BATCH_SIZE))
+        super(RandomCutForest, self)._prepare_for_training(records, mini_batch_size=mini_batch_size, job_name=job_name)
 
 
 class RandomCutForestPredictor(RealTimePredictor):

@@ -93,11 +93,12 @@ class LDA(AmazonAlgorithmEstimatorBase):
 
         return LDAModel(self.model_data, self.role, sagemaker_session=self.sagemaker_session)
 
-    def fit(self, records, mini_batch_size, **kwargs):
+    def _prepare_for_training(self, records, mini_batch_size, job_name=None):
         # mini_batch_size is required, prevent explicit calls with None
         if mini_batch_size is None:
             raise ValueError("mini_batch_size must be set")
-        super(LDA, self).fit(records, mini_batch_size, **kwargs)
+
+        super(LDA, self)._prepare_for_training(records, mini_batch_size=mini_batch_size, job_name=job_name)
 
 
 class LDAPredictor(RealTimePredictor):
