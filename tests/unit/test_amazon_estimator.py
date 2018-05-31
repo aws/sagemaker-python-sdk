@@ -98,8 +98,8 @@ def test_data_location_does_not_call_default_bucket(sagemaker_session):
     assert not sagemaker_session.default_bucket.called
 
 
-def test_prepare_for_training():
-    pca = PCA(num_components=55, **COMMON_ARGS)
+def test_prepare_for_training(sagemaker_session):
+    pca = PCA(num_components=55, sagemaker_session=sagemaker_session, **COMMON_ARGS)
 
     train = [[1.0, 2.0, 3.0], [4.0, 5.0, 6.0], [7.0, 8.0, 8.0], [44.0, 55.0, 66.0]]
     labels = [99, 85, 87, 2]
@@ -110,8 +110,8 @@ def test_prepare_for_training():
     assert pca.mini_batch_size == 1
 
 
-def test_prepare_for_training_list():
-    pca = PCA(num_components=55, **COMMON_ARGS)
+def test_prepare_for_training_list(sagemaker_session):
+    pca = PCA(num_components=55, sagemaker_session=sagemaker_session, **COMMON_ARGS)
 
     train = [[1.0, 2.0, 3.0], [4.0, 5.0, 6.0], [7.0, 8.0, 8.0], [44.0, 55.0, 66.0]]
     labels = [99, 85, 87, 2]
@@ -122,8 +122,8 @@ def test_prepare_for_training_list():
     assert pca.mini_batch_size == 1
 
 
-def test_prepare_for_training_list_no_train_channel():
-    pca = PCA(num_components=55, **COMMON_ARGS)
+def test_prepare_for_training_list_no_train_channel(sagemaker_session):
+    pca = PCA(num_components=55, sagemaker_session=sagemaker_session, **COMMON_ARGS)
 
     train = [[1.0, 2.0, 3.0], [4.0, 5.0, 6.0], [7.0, 8.0, 8.0], [44.0, 55.0, 66.0]]
     labels = [99, 85, 87, 2]

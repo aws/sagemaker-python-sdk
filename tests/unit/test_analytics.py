@@ -55,8 +55,8 @@ def test_abstract_base_class():
         AnalyticsMetricsBase()
 
 
-def test_tuner_name():
-    tuner = HyperparameterTuningJobAnalytics("my-tuning-job")
+def test_tuner_name(sagemaker_session):
+    tuner = HyperparameterTuningJobAnalytics("my-tuning-job", sagemaker_session=sagemaker_session)
     assert tuner.name == "my-tuning-job"
     assert str(tuner).find("my-tuning-job") != -1
 
