@@ -17,6 +17,8 @@ import os
 import pickle
 import sys
 
+import pytest
+
 from sagemaker.amazon.kmeans import KMeans
 from sagemaker.mxnet.estimator import MXNet
 from sagemaker.tuner import IntegerParameter, ContinuousParameter, CategoricalParameter, HyperparameterTuner
@@ -24,6 +26,7 @@ from tests.integ import DATA_DIR
 from tests.integ.timeout import timeout
 
 
+@pytest.mark.skip(reason='functionality is not ready yet')
 def test_fit_1p(sagemaker_session):
     data_path = os.path.join(DATA_DIR, 'one_p_mnist', 'mnist.pkl.gz')
     pickle_args = {} if sys.version_info.major == 2 else {'encoding': 'latin1'}
@@ -65,6 +68,7 @@ def test_fit_1p(sagemaker_session):
     print('Started HPO job with name:' + tuner.latest_tuning_job.name)
 
 
+@pytest.mark.skip(reason='functionality is not ready yet')
 def test_mxnet_tuning(sagemaker_session, mxnet_full_version):
     with timeout(minutes=15):
         script_path = os.path.join(DATA_DIR, 'mxnet_mnist', 'tuning.py')
