@@ -6,6 +6,7 @@ CHANGELOG
 ========
 
 * bug-fix: Estimators: Change max_iterations hyperparameter key for KMeans
+* feature: Estimators: add support for tagging training jobs
 
 1.3.0
 =====

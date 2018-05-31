@@ -292,9 +292,10 @@ def test_fit_then_fit_again(sagemaker_session):
 
 @patch('time.strftime', return_value=TIMESTAMP)
 def test_fit_verify_job_name(strftime, sagemaker_session):
+    tags = [{'Name': 'some-tag'}]
     fw = DummyFramework(entry_point=SCRIPT_PATH, role='DummyRole', sagemaker_session=sagemaker_session,
                         train_instance_count=INSTANCE_COUNT, train_instance_type=INSTANCE_TYPE,
-                        enable_cloudwatch_metrics=True)
+                        enable_cloudwatch_metrics=True, tags=tags)
     fw.fit(inputs=s3_input('s3://mybucket/train'))
 
     _, _, train_kwargs = sagemaker_session.train.mock_calls[0]
@@ -302,6 +303,7 @@ def test_fit_verify_job_name(strftime, sagemaker_session):
     assert train_kwargs['hyperparameters']['sagemaker_enable_cloudwatch_metrics']
     assert train_kwargs['image'] == IMAGE_NAME
     assert train_kwargs['input_mode'] == 'File'
+    assert train_kwargs['tags'] == tags
     assert train_kwargs['job_name'] == JOB_NAME
     assert fw.latest_training_job.name == JOB_NAME
 
@@ -475,7 +477,8 @@ BASE_TRAIN_CALL = {
         'InstanceType': INSTANCE_TYPE,
         'VolumeSizeInGB': 30
     },
-    'stop_condition': {'MaxRuntimeInSeconds': 86400}
+    'stop_condition': {'MaxRuntimeInSeconds': 86400},
+    'tags': None,
 }
 
 
