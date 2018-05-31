@@ -70,7 +70,7 @@ def test_tuner_dataframe():
                 "Name": "awesomeness",
                 "Value": value,
             },
-            "CreationTime": datetime.datetime(2018, 5, 16, 1, 2, 3),
+            "TrainingStartTime": datetime.datetime(2018, 5, 16, 1, 2, 3),
             "TrainingEndTime": datetime.datetime(2018, 5, 16, 5, 6, 7),
             "TunedHyperParameters": {
                 "learning_rate": 0.1,

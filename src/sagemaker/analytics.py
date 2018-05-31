@@ -126,8 +126,8 @@ class HyperparameterTuningJobAnalytics(AnalyticsMetricsBase):
             out['FinalObjectiveValue'] = training_summary.get('FinalHyperParameterTuningJobObjectiveMetric',
                                                               {}).get('Value')
 
-            start_time = training_summary['CreationTime']
-            end_time = training_summary['TrainingEndTime']
+            start_time = training_summary.get('TrainingStartTime', None)
+            end_time = training_summary.get('TrainingEndTime', None)
             out['TrainingStartTime'] = start_time
             out['TrainingEndTime'] = end_time
             if start_time and end_time:
