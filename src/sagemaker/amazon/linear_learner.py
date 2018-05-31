@@ -243,8 +243,8 @@ class LinearLearner(AmazonAlgorithmEstimatorBase):
         # mini_batch_size can't be greater than number of records or training job fails
         default_mini_batch_size = min(self.DEFAULT_MINI_BATCH_SIZE,
                                       max(1, int(num_records / self.train_instance_count)))
-        use_mini_batch_size = mini_batch_size or default_mini_batch_size
-        super(LinearLearner, self)._prepare_for_training(records, mini_batch_size=use_mini_batch_size, job_name=job_name)
+        mini_batch_size = mini_batch_size or default_mini_batch_size
+        super(LinearLearner, self)._prepare_for_training(records, mini_batch_size=mini_batch_size, job_name=job_name)
 
 
 class LinearLearnerPredictor(RealTimePredictor):

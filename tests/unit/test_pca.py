@@ -185,6 +185,7 @@ def test_prepare_for_training_multiple_channel_no_train(sagemaker_session):
 
     assert 'Must provide train channel.' in str(ex)
 
+
 def test_model_image(sagemaker_session):
     pca = PCA(sagemaker_session=sagemaker_session, **ALL_REQ_ARGS)
     data = RecordSet('s3://{}/{}'.format(BUCKET_NAME, PREFIX), num_records=1, feature_dim=FEATURE_DIM, channel='train')
