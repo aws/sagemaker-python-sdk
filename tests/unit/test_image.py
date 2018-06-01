@@ -15,6 +15,7 @@ from __future__ import absolute_import
 import base64
 import json
 import os
+import subprocess
 
 import pytest
 import yaml
@@ -180,13 +181,16 @@ def test_retrieve_artifacts(LocalSession, tmpdir):
 def test_stream_output():
 
     # it should raise an exception if the command fails
-    with pytest.raises(Exception):
-        sagemaker.local.image._execute_and_stream_output(['ls', '/some/unknown/path'])
+    with pytest.raises(RuntimeError):
+        p = subprocess.Popen(['ls', '/some/unknown/path'],
+                             stdout=subprocess.PIPE,
+                             stderr=subprocess.PIPE)
+        sagemaker.local.image._stream_output(p)
 
-    exit_code = sagemaker.local.image._execute_and_stream_output(['echo', 'hello'])
-    assert exit_code == 0
-
-    exit_code = sagemaker.local.image._execute_and_stream_output('echo hello!!!')
+    p = subprocess.Popen(['echo', 'hello'],
+                         stdout=subprocess.PIPE,
+                         stderr=subprocess.PIPE)
+    exit_code = sagemaker.local.image._stream_output(p)
     assert exit_code == 0
 
 
@@ -205,10 +209,12 @@ def test_check_output():
 
 
 @patch('sagemaker.local.local_session.LocalSession')
-@patch('sagemaker.local.image._execute_and_stream_output')
+@patch('sagemaker.local.image._stream_output')
+@patch('subprocess.Popen')
 @patch('sagemaker.local.image._SageMakerContainer._cleanup')
 @patch('sagemaker.local.image._SageMakerContainer._download_folder')
-def test_train(_download_folder, _cleanup, _execute_and_stream_output, LocalSession, tmpdir, sagemaker_session):
+def test_train(_download_folder, _cleanup, popen, _stream_output, LocalSession,
+               tmpdir, sagemaker_session):
 
     directories = [str(tmpdir.mkdir('container-root')), str(tmpdir.mkdir('data'))]
     with patch('sagemaker.local.image._SageMakerContainer._create_tmp_folder',
@@ -225,7 +231,7 @@ def test_train(_download_folder, _cleanup, _execute_and_stream_output, LocalSess
 
         docker_compose_file = os.path.join(sagemaker_container.container_root, 'docker-compose.yaml')
 
-        call_args = _execute_and_stream_output.call_args[0][0]
+        call_args = popen.call_args[0][0]
         assert call_args is not None
 
         expected = ['docker-compose', '-f', docker_compose_file, 'up', '--build', '--abort-on-container-exit']
@@ -241,10 +247,11 @@ def test_train(_download_folder, _cleanup, _execute_and_stream_output, LocalSess
 
 
 @patch('sagemaker.local.local_session.LocalSession')
-@patch('sagemaker.local.image._execute_and_stream_output')
+@patch('sagemaker.local.image._stream_output')
+@patch('subprocess.Popen')
 @patch('sagemaker.local.image._SageMakerContainer._cleanup')
 @patch('sagemaker.local.image._SageMakerContainer._download_folder')
-def test_train_local_code(_download_folder, _cleanup, _execute_and_stream_output,
+def test_train_local_code(_download_folder, _cleanup, popen, _stream_output,
                           _local_session, tmpdir, sagemaker_session):
     directories = [str(tmpdir.mkdir('container-root')), str(tmpdir.mkdir('data'))]
     with patch('sagemaker.local.image._SageMakerContainer._create_tmp_folder',
@@ -271,7 +278,7 @@ def test_train_local_code(_download_folder, _cleanup, _execute_and_stream_output
                 assert '%s:/opt/ml/shared' % shared_folder_path in volumes
 
 
-@patch('sagemaker.local.image._HostingContainer.up')
+@patch('sagemaker.local.image._HostingContainer.run')
 @patch('shutil.copy')
 @patch('shutil.copytree')
 def test_serve(up, copy, copytree, tmpdir, sagemaker_session):
@@ -299,7 +306,7 @@ def test_serve(up, copy, copytree, tmpdir, sagemaker_session):
                 assert config['services'][h]['command'] == 'serve'
 
 
-@patch('sagemaker.local.image._HostingContainer.up')
+@patch('sagemaker.local.image._HostingContainer.run')
 @patch('shutil.copy')
 @patch('shutil.copytree')
 def test_serve_local_code(up, copy, copytree, tmpdir, sagemaker_session):

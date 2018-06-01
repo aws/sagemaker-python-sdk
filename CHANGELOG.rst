@@ -6,6 +6,7 @@ CHANGELOG
 ========
 
 * bug-fix: Remove __all__ and add noqa in __init__
+* bug-fix: Estimators: Change max_iterations hyperparameter key for KMeans
 
 1.3.0
 =====
