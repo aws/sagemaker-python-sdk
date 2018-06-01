@@ -292,7 +292,7 @@ def test_fit_then_fit_again(sagemaker_session):
 
 @patch('time.strftime', return_value=TIMESTAMP)
 def test_fit_verify_job_name(strftime, sagemaker_session):
-    tags = [{'Name': 'some-tag'}]
+    tags = [{'Name': 'some-tag', 'Value': 'value-for-tag'}]
     fw = DummyFramework(entry_point=SCRIPT_PATH, role='DummyRole', sagemaker_session=sagemaker_session,
                         train_instance_count=INSTANCE_COUNT, train_instance_type=INSTANCE_TYPE,
                         enable_cloudwatch_metrics=True, tags=tags)

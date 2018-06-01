@@ -142,7 +142,6 @@ MAX_TIME = 3 * 60 * 60
 JOB_NAME = 'jobname'
 
 DEFAULT_EXPECTED_TRAIN_JOB_ARGS = {
-    # 'HyperParameters': None,
     'OutputDataConfig': {
         'S3OutputPath': S3_OUTPUT
     },
@@ -224,7 +223,7 @@ def test_train_pack_to_request(sagemaker_session):
 
     sagemaker_session.train(image=IMAGE, input_mode='File', input_config=in_config, role=EXPANDED_ROLE,
                             job_name=JOB_NAME, output_config=out_config, resource_config=resource_config,
-                            hyperparameters=None, stop_condition=stop_cond)
+                            hyperparameters=None, stop_condition=stop_cond, tags=None)
 
     assert sagemaker_session.sagemaker_client.method_calls[0] == (
         'create_training_job', (), DEFAULT_EXPECTED_TRAIN_JOB_ARGS)
