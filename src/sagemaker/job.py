@@ -68,7 +68,7 @@ class _Job(object):
 
     @staticmethod
     def _format_inputs_to_input_config(inputs):
-        # Circular dependency
+        # Deferred import due to circular dependency
         from sagemaker.amazon.amazon_estimator import RecordSet
         if isinstance(inputs, RecordSet):
             inputs = inputs.data_channel()
@@ -84,14 +84,7 @@ class _Job(object):
             for k, v in inputs.items():
                 input_dict[k] = _Job._format_string_uri_input(v)
         elif isinstance(inputs, list):
-            for record in inputs:
-                if not isinstance(record, RecordSet):
-                    raise ValueError('List compatible only with RecordSets.')
-
-                if record.channel in input_dict:
-                    raise ValueError('Duplicate channels not allowed.')
-
-                input_dict[record.channel] = record.records_s3_input()
+            input_dict = _Job._format_record_set_list_input(inputs)
         else:
             raise ValueError(
                 'Cannot format input {}. Expecting one of str, dict or s3_input'.format(inputs))
@@ -122,6 +115,23 @@ class _Job(object):
             raise ValueError(
                 'Cannot format input {}. Expecting one of str, s3_input, or file_input'.format(
                     input))
+
+    @staticmethod
+    def _format_record_set_list_input(inputs):
+        # Deferred import due to circular dependency
+        from sagemaker.amazon.amazon_estimator import RecordSet
+
+        input_dict = {}
+        for record in inputs:
+            if not isinstance(record, RecordSet):
+                raise ValueError('List compatible only with RecordSets.')
+
+            if record.channel in input_dict:
+                raise ValueError('Duplicate channels not allowed.')
+
+            input_dict[record.channel] = record.records_s3_input()
+
+        return input_dict
 
     @staticmethod
     def _prepare_output_config(s3_path, kms_key_id):

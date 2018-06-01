@@ -44,8 +44,7 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):
 
     def __init__(self, role, train_instance_count, train_instance_type,
                  train_volume_size=30, train_max_run=24 * 60 * 60, input_mode='File',
-                 output_path=None, output_kms_key=None, base_job_name=None, sagemaker_session=None,
-                 metric_definitions=None):
+                 output_path=None, output_kms_key=None, base_job_name=None, sagemaker_session=None):
         """Initialize an ``EstimatorBase`` instance.
 
         Args:
@@ -74,7 +73,6 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):
             sagemaker_session (sagemaker.session.Session): Session object which manages interactions with
                 Amazon SageMaker APIs and any other AWS services needed. If not specified, the estimator creates one
                 using the default AWS configuration chain.
-            metric_definitions (list[dict]): Metrics definition with 'name' and 'regex' keys.
         """
         self.role = role
         self.train_instance_count = train_instance_count
@@ -95,7 +93,6 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):
         self.output_path = output_path
         self.output_kms_key = output_kms_key
         self.latest_training_job = None
-        self.metric_definitions = metric_definitions
 
     @abstractmethod
     def train_image(self):
