@@ -222,10 +222,12 @@ class Session(object):
             job_name (str): Name of the training job being created.
             output_config (dict): The S3 URI where you want to store the training results and optional KMS key ID.
             resource_config (dict): Contains values for ResourceConfig:
+
                 * instance_count (int): Number of EC2 instances to use for training.
                     The key in resource_config is 'InstanceCount'.
                 * instance_type (str): Type of EC2 instance to use for training, for example, 'ml.c4.xlarge'.
                     The key in resource_config is 'InstanceType'.
+
             hyperparameters (dict): Hyperparameters for model training. The hyperparameters are made accessible as
                 a dict[str, str] to the training code on SageMaker. For convenience, this accepts other types for
                 keys and values, but ``str()`` will be called to convert them before training.
@@ -269,22 +271,28 @@ class Session(object):
 
         Args:
             job_name (str): Name of the tuning job being created.
-            strategy (str): Strategy to be used.
-            objective_type (str): Minimize/Maximize
-            objective_metric_name (str): Name of the metric to use when evaluating training job.
-            max_jobs (int): Maximum total number of jobs to start.
-            max_parallel_jobs (int): Maximum number of parallel jobs to start.
-            parameter_ranges (dict): Parameter ranges in a dictionary of types: Continuous, Integer, Categorical
-            static_hyperparameters (dict): Hyperparameters for model training. The hyperparameters are made accessible
-                as a dict[str, str] to the training code on SageMaker. For convenience, this accepts other types for
-                keys and values, but ``str()`` will be called to convert them before training.
+            strategy (str): Strategy to be used for hyperparameter estimations.
+            objective_type (str): The type of the objective metric for evaluating training jobs. This value can be
+                either 'Minimize' or 'Maximize'.
+            objective_metric_name (str): Name of the metric for evaluating training jobs.
+            max_jobs (int): Maximum total number of training jobs to start for the hyperparameter tuning job.
+            max_parallel_jobs (int): Maximum number of parallel training jobs to start.
+            parameter_ranges (dict): Dictionary of parameter ranges. These parameter ranges can be one of three types:
+                 Continuous, Integer, or Categorical.
+            static_hyperparameters (dict): Hyperparameters for model training. These hyperparameters remain
+                unchanged across all of the training jobs for the hyperparameter tuning job. The hyperparameters are
+                made accessible as a dictionary for the training code on SageMaker.
             image (str): Docker image containing training code.
             input_mode (str): The input mode that the algorithm supports. Valid modes:
 
                 * 'File' - Amazon SageMaker copies the training dataset from the S3 location to
                     a directory in the Docker container.
                 * 'Pipe' - Amazon SageMaker streams data directly from S3 to the container via a Unix-named pipe.
-            metric_definitions (list[dict]): Metrics definition with 'name' and 'regex' keys.
+
+            metric_definitions (list[dict]): A list of dictionaries that defines the metric(s) used to evaluate the
+                training jobs. Each dictionary contains two keys: 'Name' for the name of the metric, and 'Regex' for
+                the regular expression used to extract the metric from the logs. This should be defined only for
+                hyperparameter tuning jobs that don't use an Amazon algorithm.
             role (str): An AWS IAM role (either name or full ARN). The Amazon SageMaker training jobs and APIs
                 that create Amazon SageMaker endpoints use this role to access training data and model artifacts.
                 You must grant sufficient permissions to this role.
@@ -293,11 +301,15 @@ class Session(object):
                  https://botocore.readthedocs.io/en/latest/reference/services/sagemaker.html#SageMaker.Client.create_training_job
             output_config (dict): The S3 URI where you want to store the training results and optional KMS key ID.
             resource_config (dict): Contains values for ResourceConfig:
-            instance_count (int): Number of EC2 instances to use for training.
-            instance_type (str): Type of EC2 instance to use for training, for example, 'ml.c4.xlarge'.
-            stop_condition (dict): Defines when training shall finish. Contains entries that can be understood by the
-                service like ``MaxRuntimeInSeconds``.
-            tags (list[dict]): List of tags for labeling the tuning job.
+
+                * instance_count (int): Number of EC2 instances to use for training.
+                    The key in resource_config is 'InstanceCount'.
+                * instance_type (str): Type of EC2 instance to use for training, for example, 'ml.c4.xlarge'.
+                    The key in resource_config is 'InstanceType'.
+
+            stop_condition (dict): When training should finish, e.g. ``MaxRuntimeInSeconds``.
+            tags (list[dict]): List of tags for labeling the tuning job. For more, see
+                https://docs.aws.amazon.com/sagemaker/latest/dg/API_Tag.html.
         """
         tune_request = {
             'HyperParameterTuningJobName': job_name,
@@ -338,10 +350,13 @@ class Session(object):
         self.sagemaker_client.create_hyper_parameter_tuning_job(**tune_request)
 
     def stop_tuning_job(self, name):
-        """Attempts to stop tuning job on Amazon SageMaker with specified name.
+        """Stop the Amazon SageMaker hyperparameter tuning job with the specified name.
 
         Args:
-            name: Name of Amazon SageMaker tuning job.
+            name (str): Name of the Amazon SageMaker hyperparameter tuning job.
+
+        Raises:
+            ClientError: If an error occurs while trying to stop the hyperparameter tuning job.
         """
         try:
             LOGGER.info('Stopping tuning job: {}'.format(name))
@@ -491,7 +506,7 @@ class Session(object):
         return desc
 
     def wait_for_tuning_job(self, job, poll=5):
-        """Wait for an Amazon SageMaker tuning job to complete.
+        """Wait for an Amazon SageMaker hyperparameter tuning job to complete.
 
         Args:
             job (str): Name of the tuning job to wait for.

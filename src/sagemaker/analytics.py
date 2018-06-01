@@ -64,7 +64,7 @@ class AnalyticsMetricsBase(with_metaclass(ABCMeta, object)):
         pass
 
     def clear_cache(self):
-        """Clears the object of all local caches of API methods, so
+        """Clear the object of all local caches of API methods, so
         that the next time any properties are accessed they will be refreshed from
         the service.
         """
@@ -72,17 +72,16 @@ class AnalyticsMetricsBase(with_metaclass(ABCMeta, object)):
 
 
 class HyperparameterTuningJobAnalytics(AnalyticsMetricsBase):
-    """Fetches results about this tuning job and makes them accessible for analytics.
+    """Fetch results about a hyperparameter tuning job and make them accessible for analytics.
     """
 
     def __init__(self, hyperparameter_tuning_job_name, sagemaker_session=None):
-        """Initialize an ``HyperparameterTuningJobAnalytics`` instance.
+        """Initialize a ``HyperparameterTuningJobAnalytics`` instance.
 
         Args:
-            hyperparameter_tuning_job_name (str): name of the HyperparameterTuningJob to
-                analyze.
+            hyperparameter_tuning_job_name (str): name of the HyperparameterTuningJob to analyze.
             sagemaker_session (sagemaker.session.Session): Session object which manages interactions with
-                Amazon SageMaker APIs and any other AWS services needed. If not specified, the estimator creates one
+                Amazon SageMaker APIs and any other AWS services needed. If not specified, one is created
                 using the default AWS configuration chain.
         """
         sagemaker_session = sagemaker_session or Session()
@@ -100,16 +99,16 @@ class HyperparameterTuningJobAnalytics(AnalyticsMetricsBase):
         return "<sagemaker.HyperparameterTuningJobAnalytics for %s>" % self.name
 
     def clear_cache(self):
-        """Clears the object of all local caches of API methods.
+        """Clear the object of all local caches of API methods.
         """
         super(HyperparameterTuningJobAnalytics, self).clear_cache()
         self._tuning_job_describe_result = None
         self._training_job_summaries = None
 
     def _fetch_dataframe(self):
-        """Returns a pandas dataframe with all the training jobs, their
-        hyperparameters, results, and metadata about the training jobs.
-        Includes a column to indicate that any job was the best seen so far.
+        """Return a pandas dataframe with all the training jobs, along with their
+        hyperparameters, results, and metadata. This also includes a column to indicate
+        if a training job was the best seen so far.
         """
         def reshape(training_summary):
             # Helper method to reshape a single training job summary into a dataframe record
@@ -139,8 +138,8 @@ class HyperparameterTuningJobAnalytics(AnalyticsMetricsBase):
 
     @property
     def tuning_ranges(self):
-        """A dict describing the ranges of all tuned hyperparameters.
-        Dict's key is the name of the hyper param.  Dict's value is the range.
+        """A dictionary describing the ranges of all tuned hyperparameters.
+        The keys are the names of the hyperparameter, and the values are the ranges.
         """
         out = {}
         for _, ranges in self.description()['HyperParameterTuningJobConfig']['ParameterRanges'].items():
@@ -149,10 +148,13 @@ class HyperparameterTuningJobAnalytics(AnalyticsMetricsBase):
         return out
 
     def description(self, force_refresh=False):
-        """Response to DescribeHyperParameterTuningJob
+        """Call ``DescribeHyperParameterTuningJob`` for the hyperparameter tuning job.
 
         Args:
             force_refresh (bool): Set to True to fetch the latest data from SageMaker API.
+
+        Returns:
+            dict: The Amazon SageMaker response for ``DescribeHyperParameterTuningJob``.
         """
         if force_refresh:
             self.clear_cache()
@@ -163,10 +165,13 @@ class HyperparameterTuningJobAnalytics(AnalyticsMetricsBase):
         return self._tuning_job_describe_result
 
     def training_job_summaries(self, force_refresh=False):
-        """A list of everything (paginated) from ListTrainingJobsForTuningJob
+        """A (paginated) list of everything from ``ListTrainingJobsForTuningJob``.
 
         Args:
             force_refresh (bool): Set to True to fetch the latest data from SageMaker API.
+
+        Returns:
+            dict: The Amazon SageMaker response for ``ListTrainingJobsForTuningJob``.
         """
         if force_refresh:
             self.clear_cache()
@@ -191,19 +196,19 @@ class HyperparameterTuningJobAnalytics(AnalyticsMetricsBase):
 
 
 class TrainingJobAnalytics(AnalyticsMetricsBase):
-    """Fetches training curve data from CloudWatch Metrics for a specific training job.
+    """Fetch training curve data from CloudWatch Metrics for a specific training job.
     """
 
     CLOUDWATCH_NAMESPACE = '/aws/sagemaker/HyperParameterTuningJobs'
 
     def __init__(self, training_job_name, metric_names, sagemaker_session=None):
-        """Initialize an ``TrainingJobAnalytics`` instance.
+        """Initialize a ``TrainingJobAnalytics`` instance.
 
         Args:
             training_job_name (str): name of the TrainingJob to analyze.
             metric_names (list): string names of all the metrics to collect for this training job
             sagemaker_session (sagemaker.session.Session): Session object which manages interactions with
-                Amazon SageMaker APIs and any other AWS services needed. If not specified, the estimator creates one
+                Amazon SageMaker APIs and any other AWS services needed. If not specified, one is specified
                 using the default AWS configuration chain.
         """
         sagemaker_session = sagemaker_session or Session()
@@ -223,7 +228,7 @@ class TrainingJobAnalytics(AnalyticsMetricsBase):
         return "<sagemaker.TrainingJobAnalytics for %s>" % self.name
 
     def clear_cache(self):
-        """Clears the object of all local caches of API methods, so
+        """Clear the object of all local caches of API methods, so
         that the next time any properties are accessed they will be refreshed from
         the service.
         """
@@ -232,7 +237,7 @@ class TrainingJobAnalytics(AnalyticsMetricsBase):
         self._time_interval = self._determine_timeinterval()
 
     def _determine_timeinterval(self):
-        """Returns a dict with two datetime objects, start_time and end_time
+        """Return a dictionary with two datetime objects, start_time and end_time,
         covering the interval of the training job
         """
         description = self._sage_client.describe_training_job(TrainingJobName=self.name)
@@ -249,7 +254,7 @@ class TrainingJobAnalytics(AnalyticsMetricsBase):
         return pd.DataFrame(self._data)
 
     def _fetch_metric(self, metric_name):
-        """Fetches all the values of a named metric, and adds them to _data
+        """Fetch all the values of a named metric, and add them to _data
         """
         request = {
             'Namespace': self.CLOUDWATCH_NAMESPACE,
@@ -284,7 +289,7 @@ class TrainingJobAnalytics(AnalyticsMetricsBase):
             self._add_single_metric(elapsed_seconds, metric_name, value)
 
     def _add_single_metric(self, timestamp, metric_name, value):
-        """Stores a single metric in the _data dict which can be
+        """Store a single metric in the _data dict which can be
         converted to a dataframe.
         """
         # note that this method is built this way to make it possible to
