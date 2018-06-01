@@ -201,9 +201,13 @@ def test_fit_pca(sagemaker_session, tuner):
     pca.subtract_mean = True
     pca.extra_components = 5
 
+    tuner.estimator = pca
+
+    tags = [{'Name': 'some-tag-without-a-value'}]
+    tuner.tags = tags
+
     hyperparameter_ranges = {'num_components': IntegerParameter(2, 4),
                              'algorithm_mode': CategoricalParameter(['regular', 'randomized'])}
-    tuner.estimator = pca
     tuner._hyperparameter_ranges = hyperparameter_ranges
 
     records = RecordSet(s3_data=INPUTS, num_records=1, feature_dim=1)
@@ -215,6 +219,7 @@ def test_fit_pca(sagemaker_session, tuner):
     assert tune_kwargs['static_hyperparameters']['extra_components'] == '5'
     assert len(tune_kwargs['parameter_ranges']['IntegerParameterRanges']) == 1
     assert tune_kwargs['job_name'].startswith('pca')
+    assert tune_kwargs['tags'] == tags
     assert tuner.estimator.mini_batch_size == 9999
 
 

@@ -91,7 +91,7 @@ class HyperparameterTuner(object):
 
     def __init__(self, estimator, objective_metric_name, hyperparameter_ranges, metric_definitions=None,
                  strategy='Bayesian', objective_type='Maximize', max_jobs=1, max_parallel_jobs=1,
-                 base_tuning_job_name=None):
+                 tags=None, base_tuning_job_name=None):
         self._hyperparameter_ranges = hyperparameter_ranges
         if self._hyperparameter_ranges is None or len(self._hyperparameter_ranges) == 0:
             raise ValueError('Need to specify hyperparameter ranges')
@@ -106,6 +106,7 @@ class HyperparameterTuner(object):
         self.max_jobs = max_jobs
         self.max_parallel_jobs = max_parallel_jobs
 
+        self.tags = tags
         self.base_tuning_job_name = base_tuning_job_name
         self._current_job_name = None
         self.latest_tuning_job = None
@@ -387,7 +388,7 @@ class _TuningJob(_Job):
                                                role=(config['role']), input_config=(config['input_config']),
                                                output_config=(config['output_config']),
                                                resource_config=(config['resource_config']),
-                                               stop_condition=(config['stop_condition']))
+                                               stop_condition=(config['stop_condition']), tags=tuner.tags)
 
         return cls(tuner.sagemaker_session, tuner._current_job_name)
 

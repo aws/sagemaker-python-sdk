@@ -241,7 +241,6 @@ class Session(object):
                 'TrainingImage': image,
                 'TrainingInputMode': input_mode
             },
-            # 'HyperParameters': hyperparameters,
             'InputDataConfig': input_config,
             'OutputDataConfig': output_config,
             'TrainingJobName': job_name,
@@ -259,7 +258,7 @@ class Session(object):
     def tune(self, job_name, strategy, objective_type, objective_metric_name,
              max_jobs, max_parallel_jobs, parameter_ranges,
              static_hyperparameters, image, input_mode, metric_definitions,
-             role, input_config, output_config, resource_config, stop_condition):
+             role, input_config, output_config, resource_config, stop_condition, tags):
         """Create an Amazon SageMaker hyperparameter tuning job
 
         Args:
@@ -292,6 +291,7 @@ class Session(object):
             instance_type (str): Type of EC2 instance to use for training, for example, 'ml.c4.xlarge'.
             stop_condition (dict): Defines when training shall finish. Contains entries that can be understood by the
                 service like ``MaxRuntimeInSeconds``.
+            tags (list[dict]): List of tags for labeling the tuning job.
         """
         tune_request = {
             'HyperParameterTuningJobName': job_name,
@@ -323,6 +323,9 @@ class Session(object):
 
         if metric_definitions is not None:
             tune_request['TrainingJobDefinition']['AlgorithmSpecification']['MetricDefinitions'] = metric_definitions
+
+        if tags is not None:
+            tune_request['Tags'] = tags
 
         LOGGER.info('Creating hyperparameter tuning job with name: {}'.format(job_name))
         LOGGER.debug('tune request: {}'.format(json.dumps(tune_request, indent=4)))
