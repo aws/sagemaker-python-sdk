@@ -6,6 +6,7 @@ CHANGELOG
 ========
 
 * bug-fix: Estimators: Change max_iterations hyperparameter key for KMeans
+* bug-fix: Unit Tests: Improve unit test runtime
 
 1.3.0
 =====
