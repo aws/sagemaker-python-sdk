@@ -5,6 +5,7 @@ CHANGELOG
 1.3.dev1
 ========
 
+* bug-fix: Remove __all__ and add noqa in __init__
 * bug-fix: Estimators: Change max_iterations hyperparameter key for KMeans
 * bug-fix: Estimators: Remove unused argument job_details for ``EstimatorBase.attach()``
 
