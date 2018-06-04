@@ -331,7 +331,7 @@ def test_stop_tuning_job(sagemaker_session, tuner):
 
     tuner.stop_tuning_job()
 
-    sagemaker_session.stop_tuning_job.assert_called_once_with(HyperParameterTuningJobName=JOB_NAME)
+    sagemaker_session.stop_tuning_job.assert_called_once_with(name=JOB_NAME)
 
 
 def test_stop_tuning_job_no_tuning_job(tuner):
@@ -536,7 +536,7 @@ def test_stop(sagemaker_session):
     tuning_job = _TuningJob(sagemaker_session, JOB_NAME)
     tuning_job.stop()
 
-    sagemaker_session.stop_tuning_job.assert_called_once_with(HyperParameterTuningJobName=JOB_NAME)
+    sagemaker_session.stop_tuning_job.assert_called_once_with(name=JOB_NAME)
 
 
 def test_tuning_job_wait(sagemaker_session):

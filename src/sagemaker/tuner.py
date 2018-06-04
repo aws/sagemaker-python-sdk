@@ -393,7 +393,7 @@ class _TuningJob(_Job):
         return cls(tuner.sagemaker_session, tuner._current_job_name)
 
     def stop(self):
-        self.sagemaker_session.stop_tuning_job(HyperParameterTuningJobName=self.name)
+        self.sagemaker_session.stop_tuning_job(name=self.name)
 
     def wait(self):
         self.sagemaker_session.wait_for_tuning_job(self.name)
