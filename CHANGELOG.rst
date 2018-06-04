@@ -8,6 +8,7 @@ CHANGELOG
 * bug-fix: Remove __all__ and add noqa in __init__
 * bug-fix: Estimators: Change max_iterations hyperparameter key for KMeans
 * bug-fix: Estimators: Remove unused argument job_details for ``EstimatorBase.attach()``
+* feature: Estimators: add support for tagging training jobs
 
 1.3.0
 =====

@@ -44,7 +44,7 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):
 
     def __init__(self, role, train_instance_count, train_instance_type,
                  train_volume_size=30, train_max_run=24 * 60 * 60, input_mode='File',
-                 output_path=None, output_kms_key=None, base_job_name=None, sagemaker_session=None):
+                 output_path=None, output_kms_key=None, base_job_name=None, sagemaker_session=None, tags=None):
         """Initialize an ``EstimatorBase`` instance.
 
         Args:
@@ -73,6 +73,8 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):
             sagemaker_session (sagemaker.session.Session): Session object which manages interactions with
                 Amazon SageMaker APIs and any other AWS services needed. If not specified, the estimator creates one
                 using the default AWS configuration chain.
+            tags (list[dict]): List of tags for labeling a training job. For more, see
+                https://docs.aws.amazon.com/sagemaker/latest/dg/API_Tag.html.
         """
         self.role = role
         self.train_instance_count = train_instance_count
@@ -80,6 +82,7 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):
         self.train_volume_size = train_volume_size
         self.train_max_run = train_max_run
         self.input_mode = input_mode
+        self.tags = tags
 
         if self.train_instance_type in ('local', 'local_gpu'):
             if self.train_instance_type == 'local_gpu' and self.train_instance_count > 1:
@@ -345,7 +348,8 @@ class _TrainingJob(object):
         estimator.sagemaker_session.train(image=estimator.train_image(), input_mode=estimator.input_mode,
                                           input_config=input_config, role=role, job_name=estimator._current_job_name,
                                           output_config=output_config, resource_config=resource_config,
-                                          hyperparameters=hyperparameters, stop_condition=stop_condition)
+                                          hyperparameters=hyperparameters, stop_condition=stop_condition,
+                                          tags=estimator.tags)
 
         return cls(estimator.sagemaker_session, estimator._current_job_name)
 

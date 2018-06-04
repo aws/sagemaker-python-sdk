@@ -142,7 +142,6 @@ MAX_TIME = 3 * 60 * 60
 JOB_NAME = 'jobname'
 
 DEFAULT_EXPECTED_TRAIN_JOB_ARGS = {
-    # 'HyperParameters': None,
     'OutputDataConfig': {
         'S3OutputPath': S3_OUTPUT
     },
@@ -224,10 +223,43 @@ def test_train_pack_to_request(sagemaker_session):
 
     sagemaker_session.train(image=IMAGE, input_mode='File', input_config=in_config, role=EXPANDED_ROLE,
                             job_name=JOB_NAME, output_config=out_config, resource_config=resource_config,
-                            hyperparameters=None, stop_condition=stop_cond)
+                            hyperparameters=None, stop_condition=stop_cond, tags=None)
 
     assert sagemaker_session.sagemaker_client.method_calls[0] == (
         'create_training_job', (), DEFAULT_EXPECTED_TRAIN_JOB_ARGS)
+
+
+def test_train_pack_to_request_with_optional_params(sagemaker_session):
+    in_config = [{
+        'ChannelName': 'training',
+        'DataSource': {
+            'S3DataSource': {
+                'S3DataDistributionType': 'FullyReplicated',
+                'S3DataType': 'S3Prefix',
+                'S3Uri': S3_INPUT_URI
+            }
+        }
+    }]
+
+    out_config = {'S3OutputPath': S3_OUTPUT}
+
+    resource_config = {'InstanceCount': INSTANCE_COUNT,
+                       'InstanceType': INSTANCE_TYPE,
+                       'VolumeSizeInGB': MAX_SIZE}
+
+    stop_cond = {'MaxRuntimeInSeconds': MAX_TIME}
+
+    hyperparameters = {'foo': 'bar'}
+    tags = [{'Name': 'some-tag', 'Value': 'value-for-tag'}]
+
+    sagemaker_session.train(image=IMAGE, input_mode='File', input_config=in_config, role=EXPANDED_ROLE,
+                            job_name=JOB_NAME, output_config=out_config, resource_config=resource_config,
+                            hyperparameters=hyperparameters, stop_condition=stop_cond, tags=tags)
+
+    _, _, actual_train_args = sagemaker_session.sagemaker_client.method_calls[0]
+
+    assert actual_train_args['HyperParameters'] == hyperparameters
+    assert actual_train_args['Tags'] == tags
 
 
 @patch('sys.stdout', new_callable=io.BytesIO if six.PY2 else io.StringIO)
