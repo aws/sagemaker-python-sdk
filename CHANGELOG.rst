@@ -7,6 +7,7 @@ CHANGELOG
 
 * bug-fix: Unit Tests: Improve unit test runtime
 * bug-fix: Estimators: Fix attach for LDA
+* feature: Allow Chainer, Tensorflow and MXNet estimators to use a custom docker image.
 
 1.4.1
 =====

@@ -110,11 +110,34 @@ def test_create_model(sagemaker_session, mxnet_version):
     job_name = 'new_name'
     mx.fit(inputs='s3://mybucket/train', job_name='new_name')
     model = mx.create_model()
-    mx.container_log_level
 
     assert model.sagemaker_session == sagemaker_session
     assert model.framework_version == mxnet_version
     assert model.py_version == mx.py_version
+    assert model.entry_point == SCRIPT_PATH
+    assert model.role == ROLE
+    assert model.name == job_name
+    assert model.container_log_level == container_log_level
+    assert model.source_dir == source_dir
+    assert model.enable_cloudwatch_metrics == enable_cloudwatch_metrics
+
+
+def test_create_model_with_custom_image(sagemaker_session):
+    container_log_level = '"logging.INFO"'
+    source_dir = 's3://mybucket/source'
+    enable_cloudwatch_metrics = 'true'
+    custom_image = 'mxnet:2.0'
+    mx = MXNet(entry_point=SCRIPT_PATH, role=ROLE, sagemaker_session=sagemaker_session,
+               train_instance_count=INSTANCE_COUNT, train_instance_type=INSTANCE_TYPE,
+               image_name=custom_image, container_log_level=container_log_level,
+               base_job_name='job', source_dir=source_dir, enable_cloudwatch_metrics=enable_cloudwatch_metrics)
+
+    job_name = 'new_name'
+    mx.fit(inputs='s3://mybucket/train', job_name='new_name')
+    model = mx.create_model()
+
+    assert model.sagemaker_session == sagemaker_session
+    assert model.image == custom_image
     assert model.entry_point == SCRIPT_PATH
     assert model.role == ROLE
     assert model.name == job_name
@@ -297,3 +320,45 @@ def test_attach_wrong_framework(sagemaker_session):
     with pytest.raises(ValueError) as error:
         MXNet.attach(training_job_name='neo', sagemaker_session=sagemaker_session)
     assert "didn't use image for requested framework" in str(error)
+
+
+def test_attach_custom_image(sagemaker_session):
+    training_image = 'ubuntu:latest'
+    returned_job_description = {'AlgorithmSpecification': {
+        'TrainingInputMode': 'File',
+        'TrainingImage': training_image},
+        'HyperParameters': {
+            'sagemaker_submit_directory': '"s3://some/sourcedir.tar.gz"',
+            'sagemaker_program': '"iris-dnn-classifier.py"',
+            'sagemaker_s3_uri_training': '"sagemaker-3/integ-test-data/tf_iris"',
+            'sagemaker_enable_cloudwatch_metrics': 'false',
+            'sagemaker_container_log_level': '"logging.INFO"',
+            'sagemaker_job_name': '"neo"',
+            'training_steps': '100',
+            'sagemaker_region': '"us-west-2"'},
+        'RoleArn': 'arn:aws:iam::366:role/SageMakerRole',
+        'ResourceConfig': {
+            'VolumeSizeInGB': 30,
+            'InstanceCount': 1,
+            'InstanceType': 'ml.c4.xlarge'},
+        'StoppingCondition': {'MaxRuntimeInSeconds': 24 * 60 * 60},
+        'TrainingJobName': 'neo',
+        'TrainingJobStatus': 'Completed',
+        'OutputDataConfig': {'KmsKeyId': '', 'S3OutputPath': 's3://place/output/neo'},
+        'TrainingJobOutput': {'S3TrainingJobOutput': 's3://here/output.tar.gz'}}
+    sagemaker_session.sagemaker_client.describe_training_job = Mock(name='describe_training_job',
+                                                                    return_value=returned_job_description)
+
+    estimator = MXNet.attach(training_job_name='neo', sagemaker_session=sagemaker_session)
+    assert estimator.latest_training_job.job_name == 'neo'
+    assert estimator.image_name == training_image
+    assert estimator.role == 'arn:aws:iam::366:role/SageMakerRole'
+    assert estimator.train_instance_count == 1
+    assert estimator.train_max_run == 24 * 60 * 60
+    assert estimator.input_mode == 'File'
+    assert estimator.base_job_name == 'neo'
+    assert estimator.output_path == 's3://place/output/neo'
+    assert estimator.output_kms_key == ''
+    assert estimator.hyperparameters()['training_steps'] == '100'
+    assert estimator.source_dir == 's3://some/sourcedir.tar.gz'
+    assert estimator.entry_point == 'iris-dnn-classifier.py'

@@ -20,7 +20,8 @@ from abc import abstractmethod
 from six import with_metaclass
 
 from sagemaker.analytics import TrainingJobAnalytics
-from sagemaker.fw_utils import tar_and_upload_dir, parse_s3_url, UploadedCode, validate_source_dir
+from sagemaker.fw_utils import (create_image_uri, tar_and_upload_dir, parse_s3_url, UploadedCode,
+                                validate_source_dir)
 from sagemaker.job import _Job
 from sagemaker.local import LocalSession
 from sagemaker.model import Model
@@ -226,6 +227,7 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):
         job_details = sagemaker_session.sagemaker_client.describe_training_job(TrainingJobName=training_job_name)
         init_params = cls._prepare_init_params_from_job_description(job_details)
 
+        print(init_params)
         estimator = cls(sagemaker_session=sagemaker_session, **init_params)
         estimator.latest_training_job = _TrainingJob(sagemaker_session=sagemaker_session,
                                                      training_job_name=init_params['base_job_name'])
@@ -493,7 +495,7 @@ class Framework(EstimatorBase):
     """
 
     def __init__(self, entry_point, source_dir=None, hyperparameters=None, enable_cloudwatch_metrics=False,
-                 container_log_level=logging.INFO, code_location=None, **kwargs):
+                 container_log_level=logging.INFO, code_location=None, image_name=None, **kwargs):
         """Base class initializer. Subclasses which override ``__init__`` should invoke ``super()``
 
         Args:
@@ -513,6 +515,9 @@ class Framework(EstimatorBase):
             code_location (str): Name of the S3 bucket where custom code is uploaded (default: None).
                 If not specified, default bucket created by ``sagemaker.session.Session`` is used.
             **kwargs: Additional kwargs passed to the ``EstimatorBase`` constructor.
+            image_name (str): An alternate image name to use instead of the official Sagemaker image
+                for the framework. This is useful to run one of the Sagemaker supported frameworks
+                with an image containing custom dependencies.
         """
         super(Framework, self).__init__(**kwargs)
         self.source_dir = source_dir
@@ -521,6 +526,9 @@ class Framework(EstimatorBase):
         self.container_log_level = container_log_level
         self._hyperparameters = hyperparameters or {}
         self.code_location = code_location
+        self.image_name = image_name
+        print(self.image_name)
+        print(kwargs)
 
     def _prepare_for_training(self, job_name=None):
         """Set hyperparameters needed for training. This method will also validate ``source_dir``.
@@ -623,6 +631,21 @@ class Framework(EstimatorBase):
         init_params['hyperparameters'] = hyperparameters
 
         return init_params
+
+    def train_image(self):
+        """Return the Docker image to use for training.
+
+        The  :meth:`~sagemaker.estimator.EstimatorBase.fit` method, which does the model training,
+        calls this method to find the image to use for model training.
+
+        Returns:
+            str: The URI of the Docker image.
+        """
+        if self.image_name:
+            return self.image_name
+        else:
+            return create_image_uri(self.sagemaker_session.boto_region_name, self.__framework_name__,
+                                    self.train_instance_type, self.framework_version, py_version=self.py_version)
 
     @classmethod
     def attach(cls, training_job_name, sagemaker_session=None):
