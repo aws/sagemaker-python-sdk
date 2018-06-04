@@ -202,7 +202,7 @@ class Session(object):
         return self._default_bucket
 
     def train(self, image, input_mode, input_config, role, job_name, output_config,
-              resource_config, hyperparameters, stop_condition):
+              resource_config, hyperparameters, stop_condition, tags):
         """Create an Amazon SageMaker training job.
 
         Args:
@@ -231,6 +231,8 @@ class Session(object):
                 keys and values, but ``str()`` will be called to convert them before training.
             stop_condition (dict): Defines when training shall finish. Contains entries that can be understood by the
                 service like ``MaxRuntimeInSeconds``.
+            tags (list[dict]): List of tags for labeling a training job. For more, see
+                https://docs.aws.amazon.com/sagemaker/latest/dg/API_Tag.html.
 
         Returns:
             str: ARN of the training job, if it is created.
@@ -251,6 +253,10 @@ class Session(object):
 
         if hyperparameters and len(hyperparameters) > 0:
             train_request['HyperParameters'] = hyperparameters
+
+        if tags is not None:
+            train_request['Tags'] = tags
+
         LOGGER.info('Creating training-job with name: {}'.format(job_name))
         LOGGER.debug('train request: {}'.format(json.dumps(train_request, indent=4)))
         self.sagemaker_client.create_training_job(**train_request)

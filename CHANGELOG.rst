@@ -11,6 +11,7 @@ CHANGELOG
 * bug-fix: Local Mode: Show logs in Jupyter notebooks
 * feature: HyperparameterTuner: Add support for hyperparameter tuning jobs
 * feature: Analytics: Add functions for metrics in Training and Hyperparameter Tuning jobs
+* feature: Estimators: add support for tagging training jobs
 
 1.3.0
 =====

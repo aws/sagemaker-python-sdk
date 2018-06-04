@@ -101,7 +101,8 @@ def _create_train_job(tf_version):
         },
         'stop_condition': {
             'MaxRuntimeInSeconds': 24 * 60 * 60
-        }
+        },
+        'tags': None,
     }
 
 
