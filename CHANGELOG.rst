@@ -5,7 +5,9 @@ CHANGELOG
 1.4.0
 =====
 
+* bug-fix: Remove __all__ and add noqa in __init__
 * bug-fix: Estimators: Change max_iterations hyperparameter key for KMeans
+* bug-fix: Estimators: Remove unused argument job_details for ``EstimatorBase.attach()``
 * bug-fix: Local Mode: Show logs in Jupyter notebooks
 * feature: HyperparameterTuner: Add support for hyperparameter tuning jobs
 * feature: Analytics: Add functions for metrics in Training and Hyperparameter Tuning jobs

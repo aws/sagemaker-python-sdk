@@ -191,7 +191,7 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):
         raise NotImplementedError()
 
     @classmethod
-    def attach(cls, training_job_name, sagemaker_session=None, job_details=None):
+    def attach(cls, training_job_name, sagemaker_session=None):
         """Attach to an existing training job.
 
         Create an Estimator bound to an existing training job, each subclass is responsible to implement
