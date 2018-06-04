@@ -12,31 +12,23 @@
 # language governing permissions and limitations under the License.
 from __future__ import absolute_import
 
-from sagemaker import estimator
-from sagemaker.amazon.kmeans import KMeans, KMeansModel, KMeansPredictor
-from sagemaker.amazon.pca import PCA, PCAModel, PCAPredictor
-from sagemaker.amazon.lda import LDA, LDAModel, LDAPredictor
-from sagemaker.amazon.linear_learner import LinearLearner, LinearLearnerModel, LinearLearnerPredictor
-from sagemaker.amazon.factorization_machines import FactorizationMachines, FactorizationMachinesModel
-from sagemaker.amazon.factorization_machines import FactorizationMachinesPredictor
-from sagemaker.amazon.ntm import NTM, NTMModel, NTMPredictor
-from sagemaker.amazon.randomcutforest import RandomCutForest, RandomCutForestModel, RandomCutForestPredictor
+from sagemaker import estimator  # noqa: F401
+from sagemaker.amazon.kmeans import KMeans, KMeansModel, KMeansPredictor  # noqa: F401
+from sagemaker.amazon.pca import PCA, PCAModel, PCAPredictor  # noqa: F401
+from sagemaker.amazon.lda import LDA, LDAModel, LDAPredictor  # noqa: F401
+from sagemaker.amazon.linear_learner import LinearLearner, LinearLearnerModel, LinearLearnerPredictor  # noqa: F401
+from sagemaker.amazon.factorization_machines import FactorizationMachines, FactorizationMachinesModel  # noqa: F401
+from sagemaker.amazon.factorization_machines import FactorizationMachinesPredictor  # noqa: F401
+from sagemaker.amazon.ntm import NTM, NTMModel, NTMPredictor  # noqa: F401
+from sagemaker.amazon.randomcutforest import (RandomCutForest, RandomCutForestModel,  # noqa: F401
+                                              RandomCutForestPredictor)
 
-from sagemaker.local.local_session import LocalSession
+from sagemaker.local.local_session import LocalSession  # noqa: F401
 
-from sagemaker.model import Model
-from sagemaker.predictor import RealTimePredictor
-from sagemaker.session import Session
-from sagemaker.session import container_def
-from sagemaker.session import production_variant
-from sagemaker.session import s3_input
-from sagemaker.session import get_execution_role
-
-
-__all__ = ['estimator', 'KMeans', 'KMeansModel', 'KMeansPredictor', 'PCA', 'PCAModel', 'PCAPredictor', 'LinearLearner',
-           'LinearLearnerModel', 'LinearLearnerPredictor',
-           'LDA', 'LDAModel', 'LDAPredictor',
-           'FactorizationMachines', 'FactorizationMachinesModel', 'FactorizationMachinesPredictor',
-           'RandomCutForest', 'RandomCutForestModel', 'RandomCutForestPredictor',
-           'Model', 'NTM', 'NTMModel', 'NTMPredictor', 'RealTimePredictor', 'Session', 'LocalSession',
-           'container_def', 's3_input', 'production_variant', 'get_execution_role']
+from sagemaker.model import Model  # noqa: F401
+from sagemaker.predictor import RealTimePredictor  # noqa: F401
+from sagemaker.session import Session  # noqa: F401
+from sagemaker.session import container_def  # noqa: F401
+from sagemaker.session import production_variant  # noqa: F401
+from sagemaker.session import s3_input  # noqa: F401
+from sagemaker.session import get_execution_role  # noqa: F401
