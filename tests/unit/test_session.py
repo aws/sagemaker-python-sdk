@@ -1,4 +1,4 @@
-# Copyright 2017 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright 2017-2018 Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -10,6 +10,8 @@
 # distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
+from __future__ import absolute_import
+
 import pytest
 import io
 import six
@@ -19,6 +21,8 @@ from sagemaker import s3_input, Session, get_execution_role
 import datetime
 
 from botocore.exceptions import ClientError
+
+from sagemaker.session import _tuning_job_status
 
 REGION = 'us-west-2'
 
@@ -140,7 +144,6 @@ MAX_TIME = 3 * 60 * 60
 JOB_NAME = 'jobname'
 
 DEFAULT_EXPECTED_TRAIN_JOB_ARGS = {
-    # 'HyperParameters': None,
     'OutputDataConfig': {
         'S3OutputPath': S3_OUTPUT
     },
@@ -183,6 +186,10 @@ COMPLETED_DESCRIBE_JOB_RESULT.update(
     {'TrainingStartTime': datetime.datetime(2018, 2, 17, 7, 15, 0, 103000)})
 COMPLETED_DESCRIBE_JOB_RESULT.update(
     {'TrainingEndTime': datetime.datetime(2018, 2, 17, 7, 19, 34, 953000)})
+
+STOPPED_DESCRIBE_JOB_RESULT = dict(COMPLETED_DESCRIBE_JOB_RESULT)
+STOPPED_DESCRIBE_JOB_RESULT.update({'TrainingJobStatus': 'Stopped'})
+
 IN_PROGRESS_DESCRIBE_JOB_RESULT = dict(DEFAULT_EXPECTED_TRAIN_JOB_ARGS)
 IN_PROGRESS_DESCRIBE_JOB_RESULT.update({'TrainingJobStatus': 'InProgress'})
 
@@ -218,10 +225,77 @@ def test_train_pack_to_request(sagemaker_session):
 
     sagemaker_session.train(image=IMAGE, input_mode='File', input_config=in_config, role=EXPANDED_ROLE,
                             job_name=JOB_NAME, output_config=out_config, resource_config=resource_config,
-                            hyperparameters=None, stop_condition=stop_cond)
+                            hyperparameters=None, stop_condition=stop_cond, tags=None)
 
     assert sagemaker_session.sagemaker_client.method_calls[0] == (
         'create_training_job', (), DEFAULT_EXPECTED_TRAIN_JOB_ARGS)
+
+
+def test_stop_tuning_job(sagemaker_session):
+    sms = sagemaker_session
+    sms.sagemaker_client.stop_hyper_parameter_tuning_job = Mock(name='stop_hyper_parameter_tuning_job')
+
+    sagemaker_session.stop_tuning_job(JOB_NAME)
+    sms.sagemaker_client.stop_hyper_parameter_tuning_job.assert_called_once_with(HyperParameterTuningJobName=JOB_NAME)
+
+
+def test_stop_tuning_job_client_error_already_stopped(sagemaker_session):
+    sms = sagemaker_session
+    exception = ClientError({'Error': {'Code': 'ValidationException'}}, 'Operation')
+    sms.sagemaker_client.stop_hyper_parameter_tuning_job = Mock(name='stop_hyper_parameter_tuning_job',
+                                                                side_effect=exception)
+    sagemaker_session.stop_tuning_job(JOB_NAME)
+
+    sms.sagemaker_client.stop_hyper_parameter_tuning_job.assert_called_once_with(HyperParameterTuningJobName=JOB_NAME)
+
+
+def test_stop_tuning_job_client_error(sagemaker_session):
+    error_response = {'Error': {'Code': 'MockException', 'Message': 'MockMessage'}}
+    operation = 'Operation'
+    exception = ClientError(error_response, operation)
+
+    sms = sagemaker_session
+    sms.sagemaker_client.stop_hyper_parameter_tuning_job = Mock(name='stop_hyper_parameter_tuning_job',
+                                                                side_effect=exception)
+
+    with pytest.raises(ClientError) as e:
+        sagemaker_session.stop_tuning_job(JOB_NAME)
+
+    sms.sagemaker_client.stop_hyper_parameter_tuning_job.assert_called_once_with(HyperParameterTuningJobName=JOB_NAME)
+    assert 'An error occurred (MockException) when calling the Operation operation: MockMessage' in str(e)
+
+
+def test_train_pack_to_request_with_optional_params(sagemaker_session):
+    in_config = [{
+        'ChannelName': 'training',
+        'DataSource': {
+            'S3DataSource': {
+                'S3DataDistributionType': 'FullyReplicated',
+                'S3DataType': 'S3Prefix',
+                'S3Uri': S3_INPUT_URI
+            }
+        }
+    }]
+
+    out_config = {'S3OutputPath': S3_OUTPUT}
+
+    resource_config = {'InstanceCount': INSTANCE_COUNT,
+                       'InstanceType': INSTANCE_TYPE,
+                       'VolumeSizeInGB': MAX_SIZE}
+
+    stop_cond = {'MaxRuntimeInSeconds': MAX_TIME}
+
+    hyperparameters = {'foo': 'bar'}
+    tags = [{'Name': 'some-tag', 'Value': 'value-for-tag'}]
+
+    sagemaker_session.train(image=IMAGE, input_mode='File', input_config=in_config, role=EXPANDED_ROLE,
+                            job_name=JOB_NAME, output_config=out_config, resource_config=resource_config,
+                            hyperparameters=hyperparameters, stop_condition=stop_cond, tags=tags)
+
+    _, _, actual_train_args = sagemaker_session.sagemaker_client.method_calls[0]
+
+    assert actual_train_args['HyperParameters'] == hyperparameters
+    assert actual_train_args['Tags'] == tags
 
 
 @patch('sys.stdout', new_callable=io.BytesIO if six.PY2 else io.StringIO)
@@ -269,6 +343,16 @@ def sagemaker_session_complete():
 
 
 @pytest.fixture()
+def sagemaker_session_stopped():
+    boto_mock = Mock(name='boto_session')
+    boto_mock.client('logs').describe_log_streams.return_value = DEFAULT_LOG_STREAMS
+    boto_mock.client('logs').get_log_events.side_effect = DEFAULT_LOG_EVENTS
+    ims = sagemaker.Session(boto_session=boto_mock, sagemaker_client=Mock())
+    ims.sagemaker_client.describe_training_job.return_value = STOPPED_DESCRIBE_JOB_RESULT
+    return ims
+
+
+@pytest.fixture()
 def sagemaker_session_ready_lifecycle():
     boto_mock = Mock(name='boto_session')
     boto_mock.client('logs').describe_log_streams.return_value = DEFAULT_LOG_STREAMS
@@ -301,8 +385,24 @@ def test_logs_for_job_no_wait(cw, sagemaker_session_complete):
 
 
 @patch('sagemaker.logs.ColorWrap')
+def test_logs_for_job_no_wait_stopped_job(cw, sagemaker_session_stopped):
+    ims = sagemaker_session_stopped
+    ims.logs_for_job(JOB_NAME)
+    ims.sagemaker_client.describe_training_job.assert_called_once_with(TrainingJobName=JOB_NAME)
+    cw().assert_called_with(0, 'hi there #1')
+
+
+@patch('sagemaker.logs.ColorWrap')
 def test_logs_for_job_wait_on_completed(cw, sagemaker_session_complete):
     ims = sagemaker_session_complete
+    ims.logs_for_job(JOB_NAME, wait=True, poll=0)
+    assert ims.sagemaker_client.describe_training_job.call_args_list == [call(TrainingJobName=JOB_NAME,)]
+    cw().assert_called_with(0, 'hi there #1')
+
+
+@patch('sagemaker.logs.ColorWrap')
+def test_logs_for_job_wait_on_stopped(cw, sagemaker_session_stopped):
+    ims = sagemaker_session_stopped
     ims.logs_for_job(JOB_NAME, wait=True, poll=0)
     assert ims.sagemaker_client.describe_training_job.call_args_list == [call(TrainingJobName=JOB_NAME,)]
     cw().assert_called_with(0, 'hi there #1')
@@ -385,3 +485,32 @@ def test_endpoint_from_production_variants(sagemaker_session):
                 'InitialVariantWeight': 1,
                 'InitialInstanceCount': 1,
                 'VariantName': 'AllTraffic'}])
+
+
+def test_wait_for_tuning_job(sagemaker_session):
+    hyperparameter_tuning_job_desc = {'HyperParameterTuningJobStatus': 'Completed'}
+    sagemaker_session.sagemaker_client.describe_hyper_parameter_tuning_job = Mock(
+        name='describe_hyper_parameter_tuning_job', return_value=hyperparameter_tuning_job_desc)
+
+    result = sagemaker_session.wait_for_tuning_job(JOB_NAME)
+    assert result['HyperParameterTuningJobStatus'] == 'Completed'
+
+
+def test_tune_job_status(sagemaker_session):
+    hyperparameter_tuning_job_desc = {'HyperParameterTuningJobStatus': 'Completed'}
+    sagemaker_session.sagemaker_client.describe_hyper_parameter_tuning_job = Mock(
+        name='describe_hyper_parameter_tuning_job', return_value=hyperparameter_tuning_job_desc)
+
+    result = _tuning_job_status(sagemaker_session.sagemaker_client, JOB_NAME)
+
+    assert result['HyperParameterTuningJobStatus'] == 'Completed'
+
+
+def test_tune_job_status_none(sagemaker_session):
+    hyperparameter_tuning_job_desc = {'HyperParameterTuningJobStatus': 'InProgress'}
+    sagemaker_session.sagemaker_client.describe_hyper_parameter_tuning_job = Mock(
+        name='describe_hyper_parameter_tuning_job', return_value=hyperparameter_tuning_job_desc)
+
+    result = _tuning_job_status(sagemaker_session.sagemaker_client, JOB_NAME)
+
+    assert result is None

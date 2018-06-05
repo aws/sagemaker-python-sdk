@@ -1,4 +1,4 @@
-# Copyright 2017 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright 2017-2018 Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -10,6 +10,8 @@
 # distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
+from __future__ import absolute_import
+
 import gzip
 import os
 import pickle
@@ -39,13 +41,26 @@ def test_kmeans(sagemaker_session):
                         k=10, sagemaker_session=sagemaker_session, base_job_name='test-kmeans')
 
         kmeans.init_method = 'random'
-        kmeans.max_iterators = 1
+        kmeans.max_iterations = 1
         kmeans.tol = 1
         kmeans.num_trials = 1
         kmeans.local_init_method = 'kmeans++'
         kmeans.half_life_time_size = 1
         kmeans.epochs = 1
         kmeans.center_factor = 1
+
+        assert kmeans.hyperparameters() == dict(
+            init_method=kmeans.init_method,
+            local_lloyd_max_iter=str(kmeans.max_iterations),
+            local_lloyd_tol=str(kmeans.tol),
+            local_lloyd_num_trials=str(kmeans.num_trials),
+            local_lloyd_init_method=kmeans.local_init_method,
+            half_life_time_size=str(kmeans.half_life_time_size),
+            epochs=str(kmeans.epochs),
+            extra_center_factor=str(kmeans.center_factor),
+            k=str(kmeans.k),
+            force_dense='True',
+        )
 
         kmeans.fit(kmeans.record_set(train_set[0][:100]))
 
@@ -78,13 +93,26 @@ def test_async_kmeans(sagemaker_session):
                         k=10, sagemaker_session=sagemaker_session, base_job_name='test-kmeans')
 
         kmeans.init_method = 'random'
-        kmeans.max_iterators = 1
+        kmeans.max_iterations = 1
         kmeans.tol = 1
         kmeans.num_trials = 1
         kmeans.local_init_method = 'kmeans++'
         kmeans.half_life_time_size = 1
         kmeans.epochs = 1
         kmeans.center_factor = 1
+
+        assert kmeans.hyperparameters() == dict(
+            init_method=kmeans.init_method,
+            local_lloyd_max_iter=str(kmeans.max_iterations),
+            local_lloyd_tol=str(kmeans.tol),
+            local_lloyd_num_trials=str(kmeans.num_trials),
+            local_lloyd_init_method=kmeans.local_init_method,
+            half_life_time_size=str(kmeans.half_life_time_size),
+            epochs=str(kmeans.epochs),
+            extra_center_factor=str(kmeans.center_factor),
+            k=str(kmeans.k),
+            force_dense='True',
+        )
 
         kmeans.fit(kmeans.record_set(train_set[0][:100]), wait=False)
         training_job_name = kmeans.latest_training_job.name

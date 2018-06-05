@@ -1,4 +1,4 @@
-# Copyright 2017 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright 2017-2018 Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -10,6 +10,7 @@
 # distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
+from __future__ import absolute_import
 
 
 class Hyperparameter(object):
@@ -45,7 +46,6 @@ class Hyperparameter(object):
                 raise ValueError(error_message)
 
     def __get__(self, obj, objtype):
-        """Return the value of this hyperparameter"""
         if '_hyperparameters' not in dir(obj) or self.name not in obj._hyperparameters:
             raise AttributeError()
         return obj._hyperparameters[self.name]

@@ -10,7 +10,7 @@
 # distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
-from sagemaker.mxnet.estimator import MXNet
-from sagemaker.mxnet.model import MXNetModel, MXNetPredictor
+from __future__ import absolute_import  # noqa: F401
 
-__all__ = [MXNet, MXNetModel, MXNetPredictor]
+from sagemaker.mxnet.estimator import MXNet  # noqa: F401
+from sagemaker.mxnet.model import MXNetModel, MXNetPredictor  # noqa: F401

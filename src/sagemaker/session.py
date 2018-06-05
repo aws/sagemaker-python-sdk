@@ -1,4 +1,4 @@
-# Copyright 2017 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright 2017-2018 Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -12,18 +12,17 @@
 # language governing permissions and limitations under the License.
 from __future__ import print_function, absolute_import
 
+import json
 import logging
-import re
-
 import os
+import re
 import sys
 import time
 
 import boto3
-import json
+import botocore.config
 import six
 import yaml
-import botocore.config
 from botocore.exceptions import ClientError
 
 from sagemaker.user_agent import prepend_user_agent
@@ -70,10 +69,25 @@ class Session(object):
                 If not provided, one will be created using this instance's ``boto_session``.
         """
         self._default_bucket = None
+
+        sagemaker_config_file = os.path.join(os.path.expanduser('~'), '.sagemaker', 'config.yaml')
+        if os.path.exists(sagemaker_config_file):
+            self.config = yaml.load(open(sagemaker_config_file, 'r'))
+        else:
+            self.config = None
+
+        self._initialize(boto_session, sagemaker_client, sagemaker_runtime_client)
+
+    def _initialize(self, boto_session, sagemaker_client, sagemaker_runtime_client):
+        """Initialize this SageMaker Session.
+
+        Creates or uses a boto_session, sagemaker_client and sagemaker_runtime_client.
+        Sets the region_name.
+        """
         self.boto_session = boto_session or boto3.Session()
 
-        region = self.boto_session.region_name
-        if region is None:
+        self._region_name = self.boto_session.region_name
+        if self._region_name is None:
             raise ValueError('Must setup local AWS configuration with a region supported by SageMaker.')
 
         self.sagemaker_client = sagemaker_client or self.boto_session.client('sagemaker')
@@ -82,15 +96,11 @@ class Session(object):
         self.sagemaker_runtime_client = sagemaker_runtime_client or self.boto_session.client('runtime.sagemaker')
         prepend_user_agent(self.sagemaker_runtime_client)
 
-        sagemaker_config_file = os.path.join(os.path.expanduser('~'), '.sagemaker', 'config.yaml')
-        if os.path.exists(sagemaker_config_file):
-            self.config = yaml.load(open(sagemaker_config_file, 'r'))
-        else:
-            self.config = None
+        self.local_mode = False
 
     @property
     def boto_region_name(self):
-        return self.boto_session.region_name
+        return self._region_name
 
     def upload_data(self, path, bucket=None, key_prefix='data'):
         """Upload local file or directory to S3.
@@ -192,7 +202,7 @@ class Session(object):
         return self._default_bucket
 
     def train(self, image, input_mode, input_config, role, job_name, output_config,
-              resource_config, hyperparameters, stop_condition):
+              resource_config, hyperparameters, stop_condition, tags):
         """Create an Amazon SageMaker training job.
 
         Args:
@@ -221,6 +231,8 @@ class Session(object):
                 keys and values, but ``str()`` will be called to convert them before training.
             stop_condition (dict): Defines when training shall finish. Contains entries that can be understood by the
                 service like ``MaxRuntimeInSeconds``.
+            tags (list[dict]): List of tags for labeling a training job. For more, see
+                https://docs.aws.amazon.com/sagemaker/latest/dg/API_Tag.html.
 
         Returns:
             str: ARN of the training job, if it is created.
@@ -231,7 +243,6 @@ class Session(object):
                 'TrainingImage': image,
                 'TrainingInputMode': input_mode
             },
-            # 'HyperParameters': hyperparameters,
             'InputDataConfig': input_config,
             'OutputDataConfig': output_config,
             'TrainingJobName': job_name,
@@ -242,9 +253,108 @@ class Session(object):
 
         if hyperparameters and len(hyperparameters) > 0:
             train_request['HyperParameters'] = hyperparameters
+
+        if tags is not None:
+            train_request['Tags'] = tags
+
         LOGGER.info('Creating training-job with name: {}'.format(job_name))
         LOGGER.debug('train request: {}'.format(json.dumps(train_request, indent=4)))
         self.sagemaker_client.create_training_job(**train_request)
+
+    def tune(self, job_name, strategy, objective_type, objective_metric_name,
+             max_jobs, max_parallel_jobs, parameter_ranges,
+             static_hyperparameters, image, input_mode, metric_definitions,
+             role, input_config, output_config, resource_config, stop_condition, tags):
+        """Create an Amazon SageMaker hyperparameter tuning job
+
+        Args:
+            job_name (str): Name of the tuning job being created.
+            strategy (str): Strategy to be used.
+            objective_type (str): Minimize/Maximize
+            objective_metric_name (str): Name of the metric to use when evaluating training job.
+            max_jobs (int): Maximum total number of jobs to start.
+            max_parallel_jobs (int): Maximum number of parallel jobs to start.
+            parameter_ranges (dict): Parameter ranges in a dictionary of types: Continuous, Integer, Categorical
+            static_hyperparameters (dict): Hyperparameters for model training. The hyperparameters are made accessible
+                as a dict[str, str] to the training code on SageMaker. For convenience, this accepts other types for
+                keys and values, but ``str()`` will be called to convert them before training.
+            image (str): Docker image containing training code.
+            input_mode (str): The input mode that the algorithm supports. Valid modes:
+
+                * 'File' - Amazon SageMaker copies the training dataset from the S3 location to
+                    a directory in the Docker container.
+                * 'Pipe' - Amazon SageMaker streams data directly from S3 to the container via a Unix-named pipe.
+            metric_definitions (list[dict]): Metrics definition with 'name' and 'regex' keys.
+            role (str): An AWS IAM role (either name or full ARN). The Amazon SageMaker training jobs and APIs
+                that create Amazon SageMaker endpoints use this role to access training data and model artifacts.
+                You must grant sufficient permissions to this role.
+            input_config (list): A list of Channel objects. Each channel is a named input source. Please refer to
+                 the format details described:
+                 https://botocore.readthedocs.io/en/latest/reference/services/sagemaker.html#SageMaker.Client.create_training_job
+            output_config (dict): The S3 URI where you want to store the training results and optional KMS key ID.
+            resource_config (dict): Contains values for ResourceConfig:
+            instance_count (int): Number of EC2 instances to use for training.
+            instance_type (str): Type of EC2 instance to use for training, for example, 'ml.c4.xlarge'.
+            stop_condition (dict): Defines when training shall finish. Contains entries that can be understood by the
+                service like ``MaxRuntimeInSeconds``.
+            tags (list[dict]): List of tags for labeling the tuning job.
+        """
+        tune_request = {
+            'HyperParameterTuningJobName': job_name,
+            'HyperParameterTuningJobConfig': {
+                'Strategy': strategy,
+                'HyperParameterTuningJobObjective': {
+                    'Type': objective_type,
+                    'MetricName': objective_metric_name,
+                },
+                'ResourceLimits': {
+                    'MaxNumberOfTrainingJobs': max_jobs,
+                    'MaxParallelTrainingJobs': max_parallel_jobs,
+                },
+                'ParameterRanges': parameter_ranges,
+            },
+            'TrainingJobDefinition': {
+                'StaticHyperParameters': static_hyperparameters,
+                'AlgorithmSpecification': {
+                    'TrainingImage': image,
+                    'TrainingInputMode': input_mode,
+                },
+                'RoleArn': role,
+                'InputDataConfig': input_config,
+                'OutputDataConfig': output_config,
+                'ResourceConfig': resource_config,
+                'StoppingCondition': stop_condition,
+            }
+        }
+
+        if metric_definitions is not None:
+            tune_request['TrainingJobDefinition']['AlgorithmSpecification']['MetricDefinitions'] = metric_definitions
+
+        if tags is not None:
+            tune_request['Tags'] = tags
+
+        LOGGER.info('Creating hyperparameter tuning job with name: {}'.format(job_name))
+        LOGGER.debug('tune request: {}'.format(json.dumps(tune_request, indent=4)))
+        self.sagemaker_client.create_hyper_parameter_tuning_job(**tune_request)
+
+    def stop_tuning_job(self, name):
+        """Attempts to stop tuning job on Amazon SageMaker with specified name.
+
+        Args:
+            name: Name of Amazon SageMaker tuning job.
+        """
+        try:
+            LOGGER.info('Stopping tuning job: {}'.format(name))
+            self.sagemaker_client.stop_hyper_parameter_tuning_job(HyperParameterTuningJobName=name)
+        except ClientError as e:
+            error_code = e.response['Error']['Code']
+            # allow to pass if the job already stopped
+            if error_code == 'ValidationException':
+                LOGGER.info('Tuning job: {} is already stopped or not running.'.format(name))
+                pass
+            else:
+                LOGGER.error('Error occurred while attempting to stop tuning job: {}. Please try again.'.format(name))
+                raise
 
     def create_model(self, name, role, primary_container):
         """Create an Amazon SageMaker ``Model``.
@@ -377,23 +487,41 @@ class Session(object):
             ValueError: If the training job fails.
         """
         desc = _wait_until(lambda: _train_done(self.sagemaker_client, job), poll)
-        self._check_job_status(job, desc)
+        self._check_job_status(job, desc, 'TrainingJobStatus')
         return desc
 
-    def _check_job_status(self, job, desc):
+    def wait_for_tuning_job(self, job, poll=5):
+        """Wait for an Amazon SageMaker tuning job to complete.
+
+        Args:
+            job (str): Name of the tuning job to wait for.
+            poll (int): Polling interval in seconds (default: 5).
+
+        Returns:
+            (dict): Return value from the ``DescribeHyperParameterTuningJob`` API.
+
+        Raises:
+            ValueError: If the hyperparameter tuning job fails.
+        """
+        desc = _wait_until(lambda: _tuning_job_status(self.sagemaker_client, job), poll)
+        self._check_job_status(job, desc, 'HyperParameterTuningJobStatus')
+        return desc
+
+    def _check_job_status(self, job, desc, status_key_name):
         """Check to see if the job completed successfully and, if not, construct and
         raise a ValueError.
 
         Args:
             job (str): The name of the job to check.
             desc (dict[str, str]): The result of ``describe_training_job()``.
+            status_key_name (str): Status key name to check for.
 
         Raises:
             ValueError: If the training job fails.
         """
-        status = desc['TrainingJobStatus']
+        status = desc[status_key_name]
 
-        if status != 'Completed':
+        if status != 'Completed' and status != 'Stopped':
             reason = desc.get('FailureReason', '(No reason provided)')
             raise ValueError('Error training {}: {} Reason: {}'.format(job, status, reason))
 
@@ -579,7 +707,7 @@ class Session(object):
         client = self.boto_session.client('logs', config=config)
         log_group = '/aws/sagemaker/TrainingJobs'
 
-        job_already_completed = True if status == 'Completed' or status == 'Failed' else False
+        job_already_completed = True if status == 'Completed' or status == 'Failed' or status == 'Stopped' else False
 
         state = LogState.TAILING if wait and not job_already_completed else LogState.COMPLETE
         dot = False
@@ -651,11 +779,11 @@ class Session(object):
 
                 status = description['TrainingJobStatus']
 
-                if status == 'Completed' or status == 'Failed':
+                if status == 'Completed' or status == 'Failed' or status == 'Stopped':
                     state = LogState.JOB_COMPLETE
 
         if wait:
-            self._check_job_status(job_name, description)
+            self._check_job_status(job_name, description, 'TrainingJobStatus')
             if dot:
                 print()
             print('===== Job Complete =====')
@@ -798,6 +926,29 @@ def _train_done(sagemaker_client, job_name):
     status = desc['TrainingJobStatus']
 
     print(training_status_codes.get(status, '?'), end='')
+    sys.stdout.flush()
+
+    if status in in_progress_statuses:
+        return None
+
+    print('')
+    return desc
+
+
+def _tuning_job_status(sagemaker_client, job_name):
+    tuning_status_codes = {
+        'Completed': '!',
+        'InProgress': '.',
+        'Failed': '*',
+        'Stopped': 's',
+        'Stopping': '_'
+    }
+    in_progress_statuses = ['InProgress', 'Stopping']
+
+    desc = sagemaker_client.describe_hyper_parameter_tuning_job(HyperParameterTuningJobName=job_name)
+    status = desc['HyperParameterTuningJobStatus']
+
+    print(tuning_status_codes.get(status, '?'), end='')
     sys.stdout.flush()
 
     if status in in_progress_statuses:

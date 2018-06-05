@@ -1,4 +1,4 @@
-# Copyright 2017 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright 2017-2018 Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -10,13 +10,15 @@
 # distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
+from __future__ import absolute_import
+
 import logging
 
 import sagemaker
 
 from sagemaker.fw_utils import tar_and_upload_dir, parse_s3_url
 from sagemaker.session import Session
-from sagemaker.utils import name_from_image
+from sagemaker.utils import name_from_image, get_config_value
 
 
 class Model(object):
@@ -166,15 +168,28 @@ class FrameworkModel(Model):
         return sagemaker.container_def(self.image, self.model_data, deploy_env)
 
     def _upload_code(self, key_prefix):
-        self.uploaded_code = tar_and_upload_dir(session=self.sagemaker_session.boto_session,
-                                                bucket=self.bucket or self.sagemaker_session.default_bucket(),
-                                                s3_key_prefix=key_prefix,
-                                                script=self.entry_point,
-                                                directory=self.source_dir)
+        local_code = get_config_value('local.local_code', self.sagemaker_session.config)
+        if self.sagemaker_session.local_mode and local_code:
+            self.uploaded_code = None
+        else:
+            self.uploaded_code = tar_and_upload_dir(session=self.sagemaker_session.boto_session,
+                                                    bucket=self.bucket or self.sagemaker_session.default_bucket(),
+                                                    s3_key_prefix=key_prefix,
+                                                    script=self.entry_point,
+                                                    directory=self.source_dir)
 
     def _framework_env_vars(self):
-        return {SCRIPT_PARAM_NAME.upper(): self.uploaded_code.script_name,
-                DIR_PARAM_NAME.upper(): self.uploaded_code.s3_prefix,
-                CLOUDWATCH_METRICS_PARAM_NAME.upper(): str(self.enable_cloudwatch_metrics).lower(),
-                CONTAINER_LOG_LEVEL_PARAM_NAME.upper(): str(self.container_log_level),
-                SAGEMAKER_REGION_PARAM_NAME.upper(): self.sagemaker_session.boto_session.region_name}
+        if self.uploaded_code:
+            script_name = self.uploaded_code.script_name
+            dir_name = self.uploaded_code.s3_prefix
+        else:
+            script_name = self.entry_point
+            dir_name = 'file://' + self.source_dir
+
+        return {
+            SCRIPT_PARAM_NAME.upper(): script_name,
+            DIR_PARAM_NAME.upper(): dir_name,
+            CLOUDWATCH_METRICS_PARAM_NAME.upper(): str(self.enable_cloudwatch_metrics).lower(),
+            CONTAINER_LOG_LEVEL_PARAM_NAME.upper(): str(self.container_log_level),
+            SAGEMAKER_REGION_PARAM_NAME.upper(): self.sagemaker_session.boto_region_name
+        }

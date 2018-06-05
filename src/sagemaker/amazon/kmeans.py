@@ -1,4 +1,4 @@
-# Copyright 2017 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright 2017-2018 Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -10,6 +10,8 @@
 # distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
+from __future__ import absolute_import
+
 from sagemaker.amazon.amazon_estimator import AmazonAlgorithmEstimatorBase, registry
 from sagemaker.amazon.common import numpy_to_record_serializer, record_deserializer
 from sagemaker.amazon.hyperparameter import Hyperparameter as hp  # noqa
@@ -26,7 +28,7 @@ class KMeans(AmazonAlgorithmEstimatorBase):
 
     k = hp('k', gt(1), 'An integer greater-than 1', int)
     init_method = hp('init_method', isin('random', 'kmeans++'), 'One of "random", "kmeans++"', str)
-    max_iterations = hp('local_lloyd_max_iterations', gt(0), 'An integer greater-than 0', int)
+    max_iterations = hp('local_lloyd_max_iter', gt(0), 'An integer greater-than 0', int)
     tol = hp('local_lloyd_tol', (ge(0), le(1)), 'An float in [0, 1]', float)
     num_trials = hp('local_lloyd_num_trials', gt(0), 'An integer greater-than 0', int)
     local_init_method = hp('local_lloyd_init_method', isin('random', 'kmeans++'), 'One of "random", "kmeans++"', str)
@@ -106,8 +108,8 @@ class KMeans(AmazonAlgorithmEstimatorBase):
         s3 model data produced by this Estimator."""
         return KMeansModel(self.model_data, self.role, self.sagemaker_session)
 
-    def fit(self, records, mini_batch_size=5000, **kwargs):
-        super(KMeans, self).fit(records, mini_batch_size, **kwargs)
+    def _prepare_for_training(self, records, mini_batch_size=5000, job_name=None):
+        super(KMeans, self)._prepare_for_training(records, mini_batch_size=mini_batch_size, job_name=job_name)
 
     def hyperparameters(self):
         """Return the SageMaker hyperparameters for training this KMeans Estimator"""

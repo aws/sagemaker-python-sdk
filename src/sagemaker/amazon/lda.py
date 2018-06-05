@@ -1,4 +1,4 @@
-# Copyright 2017 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright 2017-2018 Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -10,6 +10,8 @@
 # distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
+from __future__ import absolute_import
+
 from sagemaker.amazon.amazon_estimator import AmazonAlgorithmEstimatorBase, registry
 from sagemaker.amazon.common import numpy_to_record_serializer, record_deserializer
 from sagemaker.amazon.hyperparameter import Hyperparameter as hp  # noqa
@@ -91,11 +93,12 @@ class LDA(AmazonAlgorithmEstimatorBase):
 
         return LDAModel(self.model_data, self.role, sagemaker_session=self.sagemaker_session)
 
-    def fit(self, records, mini_batch_size, **kwargs):
+    def _prepare_for_training(self, records, mini_batch_size, job_name=None):
         # mini_batch_size is required, prevent explicit calls with None
         if mini_batch_size is None:
             raise ValueError("mini_batch_size must be set")
-        super(LDA, self).fit(records, mini_batch_size, **kwargs)
+
+        super(LDA, self)._prepare_for_training(records, mini_batch_size=mini_batch_size, job_name=job_name)
 
 
 class LDAPredictor(RealTimePredictor):
