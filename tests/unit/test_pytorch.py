@@ -10,6 +10,7 @@
 # distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
+from __future__ import absolute_import
 import logging
 
 import json
@@ -44,12 +45,14 @@ CPU = 'ml.c4.xlarge'
 @pytest.fixture(name='sagemaker_session')
 def fixture_sagemaker_session():
     boto_mock = Mock(name='boto_session', region_name=REGION)
-    ims = Mock(name='sagemaker_session', boto_session=boto_mock)
-    ims.sagemaker_client.describe_training_job = Mock(return_value={'ModelArtifacts':
-                                                                    {'S3ModelArtifacts': 's3://m/m.tar.gz'}})
-    ims.default_bucket = Mock(name='default_bucket', return_value=BUCKET_NAME)
-    ims.expand_role = Mock(name="expand_role", return_value=ROLE)
-    return ims
+    session = Mock(name='sagemaker_session', boto_session=boto_mock,
+                   boto_region_name=REGION, config=None, local_mode=False)
+
+    describe = {'ModelArtifacts': {'S3ModelArtifacts': 's3://m/m.tar.gz'}}
+    session.sagemaker_client.describe_training_job = Mock(return_value=describe)
+    session.default_bucket = Mock(name='default_bucket', return_value=BUCKET_NAME)
+    session.expand_role = Mock(name="expand_role", return_value=ROLE)
+    return session
 
 
 def _get_full_cpu_image_uri(version, py_version=PYTHON_VERSION):
@@ -75,39 +78,42 @@ def _pytorch_estimator(sagemaker_session, framework_version=defaults.PYTORCH_VER
 
 
 def _create_train_job(version):
-    return {'image': _get_full_cpu_image_uri(version),
-            'input_mode': 'File',
-            'input_config': [{
-                'ChannelName': 'training',
-                'DataSource': {
-                    'S3DataSource': {
-                        'S3DataDistributionType': 'FullyReplicated',
-                        'S3DataType': 'S3Prefix'
-                    }
+    return {
+        'image': _get_full_cpu_image_uri(version),
+        'input_mode': 'File',
+        'input_config': [{
+            'ChannelName': 'training',
+            'DataSource': {
+                'S3DataSource': {
+                    'S3DataDistributionType': 'FullyReplicated',
+                    'S3DataType': 'S3Prefix'
                 }
-            }],
-            'role': ROLE,
-            'job_name': JOB_NAME,
-            'output_config': {
-                'S3OutputPath': 's3://{}/'.format(BUCKET_NAME),
-            },
-            'resource_config': {
-                'InstanceType': 'ml.c4.4xlarge',
-                'InstanceCount': 1,
-                'VolumeSizeInGB': 30,
-            },
-            'hyperparameters': {
-                'sagemaker_program': json.dumps('dummy_script.py'),
-                'sagemaker_enable_cloudwatch_metrics': 'false',
-                'sagemaker_container_log_level': str(logging.INFO),
-                'sagemaker_job_name': json.dumps(JOB_NAME),
-                'sagemaker_submit_directory':
-                    json.dumps('s3://{}/{}/source/sourcedir.tar.gz'.format(BUCKET_NAME, JOB_NAME)),
-                'sagemaker_region': '"us-west-2"'
-            },
-            'stop_condition': {
-                'MaxRuntimeInSeconds': 24 * 60 * 60
-            }}
+            }
+        }],
+        'role': ROLE,
+        'job_name': JOB_NAME,
+        'output_config': {
+            'S3OutputPath': 's3://{}/'.format(BUCKET_NAME),
+        },
+        'resource_config': {
+            'InstanceType': 'ml.c4.4xlarge',
+            'InstanceCount': 1,
+            'VolumeSizeInGB': 30,
+        },
+        'hyperparameters': {
+            'sagemaker_program': json.dumps('dummy_script.py'),
+            'sagemaker_enable_cloudwatch_metrics': 'false',
+            'sagemaker_container_log_level': str(logging.INFO),
+            'sagemaker_job_name': json.dumps(JOB_NAME),
+            'sagemaker_submit_directory':
+                json.dumps('s3://{}/{}/source/sourcedir.tar.gz'.format(BUCKET_NAME, JOB_NAME)),
+            'sagemaker_region': '"us-west-2"'
+        },
+        'stop_condition': {
+            'MaxRuntimeInSeconds': 24 * 60 * 60
+        },
+        'tags': None
+    }
 
 
 def test_create_model(sagemaker_session, pytorch_version):
