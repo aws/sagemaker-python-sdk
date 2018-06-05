@@ -24,6 +24,7 @@ import shutil
 import string
 import subprocess
 import sys
+import tarfile
 import tempfile
 from fcntl import fcntl, F_GETFL, F_SETFL
 from six.moves.urllib.parse import urlparse
@@ -137,7 +138,7 @@ class _SageMakerContainer(object):
         Args:
             primary_container (dict): dictionary containing the container runtime settings
                 for serving. Expected keys:
-                - 'ModelDataUrl' pointing to a local file
+                - 'ModelDataUrl' pointing to a file or s3:// location.
                 - 'Environment' a dictionary of environment variables to be passed to the hosting container.
 
         """
@@ -147,22 +148,17 @@ class _SageMakerContainer(object):
         logger.info('creating hosting dir in {}'.format(self.container_root))
 
         model_dir = primary_container['ModelDataUrl']
-        if not model_dir.lower().startswith("s3://"):
-            for h in self.hosts:
-                host_dir = os.path.join(self.container_root, h)
-                os.makedirs(host_dir)
-                shutil.copytree(model_dir, os.path.join(self.container_root, h, 'model'))
-
+        volumes = self._prepare_serving_volumes(model_dir)
         env_vars = ['{}={}'.format(k, v) for k, v in primary_container['Environment'].items()]
 
-        _ecr_login_if_needed(self.sagemaker_session.boto_session, self.image)
-
         # If the user script was passed as a file:// mount it to the container.
-        script_dir = primary_container['Environment'][sagemaker.estimator.DIR_PARAM_NAME.upper()]
-        parsed_uri = urlparse(script_dir)
-        volumes = []
-        if parsed_uri.scheme == 'file':
-            volumes.append(_Volume(parsed_uri.path, '/opt/ml/code'))
+        if sagemaker.estimator.DIR_PARAM_NAME.upper() in primary_container['Environment']:
+            script_dir = primary_container['Environment'][sagemaker.estimator.DIR_PARAM_NAME.upper()]
+            parsed_uri = urlparse(script_dir)
+            if parsed_uri.scheme == 'file':
+                volumes.append(_Volume(parsed_uri.path, '/opt/ml/code'))
+
+        _ecr_login_if_needed(self.sagemaker_session.boto_session, self.image)
 
         self._generate_compose_file('serve',
                                     additional_env_vars=env_vars,
@@ -278,9 +274,20 @@ class _SageMakerContainer(object):
 
             obj.download_file(file_path)
 
+    def _download_file(self, bucket_name, path, target):
+        path = path.lstrip('/')
+        boto_session = self.sagemaker_session.boto_session
+
+        s3 = boto_session.resource('s3')
+        bucket = s3.Bucket(bucket_name)
+        bucket.download_file(path, target)
+
     def _prepare_training_volumes(self, data_dir, input_data_config, hyperparameters):
         shared_dir = os.path.join(self.container_root, 'shared')
+        model_dir = os.path.join(self.container_root, 'model')
         volumes = []
+
+        volumes.append(_Volume(model_dir, '/opt/ml/model'))
         # Set up the channels for the containers. For local data we will
         # mount the local directory to the container. For S3 Data we will download the S3 data
         # first.
@@ -318,6 +325,32 @@ class _SageMakerContainer(object):
                 volumes.append(_Volume(parsed_uri.path, '/opt/ml/code'))
                 # Also mount a directory that all the containers can access.
                 volumes.append(_Volume(shared_dir, '/opt/ml/shared'))
+
+        return volumes
+
+    def _prepare_serving_volumes(self, model_location):
+        volumes = []
+        host = self.hosts[0]
+        # Make the model available to the container. If this is a local file just mount it to
+        # the container as a volume. If it is an S3 location download it and extract the tar file.
+        host_dir = os.path.join(self.container_root, host)
+        os.makedirs(host_dir)
+
+        if model_location.startswith('s3'):
+            container_model_dir = os.path.join(self.container_root, host, 'model')
+            os.makedirs(container_model_dir)
+
+            parsed_uri = urlparse(model_location)
+            filename = os.path.basename(parsed_uri.path)
+            tar_location = os.path.join(container_model_dir, filename)
+            self._download_file(parsed_uri.netloc, parsed_uri.path, tar_location)
+
+            if tarfile.is_tarfile(tar_location):
+                with tarfile.open(tar_location) as tar:
+                    tar.extractall(path=container_model_dir)
+            volumes.append(_Volume(container_model_dir, '/opt/ml/model'))
+        else:
+            volumes.append(_Volume(model_location, '/opt/ml/model'))
 
         return volumes
 
@@ -451,10 +484,6 @@ class _SageMakerContainer(object):
         Returns: (list) List of :class:`~sagemaker.local_session.Volume`
         """
         volumes = []
-
-        # Ensure that model is in the subdirs
-        if 'model' not in subdirs:
-            subdirs.add('model')
 
         for subdir in subdirs:
             host_dir = os.path.join(self.container_root, host, subdir)

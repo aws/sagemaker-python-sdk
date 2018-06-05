@@ -5,8 +5,8 @@ CHANGELOG
 1.4.2dev
 ========
 
-* bug-fix: Unit Tests: Improve unit test runtime
 * bug-fix: Estimators: Fix attach for LDA
+* feature: Allow Local Serving of Models in S3
 
 1.4.1
 =====
