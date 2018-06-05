@@ -48,7 +48,7 @@ You can install from source by cloning this repository and issuing a pip install
 
     git clone https://github.com/aws/sagemaker-python-sdk.git
     python setup.py sdist
-    pip install dist/sagemaker-1.3.0.tar.gz
+    pip install dist/sagemaker-1.4.0.tar.gz
 
 Supported Python versions
 ~~~~~~~~~~~~~~~~~~~~~~~~~

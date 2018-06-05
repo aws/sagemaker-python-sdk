@@ -15,6 +15,7 @@ from __future__ import absolute_import
 import logging
 import json
 import os
+
 import pytest
 from mock import Mock, patch
 
@@ -26,7 +27,6 @@ from sagemaker.predictor import RealTimePredictor
 MODEL_DATA = "s3://bucket/model.tar.gz"
 MODEL_IMAGE = "mi"
 ENTRY_POINT = "blah.py"
-
 
 DATA_DIR = os.path.join(os.path.dirname(__file__), '..', 'data')
 SCRIPT_NAME = 'dummy_script.py'
@@ -40,20 +40,22 @@ IMAGE_NAME = 'fakeimage'
 REGION = 'us-west-2'
 JOB_NAME = '{}-{}'.format(IMAGE_NAME, TIMESTAMP)
 
-COMMON_TRAIN_ARGS = {'volume_size': 30,
-                     'hyperparameters': {
-                         'sagemaker_program': 'dummy_script.py',
-                         'sagemaker_enable_cloudwatch_metrics': False,
-                         'sagemaker_container_log_level': logging.INFO,
-                     },
-                     'input_mode': 'File',
-                     'instance_type': 'c4.4xlarge',
-                     'inputs': 's3://mybucket/train',
-                     'instance_count': 1,
-                     'role': 'DummyRole',
-                     'kms_key_id': None,
-                     'max_run': 24,
-                     'wait': True}
+COMMON_TRAIN_ARGS = {
+    'volume_size': 30,
+    'hyperparameters': {
+        'sagemaker_program': 'dummy_script.py',
+        'sagemaker_enable_cloudwatch_metrics': False,
+        'sagemaker_container_log_level': logging.INFO,
+    },
+    'input_mode': 'File',
+    'instance_type': 'c4.4xlarge',
+    'inputs': 's3://mybucket/train',
+    'instance_count': 1,
+    'role': 'DummyRole',
+    'kms_key_id': None,
+    'max_run': 24,
+    'wait': True,
+}
 
 DESCRIBE_TRAINING_JOB_RESULT = {
     'ModelArtifacts': {
@@ -79,7 +81,6 @@ class DummyFramework(Framework):
 
 
 class DummyFrameworkModel(FrameworkModel):
-
     def __init__(self, sagemaker_session, **kwargs):
         super(DummyFrameworkModel, self).__init__(MODEL_DATA, MODEL_IMAGE, INSTANCE_TYPE, ROLE, ENTRY_POINT,
                                                   sagemaker_session=sagemaker_session, **kwargs)
@@ -238,28 +239,35 @@ def test_enable_cloudwatch_metrics(sagemaker_session):
 
 
 def test_attach_framework(sagemaker_session):
-    returned_job_description = {'AlgorithmSpecification':
-                                {'TrainingInputMode': 'File',
-                                 'TrainingImage': '1.dkr.ecr.us-west-2.amazonaws.com/sagemaker-other-py2-cpu:1.0.4'},
-                                'HyperParameters':
-                                    {'sagemaker_submit_directory': '"s3://some/sourcedir.tar.gz"',
-                                     'checkpoint_path': '"s3://other/1508872349"',
-                                     'sagemaker_program': '"iris-dnn-classifier.py"',
-                                     'sagemaker_enable_cloudwatch_metrics': 'false',
-                                     'sagemaker_container_log_level': '"logging.INFO"',
-                                     'sagemaker_job_name': '"neo"',
-                                     'training_steps': '100'},
-                                'RoleArn': 'arn:aws:iam::366:role/SageMakerRole',
-                                'ResourceConfig':
-                                    {'VolumeSizeInGB': 30,
-                                     'InstanceCount': 1,
-                                     'InstanceType': 'ml.c4.xlarge'},
-                                'StoppingCondition': {'MaxRuntimeInSeconds': 24 * 60 * 60},
-                                'TrainingJobName': 'neo',
-                                'TrainingJobStatus': 'Completed',
-                                'OutputDataConfig': {'KmsKeyId': '',
-                                                     'S3OutputPath': 's3://place/output/neo'},
-                                'TrainingJobOutput': {'S3TrainingJobOutput': 's3://here/output.tar.gz'}}
+    returned_job_description = {
+        'AlgorithmSpecification': {
+            'TrainingInputMode': 'File',
+            'TrainingImage': '1.dkr.ecr.us-west-2.amazonaws.com/sagemaker-other-py2-cpu:1.0.4',
+        },
+        'HyperParameters': {
+            'sagemaker_submit_directory': '"s3://some/sourcedir.tar.gz"',
+            'checkpoint_path': '"s3://other/1508872349"',
+            'sagemaker_program': '"iris-dnn-classifier.py"',
+            'sagemaker_enable_cloudwatch_metrics': 'false',
+            'sagemaker_container_log_level': '"logging.INFO"',
+                                 'sagemaker_job_name': '"neo"',
+            'training_steps': '100',
+        },
+        'RoleArn': 'arn:aws:iam::366:role/SageMakerRole',
+        'ResourceConfig': {
+            'VolumeSizeInGB': 30,
+            'InstanceCount': 1,
+            'InstanceType': 'ml.c4.xlarge',
+        },
+        'StoppingCondition': {'MaxRuntimeInSeconds': 24 * 60 * 60},
+        'TrainingJobName': 'neo',
+        'TrainingJobStatus': 'Completed',
+        'OutputDataConfig': {
+            'KmsKeyId': '',
+            'S3OutputPath': 's3://place/output/neo',
+        },
+        'TrainingJobOutput': {'S3TrainingJobOutput': 's3://here/output.tar.gz'},
+    }
     sagemaker_session.sagemaker_client.describe_training_job = Mock(name='describe_training_job',
                                                                     return_value=returned_job_description)
 
@@ -277,17 +285,62 @@ def test_attach_framework(sagemaker_session):
     assert framework_estimator.entry_point == 'iris-dnn-classifier.py'
 
 
-def test_fit_then_fit_again(sagemaker_session):
-    fw = DummyFramework(entry_point=SCRIPT_PATH, role=ROLE, sagemaker_session=sagemaker_session,
-                        train_instance_count=INSTANCE_COUNT, train_instance_type=INSTANCE_TYPE,
-                        enable_cloudwatch_metrics=True)
-    fw.fit(inputs=s3_input('s3://mybucket/train'))
-    first_job_name = fw.latest_training_job.name
+def test_attach_framework_with_tuning(sagemaker_session):
+    returned_job_description = {
+        'AlgorithmSpecification': {
+            'TrainingInputMode': 'File',
+            'TrainingImage': '1.dkr.ecr.us-west-2.amazonaws.com/sagemaker-other-py2-cpu:1.0.4'
+        },
+        'HyperParameters': {
+            'sagemaker_submit_directory': '"s3://some/sourcedir.tar.gz"',
+            'checkpoint_path': '"s3://other/1508872349"',
+            'sagemaker_program': '"iris-dnn-classifier.py"',
+            'sagemaker_enable_cloudwatch_metrics': 'false',
+            'sagemaker_container_log_level': '"logging.INFO"',
+            'sagemaker_job_name': '"neo"',
+            'training_steps': '100',
+            '_tuning_objective_metric': 'Validation-accuracy',
+        },
 
-    fw.fit(inputs=s3_input('s3://mybucket/train2'))
-    second_job_name = fw.latest_training_job.name
+        'RoleArn': 'arn:aws:iam::366:role/SageMakerRole',
+        'ResourceConfig': {
+            'VolumeSizeInGB': 30,
+            'InstanceCount': 1,
+            'InstanceType': 'ml.c4.xlarge'
+        },
+        'StoppingCondition': {
+            'MaxRuntimeInSeconds': 24 * 60 * 60
+        },
+        'TrainingJobName': 'neo',
+        'TrainingJobStatus': 'Completed',
+        'OutputDataConfig': {
+            'KmsKeyId': '',
+            'S3OutputPath': 's3://place/output/neo'
+        },
+        'TrainingJobOutput': {
+            'S3TrainingJobOutput': 's3://here/output.tar.gz'
+        }
+    }
 
-    assert first_job_name != second_job_name
+    mock_describe_training_job = Mock(name='describe_training_job',
+                                      return_value=returned_job_description)
+    sagemaker_session.sagemaker_client.describe_training_job = mock_describe_training_job
+
+    framework_estimator = DummyFramework.attach(training_job_name='neo',
+                                                sagemaker_session=sagemaker_session)
+    assert framework_estimator.latest_training_job.job_name == 'neo'
+    assert framework_estimator.role == 'arn:aws:iam::366:role/SageMakerRole'
+    assert framework_estimator.train_instance_count == 1
+    assert framework_estimator.train_max_run == 24 * 60 * 60
+    assert framework_estimator.input_mode == 'File'
+    assert framework_estimator.base_job_name == 'neo'
+    assert framework_estimator.output_path == 's3://place/output/neo'
+    assert framework_estimator.output_kms_key == ''
+    hyper_params = framework_estimator.hyperparameters()
+    assert hyper_params['training_steps'] == '100'
+    assert hyper_params['_tuning_objective_metric'] == '"Validation-accuracy"'
+    assert framework_estimator.source_dir == 's3://some/sourcedir.tar.gz'
+    assert framework_estimator.entry_point == 'iris-dnn-classifier.py'
 
 
 @patch('time.strftime', return_value=TIMESTAMP)
@@ -308,57 +361,83 @@ def test_fit_verify_job_name(strftime, sagemaker_session):
     assert fw.latest_training_job.name == JOB_NAME
 
 
-def test_fit_force_name(sagemaker_session):
+def test_prepare_for_training_unique_job_name_generation(sagemaker_session):
+    fw = DummyFramework(entry_point=SCRIPT_PATH, role=ROLE, sagemaker_session=sagemaker_session,
+                        train_instance_count=INSTANCE_COUNT, train_instance_type=INSTANCE_TYPE,
+                        enable_cloudwatch_metrics=True)
+    fw._prepare_for_training()
+    first_job_name = fw._current_job_name
+
+    fw._prepare_for_training()
+    second_job_name = fw._current_job_name
+
+    assert first_job_name != second_job_name
+
+
+def test_prepare_for_training_force_name(sagemaker_session):
     fw = DummyFramework(entry_point=SCRIPT_PATH, role=ROLE, sagemaker_session=sagemaker_session,
                         train_instance_count=INSTANCE_COUNT, train_instance_type=INSTANCE_TYPE,
                         base_job_name='some', enable_cloudwatch_metrics=True)
-    fw.fit(inputs=s3_input('s3://mybucket/train'), job_name='use_it')
-    assert 'use_it' == fw.latest_training_job.name
+    fw._prepare_for_training(job_name='use_it')
+    assert 'use_it' == fw._current_job_name
 
 
 @patch('time.strftime', return_value=TIMESTAMP)
-def test_fit_force_generation(strftime, sagemaker_session):
+def test_prepare_for_training_force_name_generation(strftime, sagemaker_session):
     fw = DummyFramework(entry_point=SCRIPT_PATH, role=ROLE, sagemaker_session=sagemaker_session,
                         train_instance_count=INSTANCE_COUNT, train_instance_type=INSTANCE_TYPE,
                         base_job_name='some', enable_cloudwatch_metrics=True)
     fw.base_job_name = None
-    fw.fit(inputs=s3_input('s3://mybucket/train'))
-    assert JOB_NAME == fw.latest_training_job.name
+    fw._prepare_for_training()
+    assert JOB_NAME == fw._current_job_name
 
 
 @patch('time.strftime', return_value=TIMESTAMP)
 def test_init_with_source_dir_s3(strftime, sagemaker_session):
-    uri = 'bucket/mydata'
-
     fw = DummyFramework(entry_point=SCRIPT_PATH, source_dir='s3://location', role=ROLE,
                         sagemaker_session=sagemaker_session,
                         train_instance_count=INSTANCE_COUNT, train_instance_type=INSTANCE_TYPE,
                         enable_cloudwatch_metrics=False)
-    fw.fit('s3://{}'.format(uri))
+    fw._prepare_for_training()
 
-    expected_hyperparameters = BASE_HP.copy()
-    expected_hyperparameters['sagemaker_enable_cloudwatch_metrics'] = 'false'
-    expected_hyperparameters['sagemaker_container_log_level'] = str(logging.INFO)
-    expected_hyperparameters['sagemaker_submit_directory'] = json.dumps("s3://location")
-    expected_hyperparameters['sagemaker_region'] = '"us-west-2"'
-
-    actual_hyperparameter = sagemaker_session.method_calls[1][2]['hyperparameters']
-    assert actual_hyperparameter == expected_hyperparameters
+    expected_hyperparameters = {
+        'sagemaker_program': SCRIPT_NAME,
+        'sagemaker_job_name': JOB_NAME,
+        'sagemaker_enable_cloudwatch_metrics': False,
+        'sagemaker_container_log_level': logging.INFO,
+        'sagemaker_submit_directory': 's3://location',
+        'sagemaker_region': 'us-west-2',
+    }
+    assert fw._hyperparameters == expected_hyperparameters
 
 
 # _TrainingJob 'utils'
-def test_format_input_single_unamed_channel():
-    input_dict = _TrainingJob._format_inputs_to_input_config('s3://blah/blah')
-    assert input_dict == [{
-        'ChannelName': 'training',
-        'DataSource': {
-            'S3DataSource': {
-                'S3DataDistributionType': 'FullyReplicated',
-                'S3DataType': 'S3Prefix',
-                'S3Uri': 's3://blah/blah'
-            }
-        }
-    }]
+def test_start_new(sagemaker_session):
+    training_job = _TrainingJob(sagemaker_session, JOB_NAME)
+    hyperparameters = {'mock': 'hyperparameters'}
+    inputs = 's3://mybucket/train'
+
+    estimator = Estimator(IMAGE_NAME, ROLE, INSTANCE_COUNT, INSTANCE_TYPE,
+                          output_path='s3://bucket/prefix', sagemaker_session=sagemaker_session,
+                          hyperparameters=hyperparameters)
+
+    started_training_job = training_job.start_new(estimator, inputs)
+    called_args = sagemaker_session.train.call_args
+
+    assert started_training_job.sagemaker_session == sagemaker_session
+    assert called_args[1]['hyperparameters'] == hyperparameters
+    sagemaker_session.train.assert_called_once()
+
+
+def test_start_new_not_local_mode_error(sagemaker_session):
+    training_job = _TrainingJob(sagemaker_session, JOB_NAME)
+    inputs = 'file://mybucket/train'
+
+    estimator = Estimator(IMAGE_NAME, ROLE, INSTANCE_COUNT, INSTANCE_TYPE,
+                          output_path='s3://bucket/prefix', sagemaker_session=sagemaker_session)
+    with pytest.raises(ValueError) as error:
+        training_job.start_new(estimator, inputs)
+        assert 'File URIs are supported in local mode only. Please use a S3 URI instead.' == str(error)
 
 
 def test_container_log_level(sagemaker_session):
@@ -371,82 +450,22 @@ def test_container_log_level(sagemaker_session):
     assert train_kwargs['hyperparameters']['sagemaker_container_log_level'] == '10'
 
 
-def test_format_input_multiple_channels():
-    input_list = _TrainingJob._format_inputs_to_input_config({'a': 's3://blah/blah', 'b': 's3://foo/bar'})
-    expected = [{
-        'ChannelName': 'a',
-        'DataSource': {
-            'S3DataSource': {
-                'S3DataDistributionType': 'FullyReplicated',
-                'S3DataType': 'S3Prefix',
-                'S3Uri': 's3://blah/blah'
-            }
-        }
-    },
-        {
-            'ChannelName': 'b',
-            'DataSource': {
-                'S3DataSource': {
-                    'S3DataDistributionType': 'FullyReplicated',
-                    'S3DataType': 'S3Prefix',
-                    'S3Uri': 's3://foo/bar'
-                }
-            }
-    }]
+def test_wait_without_logs(sagemaker_session):
+    training_job = _TrainingJob(sagemaker_session, JOB_NAME)
 
-    # convert back into map for comparison so list order (which is arbitrary) is ignored
-    assert {c['ChannelName']: c for c in input_list} == {c['ChannelName']: c for c in expected}
+    training_job.wait(False)
+
+    sagemaker_session.wait_for_job.assert_called_once()
+    assert not sagemaker_session.logs_for_job.called
 
 
-def test_format_input_s3_input():
-    input_dict = _TrainingJob._format_inputs_to_input_config(s3_input('s3://foo/bar', distribution='ShardedByS3Key',
-                                                                      compression='gzip', content_type='whizz',
-                                                                      record_wrapping='bang'))
-    assert input_dict == [{
-        'CompressionType': 'gzip',
-        'ChannelName': 'training',
-        'ContentType': 'whizz',
-        'DataSource': {
-            'S3DataSource': {
-                'S3DataType': 'S3Prefix',
-                'S3DataDistributionType': 'ShardedByS3Key',
-                'S3Uri': 's3://foo/bar'}},
-        'RecordWrapperType': 'bang'}]
+def test_wait_with_logs(sagemaker_session):
+    training_job = _TrainingJob(sagemaker_session, JOB_NAME)
 
+    training_job.wait()
 
-def test_dict_of_mixed_input_types():
-    input_list = _TrainingJob._format_inputs_to_input_config({
-        'a': 's3://foo/bar',
-        'b': s3_input('s3://whizz/bang')})
-
-    expected = [
-        {'ChannelName': 'a',
-         'DataSource': {
-             'S3DataSource': {
-                 'S3DataDistributionType': 'FullyReplicated',
-                 'S3DataType': 'S3Prefix',
-                 'S3Uri': 's3://foo/bar'
-             }
-         }
-         },
-        {
-            'ChannelName': 'b',
-            'DataSource': {
-                'S3DataSource': {
-                    'S3DataDistributionType': 'FullyReplicated',
-                    'S3DataType': 'S3Prefix',
-                    'S3Uri': 's3://whizz/bang'
-                }
-            }
-        }]
-
-    # convert back into map for comparison so list order (which is arbitrary) is ignored
-    assert {c['ChannelName']: c for c in input_list} == {c['ChannelName']: c for c in expected}
-
-
-def test_unsupported_type():
-    with pytest.raises(ValueError):
-        _TrainingJob._format_inputs_to_input_config(55)
+    sagemaker_session.logs_for_job.assert_called_once()
+    assert not sagemaker_session.wait_for_job.called
 
 
 def test_unsupported_type_in_dict():
@@ -480,7 +499,6 @@ BASE_TRAIN_CALL = {
     'stop_condition': {'MaxRuntimeInSeconds': 86400},
     'tags': None,
 }
-
 
 HYPERPARAMS = {'x': 1, 'y': 'hello'}
 STRINGIFIED_HYPERPARAMS = dict([(x, str(y)) for x, y in HYPERPARAMS.items()])

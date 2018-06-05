@@ -24,3 +24,4 @@ doc/_templates
 venv/
 *~
 .pytest_cache/
+*.swp

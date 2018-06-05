@@ -12,6 +12,7 @@
 # language governing permissions and limitations under the License.
 from __future__ import absolute_import
 
+import sys
 import time
 
 import re
@@ -31,20 +32,21 @@ def name_from_image(image):
     return name_from_base(base_name_from_image(image))
 
 
-def name_from_base(base):
+def name_from_base(base, max_length=63, short=False):
     """Append a timestamp to the provided string.
 
-    The appended timestamp is precise to the millisecond. This function assures that the total length of the resulting
-    string is not longer that 63, trimming the input parameter if necessary.
+    This function assures that the total length of the resulting string is not
+    longer than the specified max length, trimming the input parameter if necessary.
 
     Args:
         base (str): String used as prefix to generate the unique name.
+        max_length (int): Maximum length for the resulting string.
+        short (bool): Whether or not to use a truncated timestamp.
 
     Returns:
-        str: Input parameter with appended timestamp (no longer than 63 characters).
+        str: Input parameter with appended timestamp.
     """
-    max_length = 63
-    timestamp = sagemaker_timestamp()
+    timestamp = sagemaker_short_timestamp() if short else sagemaker_timestamp()
     trimmed_base = base[:max_length - len(timestamp) - 1]
     return '{}-{}'.format(trimmed_base, timestamp)
 
@@ -70,6 +72,11 @@ def sagemaker_timestamp():
     return time.strftime("%Y-%m-%d-%H-%M-%S-{}".format(moment_ms), time.gmtime(moment))
 
 
+def sagemaker_short_timestamp():
+    """Return a timestamp that is relatively short in length"""
+    return time.strftime('%y%m%d-%H%M')
+
+
 def debug(func):
     """Print the function name and arguments for debugging."""
     @wraps(func)
@@ -92,3 +99,40 @@ def get_config_value(key_path, config):
             return None
 
     return current_section
+
+
+def to_str(value):
+    """Convert the input to a string, unless it is a unicode string in Python 2.
+
+    Unicode strings are supported as native strings in Python 3, but ``str()`` cannot be
+    invoked on unicode strings in Python 2, so we need to check for that case when
+    converting user-specified values to strings.
+
+    Args:
+        value: The value to convert to a string.
+
+    Returns:
+        str or unicode: The string representation of the value or the unicode string itself.
+    """
+    if sys.version_info.major < 3 and isinstance(value, unicode):  # noqa: F821
+        return value
+    else:
+        return str(value)
+
+
+class DeferredError(object):
+    """Stores an exception and raises it at a later time anytime this
+    object is accessed in any way.  Useful to allow soft-dependencies on imports,
+    so that the ImportError can be raised again later if code actually
+    relies on the missing library.
+    """
+
+    def __init__(self, exception):
+        self.exc = exception
+
+    def __getattr__(self, name):
+        """Called by Python interpreter before using any method or property
+        on the object.  So this will short-circuit essentially any access to this
+        object.
+        """
+        raise self.exc

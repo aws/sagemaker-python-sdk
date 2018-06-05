@@ -218,22 +218,17 @@ FEATURE_DIM = 10
 DEFAULT_MINI_BATCH_SIZE = 1000
 
 
-@patch('sagemaker.amazon.amazon_estimator.AmazonAlgorithmEstimatorBase.fit')
-def test_call_fit_calculate_batch_size_1(base_fit, sagemaker_session):
+def test_prepare_for_training_calculate_batch_size_1(sagemaker_session):
     lr = LinearLearner(base_job_name='lr', sagemaker_session=sagemaker_session, **ALL_REQ_ARGS)
 
     data = RecordSet('s3://{}/{}'.format(BUCKET_NAME, PREFIX), num_records=1, feature_dim=FEATURE_DIM, channel='train')
 
-    lr.fit(data)
+    lr._prepare_for_training(data)
 
-    base_fit.assert_called_once()
-    assert len(base_fit.call_args[0]) == 2
-    assert base_fit.call_args[0][0] == data
-    assert base_fit.call_args[0][1] == 1
+    assert lr.mini_batch_size == 1
 
 
-@patch('sagemaker.amazon.amazon_estimator.AmazonAlgorithmEstimatorBase.fit')
-def test_call_fit_calculate_batch_size_2(base_fit, sagemaker_session):
+def test_prepare_for_training_calculate_batch_size_2(sagemaker_session):
     lr = LinearLearner(base_job_name='lr', sagemaker_session=sagemaker_session, **ALL_REQ_ARGS)
 
     data = RecordSet('s3://{}/{}'.format(BUCKET_NAME, PREFIX),
@@ -241,12 +236,36 @@ def test_call_fit_calculate_batch_size_2(base_fit, sagemaker_session):
                      feature_dim=FEATURE_DIM,
                      channel='train')
 
-    lr.fit(data)
+    lr._prepare_for_training(data)
 
-    base_fit.assert_called_once()
-    assert len(base_fit.call_args[0]) == 2
-    assert base_fit.call_args[0][0] == data
-    assert base_fit.call_args[0][1] == DEFAULT_MINI_BATCH_SIZE
+    assert lr.mini_batch_size == DEFAULT_MINI_BATCH_SIZE
+
+
+def test_prepare_for_training_multiple_channel(sagemaker_session):
+    lr = LinearLearner(base_job_name='lr', sagemaker_session=sagemaker_session, **ALL_REQ_ARGS)
+
+    data = RecordSet('s3://{}/{}'.format(BUCKET_NAME, PREFIX),
+                     num_records=10000,
+                     feature_dim=FEATURE_DIM,
+                     channel='train')
+
+    lr._prepare_for_training([data, data])
+
+    assert lr.mini_batch_size == DEFAULT_MINI_BATCH_SIZE
+
+
+def test_prepare_for_training_multiple_channel_no_train(sagemaker_session):
+    lr = LinearLearner(base_job_name='lr', sagemaker_session=sagemaker_session, **ALL_REQ_ARGS)
+
+    data = RecordSet('s3://{}/{}'.format(BUCKET_NAME, PREFIX),
+                     num_records=10000,
+                     feature_dim=FEATURE_DIM,
+                     channel='mock')
+
+    with pytest.raises(ValueError) as ex:
+        lr._prepare_for_training([data, data])
+
+    assert 'Must provide train channel.' in str(ex)
 
 
 @patch('sagemaker.amazon.amazon_estimator.AmazonAlgorithmEstimatorBase.fit')

@@ -143,15 +143,17 @@ def test_call_fit(base_fit, sagemaker_session):
     assert base_fit.call_args[0][1] == MINI_BATCH_SIZE
 
 
-def test_call_fit_none_mini_batch_size(sagemaker_session):
+def test_prepare_for_training_no_mini_batch_size(sagemaker_session):
     pca = PCA(base_job_name='pca', sagemaker_session=sagemaker_session, **ALL_REQ_ARGS)
 
     data = RecordSet('s3://{}/{}'.format(BUCKET_NAME, PREFIX), num_records=1, feature_dim=FEATURE_DIM,
                      channel='train')
-    pca.fit(data)
+    pca._prepare_for_training(data)
+
+    assert pca.mini_batch_size == 1
 
 
-def test_call_fit_wrong_type_mini_batch_size(sagemaker_session):
+def test_prepare_for_training_wrong_type_mini_batch_size(sagemaker_session):
     pca = PCA(base_job_name='pca', sagemaker_session=sagemaker_session, **ALL_REQ_ARGS)
 
     data = RecordSet('s3://{}/{}'.format(BUCKET_NAME, PREFIX), num_records=1, feature_dim=FEATURE_DIM,
@@ -159,6 +161,29 @@ def test_call_fit_wrong_type_mini_batch_size(sagemaker_session):
 
     with pytest.raises((TypeError, ValueError)):
         pca.fit(data, 'some')
+
+
+def test_prepare_for_training_multiple_channel(sagemaker_session):
+    lr = PCA(base_job_name='lr', sagemaker_session=sagemaker_session, **ALL_REQ_ARGS)
+
+    data = RecordSet('s3://{}/{}'.format(BUCKET_NAME, PREFIX), num_records=1, feature_dim=FEATURE_DIM,
+                     channel='train')
+
+    lr._prepare_for_training([data, data])
+
+    assert lr.mini_batch_size == 1
+
+
+def test_prepare_for_training_multiple_channel_no_train(sagemaker_session):
+    lr = PCA(base_job_name='lr', sagemaker_session=sagemaker_session, **ALL_REQ_ARGS)
+
+    data = RecordSet('s3://{}/{}'.format(BUCKET_NAME, PREFIX), num_records=1, feature_dim=FEATURE_DIM,
+                     channel='mock')
+
+    with pytest.raises(ValueError) as ex:
+        lr._prepare_for_training([data, data])
+
+    assert 'Must provide train channel.' in str(ex)
 
 
 def test_model_image(sagemaker_session):

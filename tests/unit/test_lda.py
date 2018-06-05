@@ -147,32 +147,32 @@ def test_call_fit(base_fit, sagemaker_session):
     assert base_fit.call_args[0][1] == MINI_BATCH_SZIE
 
 
-def test_call_fit_none_mini_batch_size(sagemaker_session):
+def test_prepare_for_training_no_mini_batch_size(sagemaker_session):
     lda = LDA(base_job_name='lda', sagemaker_session=sagemaker_session, **ALL_REQ_ARGS)
 
     data = RecordSet('s3://{}/{}'.format(BUCKET_NAME, PREFIX), num_records=1, feature_dim=FEATURE_DIM,
                      channel='train')
     with pytest.raises(ValueError):
-        lda.fit(data, None)
+        lda._prepare_for_training(data, None)
 
 
-def test_call_fit_wrong_type_mini_batch_size(sagemaker_session):
+def test_prepare_for_training_wrong_type_mini_batch_size(sagemaker_session):
     lda = LDA(base_job_name='lda', sagemaker_session=sagemaker_session, **ALL_REQ_ARGS)
 
     data = RecordSet('s3://{}/{}'.format(BUCKET_NAME, PREFIX), num_records=1, feature_dim=FEATURE_DIM,
                      channel='train')
 
     with pytest.raises(ValueError):
-        lda.fit(data, 'some')
+        lda._prepare_for_training(data, 'some')
 
 
-def test_call_fit_wrong_value_mini_batch_size(sagemaker_session):
+def test_prepare_for_training_wrong_value_mini_batch_size(sagemaker_session):
     lda = LDA(base_job_name='lda', sagemaker_session=sagemaker_session, **ALL_REQ_ARGS)
 
     data = RecordSet('s3://{}/{}'.format(BUCKET_NAME, PREFIX), num_records=1, feature_dim=FEATURE_DIM,
                      channel='train')
     with pytest.raises(ValueError):
-        lda.fit(data, 0)
+        lda._prepare_for_training(data, 0)
 
 
 def test_model_image(sagemaker_session):

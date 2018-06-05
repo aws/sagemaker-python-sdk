@@ -108,8 +108,8 @@ class KMeans(AmazonAlgorithmEstimatorBase):
         s3 model data produced by this Estimator."""
         return KMeansModel(self.model_data, self.role, self.sagemaker_session)
 
-    def fit(self, records, mini_batch_size=5000, **kwargs):
-        super(KMeans, self).fit(records, mini_batch_size, **kwargs)
+    def _prepare_for_training(self, records, mini_batch_size=5000, job_name=None):
+        super(KMeans, self)._prepare_for_training(records, mini_batch_size=mini_batch_size, job_name=job_name)
 
     def hyperparameters(self):
         """Return the SageMaker hyperparameters for training this KMeans Estimator"""
