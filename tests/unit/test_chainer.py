@@ -120,7 +120,8 @@ def _create_train_job(version):
         },
         'stop_condition': {
             'MaxRuntimeInSeconds': 24 * 60 * 60
-        }
+        },
+        'tags': None,
     }
 
 

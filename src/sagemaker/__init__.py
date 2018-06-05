@@ -23,6 +23,7 @@ from sagemaker.amazon.ntm import NTM, NTMModel, NTMPredictor  # noqa: F401
 from sagemaker.amazon.randomcutforest import (RandomCutForest, RandomCutForestModel,  # noqa: F401
                                               RandomCutForestPredictor)
 
+from sagemaker.analytics import TrainingJobAnalytics, HyperparameterTuningJobAnalytics  # noqa: F401
 from sagemaker.local.local_session import LocalSession  # noqa: F401
 
 from sagemaker.model import Model  # noqa: F401

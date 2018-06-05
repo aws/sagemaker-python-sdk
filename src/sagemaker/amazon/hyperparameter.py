@@ -46,7 +46,6 @@ class Hyperparameter(object):
                 raise ValueError(error_message)
 
     def __get__(self, obj, objtype):
-        """Return the value of this hyperparameter"""
         if '_hyperparameters' not in dir(obj) or self.name not in obj._hyperparameters:
             raise AttributeError()
         return obj._hyperparameters[self.name]

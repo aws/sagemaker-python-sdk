@@ -92,12 +92,33 @@ class PCA(AmazonAlgorithmEstimatorBase):
 
         return PCAModel(self.model_data, self.role, sagemaker_session=self.sagemaker_session)
 
-    def fit(self, records, mini_batch_size=None, **kwargs):
+    def _prepare_for_training(self, records, mini_batch_size=None, job_name=None):
+        """Set hyperparameters needed for training.
+
+        Args:
+            * records (:class:`~RecordSet`): The records to train this ``Estimator`` on.
+            * mini_batch_size (int or None): The size of each mini-batch to use when training. If ``None``, a
+                default value will be used.
+            * job_name (str): Name of the training job to be created. If not specified, one is generated,
+                using the base name given to the constructor if applicable.
+        """
+        num_records = None
+        if isinstance(records, list):
+            for record in records:
+                if record.channel == 'train':
+                    num_records = record.num_records
+                    break
+            if num_records is None:
+                raise ValueError('Must provide train channel.')
+        else:
+            num_records = records.num_records
+
         # mini_batch_size is a required parameter
         default_mini_batch_size = min(self.DEFAULT_MINI_BATCH_SIZE,
-                                      max(1, int(records.num_records / self.train_instance_count)))
+                                      max(1, int(num_records / self.train_instance_count)))
         use_mini_batch_size = mini_batch_size or default_mini_batch_size
-        super(PCA, self).fit(records, use_mini_batch_size, **kwargs)
+
+        super(PCA, self)._prepare_for_training(records=records, mini_batch_size=use_mini_batch_size, job_name=job_name)
 
 
 class PCAPredictor(RealTimePredictor):

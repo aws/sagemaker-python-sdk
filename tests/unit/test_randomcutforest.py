@@ -141,16 +141,18 @@ def test_call_fit(base_fit, sagemaker_session):
     assert base_fit.call_args[0][1] == MINI_BATCH_SIZE
 
 
-def test_call_fit_none_mini_batch_size(sagemaker_session):
+def test_prepare_for_training_no_mini_batch_size(sagemaker_session):
     randomcutforest = RandomCutForest(base_job_name="randomcutforest", sagemaker_session=sagemaker_session,
                                       **ALL_REQ_ARGS)
 
     data = RecordSet("s3://{}/{}".format(BUCKET_NAME, PREFIX), num_records=1, feature_dim=FEATURE_DIM,
                      channel='train')
-    randomcutforest.fit(data)
+    randomcutforest._prepare_for_training(data)
+
+    assert randomcutforest.mini_batch_size == MINI_BATCH_SIZE
 
 
-def test_call_fit_wrong_type_mini_batch_size(sagemaker_session):
+def test_prepare_for_training_wrong_type_mini_batch_size(sagemaker_session):
     randomcutforest = RandomCutForest(base_job_name="randomcutforest", sagemaker_session=sagemaker_session,
                                       **ALL_REQ_ARGS)
 
@@ -158,10 +160,10 @@ def test_call_fit_wrong_type_mini_batch_size(sagemaker_session):
                      channel='train')
 
     with pytest.raises((TypeError, ValueError)):
-        randomcutforest.fit(data, 1234)
+        randomcutforest._prepare_for_training(data, 1234)
 
 
-def test_call_fit_feature_dim_greater_than_max_allowed(sagemaker_session):
+def test_prepare_for_training_feature_dim_greater_than_max_allowed(sagemaker_session):
     randomcutforest = RandomCutForest(base_job_name="randomcutforest", sagemaker_session=sagemaker_session,
                                       **ALL_REQ_ARGS)
 
@@ -169,7 +171,7 @@ def test_call_fit_feature_dim_greater_than_max_allowed(sagemaker_session):
                      channel='train')
 
     with pytest.raises((TypeError, ValueError)):
-        randomcutforest.fit(data)
+        randomcutforest._prepare_for_training(data)
 
 
 def test_model_image(sagemaker_session):
