@@ -1,5 +1,8 @@
+import argparse
+import json
 import logging
 import os
+import sys
 import torch
 import torch.distributed as dist
 import torch.nn as nn
@@ -11,12 +14,13 @@ from torchvision import datasets, transforms
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
+logger.addHandler(logging.StreamHandler(sys.stdout))
 
 
 class Net(nn.Module):
     # Based on https://github.com/pytorch/examples/blob/master/mnist/main.py
     def __init__(self):
-        logger.info("Create neural network module")
+        logger.info('Create neural network module')
 
         super(Net, self).__init__()
         self.conv1 = nn.Conv2d(1, 10, kernel_size=5)
@@ -36,7 +40,7 @@ class Net(nn.Module):
 
 
 def _get_train_data_loader(training_dir, is_distributed, **kwargs):
-    logger.info("Get train data loader")
+    logger.info('Get train data loader')
     dataset = datasets.MNIST(training_dir, train=True, transform=transforms.Compose([
         transforms.ToTensor(),
         transforms.Normalize((0.1307,), (0.3081,))
@@ -48,7 +52,7 @@ def _get_train_data_loader(training_dir, is_distributed, **kwargs):
 
 
 def _get_test_data_loader(training_dir, **kwargs):
-    logger.info("Get test data loader")
+    logger.info('Get test data loader')
     return torch.utils.data.DataLoader(
         datasets.MNIST(training_dir, train=False, transform=transforms.Compose([
             transforms.ToTensor(),
@@ -65,26 +69,24 @@ def _average_gradients(model):
         param.grad.data /= size
 
 
-def train(channel_input_dirs, num_gpus, hosts, host_rank, master_addr, master_port):
-    training_dir = channel_input_dirs['training']
-    world_size = len(hosts)
+def train(args):
+    world_size = len(args.hosts)
     is_distributed = world_size > 1
-    logger.debug("Number of hosts {}. Distributed training - {}".format(world_size, is_distributed))
-    use_cuda = num_gpus > 0
-    logger.debug("Number of gpus available - {}".format(num_gpus))
+    logger.debug('Number of hosts {}. Distributed training - {}'.format(world_size, is_distributed))
+    use_cuda = args.num_gpus > 0
+    logger.debug('Number of gpus available - {}'.format(args.num_gpus))
     kwargs = {'num_workers': 1, 'pin_memory': True} if use_cuda else {}
-    device = torch.device("cuda" if use_cuda else "cpu")
+    device = torch.device('cuda' if use_cuda else 'cpu')
 
     if is_distributed:
         # Initialize the distributed environment.
         backend = 'gloo'
         os.environ['WORLD_SIZE'] = str(world_size)
-        os.environ['MASTER_ADDR'] = master_addr
-        os.environ['MASTER_PORT'] = master_port
+        host_rank = args.hosts.index(args.current_host)
         dist.init_process_group(backend=backend, rank=host_rank, world_size=world_size)
         logger.info('Initialized the distributed environment: \'{}\' backend on {} nodes. '.format(
             backend, dist.get_world_size()) + 'Current host rank is {}. Is cuda available: {}. Number of gpus: {}'.format(
-            dist.get_rank(), torch.cuda.is_available(), num_gpus))
+            dist.get_rank(), torch.cuda.is_available(), args.num_gpus))
 
     # set the seed for generating random numbers
     seed = 1
@@ -92,15 +94,15 @@ def train(channel_input_dirs, num_gpus, hosts, host_rank, master_addr, master_po
     if use_cuda:
         torch.cuda.manual_seed(seed)
 
-    train_sampler, train_loader = _get_train_data_loader(training_dir, is_distributed, **kwargs)
-    test_loader = _get_test_data_loader(training_dir, **kwargs)
+    train_sampler, train_loader = _get_train_data_loader(args.data_dir, is_distributed, **kwargs)
+    test_loader = _get_test_data_loader(args.data_dir, **kwargs)
 
-    logger.debug("Processes {}/{} ({:.0f}%) of train data".format(
+    logger.debug('Processes {}/{} ({:.0f}%) of train data'.format(
         len(train_loader.sampler), len(train_loader.dataset),
         100. * len(train_loader.sampler) / len(train_loader.dataset)
     ))
 
-    logger.debug("Processes {}/{} ({:.0f}%) of test data".format(
+    logger.debug('Processes {}/{} ({:.0f}%) of test data'.format(
         len(test_loader.sampler), len(test_loader.dataset),
         100. * len(test_loader.sampler) / len(test_loader.dataset)
     ))
@@ -108,22 +110,21 @@ def train(channel_input_dirs, num_gpus, hosts, host_rank, master_addr, master_po
     model = Net().to(device)
     if is_distributed and use_cuda:
         # multi-machine multi-gpu case
-        logger.debug("Multi-machine multi-gpu: using DistributedDataParallel.")
+        logger.debug('Multi-machine multi-gpu: using DistributedDataParallel.')
         model = torch.nn.parallel.DistributedDataParallel(model)
     elif use_cuda:
         # single-machine multi-gpu case
-        logger.debug("Single-machine multi-gpu: using DataParallel().cuda().")
+        logger.debug('Single-machine multi-gpu: using DataParallel().cuda().')
         model = torch.nn.DataParallel(model)
     else:
         # single-machine or multi-machine cpu case
-        logger.debug("Single-machine/multi-machine cpu: using DataParallel.")
+        logger.debug('Single-machine/multi-machine cpu: using DataParallel.')
         model = torch.nn.DataParallel(model)
 
     optimizer = optim.SGD(model.parameters(), lr=0.1, momentum=0.5)
 
-    epochs = 3
     log_interval = 100
-    for epoch in range(1, epochs + 1):
+    for epoch in range(1, args.epochs + 1):
         if is_distributed:
             train_sampler.set_epoch(epoch)
         model.train()
@@ -142,7 +143,7 @@ def train(channel_input_dirs, num_gpus, hosts, host_rank, master_addr, master_po
                     epoch, batch_idx * len(data), len(train_loader.sampler),
                     100. * batch_idx / len(train_loader), loss.item()))
         test(model, test_loader, device)
-    return model
+    save_model(model, args.model_dir)
 
 
 def test(model, test_loader, device):
@@ -168,3 +169,25 @@ def model_fn(model_dir):
     with open(os.path.join(model_dir, 'model.pth'), 'rb') as f:
         model.load_state_dict(torch.load(f))
     return model
+
+
+def save_model(model, model_dir):
+    logger.info('Saving the model.')
+    path = os.path.join(model_dir, 'model.pth')
+    # recommended way from http://pytorch.org/docs/master/notes/serialization.html
+    torch.save(model.state_dict(), path)
+
+
+if __name__ == '__main__':
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--epochs', type=int, default=1, metavar='N')
+
+    # Container environment
+    parser.add_argument('--hosts', type=list, default=json.loads(os.environ['SM_HOSTS']))
+    parser.add_argument('--current-host', type=str, default=os.environ['SM_CURRENT_HOST'])
+    parser.add_argument('--model-dir', type=str, default=os.environ['SM_MODEL_DIR'])
+    parser.add_argument('--data-dir', type=str, default=os.environ['SM_CHANNEL_TRAINING'])
+    parser.add_argument('--num-gpus', type=int, default=os.environ['SM_NUM_GPUS'])
+    parser.add_argument('--num-cpus', type=int, default=os.environ['SM_NUM_CPUS'])
+
+    train(parser.parse_args())
