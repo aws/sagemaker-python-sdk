@@ -2,6 +2,11 @@
 CHANGELOG
 =========
 
+1.4.2dev
+========
+
+* bug-fix: Unit Tests: Improve unit test runtime
+
 1.4.1
 =====
 
@@ -12,7 +17,6 @@ CHANGELOG
 
 * bug-fix: Remove __all__ and add noqa in __init__
 * bug-fix: Estimators: Change max_iterations hyperparameter key for KMeans
-* bug-fix: Unit Tests: Improve unit test runtime
 * bug-fix: Estimators: Remove unused argument job_details for ``EstimatorBase.attach()``
 * bug-fix: Local Mode: Show logs in Jupyter notebooks
 * feature: HyperparameterTuner: Add support for hyperparameter tuning jobs
