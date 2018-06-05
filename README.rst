@@ -202,6 +202,10 @@ With MXNet Estimators, you can train and host MXNet models on Amazon SageMaker.
 
 Supported versions of MXNet: ``1.1.0``, ``1.0.0``, ``0.12.1``.
 
+More details at `MXNet SageMaker Estimators and Models`_.
+
+.. _MXNet SageMaker Estimators and Models: src/sagemaker/mxnet/README.rst
+
 
 TensorFlow SageMaker Estimators
 -------------------------------
@@ -212,6 +216,9 @@ models on SageMaker Hosting.
 
 Supported versions of TensorFlow: ``1.4.1``, ``1.5.0``, ``1.6.0``.
 
+More details at `TensorFlow SageMaker Estimators and Models`_.
+
+.. _TensorFlow SageMaker Estimators and Models: src/sagemaker/tensorflow/README.rst
 
 
 Chainer SageMaker Estimators
@@ -223,6 +230,9 @@ Supported versions of Chainer: ``4.0.0``
 
 You can visit the Chainer repository at https://github.com/chainer/chainer.
 
+More details at `Chainer SageMaker Estimators and Models`_.
+
+.. _Chainer SageMaker Estimators and Models: src/sagemaker/chainer/README.rst
 
 
 AWS SageMaker Estimators
@@ -232,6 +242,10 @@ Amazon SageMaker provides several built-in machine learning algorithms that you 
 The full list of algorithms is available on the AWS website: https://docs.aws.amazon.com/sagemaker/latest/dg/algos.html
 
 SageMaker Python SDK includes Estimator wrappers for the AWS K-means, Principal Components Analysis(PCA), Linear Learner, Factorization Machines, Latent Dirichlet Allocation(LDA), Neural Topic Model(NTM) and Random Cut Forest algorithms.
+
+More details at `AWS SageMaker Estimators and Models`_.
+
+.. _AWS SageMaker Estimators and Models: src/sagemaker/amazon/README.rst
 
 
 BYO Docker Containers with SageMaker Estimators
