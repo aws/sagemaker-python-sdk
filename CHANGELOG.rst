@@ -2,6 +2,11 @@
 CHANGELOG
 =========
 
+1.4.1
+=====
+
+* bug-fix: Local Mode: Fix for non Framework containers
+
 1.4.0
 =====
 
