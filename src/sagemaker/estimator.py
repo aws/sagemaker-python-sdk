@@ -319,7 +319,7 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):
 
     @property
     def training_job_analytics(self):
-        """Returns a TrainingJobAnalytics object for the current training job.
+        """Return a ``TrainingJobAnalytics`` object for the current training job.
         """
         if self._current_job_name is None:
             raise ValueError('Estimator is not associated with a TrainingJob')
