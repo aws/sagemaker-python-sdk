@@ -30,7 +30,7 @@ Table of Contents
 5. `Chainer SageMaker Estimators <#chainer-sagemaker-estimators>`__
 6. `AWS SageMaker Estimators <#aws-sagemaker-estimators>`__
 7. `BYO Docker Containers with SageMaker Estimators <#byo-docker-containers-with-sagemaker-estimators>`__
-8. `SageMaker Automatic Model Tuning <#sagmaker-automatic-model-tuning>`__
+8. `SageMaker Automatic Model Tuning <#sagemaker-automatic-model-tuning>`__
 9. `BYO Model <#byo-model>`__
 
 
@@ -310,8 +310,8 @@ For more detailed examples of running hyperparameter tuning jobs, see: https://g
 
 For more detailed explanations of the classes mentioned, see:
 
-- `API docs for HyperparameterTuner and parameter range classes <https://sagemaker.readthedocs.io/en/latest/tuner.html>`__.
-- `API docs for analytics classes <https://sagemaker.readthedocs.io/en/latest/analytics.html>`__.
+- `API docs for HyperparameterTuner and parameter range classes <https://sagemaker.readthedocs.io/en/latest/tuner.html>`__
+- `API docs for analytics classes <https://sagemaker.readthedocs.io/en/latest/analytics.html>`__
 
 
 FAQ
