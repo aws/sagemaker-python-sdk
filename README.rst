@@ -312,7 +312,7 @@ For example, the ``dataframe`` method gets a pandas dataframe summarizing the as
 
 For more detailed examples of running hyperparameter tuning jobs, see: https://github.com/awslabs/amazon-sagemaker-examples.
 
-For more detailed explanations of the HyperparameterTuner and analytics classes, see:
+For more detailed explanations of the classes that this library provides for automatic model tuning, see:
 
 - `API docs for HyperparameterTuner and parameter range classes <https://sagemaker.readthedocs.io/en/latest/tuner.html>`__.
 - `API docs for analytics classes <https://sagemaker.readthedocs.io/en/latest/analytics.html>`__.
