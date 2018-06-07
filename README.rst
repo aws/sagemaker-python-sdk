@@ -268,7 +268,10 @@ The example notebook is is located here:
 SageMaker Automatic Model Tuning
 --------------------------------
 
-All of the estimators can be used with SageMaker Automatic Model Tuning, which performs hyperparameter tuning jobs. A hyperparameter tuning job runs multiple training jobs that differ by their hyperparameters to find the best one. The SageMaker Python SDK contains a ``HyperparameterTuner`` class for creating and interacting with hyperparameter training jobs.  You can read more about SageMaker Automatic Model Tuning in the `AWS documentation <https://docs.aws.amazon.com/sagemaker/latest/dg/automatic-model-tuning.html>`__.
+All of the estimators can be used with SageMaker Automatic Model Tuning, which performs hyperparameter tuning jobs.
+A hyperparameter tuning job runs multiple training jobs that differ by the values of their hyperparameters to find the best training job.
+The SageMaker Python SDK contains a ``HyperparameterTuner`` class for creating and interacting with hyperparameter training jobs.
+You can read more about SageMaker Automatic Model Tuning in the `AWS documentation <https://docs.aws.amazon.com/sagemaker/latest/dg/automatic-model-tuning.html>`__.
 
 Here is a basic example of how to use ``HyperparameterTuner`` to start tuning jobs instead of using an estimator to start training jobs:
 
@@ -296,7 +299,8 @@ Here is a basic example of how to use ``HyperparameterTuner`` to start tuning jo
     # Tear down the SageMaker endpoint
     my_tuner.delete_endpoint()
 
-There is also an analytics object with each ``HyperparameterTuner`` instance, which presents useful information about the hyperparameter tuning job, like a pandas dataframe summarizing the associated training jobs:
+There is also an analytics object associated with each ``HyperparameterTuner`` instance that presents useful information about the hyperparameter tuning job.
+For example, the ``dataframe`` method gets a pandas dataframe summarizing the associated training jobs:
 
 .. code:: python
 
@@ -308,7 +312,7 @@ There is also an analytics object with each ``HyperparameterTuner`` instance, wh
 
 For more detailed examples of running hyperparameter tuning jobs, see: https://github.com/awslabs/amazon-sagemaker-examples.
 
-For more detailed explanations of the classes mentioned, see:
+For more detailed explanations of the classes that this library provides for automatic model tuning, see:
 
 - `API docs for HyperparameterTuner and parameter range classes <https://sagemaker.readthedocs.io/en/latest/tuner.html>`__
 - `API docs for analytics classes <https://sagemaker.readthedocs.io/en/latest/analytics.html>`__
