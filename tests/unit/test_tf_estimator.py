@@ -19,7 +19,7 @@ import os
 import pytest
 from mock import patch, Mock
 
-from sagemaker.fw_utils import create_image_uri
+from sagemaker.fw_utils import create_image_uri, UploadedCode
 from sagemaker.model import MODEL_SERVER_WORKERS_PARAM_NAME
 from sagemaker.session import s3_input
 from sagemaker.tensorflow import defaults, TensorFlow, TensorFlowModel, TensorFlowPredictor
@@ -207,19 +207,22 @@ def test_create_model(sagemaker_session, tf_version):
 
 @patch('time.strftime', return_value=TIMESTAMP)
 @patch('time.time', return_value=TIME)
-def test_tf(time, strftime, sagemaker_session, tf_version):
+@patch('sagemaker.estimator.tar_and_upload_dir')
+@patch('sagemaker.model.tar_and_upload_dir')
+def test_tf(m_tar, e_tar, time, strftime, sagemaker_session, tf_version):
     tf = TensorFlow(entry_point=SCRIPT_FILE, role=ROLE, sagemaker_session=sagemaker_session, training_steps=1000,
                     evaluation_steps=10, train_instance_count=INSTANCE_COUNT, train_instance_type=INSTANCE_TYPE,
                     framework_version=tf_version, requirements_file=REQUIREMENTS_FILE, source_dir=DATA_DIR)
 
     inputs = 's3://mybucket/train'
-
+    s3_prefix = 's3://{}/{}/source/sourcedir.tar.gz'.format(BUCKET_NAME, JOB_NAME)
+    e_tar.return_value = UploadedCode(s3_prefix=s3_prefix, script_name=SCRIPT_FILE)
+    s3_prefix = 's3://{}/{}/sourcedir.tar.gz'.format(BUCKET_NAME, JOB_NAME)
+    m_tar.return_value = UploadedCode(s3_prefix=s3_prefix, script_name=SCRIPT_FILE)
     tf.fit(inputs=inputs)
 
     call_names = [c[0] for c in sagemaker_session.method_calls]
     assert call_names == ['train', 'logs_for_job']
-    boto_call_names = [c[0] for c in sagemaker_session.boto_session.method_calls]
-    assert boto_call_names == ['resource']
 
     expected_train_args = _create_train_job(tf_version)
     expected_train_args['input_config'][0]['DataSource']['S3DataSource']['S3Uri'] = inputs
