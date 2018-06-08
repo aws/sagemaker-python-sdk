@@ -18,10 +18,12 @@ import tensorflow as tf
 
 
 def estimator_fn(run_config, hyperparameters):
-    input_tensor_name = hyperparameters['input_tensor_name']
+    input_tensor_name = hyperparameters.get('input_tensor_name', 'inputs')
+    learning_rate = hyperparameters.get('learning_rate', 0.05)
     feature_columns = [tf.feature_column.numeric_column(input_tensor_name, shape=[4])]
     return tf.estimator.DNNClassifier(feature_columns=feature_columns,
                                       hidden_units=[10, 20, 10],
+                                      optimizer=tf.train.AdagradOptimizer(learning_rate=learning_rate),
                                       n_classes=3,
                                       config=run_config)
 
