@@ -6,6 +6,7 @@ CHANGELOG
 ========
 
 * bug-fix: Unit Tests: Improve unit test runtime
+* bug-fix: Estimators: Fix attach for LDA
 
 1.4.1
 =====
