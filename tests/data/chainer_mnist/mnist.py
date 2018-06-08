@@ -72,6 +72,7 @@ if __name__ == '__main__':
     parser.add_argument('--epochs', type=int, default=20)
     parser.add_argument('--frequency', type=int, default=20)
     parser.add_argument('--batch-size', type=int, default=100)
+    parser.add_argument('--alpha', type=float, default=0.001)
     parser.add_argument('--model-dir', type=str, default=env.model_dir)
 
     parser.add_argument('--train', type=str, default=env.channel_input_dirs['train'])
@@ -103,7 +104,7 @@ if __name__ == '__main__':
         chainer.cuda.get_device_from_id(0).use()
 
     # Setup an optimizer
-    optimizer = chainer.optimizers.Adam()
+    optimizer = chainer.optimizers.Adam(alpha=args.alpha)
     optimizer.setup(model)
 
     # Load the MNIST dataset
