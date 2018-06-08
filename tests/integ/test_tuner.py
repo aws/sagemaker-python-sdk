@@ -232,7 +232,7 @@ def test_tuning_tf(sagemaker_session):
         hyperparameter_ranges = {'learning_rate': ContinuousParameter(0.05, 0.2)}
 
         objective_metric_name = 'loss'
-        metric_definitions = [{'Name': 'loss', 'Regex': 'loss=([0-9\\.]+)'}]
+        metric_definitions = [{'Name': 'loss', 'Regex': 'loss = ([0-9\\.]+)'}]
 
         tuner = HyperparameterTuner(estimator, objective_metric_name, hyperparameter_ranges, metric_definitions,
                                     objective_type='Minimize', max_jobs=2, max_parallel_jobs=2)
