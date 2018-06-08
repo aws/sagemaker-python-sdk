@@ -108,7 +108,7 @@ def test_tuning_lda(sagemaker_session):
         record_set = prepare_record_set_from_local_files(data_path, lda.data_location,
                                                          len(all_records), feature_num, sagemaker_session)
         test_record_set = prepare_record_set_from_local_files(data_path, lda.data_location,
-                                                         len(all_records), feature_num, sagemaker_session)
+                                                              len(all_records), feature_num, sagemaker_session)
         test_record_set.channel = 'test'
 
         # specify which hp you want to optimize over
