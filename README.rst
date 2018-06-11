@@ -270,10 +270,12 @@ SageMaker Automatic Model Tuning
 
 All of the estimators can be used with SageMaker Automatic Model Tuning, which performs hyperparameter tuning jobs.
 A hyperparameter tuning job runs multiple training jobs that differ by the values of their hyperparameters to find the best training job.
-The SageMaker Python SDK contains a ``HyperparameterTuner`` class for creating and interacting with hyperparameter training jobs.
+It then chooses the hyperparameter values that result in a model that performs the best, as measured by a metric that you choose.
+If you're not using an Amazon ML algorithm, then the metric is defined by a regular expression (regex) you provide for going through the training job's logs.
 You can read more about SageMaker Automatic Model Tuning in the `AWS documentation <https://docs.aws.amazon.com/sagemaker/latest/dg/automatic-model-tuning.html>`__.
 
-Here is a basic example of how to use ``HyperparameterTuner`` to start tuning jobs instead of using an estimator to start training jobs:
+The SageMaker Python SDK contains a ``HyperparameterTuner`` class for creating and interacting with hyperparameter training jobs.
+Here is a basic example of how to use it:
 
 .. code:: python
 
@@ -299,6 +301,18 @@ Here is a basic example of how to use ``HyperparameterTuner`` to start tuning jo
     # Tear down the SageMaker endpoint
     my_tuner.delete_endpoint()
 
+If you are using an Amazon ML algorithm, you don't need to pass in anything for ``metric_definitions``.
+In addition, the ``fit()`` call uses a list of ``RecordSet`` objects instead of a dictionary:
+
+.. code:: python
+
+    # Create RecordSet object for each data channel
+    train_records = RecordSet(...)
+    test_records = RecordSet(...)
+
+    # Start hyperparameter tuning job
+    my_tuner.fit([train_records, test_records])
+
 There is also an analytics object associated with each ``HyperparameterTuner`` instance that presents useful information about the hyperparameter tuning job.
 For example, the ``dataframe`` method gets a pandas dataframe summarizing the associated training jobs:
 
@@ -310,7 +324,11 @@ For example, the ``dataframe`` method gets a pandas dataframe summarizing the as
     # Look at summary of associated training jobs
     my_dataframe = my_tuner_analytics.dataframe()
 
-For more detailed examples of running hyperparameter tuning jobs, see: https://github.com/awslabs/amazon-sagemaker-examples.
+For more detailed examples of running hyperparameter tuning jobs, see:
+
+- `Using the TensorFlow estimator with hyperparameter tuning <https://github.com/awslabs/amazon-sagemaker-examples/blob/master/hyperparameter_tuning/tensorflow_mnist/hpo_tensorflow_mnist.ipynb>`__
+- `Bringing your own estimator for hyperparameter tuning <https://github.com/awslabs/amazon-sagemaker-examples/blob/master/hyperparameter_tuning/r_bring_your_own/hpo_r_bring_your_own.ipynb>`__
+- `Analyzing results <https://github.com/awslabs/amazon-sagemaker-examples/blob/master/hyperparameter_tuning/analyze_results/HPO_Analyze_TuningJob_Results.ipynb>`__
 
 For more detailed explanations of the classes that this library provides for automatic model tuning, see:
 
