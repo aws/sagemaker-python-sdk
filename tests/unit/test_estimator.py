@@ -126,6 +126,7 @@ def test_custom_code_bucket(time, sagemaker_session):
     _, _, train_kwargs = sagemaker_session.train.mock_calls[0]
     assert train_kwargs['hyperparameters']['sagemaker_submit_directory'] == json.dumps(expected_submit_dir)
 
+
 @patch('time.strftime', return_value=TIMESTAMP)
 def test_custom_code_bucket_without_prefix(time, sagemaker_session):
     code_bucket = 'codebucket'
