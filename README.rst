@@ -301,6 +301,14 @@ Here is a basic example of how to use it:
     # Tear down the SageMaker endpoint
     my_tuner.delete_endpoint()
 
+This example shows a hyperparameter tuning job that creates up to 100 training jobs, running up to 10 at a time.
+Each training job's learning rate will be a value between 0.05 and 0.06, but this value will differ between training jobs.
+You can read more about how these values are chosen in the `AWS documentation <https://docs.aws.amazon.com/sagemaker/latest/dg/automatic-model-tuning-how-it-works.html>`__.
+
+A hyperparameter range can be one of three types: continuous, integer, or categorical.
+The SageMaker Python SDK provides corresponding classes for defining these different types.
+You can define up to 20 hyperparameters to search over, but each value of a categorical hyperparameter range counts against that limit.
+
 If you are using an Amazon ML algorithm, you don't need to pass in anything for ``metric_definitions``.
 In addition, the ``fit()`` call uses a list of ``RecordSet`` objects instead of a dictionary:
 
