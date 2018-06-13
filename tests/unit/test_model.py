@@ -80,7 +80,7 @@ def test_create_no_defaults(tfopen, exists, isdir, listdir, time, sagemaker_sess
 
     assert model.prepare_container_def(INSTANCE_TYPE) == {
         'Environment': {'SAGEMAKER_PROGRAM': 'blah.py',
-                        'SAGEMAKER_SUBMIT_DIRECTORY': 's3://cb/cp/sourcedir.tar.gz',
+                        'SAGEMAKER_SUBMIT_DIRECTORY': 's3://cb/cp/name/sourcedir.tar.gz',
                         'SAGEMAKER_CONTAINER_LOG_LEVEL': '55',
                         'SAGEMAKER_REGION': 'us-west-2',
                         'SAGEMAKER_ENABLE_CLOUDWATCH_METRICS': 'true',

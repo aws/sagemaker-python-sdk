@@ -2,6 +2,11 @@
 CHANGELOG
 =========
 
++1.5.1dev
++========
+
+* enhancement: Unify generation of model uploaded code location
+
 1.5.0
 =====
 * feature: Add Support for PyTorch Framework

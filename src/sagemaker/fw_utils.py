@@ -19,6 +19,8 @@ import tempfile
 from collections import namedtuple
 from six.moves.urllib.parse import urlparse
 
+from sagemaker.utils import name_from_image
+
 """This module contains utility functions shared across ``Framework`` components."""
 
 
@@ -199,3 +201,21 @@ def parse_s3_url(url):
     if parsed_url.scheme != "s3":
         raise ValueError("Expecting 's3' scheme, got: {} in {}".format(parsed_url.scheme, url))
     return parsed_url.netloc, parsed_url.path.lstrip('/')
+
+
+def model_code_key_prefix(code_location_key_prefix, model_name, image):
+    """Returns the s3 key prefix for uploading code during model deployment
+
+    The location returned is a potential concatenation of 2 parts
+        1. code_location_key_prefix if it exists
+        2. model_name or a name derived from the image
+
+    Args:
+        code_location_key_prefix (str): the s3 key prefix from code_location
+        model_name (str): the name of the model
+        image (str): the image from which a default name can be extracted
+
+    Returns:
+        str: the key prefix to be used in uploading code
+    """
+    return '/'.join(filter(None, [code_location_key_prefix, model_name or name_from_image(image)]))
