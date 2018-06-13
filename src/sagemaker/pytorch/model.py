@@ -15,7 +15,7 @@ import sagemaker
 from sagemaker.fw_utils import create_image_uri
 from sagemaker.model import FrameworkModel, MODEL_SERVER_WORKERS_PARAM_NAME
 from sagemaker.pytorch.defaults import PYTORCH_VERSION, PYTHON_VERSION
-from sagemaker.predictor import RealTimePredictor, json_serializer, json_deserializer
+from sagemaker.predictor import RealTimePredictor, npy_serializer, numpy_deserializer
 from sagemaker.utils import name_from_image
 
 
@@ -34,7 +34,7 @@ class PyTorchPredictor(RealTimePredictor):
                 Amazon SageMaker APIs and any other AWS services needed. If not specified, the estimator creates one
                 using the default AWS configuration chain.
         """
-        super(PyTorchPredictor, self).__init__(endpoint_name, sagemaker_session, json_serializer, json_deserializer)
+        super(PyTorchPredictor, self).__init__(endpoint_name, sagemaker_session, npy_serializer, numpy_deserializer)
 
 
 class PyTorchModel(FrameworkModel):

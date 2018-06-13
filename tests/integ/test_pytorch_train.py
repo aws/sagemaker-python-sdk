@@ -43,14 +43,14 @@ def test_sync_fit_deploy(pytorch_training_job, sagemaker_session):
     with timeout(minutes=20):
         estimator = PyTorch.attach(pytorch_training_job, sagemaker_session=sagemaker_session)
         predictor = estimator.deploy(1, 'ml.c4.xlarge', endpoint_name=endpoint_name)
-        data = numpy.zeros(shape=(1, 1, 28, 28))
+        data = numpy.zeros(shape=(1, 1, 28, 28), dtype=numpy.float32)
         predictor.predict(data)
 
         batch_size = 100
-        data = numpy.random.rand(batch_size, 1, 28, 28)
+        data = numpy.random.rand(batch_size, 1, 28, 28).astype(numpy.float32)
         output = predictor.predict(data)
 
-        assert numpy.asarray(output).shape == (batch_size, 10)
+        assert output.shape == (batch_size, 10)
 
 
 def test_deploy_model(pytorch_training_job, sagemaker_session):
@@ -63,10 +63,10 @@ def test_deploy_model(pytorch_training_job, sagemaker_session):
         predictor = model.deploy(1, 'ml.m4.xlarge', endpoint_name=endpoint_name)
 
         batch_size = 100
-        data = numpy.random.rand(batch_size, 1, 28, 28)
+        data = numpy.random.rand(batch_size, 1, 28, 28).astype(numpy.float32)
         output = predictor.predict(data)
 
-        assert numpy.asarray(output).shape == (batch_size, 10)
+        assert output.shape == (batch_size, 10)
 
 
 def test_async_fit_deploy(sagemaker_session, pytorch_full_version):
@@ -92,10 +92,10 @@ def test_async_fit_deploy(sagemaker_session, pytorch_full_version):
             predictor = estimator.deploy(1, instance_type, endpoint_name=endpoint_name)
 
             batch_size = 100
-            data = numpy.random.rand(batch_size, 1, 28, 28)
+            data = numpy.random.rand(batch_size, 1, 28, 28).astype(numpy.float32)
             output = predictor.predict(data)
 
-            assert numpy.asarray(output).shape == (batch_size, 10)
+            assert output.shape == (batch_size, 10)
 
 
 # TODO(nadiaya): Run against local mode when errors will be propagated
