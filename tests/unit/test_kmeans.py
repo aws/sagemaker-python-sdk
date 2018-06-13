@@ -175,31 +175,33 @@ def test_call_fit(base_fit, sagemaker_session):
     assert base_fit.call_args[0][1] == MINI_BATCH_SIZE
 
 
-def test_call_fit_none_mini_batch_size(sagemaker_session):
+def test_prepare_for_training_no_mini_batch_size(sagemaker_session):
     kmeans = KMeans(base_job_name='kmeans', sagemaker_session=sagemaker_session, **ALL_REQ_ARGS)
 
     data = RecordSet('s3://{}/{}'.format(BUCKET_NAME, PREFIX), num_records=1, feature_dim=FEATURE_DIM,
                      channel='train')
-    kmeans.fit(data)
+    kmeans._prepare_for_training(data)
+
+    assert kmeans.mini_batch_size == 5000
 
 
-def test_call_fit_wrong_type_mini_batch_size(sagemaker_session):
+def test_prepare_for_training_wrong_type_mini_batch_size(sagemaker_session):
     kmeans = KMeans(base_job_name='kmeans', sagemaker_session=sagemaker_session, **ALL_REQ_ARGS)
 
     data = RecordSet('s3://{}/{}'.format(BUCKET_NAME, PREFIX), num_records=1, feature_dim=FEATURE_DIM,
                      channel='train')
 
     with pytest.raises((TypeError, ValueError)):
-        kmeans.fit(data, 'some')
+        kmeans._prepare_for_training(data, 'some')
 
 
-def test_call_fit_wrong_value_mini_batch_size(sagemaker_session):
+def test_prepare_for_training_wrong_value_mini_batch_size(sagemaker_session):
     kmeans = KMeans(base_job_name='kmeans', sagemaker_session=sagemaker_session, **ALL_REQ_ARGS)
 
     data = RecordSet('s3://{}/{}'.format(BUCKET_NAME, PREFIX), num_records=1, feature_dim=FEATURE_DIM,
                      channel='train')
     with pytest.raises(ValueError):
-        kmeans.fit(data, 0)
+        kmeans._prepare_for_training(data, 0)
 
 
 def test_model_image(sagemaker_session):

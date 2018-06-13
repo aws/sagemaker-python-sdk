@@ -2,10 +2,29 @@
 CHANGELOG
 =========
 
-1.3.dev1
+1.4.2dev
 ========
 
+* bug-fix: Unit Tests: Improve unit test runtime
+* bug-fix: Estimators: Fix attach for LDA
+* bug-fix: Estimators: allow code_location to have no key prefix
+
+1.4.1
+=====
+
+* bug-fix: Local Mode: Fix for non Framework containers
+
+1.4.0
+=====
+
+* bug-fix: Remove __all__ and add noqa in __init__
 * bug-fix: Estimators: Change max_iterations hyperparameter key for KMeans
+* bug-fix: Estimators: Remove unused argument job_details for ``EstimatorBase.attach()``
+* bug-fix: Local Mode: Show logs in Jupyter notebooks
+* feature: HyperparameterTuner: Add support for hyperparameter tuning jobs
+* feature: Analytics: Add functions for metrics in Training and Hyperparameter Tuning jobs
+* feature: Estimators: add support for tagging training jobs
+
 
 1.3.0
 =====

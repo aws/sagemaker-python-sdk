@@ -309,13 +309,15 @@ class _SageMakerContainer(object):
             else:
                 raise ValueError('Unknown URI scheme {}'.format(parsed_uri.scheme))
 
-        # If the training script directory is a local directory, mount it to the container.
-        training_dir = json.loads(hyperparameters[sagemaker.estimator.DIR_PARAM_NAME])
-        parsed_uri = urlparse(training_dir)
-        if parsed_uri.scheme == 'file':
-            volumes.append(_Volume(parsed_uri.path, '/opt/ml/code'))
-            # Also mount a directory that all the containers can access.
-            volumes.append(_Volume(shared_dir, '/opt/ml/shared'))
+        # If there is a training script directory and it is a local directory,
+        #  mount it to the container.
+        if sagemaker.estimator.DIR_PARAM_NAME in hyperparameters:
+            training_dir = json.loads(hyperparameters[sagemaker.estimator.DIR_PARAM_NAME])
+            parsed_uri = urlparse(training_dir)
+            if parsed_uri.scheme == 'file':
+                volumes.append(_Volume(parsed_uri.path, '/opt/ml/code'))
+                # Also mount a directory that all the containers can access.
+                volumes.append(_Volume(shared_dir, '/opt/ml/shared'))
 
         return volumes
 

@@ -193,32 +193,32 @@ def test_call_fit_none_mini_batch_size(sagemaker_session):
     ntm.fit(data)
 
 
-def test_call_fit_wrong_type_mini_batch_size(sagemaker_session):
+def test_prepare_for_training_wrong_type_mini_batch_size(sagemaker_session):
     ntm = NTM(base_job_name="ntm", sagemaker_session=sagemaker_session, **ALL_REQ_ARGS)
 
     data = RecordSet("s3://{}/{}".format(BUCKET_NAME, PREFIX), num_records=1, feature_dim=FEATURE_DIM,
                      channel='train')
 
     with pytest.raises((TypeError, ValueError)):
-        ntm.fit(data, "some")
+        ntm._prepare_for_training(data, "some")
 
 
-def test_call_fit_wrong_value_lower_mini_batch_size(sagemaker_session):
+def test_prepare_for_training_wrong_value_lower_mini_batch_size(sagemaker_session):
     ntm = NTM(base_job_name="ntm", sagemaker_session=sagemaker_session, **ALL_REQ_ARGS)
 
     data = RecordSet("s3://{}/{}".format(BUCKET_NAME, PREFIX), num_records=1, feature_dim=FEATURE_DIM,
                      channel='train')
     with pytest.raises(ValueError):
-        ntm.fit(data, 0)
+        ntm._prepare_for_training(data, 0)
 
 
-def test_call_fit_wrong_value_upper_mini_batch_size(sagemaker_session):
+def test_prepare_for_training_wrong_value_upper_mini_batch_size(sagemaker_session):
     ntm = NTM(base_job_name="ntm", sagemaker_session=sagemaker_session, **ALL_REQ_ARGS)
 
     data = RecordSet("s3://{}/{}".format(BUCKET_NAME, PREFIX), num_records=1, feature_dim=FEATURE_DIM,
                      channel='train')
     with pytest.raises(ValueError):
-        ntm.fit(data, 10001)
+        ntm._prepare_for_training(data, 10001)
 
 
 def test_model_image(sagemaker_session):

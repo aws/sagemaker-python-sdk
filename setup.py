@@ -23,7 +23,7 @@ def read(fname):
 
 
 setup(name="sagemaker",
-      version="1.3.0",
+      version="1.4.1",
       description="Open source library for training and deploying models on Amazon SageMaker.",
       packages=find_packages('src'),
       package_dir={'': 'src'},
@@ -49,7 +49,7 @@ setup(name="sagemaker",
 
       extras_require={
           'test': ['tox', 'flake8', 'pytest', 'pytest-cov', 'pytest-xdist',
-                   'mock', 'tensorflow>=1.3.0', 'contextlib2', 'awslogs']},
+                   'mock', 'tensorflow>=1.3.0', 'contextlib2', 'awslogs', 'pandas']},
 
       entry_points={
           'console_scripts': ['sagemaker=sagemaker.cli.main:main'],

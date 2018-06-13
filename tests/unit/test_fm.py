@@ -210,31 +210,31 @@ def test_call_fit(base_fit, sagemaker_session):
     assert base_fit.call_args[0][1] == MINI_BATCH_SIZE
 
 
-def test_call_fit_none_mini_batch_size(sagemaker_session):
+def test_prepare_for_training_no_mini_batch_size(sagemaker_session):
     fm = FactorizationMachines(base_job_name='fm', sagemaker_session=sagemaker_session, **ALL_REQ_ARGS)
 
     data = RecordSet('s3://{}/{}'.format(BUCKET_NAME, PREFIX), num_records=1, feature_dim=FEATURE_DIM,
                      channel='train')
-    fm.fit(data)
+    fm._prepare_for_training(data)
 
 
-def test_call_fit_wrong_type_mini_batch_size(sagemaker_session):
+def test_prepare_for_training_wrong_type_mini_batch_size(sagemaker_session):
     fm = FactorizationMachines(base_job_name='fm', sagemaker_session=sagemaker_session, **ALL_REQ_ARGS)
 
     data = RecordSet('s3://{}/{}'.format(BUCKET_NAME, PREFIX), num_records=1, feature_dim=FEATURE_DIM,
                      channel='train')
 
     with pytest.raises((TypeError, ValueError)):
-        fm.fit(data, 'some')
+        fm._prepare_for_training(data, 'some')
 
 
-def test_call_fit_wrong_value_mini_batch_size(sagemaker_session):
+def test_prepare_for_training_wrong_value_mini_batch_size(sagemaker_session):
     fm = FactorizationMachines(base_job_name='fm', sagemaker_session=sagemaker_session, **ALL_REQ_ARGS)
 
     data = RecordSet('s3://{}/{}'.format(BUCKET_NAME, PREFIX), num_records=1, feature_dim=FEATURE_DIM,
                      channel='train')
     with pytest.raises(ValueError):
-        fm.fit(data, 0)
+        fm._prepare_for_training(data, 0)
 
 
 def test_model_image(sagemaker_session):

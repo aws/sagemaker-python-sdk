@@ -113,10 +113,10 @@ class NTM(AmazonAlgorithmEstimatorBase):
 
         return NTMModel(self.model_data, self.role, sagemaker_session=self.sagemaker_session)
 
-    def fit(self, records, mini_batch_size=None, **kwargs):
+    def _prepare_for_training(self, records, mini_batch_size, job_name=None):
         if mini_batch_size is not None and (mini_batch_size < 1 or mini_batch_size > 10000):
             raise ValueError("mini_batch_size must be in [1, 10000]")
-        super(NTM, self).fit(records, mini_batch_size, **kwargs)
+        super(NTM, self)._prepare_for_training(records, mini_batch_size=mini_batch_size, job_name=job_name)
 
 
 class NTMPredictor(RealTimePredictor):

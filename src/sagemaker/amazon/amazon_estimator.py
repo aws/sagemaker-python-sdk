@@ -19,7 +19,7 @@ from six.moves.urllib.parse import urlparse
 from sagemaker.amazon import validation
 from sagemaker.amazon.hyperparameter import Hyperparameter as hp  # noqa
 from sagemaker.amazon.common import write_numpy_to_dense_tensor
-from sagemaker.estimator import EstimatorBase
+from sagemaker.estimator import EstimatorBase, _TrainingJob
 from sagemaker.session import s3_input
 from sagemaker.utils import sagemaker_timestamp
 
@@ -92,11 +92,38 @@ class AmazonAlgorithmEstimatorBase(EstimatorBase):
         del init_params['image']
         return init_params
 
-    def fit(self, records, mini_batch_size=None, **kwargs):
+    def _prepare_for_training(self, records, mini_batch_size=None, job_name=None):
+        """Set hyperparameters needed for training.
+
+        Args:
+            * records (:class:`~RecordSet`): The records to train this ``Estimator`` on.
+            * mini_batch_size (int or None): The size of each mini-batch to use when training. If ``None``, a
+                default value will be used.
+            * job_name (str): Name of the training job to be created. If not specified, one is generated,
+                using the base name given to the constructor if applicable.
+        """
+        super(AmazonAlgorithmEstimatorBase, self)._prepare_for_training(job_name=job_name)
+
+        feature_dim = None
+
+        if isinstance(records, list):
+            for record in records:
+                if record.channel == 'train':
+                    feature_dim = record.feature_dim
+                    break
+            if feature_dim is None:
+                raise ValueError('Must provide train channel.')
+        else:
+            feature_dim = records.feature_dim
+
+        self.feature_dim = feature_dim
+        self.mini_batch_size = mini_batch_size
+
+    def fit(self, records, mini_batch_size=None, wait=True, logs=True, job_name=None):
         """Fit this Estimator on serialized Record objects, stored in S3.
 
         ``records`` should be an instance of :class:`~RecordSet`. This defines a collection of
-        s3 data files to train this ``Estimator`` on.
+        S3 data files to train this ``Estimator`` on.
 
         Training data is expected to be encoded as dense or sparse vectors in the "values" feature
         on each Record. If the data is labeled, the label is expected to be encoded as a list of
@@ -110,15 +137,19 @@ class AmazonAlgorithmEstimatorBase(EstimatorBase):
 
         Args:
             records (:class:`~RecordSet`): The records to train this ``Estimator`` on
-            mini_batch_size (int or None): The size of each mini-batch to use when training. If None, a
+            mini_batch_size (int or None): The size of each mini-batch to use when training. If ``None``, a
                 default value will be used.
+            wait (bool): Whether the call should wait until the job completes (default: True).
+            logs (bool): Whether to show the logs produced by the job.
+                Only meaningful when wait is True (default: True).
+            job_name (str): Training job name. If not specified, the estimator generates a default job name,
+                based on the training image name and current timestamp.
         """
-        self.feature_dim = records.feature_dim
-        self.mini_batch_size = mini_batch_size
+        self._prepare_for_training(records, job_name=job_name, mini_batch_size=mini_batch_size)
 
-        data = {records.channel: s3_input(records.s3_data, distribution='ShardedByS3Key',
-                                          s3_data_type=records.s3_data_type)}
-        super(AmazonAlgorithmEstimatorBase, self).fit(data, **kwargs)
+        self.latest_training_job = _TrainingJob.start_new(self, records)
+        if wait:
+            self.latest_training_job.wait(logs=logs)
 
     def record_set(self, train, labels=None, channel="train"):
         """Build a :class:`~RecordSet` from a numpy :class:`~ndarray` matrix and label vector.
@@ -179,6 +210,14 @@ class RecordSet(object):
     def __repr__(self):
         """Return an unambiguous representation of this RecordSet"""
         return str((RecordSet, self.__dict__))
+
+    def data_channel(self):
+        """Return a dictionary to represent the training data in a channel for use with ``fit()``"""
+        return {self.channel: self.records_s3_input()}
+
+    def records_s3_input(self):
+        """Return a s3_input to represent the training data"""
+        return s3_input(self.s3_data, distribution='ShardedByS3Key', s3_data_type=self.s3_data_type)
 
 
 def _build_shards(num_shards, array):

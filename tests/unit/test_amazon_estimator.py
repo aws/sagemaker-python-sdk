@@ -12,9 +12,9 @@
 # language governing permissions and limitations under the License.
 from __future__ import absolute_import
 
+import numpy as np
 import pytest
 from mock import Mock, patch, call
-import numpy as np
 
 # Use PCA as a test implementation of AmazonAlgorithmEstimator
 from sagemaker.amazon.pca import PCA
@@ -96,6 +96,43 @@ def test_data_location_does_not_call_default_bucket(sagemaker_session):
     pca = PCA(num_components=2, sagemaker_session=sagemaker_session, data_location=data_location, **COMMON_ARGS)
     assert pca.data_location == data_location
     assert not sagemaker_session.default_bucket.called
+
+
+def test_prepare_for_training(sagemaker_session):
+    pca = PCA(num_components=55, sagemaker_session=sagemaker_session, **COMMON_ARGS)
+
+    train = [[1.0, 2.0, 3.0], [4.0, 5.0, 6.0], [7.0, 8.0, 8.0], [44.0, 55.0, 66.0]]
+    labels = [99, 85, 87, 2]
+    records = pca.record_set(np.array(train), np.array(labels))
+
+    pca._prepare_for_training(records, mini_batch_size=1)
+    assert pca.feature_dim == 3
+    assert pca.mini_batch_size == 1
+
+
+def test_prepare_for_training_list(sagemaker_session):
+    pca = PCA(num_components=55, sagemaker_session=sagemaker_session, **COMMON_ARGS)
+
+    train = [[1.0, 2.0, 3.0], [4.0, 5.0, 6.0], [7.0, 8.0, 8.0], [44.0, 55.0, 66.0]]
+    labels = [99, 85, 87, 2]
+    records = [pca.record_set(np.array(train), np.array(labels))]
+
+    pca._prepare_for_training(records, mini_batch_size=1)
+    assert pca.feature_dim == 3
+    assert pca.mini_batch_size == 1
+
+
+def test_prepare_for_training_list_no_train_channel(sagemaker_session):
+    pca = PCA(num_components=55, sagemaker_session=sagemaker_session, **COMMON_ARGS)
+
+    train = [[1.0, 2.0, 3.0], [4.0, 5.0, 6.0], [7.0, 8.0, 8.0], [44.0, 55.0, 66.0]]
+    labels = [99, 85, 87, 2]
+    records = [pca.record_set(np.array(train), np.array(labels), 'test')]
+
+    with pytest.raises(ValueError) as ex:
+        pca._prepare_for_training(records, mini_batch_size=1)
+
+    assert 'Must provide train channel.' in str(ex)
 
 
 @patch('time.strftime', return_value=TIMESTAMP)
