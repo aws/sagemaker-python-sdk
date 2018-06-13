@@ -368,6 +368,7 @@ def test_download_folder(makedirs):
     obj_mock.download_file.assert_has_calls(calls)
     obj_mock.reset_mock()
 
+    # Testing with a trailing slash for the prefix.
     sagemaker_container._download_folder(BUCKET_NAME, '/prefix/', '/tmp')
     obj_mock.download_file.assert_called()
     calls = [call(os.path.join('/tmp', 'train/train_data.csv')),
