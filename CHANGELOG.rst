@@ -2,6 +2,12 @@
 CHANGELOG
 =========
 
+1.4.2dev
+========
+
+* bug-fix: Unit Tests: Improve unit test runtime
+* bug-fix: Estimators: Fix attach for LDA
+
 1.4.1
 =====
 
@@ -17,6 +23,7 @@ CHANGELOG
 * feature: HyperparameterTuner: Add support for hyperparameter tuning jobs
 * feature: Analytics: Add functions for metrics in Training and Hyperparameter Tuning jobs
 * feature: Estimators: add support for tagging training jobs
+
 
 1.3.0
 =====
