@@ -6,7 +6,9 @@ CHANGELOG
 ========
 
 * bug-fix: Estimators: Fix attach for LDA
+* bug-fix: Estimators: allow code_location to have no key prefix
 * feature: Allow Local Serving of Models in S3
+
 
 1.4.1
 =====
