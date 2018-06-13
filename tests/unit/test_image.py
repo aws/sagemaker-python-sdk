@@ -19,7 +19,7 @@ import subprocess
 
 import pytest
 import yaml
-from mock import call, patch, Mock
+from mock import call, patch, Mock, MagicMock
 
 import sagemaker
 from sagemaker.local.image import _SageMakerContainer
@@ -338,6 +338,42 @@ def test_serve_local_code(up, copy, copytree, tmpdir, sagemaker_session):
                 assert '%s:/opt/ml/code' % '/tmp/code' in volumes
 
 
+@patch('sagemaker.local.image._SageMakerContainer._download_file')
+@patch('tarfile.is_tarfile')
+@patch('tarfile.open', MagicMock())
+@patch('os.makedirs', Mock())
+def test_prepare_serving_volumes_with_s3_model(is_tarfile, _download_file, sagemaker_session):
+
+    sagemaker_container = _SageMakerContainer('local', 1, 'some-image', sagemaker_session=sagemaker_session)
+    sagemaker_container.container_root = '/tmp/container_root'
+    container_model_dir = os.path.join('/tmp/container_root/', sagemaker_container.hosts[0], 'model')
+
+    is_tarfile.return_value = True
+
+    volumes = sagemaker_container._prepare_serving_volumes('s3://bucket/my_model.tar.gz')
+
+    tar_location = os.path.join(container_model_dir, 'my_model.tar.gz')
+    _download_file.assert_called_with('bucket', '/my_model.tar.gz', tar_location)
+    is_tarfile.assert_called_with(tar_location)
+
+    assert len(volumes) == 1
+    assert volumes[0].container_dir == '/opt/ml/model'
+    assert volumes[0].host_dir == container_model_dir
+
+
+@patch('os.makedirs', Mock())
+def test_prepare_serving_volumes_with_local_model(sagemaker_session):
+
+    sagemaker_container = _SageMakerContainer('local', 1, 'some-image', sagemaker_session=sagemaker_session)
+    sagemaker_container.container_root = '/tmp/container_root'
+
+    volumes = sagemaker_container._prepare_serving_volumes('/path/to/my_model')
+
+    assert len(volumes) == 1
+    assert volumes[0].container_dir == '/opt/ml/model'
+    assert volumes[0].host_dir == '/path/to/my_model'
+
+
 @patch('os.makedirs')
 def test_download_folder(makedirs):
     boto_mock = Mock(name='boto_session')
@@ -366,6 +402,19 @@ def test_download_folder(makedirs):
     calls = [call(os.path.join('/tmp', 'train/train_data.csv')),
              call(os.path.join('/tmp', 'train/validation_data.csv'))]
     obj_mock.download_file.assert_has_calls(calls)
+
+
+def test_download_file():
+    boto_mock = Mock(name='boto_session')
+    boto_mock.client('sts').get_caller_identity.return_value = {'Account': '123'}
+    bucket_mock = Mock()
+    boto_mock.resource('s3').Bucket.return_value = bucket_mock
+    session = sagemaker.Session(boto_session=boto_mock, sagemaker_client=Mock())
+
+    sagemaker_container = _SageMakerContainer('local', 2, 'my-image', sagemaker_session=session)
+    sagemaker_container._download_file(BUCKET_NAME, '/prefix/path/file.tar.gz', '/tmp/file.tar.gz')
+
+    bucket_mock.download_file.assert_called_with('prefix/path/file.tar.gz', '/tmp/file.tar.gz')
 
 
 def test_ecr_login_non_ecr():
