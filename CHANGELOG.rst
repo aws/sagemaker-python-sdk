@@ -7,6 +7,7 @@ CHANGELOG
 
 * bug-fix: Unit Tests: Improve unit test runtime
 * bug-fix: Estimators: Fix attach for LDA
+* Change minimum required scipy from 1.0.0 to 0.19.0
 
 1.4.1
 =====
