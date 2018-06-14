@@ -94,9 +94,8 @@ class RealTimePredictor(object):
         return data
 
     def delete_endpoint(self):
-        def delete_endpoint(self):
-            """Delete an Amazon SageMaker ``Endpoint``.
-            """
+        """Delete the Amazon SageMaker endpoint backing this predictor.
+        """
         self.sagemaker_session.delete_endpoint(self.endpoint)
 
 
