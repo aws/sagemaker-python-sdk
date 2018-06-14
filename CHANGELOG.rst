@@ -7,7 +7,9 @@ CHANGELOG
 
 * bug-fix: Unit Tests: Improve unit test runtime
 * bug-fix: Estimators: Fix attach for LDA
-* Change minimum required scipy from 1.0.0 to 0.19.0
+* bug-fix: Estimators: allow code_location to have no key prefix
+* bug-fix: Local Mode: Fix s3 training data download when there is a trailing slash
+* feature: Change minimum required scipy from 1.0.0 to 0.19.0
 
 1.4.1
 =====
