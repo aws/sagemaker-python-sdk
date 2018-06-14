@@ -220,14 +220,7 @@ def test_create_model_with_custom_image(sagemaker_session):
     tf.fit(inputs='s3://mybucket/train', job_name=job_name)
     model = tf.create_model()
 
-    assert model.sagemaker_session == sagemaker_session
     assert model.image == custom_image
-    assert model.entry_point == SCRIPT_PATH
-    assert model.role == ROLE
-    assert model.name == job_name
-    assert model.container_log_level == container_log_level
-    assert model.source_dir == source_dir
-    assert model.enable_cloudwatch_metrics == enable_cloudwatch_metrics
 
 
 @patch('time.strftime', return_value=TIMESTAMP)
@@ -612,19 +605,5 @@ def test_attach_custom_image(sagemaker_session):
     sagemaker_session.sagemaker_client.describe_training_job = Mock(name='describe_training_job', return_value=rjd)
 
     estimator = TensorFlow.attach(training_job_name='neo', sagemaker_session=sagemaker_session)
-    assert estimator.latest_training_job.job_name == 'neo'
-    assert estimator.role == 'arn:aws:iam::366:role/SageMakerRole'
-    assert estimator.train_instance_count == 1
-    assert estimator.train_max_run == 24 * 60 * 60
-    assert estimator.input_mode == 'File'
-    assert estimator.training_steps == 100
-    assert estimator.evaluation_steps == 10
-    assert estimator.input_mode == 'File'
-    assert estimator.base_job_name == 'neo'
-    assert estimator.output_path == 's3://place/output/neo'
-    assert estimator.output_kms_key == ''
-    assert estimator.hyperparameters()['training_steps'] == '100'
-    assert estimator.source_dir == 's3://some/sourcedir.tar.gz'
-    assert estimator.entry_point == 'iris-dnn-classifier.py'
-    assert estimator.checkpoint_path == 's3://other/1508872349'
+    assert estimator.image_name == training_image
     assert estimator.train_image() == training_image

@@ -350,15 +350,5 @@ def test_attach_custom_image(sagemaker_session):
                                                                     return_value=returned_job_description)
 
     estimator = MXNet.attach(training_job_name='neo', sagemaker_session=sagemaker_session)
-    assert estimator.latest_training_job.job_name == 'neo'
     assert estimator.image_name == training_image
-    assert estimator.role == 'arn:aws:iam::366:role/SageMakerRole'
-    assert estimator.train_instance_count == 1
-    assert estimator.train_max_run == 24 * 60 * 60
-    assert estimator.input_mode == 'File'
-    assert estimator.base_job_name == 'neo'
-    assert estimator.output_path == 's3://place/output/neo'
-    assert estimator.output_kms_key == ''
-    assert estimator.hyperparameters()['training_steps'] == '100'
-    assert estimator.source_dir == 's3://some/sourcedir.tar.gz'
-    assert estimator.entry_point == 'iris-dnn-classifier.py'
+    assert estimator.train_image() == training_image
