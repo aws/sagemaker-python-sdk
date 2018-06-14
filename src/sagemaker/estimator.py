@@ -576,7 +576,7 @@ class Framework(EstimatorBase):
             code_s3_prefix = '{}/source'.format(self._current_job_name)
         else:
             code_bucket, key_prefix = parse_s3_url(self.code_location)
-            code_s3_prefix = '{}/{}/source'.format(key_prefix, self._current_job_name)
+            code_s3_prefix = '/'.join(filter(None, [key_prefix, self._current_job_name, 'source']))
 
         return tar_and_upload_dir(session=self.sagemaker_session.boto_session,
                                   bucket=code_bucket,

@@ -7,6 +7,8 @@ CHANGELOG
 
 * bug-fix: Unit Tests: Improve unit test runtime
 * bug-fix: Estimators: Fix attach for LDA
+* bug-fix: Estimators: allow code_location to have no key prefix
+* bug-fix: Local Mode: Fix s3 training data download when there is a trailing slash
 * feature: Allow Chainer, Tensorflow and MXNet estimators to use a custom docker image.
 
 1.4.1
