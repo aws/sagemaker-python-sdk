@@ -235,8 +235,8 @@ class TensorFlow(Framework):
                 tensorboard.start()
                 fit_super()
             finally:
-                # sleep 10 secs for tensorboard to run if fit quits instantly
-                time.sleep(10)
+                # sleep 20 secs for tensorboard start up if fit() quits instantly
+                time.sleep(20)
                 tensorboard.event.set()
                 tensorboard.join()
         else:

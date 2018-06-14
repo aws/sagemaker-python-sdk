@@ -271,13 +271,12 @@ def test_model(sagemaker_session, tf_version):
     assert isinstance(predictor, TensorFlowPredictor)
 
 
-@patch('sagemaker.tensorflow.estimator.Tensorboard._sync_directories')
 @patch('time.strftime', return_value=TIMESTAMP)
 @patch('time.time', return_value=TIME)
 @patch('subprocess.Popen')
 @patch('subprocess.call')
 @patch('os.access', side_effect=[False, True])
-def test_run_tensorboard_locally_without_awscli_binary(time, strftime, popen, call, access, sync, sagemaker_session):
+def test_run_tensorboard_locally_without_awscli_binary(time, strftime, popen, call, access, sagemaker_session):
     tf = TensorFlow(entry_point=SCRIPT_PATH, role=ROLE, sagemaker_session=sagemaker_session,
                     train_instance_count=INSTANCE_COUNT, train_instance_type=INSTANCE_TYPE)
 
@@ -309,6 +308,7 @@ def test_run_tensorboard_locally(time, strftime, popen, call, access, rmtree, mk
                              )
 
 
+@patch('sagemaker.tensorflow.estimator.Tensorboard._sync_directories')
 @patch('tempfile.mkdtemp', return_value='/my/temp/folder')
 @patch('shutil.rmtree')
 @patch('socket.socket')
@@ -317,7 +317,7 @@ def test_run_tensorboard_locally(time, strftime, popen, call, access, rmtree, mk
 @patch('subprocess.Popen')
 @patch('time.strftime', return_value=TIMESTAMP)
 @patch('time.time', return_value=TIME)
-def test_run_tensorboard_locally_port_in_use(time, strftime, popen, call, access, socket, rmtree, mkdtemp,
+def test_run_tensorboard_locally_port_in_use(time, strftime, popen, call, access, socket, rmtree, mkdtemp, sync,
                                              sagemaker_session):
     tf = TensorFlow(entry_point=SCRIPT_PATH, role=ROLE, sagemaker_session=sagemaker_session,
                     train_instance_count=INSTANCE_COUNT, train_instance_type=INSTANCE_TYPE)
