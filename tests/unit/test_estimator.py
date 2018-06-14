@@ -127,6 +127,24 @@ def test_custom_code_bucket(time, sagemaker_session):
     assert train_kwargs['hyperparameters']['sagemaker_submit_directory'] == json.dumps(expected_submit_dir)
 
 
+@patch('time.strftime', return_value=TIMESTAMP)
+def test_custom_code_bucket_without_prefix(time, sagemaker_session):
+    code_bucket = 'codebucket'
+    code_location = 's3://{}'.format(code_bucket)
+    t = DummyFramework(entry_point=SCRIPT_PATH, role=ROLE, sagemaker_session=sagemaker_session,
+                       train_instance_count=INSTANCE_COUNT, train_instance_type=INSTANCE_TYPE,
+                       code_location=code_location)
+    t.fit('s3://bucket/mydata')
+
+    expected_key = '{}/source/sourcedir.tar.gz'.format(JOB_NAME)
+    _, s3_args, _ = sagemaker_session.boto_session.resource('s3').Object.mock_calls[0]
+    assert s3_args == (code_bucket, expected_key)
+
+    expected_submit_dir = 's3://{}/{}'.format(code_bucket, expected_key)
+    _, _, train_kwargs = sagemaker_session.train.mock_calls[0]
+    assert train_kwargs['hyperparameters']['sagemaker_submit_directory'] == json.dumps(expected_submit_dir)
+
+
 def test_invalid_custom_code_bucket(sagemaker_session):
     code_location = 'thisllworkright?'
     t = DummyFramework(entry_point=SCRIPT_PATH, role=ROLE, sagemaker_session=sagemaker_session,

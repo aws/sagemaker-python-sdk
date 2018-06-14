@@ -16,6 +16,7 @@ import json
 
 import boto3
 import pytest
+from botocore.config import Config
 
 from sagemaker import Session
 from sagemaker.local import LocalSession
@@ -32,7 +33,7 @@ def pytest_addoption(parser):
 @pytest.fixture(scope='session')
 def sagemaker_client_config(request):
     config = request.config.getoption('--sagemaker-client-config')
-    return json.loads(config) if config else None
+    return json.loads(config) if config else dict()
 
 
 @pytest.fixture(scope='session')
@@ -50,6 +51,7 @@ def boto_config(request):
 @pytest.fixture(scope='session')
 def sagemaker_session(sagemaker_client_config, sagemaker_runtime_config, boto_config):
     boto_session = boto3.Session(**boto_config) if boto_config else boto3.Session(region_name=DEFAULT_REGION)
+    sagemaker_client_config.setdefault('config', Config(retries=dict(max_attempts=10)))
     sagemaker_client = boto_session.client('sagemaker', **sagemaker_client_config) if sagemaker_client_config else None
     runtime_client = (boto_session.client('sagemaker-runtime', **sagemaker_runtime_config) if sagemaker_runtime_config
                       else None)

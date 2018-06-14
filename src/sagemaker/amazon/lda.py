@@ -78,8 +78,10 @@ class LDA(AmazonAlgorithmEstimatorBase):
             tol (float): Optional. Target error tolerance for the ALS phase of the algorithm.
             **kwargs: base class keyword argument values.
         """
-
         # this algorithm only supports single instance training
+        if kwargs.pop('train_instance_count', 1) != 1:
+            print('LDA only supports single instance training. Defaulting to 1 {}.'.format(train_instance_type))
+
         super(LDA, self).__init__(role, 1, train_instance_type, **kwargs)
         self.num_topics = num_topics
         self.alpha0 = alpha0
