@@ -263,7 +263,8 @@ class _SageMakerContainer(object):
 
         for obj_sum in bucket.objects.filter(Prefix=prefix):
             obj = s3.Object(obj_sum.bucket_name, obj_sum.key)
-            file_path = os.path.join(target, obj_sum.key[len(prefix) + 1:])
+            s3_relative_path = obj_sum.key[len(prefix):].lstrip('/')
+            file_path = os.path.join(target, s3_relative_path)
 
             try:
                 os.makedirs(os.path.dirname(file_path))
@@ -271,7 +272,6 @@ class _SageMakerContainer(object):
                 if exc.errno != errno.EEXIST:
                     raise
                 pass
-
             obj.download_file(file_path)
 
     def _download_file(self, bucket_name, path, target):
