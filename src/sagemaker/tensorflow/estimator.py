@@ -19,6 +19,7 @@ import shutil
 import subprocess
 import tempfile
 import threading
+import time
 
 from sagemaker.estimator import Framework
 from sagemaker.fw_utils import create_image_uri, framework_name_from_image, framework_version_from_tag
@@ -234,7 +235,10 @@ class TensorFlow(Framework):
                 tensorboard.start()
                 fit_super()
             finally:
+                # sleep 10 secs for tensorboard to run if fit quits instantly
+                time.sleep(10)
                 tensorboard.event.set()
+                tensorboard.join()
         else:
             fit_super()
 
