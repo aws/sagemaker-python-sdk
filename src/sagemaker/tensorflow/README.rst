@@ -433,6 +433,12 @@ you can specify these as keyword arguments.
 -  ``base_job_name`` Name to assign for the training job that the ``fit``
    method launches. If not specified, the estimator generates a default
    job name, based on the training image name and current timestamp.
+-  ``image_name`` An alternative docker image to use for training and
+    serving.  If specified, the estimator will use this image for training and
+    hosting, instead of selecting the appropriate SageMaker official image based on
+    framework_version and py_version. Refer to: `SageMaker TensorFlow Docker Containers
+    <#sagemaker-tensorflow-docker-containers>`_ for details on what the Official images support
+    and where to find the source code to build your custom image.
 
 
 Optional Hyperparameters
@@ -785,5 +791,8 @@ The TensorFlow Docker images support Python 2.7 and have the following Python mo
 The Docker images extend Ubuntu 16.04.
 
 You can select version of TensorFlow by passing a ``framework_version`` keyword arg to the TensorFlow Estimator constructor. Currently supported versions are listed in the table above. You can also set ``framework_version`` to only specify major and minor version, e.g ``1.6``, which will cause your training script to be run on the latest supported patch version of that minor version, which in this example would be 1.6.0.
+Alternatively, you can build your own image by following the instructions in the SageMaker TensorFlow containers
+repository, and passing ``image_name`` to the TensorFlow Estimator constructor.
+
 
 You can visit the SageMaker TensorFlow containers repository here: https://github.com/aws/sagemaker-tensorflow-containers/

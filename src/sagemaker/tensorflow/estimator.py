@@ -171,8 +171,10 @@ class TensorFlow(Framework):
             requirements_file (str): Path to a ``requirements.txt`` file (default: ''). The path should be within and
                 relative to ``source_dir``. Details on the format can be found in the
                 `Pip User Guide <https://pip.pypa.io/en/stable/reference/pip_install/#requirements-file-format>`_.
-            image_name (str): The container image to use for training. This will override py_version and
-                framework_version. The image is expected to be a modification of the SageMaker TensorFlow image.
+            image_name (str): If specified, the estimator will use this image for training and hosting, instead of
+                selecting the appropriate SageMaker official image based on framework_version and py_version. It can
+                be an ECR url or dockerhub image and tag: 123.dkr.ecr.us-west-2.amazonaws.com/my-custom-image:1.0,
+                custom-image:latest.
             **kwargs: Additional kwargs passed to the Framework constructor.
         """
         super(TensorFlow, self).__init__(image_name=image_name, **kwargs)

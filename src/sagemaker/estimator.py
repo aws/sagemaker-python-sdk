@@ -227,7 +227,6 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):
         job_details = sagemaker_session.sagemaker_client.describe_training_job(TrainingJobName=training_job_name)
         init_params = cls._prepare_init_params_from_job_description(job_details)
 
-        print(init_params)
         estimator = cls(sagemaker_session=sagemaker_session, **init_params)
         estimator.latest_training_job = _TrainingJob(sagemaker_session=sagemaker_session,
                                                      training_job_name=init_params['base_job_name'])
@@ -527,8 +526,6 @@ class Framework(EstimatorBase):
         self._hyperparameters = hyperparameters or {}
         self.code_location = code_location
         self.image_name = image_name
-        print(self.image_name)
-        print(kwargs)
 
     def _prepare_for_training(self, job_name=None):
         """Set hyperparameters needed for training. This method will also validate ``source_dir``.
