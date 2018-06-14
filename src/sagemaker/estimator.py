@@ -579,6 +579,14 @@ class Framework(EstimatorBase):
                                   script=self.entry_point,
                                   directory=self.source_dir)
 
+    def _model_source_dir(self):
+        """ Gets the appropriate value to pass as source_dir to model constructor on deploying
+
+        Returns:
+            str: Either a local or an S3 path pointing to the source_dir to be used for code by the model to be deployed
+        """
+        return self.source_dir if self.sagemaker_session.local_mode else self.uploaded_code.s3_prefix
+
     def hyperparameters(self):
         """Return the hyperparameters as a dictionary to use for training.
 
