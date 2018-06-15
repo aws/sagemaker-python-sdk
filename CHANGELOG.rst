@@ -2,14 +2,17 @@
 CHANGELOG
 =========
 
+1.4.3dev
+========
+* feature: Allow Local Serving of Models in S3
+
+
 1.4.2
 =====
 
-* bug-fix: Unit Tests: Improve unit test runtime
 * bug-fix: Estimators: Fix attach for LDA
 * bug-fix: Estimators: allow code_location to have no key prefix
 * bug-fix: Local Mode: Fix s3 training data download when there is a trailing slash
-
 
 1.4.1
 =====
