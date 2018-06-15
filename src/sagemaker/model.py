@@ -16,13 +16,14 @@ import logging
 
 import sagemaker
 
+from sagemaker.local import LocalSession
 from sagemaker.fw_utils import tar_and_upload_dir, parse_s3_url
 from sagemaker.session import Session
 from sagemaker.utils import name_from_image, get_config_value
 
 
 class Model(object):
-    """An SageMaker ``Model`` that can be deployed to an ``Endpoint``."""
+    """A SageMaker ``Model`` that can be deployed to an ``Endpoint``."""
 
     def __init__(self, model_data, image, role, predictor_cls=None, env=None, name=None, sagemaker_session=None):
         """Initialize an SageMaker ``Model``.
@@ -48,7 +49,7 @@ class Model(object):
         self.predictor_cls = predictor_cls
         self.env = env or {}
         self.name = name
-        self.sagemaker_session = sagemaker_session or Session()
+        self.sagemaker_session = sagemaker_session
         self._model_name = None
 
     def prepare_container_def(self, instance_type):
@@ -86,6 +87,12 @@ class Model(object):
             callable[string, sagemaker.session.Session] or None: Invocation of ``self.predictor_cls`` on
                 the created endpoint name, if ``self.predictor_cls`` is not None. Otherwise, return None.
         """
+        if not self.sagemaker_session:
+            if instance_type in ('local', 'local_gpu'):
+                self.sagemaker_session = LocalSession()
+            else:
+                self.sagemaker_session = Session()
+
         container_def = self.prepare_container_def(instance_type)
         model_name = self.name or name_from_image(container_def['Image'])
         self.sagemaker_session.create_model(model_name, self.role, container_def)

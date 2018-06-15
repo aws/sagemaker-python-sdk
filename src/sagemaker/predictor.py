@@ -93,6 +93,11 @@ class RealTimePredictor(object):
         response_body.close()
         return data
 
+    def delete_endpoint(self):
+        """Delete the Amazon SageMaker endpoint backing this predictor.
+        """
+        self.sagemaker_session.delete_endpoint(self.endpoint)
+
 
 class _CsvSerializer(object):
     def __init__(self):
