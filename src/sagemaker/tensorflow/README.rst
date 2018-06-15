@@ -434,11 +434,11 @@ you can specify these as keyword arguments.
    method launches. If not specified, the estimator generates a default
    job name, based on the training image name and current timestamp.
 -  ``image_name`` An alternative docker image to use for training and
-    serving.  If specified, the estimator will use this image for training and
-    hosting, instead of selecting the appropriate SageMaker official image based on
-    framework_version and py_version. Refer to: `SageMaker TensorFlow Docker Containers
-    <#sagemaker-tensorflow-docker-containers>`_ for details on what the Official images support
-    and where to find the source code to build your custom image.
+   serving.  If specified, the estimator will use this image for training and
+   hosting, instead of selecting the appropriate SageMaker official image based on
+   framework_version and py_version. Refer to: `SageMaker TensorFlow Docker Containers
+   <#sagemaker-tensorflow-docker-containers>`_ for details on what the Official images support
+   and where to find the source code to build your custom image.
 
 
 Optional Hyperparameters

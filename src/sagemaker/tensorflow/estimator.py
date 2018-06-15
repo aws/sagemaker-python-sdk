@@ -173,8 +173,10 @@ class TensorFlow(Framework):
                 `Pip User Guide <https://pip.pypa.io/en/stable/reference/pip_install/#requirements-file-format>`_.
             image_name (str): If specified, the estimator will use this image for training and hosting, instead of
                 selecting the appropriate SageMaker official image based on framework_version and py_version. It can
-                be an ECR url or dockerhub image and tag: 123.dkr.ecr.us-west-2.amazonaws.com/my-custom-image:1.0,
-                custom-image:latest.
+                be an ECR url or dockerhub image and tag.
+                    Examples:
+                        123.dkr.ecr.us-west-2.amazonaws.com/my-custom-image:1.0
+                        custom-image:latest.
             **kwargs: Additional kwargs passed to the Framework constructor.
         """
         super(TensorFlow, self).__init__(image_name=image_name, **kwargs)
