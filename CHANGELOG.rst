@@ -2,7 +2,7 @@
 CHANGELOG
 =========
 
-1.4.2dev
+1.4.2
 ========
 
 * bug-fix: Unit Tests: Improve unit test runtime
