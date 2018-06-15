@@ -2,8 +2,8 @@
 CHANGELOG
 =========
 
-1.4.2dev
-========
+1.4.2
+=====
 
 * bug-fix: Estimators: Fix attach for LDA
 * bug-fix: Estimators: allow code_location to have no key prefix
