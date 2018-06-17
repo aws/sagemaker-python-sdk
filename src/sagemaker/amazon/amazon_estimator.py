@@ -278,7 +278,7 @@ def registry(region_name, algorithm=None):
     https://github.com/aws/sagemaker-python-sdk/tree/master/src/sagemaker/amazon
     """
     if algorithm in [None, "pca", "kmeans", "linear-learner", "factorization-machines", "ntm",
-                     "randomcutforest"]:
+                     "randomcutforest", "knn"]:
         account_id = {
             "us-east-1": "382416733822",
             "us-east-2": "404615174143",
