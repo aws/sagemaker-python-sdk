@@ -679,7 +679,7 @@ class Session(object):
         if '/' in role:
             return role
         else:
-            return boto3.resource("iam").Role(role).arn
+            return self.boto_session.resource('iam').Role(role).arn
 
     def get_caller_identity_arn(self):
         """Returns the ARN user or role whose credentials are used to call the API.

@@ -49,7 +49,7 @@ You can install from source by cloning this repository and issuing a pip install
 
     git clone https://github.com/aws/sagemaker-python-sdk.git
     python setup.py sdist
-    pip install dist/sagemaker-1.4.1.tar.gz
+    pip install dist/sagemaker-1.4.2.tar.gz
 
 Supported Python versions
 ~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -320,6 +320,14 @@ In addition, the ``fit()`` call uses a list of ``RecordSet`` objects instead of 
 
     # Start hyperparameter tuning job
     my_tuner.fit([train_records, test_records])
+
+To aid with attaching a previously-started hyperparameter tuning job with a ``HyperparameterTuner`` instance, ``fit()`` injects metadata in the hyperparameters by default.
+If the algorithm you are using cannot handle unknown hyperparameters (e.g. an Amazon ML algorithm that does not have a custom estimator in the Python SDK), then you can set ``include_cls_metadata`` to ``False`` when calling fit:
+
+.. code:: python
+
+    my_tuner.fit({'train': 's3://my_bucket/my_training_data', 'test': 's3://my_bucket_my_testing_data'},
+                 include_cls_metadata=False)
 
 There is also an analytics object associated with each ``HyperparameterTuner`` instance that presents useful information about the hyperparameter tuning job.
 For example, the ``dataframe`` method gets a pandas dataframe summarizing the associated training jobs:
