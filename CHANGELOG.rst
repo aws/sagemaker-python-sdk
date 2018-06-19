@@ -6,14 +6,13 @@ CHANGELOG
 ========
 * feature: Allow Local Serving of Models in S3
 * enhancement: Allow option for ``HyperparameterTuner`` to not include estimator metadata in job
-
+* bug-fix: Estimators: Join tensorboard thread after fitting
 
 1.4.2
 =====
 
 * bug-fix: Estimators: Fix attach for LDA
 * bug-fix: Estimators: allow code_location to have no key prefix
-* bug-fix: Estimators: Join tensorboard thread after fitting
 * bug-fix: Local Mode: Fix s3 training data download when there is a trailing slash
 
 1.4.1
