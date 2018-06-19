@@ -70,7 +70,8 @@ def sagemaker_local_session(boto_config):
     return LocalSession(boto_session=boto_session)
 
 
-@pytest.fixture(scope='module', params=['1.4', '1.4.1', '1.5', '1.5.0', '1.6', '1.6.0'])
+@pytest.fixture(scope='module', params=['1.4', '1.4.1', '1.5', '1.5.0', '1.6', '1.6.0',
+                                        '1.7', '1.7.0', '1.8', '1.8.0'])
 def tf_version(request):
     return request.param
 
@@ -85,7 +86,7 @@ def chainer_version(request):
     return request.param
 
 
-@pytest.fixture(scope='module', params=['1.4.1', '1.5.0', '1.6.0'])
+@pytest.fixture(scope='module', params=['1.4.1', '1.5.0', '1.6.0', '1.7.0', '1.8.0'])
 def tf_full_version(request):
     return request.param
 
