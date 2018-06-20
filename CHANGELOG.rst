@@ -2,8 +2,11 @@
 CHANGELOG
 =========
 
-1.4.3dev
-========
+1.5.0
+=====
+* feature: Add Support for PyTorch Framework
+* feature: Estimators: add support for TensorFlow 1.7.0
+* feature: Estimators: add support for TensorFlow 1.8.0
 * feature: Allow Local Serving of Models in S3
 * enhancement: Allow option for ``HyperparameterTuner`` to not include estimator metadata in job
 * bug-fix: Estimators: Join tensorboard thread after fitting

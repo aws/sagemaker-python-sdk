@@ -70,7 +70,8 @@ def sagemaker_local_session(boto_config):
     return LocalSession(boto_session=boto_session)
 
 
-@pytest.fixture(scope='module', params=['1.4', '1.4.1', '1.5', '1.5.0', '1.6', '1.6.0'])
+@pytest.fixture(scope='module', params=['1.4', '1.4.1', '1.5', '1.5.0', '1.6', '1.6.0',
+                                        '1.7', '1.7.0', '1.8', '1.8.0'])
 def tf_version(request):
     return request.param
 
@@ -80,18 +81,28 @@ def mxnet_version(request):
     return request.param
 
 
+@pytest.fixture(scope='module', params=["0.4", "0.4.0"])
+def pytorch_version(request):
+    return request.param
+
+
 @pytest.fixture(scope='module', params=['4.0', '4.0.0'])
 def chainer_version(request):
     return request.param
 
 
-@pytest.fixture(scope='module', params=['1.4.1', '1.5.0', '1.6.0'])
+@pytest.fixture(scope='module', params=['1.4.1', '1.5.0', '1.6.0', '1.7.0', '1.8.0'])
 def tf_full_version(request):
     return request.param
 
 
 @pytest.fixture(scope='module', params=['0.12.1', '1.0.0', '1.1.0'])
 def mxnet_full_version(request):
+    return request.param
+
+
+@pytest.fixture(scope='module', params=["0.4.0"])
+def pytorch_full_version(request):
     return request.param
 
 

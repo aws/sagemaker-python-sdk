@@ -7,7 +7,7 @@ TensorFlow SageMaker Estimators allow you to run your own TensorFlow
 training algorithms on SageMaker Learner, and to host your own TensorFlow
 models on SageMaker Hosting.
 
-Supported versions of TensorFlow: ``1.4.1``, ``1.5.0``, ``1.6.0``.
+Supported versions of TensorFlow: ``1.4.1``, ``1.5.0``, ``1.6.0``, ``1.7.0``, ``1.8.0``.
 
 Training with TensorFlow
 ~~~~~~~~~~~~~~~~~~~~~~~~
@@ -41,8 +41,7 @@ estimator.
 Preparing the TensorFlow training script
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Your TensorFlow training script must be a **Python 2.7** source file. The current supported TensorFlow
-versions are **1.6.0 (default)**, **1.5.0**, and **1.4.1**. The SageMaker TensorFlow docker image
+Your TensorFlow training script must be a **Python 2.7** source file. The SageMaker TensorFlow docker image
 uses this script by calling specifically-named functions from this script.
 
 The training script **must contain** the following:
@@ -754,36 +753,22 @@ A example with ``input_fn`` and ``output_fn`` above can be found in
 SageMaker TensorFlow Docker containers
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-The TensorFlow Docker images support Python 2.7 and have the following Python modules installed:
+The TensorFlow Docker images support Python 2.7. They include the following Python packages:
 
-+------------------------+------------------+------------------+------------------+
-| Dependencies           | tensorflow 1.4.1 | tensorflow 1.5.0 | tensorflow 1.6.0 |
-+------------------------+------------------+------------------+------------------+
-| boto3                  |            1.4.7 |           1.5.22 |          1.6.21  |
-+------------------------+------------------+------------------+------------------+
-| botocore               |           1.5.92 |           1.8.36 |          1.9.21  |
-+------------------------+------------------+------------------+------------------+
-| grpcio                 |            1.7.0 |            1.9.0 |          1.10.0  |
-+------------------------+------------------+------------------+------------------+
-| numpy                  |           1.13.3 |           1.14.0 |          1.14.2  |
-+------------------------+------------------+------------------+------------------+
-| pandas                 |           0.21.0 |           0.22.0 |          0.22.0  |
-+------------------------+------------------+------------------+------------------+
-| protobuf               |            3.4.0 |            3.5.1 |          3.5.2   |
-+------------------------+------------------+------------------+------------------+
-| scikit-learn           |           0.19.1 |           0.19.1 |          0.19.1  |
-+------------------------+------------------+------------------+------------------+
-| scipy                  |            1.0.0 |            1.0.0 |          1.0.1   |
-+------------------------+------------------+------------------+------------------+
-| sklearn                |              0.0 |              0.0 |          0.0     |
-+------------------------+------------------+------------------+------------------+
-| tensorflow             |            1.4.1 |            1.5.0 |          1.6.0   |
-+------------------------+------------------+------------------+------------------+
-| tensorflow-serving-api |            1.4.0 |            1.5.0 |          1.5.0   |
-+------------------------+------------------+------------------+------------------+
+- boto3
+- botocore
+- grpcio
+- numpy
+- pandas
+- protobuf
+- scikit-learn
+- scipy
+- sklearn
+- tensorflow
+- tensorflow-serving-api
 
 The Docker images extend Ubuntu 16.04.
 
 You can select version of TensorFlow by passing a ``framework_version`` keyword arg to the TensorFlow Estimator constructor. Currently supported versions are listed in the table above. You can also set ``framework_version`` to only specify major and minor version, e.g ``1.6``, which will cause your training script to be run on the latest supported patch version of that minor version, which in this example would be 1.6.0.
 
-You can visit the SageMaker TensorFlow containers repository here: https://github.com/aws/sagemaker-tensorflow-containers/
+For more information on the contents of the images, see the SageMaker TensorFlow containers repository here: https://github.com/aws/sagemaker-tensorflow-containers/
