@@ -236,6 +236,20 @@ More details at `Chainer SageMaker Estimators and Models`_.
 .. _Chainer SageMaker Estimators and Models: src/sagemaker/chainer/README.rst
 
 
+PyTorch SageMaker Estimators
+-------------------------------
+
+With PyTorch Estimators, you can train and host PyTorch models on Amazon SageMaker.
+
+Supported versions of PyTorch: ``0.4.0``
+
+You can visit the PyTorch repository at https://github.com/pytorch/pytorch.
+
+More details at `PyTorch SageMaker Estimators and Models`_.
+
+.. _PyTorch SageMaker Estimators and Models: src/sagemaker/pytorch/README.rst
+
+
 AWS SageMaker Estimators
 ------------------------
 Amazon SageMaker provides several built-in machine learning algorithms that you can use for a variety of problem types.
