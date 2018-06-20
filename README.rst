@@ -49,7 +49,7 @@ You can install from source by cloning this repository and issuing a pip install
 
     git clone https://github.com/aws/sagemaker-python-sdk.git
     python setup.py sdist
-    pip install dist/sagemaker-1.4.2.tar.gz
+    pip install dist/sagemaker-1.5.0.tar.gz
 
 Supported Python versions
 ~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -234,6 +234,20 @@ You can visit the Chainer repository at https://github.com/chainer/chainer.
 More details at `Chainer SageMaker Estimators and Models`_.
 
 .. _Chainer SageMaker Estimators and Models: src/sagemaker/chainer/README.rst
+
+
+PyTorch SageMaker Estimators
+-------------------------------
+
+With PyTorch Estimators, you can train and host PyTorch models on Amazon SageMaker.
+
+Supported versions of PyTorch: ``0.4.0``
+
+You can visit the PyTorch repository at https://github.com/pytorch/pytorch.
+
+More details at `PyTorch SageMaker Estimators and Models`_.
+
+.. _PyTorch SageMaker Estimators and Models: src/sagemaker/pytorch/README.rst
 
 
 AWS SageMaker Estimators

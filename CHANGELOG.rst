@@ -2,8 +2,9 @@
 CHANGELOG
 =========
 
-1.4.3dev
-========
+1.5.0
+=====
+* feature: Add Support for PyTorch Framework
 * feature: Estimators: add support for TensorFlow 1.7.0
 * feature: Estimators: add support for TensorFlow 1.8.0
 * feature: Allow Local Serving of Models in S3
