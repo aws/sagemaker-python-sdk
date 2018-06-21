@@ -472,7 +472,7 @@ both required and optional arguments.
 Required argument
 '''''''''''''''''
 
--  ``inputs``: The S3 location(s) of datasets to be used for training. This can take one of two forms:
+- ``inputs``: The S3 location(s) of datasets to be used for training. This can take one of two forms:
 
   - ``str``: An S3 URI, for example ``s3://my-bucket/my-training-data``, which indicates the dataset's location.
   - ``dict[str, str]``: A dictionary mapping channel names to S3 locations, for example ``{'train': 's3://my-bucket/my-training-data/train', 'test': 's3://my-bucket/my-training-data/test'}``
