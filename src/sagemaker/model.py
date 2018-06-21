@@ -16,13 +16,14 @@ import logging
 
 import sagemaker
 
-from sagemaker.fw_utils import tar_and_upload_dir, parse_s3_url
+from sagemaker.local import LocalSession
+from sagemaker.fw_utils import tar_and_upload_dir, parse_s3_url, model_code_key_prefix
 from sagemaker.session import Session
 from sagemaker.utils import name_from_image, get_config_value
 
 
 class Model(object):
-    """An SageMaker ``Model`` that can be deployed to an ``Endpoint``."""
+    """A SageMaker ``Model`` that can be deployed to an ``Endpoint``."""
 
     def __init__(self, model_data, image, role, predictor_cls=None, env=None, name=None, sagemaker_session=None):
         """Initialize an SageMaker ``Model``.
@@ -48,7 +49,7 @@ class Model(object):
         self.predictor_cls = predictor_cls
         self.env = env or {}
         self.name = name
-        self.sagemaker_session = sagemaker_session or Session()
+        self.sagemaker_session = sagemaker_session
         self._model_name = None
 
     def prepare_container_def(self, instance_type):
@@ -86,6 +87,12 @@ class Model(object):
             callable[string, sagemaker.session.Session] or None: Invocation of ``self.predictor_cls`` on
                 the created endpoint name, if ``self.predictor_cls`` is not None. Otherwise, return None.
         """
+        if not self.sagemaker_session:
+            if instance_type in ('local', 'local_gpu'):
+                self.sagemaker_session = LocalSession()
+            else:
+                self.sagemaker_session = Session()
+
         container_def = self.prepare_container_def(instance_type)
         model_name = self.name or name_from_image(container_def['Image'])
         self.sagemaker_session.create_model(model_name, self.role, container_def)
@@ -125,6 +132,7 @@ class FrameworkModel(Model):
             source_dir (str): Path (absolute or relative) to a directory with any other training
                 source code dependencies aside from tne entry point file (default: None). Structure within this
                 directory will be preserved when training on SageMaker.
+                If the directory points to S3, no code will be uploaded and the S3 location will be used instead.
             predictor_cls (callable[string, sagemaker.session.Session]): A function to call to create
                a predictor (default: None). If not None, ``deploy`` will return the result of invoking
                this function on the created endpoint name.
@@ -162,7 +170,8 @@ class FrameworkModel(Model):
         Returns:
             dict[str, str]: A container definition object usable with the CreateModel API.
         """
-        self._upload_code(self.key_prefix or self.name or name_from_image(self.image))
+        deploy_key_prefix = model_code_key_prefix(self.key_prefix, self.name, self.image)
+        self._upload_code(deploy_key_prefix)
         deploy_env = dict(self.env)
         deploy_env.update(self._framework_env_vars())
         return sagemaker.container_def(self.image, self.model_data, deploy_env)

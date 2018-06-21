@@ -204,7 +204,7 @@ class HyperparameterTuner(object):
         self._current_job_name = None
         self.latest_tuning_job = None
 
-    def _prepare_for_training(self, job_name=None):
+    def _prepare_for_training(self, job_name=None, include_cls_metadata=True):
         if job_name is not None:
             self._current_job_name = job_name
         else:
@@ -217,12 +217,12 @@ class HyperparameterTuner(object):
 
         # For attach() to know what estimator to use for non-1P algorithms
         # (1P algorithms don't accept extra hyperparameters)
-        if not isinstance(self.estimator, AmazonAlgorithmEstimatorBase):
+        if include_cls_metadata and not isinstance(self.estimator, AmazonAlgorithmEstimatorBase):
             self.static_hyperparameters[self.SAGEMAKER_ESTIMATOR_CLASS_NAME] = json.dumps(
                 self.estimator.__class__.__name__)
             self.static_hyperparameters[self.SAGEMAKER_ESTIMATOR_MODULE] = json.dumps(self.estimator.__module__)
 
-    def fit(self, inputs, job_name=None, **kwargs):
+    def fit(self, inputs, job_name=None, include_cls_metadata=True, **kwargs):
         """Start a hyperparameter tuning job.
 
         Args:
@@ -253,7 +253,7 @@ class HyperparameterTuner(object):
         else:
             self.estimator._prepare_for_training(job_name)
 
-        self._prepare_for_training(job_name=job_name)
+        self._prepare_for_training(job_name=job_name, include_cls_metadata=include_cls_metadata)
         self.latest_tuning_job = _TuningJob.start_new(self, inputs)
 
     @classmethod

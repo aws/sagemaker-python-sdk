@@ -159,6 +159,21 @@ def test_prepare_for_training(tuner):
     assert tuner.static_hyperparameters['sagemaker_estimator_module'] == module
 
 
+def test_prepare_for_training_with_amazon_estimator(tuner, sagemaker_session):
+    tuner.estimator = PCA(ROLE, TRAIN_INSTANCE_COUNT, TRAIN_INSTANCE_TYPE, NUM_COMPONENTS,
+                          sagemaker_session=sagemaker_session)
+
+    tuner._prepare_for_training()
+    assert 'sagemaker_estimator_class_name' not in tuner.static_hyperparameters
+    assert 'sagemaker_estimator_module' not in tuner.static_hyperparameters
+
+
+def test_prepare_for_training_dont_include_estimator_cls(tuner):
+    tuner._prepare_for_training(include_cls_metadata=False)
+    assert 'sagemaker_estimator_class_name' not in tuner.static_hyperparameters
+    assert 'sagemaker_estimator_module' not in tuner.static_hyperparameters
+
+
 def test_prepare_for_training_with_job_name(tuner):
     static_hyperparameters = {'validated': 1, 'another_one': 0}
     tuner.estimator.set_hyperparameters(**static_hyperparameters)

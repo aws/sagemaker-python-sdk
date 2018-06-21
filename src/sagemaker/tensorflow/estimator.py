@@ -19,6 +19,7 @@ import shutil
 import subprocess
 import tempfile
 import threading
+import time
 
 from sagemaker.estimator import Framework
 from sagemaker.fw_utils import create_image_uri, framework_name_from_image, framework_version_from_tag
@@ -234,7 +235,10 @@ class TensorFlow(Framework):
                 tensorboard.start()
                 fit_super()
             finally:
+                # sleep 20 secs for tensorboard start up if fit() quits instantly
+                time.sleep(20)
                 tensorboard.event.set()
+                tensorboard.join()
         else:
             fit_super()
 
@@ -296,7 +300,7 @@ class TensorFlow(Framework):
                 See :func:`~sagemaker.tensorflow.model.TensorFlowModel` for full details.
         """
         env = {'SAGEMAKER_REQUIREMENTS': self.requirements_file}
-        return TensorFlowModel(self.model_data, self.role, self.entry_point, source_dir=self.source_dir,
+        return TensorFlowModel(self.model_data, self.role, self.entry_point, source_dir=self._model_source_dir(),
                                enable_cloudwatch_metrics=self.enable_cloudwatch_metrics, env=env,
                                name=self._current_job_name, container_log_level=self.container_log_level,
                                code_location=self.code_location, py_version=self.py_version,

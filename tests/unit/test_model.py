@@ -16,7 +16,7 @@ from sagemaker.model import FrameworkModel
 from sagemaker.predictor import RealTimePredictor
 import os
 import pytest
-from mock import Mock, patch
+from mock import MagicMock, Mock, patch
 
 MODEL_DATA = "s3://bucket/model.tar.gz"
 MODEL_IMAGE = "mi"
@@ -80,7 +80,7 @@ def test_create_no_defaults(tfopen, exists, isdir, listdir, time, sagemaker_sess
 
     assert model.prepare_container_def(INSTANCE_TYPE) == {
         'Environment': {'SAGEMAKER_PROGRAM': 'blah.py',
-                        'SAGEMAKER_SUBMIT_DIRECTORY': 's3://cb/cp/sourcedir.tar.gz',
+                        'SAGEMAKER_SUBMIT_DIRECTORY': 's3://cb/cp/name/sourcedir.tar.gz',
                         'SAGEMAKER_CONTAINER_LOG_LEVEL': '55',
                         'SAGEMAKER_REGION': 'us-west-2',
                         'SAGEMAKER_ENABLE_CLOUDWATCH_METRICS': 'true',
@@ -115,3 +115,19 @@ def test_deploy_endpoint_name(tfo, time, sagemaker_session):
           'InstanceType': INSTANCE_TYPE,
           'InitialInstanceCount': 55,
           'VariantName': 'AllTraffic'}])
+
+
+@patch('sagemaker.model.Session')
+@patch('sagemaker.model.LocalSession')
+@patch('tarfile.open', MagicMock())
+def test_deploy_creates_correct_session(local_session, session):
+
+    # We expect a LocalSession when deploying to instance_type = 'local'
+    model = DummyFrameworkModel(sagemaker_session=None)
+    model.deploy(endpoint_name='blah', instance_type='local', initial_instance_count=1)
+    assert model.sagemaker_session == local_session.return_value
+
+    # We expect a real Session when deploying to instance_type != local/local_gpu
+    model = DummyFrameworkModel(sagemaker_session=None)
+    model.deploy(endpoint_name='remote_endpoint', instance_type='ml.m4.4xlarge', initial_instance_count=2)
+    assert model.sagemaker_session == session.return_value

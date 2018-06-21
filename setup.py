@@ -23,7 +23,7 @@ def read(fname):
 
 
 setup(name="sagemaker",
-      version="1.4.1",
+      version="1.5.0",
       description="Open source library for training and deploying models on Amazon SageMaker.",
       packages=find_packages('src'),
       package_dir={'': 'src'},
@@ -44,7 +44,7 @@ setup(name="sagemaker",
       ],
 
       # Declare minimal set for installation
-      install_requires=['boto3>=1.4.8', 'numpy>=1.9.0', 'protobuf>=3.1', 'scipy>=1.0.0', 'urllib3>=1.2',
+      install_requires=['boto3>=1.4.8', 'numpy>=1.9.0', 'protobuf>=3.1', 'scipy>=0.19.0', 'urllib3>=1.2',
                         'PyYAML>=3.2'],
 
       extras_require={
