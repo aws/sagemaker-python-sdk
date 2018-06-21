@@ -2,8 +2,14 @@
 CHANGELOG
 =========
 
+1.5.1dev
+========
+
+* enhancement: Let Framework models reuse code uploaded by Framework estimators
+
 1.5.0
 =====
+
 * feature: Add Support for PyTorch Framework
 * feature: Estimators: add support for TensorFlow 1.7.0
 * feature: Estimators: add support for TensorFlow 1.8.0
