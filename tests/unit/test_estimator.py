@@ -15,6 +15,7 @@ from __future__ import absolute_import
 import logging
 import json
 import os
+from time import sleep
 
 import pytest
 from mock import Mock, patch
@@ -386,6 +387,7 @@ def test_prepare_for_training_unique_job_name_generation(sagemaker_session):
     fw._prepare_for_training()
     first_job_name = fw._current_job_name
 
+    sleep(0.1)
     fw._prepare_for_training()
     second_job_name = fw._current_job_name
 
