@@ -82,7 +82,7 @@ class MXNet(Framework):
             sagemaker.mxnet.model.MXNetModel: A SageMaker ``MXNetModel`` object.
                 See :func:`~sagemaker.mxnet.model.MXNetModel` for full details.
         """
-        return MXNetModel(self.model_data, self.role, self.entry_point, source_dir=self.source_dir,
+        return MXNetModel(self.model_data, self.role, self.entry_point, source_dir=self._model_source_dir(),
                           enable_cloudwatch_metrics=self.enable_cloudwatch_metrics, name=self._current_job_name,
                           container_log_level=self.container_log_level, code_location=self.code_location,
                           py_version=self.py_version, framework_version=self.framework_version,

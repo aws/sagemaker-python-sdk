@@ -28,10 +28,11 @@ Table of Contents
 3. `MXNet SageMaker Estimators <#mxnet-sagemaker-estimators>`__
 4. `TensorFlow SageMaker Estimators <#tensorflow-sagemaker-estimators>`__
 5. `Chainer SageMaker Estimators <#chainer-sagemaker-estimators>`__
-6. `AWS SageMaker Estimators <#aws-sagemaker-estimators>`__
-7. `BYO Docker Containers with SageMaker Estimators <#byo-docker-containers-with-sagemaker-estimators>`__
-8. `SageMaker Automatic Model Tuning <#sagemaker-automatic-model-tuning>`__
-9. `BYO Model <#byo-model>`__
+6. `PyTorch SageMaker Estimators <#pytorch-sagemaker-estimators>`__
+7. `AWS SageMaker Estimators <#aws-sagemaker-estimators>`__
+8. `BYO Docker Containers with SageMaker Estimators <#byo-docker-containers-with-sagemaker-estimators>`__
+9. `SageMaker Automatic Model Tuning <#sagemaker-automatic-model-tuning>`__
+10. `BYO Model <#byo-model>`__
 
 
 Getting SageMaker Python SDK
@@ -64,19 +65,26 @@ http://aws.amazon.com/apache2.0/
 Running tests
 ~~~~~~~~~~~~~
 
-SageMaker Python SDK uses tox for running Python tests. You can run the tests by running tox:
+SageMaker Python SDK has unit tests and integration tests.
 
-::
+**Unit tests**
 
-    tox
-
-Tests are defined in ``tests/`` and includes unit and integ tests. If you just want to run unit tests, then you can issue:
+tox is a prerequisite for running unit tests so you need to make sure you have it installed. To run the unit tests:
 
 ::
 
     tox tests/unit
 
-To just run integ tests, issue the following command:
+**Integrations tests**
+
+To be able to run the integration tests, the following prerequisites must be met
+
+1. Access to an AWS account to run the tests on
+2. Make the AWS account credentials available to boto3 clients used in the tests
+3. Ensure the AWS account has an IAM role named :code:`SageMakerRole`
+4. Ensure the libraries mentioned in setup.py extra_require for test are installed which can be achieved using :code:`pip install --upgrade .[test]`
+
+You can run integ tests by issuing the following command:
 
 ::
 
@@ -117,6 +125,7 @@ Later sections of this document explain how to use the different Estimators and 
 * `MXNet SageMaker Estimators and Models <#mxnet-sagemaker-estimators>`__
 * `TensorFlow SageMaker Estimators and Models <#tensorflow-sagemaker-estimators>`__
 * `Chainer SageMaker Estimators and Models <#chainer-sagemaker-estimators>`__
+* `PyTorch SageMaker Estimators <#pytorch-sagemaker-estimators>`__
 * `AWS SageMaker Estimators and Models <#aws-sagemaker-estimators>`__
 * `Custom SageMaker Estimators and Models <#byo-docker-containers-with-sagemaker-estimators>`__
 
