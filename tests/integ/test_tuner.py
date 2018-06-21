@@ -13,19 +13,24 @@
 from __future__ import absolute_import
 
 import gzip
+import io
+import json
 import os
 import pickle
 import sys
 import time
 
+import boto3
 import numpy as np
 import pytest
 
-from sagemaker import LDA, RandomCutForest
-from sagemaker.amazon.common import read_records
-from sagemaker.amazon.kmeans import KMeans
+from sagemaker import KMeans, LDA, RandomCutForest
+from sagemaker.amazon.amazon_estimator import registry
+from sagemaker.amazon.common import read_records, write_numpy_to_dense_tensor
 from sagemaker.chainer import Chainer
+from sagemaker.estimator import Estimator
 from sagemaker.mxnet.estimator import MXNet
+from sagemaker.predictor import json_deserializer
 from sagemaker.tensorflow import TensorFlow
 from sagemaker.tuner import IntegerParameter, ContinuousParameter, CategoricalParameter, HyperparameterTuner
 from tests.integ import DATA_DIR
@@ -307,3 +312,83 @@ def test_tuning_chainer(sagemaker_session):
         data = np.zeros((batch_size, 28, 28), dtype='float32')
         output = predictor.predict(data)
         assert len(output) == batch_size
+
+
+@pytest.mark.continuous_testing
+def test_tuning_byo_estimator(sagemaker_session):
+    """Use Factorization Machines algorithm as an example here.
+
+    First we need to prepare data for training. We take standard data set, convert it to the
+    format that the algorithm can process and upload it to S3.
+    Then we create the Estimator and set hyperparamets as required by the algorithm.
+    Next, we can call fit() with path to the S3.
+    Later the trained model is deployed and prediction is called against the endpoint.
+    Default predictor is updated with json serializer and deserializer.
+    """
+    image_name = registry(sagemaker_session.boto_session.region_name) + '/factorization-machines:1'
+
+    with timeout(minutes=15):
+        data_path = os.path.join(DATA_DIR, 'one_p_mnist', 'mnist.pkl.gz')
+        pickle_args = {} if sys.version_info.major == 2 else {'encoding': 'latin1'}
+
+        with gzip.open(data_path, 'rb') as f:
+            train_set, _, _ = pickle.load(f, **pickle_args)
+
+        # take 100 examples for faster execution
+        vectors = np.array([t.tolist() for t in train_set[0][:100]]).astype('float32')
+        labels = np.where(np.array([t.tolist() for t in train_set[1][:100]]) == 0, 1.0, 0.0).astype('float32')
+
+        buf = io.BytesIO()
+        write_numpy_to_dense_tensor(buf, vectors, labels)
+        buf.seek(0)
+
+        bucket = sagemaker_session.default_bucket()
+        prefix = 'test_byo_estimator'
+        key = 'recordio-pb-data'
+        boto3.resource('s3').Bucket(bucket).Object(os.path.join(prefix, 'train', key)).upload_fileobj(buf)
+        s3_train_data = 's3://{}/{}/train/{}'.format(bucket, prefix, key)
+
+        estimator = Estimator(image_name=image_name,
+                              role='SageMakerRole', train_instance_count=1,
+                              train_instance_type='ml.c4.xlarge',
+                              sagemaker_session=sagemaker_session, base_job_name='test-byo')
+
+        estimator.set_hyperparameters(num_factors=10,
+                                      feature_dim=784,
+                                      mini_batch_size=100,
+                                      predictor_type='binary_classifier')
+
+        hyperparameter_ranges = {'mini_batch_size': IntegerParameter(100, 200)}
+
+        tuner = HyperparameterTuner(estimator=estimator, base_tuning_job_name='byo',
+                                    objective_metric_name='test:binary_classification_accuracy',
+                                    hyperparameter_ranges=hyperparameter_ranges,
+                                    max_jobs=2, max_parallel_jobs=2)
+
+        tuner.fit({'train': s3_train_data, 'test': s3_train_data}, include_cls_metadata=False)
+
+        print('Started hyperparameter tuning job with name:' + tuner.latest_tuning_job.name)
+
+        time.sleep(15)
+        tuner.wait()
+
+    best_training_job = tuner.best_training_job()
+    with timeout_and_delete_endpoint_by_name(best_training_job, sagemaker_session):
+        predictor = tuner.deploy(1, 'ml.m4.xlarge', endpoint_name=best_training_job)
+        predictor.serializer = _fm_serializer
+        predictor.content_type = 'application/json'
+        predictor.deserializer = json_deserializer
+
+        result = predictor.predict(train_set[0][:10])
+
+        assert len(result['predictions']) == 10
+        for prediction in result['predictions']:
+            assert prediction['score'] is not None
+
+
+# Serializer for the Factorization Machines predictor (for BYO example)
+def _fm_serializer(data):
+    js = {'instances': []}
+    for row in data:
+        js['instances'].append({'features': row.tolist()})
+    return json.dumps(js)
