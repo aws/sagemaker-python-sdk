@@ -2,11 +2,12 @@
 CHANGELOG
 =========
 
-+1.5.1dev
-+========
+1.5.1dev
+========
 
 * enhancement: Let Framework models reuse code uploaded by Framework estimators
 * enhancement: Unify generation of model uploaded code location
+* feature: Change minimum required scipy from 1.0.0 to 0.19.0
 
 1.5.0
 =====
