@@ -132,6 +132,7 @@ class FrameworkModel(Model):
             source_dir (str): Path (absolute or relative) to a directory with any other training
                 source code dependencies aside from tne entry point file (default: None). Structure within this
                 directory will be preserved when training on SageMaker.
+                If the directory points to S3, no code will be uploaded and the S3 location will be used instead.
             predictor_cls (callable[string, sagemaker.session.Session]): A function to call to create
                a predictor (default: None). If not None, ``deploy`` will return the result of invoking
                this function on the created endpoint name.

@@ -300,7 +300,7 @@ class TensorFlow(Framework):
                 See :func:`~sagemaker.tensorflow.model.TensorFlowModel` for full details.
         """
         env = {'SAGEMAKER_REQUIREMENTS': self.requirements_file}
-        return TensorFlowModel(self.model_data, self.role, self.entry_point, source_dir=self.source_dir,
+        return TensorFlowModel(self.model_data, self.role, self.entry_point, source_dir=self._model_source_dir(),
                                enable_cloudwatch_metrics=self.enable_cloudwatch_metrics, env=env,
                                name=self._current_job_name, container_log_level=self.container_log_level,
                                code_location=self.code_location, py_version=self.py_version,
