@@ -64,19 +64,26 @@ http://aws.amazon.com/apache2.0/
 Running tests
 ~~~~~~~~~~~~~
 
-SageMaker Python SDK uses tox for running Python tests. You can run the tests by running tox:
+SageMaker Python SDK has unit tests and integration tests.
 
-::
+**Unit tests**
 
-    tox
-
-Tests are defined in ``tests/`` and includes unit and integ tests. If you just want to run unit tests, then you can issue:
+tox is a prerequisite for running unit tests so you need to make sure you have it installed. To run the unit tests:
 
 ::
 
     tox tests/unit
 
-To just run integ tests, issue the following command:
+**Integrations tests**
+
+To be able to run the integration tests, the following prerequisites must be met
+
+1. Access to an AWS account to run the tests on
+2. Make the AWS account credentials available to boto3 clients used in the tests
+3. Ensure the AWS account has an IAM role named :code:`SageMakerRole`
+4. Ensure the libraries mentioned in setup.py extra_require for test are installed which can be achieved using :code:`pip install --upgrade .[test]`
+
+You can run integ tests by issuing the following command:
 
 ::
 
