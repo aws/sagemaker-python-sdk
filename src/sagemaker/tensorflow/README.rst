@@ -1,4 +1,3 @@
-
 ==========================================
 TensorFlow SageMaker Estimators and Models
 ==========================================
@@ -30,7 +29,7 @@ follows:
                             train_instance_count=1, train_instance_type='ml.p2.xlarge')
   tf_estimator.fit('s3://bucket/path/to/training/data')
 
-Where the s3 url is a path to your training data, within Amazon S3. The
+Where the S3 url is a path to your training data, within Amazon S3. The
 constructor keyword arguments define how SageMaker runs your training
 script and are discussed, in detail, in a later section.
 
@@ -473,11 +472,15 @@ both required and optional arguments.
 Required argument
 '''''''''''''''''
 
--  ``inputs (str)``: A S3 URI, for example ``s3://my-bucket/my-training-data``, which contains
-   the dataset that will be used for training. When the training job starts in SageMaker the
-   container will download the dataset. Both ``train_input_fn`` and ``eval_input_fn`` functions
-   have a parameter called ``training_dir`` which contains the directory inside the container
-   where the dataset was saved into. See `Creating train_input_fn and eval_input_fn functions`_.
+- ``inputs``: The S3 location(s) of datasets to be used for training. This can take one of two forms:
+
+  - ``str``: An S3 URI, for example ``s3://my-bucket/my-training-data``, which indicates the dataset's location.
+  - ``dict[str, str]``: A dictionary mapping channel names to S3 locations, for example ``{'train': 's3://my-bucket/my-training-data/train', 'test': 's3://my-bucket/my-training-data/test'}``
+
+When the training job starts in SageMaker the container will download the dataset.
+Both ``train_input_fn`` and ``eval_input_fn`` functions have a parameter called ``training_dir`` which
+contains the directory inside the container where the dataset was saved into.
+See `Creating train_input_fn and eval_input_fn functions`_.
 
 Optional arguments
 ''''''''''''''''''
