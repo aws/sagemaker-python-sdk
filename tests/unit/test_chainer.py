@@ -274,7 +274,7 @@ def test_chainer(strftime, sagemaker_session, chainer_version):
     expected_image_base = '520713654638.dkr.ecr.us-west-2.amazonaws.com/sagemaker-chainer:{}-gpu-{}'
     assert {'Environment':
             {'SAGEMAKER_SUBMIT_DIRECTORY':
-             's3://mybucket/sagemaker-chainer-{}/sourcedir.tar.gz'.format(TIMESTAMP),
+             's3://mybucket/sagemaker-chainer-{}/source/sourcedir.tar.gz'.format(TIMESTAMP),
              'SAGEMAKER_PROGRAM': 'dummy_script.py',
              'SAGEMAKER_ENABLE_CLOUDWATCH_METRICS': 'false',
              'SAGEMAKER_REGION': 'us-west-2',
