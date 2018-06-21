@@ -13,18 +13,21 @@
 from __future__ import absolute_import
 
 import inspect
-from mock import Mock
+from mock import Mock, patch
 import os
-from sagemaker.fw_utils import create_image_uri, framework_name_from_image, framework_version_from_tag
+from sagemaker.fw_utils import create_image_uri, framework_name_from_image, framework_version_from_tag, \
+    model_code_key_prefix
 from sagemaker.fw_utils import tar_and_upload_dir, parse_s3_url, UploadedCode, validate_source_dir
 import pytest
 
+from sagemaker.utils import name_from_image
 
 DATA_DIR = 'data_dir'
 BUCKET_NAME = 'mybucket'
 ROLE = 'Sagemaker'
 REGION = 'us-west-2'
 SCRIPT_PATH = 'script.py'
+TIMESTAMP = '2017-10-10-14-14-15'
 
 
 @pytest.fixture()
@@ -189,3 +192,37 @@ def test_parse_s3_url_fail():
     with pytest.raises(ValueError) as error:
         parse_s3_url('t3://code_location')
     assert 'Expecting \'s3\' scheme' in str(error)
+
+
+def test_model_code_key_prefix_with_all_values_present():
+    key_prefix = model_code_key_prefix('prefix', 'model_name', 'image_name')
+    assert key_prefix == 'prefix/model_name'
+
+
+def test_model_code_key_prefix_with_no_prefix_and_all_other_values_present():
+    key_prefix = model_code_key_prefix(None, 'model_name', 'image_name')
+    assert key_prefix == 'model_name'
+
+
+@patch('time.strftime', return_value=TIMESTAMP)
+def test_model_code_key_prefix_with_only_image_present(time):
+    key_prefix = model_code_key_prefix(None, None, 'image_name')
+    assert key_prefix == name_from_image('image_name')
+
+
+@patch('time.strftime', return_value=TIMESTAMP)
+def test_model_code_key_prefix_and_image_present(time):
+    key_prefix = model_code_key_prefix('prefix', None, 'image_name')
+    assert key_prefix == 'prefix/' + name_from_image('image_name')
+
+
+def test_model_code_key_prefix_with_prefix_present_and_others_none_fail():
+    with pytest.raises(TypeError) as error:
+        model_code_key_prefix('prefix', None, None)
+    assert 'expected string' in str(error)
+
+
+def test_model_code_key_prefix_with_all_none_fail():
+    with pytest.raises(TypeError) as error:
+        model_code_key_prefix(None, None, None)
+    assert 'expected string' in str(error)
