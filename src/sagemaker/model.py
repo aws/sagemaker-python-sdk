@@ -17,7 +17,7 @@ import logging
 import sagemaker
 
 from sagemaker.local import LocalSession
-from sagemaker.fw_utils import tar_and_upload_dir, parse_s3_url
+from sagemaker.fw_utils import tar_and_upload_dir, parse_s3_url, model_code_key_prefix
 from sagemaker.session import Session
 from sagemaker.utils import name_from_image, get_config_value
 
@@ -170,7 +170,8 @@ class FrameworkModel(Model):
         Returns:
             dict[str, str]: A container definition object usable with the CreateModel API.
         """
-        self._upload_code(self.key_prefix or self.name or name_from_image(self.image))
+        deploy_key_prefix = model_code_key_prefix(self.key_prefix, self.name, self.image)
+        self._upload_code(deploy_key_prefix)
         deploy_env = dict(self.env)
         deploy_env.update(self._framework_env_vars())
         return sagemaker.container_def(self.image, self.model_data, deploy_env)
