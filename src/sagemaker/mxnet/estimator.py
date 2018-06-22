@@ -81,9 +81,9 @@ class MXNet(Framework):
         if self.image_name:
             kwargs['image'] = self.image_name
 
-        return MXNetModel(self.model_data, self.role, self.entry_point, source_dir=self.source_dir,
+        return MXNetModel(self.model_data, self.role, self.entry_point, source_dir=self._model_source_dir(),
                           enable_cloudwatch_metrics=self.enable_cloudwatch_metrics, name=self._current_job_name,
-                          container_log_level=self.container_log_level, code_location=self.code_location,
+                          container_log_level=self.container_log_level, code_location=self.code_location, image=self.image_name,
                           py_version=self.py_version, framework_version=self.framework_version,
                           model_server_workers=model_server_workers, sagemaker_session=self.sagemaker_session, **kwargs)
 

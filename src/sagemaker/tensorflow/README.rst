@@ -1,4 +1,3 @@
-
 ==========================================
 TensorFlow SageMaker Estimators and Models
 ==========================================
@@ -7,7 +6,7 @@ TensorFlow SageMaker Estimators allow you to run your own TensorFlow
 training algorithms on SageMaker Learner, and to host your own TensorFlow
 models on SageMaker Hosting.
 
-Supported versions of TensorFlow: ``1.4.1``, ``1.5.0``, ``1.6.0``.
+Supported versions of TensorFlow: ``1.4.1``, ``1.5.0``, ``1.6.0``, ``1.7.0``, ``1.8.0``.
 
 Training with TensorFlow
 ~~~~~~~~~~~~~~~~~~~~~~~~
@@ -30,7 +29,7 @@ follows:
                             train_instance_count=1, train_instance_type='ml.p2.xlarge')
   tf_estimator.fit('s3://bucket/path/to/training/data')
 
-Where the s3 url is a path to your training data, within Amazon S3. The
+Where the S3 url is a path to your training data, within Amazon S3. The
 constructor keyword arguments define how SageMaker runs your training
 script and are discussed, in detail, in a later section.
 
@@ -41,8 +40,7 @@ estimator.
 Preparing the TensorFlow training script
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Your TensorFlow training script must be a **Python 2.7** source file. The current supported TensorFlow
-versions are **1.6.0 (default)**, **1.5.0**, and **1.4.1**. The SageMaker TensorFlow docker image
+Your TensorFlow training script must be a **Python 2.7** source file. The SageMaker TensorFlow docker image
 uses this script by calling specifically-named functions from this script.
 
 The training script **must contain** the following:
@@ -480,11 +478,15 @@ both required and optional arguments.
 Required argument
 '''''''''''''''''
 
--  ``inputs (str)``: A S3 URI, for example ``s3://my-bucket/my-training-data``, which contains
-   the dataset that will be used for training. When the training job starts in SageMaker the
-   container will download the dataset. Both ``train_input_fn`` and ``eval_input_fn`` functions
-   have a parameter called ``training_dir`` which contains the directory inside the container
-   where the dataset was saved into. See `Creating train_input_fn and eval_input_fn functions`_.
+- ``inputs``: The S3 location(s) of datasets to be used for training. This can take one of two forms:
+
+  - ``str``: An S3 URI, for example ``s3://my-bucket/my-training-data``, which indicates the dataset's location.
+  - ``dict[str, str]``: A dictionary mapping channel names to S3 locations, for example ``{'train': 's3://my-bucket/my-training-data/train', 'test': 's3://my-bucket/my-training-data/test'}``
+
+When the training job starts in SageMaker the container will download the dataset.
+Both ``train_input_fn`` and ``eval_input_fn`` functions have a parameter called ``training_dir`` which
+contains the directory inside the container where the dataset was saved into.
+See `Creating train_input_fn and eval_input_fn functions`_.
 
 Optional arguments
 ''''''''''''''''''
@@ -760,33 +762,19 @@ A example with ``input_fn`` and ``output_fn`` above can be found in
 SageMaker TensorFlow Docker containers
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-The TensorFlow Docker images support Python 2.7 and have the following Python modules installed:
+The TensorFlow Docker images support Python 2.7. They include the following Python packages:
 
-+------------------------+------------------+------------------+------------------+
-| Dependencies           | tensorflow 1.4.1 | tensorflow 1.5.0 | tensorflow 1.6.0 |
-+------------------------+------------------+------------------+------------------+
-| boto3                  |            1.4.7 |           1.5.22 |          1.6.21  |
-+------------------------+------------------+------------------+------------------+
-| botocore               |           1.5.92 |           1.8.36 |          1.9.21  |
-+------------------------+------------------+------------------+------------------+
-| grpcio                 |            1.7.0 |            1.9.0 |          1.10.0  |
-+------------------------+------------------+------------------+------------------+
-| numpy                  |           1.13.3 |           1.14.0 |          1.14.2  |
-+------------------------+------------------+------------------+------------------+
-| pandas                 |           0.21.0 |           0.22.0 |          0.22.0  |
-+------------------------+------------------+------------------+------------------+
-| protobuf               |            3.4.0 |            3.5.1 |          3.5.2   |
-+------------------------+------------------+------------------+------------------+
-| scikit-learn           |           0.19.1 |           0.19.1 |          0.19.1  |
-+------------------------+------------------+------------------+------------------+
-| scipy                  |            1.0.0 |            1.0.0 |          1.0.1   |
-+------------------------+------------------+------------------+------------------+
-| sklearn                |              0.0 |              0.0 |          0.0     |
-+------------------------+------------------+------------------+------------------+
-| tensorflow             |            1.4.1 |            1.5.0 |          1.6.0   |
-+------------------------+------------------+------------------+------------------+
-| tensorflow-serving-api |            1.4.0 |            1.5.0 |          1.5.0   |
-+------------------------+------------------+------------------+------------------+
+- boto3
+- botocore
+- grpcio
+- numpy
+- pandas
+- protobuf
+- scikit-learn
+- scipy
+- sklearn
+- tensorflow
+- tensorflow-serving-api
 
 The Docker images extend Ubuntu 16.04.
 
@@ -795,4 +783,4 @@ Alternatively, you can build your own image by following the instructions in the
 repository, and passing ``image_name`` to the TensorFlow Estimator constructor.
 
 
-You can visit the SageMaker TensorFlow containers repository here: https://github.com/aws/sagemaker-tensorflow-containers/
+For more information on the contents of the images, see the SageMaker TensorFlow containers repository here: https://github.com/aws/sagemaker-tensorflow-containers/

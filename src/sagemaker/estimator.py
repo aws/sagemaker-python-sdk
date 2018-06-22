@@ -566,7 +566,7 @@ class Framework(EstimatorBase):
         self._hyperparameters[SAGEMAKER_REGION_PARAM_NAME] = self.sagemaker_session.boto_region_name
 
     def _stage_user_code_in_s3(self):
-        """ Upload the user training script to s3 and return the location.
+        """Upload the user training script to s3 and return the location.
 
         Returns: s3 uri
 
@@ -583,6 +583,14 @@ class Framework(EstimatorBase):
                                   s3_key_prefix=code_s3_prefix,
                                   script=self.entry_point,
                                   directory=self.source_dir)
+
+    def _model_source_dir(self):
+        """Get the appropriate value to pass as source_dir to model constructor on deploying
+
+        Returns:
+            str: Either a local or an S3 path pointing to the source_dir to be used for code by the model to be deployed
+        """
+        return self.source_dir if self.sagemaker_session.local_mode else self.uploaded_code.s3_prefix
 
     def hyperparameters(self):
         """Return the hyperparameters as a dictionary to use for training.

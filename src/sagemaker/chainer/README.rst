@@ -243,10 +243,11 @@ Saving models
 In order to save your trained Chainer model for deployment on SageMaker, your training script should save your model
 to a certain filesystem path called `model_dir`. This value is accessible through the environment variable
 ``SM_MODEL_DIR``. The following code demonstrates how to save a trained Chainer model named ``model`` as
-``model.npz`` at the :
+``model.npz`` at the end of training:
 
 .. code:: python
-import chainer
+
+    import chainer
     import argparse
     import os
 
@@ -255,7 +256,7 @@ import chainer
         parser.add_argument('--model-dir', type=str, default=os.environ['SM_MODEL_DIR'])
         args, _ = parser.parse_known_args()
 
-        # ... train `model`, then save it to `model_dir`
+        # ... train `model`, then save it to `model_dir` as file 'model.npz'
         chainer.serializers.save_npz(os.path.join(args.model_dir, 'model.npz'), model)
 
 After your training job is complete, SageMaker will compress and upload the serialized model to S3, and your model data

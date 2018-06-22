@@ -2,15 +2,30 @@
 CHANGELOG
 =========
 
+1.5.1dev
+========
+
+* enhancement: Let Framework models reuse code uploaded by Framework estimators
+* enhancement: Unify generation of model uploaded code location
+* feature: Change minimum required scipy from 1.0.0 to 0.19.0
+* feature: Allow Chainer, Tensorflow and MXNet estimators to use a custom docker image.
+
+1.5.0
+=====
+
+* feature: Add Support for PyTorch Framework
+* feature: Estimators: add support for TensorFlow 1.7.0
+* feature: Estimators: add support for TensorFlow 1.8.0
+* feature: Allow Local Serving of Models in S3
+* enhancement: Allow option for ``HyperparameterTuner`` to not include estimator metadata in job
+* bug-fix: Estimators: Join tensorboard thread after fitting
+
 1.4.2
 =====
 
 * bug-fix: Estimators: Fix attach for LDA
 * bug-fix: Estimators: allow code_location to have no key prefix
 * bug-fix: Local Mode: Fix s3 training data download when there is a trailing slash
-* feature: Allow Local Serving of Models in S3
-* feature: Allow Chainer, Tensorflow and MXNet estimators to use a custom docker image.
-
 
 1.4.1
 =====

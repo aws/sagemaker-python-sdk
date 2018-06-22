@@ -28,10 +28,11 @@ Table of Contents
 3. `MXNet SageMaker Estimators <#mxnet-sagemaker-estimators>`__
 4. `TensorFlow SageMaker Estimators <#tensorflow-sagemaker-estimators>`__
 5. `Chainer SageMaker Estimators <#chainer-sagemaker-estimators>`__
-6. `AWS SageMaker Estimators <#aws-sagemaker-estimators>`__
-7. `BYO Docker Containers with SageMaker Estimators <#byo-docker-containers-with-sagemaker-estimators>`__
-8. `SageMaker Automatic Model Tuning <#sagemaker-automatic-model-tuning>`__
-9. `BYO Model <#byo-model>`__
+6. `PyTorch SageMaker Estimators <#pytorch-sagemaker-estimators>`__
+7. `AWS SageMaker Estimators <#aws-sagemaker-estimators>`__
+8. `BYO Docker Containers with SageMaker Estimators <#byo-docker-containers-with-sagemaker-estimators>`__
+9. `SageMaker Automatic Model Tuning <#sagemaker-automatic-model-tuning>`__
+10. `BYO Model <#byo-model>`__
 
 
 Getting SageMaker Python SDK
@@ -49,7 +50,7 @@ You can install from source by cloning this repository and issuing a pip install
 
     git clone https://github.com/aws/sagemaker-python-sdk.git
     python setup.py sdist
-    pip install dist/sagemaker-1.4.2.tar.gz
+    pip install dist/sagemaker-1.5.0.tar.gz
 
 Supported Python versions
 ~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -64,19 +65,26 @@ http://aws.amazon.com/apache2.0/
 Running tests
 ~~~~~~~~~~~~~
 
-SageMaker Python SDK uses tox for running Python tests. You can run the tests by running tox:
+SageMaker Python SDK has unit tests and integration tests.
 
-::
+**Unit tests**
 
-    tox
-
-Tests are defined in ``tests/`` and includes unit and integ tests. If you just want to run unit tests, then you can issue:
+tox is a prerequisite for running unit tests so you need to make sure you have it installed. To run the unit tests:
 
 ::
 
     tox tests/unit
 
-To just run integ tests, issue the following command:
+**Integrations tests**
+
+To be able to run the integration tests, the following prerequisites must be met
+
+1. Access to an AWS account to run the tests on
+2. Make the AWS account credentials available to boto3 clients used in the tests
+3. Ensure the AWS account has an IAM role named :code:`SageMakerRole`
+4. Ensure the libraries mentioned in setup.py extra_require for test are installed which can be achieved using :code:`pip install --upgrade .[test]`
+
+You can run integ tests by issuing the following command:
 
 ::
 
@@ -117,6 +125,7 @@ Later sections of this document explain how to use the different Estimators and 
 * `MXNet SageMaker Estimators and Models <#mxnet-sagemaker-estimators>`__
 * `TensorFlow SageMaker Estimators and Models <#tensorflow-sagemaker-estimators>`__
 * `Chainer SageMaker Estimators and Models <#chainer-sagemaker-estimators>`__
+* `PyTorch SageMaker Estimators <#pytorch-sagemaker-estimators>`__
 * `AWS SageMaker Estimators and Models <#aws-sagemaker-estimators>`__
 * `Custom SageMaker Estimators and Models <#byo-docker-containers-with-sagemaker-estimators>`__
 
@@ -215,7 +224,7 @@ TensorFlow SageMaker Estimators allow you to run your own TensorFlow
 training algorithms on SageMaker Learner, and to host your own TensorFlow
 models on SageMaker Hosting.
 
-Supported versions of TensorFlow: ``1.4.1``, ``1.5.0``, ``1.6.0``.
+Supported versions of TensorFlow: ``1.4.1``, ``1.5.0``, ``1.6.0``, ``1.7.0``, ``1.8.0``.
 
 More details at `TensorFlow SageMaker Estimators and Models`_.
 
@@ -234,6 +243,20 @@ You can visit the Chainer repository at https://github.com/chainer/chainer.
 More details at `Chainer SageMaker Estimators and Models`_.
 
 .. _Chainer SageMaker Estimators and Models: src/sagemaker/chainer/README.rst
+
+
+PyTorch SageMaker Estimators
+-------------------------------
+
+With PyTorch Estimators, you can train and host PyTorch models on Amazon SageMaker.
+
+Supported versions of PyTorch: ``0.4.0``
+
+You can visit the PyTorch repository at https://github.com/pytorch/pytorch.
+
+More details at `PyTorch SageMaker Estimators and Models`_.
+
+.. _PyTorch SageMaker Estimators and Models: src/sagemaker/pytorch/README.rst
 
 
 AWS SageMaker Estimators
@@ -320,6 +343,14 @@ In addition, the ``fit()`` call uses a list of ``RecordSet`` objects instead of 
 
     # Start hyperparameter tuning job
     my_tuner.fit([train_records, test_records])
+
+To aid with attaching a previously-started hyperparameter tuning job with a ``HyperparameterTuner`` instance, ``fit()`` injects metadata in the hyperparameters by default.
+If the algorithm you are using cannot handle unknown hyperparameters (e.g. an Amazon ML algorithm that does not have a custom estimator in the Python SDK), then you can set ``include_cls_metadata`` to ``False`` when calling fit:
+
+.. code:: python
+
+    my_tuner.fit({'train': 's3://my_bucket/my_training_data', 'test': 's3://my_bucket_my_testing_data'},
+                 include_cls_metadata=False)
 
 There is also an analytics object associated with each ``HyperparameterTuner`` instance that presents useful information about the hyperparameter tuning job.
 For example, the ``dataframe`` method gets a pandas dataframe summarizing the associated training jobs:

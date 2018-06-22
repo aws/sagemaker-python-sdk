@@ -304,16 +304,19 @@ def test_run_tensorboard_locally_without_awscli_binary(time, strftime, popen, ca
                                'following command: \n pip install awscli'
 
 
+@patch('sagemaker.tensorflow.estimator.Tensorboard._sync_directories')
 @patch('tempfile.mkdtemp', return_value='/my/temp/folder')
+@patch('shutil.rmtree')
 @patch('os.access', return_value=True)
 @patch('subprocess.call')
 @patch('subprocess.Popen')
 @patch('time.strftime', return_value=TIMESTAMP)
 @patch('time.time', return_value=TIME)
-@pytest.mark.skip(reason="this test fails sometimes and it needs further investigation")
-def test_run_tensorboard_locally(time, strftime, popen, call, access, sagemaker_session):
+def test_run_tensorboard_locally(time, strftime, popen, call, access, rmtree, mkdtemp, sync, sagemaker_session):
     tf = TensorFlow(entry_point=SCRIPT_PATH, role=ROLE, sagemaker_session=sagemaker_session,
                     train_instance_count=INSTANCE_COUNT, train_instance_type=INSTANCE_TYPE)
+
+    popen().poll.return_value = None
 
     tf.fit(inputs='s3://mybucket/train', run_tensorboard_locally=True)
 
@@ -323,19 +326,21 @@ def test_run_tensorboard_locally(time, strftime, popen, call, access, sagemaker_
                              )
 
 
+@patch('sagemaker.tensorflow.estimator.Tensorboard._sync_directories')
 @patch('tempfile.mkdtemp', return_value='/my/temp/folder')
+@patch('shutil.rmtree')
 @patch('socket.socket')
 @patch('os.access', return_value=True)
 @patch('subprocess.call')
 @patch('subprocess.Popen')
 @patch('time.strftime', return_value=TIMESTAMP)
 @patch('time.time', return_value=TIME)
-@pytest.mark.skip(reason="this test fails sometimes and it needs further investigation")
-def test_run_tensorboard_locally_port_in_use(time, strftime, popen, call, access, socket, sagemaker_session):
+def test_run_tensorboard_locally_port_in_use(time, strftime, popen, call, access, socket, rmtree, mkdtemp, sync,
+                                             sagemaker_session):
     tf = TensorFlow(entry_point=SCRIPT_PATH, role=ROLE, sagemaker_session=sagemaker_session,
                     train_instance_count=INSTANCE_COUNT, train_instance_type=INSTANCE_TYPE)
 
-    popen().poll.side_effect = [True, False]
+    popen().poll.side_effect = [-1, None]
 
     tf.fit(inputs='s3://mybucket/train', run_tensorboard_locally=True)
 
