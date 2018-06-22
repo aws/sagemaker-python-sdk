@@ -356,9 +356,6 @@ Before a model can be served, it must be loaded. The SageMaker PyTorch model ser
 SageMaker will inject the directory where your model files and sub-directories, saved by ``save``, have been mounted.
 Your model function should return a model object that can be used for model serving.
 
-SageMaker provides automated serving functions that work with Gluon API ``net`` objects and Module API ``Module`` objects.
-If you return either of these types of objects, then you will be able to use the default serving request handling functions.
-
 The following code-snippet shows an example ``model_fn`` implementation.
 It loads the model parameters from a ``model.pth`` file in the SageMaker model directory ``model_dir``.
 
