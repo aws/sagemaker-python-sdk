@@ -100,7 +100,8 @@ def test_deploy(tfo, time, sagemaker_session):
           'ModelName': 'mi-2017-10-10-14-14-15',
           'InstanceType': INSTANCE_TYPE,
           'InitialInstanceCount': 1,
-          'VariantName': 'AllTraffic'}])
+          'VariantName': 'AllTraffic'}],
+        None)
 
 
 @patch('tarfile.open')
@@ -114,7 +115,24 @@ def test_deploy_endpoint_name(tfo, time, sagemaker_session):
           'ModelName': 'mi-2017-10-10-14-14-15',
           'InstanceType': INSTANCE_TYPE,
           'InitialInstanceCount': 55,
-          'VariantName': 'AllTraffic'}])
+          'VariantName': 'AllTraffic'}],
+        None)
+
+
+@patch('tarfile.open')
+@patch('time.strftime', return_value=TIMESTAMP)
+def test_deploy_tags(tfo, time, sagemaker_session):
+    model = DummyFrameworkModel(sagemaker_session)
+    tags = [{'ModelName': 'TestModel'}]
+    model.deploy(instance_type=INSTANCE_TYPE, initial_instance_count=1, tags=tags)
+    sagemaker_session.endpoint_from_production_variants.assert_called_with(
+        'mi-2017-10-10-14-14-15',
+        [{'InitialVariantWeight': 1,
+          'ModelName': 'mi-2017-10-10-14-14-15',
+          'InstanceType': INSTANCE_TYPE,
+          'InitialInstanceCount': 1,
+          'VariantName': 'AllTraffic'}],
+        tags)
 
 
 @patch('sagemaker.model.Session')
