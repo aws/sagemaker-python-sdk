@@ -52,7 +52,7 @@ class KMeans(AmazonAlgorithmEstimatorBase):
         :class:`~sagemaker.amazon.record_pb2.Record` protobuf serialized data to be stored in S3.
 
         To learn more about the Amazon protobuf Record class and how to prepare bulk data in this format, please
-        consult AWS technical documentation: https://alpha-docs-aws.amazon.com/sagemaker/latest/dg/cdf-training.html
+        consult AWS technical documentation: https://docs.aws.amazon.com/sagemaker/latest/dg/cdf-training.html.
 
         After this Estimator is fit, model data is stored in S3. The model may be deployed to an Amazon SageMaker
         Endpoint by invoking :meth:`~sagemaker.amazon.estimator.EstimatorBase.deploy`. As well as deploying an Endpoint,
@@ -61,14 +61,13 @@ class KMeans(AmazonAlgorithmEstimatorBase):
 
         KMeans Estimators can be configured by setting hyperparameters. The available hyperparameters for KMeans
         are documented below. For further information on the AWS KMeans algorithm, please consult AWS technical
-        documentation: https://alpha-docs-aws.amazon.com/sagemaker/latest/dg/k-means.html
+        documentation: https://docs.aws.amazon.com/sagemaker/latest/dg/k-means.html.
 
         Args:
             role (str): An AWS IAM role (either name or full ARN). The Amazon SageMaker training jobs and
                 APIs that create Amazon SageMaker endpoints use this role to access
                 training data and model artifacts. After the endpoint is created,
                 the inference code might use the IAM role, if accessing AWS resource.
-                For more information, see <link>???.
             train_instance_count (int): Number of Amazon EC2 instances to use for training.
             train_instance_type (str): Type of EC2 instance to use for training, for example, 'ml.c4.xlarge'.
             k (int): The number of clusters to produce.
