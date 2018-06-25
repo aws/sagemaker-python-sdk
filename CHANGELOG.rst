@@ -8,7 +8,7 @@ CHANGELOG
 * enhancement: Let Framework models reuse code uploaded by Framework estimators
 * enhancement: Unify generation of model uploaded code location
 * feature: Change minimum required scipy from 1.0.0 to 0.19.0
-* feature: Allow Chainer, Tensorflow and MXNet estimators to use a custom docker image.
+* feature: Allow all Framework Estimators to use a custom docker image.
 
 1.5.0
 =====
