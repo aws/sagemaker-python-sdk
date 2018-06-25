@@ -153,6 +153,12 @@ The following are optional arguments. When you create an ``MXNet`` object, you c
 -  ``job_name`` Name to assign for the training job that the fit()
    method launches. If not specified, the estimator generates a default
    job name, based on the training image name and current timestamp
+-  ``image_name`` An alternative docker image to use for training and
+   serving.  If specified, the estimator will use this image for training and
+   hosting, instead of selecting the appropriate SageMaker official image based on
+   framework_version and py_version. Refer to: `SageMaker MXNet Docker Containers
+   <#sagemaker-mxnet-docker-containers>`_ for details on what the Official images support
+   and where to find the source code to build your custom image.
 
 Calling fit
 ^^^^^^^^^^^
@@ -595,5 +601,6 @@ The Docker images have the following dependencies installed:
 The Docker images extend Ubuntu 16.04.
 
 You can select version of MXNet by passing a ``framework_version`` keyword arg to the MXNet Estimator constructor. Currently supported versions are listed in the above table. You can also set ``framework_version`` to only specify major and minor version, e.g ``1.1``, which will cause your training script to be run on the latest supported patch version of that minor version, which in this example would be 1.1.0.
+Alternatively, you can build your own image by following the instructions in the SageMaker MXNet containers repository, and passing ``image_name`` to the MXNet Estimator constructor.
 
 You can visit the SageMaker MXNet containers repository here: https://github.com/aws/sagemaker-mxnet-containers/

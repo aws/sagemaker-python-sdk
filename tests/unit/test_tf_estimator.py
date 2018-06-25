@@ -205,6 +205,24 @@ def test_create_model(sagemaker_session, tf_version):
     assert model.enable_cloudwatch_metrics == enable_cloudwatch_metrics
 
 
+def test_create_model_with_custom_image(sagemaker_session):
+    container_log_level = '"logging.INFO"'
+    source_dir = 's3://mybucket/source'
+    enable_cloudwatch_metrics = 'true'
+    custom_image = 'tensorflow:1.0'
+    tf = TensorFlow(entry_point=SCRIPT_PATH, role=ROLE, sagemaker_session=sagemaker_session,
+                    training_steps=1000, evaluation_steps=10, train_instance_count=INSTANCE_COUNT,
+                    train_instance_type=INSTANCE_TYPE, image_name=custom_image,
+                    container_log_level=container_log_level, base_job_name='job',
+                    source_dir=source_dir, enable_cloudwatch_metrics=enable_cloudwatch_metrics)
+
+    job_name = 'doing something'
+    tf.fit(inputs='s3://mybucket/train', job_name=job_name)
+    model = tf.create_model()
+
+    assert model.image == custom_image
+
+
 @patch('time.strftime', return_value=TIMESTAMP)
 @patch('time.time', return_value=TIME)
 @patch('sagemaker.estimator.tar_and_upload_dir')
@@ -562,3 +580,35 @@ def test_attach_wrong_framework(sagemaker_session):
     with pytest.raises(ValueError) as error:
         TensorFlow.attach(training_job_name='neo', sagemaker_session=sagemaker_session)
     assert "didn't use image for requested framework" in str(error)
+
+
+def test_attach_custom_image(sagemaker_session):
+    training_image = '1.dkr.ecr.us-west-2.amazonaws.com/tensorflow_with_custom_binary:1.0'
+    rjd = {
+        'AlgorithmSpecification': {
+            'TrainingInputMode': 'File',
+            'TrainingImage': training_image},
+        'HyperParameters': {
+            'sagemaker_submit_directory': '"s3://some/sourcedir.tar.gz"',
+            'checkpoint_path': '"s3://other/1508872349"',
+            'sagemaker_program': '"iris-dnn-classifier.py"',
+            'sagemaker_enable_cloudwatch_metrics': 'false',
+            'sagemaker_container_log_level': '"logging.INFO"',
+            'sagemaker_job_name': '"neo"',
+            'training_steps': '100',
+            'evaluation_steps': '10'},
+        'RoleArn': 'arn:aws:iam::366:role/SageMakerRole',
+        'ResourceConfig': {
+            'VolumeSizeInGB': 30,
+            'InstanceCount': 1,
+            'InstanceType': 'ml.c4.xlarge'},
+        'StoppingCondition': {'MaxRuntimeInSeconds': 24 * 60 * 60},
+        'TrainingJobName': 'neo',
+        'TrainingJobStatus': 'Completed',
+        'OutputDataConfig': {'KmsKeyId': '', 'S3OutputPath': 's3://place/output/neo'},
+        'TrainingJobOutput': {'S3TrainingJobOutput': 's3://here/output.tar.gz'}}
+    sagemaker_session.sagemaker_client.describe_training_job = Mock(name='describe_training_job', return_value=rjd)
+
+    estimator = TensorFlow.attach(training_job_name='neo', sagemaker_session=sagemaker_session)
+    assert estimator.image_name == training_image
+    assert estimator.train_image() == training_image

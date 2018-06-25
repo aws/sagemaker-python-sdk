@@ -22,7 +22,7 @@ import threading
 import time
 
 from sagemaker.estimator import Framework
-from sagemaker.fw_utils import create_image_uri, framework_name_from_image, framework_version_from_tag
+from sagemaker.fw_utils import framework_name_from_image, framework_version_from_tag
 from sagemaker.utils import get_config_value
 
 from sagemaker.tensorflow.defaults import TF_VERSION
@@ -158,7 +158,7 @@ class TensorFlow(Framework):
     __framework_name__ = 'tensorflow'
 
     def __init__(self, training_steps=None, evaluation_steps=None, checkpoint_path=None, py_version='py2',
-                 framework_version=TF_VERSION, requirements_file='', **kwargs):
+                 framework_version=TF_VERSION, requirements_file='', image_name=None, **kwargs):
         """Initialize an ``TensorFlow`` estimator.
         Args:
             training_steps (int): Perform this many steps of training. `None`, the default means train forever.
@@ -172,9 +172,15 @@ class TensorFlow(Framework):
             requirements_file (str): Path to a ``requirements.txt`` file (default: ''). The path should be within and
                 relative to ``source_dir``. Details on the format can be found in the
                 `Pip User Guide <https://pip.pypa.io/en/stable/reference/pip_install/#requirements-file-format>`_.
+            image_name (str): If specified, the estimator will use this image for training and hosting, instead of
+                selecting the appropriate SageMaker official image based on framework_version and py_version. It can
+                be an ECR url or dockerhub image and tag.
+                    Examples:
+                        123.dkr.ecr.us-west-2.amazonaws.com/my-custom-image:1.0
+                        custom-image:latest.
             **kwargs: Additional kwargs passed to the Framework constructor.
         """
-        super(TensorFlow, self).__init__(**kwargs)
+        super(TensorFlow, self).__init__(image_name=image_name, **kwargs)
         self.checkpoint_path = checkpoint_path
         self.py_version = py_version
         self.framework_version = framework_version
@@ -261,7 +267,14 @@ class TensorFlow(Framework):
             if value is not None:
                 init_params[argument] = value
 
-        framework, py_version, tag = framework_name_from_image(init_params.pop('image'))
+        image_name = init_params.pop('image')
+        framework, py_version, tag = framework_name_from_image(image_name)
+        if not framework:
+            # If we were unable to parse the framework name from the image it is not one of our
+            # officially supported images, in this case just add the image to the init params.
+            init_params['image_name'] = image_name
+            return init_params
+
         init_params['py_version'] = py_version
 
         # We switched image tagging scheme from regular image version (e.g. '1.0') to more expressive
@@ -276,18 +289,6 @@ class TensorFlow(Framework):
 
         return init_params
 
-    def train_image(self):
-        """Return the Docker image to use for training.
-
-        The  :meth:`~sagemaker.estimator.EstimatorBase.fit` method, which does the model training, calls this method to
-        find the image to use for model training.
-
-        Returns:
-            str: The URI of the Docker image.
-        """
-        return create_image_uri(self.sagemaker_session.boto_region_name, self.__framework_name__,
-                                self.train_instance_type, self.framework_version, py_version=self.py_version)
-
     def create_model(self, model_server_workers=None):
         """Create a SageMaker ``TensorFlowModel`` object that can be deployed to an ``Endpoint``.
 
@@ -301,7 +302,7 @@ class TensorFlow(Framework):
         """
         env = {'SAGEMAKER_REQUIREMENTS': self.requirements_file}
         return TensorFlowModel(self.model_data, self.role, self.entry_point, source_dir=self._model_source_dir(),
-                               enable_cloudwatch_metrics=self.enable_cloudwatch_metrics, env=env,
+                               enable_cloudwatch_metrics=self.enable_cloudwatch_metrics, env=env, image=self.image_name,
                                name=self._current_job_name, container_log_level=self.container_log_level,
                                code_location=self.code_location, py_version=self.py_version,
                                framework_version=self.framework_version, model_server_workers=model_server_workers,

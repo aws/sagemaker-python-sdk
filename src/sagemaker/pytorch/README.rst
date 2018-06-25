@@ -204,7 +204,12 @@ The following are optional arguments. When you create a ``PyTorch`` object, you 
 -  ``job_name`` Name to assign for the training job that the ``fit```
    method launches. If not specified, the estimator generates a default
    job name, based on the training image name and current timestamp
-
+-  ``image_name`` An alternative docker image to use for training and
+   serving.  If specified, the estimator will use this image for training and
+   hosting, instead of selecting the appropriate SageMaker official image based on
+   framework_version and py_version. Refer to: `SageMaker PyTorch Docker Containers
+   <#sagemaker-pytorch-docker-containers>`_ for details on what the Official images support
+   and where to find the source code to build your custom image.
 
 Calling fit
 ~~~~~~~~~~~
@@ -704,5 +709,8 @@ You can select version of PyTorch by passing a ``framework_version`` keyword arg
 Currently supported versions are listed in the above table. You can also set ``framework_version`` to only specify major and
 minor version, which will cause your training script to be run on the latest supported patch version of that minor
 version.
+
+Alternatively, you can build your own image by following the instructions in the SageMaker Chainer containers
+repository, and passing ``image_name`` to the Chainer Estimator constructor.
 
 You can visit `the SageMaker PyTorch containers repository <https://github.com/aws/sagemaker-pytorch-containers>`_.
