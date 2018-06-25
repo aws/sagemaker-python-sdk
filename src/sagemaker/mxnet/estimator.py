@@ -76,16 +76,11 @@ class MXNet(Framework):
             sagemaker.mxnet.model.MXNetModel: A SageMaker ``MXNetModel`` object.
                 See :func:`~sagemaker.mxnet.model.MXNetModel` for full details.
         """
-        kwargs = {}
-        # pass our custom image if there is one.
-        if self.image_name:
-            kwargs['image'] = self.image_name
-
         return MXNetModel(self.model_data, self.role, self.entry_point, source_dir=self._model_source_dir(),
                           enable_cloudwatch_metrics=self.enable_cloudwatch_metrics, name=self._current_job_name,
-                          container_log_level=self.container_log_level, code_location=self.code_location, image=self.image_name,
-                          py_version=self.py_version, framework_version=self.framework_version,
-                          model_server_workers=model_server_workers, sagemaker_session=self.sagemaker_session, **kwargs)
+                          container_log_level=self.container_log_level, code_location=self.code_location,
+                          py_version=self.py_version, framework_version=self.framework_version, image=self.image_name,
+                          model_server_workers=model_server_workers, sagemaker_session=self.sagemaker_session)
 
     @classmethod
     def _prepare_init_params_from_job_description(cls, job_details):
