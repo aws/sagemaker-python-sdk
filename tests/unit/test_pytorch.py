@@ -128,11 +128,34 @@ def test_create_model(sagemaker_session, pytorch_version):
     job_name = 'new_name'
     pytorch.fit(inputs='s3://mybucket/train', job_name='new_name')
     model = pytorch.create_model()
-    pytorch.container_log_level
 
     assert model.sagemaker_session == sagemaker_session
     assert model.framework_version == pytorch_version
     assert model.py_version == pytorch.py_version
+    assert model.entry_point == SCRIPT_PATH
+    assert model.role == ROLE
+    assert model.name == job_name
+    assert model.container_log_level == container_log_level
+    assert model.source_dir == source_dir
+    assert model.enable_cloudwatch_metrics == enable_cloudwatch_metrics
+
+
+def test_create_model_with_custom_image(sagemaker_session):
+    container_log_level = '"logging.INFO"'
+    source_dir = 's3://mybucket/source'
+    enable_cloudwatch_metrics = 'true'
+    image = 'pytorch:9000'
+    pytorch = PyTorch(entry_point=SCRIPT_PATH, role=ROLE, sagemaker_session=sagemaker_session,
+                      train_instance_count=INSTANCE_COUNT, train_instance_type=INSTANCE_TYPE,
+                      container_log_level=container_log_level, image_name=image,
+                      base_job_name='job', source_dir=source_dir, enable_cloudwatch_metrics=enable_cloudwatch_metrics)
+
+    job_name = 'new_name'
+    pytorch.fit(inputs='s3://mybucket/train', job_name='new_name')
+    model = pytorch.create_model()
+
+    assert model.sagemaker_session == sagemaker_session
+    assert model.image == image
     assert model.entry_point == SCRIPT_PATH
     assert model.role == ROLE
     assert model.name == job_name
@@ -286,3 +309,37 @@ def test_attach_wrong_framework(sagemaker_session):
     with pytest.raises(ValueError) as error:
         PyTorch.attach(training_job_name='neo', sagemaker_session=sagemaker_session)
     assert "didn't use image for requested framework" in str(error)
+
+
+def test_attach_custom_image(sagemaker_session):
+    training_image = 'pytorch:latest'
+    returned_job_description = {'AlgorithmSpecification':
+                                {'TrainingInputMode': 'File',
+                                 'TrainingImage': training_image},
+                                'HyperParameters':
+                                    {'sagemaker_submit_directory': '"s3://some/sourcedir.tar.gz"',
+                                     'sagemaker_program': '"iris-dnn-classifier.py"',
+                                     'sagemaker_s3_uri_training': '"sagemaker-3/integ-test-data/tf_iris"',
+                                     'sagemaker_enable_cloudwatch_metrics': 'false',
+                                     'sagemaker_container_log_level': '"logging.INFO"',
+                                     'sagemaker_job_name': '"neo"',
+                                     'training_steps': '100',
+                                     'sagemaker_region': '"us-west-2"'},
+                                'RoleArn': 'arn:aws:iam::366:role/SageMakerRole',
+                                'ResourceConfig':
+                                    {'VolumeSizeInGB': 30,
+                                     'InstanceCount': 1,
+                                     'InstanceType': 'ml.c4.xlarge'},
+                                'StoppingCondition': {'MaxRuntimeInSeconds': 24 * 60 * 60},
+                                'TrainingJobName': 'neo',
+                                'TrainingJobStatus': 'Completed',
+                                'OutputDataConfig': {'KmsKeyId': '',
+                                                     'S3OutputPath': 's3://place/output/neo'},
+                                'TrainingJobOutput': {'S3TrainingJobOutput': 's3://here/output.tar.gz'}}
+    sagemaker_session.sagemaker_client.describe_training_job = Mock(name='describe_training_job',
+                                                                    return_value=returned_job_description)
+
+    estimator = PyTorch.attach(training_job_name='neo', sagemaker_session=sagemaker_session)
+    assert estimator.latest_training_job.job_name == 'neo'
+    assert estimator.image_name == training_image
+    assert estimator.train_image() == training_image
