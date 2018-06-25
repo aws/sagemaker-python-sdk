@@ -66,7 +66,7 @@ class Model(object):
         """
         return sagemaker.container_def(self.image, self.model_data, self.env)
 
-    def deploy(self, initial_instance_count, instance_type, endpoint_name=None):
+    def deploy(self, initial_instance_count, instance_type, endpoint_name=None, tags=None):
         """Deploy this ``Model`` to an ``Endpoint`` and optionally return a ``Predictor``.
 
         Create a SageMaker ``Model`` and ``EndpointConfig``, and deploy an ``Endpoint`` from this ``Model``.
@@ -82,6 +82,7 @@ class Model(object):
                 ``Endpoint`` created from this ``Model``.
             endpoint_name (str): The name of the endpoint to create (default: None).
                 If not specified, a unique endpoint name will be created.
+            tags (list[dict[str, str]]): A list of key-value pairs for tagging the endpoint (default: None).
 
         Returns:
             callable[string, sagemaker.session.Session] or None: Invocation of ``self.predictor_cls`` on
@@ -98,7 +99,7 @@ class Model(object):
         self.sagemaker_session.create_model(model_name, self.role, container_def)
         production_variant = sagemaker.production_variant(model_name, instance_type, initial_instance_count)
         self.endpoint_name = endpoint_name or model_name
-        self.sagemaker_session.endpoint_from_production_variants(self.endpoint_name, [production_variant])
+        self.sagemaker_session.endpoint_from_production_variants(self.endpoint_name, [production_variant], tags)
         if self.predictor_cls:
             return self.predictor_cls(self.endpoint_name, self.sagemaker_session)
 

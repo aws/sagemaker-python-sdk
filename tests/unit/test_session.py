@@ -487,6 +487,35 @@ def test_endpoint_from_production_variants(sagemaker_session):
                 'VariantName': 'AllTraffic'}])
 
 
+def test_endpoint_from_production_variants_with_tags(sagemaker_session):
+    ims = sagemaker_session
+    ims.sagemaker_client.describe_endpoint = Mock(return_value={'EndpointStatus': 'InService'})
+    pvs = [sagemaker.production_variant('A', 'ml.p2.xlarge'), sagemaker.production_variant('B', 'p299.4096xlarge')]
+    ex = ClientError({'Error': {'Code': 'ValidationException', 'Message': 'Could not find your thing'}}, 'b')
+    ims.sagemaker_client.describe_endpoint_config = Mock(side_effect=ex)
+    tags = [{'ModelName': 'TestModel'}]
+    sagemaker_session.endpoint_from_production_variants('some-endpoint', pvs, tags)
+    sagemaker_session.sagemaker_client.create_endpoint.assert_called_with(EndpointConfigName='some-endpoint',
+                                                                          EndpointName='some-endpoint')
+    sagemaker_session.sagemaker_client.create_endpoint_config.assert_called_with(
+        EndpointConfigName='some-endpoint',
+        ProductionVariants=[
+            {
+                'InstanceType': 'ml.p2.xlarge',
+                'ModelName': 'A',
+                'InitialVariantWeight': 1,
+                'InitialInstanceCount': 1,
+                'VariantName': 'AllTraffic'
+            },
+            {
+                'InstanceType': 'p299.4096xlarge',
+                'ModelName': 'B',
+                'InitialVariantWeight': 1,
+                'InitialInstanceCount': 1,
+                'VariantName': 'AllTraffic'}],
+        Tags=tags)
+
+
 def test_wait_for_tuning_job(sagemaker_session):
     hyperparameter_tuning_job_desc = {'HyperParameterTuningJobStatus': 'Completed'}
     sagemaker_session.sagemaker_client.describe_hyper_parameter_tuning_job = Mock(

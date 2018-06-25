@@ -646,12 +646,13 @@ class Session(object):
         self.create_endpoint(endpoint_name=name, config_name=name, wait=wait)
         return name
 
-    def endpoint_from_production_variants(self, name, production_variants, wait=True):
+    def endpoint_from_production_variants(self, name, production_variants, tags=None, wait=True):
         """Create an SageMaker ``Endpoint`` from a list of production variants.
 
         Args:
             name (str): The name of the ``Endpoint`` to create.
             production_variants (list[dict[str, str]]): The list of production variants to deploy.
+            tags (list[dict[str, str]]): A list of key-value pairs for tagging the endpoint (default: None).
             wait (bool): Whether to wait for the endpoint deployment to complete before returning (default: True).
 
         Returns:
@@ -660,8 +661,11 @@ class Session(object):
 
         if not _deployment_entity_exists(
                 lambda: self.sagemaker_client.describe_endpoint_config(EndpointConfigName=name)):
-            self.sagemaker_client.create_endpoint_config(
-                EndpointConfigName=name, ProductionVariants=production_variants)
+            config_options = {'EndpointConfigName': name, 'ProductionVariants': production_variants}
+            if tags:
+                config_options['Tags'] = tags
+
+            self.sagemaker_client.create_endpoint_config(**config_options)
         return self.create_endpoint(endpoint_name=name, config_name=name, wait=wait)
 
     def expand_role(self, role):
