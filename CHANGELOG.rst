@@ -8,6 +8,7 @@ CHANGELOG
 * enhancement: Let Framework models reuse code uploaded by Framework estimators
 * enhancement: Unify generation of model uploaded code location
 * feature: Change minimum required scipy from 1.0.0 to 0.19.0
+* feature: Allow all Framework Estimators to use a custom docker image.
 * feature: Option to add Tags on SageMaker Endpoints
 
 1.5.0

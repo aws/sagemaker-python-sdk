@@ -262,6 +262,9 @@ class _SageMakerContainer(object):
         bucket = s3.Bucket(bucket_name)
 
         for obj_sum in bucket.objects.filter(Prefix=prefix):
+            # if obj_sum is a folder object skip it.
+            if obj_sum.key != '' and obj_sum.key[-1] == '/':
+                continue
             obj = s3.Object(obj_sum.bucket_name, obj_sum.key)
             s3_relative_path = obj_sum.key[len(prefix):].lstrip('/')
             file_path = os.path.join(target, s3_relative_path)
