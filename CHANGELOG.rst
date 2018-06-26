@@ -2,8 +2,8 @@
 CHANGELOG
 =========
 
-1.5.1dev
-========
+1.5.1
+=====
 
 * enhancement: Let Framework models reuse code uploaded by Framework estimators
 * enhancement: Unify generation of model uploaded code location
