@@ -216,8 +216,8 @@ class TensorFlow(Framework):
                     training data, you can specify a dict mapping channel names
                     to strings or :func:`~sagemaker.session.s3_input` objects.
                 (sagemaker.session.s3_input) - channel configuration for S3 data sources that can provide
-                    additional information about the training dataset. See :func:`sagemaker.session.s3_input`
-                    for full details.
+                    additional information as well as the path to the training dataset.
+                    See :func:`sagemaker.session.s3_input` for full details.
             wait (bool): Whether the call should wait until the job completes (default: True).
             logs (bool): Whether to show the logs produced by the job.
                 Only meaningful when wait is True (default: True).
