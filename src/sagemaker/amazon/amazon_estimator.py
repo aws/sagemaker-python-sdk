@@ -276,7 +276,8 @@ def registry(region_name, algorithm=None):
             "us-east-2": "404615174143",
             "us-west-2": "174872318107",
             "eu-west-1": "438346466558",
-            "ap-northeast-1": "351501993468"
+            "ap-northeast-1": "351501993468",
+            "ap-northeast-2": "835164637446"
         }[region_name]
     elif algorithm in ["lda"]:
         account_id = {
@@ -284,7 +285,8 @@ def registry(region_name, algorithm=None):
             "us-east-2": "999911452149",
             "us-west-2": "266724342769",
             "eu-west-1": "999678624901",
-            "ap-northeast-1": "258307448986"
+            "ap-northeast-1": "258307448986",
+            "ap-northeast-2": "293181348795"
         }[region_name]
     else:
         raise ValueError("Algorithm class:{} doesn't have mapping to account_id with images".format(algorithm))
