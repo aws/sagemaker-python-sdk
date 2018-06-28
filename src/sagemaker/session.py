@@ -697,6 +697,11 @@ class Session(object):
             return role
 
         role = re.sub(r'^(.+)sts::(\d+):assumed-role/(.+?)/.*$', r'\1iam::\2:role/\3', assumed_role)
+
+        # Call IAM to get the role's path
+        role_name = role[role.rfind('/') + 1:]
+        role = self.boto_session.client('iam').get_role(RoleName=role_name)['Role']['Arn']
+
         return role
 
     def logs_for_job(self, job_name, wait=False, poll=10):  # noqa: C901 - suppress complexity warning for this method
