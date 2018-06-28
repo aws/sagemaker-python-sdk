@@ -41,7 +41,7 @@ def test_get_execution_role():
     assert actual == 'arn:aws:iam::369233609183:role/SageMakerRole'
 
 
-def test_get_execution_role_works_with_servie_role():
+def test_get_execution_role_works_with_service_role():
     session = Mock()
     session.get_caller_identity_arn.return_value = \
         'arn:aws:iam::369233609183:role/service-role/AmazonSageMaker-ExecutionRole-20171129T072388'
@@ -61,7 +61,9 @@ def test_get_execution_role_throws_exception_if_arn_is_not_role():
 
 def test_get_caller_identity_arn_from_an_user(boto_session):
     sess = Session(boto_session)
-    sess.boto_session.client('sts').get_caller_identity.return_value = {'Arn': 'arn:aws:iam::369233609183:user/mia'}
+    arn = 'arn:aws:iam::369233609183:user/mia'
+    sess.boto_session.client('sts').get_caller_identity.return_value = {'Arn': arn}
+    sess.boto_session.client('iam').get_role.return_value = {'Role': {'Arn': arn}}
 
     actual = sess.get_caller_identity_arn()
     assert actual == 'arn:aws:iam::369233609183:user/mia'
@@ -72,17 +74,35 @@ def test_get_caller_identity_arn_from_a_role(boto_session):
     arn = 'arn:aws:sts::369233609183:assumed-role/SageMakerRole/6d009ef3-5306-49d5-8efc-78db644d8122'
     sess.boto_session.client('sts').get_caller_identity.return_value = {'Arn': arn}
 
+    expected_role = 'arn:aws:iam::369233609183:role/SageMakerRole'
+    sess.boto_session.client('iam').get_role.return_value = {'Role': {'Arn': expected_role}}
+
     actual = sess.get_caller_identity_arn()
-    assert actual == 'arn:aws:iam::369233609183:role/SageMakerRole'
+    assert actual == expected_role
 
 
 def test_get_caller_identity_arn_from_a_execution_role(boto_session):
     sess = Session(boto_session)
     arn = 'arn:aws:sts::369233609183:assumed-role/AmazonSageMaker-ExecutionRole-20171129T072388/SageMaker'
     sess.boto_session.client('sts').get_caller_identity.return_value = {'Arn': arn}
+    sess.boto_session.client('iam').get_role.return_value = {'Role': {'Arn': arn}}
 
     actual = sess.get_caller_identity_arn()
     assert actual == 'arn:aws:iam::369233609183:role/service-role/AmazonSageMaker-ExecutionRole-20171129T072388'
+
+
+def test_get_caller_identity_arn_from_role_with_path(boto_session):
+    sess = Session(boto_session)
+    arn_prefix = 'arn:aws:iam::369233609183:role'
+    role_name = 'name'
+    sess.boto_session.client('sts').get_caller_identity.return_value = {'Arn': '/'.join([arn_prefix, role_name])}
+
+    role_path = 'path'
+    role_with_path = '/'.join([arn_prefix, role_path, role_name])
+    sess.boto_session.client('iam').get_role.return_value = {'Role': {'Arn': role_with_path}}
+
+    actual = sess.get_caller_identity_arn()
+    assert actual == role_with_path
 
 
 def test_delete_endpoint(boto_session):
@@ -95,15 +115,15 @@ def test_delete_endpoint(boto_session):
 def test_s3_input_all_defaults():
     prefix = 'pre'
     actual = s3_input(s3_data=prefix)
-    expected = \
-        {'DataSource': {
+    expected = {
+        'DataSource': {
             'S3DataSource': {
                 'S3DataDistributionType': 'FullyReplicated',
                 'S3DataType': 'S3Prefix',
                 'S3Uri': prefix
             }
         }
-        }
+    }
     assert actual.config == expected
 
 

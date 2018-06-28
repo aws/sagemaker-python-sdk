@@ -2,6 +2,11 @@
 CHANGELOG
 =========
 
+1.5.3dev
+========
+
+* bug-fix: Session: include role path in ``get_execution_role()`` result
+
 1.5.2
 =====
 
