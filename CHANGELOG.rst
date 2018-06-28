@@ -2,6 +2,11 @@
 CHANGELOG
 =========
 
+1.5.2
+=====
+
+* Support SageMaker algorithms in ICN region
+
 1.5.1
 =====
 
