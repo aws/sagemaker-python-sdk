@@ -890,7 +890,7 @@ class s3_input(object):
             s3_data (str): Defines the location of s3 data to train on.
             distribution (str): Valid values: 'FullyReplicated', 'ShardedByS3Key'
                 (default: 'FullyReplicated').
-            compression (str): Valid values: 'Gzip', 'Bzip2', 'Lzop' (default: None).
+            compression (str): Valid values: 'Gzip', None (default: None). This is used only in Pipe input mode.
             content_type (str): MIME type of the input data (default: None).
             record_wrapping (str): Valid values: 'RecordIO' (default: None).
             s3_data_type (str): Value values: 'S3Prefix', 'ManifestFile'. If 'S3Prefix', ``s3_data`` defines
