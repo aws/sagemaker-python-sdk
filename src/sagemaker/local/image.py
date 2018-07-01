@@ -112,7 +112,7 @@ class _SageMakerContainer(object):
         except RuntimeError as e:
             # _stream_output() doesn't have the command line. We will handle the exception
             # which contains the exit code and append the command line to it.
-            msg = "Failed to run: %s, %s" % (compose_command, e.message)
+            msg = "Failed to run: %s, %s" % (compose_command, str(e))
             raise RuntimeError(msg)
 
         s3_artifacts = self.retrieve_artifacts(compose_data)
@@ -516,7 +516,7 @@ class _HostingContainer(Thread):
         except RuntimeError as e:
             # _stream_output() doesn't have the command line. We will handle the exception
             # which contains the exit code and append the command line to it.
-            msg = "Failed to run: %s, %s" % (self.command, e.message)
+            msg = "Failed to run: %s, %s" % (self.command, str(e))
             raise RuntimeError(msg)
 
     def down(self):
