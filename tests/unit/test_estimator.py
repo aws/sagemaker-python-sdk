@@ -594,6 +594,47 @@ def test_generic_to_deploy(sagemaker_session):
     assert predictor.sagemaker_session == sagemaker_session
 
 
+def test_generic_training_job_analytics(sagemaker_session):
+    sagemaker_session.sagemaker_client.describe_training_job = Mock(name='describe_training_job', return_value={
+        'TuningJobArn': 'arn:aws:sagemaker:us-west-2:968277160000:hyper-parameter-tuning-job/mock-tuner',
+        'TrainingStartTime': 1530562991.299,
+    })
+    sagemaker_session.sagemaker_client.describe_hyper_parameter_tuning_job = Mock(
+        name='describe_hyper_parameter_tuning_job',
+        return_value={
+            'TrainingJobDefinition': {
+                "AlgorithmSpecification": {
+                    "TrainingImage": "some-image-url",
+                    "TrainingInputMode": "File",
+                    "MetricDefinitions": [
+                        {
+                            "Name": "train:loss",
+                            "Regex": "train_loss=([0-9]+\\.[0-9]+)"
+                        },
+                        {
+                            "Name": "validation:loss",
+                            "Regex": "valid_loss=([0-9]+\\.[0-9]+)"
+                        }
+                    ]
+                }
+            }
+        }
+    )
+
+    e = Estimator(IMAGE_NAME, ROLE, INSTANCE_COUNT, INSTANCE_TYPE, output_path='s3://bucket/prefix',
+                  sagemaker_session=sagemaker_session)
+
+    with pytest.raises(ValueError) as err:  # noqa: F841
+        # No training job yet
+        a = e.training_job_analytics
+        assert a is not None  # This line is never reached
+
+    e.set_hyperparameters(**HYPERPARAMS)
+    e.fit({'train': 's3://bucket/training-prefix'})
+    a = e.training_job_analytics
+    assert a is not None
+
+
 @patch('sagemaker.estimator.LocalSession')
 @patch('sagemaker.estimator.Session')
 def test_local_mode(session_class, local_session_class):

@@ -120,6 +120,16 @@ def to_str(value):
         return str(value)
 
 
+def extract_name_from_job_arn(arn):
+    """Returns the name used in the API given a full ARN for a training job
+    or hyperparameter tuning job.
+    """
+    slash_pos = arn.find('/')
+    if slash_pos == -1:
+        raise ValueError("Cannot parse invalid ARN: %s" % arn)
+    return arn[(slash_pos + 1):]
+
+
 class DeferredError(object):
     """Stores an exception and raises it at a later time anytime this
     object is accessed in any way.  Useful to allow soft-dependencies on imports,
