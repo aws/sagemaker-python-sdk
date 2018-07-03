@@ -236,7 +236,7 @@ Chainer SageMaker Estimators
 
 With Chainer Estimators, you can train and host Chainer models on Amazon SageMaker.
 
-Supported versions of Chainer: ``4.0.0``
+Supported versions of Chainer: ``4.0.0``, ``4.1.0``.
 
 You can visit the Chainer repository at https://github.com/chainer/chainer.
 

@@ -26,25 +26,26 @@ from tests.integ.timeout import timeout, timeout_and_delete_endpoint_by_name
 
 
 @pytest.fixture(scope='module')
-def chainer_training_job(sagemaker_session):
-    return _run_mnist_training_job(sagemaker_session, "ml.c4.xlarge", 1)
+def chainer_training_job(sagemaker_session, chainer_full_version):
+    return _run_mnist_training_job(sagemaker_session, "ml.c4.xlarge", 1, chainer_full_version)
 
 
-def test_distributed_cpu_training(sagemaker_session):
-    _run_mnist_training_job(sagemaker_session, "ml.c4.xlarge", 2)
+def test_distributed_cpu_training(sagemaker_session, chainer_full_version):
+    _run_mnist_training_job(sagemaker_session, "ml.c4.xlarge", 2, chainer_full_version)
 
 
-def test_distributed_gpu_training(sagemaker_session):
-    _run_mnist_training_job(sagemaker_session, "ml.p2.xlarge", 2)
+def test_distributed_gpu_training(sagemaker_session, chainer_full_version):
+    _run_mnist_training_job(sagemaker_session, "ml.p2.xlarge", 2, chainer_full_version)
 
 
-def test_training_with_additional_hyperparameters(sagemaker_session):
+def test_training_with_additional_hyperparameters(sagemaker_session, chainer_full_version):
     with timeout(minutes=15):
         script_path = os.path.join(DATA_DIR, 'chainer_mnist', 'mnist.py')
         data_path = os.path.join(DATA_DIR, 'chainer_mnist')
 
         chainer = Chainer(entry_point=script_path, role='SageMakerRole',
                           train_instance_count=1, train_instance_type="ml.c4.xlarge",
+                          framework_version=chainer_full_version,
                           sagemaker_session=sagemaker_session, hyperparameters={'epochs': 1},
                           use_mpi=True,
                           num_processes=2,
@@ -69,23 +70,25 @@ def test_attach_deploy(chainer_training_job, sagemaker_session):
         _predict_and_assert(predictor)
 
 
-def test_deploy_model(chainer_training_job, sagemaker_session):
+def test_deploy_model(chainer_training_job, sagemaker_session, chainer_full_version):
     endpoint_name = 'test-chainer-deploy-model-{}'.format(sagemaker_timestamp())
     with timeout_and_delete_endpoint_by_name(endpoint_name, sagemaker_session, minutes=20):
         desc = sagemaker_session.sagemaker_client.describe_training_job(TrainingJobName=chainer_training_job)
         model_data = desc['ModelArtifacts']['S3ModelArtifacts']
         script_path = os.path.join(DATA_DIR, 'chainer_mnist', 'mnist.py')
         model = ChainerModel(model_data, 'SageMakerRole', entry_point=script_path,
+                             framework_version=chainer_full_version,
                              sagemaker_session=sagemaker_session)
         predictor = model.deploy(1, "ml.m4.xlarge", endpoint_name=endpoint_name)
         _predict_and_assert(predictor)
 
 
-def test_async_fit(sagemaker_session):
+def test_async_fit(sagemaker_session, chainer_full_version):
     endpoint_name = 'test-chainer-attach-deploy-{}'.format(sagemaker_timestamp())
 
     with timeout(minutes=5):
-        training_job_name = _run_mnist_training_job(sagemaker_session, "ml.c4.xlarge", 1, wait=False)
+        training_job_name = _run_mnist_training_job(sagemaker_session, "ml.c4.xlarge", 1,
+                                                    chainer_full_version, wait=False)
 
         print("Waiting to re-attach to the training job: %s" % training_job_name)
         time.sleep(20)
@@ -97,12 +100,13 @@ def test_async_fit(sagemaker_session):
         _predict_and_assert(predictor)
 
 
-def test_failed_training_job(sagemaker_session):
+def test_failed_training_job(sagemaker_session, chainer_full_version):
     with timeout(minutes=15):
         script_path = os.path.join(DATA_DIR, 'chainer_mnist', 'failure_script.py')
         data_path = os.path.join(DATA_DIR, 'chainer_mnist')
 
         chainer = Chainer(entry_point=script_path, role='SageMakerRole',
+                          framework_version=chainer_full_version,
                           train_instance_count=1, train_instance_type='ml.c4.xlarge',
                           sagemaker_session=sagemaker_session)
 
@@ -113,7 +117,8 @@ def test_failed_training_job(sagemaker_session):
             chainer.fit(train_input)
 
 
-def _run_mnist_training_job(sagemaker_session, instance_type, instance_count, wait=True):
+def _run_mnist_training_job(sagemaker_session, instance_type, instance_count,
+                            chainer_full_version, wait=True):
     with timeout(minutes=15):
 
         script_path = os.path.join(DATA_DIR, 'chainer_mnist', 'mnist.py') if instance_type == 1 else \
@@ -122,6 +127,7 @@ def _run_mnist_training_job(sagemaker_session, instance_type, instance_count, wa
         data_path = os.path.join(DATA_DIR, 'chainer_mnist')
 
         chainer = Chainer(entry_point=script_path, role='SageMakerRole',
+                          framework_version=chainer_full_version,
                           train_instance_count=instance_count, train_instance_type=instance_type,
                           sagemaker_session=sagemaker_session, hyperparameters={'epochs': 1})
 
