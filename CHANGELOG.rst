@@ -7,6 +7,7 @@ CHANGELOG
 
 * bug-fix: Can create TrainingJobAnalytics object without specifying metric_names.
 * bug-fix: Session: include role path in ``get_execution_role()`` result
+* bug-fix: Local Mode: fix RuntimeError handling
 
 1.5.2
 =====
