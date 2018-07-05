@@ -20,7 +20,7 @@ import logging
 from six import with_metaclass
 
 from sagemaker.session import Session
-from sagemaker.utils import DeferredError
+from sagemaker.utils import DeferredError, extract_name_from_job_arn
 
 try:
     import pandas as pd
@@ -201,12 +201,13 @@ class TrainingJobAnalytics(AnalyticsMetricsBase):
 
     CLOUDWATCH_NAMESPACE = '/aws/sagemaker/HyperParameterTuningJobs'
 
-    def __init__(self, training_job_name, metric_names, sagemaker_session=None):
+    def __init__(self, training_job_name, metric_names=None, sagemaker_session=None):
         """Initialize a ``TrainingJobAnalytics`` instance.
 
         Args:
             training_job_name (str): name of the TrainingJob to analyze.
-            metric_names (list): string names of all the metrics to collect for this training job
+            metric_names (list, optional): string names of all the metrics to collect for this training job.
+                If not specified, then it will use all metric names configured for this job.
             sagemaker_session (sagemaker.session.Session): Session object which manages interactions with
                 Amazon SageMaker APIs and any other AWS services needed. If not specified, one is specified
                 using the default AWS configuration chain.
@@ -215,7 +216,10 @@ class TrainingJobAnalytics(AnalyticsMetricsBase):
         self._sage_client = sagemaker_session.sagemaker_client
         self._cloudwatch = sagemaker_session.boto_session.client('cloudwatch')
         self._training_job_name = training_job_name
-        self._metric_names = metric_names
+        if metric_names:
+            self._metric_names = metric_names
+        else:
+            self._metric_names = self._metric_names_for_training_job()
         self.clear_cache()
 
     @property
@@ -297,3 +301,22 @@ class TrainingJobAnalytics(AnalyticsMetricsBase):
         self._data['timestamp'].append(timestamp)
         self._data['metric_name'].append(metric_name)
         self._data['value'].append(value)
+
+    def _metric_names_for_training_job(self):
+        """Helper method to discover the metrics defined for a training job.
+        """
+        # First look up the tuning job
+        training_description = self._sage_client.describe_training_job(TrainingJobName=self._training_job_name)
+        tuning_job_arn = training_description.get('TuningJobArn', None)
+        if not tuning_job_arn:
+            raise ValueError(
+                "No metrics available. Training Job Analytics only available through Hyperparameter Tuning Jobs"
+            )
+        tuning_job_name = extract_name_from_job_arn(tuning_job_arn)
+        tuning_job_description = self._sage_client.describe_hyper_parameter_tuning_job(
+            HyperParameterTuningJobName=tuning_job_name
+        )
+        training_job_definition = tuning_job_description['TrainingJobDefinition']
+        metric_definitions = training_job_definition['AlgorithmSpecification']['MetricDefinitions']
+        metric_names = [md['Name'] for md in metric_definitions]
+        return metric_names
