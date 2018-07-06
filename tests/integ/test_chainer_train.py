@@ -18,6 +18,7 @@ import time
 import pytest
 import numpy
 
+from sagemaker.chainer.defaults import CHAINER_VERSION
 from sagemaker.chainer.estimator import Chainer
 from sagemaker.chainer.model import ChainerModel
 from sagemaker.utils import sagemaker_timestamp
@@ -70,25 +71,23 @@ def test_attach_deploy(chainer_training_job, sagemaker_session):
         _predict_and_assert(predictor)
 
 
-def test_deploy_model(chainer_training_job, sagemaker_session, chainer_full_version):
+def test_deploy_model(chainer_training_job, sagemaker_session):
     endpoint_name = 'test-chainer-deploy-model-{}'.format(sagemaker_timestamp())
     with timeout_and_delete_endpoint_by_name(endpoint_name, sagemaker_session, minutes=20):
         desc = sagemaker_session.sagemaker_client.describe_training_job(TrainingJobName=chainer_training_job)
         model_data = desc['ModelArtifacts']['S3ModelArtifacts']
         script_path = os.path.join(DATA_DIR, 'chainer_mnist', 'mnist.py')
-        model = ChainerModel(model_data, 'SageMakerRole', entry_point=script_path,
-                             framework_version=chainer_full_version,
-                             sagemaker_session=sagemaker_session)
+        model = ChainerModel(model_data, 'SageMakerRole', entry_point=script_path, sagemaker_session=sagemaker_session)
         predictor = model.deploy(1, "ml.m4.xlarge", endpoint_name=endpoint_name)
         _predict_and_assert(predictor)
 
 
-def test_async_fit(sagemaker_session, chainer_full_version):
+def test_async_fit(sagemaker_session):
     endpoint_name = 'test-chainer-attach-deploy-{}'.format(sagemaker_timestamp())
 
     with timeout(minutes=5):
         training_job_name = _run_mnist_training_job(sagemaker_session, "ml.c4.xlarge", 1,
-                                                    chainer_full_version, wait=False)
+                                                    chainer_full_version=CHAINER_VERSION, wait=False)
 
         print("Waiting to re-attach to the training job: %s" % training_job_name)
         time.sleep(20)
