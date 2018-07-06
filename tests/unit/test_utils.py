@@ -17,7 +17,7 @@ from __future__ import absolute_import
 import pytest
 from mock import patch
 
-from sagemaker.utils import get_config_value, name_from_base, to_str, DeferredError
+from sagemaker.utils import get_config_value, name_from_base, to_str, DeferredError, extract_name_from_job_arn
 
 NAME = 'base_name'
 
@@ -77,3 +77,15 @@ def test_to_str_with_native_string():
 def test_to_str_with_unicode_string():
     value = u'åñøthér strîng'
     assert to_str(value) == value
+
+
+def test_name_from_tuning_arn():
+    arn = 'arn:aws:sagemaker:us-west-2:968277160000:hyper-parameter-tuning-job/resnet-sgd-tuningjob-11-07-34-11'
+    name = extract_name_from_job_arn(arn)
+    assert name == 'resnet-sgd-tuningjob-11-07-34-11'
+
+
+def test_name_from_training_arn():
+    arn = 'arn:aws:sagemaker:us-west-2:968277160000:training-job/resnet-sgd-tuningjob-11-22-38-46-002-2927640b'
+    name = extract_name_from_job_arn(arn)
+    assert name == 'resnet-sgd-tuningjob-11-22-38-46-002-2927640b'

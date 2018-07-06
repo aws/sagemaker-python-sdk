@@ -4,12 +4,14 @@ CHANGELOG
 
 1.6.0
 =====
+
 * feature: Add Chainer 4.1.0 support
 * bug-fix: Use chainer_full_version fixture in Chainer integration tests
 
-1.5.3dev
-========
+1.5.3
+=====
 
+* bug-fix: Can create TrainingJobAnalytics object without specifying metric_names.
 * bug-fix: Session: include role path in ``get_execution_role()`` result
 * bug-fix: Local Mode: fix RuntimeError handling
 
