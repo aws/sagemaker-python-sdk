@@ -7,7 +7,6 @@ CHANGELOG
 
 * feature: Added Docker Registry for all 1p algorithms in amazon_estimator.py
 * feature: Added get_image_uri method for 1p algorithms in amazon_estimator.py
-* feature: Added object-detection to registry
 * Support SageMaker algorithms in FRA and SYD regions
 
 1.5.3
