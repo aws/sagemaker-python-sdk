@@ -162,6 +162,7 @@ INSTANCE_TYPE = 'ml.c4.xlarge'
 MAX_SIZE = 30
 MAX_TIME = 3 * 60 * 60
 JOB_NAME = 'jobname'
+TAGS = [{'Name': 'some-tag', 'Value': 'value-for-tag'}]
 
 DEFAULT_EXPECTED_TRAIN_JOB_ARGS = {
     'OutputDataConfig': {
@@ -304,18 +305,71 @@ def test_train_pack_to_request_with_optional_params(sagemaker_session):
                        'VolumeSizeInGB': MAX_SIZE}
 
     stop_cond = {'MaxRuntimeInSeconds': MAX_TIME}
-
     hyperparameters = {'foo': 'bar'}
-    tags = [{'Name': 'some-tag', 'Value': 'value-for-tag'}]
 
     sagemaker_session.train(image=IMAGE, input_mode='File', input_config=in_config, role=EXPANDED_ROLE,
                             job_name=JOB_NAME, output_config=out_config, resource_config=resource_config,
-                            hyperparameters=hyperparameters, stop_condition=stop_cond, tags=tags)
+                            hyperparameters=hyperparameters, stop_condition=stop_cond, tags=TAGS)
 
     _, _, actual_train_args = sagemaker_session.sagemaker_client.method_calls[0]
 
     assert actual_train_args['HyperParameters'] == hyperparameters
-    assert actual_train_args['Tags'] == tags
+    assert actual_train_args['Tags'] == TAGS
+
+
+def test_transform_pack_to_request(sagemaker_session):
+    model_name = 'my-model'
+
+    in_config = {
+        'CompressionType': 'None',
+        'ContentType': 'text/csv',
+        'SplitType': 'None',
+        'DataSource': {
+            'S3DataSource': {
+                'S3DataType': 'S3Prefix',
+                'S3Uri': S3_INPUT_URI,
+            },
+        },
+    }
+
+    out_config = {'S3OutputPath': S3_OUTPUT}
+
+    resource_config = {
+        'InstanceCount': INSTANCE_COUNT,
+        'InstanceType': INSTANCE_TYPE,
+    }
+
+    expected_args = {
+        'TransformJobName': JOB_NAME,
+        'ModelName': model_name,
+        'TransformInput': in_config,
+        'TransformOutput': out_config,
+        'TransformResources': resource_config,
+    }
+
+    sagemaker_session.transform(job_name=JOB_NAME, model_name=model_name, strategy=None, max_concurrent_transforms=None,
+                                max_payload=None, input_config=in_config, output_config=out_config,
+                                resource_config=resource_config, tags=None)
+
+    _, _, actual_args = sagemaker_session.sagemaker_client.method_calls[0]
+    assert actual_args == expected_args
+
+
+def test_transform_pack_to_request_with_optional_params(sagemaker_session):
+    strategy = 'strategy'
+    max_concurrent_transforms = 1
+    max_payload = 0
+
+    sagemaker_session.transform(job_name=JOB_NAME, model_name='my-model', strategy=strategy,
+                                max_concurrent_transforms=max_concurrent_transforms,
+                                max_payload=max_payload, input_config={}, output_config={},
+                                resource_config={}, tags=TAGS)
+
+    _, _, actual_args = sagemaker_session.sagemaker_client.method_calls[0]
+    assert actual_args['BatchStrategy'] == strategy
+    assert actual_args['MaxConcurrentTransforms'] == max_concurrent_transforms
+    assert actual_args['MaxPayloadInMB'] == max_payload
+    assert actual_args['Tags'] == TAGS
 
 
 @patch('sys.stdout', new_callable=io.BytesIO if six.PY2 else io.StringIO)

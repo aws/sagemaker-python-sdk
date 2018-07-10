@@ -371,6 +371,48 @@ class Session(object):
                 LOGGER.error('Error occurred while attempting to stop tuning job: {}. Please try again.'.format(name))
                 raise
 
+    def transform(self, job_name, model_name, strategy, max_concurrent_transforms, max_payload, input_config,
+                  output_config, resource_config, tags):
+        """Create an Amazon SageMaker transform job.
+
+        Args:
+            job_name (str): Name of the transform job being created.
+            model_name (str): Name of the SageMaker model being used for the transform job.
+            strategy (str): The strategy used to decide how to batch records in a single request.
+                Possible values are 'MULTI_RECORD' and 'SINGLE_RECORD'.
+            max_concurrent_transforms (int): The maximum number of HTTP requests to be made to
+                each individual transform container at one time.
+            max_payload (int): Maximum size of the payload in a single HTTP request to the container in MB.
+            input_config (dict): A dictionary describing the input data (and its location) for the job.
+            output_config (dict): A dictionary describing the output location for the job.
+            resource_config (dict): A dictionary describing the resources to complete the job.
+            tags (list[dict]): List of tags for labeling a training job. For more, see
+                https://docs.aws.amazon.com/sagemaker/latest/dg/API_Tag.html.
+        """
+        transform_request = {
+            'TransformJobName': job_name,
+            'ModelName': model_name,
+            'TransformInput': input_config,
+            'TransformOutput': output_config,
+            'TransformResources': resource_config,
+        }
+
+        if strategy is not None:
+            transform_request['BatchStrategy'] = strategy
+
+        if max_concurrent_transforms is not None:
+            transform_request['MaxConcurrentTransforms'] = max_concurrent_transforms
+
+        if max_payload is not None:
+            transform_request['MaxPayloadInMB'] = max_payload
+
+        if tags is not None:
+            transform_request['Tags'] = tags
+
+        LOGGER.info('Creating transform job with name: {}'.format(job_name))
+        LOGGER.debug('Transform request: {}'.format(json.dumps(transform_request, indent=4)))
+        self.sagemaker_client.create_transform_job(**transform_request)
+
     def create_model(self, name, role, primary_container):
         """Create an Amazon SageMaker ``Model``.
 
