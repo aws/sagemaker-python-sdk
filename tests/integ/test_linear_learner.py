@@ -103,11 +103,10 @@ def test_linear_learner_multiclass(sagemaker_session):
 
         train_set = train_set[0], train_set[1].astype(np.dtype('float32'))
 
-        ll = LinearLearner('SageMakerRole', 1, 'ml.c4.2xlarge', base_job_name='test-linear-learner',
-                           predictor_type='multiclass_classifier', sagemaker_session=sagemaker_session)
+        ll = LinearLearner('ease-integration', 1, 'ml.c4.2xlarge', base_job_name='test-linear-learner',
+                           predictor_type='multiclass_classifier', num_classes=10, sagemaker_session=sagemaker_session)
 
         ll.epochs = 1
-        ll.num_classes = 10
         ll.fit(ll.record_set(train_set[0][:200], train_set[1][:200]))
 
     endpoint_name = name_from_base('linear-learner')

@@ -244,7 +244,7 @@ class LinearLearner(AmazonAlgorithmEstimatorBase):
 
         if self.predictor_type == 'multiclass_classifier' and (num_classes is None or num_classes < 3):
             raise ValueError(
-                "For predictor_type 'multiclass_classifier', 'num_classes' should be set to a value greater than 3.")
+                "For predictor_type 'multiclass_classifier', 'num_classes' should be set to a value greater than 2.")
 
     def create_model(self):
         """Return a :class:`~sagemaker.amazon.kmeans.LinearLearnerModel` referencing the latest
