@@ -2,6 +2,11 @@
 CHANGELOG
 =========
 
+1.6.1
+=====
+
+* feature: Added multiclass classification support for linear learner algorithm.
+
 1.6.0
 =====
 
