@@ -2,10 +2,17 @@
 CHANGELOG
 =========
 
-1.5.5.dev
-====
+1.6.1
+=====
 
 * feature: Added multiclass classification support for linear learner algorithm.
+
+1.6.0
+=====
+
+* feature: Add Chainer 4.1.0 support
+* bug-fix: Use chainer_full_version fixture in Chainer integration tests
+
 1.5.4
 =====
 
