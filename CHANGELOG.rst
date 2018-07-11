@@ -2,6 +2,10 @@
 CHANGELOG
 =========
 
+1.5.5.dev
+====
+
+* feature: Added multiclass classification support for linear learner algorithm.
 1.5.4
 =====
 
