@@ -2,6 +2,12 @@
 CHANGELOG
 =========
 
+1.6.0
+=====
+
+* feature: Add Chainer 4.1.0 support
+* bug-fix: Use chainer_full_version fixture in Chainer integration tests
+
 1.5.4
 =====
 
