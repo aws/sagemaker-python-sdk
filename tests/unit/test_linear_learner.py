@@ -129,7 +129,7 @@ def test_num_classes_is_required_for_multiclass_classifier(sagemaker_session):
         test_params = ALL_REQ_ARGS.copy()
         test_params["predictor_type"] = 'multiclass_classifier'
         LinearLearner(sagemaker_session=sagemaker_session, **test_params)
-    assert "For predictor_type 'multiclass_classifier', 'num_classes' should be set to a value greater than 3." in str(
+    assert "For predictor_type 'multiclass_classifier', 'num_classes' should be set to a value greater than 2." in str(
         excinfo.value)
 
 
