@@ -564,6 +564,23 @@ class Session(object):
         self._check_job_status(job, desc, 'HyperParameterTuningJobStatus')
         return desc
 
+    def wait_for_transform_job(self, job, poll=5):
+        """Wait for an Amazon SageMaker transform job to complete.
+
+        Args:
+            job (str): Name of the transform job to wait for.
+            poll (int): Polling interval in seconds (default: 5).
+
+        Returns:
+            (dict): Return value from the ``DescribeTransformJob`` API.
+
+        Raises:
+            ValueError: If the transform job fails.
+        """
+        desc = _wait_until(lambda: _transform_job_status(self.sagemaker_client, job), poll)
+        self._check_job_status(job, desc, 'TransformJobStatus')
+        return desc
+
     def _check_job_status(self, job, desc, status_key_name):
         """Check to see if the job completed successfully and, if not, construct and
         raise a ValueError.
@@ -1015,6 +1032,29 @@ def _tuning_job_status(sagemaker_client, job_name):
     status = desc['HyperParameterTuningJobStatus']
 
     print(tuning_status_codes.get(status, '?'), end='')
+    sys.stdout.flush()
+
+    if status in in_progress_statuses:
+        return None
+
+    print('')
+    return desc
+
+
+def _transform_job_status(sagemaker_client, job_name):
+    transform_job_status_codes = {
+        'Completed': '!',
+        'InProgress': '.',
+        'Failed': '*',
+        'Stopped': 's',
+        'Stopping': '_'
+    }
+    in_progress_statuses = ['InProgress', 'Stopping']
+
+    desc = sagemaker_client.describe_transform_job(TransformJobName=job_name)
+    status = desc['TransformJobStatus']
+
+    print(transform_job_status_codes.get(status, '?'), end='')
     sys.stdout.flush()
 
     if status in in_progress_statuses:
