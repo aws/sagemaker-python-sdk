@@ -957,7 +957,7 @@ class s3_input(object):
             compression (str): Valid values: 'Gzip', None (default: None). This is used only in Pipe input mode.
             content_type (str): MIME type of the input data (default: None).
             record_wrapping (str): Valid values: 'RecordIO' (default: None).
-            s3_data_type (str): Value values: 'S3Prefix', 'ManifestFile'. If 'S3Prefix', ``s3_data`` defines
+            s3_data_type (str): Valid values: 'S3Prefix', 'ManifestFile'. If 'S3Prefix', ``s3_data`` defines
                 a prefix of s3 objects to train on. All objects with s3 keys beginning with ``s3_data`` will
                 be used to train. If 'ManifestFile', then ``s3_data`` defines a single s3 manifest file, listing
                 each s3 object to train on. The Manifest file format is described in the SageMaker API documentation:

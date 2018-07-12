@@ -13,17 +13,23 @@
 from __future__ import absolute_import
 
 import pytest
-from mock import Mock
+from mock import Mock, patch
 
 from sagemaker.transformer import Transformer, _TransformJob
 
 MODEL_NAME = 'model'
+IMAGE_NAME = 'image-for-model'
+JOB_NAME = 'job'
+
 INSTANCE_COUNT = 1
 INSTANCE_TYPE = 'ml.m4.xlarge'
-JOB_NAME = 'job'
-DATA = 's3://bucket/input-data'
+
 S3_DATA_TYPE = 'S3Prefix'
-OUTPUT_PATH = 's3://bucket/output'
+S3_BUCKET = 'bucket'
+DATA = 's3://{}/input-data'.format(S3_BUCKET)
+OUTPUT_PATH = 's3://{}/output'.format(S3_BUCKET)
+
+TIMESTAMP = '2018-07-12'
 
 
 @pytest.fixture()
@@ -36,6 +42,73 @@ def sagemaker_session():
 def transformer(sagemaker_session):
     return Transformer(MODEL_NAME, INSTANCE_COUNT, INSTANCE_TYPE,
                        output_path=OUTPUT_PATH, sagemaker_session=sagemaker_session)
+
+
+@patch('sagemaker.transformer._TransformJob.start_new')
+def test_transform_with_all_params(start_new_job, transformer):
+    content_type = 'text/csv'
+    compression = 'Gzip'
+    split = 'Line'
+
+    transformer.transform(DATA, S3_DATA_TYPE, content_type=content_type, compression_type=compression, split_type=split,
+                          job_name=JOB_NAME)
+
+    assert transformer._current_job_name == JOB_NAME
+    assert transformer.output_path == OUTPUT_PATH
+    start_new_job.assert_called_once_with(transformer, DATA, S3_DATA_TYPE, content_type, compression, split)
+
+
+@patch('sagemaker.transformer.name_from_base')
+@patch('sagemaker.transformer._TransformJob.start_new')
+def test_transform_with_base_job_name(start_new_job, name_from_base, transformer):
+    base_name = 'base-job-name'
+    full_name = '{}-{}'.format(base_name, TIMESTAMP)
+
+    transformer.base_transform_job_name = base_name
+    name_from_base.return_value = full_name
+
+    transformer.transform(DATA)
+    assert name_from_base.called_with(base_name)
+    assert transformer._current_job_name == full_name
+
+
+@patch('sagemaker.transformer.Transformer._retrieve_image_name', return_value=IMAGE_NAME)
+@patch('sagemaker.transformer.name_from_base')
+@patch('sagemaker.transformer._TransformJob.start_new')
+def test_transform_with_fully_generated_job_name(start_new_job, name_from_base, retrieve_image_name, transformer):
+    full_name = '{}-{}'.format(IMAGE_NAME, TIMESTAMP)
+    name_from_base.return_value = full_name
+
+    transformer.transform(DATA)
+
+    assert retrieve_image_name.called_once
+    assert name_from_base.called_with(IMAGE_NAME)
+    assert transformer._current_job_name == full_name
+
+
+@patch('sagemaker.transformer._TransformJob.start_new')
+def test_transform_with_generated_output_path(start_new_job, transformer, sagemaker_session):
+    transformer.output_path = None
+    sagemaker_session.default_bucket.return_value = S3_BUCKET
+
+    transformer.transform(DATA, job_name=JOB_NAME)
+    assert transformer.output_path == 's3://{}/{}'.format(S3_BUCKET, JOB_NAME)
+
+
+def test_transform_with_invalid_s3_uri(transformer):
+    with pytest.raises(ValueError) as e:
+        transformer.transform('not-an-s3-uri')
+
+    assert 'Invalid S3 URI' in str(e)
+
+
+def test_retrieve_image_name(sagemaker_session, transformer):
+    sage_mock = Mock(name='sagemaker_client')
+    sage_mock.describe_model.return_value = {'PrimaryContainer': {'Image': IMAGE_NAME}}
+
+    sagemaker_session.sagemaker_client = sage_mock
+
+    assert transformer._retrieve_image_name() == IMAGE_NAME
 
 
 # _TransformJob tests

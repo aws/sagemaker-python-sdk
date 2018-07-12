@@ -14,6 +14,7 @@ from __future__ import absolute_import
 
 from sagemaker.job import _Job
 from sagemaker.session import Session
+from sagemaker.utils import base_name_from_image, name_from_base
 
 
 class Transformer(object):
@@ -69,6 +70,45 @@ class Transformer(object):
         self.latest_transform_job = None
 
         self.sagemaker_session = sagemaker_session or Session()
+
+    def transform(self, data, data_type='S3Prefix', content_type=None, compression_type=None, split_type=None,
+                  job_name=None):
+        """Start a new transform job.
+
+        Args:
+            data (str): Input data location in S3.
+            data_type (str): What the S3 location defines (default: 'S3Prefix'). Valid values:
+
+                * 'S3Prefix' - the S3 URI defines a key name prefix. All objects with this prefix will be used as
+                    inputs for the transform job.
+                * 'ManifestFile' - the S3 URI points to a single manifest file listing each S3 object to use as
+                    an input for the transform job.
+
+            content_type (str): MIME type of the input data (default: None).
+            compression (str): Compression type of the input data, if compressed (default: None).
+                Valid values: 'Gzip', None.
+            split_type (str): The record delimiter for the input object (default: 'None').
+                Valid values: 'None', 'Line', and 'RecordIO'.
+            job_name (str): job name (default: None). If not specified, one will be generated.
+        """
+        if not data.startswith('s3://'):
+            raise ValueError('Invalid S3 URI: {}'.format(data))
+
+        if job_name is not None:
+            self._current_job_name = job_name
+        else:
+            base_name = self.base_transform_job_name or base_name_from_image(self._retrieve_image_name())
+            self._current_job_name = name_from_base(base_name)
+
+        if self.output_path is None:
+            self.output_path = 's3://{}/{}'.format(self.sagemaker_session.default_bucket(), self._current_job_name)
+
+        self.latest_transform_job = _TransformJob.start_new(self, data, data_type, content_type, compression_type,
+                                                            split_type)
+
+    def _retrieve_image_name(self):
+        model_desc = self.sagemaker_session.sagemaker_client.describe_model(ModelName=self.model_name)
+        return model_desc['PrimaryContainer']['Image']
 
 
 class _TransformJob(_Job):
