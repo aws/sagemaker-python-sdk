@@ -110,6 +110,65 @@ class Transformer(object):
         model_desc = self.sagemaker_session.sagemaker_client.describe_model(ModelName=self.model_name)
         return model_desc['PrimaryContainer']['Image']
 
+    def wait(self):
+        self._ensure_last_transform_job()
+        self.latest_transform_job.wait()
+
+    def _ensure_last_transform_job(self):
+        if self.latest_transform_job is None:
+            raise ValueError('No transform job available')
+
+    @classmethod
+    def attach(cls, transform_job_name, sagemaker_session=None):
+        """Attach an existing transform job to a new Transformer instance
+
+        Args:
+            transform_job_name (str): Name for the transform job to be attached.
+            sagemaker_session (sagemaker.session.Session): Session object which manages interactions with
+                Amazon SageMaker APIs and any other AWS services needed. If not specified, one will be created
+                using the default AWS configuration chain.
+
+        Returns:
+            sagemaker.transformer.Transformer: The Transformer instance with the specified transform job attached.
+
+        """
+        sagemaker_session = sagemaker_session or Session()
+
+        job_details = sagemaker_session.sagemaker_client.describe_transform_job(TransformJobName=transform_job_name)
+        init_params = cls._prepare_init_params_from_job_description(job_details)
+        transformer = cls(sagemaker_session=sagemaker_session, **init_params)
+        transformer.latest_transform_job = _TransformJob(sagemaker_session=sagemaker_session,
+                                                         transform_job_name=init_params['base_transform_job_name'])
+
+        return transformer
+
+    @classmethod
+    def _prepare_init_params_from_job_description(cls, job_details):
+        """Convert the transform job description to init params that can be handled by the class constructor
+
+        Args:
+            job_details (dict): the returned job details from a describe_transform_job API call.
+
+        Returns:
+            dict: The transformed init_params
+        """
+        init_params = dict()
+
+        init_params['model_name'] = job_details['ModelName']
+        init_params['instance_count'] = job_details['TransformResources']['InstanceCount']
+        init_params['instance_type'] = job_details['TransformResources']['InstanceType']
+        init_params['strategy'] = job_details['BatchStrategy']
+        init_params['assemble_with'] = job_details['TransformOutput']['AssembleWith']
+        init_params['compression_type'] = job_details['TransformInput']['CompressionType']
+        init_params['output_path'] = job_details['TransformOutput']['S3OutputPath']
+        init_params['output_kms_key'] = job_details['TransformOutput']['KmsKeyId']
+        init_params['accept'] = job_details['TransformOutput']['Accept']
+        init_params['max_concurrent_transforms'] = job_details['MaxConcurrentTransforms']
+        init_params['max_payload'] = job_details['MaxPayloadInMB']
+        init_params['base_transform_job_name'] = job_details['TransformJobName']
+
+        return init_params
+
 
 class _TransformJob(_Job):
     def __init__(self, sagemaker_session, transform_job_name):
@@ -128,6 +187,9 @@ class _TransformJob(_Job):
                                                 resource_config=config['resource_config'], tags=transformer.tags)
 
         return cls(transformer.sagemaker_session, transformer._current_job_name)
+
+    def wait(self):
+        self.sagemaker_session.wait_for_transform_job(self.job_name)
 
     @staticmethod
     def _load_config(data, data_type, content_type, compression_type, split_type, transformer):

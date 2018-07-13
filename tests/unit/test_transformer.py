@@ -31,6 +31,13 @@ OUTPUT_PATH = 's3://{}/output'.format(S3_BUCKET)
 
 TIMESTAMP = '2018-07-12'
 
+INIT_PARAMS = {
+    'model_name': MODEL_NAME,
+    'instance_count': INSTANCE_COUNT,
+    'instance_type': INSTANCE_TYPE,
+    'base_transform_job_name': JOB_NAME
+}
+
 
 @pytest.fixture()
 def sagemaker_session():
@@ -109,6 +116,70 @@ def test_retrieve_image_name(sagemaker_session, transformer):
     sagemaker_session.sagemaker_client = sage_mock
 
     assert transformer._retrieve_image_name() == IMAGE_NAME
+
+
+@patch('sagemaker.transformer.Transformer._ensure_last_transform_job')
+def test_wait(ensure_last_transform_job, transformer):
+    transformer.latest_transform_job = Mock(name='latest_transform_job')
+
+    transformer.wait()
+
+    assert ensure_last_transform_job.called_once
+    assert transformer.latest_transform_job.wait.called_once
+
+
+def test_ensure_last_transform_job_exists(transformer, sagemaker_session):
+    transformer.latest_transform_job = _TransformJob(sagemaker_session, 'some-transform-job')
+    transformer._ensure_last_transform_job()
+
+
+def test_ensure_last_transform_job_none(transformer):
+    transformer.latest_transform_job = None
+    with pytest.raises(ValueError) as e:
+        transformer._ensure_last_transform_job()
+
+    assert 'No transform job available' in str(e)
+
+
+@patch('sagemaker.transformer.Transformer._prepare_init_params_from_job_description', return_value=INIT_PARAMS)
+def test_attach(prepare_init_params, transformer, sagemaker_session):
+    sagemaker_session.sagemaker_client.describe_transform_job = Mock(name='describe_transform_job')
+    attached = Transformer.attach(JOB_NAME, sagemaker_session)
+
+    assert prepare_init_params.called_once
+    assert attached.latest_transform_job.job_name == JOB_NAME
+    assert attached.model_name == MODEL_NAME
+    assert attached.instance_count == INSTANCE_COUNT
+    assert attached.instance_type == INSTANCE_TYPE
+
+
+def test_prepare_init_params_from_job_description(transformer):
+    job_details = {
+        'ModelName': MODEL_NAME,
+        'TransformResources': {
+            'InstanceCount': INSTANCE_COUNT,
+            'InstanceType': INSTANCE_TYPE
+        },
+        'BatchStrategy': None,
+        'TransformOutput': {
+            'AssembleWith': None,
+            'S3OutputPath': None,
+            'KmsKeyId': None,
+            'Accept': None
+        },
+        'TransformInput': {
+            'CompressionType': None
+        },
+        'MaxConcurrentTransforms': None,
+        'MaxPayloadInMB': None,
+        'TransformJobName': JOB_NAME
+    }
+
+    init_params = transformer._prepare_init_params_from_job_description(job_details)
+
+    assert init_params['model_name'] == MODEL_NAME
+    assert init_params['instance_count'] == INSTANCE_COUNT
+    assert init_params['instance_type'] == INSTANCE_TYPE
 
 
 # _TransformJob tests
@@ -206,3 +277,10 @@ def test_prepare_output_config_with_optional_params():
 def test_prepare_resource_config():
     config = _TransformJob._prepare_resource_config(INSTANCE_COUNT, INSTANCE_TYPE)
     assert config == {'InstanceCount': INSTANCE_COUNT, 'InstanceType': INSTANCE_TYPE}
+
+
+def test_transform_job_wait(sagemaker_session):
+    job = _TransformJob(sagemaker_session, JOB_NAME)
+    job.wait()
+
+    assert sagemaker_session.wait_for_transform_job.called_once
