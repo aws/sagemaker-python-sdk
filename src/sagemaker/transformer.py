@@ -35,12 +35,12 @@ class Transformer(object):
             assemble_with (str): How the output is assembled (default: None). Valid values: 'Line' or 'None'.
             output_path (str): S3 location for saving the transform result. If not specified, results are stored to
                 a default bucket.
-            output_kms_key (str): Optional. KMS key ID for encrypting the training output (default: None).
+            output_kms_key (str): Optional. KMS key ID for encrypting the transform output (default: None).
             accept (str): The content type accepted by the endpoint deployed during the transform job.
             max_concurrent_transforms (int): The maximum number of HTTP requests to be made to
                 each individual transform container at one time.
             max_payload (int): Maximum size of the payload in a single HTTP request to the container in MB.
-            tags (list[dict]): List of tags for labeling a training job (default: None). For more, see
+            tags (list[dict]): List of tags for labeling a transform job (default: None). For more, see
                 https://docs.aws.amazon.com/sagemaker/latest/dg/API_Tag.html.
             base_transform_job_name (str): Prefix for the transform job when the
                 :meth:`~sagemaker.transformer.Transformer.transform` method launches. If not specified, a default prefix
