@@ -2,6 +2,10 @@
 CHANGELOG
 =========
 
+1.7.1dev
+========
+* deprecate enable_cloudwatch_metrics from Framework Estimators.
+
 1.7.0
 =====
 

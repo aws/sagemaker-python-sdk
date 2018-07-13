@@ -543,9 +543,6 @@ The MXNetModel constructor takes the following arguments:
    directory with any other training source code dependencies aside from
    tne entry point file. Structure within this directory will be
    preserved when training on SageMaker.
--  ``enable_cloudwatch_metrics (boolean):`` Optional. If true, training
-   and hosting containers will generate Cloudwatch metrics under the
-   AWS/SageMakerContainer namespace.
 -  ``container_log_level (int):`` Log level to use within the container.
    Valid values are defined in the Python logging module.
 -  ``code_location (str):`` Optional. Name of the S3 bucket where your
