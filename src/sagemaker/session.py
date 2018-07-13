@@ -439,15 +439,24 @@ class Session(object):
         role = self.expand_role(role)
         primary_container = _expand_container_def(primary_container)
         LOGGER.info('Creating model with name: {}'.format(name))
-        LOGGER.debug("create_model request: {}".format({
+        LOGGER.debug('create_model request: {}'.format({
             'name': name,
             'role': role,
             'primary_container': primary_container
         }))
 
-        self.sagemaker_client.create_model(ModelName=name,
-                                           PrimaryContainer=primary_container,
-                                           ExecutionRoleArn=role)
+        try:
+            self.sagemaker_client.create_model(ModelName=name,
+                                               PrimaryContainer=primary_container,
+                                               ExecutionRoleArn=role)
+        except ClientError as e:
+            error_code = e.response['Error']['Code']
+            message = e.response['Error']['Message']
+
+            if error_code == 'ValidationException' and 'Cannot create already existing model' in message:
+                LOGGER.warn('Using the already existing model with the name {}'.format(name))
+            else:
+                raise
 
         return name
 
