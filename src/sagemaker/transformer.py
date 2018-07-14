@@ -159,14 +159,13 @@ class Transformer(object):
         init_params['model_name'] = job_details['ModelName']
         init_params['instance_count'] = job_details['TransformResources']['InstanceCount']
         init_params['instance_type'] = job_details['TransformResources']['InstanceType']
-        init_params['strategy'] = job_details['BatchStrategy']
-        init_params['assemble_with'] = job_details['TransformOutput']['AssembleWith']
-        init_params['compression_type'] = job_details['TransformInput']['CompressionType']
+        init_params['strategy'] = job_details.get('BatchStrategy')
+        init_params['assemble_with'] = job_details['TransformOutput'].get('AssembleWith')
         init_params['output_path'] = job_details['TransformOutput']['S3OutputPath']
-        init_params['output_kms_key'] = job_details['TransformOutput']['KmsKeyId']
-        init_params['accept'] = job_details['TransformOutput']['Accept']
-        init_params['max_concurrent_transforms'] = job_details['MaxConcurrentTransforms']
-        init_params['max_payload'] = job_details['MaxPayloadInMB']
+        init_params['output_kms_key'] = job_details['TransformOutput'].get('KmsKeyId')
+        init_params['accept'] = job_details['TransformOutput'].get('Accept')
+        init_params['max_concurrent_transforms'] = job_details.get('MaxConcurrentTransforms')
+        init_params['max_payload'] = job_details.get('MaxPayloadInMB')
         init_params['base_transform_job_name'] = job_details['TransformJobName']
 
         return init_params

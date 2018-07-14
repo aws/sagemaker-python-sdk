@@ -153,7 +153,27 @@ def test_attach(prepare_init_params, transformer, sagemaker_session):
     assert attached.instance_type == INSTANCE_TYPE
 
 
-def test_prepare_init_params_from_job_description(transformer):
+def test_prepare_init_params_from_job_description_missing_keys(transformer):
+    job_details = {
+        'ModelName': MODEL_NAME,
+        'TransformResources': {
+            'InstanceCount': INSTANCE_COUNT,
+            'InstanceType': INSTANCE_TYPE
+        },
+        'TransformOutput': {
+            'S3OutputPath': None
+        },
+        'TransformJobName': JOB_NAME
+    }
+
+    init_params = transformer._prepare_init_params_from_job_description(job_details)
+
+    assert init_params['model_name'] == MODEL_NAME
+    assert init_params['instance_count'] == INSTANCE_COUNT
+    assert init_params['instance_type'] == INSTANCE_TYPE
+
+
+def test_prepare_init_params_from_job_description_all_keys(transformer):
     job_details = {
         'ModelName': MODEL_NAME,
         'TransformResources': {
@@ -166,9 +186,6 @@ def test_prepare_init_params_from_job_description(transformer):
             'S3OutputPath': None,
             'KmsKeyId': None,
             'Accept': None
-        },
-        'TransformInput': {
-            'CompressionType': None
         },
         'MaxConcurrentTransforms': None,
         'MaxPayloadInMB': None,
