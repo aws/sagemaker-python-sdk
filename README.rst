@@ -50,7 +50,7 @@ You can install from source by cloning this repository and issuing a pip install
 
     git clone https://github.com/aws/sagemaker-python-sdk.git
     python setup.py sdist
-    pip install dist/sagemaker-1.5.3.tar.gz
+    pip install dist/sagemaker-1.6.1.tar.gz
 
 Supported Python versions
 ~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -236,7 +236,7 @@ Chainer SageMaker Estimators
 
 With Chainer Estimators, you can train and host Chainer models on Amazon SageMaker.
 
-Supported versions of Chainer: ``4.0.0``
+Supported versions of Chainer: ``4.0.0``, ``4.1.0``.
 
 You can visit the Chainer repository at https://github.com/chainer/chainer.
 
