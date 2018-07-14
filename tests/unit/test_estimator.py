@@ -468,10 +468,12 @@ def test_transformer_creation_with_optional_params(sagemaker_session):
     accept = 'text/csv'
     max_concurrent_transforms = 1
     max_payload = 6
+    env = {'FOO': 'BAR'}
 
     transformer = fw.transformer(INSTANCE_COUNT, INSTANCE_TYPE, strategy=strategy, assemble_with=assemble_with,
                                  output_path=output_path, output_kms_key=kms_key, accept=accept, tags=TAGS,
-                                 max_concurrent_transforms=max_concurrent_transforms, max_payload=max_payload)
+                                 max_concurrent_transforms=max_concurrent_transforms, max_payload=max_payload,
+                                 transform_env=env)
 
     assert transformer.strategy == strategy
     assert transformer.assemble_with == assemble_with
@@ -480,6 +482,7 @@ def test_transformer_creation_with_optional_params(sagemaker_session):
     assert transformer.accept == accept
     assert transformer.max_concurrent_transforms == max_concurrent_transforms
     assert transformer.max_payload == max_payload
+    assert transformer.transform_env == env
 
 
 def test_ensure_latest_training_job():

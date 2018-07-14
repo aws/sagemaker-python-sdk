@@ -318,7 +318,8 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):
         self.sagemaker_session.delete_endpoint(self.latest_training_job.name)
 
     def transformer(self, instance_count, instance_type, strategy=None, assemble_with=None, output_path=None,
-                    output_kms_key=None, accept=None, max_concurrent_transforms=None, max_payload=None, tags=None):
+                    output_kms_key=None, accept=None, transform_env=None, max_concurrent_transforms=None,
+                    max_payload=None, tags=None):
         """Return a ``Transformer`` that uses a SageMaker Model based on the training job. It reuses the
         SageMaker Session and base job name used by the Estimator.
 
@@ -332,6 +333,7 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):
                 a default bucket.
             output_kms_key (str): Optional. KMS key ID for encrypting the transform output (default: None).
             accept (str): The content type accepted by the endpoint deployed during the transform job.
+            transform_env (dict): Environment variables to be set for use during the transform job (default: None).
             max_concurrent_transforms (int): The maximum number of HTTP requests to be made to
                 each individual transform container at one time.
             max_payload (int): Maximum size of the payload in a single HTTP request to the container in MB.
@@ -345,8 +347,9 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):
 
         return Transformer(model_name, instance_count, instance_type, strategy=strategy, assemble_with=assemble_with,
                            output_path=output_path, output_kms_key=output_kms_key, accept=accept,
-                           max_concurrent_transforms=max_concurrent_transforms, max_payload=max_payload, tags=tags,
-                           base_transform_job_name=self.base_job_name, sagemaker_session=self.sagemaker_session)
+                           max_concurrent_transforms=max_concurrent_transforms, max_payload=max_payload,
+                           transform_env=transform_env, tags=tags, base_transform_job_name=self.base_job_name,
+                           sagemaker_session=self.sagemaker_session)
 
     @property
     def training_job_analytics(self):
