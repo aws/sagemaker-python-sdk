@@ -151,7 +151,7 @@ Here is an end to end example of how to use a SageMaker Estimator.
     mxnet_predictor = mxnet_estimator.deploy(initial_instance_count=1, instance_type='ml.p2.xlarge')
 
     # Serializes data and makes a prediction request to the SageMaker Endpoint
-    response = predictor.predict(data)
+    response = mxnet_predictor.predict(data)
 
     # Tears down the SageMaker Endpoint
     mxnet_estimator.delete_endpoint()
@@ -185,7 +185,7 @@ instance type.
     mxnet_predictor = mxnet_estimator.deploy(initial_instance_count=1, instance_type='local')
 
     # Serializes data and makes a prediction request to the local endpoint
-    response = predictor.predict(data)
+    response = mxnet_predictor.predict(data)
 
     # Tears down the endpoint container
     mxnet_estimator.delete_endpoint()
