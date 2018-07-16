@@ -2,6 +2,23 @@
 CHANGELOG
 =========
 
+1.6.1
+=====
+
+* feature: Added multiclass classification support for linear learner algorithm.
+
+1.6.0
+=====
+
+* feature: Add Chainer 4.1.0 support
+
+1.5.4
+=====
+
+* feature: Added Docker Registry for all 1p algorithms in amazon_estimator.py
+* feature: Added get_image_uri method for 1p algorithms in amazon_estimator.py
+* Support SageMaker algorithms in FRA and SYD regions
+
 1.5.3
 =====
 

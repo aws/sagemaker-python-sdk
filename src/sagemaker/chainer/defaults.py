@@ -12,4 +12,4 @@
 # language governing permissions and limitations under the License.
 from __future__ import absolute_import
 
-CHAINER_VERSION = '4.0.0'
+CHAINER_VERSION = '4.1.0'

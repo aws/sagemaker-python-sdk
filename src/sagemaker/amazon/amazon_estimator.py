@@ -49,8 +49,10 @@ class AmazonAlgorithmEstimatorBase(EstimatorBase):
         self.data_location = data_location
 
     def train_image(self):
-        repo = '{}:{}'.format(type(self).repo_name, type(self).repo_version)
-        return '{}/{}'.format(registry(self.sagemaker_session.boto_region_name, type(self).repo_name), repo)
+        return get_image_uri(
+            self.sagemaker_session.boto_region_name,
+            type(self).repo_name,
+            type(self).repo_version)
 
     def hyperparameters(self):
         return hp.serialize_all(self)
@@ -268,7 +270,13 @@ def upload_numpy_to_s3_shards(num_shards, s3, bucket, key_prefix, array, labels=
 
 
 def registry(region_name, algorithm=None):
-    """Return docker registry for the given AWS region"""
+    """Return docker registry for the given AWS region
+
+    Note: Not all the algorithms listed below have an Amazon Estimator implemented. For full list of
+    pre-implemented Estimators, look at:
+
+    https://github.com/aws/sagemaker-python-sdk/tree/master/src/sagemaker/amazon
+    """
     if algorithm in [None, "pca", "kmeans", "linear-learner", "factorization-machines", "ntm",
                      "randomcutforest"]:
         account_id = {
@@ -276,8 +284,10 @@ def registry(region_name, algorithm=None):
             "us-east-2": "404615174143",
             "us-west-2": "174872318107",
             "eu-west-1": "438346466558",
+            "eu-central-1": "664544806723",
             "ap-northeast-1": "351501993468",
-            "ap-northeast-2": "835164637446"
+            "ap-northeast-2": "835164637446",
+            "ap-southeast-2": "712309505854"
         }[region_name]
     elif algorithm in ["lda"]:
         account_id = {
@@ -285,9 +295,40 @@ def registry(region_name, algorithm=None):
             "us-east-2": "999911452149",
             "us-west-2": "266724342769",
             "eu-west-1": "999678624901",
+            "eu-central-1": "353608530281",
             "ap-northeast-1": "258307448986",
-            "ap-northeast-2": "293181348795"
+            "ap-northeast-2": "293181348795",
+            "ap-southeast-2": "297031611018"
+        }[region_name]
+    elif algorithm in ["forecasting-deepar"]:
+        account_id = {
+            "us-east-1": "522234722520",
+            "us-east-2": "566113047672",
+            "us-west-2": "156387875391",
+            "eu-west-1": "224300973850",
+            "eu-central-1": "495149712605",
+            "ap-northeast-1": "633353088612",
+            "ap-northeast-2": "204372634319",
+            "ap-southeast-2": "514117268639"
+        }[region_name]
+    elif algorithm in ["xgboost", "seq2seq", "image-classification", "blazingtext",
+                       "object-detection"]:
+        account_id = {
+            "us-east-1": "811284229777",
+            "us-east-2": "825641698319",
+            "us-west-2": "433757028032",
+            "eu-west-1": "685385470294",
+            "eu-central-1": "813361260812",
+            "ap-northeast-1": "501404015308",
+            "ap-northeast-2": "306986355934",
+            "ap-southeast-2": "544295431143"
         }[region_name]
     else:
         raise ValueError("Algorithm class:{} doesn't have mapping to account_id with images".format(algorithm))
     return "{}.dkr.ecr.{}.amazonaws.com".format(account_id, region_name)
+
+
+def get_image_uri(region_name, repo_name, repo_version=1):
+    """Return algorithm image URI for the given AWS region, repository name, and repository version"""
+    repo = '{}:{}'.format(repo_name, repo_version)
+    return '{}/{}'.format(registry(region_name, repo_name), repo)
