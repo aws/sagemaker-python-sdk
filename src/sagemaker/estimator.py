@@ -31,7 +31,7 @@ from sagemaker.predictor import RealTimePredictor
 from sagemaker.session import Session
 from sagemaker.session import s3_input
 from sagemaker.transformer import Transformer
-from sagemaker.utils import base_name_from_image, name_from_base, get_config_value
+from sagemaker.utils import base_name_from_image, name_from_base, name_from_image, get_config_value
 
 
 class EstimatorBase(with_metaclass(ABCMeta, object)):
@@ -318,7 +318,7 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):
         self.sagemaker_session.delete_endpoint(self.latest_training_job.name)
 
     def transformer(self, instance_count, instance_type, strategy=None, assemble_with=None, output_path=None,
-                    output_kms_key=None, accept=None, transform_env=None, max_concurrent_transforms=None,
+                    output_kms_key=None, accept=None, env=None, max_concurrent_transforms=None,
                     max_payload=None, tags=None):
         """Return a ``Transformer`` that uses a SageMaker Model based on the training job. It reuses the
         SageMaker Session and base job name used by the Estimator.
@@ -333,7 +333,7 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):
                 a default bucket.
             output_kms_key (str): Optional. KMS key ID for encrypting the transform output (default: None).
             accept (str): The content type accepted by the endpoint deployed during the transform job.
-            transform_env (dict): Environment variables to be set for use during the transform job (default: None).
+            env (dict): Environment variables to be set for use during the transform job (default: None).
             max_concurrent_transforms (int): The maximum number of HTTP requests to be made to
                 each individual transform container at one time.
             max_payload (int): Maximum size of the payload in a single HTTP request to the container in MB.
@@ -348,7 +348,7 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):
         return Transformer(model_name, instance_count, instance_type, strategy=strategy, assemble_with=assemble_with,
                            output_path=output_path, output_kms_key=output_kms_key, accept=accept,
                            max_concurrent_transforms=max_concurrent_transforms, max_payload=max_payload,
-                           transform_env=transform_env, tags=tags, base_transform_job_name=self.base_job_name,
+                           env=env, tags=tags, base_transform_job_name=self.base_job_name,
                            sagemaker_session=self.sagemaker_session)
 
     @property
@@ -734,6 +734,50 @@ class Framework(EstimatorBase):
                 value = json.loads(value)
                 updated_params[argument] = value
         return updated_params
+
+    def transformer(self, instance_count, instance_type, strategy=None, assemble_with=None, output_path=None,
+                    output_kms_key=None, accept=None, env=None, max_concurrent_transforms=None,
+                    max_payload=None, tags=None, model_server_workers=None):
+        """Return a ``Transformer`` that uses a SageMaker Model based on the training job. It reuses the
+        SageMaker Session and base job name used by the Estimator.
+
+        Args:
+            instance_count (int): Number of EC2 instances to use.
+            instance_type (str): Type of EC2 instance to use, for example, 'ml.c4.xlarge'.
+            strategy (str): The strategy used to decide how to batch records in a single request (default: None).
+                Valid values: 'MULTI_RECORD' and 'SINGLE_RECORD'.
+            assemble_with (str): How the output is assembled (default: None). Valid values: 'Line' or 'None'.
+            output_path (str): S3 location for saving the transform result. If not specified, results are stored to
+                a default bucket.
+            output_kms_key (str): Optional. KMS key ID for encrypting the transform output (default: None).
+            accept (str): The content type accepted by the endpoint deployed during the transform job.
+            env (dict): Environment variables to be set for use during the transform job (default: None).
+            max_concurrent_transforms (int): The maximum number of HTTP requests to be made to
+                each individual transform container at one time.
+            max_payload (int): Maximum size of the payload in a single HTTP request to the container in MB.
+            tags (list[dict]): List of tags for labeling a transform job. If none specified, then the tags used for
+                the training job are used for the transform job.
+            model_server_workers (int): Optional. The number of worker processes used by the inference server.
+                If None, server will use one worker per vCPU.
+        """
+        self._ensure_latest_training_job()
+
+        model = self.create_model(model_server_workers=model_server_workers)
+
+        container_def = model.prepare_container_def(instance_type)
+        model_name = model.name or name_from_image(container_def['Image'])
+        self.sagemaker_session.create_model(model_name, self.role, container_def)
+
+        transform_env = model.env.copy()
+        if env is not None:
+            transform_env.update(env)
+
+        tags = tags or self.tags
+        return Transformer(model_name, instance_count, instance_type, strategy=strategy, assemble_with=assemble_with,
+                           output_path=output_path, output_kms_key=output_kms_key, accept=accept,
+                           max_concurrent_transforms=max_concurrent_transforms, max_payload=max_payload,
+                           env=transform_env, tags=tags, base_transform_job_name=self.base_job_name,
+                           sagemaker_session=self.sagemaker_session)
 
 
 def _s3_uri_prefix(channel_name, s3_data):

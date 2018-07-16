@@ -23,7 +23,7 @@ class Transformer(object):
 
     def __init__(self, model_name, instance_count, instance_type, strategy=None, assemble_with=None, output_path=None,
                  output_kms_key=None, accept=None, max_concurrent_transforms=None, max_payload=None, tags=None,
-                 transform_env=None, base_transform_job_name=None, sagemaker_session=None):
+                 env=None, base_transform_job_name=None, sagemaker_session=None):
         """Initialize a ``Transformer``.
 
         Args:
@@ -40,7 +40,7 @@ class Transformer(object):
             max_concurrent_transforms (int): The maximum number of HTTP requests to be made to
                 each individual transform container at one time.
             max_payload (int): Maximum size of the payload in a single HTTP request to the container in MB.
-            transform_env (dict): Environment variables to be set for use during the transform job (default: None).
+            env (dict): Environment variables to be set for use during the transform job (default: None).
             tags (list[dict]): List of tags for labeling a transform job (default: None). For more, see
                 https://docs.aws.amazon.com/sagemaker/latest/dg/API_Tag.html.
             base_transform_job_name (str): Prefix for the transform job when the
@@ -53,7 +53,7 @@ class Transformer(object):
         """
         self.model_name = model_name
         self.strategy = strategy
-        self.transform_env = transform_env
+        self.env = env
 
         self.output_path = output_path
         self.output_kms_key = output_kms_key
@@ -182,8 +182,7 @@ class _TransformJob(_Job):
         transformer.sagemaker_session.transform(job_name=transformer._current_job_name,
                                                 model_name=transformer.model_name, strategy=transformer.strategy,
                                                 max_concurrent_transforms=transformer.max_concurrent_transforms,
-                                                max_payload=transformer.max_payload,
-                                                transform_env=transformer.transform_env,
+                                                max_payload=transformer.max_payload, env=transformer.env,
                                                 input_config=config['input_config'],
                                                 output_config=config['output_config'],
                                                 resource_config=config['resource_config'], tags=transformer.tags)

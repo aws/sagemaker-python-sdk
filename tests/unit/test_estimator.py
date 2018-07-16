@@ -67,6 +67,18 @@ DESCRIBE_TRAINING_JOB_RESULT = {
     }
 }
 
+MODEL_CONTAINER_DEF = {
+    'Environment': {
+        'SAGEMAKER_PROGRAM': ENTRY_POINT,
+        'SAGEMAKER_SUBMIT_DIRECTORY': 's3://mybucket/mi-2017-10-10-14-14-15/sourcedir.tar.gz',
+        'SAGEMAKER_CONTAINER_LOG_LEVEL': '20',
+        'SAGEMAKER_REGION': REGION,
+        'SAGEMAKER_ENABLE_CLOUDWATCH_METRICS': 'false'
+    },
+    'Image': MODEL_IMAGE,
+    'ModelDataUrl': MODEL_DATA,
+}
+
 
 class DummyFramework(Framework):
     __framework_name__ = 'dummy'
@@ -74,7 +86,7 @@ class DummyFramework(Framework):
     def train_image(self):
         return IMAGE_NAME
 
-    def create_model(self):
+    def create_model(self, model_server_workers=None):
         return DummyFrameworkModel(self.sagemaker_session)
 
     @classmethod
@@ -91,6 +103,9 @@ class DummyFrameworkModel(FrameworkModel):
 
     def create_predictor(self, endpoint_name):
         return None
+
+    def prepare_container_def(self, instance_type):
+        return MODEL_CONTAINER_DEF
 
 
 @pytest.fixture()
@@ -433,37 +448,38 @@ def test_init_with_source_dir_s3(strftime, sagemaker_session):
     assert fw._hyperparameters == expected_hyperparameters
 
 
-def test_transformer_creation(sagemaker_session):
-    base_name = 'foo'
+@patch('sagemaker.estimator.name_from_image', return_value=MODEL_IMAGE)
+def test_framework_transformer_creation(name_from_image, sagemaker_session):
     fw = DummyFramework(entry_point=SCRIPT_PATH, role=ROLE, train_instance_count=INSTANCE_COUNT,
-                        train_instance_type=INSTANCE_TYPE, sagemaker_session=sagemaker_session,
-                        base_job_name=base_name)
+                        train_instance_type=INSTANCE_TYPE, sagemaker_session=sagemaker_session)
     fw.latest_training_job = _TrainingJob(sagemaker_session, JOB_NAME)
-    sagemaker_session.create_model_from_job.return_value = JOB_NAME
 
     transformer = fw.transformer(INSTANCE_COUNT, INSTANCE_TYPE)
 
-    sagemaker_session.create_model_from_job.assert_called_with(JOB_NAME)
+    name_from_image.assert_called_with(MODEL_IMAGE)
+    sagemaker_session.create_model.assert_called_with(MODEL_IMAGE, ROLE, MODEL_CONTAINER_DEF)
+
     assert isinstance(transformer, Transformer)
     assert transformer.sagemaker_session == sagemaker_session
     assert transformer.instance_count == INSTANCE_COUNT
     assert transformer.instance_type == INSTANCE_TYPE
-    assert transformer.model_name == JOB_NAME
-    assert transformer.base_transform_job_name == base_name
+    assert transformer.model_name == MODEL_IMAGE
     assert transformer.tags is None
+    assert transformer.env == {}
 
 
-def test_transformer_creation_with_optional_params(sagemaker_session):
+@patch('sagemaker.estimator.name_from_image', return_value=MODEL_IMAGE)
+def test_framework_transformer_creation_with_optional_params(name_from_image, sagemaker_session):
     base_name = 'foo'
     fw = DummyFramework(entry_point=SCRIPT_PATH, role=ROLE, train_instance_count=INSTANCE_COUNT,
                         train_instance_type=INSTANCE_TYPE, sagemaker_session=sagemaker_session,
                         base_job_name=base_name)
     fw.latest_training_job = _TrainingJob(sagemaker_session, JOB_NAME)
-    sagemaker_session.create_model_from_job.return_value = JOB_NAME
+
+    transformer = fw.transformer(INSTANCE_COUNT, INSTANCE_TYPE)
 
     strategy = 'MultiRecord'
     assemble_with = 'Line'
-    output_path = OUTPUT_PATH
     kms_key = 'key'
     accept = 'text/csv'
     max_concurrent_transforms = 1
@@ -471,9 +487,9 @@ def test_transformer_creation_with_optional_params(sagemaker_session):
     env = {'FOO': 'BAR'}
 
     transformer = fw.transformer(INSTANCE_COUNT, INSTANCE_TYPE, strategy=strategy, assemble_with=assemble_with,
-                                 output_path=output_path, output_kms_key=kms_key, accept=accept, tags=TAGS,
+                                 output_path=OUTPUT_PATH, output_kms_key=kms_key, accept=accept, tags=TAGS,
                                  max_concurrent_transforms=max_concurrent_transforms, max_payload=max_payload,
-                                 transform_env=env)
+                                 env=env, model_server_workers=1)
 
     assert transformer.strategy == strategy
     assert transformer.assemble_with == assemble_with
@@ -482,7 +498,9 @@ def test_transformer_creation_with_optional_params(sagemaker_session):
     assert transformer.accept == accept
     assert transformer.max_concurrent_transforms == max_concurrent_transforms
     assert transformer.max_payload == max_payload
-    assert transformer.transform_env == env
+    assert transformer.env == env
+    assert transformer.base_transform_job_name == base_name
+    assert transformer.tags == TAGS
 
 
 def test_ensure_latest_training_job():
@@ -500,6 +518,56 @@ def test_ensure_latest_training_job_failure():
     with pytest.raises(ValueError) as e:
         fw._ensure_latest_training_job()
     assert 'Estimator is not associated with a training job' in str(e)
+
+
+def test_estimator_transformer_creation(sagemaker_session):
+    estimator = Estimator(image_name=IMAGE_NAME, role=ROLE, train_instance_count=INSTANCE_COUNT,
+                          train_instance_type=INSTANCE_TYPE, sagemaker_session=sagemaker_session)
+    estimator.latest_training_job = _TrainingJob(sagemaker_session, JOB_NAME)
+    sagemaker_session.create_model_from_job.return_value = JOB_NAME
+
+    transformer = estimator.transformer(INSTANCE_COUNT, INSTANCE_TYPE)
+
+    sagemaker_session.create_model_from_job.assert_called_with(JOB_NAME)
+    assert isinstance(transformer, Transformer)
+    assert transformer.sagemaker_session == sagemaker_session
+    assert transformer.instance_count == INSTANCE_COUNT
+    assert transformer.instance_type == INSTANCE_TYPE
+    assert transformer.model_name == JOB_NAME
+    assert transformer.tags is None
+
+
+def test_estimator_transformer_creation_with_optional_params(sagemaker_session):
+    base_name = 'foo'
+    estimator = Estimator(image_name=IMAGE_NAME, role=ROLE, train_instance_count=INSTANCE_COUNT,
+                          train_instance_type=INSTANCE_TYPE, sagemaker_session=sagemaker_session,
+                          base_job_name=base_name)
+    estimator.latest_training_job = _TrainingJob(sagemaker_session, JOB_NAME)
+    sagemaker_session.create_model_from_job.return_value = JOB_NAME
+
+    strategy = 'MultiRecord'
+    assemble_with = 'Line'
+    kms_key = 'key'
+    accept = 'text/csv'
+    max_concurrent_transforms = 1
+    max_payload = 6
+    env = {'FOO': 'BAR'}
+
+    transformer = estimator.transformer(INSTANCE_COUNT, INSTANCE_TYPE, strategy=strategy, assemble_with=assemble_with,
+                                        output_path=OUTPUT_PATH, output_kms_key=kms_key, accept=accept, tags=TAGS,
+                                        max_concurrent_transforms=max_concurrent_transforms, max_payload=max_payload,
+                                        env=env)
+
+    assert transformer.strategy == strategy
+    assert transformer.assemble_with == assemble_with
+    assert transformer.output_path == OUTPUT_PATH
+    assert transformer.output_kms_key == kms_key
+    assert transformer.accept == accept
+    assert transformer.max_concurrent_transforms == max_concurrent_transforms
+    assert transformer.max_payload == max_payload
+    assert transformer.env == env
+    assert transformer.base_transform_job_name == base_name
+    assert transformer.tags == TAGS
 
 
 # _TrainingJob 'utils'

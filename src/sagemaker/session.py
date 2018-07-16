@@ -371,7 +371,7 @@ class Session(object):
                 LOGGER.error('Error occurred while attempting to stop tuning job: {}. Please try again.'.format(name))
                 raise
 
-    def transform(self, job_name, model_name, strategy, max_concurrent_transforms, max_payload, transform_env,
+    def transform(self, job_name, model_name, strategy, max_concurrent_transforms, max_payload, env,
                   input_config, output_config, resource_config, tags):
         """Create an Amazon SageMaker transform job.
 
@@ -383,7 +383,7 @@ class Session(object):
             max_concurrent_transforms (int): The maximum number of HTTP requests to be made to
                 each individual transform container at one time.
             max_payload (int): Maximum size of the payload in a single HTTP request to the container in MB.
-            transform_env (dict): Environment variables to be set for use during the transform job.
+            env (dict): Environment variables to be set for use during the transform job.
             input_config (dict): A dictionary describing the input data (and its location) for the job.
             output_config (dict): A dictionary describing the output location for the job.
             resource_config (dict): A dictionary describing the resources to complete the job.
@@ -407,8 +407,8 @@ class Session(object):
         if max_payload is not None:
             transform_request['MaxPayloadInMB'] = max_payload
 
-        if transform_env is not None:
-            transform_request['TransformEnvironmentMap'] = transform_env
+        if env is not None:
+            transform_request['Environment'] = env
 
         if tags is not None:
             transform_request['Tags'] = tags
