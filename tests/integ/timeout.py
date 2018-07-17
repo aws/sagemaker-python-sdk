@@ -78,12 +78,12 @@ def timeout_and_delete_endpoint_by_name(endpoint_name, sagemaker_session, second
                     _show_endpoint_logs(endpoint_name, sagemaker_session)
                     if no_errors:
                         _cleanup_endpoint_logs(endpoint_name, sagemaker_session)
-                    return 
+                    return
                 except ClientError as ce:
                     if ce.response['Error']['Code'] == 'ValidationException':
                         # avoids the inner exception to be overwritten
                         pass
-                # trying to delte the resource again in 10 seconds
+                # trying to delete the resource again in 10 seconds
                 sleep(10)
 
 
