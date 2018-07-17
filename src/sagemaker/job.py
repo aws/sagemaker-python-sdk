@@ -104,17 +104,14 @@ class _Job(object):
             elif input.startswith('file://'):
                 return file_input(input)
             else:
-                raise ValueError(
-                    'Training input data must be a valid S3 or FILE URI: must start with "s3://" or '
-                    '"file://"')
+                raise ValueError('Training input data must be a valid S3 or FILE URI: must start with "s3://" or '
+                                 '"file://"')
         elif isinstance(input, s3_input):
             return input
         elif isinstance(input, file_input):
             return input
         else:
-            raise ValueError(
-                'Cannot format input {}. Expecting one of str, s3_input, or file_input'.format(
-                    input))
+            raise ValueError('Cannot format input {}. Expecting one of str, s3_input, or file_input'.format(input))
 
     @staticmethod
     def _format_record_set_list_input(inputs):
