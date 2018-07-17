@@ -16,6 +16,7 @@ The SageMaker Python SDK consists of a few primary interfaces:
     estimators
     tuner
     predictors
+    transformer
     session
     model
     analytics

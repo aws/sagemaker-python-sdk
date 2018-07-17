@@ -2,6 +2,12 @@
 CHANGELOG
 =========
 
+1.7.0
+=====
+
+* feature: Transformer: add support for batch transform jobs
+* feature: Documentation: add instructions for using Pipe Mode with TensorFlow
+
 1.6.1
 =====
 
