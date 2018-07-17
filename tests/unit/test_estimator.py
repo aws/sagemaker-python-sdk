@@ -503,17 +503,17 @@ def test_framework_transformer_creation_with_optional_params(name_from_image, sa
     assert transformer.tags == TAGS
 
 
-def test_ensure_latest_training_job():
+def test_ensure_latest_training_job(sagemaker_session):
     fw = DummyFramework(entry_point=SCRIPT_PATH, role=ROLE, train_instance_count=INSTANCE_COUNT,
-                        train_instance_type=INSTANCE_TYPE)
+                        train_instance_type=INSTANCE_TYPE, sagemaker_session=sagemaker_session)
     fw.latest_training_job = Mock(name='training_job')
 
     fw._ensure_latest_training_job()
 
 
-def test_ensure_latest_training_job_failure():
+def test_ensure_latest_training_job_failure(sagemaker_session):
     fw = DummyFramework(entry_point=SCRIPT_PATH, role=ROLE, train_instance_count=INSTANCE_COUNT,
-                        train_instance_type=INSTANCE_TYPE)
+                        train_instance_type=INSTANCE_TYPE, sagemaker_session=sagemaker_session)
 
     with pytest.raises(ValueError) as e:
         fw._ensure_latest_training_job()
