@@ -32,7 +32,8 @@ Table of Contents
 7. `AWS SageMaker Estimators <#aws-sagemaker-estimators>`__
 8. `BYO Docker Containers with SageMaker Estimators <#byo-docker-containers-with-sagemaker-estimators>`__
 9. `SageMaker Automatic Model Tuning <#sagemaker-automatic-model-tuning>`__
-10. `BYO Model <#byo-model>`__
+10. `SageMaker Batch Transform <#sagemaker-batch-transform>`__
+11. `BYO Model <#byo-model>`__
 
 
 Getting SageMaker Python SDK
@@ -375,6 +376,39 @@ For more detailed explanations of the classes that this library provides for aut
 - `API docs for analytics classes <https://sagemaker.readthedocs.io/en/latest/analytics.html>`__
 
 
+SageMaker Batch Transform
+-------------------------
+
+Once you have a trained model, you can use Amazon SageMaker Batch Transform to perform inferences with the model.
+Batch Transform manages all compute resources necessary, including launching instances to deploy endpoints and deleting them afterward.
+You can read more about SageMaker Batch Transform in the `AWS documentation <https://docs.aws.amazon.com/sagemaker/latest/dg/how-it-works-batch.html>`__.
+
+If you have trained the model using a SageMaker Python SDK Estimator, you can simply invoke ``transformer()`` to create a ``Transformer`` for the training job:
+
+.. code:: python
+
+    transformer = estimator.transformer(instance_count=1, instance_type='ml.m4.xlarge')
+
+Alternatively, if you already have a SageMaker Model, you can instantiate a ``Transformer`` directly with its constructor:
+
+.. code:: python
+
+    transformer = Transformer(model_name='my-previously-trained-model',
+                              instance_count=1,
+                              instance_type='ml.m4.xlarge')
+
+For a full list of the possible options to configure through either of these methods, please refer to the API docs for `Estimator <https://sagemaker.readthedocs.io/en/latest/estimators.html#sagemaker.estimator.Estimator.transformer>`__ or `Transformer <https://sagemaker.readthedocs.io/en/latest/transformer.html#sagemaker.transformer.Transformer>`__.
+
+Once you've created a ``Transformer`` object, you can invoke ``transform()`` to being a batch transform job with the S3 location of your data.
+You can also specify other attributes about your data, such as the content type.
+
+.. code:: python
+
+    transformer.transform('s3://my-bucket/batch-transform-input')
+
+For more details about what can be specified here, please refer to the `API docs <https://sagemaker.readthedocs.io/en/latest/transformer.html#sagemaker.transformer.Transformer.transform>`__.
+
+
 FAQ
 ---
 
@@ -422,7 +456,7 @@ Example code using the TensorFlow predictor:
 
 
 BYO Model
------------------------------------------------
+---------
 You can also create an endpoint from an existing model rather than training one - i.e. bring your own model.
 
 First, package the files for the trained model into a ``.tar.gz`` file, and upload the archive to S3.
