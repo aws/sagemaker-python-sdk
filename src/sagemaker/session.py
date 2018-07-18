@@ -371,6 +371,52 @@ class Session(object):
                 LOGGER.error('Error occurred while attempting to stop tuning job: {}. Please try again.'.format(name))
                 raise
 
+    def transform(self, job_name, model_name, strategy, max_concurrent_transforms, max_payload, env,
+                  input_config, output_config, resource_config, tags):
+        """Create an Amazon SageMaker transform job.
+
+        Args:
+            job_name (str): Name of the transform job being created.
+            model_name (str): Name of the SageMaker model being used for the transform job.
+            strategy (str): The strategy used to decide how to batch records in a single request.
+                Possible values are 'MULTI_RECORD' and 'SINGLE_RECORD'.
+            max_concurrent_transforms (int): The maximum number of HTTP requests to be made to
+                each individual transform container at one time.
+            max_payload (int): Maximum size of the payload in a single HTTP request to the container in MB.
+            env (dict): Environment variables to be set for use during the transform job.
+            input_config (dict): A dictionary describing the input data (and its location) for the job.
+            output_config (dict): A dictionary describing the output location for the job.
+            resource_config (dict): A dictionary describing the resources to complete the job.
+            tags (list[dict]): List of tags for labeling a training job. For more, see
+                https://docs.aws.amazon.com/sagemaker/latest/dg/API_Tag.html.
+        """
+        transform_request = {
+            'TransformJobName': job_name,
+            'ModelName': model_name,
+            'TransformInput': input_config,
+            'TransformOutput': output_config,
+            'TransformResources': resource_config,
+        }
+
+        if strategy is not None:
+            transform_request['BatchStrategy'] = strategy
+
+        if max_concurrent_transforms is not None:
+            transform_request['MaxConcurrentTransforms'] = max_concurrent_transforms
+
+        if max_payload is not None:
+            transform_request['MaxPayloadInMB'] = max_payload
+
+        if env is not None:
+            transform_request['Environment'] = env
+
+        if tags is not None:
+            transform_request['Tags'] = tags
+
+        LOGGER.info('Creating transform job with name: {}'.format(job_name))
+        LOGGER.debug('Transform request: {}'.format(json.dumps(transform_request, indent=4)))
+        self.sagemaker_client.create_transform_job(**transform_request)
+
     def create_model(self, name, role, primary_container):
         """Create an Amazon SageMaker ``Model``.
 
@@ -520,6 +566,23 @@ class Session(object):
         """
         desc = _wait_until(lambda: _tuning_job_status(self.sagemaker_client, job), poll)
         self._check_job_status(job, desc, 'HyperParameterTuningJobStatus')
+        return desc
+
+    def wait_for_transform_job(self, job, poll=5):
+        """Wait for an Amazon SageMaker transform job to complete.
+
+        Args:
+            job (str): Name of the transform job to wait for.
+            poll (int): Polling interval in seconds (default: 5).
+
+        Returns:
+            (dict): Return value from the ``DescribeTransformJob`` API.
+
+        Raises:
+            ValueError: If the transform job fails.
+        """
+        desc = _wait_until(lambda: _transform_job_status(self.sagemaker_client, job), poll)
+        self._check_job_status(job, desc, 'TransformJobStatus')
         return desc
 
     def _check_job_status(self, job, desc, status_key_name):
@@ -898,7 +961,7 @@ class s3_input(object):
             compression (str): Valid values: 'Gzip', None (default: None). This is used only in Pipe input mode.
             content_type (str): MIME type of the input data (default: None).
             record_wrapping (str): Valid values: 'RecordIO' (default: None).
-            s3_data_type (str): Value values: 'S3Prefix', 'ManifestFile'. If 'S3Prefix', ``s3_data`` defines
+            s3_data_type (str): Valid values: 'S3Prefix', 'ManifestFile'. If 'S3Prefix', ``s3_data`` defines
                 a prefix of s3 objects to train on. All objects with s3 keys beginning with ``s3_data`` will
                 be used to train. If 'ManifestFile', then ``s3_data`` defines a single s3 manifest file, listing
                 each s3 object to train on. The Manifest file format is described in the SageMaker API documentation:
@@ -973,6 +1036,29 @@ def _tuning_job_status(sagemaker_client, job_name):
     status = desc['HyperParameterTuningJobStatus']
 
     print(tuning_status_codes.get(status, '?'), end='')
+    sys.stdout.flush()
+
+    if status in in_progress_statuses:
+        return None
+
+    print('')
+    return desc
+
+
+def _transform_job_status(sagemaker_client, job_name):
+    transform_job_status_codes = {
+        'Completed': '!',
+        'InProgress': '.',
+        'Failed': '*',
+        'Stopped': 's',
+        'Stopping': '_'
+    }
+    in_progress_statuses = ['InProgress', 'Stopping']
+
+    desc = sagemaker_client.describe_transform_job(TransformJobName=job_name)
+    status = desc['TransformJobStatus']
+
+    print(transform_job_status_codes.get(status, '?'), end='')
     sys.stdout.flush()
 
     if status in in_progress_statuses:

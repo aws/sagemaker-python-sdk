@@ -2,10 +2,15 @@
 CHANGELOG
 =========
 
-1.6.2.dev
+1.7.1.dev
 =========
 * bug-fix: Prediction output for the TF_JSON_SERIALIZER
 
+1.7.0
+=====
+
+* feature: Transformer: add support for batch transform jobs
+* feature: Documentation: add instructions for using Pipe Mode with TensorFlow
 
 1.6.1
 =====
