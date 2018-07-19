@@ -65,10 +65,12 @@ class MXNet(Framework):
         self.py_version = py_version
         self.framework_version = framework_version
 
-    def create_model(self, model_server_workers=None):
+    def create_model(self, role=None, model_server_workers=None):
         """Create a SageMaker ``MXNetModel`` object that can be deployed to an ``Endpoint``.
 
         Args:
+            role (str): The ``ExecutionRoleArn`` IAM Role ARN for the ``Model``, which is also used during
+                transform jobs. If not specified, the role from the Estimator will be used.
             model_server_workers (int): Optional. The number of worker processes used by the inference server.
                 If None, server will use one worker per vCPU.
 
@@ -76,7 +78,8 @@ class MXNet(Framework):
             sagemaker.mxnet.model.MXNetModel: A SageMaker ``MXNetModel`` object.
                 See :func:`~sagemaker.mxnet.model.MXNetModel` for full details.
         """
-        return MXNetModel(self.model_data, self.role, self.entry_point, source_dir=self._model_source_dir(),
+        role = role or self.role
+        return MXNetModel(self.model_data, role, self.entry_point, source_dir=self._model_source_dir(),
                           enable_cloudwatch_metrics=self.enable_cloudwatch_metrics, name=self._current_job_name,
                           container_log_level=self.container_log_level, code_location=self.code_location,
                           py_version=self.py_version, framework_version=self.framework_version, image=self.image_name,
