@@ -6,6 +6,7 @@ CHANGELOG
 ========
 
 * bug-fix: Session: use existing model instead of failing during ``create_model()``
+* enhancement: Estimator: allow for different role from the Estimator's when creating a Model or Transformer
 
 1.7.0
 =====
