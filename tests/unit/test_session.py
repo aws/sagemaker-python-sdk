@@ -592,7 +592,8 @@ def test_endpoint_from_production_variants_with_tags(sagemaker_session):
         Tags=tags)
 
 
-def test_wait_for_tuning_job(sagemaker_session):
+@patch('time.sleep')
+def test_wait_for_tuning_job(sleep, sagemaker_session):
     hyperparameter_tuning_job_desc = {'HyperParameterTuningJobStatus': 'Completed'}
     sagemaker_session.sagemaker_client.describe_hyper_parameter_tuning_job = Mock(
         name='describe_hyper_parameter_tuning_job', return_value=hyperparameter_tuning_job_desc)
@@ -621,7 +622,8 @@ def test_tune_job_status_none(sagemaker_session):
     assert result is None
 
 
-def test_wait_for_transform_job_completed(sagemaker_session):
+@patch('time.sleep')
+def test_wait_for_transform_job_completed(sleep, sagemaker_session):
     transform_job_desc = {'TransformJobStatus': 'Completed'}
     sagemaker_session.sagemaker_client.describe_transform_job = Mock(
         name='describe_transform_job', return_value=transform_job_desc)
@@ -629,7 +631,8 @@ def test_wait_for_transform_job_completed(sagemaker_session):
     assert sagemaker_session.wait_for_transform_job(JOB_NAME)['TransformJobStatus'] == 'Completed'
 
 
-def test_wait_for_transform_job_in_progress(sagemaker_session):
+@patch('time.sleep')
+def test_wait_for_transform_job_in_progress(sleep, sagemaker_session):
     transform_job_desc_in_progress = {'TransformJobStatus': 'InProgress'}
     transform_job_desc_in_completed = {'TransformJobStatus': 'Completed'}
     sagemaker_session.sagemaker_client.describe_transform_job = Mock(
