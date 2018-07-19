@@ -6,6 +6,7 @@ CHANGELOG
 =====
 
 * bug-fix: get_execution_role no longer fails if user can't call get_role
+* bug-fix: Session: use existing model instead of failing during ``create_model()``
 
 1.7.0
 =====

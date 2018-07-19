@@ -12,16 +12,17 @@
 # language governing permissions and limitations under the License.
 from __future__ import absolute_import
 
-import pytest
+import datetime
 import io
+import logging
+
+import pytest
 import six
+from botocore.exceptions import ClientError
 from mock import Mock, patch, call
+
 import sagemaker
 from sagemaker import s3_input, Session, get_execution_role
-import datetime
-
-from botocore.exceptions import ClientError
-
 from sagemaker.session import _tuning_job_status, _transform_job_status
 
 REGION = 'us-west-2'
@@ -515,18 +516,57 @@ def test_logs_for_job_full_lifecycle(time, cw, sagemaker_session_full_lifecycle)
                                    call(0, 'hi there #2a'), call(0, 'hi there #3')]
 
 
+MODEL_NAME = 'some-model'
+PRIMARY_CONTAINER = {
+    'Environment': {},
+    'Image': IMAGE,
+    'ModelDataUrl': 's3://sagemaker-123/output/jobname/model/model.tar.gz',
+}
+
+
+@patch('sagemaker.session._expand_container_def', return_value=PRIMARY_CONTAINER)
+def test_create_model(expand_container_def, sagemaker_session):
+    model = sagemaker_session.create_model(MODEL_NAME, ROLE, PRIMARY_CONTAINER)
+
+    assert model == MODEL_NAME
+    sagemaker_session.sagemaker_client.create_model.assert_called_with(ExecutionRoleArn=EXPANDED_ROLE,
+                                                                       ModelName=MODEL_NAME,
+                                                                       PrimaryContainer=PRIMARY_CONTAINER)
+
+
+@patch('sagemaker.session._expand_container_def', return_value=PRIMARY_CONTAINER)
+def test_create_model_already_exists(expand_container_def, sagemaker_session, caplog):
+    error_response = {'Error': {'Code': 'ValidationException', 'Message': 'Cannot create already existing model'}}
+    exception = ClientError(error_response, 'Operation')
+    sagemaker_session.sagemaker_client.create_model.side_effect = exception
+
+    model = sagemaker_session.create_model(MODEL_NAME, ROLE, PRIMARY_CONTAINER)
+    assert model == MODEL_NAME
+
+    expected_warning = ('sagemaker', logging.WARNING, 'Using already existing model: {}'.format(MODEL_NAME))
+    assert expected_warning in caplog.record_tuples
+
+
+@patch('sagemaker.session._expand_container_def', return_value=PRIMARY_CONTAINER)
+def test_create_model_failure(expand_container_def, sagemaker_session):
+    error_message = 'this is expected'
+    sagemaker_session.sagemaker_client.create_model.side_effect = RuntimeError(error_message)
+
+    with pytest.raises(RuntimeError) as e:
+        sagemaker_session.create_model(MODEL_NAME, ROLE, PRIMARY_CONTAINER)
+
+    assert error_message in str(e)
+
+
 def test_create_model_from_job(sagemaker_session):
     ims = sagemaker_session
     ims.sagemaker_client.describe_training_job.return_value = COMPLETED_DESCRIBE_JOB_RESULT
     ims.create_model_from_job(JOB_NAME)
 
-    assert call(TrainingJobName='jobname') in ims.sagemaker_client.describe_training_job.call_args_list
-    ims.sagemaker_client.create_model.assert_called_with(
-        ExecutionRoleArn='arn:aws:iam::111111111111:role/ExpandedRole',
-        ModelName='jobname',
-        PrimaryContainer={
-            'Environment': {}, 'ModelDataUrl': 's3://sagemaker-123/output/jobname/model/model.tar.gz',
-            'Image': 'myimage'})
+    assert call(TrainingJobName=JOB_NAME) in ims.sagemaker_client.describe_training_job.call_args_list
+    ims.sagemaker_client.create_model.assert_called_with(ExecutionRoleArn=EXPANDED_ROLE,
+                                                         ModelName=JOB_NAME,
+                                                         PrimaryContainer=PRIMARY_CONTAINER)
 
 
 def test_create_model_from_job_with_image(sagemaker_session):
@@ -605,7 +645,8 @@ def test_endpoint_from_production_variants_with_tags(sagemaker_session):
         Tags=tags)
 
 
-def test_wait_for_tuning_job(sagemaker_session):
+@patch('time.sleep')
+def test_wait_for_tuning_job(sleep, sagemaker_session):
     hyperparameter_tuning_job_desc = {'HyperParameterTuningJobStatus': 'Completed'}
     sagemaker_session.sagemaker_client.describe_hyper_parameter_tuning_job = Mock(
         name='describe_hyper_parameter_tuning_job', return_value=hyperparameter_tuning_job_desc)
@@ -634,7 +675,8 @@ def test_tune_job_status_none(sagemaker_session):
     assert result is None
 
 
-def test_wait_for_transform_job_completed(sagemaker_session):
+@patch('time.sleep')
+def test_wait_for_transform_job_completed(sleep, sagemaker_session):
     transform_job_desc = {'TransformJobStatus': 'Completed'}
     sagemaker_session.sagemaker_client.describe_transform_job = Mock(
         name='describe_transform_job', return_value=transform_job_desc)
@@ -642,7 +684,8 @@ def test_wait_for_transform_job_completed(sagemaker_session):
     assert sagemaker_session.wait_for_transform_job(JOB_NAME)['TransformJobStatus'] == 'Completed'
 
 
-def test_wait_for_transform_job_in_progress(sagemaker_session):
+@patch('time.sleep')
+def test_wait_for_transform_job_in_progress(sleep, sagemaker_session):
     transform_job_desc_in_progress = {'TransformJobStatus': 'InProgress'}
     transform_job_desc_in_completed = {'TransformJobStatus': 'Completed'}
     sagemaker_session.sagemaker_client.describe_transform_job = Mock(
