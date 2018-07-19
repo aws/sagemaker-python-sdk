@@ -289,7 +289,7 @@ class TensorFlow(Framework):
 
         return init_params
 
-    def create_model(self, role=None, model_server_workers=None):
+    def create_model(self, model_server_workers=None, role=None):
         """Create a SageMaker ``TensorFlowModel`` object that can be deployed to an ``Endpoint``.
 
         Args:

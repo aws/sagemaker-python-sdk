@@ -63,7 +63,7 @@ class PyTorch(Framework):
         self.py_version = py_version
         self.framework_version = framework_version
 
-    def create_model(self, role=None, model_server_workers=None):
+    def create_model(self, model_server_workers=None, role=None):
         """Create a SageMaker ``PyTorchModel`` object that can be deployed to an ``Endpoint``.
 
         Args:

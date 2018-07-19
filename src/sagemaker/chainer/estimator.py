@@ -98,7 +98,7 @@ class Chainer(Framework):
         hyperparameters.update(Framework._json_encode_hyperparameters(additional_hyperparameters))
         return hyperparameters
 
-    def create_model(self, role=None, model_server_workers=None):
+    def create_model(self, model_server_workers=None, role=None):
         """Create a SageMaker ``ChainerModel`` object that can be deployed to an ``Endpoint``.
 
         Args:
