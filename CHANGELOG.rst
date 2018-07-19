@@ -2,6 +2,11 @@
 CHANGELOG
 =========
 
+1.7.1dev
+========
+
+* bug-fix: Session: use existing model instead of failing during ``create_model()``
+
 1.7.0
 =====
 
