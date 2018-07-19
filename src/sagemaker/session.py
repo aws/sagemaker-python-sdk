@@ -454,7 +454,7 @@ class Session(object):
             message = e.response['Error']['Message']
 
             if error_code == 'ValidationException' and 'Cannot create already existing model' in message:
-                LOGGER.warn('Using the already existing model with the name {}'.format(name))
+                LOGGER.warning('Using already existing model: {}'.format(name))
             else:
                 raise
 
