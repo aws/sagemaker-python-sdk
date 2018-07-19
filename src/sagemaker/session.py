@@ -763,7 +763,10 @@ class Session(object):
 
         # Call IAM to get the role's path
         role_name = role[role.rfind('/') + 1:]
-        role = self.boto_session.client('iam').get_role(RoleName=role_name)['Role']['Arn']
+        try:
+            role = self.boto_session.client('iam').get_role(RoleName=role_name)['Role']['Arn']
+        except ClientError:
+            LOGGER.warning("Couldn't call 'get_role' to get Role ARN from role name {}.".format(role_name))
 
         return role
 

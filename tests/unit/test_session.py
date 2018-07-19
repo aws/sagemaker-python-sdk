@@ -69,6 +69,16 @@ def test_get_caller_identity_arn_from_an_user(boto_session):
     assert actual == 'arn:aws:iam::369233609183:user/mia'
 
 
+def test_get_caller_identity_arn_from_an_user_without_permissions(boto_session):
+    sess = Session(boto_session)
+    arn = 'arn:aws:iam::369233609183:user/mia'
+    sess.boto_session.client('sts').get_caller_identity.return_value = {'Arn': arn}
+    sess.boto_session.client('iam').get_role.side_effect = ClientError('Bad permissions!', {})
+
+    actual = sess.get_caller_identity_arn()
+    assert actual == 'arn:aws:iam::369233609183:user/mia'
+
+
 def test_get_caller_identity_arn_from_a_role(boto_session):
     sess = Session(boto_session)
     arn = 'arn:aws:sts::369233609183:assumed-role/SageMakerRole/6d009ef3-5306-49d5-8efc-78db644d8122'
