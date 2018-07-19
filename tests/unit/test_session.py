@@ -69,14 +69,17 @@ def test_get_caller_identity_arn_from_an_user(boto_session):
     assert actual == 'arn:aws:iam::369233609183:user/mia'
 
 
-def test_get_caller_identity_arn_from_an_user_without_permissions(boto_session):
+@patch('logging.Logger.warning')
+def test_get_caller_identity_arn_from_an_user_without_permissions(boto_session, mock_logger):
     sess = Session(boto_session)
     arn = 'arn:aws:iam::369233609183:user/mia'
     sess.boto_session.client('sts').get_caller_identity.return_value = {'Arn': arn}
     sess.boto_session.client('iam').get_role.side_effect = ClientError('Bad permissions!', {})
 
+
     actual = sess.get_caller_identity_arn()
     assert actual == 'arn:aws:iam::369233609183:user/mia'
+    mock_logger.assert_called_once()
 
 
 def test_get_caller_identity_arn_from_a_role(boto_session):
