@@ -187,18 +187,18 @@ def test_json_deserializer_should_work_with_predict_response():
         'model_spec': {
             'name': u'generic_model',
             'signature_name': u'serving_default',
-            'version': {'value': 1531758457L}
+            'version': {'value': 1531758457.}
         },
         'outputs': {
             u'ages': {
                 'dtype': 1,
                 'float_val': [4.954165935516357],
-                'tensor_shape': {'dim': [{'size': 1L}]}
+                'tensor_shape': {'dim': [{'size': 1.}]}
             },
             u'example_strings': {
                 'dtype': 7,
                 'string_val': ['apple', 'banana', 'orange'],
-                'tensor_shape': {'dim': [{'size': 3L}]}
+                'tensor_shape': {'dim': [{'size': 3.}]}
             }
         }
     }
