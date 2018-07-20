@@ -5,6 +5,8 @@ CHANGELOG
 1.7.1.dev
 =========
 * bug-fix: Prediction output for the TF_JSON_SERIALIZER
+* bug-fix: get_execution_role no longer fails if user can't call get_role
+* bug-fix: Session: use existing model instead of failing during ``create_model()``
 
 1.7.0
 =====
