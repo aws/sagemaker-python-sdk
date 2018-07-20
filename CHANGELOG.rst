@@ -4,6 +4,8 @@ CHANGELOG
 
 1.7.1dev
 ========
+
+* bug-fix: Session: use existing model instead of failing during ``create_model()``
 * deprecate enable_cloudwatch_metrics from Framework Estimators.
 
 1.7.0
