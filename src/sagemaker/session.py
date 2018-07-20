@@ -439,15 +439,24 @@ class Session(object):
         role = self.expand_role(role)
         primary_container = _expand_container_def(primary_container)
         LOGGER.info('Creating model with name: {}'.format(name))
-        LOGGER.debug("create_model request: {}".format({
+        LOGGER.debug('create_model request: {}'.format({
             'name': name,
             'role': role,
             'primary_container': primary_container
         }))
 
-        self.sagemaker_client.create_model(ModelName=name,
-                                           PrimaryContainer=primary_container,
-                                           ExecutionRoleArn=role)
+        try:
+            self.sagemaker_client.create_model(ModelName=name,
+                                               PrimaryContainer=primary_container,
+                                               ExecutionRoleArn=role)
+        except ClientError as e:
+            error_code = e.response['Error']['Code']
+            message = e.response['Error']['Message']
+
+            if error_code == 'ValidationException' and 'Cannot create already existing model' in message:
+                LOGGER.warning('Using already existing model: {}'.format(name))
+            else:
+                raise
 
         return name
 
@@ -751,7 +760,7 @@ class Session(object):
     def get_caller_identity_arn(self):
         """Returns the ARN user or role whose credentials are used to call the API.
         Returns:
-            (str): The ARN uer or role
+            (str): The ARN user or role
         """
         assumed_role = self.boto_session.client('sts').get_caller_identity()['Arn']
 
@@ -763,7 +772,11 @@ class Session(object):
 
         # Call IAM to get the role's path
         role_name = role[role.rfind('/') + 1:]
-        role = self.boto_session.client('iam').get_role(RoleName=role_name)['Role']['Arn']
+        try:
+            role = self.boto_session.client('iam').get_role(RoleName=role_name)['Role']['Arn']
+        except ClientError:
+            LOGGER.warning("Couldn't call 'get_role' to get Role ARN from role name {} to get Role path."
+                           .format(role_name))
 
         return role
 
