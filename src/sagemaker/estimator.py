@@ -15,6 +15,7 @@ from __future__ import print_function, absolute_import
 import json
 import logging
 import os
+import warnings
 from abc import ABCMeta
 from abc import abstractmethod
 from six import with_metaclass
@@ -559,7 +560,8 @@ class Framework(EstimatorBase):
         self.source_dir = source_dir
         self.entry_point = entry_point
         if enable_cloudwatch_metrics:
-            logging.warn('enable_cloudwatch_metrics is now deprecated and will be removed in the future.')
+            warnings.warn('enable_cloudwatch_metrics is now deprecated and will be removed in the future.',
+                          DeprecationWarning)
         self.enable_cloudwatch_metrics = False
         self.container_log_level = container_log_level
         self._hyperparameters = hyperparameters or {}
