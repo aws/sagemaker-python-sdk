@@ -86,7 +86,7 @@ class DummyFramework(Framework):
     def train_image(self):
         return IMAGE_NAME
 
-    def create_model(self, model_server_workers=None):
+    def create_model(self, role=None, model_server_workers=None):
         return DummyFrameworkModel(self.sagemaker_session)
 
     @classmethod
@@ -476,8 +476,6 @@ def test_framework_transformer_creation_with_optional_params(name_from_image, sa
                         base_job_name=base_name)
     fw.latest_training_job = _TrainingJob(sagemaker_session, JOB_NAME)
 
-    transformer = fw.transformer(INSTANCE_COUNT, INSTANCE_TYPE)
-
     strategy = 'MultiRecord'
     assemble_with = 'Line'
     kms_key = 'key'
@@ -485,12 +483,14 @@ def test_framework_transformer_creation_with_optional_params(name_from_image, sa
     max_concurrent_transforms = 1
     max_payload = 6
     env = {'FOO': 'BAR'}
+    new_role = 'dummy-model-role'
 
     transformer = fw.transformer(INSTANCE_COUNT, INSTANCE_TYPE, strategy=strategy, assemble_with=assemble_with,
                                  output_path=OUTPUT_PATH, output_kms_key=kms_key, accept=accept, tags=TAGS,
                                  max_concurrent_transforms=max_concurrent_transforms, max_payload=max_payload,
-                                 env=env, model_server_workers=1)
+                                 env=env, role=new_role, model_server_workers=1)
 
+    sagemaker_session.create_model.assert_called_with(MODEL_IMAGE, new_role, MODEL_CONTAINER_DEF)
     assert transformer.strategy == strategy
     assert transformer.assemble_with == assemble_with
     assert transformer.output_path == OUTPUT_PATH
@@ -528,7 +528,7 @@ def test_estimator_transformer_creation(sagemaker_session):
 
     transformer = estimator.transformer(INSTANCE_COUNT, INSTANCE_TYPE)
 
-    sagemaker_session.create_model_from_job.assert_called_with(JOB_NAME)
+    sagemaker_session.create_model_from_job.assert_called_with(JOB_NAME, role=None)
     assert isinstance(transformer, Transformer)
     assert transformer.sagemaker_session == sagemaker_session
     assert transformer.instance_count == INSTANCE_COUNT
@@ -556,8 +556,9 @@ def test_estimator_transformer_creation_with_optional_params(sagemaker_session):
     transformer = estimator.transformer(INSTANCE_COUNT, INSTANCE_TYPE, strategy=strategy, assemble_with=assemble_with,
                                         output_path=OUTPUT_PATH, output_kms_key=kms_key, accept=accept, tags=TAGS,
                                         max_concurrent_transforms=max_concurrent_transforms, max_payload=max_payload,
-                                        env=env)
+                                        env=env, role=ROLE)
 
+    sagemaker_session.create_model_from_job.assert_called_with(JOB_NAME, role=ROLE)
     assert transformer.strategy == strategy
     assert transformer.assemble_with == assemble_with
     assert transformer.output_path == OUTPUT_PATH
