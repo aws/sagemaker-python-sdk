@@ -760,7 +760,7 @@ class Session(object):
     def get_caller_identity_arn(self):
         """Returns the ARN user or role whose credentials are used to call the API.
         Returns:
-            (str): The ARN uer or role
+            (str): The ARN user or role
         """
         assumed_role = self.boto_session.client('sts').get_caller_identity()['Arn']
 
@@ -772,7 +772,11 @@ class Session(object):
 
         # Call IAM to get the role's path
         role_name = role[role.rfind('/') + 1:]
-        role = self.boto_session.client('iam').get_role(RoleName=role_name)['Role']['Arn']
+        try:
+            role = self.boto_session.client('iam').get_role(RoleName=role_name)['Role']['Arn']
+        except ClientError:
+            LOGGER.warning("Couldn't call 'get_role' to get Role ARN from role name {} to get Role path."
+                           .format(role_name))
 
         return role
 
