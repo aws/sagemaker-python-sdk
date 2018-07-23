@@ -202,6 +202,26 @@ def test_create_model(sagemaker_session, tf_version):
     assert model.source_dir == source_dir
 
 
+def test_create_model_with_optional_params(sagemaker_session):
+    container_log_level = '"logging.INFO"'
+    source_dir = 's3://mybucket/source'
+    enable_cloudwatch_metrics = 'true'
+    tf = TensorFlow(entry_point=SCRIPT_PATH, role=ROLE, sagemaker_session=sagemaker_session,
+                    training_steps=1000, evaluation_steps=10, train_instance_count=INSTANCE_COUNT,
+                    train_instance_type=INSTANCE_TYPE, container_log_level=container_log_level, base_job_name='job',
+                    source_dir=source_dir, enable_cloudwatch_metrics=enable_cloudwatch_metrics)
+
+    job_name = 'doing something'
+    tf.fit(inputs='s3://mybucket/train', job_name=job_name)
+
+    new_role = 'role'
+    model_server_workers = 2
+    model = tf.create_model(role=new_role, model_server_workers=2)
+
+    assert model.role == new_role
+    assert model.model_server_workers == model_server_workers
+
+
 def test_create_model_with_custom_image(sagemaker_session):
     container_log_level = '"logging.INFO"'
     source_dir = 's3://mybucket/source'
