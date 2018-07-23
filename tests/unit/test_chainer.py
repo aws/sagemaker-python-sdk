@@ -233,7 +233,7 @@ def test_create_model(sagemaker_session, chainer_version):
                       enable_cloudwatch_metrics=enable_cloudwatch_metrics)
 
     job_name = 'new_name'
-    chainer.fit(inputs='s3://mybucket/train', job_name='new_name')
+    chainer.fit(inputs='s3://mybucket/train', job_name=job_name)
     model = chainer.create_model()
 
     assert model.sagemaker_session == sagemaker_session
@@ -245,6 +245,25 @@ def test_create_model(sagemaker_session, chainer_version):
     assert model.container_log_level == container_log_level
     assert model.source_dir == source_dir
     assert model.enable_cloudwatch_metrics == enable_cloudwatch_metrics
+
+
+def test_create_model_with_optional_params(sagemaker_session):
+    container_log_level = '"logging.INFO"'
+    source_dir = 's3://mybucket/source'
+    enable_cloudwatch_metrics = 'true'
+    chainer = Chainer(entry_point=SCRIPT_PATH, role=ROLE, sagemaker_session=sagemaker_session,
+                      train_instance_count=INSTANCE_COUNT, train_instance_type=INSTANCE_TYPE,
+                      container_log_level=container_log_level, py_version=PYTHON_VERSION, base_job_name='job',
+                      source_dir=source_dir, enable_cloudwatch_metrics=enable_cloudwatch_metrics)
+
+    chainer.fit(inputs='s3://mybucket/train', job_name='new_name')
+
+    new_role = 'role'
+    model_server_workers = 2
+    model = chainer.create_model(role=new_role, model_server_workers=model_server_workers)
+
+    assert model.role == new_role
+    assert model.model_server_workers == model_server_workers
 
 
 def test_create_model_with_custom_image(sagemaker_session):

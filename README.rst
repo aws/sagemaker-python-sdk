@@ -192,6 +192,30 @@ instance type.
     mxnet_estimator.delete_endpoint()
 
 
+If you have an existing model and would like to deploy it locally you can do that as well. If you don't
+specify a sagemaker_session argument to the MXNetModel constructor, the right session will be generated
+when calling model.deploy()
+
+Here is an end to end example:
+
+.. code:: python
+
+    import numpy
+    from sagemaker.mxnet import MXNetModel
+
+    model_location = 's3://mybucket/my_model.tar.gz'
+    code_location = 's3://mybucket/sourcedir.tar.gz'
+    s3_model = MXNetModel(model_data=model_location, role='SageMakerRole',
+                          entry_point='mnist.py', source_dir=code_location)
+
+    predictor = s3_model.deploy(initial_instance_count=1, instance_type='local')
+    data = numpy.zeros(shape=(1, 1, 28, 28))
+    predictor.predict(data)
+
+    # Tear down the endpoint container
+    predictor.delete_endpoint()
+
+
 For detailed examples of running docker in local mode, see:
 
 - `TensorFlow local mode example notebook <https://github.com/awslabs/amazon-sagemaker-examples/blob/master/sagemaker-python-sdk/tensorflow_distributed_mnist/tensorflow_local_mode_mnist.ipynb>`__.
