@@ -289,10 +289,12 @@ class TensorFlow(Framework):
 
         return init_params
 
-    def create_model(self, model_server_workers=None):
+    def create_model(self, model_server_workers=None, role=None):
         """Create a SageMaker ``TensorFlowModel`` object that can be deployed to an ``Endpoint``.
 
         Args:
+            role (str): The ``ExecutionRoleArn`` IAM Role ARN for the ``Model``, which is also used during
+                transform jobs. If not specified, the role from the Estimator will be used.
             model_server_workers (int): Optional. The number of worker processes used by the inference server.
                 If None, server will use one worker per vCPU.
 
@@ -301,7 +303,8 @@ class TensorFlow(Framework):
                 See :func:`~sagemaker.tensorflow.model.TensorFlowModel` for full details.
         """
         env = {'SAGEMAKER_REQUIREMENTS': self.requirements_file}
-        return TensorFlowModel(self.model_data, self.role, self.entry_point, source_dir=self._model_source_dir(),
+        role = role or self.role
+        return TensorFlowModel(self.model_data, role, self.entry_point, source_dir=self._model_source_dir(),
                                enable_cloudwatch_metrics=self.enable_cloudwatch_metrics, env=env, image=self.image_name,
                                name=self._current_job_name, container_log_level=self.container_log_level,
                                code_location=self.code_location, py_version=self.py_version,

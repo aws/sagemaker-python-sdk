@@ -319,7 +319,7 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):
 
     def transformer(self, instance_count, instance_type, strategy=None, assemble_with=None, output_path=None,
                     output_kms_key=None, accept=None, env=None, max_concurrent_transforms=None,
-                    max_payload=None, tags=None):
+                    max_payload=None, tags=None, role=None):
         """Return a ``Transformer`` that uses a SageMaker Model based on the training job. It reuses the
         SageMaker Session and base job name used by the Estimator.
 
@@ -339,10 +339,12 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):
             max_payload (int): Maximum size of the payload in a single HTTP request to the container in MB.
             tags (list[dict]): List of tags for labeling a transform job. If none specified, then the tags used for
                 the training job are used for the transform job.
+            role (str): The ``ExecutionRoleArn`` IAM Role ARN for the ``Model``, which is also used during
+                transform jobs. If not specified, the role from the Estimator will be used.
         """
         self._ensure_latest_training_job()
 
-        model_name = self.sagemaker_session.create_model_from_job(self.latest_training_job.name)
+        model_name = self.sagemaker_session.create_model_from_job(self.latest_training_job.name, role=role)
         tags = tags or self.tags
 
         return Transformer(model_name, instance_count, instance_type, strategy=strategy, assemble_with=assemble_with,
@@ -476,12 +478,14 @@ class Estimator(EstimatorBase):
         """
         return self.hyperparam_dict
 
-    def create_model(self, image=None, predictor_cls=None, serializer=None, deserializer=None,
+    def create_model(self, role=None, image=None, predictor_cls=None, serializer=None, deserializer=None,
                      content_type=None, accept=None, **kwargs):
         """
         Create a model to deploy.
 
         Args:
+            role (str): The ``ExecutionRoleArn`` IAM Role ARN for the ``Model``, which is also used during
+                transform jobs. If not specified, the role from the Estimator will be used.
             image (str): An container image to use for deploying the model. Defaults to the image used for training.
             predictor_cls (RealTimePredictor): The predictor class to use when deploying the model.
             serializer (callable): Should accept a single argument, the input data, and return a sequence
@@ -503,7 +507,9 @@ class Estimator(EstimatorBase):
                 return RealTimePredictor(endpoint, session, serializer, deserializer, content_type, accept)
             predictor_cls = predict_wrapper
 
-        return Model(self.model_data, image or self.train_image(), self.role, sagemaker_session=self.sagemaker_session,
+        role = role or self.role
+
+        return Model(self.model_data, image or self.train_image(), role, sagemaker_session=self.sagemaker_session,
                      predictor_cls=predictor_cls, **kwargs)
 
     @classmethod
@@ -737,7 +743,7 @@ class Framework(EstimatorBase):
 
     def transformer(self, instance_count, instance_type, strategy=None, assemble_with=None, output_path=None,
                     output_kms_key=None, accept=None, env=None, max_concurrent_transforms=None,
-                    max_payload=None, tags=None, model_server_workers=None):
+                    max_payload=None, tags=None, role=None, model_server_workers=None):
         """Return a ``Transformer`` that uses a SageMaker Model based on the training job. It reuses the
         SageMaker Session and base job name used by the Estimator.
 
@@ -757,16 +763,19 @@ class Framework(EstimatorBase):
             max_payload (int): Maximum size of the payload in a single HTTP request to the container in MB.
             tags (list[dict]): List of tags for labeling a transform job. If none specified, then the tags used for
                 the training job are used for the transform job.
+            role (str): The ``ExecutionRoleArn`` IAM Role ARN for the ``Model``, which is also used during
+                transform jobs. If not specified, the role from the Estimator will be used.
             model_server_workers (int): Optional. The number of worker processes used by the inference server.
                 If None, server will use one worker per vCPU.
         """
         self._ensure_latest_training_job()
+        role = role or self.role
 
-        model = self.create_model(model_server_workers=model_server_workers)
+        model = self.create_model(role=role, model_server_workers=model_server_workers)
 
         container_def = model.prepare_container_def(instance_type)
         model_name = model.name or name_from_image(container_def['Image'])
-        self.sagemaker_session.create_model(model_name, self.role, container_def)
+        self.sagemaker_session.create_model(model_name, role, container_def)
 
         transform_env = model.env.copy()
         if env is not None:
