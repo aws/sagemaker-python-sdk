@@ -21,7 +21,8 @@ import numpy as np
 import pytest
 from mock import Mock
 import tensorflow as tf
-from six import StringIO
+import six
+from six import BytesIO
 from tensorflow.python.saved_model.signature_constants import DEFAULT_SERVING_SIGNATURE_DEF_KEY, PREDICT_INPUTS
 
 from sagemaker.predictor import RealTimePredictor
@@ -179,26 +180,31 @@ def test_json_deserializer_should_work_with_predict_response():
   }
 }"""
 
-    stream = StringIO(data)
+    stream = BytesIO(data)
 
     response = tf_json_deserializer(stream, 'application/json')
+
+    if six.PY2:
+        string_vals = ['apple', 'banana', 'orange']
+    else:
+        string_vals = [b'apple', b'banana', b'orange']
 
     assert response == {
         'model_spec': {
             'name': u'generic_model',
             'signature_name': u'serving_default',
-            'version': {'value': 1531758457.}
+            'version': {'value': 1531758457. if six.PY2 else 1531758457}
         },
         'outputs': {
             u'ages': {
                 'dtype': 1,
                 'float_val': [4.954165935516357],
-                'tensor_shape': {'dim': [{'size': 1.}]}
+                'tensor_shape': {'dim': [{'size': 1. if six.PY2 else 1}]}
             },
             u'example_strings': {
                 'dtype': 7,
-                'string_val': ['apple', 'banana', 'orange'],
-                'tensor_shape': {'dim': [{'size': 3.}]}
+                'string_val': string_vals,
+                'tensor_shape': {'dim': [{'size': 3. if six.PY2 else 3}]}
             }
         }
     }
