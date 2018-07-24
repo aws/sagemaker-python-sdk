@@ -2,7 +2,7 @@
 CHANGELOG
 =========
 
-1.7.1dev
+1.7.1
 =====
 
 * bug-fix: get_execution_role no longer fails if user can't call get_role
