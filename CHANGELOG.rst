@@ -2,9 +2,13 @@
 CHANGELOG
 =========
 
-1.7.1.dev
+1.7.2.dev
 =========
 * bug-fix: Prediction output for the TF_JSON_SERIALIZER
+
+1.7.1
+=====
+
 * bug-fix: get_execution_role no longer fails if user can't call get_role
 * bug-fix: Session: use existing model instead of failing during ``create_model()``
 * enhancement: Estimator: allow for different role from the Estimator's when creating a Model or Transformer
