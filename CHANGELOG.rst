@@ -2,6 +2,10 @@
 CHANGELOG
 =========
 
+1.7.2.dev
+=========
+* bug-fix: Prediction output for the TF_JSON_SERIALIZER
+
 1.7.1
 =====
 
