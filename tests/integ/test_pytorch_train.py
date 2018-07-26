@@ -41,7 +41,7 @@ def fixture_training_job(sagemaker_session, pytorch_full_version):
 def test_sync_fit_deploy(pytorch_training_job, sagemaker_session):
     # TODO: add tests against local mode when it's ready to be used
     endpoint_name = 'test-pytorch-sync-fit-attach-deploy{}'.format(sagemaker_timestamp())
-    with timeout(minutes=20):
+    with timeout_and_delete_endpoint_by_name(endpoint_name, sagemaker_session, minutes=20):
         estimator = PyTorch.attach(pytorch_training_job, sagemaker_session=sagemaker_session)
         predictor = estimator.deploy(1, 'ml.c4.xlarge', endpoint_name=endpoint_name)
         data = numpy.zeros(shape=(1, 1, 28, 28), dtype=numpy.float32)
