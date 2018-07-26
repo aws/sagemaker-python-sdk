@@ -31,6 +31,7 @@ from sagemaker.chainer import Chainer
 from sagemaker.estimator import Estimator
 from sagemaker.mxnet.estimator import MXNet
 from sagemaker.predictor import json_deserializer
+from sagemaker.pytorch import PyTorch
 from sagemaker.tensorflow import TensorFlow
 from sagemaker.tuner import IntegerParameter, ContinuousParameter, CategoricalParameter, HyperparameterTuner
 from tests.integ import DATA_DIR
@@ -312,6 +313,47 @@ def test_tuning_chainer(sagemaker_session):
         data = np.zeros((batch_size, 28, 28), dtype='float32')
         output = predictor.predict(data)
         assert len(output) == batch_size
+
+
+@pytest.mark.continuous_testing
+def test_attach_tuning_pytorch(sagemaker_session):
+    mnist_dir = os.path.join(DATA_DIR, 'pytorch_mnist')
+    mnist_script = os.path.join(mnist_dir, 'mnist.py')
+
+    estimator = PyTorch(entry_point=mnist_script, role='SageMakerRole', train_instance_count=1,
+                        train_instance_type='ml.c4.xlarge', sagemaker_session=sagemaker_session)
+
+    with timeout(minutes=15):
+        objective_metric_name = 'evaluation-accuracy'
+        metric_definitions = [{'Name': 'evaluation-accuracy', 'Regex': 'Overall test accuracy: (\d+)'}]
+        hyperparameter_ranges = {'batch-size': IntegerParameter(50, 100)}
+
+        tuner = HyperparameterTuner(estimator, objective_metric_name, hyperparameter_ranges, metric_definitions,
+                                    max_jobs=2, max_parallel_jobs=2)
+
+        training_data = estimator.sagemaker_session.upload_data(path=os.path.join(mnist_dir, 'training'),
+                                                                key_prefix='integ-test-data/pytorch_mnist/training')
+        tuner.fit({'training': training_data})
+
+        tuning_job_name = tuner.latest_tuning_job.name
+
+        print('Started hyperparameter tuning job with name:' + tuning_job_name)
+
+        time.sleep(15)
+        tuner.wait()
+
+    attached_tuner = HyperparameterTuner.attach(tuning_job_name)
+    best_training_job = tuner.best_training_job()
+    with timeout_and_delete_endpoint_by_name(best_training_job, sagemaker_session, minutes=20):
+        predictor = attached_tuner.deploy(1, 'ml.c4.xlarge')
+        data = np.zeros(shape=(1, 1, 28, 28), dtype=np.float32)
+        predictor.predict(data)
+
+        batch_size = 100
+        data = np.random.rand(batch_size, 1, 28, 28).astype(np.float32)
+        output = predictor.predict(data)
+
+        assert output.shape == (batch_size, 10)
 
 
 @pytest.mark.continuous_testing
