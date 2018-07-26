@@ -56,7 +56,7 @@ You can install from source by cloning this repository and issuing a pip install
 Supported Operating Systems
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-SageMaker Python SDK supports Unix/Linux and Mac. Support for windows is not available now.
+SageMaker Python SDK supports Unix/Linux and Mac.
 
 Supported Python versions
 ~~~~~~~~~~~~~~~~~~~~~~~~~
