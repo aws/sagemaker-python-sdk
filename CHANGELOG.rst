@@ -2,9 +2,11 @@
 CHANGELOG
 =========
 
-1.7.2.dev
-=========
+1.7.2
+=====
+
 * bug-fix: Prediction output for the TF_JSON_SERIALIZER
+* enhancement: Add better training job status report
 
 1.7.1
 =====
