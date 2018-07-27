@@ -342,7 +342,7 @@ def test_attach_tuning_pytorch(sagemaker_session):
         time.sleep(15)
         tuner.wait()
 
-    attached_tuner = HyperparameterTuner.attach(tuning_job_name)
+    attached_tuner = HyperparameterTuner.attach(tuning_job_name, sagemaker_session=sagemaker_session)
     best_training_job = tuner.best_training_job()
     with timeout_and_delete_endpoint_by_name(best_training_job, sagemaker_session, minutes=20):
         predictor = attached_tuner.deploy(1, 'ml.c4.xlarge')
