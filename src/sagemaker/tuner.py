@@ -245,6 +245,10 @@ class HyperparameterTuner(object):
 
             job_name (str): Tuning job name. If not specified, the tuner generates a default job name,
                 based on the training image name and current timestamp.
+            include_cls_metadata (bool): Whether or not the hyperparameter tuning job should include information about
+                the estimator class (default: True). This information is passed as a hyperparameter, so if
+                the algorithm you are using cannot handle unknown hyperparameters (e.g. an Amazon ML algorithm that
+                does not have a custom estimator in the Python SDK), then set ``include_cls_metadata`` to ``False``.
             **kwargs: Other arguments needed for training. Please refer to the ``fit()`` method of the associated
                 estimator to see what other arguments are needed.
         """
