@@ -16,12 +16,17 @@ import json
 
 import google.protobuf.json_format as json_format
 from google.protobuf.message import DecodeError
+from protobuf_to_dict import protobuf_to_dict
 from tensorflow.core.framework import tensor_pb2
 from tensorflow.python.framework import tensor_util
 
 from sagemaker.content_types import CONTENT_TYPE_JSON, CONTENT_TYPE_OCTET_STREAM, CONTENT_TYPE_CSV
 from sagemaker.predictor import json_serializer, csv_serializer
 from tensorflow_serving.apis import predict_pb2, classification_pb2, inference_pb2, regression_pb2
+
+_POSSIBLE_RESPONSES = [predict_pb2.PredictResponse, classification_pb2.ClassificationResponse,
+                       inference_pb2.MultiInferenceResponse, regression_pb2.RegressionResponse,
+                       tensor_pb2.TensorProto]
 
 REGRESSION_REQUEST = 'RegressionRequest'
 MULTI_INFERENCE_REQUEST = 'MultiInferenceRequest'
@@ -53,17 +58,12 @@ class _TFProtobufDeserializer(object):
         self.accept = CONTENT_TYPE_OCTET_STREAM
 
     def __call__(self, stream, content_type):
-        possible_responses = [predict_pb2.PredictResponse,
-                              classification_pb2.ClassificationResponse,
-                              inference_pb2.MultiInferenceResponse,
-                              regression_pb2.RegressionResponse]
-
         try:
             data = stream.read()
         finally:
             stream.close()
 
-        for possible_response in possible_responses:
+        for possible_response in _POSSIBLE_RESPONSES:
             try:
                 response = possible_response()
                 response.ParseFromString(data)
@@ -101,10 +101,15 @@ class _TFJsonDeserializer(object):
             data = stream.read()
         finally:
             stream.close()
-        try:
-            return json_format.Parse(data, tensor_pb2.TensorProto())
-        except json_format.ParseError:
-            return json.loads(data.decode())
+
+        for possible_response in _POSSIBLE_RESPONSES:
+            try:
+                return protobuf_to_dict(json_format.Parse(data, possible_response()))
+            except (UnicodeDecodeError, DecodeError, json_format.ParseError):
+                # given that the payload does not have the response type, there no way to infer
+                # the response without keeping state, so I'm iterating all the options.
+                pass
+        return json.loads(data.decode())
 
 
 tf_json_deserializer = _TFJsonDeserializer()

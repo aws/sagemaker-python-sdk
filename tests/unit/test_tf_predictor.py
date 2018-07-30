@@ -16,11 +16,13 @@ import io
 import json
 import sys
 
+from google.protobuf import json_format
 import numpy as np
 import pytest
-from google.protobuf import json_format
-import tensorflow as tf
 from mock import Mock
+import tensorflow as tf
+import six
+from six import BytesIO
 from tensorflow.python.saved_model.signature_constants import DEFAULT_SERVING_SIGNATURE_DEF_KEY, PREDICT_INPUTS
 
 from sagemaker.predictor import RealTimePredictor
@@ -137,6 +139,75 @@ def test_classification_request_csv(sagemaker_session):
   }
 }
 """
+
+
+def test_json_deserializer_should_work_with_predict_response():
+    data = b"""{
+"outputs": {
+    "example_strings": {
+      "dtype": "DT_STRING",
+      "tensorShape": {
+        "dim": [
+          {
+            "size": "3"
+          }
+        ]
+      },
+      "stringVal": [
+        "YXBwbGU=",
+        "YmFuYW5h",
+        "b3Jhbmdl"
+      ]
+    },
+    "ages": {
+      "dtype": "DT_FLOAT",
+      "floatVal": [
+        4.954165935516357
+      ],
+      "tensorShape": {
+        "dim": [
+          {
+            "size": "1"
+          }
+        ]
+      }
+    }
+  },
+  "modelSpec": {
+    "version": "1531758457",
+    "name": "generic_model",
+    "signatureName": "serving_default"
+  }
+}"""
+
+    stream = BytesIO(data)
+
+    response = tf_json_deserializer(stream, 'application/json')
+
+    if six.PY2:
+        string_vals = ['apple', 'banana', 'orange']
+    else:
+        string_vals = [b'apple', b'banana', b'orange']
+
+    assert response == {
+        'model_spec': {
+            'name': u'generic_model',
+            'signature_name': u'serving_default',
+            'version': {'value': 1531758457. if six.PY2 else 1531758457}
+        },
+        'outputs': {
+            u'ages': {
+                'dtype': 1,
+                'float_val': [4.954165935516357],
+                'tensor_shape': {'dim': [{'size': 1. if six.PY2 else 1}]}
+            },
+            u'example_strings': {
+                'dtype': 7,
+                'string_val': string_vals,
+                'tensor_shape': {'dim': [{'size': 3. if six.PY2 else 3}]}
+            }
+        }
+    }
 
 
 def test_classification_request_pb(sagemaker_session):
