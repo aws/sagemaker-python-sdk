@@ -5,10 +5,14 @@ CHANGELOG
 1.8.0.dev
 =========
 
-* bug-fix: Prediction output for the TF_JSON_SERIALIZER
 * bug-fix: removing PCA from tuner
 * feature: Estimators: add support for Amazon k-nearest neighbors(KNN) algorithm
 
+1.7.2
+=====
+
+* bug-fix: Prediction output for the TF_JSON_SERIALIZER
+* enhancement: Add better training job status report
 
 1.7.1
 =====

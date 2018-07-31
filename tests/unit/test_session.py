@@ -23,7 +23,7 @@ from mock import Mock, patch, call
 
 import sagemaker
 from sagemaker import s3_input, Session, get_execution_role
-from sagemaker.session import _tuning_job_status, _transform_job_status
+from sagemaker.session import _tuning_job_status, _transform_job_status, _train_done
 
 REGION = 'us-west-2'
 
@@ -711,3 +711,25 @@ def test_transform_job_status_none(sagemaker_session):
 
     result = _transform_job_status(sagemaker_session.sagemaker_client, JOB_NAME)
     assert result is None
+
+
+def test_train_done_completed(sagemaker_session):
+    training_job_desc = {'TrainingJobStatus': 'Completed'}
+    sagemaker_session.sagemaker_client.describe_training_job = Mock(
+        name='describe_training_job', return_value=training_job_desc)
+
+    actual_job_desc, training_finished = _train_done(sagemaker_session.sagemaker_client, JOB_NAME, None)
+
+    assert actual_job_desc['TrainingJobStatus'] == 'Completed'
+    assert training_finished is True
+
+
+def test_train_done_in_progress(sagemaker_session):
+    training_job_desc = {'TrainingJobStatus': 'InProgress'}
+    sagemaker_session.sagemaker_client.describe_training_job = Mock(
+        name='describe_training_job', return_value=training_job_desc)
+
+    actual_job_desc, training_finished = _train_done(sagemaker_session.sagemaker_client, JOB_NAME, None)
+
+    assert actual_job_desc['TrainingJobStatus'] == 'InProgress'
+    assert training_finished is False
