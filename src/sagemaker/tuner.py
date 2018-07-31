@@ -31,8 +31,8 @@ AMAZON_ESTIMATOR_CLS_NAMES = {
     'lda': 'LDA',
     'linear-learner': 'LinearLearner',
     'ntm': 'NTM',
-    'pca': 'PCA',
     'randomcutforest': 'RandomCutForest',
+    'knn': 'KNN'
 }
 
 
