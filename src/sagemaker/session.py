@@ -26,7 +26,7 @@ import yaml
 from botocore.exceptions import ClientError
 
 from sagemaker.user_agent import prepend_user_agent
-from sagemaker.utils import name_from_image
+from sagemaker.utils import name_from_image, secondary_training_status_message, secondary_training_status_changed
 import sagemaker.logs
 
 
@@ -556,7 +556,8 @@ class Session(object):
         Raises:
             ValueError: If the training job fails.
         """
-        desc = _wait_until(lambda: _train_done(self.sagemaker_client, job), poll)
+        desc = _wait_until_training_done(lambda last_desc: _train_done(self.sagemaker_client, job, last_desc),
+                                         None, poll)
         self._check_job_status(job, desc, 'TrainingJobStatus')
         return desc
 
@@ -795,6 +796,7 @@ class Session(object):
         """
 
         description = self.sagemaker_client.describe_training_job(TrainingJobName=job_name)
+        print(secondary_training_status_message(description, None), end='')
         instance_count = description['ResourceConfig']['InstanceCount']
         status = description['TrainingJobStatus']
 
@@ -834,6 +836,7 @@ class Session(object):
         # - The JOB_COMPLETE state forces us to do an extra pause and read any items that got to Cloudwatch after
         #   the job was marked complete.
         last_describe_job_call = time.time()
+        last_description = description
         while True:
             if len(stream_names) < instance_count:
                 # Log streams are created whenever a container starts writing to stdout/err, so this list
@@ -877,16 +880,21 @@ class Session(object):
                 description = self.sagemaker_client.describe_training_job(TrainingJobName=job_name)
                 last_describe_job_call = time.time()
 
+                if secondary_training_status_changed(description, last_description):
+                    print()
+                    print(secondary_training_status_message(description, last_description), end='')
+                    last_description = description
+
                 status = description['TrainingJobStatus']
 
                 if status == 'Completed' or status == 'Failed' or status == 'Stopped':
+                    print()
                     state = LogState.JOB_COMPLETE
 
         if wait:
             self._check_job_status(job_name, description, 'TrainingJobStatus')
             if dot:
                 print()
-            print('===== Job Complete =====')
             # Customers are not billed for hardware provisioning, so billable time is less than total time
             billable_time = (description['TrainingEndTime'] - description['TrainingStartTime']) * instance_count
             print('Billable seconds:', int(billable_time.total_seconds()) + 1)
@@ -1009,30 +1017,25 @@ def _deployment_entity_exists(describe_fn):
         return False
 
 
-def _train_done(sagemaker_client, job_name):
-    training_status_codes = {
-        'Created': '-',
-        'InProgress': '.',
-        'Completed': '!',
-        'Failed': '*',
-        'Stopping': '>',
-        'Stopped': 's',
-        'Deleting': 'o',
-        'Deleted': 'x'
-    }
+def _train_done(sagemaker_client, job_name, last_desc):
+
     in_progress_statuses = ['InProgress', 'Created']
 
     desc = sagemaker_client.describe_training_job(TrainingJobName=job_name)
     status = desc['TrainingJobStatus']
 
-    print(training_status_codes.get(status, '?'), end='')
+    if secondary_training_status_changed(desc, last_desc):
+        print()
+        print(secondary_training_status_message(desc, last_desc), end='')
+    else:
+        print('.', end='')
     sys.stdout.flush()
 
     if status in in_progress_statuses:
-        return None
+        return desc, False
 
-    print('')
-    return desc
+    print()
+    return desc, True
 
 
 def _tuning_job_status(sagemaker_client, job_name):
@@ -1100,6 +1103,14 @@ def _deploy_done(sagemaker_client, endpoint_name):
     sys.stdout.flush()
 
     return None if status in in_progress_statuses else desc
+
+
+def _wait_until_training_done(callable, desc, poll=5):
+    job_desc, finished = callable(desc)
+    while not finished:
+        time.sleep(poll)
+        job_desc, finished = callable(job_desc)
+    return job_desc
 
 
 def _wait_until(callable, poll=5):

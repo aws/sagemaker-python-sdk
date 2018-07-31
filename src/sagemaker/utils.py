@@ -16,6 +16,7 @@ import sys
 import time
 
 import re
+from datetime import datetime
 from functools import wraps
 
 
@@ -128,6 +129,61 @@ def extract_name_from_job_arn(arn):
     if slash_pos == -1:
         raise ValueError("Cannot parse invalid ARN: %s" % arn)
     return arn[(slash_pos + 1):]
+
+
+def secondary_training_status_changed(current_job_description, prev_job_description):
+    """Returns true if training job's secondary status message has changed.
+
+    Args:
+        current_job_desc: Current job description, returned from DescribeTrainingJob call.
+        prev_job_desc: Previous job description, returned from DescribeTrainingJob call.
+
+    Returns:
+        boolean: Whether the secondary status message of a training job changed or not.
+
+    """
+    current_secondary_status_transitions = current_job_description.get('SecondaryStatusTransitions')
+    if current_secondary_status_transitions is None or len(current_secondary_status_transitions) == 0:
+        return False
+
+    last_message = prev_job_description['SecondaryStatusTransitions'][-1]['StatusMessage']\
+        if prev_job_description is not None else ''
+    message = current_job_description['SecondaryStatusTransitions'][-1]['StatusMessage']
+
+    return message != last_message
+
+
+def secondary_training_status_message(job_description, prev_description):
+    """Returns a string contains start time and the secondary training job status message.
+
+    Args:
+        job_description: Returned response from DescribeTrainingJob call
+        prev_description: Previous job description from DescribeTrainingJob call
+
+    Returns:
+        str: Job status string to be printed.
+
+    """
+
+    if job_description is None or job_description.get('SecondaryStatusTransitions') is None\
+            or len(job_description.get('SecondaryStatusTransitions')) == 0:
+        return ''
+
+    prev_transitions_num = len(prev_description['SecondaryStatusTransitions']) if prev_description is not None else 0
+    current_transitions = job_description['SecondaryStatusTransitions']
+
+    if len(current_transitions) == prev_transitions_num:
+        return current_transitions[-1]['StatusMessage']
+    else:
+        transitions_to_print = current_transitions[prev_transitions_num - len(current_transitions):]
+        status_strs = []
+        for transition in transitions_to_print:
+            message = transition['StatusMessage']
+            time_str = datetime.utcfromtimestamp(
+                time.mktime(transition['StartTime'].timetuple())).strftime('%Y-%m-%d %H:%M:%S')
+            status_strs.append('{} {} - {}'.format(time_str, transition['Status'], message))
+
+        return '\n'.join(status_strs)
 
 
 class DeferredError(object):
