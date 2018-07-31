@@ -104,6 +104,7 @@ TRAINING_JOB_DESCRIPTION_1 = {
 TRAINING_JOB_DESCRIPTION_2 = {
     'SecondaryStatusTransitions': [{'StatusMessage': 'different message', 'Status': STATUS}]
 }
+
 TRAINING_JOB_DESCRIPTION_EMPTY = {
     'SecondaryStatusTransitions': []
 }
@@ -116,6 +117,21 @@ def test_secondary_training_status_changed_true():
 
 def test_secondary_training_status_changed_false():
     changed = secondary_training_status_changed(TRAINING_JOB_DESCRIPTION_1, TRAINING_JOB_DESCRIPTION_1)
+    assert changed is False
+
+
+def test_secondary_training_status_changed_prev_missing():
+    changed = secondary_training_status_changed(TRAINING_JOB_DESCRIPTION_1, {})
+    assert changed is True
+
+
+def test_secondary_training_status_changed_prev_none():
+    changed = secondary_training_status_changed(TRAINING_JOB_DESCRIPTION_1, None)
+    assert changed is True
+
+
+def test_secondary_training_status_changed_current_missing():
+    changed = secondary_training_status_changed({}, TRAINING_JOB_DESCRIPTION_1)
     assert changed is False
 
 
