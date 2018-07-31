@@ -171,7 +171,7 @@ Optional arguments
 The following are optional arguments. When you create a ``PyTorch`` object, you can specify these as keyword arguments.
 
 -  ``source_dir`` Path (absolute or relative) to a directory with any
-   other training source code dependencies aside from the entry point
+   other training source code dependencies including the entry point
    file. Structure within this directory will be preserved when training
    on SageMaker.
 -  ``hyperparameters`` Hyperparameters that will be used for training.
@@ -606,7 +606,7 @@ The PyTorchModel constructor takes the following arguments:
 -  ``entry_point:`` Path (absolute or relative) to the Python file
    which should be executed as the entry point to model hosting.
 -  ``source_dir:`` Optional. Path (absolute or relative) to a
-   directory with any other training source code dependencies aside from
+   directory with any other training source code dependencies including
    tne entry point file. Structure within this directory will be
    preserved when training on SageMaker.
 -  ``enable_cloudwatch_metrics:`` Optional. If true, training

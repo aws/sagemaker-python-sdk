@@ -400,7 +400,7 @@ The following are optional arguments. When you create a ``TensorFlow`` object,
 you can specify these as keyword arguments.
 
 -  ``source_dir (str)`` Path (absolute or relative) to a directory with any
-   other training source code dependencies aside from the entry point
+   other training source code dependencies including the entry point
    file. Structure within this directory will be preserved when training
    on SageMaker.
 -  ``requirements_file (str)`` Path to a ``requirements.txt`` file. The path should
