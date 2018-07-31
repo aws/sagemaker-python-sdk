@@ -2,8 +2,8 @@
 CHANGELOG
 =========
 
-1.8.0.dev
-=========
+1.8.0
+=====
 
 * bug-fix: removing PCA from tuner
 * feature: Estimators: add support for Amazon k-nearest neighbors(KNN) algorithm
