@@ -155,3 +155,14 @@ def test_secondary_training_status_message_status_not_changed():
     now = datetime.now()
     TRAINING_JOB_DESCRIPTION_1['SecondaryStatusTransitions'][-1]['StartTime'] = now
     assert secondary_training_status_message(TRAINING_JOB_DESCRIPTION_1, TRAINING_JOB_DESCRIPTION_2) == MESSAGE
+
+
+def test_secondary_training_status_message_prev_missing():
+    now = datetime.now()
+    TRAINING_JOB_DESCRIPTION_1['SecondaryStatusTransitions'][-1]['StartTime'] = now
+    expected = '{} {} - {}'.format(
+        datetime.utcfromtimestamp(time.mktime(now.timetuple())).strftime('%Y-%m-%d %H:%M:%S'),
+        STATUS,
+        MESSAGE
+    )
+    assert secondary_training_status_message(TRAINING_JOB_DESCRIPTION_1, {}) == expected
