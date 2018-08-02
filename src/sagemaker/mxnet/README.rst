@@ -171,7 +171,7 @@ Required argument
 -  ``inputs``: This can take one of the following forms: A string
    s3 URI, for example ``s3://my-bucket/my-training-data``. In this
    case, the s3 objects rooted at the ``my-training-data`` prefix will
-   be available in the default ``train`` channel. A dict from
+   be available in the default ``training`` channel. A dict from
    string channel names to s3 URIs. In this case, the objects rooted at
    each s3 prefix will available as files in each channel directory.
 
