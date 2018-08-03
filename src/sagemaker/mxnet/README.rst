@@ -136,7 +136,7 @@ The following are optional arguments. When you create an ``MXNet`` object, you c
 -  ``train_volume_size`` Size in GB of the EBS volume to use for storing
    input data during training. Must be large enough to store training
    data if input_mode='File' is used (which is the default).
--  ``train_max_run`` Timeout in hours for training, after which Amazon
+-  ``train_max_run`` Timeout in seconds for training, after which Amazon
    SageMaker terminates the job regardless of its current status.
 -  ``input_mode`` The input mode that the algorithm supports. Valid
    modes: 'File' - Amazon SageMaker copies the training dataset from the
