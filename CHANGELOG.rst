@@ -2,7 +2,19 @@
 CHANGELOG
 =========
 
-1.7.1dev
+1.8.0
+=====
+
+* bug-fix: removing PCA from tuner
+* feature: Estimators: add support for Amazon k-nearest neighbors(KNN) algorithm
+
+1.7.2
+=====
+
+* bug-fix: Prediction output for the TF_JSON_SERIALIZER
+* enhancement: Add better training job status report
+
+1.7.1
 =====
 
 * bug-fix: get_execution_role no longer fails if user can't call get_role

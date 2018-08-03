@@ -123,7 +123,7 @@ Optional arguments
 The following are optional arguments. When you create an ``MXNet`` object, you can specify these as keyword arguments.
 
 -  ``source_dir`` Path (absolute or relative) to a directory with any
-   other training source code dependencies aside from the entry point
+   other training source code dependencies including the entry point
    file. Structure within this directory will be preserved when training
    on SageMaker.
 -  ``hyperparameters`` Hyperparameters that will be used for training.
@@ -171,7 +171,7 @@ Required argument
 -  ``inputs``: This can take one of the following forms: A string
    s3 URI, for example ``s3://my-bucket/my-training-data``. In this
    case, the s3 objects rooted at the ``my-training-data`` prefix will
-   be available in the default ``train`` channel. A dict from
+   be available in the default ``training`` channel. A dict from
    string channel names to s3 URIs. In this case, the objects rooted at
    each s3 prefix will available as files in each channel directory.
 
@@ -540,7 +540,7 @@ The MXNetModel constructor takes the following arguments:
 -  ``entry_point (str):`` Path (absolute or relative) to the Python file
    which should be executed as the entry point to model hosting.
 -  ``source_dir (str):`` Optional. Path (absolute or relative) to a
-   directory with any other training source code dependencies aside from
+   directory with any other training source code dependencies including
    tne entry point file. Structure within this directory will be
    preserved when training on SageMaker.
 -  ``container_log_level (int):`` Log level to use within the container.

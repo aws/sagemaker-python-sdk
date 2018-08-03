@@ -39,14 +39,14 @@ class Net(nn.Module):
         return F.log_softmax(x, dim=1)
 
 
-def _get_train_data_loader(training_dir, is_distributed, **kwargs):
+def _get_train_data_loader(training_dir, is_distributed, batch_size, **kwargs):
     logger.info('Get train data loader')
     dataset = datasets.MNIST(training_dir, train=True, transform=transforms.Compose([
         transforms.ToTensor(),
         transforms.Normalize((0.1307,), (0.3081,))
     ]))
     train_sampler = torch.utils.data.distributed.DistributedSampler(dataset) if is_distributed else None
-    train_loader = torch.utils.data.DataLoader(dataset, batch_size=64, shuffle=train_sampler is None,
+    train_loader = torch.utils.data.DataLoader(dataset, batch_size=batch_size, shuffle=train_sampler is None,
                                                sampler=train_sampler, **kwargs)
     return train_sampler, train_loader
 
@@ -94,7 +94,7 @@ def train(args):
     if use_cuda:
         torch.cuda.manual_seed(seed)
 
-    train_sampler, train_loader = _get_train_data_loader(args.data_dir, is_distributed, **kwargs)
+    train_sampler, train_loader = _get_train_data_loader(args.data_dir, is_distributed, args.batch_size, **kwargs)
     test_loader = _get_test_data_loader(args.data_dir, **kwargs)
 
     logger.debug('Processes {}/{} ({:.0f}%) of train data'.format(
@@ -142,8 +142,10 @@ def train(args):
                 logger.debug('Train Epoch: {} [{}/{} ({:.0f}%)] Loss: {:.6f}'.format(
                     epoch, batch_idx * len(data), len(train_loader.sampler),
                     100. * batch_idx / len(train_loader), loss.item()))
-        test(model, test_loader, device)
+        accuracy = test(model, test_loader, device)
     save_model(model, args.model_dir)
+
+    logger.debug('Overall test accuracy: {}'.format(accuracy))
 
 
 def test(model, test_loader, device):
@@ -159,9 +161,12 @@ def test(model, test_loader, device):
             correct += pred.eq(target.view_as(pred)).sum().item()
 
     test_loss /= len(test_loader.dataset)
+    accuracy = 100. * correct / len(test_loader.dataset)
+
     logger.debug('Test set: Average loss: {:.4f}, Accuracy: {}/{} ({:.0f}%)\n'.format(
-        test_loss, correct, len(test_loader.dataset),
-        100. * correct / len(test_loader.dataset)))
+        test_loss, correct, len(test_loader.dataset), accuracy))
+
+    return accuracy
 
 
 def model_fn(model_dir):
@@ -181,6 +186,7 @@ def save_model(model, model_dir):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--epochs', type=int, default=1, metavar='N')
+    parser.add_argument('--batch-size', type=int, default=64, metavar='N')
 
     # Container environment
     parser.add_argument('--hosts', type=list, default=json.loads(os.environ['SM_HOSTS']))

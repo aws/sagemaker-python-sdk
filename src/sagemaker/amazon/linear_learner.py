@@ -247,7 +247,7 @@ class LinearLearner(AmazonAlgorithmEstimatorBase):
                 "For predictor_type 'multiclass_classifier', 'num_classes' should be set to a value greater than 2.")
 
     def create_model(self):
-        """Return a :class:`~sagemaker.amazon.kmeans.LinearLearnerModel` referencing the latest
+        """Return a :class:`~sagemaker.amazon.LinearLearnerModel` referencing the latest
         s3 model data produced by this Estimator."""
 
         return LinearLearnerModel(self.model_data, self.role, self.sagemaker_session)
