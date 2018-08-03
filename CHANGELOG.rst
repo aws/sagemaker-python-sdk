@@ -2,6 +2,10 @@
 CHANGELOG
 =========
 
+1.8.1dev
+=====
+* bug-fix: Estimators: Fix serialization of single records
+
 1.8.0
 =====
 
