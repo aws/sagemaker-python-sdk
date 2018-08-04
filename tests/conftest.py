@@ -76,7 +76,7 @@ def tf_version(request):
     return request.param
 
 
-@pytest.fixture(scope='module', params=['0.12', '0.12.1', '1.0', '1.0.0', '1.1', '1.1.0'])
+@pytest.fixture(scope='module', params=['0.12', '0.12.1', '1.0', '1.0.0', '1.1', '1.1.0', '1.2', '1.2.1'])
 def mxnet_version(request):
     return request.param
 
@@ -96,7 +96,7 @@ def tf_full_version(request):
     return request.param
 
 
-@pytest.fixture(scope='module', params=['0.12.1', '1.0.0', '1.1.0'])
+@pytest.fixture(scope='module', params=['0.12.1', '1.0.0', '1.1.0', '1.2.1'])
 def mxnet_full_version(request):
     return request.param
 
