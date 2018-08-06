@@ -12,4 +12,4 @@
 # language governing permissions and limitations under the License.
 from __future__ import absolute_import
 
-MXNET_VERSION = '1.1'
+MXNET_VERSION = '1.2'
