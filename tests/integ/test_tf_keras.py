@@ -13,7 +13,6 @@
 from __future__ import absolute_import
 
 import os
-import pickle
 
 import numpy as np
 import pytest
@@ -22,6 +21,7 @@ from sagemaker.tensorflow import TensorFlow
 from tests.integ import DATA_DIR
 from tests.integ.timeout import timeout_and_delete_endpoint_by_name, timeout
 
+@pytest.mark.continuous_testing
 def test_keras(sagemaker_session, tf_full_version):
     script_path = os.path.join(DATA_DIR, 'cifar_10', 'source')
     dataset_path = os.path.join(DATA_DIR, 'cifar_10', 'data')
