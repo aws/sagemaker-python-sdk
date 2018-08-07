@@ -23,7 +23,7 @@ from sagemaker.chainer.estimator import Chainer
 from sagemaker.chainer.model import ChainerModel
 from sagemaker.utils import sagemaker_timestamp
 from tests.integ import DATA_DIR
-from tests.integ.timeout import timeout, timeout_and_delete_endpoint_by_name
+from tests.integ.timeout import timeout_training, timeout_and_delete_endpoint_by_name
 
 
 @pytest.fixture(scope='module')
@@ -40,7 +40,7 @@ def test_distributed_gpu_training(sagemaker_session, chainer_full_version):
 
 
 def test_training_with_additional_hyperparameters(sagemaker_session, chainer_full_version):
-    with timeout(minutes=15):
+    with timeout_training():
         script_path = os.path.join(DATA_DIR, 'chainer_mnist', 'mnist.py')
         data_path = os.path.join(DATA_DIR, 'chainer_mnist')
 
@@ -86,7 +86,7 @@ def test_deploy_model(chainer_training_job, sagemaker_session):
 def test_async_fit(sagemaker_session):
     endpoint_name = 'test-chainer-attach-deploy-{}'.format(sagemaker_timestamp())
 
-    with timeout(minutes=5):
+    with timeout_training(minutes=5):
         training_job_name = _run_mnist_training_job(sagemaker_session, "ml.c4.xlarge", 1,
                                                     chainer_full_version=CHAINER_VERSION, wait=False)
 
@@ -101,7 +101,7 @@ def test_async_fit(sagemaker_session):
 
 
 def test_failed_training_job(sagemaker_session, chainer_full_version):
-    with timeout(minutes=15):
+    with timeout_training():
         script_path = os.path.join(DATA_DIR, 'chainer_mnist', 'failure_script.py')
         data_path = os.path.join(DATA_DIR, 'chainer_mnist')
 
@@ -119,7 +119,7 @@ def test_failed_training_job(sagemaker_session, chainer_full_version):
 
 def _run_mnist_training_job(sagemaker_session, instance_type, instance_count,
                             chainer_full_version, wait=True):
-    with timeout(minutes=15):
+    with timeout_training():
 
         script_path = os.path.join(DATA_DIR, 'chainer_mnist', 'mnist.py') if instance_type == 1 else \
             os.path.join(DATA_DIR, 'chainer_mnist', 'distributed_mnist.py')

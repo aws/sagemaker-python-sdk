@@ -24,12 +24,12 @@ import pytest
 from sagemaker.amazon.linear_learner import LinearLearner, LinearLearnerModel
 from sagemaker.utils import name_from_base, sagemaker_timestamp
 from tests.integ import DATA_DIR
-from tests.integ.timeout import timeout, timeout_and_delete_endpoint_by_name
+from tests.integ.timeout import timeout_training, timeout_and_delete_endpoint_by_name
 
 
 @pytest.mark.continuous_testing
 def test_linear_learner(sagemaker_session):
-    with timeout(minutes=15):
+    with timeout_training():
         data_path = os.path.join(DATA_DIR, 'one_p_mnist', 'mnist.pkl.gz')
         pickle_args = {} if sys.version_info.major == 2 else {'encoding': 'latin1'}
 
@@ -93,7 +93,7 @@ def test_linear_learner(sagemaker_session):
 
 
 def test_linear_learner_multiclass(sagemaker_session):
-    with timeout(minutes=15):
+    with timeout_training():
         data_path = os.path.join(DATA_DIR, 'one_p_mnist', 'mnist.pkl.gz')
         pickle_args = {} if sys.version_info.major == 2 else {'encoding': 'latin1'}
 
@@ -125,7 +125,7 @@ def test_async_linear_learner(sagemaker_session):
     training_job_name = ""
     endpoint_name = 'test-linear-learner-async-{}'.format(sagemaker_timestamp())
 
-    with timeout(minutes=5):
+    with timeout_training():
         data_path = os.path.join(DATA_DIR, 'one_p_mnist', 'mnist.pkl.gz')
         pickle_args = {} if sys.version_info.major == 2 else {'encoding': 'latin1'}
 

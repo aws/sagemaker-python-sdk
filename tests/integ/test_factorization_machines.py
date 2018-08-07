@@ -23,12 +23,12 @@ import pytest
 from sagemaker import FactorizationMachines, FactorizationMachinesModel
 from sagemaker.utils import name_from_base
 from tests.integ import DATA_DIR
-from tests.integ.timeout import timeout, timeout_and_delete_endpoint_by_name
+from tests.integ.timeout import timeout_training, timeout_and_delete_endpoint_by_name
 
 
 @pytest.mark.continuous_testing
 def test_factorization_machines(sagemaker_session):
-    with timeout(minutes=15):
+    with timeout_training():
         data_path = os.path.join(DATA_DIR, 'one_p_mnist', 'mnist.pkl.gz')
         pickle_args = {} if sys.version_info.major == 2 else {'encoding': 'latin1'}
 
@@ -60,7 +60,7 @@ def test_async_factorization_machines(sagemaker_session):
     training_job_name = ""
     endpoint_name = name_from_base('factorizationMachines')
 
-    with timeout(minutes=5):
+    with timeout_training(minutes=5):
         data_path = os.path.join(DATA_DIR, 'one_p_mnist', 'mnist.pkl.gz')
         pickle_args = {} if sys.version_info.major == 2 else {'encoding': 'latin1'}
 

@@ -29,7 +29,7 @@ from sagemaker.amazon.common import write_numpy_to_dense_tensor
 from sagemaker.estimator import Estimator
 from sagemaker.utils import name_from_base
 from tests.integ import DATA_DIR
-from tests.integ.timeout import timeout, timeout_and_delete_endpoint_by_name
+from tests.integ.timeout import timeout_training, timeout_and_delete_endpoint_by_name
 
 
 @pytest.fixture(scope='module')
@@ -58,7 +58,7 @@ def test_byo_estimator(sagemaker_session, region):
     """
     image_name = registry(region) + "/factorization-machines:1"
 
-    with timeout(minutes=15):
+    with timeout_training():
         data_path = os.path.join(DATA_DIR, 'one_p_mnist', 'mnist.pkl.gz')
         pickle_args = {} if sys.version_info.major == 2 else {'encoding': 'latin1'}
 
@@ -113,7 +113,7 @@ def test_async_byo_estimator(sagemaker_session, region):
     endpoint_name = name_from_base('byo')
     training_job_name = ""
 
-    with timeout(minutes=5):
+    with timeout_training(minutes=5):
         data_path = os.path.join(DATA_DIR, 'one_p_mnist', 'mnist.pkl.gz')
         pickle_args = {} if sys.version_info.major == 2 else {'encoding': 'latin1'}
 

@@ -19,14 +19,14 @@ import pytest
 
 from sagemaker.tensorflow import TensorFlow
 from tests.integ import DATA_DIR
-from tests.integ.timeout import timeout_and_delete_endpoint_by_name, timeout
+from tests.integ.timeout import timeout_and_delete_endpoint_by_name, timeout_training
 
 DATA_PATH = os.path.join(DATA_DIR, 'iris', 'data')
 
 
 @pytest.mark.continuous_testing
 def test_tf(sagemaker_session, tf_full_version):
-    with timeout(minutes=15):
+    with timeout_training():
         script_path = os.path.join(DATA_DIR, 'iris', 'iris-dnn-classifier.py')
 
         estimator = TensorFlow(entry_point=script_path,
@@ -59,7 +59,7 @@ def test_tf(sagemaker_session, tf_full_version):
 
 
 def test_tf_async(sagemaker_session):
-    with timeout(minutes=5):
+    with timeout_training():
         script_path = os.path.join(DATA_DIR, 'iris', 'iris-dnn-classifier.py')
 
         estimator = TensorFlow(entry_point=script_path,
@@ -88,7 +88,7 @@ def test_tf_async(sagemaker_session):
 
 
 def test_failed_tf_training(sagemaker_session, tf_full_version):
-    with timeout(minutes=15):
+    with timeout_training():
         script_path = os.path.join(DATA_DIR, 'iris', 'failure_script.py')
         estimator = TensorFlow(entry_point=script_path,
                                role='SageMakerRole',
