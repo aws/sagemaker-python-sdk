@@ -2,6 +2,11 @@
 CHANGELOG
 =========
 
+1.9.1
+=====
+
+* Increase timeout for create_endpoint calls in integ tests
+
 1.9.0
 =====
 
