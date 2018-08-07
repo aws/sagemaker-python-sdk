@@ -51,7 +51,7 @@ You can install from source by cloning this repository and issuing a pip install
 
     git clone https://github.com/aws/sagemaker-python-sdk.git
     python setup.py sdist
-    pip install dist/sagemaker-1.8.0.tar.gz
+    pip install dist/sagemaker-1.9.0.tar.gz
 
 Supported Operating Systems
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -240,7 +240,7 @@ MXNet SageMaker Estimators
 
 With MXNet Estimators, you can train and host MXNet models on Amazon SageMaker.
 
-Supported versions of MXNet: ``1.1.0``, ``1.0.0``, ``0.12.1``.
+Supported versions of MXNet: ``1.2.1``, ``1.1.0``, ``1.0.0``, ``0.12.1``.
 
 More details at `MXNet SageMaker Estimators and Models`_.
 

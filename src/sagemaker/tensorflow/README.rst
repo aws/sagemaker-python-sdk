@@ -400,7 +400,7 @@ The following are optional arguments. When you create a ``TensorFlow`` object,
 you can specify these as keyword arguments.
 
 -  ``source_dir (str)`` Path (absolute or relative) to a directory with any
-   other training source code dependencies aside from the entry point
+   other training source code dependencies including the entry point
    file. Structure within this directory will be preserved when training
    on SageMaker.
 -  ``requirements_file (str)`` Path to a ``requirements.txt`` file. The path should
@@ -414,7 +414,7 @@ you can specify these as keyword arguments.
 -  ``train_volume_size (int)`` Size in GB of the EBS volume to use for storing
    input data during training. Must be large enough to the store training
    data.
--  ``train_max_run (int)`` Timeout in hours for training, after which Amazon
+-  ``train_max_run (int)`` Timeout in seconds for training, after which Amazon
    SageMaker terminates the job regardless of its current status.
 -  ``output_path (str)`` S3 location where you want the training result (model
    artifacts and optional output files) saved. If not specified, results
