@@ -29,7 +29,7 @@ class numpy_to_record_serializer(object):
 
     def __call__(self, array):
         if len(array.shape) == 1:
-            array.reshape(1, array.shape[0])
+            array = array.reshape(1, array.shape[0])
         assert len(array.shape) == 2, "Expecting a 1 or 2 dimensional array"
         buf = io.BytesIO()
         write_numpy_to_dense_tensor(buf, array)
