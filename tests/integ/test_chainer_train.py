@@ -66,7 +66,7 @@ def test_training_with_additional_hyperparameters(sagemaker_session, chainer_ful
 def test_attach_deploy(chainer_training_job, sagemaker_session):
     endpoint_name = 'test-chainer-attach-deploy-{}'.format(sagemaker_timestamp())
 
-    with timeout_and_delete_endpoint_by_name(endpoint_name, sagemaker_session, minutes=20):
+    with timeout_and_delete_endpoint_by_name(endpoint_name, sagemaker_session):
         estimator = Chainer.attach(chainer_training_job, sagemaker_session=sagemaker_session)
         predictor = estimator.deploy(1, 'ml.m4.xlarge', endpoint_name=endpoint_name)
         _predict_and_assert(predictor)
@@ -74,7 +74,7 @@ def test_attach_deploy(chainer_training_job, sagemaker_session):
 
 def test_deploy_model(chainer_training_job, sagemaker_session):
     endpoint_name = 'test-chainer-deploy-model-{}'.format(sagemaker_timestamp())
-    with timeout_and_delete_endpoint_by_name(endpoint_name, sagemaker_session, minutes=20):
+    with timeout_and_delete_endpoint_by_name(endpoint_name, sagemaker_session):
         desc = sagemaker_session.sagemaker_client.describe_training_job(TrainingJobName=chainer_training_job)
         model_data = desc['ModelArtifacts']['S3ModelArtifacts']
         script_path = os.path.join(DATA_DIR, 'chainer_mnist', 'mnist.py')
@@ -93,7 +93,7 @@ def test_async_fit(sagemaker_session):
         print("Waiting to re-attach to the training job: %s" % training_job_name)
         time.sleep(20)
 
-    with timeout_and_delete_endpoint_by_name(endpoint_name, sagemaker_session, minutes=35):
+    with timeout_and_delete_endpoint_by_name(endpoint_name, sagemaker_session):
         print("Re-attaching now to: %s" % training_job_name)
         estimator = Chainer.attach(training_job_name=training_job_name, sagemaker_session=sagemaker_session)
         predictor = estimator.deploy(1, "ml.c4.xlarge", endpoint_name=endpoint_name)

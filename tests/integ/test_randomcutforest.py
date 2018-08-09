@@ -34,7 +34,7 @@ def test_randomcutforest(sagemaker_session):
         rcf.fit(rcf.record_set(train_input))
 
     endpoint_name = name_from_base('randomcutforest')
-    with timeout_and_delete_endpoint_by_name(endpoint_name, sagemaker_session, minutes=20):
+    with timeout_and_delete_endpoint_by_name(endpoint_name, sagemaker_session):
         model = RandomCutForestModel(rcf.model_data, role='SageMakerRole', sagemaker_session=sagemaker_session)
         predictor = model.deploy(1, 'ml.c4.xlarge', endpoint_name=endpoint_name)
 

@@ -72,7 +72,7 @@ def timeout_tuning(seconds=0, minutes=20, hours=0):
 
 
 @contextmanager
-def timeout_and_delete_endpoint_by_name(endpoint_name, sagemaker_session, seconds=0, minutes=35, hours=0):
+def timeout_and_delete_endpoint_by_name(endpoint_name, sagemaker_session, seconds=0, minutes=45, hours=0):
     with timeout(seconds=seconds, minutes=minutes, hours=hours) as t:
         no_errors = False
         try:
