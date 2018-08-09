@@ -24,7 +24,7 @@ import pytest
 
 from sagemaker import KMeans, LDA, RandomCutForest
 from sagemaker.amazon.amazon_estimator import registry
-from sagemaker.amazon.common import read_records, write_numpy_to_dense_tensor
+from sagemaker.amazon.common import read_records
 from sagemaker.chainer import Chainer
 from sagemaker.estimator import Estimator
 from sagemaker.mxnet.estimator import MXNet
