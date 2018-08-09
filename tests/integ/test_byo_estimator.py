@@ -22,7 +22,6 @@ import pytest
 
 import sagemaker
 from sagemaker.amazon.amazon_estimator import registry
-from sagemaker.amazon.common import write_numpy_to_dense_tensor
 from sagemaker.estimator import Estimator
 from sagemaker.utils import name_from_base
 from tests.integ import DATA_DIR
