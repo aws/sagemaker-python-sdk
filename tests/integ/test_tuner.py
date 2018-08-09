@@ -13,20 +13,18 @@
 from __future__ import absolute_import
 
 import gzip
-import io
 import json
 import os
 import pickle
 import sys
 import time
 
-import boto3
 import numpy as np
 import pytest
 
 from sagemaker import KMeans, LDA, RandomCutForest
 from sagemaker.amazon.amazon_estimator import registry
-from sagemaker.amazon.common import read_records, write_numpy_to_dense_tensor
+from sagemaker.amazon.common import read_records
 from sagemaker.chainer import Chainer
 from sagemaker.estimator import Estimator
 from sagemaker.mxnet.estimator import MXNet
@@ -368,6 +366,7 @@ def test_tuning_byo_estimator(sagemaker_session):
     Default predictor is updated with json serializer and deserializer.
     """
     image_name = registry(sagemaker_session.boto_session.region_name) + '/factorization-machines:1'
+    training_data_path = os.path.join(DATA_DIR, 'dummy_tensor')
 
     with timeout_tuning():
         data_path = os.path.join(DATA_DIR, 'one_p_mnist', 'mnist.pkl.gz')
@@ -376,19 +375,10 @@ def test_tuning_byo_estimator(sagemaker_session):
         with gzip.open(data_path, 'rb') as f:
             train_set, _, _ = pickle.load(f, **pickle_args)
 
-        # take 100 examples for faster execution
-        vectors = np.array([t.tolist() for t in train_set[0][:100]]).astype('float32')
-        labels = np.where(np.array([t.tolist() for t in train_set[1][:100]]) == 0, 1.0, 0.0).astype('float32')
-
-        buf = io.BytesIO()
-        write_numpy_to_dense_tensor(buf, vectors, labels)
-        buf.seek(0)
-
-        bucket = sagemaker_session.default_bucket()
         prefix = 'test_byo_estimator'
         key = 'recordio-pb-data'
-        boto3.resource('s3').Bucket(bucket).Object(os.path.join(prefix, 'train', key)).upload_fileobj(buf)
-        s3_train_data = 's3://{}/{}/train/{}'.format(bucket, prefix, key)
+        s3_train_data = sagemaker_session.upload_data(path=training_data_path,
+                                                      key_prefix=os.path.join(prefix, 'train', key))
 
         estimator = Estimator(image_name=image_name,
                               role='SageMakerRole', train_instance_count=1,

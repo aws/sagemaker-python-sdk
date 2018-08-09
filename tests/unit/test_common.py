@@ -32,6 +32,16 @@ def test_serializer():
         assert record.features["values"].float64_tensor.values == expected
 
 
+def test_serializer_accepts_one_dimensional_array():
+    s = numpy_to_record_serializer()
+    array_data = [1.0, 2.0, 3.0]
+    buf = s(np.array(array_data))
+    record_data = next(_read_recordio(buf))
+    record = Record()
+    record.ParseFromString(record_data)
+    assert record.features["values"].float64_tensor.values == array_data
+
+
 def test_deserializer():
     array_data = [[1.0, 2.0, 3.0], [10.0, 20.0, 30.0]]
     s = numpy_to_record_serializer()
