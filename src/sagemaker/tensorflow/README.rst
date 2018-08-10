@@ -779,8 +779,6 @@ In your ``entry_point`` script, you can use ``PipeModeDataset`` like a ``Dataset
 
     from sagemaker_tensorflow import PipeModeDataset
 
-    ds = PipeModeDataset(channel='training', record_format='TFRecord')
-
     features = {
         'data': tf.FixedLenFeature([], tf.string),
         'labels': tf.FixedLenFeature([], tf.int64),
@@ -792,12 +790,13 @@ In your ``entry_point`` script, you can use ``PipeModeDataset`` like a ``Dataset
             'data': tf.decode_raw(parsed['data'], tf.float64)
         }, parsed['labels'])
 
-    ds = PipeModeDataset(channel='training', record_format='TFRecord')
-    num_epochs = 20
-    ds = ds.repeat(num_epochs)
-    ds = ds.prefetch(10)
-    ds = ds.map(parse, num_parallel_calls=10)
-    ds = ds.batch(64)
+    def train_input_fn(training_dir, hyperparameters): 
+        ds = PipeModeDataset(channel='training', record_format='TFRecord')
+        ds = ds.repeat(20)
+        ds = ds.prefetch(10)
+        ds = ds.map(parse, num_parallel_calls=10)
+        ds = ds.batch(64)
+        return ds
 
 
 To run training job with Pipe input mode, pass in ``input_mode='Pipe'`` to your TensorFlow Estimator:
