@@ -31,7 +31,7 @@ def test_keras(sagemaker_session, tf_full_version):
                                source_dir=script_path,
                                role='SageMakerRole',
                                hyperparameters={'learning_rate': 1e-4, 'decay': 1e-6},
-                               training_steps=1000, evaluation_steps=100,
+                               training_steps=500, evaluation_steps=5,
                                train_instance_count=1, train_instance_type='ml.c4.xlarge')
 
         inputs = estimator.sagemaker_session.upload_data(path=dataset_path, key_prefix='data/cifar10')
