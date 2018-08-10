@@ -22,13 +22,13 @@ import pytest
 
 from sagemaker import KNN, KNNModel
 from sagemaker.utils import name_from_base
-from tests.integ import DATA_DIR
-from tests.integ.timeout import timeout_training, timeout_and_delete_endpoint_by_name
+from tests.integ import DATA_DIR, TRAINING_DEFAULT_TIMEOUT_MINUTES
+from tests.integ.timeout import timeout, timeout_and_delete_endpoint_by_name
 
 
 @pytest.mark.continuous_testing
 def test_knn_regressor(sagemaker_session):
-    with timeout_training():
+    with timeout(minutes=TRAINING_DEFAULT_TIMEOUT_MINUTES):
         data_path = os.path.join(DATA_DIR, 'one_p_mnist', 'mnist.pkl.gz')
         pickle_args = {} if sys.version_info.major == 2 else {'encoding': 'latin1'}
 
@@ -59,7 +59,7 @@ def test_async_knn_classifier(sagemaker_session):
     training_job_name = ""
     endpoint_name = name_from_base('knn')
 
-    with timeout_training(minutes=5):
+    with timeout(minutes=5):
         data_path = os.path.join(DATA_DIR, 'one_p_mnist', 'mnist.pkl.gz')
         pickle_args = {} if sys.version_info.major == 2 else {'encoding': 'latin1'}
 

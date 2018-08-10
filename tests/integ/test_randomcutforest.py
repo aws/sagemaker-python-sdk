@@ -17,12 +17,13 @@ import pytest
 
 from sagemaker import RandomCutForest, RandomCutForestModel
 from sagemaker.utils import name_from_base
-from tests.integ.timeout import timeout_training, timeout_and_delete_endpoint_by_name
+from tests.integ import TRAINING_DEFAULT_TIMEOUT_MINUTES
+from tests.integ.timeout import timeout, timeout_and_delete_endpoint_by_name
 
 
 @pytest.mark.continuous_testing
 def test_randomcutforest(sagemaker_session):
-    with timeout_training():
+    with timeout(minutes=TRAINING_DEFAULT_TIMEOUT_MINUTES):
         # Generate a thousand 14-dimensional datapoints.
         feature_num = 14
         train_input = np.random.rand(1000, feature_num)

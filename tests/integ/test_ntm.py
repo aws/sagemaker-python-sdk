@@ -20,14 +20,14 @@ import pytest
 from sagemaker import NTM, NTMModel
 from sagemaker.amazon.common import read_records
 from sagemaker.utils import name_from_base
-from tests.integ import DATA_DIR
-from tests.integ.timeout import timeout_training, timeout_and_delete_endpoint_by_name
+from tests.integ import DATA_DIR, TRAINING_DEFAULT_TIMEOUT_MINUTES
+from tests.integ.timeout import timeout, timeout_and_delete_endpoint_by_name
 from tests.integ.record_set import prepare_record_set_from_local_files
 
 
 @pytest.mark.continuous_testing
 def test_ntm(sagemaker_session):
-    with timeout_training():
+    with timeout(minutes=TRAINING_DEFAULT_TIMEOUT_MINUTES):
         data_path = os.path.join(DATA_DIR, 'ntm')
         data_filename = 'nips-train_1.pbr'
 

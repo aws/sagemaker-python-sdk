@@ -25,7 +25,7 @@ from sagemaker.mxnet import MXNet, MXNetModel
 from sagemaker.tensorflow import TensorFlow
 from sagemaker.fw_utils import tar_and_upload_dir
 from tests.integ import DATA_DIR
-from tests.integ.timeout import timeout_training
+from tests.integ.timeout import timeout
 
 DATA_PATH = os.path.join(DATA_DIR, 'iris', 'data')
 LOCK_PATH = os.path.join(DATA_DIR, 'local_mode_lock')
@@ -78,7 +78,7 @@ def mxnet_model(sagemaker_local_session):
 def test_tf_local_mode(tf_full_version, sagemaker_local_session):
     local_mode_lock_fd = open(LOCK_PATH, 'w')
     local_mode_lock = local_mode_lock_fd.fileno()
-    with timeout_training(minutes=5):
+    with timeout(minutes=5):
         script_path = os.path.join(DATA_DIR, 'iris', 'iris-dnn-classifier.py')
 
         estimator = TensorFlow(entry_point=script_path,
@@ -123,7 +123,7 @@ def test_tf_local_mode(tf_full_version, sagemaker_local_session):
 def test_tf_distributed_local_mode(sagemaker_local_session):
     local_mode_lock_fd = open(LOCK_PATH, 'w')
     local_mode_lock = local_mode_lock_fd.fileno()
-    with timeout_training(minutes=5):
+    with timeout(minutes=5):
         script_path = os.path.join(DATA_DIR, 'iris', 'iris-dnn-classifier.py')
 
         estimator = TensorFlow(entry_point=script_path,
@@ -167,7 +167,7 @@ def test_tf_distributed_local_mode(sagemaker_local_session):
 def test_tf_local_data(sagemaker_local_session):
     local_mode_lock_fd = open(LOCK_PATH, 'w')
     local_mode_lock = local_mode_lock_fd.fileno()
-    with timeout_training(minutes=5):
+    with timeout(minutes=5):
         script_path = os.path.join(DATA_DIR, 'iris', 'iris-dnn-classifier.py')
 
         estimator = TensorFlow(entry_point=script_path,
@@ -209,7 +209,7 @@ def test_tf_local_data(sagemaker_local_session):
 def test_tf_local_data_local_script():
     local_mode_lock_fd = open(LOCK_PATH, 'w')
     local_mode_lock = local_mode_lock_fd.fileno()
-    with timeout_training(minutes=5):
+    with timeout(minutes=5):
 
         script_path = os.path.join(DATA_DIR, 'iris', 'iris-dnn-classifier.py')
 

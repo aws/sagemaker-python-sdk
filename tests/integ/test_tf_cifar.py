@@ -20,7 +20,7 @@ import pytest
 
 from sagemaker.tensorflow import TensorFlow
 from tests.integ import DATA_DIR
-from tests.integ.timeout import timeout_and_delete_endpoint_by_name, timeout_training
+from tests.integ.timeout import timeout_and_delete_endpoint_by_name, timeout
 
 PICKLE_CONTENT_TYPE = 'application/python-pickle'
 
@@ -35,7 +35,7 @@ class PickleSerializer(object):
 
 @pytest.mark.continuous_testing
 def test_cifar(sagemaker_session, tf_full_version):
-    with timeout_training(minutes=45):
+    with timeout(minutes=45):
         script_path = os.path.join(DATA_DIR, 'cifar_10', 'source')
 
         dataset_path = os.path.join(DATA_DIR, 'cifar_10', 'data')
