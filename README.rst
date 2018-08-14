@@ -26,7 +26,7 @@ For detailed API reference please go to: `Read the Docs <https://readthedocs.org
 Table of Contents
 -----------------
 
-1. `Installing SageMaker Python SDK <#getting-sagemaker-python-sdk>`__
+1. `Installing SageMaker Python SDK <#installing-the-sagemaker-python-sdk>`__
 2. `SageMaker Python SDK Overview <#sagemaker-python-sdk-overview>`__
 3. `MXNet SageMaker Estimators <#mxnet-sagemaker-estimators>`__
 4. `TensorFlow SageMaker Estimators <#tensorflow-sagemaker-estimators>`__
@@ -39,16 +39,16 @@ Table of Contents
 11. `BYO Model <#byo-model>`__
 
 
-Installing SageMaker Python SDK
+Installing the SageMaker Python SDK
 ----------------------------
 
-SageMaker Python SDK is built to PyPI and can be installed with pip as follows:
+The SageMaker Python SDK is built to PyPI and can be installed with pip as follows:
 
 ::
 
     pip install sagemaker
 
-You can install from the source by cloning this repository and running a pip install command in the root directory of the repository:
+You can install from source by cloning this repository and running a pip install command in the root directory of the repository:
 
 ::
 
@@ -184,7 +184,7 @@ We can take the example in  `Using Estimators <#using-estimators>`__ , and use e
                             train_instance_type='local',
                             train_instance_count=1)
 
-    # In Local Mode, fit will pull the MXNet container docker image and run it locally
+    # In Local Mode, fit will pull the MXNet container Docker image and run it locally
     mxnet_estimator.fit('s3://my_bucket/my_training_data/')
 
     # Alternatively, you can train using data in your local file system. This is only supported in Local mode.
@@ -223,7 +223,7 @@ Here is an end-to-end example:
     predictor.delete_endpoint()
 
 
-For detailed examples of running docker in local mode, see:
+For detailed examples of running Docker in local mode, see:
 
 - `TensorFlow local mode example notebook <https://github.com/awslabs/amazon-sagemaker-examples/blob/master/sagemaker-python-sdk/tensorflow_distributed_mnist/tensorflow_local_mode_mnist.ipynb>`__.
 - `MXNet local mode example notebook <https://github.com/awslabs/amazon-sagemaker-examples/blob/master/sagemaker-python-sdk/mxnet_gluon_mnist/mnist_with_gluon_local_mode.ipynb>`__.
@@ -232,8 +232,8 @@ A few important notes:
 
 - Only one local mode endpoint can be running at a time.
 - If you are using S3 data as input, it is pulled from S3 to your local environment. Ensure you have sufficient space to store the data locally.
-- If you run into problems it often due to different docker containers conflicting. Killing these containers and re-running often solves your problems.
-- Local Mode requires docker-compose and `nvidia-docker2 <https://github.com/NVIDIA/nvidia-docker>`__ for ``local_gpu``.
+- If you run into problems it often due to different Docker containers conflicting. Killing these containers and re-running often solves your problems.
+- Local Mode requires Docker Compose and `nvidia-docker2 <https://github.com/NVIDIA/nvidia-docker>`__ for ``local_gpu``.
 - Distributed training is not yet supported for ``local_gpu``.
 
 
@@ -295,8 +295,8 @@ Amazon SageMaker provides several built-in machine learning algorithms that you 
 
 The full list of algorithms is available at: https://docs.aws.amazon.com/sagemaker/latest/dg/algos.html
 
-SageMaker Python SDK includes estimator wrappers for the AWS K-means, Principal Components Analysis(PCA), Linear Learner, Factorization Machines,
-Latent Dirichlet Allocation(LDA), Neural Topic Model(NTM) Random Cut Forest and k-nearest neighbors (k-NN) algorithms.
+The SageMaker Python SDK includes estimator wrappers for the AWS K-means, Principal Components Analysis (PCA), Linear Learner, Factorization Machines,
+Latent Dirichlet Allocation (LDA), Neural Topic Model (NTM) Random Cut Forest and k-nearest neighbors (k-NN) algorithms.
 
 For more information, see `AWS SageMaker Estimators and Models`_.
 
@@ -307,7 +307,7 @@ BYO Docker Containers with SageMaker Estimators
 -----------------------------------------------
 
 To use a Docker image that you created and use the SageMaker SDK for training, the easiest way is to use the dedicated ``Estimator`` class.
-You can create an instance of the ``Estimator`` class with desired docker image and use it as described in previous sections.
+You can create an instance of the ``Estimator`` class with desired Docker image and use it as described in previous sections.
 
 Please refer to the full example in the examples repo:
 
@@ -358,7 +358,7 @@ Here is a basic example of how to use it:
     my_tuner.delete_endpoint()
 
 This example shows a hyperparameter tuning job that creates up to 100 training jobs, running up to 10 training jobs at a time.
-Each training job's learning rate will is a value between 0.05 and 0.06, but this value will differ between training jobs.
+Each training job's learning rate is a value between 0.05 and 0.06, but this value will differ between training jobs.
 You can read more about how these values are chosen in the `AWS documentation <https://docs.aws.amazon.com/sagemaker/latest/dg/automatic-model-tuning-how-it-works.html>`__.
 
 A hyperparameter range can be one of three types: continuous, integer, or categorical.
@@ -521,4 +521,4 @@ After that, invoke the ``deploy()`` method on the ``Model``:
 
 This returns a predictor the same way an ``Estimator`` does when ``deploy()`` is called. You can now get inferences just like with any other model deployed on Amazon SageMaker.
 
-A full example is available in the `Amazon SageMaker examples repository <https://github.com/ragavvenkatesan/amazon-sagemaker-examples/tree/3c8394f21ee357da0b553b0ab024c5c5e425182a/advanced_functionality/mxnet_mnist_byom>`__.
+A full example is available in the `Amazon SageMaker examples repository <https://github.com/awslabs/amazon-sagemaker-examples/tree/master/advanced_functionality/mxnet_mnist_byom>`__.
