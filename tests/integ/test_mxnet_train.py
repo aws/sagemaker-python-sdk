@@ -21,13 +21,13 @@ import pytest
 from sagemaker.mxnet.estimator import MXNet
 from sagemaker.mxnet.model import MXNetModel
 from sagemaker.utils import sagemaker_timestamp
-from tests.integ import DATA_DIR
+from tests.integ import DATA_DIR, TRAINING_DEFAULT_TIMEOUT_MINUTES
 from tests.integ.timeout import timeout, timeout_and_delete_endpoint_by_name
 
 
 @pytest.fixture(scope='module')
 def mxnet_training_job(sagemaker_session, mxnet_full_version):
-    with timeout(minutes=15):
+    with timeout(minutes=TRAINING_DEFAULT_TIMEOUT_MINUTES):
         script_path = os.path.join(DATA_DIR, 'mxnet_mnist', 'mnist.py')
         data_path = os.path.join(DATA_DIR, 'mxnet_mnist')
 
@@ -100,7 +100,7 @@ def test_async_fit(sagemaker_session):
 
 
 def test_failed_training_job(sagemaker_session, mxnet_full_version):
-    with timeout(minutes=15):
+    with timeout():
         script_path = os.path.join(DATA_DIR, 'mxnet_mnist', 'failure_script.py')
         data_path = os.path.join(DATA_DIR, 'mxnet_mnist')
 
