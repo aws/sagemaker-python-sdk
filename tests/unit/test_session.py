@@ -176,6 +176,7 @@ MAX_SIZE = 30
 MAX_TIME = 3 * 60 * 60
 JOB_NAME = 'jobname'
 TAGS = [{'Name': 'some-tag', 'Value': 'value-for-tag'}]
+VPC_CONFIG = {'Subnets': 'subnet', 'SecurityGroupIds': 'sgi-blahblah'}
 
 DEFAULT_EXPECTED_TRAIN_JOB_ARGS = {
     'OutputDataConfig': {
@@ -259,7 +260,7 @@ def test_train_pack_to_request(sagemaker_session):
 
     sagemaker_session.train(image=IMAGE, input_mode='File', input_config=in_config, role=EXPANDED_ROLE,
                             job_name=JOB_NAME, output_config=out_config, resource_config=resource_config,
-                            hyperparameters=None, stop_condition=stop_cond, tags=None)
+                            hyperparameters=None, stop_condition=stop_cond, tags=None, vpc_config=None)
 
     assert sagemaker_session.sagemaker_client.method_calls[0] == (
         'create_training_job', (), DEFAULT_EXPECTED_TRAIN_JOB_ARGS)
@@ -322,12 +323,13 @@ def test_train_pack_to_request_with_optional_params(sagemaker_session):
 
     sagemaker_session.train(image=IMAGE, input_mode='File', input_config=in_config, role=EXPANDED_ROLE,
                             job_name=JOB_NAME, output_config=out_config, resource_config=resource_config,
-                            hyperparameters=hyperparameters, stop_condition=stop_cond, tags=TAGS)
+                            hyperparameters=hyperparameters, stop_condition=stop_cond, tags=TAGS, vpc_config=VPC_CONFIG)
 
     _, _, actual_train_args = sagemaker_session.sagemaker_client.method_calls[0]
 
     assert actual_train_args['HyperParameters'] == hyperparameters
     assert actual_train_args['Tags'] == TAGS
+    assert actual_train_args['VpcConfig'] == VPC_CONFIG
 
 
 def test_transform_pack_to_request(sagemaker_session):

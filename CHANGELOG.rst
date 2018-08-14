@@ -7,6 +7,7 @@ CHANGELOG
 
 * bug-fix: Estimators: Fix serialization of single records
 * bug-fix: deprecate enable_cloudwatch_metrics from Framework Estimators.
+* enhancement: Enable VPC config in training job creation
 
 1.9.0
 =====

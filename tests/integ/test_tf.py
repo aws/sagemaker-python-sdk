@@ -22,6 +22,8 @@ from tests.integ import DATA_DIR, TRAINING_DEFAULT_TIMEOUT_MINUTES
 from tests.integ.timeout import timeout_and_delete_endpoint_by_name, timeout
 
 DATA_PATH = os.path.join(DATA_DIR, 'iris', 'data')
+VPC_SUBNETS = ['subnet-06b8537735fac3757']
+VPC_SECURITY_GROUP_IDS = ['sg-0a1008de6e1f384c3']
 
 
 @pytest.mark.continuous_testing
@@ -98,10 +100,17 @@ def test_failed_tf_training(sagemaker_session, tf_full_version):
                                hyperparameters={'input_tensor_name': 'inputs'},
                                train_instance_count=1,
                                train_instance_type='ml.c4.xlarge',
-                               sagemaker_session=sagemaker_session)
+                               sagemaker_session=sagemaker_session,
+                               subnets=VPC_SUBNETS,
+                               security_group_ids=VPC_SECURITY_GROUP_IDS)
 
         inputs = estimator.sagemaker_session.upload_data(path=DATA_PATH, key_prefix='integ-test-data/tf-failure')
 
         with pytest.raises(ValueError) as e:
             estimator.fit(inputs)
         assert 'This failure is expected' in str(e.value)
+
+        job_desc = estimator.sagemaker_session.sagemaker_client.describe_training_job(
+            TrainingJobName=estimator.latest_training_job.name)
+        assert VPC_SUBNETS == job_desc['VpcConfig']['Subnets']
+        assert VPC_SECURITY_GROUP_IDS == job_desc['VpcConfig']['SecurityGroupIds']
