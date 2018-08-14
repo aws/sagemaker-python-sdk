@@ -2,6 +2,16 @@
 CHANGELOG
 =========
 
+1.9.1dev
+========
+
+* bug-fix: Estimators: Fix serialization of single records
+
+1.9.0
+=====
+
+* feature: Estimators: add support for MXNet 1.2.1
+
 1.8.0
 =====
 

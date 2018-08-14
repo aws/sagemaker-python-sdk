@@ -16,6 +16,8 @@ import logging
 import os
 
 DATA_DIR = os.path.join(os.path.dirname(__file__), '..', 'data')
+TRAINING_DEFAULT_TIMEOUT_MINUTES = 20
+TUNING_DEFAULT_TIMEOUT_MINUTES = 20
 
 logging.getLogger('boto3').setLevel(logging.INFO)
 logging.getLogger('botocore').setLevel(logging.INFO)

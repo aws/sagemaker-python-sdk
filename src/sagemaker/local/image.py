@@ -26,7 +26,6 @@ import subprocess
 import sys
 import tarfile
 import tempfile
-from fcntl import fcntl, F_GETFL, F_SETFL
 from six.moves.urllib.parse import urlparse
 from threading import Thread
 
@@ -105,7 +104,7 @@ class _SageMakerContainer(object):
         compose_command = self._compose()
 
         _ecr_login_if_needed(self.sagemaker_session.boto_session, self.image)
-        process = subprocess.Popen(compose_command, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        process = subprocess.Popen(compose_command, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
 
         try:
             _stream_output(process)
@@ -555,34 +554,20 @@ class _Volume(object):
 def _stream_output(process):
     """Stream the output of a process to stdout
 
-    This function takes an existing process that will be polled for output. Both stdout and
-    stderr will be polled and both will be sent to sys.stdout.
+    This function takes an existing process that will be polled for output. Only stdout
+    will be polled and sent to sys.stdout.
 
     Args:
         process(subprocess.Popen): a process that has been started with
-            stdout=PIPE and stderr=PIPE
+            stdout=PIPE and stderr=STDOUT
 
     Returns (int): process exit code
     """
     exit_code = None
 
-    # Get the current flags for the  stderr file descriptor
-    # And add the NONBLOCK flag to allow us to read even if there is no data.
-    # Since usually stderr will be empty unless there is an error.
-    flags = fcntl(process.stderr, F_GETFL)  # get current process.stderr flags
-    fcntl(process.stderr, F_SETFL, flags | os.O_NONBLOCK)
-
     while exit_code is None:
         stdout = process.stdout.readline().decode("utf-8")
         sys.stdout.write(stdout)
-        try:
-            stderr = process.stderr.readline().decode("utf-8")
-            sys.stdout.write(stderr)
-        except IOError:
-            # If there is nothing to read on stderr we will get an IOError
-            # this is fine.
-            pass
-
         exit_code = process.poll()
 
     if exit_code != 0:

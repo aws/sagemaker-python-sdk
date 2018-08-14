@@ -22,7 +22,7 @@ from sagemaker.chainer.defaults import CHAINER_VERSION
 from sagemaker.chainer.estimator import Chainer
 from sagemaker.chainer.model import ChainerModel
 from sagemaker.utils import sagemaker_timestamp
-from tests.integ import DATA_DIR
+from tests.integ import DATA_DIR, TRAINING_DEFAULT_TIMEOUT_MINUTES
 from tests.integ.timeout import timeout, timeout_and_delete_endpoint_by_name
 
 
@@ -40,7 +40,7 @@ def test_distributed_gpu_training(sagemaker_session, chainer_full_version):
 
 
 def test_training_with_additional_hyperparameters(sagemaker_session, chainer_full_version):
-    with timeout(minutes=15):
+    with timeout(minutes=TRAINING_DEFAULT_TIMEOUT_MINUTES):
         script_path = os.path.join(DATA_DIR, 'chainer_mnist', 'mnist.py')
         data_path = os.path.join(DATA_DIR, 'chainer_mnist')
 
@@ -66,7 +66,7 @@ def test_training_with_additional_hyperparameters(sagemaker_session, chainer_ful
 def test_attach_deploy(chainer_training_job, sagemaker_session):
     endpoint_name = 'test-chainer-attach-deploy-{}'.format(sagemaker_timestamp())
 
-    with timeout_and_delete_endpoint_by_name(endpoint_name, sagemaker_session, minutes=20):
+    with timeout_and_delete_endpoint_by_name(endpoint_name, sagemaker_session):
         estimator = Chainer.attach(chainer_training_job, sagemaker_session=sagemaker_session)
         predictor = estimator.deploy(1, 'ml.m4.xlarge', endpoint_name=endpoint_name)
         _predict_and_assert(predictor)
@@ -74,7 +74,7 @@ def test_attach_deploy(chainer_training_job, sagemaker_session):
 
 def test_deploy_model(chainer_training_job, sagemaker_session):
     endpoint_name = 'test-chainer-deploy-model-{}'.format(sagemaker_timestamp())
-    with timeout_and_delete_endpoint_by_name(endpoint_name, sagemaker_session, minutes=20):
+    with timeout_and_delete_endpoint_by_name(endpoint_name, sagemaker_session):
         desc = sagemaker_session.sagemaker_client.describe_training_job(TrainingJobName=chainer_training_job)
         model_data = desc['ModelArtifacts']['S3ModelArtifacts']
         script_path = os.path.join(DATA_DIR, 'chainer_mnist', 'mnist.py')
@@ -93,7 +93,7 @@ def test_async_fit(sagemaker_session):
         print("Waiting to re-attach to the training job: %s" % training_job_name)
         time.sleep(20)
 
-    with timeout_and_delete_endpoint_by_name(endpoint_name, sagemaker_session, minutes=35):
+    with timeout_and_delete_endpoint_by_name(endpoint_name, sagemaker_session):
         print("Re-attaching now to: %s" % training_job_name)
         estimator = Chainer.attach(training_job_name=training_job_name, sagemaker_session=sagemaker_session)
         predictor = estimator.deploy(1, "ml.c4.xlarge", endpoint_name=endpoint_name)
@@ -101,7 +101,7 @@ def test_async_fit(sagemaker_session):
 
 
 def test_failed_training_job(sagemaker_session, chainer_full_version):
-    with timeout(minutes=15):
+    with timeout(minutes=TRAINING_DEFAULT_TIMEOUT_MINUTES):
         script_path = os.path.join(DATA_DIR, 'chainer_mnist', 'failure_script.py')
         data_path = os.path.join(DATA_DIR, 'chainer_mnist')
 
@@ -119,7 +119,7 @@ def test_failed_training_job(sagemaker_session, chainer_full_version):
 
 def _run_mnist_training_job(sagemaker_session, instance_type, instance_count,
                             chainer_full_version, wait=True):
-    with timeout(minutes=15):
+    with timeout(minutes=TRAINING_DEFAULT_TIMEOUT_MINUTES):
 
         script_path = os.path.join(DATA_DIR, 'chainer_mnist', 'mnist.py') if instance_type == 1 else \
             os.path.join(DATA_DIR, 'chainer_mnist', 'distributed_mnist.py')

@@ -13,20 +13,18 @@
 from __future__ import absolute_import
 
 import gzip
-import io
 import json
 import os
 import pickle
 import sys
 import time
 
-import boto3
 import numpy as np
 import pytest
 
 from sagemaker import KMeans, LDA, RandomCutForest
 from sagemaker.amazon.amazon_estimator import registry
-from sagemaker.amazon.common import read_records, write_numpy_to_dense_tensor
+from sagemaker.amazon.common import read_records
 from sagemaker.chainer import Chainer
 from sagemaker.estimator import Estimator
 from sagemaker.mxnet.estimator import MXNet
@@ -34,7 +32,7 @@ from sagemaker.predictor import json_deserializer
 from sagemaker.pytorch import PyTorch
 from sagemaker.tensorflow import TensorFlow
 from sagemaker.tuner import IntegerParameter, ContinuousParameter, CategoricalParameter, HyperparameterTuner
-from tests.integ import DATA_DIR
+from tests.integ import DATA_DIR, TUNING_DEFAULT_TIMEOUT_MINUTES
 from tests.integ.record_set import prepare_record_set_from_local_files
 from tests.integ.timeout import timeout, timeout_and_delete_endpoint_by_name
 
@@ -43,7 +41,7 @@ DATA_PATH = os.path.join(DATA_DIR, 'iris', 'data')
 
 @pytest.mark.continuous_testing
 def test_tuning_kmeans(sagemaker_session):
-    with timeout(minutes=20):
+    with timeout(minutes=TUNING_DEFAULT_TIMEOUT_MINUTES):
         data_path = os.path.join(DATA_DIR, 'one_p_mnist', 'mnist.pkl.gz')
         pickle_args = {} if sys.version_info.major == 2 else {'encoding': 'latin1'}
 
@@ -98,7 +96,7 @@ def test_tuning_kmeans(sagemaker_session):
 
 
 def test_tuning_lda(sagemaker_session):
-    with timeout(minutes=20):
+    with timeout(minutes=TUNING_DEFAULT_TIMEOUT_MINUTES):
         data_path = os.path.join(DATA_DIR, 'lda')
         data_filename = 'nips-train_1.pbr'
 
@@ -184,7 +182,7 @@ def test_stop_tuning_job(sagemaker_session):
 
 @pytest.mark.continuous_testing
 def test_tuning_mxnet(sagemaker_session):
-    with timeout(minutes=15):
+    with timeout(minutes=TUNING_DEFAULT_TIMEOUT_MINUTES):
         script_path = os.path.join(DATA_DIR, 'mxnet_mnist', 'tuning.py')
         data_path = os.path.join(DATA_DIR, 'mxnet_mnist')
 
@@ -221,7 +219,7 @@ def test_tuning_mxnet(sagemaker_session):
 
 @pytest.mark.continuous_testing
 def test_tuning_tf(sagemaker_session):
-    with timeout(minutes=15):
+    with timeout(minutes=TUNING_DEFAULT_TIMEOUT_MINUTES):
         script_path = os.path.join(DATA_DIR, 'iris', 'iris-dnn-classifier.py')
 
         estimator = TensorFlow(entry_point=script_path,
@@ -265,7 +263,7 @@ def test_tuning_tf(sagemaker_session):
 
 @pytest.mark.continuous_testing
 def test_tuning_chainer(sagemaker_session):
-    with timeout(minutes=15):
+    with timeout(minutes=TUNING_DEFAULT_TIMEOUT_MINUTES):
         script_path = os.path.join(DATA_DIR, 'chainer_mnist', 'mnist.py')
         data_path = os.path.join(DATA_DIR, 'chainer_mnist')
 
@@ -323,7 +321,7 @@ def test_attach_tuning_pytorch(sagemaker_session):
     estimator = PyTorch(entry_point=mnist_script, role='SageMakerRole', train_instance_count=1,
                         train_instance_type='ml.c4.xlarge', sagemaker_session=sagemaker_session)
 
-    with timeout(minutes=15):
+    with timeout(minutes=TUNING_DEFAULT_TIMEOUT_MINUTES):
         objective_metric_name = 'evaluation-accuracy'
         metric_definitions = [{'Name': 'evaluation-accuracy', 'Regex': 'Overall test accuracy: (\d+)'}]
         hyperparameter_ranges = {'batch-size': IntegerParameter(50, 100)}
@@ -344,7 +342,7 @@ def test_attach_tuning_pytorch(sagemaker_session):
 
     attached_tuner = HyperparameterTuner.attach(tuning_job_name, sagemaker_session=sagemaker_session)
     best_training_job = tuner.best_training_job()
-    with timeout_and_delete_endpoint_by_name(best_training_job, sagemaker_session, minutes=20):
+    with timeout_and_delete_endpoint_by_name(best_training_job, sagemaker_session):
         predictor = attached_tuner.deploy(1, 'ml.c4.xlarge')
         data = np.zeros(shape=(1, 1, 28, 28), dtype=np.float32)
         predictor.predict(data)
@@ -368,27 +366,19 @@ def test_tuning_byo_estimator(sagemaker_session):
     Default predictor is updated with json serializer and deserializer.
     """
     image_name = registry(sagemaker_session.boto_session.region_name) + '/factorization-machines:1'
+    training_data_path = os.path.join(DATA_DIR, 'dummy_tensor')
 
-    with timeout(minutes=15):
+    with timeout(minutes=TUNING_DEFAULT_TIMEOUT_MINUTES):
         data_path = os.path.join(DATA_DIR, 'one_p_mnist', 'mnist.pkl.gz')
         pickle_args = {} if sys.version_info.major == 2 else {'encoding': 'latin1'}
 
         with gzip.open(data_path, 'rb') as f:
             train_set, _, _ = pickle.load(f, **pickle_args)
 
-        # take 100 examples for faster execution
-        vectors = np.array([t.tolist() for t in train_set[0][:100]]).astype('float32')
-        labels = np.where(np.array([t.tolist() for t in train_set[1][:100]]) == 0, 1.0, 0.0).astype('float32')
-
-        buf = io.BytesIO()
-        write_numpy_to_dense_tensor(buf, vectors, labels)
-        buf.seek(0)
-
-        bucket = sagemaker_session.default_bucket()
         prefix = 'test_byo_estimator'
         key = 'recordio-pb-data'
-        boto3.resource('s3').Bucket(bucket).Object(os.path.join(prefix, 'train', key)).upload_fileobj(buf)
-        s3_train_data = 's3://{}/{}/train/{}'.format(bucket, prefix, key)
+        s3_train_data = sagemaker_session.upload_data(path=training_data_path,
+                                                      key_prefix=os.path.join(prefix, 'train', key))
 
         estimator = Estimator(image_name=image_name,
                               role='SageMakerRole', train_instance_count=1,
