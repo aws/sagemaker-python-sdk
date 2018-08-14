@@ -825,6 +825,23 @@ If your TFRecords are compressed, you can train on Gzipped TF Records by passing
 You can learn more about ``PipeModeDataset`` in the sagemaker-tensorflow-extensions repository: https://github.com/aws/sagemaker-tensorflow-extensions
 
 
+Training with MKL-DNN disabled
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+SageMaker TensorFlow CPU images use TensorFlow built with Intel® MKL-DNN optimization.
+
+In certain cases you might be able to get a better performance by disabling this optimization
+(`for example when using small models <https://github.com/awslabs/amazon-sagemaker-examples/blob/d88d1c19861fb7733941969f5a68821d9da2982e/sagemaker-python-sdk/tensorflow_iris_dnn_classifier_using_estimators/iris_dnn_classifier.py#L7-L9>`_)
+
+You can disable MKL-DNN optimization for TensorFlow ``1.8.0`` by setting two following environment variables:
+
+.. code:: python
+
+    import os
+
+    os.environ['TF_DISABLE_MKL'] = '1'
+    os.environ['TF_DISABLE_POOL_ALLOCATOR'] = '1'
+
 
 SageMaker TensorFlow Docker containers
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
