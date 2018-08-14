@@ -24,7 +24,7 @@ import sagemaker
 from sagemaker.amazon.amazon_estimator import registry
 from sagemaker.estimator import Estimator
 from sagemaker.utils import name_from_base
-from tests.integ import DATA_DIR
+from tests.integ import DATA_DIR, TRAINING_DEFAULT_TIMEOUT_MINUTES
 from tests.integ.timeout import timeout, timeout_and_delete_endpoint_by_name
 
 
@@ -55,7 +55,7 @@ def test_byo_estimator(sagemaker_session, region):
     image_name = registry(region) + "/factorization-machines:1"
     training_data_path = os.path.join(DATA_DIR, 'dummy_tensor')
 
-    with timeout(minutes=15):
+    with timeout(minutes=TRAINING_DEFAULT_TIMEOUT_MINUTES):
         data_path = os.path.join(DATA_DIR, 'one_p_mnist', 'mnist.pkl.gz')
         pickle_args = {} if sys.version_info.major == 2 else {'encoding': 'latin1'}
 

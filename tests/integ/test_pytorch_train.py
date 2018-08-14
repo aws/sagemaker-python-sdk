@@ -19,7 +19,7 @@ import pytest
 from sagemaker.pytorch.estimator import PyTorch
 from sagemaker.pytorch.model import PyTorchModel
 from sagemaker.utils import sagemaker_timestamp
-from tests.integ import DATA_DIR
+from tests.integ import DATA_DIR, TRAINING_DEFAULT_TIMEOUT_MINUTES
 from tests.integ.timeout import timeout, timeout_and_delete_endpoint_by_name
 
 MNIST_DIR = os.path.join(DATA_DIR, 'pytorch_mnist')
@@ -30,7 +30,7 @@ PYTHON_VERSION = 'py' + str(sys.version_info.major)
 @pytest.fixture(scope='module', name='pytorch_training_job')
 def fixture_training_job(sagemaker_session, pytorch_full_version):
     instance_type = 'ml.c4.xlarge'
-    with timeout(minutes=15):
+    with timeout(minutes=TRAINING_DEFAULT_TIMEOUT_MINUTES):
         pytorch = _get_pytorch_estimator(sagemaker_session, pytorch_full_version, instance_type)
 
         pytorch.fit({'training': _upload_training_data(pytorch)})
@@ -103,7 +103,7 @@ def test_async_fit_deploy(sagemaker_session, pytorch_full_version):
 def test_failed_training_job(sagemaker_session, pytorch_full_version):
     script_path = os.path.join(MNIST_DIR, 'failure_script.py')
 
-    with timeout(minutes=15):
+    with timeout(minutes=TRAINING_DEFAULT_TIMEOUT_MINUTES):
         pytorch = _get_pytorch_estimator(sagemaker_session, pytorch_full_version, entry_point=script_path)
 
         with pytest.raises(ValueError) as e:
