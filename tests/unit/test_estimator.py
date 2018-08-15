@@ -658,7 +658,7 @@ BASE_TRAIN_CALL = {
     },
     'stop_condition': {'MaxRuntimeInSeconds': 86400},
     'tags': None,
-    'vpc_config': {'SecurityGroupIds': None, 'Subnets': None}
+    'vpc_config': None
 }
 
 HYPERPARAMS = {'x': 1, 'y': 'hello'}
