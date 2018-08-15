@@ -79,6 +79,9 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):
                 using the default AWS configuration chain.
             tags (list[dict]): List of tags for labeling a training job. For more, see
                 https://docs.aws.amazon.com/sagemaker/latest/dg/API_Tag.html.
+            subnets (list[str]): List of subnet ids. If not specified training job will be created without VPC config.
+            security_group_ids (list[str]): List of security group ids. If not specified training job will be created
+                without VPC config.
         """
         self.role = role
         self.train_instance_count = train_instance_count

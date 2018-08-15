@@ -228,6 +228,13 @@ class Session(object):
                 * instance_type (str): Type of EC2 instance to use for training, for example, 'ml.c4.xlarge'.
                     The key in resource_config is 'InstanceType'.
 
+            vpc_config (dict): Contains values for VpcConfig:
+
+                * subnets (list[str]): List of subnet ids.
+                    The key in vpc_config is 'Subnets'.
+                * security_group_ids (list[str]): List of security group ids.
+                    The key in vpc_config is 'SecurityGroupIds'.
+
             hyperparameters (dict): Hyperparameters for model training. The hyperparameters are made accessible as
                 a dict[str, str] to the training code on SageMaker. For convenience, this accepts other types for
                 keys and values, but ``str()`` will be called to convert them before training.
