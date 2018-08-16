@@ -16,14 +16,17 @@ SageMaker Python SDK
 
 SageMaker Python SDK is an open source library for training and deploying machine learning models on Amazon SageMaker.
 
-With the SDK, you can train and deploy models using popular deep learning frameworks: **Apache MXNet** and **TensorFlow**. You can also train and deploy models with **Amazon algorithms**, these are scalable implementations of core machine learning algorithms that are optimized for SageMaker and GPU training. If you have **your own algorithms** built into SageMaker compatible Docker containers, you can train and host models using these as well.
+With the SDK, you can train and deploy models using popular deep learning frameworks **Apache MXNet** and **TensorFlow**.
+You can also train and deploy models with **Amazon algorithms**,
+which are scalable implementations of core machine learning algorithms that are optimized for SageMaker and GPU training.
+If you have **your own algorithms** built into SageMaker compatible Docker containers, you can train and host models using these as well.
 
 For detailed API reference please go to: `Read the Docs <https://readthedocs.org/projects/sagemaker/>`_
 
 Table of Contents
 -----------------
 
-1. `Getting SageMaker Python SDK <#getting-sagemaker-python-sdk>`__
+1. `Installing SageMaker Python SDK <#installing-the-sagemaker-python-sdk>`__
 2. `SageMaker Python SDK Overview <#sagemaker-python-sdk-overview>`__
 3. `MXNet SageMaker Estimators <#mxnet-sagemaker-estimators>`__
 4. `TensorFlow SageMaker Estimators <#tensorflow-sagemaker-estimators>`__
@@ -36,16 +39,16 @@ Table of Contents
 11. `BYO Model <#byo-model>`__
 
 
-Getting SageMaker Python SDK
+Installing the SageMaker Python SDK
 ----------------------------
 
-SageMaker Python SDK is built to PyPI and can be installed with pip.
+The SageMaker Python SDK is built to PyPI and can be installed with pip as follows:
 
 ::
 
     pip install sagemaker
 
-You can install from source by cloning this repository and issuing a pip install command in the root directory of the repository.
+You can install from source by cloning this repository and running a pip install command in the root directory of the repository:
 
 ::
 
@@ -83,12 +86,13 @@ tox is a prerequisite for running unit tests so you need to make sure you have i
 
 **Integrations tests**
 
-To be able to run the integration tests, the following prerequisites must be met
+To run the integration tests, the following prerequisites must be met
 
 1. Access to an AWS account to run the tests on
-2. Make the AWS account credentials available to boto3 clients used in the tests
-3. Ensure the AWS account has an IAM role named :code:`SageMakerRole`
-4. Ensure the libraries mentioned in setup.py extra_require for test are installed which can be achieved using :code:`pip install --upgrade .[test]`
+2. AWS account credentials available to boto3 clients used in the tests
+3. The AWS account has an IAM role named :code:`SageMakerRole`
+4. The libraries listed in the ``extra_require`` object in in ``setup.py`` for ``test`` are installed. You can do this by running the following command:
+ :code:`pip install --upgrade .[test]`
 
 You can run integ tests by issuing the following command:
 
@@ -119,14 +123,15 @@ SageMaker Python SDK Overview
 
 SageMaker Python SDK provides several high-level abstractions for working with Amazon SageMaker. These are:
 
-- **Estimators**: Encapsulate training on SageMaker. Can be ``fit()`` to run training, then the resulting model ``deploy()`` ed to a SageMaker Endpoint.
-- **Models**: Encapsulate built ML models. Can be ``deploy()`` ed to a SageMaker Endpoint.
-- **Predictors**: Provide real-time inference and transformation using Python data-types against a SageMaker Endpoint.
-- **Session**: Provides a collection of convenience methods for working with SageMaker resources.
+- **Estimators**: Encapsulate training on SageMaker.
+- **Models**: Encapsulate built ML models.
+- **Predictors**: Provide real-time inference and transformation using Python data-types against a SageMaker endpoint.
+- **Session**: Provides a collection of methods for working with SageMaker resources.
 
-Estimator and Model implementations for MXNet, TensorFlow, and Amazon ML algorithms are included. There's also an Estimator that runs SageMaker compatible custom Docker containers, allowing you to run your own ML algorithms via SageMaker Python SDK.
+``Estimator`` and ``Model`` implementations for MXNet, TensorFlow, Chainer, PyTorch, and Amazon ML algorithms are included.
+There's also an ``Estimator`` that runs SageMaker compatible custom Docker containers, enabling you to run your own ML algorithms by using the SageMaker Python SDK.
 
-Later sections of this document explain how to use the different Estimators and Models. These are:
+The following sections of this document explain how to use the different estimators and models:
 
 * `MXNet SageMaker Estimators and Models <#mxnet-sagemaker-estimators>`__
 * `TensorFlow SageMaker Estimators and Models <#tensorflow-sagemaker-estimators>`__
@@ -136,10 +141,10 @@ Later sections of this document explain how to use the different Estimators and 
 * `Custom SageMaker Estimators and Models <#byo-docker-containers-with-sagemaker-estimators>`__
 
 
-Estimator Usage
+Using Estimators
 ---------------
 
-Here is an end to end example of how to use a SageMaker Estimator.
+Here is an end to end example of how to use a SageMaker Estimator:
 
 .. code:: python
 
@@ -153,24 +158,22 @@ Here is an end to end example of how to use a SageMaker Estimator.
     # Starts a SageMaker training job and waits until completion.
     mxnet_estimator.fit('s3://my_bucket/my_training_data/')
 
-    # Deploys the model that was generated by fit() to a SageMaker Endpoint
+    # Deploys the model that was generated by fit() to a SageMaker endpoint
     mxnet_predictor = mxnet_estimator.deploy(initial_instance_count=1, instance_type='ml.p2.xlarge')
 
-    # Serializes data and makes a prediction request to the SageMaker Endpoint
+    # Serializes data and makes a prediction request to the SageMaker endpoint
     response = mxnet_predictor.predict(data)
 
-    # Tears down the SageMaker Endpoint
+    # Tears down the SageMaker endpoint
     mxnet_estimator.delete_endpoint()
 
 Local Mode
 ~~~~~~~~~~
 
-The SageMaker Python SDK now supports local mode, which allows you to create TensorFlow, MXNet and BYO estimators and
-deploy to your local environment. This is a great way to test your deep learning script before running in
-SageMaker's managed training or hosting environments.
+The SageMaker Python SDK supports local mode, which allows you to create estimators and deploy them to your local environment.
+This is a great way to test your deep learning scripts before running them in SageMaker's managed training or hosting environments.
 
-We can take the example in  `Estimator Usage <#estimator-usage>`__ , and use either ``local`` or ``local_gpu`` as the
-instance type.
+We can take the example in  `Using Estimators <#using-estimators>`__ , and use either ``local`` or ``local_gpu`` as the instance type.
 
 .. code:: python
 
@@ -181,7 +184,7 @@ instance type.
                             train_instance_type='local',
                             train_instance_count=1)
 
-    # In Local Mode, fit will pull the MXNet container docker image and run it locally
+    # In Local Mode, fit will pull the MXNet container Docker image and run it locally
     mxnet_estimator.fit('s3://my_bucket/my_training_data/')
 
     # Alternatively, you can train using data in your local file system. This is only supported in Local mode.
@@ -197,11 +200,10 @@ instance type.
     mxnet_estimator.delete_endpoint()
 
 
-If you have an existing model and would like to deploy it locally you can do that as well. If you don't
-specify a sagemaker_session argument to the MXNetModel constructor, the right session will be generated
-when calling model.deploy()
+If you have an existing model and want to deploy it locally, don't specify a sagemaker_session argument to the ``MXNetModel`` constructor.
+The correct session is generated when you call ``model.deploy()``.
 
-Here is an end to end example:
+Here is an end-to-end example:
 
 .. code:: python
 
@@ -221,28 +223,28 @@ Here is an end to end example:
     predictor.delete_endpoint()
 
 
-For detailed examples of running docker in local mode, see:
+For detailed examples of running Docker in local mode, see:
 
 - `TensorFlow local mode example notebook <https://github.com/awslabs/amazon-sagemaker-examples/blob/master/sagemaker-python-sdk/tensorflow_distributed_mnist/tensorflow_local_mode_mnist.ipynb>`__.
 - `MXNet local mode example notebook <https://github.com/awslabs/amazon-sagemaker-examples/blob/master/sagemaker-python-sdk/mxnet_gluon_mnist/mnist_with_gluon_local_mode.ipynb>`__.
 
 A few important notes:
 
-- Only one local mode endpoint can be running at a time
-- If you are using s3 data as input, it will be pulled from S3 to your local environment, please ensure you have sufficient space.
-- If you run into problems, this is often due to different docker containers conflicting. Killing these containers and re-running often solves your problems.
-- Local Mode requires docker-compose and `nvidia-docker2 <https://github.com/NVIDIA/nvidia-docker>`__ for ``local_gpu``.
+- Only one local mode endpoint can be running at a time.
+- If you are using S3 data as input, it is pulled from S3 to your local environment. Ensure you have sufficient space to store the data locally.
+- If you run into problems it often due to different Docker containers conflicting. Killing these containers and re-running often solves your problems.
+- Local Mode requires Docker Compose and `nvidia-docker2 <https://github.com/NVIDIA/nvidia-docker>`__ for ``local_gpu``.
 - Distributed training is not yet supported for ``local_gpu``.
 
 
 MXNet SageMaker Estimators
 --------------------------
 
-With MXNet Estimators, you can train and host MXNet models on Amazon SageMaker.
+By using MXNet SageMaker ``Estimators``, you can train and host MXNet models on Amazon SageMaker.
 
 Supported versions of MXNet: ``1.2.1``, ``1.1.0``, ``1.0.0``, ``0.12.1``.
 
-More details at `MXNet SageMaker Estimators and Models`_.
+For more information, see `MXNet SageMaker Estimators and Models`_.
 
 .. _MXNet SageMaker Estimators and Models: src/sagemaker/mxnet/README.rst
 
@@ -250,13 +252,11 @@ More details at `MXNet SageMaker Estimators and Models`_.
 TensorFlow SageMaker Estimators
 -------------------------------
 
-TensorFlow SageMaker Estimators allow you to run your own TensorFlow
-training algorithms on SageMaker Learner, and to host your own TensorFlow
-models on SageMaker Hosting.
+By using TensorFlow SageMaker ``Estimators``, you can train and host TensorFlow models on Amazon SageMaker.
 
 Supported versions of TensorFlow: ``1.4.1``, ``1.5.0``, ``1.6.0``, ``1.7.0``, ``1.8.0``.
 
-More details at `TensorFlow SageMaker Estimators and Models`_.
+For more information, see `TensorFlow SageMaker Estimators and Models`_.
 
 .. _TensorFlow SageMaker Estimators and Models: src/sagemaker/tensorflow/README.rst
 
@@ -264,13 +264,13 @@ More details at `TensorFlow SageMaker Estimators and Models`_.
 Chainer SageMaker Estimators
 -------------------------------
 
-With Chainer Estimators, you can train and host Chainer models on Amazon SageMaker.
+By using Chainer SageMaker ``Estimators``, you can train and host Chainer models on Amazon SageMaker.
 
 Supported versions of Chainer: ``4.0.0``, ``4.1.0``.
 
-You can visit the Chainer repository at https://github.com/chainer/chainer.
+For more information about Chainer, see https://github.com/chainer/chainer.
 
-More details at `Chainer SageMaker Estimators and Models`_.
+For more information about  Chainer SageMaker ``Estimators``, see `Chainer SageMaker Estimators and Models`_.
 
 .. _Chainer SageMaker Estimators and Models: src/sagemaker/chainer/README.rst
 
@@ -278,26 +278,27 @@ More details at `Chainer SageMaker Estimators and Models`_.
 PyTorch SageMaker Estimators
 -------------------------------
 
-With PyTorch Estimators, you can train and host PyTorch models on Amazon SageMaker.
+With PyTorch SageMaker ``Estimators``, you can train and host PyTorch models on Amazon SageMaker.
 
 Supported versions of PyTorch: ``0.4.0``
 
-You can visit the PyTorch repository at https://github.com/pytorch/pytorch.
+For more information about PyTorch, see https://github.com/pytorch/pytorch.
 
-More details at `PyTorch SageMaker Estimators and Models`_.
+For more information about PyTorch SageMaker ``Estimators``, see `PyTorch SageMaker Estimators and Models`_.
 
 .. _PyTorch SageMaker Estimators and Models: src/sagemaker/pytorch/README.rst
 
 
 AWS SageMaker Estimators
 ------------------------
-Amazon SageMaker provides several built-in machine learning algorithms that you can use for a variety of problem types.
+Amazon SageMaker provides several built-in machine learning algorithms that you can use to solve a variety of problems.
 
-The full list of algorithms is available on the AWS website: https://docs.aws.amazon.com/sagemaker/latest/dg/algos.html
+The full list of algorithms is available at: https://docs.aws.amazon.com/sagemaker/latest/dg/algos.html
 
-SageMaker Python SDK includes Estimator wrappers for the AWS K-means, Principal Components Analysis(PCA), Linear Learner, Factorization Machines, Latent Dirichlet Allocation(LDA), Neural Topic Model(NTM) Random Cut Forest and k-nearest neighbors (k-NN) algorithms.
+The SageMaker Python SDK includes estimator wrappers for the AWS K-means, Principal Components Analysis (PCA), Linear Learner, Factorization Machines,
+Latent Dirichlet Allocation (LDA), Neural Topic Model (NTM) Random Cut Forest and k-nearest neighbors (k-NN) algorithms.
 
-More details at `AWS SageMaker Estimators and Models`_.
+For more information, see `AWS SageMaker Estimators and Models`_.
 
 .. _AWS SageMaker Estimators and Models: src/sagemaker/amazon/README.rst
 
@@ -305,7 +306,8 @@ More details at `AWS SageMaker Estimators and Models`_.
 BYO Docker Containers with SageMaker Estimators
 -----------------------------------------------
 
-When you want to use a Docker image prepared earlier and use SageMaker SDK for training the easiest way is to use dedicated ``Estimator`` class. You will be able to instantiate it with desired image and use it in same way as described in previous sections.
+To use a Docker image that you created and use the SageMaker SDK for training, the easiest way is to use the dedicated ``Estimator`` class.
+You can create an instance of the ``Estimator`` class with desired Docker image and use it as described in previous sections.
 
 Please refer to the full example in the examples repo:
 
@@ -322,10 +324,11 @@ SageMaker Automatic Model Tuning
 --------------------------------
 
 All of the estimators can be used with SageMaker Automatic Model Tuning, which performs hyperparameter tuning jobs.
-A hyperparameter tuning job runs multiple training jobs that differ by the values of their hyperparameters to find the best training job.
-It then chooses the hyperparameter values that result in a model that performs the best, as measured by a metric that you choose.
-If you're not using an Amazon ML algorithm, then the metric is defined by a regular expression (regex) you provide for going through the training job's logs.
-You can read more about SageMaker Automatic Model Tuning in the `AWS documentation <https://docs.aws.amazon.com/sagemaker/latest/dg/automatic-model-tuning.html>`__.
+A hyperparameter tuning job finds the best version of a model by running many training jobs on your dataset using the algorithm with different values of hyperparameters within ranges
+that you specify. It then chooses the hyperparameter values that result in a model that performs the best, as measured by a metric that you choose.
+If you're not using an Amazon SageMaker built-in algorithm, then the metric is defined by a regular expression (regex) you provide. 
+The hyperparameter tuning job parses the training job's logs to find metrics that match the regex you defined.
+For more information about SageMaker Automatic Model Tuning, see `AWS documentation <https://docs.aws.amazon.com/sagemaker/latest/dg/automatic-model-tuning.html>`__.
 
 The SageMaker Python SDK contains a ``HyperparameterTuner`` class for creating and interacting with hyperparameter training jobs.
 Here is a basic example of how to use it:
@@ -354,15 +357,15 @@ Here is a basic example of how to use it:
     # Tear down the SageMaker endpoint
     my_tuner.delete_endpoint()
 
-This example shows a hyperparameter tuning job that creates up to 100 training jobs, running up to 10 at a time.
-Each training job's learning rate will be a value between 0.05 and 0.06, but this value will differ between training jobs.
+This example shows a hyperparameter tuning job that creates up to 100 training jobs, running up to 10 training jobs at a time.
+Each training job's learning rate is a value between 0.05 and 0.06, but this value will differ between training jobs.
 You can read more about how these values are chosen in the `AWS documentation <https://docs.aws.amazon.com/sagemaker/latest/dg/automatic-model-tuning-how-it-works.html>`__.
 
 A hyperparameter range can be one of three types: continuous, integer, or categorical.
 The SageMaker Python SDK provides corresponding classes for defining these different types.
 You can define up to 20 hyperparameters to search over, but each value of a categorical hyperparameter range counts against that limit.
 
-If you are using an Amazon ML algorithm, you don't need to pass in anything for ``metric_definitions``.
+If you are using an Amazon SageMaker built-in algorithm, you don't need to pass in anything for ``metric_definitions``.
 In addition, the ``fit()`` call uses a list of ``RecordSet`` objects instead of a dictionary:
 
 .. code:: python
@@ -374,15 +377,18 @@ In addition, the ``fit()`` call uses a list of ``RecordSet`` objects instead of 
     # Start hyperparameter tuning job
     my_tuner.fit([train_records, test_records])
 
-To aid with attaching a previously-started hyperparameter tuning job with a ``HyperparameterTuner`` instance, ``fit()`` injects metadata in the hyperparameters by default.
-If the algorithm you are using cannot handle unknown hyperparameters (e.g. an Amazon ML algorithm that does not have a custom estimator in the Python SDK), then you can set ``include_cls_metadata`` to ``False`` when calling fit:
+To help attach a previously-started hyperparameter tuning job to a ``HyperparameterTuner`` instance, 
+``fit()`` adds the module path of the class used to create the tuner to the list of static hyperparameters by default.
+If the algorithm you are using cannot handle unknown hyperparameters
+(for example, an Amazon SageMaker built-in algorithm that does not have a custom estimator in the Python SDK),
+set ``include_cls_metadata`` to ``False`` when you call ``fit``, so that it does not add the module path as a static hyperparameter:
 
 .. code:: python
 
     my_tuner.fit({'train': 's3://my_bucket/my_training_data', 'test': 's3://my_bucket_my_testing_data'},
                  include_cls_metadata=False)
 
-There is also an analytics object associated with each ``HyperparameterTuner`` instance that presents useful information about the hyperparameter tuning job.
+There is also an analytics object associated with each ``HyperparameterTuner`` instance that contains useful information about the hyperparameter tuning job.
 For example, the ``dataframe`` method gets a pandas dataframe summarizing the associated training jobs:
 
 .. code:: python
@@ -408,17 +414,18 @@ For more detailed explanations of the classes that this library provides for aut
 SageMaker Batch Transform
 -------------------------
 
-Once you have a trained model, you can use Amazon SageMaker Batch Transform to perform inferences with the model.
-Batch Transform manages all compute resources necessary, including launching instances to deploy endpoints and deleting them afterward.
+After you train a model, you can use Amazon SageMaker Batch Transform to perform inferences with the model.
+Batch Transform manages all necessary compute resources, including launching instances to deploy endpoints and deleting them afterward.
 You can read more about SageMaker Batch Transform in the `AWS documentation <https://docs.aws.amazon.com/sagemaker/latest/dg/how-it-works-batch.html>`__.
 
-If you have trained the model using a SageMaker Python SDK Estimator, you can simply invoke ``transformer()`` to create a ``Transformer`` for the training job:
+If you trained the model using a SageMaker Python SDK estimator,
+you can invoke the estimator's ``transformer()`` method to create a transform job for a model based on the training job:
 
 .. code:: python
 
     transformer = estimator.transformer(instance_count=1, instance_type='ml.m4.xlarge')
 
-Alternatively, if you already have a SageMaker Model, you can instantiate a ``Transformer`` directly with its constructor:
+Alternatively, if you already have a SageMaker model, you can create an instance of the ``Transformer`` class by calling its constructor:
 
 .. code:: python
 
@@ -426,16 +433,16 @@ Alternatively, if you already have a SageMaker Model, you can instantiate a ``Tr
                               instance_count=1,
                               instance_type='ml.m4.xlarge')
 
-For a full list of the possible options to configure through either of these methods, please refer to the API docs for `Estimator <https://sagemaker.readthedocs.io/en/latest/estimators.html#sagemaker.estimator.Estimator.transformer>`__ or `Transformer <https://sagemaker.readthedocs.io/en/latest/transformer.html#sagemaker.transformer.Transformer>`__.
+For a full list of the possible options to configure by using either of these methods, see the API docs for `Estimator <https://sagemaker.readthedocs.io/en/latest/estimators.html#sagemaker.estimator.Estimator.transformer>`__ or `Transformer <https://sagemaker.readthedocs.io/en/latest/transformer.html#sagemaker.transformer.Transformer>`__.
 
-Once you've created a ``Transformer`` object, you can invoke ``transform()`` to being a batch transform job with the S3 location of your data.
-You can also specify other attributes about your data, such as the content type.
+After you create a ``Transformer`` object, you can invoke ``transform()`` to start a batch transform job with the S3 location of your data.
+You can also specify other attributes of your data, such as the content type.
 
 .. code:: python
 
     transformer.transform('s3://my-bucket/batch-transform-input')
 
-For more details about what can be specified here, please refer to the `API docs <https://sagemaker.readthedocs.io/en/latest/transformer.html#sagemaker.transformer.Transformer.transform>`__.
+For more details about what can be specified here, see `API docs <https://sagemaker.readthedocs.io/en/latest/transformer.html#sagemaker.transformer.Transformer.transform>`__.
 
 
 FAQ
@@ -444,7 +451,7 @@ FAQ
 I want to train a SageMaker Estimator with local data, how do I do this?
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-You'll need to upload the data to S3 before training. You can use the AWS Command Line Tool (the aws cli) to achieve this.
+Upload the data to S3 before training. You can use the AWS Command Line Tool (the aws cli) to achieve this.
 
 If you don't have the aws cli, you can install it using pip:
 
@@ -452,22 +459,24 @@ If you don't have the aws cli, you can install it using pip:
 
     pip install awscli --upgrade --user
 
-If you don't have pip or want to learn more about installing the aws cli, please refer to the official `Amazon aws cli installation guide <http://docs.aws.amazon.com/cli/latest/userguide/installing.html>`__.
+If you don't have pip or want to learn more about installing the aws cli, see the official `Amazon aws cli installation guide <http://docs.aws.amazon.com/cli/latest/userguide/installing.html>`__.
 
-Once you have the aws cli installed, you can upload a directory of files to S3 with the following command:
+After you install the AWS cli, you can upload a directory of files to S3 with the following command:
 
 ::
 
     aws s3 cp /tmp/foo/ s3://bucket/path
 
-You can read more about using the aws cli for manipulating S3 resources in the `AWS cli command reference <http://docs.aws.amazon.com/cli/latest/reference/s3/index.html>`__.
+For more information about using the aws cli for manipulating S3 resources, see `AWS cli command reference <http://docs.aws.amazon.com/cli/latest/reference/s3/index.html>`__.
 
 
 How do I make predictions against an existing endpoint?
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-Create a Predictor object and provide it your endpoint name. Then, simply call its predict() method with your input.
+Create a ``Predictor`` object and provide it with your endpoint name,
+then call its ``predict()`` method with your input.
 
-You can either use the generic RealTimePredictor class, which by default does not perform any serialization/deserialization transformations on your input, but can be configured to do so through constructor arguments:
+You can use either the generic ``RealTimePredictor`` class, which by default does not perform any serialization/deserialization transformations on your input,
+but can be configured to do so through constructor arguments:
 http://sagemaker.readthedocs.io/en/latest/predictors.html
 
 Or you can use the TensorFlow / MXNet specific predictor classes, which have default serialization/deserialization logic:
@@ -486,7 +495,8 @@ Example code using the TensorFlow predictor:
 
 BYO Model
 ---------
-You can also create an endpoint from an existing model rather than training one - i.e. bring your own model.
+You can also create an endpoint from an existing model rather than training one.
+That is, you can bring your own model:
 
 First, package the files for the trained model into a ``.tar.gz`` file, and upload the archive to S3.
 
@@ -511,4 +521,4 @@ After that, invoke the ``deploy()`` method on the ``Model``:
 
 This returns a predictor the same way an ``Estimator`` does when ``deploy()`` is called. You can now get inferences just like with any other model deployed on Amazon SageMaker.
 
-A full example is available in the `Amazon SageMaker examples repository <https://github.com/ragavvenkatesan/amazon-sagemaker-examples/tree/3c8394f21ee357da0b553b0ab024c5c5e425182a/advanced_functionality/mxnet_mnist_byom>`__.
+A full example is available in the `Amazon SageMaker examples repository <https://github.com/awslabs/amazon-sagemaker-examples/tree/master/advanced_functionality/mxnet_mnist_byom>`__.
