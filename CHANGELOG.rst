@@ -6,6 +6,7 @@ CHANGELOG
 ========
 
 * bug-fix: Estimators: Fix serialization of single records
+* bug-fix: deprecate enable_cloudwatch_metrics from Framework Estimators.
 
 1.9.0
 =====
@@ -29,7 +30,6 @@ CHANGELOG
 
 * bug-fix: get_execution_role no longer fails if user can't call get_role
 * bug-fix: Session: use existing model instead of failing during ``create_model()``
-* bug-fix: deprecate enable_cloudwatch_metrics from Framework Estimators.
 * enhancement: Estimator: allow for different role from the Estimator's when creating a Model or Transformer
 
 1.7.0
