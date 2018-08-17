@@ -29,7 +29,6 @@ from sagemaker.user_agent import prepend_user_agent
 from sagemaker.utils import name_from_image, secondary_training_status_message, secondary_training_status_changed
 import sagemaker.logs
 
-
 logging.basicConfig()
 LOGGER = logging.getLogger('sagemaker')
 LOGGER.setLevel(logging.INFO)
@@ -93,7 +92,9 @@ class Session(object):
         self.sagemaker_client = sagemaker_client or self.boto_session.client('sagemaker')
         prepend_user_agent(self.sagemaker_client)
 
-        self.sagemaker_runtime_client = sagemaker_runtime_client or self.boto_session.client('runtime.sagemaker')
+        config = botocore.config.Config(read_timeout=80)
+        self.sagemaker_runtime_client = sagemaker_runtime_client or self.boto_session.client('runtime.sagemaker',
+                                                                                             config=config)
         prepend_user_agent(self.sagemaker_runtime_client)
 
         self.local_mode = False
@@ -1018,7 +1019,6 @@ def _deployment_entity_exists(describe_fn):
 
 
 def _train_done(sagemaker_client, job_name, last_desc):
-
     in_progress_statuses = ['InProgress', 'Created']
 
     desc = sagemaker_client.describe_training_job(TrainingJobName=job_name)
