@@ -107,7 +107,7 @@ def _create_train_job(tf_version):
 
 
 def _build_tf(sagemaker_session, framework_version=defaults.TF_VERSION, train_instance_type=None,
-              checkpoint_path=None, enable_cloudwatch_metrics=False, base_job_name=None,
+              checkpoint_path=None, base_job_name=None,
               training_steps=None, evaluation_steps=None, **kwargs):
     return TensorFlow(entry_point=SCRIPT_PATH,
                       training_steps=training_steps,
@@ -118,7 +118,6 @@ def _build_tf(sagemaker_session, framework_version=defaults.TF_VERSION, train_in
                       train_instance_count=INSTANCE_COUNT,
                       train_instance_type=train_instance_type if train_instance_type else INSTANCE_TYPE,
                       checkpoint_path=checkpoint_path,
-                      enable_cloudwatch_metrics=enable_cloudwatch_metrics,
                       base_job_name=base_job_name,
                       **kwargs)
 
@@ -183,12 +182,11 @@ def test_tf_nonexistent_requirements_path(sagemaker_session):
 def test_create_model(sagemaker_session, tf_version):
     container_log_level = '"logging.INFO"'
     source_dir = 's3://mybucket/source'
-    enable_cloudwatch_metrics = 'true'
     tf = TensorFlow(entry_point=SCRIPT_PATH, role=ROLE, sagemaker_session=sagemaker_session,
                     training_steps=1000, evaluation_steps=10, train_instance_count=INSTANCE_COUNT,
                     train_instance_type=INSTANCE_TYPE, framework_version=tf_version,
                     container_log_level=container_log_level, base_job_name='job',
-                    source_dir=source_dir, enable_cloudwatch_metrics=enable_cloudwatch_metrics)
+                    source_dir=source_dir)
 
     job_name = 'doing something'
     tf.fit(inputs='s3://mybucket/train', job_name=job_name)
@@ -202,7 +200,6 @@ def test_create_model(sagemaker_session, tf_version):
     assert model.name == job_name
     assert model.container_log_level == container_log_level
     assert model.source_dir == source_dir
-    assert model.enable_cloudwatch_metrics == enable_cloudwatch_metrics
 
 
 def test_create_model_with_optional_params(sagemaker_session):
@@ -228,13 +225,12 @@ def test_create_model_with_optional_params(sagemaker_session):
 def test_create_model_with_custom_image(sagemaker_session):
     container_log_level = '"logging.INFO"'
     source_dir = 's3://mybucket/source'
-    enable_cloudwatch_metrics = 'true'
     custom_image = 'tensorflow:1.0'
     tf = TensorFlow(entry_point=SCRIPT_PATH, role=ROLE, sagemaker_session=sagemaker_session,
                     training_steps=1000, evaluation_steps=10, train_instance_count=INSTANCE_COUNT,
                     train_instance_type=INSTANCE_TYPE, image_name=custom_image,
                     container_log_level=container_log_level, base_job_name='job',
-                    source_dir=source_dir, enable_cloudwatch_metrics=enable_cloudwatch_metrics)
+                    source_dir=source_dir)
 
     job_name = 'doing something'
     tf.fit(inputs='s3://mybucket/train', job_name=job_name)

@@ -6,6 +6,7 @@ CHANGELOG
 ========
 
 * bug-fix: Estimators: Fix serialization of single records
+* bug-fix: deprecate enable_cloudwatch_metrics from Framework Estimators.
 
 1.9.0
 =====
