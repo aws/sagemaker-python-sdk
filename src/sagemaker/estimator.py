@@ -47,7 +47,8 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):
 
     def __init__(self, role, train_instance_count, train_instance_type,
                  train_volume_size=30, train_max_run=24 * 60 * 60, input_mode='File',
-                 output_path=None, output_kms_key=None, base_job_name=None, sagemaker_session=None, tags=None):
+                 output_path=None, output_kms_key=None, base_job_name=None, sagemaker_session=None, tags=None,
+                 subnets=None, security_group_ids=None):
         """Initialize an ``EstimatorBase`` instance.
 
         Args:
@@ -78,6 +79,9 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):
                 using the default AWS configuration chain.
             tags (list[dict]): List of tags for labeling a training job. For more, see
                 https://docs.aws.amazon.com/sagemaker/latest/dg/API_Tag.html.
+            subnets (list[str]): List of subnet ids. If not specified training job will be created without VPC config.
+            security_group_ids (list[str]): List of security group ids. If not specified training job will be created
+                without VPC config.
         """
         self.role = role
         self.train_instance_count = train_instance_count
@@ -99,6 +103,10 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):
         self.output_path = output_path
         self.output_kms_key = output_kms_key
         self.latest_training_job = None
+
+        # VPC configurations
+        self.subnets = subnets
+        self.security_group_ids = security_group_ids
 
     @abstractmethod
     def train_image(self):
@@ -399,8 +407,9 @@ class _TrainingJob(_Job):
         estimator.sagemaker_session.train(image=estimator.train_image(), input_mode=estimator.input_mode,
                                           input_config=config['input_config'], role=config['role'],
                                           job_name=estimator._current_job_name, output_config=config['output_config'],
-                                          resource_config=config['resource_config'], hyperparameters=hyperparameters,
-                                          stop_condition=config['stop_condition'], tags=estimator.tags)
+                                          resource_config=config['resource_config'], vpc_config=config['vpc_config'],
+                                          hyperparameters=hyperparameters, stop_condition=config['stop_condition'],
+                                          tags=estimator.tags)
 
         return cls(estimator.sagemaker_session, estimator._current_job_name)
 
