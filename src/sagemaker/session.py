@@ -92,9 +92,12 @@ class Session(object):
         self.sagemaker_client = sagemaker_client or self.boto_session.client('sagemaker')
         prepend_user_agent(self.sagemaker_client)
 
-        config = botocore.config.Config(read_timeout=80)
-        self.sagemaker_runtime_client = sagemaker_runtime_client or self.boto_session.client('runtime.sagemaker',
-                                                                                             config=config)
+        if sagemaker_runtime_client is not None:
+            self.sagemaker_runtime_client = sagemaker_runtime_client
+        else:
+            config = botocore.config.Config(read_timeout=80)
+            self.sagemaker_runtime_client = self.boto_session.client('runtime.sagemaker', config=config)
+
         prepend_user_agent(self.sagemaker_runtime_client)
 
         self.local_mode = False
