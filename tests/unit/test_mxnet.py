@@ -95,6 +95,7 @@ def _create_train_job(version):
             'MaxRuntimeInSeconds': 24 * 60 * 60
         },
         'tags': None,
+        'vpc_config': None
     }
 
 

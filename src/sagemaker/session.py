@@ -203,7 +203,7 @@ class Session(object):
         return self._default_bucket
 
     def train(self, image, input_mode, input_config, role, job_name, output_config,
-              resource_config, hyperparameters, stop_condition, tags):
+              resource_config, vpc_config, hyperparameters, stop_condition, tags):
         """Create an Amazon SageMaker training job.
 
         Args:
@@ -228,6 +228,13 @@ class Session(object):
                     The key in resource_config is 'InstanceCount'.
                 * instance_type (str): Type of EC2 instance to use for training, for example, 'ml.c4.xlarge'.
                     The key in resource_config is 'InstanceType'.
+
+            vpc_config (dict): Contains values for VpcConfig:
+
+                * subnets (list[str]): List of subnet ids.
+                    The key in vpc_config is 'Subnets'.
+                * security_group_ids (list[str]): List of security group ids.
+                    The key in vpc_config is 'SecurityGroupIds'.
 
             hyperparameters (dict): Hyperparameters for model training. The hyperparameters are made accessible as
                 a dict[str, str] to the training code on SageMaker. For convenience, this accepts other types for
@@ -259,6 +266,9 @@ class Session(object):
 
         if tags is not None:
             train_request['Tags'] = tags
+
+        if vpc_config is not None:
+            train_request['VpcConfig'] = vpc_config
 
         LOGGER.info('Creating training-job with name: {}'.format(job_name))
         LOGGER.debug('train request: {}'.format(json.dumps(train_request, indent=4)))

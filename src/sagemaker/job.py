@@ -59,12 +59,14 @@ class _Job(object):
                                                         estimator.train_instance_type,
                                                         estimator.train_volume_size)
         stop_condition = _Job._prepare_stop_condition(estimator.train_max_run)
+        vpc_config = _Job._prepare_vpc_config(estimator.subnets, estimator.security_group_ids)
 
         return {'input_config': input_config,
                 'role': role,
                 'output_config': output_config,
                 'resource_config': resource_config,
-                'stop_condition': stop_condition}
+                'stop_condition': stop_condition,
+                'vpc_config': vpc_config}
 
     @staticmethod
     def _format_inputs_to_input_config(inputs):
@@ -142,6 +144,13 @@ class _Job(object):
         return {'InstanceCount': instance_count,
                 'InstanceType': instance_type,
                 'VolumeSizeInGB': volume_size}
+
+    @staticmethod
+    def _prepare_vpc_config(subnets, security_group_ids):
+        if subnets is None or security_group_ids is None:
+            return None
+        return {'Subnets': subnets,
+                'SecurityGroupIds': security_group_ids}
 
     @staticmethod
     def _prepare_stop_condition(max_run):
