@@ -54,7 +54,7 @@ You can install from source by cloning this repository and running a pip install
 
     git clone https://github.com/aws/sagemaker-python-sdk.git
     python setup.py sdist
-    pip install dist/sagemaker-1.9.0.tar.gz
+    pip install dist/sagemaker-1.9.1.tar.gz
 
 Supported Operating Systems
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -326,7 +326,7 @@ SageMaker Automatic Model Tuning
 All of the estimators can be used with SageMaker Automatic Model Tuning, which performs hyperparameter tuning jobs.
 A hyperparameter tuning job finds the best version of a model by running many training jobs on your dataset using the algorithm with different values of hyperparameters within ranges
 that you specify. It then chooses the hyperparameter values that result in a model that performs the best, as measured by a metric that you choose.
-If you're not using an Amazon SageMaker built-in algorithm, then the metric is defined by a regular expression (regex) you provide. 
+If you're not using an Amazon SageMaker built-in algorithm, then the metric is defined by a regular expression (regex) you provide.
 The hyperparameter tuning job parses the training job's logs to find metrics that match the regex you defined.
 For more information about SageMaker Automatic Model Tuning, see `AWS documentation <https://docs.aws.amazon.com/sagemaker/latest/dg/automatic-model-tuning.html>`__.
 
@@ -377,7 +377,7 @@ In addition, the ``fit()`` call uses a list of ``RecordSet`` objects instead of 
     # Start hyperparameter tuning job
     my_tuner.fit([train_records, test_records])
 
-To help attach a previously-started hyperparameter tuning job to a ``HyperparameterTuner`` instance, 
+To help attach a previously-started hyperparameter tuning job to a ``HyperparameterTuner`` instance,
 ``fit()`` adds the module path of the class used to create the tuner to the list of static hyperparameters by default.
 If the algorithm you are using cannot handle unknown hyperparameters
 (for example, an Amazon SageMaker built-in algorithm that does not have a custom estimator in the Python SDK),
