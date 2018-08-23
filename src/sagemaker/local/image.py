@@ -388,7 +388,7 @@ class _SageMakerContainer(object):
         environment.extend(additional_env_vars)
 
         if command == 'train':
-            optml_dirs = {'output', 'input'}
+            optml_dirs = {'output', 'output/data', 'input'}
 
         services = {
             h: self._create_docker_host(h, environment, optml_dirs,
