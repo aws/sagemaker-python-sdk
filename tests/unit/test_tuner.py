@@ -157,13 +157,8 @@ def test_prepare_for_training(tuner):
 
     assert tuner._current_job_name.startswith(IMAGE_NAME)
 
-    assert len(tuner.static_hyperparameters) == 3
+    assert len(tuner.static_hyperparameters) == 1
     assert tuner.static_hyperparameters['another_one'] == '0'
-
-    class_name = json.dumps(tuner.estimator.__class__.__name__)
-    assert tuner.static_hyperparameters['sagemaker_estimator_class_name'] == class_name
-    module = json.dumps(tuner.estimator.__module__)
-    assert tuner.static_hyperparameters['sagemaker_estimator_module'] == module
 
 
 def test_prepare_for_training_with_amazon_estimator(tuner, sagemaker_session):
@@ -175,10 +170,10 @@ def test_prepare_for_training_with_amazon_estimator(tuner, sagemaker_session):
     assert 'sagemaker_estimator_module' not in tuner.static_hyperparameters
 
 
-def test_prepare_for_training_dont_include_estimator_cls(tuner):
-    tuner._prepare_for_training(include_cls_metadata=False)
-    assert 'sagemaker_estimator_class_name' not in tuner.static_hyperparameters
-    assert 'sagemaker_estimator_module' not in tuner.static_hyperparameters
+def test_prepare_for_training_include_estimator_cls(tuner):
+    tuner._prepare_for_training(include_cls_metadata=True)
+    assert 'sagemaker_estimator_class_name' in tuner.static_hyperparameters
+    assert 'sagemaker_estimator_module' in tuner.static_hyperparameters
 
 
 def test_prepare_for_training_with_job_name(tuner):
