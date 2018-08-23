@@ -2,6 +2,11 @@
 CHANGELOG
 =========
 
+1.9.2
+=====
+
+* feature: add support for TensorFlow 1.9
+
 1.9.1
 =====
 
