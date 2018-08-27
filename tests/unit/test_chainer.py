@@ -66,7 +66,7 @@ def _get_full_gpu_image_uri(version):
 
 
 def _chainer_estimator(sagemaker_session, framework_version=defaults.CHAINER_VERSION, train_instance_type=None,
-                       enable_cloudwatch_metrics=False, base_job_name=None, use_mpi=None, num_processes=None,
+                       base_job_name=None, use_mpi=None, num_processes=None,
                        process_slots_per_host=None, additional_mpi_options=None, **kwargs):
     return Chainer(entry_point=SCRIPT_PATH,
                    framework_version=framework_version,
@@ -74,7 +74,6 @@ def _chainer_estimator(sagemaker_session, framework_version=defaults.CHAINER_VER
                    sagemaker_session=sagemaker_session,
                    train_instance_count=INSTANCE_COUNT,
                    train_instance_type=train_instance_type if train_instance_type else INSTANCE_TYPE,
-                   enable_cloudwatch_metrics=enable_cloudwatch_metrics,
                    base_job_name=base_job_name,
                    use_mpi=use_mpi,
                    num_processes=num_processes,
@@ -122,6 +121,7 @@ def _create_train_job(version):
             'MaxRuntimeInSeconds': 24 * 60 * 60
         },
         'tags': None,
+        'vpc_config': None
     }
 
 
@@ -152,7 +152,6 @@ def _create_train_job_with_additional_hyperparameters(version):
         },
         'hyperparameters': {
             'sagemaker_program': json.dumps('dummy_script.py'),
-            'sagemaker_enable_cloudwatch_metrics': 'false',
             'sagemaker_container_log_level': str(logging.INFO),
             'sagemaker_job_name': json.dumps(JOB_NAME),
             'sagemaker_submit_directory':
@@ -225,12 +224,10 @@ def test_attach_with_additional_hyperparameters(sagemaker_session, chainer_versi
 def test_create_model(sagemaker_session, chainer_version):
     container_log_level = '"logging.INFO"'
     source_dir = 's3://mybucket/source'
-    enable_cloudwatch_metrics = 'true'
     chainer = Chainer(entry_point=SCRIPT_PATH, role=ROLE, sagemaker_session=sagemaker_session,
                       train_instance_count=INSTANCE_COUNT, train_instance_type=INSTANCE_TYPE,
                       framework_version=chainer_version, container_log_level=container_log_level,
-                      py_version=PYTHON_VERSION, base_job_name='job', source_dir=source_dir,
-                      enable_cloudwatch_metrics=enable_cloudwatch_metrics)
+                      py_version=PYTHON_VERSION, base_job_name='job', source_dir=source_dir)
 
     job_name = 'new_name'
     chainer.fit(inputs='s3://mybucket/train', job_name=job_name)
@@ -244,7 +241,6 @@ def test_create_model(sagemaker_session, chainer_version):
     assert model.name == job_name
     assert model.container_log_level == container_log_level
     assert model.source_dir == source_dir
-    assert model.enable_cloudwatch_metrics == enable_cloudwatch_metrics
 
 
 def test_create_model_with_optional_params(sagemaker_session):
@@ -269,13 +265,11 @@ def test_create_model_with_optional_params(sagemaker_session):
 def test_create_model_with_custom_image(sagemaker_session):
     container_log_level = '"logging.INFO"'
     source_dir = 's3://mybucket/source'
-    enable_cloudwatch_metrics = 'true'
     custom_image = 'ubuntu:latest'
     chainer = Chainer(entry_point=SCRIPT_PATH, role=ROLE, sagemaker_session=sagemaker_session,
                       train_instance_count=INSTANCE_COUNT, train_instance_type=INSTANCE_TYPE,
                       image_name=custom_image, container_log_level=container_log_level,
-                      py_version=PYTHON_VERSION, base_job_name='job', source_dir=source_dir,
-                      enable_cloudwatch_metrics=enable_cloudwatch_metrics)
+                      py_version=PYTHON_VERSION, base_job_name='job', source_dir=source_dir)
 
     chainer.fit(inputs='s3://mybucket/train', job_name='new_name')
     model = chainer.create_model()

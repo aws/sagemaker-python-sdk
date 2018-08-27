@@ -6,7 +6,7 @@ TensorFlow SageMaker Estimators allow you to run your own TensorFlow
 training algorithms on SageMaker Learner, and to host your own TensorFlow
 models on SageMaker Hosting.
 
-Supported versions of TensorFlow: ``1.4.1``, ``1.5.0``, ``1.6.0``, ``1.7.0``, ``1.8.0``.
+Supported versions of TensorFlow: ``1.4.1``, ``1.5.0``, ``1.6.0``, ``1.7.0``, ``1.8.0``, ``1.9.0``.
 
 Training with TensorFlow
 ~~~~~~~~~~~~~~~~~~~~~~~~
@@ -833,7 +833,7 @@ SageMaker TensorFlow CPU images use TensorFlow built with Intel® MKL-DNN optimi
 In certain cases you might be able to get a better performance by disabling this optimization
 (`for example when using small models <https://github.com/awslabs/amazon-sagemaker-examples/blob/d88d1c19861fb7733941969f5a68821d9da2982e/sagemaker-python-sdk/tensorflow_iris_dnn_classifier_using_estimators/iris_dnn_classifier.py#L7-L9>`_)
 
-You can disable MKL-DNN optimization for TensorFlow ``1.8.0`` by setting two following environment variables:
+You can disable MKL-DNN optimization for TensorFlow ``1.8.0`` and above by setting two following environment variables:
 
 .. code:: python
 

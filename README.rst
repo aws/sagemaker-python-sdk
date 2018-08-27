@@ -53,8 +53,8 @@ You can install from source by cloning this repository and running a pip install
 ::
 
     git clone https://github.com/aws/sagemaker-python-sdk.git
-    python setup.py sdist
-    pip install dist/sagemaker-1.9.0.tar.gz
+    cd sagemaker-python-sdk
+    pip install .
 
 Supported Operating Systems
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -244,6 +244,8 @@ By using MXNet SageMaker ``Estimators``, you can train and host MXNet models on 
 
 Supported versions of MXNet: ``1.2.1``, ``1.1.0``, ``1.0.0``, ``0.12.1``.
 
+We recommend that you use the latest supported version, because that's where we focus most of our development efforts.
+
 For more information, see `MXNet SageMaker Estimators and Models`_.
 
 .. _MXNet SageMaker Estimators and Models: src/sagemaker/mxnet/README.rst
@@ -254,7 +256,9 @@ TensorFlow SageMaker Estimators
 
 By using TensorFlow SageMaker ``Estimators``, you can train and host TensorFlow models on Amazon SageMaker.
 
-Supported versions of TensorFlow: ``1.4.1``, ``1.5.0``, ``1.6.0``, ``1.7.0``, ``1.8.0``.
+Supported versions of TensorFlow: ``1.4.1``, ``1.5.0``, ``1.6.0``, ``1.7.0``, ``1.8.0``, ``1.9.0``.
+
+We recommend that you use the latest supported version, because that's where we focus most of our development efforts.
 
 For more information, see `TensorFlow SageMaker Estimators and Models`_.
 
@@ -268,6 +272,8 @@ By using Chainer SageMaker ``Estimators``, you can train and host Chainer models
 
 Supported versions of Chainer: ``4.0.0``, ``4.1.0``.
 
+We recommend that you use the latest supported version, because that's where we focus most of our development efforts.
+
 For more information about Chainer, see https://github.com/chainer/chainer.
 
 For more information about  Chainer SageMaker ``Estimators``, see `Chainer SageMaker Estimators and Models`_.
@@ -280,7 +286,9 @@ PyTorch SageMaker Estimators
 
 With PyTorch SageMaker ``Estimators``, you can train and host PyTorch models on Amazon SageMaker.
 
-Supported versions of PyTorch: ``0.4.0``
+Supported versions of PyTorch: ``0.4.0``.
+
+We recommend that you use the latest supported version, because that's where we focus most of our development efforts.
 
 For more information about PyTorch, see https://github.com/pytorch/pytorch.
 
@@ -326,7 +334,7 @@ SageMaker Automatic Model Tuning
 All of the estimators can be used with SageMaker Automatic Model Tuning, which performs hyperparameter tuning jobs.
 A hyperparameter tuning job finds the best version of a model by running many training jobs on your dataset using the algorithm with different values of hyperparameters within ranges
 that you specify. It then chooses the hyperparameter values that result in a model that performs the best, as measured by a metric that you choose.
-If you're not using an Amazon SageMaker built-in algorithm, then the metric is defined by a regular expression (regex) you provide. 
+If you're not using an Amazon SageMaker built-in algorithm, then the metric is defined by a regular expression (regex) you provide.
 The hyperparameter tuning job parses the training job's logs to find metrics that match the regex you defined.
 For more information about SageMaker Automatic Model Tuning, see `AWS documentation <https://docs.aws.amazon.com/sagemaker/latest/dg/automatic-model-tuning.html>`__.
 
@@ -377,7 +385,7 @@ In addition, the ``fit()`` call uses a list of ``RecordSet`` objects instead of 
     # Start hyperparameter tuning job
     my_tuner.fit([train_records, test_records])
 
-To help attach a previously-started hyperparameter tuning job to a ``HyperparameterTuner`` instance, 
+To help attach a previously-started hyperparameter tuning job to a ``HyperparameterTuner`` instance,
 ``fit()`` adds the module path of the class used to create the tuner to the list of static hyperparameters by default.
 If the algorithm you are using cannot handle unknown hyperparameters
 (for example, an Amazon SageMaker built-in algorithm that does not have a custom estimator in the Python SDK),

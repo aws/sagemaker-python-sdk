@@ -1,4 +1,3 @@
-
 =======================================
 SageMaker PyTorch Estimators and Models
 =======================================
@@ -39,24 +38,21 @@ using to submit the script to SageMaker via a ``PyTorch`` Estimator. This will b
 Suppose that you already have a PyTorch training script called `pytorch-train.py`.
 You can then setup a ``PyTorch`` Estimator with keyword arguments to point to this script and define how SageMaker runs it:
 
-```python
+.. code:: python
 
     from sagemaker.pytorch import PyTorch
 
-    pytorch_estimator = PyTorch(entry_point="pytorch-train.py",
-                                role="SageMakerRole",
-                                train_instance_type="ml.p3.2xlarge",
+    pytorch_estimator = PyTorch(entry_point='pytorch-train.py',
+                                role='SageMakerRole',
+                                train_instance_type='ml.p3.2xlarge',
                                 train_instance_count=1)
-```
 
 After that, you simply tell the estimator to start a training job and provide an S3 URL
 that is the path to your training data within Amazon S3:
 
-```python
+.. code:: python
 
-    pytorch_estimator.fit("s3://bucket/path/to/training/data")
-
-```
+    pytorch_estimator.fit('s3://bucket/path/to/training/data')
 
 In the following sections, we'll discuss how to prepare a training script for execution on SageMaker,
 then how to run that script on SageMaker using a ``PyTorch`` Estimator.
@@ -443,7 +439,7 @@ the model server receives two pieces of information:
 -  The request data body, a byte array which is at most 5 MB (5 \* 1024
    \* 1024 bytes) in size.
 
-The SageMaker PyTorch model server will invoke an "input_fn" function in your hosting script,
+The SageMaker PyTorch model server will invoke an ``input_fn`` function in your hosting script,
 passing in this information. If you define an ``input_fn`` function definition,
 it should return an object that can be passed to ``predict_fn`` and have the following signature:
 
@@ -647,7 +643,7 @@ Please refer to:
 
 https://github.com/awslabs/amazon-sagemaker-examples/tree/master/sagemaker-python-sdk
 
-These are also available in SageMaker Notebook Instance hosted Jupyter notebooks under the "sample notebooks" folder.
+These are also available in SageMaker Notebook Instance hosted Jupyter notebooks under the sample notebooks folder.
 
 
 SageMaker PyTorch Docker Containers

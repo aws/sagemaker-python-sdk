@@ -2,10 +2,17 @@
 CHANGELOG
 =========
 
-1.9.1dev
-========
+1.9.2
+=====
+
+* feature: add support for TensorFlow 1.9
+
+1.9.1
+=====
 
 * bug-fix: Estimators: Fix serialization of single records
+* bug-fix: deprecate enable_cloudwatch_metrics from Framework Estimators.
+* enhancement: Enable VPC config in training job creation
 
 1.9.0
 =====

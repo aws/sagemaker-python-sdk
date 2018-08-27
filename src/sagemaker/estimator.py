@@ -15,6 +15,7 @@ from __future__ import print_function, absolute_import
 import json
 import logging
 import os
+import warnings
 from abc import ABCMeta
 from abc import abstractmethod
 from six import with_metaclass
@@ -46,7 +47,8 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):
 
     def __init__(self, role, train_instance_count, train_instance_type,
                  train_volume_size=30, train_max_run=24 * 60 * 60, input_mode='File',
-                 output_path=None, output_kms_key=None, base_job_name=None, sagemaker_session=None, tags=None):
+                 output_path=None, output_kms_key=None, base_job_name=None, sagemaker_session=None, tags=None,
+                 subnets=None, security_group_ids=None):
         """Initialize an ``EstimatorBase`` instance.
 
         Args:
@@ -77,6 +79,9 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):
                 using the default AWS configuration chain.
             tags (list[dict]): List of tags for labeling a training job. For more, see
                 https://docs.aws.amazon.com/sagemaker/latest/dg/API_Tag.html.
+            subnets (list[str]): List of subnet ids. If not specified training job will be created without VPC config.
+            security_group_ids (list[str]): List of security group ids. If not specified training job will be created
+                without VPC config.
         """
         self.role = role
         self.train_instance_count = train_instance_count
@@ -98,6 +103,10 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):
         self.output_path = output_path
         self.output_kms_key = output_kms_key
         self.latest_training_job = None
+
+        # VPC configurations
+        self.subnets = subnets
+        self.security_group_ids = security_group_ids
 
     @abstractmethod
     def train_image(self):
@@ -398,8 +407,9 @@ class _TrainingJob(_Job):
         estimator.sagemaker_session.train(image=estimator.train_image(), input_mode=estimator.input_mode,
                                           input_config=config['input_config'], role=config['role'],
                                           job_name=estimator._current_job_name, output_config=config['output_config'],
-                                          resource_config=config['resource_config'], hyperparameters=hyperparameters,
-                                          stop_condition=config['stop_condition'], tags=estimator.tags)
+                                          resource_config=config['resource_config'], vpc_config=config['vpc_config'],
+                                          hyperparameters=hyperparameters, stop_condition=config['stop_condition'],
+                                          tags=estimator.tags)
 
         return cls(estimator.sagemaker_session, estimator._current_job_name)
 
@@ -550,8 +560,8 @@ class Framework(EstimatorBase):
                 The hyperparameters are made accessible as a dict[str, str] to the training code on SageMaker.
                 For convenience, this accepts other types for keys and values, but ``str()`` will be called
                 to convert them before training.
-            enable_cloudwatch_metrics (bool): Whether training and hosting containers will
-               generate CloudWatch metrics under the AWS/SageMakerContainer namespace (default: False).
+            enable_cloudwatch_metrics (bool): [DEPRECATED] Now there are cloudwatch metrics emitted by all SageMaker
+                training jobs. This will be ignored for now and removed in a further release.
             container_log_level (int): Log level to use within the container (default: logging.INFO).
                 Valid values are defined in the Python logging module.
             code_location (str): Name of the S3 bucket where custom code is uploaded (default: None).
@@ -564,7 +574,10 @@ class Framework(EstimatorBase):
         super(Framework, self).__init__(**kwargs)
         self.source_dir = source_dir
         self.entry_point = entry_point
-        self.enable_cloudwatch_metrics = enable_cloudwatch_metrics
+        if enable_cloudwatch_metrics:
+            warnings.warn('enable_cloudwatch_metrics is now deprecated and will be removed in the future.',
+                          DeprecationWarning)
+        self.enable_cloudwatch_metrics = False
         self.container_log_level = container_log_level
         self._hyperparameters = hyperparameters or {}
         self.code_location = code_location

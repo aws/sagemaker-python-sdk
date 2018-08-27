@@ -64,7 +64,7 @@ def _get_full_gpu_image_uri(version, py_version=PYTHON_VERSION):
 
 
 def _pytorch_estimator(sagemaker_session, framework_version=defaults.PYTORCH_VERSION, train_instance_type=None,
-                       enable_cloudwatch_metrics=False, base_job_name=None, **kwargs):
+                       base_job_name=None, **kwargs):
     return PyTorch(entry_point=SCRIPT_PATH,
                    framework_version=framework_version,
                    py_version=PYTHON_VERSION,
@@ -72,7 +72,6 @@ def _pytorch_estimator(sagemaker_session, framework_version=defaults.PYTORCH_VER
                    sagemaker_session=sagemaker_session,
                    train_instance_count=INSTANCE_COUNT,
                    train_instance_type=train_instance_type if train_instance_type else INSTANCE_TYPE,
-                   enable_cloudwatch_metrics=enable_cloudwatch_metrics,
                    base_job_name=base_job_name,
                    **kwargs)
 
@@ -112,18 +111,18 @@ def _create_train_job(version):
         'stop_condition': {
             'MaxRuntimeInSeconds': 24 * 60 * 60
         },
-        'tags': None
+        'tags': None,
+        'vpc_config': None
     }
 
 
 def test_create_model(sagemaker_session, pytorch_version):
     container_log_level = '"logging.INFO"'
     source_dir = 's3://mybucket/source'
-    enable_cloudwatch_metrics = 'true'
     pytorch = PyTorch(entry_point=SCRIPT_PATH, role=ROLE, sagemaker_session=sagemaker_session,
                       train_instance_count=INSTANCE_COUNT, train_instance_type=INSTANCE_TYPE,
                       framework_version=pytorch_version, container_log_level=container_log_level,
-                      base_job_name='job', source_dir=source_dir, enable_cloudwatch_metrics=enable_cloudwatch_metrics)
+                      base_job_name='job', source_dir=source_dir)
 
     job_name = 'new_name'
     pytorch.fit(inputs='s3://mybucket/train', job_name='new_name')
@@ -137,7 +136,6 @@ def test_create_model(sagemaker_session, pytorch_version):
     assert model.name == job_name
     assert model.container_log_level == container_log_level
     assert model.source_dir == source_dir
-    assert model.enable_cloudwatch_metrics == enable_cloudwatch_metrics
 
 
 def test_create_model_with_optional_params(sagemaker_session):
@@ -162,12 +160,11 @@ def test_create_model_with_optional_params(sagemaker_session):
 def test_create_model_with_custom_image(sagemaker_session):
     container_log_level = '"logging.INFO"'
     source_dir = 's3://mybucket/source'
-    enable_cloudwatch_metrics = 'true'
     image = 'pytorch:9000'
     pytorch = PyTorch(entry_point=SCRIPT_PATH, role=ROLE, sagemaker_session=sagemaker_session,
                       train_instance_count=INSTANCE_COUNT, train_instance_type=INSTANCE_TYPE,
                       container_log_level=container_log_level, image_name=image,
-                      base_job_name='job', source_dir=source_dir, enable_cloudwatch_metrics=enable_cloudwatch_metrics)
+                      base_job_name='job', source_dir=source_dir)
 
     job_name = 'new_name'
     pytorch.fit(inputs='s3://mybucket/train', job_name='new_name')
@@ -180,7 +177,6 @@ def test_create_model_with_custom_image(sagemaker_session):
     assert model.name == job_name
     assert model.container_log_level == container_log_level
     assert model.source_dir == source_dir
-    assert model.enable_cloudwatch_metrics == enable_cloudwatch_metrics
 
 
 @patch('time.strftime', return_value=TIMESTAMP)
