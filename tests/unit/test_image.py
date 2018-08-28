@@ -245,6 +245,10 @@ def test_train(_download_folder, _cleanup, popen, _stream_output, LocalSession,
                 assert config['services'][h]['image'] == image
                 assert config['services'][h]['command'] == 'train'
 
+        # assert that expected by sagemaker container output directories exist
+        assert os.path.exists(os.path.join(sagemaker_container.container_root, 'output'))
+        assert os.path.exists(os.path.join(sagemaker_container.container_root, 'output/data'))
+
 
 @patch('sagemaker.local.local_session.LocalSession')
 @patch('sagemaker.local.image._stream_output', side_effect=RuntimeError('this is expected'))
