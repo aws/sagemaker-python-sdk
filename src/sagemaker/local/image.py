@@ -85,6 +85,8 @@ class _SageMakerContainer(object):
         """
         self.container_root = self._create_tmp_folder()
         os.mkdir(os.path.join(self.container_root, 'output'))
+        # create output/data folder since sagemaker-containers 2.0 expects it
+        os.mkdir(os.path.join(self.container_root, 'output', 'data'))
         # A shared directory for all the containers. It is only mounted if the training script is
         # Local.
         shared_dir = os.path.join(self.container_root, 'shared')
@@ -386,7 +388,7 @@ class _SageMakerContainer(object):
         environment.extend(additional_env_vars)
 
         if command == 'train':
-            optml_dirs = {'output', 'input'}
+            optml_dirs = {'output', 'output/data', 'input'}
 
         services = {
             h: self._create_docker_host(h, environment, optml_dirs,
