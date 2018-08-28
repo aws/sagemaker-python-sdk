@@ -29,7 +29,7 @@ NUM_CLASSES = 10
 NUM_DATA_BATCHES = 5
 NUM_EXAMPLES_PER_EPOCH_FOR_TRAIN = 10000 * NUM_DATA_BATCHES
 BATCH_SIZE = 128
-INPUT_TENSOR_NAME = "inputs"
+INPUT_TENSOR_NAME = PREDICT_INPUTS
 
 
 def keras_model_fn(hyperparameters):
@@ -79,7 +79,7 @@ def keras_model_fn(hyperparameters):
 
 
 def serving_input_fn(hyperpameters):
-    inputs = {INPUT_TENSOR_NAME: tf.placeholder(tf.float32, [None, 32, 32, 3])}
+    inputs = {PREDICT_INPUTS: tf.placeholder(tf.float32, [None, 32, 32, 3])}
     return tf.estimator.export.ServingInputReceiver(inputs, inputs)
 
 
