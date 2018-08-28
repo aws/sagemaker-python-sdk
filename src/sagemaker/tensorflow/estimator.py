@@ -10,6 +10,8 @@
 # distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
+from __future__ import absolute_import
+
 import contextlib
 import logging
 import os
@@ -17,9 +19,11 @@ import shutil
 import subprocess
 import tempfile
 import threading
+import time
 
 from sagemaker.estimator import Framework
-from sagemaker.fw_utils import create_image_uri, framework_name_from_image, framework_version_from_tag
+from sagemaker.fw_utils import framework_name_from_image, framework_version_from_tag
+from sagemaker.utils import get_config_value
 
 from sagemaker.tensorflow.defaults import TF_VERSION
 from sagemaker.tensorflow.model import TensorFlowModel
@@ -154,7 +158,7 @@ class TensorFlow(Framework):
     __framework_name__ = 'tensorflow'
 
     def __init__(self, training_steps=None, evaluation_steps=None, checkpoint_path=None, py_version='py2',
-                 framework_version=TF_VERSION, requirements_file='', **kwargs):
+                 framework_version=TF_VERSION, requirements_file='', image_name=None, **kwargs):
         """Initialize an ``TensorFlow`` estimator.
         Args:
             training_steps (int): Perform this many steps of training. `None`, the default means train forever.
@@ -168,9 +172,15 @@ class TensorFlow(Framework):
             requirements_file (str): Path to a ``requirements.txt`` file (default: ''). The path should be within and
                 relative to ``source_dir``. Details on the format can be found in the
                 `Pip User Guide <https://pip.pypa.io/en/stable/reference/pip_install/#requirements-file-format>`_.
+            image_name (str): If specified, the estimator will use this image for training and hosting, instead of
+                selecting the appropriate SageMaker official image based on framework_version and py_version. It can
+                be an ECR url or dockerhub image and tag.
+                    Examples:
+                        123.dkr.ecr.us-west-2.amazonaws.com/my-custom-image:1.0
+                        custom-image:latest.
             **kwargs: Additional kwargs passed to the Framework constructor.
         """
-        super(TensorFlow, self).__init__(**kwargs)
+        super(TensorFlow, self).__init__(image_name=image_name, **kwargs)
         self.checkpoint_path = checkpoint_path
         self.py_version = py_version
         self.framework_version = framework_version
@@ -206,8 +216,8 @@ class TensorFlow(Framework):
                     training data, you can specify a dict mapping channel names
                     to strings or :func:`~sagemaker.session.s3_input` objects.
                 (sagemaker.session.s3_input) - channel configuration for S3 data sources that can provide
-                    additional information about the training dataset. See :func:`sagemaker.session.s3_input`
-                    for full details.
+                    additional information as well as the path to the training dataset.
+                    See :func:`sagemaker.session.s3_input` for full details.
             wait (bool): Whether the call should wait until the job completes (default: True).
             logs (bool): Whether to show the logs produced by the job.
                 Only meaningful when wait is True (default: True).
@@ -231,7 +241,10 @@ class TensorFlow(Framework):
                 tensorboard.start()
                 fit_super()
             finally:
+                # sleep 20 secs for tensorboard start up if fit() quits instantly
+                time.sleep(20)
                 tensorboard.event.set()
+                tensorboard.join()
         else:
             fit_super()
 
@@ -254,7 +267,14 @@ class TensorFlow(Framework):
             if value is not None:
                 init_params[argument] = value
 
-        framework, py_version, tag = framework_name_from_image(init_params.pop('image'))
+        image_name = init_params.pop('image')
+        framework, py_version, tag = framework_name_from_image(image_name)
+        if not framework:
+            # If we were unable to parse the framework name from the image it is not one of our
+            # officially supported images, in this case just add the image to the init params.
+            init_params['image_name'] = image_name
+            return init_params
+
         init_params['py_version'] = py_version
 
         # We switched image tagging scheme from regular image version (e.g. '1.0') to more expressive
@@ -269,22 +289,12 @@ class TensorFlow(Framework):
 
         return init_params
 
-    def train_image(self):
-        """Return the Docker image to use for training.
-
-        The  :meth:`~sagemaker.estimator.EstimatorBase.fit` method, which does the model training, calls this method to
-        find the image to use for model training.
-
-        Returns:
-            str: The URI of the Docker image.
-        """
-        return create_image_uri(self.sagemaker_session.boto_session.region_name, self.__framework_name__,
-                                self.train_instance_type, self.framework_version, py_version=self.py_version)
-
-    def create_model(self, model_server_workers=None):
+    def create_model(self, model_server_workers=None, role=None):
         """Create a SageMaker ``TensorFlowModel`` object that can be deployed to an ``Endpoint``.
 
         Args:
+            role (str): The ``ExecutionRoleArn`` IAM Role ARN for the ``Model``, which is also used during
+                transform jobs. If not specified, the role from the Estimator will be used.
             model_server_workers (int): Optional. The number of worker processes used by the inference server.
                 If None, server will use one worker per vCPU.
 
@@ -293,8 +303,9 @@ class TensorFlow(Framework):
                 See :func:`~sagemaker.tensorflow.model.TensorFlowModel` for full details.
         """
         env = {'SAGEMAKER_REQUIREMENTS': self.requirements_file}
-        return TensorFlowModel(self.model_data, self.role, self.entry_point, source_dir=self.source_dir,
-                               enable_cloudwatch_metrics=self.enable_cloudwatch_metrics, env=env,
+        role = role or self.role
+        return TensorFlowModel(self.model_data, role, self.entry_point, source_dir=self._model_source_dir(),
+                               enable_cloudwatch_metrics=self.enable_cloudwatch_metrics, env=env, image=self.image_name,
                                name=self._current_job_name, container_log_level=self.container_log_level,
                                code_location=self.code_location, py_version=self.py_version,
                                framework_version=self.framework_version, model_server_workers=model_server_workers,
@@ -305,7 +316,12 @@ class TensorFlow(Framework):
         hyperparameters = super(TensorFlow, self).hyperparameters()
 
         if not self.checkpoint_path:
-            self.checkpoint_path = os.path.join(self.output_path, self._current_job_name, 'checkpoints')
+            local_code = get_config_value('local.local_code', self.sagemaker_session.config)
+            if self.sagemaker_session.local_mode and local_code:
+                self.checkpoint_path = '/opt/ml/shared/checkpoints'
+            else:
+                self.checkpoint_path = os.path.join(self.output_path,
+                                                    self._current_job_name, 'checkpoints')
 
         additional_hyperparameters = {'checkpoint_path': self.checkpoint_path,
                                       'training_steps': self.training_steps,

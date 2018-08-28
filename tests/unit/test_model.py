@@ -1,4 +1,4 @@
-# Copyright 2017 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright 2017-2018 Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -10,11 +10,13 @@
 # distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
+from __future__ import absolute_import
+
 from sagemaker.model import FrameworkModel
 from sagemaker.predictor import RealTimePredictor
 import os
 import pytest
-from mock import Mock, patch
+from mock import MagicMock, Mock, patch
 
 MODEL_DATA = "s3://bucket/model.tar.gz"
 MODEL_IMAGE = "mi"
@@ -46,9 +48,10 @@ class DummyFrameworkModel(FrameworkModel):
 @pytest.fixture()
 def sagemaker_session():
     boto_mock = Mock(name='boto_session', region_name=REGION)
-    ims = Mock(name='sagemaker_session', boto_session=boto_mock)
-    ims.default_bucket = Mock(name='default_bucket', return_value=BUCKET_NAME)
-    return ims
+    sms = Mock(name='sagemaker_session', boto_session=boto_mock,
+               boto_region_name=REGION, config=None, local_mode=False)
+    sms.default_bucket = Mock(name='default_bucket', return_value=BUCKET_NAME)
+    return sms
 
 
 @patch('tarfile.open')
@@ -77,7 +80,7 @@ def test_create_no_defaults(tfopen, exists, isdir, listdir, time, sagemaker_sess
 
     assert model.prepare_container_def(INSTANCE_TYPE) == {
         'Environment': {'SAGEMAKER_PROGRAM': 'blah.py',
-                        'SAGEMAKER_SUBMIT_DIRECTORY': 's3://cb/cp/sourcedir.tar.gz',
+                        'SAGEMAKER_SUBMIT_DIRECTORY': 's3://cb/cp/name/sourcedir.tar.gz',
                         'SAGEMAKER_CONTAINER_LOG_LEVEL': '55',
                         'SAGEMAKER_REGION': 'us-west-2',
                         'SAGEMAKER_ENABLE_CLOUDWATCH_METRICS': 'true',
@@ -97,7 +100,8 @@ def test_deploy(tfo, time, sagemaker_session):
           'ModelName': 'mi-2017-10-10-14-14-15',
           'InstanceType': INSTANCE_TYPE,
           'InitialInstanceCount': 1,
-          'VariantName': 'AllTraffic'}])
+          'VariantName': 'AllTraffic'}],
+        None)
 
 
 @patch('tarfile.open')
@@ -111,4 +115,37 @@ def test_deploy_endpoint_name(tfo, time, sagemaker_session):
           'ModelName': 'mi-2017-10-10-14-14-15',
           'InstanceType': INSTANCE_TYPE,
           'InitialInstanceCount': 55,
-          'VariantName': 'AllTraffic'}])
+          'VariantName': 'AllTraffic'}],
+        None)
+
+
+@patch('tarfile.open')
+@patch('time.strftime', return_value=TIMESTAMP)
+def test_deploy_tags(tfo, time, sagemaker_session):
+    model = DummyFrameworkModel(sagemaker_session)
+    tags = [{'ModelName': 'TestModel'}]
+    model.deploy(instance_type=INSTANCE_TYPE, initial_instance_count=1, tags=tags)
+    sagemaker_session.endpoint_from_production_variants.assert_called_with(
+        'mi-2017-10-10-14-14-15',
+        [{'InitialVariantWeight': 1,
+          'ModelName': 'mi-2017-10-10-14-14-15',
+          'InstanceType': INSTANCE_TYPE,
+          'InitialInstanceCount': 1,
+          'VariantName': 'AllTraffic'}],
+        tags)
+
+
+@patch('sagemaker.model.Session')
+@patch('sagemaker.model.LocalSession')
+@patch('tarfile.open', MagicMock())
+def test_deploy_creates_correct_session(local_session, session):
+
+    # We expect a LocalSession when deploying to instance_type = 'local'
+    model = DummyFrameworkModel(sagemaker_session=None)
+    model.deploy(endpoint_name='blah', instance_type='local', initial_instance_count=1)
+    assert model.sagemaker_session == local_session.return_value
+
+    # We expect a real Session when deploying to instance_type != local/local_gpu
+    model = DummyFrameworkModel(sagemaker_session=None)
+    model.deploy(endpoint_name='remote_endpoint', instance_type='ml.m4.4xlarge', initial_instance_count=2)
+    assert model.sagemaker_session == session.return_value

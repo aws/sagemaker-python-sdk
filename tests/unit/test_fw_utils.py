@@ -1,4 +1,4 @@
-# Copyright 2018 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright 2017-2018 Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -10,19 +10,24 @@
 # distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
+from __future__ import absolute_import
+
 import inspect
-from mock import Mock
+from mock import Mock, patch
 import os
-from sagemaker.fw_utils import create_image_uri, framework_name_from_image, framework_version_from_tag
-from sagemaker.fw_utils import tar_and_upload_dir, parse_s3_url, UploadedCode
+from sagemaker.fw_utils import create_image_uri, framework_name_from_image, framework_version_from_tag, \
+    model_code_key_prefix
+from sagemaker.fw_utils import tar_and_upload_dir, parse_s3_url, UploadedCode, validate_source_dir
 import pytest
 
+from sagemaker.utils import name_from_image
 
 DATA_DIR = 'data_dir'
 BUCKET_NAME = 'mybucket'
 ROLE = 'Sagemaker'
 REGION = 'us-west-2'
 SCRIPT_PATH = 'script.py'
+TIMESTAMP = '2017-10-10-14-14-15'
 
 
 @pytest.fixture()
@@ -90,34 +95,25 @@ def test_tar_and_upload_dir_s3(sagemaker_session):
     assert result == UploadedCode('s3://m', 'mnist.py')
 
 
-def test_tar_and_upload_dir_does_not_exits(sagemaker_session):
-    bucket = 'mybucker'
-    s3_key_prefix = 'something/source'
+def test_validate_source_dir_does_not_exits(sagemaker_session):
     script = 'mnist.py'
     directory = ' !@#$%^&*()path probably in not there.!@#$%^&*()'
-    with pytest.raises(ValueError) as error:
-        tar_and_upload_dir(sagemaker_session, bucket, s3_key_prefix, script, directory)
-    assert 'does not exist' in str(error)
+    with pytest.raises(ValueError):
+        validate_source_dir(script, directory)
 
 
-def test_tar_and_upload_dir_is_not_directory(sagemaker_session):
-    bucket = 'mybucker'
-    s3_key_prefix = 'something/source'
+def test_validate_source_dir_is_not_directory(sagemaker_session):
     script = 'mnist.py'
     directory = inspect.getfile(inspect.currentframe())
-    with pytest.raises(ValueError) as error:
-        tar_and_upload_dir(sagemaker_session, bucket, s3_key_prefix, script, directory)
-    assert 'is not a directory' in str(error)
+    with pytest.raises(ValueError):
+        validate_source_dir(script, directory)
 
 
-def test_tar_and_upload_dir_file_not_in_dir(sagemaker_session):
-    bucket = 'mybucker'
-    s3_key_prefix = 'something/source'
+def test_validate_source_dir_file_not_in_dir():
     script = ' !@#$%^&*() .myscript. !@#$%^&*() '
     directory = '.'
-    with pytest.raises(ValueError) as error:
-        tar_and_upload_dir(sagemaker_session, bucket, s3_key_prefix, script, directory)
-    assert 'No file named' in str(error)
+    with pytest.raises(ValueError):
+        validate_source_dir(script, directory)
 
 
 def test_tar_and_upload_dir_not_s3(sagemaker_session):
@@ -196,3 +192,37 @@ def test_parse_s3_url_fail():
     with pytest.raises(ValueError) as error:
         parse_s3_url('t3://code_location')
     assert 'Expecting \'s3\' scheme' in str(error)
+
+
+def test_model_code_key_prefix_with_all_values_present():
+    key_prefix = model_code_key_prefix('prefix', 'model_name', 'image_name')
+    assert key_prefix == 'prefix/model_name'
+
+
+def test_model_code_key_prefix_with_no_prefix_and_all_other_values_present():
+    key_prefix = model_code_key_prefix(None, 'model_name', 'image_name')
+    assert key_prefix == 'model_name'
+
+
+@patch('time.strftime', return_value=TIMESTAMP)
+def test_model_code_key_prefix_with_only_image_present(time):
+    key_prefix = model_code_key_prefix(None, None, 'image_name')
+    assert key_prefix == name_from_image('image_name')
+
+
+@patch('time.strftime', return_value=TIMESTAMP)
+def test_model_code_key_prefix_and_image_present(time):
+    key_prefix = model_code_key_prefix('prefix', None, 'image_name')
+    assert key_prefix == 'prefix/' + name_from_image('image_name')
+
+
+def test_model_code_key_prefix_with_prefix_present_and_others_none_fail():
+    with pytest.raises(TypeError) as error:
+        model_code_key_prefix('prefix', None, None)
+    assert 'expected string' in str(error)
+
+
+def test_model_code_key_prefix_with_all_none_fail():
+    with pytest.raises(TypeError) as error:
+        model_code_key_prefix(None, None, None)
+    assert 'expected string' in str(error)

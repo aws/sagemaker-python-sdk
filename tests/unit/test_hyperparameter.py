@@ -1,4 +1,4 @@
-# Copyright 2017 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright 2017-2018 Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -10,15 +10,17 @@
 # distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
+from __future__ import absolute_import
+
 import pytest
 from sagemaker.amazon.hyperparameter import Hyperparameter
 
 
 class Test(object):
 
-    blank = Hyperparameter(name="some-name", data_type=int)
+    blank = Hyperparameter(name='some-name', data_type=int)
     elizabeth = Hyperparameter(name='elizabeth')
-    validated = Hyperparameter(name="validated", validate=lambda value: value > 55, data_type=int)
+    validated = Hyperparameter(name='validated', validate=lambda value: value > 55, data_type=int)
 
 
 def test_blank_access():
@@ -60,7 +62,7 @@ def test_validated():
 def test_data_type():
     x = Test()
     x.validated = 66
-    assert type(x.validated) == Test.__dict__["validated"].data_type
+    assert type(x.validated) == Test.__dict__['validated'].data_type
 
 
 def test_from_string():

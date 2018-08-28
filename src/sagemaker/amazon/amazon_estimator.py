@@ -1,4 +1,4 @@
-# Copyright 2017 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright 2017-2018 Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -10,6 +10,8 @@
 # distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
+from __future__ import absolute_import
+
 import json
 import logging
 import tempfile
@@ -17,7 +19,7 @@ from six.moves.urllib.parse import urlparse
 from sagemaker.amazon import validation
 from sagemaker.amazon.hyperparameter import Hyperparameter as hp  # noqa
 from sagemaker.amazon.common import write_numpy_to_dense_tensor
-from sagemaker.estimator import EstimatorBase
+from sagemaker.estimator import EstimatorBase, _TrainingJob
 from sagemaker.session import s3_input
 from sagemaker.utils import sagemaker_timestamp
 
@@ -47,8 +49,10 @@ class AmazonAlgorithmEstimatorBase(EstimatorBase):
         self.data_location = data_location
 
     def train_image(self):
-        repo = '{}:{}'.format(type(self).repo_name, type(self).repo_version)
-        return '{}/{}'.format(registry(self.sagemaker_session.boto_region_name, type(self).repo_name), repo)
+        return get_image_uri(
+            self.sagemaker_session.boto_region_name,
+            type(self).repo_name,
+            type(self).repo_version)
 
     def hyperparameters(self):
         return hp.serialize_all(self)
@@ -90,11 +94,38 @@ class AmazonAlgorithmEstimatorBase(EstimatorBase):
         del init_params['image']
         return init_params
 
-    def fit(self, records, mini_batch_size=None, **kwargs):
+    def _prepare_for_training(self, records, mini_batch_size=None, job_name=None):
+        """Set hyperparameters needed for training.
+
+        Args:
+            * records (:class:`~RecordSet`): The records to train this ``Estimator`` on.
+            * mini_batch_size (int or None): The size of each mini-batch to use when training. If ``None``, a
+                default value will be used.
+            * job_name (str): Name of the training job to be created. If not specified, one is generated,
+                using the base name given to the constructor if applicable.
+        """
+        super(AmazonAlgorithmEstimatorBase, self)._prepare_for_training(job_name=job_name)
+
+        feature_dim = None
+
+        if isinstance(records, list):
+            for record in records:
+                if record.channel == 'train':
+                    feature_dim = record.feature_dim
+                    break
+            if feature_dim is None:
+                raise ValueError('Must provide train channel.')
+        else:
+            feature_dim = records.feature_dim
+
+        self.feature_dim = feature_dim
+        self.mini_batch_size = mini_batch_size
+
+    def fit(self, records, mini_batch_size=None, wait=True, logs=True, job_name=None):
         """Fit this Estimator on serialized Record objects, stored in S3.
 
         ``records`` should be an instance of :class:`~RecordSet`. This defines a collection of
-        s3 data files to train this ``Estimator`` on.
+        S3 data files to train this ``Estimator`` on.
 
         Training data is expected to be encoded as dense or sparse vectors in the "values" feature
         on each Record. If the data is labeled, the label is expected to be encoded as a list of
@@ -108,15 +139,19 @@ class AmazonAlgorithmEstimatorBase(EstimatorBase):
 
         Args:
             records (:class:`~RecordSet`): The records to train this ``Estimator`` on
-            mini_batch_size (int or None): The size of each mini-batch to use when training. If None, a
+            mini_batch_size (int or None): The size of each mini-batch to use when training. If ``None``, a
                 default value will be used.
+            wait (bool): Whether the call should wait until the job completes (default: True).
+            logs (bool): Whether to show the logs produced by the job.
+                Only meaningful when wait is True (default: True).
+            job_name (str): Training job name. If not specified, the estimator generates a default job name,
+                based on the training image name and current timestamp.
         """
-        self.feature_dim = records.feature_dim
-        self.mini_batch_size = mini_batch_size
+        self._prepare_for_training(records, job_name=job_name, mini_batch_size=mini_batch_size)
 
-        data = {records.channel: s3_input(records.s3_data, distribution='ShardedByS3Key',
-                                          s3_data_type=records.s3_data_type)}
-        super(AmazonAlgorithmEstimatorBase, self).fit(data, **kwargs)
+        self.latest_training_job = _TrainingJob.start_new(self, records)
+        if wait:
+            self.latest_training_job.wait(logs=logs)
 
     def record_set(self, train, labels=None, channel="train"):
         """Build a :class:`~RecordSet` from a numpy :class:`~ndarray` matrix and label vector.
@@ -178,6 +213,14 @@ class RecordSet(object):
         """Return an unambiguous representation of this RecordSet"""
         return str((RecordSet, self.__dict__))
 
+    def data_channel(self):
+        """Return a dictionary to represent the training data in a channel for use with ``fit()``"""
+        return {self.channel: self.records_s3_input()}
+
+    def records_s3_input(self):
+        """Return a s3_input to represent the training data"""
+        return s3_input(self.s3_data, distribution='ShardedByS3Key', s3_data_type=self.s3_data_type)
+
 
 def _build_shards(num_shards, array):
     if num_shards < 1:
@@ -227,21 +270,65 @@ def upload_numpy_to_s3_shards(num_shards, s3, bucket, key_prefix, array, labels=
 
 
 def registry(region_name, algorithm=None):
-    """Return docker registry for the given AWS region"""
-    if algorithm in [None, "pca", "kmeans", "linear-learner", "factorization-machines", "ntm"]:
+    """Return docker registry for the given AWS region
+
+    Note: Not all the algorithms listed below have an Amazon Estimator implemented. For full list of
+    pre-implemented Estimators, look at:
+
+    https://github.com/aws/sagemaker-python-sdk/tree/master/src/sagemaker/amazon
+    """
+    if algorithm in [None, "pca", "kmeans", "linear-learner", "factorization-machines", "ntm",
+                     "randomcutforest", "knn"]:
         account_id = {
             "us-east-1": "382416733822",
             "us-east-2": "404615174143",
             "us-west-2": "174872318107",
-            "eu-west-1": "438346466558"
+            "eu-west-1": "438346466558",
+            "eu-central-1": "664544806723",
+            "ap-northeast-1": "351501993468",
+            "ap-northeast-2": "835164637446",
+            "ap-southeast-2": "712309505854"
         }[region_name]
     elif algorithm in ["lda"]:
         account_id = {
             "us-east-1": "766337827248",
             "us-east-2": "999911452149",
             "us-west-2": "266724342769",
-            "eu-west-1": "999678624901"
+            "eu-west-1": "999678624901",
+            "eu-central-1": "353608530281",
+            "ap-northeast-1": "258307448986",
+            "ap-northeast-2": "293181348795",
+            "ap-southeast-2": "297031611018"
+        }[region_name]
+    elif algorithm in ["forecasting-deepar"]:
+        account_id = {
+            "us-east-1": "522234722520",
+            "us-east-2": "566113047672",
+            "us-west-2": "156387875391",
+            "eu-west-1": "224300973850",
+            "eu-central-1": "495149712605",
+            "ap-northeast-1": "633353088612",
+            "ap-northeast-2": "204372634319",
+            "ap-southeast-2": "514117268639"
+        }[region_name]
+    elif algorithm in ["xgboost", "seq2seq", "image-classification", "blazingtext",
+                       "object-detection"]:
+        account_id = {
+            "us-east-1": "811284229777",
+            "us-east-2": "825641698319",
+            "us-west-2": "433757028032",
+            "eu-west-1": "685385470294",
+            "eu-central-1": "813361260812",
+            "ap-northeast-1": "501404015308",
+            "ap-northeast-2": "306986355934",
+            "ap-southeast-2": "544295431143"
         }[region_name]
     else:
         raise ValueError("Algorithm class:{} doesn't have mapping to account_id with images".format(algorithm))
     return "{}.dkr.ecr.{}.amazonaws.com".format(account_id, region_name)
+
+
+def get_image_uri(region_name, repo_name, repo_version=1):
+    """Return algorithm image URI for the given AWS region, repository name, and repository version"""
+    repo = '{}:{}'.format(repo_name, repo_version)
+    return '{}/{}'.format(registry(region_name, repo_name), repo)

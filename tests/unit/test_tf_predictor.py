@@ -1,4 +1,4 @@
-# Copyright 2017 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright 2017-2018 Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -10,20 +10,24 @@
 # distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
-import sys
+from __future__ import absolute_import
 
 import io
 import json
+import sys
+
+from google.protobuf import json_format
 import numpy as np
 import pytest
-import tensorflow as tf
-from google.protobuf import json_format
 from mock import Mock
+import tensorflow as tf
+import six
+from six import BytesIO
 from tensorflow.python.saved_model.signature_constants import DEFAULT_SERVING_SIGNATURE_DEF_KEY, PREDICT_INPUTS
 
 from sagemaker.predictor import RealTimePredictor
-from sagemaker.tensorflow.predictor import tf_serializer, tf_deserializer, tf_csv_serializer, tf_json_serializer, \
-    tf_json_deserializer
+from sagemaker.tensorflow.predictor import tf_csv_serializer, tf_deserializer, tf_json_deserializer, \
+    tf_json_serializer, tf_serializer
 from sagemaker.tensorflow.tensorflow_serving.apis import classification_pb2
 
 BUCKET_NAME = 'mybucket'
@@ -135,6 +139,75 @@ def test_classification_request_csv(sagemaker_session):
   }
 }
 """
+
+
+def test_json_deserializer_should_work_with_predict_response():
+    data = b"""{
+"outputs": {
+    "example_strings": {
+      "dtype": "DT_STRING",
+      "tensorShape": {
+        "dim": [
+          {
+            "size": "3"
+          }
+        ]
+      },
+      "stringVal": [
+        "YXBwbGU=",
+        "YmFuYW5h",
+        "b3Jhbmdl"
+      ]
+    },
+    "ages": {
+      "dtype": "DT_FLOAT",
+      "floatVal": [
+        4.954165935516357
+      ],
+      "tensorShape": {
+        "dim": [
+          {
+            "size": "1"
+          }
+        ]
+      }
+    }
+  },
+  "modelSpec": {
+    "version": "1531758457",
+    "name": "generic_model",
+    "signatureName": "serving_default"
+  }
+}"""
+
+    stream = BytesIO(data)
+
+    response = tf_json_deserializer(stream, 'application/json')
+
+    if six.PY2:
+        string_vals = ['apple', 'banana', 'orange']
+    else:
+        string_vals = [b'apple', b'banana', b'orange']
+
+    assert response == {
+        'model_spec': {
+            'name': u'generic_model',
+            'signature_name': u'serving_default',
+            'version': {'value': 1531758457. if six.PY2 else 1531758457}
+        },
+        'outputs': {
+            u'ages': {
+                'dtype': 1,
+                'float_val': [4.954165935516357],
+                'tensor_shape': {'dim': [{'size': 1. if six.PY2 else 1}]}
+            },
+            u'example_strings': {
+                'dtype': 7,
+                'string_val': string_vals,
+                'tensor_shape': {'dim': [{'size': 3. if six.PY2 else 3}]}
+            }
+        }
+    }
 
 
 def test_classification_request_pb(sagemaker_session):

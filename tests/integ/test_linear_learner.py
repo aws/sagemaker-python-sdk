@@ -1,4 +1,4 @@
-# Copyright 2017 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright 2017-2018 Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -10,6 +10,8 @@
 # distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
+from __future__ import absolute_import
+
 import gzip
 import os
 import pickle
@@ -17,15 +19,17 @@ import sys
 import time
 
 import numpy as np
+import pytest
 
 from sagemaker.amazon.linear_learner import LinearLearner, LinearLearnerModel
 from sagemaker.utils import name_from_base, sagemaker_timestamp
-from tests.integ import DATA_DIR
+from tests.integ import DATA_DIR, TRAINING_DEFAULT_TIMEOUT_MINUTES
 from tests.integ.timeout import timeout, timeout_and_delete_endpoint_by_name
 
 
+@pytest.mark.continuous_testing
 def test_linear_learner(sagemaker_session):
-    with timeout(minutes=15):
+    with timeout(minutes=TRAINING_DEFAULT_TIMEOUT_MINUTES):
         data_path = os.path.join(DATA_DIR, 'one_p_mnist', 'mnist.pkl.gz')
         pickle_args = {} if sys.version_info.major == 2 else {'encoding': 'latin1'}
 
@@ -77,7 +81,36 @@ def test_linear_learner(sagemaker_session):
         ll.fit(ll.record_set(train_set[0][:200], train_set[1][:200]))
 
     endpoint_name = name_from_base('linear-learner')
-    with timeout_and_delete_endpoint_by_name(endpoint_name, sagemaker_session, minutes=20):
+    with timeout_and_delete_endpoint_by_name(endpoint_name, sagemaker_session):
+
+        predictor = ll.deploy(1, 'ml.c4.xlarge', endpoint_name=endpoint_name)
+
+        result = predictor.predict(train_set[0][0:100])
+        assert len(result) == 100
+        for record in result:
+            assert record.label["predicted_label"] is not None
+            assert record.label["score"] is not None
+
+
+def test_linear_learner_multiclass(sagemaker_session):
+    with timeout(minutes=TRAINING_DEFAULT_TIMEOUT_MINUTES):
+        data_path = os.path.join(DATA_DIR, 'one_p_mnist', 'mnist.pkl.gz')
+        pickle_args = {} if sys.version_info.major == 2 else {'encoding': 'latin1'}
+
+        # Load the data into memory as numpy arrays
+        with gzip.open(data_path, 'rb') as f:
+            train_set, _, _ = pickle.load(f, **pickle_args)
+
+        train_set = train_set[0], train_set[1].astype(np.dtype('float32'))
+
+        ll = LinearLearner('SageMakerRole', 1, 'ml.c4.2xlarge', base_job_name='test-linear-learner',
+                           predictor_type='multiclass_classifier', num_classes=10, sagemaker_session=sagemaker_session)
+
+        ll.epochs = 1
+        ll.fit(ll.record_set(train_set[0][:200], train_set[1][:200]))
+
+    endpoint_name = name_from_base('linear-learner')
+    with timeout_and_delete_endpoint_by_name(endpoint_name, sagemaker_session):
 
         predictor = ll.deploy(1, 'ml.c4.xlarge', endpoint_name=endpoint_name)
 
@@ -92,7 +125,7 @@ def test_async_linear_learner(sagemaker_session):
     training_job_name = ""
     endpoint_name = 'test-linear-learner-async-{}'.format(sagemaker_timestamp())
 
-    with timeout(minutes=5):
+    with timeout(minutes=TRAINING_DEFAULT_TIMEOUT_MINUTES):
         data_path = os.path.join(DATA_DIR, 'one_p_mnist', 'mnist.pkl.gz')
         pickle_args = {} if sys.version_info.major == 2 else {'encoding': 'latin1'}
 
@@ -147,7 +180,7 @@ def test_async_linear_learner(sagemaker_session):
         print("Waiting to re-attach to the training job: %s" % training_job_name)
         time.sleep(20)
 
-    with timeout_and_delete_endpoint_by_name(endpoint_name, sagemaker_session, minutes=35):
+    with timeout_and_delete_endpoint_by_name(endpoint_name, sagemaker_session):
         estimator = LinearLearner.attach(training_job_name=training_job_name, sagemaker_session=sagemaker_session)
         model = LinearLearnerModel(estimator.model_data, role='SageMakerRole', sagemaker_session=sagemaker_session)
         predictor = model.deploy(1, 'ml.c4.xlarge', endpoint_name=endpoint_name)

@@ -18,7 +18,10 @@ scratch*.py
 examples/tensorflow/distributed_mnist/data
 *.iml
 doc/_build
+doc/_static
+doc/_templates
 **/.DS_Store
 venv/
 *~
 .pytest_cache/
+*.swp

@@ -1,4 +1,4 @@
-# Copyright 2017 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright 2017-2018 Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -10,20 +10,25 @@
 # distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
+from __future__ import absolute_import
+
 import gzip
 import os
 import pickle
 import sys
 import time
 
+import pytest
+
 import sagemaker.amazon.pca
 from sagemaker.utils import name_from_base
-from tests.integ import DATA_DIR
+from tests.integ import DATA_DIR, TRAINING_DEFAULT_TIMEOUT_MINUTES
 from tests.integ.timeout import timeout, timeout_and_delete_endpoint_by_name
 
 
+@pytest.mark.continuous_testing
 def test_pca(sagemaker_session):
-    with timeout(minutes=15):
+    with timeout(minutes=TRAINING_DEFAULT_TIMEOUT_MINUTES):
         data_path = os.path.join(DATA_DIR, 'one_p_mnist', 'mnist.pkl.gz')
         pickle_args = {} if sys.version_info.major == 2 else {'encoding': 'latin1'}
 
@@ -41,7 +46,7 @@ def test_pca(sagemaker_session):
         pca.fit(pca.record_set(train_set[0][:100]))
 
     endpoint_name = name_from_base('pca')
-    with timeout_and_delete_endpoint_by_name(endpoint_name, sagemaker_session, minutes=20):
+    with timeout_and_delete_endpoint_by_name(endpoint_name, sagemaker_session):
         pca_model = sagemaker.amazon.pca.PCAModel(model_data=pca.model_data, role='SageMakerRole',
                                                   sagemaker_session=sagemaker_session)
         predictor = pca_model.deploy(initial_instance_count=1, instance_type="ml.c4.xlarge",
@@ -79,7 +84,7 @@ def test_async_pca(sagemaker_session):
         print("Detached from training job. Will re-attach in 20 seconds")
         time.sleep(20)
 
-    with timeout_and_delete_endpoint_by_name(endpoint_name, sagemaker_session, minutes=35):
+    with timeout_and_delete_endpoint_by_name(endpoint_name, sagemaker_session):
         estimator = sagemaker.amazon.pca.PCA.attach(training_job_name=training_job_name,
                                                     sagemaker_session=sagemaker_session)
 

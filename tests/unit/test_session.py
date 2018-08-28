@@ -1,4 +1,4 @@
-# Copyright 2017 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright 2017-2018 Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -10,15 +10,20 @@
 # distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
-import pytest
+from __future__ import absolute_import
+
+import datetime
 import io
+import logging
+
+import pytest
 import six
+from botocore.exceptions import ClientError
 from mock import Mock, patch, call
+
 import sagemaker
 from sagemaker import s3_input, Session, get_execution_role
-import datetime
-
-from botocore.exceptions import ClientError
+from sagemaker.session import _tuning_job_status, _transform_job_status, _train_done
 
 REGION = 'us-west-2'
 
@@ -37,7 +42,7 @@ def test_get_execution_role():
     assert actual == 'arn:aws:iam::369233609183:role/SageMakerRole'
 
 
-def test_get_execution_role_works_with_servie_role():
+def test_get_execution_role_works_with_service_role():
     session = Mock()
     session.get_caller_identity_arn.return_value = \
         'arn:aws:iam::369233609183:role/service-role/AmazonSageMaker-ExecutionRole-20171129T072388'
@@ -57,10 +62,24 @@ def test_get_execution_role_throws_exception_if_arn_is_not_role():
 
 def test_get_caller_identity_arn_from_an_user(boto_session):
     sess = Session(boto_session)
-    sess.boto_session.client('sts').get_caller_identity.return_value = {'Arn': 'arn:aws:iam::369233609183:user/mia'}
+    arn = 'arn:aws:iam::369233609183:user/mia'
+    sess.boto_session.client('sts').get_caller_identity.return_value = {'Arn': arn}
+    sess.boto_session.client('iam').get_role.return_value = {'Role': {'Arn': arn}}
 
     actual = sess.get_caller_identity_arn()
     assert actual == 'arn:aws:iam::369233609183:user/mia'
+
+
+def test_get_caller_identity_arn_from_an_user_without_permissions(boto_session):
+    sess = Session(boto_session)
+    arn = 'arn:aws:iam::369233609183:user/mia'
+    sess.boto_session.client('sts').get_caller_identity.return_value = {'Arn': arn}
+    sess.boto_session.client('iam').get_role.side_effect = ClientError({}, {})
+
+    with patch('logging.Logger.warning') as mock_logger:
+        actual = sess.get_caller_identity_arn()
+        assert actual == 'arn:aws:iam::369233609183:user/mia'
+        mock_logger.assert_called_once()
 
 
 def test_get_caller_identity_arn_from_a_role(boto_session):
@@ -68,17 +87,35 @@ def test_get_caller_identity_arn_from_a_role(boto_session):
     arn = 'arn:aws:sts::369233609183:assumed-role/SageMakerRole/6d009ef3-5306-49d5-8efc-78db644d8122'
     sess.boto_session.client('sts').get_caller_identity.return_value = {'Arn': arn}
 
+    expected_role = 'arn:aws:iam::369233609183:role/SageMakerRole'
+    sess.boto_session.client('iam').get_role.return_value = {'Role': {'Arn': expected_role}}
+
     actual = sess.get_caller_identity_arn()
-    assert actual == 'arn:aws:iam::369233609183:role/SageMakerRole'
+    assert actual == expected_role
 
 
 def test_get_caller_identity_arn_from_a_execution_role(boto_session):
     sess = Session(boto_session)
     arn = 'arn:aws:sts::369233609183:assumed-role/AmazonSageMaker-ExecutionRole-20171129T072388/SageMaker'
     sess.boto_session.client('sts').get_caller_identity.return_value = {'Arn': arn}
+    sess.boto_session.client('iam').get_role.return_value = {'Role': {'Arn': arn}}
 
     actual = sess.get_caller_identity_arn()
     assert actual == 'arn:aws:iam::369233609183:role/service-role/AmazonSageMaker-ExecutionRole-20171129T072388'
+
+
+def test_get_caller_identity_arn_from_role_with_path(boto_session):
+    sess = Session(boto_session)
+    arn_prefix = 'arn:aws:iam::369233609183:role'
+    role_name = 'name'
+    sess.boto_session.client('sts').get_caller_identity.return_value = {'Arn': '/'.join([arn_prefix, role_name])}
+
+    role_path = 'path'
+    role_with_path = '/'.join([arn_prefix, role_path, role_name])
+    sess.boto_session.client('iam').get_role.return_value = {'Role': {'Arn': role_with_path}}
+
+    actual = sess.get_caller_identity_arn()
+    assert actual == role_with_path
 
 
 def test_delete_endpoint(boto_session):
@@ -91,15 +128,15 @@ def test_delete_endpoint(boto_session):
 def test_s3_input_all_defaults():
     prefix = 'pre'
     actual = s3_input(s3_data=prefix)
-    expected = \
-        {'DataSource': {
+    expected = {
+        'DataSource': {
             'S3DataSource': {
                 'S3DataDistributionType': 'FullyReplicated',
                 'S3DataType': 'S3Prefix',
                 'S3Uri': prefix
             }
         }
-        }
+    }
     assert actual.config == expected
 
 
@@ -138,9 +175,10 @@ INSTANCE_TYPE = 'ml.c4.xlarge'
 MAX_SIZE = 30
 MAX_TIME = 3 * 60 * 60
 JOB_NAME = 'jobname'
+TAGS = [{'Name': 'some-tag', 'Value': 'value-for-tag'}]
+VPC_CONFIG = {'Subnets': 'subnet', 'SecurityGroupIds': 'sgi-blahblah'}
 
 DEFAULT_EXPECTED_TRAIN_JOB_ARGS = {
-    # 'HyperParameters': None,
     'OutputDataConfig': {
         'S3OutputPath': S3_OUTPUT
     },
@@ -183,6 +221,10 @@ COMPLETED_DESCRIBE_JOB_RESULT.update(
     {'TrainingStartTime': datetime.datetime(2018, 2, 17, 7, 15, 0, 103000)})
 COMPLETED_DESCRIBE_JOB_RESULT.update(
     {'TrainingEndTime': datetime.datetime(2018, 2, 17, 7, 19, 34, 953000)})
+
+STOPPED_DESCRIBE_JOB_RESULT = dict(COMPLETED_DESCRIBE_JOB_RESULT)
+STOPPED_DESCRIBE_JOB_RESULT.update({'TrainingJobStatus': 'Stopped'})
+
 IN_PROGRESS_DESCRIBE_JOB_RESULT = dict(DEFAULT_EXPECTED_TRAIN_JOB_ARGS)
 IN_PROGRESS_DESCRIBE_JOB_RESULT.update({'TrainingJobStatus': 'InProgress'})
 
@@ -218,10 +260,133 @@ def test_train_pack_to_request(sagemaker_session):
 
     sagemaker_session.train(image=IMAGE, input_mode='File', input_config=in_config, role=EXPANDED_ROLE,
                             job_name=JOB_NAME, output_config=out_config, resource_config=resource_config,
-                            hyperparameters=None, stop_condition=stop_cond)
+                            hyperparameters=None, stop_condition=stop_cond, tags=None, vpc_config=None)
 
     assert sagemaker_session.sagemaker_client.method_calls[0] == (
         'create_training_job', (), DEFAULT_EXPECTED_TRAIN_JOB_ARGS)
+
+
+def test_stop_tuning_job(sagemaker_session):
+    sms = sagemaker_session
+    sms.sagemaker_client.stop_hyper_parameter_tuning_job = Mock(name='stop_hyper_parameter_tuning_job')
+
+    sagemaker_session.stop_tuning_job(JOB_NAME)
+    sms.sagemaker_client.stop_hyper_parameter_tuning_job.assert_called_once_with(HyperParameterTuningJobName=JOB_NAME)
+
+
+def test_stop_tuning_job_client_error_already_stopped(sagemaker_session):
+    sms = sagemaker_session
+    exception = ClientError({'Error': {'Code': 'ValidationException'}}, 'Operation')
+    sms.sagemaker_client.stop_hyper_parameter_tuning_job = Mock(name='stop_hyper_parameter_tuning_job',
+                                                                side_effect=exception)
+    sagemaker_session.stop_tuning_job(JOB_NAME)
+
+    sms.sagemaker_client.stop_hyper_parameter_tuning_job.assert_called_once_with(HyperParameterTuningJobName=JOB_NAME)
+
+
+def test_stop_tuning_job_client_error(sagemaker_session):
+    error_response = {'Error': {'Code': 'MockException', 'Message': 'MockMessage'}}
+    operation = 'Operation'
+    exception = ClientError(error_response, operation)
+
+    sms = sagemaker_session
+    sms.sagemaker_client.stop_hyper_parameter_tuning_job = Mock(name='stop_hyper_parameter_tuning_job',
+                                                                side_effect=exception)
+
+    with pytest.raises(ClientError) as e:
+        sagemaker_session.stop_tuning_job(JOB_NAME)
+
+    sms.sagemaker_client.stop_hyper_parameter_tuning_job.assert_called_once_with(HyperParameterTuningJobName=JOB_NAME)
+    assert 'An error occurred (MockException) when calling the Operation operation: MockMessage' in str(e)
+
+
+def test_train_pack_to_request_with_optional_params(sagemaker_session):
+    in_config = [{
+        'ChannelName': 'training',
+        'DataSource': {
+            'S3DataSource': {
+                'S3DataDistributionType': 'FullyReplicated',
+                'S3DataType': 'S3Prefix',
+                'S3Uri': S3_INPUT_URI
+            }
+        }
+    }]
+
+    out_config = {'S3OutputPath': S3_OUTPUT}
+
+    resource_config = {'InstanceCount': INSTANCE_COUNT,
+                       'InstanceType': INSTANCE_TYPE,
+                       'VolumeSizeInGB': MAX_SIZE}
+
+    stop_cond = {'MaxRuntimeInSeconds': MAX_TIME}
+    hyperparameters = {'foo': 'bar'}
+
+    sagemaker_session.train(image=IMAGE, input_mode='File', input_config=in_config, role=EXPANDED_ROLE,
+                            job_name=JOB_NAME, output_config=out_config, resource_config=resource_config,
+                            hyperparameters=hyperparameters, stop_condition=stop_cond, tags=TAGS, vpc_config=VPC_CONFIG)
+
+    _, _, actual_train_args = sagemaker_session.sagemaker_client.method_calls[0]
+
+    assert actual_train_args['HyperParameters'] == hyperparameters
+    assert actual_train_args['Tags'] == TAGS
+    assert actual_train_args['VpcConfig'] == VPC_CONFIG
+
+
+def test_transform_pack_to_request(sagemaker_session):
+    model_name = 'my-model'
+
+    in_config = {
+        'CompressionType': 'None',
+        'ContentType': 'text/csv',
+        'SplitType': 'None',
+        'DataSource': {
+            'S3DataSource': {
+                'S3DataType': 'S3Prefix',
+                'S3Uri': S3_INPUT_URI,
+            },
+        },
+    }
+
+    out_config = {'S3OutputPath': S3_OUTPUT}
+
+    resource_config = {
+        'InstanceCount': INSTANCE_COUNT,
+        'InstanceType': INSTANCE_TYPE,
+    }
+
+    expected_args = {
+        'TransformJobName': JOB_NAME,
+        'ModelName': model_name,
+        'TransformInput': in_config,
+        'TransformOutput': out_config,
+        'TransformResources': resource_config,
+    }
+
+    sagemaker_session.transform(job_name=JOB_NAME, model_name=model_name, strategy=None, max_concurrent_transforms=None,
+                                max_payload=None, env=None, input_config=in_config, output_config=out_config,
+                                resource_config=resource_config, tags=None)
+
+    _, _, actual_args = sagemaker_session.sagemaker_client.method_calls[0]
+    assert actual_args == expected_args
+
+
+def test_transform_pack_to_request_with_optional_params(sagemaker_session):
+    strategy = 'strategy'
+    max_concurrent_transforms = 1
+    max_payload = 0
+    env = {'FOO': 'BAR'}
+
+    sagemaker_session.transform(job_name=JOB_NAME, model_name='my-model', strategy=strategy,
+                                max_concurrent_transforms=max_concurrent_transforms,
+                                env=env, max_payload=max_payload, input_config={}, output_config={},
+                                resource_config={}, tags=TAGS)
+
+    _, _, actual_args = sagemaker_session.sagemaker_client.method_calls[0]
+    assert actual_args['BatchStrategy'] == strategy
+    assert actual_args['MaxConcurrentTransforms'] == max_concurrent_transforms
+    assert actual_args['MaxPayloadInMB'] == max_payload
+    assert actual_args['Environment'] == env
+    assert actual_args['Tags'] == TAGS
 
 
 @patch('sys.stdout', new_callable=io.BytesIO if six.PY2 else io.StringIO)
@@ -269,6 +434,16 @@ def sagemaker_session_complete():
 
 
 @pytest.fixture()
+def sagemaker_session_stopped():
+    boto_mock = Mock(name='boto_session')
+    boto_mock.client('logs').describe_log_streams.return_value = DEFAULT_LOG_STREAMS
+    boto_mock.client('logs').get_log_events.side_effect = DEFAULT_LOG_EVENTS
+    ims = sagemaker.Session(boto_session=boto_mock, sagemaker_client=Mock())
+    ims.sagemaker_client.describe_training_job.return_value = STOPPED_DESCRIBE_JOB_RESULT
+    return ims
+
+
+@pytest.fixture()
 def sagemaker_session_ready_lifecycle():
     boto_mock = Mock(name='boto_session')
     boto_mock.client('logs').describe_log_streams.return_value = DEFAULT_LOG_STREAMS
@@ -301,8 +476,24 @@ def test_logs_for_job_no_wait(cw, sagemaker_session_complete):
 
 
 @patch('sagemaker.logs.ColorWrap')
+def test_logs_for_job_no_wait_stopped_job(cw, sagemaker_session_stopped):
+    ims = sagemaker_session_stopped
+    ims.logs_for_job(JOB_NAME)
+    ims.sagemaker_client.describe_training_job.assert_called_once_with(TrainingJobName=JOB_NAME)
+    cw().assert_called_with(0, 'hi there #1')
+
+
+@patch('sagemaker.logs.ColorWrap')
 def test_logs_for_job_wait_on_completed(cw, sagemaker_session_complete):
     ims = sagemaker_session_complete
+    ims.logs_for_job(JOB_NAME, wait=True, poll=0)
+    assert ims.sagemaker_client.describe_training_job.call_args_list == [call(TrainingJobName=JOB_NAME,)]
+    cw().assert_called_with(0, 'hi there #1')
+
+
+@patch('sagemaker.logs.ColorWrap')
+def test_logs_for_job_wait_on_stopped(cw, sagemaker_session_stopped):
+    ims = sagemaker_session_stopped
     ims.logs_for_job(JOB_NAME, wait=True, poll=0)
     assert ims.sagemaker_client.describe_training_job.call_args_list == [call(TrainingJobName=JOB_NAME,)]
     cw().assert_called_with(0, 'hi there #1')
@@ -326,18 +517,57 @@ def test_logs_for_job_full_lifecycle(time, cw, sagemaker_session_full_lifecycle)
                                    call(0, 'hi there #2a'), call(0, 'hi there #3')]
 
 
+MODEL_NAME = 'some-model'
+PRIMARY_CONTAINER = {
+    'Environment': {},
+    'Image': IMAGE,
+    'ModelDataUrl': 's3://sagemaker-123/output/jobname/model/model.tar.gz',
+}
+
+
+@patch('sagemaker.session._expand_container_def', return_value=PRIMARY_CONTAINER)
+def test_create_model(expand_container_def, sagemaker_session):
+    model = sagemaker_session.create_model(MODEL_NAME, ROLE, PRIMARY_CONTAINER)
+
+    assert model == MODEL_NAME
+    sagemaker_session.sagemaker_client.create_model.assert_called_with(ExecutionRoleArn=EXPANDED_ROLE,
+                                                                       ModelName=MODEL_NAME,
+                                                                       PrimaryContainer=PRIMARY_CONTAINER)
+
+
+@patch('sagemaker.session._expand_container_def', return_value=PRIMARY_CONTAINER)
+def test_create_model_already_exists(expand_container_def, sagemaker_session, caplog):
+    error_response = {'Error': {'Code': 'ValidationException', 'Message': 'Cannot create already existing model'}}
+    exception = ClientError(error_response, 'Operation')
+    sagemaker_session.sagemaker_client.create_model.side_effect = exception
+
+    model = sagemaker_session.create_model(MODEL_NAME, ROLE, PRIMARY_CONTAINER)
+    assert model == MODEL_NAME
+
+    expected_warning = ('sagemaker', logging.WARNING, 'Using already existing model: {}'.format(MODEL_NAME))
+    assert expected_warning in caplog.record_tuples
+
+
+@patch('sagemaker.session._expand_container_def', return_value=PRIMARY_CONTAINER)
+def test_create_model_failure(expand_container_def, sagemaker_session):
+    error_message = 'this is expected'
+    sagemaker_session.sagemaker_client.create_model.side_effect = RuntimeError(error_message)
+
+    with pytest.raises(RuntimeError) as e:
+        sagemaker_session.create_model(MODEL_NAME, ROLE, PRIMARY_CONTAINER)
+
+    assert error_message in str(e)
+
+
 def test_create_model_from_job(sagemaker_session):
     ims = sagemaker_session
     ims.sagemaker_client.describe_training_job.return_value = COMPLETED_DESCRIBE_JOB_RESULT
     ims.create_model_from_job(JOB_NAME)
 
-    assert call(TrainingJobName='jobname') in ims.sagemaker_client.describe_training_job.call_args_list
-    ims.sagemaker_client.create_model.assert_called_with(
-        ExecutionRoleArn='arn:aws:iam::111111111111:role/ExpandedRole',
-        ModelName='jobname',
-        PrimaryContainer={
-            'Environment': {}, 'ModelDataUrl': 's3://sagemaker-123/output/jobname/model/model.tar.gz',
-            'Image': 'myimage'})
+    assert call(TrainingJobName=JOB_NAME) in ims.sagemaker_client.describe_training_job.call_args_list
+    ims.sagemaker_client.create_model.assert_called_with(ExecutionRoleArn=EXPANDED_ROLE,
+                                                         ModelName=JOB_NAME,
+                                                         PrimaryContainer=PRIMARY_CONTAINER)
 
 
 def test_create_model_from_job_with_image(sagemaker_session):
@@ -385,3 +615,123 @@ def test_endpoint_from_production_variants(sagemaker_session):
                 'InitialVariantWeight': 1,
                 'InitialInstanceCount': 1,
                 'VariantName': 'AllTraffic'}])
+
+
+def test_endpoint_from_production_variants_with_tags(sagemaker_session):
+    ims = sagemaker_session
+    ims.sagemaker_client.describe_endpoint = Mock(return_value={'EndpointStatus': 'InService'})
+    pvs = [sagemaker.production_variant('A', 'ml.p2.xlarge'), sagemaker.production_variant('B', 'p299.4096xlarge')]
+    ex = ClientError({'Error': {'Code': 'ValidationException', 'Message': 'Could not find your thing'}}, 'b')
+    ims.sagemaker_client.describe_endpoint_config = Mock(side_effect=ex)
+    tags = [{'ModelName': 'TestModel'}]
+    sagemaker_session.endpoint_from_production_variants('some-endpoint', pvs, tags)
+    sagemaker_session.sagemaker_client.create_endpoint.assert_called_with(EndpointConfigName='some-endpoint',
+                                                                          EndpointName='some-endpoint')
+    sagemaker_session.sagemaker_client.create_endpoint_config.assert_called_with(
+        EndpointConfigName='some-endpoint',
+        ProductionVariants=[
+            {
+                'InstanceType': 'ml.p2.xlarge',
+                'ModelName': 'A',
+                'InitialVariantWeight': 1,
+                'InitialInstanceCount': 1,
+                'VariantName': 'AllTraffic'
+            },
+            {
+                'InstanceType': 'p299.4096xlarge',
+                'ModelName': 'B',
+                'InitialVariantWeight': 1,
+                'InitialInstanceCount': 1,
+                'VariantName': 'AllTraffic'}],
+        Tags=tags)
+
+
+@patch('time.sleep')
+def test_wait_for_tuning_job(sleep, sagemaker_session):
+    hyperparameter_tuning_job_desc = {'HyperParameterTuningJobStatus': 'Completed'}
+    sagemaker_session.sagemaker_client.describe_hyper_parameter_tuning_job = Mock(
+        name='describe_hyper_parameter_tuning_job', return_value=hyperparameter_tuning_job_desc)
+
+    result = sagemaker_session.wait_for_tuning_job(JOB_NAME)
+    assert result['HyperParameterTuningJobStatus'] == 'Completed'
+
+
+def test_tune_job_status(sagemaker_session):
+    hyperparameter_tuning_job_desc = {'HyperParameterTuningJobStatus': 'Completed'}
+    sagemaker_session.sagemaker_client.describe_hyper_parameter_tuning_job = Mock(
+        name='describe_hyper_parameter_tuning_job', return_value=hyperparameter_tuning_job_desc)
+
+    result = _tuning_job_status(sagemaker_session.sagemaker_client, JOB_NAME)
+
+    assert result['HyperParameterTuningJobStatus'] == 'Completed'
+
+
+def test_tune_job_status_none(sagemaker_session):
+    hyperparameter_tuning_job_desc = {'HyperParameterTuningJobStatus': 'InProgress'}
+    sagemaker_session.sagemaker_client.describe_hyper_parameter_tuning_job = Mock(
+        name='describe_hyper_parameter_tuning_job', return_value=hyperparameter_tuning_job_desc)
+
+    result = _tuning_job_status(sagemaker_session.sagemaker_client, JOB_NAME)
+
+    assert result is None
+
+
+@patch('time.sleep')
+def test_wait_for_transform_job_completed(sleep, sagemaker_session):
+    transform_job_desc = {'TransformJobStatus': 'Completed'}
+    sagemaker_session.sagemaker_client.describe_transform_job = Mock(
+        name='describe_transform_job', return_value=transform_job_desc)
+
+    assert sagemaker_session.wait_for_transform_job(JOB_NAME)['TransformJobStatus'] == 'Completed'
+
+
+@patch('time.sleep')
+def test_wait_for_transform_job_in_progress(sleep, sagemaker_session):
+    transform_job_desc_in_progress = {'TransformJobStatus': 'InProgress'}
+    transform_job_desc_in_completed = {'TransformJobStatus': 'Completed'}
+    sagemaker_session.sagemaker_client.describe_transform_job = Mock(
+        name='describe_transform_job', side_effect=[transform_job_desc_in_progress,
+                                                    transform_job_desc_in_completed])
+
+    assert sagemaker_session.wait_for_transform_job(JOB_NAME, 1)['TransformJobStatus'] == 'Completed'
+    assert 2 == sagemaker_session.sagemaker_client.describe_transform_job.call_count
+
+
+def test_transform_job_status(sagemaker_session):
+    transform_job_desc = {'TransformJobStatus': 'Completed'}
+    sagemaker_session.sagemaker_client.describe_transform_job = Mock(
+        name='describe_transform_job', return_value=transform_job_desc)
+
+    result = _transform_job_status(sagemaker_session.sagemaker_client, JOB_NAME)
+    assert result['TransformJobStatus'] == 'Completed'
+
+
+def test_transform_job_status_none(sagemaker_session):
+    transform_job_desc = {'TransformJobStatus': 'InProgress'}
+    sagemaker_session.sagemaker_client.describe_transform_job = Mock(
+        name='describe_transform_job', return_value=transform_job_desc)
+
+    result = _transform_job_status(sagemaker_session.sagemaker_client, JOB_NAME)
+    assert result is None
+
+
+def test_train_done_completed(sagemaker_session):
+    training_job_desc = {'TrainingJobStatus': 'Completed'}
+    sagemaker_session.sagemaker_client.describe_training_job = Mock(
+        name='describe_training_job', return_value=training_job_desc)
+
+    actual_job_desc, training_finished = _train_done(sagemaker_session.sagemaker_client, JOB_NAME, None)
+
+    assert actual_job_desc['TrainingJobStatus'] == 'Completed'
+    assert training_finished is True
+
+
+def test_train_done_in_progress(sagemaker_session):
+    training_job_desc = {'TrainingJobStatus': 'InProgress'}
+    sagemaker_session.sagemaker_client.describe_training_job = Mock(
+        name='describe_training_job', return_value=training_job_desc)
+
+    actual_job_desc, training_finished = _train_done(sagemaker_session.sagemaker_client, JOB_NAME, None)
+
+    assert actual_job_desc['TrainingJobStatus'] == 'InProgress'
+    assert training_finished is False

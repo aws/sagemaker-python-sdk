@@ -1,4 +1,4 @@
-# Copyright 2017 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright 2017-2018 Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -10,6 +10,8 @@
 # distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
+from __future__ import absolute_import
+
 import pytest
 from mock import Mock, patch
 
@@ -38,7 +40,8 @@ DESCRIBE_TRAINING_JOB_RESULT = {
 @pytest.fixture()
 def sagemaker_session():
     boto_mock = Mock(name='boto_session', region_name=REGION)
-    sms = Mock(name='sagemaker_session', boto_session=boto_mock)
+    sms = Mock(name='sagemaker_session', boto_session=boto_mock,
+               region_name=REGION, config=None, local_mode=False)
     sms.boto_region_name = REGION
     sms.default_bucket = Mock(name='default_bucket', return_value=BUCKET_NAME)
     sms.sagemaker_client.describe_training_job = Mock(name='describe_training_job',
@@ -71,7 +74,7 @@ def test_all_hyperparameters(sagemaker_session):
     assert kmeans.hyperparameters() == dict(
         k=str(ALL_REQ_ARGS['k']),
         init_method='random',
-        local_lloyd_max_iterations='3',
+        local_lloyd_max_iter='3',
         local_lloyd_tol='0.5',
         local_lloyd_num_trials='5',
         local_lloyd_init_method='kmeans++',
@@ -79,7 +82,7 @@ def test_all_hyperparameters(sagemaker_session):
         epochs='10',
         extra_center_factor='2',
         eval_metrics='[\'msd\', \'ssd\']',
-        force_dense='True'
+        force_dense='True',
     )
 
 
@@ -172,31 +175,33 @@ def test_call_fit(base_fit, sagemaker_session):
     assert base_fit.call_args[0][1] == MINI_BATCH_SIZE
 
 
-def test_call_fit_none_mini_batch_size(sagemaker_session):
+def test_prepare_for_training_no_mini_batch_size(sagemaker_session):
     kmeans = KMeans(base_job_name='kmeans', sagemaker_session=sagemaker_session, **ALL_REQ_ARGS)
 
     data = RecordSet('s3://{}/{}'.format(BUCKET_NAME, PREFIX), num_records=1, feature_dim=FEATURE_DIM,
                      channel='train')
-    kmeans.fit(data)
+    kmeans._prepare_for_training(data)
+
+    assert kmeans.mini_batch_size == 5000
 
 
-def test_call_fit_wrong_type_mini_batch_size(sagemaker_session):
+def test_prepare_for_training_wrong_type_mini_batch_size(sagemaker_session):
     kmeans = KMeans(base_job_name='kmeans', sagemaker_session=sagemaker_session, **ALL_REQ_ARGS)
 
     data = RecordSet('s3://{}/{}'.format(BUCKET_NAME, PREFIX), num_records=1, feature_dim=FEATURE_DIM,
                      channel='train')
 
     with pytest.raises((TypeError, ValueError)):
-        kmeans.fit(data, 'some')
+        kmeans._prepare_for_training(data, 'some')
 
 
-def test_call_fit_wrong_value_mini_batch_size(sagemaker_session):
+def test_prepare_for_training_wrong_value_mini_batch_size(sagemaker_session):
     kmeans = KMeans(base_job_name='kmeans', sagemaker_session=sagemaker_session, **ALL_REQ_ARGS)
 
     data = RecordSet('s3://{}/{}'.format(BUCKET_NAME, PREFIX), num_records=1, feature_dim=FEATURE_DIM,
                      channel='train')
     with pytest.raises(ValueError):
-        kmeans.fit(data, 0)
+        kmeans._prepare_for_training(data, 0)
 
 
 def test_model_image(sagemaker_session):

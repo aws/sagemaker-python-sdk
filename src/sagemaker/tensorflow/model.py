@@ -10,13 +10,14 @@
 # distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
+from __future__ import absolute_import
+
 import sagemaker
-from sagemaker.fw_utils import create_image_uri
+from sagemaker.fw_utils import create_image_uri, model_code_key_prefix
 from sagemaker.model import FrameworkModel, MODEL_SERVER_WORKERS_PARAM_NAME
 from sagemaker.predictor import RealTimePredictor
 from sagemaker.tensorflow.defaults import TF_VERSION
 from sagemaker.tensorflow.predictor import tf_json_serializer, tf_json_deserializer
-from sagemaker.utils import name_from_image
 
 
 class TensorFlowPredictor(RealTimePredictor):
@@ -83,10 +84,11 @@ class TensorFlowModel(FrameworkModel):
         """
         deploy_image = self.image
         if not deploy_image:
-            region_name = self.sagemaker_session.boto_session.region_name
+            region_name = self.sagemaker_session.boto_region_name
             deploy_image = create_image_uri(region_name, self.__framework_name__, instance_type,
                                             self.framework_version, self.py_version)
-        deploy_key_prefix = self.key_prefix or self.name or name_from_image(deploy_image)
+
+        deploy_key_prefix = model_code_key_prefix(self.key_prefix, self.name, deploy_image)
         self._upload_code(deploy_key_prefix)
         deploy_env = dict(self.env)
         deploy_env.update(self._framework_env_vars())

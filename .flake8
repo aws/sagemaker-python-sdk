@@ -1,0 +1,3 @@
+[flake8]
+application_import_names = sagemaker, tests
+import-order-style = google

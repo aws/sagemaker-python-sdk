@@ -40,7 +40,7 @@ _EXAMPLELIST = _descriptor.Descriptor(
       has_default_value=False, default_value=[],
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
-      options=None),
+      options=None, file=DESCRIPTOR),
   ],
   extensions=[
   ],
@@ -71,14 +71,14 @@ _EXAMPLELISTWITHCONTEXT = _descriptor.Descriptor(
       has_default_value=False, default_value=[],
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
-      options=None),
+      options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
       name='context', full_name='tensorflow.serving.ExampleListWithContext.context', index=1,
       number=2, type=11, cpp_type=10, label=1,
       has_default_value=False, default_value=None,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
-      options=None),
+      options=None, file=DESCRIPTOR),
   ],
   extensions=[
   ],
@@ -109,14 +109,14 @@ _INPUT = _descriptor.Descriptor(
       has_default_value=False, default_value=None,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
-      options=_descriptor._ParseOptions(descriptor_pb2.FieldOptions(), _b('(\001'))),
+      options=_descriptor._ParseOptions(descriptor_pb2.FieldOptions(), _b('(\001')), file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
       name='example_list_with_context', full_name='tensorflow.serving.Input.example_list_with_context', index=1,
       number=2, type=11, cpp_type=10, label=1,
       has_default_value=False, default_value=None,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
-      options=_descriptor._ParseOptions(descriptor_pb2.FieldOptions(), _b('(\001'))),
+      options=_descriptor._ParseOptions(descriptor_pb2.FieldOptions(), _b('(\001')), file=DESCRIPTOR),
   ],
   extensions=[
   ],

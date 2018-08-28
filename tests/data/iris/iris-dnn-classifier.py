@@ -1,13 +1,29 @@
+# Copyright 2017-2018 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License"). You
+# may not use this file except in compliance with the License. A copy of
+# the License is located at
+#
+#     http://aws.amazon.com/apache2.0/
+#
+# or in the "license" file accompanying this file. This file is
+# distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF
+# ANY KIND, either express or implied. See the License for the specific
+# language governing permissions and limitations under the License.
+from __future__ import absolute_import
+
 import numpy as np
 import os
 import tensorflow as tf
 
 
 def estimator_fn(run_config, hyperparameters):
-    input_tensor_name = hyperparameters['input_tensor_name']
+    input_tensor_name = hyperparameters.get('input_tensor_name', 'inputs')
+    learning_rate = hyperparameters.get('learning_rate', 0.05)
     feature_columns = [tf.feature_column.numeric_column(input_tensor_name, shape=[4])]
     return tf.estimator.DNNClassifier(feature_columns=feature_columns,
                                       hidden_units=[10, 20, 10],
+                                      optimizer=tf.train.AdagradOptimizer(learning_rate=learning_rate),
                                       n_classes=3,
                                       config=run_config)
 

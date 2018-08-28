@@ -1,4 +1,4 @@
-# Copyright 2017 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright 2017-2018 Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -10,6 +10,8 @@
 # distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
+from __future__ import absolute_import
+
 import os
 import time
 
@@ -19,13 +21,13 @@ import pytest
 from sagemaker.mxnet.estimator import MXNet
 from sagemaker.mxnet.model import MXNetModel
 from sagemaker.utils import sagemaker_timestamp
-from tests.integ import DATA_DIR
+from tests.integ import DATA_DIR, TRAINING_DEFAULT_TIMEOUT_MINUTES
 from tests.integ.timeout import timeout, timeout_and_delete_endpoint_by_name
 
 
 @pytest.fixture(scope='module')
 def mxnet_training_job(sagemaker_session, mxnet_full_version):
-    with timeout(minutes=15):
+    with timeout(minutes=TRAINING_DEFAULT_TIMEOUT_MINUTES):
         script_path = os.path.join(DATA_DIR, 'mxnet_mnist', 'mnist.py')
         data_path = os.path.join(DATA_DIR, 'mxnet_mnist')
 
@@ -42,10 +44,11 @@ def mxnet_training_job(sagemaker_session, mxnet_full_version):
         return mx.latest_training_job.name
 
 
+@pytest.mark.continuous_testing
 def test_attach_deploy(mxnet_training_job, sagemaker_session):
     endpoint_name = 'test-mxnet-attach-deploy-{}'.format(sagemaker_timestamp())
 
-    with timeout_and_delete_endpoint_by_name(endpoint_name, sagemaker_session, minutes=20):
+    with timeout_and_delete_endpoint_by_name(endpoint_name, sagemaker_session):
         estimator = MXNet.attach(mxnet_training_job, sagemaker_session=sagemaker_session)
         predictor = estimator.deploy(1, 'ml.m4.xlarge', endpoint_name=endpoint_name)
         data = numpy.zeros(shape=(1, 1, 28, 28))
@@ -55,7 +58,7 @@ def test_attach_deploy(mxnet_training_job, sagemaker_session):
 def test_deploy_model(mxnet_training_job, sagemaker_session):
     endpoint_name = 'test-mxnet-deploy-model-{}'.format(sagemaker_timestamp())
 
-    with timeout_and_delete_endpoint_by_name(endpoint_name, sagemaker_session, minutes=20):
+    with timeout_and_delete_endpoint_by_name(endpoint_name, sagemaker_session):
         desc = sagemaker_session.sagemaker_client.describe_training_job(TrainingJobName=mxnet_training_job)
         model_data = desc['ModelArtifacts']['S3ModelArtifacts']
         script_path = os.path.join(DATA_DIR, 'mxnet_mnist', 'mnist.py')
@@ -88,7 +91,7 @@ def test_async_fit(sagemaker_session):
         print("Waiting to re-attach to the training job: %s" % training_job_name)
         time.sleep(20)
 
-    with timeout_and_delete_endpoint_by_name(endpoint_name, sagemaker_session, minutes=35):
+    with timeout_and_delete_endpoint_by_name(endpoint_name, sagemaker_session):
         print("Re-attaching now to: %s" % training_job_name)
         estimator = MXNet.attach(training_job_name=training_job_name, sagemaker_session=sagemaker_session)
         predictor = estimator.deploy(1, 'ml.m4.xlarge', endpoint_name=endpoint_name)
@@ -97,7 +100,7 @@ def test_async_fit(sagemaker_session):
 
 
 def test_failed_training_job(sagemaker_session, mxnet_full_version):
-    with timeout(minutes=15):
+    with timeout():
         script_path = os.path.join(DATA_DIR, 'mxnet_mnist', 'failure_script.py')
         data_path = os.path.join(DATA_DIR, 'mxnet_mnist')
 
