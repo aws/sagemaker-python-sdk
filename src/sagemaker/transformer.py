@@ -23,7 +23,7 @@ class Transformer(object):
 
     def __init__(self, model_name, instance_count, instance_type, strategy=None, assemble_with=None, output_path=None,
                  output_kms_key=None, accept=None, max_concurrent_transforms=None, max_payload=None, tags=None,
-                 env=None, base_transform_job_name=None, sagemaker_session=None):
+                 env=None, base_transform_job_name=None, sagemaker_session=None, volume_kms_key=None):
         """Initialize a ``Transformer``.
 
         Args:
@@ -50,6 +50,8 @@ class Transformer(object):
             sagemaker_session (sagemaker.session.Session): Session object which manages interactions with
                 Amazon SageMaker APIs and any other AWS services needed. If not specified, the estimator creates one
                 using the default AWS configuration chain.
+            volume_kms_key (str): Optional. KMS key ID for encrypting the volume attached to the ML
+                compute instance (default: None).
         """
         self.model_name = model_name
         self.strategy = strategy
@@ -62,6 +64,7 @@ class Transformer(object):
 
         self.instance_count = instance_count
         self.instance_type = instance_type
+        self.volume_kms_key = volume_kms_key
 
         self.max_concurrent_transforms = max_concurrent_transforms
         self.max_payload = max_payload
@@ -159,6 +162,7 @@ class Transformer(object):
         init_params['model_name'] = job_details['ModelName']
         init_params['instance_count'] = job_details['TransformResources']['InstanceCount']
         init_params['instance_type'] = job_details['TransformResources']['InstanceType']
+        init_params['volume_kms_key'] = job_details['TransformResources'].get('VolumeKmsKeyId')
         init_params['strategy'] = job_details.get('BatchStrategy')
         init_params['assemble_with'] = job_details['TransformOutput'].get('AssembleWith')
         init_params['output_path'] = job_details['TransformOutput']['S3OutputPath']
@@ -200,7 +204,8 @@ class _TransformJob(_Job):
         output_config = _TransformJob._prepare_output_config(transformer.output_path, transformer.output_kms_key,
                                                              transformer.assemble_with, transformer.accept)
 
-        resource_config = _TransformJob._prepare_resource_config(transformer.instance_count, transformer.instance_type)
+        resource_config = _TransformJob._prepare_resource_config(transformer.instance_count, transformer.instance_type,
+                                                                 transformer.volume_kms_key)
 
         return {'input_config': input_config,
                 'output_config': output_config,
@@ -241,5 +246,5 @@ class _TransformJob(_Job):
         return config
 
     @staticmethod
-    def _prepare_resource_config(instance_count, instance_type):
-        return {'InstanceCount': instance_count, 'InstanceType': instance_type}
+    def _prepare_resource_config(instance_count, instance_type, volume_kms_key):
+        return {'InstanceCount': instance_count, 'InstanceType': instance_type, 'VolumeKmsKeyId': volume_kms_key}

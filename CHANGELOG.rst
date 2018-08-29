@@ -11,6 +11,7 @@ CHANGELOG
 =====
 
 * feature: add support for TensorFlow 1.9
+* enhancement: Add support for volume KMS key to Transformer
 
 1.9.1
 =====
