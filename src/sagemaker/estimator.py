@@ -328,7 +328,7 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):
 
     def transformer(self, instance_count, instance_type, strategy=None, assemble_with=None, output_path=None,
                     output_kms_key=None, accept=None, env=None, max_concurrent_transforms=None,
-                    max_payload=None, tags=None, role=None):
+                    max_payload=None, tags=None, role=None, volume_kms_key=None):
         """Return a ``Transformer`` that uses a SageMaker Model based on the training job. It reuses the
         SageMaker Session and base job name used by the Estimator.
 
@@ -350,6 +350,8 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):
                 the training job are used for the transform job.
             role (str): The ``ExecutionRoleArn`` IAM Role ARN for the ``Model``, which is also used during
                 transform jobs. If not specified, the role from the Estimator will be used.
+            volume_kms_key (str): Optional. KMS key ID for encrypting the volume attached to the ML
+                compute instance (default: None).
         """
         self._ensure_latest_training_job()
 
@@ -360,7 +362,7 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):
                            output_path=output_path, output_kms_key=output_kms_key, accept=accept,
                            max_concurrent_transforms=max_concurrent_transforms, max_payload=max_payload,
                            env=env, tags=tags, base_transform_job_name=self.base_job_name,
-                           sagemaker_session=self.sagemaker_session)
+                           volume_kms_key=volume_kms_key, sagemaker_session=self.sagemaker_session)
 
     @property
     def training_job_analytics(self):
@@ -756,7 +758,7 @@ class Framework(EstimatorBase):
 
     def transformer(self, instance_count, instance_type, strategy=None, assemble_with=None, output_path=None,
                     output_kms_key=None, accept=None, env=None, max_concurrent_transforms=None,
-                    max_payload=None, tags=None, role=None, model_server_workers=None):
+                    max_payload=None, tags=None, role=None, model_server_workers=None, volume_kms_key=None):
         """Return a ``Transformer`` that uses a SageMaker Model based on the training job. It reuses the
         SageMaker Session and base job name used by the Estimator.
 
@@ -780,6 +782,8 @@ class Framework(EstimatorBase):
                 transform jobs. If not specified, the role from the Estimator will be used.
             model_server_workers (int): Optional. The number of worker processes used by the inference server.
                 If None, server will use one worker per vCPU.
+            volume_kms_key (str): Optional. KMS key ID for encrypting the volume attached to the ML
+                compute instance (default: None).
         """
         self._ensure_latest_training_job()
         role = role or self.role
@@ -799,7 +803,7 @@ class Framework(EstimatorBase):
                            output_path=output_path, output_kms_key=output_kms_key, accept=accept,
                            max_concurrent_transforms=max_concurrent_transforms, max_payload=max_payload,
                            env=transform_env, tags=tags, base_transform_job_name=self.base_job_name,
-                           sagemaker_session=self.sagemaker_session)
+                           volume_kms_key=volume_kms_key, sagemaker_session=self.sagemaker_session)
 
 
 def _s3_uri_prefix(channel_name, s3_data):

@@ -6,12 +6,12 @@ CHANGELOG
 ========
 
 * bug-fix: Local Mode: Create output/data directory expected by SageMaker Container.
+* enhancement: Add support for volume KMS key to Transformer
 
 1.9.2
 =====
 
 * feature: add support for TensorFlow 1.9
-* enhancement: Add support for volume KMS key to Transformer
 
 1.9.1
 =====

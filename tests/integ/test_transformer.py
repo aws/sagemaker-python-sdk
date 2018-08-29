@@ -23,6 +23,7 @@ from sagemaker import KMeans
 from sagemaker.mxnet import MXNet
 from sagemaker.transformer import Transformer
 from tests.integ import DATA_DIR, TRAINING_DEFAULT_TIMEOUT_MINUTES
+from tests.integ.kms_utils import get_or_create_kms_key
 from tests.integ.timeout import timeout
 
 
@@ -47,9 +48,16 @@ def test_transform_mxnet(sagemaker_session):
     transform_input = mx.sagemaker_session.upload_data(path=transform_input_path,
                                                        key_prefix=transform_input_key_prefix)
 
-    transformer = _create_transformer_and_transform_job(mx, transform_input)
-    transformer.wait()
+    sts_client = sagemaker_session.boto_session.client('sts')
+    account_id = sts_client.get_caller_identity()['Account']
+    kms_client = sagemaker_session.boto_session.client('kms')
+    kms_key_arn = get_or_create_kms_key(kms_client, account_id)
 
+    transformer = _create_transformer_and_transform_job(mx, transform_input, kms_key_arn)
+    transformer.wait()
+    job_desc = transformer.sagemaker_session.sagemaker_client.describe_transform_job(
+        TransformJobName=transformer.latest_transform_job.name)
+    assert kms_key_arn == job_desc['TransformResources']['VolumeKmsKeyId']
 
 @pytest.mark.continuous_testing
 def test_attach_transform_kmeans(sagemaker_session):
@@ -90,7 +98,7 @@ def test_attach_transform_kmeans(sagemaker_session):
     attached_transformer.wait()
 
 
-def _create_transformer_and_transform_job(estimator, transform_input):
-    transformer = estimator.transformer(1, 'ml.m4.xlarge')
+def _create_transformer_and_transform_job(estimator, transform_input, volume_kms_key=None):
+    transformer = estimator.transformer(1, 'ml.m4.xlarge', volume_kms_key=volume_kms_key)
     transformer.transform(transform_input, content_type='text/csv')
     return transformer
