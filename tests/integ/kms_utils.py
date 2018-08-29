@@ -72,6 +72,7 @@ def _get_kms_key_arn(kms_client, alias):
     except kms_client.exceptions.NotFoundException:
         return None
 
+
 def _create_kms_key(kms_client, account_id):
     response = kms_client.create_key(
         Policy=KEY_POLICY.format(account_id=account_id),
@@ -80,6 +81,7 @@ def _create_kms_key(kms_client, account_id):
     key_arn = response['KeyMetadata']['Arn']
     response = kms_client.create_alias(AliasName='alias/' + KEY_ALIAS, TargetKeyId=key_arn)
     return key_arn
+
 
 def get_or_create_kms_key(kms_client, account_id):
     kms_key_arn = _get_kms_key_arn(kms_client, KEY_ALIAS)

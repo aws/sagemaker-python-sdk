@@ -59,6 +59,7 @@ def test_transform_mxnet(sagemaker_session):
         TransformJobName=transformer.latest_transform_job.name)
     assert kms_key_arn == job_desc['TransformResources']['VolumeKmsKeyId']
 
+
 @pytest.mark.continuous_testing
 def test_attach_transform_kmeans(sagemaker_session):
     data_path = os.path.join(DATA_DIR, 'one_p_mnist')
