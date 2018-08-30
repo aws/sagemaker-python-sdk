@@ -429,7 +429,7 @@ class Estimator(EstimatorBase):
     def __init__(self, image_name, role, train_instance_count, train_instance_type,
                  train_volume_size=30, train_max_run=24 * 60 * 60, input_mode='File',
                  output_path=None, output_kms_key=None, base_job_name=None, sagemaker_session=None,
-                 hyperparameters=None):
+                 hyperparameters=None, subnets=None, security_group_ids=None):
         """Initialize an ``Estimator`` instance.
 
         Args:
@@ -467,7 +467,8 @@ class Estimator(EstimatorBase):
         self.hyperparam_dict = hyperparameters.copy() if hyperparameters else {}
         super(Estimator, self).__init__(role, train_instance_count, train_instance_type,
                                         train_volume_size, train_max_run, input_mode,
-                                        output_path, output_kms_key, base_job_name, sagemaker_session)
+                                        output_path, output_kms_key, base_job_name, sagemaker_session,
+                                        subnets, security_group_ids)
 
     def train_image(self):
         """
