@@ -860,7 +860,7 @@ The TensorFlow Docker images support Python 2.7. They include the following Pyth
 - tensorflow
 - tensorflow-serving-api
 
-The Docker images extend Ubuntu 16.04.
+The Docker images extend Ubuntu 16.04. GPU image uses CUDA 9.0.
 
 You can select version of TensorFlow by passing a ``framework_version`` keyword arg to the TensorFlow Estimator constructor. Currently supported versions are listed in the table above. You can also set ``framework_version`` to only specify major and minor version, e.g ``1.6``, which will cause your training script to be run on the latest supported patch version of that minor version, which in this example would be 1.6.0.
 Alternatively, you can build your own image by following the instructions in the SageMaker TensorFlow containers
