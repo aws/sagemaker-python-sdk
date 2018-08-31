@@ -18,7 +18,7 @@ import time
 import pytest
 
 from sagemaker.tensorflow import TensorFlow
-from tests.integ import DATA_DIR, TRAINING_DEFAULT_TIMEOUT_MINUTES
+from tests.integ import DATA_DIR, TRAINING_DEFAULT_TIMEOUT_MINUTES, PYTHON_VERSION
 from tests.integ.timeout import timeout_and_delete_endpoint_by_name, timeout
 from tests.integ.vpc_utils import get_or_create_subnet_and_security_group
 
@@ -27,6 +27,7 @@ VPC_NAME = 'training-job-test'
 
 
 @pytest.mark.continuous_testing
+@pytest.mark.skipif(PYTHON_VERSION != 'py2', reason="TensorFlow image supports only python 2.")
 def test_tf(sagemaker_session, tf_full_version):
     with timeout(minutes=TRAINING_DEFAULT_TIMEOUT_MINUTES):
         script_path = os.path.join(DATA_DIR, 'iris', 'iris-dnn-classifier.py')
@@ -60,6 +61,7 @@ def test_tf(sagemaker_session, tf_full_version):
         assert dict_result == list_result
 
 
+@pytest.mark.skipif(PYTHON_VERSION != 'py2', reason="TensorFlow image supports only python 2.")
 def test_tf_async(sagemaker_session):
     with timeout(minutes=TRAINING_DEFAULT_TIMEOUT_MINUTES):
         script_path = os.path.join(DATA_DIR, 'iris', 'iris-dnn-classifier.py')
@@ -89,6 +91,7 @@ def test_tf_async(sagemaker_session):
         print('predict result: {}'.format(result))
 
 
+@pytest.mark.skipif(PYTHON_VERSION != 'py2', reason="TensorFlow image supports only python 2.")
 def test_failed_tf_training(sagemaker_session, tf_full_version):
     with timeout(minutes=TRAINING_DEFAULT_TIMEOUT_MINUTES):
         script_path = os.path.join(DATA_DIR, 'iris', 'failure_script.py')
