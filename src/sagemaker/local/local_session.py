@@ -12,16 +12,15 @@
 # language governing permissions and limitations under the License.
 from __future__ import absolute_import
 
-import datetime
 import logging
 import platform
-import time
 
 import boto3
 import urllib3
 from botocore.exceptions import ClientError
 
 from sagemaker.local.image import _SageMakerContainer
+from sagemaker.local.entities import _LocalEndpointConfig, _LocalEndpoint, _LocalModel, _LocalTrainingJob
 from sagemaker.session import Session
 from sagemaker.utils import get_config_value
 
@@ -37,6 +36,12 @@ class LocalSagemakerClient(object):
 
     Implements the methods with the same signature as the boto SageMakerClient.
     """
+
+    _training_jobs = {}
+    _models = {}
+    _endpoint_configs = {}
+    _endpoints = {}
+
     def __init__(self, sagemaker_session=None):
         """Initialize a LocalSageMakerClient.
 
@@ -44,35 +49,31 @@ class LocalSagemakerClient(object):
             sagemaker_session (sagemaker.session.Session): a session to use to read configurations
                 from, and use its boto client.
         """
-        self.train_container = None
         self.serve_container = None
         self.sagemaker_session = sagemaker_session or LocalSession()
         self.s3_model_artifacts = None
-        self.model_name = None
-        self.primary_container = None
-        self.role_arn = None
         self.created_endpoint = False
 
-    def create_training_job(self, TrainingJobName, AlgorithmSpecification, RoleArn, InputDataConfig, OutputDataConfig,
-                            ResourceConfig, StoppingCondition, HyperParameters, Tags=None):
+    def create_training_job(self, TrainingJobName, AlgorithmSpecification, InputDataConfig, OutputDataConfig,
+                            ResourceConfig, HyperParameters, *args, **kwargs):
+        """
+        Create a training job in Local Mode
+        Args:
+            TrainingJobName (str): local training job name.
+            AlgorithmSpecification (dict): Identifies the training algorithm to use.
+            InputDataConfig (dict): Describes the training dataset and the location where it is stored.
+            OutputDataConfig (dict): Identifies the location where you want to save the results of model training.
+            ResourceConfig (dict): Identifies the resources to use for local model traininig.
+            HyperParameters (dict): Specify these algorithm-specific parameters to influence the quality of the final
+                model.
+        """
 
-        self.train_container = _SageMakerContainer(ResourceConfig['InstanceType'], ResourceConfig['InstanceCount'],
-                                                   AlgorithmSpecification['TrainingImage'], self.sagemaker_session)
+        container = _SageMakerContainer(ResourceConfig['InstanceType'], ResourceConfig['InstanceCount'],
+                                        AlgorithmSpecification['TrainingImage'], self.sagemaker_session)
+        train_job = _LocalTrainingJob(container)
+        train_job.start(InputDataConfig, HyperParameters)
 
-        for channel in InputDataConfig:
-
-            if channel['DataSource'] and 'S3DataSource' in channel['DataSource']:
-                data_distribution = channel['DataSource']['S3DataSource']['S3DataDistributionType']
-            elif channel['DataSource'] and 'FileDataSource' in channel['DataSource']:
-                data_distribution = channel['DataSource']['FileDataSource']['FileDataDistributionType']
-            else:
-                raise ValueError('Need channel[\'DataSource\'] to have [\'S3DataSource\'] or [\'FileDataSource\']')
-
-            if data_distribution != 'FullyReplicated':
-                raise RuntimeError("DataDistribution: %s is not currently supported in Local Mode" %
-                                   data_distribution)
-
-        self.s3_model_artifacts = self.train_container.train(InputDataConfig, HyperParameters)
+        LocalSagemakerClient._training_jobs[TrainingJobName] = train_job
 
     def describe_training_job(self, TrainingJobName):
         """Describe a local training job.
@@ -83,63 +84,55 @@ class LocalSagemakerClient(object):
         Returns: (dict) DescribeTrainingJob Response.
 
         """
-        response = {'ResourceConfig': {'InstanceCount': self.train_container.instance_count},
-                    'TrainingJobStatus': 'Completed',
-                    'TrainingStartTime': datetime.datetime.now(),
-                    'TrainingEndTime': datetime.datetime.now(),
-                    'ModelArtifacts': {'S3ModelArtifacts': self.s3_model_artifacts}
-                    }
-        return response
+        if TrainingJobName not in LocalSagemakerClient._training_jobs:
+            error_response = {'Error': {'Code': 'ValidationException', 'Message': 'Could not find local training job'}}
+            raise ClientError(error_response, 'describe_training_job')
+        else:
+            return LocalSagemakerClient._training_jobs[TrainingJobName].describe()
 
-    def create_model(self, ModelName, PrimaryContainer, ExecutionRoleArn):
-        self.model_name = ModelName
-        self.primary_container = PrimaryContainer
-        self.role_arn = ExecutionRoleArn
+    def create_model(self, ModelName, PrimaryContainer, *args, **kwargs):
+        """Create a Local Model Object
+
+        Args:
+            ModelName (str): the Model Name
+            PrimaryContainer (dict): a SageMaker primary container definition
+        """
+        LocalSagemakerClient._models[ModelName] = _LocalModel(ModelName, PrimaryContainer)
+
+    def describe_model(self, ModelName):
+        if ModelName not in LocalSagemakerClient._models:
+            error_response = {'Error': {'Code': 'ValidationException', 'Message': 'Could not find local model'}}
+            raise ClientError(error_response, 'describe_model')
+        else:
+            return LocalSagemakerClient._models[ModelName].describe()
 
     def describe_endpoint_config(self, EndpointConfigName):
-        if self.created_endpoint:
-            return True
+        if EndpointConfigName in LocalSagemakerClient._endpoint_configs:
+            return LocalSagemakerClient._endpoint_configs[EndpointConfigName].describe()
         else:
-            error_response = {'Error': {'Code': 'ValidationException', 'Message': 'Could not find endpoint'}}
+            error_response = {'Error': {
+                'Code': 'ValidationException', 'Message': 'Could not find local endpoint config'}}
             raise ClientError(error_response, 'describe_endpoint_config')
 
     def create_endpoint_config(self, EndpointConfigName, ProductionVariants):
-        self.variants = ProductionVariants
+        LocalSagemakerClient._endpoint_configs[EndpointConfigName] = _LocalEndpointConfig(
+            EndpointConfigName, ProductionVariants)
 
     def describe_endpoint(self, EndpointName):
-        return {'EndpointStatus': 'InService'}
+        if EndpointName not in LocalSagemakerClient._endpoints:
+            error_response = {'Error': {'Code': 'ValidationException', 'Message': 'Could not find local endpoint'}}
+            raise ClientError(error_response, 'describe_endpoint')
+        else:
+            return LocalSagemakerClient._endpoints[EndpointName].describe()
 
     def create_endpoint(self, EndpointName, EndpointConfigName):
-        instance_type = self.variants[0]['InstanceType']
-        instance_count = self.variants[0]['InitialInstanceCount']
-        self.serve_container = _SageMakerContainer(instance_type, instance_count,
-                                                   self.primary_container['Image'], self.sagemaker_session)
-        self.serve_container.serve(self.primary_container)
-        self.created_endpoint = True
-
-        i = 0
-        http = urllib3.PoolManager()
-        serving_port = get_config_value('local.serving_port', self.sagemaker_session.config) or 8080
-        endpoint_url = "http://localhost:%s/ping" % serving_port
-        while True:
-            i += 1
-            if i >= 10:
-                raise RuntimeError("Giving up, endpoint: %s didn't launch correctly" % EndpointName)
-
-            logger.info("Checking if endpoint is up, attempt: %s" % i)
-            try:
-                r = http.request('GET', endpoint_url)
-                if r.status != 200:
-                    logger.info("Container still not up, got: %s" % r.status)
-                else:
-                    return
-            except urllib3.exceptions.RequestError:
-                logger.info("Container still not up")
-
-            time.sleep(1)
+        endpoint = _LocalEndpoint(EndpointName, EndpointConfigName)
+        LocalSagemakerClient._endpoints[EndpointName] = endpoint
+        endpoint.serve(self.sagemaker_session)
 
     def delete_endpoint(self, EndpointName):
-        self.serve_container.stop_serving()
+        if EndpointName in LocalSagemakerClient._endpoints:
+            LocalSagemakerClient._endpoints[EndpointName].stop()
 
 
 class LocalSagemakerRuntimeClient(object):
