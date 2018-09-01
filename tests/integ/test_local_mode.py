@@ -313,7 +313,7 @@ def test_mxnet_local_mode(sagemaker_local_session):
     script_path = os.path.join(DATA_DIR, 'mxnet_mnist', 'mnist.py')
     data_path = os.path.join(DATA_DIR, 'mxnet_mnist')
 
-    mx = MXNet(entry_point=script_path, role='SageMakerRole',
+    mx = MXNet(entry_point=script_path, role='SageMakerRole', py_version=PYTHON_VERSION,
                train_instance_count=1, train_instance_type='local',
                sagemaker_session=sagemaker_local_session)
 
