@@ -850,6 +850,7 @@ The TensorFlow Docker images support Python 2.7. They include the following Pyth
 
 - boto3
 - botocore
+- CUDA 9.0 (GPU image only)
 - grpcio
 - numpy
 - pandas

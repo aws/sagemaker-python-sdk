@@ -24,7 +24,7 @@ from sagemaker.local import LocalSession, LocalSagemakerRuntimeClient, LocalSage
 from sagemaker.mxnet import MXNet, MXNetModel
 from sagemaker.tensorflow import TensorFlow
 from sagemaker.fw_utils import tar_and_upload_dir
-from tests.integ import DATA_DIR
+from tests.integ import DATA_DIR, PYTHON_VERSION
 from tests.integ.timeout import timeout
 
 DATA_PATH = os.path.join(DATA_DIR, 'iris', 'data')
@@ -75,6 +75,7 @@ def mxnet_model(sagemaker_local_session):
     return model
 
 
+@pytest.mark.skipif(PYTHON_VERSION != 'py2', reason="TensorFlow image supports only python 2.")
 def test_tf_local_mode(tf_full_version, sagemaker_local_session):
     local_mode_lock_fd = open(LOCK_PATH, 'w')
     local_mode_lock = local_mode_lock_fd.fileno()
@@ -120,6 +121,7 @@ def test_tf_local_mode(tf_full_version, sagemaker_local_session):
         fcntl.lockf(local_mode_lock, fcntl.LOCK_UN)
 
 
+@pytest.mark.skipif(PYTHON_VERSION != 'py2', reason="TensorFlow image supports only python 2.")
 def test_tf_distributed_local_mode(sagemaker_local_session):
     local_mode_lock_fd = open(LOCK_PATH, 'w')
     local_mode_lock = local_mode_lock_fd.fileno()
@@ -164,6 +166,7 @@ def test_tf_distributed_local_mode(sagemaker_local_session):
         fcntl.lockf(local_mode_lock, fcntl.LOCK_UN)
 
 
+@pytest.mark.skipif(PYTHON_VERSION != 'py2', reason="TensorFlow image supports only python 2.")
 def test_tf_local_data(sagemaker_local_session):
     local_mode_lock_fd = open(LOCK_PATH, 'w')
     local_mode_lock = local_mode_lock_fd.fileno()
@@ -206,6 +209,7 @@ def test_tf_local_data(sagemaker_local_session):
         fcntl.lockf(local_mode_lock, fcntl.LOCK_UN)
 
 
+@pytest.mark.skipif(PYTHON_VERSION != 'py2', reason="TensorFlow image supports only python 2.")
 def test_tf_local_data_local_script():
     local_mode_lock_fd = open(LOCK_PATH, 'w')
     local_mode_lock = local_mode_lock_fd.fileno()
@@ -309,7 +313,7 @@ def test_mxnet_local_mode(sagemaker_local_session):
     script_path = os.path.join(DATA_DIR, 'mxnet_mnist', 'mnist.py')
     data_path = os.path.join(DATA_DIR, 'mxnet_mnist')
 
-    mx = MXNet(entry_point=script_path, role='SageMakerRole',
+    mx = MXNet(entry_point=script_path, role='SageMakerRole', py_version=PYTHON_VERSION,
                train_instance_count=1, train_instance_type='local',
                sagemaker_session=sagemaker_local_session)
 

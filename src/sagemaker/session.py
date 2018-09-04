@@ -119,8 +119,8 @@ class Session(object):
         Args:
             path (str): Path (absolute or relative) of local file or directory to upload.
             bucket (str): Name of the S3 Bucket to upload to (default: None). If not specified, the
-                default bucket of the ``Session`` is used. If the bucket does not exist, the ``Session``
-                creates the bucket.
+                default bucket of the ``Session`` is used (if default bucket does not exist, the ``Session``
+                creates it).
             key_prefix (str): Optional S3 object key name prefix (default: 'data'). S3 uses the prefix to
                 create a directory structure for the bucket content that it display in the S3 console.
 
