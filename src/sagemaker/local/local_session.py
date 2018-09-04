@@ -126,7 +126,7 @@ class LocalSagemakerClient(object):
             return LocalSagemakerClient._endpoints[EndpointName].describe()
 
     def create_endpoint(self, EndpointName, EndpointConfigName):
-        endpoint = _LocalEndpoint(EndpointName, EndpointConfigName)
+        endpoint = _LocalEndpoint(EndpointName, EndpointConfigName, self.sagemaker_session)
         LocalSagemakerClient._endpoints[EndpointName] = endpoint
         endpoint.serve(self.sagemaker_session)
 

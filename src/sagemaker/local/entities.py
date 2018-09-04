@@ -114,9 +114,12 @@ class _LocalEndpoint(object):
     _IN_SERVICE = 'InService'
     _FAILED = 'Failed'
 
-    def __init__(self, endpoint_name, endpoint_config_name):
+    def __init__(self, endpoint_name, endpoint_config_name, local_session=None):
         from sagemaker.local import LocalSagemakerClient
-        local_client = LocalSagemakerClient()
+        if local_session:
+            local_client = local_session.sagemaker_client
+        else:
+            local_client = LocalSagemakerClient()
 
         self.name = endpoint_name
         self.endpoint_config = local_client.describe_endpoint_config(endpoint_config_name)
