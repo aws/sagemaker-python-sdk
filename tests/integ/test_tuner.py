@@ -188,6 +188,7 @@ def test_tuning_mxnet(sagemaker_session):
 
         estimator = MXNet(entry_point=script_path,
                           role='SageMakerRole',
+                          py_version=PYTHON_VERSION,
                           train_instance_count=1,
                           train_instance_type='ml.m4.xlarge',
                           sagemaker_session=sagemaker_session,
@@ -270,6 +271,7 @@ def test_tuning_chainer(sagemaker_session):
 
         estimator = Chainer(entry_point=script_path,
                             role='SageMakerRole',
+                            py_version=PYTHON_VERSION,
                             train_instance_count=1,
                             train_instance_type='ml.c4.xlarge',
                             sagemaker_session=sagemaker_session,
@@ -319,7 +321,8 @@ def test_attach_tuning_pytorch(sagemaker_session):
     mnist_dir = os.path.join(DATA_DIR, 'pytorch_mnist')
     mnist_script = os.path.join(mnist_dir, 'mnist.py')
 
-    estimator = PyTorch(entry_point=mnist_script, role='SageMakerRole', train_instance_count=1,
+    estimator = PyTorch(entry_point=mnist_script, role='SageMakerRole',
+                        train_instance_count=1, py_version=PYTHON_VERSION,
                         train_instance_type='ml.c4.xlarge', sagemaker_session=sagemaker_session)
 
     with timeout(minutes=TUNING_DEFAULT_TIMEOUT_MINUTES):

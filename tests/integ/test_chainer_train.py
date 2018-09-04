@@ -22,7 +22,7 @@ from sagemaker.chainer.defaults import CHAINER_VERSION
 from sagemaker.chainer.estimator import Chainer
 from sagemaker.chainer.model import ChainerModel
 from sagemaker.utils import sagemaker_timestamp
-from tests.integ import DATA_DIR, TRAINING_DEFAULT_TIMEOUT_MINUTES
+from tests.integ import DATA_DIR, PYTHON_VERSION, TRAINING_DEFAULT_TIMEOUT_MINUTES
 from tests.integ.timeout import timeout, timeout_and_delete_endpoint_by_name
 
 
@@ -47,6 +47,7 @@ def test_training_with_additional_hyperparameters(sagemaker_session, chainer_ful
         chainer = Chainer(entry_point=script_path, role='SageMakerRole',
                           train_instance_count=1, train_instance_type="ml.c4.xlarge",
                           framework_version=chainer_full_version,
+                          py_version=PYTHON_VERSION,
                           sagemaker_session=sagemaker_session, hyperparameters={'epochs': 1},
                           use_mpi=True,
                           num_processes=2,
@@ -106,7 +107,7 @@ def test_failed_training_job(sagemaker_session, chainer_full_version):
         data_path = os.path.join(DATA_DIR, 'chainer_mnist')
 
         chainer = Chainer(entry_point=script_path, role='SageMakerRole',
-                          framework_version=chainer_full_version,
+                          framework_version=chainer_full_version, py_version=PYTHON_VERSION,
                           train_instance_count=1, train_instance_type='ml.c4.xlarge',
                           sagemaker_session=sagemaker_session)
 
@@ -127,7 +128,7 @@ def _run_mnist_training_job(sagemaker_session, instance_type, instance_count,
         data_path = os.path.join(DATA_DIR, 'chainer_mnist')
 
         chainer = Chainer(entry_point=script_path, role='SageMakerRole',
-                          framework_version=chainer_full_version,
+                          framework_version=chainer_full_version, py_version=PYTHON_VERSION,
                           train_instance_count=instance_count, train_instance_type=instance_type,
                           sagemaker_session=sagemaker_session, hyperparameters={'epochs': 1})
 

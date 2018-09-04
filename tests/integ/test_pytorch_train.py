@@ -13,18 +13,16 @@
 from __future__ import absolute_import
 import numpy
 import os
-import sys
 import time
 import pytest
 from sagemaker.pytorch.estimator import PyTorch
 from sagemaker.pytorch.model import PyTorchModel
 from sagemaker.utils import sagemaker_timestamp
-from tests.integ import DATA_DIR, TRAINING_DEFAULT_TIMEOUT_MINUTES
+from tests.integ import DATA_DIR, PYTHON_VERSION, TRAINING_DEFAULT_TIMEOUT_MINUTES
 from tests.integ.timeout import timeout, timeout_and_delete_endpoint_by_name
 
 MNIST_DIR = os.path.join(DATA_DIR, 'pytorch_mnist')
 MNIST_SCRIPT = os.path.join(MNIST_DIR, 'mnist.py')
-PYTHON_VERSION = 'py' + str(sys.version_info.major)
 
 
 @pytest.fixture(scope='module', name='pytorch_training_job')
