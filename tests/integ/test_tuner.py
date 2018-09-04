@@ -32,7 +32,7 @@ from sagemaker.predictor import json_deserializer
 from sagemaker.pytorch import PyTorch
 from sagemaker.tensorflow import TensorFlow
 from sagemaker.tuner import IntegerParameter, ContinuousParameter, CategoricalParameter, HyperparameterTuner
-from tests.integ import DATA_DIR, TUNING_DEFAULT_TIMEOUT_MINUTES
+from tests.integ import DATA_DIR, PYTHON_VERSION, TUNING_DEFAULT_TIMEOUT_MINUTES
 from tests.integ.record_set import prepare_record_set_from_local_files
 from tests.integ.timeout import timeout, timeout_and_delete_endpoint_by_name
 
@@ -188,6 +188,7 @@ def test_tuning_mxnet(sagemaker_session):
 
         estimator = MXNet(entry_point=script_path,
                           role='SageMakerRole',
+                          py_version=PYTHON_VERSION,
                           train_instance_count=1,
                           train_instance_type='ml.m4.xlarge',
                           sagemaker_session=sagemaker_session,
@@ -218,6 +219,7 @@ def test_tuning_mxnet(sagemaker_session):
 
 
 @pytest.mark.continuous_testing
+@pytest.mark.skipif(PYTHON_VERSION != 'py2', reason="TensorFlow image supports only python 2.")
 def test_tuning_tf(sagemaker_session):
     with timeout(minutes=TUNING_DEFAULT_TIMEOUT_MINUTES):
         script_path = os.path.join(DATA_DIR, 'iris', 'iris-dnn-classifier.py')
@@ -269,6 +271,7 @@ def test_tuning_chainer(sagemaker_session):
 
         estimator = Chainer(entry_point=script_path,
                             role='SageMakerRole',
+                            py_version=PYTHON_VERSION,
                             train_instance_count=1,
                             train_instance_type='ml.c4.xlarge',
                             sagemaker_session=sagemaker_session,
@@ -318,7 +321,8 @@ def test_attach_tuning_pytorch(sagemaker_session):
     mnist_dir = os.path.join(DATA_DIR, 'pytorch_mnist')
     mnist_script = os.path.join(mnist_dir, 'mnist.py')
 
-    estimator = PyTorch(entry_point=mnist_script, role='SageMakerRole', train_instance_count=1,
+    estimator = PyTorch(entry_point=mnist_script, role='SageMakerRole',
+                        train_instance_count=1, py_version=PYTHON_VERSION,
                         train_instance_type='ml.c4.xlarge', sagemaker_session=sagemaker_session)
 
     with timeout(minutes=TUNING_DEFAULT_TIMEOUT_MINUTES):

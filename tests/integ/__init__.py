@@ -14,10 +14,12 @@ from __future__ import absolute_import
 
 import logging
 import os
+import sys
 
 DATA_DIR = os.path.join(os.path.dirname(__file__), '..', 'data')
 TRAINING_DEFAULT_TIMEOUT_MINUTES = 20
 TUNING_DEFAULT_TIMEOUT_MINUTES = 20
+PYTHON_VERSION = 'py' + str(sys.version_info.major)
 
 logging.getLogger('boto3').setLevel(logging.INFO)
 logging.getLogger('botocore').setLevel(logging.INFO)
