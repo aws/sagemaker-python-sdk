@@ -2,8 +2,8 @@
 CHANGELOG
 =========
 
-1.9.3dev
-========
+1.9.3
+=====
 
 * bug-fix: Local Mode: Create output/data directory expected by SageMaker Container.
 * bug-fix: Estimator accepts the vpc configs made capable by 1.9.1
