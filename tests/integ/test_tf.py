@@ -27,6 +27,7 @@ VPC_NAME = 'training-job-test'
 
 
 @pytest.mark.continuous_testing
+@pytest.mark.regional_testing
 @pytest.mark.skipif(PYTHON_VERSION != 'py2', reason="TensorFlow image supports only python 2.")
 def test_tf(sagemaker_session, tf_full_version):
     with timeout(minutes=TRAINING_DEFAULT_TIMEOUT_MINUTES):
