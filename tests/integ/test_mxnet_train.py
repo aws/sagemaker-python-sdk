@@ -45,6 +45,7 @@ def mxnet_training_job(sagemaker_session, mxnet_full_version):
 
 
 @pytest.mark.continuous_testing
+@pytest.mark.regional_testing
 def test_attach_deploy(mxnet_training_job, sagemaker_session):
     endpoint_name = 'test-mxnet-attach-deploy-{}'.format(sagemaker_timestamp())
 
