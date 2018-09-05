@@ -105,16 +105,16 @@ def tf_full_version(request):
     return request.config.getoption('--tf-full-version')
 
 
-@pytest.fixture(scope='module', params=[MXNET_VERSION])
+@pytest.fixture(scope='module')
 def mxnet_full_version(request):
     return request.config.getoption('--mxnet-full-version')
 
 
-@pytest.fixture(scope='module', params=[PYTORCH_VERSION])
+@pytest.fixture(scope='module')
 def pytorch_full_version(request):
     return request.config.getoption('--pytorch-full-version')
 
 
-@pytest.fixture(scope='module', params=[CHAINER_VERSION])
+@pytest.fixture(scope='module')
 def chainer_full_version(request):
     return request.config.getoption('--chainer-full-version')
