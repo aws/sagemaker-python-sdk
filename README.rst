@@ -40,7 +40,7 @@ Table of Contents
 
 
 Installing the SageMaker Python SDK
-----------------------------
+-----------------------------------
 
 The SageMaker Python SDK is built to PyPI and can be installed with pip as follows:
 
@@ -91,8 +91,8 @@ To run the integration tests, the following prerequisites must be met
 1. Access to an AWS account to run the tests on
 2. AWS account credentials available to boto3 clients used in the tests
 3. The AWS account has an IAM role named :code:`SageMakerRole`
-4. The libraries listed in the ``extra_require`` object in in ``setup.py`` for ``test`` are installed. You can do this by running the following command:
- :code:`pip install --upgrade .[test]`
+4. The libraries listed in the ``extras_require`` object in in ``setup.py`` for ``test`` are installed.
+   You can do this by running the following command: :code:`pip install --upgrade .[test]`
 
 You can run integ tests by issuing the following command:
 
@@ -142,7 +142,7 @@ The following sections of this document explain how to use the different estimat
 
 
 Using Estimators
----------------
+----------------
 
 Here is an end to end example of how to use a SageMaker Estimator:
 
