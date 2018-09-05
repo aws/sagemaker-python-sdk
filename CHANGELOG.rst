@@ -2,6 +2,11 @@
 CHANGELOG
 =========
 
+1.9.4
+=====
+
+* doc-fix: fix rst warnings in README.rst
+
 1.9.3
 =====
 
