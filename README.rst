@@ -91,7 +91,7 @@ To run the integration tests, the following prerequisites must be met
 1. Access to an AWS account to run the tests on
 2. AWS account credentials available to boto3 clients used in the tests
 3. The AWS account has an IAM role named :code:`SageMakerRole`
-4. The libraries listed in the ``extras_require`` object in in ``setup.py`` for ``test`` are installed.
+4. The libraries listed in the ``extras_require`` object in ``setup.py`` for ``test`` are installed.
    You can do this by running the following command: :code:`pip install --upgrade .[test]`
 
 You can run integ tests by issuing the following command:
