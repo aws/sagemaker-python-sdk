@@ -818,8 +818,10 @@ If your TFRecords are compressed, you can train on Gzipped TF Records by passing
 ``fit()``, and SageMaker will automatically unzip the records as data is streamed to your training instances:
 
 .. code:: python
+    from sagemaker.session import s3_input
 
-    tf_estimator.fit('s3://bucket/path/to/training/data', compression='Gzip')
+    train_s3_input = s3_input('s3://bucket/path/to/training/data', compression='Gzip')
+    tf_estimator.fit(train_s3_input) 
 
 
 You can learn more about ``PipeModeDataset`` in the sagemaker-tensorflow-extensions repository: https://github.com/aws/sagemaker-tensorflow-extensions
