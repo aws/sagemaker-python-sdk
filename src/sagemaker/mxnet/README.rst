@@ -1,4 +1,3 @@
-
 =====================================
 MXNet SageMaker Estimators and Models
 =====================================
@@ -30,6 +29,11 @@ In the following sections, we'll discuss how to prepare a training script for ex
 
 Preparing the MXNet training script
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+.. warning::
+    This required structure for training scripts will be deprecated with the next major release of MXNet images.
+    The ``train`` function will no longer be required; instead the training script must be able to be run as a standalone script.
+    For more information, see `Updating your MXNet training script <#updating-your-mxnet-training-script>__`
 
 Your MXNet training script must be a Python 2.7 or 3.5 compatible source file. The MXNet training script must contain a function ``train``, which SageMaker invokes to run training. You can include other functions as well, but it must contain a ``train`` function.
 
@@ -572,6 +576,14 @@ Amazon provides several example Jupyter notebooks that demonstrate end-to-end tr
 https://github.com/awslabs/amazon-sagemaker-examples/tree/master/sagemaker-python-sdk
 
 These are also available in SageMaker Notebook Instance hosted Jupyter notebooks under the "sample notebooks" folder.
+
+
+Updating your MXNet training script
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+The required structure for training scripts will be deprecated with the next major release of MXNet images.
+The ``train`` function will no longer be required; instead the training script must be able to be run as a standalone script.
+In this way, the training script will become similar to a training script you might run outside of SageMaker.
 
 
 SageMaker MXNet Containers
