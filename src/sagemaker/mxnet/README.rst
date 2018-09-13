@@ -35,7 +35,7 @@ Preparing the MXNet training script
 +-------------------------------------------------------------------------------------------------------------------------------+
 | This required structure for training scripts will be deprecated with the next major release of MXNet images.                  |
 | The ``train`` function will no longer be required; instead the training script must be able to be run as a standalone script. |
-| For more information, see `Updating your MXNet training script <#updating-your-mxnet-training-script>`__                      |
+| For more information, see `Updating your MXNet training script <#updating-your-mxnet-training-script>`__.                     |
 +-------------------------------------------------------------------------------------------------------------------------------+
 
 Your MXNet training script must be a Python 2.7 or 3.5 compatible source file. The MXNet training script must contain a function ``train``, which SageMaker invokes to run training. You can include other functions as well, but it must contain a ``train`` function.
@@ -587,6 +587,18 @@ Updating your MXNet training script
 The required structure for training scripts will be deprecated with the next major release of MXNet images.
 The ``train`` function will no longer be required; instead the training script must be able to be run as a standalone script.
 In this way, the training script will become similar to a training script you might run outside of SageMaker.
+
+There are a few steps needed to make a training script with the old format compatible with the new format.
+You don't need to do this yet, but it's documented here for future reference.
+
+First, add a `main guard <https://docs.python.org/3/library/__main__.html>`__ (``if __name__ == '__main__':``).
+The code executed from your main guard needs to:
+
+1. Set hyperparameters and other variables
+2. Initiate training
+3. Save the model
+
+Hyperparameters will now be passed as command-line arguments to your training script.
 
 
 SageMaker MXNet Containers
