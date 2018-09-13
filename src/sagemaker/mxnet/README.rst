@@ -599,6 +599,39 @@ The code executed from your main guard needs to:
 3. Save the model
 
 Hyperparameters will now be passed as command-line arguments to your training script.
+We recommend using an `argument parser <https://docs.python.org/3.5/howto/argparse.html>`__ to aid with this.
+Using the ``argparse`` library as an example, this part of the code would look something like this:
+
+.. code:: python
+    parser = argparse.ArgumentParser()
+
+    # hyperparameters sent by the client are passed as command-line arguments to the script.
+    parser.add_argument('--epochs', type=int, default=10)
+    parser.add_argument('--batch-size', type=int, default=100)
+    parser.add_argument('--learning-rate', type=float, default=0.1)
+
+    # data, model, and output directories
+    parser.add_argument('--output-data-dir', type=str, default='opt/ml/output/data')
+    parser.add_argument('--model-dir', type=str, default='opt/ml/model')
+    parser.add_argument('--train', type=str, default='opt/ml/input/data/train')
+    parser.add_argument('--test', type=str, default='opt/ml/input/data/test')
+
+    args, _ = parser.parse_known_args()
+
+The code in the main guard should also take care of training and saving the model.
+(This can be as simple as just calling the methods used with the previous training script format.)
+Note now that saving the model will not be done by default; this must be done by the training script.
+If you were previously relying on the default save method, here is one you can copy into your code:
+
+.. code:: python
+    def save(model_dir, model):
+        model.symbol.save(os.path.join(model_dir, 'model-symbol.json'))
+        model.save_params(os.path.join(model_dir, 'model-0000.params'))
+
+        signature = [{'name': data_desc.name, 'shape': [dim for dim in data_desc.shape]}
+                     for data_desc in model.data_shapes]
+        with open(os.path.join(model_dir, 'model-shapes.json'), 'w') as f:
+            json.dump(signature, f)
 
 
 SageMaker MXNet Containers
