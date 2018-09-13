@@ -35,7 +35,7 @@ Preparing the MXNet training script
 +===============================================================================================================================+
 | This required structure for training scripts will be deprecated with the next major release of MXNet images.                  |
 | The ``train`` function will no longer be required; instead the training script must be able to be run as a standalone script. |
-| For more information, see `Updating your MXNet training script <#updating-your-mxnet-training-script>`__.                     |
+| For more information, see `"Updating your MXNet training script" <#updating-your-mxnet-training-script>`__.                   |
 +-------------------------------------------------------------------------------------------------------------------------------+
 
 Your MXNet training script must be a Python 2.7 or 3.5 compatible source file. The MXNet training script must contain a function ``train``, which SageMaker invokes to run training. You can include other functions as well, but it must contain a ``train`` function.
@@ -604,20 +604,23 @@ Using the ``argparse`` library as an example, this part of the code would look s
 
 .. code:: python
 
-    parser = argparse.ArgumentParser()
+    import argparse
 
-    # hyperparameters sent by the client are passed as command-line arguments to the script.
-    parser.add_argument('--epochs', type=int, default=10)
-    parser.add_argument('--batch-size', type=int, default=100)
-    parser.add_argument('--learning-rate', type=float, default=0.1)
+    if __name__ == '__main__':
+        parser = argparse.ArgumentParser()
 
-    # data, model, and output directories
-    parser.add_argument('--output-data-dir', type=str, default='opt/ml/output/data')
-    parser.add_argument('--model-dir', type=str, default='opt/ml/model')
-    parser.add_argument('--train', type=str, default='opt/ml/input/data/train')
-    parser.add_argument('--test', type=str, default='opt/ml/input/data/test')
+        # hyperparameters sent by the client are passed as command-line arguments to the script.
+        parser.add_argument('--epochs', type=int, default=10)
+        parser.add_argument('--batch-size', type=int, default=100)
+        parser.add_argument('--learning-rate', type=float, default=0.1)
 
-    args, _ = parser.parse_known_args()
+        # data, model, and output directories
+        parser.add_argument('--output-data-dir', type=str, default='opt/ml/output/data')
+        parser.add_argument('--model-dir', type=str, default='opt/ml/model')
+        parser.add_argument('--train', type=str, default='opt/ml/input/data/train')
+        parser.add_argument('--test', type=str, default='opt/ml/input/data/test')
+
+        args, _ = parser.parse_known_args()
 
 The code in the main guard should also take care of training and saving the model.
 (This can be as simple as just calling the methods used with the previous training script format.)
@@ -625,6 +628,9 @@ Note now that saving the model will not be done by default; this must be done by
 If you were previously relying on the default save method, here is one you can copy into your code:
 
 .. code:: python
+
+    import json
+    import os
 
     def save(model_dir, model):
         model.symbol.save(os.path.join(model_dir, 'model-symbol.json'))
@@ -634,6 +640,9 @@ If you were previously relying on the default save method, here is one you can c
                      for data_desc in model.data_shapes]
         with open(os.path.join(model_dir, 'model-shapes.json'), 'w') as f:
             json.dump(signature, f)
+
+These changes will make training with MXNet similar to training with Chainer or PyTorch on SageMaker.
+For more information about those experiences, see `"Preparing the Chainer training script" <https://github.com/aws/sagemaker-python-sdk/tree/master/src/sagemaker/chainer#preparing-the-chainer-training-script>`__ and `"Preparing the PyTorch Training Script" <https://github.com/aws/sagemaker-python-sdk/tree/master/src/sagemaker/pytorch#preparing-the-pytorch-training-script>`__.
 
 
 SageMaker MXNet Containers
