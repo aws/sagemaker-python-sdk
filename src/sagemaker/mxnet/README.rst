@@ -603,6 +603,7 @@ We recommend using an `argument parser <https://docs.python.org/3.5/howto/argpar
 Using the ``argparse`` library as an example, this part of the code would look something like this:
 
 .. code:: python
+
     parser = argparse.ArgumentParser()
 
     # hyperparameters sent by the client are passed as command-line arguments to the script.
@@ -624,6 +625,7 @@ Note now that saving the model will not be done by default; this must be done by
 If you were previously relying on the default save method, here is one you can copy into your code:
 
 .. code:: python
+
     def save(model_dir, model):
         model.symbol.save(os.path.join(model_dir, 'model-symbol.json'))
         model.save_params(os.path.join(model_dir, 'model-0000.params'))
