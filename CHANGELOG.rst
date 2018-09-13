@@ -2,6 +2,16 @@
 CHANGELOG
 =========
 
+1.10.0
+======
+
+* feature: add support for TensorFlow 1.10.0
+
+1.9.3.1
+=======
+
+* doc-fix: fix rst warnings in README.rst
+
 1.9.3
 =====
 

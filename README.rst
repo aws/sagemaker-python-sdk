@@ -1,4 +1,4 @@
-.. image:: branding/icon/sagemaker-banner.png
+.. image:: https://github.com/aws/sagemaker-python-sdk/raw/master/branding/icon/sagemaker-banner.png
     :height: 100px
     :alt: SageMaker
 
@@ -40,7 +40,7 @@ Table of Contents
 
 
 Installing the SageMaker Python SDK
-----------------------------
+-----------------------------------
 
 The SageMaker Python SDK is built to PyPI and can be installed with pip as follows:
 
@@ -91,8 +91,8 @@ To run the integration tests, the following prerequisites must be met
 1. Access to an AWS account to run the tests on
 2. AWS account credentials available to boto3 clients used in the tests
 3. The AWS account has an IAM role named :code:`SageMakerRole`
-4. The libraries listed in the ``extra_require`` object in in ``setup.py`` for ``test`` are installed. You can do this by running the following command:
- :code:`pip install --upgrade .[test]`
+4. The libraries listed in the ``extras_require`` object in ``setup.py`` for ``test`` are installed.
+   You can do this by running the following command: :code:`pip install --upgrade .[test]`
 
 You can run integ tests by issuing the following command:
 
@@ -142,7 +142,7 @@ The following sections of this document explain how to use the different estimat
 
 
 Using Estimators
----------------
+----------------
 
 Here is an end to end example of how to use a SageMaker Estimator:
 
@@ -256,7 +256,7 @@ TensorFlow SageMaker Estimators
 
 By using TensorFlow SageMaker ``Estimators``, you can train and host TensorFlow models on Amazon SageMaker.
 
-Supported versions of TensorFlow: ``1.4.1``, ``1.5.0``, ``1.6.0``, ``1.7.0``, ``1.8.0``, ``1.9.0``.
+Supported versions of TensorFlow: ``1.4.1``, ``1.5.0``, ``1.6.0``, ``1.7.0``, ``1.8.0``, ``1.9.0``, ``1.10.0``.
 
 We recommend that you use the latest supported version, because that's where we focus most of our development efforts.
 
