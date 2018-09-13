@@ -31,7 +31,8 @@ Preparing the MXNet training script
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 +-------------------------------------------------------------------------------------------------------------------------------+
-| **WARNING**                                                                                                                   |
+| .. class:: center                                                                                                             |
+|     **WARNING**                                                                                                               |
 +-------------------------------------------------------------------------------------------------------------------------------+
 | This required structure for training scripts will be deprecated with the next major release of MXNet images.                  |
 | The ``train`` function will no longer be required; instead the training script must be able to be run as a standalone script. |
