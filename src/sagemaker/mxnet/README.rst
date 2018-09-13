@@ -589,18 +589,19 @@ The ``train`` function will no longer be required; instead the training script m
 In this way, the training script will become similar to a training script you might run outside of SageMaker.
 
 There are a few steps needed to make a training script with the old format compatible with the new format.
-You don't need to do this yet, but it's documented here for future reference.
+You don't need to do this yet, but it's documented here for future reference, as this change is coming soon.
 
 First, add a `main guard <https://docs.python.org/3/library/__main__.html>`__ (``if __name__ == '__main__':``).
 The code executed from your main guard needs to:
 
-1. Set hyperparameters and other variables
+1. Set hyperparameters and directory locations
 2. Initiate training
 3. Save the model
 
-Hyperparameters will now be passed as command-line arguments to your training script.
-We recommend using an `argument parser <https://docs.python.org/3.5/howto/argparse.html>`__ to aid with this.
-Using the ``argparse`` library as an example, this part of the code would look something like this:
+Hyperparameters will be passed as command-line arguments to your training script.
+In addition, the locations for finding input data and saving the model and output data will need to be defined.
+We recommend using `an argument parser <https://docs.python.org/3.5/howto/argparse.html>`__ for this part.
+Using the ``argparse`` library as an example, the code would look something like this:
 
 .. code:: python
 
@@ -614,8 +615,7 @@ Using the ``argparse`` library as an example, this part of the code would look s
         parser.add_argument('--batch-size', type=int, default=100)
         parser.add_argument('--learning-rate', type=float, default=0.1)
 
-        # data, model, and output directories
-        parser.add_argument('--output-data-dir', type=str, default='opt/ml/output/data')
+        # input data and model directories
         parser.add_argument('--model-dir', type=str, default='opt/ml/model')
         parser.add_argument('--train', type=str, default='opt/ml/input/data/train')
         parser.add_argument('--test', type=str, default='opt/ml/input/data/test')
@@ -623,8 +623,17 @@ Using the ``argparse`` library as an example, this part of the code would look s
         args, _ = parser.parse_known_args()
 
 The code in the main guard should also take care of training and saving the model.
-(This can be as simple as just calling the methods used with the previous training script format.)
-Note now that saving the model will not be done by default; this must be done by the training script.
+This can be as simple as just calling the methods used with the previous training script format:
+
+.. code:: python
+
+    if __name__ == '__main__':
+        # arg parsing (shown above) goes here
+
+        model = train(args.batch_size, args.epochs, args.learning_rate, args.train, args.test)
+        save(args.model_dir, model)
+
+Note that saving the model will no longer be done by default; this must be done by the training script.
 If you were previously relying on the default save method, here is one you can copy into your code:
 
 .. code:: python
