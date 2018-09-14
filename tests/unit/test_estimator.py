@@ -44,23 +44,6 @@ JOB_NAME = '{}-{}'.format(IMAGE_NAME, TIMESTAMP)
 TAGS = [{'Name': 'some-tag', 'Value': 'value-for-tag'}]
 OUTPUT_PATH = 's3://bucket/prefix'
 
-COMMON_TRAIN_ARGS = {
-    'volume_size': 30,
-    'hyperparameters': {
-        'sagemaker_program': 'dummy_script.py',
-        'sagemaker_enable_cloudwatch_metrics': False,
-        'sagemaker_container_log_level': logging.INFO,
-    },
-    'input_mode': 'File',
-    'instance_type': 'c4.4xlarge',
-    'inputs': 's3://mybucket/train',
-    'instance_count': 1,
-    'role': 'DummyRole',
-    'kms_key_id': None,
-    'max_run': 24,
-    'wait': True,
-}
-
 DESCRIBE_TRAINING_JOB_RESULT = {
     'ModelArtifacts': {
         'S3ModelArtifacts': MODEL_DATA
@@ -117,6 +100,23 @@ def sagemaker_session():
     sms.sagemaker_client.describe_training_job = Mock(name='describe_training_job',
                                                       return_value=DESCRIBE_TRAINING_JOB_RESULT)
     return sms
+
+
+def test_framework_all_init_args(sagemaker_session):
+    f = DummyFramework('my_script.py', role='DummyRole', train_instance_count=3, train_instance_type='ml.m4.xlarge',
+                       sagemaker_session=sagemaker_session, train_volume_size=123, train_volume_kms_key='volumekms',
+                       train_max_run=456, input_mode='inputmode', output_path='outputpath', output_kms_key='outputkms',
+                       base_job_name='basejobname', tags=[{'foo': 'bar'}], subnets=['123', '456'], security_group_ids=['789', '012'])
+    tj = _TrainingJob.start_new(f, 's3://mydata')
+    sagemaker_session.train.assert_called_once()
+    _, args = sagemaker_session.train.call_args
+    assert args == {'input_mode': 'inputmode', 'tags': [{'foo': 'bar'}], 'hyperparameters': {}, 'image': 'fakeimage',
+                    'input_config': [{'ChannelName': 'training',
+                                      'DataSource': {'S3DataSource': {'S3DataType': 'S3Prefix', 'S3DataDistributionType': 'FullyReplicated', 'S3Uri': 's3://mydata'}}}],
+                    'output_config': {'KmsKeyId': 'outputkms', 'S3OutputPath': 'outputpath'},
+                    'vpc_config': {'Subnets': ['123', '456'], 'SecurityGroupIds': ['789', '012']}, 'stop_condition': {'MaxRuntimeInSeconds': 456},
+                    'role': sagemaker_session.expand_role(), 'job_name': None,
+                    'resource_config': {'VolumeSizeInGB': 123, 'InstanceCount': 3, 'VolumeKmsKeyId': 'volumekms', 'InstanceType': 'ml.m4.xlarge'}}
 
 
 def test_sagemaker_s3_uri_invalid(sagemaker_session):
