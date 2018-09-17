@@ -599,13 +599,16 @@ The code executed from your main guard needs to:
 3. Save the model
 
 Hyperparameters will be passed as command-line arguments to your training script.
-In addition, the locations for finding input data and saving the model and output data will need to be defined.
+In addition, the locations for finding input data and saving the model and output data will be provided as environment variables rather than as arguments to a function.
+You can find the full list of available environment variables in the `SageMaker Containers README <https://github.com/aws/sagemaker-containers#list-of-provided-environment-variables-by-sagemaker-containers>`__.
+
 We recommend using `an argument parser <https://docs.python.org/3.5/howto/argparse.html>`__ for this part.
 Using the ``argparse`` library as an example, the code would look something like this:
 
 .. code:: python
 
     import argparse
+    import os
 
     if __name__ == '__main__':
         parser = argparse.ArgumentParser()
@@ -616,9 +619,9 @@ Using the ``argparse`` library as an example, the code would look something like
         parser.add_argument('--learning-rate', type=float, default=0.1)
 
         # input data and model directories
-        parser.add_argument('--model-dir', type=str, default='opt/ml/model')
-        parser.add_argument('--train', type=str, default='opt/ml/input/data/train')
-        parser.add_argument('--test', type=str, default='opt/ml/input/data/test')
+        parser.add_argument('--model-dir', type=str, default=os.environ['SM_MODEL_DIR'])
+        parser.add_argument('--train', type=str, default=os.environ['SM_CHANNEL_TRAIN'])
+        parser.add_argument('--test', type=str, default=os.environ['SM_CHANNEL_TEST'])
 
         args, _ = parser.parse_known_args()
 
