@@ -5,7 +5,7 @@ MXNet SageMaker Estimators and Models
 
 With MXNet Estimators, you can train and host MXNet models on Amazon SageMaker.
 
-Supported versions of MXNet: ``1.1.0``, ``1.0.0``, ``0.12.1``.
+Supported versions of MXNet: ``1.2.1``, ``1.1.0``, ``1.0.0``, ``0.12.1``.
 
 Training with MXNet
 ~~~~~~~~~~~~~~~~~~~
@@ -81,7 +81,7 @@ If you want to run your training script locally via the Python interpreter, look
 Using MXNet and numpy
 ^^^^^^^^^^^^^^^^^^^^^
 
-You can import both ``mxnet`` and ``numpy`` in your training script. When your script runs in SageMaker, it will run with access to MXNet version 1.0.0 and numpy version 1.13.3 by default. For more information on the environment your script runs in, please see `SageMaker MXNet Containers <#sagemaker-mxnet-containers>`__.
+You can import both ``mxnet`` and ``numpy`` in your training script. When your script runs in SageMaker, it will run with access to MXNet version 1.2.1 and numpy version 1.14.5 by default. For more information on the environment your script runs in, please see `SageMaker MXNet Containers <#sagemaker-mxnet-containers>`__.
 
 Running an MXNet training script in SageMaker
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -123,7 +123,7 @@ Optional arguments
 The following are optional arguments. When you create an ``MXNet`` object, you can specify these as keyword arguments.
 
 -  ``source_dir`` Path (absolute or relative) to a directory with any
-   other training source code dependencies aside from the entry point
+   other training source code dependencies including the entry point
    file. Structure within this directory will be preserved when training
    on SageMaker.
 -  ``hyperparameters`` Hyperparameters that will be used for training.
@@ -136,7 +136,7 @@ The following are optional arguments. When you create an ``MXNet`` object, you c
 -  ``train_volume_size`` Size in GB of the EBS volume to use for storing
    input data during training. Must be large enough to store training
    data if input_mode='File' is used (which is the default).
--  ``train_max_run`` Timeout in hours for training, after which Amazon
+-  ``train_max_run`` Timeout in seconds for training, after which Amazon
    SageMaker terminates the job regardless of its current status.
 -  ``input_mode`` The input mode that the algorithm supports. Valid
    modes: 'File' - Amazon SageMaker copies the training dataset from the
@@ -171,7 +171,7 @@ Required argument
 -  ``inputs``: This can take one of the following forms: A string
    s3 URI, for example ``s3://my-bucket/my-training-data``. In this
    case, the s3 objects rooted at the ``my-training-data`` prefix will
-   be available in the default ``train`` channel. A dict from
+   be available in the default ``training`` channel. A dict from
    string channel names to s3 URIs. In this case, the objects rooted at
    each s3 prefix will available as files in each channel directory.
 
@@ -540,12 +540,9 @@ The MXNetModel constructor takes the following arguments:
 -  ``entry_point (str):`` Path (absolute or relative) to the Python file
    which should be executed as the entry point to model hosting.
 -  ``source_dir (str):`` Optional. Path (absolute or relative) to a
-   directory with any other training source code dependencies aside from
+   directory with any other training source code dependencies including
    tne entry point file. Structure within this directory will be
    preserved when training on SageMaker.
--  ``enable_cloudwatch_metrics (boolean):`` Optional. If true, training
-   and hosting containers will generate Cloudwatch metrics under the
-   AWS/SageMakerContainer namespace.
 -  ``container_log_level (int):`` Log level to use within the container.
    Valid values are defined in the Python logging module.
 -  ``code_location (str):`` Optional. Name of the S3 bucket where your
@@ -584,23 +581,23 @@ When training and deploying training scripts, SageMaker runs your Python script 
 
 SageMaker runs MXNet Estimator scripts in either Python 2.7 or Python 3.5. You can select the Python version by passing a ``py_version`` keyword arg to the MXNet Estimator constructor. Setting this to ``py2`` (the default) will cause your training script to be run on Python 2.7. Setting this to ``py3`` will cause your training script to be run on Python 3.5. This Python version applies to both the Training Job, created by fit, and the Endpoint, created by deploy.
 
-Your MXNet training script will be run on version 1.1.0 by default. (See below for how to choose a different version, and currently supported versions.) The decision to use the GPU or CPU version of MXNet is made by the ``train_instance_type``, set on the MXNet constructor. If you choose a GPU instance type, your training job will be run on a GPU version of MXNet. If you choose a CPU instance type, your training job will be run on a CPU version of MXNet. Similarly, when you call deploy, specifying a GPU or CPU deploy_instance_type, will control which MXNet build your Endpoint runs.
+Your MXNet training script will be run on version 1.2.1 by default. (See below for how to choose a different version, and currently supported versions.) The decision to use the GPU or CPU version of MXNet is made by the ``train_instance_type``, set on the MXNet constructor. If you choose a GPU instance type, your training job will be run on a GPU version of MXNet. If you choose a CPU instance type, your training job will be run on a CPU version of MXNet. Similarly, when you call deploy, specifying a GPU or CPU deploy_instance_type, will control which MXNet build your Endpoint runs.
 
 The Docker images have the following dependencies installed:
 
-+-------------------------+--------------+-------------+-------------+
-| Dependencies            | MXNet 0.12.1 | MXNet 1.0.0 | MXNet 1.1.0 |
-+-------------------------+--------------+-------------+-------------+
-| Python                  |   2.7 or 3.5 |   2.7 or 3.5|   2.7 or 3.5|
-+-------------------------+--------------+-------------+-------------+
-| CUDA                    |          9.0 |         9.0 |         9.0 |
-+-------------------------+--------------+-------------+-------------+
-| numpy                   |       1.13.3 |      1.13.3 |      1.13.3 |
-+-------------------------+--------------+-------------+-------------+
++-------------------------+--------------+-------------+-------------+-------------+
+| Dependencies            | MXNet 0.12.1 | MXNet 1.0.0 | MXNet 1.1.0 | MXNet 1.2.1 |
++-------------------------+--------------+-------------+-------------+-------------+
+| Python                  |   2.7 or 3.5 |   2.7 or 3.5|   2.7 or 3.5|   2.7 or 3.5|
++-------------------------+--------------+-------------+-------------+-------------+
+| CUDA (GPU image only)   |          9.0 |         9.0 |         9.0 |         9.0 |
++-------------------------+--------------+-------------+-------------+-------------+
+| numpy                   |       1.13.3 |      1.13.3 |      1.13.3 |      1.14.5 |
++-------------------------+--------------+-------------+-------------+-------------+
 
 The Docker images extend Ubuntu 16.04.
 
-You can select version of MXNet by passing a ``framework_version`` keyword arg to the MXNet Estimator constructor. Currently supported versions are listed in the above table. You can also set ``framework_version`` to only specify major and minor version, e.g ``1.1``, which will cause your training script to be run on the latest supported patch version of that minor version, which in this example would be 1.1.0.
+You can select version of MXNet by passing a ``framework_version`` keyword arg to the MXNet Estimator constructor. Currently supported versions are listed in the above table. You can also set ``framework_version`` to only specify major and minor version, e.g ``1.2``, which will cause your training script to be run on the latest supported patch version of that minor version, which in this example would be 1.2.1.
 Alternatively, you can build your own image by following the instructions in the SageMaker MXNet containers repository, and passing ``image_name`` to the MXNet Estimator constructor.
 
 You can visit the SageMaker MXNet containers repository here: https://github.com/aws/sagemaker-mxnet-containers/

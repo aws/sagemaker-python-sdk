@@ -1,4 +1,3 @@
-
 =======================================
 SageMaker PyTorch Estimators and Models
 =======================================
@@ -39,24 +38,21 @@ using to submit the script to SageMaker via a ``PyTorch`` Estimator. This will b
 Suppose that you already have a PyTorch training script called `pytorch-train.py`.
 You can then setup a ``PyTorch`` Estimator with keyword arguments to point to this script and define how SageMaker runs it:
 
-```python
+.. code:: python
 
     from sagemaker.pytorch import PyTorch
 
-    pytorch_estimator = PyTorch(entry_point="pytorch-train.py",
-                                role="SageMakerRole",
-                                train_instance_type="ml.p3.2xlarge",
+    pytorch_estimator = PyTorch(entry_point='pytorch-train.py',
+                                role='SageMakerRole',
+                                train_instance_type='ml.p3.2xlarge',
                                 train_instance_count=1)
-```
 
 After that, you simply tell the estimator to start a training job and provide an S3 URL
 that is the path to your training data within Amazon S3:
 
-```python
+.. code:: python
 
-    pytorch_estimator.fit("s3://bucket/path/to/training/data")
-
-```
+    pytorch_estimator.fit('s3://bucket/path/to/training/data')
 
 In the following sections, we'll discuss how to prepare a training script for execution on SageMaker,
 then how to run that script on SageMaker using a ``PyTorch`` Estimator.
@@ -171,7 +167,7 @@ Optional arguments
 The following are optional arguments. When you create a ``PyTorch`` object, you can specify these as keyword arguments.
 
 -  ``source_dir`` Path (absolute or relative) to a directory with any
-   other training source code dependencies aside from the entry point
+   other training source code dependencies including the entry point
    file. Structure within this directory will be preserved when training
    on SageMaker.
 -  ``hyperparameters`` Hyperparameters that will be used for training.
@@ -187,7 +183,7 @@ The following are optional arguments. When you create a ``PyTorch`` object, you 
 -  ``train_volume_size`` Size in GB of the EBS volume to use for storing
    input data during training. Must be large enough to store training
    data if input_mode='File' is used (which is the default).
--  ``train_max_run`` Timeout in hours for training, after which Amazon
+-  ``train_max_run`` Timeout in seconds for training, after which Amazon
    SageMaker terminates the job regardless of its current status.
 -  ``input_mode`` The input mode that the algorithm supports. Valid
    modes: 'File' - Amazon SageMaker copies the training dataset from the
@@ -443,7 +439,7 @@ the model server receives two pieces of information:
 -  The request data body, a byte array which is at most 5 MB (5 \* 1024
    \* 1024 bytes) in size.
 
-The SageMaker PyTorch model server will invoke an "input_fn" function in your hosting script,
+The SageMaker PyTorch model server will invoke an ``input_fn`` function in your hosting script,
 passing in this information. If you define an ``input_fn`` function definition,
 it should return an object that can be passed to ``predict_fn`` and have the following signature:
 
@@ -606,7 +602,7 @@ The PyTorchModel constructor takes the following arguments:
 -  ``entry_point:`` Path (absolute or relative) to the Python file
    which should be executed as the entry point to model hosting.
 -  ``source_dir:`` Optional. Path (absolute or relative) to a
-   directory with any other training source code dependencies aside from
+   directory with any other training source code dependencies including
    tne entry point file. Structure within this directory will be
    preserved when training on SageMaker.
 -  ``enable_cloudwatch_metrics:`` Optional. If true, training
@@ -647,7 +643,7 @@ Please refer to:
 
 https://github.com/awslabs/amazon-sagemaker-examples/tree/master/sagemaker-python-sdk
 
-These are also available in SageMaker Notebook Instance hosted Jupyter notebooks under the "sample notebooks" folder.
+These are also available in SageMaker Notebook Instance hosted Jupyter notebooks under the sample notebooks folder.
 
 
 SageMaker PyTorch Docker Containers
@@ -670,6 +666,8 @@ The PyTorch Docker images have the following dependencies installed:
 | boto3                       | 1.7.35        |
 +-----------------------------+---------------+
 | botocore                    | 1.10.35       |
++-----------------------------+---------------+
+| CUDA (GPU image only)       | 9.0           |
 +-----------------------------+---------------+
 | numpy                       | 1.14.3        |
 +-----------------------------+---------------+

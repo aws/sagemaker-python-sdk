@@ -26,9 +26,8 @@ import yaml
 from botocore.exceptions import ClientError
 
 from sagemaker.user_agent import prepend_user_agent
-from sagemaker.utils import name_from_image
+from sagemaker.utils import name_from_image, secondary_training_status_message, secondary_training_status_changed
 import sagemaker.logs
-
 
 logging.basicConfig()
 LOGGER = logging.getLogger('sagemaker')
@@ -93,7 +92,12 @@ class Session(object):
         self.sagemaker_client = sagemaker_client or self.boto_session.client('sagemaker')
         prepend_user_agent(self.sagemaker_client)
 
-        self.sagemaker_runtime_client = sagemaker_runtime_client or self.boto_session.client('runtime.sagemaker')
+        if sagemaker_runtime_client is not None:
+            self.sagemaker_runtime_client = sagemaker_runtime_client
+        else:
+            config = botocore.config.Config(read_timeout=80)
+            self.sagemaker_runtime_client = self.boto_session.client('runtime.sagemaker', config=config)
+
         prepend_user_agent(self.sagemaker_runtime_client)
 
         self.local_mode = False
@@ -115,8 +119,8 @@ class Session(object):
         Args:
             path (str): Path (absolute or relative) of local file or directory to upload.
             bucket (str): Name of the S3 Bucket to upload to (default: None). If not specified, the
-                default bucket of the ``Session`` is used. If the bucket does not exist, the ``Session``
-                creates the bucket.
+                default bucket of the ``Session`` is used (if default bucket does not exist, the ``Session``
+                creates it).
             key_prefix (str): Optional S3 object key name prefix (default: 'data'). S3 uses the prefix to
                 create a directory structure for the bucket content that it display in the S3 console.
 
@@ -202,7 +206,7 @@ class Session(object):
         return self._default_bucket
 
     def train(self, image, input_mode, input_config, role, job_name, output_config,
-              resource_config, hyperparameters, stop_condition, tags):
+              resource_config, vpc_config, hyperparameters, stop_condition, tags):
         """Create an Amazon SageMaker training job.
 
         Args:
@@ -228,6 +232,13 @@ class Session(object):
                 * instance_type (str): Type of EC2 instance to use for training, for example, 'ml.c4.xlarge'.
                     The key in resource_config is 'InstanceType'.
 
+            vpc_config (dict): Contains values for VpcConfig:
+
+                * subnets (list[str]): List of subnet ids.
+                    The key in vpc_config is 'Subnets'.
+                * security_group_ids (list[str]): List of security group ids.
+                    The key in vpc_config is 'SecurityGroupIds'.
+
             hyperparameters (dict): Hyperparameters for model training. The hyperparameters are made accessible as
                 a dict[str, str] to the training code on SageMaker. For convenience, this accepts other types for
                 keys and values, but ``str()`` will be called to convert them before training.
@@ -248,9 +259,9 @@ class Session(object):
             'InputDataConfig': input_config,
             'OutputDataConfig': output_config,
             'TrainingJobName': job_name,
-            "StoppingCondition": stop_condition,
-            "ResourceConfig": resource_config,
-            "RoleArn": role,
+            'StoppingCondition': stop_condition,
+            'ResourceConfig': resource_config,
+            'RoleArn': role,
         }
 
         if hyperparameters and len(hyperparameters) > 0:
@@ -258,6 +269,9 @@ class Session(object):
 
         if tags is not None:
             train_request['Tags'] = tags
+
+        if vpc_config is not None:
+            train_request['VpcConfig'] = vpc_config
 
         LOGGER.info('Creating training-job with name: {}'.format(job_name))
         LOGGER.debug('train request: {}'.format(json.dumps(train_request, indent=4)))
@@ -371,6 +385,52 @@ class Session(object):
                 LOGGER.error('Error occurred while attempting to stop tuning job: {}. Please try again.'.format(name))
                 raise
 
+    def transform(self, job_name, model_name, strategy, max_concurrent_transforms, max_payload, env,
+                  input_config, output_config, resource_config, tags):
+        """Create an Amazon SageMaker transform job.
+
+        Args:
+            job_name (str): Name of the transform job being created.
+            model_name (str): Name of the SageMaker model being used for the transform job.
+            strategy (str): The strategy used to decide how to batch records in a single request.
+                Possible values are 'MULTI_RECORD' and 'SINGLE_RECORD'.
+            max_concurrent_transforms (int): The maximum number of HTTP requests to be made to
+                each individual transform container at one time.
+            max_payload (int): Maximum size of the payload in a single HTTP request to the container in MB.
+            env (dict): Environment variables to be set for use during the transform job.
+            input_config (dict): A dictionary describing the input data (and its location) for the job.
+            output_config (dict): A dictionary describing the output location for the job.
+            resource_config (dict): A dictionary describing the resources to complete the job.
+            tags (list[dict]): List of tags for labeling a training job. For more, see
+                https://docs.aws.amazon.com/sagemaker/latest/dg/API_Tag.html.
+        """
+        transform_request = {
+            'TransformJobName': job_name,
+            'ModelName': model_name,
+            'TransformInput': input_config,
+            'TransformOutput': output_config,
+            'TransformResources': resource_config,
+        }
+
+        if strategy is not None:
+            transform_request['BatchStrategy'] = strategy
+
+        if max_concurrent_transforms is not None:
+            transform_request['MaxConcurrentTransforms'] = max_concurrent_transforms
+
+        if max_payload is not None:
+            transform_request['MaxPayloadInMB'] = max_payload
+
+        if env is not None:
+            transform_request['Environment'] = env
+
+        if tags is not None:
+            transform_request['Tags'] = tags
+
+        LOGGER.info('Creating transform job with name: {}'.format(job_name))
+        LOGGER.debug('Transform request: {}'.format(json.dumps(transform_request, indent=4)))
+        self.sagemaker_client.create_transform_job(**transform_request)
+
     def create_model(self, name, role, primary_container):
         """Create an Amazon SageMaker ``Model``.
 
@@ -393,15 +453,24 @@ class Session(object):
         role = self.expand_role(role)
         primary_container = _expand_container_def(primary_container)
         LOGGER.info('Creating model with name: {}'.format(name))
-        LOGGER.debug("create_model request: {}".format({
+        LOGGER.debug('create_model request: {}'.format({
             'name': name,
             'role': role,
             'primary_container': primary_container
         }))
 
-        self.sagemaker_client.create_model(ModelName=name,
-                                           PrimaryContainer=primary_container,
-                                           ExecutionRoleArn=role)
+        try:
+            self.sagemaker_client.create_model(ModelName=name,
+                                               PrimaryContainer=primary_container,
+                                               ExecutionRoleArn=role)
+        except ClientError as e:
+            error_code = e.response['Error']['Code']
+            message = e.response['Error']['Message']
+
+            if error_code == 'ValidationException' and 'Cannot create already existing model' in message:
+                LOGGER.warning('Using already existing model: {}'.format(name))
+            else:
+                raise
 
         return name
 
@@ -501,7 +570,8 @@ class Session(object):
         Raises:
             ValueError: If the training job fails.
         """
-        desc = _wait_until(lambda: _train_done(self.sagemaker_client, job), poll)
+        desc = _wait_until_training_done(lambda last_desc: _train_done(self.sagemaker_client, job, last_desc),
+                                         None, poll)
         self._check_job_status(job, desc, 'TrainingJobStatus')
         return desc
 
@@ -520,6 +590,23 @@ class Session(object):
         """
         desc = _wait_until(lambda: _tuning_job_status(self.sagemaker_client, job), poll)
         self._check_job_status(job, desc, 'HyperParameterTuningJobStatus')
+        return desc
+
+    def wait_for_transform_job(self, job, poll=5):
+        """Wait for an Amazon SageMaker transform job to complete.
+
+        Args:
+            job (str): Name of the transform job to wait for.
+            poll (int): Polling interval in seconds (default: 5).
+
+        Returns:
+            (dict): Return value from the ``DescribeTransformJob`` API.
+
+        Raises:
+            ValueError: If the transform job fails.
+        """
+        desc = _wait_until(lambda: _transform_job_status(self.sagemaker_client, job), poll)
+        self._check_job_status(job, desc, 'TransformJobStatus')
         return desc
 
     def _check_job_status(self, job, desc, status_key_name):
@@ -688,7 +775,7 @@ class Session(object):
     def get_caller_identity_arn(self):
         """Returns the ARN user or role whose credentials are used to call the API.
         Returns:
-            (str): The ARN uer or role
+            (str): The ARN user or role
         """
         assumed_role = self.boto_session.client('sts').get_caller_identity()['Arn']
 
@@ -700,7 +787,11 @@ class Session(object):
 
         # Call IAM to get the role's path
         role_name = role[role.rfind('/') + 1:]
-        role = self.boto_session.client('iam').get_role(RoleName=role_name)['Role']['Arn']
+        try:
+            role = self.boto_session.client('iam').get_role(RoleName=role_name)['Role']['Arn']
+        except ClientError:
+            LOGGER.warning("Couldn't call 'get_role' to get Role ARN from role name {} to get Role path."
+                           .format(role_name))
 
         return role
 
@@ -719,6 +810,7 @@ class Session(object):
         """
 
         description = self.sagemaker_client.describe_training_job(TrainingJobName=job_name)
+        print(secondary_training_status_message(description, None), end='')
         instance_count = description['ResourceConfig']['InstanceCount']
         status = description['TrainingJobStatus']
 
@@ -758,6 +850,7 @@ class Session(object):
         # - The JOB_COMPLETE state forces us to do an extra pause and read any items that got to Cloudwatch after
         #   the job was marked complete.
         last_describe_job_call = time.time()
+        last_description = description
         while True:
             if len(stream_names) < instance_count:
                 # Log streams are created whenever a container starts writing to stdout/err, so this list
@@ -801,16 +894,21 @@ class Session(object):
                 description = self.sagemaker_client.describe_training_job(TrainingJobName=job_name)
                 last_describe_job_call = time.time()
 
+                if secondary_training_status_changed(description, last_description):
+                    print()
+                    print(secondary_training_status_message(description, last_description), end='')
+                    last_description = description
+
                 status = description['TrainingJobStatus']
 
                 if status == 'Completed' or status == 'Failed' or status == 'Stopped':
+                    print()
                     state = LogState.JOB_COMPLETE
 
         if wait:
             self._check_job_status(job_name, description, 'TrainingJobStatus')
             if dot:
                 print()
-            print('===== Job Complete =====')
             # Customers are not billed for hardware provisioning, so billable time is less than total time
             billable_time = (description['TrainingEndTime'] - description['TrainingStartTime']) * instance_count
             print('Billable seconds:', int(billable_time.total_seconds()) + 1)
@@ -898,7 +996,7 @@ class s3_input(object):
             compression (str): Valid values: 'Gzip', None (default: None). This is used only in Pipe input mode.
             content_type (str): MIME type of the input data (default: None).
             record_wrapping (str): Valid values: 'RecordIO' (default: None).
-            s3_data_type (str): Value values: 'S3Prefix', 'ManifestFile'. If 'S3Prefix', ``s3_data`` defines
+            s3_data_type (str): Valid values: 'S3Prefix', 'ManifestFile'. If 'S3Prefix', ``s3_data`` defines
                 a prefix of s3 objects to train on. All objects with s3 keys beginning with ``s3_data`` will
                 be used to train. If 'ManifestFile', then ``s3_data`` defines a single s3 manifest file, listing
                 each s3 object to train on. The Manifest file format is described in the SageMaker API documentation:
@@ -933,30 +1031,24 @@ def _deployment_entity_exists(describe_fn):
         return False
 
 
-def _train_done(sagemaker_client, job_name):
-    training_status_codes = {
-        'Created': '-',
-        'InProgress': '.',
-        'Completed': '!',
-        'Failed': '*',
-        'Stopping': '>',
-        'Stopped': 's',
-        'Deleting': 'o',
-        'Deleted': 'x'
-    }
+def _train_done(sagemaker_client, job_name, last_desc):
     in_progress_statuses = ['InProgress', 'Created']
 
     desc = sagemaker_client.describe_training_job(TrainingJobName=job_name)
     status = desc['TrainingJobStatus']
 
-    print(training_status_codes.get(status, '?'), end='')
+    if secondary_training_status_changed(desc, last_desc):
+        print()
+        print(secondary_training_status_message(desc, last_desc), end='')
+    else:
+        print('.', end='')
     sys.stdout.flush()
 
     if status in in_progress_statuses:
-        return None
+        return desc, False
 
-    print('')
-    return desc
+    print()
+    return desc, True
 
 
 def _tuning_job_status(sagemaker_client, job_name):
@@ -973,6 +1065,29 @@ def _tuning_job_status(sagemaker_client, job_name):
     status = desc['HyperParameterTuningJobStatus']
 
     print(tuning_status_codes.get(status, '?'), end='')
+    sys.stdout.flush()
+
+    if status in in_progress_statuses:
+        return None
+
+    print('')
+    return desc
+
+
+def _transform_job_status(sagemaker_client, job_name):
+    transform_job_status_codes = {
+        'Completed': '!',
+        'InProgress': '.',
+        'Failed': '*',
+        'Stopped': 's',
+        'Stopping': '_'
+    }
+    in_progress_statuses = ['InProgress', 'Stopping']
+
+    desc = sagemaker_client.describe_transform_job(TransformJobName=job_name)
+    status = desc['TransformJobStatus']
+
+    print(transform_job_status_codes.get(status, '?'), end='')
     sys.stdout.flush()
 
     if status in in_progress_statuses:
@@ -1001,6 +1116,14 @@ def _deploy_done(sagemaker_client, endpoint_name):
     sys.stdout.flush()
 
     return None if status in in_progress_statuses else desc
+
+
+def _wait_until_training_done(callable, desc, poll=5):
+    job_desc, finished = callable(desc)
+    while not finished:
+        time.sleep(poll)
+        job_desc, finished = callable(job_desc)
+    return job_desc
 
 
 def _wait_until(callable, poll=5):

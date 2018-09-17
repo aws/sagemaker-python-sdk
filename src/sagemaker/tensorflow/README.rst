@@ -6,7 +6,7 @@ TensorFlow SageMaker Estimators allow you to run your own TensorFlow
 training algorithms on SageMaker Learner, and to host your own TensorFlow
 models on SageMaker Hosting.
 
-Supported versions of TensorFlow: ``1.4.1``, ``1.5.0``, ``1.6.0``, ``1.7.0``, ``1.8.0``.
+Supported versions of TensorFlow: ``1.4.1``, ``1.5.0``, ``1.6.0``, ``1.7.0``, ``1.8.0``, ``1.9.0``, ``1.10.0``.
 
 Training with TensorFlow
 ~~~~~~~~~~~~~~~~~~~~~~~~
@@ -400,7 +400,7 @@ The following are optional arguments. When you create a ``TensorFlow`` object,
 you can specify these as keyword arguments.
 
 -  ``source_dir (str)`` Path (absolute or relative) to a directory with any
-   other training source code dependencies aside from the entry point
+   other training source code dependencies including the entry point
    file. Structure within this directory will be preserved when training
    on SageMaker.
 -  ``requirements_file (str)`` Path to a ``requirements.txt`` file. The path should
@@ -414,7 +414,7 @@ you can specify these as keyword arguments.
 -  ``train_volume_size (int)`` Size in GB of the EBS volume to use for storing
    input data during training. Must be large enough to the store training
    data.
--  ``train_max_run (int)`` Timeout in hours for training, after which Amazon
+-  ``train_max_run (int)`` Timeout in seconds for training, after which Amazon
    SageMaker terminates the job regardless of its current status.
 -  ``output_path (str)`` S3 location where you want the training result (model
    artifacts and optional output files) saved. If not specified, results
@@ -760,6 +760,92 @@ An example of ``output_fn`` for the accept type "application/python-pickle" can 
 A example with ``input_fn`` and ``output_fn`` above can be found in
 `here <https://github.com/aws/sagemaker-python-sdk/blob/master/tests/data/cifar_10/source/resnet_cifar_10.py#L143>`_.
 
+Training with Pipe Mode using PipeModeDataset
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Amazon SageMaker allows users to create training jobs using Pipe input mode.
+With Pipe input mode, your dataset is streamed directly to your training instances instead of being downloaded first.
+This means that your training jobs start sooner, finish quicker, and need less disk space.
+
+SageMaker TensorFlow provides an implementation of ``tf.data.Dataset`` that makes it easy to take advantage of Pipe
+input mode in SageMaker. You can replace your ``tf.data.Dataset`` with a ``sagemaker_tensorflow.PipeModeDataset`` to
+read TFRecords as they are streamed to your training instances.
+
+In your ``entry_point`` script, you can use ``PipeModeDataset`` like a ``Dataset``. In this example, we create a
+``PipeModeDataset`` to read TFRecords from the 'training' channel:
+
+
+.. code:: python
+
+    from sagemaker_tensorflow import PipeModeDataset
+
+    features = {
+        'data': tf.FixedLenFeature([], tf.string),
+        'labels': tf.FixedLenFeature([], tf.int64),
+    }
+
+    def parse(record):
+        parsed = tf.parse_single_example(record, features)
+        return ({
+            'data': tf.decode_raw(parsed['data'], tf.float64)
+        }, parsed['labels'])
+
+    def train_input_fn(training_dir, hyperparameters): 
+        ds = PipeModeDataset(channel='training', record_format='TFRecord')
+        ds = ds.repeat(20)
+        ds = ds.prefetch(10)
+        ds = ds.map(parse, num_parallel_calls=10)
+        ds = ds.batch(64)
+        return ds
+
+
+To run training job with Pipe input mode, pass in ``input_mode='Pipe'`` to your TensorFlow Estimator:
+
+
+.. code:: python
+
+    from sagemaker.tensorflow import TensorFlow
+
+    tf_estimator = TensorFlow(entry_point='tf-train-with-pipemodedataset.py', role='SageMakerRole',
+                            training_steps=10000, evaluation_steps=100,
+                            train_instance_count=1, train_instance_type='ml.p2.xlarge',
+                            input_mode='Pipe')
+
+    tf_estimator.fit('s3://bucket/path/to/training/data')
+
+
+If your TFRecords are compressed, you can train on Gzipped TF Records by passing in ``compression='Gzip'`` to the call to
+``fit()``, and SageMaker will automatically unzip the records as data is streamed to your training instances:
+
+.. code:: python
+
+    from sagemaker.session import s3_input
+
+    train_s3_input = s3_input('s3://bucket/path/to/training/data', compression='Gzip')
+    tf_estimator.fit(train_s3_input) 
+
+
+You can learn more about ``PipeModeDataset`` in the sagemaker-tensorflow-extensions repository: https://github.com/aws/sagemaker-tensorflow-extensions
+
+
+Training with MKL-DNN disabled
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+SageMaker TensorFlow CPU images use TensorFlow built with Intel® MKL-DNN optimization.
+
+In certain cases you might be able to get a better performance by disabling this optimization
+(`for example when using small models <https://github.com/awslabs/amazon-sagemaker-examples/blob/d88d1c19861fb7733941969f5a68821d9da2982e/sagemaker-python-sdk/tensorflow_iris_dnn_classifier_using_estimators/iris_dnn_classifier.py#L7-L9>`_)
+
+You can disable MKL-DNN optimization for TensorFlow ``1.8.0`` and above by setting two following environment variables:
+
+.. code:: python
+
+    import os
+
+    os.environ['TF_DISABLE_MKL'] = '1'
+    os.environ['TF_DISABLE_POOL_ALLOCATOR'] = '1'
+
+
 SageMaker TensorFlow Docker containers
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -767,6 +853,7 @@ The TensorFlow Docker images support Python 2.7. They include the following Pyth
 
 - boto3
 - botocore
+- CUDA 9.0 (GPU image only)
 - grpcio
 - numpy
 - pandas

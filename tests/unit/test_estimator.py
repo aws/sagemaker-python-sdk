@@ -21,9 +21,10 @@ import pytest
 from mock import Mock, patch
 
 from sagemaker.estimator import Estimator, Framework, _TrainingJob
-from sagemaker.session import s3_input
 from sagemaker.model import FrameworkModel
 from sagemaker.predictor import RealTimePredictor
+from sagemaker.session import s3_input
+from sagemaker.transformer import Transformer
 
 MODEL_DATA = "s3://bucket/model.tar.gz"
 MODEL_IMAGE = "mi"
@@ -40,28 +41,25 @@ ROLE = 'DummyRole'
 IMAGE_NAME = 'fakeimage'
 REGION = 'us-west-2'
 JOB_NAME = '{}-{}'.format(IMAGE_NAME, TIMESTAMP)
-
-COMMON_TRAIN_ARGS = {
-    'volume_size': 30,
-    'hyperparameters': {
-        'sagemaker_program': 'dummy_script.py',
-        'sagemaker_enable_cloudwatch_metrics': False,
-        'sagemaker_container_log_level': logging.INFO,
-    },
-    'input_mode': 'File',
-    'instance_type': 'c4.4xlarge',
-    'inputs': 's3://mybucket/train',
-    'instance_count': 1,
-    'role': 'DummyRole',
-    'kms_key_id': None,
-    'max_run': 24,
-    'wait': True,
-}
+TAGS = [{'Name': 'some-tag', 'Value': 'value-for-tag'}]
+OUTPUT_PATH = 's3://bucket/prefix'
 
 DESCRIBE_TRAINING_JOB_RESULT = {
     'ModelArtifacts': {
         'S3ModelArtifacts': MODEL_DATA
     }
+}
+
+MODEL_CONTAINER_DEF = {
+    'Environment': {
+        'SAGEMAKER_PROGRAM': ENTRY_POINT,
+        'SAGEMAKER_SUBMIT_DIRECTORY': 's3://mybucket/mi-2017-10-10-14-14-15/sourcedir.tar.gz',
+        'SAGEMAKER_CONTAINER_LOG_LEVEL': '20',
+        'SAGEMAKER_REGION': REGION,
+        'SAGEMAKER_ENABLE_CLOUDWATCH_METRICS': 'false'
+    },
+    'Image': MODEL_IMAGE,
+    'ModelDataUrl': MODEL_DATA,
 }
 
 
@@ -71,7 +69,7 @@ class DummyFramework(Framework):
     def train_image(self):
         return IMAGE_NAME
 
-    def create_model(self):
+    def create_model(self, role=None, model_server_workers=None):
         return DummyFrameworkModel(self.sagemaker_session)
 
     @classmethod
@@ -89,6 +87,9 @@ class DummyFrameworkModel(FrameworkModel):
     def create_predictor(self, endpoint_name):
         return None
 
+    def prepare_container_def(self, instance_type):
+        return MODEL_CONTAINER_DEF
+
 
 @pytest.fixture()
 def sagemaker_session():
@@ -99,6 +100,29 @@ def sagemaker_session():
     sms.sagemaker_client.describe_training_job = Mock(name='describe_training_job',
                                                       return_value=DESCRIBE_TRAINING_JOB_RESULT)
     return sms
+
+
+def test_framework_all_init_args(sagemaker_session):
+    f = DummyFramework('my_script.py', role='DummyRole', train_instance_count=3, train_instance_type='ml.m4.xlarge',
+                       sagemaker_session=sagemaker_session, train_volume_size=123, train_volume_kms_key='volumekms',
+                       train_max_run=456, input_mode='inputmode', output_path='outputpath', output_kms_key='outputkms',
+                       base_job_name='basejobname', tags=[{'foo': 'bar'}], subnets=['123', '456'],
+                       security_group_ids=['789', '012'])
+    _TrainingJob.start_new(f, 's3://mydata')
+    sagemaker_session.train.assert_called_once()
+    _, args = sagemaker_session.train.call_args
+    assert args == {'input_mode': 'inputmode', 'tags': [{'foo': 'bar'}], 'hyperparameters': {}, 'image': 'fakeimage',
+                    'input_config': [{'ChannelName': 'training',
+                                      'DataSource': {
+                                          'S3DataSource': {'S3DataType': 'S3Prefix',
+                                                           'S3DataDistributionType': 'FullyReplicated',
+                                                           'S3Uri': 's3://mydata'}}}],
+                    'output_config': {'KmsKeyId': 'outputkms', 'S3OutputPath': 'outputpath'},
+                    'vpc_config': {'Subnets': ['123', '456'], 'SecurityGroupIds': ['789', '012']},
+                    'stop_condition': {'MaxRuntimeInSeconds': 456},
+                    'role': sagemaker_session.expand_role(), 'job_name': None,
+                    'resource_config': {'VolumeSizeInGB': 123, 'InstanceCount': 3, 'VolumeKmsKeyId': 'volumekms',
+                                        'InstanceType': 'ml.m4.xlarge'}}
 
 
 def test_sagemaker_s3_uri_invalid(sagemaker_session):
@@ -364,10 +388,9 @@ def test_attach_framework_with_tuning(sagemaker_session):
 
 @patch('time.strftime', return_value=TIMESTAMP)
 def test_fit_verify_job_name(strftime, sagemaker_session):
-    tags = [{'Name': 'some-tag', 'Value': 'value-for-tag'}]
     fw = DummyFramework(entry_point=SCRIPT_PATH, role='DummyRole', sagemaker_session=sagemaker_session,
                         train_instance_count=INSTANCE_COUNT, train_instance_type=INSTANCE_TYPE,
-                        enable_cloudwatch_metrics=True, tags=tags)
+                        enable_cloudwatch_metrics=True, tags=TAGS)
     fw.fit(inputs=s3_input('s3://mybucket/train'))
 
     _, _, train_kwargs = sagemaker_session.train.mock_calls[0]
@@ -375,7 +398,7 @@ def test_fit_verify_job_name(strftime, sagemaker_session):
     assert train_kwargs['hyperparameters']['sagemaker_enable_cloudwatch_metrics']
     assert train_kwargs['image'] == IMAGE_NAME
     assert train_kwargs['input_mode'] == 'File'
-    assert train_kwargs['tags'] == tags
+    assert train_kwargs['tags'] == TAGS
     assert train_kwargs['job_name'] == JOB_NAME
     assert fw.latest_training_job.name == JOB_NAME
 
@@ -431,6 +454,129 @@ def test_init_with_source_dir_s3(strftime, sagemaker_session):
     assert fw._hyperparameters == expected_hyperparameters
 
 
+@patch('sagemaker.estimator.name_from_image', return_value=MODEL_IMAGE)
+def test_framework_transformer_creation(name_from_image, sagemaker_session):
+    fw = DummyFramework(entry_point=SCRIPT_PATH, role=ROLE, train_instance_count=INSTANCE_COUNT,
+                        train_instance_type=INSTANCE_TYPE, sagemaker_session=sagemaker_session)
+    fw.latest_training_job = _TrainingJob(sagemaker_session, JOB_NAME)
+
+    transformer = fw.transformer(INSTANCE_COUNT, INSTANCE_TYPE)
+
+    name_from_image.assert_called_with(MODEL_IMAGE)
+    sagemaker_session.create_model.assert_called_with(MODEL_IMAGE, ROLE, MODEL_CONTAINER_DEF)
+
+    assert isinstance(transformer, Transformer)
+    assert transformer.sagemaker_session == sagemaker_session
+    assert transformer.instance_count == INSTANCE_COUNT
+    assert transformer.instance_type == INSTANCE_TYPE
+    assert transformer.model_name == MODEL_IMAGE
+    assert transformer.tags is None
+    assert transformer.env == {}
+
+
+@patch('sagemaker.estimator.name_from_image', return_value=MODEL_IMAGE)
+def test_framework_transformer_creation_with_optional_params(name_from_image, sagemaker_session):
+    base_name = 'foo'
+    fw = DummyFramework(entry_point=SCRIPT_PATH, role=ROLE, train_instance_count=INSTANCE_COUNT,
+                        train_instance_type=INSTANCE_TYPE, sagemaker_session=sagemaker_session,
+                        base_job_name=base_name)
+    fw.latest_training_job = _TrainingJob(sagemaker_session, JOB_NAME)
+
+    strategy = 'MultiRecord'
+    assemble_with = 'Line'
+    kms_key = 'key'
+    accept = 'text/csv'
+    max_concurrent_transforms = 1
+    max_payload = 6
+    env = {'FOO': 'BAR'}
+    new_role = 'dummy-model-role'
+
+    transformer = fw.transformer(INSTANCE_COUNT, INSTANCE_TYPE, strategy=strategy, assemble_with=assemble_with,
+                                 output_path=OUTPUT_PATH, output_kms_key=kms_key, accept=accept, tags=TAGS,
+                                 max_concurrent_transforms=max_concurrent_transforms, max_payload=max_payload,
+                                 env=env, role=new_role, model_server_workers=1)
+
+    sagemaker_session.create_model.assert_called_with(MODEL_IMAGE, new_role, MODEL_CONTAINER_DEF)
+    assert transformer.strategy == strategy
+    assert transformer.assemble_with == assemble_with
+    assert transformer.output_path == OUTPUT_PATH
+    assert transformer.output_kms_key == kms_key
+    assert transformer.accept == accept
+    assert transformer.max_concurrent_transforms == max_concurrent_transforms
+    assert transformer.max_payload == max_payload
+    assert transformer.env == env
+    assert transformer.base_transform_job_name == base_name
+    assert transformer.tags == TAGS
+
+
+def test_ensure_latest_training_job(sagemaker_session):
+    fw = DummyFramework(entry_point=SCRIPT_PATH, role=ROLE, train_instance_count=INSTANCE_COUNT,
+                        train_instance_type=INSTANCE_TYPE, sagemaker_session=sagemaker_session)
+    fw.latest_training_job = Mock(name='training_job')
+
+    fw._ensure_latest_training_job()
+
+
+def test_ensure_latest_training_job_failure(sagemaker_session):
+    fw = DummyFramework(entry_point=SCRIPT_PATH, role=ROLE, train_instance_count=INSTANCE_COUNT,
+                        train_instance_type=INSTANCE_TYPE, sagemaker_session=sagemaker_session)
+
+    with pytest.raises(ValueError) as e:
+        fw._ensure_latest_training_job()
+    assert 'Estimator is not associated with a training job' in str(e)
+
+
+def test_estimator_transformer_creation(sagemaker_session):
+    estimator = Estimator(image_name=IMAGE_NAME, role=ROLE, train_instance_count=INSTANCE_COUNT,
+                          train_instance_type=INSTANCE_TYPE, sagemaker_session=sagemaker_session)
+    estimator.latest_training_job = _TrainingJob(sagemaker_session, JOB_NAME)
+    sagemaker_session.create_model_from_job.return_value = JOB_NAME
+
+    transformer = estimator.transformer(INSTANCE_COUNT, INSTANCE_TYPE)
+
+    sagemaker_session.create_model_from_job.assert_called_with(JOB_NAME, role=None)
+    assert isinstance(transformer, Transformer)
+    assert transformer.sagemaker_session == sagemaker_session
+    assert transformer.instance_count == INSTANCE_COUNT
+    assert transformer.instance_type == INSTANCE_TYPE
+    assert transformer.model_name == JOB_NAME
+    assert transformer.tags is None
+
+
+def test_estimator_transformer_creation_with_optional_params(sagemaker_session):
+    base_name = 'foo'
+    estimator = Estimator(image_name=IMAGE_NAME, role=ROLE, train_instance_count=INSTANCE_COUNT,
+                          train_instance_type=INSTANCE_TYPE, sagemaker_session=sagemaker_session,
+                          base_job_name=base_name)
+    estimator.latest_training_job = _TrainingJob(sagemaker_session, JOB_NAME)
+    sagemaker_session.create_model_from_job.return_value = JOB_NAME
+
+    strategy = 'MultiRecord'
+    assemble_with = 'Line'
+    kms_key = 'key'
+    accept = 'text/csv'
+    max_concurrent_transforms = 1
+    max_payload = 6
+    env = {'FOO': 'BAR'}
+
+    transformer = estimator.transformer(INSTANCE_COUNT, INSTANCE_TYPE, strategy=strategy, assemble_with=assemble_with,
+                                        output_path=OUTPUT_PATH, output_kms_key=kms_key, accept=accept, tags=TAGS,
+                                        max_concurrent_transforms=max_concurrent_transforms, max_payload=max_payload,
+                                        env=env, role=ROLE)
+
+    sagemaker_session.create_model_from_job.assert_called_with(JOB_NAME, role=ROLE)
+    assert transformer.strategy == strategy
+    assert transformer.assemble_with == assemble_with
+    assert transformer.output_path == OUTPUT_PATH
+    assert transformer.output_kms_key == kms_key
+    assert transformer.accept == accept
+    assert transformer.max_concurrent_transforms == max_concurrent_transforms
+    assert transformer.max_payload == max_payload
+    assert transformer.env == env
+    assert transformer.base_transform_job_name == base_name
+    assert transformer.tags == TAGS
+
+
 # _TrainingJob 'utils'
 def test_start_new(sagemaker_session):
     training_job = _TrainingJob(sagemaker_session, JOB_NAME)
@@ -438,7 +584,7 @@ def test_start_new(sagemaker_session):
     inputs = 's3://mybucket/train'
 
     estimator = Estimator(IMAGE_NAME, ROLE, INSTANCE_COUNT, INSTANCE_TYPE,
-                          output_path='s3://bucket/prefix', sagemaker_session=sagemaker_session,
+                          output_path=OUTPUT_PATH, sagemaker_session=sagemaker_session,
                           hyperparameters=hyperparameters)
 
     started_training_job = training_job.start_new(estimator, inputs)
@@ -454,7 +600,7 @@ def test_start_new_not_local_mode_error(sagemaker_session):
     inputs = 'file://mybucket/train'
 
     estimator = Estimator(IMAGE_NAME, ROLE, INSTANCE_COUNT, INSTANCE_TYPE,
-                          output_path='s3://bucket/prefix', sagemaker_session=sagemaker_session)
+                          output_path=OUTPUT_PATH, sagemaker_session=sagemaker_session)
     with pytest.raises(ValueError) as error:
         training_job.start_new(estimator, inputs)
         assert 'File URIs are supported in local mode only. Please use a S3 URI instead.' == str(error)
@@ -510,7 +656,7 @@ BASE_TRAIN_CALL = {
         'ChannelName': 'train'
     }],
     'input_mode': 'File',
-    'output_config': {'S3OutputPath': 's3://bucket/prefix'},
+    'output_config': {'S3OutputPath': OUTPUT_PATH},
     'resource_config': {
         'InstanceCount': INSTANCE_COUNT,
         'InstanceType': INSTANCE_TYPE,
@@ -518,6 +664,7 @@ BASE_TRAIN_CALL = {
     },
     'stop_condition': {'MaxRuntimeInSeconds': 86400},
     'tags': None,
+    'vpc_config': None
 }
 
 HYPERPARAMS = {'x': 1, 'y': 'hello'}
@@ -527,7 +674,7 @@ HP_TRAIN_CALL.update({'hyperparameters': STRINGIFIED_HYPERPARAMS})
 
 
 def test_generic_to_fit_no_hps(sagemaker_session):
-    e = Estimator(IMAGE_NAME, ROLE, INSTANCE_COUNT, INSTANCE_TYPE, output_path='s3://bucket/prefix',
+    e = Estimator(IMAGE_NAME, ROLE, INSTANCE_COUNT, INSTANCE_TYPE, output_path=OUTPUT_PATH,
                   sagemaker_session=sagemaker_session)
 
     e.fit({'train': 's3://bucket/training-prefix'})
@@ -544,7 +691,7 @@ def test_generic_to_fit_no_hps(sagemaker_session):
 
 
 def test_generic_to_fit_with_hps(sagemaker_session):
-    e = Estimator(IMAGE_NAME, ROLE, INSTANCE_COUNT, INSTANCE_TYPE, output_path='s3://bucket/prefix',
+    e = Estimator(IMAGE_NAME, ROLE, INSTANCE_COUNT, INSTANCE_TYPE, output_path=OUTPUT_PATH,
                   sagemaker_session=sagemaker_session)
 
     e.set_hyperparameters(**HYPERPARAMS)
@@ -563,7 +710,7 @@ def test_generic_to_fit_with_hps(sagemaker_session):
 
 
 def test_generic_to_deploy(sagemaker_session):
-    e = Estimator(IMAGE_NAME, ROLE, INSTANCE_COUNT, INSTANCE_TYPE, output_path='s3://bucket/prefix',
+    e = Estimator(IMAGE_NAME, ROLE, INSTANCE_COUNT, INSTANCE_TYPE, output_path=OUTPUT_PATH,
                   sagemaker_session=sagemaker_session)
 
     e.set_hyperparameters(**HYPERPARAMS)
@@ -594,6 +741,47 @@ def test_generic_to_deploy(sagemaker_session):
     assert predictor.sagemaker_session == sagemaker_session
 
 
+def test_generic_training_job_analytics(sagemaker_session):
+    sagemaker_session.sagemaker_client.describe_training_job = Mock(name='describe_training_job', return_value={
+        'TuningJobArn': 'arn:aws:sagemaker:us-west-2:968277160000:hyper-parameter-tuning-job/mock-tuner',
+        'TrainingStartTime': 1530562991.299,
+    })
+    sagemaker_session.sagemaker_client.describe_hyper_parameter_tuning_job = Mock(
+        name='describe_hyper_parameter_tuning_job',
+        return_value={
+            'TrainingJobDefinition': {
+                "AlgorithmSpecification": {
+                    "TrainingImage": "some-image-url",
+                    "TrainingInputMode": "File",
+                    "MetricDefinitions": [
+                        {
+                            "Name": "train:loss",
+                            "Regex": "train_loss=([0-9]+\\.[0-9]+)"
+                        },
+                        {
+                            "Name": "validation:loss",
+                            "Regex": "valid_loss=([0-9]+\\.[0-9]+)"
+                        }
+                    ]
+                }
+            }
+        }
+    )
+
+    e = Estimator(IMAGE_NAME, ROLE, INSTANCE_COUNT, INSTANCE_TYPE, output_path=OUTPUT_PATH,
+                  sagemaker_session=sagemaker_session)
+
+    with pytest.raises(ValueError) as err:  # noqa: F841
+        # No training job yet
+        a = e.training_job_analytics
+        assert a is not None  # This line is never reached
+
+    e.set_hyperparameters(**HYPERPARAMS)
+    e.fit({'train': 's3://bucket/training-prefix'})
+    a = e.training_job_analytics
+    assert a is not None
+
+
 @patch('sagemaker.estimator.LocalSession')
 @patch('sagemaker.estimator.Session')
 def test_local_mode(session_class, local_session_class):
@@ -620,6 +808,6 @@ def test_local_mode(session_class, local_session_class):
 @patch('sagemaker.estimator.LocalSession')
 def test_distributed_gpu_local_mode(LocalSession):
     with pytest.raises(RuntimeError):
-        Estimator(IMAGE_NAME, ROLE, 3, 'local_gpu', output_path='s3://bucket/prefix')
+        Estimator(IMAGE_NAME, ROLE, 3, 'local_gpu', output_path=OUTPUT_PATH)
 
 #################################################################################

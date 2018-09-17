@@ -2,10 +2,87 @@
 CHANGELOG
 =========
 
-1.5.3dev
-========
+1.10.0
+======
 
+* feature: add support for TensorFlow 1.10.0
+
+1.9.3.1
+=======
+
+* doc-fix: fix rst warnings in README.rst
+
+1.9.3
+=====
+
+* bug-fix: Local Mode: Create output/data directory expected by SageMaker Container.
+* bug-fix: Estimator accepts the vpc configs made capable by 1.9.1
+
+1.9.2
+=====
+
+* feature: add support for TensorFlow 1.9
+
+1.9.1
+=====
+
+* bug-fix: Estimators: Fix serialization of single records
+* bug-fix: deprecate enable_cloudwatch_metrics from Framework Estimators.
+* enhancement: Enable VPC config in training job creation
+
+1.9.0
+=====
+
+* feature: Estimators: add support for MXNet 1.2.1
+
+1.8.0
+=====
+
+* bug-fix: removing PCA from tuner
+* feature: Estimators: add support for Amazon k-nearest neighbors(KNN) algorithm
+
+1.7.2
+=====
+
+* bug-fix: Prediction output for the TF_JSON_SERIALIZER
+* enhancement: Add better training job status report
+
+1.7.1
+=====
+
+* bug-fix: get_execution_role no longer fails if user can't call get_role
+* bug-fix: Session: use existing model instead of failing during ``create_model()``
+* enhancement: Estimator: allow for different role from the Estimator's when creating a Model or Transformer
+
+1.7.0
+=====
+
+* feature: Transformer: add support for batch transform jobs
+* feature: Documentation: add instructions for using Pipe Mode with TensorFlow
+
+1.6.1
+=====
+
+* feature: Added multiclass classification support for linear learner algorithm.
+
+1.6.0
+=====
+
+* feature: Add Chainer 4.1.0 support
+
+1.5.4
+=====
+
+* feature: Added Docker Registry for all 1p algorithms in amazon_estimator.py
+* feature: Added get_image_uri method for 1p algorithms in amazon_estimator.py
+* Support SageMaker algorithms in FRA and SYD regions
+
+1.5.3
+=====
+
+* bug-fix: Can create TrainingJobAnalytics object without specifying metric_names.
 * bug-fix: Session: include role path in ``get_execution_role()`` result
+* bug-fix: Local Mode: fix RuntimeError handling
 
 1.5.2
 =====

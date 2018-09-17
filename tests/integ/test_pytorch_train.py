@@ -13,34 +13,34 @@
 from __future__ import absolute_import
 import numpy
 import os
-import sys
 import time
 import pytest
 from sagemaker.pytorch.estimator import PyTorch
 from sagemaker.pytorch.model import PyTorchModel
 from sagemaker.utils import sagemaker_timestamp
-from tests.integ import DATA_DIR
+from tests.integ import DATA_DIR, PYTHON_VERSION, TRAINING_DEFAULT_TIMEOUT_MINUTES
 from tests.integ.timeout import timeout, timeout_and_delete_endpoint_by_name
 
 MNIST_DIR = os.path.join(DATA_DIR, 'pytorch_mnist')
 MNIST_SCRIPT = os.path.join(MNIST_DIR, 'mnist.py')
-PYTHON_VERSION = 'py' + str(sys.version_info.major)
 
 
 @pytest.fixture(scope='module', name='pytorch_training_job')
 def fixture_training_job(sagemaker_session, pytorch_full_version):
     instance_type = 'ml.c4.xlarge'
-    with timeout(minutes=15):
+    with timeout(minutes=TRAINING_DEFAULT_TIMEOUT_MINUTES):
         pytorch = _get_pytorch_estimator(sagemaker_session, pytorch_full_version, instance_type)
 
         pytorch.fit({'training': _upload_training_data(pytorch)})
         return pytorch.latest_training_job.name
 
 
+@pytest.mark.continuous_testing
+@pytest.mark.regional_testing
 def test_sync_fit_deploy(pytorch_training_job, sagemaker_session):
     # TODO: add tests against local mode when it's ready to be used
     endpoint_name = 'test-pytorch-sync-fit-attach-deploy{}'.format(sagemaker_timestamp())
-    with timeout(minutes=20):
+    with timeout_and_delete_endpoint_by_name(endpoint_name, sagemaker_session):
         estimator = PyTorch.attach(pytorch_training_job, sagemaker_session=sagemaker_session)
         predictor = estimator.deploy(1, 'ml.c4.xlarge', endpoint_name=endpoint_name)
         data = numpy.zeros(shape=(1, 1, 28, 28), dtype=numpy.float32)
@@ -102,7 +102,7 @@ def test_async_fit_deploy(sagemaker_session, pytorch_full_version):
 def test_failed_training_job(sagemaker_session, pytorch_full_version):
     script_path = os.path.join(MNIST_DIR, 'failure_script.py')
 
-    with timeout(minutes=15):
+    with timeout(minutes=TRAINING_DEFAULT_TIMEOUT_MINUTES):
         pytorch = _get_pytorch_estimator(sagemaker_session, pytorch_full_version, entry_point=script_path)
 
         with pytest.raises(ValueError) as e:

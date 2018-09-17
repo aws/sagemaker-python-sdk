@@ -15,6 +15,8 @@ from __future__ import absolute_import
 import signal
 from contextlib import contextmanager
 import logging
+from time import sleep
+
 from awslogs.core import AWSLogs
 from botocore.exceptions import ClientError
 
@@ -58,24 +60,31 @@ def timeout(seconds=0, minutes=0, hours=0):
 
 
 @contextmanager
-def timeout_and_delete_endpoint_by_name(endpoint_name, sagemaker_session, seconds=0, minutes=35, hours=0):
+def timeout_and_delete_endpoint_by_name(endpoint_name, sagemaker_session, seconds=0, minutes=45, hours=0):
     with timeout(seconds=seconds, minutes=minutes, hours=hours) as t:
         no_errors = False
         try:
             yield [t]
             no_errors = True
         finally:
-            try:
-                sagemaker_session.delete_endpoint(endpoint_name)
-                LOGGER.info('deleted endpoint {}'.format(endpoint_name))
+            attempts = 3
 
-                _show_endpoint_logs(endpoint_name, sagemaker_session)
-                if no_errors:
-                    _cleanup_endpoint_logs(endpoint_name, sagemaker_session)
-            except ClientError as ce:
-                if ce.response['Error']['Code'] == 'ValidationException':
-                    # avoids the inner exception to be overwritten
-                    pass
+            while attempts > 0:
+                attempts -= 1
+                try:
+                    sagemaker_session.delete_endpoint(endpoint_name)
+                    LOGGER.info('deleted endpoint {}'.format(endpoint_name))
+
+                    _show_endpoint_logs(endpoint_name, sagemaker_session)
+                    if no_errors:
+                        _cleanup_endpoint_logs(endpoint_name, sagemaker_session)
+                    return
+                except ClientError as ce:
+                    if ce.response['Error']['Code'] == 'ValidationException':
+                        # avoids the inner exception to be overwritten
+                        pass
+                # trying to delete the resource again in 10 seconds
+                sleep(10)
 
 
 def _show_endpoint_logs(endpoint_name, sagemaker_session):

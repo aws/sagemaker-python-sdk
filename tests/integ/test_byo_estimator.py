@@ -13,22 +13,18 @@
 from __future__ import absolute_import
 
 import gzip
-import io
 import json
 import os
 import pickle
 import sys
 
-import boto3
-import numpy as np
 import pytest
 
 import sagemaker
 from sagemaker.amazon.amazon_estimator import registry
-from sagemaker.amazon.common import write_numpy_to_dense_tensor
 from sagemaker.estimator import Estimator
 from sagemaker.utils import name_from_base
-from tests.integ import DATA_DIR
+from tests.integ import DATA_DIR, TRAINING_DEFAULT_TIMEOUT_MINUTES
 from tests.integ.timeout import timeout, timeout_and_delete_endpoint_by_name
 
 
@@ -57,27 +53,20 @@ def test_byo_estimator(sagemaker_session, region):
 
     """
     image_name = registry(region) + "/factorization-machines:1"
+    training_data_path = os.path.join(DATA_DIR, 'dummy_tensor')
 
-    with timeout(minutes=15):
+    with timeout(minutes=TRAINING_DEFAULT_TIMEOUT_MINUTES):
         data_path = os.path.join(DATA_DIR, 'one_p_mnist', 'mnist.pkl.gz')
         pickle_args = {} if sys.version_info.major == 2 else {'encoding': 'latin1'}
 
         with gzip.open(data_path, 'rb') as f:
             train_set, _, _ = pickle.load(f, **pickle_args)
 
-        # take 100 examples for faster execution
-        vectors = np.array([t.tolist() for t in train_set[0][:100]]).astype('float32')
-        labels = np.where(np.array([t.tolist() for t in train_set[1][:100]]) == 0, 1.0, 0.0).astype('float32')
-
-        buf = io.BytesIO()
-        write_numpy_to_dense_tensor(buf, vectors, labels)
-        buf.seek(0)
-
-        bucket = sagemaker_session.default_bucket()
         prefix = 'test_byo_estimator'
         key = 'recordio-pb-data'
-        boto3.resource('s3').Bucket(bucket).Object(os.path.join(prefix, 'train', key)).upload_fileobj(buf)
-        s3_train_data = 's3://{}/{}/train/{}'.format(bucket, prefix, key)
+
+        s3_train_data = sagemaker_session.upload_data(path=training_data_path,
+                                                      key_prefix=os.path.join(prefix, 'train', key))
 
         estimator = Estimator(image_name=image_name,
                               role='SageMakerRole', train_instance_count=1,
@@ -111,6 +100,7 @@ def test_byo_estimator(sagemaker_session, region):
 def test_async_byo_estimator(sagemaker_session, region):
     image_name = registry(region) + "/factorization-machines:1"
     endpoint_name = name_from_base('byo')
+    training_data_path = os.path.join(DATA_DIR, 'dummy_tensor')
     training_job_name = ""
 
     with timeout(minutes=5):
@@ -120,19 +110,11 @@ def test_async_byo_estimator(sagemaker_session, region):
         with gzip.open(data_path, 'rb') as f:
             train_set, _, _ = pickle.load(f, **pickle_args)
 
-        # take 100 examples for faster execution
-        vectors = np.array([t.tolist() for t in train_set[0][:100]]).astype('float32')
-        labels = np.where(np.array([t.tolist() for t in train_set[1][:100]]) == 0, 1.0, 0.0).astype('float32')
-
-        buf = io.BytesIO()
-        write_numpy_to_dense_tensor(buf, vectors, labels)
-        buf.seek(0)
-
-        bucket = sagemaker_session.default_bucket()
         prefix = 'test_byo_estimator'
         key = 'recordio-pb-data'
-        boto3.resource('s3').Bucket(bucket).Object(os.path.join(prefix, 'train', key)).upload_fileobj(buf)
-        s3_train_data = 's3://{}/{}/train/{}'.format(bucket, prefix, key)
+
+        s3_train_data = sagemaker_session.upload_data(path=training_data_path,
+                                                      key_prefix=os.path.join(prefix, 'train', key))
 
         estimator = Estimator(image_name=image_name,
                               role='SageMakerRole', train_instance_count=1,

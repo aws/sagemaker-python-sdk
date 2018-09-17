@@ -15,7 +15,7 @@ from __future__ import absolute_import
 from sagemaker.amazon.amazon_estimator import AmazonAlgorithmEstimatorBase, registry
 from sagemaker.amazon.common import numpy_to_record_serializer, record_deserializer
 from sagemaker.amazon.hyperparameter import Hyperparameter as hp  # noqa
-from sagemaker.amazon.validation import isin, gt, lt, ge
+from sagemaker.amazon.validation import isin, gt, lt, ge, le
 from sagemaker.predictor import RealTimePredictor
 from sagemaker.model import Model
 from sagemaker.session import Session
@@ -28,16 +28,16 @@ class LinearLearner(AmazonAlgorithmEstimatorBase):
     DEFAULT_MINI_BATCH_SIZE = 1000
 
     binary_classifier_model_selection_criteria = hp('binary_classifier_model_selection_criteria',
-                                                    isin('accuracy', 'f1', 'precision_at_target_recall',
-                                                         'recall_at_target_precision', 'cross_entropy_loss'),
-                                                    data_type=str)
+                                                    isin('accuracy', 'f1', 'f_beta', 'precision_at_target_recall',
+                                                         'recall_at_target_precision', 'cross_entropy_loss',
+                                                         'loss_function'), data_type=str)
     target_recall = hp('target_recall', (gt(0), lt(1)), "A float in (0,1)", float)
     target_precision = hp('target_precision', (gt(0), lt(1)), "A float in (0,1)", float)
     positive_example_weight_mult = hp('positive_example_weight_mult', (),
                                       "A float greater than 0 or 'auto' or 'balanced'", str)
     epochs = hp('epochs', gt(0), "An integer greater-than 0", int)
-    predictor_type = hp('predictor_type', isin('binary_classifier', 'regressor'),
-                        'One of "binary_classifier" or "regressor"', str)
+    predictor_type = hp('predictor_type', isin('binary_classifier', 'regressor', 'multiclass_classifier'),
+                        'One of "binary_classifier" or "multiclass_classifier" or "regressor"', str)
     use_bias = hp('use_bias', (), "Either True or False", bool)
     num_models = hp('num_models', gt(0), "An integer greater-than 0", int)
     num_calibration_samples = hp('num_calibration_samples', gt(0), "An integer greater-than 0", int)
@@ -45,11 +45,11 @@ class LinearLearner(AmazonAlgorithmEstimatorBase):
     init_scale = hp('init_scale', gt(0), 'A float greater-than 0', float)
     init_sigma = hp('init_sigma', gt(0), 'A float greater-than 0', float)
     init_bias = hp('init_bias', (), 'A number', float)
-    optimizer = hp('optimizer', isin('sgd', 'adam', 'auto'), 'One of "sgd", "adam" or "auto', str)
+    optimizer = hp('optimizer', isin('sgd', 'adam', 'rmsprop', 'auto'), 'One of "sgd", "adam", "rmsprop" or "auto', str)
     loss = hp('loss', isin('logistic', 'squared_loss', 'absolute_loss', 'hinge_loss', 'eps_insensitive_squared_loss',
-                           'eps_insensitive_absolute_loss', 'quantile_loss', 'huber_loss', 'auto'),
+                           'eps_insensitive_absolute_loss', 'quantile_loss', 'huber_loss', 'softmax_loss', 'auto'),
               '"logistic", "squared_loss", "absolute_loss", "hinge_loss", "eps_insensitive_squared_loss", '
-              '"eps_insensitive_absolute_loss", "quantile_loss", "huber_loss" or "auto"', str)
+              '"eps_insensitive_absolute_loss", "quantile_loss", "huber_loss", "softmax_loss" or "auto"', str)
     wd = hp('wd', ge(0), 'A float greater-than or equal to 0', float)
     l1 = hp('l1', ge(0), 'A float greater-than or equal to 0', float)
     momentum = hp('momentum', (ge(0), lt(1)), 'A float in [0,1)', float)
@@ -73,6 +73,10 @@ class LinearLearner(AmazonAlgorithmEstimatorBase):
     huber_delta = hp('huber_delta', ge(0), 'A float greater-than or equal to 0', float)
     early_stopping_patience = hp('early_stopping_patience', gt(0), 'An integer greater-than 0', int)
     early_stopping_tolerance = hp('early_stopping_tolerance', gt(0), 'A float greater-than 0', float)
+    num_classes = hp('num_classes', (gt(0), le(1000000)), 'An integer in [1,1000000]', int)
+    accuracy_top_k = hp('accuracy_top_k', (gt(0), le(1000000)), 'An integer in [1,1000000]', int)
+    f_beta = hp('f_beta', gt(0), 'A float greater-than 0', float)
+    balance_multiclass_weights = hp('balance_multiclass_weights', (), 'A boolean', bool)
 
     def __init__(self, role, train_instance_count, train_instance_type, predictor_type,
                  binary_classifier_model_selection_criteria=None, target_recall=None, target_precision=None,
@@ -83,7 +87,8 @@ class LinearLearner(AmazonAlgorithmEstimatorBase):
                  lr_scheduler_factor=None, lr_scheduler_minimum_lr=None, normalize_data=None,
                  normalize_label=None, unbias_data=None, unbias_label=None, num_point_for_scaler=None, margin=None,
                  quantile=None, loss_insensitivity=None, huber_delta=None, early_stopping_patience=None,
-                 early_stopping_tolerance=None, **kwargs):
+                 early_stopping_tolerance=None, num_classes=None, accuracy_top_k=None, f_beta=None,
+                 balance_multiclass_weights=None, **kwargs):
         """An :class:`Estimator` for binary classification and regression.
 
         Amazon SageMaker Linear Learner provides a solution for both classification and regression problems, allowing
@@ -119,9 +124,10 @@ class LinearLearner(AmazonAlgorithmEstimatorBase):
                 the inference code might use the IAM role, if accessing AWS resource.
             train_instance_count (int): Number of Amazon EC2 instances to use for training.
             train_instance_type (str): Type of EC2 instance to use for training, for example, 'ml.c4.xlarge'.
-            predictor_type (str): The type of predictor to learn. Either "binary_classifier" or "regressor".
-            binary_classifier_model_selection_criteria (str): One of 'accuracy', 'f1', 'precision_at_target_recall',
-            'recall_at_target_precision', 'cross_entropy_loss'
+            predictor_type (str): The type of predictor to learn. Either "binary_classifier" or
+            "multiclass_classifier" or "regressor".
+            binary_classifier_model_selection_criteria (str): One of 'accuracy', 'f1', 'f_beta',
+            'precision_at_target_recall', 'recall_at_target_precision', 'cross_entropy_loss', 'loss_function'
             target_recall (float): Target recall. Only applicable if binary_classifier_model_selection_criteria is
                 precision_at_target_recall.
             target_precision (float): Target precision. Only applicable if binary_classifier_model_selection_criteria
@@ -139,9 +145,10 @@ class LinearLearner(AmazonAlgorithmEstimatorBase):
             init_scale (float): For "uniform" init, the range of values.
             init_sigma (float): For "normal" init, the standard-deviation.
             init_bias (float):  Initial weight for bias term
-            optimizer (str): One of 'sgd', 'adam' or 'auto'
+            optimizer (str): One of 'sgd', 'adam', 'rmsprop' or 'auto'
             loss (str): One of  'logistic', 'squared_loss', 'absolute_loss', 'hinge_loss',
-            'eps_insensitive_squared_loss', 'eps_insensitive_absolute_loss', 'quantile_loss', 'huber_loss' or 'auto'
+            'eps_insensitive_squared_loss', 'eps_insensitive_absolute_loss', 'quantile_loss', 'huber_loss' or
+            'softmax_loss' or 'auto'.
             wd (float): L2 regularization parameter i.e. the weight decay parameter. Use 0 for no L2 regularization.
             l1 (float): L1 regularization parameter. Use 0 for no L1 regularization.
             momentum (float): Momentum parameter of sgd optimizer.
@@ -180,6 +187,15 @@ class LinearLearner(AmazonAlgorithmEstimatorBase):
             early_stopping_tolerance (float):  Relative tolerance to measure an improvement in loss. If the ratio of
             the improvement in loss divided by the previous best loss is smaller than this value, early stopping will
             consider the improvement to be zero.
+            num_classes (int): The number of classes for the response variable. Required when predictor_type is
+            multiclass_classifier and ignored otherwise. The classes are assumed to be labeled 0, ..., num_classes - 1.
+            accuracy_top_k (int): The value of k when computing the Top K Accuracy metric for multiclass
+            classification. An example is scored as correct if the model assigns one of the top k scores to the true
+            label.
+            f_beta (float): The value of beta to use when calculating F score metrics for binary or multiclass
+            classification. Also used if binary_classifier_model_selection_criteria is f_beta.
+            balance_multiclass_weights (bool): Whether to use class weights which give each class equal importance in
+            the loss function. Only used when predictor_type is multiclass_classifier.
             **kwargs: base class keyword argument values.
         """
         super(LinearLearner, self).__init__(role, train_instance_count, train_instance_type, **kwargs)
@@ -221,9 +237,17 @@ class LinearLearner(AmazonAlgorithmEstimatorBase):
         self.huber_delta = huber_delta
         self.early_stopping_patience = early_stopping_patience
         self.early_stopping_tolerance = early_stopping_tolerance
+        self.num_classes = num_classes
+        self.accuracy_top_k = accuracy_top_k
+        self.f_beta = f_beta
+        self.balance_multiclass_weights = balance_multiclass_weights
+
+        if self.predictor_type == 'multiclass_classifier' and (num_classes is None or num_classes < 3):
+            raise ValueError(
+                "For predictor_type 'multiclass_classifier', 'num_classes' should be set to a value greater than 2.")
 
     def create_model(self):
-        """Return a :class:`~sagemaker.amazon.kmeans.LinearLearnerModel` referencing the latest
+        """Return a :class:`~sagemaker.amazon.LinearLearnerModel` referencing the latest
         s3 model data produced by this Estimator."""
 
         return LinearLearnerModel(self.model_data, self.role, self.sagemaker_session)

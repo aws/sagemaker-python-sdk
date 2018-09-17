@@ -103,11 +103,12 @@ def _create_train_job(tf_version):
             'MaxRuntimeInSeconds': 24 * 60 * 60
         },
         'tags': None,
+        'vpc_config': None
     }
 
 
 def _build_tf(sagemaker_session, framework_version=defaults.TF_VERSION, train_instance_type=None,
-              checkpoint_path=None, enable_cloudwatch_metrics=False, base_job_name=None,
+              checkpoint_path=None, base_job_name=None,
               training_steps=None, evaluation_steps=None, **kwargs):
     return TensorFlow(entry_point=SCRIPT_PATH,
                       training_steps=training_steps,
@@ -118,7 +119,6 @@ def _build_tf(sagemaker_session, framework_version=defaults.TF_VERSION, train_in
                       train_instance_count=INSTANCE_COUNT,
                       train_instance_type=train_instance_type if train_instance_type else INSTANCE_TYPE,
                       checkpoint_path=checkpoint_path,
-                      enable_cloudwatch_metrics=enable_cloudwatch_metrics,
                       base_job_name=base_job_name,
                       **kwargs)
 
@@ -183,12 +183,11 @@ def test_tf_nonexistent_requirements_path(sagemaker_session):
 def test_create_model(sagemaker_session, tf_version):
     container_log_level = '"logging.INFO"'
     source_dir = 's3://mybucket/source'
-    enable_cloudwatch_metrics = 'true'
     tf = TensorFlow(entry_point=SCRIPT_PATH, role=ROLE, sagemaker_session=sagemaker_session,
                     training_steps=1000, evaluation_steps=10, train_instance_count=INSTANCE_COUNT,
                     train_instance_type=INSTANCE_TYPE, framework_version=tf_version,
                     container_log_level=container_log_level, base_job_name='job',
-                    source_dir=source_dir, enable_cloudwatch_metrics=enable_cloudwatch_metrics)
+                    source_dir=source_dir)
 
     job_name = 'doing something'
     tf.fit(inputs='s3://mybucket/train', job_name=job_name)
@@ -202,19 +201,37 @@ def test_create_model(sagemaker_session, tf_version):
     assert model.name == job_name
     assert model.container_log_level == container_log_level
     assert model.source_dir == source_dir
-    assert model.enable_cloudwatch_metrics == enable_cloudwatch_metrics
+
+
+def test_create_model_with_optional_params(sagemaker_session):
+    container_log_level = '"logging.INFO"'
+    source_dir = 's3://mybucket/source'
+    enable_cloudwatch_metrics = 'true'
+    tf = TensorFlow(entry_point=SCRIPT_PATH, role=ROLE, sagemaker_session=sagemaker_session,
+                    training_steps=1000, evaluation_steps=10, train_instance_count=INSTANCE_COUNT,
+                    train_instance_type=INSTANCE_TYPE, container_log_level=container_log_level, base_job_name='job',
+                    source_dir=source_dir, enable_cloudwatch_metrics=enable_cloudwatch_metrics)
+
+    job_name = 'doing something'
+    tf.fit(inputs='s3://mybucket/train', job_name=job_name)
+
+    new_role = 'role'
+    model_server_workers = 2
+    model = tf.create_model(role=new_role, model_server_workers=2)
+
+    assert model.role == new_role
+    assert model.model_server_workers == model_server_workers
 
 
 def test_create_model_with_custom_image(sagemaker_session):
     container_log_level = '"logging.INFO"'
     source_dir = 's3://mybucket/source'
-    enable_cloudwatch_metrics = 'true'
     custom_image = 'tensorflow:1.0'
     tf = TensorFlow(entry_point=SCRIPT_PATH, role=ROLE, sagemaker_session=sagemaker_session,
                     training_steps=1000, evaluation_steps=10, train_instance_count=INSTANCE_COUNT,
                     train_instance_type=INSTANCE_TYPE, image_name=custom_image,
                     container_log_level=container_log_level, base_job_name='job',
-                    source_dir=source_dir, enable_cloudwatch_metrics=enable_cloudwatch_metrics)
+                    source_dir=source_dir)
 
     job_name = 'doing something'
     tf.fit(inputs='s3://mybucket/train', job_name=job_name)
@@ -312,7 +329,8 @@ def test_run_tensorboard_locally_without_awscli_binary(time, strftime, popen, ca
 @patch('subprocess.Popen')
 @patch('time.strftime', return_value=TIMESTAMP)
 @patch('time.time', return_value=TIME)
-def test_run_tensorboard_locally(time, strftime, popen, call, access, rmtree, mkdtemp, sync, sagemaker_session):
+@patch('time.sleep')
+def test_run_tensorboard_locally(sleep, time, strftime, popen, call, access, rmtree, mkdtemp, sync, sagemaker_session):
     tf = TensorFlow(entry_point=SCRIPT_PATH, role=ROLE, sagemaker_session=sagemaker_session,
                     train_instance_count=INSTANCE_COUNT, train_instance_type=INSTANCE_TYPE)
 
@@ -322,8 +340,7 @@ def test_run_tensorboard_locally(time, strftime, popen, call, access, rmtree, mk
 
     popen.assert_called_with(['tensorboard', '--logdir', '/my/temp/folder', '--host', 'localhost', '--port', '6006'],
                              stderr=-1,
-                             stdout=-1
-                             )
+                             stdout=-1)
 
 
 @patch('sagemaker.tensorflow.estimator.Tensorboard._sync_directories')
@@ -335,7 +352,8 @@ def test_run_tensorboard_locally(time, strftime, popen, call, access, rmtree, mk
 @patch('subprocess.Popen')
 @patch('time.strftime', return_value=TIMESTAMP)
 @patch('time.time', return_value=TIME)
-def test_run_tensorboard_locally_port_in_use(time, strftime, popen, call, access, socket, rmtree, mkdtemp, sync,
+@patch('time.sleep')
+def test_run_tensorboard_locally_port_in_use(sleep, time, strftime, popen, call, access, socket, rmtree, mkdtemp, sync,
                                              sagemaker_session):
     tf = TensorFlow(entry_point=SCRIPT_PATH, role=ROLE, sagemaker_session=sagemaker_session,
                     train_instance_count=INSTANCE_COUNT, train_instance_type=INSTANCE_TYPE)

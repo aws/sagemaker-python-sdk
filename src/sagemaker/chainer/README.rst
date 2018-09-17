@@ -1,11 +1,10 @@
-
 =======================================
 Chainer SageMaker Estimators and Models
 =======================================
 
 With Chainer Estimators, you can train and host Chainer models on Amazon SageMaker.
 
-Supported versions of Chainer: ``4.0.0``
+Supported versions of Chainer: ``4.0.0``, ``4.1.0``
 
 You can visit the Chainer repository at https://github.com/chainer/chainer.
 
@@ -145,7 +144,7 @@ Optional arguments
 The following are optional arguments. When you create a ``Chainer`` object, you can specify these as keyword arguments.
 
 -  ``source_dir`` Path (absolute or relative) to a directory with any
-   other training source code dependencies aside from the entry point
+   other training source code dependencies including the entry point
    file. Structure within this directory will be preserved when training
    on SageMaker.
 -  ``hyperparameters`` Hyperparameters that will be used for training.
@@ -158,7 +157,7 @@ The following are optional arguments. When you create a ``Chainer`` object, you 
 -  ``train_volume_size`` Size in GB of the EBS volume to use for storing
    input data during training. Must be large enough to store training
    data if input_mode='File' is used (which is the default).
--  ``train_max_run`` Timeout in hours for training, after which Amazon
+-  ``train_max_run`` Timeout in seconds for training, after which Amazon
    SageMaker terminates the job regardless of its current status.
 -  ``input_mode`` The input mode that the algorithm supports. Valid
    modes: 'File' - Amazon SageMaker copies the training dataset from the
@@ -574,7 +573,7 @@ The ChainerModel constructor takes the following arguments:
 -  ``entry_point (str):`` Path (absolute or relative) to the Python file
    which should be executed as the entry point to model hosting.
 -  ``source_dir (str):`` Optional. Path (absolute or relative) to a
-   directory with any other training source code dependencies aside from
+   directory with any other training source code dependencies including
    tne entry point file. Structure within this directory will be
    preserved when training on SageMaker.
 -  ``enable_cloudwatch_metrics (boolean):`` Optional. If true, training
@@ -639,7 +638,7 @@ The Chainer Docker images have the following dependencies installed:
 +-----------------------------+-------------+
 | chainermn                   | 1.2.0       |
 +-----------------------------+-------------+
-| CUDA                        | 9.0         |
+| CUDA (GPU image only)       | 9.0         |
 +-----------------------------+-------------+
 | cupy                        | 4.0.0       |
 +-----------------------------+-------------+
@@ -667,4 +666,3 @@ Alternatively, you can build your own image by following the instructions in the
 repository, and passing ``image_name`` to the Chainer Estimator constructor.
 
 You can visit the SageMaker Chainer containers repository here: https://github.com/aws/sagemaker-chainer-containers/
-

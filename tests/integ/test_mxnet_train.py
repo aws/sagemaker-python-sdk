@@ -21,18 +21,18 @@ import pytest
 from sagemaker.mxnet.estimator import MXNet
 from sagemaker.mxnet.model import MXNetModel
 from sagemaker.utils import sagemaker_timestamp
-from tests.integ import DATA_DIR
+from tests.integ import DATA_DIR, PYTHON_VERSION, TRAINING_DEFAULT_TIMEOUT_MINUTES
 from tests.integ.timeout import timeout, timeout_and_delete_endpoint_by_name
 
 
 @pytest.fixture(scope='module')
 def mxnet_training_job(sagemaker_session, mxnet_full_version):
-    with timeout(minutes=15):
+    with timeout(minutes=TRAINING_DEFAULT_TIMEOUT_MINUTES):
         script_path = os.path.join(DATA_DIR, 'mxnet_mnist', 'mnist.py')
         data_path = os.path.join(DATA_DIR, 'mxnet_mnist')
 
         mx = MXNet(entry_point=script_path, role='SageMakerRole', framework_version=mxnet_full_version,
-                   train_instance_count=1, train_instance_type='ml.c4.xlarge',
+                   py_version=PYTHON_VERSION, train_instance_count=1, train_instance_type='ml.c4.xlarge',
                    sagemaker_session=sagemaker_session)
 
         train_input = mx.sagemaker_session.upload_data(path=os.path.join(data_path, 'train'),
@@ -45,6 +45,7 @@ def mxnet_training_job(sagemaker_session, mxnet_full_version):
 
 
 @pytest.mark.continuous_testing
+@pytest.mark.regional_testing
 def test_attach_deploy(mxnet_training_job, sagemaker_session):
     endpoint_name = 'test-mxnet-attach-deploy-{}'.format(sagemaker_timestamp())
 
@@ -62,7 +63,8 @@ def test_deploy_model(mxnet_training_job, sagemaker_session):
         desc = sagemaker_session.sagemaker_client.describe_training_job(TrainingJobName=mxnet_training_job)
         model_data = desc['ModelArtifacts']['S3ModelArtifacts']
         script_path = os.path.join(DATA_DIR, 'mxnet_mnist', 'mnist.py')
-        model = MXNetModel(model_data, 'SageMakerRole', entry_point=script_path, sagemaker_session=sagemaker_session)
+        model = MXNetModel(model_data, 'SageMakerRole', entry_point=script_path,
+                           py_version=PYTHON_VERSION, sagemaker_session=sagemaker_session)
         predictor = model.deploy(1, 'ml.m4.xlarge', endpoint_name=endpoint_name)
 
         data = numpy.zeros(shape=(1, 1, 28, 28))
@@ -76,7 +78,7 @@ def test_async_fit(sagemaker_session):
         script_path = os.path.join(DATA_DIR, 'mxnet_mnist', 'mnist.py')
         data_path = os.path.join(DATA_DIR, 'mxnet_mnist')
 
-        mx = MXNet(entry_point=script_path, role='SageMakerRole',
+        mx = MXNet(entry_point=script_path, role='SageMakerRole', py_version=PYTHON_VERSION,
                    train_instance_count=1, train_instance_type='ml.c4.xlarge',
                    sagemaker_session=sagemaker_session)
 
@@ -100,12 +102,12 @@ def test_async_fit(sagemaker_session):
 
 
 def test_failed_training_job(sagemaker_session, mxnet_full_version):
-    with timeout(minutes=15):
+    with timeout():
         script_path = os.path.join(DATA_DIR, 'mxnet_mnist', 'failure_script.py')
         data_path = os.path.join(DATA_DIR, 'mxnet_mnist')
 
         mx = MXNet(entry_point=script_path, role='SageMakerRole', framework_version=mxnet_full_version,
-                   train_instance_count=1, train_instance_type='ml.c4.xlarge',
+                   py_version=PYTHON_VERSION, train_instance_count=1, train_instance_type='ml.c4.xlarge',
                    sagemaker_session=sagemaker_session)
 
         train_input = mx.sagemaker_session.upload_data(path=os.path.join(data_path, 'train'),

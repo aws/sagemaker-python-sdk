@@ -95,20 +95,20 @@ def _create_train_job(version):
             'MaxRuntimeInSeconds': 24 * 60 * 60
         },
         'tags': None,
+        'vpc_config': None
     }
 
 
 def test_create_model(sagemaker_session, mxnet_version):
     container_log_level = '"logging.INFO"'
     source_dir = 's3://mybucket/source'
-    enable_cloudwatch_metrics = 'true'
     mx = MXNet(entry_point=SCRIPT_PATH, role=ROLE, sagemaker_session=sagemaker_session,
                train_instance_count=INSTANCE_COUNT, train_instance_type=INSTANCE_TYPE,
                framework_version=mxnet_version, container_log_level=container_log_level,
-               base_job_name='job', source_dir=source_dir, enable_cloudwatch_metrics=enable_cloudwatch_metrics)
+               base_job_name='job', source_dir=source_dir)
 
     job_name = 'new_name'
-    mx.fit(inputs='s3://mybucket/train', job_name='new_name')
+    mx.fit(inputs='s3://mybucket/train', job_name=job_name)
     model = mx.create_model()
 
     assert model.sagemaker_session == sagemaker_session
@@ -119,18 +119,35 @@ def test_create_model(sagemaker_session, mxnet_version):
     assert model.name == job_name
     assert model.container_log_level == container_log_level
     assert model.source_dir == source_dir
-    assert model.enable_cloudwatch_metrics == enable_cloudwatch_metrics
+
+
+def test_create_model_with_optional_params(sagemaker_session):
+    container_log_level = '"logging.INFO"'
+    source_dir = 's3://mybucket/source'
+    enable_cloudwatch_metrics = 'true'
+    mx = MXNet(entry_point=SCRIPT_PATH, role=ROLE, sagemaker_session=sagemaker_session,
+               train_instance_count=INSTANCE_COUNT, train_instance_type=INSTANCE_TYPE,
+               container_log_level=container_log_level, base_job_name='job', source_dir=source_dir,
+               enable_cloudwatch_metrics=enable_cloudwatch_metrics)
+
+    mx.fit(inputs='s3://mybucket/train', job_name='new_name')
+
+    new_role = 'role'
+    model_server_workers = 2
+    model = mx.create_model(role=new_role, model_server_workers=model_server_workers)
+
+    assert model.role == new_role
+    assert model.model_server_workers == model_server_workers
 
 
 def test_create_model_with_custom_image(sagemaker_session):
     container_log_level = '"logging.INFO"'
     source_dir = 's3://mybucket/source'
-    enable_cloudwatch_metrics = 'true'
     custom_image = 'mxnet:2.0'
     mx = MXNet(entry_point=SCRIPT_PATH, role=ROLE, sagemaker_session=sagemaker_session,
                train_instance_count=INSTANCE_COUNT, train_instance_type=INSTANCE_TYPE,
                image_name=custom_image, container_log_level=container_log_level,
-               base_job_name='job', source_dir=source_dir, enable_cloudwatch_metrics=enable_cloudwatch_metrics)
+               base_job_name='job', source_dir=source_dir)
 
     job_name = 'new_name'
     mx.fit(inputs='s3://mybucket/train', job_name='new_name')
@@ -143,7 +160,6 @@ def test_create_model_with_custom_image(sagemaker_session):
     assert model.name == job_name
     assert model.container_log_level == container_log_level
     assert model.source_dir == source_dir
-    assert model.enable_cloudwatch_metrics == enable_cloudwatch_metrics
 
 
 @patch('time.strftime', return_value=TIMESTAMP)

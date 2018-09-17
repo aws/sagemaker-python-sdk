@@ -15,6 +15,7 @@ from __future__ import print_function, absolute_import
 import json
 import logging
 import os
+import warnings
 from abc import ABCMeta
 from abc import abstractmethod
 from six import with_metaclass
@@ -30,7 +31,8 @@ from sagemaker.model import (SCRIPT_PARAM_NAME, DIR_PARAM_NAME, CLOUDWATCH_METRI
 from sagemaker.predictor import RealTimePredictor
 from sagemaker.session import Session
 from sagemaker.session import s3_input
-from sagemaker.utils import base_name_from_image, name_from_base, get_config_value
+from sagemaker.transformer import Transformer
+from sagemaker.utils import base_name_from_image, name_from_base, name_from_image, get_config_value
 
 
 class EstimatorBase(with_metaclass(ABCMeta, object)):
@@ -44,8 +46,9 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):
     """
 
     def __init__(self, role, train_instance_count, train_instance_type,
-                 train_volume_size=30, train_max_run=24 * 60 * 60, input_mode='File',
-                 output_path=None, output_kms_key=None, base_job_name=None, sagemaker_session=None, tags=None):
+                 train_volume_size=30, train_volume_kms_key=None, train_max_run=24 * 60 * 60, input_mode='File',
+                 output_path=None, output_kms_key=None, base_job_name=None, sagemaker_session=None, tags=None,
+                 subnets=None, security_group_ids=None):
         """Initialize an ``EstimatorBase`` instance.
 
         Args:
@@ -58,6 +61,8 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):
             train_volume_size (int): Size in GB of the EBS volume to use for storing input data
                 during training (default: 30). Must be large enough to store training data if File Mode is used
                 (which is the default).
+            train_volume_kms_key (str): Optional. KMS key ID for encrypting EBS volume attached to the
+                training instance (default: None).
             train_max_run (int): Timeout in seconds for training (default: 24 * 60 * 60).
                 After this amount of time Amazon SageMaker terminates the job regardless of its current status.
             input_mode (str): The input mode that the algorithm supports (default: 'File'). Valid modes:
@@ -76,11 +81,15 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):
                 using the default AWS configuration chain.
             tags (list[dict]): List of tags for labeling a training job. For more, see
                 https://docs.aws.amazon.com/sagemaker/latest/dg/API_Tag.html.
+            subnets (list[str]): List of subnet ids. If not specified training job will be created without VPC config.
+            security_group_ids (list[str]): List of security group ids. If not specified training job will be created
+                without VPC config.
         """
         self.role = role
         self.train_instance_count = train_instance_count
         self.train_instance_type = train_instance_type
         self.train_volume_size = train_volume_size
+        self.train_volume_kms_key = train_volume_kms_key
         self.train_max_run = train_max_run
         self.input_mode = input_mode
         self.tags = tags
@@ -97,6 +106,10 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):
         self.output_path = output_path
         self.output_kms_key = output_kms_key
         self.latest_training_job = None
+
+        # VPC configurations
+        self.subnets = subnets
+        self.security_group_ids = security_group_ids
 
     @abstractmethod
     def train_image(self):
@@ -253,8 +266,7 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):
             sagemaker.predictor.RealTimePredictor: A predictor that provides a ``predict()`` method,
                 which can be used to send requests to the Amazon SageMaker endpoint and obtain inferences.
         """
-        if not self.latest_training_job:
-            raise RuntimeError('Estimator has not been fit yet.')
+        self._ensure_latest_training_job()
         endpoint_name = endpoint_name or self.latest_training_job.name
         self.deploy_instance_type = instance_type
         return self.create_model(**kwargs).deploy(
@@ -314,9 +326,44 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):
         Raises:
             ValueError: If the endpoint does not exist.
         """
-        if self.latest_training_job is None:
-            raise ValueError('Endpoint was not created yet')
+        self._ensure_latest_training_job(error_message='Endpoint was not created yet')
         self.sagemaker_session.delete_endpoint(self.latest_training_job.name)
+
+    def transformer(self, instance_count, instance_type, strategy=None, assemble_with=None, output_path=None,
+                    output_kms_key=None, accept=None, env=None, max_concurrent_transforms=None,
+                    max_payload=None, tags=None, role=None):
+        """Return a ``Transformer`` that uses a SageMaker Model based on the training job. It reuses the
+        SageMaker Session and base job name used by the Estimator.
+
+        Args:
+            instance_count (int): Number of EC2 instances to use.
+            instance_type (str): Type of EC2 instance to use, for example, 'ml.c4.xlarge'.
+            strategy (str): The strategy used to decide how to batch records in a single request (default: None).
+                Valid values: 'MULTI_RECORD' and 'SINGLE_RECORD'.
+            assemble_with (str): How the output is assembled (default: None). Valid values: 'Line' or 'None'.
+            output_path (str): S3 location for saving the transform result. If not specified, results are stored to
+                a default bucket.
+            output_kms_key (str): Optional. KMS key ID for encrypting the transform output (default: None).
+            accept (str): The content type accepted by the endpoint deployed during the transform job.
+            env (dict): Environment variables to be set for use during the transform job (default: None).
+            max_concurrent_transforms (int): The maximum number of HTTP requests to be made to
+                each individual transform container at one time.
+            max_payload (int): Maximum size of the payload in a single HTTP request to the container in MB.
+            tags (list[dict]): List of tags for labeling a transform job. If none specified, then the tags used for
+                the training job are used for the transform job.
+            role (str): The ``ExecutionRoleArn`` IAM Role ARN for the ``Model``, which is also used during
+                transform jobs. If not specified, the role from the Estimator will be used.
+        """
+        self._ensure_latest_training_job()
+
+        model_name = self.sagemaker_session.create_model_from_job(self.latest_training_job.name, role=role)
+        tags = tags or self.tags
+
+        return Transformer(model_name, instance_count, instance_type, strategy=strategy, assemble_with=assemble_with,
+                           output_path=output_path, output_kms_key=output_kms_key, accept=accept,
+                           max_concurrent_transforms=max_concurrent_transforms, max_payload=max_payload,
+                           env=env, tags=tags, base_transform_job_name=self.base_job_name,
+                           sagemaker_session=self.sagemaker_session)
 
     @property
     def training_job_analytics(self):
@@ -324,7 +371,11 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):
         """
         if self._current_job_name is None:
             raise ValueError('Estimator is not associated with a TrainingJob')
-        return TrainingJobAnalytics(self._current_job_name)
+        return TrainingJobAnalytics(self._current_job_name, sagemaker_session=self.sagemaker_session)
+
+    def _ensure_latest_training_job(self, error_message='Estimator is not associated with a training job'):
+        if self.latest_training_job is None:
+            raise ValueError(error_message)
 
 
 class _TrainingJob(_Job):
@@ -359,8 +410,9 @@ class _TrainingJob(_Job):
         estimator.sagemaker_session.train(image=estimator.train_image(), input_mode=estimator.input_mode,
                                           input_config=config['input_config'], role=config['role'],
                                           job_name=estimator._current_job_name, output_config=config['output_config'],
-                                          resource_config=config['resource_config'], hyperparameters=hyperparameters,
-                                          stop_condition=config['stop_condition'], tags=estimator.tags)
+                                          resource_config=config['resource_config'], vpc_config=config['vpc_config'],
+                                          hyperparameters=hyperparameters, stop_condition=config['stop_condition'],
+                                          tags=estimator.tags)
 
         return cls(estimator.sagemaker_session, estimator._current_job_name)
 
@@ -378,9 +430,9 @@ class Estimator(EstimatorBase):
     """
 
     def __init__(self, image_name, role, train_instance_count, train_instance_type,
-                 train_volume_size=30, train_max_run=24 * 60 * 60, input_mode='File',
-                 output_path=None, output_kms_key=None, base_job_name=None, sagemaker_session=None,
-                 hyperparameters=None):
+                 train_volume_size=30, train_volume_kms_key=None, train_max_run=24 * 60 * 60,
+                 input_mode='File', output_path=None, output_kms_key=None, base_job_name=None,
+                 sagemaker_session=None, hyperparameters=None, tags=None, subnets=None, security_group_ids=None):
         """Initialize an ``Estimator`` instance.
 
         Args:
@@ -394,6 +446,8 @@ class Estimator(EstimatorBase):
             train_volume_size (int): Size in GB of the EBS volume to use for storing input data
                 during training (default: 30). Must be large enough to store training data if File Mode is used
                 (which is the default).
+            train_volume_kms_key (str): Optional. KMS key ID for encrypting EBS volume attached to the
+                training instance (default: None).
             train_max_run (int): Timeout in seconds for training (default: 24 * 60 * 60).
                 After this amount of time Amazon SageMaker terminates the job regardless of its current status.
             input_mode (str): The input mode that the algorithm supports (default: 'File'). Valid modes:
@@ -413,12 +467,18 @@ class Estimator(EstimatorBase):
                 Amazon SageMaker APIs and any other AWS services needed. If not specified, the estimator creates one
                 using the default AWS configuration chain.
             hyperparameters (dict): Dictionary containing the hyperparameters to initialize this estimator with.
+            tags (list[dict]): List of tags for labeling a training job. For more, see
+                https://docs.aws.amazon.com/sagemaker/latest/dg/API_Tag.html.
+            subnets (list[str]): List of subnet ids. If not specified training job will be created without VPC config.
+            security_group_ids (list[str]): List of security group ids. If not specified training job will be created
+                without VPC config.
         """
         self.image_name = image_name
         self.hyperparam_dict = hyperparameters.copy() if hyperparameters else {}
         super(Estimator, self).__init__(role, train_instance_count, train_instance_type,
-                                        train_volume_size, train_max_run, input_mode,
-                                        output_path, output_kms_key, base_job_name, sagemaker_session)
+                                        train_volume_size, train_volume_kms_key, train_max_run, input_mode,
+                                        output_path, output_kms_key, base_job_name, sagemaker_session,
+                                        tags, subnets, security_group_ids)
 
     def train_image(self):
         """
@@ -439,12 +499,14 @@ class Estimator(EstimatorBase):
         """
         return self.hyperparam_dict
 
-    def create_model(self, image=None, predictor_cls=None, serializer=None, deserializer=None,
+    def create_model(self, role=None, image=None, predictor_cls=None, serializer=None, deserializer=None,
                      content_type=None, accept=None, **kwargs):
         """
         Create a model to deploy.
 
         Args:
+            role (str): The ``ExecutionRoleArn`` IAM Role ARN for the ``Model``, which is also used during
+                transform jobs. If not specified, the role from the Estimator will be used.
             image (str): An container image to use for deploying the model. Defaults to the image used for training.
             predictor_cls (RealTimePredictor): The predictor class to use when deploying the model.
             serializer (callable): Should accept a single argument, the input data, and return a sequence
@@ -466,7 +528,9 @@ class Estimator(EstimatorBase):
                 return RealTimePredictor(endpoint, session, serializer, deserializer, content_type, accept)
             predictor_cls = predict_wrapper
 
-        return Model(self.model_data, image or self.train_image(), self.role, sagemaker_session=self.sagemaker_session,
+        role = role or self.role
+
+        return Model(self.model_data, image or self.train_image(), role, sagemaker_session=self.sagemaker_session,
                      predictor_cls=predictor_cls, **kwargs)
 
     @classmethod
@@ -507,8 +571,8 @@ class Framework(EstimatorBase):
                 The hyperparameters are made accessible as a dict[str, str] to the training code on SageMaker.
                 For convenience, this accepts other types for keys and values, but ``str()`` will be called
                 to convert them before training.
-            enable_cloudwatch_metrics (bool): Whether training and hosting containers will
-               generate CloudWatch metrics under the AWS/SageMakerContainer namespace (default: False).
+            enable_cloudwatch_metrics (bool): [DEPRECATED] Now there are cloudwatch metrics emitted by all SageMaker
+                training jobs. This will be ignored for now and removed in a further release.
             container_log_level (int): Log level to use within the container (default: logging.INFO).
                 Valid values are defined in the Python logging module.
             code_location (str): Name of the S3 bucket where custom code is uploaded (default: None).
@@ -521,7 +585,10 @@ class Framework(EstimatorBase):
         super(Framework, self).__init__(**kwargs)
         self.source_dir = source_dir
         self.entry_point = entry_point
-        self.enable_cloudwatch_metrics = enable_cloudwatch_metrics
+        if enable_cloudwatch_metrics:
+            warnings.warn('enable_cloudwatch_metrics is now deprecated and will be removed in the future.',
+                          DeprecationWarning)
+        self.enable_cloudwatch_metrics = False
         self.container_log_level = container_log_level
         self._hyperparameters = hyperparameters or {}
         self.code_location = code_location
@@ -697,6 +764,53 @@ class Framework(EstimatorBase):
                 value = json.loads(value)
                 updated_params[argument] = value
         return updated_params
+
+    def transformer(self, instance_count, instance_type, strategy=None, assemble_with=None, output_path=None,
+                    output_kms_key=None, accept=None, env=None, max_concurrent_transforms=None,
+                    max_payload=None, tags=None, role=None, model_server_workers=None):
+        """Return a ``Transformer`` that uses a SageMaker Model based on the training job. It reuses the
+        SageMaker Session and base job name used by the Estimator.
+
+        Args:
+            instance_count (int): Number of EC2 instances to use.
+            instance_type (str): Type of EC2 instance to use, for example, 'ml.c4.xlarge'.
+            strategy (str): The strategy used to decide how to batch records in a single request (default: None).
+                Valid values: 'MULTI_RECORD' and 'SINGLE_RECORD'.
+            assemble_with (str): How the output is assembled (default: None). Valid values: 'Line' or 'None'.
+            output_path (str): S3 location for saving the transform result. If not specified, results are stored to
+                a default bucket.
+            output_kms_key (str): Optional. KMS key ID for encrypting the transform output (default: None).
+            accept (str): The content type accepted by the endpoint deployed during the transform job.
+            env (dict): Environment variables to be set for use during the transform job (default: None).
+            max_concurrent_transforms (int): The maximum number of HTTP requests to be made to
+                each individual transform container at one time.
+            max_payload (int): Maximum size of the payload in a single HTTP request to the container in MB.
+            tags (list[dict]): List of tags for labeling a transform job. If none specified, then the tags used for
+                the training job are used for the transform job.
+            role (str): The ``ExecutionRoleArn`` IAM Role ARN for the ``Model``, which is also used during
+                transform jobs. If not specified, the role from the Estimator will be used.
+            model_server_workers (int): Optional. The number of worker processes used by the inference server.
+                If None, server will use one worker per vCPU.
+        """
+        self._ensure_latest_training_job()
+        role = role or self.role
+
+        model = self.create_model(role=role, model_server_workers=model_server_workers)
+
+        container_def = model.prepare_container_def(instance_type)
+        model_name = model.name or name_from_image(container_def['Image'])
+        self.sagemaker_session.create_model(model_name, role, container_def)
+
+        transform_env = model.env.copy()
+        if env is not None:
+            transform_env.update(env)
+
+        tags = tags or self.tags
+        return Transformer(model_name, instance_count, instance_type, strategy=strategy, assemble_with=assemble_with,
+                           output_path=output_path, output_kms_key=output_kms_key, accept=accept,
+                           max_concurrent_transforms=max_concurrent_transforms, max_payload=max_payload,
+                           env=transform_env, tags=tags, base_transform_job_name=self.base_job_name,
+                           sagemaker_session=self.sagemaker_session)
 
 
 def _s3_uri_prefix(channel_name, s3_data):

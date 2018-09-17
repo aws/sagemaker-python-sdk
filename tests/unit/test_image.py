@@ -245,6 +245,29 @@ def test_train(_download_folder, _cleanup, popen, _stream_output, LocalSession,
                 assert config['services'][h]['image'] == image
                 assert config['services'][h]['command'] == 'train'
 
+        # assert that expected by sagemaker container output directories exist
+        assert os.path.exists(os.path.join(sagemaker_container.container_root, 'output'))
+        assert os.path.exists(os.path.join(sagemaker_container.container_root, 'output/data'))
+
+
+@patch('sagemaker.local.local_session.LocalSession')
+@patch('sagemaker.local.image._stream_output', side_effect=RuntimeError('this is expected'))
+@patch('subprocess.Popen')
+@patch('sagemaker.local.image._SageMakerContainer._cleanup')
+@patch('sagemaker.local.image._SageMakerContainer._download_folder')
+def test_train_error(_download_folder, _cleanup, popen, _stream_output, LocalSession, tmpdir, sagemaker_session):
+    directories = [str(tmpdir.mkdir('container-root')), str(tmpdir.mkdir('data'))]
+
+    with patch('sagemaker.local.image._SageMakerContainer._create_tmp_folder', side_effect=directories):
+        instance_count = 2
+        image = 'my-image'
+        sagemaker_container = _SageMakerContainer('local', instance_count, image, sagemaker_session=sagemaker_session)
+
+        with pytest.raises(RuntimeError) as e:
+            sagemaker_container.train(INPUT_DATA_CONFIG, HYPERPARAMETERS)
+
+        assert 'this is expected' in str(e)
+
 
 @patch('sagemaker.local.local_session.LocalSession')
 @patch('sagemaker.local.image._stream_output')

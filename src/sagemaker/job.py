@@ -57,14 +57,17 @@ class _Job(object):
         output_config = _Job._prepare_output_config(estimator.output_path, estimator.output_kms_key)
         resource_config = _Job._prepare_resource_config(estimator.train_instance_count,
                                                         estimator.train_instance_type,
-                                                        estimator.train_volume_size)
+                                                        estimator.train_volume_size,
+                                                        estimator.train_volume_kms_key)
         stop_condition = _Job._prepare_stop_condition(estimator.train_max_run)
+        vpc_config = _Job._prepare_vpc_config(estimator.subnets, estimator.security_group_ids)
 
         return {'input_config': input_config,
                 'role': role,
                 'output_config': output_config,
                 'resource_config': resource_config,
-                'stop_condition': stop_condition}
+                'stop_condition': stop_condition,
+                'vpc_config': vpc_config}
 
     @staticmethod
     def _format_inputs_to_input_config(inputs):
@@ -104,17 +107,14 @@ class _Job(object):
             elif input.startswith('file://'):
                 return file_input(input)
             else:
-                raise ValueError(
-                    'Training input data must be a valid S3 or FILE URI: must start with "s3://" or '
-                    '"file://"')
+                raise ValueError('Training input data must be a valid S3 or FILE URI: must start with "s3://" or '
+                                 '"file://"')
         elif isinstance(input, s3_input):
             return input
         elif isinstance(input, file_input):
             return input
         else:
-            raise ValueError(
-                'Cannot format input {}. Expecting one of str, s3_input, or file_input'.format(
-                    input))
+            raise ValueError('Cannot format input {}. Expecting one of str, s3_input, or file_input'.format(input))
 
     @staticmethod
     def _format_record_set_list_input(inputs):
@@ -141,10 +141,21 @@ class _Job(object):
         return config
 
     @staticmethod
-    def _prepare_resource_config(instance_count, instance_type, volume_size):
-        return {'InstanceCount': instance_count,
-                'InstanceType': instance_type,
-                'VolumeSizeInGB': volume_size}
+    def _prepare_resource_config(instance_count, instance_type, volume_size, train_volume_kms_key):
+        resource_config = {'InstanceCount': instance_count,
+                           'InstanceType': instance_type,
+                           'VolumeSizeInGB': volume_size}
+        if train_volume_kms_key is not None:
+            resource_config['VolumeKmsKeyId'] = train_volume_kms_key
+
+        return resource_config
+
+    @staticmethod
+    def _prepare_vpc_config(subnets, security_group_ids):
+        if subnets is None or security_group_ids is None:
+            return None
+        return {'Subnets': subnets,
+                'SecurityGroupIds': security_group_ids}
 
     @staticmethod
     def _prepare_stop_condition(max_run):

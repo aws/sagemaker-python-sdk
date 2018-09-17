@@ -20,6 +20,11 @@ from botocore.config import Config
 
 from sagemaker import Session
 from sagemaker.local import LocalSession
+from sagemaker.chainer.defaults import CHAINER_VERSION
+from sagemaker.pytorch.defaults import PYTORCH_VERSION
+from sagemaker.mxnet.defaults import MXNET_VERSION
+from sagemaker.tensorflow.defaults import TF_VERSION
+
 
 DEFAULT_REGION = 'us-west-2'
 
@@ -28,6 +33,10 @@ def pytest_addoption(parser):
     parser.addoption('--sagemaker-client-config', action='store', default=None)
     parser.addoption('--sagemaker-runtime-config', action='store', default=None)
     parser.addoption('--boto-config', action='store', default=None)
+    parser.addoption('--tf-full-version', action='store', default=TF_VERSION)
+    parser.addoption('--mxnet-full-version', action='store', default=MXNET_VERSION)
+    parser.addoption('--chainer-full-version', action='store', default=CHAINER_VERSION)
+    parser.addoption('--pytorch-full-version', action='store', default=PYTORCH_VERSION)
 
 
 @pytest.fixture(scope='session')
@@ -71,12 +80,13 @@ def sagemaker_local_session(boto_config):
 
 
 @pytest.fixture(scope='module', params=['1.4', '1.4.1', '1.5', '1.5.0', '1.6', '1.6.0',
-                                        '1.7', '1.7.0', '1.8', '1.8.0'])
+                                        '1.7', '1.7.0', '1.8', '1.8.0', '1.9', '1.9.0',
+                                        '1.10', '1.10.0'])
 def tf_version(request):
     return request.param
 
 
-@pytest.fixture(scope='module', params=['0.12', '0.12.1', '1.0', '1.0.0', '1.1', '1.1.0'])
+@pytest.fixture(scope='module', params=['0.12', '0.12.1', '1.0', '1.0.0', '1.1', '1.1.0', '1.2', '1.2.1'])
 def mxnet_version(request):
     return request.param
 
@@ -86,26 +96,26 @@ def pytorch_version(request):
     return request.param
 
 
-@pytest.fixture(scope='module', params=['4.0', '4.0.0'])
+@pytest.fixture(scope='module', params=['4.0', '4.0.0', '4.1', '4.1.0'])
 def chainer_version(request):
     return request.param
 
 
-@pytest.fixture(scope='module', params=['1.4.1', '1.5.0', '1.6.0', '1.7.0', '1.8.0'])
+@pytest.fixture(scope='module')
 def tf_full_version(request):
-    return request.param
+    return request.config.getoption('--tf-full-version')
 
 
-@pytest.fixture(scope='module', params=['0.12.1', '1.0.0', '1.1.0'])
+@pytest.fixture(scope='module')
 def mxnet_full_version(request):
-    return request.param
+    return request.config.getoption('--mxnet-full-version')
 
 
-@pytest.fixture(scope='module', params=["0.4.0"])
+@pytest.fixture(scope='module')
 def pytorch_full_version(request):
-    return request.param
+    return request.config.getoption('--pytorch-full-version')
 
 
-@pytest.fixture(scope='module', params=['4.0.0'])
+@pytest.fixture(scope='module')
 def chainer_full_version(request):
-    return request.param
+    return request.config.getoption('--chainer-full-version')
