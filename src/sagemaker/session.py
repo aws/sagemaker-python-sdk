@@ -259,9 +259,9 @@ class Session(object):
             'InputDataConfig': input_config,
             'OutputDataConfig': output_config,
             'TrainingJobName': job_name,
-            "StoppingCondition": stop_condition,
-            "ResourceConfig": resource_config,
-            "RoleArn": role,
+            'StoppingCondition': stop_condition,
+            'ResourceConfig': resource_config,
+            'RoleArn': role,
         }
 
         if hyperparameters and len(hyperparameters) > 0:

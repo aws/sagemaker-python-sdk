@@ -1,4 +1,3 @@
-
 =====================================
 MXNet SageMaker Estimators and Models
 =====================================
@@ -30,6 +29,14 @@ In the following sections, we'll discuss how to prepare a training script for ex
 
 Preparing the MXNet training script
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
++-------------------------------------------------------------------------------------------------------------------------------+
+| WARNING                                                                                                                       |
++===============================================================================================================================+
+| This required structure for training scripts will be deprecated with the next major release of MXNet images.                  |
+| The ``train`` function will no longer be required; instead the training script must be able to be run as a standalone script. |
+| For more information, see `"Updating your MXNet training script" <#updating-your-mxnet-training-script>`__.                   |
++-------------------------------------------------------------------------------------------------------------------------------+
 
 Your MXNet training script must be a Python 2.7 or 3.5 compatible source file. The MXNet training script must contain a function ``train``, which SageMaker invokes to run training. You can include other functions as well, but it must contain a ``train`` function.
 
@@ -572,6 +579,82 @@ Amazon provides several example Jupyter notebooks that demonstrate end-to-end tr
 https://github.com/awslabs/amazon-sagemaker-examples/tree/master/sagemaker-python-sdk
 
 These are also available in SageMaker Notebook Instance hosted Jupyter notebooks under the "sample notebooks" folder.
+
+
+Updating your MXNet training script
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+The required structure for training scripts will be deprecated with the next major release of MXNet images.
+The ``train`` function will no longer be required; instead the training script must be able to be run as a standalone script.
+In this way, the training script will become similar to a training script you might run outside of SageMaker.
+
+There are a few steps needed to make a training script with the old format compatible with the new format.
+You don't need to do this yet, but it's documented here for future reference, as this change is coming soon.
+
+First, add a `main guard <https://docs.python.org/3/library/__main__.html>`__ (``if __name__ == '__main__':``).
+The code executed from your main guard needs to:
+
+1. Set hyperparameters and directory locations
+2. Initiate training
+3. Save the model
+
+Hyperparameters will be passed as command-line arguments to your training script.
+In addition, the container will define the locations of input data and where to save the model artifacts and output data as environment variables rather than passing that information as arguments to the ``train`` function.
+You can find the full list of available environment variables in the `SageMaker Containers README <https://github.com/aws/sagemaker-containers#list-of-provided-environment-variables-by-sagemaker-containers>`__.
+
+We recommend using `an argument parser <https://docs.python.org/3.5/howto/argparse.html>`__ for this part.
+Using the ``argparse`` library as an example, the code would look something like this:
+
+.. code:: python
+
+    import argparse
+    import os
+
+    if __name__ == '__main__':
+        parser = argparse.ArgumentParser()
+
+        # hyperparameters sent by the client are passed as command-line arguments to the script.
+        parser.add_argument('--epochs', type=int, default=10)
+        parser.add_argument('--batch-size', type=int, default=100)
+        parser.add_argument('--learning-rate', type=float, default=0.1)
+
+        # input data and model directories
+        parser.add_argument('--model-dir', type=str, default=os.environ['SM_MODEL_DIR'])
+        parser.add_argument('--train', type=str, default=os.environ['SM_CHANNEL_TRAIN'])
+        parser.add_argument('--test', type=str, default=os.environ['SM_CHANNEL_TEST'])
+
+        args, _ = parser.parse_known_args()
+
+The code in the main guard should also take care of training and saving the model.
+This can be as simple as just calling the ``train`` and ``save`` methods used in the previous training script format:
+
+.. code:: python
+
+    if __name__ == '__main__':
+        # arg parsing (shown above) goes here
+
+        model = train(args.batch_size, args.epochs, args.learning_rate, args.train, args.test)
+        save(args.model_dir, model)
+
+Note that saving the model will no longer be done by default; this must be done by the training script.
+If you were previously relying on the default save method, here is one you can copy into your code:
+
+.. code:: python
+
+    import json
+    import os
+
+    def save(model_dir, model):
+        model.symbol.save(os.path.join(model_dir, 'model-symbol.json'))
+        model.save_params(os.path.join(model_dir, 'model-0000.params'))
+
+        signature = [{'name': data_desc.name, 'shape': [dim for dim in data_desc.shape]}
+                     for data_desc in model.data_shapes]
+        with open(os.path.join(model_dir, 'model-shapes.json'), 'w') as f:
+            json.dump(signature, f)
+
+These changes will make training with MXNet similar to training with Chainer or PyTorch on SageMaker.
+For more information about those experiences, see `"Preparing the Chainer training script" <https://github.com/aws/sagemaker-python-sdk/tree/master/src/sagemaker/chainer#preparing-the-chainer-training-script>`__ and `"Preparing the PyTorch Training Script" <https://github.com/aws/sagemaker-python-sdk/tree/master/src/sagemaker/pytorch#preparing-the-pytorch-training-script>`__.
 
 
 SageMaker MXNet Containers
