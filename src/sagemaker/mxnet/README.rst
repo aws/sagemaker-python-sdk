@@ -599,7 +599,7 @@ The code executed from your main guard needs to:
 3. Save the model
 
 Hyperparameters will be passed as command-line arguments to your training script.
-In addition, the locations for finding input data and saving the model and output data will be provided as environment variables rather than as arguments to a function.
+In addition, the container will define the locations of input data and where to save the model artifacts and output data as environment variables rather than passing that information as arguments to the ``train`` function.
 You can find the full list of available environment variables in the `SageMaker Containers README <https://github.com/aws/sagemaker-containers#list-of-provided-environment-variables-by-sagemaker-containers>`__.
 
 We recommend using `an argument parser <https://docs.python.org/3.5/howto/argparse.html>`__ for this part.
@@ -626,7 +626,7 @@ Using the ``argparse`` library as an example, the code would look something like
         args, _ = parser.parse_known_args()
 
 The code in the main guard should also take care of training and saving the model.
-This can be as simple as just calling the methods used with the previous training script format:
+This can be as simple as just calling the ``train`` and ``save`` methods used in the previous training script format:
 
 .. code:: python
 
