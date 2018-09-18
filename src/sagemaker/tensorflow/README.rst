@@ -663,8 +663,8 @@ If you already have existing model artifacts, you can skip training and deploy t
 
   predictor = tf_model.deploy(initial_instance_count=1, instance_type='ml.c4.xlarge')
 
-You can also optionally specify a pip requirements if you need to install additional packages into the deployed
-runtime environment by including it in your source_dir and specifying it in the 'SAGEMAKER_REQUIREMENTS' env variable:
+You can also optionally specify a pip `requirements file <https://pip.pypa.io/en/stable/reference/pip_install/#requirements-file-format>`_ if you need to install additional packages into the deployed
+runtime environment by including it in your source_dir and specifying it in the ``'SAGEMAKER_REQUIREMENTS'`` env variable:
 
 .. code:: python
 
@@ -675,8 +675,7 @@ runtime environment by including it in your source_dir and specifying it in the 
                              entry_point='entry.py',
                              source_dir='my_src', # directory which contains entry_point script and requirements file
                              name='model_name',
-                             env={'SAGEMAKER_REQUIREMENTS': 'requirements.txt'} # path relative to source_dir
-                             )
+                             env={'SAGEMAKER_REQUIREMENTS': 'requirements.txt'}) # path relative to source_dir
 
   predictor = tf_model.deploy(initial_instance_count=1, instance_type='ml.c4.xlarge')
 
