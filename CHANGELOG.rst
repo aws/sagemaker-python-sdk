@@ -2,6 +2,13 @@
 CHANGELOG
 =========
 
+1.10.1
+======
+
+* feature: add train_volume_kms_key parameter to Estimator classes
+* doc-fix: add deprecation warning for current MXNet training script format
+* doc-fix: add docs on deploying TensorFlow model directly from existing model
+
 1.10.0
 ======
 
