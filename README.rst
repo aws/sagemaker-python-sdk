@@ -152,6 +152,7 @@ Here is an end to end example of how to use a SageMaker Estimator:
 
     # Configure an MXNet Estimator (no training happens yet)
     mxnet_estimator = MXNet('train.py',
+                            role="SageMakerRole",
                             train_instance_type='ml.p2.xlarge',
                             train_instance_count = 1)
 
@@ -181,6 +182,7 @@ We can take the example in  `Using Estimators <#using-estimators>`__ , and use e
 
     # Configure an MXNet Estimator (no training happens yet)
     mxnet_estimator = MXNet('train.py',
+                            role="SageMakerRole",
                             train_instance_type='local',
                             train_instance_count=1)
 
