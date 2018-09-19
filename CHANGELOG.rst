@@ -8,6 +8,7 @@ CHANGELOG
 * feature: add train_volume_kms_key parameter to Estimator classes
 * doc-fix: add deprecation warning for current MXNet training script format
 * doc-fix: add docs on deploying TensorFlow model directly from existing model
+* doc-fix: fix code example for using Gzip compression for TensorFlow training data
 
 1.10.0
 ======
