@@ -431,7 +431,7 @@ class Session(object):
         LOGGER.debug('Transform request: {}'.format(json.dumps(transform_request, indent=4)))
         self.sagemaker_client.create_transform_job(**transform_request)
 
-    def create_model(self, name, role, primary_container):
+    def create_model(self, name, role, primary_container, vpc_config=None):
         """Create an Amazon SageMaker ``Model``.
 
         Specify the S3 location of the model artifacts and Docker image containing
@@ -446,6 +446,11 @@ class Session(object):
             primary_container (str or dict[str, str]): Docker image which defines the inference code.
                 You can also specify the return value of ``sagemaker.container_def()``, which is used to create
                 more advanced container configurations, including model containers which need artifacts from S3.
+            vpc_config (dict[str, list[str]]): Contains values for VpcConfig:
+                * subnets (list[str]): List of subnet ids.
+                    The key in vpc_config is 'Subnets'.
+                * security_group_ids (list[str]): List of security group ids.
+                    The key in vpc_config is 'SecurityGroupIds'.
 
         Returns:
             str: Name of the Amazon SageMaker ``Model`` created.
@@ -456,13 +461,15 @@ class Session(object):
         LOGGER.debug('create_model request: {}'.format({
             'name': name,
             'role': role,
-            'primary_container': primary_container
+            'primary_container': primary_container,
+            'vpc_config': vpc_config,
         }))
 
         try:
             self.sagemaker_client.create_model(ModelName=name,
                                                PrimaryContainer=primary_container,
-                                               ExecutionRoleArn=role)
+                                               ExecutionRoleArn=role,
+                                               VpcConfig=vpc_config)
         except ClientError as e:
             error_code = e.response['Error']['Code']
             message = e.response['Error']['Message']
@@ -475,7 +482,7 @@ class Session(object):
         return name
 
     def create_model_from_job(self, training_job_name, name=None, role=None, primary_container_image=None,
-                              model_data_url=None, env={}):
+                              model_data_url=None, env={}, vpc_config=None):
         """Create an Amazon SageMaker ``Model`` from a SageMaker Training Job.
 
         Args:
@@ -489,6 +496,12 @@ class Session(object):
             model_data_url (str): S3 location of the model data (default: None). If None, defaults to
                 the ``ModelS3Artifacts`` of ``training_job_name``.
             env (dict[string,string]): Model environment variables (default: {}).
+            vpc_config (dict[str, list[str]]): Contains values for VpcConfig (default: None):
+                * subnets (list[str]): List of subnet ids.
+                    The key in vpc_config is 'Subnets'.
+                * security_group_ids (list[str]): List of security group ids.
+                    The key in vpc_config is 'SecurityGroupIds'.
+                If None, defaults to the ``VpcConfig`` from the SageMaker Training Job.
 
         Returns:
             str: The name of the created ``Model``.
@@ -500,7 +513,8 @@ class Session(object):
             primary_container_image or training_job['AlgorithmSpecification']['TrainingImage'],
             model_data_url=model_data_url or training_job['ModelArtifacts']['S3ModelArtifacts'],
             env=env)
-        return self.create_model(name, role, primary_container)
+        vpc_config = vpc_config or training_job.get('VpcConfig')
+        return self.create_model(name, role, primary_container, vpc_config)
 
     def create_endpoint_config(self, name, model_name, initial_instance_count, instance_type):
         """Create an Amazon SageMaker endpoint configuration.
@@ -647,7 +661,7 @@ class Session(object):
 
     def endpoint_from_job(self, job_name, initial_instance_count, instance_type,
                           deployment_image=None, name=None, role=None, wait=True,
-                          model_environment_vars=None):
+                          model_environment_vars=None, model_vpc_config=None):
         """Create an ``Endpoint`` using the results of a successful training job.
 
         Specify the job name, Docker image containing the inference code, and hardware configuration to deploy
@@ -671,6 +685,12 @@ class Session(object):
             wait (bool): Whether to wait for the endpoint deployment to complete before returning (default: True).
             model_environment_vars (dict[str, str]): Environment variables to set on the model container
                 (default: None).
+            model_vpc_config (dict[str, list[str]]): Contains values for VpcConfig set on the model (default: None):
+                * subnets (list[str]): List of subnet ids.
+                    The key in vpc_config is 'Subnets'.
+                * security_group_ids (list[str]): List of security group ids.
+                    The key in vpc_config is 'SecurityGroupIds'.
+                If None, defaults to the ``VpcConfig`` from the SageMaker Training Job.
 
         Returns:
             str: Name of the ``Endpoint`` that is created.
@@ -680,14 +700,16 @@ class Session(object):
         deployment_image = deployment_image or job_desc['AlgorithmSpecification']['TrainingImage']
         role = role or job_desc['RoleArn']
         name = name or job_name
+        model_vpc_config = model_vpc_config or job_desc.get('VpcConfig')
 
         return self.endpoint_from_model_data(model_s3_location=output_url, deployment_image=deployment_image,
                                              initial_instance_count=initial_instance_count, instance_type=instance_type,
                                              name=name, role=role, wait=wait,
-                                             model_environment_vars=model_environment_vars)
+                                             model_environment_vars=model_environment_vars,
+                                             model_vpc_config=model_vpc_config)
 
     def endpoint_from_model_data(self, model_s3_location, deployment_image, initial_instance_count, instance_type,
-                                 name=None, role=None, wait=True, model_environment_vars=None):
+                                 name=None, role=None, wait=True, model_environment_vars=None, model_vpc_config=None):
         """Create and deploy to an ``Endpoint`` using existing model data stored in S3.
 
         Args:
@@ -705,6 +727,12 @@ class Session(object):
             wait (bool): Whether to wait for the endpoint deployment to complete before returning (default: True).
             model_environment_vars (dict[str, str]): Environment variables to set on the model container
                 (default: None).
+            model_vpc_config (dict[str, list[str]]): Contains values for VpcConfig set on the model (default: None):
+                * subnets (list[str]): List of subnet ids.
+                    The key in vpc_config is 'Subnets'.
+                * security_group_ids (list[str]): List of security group ids.
+                    The key in vpc_config is 'SecurityGroupIds'.
+                If None, defaults to the ``VpcConfig`` from the SageMaker Training Job.
 
         Returns:
             str: Name of the ``Endpoint`` that is created.
@@ -721,7 +749,8 @@ class Session(object):
                               role=role,
                               primary_container=container_def(image=deployment_image,
                                                               model_data_url=model_s3_location,
-                                                              env=model_environment_vars))
+                                                              env=model_environment_vars),
+                              vpc_config=model_vpc_config)
 
         if not _deployment_entity_exists(
                 lambda: self.sagemaker_client.describe_endpoint_config(EndpointConfigName=name)):

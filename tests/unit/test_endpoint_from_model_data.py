@@ -25,6 +25,7 @@ INSTANCE_TYPE = 'ml.c4.xlarge'
 S3_MODEL_ARTIFACTS = 's3://mybucket/mymodel'
 DEPLOY_IMAGE = 'mydeployimage'
 FULL_CONTAINER_DEF = {'Environment': {}, 'Image': DEPLOY_IMAGE, 'ModelDataUrl': S3_MODEL_ARTIFACTS}
+VPC_CONFIG = {'Subnets': ['subnet-foo'], 'SecurityGroups': ['sg-foo']}
 DEPLOY_ROLE = 'mydeployrole'
 NEW_ENTITY_NAME = 'mynewendpoint'
 ENV_VARS = {'PYTHONUNBUFFERED': 'TRUE', 'some': 'nonsense'}
@@ -62,7 +63,8 @@ def test_all_defaults_no_existing_entities(name_from_image_mock, sagemaker_sessi
         EndpointConfigName=NAME_FROM_IMAGE)
     sagemaker_session.create_model.assert_called_once_with(name=NAME_FROM_IMAGE,
                                                            role=DEPLOY_ROLE,
-                                                           primary_container=FULL_CONTAINER_DEF)
+                                                           primary_container=FULL_CONTAINER_DEF,
+                                                           vpc_config=None)
     sagemaker_session.create_endpoint_config.assert_called_once_with(name=NAME_FROM_IMAGE,
                                                                      model_name=NAME_FROM_IMAGE,
                                                                      initial_instance_count=INITIAL_INSTANCE_COUNT,

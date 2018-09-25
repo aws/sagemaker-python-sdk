@@ -33,6 +33,7 @@ TRAINING_JOB_RESPONSE = {
     "RoleArn": TRAIN_ROLE
 }
 FULL_CONTAINER_DEF = {'Environment': {}, 'Image': IMAGE, 'ModelDataUrl': S3_MODEL_ARTIFACTS}
+VPC_CONFIG = {'Subnets': ['subnet-foo'], 'SecurityGroups': ['sg-foo']}
 DEPLOY_IMAGE = 'mydeployimage'
 DEPLOY_ROLE = 'mydeployrole'
 NEW_ENTITY_NAME = 'mynewendpoint'
@@ -64,6 +65,7 @@ def test_all_defaults_no_existing_entities(sagemaker_session):
     expected_args['role'] = TRAIN_ROLE
     expected_args['name'] = JOB_NAME
     expected_args['model_environment_vars'] = None
+    expected_args['model_vpc_config'] = None
     sagemaker_session.endpoint_from_model_data.assert_called_once_with(**expected_args)
     assert returned_name == ENDPOINT_FROM_MODEL_RETURNED_NAME
 
@@ -71,7 +73,8 @@ def test_all_defaults_no_existing_entities(sagemaker_session):
 def test_no_defaults_no_existing_entities(sagemaker_session):
     original_args = {'job_name': JOB_NAME, 'initial_instance_count': INITIAL_INSTANCE_COUNT,
                      'instance_type': INSTANCE_TYPE, 'deployment_image': DEPLOY_IMAGE, 'role': DEPLOY_ROLE,
-                     'name': NEW_ENTITY_NAME, 'model_environment_vars': ENV_VARS, 'wait': False}
+                     'name': NEW_ENTITY_NAME, 'model_environment_vars': ENV_VARS, 'model_vpc_config': VPC_CONFIG,
+                     'wait': False}
 
     returned_name = sagemaker_session.endpoint_from_job(**original_args)
 

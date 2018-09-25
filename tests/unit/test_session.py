@@ -207,7 +207,8 @@ DEFAULT_EXPECTED_TRAIN_JOB_ARGS = {
     'TrainingJobName': JOB_NAME,
     'StoppingCondition': {
         'MaxRuntimeInSeconds': MAX_TIME
-    }
+    },
+    'VpcConfig': VPC_CONFIG,
 }
 
 COMPLETED_DESCRIBE_JOB_RESULT = dict(DEFAULT_EXPECTED_TRAIN_JOB_ARGS)
@@ -260,7 +261,7 @@ def test_train_pack_to_request(sagemaker_session):
 
     sagemaker_session.train(image=IMAGE, input_mode='File', input_config=in_config, role=EXPANDED_ROLE,
                             job_name=JOB_NAME, output_config=out_config, resource_config=resource_config,
-                            hyperparameters=None, stop_condition=stop_cond, tags=None, vpc_config=None)
+                            hyperparameters=None, stop_condition=stop_cond, tags=None, vpc_config=VPC_CONFIG)
 
     assert sagemaker_session.sagemaker_client.method_calls[0] == (
         'create_training_job', (), DEFAULT_EXPECTED_TRAIN_JOB_ARGS)
@@ -527,12 +528,13 @@ PRIMARY_CONTAINER = {
 
 @patch('sagemaker.session._expand_container_def', return_value=PRIMARY_CONTAINER)
 def test_create_model(expand_container_def, sagemaker_session):
-    model = sagemaker_session.create_model(MODEL_NAME, ROLE, PRIMARY_CONTAINER)
+    model = sagemaker_session.create_model(MODEL_NAME, ROLE, PRIMARY_CONTAINER, VPC_CONFIG)
 
     assert model == MODEL_NAME
     sagemaker_session.sagemaker_client.create_model.assert_called_with(ExecutionRoleArn=EXPANDED_ROLE,
                                                                        ModelName=MODEL_NAME,
-                                                                       PrimaryContainer=PRIMARY_CONTAINER)
+                                                                       PrimaryContainer=PRIMARY_CONTAINER,
+                                                                       VpcConfig=VPC_CONFIG)
 
 
 @patch('sagemaker.session._expand_container_def', return_value=PRIMARY_CONTAINER)
@@ -567,7 +569,8 @@ def test_create_model_from_job(sagemaker_session):
     assert call(TrainingJobName=JOB_NAME) in ims.sagemaker_client.describe_training_job.call_args_list
     ims.sagemaker_client.create_model.assert_called_with(ExecutionRoleArn=EXPANDED_ROLE,
                                                          ModelName=JOB_NAME,
-                                                         PrimaryContainer=PRIMARY_CONTAINER)
+                                                         PrimaryContainer=PRIMARY_CONTAINER,
+                                                         VpcConfig=VPC_CONFIG)
 
 
 def test_create_model_from_job_with_image(sagemaker_session):
@@ -588,6 +591,16 @@ def test_create_model_from_job_with_container_def(sagemaker_session):
     assert c_def['Image'] == 'some-image'
     assert c_def['ModelDataUrl'] == 'some-data'
     assert c_def['Environment'] == {'a': 'b'}
+
+
+def test_create_model_from_job_with_vpc_config(sagemaker_session):
+    vpc_config_override = {'Subnets': ['subnet-bar'], 'SecurityGroupIds': ['sg-bar']}
+
+    ims = sagemaker_session
+    ims.sagemaker_client.describe_training_job.return_value = COMPLETED_DESCRIBE_JOB_RESULT
+    ims.create_model_from_job(JOB_NAME, vpc_config=vpc_config_override)
+    [create_model_call] = ims.sagemaker_client.create_model.call_args_list
+    assert create_model_call[1]['VpcConfig'] == vpc_config_override
 
 
 def test_endpoint_from_production_variants(sagemaker_session):

@@ -318,6 +318,11 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):
         init_params['hyperparameters'] = job_details['HyperParameters']
         init_params['image'] = job_details['AlgorithmSpecification']['TrainingImage']
 
+        vpc_config = job_details.get('VpcConfig')
+        if vpc_config:
+            init_params['subnets'] = vpc_config['Subnets']
+            init_params['security_groups'] = vpc_config['SecurityGroups']
+
         return init_params
 
     def delete_endpoint(self):
@@ -500,7 +505,7 @@ class Estimator(EstimatorBase):
         return self.hyperparam_dict
 
     def create_model(self, role=None, image=None, predictor_cls=None, serializer=None, deserializer=None,
-                     content_type=None, accept=None, **kwargs):
+                     content_type=None, accept=None, vpc_config=None, **kwargs):
         """
         Create a model to deploy.
 
@@ -516,6 +521,12 @@ class Estimator(EstimatorBase):
                 response Accept content type.
             content_type (str): The invocation ContentType, overriding any content_type from the serializer
             accept (str): The invocation Accept, overriding any accept from the deserializer.
+            vpc_config (dict[str, list[str]]): Contains values for VpcConfig set on the model, overriding
+                any VpcConfig from the training job:
+                * subnets (list[str]): List of subnet ids.
+                    The key in vpc_config is 'Subnets'.
+                * security_group_ids (list[str]): List of security group ids.
+                    The key in vpc_config is 'SecurityGroupIds'.
 
             The serializer, deserializer, content_type, and accept arguments are only used to define a default
             RealTimePredictor. They are ignored if an explicit predictor class is passed in. Other arguments
@@ -529,9 +540,10 @@ class Estimator(EstimatorBase):
             predictor_cls = predict_wrapper
 
         role = role or self.role
+        vpc_config = vpc_config or _Job._prepare_vpc_config(self.subnets, self.security_group_ids)
 
-        return Model(self.model_data, image or self.train_image(), role, sagemaker_session=self.sagemaker_session,
-                     predictor_cls=predictor_cls, **kwargs)
+        return Model(self.model_data, image or self.train_image(), role, vpc_config=vpc_config,
+                     sagemaker_session=self.sagemaker_session, predictor_cls=predictor_cls, **kwargs)
 
     @classmethod
     def _prepare_init_params_from_job_description(cls, job_details):
