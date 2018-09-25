@@ -204,7 +204,7 @@ def test_create_endpoint(serve, request, LocalSession):
 @patch('urllib3.PoolManager.request', return_value=BAD_RESPONSE)
 @patch('sagemaker.local.local_session.LocalSession')
 @patch('time.sleep')
-def test_create_endpoint_fails(*args):
+def test_create_endpoint_fails(sleep, *args):
     local_sagemaker_client = sagemaker.local.local_session.LocalSagemakerClient()
     local_sagemaker_client.variants = [{'InstanceType': 'ml.c4.99xlarge', 'InitialInstanceCount': 10}]
     local_sagemaker_client.primary_container = {'ModelDataUrl': '/some/model/path',
@@ -213,6 +213,8 @@ def test_create_endpoint_fails(*args):
 
     with pytest.raises(RuntimeError):
         local_sagemaker_client.create_endpoint('my-endpoint', 'some-endpoint-config')
+
+    assert 29 == sleep.call_count
 
 
 def test_file_input_all_defaults():

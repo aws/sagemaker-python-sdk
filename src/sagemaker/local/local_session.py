@@ -25,6 +25,8 @@ from sagemaker.local.image import _SageMakerContainer
 from sagemaker.session import Session
 from sagemaker.utils import get_config_value
 
+HEALTH_CHECK_TIMEOUT_LIMIT = 30
+
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.WARNING)
 
@@ -123,7 +125,7 @@ class LocalSagemakerClient(object):
         endpoint_url = "http://localhost:%s/ping" % serving_port
         while True:
             i += 1
-            if i >= 10:
+            if i >= HEALTH_CHECK_TIMEOUT_LIMIT:
                 raise RuntimeError("Giving up, endpoint: %s didn't launch correctly" % EndpointName)
 
             logger.info("Checking if endpoint is up, attempt: %s" % i)
