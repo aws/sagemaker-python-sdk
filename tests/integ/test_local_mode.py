@@ -366,3 +366,34 @@ def test_mxnet_local_data_local_script():
         mx.delete_endpoint()
         time.sleep(5)
         fcntl.lockf(local_mode_lock, fcntl.LOCK_UN)
+
+
+@pytest.mark.continuous_testing
+def test_local_transform_mxnet(sagemaker_local_session):
+    data_path = os.path.join(DATA_DIR, 'mxnet_mnist')
+    script_path = os.path.join(data_path, 'mnist.py')
+
+    mx = MXNet(entry_point=script_path, role='SageMakerRole', train_instance_count=1,
+               train_instance_type='ml.c4.xlarge', sagemaker_session=sagemaker_local_session)
+
+    train_input = mx.sagemaker_session.upload_data(path=os.path.join(data_path, 'train'),
+                                                   key_prefix='integ-test-data/mxnet_mnist/train')
+    test_input = mx.sagemaker_session.upload_data(path=os.path.join(data_path, 'test'),
+                                                  key_prefix='integ-test-data/mxnet_mnist/test')
+
+    with timeout(minutes=15):
+        mx.fit({'train': train_input, 'test': test_input})
+
+    transform_input_path = os.path.join(data_path, 'transform', 'data.csv')
+    transform_input = 'file://' + transform_input_path
+
+    transformer = _create_transformer_and_transform_job(mx, transform_input)
+    transformer.wait()
+    assert 1 == 2
+
+
+def _create_transformer_and_transform_job(estimator, transform_input):
+    transformer = estimator.transformer(1, 'local', assemble_with='Line')
+    #transformer.transform(transform_input, content_type='text/csv', split_type='Line')
+    transformer.transform(transform_input, content_type='text/csv')
+    return transformer
