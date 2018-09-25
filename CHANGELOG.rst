@@ -9,6 +9,7 @@ CHANGELOG
 * doc-fix: add deprecation warning for current MXNet training script format
 * doc-fix: add docs on deploying TensorFlow model directly from existing model
 * doc-fix: fix code example for using Gzip compression for TensorFlow training data
+* bug-fix: Setting health check timeout limit on local mode to 30s
 
 1.10.0
 ======
