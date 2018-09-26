@@ -2,6 +2,11 @@
 CHANGELOG
 =========
 
+1.10.2
+======
+
+* bug-fix: default TensorFlow json serializer accepts dict of numpy arrays
+
 1.10.1
 ======
 
