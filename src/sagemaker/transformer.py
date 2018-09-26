@@ -247,4 +247,9 @@ class _TransformJob(_Job):
 
     @staticmethod
     def _prepare_resource_config(instance_count, instance_type, volume_kms_key):
-        return {'InstanceCount': instance_count, 'InstanceType': instance_type, 'VolumeKmsKeyId': volume_kms_key}
+        config = {'InstanceCount': instance_count, 'InstanceType': instance_type}
+
+        if volume_kms_key is not None:
+            config['VolumeKmsKeyId'] = volume_kms_key
+
+        return config
