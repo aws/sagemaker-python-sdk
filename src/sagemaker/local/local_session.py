@@ -55,7 +55,7 @@ class LocalSagemakerClient(object):
         self.created_endpoint = False
 
     def create_training_job(self, TrainingJobName, AlgorithmSpecification, InputDataConfig, OutputDataConfig,
-                            ResourceConfig, HyperParameters, *args, **kwargs):
+                            ResourceConfig, **kwargs):
         """
         Create a training job in Local Mode
         Args:
@@ -64,16 +64,17 @@ class LocalSagemakerClient(object):
             InputDataConfig (dict): Describes the training dataset and the location where it is stored.
             OutputDataConfig (dict): Identifies the location where you want to save the results of model training.
             ResourceConfig (dict): Identifies the resources to use for local model traininig.
-            HyperParameters (dict): Specify these algorithm-specific parameters to influence the quality of the final
-                model.
+            HyperParameters (dict) [optional]: Specifies these algorithm-specific parameters to influence the quality of
+                the final model.
         """
 
         container = _SageMakerContainer(ResourceConfig['InstanceType'], ResourceConfig['InstanceCount'],
                                         AlgorithmSpecification['TrainingImage'], self.sagemaker_session)
-        train_job = _LocalTrainingJob(container)
-        train_job.start(InputDataConfig, HyperParameters)
+        training_job = _LocalTrainingJob(container)
+        hyperparameters = kwargs['HyperParameters'] if 'HyperParameters' in kwargs else {}
+        training_job.start(InputDataConfig, hyperparameters)
 
-        LocalSagemakerClient._training_jobs[TrainingJobName] = train_job
+        LocalSagemakerClient._training_jobs[TrainingJobName] = training_job
 
     def describe_training_job(self, TrainingJobName):
         """Describe a local training job.
@@ -128,7 +129,7 @@ class LocalSagemakerClient(object):
     def create_endpoint(self, EndpointName, EndpointConfigName):
         endpoint = _LocalEndpoint(EndpointName, EndpointConfigName, self.sagemaker_session)
         LocalSagemakerClient._endpoints[EndpointName] = endpoint
-        endpoint.serve(self.sagemaker_session)
+        endpoint.serve()
 
     def delete_endpoint(self, EndpointName):
         if EndpointName in LocalSagemakerClient._endpoints:

@@ -16,7 +16,7 @@ import pytest
 import urllib3
 
 from botocore.exceptions import ClientError
-from mock import patch
+from mock import Mock, patch
 
 import sagemaker
 
@@ -62,7 +62,7 @@ def test_create_training_job(train, LocalSession):
     hyperparameters = {'a': 1, 'b': 'bee'}
 
     local_sagemaker_client.create_training_job('my-training-job', algo_spec, input_data_config,
-                                               output_data_config, resource_config, hyperparameters)
+                                               output_data_config, resource_config, HyperParameters=hyperparameters)
 
     expected = {
         'ResourceConfig': {'InstanceCount': instance_count},
@@ -75,6 +75,12 @@ def test_create_training_job(train, LocalSession):
     assert response['TrainingJobStatus'] == expected['TrainingJobStatus']
     assert response['ResourceConfig']['InstanceCount'] == expected['ResourceConfig']['InstanceCount']
     assert response['ModelArtifacts']['S3ModelArtifacts'] == expected['ModelArtifacts']['S3ModelArtifacts']
+
+
+def test_describe_invalid_training_job():
+    local_sagemaker_client = sagemaker.local.local_session.LocalSagemakerClient()
+    with pytest.raises(ClientError):
+        local_sagemaker_client.describe_training_job('i-havent-created-this-job')
 
 
 @patch('sagemaker.local.image._SageMakerContainer.train', return_value="/some/path/to/model")
@@ -105,7 +111,7 @@ def test_create_training_job_invalid_data_source(train, LocalSession):
 
     with pytest.raises(ValueError):
         local_sagemaker_client.create_training_job('my-training-job', algo_spec, input_data_config,
-                                                   output_data_config, resource_config, hyperparameters)
+                                                   output_data_config, resource_config, HyperParameters=hyperparameters)
 
 
 @patch('sagemaker.local.image._SageMakerContainer.train', return_value="/some/path/to/model")
@@ -135,7 +141,7 @@ def test_create_training_job_not_fully_replicated(train, LocalSession):
 
     with pytest.raises(RuntimeError):
         local_sagemaker_client.create_training_job('my-training-job', algo_spec, input_data_config,
-                                                   output_data_config, resource_config, hyperparameters)
+                                                   output_data_config, resource_config, HyperParameters=hyperparameters)
 
 
 @patch('sagemaker.local.local_session.LocalSession')
@@ -311,3 +317,9 @@ def test_file_input_content_type():
             'ContentType': 'text/csv'
         }
     assert actual.config == expected
+
+
+def test_local_session_is_set_to_local_mode():
+    boto_session = Mock(region_name='us-west-2')
+    local_session = sagemaker.local.local_session.LocalSession(boto_session=boto_session)
+    assert local_session.local_mode

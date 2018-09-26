@@ -23,6 +23,9 @@ from sagemaker.utils import get_config_value
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.WARNING)
 
+_UNUSED_ARN = 'local:arn-does-not-matter'
+HEALTH_CHECK_TIMEOUT_LIMIT = 30
+
 
 class _LocalTrainingJob(object):
 
@@ -84,8 +87,8 @@ class _LocalModel(object):
         response = {
             'ModelName': self.model_name,
             'CreationTime': self.creation_time,
-            'ExecutionRoleArn': 'local:arn-does-not-matter',
-            'ModelArn': 'local:arn-does-not-matter',
+            'ExecutionRoleArn': _UNUSED_ARN,
+            'ModelArn': _UNUSED_ARN,
             'PrimaryContainer': self.primary_container
         }
         return response
@@ -101,7 +104,7 @@ class _LocalEndpointConfig(object):
     def describe(self):
         response = {
             'EndpointConfigName': self.name,
-            'EndpointConfigArn': 'local:arn-does-not-matter',
+            'EndpointConfigArn': _UNUSED_ARN,
             'CreationTime': self.creation_time,
             'ProductionVariants': self.production_variants
         }
@@ -115,11 +118,10 @@ class _LocalEndpoint(object):
     _FAILED = 'Failed'
 
     def __init__(self, endpoint_name, endpoint_config_name, local_session=None):
-        from sagemaker.local import LocalSagemakerClient
-        if local_session:
-            local_client = local_session.sagemaker_client
-        else:
-            local_client = LocalSagemakerClient()
+        # runtime import since there is a cyclic dependency between entities and local_session
+        from sagemaker.local import LocalSession
+        self.local_session = local_session or LocalSession()
+        local_client = self.local_session.sagemaker_client
 
         self.name = endpoint_name
         self.endpoint_config = local_client.describe_endpoint_config(endpoint_config_name)
@@ -132,22 +134,22 @@ class _LocalEndpoint(object):
         self.create_time = None
         self.state = _LocalEndpoint._CREATING
 
-    def serve(self, sagemaker_session):
+    def serve(self):
         image = self.primary_container['Image']
         instance_type = self.production_variant['InstanceType']
         instance_count = self.production_variant['InitialInstanceCount']
 
         self.create_time = datetime.datetime.now()
-        self.container = _SageMakerContainer(instance_type, instance_count, image, sagemaker_session)
+        self.container = _SageMakerContainer(instance_type, instance_count, image, self.local_session)
         self.container.serve(self.primary_container['ModelDataUrl'], self.primary_container['Environment'])
 
         i = 0
         http = urllib3.PoolManager()
-        serving_port = get_config_value('local.serving_port', sagemaker_session.config) or 8080
+        serving_port = get_config_value('local.serving_port', self.local_session.config) or 8080
         endpoint_url = 'http://localhost:%s/ping' % serving_port
         while True:
             i += 1
-            if i >= 10:
+            if i >= HEALTH_CHECK_TIMEOUT_LIMIT:
                 self.state = _LocalEndpoint._FAILED
                 raise RuntimeError('Giving up, endpoint: %s didn\'t launch correctly' % self.name)
 
@@ -175,7 +177,7 @@ class _LocalEndpoint(object):
             'CreationTime': self.create_time,
             'ProductionVariants': self.endpoint_config['ProductionVariants'],
             'EndpointName': self.name,
-            'EndpointArn': 'local:arn-does-not-matter',
+            'EndpointArn': _UNUSED_ARN,
             'EndpointStatus': self.state
         }
         return response
