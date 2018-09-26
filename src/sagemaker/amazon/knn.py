@@ -43,28 +43,22 @@ class KNN(AmazonAlgorithmEstimatorBase):
                  dimension_reduction_type=None, dimension_reduction_target=None, index_type=None,
                  index_metric=None, faiss_index_ivf_nlists=None, faiss_index_pq_m=None, **kwargs):
         """k-nearest neighbors (KNN) is :class:`Estimator` used for classification and regression.
-
         This Estimator may be fit via calls to
         :meth:`~sagemaker.amazon.amazon_estimator.AmazonAlgorithmEstimatorBase.fit`. It requires Amazon
         :class:`~sagemaker.amazon.record_pb2.Record` protobuf serialized data to be stored in S3.
         There is an utility :meth:`~sagemaker.amazon.amazon_estimator.AmazonAlgorithmEstimatorBase.record_set` that
         can be used to upload data to S3 and creates :class:`~sagemaker.amazon.amazon_estimator.RecordSet` to be passed
         to the `fit` call.
-
         To learn more about the Amazon protobuf Record class and how to prepare bulk data in this format, please
         consult AWS technical documentation: https://docs.aws.amazon.com/sagemaker/latest/dg/cdf-training.html
-
         After this Estimator is fit, model data is stored in S3. The model may be deployed to an Amazon SageMaker
         Endpoint by invoking :meth:`~sagemaker.amazon.estimator.EstimatorBase.deploy`. As well as deploying an Endpoint,
         deploy returns a :class:`~sagemaker.amazon.knn.KNNPredictor` object that can be used
         for inference calls using the trained model hosted in the SageMaker Endpoint.
-
         KNN Estimators can be configured by setting hyperparameters. The available hyperparameters for
         KNN are documented below.
-
         For further information on the AWS KNN algorithm,
         please consult AWS technical documentation: https://docs.aws.amazon.com/sagemaker/latest/dg/knn.html
-
         Args:
             role (str): An AWS IAM role (either name or full ARN). The Amazon SageMaker training jobs and
                 APIs that create Amazon SageMaker endpoints use this role to access
@@ -76,17 +70,17 @@ class KNN(AmazonAlgorithmEstimatorBase):
             predictor_type (str): Required. Type of inference to use on the data's labels,
                 allowed values are 'classifier' and 'regressor'.
             dimension_reduction_type (str): Optional. Type of dimension reduction technique to use.
-                Valid values: “sign”, “fjlt”
+                Valid values: "sign", "fjlt"
             dimension_reduction_target (int): Optional. Target dimension to reduce to. Required when
                 dimension_reduction_type is specified.
             index_type (str): Optional. Type of index to use. Valid values are
-                “faiss.Flat”, “faiss.IVFFlat”, “faiss.IVFPQ”.
+                "faiss.Flat", "faiss.IVFFlat", "faiss.IVFPQ".
             index_metric(str): Optional. Distance metric to measure between points when finding nearest neighbors.
                 Valid values are "COSINE", "INNER_PRODUCT", "L2"
             faiss_index_ivf_nlists(str): Optional. Number of centroids to construct in the index if
-                index_type is “faiss.IVFFlat” or “faiss.IVFPQ”.
+                index_type is "faiss.IVFFlat" or "faiss.IVFPQ".
             faiss_index_pq_m(int): Optional. Number of vector sub-components to construct in the index,
-                if index_type is “faiss.IVFPQ”.
+                if index_type is "faiss.IVFPQ".
             **kwargs: base class keyword argument values.
         """
 

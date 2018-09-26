@@ -30,12 +30,13 @@ MAX_RUNTIME = 1
 ROLE = 'DummyRole'
 IMAGE_NAME = 'fakeimage'
 JOB_NAME = 'fakejob'
+VOLUME_KMS_KEY = 'volkmskey'
 
 
 @pytest.fixture()
 def estimator(sagemaker_session):
-    return Estimator(IMAGE_NAME, ROLE, INSTANCE_COUNT, INSTANCE_TYPE, VOLUME_SIZE, MAX_RUNTIME,
-                     output_path=S3_OUTPUT_PATH, sagemaker_session=sagemaker_session)
+    return Estimator(IMAGE_NAME, ROLE, INSTANCE_COUNT, INSTANCE_TYPE, train_volume_size=VOLUME_SIZE,
+                     train_max_run=MAX_RUNTIME, output_path=S3_OUTPUT_PATH, sagemaker_session=sagemaker_session)
 
 
 @pytest.fixture()
@@ -282,11 +283,24 @@ def test_prepare_output_config_kms_key_none():
 
 
 def test_prepare_resource_config():
-    resource_config = _Job._prepare_resource_config(INSTANCE_COUNT, INSTANCE_TYPE, VOLUME_SIZE)
+    resource_config = _Job._prepare_resource_config(INSTANCE_COUNT, INSTANCE_TYPE, VOLUME_SIZE, None)
 
-    assert resource_config['InstanceCount'] == INSTANCE_COUNT
-    assert resource_config['InstanceType'] == INSTANCE_TYPE
-    assert resource_config['VolumeSizeInGB'] == VOLUME_SIZE
+    assert resource_config == {
+        'InstanceCount': INSTANCE_COUNT,
+        'InstanceType': INSTANCE_TYPE,
+        'VolumeSizeInGB': VOLUME_SIZE
+    }
+
+
+def test_prepare_resource_config_with_volume_kms():
+    resource_config = _Job._prepare_resource_config(INSTANCE_COUNT, INSTANCE_TYPE, VOLUME_SIZE, VOLUME_KMS_KEY)
+
+    assert resource_config == {
+        'InstanceCount': INSTANCE_COUNT,
+        'InstanceType': INSTANCE_TYPE,
+        'VolumeSizeInGB': VOLUME_SIZE,
+        'VolumeKmsKeyId': VOLUME_KMS_KEY
+    }
 
 
 def test_prepare_stop_condition():

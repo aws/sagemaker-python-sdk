@@ -46,7 +46,7 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):
     """
 
     def __init__(self, role, train_instance_count, train_instance_type,
-                 train_volume_size=30, train_max_run=24 * 60 * 60, input_mode='File',
+                 train_volume_size=30, train_volume_kms_key=None, train_max_run=24 * 60 * 60, input_mode='File',
                  output_path=None, output_kms_key=None, base_job_name=None, sagemaker_session=None, tags=None,
                  subnets=None, security_group_ids=None):
         """Initialize an ``EstimatorBase`` instance.
@@ -61,6 +61,8 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):
             train_volume_size (int): Size in GB of the EBS volume to use for storing input data
                 during training (default: 30). Must be large enough to store training data if File Mode is used
                 (which is the default).
+            train_volume_kms_key (str): Optional. KMS key ID for encrypting EBS volume attached to the
+                training instance (default: None).
             train_max_run (int): Timeout in seconds for training (default: 24 * 60 * 60).
                 After this amount of time Amazon SageMaker terminates the job regardless of its current status.
             input_mode (str): The input mode that the algorithm supports (default: 'File'). Valid modes:
@@ -87,6 +89,7 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):
         self.train_instance_count = train_instance_count
         self.train_instance_type = train_instance_type
         self.train_volume_size = train_volume_size
+        self.train_volume_kms_key = train_volume_kms_key
         self.train_max_run = train_max_run
         self.input_mode = input_mode
         self.tags = tags
@@ -429,9 +432,9 @@ class Estimator(EstimatorBase):
     """
 
     def __init__(self, image_name, role, train_instance_count, train_instance_type,
-                 train_volume_size=30, train_max_run=24 * 60 * 60, input_mode='File',
-                 output_path=None, output_kms_key=None, base_job_name=None, sagemaker_session=None,
-                 hyperparameters=None, tags=None, subnets=None, security_group_ids=None):
+                 train_volume_size=30, train_volume_kms_key=None, train_max_run=24 * 60 * 60,
+                 input_mode='File', output_path=None, output_kms_key=None, base_job_name=None,
+                 sagemaker_session=None, hyperparameters=None, tags=None, subnets=None, security_group_ids=None):
         """Initialize an ``Estimator`` instance.
 
         Args:
@@ -445,6 +448,8 @@ class Estimator(EstimatorBase):
             train_volume_size (int): Size in GB of the EBS volume to use for storing input data
                 during training (default: 30). Must be large enough to store training data if File Mode is used
                 (which is the default).
+            train_volume_kms_key (str): Optional. KMS key ID for encrypting EBS volume attached to the
+                training instance (default: None).
             train_max_run (int): Timeout in seconds for training (default: 24 * 60 * 60).
                 After this amount of time Amazon SageMaker terminates the job regardless of its current status.
             input_mode (str): The input mode that the algorithm supports (default: 'File'). Valid modes:
@@ -464,11 +469,16 @@ class Estimator(EstimatorBase):
                 Amazon SageMaker APIs and any other AWS services needed. If not specified, the estimator creates one
                 using the default AWS configuration chain.
             hyperparameters (dict): Dictionary containing the hyperparameters to initialize this estimator with.
+            tags (list[dict]): List of tags for labeling a training job. For more, see
+                https://docs.aws.amazon.com/sagemaker/latest/dg/API_Tag.html.
+            subnets (list[str]): List of subnet ids. If not specified training job will be created without VPC config.
+            security_group_ids (list[str]): List of security group ids. If not specified training job will be created
+                without VPC config.
         """
         self.image_name = image_name
         self.hyperparam_dict = hyperparameters.copy() if hyperparameters else {}
         super(Estimator, self).__init__(role, train_instance_count, train_instance_type,
-                                        train_volume_size, train_max_run, input_mode,
+                                        train_volume_size, train_volume_kms_key, train_max_run, input_mode,
                                         output_path, output_kms_key, base_job_name, sagemaker_session,
                                         tags, subnets, security_group_ids)
 
