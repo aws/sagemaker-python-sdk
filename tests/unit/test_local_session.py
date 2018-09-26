@@ -77,7 +77,8 @@ def test_create_training_job(train, LocalSession):
     assert response['ModelArtifacts']['S3ModelArtifacts'] == expected['ModelArtifacts']['S3ModelArtifacts']
 
 
-def test_describe_invalid_training_job():
+@patch('sagemaker.local.local_session.LocalSession')
+def test_describe_invalid_training_job(*args):
     local_sagemaker_client = sagemaker.local.local_session.LocalSagemakerClient()
     with pytest.raises(ClientError):
         local_sagemaker_client.describe_training_job('i-havent-created-this-job')
