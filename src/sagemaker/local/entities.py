@@ -20,7 +20,7 @@ import time
 import urllib3
 from six.moves.urllib.parse import urlparse
 
-from sagemaker.local.data import DataSourceFactory, SplitterFactory
+from sagemaker.local.data import BatchStrategyFactory, DataSourceFactory, SplitterFactory
 from sagemaker.local.image import _SageMakerContainer
 from sagemaker.utils import get_config_value
 
@@ -112,9 +112,9 @@ class _LocalTransformJob(object):
 
         # TODO - Get capabilities from Container if needed
 
-        self._batch_inference(input_data, output_data)
+        self._batch_inference(input_data, output_data, **kwargs)
 
-    def _batch_inference(self, input_data, output_data):
+    def _batch_inference(self, input_data, output_data, **kwargs):
         # TODO - Figure if we should pass FileDataSource here instead. Ideally not but the semantics
         # are just weird.
         input_path = input_data['DataSource']['S3DataSource']['S3Uri']
@@ -125,6 +125,19 @@ class _LocalTransformJob(object):
         data_source = DataSourceFactory.get_instance(input_path)
         split_type = input_data['SplitType'] if 'SplitType' in input_data else None
         splitter = SplitterFactory.get_instance(split_type)
+
+        # MultiRecord is the default strategy if none is provided and the container does not provide one either.
+        batch_strategy = 'MultiRecord'
+        if 'BatchStrategy' in kwargs:
+            batch_strategy = kwargs['BatchStrategy']
+
+
+        max_payload = 6
+        if 'MaxPayloadInMB' in kwargs:
+            max_payload = int(kwargs['MaxPayloadInMB'])
+
+        final_data = BatchStrategyFactory.get_instance(batch_strategy, splitter)
+
 
         # Output settings
         accept = output_data['Accept'] if 'Accept' in output_data else None
@@ -144,7 +157,7 @@ class _LocalTransformJob(object):
         with os.fdopen(out_fd, 'w') as f:
             for file in data_source.get_file_list():
 
-                for item in splitter.split(file):
+                for item in final_data.pad(file, max_payload):
                     # call the container and add the result to inference.
                     response = self.local_session.sagemaker_runtime_client.invoke_endpoint(
                         item, '', input_data['ContentType'], accept)

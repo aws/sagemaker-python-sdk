@@ -393,7 +393,7 @@ def test_local_transform_mxnet(sagemaker_local_session):
 
 
 def _create_transformer_and_transform_job(estimator, transform_input):
-    transformer = estimator.transformer(1, 'local', assemble_with='Line')
+    transformer = estimator.transformer(1, 'local', assemble_with='Line', max_payload=1)
     #transformer.transform(transform_input, content_type='text/csv', split_type='Line')
     transformer.transform(transform_input, content_type='text/csv')
     return transformer

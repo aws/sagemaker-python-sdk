@@ -13,6 +13,7 @@
 from __future__ import absolute_import
 
 import os
+import sys
 from six.moves.urllib.parse import urlparse
 
 
@@ -97,6 +98,60 @@ class RecordIOSplitter(Splitter):
         pass
 
 
-def recordio_iterator(file):
-    # this isn't that simple
-    pass
+class BatchStrategyFactory(object):
+
+    @staticmethod
+    def get_instance(strategy, splitter):
+        if strategy == 'SingleRecord':
+            return SingleRecordStrategy(splitter)
+        elif strategy == 'MultiRecord':
+            return MultiRecordStrategy(splitter)
+        else:
+            return None
+
+class BatchStrategy(object):
+
+    def pad(self, file, size):
+        pass
+
+class MultiRecordStrategy(BatchStrategy):
+
+    def __init__(self, splitter):
+        self.splitter = splitter
+
+    def pad(self, file, size=6):
+        buffer = ''
+        for element in self.splitter.split(file):
+            if _payload_size_within_limit(buffer + element, size):
+                buffer += element
+            else:
+                tmp = buffer
+                buffer = element
+                yield tmp
+        if _validate_payload_size(buffer, size):
+            yield buffer
+
+
+class SingleRecordStrategy(BatchStrategy):
+
+    def __init__(self, splitter):
+        self.splitter = splitter
+
+    def pad(self, file, size=6):
+        for element in self.splitter.split(file):
+            if _validate_payload_size(element, size):
+                yield element
+
+
+def _payload_size_within_limit(payload, size):
+    size_in_bytes = size * 1024 * 1024
+    if size == 0:
+        return True
+    else:
+        print('size_of_payload: %s > %s' % (sys.getsizeof(payload), size_in_bytes))
+        return sys.getsizeof(payload) < size_in_bytes
+
+def _validate_payload_size(payload, size):
+        if not _payload_size_within_limit(payload, size):
+            raise RuntimeError('Record is larger than %sMB. Please increase your max_payload' % size)
+        return True
