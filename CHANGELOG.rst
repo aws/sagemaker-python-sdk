@@ -2,6 +2,13 @@
 CHANGELOG
 =========
 
+1.10.2dev
+=========
+
+* bug-fix: Setting health check timeout limit on local mode to 30s
+* bug-fix: Make Hyperparameters in local mode optional.
+* enhancement: Add support for volume KMS key to Transformer
+
 1.10.1
 ======
 
