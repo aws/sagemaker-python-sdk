@@ -134,7 +134,7 @@ class _SageMakerContainer(object):
         print('===== Job Complete =====')
         return s3_artifacts
 
-    def serve(self, primary_container):
+    def serve(self, model_dir, environment):
         """Host a local endpoint using docker-compose.
         Args:
             primary_container (dict): dictionary containing the container runtime settings
@@ -148,13 +148,12 @@ class _SageMakerContainer(object):
         self.container_root = self._create_tmp_folder()
         logger.info('creating hosting dir in {}'.format(self.container_root))
 
-        model_dir = primary_container['ModelDataUrl']
         volumes = self._prepare_serving_volumes(model_dir)
-        env_vars = ['{}={}'.format(k, v) for k, v in primary_container['Environment'].items()]
+        env_vars = ['{}={}'.format(k, v) for k, v in environment.items()]
 
         # If the user script was passed as a file:// mount it to the container.
-        if sagemaker.estimator.DIR_PARAM_NAME.upper() in primary_container['Environment']:
-            script_dir = primary_container['Environment'][sagemaker.estimator.DIR_PARAM_NAME.upper()]
+        if sagemaker.estimator.DIR_PARAM_NAME.upper() in environment:
+            script_dir = environment[sagemaker.estimator.DIR_PARAM_NAME.upper()]
             parsed_uri = urlparse(script_dir)
             if parsed_uri.scheme == 'file':
                 volumes.append(_Volume(parsed_uri.path, '/opt/ml/code'))

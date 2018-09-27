@@ -311,14 +311,13 @@ def test_serve(up, copy, copytree, tmpdir, sagemaker_session):
 
         image = 'my-image'
         sagemaker_container = _SageMakerContainer('local', 1, image, sagemaker_session=sagemaker_session)
-        primary_container = {'ModelDataUrl': '/some/model/path',
-                             'Environment': {'env1': 1,
-                                             'env2': 'b',
-                                             'SAGEMAKER_SUBMIT_DIRECTORY': 's3://some/path'
-                                             }
-                             }
+        environment = {
+            'env1': 1,
+            'env2': 'b',
+            'SAGEMAKER_SUBMIT_DIRECTORY': 's3://some/path'
+        }
 
-        sagemaker_container.serve(primary_container)
+        sagemaker_container.serve('/some/model/path', environment)
         docker_compose_file = os.path.join(sagemaker_container.container_root, 'docker-compose.yaml')
 
         with open(docker_compose_file, 'r') as f:
@@ -339,14 +338,13 @@ def test_serve_local_code(up, copy, copytree, tmpdir, sagemaker_session):
 
         image = 'my-image'
         sagemaker_container = _SageMakerContainer('local', 1, image, sagemaker_session=sagemaker_session)
-        primary_container = {'ModelDataUrl': '/some/model/path',
-                             'Environment': {'env1': 1,
-                                             'env2': 'b',
-                                             'SAGEMAKER_SUBMIT_DIRECTORY': 'file:///tmp/code'
-                                             }
-                             }
+        environment = {
+            'env1': 1,
+            'env2': 'b',
+            'SAGEMAKER_SUBMIT_DIRECTORY': 'file:///tmp/code'
+        }
 
-        sagemaker_container.serve(primary_container)
+        sagemaker_container.serve('/some/model/path', environment)
         docker_compose_file = os.path.join(sagemaker_container.container_root,
                                            'docker-compose.yaml')
 
