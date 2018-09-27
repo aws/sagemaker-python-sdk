@@ -2,6 +2,11 @@
 CHANGELOG
 =========
 
+1.11.1dev
+=========
+
+* enhancement: Local Mode: add training environment variables for AWS region and job name
+
 1.11.0
 ======
 
