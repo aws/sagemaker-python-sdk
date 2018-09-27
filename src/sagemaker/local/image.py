@@ -34,8 +34,12 @@ import yaml
 import sagemaker
 from sagemaker.utils import get_config_value
 
-CONTAINER_PREFIX = "algo"
+CONTAINER_PREFIX = 'algo'
 DOCKER_COMPOSE_FILENAME = 'docker-compose.yaml'
+
+# Environment variables to be set during training
+REGION_ENV_NAME = 'AWS_REGION'
+TRAINING_JOB_NAME_ENV_NAME = 'TRAINING_JOB_NAME'
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.WARNING)
@@ -102,7 +106,12 @@ class _SageMakerContainer(object):
             self.write_config_files(host, hyperparameters, input_data_config)
             shutil.copytree(data_dir, os.path.join(self.container_root, host, 'input', 'data'))
 
-        compose_data = self._generate_compose_file('train', additional_volumes=volumes)
+        training_env_vars = {
+            REGION_ENV_NAME: self.sagemaker_session.boto_session.region_name,
+            TRAINING_JOB_NAME_ENV_NAME: json.loads(hyperparameters.get(sagemaker.model.JOB_NAME_PARAM_NAME)),
+        }
+        compose_data = self._generate_compose_file('train', additional_volumes=volumes,
+                                                   additional_env_vars=training_env_vars)
         compose_command = self._compose()
 
         _ecr_login_if_needed(self.sagemaker_session.boto_session, self.image)
@@ -149,7 +158,6 @@ class _SageMakerContainer(object):
         logger.info('creating hosting dir in {}'.format(self.container_root))
 
         volumes = self._prepare_serving_volumes(model_dir)
-        env_vars = ['{}={}'.format(k, v) for k, v in environment.items()]
 
         # If the user script was passed as a file:// mount it to the container.
         if sagemaker.estimator.DIR_PARAM_NAME.upper() in environment:
@@ -161,7 +169,7 @@ class _SageMakerContainer(object):
         _ecr_login_if_needed(self.sagemaker_session.boto_session, self.image)
 
         self._generate_compose_file('serve',
-                                    additional_env_vars=env_vars,
+                                    additional_env_vars=environment,
                                     additional_volumes=volumes)
         compose_command = self._compose()
         self.container = _HostingContainer(compose_command)
@@ -384,7 +392,8 @@ class _SageMakerContainer(object):
         if aws_creds is not None:
             environment.extend(aws_creds)
 
-        environment.extend(additional_env_vars)
+        additional_env_var_list = ['{}={}'.format(k, v) for k, v in additional_env_vars.items()]
+        environment.extend(additional_env_var_list)
 
         if command == 'train':
             optml_dirs = {'output', 'output/data', 'input'}
