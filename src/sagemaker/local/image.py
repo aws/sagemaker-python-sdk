@@ -107,7 +107,7 @@ class _SageMakerContainer(object):
             shutil.copytree(data_dir, os.path.join(self.container_root, host, 'input', 'data'))
 
         training_env_vars = {
-            REGION_ENV_NAME: self.sagemaker_session.boto_session.region_name,
+            REGION_ENV_NAME: self.sagemaker_session.boto_region_name,
             TRAINING_JOB_NAME_ENV_NAME: json.loads(hyperparameters.get(sagemaker.model.JOB_NAME_PARAM_NAME)),
         }
         compose_data = self._generate_compose_file('train', additional_volumes=volumes,
