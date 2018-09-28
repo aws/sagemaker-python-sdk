@@ -49,12 +49,14 @@ INPUT_DATA_CONFIG = [
     }
 ]
 HYPERPARAMETERS = {'a': 1,
-                   'b': 'bee',
-                   'sagemaker_submit_directory': json.dumps('s3://my_bucket/code')}
+                   'b': json.dumps('bee'),
+                   'sagemaker_submit_directory': json.dumps('s3://my_bucket/code'),
+                   'sagemaker_job_name': json.dumps('my-job')}
 
 LOCAL_CODE_HYPERPARAMETERS = {'a': 1,
                               'b': 2,
-                              'sagemaker_submit_directory': json.dumps('file:///tmp/code')}
+                              'sagemaker_submit_directory': json.dumps('file:///tmp/code'),
+                              'sagemaker_job_name': json.dumps('my-job')}
 
 
 @pytest.fixture()
@@ -244,6 +246,8 @@ def test_train(_download_folder, _cleanup, popen, _stream_output, LocalSession,
             for h in sagemaker_container.hosts:
                 assert config['services'][h]['image'] == image
                 assert config['services'][h]['command'] == 'train'
+                assert 'AWS_REGION={}'.format(REGION) in config['services'][h]['environment']
+                assert 'TRAINING_JOB_NAME=my-job' in config['services'][h]['environment']
 
         # assert that expected by sagemaker container output directories exist
         assert os.path.exists(os.path.join(sagemaker_container.container_root, 'output'))
