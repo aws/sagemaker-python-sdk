@@ -43,7 +43,7 @@ INIT_PARAMS = {
 @pytest.fixture()
 def sagemaker_session():
     boto_mock = Mock(name='boto_session')
-    return Mock(name='sagemaker_session', boto_session=boto_mock)
+    return Mock(name='sagemaker_session', boto_session=boto_mock, local_mode=False)
 
 
 @pytest.fixture()

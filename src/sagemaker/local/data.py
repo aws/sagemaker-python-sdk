@@ -14,36 +14,50 @@ from __future__ import absolute_import
 
 import os
 import sys
+import tempfile
 from six.moves.urllib.parse import urlparse
+
+from sagemaker.amazon.common import read_recordio
+from sagemaker.local.utils import download_folder
+from sagemaker.utils import get_config_value
 
 
 class DataSourceFactory(object):
 
     @staticmethod
-    def get_instance(data_source):
+    def get_instance(data_source, sagemaker_session):
         parsed_uri = urlparse(data_source)
         if parsed_uri.scheme == 'file':
             return LocalFileDataSource(parsed_uri.path)
-        else:
-            # TODO Figure S3 and S3Manifest.
-            return None
+        elif parsed_uri.scheme == 's3':
+            return S3DataSource(parsed_uri.netloc, parsed_uri.path, sagemaker_session)
+
 
 class DataSource(object):
 
     def get_file_list(self):
         pass
 
+    def get_root_dir(self):
+        pass
+
 
 class LocalFileDataSource(DataSource):
+    """
+    Represents a data source within the local filesystem.
+    """
 
     def __init__(self, root_path):
-        self.root_path = root_path
-
-    def get_file_list(self):
+        self.root_path = os.path.abspath(root_path)
         if not os.path.exists(self.root_path):
             raise RuntimeError('Invalid data source: %s Does not exist.' % self.root_path)
 
-        files = []
+    def get_file_list(self):
+        """Retrieve the list of absolute paths to all the files in this data source.
+
+        Returns:
+             List[string] List of absolute paths.
+        """
         if os.path.isdir(self.root_path):
             files = [os.path.join(self.root_path, f) for f in os.listdir(self.root_path)
                      if os.path.isfile(os.path.join(self.root_path, f))]
@@ -52,12 +66,47 @@ class LocalFileDataSource(DataSource):
 
         return files
 
+    def get_root_dir(self):
+        """Retrieve the absolute path to the root directory of this data source.
+
+        Returns:
+            string: absolute path to the root directory of this data source.
+        """
+        if os.path.isdir(self.root_path):
+            return self.root_path
+        else:
+            return os.path.dirname(self.root_path)
+
+
 class S3DataSource(DataSource):
-    pass
+    """Defines a data source given by a bucket and s3 prefix. The contents will be downloaded
+    and then processed as local data.
+    """
 
+    def __init__(self, bucket, prefix, sagemaker_session):
+        """Create an S3DataSource instance
 
-class S3ManifestDataSource(DataSource):
-    pass
+        Args:
+            bucket (str): s3 bucket name
+            prefix (str): s3 prefix path to the data
+            sagemaker_session (sagemaker.Session): a sagemaker_session with the desired settings to talk to s3
+
+        """
+
+        # Create a temporary dir to store the S3 contents
+        root_dir = get_config_value('local.container_root', sagemaker_session.config)
+        if root_dir:
+            root_dir = os.path.abspath(root_dir)
+
+        working_dir = tempfile.mkdtemp(dir=root_dir)
+        download_folder(bucket, prefix, working_dir, sagemaker_session)
+        self.files = LocalFileDataSource(working_dir)
+
+    def get_file_list(self):
+        return self.files.get_file_list()
+
+    def get_root_dir(self):
+        return self.files.get_root_dir()
 
 
 class SplitterFactory(object):
@@ -79,23 +128,37 @@ class Splitter(object):
     def split(self, file):
         pass
 
+
 class NoneSplitter(Splitter):
+    """Does not split records, essentially reads the whole file.
+    """
 
     def split(self, file):
         with open(file, 'r') as f:
             yield f.read()
 
+
 class LineSplitter(Splitter):
+    """Split records by new line.
+
+    """
 
     def split(self, file):
         with open(file, 'r') as f:
             for line in f:
                 yield line
 
-class RecordIOSplitter(Splitter):
 
+class RecordIOSplitter(Splitter):
+    """Split using Amazon Recordio.
+
+    Not useful for string content.
+
+    """
     def split(self, file):
-        pass
+        with open(file, 'rb') as f:
+            for record in read_recordio(f):
+                yield record
 
 
 class BatchStrategyFactory(object):
@@ -109,13 +172,19 @@ class BatchStrategyFactory(object):
         else:
             return None
 
+
 class BatchStrategy(object):
 
     def pad(self, file, size):
         pass
 
-class MultiRecordStrategy(BatchStrategy):
 
+class MultiRecordStrategy(BatchStrategy):
+    """Feed multiple records at a time for batch inference.
+
+    Will group up as many records as possible within the payload specified.
+
+    """
     def __init__(self, splitter):
         self.splitter = splitter
 
@@ -133,7 +202,10 @@ class MultiRecordStrategy(BatchStrategy):
 
 
 class SingleRecordStrategy(BatchStrategy):
+    """Feed a single record at a time for batch inference.
 
+    If a single record does not fit within the payload specified it will throw a Runtime error.
+    """
     def __init__(self, splitter):
         self.splitter = splitter
 
@@ -144,14 +216,34 @@ class SingleRecordStrategy(BatchStrategy):
 
 
 def _payload_size_within_limit(payload, size):
+    """
+
+    Args:
+        payload:
+        size:
+
+    Returns:
+
+    """
     size_in_bytes = size * 1024 * 1024
     if size == 0:
         return True
     else:
-        print('size_of_payload: %s > %s' % (sys.getsizeof(payload), size_in_bytes))
         return sys.getsizeof(payload) < size_in_bytes
 
+
 def _validate_payload_size(payload, size):
-        if not _payload_size_within_limit(payload, size):
-            raise RuntimeError('Record is larger than %sMB. Please increase your max_payload' % size)
-        return True
+    """Check if a payload is within the size in MB threshold. Raise an exception otherwise.
+
+    Args:
+        payload: data that will be checked
+        size (int): max size in MB
+
+    Returns (bool): True if within bounds. if size=0 it will always return True
+    Raises:
+        RuntimeError: If the payload is larger a runtime error is thrown.
+    """
+
+    if not _payload_size_within_limit(payload, size):
+        raise RuntimeError('Record is larger than %sMB. Please increase your max_payload' % size)
+    return True

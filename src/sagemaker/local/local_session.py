@@ -96,7 +96,6 @@ class LocalSagemakerClient(object):
         LocalSagemakerClient._training_jobs[TransformJobName] = transform_job
         transform_job.start(TransformInput, TransformOutput, **kwargs)
 
-
     def create_model(self, ModelName, PrimaryContainer, *args, **kwargs):
         """Create a Local Model Object
 

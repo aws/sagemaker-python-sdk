@@ -18,10 +18,10 @@ import os
 import tempfile
 import time
 import urllib3
-from six.moves.urllib.parse import urlparse
 
 from sagemaker.local.data import BatchStrategyFactory, DataSourceFactory, SplitterFactory
 from sagemaker.local.image import _SageMakerContainer
+from sagemaker.local.utils import copy_directory_structure, move_to_destination
 from sagemaker.utils import get_config_value
 
 logger = logging.getLogger(__name__)
@@ -117,12 +117,13 @@ class _LocalTransformJob(object):
     def _batch_inference(self, input_data, output_data, **kwargs):
         # TODO - Figure if we should pass FileDataSource here instead. Ideally not but the semantics
         # are just weird.
+        print(output_data)
         input_path = input_data['DataSource']['S3DataSource']['S3Uri']
 
         # Transform the input data to feed the serving container. We need to first gather the files
         # from S3 or Local FileSystem. Split them as required (Line, RecordIO, None) and finally batch them
         # according to the batch strategy and limit the request size.
-        data_source = DataSourceFactory.get_instance(input_path)
+        data_source = DataSourceFactory.get_instance(input_path, self.local_session)
         split_type = input_data['SplitType'] if 'SplitType' in input_data else None
         splitter = SplitterFactory.get_instance(split_type)
 
@@ -131,18 +132,15 @@ class _LocalTransformJob(object):
         if 'BatchStrategy' in kwargs:
             batch_strategy = kwargs['BatchStrategy']
 
-
         max_payload = 6
         if 'MaxPayloadInMB' in kwargs:
             max_payload = int(kwargs['MaxPayloadInMB'])
 
         final_data = BatchStrategyFactory.get_instance(batch_strategy, splitter)
 
-
         # Output settings
         accept = output_data['Accept'] if 'Accept' in output_data else None
         # TODO - add a warning that we don't support KMS in Local Mode.
-
 
         # Root dir to use for intermediate data location. To make things simple we will write here regardless
         # of the final destination. At the end the files will either be moved or uploaded to S3 and deleted.
@@ -150,13 +148,17 @@ class _LocalTransformJob(object):
         if root_dir:
             root_dir = os.path.abspath(root_dir)
 
+        working_dir = tempfile.mkdtemp(dir=root_dir)
+        dataset_dir = data_source.get_root_dir()
 
-        out_fd, out_path = tempfile.mkstemp(dir=root_dir)
+        for file in data_source.get_file_list():
 
-        output_files = {}
-        with os.fdopen(out_fd, 'w') as f:
-            for file in data_source.get_file_list():
+            relative_path = os.path.dirname(os.path.relpath(file, dataset_dir))
+            filename = os.path.basename(file)
+            copy_directory_structure(working_dir, relative_path)
+            destination_path = os.path.join(working_dir, relative_path, filename + '.out')
 
+            with open(destination_path, 'w') as f:
                 for item in final_data.pad(file, max_payload):
                     # call the container and add the result to inference.
                     response = self.local_session.sagemaker_runtime_client.invoke_endpoint(
@@ -166,11 +168,15 @@ class _LocalTransformJob(object):
                     data = response_body.read()
                     response_body.close()
                     print('data: %s' % data)
-                    # TODO - AssembleWith determines if we add a new line or not.
                     f.write(data)
+                    if 'AssembleWith' in output_data and output_data['AssembleWith'] == 'Line':
+                        f.write('\n')
 
-        print(out_path)
+        print(working_dir)
+        move_to_destination(working_dir, output_data['S3OutputPath'], self.local_session)
+        print(output_data['S3OutputPath'])
         self.container.stop_serving()
+
 
 class _LocalModel(object):
 
@@ -244,7 +250,6 @@ class _LocalEndpoint(object):
         # the container is running and it passed the healthcheck status is now InService
         self.state = _LocalEndpoint._IN_SERVICE
 
-
     def stop(self):
         if self.container:
             self.container.stop_serving()
@@ -269,7 +274,7 @@ def _wait_for_serving_container(serving_port):
     while True:
         i += 1
         if i >= HEALTH_CHECK_TIMEOUT_LIMIT:
-            raise RuntimeError('Giving up, endpoint: %s didn\'t launch correctly' % self.name)
+            raise RuntimeError('Giving up, endpoint didn\'t launch correctly')
 
         logger.info('Checking if serving container is up, attempt: %s' % i)
         try:

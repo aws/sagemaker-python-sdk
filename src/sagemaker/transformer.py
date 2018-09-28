@@ -97,7 +97,6 @@ class Transformer(object):
             job_name (str): job name (default: None). If not specified, one will be generated.
         """
         local_mode = self.sagemaker_session.local_mode
-
         if not local_mode and not data.startswith('s3://'):
             raise ValueError('Invalid S3 URI: {}'.format(data))
 
