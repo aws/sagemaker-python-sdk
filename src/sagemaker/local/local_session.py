@@ -79,7 +79,7 @@ class LocalSagemakerClient(object):
         """Describe a local training job.
 
         Args:
-            TrainingJobName (str): Not used in this implmentation.
+            TrainingJobName (str): Training job name to describe.
 
         Returns: (dict) DescribeTrainingJob Response.
 
@@ -91,10 +91,11 @@ class LocalSagemakerClient(object):
             return LocalSagemakerClient._training_jobs[TrainingJobName].describe()
 
     def create_transform_job(self, TransformJobName, ModelName, TransformInput, TransformOutput,
-                             *args, **kwargs):
+                             TransformResources, **kwargs):
+        print(kwargs)
         transform_job = _LocalTransformJob(TransformJobName, ModelName, self.sagemaker_session)
         LocalSagemakerClient._training_jobs[TransformJobName] = transform_job
-        transform_job.start(TransformInput, TransformOutput, **kwargs)
+        transform_job.start(TransformInput, TransformOutput, TransformResources, **kwargs)
 
     def create_model(self, ModelName, PrimaryContainer, *args, **kwargs):
         """Create a Local Model Object

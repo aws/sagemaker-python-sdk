@@ -13,6 +13,7 @@
 from __future__ import absolute_import
 
 import datetime
+import json
 import logging
 import os
 import tempfile
@@ -98,49 +99,113 @@ class _LocalTransformJob(object):
         self.create_time = None
         self.state = _LocalTransformJob._CREATING
 
-    def start(self, input_data, output_data, **kwargs):
+    def start(self, input_data, output_data, transform_resources, **kwargs):
         image = self.primary_container['Image']
-        instance_type = 'local'  # TODO get it from kwargs
-        instance_count = 1  # TODO get it from kwargs
+        instance_type = transform_resources['InstanceType']
+        instance_count = 1
 
         self.create_time = datetime.datetime.now()
+        environment = self._get_container_environment(**kwargs)
+
+        # Start the container, pass the environment and wait for it to start up
         self.container = _SageMakerContainer(instance_type, instance_count, image, self.local_session)
-        self.container.serve(self.primary_container['ModelDataUrl'], self.primary_container['Environment'])
+        self.container.serve(self.primary_container['ModelDataUrl'], environment)
 
         serving_port = get_config_value('local.serving_port', self.local_session.config) or 8080
         _wait_for_serving_container(serving_port)
 
-        # TODO - Get capabilities from Container if needed
+        # Get capabilities from Container if needed
+        endpoint_url = 'http://localhost:%s/execution-parameters' % serving_port
+        response, code = _perform_request(endpoint_url)
+        if code == 200:
+            execution_parameters = json.load(response.read())
+            # MaxConcurrentTransforms is ignored because we currently only support 1
+            for setting in ('BatchStrategy', 'MaxPayloadInMB'):
+                if setting not in kwargs and setting in execution_parameters:
+                    kwargs[setting] = execution_parameters[setting]
 
+        # Apply Defaults if none was provided
+        kwargs.update(self._get_required_defaults(**kwargs))
+
+        # run the batch inference requests
         self._batch_inference(input_data, output_data, **kwargs)
+
+    def _get_container_environment(self, **kwargs):
+        """Get all the Environment variables that will be passed to the container
+
+        Certain input fields such as BatchStrategy have different values for the API vs the Environment
+        variables, su ch as SingleRecord vs SINGLE_RECORD. This method also handles this conversion.
+
+        Args:
+            **kwargs: existing transform arguments
+
+        Returns:
+            (dict) All the environment variables that should be set in the container
+
+        """
+        environment = self.primary_container['Environment']
+        environment['SAGEMAKER_BATCH'] = 'True'
+        if 'MaxPayloadInMB' in kwargs:
+            environment['SAGEMAKER_MAX_PAYLOAD_IN_MB'] = str(kwargs['MaxPayloadInMB'])
+
+        if 'BatchStrategy' in kwargs:
+            strategy_env_value = ''
+            if kwargs['BatchStrategy'] == 'SingleRecord':
+                strategy_env_value = 'SINGLE_RECORD'
+            elif kwargs['BatchStrategy'] == 'MultiRecord':
+                strategy_env_value = 'MULTI_RECORD'
+            else:
+                raise ValueError('Invalid BatchStrategy, must be \'SingleRecord\' or \'MultiRecord\'')
+            environment['SAGEMAKER_BATCH_STRATEGY'] = strategy_env_value
+
+        # we only do 1 max concurrent transform in Local Mode
+        environment['SAGEMAKER_MAX_CONCURRENT_TRANSFORMS'] = '1'
+
+        # if there were environment variables passed to the Transformer we will pass them to the
+        # container as well.
+        if 'Environment' in kwargs:
+            environment.update(kwargs['Environment'])
+        return environment
+
+    def _get_required_defaults(self, **kwargs):
+        """
+        Return the default values for anything that was not provided by either the user or the container
+        Args:
+            **kwargs: current transform arguments
+
+        Returns:
+            (dict) key/values for the default parameters that are missing.
+
+        """
+        defaults = {}
+        if 'BatchStrategy' not in kwargs:
+            defaults['BatchStrategy'] = 'MultiRecord'
+
+        if 'MaxPayloadInMB' not in kwargs:
+            defaults['MaxPayloadInMB'] = 6
+
+        return defaults
+
 
     def _batch_inference(self, input_data, output_data, **kwargs):
         # TODO - Figure if we should pass FileDataSource here instead. Ideally not but the semantics
         # are just weird.
-        print(output_data)
         input_path = input_data['DataSource']['S3DataSource']['S3Uri']
 
         # Transform the input data to feed the serving container. We need to first gather the files
         # from S3 or Local FileSystem. Split them as required (Line, RecordIO, None) and finally batch them
         # according to the batch strategy and limit the request size.
+
+        batch_strategy = kwargs['BatchStrategy']
+        max_payload = int(kwargs['MaxPayloadInMB'])
+
         data_source = DataSourceFactory.get_instance(input_path, self.local_session)
         split_type = input_data['SplitType'] if 'SplitType' in input_data else None
         splitter = SplitterFactory.get_instance(split_type)
-
-        # MultiRecord is the default strategy if none is provided and the container does not provide one either.
-        batch_strategy = 'MultiRecord'
-        if 'BatchStrategy' in kwargs:
-            batch_strategy = kwargs['BatchStrategy']
-
-        max_payload = 6
-        if 'MaxPayloadInMB' in kwargs:
-            max_payload = int(kwargs['MaxPayloadInMB'])
-
         final_data = BatchStrategyFactory.get_instance(batch_strategy, splitter)
 
         # Output settings
         accept = output_data['Accept'] if 'Accept' in output_data else None
-        # TODO - add a warning that we don't support KMS in Local Mode.
 
         # Root dir to use for intermediate data location. To make things simple we will write here regardless
         # of the final destination. At the end the files will either be moved or uploaded to S3 and deleted.
@@ -174,7 +239,6 @@ class _LocalTransformJob(object):
 
         print(working_dir)
         move_to_destination(working_dir, output_data['S3OutputPath'], self.local_session)
-        print(output_data['S3OutputPath'])
         self.container.stop_serving()
 
 
@@ -277,13 +341,19 @@ def _wait_for_serving_container(serving_port):
             raise RuntimeError('Giving up, endpoint didn\'t launch correctly')
 
         logger.info('Checking if serving container is up, attempt: %s' % i)
-        try:
-            r = http.request('GET', endpoint_url)
-            if r.status != 200:
-                logger.info('Container still not up, got: %s' % r.status)
-            else:
-                return
-        except urllib3.exceptions.RequestError:
-            logger.info('Container still not up')
+        response, code = _perform_request(endpoint_url, http)
+        if code != 200:
+            logger.info('Container still not up, got: %s' % code)
+        else:
+            return
 
         time.sleep(1)
+
+def _perform_request(endpoint_url, pool_manager=None):
+    http = pool_manager or urllib3.PoolManager()
+    try:
+        r = http.request('GET', endpoint_url)
+        code = r.status
+    except urllib3.exceptions.RequestError:
+        return None, -1
+    return r, code
