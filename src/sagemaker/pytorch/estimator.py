@@ -15,6 +15,7 @@ from sagemaker.estimator import Framework
 from sagemaker.fw_utils import framework_name_from_image, framework_version_from_tag
 from sagemaker.pytorch.defaults import PYTORCH_VERSION, PYTHON_VERSION
 from sagemaker.pytorch.model import PyTorchModel
+from sagemaker.utils import vpc_config_dict
 
 
 class PyTorch(Framework):
@@ -63,7 +64,7 @@ class PyTorch(Framework):
         self.py_version = py_version
         self.framework_version = framework_version
 
-    def create_model(self, model_server_workers=None, role=None):
+    def create_model(self, model_server_workers=None, role=None, vpc_config=None):
         """Create a SageMaker ``PyTorchModel`` object that can be deployed to an ``Endpoint``.
 
         Args:
@@ -71,17 +72,23 @@ class PyTorch(Framework):
                 transform jobs. If not specified, the role from the Estimator will be used.
             model_server_workers (int): Optional. The number of worker processes used by the inference server.
                 If None, server will use one worker per vCPU.
+            vpc_config (dict[str, list[str]]): Overrides VpcConfig set on the model.
+                If None, defaults to VpcConfig used for training (default: None)
+                * 'Subnets' (list[str]): List of subnet ids.
+                * 'SecurityGroupIds' (list[str]): List of security group ids.
 
         Returns:
             sagemaker.pytorch.model.PyTorchModel: A SageMaker ``PyTorchModel`` object.
                 See :func:`~sagemaker.pytorch.model.PyTorchModel` for full details.
         """
         role = role or self.role
+        vpc_config = vpc_config or vpc_config_dict(self.subnets, self.security_group_ids)
         return PyTorchModel(self.model_data, role, self.entry_point, source_dir=self._model_source_dir(),
                             enable_cloudwatch_metrics=self.enable_cloudwatch_metrics, name=self._current_job_name,
                             container_log_level=self.container_log_level, code_location=self.code_location,
                             py_version=self.py_version, framework_version=self.framework_version, image=self.image_name,
-                            model_server_workers=model_server_workers, sagemaker_session=self.sagemaker_session)
+                            model_server_workers=model_server_workers, sagemaker_session=self.sagemaker_session,
+                            vpc_config=vpc_config)
 
     @classmethod
     def _prepare_init_params_from_job_description(cls, job_details):

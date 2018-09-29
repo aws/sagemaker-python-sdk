@@ -19,6 +19,7 @@ from sagemaker.amazon.validation import gt, isin
 from sagemaker.predictor import RealTimePredictor
 from sagemaker.model import Model
 from sagemaker.session import Session
+from sagemaker.utils import vpc_config_dict
 
 
 class PCA(AmazonAlgorithmEstimatorBase):
@@ -86,11 +87,18 @@ class PCA(AmazonAlgorithmEstimatorBase):
         self.subtract_mean = subtract_mean
         self.extra_components = extra_components
 
-    def create_model(self):
+    def create_model(self, vpc_config=None):
         """Return a :class:`~sagemaker.amazon.pca.PCAModel` referencing the latest
-        s3 model data produced by this Estimator."""
+        s3 model data produced by this Estimator.
 
-        return PCAModel(self.model_data, self.role, sagemaker_session=self.sagemaker_session)
+        vpc_config (dict[str, list[str]]): Overrides VpcConfig set on the model.
+                If None, defaults to VpcConfig used for training (default: None)
+                * 'Subnets' (list[str]): List of subnet ids.
+                * 'SecurityGroupIds' (list[str]): List of security group ids.
+        """
+        vpc_config = vpc_config or vpc_config_dict(self.subnets, self.security_group_ids)
+        return PCAModel(self.model_data, self.role, sagemaker_session=self.sagemaker_session,
+                        vpc_config=vpc_config)
 
     def _prepare_for_training(self, records, mini_batch_size=None, job_name=None):
         """Set hyperparameters needed for training.
@@ -142,9 +150,10 @@ class PCAModel(Model):
     """Reference PCA s3 model data. Calling :meth:`~sagemaker.model.Model.deploy` creates an Endpoint and return
     a Predictor that transforms vectors to a lower-dimensional representation."""
 
-    def __init__(self, model_data, role, sagemaker_session=None):
+    def __init__(self, model_data, role, sagemaker_session=None, **kwargs):
         sagemaker_session = sagemaker_session or Session()
         repo = '{}:{}'.format(PCA.repo_name, PCA.repo_version)
         image = '{}/{}'.format(registry(sagemaker_session.boto_session.region_name), repo)
         super(PCAModel, self).__init__(model_data, image, role, predictor_cls=PCAPredictor,
-                                       sagemaker_session=sagemaker_session)
+                                       sagemaker_session=sagemaker_session,
+                                       **kwargs)

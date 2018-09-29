@@ -19,6 +19,7 @@ from sagemaker.amazon.validation import isin, gt, lt, ge, le
 from sagemaker.predictor import RealTimePredictor
 from sagemaker.model import Model
 from sagemaker.session import Session
+from sagemaker.utils import vpc_config_dict
 
 
 class LinearLearner(AmazonAlgorithmEstimatorBase):
@@ -246,11 +247,19 @@ class LinearLearner(AmazonAlgorithmEstimatorBase):
             raise ValueError(
                 "For predictor_type 'multiclass_classifier', 'num_classes' should be set to a value greater than 2.")
 
-    def create_model(self):
+    def create_model(self, vpc_config=None):
         """Return a :class:`~sagemaker.amazon.LinearLearnerModel` referencing the latest
-        s3 model data produced by this Estimator."""
+        s3 model data produced by this Estimator.
 
-        return LinearLearnerModel(self.model_data, self.role, self.sagemaker_session)
+        Args:
+            vpc_config (dict[str, list[str]]): Overrides VpcConfig set on the model.
+                If None, defaults to VpcConfig used for training (default: None)
+                * 'Subnets' (list[str]): List of subnet ids.
+                * 'SecurityGroupIds' (list[str]): List of security group ids.
+        """
+        vpc_config = vpc_config or vpc_config_dict(self.subnets, self.security_group_ids)
+        return LinearLearnerModel(self.model_data, self.role, self.sagemaker_session,
+                                  vpc_config=vpc_config)
 
     def _prepare_for_training(self, records, mini_batch_size=None, job_name=None):
         num_records = None
@@ -293,10 +302,11 @@ class LinearLearnerModel(Model):
     """Reference LinearLearner s3 model data. Calling :meth:`~sagemaker.model.Model.deploy` creates an Endpoint
     and returns a :class:`LinearLearnerPredictor`"""
 
-    def __init__(self, model_data, role, sagemaker_session=None):
+    def __init__(self, model_data, role, sagemaker_session=None, **kwargs):
         sagemaker_session = sagemaker_session or Session()
         repo = '{}:{}'.format(LinearLearner.repo_name, LinearLearner.repo_version)
         image = '{}/{}'.format(registry(sagemaker_session.boto_session.region_name), repo)
         super(LinearLearnerModel, self).__init__(model_data, image, role,
                                                  predictor_cls=LinearLearnerPredictor,
-                                                 sagemaker_session=sagemaker_session)
+                                                 sagemaker_session=sagemaker_session,
+                                                 **kwargs)

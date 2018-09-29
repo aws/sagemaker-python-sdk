@@ -19,6 +19,7 @@ from sagemaker.amazon.validation import gt, isin, ge
 from sagemaker.predictor import RealTimePredictor
 from sagemaker.model import Model
 from sagemaker.session import Session
+from sagemaker.utils import vpc_config_dict
 
 
 class FactorizationMachines(AmazonAlgorithmEstimatorBase):
@@ -163,11 +164,19 @@ class FactorizationMachines(AmazonAlgorithmEstimatorBase):
         self.factors_init_sigma = factors_init_sigma
         self.factors_init_value = factors_init_value
 
-    def create_model(self):
+    def create_model(self, vpc_config=None):
         """Return a :class:`~sagemaker.amazon.FactorizationMachinesModel` referencing the latest
-        s3 model data produced by this Estimator."""
+        s3 model data produced by this Estimator.
 
-        return FactorizationMachinesModel(self.model_data, self.role, sagemaker_session=self.sagemaker_session)
+        Args:
+            vpc_config (dict[str, list[str]]): Overrides VpcConfig set on the model.
+                If None, defaults to VpcConfig used for training (default: None)
+                * 'Subnets' (list[str]): List of subnet ids.
+                * 'SecurityGroupIds' (list[str]): List of security group ids.
+        """
+        vpc_config = vpc_config or vpc_config_dict(self.subnets, self.security_group_ids)
+        return FactorizationMachinesModel(self.model_data, self.role, sagemaker_session=self.sagemaker_session,
+                                          vpc_config=vpc_config)
 
 
 class FactorizationMachinesPredictor(RealTimePredictor):
@@ -195,7 +204,7 @@ class FactorizationMachinesModel(Model):
     """Reference S3 model data created by FactorizationMachines estimator. Calling :meth:`~sagemaker.model.Model.deploy`
     creates an Endpoint and returns :class:`FactorizationMachinesPredictor`."""
 
-    def __init__(self, model_data, role, sagemaker_session=None):
+    def __init__(self, model_data, role, sagemaker_session=None, **kwargs):
         sagemaker_session = sagemaker_session or Session()
         repo = '{}:{}'.format(FactorizationMachines.repo_name, FactorizationMachines.repo_version)
         image = '{}/{}'.format(registry(sagemaker_session.boto_session.region_name), repo)
@@ -203,4 +212,5 @@ class FactorizationMachinesModel(Model):
                                                          image,
                                                          role,
                                                          predictor_cls=FactorizationMachinesPredictor,
-                                                         sagemaker_session=sagemaker_session)
+                                                         sagemaker_session=sagemaker_session,
+                                                         **kwargs)

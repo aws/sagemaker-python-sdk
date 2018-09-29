@@ -23,7 +23,7 @@ import time
 
 from sagemaker.estimator import Framework
 from sagemaker.fw_utils import framework_name_from_image, framework_version_from_tag
-from sagemaker.utils import get_config_value
+from sagemaker.utils import get_config_value, vpc_config_dict
 
 from sagemaker.tensorflow.defaults import TF_VERSION
 from sagemaker.tensorflow.model import TensorFlowModel
@@ -289,7 +289,7 @@ class TensorFlow(Framework):
 
         return init_params
 
-    def create_model(self, model_server_workers=None, role=None):
+    def create_model(self, model_server_workers=None, role=None, vpc_config=None):
         """Create a SageMaker ``TensorFlowModel`` object that can be deployed to an ``Endpoint``.
 
         Args:
@@ -297,6 +297,10 @@ class TensorFlow(Framework):
                 transform jobs. If not specified, the role from the Estimator will be used.
             model_server_workers (int): Optional. The number of worker processes used by the inference server.
                 If None, server will use one worker per vCPU.
+            vpc_config (dict[str, list[str]]): Overrides VpcConfig set on the model.
+                If None, defaults to VpcConfig used for training (default: None)
+                * 'Subnets' (list[str]): List of subnet ids.
+                * 'SecurityGroupIds' (list[str]): List of security group ids.
 
         Returns:
             sagemaker.tensorflow.model.TensorFlowModel: A SageMaker ``TensorFlowModel`` object.
@@ -304,12 +308,13 @@ class TensorFlow(Framework):
         """
         env = {'SAGEMAKER_REQUIREMENTS': self.requirements_file}
         role = role or self.role
+        vpc_config = vpc_config or vpc_config_dict(self.subnets, self.security_group_ids)
         return TensorFlowModel(self.model_data, role, self.entry_point, source_dir=self._model_source_dir(),
                                enable_cloudwatch_metrics=self.enable_cloudwatch_metrics, env=env, image=self.image_name,
                                name=self._current_job_name, container_log_level=self.container_log_level,
                                code_location=self.code_location, py_version=self.py_version,
                                framework_version=self.framework_version, model_server_workers=model_server_workers,
-                               sagemaker_session=self.sagemaker_session)
+                               sagemaker_session=self.sagemaker_session, vpc_config=vpc_config)
 
     def hyperparameters(self):
         """Return hyperparameters used by your custom TensorFlow code during model training."""

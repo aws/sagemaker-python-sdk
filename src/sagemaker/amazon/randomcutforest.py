@@ -19,6 +19,7 @@ from sagemaker.amazon.validation import ge, le
 from sagemaker.predictor import RealTimePredictor
 from sagemaker.model import Model
 from sagemaker.session import Session
+from sagemaker.utils import vpc_config_dict
 
 
 class RandomCutForest(AmazonAlgorithmEstimatorBase):
@@ -81,11 +82,18 @@ class RandomCutForest(AmazonAlgorithmEstimatorBase):
         self.num_trees = num_trees
         self.eval_metrics = eval_metrics
 
-    def create_model(self):
+    def create_model(self, vpc_config=None):
         """Return a :class:`~sagemaker.amazon.RandomCutForestModel` referencing the latest
-        s3 model data produced by this Estimator."""
+        s3 model data produced by this Estimator.
 
-        return RandomCutForestModel(self.model_data, self.role, sagemaker_session=self.sagemaker_session)
+        vpc_config (dict[str, list[str]]): Overrides VpcConfig set on the model.
+                If None, defaults to VpcConfig used for training (default: None)
+                * 'Subnets' (list[str]): List of subnet ids.
+                * 'SecurityGroupIds' (list[str]): List of security group ids.
+        """
+        vpc_config = vpc_config or vpc_config_dict(self.subnets, self.security_group_ids)
+        return RandomCutForestModel(self.model_data, self.role, sagemaker_session=self.sagemaker_session,
+                                    vpc_config=vpc_config)
 
     def _prepare_for_training(self, records, mini_batch_size=None, job_name=None):
         if mini_batch_size is None:
@@ -118,11 +126,12 @@ class RandomCutForestModel(Model):
     """Reference RandomCutForest s3 model data. Calling :meth:`~sagemaker.model.Model.deploy` creates an
     Endpoint and returns a Predictor that calculates anomaly scores for datapoints."""
 
-    def __init__(self, model_data, role, sagemaker_session=None):
+    def __init__(self, model_data, role, sagemaker_session=None, **kwargs):
         sagemaker_session = sagemaker_session or Session()
         repo = '{}:{}'.format(RandomCutForest.repo_name, RandomCutForest.repo_version)
         image = '{}/{}'.format(registry(sagemaker_session.boto_session.region_name,
                                         RandomCutForest.repo_name), repo)
         super(RandomCutForestModel, self).__init__(model_data, image, role,
                                                    predictor_cls=RandomCutForestPredictor,
-                                                   sagemaker_session=sagemaker_session)
+                                                   sagemaker_session=sagemaker_session,
+                                                   **kwargs)

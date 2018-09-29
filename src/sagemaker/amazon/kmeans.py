@@ -19,6 +19,7 @@ from sagemaker.amazon.validation import gt, isin, ge, le
 from sagemaker.predictor import RealTimePredictor
 from sagemaker.model import Model
 from sagemaker.session import Session
+from sagemaker.utils import vpc_config_dict
 
 
 class KMeans(AmazonAlgorithmEstimatorBase):
@@ -102,10 +103,19 @@ class KMeans(AmazonAlgorithmEstimatorBase):
         self.center_factor = center_factor
         self.eval_metrics = eval_metrics
 
-    def create_model(self):
+    def create_model(self, vpc_config=None):
         """Return a :class:`~sagemaker.amazon.kmeans.KMeansModel` referencing the latest
-        s3 model data produced by this Estimator."""
-        return KMeansModel(self.model_data, self.role, self.sagemaker_session)
+        s3 model data produced by this Estimator.
+
+        Args:
+            vpc_config (dict[str, list[str]]): Overrides VpcConfig set on the model.
+                If None, defaults to VpcConfig used for training (default: None)
+                * 'Subnets' (list[str]): List of subnet ids.
+                * 'SecurityGroupIds' (list[str]): List of security group ids.
+        """
+        vpc_config = vpc_config or vpc_config_dict(self.subnets, self.security_group_ids)
+        return KMeansModel(self.model_data, self.role, self.sagemaker_session,
+                           vpc_config=vpc_config)
 
     def _prepare_for_training(self, records, mini_batch_size=5000, job_name=None):
         super(KMeans, self)._prepare_for_training(records, mini_batch_size=mini_batch_size, job_name=job_name)
@@ -138,9 +148,10 @@ class KMeansModel(Model):
     """Reference KMeans s3 model data. Calling :meth:`~sagemaker.model.Model.deploy` creates an Endpoint and return
     a Predictor to performs k-means cluster assignment."""
 
-    def __init__(self, model_data, role, sagemaker_session=None):
+    def __init__(self, model_data, role, sagemaker_session=None, **kwargs):
         sagemaker_session = sagemaker_session or Session()
         repo = '{}:{}'.format(KMeans.repo_name, KMeans.repo_version)
         image = '{}/{}'.format(registry(sagemaker_session.boto_session.region_name), repo)
         super(KMeansModel, self).__init__(model_data, image, role, predictor_cls=KMeansPredictor,
-                                          sagemaker_session=sagemaker_session)
+                                          sagemaker_session=sagemaker_session,
+                                          **kwargs)

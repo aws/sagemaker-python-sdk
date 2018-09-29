@@ -19,6 +19,7 @@ from sagemaker.amazon.validation import ge, isin
 from sagemaker.predictor import RealTimePredictor
 from sagemaker.model import Model
 from sagemaker.session import Session
+from sagemaker.utils import vpc_config_dict
 
 
 class KNN(AmazonAlgorithmEstimatorBase):
@@ -97,11 +98,19 @@ class KNN(AmazonAlgorithmEstimatorBase):
         if dimension_reduction_type and not dimension_reduction_target:
             raise ValueError('"dimension_reduction_target" is required when "dimension_reduction_type" is set.')
 
-    def create_model(self):
+    def create_model(self, vpc_config=None):
         """Return a :class:`~sagemaker.amazon.KNNModel` referencing the latest
-        s3 model data produced by this Estimator."""
+        s3 model data produced by this Estimator.
 
-        return KNNModel(self.model_data, self.role, sagemaker_session=self.sagemaker_session)
+        Args:
+            vpc_config (dict[str, list[str]]): Overrides VpcConfig set on the model.
+                If None, defaults to VpcConfig used for training (default: None)
+                * 'Subnets' (list[str]): List of subnet ids.
+                * 'SecurityGroupIds' (list[str]): List of security group ids.
+        """
+        vpc_config = vpc_config or vpc_config_dict(self.subnets, self.security_group_ids)
+        return KNNModel(self.model_data, self.role, sagemaker_session=self.sagemaker_session,
+                        vpc_config=vpc_config)
 
     def _prepare_for_training(self, records, mini_batch_size=None, job_name=None):
         super(KNN, self)._prepare_for_training(records, mini_batch_size=mini_batch_size, job_name=job_name)
@@ -128,9 +137,9 @@ class KNNModel(Model):
     """Reference S3 model data created by KNN estimator. Calling :meth:`~sagemaker.model.Model.deploy`
     creates an Endpoint and returns :class:`KNNPredictor`."""
 
-    def __init__(self, model_data, role, sagemaker_session=None):
+    def __init__(self, model_data, role, sagemaker_session=None, **kwargs):
         sagemaker_session = sagemaker_session or Session()
         repo = '{}:{}'.format(KNN.repo_name, KNN.repo_version)
         image = '{}/{}'.format(registry(sagemaker_session.boto_session.region_name, KNN.repo_name), repo)
         super(KNNModel, self).__init__(model_data, image, role, predictor_cls=KNNPredictor,
-                                       sagemaker_session=sagemaker_session)
+                                       sagemaker_session=sagemaker_session, **kwargs)
