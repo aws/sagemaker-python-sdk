@@ -2,6 +2,8 @@
 CHANGELOG
 =========
 
+* enhancement: Enable setting VPC config when creating/deploying models
+
 1.10.1
 ======
 
