@@ -446,30 +446,30 @@ class Session(object):
             primary_container (str or dict[str, str]): Docker image which defines the inference code.
                 You can also specify the return value of ``sagemaker.container_def()``, which is used to create
                 more advanced container configurations, including model containers which need artifacts from S3.
-            vpc_config (dict[str, list[str]]): Contains values for VpcConfig:
-                * subnets (list[str]): List of subnet ids.
-                    The key in vpc_config is 'Subnets'.
-                * security_group_ids (list[str]): List of security group ids.
-                    The key in vpc_config is 'SecurityGroupIds'.
+            vpc_config (dict[str, list[str]]): The VpcConfig set on the model (default: None)
+                * 'Subnets' (list[str]): List of subnet ids.
+                * 'SecurityGroupIds' (list[str]): List of security group ids.
 
         Returns:
             str: Name of the Amazon SageMaker ``Model`` created.
         """
         role = self.expand_role(role)
         primary_container = _expand_container_def(primary_container)
+
+        create_model_request = {
+            'ModelName': name,
+            'PrimaryContainer': primary_container,
+            'ExecutionRoleArn': role
+        }
+
+        if vpc_config:
+            create_model_request['VpcConfig'] = vpc_config
+
         LOGGER.info('Creating model with name: {}'.format(name))
-        LOGGER.debug('create_model request: {}'.format({
-            'name': name,
-            'role': role,
-            'primary_container': primary_container,
-            'vpc_config': vpc_config,
-        }))
+        LOGGER.debug('CreateModel request: {}'.format(json.dumps(create_model_request, indent=4)))
 
         try:
-            self.sagemaker_client.create_model(ModelName=name,
-                                               PrimaryContainer=primary_container,
-                                               ExecutionRoleArn=role,
-                                               VpcConfig=vpc_config)
+            self.sagemaker_client.create_model(**create_model_request)
         except ClientError as e:
             error_code = e.response['Error']['Code']
             message = e.response['Error']['Message']
@@ -496,12 +496,11 @@ class Session(object):
             model_data_url (str): S3 location of the model data (default: None). If None, defaults to
                 the ``ModelS3Artifacts`` of ``training_job_name``.
             env (dict[string,string]): Model environment variables (default: {}).
-            vpc_config (dict[str, list[str]]): Contains values for VpcConfig (default: None):
-                * subnets (list[str]): List of subnet ids.
-                    The key in vpc_config is 'Subnets'.
-                * security_group_ids (list[str]): List of security group ids.
-                    The key in vpc_config is 'SecurityGroupIds'.
-                If None, defaults to the ``VpcConfig`` from the SageMaker Training Job.
+            vpc_config (dict[str, list[str]]):
+            vpc_config (dict[str, list[str]]): Overrides VpcConfig set on the model.
+                If None, defaults to VpcConfig used in training (default: None)
+                * 'Subnets' (list[str]): List of subnet ids.
+                * 'SecurityGroupIds' (list[str]): List of security group ids.
 
         Returns:
             str: The name of the created ``Model``.
@@ -685,12 +684,10 @@ class Session(object):
             wait (bool): Whether to wait for the endpoint deployment to complete before returning (default: True).
             model_environment_vars (dict[str, str]): Environment variables to set on the model container
                 (default: None).
-            model_vpc_config (dict[str, list[str]]): Contains values for VpcConfig set on the model (default: None):
-                * subnets (list[str]): List of subnet ids.
-                    The key in vpc_config is 'Subnets'.
-                * security_group_ids (list[str]): List of security group ids.
-                    The key in vpc_config is 'SecurityGroupIds'.
-                If None, defaults to the ``VpcConfig`` from the SageMaker Training Job.
+            model_vpc_config (dict[str, list[str]]): Overrides VpcConfig set on the model.
+                If None, defaults to VpcConfig used for training (default: None)
+                * 'Subnets' (list[str]): List of subnet ids.
+                * 'SecurityGroupIds' (list[str]): List of security group ids.
 
         Returns:
             str: Name of the ``Endpoint`` that is created.
@@ -727,12 +724,9 @@ class Session(object):
             wait (bool): Whether to wait for the endpoint deployment to complete before returning (default: True).
             model_environment_vars (dict[str, str]): Environment variables to set on the model container
                 (default: None).
-            model_vpc_config (dict[str, list[str]]): Contains values for VpcConfig set on the model (default: None):
-                * subnets (list[str]): List of subnet ids.
-                    The key in vpc_config is 'Subnets'.
-                * security_group_ids (list[str]): List of security group ids.
-                    The key in vpc_config is 'SecurityGroupIds'.
-                If None, defaults to the ``VpcConfig`` from the SageMaker Training Job.
+            model_vpc_config (dict[str, list[str]]): The VpcConfig set on the model (default: None)
+                * 'Subnets' (list[str]): List of subnet ids.
+                * 'SecurityGroupIds' (list[str]): List of security group ids.
 
         Returns:
             str: Name of the ``Endpoint`` that is created.

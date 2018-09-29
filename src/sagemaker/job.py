@@ -17,6 +17,7 @@ from six import string_types
 
 from sagemaker.local import file_input
 from sagemaker.session import s3_input
+from sagemaker.utils import vpc_config_dict
 
 
 class _Job(object):
@@ -60,7 +61,7 @@ class _Job(object):
                                                         estimator.train_volume_size,
                                                         estimator.train_volume_kms_key)
         stop_condition = _Job._prepare_stop_condition(estimator.train_max_run)
-        vpc_config = _Job._prepare_vpc_config(estimator.subnets, estimator.security_group_ids)
+        vpc_config = vpc_config_dict(estimator.subnets, estimator.security_group_ids)
 
         return {'input_config': input_config,
                 'role': role,
@@ -149,13 +150,6 @@ class _Job(object):
             resource_config['VolumeKmsKeyId'] = train_volume_kms_key
 
         return resource_config
-
-    @staticmethod
-    def _prepare_vpc_config(subnets, security_group_ids):
-        if subnets is None or security_group_ids is None:
-            return None
-        return {'Subnets': subnets,
-                'SecurityGroupIds': security_group_ids}
 
     @staticmethod
     def _prepare_stop_condition(max_run):

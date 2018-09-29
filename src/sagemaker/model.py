@@ -41,11 +41,9 @@ class Model(object):
                this function on the created endpoint name.
             env (dict[str, str]): Environment variables to run with ``image`` when hosted in SageMaker (default: None).
             name (str): The model name. If None, a default model name will be selected on each ``deploy``.
-            vpc_config (dict[str, list[str]]): Contains values for VpcConfig (default: None):
-                * subnets (list[str]): List of subnet ids.
-                    The key in vpc_config is 'Subnets'.
-                * security_group_ids (list[str]): List of security group ids.
-                    The key in vpc_config is 'SecurityGroupIds'.
+            vpc_config (dict[str, list[str]]): The VpcConfig set on the model (default: None)
+                * 'Subnets' (list[str]): List of subnet ids.
+                * 'SecurityGroupIds' (list[str]): List of security group ids.
             sagemaker_session (sagemaker.session.Session): A SageMaker Session object, used for SageMaker
                interactions (default: None). If not specified, one is created using the default AWS configuration chain.
         """
@@ -80,6 +78,8 @@ class Model(object):
         If ``self.predictor_cls`` is not None, this method returns a the result of invoking
         ``self.predictor_cls`` on the created endpoint name.
 
+        The name of the created model is accessible in the ``name`` field of this ``Model`` after deploy returns
+
         The name of the created endpoint is accessible in the ``endpoint_name``
         field of this ``Model`` after deploy returns.
 
@@ -101,10 +101,10 @@ class Model(object):
                 self.sagemaker_session = Session()
 
         container_def = self.prepare_container_def(instance_type)
-        model_name = self.name or name_from_image(container_def['Image'])
-        self.sagemaker_session.create_model(model_name, self.role, container_def, vpc_config=self.vpc_config)
-        production_variant = sagemaker.production_variant(model_name, instance_type, initial_instance_count)
-        self.endpoint_name = endpoint_name or model_name
+        self.name = self.name or name_from_image(container_def['Image'])
+        self.sagemaker_session.create_model(self.name, self.role, container_def, vpc_config=self.vpc_config)
+        production_variant = sagemaker.production_variant(self.name, instance_type, initial_instance_count)
+        self.endpoint_name = endpoint_name or self.name
         self.sagemaker_session.endpoint_from_production_variants(self.endpoint_name, [production_variant], tags)
         if self.predictor_cls:
             return self.predictor_cls(self.endpoint_name, self.sagemaker_session)
@@ -126,8 +126,8 @@ class FrameworkModel(Model):
     """
 
     def __init__(self, model_data, image, role, entry_point, source_dir=None, predictor_cls=None, env=None, name=None,
-                 vpc_config=None, enable_cloudwatch_metrics=False, container_log_level=logging.INFO, code_location=None,
-                 sagemaker_session=None):
+                 enable_cloudwatch_metrics=False, container_log_level=logging.INFO, code_location=None,
+                 sagemaker_session=None, **kwargs):
         """Initialize a ``FrameworkModel``.
 
         Args:
@@ -146,11 +146,6 @@ class FrameworkModel(Model):
             env (dict[str, str]): Environment variables to run with ``image`` when hosted in SageMaker
                (default: None).
             name (str): The model name. If None, a default model name will be selected on each ``deploy``.
-            vpc_config (dict[str, list[str]]): Contains values for VpcConfig (default: None):
-                * subnets (list[str]): List of subnet ids.
-                    The key in vpc_config is 'Subnets'.
-                * security_group_ids (list[str]): List of security group ids.
-                    The key in vpc_config is 'SecurityGroupIds'.
             enable_cloudwatch_metrics (bool): Whether training and hosting containers will
                generate CloudWatch metrics under the AWS/SageMakerContainer namespace (default: False).
             container_log_level (int): Log level to use within the container (default: logging.INFO).
@@ -159,9 +154,10 @@ class FrameworkModel(Model):
                 If not specified, default bucket created by ``sagemaker.session.Session`` is used.
             sagemaker_session (sagemaker.session.Session): A SageMaker Session object, used for SageMaker
                interactions (default: None). If not specified, one is created using the default AWS configuration chain.
+            **kwargs: Keyword arguments passed to the ``Model`` initializer.
         """
         super(FrameworkModel, self).__init__(model_data, image, role, predictor_cls=predictor_cls, env=env, name=name,
-                                             vpc_config=vpc_config, sagemaker_session=sagemaker_session)
+                                             sagemaker_session=sagemaker_session, **kwargs)
         self.entry_point = entry_point
         self.source_dir = source_dir
         self.enable_cloudwatch_metrics = enable_cloudwatch_metrics

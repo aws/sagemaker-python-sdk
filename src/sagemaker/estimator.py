@@ -32,7 +32,7 @@ from sagemaker.predictor import RealTimePredictor
 from sagemaker.session import Session
 from sagemaker.session import s3_input
 from sagemaker.transformer import Transformer
-from sagemaker.utils import base_name_from_image, name_from_base, name_from_image, get_config_value
+from sagemaker.utils import base_name_from_image, name_from_base, name_from_image, get_config_value, vpc_config_dict
 
 
 class EstimatorBase(with_metaclass(ABCMeta, object)):
@@ -521,12 +521,10 @@ class Estimator(EstimatorBase):
                 response Accept content type.
             content_type (str): The invocation ContentType, overriding any content_type from the serializer
             accept (str): The invocation Accept, overriding any accept from the deserializer.
-            vpc_config (dict[str, list[str]]): Contains values for VpcConfig set on the model, overriding
-                any VpcConfig from the training job:
-                * subnets (list[str]): List of subnet ids.
-                    The key in vpc_config is 'Subnets'.
-                * security_group_ids (list[str]): List of security group ids.
-                    The key in vpc_config is 'SecurityGroupIds'.
+            vpc_config (dict[str, list[str]]): Overrides VpcConfig set on the model.
+                If None, defaults to VpcConfig used in training (default: None)
+                * 'Subnets' (list[str]): List of subnet ids.
+                * 'SecurityGroupIds' (list[str]): List of security group ids.
 
             The serializer, deserializer, content_type, and accept arguments are only used to define a default
             RealTimePredictor. They are ignored if an explicit predictor class is passed in. Other arguments
@@ -540,7 +538,7 @@ class Estimator(EstimatorBase):
             predictor_cls = predict_wrapper
 
         role = role or self.role
-        vpc_config = vpc_config or _Job._prepare_vpc_config(self.subnets, self.security_group_ids)
+        vpc_config = vpc_config or vpc_config_dict(self.subnets, self.security_group_ids)
 
         return Model(self.model_data, image or self.train_image(), role, vpc_config=vpc_config,
                      sagemaker_session=self.sagemaker_session, predictor_cls=predictor_cls, **kwargs)
@@ -589,10 +587,10 @@ class Framework(EstimatorBase):
                 Valid values are defined in the Python logging module.
             code_location (str): Name of the S3 bucket where custom code is uploaded (default: None).
                 If not specified, default bucket created by ``sagemaker.session.Session`` is used.
-            **kwargs: Additional kwargs passed to the ``EstimatorBase`` constructor.
             image_name (str): An alternate image name to use instead of the official Sagemaker image
                 for the framework. This is useful to run one of the Sagemaker supported frameworks
                 with an image containing custom dependencies.
+            **kwargs: Additional kwargs passed to the ``EstimatorBase`` constructor.
         """
         super(Framework, self).__init__(**kwargs)
         self.source_dir = source_dir
