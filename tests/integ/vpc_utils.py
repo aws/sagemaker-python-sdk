@@ -12,15 +12,17 @@
 # language governing permissions and limitations under the License.
 from __future__ import absolute_import
 
+VPC_NAME = 'sagemaker-python-sdk-test-vpc'
 
-def _get_subnet_id_by_name(ec2_client, name):
+
+def _get_subnet_ids_by_name(ec2_client, name):
     desc = ec2_client.describe_subnets(Filters=[
         {'Name': 'tag-value', 'Values': [name]}
     ])
     if len(desc['Subnets']) == 0:
         return None
     else:
-        return desc['Subnets'][0]['SubnetId']
+        return [subnet['SubnetId'] for subnet in desc['Subnets']]
 
 
 def _get_security_id_by_name(ec2_client, name):
@@ -47,25 +49,43 @@ def _get_route_table_id(ec2_client, vpc_id):
     return desc['RouteTables'][0]['RouteTableId']
 
 
-def create_vpc_with_name(ec2_client, name):
+def create_vpc_with_name(ec2_client, region, name):
     vpc_id = ec2_client.create_vpc(CidrBlock='10.0.0.0/16')['Vpc']['VpcId']
+    print('created vpc: {}'.format(vpc_id))
 
-    subnet_id = ec2_client.create_subnet(CidrBlock='10.0.0.0/24', VpcId=vpc_id)['Subnet']['SubnetId']
+    # sagemaker endpoints require subnets in at least 2 different AZs for vpc mode
+    subnet_id_a = ec2_client.create_subnet(CidrBlock='10.0.0.0/24', VpcId=vpc_id,
+                                           AvailabilityZone=(region + 'a'))['Subnet']['SubnetId']
+    print('created subnet: {}'.format(subnet_id_a))
+    subnet_id_b = ec2_client.create_subnet(CidrBlock='10.0.1.0/24', VpcId=vpc_id,
+                                           AvailabilityZone=(region + 'b'))['Subnet']['SubnetId']
+    print('created subnet: {}'.format(subnet_id_b))
 
     s3_service = [s for s in ec2_client.describe_vpc_endpoint_services()['ServiceNames'] if s.endswith('s3')][0]
     ec2_client.create_vpc_endpoint(VpcId=vpc_id, ServiceName=s3_service,
                                    RouteTableIds=[_get_route_table_id(ec2_client, vpc_id)])
+    print('created s3 vpc endpoint')
 
-    security_group_id = ec2_client.create_security_group(GroupName='TrainingJobTestGroup', Description='Testing',
-                                                         VpcId=vpc_id)['GroupId']
+    security_group_id = ec2_client.create_security_group(VpcId=vpc_id, GroupName=name, Description=name)['GroupId']
+    print('created security group: {}'.format(security_group_id))
 
-    ec2_client.create_tags(Resources=[vpc_id, subnet_id, security_group_id], Tags=[{'Key': 'Name', 'Value': name}])
+    # multi-host vpc jobs require communication among hosts
+    ec2_client.authorize_security_group_ingress(GroupId=security_group_id,
+                                                IpPermissions=[{'IpProtocol': 'tcp',
+                                                                'FromPort': 0,
+                                                                'ToPort': 65535,
+                                                                'UserIdGroupPairs': [{'GroupId': security_group_id}]}])
 
-    return subnet_id, security_group_id
+    ec2_client.create_tags(Resources=[vpc_id, subnet_id_a, subnet_id_b, security_group_id],
+                           Tags=[{'Key': 'Name', 'Value': name}])
+
+    return [subnet_id_a, subnet_id_b], security_group_id
 
 
-def get_or_create_subnet_and_security_group(ec2_client, name):
+def get_or_create_subnets_and_security_group(ec2_client, region, name=VPC_NAME):
     if _vpc_exists(ec2_client, name):
-        return _get_subnet_id_by_name(ec2_client, name), _get_security_id_by_name(ec2_client, name)
+        print('using existing vpc: {}'.format(name))
+        return _get_subnet_ids_by_name(ec2_client, name), _get_security_id_by_name(ec2_client, name)
     else:
-        return create_vpc_with_name(ec2_client, name)
+        print('creating new vpc: {}'.format(name))
+        return create_vpc_with_name(ec2_client, region, name)
