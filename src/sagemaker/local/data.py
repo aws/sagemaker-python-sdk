@@ -170,7 +170,7 @@ class BatchStrategyFactory(object):
         elif strategy == 'MultiRecord':
             return MultiRecordStrategy(splitter)
         else:
-            return None
+            raise ValueError('Invalid Batch Strategy: %s - Valid Strategies: "SingleRecord", "MultiRecord"')
 
 
 class BatchStrategy(object):

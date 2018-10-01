@@ -13,6 +13,7 @@
 from __future__ import absolute_import
 
 import pytest
+import sys
 
 from mock import patch, Mock
 
@@ -29,7 +30,6 @@ def test_data_source_factory(sagemaker_local_session):
     assert isinstance(data_source, sagemaker.local.data.LocalFileDataSource)
 
     # s3
-
     data_source = factory.get_instance('s3://bucket/path', sagemaker_local_session)
     assert isinstance(data_source, sagemaker.local.data.S3DataSource)
 
@@ -136,3 +136,77 @@ def test_recordio_splitter(tmpdir):
     data = [x for x in splitter.split(str(test_file_path))]
 
     assert len(data) == 10
+
+
+def test_batch_strategy_factory():
+    factory = sagemaker.local.data.BatchStrategyFactory()
+    # Single Record
+    strategy = factory.get_instance('SingleRecord', None)
+    assert isinstance(strategy, sagemaker.local.data.SingleRecordStrategy)
+
+    # Multi Record
+    strategy = factory.get_instance('MultiRecord', None)
+    assert isinstance(strategy, sagemaker.local.data.MultiRecordStrategy)
+
+    with pytest.raises(ValueError):
+        # something invalid
+        factory.get_instance('NiceRecord', None)
+
+
+def test_single_record_strategy():
+    splitter = Mock()
+    mb = 1024 * 1024
+
+    single_record = sagemaker.local.data.SingleRecordStrategy(splitter)
+    data = ['123', '456', '789']
+    splitter.split.return_value = data
+
+    # given 3 small records the output should be the same 3 records
+    batch_records = [r for r in single_record.pad('some_file', 6)]
+    assert data == batch_records
+
+    # now we will construct a huge record greater than 1MB and we expect an exception
+    # since there is no way to fit this with the payload size.
+    buffer = ''
+    while sys.getsizeof(buffer) < 2 * mb:
+        buffer += '1' * 100
+
+    data = [buffer]
+    with pytest.raises(RuntimeError):
+        splitter.split.return_value = data
+        batch_records = [r for r in single_record.pad('some_file', 1)]
+        print(batch_records)
+
+    # passing 0 as the max_payload_size should work and the same record above should be returned
+    # correctly.
+    batch_records = [r for r in single_record.pad('some_file', 0)]
+    assert len(batch_records) == 1
+
+
+def test_multi_record_strategy():
+    splitter = Mock()
+    mb = 1024 * 1024
+
+    multi_record = sagemaker.local.data.MultiRecordStrategy(splitter)
+    data = ['123', '456', '789']
+    splitter.split.return_value = data
+
+    # given 3 small records, the output should be 1 single record with the data from all 3 combined
+    batch_records = [r for r in multi_record.pad('some_file', 6)]
+    assert len(batch_records) == 1
+    assert batch_records[0] == '123456789'
+
+    # now we will construct several large records and we expect them to be merged into <1MB ones
+    buffer = ''
+    while sys.getsizeof(buffer) < 0.5 * mb:
+        buffer += '1' * 100
+
+    # buffer should be aprox 0.5 MB. We will make the data total 10 MB made out of 0.5mb records
+    # with a max_payload size of 1MB the expectation is to have ~10 output records.
+
+    data = [buffer for _ in range(10)]
+    splitter.split.return_value = data
+
+    batch_records = [r for r in multi_record.pad('some_file', 1)]
+    # check with 11 because there may be a bit of leftover.
+    assert len(batch_records) <= 11

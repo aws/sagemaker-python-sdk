@@ -126,7 +126,7 @@ class _LocalTransformJob(object):
         endpoint_url = 'http://localhost:%s/execution-parameters' % serving_port
         response, code = _perform_request(endpoint_url)
         if code == 200:
-            execution_parameters = json.load(response.read())
+            execution_parameters = json.loads(response.read())
             # MaxConcurrentTransforms is ignored because we currently only support 1
             for setting in ('BatchStrategy', 'MaxPayloadInMB'):
                 if setting not in kwargs and setting in execution_parameters:
@@ -152,7 +152,7 @@ class _LocalTransformJob(object):
             'TransformJobName': self.name,
             'TransformJobArn': _UNUSED_ARN,
             'TransformEndTime': self.end_time,
-            'CreationTime': 1537826067.231,
+            'CreationTime': self.start_time,
             'TransformStartTime': self.start_time,
             'Environment': {},
             'BatchStrategy': self.batch_strategy,
@@ -227,8 +227,6 @@ class _LocalTransformJob(object):
         return defaults
 
     def _batch_inference(self, input_data, output_data, **kwargs):
-        # TODO - Figure if we should pass FileDataSource here instead. Ideally not but the semantics
-        # are just weird.
         input_path = input_data['DataSource']['S3DataSource']['S3Uri']
 
         # Transform the input data to feed the serving container. We need to first gather the files
@@ -271,12 +269,10 @@ class _LocalTransformJob(object):
                     response_body = response['Body']
                     data = response_body.read()
                     response_body.close()
-                    print('data: %s' % data)
                     f.write(data)
                     if 'AssembleWith' in output_data and output_data['AssembleWith'] == 'Line':
                         f.write('\n')
 
-        print(working_dir)
         move_to_destination(working_dir, output_data['S3OutputPath'], self.local_session)
         self.container.stop_serving()
 

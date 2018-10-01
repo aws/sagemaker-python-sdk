@@ -13,7 +13,7 @@
 from __future__ import absolute_import
 
 import os
-
+import pytest
 from mock import call, patch, Mock
 
 import sagemaker
@@ -70,3 +70,20 @@ def test_download_file():
                                         '/tmp/file.tar.gz', session)
 
     bucket_mock.download_file.assert_called_with('prefix/path/file.tar.gz', '/tmp/file.tar.gz')
+
+
+@patch('shutil.rmtree', Mock())
+@patch('sagemaker.local.utils.recursive_copy')
+def test_move_to_destination(recursive_copy):
+    # local files will just be recursive copied
+    sagemaker.local.utils.move_to_destination('/tmp/data', 'file:///target/dir/', None)
+    recursive_copy.assert_called()
+
+    # s3 destination will upload to S3
+    sms = Mock()
+    sagemaker.local.utils.move_to_destination('/tmp/data', 's3://bucket/path', sms)
+    sms.upload_data.assert_called()
+
+    # weird destination, should raise an exception
+    with pytest.raises(ValueError):
+        sagemaker.local.utils.move_to_destination('/tmp/data', 'ftp://ftp/in/2018', None)
