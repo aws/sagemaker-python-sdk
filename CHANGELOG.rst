@@ -6,6 +6,7 @@ CHANGELOG
 =========
 
 * enhancement: Local Mode: add training environment variables for AWS region and job name
+* feature: Add support for Local Mode Batch Inference
 
 1.11.0
 ======
