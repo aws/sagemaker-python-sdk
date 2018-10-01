@@ -84,6 +84,7 @@ class _LocalTrainingJob(object):
 class _LocalTransformJob(object):
 
     _CREATING = 'Creating'
+    _COMPLETED = 'Completed'
 
     def __init__(self, transform_job_name, model_name, local_session=None):
         from sagemaker.local import LocalSession
@@ -91,20 +92,27 @@ class _LocalTransformJob(object):
         local_client = self.local_session.sagemaker_client
 
         self.name = transform_job_name
+        self.model_name = model_name
 
         # TODO - support SageMaker Models not just local models. This is not
         # ideal but it may be a good thing to do.
         self.primary_container = local_client.describe_model(model_name)['PrimaryContainer']
         self.container = None
-        self.create_time = None
+        self.start_time = None
+        self.end_time = None
+        self.batch_strategy = None
+        self.environment = {}
         self.state = _LocalTransformJob._CREATING
 
     def start(self, input_data, output_data, transform_resources, **kwargs):
+        self.transform_resources = transform_resources
+        self.input_data = input_data
+        self.output_data = output_data
+
         image = self.primary_container['Image']
         instance_type = transform_resources['InstanceType']
         instance_count = 1
 
-        self.create_time = datetime.datetime.now()
         environment = self._get_container_environment(**kwargs)
 
         # Start the container, pass the environment and wait for it to start up
@@ -127,8 +135,39 @@ class _LocalTransformJob(object):
         # Apply Defaults if none was provided
         kwargs.update(self._get_required_defaults(**kwargs))
 
+        self.start_time = datetime.datetime.now()
+        self.batch_strategy = kwargs['BatchStrategy']
+        if 'Environment' in kwargs:
+            self.environment = kwargs['Environment']
+
         # run the batch inference requests
         self._batch_inference(input_data, output_data, **kwargs)
+        self.end_time = datetime.datetime.now()
+        self.state = self._COMPLETED
+
+    def describe(self):
+        response = {
+            'TransformJobStatus': self.state,
+            'ModelName': self.model_name,
+            'TransformJobName': self.name,
+            'TransformJobArn': _UNUSED_ARN,
+            'TransformEndTime': self.end_time,
+            'CreationTime': 1537826067.231,
+            'TransformStartTime': self.start_time,
+            'Environment': {},
+            'BatchStrategy': self.batch_strategy,
+        }
+
+        if self.transform_resources:
+            response['TransformResources'] = self.transform_resources
+
+        if self.output_data:
+            response['TransformOutput'] = self.output_data
+
+        if self.input_data:
+            response['TransformInput'] = self.input_data
+
+        return response
 
     def _get_container_environment(self, **kwargs):
         """Get all the Environment variables that will be passed to the container
@@ -143,7 +182,8 @@ class _LocalTransformJob(object):
             (dict) All the environment variables that should be set in the container
 
         """
-        environment = self.primary_container['Environment']
+        environment = {}
+        environment.update(self.primary_container['Environment'])
         environment['SAGEMAKER_BATCH'] = 'True'
         if 'MaxPayloadInMB' in kwargs:
             environment['SAGEMAKER_MAX_PAYLOAD_IN_MB'] = str(kwargs['MaxPayloadInMB'])
@@ -185,7 +225,6 @@ class _LocalTransformJob(object):
             defaults['MaxPayloadInMB'] = 6
 
         return defaults
-
 
     def _batch_inference(self, input_data, output_data, **kwargs):
         # TODO - Figure if we should pass FileDataSource here instead. Ideally not but the semantics
@@ -348,6 +387,7 @@ def _wait_for_serving_container(serving_port):
             return
 
         time.sleep(1)
+
 
 def _perform_request(endpoint_url, pool_manager=None):
     http = pool_manager or urllib3.PoolManager()

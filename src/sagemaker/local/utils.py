@@ -114,6 +114,8 @@ def download_folder(bucket_name, prefix, target, sagemaker_session):
         try:
             os.makedirs(os.path.dirname(file_path))
         except OSError as exc:
+            # EEXIST means the folder already exists, this is safe to skip
+            # anything else will be raised.
             if exc.errno != errno.EEXIST:
                 raise
             pass

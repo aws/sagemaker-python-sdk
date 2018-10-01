@@ -385,19 +385,15 @@ def test_local_transform_mxnet(sagemaker_local_session):
         mx.fit({'train': train_input, 'test': test_input})
 
     transform_input_path = os.path.join(data_path, 'transform')
-    transform_input = 'file://' + transform_input_path
-
     transform_input_key_prefix = 'integ-test-data/mxnet_mnist/transform'
     transform_input = mx.sagemaker_session.upload_data(path=transform_input_path,
                                                        key_prefix=transform_input_key_prefix)
 
     transformer = _create_transformer_and_transform_job(mx, transform_input)
     transformer.wait()
-    assert 1 == 2
 
 
 def _create_transformer_and_transform_job(estimator, transform_input):
     transformer = estimator.transformer(1, 'local', assemble_with='Line', max_payload=1)
     transformer.transform(transform_input, content_type='text/csv', split_type='Line')
-    #transformer.transform(transform_input, content_type='text/csv')
     return transformer

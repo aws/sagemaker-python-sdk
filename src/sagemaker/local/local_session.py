@@ -94,8 +94,15 @@ class LocalSagemakerClient(object):
                              TransformResources, **kwargs):
         print(kwargs)
         transform_job = _LocalTransformJob(TransformJobName, ModelName, self.sagemaker_session)
-        LocalSagemakerClient._training_jobs[TransformJobName] = transform_job
+        LocalSagemakerClient._transform_jobs[TransformJobName] = transform_job
         transform_job.start(TransformInput, TransformOutput, TransformResources, **kwargs)
+
+    def describe_transform_job(self, TransformJobName):
+        if TransformJobName not in LocalSagemakerClient._transform_jobs:
+            error_response = {'Error': {'Code': 'ValidationException', 'Message': 'Could not find local transform job'}}
+            raise ClientError(error_response, 'describe_transform_job')
+        else:
+            return LocalSagemakerClient._transform_jobs[TransformJobName].describe()
 
     def create_model(self, ModelName, PrimaryContainer, *args, **kwargs):
         """Create a Local Model Object

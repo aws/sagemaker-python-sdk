@@ -12,44 +12,25 @@
 # language governing permissions and limitations under the License.
 from __future__ import absolute_import
 
-import os
 import pytest
-import urllib3
 
-from botocore.exceptions import ClientError
-from mock import call, patch, Mock, MagicMock
+from mock import patch, Mock
 
 import sagemaker.local.data
-
-
-REGION = 'us-west-2'
-BUCKET_NAME = 'mybucket'
-EXPANDED_ROLE = 'arn:aws:iam::111111111111:role/ExpandedRole'
-
-@pytest.fixture()
-def sagemaker_session():
-    boto_mock = Mock(name='boto_session', region_name=REGION)
-    boto_mock.client('sts').get_caller_identity.return_value = {'Account': '123'}
-    boto_mock.resource('s3').Bucket(BUCKET_NAME).objects.filter.return_value = []
-
-    sms = sagemaker.Session(boto_session=boto_mock, sagemaker_client=Mock())
-
-    sms.default_bucket = Mock(name='default_bucket', return_value=BUCKET_NAME)
-    sms.expand_role = Mock(return_value=EXPANDED_ROLE)
-
-    return sms
+import sagemaker.amazon
 
 
 @patch('os.path.exists', Mock(return_value=True))
-def test_data_source_factory(sagemaker_session):
+@patch('sagemaker.local.data.download_folder', Mock())
+def test_data_source_factory(sagemaker_local_session):
     factory = sagemaker.local.data.DataSourceFactory()
     # file
-    data_source = factory.get_instance('file:///my/file', sagemaker_session)
+    data_source = factory.get_instance('file:///my/file', sagemaker_local_session)
     assert isinstance(data_source, sagemaker.local.data.LocalFileDataSource)
 
     # s3
 
-    data_source = factory.get_instance('s3://bucket/path', sagemaker_session)
+    data_source = factory.get_instance('s3://bucket/path', sagemaker_local_session)
     assert isinstance(data_source, sagemaker.local.data.S3DataSource)
 
 
@@ -89,5 +70,69 @@ def test_file_data_source_get_root():
     assert data_source.get_root_dir() == '/some/path'
 
 
-def test_s3_data_source(sagemaker_session):
-    pass
+@patch('sagemaker.local.data.LocalFileDataSource')
+@patch('sagemaker.local.data.download_folder')
+@patch('tempfile.mkdtemp', lambda dir: '/tmp/working_dir')
+def test_s3_data_source(download_folder, LocalFileDataSource, sagemaker_local_session):
+    data_source = sagemaker.local.data.S3DataSource('my_bucket', '/transform/data', sagemaker_local_session)
+    download_folder.assert_called()
+    data_source.get_file_list()
+    LocalFileDataSource().get_file_list.assert_called()
+    data_source.get_root_dir()
+    LocalFileDataSource().get_root_dir.assert_called()
+
+
+def test_splitter_factory():
+    factory = sagemaker.local.data.SplitterFactory()
+    # file
+    splitter = factory.get_instance(None)
+    assert isinstance(splitter, sagemaker.local.data.NoneSplitter)
+
+    splitter = factory.get_instance('Line')
+    assert isinstance(splitter, sagemaker.local.data.LineSplitter)
+
+    splitter = factory.get_instance('RecordIO')
+    assert isinstance(splitter, sagemaker.local.data.RecordIOSplitter)
+
+    with pytest.raises(ValueError):
+        # something invalid
+        factory.get_instance('JSON')
+
+
+def test_none_splitter(tmpdir):
+    test_file_path = tmpdir.join('none_test.txt')
+
+    with test_file_path.open('w') as f:
+        f.write('this\nis\na\ntest')
+
+    splitter = sagemaker.local.data.NoneSplitter()
+    data = [x for x in splitter.split(str(test_file_path))]
+    assert data == ['this\nis\na\ntest']
+
+
+def test_line_splitter(tmpdir):
+    test_file_path = tmpdir.join('line_test.txt')
+
+    with test_file_path.open('w') as f:
+        for i in range(10):
+            f.write('%s\n' % i)
+
+    splitter = sagemaker.local.data.LineSplitter()
+    data = [x for x in splitter.split(str(test_file_path))]
+    assert len(data) == 10
+    for i in range(10):
+        assert data[i] == '%s\n' % str(i)
+
+
+def test_recordio_splitter(tmpdir):
+
+    test_file_path = tmpdir.join('recordio_test.txt')
+    with test_file_path.open('wb') as f:
+        for i in range(10):
+            data = str(i).encode('utf-8')
+            sagemaker.amazon.common._write_recordio(f, data)
+
+    splitter = sagemaker.local.data.RecordIOSplitter()
+    data = [x for x in splitter.split(str(test_file_path))]
+
+    assert len(data) == 10

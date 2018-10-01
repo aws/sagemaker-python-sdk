@@ -13,16 +13,12 @@
 from __future__ import absolute_import
 
 import os
-import pytest
-import urllib3
 
-from botocore.exceptions import ClientError
-from mock import call, patch, Mock, MagicMock
+from mock import call, patch, Mock
 
 import sagemaker
 
 BUCKET_NAME = 'some-nice-bucket'
-
 
 
 @patch('os.makedirs')
