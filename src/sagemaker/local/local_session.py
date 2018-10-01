@@ -92,7 +92,6 @@ class LocalSagemakerClient(object):
 
     def create_transform_job(self, TransformJobName, ModelName, TransformInput, TransformOutput,
                              TransformResources, **kwargs):
-        print(kwargs)
         transform_job = _LocalTransformJob(TransformJobName, ModelName, self.sagemaker_session)
         LocalSagemakerClient._transform_jobs[TransformJobName] = transform_job
         transform_job.start(TransformInput, TransformOutput, TransformResources, **kwargs)
