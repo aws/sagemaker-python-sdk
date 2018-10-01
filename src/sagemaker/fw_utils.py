@@ -49,6 +49,10 @@ def create_image_uri(region, framework, instance_type, framework_version, py_ver
         str: The appropriate image URI based on the given parameters.
     """
 
+    # Handle Account Number for Gov Cloud
+    if region == 'us-gov-west-1':
+        account = '246785580436'
+
     # Handle Local Mode
     if instance_type.startswith('local'):
         device_type = 'cpu' if instance_type == 'local' else 'gpu'

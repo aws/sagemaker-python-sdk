@@ -2,10 +2,18 @@
 CHANGELOG
 =========
 
-1.10.2dev
+1.11.1dev
 =========
-* bug-fix: Setting health check timeout limit on local mode to 30s
-* bug-fix: Make Hyperparameters in local mode optional.
+
+* enhancement: Local Mode: add training environment variables for AWS region and job name
+
+1.11.0
+======
+
+* bug-fix: setting health check timeout limit on local mode to 30s
+* bug-fix: make Hyperparameters in local mode optional.
+* enhancement: add support for volume KMS key to Transformer
+* feature: add support for GovCloud
 
 1.10.1
 ======

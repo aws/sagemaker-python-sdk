@@ -62,6 +62,11 @@ def test_create_image_uri_default_account():
     assert image_uri == '520713654638.dkr.ecr.mars-south-3.amazonaws.com/sagemaker-mlfw:1.0rc-gpu-py3'
 
 
+def test_create_image_uri_gov_cloud():
+    image_uri = create_image_uri('us-gov-west-1', 'mlfw', 'ml.p3.2xlarge', '1.0rc', 'py3')
+    assert image_uri == '246785580436.dkr.ecr.us-gov-west-1.amazonaws.com/sagemaker-mlfw:1.0rc-gpu-py3'
+
+
 def test_invalid_instance_type():
     # instance type is missing 'ml.' prefix
     with pytest.raises(ValueError):
