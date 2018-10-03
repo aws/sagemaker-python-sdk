@@ -2,10 +2,19 @@
 CHANGELOG
 =========
 
-1.10.2
+1.11.1dev
+=========
+
+* enhancement: Local Mode: add training environment variables for AWS region and job name
+* bug-fix: default TensorFlow json serializer accepts dict of numpy arrays
+
+1.11.0
 ======
 
-* bug-fix: default TensorFlow json serializer accepts dict of numpy arrays
+* bug-fix: setting health check timeout limit on local mode to 30s
+* bug-fix: make Hyperparameters in local mode optional.
+* enhancement: add support for volume KMS key to Transformer
+* feature: add support for GovCloud
 
 1.10.1
 ======
