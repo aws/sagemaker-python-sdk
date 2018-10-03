@@ -88,13 +88,6 @@ def debug(func):
     return wrapper
 
 
-def vpc_config_dict(subnets, security_group_ids):
-    if subnets is None or security_group_ids is None:
-        return None
-    return {'Subnets': subnets,
-            'SecurityGroupIds': security_group_ids}
-
-
 def get_config_value(key_path, config):
     if config is None:
         return None

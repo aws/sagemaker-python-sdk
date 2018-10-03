@@ -27,6 +27,7 @@ from botocore.exceptions import ClientError
 
 from sagemaker.user_agent import prepend_user_agent
 from sagemaker.utils import name_from_image, secondary_training_status_message, secondary_training_status_changed
+from sagemaker import vpc_utils
 import sagemaker.logs
 
 logging.basicConfig()
@@ -482,7 +483,7 @@ class Session(object):
         return name
 
     def create_model_from_job(self, training_job_name, name=None, role=None, primary_container_image=None,
-                              model_data_url=None, env={}, vpc_config=None):
+                              model_data_url=None, env={}, vpc_config_override=vpc_utils.VPC_CONFIG_DEFAULT):
         """Create an Amazon SageMaker ``Model`` from a SageMaker Training Job.
 
         Args:
@@ -496,9 +497,8 @@ class Session(object):
             model_data_url (str): S3 location of the model data (default: None). If None, defaults to
                 the ``ModelS3Artifacts`` of ``training_job_name``.
             env (dict[string,string]): Model environment variables (default: {}).
-            vpc_config (dict[str, list[str]]):
-            vpc_config (dict[str, list[str]]): Overrides VpcConfig set on the model.
-                If None, defaults to VpcConfig used in training (default: None)
+            vpc_config_override (dict[str, list[str]]): Optional override for VpcConfig set on the model.
+                Default: use VpcConfig from training job.
                 * 'Subnets' (list[str]): List of subnet ids.
                 * 'SecurityGroupIds' (list[str]): List of security group ids.
 
@@ -512,8 +512,8 @@ class Session(object):
             primary_container_image or training_job['AlgorithmSpecification']['TrainingImage'],
             model_data_url=model_data_url or training_job['ModelArtifacts']['S3ModelArtifacts'],
             env=env)
-        vpc_config = vpc_config or training_job.get('VpcConfig')
-        return self.create_model(name, role, primary_container, vpc_config)
+        vpc_config = _vpc_config_from_training_job(training_job, vpc_config_override)
+        return self.create_model(name, role, primary_container, vpc_config=vpc_config)
 
     def create_endpoint_config(self, name, model_name, initial_instance_count, instance_type):
         """Create an Amazon SageMaker endpoint configuration.
@@ -660,7 +660,7 @@ class Session(object):
 
     def endpoint_from_job(self, job_name, initial_instance_count, instance_type,
                           deployment_image=None, name=None, role=None, wait=True,
-                          model_environment_vars=None, model_vpc_config=None):
+                          model_environment_vars=None, vpc_config_override=vpc_utils.VPC_CONFIG_DEFAULT):
         """Create an ``Endpoint`` using the results of a successful training job.
 
         Specify the job name, Docker image containing the inference code, and hardware configuration to deploy
@@ -684,8 +684,8 @@ class Session(object):
             wait (bool): Whether to wait for the endpoint deployment to complete before returning (default: True).
             model_environment_vars (dict[str, str]): Environment variables to set on the model container
                 (default: None).
-            model_vpc_config (dict[str, list[str]]): Overrides VpcConfig set on the model.
-                If None, defaults to VpcConfig used for training (default: None)
+            vpc_config_override (dict[str, list[str]]): Overrides VpcConfig set on the model.
+                Default: use VpcConfig from training job.
                 * 'Subnets' (list[str]): List of subnet ids.
                 * 'SecurityGroupIds' (list[str]): List of security group ids.
 
@@ -697,13 +697,13 @@ class Session(object):
         deployment_image = deployment_image or job_desc['AlgorithmSpecification']['TrainingImage']
         role = role or job_desc['RoleArn']
         name = name or job_name
-        model_vpc_config = model_vpc_config or job_desc.get('VpcConfig')
+        vpc_config_override = _vpc_config_from_training_job(job_desc, vpc_config_override)
 
         return self.endpoint_from_model_data(model_s3_location=output_url, deployment_image=deployment_image,
                                              initial_instance_count=initial_instance_count, instance_type=instance_type,
                                              name=name, role=role, wait=wait,
                                              model_environment_vars=model_environment_vars,
-                                             model_vpc_config=model_vpc_config)
+                                             model_vpc_config=vpc_config_override)
 
     def endpoint_from_model_data(self, model_s3_location, deployment_image, initial_instance_count, instance_type,
                                  name=None, role=None, wait=True, model_environment_vars=None, model_vpc_config=None):
@@ -734,16 +734,18 @@ class Session(object):
 
         model_environment_vars = model_environment_vars or {}
         name = name or name_from_image(deployment_image)
+        model_vpc_config = vpc_utils.validate(model_vpc_config)
 
         if _deployment_entity_exists(lambda: self.sagemaker_client.describe_endpoint(EndpointName=name)):
             raise ValueError('Endpoint with name "{}" already exists; please pick a different name.'.format(name))
 
         if not _deployment_entity_exists(lambda: self.sagemaker_client.describe_model(ModelName=name)):
+            primary_container = container_def(image=deployment_image,
+                                              model_data_url=model_s3_location,
+                                              env=model_environment_vars)
             self.create_model(name=name,
                               role=role,
-                              primary_container=container_def(image=deployment_image,
-                                                              model_data_url=model_s3_location,
-                                                              env=model_environment_vars),
+                              primary_container=primary_container,
                               vpc_config=model_vpc_config)
 
         if not _deployment_entity_exists(
@@ -1161,3 +1163,10 @@ def _expand_container_def(c_def):
     if isinstance(c_def, six.string_types):
         return container_def(c_def)
     return c_def
+
+
+def _vpc_config_from_training_job(training_job_desc, vpc_config_override=vpc_utils.VPC_CONFIG_DEFAULT):
+    if vpc_config_override is vpc_utils.VPC_CONFIG_DEFAULT:
+        return training_job_desc.get(vpc_utils.VPC_CONFIG_KEY)
+    else:
+        return vpc_utils.validate(vpc_config_override)

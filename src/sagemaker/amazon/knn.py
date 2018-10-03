@@ -19,7 +19,7 @@ from sagemaker.amazon.validation import ge, isin
 from sagemaker.predictor import RealTimePredictor
 from sagemaker.model import Model
 from sagemaker.session import Session
-from sagemaker.utils import vpc_config_dict
+from sagemaker.vpc_utils import VPC_CONFIG_DEFAULT
 
 
 class KNN(AmazonAlgorithmEstimatorBase):
@@ -98,19 +98,18 @@ class KNN(AmazonAlgorithmEstimatorBase):
         if dimension_reduction_type and not dimension_reduction_target:
             raise ValueError('"dimension_reduction_target" is required when "dimension_reduction_type" is set.')
 
-    def create_model(self, vpc_config=None):
+    def create_model(self, vpc_config_override=VPC_CONFIG_DEFAULT):
         """Return a :class:`~sagemaker.amazon.KNNModel` referencing the latest
         s3 model data produced by this Estimator.
 
         Args:
-            vpc_config (dict[str, list[str]]): Overrides VpcConfig set on the model.
-                If None, defaults to VpcConfig used for training (default: None)
+            vpc_config_override (dict[str, list[str]]): Optional override for VpcConfig set on the model.
+                Default: use subnets and security groups from this Estimator.
                 * 'Subnets' (list[str]): List of subnet ids.
                 * 'SecurityGroupIds' (list[str]): List of security group ids.
         """
-        vpc_config = vpc_config or vpc_config_dict(self.subnets, self.security_group_ids)
         return KNNModel(self.model_data, self.role, sagemaker_session=self.sagemaker_session,
-                        vpc_config=vpc_config)
+                        vpc_config=self.get_vpc_config(vpc_config_override))
 
     def _prepare_for_training(self, records, mini_batch_size=None, job_name=None):
         super(KNN, self)._prepare_for_training(records, mini_batch_size=mini_batch_size, job_name=job_name)

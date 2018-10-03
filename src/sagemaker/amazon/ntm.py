@@ -19,7 +19,7 @@ from sagemaker.amazon.validation import ge, le, isin
 from sagemaker.predictor import RealTimePredictor
 from sagemaker.model import Model
 from sagemaker.session import Session
-from sagemaker.utils import vpc_config_dict
+from sagemaker.vpc_utils import VPC_CONFIG_DEFAULT
 
 
 class NTM(AmazonAlgorithmEstimatorBase):
@@ -108,18 +108,18 @@ class NTM(AmazonAlgorithmEstimatorBase):
         self.weight_decay = weight_decay
         self.learning_rate = learning_rate
 
-    def create_model(self, vpc_config=None):
+    def create_model(self, vpc_config_override=VPC_CONFIG_DEFAULT):
         """Return a :class:`~sagemaker.amazon.NTMModel` referencing the latest
         s3 model data produced by this Estimator.
 
-        vpc_config (dict[str, list[str]]): Overrides VpcConfig set on the model.
-                If None, defaults to VpcConfig used for training (default: None)
+        Args:
+            vpc_config_override (dict[str, list[str]]): Optional override for VpcConfig set on the model.
+                Default: use subnets and security groups from this Estimator.
                 * 'Subnets' (list[str]): List of subnet ids.
                 * 'SecurityGroupIds' (list[str]): List of security group ids.
         """
-        vpc_config = vpc_config or vpc_config_dict(self.subnets, self.security_group_ids)
         return NTMModel(self.model_data, self.role, sagemaker_session=self.sagemaker_session,
-                        vpc_config=vpc_config)
+                        vpc_config=self.get_vpc_config(vpc_config_override))
 
     def _prepare_for_training(self, records, mini_batch_size, job_name=None):
         if mini_batch_size is not None and (mini_batch_size < 1 or mini_batch_size > 10000):

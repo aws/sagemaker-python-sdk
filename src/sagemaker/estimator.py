@@ -32,7 +32,8 @@ from sagemaker.predictor import RealTimePredictor
 from sagemaker.session import Session
 from sagemaker.session import s3_input
 from sagemaker.transformer import Transformer
-from sagemaker.utils import base_name_from_image, name_from_base, name_from_image, get_config_value, vpc_config_dict
+from sagemaker.utils import base_name_from_image, name_from_base, name_from_image, get_config_value
+from sagemaker import vpc_utils
 
 
 class EstimatorBase(with_metaclass(ABCMeta, object)):
@@ -318,10 +319,11 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):
         init_params['hyperparameters'] = job_details['HyperParameters']
         init_params['image'] = job_details['AlgorithmSpecification']['TrainingImage']
 
-        vpc_config = job_details.get('VpcConfig')
-        if vpc_config:
-            init_params['subnets'] = vpc_config['Subnets']
-            init_params['security_groups'] = vpc_config['SecurityGroups']
+        subnets, security_group_ids = vpc_utils.from_dict(job_details.get(vpc_utils.VPC_CONFIG_KEY))
+        if subnets:
+            init_params['subnets'] = subnets
+        if security_group_ids:
+            init_params['security_group_ids'] = security_group_ids
 
         return init_params
 
@@ -377,6 +379,16 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):
         if self._current_job_name is None:
             raise ValueError('Estimator is not associated with a TrainingJob')
         return TrainingJobAnalytics(self._current_job_name, sagemaker_session=self.sagemaker_session)
+
+    def get_vpc_config(self, vpc_config_override=vpc_utils.VPC_CONFIG_DEFAULT):
+        """
+        Returns VpcConfig dict either from this Estimator's subnets and security groups,
+        or else validate and return an optional override value.
+        """
+        if vpc_config_override is vpc_utils.VPC_CONFIG_DEFAULT:
+            return vpc_utils.to_dict(self.subnets, self.security_group_ids)
+        else:
+            return vpc_utils.validate(vpc_config_override)
 
     def _ensure_latest_training_job(self, error_message='Estimator is not associated with a training job'):
         if self.latest_training_job is None:
@@ -505,7 +517,7 @@ class Estimator(EstimatorBase):
         return self.hyperparam_dict
 
     def create_model(self, role=None, image=None, predictor_cls=None, serializer=None, deserializer=None,
-                     content_type=None, accept=None, vpc_config=None, **kwargs):
+                     content_type=None, accept=None, vpc_config_override=vpc_utils.VPC_CONFIG_DEFAULT, **kwargs):
         """
         Create a model to deploy.
 
@@ -521,8 +533,8 @@ class Estimator(EstimatorBase):
                 response Accept content type.
             content_type (str): The invocation ContentType, overriding any content_type from the serializer
             accept (str): The invocation Accept, overriding any accept from the deserializer.
-            vpc_config (dict[str, list[str]]): Overrides VpcConfig set on the model.
-                If None, defaults to VpcConfig used in training (default: None)
+            vpc_config_override (dict[str, list[str]]): Optional override for VpcConfig set on the model.
+                Default: use subnets and security groups from this Estimator.
                 * 'Subnets' (list[str]): List of subnet ids.
                 * 'SecurityGroupIds' (list[str]): List of security group ids.
 
@@ -538,9 +550,9 @@ class Estimator(EstimatorBase):
             predictor_cls = predict_wrapper
 
         role = role or self.role
-        vpc_config = vpc_config or vpc_config_dict(self.subnets, self.security_group_ids)
 
-        return Model(self.model_data, image or self.train_image(), role, vpc_config=vpc_config,
+        return Model(self.model_data, image or self.train_image(), role,
+                     vpc_config=self.get_vpc_config(vpc_config_override),
                      sagemaker_session=self.sagemaker_session, predictor_cls=predictor_cls, **kwargs)
 
     @classmethod
@@ -809,7 +821,8 @@ class Framework(EstimatorBase):
 
         container_def = model.prepare_container_def(instance_type)
         model_name = model.name or name_from_image(container_def['Image'])
-        self.sagemaker_session.create_model(model_name, role, container_def)
+        vpc_config = model.vpc_config
+        self.sagemaker_session.create_model(model_name, role, container_def, vpc_config)
 
         transform_env = model.env.copy()
         if env is not None:

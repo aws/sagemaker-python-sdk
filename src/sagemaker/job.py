@@ -17,7 +17,6 @@ from six import string_types
 
 from sagemaker.local import file_input
 from sagemaker.session import s3_input
-from sagemaker.utils import vpc_config_dict
 
 
 class _Job(object):
@@ -61,7 +60,7 @@ class _Job(object):
                                                         estimator.train_volume_size,
                                                         estimator.train_volume_kms_key)
         stop_condition = _Job._prepare_stop_condition(estimator.train_max_run)
-        vpc_config = vpc_config_dict(estimator.subnets, estimator.security_group_ids)
+        vpc_config = estimator.get_vpc_config()
 
         return {'input_config': input_config,
                 'role': role,
