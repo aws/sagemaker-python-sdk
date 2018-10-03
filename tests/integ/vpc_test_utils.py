@@ -49,7 +49,7 @@ def _get_route_table_id(ec2_client, vpc_id):
     return desc['RouteTables'][0]['RouteTableId']
 
 
-def create_vpc_with_name(ec2_client, region, name):
+def _create_vpc_with_name(ec2_client, region, name):
     vpc_id = ec2_client.create_vpc(CidrBlock='10.0.0.0/16')['Vpc']['VpcId']
     print('created vpc: {}'.format(vpc_id))
 
@@ -82,10 +82,10 @@ def create_vpc_with_name(ec2_client, region, name):
     return [subnet_id_a, subnet_id_b], security_group_id
 
 
-def get_or_create_subnets_and_security_group(ec2_client, region, name=VPC_NAME):
+def get_or_create_vpc_resources(ec2_client, region, name=VPC_NAME):
     if _vpc_exists(ec2_client, name):
         print('using existing vpc: {}'.format(name))
         return _get_subnet_ids_by_name(ec2_client, name), _get_security_id_by_name(ec2_client, name)
     else:
         print('creating new vpc: {}'.format(name))
-        return create_vpc_with_name(ec2_client, region, name)
+        return _create_vpc_with_name(ec2_client, region, name)

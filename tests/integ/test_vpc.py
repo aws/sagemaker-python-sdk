@@ -30,21 +30,21 @@ from sagemaker.pytorch import PyTorch
 from sagemaker.tensorflow import TensorFlow
 from tests.integ import DATA_DIR, TRAINING_DEFAULT_TIMEOUT_MINUTES, PYTHON_VERSION
 from tests.integ.timeout import timeout_and_delete_endpoint_by_name, timeout
-from tests.integ.vpc_utils import get_or_create_subnets_and_security_group
-
-DATA_PATH = os.path.join(DATA_DIR, 'iris', 'data')
+from tests.integ.vpc_test_utils import get_or_create_vpc_resources
 
 
 @pytest.mark.skipif(PYTHON_VERSION != 'py2', reason="TensorFlow image supports only python 2.")
 def test_vpc_tf(sagemaker_session, tf_full_version):
+    """Test Tensorflow using the same VpcConfig for training and inference"""
     instance_type = 'ml.c4.xlarge'
 
-    train_input = sagemaker_session.upload_data(path=DATA_PATH, key_prefix='integ-test-data/tf_iris')
+    train_input = sagemaker_session.upload_data(path=os.path.join(DATA_DIR, 'iris', 'data'),
+                                                key_prefix='integ-test-data/tf_iris')
     script_path = os.path.join(DATA_DIR, 'iris', 'iris-dnn-classifier.py')
 
     ec2_client = sagemaker_session.boto_session.client('ec2')
-    subnet_ids, security_group_id = get_or_create_subnets_and_security_group(ec2_client,
-                                                                             sagemaker_session.boto_session.region_name)
+    subnet_ids, security_group_id = get_or_create_vpc_resources(ec2_client,
+                                                                sagemaker_session.boto_session.region_name)
 
     estimator = TensorFlow(entry_point=script_path,
                            role='SageMakerRole',
@@ -87,7 +87,8 @@ def test_vpc_tf(sagemaker_session, tf_full_version):
         assert [security_group_id] == model_desc['VpcConfig']['SecurityGroupIds']
 
 
-def test_vpc_mxnet(sagemaker_session, mxnet_full_version):
+def test_vpc_mxnet_this_to_that(sagemaker_session, mxnet_full_version):
+    """Test MXNet using VpcConfig with one subnet in training, and two subnets in inference"""
     script_path = os.path.join(DATA_DIR, 'mxnet_mnist', 'mnist.py')
     data_path = os.path.join(DATA_DIR, 'mxnet_mnist')
 
@@ -97,8 +98,8 @@ def test_vpc_mxnet(sagemaker_session, mxnet_full_version):
                                                key_prefix='integ-test-data/mxnet_mnist/test')
 
     ec2_client = sagemaker_session.boto_session.client('ec2')
-    subnet_ids, security_group_id = get_or_create_subnets_and_security_group(ec2_client,
-                                                                             sagemaker_session.boto_session.region_name)
+    subnet_ids, security_group_id = get_or_create_vpc_resources(ec2_client,
+                                                                sagemaker_session.boto_session.region_name)
 
     estimator = MXNet(entry_point=script_path,
                       role='SageMakerRole',
@@ -108,7 +109,7 @@ def test_vpc_mxnet(sagemaker_session, mxnet_full_version):
                       train_instance_type='ml.c4.xlarge',
                       sagemaker_session=sagemaker_session,
                       base_job_name='test-vpc-mxnet',
-                      subnets=subnet_ids,
+                      subnets=[subnet_ids[0]],  # use only one subnet in training
                       security_group_ids=[security_group_id])
 
     with timeout(minutes=TRAINING_DEFAULT_TIMEOUT_MINUTES):
@@ -117,12 +118,14 @@ def test_vpc_mxnet(sagemaker_session, mxnet_full_version):
 
     job_desc = sagemaker_session.sagemaker_client.describe_training_job(
         TrainingJobName=estimator.latest_training_job.name)
-    assert set(subnet_ids) == set(job_desc['VpcConfig']['Subnets'])
+    assert [subnet_ids[0]] == job_desc['VpcConfig']['Subnets']
     assert [security_group_id] == job_desc['VpcConfig']['SecurityGroupIds']
 
     endpoint_name = estimator.latest_training_job.name
     with timeout_and_delete_endpoint_by_name(endpoint_name, sagemaker_session):
-        model = estimator.create_model()
+        # Override VpcConfig to set two subnets in inference
+        model = estimator.create_model(
+            vpc_config_override={'Subnets': subnet_ids, 'SecurityGroupIds': [security_group_id]})
         json_predictor = model.deploy(initial_instance_count=1, instance_type='ml.c4.xlarge',
                                       endpoint_name=endpoint_name)
 
@@ -139,7 +142,8 @@ def test_vpc_mxnet(sagemaker_session, mxnet_full_version):
         assert dict_result == list_result
 
 
-def test_vpc_pytorch(sagemaker_session, pytorch_full_version):
+def test_vpc_pytorch_some_to_none(sagemaker_session, pytorch_full_version):
+    """Test PyTorch with some VpcConfig in training, and None VpcConfig in inference"""
     instance_type = 'ml.c4.xlarge'
     mnist_dir = os.path.join(DATA_DIR, 'pytorch_mnist')
     mnist_script = os.path.join(mnist_dir, 'mnist.py')
@@ -148,8 +152,8 @@ def test_vpc_pytorch(sagemaker_session, pytorch_full_version):
                                                 key_prefix='integ-test-data/pytorch_mnist/training')
 
     ec2_client = sagemaker_session.boto_session.client('ec2')
-    subnet_ids, security_group_id = get_or_create_subnets_and_security_group(ec2_client,
-                                                                             sagemaker_session.boto_session.region_name)
+    subnet_ids, security_group_id = get_or_create_vpc_resources(ec2_client,
+                                                                sagemaker_session.boto_session.region_name)
 
     estimator = PyTorch(entry_point=mnist_script,
                         role='SageMakerRole',
@@ -173,13 +177,13 @@ def test_vpc_pytorch(sagemaker_session, pytorch_full_version):
 
     endpoint_name = estimator.latest_training_job.name
     with timeout_and_delete_endpoint_by_name(endpoint_name, sagemaker_session):
-        model = estimator.create_model()
+        # Override VpcConfig to None
+        model = estimator.create_model(vpc_config_override=None)
         json_predictor = model.deploy(initial_instance_count=1, instance_type=instance_type,
                                       endpoint_name=endpoint_name)
 
         model_desc = sagemaker_session.sagemaker_client.describe_model(ModelName=model.name)
-        assert set(subnet_ids) == set(model_desc['VpcConfig']['Subnets'])
-        assert [security_group_id] == model_desc['VpcConfig']['SecurityGroupIds']
+        assert model_desc.get('VpcConfig') is None
 
         features = [6.4, 3.2, 4.5, 1.5]
         dict_result = json_predictor.predict({'inputs': features})
@@ -190,7 +194,8 @@ def test_vpc_pytorch(sagemaker_session, pytorch_full_version):
         assert dict_result == list_result
 
 
-def test_vpc_chainer(sagemaker_session, chainer_full_version):
+def test_vpc_chainer_none_to_some(sagemaker_session, chainer_full_version):
+    """Test Chainer with None VpcConfig in training, and some VpcConfig in inference"""
     instance_type = 'ml.c4.xlarge'
 
     script_path = os.path.join(DATA_DIR, 'chainer_mnist', 'mnist.py')
@@ -202,8 +207,8 @@ def test_vpc_chainer(sagemaker_session, chainer_full_version):
                                                key_prefix='integ-test-data/chainer_mnist/test')
 
     ec2_client = sagemaker_session.boto_session.client('ec2')
-    subnet_ids, security_group_id = get_or_create_subnets_and_security_group(ec2_client,
-                                                                             sagemaker_session.boto_session.region_name)
+    subnet_ids, security_group_id = get_or_create_vpc_resources(ec2_client,
+                                                                sagemaker_session.boto_session.region_name)
 
     estimator = Chainer(entry_point=script_path,
                         role='SageMakerRole',
@@ -213,9 +218,7 @@ def test_vpc_chainer(sagemaker_session, chainer_full_version):
                         train_instance_type=instance_type,
                         sagemaker_session=sagemaker_session,
                         hyperparameters={'epochs': 1},
-                        base_job_name='test-vpc-chainer',
-                        subnets=subnet_ids,
-                        security_group_ids=[security_group_id])
+                        base_job_name='test-vpc-chainer')  # Not setting subnets or security group ids
 
     with timeout(minutes=TRAINING_DEFAULT_TIMEOUT_MINUTES):
         estimator.fit({'train': train_input, 'test': test_input})
@@ -223,12 +226,13 @@ def test_vpc_chainer(sagemaker_session, chainer_full_version):
 
     job_desc = sagemaker_session.sagemaker_client.describe_training_job(
         TrainingJobName=estimator.latest_training_job.name)
-    assert set(subnet_ids) == set(job_desc['VpcConfig']['Subnets'])
-    assert [security_group_id] == job_desc['VpcConfig']['SecurityGroupIds']
+    assert job_desc.get('VpcConfig') is None
 
     endpoint_name = estimator.latest_training_job.name
     with timeout_and_delete_endpoint_by_name(endpoint_name, sagemaker_session):
-        model = estimator.create_model()
+        # Override VpcConfig
+        model = estimator.create_model(
+            vpc_config_override={'Subnets': subnet_ids, 'SecurityGroupIds': [security_group_id]})
         json_predictor = model.deploy(initial_instance_count=1, instance_type=instance_type,
                                       endpoint_name=endpoint_name)
 
@@ -246,6 +250,7 @@ def test_vpc_chainer(sagemaker_session, chainer_full_version):
 
 
 def test_vpc_knn_multi(sagemaker_session):
+    """Test KNN with VpcConfig used in multi-instance training, and single-instance inference"""
     instance_type = 'ml.c4.xlarge'
     train_instance_count = 2
 
@@ -256,8 +261,8 @@ def test_vpc_knn_multi(sagemaker_session):
         train_set, _, _ = pickle.load(f, **pickle_args)
 
     ec2_client = sagemaker_session.boto_session.client('ec2')
-    subnet_ids, security_group_id = get_or_create_subnets_and_security_group(ec2_client,
-                                                                             sagemaker_session.boto_session.region_name)
+    subnet_ids, security_group_id = get_or_create_vpc_resources(ec2_client,
+                                                                sagemaker_session.boto_session.region_name)
 
     estimator = KNN(role='SageMakerRole',
                     train_instance_count=train_instance_count,
@@ -297,8 +302,11 @@ def test_vpc_knn_multi(sagemaker_session):
             assert record.label["score"] is not None
 
 
-def test_vpc_byo(sagemaker_session):
+def test_vpc_byo_attach(sagemaker_session):
+    """Test BYO with VpcConfig in training, attach to training job, then reuse VpcConfig in inference"""
     instance_type = 'ml.c4.xlarge'
+
+    # Same as in `test_byo_estimator` just using the factorization-machines image with a customer Estimator
     image_name = registry(sagemaker_session.boto_session.region_name) + "/factorization-machines:1"
 
     data_path = os.path.join(DATA_DIR, 'one_p_mnist', 'mnist.pkl.gz')
@@ -313,8 +321,8 @@ def test_vpc_byo(sagemaker_session):
                                                   key_prefix=os.path.join(prefix, 'train', key))
 
     ec2_client = sagemaker_session.boto_session.client('ec2')
-    subnet_ids, security_group_id = get_or_create_subnets_and_security_group(ec2_client,
-                                                                             sagemaker_session.boto_session.region_name)
+    subnet_ids, security_group_id = get_or_create_vpc_resources(ec2_client,
+                                                                sagemaker_session.boto_session.region_name)
 
     estimator = Estimator(image_name=image_name,
                           role='SageMakerRole',
@@ -338,6 +346,7 @@ def test_vpc_byo(sagemaker_session):
     assert set(subnet_ids) == set(job_desc['VpcConfig']['Subnets'])
     assert [security_group_id] == job_desc['VpcConfig']['SecurityGroupIds']
 
+    estimator = estimator.attach(estimator.latest_training_job.name)
     endpoint_name = estimator.latest_training_job.name
     with timeout_and_delete_endpoint_by_name(endpoint_name, sagemaker_session):
         model = estimator.create_model()

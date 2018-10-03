@@ -20,6 +20,7 @@ import pytest
 from sagemaker.tensorflow import TensorFlow
 from tests.integ import DATA_DIR, TRAINING_DEFAULT_TIMEOUT_MINUTES, PYTHON_VERSION
 from tests.integ.timeout import timeout_and_delete_endpoint_by_name, timeout
+from tests.integ.vpc_test_utils import get_or_create_vpc_resources
 
 DATA_PATH = os.path.join(DATA_DIR, 'iris', 'data')
 
@@ -88,6 +89,61 @@ def test_tf_async(sagemaker_session):
 
         result = json_predictor.predict([6.4, 3.2, 4.5, 1.5])
         print('predict result: {}'.format(result))
+
+
+@pytest.mark.skipif(PYTHON_VERSION != 'py2', reason="TensorFlow image supports only python 2.")
+def test_tf_vpc_multi(sagemaker_session, tf_full_version):
+    """Test Tensorflow multi-instance using the same VpcConfig for training and inference"""
+    instance_type = 'ml.c4.xlarge'
+    instance_count = 2
+
+    train_input = sagemaker_session.upload_data(path=os.path.join(DATA_DIR, 'iris', 'data'),
+                                                key_prefix='integ-test-data/tf_iris')
+    script_path = os.path.join(DATA_DIR, 'iris', 'iris-dnn-classifier.py')
+
+    ec2_client = sagemaker_session.boto_session.client('ec2')
+    subnet_ids, security_group_id = get_or_create_vpc_resources(ec2_client,
+                                                                sagemaker_session.boto_session.region_name)
+
+    estimator = TensorFlow(entry_point=script_path,
+                           role='SageMakerRole',
+                           framework_version=tf_full_version,
+                           training_steps=1,
+                           evaluation_steps=1,
+                           hyperparameters={'input_tensor_name': 'inputs'},
+                           train_instance_count=instance_count,
+                           train_instance_type=instance_type,
+                           sagemaker_session=sagemaker_session,
+                           base_job_name='test-vpc-tf',
+                           subnets=subnet_ids,
+                           security_group_ids=[security_group_id])
+
+    with timeout(minutes=TRAINING_DEFAULT_TIMEOUT_MINUTES):
+        estimator.fit(train_input)
+        print('training job succeeded: {}'.format(estimator.latest_training_job.name))
+
+    job_desc = sagemaker_session.sagemaker_client.describe_training_job(
+        TrainingJobName=estimator.latest_training_job.name)
+    assert set(subnet_ids) == set(job_desc['VpcConfig']['Subnets'])
+    assert [security_group_id] == job_desc['VpcConfig']['SecurityGroupIds']
+
+    endpoint_name = estimator.latest_training_job.name
+    with timeout_and_delete_endpoint_by_name(endpoint_name, sagemaker_session):
+        model = estimator.create_model()
+        json_predictor = model.deploy(initial_instance_count=instance_count, instance_type='ml.c4.xlarge',
+                                      endpoint_name=endpoint_name)
+
+        model_desc = sagemaker_session.sagemaker_client.describe_model(ModelName=model.name)
+        assert set(subnet_ids) == set(model_desc['VpcConfig']['Subnets'])
+        assert [security_group_id] == model_desc['VpcConfig']['SecurityGroupIds']
+
+        features = [6.4, 3.2, 4.5, 1.5]
+        dict_result = json_predictor.predict({'inputs': features})
+        print('predict result: {}'.format(dict_result))
+        list_result = json_predictor.predict(features)
+        print('predict result: {}'.format(list_result))
+
+        assert dict_result == list_result
 
 
 @pytest.mark.skipif(PYTHON_VERSION != 'py2', reason="TensorFlow image supports only python 2.")
