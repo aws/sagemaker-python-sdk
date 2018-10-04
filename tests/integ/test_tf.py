@@ -133,10 +133,6 @@ def test_tf_vpc_multi(sagemaker_session, tf_full_version):
         json_predictor = model.deploy(initial_instance_count=instance_count, instance_type='ml.c4.xlarge',
                                       endpoint_name=endpoint_name)
 
-        model_desc = sagemaker_session.sagemaker_client.describe_model(ModelName=model.name)
-        assert set(subnet_ids) == set(model_desc['VpcConfig']['Subnets'])
-        assert [security_group_id] == model_desc['VpcConfig']['SecurityGroupIds']
-
         features = [6.4, 3.2, 4.5, 1.5]
         dict_result = json_predictor.predict({'inputs': features})
         print('predict result: {}'.format(dict_result))
@@ -144,6 +140,10 @@ def test_tf_vpc_multi(sagemaker_session, tf_full_version):
         print('predict result: {}'.format(list_result))
 
         assert dict_result == list_result
+
+    model_desc = sagemaker_session.sagemaker_client.describe_model(ModelName=model.name)
+    assert set(subnet_ids) == set(model_desc['VpcConfig']['Subnets'])
+    assert [security_group_id] == model_desc['VpcConfig']['SecurityGroupIds']
 
 
 @pytest.mark.skipif(PYTHON_VERSION != 'py2', reason="TensorFlow image supports only python 2.")
