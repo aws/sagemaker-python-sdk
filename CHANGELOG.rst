@@ -6,6 +6,7 @@ CHANGELOG
 =========
 
 * enhancement: Local Mode: add training environment variables for AWS region and job name
+* enhancement: Local Mode: accept short lived credentials with a warning message
 
 1.11.0
 ======
