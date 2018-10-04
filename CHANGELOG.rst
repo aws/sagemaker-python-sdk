@@ -2,7 +2,20 @@
 CHANGELOG
 =========
 
+=======
+1.11.1dev
+=========
+
+* enhancement: Local Mode: add training environment variables for AWS region and job name
 * enhancement: Enable setting VPC config when creating/deploying models
+
+1.11.0
+======
+
+* bug-fix: setting health check timeout limit on local mode to 30s
+* bug-fix: make Hyperparameters in local mode optional.
+* enhancement: add support for volume KMS key to Transformer
+* feature: add support for GovCloud
 
 1.10.1
 ======

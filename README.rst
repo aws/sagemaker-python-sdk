@@ -152,6 +152,7 @@ Here is an end to end example of how to use a SageMaker Estimator:
 
     # Configure an MXNet Estimator (no training happens yet)
     mxnet_estimator = MXNet('train.py',
+                            role="SageMakerRole",
                             train_instance_type='ml.p2.xlarge',
                             train_instance_count = 1)
 
@@ -181,6 +182,7 @@ We can take the example in  `Using Estimators <#using-estimators>`__ , and use e
 
     # Configure an MXNet Estimator (no training happens yet)
     mxnet_estimator = MXNet('train.py',
+                            role="SageMakerRole",
                             train_instance_type='local',
                             train_instance_count=1)
 
@@ -286,9 +288,12 @@ PyTorch SageMaker Estimators
 
 With PyTorch SageMaker ``Estimators``, you can train and host PyTorch models on Amazon SageMaker.
 
-Supported versions of PyTorch: ``0.4.0``.
+Supported versions of PyTorch: ``0.4.0``, ``1.0.0.dev`` ("Preview").
 
 We recommend that you use the latest supported version, because that's where we focus most of our development efforts.
+
+You can try the "Preview" version of PyTorch by specifying ``'1.0.0.dev'`` for ``framework_version`` when creating your PyTorch estimator.
+This will ensure you're using the latest version of ``torch-nightly``.
 
 For more information about PyTorch, see https://github.com/pytorch/pytorch.
 

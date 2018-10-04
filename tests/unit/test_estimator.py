@@ -502,7 +502,7 @@ def test_framework_transformer_creation_with_optional_params(name_from_image, sa
     transformer = fw.transformer(INSTANCE_COUNT, INSTANCE_TYPE, strategy=strategy, assemble_with=assemble_with,
                                  output_path=OUTPUT_PATH, output_kms_key=kms_key, accept=accept, tags=TAGS,
                                  max_concurrent_transforms=max_concurrent_transforms, max_payload=max_payload,
-                                 env=env, role=new_role, model_server_workers=1)
+                                 volume_kms_key=kms_key, env=env, role=new_role, model_server_workers=1)
 
     sagemaker_session.create_model.assert_called_with(MODEL_IMAGE, new_role, MODEL_CONTAINER_DEF, vpc_config)
     assert transformer.strategy == strategy
@@ -515,6 +515,7 @@ def test_framework_transformer_creation_with_optional_params(name_from_image, sa
     assert transformer.env == env
     assert transformer.base_transform_job_name == base_name
     assert transformer.tags == TAGS
+    assert transformer.volume_kms_key == kms_key
 
 
 def test_ensure_latest_training_job(sagemaker_session):

@@ -49,12 +49,14 @@ INPUT_DATA_CONFIG = [
     }
 ]
 HYPERPARAMETERS = {'a': 1,
-                   'b': 'bee',
-                   'sagemaker_submit_directory': json.dumps('s3://my_bucket/code')}
+                   'b': json.dumps('bee'),
+                   'sagemaker_submit_directory': json.dumps('s3://my_bucket/code'),
+                   'sagemaker_job_name': json.dumps('my-job')}
 
 LOCAL_CODE_HYPERPARAMETERS = {'a': 1,
                               'b': 2,
-                              'sagemaker_submit_directory': json.dumps('file:///tmp/code')}
+                              'sagemaker_submit_directory': json.dumps('file:///tmp/code'),
+                              'sagemaker_job_name': json.dumps('my-job')}
 
 
 @pytest.fixture()
@@ -244,6 +246,8 @@ def test_train(_download_folder, _cleanup, popen, _stream_output, LocalSession,
             for h in sagemaker_container.hosts:
                 assert config['services'][h]['image'] == image
                 assert config['services'][h]['command'] == 'train'
+                assert 'AWS_REGION={}'.format(REGION) in config['services'][h]['environment']
+                assert 'TRAINING_JOB_NAME=my-job' in config['services'][h]['environment']
 
         # assert that expected by sagemaker container output directories exist
         assert os.path.exists(os.path.join(sagemaker_container.container_root, 'output'))
@@ -311,14 +315,13 @@ def test_serve(up, copy, copytree, tmpdir, sagemaker_session):
 
         image = 'my-image'
         sagemaker_container = _SageMakerContainer('local', 1, image, sagemaker_session=sagemaker_session)
-        primary_container = {'ModelDataUrl': '/some/model/path',
-                             'Environment': {'env1': 1,
-                                             'env2': 'b',
-                                             'SAGEMAKER_SUBMIT_DIRECTORY': 's3://some/path'
-                                             }
-                             }
+        environment = {
+            'env1': 1,
+            'env2': 'b',
+            'SAGEMAKER_SUBMIT_DIRECTORY': 's3://some/path'
+        }
 
-        sagemaker_container.serve(primary_container)
+        sagemaker_container.serve('/some/model/path', environment)
         docker_compose_file = os.path.join(sagemaker_container.container_root, 'docker-compose.yaml')
 
         with open(docker_compose_file, 'r') as f:
@@ -339,14 +342,13 @@ def test_serve_local_code(up, copy, copytree, tmpdir, sagemaker_session):
 
         image = 'my-image'
         sagemaker_container = _SageMakerContainer('local', 1, image, sagemaker_session=sagemaker_session)
-        primary_container = {'ModelDataUrl': '/some/model/path',
-                             'Environment': {'env1': 1,
-                                             'env2': 'b',
-                                             'SAGEMAKER_SUBMIT_DIRECTORY': 'file:///tmp/code'
-                                             }
-                             }
+        environment = {
+            'env1': 1,
+            'env2': 'b',
+            'SAGEMAKER_SUBMIT_DIRECTORY': 'file:///tmp/code'
+        }
 
-        sagemaker_container.serve(primary_container)
+        sagemaker_container.serve('/some/model/path', environment)
         docker_compose_file = os.path.join(sagemaker_container.container_root,
                                            'docker-compose.yaml')
 

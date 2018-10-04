@@ -287,7 +287,8 @@ def registry(region_name, algorithm=None):
             "eu-central-1": "664544806723",
             "ap-northeast-1": "351501993468",
             "ap-northeast-2": "835164637446",
-            "ap-southeast-2": "712309505854"
+            "ap-southeast-2": "712309505854",
+            "us-gov-west-1": "226302683700"
         }[region_name]
     elif algorithm in ["lda"]:
         account_id = {
@@ -309,7 +310,8 @@ def registry(region_name, algorithm=None):
             "eu-central-1": "495149712605",
             "ap-northeast-1": "633353088612",
             "ap-northeast-2": "204372634319",
-            "ap-southeast-2": "514117268639"
+            "ap-southeast-2": "514117268639",
+            "us-gov-west-1": "226302683700"
         }[region_name]
     elif algorithm in ["xgboost", "seq2seq", "image-classification", "blazingtext",
                        "object-detection"]:
@@ -321,7 +323,8 @@ def registry(region_name, algorithm=None):
             "eu-central-1": "813361260812",
             "ap-northeast-1": "501404015308",
             "ap-northeast-2": "306986355934",
-            "ap-southeast-2": "544295431143"
+            "ap-southeast-2": "544295431143",
+            "us-gov-west-1": "226302683700"
         }[region_name]
     else:
         raise ValueError("Algorithm class:{} doesn't have mapping to account_id with images".format(algorithm))
