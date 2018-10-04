@@ -734,7 +734,7 @@ class Session(object):
 
         model_environment_vars = model_environment_vars or {}
         name = name or name_from_image(deployment_image)
-        model_vpc_config = vpc_utils.validate(model_vpc_config)
+        model_vpc_config = vpc_utils.sanitize(model_vpc_config)
 
         if _deployment_entity_exists(lambda: self.sagemaker_client.describe_endpoint(EndpointName=name)):
             raise ValueError('Endpoint with name "{}" already exists; please pick a different name.'.format(name))
@@ -1169,4 +1169,4 @@ def _vpc_config_from_training_job(training_job_desc, vpc_config_override=vpc_uti
     if vpc_config_override is vpc_utils.VPC_CONFIG_DEFAULT:
         return training_job_desc.get(vpc_utils.VPC_CONFIG_KEY)
     else:
-        return vpc_utils.validate(vpc_config_override)
+        return vpc_utils.sanitize(vpc_config_override)

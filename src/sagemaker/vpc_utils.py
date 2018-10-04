@@ -18,7 +18,7 @@ VPC_CONFIG_KEY = 'VpcConfig'
 
 # A global constant value for methods which can optionally override VpcConfig
 # Using the default implies that VpcConfig should be reused from an existing Estimator or Training Job
-VPC_CONFIG_DEFAULT = {}
+VPC_CONFIG_DEFAULT = 'VPC_CONFIG_DEFAULT'
 
 
 def to_dict(subnets, security_group_ids):
@@ -41,30 +41,30 @@ def to_dict(subnets, security_group_ids):
             SECURITY_GROUP_IDS_KEY: security_group_ids}
 
 
-def from_dict(vpc_config, do_validate=False):
+def from_dict(vpc_config, do_sanitize=False):
     """
     Extracts subnets and security group ids as lists from a VpcConfig dict
 
     Args:
         vpc_config (dict): a VpcConfig dict containing 'Subnets' and 'SecurityGroupIds'
-        do_validate (bool): whether to validate the VpcConfig dict before extracting values
+        do_sanitize (bool): whether to sanitize the VpcConfig dict before extracting values
 
     Returns:
         Tuple of lists as (subnets, security_group_ids)
         If vpc_config parameter is None, returns (None, None)
 
     Raises:
-        ValueError if validation enabled and vpc_config is invalid
-        KeyError if validation disabled and vpc_config is missing key(s)
+        ValueError if sanitize enabled and vpc_config is invalid
+        KeyError if sanitize disabled and vpc_config is missing key(s)
     """
-    if do_validate:
-        vpc_config = validate(vpc_config)
+    if do_sanitize:
+        vpc_config = sanitize(vpc_config)
     if vpc_config is None:
         return None, None
     return vpc_config[SUBNETS_KEY], vpc_config[SECURITY_GROUP_IDS_KEY]
 
 
-def validate(vpc_config):
+def sanitize(vpc_config):
     """
     Checks that an instance of VpcConfig has the expected keys and values, removes unexpected keys,
     and raises ValueErrors if any expectations are violated

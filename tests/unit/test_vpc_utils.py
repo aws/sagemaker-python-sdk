@@ -16,14 +16,15 @@ from __future__ import absolute_import
 
 import pytest
 
-from sagemaker.vpc_utils import SUBNETS_KEY, SECURITY_GROUP_IDS_KEY, to_dict, from_dict, validate
+from sagemaker.vpc_utils import SUBNETS_KEY, SECURITY_GROUP_IDS_KEY, to_dict, from_dict, sanitize
 
 subnets = ['subnet']
 security_groups = ['sg']
 good_vpc_config = {SUBNETS_KEY: subnets,
                    SECURITY_GROUP_IDS_KEY: security_groups}
-foo_vpc_config = good_vpc_config.copy()
-foo_vpc_config.update({'foo': 1})
+foo_vpc_config = {SUBNETS_KEY: subnets,
+                  SECURITY_GROUP_IDS_KEY: security_groups,
+                  'foo': 1}
 
 
 def test_to_dict():
@@ -40,7 +41,7 @@ def test_from_dict():
     assert from_dict(foo_vpc_config) == (subnets, security_groups)
 
     assert from_dict(None) == (None, None)
-    assert from_dict(None, do_validate=True) == (None, None)
+    assert from_dict(None, do_sanitize=True) == (None, None)
 
     with pytest.raises(KeyError):
         from_dict({})
@@ -50,28 +51,28 @@ def test_from_dict():
         from_dict({SECURITY_GROUP_IDS_KEY: security_groups})
 
     with pytest.raises(ValueError):
-        from_dict({}, do_validate=True)
+        from_dict({}, do_sanitize=True)
 
 
-def test_validate():
-    assert validate(good_vpc_config) == good_vpc_config
-    assert validate(foo_vpc_config) == good_vpc_config
+def test_sanitize():
+    assert sanitize(good_vpc_config) == good_vpc_config
+    assert sanitize(foo_vpc_config) == good_vpc_config
 
-    assert validate(None) is None
-
-    with pytest.raises(ValueError):
-        validate([])
-    with pytest.raises(ValueError):
-        validate({})
+    assert sanitize(None) is None
 
     with pytest.raises(ValueError):
-        validate({SUBNETS_KEY: 1})
+        sanitize([])
     with pytest.raises(ValueError):
-        validate({SUBNETS_KEY: []})
+        sanitize({})
 
     with pytest.raises(ValueError):
-        validate({SECURITY_GROUP_IDS_KEY: 1,
+        sanitize({SUBNETS_KEY: 1})
+    with pytest.raises(ValueError):
+        sanitize({SUBNETS_KEY: []})
+
+    with pytest.raises(ValueError):
+        sanitize({SECURITY_GROUP_IDS_KEY: 1,
                   SUBNETS_KEY: subnets})
     with pytest.raises(ValueError):
-        validate({SECURITY_GROUP_IDS_KEY: [],
+        sanitize({SECURITY_GROUP_IDS_KEY: [],
                   SUBNETS_KEY: subnets})

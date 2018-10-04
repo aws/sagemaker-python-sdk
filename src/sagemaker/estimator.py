@@ -388,7 +388,7 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):
         if vpc_config_override is vpc_utils.VPC_CONFIG_DEFAULT:
             return vpc_utils.to_dict(self.subnets, self.security_group_ids)
         else:
-            return vpc_utils.validate(vpc_config_override)
+            return vpc_utils.sanitize(vpc_config_override)
 
     def _ensure_latest_training_job(self, error_message='Estimator is not associated with a training job'):
         if self.latest_training_job is None:
