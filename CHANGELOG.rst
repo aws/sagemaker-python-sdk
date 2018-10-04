@@ -6,6 +6,7 @@ CHANGELOG
 =========
 
 * enhancement: Local Mode: add training environment variables for AWS region and job name
+* bug-fix: default TensorFlow json serializer accepts dict of numpy arrays
 
 1.11.0
 ======
