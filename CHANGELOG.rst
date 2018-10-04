@@ -3,11 +3,12 @@ CHANGELOG
 =========
 
 1.11.1
-=========
+======
 
 * enhancement: Local Mode: add training environment variables for AWS region and job name
 * doc-fix: Instruction on how to use preview version of PyTorch - 1.0.0.dev.
 * doc-fix: add role to MXNet estimator example in readme
+* bug-fix: default TensorFlow json serializer accepts dict of numpy arrays
 
 1.11.0
 ======
