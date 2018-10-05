@@ -2,6 +2,12 @@
 CHANGELOG
 =========
 
+=========
+1.11.2dev
+=========
+* enhancement: Enable setting VPC config when creating/deploying models
+
+=======
 1.11.1
 ======
 
