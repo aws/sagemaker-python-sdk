@@ -33,6 +33,10 @@ def pytest_addoption(parser):
     parser.addoption('--sagemaker-client-config', action='store', default=None)
     parser.addoption('--sagemaker-runtime-config', action='store', default=None)
     parser.addoption('--boto-config', action='store', default=None)
+    parser.addoption('--tf-full-version', action='store', default=TF_VERSION)
+    parser.addoption('--mxnet-full-version', action='store', default=MXNET_VERSION)
+    parser.addoption('--chainer-full-version', action='store', default=CHAINER_VERSION)
+    parser.addoption('--pytorch-full-version', action='store', default=PYTORCH_VERSION)
 
 
 @pytest.fixture(scope='session')
@@ -76,7 +80,8 @@ def sagemaker_local_session(boto_config):
 
 
 @pytest.fixture(scope='module', params=['1.4', '1.4.1', '1.5', '1.5.0', '1.6', '1.6.0',
-                                        '1.7', '1.7.0', '1.8', '1.8.0', '1.9', '1.9.0'])
+                                        '1.7', '1.7.0', '1.8', '1.8.0', '1.9', '1.9.0',
+                                        '1.10', '1.10.0'])
 def tf_version(request):
     return request.param
 
@@ -96,21 +101,21 @@ def chainer_version(request):
     return request.param
 
 
-@pytest.fixture(scope='module', params=[TF_VERSION])
+@pytest.fixture(scope='module')
 def tf_full_version(request):
-    return request.param
+    return request.config.getoption('--tf-full-version')
 
 
-@pytest.fixture(scope='module', params=[MXNET_VERSION])
+@pytest.fixture(scope='module')
 def mxnet_full_version(request):
-    return request.param
+    return request.config.getoption('--mxnet-full-version')
 
 
-@pytest.fixture(scope='module', params=[PYTORCH_VERSION])
+@pytest.fixture(scope='module')
 def pytorch_full_version(request):
-    return request.param
+    return request.config.getoption('--pytorch-full-version')
 
 
-@pytest.fixture(scope='module', params=[CHAINER_VERSION])
+@pytest.fixture(scope='module')
 def chainer_full_version(request):
-    return request.param
+    return request.config.getoption('--chainer-full-version')

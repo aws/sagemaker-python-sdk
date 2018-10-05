@@ -136,6 +136,7 @@ def test_create_model(sagemaker_session, pytorch_version):
     assert model.name == job_name
     assert model.container_log_level == container_log_level
     assert model.source_dir == source_dir
+    assert model.vpc_config is None
 
 
 def test_create_model_with_optional_params(sagemaker_session):
@@ -151,10 +152,13 @@ def test_create_model_with_optional_params(sagemaker_session):
 
     new_role = 'role'
     model_server_workers = 2
-    model = pytorch.create_model(role=new_role, model_server_workers=model_server_workers)
+    vpc_config = {'Subnets': ['foo'], 'SecurityGroupIds': ['bar']}
+    model = pytorch.create_model(role=new_role, model_server_workers=model_server_workers,
+                                 vpc_config_override=vpc_config)
 
     assert model.role == new_role
     assert model.model_server_workers == model_server_workers
+    assert model.vpc_config == vpc_config
 
 
 def test_create_model_with_custom_image(sagemaker_session):

@@ -16,7 +16,7 @@ import pytest
 import urllib3
 
 from botocore.exceptions import ClientError
-from mock import patch
+from mock import Mock, patch
 
 import sagemaker
 
@@ -61,13 +61,8 @@ def test_create_training_job(train, LocalSession):
     resource_config = {'InstanceType': 'local', 'InstanceCount': instance_count}
     hyperparameters = {'a': 1, 'b': 'bee'}
 
-    local_sagemaker_client.create_training_job("my-training-job", algo_spec, 'arn:my-role', input_data_config,
-                                               output_data_config, resource_config, None, hyperparameters)
-
-    train_container = local_sagemaker_client.train_container
-    assert train_container is not None
-    assert train_container.image == image
-    assert train_container.instance_count == instance_count
+    local_sagemaker_client.create_training_job('my-training-job', algo_spec, input_data_config,
+                                               output_data_config, resource_config, HyperParameters=hyperparameters)
 
     expected = {
         'ResourceConfig': {'InstanceCount': instance_count},
@@ -80,6 +75,13 @@ def test_create_training_job(train, LocalSession):
     assert response['TrainingJobStatus'] == expected['TrainingJobStatus']
     assert response['ResourceConfig']['InstanceCount'] == expected['ResourceConfig']['InstanceCount']
     assert response['ModelArtifacts']['S3ModelArtifacts'] == expected['ModelArtifacts']['S3ModelArtifacts']
+
+
+@patch('sagemaker.local.local_session.LocalSession')
+def test_describe_invalid_training_job(*args):
+    local_sagemaker_client = sagemaker.local.local_session.LocalSagemakerClient()
+    with pytest.raises(ClientError):
+        local_sagemaker_client.describe_training_job('i-havent-created-this-job')
 
 
 @patch('sagemaker.local.image._SageMakerContainer.train', return_value="/some/path/to/model")
@@ -109,8 +111,8 @@ def test_create_training_job_invalid_data_source(train, LocalSession):
     hyperparameters = {'a': 1, 'b': 'bee'}
 
     with pytest.raises(ValueError):
-        local_sagemaker_client.create_training_job("my-training-job", algo_spec, 'arn:my-role', input_data_config,
-                                                   output_data_config, resource_config, None, hyperparameters)
+        local_sagemaker_client.create_training_job('my-training-job', algo_spec, input_data_config,
+                                                   output_data_config, resource_config, HyperParameters=hyperparameters)
 
 
 @patch('sagemaker.local.image._SageMakerContainer.train', return_value="/some/path/to/model")
@@ -139,22 +141,35 @@ def test_create_training_job_not_fully_replicated(train, LocalSession):
     hyperparameters = {'a': 1, 'b': 'bee'}
 
     with pytest.raises(RuntimeError):
-        local_sagemaker_client.create_training_job("my-training-job", algo_spec, 'arn:my-role', input_data_config,
-                                                   output_data_config, resource_config, None, hyperparameters)
+        local_sagemaker_client.create_training_job('my-training-job', algo_spec, input_data_config,
+                                                   output_data_config, resource_config, HyperParameters=hyperparameters)
 
 
 @patch('sagemaker.local.local_session.LocalSession')
 def test_create_model(LocalSession):
     local_sagemaker_client = sagemaker.local.local_session.LocalSagemakerClient()
-    model_name = "my-model"
+    model_name = 'my-model'
     primary_container = {'ModelDataUrl': '/some/model/path', 'Environment': {'env1': 1, 'env2': 'b'}}
-    execution_role_arn = 'arn:aws:iam::111111111111:role/ExpandedRole'
 
-    local_sagemaker_client.create_model(model_name, primary_container, execution_role_arn)
+    local_sagemaker_client.create_model(model_name, primary_container)
 
-    assert local_sagemaker_client.model_name == model_name
-    assert local_sagemaker_client.primary_container == primary_container
-    assert local_sagemaker_client.role_arn == execution_role_arn
+    assert 'my-model' in sagemaker.local.local_session.LocalSagemakerClient._models
+
+
+@patch('sagemaker.local.local_session.LocalSession')
+def test_describe_model(LocalSession):
+    local_sagemaker_client = sagemaker.local.local_session.LocalSagemakerClient()
+    model_name = 'test-model'
+    primary_container = {'ModelDataUrl': '/some/model/path', 'Environment': {'env1': 1, 'env2': 'b'}}
+
+    with pytest.raises(ClientError):
+        local_sagemaker_client.describe_model('model-does-not-exist')
+
+    local_sagemaker_client.create_model(model_name, primary_container)
+    response = local_sagemaker_client.describe_model('test-model')
+
+    assert response['ModelName'] == 'test-model'
+    assert response['PrimaryContainer']['ModelDataUrl'] == '/some/model/path'
 
 
 @patch('sagemaker.local.local_session.LocalSession')
@@ -163,10 +178,14 @@ def test_describe_endpoint_config(LocalSession):
 
     # No Endpoint Config Created
     with pytest.raises(ClientError):
-        local_sagemaker_client.describe_endpoint_config('my-endpoint-config')
+        local_sagemaker_client.describe_endpoint_config('some-endpoint-config')
 
-    local_sagemaker_client.created_endpoint = True
-    assert local_sagemaker_client.describe_endpoint_config('my-endpoint-config')
+    production_variants = [{'InstanceType': 'ml.c4.99xlarge', 'InitialInstanceCount': 10}]
+    local_sagemaker_client.create_endpoint_config('test-endpoint-config', production_variants)
+
+    response = local_sagemaker_client.describe_endpoint_config('test-endpoint-config')
+    assert response['EndpointConfigName'] == 'test-endpoint-config'
+    assert response['ProductionVariants'][0]['InstanceType'] == 'ml.c4.99xlarge'
 
 
 @patch('sagemaker.local.local_session.LocalSession')
@@ -175,44 +194,99 @@ def test_create_endpoint_config(LocalSession):
     production_variants = [{'InstanceType': 'ml.c4.99xlarge', 'InitialInstanceCount': 10}]
     local_sagemaker_client.create_endpoint_config('my-endpoint-config', production_variants)
 
-    assert local_sagemaker_client.variants == production_variants
-
-
-@patch('sagemaker.local.local_session.LocalSession')
-def test_describe_endpoint(LocalSession):
-    local_sagemaker_client = sagemaker.local.local_session.LocalSagemakerClient()
-    response = local_sagemaker_client.describe_endpoint('my-endpoint')
-    assert 'EndpointStatus' in response
+    assert 'my-endpoint-config' in sagemaker.local.local_session.LocalSagemakerClient._endpoint_configs
 
 
 @patch('sagemaker.local.image._SageMakerContainer.serve')
-@patch('urllib3.PoolManager.request', return_value=OK_RESPONSE)
 @patch('sagemaker.local.local_session.LocalSession')
-def test_create_endpoint(serve, request, LocalSession):
+@patch('urllib3.PoolManager.request')
+@patch('sagemaker.local.local_session.LocalSagemakerClient.describe_endpoint_config')
+@patch('sagemaker.local.local_session.LocalSagemakerClient.describe_model')
+def test_describe_endpoint(describe_model, describe_endpoint_config, request, *args):
     local_sagemaker_client = sagemaker.local.local_session.LocalSagemakerClient()
-    local_sagemaker_client.variants = [{'InstanceType': 'ml.c4.99xlarge', 'InitialInstanceCount': 10}]
-    local_sagemaker_client.primary_container = {'ModelDataUrl': '/some/model/path',
-                                                'Environment': {'env1': 1, 'env2': 'b'},
-                                                'Image': 'my-image:1.0'}
+
+    request.return_value = OK_RESPONSE
+    describe_endpoint_config.return_value = {
+        'EndpointConfigName': 'name',
+        'EndpointConfigArn': 'local:arn-does-not-matter',
+        'CreationTime': '00:00:00',
+        'ProductionVariants': [
+            {
+                'InitialVariantWeight': 1.0,
+                'ModelName': 'my-model',
+                'VariantName': 'AllTraffic',
+                'InitialInstanceCount': 1,
+                'InstanceType': 'local'
+
+            }
+        ]
+    }
+
+    describe_model.return_value = {
+        'ModelName': 'my-model',
+        'CreationTime': '00:00;00',
+        'ExecutionRoleArn': 'local:arn-does-not-matter',
+        'ModelArn': 'local:arn-does-not-matter',
+        'PrimaryContainer': {
+            'Environment': {
+                'SAGEMAKER_REGION': 'us-west-2'
+            },
+            'Image': '123.dkr.ecr-us-west-2.amazonaws.com/sagemaker-container:1.0',
+            'ModelDataUrl': 's3://sagemaker-us-west-2/some/model.tar.gz'
+        }
+    }
+
+    with pytest.raises(ClientError):
+        local_sagemaker_client.describe_endpoint('non-existing-endpoint')
+
+    local_sagemaker_client.create_endpoint('test-endpoint', 'some-endpoint-config')
+    response = local_sagemaker_client.describe_endpoint('test-endpoint')
+
+    assert response['EndpointName'] == 'test-endpoint'
+
+
+@patch('sagemaker.local.image._SageMakerContainer.serve')
+@patch('sagemaker.local.local_session.LocalSession')
+@patch('urllib3.PoolManager.request')
+@patch('sagemaker.local.local_session.LocalSagemakerClient.describe_endpoint_config')
+@patch('sagemaker.local.local_session.LocalSagemakerClient.describe_model')
+def test_create_endpoint(describe_model, describe_endpoint_config, request, *args):
+    local_sagemaker_client = sagemaker.local.local_session.LocalSagemakerClient()
+
+    request.return_value = OK_RESPONSE
+    describe_endpoint_config.return_value = {
+        'EndpointConfigName': 'name',
+        'EndpointConfigArn': 'local:arn-does-not-matter',
+        'CreationTime': '00:00:00',
+        'ProductionVariants': [
+            {
+                'InitialVariantWeight': 1.0,
+                'ModelName': 'my-model',
+                'VariantName': 'AllTraffic',
+                'InitialInstanceCount': 1,
+                'InstanceType': 'local'
+
+            }
+        ]
+    }
+
+    describe_model.return_value = {
+        'ModelName': 'my-model',
+        'CreationTime': '00:00;00',
+        'ExecutionRoleArn': 'local:arn-does-not-matter',
+        'ModelArn': 'local:arn-does-not-matter',
+        'PrimaryContainer': {
+            'Environment': {
+                'SAGEMAKER_REGION': 'us-west-2'
+            },
+            'Image': '123.dkr.ecr-us-west-2.amazonaws.com/sagemaker-container:1.0',
+            'ModelDataUrl': 's3://sagemaker-us-west-2/some/model.tar.gz'
+        }
+    }
 
     local_sagemaker_client.create_endpoint('my-endpoint', 'some-endpoint-config')
 
-    assert local_sagemaker_client.created_endpoint
-
-
-@patch('sagemaker.local.image._SageMakerContainer.serve')
-@patch('urllib3.PoolManager.request', return_value=BAD_RESPONSE)
-@patch('sagemaker.local.local_session.LocalSession')
-@patch('time.sleep')
-def test_create_endpoint_fails(*args):
-    local_sagemaker_client = sagemaker.local.local_session.LocalSagemakerClient()
-    local_sagemaker_client.variants = [{'InstanceType': 'ml.c4.99xlarge', 'InitialInstanceCount': 10}]
-    local_sagemaker_client.primary_container = {'ModelDataUrl': '/some/model/path',
-                                                'Environment': {'env1': 1, 'env2': 'b'},
-                                                'Image': 'my-image:1.0'}
-
-    with pytest.raises(RuntimeError):
-        local_sagemaker_client.create_endpoint('my-endpoint', 'some-endpoint-config')
+    assert 'my-endpoint' in sagemaker.local.local_session.LocalSagemakerClient._endpoints
 
 
 def test_file_input_all_defaults():
@@ -244,3 +318,9 @@ def test_file_input_content_type():
             'ContentType': 'text/csv'
         }
     assert actual.config == expected
+
+
+def test_local_session_is_set_to_local_mode():
+    boto_session = Mock(region_name='us-west-2')
+    local_session = sagemaker.local.local_session.LocalSession(boto_session=boto_session)
+    assert local_session.local_mode

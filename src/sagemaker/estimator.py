@@ -33,6 +33,7 @@ from sagemaker.session import Session
 from sagemaker.session import s3_input
 from sagemaker.transformer import Transformer
 from sagemaker.utils import base_name_from_image, name_from_base, name_from_image, get_config_value
+from sagemaker import vpc_utils
 
 
 class EstimatorBase(with_metaclass(ABCMeta, object)):
@@ -46,7 +47,7 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):
     """
 
     def __init__(self, role, train_instance_count, train_instance_type,
-                 train_volume_size=30, train_max_run=24 * 60 * 60, input_mode='File',
+                 train_volume_size=30, train_volume_kms_key=None, train_max_run=24 * 60 * 60, input_mode='File',
                  output_path=None, output_kms_key=None, base_job_name=None, sagemaker_session=None, tags=None,
                  subnets=None, security_group_ids=None):
         """Initialize an ``EstimatorBase`` instance.
@@ -61,6 +62,8 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):
             train_volume_size (int): Size in GB of the EBS volume to use for storing input data
                 during training (default: 30). Must be large enough to store training data if File Mode is used
                 (which is the default).
+            train_volume_kms_key (str): Optional. KMS key ID for encrypting EBS volume attached to the
+                training instance (default: None).
             train_max_run (int): Timeout in seconds for training (default: 24 * 60 * 60).
                 After this amount of time Amazon SageMaker terminates the job regardless of its current status.
             input_mode (str): The input mode that the algorithm supports (default: 'File'). Valid modes:
@@ -87,6 +90,7 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):
         self.train_instance_count = train_instance_count
         self.train_instance_type = train_instance_type
         self.train_volume_size = train_volume_size
+        self.train_volume_kms_key = train_volume_kms_key
         self.train_max_run = train_max_run
         self.input_mode = input_mode
         self.tags = tags
@@ -315,6 +319,12 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):
         init_params['hyperparameters'] = job_details['HyperParameters']
         init_params['image'] = job_details['AlgorithmSpecification']['TrainingImage']
 
+        subnets, security_group_ids = vpc_utils.from_dict(job_details.get(vpc_utils.VPC_CONFIG_KEY))
+        if subnets:
+            init_params['subnets'] = subnets
+        if security_group_ids:
+            init_params['security_group_ids'] = security_group_ids
+
         return init_params
 
     def delete_endpoint(self):
@@ -328,7 +338,7 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):
 
     def transformer(self, instance_count, instance_type, strategy=None, assemble_with=None, output_path=None,
                     output_kms_key=None, accept=None, env=None, max_concurrent_transforms=None,
-                    max_payload=None, tags=None, role=None):
+                    max_payload=None, tags=None, role=None, volume_kms_key=None):
         """Return a ``Transformer`` that uses a SageMaker Model based on the training job. It reuses the
         SageMaker Session and base job name used by the Estimator.
 
@@ -350,6 +360,8 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):
                 the training job are used for the transform job.
             role (str): The ``ExecutionRoleArn`` IAM Role ARN for the ``Model``, which is also used during
                 transform jobs. If not specified, the role from the Estimator will be used.
+            volume_kms_key (str): Optional. KMS key ID for encrypting the volume attached to the ML
+                compute instance (default: None).
         """
         self._ensure_latest_training_job()
 
@@ -360,7 +372,7 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):
                            output_path=output_path, output_kms_key=output_kms_key, accept=accept,
                            max_concurrent_transforms=max_concurrent_transforms, max_payload=max_payload,
                            env=env, tags=tags, base_transform_job_name=self.base_job_name,
-                           sagemaker_session=self.sagemaker_session)
+                           volume_kms_key=volume_kms_key, sagemaker_session=self.sagemaker_session)
 
     @property
     def training_job_analytics(self):
@@ -369,6 +381,16 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):
         if self._current_job_name is None:
             raise ValueError('Estimator is not associated with a TrainingJob')
         return TrainingJobAnalytics(self._current_job_name, sagemaker_session=self.sagemaker_session)
+
+    def get_vpc_config(self, vpc_config_override=vpc_utils.VPC_CONFIG_DEFAULT):
+        """
+        Returns VpcConfig dict either from this Estimator's subnets and security groups,
+        or else validate and return an optional override value.
+        """
+        if vpc_config_override is vpc_utils.VPC_CONFIG_DEFAULT:
+            return vpc_utils.to_dict(self.subnets, self.security_group_ids)
+        else:
+            return vpc_utils.sanitize(vpc_config_override)
 
     def _ensure_latest_training_job(self, error_message='Estimator is not associated with a training job'):
         if self.latest_training_job is None:
@@ -427,9 +449,9 @@ class Estimator(EstimatorBase):
     """
 
     def __init__(self, image_name, role, train_instance_count, train_instance_type,
-                 train_volume_size=30, train_max_run=24 * 60 * 60, input_mode='File',
-                 output_path=None, output_kms_key=None, base_job_name=None, sagemaker_session=None,
-                 hyperparameters=None, tags=None, subnets=None, security_group_ids=None):
+                 train_volume_size=30, train_volume_kms_key=None, train_max_run=24 * 60 * 60,
+                 input_mode='File', output_path=None, output_kms_key=None, base_job_name=None,
+                 sagemaker_session=None, hyperparameters=None, tags=None, subnets=None, security_group_ids=None):
         """Initialize an ``Estimator`` instance.
 
         Args:
@@ -443,6 +465,8 @@ class Estimator(EstimatorBase):
             train_volume_size (int): Size in GB of the EBS volume to use for storing input data
                 during training (default: 30). Must be large enough to store training data if File Mode is used
                 (which is the default).
+            train_volume_kms_key (str): Optional. KMS key ID for encrypting EBS volume attached to the
+                training instance (default: None).
             train_max_run (int): Timeout in seconds for training (default: 24 * 60 * 60).
                 After this amount of time Amazon SageMaker terminates the job regardless of its current status.
             input_mode (str): The input mode that the algorithm supports (default: 'File'). Valid modes:
@@ -462,11 +486,16 @@ class Estimator(EstimatorBase):
                 Amazon SageMaker APIs and any other AWS services needed. If not specified, the estimator creates one
                 using the default AWS configuration chain.
             hyperparameters (dict): Dictionary containing the hyperparameters to initialize this estimator with.
+            tags (list[dict]): List of tags for labeling a training job. For more, see
+                https://docs.aws.amazon.com/sagemaker/latest/dg/API_Tag.html.
+            subnets (list[str]): List of subnet ids. If not specified training job will be created without VPC config.
+            security_group_ids (list[str]): List of security group ids. If not specified training job will be created
+                without VPC config.
         """
         self.image_name = image_name
         self.hyperparam_dict = hyperparameters.copy() if hyperparameters else {}
         super(Estimator, self).__init__(role, train_instance_count, train_instance_type,
-                                        train_volume_size, train_max_run, input_mode,
+                                        train_volume_size, train_volume_kms_key, train_max_run, input_mode,
                                         output_path, output_kms_key, base_job_name, sagemaker_session,
                                         tags, subnets, security_group_ids)
 
@@ -490,7 +519,7 @@ class Estimator(EstimatorBase):
         return self.hyperparam_dict
 
     def create_model(self, role=None, image=None, predictor_cls=None, serializer=None, deserializer=None,
-                     content_type=None, accept=None, **kwargs):
+                     content_type=None, accept=None, vpc_config_override=vpc_utils.VPC_CONFIG_DEFAULT, **kwargs):
         """
         Create a model to deploy.
 
@@ -506,6 +535,10 @@ class Estimator(EstimatorBase):
                 response Accept content type.
             content_type (str): The invocation ContentType, overriding any content_type from the serializer
             accept (str): The invocation Accept, overriding any accept from the deserializer.
+            vpc_config_override (dict[str, list[str]]): Optional override for VpcConfig set on the model.
+                Default: use subnets and security groups from this Estimator.
+                * 'Subnets' (list[str]): List of subnet ids.
+                * 'SecurityGroupIds' (list[str]): List of security group ids.
 
             The serializer, deserializer, content_type, and accept arguments are only used to define a default
             RealTimePredictor. They are ignored if an explicit predictor class is passed in. Other arguments
@@ -520,8 +553,9 @@ class Estimator(EstimatorBase):
 
         role = role or self.role
 
-        return Model(self.model_data, image or self.train_image(), role, sagemaker_session=self.sagemaker_session,
-                     predictor_cls=predictor_cls, **kwargs)
+        return Model(self.model_data, image or self.train_image(), role,
+                     vpc_config=self.get_vpc_config(vpc_config_override),
+                     sagemaker_session=self.sagemaker_session, predictor_cls=predictor_cls, **kwargs)
 
     @classmethod
     def _prepare_init_params_from_job_description(cls, job_details):
@@ -567,10 +601,10 @@ class Framework(EstimatorBase):
                 Valid values are defined in the Python logging module.
             code_location (str): Name of the S3 bucket where custom code is uploaded (default: None).
                 If not specified, default bucket created by ``sagemaker.session.Session`` is used.
-            **kwargs: Additional kwargs passed to the ``EstimatorBase`` constructor.
             image_name (str): An alternate image name to use instead of the official Sagemaker image
                 for the framework. This is useful to run one of the Sagemaker supported frameworks
                 with an image containing custom dependencies.
+            **kwargs: Additional kwargs passed to the ``EstimatorBase`` constructor.
         """
         super(Framework, self).__init__(**kwargs)
         self.source_dir = source_dir
@@ -757,7 +791,7 @@ class Framework(EstimatorBase):
 
     def transformer(self, instance_count, instance_type, strategy=None, assemble_with=None, output_path=None,
                     output_kms_key=None, accept=None, env=None, max_concurrent_transforms=None,
-                    max_payload=None, tags=None, role=None, model_server_workers=None):
+                    max_payload=None, tags=None, role=None, model_server_workers=None, volume_kms_key=None):
         """Return a ``Transformer`` that uses a SageMaker Model based on the training job. It reuses the
         SageMaker Session and base job name used by the Estimator.
 
@@ -781,6 +815,8 @@ class Framework(EstimatorBase):
                 transform jobs. If not specified, the role from the Estimator will be used.
             model_server_workers (int): Optional. The number of worker processes used by the inference server.
                 If None, server will use one worker per vCPU.
+            volume_kms_key (str): Optional. KMS key ID for encrypting the volume attached to the ML
+                compute instance (default: None).
         """
         self._ensure_latest_training_job()
         role = role or self.role
@@ -789,7 +825,8 @@ class Framework(EstimatorBase):
 
         container_def = model.prepare_container_def(instance_type)
         model_name = model.name or name_from_image(container_def['Image'])
-        self.sagemaker_session.create_model(model_name, role, container_def)
+        vpc_config = model.vpc_config
+        self.sagemaker_session.create_model(model_name, role, container_def, vpc_config)
 
         transform_env = model.env.copy()
         if env is not None:
@@ -800,7 +837,7 @@ class Framework(EstimatorBase):
                            output_path=output_path, output_kms_key=output_kms_key, accept=accept,
                            max_concurrent_transforms=max_concurrent_transforms, max_payload=max_payload,
                            env=transform_env, tags=tags, base_transform_job_name=self.base_job_name,
-                           sagemaker_session=self.sagemaker_session)
+                           volume_kms_key=volume_kms_key, sagemaker_session=self.sagemaker_session)
 
 
 def _s3_uri_prefix(channel_name, s3_data):

@@ -1,4 +1,4 @@
-.. image:: branding/icon/sagemaker-banner.png
+.. image:: https://github.com/aws/sagemaker-python-sdk/raw/master/branding/icon/sagemaker-banner.png
     :height: 100px
     :alt: SageMaker
 
@@ -36,11 +36,12 @@ Table of Contents
 8. `BYO Docker Containers with SageMaker Estimators <#byo-docker-containers-with-sagemaker-estimators>`__
 9. `SageMaker Automatic Model Tuning <#sagemaker-automatic-model-tuning>`__
 10. `SageMaker Batch Transform <#sagemaker-batch-transform>`__
-11. `BYO Model <#byo-model>`__
+11. `Secure Training and Inference with VPC <#secure-training-and-inference-with-vpc>`__
+12. `BYO Model <#byo-model>`__
 
 
 Installing the SageMaker Python SDK
-----------------------------
+-----------------------------------
 
 The SageMaker Python SDK is built to PyPI and can be installed with pip as follows:
 
@@ -91,8 +92,8 @@ To run the integration tests, the following prerequisites must be met
 1. Access to an AWS account to run the tests on
 2. AWS account credentials available to boto3 clients used in the tests
 3. The AWS account has an IAM role named :code:`SageMakerRole`
-4. The libraries listed in the ``extra_require`` object in in ``setup.py`` for ``test`` are installed. You can do this by running the following command:
- :code:`pip install --upgrade .[test]`
+4. The libraries listed in the ``extras_require`` object in ``setup.py`` for ``test`` are installed.
+   You can do this by running the following command: :code:`pip install --upgrade .[test]`
 
 You can run integ tests by issuing the following command:
 
@@ -142,7 +143,7 @@ The following sections of this document explain how to use the different estimat
 
 
 Using Estimators
----------------
+----------------
 
 Here is an end to end example of how to use a SageMaker Estimator:
 
@@ -152,6 +153,7 @@ Here is an end to end example of how to use a SageMaker Estimator:
 
     # Configure an MXNet Estimator (no training happens yet)
     mxnet_estimator = MXNet('train.py',
+                            role="SageMakerRole",
                             train_instance_type='ml.p2.xlarge',
                             train_instance_count = 1)
 
@@ -181,6 +183,7 @@ We can take the example in  `Using Estimators <#using-estimators>`__ , and use e
 
     # Configure an MXNet Estimator (no training happens yet)
     mxnet_estimator = MXNet('train.py',
+                            role="SageMakerRole",
                             train_instance_type='local',
                             train_instance_count=1)
 
@@ -256,7 +259,7 @@ TensorFlow SageMaker Estimators
 
 By using TensorFlow SageMaker ``Estimators``, you can train and host TensorFlow models on Amazon SageMaker.
 
-Supported versions of TensorFlow: ``1.4.1``, ``1.5.0``, ``1.6.0``, ``1.7.0``, ``1.8.0``, ``1.9.0``.
+Supported versions of TensorFlow: ``1.4.1``, ``1.5.0``, ``1.6.0``, ``1.7.0``, ``1.8.0``, ``1.9.0``, ``1.10.0``.
 
 We recommend that you use the latest supported version, because that's where we focus most of our development efforts.
 
@@ -286,9 +289,12 @@ PyTorch SageMaker Estimators
 
 With PyTorch SageMaker ``Estimators``, you can train and host PyTorch models on Amazon SageMaker.
 
-Supported versions of PyTorch: ``0.4.0``.
+Supported versions of PyTorch: ``0.4.0``, ``1.0.0.dev`` ("Preview").
 
 We recommend that you use the latest supported version, because that's where we focus most of our development efforts.
+
+You can try the "Preview" version of PyTorch by specifying ``'1.0.0.dev'`` for ``framework_version`` when creating your PyTorch estimator.
+This will ensure you're using the latest version of ``torch-nightly``.
 
 For more information about PyTorch, see https://github.com/pytorch/pytorch.
 
@@ -451,6 +457,71 @@ You can also specify other attributes of your data, such as the content type.
     transformer.transform('s3://my-bucket/batch-transform-input')
 
 For more details about what can be specified here, see `API docs <https://sagemaker.readthedocs.io/en/latest/transformer.html#sagemaker.transformer.Transformer.transform>`__.
+
+
+Secure Training and Inference with VPC
+--------------------------------------
+
+Amazon SageMaker allows you to control network traffic to and from model container instances using Amazon Virtual Private Cloud (VPC).
+You can configure SageMaker to use your own private VPC in order to further protect and monitor traffic.
+
+For more information about Amazon SageMaker VPC features, and guidelines for configuring your VPC,
+see the following documentation:
+
+- `Protect Training Jobs by Using an Amazon Virtual Private Cloud <https://docs.aws.amazon.com/sagemaker/latest/dg/train-vpc.html>`__
+- `Protect Endpoints by Using an Amazon Virtual Private Cloud <https://docs.aws.amazon.com/sagemaker/latest/dg/host-vpc.html>`__
+- `Protect Data in Batch Transform Jobs by Using an Amazon Virtual Private Cloud <https://docs.aws.amazon.com/sagemaker/latest/dg/batch-vpc.html>`__
+- `Working with VPCs and Subnets <https://docs.aws.amazon.com/vpc/latest/userguide/working-with-vpcs.html>`__
+
+You can also reference or reuse the example VPC created for integration tests: `tests/integ/vpc_test_utils.py <tests/integ/vpc_test_utils.py>`__
+
+To train a model using your own VPC, set the optional parameters ``subnets`` and ``security_group_ids`` on an ``Estimator``:
+
+.. code:: python
+
+    from sagemaker.mxnet import MXNet
+
+    # Configure an MXNet Estimator with subnets and security groups from your VPC
+    mxnet_vpc_estimator = MXNet('train.py',
+                            train_instance_type='ml.p2.xlarge',
+                            train_instance_count = 1,
+                            subnets=['subnet-1', 'subnet-2'],
+                            security_group_ids=['sg-1'])
+
+    # SageMaker Training Job will set VpcConfig and container instances will run in your VPC
+    mxnet_vpc_estimator.fit('s3://my_bucket/my_training_data/')
+
+When you create a ``Predictor`` from the ``Estimator`` using ``deploy()``, the same VPC configurations will be set on the SageMaker Model:
+
+.. code:: python
+
+    # Creates a SageMaker Model and Endpoint using the same VpcConfig
+    # Endpoint container instances will run in your VPC
+    mxnet_vpc_predictor = mxnet_vpc_estimator.deploy(initial_instance_count=1,
+                                                     instance_type='ml.p2.xlarge')
+
+    # You can also set ``vpc_config_override`` to use a different VpcConfig
+    other_vpc_config = {'Subnets': ['subnet-3', 'subnet-4'],
+                        'SecurityGroupIds': ['sg-2']}
+    mxnet_predictor_other_vpc = mxnet_vpc_estimator.deploy(initial_instance_count=1,
+                                                           instance_type='ml.p2.xlarge',
+                                                           vpc_config_override=other_vpc_config)
+
+    # Setting ``vpc_config_override=None`` will disable VpcConfig
+    mxnet_predictor_no_vpc = mxnet_vpc_estimator.deploy(initial_instance_count=1,
+                                                        instance_type='ml.p2.xlarge',
+                                                        vpc_config_override=None)
+
+Likewise, when you create ``Transformer`` from the ``Estimator`` using ``transformer()``, the same VPC configurations will be set on the SageMaker Model:
+
+.. code:: python
+
+    # Creates a SageMaker Model using the same VpcConfig
+    mxnet_vpc_transformer = mxnet_vpc_estimator.transformer(instance_count=1,
+                                                            instance_type='ml.p2.xlarge')
+
+    # Transform Job container instances will run in your VPC
+    mxnet_vpc_transformer.transform('s3://my-bucket/batch-transform-input')
 
 
 FAQ

@@ -25,7 +25,8 @@ from sagemaker.utils import name_from_image, get_config_value
 class Model(object):
     """A SageMaker ``Model`` that can be deployed to an ``Endpoint``."""
 
-    def __init__(self, model_data, image, role, predictor_cls=None, env=None, name=None, sagemaker_session=None):
+    def __init__(self, model_data, image, role, predictor_cls=None, env=None, name=None, vpc_config=None,
+                 sagemaker_session=None):
         """Initialize an SageMaker ``Model``.
 
         Args:
@@ -40,6 +41,9 @@ class Model(object):
                this function on the created endpoint name.
             env (dict[str, str]): Environment variables to run with ``image`` when hosted in SageMaker (default: None).
             name (str): The model name. If None, a default model name will be selected on each ``deploy``.
+            vpc_config (dict[str, list[str]]): The VpcConfig set on the model (default: None)
+                * 'Subnets' (list[str]): List of subnet ids.
+                * 'SecurityGroupIds' (list[str]): List of security group ids.
             sagemaker_session (sagemaker.session.Session): A SageMaker Session object, used for SageMaker
                interactions (default: None). If not specified, one is created using the default AWS configuration chain.
         """
@@ -49,6 +53,7 @@ class Model(object):
         self.predictor_cls = predictor_cls
         self.env = env or {}
         self.name = name
+        self.vpc_config = vpc_config
         self.sagemaker_session = sagemaker_session
         self._model_name = None
 
@@ -73,6 +78,8 @@ class Model(object):
         If ``self.predictor_cls`` is not None, this method returns a the result of invoking
         ``self.predictor_cls`` on the created endpoint name.
 
+        The name of the created model is accessible in the ``name`` field of this ``Model`` after deploy returns
+
         The name of the created endpoint is accessible in the ``endpoint_name``
         field of this ``Model`` after deploy returns.
 
@@ -82,7 +89,6 @@ class Model(object):
                 ``Endpoint`` created from this ``Model``.
             endpoint_name (str): The name of the endpoint to create (default: None).
                 If not specified, a unique endpoint name will be created.
-            tags (list[dict[str, str]]): A list of key-value pairs for tagging the endpoint (default: None).
 
         Returns:
             callable[string, sagemaker.session.Session] or None: Invocation of ``self.predictor_cls`` on
@@ -95,10 +101,10 @@ class Model(object):
                 self.sagemaker_session = Session()
 
         container_def = self.prepare_container_def(instance_type)
-        model_name = self.name or name_from_image(container_def['Image'])
-        self.sagemaker_session.create_model(model_name, self.role, container_def)
-        production_variant = sagemaker.production_variant(model_name, instance_type, initial_instance_count)
-        self.endpoint_name = endpoint_name or model_name
+        self.name = self.name or name_from_image(container_def['Image'])
+        self.sagemaker_session.create_model(self.name, self.role, container_def, vpc_config=self.vpc_config)
+        production_variant = sagemaker.production_variant(self.name, instance_type, initial_instance_count)
+        self.endpoint_name = endpoint_name or self.name
         self.sagemaker_session.endpoint_from_production_variants(self.endpoint_name, [production_variant], tags)
         if self.predictor_cls:
             return self.predictor_cls(self.endpoint_name, self.sagemaker_session)
@@ -121,7 +127,7 @@ class FrameworkModel(Model):
 
     def __init__(self, model_data, image, role, entry_point, source_dir=None, predictor_cls=None, env=None, name=None,
                  enable_cloudwatch_metrics=False, container_log_level=logging.INFO, code_location=None,
-                 sagemaker_session=None):
+                 sagemaker_session=None, **kwargs):
         """Initialize a ``FrameworkModel``.
 
         Args:
@@ -148,9 +154,10 @@ class FrameworkModel(Model):
                 If not specified, default bucket created by ``sagemaker.session.Session`` is used.
             sagemaker_session (sagemaker.session.Session): A SageMaker Session object, used for SageMaker
                interactions (default: None). If not specified, one is created using the default AWS configuration chain.
+            **kwargs: Keyword arguments passed to the ``Model`` initializer.
         """
         super(FrameworkModel, self).__init__(model_data, image, role, predictor_cls=predictor_cls, env=env, name=name,
-                                             sagemaker_session=sagemaker_session)
+                                             sagemaker_session=sagemaker_session, **kwargs)
         self.entry_point = entry_point
         self.source_dir = source_dir
         self.enable_cloudwatch_metrics = enable_cloudwatch_metrics

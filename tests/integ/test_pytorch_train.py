@@ -36,6 +36,7 @@ def fixture_training_job(sagemaker_session, pytorch_full_version):
 
 
 @pytest.mark.continuous_testing
+@pytest.mark.regional_testing
 def test_sync_fit_deploy(pytorch_training_job, sagemaker_session):
     # TODO: add tests against local mode when it's ready to be used
     endpoint_name = 'test-pytorch-sync-fit-attach-deploy{}'.format(sagemaker_timestamp())

@@ -16,6 +16,7 @@ from sagemaker.estimator import Framework
 from sagemaker.fw_utils import framework_name_from_image, framework_version_from_tag
 from sagemaker.chainer.defaults import CHAINER_VERSION
 from sagemaker.chainer.model import ChainerModel
+from sagemaker.vpc_utils import VPC_CONFIG_DEFAULT
 
 
 class Chainer(Framework):
@@ -98,7 +99,7 @@ class Chainer(Framework):
         hyperparameters.update(Framework._json_encode_hyperparameters(additional_hyperparameters))
         return hyperparameters
 
-    def create_model(self, model_server_workers=None, role=None):
+    def create_model(self, model_server_workers=None, role=None, vpc_config_override=VPC_CONFIG_DEFAULT):
         """Create a SageMaker ``ChainerModel`` object that can be deployed to an ``Endpoint``.
 
         Args:
@@ -106,6 +107,10 @@ class Chainer(Framework):
                 transform jobs. If not specified, the role from the Estimator will be used.
             model_server_workers (int): Optional. The number of worker processes used by the inference server.
                 If None, server will use one worker per vCPU.
+            vpc_config_override (dict[str, list[str]]): Optional override for VpcConfig set on the model.
+                Default: use subnets and security groups from this Estimator.
+                * 'Subnets' (list[str]): List of subnet ids.
+                * 'SecurityGroupIds' (list[str]): List of security group ids.
 
         Returns:
             sagemaker.chainer.model.ChainerModel: A SageMaker ``ChainerModel`` object.
@@ -117,7 +122,8 @@ class Chainer(Framework):
                             container_log_level=self.container_log_level, code_location=self.code_location,
                             py_version=self.py_version, framework_version=self.framework_version,
                             model_server_workers=model_server_workers, image=self.image_name,
-                            sagemaker_session=self.sagemaker_session)
+                            sagemaker_session=self.sagemaker_session,
+                            vpc_config=self.get_vpc_config(vpc_config_override))
 
     @classmethod
     def _prepare_init_params_from_job_description(cls, job_details):

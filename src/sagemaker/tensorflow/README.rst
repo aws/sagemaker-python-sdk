@@ -6,7 +6,7 @@ TensorFlow SageMaker Estimators allow you to run your own TensorFlow
 training algorithms on SageMaker Learner, and to host your own TensorFlow
 models on SageMaker Hosting.
 
-Supported versions of TensorFlow: ``1.4.1``, ``1.5.0``, ``1.6.0``, ``1.7.0``, ``1.8.0``, ``1.9.0``.
+Supported versions of TensorFlow: ``1.4.1``, ``1.5.0``, ``1.6.0``, ``1.7.0``, ``1.8.0``, ``1.9.0``, ``1.10.0``.
 
 Training with TensorFlow
 ~~~~~~~~~~~~~~~~~~~~~~~~
@@ -647,6 +647,38 @@ When the ``deploy`` call finishes, the created SageMaker Endpoint is ready for p
 how to make predictions against the Endpoint, how to use different content-types in your requests, and how to extend the Web server
 functionality.
 
+Deploying directly from model artifacts
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+If you already have existing model artifacts, you can skip training and deploy them directly to an endpoint:
+
+.. code:: python
+
+  from sagemaker.tensorflow import TensorFlowModel
+
+  tf_model = TensorFlowModel(model_data='s3://mybucket/model.tar.gz',
+                             role='MySageMakerRole',
+                             entry_point='entry.py',
+                             name='model_name')
+
+  predictor = tf_model.deploy(initial_instance_count=1, instance_type='ml.c4.xlarge')
+
+You can also optionally specify a pip `requirements file <https://pip.pypa.io/en/stable/reference/pip_install/#requirements-file-format>`_ if you need to install additional packages into the deployed
+runtime environment by including it in your source_dir and specifying it in the ``'SAGEMAKER_REQUIREMENTS'`` env variable:
+
+.. code:: python
+
+  from sagemaker.tensorflow import TensorFlowModel
+
+  tf_model = TensorFlowModel(model_data='s3://mybucket/model.tar.gz',
+                             role='MySageMakerRole',
+                             entry_point='entry.py',
+                             source_dir='my_src', # directory which contains entry_point script and requirements file
+                             name='model_name',
+                             env={'SAGEMAKER_REQUIREMENTS': 'requirements.txt'}) # path relative to source_dir
+
+  predictor = tf_model.deploy(initial_instance_count=1, instance_type='ml.c4.xlarge')
+
 
 Making predictions against a SageMaker Endpoint
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -819,7 +851,10 @@ If your TFRecords are compressed, you can train on Gzipped TF Records by passing
 
 .. code:: python
 
-    tf_estimator.fit('s3://bucket/path/to/training/data', compression='Gzip')
+    from sagemaker.session import s3_input
+
+    train_s3_input = s3_input('s3://bucket/path/to/training/data', compression='Gzip')
+    tf_estimator.fit(train_s3_input) 
 
 
 You can learn more about ``PipeModeDataset`` in the sagemaker-tensorflow-extensions repository: https://github.com/aws/sagemaker-tensorflow-extensions

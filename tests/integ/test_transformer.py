@@ -22,8 +22,10 @@ import pytest
 from sagemaker import KMeans
 from sagemaker.mxnet import MXNet
 from sagemaker.transformer import Transformer
-from tests.integ import DATA_DIR, TRAINING_DEFAULT_TIMEOUT_MINUTES
+from tests.integ import DATA_DIR, TRAINING_DEFAULT_TIMEOUT_MINUTES, TRANSFORM_DEFAULT_TIMEOUT_MINUTES
+from tests.integ.kms_utils import get_or_create_kms_key
 from tests.integ.timeout import timeout
+from tests.integ.vpc_test_utils import get_or_create_vpc_resources
 
 
 @pytest.mark.continuous_testing
@@ -47,8 +49,18 @@ def test_transform_mxnet(sagemaker_session):
     transform_input = mx.sagemaker_session.upload_data(path=transform_input_path,
                                                        key_prefix=transform_input_key_prefix)
 
-    transformer = _create_transformer_and_transform_job(mx, transform_input)
-    transformer.wait()
+    sts_client = sagemaker_session.boto_session.client('sts')
+    account_id = sts_client.get_caller_identity()['Account']
+    kms_client = sagemaker_session.boto_session.client('kms')
+    kms_key_arn = get_or_create_kms_key(kms_client, account_id)
+
+    transformer = _create_transformer_and_transform_job(mx, transform_input, kms_key_arn)
+    with timeout(minutes=TRANSFORM_DEFAULT_TIMEOUT_MINUTES):
+        transformer.wait()
+
+    job_desc = transformer.sagemaker_session.sagemaker_client.describe_transform_job(
+        TransformJobName=transformer.latest_transform_job.name)
+    assert kms_key_arn == job_desc['TransformResources']['VolumeKmsKeyId']
 
 
 @pytest.mark.continuous_testing
@@ -87,10 +99,49 @@ def test_attach_transform_kmeans(sagemaker_session):
 
     attached_transformer = Transformer.attach(transformer.latest_transform_job.name,
                                               sagemaker_session=sagemaker_session)
-    attached_transformer.wait()
+    with timeout(minutes=TRANSFORM_DEFAULT_TIMEOUT_MINUTES):
+        attached_transformer.wait()
 
 
-def _create_transformer_and_transform_job(estimator, transform_input):
-    transformer = estimator.transformer(1, 'ml.m4.xlarge')
+def test_transform_mxnet_vpc(sagemaker_session):
+    data_path = os.path.join(DATA_DIR, 'mxnet_mnist')
+    script_path = os.path.join(data_path, 'mnist.py')
+
+    ec2_client = sagemaker_session.boto_session.client('ec2')
+    subnet_ids, security_group_id = get_or_create_vpc_resources(ec2_client,
+                                                                sagemaker_session.boto_session.region_name)
+
+    mx = MXNet(entry_point=script_path, role='SageMakerRole', train_instance_count=1,
+               train_instance_type='ml.c4.xlarge', sagemaker_session=sagemaker_session,
+               subnets=subnet_ids, security_group_ids=[security_group_id])
+
+    train_input = mx.sagemaker_session.upload_data(path=os.path.join(data_path, 'train'),
+                                                   key_prefix='integ-test-data/mxnet_mnist/train')
+    test_input = mx.sagemaker_session.upload_data(path=os.path.join(data_path, 'test'),
+                                                  key_prefix='integ-test-data/mxnet_mnist/test')
+
+    with timeout(minutes=TRAINING_DEFAULT_TIMEOUT_MINUTES):
+        mx.fit({'train': train_input, 'test': test_input})
+
+    job_desc = sagemaker_session.sagemaker_client.describe_training_job(TrainingJobName=mx.latest_training_job.name)
+    assert set(subnet_ids) == set(job_desc['VpcConfig']['Subnets'])
+    assert [security_group_id] == job_desc['VpcConfig']['SecurityGroupIds']
+
+    transform_input_path = os.path.join(data_path, 'transform', 'data.csv')
+    transform_input_key_prefix = 'integ-test-data/mxnet_mnist/transform'
+    transform_input = mx.sagemaker_session.upload_data(path=transform_input_path,
+                                                       key_prefix=transform_input_key_prefix)
+
+    transformer = _create_transformer_and_transform_job(mx, transform_input)
+    with timeout(minutes=TRANSFORM_DEFAULT_TIMEOUT_MINUTES):
+        transformer.wait()
+
+    model_desc = sagemaker_session.sagemaker_client.describe_model(ModelName=transformer.model_name)
+    assert set(subnet_ids) == set(model_desc['VpcConfig']['Subnets'])
+    assert [security_group_id] == model_desc['VpcConfig']['SecurityGroupIds']
+
+
+def _create_transformer_and_transform_job(estimator, transform_input, volume_kms_key=None):
+    transformer = estimator.transformer(1, 'ml.m4.xlarge', volume_kms_key=volume_kms_key)
     transformer.transform(transform_input, content_type='text/csv')
     return transformer

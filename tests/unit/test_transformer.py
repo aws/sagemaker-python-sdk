@@ -23,6 +23,7 @@ JOB_NAME = 'job'
 
 INSTANCE_COUNT = 1
 INSTANCE_TYPE = 'ml.m4.xlarge'
+KMS_KEY_ID = 'kms-key-id'
 
 S3_DATA_TYPE = 'S3Prefix'
 S3_BUCKET = 'bucket'
@@ -48,7 +49,8 @@ def sagemaker_session():
 @pytest.fixture()
 def transformer(sagemaker_session):
     return Transformer(MODEL_NAME, INSTANCE_COUNT, INSTANCE_TYPE,
-                       output_path=OUTPUT_PATH, sagemaker_session=sagemaker_session)
+                       output_path=OUTPUT_PATH, sagemaker_session=sagemaker_session,
+                       volume_kms_key=KMS_KEY_ID)
 
 
 @patch('sagemaker.transformer._TransformJob.start_new')
@@ -178,7 +180,8 @@ def test_prepare_init_params_from_job_description_all_keys(transformer):
         'ModelName': MODEL_NAME,
         'TransformResources': {
             'InstanceCount': INSTANCE_COUNT,
-            'InstanceType': INSTANCE_TYPE
+            'InstanceType': INSTANCE_TYPE,
+            'VolumeKmsKeyId': KMS_KEY_ID
         },
         'BatchStrategy': None,
         'TransformOutput': {
@@ -197,6 +200,7 @@ def test_prepare_init_params_from_job_description_all_keys(transformer):
     assert init_params['model_name'] == MODEL_NAME
     assert init_params['instance_count'] == INSTANCE_COUNT
     assert init_params['instance_type'] == INSTANCE_TYPE
+    assert init_params['volume_kms_key'] == KMS_KEY_ID
 
 
 # _TransformJob tests
@@ -227,6 +231,7 @@ def test_load_config(transformer):
         'resource_config': {
             'InstanceCount': INSTANCE_COUNT,
             'InstanceType': INSTANCE_TYPE,
+            'VolumeKmsKeyId': KMS_KEY_ID,
         },
     }
 
@@ -292,8 +297,8 @@ def test_prepare_output_config_with_optional_params():
 
 
 def test_prepare_resource_config():
-    config = _TransformJob._prepare_resource_config(INSTANCE_COUNT, INSTANCE_TYPE)
-    assert config == {'InstanceCount': INSTANCE_COUNT, 'InstanceType': INSTANCE_TYPE}
+    config = _TransformJob._prepare_resource_config(INSTANCE_COUNT, INSTANCE_TYPE, KMS_KEY_ID)
+    assert config == {'InstanceCount': INSTANCE_COUNT, 'InstanceType': INSTANCE_TYPE, 'VolumeKmsKeyId': KMS_KEY_ID}
 
 
 def test_transform_job_wait(sagemaker_session):
