@@ -24,6 +24,7 @@ ROLE = 'myimrole'
 EXPANDED_ROLE = 'arn:aws:iam::111111111111:role/ExpandedRole'
 IMAGE = 'myimage'
 FULL_CONTAINER_DEF = {'Environment': {}, 'Image': IMAGE, 'ModelDataUrl': 's3://mybucket/mymodel'}
+VPC_CONFIG = {'Subnets': ['subnet-foo'], 'SecurityGroups': ['sg-foo']}
 INITIAL_INSTANCE_COUNT = 1
 INSTANCE_TYPE = 'ml.c4.xlarge'
 REGION = 'us-west-2'
@@ -38,14 +39,15 @@ def sagemaker_session():
 
 
 def test_create_model(sagemaker_session):
-
-    returned_name = sagemaker_session.create_model(name=MODEL_NAME, role=ROLE, primary_container=FULL_CONTAINER_DEF)
+    returned_name = sagemaker_session.create_model(name=MODEL_NAME, role=ROLE, primary_container=FULL_CONTAINER_DEF,
+                                                   vpc_config=VPC_CONFIG)
 
     assert returned_name == MODEL_NAME
     sagemaker_session.sagemaker_client.create_model.assert_called_once_with(
         ModelName=MODEL_NAME,
         PrimaryContainer=FULL_CONTAINER_DEF,
-        ExecutionRoleArn=EXPANDED_ROLE)
+        ExecutionRoleArn=EXPANDED_ROLE,
+        VpcConfig=VPC_CONFIG)
 
 
 def test_create_model_expand_primary_container(sagemaker_session):

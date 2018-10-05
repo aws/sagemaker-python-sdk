@@ -70,7 +70,7 @@ class DummyFramework(Framework):
         return IMAGE_NAME
 
     def create_model(self, role=None, model_server_workers=None):
-        return DummyFrameworkModel(self.sagemaker_session)
+        return DummyFrameworkModel(self.sagemaker_session, vpc_config=self.get_vpc_config())
 
     @classmethod
     def _prepare_init_params_from_job_description(cls, job_details):
@@ -310,6 +310,10 @@ def test_attach_framework(sagemaker_session):
             'S3OutputPath': 's3://place/output/neo',
         },
         'TrainingJobOutput': {'S3TrainingJobOutput': 's3://here/output.tar.gz'},
+        'VpcConfig': {
+            'Subnets': ['foo'],
+            'SecurityGroupIds': ['bar']
+        }
     }
     sagemaker_session.sagemaker_client.describe_training_job = Mock(name='describe_training_job',
                                                                     return_value=returned_job_description)
@@ -326,6 +330,8 @@ def test_attach_framework(sagemaker_session):
     assert framework_estimator.hyperparameters()['training_steps'] == '100'
     assert framework_estimator.source_dir == 's3://some/sourcedir.tar.gz'
     assert framework_estimator.entry_point == 'iris-dnn-classifier.py'
+    assert framework_estimator.subnets == ['foo']
+    assert framework_estimator.security_group_ids == ['bar']
 
 
 def test_attach_framework_with_tuning(sagemaker_session):
@@ -463,7 +469,7 @@ def test_framework_transformer_creation(name_from_image, sagemaker_session):
     transformer = fw.transformer(INSTANCE_COUNT, INSTANCE_TYPE)
 
     name_from_image.assert_called_with(MODEL_IMAGE)
-    sagemaker_session.create_model.assert_called_with(MODEL_IMAGE, ROLE, MODEL_CONTAINER_DEF)
+    sagemaker_session.create_model.assert_called_with(MODEL_IMAGE, ROLE, MODEL_CONTAINER_DEF, None)
 
     assert isinstance(transformer, Transformer)
     assert transformer.sagemaker_session == sagemaker_session
@@ -477,9 +483,11 @@ def test_framework_transformer_creation(name_from_image, sagemaker_session):
 @patch('sagemaker.estimator.name_from_image', return_value=MODEL_IMAGE)
 def test_framework_transformer_creation_with_optional_params(name_from_image, sagemaker_session):
     base_name = 'foo'
+    vpc_config = {'Subnets': ['foo'], 'SecurityGroupIds': ['bar']}
     fw = DummyFramework(entry_point=SCRIPT_PATH, role=ROLE, train_instance_count=INSTANCE_COUNT,
                         train_instance_type=INSTANCE_TYPE, sagemaker_session=sagemaker_session,
-                        base_job_name=base_name)
+                        base_job_name=base_name,
+                        subnets=vpc_config['Subnets'], security_group_ids=vpc_config['SecurityGroupIds'])
     fw.latest_training_job = _TrainingJob(sagemaker_session, JOB_NAME)
 
     strategy = 'MultiRecord'
@@ -496,7 +504,7 @@ def test_framework_transformer_creation_with_optional_params(name_from_image, sa
                                  max_concurrent_transforms=max_concurrent_transforms, max_payload=max_payload,
                                  volume_kms_key=kms_key, env=env, role=new_role, model_server_workers=1)
 
-    sagemaker_session.create_model.assert_called_with(MODEL_IMAGE, new_role, MODEL_CONTAINER_DEF)
+    sagemaker_session.create_model.assert_called_with(MODEL_IMAGE, new_role, MODEL_CONTAINER_DEF, vpc_config)
     assert transformer.strategy == strategy
     assert transformer.assemble_with == assemble_with
     assert transformer.output_path == OUTPUT_PATH
@@ -731,11 +739,12 @@ def test_generic_to_deploy(sagemaker_session):
     assert args == HP_TRAIN_CALL
 
     sagemaker_session.create_model.assert_called_once()
-    args = sagemaker_session.create_model.call_args[0]
+    args, kwargs = sagemaker_session.create_model.call_args
     assert args[0].startswith(IMAGE_NAME)
     assert args[1] == ROLE
     assert args[2]['Image'] == IMAGE_NAME
     assert args[2]['ModelDataUrl'] == MODEL_DATA
+    assert kwargs['vpc_config'] is None
 
     assert isinstance(predictor, RealTimePredictor)
     assert predictor.endpoint.startswith(IMAGE_NAME)
@@ -781,6 +790,53 @@ def test_generic_training_job_analytics(sagemaker_session):
     e.fit({'train': 's3://bucket/training-prefix'})
     a = e.training_job_analytics
     assert a is not None
+
+
+def test_generic_create_model_vpc_config_override(sagemaker_session):
+    vpc_config_a = {'Subnets': ['foo'], 'SecurityGroupIds': ['bar']}
+    vpc_config_b = {'Subnets': ['foo', 'bar'], 'SecurityGroupIds': ['baz']}
+
+    e = Estimator(IMAGE_NAME, ROLE, INSTANCE_COUNT, INSTANCE_TYPE,
+                  sagemaker_session=sagemaker_session)
+    e.fit({'train': 's3://bucket/training-prefix'})
+    assert e.get_vpc_config() is None
+    assert e.create_model().vpc_config is None
+    assert e.create_model(vpc_config_override=vpc_config_a).vpc_config == vpc_config_a
+    assert e.create_model(vpc_config_override=None).vpc_config is None
+
+    e.subnets = vpc_config_a['Subnets']
+    e.security_group_ids = vpc_config_a['SecurityGroupIds']
+    assert e.get_vpc_config() == vpc_config_a
+    assert e.create_model().vpc_config == vpc_config_a
+    assert e.create_model(vpc_config_override=vpc_config_b).vpc_config == vpc_config_b
+    assert e.create_model(vpc_config_override=None).vpc_config is None
+
+    with pytest.raises(ValueError):
+        e.get_vpc_config(vpc_config_override={'invalid'})
+    with pytest.raises(ValueError):
+        e.create_model(vpc_config_override={'invalid'})
+
+
+def test_generic_deploy_vpc_config_override(sagemaker_session):
+    vpc_config_a = {'Subnets': ['foo'], 'SecurityGroupIds': ['bar']}
+    vpc_config_b = {'Subnets': ['foo', 'bar'], 'SecurityGroupIds': ['baz']}
+
+    e = Estimator(IMAGE_NAME, ROLE, INSTANCE_COUNT, INSTANCE_TYPE,
+                  sagemaker_session=sagemaker_session)
+    e.fit({'train': 's3://bucket/training-prefix'})
+    e.deploy(INSTANCE_COUNT, INSTANCE_TYPE)
+    assert sagemaker_session.create_model.call_args_list[0][1]['vpc_config'] is None
+
+    e.subnets = vpc_config_a['Subnets']
+    e.security_group_ids = vpc_config_a['SecurityGroupIds']
+    e.deploy(INSTANCE_COUNT, INSTANCE_TYPE)
+    assert sagemaker_session.create_model.call_args_list[1][1]['vpc_config'] == vpc_config_a
+
+    e.deploy(INSTANCE_COUNT, INSTANCE_TYPE, vpc_config_override=vpc_config_b)
+    assert sagemaker_session.create_model.call_args_list[2][1]['vpc_config'] == vpc_config_b
+
+    e.deploy(INSTANCE_COUNT, INSTANCE_TYPE, vpc_config_override=None)
+    assert sagemaker_session.create_model.call_args_list[3][1]['vpc_config'] is None
 
 
 @patch('sagemaker.estimator.LocalSession')

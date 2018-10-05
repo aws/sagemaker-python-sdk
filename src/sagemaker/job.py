@@ -60,7 +60,7 @@ class _Job(object):
                                                         estimator.train_volume_size,
                                                         estimator.train_volume_kms_key)
         stop_condition = _Job._prepare_stop_condition(estimator.train_max_run)
-        vpc_config = _Job._prepare_vpc_config(estimator.subnets, estimator.security_group_ids)
+        vpc_config = estimator.get_vpc_config()
 
         return {'input_config': input_config,
                 'role': role,
@@ -149,13 +149,6 @@ class _Job(object):
             resource_config['VolumeKmsKeyId'] = train_volume_kms_key
 
         return resource_config
-
-    @staticmethod
-    def _prepare_vpc_config(subnets, security_group_ids):
-        if subnets is None or security_group_ids is None:
-            return None
-        return {'Subnets': subnets,
-                'SecurityGroupIds': security_group_ids}
 
     @staticmethod
     def _prepare_stop_condition(max_run):
