@@ -336,3 +336,24 @@ def mock_response(expected_response, sagemaker_session, content_type):
     sagemaker_session.sagemaker_runtime_client.invoke_endpoint.return_value = {
         'ContentType': content_type,
         'Body': io.BytesIO(expected_response)}
+
+
+def test_json_serialize_dict():
+    data = {'tensor1': [1, 2, 3], 'tensor2': [4, 5, 6]}
+    serialized = tf_json_serializer(data)
+    # deserialize again for assertion, since dict order is not guaranteed
+    deserialized = json.loads(serialized)
+    assert deserialized == data
+
+
+def test_json_serialize_dict_with_numpy():
+    data = {'tensor1': np.asarray([1, 2, 3]), 'tensor2': np.asarray([4, 5, 6])}
+    serialized = tf_json_serializer(data)
+    # deserialize again for assertion, since dict order is not guaranteed
+    deserialized = json.loads(serialized)
+    assert deserialized == {'tensor1': [1, 2, 3], 'tensor2': [4, 5, 6]}
+
+
+def test_json_serialize_numpy():
+    data = np.asarray([[1, 2, 3], [4, 5, 6]])
+    assert tf_json_serializer(data) == '[[1, 2, 3], [4, 5, 6]]'

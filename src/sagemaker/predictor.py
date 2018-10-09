@@ -16,6 +16,7 @@ import codecs
 import csv
 import json
 import numpy as np
+import six
 from six import StringIO, BytesIO
 
 from sagemaker.content_types import CONTENT_TYPE_JSON, CONTENT_TYPE_CSV, CONTENT_TYPE_NPY
@@ -237,46 +238,26 @@ class _JsonSerializer(object):
         Returns:
             object: Serialized data used for the request.
         """
-        if isinstance(data, np.ndarray):
-            if not data.size > 0:
-                raise ValueError("empty array can't be serialized")
-            return _json_serialize_numpy_array(data)
-
-        if isinstance(data, list):
-            if not len(data) > 0:
-                raise ValueError("empty array can't be serialized")
-            return _json_serialize_python_object(data)
-
         if isinstance(data, dict):
-            if not len(data.keys()) > 0:
-                raise ValueError("empty dictionary can't be serialized")
-            return _json_serialize_python_object(data)
+            # convert each value in dict from a numpy array to a list if necessary, so they can be json serialized
+            return json.dumps({k: _ndarray_to_list(v) for k, v in six.iteritems(data)})
 
         # files and buffers
         if hasattr(data, 'read'):
             return _json_serialize_from_buffer(data)
 
-        raise ValueError("Unable to handle input format: {}".format(type(data)))
+        return json.dumps(_ndarray_to_list(data))
 
 
 json_serializer = _JsonSerializer()
 
 
-def _json_serialize_numpy_array(data):
-    # numpy arrays can't be serialized but we know they have uniform type
-    return _json_serialize_python_object(data.tolist())
-
-
-def _json_serialize_python_object(data):
-    return _json_serialize_object(data)
+def _ndarray_to_list(data):
+    return data.tolist() if isinstance(data, np.ndarray) else data
 
 
 def _json_serialize_from_buffer(buff):
     return buff.read()
-
-
-def _json_serialize_object(data):
-    return json.dumps(data)
 
 
 class _JsonDeserializer(object):

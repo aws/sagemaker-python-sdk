@@ -26,6 +26,7 @@ import subprocess
 import sys
 import tarfile
 import tempfile
+
 from six.moves.urllib.parse import urlparse
 from threading import Thread
 
@@ -588,22 +589,50 @@ def _aws_credentials(session):
         creds = session.get_credentials()
         access_key = creds.access_key
         secret_key = creds.secret_key
+        token = creds.token
 
-        # if there is a Token as part of the credentials, it is not safe to
-        # pass them as environment variables because the Token is not static, this is the case
-        # when running under an IAM Role in EC2 for example. By not passing credentials the
-        # SDK in the container will look for the credentials in the EC2 Metadata Service.
-        if creds.token is None:
+        # The presence of a token indicates the credentials are short-lived and as such are risky to be used as they
+        # might expire while running.
+        # Long-lived credentials are available either through
+        # 1. boto session
+        # 2. EC2 Metadata Service (SageMaker Notebook instances or EC2 instances with roles attached them)
+        # Short-lived credentials available via boto session are permitted to support running on machines with no
+        # EC2 Metadata Service but a warning is provided about their danger
+        if token is None:
+            logger.info("Using the long-lived AWS credentials found in session")
             return [
                 'AWS_ACCESS_KEY_ID=%s' % (str(access_key)),
                 'AWS_SECRET_ACCESS_KEY=%s' % (str(secret_key))
             ]
+        elif not _aws_credentials_available_in_metadata_service():
+            logger.warn("Using the short-lived AWS credentials found in session. They might expire while running.")
+            return [
+                'AWS_ACCESS_KEY_ID=%s' % (str(access_key)),
+                'AWS_SECRET_ACCESS_KEY=%s' % (str(secret_key)),
+                'AWS_SESSION_TOKEN=%s' % (str(token))
+            ]
         else:
+            logger.info("No AWS credentials found in session but credentials from EC2 Metadata Service are available.")
             return None
     except Exception as e:
-        logger.info('Could not get AWS creds: %s' % e)
+        logger.info('Could not get AWS credentials: %s' % e)
 
     return None
+
+
+def _aws_credentials_available_in_metadata_service():
+    import botocore
+    from botocore.credentials import InstanceMetadataProvider
+    from botocore.utils import InstanceMetadataFetcher
+
+    session = botocore.session.Session()
+    instance_metadata_provider = InstanceMetadataProvider(
+        iam_role_fetcher=InstanceMetadataFetcher(
+            timeout=session.get_config_variable('metadata_service_timeout'),
+            num_attempts=session.get_config_variable('metadata_service_num_attempts'),
+            user_agent=session.user_agent())
+    )
+    return not (instance_metadata_provider.load() is None)
 
 
 def _write_json_file(filename, content):

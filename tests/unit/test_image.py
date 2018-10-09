@@ -12,6 +12,11 @@
 # language governing permissions and limitations under the License.
 from __future__ import absolute_import
 
+import random
+import string
+
+from botocore.credentials import Credentials
+
 import base64
 import json
 import os
@@ -22,7 +27,7 @@ import yaml
 from mock import call, patch, Mock, MagicMock
 
 import sagemaker
-from sagemaker.local.image import _SageMakerContainer
+from sagemaker.local.image import _SageMakerContainer, _aws_credentials
 
 REGION = 'us-west-2'
 BUCKET_NAME = 'mybucket'
@@ -447,3 +452,46 @@ def test_ecr_login_needed(check_output):
 
     check_output.assert_called_with(expected_command, shell=True)
     session_mock.client('ecr').get_authorization_token.assert_called_with(registryIds=['520713654638'])
+
+
+def test__aws_credentials_with_long_lived_credentials():
+    credentials = Credentials(access_key=_random_string(), secret_key=_random_string(), token=None)
+    session = Mock()
+    session.get_credentials.return_value = credentials
+
+    aws_credentials = _aws_credentials(session)
+
+    assert aws_credentials == [
+        'AWS_ACCESS_KEY_ID=%s' % credentials.access_key,
+        'AWS_SECRET_ACCESS_KEY=%s' % credentials.secret_key
+    ]
+
+
+@patch('sagemaker.local.image._aws_credentials_available_in_metadata_service')
+def test__aws_credentials_with_short_lived_credentials_and_ec2_metadata_service_having_credentials(mock):
+    credentials = Credentials(access_key=_random_string(), secret_key=_random_string(), token=_random_string())
+    session = Mock()
+    session.get_credentials.return_value = credentials
+    mock.return_value = True
+    aws_credentials = _aws_credentials(session)
+
+    assert aws_credentials is None
+
+
+@patch('sagemaker.local.image._aws_credentials_available_in_metadata_service')
+def test__aws_credentials_with_short_lived_credentials_and_ec2_metadata_service_having_no_credentials(mock):
+    credentials = Credentials(access_key=_random_string(), secret_key=_random_string(), token=_random_string())
+    session = Mock()
+    session.get_credentials.return_value = credentials
+    mock.return_value = False
+    aws_credentials = _aws_credentials(session)
+
+    assert aws_credentials == [
+        'AWS_ACCESS_KEY_ID=%s' % credentials.access_key,
+        'AWS_SECRET_ACCESS_KEY=%s' % credentials.secret_key,
+        'AWS_SESSION_TOKEN=%s' % credentials.token
+    ]
+
+
+def _random_string(size=6, chars=string.ascii_uppercase):
+    return ''.join(random.choice(chars) for x in range(size))
