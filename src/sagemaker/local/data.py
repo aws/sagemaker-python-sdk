@@ -37,7 +37,8 @@ def get_data_source_instance(data_source, sagemaker_session):
         sagemaker_session (:class:`sagemaker.session.Session`): a SageMaker Session to interact with
             S3 if required.
 
-    Returns (:class:`sagemaker.local.data.DataSource`): an Instance of a Data Source
+    Returns
+        :class:`sagemaker.local.data.DataSource`: an Instance of a Data Source
 
     """
     parsed_uri = urlparse(data_source)
@@ -55,7 +56,8 @@ def get_splitter_instance(split_type):
         split_type (str): either 'Line' or 'RecordIO'. Can be left as None to signal no data split
             will happen.
 
-    Returns (:class:`sagemaker.local.data.Splitter`): an Instance of a Splitter
+    Returns
+        :class:`sagemaker.local.data.Splitter`: an Instance of a Splitter
 
     """
     if split_type is None:
@@ -75,7 +77,8 @@ def get_batch_strategy_instance(strategy, splitter):
         strategy (str): Either 'SingleRecord' or 'MultiRecord'
         splitter (:class:`sagemaker.local.data.Splitter): splitter to get the data from.
 
-    Returns (:class:`sagemaker.local.data.BatchStrategy`): an Instance of a BatchStrategy
+    Returns
+        :class:`sagemaker.local.data.BatchStrategy`: an Instance of a BatchStrategy
 
     """
     if strategy == 'SingleRecord':
@@ -93,7 +96,7 @@ class DataSource(with_metaclass(ABCMeta, object)):
         """Retrieve the list of absolute paths to all the files in this data source.
 
         Returns:
-             List[str] List of absolute paths.
+             List[str]: List of absolute paths.
         """
         pass
 
@@ -170,7 +173,7 @@ class S3DataSource(DataSource):
         """Retrieve the list of absolute paths to all the files in this data source.
 
         Returns:
-             List[str] List of absolute paths.
+             List[str]: List of absolute paths.
         """
         return self.files.get_file_list()
 
@@ -192,7 +195,8 @@ class Splitter(with_metaclass(ABCMeta, object)):
         Args:
             file (str): path to the file to split
 
-        Returns: generator for the individual records that were split from the file
+        Returns:
+            generator for the individual records that were split from the file
         """
         pass
 
@@ -218,13 +222,13 @@ class NoneSplitter(Splitter):
 
 class LineSplitter(Splitter):
     """Split records by new line.
-
     """
 
     def split(self, file):
         """Split a file into records using a specific strategy
 
         This LineSplitter splits the file on each line break.
+
         Args:
             file (str): path to the file to split
 
@@ -245,6 +249,7 @@ class RecordIOSplitter(Splitter):
         """Split a file into records using a specific strategy
 
         This RecordIOSplitter splits the data into individual RecordIO records.
+
         Args:
             file (str): path to the file to split
 
@@ -258,10 +263,11 @@ class RecordIOSplitter(Splitter):
 class BatchStrategy(with_metaclass(ABCMeta, object)):
 
     def __init__(self, splitter):
-        """
+        """Create a Batch Strategy Instance
 
         Args:
-            splitter:
+            splitter (:class:`sagemaker.local.data.Splitter`): A Splitter to pre-process the data
+                before batching.
         """
         self.splitter = splitter
 
@@ -274,7 +280,8 @@ class BatchStrategy(with_metaclass(ABCMeta, object)):
             size (int): maximum size in MB that each group of records will be fitted to.
                 passing 0 means unlimited size.
 
-        Returns: generator of records
+        Returns:
+            generator of records
         """
         pass
 
@@ -285,6 +292,12 @@ class MultiRecordStrategy(BatchStrategy):
     Will group up as many records as possible within the payload specified.
     """
     def __init__(self, splitter):
+        """Create a MultiRecordStrategy Instance
+
+        Args:
+            splitter (:class:`sagemaker.local.data.Splitter`): A Splitter to pre-process the data
+                before batching.
+        """
         super(MultiRecordStrategy, self).__init__(splitter)
 
     def pad(self, file, size=6):
@@ -295,7 +308,8 @@ class MultiRecordStrategy(BatchStrategy):
             size (int): maximum size in MB that each group of records will be fitted to.
                 passing 0 means unlimited size.
 
-        Returns: generator of records
+        Returns:
+            generator of records
         """
         buffer = ''
         for element in self.splitter.split(file):
@@ -315,6 +329,12 @@ class SingleRecordStrategy(BatchStrategy):
     If a single record does not fit within the payload specified it will throw a RuntimeError.
     """
     def __init__(self, splitter):
+        """Create a SingleRecordStrategy Instance
+
+        Args:
+            splitter (:class:`sagemaker.local.data.Splitter`): A Splitter to pre-process the data
+                before batching.
+        """
         super(SingleRecordStrategy, self).__init__(splitter)
 
     def pad(self, file, size=6):
@@ -328,7 +348,8 @@ class SingleRecordStrategy(BatchStrategy):
             size (int): maximum size in MB that each group of records will be fitted to.
                 passing 0 means unlimited size.
 
-        Returns: generator of records
+        Returns:
+             generator of records
         """
         for element in self.splitter.split(file):
             if _validate_payload_size(element, size):
@@ -350,7 +371,8 @@ def _validate_payload_size(payload, size):
         payload: data that will be checked
         size (int): max size in MB
 
-    Returns (bool): True if within bounds. if size=0 it will always return True
+    Returns:
+         bool: True if within bounds. if size=0 it will always return True
 
     Raises:
         RuntimeError: If the payload is larger a runtime error is thrown.

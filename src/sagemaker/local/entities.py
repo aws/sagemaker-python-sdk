@@ -105,6 +105,15 @@ class _LocalTransformJob(object):
         self.state = _LocalTransformJob._CREATING
 
     def start(self, input_data, output_data, transform_resources, **kwargs):
+        """Start the Local Transform Job
+
+        Args:
+            input_data (dict): Describes the dataset to be transformed and the location where it is stored.
+            output_data (dict): Identifies the location where to save the results from the transform job
+            transform_resources (dict): compute instances for the transform job. Currently only supports local or
+                local_gpu
+            **kwargs: additional arguments coming from the boto request object
+        """
         self.transform_resources = transform_resources
         self.input_data = input_data
         self.output_data = output_data
@@ -146,6 +155,14 @@ class _LocalTransformJob(object):
         self.state = self._COMPLETED
 
     def describe(self):
+        """Describe this _LocalTransformJob
+
+        The response is a JSON-like dictionary that follows the response of the
+        boto describe_transform_job() API.
+
+        Returns:
+            dict: description of this _LocalTransformJob
+        """
         response = {
             'TransformJobStatus': self.state,
             'ModelName': self.model_name,
@@ -179,7 +196,7 @@ class _LocalTransformJob(object):
             **kwargs: existing transform arguments
 
         Returns:
-            (dict) All the environment variables that should be set in the container
+            dict: All the environment variables that should be set in the container
 
         """
         environment = {}
@@ -214,7 +231,7 @@ class _LocalTransformJob(object):
             **kwargs: current transform arguments
 
         Returns:
-            (dict) key/values for the default parameters that are missing.
+            dict: key/values for the default parameters that are missing.
         """
         defaults = {}
         if 'BatchStrategy' not in kwargs:
