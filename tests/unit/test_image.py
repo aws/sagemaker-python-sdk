@@ -263,8 +263,8 @@ def test_train(download_folder, _cleanup, popen, _stream_output, LocalSession,
 @patch('sagemaker.local.local_session.LocalSession')
 @patch('sagemaker.local.image._stream_output')
 @patch('sagemaker.local.image._SageMakerContainer._cleanup')
-@patch('sagemaker.local.image._SageMakerContainer._download_folder')
-def test_train_with_hyperparameters_without_job_name(_download_folder, _cleanup, _stream_output, LocalSession, tmpdir):
+@patch('sagemaker.utils.download_folder')
+def test_train_with_hyperparameters_without_job_name(download_folder, _cleanup, _stream_output, LocalSession, tmpdir):
 
     directories = [str(tmpdir.mkdir('container-root')), str(tmpdir.mkdir('data'))]
     with patch('sagemaker.local.image._SageMakerContainer._create_tmp_folder',
