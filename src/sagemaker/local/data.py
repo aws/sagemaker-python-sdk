@@ -58,7 +58,6 @@ def get_splitter_instance(split_type):
 
     Returns
         :class:`sagemaker.local.data.Splitter`: an Instance of a Splitter
-
     """
     if split_type is None:
         return NoneSplitter()
@@ -79,7 +78,6 @@ def get_batch_strategy_instance(strategy, splitter):
 
     Returns
         :class:`sagemaker.local.data.BatchStrategy`: an Instance of a BatchStrategy
-
     """
     if strategy == 'SingleRecord':
         return SingleRecordStrategy(splitter)
@@ -126,10 +124,10 @@ class LocalFileDataSource(DataSource):
              List[str] List of absolute paths.
         """
         if os.path.isdir(self.root_path):
-            files = [os.path.join(self.root_path, f) for f in os.listdir(self.root_path)
-                     if os.path.isfile(os.path.join(self.root_path, f))]
+            return [os.path.join(self.root_path, f) for f in os.listdir(self.root_path)
+                    if os.path.isfile(os.path.join(self.root_path, f))]
         else:
-            files = [self.root_path]
+            return [self.root_path]
 
         return files
 

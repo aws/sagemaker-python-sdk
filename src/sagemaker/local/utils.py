@@ -41,6 +41,7 @@ def copy_directory_structure(destination_directory, relative_path):
 
 def move_to_destination(source, destination, sagemaker_session):
     """move source to destination. Can handle uploading to S3
+
     Args:
         source (str): root directory to move
         destination (str): file:// or s3:// URI that source will be moved to.
@@ -54,7 +55,7 @@ def move_to_destination(source, destination, sagemaker_session):
         path = parsed_uri.path.strip('/')
         sagemaker_session.upload_data(source, bucket, path)
     else:
-        raise ValueError('Invalid destination URI, must be s3:// or file://')
+        raise ValueError('Invalid destination URI, must be s3:// or file:// got: %s' % destination)
 
     shutil.rmtree(source)
 

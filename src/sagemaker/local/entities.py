@@ -206,7 +206,6 @@ class _LocalTransformJob(object):
             environment['SAGEMAKER_MAX_PAYLOAD_IN_MB'] = str(kwargs['MaxPayloadInMB'])
 
         if 'BatchStrategy' in kwargs:
-            strategy_env_value = ''
             if kwargs['BatchStrategy'] == 'SingleRecord':
                 strategy_env_value = 'SINGLE_RECORD'
             elif kwargs['BatchStrategy'] == 'MultiRecord':
@@ -216,6 +215,8 @@ class _LocalTransformJob(object):
             environment['SAGEMAKER_BATCH_STRATEGY'] = strategy_env_value
 
         # we only do 1 max concurrent transform in Local Mode
+        if 'MaxConcurrentTransforms' in kwargs and int(kwargs['MaxConcurrentTransforms']) > 1:
+            logger.warning('Local Mode only supports 1 ConcurrentTransform. Setting MaxConcurrentTransforms to 1')
         environment['SAGEMAKER_MAX_CONCURRENT_TRANSFORMS'] = '1'
 
         # if there were environment variables passed to the Transformer we will pass them to the
