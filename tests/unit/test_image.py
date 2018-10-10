@@ -56,17 +56,12 @@ INPUT_DATA_CONFIG = [
 ]
 HYPERPARAMETERS = {'a': 1,
                    'b': json.dumps('bee'),
-                   'sagemaker_submit_directory': json.dumps('s3://my_bucket/code'),
-                   'sagemaker_job_name': json.dumps(TRAINING_JOB_NAME)}
+                   'sagemaker_submit_directory': json.dumps('s3://my_bucket/code')}
 
-HYPERPARAMETERS_WITHOUT_JOB_NAME = {'a': 1,
-                                    'b': json.dumps('bee'),
-                                    'sagemaker_submit_directory': json.dumps('s3://my_bucket/code')}
 
 LOCAL_CODE_HYPERPARAMETERS = {'a': 1,
                               'b': 2,
-                              'sagemaker_submit_directory': json.dumps('file:///tmp/code'),
-                              'sagemaker_job_name': json.dumps(TRAINING_JOB_NAME)}
+                              'sagemaker_submit_directory': json.dumps('file:///tmp/code')}
 
 
 @pytest.fixture()
@@ -277,7 +272,7 @@ def test_train_with_hyperparameters_without_job_name(_download_folder, _cleanup,
         instance_count = 2
         image = 'my-image'
         sagemaker_container = _SageMakerContainer('local', instance_count, image, sagemaker_session=LocalSession)
-        sagemaker_container.train(INPUT_DATA_CONFIG, HYPERPARAMETERS_WITHOUT_JOB_NAME, TRAINING_JOB_NAME)
+        sagemaker_container.train(INPUT_DATA_CONFIG, HYPERPARAMETERS, TRAINING_JOB_NAME)
 
         docker_compose_file = os.path.join(sagemaker_container.container_root, 'docker-compose.yaml')
 
