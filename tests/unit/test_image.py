@@ -266,11 +266,9 @@ def test_train(_download_folder, _cleanup, popen, _stream_output, LocalSession,
 
 @patch('sagemaker.local.local_session.LocalSession')
 @patch('sagemaker.local.image._stream_output')
-@patch('subprocess.Popen')
 @patch('sagemaker.local.image._SageMakerContainer._cleanup')
 @patch('sagemaker.local.image._SageMakerContainer._download_folder')
-def test_train_with_hyperparameters_without_job_name(_download_folder, _cleanup, popen, _stream_output, LocalSession,
-                                                     tmpdir, sagemaker_session):
+def test_train_with_hyperparameters_without_job_name(_download_folder, _cleanup, _stream_output, LocalSession, tmpdir):
 
     directories = [str(tmpdir.mkdir('container-root')), str(tmpdir.mkdir('data'))]
     with patch('sagemaker.local.image._SageMakerContainer._create_tmp_folder',
@@ -278,34 +276,15 @@ def test_train_with_hyperparameters_without_job_name(_download_folder, _cleanup,
 
         instance_count = 2
         image = 'my-image'
-        sagemaker_container = _SageMakerContainer('local', instance_count, image, sagemaker_session=sagemaker_session)
+        sagemaker_container = _SageMakerContainer('local', instance_count, image, sagemaker_session=LocalSession)
         sagemaker_container.train(INPUT_DATA_CONFIG, HYPERPARAMETERS_WITHOUT_JOB_NAME, TRAINING_JOB_NAME)
-
-        channel_dir = os.path.join(directories[1], 'b')
-        download_folder_calls = [call('my-own-bucket', 'prefix', channel_dir)]
-        _download_folder.assert_has_calls(download_folder_calls)
 
         docker_compose_file = os.path.join(sagemaker_container.container_root, 'docker-compose.yaml')
 
-        call_args = popen.call_args[0][0]
-        assert call_args is not None
-
-        expected = ['docker-compose', '-f', docker_compose_file, 'up', '--build', '--abort-on-container-exit']
-        for i, v in enumerate(expected):
-            assert call_args[i] == v
-
         with open(docker_compose_file, 'r') as f:
             config = yaml.load(f)
-            assert len(config['services']) == instance_count
             for h in sagemaker_container.hosts:
-                assert config['services'][h]['image'] == image
-                assert config['services'][h]['command'] == 'train'
-                assert 'AWS_REGION={}'.format(REGION) in config['services'][h]['environment']
                 assert 'TRAINING_JOB_NAME={}'.format(TRAINING_JOB_NAME) in config['services'][h]['environment']
-
-        # assert that expected by sagemaker container output directories exist
-        assert os.path.exists(os.path.join(sagemaker_container.container_root, 'output'))
-        assert os.path.exists(os.path.join(sagemaker_container.container_root, 'output/data'))
 
 
 @patch('sagemaker.local.local_session.LocalSession')
