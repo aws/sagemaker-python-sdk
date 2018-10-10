@@ -55,7 +55,7 @@ def move_to_destination(source, destination, sagemaker_session):
         path = parsed_uri.path.strip('/')
         sagemaker_session.upload_data(source, bucket, path)
     else:
-        raise ValueError('Invalid destination URI, must be s3:// or file:// got: %s' % destination)
+        raise ValueError('Invalid destination URI, must be s3:// or file://, got: %s' % destination)
 
     shutil.rmtree(source)
 

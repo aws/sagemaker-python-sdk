@@ -129,8 +129,6 @@ class LocalFileDataSource(DataSource):
         else:
             return [self.root_path]
 
-        return files
-
     def get_root_dir(self):
         """Retrieve the absolute path to the root directory of this data source.
 
