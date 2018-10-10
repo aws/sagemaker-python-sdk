@@ -78,12 +78,13 @@ class _SageMakerContainer(object):
         self.container_root = None
         self.container = None
 
-    def train(self, input_data_config, hyperparameters):
+    def train(self, input_data_config, hyperparameters, job_name):
         """Run a training job locally using docker-compose.
         Args:
             input_data_config (dict): The Input Data Configuration, this contains data such as the
                 channels to be used for training.
             hyperparameters (dict): The HyperParameters for the training job.
+            job_name (str): Name of the local training job being run.
 
         Returns (str): Location of the trained model.
         """
@@ -108,7 +109,7 @@ class _SageMakerContainer(object):
 
         training_env_vars = {
             REGION_ENV_NAME: self.sagemaker_session.boto_region_name,
-            TRAINING_JOB_NAME_ENV_NAME: json.loads(hyperparameters.get(sagemaker.model.JOB_NAME_PARAM_NAME)),
+            TRAINING_JOB_NAME_ENV_NAME: job_name,
         }
         compose_data = self._generate_compose_file('train', additional_volumes=volumes,
                                                    additional_env_vars=training_env_vars)
