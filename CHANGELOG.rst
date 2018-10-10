@@ -2,9 +2,9 @@
 CHANGELOG
 =========
 
-=========
-1.11.2dev
-=========
+======
+1.11.2
+======
 
 * enhancement: Enable setting VPC config when creating/deploying models
 * enhancement: Local Mode: accept short lived credentials with a warning message
