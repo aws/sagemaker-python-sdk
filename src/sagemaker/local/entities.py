@@ -41,7 +41,7 @@ class _LocalTrainingJob(object):
         self.start_time = None
         self.end_time = None
 
-    def start(self, input_data_config, hyperparameters):
+    def start(self, input_data_config, hyperparameters, job_name):
         for channel in input_data_config:
             if channel['DataSource'] and 'S3DataSource' in channel['DataSource']:
                 data_distribution = channel['DataSource']['S3DataSource']['S3DataDistributionType']
@@ -57,7 +57,7 @@ class _LocalTrainingJob(object):
         self.start = datetime.datetime.now()
         self.state = self._TRAINING
 
-        self.model_artifacts = self.container.train(input_data_config, hyperparameters)
+        self.model_artifacts = self.container.train(input_data_config, hyperparameters, job_name)
         self.end = datetime.datetime.now()
         self.state = self._COMPLETED
 
