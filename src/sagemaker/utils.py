@@ -12,10 +12,12 @@
 # language governing permissions and limitations under the License.
 from __future__ import absolute_import
 
+import errno
+import os
+import re
 import sys
 import time
 
-import re
 from datetime import datetime
 from functools import wraps
 
@@ -191,6 +193,67 @@ def secondary_training_status_message(job_description, prev_description):
             status_strs.append('{} {} - {}'.format(time_str, transition['Status'], message))
 
         return '\n'.join(status_strs)
+
+
+def download_folder(bucket_name, prefix, target, sagemaker_session):
+    """Download a folder from S3 to a local path
+
+    Args:
+        bucket_name (str): S3 bucket name
+        prefix (str): S3 prefix within the bucket that will be downloaded. Can be a single file.
+        target (str): destination path where the downloaded items will be placed
+        sagemaker_session (:class:`sagemaker.session.Session`): a sagemaker session to interact with S3.
+    """
+    boto_session = sagemaker_session.boto_session
+
+    s3 = boto_session.resource('s3')
+    bucket = s3.Bucket(bucket_name)
+
+    prefix = prefix.lstrip('/')
+
+    # there is a chance that the prefix points to a file and not a 'directory' if that is the case
+    # we should just download it.
+    objects = list(bucket.objects.filter(Prefix=prefix))
+
+    if len(objects) > 0 and objects[0].key == prefix and prefix[-1] != '/':
+        s3.Object(bucket_name, prefix).download_file(os.path.join(target, os.path.basename(prefix)))
+        return
+
+    # the prefix points to an s3 'directory' download the whole thing
+    for obj_sum in bucket.objects.filter(Prefix=prefix):
+        # if obj_sum is a folder object skip it.
+        if obj_sum.key != '' and obj_sum.key[-1] == '/':
+            continue
+        obj = s3.Object(obj_sum.bucket_name, obj_sum.key)
+        s3_relative_path = obj_sum.key[len(prefix):].lstrip('/')
+        file_path = os.path.join(target, s3_relative_path)
+
+        try:
+            os.makedirs(os.path.dirname(file_path))
+        except OSError as exc:
+            # EEXIST means the folder already exists, this is safe to skip
+            # anything else will be raised.
+            if exc.errno != errno.EEXIST:
+                raise
+            pass
+        obj.download_file(file_path)
+
+
+def download_file(bucket_name, path, target, sagemaker_session):
+    """Download a Single File from S3 into a local path
+
+    Args:
+        bucket_name (str): S3 bucket name
+        path (str): file path within the bucket
+        target (str): destination directory for the downloaded file.
+        sagemaker_session (:class:`sagemaker.session.Session`): a sagemaker session to interact with S3.
+    """
+    path = path.lstrip('/')
+    boto_session = sagemaker_session.boto_session
+
+    s3 = boto_session.resource('s3')
+    bucket = s3.Bucket(bucket_name)
+    bucket.download_file(path, target)
 
 
 class DeferredError(object):

@@ -70,18 +70,32 @@ def test_local_transform_job_container_environment(local_transform_job):
     assert 'MY_ENV' in container_env
 
 
-def test_local_transform_job_defaults(local_transform_job):
+def test_local_transform_job_defaults_with_empty_args(local_transform_job):
     transform_kwargs = {}
     defaults = local_transform_job._get_required_defaults(**transform_kwargs)
     assert 'BatchStrategy' in defaults
     assert 'MaxPayloadInMB' in defaults
 
 
+def test_local_transform_job_defaults_with_batch_strategy(local_transform_job):
+    transform_kwargs = {'BatchStrategy': 'my-own'}
+    defaults = local_transform_job._get_required_defaults(**transform_kwargs)
+    assert 'BatchStrategy' not in defaults
+    assert 'MaxPayloadInMB' in defaults
+
+
+def test_local_transform_job_defaults_with_max_payload(local_transform_job):
+    transform_kwargs = {'MaxPayloadInMB': 322}
+    defaults = local_transform_job._get_required_defaults(**transform_kwargs)
+    assert 'BatchStrategy' in defaults
+    assert 'MaxPayloadInMB' not in defaults
+
+
 @patch('sagemaker.local.entities._SageMakerContainer', Mock())
 @patch('sagemaker.local.entities._wait_for_serving_container', Mock())
 @patch('sagemaker.local.entities._perform_request')
-@patch('sagemaker.local.entities._LocalTransformJob._batch_inference')
-def test_start_local_transform_job(_batch_inference, _perform_request, local_transform_job):
+@patch('sagemaker.local.entities._LocalTransformJob._perform_batch_inference')
+def test_start_local_transform_job(_perform_batch_inference, _perform_request, local_transform_job):
     input_data = {}
     output_data = {}
     transform_resources = {'InstanceType': 'local'}
@@ -92,17 +106,17 @@ def test_start_local_transform_job(_batch_inference, _perform_request, local_tra
     local_transform_job.primary_container['ModelDataUrl'] = 'file:///some/model'
     local_transform_job.start(input_data, output_data, transform_resources, Environment={})
 
-    _batch_inference.assert_called()
+    _perform_batch_inference.assert_called()
     response = local_transform_job.describe()
     assert response['TransformJobStatus'] == 'Completed'
 
 
-@patch('sagemaker.local.entities.BatchStrategyFactory')
-@patch('sagemaker.local.entities.DataSourceFactory')
+@patch('sagemaker.local.data.get_batch_strategy_instance')
+@patch('sagemaker.local.data.get_data_source_instance')
 @patch('sagemaker.local.entities.move_to_destination')
 @patch('sagemaker.local.entities.get_config_value')
-def test_local_transform_job_batch_inference(get_config_value, move_to_destination, DataSourceFactory,
-                                             BatchStrategyFactory, local_transform_job, tmpdir):
+def test_local_transform_job_perform_batch_inference(get_config_value, move_to_destination, get_data_source_instance,
+                                                     get_batch_strategy_instance, local_transform_job, tmpdir):
     input_data = {
         'DataSource': {
             'S3DataSource': {
@@ -125,11 +139,11 @@ def test_local_transform_job_batch_inference(get_config_value, move_to_destinati
     data_source = Mock()
     data_source.get_file_list.return_value = ['/tmp/file1', '/tmp/file2']
     data_source.get_root_dir.return_value = '/tmp'
-    DataSourceFactory.get_instance.return_value = data_source
+    get_data_source_instance.return_value = data_source
 
     batch_strategy = Mock()
     batch_strategy.pad.return_value = 'some data'
-    BatchStrategyFactory.get_instance.return_value = batch_strategy
+    get_batch_strategy_instance.return_value = batch_strategy
 
     get_config_value.return_value = str(tmpdir)
 
@@ -141,7 +155,7 @@ def test_local_transform_job_batch_inference(get_config_value, move_to_destinati
 
     local_transform_job.container = Mock()
 
-    local_transform_job._batch_inference(input_data, output_data, **transform_kwargs)
+    local_transform_job._perform_batch_inference(input_data, output_data, **transform_kwargs)
 
     dir, output, session = move_to_destination.call_args[0]
     assert output == 's3://bucket/output'

@@ -226,10 +226,10 @@ Here is an end-to-end example:
     predictor.delete_endpoint()
 
 
-If you don't want to deploy your model locally, you can also choose to perform a Local Transform Job. This is useful
-if you want to test your container before creating a Sagemaker Transform Job. Note that the performance will not match
-Transform Jobs hosted on SageMaker but it is still a useful tool to ensure you have everything right, or if you are
-not dealing with huge amounts of data.
+If you don't want to deploy your model locally, you can also choose to perform a Local Batch Transform Job. This is
+useful if you want to test your container before creating a Sagemaker Transform Job. Note that the performance will
+not match Batch Transform Jobs hosted on SageMaker but it is still a useful tool to ensure you have everything right,
+or if you are not dealing with huge amounts of data.
 
 Here is an end-to-end example:
 

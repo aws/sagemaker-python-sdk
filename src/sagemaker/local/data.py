@@ -15,48 +15,112 @@ from __future__ import absolute_import
 import os
 import sys
 import tempfile
+from abc import ABCMeta
+from abc import abstractmethod
+from six import with_metaclass
+
 from six.moves.urllib.parse import urlparse
 
-from sagemaker.amazon.common import read_recordio
-from sagemaker.local.utils import download_folder
-from sagemaker.utils import get_config_value
+import sagemaker.amazon.common
+import sagemaker.local.utils
+import sagemaker.utils
 
 
-class DataSourceFactory(object):
+def get_data_source_instance(data_source, sagemaker_session):
+    """Return an Instance of :class:`sagemaker.local.data.DataSource` that can handle
+    the provided data_source URI.
 
-    @staticmethod
-    def get_instance(data_source, sagemaker_session):
-        parsed_uri = urlparse(data_source)
-        if parsed_uri.scheme == 'file':
-            return LocalFileDataSource(parsed_uri.path)
-        elif parsed_uri.scheme == 's3':
-            return S3DataSource(parsed_uri.netloc, parsed_uri.path, sagemaker_session)
+    data_source can be either file:// or s3://
+
+    Args:
+        data_source (str): a valid URI that points to a data source.
+        sagemaker_session (:class:`sagemaker.session.Session`): a SageMaker Session to interact with
+            S3 if required.
+
+    Returns (:class:`sagemaker.local.data.DataSource`): an Instance of a Data Source
+
+    """
+    parsed_uri = urlparse(data_source)
+    if parsed_uri.scheme == 'file':
+        return LocalFileDataSource(parsed_uri.path)
+    elif parsed_uri.scheme == 's3':
+        return S3DataSource(parsed_uri.netloc, parsed_uri.path, sagemaker_session)
 
 
-class DataSource(object):
+def get_splitter_instance(split_type):
+    """Return an Instance of :class:`sagemaker.local.data.Splitter` according to
+    the specified `split_type`.
 
+    Args:
+        split_type (str): either 'Line' or 'RecordIO'. Can be left as None to signal no data split
+            will happen.
+
+    Returns (:class:`sagemaker.local.data.Splitter`): an Instance of a Splitter
+
+    """
+    if split_type is None:
+        return NoneSplitter()
+    elif split_type == 'Line':
+        return LineSplitter()
+    elif split_type == 'RecordIO':
+        return RecordIOSplitter()
+    else:
+        raise ValueError('Invalid Split Type: %s' % split_type)
+
+
+def get_batch_strategy_instance(strategy, splitter):
+    """Return an Instance of :class:`sagemaker.local.data.BatchStrategy` according to `strategy`
+
+    Args:
+        strategy (str): Either 'SingleRecord' or 'MultiRecord'
+        splitter (:class:`sagemaker.local.data.Splitter): splitter to get the data from.
+
+    Returns (:class:`sagemaker.local.data.BatchStrategy`): an Instance of a BatchStrategy
+
+    """
+    if strategy == 'SingleRecord':
+        return SingleRecordStrategy(splitter)
+    elif strategy == 'MultiRecord':
+        return MultiRecordStrategy(splitter)
+    else:
+        raise ValueError('Invalid Batch Strategy: %s - Valid Strategies: "SingleRecord", "MultiRecord"')
+
+
+class DataSource(with_metaclass(ABCMeta, object)):
+
+    @abstractmethod
     def get_file_list(self):
+        """Retrieve the list of absolute paths to all the files in this data source.
+
+        Returns:
+             List[str] List of absolute paths.
+        """
         pass
 
+    @abstractmethod
     def get_root_dir(self):
+        """Retrieve the absolute path to the root directory of this data source.
+
+        Returns:
+            str: absolute path to the root directory of this data source.
+        """
         pass
 
 
 class LocalFileDataSource(DataSource):
-    """
-    Represents a data source within the local filesystem.
+    """Represents a data source within the local filesystem.
     """
 
     def __init__(self, root_path):
         self.root_path = os.path.abspath(root_path)
         if not os.path.exists(self.root_path):
-            raise RuntimeError('Invalid data source: %s Does not exist.' % self.root_path)
+            raise RuntimeError('Invalid data source: %s does not exist.' % self.root_path)
 
     def get_file_list(self):
         """Retrieve the list of absolute paths to all the files in this data source.
 
         Returns:
-             List[string] List of absolute paths.
+             List[str] List of absolute paths.
         """
         if os.path.isdir(self.root_path):
             files = [os.path.join(self.root_path, f) for f in os.listdir(self.root_path)
@@ -70,7 +134,7 @@ class LocalFileDataSource(DataSource):
         """Retrieve the absolute path to the root directory of this data source.
 
         Returns:
-            string: absolute path to the root directory of this data source.
+            str: absolute path to the root directory of this data source.
         """
         if os.path.isdir(self.root_path):
             return self.root_path
@@ -79,7 +143,7 @@ class LocalFileDataSource(DataSource):
 
 
 class S3DataSource(DataSource):
-    """Defines a data source given by a bucket and s3 prefix. The contents will be downloaded
+    """Defines a data source given by a bucket and S3 prefix. The contents will be downloaded
     and then processed as local data.
     """
 
@@ -87,45 +151,49 @@ class S3DataSource(DataSource):
         """Create an S3DataSource instance
 
         Args:
-            bucket (str): s3 bucket name
-            prefix (str): s3 prefix path to the data
-            sagemaker_session (sagemaker.Session): a sagemaker_session with the desired settings to talk to s3
-
+            bucket (str): S3 bucket name
+            prefix (str): S3 prefix path to the data
+            sagemaker_session (:class:`sagemaker.session.Session`): a sagemaker_session with the desired settings
+                to talk to S3
         """
 
         # Create a temporary dir to store the S3 contents
-        root_dir = get_config_value('local.container_root', sagemaker_session.config)
+        root_dir = sagemaker.utils.get_config_value('local.container_root', sagemaker_session.config)
         if root_dir:
             root_dir = os.path.abspath(root_dir)
 
         working_dir = tempfile.mkdtemp(dir=root_dir)
-        download_folder(bucket, prefix, working_dir, sagemaker_session)
+        sagemaker.utils.download_folder(bucket, prefix, working_dir, sagemaker_session)
         self.files = LocalFileDataSource(working_dir)
 
     def get_file_list(self):
+        """Retrieve the list of absolute paths to all the files in this data source.
+
+        Returns:
+             List[str] List of absolute paths.
+        """
         return self.files.get_file_list()
 
     def get_root_dir(self):
+        """Retrieve the absolute path to the root directory of this data source.
+
+        Returns:
+            str: absolute path to the root directory of this data source.
+        """
         return self.files.get_root_dir()
 
 
-class SplitterFactory(object):
+class Splitter(with_metaclass(ABCMeta, object)):
 
-    @staticmethod
-    def get_instance(split_type):
-        if split_type is None:
-            return NoneSplitter()
-        elif split_type == 'Line':
-            return LineSplitter()
-        elif split_type == 'RecordIO':
-            return RecordIOSplitter()
-        else:
-            raise ValueError('Invalid Split Type: %s' % split_type)
-
-
-class Splitter(object):
-
+    @abstractmethod
     def split(self, file):
+        """Split a file into records using a specific strategy
+
+        Args:
+            file (str): path to the file to split
+
+        Returns: generator for the individual records that were split from the file
+        """
         pass
 
 
@@ -134,6 +202,16 @@ class NoneSplitter(Splitter):
     """
 
     def split(self, file):
+        """Split a file into records using a specific strategy.
+
+        For this NoneSplitter there is no actual split happening and the file is returned
+        as a whole.
+
+        Args:
+            file (str): path to the file to split
+
+        Returns: generator for the individual records that were split from the file
+        """
         with open(file, 'r') as f:
             yield f.read()
 
@@ -144,6 +222,14 @@ class LineSplitter(Splitter):
     """
 
     def split(self, file):
+        """Split a file into records using a specific strategy
+
+        This LineSplitter splits the file on each line break.
+        Args:
+            file (str): path to the file to split
+
+        Returns: generator for the individual records that were split from the file
+        """
         with open(file, 'r') as f:
             for line in f:
                 yield line
@@ -156,26 +242,40 @@ class RecordIOSplitter(Splitter):
 
     """
     def split(self, file):
+        """Split a file into records using a specific strategy
+
+        This RecordIOSplitter splits the data into individual RecordIO records.
+        Args:
+            file (str): path to the file to split
+
+        Returns: generator for the individual records that were split from the file
+        """
         with open(file, 'rb') as f:
-            for record in read_recordio(f):
+            for record in sagemaker.amazon.common.read_recordio(f):
                 yield record
 
 
-class BatchStrategyFactory(object):
+class BatchStrategy(with_metaclass(ABCMeta, object)):
 
-    @staticmethod
-    def get_instance(strategy, splitter):
-        if strategy == 'SingleRecord':
-            return SingleRecordStrategy(splitter)
-        elif strategy == 'MultiRecord':
-            return MultiRecordStrategy(splitter)
-        else:
-            raise ValueError('Invalid Batch Strategy: %s - Valid Strategies: "SingleRecord", "MultiRecord"')
+    def __init__(self, splitter):
+        """
 
+        Args:
+            splitter:
+        """
+        self.splitter = splitter
 
-class BatchStrategy(object):
-
+    @abstractmethod
     def pad(self, file, size):
+        """Group together as many records as possible to fit in the specified size
+
+        Args:
+            file (str): file path to read the records from.
+            size (int): maximum size in MB that each group of records will be fitted to.
+                passing 0 means unlimited size.
+
+        Returns: generator of records
+        """
         pass
 
 
@@ -183,12 +283,20 @@ class MultiRecordStrategy(BatchStrategy):
     """Feed multiple records at a time for batch inference.
 
     Will group up as many records as possible within the payload specified.
-
     """
     def __init__(self, splitter):
-        self.splitter = splitter
+        super(MultiRecordStrategy, self).__init__(splitter)
 
     def pad(self, file, size=6):
+        """Group together as many records as possible to fit in the specified size
+
+        Args:
+            file (str): file path to read the records from.
+            size (int): maximum size in MB that each group of records will be fitted to.
+                passing 0 means unlimited size.
+
+        Returns: generator of records
+        """
         buffer = ''
         for element in self.splitter.split(file):
             if _payload_size_within_limit(buffer + element, size):
@@ -204,27 +312,30 @@ class MultiRecordStrategy(BatchStrategy):
 class SingleRecordStrategy(BatchStrategy):
     """Feed a single record at a time for batch inference.
 
-    If a single record does not fit within the payload specified it will throw a Runtime error.
+    If a single record does not fit within the payload specified it will throw a RuntimeError.
     """
     def __init__(self, splitter):
-        self.splitter = splitter
+        super(SingleRecordStrategy, self).__init__(splitter)
 
     def pad(self, file, size=6):
+        """Group together as many records as possible to fit in the specified size
+
+        This SingleRecordStrategy will not group any record and will return them one by one as
+        long as they are within the maximum size.
+
+        Args:
+            file (str): file path to read the records from.
+            size (int): maximum size in MB that each group of records will be fitted to.
+                passing 0 means unlimited size.
+
+        Returns: generator of records
+        """
         for element in self.splitter.split(file):
             if _validate_payload_size(element, size):
                 yield element
 
 
 def _payload_size_within_limit(payload, size):
-    """
-
-    Args:
-        payload:
-        size:
-
-    Returns:
-
-    """
     size_in_bytes = size * 1024 * 1024
     if size == 0:
         return True
@@ -240,10 +351,12 @@ def _validate_payload_size(payload, size):
         size (int): max size in MB
 
     Returns (bool): True if within bounds. if size=0 it will always return True
+
     Raises:
         RuntimeError: If the payload is larger a runtime error is thrown.
     """
 
-    if not _payload_size_within_limit(payload, size):
+    if _payload_size_within_limit(payload, size):
+        return True
+    else:
         raise RuntimeError('Record is larger than %sMB. Please increase your max_payload' % size)
-    return True

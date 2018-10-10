@@ -10,6 +10,7 @@
 # distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
+# language governing permissions and limitations under the License.
 from __future__ import absolute_import
 
 import random
@@ -219,7 +220,7 @@ def test_check_output():
 @patch('sagemaker.local.image._stream_output')
 @patch('subprocess.Popen')
 @patch('sagemaker.local.image._SageMakerContainer._cleanup')
-@patch('sagemaker.local.image.download_folder')
+@patch('sagemaker.utils.download_folder')
 def test_train(download_folder, _cleanup, popen, _stream_output, LocalSession,
                tmpdir, sagemaker_session):
 
@@ -263,7 +264,7 @@ def test_train(download_folder, _cleanup, popen, _stream_output, LocalSession,
 @patch('sagemaker.local.image._stream_output', side_effect=RuntimeError('this is expected'))
 @patch('subprocess.Popen')
 @patch('sagemaker.local.image._SageMakerContainer._cleanup')
-@patch('sagemaker.local.image.download_folder')
+@patch('sagemaker.utils.download_folder')
 def test_train_error(download_folder, _cleanup, popen, _stream_output, LocalSession, tmpdir, sagemaker_session):
     directories = [str(tmpdir.mkdir('container-root')), str(tmpdir.mkdir('data'))]
 
@@ -282,7 +283,7 @@ def test_train_error(download_folder, _cleanup, popen, _stream_output, LocalSess
 @patch('sagemaker.local.image._stream_output')
 @patch('subprocess.Popen')
 @patch('sagemaker.local.image._SageMakerContainer._cleanup')
-@patch('sagemaker.local.image.download_folder')
+@patch('sagemaker.utils.download_folder')
 def test_train_local_code(download_folder, _cleanup, popen, _stream_output,
                           _local_session, tmpdir, sagemaker_session):
     directories = [str(tmpdir.mkdir('container-root')), str(tmpdir.mkdir('data'))]
@@ -368,7 +369,7 @@ def test_serve_local_code(up, copy, copytree, tmpdir, sagemaker_session):
                 assert '%s:/opt/ml/code' % '/tmp/code' in volumes
 
 
-@patch('sagemaker.local.image.download_file')
+@patch('sagemaker.utils.download_file')
 @patch('tarfile.is_tarfile')
 @patch('tarfile.open', MagicMock())
 @patch('os.makedirs', Mock())

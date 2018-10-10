@@ -369,7 +369,7 @@ def test_mxnet_local_data_local_script():
 
 
 @pytest.mark.continuous_testing
-def test_local_transform_mxnet(sagemaker_local_session):
+def test_local_transform_mxnet(sagemaker_local_session, tmpdir):
     data_path = os.path.join(DATA_DIR, 'mxnet_mnist')
     script_path = os.path.join(data_path, 'mnist.py')
 
@@ -389,11 +389,9 @@ def test_local_transform_mxnet(sagemaker_local_session):
     transform_input = mx.sagemaker_session.upload_data(path=transform_input_path,
                                                        key_prefix=transform_input_key_prefix)
 
-    transformer = _create_transformer_and_transform_job(mx, transform_input)
+    output_path = 'file://%s' % (str(tmpdir))
+    transformer = mx.transformer(1, 'local', assemble_with='Line', max_payload=1, output_path=output_path)
+    transformer.transform(transform_input, content_type='text/csv', split_type='Line')
     transformer.wait()
 
-
-def _create_transformer_and_transform_job(estimator, transform_input):
-    transformer = estimator.transformer(1, 'local', assemble_with='Line', max_payload=1)
-    transformer.transform(transform_input, content_type='text/csv', split_type='Line')
-    return transformer
+    assert os.path.exists(os.path.join(str(tmpdir), 'data.csv.out'))

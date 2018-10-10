@@ -20,7 +20,7 @@ import tempfile
 import time
 import urllib3
 
-from sagemaker.local.data import BatchStrategyFactory, DataSourceFactory, SplitterFactory
+import sagemaker.local.data
 from sagemaker.local.image import _SageMakerContainer
 from sagemaker.local.utils import copy_directory_structure, move_to_destination
 from sagemaker.utils import get_config_value
@@ -141,7 +141,7 @@ class _LocalTransformJob(object):
             self.environment = kwargs['Environment']
 
         # run the batch inference requests
-        self._batch_inference(input_data, output_data, **kwargs)
+        self._perform_batch_inference(input_data, output_data, **kwargs)
         self.end_time = datetime.datetime.now()
         self.state = self._COMPLETED
 
@@ -173,7 +173,7 @@ class _LocalTransformJob(object):
         """Get all the Environment variables that will be passed to the container
 
         Certain input fields such as BatchStrategy have different values for the API vs the Environment
-        variables, su ch as SingleRecord vs SINGLE_RECORD. This method also handles this conversion.
+        variables, such as SingleRecord vs SINGLE_RECORD. This method also handles this conversion.
 
         Args:
             **kwargs: existing transform arguments
@@ -208,14 +208,13 @@ class _LocalTransformJob(object):
         return environment
 
     def _get_required_defaults(self, **kwargs):
-        """
-        Return the default values for anything that was not provided by either the user or the container
+        """Return the default values for anything that was not provided by either the user or the container
+
         Args:
             **kwargs: current transform arguments
 
         Returns:
             (dict) key/values for the default parameters that are missing.
-
         """
         defaults = {}
         if 'BatchStrategy' not in kwargs:
@@ -226,24 +225,7 @@ class _LocalTransformJob(object):
 
         return defaults
 
-    def _batch_inference(self, input_data, output_data, **kwargs):
-        input_path = input_data['DataSource']['S3DataSource']['S3Uri']
-
-        # Transform the input data to feed the serving container. We need to first gather the files
-        # from S3 or Local FileSystem. Split them as required (Line, RecordIO, None) and finally batch them
-        # according to the batch strategy and limit the request size.
-
-        batch_strategy = kwargs['BatchStrategy']
-        max_payload = int(kwargs['MaxPayloadInMB'])
-
-        data_source = DataSourceFactory.get_instance(input_path, self.local_session)
-        split_type = input_data['SplitType'] if 'SplitType' in input_data else None
-        splitter = SplitterFactory.get_instance(split_type)
-        final_data = BatchStrategyFactory.get_instance(batch_strategy, splitter)
-
-        # Output settings
-        accept = output_data['Accept'] if 'Accept' in output_data else None
-
+    def _get_working_directory(self):
         # Root dir to use for intermediate data location. To make things simple we will write here regardless
         # of the final destination. At the end the files will either be moved or uploaded to S3 and deleted.
         root_dir = get_config_value('local.container_root', self.local_session.config)
@@ -251,6 +233,31 @@ class _LocalTransformJob(object):
             root_dir = os.path.abspath(root_dir)
 
         working_dir = tempfile.mkdtemp(dir=root_dir)
+        return working_dir
+
+    def _prepare_data_transformation(self, input_data, batch_strategy):
+        input_path = input_data['DataSource']['S3DataSource']['S3Uri']
+        data_source = sagemaker.local.data.get_data_source_instance(input_path, self.local_session)
+
+        split_type = input_data['SplitType'] if 'SplitType' in input_data else None
+        splitter = sagemaker.local.data.get_splitter_instance(split_type)
+
+        batch_provider = sagemaker.local.data.get_batch_strategy_instance(batch_strategy, splitter)
+        return data_source, batch_provider
+
+    def _perform_batch_inference(self, input_data, output_data, **kwargs):
+        # Transform the input data to feed the serving container. We need to first gather the files
+        # from S3 or Local FileSystem. Split them as required (Line, RecordIO, None) and finally batch them
+        # according to the batch strategy and limit the request size.
+
+        batch_strategy = kwargs['BatchStrategy']
+        max_payload = int(kwargs['MaxPayloadInMB'])
+        data_source, batch_provider = self._prepare_data_transformation(input_data, batch_strategy)
+
+        # Output settings
+        accept = output_data['Accept'] if 'Accept' in output_data else None
+
+        working_dir = self._get_working_directory()
         dataset_dir = data_source.get_root_dir()
 
         for file in data_source.get_file_list():
@@ -261,7 +268,7 @@ class _LocalTransformJob(object):
             destination_path = os.path.join(working_dir, relative_path, filename + '.out')
 
             with open(destination_path, 'w') as f:
-                for item in final_data.pad(file, max_payload):
+                for item in batch_provider.pad(file, max_payload):
                     # call the container and add the result to inference.
                     response = self.local_session.sagemaker_runtime_client.invoke_endpoint(
                         item, '', input_data['ContentType'], accept)
