@@ -8,6 +8,7 @@ CHANGELOG
 
 * enhancement: Enable setting VPC config when creating/deploying models
 * enhancement: Local Mode: accept short lived credentials with a warning message
+* bug-fix: Local Mode: pass in job name as parameter for training environment variable
 
 =======
 1.11.1
