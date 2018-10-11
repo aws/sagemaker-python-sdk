@@ -20,7 +20,8 @@ import urllib3
 from botocore.exceptions import ClientError
 
 from sagemaker.local.image import _SageMakerContainer
-from sagemaker.local.entities import _LocalEndpointConfig, _LocalEndpoint, _LocalModel, _LocalTrainingJob
+from sagemaker.local.entities import (_LocalEndpointConfig, _LocalEndpoint, _LocalModel,
+                                      _LocalTrainingJob, _LocalTransformJob)
 from sagemaker.session import Session
 from sagemaker.utils import get_config_value
 
@@ -38,6 +39,7 @@ class LocalSagemakerClient(object):
     """
 
     _training_jobs = {}
+    _transform_jobs = {}
     _models = {}
     _endpoint_configs = {}
     _endpoints = {}
@@ -49,10 +51,7 @@ class LocalSagemakerClient(object):
             sagemaker_session (sagemaker.session.Session): a session to use to read configurations
                 from, and use its boto client.
         """
-        self.serve_container = None
         self.sagemaker_session = sagemaker_session or LocalSession()
-        self.s3_model_artifacts = None
-        self.created_endpoint = False
 
     def create_training_job(self, TrainingJobName, AlgorithmSpecification, InputDataConfig, OutputDataConfig,
                             ResourceConfig, **kwargs):
@@ -80,7 +79,7 @@ class LocalSagemakerClient(object):
         """Describe a local training job.
 
         Args:
-            TrainingJobName (str): Not used in this implmentation.
+            TrainingJobName (str): Training job name to describe.
 
         Returns: (dict) DescribeTrainingJob Response.
 
@@ -90,6 +89,19 @@ class LocalSagemakerClient(object):
             raise ClientError(error_response, 'describe_training_job')
         else:
             return LocalSagemakerClient._training_jobs[TrainingJobName].describe()
+
+    def create_transform_job(self, TransformJobName, ModelName, TransformInput, TransformOutput,
+                             TransformResources, **kwargs):
+        transform_job = _LocalTransformJob(TransformJobName, ModelName, self.sagemaker_session)
+        LocalSagemakerClient._transform_jobs[TransformJobName] = transform_job
+        transform_job.start(TransformInput, TransformOutput, TransformResources, **kwargs)
+
+    def describe_transform_job(self, TransformJobName):
+        if TransformJobName not in LocalSagemakerClient._transform_jobs:
+            error_response = {'Error': {'Code': 'ValidationException', 'Message': 'Could not find local transform job'}}
+            raise ClientError(error_response, 'describe_transform_job')
+        else:
+            return LocalSagemakerClient._transform_jobs[TransformJobName].describe()
 
     def create_model(self, ModelName, PrimaryContainer, *args, **kwargs):
         """Create a Local Model Object
@@ -154,8 +166,14 @@ class LocalSagemakerRuntimeClient(object):
 
     def invoke_endpoint(self, Body, EndpointName, ContentType, Accept):
         url = "http://localhost:%s/invocations" % self.serving_port
+        headers = {
+            'Content-type': ContentType
+        }
+        if Accept is not None:
+            headers['Accept'] = Accept
+
         r = self.http.request('POST', url, body=Body, preload_content=False,
-                              headers={'Content-type': ContentType, 'Accept': Accept})
+                              headers=headers)
 
         return {'Body': r, 'ContentType': Accept}
 

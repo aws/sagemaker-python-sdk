@@ -153,7 +153,7 @@ def write_spmatrix_to_sparse_tensor(file, array, labels=None):
 def read_records(file):
     """Eagerly read a collection of amazon Record protobuf objects from file."""
     records = []
-    for record_data in _read_recordio(file):
+    for record_data in read_recordio(file):
         record = Record()
         record.ParseFromString(record_data)
         records.append(record)
@@ -183,7 +183,7 @@ def _write_recordio(f, data):
     f.write(padding[pad])
 
 
-def _read_recordio(f):
+def read_recordio(f):
     while(True):
         try:
             read_kmagic, = struct.unpack('I', f.read(4))

@@ -226,6 +226,27 @@ Here is an end-to-end example:
     predictor.delete_endpoint()
 
 
+If you don't want to deploy your model locally, you can also choose to perform a Local Batch Transform Job. This is
+useful if you want to test your container before creating a Sagemaker Batch Transform Job. Note that the performance
+will not match Batch Transform Jobs hosted on SageMaker but it is still a useful tool to ensure you have everything
+right or if you are not dealing with huge amounts of data.
+
+Here is an end-to-end example:
+
+.. code:: python
+
+    from sagemaker.mxnet import MXNet
+
+    mxnet_estimator = MXNet('train.py',
+                            train_instance_type='local',
+                            train_instance_count=1)
+
+    mxnet_estimator.fit('file:///tmp/my_training_data')
+    transformer = mxnet_estimator.transformer(1, 'local', assemble_with='Line', max_payload=1)
+    transformer.transform('s3://my/transform/data, content_type='text/csv', split_type='Line')
+    transformer.wait()
+
+
 For detailed examples of running Docker in local mode, see:
 
 - `TensorFlow local mode example notebook <https://github.com/awslabs/amazon-sagemaker-examples/blob/master/sagemaker-python-sdk/tensorflow_distributed_mnist/tensorflow_local_mode_mnist.ipynb>`__.

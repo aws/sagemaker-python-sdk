@@ -33,7 +33,6 @@ from threading import Thread
 import yaml
 
 import sagemaker
-from sagemaker.utils import get_config_value
 
 CONTAINER_PREFIX = 'algo'
 DOCKER_COMPOSE_FILENAME = 'docker-compose.yaml'
@@ -217,9 +216,9 @@ class _SageMakerContainer(object):
             for volume in volumes:
                 host_dir, container_dir = volume.split(':')
                 if container_dir == '/opt/ml/model':
-                    self._recursive_copy(host_dir, s3_model_artifacts)
+                    sagemaker.local.utils.recursive_copy(host_dir, s3_model_artifacts)
                 elif container_dir == '/opt/ml/output':
-                    self._recursive_copy(host_dir, s3_output_artifacts)
+                    sagemaker.local.utils.recursive_copy(host_dir, s3_output_artifacts)
 
         return s3_model_artifacts
 
@@ -252,49 +251,6 @@ class _SageMakerContainer(object):
         _write_json_file(os.path.join(config_path, 'resourceconfig.json'), resource_config)
         _write_json_file(os.path.join(config_path, 'inputdataconfig.json'), json_input_data_config)
 
-    def _recursive_copy(self, src, dst):
-        for root, dirs, files in os.walk(src):
-            root = os.path.relpath(root, src)
-            current_path = os.path.join(src, root)
-            target_path = os.path.join(dst, root)
-
-            for file in files:
-                shutil.copy(os.path.join(current_path, file), os.path.join(target_path, file))
-            for dir in dirs:
-                new_dir = os.path.join(target_path, dir)
-                if not os.path.exists(new_dir):
-                    os.mkdir(os.path.join(target_path, dir))
-
-    def _download_folder(self, bucket_name, prefix, target):
-        boto_session = self.sagemaker_session.boto_session
-
-        s3 = boto_session.resource('s3')
-        bucket = s3.Bucket(bucket_name)
-
-        for obj_sum in bucket.objects.filter(Prefix=prefix):
-            # if obj_sum is a folder object skip it.
-            if obj_sum.key != '' and obj_sum.key[-1] == '/':
-                continue
-            obj = s3.Object(obj_sum.bucket_name, obj_sum.key)
-            s3_relative_path = obj_sum.key[len(prefix):].lstrip('/')
-            file_path = os.path.join(target, s3_relative_path)
-
-            try:
-                os.makedirs(os.path.dirname(file_path))
-            except OSError as exc:
-                if exc.errno != errno.EEXIST:
-                    raise
-                pass
-            obj.download_file(file_path)
-
-    def _download_file(self, bucket_name, path, target):
-        path = path.lstrip('/')
-        boto_session = self.sagemaker_session.boto_session
-
-        s3 = boto_session.resource('s3')
-        bucket = s3.Bucket(bucket_name)
-        bucket.download_file(path, target)
-
     def _prepare_training_volumes(self, data_dir, input_data_config, hyperparameters):
         shared_dir = os.path.join(self.container_root, 'shared')
         model_dir = os.path.join(self.container_root, 'model')
@@ -322,7 +278,7 @@ class _SageMakerContainer(object):
 
             if parsed_uri.scheme == 's3':
                 bucket_name = parsed_uri.netloc
-                self._download_folder(bucket_name, key, channel_dir)
+                sagemaker.utils.download_folder(bucket_name, key, channel_dir, self.sagemaker_session)
             elif parsed_uri.scheme == 'file':
                 path = parsed_uri.path
                 volumes.append(_Volume(path, channel=channel_name))
@@ -356,7 +312,7 @@ class _SageMakerContainer(object):
             parsed_uri = urlparse(model_location)
             filename = os.path.basename(parsed_uri.path)
             tar_location = os.path.join(container_model_dir, filename)
-            self._download_file(parsed_uri.netloc, parsed_uri.path, tar_location)
+            sagemaker.utils.download_file(parsed_uri.netloc, parsed_uri.path, tar_location, self.sagemaker_session)
 
             if tarfile.is_tarfile(tar_location):
                 with tarfile.open(tar_location) as tar:
@@ -460,8 +416,8 @@ class _SageMakerContainer(object):
         }
 
         if command == 'serve':
-            serving_port = get_config_value('local.serving_port',
-                                            self.sagemaker_session.config) or 8080
+            serving_port = sagemaker.utils.get_config_value('local.serving_port',
+                                                            self.sagemaker_session.config) or 8080
             host_config.update({
                 'ports': [
                     '%s:8080' % serving_port
@@ -471,7 +427,8 @@ class _SageMakerContainer(object):
         return host_config
 
     def _create_tmp_folder(self):
-        root_dir = get_config_value('local.container_root', self.sagemaker_session.config)
+        root_dir = sagemaker.utils.get_config_value('local.container_root',
+                                                    self.sagemaker_session.config)
         if root_dir:
             root_dir = os.path.abspath(root_dir)
 

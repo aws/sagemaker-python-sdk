@@ -172,6 +172,27 @@ def test_describe_model(LocalSession):
     assert response['PrimaryContainer']['ModelDataUrl'] == '/some/model/path'
 
 
+@patch('sagemaker.local.local_session._LocalTransformJob')
+@patch('sagemaker.local.local_session.LocalSession')
+def test_create_transform_job(LocalSession, _LocalTransformJob):
+    local_sagemaker_client = sagemaker.local.local_session.LocalSagemakerClient()
+
+    local_sagemaker_client.create_transform_job('transform-job', 'some-model', None, None, None)
+    _LocalTransformJob().start.assert_called_with(None, None, None)
+
+    local_sagemaker_client.describe_transform_job('transform-job')
+    _LocalTransformJob().describe.assert_called()
+
+
+@patch('sagemaker.local.local_session._LocalTransformJob')
+@patch('sagemaker.local.local_session.LocalSession')
+def test_describe_transform_job_does_not_exist(LocalSession, _LocalTransformJob):
+    local_sagemaker_client = sagemaker.local.local_session.LocalSagemakerClient()
+
+    with pytest.raises(ClientError):
+        local_sagemaker_client.describe_transform_job('transform-job-does-not-exist')
+
+
 @patch('sagemaker.local.local_session.LocalSession')
 def test_describe_endpoint_config(LocalSession):
     local_sagemaker_client = sagemaker.local.local_session.LocalSagemakerClient()

@@ -14,17 +14,21 @@
 # language governing permissions and limitations under the License.
 from __future__ import absolute_import
 
-import pytest
-from mock import patch
+from datetime import datetime
+import os
+import time
 
+import pytest
+from mock import call, patch, Mock
+
+import sagemaker
 from sagemaker.utils import get_config_value, name_from_base,\
     to_str, DeferredError, extract_name_from_job_arn, secondary_training_status_changed,\
     secondary_training_status_message
 
-from datetime import datetime
-import time
 
 NAME = 'base_name'
+BUCKET_NAME = 'some_bucket'
 
 
 def test_get_config_value():
@@ -166,3 +170,80 @@ def test_secondary_training_status_message_prev_missing():
         MESSAGE
     )
     assert secondary_training_status_message(TRAINING_JOB_DESCRIPTION_1, {}) == expected
+
+
+@patch('os.makedirs')
+def test_download_folder(makedirs):
+    boto_mock = Mock(name='boto_session')
+    boto_mock.client('sts').get_caller_identity.return_value = {'Account': '123'}
+
+    session = sagemaker.Session(boto_session=boto_mock, sagemaker_client=Mock())
+
+    train_data = Mock()
+    validation_data = Mock()
+
+    train_data.bucket_name.return_value = BUCKET_NAME
+    train_data.key = 'prefix/train/train_data.csv'
+    validation_data.bucket_name.return_value = BUCKET_NAME
+    validation_data.key = 'prefix/train/validation_data.csv'
+
+    s3_files = [train_data, validation_data]
+    boto_mock.resource('s3').Bucket(BUCKET_NAME).objects.filter.return_value = s3_files
+
+    obj_mock = Mock()
+    boto_mock.resource('s3').Object.return_value = obj_mock
+
+    # all the S3 mocks are set, the test itself begins now.
+    sagemaker.utils.download_folder(BUCKET_NAME, '/prefix', '/tmp', session)
+
+    obj_mock.download_file.assert_called()
+    calls = [call(os.path.join('/tmp', 'train/train_data.csv')),
+             call(os.path.join('/tmp', 'train/validation_data.csv'))]
+    obj_mock.download_file.assert_has_calls(calls)
+    obj_mock.reset_mock()
+
+    # Testing with a trailing slash for the prefix.
+    sagemaker.utils.download_folder(BUCKET_NAME, '/prefix/', '/tmp', session)
+    obj_mock.download_file.assert_called()
+    obj_mock.download_file.assert_has_calls(calls)
+
+
+@patch('os.makedirs')
+def test_download_folder_points_to_single_file(makedirs):
+    boto_mock = Mock(name='boto_session')
+    boto_mock.client('sts').get_caller_identity.return_value = {'Account': '123'}
+
+    session = sagemaker.Session(boto_session=boto_mock, sagemaker_client=Mock())
+
+    train_data = Mock()
+
+    train_data.bucket_name.return_value = BUCKET_NAME
+    train_data.key = 'prefix/train/train_data.csv'
+
+    s3_files = [train_data]
+    boto_mock.resource('s3').Bucket(BUCKET_NAME).objects.filter.return_value = s3_files
+
+    obj_mock = Mock()
+    boto_mock.resource('s3').Object.return_value = obj_mock
+
+    # all the S3 mocks are set, the test itself begins now.
+    sagemaker.utils.download_folder(BUCKET_NAME, '/prefix/train/train_data.csv', '/tmp', session)
+
+    obj_mock.download_file.assert_called()
+    calls = [call(os.path.join('/tmp', 'train_data.csv'))]
+    obj_mock.download_file.assert_has_calls(calls)
+    assert boto_mock.resource('s3').Bucket(BUCKET_NAME).objects.filter.call_count == 1
+    obj_mock.reset_mock()
+
+
+def test_download_file():
+    boto_mock = Mock(name='boto_session')
+    boto_mock.client('sts').get_caller_identity.return_value = {'Account': '123'}
+    bucket_mock = Mock()
+    boto_mock.resource('s3').Bucket.return_value = bucket_mock
+    session = sagemaker.Session(boto_session=boto_mock, sagemaker_client=Mock())
+
+    sagemaker.utils.download_file(BUCKET_NAME, '/prefix/path/file.tar.gz',
+                                  '/tmp/file.tar.gz', session)
+
+    bucket_mock.download_file.assert_called_with('prefix/path/file.tar.gz', '/tmp/file.tar.gz')

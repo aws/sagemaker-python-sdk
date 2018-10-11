@@ -2,7 +2,11 @@
 CHANGELOG
 =========
 
-======
+1.11.3dev
+=========
+
+* feature: Local Mode: Add support for Batch Inference
+
 1.11.2
 ======
 
@@ -10,7 +14,6 @@ CHANGELOG
 * enhancement: Local Mode: accept short lived credentials with a warning message
 * bug-fix: Local Mode: pass in job name as parameter for training environment variable
 
-=======
 1.11.1
 ======
 
