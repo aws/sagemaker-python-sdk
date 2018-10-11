@@ -149,7 +149,7 @@ def test_local_transform_job_perform_batch_inference(get_config_value, move_to_d
 
     runtime_client = Mock()
     response_object = Mock()
-    response_object.read.return_value = 'data'
+    response_object.read.return_value = b'data'
     runtime_client.invoke_endpoint.return_value = {'Body': response_object}
     local_transform_job.local_session.sagemaker_runtime_client = runtime_client
 
