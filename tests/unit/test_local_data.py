@@ -103,8 +103,7 @@ def test_get_splitter_instance_with_valid_types():
 
 def test_get_splitter_instance_with_invalid_types():
     with pytest.raises(ValueError):
-        # something invalid
-        sagemaker.local.data.get_splitter_instance('JSON')
+        sagemaker.local.data.get_splitter_instance('SomethingInvalid')
 
 
 def test_none_splitter(tmpdir):
@@ -133,7 +132,6 @@ def test_line_splitter(tmpdir):
 
 
 def test_recordio_splitter(tmpdir):
-
     test_file_path = tmpdir.join('recordio_test.txt')
     with test_file_path.open('wb') as f:
         for i in range(10):

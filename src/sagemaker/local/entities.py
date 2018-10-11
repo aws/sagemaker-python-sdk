@@ -285,18 +285,18 @@ class _LocalTransformJob(object):
             copy_directory_structure(working_dir, relative_path)
             destination_path = os.path.join(working_dir, relative_path, filename + '.out')
 
-            with open(destination_path, 'w') as f:
+            with open(destination_path, 'wb') as f:
                 for item in batch_provider.pad(file, max_payload):
                     # call the container and add the result to inference.
                     response = self.local_session.sagemaker_runtime_client.invoke_endpoint(
                         item, '', input_data['ContentType'], accept)
 
                     response_body = response['Body']
-                    data = response_body.read()
+                    data = response_body.read().strip()
                     response_body.close()
                     f.write(data)
                     if 'AssembleWith' in output_data and output_data['AssembleWith'] == 'Line':
-                        f.write('\n')
+                        f.write(b'\n')
 
         move_to_destination(working_dir, output_data['S3OutputPath'], self.local_session)
         self.container.stop_serving()

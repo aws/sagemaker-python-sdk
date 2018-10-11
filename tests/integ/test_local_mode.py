@@ -390,7 +390,8 @@ def test_local_transform_mxnet(sagemaker_local_session, tmpdir):
                                                        key_prefix=transform_input_key_prefix)
 
     output_path = 'file://%s' % (str(tmpdir))
-    transformer = mx.transformer(1, 'local', assemble_with='Line', max_payload=1, output_path=output_path)
+    transformer = mx.transformer(1, 'local', assemble_with='Line', max_payload=1,
+                                 strategy='SingleRecord', output_path=output_path)
     transformer.transform(transform_input, content_type='text/csv', split_type='Line')
     transformer.wait()
 
