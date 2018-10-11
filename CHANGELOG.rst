@@ -6,6 +6,7 @@ CHANGELOG
 =========
 
 * feature: Local Mode: Add support for Batch Inference
+* enhancement: Local Mode: support nvidia-docker2 natively
 
 1.11.2
 ======
