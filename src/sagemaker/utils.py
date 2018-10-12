@@ -181,18 +181,17 @@ def secondary_training_status_message(job_description, prev_description):
         if prev_description_secondary_transitions is not None else 0
     current_transitions = job_description['SecondaryStatusTransitions']
 
-    if len(current_transitions) == prev_transitions_num:
-        return current_transitions[-1]['StatusMessage']
-    else:
-        transitions_to_print = current_transitions[prev_transitions_num - len(current_transitions):]
-        status_strs = []
-        for transition in transitions_to_print:
-            message = transition['StatusMessage']
-            time_str = datetime.utcfromtimestamp(
-                time.mktime(transition['StartTime'].timetuple())).strftime('%Y-%m-%d %H:%M:%S')
-            status_strs.append('{} {} - {}'.format(time_str, transition['Status'], message))
+    transitions_to_print = current_transitions[-1:] if len(current_transitions) == prev_transitions_num else \
+        current_transitions[prev_transitions_num - len(current_transitions):]
 
-        return '\n'.join(status_strs)
+    status_strs = []
+    for transition in transitions_to_print:
+        message = transition['StatusMessage']
+        time_str = datetime.utcfromtimestamp(
+            time.mktime(job_description['LastModifiedTime'].timetuple())).strftime('%Y-%m-%d %H:%M:%S')
+        status_strs.append('{} {} - {}'.format(time_str, transition['Status'], message))
+
+    return '\n'.join(status_strs)
 
 
 def download_folder(bucket_name, prefix, target, sagemaker_session):
