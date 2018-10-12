@@ -392,6 +392,28 @@ def test_serve_local_code(up, copy, copytree, tmpdir, sagemaker_session):
                 assert '%s:/opt/ml/code' % '/tmp/code' in volumes
 
 
+@patch('sagemaker.local.image._HostingContainer.run')
+@patch('shutil.copy')
+@patch('shutil.copytree')
+def test_serve_local_code_no_env(up, copy, copytree, tmpdir, sagemaker_session):
+
+    with patch('sagemaker.local.image._SageMakerContainer._create_tmp_folder',
+               return_value=str(tmpdir.mkdir('container-root'))):
+
+        image = 'my-image'
+        sagemaker_container = _SageMakerContainer('local', 1, image, sagemaker_session=sagemaker_session)
+        sagemaker_container.serve('/some/model/path', {})
+        docker_compose_file = os.path.join(sagemaker_container.container_root,
+                                           'docker-compose.yaml')
+
+        with open(docker_compose_file, 'r') as f:
+            config = yaml.load(f)
+
+            for h in sagemaker_container.hosts:
+                assert config['services'][h]['image'] == image
+                assert config['services'][h]['command'] == 'serve'
+
+
 @patch('sagemaker.utils.download_file')
 @patch('tarfile.is_tarfile')
 @patch('tarfile.open', MagicMock())

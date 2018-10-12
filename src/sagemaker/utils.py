@@ -160,7 +160,7 @@ def secondary_training_status_changed(current_job_description, prev_job_descript
 
 
 def secondary_training_status_message(job_description, prev_description):
-    """Returns a string contains start time and the secondary training job status message.
+    """Returns a string contains last modified time and the secondary training job status message.
 
     Args:
         job_description: Returned response from DescribeTrainingJob call
@@ -181,8 +181,12 @@ def secondary_training_status_message(job_description, prev_description):
         if prev_description_secondary_transitions is not None else 0
     current_transitions = job_description['SecondaryStatusTransitions']
 
-    transitions_to_print = current_transitions[-1:] if len(current_transitions) == prev_transitions_num else \
-        current_transitions[prev_transitions_num - len(current_transitions):]
+    if len(current_transitions) == prev_transitions_num:
+        # Secondary status is not changed but the message changed.
+        transitions_to_print = current_transitions[-1:]
+    else:
+        # Secondary status is changed we need to print all the entries.
+        transitions_to_print = current_transitions[prev_transitions_num - len(current_transitions):]
 
     status_strs = []
     for transition in transitions_to_print:
