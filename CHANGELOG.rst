@@ -6,6 +6,7 @@ CHANGELOG
 =========
 
 * feature: Local Mode: Add support for Batch Inference
+* feature: Add timestamp to secondary status in training job output
 
 1.11.2
 ======
