@@ -7,6 +7,8 @@ CHANGELOG
 
 * feature: Local Mode: Add support for Batch Inference
 * feature: Add timestamp to secondary status in training job output
+* enhancement: Local Mode: support nvidia-docker2 natively
+
 
 1.11.2
 ======
