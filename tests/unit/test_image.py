@@ -334,6 +334,27 @@ def test_train_local_code(download_folder, _cleanup, popen, _stream_output,
                 assert '%s:/opt/ml/shared' % shared_folder_path in volumes
 
 
+def test_container_has_gpu_support(tmpdir, sagemaker_session):
+    instance_count = 1
+    image = 'my-image'
+    sagemaker_container = _SageMakerContainer('local_gpu', instance_count, image,
+                                              sagemaker_session=sagemaker_session)
+
+    docker_host = sagemaker_container._create_docker_host('host-1', {}, set(), 'train', [])
+    assert 'runtime' in docker_host
+    assert docker_host['runtime'] == 'nvidia'
+
+
+def test_container_does_not_enable_nvidia_docker_for_cpu_containers(tmpdir, sagemaker_session):
+    instance_count = 1
+    image = 'my-image'
+    sagemaker_container = _SageMakerContainer('local', instance_count, image,
+                                              sagemaker_session=sagemaker_session)
+
+    docker_host = sagemaker_container._create_docker_host('host-1', {}, set(), 'train', [])
+    assert 'runtime' not in docker_host
+
+
 @patch('sagemaker.local.image._HostingContainer.run')
 @patch('shutil.copy')
 @patch('shutil.copytree')
