@@ -368,8 +368,9 @@ def test_mxnet_local_data_local_script():
         fcntl.lockf(local_mode_lock, fcntl.LOCK_UN)
 
 
-@pytest.mark.continuous_testing
 def test_local_transform_mxnet(sagemaker_local_session, tmpdir):
+    local_mode_lock_fd = open(LOCK_PATH, 'w')
+    local_mode_lock = local_mode_lock_fd.fileno()
     data_path = os.path.join(DATA_DIR, 'mxnet_mnist')
     script_path = os.path.join(data_path, 'mnist.py')
 
@@ -392,7 +393,13 @@ def test_local_transform_mxnet(sagemaker_local_session, tmpdir):
     output_path = 'file://%s' % (str(tmpdir))
     transformer = mx.transformer(1, 'local', assemble_with='Line', max_payload=1,
                                  strategy='SingleRecord', output_path=output_path)
+
+    # Since Local Mode uses the same port for serving, we need a lock in order
+    # to allow concurrent test execution.
+    fcntl.lockf(local_mode_lock, fcntl.LOCK_EX)
     transformer.transform(transform_input, content_type='text/csv', split_type='Line')
     transformer.wait()
+    time.sleep(5)
+    fcntl.lockf(local_mode_lock, fcntl.LOCK_UN)
 
     assert os.path.exists(os.path.join(str(tmpdir), 'data.csv.out'))
