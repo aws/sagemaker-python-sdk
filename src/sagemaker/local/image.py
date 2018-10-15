@@ -362,8 +362,8 @@ class _SageMakerContainer(object):
         }
 
         content = {
-            # Some legacy hosts only support the 2.1 format.
-            'version': '2.1',
+            # Use version 2.3 as a minimum so that we can specify the runtime
+            'version': '2.3',
             'services': services,
             'networks': {
                 'sagemaker-local': {'name': 'sagemaker-local'}
@@ -414,6 +414,11 @@ class _SageMakerContainer(object):
                 }
             }
         }
+
+        # for GPU support pass in nvidia as the runtime, this is equivalent
+        # to setting --runtime=nvidia in the docker commandline.
+        if self.instance_type == 'local_gpu':
+            host_config['runtime'] = 'nvidia'
 
         if command == 'serve':
             serving_port = sagemaker.utils.get_config_value('local.serving_port',
