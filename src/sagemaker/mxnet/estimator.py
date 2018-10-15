@@ -12,11 +12,16 @@
 # language governing permissions and limitations under the License.
 from __future__ import absolute_import
 
+import logging
+
 from sagemaker.estimator import Framework
-from sagemaker.fw_utils import framework_name_from_image, framework_version_from_tag
+from sagemaker.fw_utils import framework_name_from_image, framework_version_from_tag, empty_framework_version_warning
 from sagemaker.mxnet.defaults import MXNET_VERSION
 from sagemaker.mxnet.model import MXNetModel
 from sagemaker.vpc_utils import VPC_CONFIG_DEFAULT
+
+logging.basicConfig()
+logger = logging.getLogger('sagemaker')
 
 
 class MXNet(Framework):
@@ -25,7 +30,7 @@ class MXNet(Framework):
     __framework_name__ = "mxnet"
 
     def __init__(self, entry_point, source_dir=None, hyperparameters=None, py_version='py2',
-                 framework_version=MXNET_VERSION, image_name=None, **kwargs):
+                 framework_version=None, image_name=None, **kwargs):
         """
         This ``Estimator`` executes an MXNet script in a managed MXNet execution environment, within a SageMaker
         Training Job. The managed MXNet environment is an Amazon-built Docker container that executes functions
@@ -64,7 +69,10 @@ class MXNet(Framework):
         super(MXNet, self).__init__(entry_point, source_dir, hyperparameters,
                                     image_name=image_name, **kwargs)
         self.py_version = py_version
-        self.framework_version = framework_version
+
+        if framework_version is None:
+            logger.warning(empty_framework_version_warning(MXNET_VERSION))
+        self.framework_version = framework_version or MXNET_VERSION
 
     def create_model(self, model_server_workers=None, role=None, vpc_config_override=VPC_CONFIG_DEFAULT):
         """Create a SageMaker ``MXNetModel`` object that can be deployed to an ``Endpoint``.

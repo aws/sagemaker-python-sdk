@@ -11,11 +11,17 @@
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
 from __future__ import absolute_import
+
+import logging
+
 from sagemaker.estimator import Framework
-from sagemaker.fw_utils import framework_name_from_image, framework_version_from_tag
+from sagemaker.fw_utils import framework_name_from_image, framework_version_from_tag, empty_framework_version_warning
 from sagemaker.pytorch.defaults import PYTORCH_VERSION, PYTHON_VERSION
 from sagemaker.pytorch.model import PyTorchModel
 from sagemaker.vpc_utils import VPC_CONFIG_DEFAULT
+
+logging.basicConfig()
+logger = logging.getLogger('sagemaker')
 
 
 class PyTorch(Framework):
@@ -24,7 +30,7 @@ class PyTorch(Framework):
     __framework_name__ = "pytorch"
 
     def __init__(self, entry_point, source_dir=None, hyperparameters=None, py_version=PYTHON_VERSION,
-                 framework_version=PYTORCH_VERSION, image_name=None, **kwargs):
+                 framework_version=None, image_name=None, **kwargs):
         """
         This ``Estimator`` executes an PyTorch script in a managed PyTorch execution environment, within a SageMaker
         Training Job. The managed PyTorch environment is an Amazon-built Docker container that executes functions
@@ -62,7 +68,10 @@ class PyTorch(Framework):
         """
         super(PyTorch, self).__init__(entry_point, source_dir, hyperparameters, image_name=image_name, **kwargs)
         self.py_version = py_version
-        self.framework_version = framework_version
+
+        if framework_version is None:
+            logger.warning(empty_framework_version_warning(PYTORCH_VERSION))
+        self.framework_version = framework_version or PYTORCH_VERSION
 
     def create_model(self, model_server_workers=None, role=None, vpc_config_override=VPC_CONFIG_DEFAULT):
         """Create a SageMaker ``PyTorchModel`` object that can be deployed to an ``Endpoint``.
