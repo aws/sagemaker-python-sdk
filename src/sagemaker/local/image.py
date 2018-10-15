@@ -341,8 +341,8 @@ class _SageMakerContainer(object):
 
         """
         boto_session = self.sagemaker_session.boto_session
-        additional_env_vars = additional_env_vars or []
-        additional_volumes = additional_volumes or {}
+        additional_volumes = additional_volumes or []
+        additional_env_vars = additional_env_vars or {}
         environment = []
         optml_dirs = set()
 
