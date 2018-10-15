@@ -17,11 +17,12 @@ Suppose that you already have an MXNet training script called
 .. code:: python
 
     from sagemaker.mxnet import MXNet
-    mxnet_estimator = MXNet("mxnet-train.py",
-                            role="SageMakerRole",
-                            train_instance_type="ml.p3.2xlarge",
-                            train_instance_count=1)
-    mxnet_estimator.fit("s3://bucket/path/to/training/data")
+    mxnet_estimator = MXNet('mxnet-train.py',
+                            role='SageMakerRole',
+                            train_instance_type='ml.p3.2xlarge',
+                            train_instance_count=1,
+                            framework_version='1.2.1')
+    mxnet_estimator.fit('s3://bucket/path/to/training/data')
 
 Where the s3 url is a path to your training data, within Amazon S3. The constructor keyword arguments define how SageMaker runs your training script and are discussed, in detail, in a later section.
 
@@ -97,10 +98,11 @@ You run MXNet training scripts on SageMaker by creating ``MXNet`` Estimators. Sa
 
 .. code:: python
 
-    mxnet_estimator = MXNet("train.py",
-                            train_instance_type="ml.p2.xlarge",
-                            train_instance_count=1)
-    mxnet_estimator.fit("s3://my_bucket/my_training_data/")
+    mxnet_estimator = MXNet('train.py',
+                            train_instance_type='ml.p2.xlarge',
+                            train_instance_count=1,
+                            framework_version='1.2.1')
+    mxnet_estimator.fit('s3://my_bucket/my_training_data/')
 
 MXNet Estimators
 ^^^^^^^^^^^^^^^^
@@ -302,10 +304,11 @@ After calling ``fit``, you can call ``deploy`` on an ``MXNet`` Estimator to crea
 .. code:: python
 
     # Train my estimator
-    mxnet_estimator = MXNet("train.py",
-                            train_instance_type="ml.p2.xlarge",
-                            train_instance_count=1)
-    mxnet_estimator.fit("s3://my_bucket/my_training_data/")
+    mxnet_estimator = MXNet('train.py',
+                            train_instance_type='ml.p2.xlarge',
+                            train_instance_count=1,
+                            framework_version='1.2.1')
+    mxnet_estimator.fit('s3://my_bucket/my_training_data/')
 
     # Deploy my estimator to a SageMaker Endpoint and get a Predictor
     predictor = mxnet_estimator.deploy(instance_type='ml.m4.xlarge',

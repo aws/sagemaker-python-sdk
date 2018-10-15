@@ -28,11 +28,12 @@ Suppose that you already have an Chainer training script called
 .. code:: python
 
     from sagemaker.chainer import Chainer
-    chainer_estimator = Chainer(entry_point="chainer-train.py",
-                                role="SageMakerRole",
-                                train_instance_type="ml.p3.2xlarge",
-                                train_instance_count=1)
-    chainer_estimator.fit("s3://bucket/path/to/training/data")
+    chainer_estimator = Chainer(entry_point='chainer-train.py',
+                                role='SageMakerRole',
+                                train_instance_type='ml.p3.2xlarge',
+                                train_instance_count=1,
+                                framework_version='4.1.0')
+    chainer_estimator.fit('s3://bucket/path/to/training/data')
 
 Where the S3 URL is a path to your training data, within Amazon S3. The constructor keyword arguments define how
 SageMaker runs your training script and are discussed in detail in a later section.
@@ -107,12 +108,13 @@ directories ('train' and 'test').
 
 .. code:: python
 
-    chainer_estimator = Chainer("chainer-train.py",
-                            train_instance_type="ml.p3.2xlarge",
-                            train_instance_count=1,
-                            hyperparameters = {'epochs': 20, 'batch-size': 64, 'learning-rate':0.1})
+    chainer_estimator = Chainer('chainer-train.py',
+                                train_instance_type='ml.p3.2xlarge',
+                                train_instance_count=1,
+                                framework_version='4.1.0',
+                                hyperparameters = {'epochs': 20, 'batch-size': 64, 'learning-rate': 0.1})
     chainer_estimator.fit({'train': 's3://my-data-bucket/path/to/my/training/data',
-                       'test': 's3://my-data-bucket/path/to/my/test/data'})
+                           'test': 's3://my-data-bucket/path/to/my/test/data'})
 
 
 Chainer Estimators
@@ -280,13 +282,14 @@ operation.
 .. code:: python
 
     # Train my estimator
-    chainer_estimator = Chainer(entry_point="train_and_deploy.py",
-                            train_instance_type="ml.p3.2xlarge",
-                            train_instance_count=1)
-    chainer_estimator.fit("s3://my_bucket/my_training_data/")
+    chainer_estimator = Chainer(entry_point='train_and_deploy.py',
+                                train_instance_type='ml.p3.2xlarge',
+                                train_instance_count=1,
+                                framework_version='4.1.0')
+    chainer_estimator.fit('s3://my_bucket/my_training_data/')
 
     # Deploy my estimator to a SageMaker Endpoint and get a Predictor
-    predictor = chainer_estimator.deploy(instance_type="ml.m4.xlarge",
+    predictor = chainer_estimator.deploy(instance_type='ml.m4.xlarge',
                                          initial_instance_count=1)
 
     # `data` is a NumPy array or a Python list.

@@ -48,7 +48,8 @@ You can then setup a ``PyTorch`` Estimator with keyword arguments to point to th
     pytorch_estimator = PyTorch(entry_point='pytorch-train.py',
                                 role='SageMakerRole',
                                 train_instance_type='ml.p3.2xlarge',
-                                train_instance_count=1)
+                                train_instance_count=1,
+                                framework_version='0.4.0')
 
 After that, you simply tell the estimator to start a training job and provide an S3 URL
 that is the path to your training data within Amazon S3:
@@ -136,9 +137,10 @@ directories ('train' and 'test').
     pytorch_estimator = PyTorch('pytorch-train.py',
                                 train_instance_type='ml.p3.2xlarge',
                                 train_instance_count=1,
-                                hyperparameters = {'epochs': 20, 'batch-size': 64, 'learning-rate':0.1})
+                                framework_version='0.4.0',
+                                hyperparameters = {'epochs': 20, 'batch-size': 64, 'learning-rate': 0.1})
     pytorch_estimator.fit({'train': 's3://my-data-bucket/path/to/my/training/data',
-                          'test': 's3://my-data-bucket/path/to/my/test/data'})
+                           'test': 's3://my-data-bucket/path/to/my/test/data'})
 
 
 PyTorch Estimators
@@ -318,7 +320,8 @@ operation.
     # Train my estimator
     pytorch_estimator = PyTorch(entry_point='train_and_deploy.py',
                                 train_instance_type='ml.p3.2xlarge',
-                                train_instance_count=1)
+                                train_instance_count=1,
+                                framework_version='0.4.0')
     pytorch_estimator.fit('s3://my_bucket/my_training_data/')
 
     # Deploy my estimator to a SageMaker Endpoint and get a Predictor
