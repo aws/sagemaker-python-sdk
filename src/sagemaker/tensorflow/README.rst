@@ -26,7 +26,8 @@ follows:
 
   tf_estimator = TensorFlow(entry_point='tf-train.py', role='SageMakerRole',
                             training_steps=10000, evaluation_steps=100,
-                            train_instance_count=1, train_instance_type='ml.p2.xlarge')
+                            train_instance_count=1, train_instance_type='ml.p2.xlarge',
+                            framework_version=1.10.0)
   tf_estimator.fit('s3://bucket/path/to/training/data')
 
 Where the S3 url is a path to your training data, within Amazon S3. The
@@ -365,7 +366,8 @@ The following code sample shows how to train a custom TensorFlow script 'tf-trai
 
   tf_estimator = TensorFlow(entry_point='tf-train.py', role='SageMakerRole',
                             training_steps=10000, evaluation_steps=100,
-                            train_instance_count=1, train_instance_type='ml.p2.xlarge')
+                            train_instance_count=1, train_instance_type='ml.p2.xlarge',
+                            framework_version='1.10.0')
   tf_estimator.fit('s3://bucket/path/to/training/data')
 
 sagemaker.tensorflow.TensorFlow class
@@ -582,7 +584,8 @@ estimator pointing to the previous checkpoint path:
   tf_estimator = TensorFlow('tf-train.py', role='SageMakerRole',
                             checkpoint_path=previous_checkpoint_path
                             training_steps=10000, evaluation_steps=100,
-                            train_instance_count=1, train_instance_type='ml.p2.xlarge')
+                            train_instance_count=1, train_instance_type='ml.p2.xlarge',
+                            framework_version='1.10.0')
   tf_estimator.fit('s3://bucket/path/to/training/data')
 
 
@@ -622,7 +625,8 @@ like this:
 
   from sagemaker.tensorflow import TensorFlow
 
-  estimator = TensorFlow(entry_point='tf-train.py', ..., train_instance_count=1, train_instance_type='ml.c4.xlarge')
+  estimator = TensorFlow(entry_point='tf-train.py', ..., train_instance_count=1,
+                         train_instance_type='ml.c4.xlarge', framework_version='1.10.0')
 
   estimator.fit(inputs)
 
@@ -687,7 +691,8 @@ The following code adds a prediction request to the previous code example:
 
 .. code:: python
 
-  estimator = TensorFlow(entry_point='tf-train.py', ..., train_instance_count=1, train_instance_type='ml.c4.xlarge')
+  estimator = TensorFlow(entry_point='tf-train.py', ..., train_instance_count=1,
+                         train_instance_type='ml.c4.xlarge', framework_version='1.10.0')
 
   estimator.fit(inputs)
 
@@ -822,7 +827,7 @@ In your ``entry_point`` script, you can use ``PipeModeDataset`` like a ``Dataset
             'data': tf.decode_raw(parsed['data'], tf.float64)
         }, parsed['labels'])
 
-    def train_input_fn(training_dir, hyperparameters): 
+    def train_input_fn(training_dir, hyperparameters):
         ds = PipeModeDataset(channel='training', record_format='TFRecord')
         ds = ds.repeat(20)
         ds = ds.prefetch(10)
@@ -841,7 +846,7 @@ To run training job with Pipe input mode, pass in ``input_mode='Pipe'`` to your 
     tf_estimator = TensorFlow(entry_point='tf-train-with-pipemodedataset.py', role='SageMakerRole',
                             training_steps=10000, evaluation_steps=100,
                             train_instance_count=1, train_instance_type='ml.p2.xlarge',
-                            input_mode='Pipe')
+                            framework_version='1.10.0', input_mode='Pipe')
 
     tf_estimator.fit('s3://bucket/path/to/training/data')
 
@@ -854,7 +859,7 @@ If your TFRecords are compressed, you can train on Gzipped TF Records by passing
     from sagemaker.session import s3_input
 
     train_s3_input = s3_input('s3://bucket/path/to/training/data', compression='Gzip')
-    tf_estimator.fit(train_s3_input) 
+    tf_estimator.fit(train_s3_input)
 
 
 You can learn more about ``PipeModeDataset`` in the sagemaker-tensorflow-extensions repository: https://github.com/aws/sagemaker-tensorflow-extensions

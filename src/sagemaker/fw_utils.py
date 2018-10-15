@@ -23,13 +23,17 @@ from sagemaker.utils import name_from_image
 
 """This module contains utility functions shared across ``Framework`` components."""
 
-
 UploadedCode = namedtuple('UserCode', ['s3_prefix', 'script_name'])
 """sagemaker.fw_utils.UserCode: An object containing the S3 prefix and script name.
 
 This is for the source code used for the entry point with an ``Estimator``. It can be
 instantiated with positional or keyword arguments.
 """
+
+EMPTY_FRAMEWORK_VERSION_WARNING = 'In an upcoming version of the SageMaker Python SDK, ' \
+                                  'framework_version will be required to create an estimator. ' \
+                                  'Please add framework_version={} to your constructor to avoid ' \
+                                  'an error in the future.'
 
 
 def create_image_uri(region, framework, instance_type, framework_version, py_version, account='520713654638',
@@ -223,3 +227,7 @@ def model_code_key_prefix(code_location_key_prefix, model_name, image):
         str: the key prefix to be used in uploading code
     """
     return '/'.join(filter(None, [code_location_key_prefix, model_name or name_from_image(image)]))
+
+
+def empty_framework_version_warning(default_version):
+    return EMPTY_FRAMEWORK_VERSION_WARNING.format(default_version)

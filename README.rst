@@ -153,9 +153,10 @@ Here is an end to end example of how to use a SageMaker Estimator:
 
     # Configure an MXNet Estimator (no training happens yet)
     mxnet_estimator = MXNet('train.py',
-                            role="SageMakerRole",
+                            role='SageMakerRole',
                             train_instance_type='ml.p2.xlarge',
-                            train_instance_count = 1)
+                            train_instance_count=1,
+                            framework_version='1.2.1')
 
     # Starts a SageMaker training job and waits until completion.
     mxnet_estimator.fit('s3://my_bucket/my_training_data/')
@@ -183,9 +184,10 @@ We can take the example in  `Using Estimators <#using-estimators>`__ , and use e
 
     # Configure an MXNet Estimator (no training happens yet)
     mxnet_estimator = MXNet('train.py',
-                            role="SageMakerRole",
+                            role='SageMakerRole',
                             train_instance_type='local',
-                            train_instance_count=1)
+                            train_instance_count=1,
+                            framework_version='1.2.1')
 
     # In Local Mode, fit will pull the MXNet container Docker image and run it locally
     mxnet_estimator.fit('s3://my_bucket/my_training_data/')
@@ -239,7 +241,8 @@ Here is an end-to-end example:
 
     mxnet_estimator = MXNet('train.py',
                             train_instance_type='local',
-                            train_instance_count=1)
+                            train_instance_count=1,
+                            framework_version='1.2.1')
 
     mxnet_estimator.fit('file:///tmp/my_training_data')
     transformer = mxnet_estimator.transformer(1, 'local', assemble_with='Line', max_payload=1)
@@ -504,10 +507,11 @@ To train a model using your own VPC, set the optional parameters ``subnets`` and
 
     # Configure an MXNet Estimator with subnets and security groups from your VPC
     mxnet_vpc_estimator = MXNet('train.py',
-                            train_instance_type='ml.p2.xlarge',
-                            train_instance_count = 1,
-                            subnets=['subnet-1', 'subnet-2'],
-                            security_group_ids=['sg-1'])
+                                train_instance_type='ml.p2.xlarge',
+                                train_instance_count=1,
+                                framework_version='1.2.1',
+                                subnets=['subnet-1', 'subnet-2'],
+                                security_group_ids=['sg-1'])
 
     # SageMaker Training Job will set VpcConfig and container instances will run in your VPC
     mxnet_vpc_estimator.fit('s3://my_bucket/my_training_data/')

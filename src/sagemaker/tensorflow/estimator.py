@@ -22,7 +22,7 @@ import threading
 import time
 
 from sagemaker.estimator import Framework
-from sagemaker.fw_utils import framework_name_from_image, framework_version_from_tag
+from sagemaker.fw_utils import framework_name_from_image, framework_version_from_tag, empty_framework_version_warning
 from sagemaker.utils import get_config_value
 from sagemaker.vpc_utils import VPC_CONFIG_DEFAULT
 
@@ -159,7 +159,7 @@ class TensorFlow(Framework):
     __framework_name__ = 'tensorflow'
 
     def __init__(self, training_steps=None, evaluation_steps=None, checkpoint_path=None, py_version='py2',
-                 framework_version=TF_VERSION, requirements_file='', image_name=None, **kwargs):
+                 framework_version=None, requirements_file='', image_name=None, **kwargs):
         """Initialize an ``TensorFlow`` estimator.
         Args:
             training_steps (int): Perform this many steps of training. `None`, the default means train forever.
@@ -184,12 +184,15 @@ class TensorFlow(Framework):
         super(TensorFlow, self).__init__(image_name=image_name, **kwargs)
         self.checkpoint_path = checkpoint_path
         self.py_version = py_version
-        self.framework_version = framework_version
         self.training_steps = training_steps
         self.evaluation_steps = evaluation_steps
 
         self._validate_requirements_file(requirements_file)
         self.requirements_file = requirements_file
+
+        if framework_version is None:
+            LOGGER.warning(empty_framework_version_warning(TF_VERSION))
+        self.framework_version = framework_version or TF_VERSION
 
     def _validate_requirements_file(self, requirements_file):
         if not requirements_file:
