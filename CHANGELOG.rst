@@ -58,6 +58,7 @@ CHANGELOG
 * bug-fix: Local Mode: Set correct default values for additional_volumes and additional_env_vars
 * enhancement: Local Mode: support nvidia-docker2 natively
 * warning: Frameworks: add warning for upcoming breaking change that makes framework_version required
+* feature: SageMaker Automatic Model Tuning's Warm Start jobs integration
 
 1.11.2
 ======
