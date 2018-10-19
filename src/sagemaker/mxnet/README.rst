@@ -403,8 +403,7 @@ Input processing
 When an InvokeEndpoint operation is made against an Endpoint running a SageMaker MXNet model server, the model server receives two pieces of information:
 
 -  The request Content-Type, for example "application/json"
--  The request data body, a byte array which is at most 5 MB (5 \* 1024
-   \* 1024 bytes) in size.
+-  The request data body, a byte array
 
 The SageMaker MXNet model server will invoke an "input_fn" function in your training script, passing in this information. If you define an ``input_fn`` function definition, it should return an object that can be passed to ``predict_fn`` and have the following signature:
 

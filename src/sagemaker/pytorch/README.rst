@@ -442,8 +442,7 @@ When an InvokeEndpoint operation is made against an Endpoint running a SageMaker
 the model server receives two pieces of information:
 
 -  The request Content-Type, for example "application/x-npy"
--  The request data body, a byte array which is at most 5 MB (5 \* 1024
-   \* 1024 bytes) in size.
+-  The request data body, a byte array
 
 The SageMaker PyTorch model server will invoke an ``input_fn`` function in your hosting script,
 passing in this information. If you define an ``input_fn`` function definition,
