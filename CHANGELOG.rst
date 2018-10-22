@@ -2,6 +2,11 @@
 CHANGELOG
 =========
 
+1.12.0
+======
+
+* feature: add support for TensorFlow 1.11.0
+
 1.11.3
 ======
 
