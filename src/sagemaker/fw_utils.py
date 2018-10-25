@@ -159,7 +159,7 @@ def framework_name_from_image(image_name):
             str: The image tag
     """
     # image name format: <account>.dkr.ecr.<region>.amazonaws.com/sagemaker-<framework>-<py_ver>-<device>:<tag>
-    sagemaker_pattern = re.compile('^(\d+)(\.)dkr(\.)ecr(\.)(.+)(\.)amazonaws.com(/)(.*:.*)$')
+    sagemaker_pattern = re.compile(r'^(\d+)(\.)dkr(\.)ecr(\.)(.+)(\.)amazonaws.com(/)(.*:.*)$')
     sagemaker_match = sagemaker_pattern.match(image_name)
     if sagemaker_match is None:
         return None, None, None

@@ -1050,8 +1050,8 @@ def _deployment_entity_exists(describe_fn):
         describe_fn()
         return True
     except ClientError as ce:
-        if not (ce.response['Error']['Code'] == 'ValidationException' and
-                'Could not find' in ce.response['Error']['Message']):
+        error_code = ce.response['Error']['Code']
+        if not (error_code == 'ValidationException' and 'Could not find' in ce.response['Error']['Message']):
             raise ce
         return False
 
