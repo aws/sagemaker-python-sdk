@@ -286,7 +286,7 @@ def test_tuning_chainer(sagemaker_session):
 
         objective_metric_name = 'Validation-accuracy'
         metric_definitions = [
-            {'Name': 'Validation-accuracy', 'Regex': '\[J1\s+\d\.\d+\s+\d\.\d+\s+\d\.\d+\s+(\d\.\d+)'}]
+            {'Name': 'Validation-accuracy', 'Regex': r'\[J1\s+\d\.\d+\s+\d\.\d+\s+\d\.\d+\s+(\d\.\d+)'}]
 
         tuner = HyperparameterTuner(estimator, objective_metric_name, hyperparameter_ranges, metric_definitions,
                                     max_jobs=2, max_parallel_jobs=2)
@@ -327,7 +327,7 @@ def test_attach_tuning_pytorch(sagemaker_session):
 
     with timeout(minutes=TUNING_DEFAULT_TIMEOUT_MINUTES):
         objective_metric_name = 'evaluation-accuracy'
-        metric_definitions = [{'Name': 'evaluation-accuracy', 'Regex': 'Overall test accuracy: (\d+)'}]
+        metric_definitions = [{'Name': 'evaluation-accuracy', 'Regex': r'Overall test accuracy: (\d+)'}]
         hyperparameter_ranges = {'batch-size': IntegerParameter(50, 100)}
 
         tuner = HyperparameterTuner(estimator, objective_metric_name, hyperparameter_ranges, metric_definitions,
