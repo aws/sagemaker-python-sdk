@@ -27,10 +27,13 @@ logger = logging.getLogger('sagemaker')
 class MXNet(Framework):
     """Handle end-to-end training and deployment of custom MXNet code."""
 
-    __framework_name__ = "mxnet"
+    __framework_name__ = 'mxnet'
+
+    LOWEST_SCRIPT_MODE_VERSION = ['1', '3', '0']
+    LAUNCH_PS_ENV_NAME = 'sagemaker_mxnet_launch_parameter_server'
 
     def __init__(self, entry_point, source_dir=None, hyperparameters=None, py_version='py2',
-                 framework_version=None, image_name=None, **kwargs):
+                 framework_version=None, image_name=None, launch_parameter_server=False, **kwargs):
         """
         This ``Estimator`` executes an MXNet script in a managed MXNet execution environment, within a SageMaker
         Training Job. The managed MXNet environment is an Amazon-built Docker container that executes functions
@@ -50,7 +53,7 @@ class MXNet(Framework):
             source_dir (str): Path (absolute or relative) to a directory with any other training
                 source code dependencies aside from tne entry point file (default: None). Structure within this
                 directory are preserved when training on Amazon SageMaker.
-            hyperparameters (dict): Hyperparameters that will be used for training (default: None).
+            hyperparameters (dict): Hyperparameters that will be used for training (default: {}).
                 The hyperparameters are made accessible as a dict[str, str] to the training code on SageMaker.
                 For convenience, this accepts other types for keys and values, but ``str()`` will be called
                 to convert them before training.
@@ -64,15 +67,28 @@ class MXNet(Framework):
                     Examples:
                         123.dkr.ecr.us-west-2.amazonaws.com/my-custom-image:1.0
                         custom-image:latest.
+            launch_parameter_server (bool): Whether or not to launch the default parameter server
+                implementation for use with distributed training (default: False). Valid for only
+                versions 1.3 and higher of MXNet.
             **kwargs: Additional kwargs passed to the :class:`~sagemaker.estimator.Framework` constructor.
         """
+        if framework_version is None:
+            logger.warning(empty_framework_version_warning(MXNET_VERSION))
+        self.framework_version = framework_version or MXNET_VERSION
+
+        if self._script_mode_version():
+            hyperparameters = hyperparameters or {}
+            hyperparameters[self.LAUNCH_PS_ENV_NAME] = launch_parameter_server
+        else:
+            if launch_parameter_server:
+                raise ValueError('launch_parameter_server is used for only versions 1.3 and higher')
+
         super(MXNet, self).__init__(entry_point, source_dir, hyperparameters,
                                     image_name=image_name, **kwargs)
         self.py_version = py_version
 
-        if framework_version is None:
-            logger.warning(empty_framework_version_warning(MXNET_VERSION))
-        self.framework_version = framework_version or MXNET_VERSION
+    def _script_mode_version(self):
+        return self.framework_version.split('.') >= self.LOWEST_SCRIPT_MODE_VERSION
 
     def create_model(self, model_server_workers=None, role=None, vpc_config_override=VPC_CONFIG_DEFAULT):
         """Create a SageMaker ``MXNetModel`` object that can be deployed to an ``Endpoint``.
