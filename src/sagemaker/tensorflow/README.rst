@@ -404,10 +404,9 @@ you can specify these as keyword arguments.
 -  ``source_dir (str)`` Path (absolute or relative) to a directory with any
    other training source code dependencies including the entry point
    file. Structure within this directory will be preserved when training
-   on SageMaker.
--  ``requirements_file (str)`` Path to a ``requirements.txt`` file. The path should
-   be within and relative to ``source_dir``. This is a file containing a list of items to be
-   installed using pip install. Details on the format can be found in the
+   on SageMaker. If you need libraries to be installed by pip install, you can put a list of
+   libraries into ``requirements.txt`` file and put it in ``source_dir``. 
+   Details on the format can be found in the
    `Pip User Guide <https://pip.pypa.io/en/stable/reference/pip_install/#requirements-file-format>`_.
 -  ``hyperparameters (dict[str,ANY])`` Hyperparameters that will be used for training.
    Will be made accessible as a dict[] to the training code on
