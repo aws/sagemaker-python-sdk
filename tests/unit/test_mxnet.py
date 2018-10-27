@@ -378,14 +378,14 @@ def test_estimator_script_mode_launch_parameter_server(sagemaker_session):
     mx = MXNet(entry_point=SCRIPT_PATH, role=ROLE, sagemaker_session=sagemaker_session,
                train_instance_count=INSTANCE_COUNT, train_instance_type=INSTANCE_TYPE,
                launch_parameter_server=True, framework_version='1.3.0')
-    assert mx.hyperparameters.get(MXNet.LAUNCH_PS_ENV_NAME) is True
+    assert mx.hyperparameters().get(MXNet.LAUNCH_PS_ENV_NAME) is True
 
 
 def test_estimator_script_mode_dont_launch_parameter_server(sagemaker_session):
     mx = MXNet(entry_point=SCRIPT_PATH, role=ROLE, sagemaker_session=sagemaker_session,
                train_instance_count=INSTANCE_COUNT, train_instance_type=INSTANCE_TYPE,
                launch_parameter_server=False, framework_version='1.3.0')
-    assert mx.hyperparameters.get(MXNet.LAUNCH_PS_ENV_NAME) is False
+    assert mx.hyperparameters().get(MXNet.LAUNCH_PS_ENV_NAME) is False
 
 
 def test_estimator_wrong_version_launch_parameter_server(sagemaker_session):
