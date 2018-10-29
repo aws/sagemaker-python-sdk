@@ -104,6 +104,9 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):
 
         self.base_job_name = base_job_name
         self._current_job_name = None
+        if (not self.sagemaker_session.local_mode
+                and output_path and output_path.startswith('file://')):
+            raise RuntimeError('file:// output paths are only supported in Local Mode')
         self.output_path = output_path
         self.output_kms_key = output_kms_key
         self.latest_training_job = None

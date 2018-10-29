@@ -39,25 +39,31 @@ def copy_directory_structure(destination_directory, relative_path):
     os.makedirs(destination_directory, relative_path)
 
 
-def move_to_destination(source, destination, sagemaker_session):
+def move_to_destination(source, destination, job_name, sagemaker_session):
     """move source to destination. Can handle uploading to S3
 
     Args:
         source (str): root directory to move
         destination (str): file:// or s3:// URI that source will be moved to.
         sagemaker_session (sagemaker.Session): a sagemaker_session to interact with S3 if needed
+
+    Returns:
+        (str): destination URI
     """
     parsed_uri = urlparse(destination)
     if parsed_uri.scheme == 'file':
         recursive_copy(source, parsed_uri.path)
+        final_uri = destination
     elif parsed_uri.scheme == 's3':
         bucket = parsed_uri.netloc
-        path = parsed_uri.path.strip('/')
+        path = "%s%s" % (parsed_uri.path.lstrip('/'), job_name)
+        final_uri = 's3://%s/%s' % (bucket, path)
         sagemaker_session.upload_data(source, bucket, path)
     else:
         raise ValueError('Invalid destination URI, must be s3:// or file://, got: %s' % destination)
 
     shutil.rmtree(source)
+    return final_uri
 
 
 def recursive_copy(source, destination):

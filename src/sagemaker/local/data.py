@@ -13,6 +13,7 @@
 from __future__ import absolute_import
 
 import os
+import platform
 import sys
 import tempfile
 from abc import ABCMeta
@@ -162,6 +163,12 @@ class S3DataSource(DataSource):
             root_dir = os.path.abspath(root_dir)
 
         working_dir = tempfile.mkdtemp(dir=root_dir)
+        # Docker cannot mount Mac OS /var folder properly see
+        # https://forums.docker.com/t/var-folders-isnt-mounted-properly/9600
+        # Only apply this workaround if the user didn't provide an alternate storage root dir.
+        if root_dir is None and platform.system() == 'Darwin':
+            working_dir = '/private{}'.format(working_dir)
+
         sagemaker.utils.download_folder(bucket, prefix, working_dir, sagemaker_session)
         self.files = LocalFileDataSource(working_dir)
 

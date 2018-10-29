@@ -2,6 +2,10 @@
 CHANGELOG
 =========
 
+1.12.1dev
+=========
+* enhancement: Local Mode: support output_path. Can be either file:// or s3://
+
 1.12.0
 ======
 
