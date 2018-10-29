@@ -191,6 +191,7 @@ def test_tuning_mxnet(sagemaker_session):
                           py_version=PYTHON_VERSION,
                           train_instance_count=1,
                           train_instance_type='ml.m4.xlarge',
+                          framework_version='1.2.1',
                           sagemaker_session=sagemaker_session,
                           base_job_name='tune-mxnet')
 

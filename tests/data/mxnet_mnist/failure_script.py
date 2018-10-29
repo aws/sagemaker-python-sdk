@@ -12,6 +12,6 @@
 # language governing permissions and limitations under the License.
 from __future__ import absolute_import
 
-def train(**kwargs):
-    """For use with integration tests expecting failures."""
-    raise Exception('This failure is expected.')
+
+# For use with integration tests expecting failures.
+raise Exception('This failure is expected.')
