@@ -2,6 +2,12 @@
 CHANGELOG
 =========
 
+1.12.0
+======
+
+* feature: Estimators: add support for MXNet 1.3.0, including the addition of ``launch_parameter_server`` for use with the new training script format
+* feature: Documentation: add explanation for the new training script format used with MXNet
+
 1.11.3
 ======
 
