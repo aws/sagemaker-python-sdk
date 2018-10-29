@@ -24,7 +24,7 @@ Suppose that you already have an MXNet training script called
                             framework_version='1.2.1')
     mxnet_estimator.fit('s3://bucket/path/to/training/data')
 
-Where the s3 url is a path to your training data, within Amazon S3. The constructor keyword arguments define how SageMaker runs your training script and are discussed, in detail, in a later section.
+Where the S3 url is a path to your training data, within Amazon S3. The constructor keyword arguments define how SageMaker runs your training script and are discussed, in detail, in a later section.
 
 In the following sections, we'll discuss how to prepare a training script for execution on SageMaker, then how to run that script on SageMaker using an ``MXNet`` Estimator.
 
@@ -207,6 +207,16 @@ If you were previously relying on the default save method, you can now import on
 
         save(args.model_dir, model)
 
+Lastly, if you were relying on the container launching a parameter server for use with distributed training, you must now set ``launch_parameter_server`` to ``True`` when creating an MXNet estimator:
+
+.. code:: python
+
+    from sagemaker.mxnet import MXNet
+
+    estimator = MXNet('path-to-distributed-training-script.py',
+                      ...,
+                      launch_parameter_server=True)
+
 
 Using third-party libraries
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -218,7 +228,9 @@ If there are other packages you want to use with your script, you can include a 
 Running an MXNet training script in SageMaker
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-You run MXNet training scripts on SageMaker by creating ``MXNet`` Estimators. SageMaker training of your script is invoked when you call ``fit`` on an ``MXNet`` Estimator. The following code sample shows how you train a custom MXNet script "train.py".
+You run MXNet training scripts on SageMaker by creating an ``MXNet`` estimators.
+When you call ``fit`` on an ``MXNet`` estimator, a SageMaker training job with your script is started.
+The following code sample shows how you train a custom MXNet script "train.py".
 
 .. code:: python
 
@@ -292,6 +304,8 @@ The following are optional arguments. When you create an ``MXNet`` object, you c
    framework_version and py_version. Refer to: `SageMaker MXNet Docker Containers
    <#sagemaker-mxnet-docker-containers>`_ for details on what the Official images support
    and where to find the source code to build your custom image.
+-  ``launch_parameter_server`` For versions 1.3 and above only.
+   This determines whether or not a parameter server is launched for use with distributed training.
 
 Calling fit
 ^^^^^^^^^^^
