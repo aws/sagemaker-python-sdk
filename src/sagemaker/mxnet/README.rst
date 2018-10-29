@@ -31,32 +31,32 @@ In the following sections, we'll discuss how to prepare a training script for ex
 Preparing the MXNet training script
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-+--------------------------------------------------------------------------------------------------------------------------------------------------+
-| WARNING                                                                                                                                          |
-+==================================================================================================================================================+
-| The structure for training scripts changed with MXNet version 1.3.                                                                               |
-| Please make sure you are referring to the correct section of this README when preparing your script.                                             |
-| To jump to how to upgrade an old script to the new format, see `"Updating your MXNet training script" <#updating-your-mxnet-training-script>`__. |
-+--------------------------------------------------------------------------------------------------------------------------------------------------+
++----------------------------------------------------------------------------------------------------------------------------------------------------------+
+| WARNING                                                                                                                                                  |
++==========================================================================================================================================================+
+| The structure for training scripts changed with MXNet version 1.3.                                                                                       |
+| Make sure you refer to the correct section of this README when you prepare your script.                                                                  |
+| For information on how to upgrade an old script to the new format, see `"Updating your MXNet training script" <#updating-your-mxnet-training-script>`__. |
++----------------------------------------------------------------------------------------------------------------------------------------------------------+
 
 For versions 1.3 and higher
 '''''''''''''''''''''''''''
 Your MXNet training script must be a Python 2.7 or 3.5 compatible source file.
 
-The training script is very similar to a training script you might run outside of SageMaker, but you can access useful properties about the training environment through various environment variables, such as
+The training script is very similar to a training script you might run outside of SageMaker, but you can access useful properties about the training environment through various environment variables, including the following:
 
-* ``SM_MODEL_DIR``: A string representing the path to the directory to write model artifacts to.
-  These artifacts are uploaded to S3 for model hosting.
+* ``SM_MODEL_DIR``: A string that represents the path where the training job writes the model artifacts to.
+  After training, artifacts in this directory are uploaded to S3 for model hosting.
 * ``SM_NUM_GPUS``: An integer representing the number of GPUs available to the host.
-* ``SM_OUTPUT_DATA_DIR``: A string representing the filesystem path to write output artifacts to. Outut artifacts may include checkpoints, graphs, and other files to save, not including model artifacts.
-  These artifacts are compressed and uploaded to S3 to the same S3 prefix as the model artifacts.
+* ``SM_OUTPUT_DATA_DIR``: A string that represents the path to the directory to write output artifacts to.
+  Output artifacts might include checkpoints, graphs, and other files to save, but do not include model artifacts.
+  These artifacts are compressed and uploaded to S3 to an S3 bucket with the same prefix as the model artifacts.
+* ``SM_CHANNEL_XXXX``: A string that represents the path to the directory that contains the input data for the specified channel.
+  For example, if you specify two input channels in the MXNet estimator's ``fit`` call, named 'train' and 'test', the environment variables ``SM_CHANNEL_TRAIN`` and ``SM_CHANNEL_TEST`` are set.
 
-Supposing two input channels, 'train' and 'test', were used in the call to the MXNet estimator's ``fit`` method, the following will be set, following the format "SM_CHANNEL_[channel_name]":
+For the exhaustive list of available environment variables, see the `SageMaker Containers documentation <https://github.com/aws/sagemaker-containers#list-of-provided-environment-variables-by-sagemaker-containers>`__.
 
-* ``SM_CHANNEL_TRAIN``: A string representing the path to the directory containing data in the 'train' channel
-* ``SM_CHANNEL_TEST``: Same as above, but for the 'test' channel.
-
-A typical training script loads data from the input channels, configures training with hyperparameters, trains a model, and saves a model to ``model_dir`` so that it can be hosted later.
+A typical training script loads data from the input channels, configures training with hyperparameters, trains a model, and saves a model to ``model_dir`` so that it can be deployed for inference later.
 Hyperparameters are passed to your script as arguments and can be retrieved with an ``argparse.ArgumentParser`` instance.
 For example, a training script might start with the following:
 
@@ -145,8 +145,8 @@ Updating your MXNet training script
 '''''''''''''''''''''''''''''''''''
 
 The structure for training scripts changed with MXNet version 1.3.
-The ``train`` function will no longer be required; instead the training script must be able to be run as a standalone script.
-In this way, the training script will become similar to a training script you might run outside of SageMaker.
+The ``train`` function is no longer be required; instead the training script must be able to be run as a standalone script.
+In this way, the training script is similar to a training script you might run outside of SageMaker.
 
 There are a few steps needed to make a training script with the old format compatible with the new format.
 
