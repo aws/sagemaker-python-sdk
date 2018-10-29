@@ -40,7 +40,7 @@ Preparing the MXNet training script
 +----------------------------------------------------------------------------------------------------------------------------------------------------------+
 
 For versions 1.3 and higher
-'''''''''''''''''''''''''''
+^^^^^^^^^^^^^^^^^^^^^^^^^^^
 Your MXNet training script must be a Python 2.7 or 3.5 compatible source file.
 
 The training script is very similar to a training script you might run outside of SageMaker, but you can access useful properties about the training environment through various environment variables, including the following:
@@ -92,7 +92,7 @@ If you want to use, for example, boolean hyperparameters, you need to specify ``
 For more on training environment variables, please visit `SageMaker Containers <https://github.com/aws/sagemaker-containers>`_.
 
 For versions 1.2 and lower
-''''''''''''''''''''''''''
+^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 Your MXNet training script must be a Python 2.7 or 3.5 compatible source file. The MXNet training script must contain a function ``train``, which SageMaker invokes to run training. You can include other functions as well, but it must contain a ``train`` function.
 
@@ -142,7 +142,7 @@ When SageMaker runs your training script, it imports it as a Python module and t
 If you want to run your training script locally via the Python interpreter, look at using a ``___name__ == '__main__'`` guard, discussed in more detail here: https://stackoverflow.com/questions/419163/what-does-if-name-main-do .
 
 Updating your MXNet training script
-'''''''''''''''''''''''''''''''''''
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 The structure for training scripts changed with MXNet version 1.3.
 The ``train`` function is no longer be required; instead the training script must be able to be run as a standalone script.
@@ -208,10 +208,12 @@ If you were previously relying on the default save method, you can now import on
         save(args.model_dir, model)
 
 
-Using MXNet and numpy
-^^^^^^^^^^^^^^^^^^^^^
+Using third-party libraries
+^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-You can import both ``mxnet`` and ``numpy`` in your training script. When your script runs in SageMaker, it will run with access to MXNet version 1.2.1 and numpy version 1.14.5 by default. For more information on the environment your script runs in, please see `SageMaker MXNet Containers <#sagemaker-mxnet-containers>`__.
+When running your training script on SageMaker, it will have access to some pre-installed third-party libraries including ``mxnet``, ``numpy``, ``onnx``, and ``keras-mxnet``. For more information on the runtime environment, including specific package versions, see `SageMaker MXNet Containers <#sagemaker-mxnet-containers>`__.
+
+If there are other packages you want to use with your script, you can include a `requirements.txt <https://pip.pypa.io/en/stable/user_guide/#requirements-files>`__ file in the same directory as your training script to install other dependencies at runtime.
 
 Running an MXNet training script in SageMaker
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -715,15 +717,19 @@ Your MXNet training script will be run on version 1.2.1 by default. (See below f
 
 The Docker images have the following dependencies installed:
 
-+-------------------------+--------------+-------------+-------------+-------------+
-| Dependencies            | MXNet 0.12.1 | MXNet 1.0.0 | MXNet 1.1.0 | MXNet 1.2.1 |
-+-------------------------+--------------+-------------+-------------+-------------+
-| Python                  |   2.7 or 3.5 |   2.7 or 3.5|   2.7 or 3.5|   2.7 or 3.5|
-+-------------------------+--------------+-------------+-------------+-------------+
-| CUDA (GPU image only)   |          9.0 |         9.0 |         9.0 |         9.0 |
-+-------------------------+--------------+-------------+-------------+-------------+
-| numpy                   |       1.13.3 |      1.13.3 |      1.13.3 |      1.14.5 |
-+-------------------------+--------------+-------------+-------------+-------------+
++-------------------------+--------------+-------------+-------------+-------------+-------------+
+| Dependencies            | MXNet 0.12.1 | MXNet 1.0.0 | MXNet 1.1.0 | MXNet 1.2.1 | MXNet 1.3.0 |
++-------------------------+--------------+-------------+-------------+-------------+-------------+
+| Python                  |   2.7 or 3.5 |   2.7 or 3.5|   2.7 or 3.5|   2.7 or 3.5|   2.7 or 3.5|
++-------------------------+--------------+-------------+-------------+-------------+-------------+
+| CUDA (GPU image only)   |          9.0 |         9.0 |         9.0 |         9.0 |         9.0 |
++-------------------------+--------------+-------------+-------------+-------------+-------------+
+| numpy                   |       1.13.3 |      1.13.3 |      1.13.3 |      1.14.5 |      1.14.6 |
++-------------------------+--------------+-------------+-------------+-------------+-------------+
+| onnx                    |          N/A |         N/A |         N/A |       1.2.1 |       1.2.1 |
++-------------------------+--------------+-------------+-------------+-------------+-------------+
+| keras-mxnet             |          N/A |         N/A |         N/A |         N/A |       2.2.2 |
++-------------------------+--------------+-------------+-------------+-------------+-------------+
 
 The Docker images extend Ubuntu 16.04.
 
