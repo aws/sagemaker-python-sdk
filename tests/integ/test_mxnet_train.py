@@ -33,7 +33,7 @@ def mxnet_training_job(sagemaker_session, mxnet_full_version):
 
         mx = MXNet(entry_point=script_path, role='SageMakerRole', framework_version=mxnet_full_version,
                    py_version=PYTHON_VERSION, train_instance_count=1, train_instance_type='ml.c4.xlarge',
-                   sagemaker_session=sagemaker_session)
+                   launch_parameter_server=True, sagemaker_session=sagemaker_session)
 
         train_input = mx.sagemaker_session.upload_data(path=os.path.join(data_path, 'train'),
                                                        key_prefix='integ-test-data/mxnet_mnist/train')
@@ -80,7 +80,7 @@ def test_async_fit(sagemaker_session):
 
         mx = MXNet(entry_point=script_path, role='SageMakerRole', py_version=PYTHON_VERSION,
                    train_instance_count=1, train_instance_type='ml.c4.xlarge',
-                   sagemaker_session=sagemaker_session)
+                   launch_parameter_server=True, sagemaker_session=sagemaker_session)
 
         train_input = mx.sagemaker_session.upload_data(path=os.path.join(data_path, 'train'),
                                                        key_prefix='integ-test-data/mxnet_mnist/train')
