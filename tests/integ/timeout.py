@@ -96,8 +96,8 @@ def _show_endpoint_logs(endpoint_name, sagemaker_session):
                        aws_region=sagemaker_session.boto_session.region_name)
         logs.list_logs()
     except Exception:
-        LOGGER.exception('Failure occurred while listing cloudwatch log group %s. ' +
-                         'Swallowing exception but printing stacktrace for debugging.', log_group)
+        LOGGER.exception('Failure occurred while listing cloudwatch log group %s. Swallowing exception but printing '
+                         'stacktrace for debugging.', log_group)
 
 
 def _cleanup_endpoint_logs(endpoint_name, sagemaker_session):
@@ -109,5 +109,5 @@ def _cleanup_endpoint_logs(endpoint_name, sagemaker_session):
         cwl_client.delete_log_group(logGroupName=log_group)
         LOGGER.info('deleted cloudwatch log group: {}'.format(log_group))
     except Exception:
-        LOGGER.exception('Failure occurred while cleaning up cloudwatch log group %s. ' +
+        LOGGER.exception('Failure occurred while cleaning up cloudwatch log group %s. '
                          'Swallowing exception but printing stacktrace for debugging.', log_group)

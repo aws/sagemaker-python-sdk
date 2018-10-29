@@ -33,7 +33,7 @@ def test_keras(sagemaker_session, tf_full_version):
                                source_dir=script_path,
                                role='SageMakerRole', sagemaker_session=sagemaker_session,
                                hyperparameters={'learning_rate': 1e-4, 'decay': 1e-6},
-                               training_steps=500, evaluation_steps=5,
+                               training_steps=50, evaluation_steps=5,
                                train_instance_count=1, train_instance_type='ml.c4.xlarge',
                                train_max_run=45 * 60)
 
