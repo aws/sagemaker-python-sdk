@@ -184,6 +184,9 @@ def test_mxnet(strftime, sagemaker_session, mxnet_version):
     expected_train_args = _create_train_job(mxnet_version)
     expected_train_args['input_config'][0]['DataSource']['S3DataSource']['S3Uri'] = inputs
 
+    if mx._script_mode_version():
+        expected_train_args['hyperparameters'][mx.LAUNCH_PS_ENV_NAME] = json.dumps(False)
+
     actual_train_args = sagemaker_session.method_calls[0][2]
     assert actual_train_args == expected_train_args
 
@@ -378,14 +381,14 @@ def test_estimator_script_mode_launch_parameter_server(sagemaker_session):
     mx = MXNet(entry_point=SCRIPT_PATH, role=ROLE, sagemaker_session=sagemaker_session,
                train_instance_count=INSTANCE_COUNT, train_instance_type=INSTANCE_TYPE,
                launch_parameter_server=True, framework_version='1.3.0')
-    assert mx.hyperparameters().get(MXNet.LAUNCH_PS_ENV_NAME) is True
+    assert mx.hyperparameters().get(MXNet.LAUNCH_PS_ENV_NAME) == 'true'
 
 
 def test_estimator_script_mode_dont_launch_parameter_server(sagemaker_session):
     mx = MXNet(entry_point=SCRIPT_PATH, role=ROLE, sagemaker_session=sagemaker_session,
                train_instance_count=INSTANCE_COUNT, train_instance_type=INSTANCE_TYPE,
                launch_parameter_server=False, framework_version='1.3.0')
-    assert mx.hyperparameters().get(MXNet.LAUNCH_PS_ENV_NAME) is False
+    assert mx.hyperparameters().get(MXNet.LAUNCH_PS_ENV_NAME) == 'false'
 
 
 def test_estimator_wrong_version_launch_parameter_server(sagemaker_session):
