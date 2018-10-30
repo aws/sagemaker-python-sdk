@@ -11,6 +11,7 @@ CHANGELOG
 * doc-fix: Fix typos in tensorflow serving documentation
 * doc-fix: Add estimator base classes to API docs
 * feature: HyperparameterTuner: add support for Automatic Model Tuning's Warm Start Jobs
+* feature: Estimators: add support for Amazon IP Insights algorithm
 
 1.14.2
 ======
