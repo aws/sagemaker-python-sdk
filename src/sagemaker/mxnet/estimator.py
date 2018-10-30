@@ -29,7 +29,7 @@ class MXNet(Framework):
 
     __framework_name__ = 'mxnet'
 
-    LOWEST_SCRIPT_MODE_VERSION = ['1', '3', '0']
+    LOWEST_SCRIPT_MODE_VERSION = ['1', '3']
     LAUNCH_PS_ENV_NAME = 'sagemaker_mxnet_launch_parameter_server'
 
     def __init__(self, entry_point, source_dir=None, hyperparameters=None, py_version='py2',
