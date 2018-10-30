@@ -147,7 +147,8 @@ def test_s3_input_all_arguments():
     content_type = 'text/csv'
     record_wrapping = 'RecordIO'
     s3_data_type = 'Manifestfile'
-    result = s3_input(s3_data=prefix, distribution=distribution, compression=compression,
+    input_mode = 'Pipe'
+    result = s3_input(s3_data=prefix, distribution=distribution, compression=compression, input_mode=input_mode,
                       content_type=content_type, record_wrapping=record_wrapping, s3_data_type=s3_data_type)
     expected = \
         {'DataSource': {
@@ -159,7 +160,8 @@ def test_s3_input_all_arguments():
         },
             'CompressionType': compression,
             'ContentType': content_type,
-            'RecordWrapperType': record_wrapping
+            'RecordWrapperType': record_wrapping,
+            'InputMode': input_mode
         }
 
     assert result.config == expected

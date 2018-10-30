@@ -263,6 +263,66 @@ A few important notes:
 - Local Mode requires Docker Compose and `nvidia-docker2 <https://github.com/NVIDIA/nvidia-docker>`__ for ``local_gpu``.
 - Distributed training is not yet supported for ``local_gpu``.
 
+Incremental Training
+~~~~~~~~~~~~~~~~~~~~
+
+Incremental training allows you to bring a pre-trained model into a SageMaker training job, to use as a starting point for a new model.
+There are several situations where you might want to do this:
+
+- You want to perform additional training on a model to improve its fit on your data set.
+- You want to import a pre-trained model and fit it to your data.
+- You want to resume a training job that you previously stopped.
+
+To use incremental training with SageMaker algorithms, you need model artifacts compressed into a ``tar.gz`` file. These
+artifacts are passed to a training job via an input channel configured with the pre-defined settings Amazon SageMaker algorithms require.
+
+To use model files with a SageMaker estimator, you can use the following parameters:
+
+* ``model_uri``: points to the location of a model tarball, either in S3 or locally. Specifying a local path only works in local mode.
+* ``model_channel_name``: name of the channel SageMaker will use to download the tarball specified in ``model_uri``. Defaults to 'model'.
+
+This is converted into an input channel with the specifications mentioned above once you call ``fit()`` on the predictor.
+In bring-your-own cases, ``model_channel_name`` can be overriden if you require to change the name of the channel while using
+the same settings.
+
+If your bring-your-own case requires different settings, you can create your own ``s3_input`` object with the settings you require.
+
+Here's an example of how to use incremental training:
+
+.. code:: python
+    # Configure an estimator
+    estimator = sagemaker.estimator.Estimator(training_image,
+                                              role,
+                                              train_instance_count=1,
+                                              train_instance_type='ml.p2.xlarge',
+                                              train_volume_size=50,
+                                              train_max_run=360000,
+                                              input_mode='File',
+                                              output_path=s3_output_location)
+
+    # Start a SageMaker training job and waits until completion.
+    estimator.fit('s3://my_bucket/my_training_data/')
+
+    # Create a new estimator using the previous' model artifacts
+    incr_estimator = sagemaker.estimator.Estimator(training_image,
+                                                  role,
+                                                  train_instance_count=1,
+                                                  train_instance_type='ml.p2.xlarge',
+                                                  train_volume_size=50,
+                                                  train_max_run=360000,
+                                                  input_mode='File',
+                                                  output_path=s3_output_location,
+                                                  model_uri=estimator.model_data)
+
+    # Start a SageMaker training job using the original model for incremental training
+    incr_estimator.fit('s3://my_bucket/my_training_data/')
+
+Currently, the following algorithms support incremental training:
+
+- Image Classification
+- Object Detection
+- Semantics Segmentation
+
 
 MXNet SageMaker Estimators
 --------------------------

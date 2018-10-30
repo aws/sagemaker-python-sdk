@@ -50,6 +50,41 @@ DESCRIBE_TRAINING_JOB_RESULT = {
     }
 }
 
+RETURNED_JOB_DESCRIPTION = {
+    'AlgorithmSpecification': {
+        'TrainingInputMode': 'File',
+        'TrainingImage': '1.dkr.ecr.us-west-2.amazonaws.com/sagemaker-other-py2-cpu:1.0.4'
+    },
+    'HyperParameters': {
+        'sagemaker_submit_directory': '"s3://some/sourcedir.tar.gz"',
+        'checkpoint_path': '"s3://other/1508872349"',
+        'sagemaker_program': '"iris-dnn-classifier.py"',
+        'sagemaker_enable_cloudwatch_metrics': 'false',
+        'sagemaker_container_log_level': '"logging.INFO"',
+        'sagemaker_job_name': '"neo"',
+        'training_steps': '100',
+    },
+
+    'RoleArn': 'arn:aws:iam::366:role/SageMakerRole',
+    'ResourceConfig': {
+        'VolumeSizeInGB': 30,
+        'InstanceCount': 1,
+        'InstanceType': 'ml.c4.xlarge'
+    },
+    'StoppingCondition': {
+        'MaxRuntimeInSeconds': 24 * 60 * 60
+    },
+    'TrainingJobName': 'neo',
+    'TrainingJobStatus': 'Completed',
+    'OutputDataConfig': {
+        'KmsKeyId': '',
+        'S3OutputPath': 's3://place/output/neo'
+    },
+    'TrainingJobOutput': {
+        'S3TrainingJobOutput': 's3://here/output.tar.gz'
+    }
+}
+
 MODEL_CONTAINER_DEF = {
     'Environment': {
         'SAGEMAKER_PROGRAM': ENTRY_POINT,
@@ -73,8 +108,9 @@ class DummyFramework(Framework):
         return DummyFrameworkModel(self.sagemaker_session, vpc_config=self.get_vpc_config())
 
     @classmethod
-    def _prepare_init_params_from_job_description(cls, job_details):
-        init_params = super(DummyFramework, cls)._prepare_init_params_from_job_description(job_details)
+    def _prepare_init_params_from_job_description(cls, job_details, model_channel_name=None):
+        init_params = super(DummyFramework, cls)._prepare_init_params_from_job_description(
+            job_details, model_channel_name)
         init_params.pop("image", None)
         return init_params
 
@@ -131,6 +167,56 @@ def test_sagemaker_s3_uri_invalid(sagemaker_session):
                            train_instance_count=INSTANCE_COUNT, train_instance_type=INSTANCE_TYPE)
         t.fit('thisdoesntstartwiths3')
     assert 'must be a valid S3 or FILE URI' in str(error)
+
+
+def test_sagemaker_model_s3_uri_invalid(sagemaker_session):
+    with pytest.raises(ValueError) as error:
+        t = DummyFramework(entry_point=SCRIPT_PATH, role=ROLE, sagemaker_session=sagemaker_session,
+                           train_instance_count=INSTANCE_COUNT, train_instance_type=INSTANCE_TYPE,
+                           model_uri='thisdoesntstartwiths3either.tar.gz')
+        t.fit('s3://mydata')
+    assert 'must be a valid S3 or FILE URI' in str(error)
+
+
+def test_sagemaker_model_file_uri_invalid(sagemaker_session):
+    with pytest.raises(ValueError) as error:
+        t = DummyFramework(entry_point=SCRIPT_PATH, role=ROLE, sagemaker_session=sagemaker_session,
+                           train_instance_count=INSTANCE_COUNT, train_instance_type=INSTANCE_TYPE,
+                           model_uri='file://notins3.tar.gz')
+        t.fit('s3://mydata')
+    assert 'File URIs are supported in local mode only' in str(error)
+
+
+def test_sagemaker_model_default_channel_name(sagemaker_session):
+    f = DummyFramework(entry_point='my_script.py', role='DummyRole', train_instance_count=3,
+                       train_instance_type='ml.m4.xlarge', sagemaker_session=sagemaker_session,
+                       model_uri='s3://model-bucket/prefix/model.tar.gz')
+    _TrainingJob.start_new(f, {})
+    sagemaker_session.train.assert_called_once()
+    _, args = sagemaker_session.train.call_args
+    assert args['input_config'] == [{'ChannelName': 'model',
+                                     'InputMode': 'File',
+                                     'ContentType': 'application/x-sagemaker-model',
+                                     'DataSource': {
+                                         'S3DataSource': {'S3DataType': 'S3Prefix',
+                                                          'S3DataDistributionType': 'FullyReplicated',
+                                                          'S3Uri': 's3://model-bucket/prefix/model.tar.gz'}}}]
+
+
+def test_sagemaker_model_custom_channel_name(sagemaker_session):
+    f = DummyFramework(entry_point='my_script.py', role='DummyRole', train_instance_count=3,
+                       train_instance_type='ml.m4.xlarge', sagemaker_session=sagemaker_session,
+                       model_uri='s3://model-bucket/prefix/model.tar.gz', model_channel_name='testModelChannel')
+    _TrainingJob.start_new(f, {})
+    sagemaker_session.train.assert_called_once()
+    _, args = sagemaker_session.train.call_args
+    assert args['input_config'] == [{'ChannelName': 'testModelChannel',
+                                     'InputMode': 'File',
+                                     'ContentType': 'application/x-sagemaker-model',
+                                     'DataSource': {
+                                         'S3DataSource': {'S3DataType': 'S3Prefix',
+                                                          'S3DataDistributionType': 'FullyReplicated',
+                                                          'S3Uri': 's3://model-bucket/prefix/model.tar.gz'}}}]
 
 
 @patch('time.strftime', return_value=TIMESTAMP)
@@ -282,38 +368,10 @@ def test_enable_cloudwatch_metrics(sagemaker_session):
 
 
 def test_attach_framework(sagemaker_session):
-    returned_job_description = {
-        'AlgorithmSpecification': {
-            'TrainingInputMode': 'File',
-            'TrainingImage': '1.dkr.ecr.us-west-2.amazonaws.com/sagemaker-other-py2-cpu:1.0.4',
-        },
-        'HyperParameters': {
-            'sagemaker_submit_directory': '"s3://some/sourcedir.tar.gz"',
-            'checkpoint_path': '"s3://other/1508872349"',
-            'sagemaker_program': '"iris-dnn-classifier.py"',
-            'sagemaker_enable_cloudwatch_metrics': 'false',
-            'sagemaker_container_log_level': '"logging.INFO"',
-                                 'sagemaker_job_name': '"neo"',
-            'training_steps': '100',
-        },
-        'RoleArn': 'arn:aws:iam::366:role/SageMakerRole',
-        'ResourceConfig': {
-            'VolumeSizeInGB': 30,
-            'InstanceCount': 1,
-            'InstanceType': 'ml.c4.xlarge',
-        },
-        'StoppingCondition': {'MaxRuntimeInSeconds': 24 * 60 * 60},
-        'TrainingJobName': 'neo',
-        'TrainingJobStatus': 'Completed',
-        'OutputDataConfig': {
-            'KmsKeyId': '',
-            'S3OutputPath': 's3://place/output/neo',
-        },
-        'TrainingJobOutput': {'S3TrainingJobOutput': 's3://here/output.tar.gz'},
-        'VpcConfig': {
-            'Subnets': ['foo'],
-            'SecurityGroupIds': ['bar']
-        }
+    returned_job_description = RETURNED_JOB_DESCRIPTION.copy()
+    returned_job_description['VpcConfig'] = {
+        'Subnets': ['foo'],
+        'SecurityGroupIds': ['bar']
     }
     sagemaker_session.sagemaker_client.describe_training_job = Mock(name='describe_training_job',
                                                                     return_value=returned_job_description)
@@ -335,41 +393,8 @@ def test_attach_framework(sagemaker_session):
 
 
 def test_attach_framework_with_tuning(sagemaker_session):
-    returned_job_description = {
-        'AlgorithmSpecification': {
-            'TrainingInputMode': 'File',
-            'TrainingImage': '1.dkr.ecr.us-west-2.amazonaws.com/sagemaker-other-py2-cpu:1.0.4'
-        },
-        'HyperParameters': {
-            'sagemaker_submit_directory': '"s3://some/sourcedir.tar.gz"',
-            'checkpoint_path': '"s3://other/1508872349"',
-            'sagemaker_program': '"iris-dnn-classifier.py"',
-            'sagemaker_enable_cloudwatch_metrics': 'false',
-            'sagemaker_container_log_level': '"logging.INFO"',
-            'sagemaker_job_name': '"neo"',
-            'training_steps': '100',
-            '_tuning_objective_metric': 'Validation-accuracy',
-        },
-
-        'RoleArn': 'arn:aws:iam::366:role/SageMakerRole',
-        'ResourceConfig': {
-            'VolumeSizeInGB': 30,
-            'InstanceCount': 1,
-            'InstanceType': 'ml.c4.xlarge'
-        },
-        'StoppingCondition': {
-            'MaxRuntimeInSeconds': 24 * 60 * 60
-        },
-        'TrainingJobName': 'neo',
-        'TrainingJobStatus': 'Completed',
-        'OutputDataConfig': {
-            'KmsKeyId': '',
-            'S3OutputPath': 's3://place/output/neo'
-        },
-        'TrainingJobOutput': {
-            'S3TrainingJobOutput': 's3://here/output.tar.gz'
-        }
-    }
+    returned_job_description = RETURNED_JOB_DESCRIPTION.copy()
+    returned_job_description['HyperParameters']['_tuning_objective_metric'] = 'Validation-accuracy'
 
     mock_describe_training_job = Mock(name='describe_training_job',
                                       return_value=returned_job_description)
@@ -390,6 +415,28 @@ def test_attach_framework_with_tuning(sagemaker_session):
     assert hyper_params['_tuning_objective_metric'] == '"Validation-accuracy"'
     assert framework_estimator.source_dir == 's3://some/sourcedir.tar.gz'
     assert framework_estimator.entry_point == 'iris-dnn-classifier.py'
+
+
+def test_attach_framework_with_model_channel(sagemaker_session):
+    s3_uri = 's3://some/s3/path/model.tar.gz'
+    returned_job_description = RETURNED_JOB_DESCRIPTION.copy()
+    returned_job_description['InputDataConfig'] = [
+        {
+            'ChannelName': 'model',
+            'InputMode': 'File',
+            'DataSource': {
+                'S3DataSource': {
+                    'S3Uri': s3_uri
+                }
+            }
+        }
+    ]
+
+    sagemaker_session.sagemaker_client.describe_training_job = Mock(name='describe_training_job',
+                                                                    return_value=returned_job_description)
+
+    framework_estimator = DummyFramework.attach(training_job_name='neo', sagemaker_session=sagemaker_session)
+    assert framework_estimator.model_uri is s3_uri
 
 
 @patch('time.strftime', return_value=TIMESTAMP)
