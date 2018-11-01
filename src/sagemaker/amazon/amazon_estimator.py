@@ -70,17 +70,19 @@ class AmazonAlgorithmEstimatorBase(EstimatorBase):
         self._data_location = data_location
 
     @classmethod
-    def _prepare_init_params_from_job_description(cls, job_details):
+    def _prepare_init_params_from_job_description(cls, job_details, model_channel_name=None):
         """Convert the job description to init params that can be handled by the class constructor
 
         Args:
             job_details: the returned job details from a describe_training_job API call.
+            model_channel_name (str): Name of the channel where pre-trained model data will be downloaded.
 
         Returns:
              dictionary: The transformed init_params
 
         """
-        init_params = super(AmazonAlgorithmEstimatorBase, cls)._prepare_init_params_from_job_description(job_details)
+        init_params = super(AmazonAlgorithmEstimatorBase, cls)._prepare_init_params_from_job_description(
+            job_details, model_channel_name)
 
         # The hyperparam names may not be the same as the class attribute that holds them,
         # for instance: local_lloyd_init_method is called local_init_method. We need to map these
