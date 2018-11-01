@@ -19,6 +19,7 @@ import warnings
 from abc import ABCMeta
 from abc import abstractmethod
 from six import with_metaclass
+from six import string_types
 
 from sagemaker.analytics import TrainingJobAnalytics
 from sagemaker.fw_utils import (create_image_uri, tar_and_upload_dir, parse_s3_url, UploadedCode,
@@ -49,7 +50,7 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):
     def __init__(self, role, train_instance_count, train_instance_type,
                  train_volume_size=30, train_volume_kms_key=None, train_max_run=24 * 60 * 60, input_mode='File',
                  output_path=None, output_kms_key=None, base_job_name=None, sagemaker_session=None, tags=None,
-                 subnets=None, security_group_ids=None):
+                 subnets=None, security_group_ids=None, model_uri=None, model_channel_name='model'):
         """Initialize an ``EstimatorBase`` instance.
 
         Args:
@@ -69,6 +70,7 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):
             input_mode (str): The input mode that the algorithm supports (default: 'File'). Valid modes:
                 'File' - Amazon SageMaker copies the training dataset from the S3 location to a local directory.
                 'Pipe' - Amazon SageMaker streams data directly from S3 to the container via a Unix-named pipe.
+                This argument can be overriden on a per-channel basis using ``sagemaker.session.s3_input.input_mode``.
             output_path (str): S3 location for saving the trainig result (model artifacts and output files).
                 If not specified, results are stored to a default bucket. If the bucket with the specific name
                 does not exist, the estimator creates the bucket during the
@@ -85,6 +87,16 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):
             subnets (list[str]): List of subnet ids. If not specified training job will be created without VPC config.
             security_group_ids (list[str]): List of security group ids. If not specified training job will be created
                 without VPC config.
+            model_uri (str): URI where a pre-trained model is stored, either locally or in S3 (default: None). If
+                specified, the estimator will create a channel pointing to the model so the training job can download
+                it. This model can be a 'model.tar.gz' from a previous training job, or other artifacts coming from a
+                different source.
+
+                In local mode, this should point to the path in which the model is located and not the file itself, as
+                local Docker containers will try to mount the URI as a volume.
+
+                More information: https://docs.aws.amazon.com/sagemaker/latest/dg/cdf-training.html#td-deserialization
+            model_channel_name (str): Name of the channel where 'model_uri' will be downloaded (default: 'model').
         """
         self.role = role
         self.train_instance_count = train_instance_count
@@ -94,6 +106,8 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):
         self.train_max_run = train_max_run
         self.input_mode = input_mode
         self.tags = tags
+        self.model_uri = model_uri
+        self.model_channel_name = model_channel_name
 
         if self.train_instance_type in ('local', 'local_gpu'):
             if self.train_instance_type == 'local_gpu' and self.train_instance_count > 1:
@@ -209,7 +223,7 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):
         raise NotImplementedError()
 
     @classmethod
-    def attach(cls, training_job_name, sagemaker_session=None):
+    def attach(cls, training_job_name, sagemaker_session=None, model_channel_name='model'):
         """Attach to an existing training job.
 
         Create an Estimator bound to an existing training job, each subclass is responsible to implement
@@ -225,6 +239,8 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):
             sagemaker_session (sagemaker.session.Session): Session object which manages interactions with
                 Amazon SageMaker APIs and any other AWS services needed. If not specified, the estimator creates one
                 using the default AWS configuration chain.
+            model_channel_name (str): Name of the channel where pre-trained model data will be downloaded (default:
+                'model'). If no channel with the same name exists in the training job, this option will be ignored.
 
         Examples:
             >>> my_estimator.fit(wait=False)
@@ -239,7 +255,7 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):
         sagemaker_session = sagemaker_session or Session()
 
         job_details = sagemaker_session.sagemaker_client.describe_training_job(TrainingJobName=training_job_name)
-        init_params = cls._prepare_init_params_from_job_description(job_details)
+        init_params = cls._prepare_init_params_from_job_description(job_details, model_channel_name)
 
         estimator = cls(sagemaker_session=sagemaker_session, **init_params)
         estimator.latest_training_job = _TrainingJob(sagemaker_session=sagemaker_session,
@@ -294,11 +310,12 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):
         pass
 
     @classmethod
-    def _prepare_init_params_from_job_description(cls, job_details):
+    def _prepare_init_params_from_job_description(cls, job_details, model_channel_name=None):
         """Convert the job description to init params that can be handled by the class constructor
 
         Args:
             job_details: the returned job details from a describe_training_job API call.
+            model_channel_name (str): Name of the channel where pre-trained model data will be downloaded.
 
         Returns:
              dictionary: The transformed init_params
@@ -324,6 +341,13 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):
             init_params['subnets'] = subnets
         if security_group_ids:
             init_params['security_group_ids'] = security_group_ids
+
+        if 'InputDataConfig' in job_details and model_channel_name:
+            for channel in job_details['InputDataConfig']:
+                if channel['ChannelName'] == model_channel_name:
+                    init_params['model_channel_name'] = model_channel_name
+                    init_params['model_uri'] = channel['DataSource']['S3DataSource']['S3Uri']
+                    break
 
         return init_params
 
@@ -415,9 +439,10 @@ class _TrainingJob(_Job):
         """
 
         local_mode = estimator.sagemaker_session.local_mode
+        model_uri = estimator.model_uri
 
         # Allow file:// input only in local mode
-        if isinstance(inputs, str) and inputs.startswith('file://'):
+        if cls._is_local_channel(inputs) or cls._is_local_channel(model_uri):
             if not local_mode:
                 raise ValueError('File URIs are supported in local mode only. Please use a S3 URI instead.')
 
@@ -435,6 +460,10 @@ class _TrainingJob(_Job):
 
         return cls(estimator.sagemaker_session, estimator._current_job_name)
 
+    @classmethod
+    def _is_local_channel(cls, input_uri):
+        return isinstance(input_uri, string_types) and input_uri.startswith('file://')
+
     def wait(self, logs=True):
         if logs:
             self.sagemaker_session.logs_for_job(self.job_name, wait=True)
@@ -451,7 +480,8 @@ class Estimator(EstimatorBase):
     def __init__(self, image_name, role, train_instance_count, train_instance_type,
                  train_volume_size=30, train_volume_kms_key=None, train_max_run=24 * 60 * 60,
                  input_mode='File', output_path=None, output_kms_key=None, base_job_name=None,
-                 sagemaker_session=None, hyperparameters=None, tags=None, subnets=None, security_group_ids=None):
+                 sagemaker_session=None, hyperparameters=None, tags=None, subnets=None, security_group_ids=None,
+                 model_uri=None, model_channel_name='model'):
         """Initialize an ``Estimator`` instance.
 
         Args:
@@ -474,6 +504,7 @@ class Estimator(EstimatorBase):
                 * 'File' - Amazon SageMaker copies the training dataset from the S3 location to a local directory.
                 * 'Pipe' - Amazon SageMaker streams data directly from S3 to the container via a Unix-named pipe.
 
+                This argument can be overriden on a per-channel basis using ``sagemaker.session.s3_input.input_mode``.
             output_path (str): S3 location for saving the trainig result (model artifacts and output files).
                 If not specified, results are stored to a default bucket. If the bucket with the specific name
                 does not exist, the estimator creates the bucket during the
@@ -491,13 +522,24 @@ class Estimator(EstimatorBase):
             subnets (list[str]): List of subnet ids. If not specified training job will be created without VPC config.
             security_group_ids (list[str]): List of security group ids. If not specified training job will be created
                 without VPC config.
+            model_uri (str): URI where a pre-trained model is stored, either locally or in S3 (default: None). If
+                specified, the estimator will create a channel pointing to the model so the training job can download
+                it. This model can be a 'model.tar.gz' from a previous training job, or other artifacts coming from a
+                different source.
+
+                In local mode, this should point to the path in which the model is located and not the file itself,
+                as local Docker containers will try to mount the URI as a volume.
+
+                More information: https://docs.aws.amazon.com/sagemaker/latest/dg/cdf-training.html#td-deserialization
+            model_channel_name (str): Name of the channel where 'model_uri' will be downloaded (default: 'model').
         """
         self.image_name = image_name
         self.hyperparam_dict = hyperparameters.copy() if hyperparameters else {}
         super(Estimator, self).__init__(role, train_instance_count, train_instance_type,
                                         train_volume_size, train_volume_kms_key, train_max_run, input_mode,
                                         output_path, output_kms_key, base_job_name, sagemaker_session,
-                                        tags, subnets, security_group_ids)
+                                        tags, subnets, security_group_ids, model_uri=model_uri,
+                                        model_channel_name=model_channel_name)
 
     def train_image(self):
         """
@@ -558,17 +600,18 @@ class Estimator(EstimatorBase):
                      sagemaker_session=self.sagemaker_session, predictor_cls=predictor_cls, **kwargs)
 
     @classmethod
-    def _prepare_init_params_from_job_description(cls, job_details):
+    def _prepare_init_params_from_job_description(cls, job_details, model_channel_name=None):
         """Convert the job description to init params that can be handled by the class constructor
 
         Args:
             job_details: the returned job details from a describe_training_job API call.
+            model_channel_name (str): Name of the channel where pre-trained model data will be downloaded
 
         Returns:
              dictionary: The transformed init_params
 
         """
-        init_params = super(Estimator, cls)._prepare_init_params_from_job_description(job_details)
+        init_params = super(Estimator, cls)._prepare_init_params_from_job_description(job_details, model_channel_name)
 
         init_params['image_name'] = init_params.pop('image')
         return init_params
@@ -695,17 +738,18 @@ class Framework(EstimatorBase):
         return self._json_encode_hyperparameters(self._hyperparameters)
 
     @classmethod
-    def _prepare_init_params_from_job_description(cls, job_details):
+    def _prepare_init_params_from_job_description(cls, job_details, model_channel_name=None):
         """Convert the job description to init params that can be handled by the class constructor
 
         Args:
             job_details: the returned job details from a describe_training_job API call.
+            model_channel_name (str): Name of the channel where pre-trained model data will be downloaded
 
         Returns:
              dictionary: The transformed init_params
 
         """
-        init_params = super(Framework, cls)._prepare_init_params_from_job_description(job_details)
+        init_params = super(Framework, cls)._prepare_init_params_from_job_description(job_details, model_channel_name)
 
         init_params['entry_point'] = json.loads(init_params['hyperparameters'].get(SCRIPT_PARAM_NAME))
         init_params['source_dir'] = json.loads(init_params['hyperparameters'].get(DIR_PARAM_NAME))
@@ -744,7 +788,7 @@ class Framework(EstimatorBase):
                                     self.train_instance_type, self.framework_version, py_version=self.py_version)
 
     @classmethod
-    def attach(cls, training_job_name, sagemaker_session=None):
+    def attach(cls, training_job_name, sagemaker_session=None, model_channel_name='model'):
         """Attach to an existing training job.
 
         Create an Estimator bound to an existing training job, each subclass is responsible to implement
@@ -760,6 +804,8 @@ class Framework(EstimatorBase):
             sagemaker_session (sagemaker.session.Session): Session object which manages interactions with
                 Amazon SageMaker APIs and any other AWS services needed. If not specified, the estimator creates one
                 using the default AWS configuration chain.
+            model_channel_name (str): Name of the channel where pre-trained model data will be downloaded (default:
+                'model'). If no channel with the same name exists in the training job, this option will be ignored.
 
         Examples:
             >>> my_estimator.fit(wait=False)
@@ -771,7 +817,7 @@ class Framework(EstimatorBase):
         Returns:
             Instance of the calling ``Estimator`` Class with the attached training job.
         """
-        estimator = super(Framework, cls).attach(training_job_name, sagemaker_session)
+        estimator = super(Framework, cls).attach(training_job_name, sagemaker_session, model_channel_name)
         estimator.uploaded_code = UploadedCode(estimator.source_dir, estimator.entry_point)
         return estimator
 

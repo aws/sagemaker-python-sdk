@@ -2,6 +2,12 @@
 CHANGELOG
 =========
 
+1.13.0
+======
+
+* feature: Estimator: add input mode to training channels
+* feature: Estimator: add model_uri and model_channel_name parameters
+
 1.12.0
 ======
 
