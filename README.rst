@@ -266,7 +266,7 @@ A few important notes:
 Incremental Training
 ~~~~~~~~~~~~~~~~~~~~
 
-Incremental training allows you to bring a pre-trained model into a SageMaker training job, to use as a starting point for a new model.
+Incremental training allows you to bring a pre-trained model into a SageMaker training job and use it as a starting point for a new model.
 There are several situations where you might want to do this:
 
 - You want to perform additional training on a model to improve its fit on your data set.
