@@ -21,9 +21,8 @@ import numpy
 import pytest
 
 from sagemaker.local import LocalSession, LocalSagemakerRuntimeClient, LocalSagemakerClient
-from sagemaker.mxnet import MXNet, MXNetModel
+from sagemaker.mxnet import MXNet
 from sagemaker.tensorflow import TensorFlow
-from sagemaker.fw_utils import tar_and_upload_dir
 from tests.integ import DATA_DIR, PYTHON_VERSION
 from tests.integ.timeout import timeout
 
@@ -58,21 +57,24 @@ class LocalNoS3Session(LocalSession):
 
 @pytest.fixture(scope='module')
 def mxnet_model(sagemaker_local_session):
-    script_path = os.path.join(DATA_DIR, 'mxnet_mnist', 'mnist.py')
-    data_path = os.path.join(DATA_DIR, 'mxnet_mnist')
+    def _create_model(output_path):
+        script_path = os.path.join(DATA_DIR, 'mxnet_mnist', 'mnist.py')
+        data_path = os.path.join(DATA_DIR, 'mxnet_mnist')
 
-    mx = MXNet(entry_point=script_path, role='SageMakerRole',
-               train_instance_count=1, train_instance_type='local',
-               sagemaker_session=sagemaker_local_session)
+        mx = MXNet(entry_point=script_path, role='SageMakerRole',
+                   train_instance_count=1, train_instance_type='local',
+                   output_path=output_path,
+                   sagemaker_session=sagemaker_local_session)
 
-    train_input = mx.sagemaker_session.upload_data(path=os.path.join(data_path, 'train'),
-                                                   key_prefix='integ-test-data/mxnet_mnist/train')
-    test_input = mx.sagemaker_session.upload_data(path=os.path.join(data_path, 'test'),
-                                                  key_prefix='integ-test-data/mxnet_mnist/test')
+        train_input = mx.sagemaker_session.upload_data(path=os.path.join(data_path, 'train'),
+                                                       key_prefix='integ-test-data/mxnet_mnist/train')
+        test_input = mx.sagemaker_session.upload_data(path=os.path.join(data_path, 'test'),
+                                                      key_prefix='integ-test-data/mxnet_mnist/test')
 
-    mx.fit({'train': train_input, 'test': test_input})
-    model = mx.create_model(1)
-    return model
+        mx.fit({'train': train_input, 'test': test_input})
+        model = mx.create_model(1)
+        return model
+    return _create_model
 
 
 @pytest.mark.skipif(PYTHON_VERSION != 'py2', reason="TensorFlow image supports only python 2.")
@@ -259,15 +261,9 @@ def test_local_mode_serving_from_s3_model(sagemaker_local_session, mxnet_model):
     local_mode_lock_fd = open(LOCK_PATH, 'w')
     local_mode_lock = local_mode_lock_fd.fileno()
 
-    model_data = mxnet_model.model_data
-    boto_session = sagemaker_local_session.boto_session
-    default_bucket = sagemaker_local_session.default_bucket()
-    uploaded_data = tar_and_upload_dir(boto_session, default_bucket,
-                                       'test_mxnet_local_mode', '', model_data)
-
-    s3_model = MXNetModel(model_data=uploaded_data.s3_prefix, role='SageMakerRole',
-                          entry_point=mxnet_model.entry_point, image=mxnet_model.image,
-                          sagemaker_session=sagemaker_local_session)
+    path = 's3://%s' % sagemaker_local_session.default_bucket()
+    s3_model = mxnet_model(path)
+    s3_model.sagemaker_session = sagemaker_local_session
 
     predictor = None
     try:
@@ -285,7 +281,7 @@ def test_local_mode_serving_from_s3_model(sagemaker_local_session, mxnet_model):
         fcntl.lockf(local_mode_lock, fcntl.LOCK_UN)
 
 
-def test_local_mode_serving_from_local_model(sagemaker_local_session, mxnet_model):
+def test_local_mode_serving_from_local_model(tmpdir, sagemaker_local_session, mxnet_model):
     local_mode_lock_fd = open(LOCK_PATH, 'w')
     local_mode_lock = local_mode_lock_fd.fileno()
     predictor = None
@@ -295,8 +291,10 @@ def test_local_mode_serving_from_local_model(sagemaker_local_session, mxnet_mode
         # to allow concurrent test execution. The serving test is really fast so it still
         # makes sense to allow this behavior.
         fcntl.lockf(local_mode_lock, fcntl.LOCK_EX)
-        mxnet_model.sagemaker_session = sagemaker_local_session
-        predictor = mxnet_model.deploy(initial_instance_count=1, instance_type='local')
+        path = 'file://%s' % (str(tmpdir))
+        model = mxnet_model(path)
+        model.sagemaker_session = sagemaker_local_session
+        predictor = model.deploy(initial_instance_count=1, instance_type='local')
         data = numpy.zeros(shape=(1, 1, 28, 28))
         predictor.predict(data)
     finally:

@@ -2,11 +2,13 @@
 CHANGELOG
 =========
 
-1.13.0
-======
+========
+1.13.dev
+========
 
 * feature: Estimator: add input mode to training channels
 * feature: Estimator: add model_uri and model_channel_name parameters
+* enhancement: Local Mode: support output_path. Can be either file:// or s3://
 
 1.12.0
 ======

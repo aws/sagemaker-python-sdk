@@ -14,12 +14,10 @@ from __future__ import absolute_import
 
 import os
 import re
-import tarfile
-import tempfile
 from collections import namedtuple
 from six.moves.urllib.parse import urlparse
 
-from sagemaker.utils import name_from_image
+import sagemaker.utils
 
 """This module contains utility functions shared across ``Framework`` components."""
 
@@ -128,14 +126,9 @@ def tar_and_upload_dir(session, bucket, s3_key_prefix, script, directory):
     s3 = session.resource('s3')
     key = '{}/{}'.format(s3_key_prefix, 'sourcedir.tar.gz')
 
-    with tempfile.TemporaryFile() as f:
-        with tarfile.open(mode='w:gz', fileobj=f) as t:
-            for sf in source_files:
-                # Add all files from the directory into the root of the directory structure of the tar
-                t.add(sf, arcname=os.path.basename(sf))
-        # Need to reset the file descriptor position after writing to prepare for read
-        f.seek(0)
-        s3.Object(bucket, key).put(Body=f)
+    tar_file = sagemaker.utils.create_tar_file(source_files)
+    s3.Object(bucket, key).upload_file(tar_file)
+    os.remove(tar_file)
 
     return UploadedCode(s3_prefix='s3://{}/{}'.format(bucket, key), script_name=script_name)
 
@@ -226,7 +219,8 @@ def model_code_key_prefix(code_location_key_prefix, model_name, image):
     Returns:
         str: the key prefix to be used in uploading code
     """
-    return '/'.join(filter(None, [code_location_key_prefix, model_name or name_from_image(image)]))
+    training_job_name = sagemaker.utils.name_from_image(image)
+    return '/'.join(filter(None, [code_location_key_prefix, model_name or training_job_name]))
 
 
 def empty_framework_version_warning(default_version):
