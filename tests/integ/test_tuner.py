@@ -183,7 +183,7 @@ def test_stop_tuning_job(sagemaker_session):
 @pytest.mark.continuous_testing
 def test_tuning_mxnet(sagemaker_session):
     with timeout(minutes=TUNING_DEFAULT_TIMEOUT_MINUTES):
-        script_path = os.path.join(DATA_DIR, 'mxnet_mnist', 'tuning.py')
+        script_path = os.path.join(DATA_DIR, 'mxnet_mnist', 'mnist_framework_mode.py')
         data_path = os.path.join(DATA_DIR, 'mxnet_mnist')
 
         estimator = MXNet(entry_point=script_path,

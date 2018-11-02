@@ -314,7 +314,7 @@ def test_mxnet_local_mode(sagemaker_local_session, mxnet_full_version):
     data_path = os.path.join(DATA_DIR, 'mxnet_mnist')
 
     mx = MXNet(entry_point=script_path, role='SageMakerRole', py_version=PYTHON_VERSION,
-               train_instance_count=1, train_instance_type='local', launch_parameter_server=True,
+               train_instance_count=1, train_instance_type='local',
                sagemaker_session=sagemaker_local_session, framework_version=mxnet_full_version)
 
     train_input = mx.sagemaker_session.upload_data(path=os.path.join(data_path, 'train'),
@@ -338,15 +338,15 @@ def test_mxnet_local_mode(sagemaker_local_session, mxnet_full_version):
         fcntl.lockf(local_mode_lock, fcntl.LOCK_UN)
 
 
-def test_mxnet_local_data_local_script(mxnet_full_version):
+def test_mxnet_local_data_local_script():
     local_mode_lock_fd = open(LOCK_PATH, 'w')
     local_mode_lock = local_mode_lock_fd.fileno()
 
-    script_path = os.path.join(DATA_DIR, 'mxnet_mnist', 'mnist.py')
     data_path = os.path.join(DATA_DIR, 'mxnet_mnist')
+    script_path = os.path.join(data_path, 'mnist_framework_mode.py')
 
-    mx = MXNet(entry_point=script_path, role='SageMakerRole', framework_version=mxnet_full_version,
-               train_instance_count=1, train_instance_type='local', launch_parameter_server=True,
+    mx = MXNet(entry_point=script_path, role='SageMakerRole',
+               train_instance_count=1, train_instance_type='local',
                sagemaker_session=LocalNoS3Session())
 
     train_input = 'file://' + os.path.join(data_path, 'train')
