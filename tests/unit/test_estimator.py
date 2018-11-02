@@ -914,4 +914,24 @@ def test_distributed_gpu_local_mode(LocalSession):
     with pytest.raises(RuntimeError):
         Estimator(IMAGE_NAME, ROLE, 3, 'local_gpu', output_path=OUTPUT_PATH)
 
+
+@patch('sagemaker.estimator.LocalSession')
+def test_local_mode_file_output_path(local_session_class):
+    local_session = Mock()
+    local_session.local_mode = True
+    local_session_class.return_value = local_session
+
+    e = Estimator(IMAGE_NAME, ROLE, INSTANCE_COUNT, 'local', output_path='file:///tmp/model/')
+    assert e.output_path == 'file:///tmp/model/'
+
+
+@patch('sagemaker.estimator.Session')
+def test_file_output_path_not_supported_outside_local_mode(session_class):
+    session = Mock()
+    session.local_mode = False
+    session_class.return_value = session
+
+    with pytest.raises(RuntimeError):
+        Estimator(IMAGE_NAME, ROLE, INSTANCE_COUNT, INSTANCE_TYPE, output_path='file:///tmp/model')
+
 #################################################################################

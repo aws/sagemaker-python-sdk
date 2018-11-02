@@ -252,3 +252,24 @@ def test_download_file():
                                   '/tmp/file.tar.gz', session)
 
     bucket_mock.download_file.assert_called_with('prefix/path/file.tar.gz', '/tmp/file.tar.gz')
+
+
+@patch('tarfile.open')
+def test_create_tar_file_with_provided_path(open):
+    open.return_value = open
+    open.__enter__ = Mock()
+    open.__exit__ = Mock(return_value=None)
+    file_list = ['/tmp/a', '/tmp/b']
+    path = sagemaker.utils.create_tar_file(file_list, target='/my/custom/path.tar.gz')
+    assert path == '/my/custom/path.tar.gz'
+
+
+@patch('tarfile.open')
+@patch('tempfile.mkstemp', Mock(return_value=(None, '/auto/generated/path')))
+def test_create_tar_file_with_auto_generated_path(open):
+    open.return_value = open
+    open.__enter__ = Mock()
+    open.__exit__ = Mock(return_value=None)
+    file_list = ['/tmp/a', '/tmp/b']
+    path = sagemaker.utils.create_tar_file(file_list)
+    assert path == '/auto/generated/path'

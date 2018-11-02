@@ -22,10 +22,11 @@ import base64
 import json
 import os
 import subprocess
+import tarfile
 
 import pytest
 import yaml
-from mock import call, patch, Mock, MagicMock
+from mock import patch, Mock, MagicMock
 
 import sagemaker
 from sagemaker.local.image import _SageMakerContainer, _aws_credentials
@@ -37,6 +38,7 @@ TRAINING_JOB_NAME = 'my-job'
 INPUT_DATA_CONFIG = [
     {
         'ChannelName': 'a',
+        'DataUri': 'file:///tmp/source1',
         'DataSource': {
             'FileDataSource': {
                 'FileDataDistributionType': 'FullyReplicated',
@@ -46,6 +48,7 @@ INPUT_DATA_CONFIG = [
     },
     {
         'ChannelName': 'b',
+        'DataUri': 's3://my-own-bucket/prefix',
         'DataSource': {
             'S3DataSource': {
                 'S3DataDistributionType': 'FullyReplicated',
@@ -55,10 +58,14 @@ INPUT_DATA_CONFIG = [
         }
     }
 ]
+
+OUTPUT_DATA_CONFIG = {
+    'S3OutputPath': ''
+}
+
 HYPERPARAMETERS = {'a': 1,
                    'b': json.dumps('bee'),
                    'sagemaker_submit_directory': json.dumps('s3://my_bucket/code')}
-
 
 LOCAL_CODE_HYPERPARAMETERS = {'a': 1,
                               'b': 2,
@@ -81,7 +88,6 @@ def sagemaker_session():
 
 @patch('sagemaker.local.local_session.LocalSession')
 def test_write_config_file(LocalSession, tmpdir):
-
     sagemaker_container = _SageMakerContainer('local', 2, 'my-image')
     sagemaker_container.container_root = str(tmpdir.mkdir('container-root'))
     host = "algo-1"
@@ -121,6 +127,60 @@ def test_write_config_file(LocalSession, tmpdir):
 
 
 @patch('sagemaker.local.local_session.LocalSession')
+def test_write_config_files_input_content_type(LocalSession, tmpdir):
+    sagemaker_container = _SageMakerContainer('local', 1, 'my-image')
+    sagemaker_container.container_root = str(tmpdir.mkdir('container-root'))
+    host = 'algo-1'
+
+    sagemaker.local.image._create_config_file_directories(sagemaker_container.container_root, host)
+
+    container_root = sagemaker_container.container_root
+    config_file_root = os.path.join(container_root, host, 'input', 'config')
+
+    input_data_config_file = os.path.join(config_file_root, 'inputdataconfig.json')
+
+    # write the config files, and then lets check they exist and have the right content.
+    input_data_config = [
+        {
+            'ChannelName': 'channel_a',
+            'DataUri': 'file:///tmp/source1',
+            'ContentType': 'text/csv',
+            'DataSource': {
+                'FileDataSource': {
+                    'FileDataDistributionType': 'FullyReplicated',
+                    'FileUri': 'file:///tmp/source1'
+                }
+            }
+        },
+        {
+            'ChannelName': 'channel_b',
+            'DataUri': 's3://my-own-bucket/prefix',
+            'DataSource': {
+                'S3DataSource': {
+                    'S3DataDistributionType': 'FullyReplicated',
+                    'S3DataType': 'S3Prefix',
+                    'S3Uri': 's3://my-own-bucket/prefix'
+                }
+            }
+        }
+    ]
+    sagemaker_container.write_config_files(host, HYPERPARAMETERS, input_data_config)
+
+    assert os.path.exists(input_data_config_file)
+    parsed_input_config = json.load(open(input_data_config_file))
+    # Validate Input Data Config
+    for channel in input_data_config:
+        assert channel['ChannelName'] in parsed_input_config
+
+    # Channel A has a content type
+    assert 'ContentType' in parsed_input_config['channel_a']
+    assert parsed_input_config['channel_a']['ContentType'] == 'text/csv'
+
+    # Channel B does not have content type
+    assert 'ContentType' not in parsed_input_config['channel_b']
+
+
+@patch('sagemaker.local.local_session.LocalSession')
 def test_retrieve_artifacts(LocalSession, tmpdir):
     sagemaker_container = _SageMakerContainer('local', 2, 'my-image')
     sagemaker_container.hosts = ['algo-1', 'algo-2']  # avoid any randomness
@@ -144,50 +204,59 @@ def test_retrieve_artifacts(LocalSession, tmpdir):
         }
     }
 
-    dirs1 = ['model', 'model/data']
-    dirs2 = ['model', 'model/data', 'model/tmp']
-    dirs3 = ['output', 'output/data']
-    dirs4 = ['output', 'output/data', 'output/log']
+    dirs = [
+        ('model', volume1), ('model/data', volume1),
+        ('model', volume2), ('model/data', volume2), ('model/tmp', volume2),
+        ('output', volume1), ('output/data', volume1),
+        ('output', volume2), ('output/data', volume2), ('output/log', volume2)
+    ]
 
-    files1 = ['model/data/model.json', 'model/data/variables.csv']
-    files2 = ['model/data/model.json', 'model/data/variables2.csv', 'model/tmp/something-else.json']
-    files3 = ['output/data/loss.json', 'output/data/accuracy.json']
-    files4 = ['output/data/loss.json', 'output/data/accuracy2.json', 'output/log/warnings.txt']
+    files = [
+        ('model/data/model.json', volume1), ('model/data/variables.csv', volume1),
+        ('model/data/model.json', volume2), ('model/data/variables2.csv', volume2),
+        ('model/tmp/something-else.json', volume2),
+        ('output/data/loss.json', volume1), ('output/data/accuracy.json', volume1),
+        ('output/data/loss.json', volume2), ('output/data/accuracy2.json', volume2),
+        ('output/log/warnings.txt', volume2)
+    ]
 
-    expected = ['model', 'model/data/', 'model/data/model.json', 'model/data/variables.csv',
-                'model/data/variables2.csv', 'model/tmp/something-else.json', 'output', 'output/data', 'output/log',
-                'output/data/loss.json', 'output/data/accuracy.json', 'output/data/accuracy2.json',
-                'output/log/warnings.txt']
+    expected_model = ['data', 'data/model.json', 'data/variables.csv',
+                      'data/variables2.csv', 'tmp/something-else.json']
+    expected_output = ['data', 'log', 'data/loss.json', 'data/accuracy.json', 'data/accuracy2.json',
+                       'log/warnings.txt']
 
-    for d in dirs1:
-        os.mkdir(os.path.join(volume1, d))
-    for d in dirs2:
-        os.mkdir(os.path.join(volume2, d))
-    for d in dirs3:
-        os.mkdir(os.path.join(volume1, d))
-    for d in dirs4:
-        os.mkdir(os.path.join(volume2, d))
+    for d, volume in dirs:
+        os.mkdir(os.path.join(volume, d))
 
     # create all the files
-    for f in files1:
-        open(os.path.join(volume1, f), 'a').close()
-    for f in files2:
-        open(os.path.join(volume2, f), 'a').close()
-    for f in files3:
-        open(os.path.join(volume1, f), 'a').close()
-    for f in files4:
-        open(os.path.join(volume2, f), 'a').close()
+    for f, volume in files:
+        open(os.path.join(volume, f), 'a').close()
 
-    s3_model_artifacts = sagemaker_container.retrieve_artifacts(compose_data)
-    s3_artifacts = os.path.dirname(s3_model_artifacts)
+    output_path = str(tmpdir.mkdir('exported_files'))
+    output_data_config = {
+        'S3OutputPath': 'file://%s' % output_path
+    }
 
-    for f in expected:
-        assert set(os.listdir(s3_artifacts)) == set(['model', 'output'])
-        assert os.path.exists(os.path.join(s3_artifacts, f))
+    model_artifacts = sagemaker_container.retrieve_artifacts(
+        compose_data, output_data_config, sagemaker_session).replace('file://', '')
+    artifacts = os.path.dirname(model_artifacts)
+
+    # we have both the tar files
+    assert set(os.listdir(artifacts)) == {'model.tar.gz', 'output.tar.gz'}
+
+    # check that the tar files contain what we expect
+    tar = tarfile.open(os.path.join(output_path, 'model.tar.gz'))
+    model_tar_files = [m.name for m in tar.getmembers()]
+    for f in expected_model:
+        assert f in model_tar_files
+
+    tar = tarfile.open(os.path.join(output_path, 'output.tar.gz'))
+    output_tar_files = [m.name for m in tar.getmembers()]
+    for f in expected_output:
+        assert f in output_tar_files
 
 
 def test_stream_output():
-
     # it should raise an exception if the command fails
     with pytest.raises(RuntimeError):
         p = subprocess.Popen(['ls', '/some/unknown/path'],
@@ -203,7 +272,6 @@ def test_stream_output():
 
 
 def test_check_output():
-
     with pytest.raises(Exception):
         sagemaker.local.image._check_output(['ls', '/some/unknown/path'])
 
@@ -216,14 +284,12 @@ def test_check_output():
     assert output == msg
 
 
-@patch('sagemaker.local.local_session.LocalSession')
-@patch('sagemaker.local.image._stream_output')
+@patch('sagemaker.local.local_session.LocalSession', Mock())
+@patch('sagemaker.local.image._stream_output', Mock())
+@patch('sagemaker.local.image._SageMakerContainer._cleanup', Mock())
+@patch('sagemaker.local.data.get_data_source_instance', Mock())
 @patch('subprocess.Popen')
-@patch('sagemaker.local.image._SageMakerContainer._cleanup')
-@patch('sagemaker.utils.download_folder')
-def test_train(download_folder, _cleanup, popen, _stream_output, LocalSession,
-               tmpdir, sagemaker_session):
-
+def test_train(popen, tmpdir, sagemaker_session):
     directories = [str(tmpdir.mkdir('container-root')), str(tmpdir.mkdir('data'))]
     with patch('sagemaker.local.image._SageMakerContainer._create_tmp_folder',
                side_effect=directories):
@@ -231,14 +297,10 @@ def test_train(download_folder, _cleanup, popen, _stream_output, LocalSession,
         instance_count = 2
         image = 'my-image'
         sagemaker_container = _SageMakerContainer('local', instance_count, image, sagemaker_session=sagemaker_session)
-        sagemaker_container.train(INPUT_DATA_CONFIG, HYPERPARAMETERS, TRAINING_JOB_NAME)
-
-        channel_dir = os.path.join(directories[1], 'b')
-        download_folder_calls = [call('my-own-bucket', 'prefix', channel_dir, sagemaker_session)]
-        download_folder.assert_has_calls(download_folder_calls)
+        sagemaker_container.train(
+            INPUT_DATA_CONFIG, OUTPUT_DATA_CONFIG, HYPERPARAMETERS, TRAINING_JOB_NAME)
 
         docker_compose_file = os.path.join(sagemaker_container.container_root, 'docker-compose.yaml')
-
         call_args = popen.call_args[0][0]
         assert call_args is not None
 
@@ -260,20 +322,19 @@ def test_train(download_folder, _cleanup, popen, _stream_output, LocalSession,
         assert os.path.exists(os.path.join(sagemaker_container.container_root, 'output/data'))
 
 
-@patch('sagemaker.local.local_session.LocalSession')
-@patch('sagemaker.local.image._stream_output')
-@patch('sagemaker.local.image._SageMakerContainer._cleanup')
-@patch('sagemaker.utils.download_folder')
-def test_train_with_hyperparameters_without_job_name(download_folder, _cleanup, _stream_output, LocalSession, tmpdir):
-
+@patch('sagemaker.local.local_session.LocalSession', Mock())
+@patch('sagemaker.local.image._stream_output', Mock())
+@patch('sagemaker.local.image._SageMakerContainer._cleanup', Mock())
+@patch('sagemaker.local.data.get_data_source_instance', Mock())
+def test_train_with_hyperparameters_without_job_name(tmpdir, sagemaker_session):
     directories = [str(tmpdir.mkdir('container-root')), str(tmpdir.mkdir('data'))]
     with patch('sagemaker.local.image._SageMakerContainer._create_tmp_folder',
                side_effect=directories):
-
         instance_count = 2
         image = 'my-image'
-        sagemaker_container = _SageMakerContainer('local', instance_count, image, sagemaker_session=LocalSession)
-        sagemaker_container.train(INPUT_DATA_CONFIG, HYPERPARAMETERS, TRAINING_JOB_NAME)
+        sagemaker_container = _SageMakerContainer('local', instance_count, image, sagemaker_session=sagemaker_session)
+        sagemaker_container.train(
+            INPUT_DATA_CONFIG, OUTPUT_DATA_CONFIG, HYPERPARAMETERS, TRAINING_JOB_NAME)
 
         docker_compose_file = os.path.join(sagemaker_container.container_root, 'docker-compose.yaml')
 
@@ -283,12 +344,12 @@ def test_train_with_hyperparameters_without_job_name(download_folder, _cleanup, 
                 assert 'TRAINING_JOB_NAME={}'.format(TRAINING_JOB_NAME) in config['services'][h]['environment']
 
 
-@patch('sagemaker.local.local_session.LocalSession')
+@patch('sagemaker.local.local_session.LocalSession', Mock())
 @patch('sagemaker.local.image._stream_output', side_effect=RuntimeError('this is expected'))
-@patch('subprocess.Popen')
-@patch('sagemaker.local.image._SageMakerContainer._cleanup')
-@patch('sagemaker.utils.download_folder')
-def test_train_error(download_folder, _cleanup, popen, _stream_output, LocalSession, tmpdir, sagemaker_session):
+@patch('sagemaker.local.image._SageMakerContainer._cleanup', Mock())
+@patch('sagemaker.local.data.get_data_source_instance', Mock())
+@patch('subprocess.Popen', Mock())
+def test_train_error(_stream_output, tmpdir, sagemaker_session):
     directories = [str(tmpdir.mkdir('container-root')), str(tmpdir.mkdir('data'))]
 
     with patch('sagemaker.local.image._SageMakerContainer._create_tmp_folder', side_effect=directories):
@@ -297,18 +358,18 @@ def test_train_error(download_folder, _cleanup, popen, _stream_output, LocalSess
         sagemaker_container = _SageMakerContainer('local', instance_count, image, sagemaker_session=sagemaker_session)
 
         with pytest.raises(RuntimeError) as e:
-            sagemaker_container.train(INPUT_DATA_CONFIG, HYPERPARAMETERS, TRAINING_JOB_NAME)
+            sagemaker_container.train(
+                INPUT_DATA_CONFIG, OUTPUT_DATA_CONFIG, HYPERPARAMETERS, TRAINING_JOB_NAME)
 
         assert 'this is expected' in str(e)
 
 
-@patch('sagemaker.local.local_session.LocalSession')
-@patch('sagemaker.local.image._stream_output')
-@patch('subprocess.Popen')
-@patch('sagemaker.local.image._SageMakerContainer._cleanup')
-@patch('sagemaker.utils.download_folder')
-def test_train_local_code(download_folder, _cleanup, popen, _stream_output,
-                          _local_session, tmpdir, sagemaker_session):
+@patch('sagemaker.local.local_session.LocalSession', Mock())
+@patch('sagemaker.local.image._stream_output', Mock())
+@patch('sagemaker.local.image._SageMakerContainer._cleanup', Mock())
+@patch('sagemaker.local.data.get_data_source_instance', Mock())
+@patch('subprocess.Popen', Mock())
+def test_train_local_code(tmpdir, sagemaker_session):
     directories = [str(tmpdir.mkdir('container-root')), str(tmpdir.mkdir('data'))]
     with patch('sagemaker.local.image._SageMakerContainer._create_tmp_folder',
                side_effect=directories):
@@ -317,7 +378,8 @@ def test_train_local_code(download_folder, _cleanup, popen, _stream_output,
         sagemaker_container = _SageMakerContainer('local', instance_count, image,
                                                   sagemaker_session=sagemaker_session)
 
-        sagemaker_container.train(INPUT_DATA_CONFIG, LOCAL_CODE_HYPERPARAMETERS, TRAINING_JOB_NAME)
+        sagemaker_container.train(
+            INPUT_DATA_CONFIG, OUTPUT_DATA_CONFIG, LOCAL_CODE_HYPERPARAMETERS, TRAINING_JOB_NAME)
 
         docker_compose_file = os.path.join(sagemaker_container.container_root,
                                            'docker-compose.yaml')
@@ -345,7 +407,7 @@ def test_container_has_gpu_support(tmpdir, sagemaker_session):
     assert docker_host['runtime'] == 'nvidia'
 
 
-def test_container_does_not_enable_nvidia_docker_for_cpu_containers(tmpdir, sagemaker_session):
+def test_container_does_not_enable_nvidia_docker_for_cpu_containers(sagemaker_session):
     instance_count = 1
     image = 'my-image'
     sagemaker_container = _SageMakerContainer('local', instance_count, image,
@@ -355,14 +417,13 @@ def test_container_does_not_enable_nvidia_docker_for_cpu_containers(tmpdir, sage
     assert 'runtime' not in docker_host
 
 
-@patch('sagemaker.local.image._HostingContainer.run')
-@patch('shutil.copy')
-@patch('shutil.copytree')
-def test_serve(up, copy, copytree, tmpdir, sagemaker_session):
-
+@patch('sagemaker.local.image._HostingContainer.run', Mock())
+@patch('sagemaker.local.image._SageMakerContainer._prepare_serving_volumes', Mock(return_value=[]))
+@patch('shutil.copy', Mock())
+@patch('shutil.copytree', Mock())
+def test_serve(tmpdir, sagemaker_session):
     with patch('sagemaker.local.image._SageMakerContainer._create_tmp_folder',
                return_value=str(tmpdir.mkdir('container-root'))):
-
         image = 'my-image'
         sagemaker_container = _SageMakerContainer('local', 1, image, sagemaker_session=sagemaker_session)
         environment = {
@@ -382,14 +443,13 @@ def test_serve(up, copy, copytree, tmpdir, sagemaker_session):
                 assert config['services'][h]['command'] == 'serve'
 
 
-@patch('sagemaker.local.image._HostingContainer.run')
-@patch('shutil.copy')
-@patch('shutil.copytree')
-def test_serve_local_code(up, copy, copytree, tmpdir, sagemaker_session):
-
+@patch('sagemaker.local.image._HostingContainer.run', Mock())
+@patch('sagemaker.local.image._SageMakerContainer._prepare_serving_volumes', Mock(return_value=[]))
+@patch('shutil.copy', Mock())
+@patch('shutil.copytree', Mock())
+def test_serve_local_code(tmpdir, sagemaker_session):
     with patch('sagemaker.local.image._SageMakerContainer._create_tmp_folder',
                return_value=str(tmpdir.mkdir('container-root'))):
-
         image = 'my-image'
         sagemaker_container = _SageMakerContainer('local', 1, image, sagemaker_session=sagemaker_session)
         environment = {
@@ -413,14 +473,13 @@ def test_serve_local_code(up, copy, copytree, tmpdir, sagemaker_session):
                 assert '%s:/opt/ml/code' % '/tmp/code' in volumes
 
 
-@patch('sagemaker.local.image._HostingContainer.run')
-@patch('shutil.copy')
-@patch('shutil.copytree')
-def test_serve_local_code_no_env(up, copy, copytree, tmpdir, sagemaker_session):
-
+@patch('sagemaker.local.image._HostingContainer.run', Mock())
+@patch('sagemaker.local.image._SageMakerContainer._prepare_serving_volumes', Mock(return_value=[]))
+@patch('shutil.copy', Mock())
+@patch('shutil.copytree', Mock())
+def test_serve_local_code_no_env(tmpdir, sagemaker_session):
     with patch('sagemaker.local.image._SageMakerContainer._create_tmp_folder',
                return_value=str(tmpdir.mkdir('container-root'))):
-
         image = 'my-image'
         sagemaker_container = _SageMakerContainer('local', 1, image, sagemaker_session=sagemaker_session)
         sagemaker_container.serve('/some/model/path', {})
@@ -435,36 +494,41 @@ def test_serve_local_code_no_env(up, copy, copytree, tmpdir, sagemaker_session):
                 assert config['services'][h]['command'] == 'serve'
 
 
-@patch('sagemaker.utils.download_file')
+@patch('sagemaker.local.data.get_data_source_instance')
 @patch('tarfile.is_tarfile')
 @patch('tarfile.open', MagicMock())
 @patch('os.makedirs', Mock())
-def test_prepare_serving_volumes_with_s3_model(is_tarfile, download_file, sagemaker_session):
-
+def test_prepare_serving_volumes_with_s3_model(is_tarfile, get_data_source_instance, sagemaker_session):
     sagemaker_container = _SageMakerContainer('local', 1, 'some-image', sagemaker_session=sagemaker_session)
     sagemaker_container.container_root = '/tmp/container_root'
-    container_model_dir = os.path.join('/tmp/container_root/', sagemaker_container.hosts[0], 'model')
 
+    s3_data_source = Mock()
+    s3_data_source.get_root_dir.return_value = '/tmp/downloaded/data/'
+    s3_data_source.get_file_list.return_value = ['/tmp/downloaded/data/my_model.tar.gz']
+    get_data_source_instance.return_value = s3_data_source
     is_tarfile.return_value = True
 
     volumes = sagemaker_container._prepare_serving_volumes('s3://bucket/my_model.tar.gz')
-
-    tar_location = os.path.join(container_model_dir, 'my_model.tar.gz')
-    download_file.assert_called_with('bucket', '/my_model.tar.gz', tar_location, sagemaker_session)
-    is_tarfile.assert_called_with(tar_location)
+    is_tarfile.assert_called_with('/tmp/downloaded/data/my_model.tar.gz')
 
     assert len(volumes) == 1
     assert volumes[0].container_dir == '/opt/ml/model'
-    assert volumes[0].host_dir == container_model_dir
+    assert volumes[0].host_dir == '/tmp/downloaded/data/'
 
 
+@patch('sagemaker.local.data.get_data_source_instance')
+@patch('tarfile.is_tarfile', Mock(return_value=False))
 @patch('os.makedirs', Mock())
-def test_prepare_serving_volumes_with_local_model(sagemaker_session):
-
+def test_prepare_serving_volumes_with_local_model(get_data_source_instance, sagemaker_session):
     sagemaker_container = _SageMakerContainer('local', 1, 'some-image', sagemaker_session=sagemaker_session)
     sagemaker_container.container_root = '/tmp/container_root'
 
-    volumes = sagemaker_container._prepare_serving_volumes('/path/to/my_model')
+    local_file_data_source = Mock()
+    local_file_data_source.get_root_dir.return_value = '/path/to/my_model'
+    local_file_data_source.get_file_list.return_value = ['/path/to/my_model/model']
+    get_data_source_instance.return_value = local_file_data_source
+
+    volumes = sagemaker_container._prepare_serving_volumes('file:///path/to/my_model')
 
     assert len(volumes) == 1
     assert volumes[0].container_dir == '/opt/ml/model'
