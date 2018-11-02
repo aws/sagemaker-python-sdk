@@ -513,12 +513,25 @@ def test_ecr_login_needed(check_output):
     }
     session_mock.client('ecr').get_authorization_token.return_value = response
     image = '520713654638.dkr.ecr.us-east-1.amazonaws.com/image-i-need:1.1'
-    sagemaker.local.image._ecr_login_if_needed(session_mock, image)
+    result = sagemaker.local.image._ecr_login_if_needed(session_mock, image)
 
     expected_command = 'docker login -u AWS -p %s https://520713654638.dkr.ecr.us-east-1.amazonaws.com' % token
 
     check_output.assert_called_with(expected_command, shell=True)
     session_mock.client('ecr').get_authorization_token.assert_called_with(registryIds=['520713654638'])
+
+    assert result
+
+
+@patch('subprocess.check_output', return_value=''.encode('utf-8'))
+def test_pull_image(check_output):
+    image = '520713654638.dkr.ecr.us-east-1.amazonaws.com/image-i-need:1.1'
+
+    sagemaker.local.image._pull_image(image)
+
+    expected_command = 'docker pull %s' % image
+
+    check_output.assert_called_once_with(expected_command, shell=True)
 
 
 def test__aws_credentials_with_long_lived_credentials():

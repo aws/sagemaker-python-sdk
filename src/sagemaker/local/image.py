@@ -668,3 +668,13 @@ def _ecr_login_if_needed(boto_session, image):
 
     cmd = "docker login -u AWS -p %s %s" % (token, ecr_url)
     subprocess.check_output(cmd, shell=True)
+
+    return True
+
+
+def _pull_image(image):
+    pull_image_command = ('docker pull %s' % image).strip()
+    print('docker command: {}'.format(pull_image_command))
+
+    subprocess.check_output(pull_image_command, shell=True)
+    print('image pulled: {}'.format(image))
