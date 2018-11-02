@@ -255,7 +255,7 @@ def test_tf_local_data_local_script():
         fcntl.lockf(local_mode_lock, fcntl.LOCK_UN)
 
 
-def test_local_mode_serving_from_s3_model(sagemaker_local_session, mxnet_model):
+def test_local_mode_serving_from_s3_model(sagemaker_local_session, mxnet_model, mxnet_full_version):
     local_mode_lock_fd = open(LOCK_PATH, 'w')
     local_mode_lock = local_mode_lock_fd.fileno()
 
@@ -266,7 +266,7 @@ def test_local_mode_serving_from_s3_model(sagemaker_local_session, mxnet_model):
                                        'test_mxnet_local_mode', '', model_data)
 
     s3_model = MXNetModel(model_data=uploaded_data.s3_prefix, role='SageMakerRole',
-                          entry_point=mxnet_model.entry_point, image=mxnet_model.image,
+                          entry_point=mxnet_model.entry_point, framework_version=mxnet_full_version,
                           sagemaker_session=sagemaker_local_session)
 
     predictor = None
