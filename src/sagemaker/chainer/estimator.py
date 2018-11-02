@@ -134,17 +134,18 @@ class Chainer(Framework):
                             vpc_config=self.get_vpc_config(vpc_config_override))
 
     @classmethod
-    def _prepare_init_params_from_job_description(cls, job_details):
+    def _prepare_init_params_from_job_description(cls, job_details, model_channel_name=None):
         """Convert the job description to init params that can be handled by the class constructor
 
         Args:
             job_details: the returned job details from a describe_training_job API call.
+            model_channel_name (str): Name of the channel where pre-trained model data will be downloaded.
 
         Returns:
              dictionary: The transformed init_params
 
         """
-        init_params = super(Chainer, cls)._prepare_init_params_from_job_description(job_details)
+        init_params = super(Chainer, cls)._prepare_init_params_from_job_description(job_details, model_channel_name)
 
         for argument in [Chainer._use_mpi, Chainer._num_processes, Chainer._process_slots_per_host,
                          Chainer._additional_mpi_options]:
