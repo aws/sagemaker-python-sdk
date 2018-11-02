@@ -115,7 +115,9 @@ class _SageMakerContainer(object):
                                                    additional_env_vars=training_env_vars)
         compose_command = self._compose()
 
-        _ecr_login_if_needed(self.sagemaker_session.boto_session, self.image)
+        if _ecr_login_if_needed(self.sagemaker_session.boto_session, self.image):
+            _pull_image(self.image)
+
         process = subprocess.Popen(compose_command, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
 
         try:
@@ -167,7 +169,8 @@ class _SageMakerContainer(object):
             if parsed_uri.scheme == 'file':
                 volumes.append(_Volume(parsed_uri.path, '/opt/ml/code'))
 
-        _ecr_login_if_needed(self.sagemaker_session.boto_session, self.image)
+        if _ecr_login_if_needed(self.sagemaker_session.boto_session, self.image):
+            _pull_image(self.image)
 
         self._generate_compose_file('serve',
                                     additional_env_vars=environment,
