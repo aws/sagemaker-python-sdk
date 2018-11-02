@@ -2,6 +2,11 @@
 CHANGELOG
 =========
 
+1.13.1dev
+======
+
+* enhancement: Local Mode: add explicit pull for serving
+
 1.13.0
 ======
 
