@@ -134,7 +134,6 @@ class Session(object):
         files = []
         key_suffix = None
         if os.path.isdir(path):
-            print('%s is dir!' % path)
             for dirpath, dirnames, filenames in os.walk(path):
                 for name in filenames:
                     local_path = os.path.join(dirpath, name)
@@ -151,7 +150,6 @@ class Session(object):
         s3 = self.boto_session.resource('s3')
 
         for local_path, s3_key in files:
-            print("%s -> %s" % (local_path, s3_key))
             s3.Object(bucket, s3_key).upload_file(local_path)
 
         s3_uri = 's3://{}/{}'.format(bucket, key_prefix)
