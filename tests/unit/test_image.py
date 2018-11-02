@@ -127,6 +127,60 @@ def test_write_config_file(LocalSession, tmpdir):
 
 
 @patch('sagemaker.local.local_session.LocalSession')
+def test_write_config_files_input_content_type(LocalSession, tmpdir):
+    sagemaker_container = _SageMakerContainer('local', 1, 'my-image')
+    sagemaker_container.container_root = str(tmpdir.mkdir('container-root'))
+    host = 'algo-1'
+
+    sagemaker.local.image._create_config_file_directories(sagemaker_container.container_root, host)
+
+    container_root = sagemaker_container.container_root
+    config_file_root = os.path.join(container_root, host, 'input', 'config')
+
+    input_data_config_file = os.path.join(config_file_root, 'inputdataconfig.json')
+
+    # write the config files, and then lets check they exist and have the right content.
+    input_data_config = [
+        {
+            'ChannelName': 'channel_a',
+            'DataUri': 'file:///tmp/source1',
+            'ContentType': 'text/csv',
+            'DataSource': {
+                'FileDataSource': {
+                    'FileDataDistributionType': 'FullyReplicated',
+                    'FileUri': 'file:///tmp/source1'
+                }
+            }
+        },
+        {
+            'ChannelName': 'channel_b',
+            'DataUri': 's3://my-own-bucket/prefix',
+            'DataSource': {
+                'S3DataSource': {
+                    'S3DataDistributionType': 'FullyReplicated',
+                    'S3DataType': 'S3Prefix',
+                    'S3Uri': 's3://my-own-bucket/prefix'
+                }
+            }
+        }
+    ]
+    sagemaker_container.write_config_files(host, HYPERPARAMETERS, input_data_config)
+
+    assert os.path.exists(input_data_config_file)
+    parsed_input_config = json.load(open(input_data_config_file))
+    # Validate Input Data Config
+    for channel in input_data_config:
+        assert channel['ChannelName'] in parsed_input_config
+
+    # Channel A has a content type
+    assert 'ContentType' in parsed_input_config['channel_a']
+    assert parsed_input_config['channel_a']['ContentType'] == 'text/csv'
+
+    # Channel B does not have content type
+    assert 'ContentType' not in parsed_input_config['channel_b']
+
+
+@patch('sagemaker.local.local_session.LocalSession')
 def test_retrieve_artifacts(LocalSession, tmpdir):
     sagemaker_container = _SageMakerContainer('local', 2, 'my-image')
     sagemaker_container.hosts = ['algo-1', 'algo-2']  # avoid any randomness

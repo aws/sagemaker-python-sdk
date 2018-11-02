@@ -262,9 +262,15 @@ class _SageMakerContainer(object):
             'hosts': self.hosts
         }
 
-        json_input_data_config = {
-            c['ChannelName']: {'ContentType': 'application/octet-stream'} for c in input_data_config
-        }
+        print(input_data_config)
+        json_input_data_config = {}
+        for c in input_data_config:
+            channel_name = c['ChannelName']
+            json_input_data_config[channel_name] = {
+                'TrainingInputMode': 'File'
+            }
+            if 'ContentType' in c:
+                json_input_data_config[channel_name]['ContentType'] = c['ContentType']
 
         _write_json_file(os.path.join(config_path, 'hyperparameters.json'), hyperparameters)
         _write_json_file(os.path.join(config_path, 'resourceconfig.json'), resource_config)
