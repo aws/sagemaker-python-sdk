@@ -62,7 +62,7 @@ def mxnet_model(sagemaker_local_session, mxnet_full_version):
     data_path = os.path.join(DATA_DIR, 'mxnet_mnist')
 
     mx = MXNet(entry_point=script_path, role='SageMakerRole',
-               train_instance_count=1, train_instance_type='local', launch_parameter_server=True,
+               train_instance_count=1, train_instance_type='local',
                sagemaker_session=sagemaker_local_session, framework_version=mxnet_full_version)
 
     train_input = mx.sagemaker_session.upload_data(path=os.path.join(data_path, 'train'),
@@ -376,7 +376,7 @@ def test_local_transform_mxnet(sagemaker_local_session, tmpdir, mxnet_full_versi
 
     mx = MXNet(entry_point=script_path, role='SageMakerRole', train_instance_count=1,
                train_instance_type='ml.c4.xlarge', framework_version=mxnet_full_version,
-               sagemaker_session=sagemaker_local_session, launch_parameter_server=True)
+               sagemaker_session=sagemaker_local_session)
 
     train_input = mx.sagemaker_session.upload_data(path=os.path.join(data_path, 'train'),
                                                    key_prefix='integ-test-data/mxnet_mnist/train')

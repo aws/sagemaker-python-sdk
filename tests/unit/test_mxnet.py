@@ -38,6 +38,7 @@ ROLE = 'Dummy'
 REGION = 'us-west-2'
 GPU = 'ml.p2.xlarge'
 CPU = 'ml.c4.xlarge'
+LAUNCH_PS_DISTRIBUTIONS_DICT = {'parameter_server': {'enabled': True}}
 
 
 @pytest.fixture()
@@ -183,9 +184,6 @@ def test_mxnet(strftime, sagemaker_session, mxnet_version):
 
     expected_train_args = _create_train_job(mxnet_version)
     expected_train_args['input_config'][0]['DataSource']['S3DataSource']['S3Uri'] = inputs
-
-    if mx._script_mode_version():
-        expected_train_args['hyperparameters'][mx.LAUNCH_PS_ENV_NAME] = json.dumps(False)
 
     actual_train_args = sagemaker_session.method_calls[0][2]
     assert actual_train_args == expected_train_args
@@ -380,14 +378,14 @@ def test_attach_custom_image(sagemaker_session):
 def test_estimator_script_mode_launch_parameter_server(sagemaker_session):
     mx = MXNet(entry_point=SCRIPT_PATH, role=ROLE, sagemaker_session=sagemaker_session,
                train_instance_count=INSTANCE_COUNT, train_instance_type=INSTANCE_TYPE,
-               launch_parameter_server=True, framework_version='1.3.0')
+               distributions=LAUNCH_PS_DISTRIBUTIONS_DICT, framework_version='1.3.0')
     assert mx.hyperparameters().get(MXNet.LAUNCH_PS_ENV_NAME) == 'true'
 
 
 def test_estimator_script_mode_dont_launch_parameter_server(sagemaker_session):
     mx = MXNet(entry_point=SCRIPT_PATH, role=ROLE, sagemaker_session=sagemaker_session,
                train_instance_count=INSTANCE_COUNT, train_instance_type=INSTANCE_TYPE,
-               launch_parameter_server=False, framework_version='1.3.0')
+               distributions={'parameter_server': {'enabled': False}}, framework_version='1.3.0')
     assert mx.hyperparameters().get(MXNet.LAUNCH_PS_ENV_NAME) == 'false'
 
 
@@ -395,5 +393,5 @@ def test_estimator_wrong_version_launch_parameter_server(sagemaker_session):
     with pytest.raises(ValueError) as e:
         MXNet(entry_point=SCRIPT_PATH, role=ROLE, sagemaker_session=sagemaker_session,
               train_instance_count=INSTANCE_COUNT, train_instance_type=INSTANCE_TYPE,
-              launch_parameter_server=True, framework_version='1.2.1')
-    assert 'launch_parameter_server is used for only versions 1.3 and higher' in str(e)
+              distributions=LAUNCH_PS_DISTRIBUTIONS_DICT, framework_version='1.2.1')
+    assert 'The distributions option is valid for only versions 1.3 and higher' in str(e)

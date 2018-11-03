@@ -34,8 +34,8 @@ def test_transform_mxnet(sagemaker_session, mxnet_full_version):
     script_path = os.path.join(data_path, 'mnist.py')
 
     mx = MXNet(entry_point=script_path, role='SageMakerRole', train_instance_count=1,
-               train_instance_type='ml.c4.xlarge', launch_parameter_server=True,
-               sagemaker_session=sagemaker_session, framework_version=mxnet_full_version)
+               train_instance_type='ml.c4.xlarge', sagemaker_session=sagemaker_session,
+               framework_version=mxnet_full_version)
 
     train_input = mx.sagemaker_session.upload_data(path=os.path.join(data_path, 'train'),
                                                    key_prefix='integ-test-data/mxnet_mnist/train')
@@ -114,8 +114,8 @@ def test_transform_mxnet_vpc(sagemaker_session, mxnet_full_version):
 
     mx = MXNet(entry_point=script_path, role='SageMakerRole', train_instance_count=1,
                train_instance_type='ml.c4.xlarge', sagemaker_session=sagemaker_session,
-               framework_version=mxnet_full_version, launch_parameter_server=True,
-               subnets=subnet_ids, security_group_ids=[security_group_id])
+               framework_version=mxnet_full_version, subnets=subnet_ids,
+               security_group_ids=[security_group_id])
 
     train_input = mx.sagemaker_session.upload_data(path=os.path.join(data_path, 'train'),
                                                    key_prefix='integ-test-data/mxnet_mnist/train')

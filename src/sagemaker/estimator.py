@@ -629,12 +629,12 @@ class Framework(EstimatorBase):
         if distributions is None:
             return
 
-        if self.__framework_name__ in ['chainer', 'pytorch', 'tensorflow']:
+        if self.__framework_name__ != 'mxnet':
             raise ValueError('This framework does not support the distributions option.')
 
         if self.framework_version.split('.') < self._LOWEST_SCRIPT_MODE_VERSION:
             raise ValueError('The distributions option is valid for only versions {} and higher'
-                             .format(self._LOWEST_SCRIPT_MODE_VERSION.join('.')))
+                             .format('.'.join(self._LOWEST_SCRIPT_MODE_VERSION)))
 
         if 'parameter_server' in distributions:
             enabled = distributions['parameter_server'].get('enabled', False)

@@ -32,7 +32,7 @@ class MXNet(Framework):
     _LOWEST_SCRIPT_MODE_VERSION = ['1', '3']
 
     def __init__(self, entry_point, source_dir=None, hyperparameters=None, py_version='py2',
-                 framework_version=None, image_name=None, launch_parameter_server=False, **kwargs):
+                 framework_version=None, image_name=None, **kwargs):
         """
         This ``Estimator`` executes an MXNet script in a managed MXNet execution environment, within a SageMaker
         Training Job. The managed MXNet environment is an Amazon-built Docker container that executes functions
@@ -66,9 +66,6 @@ class MXNet(Framework):
                     Examples:
                         123.dkr.ecr.us-west-2.amazonaws.com/my-custom-image:1.0
                         custom-image:latest.
-            launch_parameter_server (bool): Whether or not to launch the default parameter server
-                implementation for use with distributed training (default: False). Valid for only
-                versions 1.3 and higher of MXNet.
             **kwargs: Additional kwargs passed to the :class:`~sagemaker.estimator.Framework` constructor.
         """
         if framework_version is None:
