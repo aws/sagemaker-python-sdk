@@ -29,8 +29,7 @@ class MXNet(Framework):
 
     __framework_name__ = 'mxnet'
 
-    LOWEST_SCRIPT_MODE_VERSION = ['1', '3']
-    LAUNCH_PS_ENV_NAME = 'sagemaker_mxnet_launch_parameter_server'
+    _LOWEST_SCRIPT_MODE_VERSION = ['1', '3']
 
     def __init__(self, entry_point, source_dir=None, hyperparameters=None, py_version='py2',
                  framework_version=None, image_name=None, launch_parameter_server=False, **kwargs):
@@ -76,19 +75,9 @@ class MXNet(Framework):
             logger.warning(empty_framework_version_warning(MXNET_VERSION))
         self.framework_version = framework_version or MXNET_VERSION
 
-        if self._script_mode_version():
-            hyperparameters = hyperparameters or {}
-            hyperparameters[self.LAUNCH_PS_ENV_NAME] = launch_parameter_server
-        else:
-            if launch_parameter_server:
-                raise ValueError('launch_parameter_server is used for only versions 1.3 and higher')
-
         super(MXNet, self).__init__(entry_point, source_dir, hyperparameters,
                                     image_name=image_name, **kwargs)
         self.py_version = py_version
-
-    def _script_mode_version(self):
-        return self.framework_version.split('.') >= self.LOWEST_SCRIPT_MODE_VERSION
 
     def create_model(self, model_server_workers=None, role=None, vpc_config_override=VPC_CONFIG_DEFAULT):
         """Create a SageMaker ``MXNetModel`` object that can be deployed to an ``Endpoint``.

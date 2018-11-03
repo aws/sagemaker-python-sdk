@@ -181,6 +181,10 @@ class TensorFlow(Framework):
                         custom-image:latest.
             **kwargs: Additional kwargs passed to the Framework constructor.
         """
+        if framework_version is None:
+            LOGGER.warning(empty_framework_version_warning(TF_VERSION))
+        self.framework_version = framework_version or TF_VERSION
+
         super(TensorFlow, self).__init__(image_name=image_name, **kwargs)
         self.checkpoint_path = checkpoint_path
         self.py_version = py_version
@@ -189,10 +193,6 @@ class TensorFlow(Framework):
 
         self._validate_requirements_file(requirements_file)
         self.requirements_file = requirements_file
-
-        if framework_version is None:
-            LOGGER.warning(empty_framework_version_warning(TF_VERSION))
-        self.framework_version = framework_version or TF_VERSION
 
     def _validate_requirements_file(self, requirements_file):
         if not requirements_file:
