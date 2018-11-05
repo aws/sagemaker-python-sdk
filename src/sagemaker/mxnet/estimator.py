@@ -27,7 +27,9 @@ logger = logging.getLogger('sagemaker')
 class MXNet(Framework):
     """Handle end-to-end training and deployment of custom MXNet code."""
 
-    __framework_name__ = "mxnet"
+    __framework_name__ = 'mxnet'
+
+    _LOWEST_SCRIPT_MODE_VERSION = ['1', '3']
 
     def __init__(self, entry_point, source_dir=None, hyperparameters=None, py_version='py2',
                  framework_version=None, image_name=None, **kwargs):
@@ -66,13 +68,13 @@ class MXNet(Framework):
                         custom-image:latest.
             **kwargs: Additional kwargs passed to the :class:`~sagemaker.estimator.Framework` constructor.
         """
-        super(MXNet, self).__init__(entry_point, source_dir, hyperparameters,
-                                    image_name=image_name, **kwargs)
-        self.py_version = py_version
-
         if framework_version is None:
             logger.warning(empty_framework_version_warning(MXNET_VERSION))
         self.framework_version = framework_version or MXNET_VERSION
+
+        super(MXNet, self).__init__(entry_point, source_dir, hyperparameters,
+                                    image_name=image_name, **kwargs)
+        self.py_version = py_version
 
     def create_model(self, model_server_workers=None, role=None, vpc_config_override=VPC_CONFIG_DEFAULT):
         """Create a SageMaker ``MXNetModel`` object that can be deployed to an ``Endpoint``.
