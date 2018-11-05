@@ -627,6 +627,7 @@ class Framework(EstimatorBase):
     such as training/deployment images and predictor instances.
     """
 
+    _DISTRIBUTION_SUPPORTED_FRAMEWORKS = ('mxnet',)
     LAUNCH_PS_ENV_NAME = 'sagemaker_parameter_server_enabled'
 
     def __init__(self, entry_point, source_dir=None, hyperparameters=None, enable_cloudwatch_metrics=False,
@@ -675,7 +676,7 @@ class Framework(EstimatorBase):
         if distributions is None:
             return
 
-        if self.__framework_name__ != 'mxnet':
+        if self.__framework_name__ not in self._DISTRIBUTION_SUPPORTED_FRAMEWORKS:
             raise ValueError('This framework does not support the distributions option.')
 
         if self.framework_version.split('.') < self._LOWEST_SCRIPT_MODE_VERSION:
