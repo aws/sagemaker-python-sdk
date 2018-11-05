@@ -1009,7 +1009,8 @@ class s3_input(object):
     """
 
     def __init__(self, s3_data, distribution='FullyReplicated', compression=None,
-                 content_type=None, record_wrapping=None, s3_data_type='S3Prefix'):
+                 content_type=None, record_wrapping=None, s3_data_type='S3Prefix',
+                 input_mode=None):
         """Create a definition for input data used by an SageMaker training job.
 
         See AWS documentation on the ``CreateTrainingJob`` API for more details on the parameters.
@@ -1026,6 +1027,12 @@ class s3_input(object):
                 be used to train. If 'ManifestFile', then ``s3_data`` defines a single s3 manifest file, listing
                 each s3 object to train on. The Manifest file format is described in the SageMaker API documentation:
                 https://docs.aws.amazon.com/sagemaker/latest/dg/API_S3DataSource.html
+            input_mode (str): Optional override for this channel's input mode (default: None). By default, channels will
+                use the input mode defined on ``sagemaker.estimator.EstimatorBase.input_mode``, but they will ignore
+                that setting if this parameter is set.
+                * None - Amazon SageMaker will use the input mode specified in the ``Estimator``.
+                * 'File' - Amazon SageMaker copies the training dataset from the S3 location to a local directory.
+                * 'Pipe' - Amazon SageMaker streams data directly from S3 to the container via a Unix-named pipe.
         """
         self.config = {
             'DataSource': {
@@ -1043,6 +1050,8 @@ class s3_input(object):
             self.config['ContentType'] = content_type
         if record_wrapping is not None:
             self.config['RecordWrapperType'] = record_wrapping
+        if input_mode is not None:
+            self.config['InputMode'] = input_mode
 
 
 def _deployment_entity_exists(describe_fn):

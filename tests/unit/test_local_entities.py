@@ -157,7 +157,7 @@ def test_local_transform_job_perform_batch_inference(get_config_value, move_to_d
 
     local_transform_job._perform_batch_inference(input_data, output_data, **transform_kwargs)
 
-    dir, output, session = move_to_destination.call_args[0]
+    dir, output, job_name, session = move_to_destination.call_args[0]
     assert output == 's3://bucket/output'
     output_files = os.listdir(dir)
     assert len(output_files) == 2

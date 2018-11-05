@@ -46,14 +46,19 @@ class _LocalTrainingJob(object):
         self.start_time = None
         self.end_time = None
 
-    def start(self, input_data_config, hyperparameters, job_name):
+    def start(self, input_data_config, output_data_config, hyperparameters, job_name):
         for channel in input_data_config:
             if channel['DataSource'] and 'S3DataSource' in channel['DataSource']:
                 data_distribution = channel['DataSource']['S3DataSource']['S3DataDistributionType']
+                data_uri = channel['DataSource']['S3DataSource']['S3Uri']
             elif channel['DataSource'] and 'FileDataSource' in channel['DataSource']:
                 data_distribution = channel['DataSource']['FileDataSource']['FileDataDistributionType']
+                data_uri = channel['DataSource']['FileDataSource']['FileUri']
             else:
                 raise ValueError('Need channel[\'DataSource\'] to have [\'S3DataSource\'] or [\'FileDataSource\']')
+
+            # use a single Data URI - this makes handling S3 and File Data easier down the stack
+            channel['DataUri'] = data_uri
 
             if data_distribution != 'FullyReplicated':
                 raise RuntimeError('DataDistribution: %s is not currently supported in Local Mode' %
@@ -62,7 +67,7 @@ class _LocalTrainingJob(object):
         self.start = datetime.datetime.now()
         self.state = self._TRAINING
 
-        self.model_artifacts = self.container.train(input_data_config, hyperparameters, job_name)
+        self.model_artifacts = self.container.train(input_data_config, output_data_config, hyperparameters, job_name)
         self.end = datetime.datetime.now()
         self.state = self._COMPLETED
 
@@ -298,7 +303,7 @@ class _LocalTransformJob(object):
                     if 'AssembleWith' in output_data and output_data['AssembleWith'] == 'Line':
                         f.write(b'\n')
 
-        move_to_destination(working_dir, output_data['S3OutputPath'], self.local_session)
+        move_to_destination(working_dir, output_data['S3OutputPath'], self.name, self.local_session)
         self.container.stop_serving()
 
 

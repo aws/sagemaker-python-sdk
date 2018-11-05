@@ -253,7 +253,7 @@ class TensorFlow(Framework):
             fit_super()
 
     @classmethod
-    def _prepare_init_params_from_job_description(cls, job_details):
+    def _prepare_init_params_from_job_description(cls, job_details, model_channel_name=None):
         """Convert the job description to init params that can be handled by the class constructor
 
         Args:
@@ -263,7 +263,7 @@ class TensorFlow(Framework):
              dictionary: The transformed init_params
 
         """
-        init_params = super(TensorFlow, cls)._prepare_init_params_from_job_description(job_details)
+        init_params = super(TensorFlow, cls)._prepare_init_params_from_job_description(job_details, model_channel_name)
 
         # Move some of the tensorflow specific init params from hyperparameters into the main init params.
         for argument in ['checkpoint_path', 'training_steps', 'evaluation_steps']:

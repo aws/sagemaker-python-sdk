@@ -31,6 +31,9 @@ ROLE = 'DummyRole'
 IMAGE_NAME = 'fakeimage'
 JOB_NAME = 'fakejob'
 VOLUME_KMS_KEY = 'volkmskey'
+CHANNEL_NAME = 'testChannel'
+MODEL_URI = 's3://bucket/prefix/model.tar.gz'
+LOCAL_MODEL_NAME = 'file://local/file.tar.gz'
 
 
 @pytest.fixture()
@@ -54,6 +57,26 @@ def test_load_config(estimator):
     config = _Job._load_config(inputs, estimator)
 
     assert config['input_config'][0]['DataSource']['S3DataSource']['S3Uri'] == BUCKET_NAME
+    assert config['role'] == ROLE
+    assert config['output_config']['S3OutputPath'] == S3_OUTPUT_PATH
+    assert 'KmsKeyId' not in config['output_config']
+    assert config['resource_config']['InstanceCount'] == INSTANCE_COUNT
+    assert config['resource_config']['InstanceType'] == INSTANCE_TYPE
+    assert config['resource_config']['VolumeSizeInGB'] == VOLUME_SIZE
+    assert config['stop_condition']['MaxRuntimeInSeconds'] == MAX_RUNTIME
+
+
+def test_load_config_with_model_channel(estimator):
+    inputs = s3_input(BUCKET_NAME)
+
+    estimator.model_uri = MODEL_URI
+    estimator.model_channel_name = CHANNEL_NAME
+
+    config = _Job._load_config(inputs, estimator)
+
+    assert config['input_config'][0]['DataSource']['S3DataSource']['S3Uri'] == BUCKET_NAME
+    assert config['input_config'][1]['DataSource']['S3DataSource']['S3Uri'] == MODEL_URI
+    assert config['input_config'][1]['ChannelName'] == CHANNEL_NAME
     assert config['role'] == ROLE
     assert config['output_config']['S3OutputPath'] == S3_OUTPUT_PATH
     assert 'KmsKeyId' not in config['output_config']
@@ -105,6 +128,49 @@ def test_format_inputs_to_input_config_list():
 
     assert channels[0]['DataSource']['S3DataSource']['S3Uri'] == records.s3_data
     assert channels[0]['DataSource']['S3DataSource']['S3DataType'] == records.s3_data_type
+
+
+def test_prepare_model_channel():
+    model_channel = _Job._prepare_model_channel([], MODEL_URI, CHANNEL_NAME)
+
+    # The model channel should use all the defaults except InputMode
+    assert model_channel['DataSource']['S3DataSource']['S3Uri'] == MODEL_URI
+    assert model_channel['DataSource']['S3DataSource']['S3DataDistributionType'] == 'FullyReplicated'
+    assert model_channel['DataSource']['S3DataSource']['S3DataType'] == 'S3Prefix'
+    assert model_channel['InputMode'] == 'File'
+    assert model_channel['ChannelName'] == CHANNEL_NAME
+    assert 'CompressionType' not in model_channel
+    assert model_channel['ContentType'] == 'application/x-sagemaker-model'
+    assert 'RecordWrapperType' not in model_channel
+
+
+def test_prepare_model_channel_duplicate():
+    channels = [{
+        'ChannelName': CHANNEL_NAME,
+        'DataSource': {
+            'S3DataSource': {
+                'S3DataDistributionType': 'FullyReplicated',
+                'S3DataType': 'S3Prefix',
+                'S3Uri': 's3://blah/blah'
+            }
+        }
+    }]
+
+    with pytest.raises(ValueError) as error:
+        _Job._prepare_model_channel(channels, MODEL_URI, CHANNEL_NAME)
+
+    assert 'Duplicate channels not allowed.' in str(error)
+
+
+def test_prepare_model_channel_with_missing_name():
+    with pytest.raises(ValueError) as ex:
+        _Job._prepare_model_channel([], model_uri=MODEL_URI, model_channel_name=None)
+
+    assert 'Expected a pre-trained model channel name if a model URL is specified.' in str(ex)
+
+
+def test_prepare_model_channel_with_missing_uri():
+    assert _Job._prepare_model_channel([], model_uri=None, model_channel_name=None) is None
 
 
 def test_format_inputs_to_input_config_list_not_all_records():
@@ -261,6 +327,27 @@ def test_format_string_uri_input_exception():
 
     with pytest.raises(ValueError):
         _Job._format_string_uri_input(inputs)
+
+
+def test_format_model_uri_input_string():
+    model_uri = MODEL_URI
+
+    model_uri_input = _Job._format_model_uri_input(model_uri)
+
+    assert model_uri_input.config['DataSource']['S3DataSource']['S3Uri'] == model_uri
+
+
+def test_format_model_uri_input_local_file():
+    model_uri_input = _Job._format_model_uri_input(LOCAL_MODEL_NAME)
+
+    assert model_uri_input.config['DataSource']['FileDataSource']['FileUri'] == LOCAL_MODEL_NAME
+
+
+def test_format_model_uri_input_exception():
+    model_uri = 1
+
+    with pytest.raises(ValueError):
+        _Job._format_model_uri_input(model_uri)
 
 
 def test_prepare_output_config():

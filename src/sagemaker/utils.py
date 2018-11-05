@@ -16,6 +16,8 @@ import errno
 import os
 import re
 import sys
+import tarfile
+import tempfile
 import time
 
 from datetime import datetime
@@ -240,6 +242,28 @@ def download_folder(bucket_name, prefix, target, sagemaker_session):
                 raise
             pass
         obj.download_file(file_path)
+
+
+def create_tar_file(source_files, target=None):
+    """Create a tar file containing all the source_files
+
+    Args:
+        source_files (List[str]): List of file paths that will be contained in the tar file
+
+    Returns:
+         (str): path to created tar file
+
+    """
+    if target:
+        filename = target
+    else:
+        _, filename = tempfile.mkstemp()
+
+    with tarfile.open(filename, mode='w:gz') as t:
+        for sf in source_files:
+            # Add all files from the directory into the root of the directory structure of the tar
+            t.add(sf, arcname=os.path.basename(sf))
+    return filename
 
 
 def download_file(bucket_name, path, target, sagemaker_session):
