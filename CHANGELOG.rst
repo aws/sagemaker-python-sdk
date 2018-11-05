@@ -3,12 +3,13 @@ CHANGELOG
 =========
 
 ========
-1.13.dev
+1.13.0
 ========
 
 * feature: Estimator: add input mode to training channels
 * feature: Estimator: add model_uri and model_channel_name parameters
 * enhancement: Local Mode: support output_path. Can be either file:// or s3://
+* enhancement: Added image uris for SageMaker built-in algorithms for SIN/LHR/BOM/SFO/YUL
 
 1.12.0
 ======

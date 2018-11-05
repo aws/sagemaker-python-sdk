@@ -290,7 +290,12 @@ def registry(region_name, algorithm=None):
             "ap-northeast-1": "351501993468",
             "ap-northeast-2": "835164637446",
             "ap-southeast-2": "712309505854",
-            "us-gov-west-1": "226302683700"
+            "us-gov-west-1": "226302683700",
+            "ap-southeast-1": "475088953585",
+            "ap-south-1": "991648021394",
+            "ca-central-1": "469771592824",
+            "eu-west-2": "644912444149",
+            "us-west-1": "632365934929",
         }[region_name]
     elif algorithm in ["lda"]:
         account_id = {
@@ -301,7 +306,13 @@ def registry(region_name, algorithm=None):
             "eu-central-1": "353608530281",
             "ap-northeast-1": "258307448986",
             "ap-northeast-2": "293181348795",
-            "ap-southeast-2": "297031611018"
+            "ap-southeast-2": "297031611018",
+            "us-gov-west-1": "226302683700",
+            "ap-southeast-1": "475088953585",
+            "ap-south-1": "991648021394",
+            "ca-central-1": "469771592824",
+            "eu-west-2": "644912444149",
+            "us-west-1": "632365934929",
         }[region_name]
     elif algorithm in ["forecasting-deepar"]:
         account_id = {
@@ -313,7 +324,12 @@ def registry(region_name, algorithm=None):
             "ap-northeast-1": "633353088612",
             "ap-northeast-2": "204372634319",
             "ap-southeast-2": "514117268639",
-            "us-gov-west-1": "226302683700"
+            "us-gov-west-1": "226302683700",
+            "ap-southeast-1": "475088953585",
+            "ap-south-1": "991648021394",
+            "ca-central-1": "469771592824",
+            "eu-west-2": "644912444149",
+            "us-west-1": "632365934929",
         }[region_name]
     elif algorithm in ["xgboost", "seq2seq", "image-classification", "blazingtext",
                        "object-detection"]:
@@ -326,7 +342,12 @@ def registry(region_name, algorithm=None):
             "ap-northeast-1": "501404015308",
             "ap-northeast-2": "306986355934",
             "ap-southeast-2": "544295431143",
-            "us-gov-west-1": "226302683700"
+            "us-gov-west-1": "226302683700",
+            "ap-southeast-1": "475088953585",
+            "ap-south-1": "991648021394",
+            "ca-central-1": "469771592824",
+            "eu-west-2": "644912444149",
+            "us-west-1": "632365934929",
         }[region_name]
     else:
         raise ValueError("Algorithm class:{} doesn't have mapping to account_id with images".format(algorithm))
