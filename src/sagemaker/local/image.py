@@ -651,11 +651,11 @@ def _write_json_file(filename, content):
 def _ecr_login_if_needed(boto_session, image):
     # Only ECR images need login
     if not ('dkr.ecr' in image and 'amazonaws.com' in image):
-        return
+        return False
 
     # do we have the image?
     if _check_output('docker images -q %s' % image).strip():
-        return
+        return False
 
     if not boto_session:
         raise RuntimeError('A boto session is required to login to ECR.'
