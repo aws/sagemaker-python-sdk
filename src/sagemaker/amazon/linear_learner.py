@@ -301,10 +301,11 @@ class LinearLearnerModel(Model):
     """Reference LinearLearner s3 model data. Calling :meth:`~sagemaker.model.Model.deploy` creates an Endpoint
     and returns a :class:`LinearLearnerPredictor`"""
 
-    def __init__(self, model_data, role, sagemaker_session=None):
+    def __init__(self, model_data, role, sagemaker_session=None, **kwargs):
         sagemaker_session = sagemaker_session or Session()
         repo = '{}:{}'.format(LinearLearner.repo_name, LinearLearner.repo_version)
         image = '{}/{}'.format(registry(sagemaker_session.boto_session.region_name), repo)
         super(LinearLearnerModel, self).__init__(model_data, image, role,
                                                  predictor_cls=LinearLearnerPredictor,
-                                                 sagemaker_session=sagemaker_session)
+                                                 sagemaker_session=sagemaker_session,
+                                                 **kwargs)
