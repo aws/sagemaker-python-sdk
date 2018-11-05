@@ -81,6 +81,10 @@ class Chainer(Framework):
                     custom-image:latest.
             **kwargs: Additional kwargs passed to the :class:`~sagemaker.estimator.Framework` constructor.
         """
+        if framework_version is None:
+            logger.warning(empty_framework_version_warning(CHAINER_VERSION))
+        self.framework_version = framework_version or CHAINER_VERSION
+
         super(Chainer, self).__init__(entry_point, source_dir, hyperparameters,
                                       image_name=image_name, **kwargs)
         self.py_version = py_version
@@ -88,10 +92,6 @@ class Chainer(Framework):
         self.num_processes = num_processes
         self.process_slots_per_host = process_slots_per_host
         self.additional_mpi_options = additional_mpi_options
-
-        if framework_version is None:
-            logger.warning(empty_framework_version_warning(CHAINER_VERSION))
-        self.framework_version = framework_version or CHAINER_VERSION
 
     def hyperparameters(self):
         """Return hyperparameters used by your custom Chainer code during training."""

@@ -161,6 +161,14 @@ def test_framework_all_init_args(sagemaker_session):
                                         'InstanceType': 'ml.m4.xlarge'}}
 
 
+def test_framework_init_distributions_unsupported(sagemaker_session):
+    with pytest.raises(ValueError) as e:
+        DummyFramework(SCRIPT_NAME, role=ROLE, sagemaker_session=sagemaker_session,
+                       train_instance_count=INSTANCE_COUNT, train_instance_type=INSTANCE_TYPE,
+                       distributions={'parameter_server': {'enabled': True}})
+    assert 'This framework does not support the distributions option' in str(e)
+
+
 def test_sagemaker_s3_uri_invalid(sagemaker_session):
     with pytest.raises(ValueError) as error:
         t = DummyFramework(entry_point=SCRIPT_PATH, role=ROLE, sagemaker_session=sagemaker_session,
@@ -913,5 +921,25 @@ def test_local_mode(session_class, local_session_class):
 def test_distributed_gpu_local_mode(LocalSession):
     with pytest.raises(RuntimeError):
         Estimator(IMAGE_NAME, ROLE, 3, 'local_gpu', output_path=OUTPUT_PATH)
+
+
+@patch('sagemaker.estimator.LocalSession')
+def test_local_mode_file_output_path(local_session_class):
+    local_session = Mock()
+    local_session.local_mode = True
+    local_session_class.return_value = local_session
+
+    e = Estimator(IMAGE_NAME, ROLE, INSTANCE_COUNT, 'local', output_path='file:///tmp/model/')
+    assert e.output_path == 'file:///tmp/model/'
+
+
+@patch('sagemaker.estimator.Session')
+def test_file_output_path_not_supported_outside_local_mode(session_class):
+    session = Mock()
+    session.local_mode = False
+    session_class.return_value = session
+
+    with pytest.raises(RuntimeError):
+        Estimator(IMAGE_NAME, ROLE, INSTANCE_COUNT, INSTANCE_TYPE, output_path='file:///tmp/model')
 
 #################################################################################

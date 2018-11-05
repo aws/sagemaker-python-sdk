@@ -12,6 +12,11 @@ CHANGELOG
 
 * feature: Estimator: add input mode to training channels
 * feature: Estimator: add model_uri and model_channel_name parameters
+* enhancement: Local Mode: support output_path. Can be either file:// or s3://
+* enhancement: Added image uris for SageMaker built-in algorithms for SIN/LHR/BOM/SFO/YUL
+* feature: Estimators: add support for MXNet 1.3.0, which introduces a new training script format
+* feature: Documentation: add explanation for the new training script format used with MXNet
+* feature: Estimators: add ``distributions`` for customizing distributed training with the new training script format
 
 1.12.0
 ======

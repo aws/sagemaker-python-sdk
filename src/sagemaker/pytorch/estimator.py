@@ -66,12 +66,12 @@ class PyTorch(Framework):
                     custom-image:latest.
             **kwargs: Additional kwargs passed to the :class:`~sagemaker.estimator.Framework` constructor.
         """
-        super(PyTorch, self).__init__(entry_point, source_dir, hyperparameters, image_name=image_name, **kwargs)
-        self.py_version = py_version
-
         if framework_version is None:
             logger.warning(empty_framework_version_warning(PYTORCH_VERSION))
         self.framework_version = framework_version or PYTORCH_VERSION
+
+        super(PyTorch, self).__init__(entry_point, source_dir, hyperparameters, image_name=image_name, **kwargs)
+        self.py_version = py_version
 
     def create_model(self, model_server_workers=None, role=None, vpc_config_override=VPC_CONFIG_DEFAULT):
         """Create a SageMaker ``PyTorchModel`` object that can be deployed to an ``Endpoint``.

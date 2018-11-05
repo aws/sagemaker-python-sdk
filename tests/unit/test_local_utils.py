@@ -15,7 +15,7 @@ from __future__ import absolute_import
 import pytest
 from mock import patch, Mock
 
-import sagemaker
+import sagemaker.local.utils
 
 BUCKET_NAME = 'some-nice-bucket'
 
@@ -24,14 +24,15 @@ BUCKET_NAME = 'some-nice-bucket'
 @patch('sagemaker.local.utils.recursive_copy')
 def test_move_to_destination(recursive_copy):
     # local files will just be recursive copied
-    sagemaker.local.utils.move_to_destination('/tmp/data', 'file:///target/dir/', None)
+    sagemaker.local.utils.move_to_destination('/tmp/data', 'file:///target/dir/', 'job', None)
     recursive_copy.assert_called()
 
     # s3 destination will upload to S3
     sms = Mock()
-    sagemaker.local.utils.move_to_destination('/tmp/data', 's3://bucket/path', sms)
+    sagemaker.local.utils.move_to_destination('/tmp/data', 's3://bucket/path', 'job', sms)
     sms.upload_data.assert_called()
 
-    # weird destination, should raise an exception
+
+def test_move_to_destination_illegal_destination():
     with pytest.raises(ValueError):
-        sagemaker.local.utils.move_to_destination('/tmp/data', 'ftp://ftp/in/2018', None)
+        sagemaker.local.utils.move_to_destination('/tmp/data', 'ftp://ftp/in/2018', 'job', None)
