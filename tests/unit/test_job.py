@@ -86,6 +86,29 @@ def test_load_config_with_model_channel(estimator):
     assert config['stop_condition']['MaxRuntimeInSeconds'] == MAX_RUNTIME
 
 
+def test_load_config_with_model_channel_no_inputs(estimator):
+    estimator.model_uri = MODEL_URI
+    estimator.model_channel_name = CHANNEL_NAME
+
+    config = _Job._load_config(inputs=None, estimator=estimator)
+
+    assert config['input_config'][0]['DataSource']['S3DataSource']['S3Uri'] == MODEL_URI
+    assert config['input_config'][0]['ChannelName'] == CHANNEL_NAME
+    assert config['role'] == ROLE
+    assert config['output_config']['S3OutputPath'] == S3_OUTPUT_PATH
+    assert 'KmsKeyId' not in config['output_config']
+    assert config['resource_config']['InstanceCount'] == INSTANCE_COUNT
+    assert config['resource_config']['InstanceType'] == INSTANCE_TYPE
+    assert config['resource_config']['VolumeSizeInGB'] == VOLUME_SIZE
+    assert config['stop_condition']['MaxRuntimeInSeconds'] == MAX_RUNTIME
+
+
+def test_format_inputs_none():
+    channels = _Job._format_inputs_to_input_config(inputs=None)
+
+    assert channels is None
+
+
 def test_format_inputs_to_input_config_string():
     inputs = BUCKET_NAME
 

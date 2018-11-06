@@ -160,8 +160,6 @@ def test_failed_tf_training(sagemaker_session, tf_full_version):
                                train_instance_type='ml.c4.xlarge',
                                sagemaker_session=sagemaker_session)
 
-        inputs = estimator.sagemaker_session.upload_data(path=DATA_PATH, key_prefix='integ-test-data/tf-failure')
-
         with pytest.raises(ValueError) as e:
-            estimator.fit(inputs)
+            estimator.fit()
         assert 'This failure is expected' in str(e.value)

@@ -105,15 +105,11 @@ def test_async_fit(sagemaker_session, mxnet_full_version):
 def test_failed_training_job(sagemaker_session, mxnet_full_version):
     with timeout():
         script_path = os.path.join(DATA_DIR, 'mxnet_mnist', 'failure_script.py')
-        data_path = os.path.join(DATA_DIR, 'mxnet_mnist')
 
         mx = MXNet(entry_point=script_path, role='SageMakerRole', framework_version=mxnet_full_version,
                    py_version=PYTHON_VERSION, train_instance_count=1, train_instance_type='ml.c4.xlarge',
                    sagemaker_session=sagemaker_session)
 
-        train_input = mx.sagemaker_session.upload_data(path=os.path.join(data_path, 'train'),
-                                                       key_prefix='integ-test-data/mxnet_mnist/train-failure')
-
         with pytest.raises(ValueError) as e:
-            mx.fit(train_input)
+            mx.fit()
         assert 'This failure is expected' in str(e.value)

@@ -105,18 +105,14 @@ def test_async_fit(sagemaker_session):
 def test_failed_training_job(sagemaker_session, chainer_full_version):
     with timeout(minutes=TRAINING_DEFAULT_TIMEOUT_MINUTES):
         script_path = os.path.join(DATA_DIR, 'chainer_mnist', 'failure_script.py')
-        data_path = os.path.join(DATA_DIR, 'chainer_mnist')
 
         chainer = Chainer(entry_point=script_path, role='SageMakerRole',
                           framework_version=chainer_full_version, py_version=PYTHON_VERSION,
                           train_instance_count=1, train_instance_type='ml.c4.xlarge',
                           sagemaker_session=sagemaker_session)
 
-        train_input = chainer.sagemaker_session.upload_data(path=os.path.join(data_path, 'train'),
-                                                            key_prefix='integ-test-data/chainer_mnist/train')
-
         with pytest.raises(ValueError):
-            chainer.fit(train_input)
+            chainer.fit()
 
 
 def _run_mnist_training_job(sagemaker_session, instance_type, instance_count,
