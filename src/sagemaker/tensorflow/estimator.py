@@ -26,7 +26,7 @@ from sagemaker.fw_utils import framework_name_from_image, framework_version_from
     empty_framework_version_warning
 from sagemaker.tensorflow.defaults import TF_VERSION
 from sagemaker.tensorflow.model import TensorFlowModel
-from sagemaker.tensorflow.tfs import TFSModel
+from sagemaker.tensorflow.serving import Model
 from sagemaker.utils import get_config_value
 from sagemaker.vpc_utils import VPC_CONFIG_DEFAULT
 
@@ -318,8 +318,9 @@ class TensorFlow(Framework):
                 * 'Subnets' (list[str]): List of subnet ids.
                 * 'SecurityGroupIds' (list[str]): List of security group ids.
             endpoint_type: Optional. Selects the software stack used by the inference server.
-                If  not specified, the model will be configured to use the default SageMaker model server.
-                If 'tfs', the model will be configured to use the SageMaker Tensorflow Serving container.
+                If  not specified, the model will be configured to use the default
+                SageMaker model server. If 'tensorflow-serving', the model will be configured to
+                use the SageMaker Tensorflow Serving container.
 
         Returns:
             sagemaker.tensorflow.model.TensorFlowModel: A SageMaker ``TensorFlowModel`` object.
@@ -327,21 +328,21 @@ class TensorFlow(Framework):
         """
 
         role = role or self.role
-        if endpoint_type == 'tfs':
+        if endpoint_type == 'tensorflow-serving':
             return self._create_tfs_model(role=role, vpc_config_override=vpc_config_override)
 
         return self._create_default_model(model_server_workers=model_server_workers, role=role,
                                           vpc_config_override=vpc_config_override)
 
     def _create_tfs_model(self, role=None, vpc_config_override=VPC_CONFIG_DEFAULT):
-        return TFSModel(model_data=self.model_data,
-                        role=role,
-                        image=self.image_name,
-                        name=self._current_job_name,
-                        container_log_level=self.container_log_level,
-                        framework_version=self.framework_version,
-                        sagemaker_session=self.sagemaker_session,
-                        vpc_config=self.get_vpc_config(vpc_config_override))
+        return Model(model_data=self.model_data,
+                     role=role,
+                     image=self.image_name,
+                     name=self._current_job_name,
+                     container_log_level=self.container_log_level,
+                     framework_version=self.framework_version,
+                     sagemaker_session=self.sagemaker_session,
+                     vpc_config=self.get_vpc_config(vpc_config_override))
 
     def _create_default_model(self, model_server_workers, role, vpc_config_override):
         return TensorFlowModel(self.model_data, role, self.entry_point,

@@ -5,7 +5,7 @@ CHANGELOG
 1.14.0-dev
 ==========
 
-* feature: add support for sagemaker-tfs container
+* feature: add support for sagemaker-tensorflow-serving container
 
 1.13.0
 ======

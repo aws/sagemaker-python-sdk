@@ -15,15 +15,14 @@ from __future__ import absolute_import
 import logging
 
 import sagemaker
-from sagemaker import Model, RealTimePredictor
 from sagemaker.content_types import CONTENT_TYPE_JSON
 from sagemaker.fw_utils import create_image_uri
 from sagemaker.predictor import json_serializer, json_deserializer
 from sagemaker.tensorflow.defaults import TF_VERSION
 
 
-class TFSPredictor(RealTimePredictor):
-    """A ``RealTimePredictor`` implementation for inference against TFS endpoints.
+class Predictor(sagemaker.RealTimePredictor):
+    """A ``RealTimePredictor`` implementation for inference against TensorFlow Serving endpoints.
     """
 
     def __init__(self, endpoint_name, sagemaker_session=None,
@@ -42,13 +41,13 @@ class TFSPredictor(RealTimePredictor):
             serializer (callable): Optional. Default serializes input data to json. Handles dicts,
                 lists, and numpy arrays.
             deserializer (callable): Optional. Default parses the response using ``json.load(...)``.
-            model_name (str): Optional. The name of the TFS model that should handle the request.
-                If not specified, the endpoint's default model will handle the request.
-            model_version (str): Optional. The version of the TFS model that should handle the
-                request. If not specified, the latest version of the model will be used.
+            model_name (str): Optional. The name of the SavedModel model that should handle the
+                request. If not specified, the endpoint's default model will handle the request.
+            model_version (str): Optional. The version of the SavedModel model that should handle
+                the request. If not specified, the latest version of the model will be used.
         """
-        super(TFSPredictor, self).__init__(endpoint_name, sagemaker_session, serializer,
-                                           deserializer)
+        super(Predictor, self).__init__(endpoint_name, sagemaker_session, serializer,
+                                        deserializer)
 
         attributes = []
         if model_name:
@@ -84,11 +83,11 @@ class TFSPredictor(RealTimePredictor):
             else:
                 args['CustomAttributes'] = self._model_attributes
 
-        return super(TFSPredictor, self).predict(data, args)
+        return super(Predictor, self).predict(data, args)
 
 
-class TFSModel(Model):
-    FRAMEWORK_NAME = 'tfs'
+class Model(sagemaker.Model):
+    FRAMEWORK_NAME = 'tensorflow-serving'
     LOG_LEVEL_PARAM_NAME = 'SAGEMAKER_TFS_NGINX_LOGLEVEL'
     LOG_LEVEL_MAP = {
         logging.DEBUG: 'debug',
@@ -99,8 +98,8 @@ class TFSModel(Model):
     }
 
     def __init__(self, model_data, role, image=None, framework_version=TF_VERSION,
-                 container_log_level=None, predictor_cls=TFSPredictor, **kwargs):
-        """Initialize a TFSModel.
+                 container_log_level=None, predictor_cls=Predictor, **kwargs):
+        """Initialize a Model.
 
        Args:
            model_data (str): The S3 location of a SageMaker model data ``.tar.gz`` file.
@@ -116,8 +115,8 @@ class TFSModel(Model):
                 returns the result of invoking this function on the created endpoint name.
            **kwargs: Keyword arguments passed to the ``Model`` initializer.
        """
-        super(TFSModel, self).__init__(model_data=model_data, role=role, image=image,
-                                       predictor_cls=predictor_cls, **kwargs)
+        super(Model, self).__init__(model_data=model_data, role=role, image=image,
+                                    predictor_cls=predictor_cls, **kwargs)
         self._framework_version = framework_version
         self._container_log_level = container_log_level
 
@@ -130,12 +129,12 @@ class TFSModel(Model):
         if not self._container_log_level:
             return self.env
 
-        if self._container_log_level not in TFSModel.LOG_LEVEL_MAP:
+        if self._container_log_level not in Model.LOG_LEVEL_MAP:
             logging.warning('ignoring invalid container log level: %s', self._container_log_level)
             return self.env
 
         env = dict(self.env)
-        env['SAGEMAKER_TFS_NGINX_LOGLEVEL'] = TFSModel.LOG_LEVEL_MAP[self._container_log_level]
+        env['SAGEMAKER_TFS_NGINX_LOGLEVEL'] = Model.LOG_LEVEL_MAP[self._container_log_level]
         return env
 
     def _get_image_uri(self, instance_type):
@@ -144,7 +143,7 @@ class TFSModel(Model):
 
         # reuse standard image uri function, then strip unwanted python component
         region_name = self.sagemaker_session.boto_region_name
-        image = create_image_uri(region_name, TFSModel.FRAMEWORK_NAME, instance_type,
+        image = create_image_uri(region_name, Model.FRAMEWORK_NAME, instance_type,
                                  self._framework_version, 'py3')
         image = image.replace('-py3', '')
         return image

@@ -19,7 +19,8 @@ import logging
 import pytest
 from mock import Mock
 
-from sagemaker.tensorflow import TensorFlow, TFSModel, TFSPredictor
+from sagemaker.tensorflow import TensorFlow
+from sagemaker.tensorflow.serving import Model, Predictor
 from sagemaker.tensorflow.predictor import csv_serializer
 
 JSON_CONTENT_TYPE = 'application/json'
@@ -55,28 +56,28 @@ def sagemaker_session():
 
 
 def test_tfs_model(sagemaker_session, tf_version):
-    model = TFSModel("s3://some/data.tar.gz", role=ROLE, framework_version=tf_version,
-                     sagemaker_session=sagemaker_session)
+    model = Model("s3://some/data.tar.gz", role=ROLE, framework_version=tf_version,
+                  sagemaker_session=sagemaker_session)
     cdef = model.prepare_container_def(INSTANCE_TYPE)
-    assert cdef['Image'].endswith('sagemaker-tfs:{}-cpu'.format(tf_version))
+    assert cdef['Image'].endswith('sagemaker-tensorflow-serving:{}-cpu'.format(tf_version))
     assert cdef['Environment'] == {}
 
     predictor = model.deploy(INSTANCE_COUNT, INSTANCE_TYPE)
-    assert isinstance(predictor, TFSPredictor)
+    assert isinstance(predictor, Predictor)
 
 
 def test_tfs_model_with_log_level(sagemaker_session, tf_version):
-    model = TFSModel("s3://some/data.tar.gz", role=ROLE, framework_version=tf_version,
-                     container_log_level=logging.INFO,
-                     sagemaker_session=sagemaker_session)
+    model = Model("s3://some/data.tar.gz", role=ROLE, framework_version=tf_version,
+                  container_log_level=logging.INFO,
+                  sagemaker_session=sagemaker_session)
     cdef = model.prepare_container_def(INSTANCE_TYPE)
-    assert cdef['Environment'] == {TFSModel.LOG_LEVEL_PARAM_NAME: 'info'}
+    assert cdef['Environment'] == {Model.LOG_LEVEL_PARAM_NAME: 'info'}
 
 
 def test_tfs_model_with_custom_image(sagemaker_session, tf_version):
-    model = TFSModel("s3://some/data.tar.gz", role=ROLE, framework_version=tf_version,
-                     image='my-image',
-                     sagemaker_session=sagemaker_session)
+    model = Model("s3://some/data.tar.gz", role=ROLE, framework_version=tf_version,
+                  image='my-image',
+                  sagemaker_session=sagemaker_session)
     cdef = model.prepare_container_def(INSTANCE_TYPE)
     assert cdef['Image'] == 'my-image'
 
@@ -93,12 +94,12 @@ def test_estimator_deploy(sagemaker_session):
 
     job_name = 'doing something'
     tf.fit(inputs='s3://mybucket/train', job_name=job_name)
-    predictor = tf.deploy(INSTANCE_COUNT, INSTANCE_TYPE, 'endpoint', endpoint_type='tfs')
-    assert isinstance(predictor, TFSPredictor)
+    predictor = tf.deploy(INSTANCE_COUNT, INSTANCE_TYPE, 'endpoint', endpoint_type='tensorflow-serving')
+    assert isinstance(predictor, Predictor)
 
 
 def test_predictor(sagemaker_session):
-    predictor = TFSPredictor('endpoint', sagemaker_session)
+    predictor = Predictor('endpoint', sagemaker_session)
 
     mock_response(json.dumps(PREDICT_RESPONSE).encode('utf-8'), sagemaker_session)
     result = predictor.predict(PREDICT_INPUT)
@@ -113,7 +114,7 @@ def test_predictor(sagemaker_session):
 
 
 def test_predictor_csv(sagemaker_session):
-    predictor = TFSPredictor('endpoint', sagemaker_session, serializer=csv_serializer)
+    predictor = Predictor('endpoint', sagemaker_session, serializer=csv_serializer)
 
     mock_response(json.dumps(PREDICT_RESPONSE).encode('utf-8'), sagemaker_session)
     result = predictor.predict([[1.0, 2.0, 3.0], [4.0, 5.0, 6.0]])
@@ -128,7 +129,7 @@ def test_predictor_csv(sagemaker_session):
 
 
 def test_predictor_model_attributes(sagemaker_session):
-    predictor = TFSPredictor('endpoint', sagemaker_session, model_name='model', model_version='123')
+    predictor = Predictor('endpoint', sagemaker_session, model_name='model', model_version='123')
 
     mock_response(json.dumps(PREDICT_RESPONSE).encode('utf-8'), sagemaker_session)
     result = predictor.predict(PREDICT_INPUT)
@@ -144,7 +145,7 @@ def test_predictor_model_attributes(sagemaker_session):
 
 
 def test_predictor_classify(sagemaker_session):
-    predictor = TFSPredictor('endpoint', sagemaker_session)
+    predictor = Predictor('endpoint', sagemaker_session)
 
     mock_response(json.dumps(CLASSIFY_RESPONSE).encode('utf-8'), sagemaker_session)
     result = predictor.classify(CLASSIFY_INPUT)
@@ -160,7 +161,7 @@ def test_predictor_classify(sagemaker_session):
 
 
 def test_predictor_regress(sagemaker_session):
-    predictor = TFSPredictor('endpoint', sagemaker_session, model_name='model', model_version='123')
+    predictor = Predictor('endpoint', sagemaker_session, model_name='model', model_version='123')
 
     mock_response(json.dumps(REGRESS_RESPONSE).encode('utf-8'), sagemaker_session)
     result = predictor.regress(REGRESS_INPUT)
@@ -176,14 +177,14 @@ def test_predictor_regress(sagemaker_session):
 
 
 def test_predictor_regress_bad_content_type():
-    predictor = TFSPredictor('endpoint', sagemaker_session, csv_serializer)
+    predictor = Predictor('endpoint', sagemaker_session, csv_serializer)
 
     with pytest.raises(ValueError):
         predictor.regress(REGRESS_INPUT)
 
 
 def test_predictor_classify_bad_content_type():
-    predictor = TFSPredictor('endpoint', sagemaker_session, csv_serializer)
+    predictor = Predictor('endpoint', sagemaker_session, csv_serializer)
 
     with pytest.raises(ValueError):
         predictor.classify(CLASSIFY_INPUT)

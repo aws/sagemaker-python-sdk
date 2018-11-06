@@ -17,7 +17,7 @@ import pytest
 import sagemaker
 import sagemaker.predictor
 import sagemaker.utils
-from sagemaker.tensorflow.tfs import TFSModel, TFSPredictor
+from sagemaker.tensorflow.serving import Model, Predictor
 from tests.integ.timeout import timeout_and_delete_endpoint_by_name
 
 
@@ -28,13 +28,13 @@ def instance_type(request):
 
 @pytest.fixture(scope='module')
 def tfs_predictor(instance_type, sagemaker_session, tf_full_version):
-    endpoint_name = sagemaker.utils.name_from_base('sagemaker-tfs')
-    model_data = sagemaker_session.upload_data(path='tests/data/tfs-test-model.tar.gz',
-                                               key_prefix='tfs/models')
+    endpoint_name = sagemaker.utils.name_from_base('sagemaker-tensorflow-serving')
+    model_data = sagemaker_session.upload_data(path='tests/data/tensorflow-serving-test-model.tar.gz',
+                                               key_prefix='tensorflow-serving/models')
     with timeout_and_delete_endpoint_by_name(endpoint_name, sagemaker_session):
-        model = TFSModel(model_data=model_data, role='SageMakerRole',
-                         framework_version=tf_full_version,
-                         sagemaker_session=sagemaker_session)
+        model = Model(model_data=model_data, role='SageMakerRole',
+                      framework_version=tf_full_version,
+                      sagemaker_session=sagemaker_session)
         predictor = model.deploy(1, instance_type, endpoint_name=endpoint_name)
         yield predictor
 
@@ -75,8 +75,8 @@ def test_predict_csv(tfs_predictor):
     input_data = '1.0,2.0,5.0\n1.0,2.0,5.0'
     expected_result = {'predictions': [[3.5, 4.0, 5.5], [3.5, 4.0, 5.5]]}
 
-    predictor = TFSPredictor(tfs_predictor.endpoint, tfs_predictor.sagemaker_session,
-                             serializer=sagemaker.predictor.csv_serializer)
+    predictor = Predictor(tfs_predictor.endpoint, tfs_predictor.sagemaker_session,
+                          serializer=sagemaker.predictor.csv_serializer)
 
     result = predictor.predict(input_data)
     assert expected_result == result
