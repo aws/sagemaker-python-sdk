@@ -111,8 +111,9 @@ def test_failed_training_job(sagemaker_session, chainer_full_version):
                           train_instance_count=1, train_instance_type='ml.c4.xlarge',
                           sagemaker_session=sagemaker_session)
 
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError) as e:
             chainer.fit()
+        assert 'This failure is expected' in str(e.value)
 
 
 def _run_mnist_training_job(sagemaker_session, instance_type, instance_count,
