@@ -22,13 +22,13 @@ from tests.integ.timeout import timeout_and_delete_endpoint_by_name
 
 
 @pytest.fixture(scope='module')
-def tfs_predictor(sagemaker_session, tf_full_version):
+def tfs_predictor(sagemaker_session, instance_type, tf_full_version):
     endpoint_name = sagemaker.utils.name_from_base('sagemaker-tfs')
     model_data = sagemaker_session.upload_data(path='tests/data/tfs-test-model.tar.gz',
                                                key_prefix='tfs/models')
     with timeout_and_delete_endpoint_by_name(endpoint_name, sagemaker_session):
         model = TFSModel(model_data, 'SageMakerRole', framework_version=tf_full_version)
-        predictor = model.deploy(1, 'ml.c5.xlarge', endpoint_name=endpoint_name)
+        predictor = model.deploy(1, instance_type, endpoint_name=endpoint_name)
         yield predictor
 
 

@@ -65,7 +65,8 @@ class RealTimePredictor(object):
                 If a serializer was specified when creating the RealTimePredictor, the result of the
                 serializer is sent as input data. Otherwise the data must be sequence of bytes, and
                 the predict method then sends the bytes in the request body as is.
-            initial_args (dict[str,str]): Optional. Initial request arguments. Default is None.
+            initial_args (dict[str,str]): Optional. Default arguments for boto3
+                ``invoke_endpoint`` call. Default is None (no default arguments).
 
         Returns:
             object: Inference for the given input. If a deserializer was specified when creating
