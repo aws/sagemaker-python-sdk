@@ -338,6 +338,7 @@ class TensorFlow(Framework):
                         role=role,
                         image=self.image_name,
                         name=self._current_job_name,
+                        container_log_level=self.container_log_level,
                         framework_version=self.framework_version,
                         sagemaker_session=self.sagemaker_session,
                         vpc_config=self.get_vpc_config(vpc_config_override))
