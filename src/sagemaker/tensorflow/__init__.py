@@ -29,3 +29,4 @@ if LooseVersion(tensorflow.__version__) < LooseVersion("1.3.0"):
 
 from sagemaker.tensorflow.estimator import TensorFlow  # noqa: E402, F401
 from sagemaker.tensorflow.model import TensorFlowModel, TensorFlowPredictor  # noqa: E402, F401
+from sagemaker.tensorflow.tfs import TFSModel, TFSPredictor  # noqa: E402, F401
