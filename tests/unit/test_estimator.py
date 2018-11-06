@@ -706,19 +706,10 @@ def test_unsupported_type_in_dict():
 #################################################################################
 # Tests for the generic Estimator class
 
-BASE_TRAIN_CALL = {
+NO_INPUT_TRAIN_CALL = {
     'hyperparameters': {},
     'image': IMAGE_NAME,
-    'input_config': [{
-        'DataSource': {
-            'S3DataSource': {
-                'S3DataDistributionType': 'FullyReplicated',
-                'S3DataType': 'S3Prefix',
-                'S3Uri': 's3://bucket/training-prefix'
-            }
-        },
-        'ChannelName': 'train'
-    }],
+    'input_config': None,
     'input_mode': 'File',
     'output_config': {'S3OutputPath': OUTPUT_PATH},
     'resource_config': {
@@ -731,10 +722,41 @@ BASE_TRAIN_CALL = {
     'vpc_config': None
 }
 
+INPUT_CONFIG = [{
+    'DataSource': {
+        'S3DataSource': {
+            'S3DataDistributionType': 'FullyReplicated',
+            'S3DataType': 'S3Prefix',
+            'S3Uri': 's3://bucket/training-prefix'
+        }
+    },
+    'ChannelName': 'train'
+}]
+
+BASE_TRAIN_CALL = dict(NO_INPUT_TRAIN_CALL)
+BASE_TRAIN_CALL.update({'input_config': INPUT_CONFIG})
+
 HYPERPARAMS = {'x': 1, 'y': 'hello'}
 STRINGIFIED_HYPERPARAMS = dict([(x, str(y)) for x, y in HYPERPARAMS.items()])
 HP_TRAIN_CALL = dict(BASE_TRAIN_CALL)
 HP_TRAIN_CALL.update({'hyperparameters': STRINGIFIED_HYPERPARAMS})
+
+
+def test_generic_to_fit_no_input(sagemaker_session):
+    e = Estimator(IMAGE_NAME, ROLE, INSTANCE_COUNT, INSTANCE_TYPE, output_path=OUTPUT_PATH,
+                  sagemaker_session=sagemaker_session)
+
+    e.fit()
+
+    sagemaker_session.train.assert_called_once()
+    assert len(sagemaker_session.train.call_args[0]) == 0
+    args = sagemaker_session.train.call_args[1]
+    assert args['job_name'].startswith(IMAGE_NAME)
+
+    args.pop('job_name')
+    args.pop('role')
+
+    assert args == NO_INPUT_TRAIN_CALL
 
 
 def test_generic_to_fit_no_hps(sagemaker_session):
