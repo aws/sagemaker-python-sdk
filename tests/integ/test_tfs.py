@@ -32,7 +32,8 @@ def tfs_predictor(sagemaker_session, tf_full_version):
         yield predictor
 
 
-@pytest.mark.continuous_testing
+# @pytest.mark.continuous_testing
+# @pytest.mark.regional_testing
 def test_predict(tfs_predictor):
     input_data = {'instances': [1.0, 2.0, 5.0]}
     expected_result = {'predictions': [3.5, 4.0, 5.5]}
