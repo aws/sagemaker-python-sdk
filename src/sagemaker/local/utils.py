@@ -72,6 +72,9 @@ def recursive_copy(source, destination):
         source (str): source path
         destination (str): destination path
     """
+    if not os.path.exists(destination):
+        os.makedirs(destination, exist_ok=True)
+
     for root, dirs, files in os.walk(source):
         root = os.path.relpath(root, source)
         current_path = os.path.join(source, root)
