@@ -207,7 +207,7 @@ class TensorFlow(Framework):
         if not os.path.exists(os.path.join(self.source_dir, requirements_file)):
             raise ValueError('Requirements file {} does not exist.'.format(requirements_file))
 
-    def fit(self, inputs, wait=True, logs=True, job_name=None, run_tensorboard_locally=False):
+    def fit(self, inputs=None, wait=True, logs=True, job_name=None, run_tensorboard_locally=False):
         """Train a model using the input training dataset.
 
         See :func:`~sagemaker.estimator.EstimatorBase.fit` for more details.

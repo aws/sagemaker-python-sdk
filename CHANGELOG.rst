@@ -2,6 +2,12 @@
 CHANGELOG
 =========
 
+1.13.1.dev
+==========
+
+* feature: Estimator: make input channels optional
+
+
 1.13.0
 ======
 

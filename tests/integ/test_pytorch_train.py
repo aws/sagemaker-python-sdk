@@ -106,7 +106,7 @@ def test_failed_training_job(sagemaker_session, pytorch_full_version):
         pytorch = _get_pytorch_estimator(sagemaker_session, pytorch_full_version, entry_point=script_path)
 
         with pytest.raises(ValueError) as e:
-            pytorch.fit(_upload_training_data(pytorch))
+            pytorch.fit()
         assert 'This failure is expected' in str(e.value)
 
 
