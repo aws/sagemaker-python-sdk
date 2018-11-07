@@ -257,13 +257,15 @@ class Session(object):
                 'TrainingImage': image,
                 'TrainingInputMode': input_mode
             },
-            'InputDataConfig': input_config,
             'OutputDataConfig': output_config,
             'TrainingJobName': job_name,
             'StoppingCondition': stop_condition,
             'ResourceConfig': resource_config,
             'RoleArn': role,
         }
+
+        if input_config is not None:
+            train_request['InputDataConfig'] = input_config
 
         if hyperparameters and len(hyperparameters) > 0:
             train_request['HyperParameters'] = hyperparameters

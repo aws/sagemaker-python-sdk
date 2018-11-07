@@ -176,7 +176,7 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):
             else:
                 self.output_path = 's3://{}/'.format(self.sagemaker_session.default_bucket())
 
-    def fit(self, inputs, wait=True, logs=True, job_name=None):
+    def fit(self, inputs=None, wait=True, logs=True, job_name=None):
         """Train a model using the input training dataset.
 
         The API calls the Amazon SageMaker CreateTrainingJob API to start model training.
