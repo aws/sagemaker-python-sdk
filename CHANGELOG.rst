@@ -2,8 +2,8 @@
 CHANGELOG
 =========
 
-1.14.0-dev
-==========
+1.14.0
+======
 
 * feature: add support for sagemaker-tensorflow-serving container
 * feature: Estimator: make input channels optional
