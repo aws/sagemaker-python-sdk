@@ -190,8 +190,15 @@ def test_predictor_classify_bad_content_type():
         predictor.classify(CLASSIFY_INPUT)
 
 
-def assert_invoked(sagemaker_session, **args):
-    sagemaker_session.sagemaker_runtime_client.invoke_endpoint.assert_called_once_with(**args)
+def assert_invoked(sagemaker_session, **kwargs):
+    call = sagemaker_session.sagemaker_runtime_client.invoke_endpoint.call_args
+    cargs, ckwargs = call
+    assert not cargs
+    assert len(kwargs) == len(ckwargs)
+    for k in ckwargs:
+        assert kwargs[k] == ckwargs[k]
+
+    # sagemaker_session.sagemaker_runtime_client.invoke_endpoint.assert_called_once_with(**kwargs)
 
 
 def mock_response(expected_response, sagemaker_session, content_type=JSON_CONTENT_TYPE):
