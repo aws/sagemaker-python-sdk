@@ -18,7 +18,7 @@ import pytest
 from sagemaker.pytorch.estimator import PyTorch
 from sagemaker.pytorch.model import PyTorchModel
 from sagemaker.utils import sagemaker_timestamp
-from tests.integ import DATA_DIR, PYTHON_VERSION, TRAINING_DEFAULT_TIMEOUT_MINUTES
+from tests.integ import DATA_DIR, PYTHON_VERSION, TRAINING_DEFAULT_TIMEOUT_MINUTES, REGION
 from tests.integ.timeout import timeout, timeout_and_delete_endpoint_by_name
 
 MNIST_DIR = os.path.join(DATA_DIR, 'pytorch_mnist')
@@ -69,6 +69,8 @@ def test_deploy_model(pytorch_training_job, sagemaker_session):
         assert output.shape == (batch_size, 10)
 
 
+@pytest.mark.skipif(REGION in ['us-west-1', 'eu-west-2', 'ca-central-1'],
+                    reason='No ml.p2.xlarge supported in these regions')
 def test_async_fit_deploy(sagemaker_session, pytorch_full_version):
     training_job_name = ""
     # TODO: add tests against local mode when it's ready to be used

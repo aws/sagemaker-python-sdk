@@ -22,7 +22,7 @@ from sagemaker.chainer.defaults import CHAINER_VERSION
 from sagemaker.chainer.estimator import Chainer
 from sagemaker.chainer.model import ChainerModel
 from sagemaker.utils import sagemaker_timestamp
-from tests.integ import DATA_DIR, PYTHON_VERSION, TRAINING_DEFAULT_TIMEOUT_MINUTES
+from tests.integ import DATA_DIR, PYTHON_VERSION, TRAINING_DEFAULT_TIMEOUT_MINUTES, REGION
 from tests.integ.timeout import timeout, timeout_and_delete_endpoint_by_name
 
 
@@ -35,6 +35,8 @@ def test_distributed_cpu_training(sagemaker_session, chainer_full_version):
     _run_mnist_training_job(sagemaker_session, "ml.c4.xlarge", 2, chainer_full_version)
 
 
+@pytest.mark.skipif(REGION in ['us-west-1', 'eu-west-2', 'ca-central-1'],
+                    reason='No ml.p2.xlarge supported in these regions')
 def test_distributed_gpu_training(sagemaker_session, chainer_full_version):
     _run_mnist_training_job(sagemaker_session, "ml.p2.xlarge", 2, chainer_full_version)
 
