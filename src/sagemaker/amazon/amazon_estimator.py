@@ -15,7 +15,9 @@ from __future__ import absolute_import
 import json
 import logging
 import tempfile
+
 from six.moves.urllib.parse import urlparse
+
 from sagemaker.amazon import validation
 from sagemaker.amazon.hyperparameter import Hyperparameter as hp  # noqa
 from sagemaker.amazon.common import write_numpy_to_dense_tensor
@@ -32,6 +34,8 @@ class AmazonAlgorithmEstimatorBase(EstimatorBase):
 
     feature_dim = hp('feature_dim', validation.gt(0), data_type=int)
     mini_batch_size = hp('mini_batch_size', validation.gt(0), data_type=int)
+    repo_name = None
+    repo_version = None
 
     def __init__(self, role, train_instance_count, train_instance_type, data_location=None, **kwargs):
         """Initialize an AmazonAlgorithmEstimatorBase.
@@ -263,7 +267,7 @@ def upload_numpy_to_s3_shards(num_shards, s3, bucket, key_prefix, array, labels=
             [{'prefix': 's3://{}/{}'.format(bucket, key_prefix)}] + uploaded_files)
         s3.Object(bucket, manifest_key).put(Body=manifest_str.encode('utf-8'))
         return "s3://{}/{}".format(bucket, manifest_key)
-    except Exception as ex:
+    except Exception as ex:  # pylint: disable=broad-except
         try:
             for file in uploaded_files:
                 s3.Object(bucket, key_prefix + file).delete()

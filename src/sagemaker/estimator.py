@@ -211,21 +211,6 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):
             self.latest_training_job.wait(logs=logs)
 
     @classmethod
-    def _from_training_job(cls, init_params, hyperparameters, image, sagemaker_session):
-        """Create an Estimator from existing training job data.
-
-        Args:
-            init_params (dict): The init_params the training job was created with.
-            hyperparameters (dict):  The hyperparameters the training job was created with.
-            image (str): Container image (if any) the training job was created with
-            sagemaker_session (sagemaker.session.Session): A sagemaker Session to pass to the estimator.
-
-        Returns: An instance of the calling Estimator Class.
-
-        """
-        raise NotImplementedError()
-
-    @classmethod
     def attach(cls, training_job_name, sagemaker_session=None, model_channel_name='model'):
         """Attach to an existing training job.
 
@@ -425,7 +410,7 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):
 
 
 class _TrainingJob(_Job):
-    def __init__(self, sagemaker_session, training_job_name):
+    def __init__(self, sagemaker_session, training_job_name):  # pylint: disable=useless-super-delegation
         super(_TrainingJob, self).__init__(sagemaker_session, training_job_name)
 
     @classmethod
@@ -629,6 +614,7 @@ class Framework(EstimatorBase):
 
     _DISTRIBUTION_SUPPORTED_FRAMEWORKS = ('mxnet',)
     LAUNCH_PS_ENV_NAME = 'sagemaker_parameter_server_enabled'
+    __framework_name__ = None
 
     def __init__(self, entry_point, source_dir=None, hyperparameters=None, enable_cloudwatch_metrics=False,
                  container_log_level=logging.INFO, code_location=None, image_name=None,

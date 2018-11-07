@@ -1,0 +1,187 @@
+[MASTER]
+
+ignore=
+    tensorflow_serving
+
+[MESSAGES CONTROL]
+# Enable the message, report, category or checker with the given id(s). You can
+# either give multiple identifier separated by comma (,) or put this option
+# multiple times.
+# Disable the message, report, category or checker with the given id(s). You
+# can either give multiple identifiers separated by comma (,) or put this
+# option multiple times (only on the command line, not in the configuration
+# file where it should appear only once). You can also use "--disable=all" to
+# disable everything first and then reenable specific checks. For example, if
+# you want to run only the similarities checker, you can use "--disable=all
+# --enable=similarities". If you want to run only the classes checker, but have
+# no Warning level messages displayed, use "--disable=all --enable=classes
+# --disable=W".
+
+disable=
+    C, # convention
+    R, # refactor
+    too-many-arguments, # We should fix the offending ones soon.
+    too-many-lines, # Some files are too big, we should fix this too
+    too-few-public-methods,
+    too-many-instance-attributes,
+    too-many-locals,
+    len-as-condition, # Nice to have in the future
+    bad-indentation,
+    line-too-long, # We let Flake8 take care of this
+    logging-format-interpolation,
+    useless-object-inheritance, # We still support python2 so inheriting from object is ok
+    invalid-name,
+    import-error,
+    logging-not-lazy,
+    fixme,
+    no-self-use,
+    attribute-defined-outside-init,
+    protected-access,
+    invalid-all-object,
+    arguments-differ,
+    abstract-method,
+    signature-differs
+
+
+
+[REPORTS]
+# Set the output format. Available formats are text, parseable, colorized, msvs
+# (visual studio) and html
+output-format=colorized
+
+# Put messages in a separate file for each module / package specified on the
+# command line instead of printing them on stdout. Reports (if any) will be
+# written in a file name "pylint_global.[txt|html]".
+#files-output=no
+
+# Tells whether to display a full report or only the messages
+# CHANGE: No report.
+reports=no
+# Python expression which should return a note less than 10 (10 is the highest
+# note). You have access to the variables errors warning, statement which
+# respectively contain the number of errors / warnings messages and the total
+# number of statements analyzed. This is used by the global evaluation report
+# (RP0004).
+#evaluation=10.0 - ((float(5 * error + warning + refactor + convention) / statement) * 10)
+# Add a comment according to your evaluation note. This is used by the global
+# evaluation report (RP0004).
+#comment=no
+
+[MISCELLANEOUS]
+# List of note tags to take in consideration, separated by a comma.
+#notes=FIXME,XXX,TODO
+[FORMAT]
+# Maximum number of characters on a single line.
+max-line-length=100
+# Maximum number of lines in a module
+#max-module-lines=1000
+# String used as indentation unit. This is usually " " (4 spaces) or "\t" (1
+# tab).
+indent-string='  '
+
+[TYPECHECK]
+# Tells whether missing members accessed in mixin class should be ignored. A
+# mixin class is detected if its name ends with "mixin" (case insensitive).
+#ignore-mixin-members=yes
+# List of classes names for which member attributes should not be checked
+# (useful for classes with attributes dynamically set).
+ignored-classes=hashlib,numpy
+# When zope mode is activated, add a predefined set of Zope acquired attributes
+# to generated-members.
+#zope=no
+# List of members which are set dynamically and missed by pylint inference
+# system, and so shouldn't trigger E0201 when accessed.
+# CHANGE: Added 'AndRaise', 'AndReturn', 'InAnyOrder' and 'MultipleTimes' for pymox.
+# CHANGE: Added tempdir for @osutils.TempDirDecorator.
+generated-members=REQUEST,acl_users,aq_parent,AndRaise,AndReturn,InAnyOrder,MultipleTimes,tempdir
+
+[BASIC]
+
+# Required attributes for module, separated by a comma
+#required-attributes=
+# List of builtins function names that should not be used, separated by a comma.
+# XXX: Should we ban map() & filter() for list comprehensions?
+# exit & quit are for the interactive interpreter shell only.
+# https://docs.python.org/3/library/constants.html#constants-added-by-the-site-module
+bad-functions=
+    apply,
+    exit,
+    input,
+    quit,
+# Regular expression which should only match correct module names
+#module-rgx=(([a-z_][a-z0-9_]*)|([A-Z][a-zA-Z0-9]+))$
+# Regular expression which should only match correct module level names
+#const-rgx=(([A-Z_][A-Z0-9_]*)|(__.*__))$
+# Regular expression which should only match correct class names
+#class-rgx=[A-Z_][a-zA-Z0-9]+$
+# Regular expression which should only match correct function names
+#
+#
+
+
+[SIMILARITIES]
+# Minimum lines number of a similarity.
+min-similarity-lines=5
+# Ignore comments when computing similarities.
+ignore-comments=yes
+# Ignore docstrings when computing similarities.
+ignore-docstrings=yes
+
+[VARIABLES]
+# Tells whether we should check for unused import in __init__ files.
+init-import=no
+# A regular expression matching the beginning of the name of dummy variables
+# (i.e. not used).
+dummy-variables-rgx=_|unused_
+
+# List of additional names supposed to be defined in builtins. Remember that
+# you should avoid to define new builtins when possible.
+#additional-builtins=
+
+[DESIGN]
+# Maximum number of arguments for function / method
+#max-args=5
+
+# Argument names that match this expression will be ignored. Default to name
+# with leading underscore
+
+#ignored-argument-names=_.*
+# Maximum number of locals for function / method body
+#max-locals=15
+
+# Maximum number of return / yield for function / method body
+#max-returns=6
+
+# Maximum number of branch for function / method body
+#max-branchs=12
+
+# Maximum number of statements in function / method body
+#max-statements=50
+
+# Maximum number of parents for a class (see R0901).
+max-parents=10
+
+# Maximum number of attributes for a class (see R0902).
+#max-attributes=7
+
+# Minimum number of public methods for a class (see R0903).
+#min-public-methods=2
+
+# Maximum number of public methods for a class (see R0904).
+#max-public-methods=20
+
+[IMPORTS]
+# Create a graph of every (i.e. internal and external) dependencies in the
+# given file (report RP0402 must not be disabled)
+#import-graph=
+# Create a graph of external dependencies in the given file (report RP0402 must
+# not be disabled)
+#ext-import-graph=
+# Create a graph of internal dependencies in the given file (report RP0402 must
+# not be disabled)
+#int-import-graph=
+
+[LOGGING]
+# Apply logging string format checks to calls on these modules.
+logging-modules=
+    logging

@@ -121,9 +121,9 @@ class KMeans(AmazonAlgorithmEstimatorBase):
 
     def hyperparameters(self):
         """Return the SageMaker hyperparameters for training this KMeans Estimator"""
-        hp = dict(force_dense='True')  # KMeans requires this hp to fit on Record objects
-        hp.update(super(KMeans, self).hyperparameters())
-        return hp
+        hp_dict = dict(force_dense='True')  # KMeans requires this hp to fit on Record objects
+        hp_dict.update(super(KMeans, self).hyperparameters())
+        return hp_dict
 
 
 class KMeansPredictor(RealTimePredictor):

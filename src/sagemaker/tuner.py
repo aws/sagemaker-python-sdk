@@ -73,22 +73,13 @@ class ContinuousParameter(_ParameterRange):
     """
     __name__ = 'Continuous'
 
-    def __init__(self, min_value, max_value):
-        """Initialize a ``ContinuousParameter``.
-
-        Args:
-            min_value (float): The minimum value for the range.
-            max_value (float): The maximum value for the range.
-        """
-        super(ContinuousParameter, self).__init__(min_value, max_value)
-
 
 class CategoricalParameter(_ParameterRange):
     """A class for representing hyperparameters that have a discrete list of possible values.
     """
     __name__ = 'Categorical'
 
-    def __init__(self, values):
+    def __init__(self, values):  # pylint: disable=super-init-not-called
         """Initialize a ``CategoricalParameter``.
 
         Args:
@@ -132,15 +123,6 @@ class IntegerParameter(_ParameterRange):
     """A class for representing hyperparameters that have an integer range of possible values.
     """
     __name__ = 'Integer'
-
-    def __init__(self, min_value, max_value):
-        """Initialize a ``IntegerParameter``.
-
-        Args:
-            min_value (int): The minimum value for the range.
-            max_value (int): The maximum value for the range.
-        """
-        super(IntegerParameter, self).__init__(min_value, max_value)
 
 
 class HyperparameterTuner(object):
@@ -303,7 +285,7 @@ class HyperparameterTuner(object):
         init_params = cls._prepare_init_params_from_job_description(job_details)
 
         tuner = cls(estimator=estimator, **init_params)
-        tuner.latest_tuning_job = _TuningJob(sagemaker_session=sagemaker_session, tuning_job_name=tuning_job_name)
+        tuner.latest_tuning_job = _TuningJob(sagemaker_session=sagemaker_session, job_name=tuning_job_name)
 
         return tuner
 
@@ -478,7 +460,7 @@ class HyperparameterTuner(object):
 
     def _validate_parameter_ranges(self):
         for kls in inspect.getmro(self.estimator.__class__)[::-1]:
-            for attribute, value in kls.__dict__.items():
+            for _, value in kls.__dict__.items():
                 if isinstance(value, hp):
                     try:
                         # The hyperparam names may not be the same as the class attribute that holds them,
@@ -487,7 +469,7 @@ class HyperparameterTuner(object):
                         parameter_range = self._hyperparameter_ranges[value.name]
 
                         if isinstance(parameter_range, _ParameterRange):
-                            for parameter_range_attribute, parameter_range_value in parameter_range.__dict__.items():
+                            for _, parameter_range_value in parameter_range.__dict__.items():
                                 # Categorical ranges
                                 if isinstance(parameter_range_value, list):
                                     for categorical_value in parameter_range_value:
@@ -500,9 +482,6 @@ class HyperparameterTuner(object):
 
 
 class _TuningJob(_Job):
-    def __init__(self, sagemaker_session, tuning_job_name):
-        super(_TuningJob, self).__init__(sagemaker_session, tuning_job_name)
-
     @classmethod
     def start_new(cls, tuner, inputs):
         """Create a new Amazon SageMaker hyperparameter tuning job from the HyperparameterTuner.
