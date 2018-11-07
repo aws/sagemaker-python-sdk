@@ -12,6 +12,7 @@
 # language governing permissions and limitations under the License.
 from __future__ import absolute_import
 
+import botocore.exceptions
 import pytest
 
 import sagemaker
@@ -29,8 +30,9 @@ def instance_type(request):
 @pytest.fixture(scope='module')
 def tfs_predictor(instance_type, sagemaker_session, tf_full_version):
     endpoint_name = sagemaker.utils.name_from_base('sagemaker-tensorflow-serving')
-    model_data = sagemaker_session.upload_data(path='tests/data/tensorflow-serving-test-model.tar.gz',
-                                               key_prefix='tensorflow-serving/models')
+    model_data = sagemaker_session.upload_data(
+        path='tests/data/tensorflow-serving-test-model.tar.gz',
+        key_prefix='tensorflow-serving/models')
     with timeout_and_delete_endpoint_by_name(endpoint_name, sagemaker_session):
         model = Model(model_data=model_data, role='SageMakerRole',
                       framework_version=tf_full_version,
@@ -80,3 +82,9 @@ def test_predict_csv(tfs_predictor):
 
     result = predictor.predict(input_data)
     assert expected_result == result
+
+
+def test_predict_bad_input(tfs_predictor):
+    input_data = {'junk': 'data'}
+    with pytest.raises(botocore.exceptions.ClientError):
+        tfs_predictor.predict(input_data)

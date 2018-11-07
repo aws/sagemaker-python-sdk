@@ -134,7 +134,7 @@ class Model(sagemaker.Model):
             return self.env
 
         env = dict(self.env)
-        env['SAGEMAKER_TFS_NGINX_LOGLEVEL'] = Model.LOG_LEVEL_MAP[self._container_log_level]
+        env[Model.LOG_LEVEL_PARAM_NAME] = Model.LOG_LEVEL_MAP[self._container_log_level]
         return env
 
     def _get_image_uri(self, instance_type):
@@ -143,7 +143,5 @@ class Model(sagemaker.Model):
 
         # reuse standard image uri function, then strip unwanted python component
         region_name = self.sagemaker_session.boto_region_name
-        image = create_image_uri(region_name, Model.FRAMEWORK_NAME, instance_type,
-                                 self._framework_version, 'py3')
-        image = image.replace('-py3', '')
-        return image
+        return create_image_uri(region_name, Model.FRAMEWORK_NAME, instance_type,
+                                self._framework_version)
