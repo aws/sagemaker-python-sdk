@@ -32,7 +32,7 @@ MOCK_MODULES = ['tensorflow', 'tensorflow.core', 'tensorflow.core.framework', 't
                 'numpy', 'scipy', 'scipy.sparse']
 sys.modules.update((mod_name, Mock()) for mod_name in MOCK_MODULES)
 
-version = '1.11.3'
+version = '1.14.0'
 project = u'sagemaker'
 
 # Add any Sphinx extension module names here, as strings. They can be extensions
