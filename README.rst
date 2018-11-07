@@ -290,6 +290,7 @@ If your bring-your-own case requires different settings, you can create your own
 Here's an example of how to use incremental training:
 
 .. code:: python
+
     # Configure an estimator
     estimator = sagemaker.estimator.Estimator(training_image,
                                               role,
