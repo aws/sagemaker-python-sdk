@@ -612,13 +612,10 @@ class Framework(EstimatorBase):
     such as training/deployment images and predictor instances.
     """
 
-    _DISTRIBUTION_SUPPORTED_FRAMEWORKS = ('mxnet',)
-    LAUNCH_PS_ENV_NAME = 'sagemaker_parameter_server_enabled'
     __framework_name__ = None
 
     def __init__(self, entry_point, source_dir=None, hyperparameters=None, enable_cloudwatch_metrics=False,
-                 container_log_level=logging.INFO, code_location=None, image_name=None,
-                 distributions=None, **kwargs):
+                 container_log_level=logging.INFO, code_location=None, image_name=None, **kwargs):
         """Base class initializer. Subclasses which override ``__init__`` should invoke ``super()``
 
         Args:
@@ -640,8 +637,6 @@ class Framework(EstimatorBase):
             image_name (str): An alternate image name to use instead of the official Sagemaker image
                 for the framework. This is useful to run one of the Sagemaker supported frameworks
                 with an image containing custom dependencies.
-            distributions (dict): A dictionary with information on how to run distributed training
-                (default: None).
             **kwargs: Additional kwargs passed to the ``EstimatorBase`` constructor.
         """
         super(Framework, self).__init__(**kwargs)
@@ -656,22 +651,6 @@ class Framework(EstimatorBase):
         self.image_name = image_name
 
         self._hyperparameters = hyperparameters or {}
-        self._configure_distributions(distributions)
-
-    def _configure_distributions(self, distributions):
-        if distributions is None:
-            return
-
-        if self.__framework_name__ not in self._DISTRIBUTION_SUPPORTED_FRAMEWORKS:
-            raise ValueError('This framework does not support the distributions option.')
-
-        if self.framework_version.split('.') < self._LOWEST_SCRIPT_MODE_VERSION:
-            raise ValueError('The distributions option is valid for only versions {} and higher'
-                             .format('.'.join(self._LOWEST_SCRIPT_MODE_VERSION)))
-
-        if 'parameter_server' in distributions:
-            enabled = distributions['parameter_server'].get('enabled', False)
-            self._hyperparameters[self.LAUNCH_PS_ENV_NAME] = enabled
 
     def _prepare_for_training(self, job_name=None):
         """Set hyperparameters needed for training. This method will also validate ``source_dir``.
@@ -796,8 +775,11 @@ class Framework(EstimatorBase):
         if self.image_name:
             return self.image_name
         else:
-            return create_image_uri(self.sagemaker_session.boto_region_name, self.__framework_name__,
-                                    self.train_instance_type, self.framework_version, py_version=self.py_version)
+            return create_image_uri(self.sagemaker_session.boto_region_name,
+                                    self.__framework_name__,
+                                    self.train_instance_type,
+                                    self.framework_version,  # pylint: disable=no-member
+                                    py_version=self.py_version)  # pylint: disable=no-member
 
     @classmethod
     def attach(cls, training_job_name, sagemaker_session=None, model_channel_name='model'):
@@ -830,7 +812,11 @@ class Framework(EstimatorBase):
             Instance of the calling ``Estimator`` Class with the attached training job.
         """
         estimator = super(Framework, cls).attach(training_job_name, sagemaker_session, model_channel_name)
-        estimator.uploaded_code = UploadedCode(estimator.source_dir, estimator.entry_point)
+
+        # pylint gets confused thinking that estimator is an EstimatorBase instance, but it actually
+        # is a Framework or any of its derived classes. We can safely ignore the no-member errors.
+        estimator.uploaded_code = UploadedCode(
+            estimator.source_dir, estimator.entry_point)  # pylint: disable=no-member
         return estimator
 
     @staticmethod

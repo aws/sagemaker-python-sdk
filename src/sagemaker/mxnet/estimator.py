@@ -30,9 +30,10 @@ class MXNet(Framework):
     __framework_name__ = 'mxnet'
 
     _LOWEST_SCRIPT_MODE_VERSION = ['1', '3']
+    LAUNCH_PS_ENV_NAME = 'sagemaker_parameter_server_enabled'
 
     def __init__(self, entry_point, source_dir=None, hyperparameters=None, py_version='py2',
-                 framework_version=None, image_name=None, **kwargs):
+                 framework_version=None, image_name=None, distribution=None, **kwargs):
         """
         This ``Estimator`` executes an MXNet script in a managed MXNet execution environment, within a SageMaker
         Training Job. The managed MXNet environment is an Amazon-built Docker container that executes functions
@@ -44,7 +45,7 @@ class MXNet(Framework):
         that can be used to perform inference against the hosted model.
 
         Technical documentation on preparing MXNet scripts for SageMaker training and using the MXNet Estimator is
-        avaialble on the project home-page: https://github.com/aws/sagemaker-python-sdk
+        available on the project home-page: https://github.com/aws/sagemaker-python-sdk
 
         Args:
             entry_point (str): Path (absolute or relative) to the Python source file which should be executed
@@ -66,6 +67,8 @@ class MXNet(Framework):
                     Examples:
                         123.dkr.ecr.us-west-2.amazonaws.com/my-custom-image:1.0
                         custom-image:latest.
+             distribution (dict): A dictionary with information on how to run distributed training
+                (default: None).
             **kwargs: Additional kwargs passed to the :class:`~sagemaker.estimator.Framework` constructor.
         """
         if framework_version is None:
@@ -75,6 +78,19 @@ class MXNet(Framework):
         super(MXNet, self).__init__(entry_point, source_dir, hyperparameters,
                                     image_name=image_name, **kwargs)
         self.py_version = py_version
+        self._configure_distribution(distribution)
+
+    def _configure_distribution(self, distribution):
+        if distribution is None:
+            return
+
+        if self.framework_version.split('.') < self._LOWEST_SCRIPT_MODE_VERSION:
+            raise ValueError('The distribution option is valid for only versions {} and higher'
+                             .format('.'.join(self._LOWEST_SCRIPT_MODE_VERSION)))
+
+        if 'parameter_server' in distribution:
+            enabled = distribution['parameter_server'].get('enabled', False)
+            self._hyperparameters[self.LAUNCH_PS_ENV_NAME] = enabled
 
     def create_model(self, model_server_workers=None, role=None, vpc_config_override=VPC_CONFIG_DEFAULT):
         """Create a SageMaker ``MXNetModel`` object that can be deployed to an ``Endpoint``.
