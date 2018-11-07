@@ -20,8 +20,8 @@ import pytest
 from mock import Mock
 
 from sagemaker.tensorflow import TensorFlow
-from sagemaker.tensorflow.serving import Model, Predictor
 from sagemaker.tensorflow.predictor import csv_serializer
+from sagemaker.tensorflow.serving import Model, Predictor
 
 JSON_CONTENT_TYPE = 'application/json'
 CSV_CONTENT_TYPE = 'text/csv'
@@ -94,7 +94,8 @@ def test_estimator_deploy(sagemaker_session):
 
     job_name = 'doing something'
     tf.fit(inputs='s3://mybucket/train', job_name=job_name)
-    predictor = tf.deploy(INSTANCE_COUNT, INSTANCE_TYPE, 'endpoint', endpoint_type='tensorflow-serving')
+    predictor = tf.deploy(INSTANCE_COUNT, INSTANCE_TYPE, 'endpoint',
+                          endpoint_type='tensorflow-serving')
     assert isinstance(predictor, Predictor)
 
 
@@ -197,8 +198,6 @@ def assert_invoked(sagemaker_session, **kwargs):
     assert len(kwargs) == len(ckwargs)
     for k in ckwargs:
         assert kwargs[k] == ckwargs[k]
-
-    # sagemaker_session.sagemaker_runtime_client.invoke_endpoint.assert_called_once_with(**kwargs)
 
 
 def mock_response(expected_response, sagemaker_session, content_type=JSON_CONTENT_TYPE):
