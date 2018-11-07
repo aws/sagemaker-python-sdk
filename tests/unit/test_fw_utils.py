@@ -13,13 +13,15 @@
 from __future__ import absolute_import
 
 import inspect
-from mock import Mock, patch
 import os
-from sagemaker.fw_utils import create_image_uri, framework_name_from_image, framework_version_from_tag, \
+
+import pytest
+from mock import Mock, patch
+
+from sagemaker.fw_utils import create_image_uri, framework_name_from_image, \
+    framework_version_from_tag, \
     model_code_key_prefix
 from sagemaker.fw_utils import tar_and_upload_dir, parse_s3_url, UploadedCode, validate_source_dir
-import pytest
-
 from sagemaker.utils import name_from_image
 
 DATA_DIR = 'data_dir'
@@ -33,12 +35,12 @@ TIMESTAMP = '2017-10-10-14-14-15'
 @pytest.fixture()
 def sagemaker_session():
     boto_mock = Mock(name='boto_session', region_name=REGION)
-    ims = Mock(name='sagemaker_session', boto_session=boto_mock)
-    ims.default_bucket = Mock(name='default_bucket', return_value=BUCKET_NAME)
-    ims.expand_role = Mock(name="expand_role", return_value=ROLE)
-    ims.sagemaker_client.describe_training_job = Mock(return_value={'ModelArtifacts':
-                                                                    {'S3ModelArtifacts': 's3://m/m.tar.gz'}})
-    return ims
+    session_mock = Mock(name='sagemaker_session', boto_session=boto_mock)
+    session_mock.default_bucket = Mock(name='default_bucket', return_value=BUCKET_NAME)
+    session_mock.expand_role = Mock(name="expand_role", return_value=ROLE)
+    session_mock.sagemaker_client.describe_training_job = \
+        Mock(return_value={'ModelArtifacts': {'S3ModelArtifacts': 's3://m/m.tar.gz'}})
+    return session_mock
 
 
 def test_create_image_uri_cpu():
@@ -47,6 +49,16 @@ def test_create_image_uri_cpu():
 
     image_uri = create_image_uri('mars-south-3', 'mlfw', 'local', '1.0rc', 'py2', '23')
     assert image_uri == '23.dkr.ecr.mars-south-3.amazonaws.com/sagemaker-mlfw:1.0rc-cpu-py2'
+
+
+def test_create_image_uri_no_python():
+    image_uri = create_image_uri('mars-south-3', 'mlfw', 'ml.c4.large', '1.0rc', account='23')
+    assert image_uri == '23.dkr.ecr.mars-south-3.amazonaws.com/sagemaker-mlfw:1.0rc-cpu'
+
+
+def test_create_image_uri_bad_python():
+    with pytest.raises(ValueError):
+        create_image_uri('mars-south-3', 'mlfw', 'ml.c4.large', '1.0rc', 'py0')
 
 
 def test_create_image_uri_gpu():
@@ -127,7 +139,8 @@ def test_tar_and_upload_dir_not_s3(sagemaker_session):
     script = os.path.basename(__file__)
     directory = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
     result = tar_and_upload_dir(sagemaker_session, bucket, s3_key_prefix, script, directory)
-    assert result == UploadedCode('s3://{}/{}/sourcedir.tar.gz'.format(bucket, s3_key_prefix), script)
+    assert result == UploadedCode('s3://{}/{}/sourcedir.tar.gz'.format(bucket, s3_key_prefix),
+                                  script)
 
 
 def test_framework_name_from_image_mxnet():
@@ -149,21 +162,24 @@ def test_legacy_name_from_framework_image():
 
 
 def test_legacy_name_from_wrong_framework():
-    framework, py_ver, tag = framework_name_from_image('123.dkr.ecr.us-west-2.amazonaws.com/sagemaker-myown-py2-gpu:1')
+    framework, py_ver, tag = framework_name_from_image(
+        '123.dkr.ecr.us-west-2.amazonaws.com/sagemaker-myown-py2-gpu:1')
     assert framework is None
     assert py_ver is None
     assert tag is None
 
 
 def test_legacy_name_from_wrong_python():
-    framework, py_ver, tag = framework_name_from_image('123.dkr.ecr.us-west-2.amazonaws.com/sagemaker-myown-py4-gpu:1')
+    framework, py_ver, tag = framework_name_from_image(
+        '123.dkr.ecr.us-west-2.amazonaws.com/sagemaker-myown-py4-gpu:1')
     assert framework is None
     assert py_ver is None
     assert tag is None
 
 
 def test_legacy_name_from_wrong_device():
-    framework, py_ver, tag = framework_name_from_image('123.dkr.ecr.us-west-2.amazonaws.com/sagemaker-myown-py4-gpu:1')
+    framework, py_ver, tag = framework_name_from_image(
+        '123.dkr.ecr.us-west-2.amazonaws.com/sagemaker-myown-py4-gpu:1')
     assert framework is None
     assert py_ver is None
     assert tag is None
