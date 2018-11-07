@@ -33,8 +33,10 @@ EMPTY_FRAMEWORK_VERSION_WARNING = 'In an upcoming version of the SageMaker Pytho
                                   'Please add framework_version={} to your constructor to avoid ' \
                                   'an error in the future.'
 
+VALID_PY_VERSIONS = ['py2', 'py3']
 
-def create_image_uri(region, framework, instance_type, framework_version, py_version, account='520713654638',
+
+def create_image_uri(region, framework, instance_type, framework_version, py_version=None, account='520713654638',
                      optimized_families=[]):
     """Return the ECR URI of an image.
 
@@ -43,13 +45,17 @@ def create_image_uri(region, framework, instance_type, framework_version, py_ver
         framework (str): framework used by the image.
         instance_type (str): SageMaker instance type. Used to determine device type (cpu/gpu/family-specific optimized).
         framework_version (str): The version of the framework.
-        py_version (str): Python version. One of 'py2' or 'py3'.
+        py_version (str): Optional. Python version. If specified, should be one of 'py2' or 'py3'.
+            If not specified, image uri will not include a python component.
         account (str): AWS account that contains the image. (default: '520713654638')
         optimized_families (str): Instance families for which there exist specific optimized images.
 
     Returns:
         str: The appropriate image URI based on the given parameters.
     """
+
+    if py_version and py_version not in VALID_PY_VERSIONS:
+        raise ValueError('invalid py_version argument: {}'.format(py_version))
 
     # Handle Account Number for Gov Cloud
     if region == 'us-gov-west-1':
@@ -73,7 +79,10 @@ def create_image_uri(region, framework, instance_type, framework_version, py_ver
         else:
             device_type = 'cpu'
 
-    tag = "{}-{}-{}".format(framework_version, device_type, py_version)
+    if py_version:
+        tag = "{}-{}-{}".format(framework_version, device_type, py_version)
+    else:
+        tag = "{}-{}".format(framework_version, device_type)
     return "{}.dkr.ecr.{}.amazonaws.com/sagemaker-{}:{}" \
         .format(account, region, framework, tag)
 
