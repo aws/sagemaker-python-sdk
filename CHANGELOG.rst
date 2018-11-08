@@ -2,6 +2,11 @@
 CHANGELOG
 =========
 
+1.14.1
+======
+
+* feature: Estimators: add support for Amazon Object2Vec algorithm
+
 1.14.0
 ======
 
