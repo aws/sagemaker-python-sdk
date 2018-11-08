@@ -32,7 +32,8 @@ AMAZON_ESTIMATOR_CLS_NAMES = {
     'linear-learner': 'LinearLearner',
     'ntm': 'NTM',
     'randomcutforest': 'RandomCutForest',
-    'knn': 'KNN'
+    'knn': 'KNN',
+    'object2vec': 'Object2Vec',
 }
 
 
