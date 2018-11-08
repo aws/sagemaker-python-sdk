@@ -44,16 +44,8 @@ reports=no
 max-line-length=100
 # Maximum number of lines in a module
 #max-module-lines=1000
-# String used as indentation unit. This is usually " " (4 spaces) or "\t" (1
-# tab).
+# String used as indentation unit. This is usually " " (4 spaces) or "\t" (1 tab).
 indent-string='  '
-
-[TYPECHECK]
-
-# List of classes names for which member attributes should not be checked
-# (useful for classes with attributes dynamically set).
-ignored-classes=numpy
-generated-members=REQUEST,acl_users,aq_parent,AndRaise,AndReturn,InAnyOrder,MultipleTimes,tempdir
 
 [BASIC]
 
