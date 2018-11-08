@@ -247,7 +247,7 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):
 
         estimator = cls(sagemaker_session=sagemaker_session, **init_params)
         estimator.latest_training_job = _TrainingJob(sagemaker_session=sagemaker_session,
-                                                     training_job_name=init_params['base_job_name'])
+                                                     job_name=init_params['base_job_name'])
         estimator.latest_training_job.wait()
         return estimator
 
@@ -410,9 +410,6 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):
 
 
 class _TrainingJob(_Job):
-    def __init__(self, sagemaker_session, training_job_name):  # pylint: disable=useless-super-delegation
-        super(_TrainingJob, self).__init__(sagemaker_session, training_job_name)
-
     @classmethod
     def start_new(cls, estimator, inputs):
         """Create a new Amazon SageMaker training job from the estimator.

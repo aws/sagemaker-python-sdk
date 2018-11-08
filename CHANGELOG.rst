@@ -4,7 +4,8 @@ CHANGELOG
 
 1.14.1dev
 =========
-* bug-fix: rename MXNet argument from accelerators -> accelerator
+
+* breaking-change: rename MXNet argument from distributions -> distribution
 
 1.14.0
 ======

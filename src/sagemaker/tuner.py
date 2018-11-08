@@ -70,6 +70,10 @@ class _ParameterRange(object):
 
 class ContinuousParameter(_ParameterRange):
     """A class for representing hyperparameters that have a continuous range of possible values.
+
+    Args:
+            min_value (float): The minimum value for the range.
+            max_value (float): The maximum value for the range.
     """
     __name__ = 'Continuous'
 
@@ -121,6 +125,10 @@ class CategoricalParameter(_ParameterRange):
 
 class IntegerParameter(_ParameterRange):
     """A class for representing hyperparameters that have an integer range of possible values.
+
+        Args:
+            min_value (int): The minimum value for the range.
+            max_value (int): The maximum value for the range.
     """
     __name__ = 'Integer'
 
