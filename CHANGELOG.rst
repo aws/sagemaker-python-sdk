@@ -2,6 +2,11 @@
 CHANGELOG
 =========
 
+1.14.2-dev
+==========
+
+* doc-fix: fix rendering error in README.rst
+
 1.14.1
 ======
 
