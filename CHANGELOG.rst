@@ -2,10 +2,15 @@
 CHANGELOG
 =========
 
-1.14.1dev
+1.14.2dev
 =========
 
 * breaking-change: rename MXNet argument from distributions -> distribution
+
+1.14.1
+======
+
+* feature: Estimators: add support for Amazon Object2Vec algorithm
 
 1.14.0
 ======
