@@ -2,6 +2,11 @@
 CHANGELOG
 =========
 
+1.14.1.dev
+==========
+
+* enhancement: Local Mode: support optional input channels
+
 1.14.0
 ======
 

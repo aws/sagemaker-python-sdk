@@ -53,8 +53,8 @@ class LocalSagemakerClient(object):
         """
         self.sagemaker_session = sagemaker_session or LocalSession()
 
-    def create_training_job(self, TrainingJobName, AlgorithmSpecification, InputDataConfig, OutputDataConfig,
-                            ResourceConfig, **kwargs):
+    def create_training_job(self, TrainingJobName, AlgorithmSpecification, OutputDataConfig,
+                            ResourceConfig, InputDataConfig=None, **kwargs):
         """
         Create a training job in Local Mode
         Args:
@@ -66,7 +66,7 @@ class LocalSagemakerClient(object):
             HyperParameters (dict) [optional]: Specifies these algorithm-specific parameters to influence the quality of
                 the final model.
         """
-
+        InputDataConfig = InputDataConfig or {}
         container = _SageMakerContainer(ResourceConfig['InstanceType'], ResourceConfig['InstanceCount'],
                                         AlgorithmSpecification['TrainingImage'], self.sagemaker_session)
         training_job = _LocalTrainingJob(container)
