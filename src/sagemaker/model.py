@@ -57,7 +57,7 @@ class Model(object):
         self.sagemaker_session = sagemaker_session
         self._model_name = None
 
-    def prepare_container_def(self, instance_type):
+    def prepare_container_def(self, instance_type):  # pylint: disable=unused-argument
         """Return a dict created by ``sagemaker.container_def()`` for deploying this model to a specified instance type.
 
         Subclasses can override this to provide custom container definitions for
@@ -167,7 +167,7 @@ class FrameworkModel(Model):
         else:
             self.bucket, self.key_prefix = None, None
 
-    def prepare_container_def(self, instance_type):
+    def prepare_container_def(self, instance_type):  # pylint disable=unused-argument
         """Return a container definition with framework configuration set in model environment variables.
 
         This also uploads user-supplied code to S3.

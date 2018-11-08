@@ -161,14 +161,6 @@ def test_framework_all_init_args(sagemaker_session):
                                         'InstanceType': 'ml.m4.xlarge'}}
 
 
-def test_framework_init_distributions_unsupported(sagemaker_session):
-    with pytest.raises(ValueError) as e:
-        DummyFramework(SCRIPT_NAME, role=ROLE, sagemaker_session=sagemaker_session,
-                       train_instance_count=INSTANCE_COUNT, train_instance_type=INSTANCE_TYPE,
-                       distributions={'parameter_server': {'enabled': True}})
-    assert 'This framework does not support the distributions option' in str(e)
-
-
 def test_sagemaker_s3_uri_invalid(sagemaker_session):
     with pytest.raises(ValueError) as error:
         t = DummyFramework(entry_point=SCRIPT_PATH, role=ROLE, sagemaker_session=sagemaker_session,

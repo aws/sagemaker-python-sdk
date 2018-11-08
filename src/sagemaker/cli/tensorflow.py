@@ -43,9 +43,6 @@ class TensorFlowTrainCommand(TrainCommand):
 
 
 class TensorFlowHostCommand(HostCommand):
-    def __init__(self, args):
-        super(TensorFlowHostCommand, self).__init__(args)
-
     def create_model(self, model_url):
         from sagemaker.tensorflow.model import TensorFlowModel
         return TensorFlowModel(model_data=model_url, role=self.role_name, entry_point=self.script,
