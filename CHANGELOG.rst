@@ -2,9 +2,10 @@
 CHANGELOG
 =========
 
-1.14.2dev
-=========
+1.14.2-dev
+==========
 
+* doc-fix: fix rendering error in README.rst
 * build: added pylint
 
 1.14.1
