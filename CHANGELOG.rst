@@ -2,10 +2,16 @@
 CHANGELOG
 =========
 
-1.14.1.dev
+1.14.2-dev
 ==========
 
+* doc-fix: fix rendering error in README.rst
 * enhancement: Local Mode: support optional input channels
+
+1.14.1
+======
+
+* feature: Estimators: add support for Amazon Object2Vec algorithm
 
 1.14.0
 ======
