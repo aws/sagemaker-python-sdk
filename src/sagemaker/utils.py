@@ -23,6 +23,8 @@ import time
 from datetime import datetime
 from functools import wraps
 
+import six
+
 
 # Use the base name of the image as the job name if the user doesn't give us one
 def name_from_image(image):
@@ -119,10 +121,9 @@ def to_str(value):
     Returns:
         str or unicode: The string representation of the value or the unicode string itself.
     """
-    if sys.version_info.major < 3 and isinstance(value, unicode):  # noqa: F821
+    if sys.version_info.major < 3 and isinstance(value, six.string_types):
         return value
-    else:
-        return str(value)
+    return str(value)
 
 
 def extract_name_from_job_arn(arn):
@@ -240,7 +241,6 @@ def download_folder(bucket_name, prefix, target, sagemaker_session):
             # anything else will be raised.
             if exc.errno != errno.EEXIST:
                 raise
-            pass
         obj.download_file(file_path)
 
 

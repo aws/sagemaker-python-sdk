@@ -440,15 +440,15 @@ class _SageMakerContainer(object):
         if root_dir:
             root_dir = os.path.abspath(root_dir)
 
-        dir = tempfile.mkdtemp(dir=root_dir)
+        working_dir = tempfile.mkdtemp(dir=root_dir)
 
         # Docker cannot mount Mac OS /var folder properly see
         # https://forums.docker.com/t/var-folders-isnt-mounted-properly/9600
         # Only apply this workaround if the user didn't provide an alternate storage root dir.
         if root_dir is None and platform.system() == 'Darwin':
-            dir = '/private{}'.format(dir)
+            working_dir = '/private{}'.format(working_dir)
 
-        return os.path.abspath(dir)
+        return os.path.abspath(working_dir)
 
     def _build_optml_volumes(self, host, subdirs):
         """Generate a list of :class:`~sagemaker.local_session.Volume` required for the container to start.
@@ -628,7 +628,7 @@ def _aws_credentials(session):
         else:
             logger.info("No AWS credentials found in session but credentials from EC2 Metadata Service are available.")
             return None
-    except Exception as e:
+    except Exception as e:  # pylint: disable=broad-except
         logger.info('Could not get AWS credentials: %s' % e)
 
     return None

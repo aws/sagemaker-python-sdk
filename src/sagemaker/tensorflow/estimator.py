@@ -126,7 +126,7 @@ class Tensorboard(threading.Thread):
         """
         port = 6006
 
-        for i in range(100):
+        for _ in range(100):
             p = subprocess.Popen(
                 ["tensorboard", "--logdir", self.logdir, "--host", "localhost", "--port",
                  str(port)],
