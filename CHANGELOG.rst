@@ -5,7 +5,7 @@ CHANGELOG
 1.14.2dev
 =========
 
-* breaking-change: rename MXNet argument from distributions -> distribution
+* build: added pylint
 
 1.14.1
 ======

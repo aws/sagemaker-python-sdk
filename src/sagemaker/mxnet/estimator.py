@@ -33,7 +33,7 @@ class MXNet(Framework):
     LAUNCH_PS_ENV_NAME = 'sagemaker_parameter_server_enabled'
 
     def __init__(self, entry_point, source_dir=None, hyperparameters=None, py_version='py2',
-                 framework_version=None, image_name=None, distribution=None, **kwargs):
+                 framework_version=None, image_name=None, distributions=None, **kwargs):
         """
         This ``Estimator`` executes an MXNet script in a managed MXNet execution environment, within a SageMaker
         Training Job. The managed MXNet environment is an Amazon-built Docker container that executes functions
@@ -78,18 +78,18 @@ class MXNet(Framework):
         super(MXNet, self).__init__(entry_point, source_dir, hyperparameters,
                                     image_name=image_name, **kwargs)
         self.py_version = py_version
-        self._configure_distribution(distribution)
+        self._configure_distribution(distributions)
 
-    def _configure_distribution(self, distribution):
-        if distribution is None:
+    def _configure_distribution(self, distributions):
+        if distributions is None:
             return
 
         if self.framework_version.split('.') < self._LOWEST_SCRIPT_MODE_VERSION:
-            raise ValueError('The distribution option is valid for only versions {} and higher'
+            raise ValueError('The distributions option is valid for only versions {} and higher'
                              .format('.'.join(self._LOWEST_SCRIPT_MODE_VERSION)))
 
-        if 'parameter_server' in distribution:
-            enabled = distribution['parameter_server'].get('enabled', False)
+        if 'parameter_server' in distributions:
+            enabled = distributions['parameter_server'].get('enabled', False)
             self._hyperparameters[self.LAUNCH_PS_ENV_NAME] = enabled
 
     def create_model(self, model_server_workers=None, role=None, vpc_config_override=VPC_CONFIG_DEFAULT):

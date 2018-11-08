@@ -378,14 +378,14 @@ def test_attach_custom_image(sagemaker_session):
 def test_estimator_script_mode_launch_parameter_server(sagemaker_session):
     mx = MXNet(entry_point=SCRIPT_PATH, role=ROLE, sagemaker_session=sagemaker_session,
                train_instance_count=INSTANCE_COUNT, train_instance_type=INSTANCE_TYPE,
-               distribution=LAUNCH_PS_DISTRIBUTIONS_DICT, framework_version='1.3.0')
+               distributions=LAUNCH_PS_DISTRIBUTIONS_DICT, framework_version='1.3.0')
     assert mx.hyperparameters().get(MXNet.LAUNCH_PS_ENV_NAME) == 'true'
 
 
 def test_estimator_script_mode_dont_launch_parameter_server(sagemaker_session):
     mx = MXNet(entry_point=SCRIPT_PATH, role=ROLE, sagemaker_session=sagemaker_session,
                train_instance_count=INSTANCE_COUNT, train_instance_type=INSTANCE_TYPE,
-               distribution={'parameter_server': {'enabled': False}}, framework_version='1.3.0')
+               distributions={'parameter_server': {'enabled': False}}, framework_version='1.3.0')
     assert mx.hyperparameters().get(MXNet.LAUNCH_PS_ENV_NAME) == 'false'
 
 
@@ -393,5 +393,5 @@ def test_estimator_wrong_version_launch_parameter_server(sagemaker_session):
     with pytest.raises(ValueError) as e:
         MXNet(entry_point=SCRIPT_PATH, role=ROLE, sagemaker_session=sagemaker_session,
               train_instance_count=INSTANCE_COUNT, train_instance_type=INSTANCE_TYPE,
-              distribution=LAUNCH_PS_DISTRIBUTIONS_DICT, framework_version='1.2.1')
-    assert 'The distribution option is valid for only versions 1.3 and higher' in str(e)
+              distributions=LAUNCH_PS_DISTRIBUTIONS_DICT, framework_version='1.2.1')
+    assert 'The distributions option is valid for only versions 1.3 and higher' in str(e)
