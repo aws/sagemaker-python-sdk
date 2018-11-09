@@ -287,13 +287,15 @@ class DeferredError(object):
     """Stores an exception and raises it at a later time if this
     object is accessed in any way.  Useful to allow soft-dependencies on imports,
     so that the ImportError can be raised again later if code actually
-    relies on the missing library.  Example usage:
+    relies on the missing library.  
 
-    try:
-        import obscurelib
-    except ImportError as e:
-        logging.warning("Failed to import obscurelib. Obscure features will not work.")
-        obscurelib = DeferredError(e)
+    Example::
+
+        try:
+            import obscurelib
+        except ImportError as e:
+            logging.warning("Failed to import obscurelib. Obscure features will not work.")
+            obscurelib = DeferredError(e)
     """
 
     def __init__(self, exception):
