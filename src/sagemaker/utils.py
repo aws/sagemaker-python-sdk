@@ -287,7 +287,7 @@ class DeferredError(object):
     """Stores an exception and raises it at a later time if this
     object is accessed in any way.  Useful to allow soft-dependencies on imports,
     so that the ImportError can be raised again later if code actually
-    relies on the missing library.  
+    relies on the missing library.
 
     Example::
 
