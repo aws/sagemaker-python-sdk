@@ -61,8 +61,8 @@ def test_create_training_job(train, LocalSession):
     resource_config = {'InstanceType': 'local', 'InstanceCount': instance_count}
     hyperparameters = {'a': 1, 'b': 'bee'}
 
-    local_sagemaker_client.create_training_job('my-training-job', algo_spec, input_data_config,
-                                               output_data_config, resource_config, HyperParameters=hyperparameters)
+    local_sagemaker_client.create_training_job('my-training-job', algo_spec, output_data_config, resource_config,
+                                               InputDataConfig=input_data_config, HyperParameters=hyperparameters)
 
     expected = {
         'ResourceConfig': {'InstanceCount': instance_count},
@@ -111,8 +111,8 @@ def test_create_training_job_invalid_data_source(train, LocalSession):
     hyperparameters = {'a': 1, 'b': 'bee'}
 
     with pytest.raises(ValueError):
-        local_sagemaker_client.create_training_job('my-training-job', algo_spec, input_data_config,
-                                                   output_data_config, resource_config, HyperParameters=hyperparameters)
+        local_sagemaker_client.create_training_job('my-training-job', algo_spec, output_data_config, resource_config,
+                                                   InputDataConfig=input_data_config, HyperParameters=hyperparameters)
 
 
 @patch('sagemaker.local.image._SageMakerContainer.train', return_value="/some/path/to/model")
@@ -141,8 +141,8 @@ def test_create_training_job_not_fully_replicated(train, LocalSession):
     hyperparameters = {'a': 1, 'b': 'bee'}
 
     with pytest.raises(RuntimeError):
-        local_sagemaker_client.create_training_job('my-training-job', algo_spec, input_data_config,
-                                                   output_data_config, resource_config, HyperParameters=hyperparameters)
+        local_sagemaker_client.create_training_job('my-training-job', algo_spec, output_data_config, resource_config,
+                                                   InputDataConfig=input_data_config, HyperParameters=hyperparameters)
 
 
 @patch('sagemaker.local.local_session.LocalSession')
