@@ -1,6 +1,15 @@
 Deploying to TensorFlow Serving Endpoints
 =========================================
 
+Table of Contents
+~~~~~~~~~~~~~~~~~
+
+- `Deploying from an Estimator`_
+- `Deploying directly from model artifacts`_
+- `Making predictions against a SageMaker Endpoint`_
+- `Deploying more than one model to your Endpoint`_
+- `Making predictions with the AWS CLI`_
+
 Deploying from an Estimator
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
