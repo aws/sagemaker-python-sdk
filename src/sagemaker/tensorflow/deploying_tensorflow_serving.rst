@@ -25,7 +25,7 @@ like this:
                                endpoint_type='tensorflow-serving')
 
 
-The code block above deploys a SageMaker Endpoint with one instance of the type 'ml.c4.xlarge'.
+The code block above deploys a SageMaker Endpoint with one instance of the type 'ml.c5.xlarge'.
 
 What happens when deploy is called
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -83,7 +83,7 @@ The result object will contain a Python dict like this:
 The format of the input and the output data correspond directly to the request and response formats
 of the ``Predict`` method in the `TensorFlow Serving REST API <https://www.tensorflow.org/serving/api_rest>`_.
 
-If your SavedModel includes the right ``signature_def``s, you can also make Classify or Regress requests:
+If your SavedModel includes the right ``signature_def``, you can also make Classify or Regress requests:
 
 .. code:: python
 
@@ -110,6 +110,7 @@ classify/regress requests) to get multiple prediction results in one request to 
       [1.0, 2.0, 5.0],
       [1.0, 2.0, 5.0],
       [1.0, 2.0, 5.0]
+    ]
   }
   result = predictor.predict(input)
 
@@ -119,6 +120,7 @@ classify/regress requests) to get multiple prediction results in one request to 
       [3.5, 4.0, 5.5],
       [3.5, 4.0, 5.5],
       [3.5, 4.0, 5.5]
+    ]
   }
 
 If your application allows request grouping like this, it is **much** more efficient than making separate requests.
@@ -155,6 +157,7 @@ requests like this:
     'predictions': [
       [3.5, 4.0, 5.5],
       [3.5, 4.0, 5.5]
+    ]
   }
 
 Or this:
@@ -171,6 +174,7 @@ Or this:
   {
     'predictions': [
       [3.5, 4.0, 5.5]
+    ]
   }
 
 
@@ -199,6 +203,7 @@ try to serialize your input to JSON:
       [3.5, 4.0, 5.5],
       [3.5, 4.0, 5.5],
       [3.5, 4.0, 5.5]
+    ]
   }
 
 This feature is especially useful if you are reading data from a file containing jsonlines data.
@@ -227,6 +232,7 @@ your input data to CSV format:
       [3.5, 4.0, 5.5],
       [3.5, 4.0, 5.5],
       [3.5, 4.0, 5.5]
+    ]
   }
 
 You can also use python arrays or numpy arrays as input and let the `csv_serializer` object
@@ -387,7 +393,7 @@ Note: The ``invoke-endpoint`` command usually writes prediction results to a fil
 below, the ``>(cat) 1>/dev/null`` part is a shell trick to redirect the result to stdout so it
 can be seen.
 
-.. code: bash
+.. code:: bash
 
   # TensorFlow Serving REST API - predict request
   aws sagemaker-runtime invoke-endpoint \
