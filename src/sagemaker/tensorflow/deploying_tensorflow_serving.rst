@@ -13,7 +13,8 @@ Table of Contents
 Deploying from an Estimator
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-After a TensorFlow estimator has been fit, it saves a TensorFlow ``SavedModel`` in
+After a TensorFlow estimator has been fit, it saves a TensorFlow
+`SavedModel <https://www.tensorflow.org/guide/saved_model>`_ bundle in
 the S3 location defined by ``output_path``. You can call ``deploy`` on a TensorFlow
 estimator object to create a SageMaker Endpoint:
 
@@ -256,7 +257,7 @@ your ``model_fn`` (see `Example of a complete model_fn`_ for an example of ``exp
 
 More information on how to create ``export_outputs`` can be found in `specifying the outputs of a custom model <https://github.com/tensorflow/tensorflow/blob/r1.4/tensorflow/docs_src/programmers_guide/saved_model.md#specifying-the-outputs-of-a-custom-model>`_. You can also
 refer to TensorFlow's `Save and Restore <https://www.tensorflow.org/guide/saved_model>`_ documentation for other ways to control the
-inference-time behavior of your ``SavedModel``s.
+inference-time behavior of your SavedModels.
 
 Deploying more than one model to your Endpoint
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
