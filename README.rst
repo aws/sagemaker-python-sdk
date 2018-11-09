@@ -290,6 +290,7 @@ If your bring-your-own case requires different settings, you can create your own
 Here's an example of how to use incremental training:
 
 .. code:: python
+
     # Configure an estimator
     estimator = sagemaker.estimator.Estimator(training_image,
                                               role,
@@ -394,7 +395,7 @@ Amazon SageMaker provides several built-in machine learning algorithms that you 
 The full list of algorithms is available at: https://docs.aws.amazon.com/sagemaker/latest/dg/algos.html
 
 The SageMaker Python SDK includes estimator wrappers for the AWS K-means, Principal Components Analysis (PCA), Linear Learner, Factorization Machines,
-Latent Dirichlet Allocation (LDA), Neural Topic Model (NTM) Random Cut Forest and k-nearest neighbors (k-NN) algorithms.
+Latent Dirichlet Allocation (LDA), Neural Topic Model (NTM), Random Cut Forest, k-nearest neighbors (k-NN), and Object2Vec algorithms.
 
 For more information, see `AWS SageMaker Estimators and Models`_.
 

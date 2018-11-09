@@ -32,7 +32,7 @@ class _Job(object):
         self.job_name = job_name
 
     @abstractmethod
-    def start_new(cls, estimator, inputs):
+    def start_new(self, estimator, inputs):
         """Create a new Amazon SageMaker job from the estimator.
 
         Args:
@@ -64,6 +64,7 @@ class _Job(object):
 
         model_channel = _Job._prepare_model_channel(input_config, estimator.model_uri, estimator.model_channel_name)
         if model_channel:
+            input_config = [] if input_config is None else input_config
             input_config.append(model_channel)
 
         return {'input_config': input_config,
@@ -75,6 +76,9 @@ class _Job(object):
 
     @staticmethod
     def _format_inputs_to_input_config(inputs):
+        if inputs is None:
+            return None
+
         # Deferred import due to circular dependency
         from sagemaker.amazon.amazon_estimator import RecordSet
         if isinstance(inputs, RecordSet):
@@ -107,21 +111,21 @@ class _Job(object):
         return channel_config
 
     @staticmethod
-    def _format_string_uri_input(input):
-        if isinstance(input, str):
-            if input.startswith('s3://'):
-                return s3_input(input)
-            elif input.startswith('file://'):
-                return file_input(input)
+    def _format_string_uri_input(uri_input):
+        if isinstance(uri_input, str):
+            if uri_input.startswith('s3://'):
+                return s3_input(uri_input)
+            elif uri_input.startswith('file://'):
+                return file_input(uri_input)
             else:
                 raise ValueError('Training input data must be a valid S3 or FILE URI: must start with "s3://" or '
                                  '"file://"')
-        elif isinstance(input, s3_input):
-            return input
-        elif isinstance(input, file_input):
-            return input
+        elif isinstance(uri_input, s3_input):
+            return uri_input
+        elif isinstance(uri_input, file_input):
+            return uri_input
         else:
-            raise ValueError('Cannot format input {}. Expecting one of str, s3_input, or file_input'.format(input))
+            raise ValueError('Cannot format input {}. Expecting one of str, s3_input, or file_input'.format(uri_input))
 
     @staticmethod
     def _prepare_model_channel(input_config, model_uri=None, model_channel_name=None):
@@ -130,9 +134,10 @@ class _Job(object):
         elif not model_channel_name:
             raise ValueError('Expected a pre-trained model channel name if a model URL is specified.')
 
-        for channel in input_config:
-            if channel['ChannelName'] == model_channel_name:
-                raise ValueError('Duplicate channels not allowed.')
+        if input_config:
+            for channel in input_config:
+                if channel['ChannelName'] == model_channel_name:
+                    raise ValueError('Duplicate channels not allowed.')
 
         model_input = _Job._format_model_uri_input(model_uri)
         model_channel = _Job._convert_input_to_channel(model_channel_name, model_input)

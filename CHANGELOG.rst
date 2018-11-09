@@ -2,6 +2,23 @@
 CHANGELOG
 =========
 
+1.14.2-dev
+==========
+
+* doc-fix: fix rendering error in README.rst
+* build: added pylint
+
+1.14.1
+======
+
+* feature: Estimators: add support for Amazon Object2Vec algorithm
+
+1.14.0
+======
+
+* feature: add support for sagemaker-tensorflow-serving container
+* feature: Estimator: make input channels optional
+
 1.13.0
 ======
 

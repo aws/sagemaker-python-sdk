@@ -57,7 +57,7 @@ class RealTimePredictor(object):
         self.content_type = content_type or getattr(serializer, 'content_type', None)
         self.accept = accept or getattr(deserializer, 'accept', None)
 
-    def predict(self, data):
+    def predict(self, data, initial_args=None):
         """Return the inference from the specified endpoint.
 
         Args:
@@ -65,27 +65,20 @@ class RealTimePredictor(object):
                 If a serializer was specified when creating the RealTimePredictor, the result of the
                 serializer is sent as input data. Otherwise the data must be sequence of bytes, and
                 the predict method then sends the bytes in the request body as is.
+            initial_args (dict[str,str]): Optional. Default arguments for boto3
+                ``invoke_endpoint`` call. Default is None (no default arguments).
 
         Returns:
             object: Inference for the given input. If a deserializer was specified when creating
                 the RealTimePredictor, the result of the deserializer is returned. Otherwise the response
                 returns the sequence of bytes as is.
         """
-        if self.serializer is not None:
-            data = self.serializer(data)
 
-        request_args = {
-            'EndpointName': self.endpoint,
-            'Body': data
-        }
-
-        if self.content_type:
-            request_args['ContentType'] = self.content_type
-        if self.accept:
-            request_args['Accept'] = self.accept
-
+        request_args = self._create_request_args(data, initial_args)
         response = self.sagemaker_session.sagemaker_runtime_client.invoke_endpoint(**request_args)
+        return self._handle_response(response)
 
+    def _handle_response(self, response):
         response_body = response['Body']
         if self.deserializer is not None:
             # It's the deserializer's responsibility to close the stream
@@ -93,6 +86,24 @@ class RealTimePredictor(object):
         data = response_body.read()
         response_body.close()
         return data
+
+    def _create_request_args(self, data, initial_args=None):
+        args = dict(initial_args) if initial_args else {}
+
+        if 'EndpointName' not in args:
+            args['EndpointName'] = self.endpoint
+
+        if self.content_type and 'ContentType' not in args:
+            args['ContentType'] = self.content_type
+
+        if self.accept and 'Accept' not in args:
+            args['Accept'] = self.accept
+
+        if self.serializer is not None:
+            data = self.serializer(data)
+
+        args['Body'] = data
+        return args
 
     def delete_endpoint(self):
         """Delete the Amazon SageMaker endpoint backing this predictor.

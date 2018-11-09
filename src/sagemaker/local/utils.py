@@ -82,7 +82,7 @@ def recursive_copy(source, destination):
 
         for file in files:
             shutil.copy(os.path.join(current_path, file), os.path.join(target_path, file))
-        for dir in dirs:
-            new_dir = os.path.join(target_path, dir)
+        for d in dirs:
+            new_dir = os.path.join(target_path, d)
             if not os.path.exists(new_dir):
-                os.mkdir(os.path.join(target_path, dir))
+                os.mkdir(os.path.join(target_path, d))

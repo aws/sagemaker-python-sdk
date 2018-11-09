@@ -134,7 +134,7 @@ class Session(object):
         files = []
         key_suffix = None
         if os.path.isdir(path):
-            for dirpath, dirnames, filenames in os.walk(path):
+            for dirpath, _, filenames in os.walk(path):
                 for name in filenames:
                     local_path = os.path.join(dirpath, name)
                     s3_relative_prefix = '' if path == dirpath else os.path.relpath(dirpath, start=path) + '/'
@@ -194,11 +194,7 @@ class Session(object):
                 pass
             elif error_code == 'TooManyBuckets':
                 # Succeed if the default bucket exists
-                try:
-                    s3.meta.client.head_bucket(Bucket=default_bucket)
-                    pass
-                except ClientError:
-                    raise
+                s3.meta.client.head_bucket(Bucket=default_bucket)
             else:
                 raise
 
@@ -257,13 +253,15 @@ class Session(object):
                 'TrainingImage': image,
                 'TrainingInputMode': input_mode
             },
-            'InputDataConfig': input_config,
             'OutputDataConfig': output_config,
             'TrainingJobName': job_name,
             'StoppingCondition': stop_condition,
             'ResourceConfig': resource_config,
             'RoleArn': role,
         }
+
+        if input_config is not None:
+            train_request['InputDataConfig'] = input_config
 
         if hyperparameters and len(hyperparameters) > 0:
             train_request['HyperParameters'] = hyperparameters
@@ -381,7 +379,6 @@ class Session(object):
             # allow to pass if the job already stopped
             if error_code == 'ValidationException':
                 LOGGER.info('Tuning job: {} is already stopped or not running.'.format(name))
-                pass
             else:
                 LOGGER.error('Error occurred while attempting to stop tuning job: {}. Please try again.'.format(name))
                 raise
@@ -483,7 +480,7 @@ class Session(object):
         return name
 
     def create_model_from_job(self, training_job_name, name=None, role=None, primary_container_image=None,
-                              model_data_url=None, env={}, vpc_config_override=vpc_utils.VPC_CONFIG_DEFAULT):
+                              model_data_url=None, env=None, vpc_config_override=vpc_utils.VPC_CONFIG_DEFAULT):
         """Create an Amazon SageMaker ``Model`` from a SageMaker Training Job.
 
         Args:
@@ -508,6 +505,7 @@ class Session(object):
         training_job = self.sagemaker_client.describe_training_job(TrainingJobName=training_job_name)
         name = name or training_job_name
         role = role or training_job['RoleArn']
+        env = env or {}
         primary_container = container_def(
             primary_container_image or training_job['AlgorithmSpecification']['TrainingImage'],
             model_data_url=model_data_url or training_job['ModelArtifacts']['S3ModelArtifacts'],
@@ -1152,19 +1150,19 @@ def _deploy_done(sagemaker_client, endpoint_name):
     return None if status in in_progress_statuses else desc
 
 
-def _wait_until_training_done(callable, desc, poll=5):
-    job_desc, finished = callable(desc)
+def _wait_until_training_done(callable_fn, desc, poll=5):
+    job_desc, finished = callable_fn(desc)
     while not finished:
         time.sleep(poll)
-        job_desc, finished = callable(job_desc)
+        job_desc, finished = callable_fn(job_desc)
     return job_desc
 
 
-def _wait_until(callable, poll=5):
-    result = callable()
+def _wait_until(callable_fn, poll=5):
+    result = callable_fn()
     while result is None:
         time.sleep(poll)
-        result = callable()
+        result = callable_fn()
     return result
 
 
