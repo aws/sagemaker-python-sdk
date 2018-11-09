@@ -8,6 +8,7 @@ CHANGELOG
 * doc-fix: fix rendering error in README.rst
 * enhancement: Local Mode: support optional input channels
 * build: added pylint
+* build: upgrade docker-compose to 1.23
 
 1.14.1
 ======
