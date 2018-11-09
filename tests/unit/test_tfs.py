@@ -115,7 +115,8 @@ def test_predictor(sagemaker_session):
 
 
 def test_predictor_jsons(sagemaker_session):
-    predictor = Predictor('endpoint', sagemaker_session, serializer=None, content_type='application/jsons')
+    predictor = Predictor('endpoint', sagemaker_session, serializer=None,
+                          content_type='application/jsons')
 
     mock_response(json.dumps(PREDICT_RESPONSE).encode('utf-8'), sagemaker_session)
     result = predictor.predict('[1.0, 2.0, 3.0]\n[4.0, 5.0, 6.0]')
