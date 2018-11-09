@@ -262,7 +262,6 @@ class _SageMakerContainer(object):
             'hosts': self.hosts
         }
 
-        print(input_data_config)
         json_input_data_config = {}
         for c in input_data_config:
             channel_name = c['ChannelName']

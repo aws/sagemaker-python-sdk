@@ -6,6 +6,7 @@ CHANGELOG
 ==========
 
 * doc-fix: fix rendering error in README.rst
+* enhancement: Local Mode: support optional input channels
 * build: added pylint
 
 1.14.1
