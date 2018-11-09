@@ -1,4 +1,3 @@
-==========================================
 TensorFlow SageMaker Estimators and Models
 ==========================================
 
@@ -59,7 +58,7 @@ In addition, it may optionally contain:
 
 - ``serving_input_fn``: Defines the features to be passed to the model during prediction. **Important:**
     this function is used only during training, but is required to deploy the model resulting from training
-    in a SageMaker endpoint.
+    to a SageMaker endpoint.
 
 Creating a ``model_fn``
 ^^^^^^^^^^^^^^^^^^^^^^^
@@ -229,7 +228,7 @@ More details on how to create input functions can be find in `Building Input Fun
 Creating a ``serving_input_fn``
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-``serving_input_fn`` is used to define the shapes and types of the inputs the model accepts when the model is exported for Tensorflow Serving. It is optional, but required for deploying the trained model to a SageMaker endpoint.
+``serving_input_fn`` is used to define the shapes and types of the inputs the model accepts when the model is exported for Tensorflow Serving. It is optional, but is required to create the SavedModel bundle needed to deploying the trained model to a SageMaker endpoint.
 
 ``serving_input_fn`` is called at the end of model training and is **not** called during inference. (If you'd like to preprocess inference data, please see **Overriding input preprocessing with an input_fn**).
 
@@ -558,14 +557,13 @@ For more information on training and evaluation process, see `tf.estimator.train
 
 For more information on fit, see `SageMaker Python SDK Overview <#sagemaker-python-sdk-overview>`_.
 
-TensorFlow serving models
+TensorFlow Serving models
 ^^^^^^^^^^^^^^^^^^^^^^^^^
 
 After your training job is complete in SageMaker and the ``fit`` call ends, the training job
-will generate a `TensorFlow serving <https://www.tensorflow.org/serving/serving_basic>`_
-model ready for deployment. Your TensorFlow serving model will be available in the S3 location
-``output_path`` that you specified when you created your `sagemaker.tensorflow.TensorFlow`
-estimator.
+will generate a `TensorFlow SavedModel <https://github.com/tensorflow/tensorflow/blob/master/tensorflow/python/saved_model/README.md>`_
+bundle ready for deployment. Your model will be available in S3 at the ``output_path`` location
+that you specified when you created your `sagemaker.tensorflow.TensorFlow` estimator.
 
 Restoring from checkpoints
 ^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -614,188 +612,25 @@ Note that TensorBoard is not supported when passing wait=False to ``fit``.
 Deploying TensorFlow Serving models
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-After a ``TensorFlow`` Estimator has been fit, it saves a ``TensorFlow Serving`` model in
+After a ``TensorFlow`` Estimator has been fit, it saves a TensorFlow ``SavedModel`` in
 the S3 location defined by ``output_path``. You can call ``deploy`` on a ``TensorFlow``
 estimator to create a SageMaker Endpoint.
 
-A common usage of the ``deploy`` method, after the ``TensorFlow`` estimator has been fit look
-like this:
+SageMaker provides two different options for deploying TensorFlow models to a SageMaker
+Endpoint:
 
-.. code:: python
+- The first option uses a Python-based server that allows you to specify your own custom
+  input and output handling functions in a python script. This is the default option.
 
-  from sagemaker.tensorflow import TensorFlow
-
-  estimator = TensorFlow(entry_point='tf-train.py', ..., train_instance_count=1,
-                         train_instance_type='ml.c4.xlarge', framework_version='1.10.0')
-
-  estimator.fit(inputs)
-
-  predictor = estimator.deploy(initial_instance_count=1, instance_type='ml.c4.xlarge')
+  See `Deploying to Python-based Endpoints <deploying_python.rst>`_ to learn how to use this option.
 
 
-The code block above deploys a SageMaker Endpoint with one instance of the type 'ml.c4.xlarge'.
+- The second option uses a TensorFlow Serving-based server to provide a super-set of the
+  `TensorFlow Serving REST API <https://www.tensorflow.org/serving/api_rest>`_. This option
+  does not require (or allow) a custom python script.
 
-What happens when deploy is called
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  See `Deploying to TensorFlow Serving Endpoints <deploying_tensorflow_serving.rst>`_ to learn how to use this option.
 
-Calling ``deploy`` starts the process of creating a SageMaker Endpoint. This process includes the following steps.
-
-- Starts ``initial_instance_count`` EC2 instances of the type ``instance_type``.
-- On each instance, it will do the following steps:
-
-  - start a Docker container optimized for TensorFlow Serving, see `SageMaker TensorFlow Docker containers`_.
-  - start a production ready HTTP Server which supports protobuf, JSON and CSV content types, see `Making predictions against a SageMaker Endpoint`_.
-  - start a `TensorFlow Serving` process
-
-When the ``deploy`` call finishes, the created SageMaker Endpoint is ready for prediction requests. The next chapter will explain
-how to make predictions against the Endpoint, how to use different content-types in your requests, and how to extend the Web server
-functionality.
-
-Deploying directly from model artifacts
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-If you already have existing model artifacts, you can skip training and deploy them directly to an endpoint:
-
-.. code:: python
-
-  from sagemaker.tensorflow import TensorFlowModel
-
-  tf_model = TensorFlowModel(model_data='s3://mybucket/model.tar.gz',
-                             role='MySageMakerRole',
-                             entry_point='entry.py',
-                             name='model_name')
-
-  predictor = tf_model.deploy(initial_instance_count=1, instance_type='ml.c4.xlarge')
-
-You can also optionally specify a pip `requirements file <https://pip.pypa.io/en/stable/reference/pip_install/#requirements-file-format>`_ if you need to install additional packages into the deployed
-runtime environment by including it in your source_dir and specifying it in the ``'SAGEMAKER_REQUIREMENTS'`` env variable:
-
-.. code:: python
-
-  from sagemaker.tensorflow import TensorFlowModel
-
-  tf_model = TensorFlowModel(model_data='s3://mybucket/model.tar.gz',
-                             role='MySageMakerRole',
-                             entry_point='entry.py',
-                             source_dir='my_src', # directory which contains entry_point script and requirements file
-                             name='model_name',
-                             env={'SAGEMAKER_REQUIREMENTS': 'requirements.txt'}) # path relative to source_dir
-
-  predictor = tf_model.deploy(initial_instance_count=1, instance_type='ml.c4.xlarge')
-
-
-Making predictions against a SageMaker Endpoint
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-The following code adds a prediction request to the previous code example:
-
-.. code:: python
-
-  estimator = TensorFlow(entry_point='tf-train.py', ..., train_instance_count=1,
-                         train_instance_type='ml.c4.xlarge', framework_version='1.10.0')
-
-  estimator.fit(inputs)
-
-  predictor = estimator.deploy(initial_instance_count=1, instance_type='ml.c4.xlarge')
-
-  result = predictor.predict([6.4, 3.2, 4.5, 1.5])
-
-The ``predictor.predict`` method call takes one parameter, the input ``data`` for which you want the ``SageMaker Endpoint``
-to provide inference. ``predict`` will serialize the input data, and send it in as request to the ``SageMaker Endpoint`` by
-an ``InvokeEndpoint`` SageMaker operation. ``InvokeEndpoint`` operation requests can be made by ``predictor.predict``, by
-boto3 ``SageMaker.runtime`` client or by AWS CLI.
-
-The ``SageMaker Endpoint`` web server will process the request, make an inference using the deployed model, and return a response.
-The ``result`` returned by ``predict`` is
-a Python dictionary with the model prediction. In the code example above, the prediction ``result`` looks like this:
-
-.. code:: python
-
-  {'result':
-    {'classifications': [
-      {'classes': [
-        {'label': '0', 'score': 0.0012890376383438706},
-        {'label': '1', 'score': 0.9814321994781494},
-        {'label': '2', 'score': 0.017278732731938362}
-      ]}
-    ]}
-  }
-
-Specifying the output of a prediction request
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-The format of the prediction ``result`` is determined by the parameter ``export_outputs`` of the `tf.estimator.EstimatorSpec <https://www.tensorflow.org/api_docs/python/tf/estimator/EstimatorSpec>`_ that you returned when you created your ``model_fn``, see
-`Example of a complete model_fn`_ for an example of ``export_outputs``.
-
-More information on how to create ``export_outputs`` can find in `specifying the outputs of a custom model <https://github.com/tensorflow/tensorflow/blob/r1.4/tensorflow/docs_src/programmers_guide/saved_model.md#specifying-the-outputs-of-a-custom-model>`_.
-
-Endpoint prediction request handling
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-Whenever a prediction request is made to a SageMaker Endpoint via a ``InvokeEndpoint`` SageMaker operation, the request will
-be deserialized by the web server, sent to TensorFlow Serving, and serialized back to the client as response.
-
-The TensorFlow Web server breaks request handling into three steps:
-
--  input processing,
--  TensorFlow Serving prediction, and
--  output processing.
-
-The SageMaker Endpoint provides default input and output processing, which support by default JSON, CSV, and protobuf requests.
-This process looks like this:
-
-.. code:: python
-
-    # Deserialize the Invoke request body into an object we can perform prediction on
-    deserialized_input = input_fn(serialized_input, request_content_type)
-
-    # Perform prediction on the deserialized object, with the loaded model
-    prediction_result = make_tensorflow_serving_prediction(deserialized_input)
-
-    # Serialize the prediction result into the desired response content type
-    serialized_output = output_fn(prediction_result, accepts)
-
-The common functionality can be extended by the addiction of the following two functions to your training script:
-
-Overriding input preprocessing with an ``input_fn``
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-An example of ``input_fn`` for the content-type "application/python-pickle" can be seen below:
-
-.. code:: python
-
-    import numpy as np
-
-    def input_fn(serialized_input, content_type):
-        """An input_fn that loads a pickled object"""
-        if request_content_type == "application/python-pickle":
-            deserialized_input = pickle.loads(serialized_input)
-            return deserialized_input
-        else:
-            # Handle other content-types here or raise an Exception
-            # if the content type is not supported.
-            pass
-
-Overriding output postprocessing with an ``output_fn``
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-An example of ``output_fn`` for the accept type "application/python-pickle" can be seen below:
-
-.. code:: python
-
-    import numpy as np
-
-    def output_fn(prediction_result, accepts):
-        """An output_fn that dumps a pickled object as response"""
-        if request_content_type == "application/python-pickle":
-            return np.dumps(prediction_result)
-        else:
-            # Handle other content-types here or raise an Exception
-            # if the content type is not supported.
-            pass
-
-A example with ``input_fn`` and ``output_fn`` above can be found in
-`here <https://github.com/aws/sagemaker-python-sdk/blob/master/tests/data/cifar_10/source/resnet_cifar_10.py#L143>`_.
 
 Training with Pipe Mode using PipeModeDataset
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
