@@ -19,8 +19,6 @@ from six.moves.urllib.parse import urlparse
 
 import sagemaker.utils
 
-"""This module contains utility functions shared across ``Framework`` components."""
-
 UploadedCode = namedtuple('UserCode', ['s3_prefix', 'script_name'])
 """sagemaker.fw_utils.UserCode: An object containing the S3 prefix and script name.
 
@@ -36,8 +34,9 @@ EMPTY_FRAMEWORK_VERSION_WARNING = 'In an upcoming version of the SageMaker Pytho
 VALID_PY_VERSIONS = ['py2', 'py3']
 
 
-def create_image_uri(region, framework, instance_type, framework_version, py_version=None, account='520713654638',
-                     optimized_families=[]):
+def create_image_uri(region, framework, instance_type, framework_version, py_version=None,
+                     account='520713654638', optimized_families=None):
+
     """Return the ECR URI of an image.
 
     Args:
@@ -53,6 +52,7 @@ def create_image_uri(region, framework, instance_type, framework_version, py_ver
     Returns:
         str: The appropriate image URI based on the given parameters.
     """
+    optimized_families = optimized_families or []
 
     if py_version and py_version not in VALID_PY_VERSIONS:
         raise ValueError('invalid py_version argument: {}'.format(py_version))

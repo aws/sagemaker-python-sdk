@@ -17,8 +17,8 @@ import json
 import google.protobuf.json_format as json_format
 from google.protobuf.message import DecodeError
 from protobuf_to_dict import protobuf_to_dict
-from tensorflow.core.framework import tensor_pb2
-from tensorflow.python.framework import tensor_util
+from tensorflow.core.framework import tensor_pb2  # pylint: disable=no-name-in-module
+from tensorflow.python.framework import tensor_util  # pylint: disable=no-name-in-module
 
 from sagemaker.content_types import CONTENT_TYPE_JSON, CONTENT_TYPE_OCTET_STREAM, CONTENT_TYPE_CSV
 from sagemaker.predictor import json_serializer, csv_serializer

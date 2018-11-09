@@ -103,7 +103,7 @@ class LocalSagemakerClient(object):
         else:
             return LocalSagemakerClient._transform_jobs[TransformJobName].describe()
 
-    def create_model(self, ModelName, PrimaryContainer, *args, **kwargs):
+    def create_model(self, ModelName, PrimaryContainer, *args, **kwargs):  # pylint: disable=unused-argument
         """Create a Local Model Object
 
         Args:
@@ -164,7 +164,7 @@ class LocalSagemakerRuntimeClient(object):
         self.config = config
         self.serving_port = get_config_value('local.serving_port', config) or 8080
 
-    def invoke_endpoint(self, Body, EndpointName, ContentType, Accept):
+    def invoke_endpoint(self, Body, EndpointName, ContentType, Accept):  # pylint: disable=unused-argument
         url = "http://localhost:%s/invocations" % self.serving_port
         headers = {
             'Content-type': ContentType

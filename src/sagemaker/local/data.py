@@ -294,15 +294,6 @@ class MultiRecordStrategy(BatchStrategy):
 
     Will group up as many records as possible within the payload specified.
     """
-    def __init__(self, splitter):
-        """Create a MultiRecordStrategy Instance
-
-        Args:
-            splitter (:class:`sagemaker.local.data.Splitter`): A Splitter to pre-process the data
-                before batching.
-        """
-        super(MultiRecordStrategy, self).__init__(splitter)
-
     def pad(self, file, size=6):
         """Group together as many records as possible to fit in the specified size
 
@@ -331,15 +322,6 @@ class SingleRecordStrategy(BatchStrategy):
 
     If a single record does not fit within the payload specified it will throw a RuntimeError.
     """
-    def __init__(self, splitter):
-        """Create a SingleRecordStrategy Instance
-
-        Args:
-            splitter (:class:`sagemaker.local.data.Splitter`): A Splitter to pre-process the data
-                before batching.
-        """
-        super(SingleRecordStrategy, self).__init__(splitter)
-
     def pad(self, file, size=6):
         """Group together as many records as possible to fit in the specified size
 
@@ -363,8 +345,7 @@ def _payload_size_within_limit(payload, size):
     size_in_bytes = size * 1024 * 1024
     if size == 0:
         return True
-    else:
-        return sys.getsizeof(payload) < size_in_bytes
+    return sys.getsizeof(payload) < size_in_bytes
 
 
 def _validate_payload_size(payload, size):
@@ -383,5 +364,4 @@ def _validate_payload_size(payload, size):
 
     if _payload_size_within_limit(payload, size):
         return True
-    else:
-        raise RuntimeError('Record is larger than %sMB. Please increase your max_payload' % size)
+    raise RuntimeError('Record is larger than %sMB. Please increase your max_payload' % size)
