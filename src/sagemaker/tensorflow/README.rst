@@ -228,9 +228,14 @@ More details on how to create input functions can be find in `Building Input Fun
 Creating a ``serving_input_fn``
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-``serving_input_fn`` is used to define the shapes and types of the inputs the model accepts when the model is exported for Tensorflow Serving. It is optional, but is required to create the SavedModel bundle needed to deploying the trained model to a SageMaker endpoint.
+``serving_input_fn`` is used to define the shapes and types of the inputs the model accepts when
+the model is exported for Tensorflow Serving. This function is optional if you only want to
+train a model, but it is required if you want to create a SavedModel bundle that can be
+deployed to a SageMaker endpoint.
 
-``serving_input_fn`` is called at the end of model training and is **not** called during inference. (If you'd like to preprocess inference data, please see **Overriding input preprocessing with an input_fn**).
+``serving_input_fn`` is called at the end of model training and is **not** called during
+inference. (If you'd like to preprocess inference data, please see
+**Overriding input preprocessing with an input_fn**).
 
 The basic skeleton for the ``serving_input_fn`` looks like this:
 
@@ -563,7 +568,7 @@ TensorFlow Serving models
 After your training job is complete in SageMaker and the ``fit`` call ends, the training job
 will generate a `TensorFlow SavedModel <https://github.com/tensorflow/tensorflow/blob/master/tensorflow/python/saved_model/README.md>`_
 bundle ready for deployment. Your model will be available in S3 at the ``output_path`` location
-that you specified when you created your `sagemaker.tensorflow.TensorFlow` estimator.
+that you specified when you created your ``sagemaker.tensorflow.TensorFlow`` estimator.
 
 Restoring from checkpoints
 ^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -612,7 +617,7 @@ Note that TensorBoard is not supported when passing wait=False to ``fit``.
 Deploying TensorFlow Serving models
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-After a TensorFlow Estimator has been fit, it saves a TensorFlow ``SavedModel`` in
+After a TensorFlow estimator has been fit, it saves a TensorFlow ``SavedModel`` in
 the S3 location defined by ``output_path``. You can call ``deploy`` on a TensorFlow
 estimator to create a SageMaker Endpoint.
 
@@ -620,7 +625,7 @@ SageMaker provides two different options for deploying TensorFlow models to a Sa
 Endpoint:
 
 - The first option uses a Python-based server that allows you to specify your own custom
-  input and output handling functions in a python script. This is the default option.
+  input and output handling functions in a Python script. This is the default option.
 
   See `Deploying to Python-based Endpoints <deploying_python.rst>`_ to learn how to use this option.
 

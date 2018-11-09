@@ -13,7 +13,7 @@ Table of Contents
 Deploying from an Estimator
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-After a TensorFlow Estimator has been fit, it saves a TensorFlow ``SavedModel`` in
+After a TensorFlow estimator has been fit, it saves a TensorFlow ``SavedModel`` in
 the S3 location defined by ``output_path``. You can call ``deploy`` on a TensorFlow
 estimator object to create a SageMaker Endpoint:
 
@@ -86,7 +86,7 @@ The result object will contain a Python dict like this:
     'predictions': [3.5, 4.0, 5.5]
   }
 
-The format of the input and the output data correspond directly to the request and response formats
+The formats of the input and the output data correspond directly to the request and response formats
 of the ``Predict`` method in the `TensorFlow Serving REST API <https://www.tensorflow.org/serving/api_rest>`_.
 
 If your SavedModel includes the right ``signature_def``, you can also make Classify or Regress requests:
@@ -298,10 +298,10 @@ First, download the models and extract them:
 
 **Repackaging the models**
 
-Next, examine the directories in `multi`. If you trained the models using SageMaker's TensorFlow containers,
-you are likely to have `./multi/model1/export/Servo/...` and `./multi/model2/export/Servo/...`. In both cases,
+Next, examine the directories in ``multi``. If you trained the models using SageMaker's TensorFlow containers,
+you are likely to have ``./multi/model1/export/Servo/...`` and ``./multi/model2/export/Servo/...``. In both cases,
 "Servo" is the base name for the SaveModel files. When serving multiple models, each model needs a unique
-basename, so one or both of these will need to be changed. The `/export/` part of the path isn't needed
+basename, so one or both of these will need to be changed. The ``/export/`` part of the path isn't needed
 either, so you can simplify the layout at the same time:
 
 .. code:: bash
@@ -327,13 +327,13 @@ You should now have a directory structure like this:
             └── variables
                 └── ...
 
-To repackage the files into a new archive, use `tar` again:
+To repackage the files into a new archive, use ``tar`` again:
 
 .. code:: bash
 
   tar -C "$PWD/multi/" -czvf multi.tar.gz multi/
 
-The `multi.tar.gz` file is now ready to use.
+The ``multi.tar.gz`` file is now ready to use.
 
 **Uploading the new archive to S3**
 

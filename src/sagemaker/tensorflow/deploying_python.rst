@@ -4,11 +4,11 @@ Deploying to Python-based Endpoints
 Deploying from an Estimator
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-After a ``TensorFlow`` Estimator has been fit, it saves a TensorFlow ``SavedModel`` in
-the S3 location defined by ``output_path``. You can call ``deploy`` on a ``TensorFlow``
+After a TensorFlow estimator has been fit, it saves a TensorFlow ``SavedModel`` in
+the S3 location defined by ``output_path``. You can call ``deploy`` on a TensorFlow
 estimator to create a SageMaker Endpoint.
 
-A common usage of the ``deploy`` method, after the ``TensorFlow`` estimator has been fit look
+A common usage of the ``deploy`` method, after the TensorFlow estimator has been fit look
 like this:
 
 .. code:: python
@@ -92,12 +92,12 @@ The following code adds a prediction request to the previous code example:
 
   result = predictor.predict([6.4, 3.2, 4.5, 1.5])
 
-The ``predictor.predict`` method call takes one parameter, the input ``data`` for which you want the ``SageMaker Endpoint``
-to provide inference. ``predict`` will serialize the input data, and send it in as request to the ``SageMaker Endpoint`` by
+The ``predictor.predict`` method call takes one parameter, the input ``data`` for which you want the SageMaker Endpoint
+to provide inference. ``predict`` will serialize the input data, and send it in as request to the SageMaker Endpoint by
 an ``InvokeEndpoint`` SageMaker operation. ``InvokeEndpoint`` operation requests can be made by ``predictor.predict``, by
-boto3 ``SageMaker.runtime`` client or by AWS CLI.
+boto3 ``sageMaker.runtime`` client or by AWS CLI.
 
-The ``SageMaker Endpoint`` web server will process the request, make an inference using the deployed model, and return a response.
+The SageMaker Endpoint web server will process the request, make an inference using the deployed model, and return a response.
 The ``result`` returned by ``predict`` is
 a Python dictionary with the model prediction. In the code example above, the prediction ``result`` looks like this:
 
@@ -150,7 +150,7 @@ This process looks like this:
 The common functionality can be extended by the addiction of the following two functions to your training script:
 
 Overriding input preprocessing with an ``input_fn``
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 An example of ``input_fn`` for the content-type "application/python-pickle" can be seen below:
 
@@ -169,7 +169,7 @@ An example of ``input_fn`` for the content-type "application/python-pickle" can 
             pass
 
 Overriding output postprocessing with an ``output_fn``
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 An example of ``output_fn`` for the accept type "application/python-pickle" can be seen below:
 
