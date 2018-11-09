@@ -5,6 +5,8 @@ CHANGELOG
 1.14.2-dev
 ==========
 
+* enhancement: add content_type parameter to sagemaker.tensorflow.serving.Model constructor
+* doc-fix: add TensorFlow Serving Container docs
 * doc-fix: fix rendering error in README.rst
 * enhancement: Local Mode: support optional input channels
 * build: added pylint
