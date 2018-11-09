@@ -4,12 +4,9 @@ Deploying to TensorFlow Serving Endpoints
 Deploying from an Estimator
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-After a ``TensorFlow`` Estimator has been fit, it saves a TensorFlow ``SavedModel`` in
-the S3 location defined by ``output_path``. You can call ``deploy`` on a ``TensorFlow``
-estimator to create a SageMaker Endpoint.
-
-A common usage of the ``deploy`` method, after the ``TensorFlow`` estimator has been fit look
-like this:
+After a TensorFlow Estimator has been fit, it saves a TensorFlow ``SavedModel`` in
+the S3 location defined by ``output_path``. You can call ``deploy`` on a TensorFlow
+estimator object to create a SageMaker Endpoint:
 
 .. code:: python
 
@@ -357,7 +354,7 @@ For the remaining steps, let's return to python code using the SageMaker Python 
   }
 
   model = Model(model_data=model_data, role=role, framework_version='1.11', env=env)
-  predictor = model.deploy(1, 'ml.c5.xlarge')
+  predictor = model.deploy(initial_instance_count=1, instance_type='ml.c5.xlarge')
 
 The ``predictor`` object returned by the deploy function is ready to use to make predictions
 using the default model (``model1`` in this example).
@@ -438,11 +435,3 @@ can be seen.
       --content-type 'application/jsons' \
       --body "$(cat input.jsons)" \
       results.json
-
-
-
-
-It's easy to make
-predictions using the AWS CLI, and thi
-
-
