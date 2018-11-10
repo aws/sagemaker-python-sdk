@@ -94,8 +94,9 @@ The following code adds a prediction request to the previous code example:
 
 The ``predictor.predict`` method call takes one parameter, the input ``data`` for which you want the SageMaker Endpoint
 to provide inference. ``predict`` will serialize the input data, and send it in as request to the SageMaker Endpoint by
-an ``InvokeEndpoint`` SageMaker operation. ``InvokeEndpoint`` operation requests can be made by ``predictor.predict``, by
-boto3 ``sageMaker.runtime`` client or by AWS CLI.
+an ``InvokeEndpoint`` SageMaker operation. ``InvokeEndpoint`` operation requests can be made by ``predictor.predict``,
+by boto3 `SageMakerRuntime <https://boto3.amazonaws.com/v1/documentation/api/latest/reference/services/sagemaker-runtime.html>`_
+client or by AWS CLI.
 
 The SageMaker Endpoint web server will process the request, make an inference using the deployed model, and return a response.
 The ``result`` returned by ``predict`` is

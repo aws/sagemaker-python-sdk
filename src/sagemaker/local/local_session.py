@@ -164,13 +164,18 @@ class LocalSagemakerRuntimeClient(object):
         self.config = config
         self.serving_port = get_config_value('local.serving_port', config) or 8080
 
-    def invoke_endpoint(self, Body, EndpointName, ContentType, Accept):  # pylint: disable=unused-argument
+    def invoke_endpoint(self, Body, EndpointName,  # pylint: disable=unused-argument
+                        ContentType, Accept, CustomAttributes):
         url = "http://localhost:%s/invocations" % self.serving_port
         headers = {
             'Content-type': ContentType
         }
+
         if Accept is not None:
             headers['Accept'] = Accept
+
+        if CustomAttributes is not None:
+            headers['X-Amzn-SageMaker-Custom-Attributes'] = CustomAttributes
 
         r = self.http.request('POST', url, body=Body, preload_content=False,
                               headers=headers)

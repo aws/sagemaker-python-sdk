@@ -267,7 +267,7 @@ TensorFlow Serving Endpoints allow you to deploy multiple models to the same End
 To use this feature, you will need to:
 
 #. create a multi-model archive file
-#. create a SageMaker and deploy it to an Endpoint
+#. create a SageMaker Model and deploy it to an Endpoint
 #. create Predictor instances that direct requests to a specific model
 
 Creating a multi-model archive file
@@ -385,6 +385,13 @@ additional ``Predictor`` instances. Here's how:
 
   # get a predictor for 'model2'
   model2_predictor = Predictor(endpoint, model_name='model2')
+
+  # note: that will for actual SageMaker endpoints, but if you are using
+  # local mode you need to create the new Predictor this way:
+  #
+  # model2_predictor = Predictor(endpoint, model_name='model2'
+  #                              sagemaker_session=predictor.sagemaker_session)
+
 
   # result is prediction from 'model2'
   result = model2_predictor.predict(...)

@@ -617,7 +617,7 @@ Note that TensorBoard is not supported when passing wait=False to ``fit``.
 Deploying TensorFlow Serving models
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-After a TensorFlow estimator has been fit, it saves a TensorFlow ``SavedModel`` in
+After a TensorFlow estimator has been fit, it saves a TensorFlow SavedModel in
 the S3 location defined by ``output_path``. You can call ``deploy`` on a TensorFlow
 estimator to create a SageMaker Endpoint.
 
