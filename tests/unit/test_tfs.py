@@ -114,6 +114,22 @@ def test_predictor(sagemaker_session):
     assert PREDICT_RESPONSE == result
 
 
+def test_predictor_jsons(sagemaker_session):
+    predictor = Predictor('endpoint', sagemaker_session, serializer=None,
+                          content_type='application/jsons')
+
+    mock_response(json.dumps(PREDICT_RESPONSE).encode('utf-8'), sagemaker_session)
+    result = predictor.predict('[1.0, 2.0, 3.0]\n[4.0, 5.0, 6.0]')
+
+    assert_invoked(sagemaker_session,
+                   EndpointName='endpoint',
+                   ContentType='application/jsons',
+                   Accept=JSON_CONTENT_TYPE,
+                   Body='[1.0, 2.0, 3.0]\n[4.0, 5.0, 6.0]')
+
+    assert PREDICT_RESPONSE == result
+
+
 def test_predictor_csv(sagemaker_session):
     predictor = Predictor('endpoint', sagemaker_session, serializer=csv_serializer)
 
