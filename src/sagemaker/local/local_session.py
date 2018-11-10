@@ -165,11 +165,12 @@ class LocalSagemakerRuntimeClient(object):
         self.serving_port = get_config_value('local.serving_port', config) or 8080
 
     def invoke_endpoint(self, Body, EndpointName,  # pylint: disable=unused-argument
-                        ContentType, Accept, CustomAttributes):
+                        ContentType=None, Accept=None, CustomAttributes=None):
         url = "http://localhost:%s/invocations" % self.serving_port
-        headers = {
-            'Content-type': ContentType
-        }
+        headers = {}
+
+        if ContentType is not None:
+            headers['Content-type'] = ContentType
 
         if Accept is not None:
             headers['Accept'] = Accept
