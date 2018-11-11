@@ -14,7 +14,6 @@ from __future__ import absolute_import
 
 import botocore.exceptions
 import pytest
-
 import sagemaker
 import sagemaker.predictor
 import sagemaker.utils
@@ -59,7 +58,7 @@ def test_predict_generic_json(tfs_predictor):
     assert expected_result == result
 
 
-def test_predict_jsons(tfs_predictor):
+def test_predict_jsons_json_content_type(tfs_predictor):
     input_data = '[1.0, 2.0, 5.0]\n[1.0, 2.0, 5.0]'
     expected_result = {'predictions': [[3.5, 4.0, 5.5], [3.5, 4.0, 5.5]]}
 
@@ -68,6 +67,34 @@ def test_predict_jsons(tfs_predictor):
                                             deserializer=sagemaker.predictor.json_deserializer,
                                             content_type='application/json',
                                             accept='application/json')
+
+    result = predictor.predict(input_data)
+    assert expected_result == result
+
+
+def test_predict_jsons(tfs_predictor):
+    input_data = '[1.0, 2.0, 5.0]\n[1.0, 2.0, 5.0]'
+    expected_result = {'predictions': [[3.5, 4.0, 5.5], [3.5, 4.0, 5.5]]}
+
+    predictor = sagemaker.RealTimePredictor(tfs_predictor.endpoint,
+                                            tfs_predictor.sagemaker_session, serializer=None,
+                                            deserializer=sagemaker.predictor.json_deserializer,
+                                            content_type='application/jsons',
+                                            accept='application/jsons')
+
+    result = predictor.predict(input_data)
+    assert expected_result == result
+
+
+def test_predict_jsonlines(tfs_predictor):
+    input_data = '[1.0, 2.0, 5.0]\n[1.0, 2.0, 5.0]'
+    expected_result = {'predictions': [[3.5, 4.0, 5.5], [3.5, 4.0, 5.5]]}
+
+    predictor = sagemaker.RealTimePredictor(tfs_predictor.endpoint,
+                                            tfs_predictor.sagemaker_session, serializer=None,
+                                            deserializer=sagemaker.predictor.json_deserializer,
+                                            content_type='application/jsonlines',
+                                            accept='application/jsonlines')
 
     result = predictor.predict(input_data)
     assert expected_result == result

@@ -28,6 +28,7 @@ class Predictor(sagemaker.RealTimePredictor):
     def __init__(self, endpoint_name, sagemaker_session=None,
                  serializer=json_serializer,
                  deserializer=json_deserializer,
+                 content_type=None,
                  model_name=None,
                  model_version=None):
         """Initialize a ``TFSPredictor``. See ``sagemaker.RealTimePredictor`` for
@@ -41,13 +42,15 @@ class Predictor(sagemaker.RealTimePredictor):
             serializer (callable): Optional. Default serializes input data to json. Handles dicts,
                 lists, and numpy arrays.
             deserializer (callable): Optional. Default parses the response using ``json.load(...)``.
+            content_type (str): Optional. The "ContentType" for invocation requests. If specified,
+                overrides the ``content_type`` from the serializer (default: None).
             model_name (str): Optional. The name of the SavedModel model that should handle the
                 request. If not specified, the endpoint's default model will handle the request.
             model_version (str): Optional. The version of the SavedModel model that should handle
                 the request. If not specified, the latest version of the model will be used.
         """
         super(Predictor, self).__init__(endpoint_name, sagemaker_session, serializer,
-                                        deserializer)
+                                        deserializer, content_type)
 
         attributes = []
         if model_name:
