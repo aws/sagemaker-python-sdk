@@ -6,6 +6,7 @@ CHANGELOG
 ==========
 
 * doc-fix: fix rendering error in README.rst
+* bug-fix: Local Mode: create a local destination folder it it doesn't exist yet
 * build: added pylint
 
 1.14.1
