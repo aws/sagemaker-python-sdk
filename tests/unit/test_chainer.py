@@ -459,3 +459,13 @@ def test_attach_custom_image(sagemaker_session):
     estimator = Chainer.attach(training_job_name='neo', sagemaker_session=sagemaker_session)
     assert estimator.image_name == training_image
     assert estimator.train_image() == training_image
+
+
+@patch('sagemaker.chainer.estimator.empty_framework_version_warning')
+def test_empty_framework_version(warning, sagemaker_session):
+    estimator = Chainer(entry_point=SCRIPT_PATH, role=ROLE, sagemaker_session=sagemaker_session,
+                        train_instance_count=INSTANCE_COUNT, train_instance_type=INSTANCE_TYPE,
+                        framework_version=None)
+
+    assert estimator.framework_version == defaults.CHAINER_VERSION
+    warning.assert_called_with(defaults.CHAINER_VERSION, defaults.CHAINER_VERSION)
