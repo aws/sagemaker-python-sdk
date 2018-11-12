@@ -53,8 +53,8 @@ class LocalSagemakerClient(object):
         """
         self.sagemaker_session = sagemaker_session or LocalSession()
 
-    def create_training_job(self, TrainingJobName, AlgorithmSpecification, InputDataConfig, OutputDataConfig,
-                            ResourceConfig, **kwargs):
+    def create_training_job(self, TrainingJobName, AlgorithmSpecification, OutputDataConfig,
+                            ResourceConfig, InputDataConfig=None, **kwargs):
         """
         Create a training job in Local Mode
         Args:
@@ -66,7 +66,7 @@ class LocalSagemakerClient(object):
             HyperParameters (dict) [optional]: Specifies these algorithm-specific parameters to influence the quality of
                 the final model.
         """
-
+        InputDataConfig = InputDataConfig or {}
         container = _SageMakerContainer(ResourceConfig['InstanceType'], ResourceConfig['InstanceCount'],
                                         AlgorithmSpecification['TrainingImage'], self.sagemaker_session)
         training_job = _LocalTrainingJob(container)
@@ -164,13 +164,19 @@ class LocalSagemakerRuntimeClient(object):
         self.config = config
         self.serving_port = get_config_value('local.serving_port', config) or 8080
 
-    def invoke_endpoint(self, Body, EndpointName, ContentType, Accept):  # pylint: disable=unused-argument
+    def invoke_endpoint(self, Body, EndpointName,  # pylint: disable=unused-argument
+                        ContentType=None, Accept=None, CustomAttributes=None):
         url = "http://localhost:%s/invocations" % self.serving_port
-        headers = {
-            'Content-type': ContentType
-        }
+        headers = {}
+
+        if ContentType is not None:
+            headers['Content-type'] = ContentType
+
         if Accept is not None:
             headers['Accept'] = Accept
+
+        if CustomAttributes is not None:
+            headers['X-Amzn-SageMaker-Custom-Attributes'] = CustomAttributes
 
         r = self.http.request('POST', url, body=Body, preload_content=False,
                               headers=headers)

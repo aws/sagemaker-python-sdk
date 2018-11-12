@@ -5,9 +5,14 @@ CHANGELOG
 1.14.2-dev
 ==========
 
-* doc-fix: fix rendering error in README.rst
+* bug-fix: support ``CustomAttributes`` argument in local mode ``invoke_endpoint`` requests
 * bug-fix: Local Mode: create a local destination folder it it doesn't exist yet
+* enhancement: add ``content_type`` parameter to ``sagemaker.tensorflow.serving.Predictor``
+* doc-fix: add TensorFlow Serving Container docs
+* doc-fix: fix rendering error in README.rst
+* enhancement: Local Mode: support optional input channels
 * build: added pylint
+* build: upgrade docker-compose to 1.23
 
 1.14.1
 ======
