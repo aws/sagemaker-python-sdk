@@ -12,6 +12,7 @@ CHANGELOG
 * enhancement: Local Mode: support optional input channels
 * build: added pylint
 * build: upgrade docker-compose to 1.23
+* enhancement: Session: remove hardcoded 'training' from job status error message
 
 1.14.1
 ======
