@@ -26,10 +26,10 @@ This is for the source code used for the entry point with an ``Estimator``. It c
 instantiated with positional or keyword arguments.
 """
 
-EMPTY_FRAMEWORK_VERSION_WARNING = 'In an upcoming version of the SageMaker Python SDK, ' \
-                                  'framework_version will be required to create an estimator. ' \
-                                  'Please add framework_version={} to your constructor to avoid ' \
-                                  'an error in the future.'
+EMPTY_FRAMEWORK_VERSION_WARNING = 'No framework_version specified, defaulting to version {}.'
+LATER_FRAMEWORK_VERSION_WARNING = 'This is not the latest supported version. ' \
+                                  'If you would like to use version {latest}, ' \
+                                  'please add framework_version={latest} to your constructor.'
 
 VALID_PY_VERSIONS = ['py2', 'py3']
 
@@ -232,5 +232,8 @@ def model_code_key_prefix(code_location_key_prefix, model_name, image):
     return '/'.join(filter(None, [code_location_key_prefix, model_name or training_job_name]))
 
 
-def empty_framework_version_warning(default_version):
-    return EMPTY_FRAMEWORK_VERSION_WARNING.format(default_version)
+def empty_framework_version_warning(default_version, latest_version):
+    msgs = [EMPTY_FRAMEWORK_VERSION_WARNING.format(default_version)]
+    if default_version != latest_version:
+        msgs.append(LATER_FRAMEWORK_VERSION_WARNING.format(latest=latest_version))
+    return ' '.join(msgs)

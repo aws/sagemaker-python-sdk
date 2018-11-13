@@ -12,6 +12,7 @@ CHANGELOG
 * enhancement: Local Mode: support optional input channels
 * build: added pylint
 * build: upgrade docker-compose to 1.23
+* enhancement: Frameworks: update warning for not setting framework_version as we aren't planning a breaking change anymore
 
 1.14.1
 ======

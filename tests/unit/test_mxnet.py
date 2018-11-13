@@ -395,3 +395,13 @@ def test_estimator_wrong_version_launch_parameter_server(sagemaker_session):
               train_instance_count=INSTANCE_COUNT, train_instance_type=INSTANCE_TYPE,
               distributions=LAUNCH_PS_DISTRIBUTIONS_DICT, framework_version='1.2.1')
     assert 'The distributions option is valid for only versions 1.3 and higher' in str(e)
+
+
+@patch('sagemaker.mxnet.estimator.empty_framework_version_warning')
+def test_empty_framework_version(warning, sagemaker_session):
+    mx = MXNet(entry_point=SCRIPT_PATH, role=ROLE, sagemaker_session=sagemaker_session,
+               train_instance_count=INSTANCE_COUNT, train_instance_type=INSTANCE_TYPE,
+               framework_version=None)
+
+    assert mx.framework_version == defaults.MXNET_VERSION
+    warning.assert_called_with(defaults.MXNET_VERSION, mx.LATEST_VERSION)
