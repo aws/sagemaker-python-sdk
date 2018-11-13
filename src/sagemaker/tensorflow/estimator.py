@@ -164,8 +164,8 @@ class TensorFlow(Framework):
     __framework_name__ = 'tensorflow'
 
     def __init__(self, training_steps=None, evaluation_steps=None, checkpoint_path=None,
-                 py_version='py2',
-                 framework_version=None, requirements_file='', image_name=None, **kwargs):
+                 py_version='py2', framework_version=None, requirements_file='', image_name=None,
+                 **kwargs):
         """Initialize an ``TensorFlow`` estimator.
         Args:
             training_steps (int): Perform this many steps of training. `None`, the default means train forever.
@@ -188,7 +188,7 @@ class TensorFlow(Framework):
             **kwargs: Additional kwargs passed to the Framework constructor.
         """
         if framework_version is None:
-            LOGGER.warning(empty_framework_version_warning(TF_VERSION))
+            LOGGER.warning(empty_framework_version_warning(TF_VERSION, TF_VERSION))
         self.framework_version = framework_version or TF_VERSION
 
         super(TensorFlow, self).__init__(image_name=image_name, **kwargs)
