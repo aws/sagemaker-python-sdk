@@ -2,8 +2,8 @@
 CHANGELOG
 =========
 
-1.14.2-dev
-==========
+1.14.2
+=======
 
 * bug-fix: support ``CustomAttributes`` argument in local mode ``invoke_endpoint`` requests
 * enhancement: add ``content_type`` parameter to ``sagemaker.tensorflow.serving.Predictor``
