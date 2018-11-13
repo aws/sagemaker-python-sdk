@@ -67,7 +67,7 @@ class PyTorch(Framework):
             **kwargs: Additional kwargs passed to the :class:`~sagemaker.estimator.Framework` constructor.
         """
         if framework_version is None:
-            logger.warning(empty_framework_version_warning(PYTORCH_VERSION))
+            logger.warning(empty_framework_version_warning(PYTORCH_VERSION, PYTORCH_VERSION))
         self.framework_version = framework_version or PYTORCH_VERSION
 
         super(PyTorch, self).__init__(entry_point, source_dir, hyperparameters, image_name=image_name, **kwargs)
