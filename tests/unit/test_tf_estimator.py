@@ -42,8 +42,6 @@ REGION = 'us-west-2'
 DOCKER_TAG = '1.0'
 IMAGE_URI_FORMAT_STRING = "520713654638.dkr.ecr.{}.amazonaws.com/{}:{}-{}-{}"
 SCRIPT_MODE_REPO_NAME = 'sagemaker-tensorflow-scriptmode'
-DEPRECATED_ARGS_MSG = '{} are deprecated in script mode. Please do not set these arguments.'.format(
-                      ', '.join(TensorFlow._DEPRECATED_ARGS))
 DISTRIBUTION_ENABLED = {'parameter_server': {'enabled': True}}
 
 
@@ -76,7 +74,7 @@ def _hyperparameters(script_mode=False):
         'sagemaker_enable_cloudwatch_metrics': 'false',
         'sagemaker_container_log_level': str(logging.INFO),
         'sagemaker_job_name': json.dumps(job_name),
-        'sagemaker_region': '"us-west-2"'
+        'sagemaker_region': json.dumps('us-west-2')
     }
     if script_mode:
         hps['model_dir'] = json.dumps('s3://{}/{}/model'.format(BUCKET_NAME, job_name))
@@ -661,22 +659,31 @@ def test_empty_framework_version(warning, sagemaker_session):
     warning.assert_called_with(defaults.TF_VERSION, defaults.TF_VERSION)
 
 
+def _deprecated_args_msg(args):
+    return '{} are deprecated in script mode. Please do not set {}.'.format(', '.join(TensorFlow._FRAMEWORK_ARGS), args)
+
+
 def test_script_mode_deprecated_args(sagemaker_session):
     with pytest.raises(ValueError) as e:
         _build_tf(sagemaker_session=sagemaker_session, py_version='py3', checkpoint_path='some_path')
-    assert DEPRECATED_ARGS_MSG in str(e.value)
+    assert _deprecated_args_msg('checkpoint_path') in str(e.value)
 
     with pytest.raises(ValueError) as e:
         _build_tf(sagemaker_session=sagemaker_session, py_version='py3', training_steps=1)
-    assert DEPRECATED_ARGS_MSG in str(e.value)
+    assert _deprecated_args_msg('training_steps') in str(e.value)
 
     with pytest.raises(ValueError) as e:
         _build_tf(sagemaker_session=sagemaker_session, script_mode=True, evaluation_steps=1)
-    assert DEPRECATED_ARGS_MSG in str(e.value)
+    assert _deprecated_args_msg('evaluation_steps') in str(e.value)
 
     with pytest.raises(ValueError) as e:
         _build_tf(sagemaker_session=sagemaker_session, script_mode=True, requirements_file='some_file')
-    assert DEPRECATED_ARGS_MSG in str(e.value)
+    assert _deprecated_args_msg('requirements_file') in str(e.value)
+
+    with pytest.raises(ValueError) as e:
+        _build_tf(sagemaker_session=sagemaker_session, script_mode=True, checkpoint_path='some_path',
+                  requirements_file='some_file', training_steps=1, evaluation_steps=1)
+    assert _deprecated_args_msg('training_steps, evaluation_steps, requirements_file, checkpoint_path') in str(e.value)
 
 
 def test_script_mode_enabled(sagemaker_session):
