@@ -185,7 +185,7 @@ if __name__ == "__main__":
         num_epochs=1,
         shuffle=False)
 
-    train_spec = tf.estimator.TrainSpec(train_input_fn, max_steps=500)
+    train_spec = tf.estimator.TrainSpec(train_input_fn, max_steps=1000)
     eval_spec = tf.estimator.EvalSpec(eval_input_fn)
     tf.estimator.train_and_evaluate(mnist_classifier, train_spec, eval_spec)
 

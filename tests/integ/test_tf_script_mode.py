@@ -24,7 +24,7 @@ SCRIPT = os.path.join(RESOURCE_PATH, 'mnist.py')
 DISTRIBUTION_ENABLED = {'parameter_server': {'enabled': True}}
 
 
-@pytest.fixture(scope='session', params=['ml.c5.xlarge', 'ml.p3.2xlarge'])
+@pytest.fixture(scope='session', params=['ml.c5.xlarge', 'ml.p2.xlarge'])
 def instance_type(request):
     return request.param
 
