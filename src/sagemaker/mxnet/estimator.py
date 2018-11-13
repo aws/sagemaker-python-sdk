@@ -31,6 +31,7 @@ class MXNet(Framework):
 
     _LOWEST_SCRIPT_MODE_VERSION = ['1', '3']
     LAUNCH_PS_ENV_NAME = 'sagemaker_parameter_server_enabled'
+    LATEST_VERSION = '1.3'
 
     def __init__(self, entry_point, source_dir=None, hyperparameters=None, py_version='py2',
                  framework_version=None, image_name=None, distributions=None, **kwargs):
@@ -72,7 +73,7 @@ class MXNet(Framework):
             **kwargs: Additional kwargs passed to the :class:`~sagemaker.estimator.Framework` constructor.
         """
         if framework_version is None:
-            logger.warning(empty_framework_version_warning(MXNET_VERSION))
+            logger.warning(empty_framework_version_warning(MXNET_VERSION, self.LATEST_VERSION))
         self.framework_version = framework_version or MXNET_VERSION
 
         super(MXNet, self).__init__(entry_point, source_dir, hyperparameters,
