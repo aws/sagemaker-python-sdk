@@ -25,5 +25,10 @@ TRANSFORM_DEFAULT_TIMEOUT_MINUTES = 20
 PYTHON_VERSION = 'py' + str(sys.version_info.major)
 REGION = boto3.session.Session().region_name
 
+# https://code.amazon.com/packages/MaeveControlPlaneService/blobs/mainline/--/src/com/amazonaws/services/ironman/utils/InstanceTypesHelper.java
+HOSTING_P2_UNAVAILABLE_REGIONS = ['ca-central-1', 'us-west-1', 'eu-west-2']
+HOSTING_P3_UNAVAILABLE_REGIONS = ['ap-southeast-1', 'ap-southeast-2', 'ap-south-1', 'ca-central-1',
+                                  'us-west-1']
+
 logging.getLogger('boto3').setLevel(logging.INFO)
 logging.getLogger('botocore').setLevel(logging.INFO)

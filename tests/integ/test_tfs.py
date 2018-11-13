@@ -18,7 +18,8 @@ import sagemaker
 import sagemaker.predictor
 import sagemaker.utils
 from sagemaker.tensorflow.serving import Model, Predictor
-from tests.integ.timeout import timeout_and_delete_endpoint_by_name
+import tests.integ
+import tests.integ.timeout
 
 
 @pytest.fixture(scope='session', params=['ml.c5.xlarge', 'ml.p3.2xlarge'])
@@ -32,7 +33,7 @@ def tfs_predictor(instance_type, sagemaker_session, tf_full_version):
     model_data = sagemaker_session.upload_data(
         path='tests/data/tensorflow-serving-test-model.tar.gz',
         key_prefix='tensorflow-serving/models')
-    with timeout_and_delete_endpoint_by_name(endpoint_name, sagemaker_session):
+    with tests.integ.timeout.timeout_and_delete_endpoint_by_name(endpoint_name, sagemaker_session):
         model = Model(model_data=model_data, role='SageMakerRole',
                       framework_version=tf_full_version,
                       sagemaker_session=sagemaker_session)
@@ -40,8 +41,11 @@ def tfs_predictor(instance_type, sagemaker_session, tf_full_version):
         yield predictor
 
 
-# @pytest.mark.continuous_testing
-# @pytest.mark.regional_testing
+@pytest.mark.continuous_testing
+@pytest.mark.regional_testing
+@pytest.mark.skipif(
+    tests.integ.REGION in tests.integ.HOSTING_P3_UNAVAILABLE_REGIONS,
+    reason='no ml.p3 instances in this region')
 def test_predict(tfs_predictor):
     input_data = {'instances': [1.0, 2.0, 5.0]}
     expected_result = {'predictions': [3.5, 4.0, 5.5]}
