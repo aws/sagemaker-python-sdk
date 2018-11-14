@@ -28,6 +28,7 @@ import six
 
 AIRFLOW_TIME_MACRO = "{{ execution_date.strftime('%Y-%m-%d-%H-%M-%S') }}"
 
+
 # Use the base name of the image as the job name if the user doesn't give us one
 def name_from_image(image):
     """Create a training job name based on the image name and a timestamp.

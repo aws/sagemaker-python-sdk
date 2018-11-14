@@ -30,7 +30,7 @@ BUCKET_NAME = 'output'
 def sagemaker_session():
     boto_mock = mock.Mock(name='boto_session', region_name=REGION)
     session = mock.Mock(name='sagemaker_session', boto_session=boto_mock,
-                   boto_region_name=REGION, config=None, local_mode=False)
+                        boto_region_name=REGION, config=None, local_mode=False)
     session.default_bucket = mock.Mock(name='default_bucket', return_value=BUCKET_NAME)
     session._default_bucket = BUCKET_NAME
     return session

@@ -10,6 +10,7 @@
 # distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
+from __future__ import print_function, absolute_import
 
 import os
 
@@ -67,7 +68,7 @@ def prepare_amazon_algorithm_estimator(estimator, inputs):
         raise TypeError('Training data must be represented in RecordSet or list of RecordSets')
 
 
-def training_config(estimator, inputs=None, job_name=None):
+def training_config(estimator, inputs=None, job_name=None):  # noqa: C901 - suppress complexity warning for this method
     """Export Airflow training config from an estimator
 
     Args:
