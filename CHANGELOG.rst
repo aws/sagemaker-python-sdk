@@ -6,7 +6,7 @@ CHANGELOG
 ==========
 
 * bug-fix: support ``CustomAttributes`` argument in local mode ``invoke_endpoint`` requests
-* bug-fix: Local Mode: create a local destination folder it it doesn't exist yet
+* bug-fix: Local Mode: correctly handle the case where the model output folder doesn't exist yet
 * enhancement: add ``content_type`` parameter to ``sagemaker.tensorflow.serving.Predictor``
 * doc-fix: add TensorFlow Serving Container docs
 * doc-fix: fix rendering error in README.rst
