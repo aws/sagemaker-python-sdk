@@ -660,7 +660,8 @@ def test_empty_framework_version(warning, sagemaker_session):
 
 
 def _deprecated_args_msg(args):
-    return '{} are deprecated in script mode. Please do not set {}.'.format(', '.join(TensorFlow._FRAMEWORK_ARGS), args)
+    return '{} are deprecated in script mode. Please do not set {}.'.format(
+        ', '.join(TensorFlow._FRAMEWORK_MODE_ARGS), args)
 
 
 def test_script_mode_deprecated_args(sagemaker_session):

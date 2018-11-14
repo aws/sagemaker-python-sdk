@@ -163,7 +163,7 @@ class TensorFlow(Framework):
 
     __framework_name__ = 'tensorflow'
 
-    _FRAMEWORK_ARGS = ['training_steps', 'evaluation_steps', 'requirements_file', 'checkpoint_path']
+    _FRAMEWORK_MODE_ARGS = ['training_steps', 'evaluation_steps', 'requirements_file', 'checkpoint_path']
     _SCRIPT_MODE = 'tensorflow-scriptmode'
     _SCRIPT_MODE_SERVING_ERROR_MSG = 'Script mode containers does not support serving yet. ' \
                                      'Please use our new tensorflow-serving container by creating the model ' \
@@ -209,29 +209,34 @@ class TensorFlow(Framework):
         self.script_mode = script_mode
         self.distributions = distributions
 
-        if py_version == 'py3' or script_mode:
-            if framework_version is None:
-                raise ValueError(EMPTY_FRAMEWORK_VERSION_ERROR)
-            self._check_framework_args(training_steps, evaluation_steps, requirements_file, checkpoint_path)
-
+        self._validate_args(py_version=py_version, script_mode=script_mode, framework_version=framework_version,
+                            training_steps=training_steps, evaluation_steps=evaluation_steps,
+                            requirements_file=requirements_file, checkpoint_path=checkpoint_path)
         self._validate_requirements_file(requirements_file)
         self.requirements_file = requirements_file
 
-    def _check_framework_args(self, training_steps, evaluation_steps, requirements_file, checkpoint_path):
-        set_args = []
-        if training_steps:
-            set_args.append('training_steps')
-        if evaluation_steps:
-            set_args.append('evaluation_steps')
-        if requirements_file:
-            set_args.append('requirements_file')
-        if checkpoint_path:
-            set_args.append('checkpoint_path')
-        if set_args:
-            raise ValueError(
-                '{} are deprecated in script mode. Please do not set {}.'
-                .format(', '.join(self._FRAMEWORK_ARGS), ', '.join(set_args))
-            )
+    def _validate_args(self, py_version, script_mode, framework_version, training_steps,
+                       evaluation_steps, requirements_file, checkpoint_path):
+
+        if py_version == 'py3' or script_mode:
+
+            if framework_version is None:
+                raise ValueError(EMPTY_FRAMEWORK_VERSION_ERROR)
+
+            set_args = []
+            if training_steps:
+                set_args.append('training_steps')
+            if evaluation_steps:
+                set_args.append('evaluation_steps')
+            if requirements_file:
+                set_args.append('requirements_file')
+            if checkpoint_path:
+                set_args.append('checkpoint_path')
+            if set_args:
+                raise ValueError(
+                    '{} are deprecated in script mode. Please do not set {}.'
+                    .format(', '.join(self._FRAMEWORK_MODE_ARGS), ', '.join(set_args))
+                )
 
     def _validate_requirements_file(self, requirements_file):
         if not requirements_file:
