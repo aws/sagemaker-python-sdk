@@ -26,8 +26,12 @@ REGION = 'us-west-2'
 
 
 @pytest.fixture()
-def sagemaker_session(describe_training_result=None, list_training_results=None, metric_stats_results=None,
-                      describe_tuning_result=None):
+def sagemaker_session():
+    return create_sagemaker_session()
+
+
+def create_sagemaker_session(describe_training_result=None, list_training_results=None, metric_stats_results=None,
+                             describe_tuning_result=None):
     boto_mock = Mock(name='boto_session', region_name=REGION)
     sms = Mock(name='sagemaker_session', boto_session=boto_mock,
                boto_region_name=REGION, config=None, local_mode=False)
@@ -114,7 +118,7 @@ def test_tuner_dataframe():
                 "layers": 137,
             },
         }
-    session = sagemaker_session(list_training_results={
+    session = create_sagemaker_session(list_training_results={
         "TrainingJobSummaries": [
             mock_summary(),
             mock_summary(),
@@ -153,7 +157,7 @@ def test_tuner_dataframe():
 
 
 def test_description():
-    session = sagemaker_session(describe_tuning_result={
+    session = create_sagemaker_session(describe_tuning_result={
         'HyperParameterTuningJobConfig': {
             'ParameterRanges': {
                 'CategoricalParameterRanges': [],
@@ -192,7 +196,7 @@ def test_trainer_name():
         'TrainingStartTime': datetime.datetime(2018, 5, 16, 1, 2, 3),
         'TrainingEndTime': datetime.datetime(2018, 5, 16, 5, 6, 7),
     }
-    session = sagemaker_session(describe_training_result)
+    session = create_sagemaker_session(describe_training_result)
     trainer = TrainingJobAnalytics("my-training-job", ["metric"], sagemaker_session=session)
     assert trainer.name == "my-training-job"
     assert str(trainer).find("my-training-job") != -1
@@ -225,8 +229,8 @@ def _metric_stats_results():
 
 
 def test_trainer_dataframe():
-    session = sagemaker_session(describe_training_result=_describe_training_result(),
-                                metric_stats_results=_metric_stats_results())
+    session = create_sagemaker_session(describe_training_result=_describe_training_result(),
+                                       metric_stats_results=_metric_stats_results())
     trainer = TrainingJobAnalytics("my-training-job", ["train:acc"], sagemaker_session=session)
 
     df = trainer.dataframe()
