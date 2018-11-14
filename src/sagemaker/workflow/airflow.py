@@ -19,9 +19,8 @@ from sagemaker.amazon import amazon_estimator
 
 
 def prepare_framework(estimator, s3_operations):
-    """
-    Prepare S3 operations (specify where to upload source_dir) and environment variables
-        related to framework.
+    """Prepare S3 operations (specify where to upload source_dir) and environment variables
+    related to framework.
 
     Args:
         estimator (sagemaker.estimator.Estimator): The framework estimator to get information from and update.
@@ -49,11 +48,11 @@ def prepare_framework(estimator, s3_operations):
 
 
 def prepare_amazon_algorithm_estimator(estimator, inputs):
-    """
-    Set up amazon algorithm estimator, adding the required feature_dim hyperparameter from training data.
+    """ Set up amazon algorithm estimator, adding the required `feature_dim` hyperparameter from training data.
+
     Args:
         estimator (sagemaker.amazon.amazon_estimator.AmazonAlgorithmEstimatorBase):
-            The Amazon algorithm estimator to get information from and update.
+            An estimator for a built-in Amazon algorithm to get information from and update.
         inputs (single or list of sagemaker.amazon.amazon_estimator.RecordSet):
             The training data, must be in RecordSet format.
     """
@@ -69,14 +68,15 @@ def prepare_amazon_algorithm_estimator(estimator, inputs):
 
 
 def training_config(estimator, inputs=None, job_name=None):
-    """
-    Export Airflow training config from an estimator
+    """Export Airflow training config from an estimator
 
     Args:
-        estimator: The estimator to export training config from. Can be a BYO estimator,
+        estimator (sagemaker.estimator.EstimatroBase):
+            The estimator to export training config from. Can be a BYO estimator,
             Framework estimator or Amazon algorithm estimator.
-        inputs: The training data.
-        job_name: Specify a training job name if needed.
+        inputs (str, dict, single or list of sagemaker.amazon.amazon_estimator.RecordSet):
+            The training data.
+        job_name (str): Specify a training job name if needed.
 
     Returns:
         A dict of training config that can be directly used by SageMakerTrainingOperator
