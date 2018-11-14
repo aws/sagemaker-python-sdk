@@ -99,7 +99,7 @@ def test_byo_training_config_all_args(sagemaker_session):
         output_path="{{ output_path }}",
         output_kms_key="{{ output_volume_kms_key }}",
         base_job_name="{{ base_job_name }}",
-        tags=[{"{{ key }}":"{{ value }}"}],
+        tags=[{"{{ key }}": "{{ value }}"}],
         subnets=["{{ subnet }}"],
         security_group_ids=["{{ security_group_ids }}"],
         model_uri="{{ model_uri }}",
