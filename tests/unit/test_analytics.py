@@ -47,10 +47,47 @@ def create_sagemaker_session(describe_training_result=None, list_training_result
     cwm_mock = Mock(name='cloudwatch_client')
     boto_mock.client = Mock(return_value=cwm_mock)
     cwm_mock.get_metric_statistics = Mock(
-        name='get_metric_statistics',
-        return_value=metric_stats_results,
+        name='get_metric_statistics'
     )
+    cwm_mock.get_metric_statistics.side_effect = cw_request_side_effect
     return sms
+
+
+def cw_request_side_effect(Namespace, MetricName, Dimensions, StartTime, EndTime, Period, Statistics):
+    if _is_valid_request(Namespace, MetricName, Dimensions, StartTime, EndTime, Period, Statistics):
+        return _metric_stats_results()
+
+
+def _is_valid_request(Namespace, MetricName, Dimensions, StartTime, EndTime, Period, Statistics):
+    could_watch_request = {
+        'Namespace': Namespace,
+        'MetricName': MetricName,
+        'Dimensions': Dimensions,
+        'StartTime': StartTime,
+        'EndTime': EndTime,
+        'Period': Period,
+        'Statistics': Statistics,
+    }
+    print(could_watch_request)
+    return could_watch_request == cw_request()
+
+
+def cw_request():
+    describe_training_result = _describe_training_result()
+    return {
+        'Namespace': '/aws/sagemaker/TrainingJobs',
+        'MetricName': 'train:acc',
+        'Dimensions': [
+            {
+                'Name': 'TrainingJobName',
+                'Value': 'my-training-job'
+            }
+        ],
+        'StartTime': describe_training_result['TrainingStartTime'],
+        'EndTime': describe_training_result['TrainingEndTime'] + datetime.timedelta(minutes=1),
+        'Period': 60,
+        'Statistics': ['Average'],
+    }
 
 
 def test_abstract_base_class():
@@ -165,12 +202,15 @@ def test_trainer_name():
     assert str(trainer).find("my-training-job") != -1
 
 
-def test_trainer_dataframe():
-    describe_training_result = {
+def _describe_training_result():
+    return {
         'TrainingStartTime': datetime.datetime(2018, 5, 16, 1, 2, 3),
         'TrainingEndTime': datetime.datetime(2018, 5, 16, 5, 6, 7),
     }
-    metric_stats_results = {
+
+
+def _metric_stats_results():
+    return {
         'Datapoints': [
             {
                 'Average': 77.1,
@@ -186,8 +226,11 @@ def test_trainer_dataframe():
             },
         ]
     }
-    session = create_sagemaker_session(describe_training_result=describe_training_result,
-                                       metric_stats_results=metric_stats_results)
+
+
+def test_trainer_dataframe():
+    session = create_sagemaker_session(describe_training_result=_describe_training_result(),
+                                       metric_stats_results=_metric_stats_results())
     trainer = TrainingJobAnalytics("my-training-job", ["train:acc"], sagemaker_session=session)
 
     df = trainer.dataframe()
