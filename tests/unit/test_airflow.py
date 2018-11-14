@@ -108,10 +108,7 @@ def test_byo_training_config_all_args(sagemaker_session):
                             feature_dim=1024,
                             mini_batch_size=256)
 
-    data = {
-        'train': "{{ training_data }}",
-        'evaluation': "{{ eval_data }}"
-    }
+    data = {'train': "{{ training_data }}"}
 
     training_config = get_training_config(byo, data)
     expected_config = {
@@ -144,16 +141,6 @@ def test_byo_training_config_all_args(sagemaker_session):
                     }
                 },
                 'ChannelName': 'train'
-            },
-            {
-                'DataSource': {
-                    'S3DataSource': {
-                        'S3DataDistributionType': 'FullyReplicated',
-                        'S3DataType': 'S3Prefix',
-                        'S3Uri': '{{ eval_data }}'
-                    }
-                },
-                'ChannelName': 'evaluation'
             },
             {
                 'DataSource': {
