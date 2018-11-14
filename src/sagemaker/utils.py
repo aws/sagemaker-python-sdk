@@ -61,9 +61,6 @@ def name_from_base(base, max_length=63, short=False):
 def airflow_name_from_base(base):
     """Append airflow execution_date macro to the provided string.
 
-    This function assures that the total length of the resulting string is not
-    longer than the specified max length, trimming the input parameter if necessary.
-
     Args:
         base (str): String used as prefix to generate the unique name.
 
