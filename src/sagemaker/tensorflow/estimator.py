@@ -318,7 +318,7 @@ class TensorFlow(Framework):
                                                                                        model_channel_name)
 
         # Move some of the tensorflow specific init params from hyperparameters into the main init params.
-        for argument in ['checkpoint_path', 'training_steps', 'evaluation_steps', 'model_dir']:
+        for argument in ('checkpoint_path', 'training_steps', 'evaluation_steps', 'model_dir'):
             value = init_params['hyperparameters'].pop(argument, None)
             if value is not None:
                 init_params[argument] = value

@@ -13,7 +13,7 @@ CHANGELOG
 * build: added pylint
 * build: upgrade docker-compose to 1.23
 * enhancement: Frameworks: update warning for not setting framework_version as we aren't planning a breaking change anymore
-* feature: Estimator: add script mode and py3 support for TensorFlow
+* feature: Estimator: add script mode and Python 3 support for TensorFlow
 
 1.14.1
 ======
