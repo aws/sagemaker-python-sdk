@@ -15,6 +15,7 @@ CHANGELOG
 * enhancement: Frameworks: update warning for not setting framework_version as we aren't planning a breaking change anymore
 * enhancement: Session: remove hardcoded 'training' from job status error message
 * bug-fix: Updated Cloudwatch namespace for metrics in TrainingJobsAnalytics
+* bug-fix: Changes to use correct s3 bucket and time range for dataframes in TrainingJobAnalytics.
 
 
 1.14.1
@@ -52,7 +53,6 @@ CHANGELOG
 * bug-fix: Local Mode: Set correct default values for additional_volumes and additional_env_vars
 * enhancement: Local Mode: support nvidia-docker2 natively
 * warning: Frameworks: add warning for upcoming breaking change that makes framework_version required
-* bug-fix: Changes to use correct s3 bucket and time range for dataframes in TrainingJobAnalytics.
 
 1.11.2
 ======
