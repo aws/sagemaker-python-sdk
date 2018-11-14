@@ -113,16 +113,15 @@ class _Job(object):
 
     @staticmethod
     def _format_string_uri_input(uri_input, validate_uri=True):
-        if isinstance(uri_input, str):
-            if validate_uri and uri_input.startswith('s3://'):
-                return s3_input(uri_input)
-            elif validate_uri and uri_input.startswith('file://'):
-                return file_input(uri_input)
-            elif validate_uri:
-                raise ValueError('Training input data must be a valid S3 or FILE URI: must start with "s3://" or '
-                                 '"file://"')
-            else:
-                return s3_input(uri_input)
+        if isinstance(uri_input, str) and validate_uri and uri_input.startswith('s3://'):
+            return s3_input(uri_input)
+        elif isinstance(uri_input, str) and validate_uri and uri_input.startswith('file://'):
+            return file_input(uri_input)
+        elif isinstance(uri_input, str) and validate_uri:
+            raise ValueError('Training input data must be a valid S3 or FILE URI: must start with "s3://" or '
+                             '"file://"')
+        elif isinstance(uri_input, str):
+            return s3_input(uri_input)
         elif isinstance(uri_input, s3_input):
             return uri_input
         elif isinstance(uri_input, file_input):
@@ -149,18 +148,17 @@ class _Job(object):
 
     @staticmethod
     def _format_model_uri_input(model_uri, validate_uri=True):
-        if isinstance(model_uri, string_types):
-            if validate_uri and model_uri.startswith('s3://'):
-                return s3_input(model_uri, input_mode='File', distribution='FullyReplicated',
-                                content_type='application/x-sagemaker-model')
-            elif validate_uri and model_uri.startswith('file://'):
-                return file_input(model_uri)
-            elif validate_uri:
-                raise ValueError('Model URI must be a valid S3 or FILE URI: must start with "s3://" or '
-                                 '"file://')
-            else:
-                return s3_input(model_uri, input_mode='File', distribution='FullyReplicated',
-                                content_type='application/x-sagemaker-model')
+        if isinstance(model_uri, string_types)and validate_uri and model_uri.startswith('s3://'):
+            return s3_input(model_uri, input_mode='File', distribution='FullyReplicated',
+                            content_type='application/x-sagemaker-model')
+        elif isinstance(model_uri, string_types) and validate_uri and model_uri.startswith('file://'):
+            return file_input(model_uri)
+        elif isinstance(model_uri, string_types) and validate_uri:
+            raise ValueError('Model URI must be a valid S3 or FILE URI: must start with "s3://" or '
+                             '"file://')
+        elif isinstance(model_uri, string_types):
+            return s3_input(model_uri, input_mode='File', distribution='FullyReplicated',
+                            content_type='application/x-sagemaker-model')
         else:
             raise ValueError('Cannot format model URI {}. Expecting str'.format(model_uri))
 

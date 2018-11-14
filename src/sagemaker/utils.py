@@ -61,11 +61,9 @@ def name_from_base(base, max_length=63, short=False):
 
 
 def airflow_name_from_base(base):
-    """Append airflow execution_date macro to the provided string.
-
-    This is the right way to have the return value be the same in different
-    Airflow operators.
-    https://airflow.apache.org/code.html?#macros
+    """Append airflow execution_date macro (https://airflow.apache.org/code.html?#macros)
+    to the provided string. The macro will beevaluated in Airflow operator runtime.
+    This guarantees that different operators will have same name returned by this function.
 
     Args:
         base (str): String used as prefix to generate the unique name.
