@@ -27,6 +27,7 @@ import sys
 import tarfile
 import tempfile
 
+from distutils.dir_util import copy_tree
 from six.moves.urllib.parse import urlparse
 from threading import Thread
 
@@ -217,9 +218,9 @@ class _SageMakerContainer(object):
             for volume in volumes:
                 host_dir, container_dir = volume.split(':')
                 if container_dir == '/opt/ml/model':
-                    sagemaker.local.utils.recursive_copy(host_dir, model_artifacts)
+                    copy_tree(host_dir, model_artifacts)
                 elif container_dir == '/opt/ml/output':
-                    sagemaker.local.utils.recursive_copy(host_dir, output_artifacts)
+                    copy_tree(host_dir, output_artifacts)
 
         # Tar Artifacts -> model.tar.gz and output.tar.gz
         model_files = [os.path.join(model_artifacts, name) for name in os.listdir(model_artifacts)]
