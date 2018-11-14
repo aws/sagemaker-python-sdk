@@ -23,6 +23,7 @@ from sagemaker.fw_utils import create_image_uri, UploadedCode
 from sagemaker.model import MODEL_SERVER_WORKERS_PARAM_NAME
 from sagemaker.session import s3_input
 from sagemaker.tensorflow import defaults, TensorFlow, TensorFlowModel, TensorFlowPredictor
+import sagemaker.tensorflow.estimator as tfe
 
 DATA_DIR = os.path.join(os.path.dirname(__file__), '..', 'data')
 SCRIPT_FILE = 'dummy_script.py'
@@ -649,7 +650,7 @@ def test_attach_custom_image(sagemaker_session):
     assert estimator.train_image() == training_image
 
 
-@patch('sagemaker.tensorflow.estimator.empty_framework_version_warning')
+@patch('sagemaker.fw_utils.empty_framework_version_warning')
 def test_empty_framework_version(warning, sagemaker_session):
     estimator = TensorFlow(entry_point=SCRIPT_PATH, role=ROLE, sagemaker_session=sagemaker_session,
                            train_instance_count=INSTANCE_COUNT, train_instance_type=INSTANCE_TYPE,
@@ -661,27 +662,27 @@ def test_empty_framework_version(warning, sagemaker_session):
 
 def _deprecated_args_msg(args):
     return '{} are deprecated in script mode. Please do not set {}.'.format(
-        ', '.join(TensorFlow._FRAMEWORK_MODE_ARGS), args)
+        ', '.join(tfe._FRAMEWORK_MODE_ARGS), args)
 
 
 def test_script_mode_deprecated_args(sagemaker_session):
-    with pytest.raises(ValueError) as e:
+    with pytest.raises(AttributeError) as e:
         _build_tf(sagemaker_session=sagemaker_session, py_version='py3', checkpoint_path='some_path')
     assert _deprecated_args_msg('checkpoint_path') in str(e.value)
 
-    with pytest.raises(ValueError) as e:
+    with pytest.raises(AttributeError) as e:
         _build_tf(sagemaker_session=sagemaker_session, py_version='py3', training_steps=1)
     assert _deprecated_args_msg('training_steps') in str(e.value)
 
-    with pytest.raises(ValueError) as e:
+    with pytest.raises(AttributeError) as e:
         _build_tf(sagemaker_session=sagemaker_session, script_mode=True, evaluation_steps=1)
     assert _deprecated_args_msg('evaluation_steps') in str(e.value)
 
-    with pytest.raises(ValueError) as e:
+    with pytest.raises(AttributeError) as e:
         _build_tf(sagemaker_session=sagemaker_session, script_mode=True, requirements_file='some_file')
     assert _deprecated_args_msg('requirements_file') in str(e.value)
 
-    with pytest.raises(ValueError) as e:
+    with pytest.raises(AttributeError) as e:
         _build_tf(sagemaker_session=sagemaker_session, script_mode=True, checkpoint_path='some_path',
                   requirements_file='some_file', training_steps=1, evaluation_steps=1)
     assert _deprecated_args_msg('training_steps, evaluation_steps, requirements_file, checkpoint_path') in str(e.value)
@@ -703,7 +704,7 @@ def test_script_mode_create_model(create_tfs_model, sagemaker_session):
     tf = _build_tf(sagemaker_session=sagemaker_session, py_version='py3')
     with pytest.raises(ValueError) as e:
         tf.create_model()
-    assert TensorFlow._SCRIPT_MODE_SERVING_ERROR_MSG in str(e)
+    assert tfe._SCRIPT_MODE_SERVING_ERROR_MSG in str(e)
     tf.create_model(endpoint_type='tensorflow-serving')
     create_tfs_model.assert_called_once()
 

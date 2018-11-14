@@ -22,8 +22,7 @@ import threading
 import time
 
 from sagemaker.estimator import Framework
-from sagemaker.fw_utils import create_image_uri, framework_name_from_image, framework_version_from_tag, \
-    empty_framework_version_warning, EMPTY_FRAMEWORK_VERSION_ERROR
+import sagemaker.fw_utils as fw
 from sagemaker.tensorflow.defaults import TF_VERSION
 from sagemaker.tensorflow.model import TensorFlowModel
 from sagemaker.tensorflow.serving import Model
@@ -32,6 +31,16 @@ from sagemaker.vpc_utils import VPC_CONFIG_DEFAULT
 
 logging.basicConfig()
 LOGGER = logging.getLogger('sagemaker')
+
+
+_FRAMEWORK_MODE_ARGS = ('training_steps', 'evaluation_steps', 'requirements_file', 'checkpoint_path')
+_SCRIPT_MODE = 'tensorflow-scriptmode'
+_SCRIPT_MODE_SERVING_ERROR_MSG = 'Script mode containers does not support serving yet. ' \
+                                 'Please use our new tensorflow-serving container by creating the model ' \
+                                 'with \'endpoint_type\' set to \'tensorflow-serving\'.'
+_SCRIPT_MODE_TENSORBOARD_WARNING = 'Tensorboard is not supported with script mode. You can run the following ' \
+                                   'command: tensorboard --logdir {} --host localhost --port 6006 This can be ' \
+                                   'run from anywhere with access to the S3 URI used as the logdir.'
 
 
 class Tensorboard(threading.Thread):
@@ -163,15 +172,6 @@ class TensorFlow(Framework):
 
     __framework_name__ = 'tensorflow'
 
-    _FRAMEWORK_MODE_ARGS = ['training_steps', 'evaluation_steps', 'requirements_file', 'checkpoint_path']
-    _SCRIPT_MODE = 'tensorflow-scriptmode'
-    _SCRIPT_MODE_SERVING_ERROR_MSG = 'Script mode containers does not support serving yet. ' \
-                                     'Please use our new tensorflow-serving container by creating the model ' \
-                                     'with \'endpoint_type\' set to \'tensorflow-serving\'.'
-    _SCRIPT_MODE_TENSORBOARD_WARNING = 'Tensorboard is not supported with script mode. You can run the following ' \
-                                       'command: tensorboard --logdir {} --host localhost --port 6006 This can be ' \
-                                       'run from anywhere with access to the S3 URI used as the logdir.'
-
     def __init__(self, training_steps=None, evaluation_steps=None, checkpoint_path=None, py_version='py2',
                  framework_version=None, model_dir=None, requirements_file='', image_name=None,
                  script_mode=False, distributions=None, **kwargs):
@@ -197,7 +197,7 @@ class TensorFlow(Framework):
             **kwargs: Additional kwargs passed to the Framework constructor.
         """
         if framework_version is None:
-            LOGGER.warning(empty_framework_version_warning(TF_VERSION, TF_VERSION))
+            LOGGER.warning(fw.empty_framework_version_warning(TF_VERSION, TF_VERSION))
         self.framework_version = framework_version or TF_VERSION
 
         super(TensorFlow, self).__init__(image_name=image_name, **kwargs)
@@ -221,21 +221,21 @@ class TensorFlow(Framework):
         if py_version == 'py3' or script_mode:
 
             if framework_version is None:
-                raise ValueError(EMPTY_FRAMEWORK_VERSION_ERROR)
+                raise AttributeError(fw.EMPTY_FRAMEWORK_VERSION_ERROR)
 
-            set_args = []
+            found_args = []
             if training_steps:
-                set_args.append('training_steps')
+                found_args.append('training_steps')
             if evaluation_steps:
-                set_args.append('evaluation_steps')
+                found_args.append('evaluation_steps')
             if requirements_file:
-                set_args.append('requirements_file')
+                found_args.append('requirements_file')
             if checkpoint_path:
-                set_args.append('checkpoint_path')
-            if set_args:
-                raise ValueError(
+                found_args.append('checkpoint_path')
+            if found_args:
+                raise AttributeError(
                     '{} are deprecated in script mode. Please do not set {}.'
-                    .format(', '.join(self._FRAMEWORK_MODE_ARGS), ', '.join(set_args))
+                    .format(', '.join(_FRAMEWORK_MODE_ARGS), ', '.join(found_args))
                 )
 
     def _validate_requirements_file(self, requirements_file):
@@ -286,7 +286,7 @@ class TensorFlow(Framework):
         if run_tensorboard_locally:
 
             if self.script_mode_enabled():
-                LOGGER.warning(self._SCRIPT_MODE_TENSORBOARD_WARNING.format(self.model_dir))
+                LOGGER.warning(_SCRIPT_MODE_TENSORBOARD_WARNING.format(self.model_dir))
                 return
 
             tensorboard = Tensorboard(self)
@@ -324,7 +324,7 @@ class TensorFlow(Framework):
                 init_params[argument] = value
 
         image_name = init_params.pop('image')
-        framework, py_version, tag = framework_name_from_image(image_name)
+        framework, py_version, tag = fw.framework_name_from_image(image_name)
         if not framework:
             # If we were unable to parse the framework name from the image it is not one of our
             # officially supported images, in this case just add the image to the init params.
@@ -337,7 +337,7 @@ class TensorFlow(Framework):
         # containing framework version, device type and python version (e.g. '1.5-gpu-py2').
         # For backward compatibility map deprecated image tag '1.0' to a '1.4' framework version
         # otherwise extract framework version from the tag itself.
-        init_params['framework_version'] = '1.4' if tag == '1.0' else framework_version_from_tag(
+        init_params['framework_version'] = '1.4' if tag == '1.0' else fw.framework_version_from_tag(
             tag)
 
         training_job_name = init_params['base_job_name']
@@ -375,7 +375,7 @@ class TensorFlow(Framework):
             return self._create_tfs_model(role=role, vpc_config_override=vpc_config_override)
 
         if self.script_mode_enabled():
-            raise ValueError(self._SCRIPT_MODE_SERVING_ERROR_MSG)
+            raise ValueError(_SCRIPT_MODE_SERVING_ERROR_MSG)
 
         return self._create_default_model(model_server_workers=model_server_workers, role=role,
                                           vpc_config_override=vpc_config_override)
@@ -443,7 +443,7 @@ class TensorFlow(Framework):
             return self.image_name
 
         if self.script_mode_enabled():
-            return create_image_uri(self.sagemaker_session.boto_region_name, self._SCRIPT_MODE,
-                                    self.train_instance_type, self.framework_version, self.py_version)
+            return fw.create_image_uri(self.sagemaker_session.boto_region_name, _SCRIPT_MODE,
+                                       self.train_instance_type, self.framework_version, self.py_version)
         else:
             return super(TensorFlow, self).train_image()

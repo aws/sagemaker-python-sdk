@@ -18,6 +18,8 @@ import pytest
 import boto3
 from sagemaker.tensorflow import TensorFlow
 from six.moves.urllib.parse import urlparse
+import tests.integ as integ
+import tests.integ.timeout as timeout
 
 RESOURCE_PATH = os.path.join(os.path.dirname(__file__), '..', 'data', 'tensorflow_mnist')
 SCRIPT = os.path.join(RESOURCE_PATH, 'mnist.py')
@@ -41,7 +43,9 @@ def test_mnist(sagemaker_session, instance_type):
     inputs = estimator.sagemaker_session.upload_data(
         path=os.path.join(RESOURCE_PATH, 'data'),
         key_prefix='scriptmode/mnist')
-    estimator.fit(inputs)
+
+    with timeout.timeout(minutes=integ.TRAINING_DEFAULT_TIMEOUT_MINUTES):
+        estimator.fit(inputs)
     _assert_s3_files_exist(estimator.model_dir,
                            ['graph.pbtxt', 'model.ckpt-0.index', 'model.ckpt-0.meta', 'saved_model.pb'])
 
@@ -59,7 +63,9 @@ def test_mnist_distributed(sagemaker_session, instance_type):
     inputs = estimator.sagemaker_session.upload_data(
         path=os.path.join(RESOURCE_PATH, 'data'),
         key_prefix='scriptmode/distributed_mnist')
-    estimator.fit(inputs)
+
+    with timeout.timeout(minutes=integ.TRAINING_DEFAULT_TIMEOUT_MINUTES):
+        estimator.fit(inputs)
     _assert_s3_files_exist(estimator.model_dir,
                            ['graph.pbtxt', 'model.ckpt-0.index', 'model.ckpt-0.meta', 'saved_model.pb'])
 
