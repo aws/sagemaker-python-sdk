@@ -24,6 +24,10 @@ from tensorflow.python.platform import tf_logging
 import logging as _logging
 import sys as _sys
 
+tf.logging.set_verbosity(tf.logging.DEBUG)
+_handler = _logging.StreamHandler(_sys.stdout)
+tf_logger = tf_logging._get_logger()
+tf_logger.handlers = [_handler]
 
 def cnn_model_fn(features, labels, mode):
   """Model function for CNN."""
@@ -147,10 +151,6 @@ def serving_input_fn():
 
 if __name__ == "__main__":
     args, unknown = _parse_args()
-    tf.logging.set_verbosity(tf.logging.DEBUG)
-    _handler = _logging.StreamHandler(_sys.stdout)
-    tf_logger = tf_logging._get_logger()
-    tf_logger.handlers = [_handler]
 
     if args.model_dir.startswith('s3://'):
         os.environ['S3_REGION'] = 'us-west-2'
