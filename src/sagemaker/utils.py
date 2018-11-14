@@ -26,6 +26,8 @@ from functools import wraps
 import six
 
 
+AIRFLOW_TIME_MACRO = "{{ execution_date.strftime('%Y-%m-%d-%H-%M-%S') }}"
+
 # Use the base name of the image as the job name if the user doesn't give us one
 def name_from_image(image):
     """Create a training job name based on the image name and a timestamp.
@@ -61,14 +63,18 @@ def name_from_base(base, max_length=63, short=False):
 def airflow_name_from_base(base):
     """Append airflow execution_date macro to the provided string.
 
+    This is the right way to have the return value be the same in different
+    Airflow operators.
+    https://airflow.apache.org/code.html?#macros
+
     Args:
         base (str): String used as prefix to generate the unique name.
 
     Returns:
         str: Input parameter with appended macro.
     """
-    macro = "{{ execution_date.strftime('%Y-%m-%d-%H-%M-%S') }}"
-    return "{}-{}".format(base, macro)
+
+    return "{}-{}".format(base, AIRFLOW_TIME_MACRO)
 
 
 def base_name_from_image(image):

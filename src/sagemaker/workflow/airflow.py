@@ -13,25 +13,21 @@
 
 import os
 
-from sagemaker.estimator import Framework
-from sagemaker.amazon.amazon_estimator import AmazonAlgorithmEstimatorBase, RecordSet
-from sagemaker.job import _Job
-from sagemaker.utils import base_name_from_image, airflow_name_from_base
-from sagemaker.model import DIR_PARAM_NAME, SCRIPT_PARAM_NAME, CLOUDWATCH_METRICS_PARAM_NAME, \
-    CONTAINER_LOG_LEVEL_PARAM_NAME, JOB_NAME_PARAM_NAME, SAGEMAKER_REGION_PARAM_NAME
+import sagemaker
+from sagemaker import job, utils, model
+from sagemaker.amazon import amazon_estimator
 
 
-def prepare_framework(estimator, s3_operations, default_bucket):
+def prepare_framework(estimator, s3_operations):
     """
     Prepare S3 operations (specify where to upload source_dir) and environment variables
         related to framework.
 
     Args:
-        estimator: The framework estimator to get information from and update.
-        s3_operations: The dict to specify s3 operations (upload source_dir).
-        default_bucket: The default bucket to use in training.
+        estimator (sagemaker.estimator.Estimator): The framework estimator to get information from and update.
+        s3_operations (dict): The dict to specify s3 operations (upload source_dir).
     """
-    bucket = estimator.code_location if estimator.code_location else default_bucket
+    bucket = estimator.code_location if estimator.code_location else estimator.sagemaker_session._default_bucket
     key = '{}/source/sourcedir.tar.gz'.format(estimator._current_job_name)
     script = os.path.basename(estimator.entry_point)
     if estimator.source_dir and estimator.source_dir.lower().startswith('s3://'):
@@ -44,33 +40,35 @@ def prepare_framework(estimator, s3_operations, default_bucket):
             'Key': key,
             'Tar': True
         }]
-    estimator._hyperparameters[DIR_PARAM_NAME] = code_dir
-    estimator._hyperparameters[SCRIPT_PARAM_NAME] = script
-    estimator._hyperparameters[CLOUDWATCH_METRICS_PARAM_NAME] = estimator.enable_cloudwatch_metrics
-    estimator._hyperparameters[CONTAINER_LOG_LEVEL_PARAM_NAME] = estimator.container_log_level
-    estimator._hyperparameters[JOB_NAME_PARAM_NAME] = estimator._current_job_name
-    estimator._hyperparameters[SAGEMAKER_REGION_PARAM_NAME] = estimator.sagemaker_session.boto_region_name
+    estimator._hyperparameters[model.DIR_PARAM_NAME] = code_dir
+    estimator._hyperparameters[model.SCRIPT_PARAM_NAME] = script
+    estimator._hyperparameters[model.CLOUDWATCH_METRICS_PARAM_NAME] = estimator.enable_cloudwatch_metrics
+    estimator._hyperparameters[model.CONTAINER_LOG_LEVEL_PARAM_NAME] = estimator.container_log_level
+    estimator._hyperparameters[model.JOB_NAME_PARAM_NAME] = estimator._current_job_name
+    estimator._hyperparameters[model.SAGEMAKER_REGION_PARAM_NAME] = estimator.sagemaker_session.boto_region_name
 
 
 def prepare_amazon_algorithm_estimator(estimator, inputs):
     """
     Set up amazon algorithm estimator, adding the required feature_dim hyperparameter from training data.
     Args:
-        estimator: The Amazon algorithm estimator to get information from and update.
-        inputs: The training data, must be in RecordSet format.
+        estimator (sagemaker.amazon.amazon_estimator.AmazonAlgorithmEstimatorBase):
+            The Amazon algorithm estimator to get information from and update.
+        inputs (single or list of sagemaker.amazon.amazon_estimator.RecordSet):
+            The training data, must be in RecordSet format.
     """
     if isinstance(inputs, list):
         for record in inputs:
-            if isinstance(record, RecordSet) and record.channel == 'train':
+            if isinstance(record, amazon_estimator.RecordSet) and record.channel == 'train':
                 estimator.feature_dim = record.feature_dim
                 break
-    elif isinstance(inputs, RecordSet):
+    elif isinstance(inputs, amazon_estimator.RecordSet):
         estimator.feature_dim = inputs.feature_dim
     else:
-        raise TypeError('The training data of Amazon Algorithm estimator is not represented by RecordSet.')
+        raise TypeError('Training data must be represented in RecordSet or list of RecordSets')
 
 
-def get_training_config(estimator, inputs=None, job_name=None):
+def training_config(estimator, inputs=None, job_name=None):
     """
     Export Airflow training config from an estimator
 
@@ -90,19 +88,19 @@ def get_training_config(estimator, inputs=None, job_name=None):
     if job_name is not None:
         estimator._current_job_name = job_name
     else:
-        base_name = estimator.base_job_name or base_name_from_image(estimator.train_image())
-        estimator._current_job_name = airflow_name_from_base(base_name)
+        base_name = estimator.base_job_name or utils.base_name_from_image(estimator.train_image())
+        estimator._current_job_name = utils.airflow_name_from_base(base_name)
 
     if estimator.output_path is None:
         estimator.output_path = 's3://{}/'.format(default_bucket)
 
-    if isinstance(estimator, Framework):
-        prepare_framework(estimator, s3_operations, default_bucket)
+    if isinstance(estimator, sagemaker.estimator.Framework):
+        prepare_framework(estimator, s3_operations)
 
-    elif isinstance(estimator, AmazonAlgorithmEstimatorBase):
+    elif isinstance(estimator, amazon_estimator.AmazonAlgorithmEstimatorBase):
         prepare_amazon_algorithm_estimator(estimator, inputs)
 
-    job_config = _Job._load_config(inputs, estimator, expand_role=False, validate_uri=False)
+    job_config = job._Job._load_config(inputs, estimator, expand_role=False, validate_uri=False)
 
     train_config = {
         'AlgorithmSpecification': {

@@ -14,13 +14,12 @@
 from __future__ import absolute_import
 
 import pytest
-from mock import Mock, patch
+import mock
 
-from sagemaker.workflow.airflow import get_training_config
-from sagemaker.estimator import Estimator
-from sagemaker.tensorflow import TensorFlow
-from sagemaker.amazon.amazon_estimator import RecordSet
-from sagemaker.amazon.ntm import NTM
+from sagemaker import estimator, tensorflow
+from sagemaker.workflow import airflow
+from sagemaker.amazon import amazon_estimator
+from sagemaker.amazon import ntm
 
 
 REGION = 'us-west-2'
@@ -29,19 +28,21 @@ BUCKET_NAME = 'output'
 
 @pytest.fixture()
 def sagemaker_session():
-    boto_mock = Mock(name='boto_session', region_name=REGION)
-    session = Mock(name='sagemaker_session', boto_session=boto_mock,
+    boto_mock = mock.Mock(name='boto_session', region_name=REGION)
+    session = mock.Mock(name='sagemaker_session', boto_session=boto_mock,
                    boto_region_name=REGION, config=None, local_mode=False)
-    session.default_bucket = Mock(name='default_bucket', return_value=BUCKET_NAME)
+    session.default_bucket = mock.Mock(name='default_bucket', return_value=BUCKET_NAME)
+    session._default_bucket = BUCKET_NAME
     return session
 
 
 def test_byo_training_config_required_args(sagemaker_session):
-    byo = Estimator(image_name="byo",
-                    role="{{ role }}",
-                    train_instance_count="{{ instance_count }}",
-                    train_instance_type="ml.c4.2xlarge",
-                    sagemaker_session=sagemaker_session)
+    byo = estimator.Estimator(
+        image_name="byo",
+        role="{{ role }}",
+        train_instance_count="{{ instance_count }}",
+        train_instance_type="ml.c4.2xlarge",
+        sagemaker_session=sagemaker_session)
 
     byo.set_hyperparameters(epochs=32,
                             feature_dim=1024,
@@ -49,7 +50,7 @@ def test_byo_training_config_required_args(sagemaker_session):
 
     data = {'train': "{{ training_data }}"}
 
-    training_config = get_training_config(byo, data)
+    config = airflow.training_config(byo, data)
     expected_config = {
         'AlgorithmSpecification': {
             'TrainingImage': 'byo',
@@ -82,27 +83,28 @@ def test_byo_training_config_required_args(sagemaker_session):
             'feature_dim': '1024',
             'mini_batch_size': '256'}
     }
-    assert training_config == expected_config
+    assert config == expected_config
 
 
 def test_byo_training_config_all_args(sagemaker_session):
-    byo = Estimator(image_name="byo",
-                    role="{{ role }}",
-                    train_instance_count="{{ instance_count }}",
-                    train_instance_type="ml.c4.2xlarge",
-                    train_volume_size="{{ train_volume_size }}",
-                    train_volume_kms_key="{{ train_volume_kms_key }}",
-                    train_max_run="{{ train_max_run }}",
-                    input_mode='Pipe',
-                    output_path="{{ output_path }}",
-                    output_kms_key="{{ output_volume_kms_key }}",
-                    base_job_name="{{ base_job_name }}",
-                    tags=[{"{{ key }}":"{{ value }}"}],
-                    subnets=["{{ subnet }}"],
-                    security_group_ids=["{{ security_group_ids }}"],
-                    model_uri="{{ model_uri }}",
-                    model_channel_name="{{ model_chanel }}",
-                    sagemaker_session=sagemaker_session)
+    byo = estimator.Estimator(
+        image_name="byo",
+        role="{{ role }}",
+        train_instance_count="{{ instance_count }}",
+        train_instance_type="ml.c4.2xlarge",
+        train_volume_size="{{ train_volume_size }}",
+        train_volume_kms_key="{{ train_volume_kms_key }}",
+        train_max_run="{{ train_max_run }}",
+        input_mode='Pipe',
+        output_path="{{ output_path }}",
+        output_kms_key="{{ output_volume_kms_key }}",
+        base_job_name="{{ base_job_name }}",
+        tags=[{"{{ key }}":"{{ value }}"}],
+        subnets=["{{ subnet }}"],
+        security_group_ids=["{{ security_group_ids }}"],
+        model_uri="{{ model_uri }}",
+        model_channel_name="{{ model_chanel }}",
+        sagemaker_session=sagemaker_session)
 
     byo.set_hyperparameters(epochs=32,
                             feature_dim=1024,
@@ -110,7 +112,7 @@ def test_byo_training_config_all_args(sagemaker_session):
 
     data = {'train': "{{ training_data }}"}
 
-    training_config = get_training_config(byo, data)
+    config = airflow.training_config(byo, data)
     expected_config = {
         'AlgorithmSpecification': {
             'TrainingImage': 'byo',
@@ -165,22 +167,23 @@ def test_byo_training_config_all_args(sagemaker_session):
             'mini_batch_size': '256'},
         'Tags': [{'{{ key }}': '{{ value }}'}]
     }
-    assert training_config == expected_config
+    assert config == expected_config
 
 
 def test_framework_training_config_required_args(sagemaker_session):
-    tf = TensorFlow(entry_point="{{ entry_point }}",
-                    framework_version='1.10.0',
-                    training_steps=1000,
-                    evaluation_steps=100,
-                    role="{{ role }}",
-                    train_instance_count="{{ instance_count }}",
-                    train_instance_type="ml.c4.2xlarge",
-                    sagemaker_session=sagemaker_session)
+    tf = tensorflow.TensorFlow(
+        entry_point="{{ entry_point }}",
+        framework_version='1.10.0',
+        training_steps=1000,
+        evaluation_steps=100,
+        role="{{ role }}",
+        train_instance_count="{{ instance_count }}",
+        train_instance_type="ml.c4.2xlarge",
+        sagemaker_session=sagemaker_session)
 
     data = "{{ training_data }}"
 
-    training_config = get_training_config(tf, data)
+    config = airflow.training_config(tf, data)
     expected_config = {
         'AlgorithmSpecification': {
             'TrainingImage': '520713654638.dkr.ecr.us-west-2.amazonaws.com/sagemaker-tensorflow:1.10.0-cpu-py2',
@@ -232,39 +235,40 @@ def test_framework_training_config_required_args(sagemaker_session):
                 'Tar': True}]
         }
     }
-    assert training_config == expected_config
+    assert config == expected_config
 
 
 def test_framework_training_config_all_args(sagemaker_session):
-    tf = TensorFlow(entry_point="{{ entry_point }}",
-                    source_dir="{{ source_dir }}",
-                    enable_cloudwatch_metrics=False,
-                    container_log_level="{{ log_level }}",
-                    code_location="{{ bucket_name }}",
-                    training_steps=1000,
-                    evaluation_steps=100,
-                    checkpoint_path="{{ checkpoint_path }}",
-                    py_version='py2',
-                    framework_version='1.10.0',
-                    requirements_file="",
-                    role="{{ role }}",
-                    train_instance_count="{{ instance_count }}",
-                    train_instance_type="ml.c4.2xlarge",
-                    train_volume_size="{{ train_volume_size }}",
-                    train_volume_kms_key="{{ train_volume_kms_key }}",
-                    train_max_run="{{ train_max_run }}",
-                    input_mode='Pipe',
-                    output_path="{{ output_path }}",
-                    output_kms_key="{{ output_volume_kms_key }}",
-                    base_job_name="{{ base_job_name }}",
-                    tags=[{"{{ key }}": "{{ value }}"}],
-                    subnets=["{{ subnet }}"],
-                    security_group_ids=["{{ security_group_ids }}"],
-                    sagemaker_session=sagemaker_session)
+    tf = tensorflow.TensorFlow(
+        entry_point="{{ entry_point }}",
+        source_dir="{{ source_dir }}",
+        enable_cloudwatch_metrics=False,
+        container_log_level="{{ log_level }}",
+        code_location="{{ bucket_name }}",
+        training_steps=1000,
+        evaluation_steps=100,
+        checkpoint_path="{{ checkpoint_path }}",
+        py_version='py2',
+        framework_version='1.10.0',
+        requirements_file="",
+        role="{{ role }}",
+        train_instance_count="{{ instance_count }}",
+        train_instance_type="ml.c4.2xlarge",
+        train_volume_size="{{ train_volume_size }}",
+        train_volume_kms_key="{{ train_volume_kms_key }}",
+        train_max_run="{{ train_max_run }}",
+        input_mode='Pipe',
+        output_path="{{ output_path }}",
+        output_kms_key="{{ output_volume_kms_key }}",
+        base_job_name="{{ base_job_name }}",
+        tags=[{"{{ key }}": "{{ value }}"}],
+        subnets=["{{ subnet }}"],
+        security_group_ids=["{{ security_group_ids }}"],
+        sagemaker_session=sagemaker_session)
 
     data = "{{ training_data }}"
 
-    training_config = get_training_config(tf, data)
+    config = airflow.training_config(tf, data)
     expected_config = {
         'AlgorithmSpecification': {
             'TrainingImage': '520713654638.dkr.ecr.us-west-2.amazonaws.com/sagemaker-tensorflow:1.10.0-cpu-py2',
@@ -323,22 +327,23 @@ def test_framework_training_config_all_args(sagemaker_session):
                 'Tar': True}]
         }
     }
-    assert training_config == expected_config
+    assert config == expected_config
 
 
 def test_amazon_alg_training_config_required_args(sagemaker_session):
-    ntm = NTM(role="{{ role }}",
-              num_topics=10,
-              train_instance_count="{{ instance_count }}",
-              train_instance_type="ml.c4.2xlarge",
-              sagemaker_session=sagemaker_session)
+    ntm_estimator = ntm.NTM(
+        role="{{ role }}",
+        num_topics=10,
+        train_instance_count="{{ instance_count }}",
+        train_instance_type="ml.c4.2xlarge",
+        sagemaker_session=sagemaker_session)
 
-    ntm.epochs = 32
-    ntm.mini_batch_size = 256
+    ntm_estimator.epochs = 32
+    ntm_estimator.mini_batch_size = 256
 
-    record = RecordSet("{{ record }}", 10000, 100, 'S3Prefix')
+    record = amazon_estimator.RecordSet("{{ record }}", 10000, 100, 'S3Prefix')
 
-    training_config = get_training_config(ntm, record)
+    config = airflow.training_config(ntm_estimator, record)
     expected_config = {
         'AlgorithmSpecification': {
             'TrainingImage': '174872318107.dkr.ecr.us-west-2.amazonaws.com/ntm:1',
@@ -372,32 +377,33 @@ def test_amazon_alg_training_config_required_args(sagemaker_session):
             'feature_dim': '100'
         }
     }
-    assert training_config == expected_config
+    assert config == expected_config
 
 
 def test_amazon_alg_training_config_all_args(sagemaker_session):
-    ntm = NTM(role="{{ role }}",
-              num_topics=10,
-              train_instance_count="{{ instance_count }}",
-              train_instance_type="ml.c4.2xlarge",
-              train_volume_size="{{ train_volume_size }}",
-              train_volume_kms_key="{{ train_volume_kms_key }}",
-              train_max_run="{{ train_max_run }}",
-              input_mode='Pipe',
-              output_path="{{ output_path }}",
-              output_kms_key="{{ output_volume_kms_key }}",
-              base_job_name="{{ base_job_name }}",
-              tags=[{"{{ key }}": "{{ value }}"}],
-              subnets=["{{ subnet }}"],
-              security_group_ids=["{{ security_group_ids }}"],
-              sagemaker_session=sagemaker_session)
+    ntm_estimator = ntm.NTM(
+        role="{{ role }}",
+        num_topics=10,
+        train_instance_count="{{ instance_count }}",
+        train_instance_type="ml.c4.2xlarge",
+        train_volume_size="{{ train_volume_size }}",
+        train_volume_kms_key="{{ train_volume_kms_key }}",
+        train_max_run="{{ train_max_run }}",
+        input_mode='Pipe',
+        output_path="{{ output_path }}",
+        output_kms_key="{{ output_volume_kms_key }}",
+        base_job_name="{{ base_job_name }}",
+        tags=[{"{{ key }}": "{{ value }}"}],
+        subnets=["{{ subnet }}"],
+        security_group_ids=["{{ security_group_ids }}"],
+        sagemaker_session=sagemaker_session)
 
-    ntm.epochs = 32
-    ntm.mini_batch_size = 256
+    ntm_estimator.epochs = 32
+    ntm_estimator.mini_batch_size = 256
 
-    record = RecordSet("{{ record }}", 10000, 100, 'S3Prefix')
+    record = amazon_estimator.RecordSet("{{ record }}", 10000, 100, 'S3Prefix')
 
-    training_config = get_training_config(ntm, record)
+    config = airflow.training_config(ntm_estimator, record)
     expected_config = {
         'AlgorithmSpecification': {
             'TrainingImage': '174872318107.dkr.ecr.us-west-2.amazonaws.com/ntm:1',
@@ -441,4 +447,4 @@ def test_amazon_alg_training_config_all_args(sagemaker_session):
         'Tags': [{'{{ key }}': '{{ value }}'}]
     }
 
-    assert training_config == expected_config
+    assert config == expected_config
