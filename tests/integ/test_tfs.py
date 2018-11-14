@@ -42,7 +42,6 @@ def tfs_predictor(instance_type, sagemaker_session, tf_full_version):
 
 
 @pytest.mark.continuous_testing
-@pytest.mark.regional_testing
 def test_predict(tfs_predictor, instance_type):
     if ('p3' in instance_type) and (
             tests.integ.REGION in tests.integ.HOSTING_P3_UNAVAILABLE_REGIONS):
