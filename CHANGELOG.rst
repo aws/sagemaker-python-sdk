@@ -2,8 +2,8 @@
 CHANGELOG
 =========
 
-1.14.2-dev
-==========
+1.14.2
+=======
 
 * bug-fix: support ``CustomAttributes`` argument in local mode ``invoke_endpoint`` requests
 * enhancement: add ``content_type`` parameter to ``sagemaker.tensorflow.serving.Predictor``
@@ -13,6 +13,9 @@ CHANGELOG
 * build: added pylint
 * build: upgrade docker-compose to 1.23
 * enhancement: Frameworks: update warning for not setting framework_version as we aren't planning a breaking change anymore
+* enhancement: Session: remove hardcoded 'training' from job status error message
+* bug-fix: Updated Cloudwatch namespace for metrics in TrainingJobsAnalytics
+
 
 1.14.1
 ======

@@ -636,7 +636,8 @@ class Session(object):
 
         if status != 'Completed' and status != 'Stopped':
             reason = desc.get('FailureReason', '(No reason provided)')
-            raise ValueError('Error training {}: {} Reason: {}'.format(job, status, reason))
+            job_type = status_key_name.replace('JobStatus', ' job')
+            raise ValueError('Error for {} {}: {} Reason: {}'.format(job_type, job, status, reason))
 
     def wait_for_endpoint(self, endpoint, poll=5):
         """Wait for an Amazon SageMaker endpoint deployment to complete.
