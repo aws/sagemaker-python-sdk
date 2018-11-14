@@ -13,6 +13,7 @@
 
 from __future__ import absolute_import
 
+import pytest
 from mock import Mock, patch
 
 from sagemaker.workflow.airflow import get_training_config
@@ -22,12 +23,25 @@ from sagemaker.amazon.amazon_estimator import RecordSet
 from sagemaker.amazon.ntm import NTM
 
 
-@patch('sagemaker.session.Session.default_bucket', return_value='output')
-def test_byo_training_config_required_args(default_bucket):
+REGION = 'us-west-2'
+BUCKET_NAME = 'output'
+
+
+@pytest.fixture()
+def sagemaker_session():
+    boto_mock = Mock(name='boto_session', region_name=REGION)
+    session = Mock(name='sagemaker_session', boto_session=boto_mock,
+                   boto_region_name=REGION, config=None, local_mode=False)
+    session.default_bucket = Mock(name='default_bucket', return_value=BUCKET_NAME)
+    return session
+
+
+def test_byo_training_config_required_args(sagemaker_session):
     byo = Estimator(image_name="byo",
                     role="{{ role }}",
                     train_instance_count="{{ instance_count }}",
-                    train_instance_type="ml.c4.2xlarge")
+                    train_instance_type="ml.c4.2xlarge",
+                    sagemaker_session=sagemaker_session)
 
     byo.set_hyperparameters(epochs=32,
                             feature_dim=1024,
@@ -71,7 +85,7 @@ def test_byo_training_config_required_args(default_bucket):
     assert training_config == expected_config
 
 
-def test_byo_training_config_all_args():
+def test_byo_training_config_all_args(sagemaker_session):
     byo = Estimator(image_name="byo",
                     role="{{ role }}",
                     train_instance_count="{{ instance_count }}",
@@ -87,7 +101,8 @@ def test_byo_training_config_all_args():
                     subnets=["{{ subnet }}"],
                     security_group_ids=["{{ security_group_ids }}"],
                     model_uri="{{ model_uri }}",
-                    model_channel_name="{{ model_chanel }}")
+                    model_channel_name="{{ model_chanel }}",
+                    sagemaker_session=sagemaker_session)
 
     byo.set_hyperparameters(epochs=32,
                             feature_dim=1024,
@@ -166,15 +181,15 @@ def test_byo_training_config_all_args():
     assert training_config == expected_config
 
 
-@patch('sagemaker.session.Session.default_bucket', return_value='output')
-def test_framework_training_config_required_args(default_bucket):
+def test_framework_training_config_required_args(sagemaker_session):
     tf = TensorFlow(entry_point="{{ entry_point }}",
                     framework_version='1.10.0',
                     training_steps=1000,
                     evaluation_steps=100,
                     role="{{ role }}",
                     train_instance_count="{{ instance_count }}",
-                    train_instance_type="ml.c4.2xlarge")
+                    train_instance_type="ml.c4.2xlarge",
+                    sagemaker_session=sagemaker_session)
 
     data = "{{ training_data }}"
 
@@ -233,7 +248,7 @@ def test_framework_training_config_required_args(default_bucket):
     assert training_config == expected_config
 
 
-def test_framework_training_config_all_args():
+def test_framework_training_config_all_args(sagemaker_session):
     tf = TensorFlow(entry_point="{{ entry_point }}",
                     source_dir="{{ source_dir }}",
                     enable_cloudwatch_metrics=False,
@@ -257,7 +272,8 @@ def test_framework_training_config_all_args():
                     base_job_name="{{ base_job_name }}",
                     tags=[{"{{ key }}": "{{ value }}"}],
                     subnets=["{{ subnet }}"],
-                    security_group_ids=["{{ security_group_ids }}"])
+                    security_group_ids=["{{ security_group_ids }}"],
+                    sagemaker_session=sagemaker_session)
 
     data = "{{ training_data }}"
 
@@ -323,12 +339,12 @@ def test_framework_training_config_all_args():
     assert training_config == expected_config
 
 
-@patch('sagemaker.session.Session.default_bucket', return_value='output')
-def test_amazon_alg_training_config_required_args(default_bucket):
+def test_amazon_alg_training_config_required_args(sagemaker_session):
     ntm = NTM(role="{{ role }}",
               num_topics=10,
               train_instance_count="{{ instance_count }}",
-              train_instance_type="ml.c4.2xlarge")
+              train_instance_type="ml.c4.2xlarge",
+              sagemaker_session=sagemaker_session)
 
     ntm.epochs = 32
     ntm.mini_batch_size = 256
@@ -372,7 +388,7 @@ def test_amazon_alg_training_config_required_args(default_bucket):
     assert training_config == expected_config
 
 
-def test_amazon_alg_training_config_all_args():
+def test_amazon_alg_training_config_all_args(sagemaker_session):
     ntm = NTM(role="{{ role }}",
               num_topics=10,
               train_instance_count="{{ instance_count }}",
@@ -386,7 +402,8 @@ def test_amazon_alg_training_config_all_args():
               base_job_name="{{ base_job_name }}",
               tags=[{"{{ key }}": "{{ value }}"}],
               subnets=["{{ subnet }}"],
-              security_group_ids=["{{ security_group_ids }}"])
+              security_group_ids=["{{ security_group_ids }}"],
+              sagemaker_session=sagemaker_session)
 
     ntm.epochs = 32
     ntm.mini_batch_size = 256
