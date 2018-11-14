@@ -22,6 +22,15 @@ from sagemaker.model import DIR_PARAM_NAME, SCRIPT_PARAM_NAME, CLOUDWATCH_METRIC
 
 
 def prepare_framework(estimator, s3_operations, default_bucket):
+    """
+    Prepare S3 operations (specify where to upload source_dir) and environment variables
+        related to framework.
+
+    Args:
+        estimator: The framework estimator to get information from and update.
+        s3_operations: The dict to specify s3 operations (upload source_dir).
+        default_bucket: The default bucket to use in training.
+    """
     bucket = estimator.code_location if estimator.code_location else default_bucket
     key = '{}/source/sourcedir.tar.gz'.format(estimator._current_job_name)
     script = os.path.basename(estimator.entry_point)
@@ -44,6 +53,12 @@ def prepare_framework(estimator, s3_operations, default_bucket):
 
 
 def prepare_amazon_algorithm_estimator(estimator, inputs):
+    """
+    Set up amazon algorithm estimator, adding the required feature_dim hyperparameter from training data.
+    Args:
+        estimator: The Amazon algorithm estimator to get information from and update.
+        inputs: The training data, must be in RecordSet format.
+    """
     if isinstance(inputs, list):
         for record in inputs:
             if isinstance(record, RecordSet) and record.channel == 'train':
@@ -56,6 +71,19 @@ def prepare_amazon_algorithm_estimator(estimator, inputs):
 
 
 def get_training_config(estimator, inputs=None, job_name=None):
+    """
+    Export Airflow training config from an estimator
+
+    Args:
+        estimator: The estimator to export training config from. Can be a BYO estimator,
+            Framework estimator or Amazon algorithm estimator.
+        inputs: The training data.
+        job_name: Specify a training job name if needed.
+
+    Returns:
+        A dict of training config that can be directly used by SageMakerTrainingOperator
+            in Airflow.
+    """
     default_bucket = estimator.sagemaker_session.default_bucket()
     s3_operations = {}
 
