@@ -186,7 +186,8 @@ class TensorFlow(Framework):
             framework_version (str): TensorFlow version you want to use for executing your model training code.
                 List of supported versions https://github.com/aws/sagemaker-python-sdk#tensorflow-sagemaker-estimators
             model_dir (str): S3 location where the checkpoint data and models can be exported to during training
-                (default: None). If not specified a default S3 URI will be generated.
+                (default: None). If not specified a default S3 URI will be generated. It will be passed in the
+                training script as one of the command line arguments.
             requirements_file (str): Path to a ``requirements.txt`` file (default: ''). The path should be within and
                 relative to ``source_dir``. Details on the format can be found in the
                 `Pip User Guide <https://pip.pypa.io/en/stable/reference/pip_install/#requirements-file-format>`_.
@@ -199,7 +200,14 @@ class TensorFlow(Framework):
             script_mode (bool): If set to True will the estimator will use the Script Mode containers (default: False).
                 This will be ignored if py_version is set to 'py3'.
             distribution (dict): A dictionary with information on how to run distributed training
-                (default: None).
+                (default: None). Currently we only support distributed training with parameter servers. To enable it
+                use the following setup:
+                    {
+                        'parameter_server':
+                        {
+                            'enabled': True
+                        }
+                    }
             **kwargs: Additional kwargs passed to the Framework constructor.
         """
         if framework_version is None:
@@ -289,9 +297,8 @@ class TensorFlow(Framework):
         if run_tensorboard_locally and wait is False:
             raise ValueError("Tensorboard is not supported with async fit")
 
-        if self._script_mode_enabled():
-            if run_tensorboard_locally:
-                LOGGER.warning(_SCRIPT_MODE_TENSORBOARD_WARNING.format(self.model_dir))
+        if self._script_mode_enabled() and run_tensorboard_locally:
+            LOGGER.warning(_SCRIPT_MODE_TENSORBOARD_WARNING.format(self.model_dir))
             fit_super()
         elif run_tensorboard_locally:
             tensorboard = Tensorboard(self)
