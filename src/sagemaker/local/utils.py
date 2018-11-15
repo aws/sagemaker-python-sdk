@@ -15,6 +15,7 @@ from __future__ import absolute_import
 import os
 import shutil
 
+from distutils.dir_util import copy_tree
 from six.moves.urllib.parse import urlparse
 
 
@@ -45,6 +46,7 @@ def move_to_destination(source, destination, job_name, sagemaker_session):
     Args:
         source (str): root directory to move
         destination (str): file:// or s3:// URI that source will be moved to.
+        job_name (str): SageMaker job name.
         sagemaker_session (sagemaker.Session): a sagemaker_session to interact with S3 if needed
 
     Returns:
@@ -67,19 +69,12 @@ def move_to_destination(source, destination, job_name, sagemaker_session):
 
 
 def recursive_copy(source, destination):
-    """Similar to shutil.copy but the destination directory can exist. Existing files will be overriden.
+    """A wrapper around distutils.dir_util.copy_tree but won't throw any exception when the source
+    directory does not exist.
+
     Args:
         source (str): source path
         destination (str): destination path
     """
-    for root, dirs, files in os.walk(source):
-        root = os.path.relpath(root, source)
-        current_path = os.path.join(source, root)
-        target_path = os.path.join(destination, root)
-
-        for file in files:
-            shutil.copy(os.path.join(current_path, file), os.path.join(target_path, file))
-        for d in dirs:
-            new_dir = os.path.join(target_path, d)
-            if not os.path.exists(new_dir):
-                os.mkdir(os.path.join(target_path, d))
+    if os.path.isdir(source):
+        copy_tree(source, destination)
