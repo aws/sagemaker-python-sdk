@@ -3,11 +3,12 @@ CHANGELOG
 =========
 
 1.14.3-dev
-=====
+======
 
 * bug-fix: Changes to use correct S3 bucket and time range for dataframes in TrainingJobAnalytics.
 * bug-fix: Local Mode: correctly handle the case where the model output folder doesn't exist yet
 * doc-fix: Fix typos in tensorflow serving documentation
+* doc-fix: Add estimator base classes to API docs
 
 1.14.2
 ======
