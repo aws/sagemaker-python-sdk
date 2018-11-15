@@ -478,7 +478,7 @@ def test_framework_tuning_config(sagemaker_session):
         max_jobs="{{ max_job }}",
         max_parallel_jobs="{{ max_parallel_job }}",
         tags=[{'{{ key }}': '{{ value }}'}],
-        base_tuning_job_name= "{{ base_job_name }}")
+        base_tuning_job_name="{{ base_job_name }}")
 
     data = "{{ training_data }}"
 
@@ -562,5 +562,5 @@ def test_framework_tuning_config(sagemaker_session):
                 'Tar': True}]
         }
     }
-    
+
     assert config == expected_config
