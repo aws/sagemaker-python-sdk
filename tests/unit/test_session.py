@@ -349,7 +349,7 @@ def test_tune_warm_start(sagemaker_session, warm_start_type, parents):
                            resource_config=RESOURCE_CONFIG,
                            stop_condition=SAMPLE_STOPPING_CONDITION,
                            tags=None,
-                           warm_start_config=WarmStartConfig(type=WarmStartTypes(warm_start_type),
+                           warm_start_config=WarmStartConfig(warm_start_type=WarmStartTypes(warm_start_type),
                                                              parents=parents).to_input_req())
 
 

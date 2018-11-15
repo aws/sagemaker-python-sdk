@@ -143,7 +143,7 @@ def test_tuning_kmeans_identical_dataset_algorithm_tuner_raw(sagemaker_session,
           hyperparameter_ranges=hyperparameter_ranges, max_parallel_jobs=1, max_jobs=1)
     child_tuner = _tune(kmeans_estimator, kmeans_train_set, job_name=child_tuning_job_name,
                         hyperparameter_ranges=hyperparameter_ranges,
-                        warm_start_config=WarmStartConfig(type=WarmStartTypes.IDENTICAL_DATA_AND_ALGORITHM,
+                        warm_start_config=WarmStartConfig(warm_start_type=WarmStartTypes.IDENTICAL_DATA_AND_ALGORITHM,
                                                           parents=[parent_tuning_job_name]), max_parallel_jobs=1,
                         max_jobs=1)
 

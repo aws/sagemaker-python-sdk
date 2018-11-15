@@ -160,22 +160,22 @@ class WarmStartConfig(object):
         {"p1","p2"}
     """
 
-    def __init__(self, type, parents):
+    def __init__(self, warm_start_type, parents):
         """Initializes the WarmStartConfig with the provided WarmStartType and parents.
 
         Args:
-            type (sagemaker.tuner.WarmStartTypes): This should be one of the supported warm start types in WarmStartType
+            warm_start_type (sagemaker.tuner.WarmStartTypes): This should be one of the supported warm start types in WarmStartType
             parents (set{str}): Set of parent tuning jobs which will be used to warm start the new tuning job.
         """
 
-        if type not in WarmStartTypes:
+        if warm_start_type not in WarmStartTypes:
             raise ValueError(
-                "Invalid type: {}, valid warm start types are: [{}]".format(type, [t for t in WarmStartTypes]))
+                "Invalid type: {}, valid warm start types are: [{}]".format(warm_start_type, [t for t in WarmStartTypes]))
 
         if not parents:
             raise ValueError("Invalid parents: {}, parents should not be None/empty".format(parents))
 
-        self.type = type
+        self.type = warm_start_type
         self.parents = set(parents)
 
     @classmethod
@@ -216,7 +216,7 @@ class WarmStartConfig(object):
         for parent in warm_start_config[PARENT_HYPERPARAMETER_TUNING_JOBS]:
             parents.append(parent[HYPERPARAMETER_TUNING_JOB_NAME])
 
-        return cls(type=WarmStartTypes(warm_start_config[WARM_START_TYPE]),
+        return cls(warm_start_type=WarmStartTypes(warm_start_config[WARM_START_TYPE]),
                    parents=parents)
 
     def to_input_req(self):
@@ -226,7 +226,7 @@ class WarmStartConfig(object):
             dict: Containing the "WarmStartType" and "ParentHyperParameterTuningJobs" as the first class fields.
 
         Examples:
-            >>> warm_start_config = WarmStartConfig(type=WarmStartTypes.TransferLearning,parents=["p1,p2"])
+            >>> warm_start_config = WarmStartConfig(warm_start_type=WarmStartTypes.TransferLearning,parents=["p1,p2"])
             >>> warm_start_config.to_input_req()
             {
                 "WarmStartType":"TransferLearning",
@@ -601,7 +601,7 @@ class HyperparameterTuner(object):
                     except KeyError:
                         pass
 
-    def transfer_learning_tuner(self, additional_parents={}, estimator=None):
+    def transfer_learning_tuner(self, additional_parents=None, estimator=None):
         """Creates a new tuner by copying the request fields from the provided parent to the new instance of
         ``HyperparameterTuner``. Followed by addition of warm start configuration with the type as "TransferLearning"
         and parents as the union of provided list of ``additional_parents`` and the ``self``. Also, training image in
@@ -629,7 +629,7 @@ class HyperparameterTuner(object):
 
         return _transfer_learning_tuner
 
-    def identical_dataset_and_algorithm_tuner(self, additional_parents={}):
+    def identical_dataset_and_algorithm_tuner(self, additional_parents=None):
         """Creates a new tuner by copying the request fields from the provided parent to the new instance of
         ``HyperarameterTuner``. Followed by addition of warm start configuration with the type as
         "IdenticalDataAndAlgorithm" and parents as the union of provided list of ``additional_parents`` and the ``self``
@@ -675,7 +675,7 @@ class HyperparameterTuner(object):
                                    objective_type=self.objective_type,
                                    max_jobs=self.max_jobs,
                                    max_parallel_jobs=self.max_parallel_jobs,
-                                   warm_start_config=WarmStartConfig(type=warm_start_type,
+                                   warm_start_config=WarmStartConfig(warm_start_type=warm_start_type,
                                                                      parents=all_parents))
 
 
