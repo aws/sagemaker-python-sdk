@@ -6,6 +6,7 @@ CHANGELOG
 =====
 
 * bug-fix: Local Mode: correctly handle the case where the model output folder doesn't exist yet
+* feature: add support for MetricDefinitions
 
 1.14.2
 =====

@@ -170,6 +170,25 @@ Here is an end to end example of how to use a SageMaker Estimator:
     # Tears down the SageMaker endpoint
     mxnet_estimator.delete_endpoint()
 
+Training Metrics
+~~~~~~~~~~~~~~~~
+The SageMaker Python SDK allows you to specify a name and a regular expression for metrics you want to track for training.
+A regular expression (regex) matches what is in the training algorithm logs, like a search function.
+Here is an example of how to define metrics:
+
+.. code:: python
+
+    # Configure an BYO Estimator with metric definitions (no training happens yet)
+    byo_estimator = Estimator(image_name=image_name,
+                          role='SageMakerRole', train_instance_count=1,
+                          train_instance_type='ml.c4.xlarge',
+                          sagemaker_session=sagemaker_session,
+                          metric_definitions=[{'Name': 'test:msd', 'Regex': '#quality_metric: host=\S+, test msd <loss>=(\S+)'},
+                                              {'Name': 'test:ssd', 'Regex': '#quality_metric: host=\S+, test ssd <loss>=(\S+)'}])
+
+All Amazon SageMaker algorithms come with built-in support for metrics.
+You can go to `the AWS documentation <https://docs.aws.amazon.com/sagemaker/latest/dg/algos.html>`__ for more details about built-in metrics of each Amazon SageMaker algorithm.
+
 Local Mode
 ~~~~~~~~~~
 

@@ -179,6 +179,7 @@ MAX_TIME = 3 * 60 * 60
 JOB_NAME = 'jobname'
 TAGS = [{'Name': 'some-tag', 'Value': 'value-for-tag'}]
 VPC_CONFIG = {'Subnets': ['foo'], 'SecurityGroupIds': ['bar']}
+METRIC_DEFINITONS = [{'Name': 'validation-rmse', 'Regex': 'validation-rmse=(\d\.\d+)'}]
 
 DEFAULT_EXPECTED_TRAIN_JOB_ARGS = {
     'OutputDataConfig': {
@@ -263,7 +264,8 @@ def test_train_pack_to_request(sagemaker_session):
 
     sagemaker_session.train(image=IMAGE, input_mode='File', input_config=in_config, role=EXPANDED_ROLE,
                             job_name=JOB_NAME, output_config=out_config, resource_config=resource_config,
-                            hyperparameters=None, stop_condition=stop_cond, tags=None, vpc_config=VPC_CONFIG)
+                            hyperparameters=None, stop_condition=stop_cond, tags=None, vpc_config=VPC_CONFIG,
+                            metric_definitions=None)
 
     assert sagemaker_session.sagemaker_client.method_calls[0] == (
         'create_training_job', (), DEFAULT_EXPECTED_TRAIN_JOB_ARGS)
@@ -326,13 +328,15 @@ def test_train_pack_to_request_with_optional_params(sagemaker_session):
 
     sagemaker_session.train(image=IMAGE, input_mode='File', input_config=in_config, role=EXPANDED_ROLE,
                             job_name=JOB_NAME, output_config=out_config, resource_config=resource_config,
-                            vpc_config=VPC_CONFIG, hyperparameters=hyperparameters, stop_condition=stop_cond, tags=TAGS)
+                            vpc_config=VPC_CONFIG, hyperparameters=hyperparameters, stop_condition=stop_cond, tags=TAGS,
+                            metric_definitions=METRIC_DEFINITONS)
 
     _, _, actual_train_args = sagemaker_session.sagemaker_client.method_calls[0]
 
     assert actual_train_args['VpcConfig'] == VPC_CONFIG
     assert actual_train_args['HyperParameters'] == hyperparameters
     assert actual_train_args['Tags'] == TAGS
+    assert actual_train_args['AlgorithmSpecification']['MetricDefinitions'] == METRIC_DEFINITONS
 
 
 def test_transform_pack_to_request(sagemaker_session):
