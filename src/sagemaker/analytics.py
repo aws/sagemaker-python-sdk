@@ -20,7 +20,7 @@ import logging
 from six import with_metaclass
 
 from sagemaker.session import Session
-from sagemaker.utils import DeferredError, extract_name_from_job_arn
+from sagemaker.utils import DeferredError
 
 try:
     import pandas as pd
