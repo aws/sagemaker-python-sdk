@@ -8,6 +8,7 @@ CHANGELOG
 * bug-fix: Changes to use correct S3 bucket and time range for dataframes in TrainingJobAnalytics.
 * bug-fix: Local Mode: correctly handle the case where the model output folder doesn't exist yet
 * feature: Add APIs to export Airflow training and tuning config
+* doc-fix: Fix typos in tensorflow serving documentation
 
 1.14.2
 ======
@@ -22,7 +23,8 @@ CHANGELOG
 * enhancement: Frameworks: update warning for not setting framework_version as we aren't planning a breaking change anymore
 * enhancement: Session: remove hardcoded 'training' from job status error message
 * bug-fix: Updated Cloudwatch namespace for metrics in TrainingJobsAnalytics
-
+* bug-fix: Changes to use correct s3 bucket and time range for dataframes in TrainingJobAnalytics.
+* enhancement: Remove MetricDefinition lookup via tuning job in TrainingJobAnalytics
 
 1.14.1
 ======
