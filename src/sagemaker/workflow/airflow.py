@@ -74,7 +74,7 @@ def prepare_amazon_algorithm_estimator(estimator, inputs, mini_batch_size=None):
     estimator.mini_batch_size = mini_batch_size
 
 
-def training_config(estimator, inputs=None, job_name=None, **kargs):  # noqa: C901
+def training_config(estimator, inputs=None, job_name=None, mini_batch_size=None):  # noqa: C901
     """Export Airflow training config from an estimator
 
     Args:
@@ -99,6 +99,8 @@ def training_config(estimator, inputs=None, job_name=None, **kargs):  # noqa: C9
                 a different channel of training data.
 
         job_name (str): Specify a training job name if needed.
+        mini_batch_size (int): Specify this argument only when estimator is a built-in estimator of an
+            Amazon algorithm. For other estimators, batch size should be specified in the estimator.
 
     Returns:
         A dict of training config that can be directly used by SageMakerTrainingOperator
@@ -120,7 +122,7 @@ def training_config(estimator, inputs=None, job_name=None, **kargs):  # noqa: C9
         prepare_framework(estimator, s3_operations)
 
     elif isinstance(estimator, amazon_estimator.AmazonAlgorithmEstimatorBase):
-        prepare_amazon_algorithm_estimator(estimator, inputs, **kargs)
+        prepare_amazon_algorithm_estimator(estimator, inputs, mini_batch_size)
 
     job_config = job._Job._load_config(inputs, estimator, expand_role=False, validate_uri=False)
 
