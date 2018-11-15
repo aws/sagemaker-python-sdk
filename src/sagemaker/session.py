@@ -345,12 +345,14 @@ class Session(object):
                     'TrainingInputMode': input_mode,
                 },
                 'RoleArn': role,
-                'InputDataConfig': input_config,
                 'OutputDataConfig': output_config,
                 'ResourceConfig': resource_config,
                 'StoppingCondition': stop_condition,
             }
         }
+
+        if input_config is not None:
+            tune_request['TrainingJobDefinition']['InputDataConfig'] = input_config
 
         if metric_definitions is not None:
             tune_request['TrainingJobDefinition']['AlgorithmSpecification']['MetricDefinitions'] = metric_definitions
