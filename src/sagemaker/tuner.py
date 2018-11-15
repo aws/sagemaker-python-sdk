@@ -286,8 +286,8 @@ class HyperparameterTuner(object):
             base_tuning_job_name (str): Prefix for the hyperparameter tuning job name when the
                 :meth:`~sagemaker.tuner.HyperparameterTuner.fit` method launches. If not specified,
                 a default job name is generaged, based on the training image name and current timestamp.
-            warm_start_config (sagemaker.tuner.WarmStartConfig): A ``WarmStartConfig`` object that has been initialized with
-                the configuration defining the nature of warm start tuning job.
+            warm_start_config (sagemaker.tuner.WarmStartConfig): A ``WarmStartConfig`` object that has been initialized
+                with the configuration defining the nature of warm start tuning job.
         """
         self._hyperparameter_ranges = hyperparameter_ranges
         if self._hyperparameter_ranges is None or len(self._hyperparameter_ranges) == 0:
