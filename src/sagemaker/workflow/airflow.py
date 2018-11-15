@@ -15,7 +15,7 @@ from __future__ import print_function, absolute_import
 import os
 
 import sagemaker
-from sagemaker import job, utils, model
+from sagemaker import job, model, utils
 from sagemaker.amazon import amazon_estimator
 
 
@@ -74,8 +74,8 @@ def prepare_amazon_algorithm_estimator(estimator, inputs, mini_batch_size=None):
     estimator.mini_batch_size = mini_batch_size
 
 
-def training_config(estimator, inputs=None, job_name=None, mini_batch_size=None):  # noqa: C901
-    """Export Airflow training config from an estimator
+def training_base_config(estimator, inputs=None, job_name=None, mini_batch_size=None):
+    """Export Airflow base training config from an estimator
 
     Args:
         estimator (sagemaker.estimator.EstimatroBase):
@@ -123,7 +123,6 @@ def training_config(estimator, inputs=None, job_name=None, mini_batch_size=None)
 
     elif isinstance(estimator, amazon_estimator.AmazonAlgorithmEstimatorBase):
         prepare_amazon_algorithm_estimator(estimator, inputs, mini_batch_size)
-
     job_config = job._Job._load_config(inputs, estimator, expand_role=False, validate_uri=False)
 
     train_config = {
@@ -132,7 +131,6 @@ def training_config(estimator, inputs=None, job_name=None, mini_batch_size=None)
             'TrainingInputMode': estimator.input_mode
         },
         'OutputDataConfig': job_config['output_config'],
-        'TrainingJobName': estimator._current_job_name,
         'StoppingCondition': job_config['stop_condition'],
         'ResourceConfig': job_config['resource_config'],
         'RoleArn': job_config['role'],
@@ -150,22 +148,59 @@ def training_config(estimator, inputs=None, job_name=None, mini_batch_size=None)
     if hyperparameters and len(hyperparameters) > 0:
         train_config['HyperParameters'] = hyperparameters
 
-    if estimator.tags is not None:
-        train_config['Tags'] = estimator.tags
-
     if s3_operations:
         train_config['S3Operations'] = s3_operations
 
     return train_config
 
 
-def tuning_config(tuner, inputs, job_name=None):
-    train_config = training_config(tuner.estimator, inputs, job_name)
+def training_config(estimator, inputs=None, job_name=None, mini_batch_size=None):  # noqa: C901
+    """Export Airflow training config from an estimator
 
-    train_config.pop('Tags', None)
-    train_config.pop('TrainingJobName', None)
-    s3_operations = train_config.pop('S3Operations', None)
+    Args:
+        estimator (sagemaker.estimator.EstimatroBase):
+            The estimator to export training config from. Can be a BYO estimator,
+            Framework estimator or Amazon algorithm estimator.
+        inputs: Information about the training data. Please refer to the ``fit()`` method of
+                the associated estimator, as this can take any of the following forms:
+
+            * (str) - The S3 location where training data is saved.
+            * (dict[str, str] or dict[str, sagemaker.session.s3_input]) - If using multiple channels for
+                training data, you can specify a dict mapping channel names
+                to strings or :func:`~sagemaker.session.s3_input` objects.
+            * (sagemaker.session.s3_input) - Channel configuration for S3 data sources that can provide
+                additional information about the training dataset. See :func:`sagemaker.session.s3_input`
+                for full details.
+            * (sagemaker.amazon.amazon_estimator.RecordSet) - A collection of
+                Amazon :class:~`Record` objects serialized and stored in S3.
+                For use with an estimator for an Amazon algorithm.
+            * (list[sagemaker.amazon.amazon_estimator.RecordSet]) - A list of
+                :class:~`sagemaker.amazon.amazon_estimator.RecordSet` objects, where each instance is
+                a different channel of training data.
+
+        job_name (str): Specify a training job name if needed.
+        mini_batch_size (int): Specify this argument only when estimator is a built-in estimator of an
+            Amazon algorithm. For other estimators, batch size should be specified in the estimator.
+
+    Returns:
+        A dict of training config that can be directly used by SageMakerTrainingOperator
+            in Airflow.
+    """
+
+    train_config = training_base_config(estimator, inputs, job_name, mini_batch_size)
+
+    train_config['TrainingJobName'] = estimator._current_job_name
+
+    if estimator.tags is not None:
+        train_config['Tags'] = estimator.tags
+
+    return train_config
+
+
+def tuning_config(tuner, inputs, job_name=None):
+    train_config = training_base_config(tuner.estimator, inputs)
     hyperparameters = train_config.pop('HyperParameters', None)
+    s3_operations = train_config.pop('S3Operations', None)
 
     if hyperparameters and len(hyperparameters) > 0:
         tuner.static_hyperparameters = \

@@ -16,7 +16,7 @@ from __future__ import absolute_import
 import pytest
 import mock
 
-from sagemaker import estimator, tensorflow, mxnet, tuner
+from sagemaker import estimator, mxnet, tensorflow, tuner
 from sagemaker.workflow import airflow
 from sagemaker.amazon import amazon_estimator
 from sagemaker.amazon import ntm
@@ -452,7 +452,7 @@ def test_framework_tuning_config(sagemaker_session):
     mxnet_estimator = mxnet.MXNet(
         entry_point="{{ entry_point }}",
         source_dir="{{ source_dir }}",
-        py_version='py2',
+        py_version='py3',
         framework_version='1.3.0',
         role="{{ role }}",
         train_instance_count=1,
@@ -512,7 +512,7 @@ def test_framework_tuning_config(sagemaker_session):
             }},
         'TrainingJobDefinition': {
             'AlgorithmSpecification': {
-                'TrainingImage': '520713654638.dkr.ecr.us-west-2.amazonaws.com/sagemaker-mxnet:1.3.0-cpu-py2',
+                'TrainingImage': '520713654638.dkr.ecr.us-west-2.amazonaws.com/sagemaker-mxnet:1.3.0-cpu-py3',
                 'TrainingInputMode': 'File',
                 'MetricDefinitions': [{
                     'Name': 'Validation-accuracy',
@@ -559,7 +559,8 @@ def test_framework_tuning_config(sagemaker_session):
                 'Bucket': 'output',
                 'Key': "{{ base_job_name }}-"
                        "{{ execution_date.strftime('%Y-%m-%d-%H-%M-%S') }}/source/sourcedir.tar.gz",
-                'Tar': True}]
+                'Tar': True
+            }]
         }
     }
 
