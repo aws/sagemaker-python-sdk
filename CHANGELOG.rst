@@ -9,6 +9,7 @@ CHANGELOG
 * bug-fix: Local Mode: correctly handle the case where the model output folder doesn't exist yet
 * doc-fix: Fix typos in tensorflow serving documentation
 * doc-fix: Add estimator base classes to API docs
+* feature: HyperparameterTuner: Make input channels optional
 
 1.14.2
 ======
