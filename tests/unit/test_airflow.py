@@ -16,7 +16,7 @@ from __future__ import absolute_import
 import pytest
 import mock
 
-from sagemaker import estimator, tensorflow
+from sagemaker import estimator, tensorflow, mxnet, tuner
 from sagemaker.workflow import airflow
 from sagemaker.amazon import amazon_estimator
 from sagemaker.amazon import ntm
@@ -339,11 +339,10 @@ def test_amazon_alg_training_config_required_args(sagemaker_session):
         sagemaker_session=sagemaker_session)
 
     ntm_estimator.epochs = 32
-    ntm_estimator.mini_batch_size = 256
 
     record = amazon_estimator.RecordSet("{{ record }}", 10000, 100, 'S3Prefix')
 
-    config = airflow.training_config(ntm_estimator, record)
+    config = airflow.training_config(ntm_estimator, record, mini_batch_size=256)
     expected_config = {
         'AlgorithmSpecification': {
             'TrainingImage': '174872318107.dkr.ecr.us-west-2.amazonaws.com/ntm:1',
@@ -399,11 +398,10 @@ def test_amazon_alg_training_config_all_args(sagemaker_session):
         sagemaker_session=sagemaker_session)
 
     ntm_estimator.epochs = 32
-    ntm_estimator.mini_batch_size = 256
 
     record = amazon_estimator.RecordSet("{{ record }}", 10000, 100, 'S3Prefix')
 
-    config = airflow.training_config(ntm_estimator, record)
+    config = airflow.training_config(ntm_estimator, record, mini_batch_size=256)
     expected_config = {
         'AlgorithmSpecification': {
             'TrainingImage': '174872318107.dkr.ecr.us-west-2.amazonaws.com/ntm:1',
@@ -447,4 +445,122 @@ def test_amazon_alg_training_config_all_args(sagemaker_session):
         'Tags': [{'{{ key }}': '{{ value }}'}]
     }
 
+    assert config == expected_config
+
+
+def test_framework_tuning_config(sagemaker_session):
+    mxnet_estimator = mxnet.MXNet(
+        entry_point="{{ entry_point }}",
+        source_dir="{{ source_dir }}",
+        py_version='py2',
+        framework_version='1.3.0',
+        role="{{ role }}",
+        train_instance_count=1,
+        train_instance_type='ml.m4.xlarge',
+        sagemaker_session=sagemaker_session,
+        base_job_name="{{ base_job_name }}",
+        hyperparameters={'batch_size': 100})
+
+    hyperparameter_ranges = {'optimizer': tuner.CategoricalParameter(['sgd', 'Adam']),
+                             'learning_rate': tuner.ContinuousParameter(0.01, 0.2),
+                             'num_epoch': tuner.IntegerParameter(10, 50)}
+    objective_metric_name = 'Validation-accuracy'
+    metric_definitions = [{'Name': 'Validation-accuracy',
+                           'Regex': 'Validation-accuracy=([0-9\\.]+)'}]
+
+    mxnet_tuner = tuner.HyperparameterTuner(
+        estimator=mxnet_estimator,
+        objective_metric_name=objective_metric_name,
+        hyperparameter_ranges=hyperparameter_ranges,
+        metric_definitions=metric_definitions,
+        strategy='Bayesian',
+        objective_type='Maximize',
+        max_jobs="{{ max_job }}",
+        max_parallel_jobs="{{ max_parallel_job }}",
+        tags=[{'{{ key }}': '{{ value }}'}],
+        base_tuning_job_name= "{{ base_job_name }}")
+
+    data = "{{ training_data }}"
+
+    config = airflow.tuning_config(mxnet_tuner, data)
+    expected_config = {
+        'HyperParameterTuningJobName': "{{ base_job_name }}-{{ execution_date.strftime('%y%m%d-%H%M') }}",
+        'HyperParameterTuningJobConfig': {
+            'Strategy': 'Bayesian',
+            'HyperParameterTuningJobObjective': {
+                'Type': 'Maximize',
+                'MetricName': 'Validation-accuracy'
+            },
+            'ResourceLimits': {
+                'MaxNumberOfTrainingJobs': '{{ max_job }}',
+                'MaxParallelTrainingJobs': '{{ max_parallel_job }}'
+            },
+            'ParameterRanges': {
+                'ContinuousParameterRanges': [{
+                    'Name': 'learning_rate',
+                    'MinValue': '0.01',
+                    'MaxValue': '0.2'}],
+                'CategoricalParameterRanges': [{
+                    'Name': 'optimizer',
+                    'Values': ['"sgd"', '"Adam"']
+                }],
+                'IntegerParameterRanges': [{
+                    'Name': 'num_epoch',
+                    'MinValue': '10',
+                    'MaxValue': '50'
+                }]
+            }},
+        'TrainingJobDefinition': {
+            'AlgorithmSpecification': {
+                'TrainingImage': '520713654638.dkr.ecr.us-west-2.amazonaws.com/sagemaker-mxnet:1.3.0-cpu-py2',
+                'TrainingInputMode': 'File',
+                'MetricDefinitions': [{
+                    'Name': 'Validation-accuracy',
+                    'Regex': 'Validation-accuracy=([0-9\\.]+)'
+                }]
+            },
+            'OutputDataConfig': {
+                'S3OutputPath': 's3://output/'
+            },
+            'StoppingCondition': {
+                'MaxRuntimeInSeconds': 86400
+            },
+            'ResourceConfig': {
+                'InstanceCount': 1,
+                'InstanceType': 'ml.m4.xlarge',
+                'VolumeSizeInGB': 30
+            },
+            'RoleArn': '{{ role }}',
+            'InputDataConfig': [{
+                'DataSource': {
+                    'S3DataSource': {
+                        'S3DataDistributionType': 'FullyReplicated',
+                        'S3DataType': 'S3Prefix',
+                        'S3Uri': '{{ training_data }}'
+                    }
+                },
+                'ChannelName': 'training'
+            }],
+            'StaticHyperParameters': {
+                'batch_size': '100',
+                'sagemaker_submit_directory': '"s3://output/{{ base_job_name }}'
+                                              '-{{ execution_date.strftime(\'%Y-%m-%d-%H-%M-%S\') }}'
+                                              '/source/sourcedir.tar.gz"',
+                'sagemaker_program': '"{{ entry_point }}"',
+                'sagemaker_enable_cloudwatch_metrics': 'false',
+                'sagemaker_container_log_level': '20',
+                'sagemaker_job_name': '"{{ base_job_name }}-'
+                                      '{{ execution_date.strftime(\'%Y-%m-%d-%H-%M-%S\') }}"',
+                'sagemaker_region': '"us-west-2"'}},
+        'Tags': [{'{{ key }}': '{{ value }}'}],
+        'S3Operations': {
+            'S3Upload': [{
+                'Path': '{{ source_dir }}',
+                'Bucket': 'output',
+                'Key': "{{ base_job_name }}-"
+                       "{{ execution_date.strftime('%Y-%m-%d-%H-%M-%S') }}/source/sourcedir.tar.gz",
+                'Tar': True}]
+        }
+    }
+    
     assert config == expected_config

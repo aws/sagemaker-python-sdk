@@ -48,14 +48,19 @@ def prepare_framework(estimator, s3_operations):
     estimator._hyperparameters[model.SAGEMAKER_REGION_PARAM_NAME] = estimator.sagemaker_session.boto_region_name
 
 
-def prepare_amazon_algorithm_estimator(estimator, inputs):
+def prepare_amazon_algorithm_estimator(estimator, inputs, mini_batch_size=None):
     """ Set up amazon algorithm estimator, adding the required `feature_dim` hyperparameter from training data.
 
     Args:
         estimator (sagemaker.amazon.amazon_estimator.AmazonAlgorithmEstimatorBase):
             An estimator for a built-in Amazon algorithm to get information from and update.
-        inputs (single or list of sagemaker.amazon.amazon_estimator.RecordSet):
-            The training data, must be in RecordSet format.
+        inputs: The training data.
+            * (sagemaker.amazon.amazon_estimator.RecordSet) - A collection of
+                Amazon :class:~`Record` objects serialized and stored in S3.
+                For use with an estimator for an Amazon algorithm.
+            * (list[sagemaker.amazon.amazon_estimator.RecordSet]) - A list of
+                :class:~`sagemaker.amazon.amazon_estimator.RecordSet` objects, where each instance is
+                a different channel of training data.
     """
     if isinstance(inputs, list):
         for record in inputs:
@@ -66,17 +71,33 @@ def prepare_amazon_algorithm_estimator(estimator, inputs):
         estimator.feature_dim = inputs.feature_dim
     else:
         raise TypeError('Training data must be represented in RecordSet or list of RecordSets')
+    estimator.mini_batch_size = mini_batch_size
 
 
-def training_config(estimator, inputs=None, job_name=None):  # noqa: C901 - suppress complexity warning for this method
+def training_config(estimator, inputs=None, job_name=None, **kargs):  # noqa: C901 - suppress complexity warning for this method
     """Export Airflow training config from an estimator
 
     Args:
         estimator (sagemaker.estimator.EstimatroBase):
             The estimator to export training config from. Can be a BYO estimator,
             Framework estimator or Amazon algorithm estimator.
-        inputs (str, dict, single or list of sagemaker.amazon.amazon_estimator.RecordSet):
-            The training data.
+        inputs: Information about the training data. Please refer to the ``fit()`` method of
+                the associated estimator, as this can take any of the following forms:
+
+            * (str) - The S3 location where training data is saved.
+            * (dict[str, str] or dict[str, sagemaker.session.s3_input]) - If using multiple channels for
+                training data, you can specify a dict mapping channel names
+                to strings or :func:`~sagemaker.session.s3_input` objects.
+            * (sagemaker.session.s3_input) - Channel configuration for S3 data sources that can provide
+                additional information about the training dataset. See :func:`sagemaker.session.s3_input`
+                for full details.
+            * (sagemaker.amazon.amazon_estimator.RecordSet) - A collection of
+                Amazon :class:~`Record` objects serialized and stored in S3.
+                For use with an estimator for an Amazon algorithm.
+            * (list[sagemaker.amazon.amazon_estimator.RecordSet]) - A list of
+                :class:~`sagemaker.amazon.amazon_estimator.RecordSet` objects, where each instance is
+                a different channel of training data.
+
         job_name (str): Specify a training job name if needed.
 
     Returns:
@@ -99,7 +120,7 @@ def training_config(estimator, inputs=None, job_name=None):  # noqa: C901 - supp
         prepare_framework(estimator, s3_operations)
 
     elif isinstance(estimator, amazon_estimator.AmazonAlgorithmEstimatorBase):
-        prepare_amazon_algorithm_estimator(estimator, inputs)
+        prepare_amazon_algorithm_estimator(estimator, inputs, **kargs)
 
     job_config = job._Job._load_config(inputs, estimator, expand_role=False, validate_uri=False)
 
@@ -134,3 +155,56 @@ def training_config(estimator, inputs=None, job_name=None):  # noqa: C901 - supp
         train_config['S3Operations'] = s3_operations
 
     return train_config
+
+
+def tuning_config(tuner, inputs, job_name=None):
+    train_config = training_config(tuner.estimator, inputs, job_name)
+
+    train_config.pop('Tags', None)
+    train_config.pop('TrainingJobName', None)
+    s3_operations = train_config.pop('S3Operations', None)
+    hyperparameters = train_config.pop('HyperParameters', None)
+
+    if hyperparameters and len(hyperparameters) > 0:
+        tuner.static_hyperparameters = \
+            {utils.to_str(k): utils.to_str(v) for (k, v) in hyperparameters.items()}
+
+    if job_name is not None:
+        tuner._current_job_name = job_name
+    else:
+        base_name = tuner.base_tuning_job_name or utils.base_name_from_image(tuner.estimator.train_image())
+        tuner._current_job_name = utils.airflow_name_from_base(base_name, tuner.TUNING_JOB_NAME_MAX_LENGTH, True)
+
+    for hyperparameter_name in tuner._hyperparameter_ranges.keys():
+        tuner.static_hyperparameters.pop(hyperparameter_name, None)
+
+    train_config['StaticHyperParameters'] = tuner.static_hyperparameters
+
+    tune_config = {
+        'HyperParameterTuningJobName': tuner._current_job_name,
+        'HyperParameterTuningJobConfig': {
+            'Strategy': tuner.strategy,
+            'HyperParameterTuningJobObjective': {
+                'Type': tuner.objective_type,
+                'MetricName': tuner.objective_metric_name,
+            },
+            'ResourceLimits': {
+                'MaxNumberOfTrainingJobs': tuner.max_jobs,
+                'MaxParallelTrainingJobs': tuner.max_parallel_jobs,
+            },
+            'ParameterRanges': tuner.hyperparameter_ranges(),
+        },
+        'TrainingJobDefinition': train_config
+    }
+
+    if tuner.metric_definitions is not None:
+        tune_config['TrainingJobDefinition']['AlgorithmSpecification']['MetricDefinitions'] = \
+            tuner.metric_definitions
+
+    if tuner.tags is not None:
+        tune_config['Tags'] = tuner.tags
+
+    if s3_operations is not None:
+        tune_config['S3Operations'] = s3_operations
+
+    return tune_config
