@@ -50,8 +50,8 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):
     def __init__(self, role, train_instance_count, train_instance_type,
                  train_volume_size=30, train_volume_kms_key=None, train_max_run=24 * 60 * 60, input_mode='File',
                  output_path=None, output_kms_key=None, base_job_name=None, sagemaker_session=None, tags=None,
-                 subnets=None, security_group_ids=None, metric_definitions=None, model_uri=None,
-                 model_channel_name='model'):
+                 subnets=None, security_group_ids=None, model_uri=None, model_channel_name='model',
+                 metric_definitions=None):
         """Initialize an ``EstimatorBase`` instance.
 
         Args:
@@ -88,10 +88,6 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):
             subnets (list[str]): List of subnet ids. If not specified training job will be created without VPC config.
             security_group_ids (list[str]): List of security group ids. If not specified training job will be created
                 without VPC config.
-            metric_definitions (list[dict]): A list of dictionaries that defines the metric(s) used to evaluate the
-                training jobs. Each dictionary contains two keys: 'Name' for the name of the metric, and 'Regex' for
-                the regular expression used to extract the metric from the logs. This should be defined only
-                for jobs that don't use an Amazon algorithm.
             model_uri (str): URI where a pre-trained model is stored, either locally or in S3 (default: None). If
                 specified, the estimator will create a channel pointing to the model so the training job can download
                 it. This model can be a 'model.tar.gz' from a previous training job, or other artifacts coming from a
@@ -102,6 +98,10 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):
 
                 More information: https://docs.aws.amazon.com/sagemaker/latest/dg/cdf-training.html#td-deserialization
             model_channel_name (str): Name of the channel where 'model_uri' will be downloaded (default: 'model').
+            metric_definitions (list[dict]): A list of dictionaries that defines the metric(s) used to evaluate the
+                training jobs. Each dictionary contains two keys: 'Name' for the name of the metric, and 'Regex' for
+                the regular expression used to extract the metric from the logs. This should be defined only
+                for jobs that don't use an Amazon algorithm.
         """
         self.role = role
         self.train_instance_count = train_instance_count
@@ -475,7 +475,7 @@ class Estimator(EstimatorBase):
                  train_volume_size=30, train_volume_kms_key=None, train_max_run=24 * 60 * 60,
                  input_mode='File', output_path=None, output_kms_key=None, base_job_name=None,
                  sagemaker_session=None, hyperparameters=None, tags=None, subnets=None, security_group_ids=None,
-                 metric_definitions=None, model_uri=None, model_channel_name='model'):
+                 model_uri=None, model_channel_name='model', metric_definitions=None):
         """Initialize an ``Estimator`` instance.
 
         Args:
@@ -516,10 +516,6 @@ class Estimator(EstimatorBase):
             subnets (list[str]): List of subnet ids. If not specified training job will be created without VPC config.
             security_group_ids (list[str]): List of security group ids. If not specified training job will be created
                 without VPC config.
-            metric_definitions (list[dict]): A list of dictionaries that defines the metric(s) used to evaluate the
-                training jobs. Each dictionary contains two keys: 'Name' for the name of the metric, and 'Regex' for
-                the regular expression used to extract the metric from the logs. This should be defined only
-                for jobs that don't use an Amazon algorithm.
             model_uri (str): URI where a pre-trained model is stored, either locally or in S3 (default: None). If
                 specified, the estimator will create a channel pointing to the model so the training job can download
                 it. This model can be a 'model.tar.gz' from a previous training job, or other artifacts coming from a
@@ -530,14 +526,18 @@ class Estimator(EstimatorBase):
 
                 More information: https://docs.aws.amazon.com/sagemaker/latest/dg/cdf-training.html#td-deserialization
             model_channel_name (str): Name of the channel where 'model_uri' will be downloaded (default: 'model').
+            metric_definitions (list[dict]): A list of dictionaries that defines the metric(s) used to evaluate the
+                training jobs. Each dictionary contains two keys: 'Name' for the name of the metric, and 'Regex' for
+                the regular expression used to extract the metric from the logs. This should be defined only
+                for jobs that don't use an Amazon algorithm.
         """
         self.image_name = image_name
         self.hyperparam_dict = hyperparameters.copy() if hyperparameters else {}
         super(Estimator, self).__init__(role, train_instance_count, train_instance_type,
                                         train_volume_size, train_volume_kms_key, train_max_run, input_mode,
                                         output_path, output_kms_key, base_job_name, sagemaker_session,
-                                        tags, subnets, security_group_ids, metric_definitions, model_uri=model_uri,
-                                        model_channel_name=model_channel_name)
+                                        tags, subnets, security_group_ids, model_uri=model_uri,
+                                        model_channel_name=model_channel_name, metric_definitions=metric_definitions)
 
     def train_image(self):
         """
