@@ -56,7 +56,8 @@ def test_mnist_distributed(sagemaker_session, instance_type):
                            train_instance_count=2,
                            train_instance_type=instance_type,
                            sagemaker_session=sagemaker_session,
-                           py_version='py3',
+                           py_version=integ.PYTHON_VERSION,
+                           script_mode=True,
                            framework_version='1.11',
                            distributions=DISTRIBUTION_ENABLED,
                            base_job_name='test-tf-sm-mnist')

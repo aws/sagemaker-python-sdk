@@ -690,22 +690,19 @@ def test_script_mode_deprecated_args(sagemaker_session):
 
 def test_script_mode_enabled(sagemaker_session):
     tf = _build_tf(sagemaker_session=sagemaker_session, py_version='py3')
-    assert tf.script_mode_enabled() is True
+    assert tf._script_mode_enabled() is True
 
     tf = _build_tf(sagemaker_session=sagemaker_session, script_mode=True)
-    assert tf.script_mode_enabled() is True
+    assert tf._script_mode_enabled() is True
 
     tf = _build_tf(sagemaker_session=sagemaker_session)
-    assert tf.script_mode_enabled() is False
+    assert tf._script_mode_enabled() is False
 
 
 @patch('sagemaker.tensorflow.estimator.TensorFlow._create_tfs_model')
 def test_script_mode_create_model(create_tfs_model, sagemaker_session):
     tf = _build_tf(sagemaker_session=sagemaker_session, py_version='py3')
-    with pytest.raises(ValueError) as e:
-        tf.create_model()
-    assert tfe._SCRIPT_MODE_SERVING_ERROR_MSG in str(e)
-    tf.create_model(endpoint_type='tensorflow-serving')
+    tf.create_model()
     create_tfs_model.assert_called_once()
 
 

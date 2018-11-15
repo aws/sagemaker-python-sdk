@@ -10,19 +10,16 @@
 # distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
-from __future__ import absolute_import
+from __future__ import absolute_import, division, print_function
 
-from __future__ import division
-from __future__ import print_function
-
-import numpy as np
-import tensorflow as tf
-import os
-import json
 import argparse
-from tensorflow.python.platform import tf_logging
+import json
 import logging as _logging
+import numpy as np
+import os
 import sys as _sys
+import tensorflow as tf
+from tensorflow.python.platform import tf_logging
 
 tf.logging.set_verbosity(tf.logging.DEBUG)
 _handler = _logging.StreamHandler(_sys.stdout)
@@ -137,11 +134,11 @@ def _parse_args():
     # hyperparameters sent by the client are passed as command-line arguments to the script.
     parser.add_argument('--epochs', type=int, default=1)
     # Data, model, and output directories
-    parser.add_argument('--output-data-dir', type=str, default=os.environ['SM_OUTPUT_DATA_DIR'])
-    parser.add_argument('--model_dir', type=str, default=os.environ['SM_MODEL_DIR'])
-    parser.add_argument('--train', type=str, default=os.environ['SM_CHANNEL_TRAINING'])
-    parser.add_argument('--hosts', type=list, default=json.loads(os.environ['SM_HOSTS']))
-    parser.add_argument('--current-host', type=str, default=os.environ['SM_CURRENT_HOST'])
+    parser.add_argument('--output-data-dir', type=str, default=os.environ.get('SM_OUTPUT_DATA_DIR'))
+    parser.add_argument('--model_dir', type=str)
+    parser.add_argument('--train', type=str, default=os.environ.get('SM_CHANNEL_TRAINING'))
+    parser.add_argument('--hosts', type=list, default=json.loads(os.environ.get('SM_HOSTS')))
+    parser.add_argument('--current-host', type=str, default=os.environ.get('SM_CURRENT_HOST'))
 
     return parser.parse_known_args()
 

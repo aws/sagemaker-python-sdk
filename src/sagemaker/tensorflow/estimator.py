@@ -185,6 +185,8 @@ class TensorFlow(Framework):
             py_version (str): Python version you want to use for executing your model training code (default: 'py2').
             framework_version (str): TensorFlow version you want to use for executing your model training code.
                 List of supported versions https://github.com/aws/sagemaker-python-sdk#tensorflow-sagemaker-estimators
+            model_dir (str): S3 location where the checkpoint data and models can be exported to during training
+                (default: None). If not specified a default S3 URI will be generated.
             requirements_file (str): Path to a ``requirements.txt`` file (default: ''). The path should be within and
                 relative to ``source_dir``. Details on the format can be found in the
                 `Pip User Guide <https://pip.pypa.io/en/stable/reference/pip_install/#requirements-file-format>`_.
@@ -194,6 +196,10 @@ class TensorFlow(Framework):
                     Examples:
                         123.dkr.ecr.us-west-2.amazonaws.com/my-custom-image:1.0
                         custom-image:latest.
+            script_mode (bool): If set to True will the estimator will use the Script Mode containers (default: False).
+                This will be ignored if py_version is set to 'py3'.
+            distribution (dict): A dictionary with information on how to run distributed training
+                (default: None).
             **kwargs: Additional kwargs passed to the Framework constructor.
         """
         if framework_version is None:
@@ -207,7 +213,7 @@ class TensorFlow(Framework):
         self.evaluation_steps = evaluation_steps
         self.model_dir = model_dir
         self.script_mode = script_mode
-        self.distributions = distributions
+        self.distributions = distributions or {}
 
         self._validate_args(py_version=py_version, script_mode=script_mode, framework_version=framework_version,
                             training_steps=training_steps, evaluation_steps=evaluation_steps,
@@ -283,12 +289,11 @@ class TensorFlow(Framework):
         if run_tensorboard_locally and wait is False:
             raise ValueError("Tensorboard is not supported with async fit")
 
-        if run_tensorboard_locally:
-
-            if self.script_mode_enabled():
+        if self._script_mode_enabled():
+            if run_tensorboard_locally:
                 LOGGER.warning(_SCRIPT_MODE_TENSORBOARD_WARNING.format(self.model_dir))
-                return
-
+            fit_super()
+        elif run_tensorboard_locally:
             tensorboard = Tensorboard(self)
             tensorboard.validate_requirements()
 
@@ -371,11 +376,8 @@ class TensorFlow(Framework):
         """
 
         role = role or self.role
-        if endpoint_type == 'tensorflow-serving':
+        if endpoint_type == 'tensorflow-serving' or self._script_mode_enabled():
             return self._create_tfs_model(role=role, vpc_config_override=vpc_config_override)
-
-        if self.script_mode_enabled():
-            raise ValueError(_SCRIPT_MODE_SERVING_ERROR_MSG)
 
         return self._create_default_model(model_server_workers=model_server_workers, role=role,
                                           vpc_config_override=vpc_config_override)
@@ -408,17 +410,14 @@ class TensorFlow(Framework):
         """Return hyperparameters used by your custom TensorFlow code during model training."""
         hyperparameters = super(TensorFlow, self).hyperparameters()
 
-        if not self.checkpoint_path:
-            self.checkpoint_path = self._default_s3_path('checkpoints')
+        self.checkpoint_path = self.checkpoint_path or self._default_s3_path('checkpoints')
 
-        if self.script_mode_enabled():
-            if not self.model_dir:
-                self.model_dir = self._default_s3_path('model')
+        if self._script_mode_enabled():
+            self.model_dir = self.model_dir or self._default_s3_path('model')
             additional_hyperparameters = {'model_dir': self.model_dir}
-            if self.distributions:
-                if 'parameter_server' in self.distributions:
-                    enabled = self.distributions['parameter_server'].get('enabled', False)
-                    additional_hyperparameters[self.LAUNCH_PS_ENV_NAME] = enabled
+            if 'parameter_server' in self.distributions:
+                enabled = self.distributions['parameter_server'].get('enabled', False)
+                additional_hyperparameters[self.LAUNCH_PS_ENV_NAME] = enabled
         else:
             additional_hyperparameters = {'checkpoint_path': self.checkpoint_path,
                                           'training_steps': self.training_steps,
@@ -435,15 +434,15 @@ class TensorFlow(Framework):
         else:
             return os.path.join(self.output_path, self._current_job_name, directory)
 
-    def script_mode_enabled(self):
+    def _script_mode_enabled(self):
         return self.py_version == 'py3' or self.script_mode
 
     def train_image(self):
         if self.image_name:
             return self.image_name
 
-        if self.script_mode_enabled():
+        if self._script_mode_enabled():
             return fw.create_image_uri(self.sagemaker_session.boto_region_name, _SCRIPT_MODE,
                                        self.train_instance_type, self.framework_version, self.py_version)
-        else:
-            return super(TensorFlow, self).train_image()
+
+        return super(TensorFlow, self).train_image()
