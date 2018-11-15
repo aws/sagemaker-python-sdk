@@ -169,11 +169,11 @@ class Session(object):
         if self._default_bucket:
             return self._default_bucket
 
-        s3 = self.boto_session.resource('s3')
         account = self.boto_session.client('sts').get_caller_identity()['Account']
         region = self.boto_session.region_name
         default_bucket = 'sagemaker-{}-{}'.format(region, account)
 
+        s3 = self.boto_session.resource('s3')
         try:
             # 'us-east-1' cannot be specified because it is the default region:
             # https://github.com/boto/boto3/issues/125
@@ -636,7 +636,8 @@ class Session(object):
 
         if status != 'Completed' and status != 'Stopped':
             reason = desc.get('FailureReason', '(No reason provided)')
-            raise ValueError('Error training {}: {} Reason: {}'.format(job, status, reason))
+            job_type = status_key_name.replace('JobStatus', ' job')
+            raise ValueError('Error for {} {}: {} Reason: {}'.format(job_type, job, status, reason))
 
     def wait_for_endpoint(self, endpoint, poll=5):
         """Wait for an Amazon SageMaker endpoint deployment to complete.
