@@ -696,8 +696,8 @@ def test_create_identical_dataset_and_algorithm_tuner(sagemaker_session, additio
         assert tuner.warm_start_config.parents == {JOB_NAME}
 
 
-@pytest.mark.parametrize('additional_parents',[
-    {"p1","p2"},
+@pytest.mark.parametrize('additional_parents', [
+    {"p1", "p2"},
     {},
     None,
 ])

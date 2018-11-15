@@ -164,13 +164,15 @@ class WarmStartConfig(object):
         """Initializes the WarmStartConfig with the provided WarmStartType and parents.
 
         Args:
-            warm_start_type (sagemaker.tuner.WarmStartTypes): This should be one of the supported warm start types in WarmStartType
+            warm_start_type (sagemaker.tuner.WarmStartTypes): This should be one of the supported warm start types
+            in WarmStartType
             parents (set{str}): Set of parent tuning jobs which will be used to warm start the new tuning job.
         """
 
         if warm_start_type not in WarmStartTypes:
             raise ValueError(
-                "Invalid type: {}, valid warm start types are: [{}]".format(warm_start_type, [t for t in WarmStartTypes]))
+                "Invalid type: {}, valid warm start types are: [{}]".format(warm_start_type,
+                                                                            [t for t in WarmStartTypes]))
 
         if not parents:
             raise ValueError("Invalid parents: {}, parents should not be None/empty".format(parents))
