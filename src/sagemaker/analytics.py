@@ -20,7 +20,7 @@ import logging
 from six import with_metaclass
 
 from sagemaker.session import Session
-from sagemaker.utils import DeferredError, extract_name_from_job_arn
+from sagemaker.utils import DeferredError
 
 try:
     import pandas as pd
@@ -310,18 +310,9 @@ class TrainingJobAnalytics(AnalyticsMetricsBase):
     def _metric_names_for_training_job(self):
         """Helper method to discover the metrics defined for a training job.
         """
-        # First look up the tuning job
         training_description = self._sage_client.describe_training_job(TrainingJobName=self._training_job_name)
-        tuning_job_arn = training_description.get('TuningJobArn', None)
-        if not tuning_job_arn:
-            raise ValueError(
-                "No metrics available. Training Job Analytics only available through Hyperparameter Tuning Jobs"
-            )
-        tuning_job_name = extract_name_from_job_arn(tuning_job_arn)
-        tuning_job_description = self._sage_client.describe_hyper_parameter_tuning_job(
-            HyperParameterTuningJobName=tuning_job_name
-        )
-        training_job_definition = tuning_job_description['TrainingJobDefinition']
-        metric_definitions = training_job_definition['AlgorithmSpecification']['MetricDefinitions']
+
+        metric_definitions = training_description['AlgorithmSpecification']['MetricDefinitions']
         metric_names = [md['Name'] for md in metric_definitions]
+
         return metric_names
