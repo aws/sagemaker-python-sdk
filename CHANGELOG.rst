@@ -16,6 +16,7 @@ CHANGELOG
 * enhancement: Session: remove hardcoded 'training' from job status error message
 * bug-fix: Updated Cloudwatch namespace for metrics in TrainingJobsAnalytics
 * bug-fix: Changes to use correct s3 bucket and time range for dataframes in TrainingJobAnalytics.
+* enhancement: Remove MetricDefinition lookup via tuning job in TrainingJobAnalytics
 
 
 1.14.1
