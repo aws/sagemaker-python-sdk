@@ -2,8 +2,14 @@
 CHANGELOG
 =========
 
+1.14.3-dev
+=====
+
+* bug-fix: Changes to use correct S3 bucket and time range for dataframes in TrainingJobAnalytics.
+* bug-fix: Local Mode: correctly handle the case where the model output folder doesn't exist yet
+
 1.14.2
-=======
+======
 
 * bug-fix: support ``CustomAttributes`` argument in local mode ``invoke_endpoint`` requests
 * enhancement: add ``content_type`` parameter to ``sagemaker.tensorflow.serving.Predictor``
@@ -17,7 +23,6 @@ CHANGELOG
 * bug-fix: Updated Cloudwatch namespace for metrics in TrainingJobsAnalytics
 * bug-fix: Changes to use correct s3 bucket and time range for dataframes in TrainingJobAnalytics.
 * enhancement: Remove MetricDefinition lookup via tuning job in TrainingJobAnalytics
-
 
 1.14.1
 ======

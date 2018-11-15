@@ -84,3 +84,7 @@ dummy-variables-rgx=_|unused_
 # Apply logging string format checks to calls on these modules.
 logging-modules=
     logging
+
+[TYPECHECK]
+ignored-modules=
+    distutils
