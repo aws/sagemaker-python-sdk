@@ -9,7 +9,7 @@ CHANGELOG
 * bug-fix: Local Mode: correctly handle the case where the model output folder doesn't exist yet
 * doc-fix: Fix typos in tensorflow serving documentation
 * doc-fix: Add estimator base classes to API docs
-* feature: SageMaker Automatic Model Tuning's Warm Start jobs integration
+* feature: Add support for automatic model tuner's warm start jobs
 
 1.14.2
 ======
