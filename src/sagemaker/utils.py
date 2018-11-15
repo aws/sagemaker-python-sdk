@@ -26,6 +26,9 @@ from functools import wraps
 import six
 
 
+AIRFLOW_TIME_MACRO = "{{ execution_date.strftime('%Y-%m-%d-%H-%M-%S') }}"
+
+
 # Use the base name of the image as the job name if the user doesn't give us one
 def name_from_image(image):
     """Create a training job name based on the image name and a timestamp.
@@ -56,6 +59,21 @@ def name_from_base(base, max_length=63, short=False):
     timestamp = sagemaker_short_timestamp() if short else sagemaker_timestamp()
     trimmed_base = base[:max_length - len(timestamp) - 1]
     return '{}-{}'.format(trimmed_base, timestamp)
+
+
+def airflow_name_from_base(base):
+    """Append airflow execution_date macro (https://airflow.apache.org/code.html?#macros)
+    to the provided string. The macro will beevaluated in Airflow operator runtime.
+    This guarantees that different operators will have same name returned by this function.
+
+    Args:
+        base (str): String used as prefix to generate the unique name.
+
+    Returns:
+        str: Input parameter with appended macro.
+    """
+
+    return "{}-{}".format(base, AIRFLOW_TIME_MACRO)
 
 
 def base_name_from_image(image):
