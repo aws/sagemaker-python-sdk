@@ -10,6 +10,7 @@ CHANGELOG
 * feature: SageMaker Automatic Model Tuning's Warm Start jobs integration
 * doc-fix: Fix typos in tensorflow serving documentation
 * doc-fix: Add estimator base classes to API docs
+* feature: SageMaker Automatic Model Tuning's Warm Start jobs integration
 
 
 1.14.2
