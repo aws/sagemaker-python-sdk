@@ -3,10 +3,11 @@ CHANGELOG
 =========
 
 1.14.3-dev
-=====
+======
 
 * bug-fix: Changes to use correct S3 bucket and time range for dataframes in TrainingJobAnalytics.
 * bug-fix: Local Mode: correctly handle the case where the model output folder doesn't exist yet
+* doc-fix: Fix typos in tensorflow serving documentation
 * doc-fix: Add estimator base classes to API docs
 
 1.14.2
@@ -22,7 +23,8 @@ CHANGELOG
 * enhancement: Frameworks: update warning for not setting framework_version as we aren't planning a breaking change anymore
 * enhancement: Session: remove hardcoded 'training' from job status error message
 * bug-fix: Updated Cloudwatch namespace for metrics in TrainingJobsAnalytics
-
+* bug-fix: Changes to use correct s3 bucket and time range for dataframes in TrainingJobAnalytics.
+* enhancement: Remove MetricDefinition lookup via tuning job in TrainingJobAnalytics
 
 1.14.1
 ======
