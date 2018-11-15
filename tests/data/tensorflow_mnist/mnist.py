@@ -174,7 +174,7 @@ if __name__ == "__main__":
     train_input_fn = tf.estimator.inputs.numpy_input_fn(
         x={"x": train_data},
         y=train_labels,
-        batch_size=100,
+        batch_size=50,
         num_epochs=None,
         shuffle=True)
 
