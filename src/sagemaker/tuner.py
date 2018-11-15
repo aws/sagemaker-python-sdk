@@ -150,7 +150,8 @@ class WarmStartTypes(Enum):
 
 
 class WarmStartConfig(object):
-    """Warm Start Configuration which defines the nature of the warm start tuner, with type and parents for warm start.
+    """Warm Start Configuration which defines the nature of the warm start ``HyperparameterTuner``, with type and
+    parents for warm start.
 
     Examples:
         >>> warm_start_config = WarmStartConfig(type=WarmStartTypes.TransferLearning, parents={"p1","p2"})
@@ -161,7 +162,7 @@ class WarmStartConfig(object):
     """
 
     def __init__(self, warm_start_type, parents):
-        """Initializes the WarmStartConfig with the provided WarmStartType and parents.
+        """Initializes the ``WarmStartConfig`` with the provided ``WarmStartTypes`` and parents.
 
         Args:
             warm_start_type (sagemaker.tuner.WarmStartTypes): This should be one of the supported warm start types
@@ -285,7 +286,7 @@ class HyperparameterTuner(object):
             base_tuning_job_name (str): Prefix for the hyperparameter tuning job name when the
                 :meth:`~sagemaker.tuner.HyperparameterTuner.fit` method launches. If not specified,
                 a default job name is generaged, based on the training image name and current timestamp.
-            warm_start_config (sagemaker.tuner.WarmStartConfig): A WarmStartConfig object that has been initialized with
+            warm_start_config (sagemaker.tuner.WarmStartConfig): A ``WarmStartConfig`` object that has been initialized with
                 the configuration defining the nature of warm start tuning job.
         """
         self._hyperparameter_ranges = hyperparameter_ranges
@@ -604,10 +605,10 @@ class HyperparameterTuner(object):
                         pass
 
     def transfer_learning_tuner(self, additional_parents=None, estimator=None):
-        """Creates a new tuner by copying the request fields from the provided parent to the new instance of
-        ``HyperparameterTuner``. Followed by addition of warm start configuration with the type as "TransferLearning"
-        and parents as the union of provided list of ``additional_parents`` and the ``self``. Also, training image in
-        the new tuner's estimator is updated with the provided ``training_image``.
+        """Creates a new ``HyperarameterTuner`` by copying the request fields from the provided parent to the new
+        instance of ``HyperparameterTuner``. Followed by addition of warm start configuration with the type as
+        "TransferLearning" and parents as the union of provided list of ``additional_parents`` and the ``self``.
+        Also, training image in the new tuner's estimator is updated with the provided ``training_image``.
 
         Args:
             additional_parents (set{str}): Set of additional parents along with the self to be used in warm starting
@@ -625,15 +626,14 @@ class HyperparameterTuner(object):
             Later On:
             >>> transfer_learning_tuner.fit(inputs={})
         """
-        _transfer_learning_tuner = self._create_warm_start_tuner(additional_parents=additional_parents,
-                                                                 warm_start_type=WarmStartTypes.TRANSFER_LEARNING,
-                                                                 estimator=estimator)
 
-        return _transfer_learning_tuner
+        return self._create_warm_start_tuner(additional_parents=additional_parents,
+                                             warm_start_type=WarmStartTypes.TRANSFER_LEARNING,
+                                             estimator=estimator)
 
     def identical_dataset_and_algorithm_tuner(self, additional_parents=None):
-        """Creates a new tuner by copying the request fields from the provided parent to the new instance of
-        ``HyperarameterTuner``. Followed by addition of warm start configuration with the type as
+        """Creates a new ``HyperarameterTuner`` by copying the request fields from the provided parent to the new
+        instance of ``HyperarameterTuner``. Followed by addition of warm start configuration with the type as
         "IdenticalDataAndAlgorithm" and parents as the union of provided list of ``additional_parents`` and the ``self``
 
         Args:
@@ -656,8 +656,8 @@ class HyperparameterTuner(object):
                                              warm_start_type=WarmStartTypes.IDENTICAL_DATA_AND_ALGORITHM)
 
     def _create_warm_start_tuner(self, additional_parents, warm_start_type, estimator=None):
-        """Creates a new HyperparameterTuner with WarmStartConfig, where type will be equal to warm_start_type and
-        parents would be equal to union of additional_parents and self.
+        """Creates a new ``HyperparameterTuner`` with ``WarmStartConfig``, where type will be equal to
+        ``warm_start_type`` and``parents`` would be equal to union of ``additional_parents`` and self.
 
         Args:
             additional_parents (set{str}): Additional parents along with self, to be used for warm starting.
@@ -725,8 +725,9 @@ class _TuningJob(_Job):
 
 def create_identical_dataset_and_algorithm_tuner(parent, additional_parents=None, sagemaker_session=None):
     """Creates a new tuner by copying the request fields from the provided parent to the new instance of
-        HyperarameterTuner. Followed by addition of warm start configuration with the type as
-        "IdenticalDataAndAlgorithm" and parents as the union of provided list of additional_parents and the parent.
+        ``HyperarameterTuner`` followed by addition of warm start configuration with the type as
+        "IdenticalDataAndAlgorithm" and ``parents`` as the union of provided list of ``additional_parents`` and the
+        ``parent``.
 
     Args:
         parent (str): Primary parent tuning job's name from which the Tuner and Estimator configuration has to be copied
@@ -737,7 +738,8 @@ def create_identical_dataset_and_algorithm_tuner(parent, additional_parents=None
                 using the default AWS configuration chain.
 
     Returns:
-        sagemaker.tuner.HyperparameterTuner: New instance of warm started HyperparameterTuner
+        sagemaker.tuner.HyperparameterTuner: a new ``HyperparameterTuner`` object for the warm-started
+        hyperparameter tuning job
     """
 
     parent_tuner = HyperparameterTuner.attach(tuning_job_name=parent, sagemaker_session=sagemaker_session)
@@ -745,10 +747,9 @@ def create_identical_dataset_and_algorithm_tuner(parent, additional_parents=None
 
 
 def create_transfer_learning_tuner(parent, additional_parents=None, estimator=None, sagemaker_session=None):
-    """Creates a new tuner by copying the request fields from the provided parent to the new instance of
-        HyperarameterTuner.
-        Followed by addition of warm start configuration with the type as "TransferLearning" and parents as the
-        union of provided list of additional_parents and the parent.
+    """Creates a new ``HyperParameterTuner`` by copying the request fields from the provided parent to the new instance
+        of ``HyperarameterTuner`` followed by addition of warm start configuration with the type as "TransferLearning"
+        and ``parents`` as the union of provided list of ``additional_parents`` and the ``parent``.
 
     Args:
         parent (str): Primary parent tuning job's name from which the Tuner and Estimator configuration has to be copied

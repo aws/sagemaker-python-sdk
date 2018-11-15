@@ -11,7 +11,6 @@ CHANGELOG
 * doc-fix: Add estimator base classes to API docs
 * feature: SageMaker Automatic Model Tuning's Warm Start jobs integration
 
-
 1.14.2
 ======
 
