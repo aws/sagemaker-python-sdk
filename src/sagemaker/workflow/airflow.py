@@ -74,7 +74,7 @@ def prepare_amazon_algorithm_estimator(estimator, inputs, mini_batch_size=None):
     estimator.mini_batch_size = mini_batch_size
 
 
-def training_config(estimator, inputs=None, job_name=None, **kargs):  # noqa: C901 - suppress complexity warning for this method
+def training_config(estimator, inputs=None, job_name=None, **kargs):  # noqa: C901
     """Export Airflow training config from an estimator
 
     Args:
