@@ -104,7 +104,7 @@ def validate_source_dir(script, directory):
     return True
 
 
-def tar_and_upload_dir(session, bucket, s3_key_prefix, script, directory):
+def tar_and_upload_dir(session, bucket, s3_key_prefix, script, directory, additional_files=None):
     """Pack and upload source files to S3 only if directory is empty or local.
 
     Note:
@@ -120,26 +120,38 @@ def tar_and_upload_dir(session, bucket, s3_key_prefix, script, directory):
     Returns:
         sagemaker.fw_utils.UserCode: An object with the S3 bucket and key (S3 prefix) and script name.
     """
-    if directory:
-        if directory.lower().startswith("s3://"):
-            return UploadedCode(s3_prefix=directory, script_name=os.path.basename(script))
-        else:
-            script_name = script
-            source_files = [os.path.join(directory, name) for name in os.listdir(directory)]
+    additional_files = additional_files or []
+    key = '%s/sourcedir.tar.gz' % s3_key_prefix
+
+    basedir = directory if directory else os.path.dirname(script)
+
+    if basedir.lower().startswith("s3://"):
+        s3_prefix = directory
     else:
-        # If no directory is specified, the script parameter needs to be a valid relative path.
-        os.path.exists(script)
-        script_name = os.path.basename(script)
-        source_files = [script]
+        _upload_code(session, bucket, key, basedir, additional_files)
+        s3_prefix = 's3://%s/%s' % (bucket, key)
 
-    s3 = session.resource('s3')
-    key = '{}/{}'.format(s3_key_prefix, 'sourcedir.tar.gz')
+    script_name = script if directory else os.path.basename(script)
+    return UploadedCode(s3_prefix=s3_prefix, script_name=script_name)
 
+
+def _upload_code(session, bucket, key, dirname, additional_files):
+    source_files = _list_files([dirname] + additional_files)
     tar_file = sagemaker.utils.create_tar_file(source_files)
-    s3.Object(bucket, key).upload_file(tar_file)
-    os.remove(tar_file)
 
-    return UploadedCode(s3_prefix='s3://{}/{}'.format(bucket, key), script_name=script_name)
+    try:
+        session.resource('s3').Object(bucket, key).upload_file(tar_file)
+    finally:
+        os.remove(tar_file)
+
+
+def _list_files(files):
+    for file in files:
+        if os.path.isdir(file):
+            for name in os.listdir(file):
+                yield os.path.join(file, name)
+        else:
+            yield file
 
 
 def framework_name_from_image(image_name):
