@@ -118,7 +118,7 @@ def tar_and_upload_dir(session, bucket, s3_key_prefix, script, directory, additi
         bucket (str): S3 bucket to which the compressed file is uploaded.
         s3_key_prefix (str): Prefix for the S3 key.
         script (str): Script filename.
-        directory (str): Directory containing the source file. If it starts with "s3://", no action is taken.
+        directory (str or None): Directory containing the source file. If it starts with "s3://", no action is taken.
 
     Returns:
         sagemaker.fw_utils.UserCode: An object with the S3 bucket and key (S3 prefix) and script name.
