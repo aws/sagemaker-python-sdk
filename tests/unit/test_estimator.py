@@ -143,7 +143,8 @@ def test_framework_all_init_args(sagemaker_session):
                        sagemaker_session=sagemaker_session, train_volume_size=123, train_volume_kms_key='volumekms',
                        train_max_run=456, input_mode='inputmode', output_path='outputpath', output_kms_key='outputkms',
                        base_job_name='basejobname', tags=[{'foo': 'bar'}], subnets=['123', '456'],
-                       security_group_ids=['789', '012'])
+                       security_group_ids=['789', '012'],
+                       metric_definitions=[{'Name': 'validation-rmse', 'Regex': 'validation-rmse=(\\d+)'}])
     _TrainingJob.start_new(f, 's3://mydata')
     sagemaker_session.train.assert_called_once()
     _, args = sagemaker_session.train.call_args
@@ -158,7 +159,8 @@ def test_framework_all_init_args(sagemaker_session):
                     'stop_condition': {'MaxRuntimeInSeconds': 456},
                     'role': sagemaker_session.expand_role(), 'job_name': None,
                     'resource_config': {'VolumeSizeInGB': 123, 'InstanceCount': 3, 'VolumeKmsKeyId': 'volumekms',
-                                        'InstanceType': 'ml.m4.xlarge'}}
+                                        'InstanceType': 'ml.m4.xlarge'},
+                    'metric_definitions': [{'Name': 'validation-rmse', 'Regex': 'validation-rmse=(\\d+)'}]}
 
 
 def test_sagemaker_s3_uri_invalid(sagemaker_session):
@@ -711,7 +713,8 @@ NO_INPUT_TRAIN_CALL = {
     },
     'stop_condition': {'MaxRuntimeInSeconds': 86400},
     'tags': None,
-    'vpc_config': None
+    'vpc_config': None,
+    'metric_definitions': None
 }
 
 INPUT_CONFIG = [{
@@ -824,28 +827,21 @@ def test_generic_training_job_analytics(sagemaker_session):
     sagemaker_session.sagemaker_client.describe_training_job = Mock(name='describe_training_job', return_value={
         'TuningJobArn': 'arn:aws:sagemaker:us-west-2:968277160000:hyper-parameter-tuning-job/mock-tuner',
         'TrainingStartTime': 1530562991.299,
-    })
-    sagemaker_session.sagemaker_client.describe_hyper_parameter_tuning_job = Mock(
-        name='describe_hyper_parameter_tuning_job',
-        return_value={
-            'TrainingJobDefinition': {
-                "AlgorithmSpecification": {
-                    "TrainingImage": "some-image-url",
-                    "TrainingInputMode": "File",
-                    "MetricDefinitions": [
-                        {
-                            "Name": "train:loss",
-                            "Regex": "train_loss=([0-9]+\\.[0-9]+)"
-                        },
-                        {
-                            "Name": "validation:loss",
-                            "Regex": "valid_loss=([0-9]+\\.[0-9]+)"
-                        }
-                    ]
+        "AlgorithmSpecification": {
+            "TrainingImage": "some-image-url",
+            "TrainingInputMode": "File",
+            "MetricDefinitions": [
+                {
+                    "Name": "train:loss",
+                    "Regex": "train_loss=([0-9]+\\.[0-9]+)"
+                },
+                {
+                    "Name": "validation:loss",
+                    "Regex": "valid_loss=([0-9]+\\.[0-9]+)"
                 }
-            }
-        }
-    )
+            ]
+        },
+    })
 
     e = Estimator(IMAGE_NAME, ROLE, INSTANCE_COUNT, INSTANCE_TYPE, output_path=OUTPUT_PATH,
                   sagemaker_session=sagemaker_session)

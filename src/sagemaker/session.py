@@ -203,7 +203,7 @@ class Session(object):
         return self._default_bucket
 
     def train(self, image, input_mode, input_config, role, job_name, output_config,
-              resource_config, vpc_config, hyperparameters, stop_condition, tags):
+              resource_config, vpc_config, hyperparameters, stop_condition, tags, metric_definitions):
         """Create an Amazon SageMaker training job.
 
         Args:
@@ -243,6 +243,9 @@ class Session(object):
                 service like ``MaxRuntimeInSeconds``.
             tags (list[dict]): List of tags for labeling a training job. For more, see
                 https://docs.aws.amazon.com/sagemaker/latest/dg/API_Tag.html.
+            metric_definitions (list[dict]): A list of dictionaries that defines the metric(s) used to evaluate the
+                training jobs. Each dictionary contains two keys: 'Name' for the name of the metric, and 'Regex' for
+                the regular expression used to extract the metric from the logs.
 
         Returns:
             str: ARN of the training job, if it is created.
@@ -263,6 +266,9 @@ class Session(object):
         if input_config is not None:
             train_request['InputDataConfig'] = input_config
 
+        if metric_definitions is not None:
+            train_request['AlgorithmSpecification']['MetricDefinitions'] = metric_definitions
+
         if hyperparameters and len(hyperparameters) > 0:
             train_request['HyperParameters'] = hyperparameters
 
@@ -279,7 +285,8 @@ class Session(object):
     def tune(self, job_name, strategy, objective_type, objective_metric_name,
              max_jobs, max_parallel_jobs, parameter_ranges,
              static_hyperparameters, image, input_mode, metric_definitions,
-             role, input_config, output_config, resource_config, stop_condition, tags):
+             role, input_config, output_config, resource_config, stop_condition, tags,
+             warm_start_config):
         """Create an Amazon SageMaker hyperparameter tuning job
 
         Args:
@@ -305,7 +312,7 @@ class Session(object):
             metric_definitions (list[dict]): A list of dictionaries that defines the metric(s) used to evaluate the
                 training jobs. Each dictionary contains two keys: 'Name' for the name of the metric, and 'Regex' for
                 the regular expression used to extract the metric from the logs. This should be defined only for
-                hyperparameter tuning jobs that don't use an Amazon algorithm.
+                jobs that don't use an Amazon algorithm.
             role (str): An AWS IAM role (either name or full ARN). The Amazon SageMaker training jobs and APIs
                 that create Amazon SageMaker endpoints use this role to access training data and model artifacts.
                 You must grant sufficient permissions to this role.
@@ -323,6 +330,8 @@ class Session(object):
             stop_condition (dict): When training should finish, e.g. ``MaxRuntimeInSeconds``.
             tags (list[dict]): List of tags for labeling the tuning job. For more, see
                 https://docs.aws.amazon.com/sagemaker/latest/dg/API_Tag.html.
+            warm_start_config (dict): Configuration defining the type of warm start and
+                other required configurations.
         """
         tune_request = {
             'HyperParameterTuningJobName': job_name,
@@ -345,12 +354,17 @@ class Session(object):
                     'TrainingInputMode': input_mode,
                 },
                 'RoleArn': role,
-                'InputDataConfig': input_config,
                 'OutputDataConfig': output_config,
                 'ResourceConfig': resource_config,
                 'StoppingCondition': stop_condition,
             }
         }
+
+        if input_config is not None:
+            tune_request['TrainingJobDefinition']['InputDataConfig'] = input_config
+
+        if warm_start_config:
+            tune_request['WarmStartConfig'] = warm_start_config
 
         if metric_definitions is not None:
             tune_request['TrainingJobDefinition']['AlgorithmSpecification']['MetricDefinitions'] = metric_definitions

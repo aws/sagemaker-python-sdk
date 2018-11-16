@@ -15,6 +15,7 @@ from __future__ import absolute_import
 import copy
 import json
 
+import os
 import pytest
 from mock import Mock
 
@@ -23,8 +24,11 @@ from sagemaker.amazon.pca import PCA
 from sagemaker.amazon.amazon_estimator import RecordSet
 from sagemaker.estimator import Estimator
 from sagemaker.tuner import _ParameterRange, ContinuousParameter, IntegerParameter, CategoricalParameter, \
-    HyperparameterTuner, _TuningJob
+    HyperparameterTuner, _TuningJob, WarmStartConfig, create_identical_dataset_and_algorithm_tuner, \
+    create_transfer_learning_tuner, WarmStartTypes
 from sagemaker.mxnet import MXNet
+
+DATA_DIR = os.path.join(os.path.dirname(__file__), '..', 'data')
 MODEL_DATA = "s3://bucket/model.tar.gz"
 
 JOB_NAME = 'tuning_job'
@@ -300,6 +304,19 @@ def test_attach_with_no_specified_estimator(sagemaker_session):
     assert isinstance(tuner.estimator, Estimator)
 
 
+def test_attach_with_warm_start_config(sagemaker_session):
+    warm_start_config = WarmStartConfig(warm_start_type=WarmStartTypes.TRANSFER_LEARNING, parents={"p1", "p2"})
+    job_details = copy.deepcopy(TUNING_JOB_DETAILS)
+    job_details["WarmStartConfig"] = warm_start_config.to_input_req()
+
+    sagemaker_session.sagemaker_client.describe_hyper_parameter_tuning_job = Mock(name='describe_tuning_job',
+                                                                                  return_value=job_details)
+
+    tuner = HyperparameterTuner.attach(JOB_NAME, sagemaker_session=sagemaker_session)
+    assert tuner.warm_start_config.type == warm_start_config.type
+    assert tuner.warm_start_config.parents == warm_start_config.parents
+
+
 def test_serialize_parameter_ranges(tuner):
     hyperparameter_ranges = tuner.hyperparameter_ranges()
 
@@ -396,7 +413,8 @@ def test_deploy_default(tuner):
     returned_training_job_description = {
         'AlgorithmSpecification': {
             'TrainingInputMode': 'File',
-            'TrainingImage': IMAGE_NAME
+            'TrainingImage': IMAGE_NAME,
+            'MetricDefinitions': METRIC_DEFINTIONS,
         },
         'HyperParameters': {
             'sagemaker_submit_directory': '"s3://some/sourcedir.tar.gz"',
@@ -474,8 +492,62 @@ def test_delete_endpoint(tuner):
     tuner.sagemaker_session.delete_endpoint.assert_called_with(JOB_NAME)
 
 
+def test_fit_no_inputs(tuner, sagemaker_session):
+    script_path = os.path.join(DATA_DIR, 'mxnet_mnist', 'failure_script.py')
+    tuner.estimator = MXNet(entry_point=script_path,
+                            role=ROLE,
+                            framework_version=FRAMEWORK_VERSION,
+                            train_instance_count=TRAIN_INSTANCE_COUNT,
+                            train_instance_type=TRAIN_INSTANCE_TYPE,
+                            sagemaker_session=sagemaker_session)
+
+    tuner.fit()
+
+    _, _, tune_kwargs = sagemaker_session.tune.mock_calls[0]
+
+    assert tune_kwargs['input_config'] is None
+
+
+def test_identical_dataset_and_algorithm_tuner(sagemaker_session):
+    job_details = copy.deepcopy(TUNING_JOB_DETAILS)
+    sagemaker_session.sagemaker_client.describe_hyper_parameter_tuning_job = Mock(name='describe_tuning_job',
+                                                                                  return_value=job_details)
+
+    tuner = HyperparameterTuner.attach(JOB_NAME, sagemaker_session=sagemaker_session)
+    parent_tuner = tuner.identical_dataset_and_algorithm_tuner(additional_parents={"p1", "p2"})
+    assert parent_tuner.warm_start_config.type == WarmStartTypes.IDENTICAL_DATA_AND_ALGORITHM
+    assert parent_tuner.warm_start_config.parents == {tuner.latest_tuning_job.name, "p1", "p2"}
+
+
+def test_transfer_learning_tuner_with_estimator(sagemaker_session, estimator):
+    job_details = copy.deepcopy(TUNING_JOB_DETAILS)
+    sagemaker_session.sagemaker_client.describe_hyper_parameter_tuning_job = Mock(name='describe_tuning_job',
+                                                                                  return_value=job_details)
+
+    tuner = HyperparameterTuner.attach(JOB_NAME, sagemaker_session=sagemaker_session)
+    parent_tuner = tuner.transfer_learning_tuner(additional_parents={"p1", "p2"}, estimator=estimator)
+
+    assert parent_tuner.warm_start_config.type == WarmStartTypes.TRANSFER_LEARNING
+    assert parent_tuner.warm_start_config.parents == {tuner.latest_tuning_job.name, "p1", "p2"}
+    assert parent_tuner.estimator == estimator and parent_tuner.estimator != tuner.estimator
+
+
+def test_transfer_learning_tuner(sagemaker_session):
+    job_details = copy.deepcopy(TUNING_JOB_DETAILS)
+    sagemaker_session.sagemaker_client.describe_hyper_parameter_tuning_job = Mock(name='describe_tuning_job',
+                                                                                  return_value=job_details)
+
+    tuner = HyperparameterTuner.attach(JOB_NAME, sagemaker_session=sagemaker_session)
+    parent_tuner = tuner.transfer_learning_tuner(additional_parents={"p1", "p2"})
+
+    assert parent_tuner.warm_start_config.type == WarmStartTypes.TRANSFER_LEARNING
+    assert parent_tuner.warm_start_config.parents == {tuner.latest_tuning_job.name, "p1", "p2"}
+    assert parent_tuner.estimator == tuner.estimator
+
+
 #################################################################################
 # _ParameterRange Tests
+
 
 def test_continuous_parameter():
     cont_param = ContinuousParameter(0.1, 1e-2)
@@ -561,3 +633,110 @@ def test_tuning_job_wait(sagemaker_session):
     tuning_job.wait()
 
     sagemaker_session.wait_for_tuning_job.assert_called_once_with(JOB_NAME)
+
+
+#################################################################################
+# WarmStartConfig Tests
+
+@pytest.mark.parametrize('type, parents', [
+    (WarmStartTypes.IDENTICAL_DATA_AND_ALGORITHM, {"p1", "p2", "p3"}),
+    (WarmStartTypes.IDENTICAL_DATA_AND_ALGORITHM, {"p1", "p3", "p3"}),
+    (WarmStartTypes.TRANSFER_LEARNING, {"p3"}),
+])
+def test_warm_start_config_init(type, parents):
+    warm_start_config = WarmStartConfig(warm_start_type=type, parents=parents)
+
+    assert warm_start_config.type == type, "Warm start type initialization failed."
+    assert warm_start_config.parents == set(parents), "Warm start parents config initialization failed."
+
+    warm_start_config_req = warm_start_config.to_input_req()
+    assert warm_start_config.type == WarmStartTypes(warm_start_config_req["WarmStartType"])
+    for parent in warm_start_config_req["ParentHyperParameterTuningJobs"]:
+        assert parent['HyperParameterTuningJobName'] in parents
+
+
+@pytest.mark.parametrize('type, parents', [
+    ("InvalidType", {"p1", "p2", "p3"}),
+    (None, {"p1", "p2", "p3"}),
+    ("", {"p1", "p2", "p3"}),
+    (WarmStartTypes.TRANSFER_LEARNING, None),
+    (WarmStartTypes.TRANSFER_LEARNING, {}),
+])
+def test_warm_start_config_init_negative(type, parents):
+    with pytest.raises(ValueError):
+        WarmStartConfig(warm_start_type=type, parents=parents)
+
+
+@pytest.mark.parametrize('warm_start_config_req', [
+    ({}),
+    (None),
+    ({'WarmStartType': 'TransferLearning'}),
+    ({'ParentHyperParameterTuningJobs': []}),
+])
+def test_prepare_warm_start_config_cls_negative(warm_start_config_req):
+    warm_start_config = WarmStartConfig.from_job_desc(warm_start_config_req)
+    assert warm_start_config is None, "Warm start config should be None for invalid type/parents"
+
+
+@pytest.mark.parametrize('warm_start_config_req', [
+    ({'WarmStartType': 'TransferLearning', 'ParentHyperParameterTuningJobs': [{'HyperParameterTuningJobName': 'p1'},
+                                                                              {'HyperParameterTuningJobName': 'p2'}]}),
+    ({'WarmStartType': 'IdenticalDataAndAlgorithm',
+      'ParentHyperParameterTuningJobs': [{'HyperParameterTuningJobName': 'p1'},
+                                         {'HyperParameterTuningJobName': 'p1'}]}),
+])
+def test_prepare_warm_start_config_cls(warm_start_config_req):
+    warm_start_config = WarmStartConfig.from_job_desc(warm_start_config_req)
+
+    assert warm_start_config.type == WarmStartTypes(
+        warm_start_config_req["WarmStartType"]), "Warm start type initialization failed."
+
+    for p in warm_start_config_req["ParentHyperParameterTuningJobs"]:
+        assert p['HyperParameterTuningJobName'] in warm_start_config.parents, \
+            "Warm start parents config initialization failed."
+
+
+@pytest.mark.parametrize('additional_parents', [
+    {"p1", "p2"},
+    {},
+    None,
+])
+def test_create_identical_dataset_and_algorithm_tuner(sagemaker_session, additional_parents):
+    job_details = copy.deepcopy(TUNING_JOB_DETAILS)
+    sagemaker_session.sagemaker_client.describe_hyper_parameter_tuning_job = Mock(name='describe_tuning_job',
+                                                                                  return_value=job_details)
+
+    tuner = create_identical_dataset_and_algorithm_tuner(parent=JOB_NAME,
+                                                         additional_parents=additional_parents,
+                                                         sagemaker_session=sagemaker_session)
+
+    assert tuner.warm_start_config.type == WarmStartTypes.IDENTICAL_DATA_AND_ALGORITHM
+    if additional_parents:
+        additional_parents.add(JOB_NAME)
+        assert tuner.warm_start_config.parents == additional_parents
+    else:
+        assert tuner.warm_start_config.parents == {JOB_NAME}
+
+
+@pytest.mark.parametrize('additional_parents', [
+    {"p1", "p2"},
+    {},
+    None,
+])
+def test_create_transfer_learning_tuner(sagemaker_session, estimator, additional_parents):
+    job_details = copy.deepcopy(TUNING_JOB_DETAILS)
+    sagemaker_session.sagemaker_client.describe_hyper_parameter_tuning_job = Mock(name='describe_tuning_job',
+                                                                                  return_value=job_details)
+
+    tuner = create_transfer_learning_tuner(parent=JOB_NAME,
+                                           additional_parents=additional_parents,
+                                           sagemaker_session=sagemaker_session,
+                                           estimator=estimator)
+
+    assert tuner.warm_start_config.type == WarmStartTypes.TRANSFER_LEARNING
+    assert tuner.estimator == estimator
+    if additional_parents:
+        additional_parents.add(JOB_NAME)
+        assert tuner.warm_start_config.parents == additional_parents
+    else:
+        assert tuner.warm_start_config.parents == {JOB_NAME}

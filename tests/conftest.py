@@ -20,7 +20,8 @@ from botocore.config import Config
 
 from sagemaker import Session
 from sagemaker.local import LocalSession
-from sagemaker.chainer.defaults import CHAINER_VERSION
+from sagemaker.chainer import Chainer
+from sagemaker.mxnet import MXNet
 from sagemaker.pytorch.defaults import PYTORCH_VERSION
 from sagemaker.tensorflow.defaults import TF_VERSION
 
@@ -33,8 +34,8 @@ def pytest_addoption(parser):
     parser.addoption('--sagemaker-runtime-config', action='store', default=None)
     parser.addoption('--boto-config', action='store', default=None)
     parser.addoption('--tf-full-version', action='store', default=TF_VERSION)
-    parser.addoption('--mxnet-full-version', action='store', default='1.3.0')
-    parser.addoption('--chainer-full-version', action='store', default=CHAINER_VERSION)
+    parser.addoption('--mxnet-full-version', action='store', default=MXNet.LATEST_VERSION)
+    parser.addoption('--chainer-full-version', action='store', default=Chainer.LATEST_VERSION)
     parser.addoption('--pytorch-full-version', action='store', default=PYTORCH_VERSION)
 
 
@@ -96,7 +97,7 @@ def pytorch_version(request):
     return request.param
 
 
-@pytest.fixture(scope='module', params=['4.0', '4.0.0', '4.1', '4.1.0'])
+@pytest.fixture(scope='module', params=['4.0', '4.0.0', '4.1', '4.1.0', '5.0', '5.0.0'])
 def chainer_version(request):
     return request.param
 
