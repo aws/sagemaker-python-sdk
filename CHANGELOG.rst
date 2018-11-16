@@ -2,7 +2,7 @@
 CHANGELOG
 =========
 
-1.14.3-dev
+1.15.0
 ======
 
 * bug-fix: Changes to use correct S3 bucket and time range for dataframes in TrainingJobAnalytics.

@@ -37,4 +37,4 @@ from sagemaker.session import production_variant  # noqa: F401
 from sagemaker.session import s3_input  # noqa: F401
 from sagemaker.session import get_execution_role  # noqa: F401
 
-__version__ = '1.14.2'
+__version__ = '1.15.0'
