@@ -15,7 +15,7 @@ from __future__ import print_function, absolute_import
 import os
 
 import sagemaker
-from sagemaker import job, model, utils
+from sagemaker import fw_utils, job, utils, model, session
 from sagemaker.amazon import amazon_estimator
 
 
@@ -269,3 +269,61 @@ def tuning_config(tuner, inputs, job_name=None):
         tune_config['S3Operations'] = s3_operations
 
     return tune_config
+
+
+def prepare_framework_container_def(model, instance_type, s3_operations):
+    deploy_image = model.image
+    if not deploy_image:
+        region_name = model.sagemaker_session.boto_session.region_name
+        deploy_image = sagemaker.create_image_uri(
+            region_name, model.__framework_name__, instance_type, model.framework_version, model.py_version)
+
+    deploy_env = dict(model.env)
+    deploy_env.update(model._framework_env_vars())
+    try:
+        if model.model_server_workers:
+            deploy_env[model.MODEL_SERVER_WORKERS_PARAM_NAME.upper()] = str(model.model_server_workers)
+    except AttributeError:
+        # This applies to a FrameworkModel which is not SageMaker Deep Learning Framework Model
+        pass
+
+    bucket = model.bucket or model.sagemaker_session._default_bucket
+    key = '{}/source/sourcedir.tar.gz'.format(model.name)
+    script = os.path.basename(model.entry_point)
+    if model.source_dir and model.source_dir.lower().startswith('s3://'):
+        model.uploaded_code = fw_utils.UploadedCode(s3_prefix=model.source_dir, script_name=script)
+    else:
+        code_dir = 's3://{}/{}'.format(bucket, key)
+        model.uploaded_code = fw_utils.UploadedCode(s3_prefix=code_dir, script_name=script)
+        s3_operations['S3Upload'] = [{
+            'Path': model.source_dir or script,
+            'Bucket': bucket,
+            'Key': key,
+            'Tar': True
+        }]
+
+    return sagemaker.container_def(deploy_image, model.model_data, deploy_env)
+
+
+def model_config(instance_type, estimator=None, model=None, role=None, image=None, **kwargs):
+    s3_operations = {}
+    if isinstance(model, model.FrameworkModel):
+        container_def = prepare_framework_container_def(model, instance_type, s3_operations)
+    else:
+        container_def = model.prepare_container_def(instance_type)
+    base_name = utils.base_name_from_image(container_def['Image'])
+    model.name = model.name or utils.airflow_name_from_base(base_name)
+
+    primary_container = session._expand_container_def(container_def)
+
+    config = {
+        'ModelName': model.name,
+        'PrimaryContainer': primary_container,
+        'ExecutionRoleArn': role
+    }
+
+    if model.vpc_config:
+        config['VpcConfig'] = model.vpc_config
+
+    return config
+
