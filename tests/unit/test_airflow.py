@@ -945,4 +945,107 @@ def test_deploy_config(sagemaker_session):
         sagemaker_session=sagemaker_session)
 
     config = airflow.deploy_config(chainer_model,
-                                   initial_instance_count, instance_type)
+                                   initial_instance_count="{{ instance_count }}",
+                                   instance_type="ml.m4.xlarge")
+    expected_config = {
+        'Model': {
+            'ModelName': "sagemaker-chainer-{{ execution_date.strftime('%Y-%m-%d-%H-%M-%S') }}",
+            'PrimaryContainer': {
+                'Image': '520713654638.dkr.ecr.us-west-2.amazonaws.com/sagemaker-chainer:5.0.0-cpu-py3',
+                'Environment': {
+                    'SAGEMAKER_PROGRAM': '{{ entry_point }}',
+                    'SAGEMAKER_SUBMIT_DIRECTORY': "s3://output/sagemaker-chainer-"
+                                                  "{{ execution_date.strftime('%Y-%m-%d-%H-%M-%S') }}"
+                                                  "/source/sourcedir.tar.gz",
+                    'SAGEMAKER_ENABLE_CLOUDWATCH_METRICS': 'false',
+                    'SAGEMAKER_CONTAINER_LOG_LEVEL': '20',
+                    'SAGEMAKER_REGION': 'us-west-2',
+                    'SAGEMAKER_MODEL_SERVER_WORKERS': '{{ model_server_worker }}'
+                },
+                'ModelDataUrl': '{{ model_data }}'},
+            'ExecutionRoleArn': '{{ role }}'
+        },
+        'EndpointConfig': {
+            'EndpointConfigName': "sagemaker-chainer-{{ execution_date.strftime('%Y-%m-%d-%H-%M-%S') }}",
+            'ProductionVariants': [{
+                'InstanceType': 'ml.m4.xlarge',
+                'InitialInstanceCount': '{{ instance_count }}',
+                'ModelName': "sagemaker-chainer-{{ execution_date.strftime('%Y-%m-%d-%H-%M-%S') }}",
+                'VariantName': 'AllTraffic',
+                'InitialVariantWeight': 1
+            }]
+        },
+        'Endpoint': {
+            'EndpointName': "sagemaker-chainer-{{ execution_date.strftime('%Y-%m-%d-%H-%M-%S') }}",
+            'EndpointConfigName': "sagemaker-chainer-{{ execution_date.strftime('%Y-%m-%d-%H-%M-%S') }}"
+        },
+        'S3Operations': {
+            'S3Upload': [{
+                'Path': '{{ source_dir }}',
+                'Bucket': 'output',
+                'Key': "sagemaker-chainer-{{ execution_date.strftime('%Y-%m-%d-%H-%M-%S') }}/source/sourcedir.tar.gz",
+                'Tar': True
+            }]
+        }
+    }
+
+    assert config == expected_config
+
+
+def test_deploy_config_from_estimator(sagemaker_session):
+    mxnet_estimator = mxnet.MXNet(
+        entry_point="{{ entry_point }}",
+        source_dir="{{ source_dir }}",
+        py_version='py3',
+        framework_version='1.3.0',
+        role="{{ role }}",
+        train_instance_count=1,
+        train_instance_type='ml.m4.xlarge',
+        sagemaker_session=sagemaker_session,
+        base_job_name="{{ base_job_name }}",
+        hyperparameters={'batch_size': 100})
+
+    train_data = "{{ train_data }}"
+    transform_data = "{{ transform_data }}"
+
+    # simulate training
+    airflow.training_config(mxnet_estimator, train_data)
+
+    config = airflow.deploy_config_from_estimator(estimator=mxnet_estimator,
+                                                  initial_instance_count="{{ instance_count}}",
+                                                  instance_type="ml.c4.large",
+                                                  endpoint_name="mxnet-endpoint")
+    expected_config = {
+        'Model': {
+            'ModelName': "{{ base_job_name }}-{{ execution_date.strftime('%Y-%m-%d-%H-%M-%S') }}",
+            'PrimaryContainer': {
+                'Image': '520713654638.dkr.ecr.us-west-2.amazonaws.com/sagemaker-mxnet:1.3.0-cpu-py3',
+                'Environment': {
+                    'SAGEMAKER_PROGRAM': '{{ entry_point }}',
+                    'SAGEMAKER_SUBMIT_DIRECTORY': "s3://output/{{ base_job_name }}-"
+                                                  "{{ execution_date.strftime('%Y-%m-%d-%H-%M-%S') }}/"
+                                                  "source/sourcedir.tar.gz",
+                    'SAGEMAKER_ENABLE_CLOUDWATCH_METRICS': 'false',
+                    'SAGEMAKER_CONTAINER_LOG_LEVEL': '20',
+                    'SAGEMAKER_REGION': 'us-west-2'},
+                'ModelDataUrl': "s3://output/{{ base_job_name }}-"
+                                "{{ execution_date.strftime('%Y-%m-%d-%H-%M-%S') }}/output/model.tar.gz"},
+            'ExecutionRoleArn': '{{ role }}'
+        },
+        'EndpointConfig': {
+            'EndpointConfigName': "{{ base_job_name }}-{{ execution_date.strftime('%Y-%m-%d-%H-%M-%S') }}",
+            'ProductionVariants': [{
+                'InstanceType': 'ml.c4.large',
+                'InitialInstanceCount': '{{ instance_count}}',
+                'ModelName': "{{ base_job_name }}-{{ execution_date.strftime('%Y-%m-%d-%H-%M-%S') }}",
+                'VariantName': 'AllTraffic',
+                'InitialVariantWeight': 1
+            }]
+        },
+        'Endpoint': {
+            'EndpointName': 'mxnet-endpoint',
+            'EndpointConfigName': "{{ base_job_name }}-{{ execution_date.strftime('%Y-%m-%d-%H-%M-%S') }}"
+        }
+    }
+
+    assert config == expected_config

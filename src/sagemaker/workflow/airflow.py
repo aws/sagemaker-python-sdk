@@ -278,12 +278,10 @@ def tuning_config(tuner, inputs, job_name=None):
 def prepare_framework_container_def(model, instance_type, s3_operations):
     """Prepare the framework model container information. Specify related S3 operations for Airflow to perform.
     (Upload `source_dir`)
-
     Args:
         model (sagemaker.model.FrameworkModel): The framework model
         instance_type (str): The EC2 instance type to deploy this Model to. For example, 'ml.p2.xlarge'.
         s3_operations (dict): The dict to specify S3 operations (upload `source_dir`).
-
     Returns:
         dict: The container information of this framework model.
     """
@@ -294,10 +292,6 @@ def prepare_framework_container_def(model, instance_type, s3_operations):
             region_name, model.__framework_name__, instance_type, model.framework_version, model.py_version)
 
     base_name = utils.base_name_from_image(deploy_image)
-    model.name = model.name or utils.airflow_name_from_base(base_name)
-
-    container_def = sagemaker.container_def(deploy_image, model.model_data, deploy_env)
-    base_name = utils.base_name_from_image(container_def['Image'])
     model.name = model.name or utils.airflow_name_from_base(base_name)
 
     bucket = model.bucket or model.sagemaker_session._default_bucket
@@ -561,8 +555,22 @@ def deploy_config(model, initial_instance_count, instance_type, endpoint_name=No
         'EndpointConfigName': name
     }
 
-    return {
+    config = {
         'Model': model_base_config,
         'EndpointConfig': config_options,
         'Endpoint': endpoint_base_config
     }
+
+    # if there is s3 operations needed for model, move it to root level of config
+    s3_operations = model_base_config.pop('S3Operations', None)
+    if s3_operations is not None:
+        config['S3Operations'] = s3_operations
+
+    return config
+
+
+def deploy_config_from_estimator(estimator, initial_instance_count, instance_type, endpoint_name=None,
+                                 tags=None, **kwargs):
+    model = estimator.create_model(**kwargs)
+    config = deploy_config(model, initial_instance_count, instance_type, endpoint_name, tags)
+    return config
