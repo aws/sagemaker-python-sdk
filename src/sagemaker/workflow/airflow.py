@@ -15,6 +15,7 @@ from __future__ import print_function, absolute_import
 import os
 
 import sagemaker
+
 from sagemaker import fw_utils, job, utils, session, vpc_utils
 from sagemaker.amazon import amazon_estimator
 
