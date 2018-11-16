@@ -42,7 +42,7 @@ class IPInsights(AmazonAlgorithmEstimatorBase):
                  batch_metrics_publish_interval=None, epochs=None, learning_rate=None,
                  num_ip_encoder_layers=None, random_negative_sampling_rate=None,
                  shuffled_negative_sampling_rate=None, weight_decay=None, **kwargs):
-        """IP Insights is :class:`Estimator` used for unsupervised learning.
+        """This estimator is for IP Insights, an unsupervised algorithm that learns usage patterns of IP addresses.
 
         This Estimator may be fit via calls to
         :meth:`~sagemaker.amazon.amazon_estimator.AmazonAlgorithmEstimatorBase.fit`. It requires
@@ -80,7 +80,6 @@ class IPInsights(AmazonAlgorithmEstimatorBase):
             weight_decay (float): Optional. Weight decay coefficient. Adds L2 regularization.
             **kwargs: base class keyword argument values.
         """
-
         super(IPInsights, self).__init__(role, train_instance_count, train_instance_type, **kwargs)
         self.num_entity_vectors = num_entity_vectors
         self.vector_dim = vector_dim
@@ -93,14 +92,15 @@ class IPInsights(AmazonAlgorithmEstimatorBase):
         self.weight_decay = weight_decay
 
     def create_model(self, vpc_config_override=VPC_CONFIG_DEFAULT):
-        """Return a :class:`~sagemaker.amazon.IPInsightsModel`referencing the latest
-        s3 model data produced by this estimator.
+        """Create a model for the latest s3 model produced by this estimator.
 
         Args:
             vpc_config_override (dict[str, list[str]]): Optional override for VpcConfig set on the model.
                 Default: use subnets and security groups from this Estimator.
                 * 'Subnets' (list[str]): List of subnet ids.
                 * 'SecurityGroupIds' (list[str]): List of security group ids.
+        Returns:
+            :class:`~sagemaker.amazon.IPInsightsModel`: references the latest s3 model data produced by this estimator.
         """
         return IPInsightsModel(self.model_data, self.role, sagemaker_session=self.sagemaker_session,
                                vpc_config=self.get_vpc_config(vpc_config_override))
