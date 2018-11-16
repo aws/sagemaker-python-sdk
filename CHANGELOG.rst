@@ -14,6 +14,7 @@ CHANGELOG
 * feature: HyperparameterTuner: Make input channels optional
 * feature: Add support for Chainer 5.0
 * feature: Estimator: add support for MetricDefinitions
+* feature: source_dir accepts a list of directories
 
 1.14.2
 ======
