@@ -276,13 +276,13 @@ def tuning_config(tuner, inputs, job_name=None):
 
 
 def prepare_framework_container_def(model, instance_type, s3_operations):
-    """Prepare the framework model container information. Specify related s3 operations for Airflow to perform.
+    """Prepare the framework model container information. Specify related S3 operations for Airflow to perform.
     (Upload source_dir)
 
     Args:
         model (sagemaker.model.FrameworkModel): The framework model
         instance_type (str): The EC2 instance type to deploy this Model to. For example, 'ml.p2.xlarge'.
-        s3_operations (dict): The dict to specify s3 operations (upload source_dir).
+        s3_operations (dict): The dict to specify S3 operations (upload source_dir).
 
     Returns (dict):
         The container information of this framework model.

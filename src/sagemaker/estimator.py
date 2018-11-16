@@ -282,13 +282,13 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):
     @property
     def model_data(self):
         """str: The model location in S3. Only set if Estimator has been ``fit()``."""
-        try:
+        if self.latest_training_job is not None:
             model_uri = self.sagemaker_session.sagemaker_client.describe_training_job(
                 TrainingJobName=self.latest_training_job.name)['ModelArtifacts']['S3ModelArtifacts']
-        except AttributeError:
+        else:
             logging.warning('No finished training job found associated with this estimator. Please make sure'
                             'this estimator is only used for building workflow config')
-            model_uri = os.path.join(self.output_path, self._current_job_name, 'output/model.tar.gz')
+            model_uri = os.path.join(self.output_path, self._current_job_name, 'output', 'model.tar.gz')
         return model_uri
 
     @abstractmethod

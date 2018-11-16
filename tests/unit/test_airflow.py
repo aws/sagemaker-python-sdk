@@ -736,7 +736,8 @@ def test_model_config_from_amazon_alg_estimator(sagemaker_session):
         train_instance_type='ml.m4.xlarge',
         k=16,
         sample_size=128,
-        predictor_type='regressor')
+        predictor_type='regressor',
+        sagemaker_session=sagemaker_session)
 
     record = amazon_estimator.RecordSet("{{ record }}", 10000, 100, 'S3Prefix')
 
@@ -749,8 +750,7 @@ def test_model_config_from_amazon_alg_estimator(sagemaker_session):
         'PrimaryContainer': {
             'Image': '174872318107.dkr.ecr.us-west-2.amazonaws.com/knn:1',
             'Environment': {},
-            'ModelDataUrl': "s3://sagemaker-us-west-2-389309777320/knn-"
-                            "{{ execution_date.strftime('%Y-%m-%d-%H-%M-%S') }}/output/model.tar.gz"},
+            'ModelDataUrl': "s3://output/knn-{{ execution_date.strftime('%Y-%m-%d-%H-%M-%S') }}/output/model.tar.gz"},
         'ExecutionRoleArn': '{{ role }}'
     }
 
