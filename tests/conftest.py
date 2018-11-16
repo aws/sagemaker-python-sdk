@@ -96,7 +96,7 @@ def pytorch_version(request):
     return request.param
 
 
-@pytest.fixture(scope='module', params=['4.0', '4.0.0', '4.1', '4.1.0'])
+@pytest.fixture(scope='module', params=['4.0', '4.0.0', '4.1', '4.1.0', '5.0', '5.0.0'])
 def chainer_version(request):
     return request.param
 

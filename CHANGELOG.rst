@@ -10,6 +10,7 @@ CHANGELOG
 * feature: Add APIs to export Airflow training and tuning config
 * doc-fix: Fix typos in tensorflow serving documentation
 * doc-fix: Add estimator base classes to API docs
+* feature: Add support for Chainer 5.0
 
 1.14.2
 ======

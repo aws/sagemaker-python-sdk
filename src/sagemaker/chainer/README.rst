@@ -4,7 +4,7 @@ Chainer SageMaker Estimators and Models
 
 With Chainer Estimators, you can train and host Chainer models on Amazon SageMaker.
 
-Supported versions of Chainer: ``4.0.0``, ``4.1.0``
+Supported versions of Chainer: ``4.0.0``, ``4.1.0``, ``5.0.0``
 
 You can visit the Chainer repository at https://github.com/chainer/chainer.
 
@@ -32,7 +32,7 @@ Suppose that you already have an Chainer training script called
                                 role='SageMakerRole',
                                 train_instance_type='ml.p3.2xlarge',
                                 train_instance_count=1,
-                                framework_version='4.1.0')
+                                framework_version='5.0.0')
     chainer_estimator.fit('s3://bucket/path/to/training/data')
 
 Where the S3 URL is a path to your training data, within Amazon S3. The constructor keyword arguments define how
@@ -111,7 +111,7 @@ directories ('train' and 'test').
     chainer_estimator = Chainer('chainer-train.py',
                                 train_instance_type='ml.p3.2xlarge',
                                 train_instance_count=1,
-                                framework_version='4.1.0',
+                                framework_version='5.0.0',
                                 hyperparameters = {'epochs': 20, 'batch-size': 64, 'learning-rate': 0.1})
     chainer_estimator.fit({'train': 's3://my-data-bucket/path/to/my/training/data',
                            'test': 's3://my-data-bucket/path/to/my/test/data'})
@@ -285,7 +285,7 @@ operation.
     chainer_estimator = Chainer(entry_point='train_and_deploy.py',
                                 train_instance_type='ml.p3.2xlarge',
                                 train_instance_count=1,
-                                framework_version='4.1.0')
+                                framework_version='5.0.0')
     chainer_estimator.fit('s3://my_bucket/my_training_data/')
 
     # Deploy my estimator to a SageMaker Endpoint and get a Predictor
