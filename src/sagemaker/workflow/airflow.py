@@ -276,7 +276,6 @@ def tuning_config(tuner, inputs, job_name=None):
 
 
 def prepare_framework_container_def(model, instance_type, s3_operations):
-
     """Prepare the framework model container information. Specify related S3 operations for Airflow to perform.
     (Upload `source_dir`)
 

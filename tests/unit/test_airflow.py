@@ -741,7 +741,6 @@ def test_model_config_from_amazon_alg_estimator(sagemaker_session):
         predictor_type='regressor',
         sagemaker_session=sagemaker_session)
 
-
     record = amazon_estimator.RecordSet("{{ record }}", 10000, 100, 'S3Prefix')
 
     # simulate training
