@@ -20,7 +20,7 @@ import logging
 from six import with_metaclass
 
 from sagemaker.session import Session
-from sagemaker.utils import DeferredError, extract_name_from_job_arn
+from sagemaker.utils import DeferredError
 
 try:
     import pandas as pd
@@ -199,7 +199,7 @@ class TrainingJobAnalytics(AnalyticsMetricsBase):
     """Fetch training curve data from CloudWatch Metrics for a specific training job.
     """
 
-    CLOUDWATCH_NAMESPACE = '/aws/sagemaker/HyperParameterTuningJobs'
+    CLOUDWATCH_NAMESPACE = '/aws/sagemaker/TrainingJobs'
 
     def __init__(self, training_job_name, metric_names=None, sagemaker_session=None):
         """Initialize a ``TrainingJobAnalytics`` instance.
@@ -246,7 +246,12 @@ class TrainingJobAnalytics(AnalyticsMetricsBase):
         """
         description = self._sage_client.describe_training_job(TrainingJobName=self.name)
         start_time = description[u'TrainingStartTime']  # datetime object
-        end_time = description.get(u'TrainingEndTime', datetime.datetime.utcnow())
+        # Incrementing end time by 1 min since CloudWatch drops seconds before finding the logs.
+        # This results in logs being searched in the time range in which the correct log line was not present.
+        # Example - Log time - 2018-10-22 08:25:55
+        #           Here calculated end time would also be 2018-10-22 08:25:55 (without 1 min addition)
+        #           CW will consider end time as 2018-10-22 08:25 and will not be able to search the correct log.
+        end_time = description.get(u'TrainingEndTime', datetime.datetime.utcnow()) + datetime.timedelta(minutes=1)
         return {
             'start_time': start_time,
             'end_time': end_time,
@@ -305,18 +310,9 @@ class TrainingJobAnalytics(AnalyticsMetricsBase):
     def _metric_names_for_training_job(self):
         """Helper method to discover the metrics defined for a training job.
         """
-        # First look up the tuning job
         training_description = self._sage_client.describe_training_job(TrainingJobName=self._training_job_name)
-        tuning_job_arn = training_description.get('TuningJobArn', None)
-        if not tuning_job_arn:
-            raise ValueError(
-                "No metrics available. Training Job Analytics only available through Hyperparameter Tuning Jobs"
-            )
-        tuning_job_name = extract_name_from_job_arn(tuning_job_arn)
-        tuning_job_description = self._sage_client.describe_hyper_parameter_tuning_job(
-            HyperParameterTuningJobName=tuning_job_name
-        )
-        training_job_definition = tuning_job_description['TrainingJobDefinition']
-        metric_definitions = training_job_definition['AlgorithmSpecification']['MetricDefinitions']
+
+        metric_definitions = training_description['AlgorithmSpecification']['MetricDefinitions']
         metric_names = [md['Name'] for md in metric_definitions]
+
         return metric_names

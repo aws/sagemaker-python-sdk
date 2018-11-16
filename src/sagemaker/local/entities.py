@@ -64,7 +64,7 @@ class _LocalTrainingJob(object):
                 raise RuntimeError('DataDistribution: %s is not currently supported in Local Mode' %
                                    data_distribution)
 
-        self.start = datetime.datetime.now()
+        self.start_time = datetime.datetime.now()
         self.state = self._TRAINING
 
         self.model_artifacts = self.container.train(input_data_config, output_data_config, hyperparameters, job_name)
@@ -406,7 +406,7 @@ def _wait_for_serving_container(serving_port):
             raise RuntimeError('Giving up, endpoint didn\'t launch correctly')
 
         logger.info('Checking if serving container is up, attempt: %s' % i)
-        response, code = _perform_request(endpoint_url, http)
+        _, code = _perform_request(endpoint_url, http)
         if code != 200:
             logger.info('Container still not up, got: %s' % code)
         else:

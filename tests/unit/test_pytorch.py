@@ -362,3 +362,13 @@ def test_attach_custom_image(sagemaker_session):
     assert estimator.latest_training_job.job_name == 'neo'
     assert estimator.image_name == training_image
     assert estimator.train_image() == training_image
+
+
+@patch('sagemaker.pytorch.estimator.empty_framework_version_warning')
+def test_empty_framework_version(warning, sagemaker_session):
+    estimator = PyTorch(entry_point=SCRIPT_PATH, role=ROLE, sagemaker_session=sagemaker_session,
+                        train_instance_count=INSTANCE_COUNT, train_instance_type=INSTANCE_TYPE,
+                        framework_version=None)
+
+    assert estimator.framework_version == defaults.PYTORCH_VERSION
+    warning.assert_called_with(defaults.PYTORCH_VERSION, defaults.PYTORCH_VERSION)

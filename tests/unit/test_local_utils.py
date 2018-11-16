@@ -17,15 +17,13 @@ from mock import patch, Mock
 
 import sagemaker.local.utils
 
-BUCKET_NAME = 'some-nice-bucket'
-
 
 @patch('shutil.rmtree', Mock())
 @patch('sagemaker.local.utils.recursive_copy')
 def test_move_to_destination(recursive_copy):
-    # local files will just be recursive copied
+    # local files will just be recursively copied
     sagemaker.local.utils.move_to_destination('/tmp/data', 'file:///target/dir/', 'job', None)
-    recursive_copy.assert_called()
+    recursive_copy.assert_called_with('/tmp/data', '/target/dir/')
 
     # s3 destination will upload to S3
     sms = Mock()

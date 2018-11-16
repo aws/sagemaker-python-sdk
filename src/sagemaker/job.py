@@ -32,7 +32,7 @@ class _Job(object):
         self.job_name = job_name
 
     @abstractmethod
-    def start_new(cls, estimator, inputs):
+    def start_new(self, estimator, inputs):
         """Create a new Amazon SageMaker job from the estimator.
 
         Args:
@@ -51,9 +51,9 @@ class _Job(object):
         pass
 
     @staticmethod
-    def _load_config(inputs, estimator):
-        input_config = _Job._format_inputs_to_input_config(inputs)
-        role = estimator.sagemaker_session.expand_role(estimator.role)
+    def _load_config(inputs, estimator, expand_role=True, validate_uri=True):
+        input_config = _Job._format_inputs_to_input_config(inputs, validate_uri)
+        role = estimator.sagemaker_session.expand_role(estimator.role) if expand_role else estimator.role
         output_config = _Job._prepare_output_config(estimator.output_path, estimator.output_kms_key)
         resource_config = _Job._prepare_resource_config(estimator.train_instance_count,
                                                         estimator.train_instance_type,
@@ -62,8 +62,10 @@ class _Job(object):
         stop_condition = _Job._prepare_stop_condition(estimator.train_max_run)
         vpc_config = estimator.get_vpc_config()
 
-        model_channel = _Job._prepare_model_channel(input_config, estimator.model_uri, estimator.model_channel_name)
+        model_channel = _Job._prepare_model_channel(input_config, estimator.model_uri, estimator.model_channel_name,
+                                                    validate_uri)
         if model_channel:
+            input_config = [] if input_config is None else input_config
             input_config.append(model_channel)
 
         return {'input_config': input_config,
@@ -74,7 +76,10 @@ class _Job(object):
                 'vpc_config': vpc_config}
 
     @staticmethod
-    def _format_inputs_to_input_config(inputs):
+    def _format_inputs_to_input_config(inputs, validate_uri=True):
+        if inputs is None:
+            return None
+
         # Deferred import due to circular dependency
         from sagemaker.amazon.amazon_estimator import RecordSet
         if isinstance(inputs, RecordSet):
@@ -82,14 +87,14 @@ class _Job(object):
 
         input_dict = {}
         if isinstance(inputs, string_types):
-            input_dict['training'] = _Job._format_string_uri_input(inputs)
+            input_dict['training'] = _Job._format_string_uri_input(inputs, validate_uri)
         elif isinstance(inputs, s3_input):
             input_dict['training'] = inputs
         elif isinstance(inputs, file_input):
             input_dict['training'] = inputs
         elif isinstance(inputs, dict):
             for k, v in inputs.items():
-                input_dict[k] = _Job._format_string_uri_input(v)
+                input_dict[k] = _Job._format_string_uri_input(v, validate_uri)
         elif isinstance(inputs, list):
             input_dict = _Job._format_record_set_list_input(inputs)
         else:
@@ -107,49 +112,53 @@ class _Job(object):
         return channel_config
 
     @staticmethod
-    def _format_string_uri_input(input):
-        if isinstance(input, str):
-            if input.startswith('s3://'):
-                return s3_input(input)
-            elif input.startswith('file://'):
-                return file_input(input)
-            else:
-                raise ValueError('Training input data must be a valid S3 or FILE URI: must start with "s3://" or '
-                                 '"file://"')
-        elif isinstance(input, s3_input):
-            return input
-        elif isinstance(input, file_input):
-            return input
+    def _format_string_uri_input(uri_input, validate_uri=True):
+        if isinstance(uri_input, str) and validate_uri and uri_input.startswith('s3://'):
+            return s3_input(uri_input)
+        elif isinstance(uri_input, str) and validate_uri and uri_input.startswith('file://'):
+            return file_input(uri_input)
+        elif isinstance(uri_input, str) and validate_uri:
+            raise ValueError('Training input data must be a valid S3 or FILE URI: must start with "s3://" or '
+                             '"file://"')
+        elif isinstance(uri_input, str):
+            return s3_input(uri_input)
+        elif isinstance(uri_input, s3_input):
+            return uri_input
+        elif isinstance(uri_input, file_input):
+            return uri_input
         else:
-            raise ValueError('Cannot format input {}. Expecting one of str, s3_input, or file_input'.format(input))
+            raise ValueError('Cannot format input {}. Expecting one of str, s3_input, or file_input'.format(uri_input))
 
     @staticmethod
-    def _prepare_model_channel(input_config, model_uri=None, model_channel_name=None):
+    def _prepare_model_channel(input_config, model_uri=None, model_channel_name=None, validate_uri=True):
         if not model_uri:
             return
         elif not model_channel_name:
             raise ValueError('Expected a pre-trained model channel name if a model URL is specified.')
 
-        for channel in input_config:
-            if channel['ChannelName'] == model_channel_name:
-                raise ValueError('Duplicate channels not allowed.')
+        if input_config:
+            for channel in input_config:
+                if channel['ChannelName'] == model_channel_name:
+                    raise ValueError('Duplicate channels not allowed.')
 
-        model_input = _Job._format_model_uri_input(model_uri)
+        model_input = _Job._format_model_uri_input(model_uri, validate_uri)
         model_channel = _Job._convert_input_to_channel(model_channel_name, model_input)
 
         return model_channel
 
     @staticmethod
-    def _format_model_uri_input(model_uri):
-        if isinstance(model_uri, string_types):
-            if model_uri.startswith('s3://'):
-                return s3_input(model_uri, input_mode='File', distribution='FullyReplicated',
-                                content_type='application/x-sagemaker-model')
-            elif model_uri.startswith('file://'):
-                return file_input(model_uri)
-            else:
-                raise ValueError('Model URI must be a valid S3 or FILE URI: must start with "s3://" or '
-                                 '"file://')
+    def _format_model_uri_input(model_uri, validate_uri=True):
+        if isinstance(model_uri, string_types)and validate_uri and model_uri.startswith('s3://'):
+            return s3_input(model_uri, input_mode='File', distribution='FullyReplicated',
+                            content_type='application/x-sagemaker-model')
+        elif isinstance(model_uri, string_types) and validate_uri and model_uri.startswith('file://'):
+            return file_input(model_uri)
+        elif isinstance(model_uri, string_types) and validate_uri:
+            raise ValueError('Model URI must be a valid S3 or FILE URI: must start with "s3://" or '
+                             '"file://')
+        elif isinstance(model_uri, string_types):
+            return s3_input(model_uri, input_mode='File', distribution='FullyReplicated',
+                            content_type='application/x-sagemaker-model')
         else:
             raise ValueError('Cannot format model URI {}. Expecting str'.format(model_uri))
 

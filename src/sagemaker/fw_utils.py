@@ -19,8 +19,6 @@ from six.moves.urllib.parse import urlparse
 
 import sagemaker.utils
 
-"""This module contains utility functions shared across ``Framework`` components."""
-
 UploadedCode = namedtuple('UserCode', ['s3_prefix', 'script_name'])
 """sagemaker.fw_utils.UserCode: An object containing the S3 prefix and script name.
 
@@ -28,14 +26,17 @@ This is for the source code used for the entry point with an ``Estimator``. It c
 instantiated with positional or keyword arguments.
 """
 
-EMPTY_FRAMEWORK_VERSION_WARNING = 'In an upcoming version of the SageMaker Python SDK, ' \
-                                  'framework_version will be required to create an estimator. ' \
-                                  'Please add framework_version={} to your constructor to avoid ' \
-                                  'an error in the future.'
+EMPTY_FRAMEWORK_VERSION_WARNING = 'No framework_version specified, defaulting to version {}.'
+LATER_FRAMEWORK_VERSION_WARNING = 'This is not the latest supported version. ' \
+                                  'If you would like to use version {latest}, ' \
+                                  'please add framework_version={latest} to your constructor.'
+
+VALID_PY_VERSIONS = ['py2', 'py3']
 
 
-def create_image_uri(region, framework, instance_type, framework_version, py_version, account='520713654638',
-                     optimized_families=[]):
+def create_image_uri(region, framework, instance_type, framework_version, py_version=None,
+                     account='520713654638', optimized_families=None):
+
     """Return the ECR URI of an image.
 
     Args:
@@ -43,13 +44,18 @@ def create_image_uri(region, framework, instance_type, framework_version, py_ver
         framework (str): framework used by the image.
         instance_type (str): SageMaker instance type. Used to determine device type (cpu/gpu/family-specific optimized).
         framework_version (str): The version of the framework.
-        py_version (str): Python version. One of 'py2' or 'py3'.
+        py_version (str): Optional. Python version. If specified, should be one of 'py2' or 'py3'.
+            If not specified, image uri will not include a python component.
         account (str): AWS account that contains the image. (default: '520713654638')
         optimized_families (str): Instance families for which there exist specific optimized images.
 
     Returns:
         str: The appropriate image URI based on the given parameters.
     """
+    optimized_families = optimized_families or []
+
+    if py_version and py_version not in VALID_PY_VERSIONS:
+        raise ValueError('invalid py_version argument: {}'.format(py_version))
 
     # Handle Account Number for Gov Cloud
     if region == 'us-gov-west-1':
@@ -73,7 +79,10 @@ def create_image_uri(region, framework, instance_type, framework_version, py_ver
         else:
             device_type = 'cpu'
 
-    tag = "{}-{}-{}".format(framework_version, device_type, py_version)
+    if py_version:
+        tag = "{}-{}-{}".format(framework_version, device_type, py_version)
+    else:
+        tag = "{}-{}".format(framework_version, device_type)
     return "{}.dkr.ecr.{}.amazonaws.com/sagemaker-{}:{}" \
         .format(account, region, framework, tag)
 
@@ -223,5 +232,8 @@ def model_code_key_prefix(code_location_key_prefix, model_name, image):
     return '/'.join(filter(None, [code_location_key_prefix, model_name or training_job_name]))
 
 
-def empty_framework_version_warning(default_version):
-    return EMPTY_FRAMEWORK_VERSION_WARNING.format(default_version)
+def empty_framework_version_warning(default_version, latest_version):
+    msgs = [EMPTY_FRAMEWORK_VERSION_WARNING.format(default_version)]
+    if default_version != latest_version:
+        msgs.append(LATER_FRAMEWORK_VERSION_WARNING.format(latest=latest_version))
+    return ' '.join(msgs)

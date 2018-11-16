@@ -161,14 +161,6 @@ def test_framework_all_init_args(sagemaker_session):
                                         'InstanceType': 'ml.m4.xlarge'}}
 
 
-def test_framework_init_distributions_unsupported(sagemaker_session):
-    with pytest.raises(ValueError) as e:
-        DummyFramework(SCRIPT_NAME, role=ROLE, sagemaker_session=sagemaker_session,
-                       train_instance_count=INSTANCE_COUNT, train_instance_type=INSTANCE_TYPE,
-                       distributions={'parameter_server': {'enabled': True}})
-    assert 'This framework does not support the distributions option' in str(e)
-
-
 def test_sagemaker_s3_uri_invalid(sagemaker_session):
     with pytest.raises(ValueError) as error:
         t = DummyFramework(entry_point=SCRIPT_PATH, role=ROLE, sagemaker_session=sagemaker_session,
@@ -706,19 +698,10 @@ def test_unsupported_type_in_dict():
 #################################################################################
 # Tests for the generic Estimator class
 
-BASE_TRAIN_CALL = {
+NO_INPUT_TRAIN_CALL = {
     'hyperparameters': {},
     'image': IMAGE_NAME,
-    'input_config': [{
-        'DataSource': {
-            'S3DataSource': {
-                'S3DataDistributionType': 'FullyReplicated',
-                'S3DataType': 'S3Prefix',
-                'S3Uri': 's3://bucket/training-prefix'
-            }
-        },
-        'ChannelName': 'train'
-    }],
+    'input_config': None,
     'input_mode': 'File',
     'output_config': {'S3OutputPath': OUTPUT_PATH},
     'resource_config': {
@@ -731,10 +714,41 @@ BASE_TRAIN_CALL = {
     'vpc_config': None
 }
 
+INPUT_CONFIG = [{
+    'DataSource': {
+        'S3DataSource': {
+            'S3DataDistributionType': 'FullyReplicated',
+            'S3DataType': 'S3Prefix',
+            'S3Uri': 's3://bucket/training-prefix'
+        }
+    },
+    'ChannelName': 'train'
+}]
+
+BASE_TRAIN_CALL = dict(NO_INPUT_TRAIN_CALL)
+BASE_TRAIN_CALL.update({'input_config': INPUT_CONFIG})
+
 HYPERPARAMS = {'x': 1, 'y': 'hello'}
 STRINGIFIED_HYPERPARAMS = dict([(x, str(y)) for x, y in HYPERPARAMS.items()])
 HP_TRAIN_CALL = dict(BASE_TRAIN_CALL)
 HP_TRAIN_CALL.update({'hyperparameters': STRINGIFIED_HYPERPARAMS})
+
+
+def test_generic_to_fit_no_input(sagemaker_session):
+    e = Estimator(IMAGE_NAME, ROLE, INSTANCE_COUNT, INSTANCE_TYPE, output_path=OUTPUT_PATH,
+                  sagemaker_session=sagemaker_session)
+
+    e.fit()
+
+    sagemaker_session.train.assert_called_once()
+    assert len(sagemaker_session.train.call_args[0]) == 0
+    args = sagemaker_session.train.call_args[1]
+    assert args['job_name'].startswith(IMAGE_NAME)
+
+    args.pop('job_name')
+    args.pop('role')
+
+    assert args == NO_INPUT_TRAIN_CALL
 
 
 def test_generic_to_fit_no_hps(sagemaker_session):
@@ -810,28 +824,21 @@ def test_generic_training_job_analytics(sagemaker_session):
     sagemaker_session.sagemaker_client.describe_training_job = Mock(name='describe_training_job', return_value={
         'TuningJobArn': 'arn:aws:sagemaker:us-west-2:968277160000:hyper-parameter-tuning-job/mock-tuner',
         'TrainingStartTime': 1530562991.299,
-    })
-    sagemaker_session.sagemaker_client.describe_hyper_parameter_tuning_job = Mock(
-        name='describe_hyper_parameter_tuning_job',
-        return_value={
-            'TrainingJobDefinition': {
-                "AlgorithmSpecification": {
-                    "TrainingImage": "some-image-url",
-                    "TrainingInputMode": "File",
-                    "MetricDefinitions": [
-                        {
-                            "Name": "train:loss",
-                            "Regex": "train_loss=([0-9]+\\.[0-9]+)"
-                        },
-                        {
-                            "Name": "validation:loss",
-                            "Regex": "valid_loss=([0-9]+\\.[0-9]+)"
-                        }
-                    ]
+        "AlgorithmSpecification": {
+            "TrainingImage": "some-image-url",
+            "TrainingInputMode": "File",
+            "MetricDefinitions": [
+                {
+                    "Name": "train:loss",
+                    "Regex": "train_loss=([0-9]+\\.[0-9]+)"
+                },
+                {
+                    "Name": "validation:loss",
+                    "Regex": "valid_loss=([0-9]+\\.[0-9]+)"
                 }
-            }
-        }
-    )
+            ]
+        },
+    })
 
     e = Estimator(IMAGE_NAME, ROLE, INSTANCE_COUNT, INSTANCE_TYPE, output_path=OUTPUT_PATH,
                   sagemaker_session=sagemaker_session)

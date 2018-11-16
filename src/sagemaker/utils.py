@@ -23,6 +23,14 @@ import time
 from datetime import datetime
 from functools import wraps
 
+import six
+
+
+AIRFLOW_TIME_MACRO = "{{ execution_date.strftime('%Y-%m-%d-%H-%M-%S') }}"
+AIRFLOW_TIME_MACRO_LEN = 19
+AIRFLOW_TIME_MACRO_SHORT = "{{ execution_date.strftime('%y%m%d-%H%M') }}"
+AIRFLOW_TIME_MACRO_SHORT_LEN = 11
+
 
 # Use the base name of the image as the job name if the user doesn't give us one
 def name_from_image(image):
@@ -54,6 +62,25 @@ def name_from_base(base, max_length=63, short=False):
     timestamp = sagemaker_short_timestamp() if short else sagemaker_timestamp()
     trimmed_base = base[:max_length - len(timestamp) - 1]
     return '{}-{}'.format(trimmed_base, timestamp)
+
+
+def airflow_name_from_base(base, max_length=63, short=False):
+    """Append airflow execution_date macro (https://airflow.apache.org/code.html?#macros)
+    to the provided string. The macro will beevaluated in Airflow operator runtime.
+    This guarantees that different operators will have same name returned by this function.
+
+    Args:
+        base (str): String used as prefix to generate the unique name.
+        max_length (int): Maximum length for the resulting string.
+        short (bool): Whether or not to use a truncated timestamp.
+
+    Returns:
+        str: Input parameter with appended macro.
+    """
+    macro = AIRFLOW_TIME_MACRO_SHORT if short else AIRFLOW_TIME_MACRO
+    length = AIRFLOW_TIME_MACRO_SHORT_LEN if short else AIRFLOW_TIME_MACRO_LEN
+    trimmed_base = base[:max_length - length - 1]
+    return "{}-{}".format(trimmed_base, macro)
 
 
 def base_name_from_image(image):
@@ -119,10 +146,9 @@ def to_str(value):
     Returns:
         str or unicode: The string representation of the value or the unicode string itself.
     """
-    if sys.version_info.major < 3 and isinstance(value, unicode):  # noqa: F821
+    if sys.version_info.major < 3 and isinstance(value, six.string_types):
         return value
-    else:
-        return str(value)
+    return str(value)
 
 
 def extract_name_from_job_arn(arn):
@@ -240,7 +266,6 @@ def download_folder(bucket_name, prefix, target, sagemaker_session):
             # anything else will be raised.
             if exc.errno != errno.EEXIST:
                 raise
-            pass
         obj.download_file(file_path)
 
 
@@ -284,10 +309,18 @@ def download_file(bucket_name, path, target, sagemaker_session):
 
 
 class DeferredError(object):
-    """Stores an exception and raises it at a later time anytime this
+    """Stores an exception and raises it at a later time if this
     object is accessed in any way.  Useful to allow soft-dependencies on imports,
     so that the ImportError can be raised again later if code actually
     relies on the missing library.
+
+    Example::
+
+        try:
+            import obscurelib
+        except ImportError as e:
+            logging.warning("Failed to import obscurelib. Obscure features will not work.")
+            obscurelib = DeferredError(e)
     """
 
     def __init__(self, exception):

@@ -2,10 +2,43 @@
 CHANGELOG
 =========
 
-1.13.1dev
+1.14.3-dev
 ======
 
+* bug-fix: Changes to use correct S3 bucket and time range for dataframes in TrainingJobAnalytics.
+* bug-fix: Local Mode: correctly handle the case where the model output folder doesn't exist yet
+* feature: Add APIs to export Airflow training and tuning config
+* doc-fix: Fix typos in tensorflow serving documentation
+* doc-fix: Add estimator base classes to API docs
+* feature: HyperparameterTuner: add support for Automatic Model Tuning's Warm Start Jobs
 * enhancement: Local Mode: add explicit pull for serving
+
+1.14.2
+======
+
+* bug-fix: support ``CustomAttributes`` argument in local mode ``invoke_endpoint`` requests
+* enhancement: add ``content_type`` parameter to ``sagemaker.tensorflow.serving.Predictor``
+* doc-fix: add TensorFlow Serving Container docs
+* doc-fix: fix rendering error in README.rst
+* enhancement: Local Mode: support optional input channels
+* build: added pylint
+* build: upgrade docker-compose to 1.23
+* enhancement: Frameworks: update warning for not setting framework_version as we aren't planning a breaking change anymore
+* enhancement: Session: remove hardcoded 'training' from job status error message
+* bug-fix: Updated Cloudwatch namespace for metrics in TrainingJobsAnalytics
+* bug-fix: Changes to use correct s3 bucket and time range for dataframes in TrainingJobAnalytics.
+* enhancement: Remove MetricDefinition lookup via tuning job in TrainingJobAnalytics
+
+1.14.1
+======
+
+* feature: Estimators: add support for Amazon Object2Vec algorithm
+
+1.14.0
+======
+
+* feature: add support for sagemaker-tensorflow-serving container
+* feature: Estimator: make input channels optional
 
 1.13.0
 ======

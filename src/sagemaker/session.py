@@ -134,7 +134,7 @@ class Session(object):
         files = []
         key_suffix = None
         if os.path.isdir(path):
-            for dirpath, dirnames, filenames in os.walk(path):
+            for dirpath, _, filenames in os.walk(path):
                 for name in filenames:
                     local_path = os.path.join(dirpath, name)
                     s3_relative_prefix = '' if path == dirpath else os.path.relpath(dirpath, start=path) + '/'
@@ -169,11 +169,11 @@ class Session(object):
         if self._default_bucket:
             return self._default_bucket
 
-        s3 = self.boto_session.resource('s3')
         account = self.boto_session.client('sts').get_caller_identity()['Account']
         region = self.boto_session.region_name
         default_bucket = 'sagemaker-{}-{}'.format(region, account)
 
+        s3 = self.boto_session.resource('s3')
         try:
             # 'us-east-1' cannot be specified because it is the default region:
             # https://github.com/boto/boto3/issues/125
@@ -194,11 +194,7 @@ class Session(object):
                 pass
             elif error_code == 'TooManyBuckets':
                 # Succeed if the default bucket exists
-                try:
-                    s3.meta.client.head_bucket(Bucket=default_bucket)
-                    pass
-                except ClientError:
-                    raise
+                s3.meta.client.head_bucket(Bucket=default_bucket)
             else:
                 raise
 
@@ -257,13 +253,15 @@ class Session(object):
                 'TrainingImage': image,
                 'TrainingInputMode': input_mode
             },
-            'InputDataConfig': input_config,
             'OutputDataConfig': output_config,
             'TrainingJobName': job_name,
             'StoppingCondition': stop_condition,
             'ResourceConfig': resource_config,
             'RoleArn': role,
         }
+
+        if input_config is not None:
+            train_request['InputDataConfig'] = input_config
 
         if hyperparameters and len(hyperparameters) > 0:
             train_request['HyperParameters'] = hyperparameters
@@ -281,7 +279,8 @@ class Session(object):
     def tune(self, job_name, strategy, objective_type, objective_metric_name,
              max_jobs, max_parallel_jobs, parameter_ranges,
              static_hyperparameters, image, input_mode, metric_definitions,
-             role, input_config, output_config, resource_config, stop_condition, tags):
+             role, input_config, output_config, resource_config, stop_condition, tags,
+             warm_start_config):
         """Create an Amazon SageMaker hyperparameter tuning job
 
         Args:
@@ -325,6 +324,8 @@ class Session(object):
             stop_condition (dict): When training should finish, e.g. ``MaxRuntimeInSeconds``.
             tags (list[dict]): List of tags for labeling the tuning job. For more, see
                 https://docs.aws.amazon.com/sagemaker/latest/dg/API_Tag.html.
+            warm_start_config (dict): Configuration defining the type of warm start and
+                other required configurations.
         """
         tune_request = {
             'HyperParameterTuningJobName': job_name,
@@ -354,6 +355,9 @@ class Session(object):
             }
         }
 
+        if warm_start_config:
+            tune_request['WarmStartConfig'] = warm_start_config
+
         if metric_definitions is not None:
             tune_request['TrainingJobDefinition']['AlgorithmSpecification']['MetricDefinitions'] = metric_definitions
 
@@ -381,7 +385,6 @@ class Session(object):
             # allow to pass if the job already stopped
             if error_code == 'ValidationException':
                 LOGGER.info('Tuning job: {} is already stopped or not running.'.format(name))
-                pass
             else:
                 LOGGER.error('Error occurred while attempting to stop tuning job: {}. Please try again.'.format(name))
                 raise
@@ -483,7 +486,7 @@ class Session(object):
         return name
 
     def create_model_from_job(self, training_job_name, name=None, role=None, primary_container_image=None,
-                              model_data_url=None, env={}, vpc_config_override=vpc_utils.VPC_CONFIG_DEFAULT):
+                              model_data_url=None, env=None, vpc_config_override=vpc_utils.VPC_CONFIG_DEFAULT):
         """Create an Amazon SageMaker ``Model`` from a SageMaker Training Job.
 
         Args:
@@ -508,6 +511,7 @@ class Session(object):
         training_job = self.sagemaker_client.describe_training_job(TrainingJobName=training_job_name)
         name = name or training_job_name
         role = role or training_job['RoleArn']
+        env = env or {}
         primary_container = container_def(
             primary_container_image or training_job['AlgorithmSpecification']['TrainingImage'],
             model_data_url=model_data_url or training_job['ModelArtifacts']['S3ModelArtifacts'],
@@ -638,7 +642,8 @@ class Session(object):
 
         if status != 'Completed' and status != 'Stopped':
             reason = desc.get('FailureReason', '(No reason provided)')
-            raise ValueError('Error training {}: {} Reason: {}'.format(job, status, reason))
+            job_type = status_key_name.replace('JobStatus', ' job')
+            raise ValueError('Error for {} {}: {} Reason: {}'.format(job_type, job, status, reason))
 
     def wait_for_endpoint(self, endpoint, poll=5):
         """Wait for an Amazon SageMaker endpoint deployment to complete.
@@ -1152,19 +1157,19 @@ def _deploy_done(sagemaker_client, endpoint_name):
     return None if status in in_progress_statuses else desc
 
 
-def _wait_until_training_done(callable, desc, poll=5):
-    job_desc, finished = callable(desc)
+def _wait_until_training_done(callable_fn, desc, poll=5):
+    job_desc, finished = callable_fn(desc)
     while not finished:
         time.sleep(poll)
-        job_desc, finished = callable(job_desc)
+        job_desc, finished = callable_fn(job_desc)
     return job_desc
 
 
-def _wait_until(callable, poll=5):
-    result = callable()
+def _wait_until(callable_fn, poll=5):
+    result = callable_fn()
     while result is None:
         time.sleep(poll)
-        result = callable()
+        result = callable_fn()
     return result
 
 

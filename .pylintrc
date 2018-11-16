@@ -1,0 +1,90 @@
+[MASTER]
+
+ignore=
+    tensorflow_serving
+
+[MESSAGES CONTROL]
+
+disable=
+    C, # convention
+    R, # refactor
+    too-many-arguments, # We should fix the offending ones soon.
+    too-many-lines, # Some files are too big, we should fix this too
+    too-few-public-methods,
+    too-many-instance-attributes,
+    too-many-locals,
+    len-as-condition, # Nice to have in the future
+    bad-indentation,
+    line-too-long, # We let Flake8 take care of this
+    logging-format-interpolation,
+    useless-object-inheritance, # We still support python2 so inheriting from object is ok
+    invalid-name,
+    import-error,
+    logging-not-lazy,
+    fixme,
+    no-self-use,
+    attribute-defined-outside-init,
+    protected-access,
+    invalid-all-object,
+    arguments-differ,
+    abstract-method,
+    signature-differs
+
+[REPORTS]
+# Set the output format. Available formats are text, parseable, colorized, msvs
+# (visual studio) and html
+output-format=colorized
+
+# Tells whether to display a full report or only the messages
+# CHANGE: No report.
+reports=no
+
+[FORMAT]
+# Maximum number of characters on a single line.
+max-line-length=100
+# Maximum number of lines in a module
+#max-module-lines=1000
+# String used as indentation unit. This is usually " " (4 spaces) or "\t" (1 tab).
+indent-string='  '
+
+[BASIC]
+
+# Required attributes for module, separated by a comma
+#required-attributes=
+# List of builtins function names that should not be used, separated by a comma.
+# XXX: Should we ban map() & filter() for list comprehensions?
+# exit & quit are for the interactive interpreter shell only.
+# https://docs.python.org/3/library/constants.html#constants-added-by-the-site-module
+bad-functions=
+    apply,
+    exit,
+    input,
+    quit,
+
+[SIMILARITIES]
+# Minimum lines number of a similarity.
+min-similarity-lines=5
+# Ignore comments when computing similarities.
+ignore-comments=yes
+# Ignore docstrings when computing similarities.
+ignore-docstrings=yes
+
+[VARIABLES]
+# Tells whether we should check for unused import in __init__ files.
+init-import=no
+# A regular expression matching the beginning of the name of dummy variables
+# (i.e. not used).
+dummy-variables-rgx=_|unused_
+
+# List of additional names supposed to be defined in builtins. Remember that
+# you should avoid to define new builtins when possible.
+#additional-builtins=
+
+[LOGGING]
+# Apply logging string format checks to calls on these modules.
+logging-modules=
+    logging
+
+[TYPECHECK]
+ignored-modules=
+    distutils

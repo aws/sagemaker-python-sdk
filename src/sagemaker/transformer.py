@@ -144,7 +144,7 @@ class Transformer(object):
         init_params = cls._prepare_init_params_from_job_description(job_details)
         transformer = cls(sagemaker_session=sagemaker_session, **init_params)
         transformer.latest_transform_job = _TransformJob(sagemaker_session=sagemaker_session,
-                                                         transform_job_name=init_params['base_transform_job_name'])
+                                                         job_name=init_params['base_transform_job_name'])
 
         return transformer
 
@@ -177,9 +177,6 @@ class Transformer(object):
 
 
 class _TransformJob(_Job):
-    def __init__(self, sagemaker_session, transform_job_name):
-        super(_TransformJob, self).__init__(sagemaker_session, transform_job_name)
-
     @classmethod
     def start_new(cls, transformer, data, data_type, content_type, compression_type, split_type):
         config = _TransformJob._load_config(data, data_type, content_type, compression_type, split_type, transformer)
