@@ -14,6 +14,7 @@ CHANGELOG
 * feature: HyperparameterTuner: Make input channels optional
 * feature: Add support for Chainer 5.0
 * feature: Estimator: add support for MetricDefinitions
+* feature: Estimators: add support for Amazon IP Insights algorithm
 
 1.14.2
 ======
