@@ -623,6 +623,7 @@ class Framework(EstimatorBase):
     """
 
     __framework_name__ = None
+    LAUNCH_PS_ENV_NAME = 'sagemaker_parameter_server_enabled'
 
     def __init__(self, entry_point, source_dir=None, hyperparameters=None, enable_cloudwatch_metrics=False,
                  container_log_level=logging.INFO, code_location=None, image_name=None, **kwargs):

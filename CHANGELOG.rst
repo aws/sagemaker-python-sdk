@@ -25,6 +25,7 @@ CHANGELOG
 * build: added pylint
 * build: upgrade docker-compose to 1.23
 * enhancement: Frameworks: update warning for not setting framework_version as we aren't planning a breaking change anymore
+* feature: Estimator: add script mode and Python 3 support for TensorFlow
 * enhancement: Session: remove hardcoded 'training' from job status error message
 * bug-fix: Updated Cloudwatch namespace for metrics in TrainingJobsAnalytics
 * bug-fix: Changes to use correct s3 bucket and time range for dataframes in TrainingJobAnalytics.
