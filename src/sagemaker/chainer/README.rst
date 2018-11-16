@@ -634,13 +634,13 @@ The Chainer Docker images have the following dependencies installed:
 +-----------------------------+-------------+-------------+-------------+
 | Dependencies                | chainer 4.0 | chainer 4.1 | chainer 5.0 |
 +-----------------------------+-------------+-------------+-------------+
-| chainer                     | 4.0.0       | 4.1.0       |  5.0.0      |
+| chainer                     | 4.0.0       | 4.1.0       | 5.0.0       |
 +-----------------------------+-------------+-------------+-------------+
 | chainercv                   | 0.9.0       | 0.10.0      | 0.10.0      |
 +-----------------------------+-------------+-------------+-------------+
-| chainermn                   | 1.2.0       |  1.3.0      |  N/A        |
+| chainermn                   | 1.2.0       | 1.3.0       | N/A         |
 +-----------------------------+-------------+-------------+-------------+
-| CUDA (GPU image only)       | 9.0         | 9.0         |  9.0        |
+| CUDA (GPU image only)       | 9.0         | 9.0         | 9.0         |
 +-----------------------------+-------------+-------------+-------------+
 | cupy                        | 4.0.0       | 4.1.0       | 5.0.0       |
 +-----------------------------+-------------+-------------+-------------+
@@ -659,10 +659,10 @@ The Chainer Docker images have the following dependencies installed:
 
 The Docker images extend Ubuntu 16.04.
 
-You must select a version of Chainer by passing a framework_version keyword arg to the Chainer Estimator constructor.
-Currently supported versions are listed in the above table. You can also set framework_version to only specify major and
-minor version, which will cause your training script to be run on the latest supported patch version of that minor
-version.
+You must select a version of Chainer by passing a ``framework_version`` keyword arg to the Chainer Estimator
+constructor. Currently supported versions are listed in the above table. You can also set framework_version to only
+specify major and minor version, which will cause your training script to be run on the latest supported patch
+version of that minor version.
 
 Alternatively, you can build your own image by following the instructions in the SageMaker Chainer containers
 repository, and passing ``image_name`` to the Chainer Estimator constructor.
