@@ -267,7 +267,7 @@ class Session(object):
             train_request['InputDataConfig'] = input_config
 
         if metric_definitions is not None:
-             train_request['AlgorithmSpecification']['MetricDefinitions'] = metric_definitions
+            train_request['AlgorithmSpecification']['MetricDefinitions'] = metric_definitions
 
         if hyperparameters and len(hyperparameters) > 0:
             train_request['HyperParameters'] = hyperparameters

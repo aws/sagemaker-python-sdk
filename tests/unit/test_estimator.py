@@ -144,7 +144,7 @@ def test_framework_all_init_args(sagemaker_session):
                        train_max_run=456, input_mode='inputmode', output_path='outputpath', output_kms_key='outputkms',
                        base_job_name='basejobname', tags=[{'foo': 'bar'}], subnets=['123', '456'],
                        security_group_ids=['789', '012'],
-                       metric_definitions = [{'Name': 'validation-rmse', 'Regex': 'validation-rmse=(\d\.\d+)'}])
+                       metric_definitions=[{'Name': 'validation-rmse', 'Regex': 'validation-rmse=(\\d+)'}])
     _TrainingJob.start_new(f, 's3://mydata')
     sagemaker_session.train.assert_called_once()
     _, args = sagemaker_session.train.call_args
@@ -160,7 +160,8 @@ def test_framework_all_init_args(sagemaker_session):
                     'role': sagemaker_session.expand_role(), 'job_name': None,
                     'resource_config': {'VolumeSizeInGB': 123, 'InstanceCount': 3, 'VolumeKmsKeyId': 'volumekms',
                                         'InstanceType': 'ml.m4.xlarge'},
-                    'metric_definitions': [{'Name': 'validation-rmse', 'Regex': 'validation-rmse=(\d\.\d+)'}]}
+                    'metric_definitions': [{'Name': 'validation-rmse', 'Regex': 'validation-rmse=(\\d+)'}]}
+
 
 def test_sagemaker_s3_uri_invalid(sagemaker_session):
     with pytest.raises(ValueError) as error:

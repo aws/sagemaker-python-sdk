@@ -179,7 +179,7 @@ MAX_TIME = 3 * 60 * 60
 JOB_NAME = 'jobname'
 TAGS = [{'Name': 'some-tag', 'Value': 'value-for-tag'}]
 VPC_CONFIG = {'Subnets': ['foo'], 'SecurityGroupIds': ['bar']}
-METRIC_DEFINITONS = [{'Name': 'validation-rmse', 'Regex': 'validation-rmse=(\d\.\d+)'}]
+METRIC_DEFINITONS = [{'Name': 'validation-rmse', 'Regex': 'validation-rmse=(\\d+)'}]
 
 DEFAULT_EXPECTED_TRAIN_JOB_ARGS = {
     'OutputDataConfig': {
