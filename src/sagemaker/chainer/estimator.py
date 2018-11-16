@@ -64,9 +64,9 @@ class Chainer(Framework):
                 set to the number of GPUs on the instance (on GPU instances), or one (on CPU instances).
             additional_mpi_options (str): String of options to the 'mpirun' command used to run the entry point.
                 For example, '-X NCCL_DEBUG=WARN' will pass that option string to the mpirun command.
-            source_dir (str): Path (absolute or relative) to a directory with any other training
-                source code dependencies aside from tne entry point file (default: None). Structure within this
-                directory are preserved when training on Amazon SageMaker.
+            source_dir (str or [str]): Single path (absolute or relative) or a list of paths to directories with
+                any other training source code dependencies aside from the entry point file (default: None).
+                The structures within this directories are preserved when training on Amazon SageMaker.
             hyperparameters (dict): Hyperparameters that will be used for training (default: None).
                 The hyperparameters are made accessible as a dict[str, str] to the training code on SageMaker.
                 For convenience, this accepts other types for keys and values, but ``str()`` will be called

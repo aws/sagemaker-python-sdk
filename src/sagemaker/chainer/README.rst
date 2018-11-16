@@ -145,10 +145,10 @@ Optional arguments
 
 The following are optional arguments. When you create a ``Chainer`` object, you can specify these as keyword arguments.
 
--  ``source_dir`` Path (absolute or relative) to a directory with any
-   other training source code dependencies including the entry point
-   file. Structure within this directory will be preserved when training
-   on SageMaker.
+-  ``source_dir`` Single path (absolute or relative) or a list of paths
+    to directories with any other training source code dependencies
+    aside from the entry point file (default: None). The structures
+    within this directories are preserved when training on Amazon SageMaker.
 -  ``hyperparameters`` Hyperparameters that will be used for training.
    Will be made accessible as a dict[str, str] to the training code on
    SageMaker. For convenience, accepts other types besides str, but

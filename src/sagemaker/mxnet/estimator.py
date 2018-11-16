@@ -50,9 +50,9 @@ class MXNet(Framework):
         Args:
             entry_point (str): Path (absolute or relative) to the Python source file which should be executed
                 as the entry point to training. This should be compatible with either Python 2.7 or Python 3.5.
-            source_dir (str): Path (absolute or relative) to a directory with any other training
-                source code dependencies aside from tne entry point file (default: None). Structure within this
-                directory are preserved when training on Amazon SageMaker.
+            source_dir (str or [str]): Single path (absolute or relative) or a list of paths to directories with
+                any other training source code dependencies aside from the entry point file (default: None).
+                The structures within this directories are preserved when training on Amazon SageMaker.
             hyperparameters (dict): Hyperparameters that will be used for training (default: None).
                 The hyperparameters are made accessible as a dict[str, str] to the training code on SageMaker.
                 For convenience, this accepts other types for keys and values, but ``str()`` will be called
