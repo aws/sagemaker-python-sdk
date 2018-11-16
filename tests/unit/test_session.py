@@ -24,6 +24,11 @@ from mock import Mock, patch, call
 import sagemaker
 from sagemaker import s3_input, Session, get_execution_role
 from sagemaker.session import _tuning_job_status, _transform_job_status, _train_done
+from sagemaker.tuner import WarmStartConfig, WarmStartTypes
+
+STATIC_HPs = {"feature_dim": "784", }
+
+SAMPLE_PARAM_RANGES = [{"Name": "mini_batch_size", "MinValue": "10", "MaxValue": "100"}]
 
 REGION = 'us-west-2'
 
@@ -267,6 +272,114 @@ def test_train_pack_to_request(sagemaker_session):
 
     assert sagemaker_session.sagemaker_client.method_calls[0] == (
         'create_training_job', (), DEFAULT_EXPECTED_TRAIN_JOB_ARGS)
+
+
+SAMPLE_STOPPING_CONDITION = {'MaxRuntimeInSeconds': MAX_TIME}
+
+RESOURCE_CONFIG = {'InstanceCount': INSTANCE_COUNT, 'InstanceType': INSTANCE_TYPE, 'VolumeSizeInGB': MAX_SIZE}
+
+SAMPLE_INPUT = [{'DataSource': {
+    'S3DataSource': {'S3DataDistributionType': 'FullyReplicated', 'S3DataType': 'S3Prefix', 'S3Uri': S3_INPUT_URI}},
+    'ChannelName': 'training'}]
+
+SAMPLE_OUTPUT = {'S3OutputPath': S3_OUTPUT}
+
+SAMPLE_OBJECTIVE = {'Type': "Maximize", 'MetricName': "val-score", }
+
+SAMPLE_METRIC_DEF = [{"Name": "train:progress", "Regex": "regex-1"}]
+
+SAMPLE_TUNING_JOB_REQUEST = {
+    'HyperParameterTuningJobName': 'dummy-tuning-1',
+    'HyperParameterTuningJobConfig': {
+        'Strategy': "Bayesian",
+        'HyperParameterTuningJobObjective': SAMPLE_OBJECTIVE,
+        'ResourceLimits': {
+            'MaxNumberOfTrainingJobs': 100,
+            'MaxParallelTrainingJobs': 5,
+        },
+        'ParameterRanges': SAMPLE_PARAM_RANGES,
+    },
+    'TrainingJobDefinition': {
+        'StaticHyperParameters': STATIC_HPs,
+        'AlgorithmSpecification': {
+            'TrainingImage': "dummy-image-1",
+            'TrainingInputMode': "File",
+            'MetricDefinitions': SAMPLE_METRIC_DEF
+        },
+        'RoleArn': EXPANDED_ROLE,
+        'InputDataConfig': SAMPLE_INPUT,
+        'OutputDataConfig': SAMPLE_OUTPUT,
+
+        'ResourceConfig': RESOURCE_CONFIG,
+        'StoppingCondition': SAMPLE_STOPPING_CONDITION
+    }
+}
+
+
+@pytest.mark.parametrize('warm_start_type, parents', [
+    ("IdenticalDataAndAlgorithm", {"p1", "p2", "p3"}),
+    ("TransferLearning", {"p1", "p2", "p3"}),
+])
+def test_tune_warm_start(sagemaker_session, warm_start_type, parents):
+
+    def assert_create_tuning_job_request(**kwrags):
+        assert kwrags["HyperParameterTuningJobConfig"] == SAMPLE_TUNING_JOB_REQUEST["HyperParameterTuningJobConfig"]
+        assert kwrags["HyperParameterTuningJobName"] == "dummy-tuning-1"
+        assert kwrags["TrainingJobDefinition"] == SAMPLE_TUNING_JOB_REQUEST["TrainingJobDefinition"]
+        assert kwrags["WarmStartConfig"] == {
+            'WarmStartType': warm_start_type,
+            'ParentHyperParameterTuningJobs': [{'HyperParameterTuningJobName': parent} for parent in parents]
+        }
+
+    sagemaker_session.sagemaker_client.create_hyper_parameter_tuning_job.side_effect = assert_create_tuning_job_request
+    sagemaker_session.tune(job_name="dummy-tuning-1",
+                           strategy="Bayesian",
+                           objective_type="Maximize",
+                           objective_metric_name="val-score",
+                           max_jobs=100,
+                           max_parallel_jobs=5,
+                           parameter_ranges=SAMPLE_PARAM_RANGES,
+                           static_hyperparameters=STATIC_HPs,
+                           image="dummy-image-1",
+                           input_mode="File",
+                           metric_definitions=SAMPLE_METRIC_DEF,
+                           role=EXPANDED_ROLE,
+                           input_config=SAMPLE_INPUT,
+                           output_config=SAMPLE_OUTPUT,
+                           resource_config=RESOURCE_CONFIG,
+                           stop_condition=SAMPLE_STOPPING_CONDITION,
+                           tags=None,
+                           warm_start_config=WarmStartConfig(warm_start_type=WarmStartTypes(warm_start_type),
+                                                             parents=parents).to_input_req())
+
+
+def test_tune(sagemaker_session):
+
+    def assert_create_tuning_job_request(**kwrags):
+        assert kwrags["HyperParameterTuningJobConfig"] == SAMPLE_TUNING_JOB_REQUEST["HyperParameterTuningJobConfig"]
+        assert kwrags["HyperParameterTuningJobName"] == "dummy-tuning-1"
+        assert kwrags["TrainingJobDefinition"] == SAMPLE_TUNING_JOB_REQUEST["TrainingJobDefinition"]
+        assert kwrags.get("WarmStartConfig", None) is None
+
+    sagemaker_session.sagemaker_client.create_hyper_parameter_tuning_job.side_effect = assert_create_tuning_job_request
+    sagemaker_session.tune(job_name="dummy-tuning-1",
+                           strategy="Bayesian",
+                           objective_type="Maximize",
+                           objective_metric_name="val-score",
+                           max_jobs=100,
+                           max_parallel_jobs=5,
+                           parameter_ranges=SAMPLE_PARAM_RANGES,
+                           static_hyperparameters=STATIC_HPs,
+                           image="dummy-image-1",
+                           input_mode="File",
+                           metric_definitions=SAMPLE_METRIC_DEF,
+                           role=EXPANDED_ROLE,
+                           input_config=SAMPLE_INPUT,
+                           output_config=SAMPLE_OUTPUT,
+                           resource_config=RESOURCE_CONFIG,
+                           stop_condition=SAMPLE_STOPPING_CONDITION,
+                           tags=None,
+                           warm_start_config=None)
 
 
 def test_stop_tuning_job(sagemaker_session):
