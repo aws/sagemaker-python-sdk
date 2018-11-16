@@ -367,7 +367,7 @@ def model_config(instance_type, model, role=None, image=None):
     return config
 
 
-def model_config_from_estimator(instance_type, estimator, role=None, image=None,
+def model_config_from_estimator(instance_type, estimator, role=None, image=None, model_server_workers=None,
                                 vpc_config_override=vpc_utils.VPC_CONFIG_DEFAULT):
     """Export Airflow model config from a SageMaker estimator
 
@@ -375,6 +375,11 @@ def model_config_from_estimator(instance_type, estimator, role=None, image=None,
         instance_type (str): The EC2 instance type to deploy this Model to. For example, 'ml.p2.xlarge'
         estimator (sagemaker.model.EstimatorBase): The SageMaker estimator to export Airflow config from.
             It has to be an estimator associated with a training job.
+        role (str): The ``ExecutionRoleArn`` IAM Role ARN for the model
+        image (str): An container image to use for deploying the model
+        model_server_workers (int): The number of worker processes used by the inference server.
+                If None, server will use one worker per vCPU. Only effective when estimator is
+                SageMaker framework.
         vpc_config_override (dict[str, list[str]]): Override for VpcConfig set on the model.
             Default: use subnets and security groups from this Estimator.
             * 'Subnets' (list[str]): List of subnet ids.
@@ -384,9 +389,12 @@ def model_config_from_estimator(instance_type, estimator, role=None, image=None,
         Model config that can be directly used by SageMakerModelOperator in Airflow. It can also be part
         of the config used by SageMakerEndpointOperator and SageMakerTransformOperator in Airflow.
     """
-    try:
-        model = estimator.create_model(role, image, vpc_config_override=vpc_config_override)
-    except TypeError:
+    if isinstance(estimator, sagemaker.estimator.Estimator):
+        model = estimator.create_model(role=role, image=image, vpc_config_override=vpc_config_override)
+    elif isinstance(estimator, sagemaker.amazon.amazon_estimator.AmazonAlgorithmEstimatorBase):
         model = estimator.create_model(vpc_config_override=vpc_config_override)
+    elif isinstance(estimator, sagemaker.estimator.Framework):
+        model = estimator.create_model(model_server_workers=model_server_workers, role=role,
+                                       vpc_config_override=vpc_config_override)
 
     return model_config(instance_type, model, role, image)
