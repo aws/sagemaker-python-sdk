@@ -15,7 +15,7 @@ from __future__ import print_function, absolute_import
 import os
 
 import sagemaker
-from sagemaker import fw_utils, job, utils, model, session
+from sagemaker import fw_utils, job, utils, session, vpc_utils
 from sagemaker.amazon import amazon_estimator
 
 
@@ -32,20 +32,24 @@ def prepare_framework(estimator, s3_operations):
     script = os.path.basename(estimator.entry_point)
     if estimator.source_dir and estimator.source_dir.lower().startswith('s3://'):
         code_dir = estimator.source_dir
+        estimator.uploaded_code = fw_utils.UploadedCode(s3_prefix=code_dir, script_name=script)
     else:
         code_dir = 's3://{}/{}'.format(bucket, key)
+        estimator.uploaded_code = fw_utils.UploadedCode(s3_prefix=code_dir, script_name=script)
         s3_operations['S3Upload'] = [{
             'Path': estimator.source_dir or script,
             'Bucket': bucket,
             'Key': key,
             'Tar': True
         }]
-    estimator._hyperparameters[model.DIR_PARAM_NAME] = code_dir
-    estimator._hyperparameters[model.SCRIPT_PARAM_NAME] = script
-    estimator._hyperparameters[model.CLOUDWATCH_METRICS_PARAM_NAME] = estimator.enable_cloudwatch_metrics
-    estimator._hyperparameters[model.CONTAINER_LOG_LEVEL_PARAM_NAME] = estimator.container_log_level
-    estimator._hyperparameters[model.JOB_NAME_PARAM_NAME] = estimator._current_job_name
-    estimator._hyperparameters[model.SAGEMAKER_REGION_PARAM_NAME] = estimator.sagemaker_session.boto_region_name
+    estimator._hyperparameters[sagemaker.model.DIR_PARAM_NAME] = code_dir
+    estimator._hyperparameters[sagemaker.model.SCRIPT_PARAM_NAME] = script
+    estimator._hyperparameters[sagemaker.model.CLOUDWATCH_METRICS_PARAM_NAME] = \
+        estimator.enable_cloudwatch_metrics
+    estimator._hyperparameters[sagemaker.model.CONTAINER_LOG_LEVEL_PARAM_NAME] = estimator.container_log_level
+    estimator._hyperparameters[sagemaker.model.JOB_NAME_PARAM_NAME] = estimator._current_job_name
+    estimator._hyperparameters[sagemaker.model.SAGEMAKER_REGION_PARAM_NAME] = \
+        estimator.sagemaker_session.boto_region_name
 
 
 def prepare_amazon_algorithm_estimator(estimator, inputs, mini_batch_size=None):
@@ -272,20 +276,35 @@ def tuning_config(tuner, inputs, job_name=None):
 
 
 def prepare_framework_container_def(model, instance_type, s3_operations):
+    """Prepare the framework model container information. Specify related s3 operations for Airflow to perform.
+    (Upload source_dir)
+
+    Args:
+        model (sagemaker.model.FrameworkModel): The framework model
+        instance_type (str): The EC2 instance type to deploy this Model to. For example, 'ml.p2.xlarge'.
+        s3_operations (dict): The dict to specify s3 operations (upload source_dir).
+
+    Returns (dict):
+        The container information of this framework model.
+    """
     deploy_image = model.image
     if not deploy_image:
         region_name = model.sagemaker_session.boto_session.region_name
-        deploy_image = sagemaker.create_image_uri(
+        deploy_image = fw_utils.create_image_uri(
             region_name, model.__framework_name__, instance_type, model.framework_version, model.py_version)
 
     deploy_env = dict(model.env)
     deploy_env.update(model._framework_env_vars())
     try:
         if model.model_server_workers:
-            deploy_env[model.MODEL_SERVER_WORKERS_PARAM_NAME.upper()] = str(model.model_server_workers)
+            deploy_env[sagemaker.model.MODEL_SERVER_WORKERS_PARAM_NAME.upper()] = str(model.model_server_workers)
     except AttributeError:
         # This applies to a FrameworkModel which is not SageMaker Deep Learning Framework Model
         pass
+
+    container_def = sagemaker.container_def(deploy_image, model.model_data, deploy_env)
+    base_name = utils.base_name_from_image(container_def['Image'])
+    model.name = model.name or utils.airflow_name_from_base(base_name)
 
     bucket = model.bucket or model.sagemaker_session._default_bucket
     key = '{}/source/sourcedir.tar.gz'.format(model.name)
@@ -302,28 +321,69 @@ def prepare_framework_container_def(model, instance_type, s3_operations):
             'Tar': True
         }]
 
-    return sagemaker.container_def(deploy_image, model.model_data, deploy_env)
+    return container_def
 
 
-def model_config(instance_type, estimator=None, model=None, role=None, image=None, **kwargs):
+def model_config(instance_type, model, role=None, image=None):
+    """Export Airflow model config from a SageMaker model
+
+    Args:
+        instance_type (str): The EC2 instance type to deploy this Model to. For example, 'ml.p2.xlarge'
+        model (sagemaker.model.FrameworkModel): The SageMaker model to export Airflow config from
+        role (str): The ``ExecutionRoleArn`` IAM Role ARN for the model
+        image (str): An container image to use for deploying the model
+
+    Returns (dict):
+        Model config that can be directly used by SageMakerModelOperator in Airflow. It can also be part
+        of the config used by SageMakerEndpointOperator and SageMakerTransformOperator in Airflow.
+    """
     s3_operations = {}
-    if isinstance(model, model.FrameworkModel):
+    model.image = image or model.image
+
+    if isinstance(model, sagemaker.model.FrameworkModel):
         container_def = prepare_framework_container_def(model, instance_type, s3_operations)
     else:
         container_def = model.prepare_container_def(instance_type)
-    base_name = utils.base_name_from_image(container_def['Image'])
-    model.name = model.name or utils.airflow_name_from_base(base_name)
+        base_name = utils.base_name_from_image(container_def['Image'])
+        model.name = model.name or utils.airflow_name_from_base(base_name)
 
     primary_container = session._expand_container_def(container_def)
 
     config = {
         'ModelName': model.name,
         'PrimaryContainer': primary_container,
-        'ExecutionRoleArn': role
+        'ExecutionRoleArn': role or model.role
     }
 
     if model.vpc_config:
         config['VpcConfig'] = model.vpc_config
 
+    if s3_operations:
+        config['S3Operations'] = s3_operations
+
     return config
 
+
+def model_config_from_estimator(instance_type, estimator, role=None, image=None,
+                                vpc_config_override=vpc_utils.VPC_CONFIG_DEFAULT):
+    """Export Airflow model config from a SageMaker estimator
+
+    Args:
+        instance_type (str): The EC2 instance type to deploy this Model to. For example, 'ml.p2.xlarge'
+        estimator (sagemaker.model.EstimatorBase): The SageMaker estimator to export Airflow config from.
+            It has to be an estimator associated with a training job.
+        vpc_config_override (dict[str, list[str]]): Override for VpcConfig set on the model.
+            Default: use subnets and security groups from this Estimator.
+            * 'Subnets' (list[str]): List of subnet ids.
+            * 'SecurityGroupIds' (list[str]): List of security group ids.
+
+    Returns (dict):
+        Model config that can be directly used by SageMakerModelOperator in Airflow. It can also be part
+        of the config used by SageMakerEndpointOperator and SageMakerTransformOperator in Airflow.
+    """
+    try:
+        model = estimator.create_model(role, image, vpc_config_override=vpc_config_override)
+    except TypeError:
+        model = estimator.create_model(vpc_config_override=vpc_config_override)
+
+    return model_config(instance_type, model, role, image)

@@ -17,7 +17,7 @@ import logging
 import sagemaker
 
 from sagemaker.local import LocalSession
-from sagemaker.fw_utils import tar_and_upload_dir, parse_s3_url, model_code_key_prefix
+from sagemaker.fw_utils import UploadedCode, tar_and_upload_dir, parse_s3_url, model_code_key_prefix
 from sagemaker.session import Session
 from sagemaker.utils import name_from_image, get_config_value
 
@@ -166,6 +166,7 @@ class FrameworkModel(Model):
             self.bucket, self.key_prefix = parse_s3_url(code_location)
         else:
             self.bucket, self.key_prefix = None, None
+        self.uploaded_code = None
 
     def prepare_container_def(self, instance_type):  # pylint disable=unused-argument
         """Return a container definition with framework configuration set in model environment variables.
@@ -187,7 +188,9 @@ class FrameworkModel(Model):
     def _upload_code(self, key_prefix):
         local_code = get_config_value('local.local_code', self.sagemaker_session.config)
         if self.sagemaker_session.local_mode and local_code:
-            self.uploaded_code = None
+            script_name = self.entry_point
+            dir_name = 'file://' + self.source_dir
+            self.uploaded_code = UploadedCode(s3_prefix=dir_name, script_name=script_name)
         else:
             self.uploaded_code = tar_and_upload_dir(session=self.sagemaker_session.boto_session,
                                                     bucket=self.bucket or self.sagemaker_session.default_bucket(),
@@ -201,7 +204,7 @@ class FrameworkModel(Model):
             dir_name = self.uploaded_code.s3_prefix
         else:
             script_name = self.entry_point
-            dir_name = 'file://' + self.source_dir
+            dir_name = self.source_dir
 
         return {
             SCRIPT_PARAM_NAME.upper(): script_name,
