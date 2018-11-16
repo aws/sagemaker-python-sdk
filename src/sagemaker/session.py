@@ -348,12 +348,14 @@ class Session(object):
                     'TrainingInputMode': input_mode,
                 },
                 'RoleArn': role,
-                'InputDataConfig': input_config,
                 'OutputDataConfig': output_config,
                 'ResourceConfig': resource_config,
                 'StoppingCondition': stop_condition,
             }
         }
+
+        if input_config is not None:
+            tune_request['TrainingJobDefinition']['InputDataConfig'] = input_config
 
         if warm_start_config:
             tune_request['WarmStartConfig'] = warm_start_config
