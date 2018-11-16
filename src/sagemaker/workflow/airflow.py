@@ -369,7 +369,6 @@ def model_config(instance_type, model, role=None, image=None):
     return config
 
 
-
 def model_config_from_estimator(instance_type, estimator, role=None, image=None, model_server_workers=None,
                                 vpc_config_override=vpc_utils.VPC_CONFIG_DEFAULT):
     """Export Airflow model config from a SageMaker estimator
@@ -383,6 +382,10 @@ def model_config_from_estimator(instance_type, estimator, role=None, image=None,
         model_server_workers (int): The number of worker processes used by the inference server.
                 If None, server will use one worker per vCPU. Only effective when estimator is
                 SageMaker framework.
+        vpc_config_override (dict[str, list[str]]): Override for VpcConfig set on the model.
+            Default: use subnets and security groups from this Estimator.
+            * 'Subnets' (list[str]): List of subnet ids.
+            * 'SecurityGroupIds' (list[str]): List of security group ids.
 
     Returns:
         dict: Model config that can be directly used by SageMakerModelOperator in Airflow. It can also be part
