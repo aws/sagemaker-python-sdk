@@ -930,3 +930,19 @@ def test_transform_config_from_amazon_alg_estimator(sagemaker_session):
     }
 
     assert config == expected_config
+
+
+def test_deploy_config(sagemaker_session):
+    chainer_model = chainer.ChainerModel(
+        model_data="{{ model_data }}",
+        role="{{ role }}",
+        entry_point="{{ entry_point }}",
+        source_dir="{{ source_dir }}",
+        image=None,
+        py_version='py3',
+        framework_version='5.0.0',
+        model_server_workers="{{ model_server_worker }}",
+        sagemaker_session=sagemaker_session)
+
+    config = airflow.deploy_config(chainer_model,
+                                   initial_instance_count, instance_type)

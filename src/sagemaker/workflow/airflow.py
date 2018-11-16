@@ -544,3 +544,25 @@ def transform_config_from_estimator(estimator, instance_count, instance_type, da
     }
 
     return config
+
+
+def deploy_config(model, initial_instance_count, instance_type, endpoint_name=None, tags=None):
+    model_base_config = model_config(instance_type, model)
+
+    production_variant = sagemaker.production_variant(model.name, instance_type, initial_instance_count)
+    name = model.name
+    config_options = {'EndpointConfigName': name, 'ProductionVariants': [production_variant]}
+    if tags is not None:
+        config_options['Tags'] = tags
+
+    endpoint_name = endpoint_name or name
+    endpoint_base_config = {
+        'EndpointName': endpoint_name,
+        'EndpointConfigName': name
+    }
+
+    return {
+        'Model': model_base_config,
+        'EndpointConfig': config_options,
+        'Endpoint': endpoint_base_config
+    }
