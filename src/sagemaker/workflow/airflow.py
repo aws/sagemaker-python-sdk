@@ -15,7 +15,6 @@ from __future__ import print_function, absolute_import
 import os
 
 import sagemaker
-
 from sagemaker import fw_utils, job, utils, session, vpc_utils
 from sagemaker.amazon import amazon_estimator
 
@@ -277,6 +276,7 @@ def tuning_config(tuner, inputs, job_name=None):
 
 
 def prepare_framework_container_def(model, instance_type, s3_operations):
+
     """Prepare the framework model container information. Specify related S3 operations for Airflow to perform.
     (Upload `source_dir`)
 
@@ -295,6 +295,10 @@ def prepare_framework_container_def(model, instance_type, s3_operations):
             region_name, model.__framework_name__, instance_type, model.framework_version, model.py_version)
 
     base_name = utils.base_name_from_image(deploy_image)
+    model.name = model.name or utils.airflow_name_from_base(base_name)
+
+    container_def = sagemaker.container_def(deploy_image, model.model_data, deploy_env)
+    base_name = utils.base_name_from_image(container_def['Image'])
     model.name = model.name or utils.airflow_name_from_base(base_name)
 
     bucket = model.bucket or model.sagemaker_session._default_bucket
@@ -366,6 +370,7 @@ def model_config(instance_type, model, role=None, image=None):
     return config
 
 
+
 def model_config_from_estimator(instance_type, estimator, role=None, image=None, model_server_workers=None,
                                 vpc_config_override=vpc_utils.VPC_CONFIG_DEFAULT):
     """Export Airflow model config from a SageMaker estimator
@@ -379,10 +384,6 @@ def model_config_from_estimator(instance_type, estimator, role=None, image=None,
         model_server_workers (int): The number of worker processes used by the inference server.
                 If None, server will use one worker per vCPU. Only effective when estimator is
                 SageMaker framework.
-        vpc_config_override (dict[str, list[str]]): Override for VpcConfig set on the model.
-            Default: use subnets and security groups from this Estimator.
-            * 'Subnets' (list[str]): List of subnet ids.
-            * 'SecurityGroupIds' (list[str]): List of security group ids.
 
     Returns:
         dict: Model config that can be directly used by SageMakerModelOperator in Airflow. It can also be part
