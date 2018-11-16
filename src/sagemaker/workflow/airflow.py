@@ -20,12 +20,12 @@ from sagemaker.amazon import amazon_estimator
 
 
 def prepare_framework(estimator, s3_operations):
-    """Prepare S3 operations (specify where to upload source_dir) and environment variables
+    """Prepare S3 operations (specify where to upload `source_dir`) and environment variables
     related to framework.
 
     Args:
         estimator (sagemaker.estimator.Estimator): The framework estimator to get information from and update.
-        s3_operations (dict): The dict to specify s3 operations (upload source_dir).
+        s3_operations (dict): The dict to specify s3 operations (upload `source_dir`).
     """
     bucket = estimator.code_location if estimator.code_location else estimator.sagemaker_session._default_bucket
     key = '{}/source/sourcedir.tar.gz'.format(estimator._current_job_name)
@@ -106,8 +106,8 @@ def training_base_config(estimator, inputs=None, job_name=None, mini_batch_size=
         mini_batch_size (int): Specify this argument only when estimator is a built-in estimator of an
             Amazon algorithm. For other estimators, batch size should be specified in the estimator.
 
-    Returns (dict):
-        Training config that can be directly used by SageMakerTrainingOperator in Airflow.
+    Returns:
+        dict: Training config that can be directly used by SageMakerTrainingOperator in Airflow.
     """
     default_bucket = estimator.sagemaker_session.default_bucket()
     s3_operations = {}
@@ -185,8 +185,8 @@ def training_config(estimator, inputs=None, job_name=None, mini_batch_size=None)
         mini_batch_size (int): Specify this argument only when estimator is a built-in estimator of an
             Amazon algorithm. For other estimators, batch size should be specified in the estimator.
 
-    Returns (dict):
-        Training config that can be directly used by SageMakerTrainingOperator in Airflow.
+    Returns:
+        dict: Training config that can be directly used by SageMakerTrainingOperator in Airflow.
     """
 
     train_config = training_base_config(estimator, inputs, job_name, mini_batch_size)
@@ -223,8 +223,8 @@ def tuning_config(tuner, inputs, job_name=None):
 
         job_name (str): Specify a tuning job name if needed.
 
-    Returns (dict):
-        Tuning config that can be directly used by SageMakerTuningOperator in Airflow.
+    Returns:
+        dict: Tuning config that can be directly used by SageMakerTuningOperator in Airflow.
     """
     train_config = training_base_config(tuner.estimator, inputs)
     hyperparameters = train_config.pop('HyperParameters', None)
@@ -277,15 +277,15 @@ def tuning_config(tuner, inputs, job_name=None):
 
 def prepare_framework_container_def(model, instance_type, s3_operations):
     """Prepare the framework model container information. Specify related S3 operations for Airflow to perform.
-    (Upload source_dir)
+    (Upload `source_dir`)
 
     Args:
         model (sagemaker.model.FrameworkModel): The framework model
         instance_type (str): The EC2 instance type to deploy this Model to. For example, 'ml.p2.xlarge'.
-        s3_operations (dict): The dict to specify S3 operations (upload source_dir).
+        s3_operations (dict): The dict to specify S3 operations (upload `source_dir`).
 
-    Returns (dict):
-        The container information of this framework model.
+    Returns:
+        dict: The container information of this framework model.
     """
     deploy_image = model.image
     if not deploy_image:
@@ -322,9 +322,7 @@ def prepare_framework_container_def(model, instance_type, s3_operations):
         # This applies to a FrameworkModel which is not SageMaker Deep Learning Framework Model
         pass
 
-    container_def = sagemaker.container_def(deploy_image, model.model_data, deploy_env)
-
-    return container_def
+    return sagemaker.container_def(deploy_image, model.model_data, deploy_env)
 
 
 def model_config(instance_type, model, role=None, image=None):
@@ -336,8 +334,8 @@ def model_config(instance_type, model, role=None, image=None):
         role (str): The ``ExecutionRoleArn`` IAM Role ARN for the model
         image (str): An container image to use for deploying the model
 
-    Returns (dict):
-        Model config that can be directly used by SageMakerModelOperator in Airflow. It can also be part
+    Returns:
+        dict: Model config that can be directly used by SageMakerModelOperator in Airflow. It can also be part
         of the config used by SageMakerEndpointOperator and SageMakerTransformOperator in Airflow.
     """
     s3_operations = {}
@@ -385,8 +383,8 @@ def model_config_from_estimator(instance_type, estimator, role=None, image=None,
             * 'Subnets' (list[str]): List of subnet ids.
             * 'SecurityGroupIds' (list[str]): List of security group ids.
 
-    Returns (dict):
-        Model config that can be directly used by SageMakerModelOperator in Airflow. It can also be part
+    Returns:
+        dict: Model config that can be directly used by SageMakerModelOperator in Airflow. It can also be part
         of the config used by SageMakerEndpointOperator and SageMakerTransformOperator in Airflow.
     """
     if isinstance(estimator, sagemaker.estimator.Estimator):
