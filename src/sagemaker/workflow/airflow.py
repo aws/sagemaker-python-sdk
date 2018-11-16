@@ -400,3 +400,50 @@ def model_config_from_estimator(instance_type, estimator, role=None, image=None,
                                        vpc_config_override=vpc_config_override)
 
     return model_config(instance_type, model, role, image)
+
+
+def transform_config(transformer, data, data_type='S3Prefix', content_type=None, compression_type=None, 
+                     split_type=None, job_name=None):
+    if job_name is not None:
+        transformer._current_job_name = job_name
+    else:
+        base_name = transformer.base_transform_job_name
+        transformer._current_job_name = utils.airflow_name_from_base(base_name) \
+            if base_name is not None else transformer.model_name 
+
+    if transformer.output_path is None:
+        transformer.output_path = 's3://{}/{}'.format(
+            transformer.sagemaker_session.default_bucket(), transformer._current_job_name)
+
+    job_config = sagemaker.transformer._TransformJob._load_config(
+        data, data_type, content_type, compression_type, split_type, transformer)
+
+    config = {
+        'TransformJobName': transformer._current_job_name,
+        'ModelName': transformer.model_name,
+        'TransformInput': job_config['input_config'],
+        'TransformOutput': job_config['output_config'],
+        'TransformResources': job_config['resource_config'],
+    }
+
+    if transformer.strategy is not None:
+        config['BatchStrategy'] = transformer.strategy
+
+    if transformer.max_concurrent_transforms is not None:
+        config['MaxConcurrentTransforms'] = transformer.max_concurrent_transforms
+
+    if transformer.max_payload is not None:
+        config['MaxPayloadInMB'] = transformer.max_payload
+
+    if transformer.env is not None:
+        config['Environment'] = transformer.env
+
+    if transformer.tags is not None:
+        config['Tags'] = transformer.tags
+
+'''
+def transform_config_from_estimator(estimator, instance_count, instance_type, strategy=None, assemble_with=None,
+                                    output_path=None, output_kms_key=None, accept=None, env=None,
+                                    max_concurrent_transforms=None, max_payload=None, tags=None, role=None,
+                                    volume_kms_key=None, model_server_workers=None):
+'''
