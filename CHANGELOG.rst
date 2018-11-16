@@ -7,9 +7,11 @@ CHANGELOG
 
 * bug-fix: Changes to use correct S3 bucket and time range for dataframes in TrainingJobAnalytics.
 * bug-fix: Local Mode: correctly handle the case where the model output folder doesn't exist yet
+* feature: Add APIs to export Airflow training and tuning config
 * doc-fix: Fix typos in tensorflow serving documentation
 * doc-fix: Add estimator base classes to API docs
-* feature: add support for MetricDefinitions
+* feature: HyperparameterTuner: add support for Automatic Model Tuning's Warm Start Jobs
+* feature: Estimator: add support for MetricDefinitions
 
 1.14.2
 ======
