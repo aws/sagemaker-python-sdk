@@ -279,7 +279,8 @@ class Session(object):
     def tune(self, job_name, strategy, objective_type, objective_metric_name,
              max_jobs, max_parallel_jobs, parameter_ranges,
              static_hyperparameters, image, input_mode, metric_definitions,
-             role, input_config, output_config, resource_config, stop_condition, tags):
+             role, input_config, output_config, resource_config, stop_condition, tags,
+             warm_start_config):
         """Create an Amazon SageMaker hyperparameter tuning job
 
         Args:
@@ -323,6 +324,8 @@ class Session(object):
             stop_condition (dict): When training should finish, e.g. ``MaxRuntimeInSeconds``.
             tags (list[dict]): List of tags for labeling the tuning job. For more, see
                 https://docs.aws.amazon.com/sagemaker/latest/dg/API_Tag.html.
+            warm_start_config (dict): Configuration defining the type of warm start and
+                other required configurations.
         """
         tune_request = {
             'HyperParameterTuningJobName': job_name,
@@ -345,12 +348,17 @@ class Session(object):
                     'TrainingInputMode': input_mode,
                 },
                 'RoleArn': role,
-                'InputDataConfig': input_config,
                 'OutputDataConfig': output_config,
                 'ResourceConfig': resource_config,
                 'StoppingCondition': stop_condition,
             }
         }
+
+        if input_config is not None:
+            tune_request['TrainingJobDefinition']['InputDataConfig'] = input_config
+
+        if warm_start_config:
+            tune_request['WarmStartConfig'] = warm_start_config
 
         if metric_definitions is not None:
             tune_request['TrainingJobDefinition']['AlgorithmSpecification']['MetricDefinitions'] = metric_definitions

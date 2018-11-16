@@ -31,6 +31,9 @@ LATER_FRAMEWORK_VERSION_WARNING = 'This is not the latest supported version. ' \
                                   'If you would like to use version {latest}, ' \
                                   'please add framework_version={latest} to your constructor.'
 
+EMPTY_FRAMEWORK_VERSION_ERROR = 'framework_version is required for script mode estimator. ' \
+                                'Please add framework_version={} to your constructor to avoid this error.'
+
 VALID_PY_VERSIONS = ['py2', 'py3']
 
 
