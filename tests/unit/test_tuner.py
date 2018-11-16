@@ -413,7 +413,8 @@ def test_deploy_default(tuner):
     returned_training_job_description = {
         'AlgorithmSpecification': {
             'TrainingInputMode': 'File',
-            'TrainingImage': IMAGE_NAME
+            'TrainingImage': IMAGE_NAME,
+            'MetricDefinitions': METRIC_DEFINTIONS,
         },
         'HyperParameters': {
             'sagemaker_submit_directory': '"s3://some/sourcedir.tar.gz"',

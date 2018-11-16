@@ -121,7 +121,8 @@ def _create_train_job(version):
             'MaxRuntimeInSeconds': 24 * 60 * 60
         },
         'tags': None,
-        'vpc_config': None
+        'vpc_config': None,
+        'metric_definitions': None
     }
 
 
@@ -468,4 +469,4 @@ def test_empty_framework_version(warning, sagemaker_session):
                         framework_version=None)
 
     assert estimator.framework_version == defaults.CHAINER_VERSION
-    warning.assert_called_with(defaults.CHAINER_VERSION, defaults.CHAINER_VERSION)
+    warning.assert_called_with(defaults.CHAINER_VERSION, Chainer.LATEST_VERSION)
