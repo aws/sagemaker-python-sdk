@@ -327,7 +327,7 @@ class HyperparameterTuner(object):
                 self.estimator.__class__.__name__)
             self.static_hyperparameters[self.SAGEMAKER_ESTIMATOR_MODULE] = json.dumps(self.estimator.__module__)
 
-    def fit(self, inputs, job_name=None, include_cls_metadata=True, **kwargs):
+    def fit(self, inputs=None, job_name=None, include_cls_metadata=True, **kwargs):
         """Start a hyperparameter tuning job.
 
         Args:

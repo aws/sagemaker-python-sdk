@@ -15,6 +15,7 @@ from __future__ import absolute_import
 import copy
 import json
 
+import os
 import pytest
 from mock import Mock
 
@@ -26,6 +27,8 @@ from sagemaker.tuner import _ParameterRange, ContinuousParameter, IntegerParamet
     HyperparameterTuner, _TuningJob, WarmStartConfig, create_identical_dataset_and_algorithm_tuner, \
     create_transfer_learning_tuner, WarmStartTypes
 from sagemaker.mxnet import MXNet
+
+DATA_DIR = os.path.join(os.path.dirname(__file__), '..', 'data')
 MODEL_DATA = "s3://bucket/model.tar.gz"
 
 JOB_NAME = 'tuning_job'
@@ -410,7 +413,8 @@ def test_deploy_default(tuner):
     returned_training_job_description = {
         'AlgorithmSpecification': {
             'TrainingInputMode': 'File',
-            'TrainingImage': IMAGE_NAME
+            'TrainingImage': IMAGE_NAME,
+            'MetricDefinitions': METRIC_DEFINTIONS,
         },
         'HyperParameters': {
             'sagemaker_submit_directory': '"s3://some/sourcedir.tar.gz"',
@@ -488,6 +492,22 @@ def test_delete_endpoint(tuner):
     tuner.sagemaker_session.delete_endpoint.assert_called_with(JOB_NAME)
 
 
+def test_fit_no_inputs(tuner, sagemaker_session):
+    script_path = os.path.join(DATA_DIR, 'mxnet_mnist', 'failure_script.py')
+    tuner.estimator = MXNet(entry_point=script_path,
+                            role=ROLE,
+                            framework_version=FRAMEWORK_VERSION,
+                            train_instance_count=TRAIN_INSTANCE_COUNT,
+                            train_instance_type=TRAIN_INSTANCE_TYPE,
+                            sagemaker_session=sagemaker_session)
+
+    tuner.fit()
+
+    _, _, tune_kwargs = sagemaker_session.tune.mock_calls[0]
+
+    assert tune_kwargs['input_config'] is None
+
+
 def test_identical_dataset_and_algorithm_tuner(sagemaker_session):
     job_details = copy.deepcopy(TUNING_JOB_DETAILS)
     sagemaker_session.sagemaker_client.describe_hyper_parameter_tuning_job = Mock(name='describe_tuning_job',
@@ -523,6 +543,8 @@ def test_transfer_learning_tuner(sagemaker_session):
     assert parent_tuner.warm_start_config.type == WarmStartTypes.TRANSFER_LEARNING
     assert parent_tuner.warm_start_config.parents == {tuner.latest_tuning_job.name, "p1", "p2"}
     assert parent_tuner.estimator == tuner.estimator
+
+
 #################################################################################
 # _ParameterRange Tests
 

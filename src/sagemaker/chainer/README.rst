@@ -4,7 +4,7 @@ Chainer SageMaker Estimators and Models
 
 With Chainer Estimators, you can train and host Chainer models on Amazon SageMaker.
 
-Supported versions of Chainer: ``4.0.0``, ``4.1.0``
+Supported versions of Chainer: ``4.0.0``, ``4.1.0``, ``5.0.0``
 
 You can visit the Chainer repository at https://github.com/chainer/chainer.
 
@@ -32,7 +32,7 @@ Suppose that you already have an Chainer training script called
                                 role='SageMakerRole',
                                 train_instance_type='ml.p3.2xlarge',
                                 train_instance_count=1,
-                                framework_version='4.1.0')
+                                framework_version='5.0.0')
     chainer_estimator.fit('s3://bucket/path/to/training/data')
 
 Where the S3 URL is a path to your training data, within Amazon S3. The constructor keyword arguments define how
@@ -111,7 +111,7 @@ directories ('train' and 'test').
     chainer_estimator = Chainer('chainer-train.py',
                                 train_instance_type='ml.p3.2xlarge',
                                 train_instance_count=1,
-                                framework_version='4.1.0',
+                                framework_version='5.0.0',
                                 hyperparameters = {'epochs': 20, 'batch-size': 64, 'learning-rate': 0.1})
     chainer_estimator.fit({'train': 's3://my-data-bucket/path/to/my/training/data',
                            'test': 's3://my-data-bucket/path/to/my/test/data'})
@@ -285,7 +285,7 @@ operation.
     chainer_estimator = Chainer(entry_point='train_and_deploy.py',
                                 train_instance_type='ml.p3.2xlarge',
                                 train_instance_count=1,
-                                framework_version='4.1.0')
+                                framework_version='5.0.0')
     chainer_estimator.fit('s3://my_bucket/my_training_data/')
 
     # Deploy my estimator to a SageMaker Endpoint and get a Predictor
@@ -631,38 +631,38 @@ This Python version applies to both the Training Job, created by fit, and the En
 
 The Chainer Docker images have the following dependencies installed:
 
-+-----------------------------+-------------+
-| Dependencies                | chainer 4.0 |
-+-----------------------------+-------------+
-| chainer                     | 4.0.0       |
-+-----------------------------+-------------+
-| chainercv                   | 0.9.0       |
-+-----------------------------+-------------+
-| chainermn                   | 1.2.0       |
-+-----------------------------+-------------+
-| CUDA (GPU image only)       | 9.0         |
-+-----------------------------+-------------+
-| cupy                        | 4.0.0       |
-+-----------------------------+-------------+
-| matplotlib                  | 2.2.0       |
-+-----------------------------+-------------+
-| mpi4py                      | 3.0.0       |
-+-----------------------------+-------------+
-| numpy                       | 1.14.3      |
-+-----------------------------+-------------+
-| opencv-python               | 3.4.0.12    |
-+-----------------------------+-------------+
-| Pillow                      | 5.1.0       |
-+-----------------------------+-------------+
-| Python                      | 2.7 or 3.5  |
-+-----------------------------+-------------+
++-----------------------------+-------------+-------------+-------------+
+| Dependencies                | chainer 4.0 | chainer 4.1 | chainer 5.0 |
++-----------------------------+-------------+-------------+-------------+
+| chainer                     | 4.0.0       | 4.1.0       | 5.0.0       |
++-----------------------------+-------------+-------------+-------------+
+| chainercv                   | 0.9.0       | 0.10.0      | 0.10.0      |
++-----------------------------+-------------+-------------+-------------+
+| chainermn                   | 1.2.0       | 1.3.0       | N/A         |
++-----------------------------+-------------+-------------+-------------+
+| CUDA (GPU image only)       | 9.0         | 9.0         | 9.0         |
++-----------------------------+-------------+-------------+-------------+
+| cupy                        | 4.0.0       | 4.1.0       | 5.0.0       |
++-----------------------------+-------------+-------------+-------------+
+| matplotlib                  | 2.2.0       | 2.2.0       | 2.2.0       |
++-----------------------------+-------------+-------------+-------------+
+| mpi4py                      | 3.0.0       | 3.0.0       | 3.0.0       |
++-----------------------------+-------------+-------------+-------------+
+| numpy                       | 1.14.3      | 1.15.3      | 1.15.4      |
++-----------------------------+-------------+-------------+-------------+
+| opencv-python               | 3.4.0.12    | 3.4.0.12    | 3.4.0.12    |
++-----------------------------+-------------+-------------+-------------+
+| Pillow                      | 5.1.0       | 5.3.0       | 5.3.0       |
++-----------------------------+-------------+-------------+-------------+
+| Python                      | 2.7 or 3.5  | 2.7 or 3.5  | 2.7 or 3.5  |
++-----------------------------+-------------+-------------+-------------+
 
 The Docker images extend Ubuntu 16.04.
 
-You can select version of Chainer by passing a framework_version keyword arg to the Chainer Estimator constructor.
-Currently supported versions are listed in the above table. You can also set framework_version to only specify major and
-minor version, which will cause your training script to be run on the latest supported patch version of that minor
-version.
+You must select a version of Chainer by passing a ``framework_version`` keyword arg to the Chainer Estimator
+constructor. Currently supported versions are listed in the above table. You can also set framework_version to only
+specify major and minor version, which will cause your training script to be run on the latest supported patch
+version of that minor version.
 
 Alternatively, you can build your own image by following the instructions in the SageMaker Chainer containers
 repository, and passing ``image_name`` to the Chainer Estimator constructor.
