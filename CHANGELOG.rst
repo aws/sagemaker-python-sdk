@@ -2,16 +2,24 @@
 CHANGELOG
 =========
 
-1.14.3-dev
+1.15.1dev
+======
+
+* enhancement: Local Mode: add explicit pull for serving
+
+1.15.0
 ======
 
 * bug-fix: Changes to use correct S3 bucket and time range for dataframes in TrainingJobAnalytics.
 * bug-fix: Local Mode: correctly handle the case where the model output folder doesn't exist yet
-* feature: Add APIs to export Airflow training and tuning config
+* feature: Add APIs to export Airflow training, tuning and model config
 * doc-fix: Fix typos in tensorflow serving documentation
 * doc-fix: Add estimator base classes to API docs
 * feature: HyperparameterTuner: add support for Automatic Model Tuning's Warm Start Jobs
-* enhancement: Local Mode: add explicit pull for serving
+* feature: HyperparameterTuner: Make input channels optional
+* feature: Add support for Chainer 5.0
+* feature: Estimator: add support for MetricDefinitions
+* feature: Estimators: add support for Amazon IP Insights algorithm
 
 1.14.2
 ======
@@ -24,6 +32,7 @@ CHANGELOG
 * build: added pylint
 * build: upgrade docker-compose to 1.23
 * enhancement: Frameworks: update warning for not setting framework_version as we aren't planning a breaking change anymore
+* feature: Estimator: add script mode and Python 3 support for TensorFlow
 * enhancement: Session: remove hardcoded 'training' from job status error message
 * bug-fix: Updated Cloudwatch namespace for metrics in TrainingJobsAnalytics
 * bug-fix: Changes to use correct s3 bucket and time range for dataframes in TrainingJobAnalytics.

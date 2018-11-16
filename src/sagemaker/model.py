@@ -166,6 +166,7 @@ class FrameworkModel(Model):
             self.bucket, self.key_prefix = parse_s3_url(code_location)
         else:
             self.bucket, self.key_prefix = None, None
+        self.uploaded_code = None
 
     def prepare_container_def(self, instance_type):  # pylint disable=unused-argument
         """Return a container definition with framework configuration set in model environment variables.

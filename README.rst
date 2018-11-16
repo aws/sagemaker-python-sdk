@@ -170,6 +170,25 @@ Here is an end to end example of how to use a SageMaker Estimator:
     # Tears down the SageMaker endpoint
     mxnet_estimator.delete_endpoint()
 
+Training Metrics
+~~~~~~~~~~~~~~~~
+The SageMaker Python SDK allows you to specify a name and a regular expression for metrics you want to track for training.
+A regular expression (regex) matches what is in the training algorithm logs, like a search function.
+Here is an example of how to define metrics:
+
+.. code:: python
+
+    # Configure an BYO Estimator with metric definitions (no training happens yet)
+    byo_estimator = Estimator(image_name=image_name,
+                              role='SageMakerRole', train_instance_count=1,
+                              train_instance_type='ml.c4.xlarge',
+                              sagemaker_session=sagemaker_session,
+                              metric_definitions=[{'Name': 'test:msd', 'Regex': '#quality_metric: host=\S+, test msd <loss>=(\S+)'},
+                                                  {'Name': 'test:ssd', 'Regex': '#quality_metric: host=\S+, test ssd <loss>=(\S+)'}])
+
+All Amazon SageMaker algorithms come with built-in support for metrics.
+You can go to `the AWS documentation <https://docs.aws.amazon.com/sagemaker/latest/dg/algos.html>`__ for more details about built-in metrics of each Amazon SageMaker algorithm.
+
 Local Mode
 ~~~~~~~~~~
 
@@ -358,7 +377,7 @@ Chainer SageMaker Estimators
 
 By using Chainer SageMaker ``Estimators``, you can train and host Chainer models on Amazon SageMaker.
 
-Supported versions of Chainer: ``4.0.0``, ``4.1.0``.
+Supported versions of Chainer: ``4.0.0``, ``4.1.0``, ``5.0.0``.
 
 We recommend that you use the latest supported version, because that's where we focus most of our development efforts.
 
@@ -395,7 +414,7 @@ Amazon SageMaker provides several built-in machine learning algorithms that you 
 The full list of algorithms is available at: https://docs.aws.amazon.com/sagemaker/latest/dg/algos.html
 
 The SageMaker Python SDK includes estimator wrappers for the AWS K-means, Principal Components Analysis (PCA), Linear Learner, Factorization Machines,
-Latent Dirichlet Allocation (LDA), Neural Topic Model (NTM), Random Cut Forest, k-nearest neighbors (k-NN), and Object2Vec algorithms.
+Latent Dirichlet Allocation (LDA), Neural Topic Model (NTM), Random Cut Forest, k-nearest neighbors (k-NN), Object2Vec, and IP Insights algorithms.
 
 For more information, see `AWS SageMaker Estimators and Models`_.
 
