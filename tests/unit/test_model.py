@@ -56,8 +56,8 @@ def sagemaker_session():
 
 @patch('tarfile.open')
 @patch('time.strftime', return_value=TIMESTAMP)
-def test_prepare_container_def(tfopen, time, sagemaker_session):
-    model = DummyFrameworkModel(sagemaker_session)
+def test_prepare_container_def(tfopen, time, sagemaker_session, tmpdir):
+    model = DummyFrameworkModel(sagemaker_session, source_dir=str(tmpdir))
     assert model.prepare_container_def(INSTANCE_TYPE) == {
         'Environment': {'SAGEMAKER_PROGRAM': 'blah.py',
                         'SAGEMAKER_SUBMIT_DIRECTORY': 's3://mybucket/mi-2017-10-10-14-14-15/sourcedir.tar.gz',
@@ -91,8 +91,8 @@ def test_create_no_defaults(tfopen, exists, isdir, listdir, time, sagemaker_sess
 
 @patch('tarfile.open')
 @patch('time.strftime', return_value=TIMESTAMP)
-def test_deploy(tfo, time, sagemaker_session):
-    model = DummyFrameworkModel(sagemaker_session)
+def test_deploy(tfo, time, sagemaker_session, tmpdir):
+    model = DummyFrameworkModel(sagemaker_session, source_dir=str(tmpdir))
     model.deploy(instance_type=INSTANCE_TYPE, initial_instance_count=1)
     sagemaker_session.endpoint_from_production_variants.assert_called_with(
         'mi-2017-10-10-14-14-15',
@@ -106,8 +106,8 @@ def test_deploy(tfo, time, sagemaker_session):
 
 @patch('tarfile.open')
 @patch('time.strftime', return_value=TIMESTAMP)
-def test_deploy_endpoint_name(tfo, time, sagemaker_session):
-    model = DummyFrameworkModel(sagemaker_session)
+def test_deploy_endpoint_name(tfo, time, sagemaker_session, tmpdir):
+    model = DummyFrameworkModel(sagemaker_session, source_dir=str(tmpdir))
     model.deploy(endpoint_name='blah', instance_type=INSTANCE_TYPE, initial_instance_count=55)
     sagemaker_session.endpoint_from_production_variants.assert_called_with(
         'blah',
@@ -121,8 +121,8 @@ def test_deploy_endpoint_name(tfo, time, sagemaker_session):
 
 @patch('tarfile.open')
 @patch('time.strftime', return_value=TIMESTAMP)
-def test_deploy_tags(tfo, time, sagemaker_session):
-    model = DummyFrameworkModel(sagemaker_session)
+def test_deploy_tags(tfo, time, sagemaker_session, tmpdir):
+    model = DummyFrameworkModel(sagemaker_session, source_dir=str(tmpdir))
     tags = [{'ModelName': 'TestModel'}]
     model.deploy(instance_type=INSTANCE_TYPE, initial_instance_count=1, tags=tags)
     sagemaker_session.endpoint_from_production_variants.assert_called_with(
@@ -138,14 +138,13 @@ def test_deploy_tags(tfo, time, sagemaker_session):
 @patch('sagemaker.model.Session')
 @patch('sagemaker.model.LocalSession')
 @patch('tarfile.open', MagicMock())
-def test_deploy_creates_correct_session(local_session, session):
-
+def test_deploy_creates_correct_session(local_session, session, tmpdir):
     # We expect a LocalSession when deploying to instance_type = 'local'
-    model = DummyFrameworkModel(sagemaker_session=None)
+    model = DummyFrameworkModel(sagemaker_session=None, source_dir=str(tmpdir))
     model.deploy(endpoint_name='blah', instance_type='local', initial_instance_count=1)
     assert model.sagemaker_session == local_session.return_value
 
     # We expect a real Session when deploying to instance_type != local/local_gpu
-    model = DummyFrameworkModel(sagemaker_session=None)
+    model = DummyFrameworkModel(sagemaker_session=None, source_dir=str(tmpdir))
     model.deploy(endpoint_name='remote_endpoint', instance_type='ml.m4.4xlarge', initial_instance_count=2)
     assert model.sagemaker_session == session.return_value
