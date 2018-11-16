@@ -123,23 +123,19 @@ def tar_and_upload_dir(session, bucket, s3_key_prefix, script, directory, additi
     Returns:
         sagemaker.fw_utils.UserCode: An object with the S3 bucket and key (S3 prefix) and script name.
     """
-    additional_files = additional_files or []
     key = '%s/sourcedir.tar.gz' % s3_key_prefix
 
-    basedir = directory if directory else os.path.dirname(script)
-
-    if basedir.lower().startswith("s3://"):
-        s3_prefix = directory
+    if directory and directory.lower().startswith("s3://"):
+        return UploadedCode(s3_prefix=directory, script_name=os.path.basename(script))
     else:
-        _upload_code(session, bucket, key, basedir, additional_files)
-        s3_prefix = 's3://%s/%s' % (bucket, key)
+        source_files = _list_root_files(script, directory, additional_files)
+        _upload_code(session, bucket, key, source_files)
 
-    script_name = script if directory else os.path.basename(script)
-    return UploadedCode(s3_prefix=s3_prefix, script_name=script_name)
+        script_name = script if directory else os.path.basename(script)
+        return UploadedCode(s3_prefix='s3://%s/%s' % (bucket, key), script_name=script_name)
 
 
-def _upload_code(session, bucket, key, dirname, additional_files):
-    source_files = _list_files([dirname] + additional_files)
+def _upload_code(session, bucket, key, source_files):
     tar_file = sagemaker.utils.create_tar_file(source_files)
 
     try:
@@ -148,13 +144,17 @@ def _upload_code(session, bucket, key, dirname, additional_files):
         os.remove(tar_file)
 
 
-def _list_files(files):
+def _list_root_files(script, directory, additional_files):
+    additional_files = additional_files or []
+    basedir = directory if directory else os.path.dirname(script)
+    files = [basedir] + additional_files
+
     for file in files:
-        if os.path.isdir(file):
+        if os.path.isfile(file):
+            yield file
+        else:
             for name in os.listdir(file):
                 yield os.path.join(file, name)
-        else:
-            yield file
 
 
 def framework_name_from_image(image_name):

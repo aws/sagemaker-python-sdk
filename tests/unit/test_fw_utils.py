@@ -14,6 +14,7 @@ from __future__ import absolute_import
 
 import inspect
 import os
+import tarfile
 
 import pytest
 from mock import Mock, patch
@@ -141,6 +142,132 @@ def test_tar_and_upload_dir_not_s3(sagemaker_session):
     result = tar_and_upload_dir(sagemaker_session, bucket, s3_key_prefix, script, directory)
     assert result == UploadedCode('s3://{}/{}/sourcedir.tar.gz'.format(bucket, s3_key_prefix),
                                   script)
+
+
+def file_tree(tmpdir, files=None, folders=None):
+    files = files or []
+    folders = folders or []
+    for file in files:
+        tmpdir.join(file).ensure(file=True)
+
+    for folder in folders:
+        tmpdir.join(folder).ensure(dir=True)
+
+    return str(tmpdir)
+
+
+def test_tar_and_upload_dir_no_directory(sagemaker_session, tmpdir):
+    root = file_tree(tmpdir, ['train.py'])
+
+    with patch('os.remove'):
+        result = tar_and_upload_dir(sagemaker_session, 'bucket', 'prefix', os.path.join(root, 'train.py'), None)
+
+    assert result == UploadedCode(s3_prefix='s3://bucket/prefix/sourcedir.tar.gz',
+                                  script_name='train.py')
+
+    assert {'/train.py'} == tarball_files(sagemaker_session, tmpdir)
+
+
+def test_tar_and_upload_dir_with_directory(sagemaker_session, tmpdir):
+    file_tree(tmpdir, ['src-dir/train.py'])
+
+    root = os.path.join(str(tmpdir), 'src-dir')
+
+    with patch('os.remove'):
+        result = tar_and_upload_dir(sagemaker_session, 'bucket', 'prefix', 'train.py', root)
+
+    assert result == UploadedCode(s3_prefix='s3://bucket/prefix/sourcedir.tar.gz',
+                                  script_name='train.py')
+
+    assert {'/train.py'} == tarball_files(sagemaker_session, tmpdir)
+
+
+def test_tar_and_upload_dir_with_subdirectory(sagemaker_session, tmpdir):
+    file_tree(tmpdir, ['src-dir/sub/train.py'])
+
+    root = os.path.join(str(tmpdir), 'src-dir')
+
+    with patch('os.remove'):
+        result = tar_and_upload_dir(sagemaker_session, 'bucket', 'prefix', 'train.py', root)
+
+    assert result == UploadedCode(s3_prefix='s3://bucket/prefix/sourcedir.tar.gz',
+                                  script_name='train.py')
+
+    assert {'/sub/train.py'} == tarball_files(sagemaker_session, tmpdir)
+
+
+def test_tar_and_upload_dir_with_directory_and_files(sagemaker_session, tmpdir):
+    file_tree(tmpdir, ['src-dir/train.py', 'src-dir/laucher', 'src-dir/module/__init__.py'])
+    root = os.path.join(str(tmpdir), 'src-dir')
+
+    with patch('os.remove'):
+        result = tar_and_upload_dir(sagemaker_session, 'bucket', 'prefix', 'train.py', root)
+
+    assert result == UploadedCode(s3_prefix='s3://bucket/prefix/sourcedir.tar.gz',
+                                  script_name='train.py')
+
+    assert {'/laucher', '/module/__init__.py', '/train.py'} == tarball_files(sagemaker_session, tmpdir)
+
+
+def test_tar_and_upload_dir_with_directories_and_files(sagemaker_session, tmpdir):
+    file_tree(tmpdir, ['src-dir/a/b', 'src-dir/a/b2', 'src-dir/x/y', 'src-dir/x/y2', 'src-dir/z'])
+    root = os.path.join(str(tmpdir), 'src-dir')
+
+    with patch('os.remove'):
+        result = tar_and_upload_dir(sagemaker_session, 'bucket', 'prefix', 'a/b', root)
+
+    assert result == UploadedCode(s3_prefix='s3://bucket/prefix/sourcedir.tar.gz',
+                                  script_name='a/b')
+
+    assert {'/a/b', '/a/b2', '/x/y', '/x/y2', '/z'} == tarball_files(sagemaker_session, tmpdir)
+
+
+def test_tar_and_upload_dir_with_many_folders(sagemaker_session, tmpdir):
+    file_tree(tmpdir, ['src-dir/a/b', 'src-dir/a/b2', 'common/x/y', 'common/x/y2', 't/y/z'])
+    root = os.path.join(str(tmpdir), 'src-dir')
+    additional_files = [os.path.join(str(tmpdir), 'common'), os.path.join(str(tmpdir), 't', 'y', 'z')]
+
+    with patch('os.remove'):
+        result = tar_and_upload_dir(sagemaker_session, 'bucket', 'prefix', 'model.py', root, additional_files)
+
+    assert result == UploadedCode(s3_prefix='s3://bucket/prefix/sourcedir.tar.gz',
+                                  script_name='model.py')
+
+    assert {'/a/b', '/a/b2', '/x/y', '/x/y2', '/z'} == tarball_files(sagemaker_session, tmpdir)
+
+
+def test_test_tar_and_upload_dir_with_subfolders(sagemaker_session, tmpdir):
+    file_tree(tmpdir, ['a/b/c', 'a/b/c2'])
+    root = file_tree(tmpdir, ['x/y/z', 'x/y/z2'])
+
+    with patch('os.remove'):
+        result = tar_and_upload_dir(sagemaker_session, 'bucket', 'prefix', 'b/c',
+                                    os.path.join(root, 'a'), [os.path.join(root, 'x')])
+
+    assert result == UploadedCode(s3_prefix='s3://bucket/prefix/sourcedir.tar.gz',
+                                  script_name='b/c')
+
+    assert {'/y/z2', '/b/c2', '/b/c', '/y/z'} == tarball_files(sagemaker_session, tmpdir)
+
+
+def tarball_files(sagemaker_session, tmpdir):
+    startpath = str(tmpdir.ensure('/opt/ml/code/', dir=True))
+
+    tar_ball = sagemaker_session.resource('s3').Object().upload_file.call_args[0][0]
+    try:
+
+        with tarfile.open(name=tar_ball, mode='r:gz') as t:
+            t.extractall(path=startpath)
+
+        def walk():
+            for root, dirs, files in os.walk(startpath):
+                path = root.replace(startpath, '')
+                for f in files:
+                    yield '{}/{}'.format(path, f)
+
+        return set(walk())
+    finally:
+        os.remove(tar_ball)
 
 
 def test_framework_name_from_image_mxnet():
