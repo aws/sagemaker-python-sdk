@@ -609,7 +609,7 @@ def test_byo_framework_model_config(sagemaker_session):
             'Environment': {
                 '{{ key }}': '{{ value }}',
                 'SAGEMAKER_PROGRAM': '{{ entry_point }}',
-                'SAGEMAKER_SUBMIT_DIRECTORY': '{{ source_dir }}',
+                'SAGEMAKER_SUBMIT_DIRECTORY': 's3://output/model/source/sourcedir.tar.gz',
                 'SAGEMAKER_ENABLE_CLOUDWATCH_METRICS': 'false',
                 'SAGEMAKER_CONTAINER_LOG_LEVEL': '20',
                 'SAGEMAKER_REGION': 'us-west-2'
@@ -648,7 +648,9 @@ def test_framework_model_config(sagemaker_session):
             'Image': '520713654638.dkr.ecr.us-west-2.amazonaws.com/sagemaker-chainer:5.0.0-cpu-py3',
             'Environment': {
                 'SAGEMAKER_PROGRAM': '{{ entry_point }}',
-                'SAGEMAKER_SUBMIT_DIRECTORY': '{{ source_dir }}',
+                'SAGEMAKER_SUBMIT_DIRECTORY': "s3://output/sagemaker-chainer-"
+                                              "{{ execution_date.strftime('%Y-%m-%d-%H-%M-%S') }}"
+                                              "/source/sourcedir.tar.gz",
                 'SAGEMAKER_ENABLE_CLOUDWATCH_METRICS': 'false',
                 'SAGEMAKER_CONTAINER_LOG_LEVEL': '20',
                 'SAGEMAKER_REGION': 'us-west-2',

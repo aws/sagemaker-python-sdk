@@ -293,22 +293,13 @@ def prepare_framework_container_def(model, instance_type, s3_operations):
         deploy_image = fw_utils.create_image_uri(
             region_name, model.__framework_name__, instance_type, model.framework_version, model.py_version)
 
-    deploy_env = dict(model.env)
-    deploy_env.update(model._framework_env_vars())
-    try:
-        if model.model_server_workers:
-            deploy_env[sagemaker.model.MODEL_SERVER_WORKERS_PARAM_NAME.upper()] = str(model.model_server_workers)
-    except AttributeError:
-        # This applies to a FrameworkModel which is not SageMaker Deep Learning Framework Model
-        pass
-
-    container_def = sagemaker.container_def(deploy_image, model.model_data, deploy_env)
-    base_name = utils.base_name_from_image(container_def['Image'])
+    base_name = utils.base_name_from_image(deploy_image)
     model.name = model.name or utils.airflow_name_from_base(base_name)
 
     bucket = model.bucket or model.sagemaker_session._default_bucket
-    key = '{}/source/sourcedir.tar.gz'.format(model.name)
     script = os.path.basename(model.entry_point)
+    key = '{}/source/sourcedir.tar.gz'.format(model.name)
+
     if model.source_dir and model.source_dir.lower().startswith('s3://'):
         model.uploaded_code = fw_utils.UploadedCode(s3_prefix=model.source_dir, script_name=script)
     else:
@@ -320,6 +311,18 @@ def prepare_framework_container_def(model, instance_type, s3_operations):
             'Key': key,
             'Tar': True
         }]
+
+    deploy_env = dict(model.env)
+    deploy_env.update(model._framework_env_vars())
+
+    try:
+        if model.model_server_workers:
+            deploy_env[sagemaker.model.MODEL_SERVER_WORKERS_PARAM_NAME.upper()] = str(model.model_server_workers)
+    except AttributeError:
+        # This applies to a FrameworkModel which is not SageMaker Deep Learning Framework Model
+        pass
+
+    container_def = sagemaker.container_def(deploy_image, model.model_data, deploy_env)
 
     return container_def
 
