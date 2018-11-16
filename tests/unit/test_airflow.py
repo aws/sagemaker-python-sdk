@@ -932,7 +932,7 @@ def test_transform_config_from_amazon_alg_estimator(sagemaker_session):
     assert config == expected_config
 
 
-def test_deploy_config(sagemaker_session):
+def test_deploy_framework_model_config(sagemaker_session):
     chainer_model = chainer.ChainerModel(
         model_data="{{ model_data }}",
         role="{{ role }}",
@@ -992,7 +992,43 @@ def test_deploy_config(sagemaker_session):
     assert config == expected_config
 
 
-def test_deploy_config_from_estimator(sagemaker_session):
+def test_deploy_amazon_alg_model_config(sagemaker_session):
+    pca_model = pca.PCAModel(
+        model_data="{{ model_data }}",
+        role="{{ role }}",
+        sagemaker_session=sagemaker_session)
+
+    config = airflow.deploy_config(pca_model,
+                                   initial_instance_count="{{ instance_count }}",
+                                   instance_type='ml.c4.xlarge')
+    expected_config = {
+        'Model': {
+            'ModelName': "pca-{{ execution_date.strftime('%Y-%m-%d-%H-%M-%S') }}",
+            'PrimaryContainer': {
+                'Image': '174872318107.dkr.ecr.us-west-2.amazonaws.com/pca:1',
+                'Environment': {},
+                'ModelDataUrl': '{{ model_data }}'},
+            'ExecutionRoleArn': '{{ role }}'},
+        'EndpointConfig': {
+            'EndpointConfigName': "pca-{{ execution_date.strftime('%Y-%m-%d-%H-%M-%S') }}",
+            'ProductionVariants': [{
+                'InstanceType': 'ml.c4.xlarge',
+                'InitialInstanceCount': '{{ instance_count }}',
+                'ModelName': "pca-{{ execution_date.strftime('%Y-%m-%d-%H-%M-%S') }}",
+                'VariantName': 'AllTraffic',
+                'InitialVariantWeight': 1
+            }]
+        },
+        'Endpoint': {
+            'EndpointName': "pca-{{ execution_date.strftime('%Y-%m-%d-%H-%M-%S') }}",
+            'EndpointConfigName': "pca-{{ execution_date.strftime('%Y-%m-%d-%H-%M-%S') }}"
+        }
+    }
+
+    assert config == expected_config
+
+
+def test_deploy_config_from_framework_estimator(sagemaker_session):
     mxnet_estimator = mxnet.MXNet(
         entry_point="{{ entry_point }}",
         source_dir="{{ source_dir }}",
@@ -1006,7 +1042,6 @@ def test_deploy_config_from_estimator(sagemaker_session):
         hyperparameters={'batch_size': 100})
 
     train_data = "{{ train_data }}"
-    transform_data = "{{ transform_data }}"
 
     # simulate training
     airflow.training_config(mxnet_estimator, train_data)
@@ -1045,6 +1080,50 @@ def test_deploy_config_from_estimator(sagemaker_session):
         'Endpoint': {
             'EndpointName': 'mxnet-endpoint',
             'EndpointConfigName': "{{ base_job_name }}-{{ execution_date.strftime('%Y-%m-%d-%H-%M-%S') }}"
+        }
+    }
+
+    assert config == expected_config
+
+
+def test_deploy_config_from_amazon_alg_estimator(sagemaker_session):
+    knn_estimator = knn.KNN(
+        role="{{ role }}",
+        train_instance_count="{{ instance_count }}",
+        train_instance_type='ml.m4.xlarge',
+        k=16,
+        sample_size=128,
+        predictor_type='regressor',
+        sagemaker_session=sagemaker_session)
+
+    record = amazon_estimator.RecordSet("{{ record }}", 10000, 100, 'S3Prefix')
+
+    # simulate training
+    airflow.training_config(knn_estimator, record, mini_batch_size=256)
+
+    config = airflow.deploy_config_from_estimator(estimator=knn_estimator,
+                                                  initial_instance_count="{{ instance_count }}",
+                                                  instance_type="ml.p2.xlarge")
+    expected_config = {
+        'Model': {
+            'ModelName': "knn-{{ execution_date.strftime('%Y-%m-%d-%H-%M-%S') }}",
+            'PrimaryContainer': {
+                'Image': '174872318107.dkr.ecr.us-west-2.amazonaws.com/knn:1',
+                'Environment': {},
+                'ModelDataUrl': "s3://output/knn-{{ execution_date.strftime('%Y-%m-%d-%H-%M-%S') }}"
+                                "/output/model.tar.gz"}, 'ExecutionRoleArn': '{{ role }}'},
+        'EndpointConfig': {
+            'EndpointConfigName': "knn-{{ execution_date.strftime('%Y-%m-%d-%H-%M-%S') }}",
+            'ProductionVariants': [{
+                'InstanceType': 'ml.p2.xlarge',
+                'InitialInstanceCount': '{{ instance_count }}',
+                'ModelName': "knn-{{ execution_date.strftime('%Y-%m-%d-%H-%M-%S') }}",
+                'VariantName': 'AllTraffic', 'InitialVariantWeight': 1
+            }]
+        },
+        'Endpoint': {
+            'EndpointName': "knn-{{ execution_date.strftime('%Y-%m-%d-%H-%M-%S') }}",
+            'EndpointConfigName': "knn-{{ execution_date.strftime('%Y-%m-%d-%H-%M-%S') }}"
         }
     }
 

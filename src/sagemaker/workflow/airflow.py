@@ -421,8 +421,8 @@ def transform_config(transformer, data, data_type='S3Prefix', content_type=None,
             Valid values: 'None', 'Line', and 'RecordIO'.
         job_name (str): job name (default: None). If not specified, one will be generated.
 
-    Return (dict):
-        Transform config that can be directly used by SageMakerTransformOperator in Airflow.
+    Returns:
+        dict: Transform config that can be directly used by SageMakerTransformOperator in Airflow.
     """
     if job_name is not None:
         transformer._current_job_name = job_name
@@ -515,6 +515,9 @@ def transform_config_from_estimator(estimator, instance_count, instance_type, da
             Default: use subnets and security groups from this Estimator.
             * 'Subnets' (list[str]): List of subnet ids.
             * 'SecurityGroupIds' (list[str]): List of security group ids.
+
+    Returns:
+        dict: Transform config that can be directly used by SageMakerTransformOperator in Airflow.
     """
     model_base_config = model_config_from_estimator(instance_type=instance_type, estimator=estimator, role=role,
                                                     image=image, model_server_workers=model_server_workers,
@@ -541,6 +544,22 @@ def transform_config_from_estimator(estimator, instance_count, instance_type, da
 
 
 def deploy_config(model, initial_instance_count, instance_type, endpoint_name=None, tags=None):
+    """Export Airflow deploy config from a SageMaker model
+
+    Args:
+        model (sagemaker.model.Model): The SageMaker model to export the Airflow config from.
+        instance_type (str): The EC2 instance type to deploy this Model to. For example, 'ml.p2.xlarge'.
+        initial_instance_count (int): The initial number of instances to run in the
+            ``Endpoint`` created from this ``Model``.
+        endpoint_name (str): The name of the endpoint to create (default: None).
+            If not specified, a unique endpoint name will be created.
+        tags (list[dict]): List of tags for labeling a training job. For more, see
+            https://docs.aws.amazon.com/sagemaker/latest/dg/API_Tag.html.
+
+    Returns:
+        dict: Deploy config that can be directly used by SageMakerEndpointOperator in Airflow.
+
+    """
     model_base_config = model_config(instance_type, model)
 
     production_variant = sagemaker.production_variant(model.name, instance_type, initial_instance_count)
@@ -571,6 +590,25 @@ def deploy_config(model, initial_instance_count, instance_type, endpoint_name=No
 
 def deploy_config_from_estimator(estimator, initial_instance_count, instance_type, endpoint_name=None,
                                  tags=None, **kwargs):
+    """Export Airflow deploy config from a SageMaker estimator
+
+    Args:
+        estimator (sagemaker.model.EstimatorBase): The SageMaker estimator to export Airflow config from.
+            It has to be an estimator associated with a training job.
+        initial_instance_count (int): Minimum number of EC2 instances to deploy to an endpoint for prediction.
+        instance_type (str): Type of EC2 instance to deploy to an endpoint for prediction,
+            for example, 'ml.c4.xlarge'.
+        endpoint_name (str): Name to use for creating an Amazon SageMaker endpoint. If not specified, the name of
+            the training job is used.
+        tags (list[dict]): List of tags for labeling a training job. For more, see
+            https://docs.aws.amazon.com/sagemaker/latest/dg/API_Tag.html.
+        **kwargs: Passed to invocation of ``create_model()``. Implementations may customize
+            ``create_model()`` to accept ``**kwargs`` to customize model creation during deploy.
+            For more, see the implementation docs.
+
+    Returns:
+        dict: Deploy config that can be directly used by SageMakerEndpointOperator in Airflow.
+    """
     model = estimator.create_model(**kwargs)
     config = deploy_config(model, initial_instance_count, instance_type, endpoint_name, tags)
     return config
