@@ -380,8 +380,8 @@ def model_config_from_estimator(instance_type, estimator, role=None, image=None,
         role (str): The ``ExecutionRoleArn`` IAM Role ARN for the model
         image (str): An container image to use for deploying the model
         model_server_workers (int): The number of worker processes used by the inference server.
-                If None, server will use one worker per vCPU. Only effective when estimator is
-                SageMaker framework.
+            If None, server will use one worker per vCPU. Only effective when estimator is
+            SageMaker framework.
         vpc_config_override (dict[str, list[str]]): Override for VpcConfig set on the model.
             Default: use subnets and security groups from this Estimator.
             * 'Subnets' (list[str]): List of subnet ids.
@@ -398,18 +398,44 @@ def model_config_from_estimator(instance_type, estimator, role=None, image=None,
     elif isinstance(estimator, sagemaker.estimator.Framework):
         model = estimator.create_model(model_server_workers=model_server_workers, role=role,
                                        vpc_config_override=vpc_config_override)
+    else:
+        raise TypeError('Estimator must be one of BYO estimator, framework estimator or amazon algorithm'
+                        'estimator.')
 
     return model_config(instance_type, model, role, image)
 
 
-def transform_config(transformer, data, data_type='S3Prefix', content_type=None, compression_type=None, 
+def transform_config(transformer, data, data_type='S3Prefix', content_type=None, compression_type=None,
                      split_type=None, job_name=None):
+    """Export Airflow transform config from a SageMaker transformer
+
+    Args:
+        transformer (sagemaker.transformer.Transformer): The SageMaker transformer to export Airflow
+            config from.
+        data (str): Input data location in S3.
+        data_type (str): What the S3 location defines (default: 'S3Prefix'). Valid values:
+
+            * 'S3Prefix' - the S3 URI defines a key name prefix. All objects with this prefix will be used as
+                inputs for the transform job.
+            * 'ManifestFile' - the S3 URI points to a single manifest file listing each S3 object to use as
+                an input for the transform job.
+
+        content_type (str): MIME type of the input data (default: None).
+        compression_type (str): Compression type of the input data, if compressed (default: None).
+            Valid values: 'Gzip', None.
+        split_type (str): The record delimiter for the input object (default: 'None').
+            Valid values: 'None', 'Line', and 'RecordIO'.
+        job_name (str): job name (default: None). If not specified, one will be generated.
+
+    Return (dict):
+        Transform config that can be directly used by SageMakerTransformOperator in Airflow.
+    """
     if job_name is not None:
         transformer._current_job_name = job_name
     else:
         base_name = transformer.base_transform_job_name
         transformer._current_job_name = utils.airflow_name_from_base(base_name) \
-            if base_name is not None else transformer.model_name 
+            if base_name is not None else transformer.model_name
 
     if transformer.output_path is None:
         transformer.output_path = 's3://{}/{}'.format(
@@ -441,9 +467,80 @@ def transform_config(transformer, data, data_type='S3Prefix', content_type=None,
     if transformer.tags is not None:
         config['Tags'] = transformer.tags
 
-'''
-def transform_config_from_estimator(estimator, instance_count, instance_type, strategy=None, assemble_with=None,
-                                    output_path=None, output_kms_key=None, accept=None, env=None,
-                                    max_concurrent_transforms=None, max_payload=None, tags=None, role=None,
-                                    volume_kms_key=None, model_server_workers=None):
-'''
+    return config
+
+
+def transform_config_from_estimator(estimator, instance_count, instance_type, data, data_type='S3Prefix',
+                                    content_type=None, compression_type=None, split_type=None,
+                                    job_name=None, strategy=None, assemble_with=None, output_path=None,
+                                    output_kms_key=None, accept=None, env=None, max_concurrent_transforms=None,
+                                    max_payload=None, tags=None, role=None, volume_kms_key=None,
+                                    model_server_workers=None, image=None, vpc_config_override=None):
+    """Export Airflow transform config from a SageMaker estimator
+
+    Args:
+        estimator (sagemaker.model.EstimatorBase): The SageMaker estimator to export Airflow config from.
+            It has to be an estimator associated with a training job.
+        instance_count (int): Number of EC2 instances to use.
+        instance_type (str): Type of EC2 instance to use, for example, 'ml.c4.xlarge'.
+        data (str): Input data location in S3.
+        data_type (str): What the S3 location defines (default: 'S3Prefix'). Valid values:
+
+            * 'S3Prefix' - the S3 URI defines a key name prefix. All objects with this prefix will be used as
+                inputs for the transform job.
+            * 'ManifestFile' - the S3 URI points to a single manifest file listing each S3 object to use as
+                an input for the transform job.
+
+        content_type (str): MIME type of the input data (default: None).
+        compression_type (str): Compression type of the input data, if compressed (default: None).
+            Valid values: 'Gzip', None.
+        split_type (str): The record delimiter for the input object (default: 'None').
+            Valid values: 'None', 'Line', and 'RecordIO'.
+        job_name (str): job name (default: None). If not specified, one will be generated.
+        strategy (str): The strategy used to decide how to batch records in a single request (default: None).
+            Valid values: 'MULTI_RECORD' and 'SINGLE_RECORD'.
+        assemble_with (str): How the output is assembled (default: None). Valid values: 'Line' or 'None'.
+        output_path (str): S3 location for saving the transform result. If not specified, results are stored to
+            a default bucket.
+        output_kms_key (str): Optional. KMS key ID for encrypting the transform output (default: None).
+        accept (str): The content type accepted by the endpoint deployed during the transform job.
+        env (dict): Environment variables to be set for use during the transform job (default: None).
+        max_concurrent_transforms (int): The maximum number of HTTP requests to be made to
+            each individual transform container at one time.
+        max_payload (int): Maximum size of the payload in a single HTTP request to the container in MB.
+        tags (list[dict]): List of tags for labeling a transform job. If none specified, then the tags used for
+            the training job are used for the transform job.
+        role (str): The ``ExecutionRoleArn`` IAM Role ARN for the ``Model``, which is also used during
+            transform jobs. If not specified, the role from the Estimator will be used.
+        volume_kms_key (str): Optional. KMS key ID for encrypting the volume attached to the ML
+            compute instance (default: None).
+        model_server_workers (int): Optional. The number of worker processes used by the inference server.
+            If None, server will use one worker per vCPU.
+        image (str): An container image to use for deploying the model
+        vpc_config_override (dict[str, list[str]]): Override for VpcConfig set on the model.
+            Default: use subnets and security groups from this Estimator.
+            * 'Subnets' (list[str]): List of subnet ids.
+            * 'SecurityGroupIds' (list[str]): List of security group ids.
+    """
+    model_base_config = model_config_from_estimator(instance_type=instance_type, estimator=estimator, role=role,
+                                                    image=image, model_server_workers=model_server_workers,
+                                                    vpc_config_override=vpc_config_override)
+
+    if isinstance(estimator, sagemaker.estimator.Framework):
+        transformer = estimator.transformer(instance_count, instance_type, strategy, assemble_with, output_path,
+                                            output_kms_key, accept, env, max_concurrent_transforms,
+                                            max_payload, tags, role, model_server_workers, volume_kms_key)
+    else:
+        transformer = estimator.transformer(instance_count, instance_type, strategy, assemble_with, output_path,
+                                            output_kms_key, accept, env, max_concurrent_transforms,
+                                            max_payload, tags, role, volume_kms_key)
+
+    transform_base_config = transform_config(transformer, data, data_type, content_type, compression_type,
+                                             split_type, job_name)
+
+    config = {
+        'Model': model_base_config,
+        'Transform': transform_base_config
+    }
+
+    return config

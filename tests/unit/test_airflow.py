@@ -16,7 +16,7 @@ from __future__ import absolute_import
 import pytest
 import mock
 
-from sagemaker import chainer, estimator, model, mxnet, tensorflow, tuner
+from sagemaker import chainer, estimator, model, mxnet, tensorflow, transformer, tuner
 from sagemaker.workflow import airflow
 from sagemaker.amazon import amazon_estimator
 from sagemaker.amazon import knn, ntm, pca
@@ -754,6 +754,179 @@ def test_model_config_from_amazon_alg_estimator(sagemaker_session):
             'Environment': {},
             'ModelDataUrl': "s3://output/knn-{{ execution_date.strftime('%Y-%m-%d-%H-%M-%S') }}/output/model.tar.gz"},
         'ExecutionRoleArn': '{{ role }}'
+    }
+
+    assert config == expected_config
+
+
+def test_transformer_config(sagemaker_session):
+    tf_transformer = transformer.Transformer(
+        model_name="tensorflow-model",
+        instance_count="{{ instance_count }}",
+        instance_type="ml.p2.xlarge",
+        strategy="SingleRecord",
+        assemble_with='Line',
+        output_path="{{ output_path }}",
+        output_kms_key="{{ kms_key }}",
+        accept="{{ accept }}",
+        max_concurrent_transforms="{{ max_parallel_job }}",
+        max_payload="{{ max_payload }}",
+        tags=[{"{{ key }}": "{{ value }}"}],
+        env={"{{ key }}": "{{ value }}"},
+        base_transform_job_name="tensorflow-transform",
+        sagemaker_session=sagemaker_session,
+        volume_kms_key="{{ kms_key }}")
+
+    data = "{{ transform_data }}"
+
+    config = airflow.transform_config(tf_transformer, data, data_type='S3Prefix', content_type="{{ content_type }}",
+                                      compression_type="{{ compression_type }}", split_type="{{ split_type }}")
+    expected_config = {
+        'TransformJobName': "tensorflow-transform-{{ execution_date.strftime('%Y-%m-%d-%H-%M-%S') }}",
+        'ModelName': 'tensorflow-model',
+        'TransformInput': {
+            'DataSource': {
+                'S3DataSource': {
+                    'S3DataType': 'S3Prefix',
+                    'S3Uri': '{{ transform_data }}'
+                }
+            },
+            'ContentType': '{{ content_type }}',
+            'CompressionType': '{{ compression_type }}',
+            'SplitType': '{{ split_type }}'},
+        'TransformOutput': {
+            'S3OutputPath': '{{ output_path }}',
+            'KmsKeyId': '{{ kms_key }}',
+            'AssembleWith': 'Line',
+            'Accept': '{{ accept }}'
+        },
+        'TransformResources': {
+            'InstanceCount': '{{ instance_count }}',
+            'InstanceType': 'ml.p2.xlarge',
+            'VolumeKmsKeyId': '{{ kms_key }}'
+        },
+        'BatchStrategy': 'SingleRecord',
+        'MaxConcurrentTransforms': '{{ max_parallel_job }}',
+        'MaxPayloadInMB': '{{ max_payload }}',
+        'Environment': {'{{ key }}': '{{ value }}'},
+        'Tags': [{'{{ key }}': '{{ value }}'}]
+    }
+
+    assert config == expected_config
+
+
+def test_transform_config_from_framework_estimator(sagemaker_session):
+    mxnet_estimator = mxnet.MXNet(
+        entry_point="{{ entry_point }}",
+        source_dir="{{ source_dir }}",
+        py_version='py3',
+        framework_version='1.3.0',
+        role="{{ role }}",
+        train_instance_count=1,
+        train_instance_type='ml.m4.xlarge',
+        sagemaker_session=sagemaker_session,
+        base_job_name="{{ base_job_name }}",
+        hyperparameters={'batch_size': 100})
+
+    train_data = "{{ train_data }}"
+    transform_data = "{{ transform_data }}"
+
+    # simulate training
+    airflow.training_config(mxnet_estimator, train_data)
+
+    config = airflow.transform_config_from_estimator(
+        estimator=mxnet_estimator,
+        instance_count="{{ instance_count }}",
+        instance_type="ml.p2.xlarge",
+        data=transform_data)
+    expected_config = {
+        'Model': {
+            'ModelName': "{{ base_job_name }}-{{ execution_date.strftime('%Y-%m-%d-%H-%M-%S') }}",
+            'PrimaryContainer': {
+                'Image': '520713654638.dkr.ecr.us-west-2.amazonaws.com/sagemaker-mxnet:1.3.0-gpu-py3',
+                'Environment': {'SAGEMAKER_PROGRAM': '{{ entry_point }}',
+                                'SAGEMAKER_SUBMIT_DIRECTORY': "s3://output/{{ base_job_name }}-"
+                                                              "{{ execution_date.strftime('%Y-%m-%d-%H-%M-%S') }}/"
+                                                              "source/sourcedir.tar.gz",
+                                'SAGEMAKER_ENABLE_CLOUDWATCH_METRICS': 'false',
+                                'SAGEMAKER_CONTAINER_LOG_LEVEL': '20',
+                                'SAGEMAKER_REGION': 'us-west-2'
+                                },
+                'ModelDataUrl': "s3://output/{{ base_job_name }}-"
+                                "{{ execution_date.strftime('%Y-%m-%d-%H-%M-%S') }}/output/model.tar.gz"},
+            'ExecutionRoleArn': '{{ role }}'
+        },
+        'Transform': {
+            'TransformJobName': "{{ base_job_name }}-{{ execution_date.strftime('%Y-%m-%d-%H-%M-%S') }}",
+            'ModelName': "{{ base_job_name }}-{{ execution_date.strftime('%Y-%m-%d-%H-%M-%S') }}",
+            'TransformInput': {
+                'DataSource': {
+                    'S3DataSource': {
+                        'S3DataType': 'S3Prefix',
+                        'S3Uri': '{{ transform_data }}'
+                    }
+                }
+            },
+            'TransformOutput': {
+                'S3OutputPath': "s3://output/{{ base_job_name }}-{{ execution_date.strftime('%Y-%m-%d-%H-%M-%S') }}"
+            },
+            'TransformResources': {
+                'InstanceCount': '{{ instance_count }}',
+                'InstanceType': 'ml.p2.xlarge'
+            },
+            'Environment': {}
+        }
+    }
+
+    assert config == expected_config
+
+
+def test_transform_config_from_amazon_alg_estimator(sagemaker_session):
+    knn_estimator = knn.KNN(
+        role="{{ role }}",
+        train_instance_count="{{ instance_count }}",
+        train_instance_type='ml.m4.xlarge',
+        k=16,
+        sample_size=128,
+        predictor_type='regressor',
+        sagemaker_session=sagemaker_session)
+
+    record = amazon_estimator.RecordSet("{{ record }}", 10000, 100, 'S3Prefix')
+    transform_data = "{{ transform_data }}"
+
+    # simulate training
+    airflow.training_config(knn_estimator, record, mini_batch_size=256)
+
+    config = airflow.transform_config_from_estimator(
+        estimator=knn_estimator,
+        instance_count="{{ instance_count }}",
+        instance_type="ml.p2.xlarge",
+        data=transform_data)
+    expected_config = {
+        'Model': {
+            'ModelName': "knn-{{ execution_date.strftime('%Y-%m-%d-%H-%M-%S') }}",
+            'PrimaryContainer': {
+                'Image': '174872318107.dkr.ecr.us-west-2.amazonaws.com/knn:1',
+                'Environment': {},
+                'ModelDataUrl': "s3://output/knn-{{ execution_date.strftime('%Y-%m-%d-%H-%M-%S') }}"
+                                "/output/model.tar.gz"},
+            'ExecutionRoleArn': '{{ role }}'},
+        'Transform': {'TransformJobName': "knn-{{ execution_date.strftime('%Y-%m-%d-%H-%M-%S') }}",
+                      'ModelName': "knn-{{ execution_date.strftime('%Y-%m-%d-%H-%M-%S') }}",
+                      'TransformInput': {
+                          'DataSource': {
+                              'S3DataSource': {
+                                  'S3DataType': 'S3Prefix',
+                                  'S3Uri': '{{ transform_data }}'}
+                          }
+                      },
+                      'TransformOutput': {
+                          'S3OutputPath': "s3://output/knn-{{ execution_date.strftime('%Y-%m-%d-%H-%M-%S') }}"
+                      },
+                      'TransformResources': {
+                          'InstanceCount': '{{ instance_count }}',
+                          'InstanceType': 'ml.p2.xlarge'}
+                      }
     }
 
     assert config == expected_config
