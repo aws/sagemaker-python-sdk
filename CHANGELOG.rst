@@ -13,6 +13,7 @@ CHANGELOG
 * feature: HyperparameterTuner: add support for Automatic Model Tuning's Warm Start Jobs
 * feature: HyperparameterTuner: Make input channels optional
 * feature: Add support for Chainer 5.0
+* feature: Estimator: add support for MetricDefinitions
 
 1.14.2
 ======
