@@ -137,8 +137,8 @@ def test_tuning_kmeans_identical_dataset_algorithm_tuner_raw(sagemaker_session,
                                                              kmeans_train_set,
                                                              kmeans_estimator,
                                                              hyperparameter_ranges):
-    parent_tuning_job_name = name_from_base("kmeans", max_length=32, short=True)
-    child_tuning_job_name = name_from_base("c-kmeans", max_length=32, short=True)
+    parent_tuning_job_name = name_from_base("kmeans-identical", max_length=32, short=True)
+    child_tuning_job_name = name_from_base("c-kmeans-identical", max_length=32, short=True)
     _tune(kmeans_estimator, kmeans_train_set, job_name=parent_tuning_job_name,
           hyperparameter_ranges=hyperparameter_ranges, max_parallel_jobs=1, max_jobs=1)
     child_tuner = _tune(kmeans_estimator, kmeans_train_set, job_name=child_tuning_job_name,
