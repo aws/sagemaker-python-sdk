@@ -659,11 +659,11 @@ def _write_json_file(filename, content):
 def _ecr_login_if_needed(boto_session, image):
     # Only ECR images need login
     if not ('dkr.ecr' in image and 'amazonaws.com' in image):
-        return False
+        return
 
     # do we have the image?
     if _check_output('docker images -q %s' % image).strip():
-        return False
+        return
 
     if not boto_session:
         raise RuntimeError('A boto session is required to login to ECR.'
@@ -685,7 +685,7 @@ def _ecr_login_if_needed(boto_session, image):
 
 def _pull_image(image):
     pull_image_command = ('docker pull %s' % image).strip()
-    print('docker command: {}'.format(pull_image_command))
+    logger.info('docker command: {}'.format(pull_image_command))
 
     subprocess.check_output(pull_image_command, shell=True)
-    print('image pulled: {}'.format(image))
+    logger.info('image pulled: {}'.format(image))
