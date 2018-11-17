@@ -900,7 +900,7 @@ class Framework(EstimatorBase):
             logging.warning('No finished training job found associated with this estimator. Please make sure'
                             'this estimator is only used for building workflow config')
             model_name = self._current_job_name
-            transform_env = env if env is not None else {}
+            transform_env = env or {}
 
         tags = tags or self.tags
         return Transformer(model_name, instance_count, instance_type, strategy=strategy, assemble_with=assemble_with,

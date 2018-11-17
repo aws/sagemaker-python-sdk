@@ -278,10 +278,12 @@ def tuning_config(tuner, inputs, job_name=None):
 def prepare_framework_container_def(model, instance_type, s3_operations):
     """Prepare the framework model container information. Specify related S3 operations for Airflow to perform.
     (Upload `source_dir`)
+
     Args:
         model (sagemaker.model.FrameworkModel): The framework model
         instance_type (str): The EC2 instance type to deploy this Model to. For example, 'ml.p2.xlarge'.
         s3_operations (dict): The dict to specify S3 operations (upload `source_dir`).
+
     Returns:
         dict: The container information of this framework model.
     """
@@ -374,7 +376,7 @@ def model_config_from_estimator(instance_type, estimator, role=None, image=None,
         role (str): The ``ExecutionRoleArn`` IAM Role ARN for the model
         image (str): An container image to use for deploying the model
         model_server_workers (int): The number of worker processes used by the inference server.
-            If None, server will use one worker per vCPU. Only effective when estimator is
+            If None, server will use one worker per vCPU. Only effective when estimator is a
             SageMaker framework.
         vpc_config_override (dict[str, list[str]]): Override for VpcConfig set on the model.
             Default: use subnets and security groups from this Estimator.
@@ -393,8 +395,8 @@ def model_config_from_estimator(instance_type, estimator, role=None, image=None,
         model = estimator.create_model(model_server_workers=model_server_workers, role=role,
                                        vpc_config_override=vpc_config_override)
     else:
-        raise TypeError('Estimator must be one of BYO estimator, framework estimator or amazon algorithm'
-                        'estimator.')
+        raise TypeError('Estimator must be one of sagemaker.estimator.Estimator, sagemaker.estimator.Framework'
+                        ' or sagemaker.amazon.amazon_estimator.AmazonAlgorithmEstimatorBase.')
 
     return model_config(instance_type, model, role, image)
 
