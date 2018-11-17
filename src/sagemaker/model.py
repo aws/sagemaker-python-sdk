@@ -198,7 +198,8 @@ class FrameworkModel(Model):
                                                     bucket=self.bucket or self.sagemaker_session.default_bucket(),
                                                     s3_key_prefix=key_prefix,
                                                     script=self.entry_point,
-                                                    directory=self.source_dir)
+                                                    directory=self.source_dir,
+                                                    additional_files=self._additional_files)
 
     def _framework_env_vars(self):
         if self.uploaded_code:

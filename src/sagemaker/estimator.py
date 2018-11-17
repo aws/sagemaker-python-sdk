@@ -659,7 +659,6 @@ class Framework(EstimatorBase):
             self.source_dir = source_dir
             self._additional_files = []
 
-        self.source_dir = source_dir
         self.entry_point = entry_point
         if enable_cloudwatch_metrics:
             warnings.warn('enable_cloudwatch_metrics is now deprecated and will be removed in the future.',
@@ -735,7 +734,8 @@ class Framework(EstimatorBase):
         Returns:
             str: Either a local or an S3 path pointing to the source_dir to be used for code by the model to be deployed
         """
-        return self.source_dir if self.sagemaker_session.local_mode else self.uploaded_code.s3_prefix
+        source_dir = [self.source_dir] + self._additional_files
+        return source_dir if self.sagemaker_session.local_mode else self.uploaded_code.s3_prefix
 
     def hyperparameters(self):
         """Return the hyperparameters as a dictionary to use for training.
