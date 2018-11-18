@@ -115,7 +115,7 @@ class MXNet(Framework):
                           container_log_level=self.container_log_level, code_location=self.code_location,
                           py_version=self.py_version, framework_version=self.framework_version, image=self.image_name,
                           model_server_workers=model_server_workers, sagemaker_session=self.sagemaker_session,
-                          vpc_config=self.get_vpc_config(vpc_config_override))
+                          vpc_config=self.get_vpc_config(vpc_config_override), lib_dirs=self.lib_dirs)
 
     @classmethod
     def _prepare_init_params_from_job_description(cls, job_details, model_channel_name=None):

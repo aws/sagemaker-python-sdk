@@ -2,6 +2,11 @@
 CHANGELOG
 =========
 
+1.15.1dev
+=========
+
+* feature: Estimators: lib_dirs attribute allows export of additional libraries into the container
+
 1.15.0
 ======
 

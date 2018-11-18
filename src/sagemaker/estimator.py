@@ -632,7 +632,7 @@ class Framework(EstimatorBase):
     LAUNCH_PS_ENV_NAME = 'sagemaker_parameter_server_enabled'
 
     def __init__(self, entry_point, source_dir=None, hyperparameters=None, enable_cloudwatch_metrics=False,
-                 container_log_level=logging.INFO, code_location=None, image_name=None, **kwargs):
+                 container_log_level=logging.INFO, code_location=None, image_name=None, lib_dirs=None, **kwargs):
         """Base class initializer. Subclasses which override ``__init__`` should invoke ``super()``
 
         Args:
@@ -641,6 +641,22 @@ class Framework(EstimatorBase):
             source_dir (str): Path (absolute or relative) to a directory with any other training
                 source code dependencies aside from tne entry point file (default: None). Structure within this
                 directory are preserved when training on Amazon SageMaker.
+            lib_dirs (list[str]): A list of paths to directories (absolute or relative) with
+                any additional libraries that will be exported to the container (default: []).
+                The library folders will be copied to SageMaker in the same folder where the entrypoint is copied.
+                Example:
+
+                    The following call
+                    >>> Estimator(entry_point='train.py', lib_dirs=['my/libs/common', 'virtual-env'])
+                    results in the following inside the container:
+
+                    >>> $ ls
+
+                    >>> opt/ml/code
+                    >>>     ├── train.py
+                    >>>     ├── common
+                    >>>     └── virtual-env
+
             hyperparameters (dict): Hyperparameters that will be used for training (default: None).
                 The hyperparameters are made accessible as a dict[str, str] to the training code on SageMaker.
                 For convenience, this accepts other types for keys and values, but ``str()`` will be called
@@ -658,6 +674,7 @@ class Framework(EstimatorBase):
         """
         super(Framework, self).__init__(**kwargs)
         self.source_dir = source_dir
+        self.lib_dirs = lib_dirs or []
         self.entry_point = entry_point
         if enable_cloudwatch_metrics:
             warnings.warn('enable_cloudwatch_metrics is now deprecated and will be removed in the future.',
@@ -724,7 +741,8 @@ class Framework(EstimatorBase):
                                   bucket=code_bucket,
                                   s3_key_prefix=code_s3_prefix,
                                   script=self.entry_point,
-                                  directory=self.source_dir)
+                                  directory=self.source_dir,
+                                  lib_dirs=self.lib_dirs)
 
     def _model_source_dir(self):
         """Get the appropriate value to pass as source_dir to model constructor on deploying

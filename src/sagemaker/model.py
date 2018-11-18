@@ -127,7 +127,7 @@ class FrameworkModel(Model):
 
     def __init__(self, model_data, image, role, entry_point, source_dir=None, predictor_cls=None, env=None, name=None,
                  enable_cloudwatch_metrics=False, container_log_level=logging.INFO, code_location=None,
-                 sagemaker_session=None, **kwargs):
+                 sagemaker_session=None, lib_dirs=None, **kwargs):
         """Initialize a ``FrameworkModel``.
 
         Args:
@@ -140,6 +140,23 @@ class FrameworkModel(Model):
                 source code dependencies aside from tne entry point file (default: None). Structure within this
                 directory will be preserved when training on SageMaker.
                 If the directory points to S3, no code will be uploaded and the S3 location will be used instead.
+            lib_dirs (list[str]): A list of paths to directories (absolute or relative) with
+                any additional libraries that will be exported to the container (default: []).
+                The library folders will be copied to SageMaker in the same folder where the entrypoint is copied.
+                If the ```source_dir``` points to S3, code will be uploaded and the S3 location will be used
+                instead. Example:
+
+                    The following call
+                    >>> Estimator(entry_point='train.py', lib_dirs=['my/libs/common', 'virtual-env'])
+                    results in the following inside the container:
+
+                    >>> $ ls
+
+                    >>> opt/ml/code
+                    >>>     ├── train.py
+                    >>>     ├── common
+                    >>>     └── virtual-env
+
             predictor_cls (callable[string, sagemaker.session.Session]): A function to call to create
                a predictor (default: None). If not None, ``deploy`` will return the result of invoking
                this function on the created endpoint name.
@@ -160,6 +177,7 @@ class FrameworkModel(Model):
                                              sagemaker_session=sagemaker_session, **kwargs)
         self.entry_point = entry_point
         self.source_dir = source_dir
+        self.lib_dirs = lib_dirs or []
         self.enable_cloudwatch_metrics = enable_cloudwatch_metrics
         self.container_log_level = container_log_level
         if code_location:
@@ -194,7 +212,8 @@ class FrameworkModel(Model):
                                                     bucket=self.bucket or self.sagemaker_session.default_bucket(),
                                                     s3_key_prefix=key_prefix,
                                                     script=self.entry_point,
-                                                    directory=self.source_dir)
+                                                    directory=self.source_dir,
+                                                    lib_dirs=self.lib_dirs)
 
     def _framework_env_vars(self):
         if self.uploaded_code:
