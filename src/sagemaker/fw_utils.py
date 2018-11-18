@@ -140,12 +140,10 @@ def tar_and_upload_dir(session, bucket, s3_key_prefix, script, directory, lib_di
         tmp = tempfile.mkdtemp()
 
         try:
-            source_files = list(_expand_files_to_compress(script, directory))
-
-            tar_file = sagemaker.utils.create_tar_file(source_files + lib_dirs, os.path.join(tmp, _TAR_SOURCE_FILENAME))
+            source_files = _list_files_to_compress(script, directory) + lib_dirs
+            tar_file = sagemaker.utils.create_tar_file(source_files, os.path.join(tmp, _TAR_SOURCE_FILENAME))
 
             session.resource('s3').Object(bucket, key).upload_file(tar_file)
-
         finally:
             shutil.rmtree(tmp)
 
@@ -153,17 +151,9 @@ def tar_and_upload_dir(session, bucket, s3_key_prefix, script, directory, lib_di
         return UploadedCode(s3_prefix='s3://%s/%s' % (bucket, key), script_name=script_name)
 
 
-def _expand_files_to_compress(script, directory, additional_files=None):
-    additional_files = additional_files or []
+def _list_files_to_compress(script, directory):
     basedir = directory if directory else os.path.dirname(script)
-    files = [basedir] + additional_files
-
-    for file in files:
-        if os.path.isfile(file):
-            yield file
-        else:
-            for name in os.listdir(file):
-                yield os.path.join(file, name)
+    return [os.path.join(basedir, name) for name in os.listdir(basedir)]
 
 
 def framework_name_from_image(image_name):
