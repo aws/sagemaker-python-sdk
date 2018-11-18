@@ -295,6 +295,7 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):
             logging.warning('No finished training job found associated with this estimator. Please make sure'
                             'this estimator is only used for building workflow config')
             model_uri = os.path.join(self.output_path, self._current_job_name, 'output', 'model.tar.gz')
+
         return model_uri
 
     @abstractmethod
@@ -390,9 +391,13 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):
             volume_kms_key (str): Optional. KMS key ID for encrypting the volume attached to the ML
                 compute instance (default: None).
         """
-        self._ensure_latest_training_job()
+        if self.latest_training_job is not None:
+            model_name = self.sagemaker_session.create_model_from_job(self.latest_training_job.name, role=role)
+        else:
+            logging.warning('No finished training job found associated with this estimator. Please make sure'
+                            'this estimator is only used for building workflow config')
+            model_name = self._current_job_name
 
-        model_name = self.sagemaker_session.create_model_from_job(self.latest_training_job.name, role=role)
         tags = tags or self.tags
 
         return Transformer(model_name, instance_count, instance_type, strategy=strategy, assemble_with=assemble_with,
@@ -879,19 +884,23 @@ class Framework(EstimatorBase):
             volume_kms_key (str): Optional. KMS key ID for encrypting the volume attached to the ML
                 compute instance (default: None).
         """
-        self._ensure_latest_training_job()
         role = role or self.role
 
-        model = self.create_model(role=role, model_server_workers=model_server_workers)
+        if self.latest_training_job is not None:
+            model = self.create_model(role=role, model_server_workers=model_server_workers)
 
-        container_def = model.prepare_container_def(instance_type)
-        model_name = model.name or name_from_image(container_def['Image'])
-        vpc_config = model.vpc_config
-        self.sagemaker_session.create_model(model_name, role, container_def, vpc_config)
-
-        transform_env = model.env.copy()
-        if env is not None:
-            transform_env.update(env)
+            container_def = model.prepare_container_def(instance_type)
+            model_name = model.name or name_from_image(container_def['Image'])
+            vpc_config = model.vpc_config
+            self.sagemaker_session.create_model(model_name, role, container_def, vpc_config)
+            transform_env = model.env.copy()
+            if env is not None:
+                transform_env.update(env)
+        else:
+            logging.warning('No finished training job found associated with this estimator. Please make sure'
+                            'this estimator is only used for building workflow config')
+            model_name = self._current_job_name
+            transform_env = env or {}
 
         tags = tags or self.tags
         return Transformer(model_name, instance_count, instance_type, strategy=strategy, assemble_with=assemble_with,

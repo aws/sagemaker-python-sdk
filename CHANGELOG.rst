@@ -2,6 +2,11 @@
 CHANGELOG
 =========
 
+1.15.1.dev
+==========
+
+* feature: Add APIs to export Airflow transform and deploy config
+
 1.15.0
 ======
 
