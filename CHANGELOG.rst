@@ -6,6 +6,7 @@ CHANGELOG
 =========
 
 * feature: Estimators: lib_dirs attribute allows export of additional libraries into the container
+* feature: Add APIs to export Airflow transform and deploy config
 
 1.15.0
 ======

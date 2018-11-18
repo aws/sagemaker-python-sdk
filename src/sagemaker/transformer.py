@@ -90,7 +90,7 @@ class Transformer(object):
                     an input for the transform job.
 
             content_type (str): MIME type of the input data (default: None).
-            compression (str): Compression type of the input data, if compressed (default: None).
+            compression_type (str): Compression type of the input data, if compressed (default: None).
                 Valid values: 'Gzip', None.
             split_type (str): The record delimiter for the input object (default: 'None').
                 Valid values: 'None', 'Line', and 'RecordIO'.
