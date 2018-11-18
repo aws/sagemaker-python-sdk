@@ -117,6 +117,7 @@ CONTAINER_LOG_LEVEL_PARAM_NAME = 'sagemaker_container_log_level'
 JOB_NAME_PARAM_NAME = 'sagemaker_job_name'
 MODEL_SERVER_WORKERS_PARAM_NAME = 'sagemaker_model_server_workers'
 SAGEMAKER_REGION_PARAM_NAME = 'sagemaker_region'
+SAGEMAKER_OUTPUT_LOCATION = 'sagemaker_s3_output'
 
 
 class FrameworkModel(Model):
