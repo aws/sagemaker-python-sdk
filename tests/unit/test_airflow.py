@@ -16,10 +16,10 @@ from __future__ import absolute_import
 import pytest
 import mock
 
-from sagemaker import estimator, mxnet, tensorflow, tuner
+from sagemaker import chainer, estimator, model, mxnet, tensorflow, tuner
 from sagemaker.workflow import airflow
 from sagemaker.amazon import amazon_estimator
-from sagemaker.amazon import ntm
+from sagemaker.amazon import knn, ntm, pca
 
 
 REGION = 'us-west-2'
@@ -562,6 +562,198 @@ def test_framework_tuning_config(sagemaker_session):
                 'Tar': True
             }]
         }
+    }
+
+    assert config == expected_config
+
+
+def test_byo_model_config(sagemaker_session):
+    byo_model = model.Model(
+        model_data="{{ model_data }}",
+        image="{{ image }}",
+        role="{{ role }}",
+        env={"{{ key }}": "{{ value }}"},
+        name='model',
+        sagemaker_session=sagemaker_session)
+
+    config = airflow.model_config(instance_type='ml.c4.xlarge', model=byo_model)
+    expected_config = {
+        'ModelName': 'model',
+        'PrimaryContainer': {
+            'Image': '{{ image }}',
+            'Environment': {'{{ key }}': '{{ value }}'},
+            'ModelDataUrl': '{{ model_data }}'
+        },
+        'ExecutionRoleArn': '{{ role }}'
+    }
+
+    assert config == expected_config
+
+
+def test_byo_framework_model_config(sagemaker_session):
+    byo_model = model.FrameworkModel(
+        model_data="{{ model_data }}",
+        image="{{ image }}",
+        role="{{ role }}",
+        entry_point="{{ entry_point }}",
+        source_dir="{{ source_dir }}",
+        env={"{{ key }}": "{{ value }}"},
+        name='model',
+        sagemaker_session=sagemaker_session)
+
+    config = airflow.model_config(instance_type='ml.c4.xlarge', model=byo_model)
+    expected_config = {
+        'ModelName': 'model',
+        'PrimaryContainer': {
+            'Image': '{{ image }}',
+            'Environment': {
+                '{{ key }}': '{{ value }}',
+                'SAGEMAKER_PROGRAM': '{{ entry_point }}',
+                'SAGEMAKER_SUBMIT_DIRECTORY': 's3://output/model/source/sourcedir.tar.gz',
+                'SAGEMAKER_ENABLE_CLOUDWATCH_METRICS': 'false',
+                'SAGEMAKER_CONTAINER_LOG_LEVEL': '20',
+                'SAGEMAKER_REGION': 'us-west-2'
+            },
+            'ModelDataUrl': '{{ model_data }}'},
+        'ExecutionRoleArn': '{{ role }}',
+        'S3Operations': {
+            'S3Upload': [{
+                'Path': '{{ source_dir }}',
+                'Bucket': 'output',
+                'Key': 'model/source/sourcedir.tar.gz',
+                'Tar': True
+            }]
+        }
+    }
+
+    assert config == expected_config
+
+
+def test_framework_model_config(sagemaker_session):
+    chainer_model = chainer.ChainerModel(
+        model_data="{{ model_data }}",
+        role="{{ role }}",
+        entry_point="{{ entry_point }}",
+        source_dir="{{ source_dir }}",
+        image=None,
+        py_version='py3',
+        framework_version='5.0.0',
+        model_server_workers="{{ model_server_worker }}",
+        sagemaker_session=sagemaker_session)
+
+    config = airflow.model_config(instance_type='ml.c4.xlarge', model=chainer_model)
+    expected_config = {
+        'ModelName': "sagemaker-chainer-{{ execution_date.strftime('%Y-%m-%d-%H-%M-%S') }}",
+        'PrimaryContainer': {
+            'Image': '520713654638.dkr.ecr.us-west-2.amazonaws.com/sagemaker-chainer:5.0.0-cpu-py3',
+            'Environment': {
+                'SAGEMAKER_PROGRAM': '{{ entry_point }}',
+                'SAGEMAKER_SUBMIT_DIRECTORY': "s3://output/sagemaker-chainer-"
+                                              "{{ execution_date.strftime('%Y-%m-%d-%H-%M-%S') }}"
+                                              "/source/sourcedir.tar.gz",
+                'SAGEMAKER_ENABLE_CLOUDWATCH_METRICS': 'false',
+                'SAGEMAKER_CONTAINER_LOG_LEVEL': '20',
+                'SAGEMAKER_REGION': 'us-west-2',
+                'SAGEMAKER_MODEL_SERVER_WORKERS': '{{ model_server_worker }}'
+            },
+            'ModelDataUrl': '{{ model_data }}'
+        },
+        'ExecutionRoleArn': '{{ role }}',
+        'S3Operations': {
+            'S3Upload': [{
+                'Path': '{{ source_dir }}',
+                'Bucket': 'output',
+                'Key': "sagemaker-chainer-{{ execution_date.strftime('%Y-%m-%d-%H-%M-%S') }}/source/sourcedir.tar.gz",
+                'Tar': True}]
+        }
+    }
+
+    assert config == expected_config
+
+
+def test_amazon_alg_model_config(sagemaker_session):
+    pca_model = pca.PCAModel(
+        model_data="{{ model_data }}",
+        role="{{ role }}",
+        sagemaker_session=sagemaker_session)
+
+    config = airflow.model_config(instance_type='ml.c4.xlarge', model=pca_model)
+    expected_config = {
+        'ModelName': "pca-{{ execution_date.strftime('%Y-%m-%d-%H-%M-%S') }}",
+        'PrimaryContainer': {
+            'Image': '174872318107.dkr.ecr.us-west-2.amazonaws.com/pca:1',
+            'Environment': {},
+            'ModelDataUrl': '{{ model_data }}'
+        },
+        'ExecutionRoleArn': '{{ role }}'
+    }
+
+    assert config == expected_config
+
+
+def test_model_config_from_framework_estimator(sagemaker_session):
+    mxnet_estimator = mxnet.MXNet(
+        entry_point="{{ entry_point }}",
+        source_dir="{{ source_dir }}",
+        py_version='py3',
+        framework_version='1.3.0',
+        role="{{ role }}",
+        train_instance_count=1,
+        train_instance_type='ml.m4.xlarge',
+        sagemaker_session=sagemaker_session,
+        base_job_name="{{ base_job_name }}",
+        hyperparameters={'batch_size': 100})
+
+    data = "{{ training_data }}"
+
+    # simulate training
+    airflow.training_config(mxnet_estimator, data)
+
+    config = airflow.model_config_from_estimator(instance_type='ml.c4.xlarge', estimator=mxnet_estimator)
+    expected_config = {
+        'ModelName': "{{ base_job_name }}-{{ execution_date.strftime('%Y-%m-%d-%H-%M-%S') }}",
+        'PrimaryContainer': {
+            'Image': '520713654638.dkr.ecr.us-west-2.amazonaws.com/sagemaker-mxnet:1.3.0-cpu-py3',
+            'Environment': {
+                'SAGEMAKER_PROGRAM': '{{ entry_point }}',
+                'SAGEMAKER_SUBMIT_DIRECTORY': "s3://output/{{ base_job_name }}-"
+                                              "{{ execution_date.strftime('%Y-%m-%d-%H-%M-%S') }}"
+                                              "/source/sourcedir.tar.gz",
+                'SAGEMAKER_ENABLE_CLOUDWATCH_METRICS': 'false',
+                'SAGEMAKER_CONTAINER_LOG_LEVEL': '20',
+                'SAGEMAKER_REGION': 'us-west-2'
+            },
+            'ModelDataUrl': "s3://output/{{ base_job_name }}-"
+                            "{{ execution_date.strftime('%Y-%m-%d-%H-%M-%S') }}/output/model.tar.gz"},
+        'ExecutionRoleArn': '{{ role }}'
+    }
+
+    assert config == expected_config
+
+
+def test_model_config_from_amazon_alg_estimator(sagemaker_session):
+    knn_estimator = knn.KNN(
+        role="{{ role }}",
+        train_instance_count="{{ instance_count }}",
+        train_instance_type='ml.m4.xlarge',
+        k=16,
+        sample_size=128,
+        predictor_type='regressor',
+        sagemaker_session=sagemaker_session)
+
+    record = amazon_estimator.RecordSet("{{ record }}", 10000, 100, 'S3Prefix')
+
+    # simulate training
+    airflow.training_config(knn_estimator, record, mini_batch_size=256)
+
+    config = airflow.model_config_from_estimator(instance_type='ml.c4.xlarge', estimator=knn_estimator)
+    expected_config = {
+        'ModelName': "knn-{{ execution_date.strftime('%Y-%m-%d-%H-%M-%S') }}",
+        'PrimaryContainer': {
+            'Image': '174872318107.dkr.ecr.us-west-2.amazonaws.com/knn:1',
+            'Environment': {},
+            'ModelDataUrl': "s3://output/knn-{{ execution_date.strftime('%Y-%m-%d-%H-%M-%S') }}/output/model.tar.gz"},
+        'ExecutionRoleArn': '{{ role }}'
     }
 
     assert config == expected_config

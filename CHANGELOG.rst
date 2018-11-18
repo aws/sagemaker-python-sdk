@@ -2,19 +2,25 @@
 CHANGELOG
 =========
 
-1.14.3-dev
+1.15.1dev
+=========
+
+* feature: Estimators: source_dir accepts a list of directories
+
+1.15.0
 ======
 
 * bug-fix: Changes to use correct S3 bucket and time range for dataframes in TrainingJobAnalytics.
 * bug-fix: Local Mode: correctly handle the case where the model output folder doesn't exist yet
-* feature: Add APIs to export Airflow training and tuning config
+* feature: Add APIs to export Airflow training, tuning and model config
 * doc-fix: Fix typos in tensorflow serving documentation
 * doc-fix: Add estimator base classes to API docs
 * feature: HyperparameterTuner: add support for Automatic Model Tuning's Warm Start Jobs
 * feature: HyperparameterTuner: Make input channels optional
 * feature: Add support for Chainer 5.0
 * feature: Estimator: add support for MetricDefinitions
-* feature: source_dir accepts a list of directories
+* feature: Estimators: add support for Amazon IP Insights algorithm
+
 
 1.14.2
 ======
