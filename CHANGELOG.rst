@@ -2,9 +2,10 @@
 CHANGELOG
 =========
 
-1.15.1.dev
-==========
+1.15.1dev
+=========
 
+* feature: Estimators: dependencies attribute allows export of additional libraries into the container
 * feature: Add APIs to export Airflow transform and deploy config
 
 1.15.0

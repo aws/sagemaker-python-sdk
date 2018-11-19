@@ -17,7 +17,7 @@ import json
 import os
 import pytest
 import sys
-from mock import Mock
+from mock import MagicMock, Mock
 from mock import patch
 
 from sagemaker.pytorch import defaults
@@ -184,6 +184,7 @@ def test_create_model_with_custom_image(sagemaker_session):
     assert model.source_dir == source_dir
 
 
+@patch('sagemaker.utils.create_tar_file', MagicMock())
 @patch('time.strftime', return_value=TIMESTAMP)
 def test_pytorch(strftime, sagemaker_session, pytorch_version):
     pytorch = PyTorch(entry_point=SCRIPT_PATH, role=ROLE, sagemaker_session=sagemaker_session,
@@ -223,6 +224,7 @@ def test_pytorch(strftime, sagemaker_session, pytorch_version):
     assert isinstance(predictor, PyTorchPredictor)
 
 
+@patch('sagemaker.utils.create_tar_file', MagicMock())
 def test_model(sagemaker_session):
     model = PyTorchModel("s3://some/data.tar.gz", role=ROLE, entry_point=SCRIPT_PATH,
                          sagemaker_session=sagemaker_session)

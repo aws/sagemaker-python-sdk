@@ -14,10 +14,14 @@ from __future__ import absolute_import
 
 import os
 import re
+import shutil
+import tempfile
 from collections import namedtuple
 from six.moves.urllib.parse import urlparse
 
 import sagemaker.utils
+
+_TAR_SOURCE_FILENAME = 'source.tar.gz'
 
 UploadedCode = namedtuple('UserCode', ['s3_prefix', 'script_name'])
 """sagemaker.fw_utils.UserCode: An object containing the S3 prefix and script name.
@@ -107,7 +111,7 @@ def validate_source_dir(script, directory):
     return True
 
 
-def tar_and_upload_dir(session, bucket, s3_key_prefix, script, directory):
+def tar_and_upload_dir(session, bucket, s3_key_prefix, script, directory, dependencies=None):
     """Pack and upload source files to S3 only if directory is empty or local.
 
     Note:
@@ -118,31 +122,38 @@ def tar_and_upload_dir(session, bucket, s3_key_prefix, script, directory):
         bucket (str): S3 bucket to which the compressed file is uploaded.
         s3_key_prefix (str): Prefix for the S3 key.
         script (str): Script filename.
-        directory (str): Directory containing the source file. If it starts with "s3://", no action is taken.
+        directory (str or None): Directory containing the source file. If it starts with
+                                    "s3://", no action is taken.
+        dependencies (List[str]): A list of paths to directories (absolute or relative)
+                                containing additional libraries that will be copied into
+                                /opt/ml/lib
 
     Returns:
         sagemaker.fw_utils.UserCode: An object with the S3 bucket and key (S3 prefix) and script name.
     """
-    if directory:
-        if directory.lower().startswith("s3://"):
-            return UploadedCode(s3_prefix=directory, script_name=os.path.basename(script))
-        else:
-            script_name = script
-            source_files = [os.path.join(directory, name) for name in os.listdir(directory)]
+    dependencies = dependencies or []
+    key = '%s/sourcedir.tar.gz' % s3_key_prefix
+
+    if directory and directory.lower().startswith('s3://'):
+        return UploadedCode(s3_prefix=directory, script_name=os.path.basename(script))
     else:
-        # If no directory is specified, the script parameter needs to be a valid relative path.
-        os.path.exists(script)
-        script_name = os.path.basename(script)
-        source_files = [script]
+        tmp = tempfile.mkdtemp()
 
-    s3 = session.resource('s3')
-    key = '{}/{}'.format(s3_key_prefix, 'sourcedir.tar.gz')
+        try:
+            source_files = _list_files_to_compress(script, directory) + dependencies
+            tar_file = sagemaker.utils.create_tar_file(source_files, os.path.join(tmp, _TAR_SOURCE_FILENAME))
 
-    tar_file = sagemaker.utils.create_tar_file(source_files)
-    s3.Object(bucket, key).upload_file(tar_file)
-    os.remove(tar_file)
+            session.resource('s3').Object(bucket, key).upload_file(tar_file)
+        finally:
+            shutil.rmtree(tmp)
 
-    return UploadedCode(s3_prefix='s3://{}/{}'.format(bucket, key), script_name=script_name)
+        script_name = script if directory else os.path.basename(script)
+        return UploadedCode(s3_prefix='s3://%s/%s' % (bucket, key), script_name=script_name)
+
+
+def _list_files_to_compress(script, directory):
+    basedir = directory if directory else os.path.dirname(script)
+    return [os.path.join(basedir, name) for name in os.listdir(basedir)]
 
 
 def framework_name_from_image(image_name):

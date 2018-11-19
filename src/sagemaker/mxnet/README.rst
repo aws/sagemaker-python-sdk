@@ -271,6 +271,23 @@ The following are optional arguments. When you create an ``MXNet`` object, you c
    other training source code dependencies including the entry point
    file. Structure within this directory will be preserved when training
    on SageMaker.
+- ``dependencies (list[str])`` A list of paths to directories (absolute or relative) with
+        any additional libraries that will be exported to the container (default: []).
+        The library folders will be copied to SageMaker in the same folder where the entrypoint is copied.
+        If the ```source_dir``` points to S3, code will be uploaded and the S3 location will be used
+        instead. Example:
+
+            The following call
+            >>> MXNet(entry_point='train.py', dependencies=['my/libs/common', 'virtual-env'])
+            results in the following inside the container:
+
+            >>> $ ls
+
+            >>> opt/ml/code
+            >>>     ├── train.py
+            >>>     ├── common
+            >>>     └── virtual-env
+
 -  ``hyperparameters`` Hyperparameters that will be used for training.
    Will be made accessible as a dict[str, str] to the training code on
    SageMaker. For convenience, accepts other types besides str, but
