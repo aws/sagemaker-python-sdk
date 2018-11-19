@@ -14,6 +14,7 @@ CHANGELOG
 * feature: Local Mode: Add support for intermediate output to a local directory.
 * bug-fix: Update PyYAML version to avoid conflicts with docker-compose
 * doc-fix: Correct the numbered list in the table of contents
+* bug-fix: Local Mode: No longer requires s3 permissions to run local entry point file
 * doc-fix: Add Airflow API documentation
 
 1.16.1.post1
