@@ -207,7 +207,7 @@ If you were previously relying on the default save method, you can now import on
 
         save(args.model_dir, model)
 
-Lastly, if you were relying on the container launching a parameter server for use with distributed training, you must now set ``distribution`` to the following dictionary when creating an MXNet estimator:
+Lastly, if you were relying on the container launching a parameter server for use with distributed training, you must now set ``distributions`` to the following dictionary when creating an MXNet estimator:
 
 .. code:: python
 
@@ -215,7 +215,7 @@ Lastly, if you were relying on the container launching a parameter server for us
 
     estimator = MXNet('path-to-distributed-training-script.py',
                       ...,
-                      distribution={'parameter_server': {'enabled': True}})
+                      distributions={'parameter_server': {'enabled': True}})
 
 
 Using third-party libraries
@@ -321,7 +321,7 @@ The following are optional arguments. When you create an ``MXNet`` object, you c
    framework_version and py_version. Refer to: `SageMaker MXNet Docker Containers
    <#sagemaker-mxnet-docker-containers>`_ for details on what the Official images support
    and where to find the source code to build your custom image.
--  ``distribution`` For versions 1.3 and above only.
+-  ``distributions`` For versions 1.3 and above only.
    Specifies information for how to run distributed training.
    To launch a parameter server during training, set this argument to:
 
