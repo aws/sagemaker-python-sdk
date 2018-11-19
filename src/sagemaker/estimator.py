@@ -658,9 +658,9 @@ class Framework(EstimatorBase):
                     >>> $ ls
 
                     >>> opt/ml/code
-                    >>>     ├── train.py
-                    >>>     ├── common
-                    >>>     └── virtual-env
+                    >>>     |------ train.py
+                    >>>     |------ common
+                    >>>     |------ virtual-env
 
             hyperparameters (dict): Hyperparameters that will be used for training (default: None).
                 The hyperparameters are made accessible as a dict[str, str] to the training code on SageMaker.

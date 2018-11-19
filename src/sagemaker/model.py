@@ -153,9 +153,9 @@ class FrameworkModel(Model):
                     >>> $ ls
 
                     >>> opt/ml/code
-                    >>>     ├── train.py
-                    >>>     ├── common
-                    >>>     └── virtual-env
+                    >>>     |------ train.py
+                    >>>     |------ common
+                    >>>     |------ virtual-env
 
             predictor_cls (callable[string, sagemaker.session.Session]): A function to call to create
                a predictor (default: None). If not None, ``deploy`` will return the result of invoking
