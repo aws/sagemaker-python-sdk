@@ -18,7 +18,7 @@ import os
 import pytest
 import sys
 from distutils.util import strtobool
-from mock import Mock
+from mock import MagicMock, Mock
 from mock import patch
 
 
@@ -282,6 +282,7 @@ def test_create_model_with_custom_image(sagemaker_session):
     assert model.image == custom_image
 
 
+@patch('sagemaker.utils.create_tar_file', MagicMock())
 @patch('time.strftime', return_value=TIMESTAMP)
 def test_chainer(strftime, sagemaker_session, chainer_version):
     chainer = Chainer(entry_point=SCRIPT_PATH, role=ROLE, sagemaker_session=sagemaker_session,
@@ -321,6 +322,7 @@ def test_chainer(strftime, sagemaker_session, chainer_version):
     assert isinstance(predictor, ChainerPredictor)
 
 
+@patch('sagemaker.utils.create_tar_file', MagicMock())
 def test_model(sagemaker_session):
     model = ChainerModel("s3://some/data.tar.gz", role=ROLE, entry_point=SCRIPT_PATH,
                          sagemaker_session=sagemaker_session)
