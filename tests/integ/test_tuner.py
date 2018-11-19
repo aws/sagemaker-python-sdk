@@ -16,6 +16,8 @@ import gzip
 import json
 import os
 import pickle
+import random
+import string
 import sys
 import time
 
@@ -32,7 +34,6 @@ from sagemaker.mxnet.estimator import MXNet
 from sagemaker.predictor import json_deserializer
 from sagemaker.pytorch import PyTorch
 from sagemaker.tensorflow import TensorFlow
-from sagemaker.utils import name_from_base
 from sagemaker.tuner import IntegerParameter, ContinuousParameter, CategoricalParameter, HyperparameterTuner, \
     WarmStartConfig, WarmStartTypes, create_transfer_learning_tuner, create_identical_dataset_and_algorithm_tuner
 from tests.integ import DATA_DIR, PYTHON_VERSION, TUNING_DEFAULT_TIMEOUT_MINUTES
@@ -59,7 +60,7 @@ def kmeans_estimator(sagemaker_session):
 
     kmeans = KMeans(role='SageMakerRole', train_instance_count=1,
                     train_instance_type='ml.c4.xlarge',
-                    k=10, sagemaker_session=sagemaker_session, base_job_name='tk',
+                    k=10, sagemaker_session=sagemaker_session,
                     output_path='s3://{}/'.format(sagemaker_session.default_bucket()))
     # set kmeans specific hp
     kmeans.init_method = 'random'
@@ -124,12 +125,15 @@ def _tune(kmeans_estimator, kmeans_train_set, tuner=None,
     return tuner
 
 
+def _job_name(base):
+    return base + ''.join(random.choice(string.ascii_letters + string.digits) for _ in range(8))
+
+
 @pytest.mark.continuous_testing
-def test_tuning_kmeans(sagemaker_session,
-                       kmeans_train_set,
-                       kmeans_estimator,
+def test_tuning_kmeans(sagemaker_session, kmeans_train_set, kmeans_estimator,
                        hyperparameter_ranges):
-    _tune_and_deploy(kmeans_estimator, kmeans_train_set, sagemaker_session, hyperparameter_ranges=hyperparameter_ranges)
+    _tune_and_deploy(kmeans_estimator, kmeans_train_set, sagemaker_session,
+                     hyperparameter_ranges=hyperparameter_ranges, job_name=_job_name('tune-kmeans'))
 
 
 @pytest.mark.continuous_testing
@@ -137,8 +141,8 @@ def test_tuning_kmeans_identical_dataset_algorithm_tuner_raw(sagemaker_session,
                                                              kmeans_train_set,
                                                              kmeans_estimator,
                                                              hyperparameter_ranges):
-    parent_tuning_job_name = name_from_base("kmeans-identical", max_length=32, short=True)
-    child_tuning_job_name = name_from_base("c-kmeans-identical", max_length=32, short=True)
+    parent_tuning_job_name = _job_name('kmeans-identical')
+    child_tuning_job_name = _job_name('c-kmeans-identical')
     _tune(kmeans_estimator, kmeans_train_set, job_name=parent_tuning_job_name,
           hyperparameter_ranges=hyperparameter_ranges, max_parallel_jobs=1, max_jobs=1)
     child_tuner = _tune(kmeans_estimator, kmeans_train_set, job_name=child_tuning_job_name,
@@ -149,7 +153,7 @@ def test_tuning_kmeans_identical_dataset_algorithm_tuner_raw(sagemaker_session,
 
     child_warm_start_config_response = WarmStartConfig.from_job_desc(
         sagemaker_session.sagemaker_client.describe_hyper_parameter_tuning_job(
-            HyperParameterTuningJobName=child_tuning_job_name)["WarmStartConfig"])
+            HyperParameterTuningJobName=child_tuning_job_name)['WarmStartConfig'])
 
     assert child_warm_start_config_response.type == child_tuner.warm_start_config.type
     assert child_warm_start_config_response.parents == child_tuner.warm_start_config.parents
@@ -160,10 +164,10 @@ def test_tuning_kmeans_identical_dataset_algorithm_tuner(sagemaker_session,
                                                          kmeans_estimator,
                                                          hyperparameter_ranges):
     """Tests Identical dataset and algorithm use case with one parent and child job launched with
-        .identical_dataset_and_algorithm_tuner() """
+        .identical_dataset_and_algorithm_tuner()"""
 
-    parent_tuning_job_name = name_from_base("km-iden1-parent", max_length=32, short=True)
-    child_tuning_job_name = name_from_base("km-iden1-child", max_length=32, short=True)
+    parent_tuning_job_name = _job_name('km-iden1-parent')
+    child_tuning_job_name = _job_name('km-iden1-child')
 
     parent_tuner = _tune(kmeans_estimator, kmeans_train_set, job_name=parent_tuning_job_name,
                          hyperparameter_ranges=hyperparameter_ranges)
@@ -174,7 +178,7 @@ def test_tuning_kmeans_identical_dataset_algorithm_tuner(sagemaker_session,
 
     child_warm_start_config_response = WarmStartConfig.from_job_desc(
         sagemaker_session.sagemaker_client.describe_hyper_parameter_tuning_job(
-            HyperParameterTuningJobName=child_tuning_job_name)["WarmStartConfig"])
+            HyperParameterTuningJobName=child_tuning_job_name)['WarmStartConfig'])
 
     assert child_warm_start_config_response.type == child_tuner.warm_start_config.type
     assert child_warm_start_config_response.parents == child_tuner.warm_start_config.parents
@@ -186,10 +190,10 @@ def test_create_tuning_kmeans_identical_dataset_algorithm_tuner(sagemaker_sessio
                                                                 kmeans_estimator,
                                                                 hyperparameter_ranges):
     """Tests Identical dataset and algorithm use case with one parent and child job launched with
-        .create_identical_dataset_and_algorithm_tuner() """
+        .create_identical_dataset_and_algorithm_tuner()"""
 
-    parent_tuning_job_name = name_from_base("km-iden2-parent", max_length=32, short=True)
-    child_tuning_job_name = name_from_base("km-iden2-child", max_length=32, short=True)
+    parent_tuning_job_name = _job_name('km-iden2-parent')
+    child_tuning_job_name = _job_name('km-iden2-child')
 
     parent_tuner = _tune(kmeans_estimator, kmeans_train_set, job_name=parent_tuning_job_name,
                          hyperparameter_ranges=hyperparameter_ranges, max_parallel_jobs=1, max_jobs=1)
@@ -202,7 +206,7 @@ def test_create_tuning_kmeans_identical_dataset_algorithm_tuner(sagemaker_sessio
 
     child_warm_start_config_response = WarmStartConfig.from_job_desc(
         sagemaker_session.sagemaker_client.describe_hyper_parameter_tuning_job(
-            HyperParameterTuningJobName=child_tuning_job_name)["WarmStartConfig"])
+            HyperParameterTuningJobName=child_tuning_job_name)['WarmStartConfig'])
 
     assert child_warm_start_config_response.type == child_tuner.warm_start_config.type
     assert child_warm_start_config_response.parents == child_tuner.warm_start_config.parents
@@ -213,10 +217,10 @@ def test_transfer_learning_tuner(sagemaker_session,
                                  kmeans_estimator,
                                  hyperparameter_ranges):
     """Tests Transfer learning use case with one parent and child job launched with
-        .transfer_learning_tuner() """
+        .transfer_learning_tuner()"""
 
-    parent_tuning_job_name = name_from_base("km-tran1-parent", max_length=32, short=True)
-    child_tuning_job_name = name_from_base("km-tran1-child", max_length=32, short=True)
+    parent_tuning_job_name = _job_name('km-tran1-parent')
+    child_tuning_job_name = _job_name('km-tran1-child')
 
     parent_tuner = _tune(kmeans_estimator, kmeans_train_set, job_name=parent_tuning_job_name,
                          hyperparameter_ranges=hyperparameter_ranges, max_jobs=1, max_parallel_jobs=1)
@@ -227,7 +231,7 @@ def test_transfer_learning_tuner(sagemaker_session,
 
     child_warm_start_config_response = WarmStartConfig.from_job_desc(
         sagemaker_session.sagemaker_client.describe_hyper_parameter_tuning_job(
-            HyperParameterTuningJobName=child_tuning_job_name)["WarmStartConfig"])
+            HyperParameterTuningJobName=child_tuning_job_name)['WarmStartConfig'])
 
     assert child_warm_start_config_response.type == child_tuner.warm_start_config.type
     assert child_warm_start_config_response.parents == child_tuner.warm_start_config.parents
@@ -239,10 +243,10 @@ def test_create_transfer_learning_tuner(sagemaker_session,
                                         kmeans_estimator,
                                         hyperparameter_ranges):
     """Tests Transfer learning use case with two parents and child job launched with
-        create_transfer_learning_tuner() """
-    parent_tuning_job_name_1 = name_from_base("km-tran2-parent1", max_length=32, short=True)
-    parent_tuning_job_name_2 = name_from_base("km-tran2-parent2", max_length=32, short=True)
-    child_tuning_job_name = name_from_base("km-tran2-child", max_length=32, short=True)
+    create_transfer_learning_tuner()"""
+    parent_tuning_job_name_1 = _job_name('km-tran2-parent1')
+    parent_tuning_job_name_2 = _job_name('km-tran2-parent2')
+    child_tuning_job_name = _job_name('km-tran2-child')
 
     parent_tuner_1 = _tune(kmeans_estimator, kmeans_train_set, job_name=parent_tuning_job_name_1,
                            hyperparameter_ranges=hyperparameter_ranges, max_parallel_jobs=1, max_jobs=1)
@@ -258,7 +262,7 @@ def test_create_transfer_learning_tuner(sagemaker_session,
 
     child_warm_start_config_response = WarmStartConfig.from_job_desc(
         sagemaker_session.sagemaker_client.describe_hyper_parameter_tuning_job(
-            HyperParameterTuningJobName=child_tuning_job_name)["WarmStartConfig"])
+            HyperParameterTuningJobName=child_tuning_job_name)['WarmStartConfig'])
 
     assert child_warm_start_config_response.type == child_tuner.warm_start_config.type
     assert child_warm_start_config_response.parents == child_tuner.warm_start_config.parents
@@ -270,9 +274,9 @@ def test_tuning_kmeans_identical_dataset_algorithm_tuner_from_non_terminal_paren
                                                                                   kmeans_estimator,
                                                                                   hyperparameter_ranges):
     """Tests Identical dataset and algorithm use case with one non terminal parent and child job launched with
-    .identical_dataset_and_algorithm_tuner() """
-    parent_tuning_job_name = name_from_base("km-non-term", max_length=32, short=True)
-    child_tuning_job_name = name_from_base("km-non-term-child", max_length=32, short=True)
+    .identical_dataset_and_algorithm_tuner()"""
+    parent_tuning_job_name = _job_name('km-non-term')
+    child_tuning_job_name = _job_name('km-non-term-child')
 
     parent_tuner = _tune(kmeans_estimator, kmeans_train_set, job_name=parent_tuning_job_name,
                          hyperparameter_ranges=hyperparameter_ranges, wait_till_terminal=False, max_parallel_jobs=1,
@@ -296,7 +300,7 @@ def test_tuning_lda(sagemaker_session):
         feature_num = int(all_records[0].features['values'].float32_tensor.shape[0])
 
         lda = LDA(role='SageMakerRole', train_instance_type='ml.c4.xlarge', num_topics=10,
-                  sagemaker_session=sagemaker_session, base_job_name='test-lda')
+                  sagemaker_session=sagemaker_session)
 
         record_set = prepare_record_set_from_local_files(data_path, lda.data_location,
                                                          len(all_records), feature_num, sagemaker_session)
@@ -313,7 +317,7 @@ def test_tuning_lda(sagemaker_session):
                                     hyperparameter_ranges=hyperparameter_ranges, objective_type='Maximize', max_jobs=2,
                                     max_parallel_jobs=2)
 
-        tuner.fit([record_set, test_record_set], mini_batch_size=1)
+        tuner.fit([record_set, test_record_set], mini_batch_size=1, job_name=_job_name('tune-lda'))
 
         print('Started hyperparameter tuning job with name:' + tuner.latest_tuning_job.name)
 
@@ -337,8 +341,7 @@ def test_stop_tuning_job(sagemaker_session):
     train_input = np.random.rand(1000, feature_num)
 
     rcf = RandomCutForest(role='SageMakerRole', train_instance_count=1, train_instance_type='ml.c4.xlarge',
-                          num_trees=50, num_samples_per_tree=20, sagemaker_session=sagemaker_session,
-                          base_job_name='test-randomcutforest')
+                          num_trees=50, num_samples_per_tree=20, sagemaker_session=sagemaker_session)
 
     records = rcf.record_set(train_input)
     records.distribution = 'FullyReplicated'
@@ -354,7 +357,7 @@ def test_stop_tuning_job(sagemaker_session):
                                 hyperparameter_ranges=hyperparameter_ranges, objective_type='Maximize', max_jobs=2,
                                 max_parallel_jobs=2)
 
-    tuner.fit([records, test_records])
+    tuner.fit([records, test_records], job_name=_job_name('tune-rcf'))
 
     time.sleep(15)
 
@@ -394,7 +397,7 @@ def test_tuning_mxnet(sagemaker_session):
                                                               key_prefix='integ-test-data/mxnet_mnist/train')
         test_input = estimator.sagemaker_session.upload_data(path=os.path.join(data_path, 'test'),
                                                              key_prefix='integ-test-data/mxnet_mnist/test')
-        tuner.fit({'train': train_input, 'test': test_input})
+        tuner.fit({'train': train_input, 'test': test_input}, job_name=_job_name('tune-mxnet'))
 
         print('Started hyperparameter tuning job with name:' + tuner.latest_tuning_job.name)
 
@@ -409,7 +412,7 @@ def test_tuning_mxnet(sagemaker_session):
 
 
 @pytest.mark.continuous_testing
-@pytest.mark.skipif(PYTHON_VERSION != 'py2', reason="TensorFlow image supports only python 2.")
+@pytest.mark.skipif(PYTHON_VERSION != 'py2', reason='TensorFlow image supports only Python 2.')
 def test_tuning_tf(sagemaker_session):
     with timeout(minutes=TUNING_DEFAULT_TIMEOUT_MINUTES):
         script_path = os.path.join(DATA_DIR, 'iris', 'iris-dnn-classifier.py')
@@ -433,7 +436,7 @@ def test_tuning_tf(sagemaker_session):
         tuner = HyperparameterTuner(estimator, objective_metric_name, hyperparameter_ranges, metric_definitions,
                                     objective_type='Minimize', max_jobs=2, max_parallel_jobs=2)
 
-        tuner.fit(inputs)
+        tuner.fit(inputs, job_name=_job_name('tune-tf'))
 
         print('Started hyperparameter tuning job with name:' + tuner.latest_tuning_job.name)
 
@@ -481,7 +484,7 @@ def test_tuning_chainer(sagemaker_session):
         tuner = HyperparameterTuner(estimator, objective_metric_name, hyperparameter_ranges, metric_definitions,
                                     max_jobs=2, max_parallel_jobs=2)
 
-        tuner.fit({'train': train_input, 'test': test_input})
+        tuner.fit({'train': train_input, 'test': test_input}, job_name='tune-chainer')
 
         print('Started hyperparameter tuning job with name:' + tuner.latest_tuning_job.name)
 
@@ -525,7 +528,7 @@ def test_attach_tuning_pytorch(sagemaker_session):
 
         training_data = estimator.sagemaker_session.upload_data(path=os.path.join(mnist_dir, 'training'),
                                                                 key_prefix='integ-test-data/pytorch_mnist/training')
-        tuner.fit({'training': training_data})
+        tuner.fit({'training': training_data}, job_name=_job_name('tune-pytorch'))
 
         tuning_job_name = tuner.latest_tuning_job.name
 
@@ -591,7 +594,8 @@ def test_tuning_byo_estimator(sagemaker_session):
                                     hyperparameter_ranges=hyperparameter_ranges,
                                     max_jobs=2, max_parallel_jobs=2)
 
-        tuner.fit({'train': s3_train_data, 'test': s3_train_data}, include_cls_metadata=False)
+        tuner.fit({'train': s3_train_data, 'test': s3_train_data}, include_cls_metadata=False,
+                  job_name=_job_name('tune-byo'))
 
         print('Started hyperparameter tuning job with name:' + tuner.latest_tuning_job.name)
 
