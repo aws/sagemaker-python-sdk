@@ -13,7 +13,7 @@
 from __future__ import absolute_import
 
 import pytest
-from mock import Mock, patch
+from mock import MagicMock, Mock, patch
 
 from sagemaker.transformer import Transformer, _TransformJob
 
@@ -38,6 +38,12 @@ INIT_PARAMS = {
     'instance_type': INSTANCE_TYPE,
     'base_transform_job_name': JOB_NAME
 }
+
+
+@pytest.fixture(autouse=True)
+def mock_create_tar_file():
+    with patch('sagemaker.utils.create_tar_file', MagicMock()) as create_tar_file:
+        yield create_tar_file
 
 
 @pytest.fixture()
