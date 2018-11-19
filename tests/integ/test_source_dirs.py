@@ -18,7 +18,7 @@ from sagemaker.pytorch.estimator import PyTorch
 from tests.integ import DATA_DIR, PYTHON_VERSION
 
 
-def test_source_dirs(sagemaker_session, tmpdir, sagemaker_local_session):
+def test_source_dirs(tmpdir, sagemaker_local_session):
     source_dir = os.path.join(DATA_DIR, 'pytorch_source_dirs')
     lib = os.path.join(str(tmpdir), 'alexa.py')
 
