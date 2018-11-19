@@ -133,7 +133,7 @@ class Chainer(Framework):
                             py_version=self.py_version, framework_version=self.framework_version,
                             model_server_workers=model_server_workers, image=self.image_name,
                             sagemaker_session=self.sagemaker_session,
-                            vpc_config=self.get_vpc_config(vpc_config_override), lib_dirs=self.lib_dirs)
+                            vpc_config=self.get_vpc_config(vpc_config_override), dependencies=self.dependencies)
 
     @classmethod
     def _prepare_init_params_from_job_description(cls, job_details, model_channel_name=None):

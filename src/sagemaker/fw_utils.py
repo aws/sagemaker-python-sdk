@@ -111,7 +111,7 @@ def validate_source_dir(script, directory):
     return True
 
 
-def tar_and_upload_dir(session, bucket, s3_key_prefix, script, directory, lib_dirs=None):
+def tar_and_upload_dir(session, bucket, s3_key_prefix, script, directory, dependencies=None):
     """Pack and upload source files to S3 only if directory is empty or local.
 
     Note:
@@ -124,14 +124,14 @@ def tar_and_upload_dir(session, bucket, s3_key_prefix, script, directory, lib_di
         script (str): Script filename.
         directory (str or None): Directory containing the source file. If it starts with
                                     "s3://", no action is taken.
-        lib_dirs (List[str]): A list of paths to directories (absolute or relative)
+        dependencies (List[str]): A list of paths to directories (absolute or relative)
                                 containing additional libraries that will be copied into
                                 /opt/ml/lib
 
     Returns:
         sagemaker.fw_utils.UserCode: An object with the S3 bucket and key (S3 prefix) and script name.
     """
-    lib_dirs = lib_dirs or []
+    dependencies = dependencies or []
     key = '%s/sourcedir.tar.gz' % s3_key_prefix
 
     if directory and directory.lower().startswith('s3://'):
@@ -140,7 +140,7 @@ def tar_and_upload_dir(session, bucket, s3_key_prefix, script, directory, lib_di
         tmp = tempfile.mkdtemp()
 
         try:
-            source_files = _list_files_to_compress(script, directory) + lib_dirs
+            source_files = _list_files_to_compress(script, directory) + dependencies
             tar_file = sagemaker.utils.create_tar_file(source_files, os.path.join(tmp, _TAR_SOURCE_FILENAME))
 
             session.resource('s3').Object(bucket, key).upload_file(tar_file)

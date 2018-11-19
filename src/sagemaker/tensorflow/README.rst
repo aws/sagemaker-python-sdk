@@ -409,14 +409,14 @@ you can specify these as keyword arguments.
    other training source code dependencies including the entry point
    file. Structure within this directory will be preserved when training
    on SageMaker.
-- ``lib_dirs (list[str])`` A list of paths to directories (absolute or relative) with
+- ``dependencies (list[str])`` A list of paths to directories (absolute or relative) with
         any additional libraries that will be exported to the container (default: []).
         The library folders will be copied to SageMaker in the same folder where the entrypoint is copied.
         If the ```source_dir``` points to S3, code will be uploaded and the S3 location will be used
         instead. Example:
 
             The following call
-            >>> Estimator(entry_point='train.py', lib_dirs=['my/libs/common', 'virtual-env'])
+            >>> TensorFlow(entry_point='train.py', dependencies=['my/libs/common', 'virtual-env'])
             results in the following inside the container:
 
             >>> $ ls

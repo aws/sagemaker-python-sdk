@@ -25,7 +25,7 @@ def test_source_dirs(sagemaker_session, tmpdir):
     with open(lib, 'w') as f:
         f.write('def question(to_anything): return 42')
 
-    estimator = PyTorch(entry_point='train.py', role='SageMakerRole', source_dir=source_dir, lib_dirs=[lib],
+    estimator = PyTorch(entry_point='train.py', role='SageMakerRole', source_dir=source_dir, dependencies=[lib],
                         py_version=PYTHON_VERSION, train_instance_count=1, train_instance_type='local')
     try:
 
@@ -33,8 +33,8 @@ def test_source_dirs(sagemaker_session, tmpdir):
 
         predictor = estimator.deploy(initial_instance_count=1, instance_type='local')
 
-        predict_response = predictor.predict([24])
+        predict_response = predictor.predict([7])
 
-        assert predict_response == [24]
+        assert predict_response == [49]
     finally:
         estimator.delete_endpoint()
