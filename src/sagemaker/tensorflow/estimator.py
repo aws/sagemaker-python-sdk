@@ -411,7 +411,8 @@ class TensorFlow(Framework):
                                framework_version=self.framework_version,
                                model_server_workers=model_server_workers,
                                sagemaker_session=self.sagemaker_session,
-                               vpc_config=self.get_vpc_config(vpc_config_override))
+                               vpc_config=self.get_vpc_config(vpc_config_override),
+                               dependencies=self.dependencies)
 
     def hyperparameters(self):
         """Return hyperparameters used by your custom TensorFlow code during model training."""

@@ -17,7 +17,7 @@ import logging
 import json
 import os
 import pytest
-from mock import Mock
+from mock import MagicMock, Mock
 from mock import patch
 
 from sagemaker.mxnet import defaults
@@ -101,6 +101,7 @@ def _create_train_job(version):
     }
 
 
+@patch('sagemaker.utils.create_tar_file', MagicMock())
 def test_create_model(sagemaker_session, mxnet_version):
     container_log_level = '"logging.INFO"'
     source_dir = 's3://mybucket/source'
@@ -168,6 +169,7 @@ def test_create_model_with_custom_image(sagemaker_session):
     assert model.source_dir == source_dir
 
 
+@patch('sagemaker.utils.create_tar_file', MagicMock())
 @patch('time.strftime', return_value=TIMESTAMP)
 def test_mxnet(strftime, sagemaker_session, mxnet_version):
     mx = MXNet(entry_point=SCRIPT_PATH, role=ROLE, sagemaker_session=sagemaker_session,
@@ -207,6 +209,7 @@ def test_mxnet(strftime, sagemaker_session, mxnet_version):
     assert isinstance(predictor, MXNetPredictor)
 
 
+@patch('sagemaker.utils.create_tar_file', MagicMock())
 def test_model(sagemaker_session):
     model = MXNetModel("s3://some/data.tar.gz", role=ROLE, entry_point=SCRIPT_PATH,
                        sagemaker_session=sagemaker_session)

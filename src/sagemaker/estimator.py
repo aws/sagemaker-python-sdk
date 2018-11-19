@@ -295,6 +295,7 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):
             logging.warning('No finished training job found associated with this estimator. Please make sure'
                             'this estimator is only used for building workflow config')
             model_uri = os.path.join(self.output_path, self._current_job_name, 'output', 'model.tar.gz')
+
         return model_uri
 
     @abstractmethod
@@ -390,9 +391,13 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):
             volume_kms_key (str): Optional. KMS key ID for encrypting the volume attached to the ML
                 compute instance (default: None).
         """
-        self._ensure_latest_training_job()
+        if self.latest_training_job is not None:
+            model_name = self.sagemaker_session.create_model_from_job(self.latest_training_job.name, role=role)
+        else:
+            logging.warning('No finished training job found associated with this estimator. Please make sure'
+                            'this estimator is only used for building workflow config')
+            model_name = self._current_job_name
 
-        model_name = self.sagemaker_session.create_model_from_job(self.latest_training_job.name, role=role)
         tags = tags or self.tags
 
         return Transformer(model_name, instance_count, instance_type, strategy=strategy, assemble_with=assemble_with,
@@ -632,7 +637,7 @@ class Framework(EstimatorBase):
     LAUNCH_PS_ENV_NAME = 'sagemaker_parameter_server_enabled'
 
     def __init__(self, entry_point, source_dir=None, hyperparameters=None, enable_cloudwatch_metrics=False,
-                 container_log_level=logging.INFO, code_location=None, image_name=None, **kwargs):
+                 container_log_level=logging.INFO, code_location=None, image_name=None, dependencies=None, **kwargs):
         """Base class initializer. Subclasses which override ``__init__`` should invoke ``super()``
 
         Args:
@@ -641,6 +646,22 @@ class Framework(EstimatorBase):
             source_dir (str): Path (absolute or relative) to a directory with any other training
                 source code dependencies aside from tne entry point file (default: None). Structure within this
                 directory are preserved when training on Amazon SageMaker.
+            dependencies (list[str]): A list of paths to directories (absolute or relative) with
+                any additional libraries that will be exported to the container (default: []).
+                The library folders will be copied to SageMaker in the same folder where the entrypoint is copied.
+                Example:
+
+                    The following call
+                    >>> Estimator(entry_point='train.py', dependencies=['my/libs/common', 'virtual-env'])
+                    results in the following inside the container:
+
+                    >>> $ ls
+
+                    >>> opt/ml/code
+                    >>>     ├── train.py
+                    >>>     ├── common
+                    >>>     └── virtual-env
+
             hyperparameters (dict): Hyperparameters that will be used for training (default: None).
                 The hyperparameters are made accessible as a dict[str, str] to the training code on SageMaker.
                 For convenience, this accepts other types for keys and values, but ``str()`` will be called
@@ -658,6 +679,7 @@ class Framework(EstimatorBase):
         """
         super(Framework, self).__init__(**kwargs)
         self.source_dir = source_dir
+        self.dependencies = dependencies or []
         self.entry_point = entry_point
         if enable_cloudwatch_metrics:
             warnings.warn('enable_cloudwatch_metrics is now deprecated and will be removed in the future.',
@@ -724,7 +746,8 @@ class Framework(EstimatorBase):
                                   bucket=code_bucket,
                                   s3_key_prefix=code_s3_prefix,
                                   script=self.entry_point,
-                                  directory=self.source_dir)
+                                  directory=self.source_dir,
+                                  dependencies=self.dependencies)
 
     def _model_source_dir(self):
         """Get the appropriate value to pass as source_dir to model constructor on deploying
@@ -879,19 +902,23 @@ class Framework(EstimatorBase):
             volume_kms_key (str): Optional. KMS key ID for encrypting the volume attached to the ML
                 compute instance (default: None).
         """
-        self._ensure_latest_training_job()
         role = role or self.role
 
-        model = self.create_model(role=role, model_server_workers=model_server_workers)
+        if self.latest_training_job is not None:
+            model = self.create_model(role=role, model_server_workers=model_server_workers)
 
-        container_def = model.prepare_container_def(instance_type)
-        model_name = model.name or name_from_image(container_def['Image'])
-        vpc_config = model.vpc_config
-        self.sagemaker_session.create_model(model_name, role, container_def, vpc_config)
-
-        transform_env = model.env.copy()
-        if env is not None:
-            transform_env.update(env)
+            container_def = model.prepare_container_def(instance_type)
+            model_name = model.name or name_from_image(container_def['Image'])
+            vpc_config = model.vpc_config
+            self.sagemaker_session.create_model(model_name, role, container_def, vpc_config)
+            transform_env = model.env.copy()
+            if env is not None:
+                transform_env.update(env)
+        else:
+            logging.warning('No finished training job found associated with this estimator. Please make sure'
+                            'this estimator is only used for building workflow config')
+            model_name = self._current_job_name
+            transform_env = env or {}
 
         tags = tags or self.tags
         return Transformer(model_name, instance_count, instance_type, strategy=strategy, assemble_with=assemble_with,

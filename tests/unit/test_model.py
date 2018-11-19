@@ -54,9 +54,11 @@ def sagemaker_session():
     return sms
 
 
-@patch('tarfile.open')
+@patch('shutil.rmtree', MagicMock())
+@patch('tarfile.open', MagicMock())
+@patch('os.listdir', MagicMock(return_value=['blah.py']))
 @patch('time.strftime', return_value=TIMESTAMP)
-def test_prepare_container_def(tfopen, time, sagemaker_session):
+def test_prepare_container_def(time, sagemaker_session):
     model = DummyFrameworkModel(sagemaker_session)
     assert model.prepare_container_def(INSTANCE_TYPE) == {
         'Environment': {'SAGEMAKER_PROGRAM': 'blah.py',
@@ -68,13 +70,14 @@ def test_prepare_container_def(tfopen, time, sagemaker_session):
         'ModelDataUrl': 's3://bucket/model.tar.gz'}
 
 
-@patch('tarfile.open')
-@patch('os.path.exists', return_value=True)
-@patch('os.path.isdir', return_value=True)
-@patch('os.listdir', return_value=['blah.py'])
-@patch('time.strftime', return_value=TIMESTAMP)
-def test_create_no_defaults(tfopen, exists, isdir, listdir, time, sagemaker_session):
-    model = DummyFrameworkModel(sagemaker_session, source_dir="sd", env={"a": "a"}, name="name",
+@patch('shutil.rmtree', MagicMock())
+@patch('tarfile.open', MagicMock())
+@patch('os.path.exists', MagicMock(return_value=True))
+@patch('os.path.isdir', MagicMock(return_value=True))
+@patch('os.listdir', MagicMock(return_value=['blah.py']))
+@patch('time.strftime', MagicMock(return_value=TIMESTAMP))
+def test_create_no_defaults(sagemaker_session, tmpdir):
+    model = DummyFrameworkModel(sagemaker_session, source_dir='sd', env={"a": "a"}, name="name",
                                 enable_cloudwatch_metrics=True, container_log_level=55,
                                 code_location="s3://cb/cp")
 
@@ -89,10 +92,10 @@ def test_create_no_defaults(tfopen, exists, isdir, listdir, time, sagemaker_sess
         'ModelDataUrl': 's3://bucket/model.tar.gz'}
 
 
-@patch('tarfile.open')
-@patch('time.strftime', return_value=TIMESTAMP)
-def test_deploy(tfo, time, sagemaker_session):
-    model = DummyFrameworkModel(sagemaker_session)
+@patch('sagemaker.fw_utils.tar_and_upload_dir', MagicMock())
+@patch('time.strftime', MagicMock(return_value=TIMESTAMP))
+def test_deploy(sagemaker_session, tmpdir):
+    model = DummyFrameworkModel(sagemaker_session, source_dir=str(tmpdir))
     model.deploy(instance_type=INSTANCE_TYPE, initial_instance_count=1)
     sagemaker_session.endpoint_from_production_variants.assert_called_with(
         'mi-2017-10-10-14-14-15',
@@ -104,10 +107,10 @@ def test_deploy(tfo, time, sagemaker_session):
         None)
 
 
-@patch('tarfile.open')
-@patch('time.strftime', return_value=TIMESTAMP)
-def test_deploy_endpoint_name(tfo, time, sagemaker_session):
-    model = DummyFrameworkModel(sagemaker_session)
+@patch('sagemaker.fw_utils.tar_and_upload_dir', MagicMock())
+@patch('time.strftime', MagicMock(return_value=TIMESTAMP))
+def test_deploy_endpoint_name(sagemaker_session, tmpdir):
+    model = DummyFrameworkModel(sagemaker_session, source_dir=str(tmpdir))
     model.deploy(endpoint_name='blah', instance_type=INSTANCE_TYPE, initial_instance_count=55)
     sagemaker_session.endpoint_from_production_variants.assert_called_with(
         'blah',
@@ -119,10 +122,10 @@ def test_deploy_endpoint_name(tfo, time, sagemaker_session):
         None)
 
 
-@patch('tarfile.open')
-@patch('time.strftime', return_value=TIMESTAMP)
-def test_deploy_tags(tfo, time, sagemaker_session):
-    model = DummyFrameworkModel(sagemaker_session)
+@patch('sagemaker.fw_utils.tar_and_upload_dir', MagicMock())
+@patch('time.strftime', MagicMock(return_value=TIMESTAMP))
+def test_deploy_tags(sagemaker_session, tmpdir):
+    model = DummyFrameworkModel(sagemaker_session, source_dir=str(tmpdir))
     tags = [{'ModelName': 'TestModel'}]
     model.deploy(instance_type=INSTANCE_TYPE, initial_instance_count=1, tags=tags)
     sagemaker_session.endpoint_from_production_variants.assert_called_with(
@@ -135,17 +138,16 @@ def test_deploy_tags(tfo, time, sagemaker_session):
         tags)
 
 
-@patch('sagemaker.model.Session')
-@patch('sagemaker.model.LocalSession')
-@patch('tarfile.open', MagicMock())
-def test_deploy_creates_correct_session(local_session, session):
-
+@patch('sagemaker.session.Session')
+@patch('sagemaker.local.LocalSession')
+@patch('sagemaker.fw_utils.tar_and_upload_dir', MagicMock())
+def test_deploy_creates_correct_session(local_session, session, tmpdir):
     # We expect a LocalSession when deploying to instance_type = 'local'
-    model = DummyFrameworkModel(sagemaker_session=None)
+    model = DummyFrameworkModel(sagemaker_session=None, source_dir=str(tmpdir))
     model.deploy(endpoint_name='blah', instance_type='local', initial_instance_count=1)
     assert model.sagemaker_session == local_session.return_value
 
     # We expect a real Session when deploying to instance_type != local/local_gpu
-    model = DummyFrameworkModel(sagemaker_session=None)
+    model = DummyFrameworkModel(sagemaker_session=None, source_dir=str(tmpdir))
     model.deploy(endpoint_name='remote_endpoint', instance_type='ml.m4.4xlarge', initial_instance_count=2)
     assert model.sagemaker_session == session.return_value
