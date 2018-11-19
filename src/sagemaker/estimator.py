@@ -670,8 +670,9 @@ class Framework(EstimatorBase):
                 training jobs. This will be ignored for now and removed in a further release.
             container_log_level (int): Log level to use within the container (default: logging.INFO).
                 Valid values are defined in the Python logging module.
-            code_location (str): Name of the S3 bucket where custom code is uploaded (default: None).
+            code_location (str): The S3 URI where custom code is uploaded (default: None).
                 If not specified, default bucket created by ``sagemaker.session.Session`` is used.
+                The default S3 path is default_bucket/job-name/source/.
             image_name (str): An alternate image name to use instead of the official Sagemaker image
                 for the framework. This is useful to run one of the Sagemaker supported frameworks
                 with an image containing custom dependencies.

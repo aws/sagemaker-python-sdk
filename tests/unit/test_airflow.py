@@ -244,7 +244,7 @@ def test_framework_training_config_all_args(sagemaker_session):
         source_dir="{{ source_dir }}",
         enable_cloudwatch_metrics=False,
         container_log_level="{{ log_level }}",
-        code_location="{{ bucket_name }}",
+        code_location="s3://{{ bucket_name }}/{{ prefix }}",
         training_steps=1000,
         evaluation_steps=100,
         checkpoint_path="{{ checkpoint_path }}",
@@ -304,9 +304,7 @@ def test_framework_training_config_all_args(sagemaker_session):
             'SecurityGroupIds': ['{{ security_group_ids }}']
         },
         'HyperParameters': {
-            'sagemaker_submit_directory': '"s3://{{ bucket_name }}/{{ base_job_name }}-'
-                                          '{{ execution_date.strftime(\'%Y-%m-%d-%H-%M-%S\') }}'
-                                          '/source/sourcedir.tar.gz"',
+            'sagemaker_submit_directory': '"s3://{{ bucket_name }}/{{ prefix }}/source/sourcedir.tar.gz"',
             'sagemaker_program': '"{{ entry_point }}"',
             'sagemaker_enable_cloudwatch_metrics': 'false',
             'sagemaker_container_log_level': '"{{ log_level }}"',
@@ -322,8 +320,7 @@ def test_framework_training_config_all_args(sagemaker_session):
             'S3Upload': [{
                 'Path': '{{ source_dir }}',
                 'Bucket': '{{ bucket_name }}',
-                'Key': "{{ base_job_name }}-{{ execution_date.strftime('%Y-%m-%d-%H-%M-%S') }}"
-                       "/source/sourcedir.tar.gz",
+                'Key': "{{ prefix }}/source/sourcedir.tar.gz",
                 'Tar': True}]
         }
     }
