@@ -18,7 +18,7 @@ from sagemaker.pytorch.estimator import PyTorch
 from tests.integ import DATA_DIR, PYTHON_VERSION
 
 
-def test_source_dirs(sagemaker_session, tmpdir):
+def test_source_dirs(sagemaker_session, tmpdir, sagemaker_local_session):
     source_dir = os.path.join(DATA_DIR, 'pytorch_source_dirs')
     lib = os.path.join(str(tmpdir), 'alexa.py')
 
@@ -26,7 +26,8 @@ def test_source_dirs(sagemaker_session, tmpdir):
         f.write('def question(to_anything): return 42')
 
     estimator = PyTorch(entry_point='train.py', role='SageMakerRole', source_dir=source_dir, dependencies=[lib],
-                        py_version=PYTHON_VERSION, train_instance_count=1, train_instance_type='local')
+                        py_version=PYTHON_VERSION, train_instance_count=1, train_instance_type='local',
+                        sagemaker_session=sagemaker_local_session)
     try:
 
         estimator.fit()
