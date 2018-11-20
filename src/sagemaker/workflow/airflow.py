@@ -27,8 +27,12 @@ def prepare_framework(estimator, s3_operations):
         estimator (sagemaker.estimator.Estimator): The framework estimator to get information from and update.
         s3_operations (dict): The dict to specify s3 operations (upload `source_dir`).
     """
-    bucket = estimator.code_location if estimator.code_location else estimator.sagemaker_session._default_bucket
-    key = '{}/source/sourcedir.tar.gz'.format(estimator._current_job_name)
+    if estimator.code_location is not None:
+        bucket, key = fw_utils.parse_s3_url(estimator.code_location)
+        key = os.path.join(key, 'source', 'sourcedir.tar.gz')
+    else:
+        bucket = estimator.sagemaker_session._default_bucket
+        key = os.path.join(estimator._current_job_name, 'source', 'sourcedir.tar.gz')
     script = os.path.basename(estimator.entry_point)
     if estimator.source_dir and estimator.source_dir.lower().startswith('s3://'):
         code_dir = estimator.source_dir

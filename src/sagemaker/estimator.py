@@ -637,7 +637,7 @@ class Framework(EstimatorBase):
     LAUNCH_PS_ENV_NAME = 'sagemaker_parameter_server_enabled'
 
     def __init__(self, entry_point, source_dir=None, hyperparameters=None, enable_cloudwatch_metrics=False,
-                 container_log_level=logging.INFO, code_location=None, image_name=None, **kwargs):
+                 container_log_level=logging.INFO, code_location=None, image_name=None, dependencies=None, **kwargs):
         """Base class initializer. Subclasses which override ``__init__`` should invoke ``super()``
 
         Args:
@@ -646,6 +646,22 @@ class Framework(EstimatorBase):
             source_dir (str): Path (absolute or relative) to a directory with any other training
                 source code dependencies aside from tne entry point file (default: None). Structure within this
                 directory are preserved when training on Amazon SageMaker.
+            dependencies (list[str]): A list of paths to directories (absolute or relative) with
+                any additional libraries that will be exported to the container (default: []).
+                The library folders will be copied to SageMaker in the same folder where the entrypoint is copied.
+                Example:
+
+                    The following call
+                    >>> Estimator(entry_point='train.py', dependencies=['my/libs/common', 'virtual-env'])
+                    results in the following inside the container:
+
+                    >>> $ ls
+
+                    >>> opt/ml/code
+                    >>>     |------ train.py
+                    >>>     |------ common
+                    >>>     |------ virtual-env
+
             hyperparameters (dict): Hyperparameters that will be used for training (default: None).
                 The hyperparameters are made accessible as a dict[str, str] to the training code on SageMaker.
                 For convenience, this accepts other types for keys and values, but ``str()`` will be called
@@ -654,8 +670,10 @@ class Framework(EstimatorBase):
                 training jobs. This will be ignored for now and removed in a further release.
             container_log_level (int): Log level to use within the container (default: logging.INFO).
                 Valid values are defined in the Python logging module.
-            code_location (str): Name of the S3 bucket where custom code is uploaded (default: None).
-                If not specified, default bucket created by ``sagemaker.session.Session`` is used.
+            code_location (str): The S3 prefix URI where custom code will be uploaded (default: None).
+                The code file uploaded in S3 is 'code_location/source/sourcedir.tar.gz'.
+                If not specified, the default code location is s3://default_bucket/job-name/. And code file
+                uploaded to S3 is s3://default_bucket/job-name/source/sourcedir.tar.gz
             image_name (str): An alternate image name to use instead of the official Sagemaker image
                 for the framework. This is useful to run one of the Sagemaker supported frameworks
                 with an image containing custom dependencies.
@@ -663,6 +681,7 @@ class Framework(EstimatorBase):
         """
         super(Framework, self).__init__(**kwargs)
         self.source_dir = source_dir
+        self.dependencies = dependencies or []
         self.entry_point = entry_point
         if enable_cloudwatch_metrics:
             warnings.warn('enable_cloudwatch_metrics is now deprecated and will be removed in the future.',
@@ -729,7 +748,8 @@ class Framework(EstimatorBase):
                                   bucket=code_bucket,
                                   s3_key_prefix=code_s3_prefix,
                                   script=self.entry_point,
-                                  directory=self.source_dir)
+                                  directory=self.source_dir,
+                                  dependencies=self.dependencies)
 
     def _model_source_dir(self):
         """Get the appropriate value to pass as source_dir to model constructor on deploying

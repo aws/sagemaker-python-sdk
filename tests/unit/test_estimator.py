@@ -18,7 +18,7 @@ import os
 from time import sleep
 
 import pytest
-from mock import Mock, patch
+from mock import MagicMock, Mock, patch
 
 from sagemaker.estimator import Estimator, Framework, _TrainingJob
 from sagemaker.model import FrameworkModel
@@ -125,6 +125,12 @@ class DummyFrameworkModel(FrameworkModel):
 
     def prepare_container_def(self, instance_type):
         return MODEL_CONTAINER_DEF
+
+
+@pytest.fixture(autouse=True)
+def mock_create_tar_file():
+    with patch('sagemaker.utils.create_tar_file', MagicMock()) as create_tar_file:
+        yield create_tar_file
 
 
 @pytest.fixture()

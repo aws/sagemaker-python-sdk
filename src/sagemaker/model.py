@@ -16,10 +16,10 @@ import logging
 
 import sagemaker
 
-from sagemaker.local import LocalSession
-from sagemaker.fw_utils import tar_and_upload_dir, parse_s3_url, model_code_key_prefix
-from sagemaker.session import Session
-from sagemaker.utils import name_from_image, get_config_value
+from sagemaker import local
+from sagemaker import fw_utils
+from sagemaker import session
+from sagemaker import utils
 
 
 class Model(object):
@@ -96,12 +96,12 @@ class Model(object):
         """
         if not self.sagemaker_session:
             if instance_type in ('local', 'local_gpu'):
-                self.sagemaker_session = LocalSession()
+                self.sagemaker_session = local.LocalSession()
             else:
-                self.sagemaker_session = Session()
+                self.sagemaker_session = session.Session()
 
         container_def = self.prepare_container_def(instance_type)
-        self.name = self.name or name_from_image(container_def['Image'])
+        self.name = self.name or utils.name_from_image(container_def['Image'])
         self.sagemaker_session.create_model(self.name, self.role, container_def, vpc_config=self.vpc_config)
         production_variant = sagemaker.production_variant(self.name, instance_type, initial_instance_count)
         self.endpoint_name = endpoint_name or self.name
@@ -127,7 +127,7 @@ class FrameworkModel(Model):
 
     def __init__(self, model_data, image, role, entry_point, source_dir=None, predictor_cls=None, env=None, name=None,
                  enable_cloudwatch_metrics=False, container_log_level=logging.INFO, code_location=None,
-                 sagemaker_session=None, **kwargs):
+                 sagemaker_session=None, dependencies=None, **kwargs):
         """Initialize a ``FrameworkModel``.
 
         Args:
@@ -140,6 +140,23 @@ class FrameworkModel(Model):
                 source code dependencies aside from tne entry point file (default: None). Structure within this
                 directory will be preserved when training on SageMaker.
                 If the directory points to S3, no code will be uploaded and the S3 location will be used instead.
+            dependencies (list[str]): A list of paths to directories (absolute or relative) with
+                any additional libraries that will be exported to the container (default: []).
+                The library folders will be copied to SageMaker in the same folder where the entrypoint is copied.
+                If the ```source_dir``` points to S3, code will be uploaded and the S3 location will be used
+                instead. Example:
+
+                    The following call
+                    >>> Estimator(entry_point='train.py', dependencies=['my/libs/common', 'virtual-env'])
+                    results in the following inside the container:
+
+                    >>> $ ls
+
+                    >>> opt/ml/code
+                    >>>     |------ train.py
+                    >>>     |------ common
+                    >>>     |------ virtual-env
+
             predictor_cls (callable[string, sagemaker.session.Session]): A function to call to create
                a predictor (default: None). If not None, ``deploy`` will return the result of invoking
                this function on the created endpoint name.
@@ -160,10 +177,11 @@ class FrameworkModel(Model):
                                              sagemaker_session=sagemaker_session, **kwargs)
         self.entry_point = entry_point
         self.source_dir = source_dir
+        self.dependencies = dependencies or []
         self.enable_cloudwatch_metrics = enable_cloudwatch_metrics
         self.container_log_level = container_log_level
         if code_location:
-            self.bucket, self.key_prefix = parse_s3_url(code_location)
+            self.bucket, self.key_prefix = fw_utils.parse_s3_url(code_location)
         else:
             self.bucket, self.key_prefix = None, None
         self.uploaded_code = None
@@ -179,22 +197,24 @@ class FrameworkModel(Model):
         Returns:
             dict[str, str]: A container definition object usable with the CreateModel API.
         """
-        deploy_key_prefix = model_code_key_prefix(self.key_prefix, self.name, self.image)
+        deploy_key_prefix = fw_utils.model_code_key_prefix(self.key_prefix, self.name, self.image)
         self._upload_code(deploy_key_prefix)
         deploy_env = dict(self.env)
         deploy_env.update(self._framework_env_vars())
         return sagemaker.container_def(self.image, self.model_data, deploy_env)
 
     def _upload_code(self, key_prefix):
-        local_code = get_config_value('local.local_code', self.sagemaker_session.config)
+        local_code = utils.get_config_value('local.local_code', self.sagemaker_session.config)
         if self.sagemaker_session.local_mode and local_code:
             self.uploaded_code = None
         else:
-            self.uploaded_code = tar_and_upload_dir(session=self.sagemaker_session.boto_session,
-                                                    bucket=self.bucket or self.sagemaker_session.default_bucket(),
-                                                    s3_key_prefix=key_prefix,
-                                                    script=self.entry_point,
-                                                    directory=self.source_dir)
+            bucket = self.bucket or self.sagemaker_session.default_bucket()
+            self.uploaded_code = fw_utils.tar_and_upload_dir(session=self.sagemaker_session.boto_session,
+                                                             bucket=bucket,
+                                                             s3_key_prefix=key_prefix,
+                                                             script=self.entry_point,
+                                                             directory=self.source_dir,
+                                                             dependencies=self.dependencies)
 
     def _framework_env_vars(self):
         if self.uploaded_code:

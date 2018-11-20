@@ -2,10 +2,14 @@
 CHANGELOG
 =========
 
-1.15.1.dev
-==========
+1.15.1
+======
 
+* enhancement: Local Mode: add explicit pull for serving
+* feature: Estimators: dependencies attribute allows export of additional libraries into the container
 * feature: Add APIs to export Airflow transform and deploy config
+* bug-fix: Allow code_location argument to be S3 URI in training_config API
+* enhancement: Local Mode: add explicit pull for serving
 
 1.15.0
 ======
