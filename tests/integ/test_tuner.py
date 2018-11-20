@@ -384,8 +384,7 @@ def test_tuning_mxnet(sagemaker_session):
                           train_instance_count=1,
                           train_instance_type='ml.m4.xlarge',
                           framework_version='1.2.1',
-                          sagemaker_session=sagemaker_session,
-                          base_job_name='tune-mxnet')
+                          sagemaker_session=sagemaker_session)
 
         hyperparameter_ranges = {'learning_rate': ContinuousParameter(0.01, 0.2)}
         objective_metric_name = 'Validation-accuracy'
@@ -424,8 +423,7 @@ def test_tuning_tf(sagemaker_session):
                                hyperparameters={'input_tensor_name': 'inputs'},
                                train_instance_count=1,
                                train_instance_type='ml.c4.xlarge',
-                               sagemaker_session=sagemaker_session,
-                               base_job_name='tune-tf')
+                               sagemaker_session=sagemaker_session)
 
         inputs = sagemaker_session.upload_data(path=DATA_PATH, key_prefix='integ-test-data/tf_iris')
         hyperparameter_ranges = {'learning_rate': ContinuousParameter(0.05, 0.2)}
@@ -484,7 +482,7 @@ def test_tuning_chainer(sagemaker_session):
         tuner = HyperparameterTuner(estimator, objective_metric_name, hyperparameter_ranges, metric_definitions,
                                     max_jobs=2, max_parallel_jobs=2)
 
-        tuner.fit({'train': train_input, 'test': test_input}, job_name='tune-chainer')
+        tuner.fit({'train': train_input, 'test': test_input}, job_name=_job_name('tune-chainer'))
 
         print('Started hyperparameter tuning job with name:' + tuner.latest_tuning_job.name)
 
@@ -580,7 +578,7 @@ def test_tuning_byo_estimator(sagemaker_session):
         estimator = Estimator(image_name=image_name,
                               role='SageMakerRole', train_instance_count=1,
                               train_instance_type='ml.c4.xlarge',
-                              sagemaker_session=sagemaker_session, base_job_name='test-byo')
+                              sagemaker_session=sagemaker_session)
 
         estimator.set_hyperparameters(num_factors=10,
                                       feature_dim=784,
@@ -589,7 +587,7 @@ def test_tuning_byo_estimator(sagemaker_session):
 
         hyperparameter_ranges = {'mini_batch_size': IntegerParameter(100, 200)}
 
-        tuner = HyperparameterTuner(estimator=estimator, base_tuning_job_name='byo',
+        tuner = HyperparameterTuner(estimator=estimator,
                                     objective_metric_name='test:binary_classification_accuracy',
                                     hyperparameter_ranges=hyperparameter_ranges,
                                     max_jobs=2, max_parallel_jobs=2)
