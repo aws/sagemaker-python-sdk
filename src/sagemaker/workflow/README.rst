@@ -1,6 +1,6 @@
-=============================
-SageMaker Workflow in Airflow
-=============================
+====================================
+SageMaker Workflow in Apache Airflow
+====================================
 
 Apache Airflow
 ~~~~~~~~~~~~~~

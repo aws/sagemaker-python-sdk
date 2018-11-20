@@ -38,6 +38,7 @@ Table of Contents
 10. `SageMaker Batch Transform <#sagemaker-batch-transform>`__
 11. `Secure Training and Inference with VPC <#secure-training-and-inference-with-vpc>`__
 12. `BYO Model <#byo-model>`__
+13. `SageMaker Workflow <#sagemaker-workflow>`__
 
 
 Installing the SageMaker Python SDK
@@ -706,3 +707,13 @@ After that, invoke the ``deploy()`` method on the ``Model``:
 This returns a predictor the same way an ``Estimator`` does when ``deploy()`` is called. You can now get inferences just like with any other model deployed on Amazon SageMaker.
 
 A full example is available in the `Amazon SageMaker examples repository <https://github.com/awslabs/amazon-sagemaker-examples/tree/master/advanced_functionality/mxnet_mnist_byom>`__.
+
+
+SageMaker Workflow
+------------------
+
+You can use Apache Airflow to author, schedule and monitor SageMaker workflow.
+
+For more information, see `SageMaker Workflow in Apache Airflow`_.
+
+.. _SageMaker Workflow in Apache Airflow: src/sagemaker/workflow/README.rst
