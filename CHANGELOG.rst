@@ -14,6 +14,7 @@ CHANGELOG
 1.15.0
 ======
 
+* feature: Estimator: add script mode and Python 3 support for TensorFlow
 * bug-fix: Changes to use correct S3 bucket and time range for dataframes in TrainingJobAnalytics.
 * bug-fix: Local Mode: correctly handle the case where the model output folder doesn't exist yet
 * feature: Add APIs to export Airflow training, tuning and model config
