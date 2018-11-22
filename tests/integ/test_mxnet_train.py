@@ -112,4 +112,4 @@ def test_failed_training_job(sagemaker_session, mxnet_full_version):
 
         with pytest.raises(ValueError) as e:
             mx.fit()
-        assert 'This failure is expected' in str(e.value)
+        assert 'ExecuteUserScriptError' in str(e.value)
