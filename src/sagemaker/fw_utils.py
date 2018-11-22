@@ -12,14 +12,14 @@
 # language governing permissions and limitations under the License.
 from __future__ import absolute_import
 
+from collections import namedtuple
+
 import os
 import re
+import sagemaker.utils
 import shutil
 import tempfile
-from collections import namedtuple
 from six.moves.urllib.parse import urlparse
-
-import sagemaker.utils
 
 _TAR_SOURCE_FILENAME = 'source.tar.gz'
 
@@ -112,46 +112,57 @@ def validate_source_dir(script, directory):
 
 
 def tar_and_upload_dir(session, bucket, s3_key_prefix, script, directory, dependencies=None):
-    """Pack and upload source files to S3 only if directory is empty or local.
+    """Package source files and upload a compress tar file to S3. The S3 location will be
+    ``s3://<bucket>/s3_key_prefix/sourcedir.tar.gz``.
 
-    Note:
-        If the directory points to S3 no action is taken.
+    If directory is an S3 URI, an UploadedCode object will be returned, but nothing will be
+    uploaded to S3 (this allow reuse of code already in S3).
+
+    If directory is None, the script will be added to the archive at ``./<basename of script>``.
+
+    If directory is not None, the (recursive) contents of the directory will be added to
+    the archive. directory is treated as the base path of the archive, and the script name is
+    assumed to be a filename or relative path inside the directory.
 
     Args:
         session (boto3.Session): Boto session used to access S3.
         bucket (str): S3 bucket to which the compressed file is uploaded.
         s3_key_prefix (str): Prefix for the S3 key.
-        script (str): Script filename.
-        directory (str or None): Directory containing the source file. If it starts with
-                                    "s3://", no action is taken.
-        dependencies (List[str]): A list of paths to directories (absolute or relative)
+        script (str): Script filename or path.
+        directory (str): Optional. Directory containing the source file. If it starts with "s3://",
+            no action is taken.
+        dependencies (List[str]): Optional. A list of paths to directories (absolute or relative)
                                 containing additional libraries that will be copied into
                                 /opt/ml/lib
 
     Returns:
-        sagemaker.fw_utils.UserCode: An object with the S3 bucket and key (S3 prefix) and script name.
+        sagemaker.fw_utils.UserCode: An object with the S3 bucket and key (S3 prefix) and
+            script name.
     """
-    dependencies = dependencies or []
-    key = '%s/sourcedir.tar.gz' % s3_key_prefix
-
     if directory and directory.lower().startswith('s3://'):
         return UploadedCode(s3_prefix=directory, script_name=os.path.basename(script))
-    else:
-        tmp = tempfile.mkdtemp()
 
-        try:
-            source_files = _list_files_to_compress(script, directory) + dependencies
-            tar_file = sagemaker.utils.create_tar_file(source_files, os.path.join(tmp, _TAR_SOURCE_FILENAME))
+    script_name = script if directory else os.path.basename(script)
+    dependencies = dependencies or []
+    key = '%s/sourcedir.tar.gz' % s3_key_prefix
+    tmp = tempfile.mkdtemp()
 
-            session.resource('s3').Object(bucket, key).upload_file(tar_file)
-        finally:
-            shutil.rmtree(tmp)
+    try:
+        source_files = _list_files_to_compress(script, directory) + dependencies
+        tar_file = sagemaker.utils.create_tar_file(source_files,
+                                                   os.path.join(tmp, _TAR_SOURCE_FILENAME))
 
-        script_name = script if directory else os.path.basename(script)
-        return UploadedCode(s3_prefix='s3://%s/%s' % (bucket, key), script_name=script_name)
+        session.resource('s3').Object(bucket, key).upload_file(tar_file)
+    finally:
+        shutil.rmtree(tmp)
+
+    return UploadedCode(s3_prefix='s3://%s/%s' % (bucket, key), script_name=script_name)
 
 
 def _list_files_to_compress(script, directory):
+    if directory is None:
+        return [script]
+
     basedir = directory if directory else os.path.dirname(script)
     return [os.path.join(basedir, name) for name in os.listdir(basedir)]
 

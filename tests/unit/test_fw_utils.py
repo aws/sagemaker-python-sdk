@@ -19,6 +19,7 @@ import tarfile
 import pytest
 from mock import Mock, patch
 
+from contextlib import contextmanager
 from sagemaker import fw_utils
 from sagemaker.utils import name_from_image
 
@@ -28,6 +29,14 @@ ROLE = 'Sagemaker'
 REGION = 'us-west-2'
 SCRIPT_PATH = 'script.py'
 TIMESTAMP = '2017-10-10-14-14-15'
+
+
+@contextmanager
+def cd(path):
+    old_dir = os.getcwd()
+    os.chdir(path)
+    yield
+    os.chdir(old_dir)
 
 
 @pytest.fixture()
@@ -132,7 +141,7 @@ def test_validate_source_dir_file_not_in_dir():
 
 
 def test_tar_and_upload_dir_not_s3(sagemaker_session):
-    bucket = 'mybucker'
+    bucket = 'mybucket'
     s3_key_prefix = 'something/source'
     script = os.path.basename(__file__)
     directory = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
@@ -159,6 +168,33 @@ def test_tar_and_upload_dir_no_directory(sagemaker_session, tmpdir):
 
     with patch('shutil.rmtree'):
         result = fw_utils.tar_and_upload_dir(sagemaker_session, 'bucket', 'prefix', entrypoint, None)
+
+    assert result == fw_utils.UploadedCode(s3_prefix='s3://bucket/prefix/sourcedir.tar.gz',
+                                           script_name='train.py')
+
+    assert {'/train.py'} == list_source_dir_files(sagemaker_session, tmpdir)
+
+
+def test_tar_and_upload_dir_no_directory_only_entrypoint(sagemaker_session, tmpdir):
+    source_dir = file_tree(tmpdir, ['train.py', 'not_me.py'])
+    entrypoint = os.path.join(source_dir, 'train.py')
+
+    with patch('shutil.rmtree'):
+        result = fw_utils.tar_and_upload_dir(sagemaker_session, 'bucket', 'prefix', entrypoint, None)
+
+    assert result == fw_utils.UploadedCode(s3_prefix='s3://bucket/prefix/sourcedir.tar.gz',
+                                           script_name='train.py')
+
+    assert {'/train.py'} == list_source_dir_files(sagemaker_session, tmpdir)
+
+
+def test_tar_and_upload_dir_no_directory_bare_filename(sagemaker_session, tmpdir):
+    source_dir = file_tree(tmpdir, ['train.py'])
+    entrypoint = 'train.py'
+
+    with patch('shutil.rmtree'):
+        with cd(source_dir):
+            result = fw_utils.tar_and_upload_dir(sagemaker_session, 'bucket', 'prefix', entrypoint, None)
 
     assert result == fw_utils.UploadedCode(s3_prefix='s3://bucket/prefix/sourcedir.tar.gz',
                                            script_name='train.py')
