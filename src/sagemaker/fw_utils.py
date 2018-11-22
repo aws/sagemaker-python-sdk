@@ -131,27 +131,29 @@ def tar_and_upload_dir(session, bucket, s3_key_prefix, script, directory, depend
     Returns:
         sagemaker.fw_utils.UserCode: An object with the S3 bucket and key (S3 prefix) and script name.
     """
-    dependencies = dependencies or []
-    key = '%s/sourcedir.tar.gz' % s3_key_prefix
-
     if directory and directory.lower().startswith('s3://'):
         return UploadedCode(s3_prefix=directory, script_name=os.path.basename(script))
-    else:
-        tmp = tempfile.mkdtemp()
 
-        try:
-            source_files = _list_files_to_compress(script, directory) + dependencies
-            tar_file = sagemaker.utils.create_tar_file(source_files, os.path.join(tmp, _TAR_SOURCE_FILENAME))
+    script_name = script if directory else os.path.basename(script)
+    dependencies = dependencies or []
+    key = '%s/sourcedir.tar.gz' % s3_key_prefix
+    tmp = tempfile.mkdtemp()
 
-            session.resource('s3').Object(bucket, key).upload_file(tar_file)
-        finally:
-            shutil.rmtree(tmp)
+    try:
+        source_files = _list_files_to_compress(script, directory) + dependencies
+        tar_file = sagemaker.utils.create_tar_file(source_files, os.path.join(tmp, _TAR_SOURCE_FILENAME))
 
-        script_name = script if directory else os.path.basename(script)
-        return UploadedCode(s3_prefix='s3://%s/%s' % (bucket, key), script_name=script_name)
+        session.resource('s3').Object(bucket, key).upload_file(tar_file)
+    finally:
+        shutil.rmtree(tmp)
+
+    return UploadedCode(s3_prefix='s3://%s/%s' % (bucket, key), script_name=script_name)
 
 
 def _list_files_to_compress(script, directory):
+    if directory is None:
+        return [script]
+
     basedir = directory if directory else os.path.dirname(script)
     return [os.path.join(basedir, name) for name in os.listdir(basedir)]
 
