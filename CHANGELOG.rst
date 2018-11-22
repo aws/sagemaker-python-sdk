@@ -2,6 +2,13 @@
 CHANGELOG
 =========
 
+1.15.2
+======
+
+* bug-fix: Fix FileNotFoundError for entry_point without source_dir
+* doc-fix: Add missing feature 1.5.0 in change log
+* doc-fix: Add README for airflow
+
 1.15.1
 ======
 
