@@ -39,7 +39,7 @@ def sagemaker_session():
 
 
 def test_create_model(sagemaker_session):
-    returned_name = sagemaker_session.create_model(name=MODEL_NAME, role=ROLE, primary_container=FULL_CONTAINER_DEF,
+    returned_name = sagemaker_session.create_model(name=MODEL_NAME, role=ROLE, container_defs=FULL_CONTAINER_DEF,
                                                    vpc_config=VPC_CONFIG)
 
     assert returned_name == MODEL_NAME
@@ -51,7 +51,7 @@ def test_create_model(sagemaker_session):
 
 
 def test_create_model_expand_primary_container(sagemaker_session):
-    sagemaker_session.create_model(name=MODEL_NAME, role=ROLE, primary_container=IMAGE)
+    sagemaker_session.create_model(name=MODEL_NAME, role=ROLE, container_defs=IMAGE)
 
     _1, _2, create_model_kwargs = sagemaker_session.sagemaker_client.create_model.mock_calls[0]
     assert create_model_kwargs['PrimaryContainer'] == {'Environment': {}, 'Image': IMAGE}

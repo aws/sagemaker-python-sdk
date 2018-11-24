@@ -61,7 +61,7 @@ def test_all_defaults_no_existing_entities(name_from_image_mock, sagemaker_sessi
         EndpointConfigName=NAME_FROM_IMAGE)
     sagemaker_session.create_model.assert_called_once_with(name=NAME_FROM_IMAGE,
                                                            role=DEPLOY_ROLE,
-                                                           primary_container=CONTAINER_DEF,
+                                                           container_defs=CONTAINER_DEF,
                                                            vpc_config=None)
     sagemaker_session.create_endpoint_config.assert_called_once_with(name=NAME_FROM_IMAGE,
                                                                      model_name=NAME_FROM_IMAGE,
@@ -92,7 +92,7 @@ def test_no_defaults_no_existing_entities(name_from_image_mock, sagemaker_sessio
         EndpointConfigName=ENDPOINT_NAME)
     sagemaker_session.create_model.assert_called_once_with(name=ENDPOINT_NAME,
                                                            role=DEPLOY_ROLE,
-                                                           primary_container=container_def_with_env,
+                                                           container_defs=container_def_with_env,
                                                            vpc_config=VPC_CONFIG)
     sagemaker_session.create_endpoint_config.assert_called_once_with(name=ENDPOINT_NAME,
                                                                      model_name=ENDPOINT_NAME,
@@ -114,7 +114,7 @@ def test_model_and_endpoint_config_exist(name_from_image_mock, sagemaker_session
                                                instance_type=INSTANCE_TYPE, wait=False)
 
     sagemaker_session.create_model.assert_not_called()
-    sagemaker_session.create_endpoint_config.assert_not_called
+    sagemaker_session.create_endpoint_config.assert_not_called()
     sagemaker_session.create_endpoint.assert_called_once_with(endpoint_name=NAME_FROM_IMAGE,
                                                               config_name=NAME_FROM_IMAGE,
                                                               wait=False)

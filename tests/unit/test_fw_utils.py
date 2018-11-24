@@ -261,10 +261,10 @@ def test_tar_and_upload_dir_with_many_folders(sagemaker_session, tmpdir):
 
     with patch('shutil.rmtree'):
         result = fw_utils.tar_and_upload_dir(sagemaker_session, 'bucket', 'prefix',
-                                             'model.py', source_dir, dependencies)
+                                             'pipeline.py', source_dir, dependencies)
 
     assert result == fw_utils.UploadedCode(s3_prefix='s3://bucket/prefix/sourcedir.tar.gz',
-                                           script_name='model.py')
+                                           script_name='pipeline.py')
 
     assert {'/a/b', '/a/b2', '/common/x/y', '/common/x/y2', '/z'} == list_source_dir_files(sagemaker_session, tmpdir)
 

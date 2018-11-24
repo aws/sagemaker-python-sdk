@@ -15,17 +15,13 @@ from __future__ import absolute_import
 import logging
 
 import sagemaker
-
-from sagemaker import local
-from sagemaker import fw_utils
-from sagemaker import session
-from sagemaker import utils
+from sagemaker import fw_utils, local, session, utils
 
 
 class Model(object):
     """A SageMaker ``Model`` that can be deployed to an ``Endpoint``."""
 
-    def __init__(self, model_data, image, role, predictor_cls=None, env=None, name=None, vpc_config=None,
+    def __init__(self, model_data, image, role=None, predictor_cls=None, env=None, name=None, vpc_config=None,
                  sagemaker_session=None):
         """Initialize an SageMaker ``Model``.
 
@@ -34,8 +30,9 @@ class Model(object):
             image (str): A Docker image URI.
             role (str): An AWS IAM role (either name or full ARN). The Amazon SageMaker training jobs and APIs
                 that create Amazon SageMaker endpoints use this role to access training data and model artifacts.
-                After the endpoint is created, the inference code might use the IAM role,
-                if it needs to access an AWS resource.
+                After the endpoint is created, the inference code might use the IAM role if it needs to access some AWS
+                resources. It can be null if this is being used to create a Model to pass to a ``PipelineModel`` which
+                has its own Role field. (default: None)
             predictor_cls (callable[string, sagemaker.session.Session]): A function to call to create
                a predictor (default: None). If not None, ``deploy`` will return the result of invoking
                this function on the created endpoint name.
@@ -89,6 +86,7 @@ class Model(object):
                 ``Endpoint`` created from this ``Model``.
             endpoint_name (str): The name of the endpoint to create (default: None).
                 If not specified, a unique endpoint name will be created.
+            tags(List[dict[str, str]]): The list of tags to attach to this specific endpoint.
 
         Returns:
             callable[string, sagemaker.session.Session] or None: Invocation of ``self.predictor_cls`` on
@@ -102,6 +100,8 @@ class Model(object):
 
         container_def = self.prepare_container_def(instance_type)
         self.name = self.name or utils.name_from_image(container_def['Image'])
+        if self.role is None:
+            raise ValueError("Role can not be null for deploying a model")
         self.sagemaker_session.create_model(self.name, self.role, container_def, vpc_config=self.vpc_config)
         production_variant = sagemaker.production_variant(self.name, instance_type, initial_instance_count)
         self.endpoint_name = endpoint_name or self.name

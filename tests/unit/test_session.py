@@ -656,6 +656,47 @@ def test_create_model(expand_container_def, sagemaker_session):
 
 
 @patch('sagemaker.session._expand_container_def', return_value=PRIMARY_CONTAINER)
+def test_create_model_with_primary_container(expand_container_def, sagemaker_session):
+    model = sagemaker_session.create_model(MODEL_NAME, ROLE, container_defs=PRIMARY_CONTAINER)
+
+    assert model == MODEL_NAME
+    sagemaker_session.sagemaker_client.create_model.assert_called_with(ExecutionRoleArn=EXPANDED_ROLE,
+                                                                       ModelName=MODEL_NAME,
+                                                                       PrimaryContainer=PRIMARY_CONTAINER)
+
+
+@patch('sagemaker.session._expand_container_def', return_value=PRIMARY_CONTAINER)
+def test_create_model_with_both(expand_container_def, sagemaker_session):
+    with pytest.raises(ValueError):
+        sagemaker_session.create_model(MODEL_NAME, ROLE, container_defs=PRIMARY_CONTAINER,
+                                       primary_container=PRIMARY_CONTAINER)
+
+
+CONTAINERS = [
+    {
+        'Environment': {'SAGEMAKER_DEFAULT_INVOCATIONS_ACCEPT': 'application/json'},
+        'Image': 'mi-1',
+        'ModelDataUrl': 's3://bucket/model_1.tar.gz'
+    },
+    {
+        'Environment': {},
+        'Image': 'mi-2',
+        'ModelDataUrl': 's3://bucket/model_2.tar.gz'
+    }
+]
+
+
+@patch('sagemaker.session._expand_container_def', return_value=PRIMARY_CONTAINER)
+def test_create_pipeline_model(expand_container_def, sagemaker_session):
+    model = sagemaker_session.create_model(MODEL_NAME, ROLE, container_defs=CONTAINERS)
+
+    assert model == MODEL_NAME
+    sagemaker_session.sagemaker_client.create_model.assert_called_with(ExecutionRoleArn=EXPANDED_ROLE,
+                                                                       ModelName=MODEL_NAME,
+                                                                       Containers=CONTAINERS)
+
+
+@patch('sagemaker.session._expand_container_def', return_value=PRIMARY_CONTAINER)
 def test_create_model_vpc_config(expand_container_def, sagemaker_session):
     model = sagemaker_session.create_model(MODEL_NAME, ROLE, PRIMARY_CONTAINER, VPC_CONFIG)
 
@@ -663,6 +704,17 @@ def test_create_model_vpc_config(expand_container_def, sagemaker_session):
     sagemaker_session.sagemaker_client.create_model.assert_called_with(ExecutionRoleArn=EXPANDED_ROLE,
                                                                        ModelName=MODEL_NAME,
                                                                        PrimaryContainer=PRIMARY_CONTAINER,
+                                                                       VpcConfig=VPC_CONFIG)
+
+
+@patch('sagemaker.session._expand_container_def', return_value=PRIMARY_CONTAINER)
+def test_create_pipeline_model_vpc_config(expand_container_def, sagemaker_session):
+    model = sagemaker_session.create_model(MODEL_NAME, ROLE, CONTAINERS, VPC_CONFIG)
+
+    assert model == MODEL_NAME
+    sagemaker_session.sagemaker_client.create_model.assert_called_with(ExecutionRoleArn=EXPANDED_ROLE,
+                                                                       ModelName=MODEL_NAME,
+                                                                       Containers=CONTAINERS,
                                                                        VpcConfig=VPC_CONFIG)
 
 

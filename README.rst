@@ -32,13 +32,15 @@ Table of Contents
 4. `TensorFlow SageMaker Estimators <#tensorflow-sagemaker-estimators>`__
 5. `Chainer SageMaker Estimators <#chainer-sagemaker-estimators>`__
 6. `PyTorch SageMaker Estimators <#pytorch-sagemaker-estimators>`__
-7. `AWS SageMaker Estimators <#aws-sagemaker-estimators>`__
-8. `BYO Docker Containers with SageMaker Estimators <#byo-docker-containers-with-sagemaker-estimators>`__
-9. `SageMaker Automatic Model Tuning <#sagemaker-automatic-model-tuning>`__
-10. `SageMaker Batch Transform <#sagemaker-batch-transform>`__
-11. `Secure Training and Inference with VPC <#secure-training-and-inference-with-vpc>`__
-12. `BYO Model <#byo-model>`__
-13. `SageMaker Workflow <#sagemaker-workflow>`__
+7. `SageMaker SparkML Serving <#sagemaker-sparkml-serving>`__
+8. `AWS SageMaker Estimators <#aws-sagemaker-estimators>`__
+9. `BYO Docker Containers with SageMaker Estimators <#byo-docker-containers-with-sagemaker-estimators>`__
+10. `SageMaker Automatic Model Tuning <#sagemaker-automatic-model-tuning>`__
+11. `SageMaker Batch Transform <#sagemaker-batch-transform>`__
+12. `Secure Training and Inference with VPC <#secure-training-and-inference-with-vpc>`__
+13. `BYO Model <#byo-model>`__
+14. `Inference Pipelines <#inference-pipelines>`__
+15. `SageMaker Workflow <#sagemaker-workflow>`__
 
 
 Installing the SageMaker Python SDK
@@ -374,7 +376,7 @@ For more information, see `TensorFlow SageMaker Estimators and Models`_.
 
 
 Chainer SageMaker Estimators
--------------------------------
+----------------------------
 
 By using Chainer SageMaker ``Estimators``, you can train and host Chainer models on Amazon SageMaker.
 
@@ -390,7 +392,7 @@ For more information about  Chainer SageMaker ``Estimators``, see `Chainer SageM
 
 
 PyTorch SageMaker Estimators
--------------------------------
+----------------------------
 
 With PyTorch SageMaker ``Estimators``, you can train and host PyTorch models on Amazon SageMaker.
 
@@ -407,6 +409,39 @@ For more information about PyTorch SageMaker ``Estimators``, see `PyTorch SageMa
 
 .. _PyTorch SageMaker Estimators and Models: src/sagemaker/pytorch/README.rst
 
+
+SageMaker SparkML Serving
+-------------------------
+
+With SageMaker SparkML Serving, you can now perform predictions against a SparkML Model in SageMaker.
+In order to host a SparkML model in SageMaker, it should be serialized with ``MLeap`` library.
+
+For more information on MLeap, see https://github.com/combust/mleap .
+
+Supported major version of Spark: 2.2 (MLeap version - 0.9.6)
+
+Here is an example on how to create an instance of  ``SparkMLModel`` class and use ``deploy()`` method to create an
+endpoint which can be used to perform prediction against your trained SparkML Model.
+
+.. code:: python
+
+    sparkml_model = SparkMLModel(model_data='s3://path/to/model.tar.gz', env={'SAGEMAKER_SPARKML_SCHEMA': schema})
+    model_name = 'sparkml-model'
+    endpoint_name = 'sparkml-endpoint'
+    predictor = sparkml_model.deploy(initial_instance_count=1, instance_type='ml.c4.xlarge', endpoint_name=endpoint_name)
+
+Once the model is deployed, we can invoke the endpoint with a ``CSV`` payload like this:
+
+.. code:: python
+
+    payload = 'field_1,field_2,field_3,field_4,field_5'
+    predictor.predict(payload)
+
+
+For more information about the different ``content-type`` and ``Accept`` formats as well as the structure of the
+``schema`` that SageMaker SparkML Serving recognizes, please see `SageMaker SparkML Serving Container`_.
+
+.. _SageMaker SparkML Serving Container: https://github.com/aws/sagemaker-sparkml-serving-container
 
 AWS SageMaker Estimators
 ------------------------
@@ -707,6 +742,40 @@ After that, invoke the ``deploy()`` method on the ``Model``:
 This returns a predictor the same way an ``Estimator`` does when ``deploy()`` is called. You can now get inferences just like with any other model deployed on Amazon SageMaker.
 
 A full example is available in the `Amazon SageMaker examples repository <https://github.com/awslabs/amazon-sagemaker-examples/tree/master/advanced_functionality/mxnet_mnist_byom>`__.
+
+
+Inference Pipelines
+-------------------
+You can create a Pipeline for realtime or batch inference comprising of one or multiple model containers. This will help
+you to deploy an ML pipeline behind a single endpoint and you can have one API call perform pre-processing, model-scoring
+and post-processing on your data before returning it back as the response.
+
+For this, you have to create a ``PipelineModel`` which will take a list of ``Model`` objects. Calling ``deploy()`` on the
+``PipelineModel`` will provide you with an endpoint which can be invoked to perform the prediction on a data point against
+the ML Pipeline.
+
+.. code:: python
+
+   xgb_image = get_image_uri(sess.boto_region_name, 'xgboost', repo_version="latest")
+   xgb_model = Model(model_data='s3://path/to/model.tar.gz', image=xgb_image)
+   sparkml_model = SparkMLModel(model_data='s3://path/to/model.tar.gz', env={'SAGEMAKER_SPARKML_SCHEMA': schema})
+
+   model_name = 'inference-pipeline-model'
+   endpoint_name = 'inference-pipeline-endpoint'
+   sm_model = PipelineModel(name=model_name, role=sagemaker_role, models=[sparkml_model, xgb_model])
+
+This will define a ``PipelineModel`` consisting of SparkML model and an XGBoost model stacked sequentially. For more
+information about how to train an XGBoost model, please refer to the XGBoost notebook here_.
+
+.. _here: https://docs.aws.amazon.com/sagemaker/latest/dg/xgboost.html#xgboost-sample-notebooks
+
+.. code:: python
+
+   sm_model.deploy(initial_instance_count=1, instance_type='ml.c5.xlarge', endpoint_name=endpoint_name)
+
+This returns a predictor the same way an ``Estimator`` does when ``deploy()`` is called. Whenever you make an inference
+request using this predictor, you should pass the data that the first container expects and the predictor will return the
+output from the last container.
 
 
 SageMaker Workflow

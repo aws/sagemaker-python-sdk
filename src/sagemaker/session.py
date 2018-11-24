@@ -10,7 +10,7 @@
 # distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
-from __future__ import print_function, absolute_import
+from __future__ import absolute_import, print_function
 
 import json
 import logging
@@ -18,6 +18,7 @@ import os
 import re
 import sys
 import time
+import warnings
 
 import boto3
 import botocore.config
@@ -25,10 +26,10 @@ import six
 import yaml
 from botocore.exceptions import ClientError
 
-from sagemaker.user_agent import prepend_user_agent
-from sagemaker.utils import name_from_image, secondary_training_status_message, secondary_training_status_changed
-from sagemaker import vpc_utils
 import sagemaker.logs
+from sagemaker import vpc_utils
+from sagemaker.user_agent import prepend_user_agent
+from sagemaker.utils import name_from_image, secondary_training_status_changed, secondary_training_status_message
 
 logging.basicConfig()
 LOGGER = logging.getLogger('sagemaker')
@@ -443,36 +444,48 @@ class Session(object):
         LOGGER.debug('Transform request: {}'.format(json.dumps(transform_request, indent=4)))
         self.sagemaker_client.create_transform_job(**transform_request)
 
-    def create_model(self, name, role, primary_container, vpc_config=None):
+    def create_model(self, name, role, container_defs, vpc_config=None, primary_container=None):
         """Create an Amazon SageMaker ``Model``.
-
         Specify the S3 location of the model artifacts and Docker image containing
         the inference code. Amazon SageMaker uses this information to deploy the
-        model in Amazon SageMaker.
-
+        model in Amazon SageMaker. This method can also be used to create a Model for an Inference Pipeline
+        if you pass the list of container definitions through the containers parameter.
         Args:
             name (str): Name of the Amazon SageMaker ``Model`` to create.
             role (str): An AWS IAM role (either name or full ARN). The Amazon SageMaker training jobs and APIs
                 that create Amazon SageMaker endpoints use this role to access training data and model artifacts.
                 You must grant sufficient permissions to this role.
-            primary_container (str or dict[str, str]): Docker image which defines the inference code.
-                You can also specify the return value of ``sagemaker.container_def()``, which is used to create
-                more advanced container configurations, including model containers which need artifacts from S3.
+            container_defs (list[dict[str, str]] or [dict[str, str]]): A single container definition or a list of
+                container definitions which will be invoked sequentially while performing the prediction. If the list
+                contains only one container, then it'll be passed to SageMaker Hosting as the ``PrimaryContainer`` and
+                otherwise, it'll be passed as ``Containers``.You can also specify the  return value of
+                ``sagemaker.get_container_def()`` or ``sagemaker.pipeline_container_def()``, which will used to
+                create more advanced container configurations ,including model containers which need artifacts from S3.
             vpc_config (dict[str, list[str]]): The VpcConfig set on the model (default: None)
                 * 'Subnets' (list[str]): List of subnet ids.
                 * 'SecurityGroupIds' (list[str]): List of security group ids.
-
+            primary_container (str or dict[str, str]): Docker image which defines the inference code.
+                You can also specify the return value of ``sagemaker.container_def()``, which is used to create
+                more advanced container configurations, including model containers which need artifacts from S3. This
+                field is deprecated, please use container_defs instead.
         Returns:
             str: Name of the Amazon SageMaker ``Model`` created.
         """
-        role = self.expand_role(role)
-        primary_container = _expand_container_def(primary_container)
+        if container_defs and primary_container:
+            raise ValueError('Both container_defs and primary_container can not be passed as input')
 
-        create_model_request = {
-            'ModelName': name,
-            'PrimaryContainer': primary_container,
-            'ExecutionRoleArn': role
-        }
+        if primary_container:
+            msg = 'primary_container is going to be deprecated in a future release. Please use container_defs instead.'
+            warnings.warn(msg, DeprecationWarning)
+            container_defs = primary_container
+
+        role = self.expand_role(role)
+        create_model_request = {}
+        if isinstance(container_defs, list):
+            create_model_request = _create_model_request(name=name, role=role, container_def=container_defs)
+        else:
+            primary_container = _expand_container_def(container_defs)
+            create_model_request = _create_model_request(name=name, role=role, container_def=primary_container)
 
         if vpc_config:
             create_model_request['VpcConfig'] = vpc_config
@@ -758,7 +771,7 @@ class Session(object):
                                               env=model_environment_vars)
             self.create_model(name=name,
                               role=role,
-                              primary_container=primary_container,
+                              container_defs=primary_container,
                               vpc_config=model_vpc_config)
 
         if not _deployment_entity_exists(
@@ -954,15 +967,14 @@ class Session(object):
 
 def container_def(image, model_data_url=None, env=None):
     """Create a definition for executing a container as part of a SageMaker model.
-
     Args:
         image (str): Docker image to run for this container.
         model_data_url (str): S3 URI of data required by this container,
             e.g. SageMaker training job model artifacts (default: None).
         env (dict[str, str]): Environment variables to set inside the container (default: None).
-
     Returns:
-        dict[str, str]: A complete container definition object usable with the CreateModel API.
+        dict[str, str]: A complete container definition object usable with the CreateModel API if passed via
+        `PrimaryContainers` field.
     """
     if env is None:
         env = {}
@@ -970,6 +982,23 @@ def container_def(image, model_data_url=None, env=None):
     if model_data_url:
         c_def['ModelDataUrl'] = model_data_url
     return c_def
+
+
+def pipeline_container_def(models, instance_type=None):
+    """
+    Create a definition for executing a pipeline of containers as part of a SageMaker model.
+    Args:
+        models (list[sagemaker.Model]): this will be a list of ``sagemaker.Model`` objects in the order the inference
+        should be invoked.
+        instance_type (str): The EC2 instance type to deploy this Model to. For example, 'ml.p2.xlarge' (default: None).
+    Returns:
+        list[dict[str, str]]: list of container definition objects usable with with the CreateModel API for inference
+        pipelines if passed via `Containers` field.
+    """
+    c_defs = []  # should contain list of container definitions in the same order customer passed
+    for model in models:
+        c_defs.append(model.prepare_container_def(instance_type))
+    return c_defs
 
 
 def production_variant(model_name, instance_type, initial_instance_count=1, variant_name='AllTraffic',
@@ -1065,6 +1094,43 @@ class s3_input(object):
             self.config['RecordWrapperType'] = record_wrapping
         if input_mode is not None:
             self.config['InputMode'] = input_mode
+
+
+class ModelContainer(object):
+    """
+    Amazon SageMaker Model configurations for inference pipelines.
+    Attributes:
+        model_data (str): S3 Model artifact location
+        image (str): Docker image URL in ECR
+        env (dict[str,str]): Environment variable mapping
+    """
+
+    def __init__(self, model_data, image, env=None):
+        """
+        Create a definition of a model which can be part of an Inference Pipeline
+        Args:
+            model_data (str): The S3 location of a SageMaker model data ``.tar.gz`` file.
+            image (str): A Docker image URI.
+            env (dict[str, str]): Environment variables to run with ``image`` when hosted in SageMaker (default: None).
+        """
+        self.model_data = model_data
+        self.image = image
+        self.env = env
+
+
+def _create_model_request(name, role, container_def=None):  # pylint: disable=redefined-outer-name
+    if isinstance(container_def, list):
+        return {
+            'ModelName': name,
+            'Containers': container_def,
+            'ExecutionRoleArn': role
+        }
+    else:
+        return {
+            'ModelName': name,
+            'PrimaryContainer': container_def,
+            'ExecutionRoleArn': role
+        }
 
 
 def _deployment_entity_exists(describe_fn):
