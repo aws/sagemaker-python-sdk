@@ -344,7 +344,7 @@ Currently, the following algorithms support incremental training:
 
 - Image Classification
 - Object Detection
-- Semantics Segmentation
+- Semantic Segmentation
 
 
 MXNet SageMaker Estimators

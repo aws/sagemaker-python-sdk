@@ -75,10 +75,12 @@ def test_inference_pipeline_model_deploy(sagemaker_session):
         }
     })
     with timeout_and_delete_endpoint_by_name(endpoint_name, sagemaker_session):
-        sparkml_model = SparkMLModel(model_data=sparkml_model_data, env={'SAGEMAKER_SPARKML_SCHEMA': schema})
+        sparkml_model = SparkMLModel(model_data=sparkml_model_data, env={'SAGEMAKER_SPARKML_SCHEMA': schema},
+                                     sagemaker_session=sagemaker_session)
         xgb_image = get_image_uri(Session().boto_region_name, 'xgboost')
-        xgb_model = Model(model_data=xgb_model_data, image=xgb_image)
-        model = PipelineModel(models=[sparkml_model, xgb_model], role='SageMakerRole', name=endpoint_name)
+        xgb_model = Model(model_data=xgb_model_data, image=xgb_image, sagemaker_session=sagemaker_session)
+        model = PipelineModel(models=[sparkml_model, xgb_model], role='SageMakerRole',
+                              sagemaker_session=sagemaker_session, name=endpoint_name)
         model.deploy(1, 'ml.m4.xlarge', endpoint_name=endpoint_name)
         predictor = RealTimePredictor(endpoint=endpoint_name, sagemaker_session=sagemaker_session,
                                       serializer=json_serializer, content_type=CONTENT_TYPE_CSV,

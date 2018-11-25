@@ -162,4 +162,4 @@ def test_failed_tf_training(sagemaker_session, tf_full_version):
 
         with pytest.raises(ValueError) as e:
             estimator.fit()
-        assert 'ExecuteUserScriptError' in str(e.value)
+        assert 'This failure is expected' in str(e.value)

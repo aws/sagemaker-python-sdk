@@ -336,7 +336,7 @@ def registry(region_name, algorithm=None):
             "us-west-1": "632365934929",
         }[region_name]
     elif algorithm in ["xgboost", "seq2seq", "image-classification", "blazingtext",
-                       "object-detection"]:
+                       "object-detection", "semantic-segmentation"]:
         account_id = {
             "us-east-1": "811284229777",
             "us-east-2": "825641698319",

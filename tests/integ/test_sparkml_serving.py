@@ -65,7 +65,8 @@ def test_sparkml_model_deploy(sagemaker_session):
         }
     })
     with timeout_and_delete_endpoint_by_name(endpoint_name, sagemaker_session):
-        model = SparkMLModel(model_data=model_data, role='SageMakerRole', env={'SAGEMAKER_SPARKML_SCHEMA': schema})
+        model = SparkMLModel(model_data=model_data, role='SageMakerRole', sagemaker_session=sagemaker_session,
+                             env={'SAGEMAKER_SPARKML_SCHEMA': schema})
         predictor = model.deploy(1, 'ml.m4.xlarge', endpoint_name=endpoint_name)
 
         valid_data = "1.0,C,38.0,71.5,1.0,female"
