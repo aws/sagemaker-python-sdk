@@ -14,7 +14,11 @@ from __future__ import absolute_import
 
 import pytest
 
-from sagemaker.fw_registry import registry
+from sagemaker.fw_registry import registry, default_framework_uri
+from sagemaker.sklearn import SKLearn
+
+
+scikit_learn_framework_name = SKLearn.__framework_name__
 
 
 def test_registry_sparkml_serving():
@@ -35,20 +39,30 @@ def test_registry_sparkml_serving():
 
 
 def test_registry_sklearn():
-    assert registry('us-west-1', 'scikit-learn') == "746614075791.dkr.ecr.us-west-1.amazonaws.com"
-    assert registry('us-west-2', 'scikit-learn') == "246618743249.dkr.ecr.us-west-2.amazonaws.com"
-    assert registry('us-east-1', 'scikit-learn') == "683313688378.dkr.ecr.us-east-1.amazonaws.com"
-    assert registry('us-east-2', 'scikit-learn') == "257758044811.dkr.ecr.us-east-2.amazonaws.com"
-    assert registry('ap-northeast-1', 'scikit-learn') == "354813040037.dkr.ecr.ap-northeast-1.amazonaws.com"
-    assert registry('ap-northeast-2', 'scikit-learn') == "366743142698.dkr.ecr.ap-northeast-2.amazonaws.com"
-    assert registry('ap-southeast-1', 'scikit-learn') == "121021644041.dkr.ecr.ap-southeast-1.amazonaws.com"
-    assert registry('ap-southeast-2', 'scikit-learn') == "783357654285.dkr.ecr.ap-southeast-2.amazonaws.com"
-    assert registry('ap-south-1', 'scikit-learn') == "720646828776.dkr.ecr.ap-south-1.amazonaws.com"
-    assert registry('eu-west-1', 'scikit-learn') == "141502667606.dkr.ecr.eu-west-1.amazonaws.com"
-    assert registry('eu-west-2', 'scikit-learn') == "764974769150.dkr.ecr.eu-west-2.amazonaws.com"
-    assert registry('eu-central-1', 'scikit-learn') == "492215442770.dkr.ecr.eu-central-1.amazonaws.com"
-    assert registry('ca-central-1', 'scikit-learn') == "341280168497.dkr.ecr.ca-central-1.amazonaws.com"
-    assert registry('us-gov-west-1', 'scikit-learn') == "414596584902.dkr.ecr.us-gov-west-1.amazonaws.com"
+    assert registry('us-west-1', scikit_learn_framework_name) == "746614075791.dkr.ecr.us-west-1.amazonaws.com"
+    assert registry('us-west-2', scikit_learn_framework_name) == "246618743249.dkr.ecr.us-west-2.amazonaws.com"
+    assert registry('us-east-1', scikit_learn_framework_name) == "683313688378.dkr.ecr.us-east-1.amazonaws.com"
+    assert registry('us-east-2', scikit_learn_framework_name) == "257758044811.dkr.ecr.us-east-2.amazonaws.com"
+    assert registry('ap-northeast-1', scikit_learn_framework_name) == \
+        "354813040037.dkr.ecr.ap-northeast-1.amazonaws.com"
+    assert registry('ap-northeast-2', scikit_learn_framework_name) == \
+        "366743142698.dkr.ecr.ap-northeast-2.amazonaws.com"
+    assert registry('ap-southeast-1', scikit_learn_framework_name) == \
+        "121021644041.dkr.ecr.ap-southeast-1.amazonaws.com"
+    assert registry('ap-southeast-2', scikit_learn_framework_name) == \
+        "783357654285.dkr.ecr.ap-southeast-2.amazonaws.com"
+    assert registry('ap-south-1', scikit_learn_framework_name) == "720646828776.dkr.ecr.ap-south-1.amazonaws.com"
+    assert registry('eu-west-1', scikit_learn_framework_name) == "141502667606.dkr.ecr.eu-west-1.amazonaws.com"
+    assert registry('eu-west-2', scikit_learn_framework_name) == "764974769150.dkr.ecr.eu-west-2.amazonaws.com"
+    assert registry('eu-central-1', scikit_learn_framework_name) == "492215442770.dkr.ecr.eu-central-1.amazonaws.com"
+    assert registry('ca-central-1', scikit_learn_framework_name) == "341280168497.dkr.ecr.ca-central-1.amazonaws.com"
+    assert registry('us-gov-west-1', scikit_learn_framework_name) == "414596584902.dkr.ecr.us-gov-west-1.amazonaws.com"
+
+
+def test_default_sklearn_image_uri():
+    image_tag = '0.20.0-cpu-py3'
+    sklearn_image_uri = default_framework_uri(scikit_learn_framework_name, 'us-west-1', image_tag)
+    assert sklearn_image_uri == "746614075791.dkr.ecr.us-west-1.amazonaws.com/sagemaker-scikit-learn:0.20.0-cpu-py3"
 
 
 def test_framework_invalid():

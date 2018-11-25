@@ -84,3 +84,9 @@ def registry(region_name, framework=None):
     except KeyError:
         logging.error("The specific image or region does not exist")
         raise
+
+
+def default_framework_uri(framework, region_name, image_tag):
+    repository_name = "sagemaker-{}".format(framework)
+    account_name = registry(region_name, framework)
+    return "{}/{}:{}".format(account_name, repository_name, image_tag)
