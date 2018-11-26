@@ -353,6 +353,13 @@ def registry(region_name, algorithm=None):
             "eu-west-2": "644912444149",
             "us-west-1": "632365934929",
         }[region_name]
+    elif algorithm in ['image-classification-neo', 'xgboost-neo']:
+        account_id = {
+            'us-west-2': '301217895009',
+            'us-east-1': '785573368785',
+            'eu-west-1': '802834080501',
+            'us-east-2': '007439368137'
+        }[region_name]
     else:
         raise ValueError("Algorithm class:{} doesn't have mapping to account_id with images".format(algorithm))
     return "{}.dkr.ecr.{}.amazonaws.com".format(account_id, region_name)

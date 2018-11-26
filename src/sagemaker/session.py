@@ -283,6 +283,40 @@ class Session(object):
         LOGGER.debug('train request: {}'.format(json.dumps(train_request, indent=4)))
         self.sagemaker_client.create_training_job(**train_request)
 
+    def compile_model(self, input_model_config, output_model_config, role,
+                      job_name, stop_condition, tags):
+        """Create an Amazon SageMaker Neo compilation job.
+
+        Args:
+            input_model_config (dict): the trained model and the Amazon S3 location where it is stored.
+            output_model_config (dict): - Identifies the Amazon S3 location where you want Amazon SageMaker Neo to save
+                the results of compilation job
+            role (str): An AWS IAM role (either name or full ARN). The Amazon SageMaker Neo compilation jobs use this
+                role to access model artifacts. You must grant sufficient permissions to this role.
+            job_name (str): Name of the compilation job being created.
+            stop_condition (dict): Defines when compilation job shall finish. Contains entries that can be understood
+                by the service like ``MaxRuntimeInSeconds``.
+            tags (list[dict]): List of tags for labeling a compile model job. For more, see
+                https://docs.aws.amazon.com/sagemaker/latest/dg/API_Tag.html.
+
+        Returns:
+            str: ARN of the compile model job, if it is created.
+        """
+
+        compilation_job_request = {
+            'InputConfig': input_model_config,
+            'OutputConfig': output_model_config,
+            'RoleArn': role,
+            'StoppingCondition': stop_condition,
+            'CompilationJobName': job_name
+        }
+
+        if tags is not None:
+            compilation_job_request['Tags'] = tags
+
+        LOGGER.info('Creating compilation-job with name: {}'.format(job_name))
+        self.sagemaker_client.create_compilation_job(**compilation_job_request)
+
     def tune(self, job_name, strategy, objective_type, objective_metric_name,
              max_jobs, max_parallel_jobs, parameter_ranges,
              static_hyperparameters, image, input_mode, metric_definitions,
@@ -611,6 +645,23 @@ class Session(object):
         desc = _wait_until_training_done(lambda last_desc: _train_done(self.sagemaker_client, job, last_desc),
                                          None, poll)
         self._check_job_status(job, desc, 'TrainingJobStatus')
+        return desc
+
+    def wait_for_compilation_job(self, job, poll=5):
+        """Wait for an Amazon SageMaker Neo compilation job to complete.
+
+        Args:
+            job (str): Name of the compilation job to wait for.
+            poll (int): Polling interval in seconds (default: 5).
+
+        Returns:
+            (dict): Return value from the ``DescribeCompilationJob`` API.
+
+        Raises:
+            ValueError: If the compilation job fails.
+        """
+        desc = _wait_until(lambda: _compilation_job_status(self.sagemaker_client, job), poll)
+        self._check_job_status(job, desc, 'CompilationJobStatus')
         return desc
 
     def wait_for_tuning_job(self, job, poll=5):
@@ -1162,6 +1213,28 @@ def _train_done(sagemaker_client, job_name, last_desc):
 
     print()
     return desc, True
+
+
+def _compilation_job_status(sagemaker_client, job_name):
+    compile_status_codes = {
+        'Completed': '!',
+        'InProgress': '.',
+        'Failed': '*',
+        'Stopped': 's',
+        'Stopping': '_'
+    }
+    in_progress_statuses = ['InProgress', 'Stopping', 'Starting']
+
+    desc = sagemaker_client.describe_compilation_job(CompilationJobName=job_name)
+    status = desc['CompilationJobStatus']
+
+    print(compile_status_codes.get(status, '?'), end='')
+    sys.stdout.flush()
+
+    if status in in_progress_statuses:
+        return None
+
+    return desc
 
 
 def _tuning_job_status(sagemaker_client, job_name):

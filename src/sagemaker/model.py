@@ -12,10 +12,22 @@
 # language governing permissions and limitations under the License.
 from __future__ import absolute_import
 
+import json
 import logging
 
 import sagemaker
 from sagemaker import fw_utils, local, session, utils
+
+NEO_ALLOWED_TARGET_INSTANCE_FAMILY = set(['ml_c5', 'ml_m5', 'ml_c4', 'ml_m4', 'jetson_tx1', 'jetson_tx2', 'ml_p2',
+                                          'ml_p3', 'deeplens', 'rasp3b'])
+NEO_ALLOWED_FRAMEWORKS = set(['mxnet', 'tensorflow', 'pytorch', 'onnx', 'xgboost'])
+
+NEO_IMAGE_ACCOUNT = {
+    'us-west-2': '301217895009',
+    'us-east-1': '785573368785',
+    'eu-west-1': '802834080501',
+    'us-east-2': '007439368137'
+}
 
 
 class Model(object):
@@ -53,6 +65,7 @@ class Model(object):
         self.vpc_config = vpc_config
         self.sagemaker_session = sagemaker_session
         self._model_name = None
+        self._is_compiled_model = False
 
     def prepare_container_def(self, instance_type):  # pylint: disable=unused-argument
         """Return a dict created by ``sagemaker.container_def()`` for deploying this model to a specified instance type.
@@ -67,6 +80,93 @@ class Model(object):
             dict: A container definition object usable with the CreateModel API.
         """
         return sagemaker.container_def(self.image, self.model_data, self.env)
+
+    def _framework(self):
+        return getattr(self, '__framework_name__', None)
+
+    def _get_framework_version(self):
+        return getattr(self, 'framework_version', None)
+
+    def _compilation_job_config(self, target_instance_type, input_shape, output_path, role, compile_max_run,
+                                job_name, framework, tags):
+        input_model_config = {
+            'S3Uri': self.model_data,
+            'DataInputConfig': input_shape if type(input_shape) != dict else json.dumps(input_shape),
+            'Framework': framework
+        }
+        role = self.sagemaker_session.expand_role(role)
+        output_model_config = {
+            'TargetDevice': target_instance_type,
+            'S3OutputLocation': output_path
+        }
+
+        return {'input_model_config': input_model_config,
+                'output_model_config': output_model_config,
+                'role': role,
+                'stop_condition': {
+                    'MaxRuntimeInSeconds': compile_max_run
+                },
+                'tags': tags,
+                'job_name': job_name}
+
+    def _neo_image_account(self, region):
+        if region not in NEO_IMAGE_ACCOUNT:
+            raise ValueError("Neo is not currently supported in {}, "
+                             "valid regions: {}".format(region, NEO_IMAGE_ACCOUNT.keys()))
+        return NEO_IMAGE_ACCOUNT[region]
+
+    def _neo_image(self, region, target_instance_type, framework, framework_version):
+        return fw_utils.create_image_uri(region,
+                                         'neo-' + framework.lower(),
+                                         target_instance_type.replace('_', '.'),
+                                         framework_version,
+                                         py_version='py3',
+                                         account=self._neo_image_account(region))
+
+    def compile(self, target_instance_family, input_shape, output_path, role,
+                tags=None, job_name=None, compile_max_run=5 * 60, framework=None, framework_version=None):
+        """Compile this ``Model`` with SageMaker Neo.
+
+        Args:
+            target_instance_family (str): Identifies the device that you want to run your model after compilation, for
+                example: ml_c5. Allowed strings are: ml_c5, ml_m5, ml_c4, ml_m4, jetsontx1, jetsontx2, ml_p2, ml_p3,
+                deeplens, rasp3b
+            input_shape (dict): Specifies the name and shape of the expected inputs for your trained model in json
+                dictionary form, for example: {‘data’:[1,3,1024,1024]}, or {‘var1’: [1,1,28,28], ‘var2’:[1,1,28,28]}
+            output_path (str): Specifies where to store the compiled model
+            role (str): Execution role
+            tags (list[dict]): List of tags for labeling a compilation job. For more, see
+                https://docs.aws.amazon.com/sagemaker/latest/dg/API_Tag.html.
+            job_name (str): The name of the compilation job
+            compile_max_run (int): Timeout in seconds for compilation (default: 3 * 60).
+                After this amount of time Amazon SageMaker Neo terminates the compilation job regardless of its
+                current status.
+            framework (str): The framework that is used to train the original model. Allowed values: 'mxnet',
+                'tensorflow', 'pytorch', 'onnx', 'xgboost'
+            framework_version (str)
+        Returns:
+            sagemaker.model.Model: A SageMaker ``Model`` object. See :func:`~sagemaker.model.Model` for full details.
+        """
+        framework = self._framework() or framework
+        if framework is None:
+            raise ValueError("You must specify framework, allowed values {}".format(NEO_ALLOWED_FRAMEWORKS))
+        if framework not in NEO_ALLOWED_FRAMEWORKS:
+            raise ValueError("You must provide valid framework, allowed values {}".format(NEO_ALLOWED_FRAMEWORKS))
+        if job_name is None:
+            raise ValueError("You must provide a compilation job name")
+
+        framework = framework.upper()
+        framework_version = self._get_framework_version() or framework_version
+
+        config = self._compilation_job_config(target_instance_family, input_shape, output_path, role,
+                                              compile_max_run, job_name, framework, tags)
+        self.sagemaker_session.compile_model(**config)
+        job_status = self.sagemaker_session.wait_for_compilation_job(job_name)
+        self.model_data = job_status['ModelArtifacts']['S3ModelArtifacts']
+        self.image = self._neo_image(self.sagemaker_session.boto_region_name, target_instance_family, framework,
+                                     framework_version)
+        self._is_compiled_model = True
+        return self
 
     def deploy(self, initial_instance_count, instance_type, endpoint_name=None, tags=None):
         """Deploy this ``Model`` to an ``Endpoint`` and optionally return a ``Predictor``.
@@ -98,13 +198,21 @@ class Model(object):
             else:
                 self.sagemaker_session = session.Session()
 
+        compiled_model_suffix = '-'.join(instance_type.split('.')[:-1])
         container_def = self.prepare_container_def(instance_type)
         self.name = self.name or utils.name_from_image(container_def['Image'])
         if self.role is None:
             raise ValueError("Role can not be null for deploying a model")
+        if self._is_compiled_model:
+            self.name += compiled_model_suffix
         self.sagemaker_session.create_model(self.name, self.role, container_def, vpc_config=self.vpc_config)
         production_variant = sagemaker.production_variant(self.name, instance_type, initial_instance_count)
-        self.endpoint_name = endpoint_name or self.name
+        if endpoint_name:
+            self.endpoint_name = endpoint_name
+        else:
+            self.endpoint_name = self.name
+            if self._is_compiled_model and not self.endpoint_name.endswith(compiled_model_suffix):
+                self.endpoint_name += compiled_model_suffix
         self.sagemaker_session.endpoint_from_production_variants(self.endpoint_name, [production_variant], tags)
         if self.predictor_cls:
             return self.predictor_cls(self.endpoint_name, self.sagemaker_session)
