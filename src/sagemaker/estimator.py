@@ -21,6 +21,7 @@ from abc import abstractmethod
 from six import with_metaclass
 from six import string_types
 
+import sagemaker
 from sagemaker.analytics import TrainingJobAnalytics
 from sagemaker.fw_utils import (create_image_uri, tar_and_upload_dir, parse_s3_url, UploadedCode,
                                 validate_source_dir)
@@ -161,6 +162,14 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):
         """
         pass
 
+    def enable_network_isolation(self):
+        """Return True if this Estimator will need network isolation to run.
+
+        Returns:
+            bool: Whether this Estimator needs network isolation or not.
+        """
+        return False
+
     def _prepare_for_training(self, job_name=None):
         """Set any values in the estimator that need to be set before training.
 
@@ -172,7 +181,13 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):
             self._current_job_name = job_name
         else:
             # honor supplied base_job_name or generate it
-            base_name = self.base_job_name or base_name_from_image(self.train_image())
+            if self.base_job_name:
+                base_name = self.base_job_name
+            elif isinstance(self, sagemaker.algorithm.AlgorithmEstimator):
+                base_name = self.algorithm_arn.split('/')[-1]  # pylint: disable=no-member
+            else:
+                base_name = base_name_from_image(self.train_image())
+
             self._current_job_name = name_from_base(base_name)
 
         # if output_path was specified we use it otherwise initialize here.
@@ -403,7 +418,13 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):
         init_params['output_kms_key'] = job_details['OutputDataConfig']['KmsKeyId']
 
         init_params['hyperparameters'] = job_details['HyperParameters']
-        init_params['image'] = job_details['AlgorithmSpecification']['TrainingImage']
+        if 'TrainingImage' in job_details['AlgorithmSpecification']:
+            init_params['image'] = job_details['AlgorithmSpecification']['TrainingImage']
+        elif 'AlgorithmName' in job_details['AlgorithmSpecification']:
+            init_params['algorithm_arn'] = job_details['AlgorithmSpecification']['AlgorithmName']
+        else:
+            raise RuntimeError('Invalid AlgorithmSpecification. Either TrainingImage or '
+                               'AlgorithmName is expected. None was found.')
 
         if 'MetricDefinitons' in job_details['AlgorithmSpecification']:
             init_params['metric_definitions'] = job_details['AlgorithmSpecification']['MetricsDefinition']
@@ -524,12 +545,22 @@ class _TrainingJob(_Job):
         if estimator.hyperparameters() is not None:
             hyperparameters = {str(k): str(v) for (k, v) in estimator.hyperparameters().items()}
 
-        estimator.sagemaker_session.train(image=estimator.train_image(), input_mode=estimator.input_mode,
-                                          input_config=config['input_config'], role=config['role'],
-                                          job_name=estimator._current_job_name, output_config=config['output_config'],
-                                          resource_config=config['resource_config'], vpc_config=config['vpc_config'],
-                                          hyperparameters=hyperparameters, stop_condition=config['stop_condition'],
-                                          tags=estimator.tags, metric_definitions=estimator.metric_definitions)
+        train_args = config.copy()
+        train_args['input_mode'] = estimator.input_mode
+        train_args['job_name'] = estimator._current_job_name
+        train_args['hyperparameters'] = hyperparameters
+        train_args['tags'] = estimator.tags
+        train_args['metric_definitions'] = estimator.metric_definitions
+
+        if estimator.enable_network_isolation():
+            train_args['enable_network_isolation'] = True
+
+        if isinstance(estimator, sagemaker.algorithm.AlgorithmEstimator):
+            train_args['algorithm_arn'] = estimator.algorithm_arn
+        else:
+            train_args['image'] = estimator.train_image()
+
+        estimator.sagemaker_session.train(**train_args)
 
         return cls(estimator.sagemaker_session, estimator._current_job_name)
 

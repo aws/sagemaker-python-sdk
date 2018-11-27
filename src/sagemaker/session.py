@@ -203,12 +203,12 @@ class Session(object):
 
         return self._default_bucket
 
-    def train(self, image, input_mode, input_config, role, job_name, output_config,
-              resource_config, vpc_config, hyperparameters, stop_condition, tags, metric_definitions):
+    def train(self, input_mode, input_config, role, job_name, output_config,  # noqa: C901
+              resource_config, vpc_config, hyperparameters, stop_condition, tags, metric_definitions,
+              enable_network_isolation=False, image=None, algorithm_arn=None):
         """Create an Amazon SageMaker training job.
 
         Args:
-            image (str): Docker image containing training code.
             input_mode (str): The input mode that the algorithm supports. Valid modes:
 
                 * 'File' - Amazon SageMaker copies the training dataset from the S3 location to
@@ -247,6 +247,10 @@ class Session(object):
             metric_definitions (list[dict]): A list of dictionaries that defines the metric(s) used to evaluate the
                 training jobs. Each dictionary contains two keys: 'Name' for the name of the metric, and 'Regex' for
                 the regular expression used to extract the metric from the logs.
+            enable_network_isolation (bool): Whether to request for the training job to run with
+                network isolation or not.
+            image (str): Docker image containing training code.
+            algorithm_arn (str): Algorithm Arn from Marketplace.
 
         Returns:
             str: ARN of the training job, if it is created.
@@ -254,7 +258,6 @@ class Session(object):
 
         train_request = {
             'AlgorithmSpecification': {
-                'TrainingImage': image,
                 'TrainingInputMode': input_mode
             },
             'OutputDataConfig': output_config,
@@ -263,6 +266,19 @@ class Session(object):
             'ResourceConfig': resource_config,
             'RoleArn': role,
         }
+
+        if image and algorithm_arn:
+            raise ValueError('image and algorithm_arn are mutually exclusive.'
+                             'Both were provided: image: %s algorithm_arn: %s' % (image, algorithm_arn))
+
+        if image is None and algorithm_arn is None:
+            raise ValueError('either image or algorithm_arn is required. None was provided.')
+
+        if image is not None:
+            train_request['AlgorithmSpecification']['TrainingImage'] = image
+
+        if algorithm_arn is not None:
+            train_request['AlgorithmSpecification']['AlgorithmName'] = algorithm_arn
 
         if input_config is not None:
             train_request['InputDataConfig'] = input_config
@@ -278,6 +294,9 @@ class Session(object):
 
         if vpc_config is not None:
             train_request['VpcConfig'] = vpc_config
+
+        if enable_network_isolation:
+            train_request['EnableNetworkIsolation'] = enable_network_isolation
 
         LOGGER.info('Creating training-job with name: {}'.format(job_name))
         LOGGER.debug('train request: {}'.format(json.dumps(train_request, indent=4)))
@@ -319,9 +338,9 @@ class Session(object):
 
     def tune(self, job_name, strategy, objective_type, objective_metric_name,
              max_jobs, max_parallel_jobs, parameter_ranges,
-             static_hyperparameters, image, input_mode, metric_definitions,
+             static_hyperparameters, input_mode, metric_definitions,
              role, input_config, output_config, resource_config, stop_condition, tags,
-             warm_start_config):
+             warm_start_config, enable_network_isolation=False, image=None, algorithm_arn=None):
         """Create an Amazon SageMaker hyperparameter tuning job
 
         Args:
@@ -384,16 +403,22 @@ class Session(object):
             },
             'TrainingJobDefinition': {
                 'StaticHyperParameters': static_hyperparameters,
-                'AlgorithmSpecification': {
-                    'TrainingImage': image,
-                    'TrainingInputMode': input_mode,
-                },
                 'RoleArn': role,
                 'OutputDataConfig': output_config,
                 'ResourceConfig': resource_config,
                 'StoppingCondition': stop_condition,
             }
         }
+
+        algorithm_spec = {
+            'TrainingInputMode': input_mode
+        }
+        if algorithm_arn:
+            algorithm_spec['AlgorithmName'] = algorithm_arn
+        else:
+            algorithm_spec['TrainingImage'] = image
+
+        tune_request['TrainingJobDefinition']['AlgorithmSpecification'] = algorithm_spec
 
         if input_config is not None:
             tune_request['TrainingJobDefinition']['InputDataConfig'] = input_config
@@ -406,6 +431,9 @@ class Session(object):
 
         if tags is not None:
             tune_request['Tags'] = tags
+
+        if enable_network_isolation:
+            tune_request['TrainingJobDefinition']['EnableNetworkIsolation'] = True
 
         LOGGER.info('Creating hyperparameter tuning job with name: {}'.format(job_name))
         LOGGER.debug('tune request: {}'.format(json.dumps(tune_request, indent=4)))
@@ -478,7 +506,8 @@ class Session(object):
         LOGGER.debug('Transform request: {}'.format(json.dumps(transform_request, indent=4)))
         self.sagemaker_client.create_transform_job(**transform_request)
 
-    def create_model(self, name, role, container_defs, vpc_config=None, primary_container=None):
+    def create_model(self, name, role, container_defs, vpc_config=None,
+                     enable_network_isolation=False, primary_container=None):
         """Create an Amazon SageMaker ``Model``.
         Specify the S3 location of the model artifacts and Docker image containing
         the inference code. Amazon SageMaker uses this information to deploy the
@@ -498,10 +527,12 @@ class Session(object):
             vpc_config (dict[str, list[str]]): The VpcConfig set on the model (default: None)
                 * 'Subnets' (list[str]): List of subnet ids.
                 * 'SecurityGroupIds' (list[str]): List of security group ids.
+            enable_network_isolation (bool): Wether the model requires network isolation or not.
             primary_container (str or dict[str, str]): Docker image which defines the inference code.
                 You can also specify the return value of ``sagemaker.container_def()``, which is used to create
                 more advanced container configurations, including model containers which need artifacts from S3. This
                 field is deprecated, please use container_defs instead.
+
         Returns:
             str: Name of the Amazon SageMaker ``Model`` created.
         """
@@ -523,6 +554,9 @@ class Session(object):
 
         if vpc_config:
             create_model_request['VpcConfig'] = vpc_config
+
+        if enable_network_isolation:
+            create_model_request['EnableNetworkIsolation'] = True
 
         LOGGER.info('Creating model with name: {}'.format(name))
         LOGGER.debug('CreateModel request: {}'.format(json.dumps(create_model_request, indent=4)))
@@ -573,6 +607,62 @@ class Session(object):
             env=env)
         vpc_config = _vpc_config_from_training_job(training_job, vpc_config_override)
         return self.create_model(name, role, primary_container, vpc_config=vpc_config)
+
+    def create_model_package_from_algorithm(self, name, description, algorithm_arn, model_data):
+        """Create a SageMaker Model Package from the results of training with an Algorithm Package
+
+        Args:
+            name (str): ModelPackage name
+            description (str): Model Package description
+            algorithm_arn (str): arn or name of the algorithm used for training.
+            model_data (str): s3 URI to the model artifacts produced by training
+        """
+        request = {
+            'ModelPackageName': name,
+            'ModelPackageDescription': description,
+            'SourceAlgorithmSpecification': {
+                'SourceAlgorithms': [
+                    {
+                        'AlgorithmName': algorithm_arn,
+                        'ModelDataUrl': model_data
+                    }
+                ]
+            }
+        }
+        try:
+            LOGGER.info('Creating model package with name: {}'.format(name))
+            self.sagemaker_client.create_model_package(**request)
+        except ClientError as e:
+            error_code = e.response['Error']['Code']
+            message = e.response['Error']['Message']
+
+            if (
+                    error_code == 'ValidationException'
+                    and 'ModelPackage already exists' in message
+            ):
+                LOGGER.warning('Using already existing model package: {}'.format(name))
+            else:
+                raise
+
+    def wait_for_model_package(self, model_package_name, poll=5):
+        """Wait for an Amazon SageMaker endpoint deployment to complete.
+
+        Args:
+            endpoint (str): Name of the ``Endpoint`` to wait for.
+            poll (int): Polling interval in seconds (default: 5).
+
+        Returns:
+            dict: Return value from the ``DescribeEndpoint`` API.
+        """
+        desc = _wait_until(lambda: _create_model_package_status(self.sagemaker_client, model_package_name),
+                           poll)
+        status = desc['ModelPackageStatus']
+
+        if status != 'Completed':
+            reason = desc.get('FailureReason', None)
+            raise ValueError('Error creating model package {}: {} Reason: {}'.format(
+                model_package_name, status, reason))
+        return desc
 
     def create_endpoint_config(self, name, model_name, initial_instance_count, instance_type, accelerator_type=None):
         """Create an Amazon SageMaker endpoint configuration.
@@ -1291,6 +1381,21 @@ def _transform_job_status(sagemaker_client, job_name):
     status = desc['TransformJobStatus']
 
     print(transform_job_status_codes.get(status, '?'), end='')
+    sys.stdout.flush()
+
+    if status in in_progress_statuses:
+        return None
+
+    print('')
+    return desc
+
+
+def _create_model_package_status(sagemaker_client, model_package_name):
+    in_progress_statuses = ['InProgress', 'Pending']
+
+    desc = sagemaker_client.describe_model_package(ModelPackageName=model_package_name)
+    status = desc['ModelPackageStatus']
+    print('.', end='')
     sys.stdout.flush()
 
     if status in in_progress_statuses:

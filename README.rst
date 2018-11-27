@@ -34,13 +34,15 @@ Table of Contents
 6. `PyTorch SageMaker Estimators <#pytorch-sagemaker-estimators>`__
 7. `SageMaker SparkML Serving <#sagemaker-sparkml-serving>`__
 8. `AWS SageMaker Estimators <#aws-sagemaker-estimators>`__
-9. `BYO Docker Containers with SageMaker Estimators <#byo-docker-containers-with-sagemaker-estimators>`__
-10. `SageMaker Automatic Model Tuning <#sagemaker-automatic-model-tuning>`__
-11. `SageMaker Batch Transform <#sagemaker-batch-transform>`__
-12. `Secure Training and Inference with VPC <#secure-training-and-inference-with-vpc>`__
-13. `BYO Model <#byo-model>`__
-14. `Inference Pipelines <#inference-pipelines>`__
-15. `SageMaker Workflow <#sagemaker-workflow>`__
+9. `Using SageMaker AlgorithmEstimators <#using-sagemaker-algorithmestimators>`__
+10. `Consuming SageMaker Model Packages <#consuming-sagemaker-model-packages>`__
+11. `BYO Docker Containers with SageMaker Estimators <#byo-docker-containers-with-sagemaker-estimators>`__
+12. `SageMaker Automatic Model Tuning <#sagemaker-automatic-model-tuning>`__
+13. `SageMaker Batch Transform <#sagemaker-batch-transform>`__
+14. `Secure Training and Inference with VPC <#secure-training-and-inference-with-vpc>`__
+15. `BYO Model <#byo-model>`__
+16. `Inference Pipelines <#inference-pipelines>`__
+17. `SageMaker Workflow <#sagemaker-workflow>`__
 
 
 Installing the SageMaker Python SDK
@@ -456,6 +458,59 @@ For more information, see `AWS SageMaker Estimators and Models`_.
 
 .. _AWS SageMaker Estimators and Models: src/sagemaker/amazon/README.rst
 
+Using SageMaker AlgorithmEstimators
+-----------------------------------
+
+With the SageMaker Algorithm entities, you can create training jobs with just an ``algorithm_arn`` instead of
+a training image. There is a dedicated ``AlgorithmEstimator`` class that accepts ``algorithm_arn`` as a
+parameter, the rest of the arguments are similar to the other Estimator classes. This class also allows you to
+consume algorithms that you have subscribed to in the AWS Marketplace. The AlgorithmEstimator performs
+client-side validation on your inputs based on the algorithm's properties.
+
+Here is an example:
+
+.. code:: python
+
+        import sagemaker
+
+        algo = sagemaker.AlgorithmEstimator(
+            algorithm_arn='arn:aws:sagemaker:us-west-2:1234567:algorithm/some-algorithm',
+            role='SageMakerRole',
+            train_instance_count=1,
+            train_instance_type='ml.c4.xlarge')
+
+        train_input = algo.sagemaker_session.upload_data(path='/path/to/your/data')
+
+        algo.fit({'training': train_input})
+        algo.deploy(1, 'ml.m4.xlarge')
+
+        # When you are done using your endpoint
+        algo.delete_endpoint()
+
+
+Consuming SageMaker Model Packages
+----------------------------------
+
+SageMaker Model Packages are a way to specify and share information for how to create SageMaker Models.
+With a SageMaker Model Package that you have created or subscribed to in the AWS Marketplace,
+you can use the specified serving image and model data for Endpoints and Batch Transform jobs.
+
+To work with a SageMaker Model Package, use the ``ModelPackage`` class.
+
+Here is an example:
+
+.. code:: python
+
+        import sagemaker
+
+        model = sagemaker.ModelPackage(
+            role='SageMakerRole',
+            model_package_arn='arn:aws:sagemaker:us-west-2:123456:model-package/my-model-package')
+        model.deploy(1, 'ml.m4.xlarge', endpoint_name='my-endpoint')
+
+        # When you are done using your endpoint
+        model.sagemaker_session.delete_endpoint('my-endpoint')
+
 
 BYO Docker Containers with SageMaker Estimators
 -----------------------------------------------
@@ -470,7 +525,7 @@ Please refer to the full example in the examples repo:
     git clone https://github.com/awslabs/amazon-sagemaker-examples.git
 
 
-The example notebook is is located here:
+The example notebook is located here:
 ``advanced_functionality/scikit_bring_your_own/scikit_bring_your_own.ipynb``
 
 

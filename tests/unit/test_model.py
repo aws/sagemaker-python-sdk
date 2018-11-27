@@ -12,17 +12,21 @@
 # language governing permissions and limitations under the License.
 from __future__ import absolute_import
 
-from sagemaker.model import FrameworkModel
-from sagemaker.predictor import RealTimePredictor
+import copy
 import os
+
+import sagemaker
+from sagemaker.model import FrameworkModel, ModelPackage
+from sagemaker.predictor import RealTimePredictor
+
 import pytest
 from mock import MagicMock, Mock, patch
 
-MODEL_DATA = "s3://bucket/model.tar.gz"
-MODEL_IMAGE = "mi"
-ENTRY_POINT = "blah.py"
-INSTANCE_TYPE = "p2.xlarge"
-ROLE = "some-role"
+MODEL_DATA = 's3://bucket/model.tar.gz'
+MODEL_IMAGE = 'mi'
+ENTRY_POINT = 'blah.py'
+INSTANCE_TYPE = 'p2.xlarge'
+ROLE = 'some-role'
 
 DATA_DIR = os.path.join(os.path.dirname(__file__), '..', 'data')
 SCRIPT_NAME = 'dummy_script.py'
@@ -35,6 +39,54 @@ ACCELERATOR_TYPE = 'ml.eia.medium'
 IMAGE_NAME = 'fakeimage'
 REGION = 'us-west-2'
 MODEL_NAME = '{}-{}'.format(MODEL_IMAGE, TIMESTAMP)
+
+
+DESCRIBE_MODEL_PACKAGE_RESPONSE = {
+    'InferenceSpecification': {
+        'SupportedResponseMIMETypes': [
+            'text'
+        ],
+        'SupportedContentTypes': [
+            'text/csv'
+        ],
+        'SupportedTransformInstanceTypes': [
+            'ml.m4.xlarge',
+            'ml.m4.2xlarge'
+        ],
+        'Containers': [
+            {
+                'Image': '1.dkr.ecr.us-east-2.amazonaws.com/decision-trees-sample:latest',
+                'ImageDigest': 'sha256:1234556789',
+                'ModelDataUrl': 's3://bucket/output/model.tar.gz'
+            }
+        ],
+        'SupportedRealtimeInferenceInstanceTypes': [
+            'ml.m4.xlarge',
+            'ml.m4.2xlarge',
+
+        ]
+    },
+    'ModelPackageDescription': 'Model Package created from training with '
+                               'arn:aws:sagemaker:us-east-2:1234:algorithm/scikit-decision-trees',
+    'CreationTime': 1542752036.687,
+    'ModelPackageArn': 'arn:aws:sagemaker:us-east-2:123:model-package/mp-scikit-decision-trees',
+    'ModelPackageStatusDetails': {
+        'ValidationStatuses': [],
+        'ImageScanStatuses': []
+    },
+    'SourceAlgorithmSpecification': {
+        'SourceAlgorithms': [
+            {
+                'ModelDataUrl': 's3://bucket/output/model.tar.gz',
+                'AlgorithmName': 'arn:aws:sagemaker:us-east-2:1234:algorithm/scikit-decision-trees'
+            }
+        ]
+    },
+
+    'ModelPackageStatus': 'Completed',
+    'ModelPackageName': 'mp-scikit-decision-trees-1542410022-2018-11-20-22-13-56-502',
+    'CertifyForMarketplace': False
+}
 
 
 class DummyFrameworkModel(FrameworkModel):
@@ -170,3 +222,74 @@ def test_deploy_creates_correct_session(local_session, session, tmpdir):
     model = DummyFrameworkModel(sagemaker_session=None, source_dir=str(tmpdir))
     model.deploy(endpoint_name='remote_endpoint', instance_type='ml.m4.4xlarge', initial_instance_count=2)
     assert model.sagemaker_session == session.return_value
+
+
+def test_model_enable_network_isolation(sagemaker_session):
+    model = DummyFrameworkModel(sagemaker_session=sagemaker_session)
+    assert model.enable_network_isolation() is False
+
+
+def test_model_package_enable_network_isolation_with_no_product_id(sagemaker_session):
+    sagemaker_session.sagemaker_client.describe_model_package = Mock(
+        return_value=DESCRIBE_MODEL_PACKAGE_RESPONSE)
+
+    model_package = ModelPackage(role='role', model_package_arn='my-model-package',
+                                 sagemaker_session=sagemaker_session)
+    assert model_package.enable_network_isolation() is False
+
+
+def test_model_package_enable_network_isolation_with_product_id(sagemaker_session):
+    model_package_response = copy.deepcopy(DESCRIBE_MODEL_PACKAGE_RESPONSE)
+    model_package_response['InferenceSpecification']['Containers'].append(
+        {
+            'Image': '1.dkr.ecr.us-east-2.amazonaws.com/some-container:latest',
+            'ModelDataUrl': 's3://bucket/output/model.tar.gz',
+            'ProductId': 'some-product-id'
+        }
+    )
+    sagemaker_session.sagemaker_client.describe_model_package = Mock(
+        return_value=model_package_response)
+
+    model_package = ModelPackage(role='role', model_package_arn='my-model-package',
+                                 sagemaker_session=sagemaker_session)
+    assert model_package.enable_network_isolation() is True
+
+
+@patch('sagemaker.model.ModelPackage._create_sagemaker_model', Mock())
+def test_model_package_create_transformer(sagemaker_session):
+    sagemaker_session.sagemaker_client.describe_model_package = Mock(
+        return_value=DESCRIBE_MODEL_PACKAGE_RESPONSE)
+
+    model_package = ModelPackage(role='role', model_package_arn='my-model-package',
+                                 sagemaker_session=sagemaker_session)
+    model_package.name = 'auto-generated-model'
+    transformer = model_package.transformer(instance_count=1, instance_type='ml.m4.xlarge',
+                                            env={'test': True})
+    assert isinstance(transformer, sagemaker.transformer.Transformer)
+    assert transformer.model_name == 'auto-generated-model'
+    assert transformer.instance_type == 'ml.m4.xlarge'
+    assert transformer.env == {'test': True}
+
+
+@patch('sagemaker.model.ModelPackage._create_sagemaker_model', Mock())
+def test_model_package_create_transformer_with_product_id(sagemaker_session):
+    model_package_response = copy.deepcopy(DESCRIBE_MODEL_PACKAGE_RESPONSE)
+    model_package_response['InferenceSpecification']['Containers'].append(
+        {
+            'Image': '1.dkr.ecr.us-east-2.amazonaws.com/some-container:latest',
+            'ModelDataUrl': 's3://bucket/output/model.tar.gz',
+            'ProductId': 'some-product-id'
+        }
+    )
+    sagemaker_session.sagemaker_client.describe_model_package = Mock(
+        return_value=model_package_response)
+
+    model_package = ModelPackage(role='role', model_package_arn='my-model-package',
+                                 sagemaker_session=sagemaker_session)
+    model_package.name = 'auto-generated-model'
+    transformer = model_package.transformer(instance_count=1, instance_type='ml.m4.xlarge',
+                                            env={'test': True})
+    assert isinstance(transformer, sagemaker.transformer.Transformer)
+    assert transformer.model_name == 'auto-generated-model'
+    assert transformer.instance_type == 'ml.m4.xlarge'
+    assert transformer.env is None
