@@ -178,6 +178,8 @@ def framework_name_from_image(image_name):
             '<account>.dkr.ecr.<region>.amazonaws.com/sagemaker-<fw>-<py_ver>-<device>:<fw_version>-<device>-<py_ver>'
             current:
             '<account>.dkr.ecr.<region>.amazonaws.com/sagemaker-<fw>:<fw_version>-<device>-<py_ver>'
+            current:
+            '<account>.dkr.ecr.<region>.amazonaws.com/sagemaker-rl-<fw>:<rl_toolkit><rl_version>-<device>-<py_ver>'
 
     Returns:
         tuple: A tuple containing:
@@ -185,7 +187,6 @@ def framework_name_from_image(image_name):
             str: The Python version
             str: The image tag
     """
-    # image name format: <account>.dkr.ecr.<region>.amazonaws.com/sagemaker-<framework>-<py_ver>-<device>:<tag>
     sagemaker_pattern = re.compile(r'^(\d+)(\.)dkr(\.)ecr(\.)(.+)(\.)amazonaws.com(/)(.*:.*)$')
     sagemaker_match = sagemaker_pattern.match(image_name)
     if sagemaker_match is None:
@@ -193,7 +194,8 @@ def framework_name_from_image(image_name):
     else:
         # extract framework, python version and image tag
         # We must support both the legacy and current image name format.
-        name_pattern = re.compile('^sagemaker-(tensorflow|mxnet|chainer|pytorch|scikit-learn):(.*?)-(.*?)-(py2|py3)$')
+        name_pattern = \
+            re.compile('^sagemaker(?:-rl)?-(tensorflow|mxnet|chainer|pytorch|scikit-learn):(.*)-(.*?)-(py2|py3)$')
         legacy_name_pattern = re.compile('^sagemaker-(tensorflow|mxnet)-(py2|py3)-(cpu|gpu):(.*)$')
         name_match = name_pattern.match(sagemaker_match.group(8))
         legacy_match = legacy_name_pattern.match(sagemaker_match.group(8))

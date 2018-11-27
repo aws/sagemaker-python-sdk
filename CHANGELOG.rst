@@ -2,6 +2,11 @@
 CHANGELOG
 =========
 
+1.16.0.dev
+==========
+
+* feature: Estimators: Add RLEstimator to provide support for Reinforcement Learning.
+
 1.15.2
 ======
 

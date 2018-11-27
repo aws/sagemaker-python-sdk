@@ -316,6 +316,11 @@ def test_framework_name_from_image_tf():
     assert ('tensorflow', 'py2', '1.6-cpu-py2') == fw_utils.framework_name_from_image(image_name)
 
 
+def test_framework_name_from_image_rl():
+    image_name = '123.dkr.ecr.us-west-2.amazonaws.com/sagemaker-rl-mxnet:toolkit1.1-gpu-py3'
+    assert ('mxnet', 'py3', 'toolkit1.1-gpu-py3') == fw_utils.framework_name_from_image(image_name)
+
+
 def test_legacy_name_from_framework_image():
     image_name = '123.dkr.ecr.us-west-2.amazonaws.com/sagemaker-mxnet-py3-gpu:2.5.6-gpu-py2'
     framework, py_ver, tag = fw_utils.framework_name_from_image(image_name)
