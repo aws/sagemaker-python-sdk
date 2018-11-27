@@ -36,6 +36,16 @@ LOGGER = logging.getLogger('sagemaker')
 LOGGER.setLevel(logging.INFO)
 
 
+_STATUS_CODE_TABLE = {
+    'COMPLETED': 'Completed',
+    'INPROGRESS': 'InProgress',
+    'FAILED': 'Failed',
+    'STOPPED': 'Stopped',
+    'STOPPING': 'Stopping',
+    'STARTING': 'Starting'
+}
+
+
 class LogState(object):
     STARTING = 1
     WAIT_IN_PROGRESS = 2
@@ -804,6 +814,8 @@ class Session(object):
             ValueError: If the training job fails.
         """
         status = desc[status_key_name]
+        # If the status is capital case, then convert it to Camel case
+        status = _STATUS_CODE_TABLE.get(status, status)
 
         if status != 'Completed' and status != 'Stopped':
             reason = desc.get('FailureReason', '(No reason provided)')
@@ -1335,6 +1347,7 @@ def _compilation_job_status(sagemaker_client, job_name):
     desc = sagemaker_client.describe_compilation_job(CompilationJobName=job_name)
     status = desc['CompilationJobStatus']
 
+    status = _STATUS_CODE_TABLE.get(status, status)
     print(compile_status_codes.get(status, '?'), end='')
     sys.stdout.flush()
 
