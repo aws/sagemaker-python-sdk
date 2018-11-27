@@ -2,6 +2,11 @@
 CHANGELOG
 =========
 
+1.15.3.dev
+==========
+
+* bug-fix: Remove unnecessary dependency tensorflow
+
 1.15.2
 ======
 
