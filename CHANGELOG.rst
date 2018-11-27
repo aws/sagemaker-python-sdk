@@ -2,9 +2,10 @@
 CHANGELOG
 =========
 
-1.16.0.dev
-==========
+1.16.0
+======
 
+* features Add 0.10.1 coach version
 * feature: Add support for SageMaker Neo
 * feature: Estimators: Add RLEstimator to provide support for Reinforcement Learning
 * feature: Add support for Amazon Elastic Inference
