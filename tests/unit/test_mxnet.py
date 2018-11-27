@@ -26,11 +26,13 @@ from sagemaker.mxnet import MXNetPredictor, MXNetModel
 
 DATA_DIR = os.path.join(os.path.dirname(__file__), '..', 'data')
 SCRIPT_PATH = os.path.join(DATA_DIR, 'dummy_script.py')
+MODEL_DATA = 's3://mybucket/model'
 TIMESTAMP = '2017-11-06-14:14:15.672'
 TIME = 1507167947
 BUCKET_NAME = 'mybucket'
 INSTANCE_COUNT = 1
 INSTANCE_TYPE = 'ml.c4.4xlarge'
+ACCELERATOR_TYPE = 'ml.eia.medium'
 IMAGE_CPU_NAME = 'sagemaker-mxnet'
 JOB_NAME = '{}-{}'.format(IMAGE_CPU_NAME, TIMESTAMP)
 COMPILATION_JOB_NAME = '{}-{}'.format('compilation-sagemaker-mxnet', TIMESTAMP)
@@ -61,6 +63,10 @@ def sagemaker_session():
 
 def _get_full_image_uri(version):
     return FULL_IMAGE_URI.format(IMAGE_CPU_NAME, version)
+
+
+def _get_full_image_uri_for_cpu_with_ei(version):
+    return FULL_IMAGE_URI.format('{}-eia'.format(IMAGE_CPU_NAME), version)
 
 
 def _create_train_job(version):
@@ -154,6 +160,7 @@ def test_create_model(sagemaker_session, mxnet_version):
     assert model.name == job_name
     assert model.container_log_level == container_log_level
     assert model.source_dir == source_dir
+    assert model.image is None
     assert model.vpc_config is None
 
 
@@ -281,10 +288,18 @@ def test_mxnet_neo(strftime, sagemaker_session, mxnet_version):
 
 @patch('sagemaker.utils.create_tar_file', MagicMock())
 def test_model(sagemaker_session):
-    model = MXNetModel("s3://some/data.tar.gz", role=ROLE, entry_point=SCRIPT_PATH,
+    model = MXNetModel(MODEL_DATA, role=ROLE, entry_point=SCRIPT_PATH,
                        sagemaker_session=sagemaker_session)
     predictor = model.deploy(1, GPU)
     assert isinstance(predictor, MXNetPredictor)
+
+
+@patch('sagemaker.fw_utils.tar_and_upload_dir', MagicMock())
+def test_model_image_accelerator(sagemaker_session):
+    model = MXNetModel(MODEL_DATA, role=ROLE, entry_point=SCRIPT_PATH,
+                       sagemaker_session=sagemaker_session)
+    container_def = model.prepare_container_def(INSTANCE_TYPE, accelerator_type=ACCELERATOR_TYPE)
+    assert container_def['Image'] == _get_full_image_uri_for_cpu_with_ei(defaults.MXNET_VERSION)
 
 
 def test_train_image_default(sagemaker_session):

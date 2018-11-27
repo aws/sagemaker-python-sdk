@@ -37,6 +37,7 @@ TIMESTAMP = '2017-11-06-14:14:15.671'
 BUCKET_NAME = 'mybucket'
 INSTANCE_COUNT = 1
 INSTANCE_TYPE = 'c4.4xlarge'
+ACCELERATOR_TYPE = 'ml.eia.medium'
 ROLE = 'DummyRole'
 IMAGE_NAME = 'fakeimage'
 REGION = 'us-west-2'
@@ -908,6 +909,19 @@ def test_generic_deploy_vpc_config_override(sagemaker_session):
 
     e.deploy(INSTANCE_COUNT, INSTANCE_TYPE, vpc_config_override=None)
     assert sagemaker_session.create_model.call_args_list[3][1]['vpc_config'] is None
+
+
+def test_generic_deploy_accelerator_type(sagemaker_session):
+    e = Estimator(IMAGE_NAME, ROLE, INSTANCE_COUNT, INSTANCE_TYPE,
+                  sagemaker_session=sagemaker_session)
+    e.fit({'train': 's3://bucket/training-prefix'})
+    e.deploy(INSTANCE_COUNT, INSTANCE_TYPE, ACCELERATOR_TYPE)
+
+    args = e.sagemaker_session.endpoint_from_production_variants.call_args[0]
+    assert args[0].startswith(IMAGE_NAME)
+    assert args[1][0]['AcceleratorType'] == ACCELERATOR_TYPE
+    assert args[1][0]['InitialInstanceCount'] == INSTANCE_COUNT
+    assert args[1][0]['InstanceType'] == INSTANCE_TYPE
 
 
 @patch('sagemaker.estimator.LocalSession')

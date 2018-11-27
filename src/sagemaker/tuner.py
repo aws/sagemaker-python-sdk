@@ -285,7 +285,7 @@ class HyperparameterTuner(object):
                 https://docs.aws.amazon.com/sagemaker/latest/dg/API_Tag.html.
             base_tuning_job_name (str): Prefix for the hyperparameter tuning job name when the
                 :meth:`~sagemaker.tuner.HyperparameterTuner.fit` method launches. If not specified,
-                a default job name is generaged, based on the training image name and current timestamp.
+                a default job name is generated, based on the training image name and current timestamp.
             warm_start_config (sagemaker.tuner.WarmStartConfig): A ``WarmStartConfig`` object that has been initialized
                 with the configuration defining the nature of warm start tuning job.
         """
@@ -412,7 +412,7 @@ class HyperparameterTuner(object):
 
         return tuner
 
-    def deploy(self, initial_instance_count, instance_type, endpoint_name=None, **kwargs):
+    def deploy(self, initial_instance_count, instance_type, accelerator_type=None, endpoint_name=None, **kwargs):
         """Deploy the best trained or user specified model to an Amazon SageMaker endpoint and return a
         ``sagemaker.RealTimePredictor`` object.
 
@@ -422,6 +422,10 @@ class HyperparameterTuner(object):
             initial_instance_count (int): Minimum number of EC2 instances to deploy to an endpoint for prediction.
             instance_type (str): Type of EC2 instance to deploy to an endpoint for prediction,
                 for example, 'ml.c4.xlarge'.
+            accelerator_type (str): Type of Elastic Inference accelerator to attach to an endpoint for model loading
+                and inference, for example, 'ml.eia1.medium'. If not specified, no Elastic Inference accelerator
+                will be attached to the endpoint.
+                For more information: https://docs.aws.amazon.com/sagemaker/latest/dg/ei.html
             endpoint_name (str): Name to use for creating an Amazon SageMaker endpoint. If not specified,
                 the name of the training job is used.
             **kwargs: Other arguments needed for deployment. Please refer to the ``create_model()`` method of
@@ -434,7 +438,9 @@ class HyperparameterTuner(object):
         endpoint_name = endpoint_name or self.best_training_job()
         best_estimator = self.estimator.attach(self.best_training_job(),
                                                sagemaker_session=self.estimator.sagemaker_session)
-        return best_estimator.deploy(initial_instance_count, instance_type, endpoint_name=endpoint_name, **kwargs)
+        return best_estimator.deploy(initial_instance_count, instance_type,
+                                     accelerator_type=accelerator_type,
+                                     endpoint_name=endpoint_name, **kwargs)
 
     def stop_tuning_job(self):
         """Stop latest running hyperparameter tuning job.

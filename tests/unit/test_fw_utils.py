@@ -30,6 +30,10 @@ REGION = 'us-west-2'
 SCRIPT_PATH = 'script.py'
 TIMESTAMP = '2017-10-10-14-14-15'
 
+MOCK_FRAMEWORK = 'mlfw'
+MOCK_REGION = 'mars-south-3'
+MOCK_ACCELERATOR = 'eia1.medium'
+
 
 @contextmanager
 def cd(path):
@@ -51,61 +55,103 @@ def sagemaker_session():
 
 
 def test_create_image_uri_cpu():
-    image_uri = fw_utils.create_image_uri('mars-south-3', 'mlfw', 'ml.c4.large', '1.0rc', 'py2', '23')
+    image_uri = fw_utils.create_image_uri(MOCK_REGION, MOCK_FRAMEWORK, 'ml.c4.large', '1.0rc', 'py2', '23')
     assert image_uri == '23.dkr.ecr.mars-south-3.amazonaws.com/sagemaker-mlfw:1.0rc-cpu-py2'
 
-    image_uri = fw_utils.create_image_uri('mars-south-3', 'mlfw', 'local', '1.0rc', 'py2', '23')
+    image_uri = fw_utils.create_image_uri(MOCK_REGION, MOCK_FRAMEWORK, 'local', '1.0rc', 'py2', '23')
     assert image_uri == '23.dkr.ecr.mars-south-3.amazonaws.com/sagemaker-mlfw:1.0rc-cpu-py2'
 
 
 def test_create_image_uri_no_python():
-    image_uri = fw_utils.create_image_uri('mars-south-3', 'mlfw', 'ml.c4.large', '1.0rc', account='23')
+    image_uri = fw_utils.create_image_uri(MOCK_REGION, MOCK_FRAMEWORK, 'ml.c4.large', '1.0rc', account='23')
     assert image_uri == '23.dkr.ecr.mars-south-3.amazonaws.com/sagemaker-mlfw:1.0rc-cpu'
 
 
 def test_create_image_uri_bad_python():
     with pytest.raises(ValueError):
-        fw_utils.create_image_uri('mars-south-3', 'mlfw', 'ml.c4.large', '1.0rc', 'py0')
+        fw_utils.create_image_uri(MOCK_REGION, MOCK_FRAMEWORK, 'ml.c4.large', '1.0rc', 'py0')
 
 
 def test_create_image_uri_gpu():
-    image_uri = fw_utils.create_image_uri('mars-south-3', 'mlfw', 'ml.p3.2xlarge', '1.0rc', 'py3', '23')
+    image_uri = fw_utils.create_image_uri(MOCK_REGION, MOCK_FRAMEWORK, 'ml.p3.2xlarge', '1.0rc', 'py3', '23')
     assert image_uri == '23.dkr.ecr.mars-south-3.amazonaws.com/sagemaker-mlfw:1.0rc-gpu-py3'
 
-    image_uri = fw_utils.create_image_uri('mars-south-3', 'mlfw', 'local_gpu', '1.0rc', 'py3', '23')
+    image_uri = fw_utils.create_image_uri(MOCK_REGION, MOCK_FRAMEWORK, 'local_gpu', '1.0rc', 'py3', '23')
     assert image_uri == '23.dkr.ecr.mars-south-3.amazonaws.com/sagemaker-mlfw:1.0rc-gpu-py3'
 
 
 def test_create_image_uri_default_account():
-    image_uri = fw_utils.create_image_uri('mars-south-3', 'mlfw', 'ml.p3.2xlarge', '1.0rc', 'py3')
+    image_uri = fw_utils.create_image_uri(MOCK_REGION, MOCK_FRAMEWORK, 'ml.p3.2xlarge', '1.0rc', 'py3')
     assert image_uri == '520713654638.dkr.ecr.mars-south-3.amazonaws.com/sagemaker-mlfw:1.0rc-gpu-py3'
 
 
 def test_create_image_uri_gov_cloud():
-    image_uri = fw_utils.create_image_uri('us-gov-west-1', 'mlfw', 'ml.p3.2xlarge', '1.0rc', 'py3')
+    image_uri = fw_utils.create_image_uri('us-gov-west-1', MOCK_FRAMEWORK, 'ml.p3.2xlarge', '1.0rc', 'py3')
     assert image_uri == '246785580436.dkr.ecr.us-gov-west-1.amazonaws.com/sagemaker-mlfw:1.0rc-gpu-py3'
+
+
+def test_create_image_uri_accelerator():
+    image_uri = fw_utils.create_image_uri(MOCK_REGION, 'tensorflow', 'ml.p3.2xlarge', '1.0rc', 'py3',
+                                          accelerator_type='ml.eia1.medium')
+    assert image_uri == '520713654638.dkr.ecr.mars-south-3.amazonaws.com/sagemaker-tensorflow-eia:1.0rc-gpu-py3'
+
+
+def test_create_image_uri_local_sagemaker_notebook_accelerator():
+    image_uri = fw_utils.create_image_uri(MOCK_REGION, 'mxnet', 'ml.p3.2xlarge', '1.0rc', 'py3',
+                                          accelerator_type='local_sagemaker_notebook')
+    assert image_uri == '520713654638.dkr.ecr.mars-south-3.amazonaws.com/sagemaker-mxnet-eia:1.0rc-gpu-py3'
+
+
+def test_invalid_accelerator():
+    error_message = '{} is not a valid SageMaker Elastic Inference accelerator type.'.format(MOCK_ACCELERATOR)
+    # accelerator type is missing 'ml.' prefix
+    with pytest.raises(ValueError) as error:
+        fw_utils.create_image_uri(MOCK_REGION, 'tensorflow', 'ml.p3.2xlarge', '1.0.0', 'py3',
+                                  accelerator_type=MOCK_ACCELERATOR)
+
+    assert error_message in str(error)
+
+
+def test_invalid_framework_accelerator():
+    error_message = '{} is not supported with Amazon Elastic Inference.'.format(MOCK_FRAMEWORK)
+    # accelerator was chosen for unsupported framework
+    with pytest.raises(ValueError) as error:
+        fw_utils.create_image_uri(MOCK_REGION, MOCK_FRAMEWORK, 'ml.p3.2xlarge', '1.0.0', 'py3',
+                                  accelerator_type='ml.eia1.medium')
+
+    assert error_message in str(error)
+
+
+def test_invalid_framework_accelerator_with_neo():
+    error_message = 'Neo does not support Amazon Elastic Inference.'.format(MOCK_FRAMEWORK)
+    # accelerator was chosen for unsupported framework
+    with pytest.raises(ValueError) as error:
+        fw_utils.create_image_uri(MOCK_REGION, 'tensorflow', 'ml.p3.2xlarge', '1.0.0', 'py3',
+                                  accelerator_type='ml.eia1.medium', optimized_families=['c5', 'p3'])
+
+    assert error_message in str(error)
 
 
 def test_invalid_instance_type():
     # instance type is missing 'ml.' prefix
     with pytest.raises(ValueError):
-        fw_utils.create_image_uri('mars-south-3', 'mlfw', 'p3.2xlarge', '1.0.0', 'py3')
+        fw_utils.create_image_uri(MOCK_REGION, MOCK_FRAMEWORK, 'p3.2xlarge', '1.0.0', 'py3')
 
 
 def test_optimized_family():
-    image_uri = fw_utils.create_image_uri('mars-south-3', 'mlfw', 'ml.p3.2xlarge', '1.0.0', 'py3',
+    image_uri = fw_utils.create_image_uri(MOCK_REGION, MOCK_FRAMEWORK, 'ml.p3.2xlarge', '1.0.0', 'py3',
                                           optimized_families=['c5', 'p3'])
     assert image_uri == '520713654638.dkr.ecr.mars-south-3.amazonaws.com/sagemaker-mlfw:1.0.0-p3-py3'
 
 
 def test_unoptimized_cpu_family():
-    image_uri = fw_utils.create_image_uri('mars-south-3', 'mlfw', 'ml.m4.xlarge', '1.0.0', 'py3',
+    image_uri = fw_utils.create_image_uri(MOCK_REGION, MOCK_FRAMEWORK, 'ml.m4.xlarge', '1.0.0', 'py3',
                                           optimized_families=['c5', 'p3'])
     assert image_uri == '520713654638.dkr.ecr.mars-south-3.amazonaws.com/sagemaker-mlfw:1.0.0-cpu-py3'
 
 
 def test_unoptimized_gpu_family():
-    image_uri = fw_utils.create_image_uri('mars-south-3', 'mlfw', 'ml.p2.xlarge', '1.0.0', 'py3',
+    image_uri = fw_utils.create_image_uri(MOCK_REGION, MOCK_FRAMEWORK, 'ml.p2.xlarge', '1.0.0', 'py3',
                                           optimized_families=['c5', 'p3'])
     assert image_uri == '520713654638.dkr.ecr.mars-south-3.amazonaws.com/sagemaker-mlfw:1.0.0-gpu-py3'
 

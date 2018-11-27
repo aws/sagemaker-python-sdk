@@ -2,10 +2,12 @@
 CHANGELOG
 =========
 
+=======
 1.16.0.dev
-==========
+=======
 
 * feature: Estimators: Add RLEstimator to provide support for Reinforcement Learning.
+* feature: Add support for Amazon Elastic Inference
 
 1.15.2
 ======

@@ -574,7 +574,7 @@ class Session(object):
         vpc_config = _vpc_config_from_training_job(training_job, vpc_config_override)
         return self.create_model(name, role, primary_container, vpc_config=vpc_config)
 
-    def create_endpoint_config(self, name, model_name, initial_instance_count, instance_type):
+    def create_endpoint_config(self, name, model_name, initial_instance_count, instance_type, accelerator_type=None):
         """Create an Amazon SageMaker endpoint configuration.
 
         The endpoint configuration identifies the Amazon SageMaker model (created using the
@@ -587,17 +587,20 @@ class Session(object):
             initial_instance_count (int): Minimum number of EC2 instances to launch. The actual number of
                 active instances for an endpoint at any given time varies due to autoscaling.
             instance_type (str): Type of EC2 instance to launch, for example, 'ml.c4.xlarge'.
+            accelerator_type (str): Type of Elastic Inference accelerator to attach to the instance. For example,
+                'ml.eia1.medium'. For more information: https://docs.aws.amazon.com/sagemaker/latest/dg/ei.html
+
 
         Returns:
             str: Name of the endpoint point configuration created.
         """
         LOGGER.info('Creating endpoint-config with name {}'.format(name))
+
         self.sagemaker_client.create_endpoint_config(
             EndpointConfigName=name,
-            ProductionVariants=[{'ModelName': model_name,
-                                 'InitialInstanceCount': initial_instance_count,
-                                 'InstanceType': instance_type,
-                                 'VariantName': 'AllTraffic'}])
+            ProductionVariants=[production_variant(model_name, instance_type, initial_instance_count,
+                                                   accelerator_type=accelerator_type)]
+        )
         return name
 
     def create_endpoint(self, endpoint_name, config_name, wait=True):
@@ -737,7 +740,8 @@ class Session(object):
 
     def endpoint_from_job(self, job_name, initial_instance_count, instance_type,
                           deployment_image=None, name=None, role=None, wait=True,
-                          model_environment_vars=None, vpc_config_override=vpc_utils.VPC_CONFIG_DEFAULT):
+                          model_environment_vars=None, vpc_config_override=vpc_utils.VPC_CONFIG_DEFAULT,
+                          accelerator_type=None):
         """Create an ``Endpoint`` using the results of a successful training job.
 
         Specify the job name, Docker image containing the inference code, and hardware configuration to deploy
@@ -765,6 +769,8 @@ class Session(object):
                 Default: use VpcConfig from training job.
                 * 'Subnets' (list[str]): List of subnet ids.
                 * 'SecurityGroupIds' (list[str]): List of security group ids.
+            accelerator_type (str): Type of Elastic Inference accelerator to attach to the instance. For example,
+                'ml.eia1.medium'. For more information: https://docs.aws.amazon.com/sagemaker/latest/dg/ei.html
 
         Returns:
             str: Name of the ``Endpoint`` that is created.
@@ -780,10 +786,11 @@ class Session(object):
                                              initial_instance_count=initial_instance_count, instance_type=instance_type,
                                              name=name, role=role, wait=wait,
                                              model_environment_vars=model_environment_vars,
-                                             model_vpc_config=vpc_config_override)
+                                             model_vpc_config=vpc_config_override, accelerator_type=accelerator_type)
 
     def endpoint_from_model_data(self, model_s3_location, deployment_image, initial_instance_count, instance_type,
-                                 name=None, role=None, wait=True, model_environment_vars=None, model_vpc_config=None):
+                                 name=None, role=None, wait=True, model_environment_vars=None, model_vpc_config=None,
+                                 accelerator_type=None):
         """Create and deploy to an ``Endpoint`` using existing model data stored in S3.
 
         Args:
@@ -804,6 +811,8 @@ class Session(object):
             model_vpc_config (dict[str, list[str]]): The VpcConfig set on the model (default: None)
                 * 'Subnets' (list[str]): List of subnet ids.
                 * 'SecurityGroupIds' (list[str]): List of security group ids.
+            accelerator_type (str): Type of Elastic Inference accelerator to attach to the instance. For example,
+                'ml.eia1.medium'. For more information: https://docs.aws.amazon.com/sagemaker/latest/dg/ei.html
 
         Returns:
             str: Name of the ``Endpoint`` that is created.
@@ -830,7 +839,8 @@ class Session(object):
             self.create_endpoint_config(name=name,
                                         model_name=name,
                                         initial_instance_count=initial_instance_count,
-                                        instance_type=instance_type)
+                                        instance_type=instance_type,
+                                        accelerator_type=accelerator_type)
 
         self.create_endpoint(endpoint_name=name, config_name=name, wait=wait)
         return name
@@ -1053,7 +1063,7 @@ def pipeline_container_def(models, instance_type=None):
 
 
 def production_variant(model_name, instance_type, initial_instance_count=1, variant_name='AllTraffic',
-                       initial_weight=1):
+                       initial_weight=1, accelerator_type=None):
     """Create a production variant description suitable for use in a ``ProductionVariant`` list as part of a
     ``CreateEndpointConfig`` request.
 
@@ -1063,17 +1073,24 @@ def production_variant(model_name, instance_type, initial_instance_count=1, vari
         initial_instance_count (int): The initial instance count for this production variant (default: 1).
         variant_name (string): The ``VariantName`` of this production variant (default: 'AllTraffic').
         initial_weight (int): The relative ``InitialVariantWeight`` of this production variant (default: 1).
+        accelerator_type (str): Type of Elastic Inference accelerator for this production variant. For example,
+            'ml.eia1.medium'. For more information: https://docs.aws.amazon.com/sagemaker/latest/dg/ei.html
 
     Returns:
         dict[str, str]: An SageMaker ``ProductionVariant`` description
     """
-    return {
+    production_variant_configuration = {
+        'ModelName': model_name,
         'InstanceType': instance_type,
         'InitialInstanceCount': initial_instance_count,
-        'ModelName': model_name,
         'VariantName': variant_name,
         'InitialVariantWeight': initial_weight
     }
+
+    if accelerator_type:
+        production_variant_configuration['AcceleratorType'] = accelerator_type
+
+    return production_variant_configuration
 
 
 def get_execution_role(sagemaker_session=None):

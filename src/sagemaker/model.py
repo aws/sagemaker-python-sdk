@@ -67,7 +67,7 @@ class Model(object):
         self._model_name = None
         self._is_compiled_model = False
 
-    def prepare_container_def(self, instance_type):  # pylint: disable=unused-argument
+    def prepare_container_def(self, instance_type, accelerator_type=None):  # pylint: disable=unused-argument
         """Return a dict created by ``sagemaker.container_def()`` for deploying this model to a specified instance type.
 
         Subclasses can override this to provide custom container definitions for
@@ -75,6 +75,8 @@ class Model(object):
 
         Args:
             instance_type (str): The EC2 instance type to deploy this Model to. For example, 'ml.p2.xlarge'.
+            accelerator_type (str): The Elastic Inference accelerator type to deploy to the instance for loading and
+                making inferences to the model. For example, 'ml.eia1.medium'.
 
         Returns:
             dict: A container definition object usable with the CreateModel API.
@@ -168,7 +170,7 @@ class Model(object):
         self._is_compiled_model = True
         return self
 
-    def deploy(self, initial_instance_count, instance_type, endpoint_name=None, tags=None):
+    def deploy(self, initial_instance_count, instance_type, accelerator_type=None, endpoint_name=None, tags=None):
         """Deploy this ``Model`` to an ``Endpoint`` and optionally return a ``Predictor``.
 
         Create a SageMaker ``Model`` and ``EndpointConfig``, and deploy an ``Endpoint`` from this ``Model``.
@@ -184,6 +186,10 @@ class Model(object):
             instance_type (str): The EC2 instance type to deploy this Model to. For example, 'ml.p2.xlarge'.
             initial_instance_count (int): The initial number of instances to run in the
                 ``Endpoint`` created from this ``Model``.
+            accelerator_type (str): Type of Elastic Inference accelerator to deploy this model for model loading
+                and inference, for example, 'ml.eia1.medium'. If not specified, no Elastic Inference accelerator
+                will be attached to the endpoint.
+                For more information: https://docs.aws.amazon.com/sagemaker/latest/dg/ei.html
             endpoint_name (str): The name of the endpoint to create (default: None).
                 If not specified, a unique endpoint name will be created.
             tags(List[dict[str, str]]): The list of tags to attach to this specific endpoint.
@@ -199,14 +205,15 @@ class Model(object):
                 self.sagemaker_session = session.Session()
 
         compiled_model_suffix = '-'.join(instance_type.split('.')[:-1])
-        container_def = self.prepare_container_def(instance_type)
+        container_def = self.prepare_container_def(instance_type, accelerator_type=accelerator_type)
         self.name = self.name or utils.name_from_image(container_def['Image'])
         if self.role is None:
             raise ValueError("Role can not be null for deploying a model")
         if self._is_compiled_model:
             self.name += compiled_model_suffix
         self.sagemaker_session.create_model(self.name, self.role, container_def, vpc_config=self.vpc_config)
-        production_variant = sagemaker.production_variant(self.name, instance_type, initial_instance_count)
+        production_variant = sagemaker.production_variant(self.name, instance_type, initial_instance_count,
+                                                          accelerator_type=accelerator_type)
         if endpoint_name:
             self.endpoint_name = endpoint_name
         else:
@@ -294,13 +301,15 @@ class FrameworkModel(Model):
             self.bucket, self.key_prefix = None, None
         self.uploaded_code = None
 
-    def prepare_container_def(self, instance_type):  # pylint disable=unused-argument
+    def prepare_container_def(self, instance_type, accelerator_type=None):  # pylint disable=unused-argument
         """Return a container definition with framework configuration set in model environment variables.
 
         This also uploads user-supplied code to S3.
 
         Args:
             instance_type (str): The EC2 instance type to deploy this Model to. For example, 'ml.p2.xlarge'.
+            accelerator_type (str): The Elastic Inference accelerator type to deploy to the instance for loading and
+                making inferences to the model. For example, 'ml.eia1.medium'.
 
         Returns:
             dict[str, str]: A container definition object usable with the CreateModel API.

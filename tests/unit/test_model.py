@@ -31,8 +31,10 @@ TIMESTAMP = '2017-10-10-14-14-15'
 BUCKET_NAME = 'mybucket'
 INSTANCE_COUNT = 1
 INSTANCE_TYPE = 'c4.4xlarge'
+ACCELERATOR_TYPE = 'ml.eia.medium'
 IMAGE_NAME = 'fakeimage'
 REGION = 'us-west-2'
+MODEL_NAME = '{}-{}'.format(MODEL_IMAGE, TIMESTAMP)
 
 
 class DummyFrameworkModel(FrameworkModel):
@@ -61,13 +63,13 @@ def sagemaker_session():
 def test_prepare_container_def(time, sagemaker_session):
     model = DummyFrameworkModel(sagemaker_session)
     assert model.prepare_container_def(INSTANCE_TYPE) == {
-        'Environment': {'SAGEMAKER_PROGRAM': 'blah.py',
+        'Environment': {'SAGEMAKER_PROGRAM': ENTRY_POINT,
                         'SAGEMAKER_SUBMIT_DIRECTORY': 's3://mybucket/mi-2017-10-10-14-14-15/sourcedir.tar.gz',
                         'SAGEMAKER_CONTAINER_LOG_LEVEL': '20',
-                        'SAGEMAKER_REGION': 'us-west-2',
+                        'SAGEMAKER_REGION': REGION,
                         'SAGEMAKER_ENABLE_CLOUDWATCH_METRICS': 'false'},
-        'Image': 'mi',
-        'ModelDataUrl': 's3://bucket/model.tar.gz'}
+        'Image': MODEL_IMAGE,
+        'ModelDataUrl': MODEL_DATA}
 
 
 @patch('shutil.rmtree', MagicMock())
@@ -82,14 +84,14 @@ def test_create_no_defaults(sagemaker_session, tmpdir):
                                 code_location="s3://cb/cp")
 
     assert model.prepare_container_def(INSTANCE_TYPE) == {
-        'Environment': {'SAGEMAKER_PROGRAM': 'blah.py',
+        'Environment': {'SAGEMAKER_PROGRAM': ENTRY_POINT,
                         'SAGEMAKER_SUBMIT_DIRECTORY': 's3://cb/cp/name/sourcedir.tar.gz',
                         'SAGEMAKER_CONTAINER_LOG_LEVEL': '55',
-                        'SAGEMAKER_REGION': 'us-west-2',
+                        'SAGEMAKER_REGION': REGION,
                         'SAGEMAKER_ENABLE_CLOUDWATCH_METRICS': 'true',
                         'a': 'a'},
-        'Image': 'mi',
-        'ModelDataUrl': 's3://bucket/model.tar.gz'}
+        'Image': MODEL_IMAGE,
+        'ModelDataUrl': MODEL_DATA}
 
 
 @patch('sagemaker.fw_utils.tar_and_upload_dir', MagicMock())
@@ -98,9 +100,9 @@ def test_deploy(sagemaker_session, tmpdir):
     model = DummyFrameworkModel(sagemaker_session, source_dir=str(tmpdir))
     model.deploy(instance_type=INSTANCE_TYPE, initial_instance_count=1)
     sagemaker_session.endpoint_from_production_variants.assert_called_with(
-        'mi-2017-10-10-14-14-15',
+        MODEL_NAME,
         [{'InitialVariantWeight': 1,
-          'ModelName': 'mi-2017-10-10-14-14-15',
+          'ModelName': MODEL_NAME,
           'InstanceType': INSTANCE_TYPE,
           'InitialInstanceCount': 1,
           'VariantName': 'AllTraffic'}],
@@ -115,7 +117,7 @@ def test_deploy_endpoint_name(sagemaker_session, tmpdir):
     sagemaker_session.endpoint_from_production_variants.assert_called_with(
         'blah',
         [{'InitialVariantWeight': 1,
-          'ModelName': 'mi-2017-10-10-14-14-15',
+          'ModelName': MODEL_NAME,
           'InstanceType': INSTANCE_TYPE,
           'InitialInstanceCount': 55,
           'VariantName': 'AllTraffic'}],
@@ -129,13 +131,30 @@ def test_deploy_tags(sagemaker_session, tmpdir):
     tags = [{'ModelName': 'TestModel'}]
     model.deploy(instance_type=INSTANCE_TYPE, initial_instance_count=1, tags=tags)
     sagemaker_session.endpoint_from_production_variants.assert_called_with(
-        'mi-2017-10-10-14-14-15',
+        MODEL_NAME,
         [{'InitialVariantWeight': 1,
-          'ModelName': 'mi-2017-10-10-14-14-15',
+          'ModelName': MODEL_NAME,
           'InstanceType': INSTANCE_TYPE,
           'InitialInstanceCount': 1,
           'VariantName': 'AllTraffic'}],
         tags)
+
+
+@patch('sagemaker.fw_utils.tar_and_upload_dir', MagicMock())
+@patch('tarfile.open')
+@patch('time.strftime', return_value=TIMESTAMP)
+def test_deploy_accelerator_type(tfo, time, sagemaker_session):
+    model = DummyFrameworkModel(sagemaker_session)
+    model.deploy(instance_type=INSTANCE_TYPE, initial_instance_count=1, accelerator_type=ACCELERATOR_TYPE)
+    sagemaker_session.endpoint_from_production_variants.assert_called_with(
+        MODEL_NAME,
+        [{'InitialVariantWeight': 1,
+          'ModelName': MODEL_NAME,
+          'InstanceType': INSTANCE_TYPE,
+          'InitialInstanceCount': 1,
+          'VariantName': 'AllTraffic',
+          'AcceleratorType': ACCELERATOR_TYPE}],
+        None)
 
 
 @patch('sagemaker.session.Session')

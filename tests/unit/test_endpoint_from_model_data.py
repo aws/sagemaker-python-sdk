@@ -22,6 +22,7 @@ import sagemaker
 ENDPOINT_NAME = 'myendpoint'
 INITIAL_INSTANCE_COUNT = 1
 INSTANCE_TYPE = 'ml.c4.xlarge'
+ACCELERATOR_TYPE = 'ml.eia.medium'
 S3_MODEL_ARTIFACTS = 's3://mybucket/mymodel'
 DEPLOY_IMAGE = 'mydeployimage'
 CONTAINER_DEF = {'Environment': {}, 'Image': DEPLOY_IMAGE, 'ModelDataUrl': S3_MODEL_ARTIFACTS}
@@ -66,7 +67,8 @@ def test_all_defaults_no_existing_entities(name_from_image_mock, sagemaker_sessi
     sagemaker_session.create_endpoint_config.assert_called_once_with(name=NAME_FROM_IMAGE,
                                                                      model_name=NAME_FROM_IMAGE,
                                                                      initial_instance_count=INITIAL_INSTANCE_COUNT,
-                                                                     instance_type=INSTANCE_TYPE)
+                                                                     instance_type=INSTANCE_TYPE,
+                                                                     accelerator_type=None)
     sagemaker_session.create_endpoint.assert_called_once_with(endpoint_name=NAME_FROM_IMAGE,
                                                               config_name=NAME_FROM_IMAGE,
                                                               wait=False)
@@ -84,7 +86,8 @@ def test_no_defaults_no_existing_entities(name_from_image_mock, sagemaker_sessio
                                                                instance_type=INSTANCE_TYPE, role=DEPLOY_ROLE,
                                                                wait=False, name=ENDPOINT_NAME,
                                                                model_environment_vars=ENV_VARS,
-                                                               model_vpc_config=VPC_CONFIG)
+                                                               model_vpc_config=VPC_CONFIG,
+                                                               accelerator_type=ACCELERATOR_TYPE)
 
     sagemaker_session.sagemaker_client.describe_endpoint.assert_called_once_with(EndpointName=ENDPOINT_NAME)
     sagemaker_session.sagemaker_client.describe_model.assert_called_once_with(ModelName=ENDPOINT_NAME)
@@ -97,7 +100,8 @@ def test_no_defaults_no_existing_entities(name_from_image_mock, sagemaker_sessio
     sagemaker_session.create_endpoint_config.assert_called_once_with(name=ENDPOINT_NAME,
                                                                      model_name=ENDPOINT_NAME,
                                                                      initial_instance_count=INITIAL_INSTANCE_COUNT,
-                                                                     instance_type=INSTANCE_TYPE)
+                                                                     instance_type=INSTANCE_TYPE,
+                                                                     accelerator_type=ACCELERATOR_TYPE)
     sagemaker_session.create_endpoint.assert_called_once_with(endpoint_name=ENDPOINT_NAME,
                                                               config_name=ENDPOINT_NAME,
                                                               wait=False)
