@@ -31,6 +31,12 @@ SAGEMAKER_OUTPUT_LOCATION = 'sagemaker_s3_output'
 PYTHON_VERSION = 'py3'
 TOOLKIT_FRAMEWORK_VERSION_MAP = {
     'coach': {
+        '0.10.1': {
+            'tensorflow': '1.11'
+        },
+        '0.10': {
+            'tensorflow': '1.11'
+        },
         '0.11.0': {
             'tensorflow': '1.11',
             'mxnet': '1.3'

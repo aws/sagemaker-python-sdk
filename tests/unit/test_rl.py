@@ -128,12 +128,12 @@ def _create_train_job(toolkit, toolkit_version, framework):
     }
 
 
-def test_create_tf_model(sagemaker_session, rl_coach_version):
+def test_create_tf_model(sagemaker_session, rl_coach_tf_version):
     container_log_level = '"logging.INFO"'
     source_dir = 's3://mybucket/source'
     rl = RLEstimator(entry_point=SCRIPT_PATH, role=ROLE, sagemaker_session=sagemaker_session,
                      train_instance_count=INSTANCE_COUNT, train_instance_type=INSTANCE_TYPE,
-                     toolkit=RLToolkit.COACH, toolkit_version=rl_coach_version,
+                     toolkit=RLToolkit.COACH, toolkit_version=rl_coach_tf_version,
                      framework=RLFramework.TENSORFLOW, container_log_level=container_log_level,
                      source_dir=source_dir)
 
@@ -141,7 +141,7 @@ def test_create_tf_model(sagemaker_session, rl_coach_version):
     rl.fit(inputs='s3://mybucket/train', job_name='new_name')
     model = rl.create_model()
     supported_versions = TOOLKIT_FRAMEWORK_VERSION_MAP[RLToolkit.COACH.value]
-    framework_version = supported_versions[rl_coach_version][RLFramework.TENSORFLOW.value]
+    framework_version = supported_versions[rl_coach_tf_version][RLFramework.TENSORFLOW.value]
 
     assert isinstance(model, tfs.Model)
     assert model.sagemaker_session == sagemaker_session
@@ -152,12 +152,12 @@ def test_create_tf_model(sagemaker_session, rl_coach_version):
     assert model.vpc_config is None
 
 
-def test_create_mxnet_model(sagemaker_session, rl_coach_version):
+def test_create_mxnet_model(sagemaker_session, rl_coach_mxnet_version):
     container_log_level = '"logging.INFO"'
     source_dir = 's3://mybucket/source'
     rl = RLEstimator(entry_point=SCRIPT_PATH, role=ROLE, sagemaker_session=sagemaker_session,
                      train_instance_count=INSTANCE_COUNT, train_instance_type=INSTANCE_TYPE,
-                     toolkit=RLToolkit.COACH, toolkit_version=rl_coach_version,
+                     toolkit=RLToolkit.COACH, toolkit_version=rl_coach_mxnet_version,
                      framework=RLFramework.MXNET, container_log_level=container_log_level,
                      source_dir=source_dir)
 
@@ -165,7 +165,7 @@ def test_create_mxnet_model(sagemaker_session, rl_coach_version):
     rl.fit(inputs='s3://mybucket/train', job_name='new_name')
     model = rl.create_model()
     supported_versions = TOOLKIT_FRAMEWORK_VERSION_MAP[RLToolkit.COACH.value]
-    framework_version = supported_versions[rl_coach_version][RLFramework.MXNET.value]
+    framework_version = supported_versions[rl_coach_mxnet_version][RLFramework.MXNET.value]
 
     assert isinstance(model, MXNetModel)
     assert model.sagemaker_session == sagemaker_session
@@ -179,12 +179,12 @@ def test_create_mxnet_model(sagemaker_session, rl_coach_version):
     assert model.vpc_config is None
 
 
-def test_create_model_with_optional_params(sagemaker_session, rl_coach_version):
+def test_create_model_with_optional_params(sagemaker_session, rl_coach_mxnet_version):
     container_log_level = '"logging.INFO"'
     source_dir = 's3://mybucket/source'
     rl = RLEstimator(entry_point=SCRIPT_PATH, role=ROLE, sagemaker_session=sagemaker_session,
                      train_instance_count=INSTANCE_COUNT, train_instance_type=INSTANCE_TYPE,
-                     toolkit=RLToolkit.COACH, toolkit_version=rl_coach_version,
+                     toolkit=RLToolkit.COACH, toolkit_version=rl_coach_mxnet_version,
                      framework=RLFramework.MXNET, container_log_level=container_log_level,
                      source_dir=source_dir)
 
@@ -226,10 +226,10 @@ def test_create_model_with_custom_image(sagemaker_session):
 
 @patch('sagemaker.utils.create_tar_file', MagicMock())
 @patch('time.strftime', return_value=TIMESTAMP)
-def test_rl(strftime, sagemaker_session, rl_coach_version):
+def test_rl(strftime, sagemaker_session, rl_coach_mxnet_version):
     rl = RLEstimator(entry_point=SCRIPT_PATH, role=ROLE, sagemaker_session=sagemaker_session,
                      train_instance_count=INSTANCE_COUNT, train_instance_type=INSTANCE_TYPE,
-                     toolkit=RLToolkit.COACH, toolkit_version=rl_coach_version,
+                     toolkit=RLToolkit.COACH, toolkit_version=rl_coach_mxnet_version,
                      framework=RLFramework.MXNET)
 
     inputs = 's3://mybucket/train'
@@ -241,7 +241,7 @@ def test_rl(strftime, sagemaker_session, rl_coach_version):
     boto_call_names = [c[0] for c in sagemaker_session.boto_session.method_calls]
     assert boto_call_names == ['resource']
 
-    expected_train_args = _create_train_job(RLToolkit.COACH.value, rl_coach_version,
+    expected_train_args = _create_train_job(RLToolkit.COACH.value, rl_coach_mxnet_version,
                                             RLFramework.MXNET.value)
     expected_train_args['input_config'][0]['DataSource']['S3DataSource']['S3Uri'] = inputs
 
@@ -250,7 +250,7 @@ def test_rl(strftime, sagemaker_session, rl_coach_version):
 
     model = rl.create_model()
     supported_versions = TOOLKIT_FRAMEWORK_VERSION_MAP[RLToolkit.COACH.value]
-    framework_version = supported_versions[rl_coach_version][RLFramework.MXNET.value]
+    framework_version = supported_versions[rl_coach_mxnet_version][RLFramework.MXNET.value]
 
     expected_image_base = '520713654638.dkr.ecr.us-west-2.amazonaws.com/sagemaker-mxnet:{}-gpu-py3'
     submit_dir = 's3://notmybucket/sagemaker-rl-mxnet-{}/source/sourcedir.tar.gz'.format(TIMESTAMP)
@@ -266,8 +266,8 @@ def test_rl(strftime, sagemaker_session, rl_coach_version):
 
 
 @patch('sagemaker.utils.create_tar_file', MagicMock())
-def test_deploy_mxnet(sagemaker_session, rl_coach_version):
-    rl = _rl_estimator(sagemaker_session, RLToolkit.COACH, rl_coach_version, RLFramework.MXNET,
+def test_deploy_mxnet(sagemaker_session, rl_coach_mxnet_version):
+    rl = _rl_estimator(sagemaker_session, RLToolkit.COACH, rl_coach_mxnet_version, RLFramework.MXNET,
                        train_instance_type='ml.g2.2xlarge')
     rl.fit()
     predictor = rl.deploy(1, CPU)
@@ -275,8 +275,8 @@ def test_deploy_mxnet(sagemaker_session, rl_coach_version):
 
 
 @patch('sagemaker.utils.create_tar_file', MagicMock())
-def test_deploy_tfs(sagemaker_session, rl_coach_version):
-    rl = _rl_estimator(sagemaker_session, RLToolkit.COACH, rl_coach_version, RLFramework.TENSORFLOW,
+def test_deploy_tfs(sagemaker_session, rl_coach_tf_version):
+    rl = _rl_estimator(sagemaker_session, RLToolkit.COACH, rl_coach_tf_version, RLFramework.TENSORFLOW,
                        train_instance_type='ml.g2.2xlarge')
     rl.fit()
     predictor = rl.deploy(1, GPU)
@@ -312,25 +312,25 @@ def test_train_image_cpu_instances(sagemaker_session, rl_ray_version):
                                                        framework.value)
 
 
-def test_train_image_gpu_instances(sagemaker_session, rl_coach_version):
+def test_train_image_gpu_instances(sagemaker_session, rl_coach_mxnet_version):
     toolkit = RLToolkit.COACH
     framework = RLFramework.MXNET
-    rl = _rl_estimator(sagemaker_session, toolkit, rl_coach_version, framework,
+    rl = _rl_estimator(sagemaker_session, toolkit, rl_coach_mxnet_version, framework,
                        train_instance_type='ml.g2.2xlarge')
-    assert rl.train_image() == _get_full_gpu_image_uri(toolkit.value, rl_coach_version,
+    assert rl.train_image() == _get_full_gpu_image_uri(toolkit.value, rl_coach_mxnet_version,
                                                        framework.value)
 
-    rl = _rl_estimator(sagemaker_session, toolkit, rl_coach_version, framework,
+    rl = _rl_estimator(sagemaker_session, toolkit, rl_coach_mxnet_version, framework,
                        train_instance_type='ml.p2.2xlarge')
-    assert rl.train_image() == _get_full_gpu_image_uri(toolkit.value, rl_coach_version,
+    assert rl.train_image() == _get_full_gpu_image_uri(toolkit.value, rl_coach_mxnet_version,
                                                        framework.value)
 
 
-def test_attach(sagemaker_session, rl_coach_version):
+def test_attach(sagemaker_session, rl_coach_mxnet_version):
     training_image = '1.dkr.ecr.us-west-2.amazonaws.com/sagemaker-rl-{}:{}{}-cpu-py3'\
-        .format(RLFramework.MXNET.value, RLToolkit.COACH.value, rl_coach_version)
+        .format(RLFramework.MXNET.value, RLToolkit.COACH.value, rl_coach_mxnet_version)
     supported_versions = TOOLKIT_FRAMEWORK_VERSION_MAP[RLToolkit.COACH.value]
-    framework_version = supported_versions[rl_coach_version][RLFramework.MXNET.value]
+    framework_version = supported_versions[rl_coach_mxnet_version][RLFramework.MXNET.value]
     returned_job_description = {'AlgorithmSpecification': {'TrainingInputMode': 'File',
                                                            'TrainingImage': training_image},
                                 'HyperParameters':
@@ -361,7 +361,7 @@ def test_attach(sagemaker_session, rl_coach_version):
     assert estimator.framework == RLFramework.MXNET.value
     assert estimator.toolkit == RLToolkit.COACH.value
     assert estimator.framework_version == framework_version
-    assert estimator.toolkit_version == rl_coach_version
+    assert estimator.toolkit_version == rl_coach_mxnet_version
     assert estimator.role == 'arn:aws:iam::366:role/SageMakerRole'
     assert estimator.train_instance_count == 1
     assert estimator.train_max_run == 24 * 60 * 60

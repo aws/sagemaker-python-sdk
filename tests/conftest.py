@@ -112,8 +112,13 @@ def tf_version(request):
     return request.param
 
 
+@pytest.fixture(scope='module', params=['0.10.1', '0.10.1', '0.11', '0.11.0'])
+def rl_coach_tf_version(request):
+    return request.param
+
+
 @pytest.fixture(scope='module', params=['0.11', '0.11.0'])
-def rl_coach_version(request):
+def rl_coach_mxnet_version(request):
     return request.param
 
 
