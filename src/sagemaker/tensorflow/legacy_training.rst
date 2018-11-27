@@ -1,9 +1,8 @@
-Preparing Legacy Mode training script
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Preparing a Legacy Mode training script
+=======================================
 
-
-For Legacy Mode your TensorFlow training script must be a **Python 2.7** source file. The SageMaker TensorFlow
-docker image uses this script by calling specifically-named functions from this script.
+For Legacy Mode your TensorFlow training script must be a Python 2.7 source file. The SageMaker TensorFlow
+Docker image uses this script by calling specifically-named functions from this script.
 
 The training script **must contain** the following:
 
@@ -18,12 +17,12 @@ The training script **must contain** the following:
 
 In addition, it may optionally contain:
 
-- ``serving_input_fn``: Defines the features to be passed to the model during prediction. **Important:**
-    this function is used only during training, but is required to deploy the model resulting from training
-    to a SageMaker endpoint.
+- ``serving_input_fn``: Defines the features to be passed to the model during prediction.
+    **Important:** this function is used only during training, but is required to deploy the model resulting from
+    training to a SageMaker endpoint.
 
 Creating a ``model_fn``
-^^^^^^^^^^^^^^^^^^^^^^^
+~~~~~~~~~~~~~~~~~~~~~~~
 
 A ``model_fn`` is a function that contains all the logic to support training, evaluation,
 and prediction. The basic skeleton for a ``model_fn`` looks like this:
@@ -59,7 +58,7 @@ The ``model_fn`` must accept four positional arguments:
 The ``model_fn`` must return a ``tf.estimator.EstimatorSpec``.
 
 Example of a complete ``model_fn``
-''''''''''''''''''''''''''''''''''
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 .. code:: python
 
@@ -102,7 +101,7 @@ Example of a complete ``model_fn``
         eval_metric_ops=eval_metric_ops)
 
 Distributed training
-''''''''''''''''''''
+^^^^^^^^^^^^^^^^^^^^
 
 When distributed training happens, a copy of the same neural network will be sent to
 multiple training instances. Each instance will train with a batch of the dataset,
@@ -118,7 +117,7 @@ step into the ``optimizer.minimize`` function:
 
   train_op = optimizer.minimize(loss, tf.train.get_or_create_global_step())
 
-More information about distributed training can be find in talk from the TensorFlow Dev Summit 2017
+More information about distributed training can be find in talk from the TensorFlow Dev Summit 2017:
 `Distributed TensorFlow <https://www.youtube.com/watch?time_continue=1&v=la_M6bCV91M>`_.
 
 
@@ -126,7 +125,7 @@ More details on how to create a ``model_fn`` can be find in `Constructing the mo
 
 
 Creating ``train_input_fn`` and ``eval_input_fn`` functions
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 The ``train_input_fn`` is used to pass ``features`` and ``labels`` to the ``model_fn``
 in **training** mode. The ``eval_input_fn`` is used to ``features`` and ``labels`` to the
@@ -157,10 +156,10 @@ An ``eval_input_fn`` follows the same format:
     return features, labels
 
 **Note:** For TensorFlow 1.4 and 1.5, ``train_input_fn`` and ``eval_input_fn`` may also return a no-argument
-function which returns the tuple ``features, labels``. This is no longer supported for TensorFlow 1.6 and up.
+function which returns the tuple ``(features, labels)``. This is no longer supported for TensorFlow 1.6 and up.
 
 Example of a complete ``train_input_fn`` and ``eval_input_fn``
-''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 .. code:: python
 
@@ -188,7 +187,7 @@ Example of a complete ``train_input_fn`` and ``eval_input_fn``
 More details on how to create input functions can be find in `Building Input Functions with tf.estimator <https://github.com/tensorflow/tensorflow/blob/r1.4/tensorflow/docs_src/get_started/input_fn.md#building-input-functions-with-tfestimator>`_.
 
 Creating a ``serving_input_fn``
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 ``serving_input_fn`` is used to define the shapes and types of the inputs the model accepts when
 the model is exported for Tensorflow Serving. This function is optional if you only want to
@@ -197,7 +196,7 @@ deployed to a SageMaker endpoint.
 
 ``serving_input_fn`` is called at the end of model training and is **not** called during
 inference. (If you'd like to preprocess inference data, please see
-**Overriding input preprocessing with an input_fn**).
+`Overriding input preprocessing with an input_fn <https://github.com/aws/sagemaker-python-sdk/blob/master/src/sagemaker/tensorflow/deploying_python.rst#overriding-input-preprocessing-with-an-input_fn>`_ ).
 
 The basic skeleton for the ``serving_input_fn`` looks like this:
 
@@ -213,7 +212,7 @@ The basic skeleton for the ``serving_input_fn`` looks like this:
 **Note:** For TensorFlow 1.4 and 1.5, ``serving_input_fn`` may also return a no-argument function which returns a ``tf.estimator.export.ServingInputReceiver`` or``tf.estimator.export.TensorServingInputReceiver``. This is no longer supported for TensorFlow 1.6 and up.
 
 Example of a complete ``serving_input_fn``
-''''''''''''''''''''''''''''''''''''''''''
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 .. code:: python
 
@@ -233,7 +232,7 @@ Support for pre-made ``tf.estimator`` and ``Keras`` models
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 In addition to ``model_fn``, ``sagemaker.tensorflow.TensorFlow`` supports pre-canned ``tf.estimator``
-and ``Keras`` models.
+and Keras models.
 
 Using a pre-made ``tensorflow.estimator`` instead of a ``model_fn``
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -314,10 +313,10 @@ Example of a complete ``keras_model_fn``
     return keras_inception_v3
 
 
-TensorFlow 1.4.0 support for ``Keras`` models is limited only for **non-distributed** training;
-i.e. set the ``train_instance_count`` parameter in the ``TensorFlow`` estimator equal to 1.
+TensorFlow 1.4.0 support for Keras models is limited only for **single-node** training;
+i.e. you must set ``train_instance_count=1`` when constructing your TensorFlow estimator.
 
-More details on how to create a ``Keras`` model can be find in the `Keras documentation <https://keras.io/>`_.
+More details on how to create a Keras model can be find in the `Keras documentation <https://keras.io/>`_.
 
 Optional Hyperparameters
 ''''''''''''''''''''''''
@@ -328,35 +327,35 @@ You need to add them inside the hyperparameters dictionary in the
 
 **All versions**
 
--  ``save_summary_steps (int)`` Save summaries every this many steps.
--  ``save_checkpoints_secs (int)`` Save checkpoints every this many seconds. Can not be specified with ``save_checkpoints_steps``.
--  ``save_checkpoints_steps (int)`` Save checkpoints every this many steps. Can not be specified with ``save_checkpoints_secs``.
--  ``keep_checkpoint_max (int)`` The maximum number of recent checkpoint files to keep. As new files are created, older files are deleted. If None or 0, all checkpoint files are kept. Defaults to 5 (that is, the 5 most recent checkpoint files are kept.)
--  ``keep_checkpoint_every_n_hours (int)`` Number of hours between each checkpoint to be saved. The default value of 10,000 hours effectively disables the feature.
--  ``log_step_count_steps (int)`` The frequency, in number of global steps, that the global step/sec will be logged during training.
+-  ``save_summary_steps (int)``: Save summaries every this many steps.
+-  ``save_checkpoints_secs (int)``: Save checkpoints every this many seconds. Can not be specified with ``save_checkpoints_steps``.
+-  ``save_checkpoints_steps (int)``: Save checkpoints every this many steps. Can not be specified with ``save_checkpoints_secs``.
+-  ``keep_checkpoint_max (int)``: The maximum number of recent checkpoint files to keep. As new files are created, older files are deleted. If None or 0, all checkpoint files are kept. Defaults to 5 (that is, the 5 most recent checkpoint files are kept.)
+-  ``keep_checkpoint_every_n_hours (int)``: Number of hours between each checkpoint to be saved. The default value of 10,000 hours effectively disables the feature.
+-  ``log_step_count_steps (int)``: The frequency, in number of global steps, that the global step/sec will be logged during training.
 
 **TensorFlow 1.6 and up**
 
-- ``start_delay_secs (int)`` See docs for this parameter in `tf.estimator.EvalSpec <https://www.tensorflow.org/api_docs/python/tf/estimator/EvalSpec>`_.
-- ``throttle_secs (int)`` See docs for this parameter in `tf.estimator.EvalSpec <https://www.tensorflow.org/api_docs/python/tf/estimator/EvalSpec>`_.
+- ``start_delay_secs (int)``: See docs for this parameter in `tf.estimator.EvalSpec <https://www.tensorflow.org/api_docs/python/tf/estimator/EvalSpec>`_.
+- ``throttle_secs (int)``: See docs for this parameter in `tf.estimator.EvalSpec <https://www.tensorflow.org/api_docs/python/tf/estimator/EvalSpec>`_.
 
 **TensorFlow 1.4 and 1.5**
 
--  ``eval_metrics (dict)`` ``dict`` of string, metric function. If `None`, default set is used. This should be ``None`` if the ``estimator`` is `tf.estimator.Estimator <https://www.tensorflow.org/api_docs/python/tf/estimator/Estimator>`_. If metrics are provided they will be *appended* to the default set.
--  ``eval_delay_secs (int)`` Start evaluating after waiting for this many seconds.
--  ``continuous_eval_throttle_secs (int)`` Do not re-evaluate unless the last evaluation was started at least this many seconds ago.
--  ``min_eval_frequency (int)`` The minimum number of steps between evaluations. Of course, evaluation does not occur if no new snapshot is available, hence, this is the minimum. If 0, the evaluation will only happen after training. If None, defaults to 1000.
--  ``delay_workers_by_global_step (bool)`` if ``True`` delays training workers based on global step instead of time.
-- ``train_steps_per_iteration (int)`` Perform this many (integer) number of train steps for each training-evaluation iteration. With a small value, the model will be evaluated more frequently with more checkpoints saved.
+-  ``eval_metrics (dict)``: ``dict`` of string, metric function. If `None`, default set is used. This should be ``None`` if the ``estimator`` is `tf.estimator.Estimator <https://www.tensorflow.org/api_docs/python/tf/estimator/Estimator>`_. If metrics are provided they will be *appended* to the default set.
+-  ``eval_delay_secs (int)``: Start evaluating after waiting for this many seconds.
+-  ``continuous_eval_throttle_secs (int)``: Do not re-evaluate unless the last evaluation was started at least this many seconds ago.
+-  ``min_eval_frequency (int)``: The minimum number of steps between evaluations. Of course, evaluation does not occur if no new snapshot is available, hence, this is the minimum. If 0, the evaluation will only happen after training. If None, defaults to 1000.
+-  ``delay_workers_by_global_step (bool)``: if ``True`` delays training workers based on global step instead of time.
+- ``train_steps_per_iteration (int)``: Perform this many (integer) number of train steps for each training-evaluation iteration. With a small value, the model will be evaluated more frequently with more checkpoints saved.
 
 Calling fit
-^^^^^^^^^^^
+~~~~~~~~~~~
 
 You start your training script by calling ``fit`` on a ``TensorFlow`` estimator. ``fit`` takes
 both required and optional arguments.
 
 Required argument
-'''''''''''''''''
+^^^^^^^^^^^^^^^^^
 
 - ``inputs``: The S3 location(s) of datasets to be used for training. This can take one of two forms:
 
@@ -370,7 +369,7 @@ contains the directory inside the container where the dataset was saved into.
 See `Creating train_input_fn and eval_input_fn functions`_.
 
 Optional arguments
-''''''''''''''''''
+^^^^^^^^^^^^^^^^^^
 
 -  ``wait (bool)``: Defaults to True, whether to block and wait for the
    training script to complete before returning.
@@ -384,7 +383,7 @@ Optional arguments
   based on the training image name and current timestamp.
 
 What happens when fit is called
-"""""""""""""""""""""""""""""""
+'''''''''''''''''''''''''''''''
 
 Calling ``fit`` starts a SageMaker training job. The training job will execute the following.
 
@@ -422,7 +421,7 @@ After attaching, the estimator can be deployed as usual.
 
 
 The evaluation process
-""""""""""""""""""""""
+''''''''''''''''''''''
 
 During the training job, the first EC2 instance that is executing the training is named ``master``. All the other instances are called ``workers``.
 
@@ -436,7 +435,7 @@ For more information on training and evaluation process, see `tf.estimator.train
 For more information on fit, see `SageMaker Python SDK Overview <#sagemaker-python-sdk-overview>`_.
 
 TensorFlow Serving models
-^^^^^^^^^^^^^^^^^^^^^^^^^
+~~~~~~~~~~~~~~~~~~~~~~~~~
 
 After your training job is complete in SageMaker and the ``fit`` call ends, the training job
 will generate a `TensorFlow SavedModel <https://github.com/tensorflow/tensorflow/blob/master/tensorflow/python/saved_model/README.md>`_
@@ -444,7 +443,7 @@ bundle ready for deployment. Your model will be available in S3 at the ``output_
 that you specified when you created your ``sagemaker.tensorflow.TensorFlow`` estimator.
 
 Restoring from checkpoints
-^^^^^^^^^^^^^^^^^^^^^^^^^^
+~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 While your training job is executing, TensorFlow will generate checkpoints and save them in the S3
 location defined by ``checkpoint_path`` parameter in the ``TensorFlow`` constructor.
@@ -466,7 +465,7 @@ estimator pointing to the previous checkpoint path:
 
 
 Running TensorBoard
-^^^^^^^^^^^^^^^^^^^
+~~~~~~~~~~~~~~~~~~~
 
 When the ``fit`` parameter ``run_tensorboard_locally`` is set ``True``, all the checkpoint data
 located in ``checkpoint_path`` will be downloaded to a local temporary folder and a local
@@ -484,4 +483,4 @@ You can access TensorBoard locally at http://localhost:6006 or using your SakeMa
 `https*workspace_base_url*proxy/6006/ <proxy/6006/>`_ (TensorBoard will not work if you forget to put the slash,
 '/', in end of the url). If TensorBoard started on a different port, adjust these URLs to match.
 
-Note that TensorBoard is not supported when passing wait=False to ``fit``.
+Note that TensorBoard is not supported when passing ``wait=False`` to ``fit``.

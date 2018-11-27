@@ -1,7 +1,7 @@
-Preparing Script Mode training script
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Preparing a Script Mode training script
+=======================================
 
-Your TensorFlow training script must be a Python 2.7 or 3.5 compatible source file.
+Your TensorFlow training script must be a Python 2.7- or 3.5-compatible source file.
 
 The training script is very similar to a training script you might run outside of SageMaker, but you can access useful properties about the training environment through various environment variables, including the following:
 
@@ -12,7 +12,7 @@ The training script is very similar to a training script you might run outside o
   Output artifacts might include checkpoints, graphs, and other files to save, but do not include model artifacts.
   These artifacts are compressed and uploaded to S3 to an S3 bucket with the same prefix as the model artifacts.
 * ``SM_CHANNEL_XXXX``: A string that represents the path to the directory that contains the input data for the specified channel.
-  For example, if you specify two input channels in the MXNet estimator's ``fit`` call, named 'train' and 'test', the environment variables ``SM_CHANNEL_TRAIN`` and ``SM_CHANNEL_TEST`` are set.
+  For example, if you specify two input channels in the TensorFlow estimator's ``fit`` call, named 'train' and 'test', the environment variables ``SM_CHANNEL_TRAIN`` and ``SM_CHANNEL_TEST`` are set.
 
 For the exhaustive list of available environment variables, see the `SageMaker Containers documentation <https://github.com/aws/sagemaker-containers#list-of-provided-environment-variables-by-sagemaker-containers>`__.
 
@@ -52,8 +52,8 @@ If you want to use, for example, boolean hyperparameters, you need to specify ``
 
 For more on training environment variables, please visit `SageMaker Containers <https://github.com/aws/sagemaker-containers>`_.
 
-Adapt your TensorFlow script
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Adapting your local TensorFlow script
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 If you have a TensorFlow training script with runs outside of SageaMaker please follow the directions here:
 
@@ -84,7 +84,7 @@ a S3 location is needed as the model directory during training. Here is an examp
 
     parser = argparse.ArgumentParser()
     parser.add_argument('--train', type=str, default=os.environ['SM_CHANNEL_TRAIN'])
-    parser.add_argument('--test', type=str, default=os.environ['SM_CHANNEL_EVAL'])
+    parser.add_argument('--eval', type=str, default=os.environ['SM_CHANNEL_EVAL'])
 
 3. Export your final model to path stored in environment variable ``SM_MODEL_DIR`` which should always be
    ``/opt/ml/model``. At end of training SageMaker will upload the model file under ``/opt/ml/model`` to
@@ -92,13 +92,13 @@ a S3 location is needed as the model directory during training. Here is an examp
 
 
 Calling fit
-^^^^^^^^^^^
+~~~~~~~~~~~
 
 You start your training script by calling ``fit`` on a ``TensorFlow`` estimator. ``fit`` takes
 both required and optional arguments.
 
 Required argument
-'''''''''''''''''
+^^^^^^^^^^^^^^^^^
 
 - ``inputs``: The S3 location(s) of datasets to be used for training. This can take one of two forms:
 
@@ -107,7 +107,7 @@ Required argument
   - ``sagemaker.session.s3_input``: channel configuration for S3 data sources that can provide additional information as well as the path to the training dataset. See `the API docs <https://sagemaker.readthedocs.io/en/latest/session.html#sagemaker.session.s3_input>`_ for full details.
 
 Optional arguments
-''''''''''''''''''
+^^^^^^^^^^^^^^^^^^
 
 -  ``wait (bool)``: Defaults to True, whether to block and wait for the
    training script to complete before returning.
@@ -119,7 +119,7 @@ Optional arguments
   based on the training image name and current timestamp.
 
 What happens when fit is called
-"""""""""""""""""""""""""""""""
+'''''''''''''''''''''''''''''''
 
 Calling ``fit`` starts a SageMaker training job. The training job will execute the following.
 
@@ -142,6 +142,6 @@ After attaching, the estimator can be deployed as usual.
     tf_estimator.fit(your_input_data, wait=False)
     training_job_name = tf_estimator.latest_training_job.name
 
-    # after some time, or in a separate python notebook, we can attach to it again.
+    # after some time, or in a separate Python notebook, we can attach to it again.
 
     tf_estimator = TensorFlow.attach(training_job_name=training_job_name)
