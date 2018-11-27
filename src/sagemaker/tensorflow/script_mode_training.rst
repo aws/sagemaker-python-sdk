@@ -1,7 +1,7 @@
 Preparing a Script Mode training script
 =======================================
 
-Your TensorFlow training script must be a Python 2.7- or 3.5-compatible source file.
+Your TensorFlow training script must be a Python 2.7- or 3.6-compatible source file.
 
 The training script is very similar to a training script you might run outside of SageMaker, but you can access useful properties about the training environment through various environment variables, including the following:
 
@@ -36,16 +36,15 @@ For example, a training script might start with the following:
 
         # input data and model directories
         parser.add_argument('--model_dir', type=str)
-        parser.add_argument('--sm-model-dir', type=str, default=os.environ['SM_MODEL_DIR'])
-        parser.add_argument('--train', type=str, default=os.environ['SM_CHANNEL_TRAIN'])
-        parser.add_argument('--test', type=str, default=os.environ['SM_CHANNEL_TEST'])
+        parser.add_argument('--train', type=str, default=os.environ.get('SM_CHANNEL_TRAIN'))
+        parser.add_argument('--test', type=str, default=os.environ.get('SM_CHANNEL_TEST'))
 
         args, _ = parser.parse_known_args()
 
         # ... load from args.train and args.test, train a model, write model to args.model_dir.
 
-Because the SageMaker imports your training script, you should put your training code in a main guard (``if __name__=='__main__':``) if you are using the same script to host your model,
-so that SageMaker does not inadvertently run your training code at the wrong point in execution.
+Because the SageMaker imports your training script, putting your training launching code in a main guard (``if __name__=='__main__':``)
+is good practice.
 
 Note that SageMaker doesn't support argparse actions.
 If you want to use, for example, boolean hyperparameters, you need to specify ``type`` as ``bool`` in your script and provide an explicit ``True`` or ``False`` value for this hyperparameter when instantiating your TensorFlow estimator.
