@@ -2,12 +2,17 @@
 CHANGELOG
 =========
 
-=======
 1.16.0.dev
-=======
+==========
 
-* feature: Estimators: Add RLEstimator to provide support for Reinforcement Learning.
+* feature: Add support for SageMaker Neo
+* feature: Estimators: Add RLEstimator to provide support for Reinforcement Learning
 * feature: Add support for Amazon Elastic Inference
+* feature: Add support for Algorithm Estimators and ModelPackages: includes support for AWS Marketplace
+* feature: Add SKLearn Estimator to provide support for SciKit Learn
+* feature: Add Amazon SageMaker Semantic Segmentation algorithm to the registry
+* feature: Add support for SageMaker Inference Pipelines
+* feature: Add support for SparkML serving container
 
 1.15.2
 ======
@@ -15,7 +20,6 @@ CHANGELOG
 * bug-fix: Fix FileNotFoundError for entry_point without source_dir
 * doc-fix: Add missing feature 1.5.0 in change log
 * doc-fix: Add README for airflow
-* feature: Add Amazon SageMaker Semantic Segmentation algorithm to the registry.
 
 1.15.1
 ======
