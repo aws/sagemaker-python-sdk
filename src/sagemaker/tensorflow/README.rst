@@ -15,10 +15,9 @@ Documentation of the previous versions: ``[1.4.1](https://github.com/aws/sagemak
 | We are calling this new feature Script Mode.                                                                                        |
 | This new format is called Script Mode, as opposed to Legacy Mode, which is what we support with TensorFlow 1.11 and older versions. |
 | In addition we are adding Python 3 support with Script Mode.                                                                        |
-| For clarification we will name the current training script configuration Legacy Mode.                                               |
-| Last supported version of Framework Mode will be TensorFlow 1.12.                                                                   |
+| Last supported version of Legacy Mode will be TensorFlow 1.12.                                                                      |
 | Script Mode is only available with TensorFlow version 1.11 and newer.                                                               |
-| Make sure you refer to the correct section of this README when you prepare your script.                                             |
+| Make sure you refer to the correct version of this README when you prepare your script.                                             |
 +-------------------------------------------------------------------------------------------------------------------------------------+
 
 Training with TensorFlow
