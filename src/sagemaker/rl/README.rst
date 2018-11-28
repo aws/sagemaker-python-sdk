@@ -28,10 +28,10 @@ RL Training
 Training RL models using ``RLEstimator`` is a two-step process:
 
 1. Prepare a training script to run on SageMaker
-2. Run this script on SageMaker via a ``RLEstimator``.
+2. Run this script on SageMaker via an ``RlEstimator``.
 
 You should prepare your script in a separate source file than the notebook, terminal session, or source file you're
-using to submit the script to SageMaker via a ``RLEstimator``. This will be discussed in further detail below.
+using to submit the script to SageMaker via an ``RlEstimator``. This will be discussed in further detail below.
 
 Suppose that you already have a training script called ``coach-train.py``.
 You can then create an ``RLEstimator`` with keyword arguments to point to this script and define how SageMaker runs it:
@@ -55,7 +55,7 @@ After that, you simply tell the estimator to start a training job:
     rl_estimator.fit()
 
 In the following sections, we'll discuss how to prepare a training script for execution on SageMaker
-and how to run that script on SageMaker using a ``RLEstimator``.
+and how to run that script on SageMaker using ``RLEstimator``.
 
 
 Preparing the RL Training Script
@@ -85,7 +85,7 @@ The ``RLEstimator`` constructor takes both required and optional arguments.
 Required arguments
 ~~~~~~~~~~~~~~~~~~
 
-The following are required arguments to the ``RLEstimator`` constructor. When you create a RLEstimator object, you must include
+The following are required arguments to the ``RLEstimator`` constructor. When you create an instance of RLEstimator, you must include
 these in the constructor, either positionally or as keyword arguments.
 
 -  ``entry_point`` Path (absolute or relative) to the Python file which
@@ -122,7 +122,7 @@ or provide:
 Optional arguments
 ~~~~~~~~~~~~~~~~~~
 
-The following are optional arguments. When you create a ``RLEstimator`` object, you can specify these as keyword arguments.
+The following are optional arguments. When you create an ``RlEstimator`` object, you can specify these as keyword arguments.
 
 -  ``source_dir`` Path (absolute or relative) to a directory with any
    other training source code dependencies including the entry point
@@ -178,7 +178,7 @@ The following are optional arguments. When you create a ``RLEstimator`` object, 
 Calling fit
 ~~~~~~~~~~~
 
-You start your training script by calling ``fit`` on a ``RLEstimator``. ``fit`` takes both a few optional
+You start your training script by calling ``fit`` on an ``RLEstimator``. ``fit`` takes both a few optional
 arguments.
 
 Optional arguments
@@ -218,7 +218,7 @@ Deploying RL Models
 
 After an RL Estimator has been fit, you can host the newly created model in SageMaker.
 
-After calling ``fit``, you can call ``deploy`` on a ``RLEstimator`` Estimator to create a SageMaker Endpoint.
+After calling ``fit``, you can call ``deploy`` on an ``RlEstimator`` Estimator to create a SageMaker Endpoint.
 The Endpoint runs one of the SageMaker-provided model server based on the ``framework`` parameter
 specified in the ``RLEstimator`` constructor and hosts the model produced by your training script,
 which was run when you called ``fit``. This was the model you saved to ``model_dir``.
