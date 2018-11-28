@@ -32,7 +32,7 @@ Table of Contents
 4. `TensorFlow SageMaker Estimators <#tensorflow-sagemaker-estimators>`__
 5. `Chainer SageMaker Estimators <#chainer-sagemaker-estimators>`__
 6. `PyTorch SageMaker Estimators <#pytorch-sagemaker-estimators>`__
-7. `SageMaker RL Estimators <#sagemaker-rl-estimators>`__
+7. `SageMaker Reinforcement Learning Estimators <#sagemaker-reinforcement-learning-estimators>`__
 8. `SageMaker SparkML Serving <#sagemaker-sparkml-serving>`__
 9. `AWS SageMaker Estimators <#aws-sagemaker-estimators>`__
 10. `Using SageMaker AlgorithmEstimators <#using-sagemaker-algorithmestimators>`__
@@ -144,7 +144,7 @@ The following sections of this document explain how to use the different estimat
 * `TensorFlow SageMaker Estimators and Models <#tensorflow-sagemaker-estimators>`__
 * `Chainer SageMaker Estimators and Models <#chainer-sagemaker-estimators>`__
 * `PyTorch SageMaker Estimators <#pytorch-sagemaker-estimators>`__
-* `SageMaker RL Estimators <#sagemaker-rl-estimators>`__
+* `SageMaker Reinforcement Learning Estimators <#sagemaker-reinforcement-learning-estimators>`__
 * `AWS SageMaker Estimators and Models <#aws-sagemaker-estimators>`__
 * `Custom SageMaker Estimators and Models <#byo-docker-containers-with-sagemaker-estimators>`__
 
@@ -414,10 +414,10 @@ For more information about PyTorch SageMaker ``Estimators``, see `PyTorch SageMa
 .. _PyTorch SageMaker Estimators and Models: src/sagemaker/pytorch/README.rst
 
 
-SageMaker RL Estimators
------------------------
+SageMaker Reinforcement Learning Estimators
+-------------------------------------------
 
-With Reinforcement Learning Estimators, you can train reinforcement learning models on Amazon SageMaker.
+With Reinforcement Learning (RL) Estimators, you can use reinforcement learning to train models on Amazon SageMaker.
 
 Supported versions of Coach: ``0.10.1`` with TensorFlow, ``0.11.0`` with TensorFlow or MXNet.
 For more information about Coach, see https://github.com/NervanaSystems/coach

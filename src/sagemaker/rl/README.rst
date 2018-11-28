@@ -2,7 +2,7 @@
 SageMaker Reinforcement Learning Estimators
 ===========================================
 
-With Reinforcement Learning Estimators, you can train reinforcement learning models on Amazon SageMaker.
+With Reinforcement Learning (RL) Estimators, you can train reinforcement learning models on Amazon SageMaker.
 
 Supported versions of Coach: ``0.10.1`` with TensorFlow, ``0.11.0`` with TensorFlow or MXNet.
 For more information about Coach, see https://github.com/NervanaSystems/coach
@@ -30,13 +30,11 @@ Training RL models using ``RLEstimator`` is a two-step process:
 1. Prepare a training script to run on SageMaker
 2. Run this script on SageMaker via a ``RLEstimator``.
 
-
-First, you prepare your training script, then second, you run this on SageMaker via a ``RLEstimator``.
 You should prepare your script in a separate source file than the notebook, terminal session, or source file you're
 using to submit the script to SageMaker via a ``RLEstimator``. This will be discussed in further detail below.
 
-Suppose that you already have a training script called `coach-train.py`.
-You can then setup an ``RLEstimator`` with keyword arguments to point to this script and define how SageMaker runs it:
+Suppose that you already have a training script called ``coach-train.py``.
+You can then create an ``RLEstimator`` with keyword arguments to point to this script and define how SageMaker runs it:
 
 .. code:: python
 
@@ -56,8 +54,8 @@ After that, you simply tell the estimator to start a training job:
 
     rl_estimator.fit()
 
-In the following sections, we'll discuss how to prepare a training script for execution on SageMaker,
-then how to run that script on SageMaker using a ``RLEstimator``.
+In the following sections, we'll discuss how to prepare a training script for execution on SageMaker
+and how to run that script on SageMaker using a ``RLEstimator``.
 
 
 Preparing the RL Training Script
@@ -74,6 +72,10 @@ can access useful properties about the training environment through various envi
 * ``SM_OUTPUT_DATA_DIR``: A string representing the filesystem path to write output artifacts to. Output artifacts may
   include checkpoints, graphs, and other files to save, not including model artifacts. These artifacts are compressed
   and uploaded to S3 to the same S3 prefix as the model artifacts.
+
+For the exhaustive list of available environment variables, see the
+`SageMaker Containers documentation <https://github.com/aws/sagemaker-containers#list-of-provided-environment-variables-by-sagemaker-containers>`__.
+
 
 RL Estimators
 -------------
@@ -127,7 +129,7 @@ The following are optional arguments. When you create a ``RLEstimator`` object, 
    file. Structure within this directory will be preserved when training
    on SageMaker.
 -  ``dependencies (list[str])`` A list of paths to directories (absolute or relative) with
-   any additional libraries that will be exported to the container (default: []).
+   any additional libraries that will be exported to the container (default: ``[]``).
    The library folders will be copied to SageMaker in the same folder where the entrypoint is copied.
    If the ``source_dir`` points to S3, code will be uploaded and the S3 location will be used
    instead. Example:
@@ -148,13 +150,13 @@ The following are optional arguments. When you create a ``RLEstimator`` object, 
         >>>     └── virtual-env
 
 -  ``hyperparameters`` Hyperparameters that will be used for training.
-   Will be made accessible as a dict[str, str] to the training code on
+   Will be made accessible as a ``dict[str, str]`` to the training code on
    SageMaker. For convenience, accepts other types besides strings, but
    ``str`` will be called on keys and values to convert them before
    training.
 -  ``train_volume_size`` Size in GB of the EBS volume to use for storing
    input data during training. Must be large enough to store training
-   data if input_mode='File' is used (which is the default).
+   data if ``input_mode='File'`` is used (which is the default).
 -  ``train_max_run`` Timeout in seconds for training, after which Amazon
    SageMaker terminates the job regardless of its current status.
 -  ``input_mode`` The input mode that the algorithm supports. Valid
@@ -246,6 +248,9 @@ In case if ``image_name`` was specified it would use provided image for the depl
 
     response = predictor.predict(data)
 
+For more information please see `The SageMaker MXNet Model Server <https://github.com/aws/sagemaker-python-sdk/tree/master/src/sagemaker/mxnet#the-sagemaker-mxnet-model-server>`_
+and `Deploying to TensorFlow Serving Endpoints <https://github.com/aws/sagemaker-python-sdk/blob/master/src/sagemaker/tensorflow/deploying_tensorflow_serving.rst>`_ documentation.
+
 
 Working with Existing Training Jobs
 -----------------------------------
@@ -309,9 +314,6 @@ The Docker images have the following dependencies installed:
 +-------------------------+-------------------+-------------------+-------------------+
 
 The Docker images extend Ubuntu 16.04.
-
-If you need to install other dependencies you can put them into `requirements.txt` file and put it in the source directory
-(``source_dir``) you provide to the `RL Estimator <#rl-estimators>`__.
 
 You can select version of  by passing a ``framework_version`` keyword arg to the RL Estimator constructor.
 Currently supported versions are listed in the above table. You can also set ``framework_version`` to only specify major and
