@@ -5,32 +5,32 @@ TensorFlow SageMaker Estimators allow you to run your own TensorFlow
 training algorithms on SageMaker Learner, and to host your own TensorFlow
 models on SageMaker Hosting.
 
-+-------------------------------------------------------------------------------------------------------------------------------------------------------+
-| WARNING                                                                                                                                               |
-+=======================================================================================================================================================+
-| We have added a new format of your TensorFlow training script with TensorFlow version 1.11.                                                           |
-| This new way gives the user script more flexibility.                                                                                                  |
-| This new format is called Script Mode, as opposed to Legacy Mode, which is what we support with TensorFlow 1.11 and older versions.                   |
-| In addition we are adding Python 3 support with Script Mode.                                                                                          |
-| Last supported version of Legacy Mode will be TensorFlow 1.12.                                                                                        |
-| Script Mode is only available with TensorFlow version 1.11 and newer.                                                                                 |
-| Make sure you refer to the correct version of this README when you prepare your script.                                                               |
-| Documentation of the previous Legacy Mode versions:                                                                                                   |
-| - `1.4.1 <https://github.com/aws/sagemaker-python-sdk/tree/v1.0.0#tensorflow-sagemaker-estimators>`_                                                  |
-| - `1.5.0 <https://github.com/aws/sagemaker-python-sdk/tree/v1.1.0#tensorflow-sagemaker-estimators>`_                                                  |
-| - `1.6.0 <https://github.com/aws/sagemaker-python-sdk/blob/v1.5.0/src/sagemaker/tensorflow/README.rst#tensorflow-sagemaker-estimators-and-models>`_   |
-| - `1.7.0 <https://github.com/aws/sagemaker-python-sdk/blob/v1.5.0/src/sagemaker/tensorflow/README.rst#tensorflow-sagemaker-estimators-and-models>`_   |
-| - `1.8.0 <https://github.com/aws/sagemaker-python-sdk/blob/v1.5.0/src/sagemaker/tensorflow/README.rst#tensorflow-sagemaker-estimators-and-models>`_   |
-| - `1.9.0 <https://github.com/aws/sagemaker-python-sdk/blob/v1.9.2/src/sagemaker/tensorflow/README.rst#tensorflow-sagemaker-estimators-and-models>`_   |
-| - `1.10.0 <https://github.com/aws/sagemaker-python-sdk/blob/v1.10.0/src/sagemaker/tensorflow/README.rst#tensorflow-sagemaker-estimators-and-models>`_ |
-| - `1.11.0 <https://github.com/aws/sagemaker-python-sdk/tree/v1.12.0/src/sagemaker/tensorflow#tensorflow-sagemaker-estimators-and-models>`_            |
-+-------------------------------------------------------------------------------------------------------------------------------------------------------+
+Documentation of the previous Legacy Mode versions:
+- `1.4.1 <https://github.com/aws/sagemaker-python-sdk/tree/v1.0.0#tensorflow-sagemaker-estimators>`_
+- `1.5.0 <https://github.com/aws/sagemaker-python-sdk/tree/v1.1.0#tensorflow-sagemaker-estimators>`_
+- `1.6.0 <https://github.com/aws/sagemaker-python-sdk/blob/v1.5.0/src/sagemaker/tensorflow/README.rst#tensorflow-sagemaker-estimators-and-models>`_
+- `1.7.0 <https://github.com/aws/sagemaker-python-sdk/blob/v1.5.0/src/sagemaker/tensorflow/README.rst#tensorflow-sagemaker-estimators-and-models>`_
+- `1.8.0 <https://github.com/aws/sagemaker-python-sdk/blob/v1.5.0/src/sagemaker/tensorflow/README.rst#tensorflow-sagemaker-estimators-and-models>`_
+- `1.9.0 <https://github.com/aws/sagemaker-python-sdk/blob/v1.9.2/src/sagemaker/tensorflow/README.rst#tensorflow-sagemaker-estimators-and-models>`_
+- `1.10.0 <https://github.com/aws/sagemaker-python-sdk/blob/v1.10.0/src/sagemaker/tensorflow/README.rst#tensorflow-sagemaker-estimators-and-models>`_
+
++----------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+| WARNING                                                                                                                                                                    |
++============================================================================================================================================================================+
+| We have added a new format of your TensorFlow training script with TensorFlow version 1.11.                                                                                |
+| This new way gives the user script more flexibility.                                                                                                                       |
+| This new format is called Script Mode, as opposed to Legacy Mode, which is what we support with TensorFlow 1.11 and older versions.                                        |
+| In addition we are adding Python 3 support with Script Mode.                                                                                                               |
+| Last supported version of Legacy Mode will be TensorFlow 1.12.                                                                                                             |
+| Script Mode is available with TensorFlow version 1.11 and newer.                                                                                                           |
+| Make sure you refer to the correct version of this README when you prepare your script.                                                                                    |
+| You can find the Legacy Mode README `here <https://github.com/aws/sagemaker-python-sdk/tree/v1.12.0/src/sagemaker/tensorflow#tensorflow-sagemaker-estimators-and-models>`_ |
++----------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
 
 Training with TensorFlow
 ~~~~~~~~~~~~~~~~~~~~~~~~
 
-Training TensorFlow models using a ``sagemaker.tensorflow.TensorFlow``
-is a two-step process.
+Training TensorFlow models using ``sagemaker.tensorflow.TensorFlow`` is a two-step process.
 First, you prepare your training script, then second, you run it on
 SageMaker Learner via the ``sagemaker.tensorflow.TensorFlow`` estimator.
 
@@ -70,8 +70,8 @@ For example, a training script might start with the following:
 
         # hyperparameters sent by the client are passed as command-line arguments to the script.
         parser.add_argument('--epochs', type=int, default=10)
-        parser.add_argument('--batch-size', type=int, default=100)
-        parser.add_argument('--learning-rate', type=float, default=0.1)
+        parser.add_argument('--batch_size', type=int, default=100)
+        parser.add_argument('--learning_rate', type=float, default=0.1)
 
         # input data and model directories
         parser.add_argument('--model_dir', type=str)
@@ -113,8 +113,8 @@ a S3 location is needed as the model directory during training. Here is an examp
     estimator.fit({'train':'s3://my-bucket/my-training-data',
                   'eval':'s3://my-bucket/my-evaluation-data'})
 
-   In your training script the channels will be stored in environment variables ``SM_CHANNEL_TRAIN`` and
-   ``SM_CHANNEL_EVAL``. You can add them to your argument parsing logic like this:
+In your training script the channels will be stored in environment variables ``SM_CHANNEL_TRAIN`` and
+``SM_CHANNEL_EVAL``. You can add them to your argument parsing logic like this:
 
 .. code:: python
 
@@ -127,10 +127,13 @@ a S3 location is needed as the model directory during training. Here is an examp
    ``output_path``.
 
 
-Calling fit
-^^^^^^^^^^^
+Training with TensorFlow estimator
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-If you want to use Script Mode, set at least one of these args
+Calling fit
+'''''''''''
+
+To use Script Mode, set at least one of these args
 
 - ``py_version='py3'``
 - ``script_mode=True``
@@ -163,7 +166,7 @@ You start your training script by calling ``fit`` on a ``TensorFlow`` estimator.
 both required and optional arguments.
 
 Required argument
-'''''''''''''''''
+"""""""""""""""""
 
 - ``inputs``: The S3 location(s) of datasets to be used for training. This can take one of two forms:
 
@@ -172,7 +175,7 @@ Required argument
   - ``sagemaker.session.s3_input``: channel configuration for S3 data sources that can provide additional information as well as the path to the training dataset. See `the API docs <https://sagemaker.readthedocs.io/en/latest/session.html#sagemaker.session.s3_input>`_ for full details.
 
 Optional arguments
-''''''''''''''''''
+""""""""""""""""""
 
 - ``wait (bool)``: Defaults to True, whether to block and wait for the
   training script to complete before returning.
@@ -212,7 +215,7 @@ After attaching, the estimator can be deployed as usual.
     tf_estimator = TensorFlow.attach(training_job_name=training_job_name)
 
 sagemaker.tensorflow.TensorFlow class
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+'''''''''''''''''''''''''''''''''''''
 
 The ``TensorFlow`` constructor takes both required and optional arguments.
 
@@ -239,19 +242,17 @@ Optional:
 - ``dependencies (list[str])`` A list of paths to directories (absolute or relative) with
   any additional libraries that will be exported to the container (default: ``[]``).
   The library folders will be copied to SageMaker in the same folder where the entrypoint is copied.
-  If the ```source_dir``` points to S3, code will be uploaded and the S3 location will be used
+  If the ``source_dir`` points to S3, code will be uploaded and the S3 location will be used
   instead. Example:
 
-      The following call
-      >>> TensorFlow(entry_point='train.py', dependencies=['my/libs/common', 'virtual-env'])
-      results in the following inside the container:
+  The following call
+  >>> TensorFlow(entry_point='train.py', dependencies=['my/libs/common', 'virtual-env'])
+  results in the following inside the container:
 
-      >>> $ ls
-
-      >>> opt/ml/code
-      >>>     ├── train.py
-      >>>     ├── common
-      >>>     └── virtual-env
+  >>> opt/ml/code
+  >>>     ├── train.py
+  >>>     ├── common
+  >>>     └── virtual-env
 
 - ``hyperparameters (dict[str,ANY])`` Hyperparameters that will be used for training.
   Will be made accessible as command line arguments.
