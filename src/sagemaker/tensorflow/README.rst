@@ -20,6 +20,8 @@ Documentation of the previous Legacy Mode versions: `1.4.1 <https://github.com/a
 | You can find the Legacy Mode README `here <https://github.com/aws/sagemaker-python-sdk/tree/v1.12.0/src/sagemaker/tensorflow#tensorflow-sagemaker-estimators-and-models>`_. |
 +-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
 
+Supported versions of TensorFlow for Elastic Inference: ``1.11.0``.
+
 Training with TensorFlow
 ~~~~~~~~~~~~~~~~~~~~~~~~
 
