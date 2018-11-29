@@ -34,6 +34,15 @@ estimator object to create a SageMaker Endpoint:
 
 The code block above deploys a SageMaker Endpoint with one instance of the type 'ml.c5.xlarge'.
 
+TensorFlow serving on SageMaker has support for (`Elastic Inference <https://docs.aws.amazon.com/sagemaker/latest/dg/ei.html>`_), which allows for inference acceleration to a hosted endpoint for a fraction of the cost of using a full GPU instance. In order to attach an Elastic Inference accelerator to your endpoint provide the accelerator type to ``accelerator_type`` to your ``deploy``.
+
+.. code:: python
+
+  predictor = estimator.deploy(initial_instance_count=1,
+                               instance_type='ml.c5.xlarge',
+                               accelerator_type='ml.eia1.medium'
+                               endpoint_type='tensorflow-serving-elastic-inference')
+
 What happens when deploy is called
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
