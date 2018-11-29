@@ -370,6 +370,10 @@ class _LocalEndpoint(object):
         instance_type = self.production_variant['InstanceType']
         instance_count = self.production_variant['InitialInstanceCount']
 
+        accelerator_type = self.production_variant.get('AcceleratorType')
+        if accelerator_type == 'local_sagemaker_notebook':
+            self.primary_container['Environment']['SAGEMAKER_INFERENCE_ACCELERATOR_PRESENT'] = 'true'
+
         self.create_time = datetime.datetime.now()
         self.container = _SageMakerContainer(instance_type, instance_count, image, self.local_session)
         self.container.serve(self.primary_container['ModelDataUrl'], self.primary_container['Environment'])

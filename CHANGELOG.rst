@@ -2,6 +2,24 @@
 CHANGELOG
 =========
 
+1.16.1
+======
+
+* feature: update boto3 to version 1.9.55
+
+1.16.0
+======
+
+* feature: Add 0.10.1 coach version
+* feature: Add support for SageMaker Neo
+* feature: Estimators: Add RLEstimator to provide support for Reinforcement Learning
+* feature: Add support for Amazon Elastic Inference
+* feature: Add support for Algorithm Estimators and ModelPackages: includes support for AWS Marketplace
+* feature: Add SKLearn Estimator to provide support for SciKit Learn
+* feature: Add Amazon SageMaker Semantic Segmentation algorithm to the registry
+* feature: Add support for SageMaker Inference Pipelines
+* feature: Add support for SparkML serving container
+
 1.15.2
 ======
 
