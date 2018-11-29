@@ -23,9 +23,11 @@ from sagemaker import RealTimePredictor
 from sagemaker.amazon.pca import PCA
 from sagemaker.amazon.amazon_estimator import RecordSet
 from sagemaker.estimator import Estimator
-from sagemaker.tuner import _ParameterRange, ContinuousParameter, IntegerParameter, CategoricalParameter, \
-    HyperparameterTuner, _TuningJob, WarmStartConfig, create_identical_dataset_and_algorithm_tuner, \
-    create_transfer_learning_tuner, WarmStartTypes
+from sagemaker.parameter import (ParameterRange, ContinuousParameter,
+                                 IntegerParameter, CategoricalParameter)
+from sagemaker.tuner import (HyperparameterTuner, _TuningJob, WarmStartConfig, WarmStartTypes,
+                             create_identical_dataset_and_algorithm_tuner,
+                             create_transfer_learning_tuner)
 from sagemaker.mxnet import MXNet
 
 DATA_DIR = os.path.join(os.path.dirname(__file__), '..', 'data')
@@ -551,7 +553,7 @@ def test_transfer_learning_tuner(sagemaker_session):
 
 def test_continuous_parameter():
     cont_param = ContinuousParameter(0.1, 1e-2)
-    assert isinstance(cont_param, _ParameterRange)
+    assert isinstance(cont_param, ParameterRange)
     assert cont_param.__name__ is 'Continuous'
 
 
@@ -566,7 +568,7 @@ def test_continuous_parameter_ranges():
 
 def test_integer_parameter():
     int_param = IntegerParameter(1, 2)
-    assert isinstance(int_param, _ParameterRange)
+    assert isinstance(int_param, ParameterRange)
     assert int_param.__name__ is 'Integer'
 
 
@@ -581,7 +583,7 @@ def test_integer_parameter_ranges():
 
 def test_categorical_parameter_list():
     cat_param = CategoricalParameter(['a', 'z'])
-    assert isinstance(cat_param, _ParameterRange)
+    assert isinstance(cat_param, ParameterRange)
     assert cat_param.__name__ is 'Categorical'
 
 
@@ -595,7 +597,7 @@ def test_categorical_parameter_list_ranges():
 
 def test_categorical_parameter_value():
     cat_param = CategoricalParameter('a')
-    assert isinstance(cat_param, _ParameterRange)
+    assert isinstance(cat_param, ParameterRange)
 
 
 def test_categorical_parameter_value_ranges():

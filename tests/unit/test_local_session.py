@@ -310,6 +310,77 @@ def test_create_endpoint(describe_model, describe_endpoint_config, request, *arg
     assert 'my-endpoint' in sagemaker.local.local_session.LocalSagemakerClient._endpoints
 
 
+@patch('sagemaker.local.image._SageMakerContainer.serve')
+@patch('urllib3.PoolManager.request')
+def test_serve_endpoint_with_correct_accelerator(request, *args):
+    mock_session = Mock(name='sagemaker_session')
+    mock_session.return_value.sagemaker_client = Mock(name='sagemaker_client')
+    mock_session.config = None
+
+    request.return_value = OK_RESPONSE
+    mock_session.sagemaker_client.describe_endpoint_config.return_value = {
+        'ProductionVariants': [
+            {
+                'ModelName': 'my-model',
+                'InitialInstanceCount': 1,
+                'InstanceType': 'local',
+                'AcceleratorType': 'local_sagemaker_notebook'
+            }
+        ]
+    }
+
+    mock_session.sagemaker_client.describe_model.return_value = {
+        'PrimaryContainer': {
+            'Environment': {
+            },
+            'Image': '123.dkr.ecr-us-west-2.amazonaws.com/sagemaker-container:1.0',
+            'ModelDataUrl': 's3://sagemaker-us-west-2/some/model.tar.gz'
+        }
+    }
+
+    endpoint = sagemaker.local.local_session._LocalEndpoint('my-endpoint', 'some-endpoint-config',
+                                                            local_session=mock_session)
+    endpoint.serve()
+
+    assert endpoint.primary_container['Environment']['SAGEMAKER_INFERENCE_ACCELERATOR_PRESENT'] == 'true'
+
+
+@patch('sagemaker.local.image._SageMakerContainer.serve')
+@patch('urllib3.PoolManager.request')
+def test_serve_endpoint_with_incorrect_accelerator(request, *args):
+    mock_session = Mock(name='sagemaker_session')
+    mock_session.return_value.sagemaker_client = Mock(name='sagemaker_client')
+    mock_session.config = None
+
+    request.return_value = OK_RESPONSE
+    mock_session.sagemaker_client.describe_endpoint_config.return_value = {
+        'ProductionVariants': [
+            {
+                'ModelName': 'my-model',
+                'InitialInstanceCount': 1,
+                'InstanceType': 'local',
+                'AcceleratorType': 'local'
+            }
+        ]
+    }
+
+    mock_session.sagemaker_client.describe_model.return_value = {
+        'PrimaryContainer': {
+            'Environment': {
+            },
+            'Image': '123.dkr.ecr-us-west-2.amazonaws.com/sagemaker-container:1.0',
+            'ModelDataUrl': 's3://sagemaker-us-west-2/some/model.tar.gz'
+        }
+    }
+
+    endpoint = sagemaker.local.local_session._LocalEndpoint('my-endpoint', 'some-endpoint-config',
+                                                            local_session=mock_session)
+    endpoint.serve()
+
+    with pytest.raises(KeyError):
+        assert endpoint.primary_container['Environment']['SAGEMAKER_INFERENCE_ACCELERATOR_PRESENT'] == 'true'
+
+
 def test_file_input_all_defaults():
     prefix = 'pre'
     actual = sagemaker.local.local_session.file_input(fileUri=prefix)
