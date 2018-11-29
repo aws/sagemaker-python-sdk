@@ -239,6 +239,7 @@ Optional:
   The following call
 
   >>> TensorFlow(entry_point='train.py', dependencies=['my/libs/common', 'virtual-env'])
+
   results in the following inside the container:
 
   >>> opt/ml/code
