@@ -32,17 +32,18 @@ Table of Contents
 4. `TensorFlow SageMaker Estimators <#tensorflow-sagemaker-estimators>`__
 5. `Chainer SageMaker Estimators <#chainer-sagemaker-estimators>`__
 6. `PyTorch SageMaker Estimators <#pytorch-sagemaker-estimators>`__
-7. `SageMaker SparkML Serving <#sagemaker-sparkml-serving>`__
-8. `AWS SageMaker Estimators <#aws-sagemaker-estimators>`__
-9. `Using SageMaker AlgorithmEstimators <#using-sagemaker-algorithmestimators>`__
-10. `Consuming SageMaker Model Packages <#consuming-sagemaker-model-packages>`__
-11. `BYO Docker Containers with SageMaker Estimators <#byo-docker-containers-with-sagemaker-estimators>`__
-12. `SageMaker Automatic Model Tuning <#sagemaker-automatic-model-tuning>`__
-13. `SageMaker Batch Transform <#sagemaker-batch-transform>`__
-14. `Secure Training and Inference with VPC <#secure-training-and-inference-with-vpc>`__
-15. `BYO Model <#byo-model>`__
-16. `Inference Pipelines <#inference-pipelines>`__
-17. `SageMaker Workflow <#sagemaker-workflow>`__
+7. `SageMaker Reinforcement Learning Estimators <#sagemaker-reinforcement-learning-estimators>`__
+8. `SageMaker SparkML Serving <#sagemaker-sparkml-serving>`__
+9. `AWS SageMaker Estimators <#aws-sagemaker-estimators>`__
+10. `Using SageMaker AlgorithmEstimators <#using-sagemaker-algorithmestimators>`__
+11. `Consuming SageMaker Model Packages <#consuming-sagemaker-model-packages>`__
+12. `BYO Docker Containers with SageMaker Estimators <#byo-docker-containers-with-sagemaker-estimators>`__
+13. `SageMaker Automatic Model Tuning <#sagemaker-automatic-model-tuning>`__
+14. `SageMaker Batch Transform <#sagemaker-batch-transform>`__
+15. `Secure Training and Inference with VPC <#secure-training-and-inference-with-vpc>`__
+16. `BYO Model <#byo-model>`__
+17. `Inference Pipelines <#inference-pipelines>`__
+18. `SageMaker Workflow <#sagemaker-workflow>`__
 
 
 Installing the SageMaker Python SDK
@@ -143,6 +144,7 @@ The following sections of this document explain how to use the different estimat
 * `TensorFlow SageMaker Estimators and Models <#tensorflow-sagemaker-estimators>`__
 * `Chainer SageMaker Estimators and Models <#chainer-sagemaker-estimators>`__
 * `PyTorch SageMaker Estimators <#pytorch-sagemaker-estimators>`__
+* `SageMaker Reinforcement Learning Estimators <#sagemaker-reinforcement-learning-estimators>`__
 * `AWS SageMaker Estimators and Models <#aws-sagemaker-estimators>`__
 * `Custom SageMaker Estimators and Models <#byo-docker-containers-with-sagemaker-estimators>`__
 
@@ -414,6 +416,22 @@ For more information about PyTorch, see https://github.com/pytorch/pytorch.
 For more information about PyTorch SageMaker ``Estimators``, see `PyTorch SageMaker Estimators and Models`_.
 
 .. _PyTorch SageMaker Estimators and Models: src/sagemaker/pytorch/README.rst
+
+
+SageMaker Reinforcement Learning Estimators
+-------------------------------------------
+
+With Reinforcement Learning (RL) Estimators, you can use reinforcement learning to train models on Amazon SageMaker.
+
+Supported versions of Coach: ``0.10.1`` with TensorFlow, ``0.11.0`` with TensorFlow or MXNet.
+For more information about Coach, see https://github.com/NervanaSystems/coach
+
+Supported versions of Ray: ``0.5.3`` with TensorFlow.
+For more information about Ray, see https://github.com/ray-project/ray
+
+For more information about SageMaker RL ``Estimators``, see `SageMaker Reinforcement Learning Estimators`_.
+
+.. _SageMaker Reinforcement Learning Estimators: src/sagemaker/rl/README.rst
 
 
 SageMaker SparkML Serving
