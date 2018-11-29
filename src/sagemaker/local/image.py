@@ -119,7 +119,9 @@ class _SageMakerContainer(object):
                                                    additional_env_vars=training_env_vars)
         compose_command = self._compose()
 
-        _ecr_login_if_needed(self.sagemaker_session.boto_session, self.image)
+        if _ecr_login_if_needed(self.sagemaker_session.boto_session, self.image):
+            _pull_image(self.image)
+
         process = subprocess.Popen(compose_command, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
 
         try:
@@ -165,7 +167,8 @@ class _SageMakerContainer(object):
             if parsed_uri.scheme == 'file':
                 volumes.append(_Volume(parsed_uri.path, '/opt/ml/code'))
 
-        _ecr_login_if_needed(self.sagemaker_session.boto_session, self.image)
+        if _ecr_login_if_needed(self.sagemaker_session.boto_session, self.image):
+            _pull_image(self.image)
 
         self._generate_compose_file('serve',
                                     additional_env_vars=environment,
@@ -670,11 +673,11 @@ def _write_json_file(filename, content):
 def _ecr_login_if_needed(boto_session, image):
     # Only ECR images need login
     if not ('dkr.ecr' in image and 'amazonaws.com' in image):
-        return
+        return False
 
     # do we have the image?
     if _check_output('docker images -q %s' % image).strip():
-        return
+        return False
 
     if not boto_session:
         raise RuntimeError('A boto session is required to login to ECR.'
@@ -690,3 +693,13 @@ def _ecr_login_if_needed(boto_session, image):
 
     cmd = "docker login -u AWS -p %s %s" % (token, ecr_url)
     subprocess.check_output(cmd, shell=True)
+
+    return True
+
+
+def _pull_image(image):
+    pull_image_command = ('docker pull %s' % image).strip()
+    logger.info('docker command: {}'.format(pull_image_command))
+
+    subprocess.check_output(pull_image_command, shell=True)
+    logger.info('image pulled: {}'.format(image))

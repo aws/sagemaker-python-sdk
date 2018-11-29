@@ -21,12 +21,13 @@ from abc import abstractmethod
 from six import with_metaclass
 from six import string_types
 
+import sagemaker
 from sagemaker.analytics import TrainingJobAnalytics
 from sagemaker.fw_utils import (create_image_uri, tar_and_upload_dir, parse_s3_url, UploadedCode,
                                 validate_source_dir)
 from sagemaker.job import _Job
 from sagemaker.local import LocalSession
-from sagemaker.model import Model
+from sagemaker.model import Model, NEO_ALLOWED_TARGET_INSTANCE_FAMILY, NEO_ALLOWED_FRAMEWORKS
 from sagemaker.model import (SCRIPT_PARAM_NAME, DIR_PARAM_NAME, CLOUDWATCH_METRICS_PARAM_NAME,
                              CONTAINER_LOG_LEVEL_PARAM_NAME, JOB_NAME_PARAM_NAME,
                              SAGEMAKER_REGION_PARAM_NAME, SAGEMAKER_OUTPUT_LOCATION)
@@ -132,6 +133,8 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):
         self.output_kms_key = output_kms_key
         self.latest_training_job = None
 
+        self._compiled_models = {}
+
         # VPC configurations
         self.subnets = subnets
         self.security_group_ids = security_group_ids
@@ -160,6 +163,14 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):
         """
         pass
 
+    def enable_network_isolation(self):
+        """Return True if this Estimator will need network isolation to run.
+
+        Returns:
+            bool: Whether this Estimator needs network isolation or not.
+        """
+        return False
+
     def _prepare_for_training(self, job_name=None):
         """Set any values in the estimator that need to be set before training.
 
@@ -171,7 +182,13 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):
             self._current_job_name = job_name
         else:
             # honor supplied base_job_name or generate it
-            base_name = self.base_job_name or base_name_from_image(self.train_image())
+            if self.base_job_name:
+                base_name = self.base_job_name
+            elif isinstance(self, sagemaker.algorithm.AlgorithmEstimator):
+                base_name = self.algorithm_arn.split('/')[-1]  # pylint: disable=no-member
+            else:
+                base_name = base_name_from_image(self.train_image())
+
             self._current_job_name = name_from_base(base_name)
 
         # if output_path was specified we use it otherwise initialize here.
@@ -217,6 +234,57 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):
         if wait:
             self.latest_training_job.wait(logs=logs)
 
+    def _compilation_job_name(self):
+        base_name = self.base_job_name or base_name_from_image(self.train_image())
+        return name_from_base('compilation-' + base_name)
+
+    def compile_model(self, target_instance_family, input_shape, output_path, framework=None, framework_version=None,
+                      compile_max_run=5 * 60, tags=None, **kwargs):
+        """Compile a Neo model using the input model.
+
+        Args:
+            target_instance_family (str): Identifies the device that you want to run your model after compilation, for
+                example: ml_c5. Allowed strings are: ml_c5, ml_m5, ml_c4, ml_m4, jetsontx1, jetsontx2, ml_p2, ml_p3,
+                deeplens, rasp3b
+            input_shape (dict): Specifies the name and shape of the expected inputs for your trained model in json
+                dictionary form, for example: {‘data’:[1,3,1024,1024]}, or {‘var1’: [1,1,28,28], ‘var2’:[1,1,28,28]}
+            output_path (str): Specifies where to store the compiled model
+            framework (str): The framework that is used to train the original model. Allowed values: 'mxnet',
+                'tensorflow', 'pytorch', 'onnx', 'xgboost'
+            framework_version (str): The version of the framework
+            compile_max_run (int): Timeout in seconds for compilation (default: 3 * 60).
+                After this amount of time Amazon SageMaker Neo terminates the compilation job regardless of its
+                current status.
+            tags (list[dict]): List of tags for labeling a compilation job. For more, see
+                https://docs.aws.amazon.com/sagemaker/latest/dg/API_Tag.html.
+            **kwargs: Passed to invocation of ``create_model()``. Implementations may customize
+                ``create_model()`` to accept ``**kwargs`` to customize model creation during deploy.
+                For more, see the implementation docs.
+        Returns:
+            sagemaker.model.Model: A SageMaker ``Model`` object. See :func:`~sagemaker.model.Model` for full details.
+        """
+        if target_instance_family not in NEO_ALLOWED_TARGET_INSTANCE_FAMILY:
+            raise ValueError("Please use valid target_instance_family,"
+                             "allowed values: {}".format(NEO_ALLOWED_TARGET_INSTANCE_FAMILY))
+        if framework and framework not in NEO_ALLOWED_FRAMEWORKS:
+            raise ValueError("Please use valid framework, allowed values: {}".format(NEO_ALLOWED_FRAMEWORKS))
+
+        if (framework is None) != (framework_version is None):
+            raise ValueError("You should provide framework and framework_version at the same time.")
+
+        model = self.create_model(**kwargs)
+
+        self._compiled_models[target_instance_family] = model.compile(target_instance_family,
+                                                                      input_shape,
+                                                                      output_path,
+                                                                      self.role,
+                                                                      tags,
+                                                                      self._compilation_job_name(),
+                                                                      compile_max_run,
+                                                                      framework=framework,
+                                                                      framework_version=framework_version)
+        return self._compiled_models[target_instance_family]
+
     @classmethod
     def attach(cls, training_job_name, sagemaker_session=None, model_channel_name='model'):
         """Attach to an existing training job.
@@ -258,7 +326,8 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):
         estimator.latest_training_job.wait()
         return estimator
 
-    def deploy(self, initial_instance_count, instance_type, endpoint_name=None, **kwargs):
+    def deploy(self, initial_instance_count, instance_type, accelerator_type=None, endpoint_name=None,
+               use_compiled_model=False, **kwargs):
         """Deploy the trained model to an Amazon SageMaker endpoint and return a ``sagemaker.RealTimePredictor`` object.
 
         More information:
@@ -268,8 +337,13 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):
             initial_instance_count (int): Minimum number of EC2 instances to deploy to an endpoint for prediction.
             instance_type (str): Type of EC2 instance to deploy to an endpoint for prediction,
                 for example, 'ml.c4.xlarge'.
+            accelerator_type (str): Type of Elastic Inference accelerator to attach to an endpoint for model loading
+                and inference, for example, 'ml.eia1.medium'. If not specified, no Elastic Inference accelerator
+                will be attached to the endpoint.
+                For more information: https://docs.aws.amazon.com/sagemaker/latest/dg/ei.html
             endpoint_name (str): Name to use for creating an Amazon SageMaker endpoint. If not specified, the name of
                 the training job is used.
+            use_compiled_model (bool): Flag to select whether to use compiled (optimized) model. Default: False.
             **kwargs: Passed to invocation of ``create_model()``. Implementations may customize
                 ``create_model()`` to accept ``**kwargs`` to customize model creation during deploy.
                 For more, see the implementation docs.
@@ -281,9 +355,18 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):
         self._ensure_latest_training_job()
         endpoint_name = endpoint_name or self.latest_training_job.name
         self.deploy_instance_type = instance_type
-        return self.create_model(**kwargs).deploy(
+        if use_compiled_model:
+            family = '_'.join(instance_type.split('.')[:-1])
+            if family not in self._compiled_models:
+                raise ValueError("No compiled model for {}. "
+                                 "Please compile one with compile_model before deploying.".format(family))
+            model = self._compiled_models[family]
+        else:
+            model = self.create_model(**kwargs)
+        return model.deploy(
             instance_type=instance_type,
             initial_instance_count=initial_instance_count,
+            accelerator_type=accelerator_type,
             endpoint_name=endpoint_name)
 
     @property
@@ -296,6 +379,7 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):
             logging.warning('No finished training job found associated with this estimator. Please make sure'
                             'this estimator is only used for building workflow config')
             model_uri = os.path.join(self.output_path, self._current_job_name, 'output', 'model.tar.gz')
+
         return model_uri
 
     @abstractmethod
@@ -335,7 +419,13 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):
         init_params['output_kms_key'] = job_details['OutputDataConfig']['KmsKeyId']
 
         init_params['hyperparameters'] = job_details['HyperParameters']
-        init_params['image'] = job_details['AlgorithmSpecification']['TrainingImage']
+        if 'TrainingImage' in job_details['AlgorithmSpecification']:
+            init_params['image'] = job_details['AlgorithmSpecification']['TrainingImage']
+        elif 'AlgorithmName' in job_details['AlgorithmSpecification']:
+            init_params['algorithm_arn'] = job_details['AlgorithmSpecification']['AlgorithmName']
+        else:
+            raise RuntimeError('Invalid AlgorithmSpecification. Either TrainingImage or '
+                               'AlgorithmName is expected. None was found.')
 
         if 'MetricDefinitons' in job_details['AlgorithmSpecification']:
             init_params['metric_definitions'] = job_details['AlgorithmSpecification']['MetricsDefinition']
@@ -391,9 +481,13 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):
             volume_kms_key (str): Optional. KMS key ID for encrypting the volume attached to the ML
                 compute instance (default: None).
         """
-        self._ensure_latest_training_job()
+        if self.latest_training_job is not None:
+            model_name = self.sagemaker_session.create_model_from_job(self.latest_training_job.name, role=role)
+        else:
+            logging.warning('No finished training job found associated with this estimator. Please make sure'
+                            'this estimator is only used for building workflow config')
+            model_name = self._current_job_name
 
-        model_name = self.sagemaker_session.create_model_from_job(self.latest_training_job.name, role=role)
         tags = tags or self.tags
 
         return Transformer(model_name, instance_count, instance_type, strategy=strategy, assemble_with=assemble_with,
@@ -452,12 +546,22 @@ class _TrainingJob(_Job):
         if estimator.hyperparameters() is not None:
             hyperparameters = {str(k): str(v) for (k, v) in estimator.hyperparameters().items()}
 
-        estimator.sagemaker_session.train(image=estimator.train_image(), input_mode=estimator.input_mode,
-                                          input_config=config['input_config'], role=config['role'],
-                                          job_name=estimator._current_job_name, output_config=config['output_config'],
-                                          resource_config=config['resource_config'], vpc_config=config['vpc_config'],
-                                          hyperparameters=hyperparameters, stop_condition=config['stop_condition'],
-                                          tags=estimator.tags, metric_definitions=estimator.metric_definitions)
+        train_args = config.copy()
+        train_args['input_mode'] = estimator.input_mode
+        train_args['job_name'] = estimator._current_job_name
+        train_args['hyperparameters'] = hyperparameters
+        train_args['tags'] = estimator.tags
+        train_args['metric_definitions'] = estimator.metric_definitions
+
+        if estimator.enable_network_isolation():
+            train_args['enable_network_isolation'] = True
+
+        if isinstance(estimator, sagemaker.algorithm.AlgorithmEstimator):
+            train_args['algorithm_arn'] = estimator.algorithm_arn
+        else:
+            train_args['image'] = estimator.train_image()
+
+        estimator.sagemaker_session.train(**train_args)
 
         return cls(estimator.sagemaker_session, estimator._current_job_name)
 
@@ -633,7 +737,7 @@ class Framework(EstimatorBase):
     LAUNCH_PS_ENV_NAME = 'sagemaker_parameter_server_enabled'
 
     def __init__(self, entry_point, source_dir=None, hyperparameters=None, enable_cloudwatch_metrics=False,
-                 container_log_level=logging.INFO, code_location=None, image_name=None, **kwargs):
+                 container_log_level=logging.INFO, code_location=None, image_name=None, dependencies=None, **kwargs):
         """Base class initializer. Subclasses which override ``__init__`` should invoke ``super()``
 
         Args:
@@ -642,6 +746,22 @@ class Framework(EstimatorBase):
             source_dir (str): Path (absolute or relative) to a directory with any other training
                 source code dependencies aside from tne entry point file (default: None). Structure within this
                 directory are preserved when training on Amazon SageMaker.
+            dependencies (list[str]): A list of paths to directories (absolute or relative) with
+                any additional libraries that will be exported to the container (default: []).
+                The library folders will be copied to SageMaker in the same folder where the entrypoint is copied.
+                Example:
+
+                    The following call
+                    >>> Estimator(entry_point='train.py', dependencies=['my/libs/common', 'virtual-env'])
+                    results in the following inside the container:
+
+                    >>> $ ls
+
+                    >>> opt/ml/code
+                    >>>     |------ train.py
+                    >>>     |------ common
+                    >>>     |------ virtual-env
+
             hyperparameters (dict): Hyperparameters that will be used for training (default: None).
                 The hyperparameters are made accessible as a dict[str, str] to the training code on SageMaker.
                 For convenience, this accepts other types for keys and values, but ``str()`` will be called
@@ -650,8 +770,10 @@ class Framework(EstimatorBase):
                 training jobs. This will be ignored for now and removed in a further release.
             container_log_level (int): Log level to use within the container (default: logging.INFO).
                 Valid values are defined in the Python logging module.
-            code_location (str): Name of the S3 bucket where custom code is uploaded (default: None).
-                If not specified, default bucket created by ``sagemaker.session.Session`` is used.
+            code_location (str): The S3 prefix URI where custom code will be uploaded (default: None).
+                The code file uploaded in S3 is 'code_location/source/sourcedir.tar.gz'.
+                If not specified, the default code location is s3://default_bucket/job-name/. And code file
+                uploaded to S3 is s3://default_bucket/job-name/source/sourcedir.tar.gz
             image_name (str): An alternate image name to use instead of the official Sagemaker image
                 for the framework. This is useful to run one of the Sagemaker supported frameworks
                 with an image containing custom dependencies.
@@ -659,6 +781,7 @@ class Framework(EstimatorBase):
         """
         super(Framework, self).__init__(**kwargs)
         self.source_dir = source_dir
+        self.dependencies = dependencies or []
         self.entry_point = entry_point
         if enable_cloudwatch_metrics:
             warnings.warn('enable_cloudwatch_metrics is now deprecated and will be removed in the future.',
@@ -725,7 +848,8 @@ class Framework(EstimatorBase):
                                   bucket=code_bucket,
                                   s3_key_prefix=code_s3_prefix,
                                   script=self.entry_point,
-                                  directory=self.source_dir)
+                                  directory=self.source_dir,
+                                  dependencies=self.dependencies)
 
     def _model_source_dir(self):
         """Get the appropriate value to pass as source_dir to model constructor on deploying
@@ -880,19 +1004,23 @@ class Framework(EstimatorBase):
             volume_kms_key (str): Optional. KMS key ID for encrypting the volume attached to the ML
                 compute instance (default: None).
         """
-        self._ensure_latest_training_job()
         role = role or self.role
 
-        model = self.create_model(role=role, model_server_workers=model_server_workers)
+        if self.latest_training_job is not None:
+            model = self.create_model(role=role, model_server_workers=model_server_workers)
 
-        container_def = model.prepare_container_def(instance_type)
-        model_name = model.name or name_from_image(container_def['Image'])
-        vpc_config = model.vpc_config
-        self.sagemaker_session.create_model(model_name, role, container_def, vpc_config)
-
-        transform_env = model.env.copy()
-        if env is not None:
-            transform_env.update(env)
+            container_def = model.prepare_container_def(instance_type)
+            model_name = model.name or name_from_image(container_def['Image'])
+            vpc_config = model.vpc_config
+            self.sagemaker_session.create_model(model_name, role, container_def, vpc_config)
+            transform_env = model.env.copy()
+            if env is not None:
+                transform_env.update(env)
+        else:
+            logging.warning('No finished training job found associated with this estimator. Please make sure'
+                            'this estimator is only used for building workflow config')
+            model_name = self._current_job_name
+            transform_env = env or {}
 
         tags = tags or self.tags
         return Transformer(model_name, instance_count, instance_type, strategy=strategy, assemble_with=assemble_with,

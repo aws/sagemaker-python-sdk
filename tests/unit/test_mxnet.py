@@ -17,7 +17,7 @@ import logging
 import json
 import os
 import pytest
-from mock import Mock
+from mock import MagicMock, Mock
 from mock import patch
 
 from sagemaker.mxnet import defaults
@@ -26,18 +26,23 @@ from sagemaker.mxnet import MXNetPredictor, MXNetModel
 
 DATA_DIR = os.path.join(os.path.dirname(__file__), '..', 'data')
 SCRIPT_PATH = os.path.join(DATA_DIR, 'dummy_script.py')
+MODEL_DATA = 's3://mybucket/model'
 TIMESTAMP = '2017-11-06-14:14:15.672'
 TIME = 1507167947
 BUCKET_NAME = 'mybucket'
 INSTANCE_COUNT = 1
 INSTANCE_TYPE = 'ml.c4.4xlarge'
+ACCELERATOR_TYPE = 'ml.eia.medium'
 IMAGE_CPU_NAME = 'sagemaker-mxnet'
 JOB_NAME = '{}-{}'.format(IMAGE_CPU_NAME, TIMESTAMP)
+COMPILATION_JOB_NAME = '{}-{}'.format('compilation-sagemaker-mxnet', TIMESTAMP)
+FRAMEWORK = 'mxnet'
 FULL_IMAGE_URI = '520713654638.dkr.ecr.us-west-2.amazonaws.com/{}:{}-cpu-py2'
 ROLE = 'Dummy'
 REGION = 'us-west-2'
 GPU = 'ml.p2.xlarge'
 CPU = 'ml.c4.xlarge'
+CPU_C5 = 'ml.c5.xlarge'
 LAUNCH_PS_DISTRIBUTIONS_DICT = {'parameter_server': {'enabled': True}}
 
 
@@ -48,7 +53,9 @@ def sagemaker_session():
                    boto_region_name=REGION, config=None, local_mode=False)
 
     describe = {'ModelArtifacts': {'S3ModelArtifacts': 's3://m/m.tar.gz'}}
+    describe_compilation = {'ModelArtifacts': {'S3ModelArtifacts': 's3://m/model_c5.tar.gz'}}
     session.sagemaker_client.describe_training_job = Mock(return_value=describe)
+    session.wait_for_compilation_job = Mock(return_value=describe_compilation)
     session.default_bucket = Mock(name='default_bucket', return_value=BUCKET_NAME)
     session.expand_role = Mock(name="expand_role", return_value=ROLE)
     return session
@@ -56,6 +63,10 @@ def sagemaker_session():
 
 def _get_full_image_uri(version):
     return FULL_IMAGE_URI.format(IMAGE_CPU_NAME, version)
+
+
+def _get_full_image_uri_for_cpu_with_ei(version):
+    return FULL_IMAGE_URI.format('{}-eia'.format(IMAGE_CPU_NAME), version)
 
 
 def _create_train_job(version):
@@ -101,6 +112,34 @@ def _create_train_job(version):
     }
 
 
+def _create_compilation_job(input_shape, output_location):
+    return {
+        'input_model_config': {
+            'DataInputConfig': input_shape,
+            'Framework': FRAMEWORK.upper(),
+            'S3Uri': 's3://m/m.tar.gz'
+        },
+        'job_name': COMPILATION_JOB_NAME,
+        'output_model_config': {
+            'S3OutputLocation': output_location,
+            'TargetDevice': 'ml_c4'
+        },
+        'role': ROLE,
+        'stop_condition': {
+            'MaxRuntimeInSeconds': 300
+        },
+        'tags': None
+    }
+
+
+def _neo_inference_image(mxnet_version):
+    return "301217895009.dkr.ecr.us-west-2.amazonaws.com/sagemaker-neo-{}:{}-cpu-py3".format(
+        FRAMEWORK.lower(),
+        mxnet_version
+    )
+
+
+@patch('sagemaker.utils.create_tar_file', MagicMock())
 def test_create_model(sagemaker_session, mxnet_version):
     container_log_level = '"logging.INFO"'
     source_dir = 's3://mybucket/source'
@@ -121,6 +160,7 @@ def test_create_model(sagemaker_session, mxnet_version):
     assert model.name == job_name
     assert model.container_log_level == container_log_level
     assert model.source_dir == source_dir
+    assert model.image is None
     assert model.vpc_config is None
 
 
@@ -168,6 +208,7 @@ def test_create_model_with_custom_image(sagemaker_session):
     assert model.source_dir == source_dir
 
 
+@patch('sagemaker.utils.create_tar_file', MagicMock())
 @patch('time.strftime', return_value=TIMESTAMP)
 def test_mxnet(strftime, sagemaker_session, mxnet_version):
     mx = MXNet(entry_point=SCRIPT_PATH, role=ROLE, sagemaker_session=sagemaker_session,
@@ -207,11 +248,58 @@ def test_mxnet(strftime, sagemaker_session, mxnet_version):
     assert isinstance(predictor, MXNetPredictor)
 
 
+@patch('sagemaker.utils.create_tar_file', MagicMock())
+@patch('time.strftime', return_value=TIMESTAMP)
+def test_mxnet_neo(strftime, sagemaker_session, mxnet_version):
+    mx = MXNet(entry_point=SCRIPT_PATH, role=ROLE, sagemaker_session=sagemaker_session,
+               train_instance_count=INSTANCE_COUNT, train_instance_type=INSTANCE_TYPE,
+               framework_version=mxnet_version)
+
+    inputs = 's3://mybucket/train'
+
+    mx.fit(inputs=inputs)
+
+    input_shape = {'data': [100, 1, 28, 28]}
+    output_location = 's3://neo-sdk-test'
+
+    compiled_model = mx.compile_model(target_instance_family='ml_c4', input_shape=input_shape,
+                                      output_path=output_location)
+
+    sagemaker_call_names = [c[0] for c in sagemaker_session.method_calls]
+    assert sagemaker_call_names == ['train', 'logs_for_job', 'sagemaker_client.describe_training_job',
+                                    'compile_model', 'wait_for_compilation_job']
+
+    expected_compile_model_args = _create_compilation_job(json.dumps(input_shape), output_location)
+    actual_compile_model_args = sagemaker_session.method_calls[3][2]
+    assert expected_compile_model_args == actual_compile_model_args
+
+    assert compiled_model.image == _neo_inference_image(mxnet_version)
+
+    predictor = mx.deploy(1, CPU, use_compiled_model=True)
+    assert isinstance(predictor, MXNetPredictor)
+
+    with pytest.raises(Exception) as wrong_target:
+        mx.deploy(1, CPU_C5, use_compiled_model=True)
+    assert str(wrong_target.value).startswith('No compiled model for')
+
+    # deploy without sagemaker Neo should continue to work
+    mx.deploy(1, CPU)
+
+
+@patch('sagemaker.utils.create_tar_file', MagicMock())
 def test_model(sagemaker_session):
-    model = MXNetModel("s3://some/data.tar.gz", role=ROLE, entry_point=SCRIPT_PATH,
+    model = MXNetModel(MODEL_DATA, role=ROLE, entry_point=SCRIPT_PATH,
                        sagemaker_session=sagemaker_session)
     predictor = model.deploy(1, GPU)
     assert isinstance(predictor, MXNetPredictor)
+
+
+@patch('sagemaker.fw_utils.tar_and_upload_dir', MagicMock())
+def test_model_image_accelerator(sagemaker_session):
+    model = MXNetModel(MODEL_DATA, role=ROLE, entry_point=SCRIPT_PATH,
+                       sagemaker_session=sagemaker_session)
+    container_def = model.prepare_container_def(INSTANCE_TYPE, accelerator_type=ACCELERATOR_TYPE)
+    assert container_def['Image'] == _get_full_image_uri_for_cpu_with_ei(defaults.MXNET_VERSION)
 
 
 def test_train_image_default(sagemaker_session):

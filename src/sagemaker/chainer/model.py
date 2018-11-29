@@ -70,11 +70,13 @@ class ChainerModel(FrameworkModel):
         self.framework_version = framework_version
         self.model_server_workers = model_server_workers
 
-    def prepare_container_def(self, instance_type):
+    def prepare_container_def(self, instance_type, accelerator_type=None):
         """Return a container definition with framework configuration set in model environment variables.
 
         Args:
             instance_type (str): The EC2 instance type to deploy this Model to. For example, 'ml.p2.xlarge'.
+            accelerator_type (str): The Elastic Inference accelerator type to deploy to the instance for loading and
+                making inferences to the model. For example, 'ml.eia1.medium'.
 
         Returns:
             dict[str, str]: A container definition object usable with the CreateModel API.
@@ -83,7 +85,7 @@ class ChainerModel(FrameworkModel):
         if not deploy_image:
             region_name = self.sagemaker_session.boto_session.region_name
             deploy_image = create_image_uri(region_name, self.__framework_name__, instance_type,
-                                            self.framework_version, self.py_version)
+                                            self.framework_version, self.py_version, accelerator_type=accelerator_type)
 
         deploy_key_prefix = model_code_key_prefix(self.key_prefix, self.name, deploy_image)
         self._upload_code(deploy_key_prefix)
