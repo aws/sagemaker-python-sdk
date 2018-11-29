@@ -5,7 +5,8 @@ CHANGELOG
 1.16.1.1
 ========
 
-* enhancement: main Readme update.
+* enhancement: Documentation: add documentation for Reinforcement Learning Estimator.
+* enhancement: Documentation: update TensorFlow README for Script Mode
 
 1.16.1
 ======
