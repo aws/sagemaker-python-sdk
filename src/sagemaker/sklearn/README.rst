@@ -13,12 +13,12 @@ Table of Contents
 
 1. `Training with Scikit-learn <#training-with-scikit-learn>`__
 2. `Scikit-learn Estimators <#scikit-learn-estimators>`__
-4. `Saving models <#saving-models>`__
-5. `Deploying Scikit-learn models <#deploying-scikit-learn-models>`__
-6. `SageMaker Scikit-learn Model Server <#sagemaker-scikit-learn-model-server>`__
-7. `Working with Existing Model Data and Training Jobs <#working-with-existing-model-data-and-training-jobs>`__
-8. `Scikit-learn Training Examples <#scikit-learn-training-examples>`__
-9. `SageMaker PyTorch Docker Containers <#sagemaker-pytorch-docker-containers>`__
+3. `Saving models <#saving-models>`__
+4. `Deploying Scikit-learn models <#deploying-scikit-learn-models>`__
+5. `SageMaker Scikit-learn Model Server <#sagemaker-scikit-learn-model-server>`__
+6. `Working with Existing Model Data and Training Jobs <#working-with-existing-model-data-and-training-jobs>`__
+7. `Scikit-learn Training Examples <#scikit-learn-training-examples>`__
+8. `SageMaker PyTorch Docker Containers <#sagemaker-pytorch-docker-containers>`__
 
 
 Training with Scikit-learn
