@@ -29,11 +29,13 @@ from sagemaker.chainer import ChainerPredictor, ChainerModel
 
 DATA_DIR = os.path.join(os.path.dirname(__file__), '..', 'data')
 SCRIPT_PATH = os.path.join(DATA_DIR, 'dummy_script.py')
+MODEL_DATA = "s3://some/data.tar.gz"
 TIMESTAMP = '2017-11-06-14:14:15.672'
 TIME = 1507167947
 BUCKET_NAME = 'mybucket'
 INSTANCE_COUNT = 1
 INSTANCE_TYPE = 'ml.c4.4xlarge'
+ACCELERATOR_TYPE = 'ml.eia.medium'
 PYTHON_VERSION = 'py' + str(sys.version_info.major)
 IMAGE_NAME = 'sagemaker-chainer'
 JOB_NAME = '{}-{}'.format(IMAGE_NAME, TIMESTAMP)
@@ -57,12 +59,16 @@ def sagemaker_session():
     return session
 
 
-def _get_full_cpu_image_uri(version):
-    return IMAGE_URI_FORMAT_STRING.format(REGION, IMAGE_NAME, version, 'cpu', PYTHON_VERSION)
+def _get_full_cpu_image_uri(version, py_version=PYTHON_VERSION):
+    return IMAGE_URI_FORMAT_STRING.format(REGION, IMAGE_NAME, version, 'cpu', py_version)
 
 
-def _get_full_gpu_image_uri(version):
-    return IMAGE_URI_FORMAT_STRING.format(REGION, IMAGE_NAME, version, 'gpu', PYTHON_VERSION)
+def _get_full_gpu_image_uri(version, py_version=PYTHON_VERSION):
+    return IMAGE_URI_FORMAT_STRING.format(REGION, IMAGE_NAME, version, 'gpu', py_version)
+
+
+def _get_full_cpu_image_uri_with_ei(version, py_version=PYTHON_VERSION):
+    return _get_full_cpu_image_uri(version, py_version=py_version) + '-eia'
 
 
 def _chainer_estimator(sagemaker_session, framework_version=defaults.CHAINER_VERSION, train_instance_type=None,
@@ -328,6 +334,14 @@ def test_model(sagemaker_session):
                          sagemaker_session=sagemaker_session)
     predictor = model.deploy(1, GPU)
     assert isinstance(predictor, ChainerPredictor)
+
+
+@patch('sagemaker.fw_utils.tar_and_upload_dir', MagicMock())
+def test_model_prepare_container_def_accelerator_error(sagemaker_session):
+    model = ChainerModel(MODEL_DATA, role=ROLE, entry_point=SCRIPT_PATH,
+                         sagemaker_session=sagemaker_session)
+    with pytest.raises(ValueError):
+        model.prepare_container_def(INSTANCE_TYPE, accelerator_type=ACCELERATOR_TYPE)
 
 
 def test_train_image_default(sagemaker_session):

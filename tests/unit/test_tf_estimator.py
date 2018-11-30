@@ -28,12 +28,14 @@ import sagemaker.tensorflow.estimator as tfe
 DATA_DIR = os.path.join(os.path.dirname(__file__), '..', 'data')
 SCRIPT_FILE = 'dummy_script.py'
 SCRIPT_PATH = os.path.join(DATA_DIR, SCRIPT_FILE)
+MODEL_DATA = "s3://some/data.tar.gz"
 REQUIREMENTS_FILE = 'dummy_requirements.txt'
 TIMESTAMP = '2017-11-06-14:14:15.673'
 TIME = 1510006209.073025
 BUCKET_NAME = 'mybucket'
 INSTANCE_COUNT = 1
 INSTANCE_TYPE = 'ml.c4.4xlarge'
+ACCELERATOR_TYPE = 'ml.eia.medium'
 IMAGE_REPO_NAME = 'sagemaker-tensorflow'
 SM_IMAGE_REPO_NAME = 'sagemaker-tensorflow-scriptmode'
 JOB_NAME = '{}-{}'.format(IMAGE_REPO_NAME, TIMESTAMP)
@@ -64,6 +66,10 @@ def _get_full_cpu_image_uri(version, repo=IMAGE_REPO_NAME, py_version='py2'):
 
 def _get_full_gpu_image_uri(version, repo=IMAGE_REPO_NAME, py_version='py2'):
     return IMAGE_URI_FORMAT_STRING.format(REGION, repo, version, 'gpu', py_version)
+
+
+def _get_full_cpu_image_uri_with_ei(version):
+    return _get_full_cpu_image_uri(version, repo='{}-eia'.format(IMAGE_REPO_NAME))
 
 
 def _hyperparameters(script_mode=False):
@@ -319,10 +325,18 @@ def test_run_tensorboard_locally_without_tensorboard_binary(time, strftime, pope
 
 @patch('sagemaker.utils.create_tar_file', MagicMock())
 def test_model(sagemaker_session, tf_version):
-    model = TensorFlowModel("s3://some/data.tar.gz", role=ROLE, entry_point=SCRIPT_PATH,
+    model = TensorFlowModel(MODEL_DATA, role=ROLE, entry_point=SCRIPT_PATH,
                             sagemaker_session=sagemaker_session)
     predictor = model.deploy(1, INSTANCE_TYPE)
     assert isinstance(predictor, TensorFlowPredictor)
+
+
+@patch('sagemaker.fw_utils.tar_and_upload_dir', MagicMock())
+def test_model_image_accelerator(sagemaker_session):
+    model = TensorFlowModel(MODEL_DATA, role=ROLE, entry_point=SCRIPT_PATH,
+                            sagemaker_session=sagemaker_session)
+    container_def = model.prepare_container_def(INSTANCE_TYPE, accelerator_type=ACCELERATOR_TYPE)
+    assert container_def['Image'] == _get_full_cpu_image_uri_with_ei(defaults.TF_VERSION)
 
 
 @patch('time.strftime', return_value=TIMESTAMP)
