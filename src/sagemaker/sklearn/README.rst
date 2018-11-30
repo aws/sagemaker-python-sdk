@@ -13,7 +13,7 @@ Table of Contents
 
 1. `Training with Scikit-learn <#training-with-scikit-learn>`__
 2. `Scikit-learn Estimators <#scikit-learn-estimators>`__
-3. `Saving models <#saving-models>`__  
+3. `Saving models <#saving-models>`__
 4. `Deploying Scikit-learn models <#deploying-scikit-learn-models>`__
 5. `SageMaker Scikit-learn Model Server <#sagemaker-scikit-learn-model-server>`__
 6. `Working with Existing Model Data and Training Jobs <#working-with-existing-model-data-and-training-jobs>`__
