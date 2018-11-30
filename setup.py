@@ -22,7 +22,7 @@ from setuptools import setup, find_packages
 
 def get_version():
     root = os.path.dirname(__file__)
-    version_re = re.compile(r'''__version__ = ['"]([0-9.]+)['"]''')
+    version_re = re.compile(r'''__version__ = ['"]([0-9.]+((post|dev)\d+)?)['"]''')
 
     init = read(os.path.join(root, 'src/sagemaker', '__init__.py'))
     return version_re.search(init).group(1)
