@@ -854,6 +854,11 @@ This returns a predictor the same way an ``Estimator`` does when ``deploy()`` is
 request using this predictor, you should pass the data that the first container expects and the predictor will return the
 output from the last container.
 
+For comprehensive examples on how to use Inference Pipelines please refer to the following notebooks:
+
+- `inference_pipeline_sparkml_xgboost_abalone.ipynb <https://github.com/awslabs/amazon-sagemaker-examples/blob/master/advanced_functionality/inference_pipeline_sparkml_xgboost_abalone/inference_pipeline_sparkml_xgboost_abalone.ipynb>`__
+- `inference_pipeline_sparkml_blazingtext_dbpedia.ipynb <https://github.com/awslabs/amazon-sagemaker-examples/blob/master/advanced_functionality/inference_pipeline_sparkml_blazingtext_dbpedia/inference_pipeline_sparkml_blazingtext_dbpedia.ipynb>`__
+
 
 SageMaker Workflow
 ------------------
