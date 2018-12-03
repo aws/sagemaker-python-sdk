@@ -109,7 +109,7 @@ def test_failed_training_job(sagemaker_session, pytorch_full_version):
 
         with pytest.raises(ValueError) as e:
             pytorch.fit()
-        assert 'This failure is expected' in str(e.value)
+        assert 'ExecuteUserScriptError' in str(e.value)
 
 
 def _upload_training_data(pytorch):
