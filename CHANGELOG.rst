@@ -2,6 +2,12 @@
 CHANGELOG
 =========
 
+1.16.1.post1
+============
+
+* Documentation: add documentation for Reinforcement Learning Estimator.
+* Documentation: update TensorFlow README for Script Mode
+
 1.16.1
 ======
 

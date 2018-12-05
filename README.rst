@@ -356,7 +356,9 @@ MXNet SageMaker Estimators
 
 By using MXNet SageMaker ``Estimators``, you can train and host MXNet models on Amazon SageMaker.
 
-Supported versions of MXNet: ``1.2.1``, ``1.1.0``, ``1.0.0``, ``0.12.1``.
+Supported versions of MXNet: ``1.3.0``, ``1.2.1``, ``1.1.0``, ``1.0.0``, ``0.12.1``.
+
+Supported versions of MXNet for Elastic Inference: ``1.3.0``
 
 We recommend that you use the latest supported version, because that's where we focus most of our development efforts.
 
@@ -371,6 +373,8 @@ TensorFlow SageMaker Estimators
 By using TensorFlow SageMaker ``Estimators``, you can train and host TensorFlow models on Amazon SageMaker.
 
 Supported versions of TensorFlow: ``1.4.1``, ``1.5.0``, ``1.6.0``, ``1.7.0``, ``1.8.0``, ``1.9.0``, ``1.10.0``, ``1.11.0``.
+
+Supported versions of TensorFlow for Elastic Inference: ``1.11.0``.
 
 We recommend that you use the latest supported version, because that's where we focus most of our development efforts.
 
@@ -849,6 +853,11 @@ information about how to train an XGBoost model, please refer to the XGBoost not
 This returns a predictor the same way an ``Estimator`` does when ``deploy()`` is called. Whenever you make an inference
 request using this predictor, you should pass the data that the first container expects and the predictor will return the
 output from the last container.
+
+For comprehensive examples on how to use Inference Pipelines please refer to the following notebooks:
+
+- `inference_pipeline_sparkml_xgboost_abalone.ipynb <https://github.com/awslabs/amazon-sagemaker-examples/blob/master/advanced_functionality/inference_pipeline_sparkml_xgboost_abalone/inference_pipeline_sparkml_xgboost_abalone.ipynb>`__
+- `inference_pipeline_sparkml_blazingtext_dbpedia.ipynb <https://github.com/awslabs/amazon-sagemaker-examples/blob/master/advanced_functionality/inference_pipeline_sparkml_blazingtext_dbpedia/inference_pipeline_sparkml_blazingtext_dbpedia.ipynb>`__
 
 
 SageMaker Workflow

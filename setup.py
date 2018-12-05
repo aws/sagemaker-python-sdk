@@ -22,7 +22,7 @@ from setuptools import setup, find_packages
 
 def get_version():
     root = os.path.dirname(__file__)
-    version_re = re.compile(r'''__version__ = ['"]([0-9.]+)['"]''')
+    version_re = re.compile(r'''__version__ = ['"]([0-9.]+((post|dev)\d+)?)['"]''')
 
     init = read(os.path.join(root, 'src/sagemaker', '__init__.py'))
     return version_re.search(init).group(1)
@@ -34,7 +34,7 @@ def read(fname):
 
 # Declare minimal set for installation
 required_packages = ['boto3>=1.9.55', 'numpy>=1.9.0', 'protobuf>=3.1', 'scipy>=0.19.0',
-                     'urllib3>=1.21', 'PyYAML>=3.2', 'protobuf3-to-dict>=0.1.5',
+                     'urllib3>=1.21', 'PyYAML>=3.2, <4', 'protobuf3-to-dict>=0.1.5',
                      'docker-compose>=1.23.0']
 
 # enum is introduced in Python 3.4. Installing enum back port
