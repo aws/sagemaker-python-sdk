@@ -309,10 +309,6 @@ class _SageMakerContainer(object):
                 volumes.append(_Volume(shared_dir, '/opt/ml/shared'))
 
         parsed_uri = urlparse(output_data_config['S3OutputPath'])
-        print("output_data_config['S3OutputPath']: {}".format(output_data_config['S3OutputPath']))
-        print('sagemaker.estimator.SAGEMAKER_OUTPUT_LOCATION in hyperparameters: {}'.format(
-            sagemaker.estimator.SAGEMAKER_OUTPUT_LOCATION in hyperparameters
-        ))
         if parsed_uri.scheme == 'file' \
                 and sagemaker.estimator.SAGEMAKER_OUTPUT_LOCATION in hyperparameters:
             intermediate_dir = os.path.join(parsed_uri.path, 'output', 'intermediate')
