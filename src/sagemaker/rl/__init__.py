@@ -13,6 +13,7 @@
 from __future__ import absolute_import
 
 from sagemaker.rl.estimator import (RLEstimator, RLToolkit, RLFramework,
-                                    TOOLKIT_FRAMEWORK_VERSION_MAP)
+                                    TOOLKIT_FRAMEWORK_VERSION_MAP, SAGEMAKER_OUTPUT_LOCATION)
 
-__all__ = [RLEstimator, RLToolkit, RLFramework, TOOLKIT_FRAMEWORK_VERSION_MAP]
+__all__ = [RLEstimator, RLToolkit, RLFramework,
+           TOOLKIT_FRAMEWORK_VERSION_MAP, SAGEMAKER_OUTPUT_LOCATION]

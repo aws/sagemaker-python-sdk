@@ -29,8 +29,7 @@ from sagemaker.job import _Job
 from sagemaker.local import LocalSession
 from sagemaker.model import Model, NEO_ALLOWED_TARGET_INSTANCE_FAMILY, NEO_ALLOWED_FRAMEWORKS
 from sagemaker.model import (SCRIPT_PARAM_NAME, DIR_PARAM_NAME, CLOUDWATCH_METRICS_PARAM_NAME,
-                             CONTAINER_LOG_LEVEL_PARAM_NAME, JOB_NAME_PARAM_NAME,
-                             SAGEMAKER_REGION_PARAM_NAME, SAGEMAKER_OUTPUT_LOCATION)
+                             CONTAINER_LOG_LEVEL_PARAM_NAME, JOB_NAME_PARAM_NAME, SAGEMAKER_REGION_PARAM_NAME)
 from sagemaker.predictor import RealTimePredictor
 from sagemaker.session import Session
 from sagemaker.session import s3_input
