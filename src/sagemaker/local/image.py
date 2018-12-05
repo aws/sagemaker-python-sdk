@@ -36,9 +36,11 @@ import sagemaker
 import sagemaker.local.data
 import sagemaker.local.utils
 import sagemaker.utils
+from sagemaker.local.entities import HEALTH_CHECK_TIMEOUT_LIMIT
 
 CONTAINER_PREFIX = 'algo'
 DOCKER_COMPOSE_FILENAME = 'docker-compose.yaml'
+
 
 # Environment variables to be set during training
 REGION_ENV_NAME = 'AWS_REGION'
@@ -358,6 +360,9 @@ class _SageMakerContainer(object):
 
         additional_env_var_list = ['{}={}'.format(k, v) for k, v in additional_env_vars.items()]
         environment.extend(additional_env_var_list)
+
+        if os.environ.get('COMPOSE_HTTP_TIMEOUT') is None:
+            os.environ['COMPOSE_HTTP_TIMEOUT'] = str(HEALTH_CHECK_TIMEOUT_LIMIT)
 
         if command == 'train':
             optml_dirs = {'output', 'output/data', 'input'}
