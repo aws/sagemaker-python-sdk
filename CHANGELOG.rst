@@ -2,6 +2,11 @@
 CHANGELOG
 =========
 
+1.16.2.dev
+==========
+
+* feature: Local Mode: Add support for intermediate output to a local directory.
+
 1.16.1.post1
 ============
 
