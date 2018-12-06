@@ -282,13 +282,13 @@ def test_augmented_manifest(sagemaker_session):
                         train_instance_count=INSTANCE_COUNT, train_instance_type=INSTANCE_TYPE,
                         enable_cloudwatch_metrics=True)
     fw.fit(inputs=s3_input('s3://mybucket/train_manifest', s3_data_type='AugmentedManifestFile',
-                           attribute_names=["foo", "bar"]))
+                           attribute_names=['foo', 'bar']))
 
     _, _, train_kwargs = sagemaker_session.train.mock_calls[0]
     s3_data_source = train_kwargs['input_config'][0]['DataSource']['S3DataSource']
     assert s3_data_source['S3Uri'] == 's3://mybucket/train_manifest'
     assert s3_data_source['S3DataType'] == 'AugmentedManifestFile'
-    assert s3_data_source['AttributeNames'] == ["foo", "bar"]
+    assert s3_data_source['AttributeNames'] == ['foo', 'bar']
 
 
 def test_shuffle_config(sagemaker_session):

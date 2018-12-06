@@ -2,6 +2,10 @@
 CHANGELOG
 =========
 
+1.16.2
+======
+* feature: Add support for AugmentedManifestFile and ShuffleConfig
+
 1.16.1.post1
 ============
 
