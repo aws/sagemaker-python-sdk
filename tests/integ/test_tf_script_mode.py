@@ -24,6 +24,7 @@ import tests.integ.timeout as timeout
 RESOURCE_PATH = os.path.join(os.path.dirname(__file__), '..', 'data', 'tensorflow_mnist')
 SCRIPT = os.path.join(RESOURCE_PATH, 'mnist.py')
 DISTRIBUTION_ENABLED = {'parameter_server': {'enabled': True}}
+DISTRIBUTION_MPI_ENABLED = {'mpi': {'enabled': True}}
 
 
 @pytest.fixture(scope='session', params=['ml.c5.xlarge', 'ml.p2.xlarge'])
@@ -64,6 +65,28 @@ def test_mnist_distributed(sagemaker_session, instance_type):
                            framework_version='1.11',
                            distributions=DISTRIBUTION_ENABLED,
                            base_job_name='test-tf-sm-mnist')
+    inputs = estimator.sagemaker_session.upload_data(
+        path=os.path.join(RESOURCE_PATH, 'data'),
+        key_prefix='scriptmode/distributed_mnist')
+
+    with timeout.timeout(minutes=integ.TRAINING_DEFAULT_TIMEOUT_MINUTES):
+        estimator.fit(inputs)
+    _assert_s3_files_exist(estimator.model_dir,
+                           ['graph.pbtxt', 'model.ckpt-0.index', 'model.ckpt-0.meta', 'saved_model.pb'])
+
+
+@pytest.mark.skip(reason='The containers have not been updated in Prod yet.')
+def test_mnist_horovod_distributed(sagemaker_session, instance_type):
+    estimator = TensorFlow(entry_point=os.path.join(RESOURCE_PATH, 'horovod_mnist.py'),
+                           role='SageMakerRole',
+                           train_instance_count=2,
+                           train_instance_type=instance_type,
+                           sagemaker_session=sagemaker_session,
+                           py_version=integ.PYTHON_VERSION,
+                           script_mode=True,
+                           framework_version='1.11',
+                           distributions=DISTRIBUTION_MPI_ENABLED,
+                           base_job_name='test-tf-sm-horovod-mnist')
     inputs = estimator.sagemaker_session.upload_data(
         path=os.path.join(RESOURCE_PATH, 'data'),
         key_prefix='scriptmode/distributed_mnist')
