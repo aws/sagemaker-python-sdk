@@ -201,10 +201,18 @@ class TensorFlow(Framework):
             script_mode (bool): If set to True will the estimator will use the Script Mode containers (default: False).
                 This will be ignored if py_version is set to 'py3'.
             distributions (dict): A dictionary with information on how to run distributed training
-                (default: None). Currently we only support distributed training with parameter servers. To enable it
-                use the following setup:
+                (default: None). Currently we support distributed training with parameter servers and MPI. To enable
+                parameter server use the following setup:
+
                     {
                         'parameter_server':
+                        {
+                            'enabled': True
+                        }
+                    }
+                To enable MPI:
+                    {
+                        'mpi':
                         {
                             'enabled': True
                         }
@@ -427,6 +435,9 @@ class TensorFlow(Framework):
             if 'parameter_server' in self.distributions:
                 enabled = self.distributions['parameter_server'].get('enabled', False)
                 additional_hyperparameters[self.LAUNCH_PS_ENV_NAME] = enabled
+            if 'mpi' in self.distributions:
+                enabled = self.distributions['mpi'].get('enabled', False)
+                additional_hyperparameters[self.USE_MPI_ENV_NAME] = enabled
         else:
             additional_hyperparameters = {'checkpoint_path': self.checkpoint_path,
                                           'training_steps': self.training_steps,

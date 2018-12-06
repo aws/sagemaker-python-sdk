@@ -46,6 +46,7 @@ DOCKER_TAG = '1.0'
 IMAGE_URI_FORMAT_STRING = "520713654638.dkr.ecr.{}.amazonaws.com/{}:{}-{}-{}"
 SCRIPT_MODE_REPO_NAME = 'sagemaker-tensorflow-scriptmode'
 DISTRIBUTION_ENABLED = {'parameter_server': {'enabled': True}}
+DISTRIBUTION_MPI_ENABLED = {'mpi': {'enabled': True}}
 
 
 @pytest.fixture()
@@ -787,6 +788,28 @@ def test_tf_script_mode_ps(time, strftime, sagemaker_session):
     expected_train_args = _create_train_job('1.11', script_mode=True, repo_name=SM_IMAGE_REPO_NAME, py_version='py3')
     expected_train_args['input_config'][0]['DataSource']['S3DataSource']['S3Uri'] = inputs
     expected_train_args['hyperparameters'][TensorFlow.LAUNCH_PS_ENV_NAME] = json.dumps(True)
+
+    actual_train_args = sagemaker_session.method_calls[0][2]
+    assert actual_train_args == expected_train_args
+
+
+@patch('time.strftime', return_value=TIMESTAMP)
+@patch('time.time', return_value=TIME)
+@patch('sagemaker.utils.create_tar_file', MagicMock())
+def test_tf_script_mode_mpi(time, strftime, sagemaker_session):
+    tf = TensorFlow(entry_point=SCRIPT_FILE, role=ROLE, sagemaker_session=sagemaker_session, py_version='py3',
+                    train_instance_type=INSTANCE_TYPE, train_instance_count=1, framework_version='1.11',
+                    source_dir=DATA_DIR, distributions=DISTRIBUTION_MPI_ENABLED)
+
+    inputs = 's3://mybucket/train'
+    tf.fit(inputs=inputs)
+
+    call_names = [c[0] for c in sagemaker_session.method_calls]
+    assert call_names == ['train', 'logs_for_job']
+
+    expected_train_args = _create_train_job('1.11', script_mode=True, repo_name=SM_IMAGE_REPO_NAME, py_version='py3')
+    expected_train_args['input_config'][0]['DataSource']['S3DataSource']['S3Uri'] = inputs
+    expected_train_args['hyperparameters'][TensorFlow.USE_MPI_ENV_NAME] = json.dumps(True)
 
     actual_train_args = sagemaker_session.method_calls[0][2]
     assert actual_train_args == expected_train_args
