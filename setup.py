@@ -15,13 +15,14 @@ from __future__ import absolute_import
 import os
 import re
 from glob import glob
+import sys
 
 from setuptools import setup, find_packages
 
 
 def get_version():
     root = os.path.dirname(__file__)
-    version_re = re.compile(r'''__version__ = ['"]([0-9.]+)['"]''')
+    version_re = re.compile(r'''__version__ = ['"]([0-9.]+((post|dev)\d+)?)['"]''')
 
     init = read(os.path.join(root, 'src/sagemaker', '__init__.py'))
     return version_re.search(init).group(1)
@@ -31,12 +32,21 @@ def read(fname):
     return open(os.path.join(os.path.dirname(__file__), fname)).read()
 
 
+# Declare minimal set for installation
+required_packages = ['boto3>=1.9.55', 'numpy>=1.9.0', 'protobuf>=3.1', 'scipy>=0.19.0',
+                     'urllib3>=1.21', 'PyYAML>=3.2, <4', 'protobuf3-to-dict>=0.1.5',
+                     'docker-compose>=1.23.0']
+
+# enum is introduced in Python 3.4. Installing enum back port
+if sys.version_info < (3, 4):
+    required_packages.append('enum34>=1.1.6')
+
 setup(name="sagemaker",
       version=get_version(),
       description="Open source library for training and deploying models on Amazon SageMaker.",
       packages=find_packages('src'),
       package_dir={'': 'src'},
-      py_modules=[os.splitext(os.basename(path))[0] for path in glob('src/*.py')],
+      py_modules=[os.path.splitext(os.path.basename(path))[0] for path in glob('src/*.py')],
       long_description=read('README.rst'),
       author="Amazon Web Services",
       url='https://github.com/aws/sagemaker-python-sdk/',
@@ -52,10 +62,7 @@ setup(name="sagemaker",
           "Programming Language :: Python :: 3.5",
       ],
 
-      # Declare minimal set for installation
-      install_requires=['boto3>=1.9.45', 'numpy>=1.9.0', 'protobuf>=3.1', 'scipy>=0.19.0',
-                        'urllib3 >=1.21', 'PyYAML>=3.2', 'protobuf3-to-dict>=0.1.5',
-                        'docker-compose>=1.23.0'],
+      install_requires=required_packages,
 
       extras_require={
           'test': ['tox', 'flake8', 'pytest', 'pytest-cov', 'pytest-xdist',
