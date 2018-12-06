@@ -207,6 +207,43 @@ After attaching, the estimator can be deployed as usual.
 
     tf_estimator = TensorFlow.attach(training_job_name=training_job_name)
 
+Distributed Training
+''''''''''''''''''''
+
+To run your training job in a distributed fashion you need to set ``train_instance_count`` to a number larger than 1.
+We support two different types of distributed training, parameter server and MPI. The ``distributions`` parameter is
+used to configure which distributed training strategy to use.
+
+To enable parameter server training:
+
+.. code:: python
+
+  from sagemaker.tensorflow import TensorFlow
+
+  tf_estimator = TensorFlow(entry_point='tf-train.py', role='SageMakerRole',
+                            train_instance_count=2, train_instance_type='ml.p2.xlarge',
+                            framework_version='1.11', py_version='py3',
+                            distributions={'parameter_server': {'enabled': True}})
+  tf_estimator.fit('s3://bucket/path/to/training/data')
+
+If parameter server is enabled, the container will launch a parameter server thread in each instance first then execute
+your training code. You can find more information on TensorFlow distributed training `here <https://www.tensorflow.org/deploy/distributed>`__
+
+To enable MPI training:
+
+.. code:: python
+
+  from sagemaker.tensorflow import TensorFlow
+
+  tf_estimator = TensorFlow(entry_point='tf-train.py', role='SageMakerRole',
+                            train_instance_count=2, train_instance_type='ml.p2.xlarge',
+                            framework_version='1.11', py_version='py3',
+                            distributions={'mpi': {'enabled': True}})
+  tf_estimator.fit('s3://bucket/path/to/training/data')
+
+If MPI is enabled the container will construct and run MPI commands which executes your training script. You can find
+more information on MPI and Horovod `here <https://github.com/uber/horovod>`__
+
 sagemaker.tensorflow.TensorFlow class
 '''''''''''''''''''''''''''''''''''''
 
@@ -277,8 +314,7 @@ Optional:
 - ``model_dir (str)`` Location where model data, checkpoint data, and TensorBoard checkpoints should be saved during training.
   If not specified a S3 location will be generated under the training job's default bucket. And ``model_dir`` will be
   passed in your training script as one of the command line arguments.
-- ``distributions (dict)`` Configure your distrubtion strategy with this argument. For launching parameter server for
-  for distributed training, you must set ``distributions`` to ``{'parameter_server': {'enabled': True}}``
+- ``distributions (dict)`` Configure your distribution strategy with this argument.
 
 Training with Pipe Mode using PipeModeDataset
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
