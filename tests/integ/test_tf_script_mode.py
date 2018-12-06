@@ -75,7 +75,7 @@ def test_mnist_distributed(sagemaker_session, instance_type):
                            ['graph.pbtxt', 'model.ckpt-0.index', 'model.ckpt-0.meta', 'saved_model.pb'])
 
 
-@pytest.mark.skip(reason='The containers have not been updated in Prod yet.')
+@pytest.mark.skipif(integ.PYTHON_VERSION != 'py3', reason="Script Mode tests are only configured to run with Python 3")
 def test_mnist_horovod_distributed(sagemaker_session, instance_type):
     estimator = TensorFlow(entry_point=os.path.join(RESOURCE_PATH, 'horovod_mnist.py'),
                            role='SageMakerRole',
