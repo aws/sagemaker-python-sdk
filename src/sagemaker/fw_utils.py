@@ -219,9 +219,11 @@ def framework_name_from_image(image_name):
     else:
         # extract framework, python version and image tag
         # We must support both the legacy and current image name format.
-        name_pattern = \
-            re.compile('^sagemaker(?:-rl)?-(tensorflow|mxnet|chainer|pytorch|scikit-learn):(.*)-(.*?)-(py2|py3)$')
-        legacy_name_pattern = re.compile('^sagemaker-(tensorflow|mxnet)-(py2|py3)-(cpu|gpu):(.*)$')
+        name_pattern = re.compile(
+            r'^sagemaker(?:-rl)?-(tensorflow|mxnet|chainer|pytorch|scikit-learn):(.*)-(.*?)-(py2|py3)$')
+        legacy_name_pattern = re.compile(
+            r'^sagemaker-(tensorflow|mxnet)-(py2|py3)-(cpu|gpu):(.*)$')
+
         name_match = name_pattern.match(sagemaker_match.group(8))
         legacy_match = legacy_name_pattern.match(sagemaker_match.group(8))
 
