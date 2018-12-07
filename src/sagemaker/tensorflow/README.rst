@@ -218,7 +218,7 @@ Training with parameter servers
 """""""""""""""""""""""""""""""
 
 If parameter server is enabled, the container will launch a parameter server thread in each instance first then execute
-your training code. You can find more information on TensorFlow distributed training `here <https://www.tensorflow.org/deploy/distributed>`__
+your training code. You can find more information on TensorFlow distributed training `here <https://www.tensorflow.org/deploy/distributed>`__.
 To enable parameter server training:
 
 .. code:: python
@@ -246,7 +246,7 @@ Training with ``MPI`` is configured by specifying following fields in ``distribu
   greater than the available slots on the selected instance type.
 - ``custom_mpi_options (str)``: Additional command line arguments to pass to ``mpirun``.
 
-In the below example we create an estimator to launch Horovod distributed training with 2 processes per host:
+In the below example we create an estimator to launch Horovod distributed training with 2 processes on one host:
 
 .. code:: python
 
