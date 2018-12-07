@@ -241,7 +241,7 @@ training script with Script Mode.
 
 Training with ``MPI`` is configured by specifying following fields in ``distributions``:
 
-- ``enabled (bool)``: If set to `True`, the MPI setup is performed and ``mpirun`` command is executed.
+- ``enabled (bool)``: If set to ``True``, the MPI setup is performed and ``mpirun`` command is executed.
 - ``processes_per_host (int)``: Number of processes MPI should launch on each host. Note, this should not be
   greater than the available slots on the selected instance type.
 - ``custom_mpi_options (str)``: Additional command line arguments to pass to ``mpirun``.
@@ -255,7 +255,7 @@ In the below example we create an estimator to launch Horovod distributed traini
     tf_estimator = TensorFlow(entry_point='tf-train.py', role='SageMakerRole',
                             train_instance_count=1, train_instance_type='ml.p2.xlarge',
                             framework_version='1.11', py_version='py3',
-                            distributions: {
+                            distributions={
                                 "mpi":{
                                     "enabled":True,
                                     "processes_per_host":2,
