@@ -241,7 +241,7 @@ To enable MPI training:
                             distributions={'mpi': {'enabled': True}})
   tf_estimator.fit('s3://bucket/path/to/training/data')
 
-If MPI is enabled the container will construct and run MPI commands which executes your training script. You can find
+If MPI is enabled the container will configure and execute ``mpirun`` with your training script. You can find
 more information on MPI and Horovod `here <https://github.com/uber/horovod>`__
 
 sagemaker.tensorflow.TensorFlow class

@@ -27,8 +27,8 @@ tf.logging.set_verbosity(tf.logging.INFO)
 def _parse_args():
     parser = argparse.ArgumentParser()
     # Data, model, and output directories
-    parser.add_argument('--output-data-dir', type=str, default=os.environ['SM_OUTPUT_DATA_DIR'])
-    parser.add_argument('--model_dir', type=str, default=os.environ['SM_MODEL_DIR'])
+    parser.add_argument('--output-data-dir', type=str, default=os.environ.get('SM_OUTPUT_DATA_DIR'))
+    parser.add_argument('--model_dir', type=str)
 
     return parser.parse_known_args()
 
