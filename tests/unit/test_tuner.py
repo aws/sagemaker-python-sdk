@@ -74,7 +74,8 @@ TUNING_JOB_DETAILS = {
                     'MinValue': '10',
                 },
             ]
-        }
+        },
+        'TrainingJobEarlyStoppingType': 'Off'
     },
     'HyperParameterTuningJobName': JOB_NAME,
     'TrainingJobDefinition': {
@@ -241,8 +242,23 @@ def test_fit_pca(sagemaker_session, tuner):
     assert len(tune_kwargs['parameter_ranges']['IntegerParameterRanges']) == 1
     assert tune_kwargs['job_name'].startswith('pca')
     assert tune_kwargs['tags'] == tags
+    assert tune_kwargs['early_stopping_type'] == 'Off'
     assert tuner.estimator.mini_batch_size == 9999
 
+def test_fit_pca_with_early_stopping(sagemaker_session, tuner):
+    pca = PCA(ROLE, TRAIN_INSTANCE_COUNT, TRAIN_INSTANCE_TYPE, NUM_COMPONENTS,
+              base_job_name='pca', sagemaker_session=sagemaker_session)
+
+    tuner.estimator = pca
+    tuner.early_stopping_type = 'Auto'
+
+    records = RecordSet(s3_data=INPUTS, num_records=1, feature_dim=1)
+    tuner.fit(records, mini_batch_size=9999)
+
+    _, _, tune_kwargs = sagemaker_session.tune.mock_calls[0]
+
+    assert tune_kwargs['job_name'].startswith('pca')
+    assert tune_kwargs['early_stopping_type'] == 'Auto'
 
 def test_attach_tuning_job_with_estimator_from_hyperparameters(sagemaker_session):
     job_details = copy.deepcopy(TUNING_JOB_DETAILS)
@@ -257,6 +273,7 @@ def test_attach_tuning_job_with_estimator_from_hyperparameters(sagemaker_session
     assert tuner.metric_definitions == METRIC_DEFINTIONS
     assert tuner.strategy == 'Bayesian'
     assert tuner.objective_type == 'Minimize'
+    assert tuner.early_stopping_type == 'Off'
 
     assert isinstance(tuner.estimator, PCA)
     assert tuner.estimator.role == ROLE
@@ -269,6 +286,17 @@ def test_attach_tuning_job_with_estimator_from_hyperparameters(sagemaker_session
     assert '_tuning_objective_metric' not in tuner.estimator.hyperparameters()
     assert tuner.estimator.hyperparameters()['num_components'] == '1'
 
+def test_attach_tuning_job_with_estimator_from_hyperparameters_with_early_stopping(sagemaker_session):
+    job_details = copy.deepcopy(TUNING_JOB_DETAILS)
+    job_details['HyperParameterTuningJobConfig']['TrainingJobEarlyStoppingType'] = 'Auto'
+    sagemaker_session.sagemaker_client.describe_hyper_parameter_tuning_job = Mock(name='describe_tuning_job',
+                                                                                  return_value=job_details)
+    tuner = HyperparameterTuner.attach(JOB_NAME, sagemaker_session=sagemaker_session)
+
+    assert tuner.latest_tuning_job.name == JOB_NAME
+    assert tuner.early_stopping_type == 'Auto'
+
+    assert isinstance(tuner.estimator, PCA)
 
 def test_attach_tuning_job_with_job_details(sagemaker_session):
     job_details = copy.deepcopy(TUNING_JOB_DETAILS)

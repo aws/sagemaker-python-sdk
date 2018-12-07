@@ -83,15 +83,16 @@ def hyperparameter_ranges():
 
 def _tune_and_deploy(kmeans_estimator, kmeans_train_set, sagemaker_session,
                      hyperparameter_ranges=None, job_name=None,
-                     warm_start_config=None):
+                     warm_start_config=None, early_stopping_type='Off'):
     tuner = _tune(kmeans_estimator, kmeans_train_set,
                   hyperparameter_ranges=hyperparameter_ranges, warm_start_config=warm_start_config,
-                  job_name=job_name)
-    _deploy(kmeans_train_set, sagemaker_session, tuner)
+                  job_name=job_name, early_stopping_type=early_stopping_type)
+    _deploy(kmeans_train_set, sagemaker_session, tuner, early_stopping_type)
 
 
-def _deploy(kmeans_train_set, sagemaker_session, tuner):
+def _deploy(kmeans_train_set, sagemaker_session, tuner, early_stopping_type):
     best_training_job = tuner.best_training_job()
+    assert tuner.early_stopping_type == early_stopping_type
     with timeout_and_delete_endpoint_by_name(best_training_job, sagemaker_session):
         predictor = tuner.deploy(1, 'ml.c4.xlarge')
 
@@ -105,7 +106,7 @@ def _deploy(kmeans_train_set, sagemaker_session, tuner):
 
 def _tune(kmeans_estimator, kmeans_train_set, tuner=None,
           hyperparameter_ranges=None, job_name=None, warm_start_config=None,
-          wait_till_terminal=True, max_jobs=2, max_parallel_jobs=2):
+          wait_till_terminal=True, max_jobs=2, max_parallel_jobs=2, early_stopping_type='Off'):
     with timeout(minutes=TUNING_DEFAULT_TIMEOUT_MINUTES):
 
         if not tuner:
@@ -115,7 +116,8 @@ def _tune(kmeans_estimator, kmeans_train_set, tuner=None,
                                         objective_type='Minimize',
                                         max_jobs=max_jobs,
                                         max_parallel_jobs=max_parallel_jobs,
-                                        warm_start_config=warm_start_config)
+                                        warm_start_config=warm_start_config,
+                                        early_stopping_type=early_stopping_type)
 
         records = kmeans_estimator.record_set(kmeans_train_set[0][:100])
         test_record_set = kmeans_estimator.record_set(kmeans_train_set[0][:100], channel='test')
@@ -332,15 +334,22 @@ def test_tuning_lda(sagemaker_session):
         tuner = HyperparameterTuner(estimator=lda, objective_metric_name=objective_metric_name,
                                     hyperparameter_ranges=hyperparameter_ranges,
                                     objective_type='Maximize', max_jobs=2,
-                                    max_parallel_jobs=2)
+                                    max_parallel_jobs=2,
+                                    early_stopping_type='Auto')
 
         tuning_job_name = unique_name_from_base('test-lda', max_length=32)
         tuner.fit([record_set, test_record_set], mini_batch_size=1, job_name=tuning_job_name)
 
-        print('Started hyperparameter tuning job with name:' + tuner.latest_tuning_job.name)
+        latest_tuning_job_name = tuner.latest_tuning_job.name
+
+        print('Started hyperparameter tuning job with name:' + latest_tuning_job_name)
 
         time.sleep(15)
         tuner.wait()
+
+    desc = tuner.latest_tuning_job.sagemaker_session.sagemaker_client \
+        .describe_hyper_parameter_tuning_job(HyperParameterTuningJobName=latest_tuning_job_name)
+    assert desc['HyperParameterTuningJobConfig']['TrainingJobEarlyStoppingType'] == 'Auto'
 
     best_training_job = tuner.best_training_job()
     with timeout_and_delete_endpoint_by_name(best_training_job, sagemaker_session):
@@ -555,7 +564,8 @@ def test_attach_tuning_pytorch(sagemaker_session):
 
         tuner = HyperparameterTuner(estimator, objective_metric_name, hyperparameter_ranges,
                                     metric_definitions,
-                                    max_jobs=2, max_parallel_jobs=2)
+                                    max_jobs=2, max_parallel_jobs=2,
+                                    early_stopping_type='Auto')
 
         training_data = estimator.sagemaker_session.upload_data(
             path=os.path.join(mnist_dir, 'training'),
@@ -571,6 +581,8 @@ def test_attach_tuning_pytorch(sagemaker_session):
 
     attached_tuner = HyperparameterTuner.attach(tuning_job_name,
                                                 sagemaker_session=sagemaker_session)
+    assert attached_tuner.early_stopping_type == 'Auto'
+
     best_training_job = tuner.best_training_job()
     with timeout_and_delete_endpoint_by_name(best_training_job, sagemaker_session):
         predictor = attached_tuner.deploy(1, 'ml.c4.xlarge')
