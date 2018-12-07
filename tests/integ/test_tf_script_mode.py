@@ -93,8 +93,8 @@ def test_mnist_horovod_distributed(sagemaker_session, instance_type):
 
     with timeout.timeout(minutes=integ.TRAINING_DEFAULT_TIMEOUT_MINUTES):
         estimator.fit(inputs)
-    _assert_s3_files_exist(estimator.model_dir,
-                           ['graph.pbtxt', 'model.ckpt-0.index', 'model.ckpt-0.meta', 'saved_model.pb'])
+
+    # TODO: Add assertion of model.tar.gz contains the checkpoint files.
 
 
 def _assert_s3_files_exist(s3_url, files):

@@ -73,7 +73,7 @@ def _get_full_cpu_image_uri_with_ei(version):
     return _get_full_cpu_image_uri(version, repo='{}-eia'.format(IMAGE_REPO_NAME))
 
 
-def _hyperparameters(script_mode=False):
+def _hyperparameters(script_mode=False, horovod=False):
     job_name = SM_JOB_NAME if script_mode else JOB_NAME
     hps = {
         'sagemaker_program': json.dumps('dummy_script.py'),
@@ -85,7 +85,10 @@ def _hyperparameters(script_mode=False):
         'sagemaker_region': json.dumps('us-west-2')
     }
     if script_mode:
-        hps['model_dir'] = json.dumps('s3://{}/{}/model'.format(BUCKET_NAME, job_name))
+        if horovod:
+            hps['model_dir'] = json.dumps('/opt/ml/model')
+        else:
+            hps['model_dir'] = json.dumps('s3://{}/{}/model'.format(BUCKET_NAME, job_name))
     else:
         hps['checkpoint_path'] = json.dumps('s3://{}/{}/checkpoints'.format(BUCKET_NAME, job_name))
         hps['training_steps'] = '1000'
@@ -94,7 +97,7 @@ def _hyperparameters(script_mode=False):
     return hps
 
 
-def _create_train_job(tf_version, script_mode=False, repo_name=IMAGE_REPO_NAME, py_version='py2'):
+def _create_train_job(tf_version, script_mode=False, horovod=False, repo_name=IMAGE_REPO_NAME, py_version='py2'):
     return {
         'image': _get_full_cpu_image_uri(tf_version, repo=repo_name, py_version=py_version),
         'input_mode': 'File',
@@ -119,7 +122,7 @@ def _create_train_job(tf_version, script_mode=False, repo_name=IMAGE_REPO_NAME, 
             'InstanceCount': 1,
             'VolumeSizeInGB': 30,
         },
-        'hyperparameters': _hyperparameters(script_mode),
+        'hyperparameters': _hyperparameters(script_mode, horovod),
         'stop_condition': {
             'MaxRuntimeInSeconds': 24 * 60 * 60
         },
@@ -807,9 +810,10 @@ def test_tf_script_mode_mpi(time, strftime, sagemaker_session):
     call_names = [c[0] for c in sagemaker_session.method_calls]
     assert call_names == ['train', 'logs_for_job']
 
-    expected_train_args = _create_train_job('1.11', script_mode=True, repo_name=SM_IMAGE_REPO_NAME, py_version='py3')
+    expected_train_args = _create_train_job('1.11', script_mode=True, horovod=True,
+                                            repo_name=SM_IMAGE_REPO_NAME, py_version='py3')
     expected_train_args['input_config'][0]['DataSource']['S3DataSource']['S3Uri'] = inputs
-    expected_train_args['hyperparameters'][TensorFlow.USE_MPI_ENV_NAME] = json.dumps(True)
+    expected_train_args['hyperparameters'][TensorFlow.LAUNCH_MPI_ENV_NAME] = json.dumps(True)
 
     actual_train_args = sagemaker_session.method_calls[0][2]
     assert actual_train_args == expected_train_args
