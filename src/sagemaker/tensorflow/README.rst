@@ -212,7 +212,7 @@ Distributed Training
 
 To run your training job with multiple instances in a distributed fashion you need to set ``train_instance_count``
 to a number larger than 1. We support two different types of distributed training, parameter server and Horovod.
-The ``distribution`` parameter is used to configure which distributed training strategy to use.
+The ``distributions`` parameter is used to configure which distributed training strategy to use.
 
 Training with parameter servers
 """""""""""""""""""""""""""""""
@@ -228,7 +228,7 @@ To enable parameter server training:
   tf_estimator = TensorFlow(entry_point='tf-train.py', role='SageMakerRole',
                             train_instance_count=2, train_instance_type='ml.p2.xlarge',
                             framework_version='1.11', py_version='py3',
-                            distribution={'parameter_server': {'enabled': True}})
+                            distributions={'parameter_server': {'enabled': True}})
   tf_estimator.fit('s3://bucket/path/to/training/data')
 
 Training with Horovod
@@ -239,7 +239,7 @@ Horovod is a distributed training framework based on MPI. You can find more deta
 The container sets up the MPI environment and executes the ``mpirun`` command enabling you to run any Horovod
 training script with Script Mode.
 
-Training with ``MPI`` is configured by specifying following fields in ``distribution``:
+Training with ``MPI`` is configured by specifying following fields in ``distributions``:
 
 - ``enabled (bool)``: If set to `True`, the MPI setup is performed and ``mpirun`` command is executed.
 - ``processes_per_host (int)``: Number of processes MPI should launch on each host. Note, this should not be
@@ -255,7 +255,7 @@ In the below example we create an estimator to launch Horovod distributed traini
     tf_estimator = TensorFlow(entry_point='tf-train.py', role='SageMakerRole',
                             train_instance_count=1, train_instance_type='ml.p2.xlarge',
                             framework_version='1.11', py_version='py3',
-                            distribution: {
+                            distributions: {
                                 "mpi":{
                                     "enabled":True,
                                     "processes_per_host":2,
@@ -334,7 +334,7 @@ Optional:
 - ``model_dir (str)`` Location where model data, checkpoint data, and TensorBoard checkpoints should be saved during training.
   If not specified a S3 location will be generated under the training job's default bucket. And ``model_dir`` will be
   passed in your training script as one of the command line arguments.
-- ``distribution (dict)`` Configure your distribution strategy with this argument.
+- ``distributions (dict)`` Configure your distribution strategy with this argument.
 
 Training with Pipe Mode using PipeModeDataset
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
