@@ -2,6 +2,11 @@
 CHANGELOG
 =========
 
+1.16.2
+======
+
+* doc-fix: Change ``distribution`` to ``distributions``
+
 1.16.1.post1
 ============
 
