@@ -228,7 +228,7 @@ To enable parameter server training:
   tf_estimator = TensorFlow(entry_point='tf-train.py', role='SageMakerRole',
                             train_instance_count=2, train_instance_type='ml.p2.xlarge',
                             framework_version='1.11', py_version='py3',
-                            distributions={'parameter_server': {'enabled': True}})
+                            distribution={'parameter_server': {'enabled': True}})
   tf_estimator.fit('s3://bucket/path/to/training/data')
 
 Training with Horovod
@@ -334,7 +334,7 @@ Optional:
 - ``model_dir (str)`` Location where model data, checkpoint data, and TensorBoard checkpoints should be saved during training.
   If not specified a S3 location will be generated under the training job's default bucket. And ``model_dir`` will be
   passed in your training script as one of the command line arguments.
-- ``distributions (dict)`` Configure your distribution strategy with this argument.
+- ``distribution (dict)`` Configure your distribution strategy with this argument.
 
 Training with Pipe Mode using PipeModeDataset
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
