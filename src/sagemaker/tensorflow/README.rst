@@ -210,10 +210,15 @@ After attaching, the estimator can be deployed as usual.
 Distributed Training
 ''''''''''''''''''''
 
-To run your training job in a distributed fashion you need to set ``train_instance_count`` to a number larger than 1.
-We support two different types of distributed training, parameter server and MPI. The ``distributions`` parameter is
-used to configure which distributed training strategy to use.
+To run your training job with multiple instances in a distributed fashion you need to set ``train_instance_count``
+to a number larger than 1. We support two different types of distributed training, parameter server and Horovod.
+The ``distribution`` parameter is used to configure which distributed training strategy to use.
 
+Training with parameter servers
+"""""""""""""""""""""""""""""""
+
+If parameter server is enabled, the container will launch a parameter server thread in each instance first then execute
+your training code. You can find more information on TensorFlow distributed training `here <https://www.tensorflow.org/deploy/distributed>`__
 To enable parameter server training:
 
 .. code:: python
@@ -226,23 +231,38 @@ To enable parameter server training:
                             distributions={'parameter_server': {'enabled': True}})
   tf_estimator.fit('s3://bucket/path/to/training/data')
 
-If parameter server is enabled, the container will launch a parameter server thread in each instance first then execute
-your training code. You can find more information on TensorFlow distributed training `here <https://www.tensorflow.org/deploy/distributed>`__
+Training with Horovod
+"""""""""""""""""""""
 
-To enable MPI training:
+Horovod is a distributed training framework based on MPI. You can find more details `here <https://github.com/uber/horovod>`__.
+
+The container sets up the MPI environment and executes the ``mpirun`` command enabling you to run any Horovod
+training script with Script Mode.
+
+Training with ``MPI`` is configured by specifying following fields in ``distribution``:
+
+- ``enabled (bool)``: If set to `True`, the MPI setup is performed and ``mpirun`` command is executed.
+- ``processes_per_host (int)``: Number of processes MPI should launch on each host. Note, this should not be
+  greater than the available slots on the selected instance type.
+- ``custom_mpi_options (str)``: Additional command line arguments to pass to ``mpirun``.
+
+In the below example we create an estimator to launch Horovod distributed training with 2 processes per host:
 
 .. code:: python
 
-  from sagemaker.tensorflow import TensorFlow
+    from sagemaker.tensorflow import TensorFlow
 
-  tf_estimator = TensorFlow(entry_point='tf-train.py', role='SageMakerRole',
-                            train_instance_count=2, train_instance_type='ml.p2.xlarge',
+    tf_estimator = TensorFlow(entry_point='tf-train.py', role='SageMakerRole',
+                            train_instance_count=1, train_instance_type='ml.p2.xlarge',
                             framework_version='1.11', py_version='py3',
-                            distributions={'mpi': {'enabled': True}})
-  tf_estimator.fit('s3://bucket/path/to/training/data')
-
-If MPI is enabled the container will configure and execute ``mpirun`` with your training script. You can find
-more information on MPI and Horovod `here <https://github.com/uber/horovod>`__
+                            distribution: {
+                                "mpi":{
+                                    "enabled":True,
+                                    "processes_per_host":2,
+                                    "custom_mpi_options": "--NCCL_DEBUG INFO"
+                                }
+                            })
+    tf_estimator.fit('s3://bucket/path/to/training/data')
 
 sagemaker.tensorflow.TensorFlow class
 '''''''''''''''''''''''''''''''''''''
@@ -317,7 +337,7 @@ Optional:
 - ``distributions (dict)`` Configure your distribution strategy with this argument.
 
 Training with Pipe Mode using PipeModeDataset
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Amazon SageMaker allows users to create training jobs using Pipe input mode.
 With Pipe input mode, your dataset is streamed directly to your training instances instead of being downloaded first.

@@ -438,8 +438,11 @@ class TensorFlow(Framework):
 
             mpi_enabled = False
             if 'mpi' in self.distributions:
-                mpi_enabled = self.distributions['mpi'].get('enabled', False)
+                mpi_dict = self.distributions['mpi']
+                mpi_enabled = mpi_dict.get('enabled', False)
                 additional_hyperparameters[self.LAUNCH_MPI_ENV_NAME] = mpi_enabled
+                additional_hyperparameters[self.MPI_NUM_PROCESSES_PER_HOST] = mpi_dict.get('processes_per_host', 1)
+                additional_hyperparameters[self.MPI_CUSTOM_MPI_OPTIONS] = mpi_dict.get('custom_mpi_options')
 
             self.model_dir = self.model_dir or self._default_s3_path('model', mpi=mpi_enabled)
             additional_hyperparameters['model_dir'] = self.model_dir
