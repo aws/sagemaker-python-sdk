@@ -2,6 +2,11 @@
 CHANGELOG
 =========
 
+1.16.2
+======
+
+* bug-fix: add version bound for requests module to avoid version conflicts between docker-compose and docker-py
+
 1.16.1.post1
 ============
 
