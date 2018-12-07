@@ -14,6 +14,7 @@ from __future__ import absolute_import
 
 import errno
 import os
+import random
 import re
 import sys
 import tarfile
@@ -62,6 +63,14 @@ def name_from_base(base, max_length=63, short=False):
     timestamp = sagemaker_short_timestamp() if short else sagemaker_timestamp()
     trimmed_base = base[:max_length - len(timestamp) - 1]
     return '{}-{}'.format(trimmed_base, timestamp)
+
+
+def unique_name_from_base(base, max_length=63):
+    unique = '%04x' % random.randrange(16**4)  # 4-digit hex
+    ts = str(int(time.time()))
+    available_length = max_length - 2 - len(ts) - len(unique)
+    trimmed = base[:available_length]
+    return '{}-{}-{}'.format(trimmed, ts, unique)
 
 
 def airflow_name_from_base(base, max_length=63, short=False):
