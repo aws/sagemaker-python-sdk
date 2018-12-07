@@ -31,7 +31,6 @@ from tests.integ.timeout import timeout_and_delete_endpoint_by_name
 
 @pytest.mark.continuous_testing
 @pytest.mark.regional_testing
-@pytest.mark.skip(reason="This should be enabled along with the Boto SDK release for CreateModel API changes")
 def test_inference_pipeline_model_deploy(sagemaker_session):
     # Creates a Pipeline model comprising of SparkML (serialized by MLeap) and XGBoost and deploys to one endpoint
     sparkml_data_path = os.path.join(DATA_DIR, 'sparkml_model')
