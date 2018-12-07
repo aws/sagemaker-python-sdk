@@ -46,7 +46,7 @@ DOCKER_TAG = '1.0'
 IMAGE_URI_FORMAT_STRING = "520713654638.dkr.ecr.{}.amazonaws.com/{}:{}-{}-{}"
 SCRIPT_MODE_REPO_NAME = 'sagemaker-tensorflow-scriptmode'
 DISTRIBUTION_ENABLED = {'parameter_server': {'enabled': True}}
-DISTRIBUTION_MPI_ENABLED = {'mpi': {'enabled': True}}
+DISTRIBUTION_MPI_ENABLED = {'mpi': {'enabled': True, 'custom_mpi_options': 'options', 'processes_per_host': 2}}
 
 
 @pytest.fixture()
@@ -814,6 +814,8 @@ def test_tf_script_mode_mpi(time, strftime, sagemaker_session):
                                             repo_name=SM_IMAGE_REPO_NAME, py_version='py3')
     expected_train_args['input_config'][0]['DataSource']['S3DataSource']['S3Uri'] = inputs
     expected_train_args['hyperparameters'][TensorFlow.LAUNCH_MPI_ENV_NAME] = json.dumps(True)
+    expected_train_args['hyperparameters'][TensorFlow.MPI_NUM_PROCESSES_PER_HOST] = json.dumps(2)
+    expected_train_args['hyperparameters'][TensorFlow.MPI_CUSTOM_MPI_OPTIONS] = json.dumps('options')
 
     actual_train_args = sagemaker_session.method_calls[0][2]
     assert actual_train_args == expected_train_args
