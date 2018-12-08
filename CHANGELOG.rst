@@ -6,6 +6,7 @@ CHANGELOG
 ======
 
 * doc-fix: Change ``distribution`` to ``distributions``
+* bug-fix: Increase docker-compose http timeout and health check timeout to 120.
 
 1.16.1.post1
 ============
