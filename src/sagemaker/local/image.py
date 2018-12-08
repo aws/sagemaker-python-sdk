@@ -104,7 +104,8 @@ class _SageMakerContainer(object):
         os.mkdir(shared_dir)
 
         data_dir = self._create_tmp_folder()
-        volumes = self._prepare_training_volumes(data_dir, input_data_config, hyperparameters)
+        volumes = self._prepare_training_volumes(data_dir, input_data_config, output_data_config,
+                                                 hyperparameters)
 
         # Create the configuration files for each container that we will create
         # Each container will map the additional local volumes (if any).
@@ -281,7 +282,8 @@ class _SageMakerContainer(object):
         _write_json_file(os.path.join(config_path, 'resourceconfig.json'), resource_config)
         _write_json_file(os.path.join(config_path, 'inputdataconfig.json'), json_input_data_config)
 
-    def _prepare_training_volumes(self, data_dir, input_data_config, hyperparameters):
+    def _prepare_training_volumes(self, data_dir, input_data_config, output_data_config,
+                                  hyperparameters):
         shared_dir = os.path.join(self.container_root, 'shared')
         model_dir = os.path.join(self.container_root, 'model')
         volumes = []
@@ -308,6 +310,14 @@ class _SageMakerContainer(object):
                 volumes.append(_Volume(parsed_uri.path, '/opt/ml/code'))
                 # Also mount a directory that all the containers can access.
                 volumes.append(_Volume(shared_dir, '/opt/ml/shared'))
+
+        parsed_uri = urlparse(output_data_config['S3OutputPath'])
+        if parsed_uri.scheme == 'file' \
+                and sagemaker.rl.estimator.SAGEMAKER_OUTPUT_LOCATION in hyperparameters:
+            intermediate_dir = os.path.join(parsed_uri.path, 'output', 'intermediate')
+            if not os.path.exists(intermediate_dir):
+                os.makedirs(intermediate_dir)
+            volumes.append(_Volume(intermediate_dir, '/opt/ml/output/intermediate'))
 
         return volumes
 
