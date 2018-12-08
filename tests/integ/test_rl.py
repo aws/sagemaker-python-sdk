@@ -33,7 +33,8 @@ def test_coach_mxnet(sagemaker_session, rl_coach_full_version):
     with timeout(minutes=15):
         estimator.fit(wait='False')
 
-        estimator = RLEstimator.attach(estimator.latest_training_job.name)
+        estimator = RLEstimator.attach(estimator.latest_training_job.name,
+                                       sagemaker_session=sagemaker_session)
 
     endpoint_name = 'test-mxnet-coach-deploy-{}'.format(sagemaker_timestamp())
 

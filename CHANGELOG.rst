@@ -2,9 +2,15 @@
 CHANGELOG
 =========
 
-1.16.2
-======
+1.16.2.dev
+==========
+
 * feature: Add support for AugmentedManifestFile and ShuffleConfig
+* bug-fix: add version bound for requests module to avoid version conflicts between docker-compose and docker-py
+* bug-fix: Remove unnecessary dependency tensorflow
+* doc-fix: Change ``distribution`` to ``distributions``
+* bug-fix: Increase docker-compose http timeout and health check timeout to 120.
+* feature: Local Mode: Add support for intermediate output to a local directory.
 
 1.16.1.post1
 ============
@@ -29,6 +35,7 @@ CHANGELOG
 * feature: Add Amazon SageMaker Semantic Segmentation algorithm to the registry
 * feature: Add support for SageMaker Inference Pipelines
 * feature: Add support for SparkML serving container
+
 
 1.15.2
 ======
