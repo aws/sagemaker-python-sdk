@@ -14,12 +14,13 @@ from __future__ import absolute_import
 
 import botocore.exceptions
 import pytest
+
 import sagemaker
 import sagemaker.predictor
+from sagemaker.tensorflow.serving import Model, Predictor
 import sagemaker.utils
 import tests.integ
 import tests.integ.timeout
-from sagemaker.tensorflow.serving import Model, Predictor
 
 
 @pytest.fixture(scope='session', params=[
@@ -27,8 +28,7 @@ from sagemaker.tensorflow.serving import Model, Predictor
     pytest.param('ml.p3.2xlarge',
                  marks=pytest.mark.skipif(
                      tests.integ.REGION in tests.integ.HOSTING_P3_UNAVAILABLE_REGIONS,
-                     reason='no ml.p3 instances in this region'))
-    ])
+                     reason='no ml.p3 instances in this region'))])
 def instance_type(request):
     return request.param
 
