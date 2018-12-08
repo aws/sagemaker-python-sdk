@@ -71,8 +71,7 @@ def test_deploy_model(mxnet_training_job, sagemaker_session):
         predictor.predict(data)
 
 
-@pytest.mark.skip
-def test_deploy_model_with_accelerator(mxnet_training_job, sagemaker_session):
+def test_deploy_model_with_accelerator(mxnet_training_job, sagemaker_session, ei_mxnet_version):
     endpoint_name = 'test-mxnet-deploy-model-ei-{}'.format(sagemaker_timestamp())
 
     with timeout_and_delete_endpoint_by_name(endpoint_name, sagemaker_session):
@@ -80,7 +79,8 @@ def test_deploy_model_with_accelerator(mxnet_training_job, sagemaker_session):
         model_data = desc['ModelArtifacts']['S3ModelArtifacts']
         script_path = os.path.join(DATA_DIR, 'mxnet_mnist', 'mnist.py')
         model = MXNetModel(model_data, 'SageMakerRole', entry_point=script_path,
-                           py_version=PYTHON_VERSION, sagemaker_session=sagemaker_session)
+                           framework_version=ei_mxnet_version, py_version=PYTHON_VERSION,
+                           sagemaker_session=sagemaker_session)
         predictor = model.deploy(1, 'ml.m4.xlarge', endpoint_name=endpoint_name, accelerator_type='ml.eia1.medium')
 
         data = numpy.zeros(shape=(1, 1, 28, 28))

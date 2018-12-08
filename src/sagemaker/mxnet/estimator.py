@@ -67,7 +67,7 @@ class MXNet(Framework):
                     Examples:
                         123.dkr.ecr.us-west-2.amazonaws.com/my-custom-image:1.0
                         custom-image:latest.
-             distribution (dict): A dictionary with information on how to run distributed training
+             distributions (dict): A dictionary with information on how to run distributed training
                 (default: None).
             **kwargs: Additional kwargs passed to the :class:`~sagemaker.estimator.Framework` constructor.
         """

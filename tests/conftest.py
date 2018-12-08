@@ -95,6 +95,11 @@ def mxnet_version(request):
     return request.param
 
 
+@pytest.fixture(scope='module', params=['1.3', '1.3.0'])
+def ei_mxnet_version(request):
+    return request.param
+
+
 @pytest.fixture(scope='module', params=['0.4', '0.4.0'])
 def pytorch_version(request):
     return request.param
@@ -109,6 +114,11 @@ def sklearn_version(request):
                                         '1.7', '1.7.0', '1.8', '1.8.0', '1.9', '1.9.0',
                                         '1.10', '1.10.0', '1.11', '1.11.0'])
 def tf_version(request):
+    return request.param
+
+
+@pytest.fixture(scope='module', params=['1.11', '1.11.0'])
+def ei_tf_version(request):
     return request.param
 
 
