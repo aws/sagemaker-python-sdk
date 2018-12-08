@@ -16,30 +16,30 @@ import json
 import os
 
 import pytest
+from tests.integ import DATA_DIR
+from tests.integ.timeout import timeout_and_delete_endpoint_by_name
 
 from sagemaker.amazon.amazon_estimator import get_image_uri
 from sagemaker.content_types import CONTENT_TYPE_CSV
 from sagemaker.model import Model
 from sagemaker.pipeline import PipelineModel
 from sagemaker.predictor import RealTimePredictor, json_serializer
-from sagemaker.session import Session
 from sagemaker.sparkml.model import SparkMLModel
 from sagemaker.utils import sagemaker_timestamp
-from tests.integ import DATA_DIR
-from tests.integ.timeout import timeout_and_delete_endpoint_by_name
 
 
 @pytest.mark.continuous_testing
 @pytest.mark.regional_testing
 def test_inference_pipeline_model_deploy(sagemaker_session):
-    # Creates a Pipeline model comprising of SparkML (serialized by MLeap) and XGBoost and deploys to one endpoint
     sparkml_data_path = os.path.join(DATA_DIR, 'sparkml_model')
     xgboost_data_path = os.path.join(DATA_DIR, 'xgboost_model')
     endpoint_name = 'test-inference-pipeline-deploy-{}'.format(sagemaker_timestamp())
-    sparkml_model_data = sagemaker_session.upload_data(path=os.path.join(sparkml_data_path, 'mleap_model.tar.gz'),
-                                                       key_prefix='integ-test-data/sparkml/model')
-    xgb_model_data = sagemaker_session.upload_data(path=os.path.join(xgboost_data_path, 'xgb_model.tar.gz'),
-                                                   key_prefix='integ-test-data/xgboost/model')
+    sparkml_model_data = sagemaker_session.upload_data(
+        path=os.path.join(sparkml_data_path, 'mleap_model.tar.gz'),
+        key_prefix='integ-test-data/sparkml/model')
+    xgb_model_data = sagemaker_session.upload_data(
+        path=os.path.join(xgboost_data_path, 'xgb_model.tar.gz'),
+        key_prefix='integ-test-data/xgboost/model')
     schema = json.dumps({
         "input": [
             {
@@ -74,10 +74,12 @@ def test_inference_pipeline_model_deploy(sagemaker_session):
         }
     })
     with timeout_and_delete_endpoint_by_name(endpoint_name, sagemaker_session):
-        sparkml_model = SparkMLModel(model_data=sparkml_model_data, env={'SAGEMAKER_SPARKML_SCHEMA': schema},
+        sparkml_model = SparkMLModel(model_data=sparkml_model_data,
+                                     env={'SAGEMAKER_SPARKML_SCHEMA': schema},
                                      sagemaker_session=sagemaker_session)
-        xgb_image = get_image_uri(Session().boto_region_name, 'xgboost')
-        xgb_model = Model(model_data=xgb_model_data, image=xgb_image, sagemaker_session=sagemaker_session)
+        xgb_image = get_image_uri(sagemaker_session.boto_region_name, 'xgboost')
+        xgb_model = Model(model_data=xgb_model_data, image=xgb_image,
+                          sagemaker_session=sagemaker_session)
         model = PipelineModel(models=[sparkml_model, xgb_model], role='SageMakerRole',
                               sagemaker_session=sagemaker_session, name=endpoint_name)
         model.deploy(1, 'ml.m4.xlarge', endpoint_name=endpoint_name)
