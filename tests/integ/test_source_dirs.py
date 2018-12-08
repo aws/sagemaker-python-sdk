@@ -14,8 +14,10 @@ from __future__ import absolute_import
 
 import os
 
-from sagemaker.pytorch.estimator import PyTorch
+import tests.integ.local_mode_utils as local_mode_utils
 from tests.integ import DATA_DIR, PYTHON_VERSION
+
+from sagemaker.pytorch.estimator import PyTorch
 
 
 def test_source_dirs(tmpdir, sagemaker_local_session):
@@ -25,17 +27,17 @@ def test_source_dirs(tmpdir, sagemaker_local_session):
     with open(lib, 'w') as f:
         f.write('def question(to_anything): return 42')
 
-    estimator = PyTorch(entry_point='train.py', role='SageMakerRole', source_dir=source_dir, dependencies=[lib],
-                        py_version=PYTHON_VERSION, train_instance_count=1, train_instance_type='local',
+    estimator = PyTorch(entry_point='train.py', role='SageMakerRole', source_dir=source_dir,
+                        dependencies=[lib],
+                        py_version=PYTHON_VERSION, train_instance_count=1,
+                        train_instance_type='local',
                         sagemaker_session=sagemaker_local_session)
-    try:
+    estimator.fit()
 
-        estimator.fit()
-
-        predictor = estimator.deploy(initial_instance_count=1, instance_type='local')
-
-        predict_response = predictor.predict([7])
-
-        assert predict_response == [49]
-    finally:
-        estimator.delete_endpoint()
+    with local_mode_utils.lock():
+        try:
+            predictor = estimator.deploy(initial_instance_count=1, instance_type='local')
+            predict_response = predictor.predict([7])
+            assert predict_response == [49]
+        finally:
+            estimator.delete_endpoint()
