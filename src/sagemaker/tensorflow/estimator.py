@@ -199,7 +199,7 @@ class TensorFlow(Framework):
                         custom-image:latest.
             script_mode (bool): If set to True will the estimator will use the Script Mode containers (default: False).
                 This will be ignored if py_version is set to 'py3'.
-            distribution (dict): A dictionary with information on how to run distributed training
+            distributions (dict): A dictionary with information on how to run distributed training
                 (default: None). Currently we only support distributed training with parameter servers. To enable it
                 use the following setup:
                     {
