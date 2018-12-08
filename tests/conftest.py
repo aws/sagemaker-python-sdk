@@ -50,7 +50,9 @@ def pytest_configure(config):
     bc = config.getoption('--boto-config')
     parsed = json.loads(bc) if bc else {}
     region = parsed.get('region_name', boto3.session.Session().region_name)
-    os.environ['TEST_AWS_REGION_NAME'] = region
+
+    if region:
+        os.environ['TEST_AWS_REGION_NAME'] = region
 
 
 @pytest.fixture(scope='session')
