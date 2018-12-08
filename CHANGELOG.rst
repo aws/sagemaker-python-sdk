@@ -5,6 +5,7 @@ CHANGELOG
 1.16.2.dev
 ==========
 
+* bug-fix: add version bound for requests module to avoid version conflicts between docker-compose and docker-py
 * bug-fix: Remove unnecessary dependency tensorflow
 * doc-fix: Change ``distribution`` to ``distributions``
 * bug-fix: Increase docker-compose http timeout and health check timeout to 120.
