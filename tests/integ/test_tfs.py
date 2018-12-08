@@ -43,8 +43,9 @@ def tfs_predictor(instance_type, sagemaker_session, tf_full_version):
 
 @pytest.mark.continuous_testing
 def test_predict(tfs_predictor, instance_type):
+    # TODO update when #536 is merged
     if ('p3' in instance_type) and (
-            tests.integ.REGION in tests.integ.HOSTING_P3_UNAVAILABLE_REGIONS):
+            tests.integ.test_region() in tests.integ.HOSTING_P3_UNAVAILABLE_REGIONS):
         pytest.skip('no ml.p3 instances in this region')
 
     input_data = {'instances': [1.0, 2.0, 5.0]}
