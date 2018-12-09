@@ -18,9 +18,10 @@ import pickle
 import numpy as np
 import pytest
 
-from sagemaker.tensorflow import TensorFlow
-from tests.integ import DATA_DIR, PYTHON_VERSION, REGION
+import tests.integ
 from tests.integ.timeout import timeout_and_delete_endpoint_by_name, timeout
+
+from sagemaker.tensorflow import TensorFlow
 
 PICKLE_CONTENT_TYPE = 'application/python-pickle'
 
@@ -34,22 +35,26 @@ class PickleSerializer(object):
 
 
 @pytest.mark.continuous_testing
-@pytest.mark.skipif(PYTHON_VERSION != 'py2', reason="TensorFlow image supports only python 2.")
-@pytest.mark.skipif(REGION in ['us-west-1', 'eu-west-2', 'ca-central-1'],
+@pytest.mark.skipif(tests.integ.PYTHON_VERSION != 'py2',
+                    reason="TensorFlow image supports only python 2.")
+@pytest.mark.skipif(tests.integ.test_region() in ['us-west-1', 'eu-west-2', 'ca-central-1'],
                     reason='No ml.p2.xlarge supported in these regions')
 def test_cifar(sagemaker_session, tf_full_version):
     with timeout(minutes=45):
-        script_path = os.path.join(DATA_DIR, 'cifar_10', 'source')
+        script_path = os.path.join(tests.integ.DATA_DIR, 'cifar_10', 'source')
 
-        dataset_path = os.path.join(DATA_DIR, 'cifar_10', 'data')
+        dataset_path = os.path.join(tests.integ.DATA_DIR, 'cifar_10', 'data')
 
-        estimator = TensorFlow(entry_point='resnet_cifar_10.py', source_dir=script_path, role='SageMakerRole',
-                               framework_version=tf_full_version, training_steps=500, evaluation_steps=5,
+        estimator = TensorFlow(entry_point='resnet_cifar_10.py', source_dir=script_path,
+                               role='SageMakerRole',
+                               framework_version=tf_full_version, training_steps=500,
+                               evaluation_steps=5,
                                train_instance_count=2, train_instance_type='ml.p2.xlarge',
                                sagemaker_session=sagemaker_session, train_max_run=45 * 60,
                                base_job_name='test-cifar')
 
-        inputs = estimator.sagemaker_session.upload_data(path=dataset_path, key_prefix='data/cifar10')
+        inputs = estimator.sagemaker_session.upload_data(path=dataset_path,
+                                                         key_prefix='data/cifar10')
         estimator.fit(inputs, logs=False)
         print('job succeeded: {}'.format(estimator.latest_training_job.name))
 
