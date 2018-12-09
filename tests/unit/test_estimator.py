@@ -171,6 +171,14 @@ def test_framework_all_init_args(sagemaker_session):
                     'metric_definitions': [{'Name': 'validation-rmse', 'Regex': 'validation-rmse=(\\d+)'}]}
 
 
+def test_framework_init_s3_entry_point_invalid(sagemaker_session):
+    with pytest.raises(ValueError) as error:
+        DummyFramework('s3://remote-script-because-im-mistaken', role=ROLE,
+                       sagemaker_session=sagemaker_session, train_instance_count=INSTANCE_COUNT,
+                       train_instance_type=INSTANCE_TYPE)
+    assert 'Must be a path to a local file' in str(error)
+
+
 def test_sagemaker_s3_uri_invalid(sagemaker_session):
     with pytest.raises(ValueError) as error:
         t = DummyFramework(entry_point=SCRIPT_PATH, role=ROLE, sagemaker_session=sagemaker_session,
