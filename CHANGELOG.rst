@@ -2,15 +2,61 @@
 CHANGELOG
 =========
 
-1.15.1dev
-=========
+1.16.2.dev
+==========
 
+* feature: Add support for AugmentedManifestFile and ShuffleConfig
+* bug-fix: add version bound for requests module to avoid version conflicts between docker-compose and docker-py
+* bug-fix: Remove unnecessary dependency tensorflow
+* doc-fix: Change ``distribution`` to ``distributions``
+* bug-fix: Increase docker-compose http timeout and health check timeout to 120.
+* feature: Local Mode: Add support for intermediate output to a local directory.
+
+1.16.1.post1
+============
+
+* Documentation: add documentation for Reinforcement Learning Estimator.
+* Documentation: update TensorFlow README for Script Mode
+
+1.16.1
+======
+
+* feature: update boto3 to version 1.9.55
+
+1.16.0
+======
+
+* feature: Add 0.10.1 coach version
+* feature: Add support for SageMaker Neo
+* feature: Estimators: Add RLEstimator to provide support for Reinforcement Learning
+* feature: Add support for Amazon Elastic Inference
+* feature: Add support for Algorithm Estimators and ModelPackages: includes support for AWS Marketplace
+* feature: Add SKLearn Estimator to provide support for SciKit Learn
+* feature: Add Amazon SageMaker Semantic Segmentation algorithm to the registry
+* feature: Add support for SageMaker Inference Pipelines
+* feature: Add support for SparkML serving container
+
+
+1.15.2
+======
+
+* bug-fix: Fix FileNotFoundError for entry_point without source_dir
+* doc-fix: Add missing feature 1.5.0 in change log
+* doc-fix: Add README for airflow
+
+1.15.1
+======
+
+* enhancement: Local Mode: add explicit pull for serving
 * feature: Estimators: dependencies attribute allows export of additional libraries into the container
 * feature: Add APIs to export Airflow transform and deploy config
+* bug-fix: Allow code_location argument to be S3 URI in training_config API
+* enhancement: Local Mode: add explicit pull for serving
 
 1.15.0
 ======
 
+* feature: Estimator: add script mode and Python 3 support for TensorFlow
 * bug-fix: Changes to use correct S3 bucket and time range for dataframes in TrainingJobAnalytics.
 * bug-fix: Local Mode: correctly handle the case where the model output folder doesn't exist yet
 * feature: Add APIs to export Airflow training, tuning and model config

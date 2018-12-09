@@ -179,6 +179,7 @@ ROLE = 'SageMakerRole'
 EXPANDED_ROLE = 'arn:aws:iam::111111111111:role/ExpandedRole'
 INSTANCE_COUNT = 1
 INSTANCE_TYPE = 'ml.c4.xlarge'
+ACCELERATOR_TYPE = 'ml.eia.medium'
 MAX_SIZE = 30
 MAX_TIME = 3 * 60 * 60
 JOB_NAME = 'jobname'
@@ -656,6 +657,47 @@ def test_create_model(expand_container_def, sagemaker_session):
 
 
 @patch('sagemaker.session._expand_container_def', return_value=PRIMARY_CONTAINER)
+def test_create_model_with_primary_container(expand_container_def, sagemaker_session):
+    model = sagemaker_session.create_model(MODEL_NAME, ROLE, container_defs=PRIMARY_CONTAINER)
+
+    assert model == MODEL_NAME
+    sagemaker_session.sagemaker_client.create_model.assert_called_with(ExecutionRoleArn=EXPANDED_ROLE,
+                                                                       ModelName=MODEL_NAME,
+                                                                       PrimaryContainer=PRIMARY_CONTAINER)
+
+
+@patch('sagemaker.session._expand_container_def', return_value=PRIMARY_CONTAINER)
+def test_create_model_with_both(expand_container_def, sagemaker_session):
+    with pytest.raises(ValueError):
+        sagemaker_session.create_model(MODEL_NAME, ROLE, container_defs=PRIMARY_CONTAINER,
+                                       primary_container=PRIMARY_CONTAINER)
+
+
+CONTAINERS = [
+    {
+        'Environment': {'SAGEMAKER_DEFAULT_INVOCATIONS_ACCEPT': 'application/json'},
+        'Image': 'mi-1',
+        'ModelDataUrl': 's3://bucket/model_1.tar.gz'
+    },
+    {
+        'Environment': {},
+        'Image': 'mi-2',
+        'ModelDataUrl': 's3://bucket/model_2.tar.gz'
+    }
+]
+
+
+@patch('sagemaker.session._expand_container_def', return_value=PRIMARY_CONTAINER)
+def test_create_pipeline_model(expand_container_def, sagemaker_session):
+    model = sagemaker_session.create_model(MODEL_NAME, ROLE, container_defs=CONTAINERS)
+
+    assert model == MODEL_NAME
+    sagemaker_session.sagemaker_client.create_model.assert_called_with(ExecutionRoleArn=EXPANDED_ROLE,
+                                                                       ModelName=MODEL_NAME,
+                                                                       Containers=CONTAINERS)
+
+
+@patch('sagemaker.session._expand_container_def', return_value=PRIMARY_CONTAINER)
 def test_create_model_vpc_config(expand_container_def, sagemaker_session):
     model = sagemaker_session.create_model(MODEL_NAME, ROLE, PRIMARY_CONTAINER, VPC_CONFIG)
 
@@ -663,6 +705,17 @@ def test_create_model_vpc_config(expand_container_def, sagemaker_session):
     sagemaker_session.sagemaker_client.create_model.assert_called_with(ExecutionRoleArn=EXPANDED_ROLE,
                                                                        ModelName=MODEL_NAME,
                                                                        PrimaryContainer=PRIMARY_CONTAINER,
+                                                                       VpcConfig=VPC_CONFIG)
+
+
+@patch('sagemaker.session._expand_container_def', return_value=PRIMARY_CONTAINER)
+def test_create_pipeline_model_vpc_config(expand_container_def, sagemaker_session):
+    model = sagemaker_session.create_model(MODEL_NAME, ROLE, CONTAINERS, VPC_CONFIG)
+
+    assert model == MODEL_NAME
+    sagemaker_session.sagemaker_client.create_model.assert_called_with(ExecutionRoleArn=EXPANDED_ROLE,
+                                                                       ModelName=MODEL_NAME,
+                                                                       Containers=CONTAINERS,
                                                                        VpcConfig=VPC_CONFIG)
 
 
@@ -745,20 +798,7 @@ def test_endpoint_from_production_variants(sagemaker_session):
                                                                           EndpointName='some-endpoint')
     sagemaker_session.sagemaker_client.create_endpoint_config.assert_called_with(
         EndpointConfigName='some-endpoint',
-        ProductionVariants=[
-            {
-                'InstanceType': 'ml.p2.xlarge',
-                'ModelName': 'A',
-                'InitialVariantWeight': 1,
-                'InitialInstanceCount': 1,
-                'VariantName': 'AllTraffic'
-            },
-            {
-                'InstanceType': 'p299.4096xlarge',
-                'ModelName': 'B',
-                'InitialVariantWeight': 1,
-                'InitialInstanceCount': 1,
-                'VariantName': 'AllTraffic'}])
+        ProductionVariants=pvs)
 
 
 def test_endpoint_from_production_variants_with_tags(sagemaker_session):
@@ -773,20 +813,24 @@ def test_endpoint_from_production_variants_with_tags(sagemaker_session):
                                                                           EndpointName='some-endpoint')
     sagemaker_session.sagemaker_client.create_endpoint_config.assert_called_with(
         EndpointConfigName='some-endpoint',
-        ProductionVariants=[
-            {
-                'InstanceType': 'ml.p2.xlarge',
-                'ModelName': 'A',
-                'InitialVariantWeight': 1,
-                'InitialInstanceCount': 1,
-                'VariantName': 'AllTraffic'
-            },
-            {
-                'InstanceType': 'p299.4096xlarge',
-                'ModelName': 'B',
-                'InitialVariantWeight': 1,
-                'InitialInstanceCount': 1,
-                'VariantName': 'AllTraffic'}],
+        ProductionVariants=pvs,
+        Tags=tags)
+
+
+def test_endpoint_from_production_variants_with_accelerator_type(sagemaker_session):
+    ims = sagemaker_session
+    ims.sagemaker_client.describe_endpoint = Mock(return_value={'EndpointStatus': 'InService'})
+    pvs = [sagemaker.production_variant('A', 'ml.p2.xlarge', accelerator_type=ACCELERATOR_TYPE),
+           sagemaker.production_variant('B', 'p299.4096xlarge', accelerator_type=ACCELERATOR_TYPE)]
+    ex = ClientError({'Error': {'Code': 'ValidationException', 'Message': 'Could not find your thing'}}, 'b')
+    ims.sagemaker_client.describe_endpoint_config = Mock(side_effect=ex)
+    tags = [{'ModelName': 'TestModel'}]
+    sagemaker_session.endpoint_from_production_variants('some-endpoint', pvs, tags)
+    sagemaker_session.sagemaker_client.create_endpoint.assert_called_with(EndpointConfigName='some-endpoint',
+                                                                          EndpointName='some-endpoint')
+    sagemaker_session.sagemaker_client.create_endpoint_config.assert_called_with(
+        EndpointConfigName='some-endpoint',
+        ProductionVariants=pvs,
         Tags=tags)
 
 

@@ -39,6 +39,15 @@ A managed environment for TensorFlow training and hosting on Amazon SageMaker
 
     sagemaker.tensorflow
 
+Reinforcement Learning
+----------------------
+A managed environment for Reinforcement Learning training and hosting on Amazon SageMaker
+
+.. toctree::
+:maxdepth: 2
+
+        sagemaker.rl
+
 SageMaker First-Party Algorithms
 --------------------------------
 Amazon provides implementations of some common machine learning algortithms optimized for GPU architecture and massive datasets.

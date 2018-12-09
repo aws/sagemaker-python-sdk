@@ -6,6 +6,8 @@ With MXNet Estimators, you can train and host MXNet models on Amazon SageMaker.
 
 Supported versions of MXNet: ``1.3.0``, ``1.2.1``, ``1.1.0``, ``1.0.0``, ``0.12.1``.
 
+Supported versions of MXNet for Elastic Inference: ``1.3.0``.
+
 Training with MXNet
 ~~~~~~~~~~~~~~~~~~~
 
@@ -207,7 +209,7 @@ If you were previously relying on the default save method, you can now import on
 
         save(args.model_dir, model)
 
-Lastly, if you were relying on the container launching a parameter server for use with distributed training, you must now set ``distribution`` to the following dictionary when creating an MXNet estimator:
+Lastly, if you were relying on the container launching a parameter server for use with distributed training, you must now set ``distributions`` to the following dictionary when creating an MXNet estimator:
 
 .. code:: python
 
@@ -215,7 +217,7 @@ Lastly, if you were relying on the container launching a parameter server for us
 
     estimator = MXNet('path-to-distributed-training-script.py',
                       ...,
-                      distribution={'parameter_server': {'enabled': True}})
+                      distributions={'parameter_server': {'enabled': True}})
 
 
 Using third-party libraries
@@ -321,7 +323,7 @@ The following are optional arguments. When you create an ``MXNet`` object, you c
    framework_version and py_version. Refer to: `SageMaker MXNet Docker Containers
    <#sagemaker-mxnet-docker-containers>`_ for details on what the Official images support
    and where to find the source code to build your custom image.
--  ``distribution`` For versions 1.3 and above only.
+-  ``distributions`` For versions 1.3 and above only.
    Specifies information for how to run distributed training.
    To launch a parameter server during training, set this argument to:
 
@@ -479,6 +481,14 @@ After calling ``fit``, you can call ``deploy`` on an ``MXNet`` Estimator to crea
                                        initial_instance_count=1)
 
 You use the SageMaker MXNet model server to host your MXNet model when you call ``deploy`` on an ``MXNet`` Estimator. The model server runs inside a SageMaker Endpoint, which your call to ``deploy`` creates. You can access the name of the Endpoint by the ``name`` property on the returned ``Predictor``.
+
+MXNet on SageMaker has support for `Elastic Inference <https://docs.aws.amazon.com/sagemaker/latest/dg/ei.html>`_, which allows for inference acceleration to a hosted endpoint for a fraction of the cost of using a full GPU instance. In order to attach an Elastic Inference accelerator to your endpoint provide the accelerator type to ``accelerator_type`` to your ``deploy`` call.
+
+.. code:: python
+
+  predictor = mxnet_estimator.deploy(instance_type='ml.m4.xlarge',
+                                     initial_instance_count=1,
+                                     accelerator_type='ml.eia1.medium')
 
 The SageMaker MXNet Model Server
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

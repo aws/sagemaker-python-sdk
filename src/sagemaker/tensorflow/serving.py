@@ -13,7 +13,6 @@
 from __future__ import absolute_import
 
 import logging
-
 import sagemaker
 from sagemaker.content_types import CONTENT_TYPE_JSON
 from sagemaker.fw_utils import create_image_uri
@@ -123,7 +122,7 @@ class Model(sagemaker.Model):
         self._framework_version = framework_version
         self._container_log_level = container_log_level
 
-    def prepare_container_def(self, instance_type):
+    def prepare_container_def(self, instance_type, accelerator_type=None):
         image = self._get_image_uri(instance_type)
         env = self._get_container_env()
         return sagemaker.container_def(image, self.model_data, env)
@@ -144,7 +143,6 @@ class Model(sagemaker.Model):
         if self.image:
             return self.image
 
-        # reuse standard image uri function, then strip unwanted python component
         region_name = self.sagemaker_session.boto_region_name
         return create_image_uri(region_name, Model.FRAMEWORK_NAME, instance_type,
                                 self._framework_version)

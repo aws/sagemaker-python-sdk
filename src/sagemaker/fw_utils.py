@@ -12,14 +12,14 @@
 # language governing permissions and limitations under the License.
 from __future__ import absolute_import
 
+from collections import namedtuple
+
 import os
 import re
+import sagemaker.utils
 import shutil
 import tempfile
-from collections import namedtuple
 from six.moves.urllib.parse import urlparse
-
-import sagemaker.utils
 
 _TAR_SOURCE_FILENAME = 'source.tar.gz'
 
@@ -39,11 +39,12 @@ EMPTY_FRAMEWORK_VERSION_ERROR = 'framework_version is required for script mode e
                                 'Please add framework_version={} to your constructor to avoid this error.'
 
 VALID_PY_VERSIONS = ['py2', 'py3']
+VALID_EIA_FRAMEWORKS = ['tensorflow', 'mxnet']
+VALID_ACCOUNTS_BY_REGION = {'us-gov-west-1': '246785580436'}
 
 
 def create_image_uri(region, framework, instance_type, framework_version, py_version=None,
-                     account='520713654638', optimized_families=None):
-
+                     account='520713654638', accelerator_type=None, optimized_families=None):
     """Return the ECR URI of an image.
 
     Args:
@@ -54,6 +55,7 @@ def create_image_uri(region, framework, instance_type, framework_version, py_ver
         py_version (str): Optional. Python version. If specified, should be one of 'py2' or 'py3'.
             If not specified, image uri will not include a python component.
         account (str): AWS account that contains the image. (default: '520713654638')
+        accelerator_type (str): SageMaker Elastic Inference accelerator type.
         optimized_families (str): Instance families for which there exist specific optimized images.
 
     Returns:
@@ -65,8 +67,7 @@ def create_image_uri(region, framework, instance_type, framework_version, py_ver
         raise ValueError('invalid py_version argument: {}'.format(py_version))
 
     # Handle Account Number for Gov Cloud
-    if region == 'us-gov-west-1':
-        account = '246785580436'
+    account = VALID_ACCOUNTS_BY_REGION.get(region, account)
 
     # Handle Local Mode
     if instance_type.startswith('local'):
@@ -90,8 +91,32 @@ def create_image_uri(region, framework, instance_type, framework_version, py_ver
         tag = "{}-{}-{}".format(framework_version, device_type, py_version)
     else:
         tag = "{}-{}".format(framework_version, device_type)
+
+    if _accelerator_type_valid_for_framework(framework=framework, accelerator_type=accelerator_type,
+                                             optimized_families=optimized_families):
+        framework += '-eia'
+
     return "{}.dkr.ecr.{}.amazonaws.com/sagemaker-{}:{}" \
         .format(account, region, framework, tag)
+
+
+def _accelerator_type_valid_for_framework(framework, accelerator_type=None, optimized_families=None):
+    if accelerator_type is None:
+        return False
+
+    if framework not in VALID_EIA_FRAMEWORKS:
+        raise ValueError('{} is not supported with Amazon Elastic Inference. Currently only '
+                         'TensorFlow and MXNet are supported for SageMaker.'.format(framework))
+
+    if optimized_families:
+        raise ValueError('Neo does not support Amazon Elastic Inference.')
+
+    if not accelerator_type.startswith('ml.eia') and not accelerator_type == 'local_sagemaker_notebook':
+        raise ValueError('{} is not a valid SageMaker Elastic Inference accelerator type. '
+                         'See: https://docs.aws.amazon.com/sagemaker/latest/dg/ei.html'
+                         .format(accelerator_type))
+
+    return True
 
 
 def validate_source_dir(script, directory):
@@ -112,46 +137,57 @@ def validate_source_dir(script, directory):
 
 
 def tar_and_upload_dir(session, bucket, s3_key_prefix, script, directory, dependencies=None):
-    """Pack and upload source files to S3 only if directory is empty or local.
+    """Package source files and upload a compress tar file to S3. The S3 location will be
+    ``s3://<bucket>/s3_key_prefix/sourcedir.tar.gz``.
 
-    Note:
-        If the directory points to S3 no action is taken.
+    If directory is an S3 URI, an UploadedCode object will be returned, but nothing will be
+    uploaded to S3 (this allow reuse of code already in S3).
+
+    If directory is None, the script will be added to the archive at ``./<basename of script>``.
+
+    If directory is not None, the (recursive) contents of the directory will be added to
+    the archive. directory is treated as the base path of the archive, and the script name is
+    assumed to be a filename or relative path inside the directory.
 
     Args:
         session (boto3.Session): Boto session used to access S3.
         bucket (str): S3 bucket to which the compressed file is uploaded.
         s3_key_prefix (str): Prefix for the S3 key.
-        script (str): Script filename.
-        directory (str or None): Directory containing the source file. If it starts with
-                                    "s3://", no action is taken.
-        dependencies (List[str]): A list of paths to directories (absolute or relative)
+        script (str): Script filename or path.
+        directory (str): Optional. Directory containing the source file. If it starts with "s3://",
+            no action is taken.
+        dependencies (List[str]): Optional. A list of paths to directories (absolute or relative)
                                 containing additional libraries that will be copied into
                                 /opt/ml/lib
 
     Returns:
-        sagemaker.fw_utils.UserCode: An object with the S3 bucket and key (S3 prefix) and script name.
+        sagemaker.fw_utils.UserCode: An object with the S3 bucket and key (S3 prefix) and
+            script name.
     """
-    dependencies = dependencies or []
-    key = '%s/sourcedir.tar.gz' % s3_key_prefix
-
     if directory and directory.lower().startswith('s3://'):
         return UploadedCode(s3_prefix=directory, script_name=os.path.basename(script))
-    else:
-        tmp = tempfile.mkdtemp()
 
-        try:
-            source_files = _list_files_to_compress(script, directory) + dependencies
-            tar_file = sagemaker.utils.create_tar_file(source_files, os.path.join(tmp, _TAR_SOURCE_FILENAME))
+    script_name = script if directory else os.path.basename(script)
+    dependencies = dependencies or []
+    key = '%s/sourcedir.tar.gz' % s3_key_prefix
+    tmp = tempfile.mkdtemp()
 
-            session.resource('s3').Object(bucket, key).upload_file(tar_file)
-        finally:
-            shutil.rmtree(tmp)
+    try:
+        source_files = _list_files_to_compress(script, directory) + dependencies
+        tar_file = sagemaker.utils.create_tar_file(source_files,
+                                                   os.path.join(tmp, _TAR_SOURCE_FILENAME))
 
-        script_name = script if directory else os.path.basename(script)
-        return UploadedCode(s3_prefix='s3://%s/%s' % (bucket, key), script_name=script_name)
+        session.resource('s3').Object(bucket, key).upload_file(tar_file)
+    finally:
+        shutil.rmtree(tmp)
+
+    return UploadedCode(s3_prefix='s3://%s/%s' % (bucket, key), script_name=script_name)
 
 
 def _list_files_to_compress(script, directory):
+    if directory is None:
+        return [script]
+
     basedir = directory if directory else os.path.dirname(script)
     return [os.path.join(basedir, name) for name in os.listdir(basedir)]
 
@@ -167,6 +203,8 @@ def framework_name_from_image(image_name):
             '<account>.dkr.ecr.<region>.amazonaws.com/sagemaker-<fw>-<py_ver>-<device>:<fw_version>-<device>-<py_ver>'
             current:
             '<account>.dkr.ecr.<region>.amazonaws.com/sagemaker-<fw>:<fw_version>-<device>-<py_ver>'
+            current:
+            '<account>.dkr.ecr.<region>.amazonaws.com/sagemaker-rl-<fw>:<rl_toolkit><rl_version>-<device>-<py_ver>'
 
     Returns:
         tuple: A tuple containing:
@@ -174,7 +212,6 @@ def framework_name_from_image(image_name):
             str: The Python version
             str: The image tag
     """
-    # image name format: <account>.dkr.ecr.<region>.amazonaws.com/sagemaker-<framework>-<py_ver>-<device>:<tag>
     sagemaker_pattern = re.compile(r'^(\d+)(\.)dkr(\.)ecr(\.)(.+)(\.)amazonaws.com(/)(.*:.*)$')
     sagemaker_match = sagemaker_pattern.match(image_name)
     if sagemaker_match is None:
@@ -182,8 +219,11 @@ def framework_name_from_image(image_name):
     else:
         # extract framework, python version and image tag
         # We must support both the legacy and current image name format.
-        name_pattern = re.compile('^sagemaker-(tensorflow|mxnet|chainer|pytorch):(.*?)-(.*?)-(py2|py3)$')
-        legacy_name_pattern = re.compile('^sagemaker-(tensorflow|mxnet)-(py2|py3)-(cpu|gpu):(.*)$')
+        name_pattern = re.compile(
+            r'^sagemaker(?:-rl)?-(tensorflow|mxnet|chainer|pytorch|scikit-learn):(.*)-(.*?)-(py2|py3)$')
+        legacy_name_pattern = re.compile(
+            r'^sagemaker-(tensorflow|mxnet)-(py2|py3)-(cpu|gpu):(.*)$')
+
         name_match = name_pattern.match(sagemaker_match.group(8))
         legacy_match = legacy_name_pattern.match(sagemaker_match.group(8))
 

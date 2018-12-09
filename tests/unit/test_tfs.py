@@ -15,10 +15,8 @@ from __future__ import absolute_import
 import io
 import json
 import logging
-
 import pytest
 from mock import Mock
-
 from sagemaker.tensorflow import TensorFlow
 from sagemaker.tensorflow.predictor import csv_serializer
 from sagemaker.tensorflow.serving import Model, Predictor
@@ -94,7 +92,7 @@ def test_estimator_deploy(sagemaker_session):
 
     job_name = 'doing something'
     tf.fit(inputs='s3://mybucket/train', job_name=job_name)
-    predictor = tf.deploy(INSTANCE_COUNT, INSTANCE_TYPE, 'endpoint',
+    predictor = tf.deploy(INSTANCE_COUNT, INSTANCE_TYPE, endpoint_name='endpoint',
                           endpoint_type='tensorflow-serving')
     assert isinstance(predictor, Predictor)
 
@@ -167,12 +165,12 @@ def test_predictor_classify(sagemaker_session):
     mock_response(json.dumps(CLASSIFY_RESPONSE).encode('utf-8'), sagemaker_session)
     result = predictor.classify(CLASSIFY_INPUT)
 
-    assert_invoked(sagemaker_session,
-                   EndpointName='endpoint',
-                   ContentType=JSON_CONTENT_TYPE,
-                   Accept=JSON_CONTENT_TYPE,
-                   CustomAttributes='tfs-method=classify',
-                   Body=json.dumps(CLASSIFY_INPUT))
+    assert_invoked_with_body_dict(sagemaker_session,
+                                  EndpointName='endpoint',
+                                  ContentType=JSON_CONTENT_TYPE,
+                                  Accept=JSON_CONTENT_TYPE,
+                                  CustomAttributes='tfs-method=classify',
+                                  Body=json.dumps(CLASSIFY_INPUT))
 
     assert CLASSIFY_RESPONSE == result
 
@@ -183,12 +181,12 @@ def test_predictor_regress(sagemaker_session):
     mock_response(json.dumps(REGRESS_RESPONSE).encode('utf-8'), sagemaker_session)
     result = predictor.regress(REGRESS_INPUT)
 
-    assert_invoked(sagemaker_session,
-                   EndpointName='endpoint',
-                   ContentType=JSON_CONTENT_TYPE,
-                   Accept=JSON_CONTENT_TYPE,
-                   CustomAttributes='tfs-method=regress,tfs-model-name=model,tfs-model-version=123',
-                   Body=json.dumps(REGRESS_INPUT))
+    assert_invoked_with_body_dict(sagemaker_session,
+                                  EndpointName='endpoint',
+                                  ContentType=JSON_CONTENT_TYPE,
+                                  Accept=JSON_CONTENT_TYPE,
+                                  CustomAttributes='tfs-method=regress,tfs-model-name=model,tfs-model-version=123',
+                                  Body=json.dumps(REGRESS_INPUT))
 
     assert REGRESS_RESPONSE == result
 
@@ -208,12 +206,23 @@ def test_predictor_classify_bad_content_type():
 
 
 def assert_invoked(sagemaker_session, **kwargs):
+    sagemaker_session.sagemaker_runtime_client.invoke_endpoint.assert_called_once_with(**kwargs)
+
+
+def assert_invoked_with_body_dict(sagemaker_session, **kwargs):
     call = sagemaker_session.sagemaker_runtime_client.invoke_endpoint.call_args
     cargs, ckwargs = call
     assert not cargs
     assert len(kwargs) == len(ckwargs)
     for k in ckwargs:
-        assert kwargs[k] == ckwargs[k]
+        if k != 'Body':
+            assert kwargs[k] == ckwargs[k]
+        else:
+            actual_body = json.loads(ckwargs[k])
+            expected_body = json.loads(kwargs[k])
+            assert len(actual_body) == len(expected_body)
+            for k2 in actual_body:
+                assert actual_body[k2] == expected_body[k2]
 
 
 def mock_response(expected_response, sagemaker_session, content_type=JSON_CONTENT_TYPE):

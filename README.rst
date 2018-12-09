@@ -32,12 +32,18 @@ Table of Contents
 4. `TensorFlow SageMaker Estimators <#tensorflow-sagemaker-estimators>`__
 5. `Chainer SageMaker Estimators <#chainer-sagemaker-estimators>`__
 6. `PyTorch SageMaker Estimators <#pytorch-sagemaker-estimators>`__
-7. `AWS SageMaker Estimators <#aws-sagemaker-estimators>`__
-8. `BYO Docker Containers with SageMaker Estimators <#byo-docker-containers-with-sagemaker-estimators>`__
-9. `SageMaker Automatic Model Tuning <#sagemaker-automatic-model-tuning>`__
-10. `SageMaker Batch Transform <#sagemaker-batch-transform>`__
-11. `Secure Training and Inference with VPC <#secure-training-and-inference-with-vpc>`__
-12. `BYO Model <#byo-model>`__
+7. `SageMaker Reinforcement Learning Estimators <#sagemaker-reinforcement-learning-estimators>`__
+8. `SageMaker SparkML Serving <#sagemaker-sparkml-serving>`__
+9. `AWS SageMaker Estimators <#aws-sagemaker-estimators>`__
+10. `Using SageMaker AlgorithmEstimators <#using-sagemaker-algorithmestimators>`__
+11. `Consuming SageMaker Model Packages <#consuming-sagemaker-model-packages>`__
+12. `BYO Docker Containers with SageMaker Estimators <#byo-docker-containers-with-sagemaker-estimators>`__
+13. `SageMaker Automatic Model Tuning <#sagemaker-automatic-model-tuning>`__
+14. `SageMaker Batch Transform <#sagemaker-batch-transform>`__
+15. `Secure Training and Inference with VPC <#secure-training-and-inference-with-vpc>`__
+16. `BYO Model <#byo-model>`__
+17. `Inference Pipelines <#inference-pipelines>`__
+18. `SageMaker Workflow <#sagemaker-workflow>`__
 
 
 Installing the SageMaker Python SDK
@@ -138,6 +144,7 @@ The following sections of this document explain how to use the different estimat
 * `TensorFlow SageMaker Estimators and Models <#tensorflow-sagemaker-estimators>`__
 * `Chainer SageMaker Estimators and Models <#chainer-sagemaker-estimators>`__
 * `PyTorch SageMaker Estimators <#pytorch-sagemaker-estimators>`__
+* `SageMaker Reinforcement Learning Estimators <#sagemaker-reinforcement-learning-estimators>`__
 * `AWS SageMaker Estimators and Models <#aws-sagemaker-estimators>`__
 * `Custom SageMaker Estimators and Models <#byo-docker-containers-with-sagemaker-estimators>`__
 
@@ -341,7 +348,7 @@ Currently, the following algorithms support incremental training:
 
 - Image Classification
 - Object Detection
-- Semantics Segmentation
+- Semantic Segmentation
 
 
 MXNet SageMaker Estimators
@@ -349,7 +356,9 @@ MXNet SageMaker Estimators
 
 By using MXNet SageMaker ``Estimators``, you can train and host MXNet models on Amazon SageMaker.
 
-Supported versions of MXNet: ``1.2.1``, ``1.1.0``, ``1.0.0``, ``0.12.1``.
+Supported versions of MXNet: ``1.3.0``, ``1.2.1``, ``1.1.0``, ``1.0.0``, ``0.12.1``.
+
+Supported versions of MXNet for Elastic Inference: ``1.3.0``
 
 We recommend that you use the latest supported version, because that's where we focus most of our development efforts.
 
@@ -365,6 +374,8 @@ By using TensorFlow SageMaker ``Estimators``, you can train and host TensorFlow 
 
 Supported versions of TensorFlow: ``1.4.1``, ``1.5.0``, ``1.6.0``, ``1.7.0``, ``1.8.0``, ``1.9.0``, ``1.10.0``, ``1.11.0``.
 
+Supported versions of TensorFlow for Elastic Inference: ``1.11.0``.
+
 We recommend that you use the latest supported version, because that's where we focus most of our development efforts.
 
 For more information, see `TensorFlow SageMaker Estimators and Models`_.
@@ -373,7 +384,7 @@ For more information, see `TensorFlow SageMaker Estimators and Models`_.
 
 
 Chainer SageMaker Estimators
--------------------------------
+----------------------------
 
 By using Chainer SageMaker ``Estimators``, you can train and host Chainer models on Amazon SageMaker.
 
@@ -389,7 +400,7 @@ For more information about  Chainer SageMaker ``Estimators``, see `Chainer SageM
 
 
 PyTorch SageMaker Estimators
--------------------------------
+----------------------------
 
 With PyTorch SageMaker ``Estimators``, you can train and host PyTorch models on Amazon SageMaker.
 
@@ -407,6 +418,55 @@ For more information about PyTorch SageMaker ``Estimators``, see `PyTorch SageMa
 .. _PyTorch SageMaker Estimators and Models: src/sagemaker/pytorch/README.rst
 
 
+SageMaker Reinforcement Learning Estimators
+-------------------------------------------
+
+With Reinforcement Learning (RL) Estimators, you can use reinforcement learning to train models on Amazon SageMaker.
+
+Supported versions of Coach: ``0.10.1`` with TensorFlow, ``0.11.0`` with TensorFlow or MXNet.
+For more information about Coach, see https://github.com/NervanaSystems/coach
+
+Supported versions of Ray: ``0.5.3`` with TensorFlow.
+For more information about Ray, see https://github.com/ray-project/ray
+
+For more information about SageMaker RL ``Estimators``, see `SageMaker Reinforcement Learning Estimators`_.
+
+.. _SageMaker Reinforcement Learning Estimators: src/sagemaker/rl/README.rst
+
+
+SageMaker SparkML Serving
+-------------------------
+
+With SageMaker SparkML Serving, you can now perform predictions against a SparkML Model in SageMaker.
+In order to host a SparkML model in SageMaker, it should be serialized with ``MLeap`` library.
+
+For more information on MLeap, see https://github.com/combust/mleap .
+
+Supported major version of Spark: 2.2 (MLeap version - 0.9.6)
+
+Here is an example on how to create an instance of  ``SparkMLModel`` class and use ``deploy()`` method to create an
+endpoint which can be used to perform prediction against your trained SparkML Model.
+
+.. code:: python
+
+    sparkml_model = SparkMLModel(model_data='s3://path/to/model.tar.gz', env={'SAGEMAKER_SPARKML_SCHEMA': schema})
+    model_name = 'sparkml-model'
+    endpoint_name = 'sparkml-endpoint'
+    predictor = sparkml_model.deploy(initial_instance_count=1, instance_type='ml.c4.xlarge', endpoint_name=endpoint_name)
+
+Once the model is deployed, we can invoke the endpoint with a ``CSV`` payload like this:
+
+.. code:: python
+
+    payload = 'field_1,field_2,field_3,field_4,field_5'
+    predictor.predict(payload)
+
+
+For more information about the different ``content-type`` and ``Accept`` formats as well as the structure of the
+``schema`` that SageMaker SparkML Serving recognizes, please see `SageMaker SparkML Serving Container`_.
+
+.. _SageMaker SparkML Serving Container: https://github.com/aws/sagemaker-sparkml-serving-container
+
 AWS SageMaker Estimators
 ------------------------
 Amazon SageMaker provides several built-in machine learning algorithms that you can use to solve a variety of problems.
@@ -419,6 +479,59 @@ Latent Dirichlet Allocation (LDA), Neural Topic Model (NTM), Random Cut Forest, 
 For more information, see `AWS SageMaker Estimators and Models`_.
 
 .. _AWS SageMaker Estimators and Models: src/sagemaker/amazon/README.rst
+
+Using SageMaker AlgorithmEstimators
+-----------------------------------
+
+With the SageMaker Algorithm entities, you can create training jobs with just an ``algorithm_arn`` instead of
+a training image. There is a dedicated ``AlgorithmEstimator`` class that accepts ``algorithm_arn`` as a
+parameter, the rest of the arguments are similar to the other Estimator classes. This class also allows you to
+consume algorithms that you have subscribed to in the AWS Marketplace. The AlgorithmEstimator performs
+client-side validation on your inputs based on the algorithm's properties.
+
+Here is an example:
+
+.. code:: python
+
+        import sagemaker
+
+        algo = sagemaker.AlgorithmEstimator(
+            algorithm_arn='arn:aws:sagemaker:us-west-2:1234567:algorithm/some-algorithm',
+            role='SageMakerRole',
+            train_instance_count=1,
+            train_instance_type='ml.c4.xlarge')
+
+        train_input = algo.sagemaker_session.upload_data(path='/path/to/your/data')
+
+        algo.fit({'training': train_input})
+        algo.deploy(1, 'ml.m4.xlarge')
+
+        # When you are done using your endpoint
+        algo.delete_endpoint()
+
+
+Consuming SageMaker Model Packages
+----------------------------------
+
+SageMaker Model Packages are a way to specify and share information for how to create SageMaker Models.
+With a SageMaker Model Package that you have created or subscribed to in the AWS Marketplace,
+you can use the specified serving image and model data for Endpoints and Batch Transform jobs.
+
+To work with a SageMaker Model Package, use the ``ModelPackage`` class.
+
+Here is an example:
+
+.. code:: python
+
+        import sagemaker
+
+        model = sagemaker.ModelPackage(
+            role='SageMakerRole',
+            model_package_arn='arn:aws:sagemaker:us-west-2:123456:model-package/my-model-package')
+        model.deploy(1, 'ml.m4.xlarge', endpoint_name='my-endpoint')
+
+        # When you are done using your endpoint
+        model.sagemaker_session.delete_endpoint('my-endpoint')
 
 
 BYO Docker Containers with SageMaker Estimators
@@ -434,7 +547,7 @@ Please refer to the full example in the examples repo:
     git clone https://github.com/awslabs/amazon-sagemaker-examples.git
 
 
-The example notebook is is located here:
+The example notebook is located here:
 ``advanced_functionality/scikit_bring_your_own/scikit_bring_your_own.ipynb``
 
 
@@ -706,3 +819,52 @@ After that, invoke the ``deploy()`` method on the ``Model``:
 This returns a predictor the same way an ``Estimator`` does when ``deploy()`` is called. You can now get inferences just like with any other model deployed on Amazon SageMaker.
 
 A full example is available in the `Amazon SageMaker examples repository <https://github.com/awslabs/amazon-sagemaker-examples/tree/master/advanced_functionality/mxnet_mnist_byom>`__.
+
+
+Inference Pipelines
+-------------------
+You can create a Pipeline for realtime or batch inference comprising of one or multiple model containers. This will help
+you to deploy an ML pipeline behind a single endpoint and you can have one API call perform pre-processing, model-scoring
+and post-processing on your data before returning it back as the response.
+
+For this, you have to create a ``PipelineModel`` which will take a list of ``Model`` objects. Calling ``deploy()`` on the
+``PipelineModel`` will provide you with an endpoint which can be invoked to perform the prediction on a data point against
+the ML Pipeline.
+
+.. code:: python
+
+   xgb_image = get_image_uri(sess.boto_region_name, 'xgboost', repo_version="latest")
+   xgb_model = Model(model_data='s3://path/to/model.tar.gz', image=xgb_image)
+   sparkml_model = SparkMLModel(model_data='s3://path/to/model.tar.gz', env={'SAGEMAKER_SPARKML_SCHEMA': schema})
+
+   model_name = 'inference-pipeline-model'
+   endpoint_name = 'inference-pipeline-endpoint'
+   sm_model = PipelineModel(name=model_name, role=sagemaker_role, models=[sparkml_model, xgb_model])
+
+This will define a ``PipelineModel`` consisting of SparkML model and an XGBoost model stacked sequentially. For more
+information about how to train an XGBoost model, please refer to the XGBoost notebook here_.
+
+.. _here: https://docs.aws.amazon.com/sagemaker/latest/dg/xgboost.html#xgboost-sample-notebooks
+
+.. code:: python
+
+   sm_model.deploy(initial_instance_count=1, instance_type='ml.c5.xlarge', endpoint_name=endpoint_name)
+
+This returns a predictor the same way an ``Estimator`` does when ``deploy()`` is called. Whenever you make an inference
+request using this predictor, you should pass the data that the first container expects and the predictor will return the
+output from the last container.
+
+For comprehensive examples on how to use Inference Pipelines please refer to the following notebooks:
+
+- `inference_pipeline_sparkml_xgboost_abalone.ipynb <https://github.com/awslabs/amazon-sagemaker-examples/blob/master/advanced_functionality/inference_pipeline_sparkml_xgboost_abalone/inference_pipeline_sparkml_xgboost_abalone.ipynb>`__
+- `inference_pipeline_sparkml_blazingtext_dbpedia.ipynb <https://github.com/awslabs/amazon-sagemaker-examples/blob/master/advanced_functionality/inference_pipeline_sparkml_blazingtext_dbpedia/inference_pipeline_sparkml_blazingtext_dbpedia.ipynb>`__
+
+
+SageMaker Workflow
+------------------
+
+You can use Apache Airflow to author, schedule and monitor SageMaker workflow.
+
+For more information, see `SageMaker Workflow in Apache Airflow`_.
+
+.. _SageMaker Workflow in Apache Airflow: src/sagemaker/workflow/README.rst

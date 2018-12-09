@@ -29,7 +29,7 @@ logger = logging.getLogger(__name__)
 logger.setLevel(logging.WARNING)
 
 _UNUSED_ARN = 'local:arn-does-not-matter'
-HEALTH_CHECK_TIMEOUT_LIMIT = 30
+HEALTH_CHECK_TIMEOUT_LIMIT = 120
 
 
 class _LocalTrainingJob(object):
@@ -370,6 +370,10 @@ class _LocalEndpoint(object):
         instance_type = self.production_variant['InstanceType']
         instance_count = self.production_variant['InitialInstanceCount']
 
+        accelerator_type = self.production_variant.get('AcceleratorType')
+        if accelerator_type == 'local_sagemaker_notebook':
+            self.primary_container['Environment']['SAGEMAKER_INFERENCE_ACCELERATOR_PRESENT'] = 'true'
+
         self.create_time = datetime.datetime.now()
         self.container = _SageMakerContainer(instance_type, instance_count, image, self.local_session)
         self.container.serve(self.primary_container['ModelDataUrl'], self.primary_container['Environment'])
@@ -401,7 +405,7 @@ def _wait_for_serving_container(serving_port):
 
     endpoint_url = 'http://localhost:%s/ping' % serving_port
     while True:
-        i += 1
+        i += 5
         if i >= HEALTH_CHECK_TIMEOUT_LIMIT:
             raise RuntimeError('Giving up, endpoint didn\'t launch correctly')
 
@@ -412,7 +416,7 @@ def _wait_for_serving_container(serving_port):
         else:
             return
 
-        time.sleep(1)
+        time.sleep(5)
 
 
 def _perform_request(endpoint_url, pool_manager=None):

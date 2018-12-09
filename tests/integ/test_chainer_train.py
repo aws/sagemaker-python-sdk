@@ -115,7 +115,7 @@ def test_failed_training_job(sagemaker_session, chainer_full_version):
 
         with pytest.raises(ValueError) as e:
             chainer.fit()
-        assert 'This failure is expected' in str(e.value)
+        assert 'ExecuteUserScriptError' in str(e.value)
 
 
 def _run_mnist_training_job(sagemaker_session, instance_type, instance_count,

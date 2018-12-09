@@ -396,6 +396,41 @@ def test_train_local_code(tmpdir, sagemaker_session):
                 assert '%s:/opt/ml/shared' % shared_folder_path in volumes
 
 
+@patch('sagemaker.local.local_session.LocalSession', Mock())
+@patch('sagemaker.local.image._stream_output', Mock())
+@patch('sagemaker.local.image._SageMakerContainer._cleanup', Mock())
+@patch('sagemaker.local.data.get_data_source_instance', Mock())
+@patch('subprocess.Popen', Mock())
+def test_train_local_intermediate_output(tmpdir, sagemaker_session):
+    directories = [str(tmpdir.mkdir('container-root')), str(tmpdir.mkdir('data'))]
+    with patch('sagemaker.local.image._SageMakerContainer._create_tmp_folder',
+               side_effect=directories):
+        instance_count = 2
+        image = 'my-image'
+        sagemaker_container = _SageMakerContainer('local', instance_count, image,
+                                                  sagemaker_session=sagemaker_session)
+
+        output_path = str(tmpdir.mkdir('customer_intermediate_output'))
+        output_data_config = {'S3OutputPath': 'file://%s' % output_path}
+        hyperparameters = {'sagemaker_s3_output': output_path}
+
+        sagemaker_container.train(
+            INPUT_DATA_CONFIG, output_data_config, hyperparameters, TRAINING_JOB_NAME)
+
+        docker_compose_file = os.path.join(sagemaker_container.container_root,
+                                           'docker-compose.yaml')
+        intermediate_folder_path = os.path.join(output_path, 'output/intermediate')
+
+        with open(docker_compose_file, 'r') as f:
+            config = yaml.load(f)
+            assert len(config['services']) == instance_count
+            for h in sagemaker_container.hosts:
+                assert config['services'][h]['image'] == image
+                assert config['services'][h]['command'] == 'train'
+                volumes = config['services'][h]['volumes']
+                assert '%s:/opt/ml/output/intermediate' % intermediate_folder_path in volumes
+
+
 def test_container_has_gpu_support(tmpdir, sagemaker_session):
     instance_count = 1
     image = 'my-image'
@@ -537,9 +572,10 @@ def test_prepare_serving_volumes_with_local_model(get_data_source_instance, sage
 
 def test_ecr_login_non_ecr():
     session_mock = Mock()
-    sagemaker.local.image._ecr_login_if_needed(session_mock, 'ubuntu')
+    result = sagemaker.local.image._ecr_login_if_needed(session_mock, 'ubuntu')
 
     session_mock.assert_not_called()
+    assert result is False
 
 
 @patch('sagemaker.local.image._check_output', return_value='123451324')
@@ -547,10 +583,11 @@ def test_ecr_login_image_exists(_check_output):
     session_mock = Mock()
 
     image = '520713654638.dkr.ecr.us-east-1.amazonaws.com/image-i-have:1.0'
-    sagemaker.local.image._ecr_login_if_needed(session_mock, image)
+    result = sagemaker.local.image._ecr_login_if_needed(session_mock, image)
 
     session_mock.assert_not_called()
     _check_output.assert_called()
+    assert result is False
 
 
 @patch('subprocess.check_output', return_value=''.encode('utf-8'))
@@ -577,12 +614,25 @@ def test_ecr_login_needed(check_output):
     }
     session_mock.client('ecr').get_authorization_token.return_value = response
     image = '520713654638.dkr.ecr.us-east-1.amazonaws.com/image-i-need:1.1'
-    sagemaker.local.image._ecr_login_if_needed(session_mock, image)
+    result = sagemaker.local.image._ecr_login_if_needed(session_mock, image)
 
     expected_command = 'docker login -u AWS -p %s https://520713654638.dkr.ecr.us-east-1.amazonaws.com' % token
 
     check_output.assert_called_with(expected_command, shell=True)
     session_mock.client('ecr').get_authorization_token.assert_called_with(registryIds=['520713654638'])
+
+    assert result is True
+
+
+@patch('subprocess.check_output', return_value=''.encode('utf-8'))
+def test_pull_image(check_output):
+    image = '520713654638.dkr.ecr.us-east-1.amazonaws.com/image-i-need:1.1'
+
+    sagemaker.local.image._pull_image(image)
+
+    expected_command = 'docker pull %s' % image
+
+    check_output.assert_called_once_with(expected_command, shell=True)
 
 
 def test__aws_credentials_with_long_lived_credentials():

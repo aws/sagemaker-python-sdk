@@ -336,7 +336,7 @@ def registry(region_name, algorithm=None):
             "us-west-1": "632365934929",
         }[region_name]
     elif algorithm in ["xgboost", "seq2seq", "image-classification", "blazingtext",
-                       "object-detection"]:
+                       "object-detection", "semantic-segmentation"]:
         account_id = {
             "us-east-1": "811284229777",
             "us-east-2": "825641698319",
@@ -352,6 +352,13 @@ def registry(region_name, algorithm=None):
             "ca-central-1": "469771592824",
             "eu-west-2": "644912444149",
             "us-west-1": "632365934929",
+        }[region_name]
+    elif algorithm in ['image-classification-neo', 'xgboost-neo']:
+        account_id = {
+            'us-west-2': '301217895009',
+            'us-east-1': '785573368785',
+            'eu-west-1': '802834080501',
+            'us-east-2': '007439368137'
         }[region_name]
     else:
         raise ValueError("Algorithm class:{} doesn't have mapping to account_id with images".format(algorithm))

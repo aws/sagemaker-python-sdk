@@ -5,501 +5,161 @@ TensorFlow SageMaker Estimators allow you to run your own TensorFlow
 training algorithms on SageMaker Learner, and to host your own TensorFlow
 models on SageMaker Hosting.
 
-Supported versions of TensorFlow: ``1.4.1``, ``1.5.0``, ``1.6.0``, ``1.7.0``, ``1.8.0``, ``1.9.0``, ``1.10.0``, ``1.11.0``.
+Documentation of the previous Legacy Mode versions: `1.4.1 <https://github.com/aws/sagemaker-python-sdk/tree/v1.0.0#tensorflow-sagemaker-estimators>`_, `1.5.0 <https://github.com/aws/sagemaker-python-sdk/tree/v1.1.0#tensorflow-sagemaker-estimators>`_, `1.6.0 <https://github.com/aws/sagemaker-python-sdk/blob/v1.5.0/src/sagemaker/tensorflow/README.rst#tensorflow-sagemaker-estimators-and-models>`_, `1.7.0 <https://github.com/aws/sagemaker-python-sdk/blob/v1.5.0/src/sagemaker/tensorflow/README.rst#tensorflow-sagemaker-estimators-and-models>`_, `1.8.0 <https://github.com/aws/sagemaker-python-sdk/blob/v1.5.0/src/sagemaker/tensorflow/README.rst#tensorflow-sagemaker-estimators-and-models>`_, `1.9.0 <https://github.com/aws/sagemaker-python-sdk/blob/v1.9.2/src/sagemaker/tensorflow/README.rst#tensorflow-sagemaker-estimators-and-models>`_, `1.10.0 <https://github.com/aws/sagemaker-python-sdk/blob/v1.10.0/src/sagemaker/tensorflow/README.rst#tensorflow-sagemaker-estimators-and-models>`_
+
++-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+| WARNING                                                                                                                                                                     |
++=============================================================================================================================================================================+
+| We have added a new format of your TensorFlow training script with TensorFlow version 1.11.                                                                                 |
+| This new way gives the user script more flexibility.                                                                                                                        |
+| This new format is called Script Mode, as opposed to Legacy Mode, which is what we support with TensorFlow 1.11 and older versions.                                         |
+| In addition we are adding Python 3 support with Script Mode.                                                                                                                |
+| Last supported version of Legacy Mode will be TensorFlow 1.12.                                                                                                              |
+| Script Mode is available with TensorFlow version 1.11 and newer.                                                                                                            |
+| Make sure you refer to the correct version of this README when you prepare your script.                                                                                     |
+| You can find the Legacy Mode README `here <https://github.com/aws/sagemaker-python-sdk/tree/v1.12.0/src/sagemaker/tensorflow#tensorflow-sagemaker-estimators-and-models>`_. |
++-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+
+Supported versions of TensorFlow for Elastic Inference: ``1.11.0``.
 
 Training with TensorFlow
 ~~~~~~~~~~~~~~~~~~~~~~~~
 
-Training TensorFlow models using a ``sagemaker.tensorflow.TensorFlow``
-is a two-step process.
+Training TensorFlow models using ``sagemaker.tensorflow.TensorFlow`` is a two-step process.
 First, you prepare your training script, then second, you run it on
 SageMaker Learner via the ``sagemaker.tensorflow.TensorFlow`` estimator.
 
-Suppose that you already have a TensorFlow training script called
-``tf-train.py``. You can train this script in SageMaker Learner as
-follows:
+Preparing a Script Mode training script
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Your TensorFlow training script must be a Python 2.7- or 3.6-compatible source file.
+
+The training script is very similar to a training script you might run outside of SageMaker, but you can access useful properties about the training environment through various environment variables, including the following:
+
+* ``SM_MODEL_DIR``: A string that represents the local path where the training job can write the model artifacts to.
+  After training, artifacts in this directory are uploaded to S3 for model hosting. This is different than the ``model_dir``
+  argument passed in your training script which is a S3 location. ``SM_MODEL_DIR`` is always set to ``/opt/ml/model``.
+* ``SM_NUM_GPUS``: An integer representing the number of GPUs available to the host.
+* ``SM_OUTPUT_DATA_DIR``: A string that represents the path to the directory to write output artifacts to.
+  Output artifacts might include checkpoints, graphs, and other files to save, but do not include model artifacts.
+  These artifacts are compressed and uploaded to S3 to an S3 bucket with the same prefix as the model artifacts.
+* ``SM_CHANNEL_XXXX``: A string that represents the path to the directory that contains the input data for the specified channel.
+  For example, if you specify two input channels in the TensorFlow estimator's ``fit`` call, named 'train' and 'test', the environment variables ``SM_CHANNEL_TRAIN`` and ``SM_CHANNEL_TEST`` are set.
+
+For the exhaustive list of available environment variables, see the `SageMaker Containers documentation <https://github.com/aws/sagemaker-containers#list-of-provided-environment-variables-by-sagemaker-containers>`__.
+
+A typical training script loads data from the input channels, configures training with hyperparameters, trains a model, and saves a model to ``SM_CHANNEL_TRAIN`` so that it can be deployed for inference later.
+Hyperparameters are passed to your script as arguments and can be retrieved with an ``argparse.ArgumentParser`` instance.
+For example, a training script might start with the following:
+
+.. code:: python
+
+    import argparse
+    import os
+
+    if __name__ =='__main__':
+
+        parser = argparse.ArgumentParser()
+
+        # hyperparameters sent by the client are passed as command-line arguments to the script.
+        parser.add_argument('--epochs', type=int, default=10)
+        parser.add_argument('--batch_size', type=int, default=100)
+        parser.add_argument('--learning_rate', type=float, default=0.1)
+
+        # input data and model directories
+        parser.add_argument('--model_dir', type=str)
+        parser.add_argument('--train', type=str, default=os.environ.get('SM_CHANNEL_TRAIN'))
+        parser.add_argument('--test', type=str, default=os.environ.get('SM_CHANNEL_TEST'))
+
+        args, _ = parser.parse_known_args()
+
+        # ... load from args.train and args.test, train a model, write model to args.model_dir.
+
+Because the SageMaker imports your training script, putting your training launching code in a main guard (``if __name__=='__main__':``)
+is good practice.
+
+Note that SageMaker doesn't support argparse actions.
+If you want to use, for example, boolean hyperparameters, you need to specify ``type`` as ``bool`` in your script and provide an explicit ``True`` or ``False`` value for this hyperparameter when instantiating your TensorFlow estimator.
+
+Adapting your local TensorFlow script
+'''''''''''''''''''''''''''''''''''''
+
+If you have a TensorFlow training script that runs outside of SageMaker please follow the directions here:
+
+1. Make sure your script can handle ``--model_dir`` as an additional command line argument. If you did not specify a
+location when the TensorFlow estimator is constructed a S3 location under the default training job bucket will be passed
+in here. Distributed training with parameter servers requires you use the ``tf.estimator.train_and_evaluate`` API and
+a S3 location is needed as the model directory during training. Here is an example:
+
+.. code:: python
+
+    estimator = tf.estimator.Estimator(model_fn=my_model_fn, model_dir=args.model_dir)
+    ...
+    train_spec = tf.estimator.TrainSpec(train_input_fn, max_steps=1000)
+    eval_spec = tf.estimator.EvalSpec(eval_input_fn)
+    tf.estimator.train_and_evaluate(mnist_classifier, train_spec, eval_spec)
+
+2. Load input data from the input channels. The input channels are defined when ``fit`` is called. For example:
+
+.. code:: python
+
+    estimator.fit({'train':'s3://my-bucket/my-training-data',
+                  'eval':'s3://my-bucket/my-evaluation-data'})
+
+In your training script the channels will be stored in environment variables ``SM_CHANNEL_TRAIN`` and
+``SM_CHANNEL_EVAL``. You can add them to your argument parsing logic like this:
+
+.. code:: python
+
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--train', type=str, default=os.environ.get('SM_CHANNEL_TRAIN'))
+    parser.add_argument('--eval', type=str, default=os.environ.get('SM_CHANNEL_EVAL'))
+
+3. Export your final model to path stored in environment variable ``SM_MODEL_DIR`` which should always be
+   ``/opt/ml/model``. At end of training SageMaker will upload the model file under ``/opt/ml/model`` to
+   ``output_path``.
+
+
+Training with TensorFlow estimator
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Calling fit
+'''''''''''
+
+To use Script Mode, set at least one of these args
+
+- ``py_version='py3'``
+- ``script_mode=True``
+
+Please note that when using Script Mode, your training script need to accept the following args:
+
+- ``model_dir``
+
+Please note that the following args are not permitted when using Script Mode:
+
+- ``checkpoint_path``
+- ``training_steps``
+- ``evaluation_steps``
+- ``requirements_file``
 
 .. code:: python
 
   from sagemaker.tensorflow import TensorFlow
 
   tf_estimator = TensorFlow(entry_point='tf-train.py', role='SageMakerRole',
-                            training_steps=10000, evaluation_steps=100,
                             train_instance_count=1, train_instance_type='ml.p2.xlarge',
-                            framework_version=1.10.0)
+                            framework_version='1.11', py_version='py3')
   tf_estimator.fit('s3://bucket/path/to/training/data')
 
 Where the S3 url is a path to your training data, within Amazon S3. The
 constructor keyword arguments define how SageMaker runs your training
-script and are discussed, in detail, in a later section.
-
-In the following sections, we'll discuss how to prepare a training script for execution on
-SageMaker, then how to run that script on SageMaker using a ``sagemaker.tensorflow.TensorFlow``
-estimator.
-
-Preparing the TensorFlow training script
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-Your TensorFlow training script must be a **Python 2.7** source file. The SageMaker TensorFlow docker image
-uses this script by calling specifically-named functions from this script.
-
-The training script **must contain** the following:
-
-- Exactly one of the following:
-
-  - ``model_fn``: defines the model that will be trained.
-  - ``keras_model_fn``: defines the ``tf.keras`` model that will be trained.
-  - ``estimator_fn``: defines the ``tf.estimator.Estimator`` that will train the model.
-
-- ``train_input_fn``: preprocess and load training data.
-- ``eval_input_fn``: preprocess and load evaluation data.
-
-In addition, it may optionally contain:
-
-- ``serving_input_fn``: Defines the features to be passed to the model during prediction. **Important:**
-    this function is used only during training, but is required to deploy the model resulting from training
-    to a SageMaker endpoint.
-
-Creating a ``model_fn``
-^^^^^^^^^^^^^^^^^^^^^^^
-
-A ``model_fn`` is a function that contains all the logic to support training, evaluation,
-and prediction. The basic skeleton for a ``model_fn`` looks like this:
-
-.. code:: python
-
-  def model_fn(features, labels, mode, hyperparameters):
-    # Logic to do the following:
-    # 1. Configure the model via TensorFlow operations
-    # 2. Define the loss function for training/evaluation
-    # 3. Define the training operation/optimizer
-    # 4. Generate predictions
-    # 5. Return predictions/loss/train_op/eval_metric_ops in EstimatorSpec object
-    return EstimatorSpec(mode, predictions, loss, train_op, eval_metric_ops)
-
-The ``model_fn`` must accept four positional arguments:
-
-- ``features``: A dict containing the features passed to the model via ``train_input_fn``
-  in **training** mode, via ``eval_input_fn`` in **evaluation** mode, and via ``serving_input_fn``
-  in **predict** mode.
-- ``labels``: A ``Tensor`` containing the labels passed to the model via ``train_input_fn``
-  in **training** mode and ``eval_input_fn`` in **evaluation** mode. It will be empty for
-  **predict** mode.
-- ``mode``: One of the following ``tf.estimator.ModeKeys`` string values indicating the
-  context in which the ``model_fn`` was invoked:
-  - ``TRAIN``: the ``model_fn`` was invoked in **training** mode.
-  - ``EVAL``: the ``model_fn`` was invoked in **evaluation** mode.
-  - ``PREDICT``: the ``model_fn`` was invoked in **predict** mode.
-- ``hyperparameters``: The hyperparameters passed to SageMaker TrainingJob that runs
-  your TensorFlow training script. You can use this to pass hyperparameters to your
-  training script.
-
-The ``model_fn`` must return a ``tf.estimator.EstimatorSpec``.
-
-Example of a complete ``model_fn``
-''''''''''''''''''''''''''''''''''
-
-.. code:: python
-
-  def model_fn(features, labels, mode, hyperparameters):
-    # Connect the first hidden layer to input layer
-    # (features["x"]) with relu activation
-    first_hidden_layer = Dense(10, activation='relu', name='first-layer')(features[INPUT_TENSOR_NAME])
-
-    # Connect the second hidden layer to first hidden layer with relu
-    second_hidden_layer = Dense(20, activation='relu')(first_hidden_layer)
-
-    # Connect the output layer to second hidden layer (no activation fn)
-    output_layer = Dense(1, activation='linear')(second_hidden_layer)
-
-    # Reshape output layer to 1-dim Tensor to return predictions
-    predictions = tf.reshape(output_layer, [-1])
-
-    # Provide an estimator spec for `ModeKeys.PREDICT`.
-    if mode == tf.estimator.ModeKeys.PREDICT:
-      return tf.estimator.EstimatorSpec(mode=mode, predictions={"ages": predictions})
-
-    # Calculate loss using mean squared error
-    loss = tf.losses.mean_squared_error(labels, predictions)
-
-    # Calculate root mean squared error as additional eval metric
-    eval_metric_ops = {
-        "rmse": tf.metrics.root_mean_squared_error(tf.cast(labels, tf.float64), predictions)
-    }
-
-    optimizer = tf.train.GradientDescentOptimizer(
-        learning_rate=hyperparameters["learning_rate"])
-    train_op = optimizer.minimize(
-        loss=loss, global_step=tf.train.get_global_step())
-
-    # Provide an estimator spec for `ModeKeys.EVAL` and `ModeKeys.TRAIN` modes.
-    return tf.estimator.EstimatorSpec(
-        mode=mode,
-        loss=loss,
-        train_op=train_op,
-        eval_metric_ops=eval_metric_ops)
-
-Distributed training
-''''''''''''''''''''
-
-When distributed training happens, a copy of the same neural network will be sent to
-multiple training instances. Each instance will train with a batch of the dataset,
-calculate loss and minimize the optimizer. One entire loop of this process is called training step.
-
-A `global step <https://www.tensorflow.org/api_docs/python/tf/train/global_step>`_ is a global
-counter shared between the instances. It is necessary for distributed training, so the optimizer
-can keep track of the number of training steps across instances. The only change in the
-previous complete ``model_fn`` to enable distributed training is to pass in the global
-step into the ``optimizer.minimize`` function:
-
-.. code:: python
-
-  train_op = optimizer.minimize(loss, tf.train.get_or_create_global_step())
-
-More information about distributed training can be find in talk from the TensorFlow Dev Summit 2017
-`Distributed TensorFlow <https://www.youtube.com/watch?time_continue=1&v=la_M6bCV91M>`_.
-
-
-More details on how to create a ``model_fn`` can be find in `Constructing the model_fn <https://github.com/tensorflow/tensorflow/blob/r1.4/tensorflow/docs_src/extend/estimators.md#constructing-the-model_fn-constructing-modelfn>`_.
-
-
-Creating ``train_input_fn`` and ``eval_input_fn`` functions
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-The ``train_input_fn`` is used to pass ``features`` and ``labels`` to the ``model_fn``
-in **training** mode. The ``eval_input_fn`` is used to ``features`` and ``labels`` to the
-``model_fn`` in **evaluation** mode.
-
-The basic skeleton for the ``train_input_fn`` looks like this:
-
-.. code:: python
-
-  def train_input_fn(training_dir, hyperparameters):
-    # Logic to the following:
-    # 1. Reads the **training** dataset files located in training_dir
-    # 2. Preprocess the dataset
-    # 3. Return 1)  a dict of feature names to Tensors with
-    # the corresponding feature data, and 2) a Tensor containing labels
-    return features, labels
-
-An ``eval_input_fn`` follows the same format:
-
-.. code:: python
-
-  def eval_input_fn(training_dir, hyperparameters):
-    # Logic to the following:
-    # 1. Reads the **evaluation** dataset files located in training_dir
-    # 2. Preprocess the dataset
-    # 3. Return 1)  a dict of feature names to Tensors with
-    # the corresponding feature data, and 2) a Tensor containing labels
-    return features, labels
-
-**Note:** For TensorFlow 1.4 and 1.5, ``train_input_fn`` and ``eval_input_fn`` may also return a no-argument
-function which returns the tuple ``features, labels``. This is no longer supported for TensorFlow 1.6 and up.
-
-Example of a complete ``train_input_fn`` and ``eval_input_fn``
-''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
-
-.. code:: python
-
-  def train_input_fn(training_dir, hyperparameters):
-    # invokes _input_fn with training dataset
-    return _input_fn(training_dir, 'training_dataset.csv')
-
-  def eval_input_fn(training_dir, hyperparameters):
-    # invokes _input_fn with evaluation dataset
-    return _input_fn(training_dir, 'evaluation_dataset.csv')
-
-  def _input_fn(training_dir, training_filename):
-      # reads the dataset using tf.dataset API
-      training_set = tf.contrib.learn.datasets.base.load_csv_without_header(
-          filename=os.path.join(training_dir, training_filename), target_dtype=np.int, features_dtype=np.float32)
-
-      # returns features x and labels y
-      return tf.estimator.inputs.numpy_input_fn(
-          x={INPUT_TENSOR_NAME: np.array(training_set.data)},
-          y=np.array(training_set.target),
-          num_epochs=None,
-          shuffle=True)()
-
-
-More details on how to create input functions can be find in `Building Input Functions with tf.estimator <https://github.com/tensorflow/tensorflow/blob/r1.4/tensorflow/docs_src/get_started/input_fn.md#building-input-functions-with-tfestimator>`_.
-
-Creating a ``serving_input_fn``
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-``serving_input_fn`` is used to define the shapes and types of the inputs the model accepts when
-the model is exported for Tensorflow Serving. This function is optional if you only want to
-train a model, but it is required if you want to create a SavedModel bundle that can be
-deployed to a SageMaker endpoint.
-
-``serving_input_fn`` is called at the end of model training and is **not** called during
-inference. (If you'd like to preprocess inference data, please see
-**Overriding input preprocessing with an input_fn**).
-
-The basic skeleton for the ``serving_input_fn`` looks like this:
-
-.. code:: python
-
-  def serving_input_fn(hyperparameters):
-    # Logic to the following:
-    # 1. Defines placeholders that TensorFlow serving will feed with inference requests
-    # 2. Preprocess input data
-    # 3. Returns a tf.estimator.export.ServingInputReceiver or tf.estimator.export.TensorServingInputReceiver,
-    # which packages the placeholders and the resulting feature Tensors together.
-
-**Note:** For TensorFlow 1.4 and 1.5, ``serving_input_fn`` may also return a no-argument function which returns a ``tf.estimator.export.ServingInputReceiver`` or``tf.estimator.export.TensorServingInputReceiver``. This is no longer supported for TensorFlow 1.6 and up.
-
-Example of a complete ``serving_input_fn``
-''''''''''''''''''''''''''''''''''''''''''
-
-.. code:: python
-
-  def serving_input_fn(hyperparameters):
-      # defines the input placeholder
-      tensor = tf.placeholder(tf.float32, shape=[1, 7])
-      # returns the ServingInputReceiver object.
-      return build_raw_serving_input_receiver_fn({INPUT_TENSOR_NAME: tensor})()
-
-More details on how to create a `serving_input_fn` can be find in `Preparing serving inputs <https://github.com/tensorflow/tensorflow/blob/r1.4/tensorflow/docs_src/programmers_guide/saved_model.md#preparing-serving-inputs>`_.
-
-The complete example described above can find in `Abalone age predictor using layers notebook example <https://github.com/awslabs/amazon-sagemaker-examples/blob/master/sagemaker-python-sdk/tensorflow_abalone_age_predictor_using_layers/tensorflow_abalone_age_predictor_using_layers.ipynb>`_.
-
-More examples on how to create a TensorFlow training script can be find in the `Amazon SageMaker examples repository <https://github.com/awslabs/amazon-sagemaker-examples/tree/master/sagemaker-python-sdk>`_.
-
-Support for pre-made ``tf.estimator`` and ``Keras`` models
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-In addition to ``model_fn``, ``sagemaker.tensorflow.TensorFlow`` supports pre-canned ``tf.estimator``
-and ``Keras`` models.
-
-Using a pre-made ``tensorflow.estimator`` instead of a ``model_fn``
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-Pre-canned estimators are machine learning estimators premade for general purpose problems.
-``tf.estimator`` provides the following pre-canned estimators:
-
-- `tf.estimator.LinearClassifier <https://www.tensorflow.org/api_docs/python/tf/estimator/LinearClassifier>`_: Constructs
-  a linear classification model.
-- `tf.estimator.LinearRegressor <https://www.tensorflow.org/api_docs/python/tf/estimator/LinearRegressor>`_: Constructs
-  a linear regression model.
-- `tf.estimator.DNNClassifier <https://www.tensorflow.org/api_docs/python/tf/estimator/DNNClassifier>`_: Constructs
-  a neural network classification model.
-- `tf.estimator.DNNRegressor <https://www.tensorflow.org/api_docs/python/tf/estimator/DNNRegressor>`_: Construct
-  a neural network regression model.
-- `tf.estimator.DNNLinearCombinedClassifier <https://www.tensorflow.org/api_docs/python/tf/estimator/DNNLinearCombinedClassifier>`_: Constructs
-  a neural network and linear combined classification model.
-- `tf.estimator.DNNLinearCombinedRegressor <https://www.tensorflow.org/api_docs/python/tf/estimator/DNNLinearCombinedRegressor>`_: Constructs
-  a neural network and linear combined regression model.
-
-To use a pre-canned ``tensorflow.estimator`` instead of creating a ``model_fn``, you need to write a ``estimator_fn``.
-The base skeleton for the ``estimator_fn`` looks like this:
-
-.. code:: python
-
-  def estimator_fn(run_config, hyperparameters):
-    # Logic to the following:
-    # 1. Defines the features columns that will be the input of the estimator
-    # 2. Returns an instance of a ``tensorflow.estimator`` passing in, the input run_config in the
-    #    constructor.
-
-Example of a complete ``estimator_fn``
-''''''''''''''''''''''''''''''''''''''
-
-.. code:: python
-
-  def estimator_fn(run_config, hyperparameters):
-      # Defines the features columns that will be the input of the estimator
-      feature_columns = [tf.feature_column.numeric_column(INPUT_TENSOR_NAME, shape=[4])]
-      # Returns the instance of estimator.
-      return tf.estimator.DNNClassifier(feature_columns=feature_columns,
-                                        hidden_units=[10, 20, 10],
-                                        n_classes=3,
-                                        config=run_config)
-
-More details on how to create a ``tensorflow.estimator`` can be find in `Creating Estimators in tf.estimator <https://www.tensorflow.org/extend/estimators>`_.
-
-An example on how to create a TensorFlow training script with an ``estimator_fn`` can find in this `example <https://github.com/awslabs/amazon-sagemaker-examples/tree/master/sagemaker-python-sdk/tensorflow_iris_dnn_classifier_using_estimators>`_.
-
-
-Using a ``Keras`` model instead of a ``model_fn``
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-``tf.keras`` is an full implementation inside TensorFlow of the Keras API. To use a ``tf.keras``
-model for training instead of ``model_fn``, you need to write a ``keras_model_fn``. The base skeleton of
-a ``keras_model_fn`` looks like this:
-
-.. code:: python
-
-  def keras_model_fn(hyperparameters):
-      # Logic to do the following:
-      # 1. Instantiate the Keras model
-      # 2. Compile the Keras model
-      return compiled_model
-
-
-Example of a complete ``keras_model_fn``
-''''''''''''''''''''''''''''''''''''''''
-
-.. code:: python
-
-  def keras_model_fn(hyperparameters):
-    # Instantiate a Keras inception v3 model.
-    keras_inception_v3 = tf.keras.applications.inception_v3.InceptionV3(weights=None)
-    # Compile model with the optimizer, loss, and metrics you'd like to train with.
-    keras_inception_v3.compile(optimizer=tf.keras.optimizers.SGD(lr=0.0001, momentum=0.9),
-                          loss='categorical_crossentropy', metric='accuracy')
-    return keras_inception_v3
-
-
-TensorFlow 1.4.0 support for ``Keras`` models is limited only for **non-distributed** training;
-i.e. set the ``train_instance_count`` parameter in the ``TensorFlow`` estimator equal to 1.
-
-More details on how to create a ``Keras`` model can be find in the `Keras documentation <https://keras.io/>`_.
-
-Running a TensorFlow training script in SageMaker
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-You run TensorFlow training scripts on SageMaker by creating a ``sagemaker.tensorflow.TensorFlow`` estimator.
-When you call ``fit`` on the ``TensorFlow`` estimator, a training job is created in SageMaker.
-The following code sample shows how to train a custom TensorFlow script 'tf-train.py'.
-
-.. code:: python
-
-  from sagemaker.tensorflow import TensorFlow
-
-  tf_estimator = TensorFlow(entry_point='tf-train.py', role='SageMakerRole',
-                            training_steps=10000, evaluation_steps=100,
-                            train_instance_count=1, train_instance_type='ml.p2.xlarge',
-                            framework_version='1.10.0')
-  tf_estimator.fit('s3://bucket/path/to/training/data')
-
-sagemaker.tensorflow.TensorFlow class
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-The ``TensorFlow`` constructor takes both required and optional arguments.
-
-Required arguments
-''''''''''''''''''
-
-The following are required arguments to the TensorFlow constructor.
-
--  ``entry_point (str)`` Path (absolute or relative) to the Python file which
-   should be executed as the entry point to training.
--  ``role (str)`` An AWS IAM role (either name or full ARN). The Amazon
-   SageMaker training jobs and APIs that create Amazon SageMaker
-   endpoints use this role to access training data and model artifacts.
-   After the endpoint is created, the inference code might use the IAM
-   role, if accessing AWS resource.
--  ``train_instance_count (int)`` Number of Amazon EC2 instances to use for
-   training.
--  ``train_instance_type (str)`` Type of EC2 instance to use for training, for
-   example, 'ml.c4.xlarge'.
-- ``training_steps (int)`` Perform this many steps of training. ``None``, means train forever.
-- ``evaluation_steps (int)`` Perform this many steps of evaluation. ``None``, means
-  that evaluation runs until input from ``eval_input_fn`` is exhausted (or another exception is raised).
-
-Optional Arguments
-''''''''''''''''''
-
-The following are optional arguments. When you create a ``TensorFlow`` object,
-you can specify these as keyword arguments.
-
--  ``source_dir (str)`` Path (absolute or relative) to a directory with any
-   other training source code dependencies including the entry point
-   file. Structure within this directory will be preserved when training
-   on SageMaker.
-- ``dependencies (list[str])`` A list of paths to directories (absolute or relative) with
-        any additional libraries that will be exported to the container (default: []).
-        The library folders will be copied to SageMaker in the same folder where the entrypoint is copied.
-        If the ```source_dir``` points to S3, code will be uploaded and the S3 location will be used
-        instead. Example:
-
-            The following call
-            >>> TensorFlow(entry_point='train.py', dependencies=['my/libs/common', 'virtual-env'])
-            results in the following inside the container:
-
-            >>> $ ls
-
-            >>> opt/ml/code
-            >>>     ├── train.py
-            >>>     ├── common
-            >>>     └── virtual-env
-
--  ``requirements_file (str)`` Path to a ``requirements.txt`` file. The path should
-   be within and relative to ``source_dir``. This is a file containing a list of items to be
-   installed using pip install. Details on the format can be found in the
-   `Pip User Guide <https://pip.pypa.io/en/stable/reference/pip_install/#requirements-file-format>`_.
--  ``hyperparameters (dict[str,ANY])`` Hyperparameters that will be used for training.
-   Will be made accessible as a dict[] to the training code on
-   SageMaker. Some hyperparameters will be interpreted by TensorFlow and can be use to
-   fine tune training. See `Optional Hyperparameters <#optional-hyperparameters>`_.
--  ``train_volume_size (int)`` Size in GB of the EBS volume to use for storing
-   input data during training. Must be large enough to the store training
-   data.
--  ``train_max_run (int)`` Timeout in seconds for training, after which Amazon
-   SageMaker terminates the job regardless of its current status.
--  ``output_path (str)`` S3 location where you want the training result (model
-   artifacts and optional output files) saved. If not specified, results
-   are stored to a default bucket. If the bucket with the specific name
-   does not exist, the estimator creates the bucket during the ``fit``
-   method execution.
--  ``checkpoint_path`` S3 location where checkpoint data will saved and restored.
-   The default location is *bucket_name/job_name/checkpoint*. If the location
-   already has checkpoints before the training starts, the model will restore
-   state from the last saved checkpoint. It is very useful to restart a training.
-   See `Restoring from checkpoints <#restoring-from-checkpoints>`_.
--  ``output_kms_key`` Optional KMS key ID to optionally encrypt training
-   output with.
--  ``base_job_name`` Name to assign for the training job that the ``fit``
-   method launches. If not specified, the estimator generates a default
-   job name, based on the training image name and current timestamp.
--  ``image_name`` An alternative docker image to use for training and
-   serving.  If specified, the estimator will use this image for training and
-   hosting, instead of selecting the appropriate SageMaker official image based on
-   framework_version and py_version. Refer to: `SageMaker TensorFlow Docker Containers
-   <#sagemaker-tensorflow-docker-containers>`_ for details on what the Official images support
-   and where to find the source code to build your custom image.
-
-
-Optional Hyperparameters
-''''''''''''''''''''''''
-
-These hyperparameters are used by TensorFlow to fine tune the training.
-You need to add them inside the hyperparameters dictionary in the
-``TensorFlow`` estimator constructor.
-
-**All versions**
-
--  ``save_summary_steps (int)`` Save summaries every this many steps.
--  ``save_checkpoints_secs (int)`` Save checkpoints every this many seconds. Can not be specified with ``save_checkpoints_steps``.
--  ``save_checkpoints_steps (int)`` Save checkpoints every this many steps. Can not be specified with ``save_checkpoints_secs``.
--  ``keep_checkpoint_max (int)`` The maximum number of recent checkpoint files to keep. As new files are created, older files are deleted. If None or 0, all checkpoint files are kept. Defaults to 5 (that is, the 5 most recent checkpoint files are kept.)
--  ``keep_checkpoint_every_n_hours (int)`` Number of hours between each checkpoint to be saved. The default value of 10,000 hours effectively disables the feature.
--  ``log_step_count_steps (int)`` The frequency, in number of global steps, that the global step/sec will be logged during training.
-
-**TensorFlow 1.6 and up**
-
-- ``start_delay_secs (int)`` See docs for this parameter in `tf.estimator.EvalSpec <https://www.tensorflow.org/api_docs/python/tf/estimator/EvalSpec>`_.
-- ``throttle_secs (int)`` See docs for this parameter in `tf.estimator.EvalSpec <https://www.tensorflow.org/api_docs/python/tf/estimator/EvalSpec>`_.
-
-**TensorFlow 1.4 and 1.5**
-
--  ``eval_metrics (dict)`` ``dict`` of string, metric function. If `None`, default set is used. This should be ``None`` if the ``estimator`` is `tf.estimator.Estimator <https://www.tensorflow.org/api_docs/python/tf/estimator/Estimator>`_. If metrics are provided they will be *appended* to the default set.
--  ``eval_delay_secs (int)`` Start evaluating after waiting for this many seconds.
--  ``continuous_eval_throttle_secs (int)`` Do not re-evaluate unless the last evaluation was started at least this many seconds ago.
--  ``min_eval_frequency (int)`` The minimum number of steps between evaluations. Of course, evaluation does not occur if no new snapshot is available, hence, this is the minimum. If 0, the evaluation will only happen after training. If None, defaults to 1000.
--  ``delay_workers_by_global_step (bool)`` if ``True`` delays training workers based on global step instead of time.
-- ``train_steps_per_iteration (int)`` Perform this many (integer) number of train steps for each training-evaluation iteration. With a small value, the model will be evaluated more frequently with more checkpoints saved.
-
-Calling fit
-^^^^^^^^^^^
+script which we discussed earlier.
 
 You start your training script by calling ``fit`` on a ``TensorFlow`` estimator. ``fit`` takes
 both required and optional arguments.
 
 Required argument
-'''''''''''''''''
+"""""""""""""""""
 
 - ``inputs``: The S3 location(s) of datasets to be used for training. This can take one of two forms:
 
@@ -507,22 +167,15 @@ Required argument
   - ``dict[str, str]``: A dictionary mapping channel names to S3 locations, for example ``{'train': 's3://my-bucket/my-training-data/train', 'test': 's3://my-bucket/my-training-data/test'}``
   - ``sagemaker.session.s3_input``: channel configuration for S3 data sources that can provide additional information as well as the path to the training dataset. See `the API docs <https://sagemaker.readthedocs.io/en/latest/session.html#sagemaker.session.s3_input>`_ for full details.
 
-When the training job starts in SageMaker the container will download the dataset.
-Both ``train_input_fn`` and ``eval_input_fn`` functions have a parameter called ``training_dir`` which
-contains the directory inside the container where the dataset was saved into.
-See `Creating train_input_fn and eval_input_fn functions`_.
-
 Optional arguments
-''''''''''''''''''
+""""""""""""""""""
 
--  ``wait (bool)``: Defaults to True, whether to block and wait for the
-   training script to complete before returning.
-   If set to False, it will return immediately, and can later be attached to.
--  ``logs (bool)``: Defaults to True, whether to show logs produced by training
-   job in the Python session. Only meaningful when wait is True.
-- ``run_tensorboard_locally (bool)``: Defaults to False. Executes TensorBoard in a different
-  process with downloaded checkpoint information. Requires modules TensorBoard and AWS CLI.
-  installed. Terminates TensorBoard when the execution ends. See `Running TensorBoard`_.
+- ``wait (bool)``: Defaults to True, whether to block and wait for the
+  training script to complete before returning.
+  If set to False, it will return immediately, and can later be attached to.
+- ``logs (bool)``: Defaults to True, whether to show logs produced by training
+  job in the Python session. Only meaningful when wait is True.
+- ``run_tensorboard_locally (bool)``: Defaults to False. If set to True a Tensorboard command will be printed out.
 - ``job_name (str)``: Training job name. If not specified, the estimator generates a default job name,
   based on the training image name and current timestamp.
 
@@ -534,21 +187,11 @@ Calling ``fit`` starts a SageMaker training job. The training job will execute t
 - Starts ``train_instance_count`` EC2 instances of the type ``train_instance_type``.
 - On each instance, it will do the following steps:
 
-  - starts a Docker container optimized for TensorFlow, see `SageMaker TensorFlow Docker containers`_.
+  - starts a Docker container optimized for TensorFlow.
   - downloads the dataset.
-  - setup up distributed training.
-  - starts asynchronous training, executing the ``model_fn`` function defined in your script
-    in **training** mode; i.e., ``features`` and ``labels`` are fed by a batch of the
-    training dataset defined by ``train_input_fn``. See `Creating train_input_fn and eval_input_fn functions`_.
-
-The training job finishes after the number of training steps reaches the value defined by
-the ``TensorFlow`` estimator parameter ``training_steps`` is finished or when the training
-job execution time reaches the ``TensorFlow`` estimator parameter ``train_max_run``.
-
-When the training job finishes, a `TensorFlow serving <https://www.tensorflow.org/serving/serving_basic>`_
-with the result of the training is generated and saved to the S3 location defined by
-the ``TensorFlow`` estimator parameter ``output_path``.
-
+  - setup up training related environment varialbes
+  - setup up distributed training environment if configured to use parameter server
+  - starts asynchronous training
 
 If the ``wait=False`` flag is passed to ``fit``, then it will return immediately. The training job will continue running
 asynchronously. At a later time, a Tensorflow Estimator can be obtained by attaching to the existing training job. If
@@ -560,99 +203,82 @@ After attaching, the estimator can be deployed as usual.
     tf_estimator.fit(your_input_data, wait=False)
     training_job_name = tf_estimator.latest_training_job.name
 
-    # after some time, or in a separate python notebook, we can attach to it again.
+    # after some time, or in a separate Python notebook, we can attach to it again.
 
     tf_estimator = TensorFlow.attach(training_job_name=training_job_name)
 
+sagemaker.tensorflow.TensorFlow class
+'''''''''''''''''''''''''''''''''''''
 
-The evaluation process
-""""""""""""""""""""""
+The ``TensorFlow`` constructor takes both required and optional arguments.
 
-During the training job, the first EC2 instance that is executing the training is named ``master``. All the other instances are called ``workers``.
+Required:
 
-All instances execute the training loop, feeding the ``model_fn`` with ``train_input_fn``.
-Every ``min_eval_frequency`` steps (see `Optional Hyperparameters`_), the ``master`` instance
-will execute the ``model_fn`` in **evaluation** mode; i.e., ``features`` and ``labels`` are
-fed with the evaluation dataset defined by ``eval_input_fn``. See `Creating train_input_fn and eval_input_fn functions`_.
+- ``entry_point (str)`` Path (absolute or relative) to the Python file which
+  should be executed as the entry point to training.
+- ``role (str)`` An AWS IAM role (either name or full ARN). The Amazon
+  SageMaker training jobs and APIs that create Amazon SageMaker
+  endpoints use this role to access training data and model artifacts.
+  After the endpoint is created, the inference code might use the IAM
+  role, if accessing AWS resource.
+- ``train_instance_count (int)`` Number of Amazon EC2 instances to use for
+  training.
+- ``train_instance_type (str)`` Type of EC2 instance to use for training, for
+  example, 'ml.c4.xlarge'.
 
-For more information on training and evaluation process, see `tf.estimator.train_and_evaluate <https://github.com/tensorflow/tensorflow/blob/r1.4/tensorflow/python/estimator/training.py#L256>`_.
+Optional:
 
-For more information on fit, see `SageMaker Python SDK Overview <#sagemaker-python-sdk-overview>`_.
+- ``source_dir (str)`` Path (absolute or relative) to a directory with any
+  other training source code dependencies including the entry point
+  file. Structure within this directory will be preserved when training
+  on SageMaker.
+- ``dependencies (list[str])`` A list of paths to directories (absolute or relative) with
+  any additional libraries that will be exported to the container (default: ``[]``).
+  The library folders will be copied to SageMaker in the same folder where the entrypoint is copied.
+  If the ``source_dir`` points to S3, code will be uploaded and the S3 location will be used
+  instead. Example:
 
-TensorFlow Serving models
-^^^^^^^^^^^^^^^^^^^^^^^^^
+  The following call
 
-After your training job is complete in SageMaker and the ``fit`` call ends, the training job
-will generate a `TensorFlow SavedModel <https://github.com/tensorflow/tensorflow/blob/master/tensorflow/python/saved_model/README.md>`_
-bundle ready for deployment. Your model will be available in S3 at the ``output_path`` location
-that you specified when you created your ``sagemaker.tensorflow.TensorFlow`` estimator.
+  >>> TensorFlow(entry_point='train.py', dependencies=['my/libs/common', 'virtual-env'])
 
-Restoring from checkpoints
-^^^^^^^^^^^^^^^^^^^^^^^^^^
+  results in the following inside the container:
 
-While your training job is executing, TensorFlow will generate checkpoints and save them in the S3
-location defined by ``checkpoint_path`` parameter in the ``TensorFlow`` constructor.
-These checkpoints can be used to restore a previous session or to evaluate the current training using ``TensorBoard``.
+  >>> opt/ml/code
+  >>>     ├── train.py
+  >>>     ├── common
+  >>>     └── virtual-env
 
-To restore a previous session, you just need to create a new ``sagemaker.tensorflow.TensorFlow``
-estimator pointing to the previous checkpoint path:
-
-.. code:: python
-
-  previous_checkpoint_path = 's3://location/of/my/previous/generated/checkpoints'
-
-  tf_estimator = TensorFlow('tf-train.py', role='SageMakerRole',
-                            checkpoint_path=previous_checkpoint_path
-                            training_steps=10000, evaluation_steps=100,
-                            train_instance_count=1, train_instance_type='ml.p2.xlarge',
-                            framework_version='1.10.0')
-  tf_estimator.fit('s3://bucket/path/to/training/data')
-
-
-Running TensorBoard
-^^^^^^^^^^^^^^^^^^^
-
-When the ``fit`` parameter ``run_tensorboard_locally`` is set ``True``, all the checkpoint data
-located in ``checkpoint_path`` will be downloaded to a local temporary folder and a local
-``TensorBoard`` application will be watching that temporary folder.
-Every time a new checkpoint is created by the training job in the S3 bucket, ``fit`` will download that checkpoint to the same temporary folder and update ``TensorBoard``.
-
-When the ``fit`` method starts the training, it will log the port that ``TensorBoard`` is using
-to display metrics. The default port is **6006**, but another port can be chosen depending on
-availability. The port number will increase until finds an available port. After that, the port
-number will be printed in stdout.
-
-It takes a few minutes to provision containers and start the training job. TensorBoard will start to display metrics shortly after that.
-
-You can access TensorBoard locally at http://localhost:6006 or using your SakeMaker workspace at
-`https*workspace_base_url*proxy/6006/ <proxy/6006/>`_ (TensorBoard will not work if you forget to put the slash,
-'/', in end of the url). If TensorBoard started on a different port, adjust these URLs to match.
-
-Note that TensorBoard is not supported when passing wait=False to ``fit``.
-
-
-Deploying TensorFlow Serving models
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-After a TensorFlow estimator has been fit, it saves a TensorFlow SavedModel in
-the S3 location defined by ``output_path``. You can call ``deploy`` on a TensorFlow
-estimator to create a SageMaker Endpoint.
-
-SageMaker provides two different options for deploying TensorFlow models to a SageMaker
-Endpoint:
-
-- The first option uses a Python-based server that allows you to specify your own custom
-  input and output handling functions in a Python script. This is the default option.
-
-  See `Deploying to Python-based Endpoints <deploying_python.rst>`_ to learn how to use this option.
-
-
-- The second option uses a TensorFlow Serving-based server to provide a super-set of the
-  `TensorFlow Serving REST API <https://www.tensorflow.org/serving/api_rest>`_. This option
-  does not require (or allow) a custom python script.
-
-  See `Deploying to TensorFlow Serving Endpoints <deploying_tensorflow_serving.rst>`_ to learn how to use this option.
-
+- ``hyperparameters (dict[str, ANY])`` Hyperparameters that will be used for training.
+  Will be made accessible as command line arguments.
+- ``train_volume_size (int)`` Size in GB of the EBS volume to use for storing
+  input data during training. Must be large enough to the store training
+  data.
+- ``train_max_run (int)`` Timeout in seconds for training, after which Amazon
+  SageMaker terminates the job regardless of its current status.
+- ``output_path (str)`` S3 location where you want the training result (model
+  artifacts and optional output files) saved. If not specified, results
+  are stored to a default bucket. If the bucket with the specific name
+  does not exist, the estimator creates the bucket during the ``fit``
+  method execution.
+- ``output_kms_key`` Optional KMS key ID to optionally encrypt training
+  output with.
+- ``base_job_name`` Name to assign for the training job that the ``fit``
+  method launches. If not specified, the estimator generates a default
+  job name, based on the training image name and current timestamp.
+- ``image_name`` An alternative docker image to use for training and
+  serving.  If specified, the estimator will use this image for training and
+  hosting, instead of selecting the appropriate SageMaker official image based on
+  ``framework_version`` and ``py_version``. Refer to: `SageMaker TensorFlow Docker Containers
+  <#sagemaker-tensorflow-docker-containers>`_ for details on what the official images support
+  and where to find the source code to build your custom image.
+- ``script_mode (bool)`` Whether to use Script Mode or not. Script mode is the only available training mode in Python 3,
+  setting ``py_version`` to ``py3`` automatically sets ``script_mode`` to True.
+- ``model_dir (str)`` Location where model data, checkpoint data, and TensorBoard checkpoints should be saved during training.
+  If not specified a S3 location will be generated under the training job's default bucket. And ``model_dir`` will be
+  passed in your training script as one of the command line arguments.
+- ``distributions (dict)`` Configure your distrubtion strategy with this argument. For launching parameter server for
+  for distributed training, you must set ``distributions`` to ``{'parameter_server': {'enabled': True}}``
 
 Training with Pipe Mode using PipeModeDataset
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -740,29 +366,73 @@ You can disable MKL-DNN optimization for TensorFlow ``1.8.0`` and above by setti
     os.environ['TF_DISABLE_POOL_ALLOCATOR'] = '1'
 
 
+Deploying TensorFlow Serving models
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+After a TensorFlow estimator has been fit, it saves a TensorFlow SavedModel in
+the S3 location defined by ``output_path``. You can call ``deploy`` on a TensorFlow
+estimator to create a SageMaker Endpoint.
+
+SageMaker provides two different options for deploying TensorFlow models to a SageMaker
+Endpoint:
+
+- The first option uses a Python-based server that allows you to specify your own custom
+  input and output handling functions in a Python script. This is the default option.
+
+  See `Deploying to Python-based Endpoints <deploying_python.rst>`_ to learn how to use this option.
+
+
+- The second option uses a TensorFlow Serving-based server to provide a super-set of the
+  `TensorFlow Serving REST API <https://www.tensorflow.org/serving/api_rest>`_. This option
+  does not require (or allow) a custom python script.
+
+  See `Deploying to TensorFlow Serving Endpoints <deploying_tensorflow_serving.rst>`_ to learn how to use this option.
+
+
 SageMaker TensorFlow Docker containers
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-The TensorFlow Docker images support Python 2.7. They include the following Python packages:
+The containers include the following Python packages:
 
-- boto3
-- botocore
-- CUDA 9.0 (GPU image only)
-- grpcio
-- numpy
-- pandas
-- protobuf
-- scikit-learn
-- scipy
-- sklearn
-- tensorflow
-- tensorflow-serving-api
++--------------------------------+---------------+-------------------+
+| Dependencies                   | Script Mode   | Legacy Mode       |
++--------------------------------+---------------+-------------------+
+| boto3                          | Latest        | Latest            |
++--------------------------------+---------------+-------------------+
+| botocore                       | Latest        | Latest            |
++--------------------------------+---------------+-------------------+
+| CUDA (GPU image only)          | 9.0           | 9.0               |
++--------------------------------+---------------+-------------------+
+| numpy                          | Latest        | Latest            |
++--------------------------------+---------------+-------------------+
+| Pillow                         | Latest        | Latest            |
++--------------------------------+---------------+-------------------+
+| scipy                          | Latest        | Latest            |
++--------------------------------+---------------+-------------------+
+| sklean                         | Latest        | Latest            |
++--------------------------------+---------------+-------------------+
+| h5py                           | Latest        | Latest            |
++--------------------------------+---------------+-------------------+
+| pip                            | 18.1          | 18.1              |
++--------------------------------+---------------+-------------------+
+| curl                           | Latest        | Latest            |
++--------------------------------+---------------+-------------------+
+| tensorflow                     | 1.11.0        | 1.11.0            |
++--------------------------------+---------------+-------------------+
+| tensorflow-serving-api         | 1.11.0        | None              |
++--------------------------------+---------------+-------------------+
+| sagemaker-containers           | >=2.3.5       | >=2.3.5           |
++--------------------------------+---------------+-------------------+
+| sagemaker-tensorflow-container | 1.0           | 1.0               |
++--------------------------------+---------------+-------------------+
+| Python                         | 2.7 or 3.6    | 2.7               |
++--------------------------------+---------------+-------------------+
 
-The Docker images extend Ubuntu 16.04.
+Legacy Mode TensorFlow Docker images support Python 2.7. Script Mode TensorFlow Docker images support both Python 2.7
+and Python 3.6. The Docker images extend Ubuntu 16.04.
 
-You can select version of TensorFlow by passing a ``framework_version`` keyword arg to the TensorFlow Estimator constructor. Currently supported versions are listed in the table above. You can also set ``framework_version`` to only specify major and minor version, e.g ``1.6``, which will cause your training script to be run on the latest supported patch version of that minor version, which in this example would be 1.6.0.
+You can select version of TensorFlow by passing a ``framework_version`` keyword arg to the TensorFlow Estimator constructor. Currently supported versions are listed in the table above. You can also set ``framework_version`` to only specify major and minor version, e.g ``'1.6'``, which will cause your training script to be run on the latest supported patch version of that minor version, which in this example would be 1.6.0.
 Alternatively, you can build your own image by following the instructions in the SageMaker TensorFlow containers
 repository, and passing ``image_name`` to the TensorFlow Estimator constructor.
-
 
 For more information on the contents of the images, see the SageMaker TensorFlow containers repository here: https://github.com/aws/sagemaker-tensorflow-containers/
