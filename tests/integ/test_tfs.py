@@ -27,8 +27,7 @@ from sagemaker.tensorflow.serving import Model, Predictor
     pytest.param('ml.p3.2xlarge',
                  marks=pytest.mark.skipif(
                      tests.integ.test_region() in tests.integ.HOSTING_P3_UNAVAILABLE_REGIONS,
-                     reason='no ml.p3 instances in this region'))
-    ])
+                     reason='no ml.p3 instances in this region'))])
 def instance_type(request):
     return request.param
 
