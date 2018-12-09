@@ -5,6 +5,7 @@ CHANGELOG
 1.16.2.dev
 ==========
 
+* enhancement: Check for S3 paths being passed as entry point
 * feature: Add support for AugmentedManifestFile and ShuffleConfig
 * bug-fix: Add version bound for requests module to avoid conflicts with docker-compose and docker-py
 * bug-fix: Remove unnecessary dependency tensorflow
