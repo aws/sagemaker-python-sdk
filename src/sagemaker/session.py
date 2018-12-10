@@ -350,7 +350,8 @@ class Session(object):
              max_jobs, max_parallel_jobs, parameter_ranges,
              static_hyperparameters, input_mode, metric_definitions,
              role, input_config, output_config, resource_config, stop_condition, tags,
-             warm_start_config, enable_network_isolation=False, image=None, algorithm_arn=None, early_stopping_type='Off'):
+             warm_start_config, enable_network_isolation=False, image=None, algorithm_arn=None,
+             early_stopping_type='Off'):
         """Create an Amazon SageMaker hyperparameter tuning job
 
         Args:

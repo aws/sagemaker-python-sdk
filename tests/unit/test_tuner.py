@@ -245,6 +245,7 @@ def test_fit_pca(sagemaker_session, tuner):
     assert tune_kwargs['early_stopping_type'] == 'Off'
     assert tuner.estimator.mini_batch_size == 9999
 
+
 def test_fit_pca_with_early_stopping(sagemaker_session, tuner):
     pca = PCA(ROLE, TRAIN_INSTANCE_COUNT, TRAIN_INSTANCE_TYPE, NUM_COMPONENTS,
               base_job_name='pca', sagemaker_session=sagemaker_session)
@@ -259,6 +260,7 @@ def test_fit_pca_with_early_stopping(sagemaker_session, tuner):
 
     assert tune_kwargs['job_name'].startswith('pca')
     assert tune_kwargs['early_stopping_type'] == 'Auto'
+
 
 def test_attach_tuning_job_with_estimator_from_hyperparameters(sagemaker_session):
     job_details = copy.deepcopy(TUNING_JOB_DETAILS)
@@ -286,6 +288,7 @@ def test_attach_tuning_job_with_estimator_from_hyperparameters(sagemaker_session
     assert '_tuning_objective_metric' not in tuner.estimator.hyperparameters()
     assert tuner.estimator.hyperparameters()['num_components'] == '1'
 
+
 def test_attach_tuning_job_with_estimator_from_hyperparameters_with_early_stopping(sagemaker_session):
     job_details = copy.deepcopy(TUNING_JOB_DETAILS)
     job_details['HyperParameterTuningJobConfig']['TrainingJobEarlyStoppingType'] = 'Auto'
@@ -297,6 +300,7 @@ def test_attach_tuning_job_with_estimator_from_hyperparameters_with_early_stoppi
     assert tuner.early_stopping_type == 'Auto'
 
     assert isinstance(tuner.estimator, PCA)
+
 
 def test_attach_tuning_job_with_job_details(sagemaker_session):
     job_details = copy.deepcopy(TUNING_JOB_DETAILS)
