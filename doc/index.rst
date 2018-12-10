@@ -63,9 +63,9 @@ Amazon provides implementations of some common machine learning algortithms opti
     lda
     ntm
 
-SageMaker Workflow
-------------------
-SageMaker APIs to export configurations to create and manage Airflow workflows.
+Workflows
+---------
+SageMaker APIs to export configurations for creating and managing Airflow workflows.
 
 .. toctree::
     :maxdepth: 2
