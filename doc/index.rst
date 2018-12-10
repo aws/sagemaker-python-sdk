@@ -44,9 +44,9 @@ Reinforcement Learning
 A managed environment for Reinforcement Learning training and hosting on Amazon SageMaker
 
 .. toctree::
-:maxdepth: 2
+    :maxdepth: 2
 
-        sagemaker.rl
+    sagemaker.rl
 
 SageMaker First-Party Algorithms
 --------------------------------
@@ -62,3 +62,12 @@ Amazon provides implementations of some common machine learning algortithms opti
     factorization_machines
     lda
     ntm
+
+SageMaker Workflow
+------------------
+SageMaker APIs to export configurations to create and manage Airflow workflows.
+
+.. toctree::
+    :maxdepth: 2
+
+    sagemaker.workflow.airflow

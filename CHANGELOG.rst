@@ -14,6 +14,7 @@ CHANGELOG
 * feature: Local Mode: Add support for intermediate output to a local directory.
 * bug-fix: Update PyYAML version to avoid conflicts with docker-compose
 * doc-fix: Correct the numbered list in the table of contents
+* doc-fix: Add Airflow API documentation
 
 1.16.1.post1
 ============
