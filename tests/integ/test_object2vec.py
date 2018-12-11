@@ -17,7 +17,7 @@ import pytest
 
 from sagemaker.predictor import RealTimePredictor
 from sagemaker import Object2Vec, Object2VecModel
-from sagemaker.utils import name_from_base
+from sagemaker.utils import unique_name_from_base
 from tests.integ import DATA_DIR, TRAINING_DEFAULT_TIMEOUT_MINUTES
 from tests.integ.timeout import timeout, timeout_and_delete_endpoint_by_name
 from tests.integ.record_set import prepare_record_set_from_local_files
@@ -52,7 +52,7 @@ def test_object2vec(sagemaker_session):
 
         object2vec.fit(record_set, None)
 
-    endpoint_name = name_from_base('object2vec')
+    endpoint_name = unique_name_from_base('object2vec')
 
     with timeout_and_delete_endpoint_by_name(endpoint_name, sagemaker_session):
         model = Object2VecModel(object2vec.model_data, role='SageMakerRole', sagemaker_session=sagemaker_session)
