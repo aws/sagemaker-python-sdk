@@ -187,7 +187,7 @@ The following are optional arguments. When you create a ``SKLearn`` object, you 
    serving.  If specified, the estimator will use this image for training and
    hosting, instead of selecting the appropriate SageMaker official image based on
    framework_version and py_version. Refer to: `SageMaker Scikit-learn Docker Container
-   <#sagemaker-sklearn-docker-container>`_ for details on what the official images support
+   <#sagemaker-scikit-learn-docker-container>`_ for details on what the official images support
    and where to find the source code to build your custom image.
 
 
@@ -604,8 +604,8 @@ https://github.com/awslabs/amazon-sagemaker-examples/tree/master/sagemaker-pytho
 These are also available in SageMaker Notebook Instance hosted Jupyter notebooks under the "sample notebooks" folder.
 
 
-SageMaker Scikit-learn Docker containers
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+SageMaker Scikit-learn Docker Container
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 When training and deploying training scripts, SageMaker runs your Python script in a Docker container with several
 libraries installed. When creating the Estimator and calling deploy to create the SageMaker Endpoint, you can control
