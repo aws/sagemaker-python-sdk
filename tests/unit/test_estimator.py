@@ -24,7 +24,7 @@ from sagemaker.algorithm import AlgorithmEstimator
 from sagemaker.estimator import Estimator, EstimatorBase, Framework, _TrainingJob
 from sagemaker.model import FrameworkModel
 from sagemaker.predictor import RealTimePredictor
-from sagemaker.session import s3_input
+from sagemaker.session import s3_input, ShuffleConfig
 from sagemaker.transformer import Transformer
 
 MODEL_DATA = "s3://bucket/model.tar.gz"
@@ -171,6 +171,14 @@ def test_framework_all_init_args(sagemaker_session):
                     'metric_definitions': [{'Name': 'validation-rmse', 'Regex': 'validation-rmse=(\\d+)'}]}
 
 
+def test_framework_init_s3_entry_point_invalid(sagemaker_session):
+    with pytest.raises(ValueError) as error:
+        DummyFramework('s3://remote-script-because-im-mistaken', role=ROLE,
+                       sagemaker_session=sagemaker_session, train_instance_count=INSTANCE_COUNT,
+                       train_instance_type=INSTANCE_TYPE)
+    assert 'Must be a path to a local file' in str(error)
+
+
 def test_sagemaker_s3_uri_invalid(sagemaker_session):
     with pytest.raises(ValueError) as error:
         t = DummyFramework(entry_point=SCRIPT_PATH, role=ROLE, sagemaker_session=sagemaker_session,
@@ -275,6 +283,30 @@ def test_invalid_custom_code_bucket(sagemaker_session):
     with pytest.raises(ValueError) as error:
         t.fit('s3://bucket/mydata')
     assert "Expecting 's3' scheme" in str(error)
+
+
+def test_augmented_manifest(sagemaker_session):
+    fw = DummyFramework(entry_point=SCRIPT_PATH, role='DummyRole', sagemaker_session=sagemaker_session,
+                        train_instance_count=INSTANCE_COUNT, train_instance_type=INSTANCE_TYPE,
+                        enable_cloudwatch_metrics=True)
+    fw.fit(inputs=s3_input('s3://mybucket/train_manifest', s3_data_type='AugmentedManifestFile',
+                           attribute_names=['foo', 'bar']))
+
+    _, _, train_kwargs = sagemaker_session.train.mock_calls[0]
+    s3_data_source = train_kwargs['input_config'][0]['DataSource']['S3DataSource']
+    assert s3_data_source['S3Uri'] == 's3://mybucket/train_manifest'
+    assert s3_data_source['S3DataType'] == 'AugmentedManifestFile'
+    assert s3_data_source['AttributeNames'] == ['foo', 'bar']
+
+
+def test_shuffle_config(sagemaker_session):
+    fw = DummyFramework(entry_point=SCRIPT_PATH, role='DummyRole', sagemaker_session=sagemaker_session,
+                        train_instance_count=INSTANCE_COUNT, train_instance_type=INSTANCE_TYPE,
+                        enable_cloudwatch_metrics=True)
+    fw.fit(inputs=s3_input('s3://mybucket/train_manifest', shuffle_config=ShuffleConfig(100)))
+    _, _, train_kwargs = sagemaker_session.train.mock_calls[0]
+    channel = train_kwargs['input_config'][0]
+    assert channel['ShuffleConfig']['Seed'] == 100
 
 
 BASE_HP = {

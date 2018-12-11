@@ -11,15 +11,19 @@
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
 from __future__ import absolute_import
-import numpy
+
 import os
 import time
+
+import numpy
 import pytest
+import tests.integ
+from tests.integ import DATA_DIR, PYTHON_VERSION, TRAINING_DEFAULT_TIMEOUT_MINUTES
+from tests.integ.timeout import timeout, timeout_and_delete_endpoint_by_name
+
 from sagemaker.pytorch.estimator import PyTorch
 from sagemaker.pytorch.model import PyTorchModel
 from sagemaker.utils import sagemaker_timestamp
-from tests.integ import DATA_DIR, PYTHON_VERSION, TRAINING_DEFAULT_TIMEOUT_MINUTES, REGION
-from tests.integ.timeout import timeout, timeout_and_delete_endpoint_by_name
 
 MNIST_DIR = os.path.join(DATA_DIR, 'pytorch_mnist')
 MNIST_SCRIPT = os.path.join(MNIST_DIR, 'mnist.py')
@@ -57,9 +61,11 @@ def test_deploy_model(pytorch_training_job, sagemaker_session):
     endpoint_name = 'test-pytorch-deploy-model-{}'.format(sagemaker_timestamp())
 
     with timeout_and_delete_endpoint_by_name(endpoint_name, sagemaker_session):
-        desc = sagemaker_session.sagemaker_client.describe_training_job(TrainingJobName=pytorch_training_job)
+        desc = sagemaker_session.sagemaker_client.describe_training_job(
+            TrainingJobName=pytorch_training_job)
         model_data = desc['ModelArtifacts']['S3ModelArtifacts']
-        model = PyTorchModel(model_data, 'SageMakerRole', entry_point=MNIST_SCRIPT, sagemaker_session=sagemaker_session)
+        model = PyTorchModel(model_data, 'SageMakerRole', entry_point=MNIST_SCRIPT,
+                             sagemaker_session=sagemaker_session)
         predictor = model.deploy(1, 'ml.m4.xlarge', endpoint_name=endpoint_name)
 
         batch_size = 100
@@ -69,8 +75,8 @@ def test_deploy_model(pytorch_training_job, sagemaker_session):
         assert output.shape == (batch_size, 10)
 
 
-@pytest.mark.skipif(REGION in ['us-west-1', 'eu-west-2', 'ca-central-1'],
-                    reason='No ml.p2.xlarge supported in these regions')
+@pytest.mark.skipif(tests.integ.test_region() in tests.integ.HOSTING_NO_P2_REGIONS,
+                    reason='no ml.p2 instances in these regions')
 def test_async_fit_deploy(sagemaker_session, pytorch_full_version):
     training_job_name = ""
     # TODO: add tests against local mode when it's ready to be used
@@ -90,7 +96,8 @@ def test_async_fit_deploy(sagemaker_session, pytorch_full_version):
 
         with timeout_and_delete_endpoint_by_name(endpoint_name, sagemaker_session):
             print("Re-attaching now to: %s" % training_job_name)
-            estimator = PyTorch.attach(training_job_name=training_job_name, sagemaker_session=sagemaker_session)
+            estimator = PyTorch.attach(training_job_name=training_job_name,
+                                       sagemaker_session=sagemaker_session)
             predictor = estimator.deploy(1, instance_type, endpoint_name=endpoint_name)
 
             batch_size = 100
@@ -105,7 +112,8 @@ def test_failed_training_job(sagemaker_session, pytorch_full_version):
     script_path = os.path.join(MNIST_DIR, 'failure_script.py')
 
     with timeout(minutes=TRAINING_DEFAULT_TIMEOUT_MINUTES):
-        pytorch = _get_pytorch_estimator(sagemaker_session, pytorch_full_version, entry_point=script_path)
+        pytorch = _get_pytorch_estimator(sagemaker_session, pytorch_full_version,
+                                         entry_point=script_path)
 
         with pytest.raises(ValueError) as e:
             pytorch.fit()
@@ -119,8 +127,10 @@ def _upload_training_data(pytorch):
 
 def _get_pytorch_estimator(sagemaker_session, pytorch_full_version, instance_type='ml.c4.xlarge',
                            entry_point=MNIST_SCRIPT):
-    return PyTorch(entry_point=entry_point, role='SageMakerRole', framework_version=pytorch_full_version,
-                   py_version=PYTHON_VERSION, train_instance_count=1, train_instance_type=instance_type,
+    return PyTorch(entry_point=entry_point, role='SageMakerRole',
+                   framework_version=pytorch_full_version,
+                   py_version=PYTHON_VERSION, train_instance_count=1,
+                   train_instance_type=instance_type,
                    sagemaker_session=sagemaker_session)
 
 

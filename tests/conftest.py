@@ -13,20 +13,20 @@
 from __future__ import absolute_import
 
 import json
+import os
 
 import boto3
 import pytest
 from botocore.config import Config
 
 from sagemaker import Session
-from sagemaker.local import LocalSession
 from sagemaker.chainer import Chainer
+from sagemaker.local import LocalSession
 from sagemaker.mxnet import MXNet
-from sagemaker.rl import RLEstimator
 from sagemaker.pytorch.defaults import PYTORCH_VERSION
+from sagemaker.rl import RLEstimator
 from sagemaker.sklearn.defaults import SKLEARN_VERSION
 from sagemaker.tensorflow.defaults import TF_VERSION
-
 
 DEFAULT_REGION = 'us-west-2'
 
@@ -38,10 +38,21 @@ def pytest_addoption(parser):
     parser.addoption('--chainer-full-version', action='store', default=Chainer.LATEST_VERSION)
     parser.addoption('--mxnet-full-version', action='store', default=MXNet.LATEST_VERSION)
     parser.addoption('--pytorch-full-version', action='store', default=PYTORCH_VERSION)
-    parser.addoption('--rl-coach-full-version', action='store', default=RLEstimator.COACH_LATEST_VERSION)
-    parser.addoption('--rl-ray-full-version', action='store', default=RLEstimator.RAY_LATEST_VERSION)
+    parser.addoption('--rl-coach-full-version', action='store',
+                     default=RLEstimator.COACH_LATEST_VERSION)
+    parser.addoption('--rl-ray-full-version', action='store',
+                     default=RLEstimator.RAY_LATEST_VERSION)
     parser.addoption('--sklearn-full-version', action='store', default=SKLEARN_VERSION)
     parser.addoption('--tf-full-version', action='store', default=TF_VERSION)
+
+
+def pytest_configure(config):
+    bc = config.getoption('--boto-config')
+    parsed = json.loads(bc) if bc else {}
+    region = parsed.get('region_name', boto3.session.Session().region_name)
+
+    if region:
+        os.environ['TEST_AWS_REGION_NAME'] = region
 
 
 @pytest.fixture(scope='session')
@@ -64,10 +75,13 @@ def boto_config(request):
 
 @pytest.fixture(scope='session')
 def sagemaker_session(sagemaker_client_config, sagemaker_runtime_config, boto_config):
-    boto_session = boto3.Session(**boto_config) if boto_config else boto3.Session(region_name=DEFAULT_REGION)
+    boto_session = boto3.Session(**boto_config) if boto_config else boto3.Session(
+        region_name=DEFAULT_REGION)
     sagemaker_client_config.setdefault('config', Config(retries=dict(max_attempts=10)))
-    sagemaker_client = boto_session.client('sagemaker', **sagemaker_client_config) if sagemaker_client_config else None
-    runtime_client = (boto_session.client('sagemaker-runtime', **sagemaker_runtime_config) if sagemaker_runtime_config
+    sagemaker_client = boto_session.client('sagemaker',
+                                           **sagemaker_client_config) if sagemaker_client_config else None
+    runtime_client = (boto_session.client('sagemaker-runtime',
+                                          **sagemaker_runtime_config) if sagemaker_runtime_config
                       else None)
 
     return Session(boto_session=boto_session,
@@ -95,6 +109,11 @@ def mxnet_version(request):
     return request.param
 
 
+@pytest.fixture(scope='module', params=['1.3', '1.3.0'])
+def ei_mxnet_version(request):
+    return request.param
+
+
 @pytest.fixture(scope='module', params=['0.4', '0.4.0'])
 def pytorch_version(request):
     return request.param
@@ -109,6 +128,11 @@ def sklearn_version(request):
                                         '1.7', '1.7.0', '1.8', '1.8.0', '1.9', '1.9.0',
                                         '1.10', '1.10.0', '1.11', '1.11.0'])
 def tf_version(request):
+    return request.param
+
+
+@pytest.fixture(scope='module', params=['1.11', '1.11.0'])
+def ei_tf_version(request):
     return request.param
 
 

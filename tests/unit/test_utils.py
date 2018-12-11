@@ -16,6 +16,7 @@ from __future__ import absolute_import
 
 from datetime import datetime
 import os
+import re
 import time
 
 import pytest
@@ -24,7 +25,7 @@ from mock import call, patch, Mock
 import sagemaker
 from sagemaker.utils import get_config_value, name_from_base,\
     to_str, DeferredError, extract_name_from_job_arn, secondary_training_status_changed,\
-    secondary_training_status_message
+    secondary_training_status_message, unique_name_from_base
 
 
 NAME = 'base_name'
@@ -76,6 +77,15 @@ def test_name_from_base(sagemaker_timestamp):
 def test_name_from_base_short(sagemaker_short_timestamp):
     name_from_base(NAME, short=True)
     assert sagemaker_short_timestamp.called_once
+
+
+def test_unique_name_from_base():
+    assert re.match(r'base-\d{10}-[a-f0-9]{4}', unique_name_from_base('base'))
+
+
+def test_unique_name_from_base_truncated():
+    assert re.match(r'real-\d{10}-[a-f0-9]{4}',
+                    unique_name_from_base('really-long-name', max_length=20))
 
 
 def test_to_str_with_native_string():

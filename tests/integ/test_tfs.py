@@ -22,14 +22,19 @@ import tests.integ.timeout
 from sagemaker.tensorflow.serving import Model, Predictor
 
 
-@pytest.fixture(scope='session', params=['ml.c5.xlarge', 'ml.p3.2xlarge'])
+@pytest.fixture(scope='session', params=[
+    'ml.c5.xlarge',
+    pytest.param('ml.p3.2xlarge',
+                 marks=pytest.mark.skipif(
+                     tests.integ.test_region() in tests.integ.HOSTING_NO_P3_REGIONS,
+                     reason='no ml.p3 instances in this region'))])
 def instance_type(request):
     return request.param
 
 
 @pytest.fixture(scope='module')
 def tfs_predictor(instance_type, sagemaker_session, tf_full_version):
-    endpoint_name = sagemaker.utils.name_from_base('sagemaker-tensorflow-serving')
+    endpoint_name = sagemaker.utils.unique_name_from_base('sagemaker-tensorflow-serving')
     model_data = sagemaker_session.upload_data(
         path='tests/data/tensorflow-serving-test-model.tar.gz',
         key_prefix='tensorflow-serving/models')
@@ -42,11 +47,7 @@ def tfs_predictor(instance_type, sagemaker_session, tf_full_version):
 
 
 @pytest.mark.continuous_testing
-def test_predict(tfs_predictor, instance_type):
-    if ('p3' in instance_type) and (
-            tests.integ.REGION in tests.integ.HOSTING_P3_UNAVAILABLE_REGIONS):
-        pytest.skip('no ml.p3 instances in this region')
-
+def test_predict(tfs_predictor, instance_type):  # pylint: disable=W0613
     input_data = {'instances': [1.0, 2.0, 5.0]}
     expected_result = {'predictions': [3.5, 4.0, 5.5]}
 

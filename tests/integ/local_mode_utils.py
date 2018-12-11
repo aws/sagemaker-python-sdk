@@ -12,12 +12,27 @@
 # language governing permissions and limitations under the License.
 from __future__ import absolute_import
 
-import sys
+import fcntl
 import os
+import time
+from contextlib import contextmanager
 
-# Hack to use our local copy of tensorflow_serving.apis, which contains the protobuf-generated
-# classes for tensorflow serving. Currently tensorflow_serving_api can only be pip-installed for python 2.
-sys.path.append(os.path.dirname(__file__))
+import tests.integ
 
-from sagemaker.tensorflow.estimator import TensorFlow  # noqa: E402, F401
-from sagemaker.tensorflow.model import TensorFlowModel, TensorFlowPredictor  # noqa: E402, F401
+LOCK_PATH = os.path.join(tests.integ.DATA_DIR, 'local_mode_lock')
+
+
+@contextmanager
+def lock():
+    # Since Local Mode uses the same port for serving, we need a lock in order
+    # to allow concurrent test execution.
+    local_mode_lock_fd = open(LOCK_PATH, 'w')
+    local_mode_lock = local_mode_lock_fd.fileno()
+
+    fcntl.lockf(local_mode_lock, fcntl.LOCK_EX)
+
+    try:
+        yield
+    finally:
+        time.sleep(5)
+        fcntl.lockf(local_mode_lock, fcntl.LOCK_UN)
