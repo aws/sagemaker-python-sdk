@@ -145,7 +145,7 @@ The following sections of this document explain how to use the different estimat
 * `TensorFlow SageMaker Estimators and Models <#tensorflow-sagemaker-estimators>`__
 * `Chainer SageMaker Estimators and Models <#chainer-sagemaker-estimators>`__
 * `PyTorch SageMaker Estimators <#pytorch-sagemaker-estimators>`__
-* `Scikit-learn SageMaaker Estimators <##scikit-learan-sagemaker-estimaators>`__
+* `Scikit-learn SageMaker Estimators and Models <#scikit-learn-sagemaker-estimators>`__
 * `SageMaker Reinforcement Learning Estimators <#sagemaker-reinforcement-learning-estimators>`__
 * `AWS SageMaker Estimators and Models <#aws-sagemaker-estimators>`__
 * `Custom SageMaker Estimators and Models <#byo-docker-containers-with-sagemaker-estimators>`__
