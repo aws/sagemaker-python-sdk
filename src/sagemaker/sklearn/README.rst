@@ -18,7 +18,7 @@ Table of Contents
 5. `SageMaker Scikit-learn Model Server <#sagemaker-scikit-learn-model-server>`__
 6. `Working with Existing Model Data and Training Jobs <#working-with-existing-model-data-and-training-jobs>`__
 7. `Scikit-learn Training Examples <#scikit-learn-training-examples>`__
-8. `SageMaker PyTorch Docker Containers <#sagemaker-pytorch-docker-containers>`__
+8. `SageMaker Scikit-learn Docker Containers <#sagemaker-scikit-learn-docker-containers>`__
 
 
 Training with Scikit-learn
@@ -62,7 +62,6 @@ can access useful properties about the training environment through various envi
 
 * ``SM_MODEL_DIR``: A string representing the path to the directory to write model artifacts to.
   These artifacts are uploaded to S3 for model hosting.
-* ``SM_NUM_GPUS``: An integer representing the number of GPUs available to the host.
 * ``SM_OUTPUT_DATA_DIR``: A string representing the filesystem path to write output artifacts to. Output artifacts may
   include checkpoints, graphs, and other files to save, not including model artifacts. These artifacts are compressed
   and uploaded to S3 to the same S3 prefix as the model artifacts.
@@ -109,7 +108,7 @@ inadvertently run your training code at the wrong point in execution.
 For more on training environment variables, please visit https://github.com/aws/sagemaker-containers.
 
 Running a Scikit-learn training script in SageMaker
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 You run Scikit-learn training scripts on SageMaker by creating ``SKLearn`` Estimators.
 SageMaker training of your script is invoked when you call ``fit`` on a ``SKLearn`` Estimator.
@@ -188,7 +187,7 @@ The following are optional arguments. When you create a ``SKLearn`` object, you 
    serving.  If specified, the estimator will use this image for training and
    hosting, instead of selecting the appropriate SageMaker official image based on
    framework_version and py_version. Refer to: `SageMaker Scikit-learn Docker Containers
-   <#sagemaker-sklearn-docker-containers>`_ for details on what the Official images support
+   <#sagemaker-sklearn-docker-containers>`_ for details on what the official images support
    and where to find the source code to build your custom image.
 
 
@@ -292,7 +291,7 @@ You can access the name of the Endpoint by the ``name`` property on the returned
 
 
 SageMaker Scikit-learn Model Server
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 The Scikit-learn Endpoint you create with ``deploy`` runs a SageMaker Scikit-learn model server.
 The model server loads the model that was saved by your training script and performs inference on the model in response
@@ -629,7 +628,7 @@ The Scikit-learn Docker images have the following dependencies installed:
 | sagemaker-containers        | 2.2.4       |
 +-----------------------------+-------------+
 | numpy                       | 1.15.2      |
-+-------------------------------------------+
++-----------------------------+-------------+
 | pandas                      | 0.23.4      |
 +-----------------------------+-------------+
 | Pillow                      | 3.1.2       |
@@ -649,4 +648,4 @@ version.
 Alternatively, you can build your own image by following the instructions in the SageMaker Scikit-learn containers
 repository, and passing ``image_name`` to the Scikit-learn Estimator constructor.
 sagemaker-containers
-You can visit the SageMaker Scikit-learn containers repository here: https://github.com/aws/sagemaker-sklearn-containers/
+You can visit the SageMaker Scikit-learn containers repository here: https://github.com/aws/sagemaker-scikit-learn-container/
