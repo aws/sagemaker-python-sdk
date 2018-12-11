@@ -1,8 +1,8 @@
 Chainer
-=================
+=======
 
 Chainer Estimator
----------------------------
+-----------------
 
 .. autoclass:: sagemaker.chainer.estimator.Chainer
     :members:
@@ -10,7 +10,7 @@ Chainer Estimator
     :show-inheritance:
 
 Chainer Model
----------------------------
+-------------
 
 .. autoclass:: sagemaker.chainer.model.ChainerModel
     :members:
@@ -18,7 +18,7 @@ Chainer Model
     :show-inheritance:
 
 Chainer Predictor
----------------------------
+-----------------
 
 .. autoclass:: sagemaker.chainer.model.ChainerPredictor
     :members:

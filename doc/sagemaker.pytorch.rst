@@ -1,8 +1,8 @@
 PyTorch
-=================
+=======
 
 PyTorch Estimator
----------------------------
+-----------------
 
 .. autoclass:: sagemaker.pytorch.estimator.PyTorch
     :members:
@@ -10,7 +10,7 @@ PyTorch Estimator
     :show-inheritance:
 
 PyTorch Model
----------------------------
+-------------
 
 .. autoclass:: sagemaker.pytorch.model.PyTorchModel
     :members:
@@ -18,7 +18,7 @@ PyTorch Model
     :show-inheritance:
 
 PyTorch Predictor
----------------------------
+-----------------
 
 .. autoclass:: sagemaker.pytorch.model.PyTorchPredictor
     :members:
