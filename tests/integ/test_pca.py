@@ -21,7 +21,7 @@ import time
 import pytest
 
 import sagemaker.amazon.pca
-from sagemaker.utils import name_from_base
+from sagemaker.utils import unique_name_from_base
 from tests.integ import DATA_DIR, TRAINING_DEFAULT_TIMEOUT_MINUTES
 from tests.integ.timeout import timeout, timeout_and_delete_endpoint_by_name
 
@@ -45,7 +45,7 @@ def test_pca(sagemaker_session):
         pca.extra_components = 5
         pca.fit(pca.record_set(train_set[0][:100]))
 
-    endpoint_name = name_from_base('pca')
+    endpoint_name = unique_name_from_base('pca')
     with timeout_and_delete_endpoint_by_name(endpoint_name, sagemaker_session):
         pca_model = sagemaker.amazon.pca.PCAModel(model_data=pca.model_data, role='SageMakerRole',
                                                   sagemaker_session=sagemaker_session)
@@ -61,7 +61,7 @@ def test_pca(sagemaker_session):
 
 def test_async_pca(sagemaker_session):
     training_job_name = ""
-    endpoint_name = name_from_base('pca')
+    endpoint_name = unique_name_from_base('pca')
 
     with timeout(minutes=5):
         data_path = os.path.join(DATA_DIR, 'one_p_mnist', 'mnist.pkl.gz')

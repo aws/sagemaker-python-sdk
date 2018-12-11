@@ -22,7 +22,7 @@ import numpy as np
 import pytest
 
 from sagemaker.amazon.linear_learner import LinearLearner, LinearLearnerModel
-from sagemaker.utils import name_from_base, sagemaker_timestamp
+from sagemaker.utils import unique_name_from_base, sagemaker_timestamp
 from tests.integ import DATA_DIR, TRAINING_DEFAULT_TIMEOUT_MINUTES
 from tests.integ.timeout import timeout, timeout_and_delete_endpoint_by_name
 
@@ -80,7 +80,7 @@ def test_linear_learner(sagemaker_session):
         ll.early_stopping_patience = 3
         ll.fit(ll.record_set(train_set[0][:200], train_set[1][:200]))
 
-    endpoint_name = name_from_base('linear-learner')
+    endpoint_name = unique_name_from_base('linear-learner')
     with timeout_and_delete_endpoint_by_name(endpoint_name, sagemaker_session):
 
         predictor = ll.deploy(1, 'ml.c4.xlarge', endpoint_name=endpoint_name)
@@ -109,7 +109,7 @@ def test_linear_learner_multiclass(sagemaker_session):
         ll.epochs = 1
         ll.fit(ll.record_set(train_set[0][:200], train_set[1][:200]))
 
-    endpoint_name = name_from_base('linear-learner')
+    endpoint_name = unique_name_from_base('linear-learner')
     with timeout_and_delete_endpoint_by_name(endpoint_name, sagemaker_session):
 
         predictor = ll.deploy(1, 'ml.c4.xlarge', endpoint_name=endpoint_name)
