@@ -37,7 +37,7 @@ class PickleSerializer(object):
 @pytest.mark.continuous_testing
 @pytest.mark.skipif(tests.integ.PYTHON_VERSION != 'py2',
                     reason="TensorFlow image supports only python 2.")
-@pytest.mark.skipif(tests.integ.test_region() in tests.integ.HOSTING_SCARCE_P2_REGIONS,
+@pytest.mark.skipif(tests.integ.test_region() in tests.integ.HOSTING_NO_P2_REGIONS,
                     reason='no ml.p2 instances in these regions')
 def test_cifar(sagemaker_session, tf_full_version):
     with timeout(minutes=45):
