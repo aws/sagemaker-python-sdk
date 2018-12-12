@@ -27,7 +27,7 @@ TensorFlow Predictor
     :show-inheritance:
 
 TensorFlow Serving Model
---------------------
+------------------------
 
 .. autoclass:: sagemaker.tensorflow.serving.Model
     :members:
@@ -35,7 +35,7 @@ TensorFlow Serving Model
         :show-inheritance:
 
 TensorFlow Serving Predictor
---------------------
+----------------------------
 
 .. autoclass:: sagemaker.tensorflow.serving.Predictor
     :members:
