@@ -12,5 +12,5 @@
 # language governing permissions and limitations under the License.
 from __future__ import absolute_import
 
-PYTORCH_VERSION = '1.0'
+PYTORCH_VERSION = '0.4'
 PYTHON_VERSION = 'py3'

@@ -29,6 +29,8 @@ class PyTorch(Framework):
 
     __framework_name__ = "pytorch"
 
+    LATEST_VERSION = '1.0'
+
     def __init__(self, entry_point, source_dir=None, hyperparameters=None, py_version=PYTHON_VERSION,
                  framework_version=None, image_name=None, **kwargs):
         """

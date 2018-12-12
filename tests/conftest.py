@@ -23,7 +23,7 @@ from sagemaker import Session
 from sagemaker.chainer import Chainer
 from sagemaker.local import LocalSession
 from sagemaker.mxnet import MXNet
-from sagemaker.pytorch.defaults import PYTORCH_VERSION
+from sagemaker.pytorch import PyTorch
 from sagemaker.rl import RLEstimator
 from sagemaker.sklearn.defaults import SKLEARN_VERSION
 from sagemaker.tensorflow.defaults import TF_VERSION
@@ -37,7 +37,7 @@ def pytest_addoption(parser):
     parser.addoption('--boto-config', action='store', default=None)
     parser.addoption('--chainer-full-version', action='store', default=Chainer.LATEST_VERSION)
     parser.addoption('--mxnet-full-version', action='store', default=MXNet.LATEST_VERSION)
-    parser.addoption('--pytorch-full-version', action='store', default=PYTORCH_VERSION)
+    parser.addoption('--pytorch-full-version', action='store', default=PyTorch.LATEST_VERSION)
     parser.addoption('--rl-coach-full-version', action='store',
                      default=RLEstimator.COACH_LATEST_VERSION)
     parser.addoption('--rl-ray-full-version', action='store',
