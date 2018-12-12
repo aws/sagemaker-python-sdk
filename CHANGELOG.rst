@@ -15,6 +15,7 @@ CHANGELOG
 * bug-fix: Update PyYAML version to avoid conflicts with docker-compose
 * doc-fix: Correct the numbered list in the table of contents
 * doc-fix: Add Airflow API documentation
+* feature: Estimators: add support for PyTorch 1.0.0
 
 1.16.1.post1
 ============
