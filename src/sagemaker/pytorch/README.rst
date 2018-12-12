@@ -674,7 +674,7 @@ When training and deploying training scripts, SageMaker runs your Python script 
 libraries installed. When creating the Estimator and calling deploy to create the SageMaker Endpoint, you can control
 the environment your script runs in.
 
-SageMaker runs PyTorch Estimator scripts in either Python 2.7 or Python 3.6. You can select the Python version by
+SageMaker runs PyTorch Estimator scripts in either Python 2 or Python 3. You can select the Python version by
 passing a ``py_version`` keyword arg to the PyTorch Estimator constructor. Setting this to `py3` (the default) will cause your
 training script to be run on Python 3.5. Setting this to `py2` will cause your training script to be run on Python 2.7
 This Python version applies to both the Training Job, created by fit, and the Endpoint, created by deploy.
@@ -714,7 +714,7 @@ The PyTorch Docker images have the following dependencies installed:
 +-----------------------------+---------------+-------------------+
 | torchvision                 | 0.2.1         | 0.2.1             |
 +-----------------------------+---------------+-------------------+
-| Python                      | 2.7 or 3.6    | 2.7 or 3.6        |
+| Python                      | 2.7 or 3.5    | 2.7 or 3.6        |
 +-----------------------------+---------------+-------------------+
 
 The Docker images extend Ubuntu 16.04.
