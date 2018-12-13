@@ -165,7 +165,7 @@ class HyperparameterTuner(object):
 
     def __init__(self, estimator, objective_metric_name, hyperparameter_ranges, metric_definitions=None,
                  strategy='Bayesian', objective_type='Maximize', max_jobs=1, max_parallel_jobs=1,
-                 tags=None, base_tuning_job_name=None, warm_start_config=None):
+                 tags=None, base_tuning_job_name=None, warm_start_config=None, early_stopping_type='Off'):
         """Initialize a ``HyperparameterTuner``. It takes an estimator to obtain configuration information
         for training jobs that are created as the result of a hyperparameter tuning job.
 
@@ -194,6 +194,9 @@ class HyperparameterTuner(object):
                 a default job name is generated, based on the training image name and current timestamp.
             warm_start_config (sagemaker.tuner.WarmStartConfig): A ``WarmStartConfig`` object that has been initialized
                 with the configuration defining the nature of warm start tuning job.
+            early_stopping_type (str): Specifies whether early stopping is enabled for the job.
+                Can be either 'Auto' or 'Off' (default: 'Off'). If set to 'Off', early stopping will not be attempted.
+                If set to 'Auto', early stopping of some training jobs may happen, but is not guaranteed to.
         """
         self._hyperparameter_ranges = hyperparameter_ranges
         if self._hyperparameter_ranges is None or len(self._hyperparameter_ranges) == 0:
@@ -214,6 +217,7 @@ class HyperparameterTuner(object):
         self._current_job_name = None
         self.latest_tuning_job = None
         self.warm_start_config = warm_start_config
+        self.early_stopping_type = early_stopping_type
 
     def _prepare_for_training(self, job_name=None, include_cls_metadata=True):
         if job_name is not None:
@@ -445,7 +449,8 @@ class HyperparameterTuner(object):
             'strategy': tuning_config['Strategy'],
             'max_jobs': tuning_config['ResourceLimits']['MaxNumberOfTrainingJobs'],
             'max_parallel_jobs': tuning_config['ResourceLimits']['MaxParallelTrainingJobs'],
-            'warm_start_config': WarmStartConfig.from_job_desc(job_details.get('WarmStartConfig', None))
+            'warm_start_config': WarmStartConfig.from_job_desc(job_details.get('WarmStartConfig', None)),
+            'early_stopping_type': tuning_config['TrainingJobEarlyStoppingType']
         }
 
     @classmethod
@@ -625,6 +630,7 @@ class _TuningJob(_Job):
         tuner_args['metric_definitions'] = tuner.metric_definitions
         tuner_args['tags'] = tuner.tags
         tuner_args['warm_start_config'] = warm_start_config_req
+        tuner_args['early_stopping_type'] = tuner.early_stopping_type
 
         del tuner_args['vpc_config']
         if isinstance(tuner.estimator, sagemaker.algorithm.AlgorithmEstimator):
