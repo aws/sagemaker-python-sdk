@@ -12,7 +12,8 @@
 # language governing permissions and limitations under the License.
 from __future__ import absolute_import
 
+__all__ = [
+    'RLEstimator', 'RLToolkit', 'RLFramework', 'TOOLKIT_FRAMEWORK_VERSION_MAP']
+
 from sagemaker.rl.estimator import (RLEstimator, RLToolkit, RLFramework,
                                     TOOLKIT_FRAMEWORK_VERSION_MAP)
-
-__all__ = [RLEstimator, RLToolkit, RLFramework, TOOLKIT_FRAMEWORK_VERSION_MAP]
