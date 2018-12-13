@@ -33,7 +33,7 @@ def read(fname):
 
 
 # Declare minimal set for installation
-required_packages = ['boto3>=1.9.55', 'numpy>=1.9.0', 'protobuf>=3.1', 'scipy>=0.19.0',
+required_packages = ['boto3>=1.9.64', 'numpy>=1.9.0', 'protobuf>=3.1', 'scipy>=0.19.0',
                      'urllib3>=1.21', 'PyYAML>=3.2, <4', 'protobuf3-to-dict>=0.1.5',
                      'docker-compose>=1.23.0', 'requests>=2.20.0, <2.21']
 

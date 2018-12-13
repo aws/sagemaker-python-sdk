@@ -2,8 +2,8 @@
 CHANGELOG
 =========
 
-1.16.2.dev
-==========
+1.16.2
+======
 
 * enhancement: Check for S3 paths being passed as entry point
 * feature: Add support for AugmentedManifestFile and ShuffleConfig
@@ -16,6 +16,7 @@ CHANGELOG
 * doc-fix: Correct the numbered list in the table of contents
 * bug-fix: Local Mode: No longer requires s3 permissions to run local entry point file
 * doc-fix: Add Airflow API documentation
+* feature: HyperparameterTuner: add Early Stopping support
 
 1.16.1.post1
 ============
