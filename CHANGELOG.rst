@@ -2,6 +2,11 @@
 CHANGELOG
 =========
 
+1.16.3.dev
+==========
+
+* bug-fix: Append retry id to default Airflow job name to avoid name collisions in retry
+
 1.16.2
 ======
 
