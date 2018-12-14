@@ -2,9 +2,10 @@
 CHANGELOG
 =========
 
-1.16.3
-======
+1.16.3.dev
+==========
 
+* bug-fix: Append retry id to default Airflow job name to avoid name collisions in retry
 * bug-fix: Local Mode: No longer requires s3 permissions to run local entry point file
 
 1.16.2
