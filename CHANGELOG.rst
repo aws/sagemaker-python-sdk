@@ -2,6 +2,11 @@
 CHANGELOG
 =========
 
+1.16.4.dev
+======
+
+* bug-fix: Local Mode: Allow support for SSH in local mode 
+
 1.16.3
 ======
 

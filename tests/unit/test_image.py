@@ -88,7 +88,7 @@ def sagemaker_session():
 
 def test_sagemaker_container_hosts_should_have_lowercase_names():
     random.seed(a=42)
-    sagemaker_container = _SageMakerContainer('local', 2, 'my-image')
+    sagemaker_container = _SageMakerContainer('local', 2, 'my-image', sagemaker_session=Mock())
     assert sagemaker_container.hosts == ['algo-1-hbrpo', 'algo-2-hbrpo']
 
     sagemaker_container = _SageMakerContainer('local', 10, 'my-image')
