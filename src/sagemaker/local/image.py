@@ -317,8 +317,7 @@ class _SageMakerContainer(object):
                 volumes.append(_Volume(shared_dir, '/opt/ml/shared'))
 
         parsed_uri = urlparse(output_data_config['S3OutputPath'])
-        if parsed_uri.scheme == 'file' \
-                and sagemaker.rl.estimator.SAGEMAKER_OUTPUT_LOCATION in hyperparameters:
+        if parsed_uri.scheme == 'file' and sagemaker.model.SAGEMAKER_OUTPUT_LOCATION in hyperparameters:
             intermediate_dir = os.path.join(parsed_uri.path, 'output', 'intermediate')
             if not os.path.exists(intermediate_dir):
                 os.makedirs(intermediate_dir)
