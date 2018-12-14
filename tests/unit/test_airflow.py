@@ -26,6 +26,16 @@ REGION = 'us-west-2'
 BUCKET_NAME = 'output'
 
 
+def get_job_name(job_name_prefix, short=False):
+    if not short:
+        job_name_postfix = "{{ execution_date.strftime('%Y-%m-%d-%H-%M-%S') }}" \
+                           "-{{ task_instance.try_number }}"
+    else:
+        job_name_postfix = "{{ execution_date.strftime('%y%m%d-%H%M') }}" \
+                           "-{{ task_instance.try_number }}"
+    return "{}-{}".format(job_name_prefix, job_name_postfix)
+
+
 @pytest.fixture()
 def sagemaker_session():
     boto_mock = mock.Mock(name='boto_session', region_name=REGION)
@@ -37,6 +47,7 @@ def sagemaker_session():
 
 
 def test_byo_training_config_required_args(sagemaker_session):
+    job_name = get_job_name('byo')
     byo = estimator.Estimator(
         image_name="byo",
         role="{{ role }}",
@@ -59,7 +70,7 @@ def test_byo_training_config_required_args(sagemaker_session):
         'OutputDataConfig': {
             'S3OutputPath': 's3://output/'
         },
-        'TrainingJobName': "byo-{{ execution_date.strftime('%Y-%m-%d-%H-%M-%S') }}",
+        'TrainingJobName': job_name,
         'StoppingCondition': {
             'MaxRuntimeInSeconds': 86400
         },
@@ -87,6 +98,7 @@ def test_byo_training_config_required_args(sagemaker_session):
 
 
 def test_byo_training_config_all_args(sagemaker_session):
+    job_name = get_job_name("{{ base_job_name }}")
     byo = estimator.Estimator(
         image_name="byo",
         role="{{ role }}",
@@ -122,7 +134,7 @@ def test_byo_training_config_all_args(sagemaker_session):
             'S3OutputPath': '{{ output_path }}',
             'KmsKeyId': '{{ output_volume_kms_key }}'
         },
-        'TrainingJobName': "{{ base_job_name }}-{{ execution_date.strftime('%Y-%m-%d-%H-%M-%S') }}",
+        'TrainingJobName': job_name,
         'StoppingCondition': {
             'MaxRuntimeInSeconds': '{{ train_max_run }}'
         },
@@ -171,6 +183,7 @@ def test_byo_training_config_all_args(sagemaker_session):
 
 
 def test_framework_training_config_required_args(sagemaker_session):
+    job_name = get_job_name('sagemaker-tensorflow')
     tf = tensorflow.TensorFlow(
         entry_point="{{ entry_point }}",
         framework_version='1.10.0',
@@ -192,7 +205,7 @@ def test_framework_training_config_required_args(sagemaker_session):
         'OutputDataConfig': {
             'S3OutputPath': 's3://output/'
         },
-        'TrainingJobName': "sagemaker-tensorflow-{{ execution_date.strftime('%Y-%m-%d-%H-%M-%S') }}",
+        'TrainingJobName': job_name,
         'StoppingCondition': {
             'MaxRuntimeInSeconds': 86400
         },
@@ -213,16 +226,13 @@ def test_framework_training_config_required_args(sagemaker_session):
             'ChannelName': 'training'
         }],
         'HyperParameters': {
-            'sagemaker_submit_directory': '"s3://output/sagemaker-tensorflow-'
-                                          '{{ execution_date.strftime(\'%Y-%m-%d-%H-%M-%S\') }}'
-                                          '/source/sourcedir.tar.gz"',
+            'sagemaker_submit_directory': '"s3://output/{}/source/sourcedir.tar.gz"'.format(job_name),
             'sagemaker_program': '"{{ entry_point }}"',
             'sagemaker_enable_cloudwatch_metrics': 'false',
             'sagemaker_container_log_level': '20',
-            'sagemaker_job_name': '"sagemaker-tensorflow-{{ execution_date.strftime(\'%Y-%m-%d-%H-%M-%S\') }}"',
+            'sagemaker_job_name': '"{}"'.format(job_name),
             'sagemaker_region': '"us-west-2"',
-            'checkpoint_path': '"s3://output/sagemaker-tensorflow-{{ execution_date.strftime(\'%Y-%m-%d-%H-%M-%S\') }}'
-                               '/checkpoints"',
+            'checkpoint_path': '"s3://output/{}/checkpoints"'.format(job_name),
             'training_steps': '1000',
             'evaluation_steps': '100',
             'sagemaker_requirements': '""'},
@@ -230,8 +240,7 @@ def test_framework_training_config_required_args(sagemaker_session):
             'S3Upload': [{
                 'Path': '{{ entry_point }}',
                 'Bucket': 'output',
-                'Key': "sagemaker-tensorflow-{{ execution_date.strftime('%Y-%m-%d-%H-%M-%S') }}"
-                       "/source/sourcedir.tar.gz",
+                'Key': "{}/source/sourcedir.tar.gz".format(job_name),
                 'Tar': True}]
         }
     }
@@ -239,6 +248,7 @@ def test_framework_training_config_required_args(sagemaker_session):
 
 
 def test_framework_training_config_all_args(sagemaker_session):
+    job_name = get_job_name("{{ base_job_name }}")
     tf = tensorflow.TensorFlow(
         entry_point="{{ entry_point }}",
         source_dir="{{ source_dir }}",
@@ -278,7 +288,7 @@ def test_framework_training_config_all_args(sagemaker_session):
             'S3OutputPath': '{{ output_path }}',
             'KmsKeyId': '{{ output_volume_kms_key }}'
         },
-        'TrainingJobName': "{{ base_job_name }}-{{ execution_date.strftime('%Y-%m-%d-%H-%M-%S') }}",
+        'TrainingJobName': job_name,
         'StoppingCondition': {
             'MaxRuntimeInSeconds': '{{ train_max_run }}'
         },
@@ -308,7 +318,7 @@ def test_framework_training_config_all_args(sagemaker_session):
             'sagemaker_program': '"{{ entry_point }}"',
             'sagemaker_enable_cloudwatch_metrics': 'false',
             'sagemaker_container_log_level': '"{{ log_level }}"',
-            'sagemaker_job_name': '"{{ base_job_name }}-{{ execution_date.strftime(\'%Y-%m-%d-%H-%M-%S\') }}"',
+            'sagemaker_job_name': '"{}"'.format(job_name),
             'sagemaker_region': '"us-west-2"',
             'checkpoint_path': '"{{ checkpoint_path }}"',
             'training_steps': '1000',
@@ -328,6 +338,7 @@ def test_framework_training_config_all_args(sagemaker_session):
 
 
 def test_amazon_alg_training_config_required_args(sagemaker_session):
+    job_name = get_job_name('ntm')
     ntm_estimator = ntm.NTM(
         role="{{ role }}",
         num_topics=10,
@@ -348,7 +359,7 @@ def test_amazon_alg_training_config_required_args(sagemaker_session):
         'OutputDataConfig': {
             'S3OutputPath': 's3://output/'
         },
-        'TrainingJobName': "ntm-{{ execution_date.strftime('%Y-%m-%d-%H-%M-%S') }}",
+        'TrainingJobName': job_name,
         'StoppingCondition': {'MaxRuntimeInSeconds': 86400},
         'ResourceConfig': {
             'InstanceCount': '{{ instance_count }}',
@@ -377,6 +388,7 @@ def test_amazon_alg_training_config_required_args(sagemaker_session):
 
 
 def test_amazon_alg_training_config_all_args(sagemaker_session):
+    job_name = get_job_name("{{ base_job_name }}")
     ntm_estimator = ntm.NTM(
         role="{{ role }}",
         num_topics=10,
@@ -408,7 +420,7 @@ def test_amazon_alg_training_config_all_args(sagemaker_session):
             'S3OutputPath': '{{ output_path }}',
             'KmsKeyId': '{{ output_volume_kms_key }}'
         },
-        'TrainingJobName': "{{ base_job_name }}-{{ execution_date.strftime('%Y-%m-%d-%H-%M-%S') }}",
+        'TrainingJobName': job_name,
         'StoppingCondition': {
             'MaxRuntimeInSeconds': '{{ train_max_run }}'
         },
@@ -446,6 +458,8 @@ def test_amazon_alg_training_config_all_args(sagemaker_session):
 
 
 def test_framework_tuning_config(sagemaker_session):
+    training_job_name = get_job_name("{{ base_job_name }}")
+    tuning_job_name = get_job_name("tuning", short=True)
     mxnet_estimator = mxnet.MXNet(
         entry_point="{{ entry_point }}",
         source_dir="{{ source_dir }}",
@@ -475,13 +489,13 @@ def test_framework_tuning_config(sagemaker_session):
         max_jobs="{{ max_job }}",
         max_parallel_jobs="{{ max_parallel_job }}",
         tags=[{'{{ key }}': '{{ value }}'}],
-        base_tuning_job_name="{{ base_job_name }}")
+        base_tuning_job_name="tuning")
 
     data = "{{ training_data }}"
 
     config = airflow.tuning_config(mxnet_tuner, data)
     expected_config = {
-        'HyperParameterTuningJobName': "{{ base_job_name }}-{{ execution_date.strftime('%y%m%d-%H%M') }}",
+        'HyperParameterTuningJobName': tuning_job_name,
         'HyperParameterTuningJobConfig': {
             'Strategy': 'Bayesian',
             'HyperParameterTuningJobObjective': {
@@ -540,22 +554,18 @@ def test_framework_tuning_config(sagemaker_session):
             }],
             'StaticHyperParameters': {
                 'batch_size': '100',
-                'sagemaker_submit_directory': '"s3://output/{{ base_job_name }}'
-                                              '-{{ execution_date.strftime(\'%Y-%m-%d-%H-%M-%S\') }}'
-                                              '/source/sourcedir.tar.gz"',
+                'sagemaker_submit_directory': '"s3://output/{}/source/sourcedir.tar.gz"'.format(training_job_name),
                 'sagemaker_program': '"{{ entry_point }}"',
                 'sagemaker_enable_cloudwatch_metrics': 'false',
                 'sagemaker_container_log_level': '20',
-                'sagemaker_job_name': '"{{ base_job_name }}-'
-                                      '{{ execution_date.strftime(\'%Y-%m-%d-%H-%M-%S\') }}"',
+                'sagemaker_job_name': '"{}"'.format(training_job_name),
                 'sagemaker_region': '"us-west-2"'}},
         'Tags': [{'{{ key }}': '{{ value }}'}],
         'S3Operations': {
             'S3Upload': [{
                 'Path': '{{ source_dir }}',
                 'Bucket': 'output',
-                'Key': "{{ base_job_name }}-"
-                       "{{ execution_date.strftime('%Y-%m-%d-%H-%M-%S') }}/source/sourcedir.tar.gz",
+                'Key': "{}/source/sourcedir.tar.gz".format(training_job_name),
                 'Tar': True
             }]
         }
@@ -627,6 +637,7 @@ def test_byo_framework_model_config(sagemaker_session):
 
 
 def test_framework_model_config(sagemaker_session):
+    job_name = get_job_name('sagemaker-chainer')
     chainer_model = chainer.ChainerModel(
         model_data="{{ model_data }}",
         role="{{ role }}",
@@ -640,14 +651,12 @@ def test_framework_model_config(sagemaker_session):
 
     config = airflow.model_config(instance_type='ml.c4.xlarge', model=chainer_model)
     expected_config = {
-        'ModelName': "sagemaker-chainer-{{ execution_date.strftime('%Y-%m-%d-%H-%M-%S') }}",
+        'ModelName': job_name,
         'PrimaryContainer': {
             'Image': '520713654638.dkr.ecr.us-west-2.amazonaws.com/sagemaker-chainer:5.0.0-cpu-py3',
             'Environment': {
                 'SAGEMAKER_PROGRAM': '{{ entry_point }}',
-                'SAGEMAKER_SUBMIT_DIRECTORY': "s3://output/sagemaker-chainer-"
-                                              "{{ execution_date.strftime('%Y-%m-%d-%H-%M-%S') }}"
-                                              "/source/sourcedir.tar.gz",
+                'SAGEMAKER_SUBMIT_DIRECTORY': "s3://output/{}/source/sourcedir.tar.gz".format(job_name),
                 'SAGEMAKER_ENABLE_CLOUDWATCH_METRICS': 'false',
                 'SAGEMAKER_CONTAINER_LOG_LEVEL': '20',
                 'SAGEMAKER_REGION': 'us-west-2',
@@ -660,7 +669,7 @@ def test_framework_model_config(sagemaker_session):
             'S3Upload': [{
                 'Path': '{{ source_dir }}',
                 'Bucket': 'output',
-                'Key': "sagemaker-chainer-{{ execution_date.strftime('%Y-%m-%d-%H-%M-%S') }}/source/sourcedir.tar.gz",
+                'Key': "{}/source/sourcedir.tar.gz".format(job_name),
                 'Tar': True}]
         }
     }
@@ -669,6 +678,7 @@ def test_framework_model_config(sagemaker_session):
 
 
 def test_amazon_alg_model_config(sagemaker_session):
+    job_name = get_job_name('pca')
     pca_model = pca.PCAModel(
         model_data="{{ model_data }}",
         role="{{ role }}",
@@ -676,7 +686,7 @@ def test_amazon_alg_model_config(sagemaker_session):
 
     config = airflow.model_config(instance_type='ml.c4.xlarge', model=pca_model)
     expected_config = {
-        'ModelName': "pca-{{ execution_date.strftime('%Y-%m-%d-%H-%M-%S') }}",
+        'ModelName': job_name,
         'PrimaryContainer': {
             'Image': '174872318107.dkr.ecr.us-west-2.amazonaws.com/pca:1',
             'Environment': {},
@@ -689,6 +699,7 @@ def test_amazon_alg_model_config(sagemaker_session):
 
 
 def test_model_config_from_framework_estimator(sagemaker_session):
+    job_name = get_job_name("{{ base_job_name }}")
     mxnet_estimator = mxnet.MXNet(
         entry_point="{{ entry_point }}",
         source_dir="{{ source_dir }}",
@@ -708,20 +719,18 @@ def test_model_config_from_framework_estimator(sagemaker_session):
 
     config = airflow.model_config_from_estimator(instance_type='ml.c4.xlarge', estimator=mxnet_estimator)
     expected_config = {
-        'ModelName': "{{ base_job_name }}-{{ execution_date.strftime('%Y-%m-%d-%H-%M-%S') }}",
+        'ModelName': job_name,
         'PrimaryContainer': {
             'Image': '520713654638.dkr.ecr.us-west-2.amazonaws.com/sagemaker-mxnet:1.3.0-cpu-py3',
             'Environment': {
                 'SAGEMAKER_PROGRAM': '{{ entry_point }}',
-                'SAGEMAKER_SUBMIT_DIRECTORY': "s3://output/{{ base_job_name }}-"
-                                              "{{ execution_date.strftime('%Y-%m-%d-%H-%M-%S') }}"
-                                              "/source/sourcedir.tar.gz",
+                'SAGEMAKER_SUBMIT_DIRECTORY': "s3://output/{}/source/sourcedir.tar.gz".format(job_name),
                 'SAGEMAKER_ENABLE_CLOUDWATCH_METRICS': 'false',
                 'SAGEMAKER_CONTAINER_LOG_LEVEL': '20',
                 'SAGEMAKER_REGION': 'us-west-2'
             },
-            'ModelDataUrl': "s3://output/{{ base_job_name }}-"
-                            "{{ execution_date.strftime('%Y-%m-%d-%H-%M-%S') }}/output/model.tar.gz"},
+            'ModelDataUrl': "s3://output/{}/output/model.tar.gz".format(job_name)
+        },
         'ExecutionRoleArn': '{{ role }}'
     }
 
@@ -729,6 +738,7 @@ def test_model_config_from_framework_estimator(sagemaker_session):
 
 
 def test_model_config_from_amazon_alg_estimator(sagemaker_session):
+    job_name = get_job_name('knn')
     knn_estimator = knn.KNN(
         role="{{ role }}",
         train_instance_count="{{ instance_count }}",
@@ -745,11 +755,11 @@ def test_model_config_from_amazon_alg_estimator(sagemaker_session):
 
     config = airflow.model_config_from_estimator(instance_type='ml.c4.xlarge', estimator=knn_estimator)
     expected_config = {
-        'ModelName': "knn-{{ execution_date.strftime('%Y-%m-%d-%H-%M-%S') }}",
+        'ModelName': job_name,
         'PrimaryContainer': {
             'Image': '174872318107.dkr.ecr.us-west-2.amazonaws.com/knn:1',
             'Environment': {},
-            'ModelDataUrl': "s3://output/knn-{{ execution_date.strftime('%Y-%m-%d-%H-%M-%S') }}/output/model.tar.gz"},
+            'ModelDataUrl': "s3://output/{}/output/model.tar.gz".format(job_name)},
         'ExecutionRoleArn': '{{ role }}'
     }
 
@@ -757,6 +767,7 @@ def test_model_config_from_amazon_alg_estimator(sagemaker_session):
 
 
 def test_transformer_config(sagemaker_session):
+    job_name = get_job_name('tensorflow-transform')
     tf_transformer = transformer.Transformer(
         model_name="tensorflow-model",
         instance_count="{{ instance_count }}",
@@ -779,7 +790,7 @@ def test_transformer_config(sagemaker_session):
     config = airflow.transform_config(tf_transformer, data, data_type='S3Prefix', content_type="{{ content_type }}",
                                       compression_type="{{ compression_type }}", split_type="{{ split_type }}")
     expected_config = {
-        'TransformJobName': "tensorflow-transform-{{ execution_date.strftime('%Y-%m-%d-%H-%M-%S') }}",
+        'TransformJobName': job_name,
         'ModelName': 'tensorflow-model',
         'TransformInput': {
             'DataSource': {
@@ -813,6 +824,7 @@ def test_transformer_config(sagemaker_session):
 
 
 def test_transform_config_from_framework_estimator(sagemaker_session):
+    job_name = get_job_name("{{ base_job_name }}")
     mxnet_estimator = mxnet.MXNet(
         entry_point="{{ entry_point }}",
         source_dir="{{ source_dir }}",
@@ -838,24 +850,22 @@ def test_transform_config_from_framework_estimator(sagemaker_session):
         data=transform_data)
     expected_config = {
         'Model': {
-            'ModelName': "{{ base_job_name }}-{{ execution_date.strftime('%Y-%m-%d-%H-%M-%S') }}",
+            'ModelName': job_name,
             'PrimaryContainer': {
                 'Image': '520713654638.dkr.ecr.us-west-2.amazonaws.com/sagemaker-mxnet:1.3.0-gpu-py3',
                 'Environment': {'SAGEMAKER_PROGRAM': '{{ entry_point }}',
-                                'SAGEMAKER_SUBMIT_DIRECTORY': "s3://output/{{ base_job_name }}-"
-                                                              "{{ execution_date.strftime('%Y-%m-%d-%H-%M-%S') }}/"
-                                                              "source/sourcedir.tar.gz",
+                                'SAGEMAKER_SUBMIT_DIRECTORY': "s3://output/{}/source/sourcedir.tar.gz".format(job_name),
                                 'SAGEMAKER_ENABLE_CLOUDWATCH_METRICS': 'false',
                                 'SAGEMAKER_CONTAINER_LOG_LEVEL': '20',
                                 'SAGEMAKER_REGION': 'us-west-2'
                                 },
-                'ModelDataUrl': "s3://output/{{ base_job_name }}-"
-                                "{{ execution_date.strftime('%Y-%m-%d-%H-%M-%S') }}/output/model.tar.gz"},
+                'ModelDataUrl': "s3://output/{}/output/model.tar.gz".format(job_name)
+            },
             'ExecutionRoleArn': '{{ role }}'
         },
         'Transform': {
-            'TransformJobName': "{{ base_job_name }}-{{ execution_date.strftime('%Y-%m-%d-%H-%M-%S') }}",
-            'ModelName': "{{ base_job_name }}-{{ execution_date.strftime('%Y-%m-%d-%H-%M-%S') }}",
+            'TransformJobName': job_name,
+            'ModelName': job_name,
             'TransformInput': {
                 'DataSource': {
                     'S3DataSource': {
@@ -865,7 +875,7 @@ def test_transform_config_from_framework_estimator(sagemaker_session):
                 }
             },
             'TransformOutput': {
-                'S3OutputPath': "s3://output/{{ base_job_name }}-{{ execution_date.strftime('%Y-%m-%d-%H-%M-%S') }}"
+                'S3OutputPath': "s3://output/{}".format(job_name)
             },
             'TransformResources': {
                 'InstanceCount': '{{ instance_count }}',
@@ -879,6 +889,7 @@ def test_transform_config_from_framework_estimator(sagemaker_session):
 
 
 def test_transform_config_from_amazon_alg_estimator(sagemaker_session):
+    job_name = get_job_name('knn')
     knn_estimator = knn.KNN(
         role="{{ role }}",
         train_instance_count="{{ instance_count }}",
@@ -901,35 +912,39 @@ def test_transform_config_from_amazon_alg_estimator(sagemaker_session):
         data=transform_data)
     expected_config = {
         'Model': {
-            'ModelName': "knn-{{ execution_date.strftime('%Y-%m-%d-%H-%M-%S') }}",
+            'ModelName': job_name,
             'PrimaryContainer': {
                 'Image': '174872318107.dkr.ecr.us-west-2.amazonaws.com/knn:1',
                 'Environment': {},
-                'ModelDataUrl': "s3://output/knn-{{ execution_date.strftime('%Y-%m-%d-%H-%M-%S') }}"
-                                "/output/model.tar.gz"},
+                'ModelDataUrl': "s3://output/{}/output/model.tar.gz".format(job_name)
+            },
             'ExecutionRoleArn': '{{ role }}'},
-        'Transform': {'TransformJobName': "knn-{{ execution_date.strftime('%Y-%m-%d-%H-%M-%S') }}",
-                      'ModelName': "knn-{{ execution_date.strftime('%Y-%m-%d-%H-%M-%S') }}",
-                      'TransformInput': {
-                          'DataSource': {
-                              'S3DataSource': {
-                                  'S3DataType': 'S3Prefix',
-                                  'S3Uri': '{{ transform_data }}'}
-                          }
-                      },
-                      'TransformOutput': {
-                          'S3OutputPath': "s3://output/knn-{{ execution_date.strftime('%Y-%m-%d-%H-%M-%S') }}"
-                      },
-                      'TransformResources': {
-                          'InstanceCount': '{{ instance_count }}',
-                          'InstanceType': 'ml.p2.xlarge'}
-                      }
+        'Transform': {
+            'TransformJobName': job_name,
+            'ModelName': job_name,
+            'TransformInput': {
+                'DataSource': {
+                    'S3DataSource': {
+                        'S3DataType': 'S3Prefix',
+                        'S3Uri': '{{ transform_data }}'
+                    }
+                }
+            },
+            'TransformOutput': {
+                'S3OutputPath': "s3://output/{}".format(job_name)
+            },
+            'TransformResources': {
+                'InstanceCount': '{{ instance_count }}',
+                'InstanceType': 'ml.p2.xlarge'
+            }
+        }
     }
 
     assert config == expected_config
 
 
 def test_deploy_framework_model_config(sagemaker_session):
+    job_name = get_job_name('sagemaker-chainer')
     chainer_model = chainer.ChainerModel(
         model_data="{{ model_data }}",
         role="{{ role }}",
@@ -946,14 +961,12 @@ def test_deploy_framework_model_config(sagemaker_session):
                                    instance_type="ml.m4.xlarge")
     expected_config = {
         'Model': {
-            'ModelName': "sagemaker-chainer-{{ execution_date.strftime('%Y-%m-%d-%H-%M-%S') }}",
+            'ModelName': job_name,
             'PrimaryContainer': {
                 'Image': '520713654638.dkr.ecr.us-west-2.amazonaws.com/sagemaker-chainer:5.0.0-cpu-py3',
                 'Environment': {
                     'SAGEMAKER_PROGRAM': '{{ entry_point }}',
-                    'SAGEMAKER_SUBMIT_DIRECTORY': "s3://output/sagemaker-chainer-"
-                                                  "{{ execution_date.strftime('%Y-%m-%d-%H-%M-%S') }}"
-                                                  "/source/sourcedir.tar.gz",
+                    'SAGEMAKER_SUBMIT_DIRECTORY': "s3://output/{}/source/sourcedir.tar.gz".format(job_name),
                     'SAGEMAKER_ENABLE_CLOUDWATCH_METRICS': 'false',
                     'SAGEMAKER_CONTAINER_LOG_LEVEL': '20',
                     'SAGEMAKER_REGION': 'us-west-2',
@@ -963,24 +976,24 @@ def test_deploy_framework_model_config(sagemaker_session):
             'ExecutionRoleArn': '{{ role }}'
         },
         'EndpointConfig': {
-            'EndpointConfigName': "sagemaker-chainer-{{ execution_date.strftime('%Y-%m-%d-%H-%M-%S') }}",
+            'EndpointConfigName': job_name,
             'ProductionVariants': [{
                 'InstanceType': 'ml.m4.xlarge',
                 'InitialInstanceCount': '{{ instance_count }}',
-                'ModelName': "sagemaker-chainer-{{ execution_date.strftime('%Y-%m-%d-%H-%M-%S') }}",
+                'ModelName': job_name,
                 'VariantName': 'AllTraffic',
                 'InitialVariantWeight': 1
             }]
         },
         'Endpoint': {
-            'EndpointName': "sagemaker-chainer-{{ execution_date.strftime('%Y-%m-%d-%H-%M-%S') }}",
-            'EndpointConfigName': "sagemaker-chainer-{{ execution_date.strftime('%Y-%m-%d-%H-%M-%S') }}"
+            'EndpointName': job_name,
+            'EndpointConfigName': job_name
         },
         'S3Operations': {
             'S3Upload': [{
                 'Path': '{{ source_dir }}',
                 'Bucket': 'output',
-                'Key': "sagemaker-chainer-{{ execution_date.strftime('%Y-%m-%d-%H-%M-%S') }}/source/sourcedir.tar.gz",
+                'Key': "{}/source/sourcedir.tar.gz".format(job_name),
                 'Tar': True
             }]
         }
@@ -990,6 +1003,7 @@ def test_deploy_framework_model_config(sagemaker_session):
 
 
 def test_deploy_amazon_alg_model_config(sagemaker_session):
+    job_name = get_job_name('pca')
     pca_model = pca.PCAModel(
         model_data="{{ model_data }}",
         role="{{ role }}",
@@ -1000,25 +1014,25 @@ def test_deploy_amazon_alg_model_config(sagemaker_session):
                                    instance_type='ml.c4.xlarge')
     expected_config = {
         'Model': {
-            'ModelName': "pca-{{ execution_date.strftime('%Y-%m-%d-%H-%M-%S') }}",
+            'ModelName': job_name,
             'PrimaryContainer': {
                 'Image': '174872318107.dkr.ecr.us-west-2.amazonaws.com/pca:1',
                 'Environment': {},
                 'ModelDataUrl': '{{ model_data }}'},
             'ExecutionRoleArn': '{{ role }}'},
         'EndpointConfig': {
-            'EndpointConfigName': "pca-{{ execution_date.strftime('%Y-%m-%d-%H-%M-%S') }}",
+            'EndpointConfigName': job_name,
             'ProductionVariants': [{
                 'InstanceType': 'ml.c4.xlarge',
                 'InitialInstanceCount': '{{ instance_count }}',
-                'ModelName': "pca-{{ execution_date.strftime('%Y-%m-%d-%H-%M-%S') }}",
+                'ModelName': job_name,
                 'VariantName': 'AllTraffic',
                 'InitialVariantWeight': 1
             }]
         },
         'Endpoint': {
-            'EndpointName': "pca-{{ execution_date.strftime('%Y-%m-%d-%H-%M-%S') }}",
-            'EndpointConfigName': "pca-{{ execution_date.strftime('%Y-%m-%d-%H-%M-%S') }}"
+            'EndpointName': job_name,
+            'EndpointConfigName': job_name
         }
     }
 
@@ -1026,6 +1040,7 @@ def test_deploy_amazon_alg_model_config(sagemaker_session):
 
 
 def test_deploy_config_from_framework_estimator(sagemaker_session):
+    job_name = get_job_name("{{ base_job_name }}")
     mxnet_estimator = mxnet.MXNet(
         entry_point="{{ entry_point }}",
         source_dir="{{ source_dir }}",
@@ -1049,34 +1064,32 @@ def test_deploy_config_from_framework_estimator(sagemaker_session):
                                                   endpoint_name="mxnet-endpoint")
     expected_config = {
         'Model': {
-            'ModelName': "{{ base_job_name }}-{{ execution_date.strftime('%Y-%m-%d-%H-%M-%S') }}",
+            'ModelName': job_name,
             'PrimaryContainer': {
                 'Image': '520713654638.dkr.ecr.us-west-2.amazonaws.com/sagemaker-mxnet:1.3.0-cpu-py3',
                 'Environment': {
                     'SAGEMAKER_PROGRAM': '{{ entry_point }}',
-                    'SAGEMAKER_SUBMIT_DIRECTORY': "s3://output/{{ base_job_name }}-"
-                                                  "{{ execution_date.strftime('%Y-%m-%d-%H-%M-%S') }}/"
-                                                  "source/sourcedir.tar.gz",
+                    'SAGEMAKER_SUBMIT_DIRECTORY': "s3://output/{}/source/sourcedir.tar.gz".format(job_name),
                     'SAGEMAKER_ENABLE_CLOUDWATCH_METRICS': 'false',
                     'SAGEMAKER_CONTAINER_LOG_LEVEL': '20',
                     'SAGEMAKER_REGION': 'us-west-2'},
-                'ModelDataUrl': "s3://output/{{ base_job_name }}-"
-                                "{{ execution_date.strftime('%Y-%m-%d-%H-%M-%S') }}/output/model.tar.gz"},
+                'ModelDataUrl': "s3://output/{}/output/model.tar.gz".format(job_name)
+            },
             'ExecutionRoleArn': '{{ role }}'
         },
         'EndpointConfig': {
-            'EndpointConfigName': "{{ base_job_name }}-{{ execution_date.strftime('%Y-%m-%d-%H-%M-%S') }}",
+            'EndpointConfigName': job_name,
             'ProductionVariants': [{
                 'InstanceType': 'ml.c4.large',
                 'InitialInstanceCount': '{{ instance_count}}',
-                'ModelName': "{{ base_job_name }}-{{ execution_date.strftime('%Y-%m-%d-%H-%M-%S') }}",
+                'ModelName': job_name,
                 'VariantName': 'AllTraffic',
                 'InitialVariantWeight': 1
             }]
         },
         'Endpoint': {
             'EndpointName': 'mxnet-endpoint',
-            'EndpointConfigName': "{{ base_job_name }}-{{ execution_date.strftime('%Y-%m-%d-%H-%M-%S') }}"
+            'EndpointConfigName': job_name
         }
     }
 
@@ -1084,6 +1097,7 @@ def test_deploy_config_from_framework_estimator(sagemaker_session):
 
 
 def test_deploy_config_from_amazon_alg_estimator(sagemaker_session):
+    job_name = get_job_name('knn')
     knn_estimator = knn.KNN(
         role="{{ role }}",
         train_instance_count="{{ instance_count }}",
@@ -1103,24 +1117,26 @@ def test_deploy_config_from_amazon_alg_estimator(sagemaker_session):
                                                   instance_type="ml.p2.xlarge")
     expected_config = {
         'Model': {
-            'ModelName': "knn-{{ execution_date.strftime('%Y-%m-%d-%H-%M-%S') }}",
+            'ModelName': job_name,
             'PrimaryContainer': {
                 'Image': '174872318107.dkr.ecr.us-west-2.amazonaws.com/knn:1',
                 'Environment': {},
-                'ModelDataUrl': "s3://output/knn-{{ execution_date.strftime('%Y-%m-%d-%H-%M-%S') }}"
-                                "/output/model.tar.gz"}, 'ExecutionRoleArn': '{{ role }}'},
+                'ModelDataUrl': "s3://output/{}/output/model.tar.gz".format(job_name)
+            },
+            'ExecutionRoleArn': '{{ role }}'
+        },
         'EndpointConfig': {
-            'EndpointConfigName': "knn-{{ execution_date.strftime('%Y-%m-%d-%H-%M-%S') }}",
+            'EndpointConfigName': job_name,
             'ProductionVariants': [{
                 'InstanceType': 'ml.p2.xlarge',
                 'InitialInstanceCount': '{{ instance_count }}',
-                'ModelName': "knn-{{ execution_date.strftime('%Y-%m-%d-%H-%M-%S') }}",
+                'ModelName': job_name,
                 'VariantName': 'AllTraffic', 'InitialVariantWeight': 1
             }]
         },
         'Endpoint': {
-            'EndpointName': "knn-{{ execution_date.strftime('%Y-%m-%d-%H-%M-%S') }}",
-            'EndpointConfigName': "knn-{{ execution_date.strftime('%Y-%m-%d-%H-%M-%S') }}"
+            'EndpointName': job_name,
+            'EndpointConfigName': job_name
         }
     }
 
