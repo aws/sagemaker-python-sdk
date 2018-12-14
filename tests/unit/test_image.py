@@ -86,6 +86,21 @@ def sagemaker_session():
     return sms
 
 
+def test_sagemaker_container_hosts_should_have_lowercase_names():
+    random.seed(a=42)
+    sagemaker_container = _SageMakerContainer('local', 2, 'my-image')
+    assert sagemaker_container.hosts == ['algo-1-hbrpo', 'algo-2-hbrpo']
+
+    sagemaker_container = _SageMakerContainer('local', 10, 'my-image')
+    assert sagemaker_container.hosts == [
+        'algo-1-ig8f1', 'algo-2-ig8f1', 'algo-3-ig8f1', 'algo-4-ig8f1',
+        'algo-5-ig8f1', 'algo-6-ig8f1', 'algo-7-ig8f1', 'algo-8-ig8f1',
+        'algo-9-ig8f1', 'algo-10-ig8f1']
+
+    sagemaker_container = _SageMakerContainer('local', 1, 'my-image')
+    assert sagemaker_container.hosts == ['algo-1-cbfno']
+
+
 @patch('sagemaker.local.local_session.LocalSession')
 def test_write_config_file(LocalSession, tmpdir):
     sagemaker_container = _SageMakerContainer('local', 2, 'my-image')
