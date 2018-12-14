@@ -2,6 +2,11 @@
 CHANGELOG
 =========
 
+1.16.3
+======
+
+* bug-fix: Local Mode: No longer requires s3 permissions to run local entry point file
+
 1.16.2
 ======
 
