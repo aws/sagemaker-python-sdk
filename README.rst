@@ -611,6 +611,22 @@ A hyperparameter range can be one of three types: continuous, integer, or catego
 The SageMaker Python SDK provides corresponding classes for defining these different types.
 You can define up to 20 hyperparameters to search over, but each value of a categorical hyperparameter range counts against that limit.
 
+By default, training job early stopping is turned off. To enable early stopping for the tuning job, you need to set the ``early_stopping_type`` parameter to ``Auto``:
+
+.. code:: python
+
+    # Enable early stopping
+    my_tuner = HyperparameterTuner(estimator=my_estimator,  # previously-configured Estimator object
+                                   objective_metric_name='validation-accuracy',
+                                   hyperparameter_ranges={'learning-rate': ContinuousParameter(0.05, 0.06)},
+                                   metric_definitions=[{'Name': 'validation-accuracy', 'Regex': 'validation-accuracy=(\d\.\d+)'}],
+                                   max_jobs=100,
+                                   max_parallel_jobs=10,
+                                   early_stopping_type='Auto')
+
+When early stopping is turned on, Amazon SageMaker will automatically stop a training job if it appears unlikely to produce a model of better quality than other jobs.
+If not using built-in Amazon SageMaker algorithms, note that, for early stopping to be effective, the objective metric should be emitted at epoch level.
+
 If you are using an Amazon SageMaker built-in algorithm, you don't need to pass in anything for ``metric_definitions``.
 In addition, the ``fit()`` call uses a list of ``RecordSet`` objects instead of a dictionary:
 

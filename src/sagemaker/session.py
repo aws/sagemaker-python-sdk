@@ -350,7 +350,8 @@ class Session(object):
              max_jobs, max_parallel_jobs, parameter_ranges,
              static_hyperparameters, input_mode, metric_definitions,
              role, input_config, output_config, resource_config, stop_condition, tags,
-             warm_start_config, enable_network_isolation=False, image=None, algorithm_arn=None):
+             warm_start_config, enable_network_isolation=False, image=None, algorithm_arn=None,
+             early_stopping_type='Off'):
         """Create an Amazon SageMaker hyperparameter tuning job
 
         Args:
@@ -396,6 +397,9 @@ class Session(object):
                 https://docs.aws.amazon.com/sagemaker/latest/dg/API_Tag.html.
             warm_start_config (dict): Configuration defining the type of warm start and
                 other required configurations.
+            early_stopping_type (str): Specifies whether early stopping is enabled for the job.
+                Can be either 'Auto' or 'Off'. If set to 'Off', early stopping will not be attempted.
+                If set to 'Auto', early stopping of some training jobs may happen, but is not guaranteed to.
         """
         tune_request = {
             'HyperParameterTuningJobName': job_name,
@@ -410,6 +414,7 @@ class Session(object):
                     'MaxParallelTrainingJobs': max_parallel_jobs,
                 },
                 'ParameterRanges': parameter_ranges,
+                'TrainingJobEarlyStoppingType': early_stopping_type,
             },
             'TrainingJobDefinition': {
                 'StaticHyperParameters': static_hyperparameters,

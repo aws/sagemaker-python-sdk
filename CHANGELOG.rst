@@ -2,8 +2,15 @@
 CHANGELOG
 =========
 
-1.16.2.dev
+1.16.3.dev
 ==========
+
+* bug-fix: Append retry id to default Airflow job name to avoid name collisions in retry
+* bug-fix: Local Mode: No longer requires s3 permissions to run local entry point file
+* feature: Estimators: add support for PyTorch 1.0.0
+
+1.16.2
+======
 
 * enhancement: Check for S3 paths being passed as entry point
 * feature: Add support for AugmentedManifestFile and ShuffleConfig
@@ -15,7 +22,7 @@ CHANGELOG
 * bug-fix: Update PyYAML version to avoid conflicts with docker-compose
 * doc-fix: Correct the numbered list in the table of contents
 * doc-fix: Add Airflow API documentation
-* feature: Estimators: add support for PyTorch 1.0.0
+* feature: HyperparameterTuner: add Early Stopping support
 
 1.16.1.post1
 ============
