@@ -246,7 +246,7 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):
                 example: ml_c5. Allowed strings are: ml_c5, ml_m5, ml_c4, ml_m4, jetsontx1, jetsontx2, ml_p2, ml_p3,
                 deeplens, rasp3b
             input_shape (dict): Specifies the name and shape of the expected inputs for your trained model in json
-                dictionary form, for example: {‘data’:[1,3,1024,1024]}, or {‘var1’: [1,1,28,28], ‘var2’:[1,1,28,28]}
+                dictionary form, for example: {'data':[1,3,1024,1024]}, or {'var1': [1,1,28,28], 'var2':[1,1,28,28]}
             output_path (str): Specifies where to store the compiled model
             framework (str): The framework that is used to train the original model. Allowed values: 'mxnet',
                 'tensorflow', 'pytorch', 'onnx', 'xgboost'
