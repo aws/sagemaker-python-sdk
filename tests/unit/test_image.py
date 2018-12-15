@@ -88,17 +88,19 @@ def sagemaker_session():
 
 def test_sagemaker_container_hosts_should_have_lowercase_names():
     random.seed(a=42)
+
+    def assert_all_lowercase(hosts):
+        for host in hosts:
+            assert host.lower() == host
+
     sagemaker_container = _SageMakerContainer('local', 2, 'my-image', sagemaker_session=Mock())
-    assert sagemaker_container.hosts == ['algo-1-hbrpo', 'algo-2-hbrpo']
+    assert_all_lowercase(sagemaker_container.hosts)
 
     sagemaker_container = _SageMakerContainer('local', 10, 'my-image')
-    assert sagemaker_container.hosts == [
-        'algo-1-ig8f1', 'algo-2-ig8f1', 'algo-3-ig8f1', 'algo-4-ig8f1',
-        'algo-5-ig8f1', 'algo-6-ig8f1', 'algo-7-ig8f1', 'algo-8-ig8f1',
-        'algo-9-ig8f1', 'algo-10-ig8f1']
+    assert_all_lowercase(sagemaker_container.hosts)
 
     sagemaker_container = _SageMakerContainer('local', 1, 'my-image')
-    assert sagemaker_container.hosts == ['algo-1-cbfno']
+    assert_all_lowercase(sagemaker_container.hosts)
 
 
 @patch('sagemaker.local.local_session.LocalSession')
