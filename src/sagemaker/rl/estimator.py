@@ -18,7 +18,7 @@ import re
 
 from sagemaker.estimator import Framework
 import sagemaker.fw_utils as fw_utils
-from sagemaker.model import FrameworkModel
+from sagemaker.model import FrameworkModel, SAGEMAKER_OUTPUT_LOCATION
 from sagemaker.mxnet.model import MXNetModel
 from sagemaker.vpc_utils import VPC_CONFIG_DEFAULT
 
@@ -27,7 +27,6 @@ logger = logging.getLogger('sagemaker')
 
 SAGEMAKER_ESTIMATOR = 'sagemaker_estimator'
 SAGEMAKER_ESTIMATOR_VALUE = 'RLEstimator'
-SAGEMAKER_OUTPUT_LOCATION = 'sagemaker_s3_output'
 PYTHON_VERSION = 'py3'
 TOOLKIT_FRAMEWORK_VERSION_MAP = {
     'coach': {
