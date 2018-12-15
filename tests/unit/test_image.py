@@ -96,10 +96,10 @@ def test_sagemaker_container_hosts_should_have_lowercase_names():
     sagemaker_container = _SageMakerContainer('local', 2, 'my-image', sagemaker_session=Mock())
     assert_all_lowercase(sagemaker_container.hosts)
 
-    sagemaker_container = _SageMakerContainer('local', 10, 'my-image')
+    sagemaker_container = _SageMakerContainer('local', 10, 'my-image', sagemaker_session=Mock())
     assert_all_lowercase(sagemaker_container.hosts)
 
-    sagemaker_container = _SageMakerContainer('local', 1, 'my-image')
+    sagemaker_container = _SageMakerContainer('local', 1, 'my-image', sagemaker_session=Mock())
     assert_all_lowercase(sagemaker_container.hosts)
 
 
