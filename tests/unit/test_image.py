@@ -86,6 +86,23 @@ def sagemaker_session():
     return sms
 
 
+def test_sagemaker_container_hosts_should_have_lowercase_names():
+    random.seed(a=42)
+
+    def assert_all_lowercase(hosts):
+        for host in hosts:
+            assert host.lower() == host
+
+    sagemaker_container = _SageMakerContainer('local', 2, 'my-image', sagemaker_session=Mock())
+    assert_all_lowercase(sagemaker_container.hosts)
+
+    sagemaker_container = _SageMakerContainer('local', 10, 'my-image', sagemaker_session=Mock())
+    assert_all_lowercase(sagemaker_container.hosts)
+
+    sagemaker_container = _SageMakerContainer('local', 1, 'my-image', sagemaker_session=Mock())
+    assert_all_lowercase(sagemaker_container.hosts)
+
+
 @patch('sagemaker.local.local_session.LocalSession')
 def test_write_config_file(LocalSession, tmpdir):
     sagemaker_container = _SageMakerContainer('local', 2, 'my-image')

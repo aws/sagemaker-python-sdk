@@ -5,6 +5,7 @@ CHANGELOG
 1.16.3.dev
 ==========
 
+* bug-fix: Local Mode: Allow support for SSH in local mode 
 * bug-fix: Append retry id to default Airflow job name to avoid name collisions in retry
 * bug-fix: Local Mode: No longer requires s3 permissions to run local entry point file
 * bug-fix: Local Mode: Move dependency on sagemaker_s3_output from rl.estimator to model
