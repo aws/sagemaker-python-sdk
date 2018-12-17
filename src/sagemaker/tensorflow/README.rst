@@ -218,7 +218,7 @@ Training with parameter servers
 """""""""""""""""""""""""""""""
 
 If parameter server is enabled, the container will launch a parameter server thread in each instance first then execute
-your training code. You can find more information on TensorFlow distributed training `here <https://www.tensorflow.org/deploy/distributed>`__.
+your training code. You can find more information on TensorFlow distributed training in `TensorFlow docs <https://www.tensorflow.org/deploy/distributed>`__.
 To enable parameter server training:
 
 .. code:: python
@@ -234,7 +234,7 @@ To enable parameter server training:
 Training with Horovod
 """""""""""""""""""""
 
-Horovod is a distributed training framework based on MPI. You can find more details `here <https://github.com/uber/horovod>`__.
+Horovod is a distributed training framework based on MPI. You can find more details in `Horovod README <https://github.com/uber/horovod>`__.
 
 The container sets up the MPI environment and executes the ``mpirun`` command enabling you to run any Horovod
 training script with Script Mode.
@@ -253,15 +253,15 @@ In the below example we create an estimator to launch Horovod distributed traini
     from sagemaker.tensorflow import TensorFlow
 
     tf_estimator = TensorFlow(entry_point='tf-train.py', role='SageMakerRole',
-                            train_instance_count=1, train_instance_type='ml.p2.xlarge',
-                            framework_version='1.11', py_version='py3',
-                            distributions={
-                                "mpi":{
-                                    "enabled":True,
-                                    "processes_per_host":2,
-                                    "custom_mpi_options": "--NCCL_DEBUG INFO"
-                                }
-                            })
+                              train_instance_count=1, train_instance_type='ml.p2.xlarge',
+                              framework_version='1.11', py_version='py3',
+                              distributions={
+                                  'mpi': {
+                                      'enabled': True,
+                                      'processes_per_host': 2,
+                                      'custom_mpi_options': '--NCCL_DEBUG INFO'
+                                  }
+                              })
     tf_estimator.fit('s3://bucket/path/to/training/data')
 
 sagemaker.tensorflow.TensorFlow class
@@ -383,9 +383,9 @@ To run training job with Pipe input mode, pass in ``input_mode='Pipe'`` to your 
     from sagemaker.tensorflow import TensorFlow
 
     tf_estimator = TensorFlow(entry_point='tf-train-with-pipemodedataset.py', role='SageMakerRole',
-                            training_steps=10000, evaluation_steps=100,
-                            train_instance_count=1, train_instance_type='ml.p2.xlarge',
-                            framework_version='1.10.0', input_mode='Pipe')
+                              training_steps=10000, evaluation_steps=100,
+                              train_instance_count=1, train_instance_type='ml.p2.xlarge',
+                              framework_version='1.10.0', input_mode='Pipe')
 
     tf_estimator.fit('s3://bucket/path/to/training/data')
 
