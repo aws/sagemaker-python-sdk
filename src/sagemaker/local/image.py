@@ -79,7 +79,7 @@ class _SageMakerContainer(object):
         self.image = image
         # Since we are using a single docker network, Generate a random suffix to attach to the container names.
         #  This way multiple jobs can run in parallel.
-        suffix = ''.join(random.choice(string.ascii_uppercase + string.digits) for _ in range(5))
+        suffix = ''.join(random.choice(string.ascii_lowercase + string.digits) for _ in range(5))
         self.hosts = ['{}-{}-{}'.format(CONTAINER_PREFIX, i, suffix) for i in range(1, self.instance_count + 1)]
         self.container_root = None
         self.container = None
@@ -317,8 +317,7 @@ class _SageMakerContainer(object):
                 volumes.append(_Volume(shared_dir, '/opt/ml/shared'))
 
         parsed_uri = urlparse(output_data_config['S3OutputPath'])
-        if parsed_uri.scheme == 'file' \
-                and sagemaker.rl.estimator.SAGEMAKER_OUTPUT_LOCATION in hyperparameters:
+        if parsed_uri.scheme == 'file' and sagemaker.model.SAGEMAKER_OUTPUT_LOCATION in hyperparameters:
             intermediate_dir = os.path.join(parsed_uri.path, 'output', 'intermediate')
             if not os.path.exists(intermediate_dir):
                 os.makedirs(intermediate_dir)
