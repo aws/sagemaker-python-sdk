@@ -21,7 +21,7 @@ You can also train and deploy models with **Amazon algorithms**,
 which are scalable implementations of core machine learning algorithms that are optimized for SageMaker and GPU training.
 If you have **your own algorithms** built into SageMaker compatible Docker containers, you can train and host models using these as well.
 
-For detailed API reference please go to: `Read the Docs <https://readthedocs.org/projects/sagemaker/>`_
+For detailed API reference please go to: `Read the Docs <https://sagemaker.readthedocs.io>`_
 
 Table of Contents
 -----------------
