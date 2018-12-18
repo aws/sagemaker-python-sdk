@@ -2,6 +2,31 @@
 CHANGELOG
 =========
 
+1.16.3
+======
+
+* bug-fix: Local Mode: Allow support for SSH in local mode 
+* bug-fix: Append retry id to default Airflow job name to avoid name collisions in retry
+* bug-fix: Local Mode: No longer requires s3 permissions to run local entry point file
+* feature: Estimators: add support for PyTorch 1.0.0
+* bug-fix: Local Mode: Move dependency on sagemaker_s3_output from rl.estimator to model
+* doc-fix: Fix quotes in estimator.py and model.py
+
+1.16.2
+======
+
+* enhancement: Check for S3 paths being passed as entry point
+* feature: Add support for AugmentedManifestFile and ShuffleConfig
+* bug-fix: Add version bound for requests module to avoid conflicts with docker-compose and docker-py
+* bug-fix: Remove unnecessary dependency tensorflow
+* doc-fix: Change ``distribution`` to ``distributions``
+* bug-fix: Increase docker-compose http timeout and health check timeout to 120.
+* feature: Local Mode: Add support for intermediate output to a local directory.
+* bug-fix: Update PyYAML version to avoid conflicts with docker-compose
+* doc-fix: Correct the numbered list in the table of contents
+* doc-fix: Add Airflow API documentation
+* feature: HyperparameterTuner: add Early Stopping support
+
 1.16.1.post1
 ============
 
@@ -25,6 +50,7 @@ CHANGELOG
 * feature: Add Amazon SageMaker Semantic Segmentation algorithm to the registry
 * feature: Add support for SageMaker Inference Pipelines
 * feature: Add support for SparkML serving container
+
 
 1.15.2
 ======

@@ -14,6 +14,7 @@ from __future__ import absolute_import
 
 import errno
 import os
+import random
 import re
 import sys
 import tarfile
@@ -26,10 +27,11 @@ from functools import wraps
 import six
 
 
-AIRFLOW_TIME_MACRO = "{{ execution_date.strftime('%Y-%m-%d-%H-%M-%S') }}"
-AIRFLOW_TIME_MACRO_LEN = 19
-AIRFLOW_TIME_MACRO_SHORT = "{{ execution_date.strftime('%y%m%d-%H%M') }}"
-AIRFLOW_TIME_MACRO_SHORT_LEN = 11
+AIRFLOW_RETRY_MACRO = "{{ task_instance.try_number }}"
+AIRFLOW_TIME_MACRO = "{{ execution_date.strftime('%Y-%m-%d-%H-%M-%S') }}" + "-{}".format(AIRFLOW_RETRY_MACRO)
+AIRFLOW_TIME_MACRO_LEN = 22
+AIRFLOW_TIME_MACRO_SHORT = "{{ execution_date.strftime('%y%m%d-%H%M') }}" + "-{}".format(AIRFLOW_RETRY_MACRO)
+AIRFLOW_TIME_MACRO_SHORT_LEN = 14
 
 
 # Use the base name of the image as the job name if the user doesn't give us one
@@ -62,6 +64,14 @@ def name_from_base(base, max_length=63, short=False):
     timestamp = sagemaker_short_timestamp() if short else sagemaker_timestamp()
     trimmed_base = base[:max_length - len(timestamp) - 1]
     return '{}-{}'.format(trimmed_base, timestamp)
+
+
+def unique_name_from_base(base, max_length=63):
+    unique = '%04x' % random.randrange(16**4)  # 4-digit hex
+    ts = str(int(time.time()))
+    available_length = max_length - 2 - len(ts) - len(unique)
+    trimmed = base[:available_length]
+    return '{}-{}-{}'.format(trimmed, ts, unique)
 
 
 def airflow_name_from_base(base, max_length=63, short=False):

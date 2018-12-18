@@ -39,14 +39,32 @@ A managed environment for TensorFlow training and hosting on Amazon SageMaker
 
     sagemaker.tensorflow
 
+PyTorch
+-------
+A managed environment for PyTorch training and hosting on Amazon SageMaker
+
+.. toctree::
+    :maxdepth: 2
+
+    sagemaker.pytorch
+
+Chainer
+-------
+A managed environment for Chainer training and hosting on Amazon SageMaker
+
+.. toctree::
+    :maxdepth: 2
+
+    sagemaker.chainer
+
 Reinforcement Learning
 ----------------------
 A managed environment for Reinforcement Learning training and hosting on Amazon SageMaker
 
 .. toctree::
-:maxdepth: 2
+    :maxdepth: 2
 
-        sagemaker.rl
+    sagemaker.rl
 
 SageMaker First-Party Algorithms
 --------------------------------
@@ -62,3 +80,12 @@ Amazon provides implementations of some common machine learning algortithms opti
     factorization_machines
     lda
     ntm
+
+Workflows
+---------
+SageMaker APIs to export configurations for creating and managing Airflow workflows.
+
+.. toctree::
+    :maxdepth: 2
+
+    sagemaker.workflow.airflow

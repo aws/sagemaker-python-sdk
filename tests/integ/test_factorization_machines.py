@@ -21,7 +21,7 @@ import time
 import pytest
 
 from sagemaker import FactorizationMachines, FactorizationMachinesModel
-from sagemaker.utils import name_from_base
+from sagemaker.utils import unique_name_from_base
 from tests.integ import DATA_DIR, TRAINING_DEFAULT_TIMEOUT_MINUTES
 from tests.integ.timeout import timeout, timeout_and_delete_endpoint_by_name
 
@@ -45,7 +45,7 @@ def test_factorization_machines(sagemaker_session):
         # training labels must be 'float32'
         fm.fit(fm.record_set(train_set[0][:200], train_set[1][:200].astype('float32')))
 
-    endpoint_name = name_from_base('fm')
+    endpoint_name = unique_name_from_base('fm')
     with timeout_and_delete_endpoint_by_name(endpoint_name, sagemaker_session):
         model = FactorizationMachinesModel(fm.model_data, role='SageMakerRole', sagemaker_session=sagemaker_session)
         predictor = model.deploy(1, 'ml.c4.xlarge', endpoint_name=endpoint_name)
@@ -58,7 +58,7 @@ def test_factorization_machines(sagemaker_session):
 
 def test_async_factorization_machines(sagemaker_session):
     training_job_name = ""
-    endpoint_name = name_from_base('factorizationMachines')
+    endpoint_name = unique_name_from_base('factorizationMachines')
 
     with timeout(minutes=5):
         data_path = os.path.join(DATA_DIR, 'one_p_mnist', 'mnist.pkl.gz')

@@ -17,7 +17,7 @@ import pytest
 
 from sagemaker import IPInsights, IPInsightsModel
 from sagemaker.predictor import RealTimePredictor
-from sagemaker.utils import name_from_base
+from sagemaker.utils import unique_name_from_base
 from tests.integ import DATA_DIR, TRAINING_DEFAULT_TIMEOUT_MINUTES
 from tests.integ.record_set import prepare_record_set_from_local_files
 from tests.integ.timeout import timeout, timeout_and_delete_endpoint_by_name
@@ -47,7 +47,7 @@ def test_ipinsights(sagemaker_session):
                                                          num_records, FEATURE_DIM, sagemaker_session)
         ipinsights.fit(record_set, None)
 
-    endpoint_name = name_from_base('ipinsights')
+    endpoint_name = unique_name_from_base('ipinsights')
     with timeout_and_delete_endpoint_by_name(endpoint_name, sagemaker_session):
         model = IPInsightsModel(ipinsights.model_data, role='SageMakerRole', sagemaker_session=sagemaker_session)
         predictor = model.deploy(1, 'ml.c4.xlarge', endpoint_name=endpoint_name)

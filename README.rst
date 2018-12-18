@@ -21,7 +21,7 @@ You can also train and deploy models with **Amazon algorithms**,
 which are scalable implementations of core machine learning algorithms that are optimized for SageMaker and GPU training.
 If you have **your own algorithms** built into SageMaker compatible Docker containers, you can train and host models using these as well.
 
-For detailed API reference please go to: `Read the Docs <https://readthedocs.org/projects/sagemaker/>`_
+For detailed API reference please go to: `Read the Docs <https://sagemaker.readthedocs.io>`_
 
 Table of Contents
 -----------------
@@ -32,18 +32,19 @@ Table of Contents
 4. `TensorFlow SageMaker Estimators <#tensorflow-sagemaker-estimators>`__
 5. `Chainer SageMaker Estimators <#chainer-sagemaker-estimators>`__
 6. `PyTorch SageMaker Estimators <#pytorch-sagemaker-estimators>`__
-7. `SageMaker Reinforcement Learning Estimators <#sagemaker-reinforcement-learning-estimators>`__
-8. `SageMaker SparkML Serving <#sagemaker-sparkml-serving>`__
-9. `AWS SageMaker Estimators <#aws-sagemaker-estimators>`__
-10. `Using SageMaker AlgorithmEstimators <#using-sagemaker-algorithmestimators>`__
-11. `Consuming SageMaker Model Packages <#consuming-sagemaker-model-packages>`__
-12. `BYO Docker Containers with SageMaker Estimators <#byo-docker-containers-with-sagemaker-estimators>`__
-13. `SageMaker Automatic Model Tuning <#sagemaker-automatic-model-tuning>`__
-14. `SageMaker Batch Transform <#sagemaker-batch-transform>`__
-15. `Secure Training and Inference with VPC <#secure-training-and-inference-with-vpc>`__
-16. `BYO Model <#byo-model>`__
-17. `Inference Pipelines <#inference-pipelines>`__
-18. `SageMaker Workflow <#sagemaker-workflow>`__
+7. `Scikit-learn SageMaker Estimators <#scikit-learn-sagemaker-estimators>`__
+8. `SageMaker Reinforcement Learning Estimators <#sagemaker-reinforcement-learning-estimators>`__
+9. `SageMaker SparkML Serving <#sagemaker-sparkml-serving>`__
+10. `AWS SageMaker Estimators <#aws-sagemaker-estimators>`__
+11. `Using SageMaker AlgorithmEstimators <#using-sagemaker-algorithmestimators>`__
+12. `Consuming SageMaker Model Packages <#consuming-sagemaker-model-packages>`__
+13. `BYO Docker Containers with SageMaker Estimators <#byo-docker-containers-with-sagemaker-estimators>`__
+14. `SageMaker Automatic Model Tuning <#sagemaker-automatic-model-tuning>`__
+15. `SageMaker Batch Transform <#sagemaker-batch-transform>`__
+16. `Secure Training and Inference with VPC <#secure-training-and-inference-with-vpc>`__
+17. `BYO Model <#byo-model>`__
+18. `Inference Pipelines <#inference-pipelines>`__
+19. `SageMaker Workflow <#sagemaker-workflow>`__
 
 
 Installing the SageMaker Python SDK
@@ -144,6 +145,7 @@ The following sections of this document explain how to use the different estimat
 * `TensorFlow SageMaker Estimators and Models <#tensorflow-sagemaker-estimators>`__
 * `Chainer SageMaker Estimators and Models <#chainer-sagemaker-estimators>`__
 * `PyTorch SageMaker Estimators <#pytorch-sagemaker-estimators>`__
+* `Scikit-learn SageMaker Estimators and Models <#scikit-learn-sagemaker-estimators>`__
 * `SageMaker Reinforcement Learning Estimators <#sagemaker-reinforcement-learning-estimators>`__
 * `AWS SageMaker Estimators and Models <#aws-sagemaker-estimators>`__
 * `Custom SageMaker Estimators and Models <#byo-docker-containers-with-sagemaker-estimators>`__
@@ -404,18 +406,31 @@ PyTorch SageMaker Estimators
 
 With PyTorch SageMaker ``Estimators``, you can train and host PyTorch models on Amazon SageMaker.
 
-Supported versions of PyTorch: ``0.4.0``, ``1.0.0.dev`` ("Preview").
+Supported versions of PyTorch: ``0.4.0``, ``1.0.0``.
 
 We recommend that you use the latest supported version, because that's where we focus most of our development efforts.
-
-You can try the "Preview" version of PyTorch by specifying ``'1.0.0.dev'`` for ``framework_version`` when creating your PyTorch estimator.
-This will ensure you're using the latest version of ``torch-nightly``.
 
 For more information about PyTorch, see https://github.com/pytorch/pytorch.
 
 For more information about PyTorch SageMaker ``Estimators``, see `PyTorch SageMaker Estimators and Models`_.
 
 .. _PyTorch SageMaker Estimators and Models: src/sagemaker/pytorch/README.rst
+
+
+Scikit-learn SageMaker Estimators
+---------------------------------
+
+With Scikit-learn SageMaker ``Estimators``, you can train and host Scikit-learn models on Amazon SageMaker.
+
+Supported versions of Scikit-learn: ``0.20.0``.
+
+We recommend that you use the latest supported version, because that's where we focus most of our development efforts.
+
+For more information about Scikit-learn, see https://scikit-learn.org/stable/
+
+For more information about Scikit-learn SageMaker ``Estimators``, see `Scikit-learn SageMaker Estimators and Models`_.
+
+.. _Scikit-learn SageMaker Estimators and Models: src/sagemaker/sklearn/README.rst
 
 
 SageMaker Reinforcement Learning Estimators
@@ -595,6 +610,22 @@ You can read more about how these values are chosen in the `AWS documentation <h
 A hyperparameter range can be one of three types: continuous, integer, or categorical.
 The SageMaker Python SDK provides corresponding classes for defining these different types.
 You can define up to 20 hyperparameters to search over, but each value of a categorical hyperparameter range counts against that limit.
+
+By default, training job early stopping is turned off. To enable early stopping for the tuning job, you need to set the ``early_stopping_type`` parameter to ``Auto``:
+
+.. code:: python
+
+    # Enable early stopping
+    my_tuner = HyperparameterTuner(estimator=my_estimator,  # previously-configured Estimator object
+                                   objective_metric_name='validation-accuracy',
+                                   hyperparameter_ranges={'learning-rate': ContinuousParameter(0.05, 0.06)},
+                                   metric_definitions=[{'Name': 'validation-accuracy', 'Regex': 'validation-accuracy=(\d\.\d+)'}],
+                                   max_jobs=100,
+                                   max_parallel_jobs=10,
+                                   early_stopping_type='Auto')
+
+When early stopping is turned on, Amazon SageMaker will automatically stop a training job if it appears unlikely to produce a model of better quality than other jobs.
+If not using built-in Amazon SageMaker algorithms, note that, for early stopping to be effective, the objective metric should be emitted at epoch level.
 
 If you are using an Amazon SageMaker built-in algorithm, you don't need to pass in anything for ``metric_definitions``.
 In addition, the ``fit()`` call uses a list of ``RecordSet`` objects instead of a dictionary:

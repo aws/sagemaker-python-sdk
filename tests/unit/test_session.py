@@ -301,6 +301,7 @@ SAMPLE_TUNING_JOB_REQUEST = {
             'MaxParallelTrainingJobs': 5,
         },
         'ParameterRanges': SAMPLE_PARAM_RANGES,
+        'TrainingJobEarlyStoppingType': 'Off'
     },
     'TrainingJobDefinition': {
         'StaticHyperParameters': STATIC_HPs,

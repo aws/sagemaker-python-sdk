@@ -39,6 +39,9 @@ import sagemaker.utils
 
 CONTAINER_PREFIX = 'algo'
 DOCKER_COMPOSE_FILENAME = 'docker-compose.yaml'
+DOCKER_COMPOSE_HTTP_TIMEOUT_ENV = 'COMPOSE_HTTP_TIMEOUT'
+DOCKER_COMPOSE_HTTP_TIMEOUT = '120'
+
 
 # Environment variables to be set during training
 REGION_ENV_NAME = 'AWS_REGION'
@@ -76,7 +79,7 @@ class _SageMakerContainer(object):
         self.image = image
         # Since we are using a single docker network, Generate a random suffix to attach to the container names.
         #  This way multiple jobs can run in parallel.
-        suffix = ''.join(random.choice(string.ascii_uppercase + string.digits) for _ in range(5))
+        suffix = ''.join(random.choice(string.ascii_lowercase + string.digits) for _ in range(5))
         self.hosts = ['{}-{}-{}'.format(CONTAINER_PREFIX, i, suffix) for i in range(1, self.instance_count + 1)]
         self.container_root = None
         self.container = None
@@ -101,7 +104,10 @@ class _SageMakerContainer(object):
         os.mkdir(shared_dir)
 
         data_dir = self._create_tmp_folder()
-        volumes = self._prepare_training_volumes(data_dir, input_data_config, hyperparameters)
+        volumes = self._prepare_training_volumes(data_dir, input_data_config, output_data_config,
+                                                 hyperparameters)
+        # If local, source directory needs to be updated to mounted /opt/ml/code path
+        hyperparameters = self._update_local_src_path(hyperparameters, key=sagemaker.estimator.DIR_PARAM_NAME)
 
         # Create the configuration files for each container that we will create
         # Each container will map the additional local volumes (if any).
@@ -165,6 +171,9 @@ class _SageMakerContainer(object):
             parsed_uri = urlparse(script_dir)
             if parsed_uri.scheme == 'file':
                 volumes.append(_Volume(parsed_uri.path, '/opt/ml/code'))
+                # Update path to mount location
+                environment = environment.copy()
+                environment[sagemaker.estimator.DIR_PARAM_NAME.upper()] = '/opt/ml/code'
 
         if _ecr_login_if_needed(self.sagemaker_session.boto_session, self.image):
             _pull_image(self.image)
@@ -278,7 +287,8 @@ class _SageMakerContainer(object):
         _write_json_file(os.path.join(config_path, 'resourceconfig.json'), resource_config)
         _write_json_file(os.path.join(config_path, 'inputdataconfig.json'), json_input_data_config)
 
-    def _prepare_training_volumes(self, data_dir, input_data_config, hyperparameters):
+    def _prepare_training_volumes(self, data_dir, input_data_config, output_data_config,
+                                  hyperparameters):
         shared_dir = os.path.join(self.container_root, 'shared')
         model_dir = os.path.join(self.container_root, 'model')
         volumes = []
@@ -297,7 +307,7 @@ class _SageMakerContainer(object):
             volumes.append(_Volume(data_source.get_root_dir(), channel=channel_name))
 
         # If there is a training script directory and it is a local directory,
-        #  mount it to the container.
+        # mount it to the container.
         if sagemaker.estimator.DIR_PARAM_NAME in hyperparameters:
             training_dir = json.loads(hyperparameters[sagemaker.estimator.DIR_PARAM_NAME])
             parsed_uri = urlparse(training_dir)
@@ -306,7 +316,24 @@ class _SageMakerContainer(object):
                 # Also mount a directory that all the containers can access.
                 volumes.append(_Volume(shared_dir, '/opt/ml/shared'))
 
+        parsed_uri = urlparse(output_data_config['S3OutputPath'])
+        if parsed_uri.scheme == 'file' and sagemaker.model.SAGEMAKER_OUTPUT_LOCATION in hyperparameters:
+            intermediate_dir = os.path.join(parsed_uri.path, 'output', 'intermediate')
+            if not os.path.exists(intermediate_dir):
+                os.makedirs(intermediate_dir)
+            volumes.append(_Volume(intermediate_dir, '/opt/ml/output/intermediate'))
+
         return volumes
+
+    def _update_local_src_path(self, params, key):
+        if key in params:
+            src_dir = json.loads(params[key])
+            parsed_uri = urlparse(src_dir)
+            if parsed_uri.scheme == 'file':
+                new_params = params.copy()
+                new_params[key] = json.dumps('/opt/ml/code')
+                return new_params
+        return params
 
     def _prepare_serving_volumes(self, model_location):
         volumes = []
@@ -358,6 +385,9 @@ class _SageMakerContainer(object):
 
         additional_env_var_list = ['{}={}'.format(k, v) for k, v in additional_env_vars.items()]
         environment.extend(additional_env_var_list)
+
+        if os.environ.get(DOCKER_COMPOSE_HTTP_TIMEOUT_ENV) is None:
+            os.environ[DOCKER_COMPOSE_HTTP_TIMEOUT_ENV] = DOCKER_COMPOSE_HTTP_TIMEOUT
 
         if command == 'train':
             optml_dirs = {'output', 'output/data', 'input'}

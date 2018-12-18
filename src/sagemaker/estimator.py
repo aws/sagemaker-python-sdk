@@ -246,7 +246,7 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):
                 example: ml_c5. Allowed strings are: ml_c5, ml_m5, ml_c4, ml_m4, jetsontx1, jetsontx2, ml_p2, ml_p3,
                 deeplens, rasp3b
             input_shape (dict): Specifies the name and shape of the expected inputs for your trained model in json
-                dictionary form, for example: {‘data’:[1,3,1024,1024]}, or {‘var1’: [1,1,28,28], ‘var2’:[1,1,28,28]}
+                dictionary form, for example: {'data':[1,3,1024,1024]}, or {'var1': [1,1,28,28], 'var2':[1,1,28,28]}
             output_path (str): Specifies where to store the compiled model
             framework (str): The framework that is used to train the original model. Allowed values: 'mxnet',
                 'tensorflow', 'pytorch', 'onnx', 'xgboost'
@@ -743,7 +743,7 @@ class Framework(EstimatorBase):
         """Base class initializer. Subclasses which override ``__init__`` should invoke ``super()``
 
         Args:
-            entry_point (str): Path (absolute or relative) to the Python source file which should be executed
+            entry_point (str): Path (absolute or relative) to the local Python source file which should be executed
                 as the entry point to training. This should be compatible with either Python 2.7 or Python 3.5.
             source_dir (str): Path (absolute or relative) to a directory with any other training
                 source code dependencies aside from tne entry point file (default: None). Structure within this
@@ -782,9 +782,11 @@ class Framework(EstimatorBase):
             **kwargs: Additional kwargs passed to the ``EstimatorBase`` constructor.
         """
         super(Framework, self).__init__(**kwargs)
+        if entry_point.startswith('s3://'):
+            raise ValueError('Invalid entry point script: {}. Must be a path to a local file.'.format(entry_point))
+        self.entry_point = entry_point
         self.source_dir = source_dir
         self.dependencies = dependencies or []
-        self.entry_point = entry_point
         if enable_cloudwatch_metrics:
             warnings.warn('enable_cloudwatch_metrics is now deprecated and will be removed in the future.',
                           DeprecationWarning)

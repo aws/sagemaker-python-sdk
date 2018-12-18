@@ -159,7 +159,7 @@ class Model(object):
                 example: ml_c5. Allowed strings are: ml_c5, ml_m5, ml_c4, ml_m4, jetsontx1, jetsontx2, ml_p2, ml_p3,
                 deeplens, rasp3b
             input_shape (dict): Specifies the name and shape of the expected inputs for your trained model in json
-                dictionary form, for example: {‘data’:[1,3,1024,1024]}, or {‘var1’: [1,1,28,28], ‘var2’:[1,1,28,28]}
+                dictionary form, for example: {'data':[1,3,1024,1024]}, or {'var1': [1,1,28,28], 'var2':[1,1,28,28]}
             output_path (str): Specifies where to store the compiled model
             role (str): Execution role
             tags (list[dict]): List of tags for labeling a compilation job. For more, see
@@ -257,6 +257,7 @@ CONTAINER_LOG_LEVEL_PARAM_NAME = 'sagemaker_container_log_level'
 JOB_NAME_PARAM_NAME = 'sagemaker_job_name'
 MODEL_SERVER_WORKERS_PARAM_NAME = 'sagemaker_model_server_workers'
 SAGEMAKER_REGION_PARAM_NAME = 'sagemaker_region'
+SAGEMAKER_OUTPUT_LOCATION = 'sagemaker_s3_output'
 
 
 class FrameworkModel(Model):

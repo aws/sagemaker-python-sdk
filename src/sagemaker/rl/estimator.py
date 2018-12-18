@@ -18,7 +18,7 @@ import re
 
 from sagemaker.estimator import Framework
 import sagemaker.fw_utils as fw_utils
-from sagemaker.model import FrameworkModel
+from sagemaker.model import FrameworkModel, SAGEMAKER_OUTPUT_LOCATION
 from sagemaker.mxnet.model import MXNetModel
 from sagemaker.vpc_utils import VPC_CONFIG_DEFAULT
 
@@ -27,7 +27,6 @@ logger = logging.getLogger('sagemaker')
 
 SAGEMAKER_ESTIMATOR = 'sagemaker_estimator'
 SAGEMAKER_ESTIMATOR_VALUE = 'RLEstimator'
-SAGEMAKER_OUTPUT_LOCATION = 'sagemaker_s3_output'
 PYTHON_VERSION = 'py3'
 TOOLKIT_FRAMEWORK_VERSION_MAP = {
     'coach': {
@@ -113,9 +112,8 @@ class RLEstimator(Framework):
             image_name (str): An ECR url. If specified, the estimator will use this image
                 for training and hosting, instead of selecting the appropriate SageMaker
                 official image based on framework_version and py_version.
-                Examples:
-                    123.dkr.ecr.us-west-2.amazonaws.com/my-custom-image:1.0
-             metric_definitions (list[dict]): A list of dictionaries that defines the metric(s)
+                Example: 123.dkr.ecr.us-west-2.amazonaws.com/my-custom-image:1.0
+            metric_definitions (list[dict]): A list of dictionaries that defines the metric(s)
                 used to evaluate the training jobs. Each dictionary contains two keys:
                 'Name' for the name of the metric, and 'Regex' for the regular expression used to
                 extract the metric from the logs. This should be defined only for jobs
