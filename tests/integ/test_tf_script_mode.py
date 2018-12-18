@@ -23,8 +23,8 @@ import tests.integ.timeout as timeout
 
 RESOURCE_PATH = os.path.join(os.path.dirname(__file__), '..', 'data', 'tensorflow_mnist')
 SCRIPT = os.path.join(RESOURCE_PATH, 'mnist.py')
-DISTRIBUTION_ENABLED = {'parameter_server': {'enabled': True}}
-DISTRIBUTION_MPI_ENABLED = {'mpi': {'enabled': True}}
+parameter_server_distribution = {'parameter_server': {'enabled': True}}
+mpi_distribution = {'mpi': {'enabled': True}}
 
 
 @pytest.fixture(scope='session', params=['ml.c5.xlarge', 'ml.p2.xlarge'])
@@ -63,7 +63,7 @@ def test_mnist_distributed(sagemaker_session, instance_type):
                            py_version=integ.PYTHON_VERSION,
                            script_mode=True,
                            framework_version='1.11',
-                           distributions=DISTRIBUTION_ENABLED,
+                           distributions=parameter_server_distribution,
                            base_job_name='test-tf-sm-mnist')
     inputs = estimator.sagemaker_session.upload_data(
         path=os.path.join(RESOURCE_PATH, 'data'),
@@ -75,8 +75,9 @@ def test_mnist_distributed(sagemaker_session, instance_type):
                            ['graph.pbtxt', 'model.ckpt-0.index', 'model.ckpt-0.meta', 'saved_model.pb'])
 
 
-@pytest.mark.skipif(integ.PYTHON_VERSION != 'py3', reason="Script Mode tests are only configured to run with Python 3")
-def test_mnist_horovod_distributed(sagemaker_session, instance_type):
+def test_mnist_horovod_distributed(sagemaker_session):
+
+    instance_type = 'ml.p3.2xlarge'
     estimator = TensorFlow(entry_point=os.path.join(RESOURCE_PATH, 'horovod_mnist.py'),
                            role='SageMakerRole',
                            train_instance_count=2,
@@ -84,8 +85,8 @@ def test_mnist_horovod_distributed(sagemaker_session, instance_type):
                            sagemaker_session=sagemaker_session,
                            py_version=integ.PYTHON_VERSION,
                            script_mode=True,
-                           framework_version='1.11',
-                           distributions=DISTRIBUTION_MPI_ENABLED,
+                           framework_version='1.12',
+                           distributions=mpi_distribution,
                            base_job_name='test-tf-sm-horovod-mnist')
     inputs = estimator.sagemaker_session.upload_data(
         path=os.path.join(RESOURCE_PATH, 'data'),
