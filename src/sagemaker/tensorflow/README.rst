@@ -210,15 +210,16 @@ After attaching, the estimator can be deployed as usual.
 Distributed Training
 ''''''''''''''''''''
 
-To run your training job with multiple instances in a distributed fashion you need to set ``train_instance_count``
+To run your training job with multiple instances in a distributed fashion, set ``train_instance_count``
 to a number larger than 1. We support two different types of distributed training, parameter server and Horovod.
 The ``distributions`` parameter is used to configure which distributed training strategy to use.
 
 Training with parameter servers
 """""""""""""""""""""""""""""""
 
-If parameter server is enabled, the container will launch a parameter server thread in each instance first then execute
-your training code. You can find more information on TensorFlow distributed training in `TensorFlow docs <https://www.tensorflow.org/deploy/distributed>`__.
+If you specify parameter_server as the value of the distributions parameter, the container launches a parameter server
+thread on each instance in the training cluster, and then executes your training code. You can find more information on
+TensorFlow distributed training at `TensorFlow docs <https://www.tensorflow.org/deploy/distributed>`__.
 To enable parameter server training:
 
 .. code:: python
@@ -234,7 +235,7 @@ To enable parameter server training:
 Training with Horovod
 """""""""""""""""""""
 
-Horovod is a distributed training framework based on MPI. You can find more details in `Horovod README <https://github.com/uber/horovod>`__.
+Horovod is a distributed training framework based on MPI. You can find more details at `Horovod README <https://github.com/uber/horovod>`__.
 
 The container sets up the MPI environment and executes the ``mpirun`` command enabling you to run any Horovod
 training script with Script Mode.
