@@ -14,6 +14,8 @@ from __future__ import absolute_import
 
 import os
 import pytest
+import tarfile
+import tempfile
 
 import boto3
 from sagemaker.tensorflow import TensorFlow
@@ -76,7 +78,6 @@ def test_mnist_distributed(sagemaker_session, instance_type):
 
 
 def test_mnist_horovod_distributed(sagemaker_session):
-
     instance_type = 'ml.p3.2xlarge'
     estimator = TensorFlow(entry_point=os.path.join(RESOURCE_PATH, 'horovod_mnist.py'),
                            role='SageMakerRole',
@@ -94,8 +95,9 @@ def test_mnist_horovod_distributed(sagemaker_session):
 
     with timeout.timeout(minutes=integ.TRAINING_DEFAULT_TIMEOUT_MINUTES):
         estimator.fit(inputs)
-
-    # TODO: Add assertion of model.tar.gz contains the checkpoint files.
+    model_dir = os.path.join(estimator.output_path, estimator._current_job_name, 'output', 'model.tar.gz')
+    _assert_s3_files_exist_in_tar(model_dir,
+                                  ['graph.pbtxt', 'model.ckpt-0.index', 'model.ckpt-0.meta', 'saved_model.pb'])
 
 
 def _assert_s3_files_exist(s3_url, files):
@@ -106,3 +108,18 @@ def _assert_s3_files_exist(s3_url, files):
         found = [x['Key'] for x in contents if x['Key'].endswith(f)]
         if not found:
             raise ValueError('File {} is not found under {}'.format(f, s3_url))
+
+
+def _assert_s3_files_exist_in_tar(s3_url, files):
+    parsed_url = urlparse(s3_url)
+    tmp_file = tempfile.NamedTemporaryFile()
+    s3 = boto3.resource('s3')
+    object = s3.Bucket(parsed_url.netloc).Object(parsed_url.path.lstrip('/'))
+
+    with open(tmp_file.name, 'wb') as temp_file:
+        object.download_fileobj(temp_file)
+        with tarfile.open(tmp_file.name, 'r') as tar_file:
+            for f in files:
+                found = [x for x in tar_file.getnames() if x.endswith(f)]
+                if not found:
+                    raise ValueError('File {} is not found in {}'.format(f, s3_url))

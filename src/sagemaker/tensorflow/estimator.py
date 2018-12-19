@@ -428,6 +428,7 @@ class TensorFlow(Framework):
         hyperparameters = super(TensorFlow, self).hyperparameters()
 
         self.checkpoint_path = self.checkpoint_path or self._default_s3_path('checkpoints')
+        mpi_enabled = False
 
         if self._script_mode_enabled():
             additional_hyperparameters = {}
