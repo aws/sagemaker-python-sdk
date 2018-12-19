@@ -203,8 +203,6 @@ class TensorFlow(Framework):
             distributions (dict): A dictionary with information on how to run distributed training
                 (default: None). Currently we support distributed training with parameter servers and MPI. To enable
                 parameter server use the following setup:
-
-                    {
                         'parameter_server':
                         {
                             'enabled': True
