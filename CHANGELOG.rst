@@ -6,6 +6,9 @@ CHANGELOG
 ==========
 
 * enhancement: Workflow: Specify tasks from which training/tuning operator to transform/deploy in related operators
+* feature: support for Tensorflow 1.12
+* feature: support for Tensorflow Serving 1.12
+* feature: support for Horovod
 
 1.17.0
 ======
@@ -22,6 +25,7 @@ CHANGELOG
 * feature: Update TensorFlow latest version to 1.12
 * enhancement: Add Model.transformer()
 * bug-fix: HyperparameterTuner: make ``include_cls_metadata`` default to ``False`` for everything except Frameworks
+
 
 1.16.3
 ======
