@@ -1,4 +1,4 @@
-[submodule "tests/data/benchmarks"]
+[submodule "tests/data/horovod/benchmarks"]
 	path = tests/data/horovod/benchmarks
-	url = git@github.com:tensorflow/benchmarks.git
+	url = https://github.com/tensorflow/benchmarks.git
 	branch = cnn_tf_v1.12_compatible
