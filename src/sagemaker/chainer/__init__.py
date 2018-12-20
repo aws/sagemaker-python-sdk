@@ -12,7 +12,5 @@
 # language governing permissions and limitations under the License.
 from __future__ import absolute_import
 
-from sagemaker.chainer.estimator import Chainer
-from sagemaker.chainer.model import ChainerModel, ChainerPredictor
-
-__all__ = [Chainer, ChainerModel, ChainerPredictor]
+from sagemaker.chainer.estimator import Chainer  # noqa: F401
+from sagemaker.chainer.model import ChainerModel, ChainerPredictor  # noqa: F401
