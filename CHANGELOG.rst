@@ -2,10 +2,15 @@
 CHANGELOG
 =========
 
+1.16.4.dev
+==========
+
+* bug-fix: HyperparameterTuner: make ``include_cls_metadata`` default to ``False`` for everything except Frameworks
+
 1.16.3
 ======
 
-* bug-fix: Local Mode: Allow support for SSH in local mode 
+* bug-fix: Local Mode: Allow support for SSH in local mode
 * bug-fix: Append retry id to default Airflow job name to avoid name collisions in retry
 * bug-fix: Local Mode: No longer requires s3 permissions to run local entry point file
 * feature: Estimators: add support for PyTorch 1.0.0
