@@ -2,6 +2,13 @@
 CHANGELOG
 =========
 
+1.17.0
+======
+
+* feature: support for Tensorflow 1.12
+* feature: support for Tensorflow Serving 1.12
+* feature: support for Horovod
+
 1.16.3
 ======
 

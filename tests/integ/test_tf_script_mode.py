@@ -14,6 +14,8 @@ from __future__ import absolute_import
 
 import os
 import pytest
+import tarfile
+import tempfile
 
 import boto3
 from sagemaker.tensorflow import TensorFlow
@@ -23,7 +25,8 @@ import tests.integ.timeout as timeout
 
 RESOURCE_PATH = os.path.join(os.path.dirname(__file__), '..', 'data', 'tensorflow_mnist')
 SCRIPT = os.path.join(RESOURCE_PATH, 'mnist.py')
-DISTRIBUTION_ENABLED = {'parameter_server': {'enabled': True}}
+parameter_server_distribution = {'parameter_server': {'enabled': True}}
+mpi_distribution = {'mpi': {'enabled': True}}
 
 
 @pytest.fixture(scope='session', params=['ml.c5.xlarge', 'ml.p2.xlarge'])
@@ -62,7 +65,7 @@ def test_mnist_distributed(sagemaker_session, instance_type):
                            py_version=integ.PYTHON_VERSION,
                            script_mode=True,
                            framework_version='1.11',
-                           distributions=DISTRIBUTION_ENABLED,
+                           distributions=parameter_server_distribution,
                            base_job_name='test-tf-sm-mnist')
     inputs = estimator.sagemaker_session.upload_data(
         path=os.path.join(RESOURCE_PATH, 'data'),
@@ -74,6 +77,29 @@ def test_mnist_distributed(sagemaker_session, instance_type):
                            ['graph.pbtxt', 'model.ckpt-0.index', 'model.ckpt-0.meta', 'saved_model.pb'])
 
 
+def test_mnist_horovod_distributed(sagemaker_session):
+    instance_type = 'ml.p3.2xlarge'
+    estimator = TensorFlow(entry_point=os.path.join(RESOURCE_PATH, 'horovod_mnist.py'),
+                           role='SageMakerRole',
+                           train_instance_count=2,
+                           train_instance_type=instance_type,
+                           sagemaker_session=sagemaker_session,
+                           py_version=integ.PYTHON_VERSION,
+                           script_mode=True,
+                           framework_version='1.12',
+                           distributions=mpi_distribution,
+                           base_job_name='test-tf-sm-horovod-mnist')
+    inputs = estimator.sagemaker_session.upload_data(
+        path=os.path.join(RESOURCE_PATH, 'data'),
+        key_prefix='scriptmode/distributed_mnist')
+
+    with timeout.timeout(minutes=integ.TRAINING_DEFAULT_TIMEOUT_MINUTES):
+        estimator.fit(inputs)
+    model_dir = os.path.join(estimator.output_path, estimator._current_job_name, 'output', 'model.tar.gz')
+    _assert_s3_files_exist_in_tar(model_dir,
+                                  ['graph.pbtxt', 'model.ckpt-0.index', 'model.ckpt-0.meta', 'saved_model.pb'])
+
+
 def _assert_s3_files_exist(s3_url, files):
     parsed_url = urlparse(s3_url)
     s3 = boto3.client('s3')
@@ -82,3 +108,18 @@ def _assert_s3_files_exist(s3_url, files):
         found = [x['Key'] for x in contents if x['Key'].endswith(f)]
         if not found:
             raise ValueError('File {} is not found under {}'.format(f, s3_url))
+
+
+def _assert_s3_files_exist_in_tar(s3_url, files):
+    parsed_url = urlparse(s3_url)
+    tmp_file = tempfile.NamedTemporaryFile()
+    s3 = boto3.resource('s3')
+    object = s3.Bucket(parsed_url.netloc).Object(parsed_url.path.lstrip('/'))
+
+    with open(tmp_file.name, 'wb') as temp_file:
+        object.download_fileobj(temp_file)
+        with tarfile.open(tmp_file.name, 'r') as tar_file:
+            for f in files:
+                found = [x for x in tar_file.getnames() if x.endswith(f)]
+                if not found:
+                    raise ValueError('File {} is not found in {}'.format(f, s3_url))

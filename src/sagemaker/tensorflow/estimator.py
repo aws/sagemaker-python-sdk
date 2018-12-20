@@ -201,10 +201,17 @@ class TensorFlow(Framework):
             script_mode (bool): If set to True will the estimator will use the Script Mode containers (default: False).
                 This will be ignored if py_version is set to 'py3'.
             distributions (dict): A dictionary with information on how to run distributed training
-                (default: None). Currently we only support distributed training with parameter servers. To enable it
-                use the following setup:
+                (default: None). Currently we support distributed training with parameter servers and MPI. To enable
+                parameter servers use the following setup:
                     {
                         'parameter_server':
+                        {
+                            'enabled': True
+                        }
+                    }
+                To enable MPI:
+                    {
+                        'mpi':
                         {
                             'enabled': True
                         }
@@ -420,13 +427,24 @@ class TensorFlow(Framework):
         hyperparameters = super(TensorFlow, self).hyperparameters()
 
         self.checkpoint_path = self.checkpoint_path or self._default_s3_path('checkpoints')
+        mpi_enabled = False
 
         if self._script_mode_enabled():
-            self.model_dir = self.model_dir or self._default_s3_path('model')
-            additional_hyperparameters = {'model_dir': self.model_dir}
+            additional_hyperparameters = {}
+
             if 'parameter_server' in self.distributions:
-                enabled = self.distributions['parameter_server'].get('enabled', False)
-                additional_hyperparameters[self.LAUNCH_PS_ENV_NAME] = enabled
+                ps_enabled = self.distributions['parameter_server'].get('enabled', False)
+                additional_hyperparameters[self.LAUNCH_PS_ENV_NAME] = ps_enabled
+
+            if 'mpi' in self.distributions:
+                mpi_dict = self.distributions['mpi']
+                mpi_enabled = mpi_dict.get('enabled', False)
+                additional_hyperparameters[self.LAUNCH_MPI_ENV_NAME] = mpi_enabled
+                additional_hyperparameters[self.MPI_NUM_PROCESSES_PER_HOST] = mpi_dict.get('processes_per_host', 1)
+                additional_hyperparameters[self.MPI_CUSTOM_MPI_OPTIONS] = mpi_dict.get('custom_mpi_options', '')
+
+            self.model_dir = self.model_dir or self._default_s3_path('model', mpi=mpi_enabled)
+            additional_hyperparameters['model_dir'] = self.model_dir
         else:
             additional_hyperparameters = {'checkpoint_path': self.checkpoint_path,
                                           'training_steps': self.training_steps,
@@ -436,10 +454,12 @@ class TensorFlow(Framework):
         hyperparameters.update(Framework._json_encode_hyperparameters(additional_hyperparameters))
         return hyperparameters
 
-    def _default_s3_path(self, directory):
+    def _default_s3_path(self, directory, mpi=False):
         local_code = get_config_value('local.local_code', self.sagemaker_session.config)
         if self.sagemaker_session.local_mode and local_code:
             return '/opt/ml/shared/{}'.format(directory)
+        elif mpi:
+            return '/opt/ml/model'
         else:
             return os.path.join(self.output_path, self._current_job_name, directory)
 
