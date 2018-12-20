@@ -1212,7 +1212,7 @@ def get_execution_role(sagemaker_session=None):
         sagemaker_session = Session()
     arn = sagemaker_session.get_caller_identity_arn()
 
-    if 'role' in arn:
+    if ':role/' in arn:
         return arn
     message = 'The current AWS identity is not a role: {}, therefore it cannot be used as a SageMaker execution role'
     raise ValueError(message.format(arn))

@@ -65,6 +65,15 @@ def test_get_execution_role_throws_exception_if_arn_is_not_role():
     assert 'ValueError: The current AWS identity is not a role' in str(error)
 
 
+def test_get_execution_role_throws_exception_if_arn_is_not_role_with_role_in_name():
+    session = Mock()
+    session.get_caller_identity_arn.return_value = 'arn:aws:iam::369233609183:user/marcos-role'
+
+    with pytest.raises(ValueError) as error:
+        get_execution_role(session)
+    assert 'ValueError: The current AWS identity is not a role' in str(error)
+
+
 def test_get_caller_identity_arn_from_an_user(boto_session):
     sess = Session(boto_session)
     arn = 'arn:aws:iam::369233609183:user/mia'
