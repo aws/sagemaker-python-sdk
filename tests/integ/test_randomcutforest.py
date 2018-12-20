@@ -16,7 +16,7 @@ import numpy as np
 import pytest
 
 from sagemaker import RandomCutForest, RandomCutForestModel
-from sagemaker.utils import name_from_base
+from sagemaker.utils import unique_name_from_base
 from tests.integ import TRAINING_DEFAULT_TIMEOUT_MINUTES
 from tests.integ.timeout import timeout, timeout_and_delete_endpoint_by_name
 
@@ -34,7 +34,7 @@ def test_randomcutforest(sagemaker_session):
 
         rcf.fit(rcf.record_set(train_input))
 
-    endpoint_name = name_from_base('randomcutforest')
+    endpoint_name = unique_name_from_base('randomcutforest')
     with timeout_and_delete_endpoint_by_name(endpoint_name, sagemaker_session):
         model = RandomCutForestModel(rcf.model_data, role='SageMakerRole', sagemaker_session=sagemaker_session)
         predictor = model.deploy(1, 'ml.c4.xlarge', endpoint_name=endpoint_name)

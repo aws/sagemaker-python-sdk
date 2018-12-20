@@ -13,19 +13,11 @@
 from __future__ import absolute_import
 
 import sys
-
 import os
 
 # Hack to use our local copy of tensorflow_serving.apis, which contains the protobuf-generated
 # classes for tensorflow serving. Currently tensorflow_serving_api can only be pip-installed for python 2.
 sys.path.append(os.path.dirname(__file__))
-
-from distutils.version import LooseVersion  # noqa: E402, F401
-import tensorflow  # noqa: E402, F401
-
-if LooseVersion(tensorflow.__version__) < LooseVersion("1.3.0"):
-    message = 'Tensorflow version must be >= 1.3.0. Current version: {}'.format(tensorflow.__version__)
-    raise AssertionError(message)
 
 from sagemaker.tensorflow.estimator import TensorFlow  # noqa: E402, F401
 from sagemaker.tensorflow.model import TensorFlowModel, TensorFlowPredictor  # noqa: E402, F401

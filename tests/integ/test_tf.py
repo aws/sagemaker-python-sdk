@@ -17,7 +17,8 @@ import time
 
 import pytest
 
-from sagemaker.tensorflow import TensorFlow
+from sagemaker.tensorflow import TensorFlow, TensorFlowModel
+from sagemaker.utils import sagemaker_timestamp
 from tests.integ import DATA_DIR, TRAINING_DEFAULT_TIMEOUT_MINUTES, PYTHON_VERSION
 from tests.integ.timeout import timeout_and_delete_endpoint_by_name, timeout
 from tests.integ.vpc_test_utils import get_or_create_vpc_resources
@@ -25,10 +26,9 @@ from tests.integ.vpc_test_utils import get_or_create_vpc_resources
 DATA_PATH = os.path.join(DATA_DIR, 'iris', 'data')
 
 
-@pytest.mark.continuous_testing
-@pytest.mark.regional_testing
+@pytest.fixture(scope='module')
 @pytest.mark.skipif(PYTHON_VERSION != 'py2', reason="TensorFlow image supports only python 2.")
-def test_tf(sagemaker_session, tf_full_version):
+def tf_training_job(sagemaker_session, tf_full_version):
     with timeout(minutes=TRAINING_DEFAULT_TIMEOUT_MINUTES):
         script_path = os.path.join(DATA_DIR, 'iris', 'iris-dnn-classifier.py')
 
@@ -47,10 +47,49 @@ def test_tf(sagemaker_session, tf_full_version):
         estimator.fit(inputs)
         print('job succeeded: {}'.format(estimator.latest_training_job.name))
 
-    endpoint_name = estimator.latest_training_job.name
+        return estimator.latest_training_job.name
+
+
+@pytest.mark.continuous_testing
+@pytest.mark.regional_testing
+@pytest.mark.skipif(PYTHON_VERSION != 'py2', reason="TensorFlow image supports only python 2.")
+def test_deploy_model(sagemaker_session, tf_training_job):
+    endpoint_name = 'test-tf-deploy-model-{}'.format(sagemaker_timestamp())
+
     with timeout_and_delete_endpoint_by_name(endpoint_name, sagemaker_session):
-        json_predictor = estimator.deploy(initial_instance_count=1, instance_type='ml.c4.xlarge',
-                                          endpoint_name=endpoint_name)
+        desc = sagemaker_session.sagemaker_client.describe_training_job(TrainingJobName=tf_training_job)
+        model_data = desc['ModelArtifacts']['S3ModelArtifacts']
+
+        script_path = os.path.join(DATA_DIR, 'iris', 'iris-dnn-classifier.py')
+        model = TensorFlowModel(model_data, 'SageMakerRole', entry_point=script_path,
+                                sagemaker_session=sagemaker_session)
+
+        json_predictor = model.deploy(initial_instance_count=1, instance_type='ml.c4.xlarge',
+                                      endpoint_name=endpoint_name)
+
+        features = [6.4, 3.2, 4.5, 1.5]
+        dict_result = json_predictor.predict({'inputs': features})
+        print('predict result: {}'.format(dict_result))
+        list_result = json_predictor.predict(features)
+        print('predict result: {}'.format(list_result))
+
+        assert dict_result == list_result
+
+
+@pytest.mark.skipif(PYTHON_VERSION != 'py2', reason="TensorFlow image supports only python 2.")
+def test_deploy_model_with_accelerator(sagemaker_session, tf_training_job, ei_tf_version):
+    endpoint_name = 'test-tf-deploy-model-ei-{}'.format(sagemaker_timestamp())
+
+    with timeout_and_delete_endpoint_by_name(endpoint_name, sagemaker_session):
+        desc = sagemaker_session.sagemaker_client.describe_training_job(TrainingJobName=tf_training_job)
+        model_data = desc['ModelArtifacts']['S3ModelArtifacts']
+
+        script_path = os.path.join(DATA_DIR, 'iris', 'iris-dnn-classifier.py')
+        model = TensorFlowModel(model_data, 'SageMakerRole', entry_point=script_path,
+                                framework_version=ei_tf_version, sagemaker_session=sagemaker_session)
+
+        json_predictor = model.deploy(initial_instance_count=1, instance_type='ml.c4.xlarge',
+                                      endpoint_name=endpoint_name, accelerator_type='ml.eia1.medium')
 
         features = [6.4, 3.2, 4.5, 1.5]
         dict_result = json_predictor.predict({'inputs': features})
@@ -160,8 +199,6 @@ def test_failed_tf_training(sagemaker_session, tf_full_version):
                                train_instance_type='ml.c4.xlarge',
                                sagemaker_session=sagemaker_session)
 
-        inputs = estimator.sagemaker_session.upload_data(path=DATA_PATH, key_prefix='integ-test-data/tf-failure')
-
         with pytest.raises(ValueError) as e:
-            estimator.fit(inputs)
+            estimator.fit()
         assert 'This failure is expected' in str(e.value)

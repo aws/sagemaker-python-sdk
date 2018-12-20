@@ -17,27 +17,32 @@ import os
 import numpy as np
 import pytest
 
-from sagemaker.tensorflow import TensorFlow
-from tests.integ import DATA_DIR, PYTHON_VERSION
+import tests.integ
 from tests.integ.timeout import timeout_and_delete_endpoint_by_name, timeout
+
+from sagemaker.tensorflow import TensorFlow
 
 
 @pytest.mark.continuous_testing
-@pytest.mark.skipif(PYTHON_VERSION != 'py2', reason="TensorFlow image supports only python 2.")
+@pytest.mark.skipif(tests.integ.PYTHON_VERSION != 'py2',
+                    reason="TensorFlow image supports only python 2.")
+@pytest.mark.skipif(tests.integ.test_region() in tests.integ.HOSTING_NO_P2_REGIONS,
+                    reason='no ml.p2 instances in these regions')
 def test_keras(sagemaker_session, tf_full_version):
-    script_path = os.path.join(DATA_DIR, 'cifar_10', 'source')
-    dataset_path = os.path.join(DATA_DIR, 'cifar_10', 'data')
+    script_path = os.path.join(tests.integ.DATA_DIR, 'cifar_10', 'source')
+    dataset_path = os.path.join(tests.integ.DATA_DIR, 'cifar_10', 'data')
 
     with timeout(minutes=45):
         estimator = TensorFlow(entry_point='keras_cnn_cifar_10.py',
                                source_dir=script_path,
                                role='SageMakerRole', sagemaker_session=sagemaker_session,
                                hyperparameters={'learning_rate': 1e-4, 'decay': 1e-6},
-                               training_steps=500, evaluation_steps=5,
+                               training_steps=50, evaluation_steps=5,
                                train_instance_count=1, train_instance_type='ml.c4.xlarge',
                                train_max_run=45 * 60)
 
-        inputs = estimator.sagemaker_session.upload_data(path=dataset_path, key_prefix='data/cifar10')
+        inputs = estimator.sagemaker_session.upload_data(path=dataset_path,
+                                                         key_prefix='data/cifar10')
 
         estimator.fit(inputs)
 

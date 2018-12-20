@@ -16,11 +16,22 @@ import logging
 import os
 import sys
 
+import boto3
+
 DATA_DIR = os.path.join(os.path.dirname(__file__), '..', 'data')
 TRAINING_DEFAULT_TIMEOUT_MINUTES = 20
 TUNING_DEFAULT_TIMEOUT_MINUTES = 20
 TRANSFORM_DEFAULT_TIMEOUT_MINUTES = 20
 PYTHON_VERSION = 'py' + str(sys.version_info.major)
 
+# 'eu-central-1' has some p2, but no enough for continuous testing
+HOSTING_NO_P2_REGIONS = ['ca-central-1', 'eu-west-2', 'us-west-1', 'eu-central-1']
+HOSTING_NO_P3_REGIONS = ['ap-southeast-1', 'ap-southeast-2', 'ap-south-1', 'ca-central-1',
+                         'eu-west-2', 'us-west-1']
+
 logging.getLogger('boto3').setLevel(logging.INFO)
 logging.getLogger('botocore').setLevel(logging.INFO)
+
+
+def test_region():
+    return os.environ.get('TEST_AWS_REGION_NAME', boto3.session.Session().region_name)

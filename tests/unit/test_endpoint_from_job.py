@@ -20,6 +20,7 @@ import sagemaker
 JOB_NAME = 'myjob'
 INITIAL_INSTANCE_COUNT = 1
 INSTANCE_TYPE = 'ml.c4.xlarge'
+ACCELERATOR_TYPE = 'ml.eia.medium'
 IMAGE = 'myimage'
 S3_MODEL_ARTIFACTS = 's3://mybucket/mymodel'
 TRAIN_ROLE = 'mytrainrole'
@@ -67,6 +68,7 @@ def test_all_defaults_no_existing_entities(sagemaker_session):
     expected_args['name'] = JOB_NAME
     expected_args['model_environment_vars'] = None
     expected_args['model_vpc_config'] = VPC_CONFIG
+    expected_args['accelerator_type'] = None
     sagemaker_session.endpoint_from_model_data.assert_called_once_with(**expected_args)
     assert returned_name == ENDPOINT_FROM_MODEL_RETURNED_NAME
 
@@ -77,7 +79,7 @@ def test_no_defaults_no_existing_entities(sagemaker_session):
     original_args = {'job_name': JOB_NAME, 'initial_instance_count': INITIAL_INSTANCE_COUNT,
                      'instance_type': INSTANCE_TYPE, 'deployment_image': DEPLOY_IMAGE, 'role': DEPLOY_ROLE,
                      'name': NEW_ENTITY_NAME, 'model_environment_vars': ENV_VARS,
-                     'vpc_config_override': vpc_config_override,
+                     'vpc_config_override': vpc_config_override, 'accelerator_type': ACCELERATOR_TYPE,
                      'wait': False}
 
     returned_name = sagemaker_session.endpoint_from_job(**original_args)

@@ -4,7 +4,9 @@ MXNet SageMaker Estimators and Models
 
 With MXNet Estimators, you can train and host MXNet models on Amazon SageMaker.
 
-Supported versions of MXNet: ``1.2.1``, ``1.1.0``, ``1.0.0``, ``0.12.1``.
+Supported versions of MXNet: ``1.3.0``, ``1.2.1``, ``1.1.0``, ``1.0.0``, ``0.12.1``.
+
+Supported versions of MXNet for Elastic Inference: ``1.3.0``.
 
 Training with MXNet
 ~~~~~~~~~~~~~~~~~~~
@@ -17,26 +19,82 @@ Suppose that you already have an MXNet training script called
 .. code:: python
 
     from sagemaker.mxnet import MXNet
-    mxnet_estimator = MXNet("mxnet-train.py",
-                            role="SageMakerRole",
-                            train_instance_type="ml.p3.2xlarge",
-                            train_instance_count=1)
-    mxnet_estimator.fit("s3://bucket/path/to/training/data")
+    mxnet_estimator = MXNet('mxnet-train.py',
+                            role='SageMakerRole',
+                            train_instance_type='ml.p3.2xlarge',
+                            train_instance_count=1,
+                            framework_version='1.2.1')
+    mxnet_estimator.fit('s3://bucket/path/to/training/data')
 
-Where the s3 url is a path to your training data, within Amazon S3. The constructor keyword arguments define how SageMaker runs your training script and are discussed, in detail, in a later section.
+Where the S3 url is a path to your training data, within Amazon S3. The constructor keyword arguments define how SageMaker runs your training script and are discussed, in detail, in a later section.
 
 In the following sections, we'll discuss how to prepare a training script for execution on SageMaker, then how to run that script on SageMaker using an ``MXNet`` Estimator.
 
 Preparing the MXNet training script
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-+-------------------------------------------------------------------------------------------------------------------------------+
-| WARNING                                                                                                                       |
-+===============================================================================================================================+
-| This required structure for training scripts will be deprecated with the next major release of MXNet images.                  |
-| The ``train`` function will no longer be required; instead the training script must be able to be run as a standalone script. |
-| For more information, see `"Updating your MXNet training script" <#updating-your-mxnet-training-script>`__.                   |
-+-------------------------------------------------------------------------------------------------------------------------------+
++----------------------------------------------------------------------------------------------------------------------------------------------------------+
+| WARNING                                                                                                                                                  |
++==========================================================================================================================================================+
+| The structure for training scripts changed with MXNet version 1.3.                                                                                       |
+| Make sure you refer to the correct section of this README when you prepare your script.                                                                  |
+| For information on how to upgrade an old script to the new format, see `"Updating your MXNet training script" <#updating-your-mxnet-training-script>`__. |
++----------------------------------------------------------------------------------------------------------------------------------------------------------+
+
+For versions 1.3 and higher
+^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Your MXNet training script must be a Python 2.7 or 3.5 compatible source file.
+
+The training script is very similar to a training script you might run outside of SageMaker, but you can access useful properties about the training environment through various environment variables, including the following:
+
+* ``SM_MODEL_DIR``: A string that represents the path where the training job writes the model artifacts to.
+  After training, artifacts in this directory are uploaded to S3 for model hosting.
+* ``SM_NUM_GPUS``: An integer representing the number of GPUs available to the host.
+* ``SM_OUTPUT_DATA_DIR``: A string that represents the path to the directory to write output artifacts to.
+  Output artifacts might include checkpoints, graphs, and other files to save, but do not include model artifacts.
+  These artifacts are compressed and uploaded to S3 to an S3 bucket with the same prefix as the model artifacts.
+* ``SM_CHANNEL_XXXX``: A string that represents the path to the directory that contains the input data for the specified channel.
+  For example, if you specify two input channels in the MXNet estimator's ``fit`` call, named 'train' and 'test', the environment variables ``SM_CHANNEL_TRAIN`` and ``SM_CHANNEL_TEST`` are set.
+
+For the exhaustive list of available environment variables, see the `SageMaker Containers documentation <https://github.com/aws/sagemaker-containers#list-of-provided-environment-variables-by-sagemaker-containers>`__.
+
+A typical training script loads data from the input channels, configures training with hyperparameters, trains a model, and saves a model to ``model_dir`` so that it can be deployed for inference later.
+Hyperparameters are passed to your script as arguments and can be retrieved with an ``argparse.ArgumentParser`` instance.
+For example, a training script might start with the following:
+
+.. code:: python
+
+    import argparse
+    import os
+
+    if __name__ =='__main__':
+
+        parser = argparse.ArgumentParser()
+
+        # hyperparameters sent by the client are passed as command-line arguments to the script.
+        parser.add_argument('--epochs', type=int, default=10)
+        parser.add_argument('--batch-size', type=int, default=100)
+        parser.add_argument('--learning-rate', type=float, default=0.1)
+
+        # input data and model directories
+        parser.add_argument('--model-dir', type=str, default=os.environ['SM_MODEL_DIR'])
+        parser.add_argument('--train', type=str, default=os.environ['SM_CHANNEL_TRAIN'])
+        parser.add_argument('--test', type=str, default=os.environ['SM_CHANNEL_TEST'])
+
+        args, _ = parser.parse_known_args()
+
+        # ... load from args.train and args.test, train a model, write model to args.model_dir.
+
+Because the SageMaker imports your training script, you should put your training code in a main guard (``if __name__=='__main__':``) if you are using the same script to host your model,
+so that SageMaker does not inadvertently run your training code at the wrong point in execution.
+
+Note that SageMaker doesn't support argparse actions.
+If you want to use, for example, boolean hyperparameters, you need to specify ``type`` as ``bool`` in your script and provide an explicit ``True`` or ``False`` value for this hyperparameter when instantiating your MXNet estimator.
+
+For more on training environment variables, please visit `SageMaker Containers <https://github.com/aws/sagemaker-containers>`_.
+
+For versions 1.2 and lower
+^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 Your MXNet training script must be a Python 2.7 or 3.5 compatible source file. The MXNet training script must contain a function ``train``, which SageMaker invokes to run training. You can include other functions as well, but it must contain a ``train`` function.
 
@@ -85,22 +143,104 @@ When SageMaker runs your training script, it imports it as a Python module and t
 
 If you want to run your training script locally via the Python interpreter, look at using a ``___name__ == '__main__'`` guard, discussed in more detail here: https://stackoverflow.com/questions/419163/what-does-if-name-main-do .
 
-Using MXNet and numpy
-^^^^^^^^^^^^^^^^^^^^^
+Updating your MXNet training script
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-You can import both ``mxnet`` and ``numpy`` in your training script. When your script runs in SageMaker, it will run with access to MXNet version 1.2.1 and numpy version 1.14.5 by default. For more information on the environment your script runs in, please see `SageMaker MXNet Containers <#sagemaker-mxnet-containers>`__.
+The structure for training scripts changed with MXNet version 1.3.
+The ``train`` function is no longer be required; instead the training script must be able to be run as a standalone script.
+In this way, the training script is similar to a training script you might run outside of SageMaker.
+
+There are a few steps needed to make a training script with the old format compatible with the new format.
+
+First, add a `main guard <https://docs.python.org/3/library/__main__.html>`__ (``if __name__ == '__main__':``).
+The code executed from your main guard needs to:
+
+1. Set hyperparameters and directory locations
+2. Initiate training
+3. Save the model
+
+Hyperparameters will be passed as command-line arguments to your training script.
+In addition, the container will define the locations of input data and where to save the model artifacts and output data as environment variables rather than passing that information as arguments to the ``train`` function.
+You can find the full list of available environment variables in the `SageMaker Containers README <https://github.com/aws/sagemaker-containers#list-of-provided-environment-variables-by-sagemaker-containers>`__.
+
+We recommend using `an argument parser <https://docs.python.org/3.5/howto/argparse.html>`__ for this part.
+Using the ``argparse`` library as an example, the code would look something like this:
+
+.. code:: python
+
+    import argparse
+    import os
+
+    if __name__ == '__main__':
+        parser = argparse.ArgumentParser()
+
+        # hyperparameters sent by the client are passed as command-line arguments to the script.
+        parser.add_argument('--epochs', type=int, default=10)
+        parser.add_argument('--batch-size', type=int, default=100)
+        parser.add_argument('--learning-rate', type=float, default=0.1)
+
+        # input data and model directories
+        parser.add_argument('--model-dir', type=str, default=os.environ['SM_MODEL_DIR'])
+        parser.add_argument('--train', type=str, default=os.environ['SM_CHANNEL_TRAIN'])
+        parser.add_argument('--test', type=str, default=os.environ['SM_CHANNEL_TEST'])
+
+        args, _ = parser.parse_known_args()
+
+The code in the main guard should also take care of training and saving the model.
+This can be as simple as just calling the ``train`` and ``save`` methods used in the previous training script format:
+
+.. code:: python
+
+    if __name__ == '__main__':
+        # arg parsing (shown above) goes here
+
+        model = train(args.batch_size, args.epochs, args.learning_rate, args.train, args.test)
+        save(args.model_dir, model)
+
+Note that saving the model will no longer be done by default; this must be done by the training script.
+If you were previously relying on the default save method, you can now import one from the container:
+
+.. code:: python
+
+    from sagemaker_mxnet_container.training_utils import save
+
+    if __name__ == '__main__':
+        # arg parsing and training (shown above) goes here
+
+        save(args.model_dir, model)
+
+Lastly, if you were relying on the container launching a parameter server for use with distributed training, you must now set ``distributions`` to the following dictionary when creating an MXNet estimator:
+
+.. code:: python
+
+    from sagemaker.mxnet import MXNet
+
+    estimator = MXNet('path-to-distributed-training-script.py',
+                      ...,
+                      distributions={'parameter_server': {'enabled': True}})
+
+
+Using third-party libraries
+^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+When running your training script on SageMaker, it will have access to some pre-installed third-party libraries including ``mxnet``, ``numpy``, ``onnx``, and ``keras-mxnet``. For more information on the runtime environment, including specific package versions, see `SageMaker MXNet Containers <#sagemaker-mxnet-containers>`__.
+
+If there are other packages you want to use with your script, you can include a `requirements.txt <https://pip.pypa.io/en/stable/user_guide/#requirements-files>`__ file in the same directory as your training script to install other dependencies at runtime.
 
 Running an MXNet training script in SageMaker
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-You run MXNet training scripts on SageMaker by creating ``MXNet`` Estimators. SageMaker training of your script is invoked when you call ``fit`` on an ``MXNet`` Estimator. The following code sample shows how you train a custom MXNet script "train.py".
+You run MXNet training scripts on SageMaker by creating an ``MXNet`` estimators.
+When you call ``fit`` on an ``MXNet`` estimator, a SageMaker training job with your script is started.
+The following code sample shows how you train a custom MXNet script "train.py".
 
 .. code:: python
 
-    mxnet_estimator = MXNet("train.py",
-                            train_instance_type="ml.p2.xlarge",
-                            train_instance_count=1)
-    mxnet_estimator.fit("s3://my_bucket/my_training_data/")
+    mxnet_estimator = MXNet('train.py',
+                            train_instance_type='ml.p2.xlarge',
+                            train_instance_count=1,
+                            framework_version='1.2.1')
+    mxnet_estimator.fit('s3://my_bucket/my_training_data/')
 
 MXNet Estimators
 ^^^^^^^^^^^^^^^^
@@ -133,6 +273,23 @@ The following are optional arguments. When you create an ``MXNet`` object, you c
    other training source code dependencies including the entry point
    file. Structure within this directory will be preserved when training
    on SageMaker.
+- ``dependencies (list[str])`` A list of paths to directories (absolute or relative) with
+        any additional libraries that will be exported to the container (default: []).
+        The library folders will be copied to SageMaker in the same folder where the entrypoint is copied.
+        If the ```source_dir``` points to S3, code will be uploaded and the S3 location will be used
+        instead. Example:
+
+            The following call
+            >>> MXNet(entry_point='train.py', dependencies=['my/libs/common', 'virtual-env'])
+            results in the following inside the container:
+
+            >>> $ ls
+
+            >>> opt/ml/code
+            >>>     ├── train.py
+            >>>     ├── common
+            >>>     └── virtual-env
+
 -  ``hyperparameters`` Hyperparameters that will be used for training.
    Will be made accessible as a dict[str, str] to the training code on
    SageMaker. For convenience, accepts other types besides str, but
@@ -166,6 +323,17 @@ The following are optional arguments. When you create an ``MXNet`` object, you c
    framework_version and py_version. Refer to: `SageMaker MXNet Docker Containers
    <#sagemaker-mxnet-docker-containers>`_ for details on what the Official images support
    and where to find the source code to build your custom image.
+-  ``distributions`` For versions 1.3 and above only.
+   Specifies information for how to run distributed training.
+   To launch a parameter server during training, set this argument to:
+
+.. code::
+
+    {
+      'parameter_server': {
+        'enabled': True
+      }
+    }
 
 Calling fit
 ^^^^^^^^^^^
@@ -302,16 +470,25 @@ After calling ``fit``, you can call ``deploy`` on an ``MXNet`` Estimator to crea
 .. code:: python
 
     # Train my estimator
-    mxnet_estimator = MXNet("train.py",
-                            train_instance_type="ml.p2.xlarge",
-                            train_instance_count=1)
-    mxnet_estimator.fit("s3://my_bucket/my_training_data/")
+    mxnet_estimator = MXNet('train.py',
+                            train_instance_type='ml.p2.xlarge',
+                            train_instance_count=1,
+                            framework_version='1.2.1')
+    mxnet_estimator.fit('s3://my_bucket/my_training_data/')
 
     # Deploy my estimator to a SageMaker Endpoint and get a Predictor
     predictor = mxnet_estimator.deploy(instance_type='ml.m4.xlarge',
                                        initial_instance_count=1)
 
 You use the SageMaker MXNet model server to host your MXNet model when you call ``deploy`` on an ``MXNet`` Estimator. The model server runs inside a SageMaker Endpoint, which your call to ``deploy`` creates. You can access the name of the Endpoint by the ``name`` property on the returned ``Predictor``.
+
+MXNet on SageMaker has support for `Elastic Inference <https://docs.aws.amazon.com/sagemaker/latest/dg/ei.html>`_, which allows for inference acceleration to a hosted endpoint for a fraction of the cost of using a full GPU instance. In order to attach an Elastic Inference accelerator to your endpoint provide the accelerator type to ``accelerator_type`` to your ``deploy`` call.
+
+.. code:: python
+
+  predictor = mxnet_estimator.deploy(instance_type='ml.m4.xlarge',
+                                     initial_instance_count=1,
+                                     accelerator_type='ml.eia1.medium')
 
 The SageMaker MXNet Model Server
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -400,8 +577,7 @@ Input processing
 When an InvokeEndpoint operation is made against an Endpoint running a SageMaker MXNet model server, the model server receives two pieces of information:
 
 -  The request Content-Type, for example "application/json"
--  The request data body, a byte array which is at most 5 MB (5 \* 1024
-   \* 1024 bytes) in size.
+-  The request data body, a byte array
 
 The SageMaker MXNet model server will invoke an "input_fn" function in your training script, passing in this information. If you define an ``input_fn`` function definition, it should return an object that can be passed to ``predict_fn`` and have the following signature:
 
@@ -580,83 +756,6 @@ https://github.com/awslabs/amazon-sagemaker-examples/tree/master/sagemaker-pytho
 
 These are also available in SageMaker Notebook Instance hosted Jupyter notebooks under the "sample notebooks" folder.
 
-
-Updating your MXNet training script
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-The required structure for training scripts will be deprecated with the next major release of MXNet images.
-The ``train`` function will no longer be required; instead the training script must be able to be run as a standalone script.
-In this way, the training script will become similar to a training script you might run outside of SageMaker.
-
-There are a few steps needed to make a training script with the old format compatible with the new format.
-You don't need to do this yet, but it's documented here for future reference, as this change is coming soon.
-
-First, add a `main guard <https://docs.python.org/3/library/__main__.html>`__ (``if __name__ == '__main__':``).
-The code executed from your main guard needs to:
-
-1. Set hyperparameters and directory locations
-2. Initiate training
-3. Save the model
-
-Hyperparameters will be passed as command-line arguments to your training script.
-In addition, the container will define the locations of input data and where to save the model artifacts and output data as environment variables rather than passing that information as arguments to the ``train`` function.
-You can find the full list of available environment variables in the `SageMaker Containers README <https://github.com/aws/sagemaker-containers#list-of-provided-environment-variables-by-sagemaker-containers>`__.
-
-We recommend using `an argument parser <https://docs.python.org/3.5/howto/argparse.html>`__ for this part.
-Using the ``argparse`` library as an example, the code would look something like this:
-
-.. code:: python
-
-    import argparse
-    import os
-
-    if __name__ == '__main__':
-        parser = argparse.ArgumentParser()
-
-        # hyperparameters sent by the client are passed as command-line arguments to the script.
-        parser.add_argument('--epochs', type=int, default=10)
-        parser.add_argument('--batch-size', type=int, default=100)
-        parser.add_argument('--learning-rate', type=float, default=0.1)
-
-        # input data and model directories
-        parser.add_argument('--model-dir', type=str, default=os.environ['SM_MODEL_DIR'])
-        parser.add_argument('--train', type=str, default=os.environ['SM_CHANNEL_TRAIN'])
-        parser.add_argument('--test', type=str, default=os.environ['SM_CHANNEL_TEST'])
-
-        args, _ = parser.parse_known_args()
-
-The code in the main guard should also take care of training and saving the model.
-This can be as simple as just calling the ``train`` and ``save`` methods used in the previous training script format:
-
-.. code:: python
-
-    if __name__ == '__main__':
-        # arg parsing (shown above) goes here
-
-        model = train(args.batch_size, args.epochs, args.learning_rate, args.train, args.test)
-        save(args.model_dir, model)
-
-Note that saving the model will no longer be done by default; this must be done by the training script.
-If you were previously relying on the default save method, here is one you can copy into your code:
-
-.. code:: python
-
-    import json
-    import os
-
-    def save(model_dir, model):
-        model.symbol.save(os.path.join(model_dir, 'model-symbol.json'))
-        model.save_params(os.path.join(model_dir, 'model-0000.params'))
-
-        signature = [{'name': data_desc.name, 'shape': [dim for dim in data_desc.shape]}
-                     for data_desc in model.data_shapes]
-        with open(os.path.join(model_dir, 'model-shapes.json'), 'w') as f:
-            json.dump(signature, f)
-
-These changes will make training with MXNet similar to training with Chainer or PyTorch on SageMaker.
-For more information about those experiences, see `"Preparing the Chainer training script" <https://github.com/aws/sagemaker-python-sdk/tree/master/src/sagemaker/chainer#preparing-the-chainer-training-script>`__ and `"Preparing the PyTorch Training Script" <https://github.com/aws/sagemaker-python-sdk/tree/master/src/sagemaker/pytorch#preparing-the-pytorch-training-script>`__.
-
-
 SageMaker MXNet Containers
 ~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -668,15 +767,19 @@ Your MXNet training script will be run on version 1.2.1 by default. (See below f
 
 The Docker images have the following dependencies installed:
 
-+-------------------------+--------------+-------------+-------------+-------------+
-| Dependencies            | MXNet 0.12.1 | MXNet 1.0.0 | MXNet 1.1.0 | MXNet 1.2.1 |
-+-------------------------+--------------+-------------+-------------+-------------+
-| Python                  |   2.7 or 3.5 |   2.7 or 3.5|   2.7 or 3.5|   2.7 or 3.5|
-+-------------------------+--------------+-------------+-------------+-------------+
-| CUDA (GPU image only)   |          9.0 |         9.0 |         9.0 |         9.0 |
-+-------------------------+--------------+-------------+-------------+-------------+
-| numpy                   |       1.13.3 |      1.13.3 |      1.13.3 |      1.14.5 |
-+-------------------------+--------------+-------------+-------------+-------------+
++-------------------------+--------------+-------------+-------------+-------------+-------------+
+| Dependencies            | MXNet 0.12.1 | MXNet 1.0.0 | MXNet 1.1.0 | MXNet 1.2.1 | MXNet 1.3.0 |
++-------------------------+--------------+-------------+-------------+-------------+-------------+
+| Python                  |   2.7 or 3.5 |   2.7 or 3.5|   2.7 or 3.5|   2.7 or 3.5|   2.7 or 3.5|
++-------------------------+--------------+-------------+-------------+-------------+-------------+
+| CUDA (GPU image only)   |          9.0 |         9.0 |         9.0 |         9.0 |         9.0 |
++-------------------------+--------------+-------------+-------------+-------------+-------------+
+| numpy                   |       1.13.3 |      1.13.3 |      1.13.3 |      1.14.5 |      1.14.6 |
++-------------------------+--------------+-------------+-------------+-------------+-------------+
+| onnx                    |          N/A |         N/A |         N/A |       1.2.1 |       1.2.1 |
++-------------------------+--------------+-------------+-------------+-------------+-------------+
+| keras-mxnet             |          N/A |         N/A |         N/A |         N/A |       2.2.2 |
++-------------------------+--------------+-------------+-------------+-------------+-------------+
 
 The Docker images extend Ubuntu 16.04.
 

@@ -61,8 +61,8 @@ def test_create_training_job(train, LocalSession):
     resource_config = {'InstanceType': 'local', 'InstanceCount': instance_count}
     hyperparameters = {'a': 1, 'b': 'bee'}
 
-    local_sagemaker_client.create_training_job('my-training-job', algo_spec, input_data_config,
-                                               output_data_config, resource_config, HyperParameters=hyperparameters)
+    local_sagemaker_client.create_training_job('my-training-job', algo_spec, output_data_config, resource_config,
+                                               InputDataConfig=input_data_config, HyperParameters=hyperparameters)
 
     expected = {
         'ResourceConfig': {'InstanceCount': instance_count},
@@ -111,8 +111,8 @@ def test_create_training_job_invalid_data_source(train, LocalSession):
     hyperparameters = {'a': 1, 'b': 'bee'}
 
     with pytest.raises(ValueError):
-        local_sagemaker_client.create_training_job('my-training-job', algo_spec, input_data_config,
-                                                   output_data_config, resource_config, HyperParameters=hyperparameters)
+        local_sagemaker_client.create_training_job('my-training-job', algo_spec, output_data_config, resource_config,
+                                                   InputDataConfig=input_data_config, HyperParameters=hyperparameters)
 
 
 @patch('sagemaker.local.image._SageMakerContainer.train', return_value="/some/path/to/model")
@@ -141,8 +141,8 @@ def test_create_training_job_not_fully_replicated(train, LocalSession):
     hyperparameters = {'a': 1, 'b': 'bee'}
 
     with pytest.raises(RuntimeError):
-        local_sagemaker_client.create_training_job('my-training-job', algo_spec, input_data_config,
-                                                   output_data_config, resource_config, HyperParameters=hyperparameters)
+        local_sagemaker_client.create_training_job('my-training-job', algo_spec, output_data_config, resource_config,
+                                                   InputDataConfig=input_data_config, HyperParameters=hyperparameters)
 
 
 @patch('sagemaker.local.local_session.LocalSession')
@@ -170,6 +170,27 @@ def test_describe_model(LocalSession):
 
     assert response['ModelName'] == 'test-model'
     assert response['PrimaryContainer']['ModelDataUrl'] == '/some/model/path'
+
+
+@patch('sagemaker.local.local_session._LocalTransformJob')
+@patch('sagemaker.local.local_session.LocalSession')
+def test_create_transform_job(LocalSession, _LocalTransformJob):
+    local_sagemaker_client = sagemaker.local.local_session.LocalSagemakerClient()
+
+    local_sagemaker_client.create_transform_job('transform-job', 'some-model', None, None, None)
+    _LocalTransformJob().start.assert_called_with(None, None, None)
+
+    local_sagemaker_client.describe_transform_job('transform-job')
+    _LocalTransformJob().describe.assert_called()
+
+
+@patch('sagemaker.local.local_session._LocalTransformJob')
+@patch('sagemaker.local.local_session.LocalSession')
+def test_describe_transform_job_does_not_exist(LocalSession, _LocalTransformJob):
+    local_sagemaker_client = sagemaker.local.local_session.LocalSagemakerClient()
+
+    with pytest.raises(ClientError):
+        local_sagemaker_client.describe_transform_job('transform-job-does-not-exist')
 
 
 @patch('sagemaker.local.local_session.LocalSession')
@@ -287,6 +308,77 @@ def test_create_endpoint(describe_model, describe_endpoint_config, request, *arg
     local_sagemaker_client.create_endpoint('my-endpoint', 'some-endpoint-config')
 
     assert 'my-endpoint' in sagemaker.local.local_session.LocalSagemakerClient._endpoints
+
+
+@patch('sagemaker.local.image._SageMakerContainer.serve')
+@patch('urllib3.PoolManager.request')
+def test_serve_endpoint_with_correct_accelerator(request, *args):
+    mock_session = Mock(name='sagemaker_session')
+    mock_session.return_value.sagemaker_client = Mock(name='sagemaker_client')
+    mock_session.config = None
+
+    request.return_value = OK_RESPONSE
+    mock_session.sagemaker_client.describe_endpoint_config.return_value = {
+        'ProductionVariants': [
+            {
+                'ModelName': 'my-model',
+                'InitialInstanceCount': 1,
+                'InstanceType': 'local',
+                'AcceleratorType': 'local_sagemaker_notebook'
+            }
+        ]
+    }
+
+    mock_session.sagemaker_client.describe_model.return_value = {
+        'PrimaryContainer': {
+            'Environment': {
+            },
+            'Image': '123.dkr.ecr-us-west-2.amazonaws.com/sagemaker-container:1.0',
+            'ModelDataUrl': 's3://sagemaker-us-west-2/some/model.tar.gz'
+        }
+    }
+
+    endpoint = sagemaker.local.local_session._LocalEndpoint('my-endpoint', 'some-endpoint-config',
+                                                            local_session=mock_session)
+    endpoint.serve()
+
+    assert endpoint.primary_container['Environment']['SAGEMAKER_INFERENCE_ACCELERATOR_PRESENT'] == 'true'
+
+
+@patch('sagemaker.local.image._SageMakerContainer.serve')
+@patch('urllib3.PoolManager.request')
+def test_serve_endpoint_with_incorrect_accelerator(request, *args):
+    mock_session = Mock(name='sagemaker_session')
+    mock_session.return_value.sagemaker_client = Mock(name='sagemaker_client')
+    mock_session.config = None
+
+    request.return_value = OK_RESPONSE
+    mock_session.sagemaker_client.describe_endpoint_config.return_value = {
+        'ProductionVariants': [
+            {
+                'ModelName': 'my-model',
+                'InitialInstanceCount': 1,
+                'InstanceType': 'local',
+                'AcceleratorType': 'local'
+            }
+        ]
+    }
+
+    mock_session.sagemaker_client.describe_model.return_value = {
+        'PrimaryContainer': {
+            'Environment': {
+            },
+            'Image': '123.dkr.ecr-us-west-2.amazonaws.com/sagemaker-container:1.0',
+            'ModelDataUrl': 's3://sagemaker-us-west-2/some/model.tar.gz'
+        }
+    }
+
+    endpoint = sagemaker.local.local_session._LocalEndpoint('my-endpoint', 'some-endpoint-config',
+                                                            local_session=mock_session)
+    endpoint.serve()
+
+    with pytest.raises(KeyError):
+        assert endpoint.primary_container['Environment']['SAGEMAKER_INFERENCE_ACCELERATOR_PRESENT'] == 'true'
 
 
 def test_file_input_all_defaults():

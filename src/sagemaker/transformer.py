@@ -31,7 +31,7 @@ class Transformer(object):
             instance_count (int): Number of EC2 instances to use.
             instance_type (str): Type of EC2 instance to use, for example, 'ml.c4.xlarge'.
             strategy (str): The strategy used to decide how to batch records in a single request (default: None).
-                Valid values: 'MULTI_RECORD' and 'SINGLE_RECORD'.
+                Valid values: 'MultiRecord' and 'SingleRecord'.
             assemble_with (str): How the output is assembled (default: None). Valid values: 'Line' or 'None'.
             output_path (str): S3 location for saving the transform result. If not specified, results are stored to
                 a default bucket.
@@ -90,13 +90,14 @@ class Transformer(object):
                     an input for the transform job.
 
             content_type (str): MIME type of the input data (default: None).
-            compression (str): Compression type of the input data, if compressed (default: None).
+            compression_type (str): Compression type of the input data, if compressed (default: None).
                 Valid values: 'Gzip', None.
             split_type (str): The record delimiter for the input object (default: 'None').
                 Valid values: 'None', 'Line', and 'RecordIO'.
             job_name (str): job name (default: None). If not specified, one will be generated.
         """
-        if not data.startswith('s3://'):
+        local_mode = self.sagemaker_session.local_mode
+        if not local_mode and not data.startswith('s3://'):
             raise ValueError('Invalid S3 URI: {}'.format(data))
 
         if job_name is not None:
@@ -143,7 +144,7 @@ class Transformer(object):
         init_params = cls._prepare_init_params_from_job_description(job_details)
         transformer = cls(sagemaker_session=sagemaker_session, **init_params)
         transformer.latest_transform_job = _TransformJob(sagemaker_session=sagemaker_session,
-                                                         transform_job_name=init_params['base_transform_job_name'])
+                                                         job_name=init_params['base_transform_job_name'])
 
         return transformer
 
@@ -176,9 +177,6 @@ class Transformer(object):
 
 
 class _TransformJob(_Job):
-    def __init__(self, sagemaker_session, transform_job_name):
-        super(_TransformJob, self).__init__(sagemaker_session, transform_job_name)
-
     @classmethod
     def start_new(cls, transformer, data, data_type, content_type, compression_type, split_type):
         config = _TransformJob._load_config(data, data_type, content_type, compression_type, split_type, transformer)

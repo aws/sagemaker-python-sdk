@@ -22,15 +22,25 @@ import threading
 import time
 
 from sagemaker.estimator import Framework
-from sagemaker.fw_utils import framework_name_from_image, framework_version_from_tag
+import sagemaker.fw_utils as fw
+from sagemaker.tensorflow.defaults import TF_VERSION
+from sagemaker.tensorflow.model import TensorFlowModel
+from sagemaker.tensorflow.serving import Model
 from sagemaker.utils import get_config_value
 from sagemaker.vpc_utils import VPC_CONFIG_DEFAULT
 
-from sagemaker.tensorflow.defaults import TF_VERSION
-from sagemaker.tensorflow.model import TensorFlowModel
-
 logging.basicConfig()
 LOGGER = logging.getLogger('sagemaker')
+
+
+_FRAMEWORK_MODE_ARGS = ('training_steps', 'evaluation_steps', 'requirements_file', 'checkpoint_path')
+_SCRIPT_MODE = 'tensorflow-scriptmode'
+_SCRIPT_MODE_SERVING_ERROR_MSG = 'Script mode containers does not support serving yet. ' \
+                                 'Please use our new tensorflow-serving container by creating the model ' \
+                                 'with \'endpoint_type\' set to \'tensorflow-serving\'.'
+_SCRIPT_MODE_TENSORBOARD_WARNING = 'Tensorboard is not supported with script mode. You can run the following ' \
+                                   'command: tensorboard --logdir {} --host localhost --port 6006 This can be ' \
+                                   'run from anywhere with access to the S3 URI used as the logdir.'
 
 
 class Tensorboard(threading.Thread):
@@ -103,12 +113,14 @@ class Tensorboard(threading.Thread):
             EnvironmentError: If at least one requirement is not installed.
         """
         if not self._cmd_exists('tensorboard'):
-            raise EnvironmentError('TensorBoard is not installed in the system. Please install TensorBoard using the'
-                                   ' following command: \n pip install tensorboard')
+            raise EnvironmentError(
+                'TensorBoard is not installed in the system. Please install TensorBoard using the'
+                ' following command: \n pip install tensorboard')
 
         if not self._cmd_exists('aws'):
-            raise EnvironmentError('The AWS CLI is not installed in the system. Please install the AWS CLI using the'
-                                   ' following command: \n pip install awscli')
+            raise EnvironmentError(
+                'The AWS CLI is not installed in the system. Please install the AWS CLI using the'
+                ' following command: \n pip install awscli')
 
     def create_tensorboard_process(self):
         """Create a TensorBoard process.
@@ -123,9 +135,10 @@ class Tensorboard(threading.Thread):
         """
         port = 6006
 
-        for i in range(100):
+        for _ in range(100):
             p = subprocess.Popen(
-                ["tensorboard", "--logdir", self.logdir, "--host", "localhost", "--port", str(port)],
+                ["tensorboard", "--logdir", self.logdir, "--host", "localhost", "--port",
+                 str(port)],
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE
             )
@@ -135,7 +148,8 @@ class Tensorboard(threading.Thread):
             else:
                 return port, p
 
-        raise OSError('No available ports to start TensorBoard. Attempted all ports between 6006 and 6105')
+        raise OSError(
+            'No available ports to start TensorBoard. Attempted all ports between 6006 and 6105')
 
     def run(self):
         """Run TensorBoard process."""
@@ -159,7 +173,8 @@ class TensorFlow(Framework):
     __framework_name__ = 'tensorflow'
 
     def __init__(self, training_steps=None, evaluation_steps=None, checkpoint_path=None, py_version='py2',
-                 framework_version=TF_VERSION, requirements_file='', image_name=None, **kwargs):
+                 framework_version=None, model_dir=None, requirements_file='', image_name=None,
+                 script_mode=False, distributions=None, **kwargs):
         """Initialize an ``TensorFlow`` estimator.
         Args:
             training_steps (int): Perform this many steps of training. `None`, the default means train forever.
@@ -170,6 +185,9 @@ class TensorFlow(Framework):
             py_version (str): Python version you want to use for executing your model training code (default: 'py2').
             framework_version (str): TensorFlow version you want to use for executing your model training code.
                 List of supported versions https://github.com/aws/sagemaker-python-sdk#tensorflow-sagemaker-estimators
+            model_dir (str): S3 location where the checkpoint data and models can be exported to during training
+                (default: None). If not specified a default S3 URI will be generated. It will be passed in the
+                training script as one of the command line arguments.
             requirements_file (str): Path to a ``requirements.txt`` file (default: ''). The path should be within and
                 relative to ``source_dir``. Details on the format can be found in the
                 `Pip User Guide <https://pip.pypa.io/en/stable/reference/pip_install/#requirements-file-format>`_.
@@ -179,17 +197,60 @@ class TensorFlow(Framework):
                     Examples:
                         123.dkr.ecr.us-west-2.amazonaws.com/my-custom-image:1.0
                         custom-image:latest.
+            script_mode (bool): If set to True will the estimator will use the Script Mode containers (default: False).
+                This will be ignored if py_version is set to 'py3'.
+            distributions (dict): A dictionary with information on how to run distributed training
+                (default: None). Currently we only support distributed training with parameter servers. To enable it
+                use the following setup:
+                    {
+                        'parameter_server':
+                        {
+                            'enabled': True
+                        }
+                    }
             **kwargs: Additional kwargs passed to the Framework constructor.
         """
+        if framework_version is None:
+            LOGGER.warning(fw.empty_framework_version_warning(TF_VERSION, TF_VERSION))
+        self.framework_version = framework_version or TF_VERSION
+
         super(TensorFlow, self).__init__(image_name=image_name, **kwargs)
         self.checkpoint_path = checkpoint_path
         self.py_version = py_version
-        self.framework_version = framework_version
         self.training_steps = training_steps
         self.evaluation_steps = evaluation_steps
+        self.model_dir = model_dir
+        self.script_mode = script_mode
+        self.distributions = distributions or {}
 
+        self._validate_args(py_version=py_version, script_mode=script_mode, framework_version=framework_version,
+                            training_steps=training_steps, evaluation_steps=evaluation_steps,
+                            requirements_file=requirements_file, checkpoint_path=checkpoint_path)
         self._validate_requirements_file(requirements_file)
         self.requirements_file = requirements_file
+
+    def _validate_args(self, py_version, script_mode, framework_version, training_steps,
+                       evaluation_steps, requirements_file, checkpoint_path):
+
+        if py_version == 'py3' or script_mode:
+
+            if framework_version is None:
+                raise AttributeError(fw.EMPTY_FRAMEWORK_VERSION_ERROR)
+
+            found_args = []
+            if training_steps:
+                found_args.append('training_steps')
+            if evaluation_steps:
+                found_args.append('evaluation_steps')
+            if requirements_file:
+                found_args.append('requirements_file')
+            if checkpoint_path:
+                found_args.append('checkpoint_path')
+            if found_args:
+                raise AttributeError(
+                    '{} are deprecated in script mode. Please do not set {}.'
+                    .format(', '.join(_FRAMEWORK_MODE_ARGS), ', '.join(found_args))
+                )
 
     def _validate_requirements_file(self, requirements_file):
         if not requirements_file:
@@ -199,12 +260,13 @@ class TensorFlow(Framework):
             raise ValueError('Must specify source_dir along with a requirements file.')
 
         if os.path.isabs(requirements_file):
-            raise ValueError('Requirements file {} is not a path relative to source_dir.'.format(requirements_file))
+            raise ValueError('Requirements file {} is not a path relative to source_dir.'.format(
+                requirements_file))
 
         if not os.path.exists(os.path.join(self.source_dir, requirements_file)):
             raise ValueError('Requirements file {} does not exist.'.format(requirements_file))
 
-    def fit(self, inputs, wait=True, logs=True, job_name=None, run_tensorboard_locally=False):
+    def fit(self, inputs=None, wait=True, logs=True, job_name=None, run_tensorboard_locally=False):
         """Train a model using the input training dataset.
 
         See :func:`~sagemaker.estimator.EstimatorBase.fit` for more details.
@@ -228,13 +290,17 @@ class TensorFlow(Framework):
                 downloaded checkpoint information (default: False). This is an experimental feature, and requires
                 TensorBoard and AWS CLI to be installed. It terminates TensorBoard when execution ends.
         """
+
         def fit_super():
             super(TensorFlow, self).fit(inputs, wait, logs, job_name)
 
         if run_tensorboard_locally and wait is False:
             raise ValueError("Tensorboard is not supported with async fit")
 
-        if run_tensorboard_locally:
+        if self._script_mode_enabled() and run_tensorboard_locally:
+            LOGGER.warning(_SCRIPT_MODE_TENSORBOARD_WARNING.format(self.model_dir))
+            fit_super()
+        elif run_tensorboard_locally:
             tensorboard = Tensorboard(self)
             tensorboard.validate_requirements()
 
@@ -250,7 +316,7 @@ class TensorFlow(Framework):
             fit_super()
 
     @classmethod
-    def _prepare_init_params_from_job_description(cls, job_details):
+    def _prepare_init_params_from_job_description(cls, job_details, model_channel_name=None):
         """Convert the job description to init params that can be handled by the class constructor
 
         Args:
@@ -260,16 +326,17 @@ class TensorFlow(Framework):
              dictionary: The transformed init_params
 
         """
-        init_params = super(TensorFlow, cls)._prepare_init_params_from_job_description(job_details)
+        init_params = super(TensorFlow, cls)._prepare_init_params_from_job_description(job_details,
+                                                                                       model_channel_name)
 
         # Move some of the tensorflow specific init params from hyperparameters into the main init params.
-        for argument in ['checkpoint_path', 'training_steps', 'evaluation_steps']:
+        for argument in ('checkpoint_path', 'training_steps', 'evaluation_steps', 'model_dir'):
             value = init_params['hyperparameters'].pop(argument, None)
             if value is not None:
                 init_params[argument] = value
 
         image_name = init_params.pop('image')
-        framework, py_version, tag = framework_name_from_image(image_name)
+        framework, py_version, tag = fw.framework_name_from_image(image_name)
         if not framework:
             # If we were unable to parse the framework name from the image it is not one of our
             # officially supported images, in this case just add the image to the init params.
@@ -282,15 +349,18 @@ class TensorFlow(Framework):
         # containing framework version, device type and python version (e.g. '1.5-gpu-py2').
         # For backward compatibility map deprecated image tag '1.0' to a '1.4' framework version
         # otherwise extract framework version from the tag itself.
-        init_params['framework_version'] = '1.4' if tag == '1.0' else framework_version_from_tag(tag)
+        init_params['framework_version'] = '1.4' if tag == '1.0' else fw.framework_version_from_tag(
+            tag)
 
         training_job_name = init_params['base_job_name']
         if framework != cls.__framework_name__:
-            raise ValueError("Training job: {} didn't use image for requested framework".format(training_job_name))
+            raise ValueError("Training job: {} didn't use image for requested framework".format(
+                training_job_name))
 
         return init_params
 
-    def create_model(self, model_server_workers=None, role=None, vpc_config_override=VPC_CONFIG_DEFAULT):
+    def create_model(self, model_server_workers=None, role=None,
+                     vpc_config_override=VPC_CONFIG_DEFAULT, endpoint_type=None):
         """Create a SageMaker ``TensorFlowModel`` object that can be deployed to an ``Endpoint``.
 
         Args:
@@ -302,37 +372,85 @@ class TensorFlow(Framework):
                 Default: use subnets and security groups from this Estimator.
                 * 'Subnets' (list[str]): List of subnet ids.
                 * 'SecurityGroupIds' (list[str]): List of security group ids.
+            endpoint_type: Optional. Selects the software stack used by the inference server.
+                If  not specified, the model will be configured to use the default
+                SageMaker model server. If 'tensorflow-serving', the model will be configured to
+                use the SageMaker Tensorflow Serving container.
 
         Returns:
             sagemaker.tensorflow.model.TensorFlowModel: A SageMaker ``TensorFlowModel`` object.
                 See :func:`~sagemaker.tensorflow.model.TensorFlowModel` for full details.
         """
-        env = {'SAGEMAKER_REQUIREMENTS': self.requirements_file}
+
         role = role or self.role
-        return TensorFlowModel(self.model_data, role, self.entry_point, source_dir=self._model_source_dir(),
-                               enable_cloudwatch_metrics=self.enable_cloudwatch_metrics, env=env, image=self.image_name,
-                               name=self._current_job_name, container_log_level=self.container_log_level,
+        if endpoint_type == 'tensorflow-serving' or self._script_mode_enabled():
+            return self._create_tfs_model(role=role, vpc_config_override=vpc_config_override)
+
+        return self._create_default_model(model_server_workers=model_server_workers, role=role,
+                                          vpc_config_override=vpc_config_override)
+
+    def _create_tfs_model(self, role=None, vpc_config_override=VPC_CONFIG_DEFAULT):
+        return Model(model_data=self.model_data,
+                     role=role,
+                     image=self.image_name,
+                     name=self._current_job_name,
+                     container_log_level=self.container_log_level,
+                     framework_version=self.framework_version,
+                     sagemaker_session=self.sagemaker_session,
+                     vpc_config=self.get_vpc_config(vpc_config_override))
+
+    def _create_default_model(self, model_server_workers, role, vpc_config_override):
+        return TensorFlowModel(self.model_data, role, self.entry_point,
+                               source_dir=self._model_source_dir(),
+                               enable_cloudwatch_metrics=self.enable_cloudwatch_metrics,
+                               env={'SAGEMAKER_REQUIREMENTS': self.requirements_file},
+                               image=self.image_name,
+                               name=self._current_job_name,
+                               container_log_level=self.container_log_level,
                                code_location=self.code_location, py_version=self.py_version,
-                               framework_version=self.framework_version, model_server_workers=model_server_workers,
+                               framework_version=self.framework_version,
+                               model_server_workers=model_server_workers,
                                sagemaker_session=self.sagemaker_session,
-                               vpc_config=self.get_vpc_config(vpc_config_override))
+                               vpc_config=self.get_vpc_config(vpc_config_override),
+                               dependencies=self.dependencies)
 
     def hyperparameters(self):
         """Return hyperparameters used by your custom TensorFlow code during model training."""
         hyperparameters = super(TensorFlow, self).hyperparameters()
 
-        if not self.checkpoint_path:
-            local_code = get_config_value('local.local_code', self.sagemaker_session.config)
-            if self.sagemaker_session.local_mode and local_code:
-                self.checkpoint_path = '/opt/ml/shared/checkpoints'
-            else:
-                self.checkpoint_path = os.path.join(self.output_path,
-                                                    self._current_job_name, 'checkpoints')
+        self.checkpoint_path = self.checkpoint_path or self._default_s3_path('checkpoints')
 
-        additional_hyperparameters = {'checkpoint_path': self.checkpoint_path,
-                                      'training_steps': self.training_steps,
-                                      'evaluation_steps': self.evaluation_steps,
-                                      'sagemaker_requirements': self.requirements_file}
+        if self._script_mode_enabled():
+            self.model_dir = self.model_dir or self._default_s3_path('model')
+            additional_hyperparameters = {'model_dir': self.model_dir}
+            if 'parameter_server' in self.distributions:
+                enabled = self.distributions['parameter_server'].get('enabled', False)
+                additional_hyperparameters[self.LAUNCH_PS_ENV_NAME] = enabled
+        else:
+            additional_hyperparameters = {'checkpoint_path': self.checkpoint_path,
+                                          'training_steps': self.training_steps,
+                                          'evaluation_steps': self.evaluation_steps,
+                                          'sagemaker_requirements': self.requirements_file}
 
         hyperparameters.update(Framework._json_encode_hyperparameters(additional_hyperparameters))
         return hyperparameters
+
+    def _default_s3_path(self, directory):
+        local_code = get_config_value('local.local_code', self.sagemaker_session.config)
+        if self.sagemaker_session.local_mode and local_code:
+            return '/opt/ml/shared/{}'.format(directory)
+        else:
+            return os.path.join(self.output_path, self._current_job_name, directory)
+
+    def _script_mode_enabled(self):
+        return self.py_version == 'py3' or self.script_mode
+
+    def train_image(self):
+        if self.image_name:
+            return self.image_name
+
+        if self._script_mode_enabled():
+            return fw.create_image_uri(self.sagemaker_session.boto_region_name, _SCRIPT_MODE,
+                                       self.train_instance_type, self.framework_version, self.py_version)
+
+        return super(TensorFlow, self).train_image()

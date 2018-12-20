@@ -4,10 +4,9 @@ SageMaker PyTorch Estimators and Models
 
 With PyTorch Estimators and Models, you can train and host PyTorch models on Amazon SageMaker.
 
-Supported versions of PyTorch: ``0.4.0``, ``1.0.0.dev`` ("Preview").
+Supported versions of PyTorch: ``0.4.0``, ``1.0.0``.
 
-You can try the "Preview" version of PyTorch by specifying ``1.0.0.dev`` for ``framework_version`` when creating your PyTorch estimator.
-This will ensure you're using the latest version of ``torch-nightly``.
+We recommend that you use the latest supported version, because that's where we focus most of our development efforts.
 
 You can visit the PyTorch repository at https://github.com/pytorch/pytorch.
 
@@ -48,7 +47,8 @@ You can then setup a ``PyTorch`` Estimator with keyword arguments to point to th
     pytorch_estimator = PyTorch(entry_point='pytorch-train.py',
                                 role='SageMakerRole',
                                 train_instance_type='ml.p3.2xlarge',
-                                train_instance_count=1)
+                                train_instance_count=1,
+                                framework_version='1.0.0')
 
 After that, you simply tell the estimator to start a training job and provide an S3 URL
 that is the path to your training data within Amazon S3:
@@ -136,9 +136,10 @@ directories ('train' and 'test').
     pytorch_estimator = PyTorch('pytorch-train.py',
                                 train_instance_type='ml.p3.2xlarge',
                                 train_instance_count=1,
-                                hyperparameters = {'epochs': 20, 'batch-size': 64, 'learning-rate':0.1})
+                                framework_version='1.0.0',
+                                hyperparameters = {'epochs': 20, 'batch-size': 64, 'learning-rate': 0.1})
     pytorch_estimator.fit({'train': 's3://my-data-bucket/path/to/my/training/data',
-                          'test': 's3://my-data-bucket/path/to/my/test/data'})
+                           'test': 's3://my-data-bucket/path/to/my/test/data'})
 
 
 PyTorch Estimators
@@ -173,6 +174,23 @@ The following are optional arguments. When you create a ``PyTorch`` object, you 
    other training source code dependencies including the entry point
    file. Structure within this directory will be preserved when training
    on SageMaker.
+- ``dependencies (list[str])`` A list of paths to directories (absolute or relative) with
+        any additional libraries that will be exported to the container (default: []).
+        The library folders will be copied to SageMaker in the same folder where the entrypoint is copied.
+        If the ```source_dir``` points to S3, code will be uploaded and the S3 location will be used
+        instead. Example:
+
+            The following call
+            >>> PyTorch(entry_point='train.py', dependencies=['my/libs/common', 'virtual-env'])
+            results in the following inside the container:
+
+            >>> $ ls
+
+            >>> opt/ml/code
+            >>>     ├── train.py
+            >>>     ├── common
+            >>>     └── virtual-env
+
 -  ``hyperparameters`` Hyperparameters that will be used for training.
    Will be made accessible as a dict[str, str] to the training code on
    SageMaker. For convenience, accepts other types besides strings, but
@@ -318,7 +336,8 @@ operation.
     # Train my estimator
     pytorch_estimator = PyTorch(entry_point='train_and_deploy.py',
                                 train_instance_type='ml.p3.2xlarge',
-                                train_instance_count=1)
+                                train_instance_count=1,
+                                framework_version='1.0.0')
     pytorch_estimator.fit('s3://my_bucket/my_training_data/')
 
     # Deploy my estimator to a SageMaker Endpoint and get a Predictor
@@ -439,8 +458,7 @@ When an InvokeEndpoint operation is made against an Endpoint running a SageMaker
 the model server receives two pieces of information:
 
 -  The request Content-Type, for example "application/x-npy"
--  The request data body, a byte array which is at most 5 MB (5 \* 1024
-   \* 1024 bytes) in size.
+-  The request data body, a byte array
 
 The SageMaker PyTorch model server will invoke an ``input_fn`` function in your hosting script,
 passing in this information. If you define an ``input_fn`` function definition,
@@ -656,7 +674,7 @@ When training and deploying training scripts, SageMaker runs your Python script 
 libraries installed. When creating the Estimator and calling deploy to create the SageMaker Endpoint, you can control
 the environment your script runs in.
 
-SageMaker runs PyTorch Estimator scripts in either Python 2.7 or Python 3.5. You can select the Python version by
+SageMaker runs PyTorch Estimator scripts in either Python 2 or Python 3. You can select the Python version by
 passing a ``py_version`` keyword arg to the PyTorch Estimator constructor. Setting this to `py3` (the default) will cause your
 training script to be run on Python 3.5. Setting this to `py2` will cause your training script to be run on Python 2.7
 This Python version applies to both the Training Job, created by fit, and the Endpoint, created by deploy.
@@ -664,13 +682,13 @@ This Python version applies to both the Training Job, created by fit, and the En
 The PyTorch Docker images have the following dependencies installed:
 
 +-----------------------------+---------------+-------------------+
-| Dependencies                | pytorch 0.4.0 | pytorch 1.0.0.dev |
+| Dependencies                | pytorch 0.4.0 | pytorch 1.0.0     |
 +-----------------------------+---------------+-------------------+
 | boto3                       | >=1.7.35      | >=1.9.11          |
 +-----------------------------+---------------+-------------------+
 | botocore                    | >=1.10.35     | >=1.12.11         |
 +-----------------------------+---------------+-------------------+
-| CUDA (GPU image only)       | 9.0           | 9.2               |
+| CUDA (GPU image only)       | 9.0           | 9.0               |
 +-----------------------------+---------------+-------------------+
 | numpy                       | >=1.14.3      | >=1.15.2          |
 +-----------------------------+---------------+-------------------+
@@ -692,11 +710,11 @@ The PyTorch Docker images have the following dependencies installed:
 +-----------------------------+---------------+-------------------+
 | six                         | >=1.11.0      | >=1.11.0          |
 +-----------------------------+---------------+-------------------+
-| torch (torch-nightly)       | 0.4.0         | 1.0.0.dev         |
+| torch                       | 0.4.0         | 1.0.0             |
 +-----------------------------+---------------+-------------------+
 | torchvision                 | 0.2.1         | 0.2.1             |
 +-----------------------------+---------------+-------------------+
-| Python                      | 2.7 or 3.5    | 2.7 or 3.5        |
+| Python                      | 2.7 or 3.5    | 2.7 or 3.6        |
 +-----------------------------+---------------+-------------------+
 
 The Docker images extend Ubuntu 16.04.

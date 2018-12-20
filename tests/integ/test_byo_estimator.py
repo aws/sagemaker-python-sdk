@@ -23,7 +23,7 @@ import pytest
 import sagemaker
 from sagemaker.amazon.amazon_estimator import registry
 from sagemaker.estimator import Estimator
-from sagemaker.utils import name_from_base
+from sagemaker.utils import unique_name_from_base
 from tests.integ import DATA_DIR, TRAINING_DEFAULT_TIMEOUT_MINUTES
 from tests.integ.timeout import timeout, timeout_and_delete_endpoint_by_name
 
@@ -81,7 +81,7 @@ def test_byo_estimator(sagemaker_session, region):
         # training labels must be 'float32'
         estimator.fit({'train': s3_train_data})
 
-    endpoint_name = name_from_base('byo')
+    endpoint_name = unique_name_from_base('byo')
 
     with timeout_and_delete_endpoint_by_name(endpoint_name, sagemaker_session):
         model = estimator.create_model()
@@ -99,7 +99,7 @@ def test_byo_estimator(sagemaker_session, region):
 
 def test_async_byo_estimator(sagemaker_session, region):
     image_name = registry(region) + "/factorization-machines:1"
-    endpoint_name = name_from_base('byo')
+    endpoint_name = unique_name_from_base('byo')
     training_data_path = os.path.join(DATA_DIR, 'dummy_tensor')
     training_job_name = ""
 

@@ -12,11 +12,16 @@
 # language governing permissions and limitations under the License.
 from __future__ import absolute_import
 
+import logging
+
 from sagemaker.estimator import Framework
-from sagemaker.fw_utils import framework_name_from_image, framework_version_from_tag
+from sagemaker.fw_utils import framework_name_from_image, framework_version_from_tag, empty_framework_version_warning
 from sagemaker.chainer.defaults import CHAINER_VERSION
 from sagemaker.chainer.model import ChainerModel
 from sagemaker.vpc_utils import VPC_CONFIG_DEFAULT
+
+logging.basicConfig()
+logger = logging.getLogger('sagemaker')
 
 
 class Chainer(Framework):
@@ -30,9 +35,11 @@ class Chainer(Framework):
     _process_slots_per_host = "sagemaker_process_slots_per_host"
     _additional_mpi_options = "sagemaker_additional_mpi_options"
 
+    LATEST_VERSION = '5.0.0'
+
     def __init__(self, entry_point, use_mpi=None, num_processes=None, process_slots_per_host=None,
                  additional_mpi_options=None, source_dir=None, hyperparameters=None, py_version='py3',
-                 framework_version=CHAINER_VERSION, image_name=None, **kwargs):
+                 framework_version=None, image_name=None, **kwargs):
         """
         This ``Estimator`` executes an Chainer script in a managed Chainer execution environment, within a SageMaker
         Training Job. The managed Chainer environment is an Amazon-built Docker container that executes functions
@@ -76,10 +83,13 @@ class Chainer(Framework):
                     custom-image:latest.
             **kwargs: Additional kwargs passed to the :class:`~sagemaker.estimator.Framework` constructor.
         """
+        if framework_version is None:
+            logger.warning(empty_framework_version_warning(CHAINER_VERSION, self.LATEST_VERSION))
+        self.framework_version = framework_version or CHAINER_VERSION
+
         super(Chainer, self).__init__(entry_point, source_dir, hyperparameters,
                                       image_name=image_name, **kwargs)
         self.py_version = py_version
-        self.framework_version = framework_version
         self.use_mpi = use_mpi
         self.num_processes = num_processes
         self.process_slots_per_host = process_slots_per_host
@@ -123,20 +133,21 @@ class Chainer(Framework):
                             py_version=self.py_version, framework_version=self.framework_version,
                             model_server_workers=model_server_workers, image=self.image_name,
                             sagemaker_session=self.sagemaker_session,
-                            vpc_config=self.get_vpc_config(vpc_config_override))
+                            vpc_config=self.get_vpc_config(vpc_config_override), dependencies=self.dependencies)
 
     @classmethod
-    def _prepare_init_params_from_job_description(cls, job_details):
+    def _prepare_init_params_from_job_description(cls, job_details, model_channel_name=None):
         """Convert the job description to init params that can be handled by the class constructor
 
         Args:
             job_details: the returned job details from a describe_training_job API call.
+            model_channel_name (str): Name of the channel where pre-trained model data will be downloaded.
 
         Returns:
              dictionary: The transformed init_params
 
         """
-        init_params = super(Chainer, cls)._prepare_init_params_from_job_description(job_details)
+        init_params = super(Chainer, cls)._prepare_init_params_from_job_description(job_details, model_channel_name)
 
         for argument in [Chainer._use_mpi, Chainer._num_processes, Chainer._process_slots_per_host,
                          Chainer._additional_mpi_options]:

@@ -11,11 +11,17 @@
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
 from __future__ import absolute_import
+
+import logging
+
 from sagemaker.estimator import Framework
-from sagemaker.fw_utils import framework_name_from_image, framework_version_from_tag
+from sagemaker.fw_utils import framework_name_from_image, framework_version_from_tag, empty_framework_version_warning
 from sagemaker.pytorch.defaults import PYTORCH_VERSION, PYTHON_VERSION
 from sagemaker.pytorch.model import PyTorchModel
 from sagemaker.vpc_utils import VPC_CONFIG_DEFAULT
+
+logging.basicConfig()
+logger = logging.getLogger('sagemaker')
 
 
 class PyTorch(Framework):
@@ -23,8 +29,10 @@ class PyTorch(Framework):
 
     __framework_name__ = "pytorch"
 
+    LATEST_VERSION = '1.0'
+
     def __init__(self, entry_point, source_dir=None, hyperparameters=None, py_version=PYTHON_VERSION,
-                 framework_version=PYTORCH_VERSION, image_name=None, **kwargs):
+                 framework_version=None, image_name=None, **kwargs):
         """
         This ``Estimator`` executes an PyTorch script in a managed PyTorch execution environment, within a SageMaker
         Training Job. The managed PyTorch environment is an Amazon-built Docker container that executes functions
@@ -60,9 +68,12 @@ class PyTorch(Framework):
                     custom-image:latest.
             **kwargs: Additional kwargs passed to the :class:`~sagemaker.estimator.Framework` constructor.
         """
+        if framework_version is None:
+            logger.warning(empty_framework_version_warning(PYTORCH_VERSION, PYTORCH_VERSION))
+        self.framework_version = framework_version or PYTORCH_VERSION
+
         super(PyTorch, self).__init__(entry_point, source_dir, hyperparameters, image_name=image_name, **kwargs)
         self.py_version = py_version
-        self.framework_version = framework_version
 
     def create_model(self, model_server_workers=None, role=None, vpc_config_override=VPC_CONFIG_DEFAULT):
         """Create a SageMaker ``PyTorchModel`` object that can be deployed to an ``Endpoint``.
@@ -87,20 +98,21 @@ class PyTorch(Framework):
                             container_log_level=self.container_log_level, code_location=self.code_location,
                             py_version=self.py_version, framework_version=self.framework_version, image=self.image_name,
                             model_server_workers=model_server_workers, sagemaker_session=self.sagemaker_session,
-                            vpc_config=self.get_vpc_config(vpc_config_override))
+                            vpc_config=self.get_vpc_config(vpc_config_override), dependencies=self.dependencies)
 
     @classmethod
-    def _prepare_init_params_from_job_description(cls, job_details):
+    def _prepare_init_params_from_job_description(cls, job_details, model_channel_name=None):
         """Convert the job description to init params that can be handled by the class constructor
 
         Args:
             job_details: the returned job details from a describe_training_job API call.
+            model_channel_name (str): Name of the channel where pre-trained model data will be downloaded.
 
         Returns:
              dictionary: The transformed init_params
 
         """
-        init_params = super(PyTorch, cls)._prepare_init_params_from_job_description(job_details)
+        init_params = super(PyTorch, cls)._prepare_init_params_from_job_description(job_details, model_channel_name)
         image_name = init_params.pop('image')
         framework, py_version, tag = framework_name_from_image(image_name)
 

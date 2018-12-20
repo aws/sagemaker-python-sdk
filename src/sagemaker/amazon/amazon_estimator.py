@@ -15,7 +15,9 @@ from __future__ import absolute_import
 import json
 import logging
 import tempfile
+
 from six.moves.urllib.parse import urlparse
+
 from sagemaker.amazon import validation
 from sagemaker.amazon.hyperparameter import Hyperparameter as hp  # noqa
 from sagemaker.amazon.common import write_numpy_to_dense_tensor
@@ -32,6 +34,8 @@ class AmazonAlgorithmEstimatorBase(EstimatorBase):
 
     feature_dim = hp('feature_dim', validation.gt(0), data_type=int)
     mini_batch_size = hp('mini_batch_size', validation.gt(0), data_type=int)
+    repo_name = None
+    repo_version = None
 
     def __init__(self, role, train_instance_count, train_instance_type, data_location=None, **kwargs):
         """Initialize an AmazonAlgorithmEstimatorBase.
@@ -70,17 +74,19 @@ class AmazonAlgorithmEstimatorBase(EstimatorBase):
         self._data_location = data_location
 
     @classmethod
-    def _prepare_init_params_from_job_description(cls, job_details):
+    def _prepare_init_params_from_job_description(cls, job_details, model_channel_name=None):
         """Convert the job description to init params that can be handled by the class constructor
 
         Args:
             job_details: the returned job details from a describe_training_job API call.
+            model_channel_name (str): Name of the channel where pre-trained model data will be downloaded.
 
         Returns:
              dictionary: The transformed init_params
 
         """
-        init_params = super(AmazonAlgorithmEstimatorBase, cls)._prepare_init_params_from_job_description(job_details)
+        init_params = super(AmazonAlgorithmEstimatorBase, cls)._prepare_init_params_from_job_description(
+            job_details, model_channel_name)
 
         # The hyperparam names may not be the same as the class attribute that holds them,
         # for instance: local_lloyd_init_method is called local_init_method. We need to map these
@@ -261,7 +267,7 @@ def upload_numpy_to_s3_shards(num_shards, s3, bucket, key_prefix, array, labels=
             [{'prefix': 's3://{}/{}'.format(bucket, key_prefix)}] + uploaded_files)
         s3.Object(bucket, manifest_key).put(Body=manifest_str.encode('utf-8'))
         return "s3://{}/{}".format(bucket, manifest_key)
-    except Exception as ex:
+    except Exception as ex:  # pylint: disable=broad-except
         try:
             for file in uploaded_files:
                 s3.Object(bucket, key_prefix + file).delete()
@@ -278,7 +284,7 @@ def registry(region_name, algorithm=None):
     https://github.com/aws/sagemaker-python-sdk/tree/master/src/sagemaker/amazon
     """
     if algorithm in [None, "pca", "kmeans", "linear-learner", "factorization-machines", "ntm",
-                     "randomcutforest", "knn"]:
+                     "randomcutforest", "knn", "object2vec", "ipinsights"]:
         account_id = {
             "us-east-1": "382416733822",
             "us-east-2": "404615174143",
@@ -288,7 +294,12 @@ def registry(region_name, algorithm=None):
             "ap-northeast-1": "351501993468",
             "ap-northeast-2": "835164637446",
             "ap-southeast-2": "712309505854",
-            "us-gov-west-1": "226302683700"
+            "us-gov-west-1": "226302683700",
+            "ap-southeast-1": "475088953585",
+            "ap-south-1": "991648021394",
+            "ca-central-1": "469771592824",
+            "eu-west-2": "644912444149",
+            "us-west-1": "632365934929",
         }[region_name]
     elif algorithm in ["lda"]:
         account_id = {
@@ -299,7 +310,13 @@ def registry(region_name, algorithm=None):
             "eu-central-1": "353608530281",
             "ap-northeast-1": "258307448986",
             "ap-northeast-2": "293181348795",
-            "ap-southeast-2": "297031611018"
+            "ap-southeast-2": "297031611018",
+            "us-gov-west-1": "226302683700",
+            "ap-southeast-1": "475088953585",
+            "ap-south-1": "991648021394",
+            "ca-central-1": "469771592824",
+            "eu-west-2": "644912444149",
+            "us-west-1": "632365934929",
         }[region_name]
     elif algorithm in ["forecasting-deepar"]:
         account_id = {
@@ -311,10 +328,15 @@ def registry(region_name, algorithm=None):
             "ap-northeast-1": "633353088612",
             "ap-northeast-2": "204372634319",
             "ap-southeast-2": "514117268639",
-            "us-gov-west-1": "226302683700"
+            "us-gov-west-1": "226302683700",
+            "ap-southeast-1": "475088953585",
+            "ap-south-1": "991648021394",
+            "ca-central-1": "469771592824",
+            "eu-west-2": "644912444149",
+            "us-west-1": "632365934929",
         }[region_name]
     elif algorithm in ["xgboost", "seq2seq", "image-classification", "blazingtext",
-                       "object-detection"]:
+                       "object-detection", "semantic-segmentation"]:
         account_id = {
             "us-east-1": "811284229777",
             "us-east-2": "825641698319",
@@ -324,7 +346,19 @@ def registry(region_name, algorithm=None):
             "ap-northeast-1": "501404015308",
             "ap-northeast-2": "306986355934",
             "ap-southeast-2": "544295431143",
-            "us-gov-west-1": "226302683700"
+            "us-gov-west-1": "226302683700",
+            "ap-southeast-1": "475088953585",
+            "ap-south-1": "991648021394",
+            "ca-central-1": "469771592824",
+            "eu-west-2": "644912444149",
+            "us-west-1": "632365934929",
+        }[region_name]
+    elif algorithm in ['image-classification-neo', 'xgboost-neo']:
+        account_id = {
+            'us-west-2': '301217895009',
+            'us-east-1': '785573368785',
+            'eu-west-1': '802834080501',
+            'us-east-2': '007439368137'
         }[region_name]
     else:
         raise ValueError("Algorithm class:{} doesn't have mapping to account_id with images".format(algorithm))

@@ -20,7 +20,8 @@ import urllib3
 from botocore.exceptions import ClientError
 
 from sagemaker.local.image import _SageMakerContainer
-from sagemaker.local.entities import _LocalEndpointConfig, _LocalEndpoint, _LocalModel, _LocalTrainingJob
+from sagemaker.local.entities import (_LocalEndpointConfig, _LocalEndpoint, _LocalModel,
+                                      _LocalTrainingJob, _LocalTransformJob)
 from sagemaker.session import Session
 from sagemaker.utils import get_config_value
 
@@ -38,6 +39,7 @@ class LocalSagemakerClient(object):
     """
 
     _training_jobs = {}
+    _transform_jobs = {}
     _models = {}
     _endpoint_configs = {}
     _endpoints = {}
@@ -49,13 +51,10 @@ class LocalSagemakerClient(object):
             sagemaker_session (sagemaker.session.Session): a session to use to read configurations
                 from, and use its boto client.
         """
-        self.serve_container = None
         self.sagemaker_session = sagemaker_session or LocalSession()
-        self.s3_model_artifacts = None
-        self.created_endpoint = False
 
-    def create_training_job(self, TrainingJobName, AlgorithmSpecification, InputDataConfig, OutputDataConfig,
-                            ResourceConfig, **kwargs):
+    def create_training_job(self, TrainingJobName, AlgorithmSpecification, OutputDataConfig,
+                            ResourceConfig, InputDataConfig=None, **kwargs):
         """
         Create a training job in Local Mode
         Args:
@@ -67,12 +66,12 @@ class LocalSagemakerClient(object):
             HyperParameters (dict) [optional]: Specifies these algorithm-specific parameters to influence the quality of
                 the final model.
         """
-
+        InputDataConfig = InputDataConfig or {}
         container = _SageMakerContainer(ResourceConfig['InstanceType'], ResourceConfig['InstanceCount'],
                                         AlgorithmSpecification['TrainingImage'], self.sagemaker_session)
         training_job = _LocalTrainingJob(container)
         hyperparameters = kwargs['HyperParameters'] if 'HyperParameters' in kwargs else {}
-        training_job.start(InputDataConfig, hyperparameters)
+        training_job.start(InputDataConfig, OutputDataConfig, hyperparameters, TrainingJobName)
 
         LocalSagemakerClient._training_jobs[TrainingJobName] = training_job
 
@@ -80,7 +79,7 @@ class LocalSagemakerClient(object):
         """Describe a local training job.
 
         Args:
-            TrainingJobName (str): Not used in this implmentation.
+            TrainingJobName (str): Training job name to describe.
 
         Returns: (dict) DescribeTrainingJob Response.
 
@@ -91,7 +90,20 @@ class LocalSagemakerClient(object):
         else:
             return LocalSagemakerClient._training_jobs[TrainingJobName].describe()
 
-    def create_model(self, ModelName, PrimaryContainer, *args, **kwargs):
+    def create_transform_job(self, TransformJobName, ModelName, TransformInput, TransformOutput,
+                             TransformResources, **kwargs):
+        transform_job = _LocalTransformJob(TransformJobName, ModelName, self.sagemaker_session)
+        LocalSagemakerClient._transform_jobs[TransformJobName] = transform_job
+        transform_job.start(TransformInput, TransformOutput, TransformResources, **kwargs)
+
+    def describe_transform_job(self, TransformJobName):
+        if TransformJobName not in LocalSagemakerClient._transform_jobs:
+            error_response = {'Error': {'Code': 'ValidationException', 'Message': 'Could not find local transform job'}}
+            raise ClientError(error_response, 'describe_transform_job')
+        else:
+            return LocalSagemakerClient._transform_jobs[TransformJobName].describe()
+
+    def create_model(self, ModelName, PrimaryContainer, *args, **kwargs):  # pylint: disable=unused-argument
         """Create a Local Model Object
 
         Args:
@@ -152,10 +164,22 @@ class LocalSagemakerRuntimeClient(object):
         self.config = config
         self.serving_port = get_config_value('local.serving_port', config) or 8080
 
-    def invoke_endpoint(self, Body, EndpointName, ContentType, Accept):
+    def invoke_endpoint(self, Body, EndpointName,  # pylint: disable=unused-argument
+                        ContentType=None, Accept=None, CustomAttributes=None):
         url = "http://localhost:%s/invocations" % self.serving_port
+        headers = {}
+
+        if ContentType is not None:
+            headers['Content-type'] = ContentType
+
+        if Accept is not None:
+            headers['Accept'] = Accept
+
+        if CustomAttributes is not None:
+            headers['X-Amzn-SageMaker-Custom-Attributes'] = CustomAttributes
+
         r = self.http.request('POST', url, body=Body, preload_content=False,
-                              headers={'Content-type': ContentType, 'Accept': Accept})
+                              headers=headers)
 
         return {'Body': r, 'ContentType': Accept}
 

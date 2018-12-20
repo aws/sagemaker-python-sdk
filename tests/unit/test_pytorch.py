@@ -17,7 +17,7 @@ import json
 import os
 import pytest
 import sys
-from mock import Mock
+from mock import MagicMock, Mock
 from mock import patch
 
 from sagemaker.pytorch import defaults
@@ -27,11 +27,13 @@ from sagemaker.pytorch import PyTorchPredictor, PyTorchModel
 
 DATA_DIR = os.path.join(os.path.dirname(__file__), '..', 'data')
 SCRIPT_PATH = os.path.join(DATA_DIR, 'dummy_script.py')
+MODEL_DATA = "s3://some/data.tar.gz"
 TIMESTAMP = '2017-11-06-14:14:15.672'
 TIME = 1507167947
 BUCKET_NAME = 'mybucket'
 INSTANCE_COUNT = 1
 INSTANCE_TYPE = 'ml.c4.4xlarge'
+ACCELERATOR_TYPE = 'ml.eia.medium'
 PYTHON_VERSION = 'py' + str(sys.version_info.major)
 IMAGE_NAME = 'sagemaker-pytorch'
 JOB_NAME = '{}-{}'.format(IMAGE_NAME, TIMESTAMP)
@@ -61,6 +63,10 @@ def _get_full_cpu_image_uri(version, py_version=PYTHON_VERSION):
 
 def _get_full_gpu_image_uri(version, py_version=PYTHON_VERSION):
     return IMAGE_URI_FORMAT_STRING.format(REGION, IMAGE_NAME, version, 'gpu', py_version)
+
+
+def _get_full_cpu_image_uri_with_ei(version, py_version=PYTHON_VERSION):
+    return _get_full_cpu_image_uri(version, py_version=py_version) + '-eia'
 
 
 def _pytorch_estimator(sagemaker_session, framework_version=defaults.PYTORCH_VERSION, train_instance_type=None,
@@ -112,7 +118,8 @@ def _create_train_job(version):
             'MaxRuntimeInSeconds': 24 * 60 * 60
         },
         'tags': None,
-        'vpc_config': None
+        'vpc_config': None,
+        'metric_definitions': None
     }
 
 
@@ -183,6 +190,7 @@ def test_create_model_with_custom_image(sagemaker_session):
     assert model.source_dir == source_dir
 
 
+@patch('sagemaker.utils.create_tar_file', MagicMock())
 @patch('time.strftime', return_value=TIMESTAMP)
 def test_pytorch(strftime, sagemaker_session, pytorch_version):
     pytorch = PyTorch(entry_point=SCRIPT_PATH, role=ROLE, sagemaker_session=sagemaker_session,
@@ -222,11 +230,20 @@ def test_pytorch(strftime, sagemaker_session, pytorch_version):
     assert isinstance(predictor, PyTorchPredictor)
 
 
+@patch('sagemaker.utils.create_tar_file', MagicMock())
 def test_model(sagemaker_session):
-    model = PyTorchModel("s3://some/data.tar.gz", role=ROLE, entry_point=SCRIPT_PATH,
+    model = PyTorchModel(MODEL_DATA, role=ROLE, entry_point=SCRIPT_PATH,
                          sagemaker_session=sagemaker_session)
     predictor = model.deploy(1, GPU)
     assert isinstance(predictor, PyTorchPredictor)
+
+
+@patch('sagemaker.fw_utils.tar_and_upload_dir', MagicMock())
+def test_model_image_accelerator(sagemaker_session):
+    model = PyTorchModel(MODEL_DATA, role=ROLE, entry_point=SCRIPT_PATH,
+                         sagemaker_session=sagemaker_session)
+    with pytest.raises(ValueError):
+        model.prepare_container_def(INSTANCE_TYPE, accelerator_type=ACCELERATOR_TYPE)
 
 
 def test_train_image_default(sagemaker_session):
@@ -362,3 +379,13 @@ def test_attach_custom_image(sagemaker_session):
     assert estimator.latest_training_job.job_name == 'neo'
     assert estimator.image_name == training_image
     assert estimator.train_image() == training_image
+
+
+@patch('sagemaker.pytorch.estimator.empty_framework_version_warning')
+def test_empty_framework_version(warning, sagemaker_session):
+    estimator = PyTorch(entry_point=SCRIPT_PATH, role=ROLE, sagemaker_session=sagemaker_session,
+                        train_instance_count=INSTANCE_COUNT, train_instance_type=INSTANCE_TYPE,
+                        framework_version=None)
+
+    assert estimator.framework_version == defaults.PYTORCH_VERSION
+    warning.assert_called_with(defaults.PYTORCH_VERSION, defaults.PYTORCH_VERSION)

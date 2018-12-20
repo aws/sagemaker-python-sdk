@@ -14,17 +14,22 @@
 # language governing permissions and limitations under the License.
 from __future__ import absolute_import
 
-import pytest
-from mock import patch
-
-from sagemaker.utils import get_config_value, name_from_base,\
-    to_str, DeferredError, extract_name_from_job_arn, secondary_training_status_changed,\
-    secondary_training_status_message
-
 from datetime import datetime
+import os
+import re
 import time
 
+import pytest
+from mock import call, patch, Mock
+
+import sagemaker
+from sagemaker.utils import get_config_value, name_from_base,\
+    to_str, DeferredError, extract_name_from_job_arn, secondary_training_status_changed,\
+    secondary_training_status_message, unique_name_from_base
+
+
 NAME = 'base_name'
+BUCKET_NAME = 'some_bucket'
 
 
 def test_get_config_value():
@@ -72,6 +77,15 @@ def test_name_from_base(sagemaker_timestamp):
 def test_name_from_base_short(sagemaker_short_timestamp):
     name_from_base(NAME, short=True)
     assert sagemaker_short_timestamp.called_once
+
+
+def test_unique_name_from_base():
+    assert re.match(r'base-\d{10}-[a-f0-9]{4}', unique_name_from_base('base'))
+
+
+def test_unique_name_from_base_truncated():
+    assert re.match(r'real-\d{10}-[a-f0-9]{4}',
+                    unique_name_from_base('really-long-name', max_length=20))
 
 
 def test_to_str_with_native_string():
@@ -142,7 +156,7 @@ def test_secondary_training_status_changed_empty():
 
 def test_secondary_training_status_message_status_changed():
     now = datetime.now()
-    TRAINING_JOB_DESCRIPTION_1['SecondaryStatusTransitions'][-1]['StartTime'] = now
+    TRAINING_JOB_DESCRIPTION_1['LastModifiedTime'] = now
     expected = '{} {} - {}'.format(
         datetime.utcfromtimestamp(time.mktime(now.timetuple())).strftime('%Y-%m-%d %H:%M:%S'),
         STATUS,
@@ -153,16 +167,119 @@ def test_secondary_training_status_message_status_changed():
 
 def test_secondary_training_status_message_status_not_changed():
     now = datetime.now()
-    TRAINING_JOB_DESCRIPTION_1['SecondaryStatusTransitions'][-1]['StartTime'] = now
-    assert secondary_training_status_message(TRAINING_JOB_DESCRIPTION_1, TRAINING_JOB_DESCRIPTION_2) == MESSAGE
+    TRAINING_JOB_DESCRIPTION_1['LastModifiedTime'] = now
+    expected = '{} {} - {}'.format(
+        datetime.utcfromtimestamp(time.mktime(now.timetuple())).strftime('%Y-%m-%d %H:%M:%S'),
+        STATUS,
+        MESSAGE
+    )
+    assert secondary_training_status_message(TRAINING_JOB_DESCRIPTION_1, TRAINING_JOB_DESCRIPTION_2) == expected
 
 
 def test_secondary_training_status_message_prev_missing():
     now = datetime.now()
-    TRAINING_JOB_DESCRIPTION_1['SecondaryStatusTransitions'][-1]['StartTime'] = now
+    TRAINING_JOB_DESCRIPTION_1['LastModifiedTime'] = now
     expected = '{} {} - {}'.format(
         datetime.utcfromtimestamp(time.mktime(now.timetuple())).strftime('%Y-%m-%d %H:%M:%S'),
         STATUS,
         MESSAGE
     )
     assert secondary_training_status_message(TRAINING_JOB_DESCRIPTION_1, {}) == expected
+
+
+@patch('os.makedirs')
+def test_download_folder(makedirs):
+    boto_mock = Mock(name='boto_session')
+    boto_mock.client('sts').get_caller_identity.return_value = {'Account': '123'}
+
+    session = sagemaker.Session(boto_session=boto_mock, sagemaker_client=Mock())
+
+    train_data = Mock()
+    validation_data = Mock()
+
+    train_data.bucket_name.return_value = BUCKET_NAME
+    train_data.key = 'prefix/train/train_data.csv'
+    validation_data.bucket_name.return_value = BUCKET_NAME
+    validation_data.key = 'prefix/train/validation_data.csv'
+
+    s3_files = [train_data, validation_data]
+    boto_mock.resource('s3').Bucket(BUCKET_NAME).objects.filter.return_value = s3_files
+
+    obj_mock = Mock()
+    boto_mock.resource('s3').Object.return_value = obj_mock
+
+    # all the S3 mocks are set, the test itself begins now.
+    sagemaker.utils.download_folder(BUCKET_NAME, '/prefix', '/tmp', session)
+
+    obj_mock.download_file.assert_called()
+    calls = [call(os.path.join('/tmp', 'train/train_data.csv')),
+             call(os.path.join('/tmp', 'train/validation_data.csv'))]
+    obj_mock.download_file.assert_has_calls(calls)
+    obj_mock.reset_mock()
+
+    # Testing with a trailing slash for the prefix.
+    sagemaker.utils.download_folder(BUCKET_NAME, '/prefix/', '/tmp', session)
+    obj_mock.download_file.assert_called()
+    obj_mock.download_file.assert_has_calls(calls)
+
+
+@patch('os.makedirs')
+def test_download_folder_points_to_single_file(makedirs):
+    boto_mock = Mock(name='boto_session')
+    boto_mock.client('sts').get_caller_identity.return_value = {'Account': '123'}
+
+    session = sagemaker.Session(boto_session=boto_mock, sagemaker_client=Mock())
+
+    train_data = Mock()
+
+    train_data.bucket_name.return_value = BUCKET_NAME
+    train_data.key = 'prefix/train/train_data.csv'
+
+    s3_files = [train_data]
+    boto_mock.resource('s3').Bucket(BUCKET_NAME).objects.filter.return_value = s3_files
+
+    obj_mock = Mock()
+    boto_mock.resource('s3').Object.return_value = obj_mock
+
+    # all the S3 mocks are set, the test itself begins now.
+    sagemaker.utils.download_folder(BUCKET_NAME, '/prefix/train/train_data.csv', '/tmp', session)
+
+    obj_mock.download_file.assert_called()
+    calls = [call(os.path.join('/tmp', 'train_data.csv'))]
+    obj_mock.download_file.assert_has_calls(calls)
+    assert boto_mock.resource('s3').Bucket(BUCKET_NAME).objects.filter.call_count == 1
+    obj_mock.reset_mock()
+
+
+def test_download_file():
+    boto_mock = Mock(name='boto_session')
+    boto_mock.client('sts').get_caller_identity.return_value = {'Account': '123'}
+    bucket_mock = Mock()
+    boto_mock.resource('s3').Bucket.return_value = bucket_mock
+    session = sagemaker.Session(boto_session=boto_mock, sagemaker_client=Mock())
+
+    sagemaker.utils.download_file(BUCKET_NAME, '/prefix/path/file.tar.gz',
+                                  '/tmp/file.tar.gz', session)
+
+    bucket_mock.download_file.assert_called_with('prefix/path/file.tar.gz', '/tmp/file.tar.gz')
+
+
+@patch('tarfile.open')
+def test_create_tar_file_with_provided_path(open):
+    open.return_value = open
+    open.__enter__ = Mock()
+    open.__exit__ = Mock(return_value=None)
+    file_list = ['/tmp/a', '/tmp/b']
+    path = sagemaker.utils.create_tar_file(file_list, target='/my/custom/path.tar.gz')
+    assert path == '/my/custom/path.tar.gz'
+
+
+@patch('tarfile.open')
+@patch('tempfile.mkstemp', Mock(return_value=(None, '/auto/generated/path')))
+def test_create_tar_file_with_auto_generated_path(open):
+    open.return_value = open
+    open.__enter__ = Mock()
+    open.__exit__ = Mock(return_value=None)
+    file_list = ['/tmp/a', '/tmp/b']
+    path = sagemaker.utils.create_tar_file(file_list)
+    assert path == '/auto/generated/path'
