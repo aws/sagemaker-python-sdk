@@ -95,11 +95,10 @@ def read_json(file, tmp):
 
 def extract_files_from_s3(s3_url, tmpdir):
     parsed_url = urlparse(s3_url)
-    tmp_file = tempfile.NamedTemporaryFile()
     s3 = boto3.resource('s3')
 
     model = os.path.join(tmpdir, 'model')
     s3.Bucket(parsed_url.netloc).download_file(parsed_url.path.lstrip('/'), model)
 
-    with tarfile.open(tmp_file.name, 'r') as tar_file:
+    with tarfile.open(model, 'r') as tar_file:
         tar_file.extractall(tmpdir)
