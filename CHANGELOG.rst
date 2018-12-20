@@ -5,6 +5,7 @@ CHANGELOG
 1.16.4.dev
 ==========
 
+* bug-fix: Session: don't allow get_execution_role() to return an ARN that's not a role but has "role" in the name
 * bug-fix: Remove ``__all__`` from ``__init__.py`` files
 
 1.16.3
