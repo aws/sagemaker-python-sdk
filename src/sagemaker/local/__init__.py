@@ -12,7 +12,5 @@
 # language governing permissions and limitations under the License.
 from __future__ import absolute_import
 
-from .local_session import (file_input, LocalSession, LocalSagemakerRuntimeClient,
-                            LocalSagemakerClient)
-
-__all__ = [file_input, LocalSession, LocalSagemakerClient, LocalSagemakerRuntimeClient]
+from .local_session import (file_input, LocalSagemakerClient,  # noqa: F401
+                            LocalSagemakerRuntimeClient, LocalSession)

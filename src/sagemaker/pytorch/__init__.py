@@ -11,7 +11,6 @@
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
 from __future__ import absolute_import
-from sagemaker.pytorch.estimator import PyTorch
-from sagemaker.pytorch.model import PyTorchModel, PyTorchPredictor
 
-__all__ = [PyTorch, PyTorchModel, PyTorchPredictor]
+from sagemaker.pytorch.estimator import PyTorch  # noqa: F401
+from sagemaker.pytorch.model import PyTorchModel, PyTorchPredictor  # noqa: F401
