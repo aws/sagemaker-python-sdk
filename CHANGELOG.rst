@@ -7,6 +7,8 @@ CHANGELOG
 
 * bug-fix: Session: don't allow get_execution_role() to return an ARN that's not a role but has "role" in the name
 * bug-fix: Remove ``__all__`` from ``__init__.py`` files
+* doc-fix: Specify that Local Mode supports only framework and BYO cases
+* doc-fix: Add missing classes to API docs
 
 1.16.3
 ======
