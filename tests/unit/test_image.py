@@ -86,6 +86,23 @@ def sagemaker_session():
     return sms
 
 
+def test_sagemaker_container_hosts_should_have_lowercase_names():
+    random.seed(a=42)
+
+    def assert_all_lowercase(hosts):
+        for host in hosts:
+            assert host.lower() == host
+
+    sagemaker_container = _SageMakerContainer('local', 2, 'my-image', sagemaker_session=Mock())
+    assert_all_lowercase(sagemaker_container.hosts)
+
+    sagemaker_container = _SageMakerContainer('local', 10, 'my-image', sagemaker_session=Mock())
+    assert_all_lowercase(sagemaker_container.hosts)
+
+    sagemaker_container = _SageMakerContainer('local', 1, 'my-image', sagemaker_session=Mock())
+    assert_all_lowercase(sagemaker_container.hosts)
+
+
 @patch('sagemaker.local.local_session.LocalSession')
 def test_write_config_file(LocalSession, tmpdir):
     sagemaker_container = _SageMakerContainer('local', 2, 'my-image')
@@ -388,12 +405,18 @@ def test_train_local_code(tmpdir, sagemaker_session):
         with open(docker_compose_file, 'r') as f:
             config = yaml.load(f)
             assert len(config['services']) == instance_count
-            for h in sagemaker_container.hosts:
-                assert config['services'][h]['image'] == image
-                assert config['services'][h]['command'] == 'train'
-                volumes = config['services'][h]['volumes']
-                assert '%s:/opt/ml/code' % '/tmp/code' in volumes
-                assert '%s:/opt/ml/shared' % shared_folder_path in volumes
+
+        for h in sagemaker_container.hosts:
+            assert config['services'][h]['image'] == image
+            assert config['services'][h]['command'] == 'train'
+            volumes = config['services'][h]['volumes']
+            assert '%s:/opt/ml/code' % '/tmp/code' in volumes
+            assert '%s:/opt/ml/shared' % shared_folder_path in volumes
+
+            config_file_root = os.path.join(sagemaker_container.container_root, h, 'input', 'config')
+            hyperparameters_file = os.path.join(config_file_root, 'hyperparameters.json')
+            hyperparameters_data = json.load(open(hyperparameters_file))
+            assert hyperparameters_data['sagemaker_submit_directory'] == json.dumps('/opt/ml/code')
 
 
 @patch('sagemaker.local.local_session.LocalSession', Mock())
@@ -506,6 +529,7 @@ def test_serve_local_code(tmpdir, sagemaker_session):
 
                 volumes = config['services'][h]['volumes']
                 assert '%s:/opt/ml/code' % '/tmp/code' in volumes
+                assert 'SAGEMAKER_SUBMIT_DIRECTORY=/opt/ml/code' in config['services'][h]['environment']
 
 
 @patch('sagemaker.local.image._HostingContainer.run', Mock())
