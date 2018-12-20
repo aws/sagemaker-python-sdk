@@ -15,7 +15,6 @@ from __future__ import absolute_import
 import json
 import os
 import tarfile
-import tempfile
 from six.moves.urllib.parse import urlparse
 
 import boto3
