@@ -171,6 +171,7 @@ class TensorFlow(Framework):
     """Handle end-to-end training and deployment of user-provided TensorFlow code."""
 
     __framework_name__ = 'tensorflow'
+    LATEST_VERSION = '1.12'
 
     def __init__(self, training_steps=None, evaluation_steps=None, checkpoint_path=None, py_version='py2',
                  framework_version=None, model_dir=None, requirements_file='', image_name=None,

@@ -12,35 +12,30 @@
 # language governing permissions and limitations under the License.
 from __future__ import absolute_import
 
+import json
 import os
 import tarfile
 import tempfile
+from urllib.parse import urlparse
 
 import boto3
 import pytest
 
-from sagemaker.tensorflow import TensorFlow
-from six.moves.urllib.parse import urlparse
 import tests.integ as integ
-from tests.integ import timeout, vpc_test_utils
+from sagemaker.tensorflow import TensorFlow
+from tests.integ import timeout
 
 horovod_dir = os.path.join(os.path.dirname(__file__), '..', 'data', 'horovod')
 
 
-@pytest.mark.parametrize('instance_type', ['ml.p3.2xlarge', 'ml.p2.xlarge'])
-def test_horovod_tf_benchmarks(sagemaker_session, instance_type):
-    ec2_client = sagemaker_session.boto_session.client('ec2')
-    subnet_ids, security_group_id = vpc_test_utils.get_or_create_vpc_resources(
-        ec2_client, sagemaker_session.boto_session.region_name)
+@pytest.mark.parametrize('instance_type', ['ml.c5.xlarge', 'ml.p3.2xlarge'])
+def test_horovod(sagemaker_session, instance_type, tmpdir):
 
-    estimator = TensorFlow(entry_point=os.path.join(horovod_dir, 'launcher.sh'),
+    estimator = TensorFlow(entry_point=os.path.join(horovod_dir, 'test_hvd_basic.py'),
                            role='SageMakerRole',
-                           dependencies=[os.path.join(horovod_dir, 'benchmarks')],
                            train_instance_count=2,
-                           train_instance_type='ml.p3.2xlarge',
+                           train_instance_type=instance_type,
                            sagemaker_session=sagemaker_session,
-                           subnets=subnet_ids,
-                           security_group_ids=[security_group_id],
                            py_version=integ.PYTHON_VERSION,
                            script_mode=True,
                            framework_version='1.12',
@@ -50,19 +45,61 @@ def test_horovod_tf_benchmarks(sagemaker_session, instance_type):
     with timeout.timeout(minutes=integ.TRAINING_DEFAULT_TIMEOUT_MINUTES):
         estimator.fit()
 
-    _assert_s3_files_exist_in_tar(estimator.model_data, ['graph.pbtxt', 'checkpoint'])
+        tmp = str(tmpdir)
+        extract_files_from_s3(estimator.model_data, tmp)
+
+        for rank in range(2):
+            assert read_json('rank-%s' % rank, tmp)['rank'] == rank
 
 
-def _assert_s3_files_exist_in_tar(s3_url, files):
+@pytest.mark.parametrize('instances, processes', [
+    [1, 2],
+    (2, 1),
+    (2, 2)])
+def test_horovod_local_mode(instances, processes, tmpdir):
+    output_path = 'file://%s' % tmpdir
+
+    estimator = TensorFlow(entry_point=os.path.join(horovod_dir, 'test_hvd_basic.py'),
+                           role='SageMakerRole',
+                           train_instance_count=2,
+                           train_instance_type='local',
+                           py_version=integ.PYTHON_VERSION,
+                           script_mode=True,
+                           output_path=output_path,
+                           framework_version='1.12',
+                           distributions={'mpi': {'enabled': True,
+                                                  'processes_per_host': processes}},
+                           base_job_name='test-tf-horovod')
+
+    with timeout.timeout(minutes=integ.TRAINING_DEFAULT_TIMEOUT_MINUTES):
+        estimator.fit()
+
+        tmp = str(tmpdir)
+        extract_files(output_path.replace('file://', ''), tmp)
+
+        size = instances * processes
+
+        for rank in range(size):
+            assert read_json('rank-%s' % rank, tmp)['rank'] == rank
+
+
+def extract_files(output_path, tmpdir):
+    with tarfile.open(os.path.join(output_path, 'model.tar.gz')) as tar:
+        tar.extractall(tmpdir)
+
+
+def read_json(file, tmp):
+    with open(os.path.join(tmp, file)) as f:
+        return json.load(f)
+
+
+def extract_files_from_s3(s3_url, tmpdir):
     parsed_url = urlparse(s3_url)
     tmp_file = tempfile.NamedTemporaryFile()
     s3 = boto3.resource('s3')
-    object = s3.Bucket(parsed_url.netloc).Object(parsed_url.path.lstrip('/'))
 
-    with open(tmp_file.name, 'wb') as temp_file:
-        object.download_fileobj(temp_file)
-        with tarfile.open(tmp_file.name, 'r') as tar_file:
-            for f in files:
-                found = [x for x in tar_file.getnames() if x.endswith(f)]
-                if not found:
-                    raise ValueError('File {} is not found in {}'.format(f, s3_url))
+    model = os.path.join(tmpdir, 'model')
+    s3.Bucket(parsed_url.netloc).download_file(parsed_url.path.lstrip('/'), model)
+
+    with tarfile.open(tmp_file.name, 'r') as tar_file:
+        tar_file.extractall(tmpdir)
