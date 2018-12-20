@@ -8,11 +8,12 @@ CHANGELOG
 * feature: support for Tensorflow 1.12
 * feature: support for Tensorflow Serving 1.12
 * feature: support for Horovod
+* bug-fix: Session: don't allow get_execution_role() to return an ARN that's not a role but has "role" in the name
 
 1.16.3
 ======
 
-* bug-fix: Local Mode: Allow support for SSH in local mode 
+* bug-fix: Local Mode: Allow support for SSH in local mode
 * bug-fix: Append retry id to default Airflow job name to avoid name collisions in retry
 * bug-fix: Local Mode: No longer requires s3 permissions to run local entry point file
 * feature: Estimators: add support for PyTorch 1.0.0
