@@ -13,22 +13,21 @@
 from __future__ import absolute_import
 
 import copy
-import json
-
 import os
+
 import pytest
 from mock import Mock
 
 from sagemaker import RealTimePredictor
-from sagemaker.amazon.pca import PCA
 from sagemaker.amazon.amazon_estimator import RecordSet
+from sagemaker.amazon.pca import PCA
 from sagemaker.estimator import Estimator
-from sagemaker.parameter import (ParameterRange, ContinuousParameter,
-                                 IntegerParameter, CategoricalParameter)
-from sagemaker.tuner import (HyperparameterTuner, _TuningJob, WarmStartConfig, WarmStartTypes,
-                             create_identical_dataset_and_algorithm_tuner,
-                             create_transfer_learning_tuner)
 from sagemaker.mxnet import MXNet
+from sagemaker.parameter import (CategoricalParameter, ContinuousParameter,
+                                 IntegerParameter, ParameterRange)
+from sagemaker.tuner import (_TuningJob, create_identical_dataset_and_algorithm_tuner,
+                             create_transfer_learning_tuner, HyperparameterTuner, WarmStartConfig,
+                             WarmStartTypes)
 
 DATA_DIR = os.path.join(os.path.dirname(__file__), '..', 'data')
 MODEL_DATA = "s3://bucket/model.tar.gz"
