@@ -48,6 +48,15 @@ A managed environment for PyTorch training and hosting on Amazon SageMaker
 
     sagemaker.pytorch
 
+Scikit-learn
+------------
+A managed environment for Scikit-learn training and hosting on Amazon SageMaker
+
+.. toctree::
+    :maxdepth: 2
+
+    sagemaker.sklearn
+
 Chainer
 -------
 A managed environment for Chainer training and hosting on Amazon SageMaker
