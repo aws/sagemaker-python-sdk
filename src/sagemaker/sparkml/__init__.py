@@ -12,6 +12,4 @@
 # language governing permissions and limitations under the License.
 from __future__ import absolute_import
 
-from sagemaker.sparkml.model import SparkMLModel, SparkMLPredictor
-
-__all__ = [SparkMLModel, SparkMLPredictor]
+from sagemaker.sparkml.model import SparkMLModel, SparkMLPredictor  # noqa: F401
