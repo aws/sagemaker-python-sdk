@@ -89,6 +89,7 @@ Amazon provides implementations of some common machine learning algortithms opti
     factorization_machines
     lda
     ntm
+    randomcutforest
 
 Workflows
 ---------
