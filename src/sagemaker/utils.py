@@ -27,11 +27,10 @@ from functools import wraps
 import six
 
 
-AIRFLOW_RETRY_MACRO = "{{ task_instance.try_number }}"
-AIRFLOW_TIME_MACRO = "{{ execution_date.strftime('%Y-%m-%d-%H-%M-%S') }}" + "-{}".format(AIRFLOW_RETRY_MACRO)
-AIRFLOW_TIME_MACRO_LEN = 22
-AIRFLOW_TIME_MACRO_SHORT = "{{ execution_date.strftime('%y%m%d-%H%M') }}" + "-{}".format(AIRFLOW_RETRY_MACRO)
-AIRFLOW_TIME_MACRO_SHORT_LEN = 14
+AIRFLOW_TIME_MACRO = "{{ execution_date.strftime('%Y-%m-%d-%H-%M-%S') }}"
+AIRFLOW_TIME_MACRO_LEN = 19
+AIRFLOW_TIME_MACRO_SHORT = "{{ execution_date.strftime('%y%m%d-%H%M') }}"
+AIRFLOW_TIME_MACRO_SHORT_LEN = 11
 
 
 # Use the base name of the image as the job name if the user doesn't give us one
