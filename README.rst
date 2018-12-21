@@ -69,10 +69,23 @@ Supported Operating Systems
 
 SageMaker Python SDK supports Unix/Linux and Mac.
 
-Supported Python versions
+Supported Python Versions
 ~~~~~~~~~~~~~~~~~~~~~~~~~
 
-SageMaker Python SDK is tested on: \* Python 2.7 \* Python 3.5
+SageMaker Python SDK is tested on:
+
+- Python 2.7
+- Python 3.5
+
+AWS Permissions
+~~~~~~~~~~~~~~~
+
+As a managed service, Amazon SageMaker performs operations on your behalf on the AWS hardware that is managed by Amazon SageMaker.
+Amazon SageMaker can perform only operations that the user permits.
+You can read more about which permissions are necessary in the `AWS Documentation <https://docs.aws.amazon.com/sagemaker/latest/dg/sagemaker-roles.html>`__.
+
+The SageMaker Python SDK should not require any additional permissions.
+However, if you are using an IAM role with a path in it, you should grant permission for ``iam:GetRole``.
 
 Licensing
 ~~~~~~~~~
