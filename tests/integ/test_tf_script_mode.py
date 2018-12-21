@@ -77,29 +77,6 @@ def test_mnist_distributed(sagemaker_session, instance_type):
                            ['graph.pbtxt', 'model.ckpt-0.index', 'model.ckpt-0.meta', 'saved_model.pb'])
 
 
-def test_mnist_horovod_distributed(sagemaker_session):
-    instance_type = 'ml.p3.2xlarge'
-    estimator = TensorFlow(entry_point=os.path.join(RESOURCE_PATH, 'horovod_mnist.py'),
-                           role='SageMakerRole',
-                           train_instance_count=2,
-                           train_instance_type=instance_type,
-                           sagemaker_session=sagemaker_session,
-                           py_version=integ.PYTHON_VERSION,
-                           script_mode=True,
-                           framework_version='1.12',
-                           distributions=mpi_distribution,
-                           base_job_name='test-tf-sm-horovod-mnist')
-    inputs = estimator.sagemaker_session.upload_data(
-        path=os.path.join(RESOURCE_PATH, 'data'),
-        key_prefix='scriptmode/distributed_mnist')
-
-    with timeout.timeout(minutes=integ.TRAINING_DEFAULT_TIMEOUT_MINUTES):
-        estimator.fit(inputs)
-    model_dir = os.path.join(estimator.output_path, estimator._current_job_name, 'output', 'model.tar.gz')
-    _assert_s3_files_exist_in_tar(model_dir,
-                                  ['graph.pbtxt', 'model.ckpt-0.index', 'model.ckpt-0.meta', 'saved_model.pb'])
-
-
 def _assert_s3_files_exist(s3_url, files):
     parsed_url = urlparse(s3_url)
     s3 = boto3.client('s3')
