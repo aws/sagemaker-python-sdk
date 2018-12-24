@@ -2,12 +2,14 @@
 CHANGELOG
 =========
 
-1.17.0
-======
+1.17.0.dev
+==========
 
 * bug-fix: Revert appending Airflow retry id to default job name
 * bug-fix: Session: don't allow get_execution_role() to return an ARN that's not a role but has "role" in the name
 * bug-fix: Remove ``__all__`` from ``__init__.py`` files
+* doc-fix: Add TFRecord split type to docs
+* doc-fix: Mention ``SM_HPS`` environment variable in MXNet README
 
 1.16.3
 ======
