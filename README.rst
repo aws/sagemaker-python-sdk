@@ -69,10 +69,23 @@ Supported Operating Systems
 
 SageMaker Python SDK supports Unix/Linux and Mac.
 
-Supported Python versions
+Supported Python Versions
 ~~~~~~~~~~~~~~~~~~~~~~~~~
 
-SageMaker Python SDK is tested on: \* Python 2.7 \* Python 3.5
+SageMaker Python SDK is tested on:
+
+- Python 2.7
+- Python 3.5
+
+AWS Permissions
+~~~~~~~~~~~~~~~
+
+As a managed service, Amazon SageMaker performs operations on your behalf on the AWS hardware that is managed by Amazon SageMaker.
+Amazon SageMaker can perform only operations that the user permits.
+You can read more about which permissions are necessary in the `AWS Documentation <https://docs.aws.amazon.com/sagemaker/latest/dg/sagemaker-roles.html>`__.
+
+The SageMaker Python SDK should not require any additional permissions.
+However, if you are using an IAM role with a path in it, you should grant permission for ``iam:GetRole``.
 
 Licensing
 ~~~~~~~~~
@@ -203,6 +216,7 @@ Local Mode
 
 The SageMaker Python SDK supports local mode, which allows you to create estimators and deploy them to your local environment.
 This is a great way to test your deep learning scripts before running them in SageMaker's managed training or hosting environments.
+Local Mode is supported for only frameworks (e.g. TensorFlow, MXNet) and images you supply yourself.
 
 We can take the example in  `Using Estimators <#using-estimators>`__ , and use either ``local`` or ``local_gpu`` as the instance type.
 

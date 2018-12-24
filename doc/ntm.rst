@@ -1,5 +1,5 @@
 NTM
---------------------
+---
 
 The Amazon SageMaker NTM algorithm.
 
