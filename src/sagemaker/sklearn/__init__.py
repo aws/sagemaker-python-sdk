@@ -12,7 +12,5 @@
 # language governing permissions and limitations under the License.
 from __future__ import absolute_import
 
-from sagemaker.sklearn.estimator import SKLearn
-from sagemaker.sklearn.model import SKLearnModel, SKLearnPredictor
-
-__all__ = [SKLearn, SKLearnModel, SKLearnPredictor]
+from sagemaker.sklearn.estimator import SKLearn  # noqa: F401
+from sagemaker.sklearn.model import SKLearnModel, SKLearnPredictor  # noqa: F401
