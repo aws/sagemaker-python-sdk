@@ -424,7 +424,7 @@ def transform_config(transformer, data, data_type='S3Prefix', content_type=None,
         compression_type (str): Compression type of the input data, if compressed (default: None).
             Valid values: 'Gzip', None.
         split_type (str): The record delimiter for the input object (default: 'None').
-            Valid values: 'None', 'Line', and 'RecordIO'.
+            Valid values: 'None', 'Line', 'RecordIO', and 'TFRecord'.
         job_name (str): job name (default: None). If not specified, one will be generated.
 
     Returns:
@@ -495,7 +495,7 @@ def transform_config_from_estimator(estimator, instance_count, instance_type, da
         compression_type (str): Compression type of the input data, if compressed (default: None).
             Valid values: 'Gzip', None.
         split_type (str): The record delimiter for the input object (default: 'None').
-            Valid values: 'None', 'Line', and 'RecordIO'.
+            Valid values: 'None', 'Line', 'RecordIO', and 'TFRecord'.
         job_name (str): job name (default: None). If not specified, one will be generated.
         strategy (str): The strategy used to decide how to batch records in a single request (default: None).
             Valid values: 'MULTI_RECORD' and 'SINGLE_RECORD'.
