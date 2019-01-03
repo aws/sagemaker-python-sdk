@@ -79,7 +79,7 @@ def test_deploy_model(sagemaker_session, tf_training_job):
 
 @pytest.continous_testing
 @pytest.regional_testing
-@pytest.mark.skipif(tests.integ.test_region() in tests.integ.EI_SUPPORTED_REGIONS,
+@pytest.mark.skipif(tests.integ.test_region() not in tests.integ.EI_SUPPORTED_REGIONS,
                     reason="EI isn't supported in that specific region.")
 @pytest.mark.skipif(PYTHON_VERSION != 'py2', reason="TensorFlow image supports only python 2.")
 def test_deploy_model_with_accelerator(sagemaker_session, tf_training_job, ei_tf_version):
