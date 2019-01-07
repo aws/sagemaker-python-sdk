@@ -404,9 +404,9 @@ def test_stop_tuning_job(sagemaker_session):
 
 
 @pytest.mark.continuous_testing
-def test_tuning_mxnet(sagemaker_session):
+def test_tuning_mxnet(sagemaker_session, mxnet_full_version):
     with timeout(minutes=TUNING_DEFAULT_TIMEOUT_MINUTES):
-        script_path = os.path.join(DATA_DIR, 'mxnet_mnist', 'mnist_framework_mode.py')
+        script_path = os.path.join(DATA_DIR, 'mxnet_mnist', 'mnist.py')
         data_path = os.path.join(DATA_DIR, 'mxnet_mnist')
 
         estimator = MXNet(entry_point=script_path,
@@ -414,7 +414,7 @@ def test_tuning_mxnet(sagemaker_session):
                           py_version=PYTHON_VERSION,
                           train_instance_count=1,
                           train_instance_type='ml.m4.xlarge',
-                          framework_version='1.2.1',
+                          framework_version=mxnet_full_version,
                           sagemaker_session=sagemaker_session)
 
         hyperparameter_ranges = {'learning_rate': ContinuousParameter(0.01, 0.2)}
