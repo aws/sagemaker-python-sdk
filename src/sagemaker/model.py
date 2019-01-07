@@ -249,6 +249,44 @@ class Model(object):
         if self.predictor_cls:
             return self.predictor_cls(self.endpoint_name, self.sagemaker_session)
 
+    def transformer(self, instance_count, instance_type, strategy=None, assemble_with=None, output_path=None,
+                    output_kms_key=None, accept=None, env=None, max_concurrent_transforms=None,
+                    max_payload=None, tags=None, volume_kms_key=None):
+        """Return a ``Transformer`` that uses this Model.
+
+        Args:
+            instance_count (int): Number of EC2 instances to use.
+            instance_type (str): Type of EC2 instance to use, for example, 'ml.c4.xlarge'.
+            strategy (str): The strategy used to decide how to batch records in a single request (default: None).
+                Valid values: 'MULTI_RECORD' and 'SINGLE_RECORD'.
+            assemble_with (str): How the output is assembled (default: None). Valid values: 'Line' or 'None'.
+            output_path (str): S3 location for saving the transform result. If not specified, results are stored to
+                a default bucket.
+            output_kms_key (str): Optional. KMS key ID for encrypting the transform output (default: None).
+            accept (str): The content type accepted by the endpoint deployed during the transform job.
+            env (dict): Environment variables to be set for use during the transform job (default: None).
+            max_concurrent_transforms (int): The maximum number of HTTP requests to be made to
+                each individual transform container at one time.
+            max_payload (int): Maximum size of the payload in a single HTTP request to the container in MB.
+            tags (list[dict]): List of tags for labeling a transform job. If none specified, then the tags used for
+                the training job are used for the transform job.
+            role (str): The ``ExecutionRoleArn`` IAM Role ARN for the ``Model``, which is also used during
+                transform jobs. If not specified, the role from the Model will be used.
+            model_server_workers (int): Optional. The number of worker processes used by the inference server.
+                If None, server will use one worker per vCPU.
+            volume_kms_key (str): Optional. KMS key ID for encrypting the volume attached to the ML
+                compute instance (default: None).
+        """
+        self._create_sagemaker_model(instance_type)
+        if self.enable_network_isolation():
+            env = None
+
+        return Transformer(self.name, instance_count, instance_type, strategy=strategy, assemble_with=assemble_with,
+                           output_path=output_path, output_kms_key=output_kms_key, accept=accept,
+                           max_concurrent_transforms=max_concurrent_transforms, max_payload=max_payload,
+                           env=env, tags=tags, base_transform_job_name=self.name,
+                           volume_kms_key=volume_kms_key, sagemaker_session=self.sagemaker_session)
+
 
 SCRIPT_PARAM_NAME = 'sagemaker_program'
 DIR_PARAM_NAME = 'sagemaker_submit_directory'
@@ -456,44 +494,6 @@ class ModelPackage(Model):
             if 'ProductId' in container:
                 return True
         return False
-
-    def transformer(self, instance_count, instance_type, strategy=None, assemble_with=None, output_path=None,
-                    output_kms_key=None, accept=None, env=None, max_concurrent_transforms=None,
-                    max_payload=None, tags=None, volume_kms_key=None):
-        """Return a ``Transformer`` that uses this ModelPackage.
-
-        Args:
-            instance_count (int): Number of EC2 instances to use.
-            instance_type (str): Type of EC2 instance to use, for example, 'ml.c4.xlarge'.
-            strategy (str): The strategy used to decide how to batch records in a single request (default: None).
-                Valid values: 'MULTI_RECORD' and 'SINGLE_RECORD'.
-            assemble_with (str): How the output is assembled (default: None). Valid values: 'Line' or 'None'.
-            output_path (str): S3 location for saving the transform result. If not specified, results are stored to
-                a default bucket.
-            output_kms_key (str): Optional. KMS key ID for encrypting the transform output (default: None).
-            accept (str): The content type accepted by the endpoint deployed during the transform job.
-            env (dict): Environment variables to be set for use during the transform job (default: None).
-            max_concurrent_transforms (int): The maximum number of HTTP requests to be made to
-                each individual transform container at one time.
-            max_payload (int): Maximum size of the payload in a single HTTP request to the container in MB.
-            tags (list[dict]): List of tags for labeling a transform job. If none specified, then the tags used for
-                the training job are used for the transform job.
-            role (str): The ``ExecutionRoleArn`` IAM Role ARN for the ``Model``, which is also used during
-                transform jobs. If not specified, the role from the Model will be used.
-            model_server_workers (int): Optional. The number of worker processes used by the inference server.
-                If None, server will use one worker per vCPU.
-            volume_kms_key (str): Optional. KMS key ID for encrypting the volume attached to the ML
-                compute instance (default: None).
-        """
-        self._create_sagemaker_model(instance_type)
-        if self._is_marketplace():
-            env = None
-
-        return Transformer(self.name, instance_count, instance_type, strategy=strategy, assemble_with=assemble_with,
-                           output_path=output_path, output_kms_key=output_kms_key, accept=accept,
-                           max_concurrent_transforms=max_concurrent_transforms, max_payload=max_payload,
-                           env=env, tags=tags, base_transform_job_name=self.name,
-                           volume_kms_key=volume_kms_key, sagemaker_session=self.sagemaker_session)
 
     def _create_sagemaker_model(self, *args):  # pylint: disable=unused-argument
         """Create a SageMaker Model Entity
