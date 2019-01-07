@@ -229,6 +229,21 @@ def test_model_enable_network_isolation(sagemaker_session):
     assert model.enable_network_isolation() is False
 
 
+@patch('sagemaker.model.Model._create_sagemaker_model', Mock())
+def test_model_create_transformer(sagemaker_session):
+    sagemaker_session.sagemaker_client.describe_model_package = Mock(
+        return_value=DESCRIBE_MODEL_PACKAGE_RESPONSE)
+
+    model = DummyFrameworkModel(sagemaker_session=sagemaker_session)
+    model.name = 'auto-generated-model'
+    transformer = model.transformer(instance_count=1, instance_type='ml.m4.xlarge',
+                                    env={'test': True})
+    assert isinstance(transformer, sagemaker.transformer.Transformer)
+    assert transformer.model_name == 'auto-generated-model'
+    assert transformer.instance_type == 'ml.m4.xlarge'
+    assert transformer.env == {'test': True}
+
+
 def test_model_package_enable_network_isolation_with_no_product_id(sagemaker_session):
     sagemaker_session.sagemaker_client.describe_model_package = Mock(
         return_value=DESCRIBE_MODEL_PACKAGE_RESPONSE)
