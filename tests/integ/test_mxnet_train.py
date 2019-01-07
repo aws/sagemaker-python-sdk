@@ -18,6 +18,7 @@ import time
 import numpy
 import pytest
 
+import tests.integ
 from sagemaker.mxnet.estimator import MXNet
 from sagemaker.mxnet.model import MXNetModel
 from sagemaker.utils import sagemaker_timestamp
@@ -71,6 +72,10 @@ def test_deploy_model(mxnet_training_job, sagemaker_session):
         predictor.predict(data)
 
 
+@pytest.mark.continuous_testing
+@pytest.mark.regional_testing
+@pytest.mark.skipif(tests.integ.test_region() not in tests.integ.EI_SUPPORTED_REGIONS,
+                    reason="EI isn't supported in that specific region.")
 def test_deploy_model_with_accelerator(mxnet_training_job, sagemaker_session, ei_mxnet_version):
     endpoint_name = 'test-mxnet-deploy-model-ei-{}'.format(sagemaker_timestamp())
 
