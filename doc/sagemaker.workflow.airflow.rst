@@ -37,6 +37,6 @@ deploy_config
 .. autofunction:: sagemaker.workflow.airflow.deploy_config
 
 deploy_config_from_estimator
-----------------
+----------------------------
 
 .. autofunction:: sagemaker.workflow.airflow.deploy_config_from_estimator
