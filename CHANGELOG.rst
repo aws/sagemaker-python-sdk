@@ -14,6 +14,7 @@ CHANGELOG
 * doc-fix: Add missing classes to API docs
 * doc-fix: Add information on necessary AWS permissions
 * bug-fix: Remove PyYAML to let docker-compose install the right version
+* enhancement: Add Model.transformer()
 * bug-fix: HyperparameterTuner: make ``include_cls_metadata`` default to ``False`` for everything except Frameworks
 
 1.16.3
