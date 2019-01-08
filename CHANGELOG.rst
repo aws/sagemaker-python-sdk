@@ -17,7 +17,6 @@ CHANGELOG
 * feature: Update TensorFlow latest version to 1.12
 * enhancement: Add Model.transformer()
 
-
 1.16.3
 ======
 
