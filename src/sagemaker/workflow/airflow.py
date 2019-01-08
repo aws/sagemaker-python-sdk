@@ -29,7 +29,7 @@ def prepare_framework(estimator, s3_operations):
     """
     if estimator.code_location is not None:
         bucket, key = fw_utils.parse_s3_url(estimator.code_location)
-        key = os.path.join(key, 'source', 'sourcedir.tar.gz')
+        key = os.path.join(key, estimator._current_job_name, 'source', 'sourcedir.tar.gz')
     else:
         bucket = estimator.sagemaker_session._default_bucket
         key = os.path.join(estimator._current_job_name, 'source', 'sourcedir.tar.gz')
@@ -120,7 +120,7 @@ def training_base_config(estimator, inputs=None, job_name=None, mini_batch_size=
         estimator._current_job_name = job_name
     else:
         base_name = estimator.base_job_name or utils.base_name_from_image(estimator.train_image())
-        estimator._current_job_name = utils.airflow_name_from_base(base_name)
+        estimator._current_job_name = utils.name_from_base(base_name)
 
     if estimator.output_path is None:
         estimator.output_path = 's3://{}/'.format(default_bucket)
@@ -242,7 +242,7 @@ def tuning_config(tuner, inputs, job_name=None):
         tuner._current_job_name = job_name
     else:
         base_name = tuner.base_tuning_job_name or utils.base_name_from_image(tuner.estimator.train_image())
-        tuner._current_job_name = utils.airflow_name_from_base(base_name, tuner.TUNING_JOB_NAME_MAX_LENGTH, True)
+        tuner._current_job_name = utils.name_from_base(base_name, tuner.TUNING_JOB_NAME_MAX_LENGTH, True)
 
     for hyperparameter_name in tuner._hyperparameter_ranges.keys():
         tuner.static_hyperparameters.pop(hyperparameter_name, None)
@@ -279,6 +279,57 @@ def tuning_config(tuner, inputs, job_name=None):
     return tune_config
 
 
+def update_submit_s3_uri(estimator, job_name):
+    """Updated the S3 URI of the framework source directory in given estimator.
+
+    Args:
+        estimator (sagemaker.estimator.Framework): The Framework estimator to update.
+        job_name (str): The new job name included in the submit S3 URI
+
+    Returns:
+        str: The updated S3 URI of framework source directory
+    """
+    if estimator.uploaded_code is None:
+        return
+
+    postfix = os.path.join('/', 'source', 'sourcedir.tar.gz')
+
+    # update the S3 URI with the latest training job.
+    # s3://path/old_job/source/sourcedir.tar.gz will become s3://path/new_job/source/sourcedir.tar.gz
+    submit_uri = estimator.uploaded_code.s3_prefix
+    submit_uri = submit_uri[:len(submit_uri) - len(postfix)]
+    submit_uri = submit_uri[:submit_uri.rfind('/') + 1] + job_name + postfix
+    script_name = estimator.uploaded_code.script_name
+    estimator.uploaded_code = fw_utils.UploadedCode(submit_uri, script_name)
+
+
+def update_estimator_from_task(estimator, task_id, task_type):
+    """Update training job of the estimator from a task in the DAG
+
+    Args:
+        estimator (sagemaker.estimator.EstimatorBase): The estimator to update
+        task_id (str): The task id of any airflow.contrib.operators.SageMakerTrainingOperator or
+            airflow.contrib.operators.SageMakerTuningOperator that generates training jobs in the DAG.
+        task_type (str): Whether the task is from SageMakerTrainingOperator or SageMakerTuningOperator. Values can be
+            'training' or 'tuning'.
+    """
+    if task_id is None:
+        return
+    if task_type.lower() == 'training':
+        training_job = "{{ ti.xcom_pull(task_ids='%s')['Training']['TrainingJobName'] }}" % task_id
+        job_name = training_job
+    elif task_type.lower() == 'tuning':
+        training_job = "{{ ti.xcom_pull(task_ids='%s')['Tuning']['BestTrainingJob']['TrainingJobName'] }}" % task_id
+        # need to strip the double quotes in json to get the string
+        job_name = "{{ ti.xcom_pull(task_ids='%s')['Tuning']['TrainingJobDefinition']['StaticHyperParameters']" \
+                   "['sagemaker_job_name'].replace('%s', '') }}" % (task_id, '"')
+    else:
+        raise ValueError("task_type must be either 'training' or 'tuning'.")
+    estimator._current_job_name = training_job
+    if isinstance(estimator, sagemaker.estimator.Framework):
+        update_submit_s3_uri(estimator, job_name)
+
+
 def prepare_framework_container_def(model, instance_type, s3_operations):
     """Prepare the framework model container information. Specify related S3 operations for Airflow to perform.
     (Upload `source_dir`)
@@ -298,14 +349,15 @@ def prepare_framework_container_def(model, instance_type, s3_operations):
             region_name, model.__framework_name__, instance_type, model.framework_version, model.py_version)
 
     base_name = utils.base_name_from_image(deploy_image)
-    model.name = model.name or utils.airflow_name_from_base(base_name)
+    model.name = model.name or utils.name_from_base(base_name)
 
     bucket = model.bucket or model.sagemaker_session._default_bucket
     script = os.path.basename(model.entry_point)
     key = '{}/source/sourcedir.tar.gz'.format(model.name)
 
     if model.source_dir and model.source_dir.lower().startswith('s3://'):
-        model.uploaded_code = fw_utils.UploadedCode(s3_prefix=model.source_dir, script_name=script)
+        code_dir = model.source_dir
+        model.uploaded_code = fw_utils.UploadedCode(s3_prefix=code_dir, script_name=script)
     else:
         code_dir = 's3://{}/{}'.format(bucket, key)
         model.uploaded_code = fw_utils.UploadedCode(s3_prefix=code_dir, script_name=script)
@@ -350,7 +402,7 @@ def model_config(instance_type, model, role=None, image=None):
     else:
         container_def = model.prepare_container_def(instance_type)
         base_name = utils.base_name_from_image(container_def['Image'])
-        model.name = model.name or utils.airflow_name_from_base(base_name)
+        model.name = model.name or utils.name_from_base(base_name)
 
     primary_container = session._expand_container_def(container_def)
 
@@ -369,16 +421,22 @@ def model_config(instance_type, model, role=None, image=None):
     return config
 
 
-def model_config_from_estimator(instance_type, estimator, role=None, image=None, model_server_workers=None,
-                                vpc_config_override=vpc_utils.VPC_CONFIG_DEFAULT):
+def model_config_from_estimator(instance_type, estimator, task_id, task_type, role=None, image=None, name=None,
+                                model_server_workers=None, vpc_config_override=vpc_utils.VPC_CONFIG_DEFAULT):
     """Export Airflow model config from a SageMaker estimator
 
     Args:
         instance_type (str): The EC2 instance type to deploy this Model to. For example, 'ml.p2.xlarge'
         estimator (sagemaker.model.EstimatorBase): The SageMaker estimator to export Airflow config from.
             It has to be an estimator associated with a training job.
+        task_id (str): The task id of any airflow.contrib.operators.SageMakerTrainingOperator or
+            airflow.contrib.operators.SageMakerTuningOperator that generates training jobs in the DAG. The model config
+            is built based on the training job generated in this operator.
+        task_type (str): Whether the task is from SageMakerTrainingOperator or SageMakerTuningOperator. Values can be
+            'training' or 'tuning'.
         role (str): The ``ExecutionRoleArn`` IAM Role ARN for the model
         image (str): An container image to use for deploying the model
+        name (str): Name of the model
         model_server_workers (int): The number of worker processes used by the inference server.
             If None, server will use one worker per vCPU. Only effective when estimator is a
             SageMaker framework.
@@ -389,8 +447,10 @@ def model_config_from_estimator(instance_type, estimator, role=None, image=None,
 
     Returns:
         dict: Model config that can be directly used by SageMakerModelOperator in Airflow. It can also be part
-        of the config used by SageMakerEndpointOperator and SageMakerTransformOperator in Airflow.
+        of the config used by SageMakerEndpointOperator.
+         SageMakerTransformOperator in Airflow.
     """
+    update_estimator_from_task(estimator, task_id, task_type)
     if isinstance(estimator, sagemaker.estimator.Estimator):
         model = estimator.create_model(role=role, image=image, vpc_config_override=vpc_config_override)
     elif isinstance(estimator, sagemaker.amazon.amazon_estimator.AmazonAlgorithmEstimatorBase):
@@ -401,6 +461,7 @@ def model_config_from_estimator(instance_type, estimator, role=None, image=None,
     else:
         raise TypeError('Estimator must be one of sagemaker.estimator.Estimator, sagemaker.estimator.Framework'
                         ' or sagemaker.amazon.amazon_estimator.AmazonAlgorithmEstimatorBase.')
+    model.name = name
 
     return model_config(instance_type, model, role, image)
 
@@ -434,7 +495,7 @@ def transform_config(transformer, data, data_type='S3Prefix', content_type=None,
         transformer._current_job_name = job_name
     else:
         base_name = transformer.base_transform_job_name
-        transformer._current_job_name = utils.airflow_name_from_base(base_name) \
+        transformer._current_job_name = utils.name_from_base(base_name) \
             if base_name is not None else transformer.model_name
 
     if transformer.output_path is None:
@@ -470,9 +531,9 @@ def transform_config(transformer, data, data_type='S3Prefix', content_type=None,
     return config
 
 
-def transform_config_from_estimator(estimator, instance_count, instance_type, data, data_type='S3Prefix',
-                                    content_type=None, compression_type=None, split_type=None,
-                                    job_name=None, strategy=None, assemble_with=None, output_path=None,
+def transform_config_from_estimator(estimator, task_id, task_type, instance_count, instance_type, data,
+                                    data_type='S3Prefix', content_type=None, compression_type=None, split_type=None,
+                                    job_name=None, model_name=None, strategy=None, assemble_with=None, output_path=None,
                                     output_kms_key=None, accept=None, env=None, max_concurrent_transforms=None,
                                     max_payload=None, tags=None, role=None, volume_kms_key=None,
                                     model_server_workers=None, image=None, vpc_config_override=None):
@@ -481,6 +542,11 @@ def transform_config_from_estimator(estimator, instance_count, instance_type, da
     Args:
         estimator (sagemaker.model.EstimatorBase): The SageMaker estimator to export Airflow config from.
             It has to be an estimator associated with a training job.
+        task_id (str): The task id of any airflow.contrib.operators.SageMakerTrainingOperator or
+            airflow.contrib.operators.SageMakerTuningOperator that generates training jobs in the DAG. The transform
+            config is built based on the training job generated in this operator.
+        task_type (str): Whether the task is from SageMakerTrainingOperator or SageMakerTuningOperator. Values can be
+            'training' or 'tuning'.
         instance_count (int): Number of EC2 instances to use.
         instance_type (str): Type of EC2 instance to use, for example, 'ml.c4.xlarge'.
         data (str): Input data location in S3.
@@ -496,7 +562,8 @@ def transform_config_from_estimator(estimator, instance_count, instance_type, da
             Valid values: 'Gzip', None.
         split_type (str): The record delimiter for the input object (default: 'None').
             Valid values: 'None', 'Line', 'RecordIO', and 'TFRecord'.
-        job_name (str): job name (default: None). If not specified, one will be generated.
+        job_name (str): transform job name (default: None). If not specified, one will be generated.
+        model_name (str): model name (default: None). If not specified, one will be generated.
         strategy (str): The strategy used to decide how to batch records in a single request (default: None).
             Valid values: 'MULTI_RECORD' and 'SINGLE_RECORD'.
         assemble_with (str): How the output is assembled (default: None). Valid values: 'Line' or 'None'.
@@ -525,8 +592,9 @@ def transform_config_from_estimator(estimator, instance_count, instance_type, da
     Returns:
         dict: Transform config that can be directly used by SageMakerTransformOperator in Airflow.
     """
-    model_base_config = model_config_from_estimator(instance_type=instance_type, estimator=estimator, role=role,
-                                                    image=image, model_server_workers=model_server_workers,
+    model_base_config = model_config_from_estimator(instance_type=instance_type, estimator=estimator, task_id=task_id,
+                                                    task_type=task_type, role=role, image=image, name=model_name,
+                                                    model_server_workers=model_server_workers,
                                                     vpc_config_override=vpc_config_override)
 
     if isinstance(estimator, sagemaker.estimator.Framework):
@@ -537,6 +605,7 @@ def transform_config_from_estimator(estimator, instance_count, instance_type, da
         transformer = estimator.transformer(instance_count, instance_type, strategy, assemble_with, output_path,
                                             output_kms_key, accept, env, max_concurrent_transforms,
                                             max_payload, tags, role, volume_kms_key)
+    transformer.model_name = model_base_config['ModelName']
 
     transform_base_config = transform_config(transformer, data, data_type, content_type, compression_type,
                                              split_type, job_name)
@@ -594,18 +663,24 @@ def deploy_config(model, initial_instance_count, instance_type, endpoint_name=No
     return config
 
 
-def deploy_config_from_estimator(estimator, initial_instance_count, instance_type, endpoint_name=None,
-                                 tags=None, **kwargs):
+def deploy_config_from_estimator(estimator, task_id, task_type, initial_instance_count, instance_type,
+                                 model_name=None, endpoint_name=None, tags=None, **kwargs):
     """Export Airflow deploy config from a SageMaker estimator
 
     Args:
         estimator (sagemaker.model.EstimatorBase): The SageMaker estimator to export Airflow config from.
             It has to be an estimator associated with a training job.
+        task_id (str): The task id of any airflow.contrib.operators.SageMakerTrainingOperator or
+            airflow.contrib.operators.SageMakerTuningOperator that generates training jobs in the DAG. The endpoint
+            config is built based on the training job generated in this operator.
+        task_type (str): Whether the task is from SageMakerTrainingOperator or SageMakerTuningOperator. Values can be
+            'training' or 'tuning'.
         initial_instance_count (int): Minimum number of EC2 instances to deploy to an endpoint for prediction.
         instance_type (str): Type of EC2 instance to deploy to an endpoint for prediction,
             for example, 'ml.c4.xlarge'.
+        model_name (str): Name to use for creating an Amazon SageMaker model. If not specified, one will be generated.
         endpoint_name (str): Name to use for creating an Amazon SageMaker endpoint. If not specified, the name of
-            the training job is used.
+            the SageMaker model is used.
         tags (list[dict]): List of tags for labeling a training job. For more, see
             https://docs.aws.amazon.com/sagemaker/latest/dg/API_Tag.html.
         **kwargs: Passed to invocation of ``create_model()``. Implementations may customize
@@ -615,6 +690,8 @@ def deploy_config_from_estimator(estimator, initial_instance_count, instance_typ
     Returns:
         dict: Deploy config that can be directly used by SageMakerEndpointOperator in Airflow.
     """
+    update_estimator_from_task(estimator, task_id, task_type)
     model = estimator.create_model(**kwargs)
+    model.name = model_name
     config = deploy_config(model, initial_instance_count, instance_type, endpoint_name, tags)
     return config
