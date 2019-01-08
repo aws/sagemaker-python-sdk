@@ -894,3 +894,22 @@ def test_algorithm_enable_network_isolation_with_product_id(sagemaker_session):
 
     network_isolation = estimator.enable_network_isolation()
     assert network_isolation is True
+
+
+def test_algorithm_encrypt_inter_container_traffic(sagemaker_session):
+    response = copy.deepcopy(DESCRIBE_ALGORITHM_RESPONSE)
+    response['encrypt_inter_container_traffic'] = True
+    sagemaker_session.sagemaker_client.describe_algorithm = Mock(
+        return_value=response)
+
+    estimator = AlgorithmEstimator(
+        algorithm_arn='arn:aws:sagemaker:us-east-2:1234:algorithm/scikit-decision-trees',
+        role='SageMakerRole',
+        train_instance_type='ml.m4.xlarge',
+        train_instance_count=1,
+        sagemaker_session=sagemaker_session,
+        encrypt_inter_container_traffic=True
+    )
+
+    encrypt_inter_container_traffic = estimator.encrypt_inter_container_traffic
+    assert encrypt_inter_container_traffic is True

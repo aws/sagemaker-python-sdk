@@ -50,6 +50,7 @@ class AlgorithmEstimator(EstimatorBase):
         model_uri=None,
         model_channel_name='model',
         metric_definitions=None,
+        encrypt_inter_container_traffic=False
     ):
         """Initialize an ``AlgorithmEstimator`` instance.
 
@@ -75,7 +76,7 @@ class AlgorithmEstimator(EstimatorBase):
                 * 'Pipe' - Amazon SageMaker streams data directly from S3 to the container via a Unix-named pipe.
 
                 This argument can be overriden on a per-channel basis using ``sagemaker.session.s3_input.input_mode``.
-            output_path (str): S3 location for saving the trainig result (model artifacts and output files).
+            output_path (str): S3 location for saving the training result (model artifacts and output files).
                 If not specified, results are stored to a default bucket. If the bucket with the specific name
                 does not exist, the estimator creates the bucket during the
                 :meth:`~sagemaker.estimator.EstimatorBase.fit` method execution.
@@ -100,6 +101,8 @@ class AlgorithmEstimator(EstimatorBase):
             metric_definitions (list[dict]): A list of dictionaries that defines the metric(s) used to evaluate the
                 training jobs. Each dictionary contains two keys: 'Name' for the name of the metric, and 'Regex' for
                 the regular expression used to extract the metric from the logs.
+            encrypt_inter_container_traffic (bool): Specifies whether traffic between training containers is encrypted
+                for the training job (default: ``False``).
         """
         self.algorithm_arn = algorithm_arn
         super(AlgorithmEstimator, self).__init__(
@@ -120,6 +123,7 @@ class AlgorithmEstimator(EstimatorBase):
             model_uri=model_uri,
             model_channel_name=model_channel_name,
             metric_definitions=metric_definitions,
+            encrypt_inter_container_traffic=encrypt_inter_container_traffic
         )
 
         self.algorithm_spec = self.sagemaker_session.sagemaker_client.describe_algorithm(

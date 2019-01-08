@@ -89,3 +89,17 @@ def get_or_create_vpc_resources(ec2_client, region, name=VPC_NAME):
     else:
         print('creating new vpc: {}'.format(name))
         return _create_vpc_with_name(ec2_client, region, name)
+
+
+def setup_security_group_for_encryption(ec2_client, security_group_id):
+    sg_desc = ec2_client.describe_security_groups(GroupIds=[security_group_id])
+    ingress_perms = sg_desc['SecurityGroups'][0]['IpPermissions']
+    if len(ingress_perms) == 1:
+        ec2_client.\
+            authorize_security_group_ingress(GroupId=security_group_id,
+                                             IpPermissions=[{'IpProtocol': '50',
+                                                             'UserIdGroupPairs': [{'GroupId': security_group_id}]},
+                                                            {'IpProtocol': 'udp',
+                                                             'FromPort': 500,
+                                                             'ToPort': 500,
+                                                             'UserIdGroupPairs': [{'GroupId': security_group_id}]}])

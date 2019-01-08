@@ -641,6 +641,8 @@ class _TuningJob(_Job):
             tuner_args['image'] = tuner.estimator.train_image()
 
         tuner_args['enable_network_isolation'] = tuner.estimator.enable_network_isolation()
+        tuner_args['encrypt_inter_container_traffic'] = \
+            tuner.estimator.encrypt_inter_container_traffic
 
         tuner.estimator.sagemaker_session.tune(**tuner_args)
 

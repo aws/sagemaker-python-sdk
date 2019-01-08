@@ -395,6 +395,36 @@ def test_tune(sagemaker_session):
                            warm_start_config=None)
 
 
+def test_tune_with_encryption_flag(sagemaker_session):
+
+    def assert_create_tuning_job_request(**kwrags):
+        assert kwrags["HyperParameterTuningJobConfig"] == SAMPLE_TUNING_JOB_REQUEST["HyperParameterTuningJobConfig"]
+        assert kwrags["HyperParameterTuningJobName"] == "dummy-tuning-1"
+        assert kwrags["TrainingJobDefinition"]["EnableInterContainerTrafficEncryption"] is True
+        assert kwrags.get("WarmStartConfig", None) is None
+
+    sagemaker_session.sagemaker_client.create_hyper_parameter_tuning_job.side_effect = assert_create_tuning_job_request
+    sagemaker_session.tune(job_name="dummy-tuning-1",
+                           strategy="Bayesian",
+                           objective_type="Maximize",
+                           objective_metric_name="val-score",
+                           max_jobs=100,
+                           max_parallel_jobs=5,
+                           parameter_ranges=SAMPLE_PARAM_RANGES,
+                           static_hyperparameters=STATIC_HPs,
+                           image="dummy-image-1",
+                           input_mode="File",
+                           metric_definitions=SAMPLE_METRIC_DEF,
+                           role=EXPANDED_ROLE,
+                           input_config=SAMPLE_INPUT,
+                           output_config=SAMPLE_OUTPUT,
+                           resource_config=RESOURCE_CONFIG,
+                           stop_condition=SAMPLE_STOPPING_CONDITION,
+                           tags=None,
+                           warm_start_config=None,
+                           encrypt_inter_container_traffic=True)
+
+
 def test_stop_tuning_job(sagemaker_session):
     sms = sagemaker_session
     sms.sagemaker_client.stop_hyper_parameter_tuning_job = Mock(name='stop_hyper_parameter_tuning_job')
@@ -453,7 +483,7 @@ def test_train_pack_to_request_with_optional_params(sagemaker_session):
     sagemaker_session.train(image=IMAGE, input_mode='File', input_config=in_config, role=EXPANDED_ROLE,
                             job_name=JOB_NAME, output_config=out_config, resource_config=resource_config,
                             vpc_config=VPC_CONFIG, hyperparameters=hyperparameters, stop_condition=stop_cond, tags=TAGS,
-                            metric_definitions=METRIC_DEFINITONS)
+                            metric_definitions=METRIC_DEFINITONS, encrypt_inter_container_traffic=True)
 
     _, _, actual_train_args = sagemaker_session.sagemaker_client.method_calls[0]
 
@@ -461,6 +491,7 @@ def test_train_pack_to_request_with_optional_params(sagemaker_session):
     assert actual_train_args['HyperParameters'] == hyperparameters
     assert actual_train_args['Tags'] == TAGS
     assert actual_train_args['AlgorithmSpecification']['MetricDefinitions'] == METRIC_DEFINITONS
+    assert actual_train_args['EnableInterContainerTrafficEncryption'] is True
 
 
 def test_transform_pack_to_request(sagemaker_session):

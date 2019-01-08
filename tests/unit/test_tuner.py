@@ -50,7 +50,7 @@ OBJECTIVE_METRIC_NAME = 'mock_metric'
 HYPERPARAMETER_RANGES = {'validated': ContinuousParameter(0, 5),
                          'elizabeth': IntegerParameter(0, 5),
                          'blank': CategoricalParameter([0, 5])}
-METRIC_DEFINTIONS = 'mock_metric_definitions'
+METRIC_DEFINITIONS = 'mock_metric_definitions'
 
 TUNING_JOB_DETAILS = {
     'HyperParameterTuningJobConfig': {
@@ -94,7 +94,7 @@ TUNING_JOB_DETAILS = {
         'AlgorithmSpecification': {
             'TrainingImage': IMAGE_NAME,
             'TrainingInputMode': 'File',
-            'MetricDefinitions': METRIC_DEFINTIONS,
+            'MetricDefinitions': METRIC_DEFINITIONS,
         },
         'InputDataConfig': [
             {
@@ -146,7 +146,7 @@ def estimator(sagemaker_session):
 
 @pytest.fixture()
 def tuner(estimator):
-    return HyperparameterTuner(estimator, OBJECTIVE_METRIC_NAME, HYPERPARAMETER_RANGES, METRIC_DEFINTIONS)
+    return HyperparameterTuner(estimator, OBJECTIVE_METRIC_NAME, HYPERPARAMETER_RANGES, METRIC_DEFINITIONS)
 
 
 def test_prepare_for_training(tuner):
@@ -191,7 +191,7 @@ def test_validate_parameter_ranges_number_validation_error(sagemaker_session):
 
     with pytest.raises(ValueError) as e:
         HyperparameterTuner(estimator=pca, objective_metric_name=OBJECTIVE_METRIC_NAME,
-                            hyperparameter_ranges=invalid_hyperparameter_ranges, metric_definitions=METRIC_DEFINTIONS)
+                            hyperparameter_ranges=invalid_hyperparameter_ranges, metric_definitions=METRIC_DEFINITIONS)
 
     assert 'Value must be an integer greater than zero' in str(e)
 
@@ -204,7 +204,7 @@ def test_validate_parameter_ranges_string_value_validation_error(sagemaker_sessi
 
     with pytest.raises(ValueError) as e:
         HyperparameterTuner(estimator=pca, objective_metric_name=OBJECTIVE_METRIC_NAME,
-                            hyperparameter_ranges=invalid_hyperparameter_ranges, metric_definitions=METRIC_DEFINTIONS)
+                            hyperparameter_ranges=invalid_hyperparameter_ranges, metric_definitions=METRIC_DEFINITIONS)
 
     assert 'Value must be one of "regular" and "randomized"' in str(e)
 
@@ -256,6 +256,22 @@ def test_fit_pca_with_early_stopping(sagemaker_session, tuner):
     assert tune_kwargs['early_stopping_type'] == 'Auto'
 
 
+def test_fit_pca_with_inter_container_traffic_encryption_flag(sagemaker_session, tuner):
+    pca = PCA(ROLE, TRAIN_INSTANCE_COUNT, TRAIN_INSTANCE_TYPE, NUM_COMPONENTS,
+              base_job_name='pca', sagemaker_session=sagemaker_session,
+              encrypt_inter_container_traffic=True)
+
+    tuner.estimator = pca
+
+    records = RecordSet(s3_data=INPUTS, num_records=1, feature_dim=1)
+    tuner.fit(records, mini_batch_size=9999)
+
+    _, _, tune_kwargs = sagemaker_session.tune.mock_calls[0]
+
+    assert tune_kwargs['job_name'].startswith('pca')
+    assert tune_kwargs['encrypt_inter_container_traffic'] is True
+
+
 def test_attach_tuning_job_with_estimator_from_hyperparameters(sagemaker_session):
     job_details = copy.deepcopy(TUNING_JOB_DETAILS)
     sagemaker_session.sagemaker_client.describe_hyper_parameter_tuning_job = Mock(name='describe_tuning_job',
@@ -266,7 +282,7 @@ def test_attach_tuning_job_with_estimator_from_hyperparameters(sagemaker_session
     assert tuner.objective_metric_name == OBJECTIVE_METRIC_NAME
     assert tuner.max_jobs == 1
     assert tuner.max_parallel_jobs == 1
-    assert tuner.metric_definitions == METRIC_DEFINTIONS
+    assert tuner.metric_definitions == METRIC_DEFINITIONS
     assert tuner.strategy == 'Bayesian'
     assert tuner.objective_type == 'Minimize'
     assert tuner.early_stopping_type == 'Off'
@@ -442,7 +458,7 @@ def test_deploy_default(tuner):
         'AlgorithmSpecification': {
             'TrainingInputMode': 'File',
             'TrainingImage': IMAGE_NAME,
-            'MetricDefinitions': METRIC_DEFINTIONS,
+            'MetricDefinitions': METRIC_DEFINITIONS,
         },
         'HyperParameters': {
             'sagemaker_submit_directory': '"s3://some/sourcedir.tar.gz"',

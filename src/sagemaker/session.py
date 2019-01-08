@@ -215,7 +215,8 @@ class Session(object):
 
     def train(self, input_mode, input_config, role, job_name, output_config,  # noqa: C901
               resource_config, vpc_config, hyperparameters, stop_condition, tags, metric_definitions,
-              enable_network_isolation=False, image=None, algorithm_arn=None):
+              enable_network_isolation=False, image=None, algorithm_arn=None,
+              encrypt_inter_container_traffic=False):
         """Create an Amazon SageMaker training job.
 
         Args:
@@ -261,6 +262,8 @@ class Session(object):
                 network isolation or not.
             image (str): Docker image containing training code.
             algorithm_arn (str): Algorithm Arn from Marketplace.
+            encrypt_inter_container_traffic (bool): Specifies whether traffic between training containers is
+                encrypted for the training job (default: ``False``).
 
         Returns:
             str: ARN of the training job, if it is created.
@@ -308,6 +311,10 @@ class Session(object):
         if enable_network_isolation:
             train_request['EnableNetworkIsolation'] = enable_network_isolation
 
+        if encrypt_inter_container_traffic:
+            train_request['EnableInterContainerTrafficEncryption'] = \
+                encrypt_inter_container_traffic
+
         LOGGER.info('Creating training-job with name: {}'.format(job_name))
         LOGGER.debug('train request: {}'.format(json.dumps(train_request, indent=4)))
         self.sagemaker_client.create_training_job(**train_request)
@@ -351,7 +358,7 @@ class Session(object):
              static_hyperparameters, input_mode, metric_definitions,
              role, input_config, output_config, resource_config, stop_condition, tags,
              warm_start_config, enable_network_isolation=False, image=None, algorithm_arn=None,
-             early_stopping_type='Off'):
+             early_stopping_type='Off', encrypt_inter_container_traffic=False):
         """Create an Amazon SageMaker hyperparameter tuning job
 
         Args:
@@ -400,6 +407,9 @@ class Session(object):
             early_stopping_type (str): Specifies whether early stopping is enabled for the job.
                 Can be either 'Auto' or 'Off'. If set to 'Off', early stopping will not be attempted.
                 If set to 'Auto', early stopping of some training jobs may happen, but is not guaranteed to.
+            encrypt_inter_container_traffic (bool): Specifies whether traffic between training containers
+                is encrypted for the training jobs started for this hyperparameter tuning job. Set to ``False``
+                by default.
         """
         tune_request = {
             'HyperParameterTuningJobName': job_name,
@@ -449,6 +459,9 @@ class Session(object):
 
         if enable_network_isolation:
             tune_request['TrainingJobDefinition']['EnableNetworkIsolation'] = True
+
+        if encrypt_inter_container_traffic:
+            tune_request['TrainingJobDefinition']['EnableInterContainerTrafficEncryption'] = True
 
         LOGGER.info('Creating hyperparameter tuning job with name: {}'.format(job_name))
         LOGGER.debug('tune request: {}'.format(json.dumps(tune_request, indent=4)))
