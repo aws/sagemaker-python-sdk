@@ -14,6 +14,8 @@ CHANGELOG
 * doc-fix: Specify that Local Mode supports only framework and BYO cases
 * doc-fix: Add missing classes to API docs
 * doc-fix: Add information on necessary AWS permissions
+* bug-fix: Remove PyYAML to let docker-compose install the right version
+* enhancement: Add Model.transformer()
 
 1.16.3
 ======
