@@ -417,7 +417,7 @@ def test_tuning_mxnet(sagemaker_session, mxnet_full_version):
                           framework_version=mxnet_full_version,
                           sagemaker_session=sagemaker_session)
 
-        hyperparameter_ranges = {'learning_rate': ContinuousParameter(0.01, 0.2)}
+        hyperparameter_ranges = {'learning-rate': ContinuousParameter(0.01, 0.2)}
         objective_metric_name = 'Validation-accuracy'
         metric_definitions = [
             {'Name': 'Validation-accuracy', 'Regex': 'Validation-accuracy=([0-9\\.]+)'}]
