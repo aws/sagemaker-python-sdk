@@ -16,6 +16,7 @@ CHANGELOG
 * bug-fix: Remove PyYAML to let docker-compose install the right version
 * feature: Update TensorFlow latest version to 1.12
 * enhancement: Add Model.transformer()
+* bug-fix: HyperparameterTuner: make ``include_cls_metadata`` default to ``False`` for everything except Frameworks
 
 1.16.3
 ======
