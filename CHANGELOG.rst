@@ -5,8 +5,8 @@ CHANGELOG
 1.17.0.dev
 ==========
 
-* enhancement: Specify tasks from which training/tuning operator to transform/deploy in related operators
-* bug-fix: Revert appending Airflow retry id to default job name
+* enhancement: Workflow: Specify tasks from which training/tuning operator to transform/deploy in related operators
+* bug-fix: Workflow: Revert appending Airflow retry id to default job name
 * bug-fix: Session: don't allow get_execution_role() to return an ARN that's not a role but has "role" in the name
 * bug-fix: Remove ``__all__`` from ``__init__.py`` files
 * doc-fix: Add TFRecord split type to docs
@@ -22,7 +22,7 @@ CHANGELOG
 ======
 
 * bug-fix: Local Mode: Allow support for SSH in local mode
-* bug-fix: Append retry id to default Airflow job name to avoid name collisions in retry
+* bug-fix: Workflow: Append retry id to default Airflow job name to avoid name collisions in retry
 * bug-fix: Local Mode: No longer requires s3 permissions to run local entry point file
 * feature: Estimators: add support for PyTorch 1.0.0
 * bug-fix: Local Mode: Move dependency on sagemaker_s3_output from rl.estimator to model

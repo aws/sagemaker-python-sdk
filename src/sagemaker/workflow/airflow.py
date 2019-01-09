@@ -13,6 +13,7 @@
 from __future__ import print_function, absolute_import
 
 import os
+import re
 
 import sagemaker
 from sagemaker import fw_utils, job, utils, session, vpc_utils
@@ -292,13 +293,12 @@ def update_submit_s3_uri(estimator, job_name):
     if estimator.uploaded_code is None:
         return
 
-    postfix = os.path.join('/', 'source', 'sourcedir.tar.gz')
+    pattern = r'(?<=/)[^/]+?(?=/source/sourcedir.tar.gz)'
 
     # update the S3 URI with the latest training job.
     # s3://path/old_job/source/sourcedir.tar.gz will become s3://path/new_job/source/sourcedir.tar.gz
     submit_uri = estimator.uploaded_code.s3_prefix
-    submit_uri = submit_uri[:len(submit_uri) - len(postfix)]
-    submit_uri = submit_uri[:submit_uri.rfind('/') + 1] + job_name + postfix
+    submit_uri = re.sub(pattern, job_name, submit_uri)
     script_name = estimator.uploaded_code.script_name
     estimator.uploaded_code = fw_utils.UploadedCode(submit_uri, script_name)
 
@@ -322,7 +322,7 @@ def update_estimator_from_task(estimator, task_id, task_type):
         training_job = "{{ ti.xcom_pull(task_ids='%s')['Tuning']['BestTrainingJob']['TrainingJobName'] }}" % task_id
         # need to strip the double quotes in json to get the string
         job_name = "{{ ti.xcom_pull(task_ids='%s')['Tuning']['TrainingJobDefinition']['StaticHyperParameters']" \
-                   "['sagemaker_job_name'].replace('%s', '') }}" % (task_id, '"')
+                   "['sagemaker_job_name'].strip('%s') }}" % (task_id, '"')
     else:
         raise ValueError("task_type must be either 'training' or 'tuning'.")
     estimator._current_job_name = training_job
