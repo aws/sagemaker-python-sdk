@@ -26,7 +26,7 @@ from sagemaker.mxnet import MXNet
 from sagemaker.pytorch import PyTorch
 from sagemaker.rl import RLEstimator
 from sagemaker.sklearn.defaults import SKLEARN_VERSION
-from sagemaker.tensorflow.defaults import TF_VERSION
+from sagemaker.tensorflow.estimator import TensorFlow
 
 DEFAULT_REGION = 'us-west-2'
 
@@ -43,7 +43,7 @@ def pytest_addoption(parser):
     parser.addoption('--rl-ray-full-version', action='store',
                      default=RLEstimator.RAY_LATEST_VERSION)
     parser.addoption('--sklearn-full-version', action='store', default=SKLEARN_VERSION)
-    parser.addoption('--tf-full-version', action='store', default=TF_VERSION)
+    parser.addoption('--tf-full-version', action='store', default=TensorFlow.LATEST_VERSION)
 
 
 def pytest_configure(config):
@@ -126,7 +126,7 @@ def sklearn_version(request):
 
 @pytest.fixture(scope='module', params=['1.4', '1.4.1', '1.5', '1.5.0', '1.6', '1.6.0',
                                         '1.7', '1.7.0', '1.8', '1.8.0', '1.9', '1.9.0',
-                                        '1.10', '1.10.0', '1.11', '1.11.0'])
+                                        '1.10', '1.10.0', '1.11', '1.11.0', '1.12', '1.12.0'])
 def tf_version(request):
     return request.param
 

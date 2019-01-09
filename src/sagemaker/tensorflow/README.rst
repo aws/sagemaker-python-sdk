@@ -148,7 +148,7 @@ Please note that the following args are not permitted when using Script Mode:
 
   tf_estimator = TensorFlow(entry_point='tf-train.py', role='SageMakerRole',
                             train_instance_count=1, train_instance_type='ml.p2.xlarge',
-                            framework_version='1.11', py_version='py3')
+                            framework_version='1.12', py_version='py3')
   tf_estimator.fit('s3://bucket/path/to/training/data')
 
 Where the S3 url is a path to your training data, within Amazon S3. The
@@ -417,9 +417,9 @@ The containers include the following Python packages:
 +--------------------------------+---------------+-------------------+
 | curl                           | Latest        | Latest            |
 +--------------------------------+---------------+-------------------+
-| tensorflow                     | 1.11.0        | 1.11.0            |
+| tensorflow                     | 1.12.0        | 1.12.0            |
 +--------------------------------+---------------+-------------------+
-| tensorflow-serving-api         | 1.11.0        | None              |
+| tensorflow-serving-api         | 1.12.0        | None              |
 +--------------------------------+---------------+-------------------+
 | sagemaker-containers           | >=2.3.5       | >=2.3.5           |
 +--------------------------------+---------------+-------------------+
