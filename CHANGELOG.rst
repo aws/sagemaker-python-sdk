@@ -2,8 +2,8 @@
 CHANGELOG
 =========
 
-1.17.0.dev
-==========
+1.17.0
+======
 
 * bug-fix: Revert appending Airflow retry id to default job name
 * bug-fix: Session: don't allow get_execution_role() to return an ARN that's not a role but has "role" in the name
