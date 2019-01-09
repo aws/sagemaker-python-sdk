@@ -18,7 +18,7 @@ import json
 from enum import Enum
 
 import sagemaker
-from sagemaker.amazon.amazon_estimator import AmazonAlgorithmEstimatorBase, RecordSet
+from sagemaker.amazon.amazon_estimator import RecordSet
 from sagemaker.amazon.hyperparameter import Hyperparameter as hp  # noqa
 from sagemaker.analytics import HyperparameterTuningJobAnalytics
 from sagemaker.estimator import Framework
@@ -219,7 +219,7 @@ class HyperparameterTuner(object):
         self.warm_start_config = warm_start_config
         self.early_stopping_type = early_stopping_type
 
-    def _prepare_for_training(self, job_name=None, include_cls_metadata=True):
+    def _prepare_for_training(self, job_name=None, include_cls_metadata=False):
         if job_name is not None:
             self._current_job_name = job_name
         else:
@@ -230,14 +230,14 @@ class HyperparameterTuner(object):
         for hyperparameter_name in self._hyperparameter_ranges.keys():
             self.static_hyperparameters.pop(hyperparameter_name, None)
 
-        # For attach() to know what estimator to use for non-1P algorithms
-        # (1P algorithms don't accept extra hyperparameters)
-        if include_cls_metadata and not isinstance(self.estimator, AmazonAlgorithmEstimatorBase):
+        # For attach() to know what estimator to use for frameworks
+        # (other algorithms may not accept extra hyperparameters)
+        if include_cls_metadata or isinstance(self.estimator, Framework):
             self.static_hyperparameters[self.SAGEMAKER_ESTIMATOR_CLASS_NAME] = json.dumps(
                 self.estimator.__class__.__name__)
             self.static_hyperparameters[self.SAGEMAKER_ESTIMATOR_MODULE] = json.dumps(self.estimator.__module__)
 
-    def fit(self, inputs=None, job_name=None, include_cls_metadata=True, **kwargs):
+    def fit(self, inputs=None, job_name=None, include_cls_metadata=False, **kwargs):
         """Start a hyperparameter tuning job.
 
         Args:
@@ -260,10 +260,12 @@ class HyperparameterTuner(object):
 
             job_name (str): Tuning job name. If not specified, the tuner generates a default job name,
                 based on the training image name and current timestamp.
-            include_cls_metadata (bool): Whether or not the hyperparameter tuning job should include information about
-                the estimator class (default: True). This information is passed as a hyperparameter, so if
-                the algorithm you are using cannot handle unknown hyperparameters (e.g. an Amazon ML algorithm that
-                does not have a custom estimator in the Python SDK), then set ``include_cls_metadata`` to ``False``.
+            include_cls_metadata (bool): Whether or not the hyperparameter tuning job should include
+                information about the estimator class (default: False). This information is passed
+                as a hyperparameter, so if the algorithm you are using cannot handle
+                unknown hyperparameters (e.g. an Amazon SageMaker built-in algorithm that
+                does not have a custom estimator in the Python SDK), then set
+                ``include_cls_metadata`` to ``False``.
             **kwargs: Other arguments needed for training. Please refer to the ``fit()`` method of the associated
                 estimator to see what other arguments are needed.
         """
