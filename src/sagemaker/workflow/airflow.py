@@ -311,9 +311,9 @@ def update_estimator_from_task(estimator, task_id, task_type):
         task_id (str): The task id of any airflow.contrib.operators.SageMakerTrainingOperator or
             airflow.contrib.operators.SageMakerTuningOperator that generates training jobs in the DAG.
         task_type (str): Whether the task is from SageMakerTrainingOperator or SageMakerTuningOperator. Values can be
-            'training' or 'tuning'.
+            'training', 'tuning' or None (which means training job is not from any task).
     """
-    if task_id is None:
+    if task_type is None:
         return
     if task_type.lower() == 'training':
         training_job = "{{ ti.xcom_pull(task_ids='%s')['Training']['TrainingJobName'] }}" % task_id
@@ -324,7 +324,7 @@ def update_estimator_from_task(estimator, task_id, task_type):
         job_name = "{{ ti.xcom_pull(task_ids='%s')['Tuning']['TrainingJobDefinition']['StaticHyperParameters']" \
                    "['sagemaker_job_name'].strip('%s') }}" % (task_id, '"')
     else:
-        raise ValueError("task_type must be either 'training' or 'tuning'.")
+        raise ValueError("task_type must be either 'training', 'tuning' or None.")
     estimator._current_job_name = training_job
     if isinstance(estimator, sagemaker.estimator.Framework):
         update_submit_s3_uri(estimator, job_name)
@@ -433,7 +433,7 @@ def model_config_from_estimator(instance_type, estimator, task_id, task_type, ro
             airflow.contrib.operators.SageMakerTuningOperator that generates training jobs in the DAG. The model config
             is built based on the training job generated in this operator.
         task_type (str): Whether the task is from SageMakerTrainingOperator or SageMakerTuningOperator. Values can be
-            'training' or 'tuning'.
+            'training', 'tuning' or None (which means training job is not from any task).
         role (str): The ``ExecutionRoleArn`` IAM Role ARN for the model
         image (str): An container image to use for deploying the model
         name (str): Name of the model
@@ -546,7 +546,7 @@ def transform_config_from_estimator(estimator, task_id, task_type, instance_coun
             airflow.contrib.operators.SageMakerTuningOperator that generates training jobs in the DAG. The transform
             config is built based on the training job generated in this operator.
         task_type (str): Whether the task is from SageMakerTrainingOperator or SageMakerTuningOperator. Values can be
-            'training' or 'tuning'.
+            'training', 'tuning' or None (which means training job is not from any task).
         instance_count (int): Number of EC2 instances to use.
         instance_type (str): Type of EC2 instance to use, for example, 'ml.c4.xlarge'.
         data (str): Input data location in S3.
@@ -674,7 +674,7 @@ def deploy_config_from_estimator(estimator, task_id, task_type, initial_instance
             airflow.contrib.operators.SageMakerTuningOperator that generates training jobs in the DAG. The endpoint
             config is built based on the training job generated in this operator.
         task_type (str): Whether the task is from SageMakerTrainingOperator or SageMakerTuningOperator. Values can be
-            'training' or 'tuning'.
+            'training', 'tuning' or None (which means training job is not from any task).
         initial_instance_count (int): Minimum number of EC2 instances to deploy to an endpoint for prediction.
         instance_type (str): Type of EC2 instance to deploy to an endpoint for prediction,
             for example, 'ml.c4.xlarge'.
