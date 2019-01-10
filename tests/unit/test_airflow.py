@@ -14,7 +14,7 @@
 from __future__ import absolute_import
 
 import pytest
-import mock
+from mock import Mock, MagicMock, patch
 
 from sagemaker import chainer, estimator, model, mxnet, tensorflow, transformer, tuner
 from sagemaker.workflow import airflow
@@ -24,18 +24,20 @@ from sagemaker.amazon import knn, ntm, pca
 
 REGION = 'us-west-2'
 BUCKET_NAME = 'output'
+TIME_STAMP = '1111'
 
 
 @pytest.fixture()
 def sagemaker_session():
-    boto_mock = mock.Mock(name='boto_session', region_name=REGION)
-    session = mock.Mock(name='sagemaker_session', boto_session=boto_mock,
-                        boto_region_name=REGION, config=None, local_mode=False)
-    session.default_bucket = mock.Mock(name='default_bucket', return_value=BUCKET_NAME)
+    boto_mock = Mock(name='boto_session', region_name=REGION)
+    session = Mock(name='sagemaker_session', boto_session=boto_mock,
+                   boto_region_name=REGION, config=None, local_mode=False)
+    session.default_bucket = Mock(name='default_bucket', return_value=BUCKET_NAME)
     session._default_bucket = BUCKET_NAME
     return session
 
 
+@patch('sagemaker.utils.sagemaker_timestamp', MagicMock(return_value=TIME_STAMP))
 def test_byo_training_config_required_args(sagemaker_session):
     byo = estimator.Estimator(
         image_name="byo",
@@ -59,7 +61,7 @@ def test_byo_training_config_required_args(sagemaker_session):
         'OutputDataConfig': {
             'S3OutputPath': 's3://output/'
         },
-        'TrainingJobName': "byo-{{ execution_date.strftime('%Y-%m-%d-%H-%M-%S') }}",
+        'TrainingJobName': "byo-%s" % TIME_STAMP,
         'StoppingCondition': {
             'MaxRuntimeInSeconds': 86400
         },
@@ -86,6 +88,7 @@ def test_byo_training_config_required_args(sagemaker_session):
     assert config == expected_config
 
 
+@patch('sagemaker.utils.sagemaker_timestamp', MagicMock(return_value=TIME_STAMP))
 def test_byo_training_config_all_args(sagemaker_session):
     byo = estimator.Estimator(
         image_name="byo",
@@ -122,7 +125,7 @@ def test_byo_training_config_all_args(sagemaker_session):
             'S3OutputPath': '{{ output_path }}',
             'KmsKeyId': '{{ output_volume_kms_key }}'
         },
-        'TrainingJobName': "{{ base_job_name }}-{{ execution_date.strftime('%Y-%m-%d-%H-%M-%S') }}",
+        'TrainingJobName': "{{ base_job_name }}-%s" % TIME_STAMP,
         'StoppingCondition': {
             'MaxRuntimeInSeconds': '{{ train_max_run }}'
         },
@@ -170,6 +173,7 @@ def test_byo_training_config_all_args(sagemaker_session):
     assert config == expected_config
 
 
+@patch('sagemaker.utils.sagemaker_timestamp', MagicMock(return_value=TIME_STAMP))
 def test_framework_training_config_required_args(sagemaker_session):
     tf = tensorflow.TensorFlow(
         entry_point="{{ entry_point }}",
@@ -192,7 +196,7 @@ def test_framework_training_config_required_args(sagemaker_session):
         'OutputDataConfig': {
             'S3OutputPath': 's3://output/'
         },
-        'TrainingJobName': "sagemaker-tensorflow-{{ execution_date.strftime('%Y-%m-%d-%H-%M-%S') }}",
+        'TrainingJobName': "sagemaker-tensorflow-%s" % TIME_STAMP,
         'StoppingCondition': {
             'MaxRuntimeInSeconds': 86400
         },
@@ -213,16 +217,13 @@ def test_framework_training_config_required_args(sagemaker_session):
             'ChannelName': 'training'
         }],
         'HyperParameters': {
-            'sagemaker_submit_directory': '"s3://output/sagemaker-tensorflow-'
-                                          '{{ execution_date.strftime(\'%Y-%m-%d-%H-%M-%S\') }}'
-                                          '/source/sourcedir.tar.gz"',
+            'sagemaker_submit_directory': '"s3://output/sagemaker-tensorflow-%s/source/sourcedir.tar.gz"' % TIME_STAMP,
             'sagemaker_program': '"{{ entry_point }}"',
             'sagemaker_enable_cloudwatch_metrics': 'false',
             'sagemaker_container_log_level': '20',
-            'sagemaker_job_name': '"sagemaker-tensorflow-{{ execution_date.strftime(\'%Y-%m-%d-%H-%M-%S\') }}"',
+            'sagemaker_job_name': '"sagemaker-tensorflow-%s"' % TIME_STAMP,
             'sagemaker_region': '"us-west-2"',
-            'checkpoint_path': '"s3://output/sagemaker-tensorflow-{{ execution_date.strftime(\'%Y-%m-%d-%H-%M-%S\') }}'
-                               '/checkpoints"',
+            'checkpoint_path': '"s3://output/sagemaker-tensorflow-%s/checkpoints"' % TIME_STAMP,
             'training_steps': '1000',
             'evaluation_steps': '100',
             'sagemaker_requirements': '""'},
@@ -230,14 +231,14 @@ def test_framework_training_config_required_args(sagemaker_session):
             'S3Upload': [{
                 'Path': '{{ entry_point }}',
                 'Bucket': 'output',
-                'Key': "sagemaker-tensorflow-{{ execution_date.strftime('%Y-%m-%d-%H-%M-%S') }}"
-                       "/source/sourcedir.tar.gz",
+                'Key': "sagemaker-tensorflow-%s/source/sourcedir.tar.gz" % TIME_STAMP,
                 'Tar': True}]
         }
     }
     assert config == expected_config
 
 
+@patch('sagemaker.utils.sagemaker_timestamp', MagicMock(return_value=TIME_STAMP))
 def test_framework_training_config_all_args(sagemaker_session):
     tf = tensorflow.TensorFlow(
         entry_point="{{ entry_point }}",
@@ -278,7 +279,7 @@ def test_framework_training_config_all_args(sagemaker_session):
             'S3OutputPath': '{{ output_path }}',
             'KmsKeyId': '{{ output_volume_kms_key }}'
         },
-        'TrainingJobName': "{{ base_job_name }}-{{ execution_date.strftime('%Y-%m-%d-%H-%M-%S') }}",
+        'TrainingJobName': "{{ base_job_name }}-%s" % TIME_STAMP,
         'StoppingCondition': {
             'MaxRuntimeInSeconds': '{{ train_max_run }}'
         },
@@ -304,11 +305,12 @@ def test_framework_training_config_all_args(sagemaker_session):
             'SecurityGroupIds': ['{{ security_group_ids }}']
         },
         'HyperParameters': {
-            'sagemaker_submit_directory': '"s3://{{ bucket_name }}/{{ prefix }}/source/sourcedir.tar.gz"',
+            'sagemaker_submit_directory': '"s3://{{ bucket_name }}/{{ prefix }}/{{ base_job_name }}-%s/'
+                                          'source/sourcedir.tar.gz"' % TIME_STAMP,
             'sagemaker_program': '"{{ entry_point }}"',
             'sagemaker_enable_cloudwatch_metrics': 'false',
             'sagemaker_container_log_level': '"{{ log_level }}"',
-            'sagemaker_job_name': '"{{ base_job_name }}-{{ execution_date.strftime(\'%Y-%m-%d-%H-%M-%S\') }}"',
+            'sagemaker_job_name': '"{{ base_job_name }}-%s"' % TIME_STAMP,
             'sagemaker_region': '"us-west-2"',
             'checkpoint_path': '"{{ checkpoint_path }}"',
             'training_steps': '1000',
@@ -320,13 +322,14 @@ def test_framework_training_config_all_args(sagemaker_session):
             'S3Upload': [{
                 'Path': '{{ source_dir }}',
                 'Bucket': '{{ bucket_name }}',
-                'Key': "{{ prefix }}/source/sourcedir.tar.gz",
+                'Key': "{{ prefix }}/{{ base_job_name }}-%s/source/sourcedir.tar.gz" % TIME_STAMP,
                 'Tar': True}]
         }
     }
     assert config == expected_config
 
 
+@patch('sagemaker.utils.sagemaker_timestamp', MagicMock(return_value=TIME_STAMP))
 def test_amazon_alg_training_config_required_args(sagemaker_session):
     ntm_estimator = ntm.NTM(
         role="{{ role }}",
@@ -348,7 +351,7 @@ def test_amazon_alg_training_config_required_args(sagemaker_session):
         'OutputDataConfig': {
             'S3OutputPath': 's3://output/'
         },
-        'TrainingJobName': "ntm-{{ execution_date.strftime('%Y-%m-%d-%H-%M-%S') }}",
+        'TrainingJobName': "ntm-%s" % TIME_STAMP,
         'StoppingCondition': {'MaxRuntimeInSeconds': 86400},
         'ResourceConfig': {
             'InstanceCount': '{{ instance_count }}',
@@ -376,6 +379,7 @@ def test_amazon_alg_training_config_required_args(sagemaker_session):
     assert config == expected_config
 
 
+@patch('sagemaker.utils.sagemaker_timestamp', MagicMock(return_value=TIME_STAMP))
 def test_amazon_alg_training_config_all_args(sagemaker_session):
     ntm_estimator = ntm.NTM(
         role="{{ role }}",
@@ -408,7 +412,7 @@ def test_amazon_alg_training_config_all_args(sagemaker_session):
             'S3OutputPath': '{{ output_path }}',
             'KmsKeyId': '{{ output_volume_kms_key }}'
         },
-        'TrainingJobName': "{{ base_job_name }}-{{ execution_date.strftime('%Y-%m-%d-%H-%M-%S') }}",
+        'TrainingJobName': "{{ base_job_name }}-%s" % TIME_STAMP,
         'StoppingCondition': {
             'MaxRuntimeInSeconds': '{{ train_max_run }}'
         },
@@ -445,6 +449,8 @@ def test_amazon_alg_training_config_all_args(sagemaker_session):
     assert config == expected_config
 
 
+@patch('sagemaker.utils.sagemaker_timestamp', MagicMock(return_value=TIME_STAMP))
+@patch('sagemaker.utils.sagemaker_short_timestamp', MagicMock(return_value=TIME_STAMP))
 def test_framework_tuning_config(sagemaker_session):
     mxnet_estimator = mxnet.MXNet(
         entry_point="{{ entry_point }}",
@@ -481,7 +487,7 @@ def test_framework_tuning_config(sagemaker_session):
 
     config = airflow.tuning_config(mxnet_tuner, data)
     expected_config = {
-        'HyperParameterTuningJobName': "{{ base_job_name }}-{{ execution_date.strftime('%y%m%d-%H%M') }}",
+        'HyperParameterTuningJobName': "{{ base_job_name }}-%s" % TIME_STAMP,
         'HyperParameterTuningJobConfig': {
             'Strategy': 'Bayesian',
             'HyperParameterTuningJobObjective': {
@@ -540,22 +546,19 @@ def test_framework_tuning_config(sagemaker_session):
             }],
             'StaticHyperParameters': {
                 'batch_size': '100',
-                'sagemaker_submit_directory': '"s3://output/{{ base_job_name }}'
-                                              '-{{ execution_date.strftime(\'%Y-%m-%d-%H-%M-%S\') }}'
-                                              '/source/sourcedir.tar.gz"',
+                'sagemaker_submit_directory': '"s3://output/{{ base_job_name }}-%s/source/sourcedir.tar.gz"'
+                                              % TIME_STAMP,
                 'sagemaker_program': '"{{ entry_point }}"',
                 'sagemaker_enable_cloudwatch_metrics': 'false',
                 'sagemaker_container_log_level': '20',
-                'sagemaker_job_name': '"{{ base_job_name }}-'
-                                      '{{ execution_date.strftime(\'%Y-%m-%d-%H-%M-%S\') }}"',
+                'sagemaker_job_name': '"{{ base_job_name }}-%s"' % TIME_STAMP,
                 'sagemaker_region': '"us-west-2"'}},
         'Tags': [{'{{ key }}': '{{ value }}'}],
         'S3Operations': {
             'S3Upload': [{
                 'Path': '{{ source_dir }}',
                 'Bucket': 'output',
-                'Key': "{{ base_job_name }}-"
-                       "{{ execution_date.strftime('%Y-%m-%d-%H-%M-%S') }}/source/sourcedir.tar.gz",
+                'Key': "{{ base_job_name }}-%s/source/sourcedir.tar.gz" % TIME_STAMP,
                 'Tar': True
             }]
         }
@@ -626,6 +629,7 @@ def test_byo_framework_model_config(sagemaker_session):
     assert config == expected_config
 
 
+@patch('sagemaker.utils.sagemaker_timestamp', MagicMock(return_value=TIME_STAMP))
 def test_framework_model_config(sagemaker_session):
     chainer_model = chainer.ChainerModel(
         model_data="{{ model_data }}",
@@ -640,14 +644,12 @@ def test_framework_model_config(sagemaker_session):
 
     config = airflow.model_config(instance_type='ml.c4.xlarge', model=chainer_model)
     expected_config = {
-        'ModelName': "sagemaker-chainer-{{ execution_date.strftime('%Y-%m-%d-%H-%M-%S') }}",
+        'ModelName': "sagemaker-chainer-%s" % TIME_STAMP,
         'PrimaryContainer': {
             'Image': '520713654638.dkr.ecr.us-west-2.amazonaws.com/sagemaker-chainer:5.0.0-cpu-py3',
             'Environment': {
                 'SAGEMAKER_PROGRAM': '{{ entry_point }}',
-                'SAGEMAKER_SUBMIT_DIRECTORY': "s3://output/sagemaker-chainer-"
-                                              "{{ execution_date.strftime('%Y-%m-%d-%H-%M-%S') }}"
-                                              "/source/sourcedir.tar.gz",
+                'SAGEMAKER_SUBMIT_DIRECTORY': "s3://output/sagemaker-chainer-%s/source/sourcedir.tar.gz" % TIME_STAMP,
                 'SAGEMAKER_ENABLE_CLOUDWATCH_METRICS': 'false',
                 'SAGEMAKER_CONTAINER_LOG_LEVEL': '20',
                 'SAGEMAKER_REGION': 'us-west-2',
@@ -660,7 +662,7 @@ def test_framework_model_config(sagemaker_session):
             'S3Upload': [{
                 'Path': '{{ source_dir }}',
                 'Bucket': 'output',
-                'Key': "sagemaker-chainer-{{ execution_date.strftime('%Y-%m-%d-%H-%M-%S') }}/source/sourcedir.tar.gz",
+                'Key': "sagemaker-chainer-%s/source/sourcedir.tar.gz" % TIME_STAMP,
                 'Tar': True}]
         }
     }
@@ -668,6 +670,7 @@ def test_framework_model_config(sagemaker_session):
     assert config == expected_config
 
 
+@patch('sagemaker.utils.sagemaker_timestamp', MagicMock(return_value=TIME_STAMP))
 def test_amazon_alg_model_config(sagemaker_session):
     pca_model = pca.PCAModel(
         model_data="{{ model_data }}",
@@ -676,7 +679,7 @@ def test_amazon_alg_model_config(sagemaker_session):
 
     config = airflow.model_config(instance_type='ml.c4.xlarge', model=pca_model)
     expected_config = {
-        'ModelName': "pca-{{ execution_date.strftime('%Y-%m-%d-%H-%M-%S') }}",
+        'ModelName': "pca-%s" % TIME_STAMP,
         'PrimaryContainer': {
             'Image': '174872318107.dkr.ecr.us-west-2.amazonaws.com/pca:1',
             'Environment': {},
@@ -688,6 +691,7 @@ def test_amazon_alg_model_config(sagemaker_session):
     assert config == expected_config
 
 
+@patch('sagemaker.utils.sagemaker_timestamp', MagicMock(return_value=TIME_STAMP))
 def test_model_config_from_framework_estimator(sagemaker_session):
     mxnet_estimator = mxnet.MXNet(
         entry_point="{{ entry_point }}",
@@ -706,28 +710,32 @@ def test_model_config_from_framework_estimator(sagemaker_session):
     # simulate training
     airflow.training_config(mxnet_estimator, data)
 
-    config = airflow.model_config_from_estimator(instance_type='ml.c4.xlarge', estimator=mxnet_estimator)
+    config = airflow.model_config_from_estimator(instance_type='ml.c4.xlarge',
+                                                 estimator=mxnet_estimator,
+                                                 task_id='task_id',
+                                                 task_type='training')
     expected_config = {
-        'ModelName': "{{ base_job_name }}-{{ execution_date.strftime('%Y-%m-%d-%H-%M-%S') }}",
+        'ModelName': "sagemaker-mxnet-%s" % TIME_STAMP,
         'PrimaryContainer': {
             'Image': '520713654638.dkr.ecr.us-west-2.amazonaws.com/sagemaker-mxnet:1.3.0-cpu-py3',
             'Environment': {
                 'SAGEMAKER_PROGRAM': '{{ entry_point }}',
-                'SAGEMAKER_SUBMIT_DIRECTORY': "s3://output/{{ base_job_name }}-"
-                                              "{{ execution_date.strftime('%Y-%m-%d-%H-%M-%S') }}"
-                                              "/source/sourcedir.tar.gz",
+                'SAGEMAKER_SUBMIT_DIRECTORY': "s3://output/{{ ti.xcom_pull(task_ids='task_id')['Training']"
+                                              "['TrainingJobName'] }}/source/sourcedir.tar.gz",
                 'SAGEMAKER_ENABLE_CLOUDWATCH_METRICS': 'false',
                 'SAGEMAKER_CONTAINER_LOG_LEVEL': '20',
                 'SAGEMAKER_REGION': 'us-west-2'
             },
-            'ModelDataUrl': "s3://output/{{ base_job_name }}-"
-                            "{{ execution_date.strftime('%Y-%m-%d-%H-%M-%S') }}/output/model.tar.gz"},
+            'ModelDataUrl': "s3://output/{{ ti.xcom_pull(task_ids='task_id')['Training']['TrainingJobName'] }}"
+                            "/output/model.tar.gz"
+        },
         'ExecutionRoleArn': '{{ role }}'
     }
 
     assert config == expected_config
 
 
+@patch('sagemaker.utils.sagemaker_timestamp', MagicMock(return_value=TIME_STAMP))
 def test_model_config_from_amazon_alg_estimator(sagemaker_session):
     knn_estimator = knn.KNN(
         role="{{ role }}",
@@ -743,20 +751,26 @@ def test_model_config_from_amazon_alg_estimator(sagemaker_session):
     # simulate training
     airflow.training_config(knn_estimator, record, mini_batch_size=256)
 
-    config = airflow.model_config_from_estimator(instance_type='ml.c4.xlarge', estimator=knn_estimator)
+    config = airflow.model_config_from_estimator(instance_type='ml.c4.xlarge',
+                                                 estimator=knn_estimator,
+                                                 task_id='task_id',
+                                                 task_type='tuning')
     expected_config = {
-        'ModelName': "knn-{{ execution_date.strftime('%Y-%m-%d-%H-%M-%S') }}",
+        'ModelName': "knn-%s" % TIME_STAMP,
         'PrimaryContainer': {
             'Image': '174872318107.dkr.ecr.us-west-2.amazonaws.com/knn:1',
             'Environment': {},
-            'ModelDataUrl': "s3://output/knn-{{ execution_date.strftime('%Y-%m-%d-%H-%M-%S') }}/output/model.tar.gz"},
+            'ModelDataUrl': "s3://output/{{ ti.xcom_pull(task_ids='task_id')['Tuning']['BestTrainingJob']"
+                            "['TrainingJobName'] }}/output/model.tar.gz"
+        },
         'ExecutionRoleArn': '{{ role }}'
     }
 
     assert config == expected_config
 
 
-def test_transformer_config(sagemaker_session):
+@patch('sagemaker.utils.sagemaker_timestamp', MagicMock(return_value=TIME_STAMP))
+def test_transform_config(sagemaker_session):
     tf_transformer = transformer.Transformer(
         model_name="tensorflow-model",
         instance_count="{{ instance_count }}",
@@ -779,7 +793,7 @@ def test_transformer_config(sagemaker_session):
     config = airflow.transform_config(tf_transformer, data, data_type='S3Prefix', content_type="{{ content_type }}",
                                       compression_type="{{ compression_type }}", split_type="{{ split_type }}")
     expected_config = {
-        'TransformJobName': "tensorflow-transform-{{ execution_date.strftime('%Y-%m-%d-%H-%M-%S') }}",
+        'TransformJobName': "tensorflow-transform-%s" % TIME_STAMP,
         'ModelName': 'tensorflow-model',
         'TransformInput': {
             'DataSource': {
@@ -812,6 +826,7 @@ def test_transformer_config(sagemaker_session):
     assert config == expected_config
 
 
+@patch('sagemaker.utils.sagemaker_timestamp', MagicMock(return_value=TIME_STAMP))
 def test_transform_config_from_framework_estimator(sagemaker_session):
     mxnet_estimator = mxnet.MXNet(
         entry_point="{{ entry_point }}",
@@ -833,29 +848,32 @@ def test_transform_config_from_framework_estimator(sagemaker_session):
 
     config = airflow.transform_config_from_estimator(
         estimator=mxnet_estimator,
+        task_id='task_id',
+        task_type='training',
         instance_count="{{ instance_count }}",
         instance_type="ml.p2.xlarge",
         data=transform_data)
     expected_config = {
         'Model': {
-            'ModelName': "{{ base_job_name }}-{{ execution_date.strftime('%Y-%m-%d-%H-%M-%S') }}",
+            'ModelName': "sagemaker-mxnet-%s" % TIME_STAMP,
             'PrimaryContainer': {
                 'Image': '520713654638.dkr.ecr.us-west-2.amazonaws.com/sagemaker-mxnet:1.3.0-gpu-py3',
                 'Environment': {'SAGEMAKER_PROGRAM': '{{ entry_point }}',
-                                'SAGEMAKER_SUBMIT_DIRECTORY': "s3://output/{{ base_job_name }}-"
-                                                              "{{ execution_date.strftime('%Y-%m-%d-%H-%M-%S') }}/"
-                                                              "source/sourcedir.tar.gz",
+                                'SAGEMAKER_SUBMIT_DIRECTORY': "s3://output/{{ ti.xcom_pull(task_ids='task_id')"
+                                                              "['Training']['TrainingJobName'] }}"
+                                                              "/source/sourcedir.tar.gz",
                                 'SAGEMAKER_ENABLE_CLOUDWATCH_METRICS': 'false',
                                 'SAGEMAKER_CONTAINER_LOG_LEVEL': '20',
                                 'SAGEMAKER_REGION': 'us-west-2'
                                 },
-                'ModelDataUrl': "s3://output/{{ base_job_name }}-"
-                                "{{ execution_date.strftime('%Y-%m-%d-%H-%M-%S') }}/output/model.tar.gz"},
+                'ModelDataUrl': "s3://output/{{ ti.xcom_pull(task_ids='task_id')['Training']['TrainingJobName'] }}"
+                                "/output/model.tar.gz"
+            },
             'ExecutionRoleArn': '{{ role }}'
         },
         'Transform': {
-            'TransformJobName': "{{ base_job_name }}-{{ execution_date.strftime('%Y-%m-%d-%H-%M-%S') }}",
-            'ModelName': "{{ base_job_name }}-{{ execution_date.strftime('%Y-%m-%d-%H-%M-%S') }}",
+            'TransformJobName': "{{ base_job_name }}-%s" % TIME_STAMP,
+            'ModelName': "sagemaker-mxnet-%s" % TIME_STAMP,
             'TransformInput': {
                 'DataSource': {
                     'S3DataSource': {
@@ -865,7 +883,7 @@ def test_transform_config_from_framework_estimator(sagemaker_session):
                 }
             },
             'TransformOutput': {
-                'S3OutputPath': "s3://output/{{ base_job_name }}-{{ execution_date.strftime('%Y-%m-%d-%H-%M-%S') }}"
+                'S3OutputPath': "s3://output/{{ base_job_name }}-%s" % TIME_STAMP
             },
             'TransformResources': {
                 'InstanceCount': '{{ instance_count }}',
@@ -878,6 +896,7 @@ def test_transform_config_from_framework_estimator(sagemaker_session):
     assert config == expected_config
 
 
+@patch('sagemaker.utils.sagemaker_timestamp', MagicMock(return_value=TIME_STAMP))
 def test_transform_config_from_amazon_alg_estimator(sagemaker_session):
     knn_estimator = knn.KNN(
         role="{{ role }}",
@@ -896,39 +915,44 @@ def test_transform_config_from_amazon_alg_estimator(sagemaker_session):
 
     config = airflow.transform_config_from_estimator(
         estimator=knn_estimator,
+        task_id='task_id',
+        task_type='training',
         instance_count="{{ instance_count }}",
         instance_type="ml.p2.xlarge",
         data=transform_data)
     expected_config = {
         'Model': {
-            'ModelName': "knn-{{ execution_date.strftime('%Y-%m-%d-%H-%M-%S') }}",
+            'ModelName': "knn-%s" % TIME_STAMP,
             'PrimaryContainer': {
                 'Image': '174872318107.dkr.ecr.us-west-2.amazonaws.com/knn:1',
                 'Environment': {},
-                'ModelDataUrl': "s3://output/knn-{{ execution_date.strftime('%Y-%m-%d-%H-%M-%S') }}"
-                                "/output/model.tar.gz"},
+                'ModelDataUrl': "s3://output/{{ ti.xcom_pull(task_ids='task_id')['Training']['TrainingJobName'] }}"
+                                "/output/model.tar.gz"
+            },
             'ExecutionRoleArn': '{{ role }}'},
-        'Transform': {'TransformJobName': "knn-{{ execution_date.strftime('%Y-%m-%d-%H-%M-%S') }}",
-                      'ModelName': "knn-{{ execution_date.strftime('%Y-%m-%d-%H-%M-%S') }}",
-                      'TransformInput': {
-                          'DataSource': {
-                              'S3DataSource': {
-                                  'S3DataType': 'S3Prefix',
-                                  'S3Uri': '{{ transform_data }}'}
-                          }
-                      },
-                      'TransformOutput': {
-                          'S3OutputPath': "s3://output/knn-{{ execution_date.strftime('%Y-%m-%d-%H-%M-%S') }}"
-                      },
-                      'TransformResources': {
-                          'InstanceCount': '{{ instance_count }}',
-                          'InstanceType': 'ml.p2.xlarge'}
-                      }
+        'Transform': {
+            'TransformJobName': "knn-%s" % TIME_STAMP,
+            'ModelName': "knn-%s" % TIME_STAMP,
+            'TransformInput': {
+                'DataSource': {
+                    'S3DataSource': {
+                        'S3DataType': 'S3Prefix',
+                        'S3Uri': '{{ transform_data }}'}
+                }
+            },
+            'TransformOutput': {
+                'S3OutputPath': "s3://output/knn-%s" % TIME_STAMP
+            },
+            'TransformResources': {
+                'InstanceCount': '{{ instance_count }}',
+                'InstanceType': 'ml.p2.xlarge'}
+        }
     }
 
     assert config == expected_config
 
 
+@patch('sagemaker.utils.sagemaker_timestamp', MagicMock(return_value=TIME_STAMP))
 def test_deploy_framework_model_config(sagemaker_session):
     chainer_model = chainer.ChainerModel(
         model_data="{{ model_data }}",
@@ -946,14 +970,13 @@ def test_deploy_framework_model_config(sagemaker_session):
                                    instance_type="ml.m4.xlarge")
     expected_config = {
         'Model': {
-            'ModelName': "sagemaker-chainer-{{ execution_date.strftime('%Y-%m-%d-%H-%M-%S') }}",
+            'ModelName': "sagemaker-chainer-%s" % TIME_STAMP,
             'PrimaryContainer': {
                 'Image': '520713654638.dkr.ecr.us-west-2.amazonaws.com/sagemaker-chainer:5.0.0-cpu-py3',
                 'Environment': {
                     'SAGEMAKER_PROGRAM': '{{ entry_point }}',
-                    'SAGEMAKER_SUBMIT_DIRECTORY': "s3://output/sagemaker-chainer-"
-                                                  "{{ execution_date.strftime('%Y-%m-%d-%H-%M-%S') }}"
-                                                  "/source/sourcedir.tar.gz",
+                    'SAGEMAKER_SUBMIT_DIRECTORY': "s3://output/sagemaker-chainer-%s/source/sourcedir.tar.gz"
+                                                  % TIME_STAMP,
                     'SAGEMAKER_ENABLE_CLOUDWATCH_METRICS': 'false',
                     'SAGEMAKER_CONTAINER_LOG_LEVEL': '20',
                     'SAGEMAKER_REGION': 'us-west-2',
@@ -963,24 +986,24 @@ def test_deploy_framework_model_config(sagemaker_session):
             'ExecutionRoleArn': '{{ role }}'
         },
         'EndpointConfig': {
-            'EndpointConfigName': "sagemaker-chainer-{{ execution_date.strftime('%Y-%m-%d-%H-%M-%S') }}",
+            'EndpointConfigName': "sagemaker-chainer-%s" % TIME_STAMP,
             'ProductionVariants': [{
                 'InstanceType': 'ml.m4.xlarge',
                 'InitialInstanceCount': '{{ instance_count }}',
-                'ModelName': "sagemaker-chainer-{{ execution_date.strftime('%Y-%m-%d-%H-%M-%S') }}",
+                'ModelName': "sagemaker-chainer-%s" % TIME_STAMP,
                 'VariantName': 'AllTraffic',
                 'InitialVariantWeight': 1
             }]
         },
         'Endpoint': {
-            'EndpointName': "sagemaker-chainer-{{ execution_date.strftime('%Y-%m-%d-%H-%M-%S') }}",
-            'EndpointConfigName': "sagemaker-chainer-{{ execution_date.strftime('%Y-%m-%d-%H-%M-%S') }}"
+            'EndpointName': "sagemaker-chainer-%s" % TIME_STAMP,
+            'EndpointConfigName': "sagemaker-chainer-%s" % TIME_STAMP
         },
         'S3Operations': {
             'S3Upload': [{
                 'Path': '{{ source_dir }}',
                 'Bucket': 'output',
-                'Key': "sagemaker-chainer-{{ execution_date.strftime('%Y-%m-%d-%H-%M-%S') }}/source/sourcedir.tar.gz",
+                'Key': "sagemaker-chainer-%s/source/sourcedir.tar.gz" % TIME_STAMP,
                 'Tar': True
             }]
         }
@@ -989,6 +1012,7 @@ def test_deploy_framework_model_config(sagemaker_session):
     assert config == expected_config
 
 
+@patch('sagemaker.utils.sagemaker_timestamp', MagicMock(return_value=TIME_STAMP))
 def test_deploy_amazon_alg_model_config(sagemaker_session):
     pca_model = pca.PCAModel(
         model_data="{{ model_data }}",
@@ -1000,31 +1024,32 @@ def test_deploy_amazon_alg_model_config(sagemaker_session):
                                    instance_type='ml.c4.xlarge')
     expected_config = {
         'Model': {
-            'ModelName': "pca-{{ execution_date.strftime('%Y-%m-%d-%H-%M-%S') }}",
+            'ModelName': "pca-%s" % TIME_STAMP,
             'PrimaryContainer': {
                 'Image': '174872318107.dkr.ecr.us-west-2.amazonaws.com/pca:1',
                 'Environment': {},
                 'ModelDataUrl': '{{ model_data }}'},
             'ExecutionRoleArn': '{{ role }}'},
         'EndpointConfig': {
-            'EndpointConfigName': "pca-{{ execution_date.strftime('%Y-%m-%d-%H-%M-%S') }}",
+            'EndpointConfigName': "pca-%s" % TIME_STAMP,
             'ProductionVariants': [{
                 'InstanceType': 'ml.c4.xlarge',
                 'InitialInstanceCount': '{{ instance_count }}',
-                'ModelName': "pca-{{ execution_date.strftime('%Y-%m-%d-%H-%M-%S') }}",
+                'ModelName': "pca-%s" % TIME_STAMP,
                 'VariantName': 'AllTraffic',
                 'InitialVariantWeight': 1
             }]
         },
         'Endpoint': {
-            'EndpointName': "pca-{{ execution_date.strftime('%Y-%m-%d-%H-%M-%S') }}",
-            'EndpointConfigName': "pca-{{ execution_date.strftime('%Y-%m-%d-%H-%M-%S') }}"
+            'EndpointName': "pca-%s" % TIME_STAMP,
+            'EndpointConfigName': "pca-%s" % TIME_STAMP
         }
     }
 
     assert config == expected_config
 
 
+@patch('sagemaker.utils.sagemaker_timestamp', MagicMock(return_value=TIME_STAMP))
 def test_deploy_config_from_framework_estimator(sagemaker_session):
     mxnet_estimator = mxnet.MXNet(
         entry_point="{{ entry_point }}",
@@ -1044,45 +1069,48 @@ def test_deploy_config_from_framework_estimator(sagemaker_session):
     airflow.training_config(mxnet_estimator, train_data)
 
     config = airflow.deploy_config_from_estimator(estimator=mxnet_estimator,
+                                                  task_id='task_id',
+                                                  task_type='training',
                                                   initial_instance_count="{{ instance_count}}",
                                                   instance_type="ml.c4.large",
                                                   endpoint_name="mxnet-endpoint")
     expected_config = {
         'Model': {
-            'ModelName': "{{ base_job_name }}-{{ execution_date.strftime('%Y-%m-%d-%H-%M-%S') }}",
+            'ModelName': "sagemaker-mxnet-%s" % TIME_STAMP,
             'PrimaryContainer': {
                 'Image': '520713654638.dkr.ecr.us-west-2.amazonaws.com/sagemaker-mxnet:1.3.0-cpu-py3',
                 'Environment': {
                     'SAGEMAKER_PROGRAM': '{{ entry_point }}',
-                    'SAGEMAKER_SUBMIT_DIRECTORY': "s3://output/{{ base_job_name }}-"
-                                                  "{{ execution_date.strftime('%Y-%m-%d-%H-%M-%S') }}/"
-                                                  "source/sourcedir.tar.gz",
+                    'SAGEMAKER_SUBMIT_DIRECTORY': "s3://output/{{ ti.xcom_pull(task_ids='task_id')['Training']"
+                                                  "['TrainingJobName'] }}/source/sourcedir.tar.gz",
                     'SAGEMAKER_ENABLE_CLOUDWATCH_METRICS': 'false',
                     'SAGEMAKER_CONTAINER_LOG_LEVEL': '20',
                     'SAGEMAKER_REGION': 'us-west-2'},
-                'ModelDataUrl': "s3://output/{{ base_job_name }}-"
-                                "{{ execution_date.strftime('%Y-%m-%d-%H-%M-%S') }}/output/model.tar.gz"},
+                'ModelDataUrl': "s3://output/{{ ti.xcom_pull(task_ids='task_id')['Training']['TrainingJobName'] }}"
+                                "/output/model.tar.gz"
+            },
             'ExecutionRoleArn': '{{ role }}'
         },
         'EndpointConfig': {
-            'EndpointConfigName': "{{ base_job_name }}-{{ execution_date.strftime('%Y-%m-%d-%H-%M-%S') }}",
+            'EndpointConfigName': "sagemaker-mxnet-%s" % TIME_STAMP,
             'ProductionVariants': [{
                 'InstanceType': 'ml.c4.large',
                 'InitialInstanceCount': '{{ instance_count}}',
-                'ModelName': "{{ base_job_name }}-{{ execution_date.strftime('%Y-%m-%d-%H-%M-%S') }}",
+                'ModelName': "sagemaker-mxnet-%s" % TIME_STAMP,
                 'VariantName': 'AllTraffic',
                 'InitialVariantWeight': 1
             }]
         },
         'Endpoint': {
             'EndpointName': 'mxnet-endpoint',
-            'EndpointConfigName': "{{ base_job_name }}-{{ execution_date.strftime('%Y-%m-%d-%H-%M-%S') }}"
+            'EndpointConfigName': "sagemaker-mxnet-%s" % TIME_STAMP
         }
     }
 
     assert config == expected_config
 
 
+@patch('sagemaker.utils.sagemaker_timestamp', MagicMock(return_value=TIME_STAMP))
 def test_deploy_config_from_amazon_alg_estimator(sagemaker_session):
     knn_estimator = knn.KNN(
         role="{{ role }}",
@@ -1099,28 +1127,31 @@ def test_deploy_config_from_amazon_alg_estimator(sagemaker_session):
     airflow.training_config(knn_estimator, record, mini_batch_size=256)
 
     config = airflow.deploy_config_from_estimator(estimator=knn_estimator,
+                                                  task_id='task_id',
+                                                  task_type='tuning',
                                                   initial_instance_count="{{ instance_count }}",
                                                   instance_type="ml.p2.xlarge")
     expected_config = {
         'Model': {
-            'ModelName': "knn-{{ execution_date.strftime('%Y-%m-%d-%H-%M-%S') }}",
+            'ModelName': "knn-%s" % TIME_STAMP,
             'PrimaryContainer': {
                 'Image': '174872318107.dkr.ecr.us-west-2.amazonaws.com/knn:1',
                 'Environment': {},
-                'ModelDataUrl': "s3://output/knn-{{ execution_date.strftime('%Y-%m-%d-%H-%M-%S') }}"
-                                "/output/model.tar.gz"}, 'ExecutionRoleArn': '{{ role }}'},
+                'ModelDataUrl': "s3://output/{{ ti.xcom_pull(task_ids='task_id')['Tuning']['BestTrainingJob']"
+                                "['TrainingJobName'] }}/output/model.tar.gz"},
+            'ExecutionRoleArn': '{{ role }}'},
         'EndpointConfig': {
-            'EndpointConfigName': "knn-{{ execution_date.strftime('%Y-%m-%d-%H-%M-%S') }}",
+            'EndpointConfigName': "knn-%s" % TIME_STAMP,
             'ProductionVariants': [{
                 'InstanceType': 'ml.p2.xlarge',
                 'InitialInstanceCount': '{{ instance_count }}',
-                'ModelName': "knn-{{ execution_date.strftime('%Y-%m-%d-%H-%M-%S') }}",
+                'ModelName': "knn-%s" % TIME_STAMP,
                 'VariantName': 'AllTraffic', 'InitialVariantWeight': 1
             }]
         },
         'Endpoint': {
-            'EndpointName': "knn-{{ execution_date.strftime('%Y-%m-%d-%H-%M-%S') }}",
-            'EndpointConfigName': "knn-{{ execution_date.strftime('%Y-%m-%d-%H-%M-%S') }}"
+            'EndpointName': "knn-%s" % TIME_STAMP,
+            'EndpointConfigName': "knn-%s" % TIME_STAMP
         }
     }
 
