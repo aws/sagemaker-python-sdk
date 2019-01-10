@@ -69,10 +69,23 @@ Supported Operating Systems
 
 SageMaker Python SDK supports Unix/Linux and Mac.
 
-Supported Python versions
+Supported Python Versions
 ~~~~~~~~~~~~~~~~~~~~~~~~~
 
-SageMaker Python SDK is tested on: \* Python 2.7 \* Python 3.5
+SageMaker Python SDK is tested on:
+
+- Python 2.7
+- Python 3.5
+
+AWS Permissions
+~~~~~~~~~~~~~~~
+
+As a managed service, Amazon SageMaker performs operations on your behalf on the AWS hardware that is managed by Amazon SageMaker.
+Amazon SageMaker can perform only operations that the user permits.
+You can read more about which permissions are necessary in the `AWS Documentation <https://docs.aws.amazon.com/sagemaker/latest/dg/sagemaker-roles.html>`__.
+
+The SageMaker Python SDK should not require any additional permissions.
+However, if you are using an IAM role with a path in it, you should grant permission for ``iam:GetRole``.
 
 Licensing
 ~~~~~~~~~
@@ -203,6 +216,7 @@ Local Mode
 
 The SageMaker Python SDK supports local mode, which allows you to create estimators and deploy them to your local environment.
 This is a great way to test your deep learning scripts before running them in SageMaker's managed training or hosting environments.
+Local Mode is supported for only frameworks (e.g. TensorFlow, MXNet) and images you supply yourself.
 
 We can take the example in  `Using Estimators <#using-estimators>`__ , and use either ``local`` or ``local_gpu`` as the instance type.
 
@@ -374,7 +388,7 @@ TensorFlow SageMaker Estimators
 
 By using TensorFlow SageMaker ``Estimators``, you can train and host TensorFlow models on Amazon SageMaker.
 
-Supported versions of TensorFlow: ``1.4.1``, ``1.5.0``, ``1.6.0``, ``1.7.0``, ``1.8.0``, ``1.9.0``, ``1.10.0``, ``1.11.0``.
+Supported versions of TensorFlow: ``1.4.1``, ``1.5.0``, ``1.6.0``, ``1.7.0``, ``1.8.0``, ``1.9.0``, ``1.10.0``, ``1.11.0``, ``1.12.0``.
 
 Supported versions of TensorFlow for Elastic Inference: ``1.11.0``.
 
@@ -640,15 +654,9 @@ In addition, the ``fit()`` call uses a list of ``RecordSet`` objects instead of 
     my_tuner.fit([train_records, test_records])
 
 To help attach a previously-started hyperparameter tuning job to a ``HyperparameterTuner`` instance,
-``fit()`` adds the module path of the class used to create the tuner to the list of static hyperparameters by default.
-If the algorithm you are using cannot handle unknown hyperparameters
-(for example, an Amazon SageMaker built-in algorithm that does not have a custom estimator in the Python SDK),
-set ``include_cls_metadata`` to ``False`` when you call ``fit``, so that it does not add the module path as a static hyperparameter:
-
-.. code:: python
-
-    my_tuner.fit({'train': 's3://my_bucket/my_training_data', 'test': 's3://my_bucket_my_testing_data'},
-                 include_cls_metadata=False)
+``fit()`` adds the module path of the class used to create the hyperparameter tuner to the list of static hyperparameters by default.
+If you are using your own custom estimator class (i.e. not one provided in this SDK) and want that class to be used when attaching a hyperparamter tuning job,
+set ``include_cls_metadata`` to ``True`` when you call ``fit`` to add the module path as static hyperparameters.
 
 There is also an analytics object associated with each ``HyperparameterTuner`` instance that contains useful information about the hyperparameter tuning job.
 For example, the ``dataframe`` method gets a pandas dataframe summarizing the associated training jobs:

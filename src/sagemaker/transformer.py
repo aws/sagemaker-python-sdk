@@ -93,7 +93,7 @@ class Transformer(object):
             compression_type (str): Compression type of the input data, if compressed (default: None).
                 Valid values: 'Gzip', None.
             split_type (str): The record delimiter for the input object (default: 'None').
-                Valid values: 'None', 'Line', and 'RecordIO'.
+                Valid values: 'None', 'Line', 'RecordIO', and 'TFRecord'.
             job_name (str): job name (default: None). If not specified, one will be generated.
         """
         local_mode = self.sagemaker_session.local_mode

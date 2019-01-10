@@ -17,6 +17,7 @@ import time
 
 import pytest
 
+import tests.integ
 from sagemaker.tensorflow import TensorFlow, TensorFlowModel
 from sagemaker.utils import sagemaker_timestamp
 from tests.integ import DATA_DIR, TRAINING_DEFAULT_TIMEOUT_MINUTES, PYTHON_VERSION
@@ -76,6 +77,10 @@ def test_deploy_model(sagemaker_session, tf_training_job):
         assert dict_result == list_result
 
 
+@pytest.mark.continuous_testing
+@pytest.mark.regional_testing
+@pytest.mark.skipif(tests.integ.test_region() not in tests.integ.EI_SUPPORTED_REGIONS,
+                    reason="EI isn't supported in that specific region.")
 @pytest.mark.skipif(PYTHON_VERSION != 'py2', reason="TensorFlow image supports only python 2.")
 def test_deploy_model_with_accelerator(sagemaker_session, tf_training_job, ei_tf_version):
     endpoint_name = 'test-tf-deploy-model-ei-{}'.format(sagemaker_timestamp())

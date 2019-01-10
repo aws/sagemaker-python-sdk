@@ -286,12 +286,13 @@ def test_mxnet_local_mode(sagemaker_local_session, mxnet_full_version):
             mx.delete_endpoint()
 
 
-def test_mxnet_local_data_local_script():
+def test_mxnet_local_data_local_script(mxnet_full_version):
     data_path = os.path.join(DATA_DIR, 'mxnet_mnist')
-    script_path = os.path.join(data_path, 'mnist_framework_mode.py')
+    script_path = os.path.join(data_path, 'mnist.py')
 
     mx = MXNet(entry_point=script_path, role='SageMakerRole',
                train_instance_count=1, train_instance_type='local',
+               framework_version=mxnet_full_version,
                sagemaker_session=LocalNoS3Session())
 
     train_input = 'file://' + os.path.join(data_path, 'train')

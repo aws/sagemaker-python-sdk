@@ -55,6 +55,7 @@ The training script is very similar to a training script you might run outside o
   These artifacts are compressed and uploaded to S3 to an S3 bucket with the same prefix as the model artifacts.
 * ``SM_CHANNEL_XXXX``: A string that represents the path to the directory that contains the input data for the specified channel.
   For example, if you specify two input channels in the MXNet estimator's ``fit`` call, named 'train' and 'test', the environment variables ``SM_CHANNEL_TRAIN`` and ``SM_CHANNEL_TEST`` are set.
+* ``SM_HPS``: A json dump of the hyperparameters preserving json types (boolean, integer, etc.)
 
 For the exhaustive list of available environment variables, see the `SageMaker Containers documentation <https://github.com/aws/sagemaker-containers#list-of-provided-environment-variables-by-sagemaker-containers>`__.
 
@@ -66,6 +67,7 @@ For example, a training script might start with the following:
 
     import argparse
     import os
+    import json
 
     if __name__ =='__main__':
 
@@ -75,6 +77,9 @@ For example, a training script might start with the following:
         parser.add_argument('--epochs', type=int, default=10)
         parser.add_argument('--batch-size', type=int, default=100)
         parser.add_argument('--learning-rate', type=float, default=0.1)
+
+        # an alternative way to load hyperparameters via SM_HPS environment variable.
+        parser.add_argument('--sm-hps', type=json.loads, default=os.environ['SM_HPS'])
 
         # input data and model directories
         parser.add_argument('--model-dir', type=str, default=os.environ['SM_MODEL_DIR'])
