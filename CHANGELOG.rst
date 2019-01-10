@@ -2,9 +2,16 @@
 CHANGELOG
 =========
 
+1.17.1.dev
+==========
+
+* enhancement: Workflow: Specify tasks from which training/tuning operator to transform/deploy in related operators
+
 1.17.0
 ======
 
+
+* bug-fix: Workflow: Revert appending Airflow retry id to default job name
 * feature: support for Tensorflow 1.12
 * feature: support for Tensorflow Serving 1.12
 * feature: support for Horovod
@@ -25,7 +32,7 @@ CHANGELOG
 ======
 
 * bug-fix: Local Mode: Allow support for SSH in local mode
-* bug-fix: Append retry id to default Airflow job name to avoid name collisions in retry
+* bug-fix: Workflow: Append retry id to default Airflow job name to avoid name collisions in retry
 * bug-fix: Local Mode: No longer requires s3 permissions to run local entry point file
 * feature: Estimators: add support for PyTorch 1.0.0
 * bug-fix: Local Mode: Move dependency on sagemaker_s3_output from rl.estimator to model
