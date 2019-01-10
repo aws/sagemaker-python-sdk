@@ -27,12 +27,6 @@ from functools import wraps
 import six
 
 
-AIRFLOW_TIME_MACRO = "{{ execution_date.strftime('%Y-%m-%d-%H-%M-%S') }}"
-AIRFLOW_TIME_MACRO_LEN = 19
-AIRFLOW_TIME_MACRO_SHORT = "{{ execution_date.strftime('%y%m%d-%H%M') }}"
-AIRFLOW_TIME_MACRO_SHORT_LEN = 11
-
-
 # Use the base name of the image as the job name if the user doesn't give us one
 def name_from_image(image):
     """Create a training job name based on the image name and a timestamp.
@@ -71,25 +65,6 @@ def unique_name_from_base(base, max_length=63):
     available_length = max_length - 2 - len(ts) - len(unique)
     trimmed = base[:available_length]
     return '{}-{}-{}'.format(trimmed, ts, unique)
-
-
-def airflow_name_from_base(base, max_length=63, short=False):
-    """Append airflow execution_date macro (https://airflow.apache.org/code.html?#macros)
-    to the provided string. The macro will beevaluated in Airflow operator runtime.
-    This guarantees that different operators will have same name returned by this function.
-
-    Args:
-        base (str): String used as prefix to generate the unique name.
-        max_length (int): Maximum length for the resulting string.
-        short (bool): Whether or not to use a truncated timestamp.
-
-    Returns:
-        str: Input parameter with appended macro.
-    """
-    macro = AIRFLOW_TIME_MACRO_SHORT if short else AIRFLOW_TIME_MACRO
-    length = AIRFLOW_TIME_MACRO_SHORT_LEN if short else AIRFLOW_TIME_MACRO_LEN
-    trimmed_base = base[:max_length - length - 1]
-    return "{}-{}".format(trimmed_base, macro)
 
 
 def base_name_from_image(image):
