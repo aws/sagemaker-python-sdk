@@ -26,7 +26,6 @@ from sagemaker.mxnet import MXNet
 from sagemaker.pytorch import PyTorch
 from sagemaker.rl import RLEstimator
 from sagemaker.sklearn.defaults import SKLEARN_VERSION
-from sagemaker.tensorflow import TensorFlow
 from sagemaker.tensorflow.estimator import TensorFlow
 
 DEFAULT_REGION = 'us-west-2'
