@@ -2,6 +2,11 @@
 CHANGELOG
 =========
 
+1.17.1.dev
+==========
+
+* bug-fix: Handle StopIteration in CloudWatch Logs retrieval
+
 1.17.0
 ======
 
