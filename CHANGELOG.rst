@@ -2,6 +2,11 @@
 CHANGELOG
 =========
 
+1.17.2
+======
+
+* feature: HyperparameterTuner: support VPC config
+
 1.17.1
 ======
 
