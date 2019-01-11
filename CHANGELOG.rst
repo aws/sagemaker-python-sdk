@@ -2,11 +2,16 @@
 CHANGELOG
 =========
 
-1.17.1.dev
+1.17.2.dev
 ==========
 
-* enhancement: Workflow: Specify tasks from which training/tuning operator to transform/deploy in related operators
 * bug-fix: Handle StopIteration in CloudWatch Logs retrieval
+
+1.17.1
+======
+
+* enhancement: Workflow: Specify tasks from which training/tuning operator to transform/deploy in related operators
+* feature: Supporting inter-container traffic encryption flag
 
 1.17.0
 ======
