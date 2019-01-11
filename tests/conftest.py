@@ -131,7 +131,7 @@ def tf_version(request):
     return request.param
 
 
-@pytest.fixture(scope='module', params=['1.11', '1.11.0'])
+@pytest.fixture(scope='module', params=['1.12', '1.12.0'])
 def ei_tf_version(request):
     return request.param
 
