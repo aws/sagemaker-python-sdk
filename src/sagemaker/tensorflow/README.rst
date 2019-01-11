@@ -244,8 +244,11 @@ Training with ``MPI`` is configured by specifying following fields in ``distribu
 
 - ``enabled (bool)``: If set to ``True``, the MPI setup is performed and ``mpirun`` command is executed.
 - ``processes_per_host (int)``: Number of processes MPI should launch on each host. Note, this should not be
-  greater than the available slots on the selected instance type.
-- ``custom_mpi_options (str)``: Additional command line arguments to pass to ``mpirun``.
+  greater than the available slots on the selected instance type. This flag should be set for the multi-cpu/gpu
+  training.
+- ``custom_mpi_options (str)``:  Any `mpirun` flag(s) can be passed in this field that will be added to the `mpirun`
+  command executed by SageMaker to launch distributed horovod training.
+
 
 In the below example we create an estimator to launch Horovod distributed training with 2 processes on one host:
 
@@ -255,7 +258,7 @@ In the below example we create an estimator to launch Horovod distributed traini
 
     tf_estimator = TensorFlow(entry_point='tf-train.py', role='SageMakerRole',
                               train_instance_count=1, train_instance_type='ml.p2.xlarge',
-                              framework_version='1.11', py_version='py3',
+                              framework_version='1.12', py_version='py3',
                               distributions={
                                   'mpi': {
                                       'enabled': True,

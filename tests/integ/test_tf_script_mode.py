@@ -86,17 +86,3 @@ def _assert_s3_files_exist(s3_url, files):
         if not found:
             raise ValueError('File {} is not found under {}'.format(f, s3_url))
 
-
-def _assert_s3_files_exist_in_tar(s3_url, files):
-    parsed_url = urlparse(s3_url)
-    tmp_file = tempfile.NamedTemporaryFile()
-    s3 = boto3.resource('s3')
-    object = s3.Bucket(parsed_url.netloc).Object(parsed_url.path.lstrip('/'))
-
-    with open(tmp_file.name, 'wb') as temp_file:
-        object.download_fileobj(temp_file)
-        with tarfile.open(tmp_file.name, 'r') as tar_file:
-            for f in files:
-                found = [x for x in tar_file.getnames() if x.endswith(f)]
-                if not found:
-                    raise ValueError('File {} is not found in {}'.format(f, s3_url))
