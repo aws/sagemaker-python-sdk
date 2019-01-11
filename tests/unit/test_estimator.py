@@ -20,12 +20,14 @@ from time import sleep
 import pytest
 from mock import MagicMock, Mock, patch
 
+from sagemaker.amazon.amazon_estimator import registry
 from sagemaker.algorithm import AlgorithmEstimator
 from sagemaker.estimator import Estimator, EstimatorBase, Framework, _TrainingJob
 from sagemaker.model import FrameworkModel
 from sagemaker.predictor import RealTimePredictor
 from sagemaker.session import s3_input, ShuffleConfig
 from sagemaker.transformer import Transformer
+from botocore.exceptions import ClientError
 
 MODEL_DATA = "s3://bucket/model.tar.gz"
 MODEL_IMAGE = "mi"
@@ -84,7 +86,8 @@ RETURNED_JOB_DESCRIPTION = {
     },
     'TrainingJobOutput': {
         'S3TrainingJobOutput': 's3://here/output.tar.gz'
-    }
+    },
+    'EnableInterContainerTrafficEncryption': False
 }
 
 MODEL_CONTAINER_DEF = {
@@ -152,7 +155,8 @@ def test_framework_all_init_args(sagemaker_session):
                        train_max_run=456, input_mode='inputmode', output_path='outputpath', output_kms_key='outputkms',
                        base_job_name='basejobname', tags=[{'foo': 'bar'}], subnets=['123', '456'],
                        security_group_ids=['789', '012'],
-                       metric_definitions=[{'Name': 'validation-rmse', 'Regex': 'validation-rmse=(\\d+)'}])
+                       metric_definitions=[{'Name': 'validation-rmse', 'Regex': 'validation-rmse=(\\d+)'}],
+                       encrypt_inter_container_traffic=True)
     _TrainingJob.start_new(f, 's3://mydata')
     sagemaker_session.train.assert_called_once()
     _, args = sagemaker_session.train.call_args
@@ -168,7 +172,8 @@ def test_framework_all_init_args(sagemaker_session):
                     'role': sagemaker_session.expand_role(), 'job_name': None,
                     'resource_config': {'VolumeSizeInGB': 123, 'InstanceCount': 3, 'VolumeKmsKeyId': 'volumekms',
                                         'InstanceType': 'ml.m4.xlarge'},
-                    'metric_definitions': [{'Name': 'validation-rmse', 'Regex': 'validation-rmse=(\\d+)'}]}
+                    'metric_definitions': [{'Name': 'validation-rmse', 'Regex': 'validation-rmse=(\\d+)'}],
+                    'encrypt_inter_container_traffic': True}
 
 
 def test_framework_init_s3_entry_point_invalid(sagemaker_session):
@@ -432,6 +437,7 @@ def test_attach_framework(sagemaker_session):
     assert framework_estimator.entry_point == 'iris-dnn-classifier.py'
     assert framework_estimator.subnets == ['foo']
     assert framework_estimator.security_group_ids == ['bar']
+    assert framework_estimator.encrypt_inter_container_traffic is False
 
 
 def test_attach_framework_with_tuning(sagemaker_session):
@@ -457,6 +463,7 @@ def test_attach_framework_with_tuning(sagemaker_session):
     assert hyper_params['_tuning_objective_metric'] == '"Validation-accuracy"'
     assert framework_estimator.source_dir == 's3://some/sourcedir.tar.gz'
     assert framework_estimator.entry_point == 'iris-dnn-classifier.py'
+    assert framework_estimator.encrypt_inter_container_traffic is False
 
 
 def test_attach_framework_with_model_channel(sagemaker_session):
@@ -479,13 +486,27 @@ def test_attach_framework_with_model_channel(sagemaker_session):
 
     framework_estimator = DummyFramework.attach(training_job_name='neo', sagemaker_session=sagemaker_session)
     assert framework_estimator.model_uri is s3_uri
+    assert framework_estimator.encrypt_inter_container_traffic is False
+
+
+def test_attach_framework_with_inter_container_traffic_encryption_flag(sagemaker_session):
+    returned_job_description = RETURNED_JOB_DESCRIPTION.copy()
+    returned_job_description['EnableInterContainerTrafficEncryption'] = True
+
+    sagemaker_session.sagemaker_client.describe_training_job = Mock(name='describe_training_job',
+                                                                    return_value=returned_job_description)
+
+    framework_estimator = DummyFramework.attach(training_job_name='neo', sagemaker_session=sagemaker_session)
+
+    assert framework_estimator.encrypt_inter_container_traffic is True
 
 
 @patch('time.strftime', return_value=TIMESTAMP)
 def test_fit_verify_job_name(strftime, sagemaker_session):
     fw = DummyFramework(entry_point=SCRIPT_PATH, role='DummyRole', sagemaker_session=sagemaker_session,
                         train_instance_count=INSTANCE_COUNT, train_instance_type=INSTANCE_TYPE,
-                        enable_cloudwatch_metrics=True, tags=TAGS)
+                        enable_cloudwatch_metrics=True, tags=TAGS,
+                        encrypt_inter_container_traffic=True)
     fw.fit(inputs=s3_input('s3://mybucket/train'))
 
     _, _, train_kwargs = sagemaker_session.train.mock_calls[0]
@@ -495,6 +516,7 @@ def test_fit_verify_job_name(strftime, sagemaker_session):
     assert train_kwargs['input_mode'] == 'File'
     assert train_kwargs['tags'] == TAGS
     assert train_kwargs['job_name'] == JOB_NAME
+    assert train_kwargs['encrypt_inter_container_traffic'] is True
     assert fw.latest_training_job.name == JOB_NAME
 
 
@@ -830,6 +852,17 @@ def test_generic_to_fit_with_hps(sagemaker_session):
     assert args == HP_TRAIN_CALL
 
 
+def test_generic_to_fit_with_encrypt_inter_container_traffic_flag(sagemaker_session):
+    e = Estimator(IMAGE_NAME, ROLE, INSTANCE_COUNT, INSTANCE_TYPE, output_path=OUTPUT_PATH,
+                  sagemaker_session=sagemaker_session, encrypt_inter_container_traffic=True)
+
+    e.fit()
+
+    sagemaker_session.train.assert_called_once()
+    args = sagemaker_session.train.call_args[1]
+    assert args['encrypt_inter_container_traffic'] is True
+
+
 def test_generic_to_deploy(sagemaker_session):
     e = Estimator(IMAGE_NAME, ROLE, INSTANCE_COUNT, INSTANCE_TYPE, output_path=OUTPUT_PATH,
                   sagemaker_session=sagemaker_session)
@@ -1071,6 +1104,26 @@ def test_prepare_for_training_with_name_based_on_algorithm(sagemaker_session):
 
     estimator._prepare_for_training()
     assert 'scikit-decision-trees-1542410022' in estimator._current_job_name
+
+
+@patch('sagemaker.estimator.Estimator.fit',
+       Mock(side_effect=ClientError(error_response={"Error": {
+                                                    "Code": 403,
+                                                    "Message":
+                                                    '"EnableInterContainerTrafficEncryption" and '
+                                                    '"VpcConfig" must be provided together'}},
+                                    operation_name='Unit Test')))
+def test_encryption_flag_in_non_vpc_mode_invalid(sagemaker_session):
+    image_name = registry("us-west-2") + "/factorization-machines:1"
+    with pytest.raises(ClientError) as error:
+        estimator = Estimator(image_name=image_name,
+                              role='SageMakerRole', train_instance_count=1,
+                              train_instance_type='ml.c4.xlarge',
+                              sagemaker_session=sagemaker_session,
+                              base_job_name='test-non-vpc-encryption',
+                              encrypt_inter_container_traffic=True)
+        estimator.fit()
+    assert '"EnableInterContainerTrafficEncryption" and "VpcConfig" must be provided together' in str(error)
 
 
 #################################################################################

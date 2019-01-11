@@ -2,13 +2,15 @@
 CHANGELOG
 =========
 
-1.17.1.dev
-==========
+1.17.1
+======
 
 * enhancement: Workflow: Specify tasks from which training/tuning operator to transform/deploy in related operators
 * feature: support for Tensorflow 1.12
 * feature: support for Tensorflow Serving 1.12
 * feature: support for Horovod
+* feature: Supporting inter-container traffic encryption flag
+
 
 1.17.0
 ======
