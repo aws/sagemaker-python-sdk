@@ -408,8 +408,7 @@ class Session(object):
                 Can be either 'Auto' or 'Off'. If set to 'Off', early stopping will not be attempted.
                 If set to 'Auto', early stopping of some training jobs may happen, but is not guaranteed to.
             encrypt_inter_container_traffic (bool): Specifies whether traffic between training containers
-                is encrypted for the training jobs started for this hyperparameter tuning job. Set to ``False``
-                by default.
+                is encrypted for the training jobs started for this hyperparameter tuning job (default: ``False``).
             vpc_config (dict): Contains values for VpcConfig (default: None):
 
                 * subnets (list[str]): List of subnet ids.
