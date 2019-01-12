@@ -2,10 +2,15 @@
 CHANGELOG
 =========
 
-1.17.2.dev
+1.17.3.dev
 ==========
 
 * feature: Update EI TensorFlow latest version to 1.12
+
+1.17.2
+======
+
+* feature: HyperparameterTuner: support VPC config
 
 1.17.1
 ======
