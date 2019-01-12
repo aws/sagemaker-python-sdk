@@ -634,7 +634,6 @@ class _TuningJob(_Job):
         tuner_args['warm_start_config'] = warm_start_config_req
         tuner_args['early_stopping_type'] = tuner.early_stopping_type
 
-        del tuner_args['vpc_config']
         if isinstance(tuner.estimator, sagemaker.algorithm.AlgorithmEstimator):
             tuner_args['algorithm_arn'] = tuner.estimator.algorithm_arn
         else:

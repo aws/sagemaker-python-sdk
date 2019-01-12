@@ -256,6 +256,22 @@ def test_fit_pca_with_early_stopping(sagemaker_session, tuner):
     assert tune_kwargs['early_stopping_type'] == 'Auto'
 
 
+def test_fit_mxnet_with_vpc_config(sagemaker_session, tuner):
+    subnets = ['foo']
+    security_group_ids = ['bar']
+
+    pca = PCA(ROLE, TRAIN_INSTANCE_COUNT, TRAIN_INSTANCE_TYPE, NUM_COMPONENTS,
+              base_job_name='pca', sagemaker_session=sagemaker_session,
+              subnets=subnets, security_group_ids=security_group_ids)
+    tuner.estimator = pca
+
+    records = RecordSet(s3_data=INPUTS, num_records=1, feature_dim=1)
+    tuner.fit(records, mini_batch_size=9999)
+
+    _, _, tune_kwargs = sagemaker_session.tune.mock_calls[0]
+    assert tune_kwargs['vpc_config'] == {'Subnets': subnets, 'SecurityGroupIds': security_group_ids}
+
+
 def test_fit_pca_with_inter_container_traffic_encryption_flag(sagemaker_session, tuner):
     pca = PCA(ROLE, TRAIN_INSTANCE_COUNT, TRAIN_INSTANCE_TYPE, NUM_COMPONENTS,
               base_job_name='pca', sagemaker_session=sagemaker_session,

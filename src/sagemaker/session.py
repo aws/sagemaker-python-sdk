@@ -358,7 +358,7 @@ class Session(object):
              static_hyperparameters, input_mode, metric_definitions,
              role, input_config, output_config, resource_config, stop_condition, tags,
              warm_start_config, enable_network_isolation=False, image=None, algorithm_arn=None,
-             early_stopping_type='Off', encrypt_inter_container_traffic=False):
+             early_stopping_type='Off', encrypt_inter_container_traffic=False, vpc_config=None):
         """Create an Amazon SageMaker hyperparameter tuning job
 
         Args:
@@ -408,8 +408,14 @@ class Session(object):
                 Can be either 'Auto' or 'Off'. If set to 'Off', early stopping will not be attempted.
                 If set to 'Auto', early stopping of some training jobs may happen, but is not guaranteed to.
             encrypt_inter_container_traffic (bool): Specifies whether traffic between training containers
-                is encrypted for the training jobs started for this hyperparameter tuning job. Set to ``False``
-                by default.
+                is encrypted for the training jobs started for this hyperparameter tuning job (default: ``False``).
+            vpc_config (dict): Contains values for VpcConfig (default: None):
+
+                * subnets (list[str]): List of subnet ids.
+                    The key in vpc_config is 'Subnets'.
+                * security_group_ids (list[str]): List of security group ids.
+                    The key in vpc_config is 'SecurityGroupIds'.
+
         """
         tune_request = {
             'HyperParameterTuningJobName': job_name,
@@ -456,6 +462,9 @@ class Session(object):
 
         if tags is not None:
             tune_request['Tags'] = tags
+
+        if vpc_config is not None:
+            tune_request['TrainingJobDefinition']['VpcConfig'] = vpc_config
 
         if enable_network_isolation:
             tune_request['TrainingJobDefinition']['EnableNetworkIsolation'] = True
