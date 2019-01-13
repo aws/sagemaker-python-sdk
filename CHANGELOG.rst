@@ -2,10 +2,15 @@
 CHANGELOG
 =========
 
-1.17.2.dev
+1.17.3.dev
 ==========
 
 * bug-fix: Handle StopIteration in CloudWatch Logs retrieval
+
+1.17.2
+======
+
+* feature: HyperparameterTuner: support VPC config
 
 1.17.1
 ======
