@@ -6,6 +6,7 @@ CHANGELOG
 ==========
 
 * bug-fix: Handle StopIteration in CloudWatch Logs retrieval
+* feature: Update EI TensorFlow latest version to 1.12
 
 1.17.2
 ======
