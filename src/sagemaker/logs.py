@@ -94,7 +94,15 @@ def multi_stream_iter(client, log_group, streams, positions=None):
     """
     positions = positions or {s: Position(timestamp=0, skip=0) for s in streams}
     event_iters = [log_stream(client, log_group, s, positions[s].timestamp, positions[s].skip) for s in streams]
-    events = [next(s) if s else None for s in event_iters]
+    events = []
+    for s in event_iters:
+        if not s:
+            events.append(None)
+            continue
+        try:
+            events.append(next(s))
+        except StopIteration:
+            events.append(None)
 
     while some(events):
         i = argmin(events, lambda x: x['timestamp'] if x else 9999999999)

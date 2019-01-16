@@ -2,6 +2,17 @@
 CHANGELOG
 =========
 
+1.17.3.dev
+==========
+
+* bug-fix: Handle StopIteration in CloudWatch Logs retrieval
+* feature: Update EI TensorFlow latest version to 1.12
+
+1.17.2
+======
+
+* feature: HyperparameterTuner: support VPC config
+
 1.17.1
 ======
 
