@@ -158,7 +158,6 @@ def test_tf_vpc_multi(sagemaker_session, tf_full_version):
                            framework_version=tf_full_version,
                            training_steps=1,
                            evaluation_steps=1,
-                           checkpoint_path='/opt/ml/model',
                            hyperparameters={'input_tensor_name': 'inputs'},
                            train_instance_count=instance_count,
                            train_instance_type=instance_type,
