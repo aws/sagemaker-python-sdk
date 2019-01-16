@@ -2,11 +2,13 @@
 CHANGELOG
 =========
 
-1.17.3.dev
-==========
+
+1.17.3
+======
 
 * bug-fix: Handle StopIteration in CloudWatch Logs retrieval
 * feature: Update EI TensorFlow latest version to 1.12
+* feature: Support for Horovod
 
 1.17.2
 ======
@@ -17,7 +19,6 @@ CHANGELOG
 ======
 
 * enhancement: Workflow: Specify tasks from which training/tuning operator to transform/deploy in related operators
-* feature: support for Horovod
 * feature: Supporting inter-container traffic encryption flag
 
 

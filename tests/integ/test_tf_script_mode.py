@@ -14,8 +14,6 @@ from __future__ import absolute_import
 
 import os
 import pytest
-import tarfile
-import tempfile
 
 import boto3
 from sagemaker.tensorflow import TensorFlow
@@ -85,4 +83,3 @@ def _assert_s3_files_exist(s3_url, files):
         found = [x['Key'] for x in contents if x['Key'].endswith(f)]
         if not found:
             raise ValueError('File {} is not found under {}'.format(f, s3_url))
-
