@@ -164,3 +164,6 @@ Then build your workflow by using the PythonOperator with the Python callables d
 
 A workflow that runs a SageMaker training job and a batch transform job is finished. You can customize your Python
 callables with the SageMaker Python SDK according to your needs, and build more flexible and powerful workflows.
+
+For more examples, you can refer to our
+`example DAGs <https://github.com/aws/sagemaker-python-sdk/tree/master/src/sagemaker/workflow/examples>`_
