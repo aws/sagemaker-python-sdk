@@ -17,7 +17,7 @@ import os
 import pytest
 
 
-def create_sagemaker_local_network_if_necessary():
+def create_sagemaker_local_network():
     """
     Docker has a known race condition which allows two parallel processes
     to create a duplicated networks with the same name. This function
@@ -27,7 +27,7 @@ def create_sagemaker_local_network_if_necessary():
     os.system('docker network create sagemaker-local')
 
 
-create_sagemaker_local_network_if_necessary()
+create_sagemaker_local_network()
 
 
 @pytest.fixture(scope='session', params=['local', 'ml.c4.xlarge'])
