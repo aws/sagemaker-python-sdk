@@ -20,7 +20,7 @@ import pytest
 def create_sagemaker_local_network():
     """
     Docker has a known race condition which allows two parallel processes
-    to create a duplicated networks with the same name. This function
+    to create duplicated networks with the same name. This function
     creates the network sagemaker-local beforehand, avoiding this issue
     in CI.
     """
