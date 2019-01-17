@@ -3,7 +3,7 @@ CHANGELOG
 =========
 
 
-1.17.3
+1.18.0
 ======
 
 * bug-fix: Handle StopIteration in CloudWatch Logs retrieval
