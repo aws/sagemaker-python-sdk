@@ -23,8 +23,6 @@ def create_sagemaker_local_network_if_necessary():
     to create a duplicated networks with the same name. This function
     creates the network sagemaker-local beforehand, avoiding this issue
     in CI.
-    Returns:
-
     """
     os.system('docker network create sagemaker-local')
 
