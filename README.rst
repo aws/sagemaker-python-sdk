@@ -390,7 +390,7 @@ By using TensorFlow SageMaker ``Estimators``, you can train and host TensorFlow 
 
 Supported versions of TensorFlow: ``1.4.1``, ``1.5.0``, ``1.6.0``, ``1.7.0``, ``1.8.0``, ``1.9.0``, ``1.10.0``, ``1.11.0``, ``1.12.0``.
 
-Supported versions of TensorFlow for Elastic Inference: ``1.11.0``.
+Supported versions of TensorFlow for Elastic Inference: ``1.11.0``, ``1.12.0``.
 
 We recommend that you use the latest supported version, because that's where we focus most of our development efforts.
 
@@ -746,6 +746,26 @@ To train a model using your own VPC, set the optional parameters ``subnets`` and
                                 security_group_ids=['sg-1'])
 
     # SageMaker Training Job will set VpcConfig and container instances will run in your VPC
+    mxnet_vpc_estimator.fit('s3://my_bucket/my_training_data/')
+
+To train a model with the inter-container traffic encrypted, set the optional parameters ``subnets`` and ``security_group_ids`` and
+the flag ``encrypt_inter_container_traffic`` as ``True`` on an Estimator (Note: This flag can be used only if you specify that the training
+job runs in a VPC):
+
+.. code:: python
+
+    from sagemaker.mxnet import MXNet
+
+    # Configure an MXNet Estimator with subnets and security groups from your VPC
+    mxnet_vpc_estimator = MXNet('train.py',
+                                train_instance_type='ml.p2.xlarge',
+                                train_instance_count=1,
+                                framework_version='1.2.1',
+                                subnets=['subnet-1', 'subnet-2'],
+                                security_group_ids=['sg-1'],
+                                encrypt_inter_container_traffic=True)
+
+    # The SageMaker training job sets the VpcConfig, and training container instances run in your VPC with traffic between the containers encrypted
     mxnet_vpc_estimator.fit('s3://my_bucket/my_training_data/')
 
 When you create a ``Predictor`` from the ``Estimator`` using ``deploy()``, the same VPC configurations will be set on the SageMaker Model:

@@ -22,7 +22,7 @@ from sagemaker.tensorflow import TensorFlow, TensorFlowModel
 from sagemaker.utils import sagemaker_timestamp
 from tests.integ import DATA_DIR, TRAINING_DEFAULT_TIMEOUT_MINUTES, PYTHON_VERSION
 from tests.integ.timeout import timeout_and_delete_endpoint_by_name, timeout
-from tests.integ.vpc_test_utils import get_or_create_vpc_resources
+from tests.integ.vpc_test_utils import get_or_create_vpc_resources, setup_security_group_for_encryption
 
 DATA_PATH = os.path.join(DATA_DIR, 'iris', 'data')
 
@@ -38,6 +38,7 @@ def tf_training_job(sagemaker_session, tf_full_version):
                                framework_version=tf_full_version,
                                training_steps=1,
                                evaluation_steps=1,
+                               checkpoint_path='/opt/ml/model',
                                hyperparameters={'input_tensor_name': 'inputs'},
                                train_instance_count=1,
                                train_instance_type='ml.c4.xlarge',
@@ -114,6 +115,7 @@ def test_tf_async(sagemaker_session):
                                role='SageMakerRole',
                                training_steps=1,
                                evaluation_steps=1,
+                               checkpoint_path='/opt/ml/model',
                                hyperparameters={'input_tensor_name': 'inputs'},
                                train_instance_count=1,
                                train_instance_type='ml.c4.xlarge',
@@ -149,6 +151,8 @@ def test_tf_vpc_multi(sagemaker_session, tf_full_version):
     subnet_ids, security_group_id = get_or_create_vpc_resources(ec2_client,
                                                                 sagemaker_session.boto_session.region_name)
 
+    setup_security_group_for_encryption(ec2_client, security_group_id)
+
     estimator = TensorFlow(entry_point=script_path,
                            role='SageMakerRole',
                            framework_version=tf_full_version,
@@ -160,7 +164,8 @@ def test_tf_vpc_multi(sagemaker_session, tf_full_version):
                            sagemaker_session=sagemaker_session,
                            base_job_name='test-vpc-tf',
                            subnets=subnet_ids,
-                           security_group_ids=[security_group_id])
+                           security_group_ids=[security_group_id],
+                           encrypt_inter_container_traffic=True)
 
     with timeout(minutes=TRAINING_DEFAULT_TIMEOUT_MINUTES):
         estimator.fit(train_input)
@@ -170,6 +175,7 @@ def test_tf_vpc_multi(sagemaker_session, tf_full_version):
         TrainingJobName=estimator.latest_training_job.name)
     assert set(subnet_ids) == set(job_desc['VpcConfig']['Subnets'])
     assert [security_group_id] == job_desc['VpcConfig']['SecurityGroupIds']
+    assert job_desc['EnableInterContainerTrafficEncryption'] is True
 
     endpoint_name = estimator.latest_training_job.name
     with timeout_and_delete_endpoint_by_name(endpoint_name, sagemaker_session):

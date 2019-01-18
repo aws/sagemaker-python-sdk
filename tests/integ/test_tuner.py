@@ -25,6 +25,7 @@ from botocore.exceptions import ClientError
 from tests.integ import DATA_DIR, PYTHON_VERSION, TUNING_DEFAULT_TIMEOUT_MINUTES
 from tests.integ.record_set import prepare_record_set_from_local_files
 from tests.integ.timeout import timeout, timeout_and_delete_endpoint_by_name
+from tests.integ import vpc_test_utils
 
 from sagemaker import KMeans, LDA, RandomCutForest
 from sagemaker.amazon.amazon_estimator import registry
@@ -489,6 +490,52 @@ def test_tuning_tf(sagemaker_session):
         print('predict result: {}'.format(list_result))
 
         assert dict_result == list_result
+
+
+@pytest.mark.skipif(PYTHON_VERSION != 'py2', reason="TensorFlow image supports only python 2.")
+def test_tuning_tf_vpc_multi(sagemaker_session):
+    """Test Tensorflow multi-instance using the same VpcConfig for training and inference"""
+    instance_type = 'ml.c4.xlarge'
+    instance_count = 2
+
+    script_path = os.path.join(DATA_DIR, 'iris', 'iris-dnn-classifier.py')
+
+    ec2_client = sagemaker_session.boto_session.client('ec2')
+    subnet_ids, security_group_id = vpc_test_utils.get_or_create_vpc_resources(ec2_client,
+                                                                               sagemaker_session.boto_region_name)
+    vpc_test_utils.setup_security_group_for_encryption(ec2_client, security_group_id)
+
+    estimator = TensorFlow(entry_point=script_path,
+                           role='SageMakerRole',
+                           training_steps=1,
+                           evaluation_steps=1,
+                           hyperparameters={'input_tensor_name': 'inputs'},
+                           train_instance_count=instance_count,
+                           train_instance_type=instance_type,
+                           sagemaker_session=sagemaker_session,
+                           base_job_name='test-vpc-tf',
+                           subnets=subnet_ids,
+                           security_group_ids=[security_group_id],
+                           encrypt_inter_container_traffic=True)
+
+    inputs = sagemaker_session.upload_data(path=DATA_PATH, key_prefix='integ-test-data/tf_iris')
+    hyperparameter_ranges = {'learning_rate': ContinuousParameter(0.05, 0.2)}
+
+    objective_metric_name = 'loss'
+    metric_definitions = [{'Name': 'loss', 'Regex': 'loss = ([0-9\\.]+)'}]
+
+    tuner = HyperparameterTuner(estimator, objective_metric_name, hyperparameter_ranges,
+                                metric_definitions,
+                                objective_type='Minimize', max_jobs=2, max_parallel_jobs=2)
+
+    tuning_job_name = unique_name_from_base('tune-tf', max_length=32)
+    with timeout(minutes=TUNING_DEFAULT_TIMEOUT_MINUTES):
+        tuner.fit(inputs, job_name=tuning_job_name)
+
+        print('Started hyperparameter tuning job with name:' + tuning_job_name)
+
+        time.sleep(15)
+        tuner.wait()
 
 
 @pytest.mark.continuous_testing

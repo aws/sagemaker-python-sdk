@@ -634,13 +634,14 @@ class _TuningJob(_Job):
         tuner_args['warm_start_config'] = warm_start_config_req
         tuner_args['early_stopping_type'] = tuner.early_stopping_type
 
-        del tuner_args['vpc_config']
         if isinstance(tuner.estimator, sagemaker.algorithm.AlgorithmEstimator):
             tuner_args['algorithm_arn'] = tuner.estimator.algorithm_arn
         else:
             tuner_args['image'] = tuner.estimator.train_image()
 
         tuner_args['enable_network_isolation'] = tuner.estimator.enable_network_isolation()
+        tuner_args['encrypt_inter_container_traffic'] = \
+            tuner.estimator.encrypt_inter_container_traffic
 
         tuner.estimator.sagemaker_session.tune(**tuner_args)
 

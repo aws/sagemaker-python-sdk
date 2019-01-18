@@ -2,15 +2,34 @@
 CHANGELOG
 =========
 
-1.17.1.dev
-==========
+
+1.18.0
+======
+
+* bug-fix: Handle StopIteration in CloudWatch Logs retrieval
+* feature: Update EI TensorFlow latest version to 1.12
+* feature: Support for Horovod
+
+1.17.2
+======
+
+* feature: HyperparameterTuner: support VPC config
+
+1.17.1
+======
 
 * enhancement: Workflow: Specify tasks from which training/tuning operator to transform/deploy in related operators
+* feature: Supporting inter-container traffic encryption flag
+
 
 1.17.0
 ======
 
+
 * bug-fix: Workflow: Revert appending Airflow retry id to default job name
+* feature: support for Tensorflow 1.12
+* feature: support for Tensorflow Serving 1.12
+* bug-fix: Revert appending Airflow retry id to default job name
 * bug-fix: Session: don't allow get_execution_role() to return an ARN that's not a role but has "role" in the name
 * bug-fix: Remove ``__all__`` from ``__init__.py`` files
 * doc-fix: Add TFRecord split type to docs
@@ -22,6 +41,7 @@ CHANGELOG
 * feature: Update TensorFlow latest version to 1.12
 * enhancement: Add Model.transformer()
 * bug-fix: HyperparameterTuner: make ``include_cls_metadata`` default to ``False`` for everything except Frameworks
+
 
 1.16.3
 ======

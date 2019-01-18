@@ -23,7 +23,8 @@ import tests.integ.timeout as timeout
 
 RESOURCE_PATH = os.path.join(os.path.dirname(__file__), '..', 'data', 'tensorflow_mnist')
 SCRIPT = os.path.join(RESOURCE_PATH, 'mnist.py')
-DISTRIBUTION_ENABLED = {'parameter_server': {'enabled': True}}
+PARAMETER_SERVER_DISTRIBUTION = {'parameter_server': {'enabled': True}}
+MPI_DISTRIBUTION = {'mpi': {'enabled': True}}
 
 
 @pytest.fixture(scope='session', params=['ml.c5.xlarge', 'ml.p2.xlarge'])
@@ -62,7 +63,7 @@ def test_mnist_distributed(sagemaker_session, instance_type):
                            py_version=integ.PYTHON_VERSION,
                            script_mode=True,
                            framework_version='1.11',
-                           distributions=DISTRIBUTION_ENABLED,
+                           distributions=PARAMETER_SERVER_DISTRIBUTION,
                            base_job_name='test-tf-sm-mnist')
     inputs = estimator.sagemaker_session.upload_data(
         path=os.path.join(RESOURCE_PATH, 'data'),

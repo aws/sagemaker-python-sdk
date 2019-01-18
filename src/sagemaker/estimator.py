@@ -52,7 +52,7 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):
                  train_volume_size=30, train_volume_kms_key=None, train_max_run=24 * 60 * 60, input_mode='File',
                  output_path=None, output_kms_key=None, base_job_name=None, sagemaker_session=None, tags=None,
                  subnets=None, security_group_ids=None, model_uri=None, model_channel_name='model',
-                 metric_definitions=None):
+                 metric_definitions=None, encrypt_inter_container_traffic=False):
         """Initialize an ``EstimatorBase`` instance.
 
         Args:
@@ -103,6 +103,8 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):
                 training jobs. Each dictionary contains two keys: 'Name' for the name of the metric, and 'Regex' for
                 the regular expression used to extract the metric from the logs. This should be defined only
                 for jobs that don't use an Amazon algorithm.
+            encrypt_inter_container_traffic (bool): Specifies whether traffic between training containers is encrypted
+                for the training job (default: ``False``).
         """
         self.role = role
         self.train_instance_count = train_instance_count
@@ -137,6 +139,8 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):
         # VPC configurations
         self.subnets = subnets
         self.security_group_ids = security_group_ids
+
+        self.encrypt_inter_container_traffic = encrypt_inter_container_traffic
 
     @abstractmethod
     def train_image(self):
@@ -429,6 +433,10 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):
         if 'MetricDefinitons' in job_details['AlgorithmSpecification']:
             init_params['metric_definitions'] = job_details['AlgorithmSpecification']['MetricsDefinition']
 
+        if 'EnableInterContainerTrafficEncryption' in job_details:
+            init_params['encrypt_inter_container_traffic'] = \
+                job_details['EnableInterContainerTrafficEncryption']
+
         subnets, security_group_ids = vpc_utils.from_dict(job_details.get(vpc_utils.VPC_CONFIG_KEY))
         if subnets:
             init_params['subnets'] = subnets
@@ -555,6 +563,9 @@ class _TrainingJob(_Job):
         if estimator.enable_network_isolation():
             train_args['enable_network_isolation'] = True
 
+        if estimator.encrypt_inter_container_traffic:
+            train_args['encrypt_inter_container_traffic'] = True
+
         if isinstance(estimator, sagemaker.algorithm.AlgorithmEstimator):
             train_args['algorithm_arn'] = estimator.algorithm_arn
         else:
@@ -585,7 +596,8 @@ class Estimator(EstimatorBase):
                  train_volume_size=30, train_volume_kms_key=None, train_max_run=24 * 60 * 60,
                  input_mode='File', output_path=None, output_kms_key=None, base_job_name=None,
                  sagemaker_session=None, hyperparameters=None, tags=None, subnets=None, security_group_ids=None,
-                 model_uri=None, model_channel_name='model', metric_definitions=None):
+                 model_uri=None, model_channel_name='model', metric_definitions=None,
+                 encrypt_inter_container_traffic=False):
         """Initialize an ``Estimator`` instance.
 
         Args:
@@ -640,6 +652,8 @@ class Estimator(EstimatorBase):
                 training jobs. Each dictionary contains two keys: 'Name' for the name of the metric, and 'Regex' for
                 the regular expression used to extract the metric from the logs. This should be defined only
                 for jobs that don't use an Amazon algorithm.
+            encrypt_inter_container_traffic (bool): Specifies whether traffic between training containers is encrypted
+                for the training job (default: ``False``).
         """
         self.image_name = image_name
         self.hyperparam_dict = hyperparameters.copy() if hyperparameters else {}
@@ -647,7 +661,8 @@ class Estimator(EstimatorBase):
                                         train_volume_size, train_volume_kms_key, train_max_run, input_mode,
                                         output_path, output_kms_key, base_job_name, sagemaker_session,
                                         tags, subnets, security_group_ids, model_uri=model_uri,
-                                        model_channel_name=model_channel_name, metric_definitions=metric_definitions)
+                                        model_channel_name=model_channel_name, metric_definitions=metric_definitions,
+                                        encrypt_inter_container_traffic=encrypt_inter_container_traffic)
 
     def train_image(self):
         """
@@ -734,6 +749,9 @@ class Framework(EstimatorBase):
 
     __framework_name__ = None
     LAUNCH_PS_ENV_NAME = 'sagemaker_parameter_server_enabled'
+    LAUNCH_MPI_ENV_NAME = 'sagemaker_mpi_enabled'
+    MPI_NUM_PROCESSES_PER_HOST = 'sagemaker_mpi_num_of_processes_per_host'
+    MPI_CUSTOM_MPI_OPTIONS = 'sagemaker_mpi_custom_mpi_options'
 
     def __init__(self, entry_point, source_dir=None, hyperparameters=None, enable_cloudwatch_metrics=False,
                  container_log_level=logging.INFO, code_location=None, image_name=None, dependencies=None, **kwargs):
@@ -743,7 +761,7 @@ class Framework(EstimatorBase):
             entry_point (str): Path (absolute or relative) to the local Python source file which should be executed
                 as the entry point to training. This should be compatible with either Python 2.7 or Python 3.5.
             source_dir (str): Path (absolute or relative) to a directory with any other training
-                source code dependencies aside from tne entry point file (default: None). Structure within this
+                source code dependencies aside from the entry point file (default: None). Structure within this
                 directory are preserved when training on Amazon SageMaker.
             dependencies (list[str]): A list of paths to directories (absolute or relative) with
                 any additional libraries that will be exported to the container (default: []).
