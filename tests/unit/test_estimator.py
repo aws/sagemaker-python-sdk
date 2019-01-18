@@ -990,6 +990,17 @@ def test_generic_deploy_accelerator_type(sagemaker_session):
     assert args[1][0]['InstanceType'] == INSTANCE_TYPE
 
 
+def test_deploy_with_update_endpoint(sagemaker_session):
+    e = Estimator(IMAGE_NAME, ROLE, INSTANCE_COUNT, INSTANCE_TYPE, output_path=OUTPUT_PATH,
+                  sagemaker_session=sagemaker_session)
+    e.set_hyperparameters(**HYPERPARAMS)
+    e.fit({'train': 's3://bucket/training-prefix'})
+    e.deploy(INSTANCE_COUNT, INSTANCE_TYPE, endpoint_name="endpoint-name", update_endpoint=True)
+    sagemaker_session.create_endpoint_config.assert_called()
+    sagemaker_session.update_endpoint.assert_called()
+    sagemaker_session.create_endpoint.assert_not_called()
+
+
 @patch('sagemaker.estimator.LocalSession')
 @patch('sagemaker.estimator.Session')
 def test_local_mode(session_class, local_session_class):

@@ -224,6 +224,18 @@ def test_deploy_creates_correct_session(local_session, session, tmpdir):
     assert model.sagemaker_session == session.return_value
 
 
+@patch('sagemaker.fw_utils.tar_and_upload_dir', MagicMock())
+def test_deploy_update_endpoint(sagemaker_session, tmpdir):
+    model = DummyFrameworkModel(sagemaker_session, source_dir=tmpdir)
+    model.deploy(instance_type=INSTANCE_TYPE,
+                 initial_instance_count=1,
+                 endpoint_name='endpoint-name',
+                 update_endpoint=True)
+    sagemaker_session.create_endpoint_config.assert_called()
+    sagemaker_session.update_endpoint.assert_called()
+    sagemaker_session.create_endpoint.assert_not_called()
+
+
 def test_model_enable_network_isolation(sagemaker_session):
     model = DummyFrameworkModel(sagemaker_session=sagemaker_session)
     assert model.enable_network_isolation() is False

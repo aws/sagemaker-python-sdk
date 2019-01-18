@@ -195,7 +195,8 @@ class Model(object):
         self._is_compiled_model = True
         return self
 
-    def deploy(self, initial_instance_count, instance_type, accelerator_type=None, endpoint_name=None, tags=None):
+    def deploy(self, initial_instance_count, instance_type, accelerator_type=None, endpoint_name=None,
+               update_endpoint=False, tags=None):
         """Deploy this ``Model`` to an ``Endpoint`` and optionally return a ``Predictor``.
 
         Create a SageMaker ``Model`` and ``EndpointConfig``, and deploy an ``Endpoint`` from this ``Model``.
@@ -217,6 +218,7 @@ class Model(object):
                 For more information: https://docs.aws.amazon.com/sagemaker/latest/dg/ei.html
             endpoint_name (str): The name of the endpoint to create (default: None).
                 If not specified, a unique endpoint name will be created.
+            update_endpoint (bool): Weather to update an endpoint or create a new endpoint. Default: False
             tags(List[dict[str, str]]): The list of tags to attach to this specific endpoint.
 
         Returns:
@@ -245,7 +247,17 @@ class Model(object):
             self.endpoint_name = self.name
             if self._is_compiled_model and not self.endpoint_name.endswith(compiled_model_suffix):
                 self.endpoint_name += compiled_model_suffix
-        self.sagemaker_session.endpoint_from_production_variants(self.endpoint_name, [production_variant], tags)
+
+        if update_endpoint:
+            endpoint_config_name = self.sagemaker_session.create_endpoint_config(
+                name=self.name,
+                model_name=self.name,
+                initial_instance_count=initial_instance_count,
+                instance_type=instance_type)
+            self.sagemaker_session.update_endpoint(self.endpoint_name, endpoint_config_name)
+        else:
+            self.sagemaker_session.endpoint_from_production_variants(self.endpoint_name, [production_variant], tags)
+
         if self.predictor_cls:
             return self.predictor_cls(self.endpoint_name, self.sagemaker_session)
 
