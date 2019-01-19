@@ -430,7 +430,7 @@ Deploying TensorFlow Serving models
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 After a TensorFlow estimator has been fit, if your training script saves the model in the TensorFlow Serving Saved model under the folder ``/opt/ml/model``, you can call ``deploy`` on a TensorFlow
-estimator to create a SageMaker Endpoint. See `Preparing your training script<https://github.com/aws/sagemaker-python-sdk/blob/master/src/sagemaker/tensorflow/README.rst#preparing-a-script-mode-training-script>`_ for more information about the  ``/opt/ml/model`` folder. See  `Save and Restore models<https://www.tensorflow.org/guide/saved_model#save_and_restore_models>`_ for more information on how to export a TensorFlow model to the TensorFlow Serving Saved Model format.
+estimator to create a SageMaker Endpoint. See `Preparing your training script <https://github.com/aws/sagemaker-python-sdk/blob/master/src/sagemaker/tensorflow/README.rst#preparing-a-script-mode-training-script>`_ for more information about the  ``/opt/ml/model`` folder. See  `Save and Restore models <https://www.tensorflow.org/guide/saved_model#save_and_restore_models>`_ for more information on how to export a TensorFlow model to the TensorFlow Serving Saved Model format.
 
 SageMaker provides two different options for deploying TensorFlow models to a SageMaker
 Endpoint:
