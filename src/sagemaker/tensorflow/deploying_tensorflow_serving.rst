@@ -13,10 +13,9 @@ Table of Contents
 Deploying from an Estimator
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-After a TensorFlow estimator has been fit, it saves a TensorFlow
-`SavedModel <https://www.tensorflow.org/guide/saved_model>`_ bundle in
-the S3 location defined by ``output_path``. You can call ``deploy`` on a TensorFlow
-estimator object to create a SageMaker Endpoint:
+After a TensorFlow estimator has been fit, the SageMaker Training Job copies the model data from the location defined by the command line argument ``--model_dir`` (see `Adapting your local TF script <https://github.com/aws/sagemaker-python-sdk/blob/v1.18.0/src/sagemaker/tensorflow/README.rst#adapting-your-local-tensorflow-script>`_ for more information) to the S3 location defined by ``output_path``. You can call ``deploy`` on a TensorFlow
+estimator object to create a SageMaker Endpoint if the model data includes a TensorFlow
+`SavedModel <https://www.tensorflow.org/guide/saved_model>`_ bundle:
 
 .. code:: python
 
@@ -59,6 +58,16 @@ Calling ``deploy`` starts the process of creating a SageMaker Endpoint. This pro
 When the ``deploy`` call finishes, the created SageMaker Endpoint is ready for prediction requests. The
 `Making predictions against a SageMaker Endpoint`_ section will explain how to make prediction requests
 against the Endpoint.
+
+TensorFlow Serving Saved Model format standard
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+TensorFlow Serving expects the TFS model to be saved under the following directory structure ``export/Servo/{version}``, where ``version`` can be valid positive integer.
+Examples of valid Saved Models:
+
+- /opt/ml/model/export/Servo/1/saved_model.pb.
+- s3://default/sagemaker/bucket/output-path/30/saved_model.pb.
+
+Saving the protobuf model without providing the directory structure above will result in the error: ``Could not find base path /opt/ml/model/export/Servo for servable generic_model``.
 
 Deploying directly from model artifacts
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
