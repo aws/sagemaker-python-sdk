@@ -884,7 +884,7 @@ def test_update_endpoint_succeed(sagemaker_session):
     assert returned_endpoint_name == endpoint_name
 
 
-def test_update_endpoint_fail(sagemaker_session):
+def test_update_endpoint_non_existing_endpoint(sagemaker_session):
     ims = sagemaker_session
     error = ClientError({'Error': {'Code': 'ValidationException', 'Message': 'Could not find entity'}}, 'foo')
     ims.sagemaker_client.describe_endpoint = Mock(side_effect=error)

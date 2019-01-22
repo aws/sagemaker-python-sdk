@@ -347,7 +347,9 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):
             endpoint_name (str): Name to use for creating an Amazon SageMaker endpoint. If not specified, the name of
                 the training job is used.
             use_compiled_model (bool): Flag to select whether to use compiled (optimized) model. Default: False.
-            update_endpoint (bool): Weather to update an endpoint or create a new endpoint. Default: False.
+            update_endpoint (bool): Flag to update the model in an existing Amazon SageMaker endpoint.
+                If True, this will deploy a new EndpointConfig to an already existing endpoint and delete resources
+                corresponding to the previous EndpointConfig. Default: False
             **kwargs: Passed to invocation of ``create_model()``. Implementations may customize
                 ``create_model()`` to accept ``**kwargs`` to customize model creation during deploy.
                 For more, see the implementation docs.

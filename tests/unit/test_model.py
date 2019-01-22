@@ -227,12 +227,27 @@ def test_deploy_creates_correct_session(local_session, session, tmpdir):
 @patch('sagemaker.fw_utils.tar_and_upload_dir', MagicMock())
 def test_deploy_update_endpoint(sagemaker_session, tmpdir):
     model = DummyFrameworkModel(sagemaker_session, source_dir=tmpdir)
+    endpoint_name = 'endpoint-name'
     model.deploy(instance_type=INSTANCE_TYPE,
                  initial_instance_count=1,
-                 endpoint_name='endpoint-name',
-                 update_endpoint=True)
-    sagemaker_session.create_endpoint_config.assert_called()
-    sagemaker_session.update_endpoint.assert_called()
+                 endpoint_name=endpoint_name,
+                 update_endpoint=True,
+                 accelerator_type=ACCELERATOR_TYPE)
+    sagemaker_session.create_endpoint_config.assert_called_with(
+        name=model.name,
+        model_name=model.name,
+        initial_instance_count=INSTANCE_COUNT,
+        instance_type=INSTANCE_TYPE,
+        accelerator_type=ACCELERATOR_TYPE
+    )
+    config_name = sagemaker_session.create_endpoint_config(
+        name=model.name,
+        model_name=model.name,
+        initial_instance_count=INSTANCE_COUNT,
+        instance_type=INSTANCE_TYPE,
+        accelerator_type=ACCELERATOR_TYPE
+    )
+    sagemaker_session.update_endpoint.assert_called_with(endpoint_name, config_name)
     sagemaker_session.create_endpoint.assert_not_called()
 
 

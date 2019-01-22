@@ -3,6 +3,11 @@ CHANGELOG
 =========
 
 
+1.18.1
+======
+
+* feature: Support for updating existing endpoint
+
 1.18.0
 ======
 

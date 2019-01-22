@@ -72,6 +72,48 @@ def test_deploy_model(mxnet_training_job, sagemaker_session):
         predictor.predict(data)
 
 
+def test_deploy_model_with_update_endpoint(mxnet_training_job, sagemaker_session):
+    endpoint_name = 'test-mxnet-deploy-model-{}'.format(sagemaker_timestamp())
+
+    with timeout_and_delete_endpoint_by_name(endpoint_name, sagemaker_session):
+        desc = sagemaker_session.sagemaker_client.describe_training_job(TrainingJobName=mxnet_training_job)
+        model_data = desc['ModelArtifacts']['S3ModelArtifacts']
+        script_path = os.path.join(DATA_DIR, 'mxnet_mnist', 'mnist.py')
+        model = MXNetModel(model_data, 'SageMakerRole', entry_point=script_path,
+                           py_version=PYTHON_VERSION, sagemaker_session=sagemaker_session)
+        model.deploy(1, 'ml.t2.medium', endpoint_name=endpoint_name)
+        old_endpoint_config = sagemaker_session.describe_endpoint(EndpointName=endpoint_name)
+        predictor = model.deploy(1, 'ml.m4.xlarge', update_endpoint=True, endpoint_name=endpoint_name)
+        new_endpoint_config = sagemaker_session.describe_endpoint(EndpointName=endpoint_name)
+        data = numpy.zeros(shape=(1, 1, 28, 28))
+        predictor.predict(data)
+
+        print(old_endpoint_config)
+        print()
+        print(new_endpoint_config)
+
+        if old_endpoint_config['EndpointConfigName'] == new_endpoint_config['EndpointConfigName']:
+            raise Exception('Failed to update endpoint')
+
+
+def test_deploy_model_with_update_non_existing_endpoint(mxnet_training_job, sagemaker_session):
+    endpoint_name = 'test-mxnet-deploy-model-{}'.format(sagemaker_timestamp())
+
+    with timeout_and_delete_endpoint_by_name(endpoint_name, sagemaker_session):
+        try:
+            desc = sagemaker_session.sagemaker_client.describe_training_job(TrainingJobName=mxnet_training_job)
+            model_data = desc['ModelArtifacts']['S3ModelArtifacts']
+            script_path = os.path.join(DATA_DIR, 'mxnet_mnist', 'mnist.py')
+            model = MXNetModel(model_data, 'SageMakerRole', entry_point=script_path,
+                               py_version=PYTHON_VERSION, sagemaker_session=sagemaker_session)
+            model.deploy(1, 'ml.t2.medium', endpoint_name=endpoint_name)
+            sagemaker_session.describe_endpoint(EndpointName=endpoint_name)
+            model.deploy(1, 'ml.m4.xlarge', update_endpoint=True, endpoint_name='non-existing-endpoint')
+        except ValueError:
+            return
+        raise Exception('Non-existing endpoint should not be updated')
+
+
 @pytest.mark.continuous_testing
 @pytest.mark.regional_testing
 @pytest.mark.skipif(tests.integ.test_region() not in tests.integ.EI_SUPPORTED_REGIONS,

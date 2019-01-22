@@ -218,7 +218,9 @@ class Model(object):
                 For more information: https://docs.aws.amazon.com/sagemaker/latest/dg/ei.html
             endpoint_name (str): The name of the endpoint to create (default: None).
                 If not specified, a unique endpoint name will be created.
-            update_endpoint (bool): Weather to update an endpoint or create a new endpoint. Default: False
+            update_endpoint (bool): Flag to update the model in an existing Amazon SageMaker endpoint.
+                If True, this will deploy a new EndpointConfig to an already existing endpoint and delete resources
+                corresponding to the previous EndpointConfig. Default: False
             tags(List[dict[str, str]]): The list of tags to attach to this specific endpoint.
 
         Returns:
@@ -253,7 +255,8 @@ class Model(object):
                 name=self.name,
                 model_name=self.name,
                 initial_instance_count=initial_instance_count,
-                instance_type=instance_type)
+                instance_type=instance_type,
+                accelerator_type=accelerator_type)
             self.sagemaker_session.update_endpoint(self.endpoint_name, endpoint_config_name)
         else:
             self.sagemaker_session.endpoint_from_production_variants(self.endpoint_name, [production_variant], tags)
