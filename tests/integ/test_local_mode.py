@@ -268,12 +268,13 @@ def test_local_deploy_with_update_endpoint(tmpdir, sagemaker_local_session, mxne
             model = mxnet_model(path)
             model.sagemaker_session = sagemaker_local_session
             model.deploy(initial_instance_count=1,
-                                     instance_type='local',
-                                     update_endpoint=True,
-                                     endpoint_name='some-existing-endpoint')
+                         instance_type='local',
+                         update_endpoint=True,
+                         endpoint_name='some-existing-endpoint')
         except Exception:
             return
         raise Exception('Local mode should not support update enpoint.')
+
 
 def test_mxnet_local_mode(sagemaker_local_session, mxnet_full_version):
     script_path = os.path.join(DATA_DIR, 'mxnet_mnist', 'mnist.py')
