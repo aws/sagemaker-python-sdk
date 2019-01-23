@@ -83,7 +83,6 @@ def test_deploy_model_with_update_endpoint(mxnet_training_job, sagemaker_session
                            py_version=PYTHON_VERSION, sagemaker_session=sagemaker_session)
         model.deploy(1, 'ml.t2.medium', endpoint_name=endpoint_name)
         old_endpoint = sagemaker_session.describe_endpoint(EndpointName=endpoint_name)
-        old_production_variants = old_endpoint['ProductionVariants']
         old_config_name = old_endpoint['EndpointConfigName']
 
         model.deploy(1, 'ml.m4.xlarge', update_endpoint=True, endpoint_name=endpoint_name)
@@ -93,8 +92,8 @@ def test_deploy_model_with_update_endpoint(mxnet_training_job, sagemaker_session
 
         assert old_config_name != new_config_name
         assert new_production_variants['InstanceType'] == 'ml.m4.xlarge'
-        assert old_production_variants['InitialInstanceCount'] == 1
-        assert old_production_variants['AcceleratorType'] is None
+        assert new_production_variants['InitialInstanceCount'] == 1
+        assert new_production_variants['AcceleratorType'] is None
 
 
 def test_deploy_model_with_update_non_existing_endpoint(mxnet_training_job, sagemaker_session):
