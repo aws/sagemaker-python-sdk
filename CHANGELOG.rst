@@ -3,8 +3,8 @@ CHANGELOG
 =========
 
 
-1.18.1
-======
+1.18.1.dev
+==========
 
 * feature: Support for updating existing endpoint
 

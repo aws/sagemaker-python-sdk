@@ -315,9 +315,9 @@ def test_update_endpoint(LocalSession):
     local_sagemaker_client = sagemaker.local.local_session.LocalSagemakerClient()
     endpoint_name = 'my-endpoint'
     endpoint_config = 'my-endpoint-config'
-    with pytest.raises(Exception) as exception:
+    with pytest.raises(NotImplementedError) as error:
         local_sagemaker_client.update_endpoint(endpoint_name, endpoint_config)
-    assert 'Exception: Update endpoint name is not supported in local session.' in str(exception)
+    assert 'NotImplementedError: Update endpoint name is not supported in local session.' in str(error)
 
 
 @patch('sagemaker.local.image._SageMakerContainer.serve')

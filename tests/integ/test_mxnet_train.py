@@ -82,18 +82,17 @@ def test_deploy_model_with_update_endpoint(mxnet_training_job, sagemaker_session
         model = MXNetModel(model_data, 'SageMakerRole', entry_point=script_path,
                            py_version=PYTHON_VERSION, sagemaker_session=sagemaker_session)
         model.deploy(1, 'ml.t2.medium', endpoint_name=endpoint_name)
-        old_endpoint_config = sagemaker_session.describe_endpoint(EndpointName=endpoint_name)
-        predictor = model.deploy(1, 'ml.m4.xlarge', update_endpoint=True, endpoint_name=endpoint_name)
-        new_endpoint_config = sagemaker_session.describe_endpoint(EndpointName=endpoint_name)
-        data = numpy.zeros(shape=(1, 1, 28, 28))
-        predictor.predict(data)
+        old_production_variants = sagemaker_session.describe_endpoint(EndpointName=endpoint_name)['ProductionVariants']
 
-        print(old_endpoint_config)
-        print()
-        print(new_endpoint_config)
+        model.deploy(1, 'ml.m4.xlarge', update_endpoint=True, endpoint_name=endpoint_name)
+        new_production_variants = sagemaker_session.describe_endpoint(EndpointName=endpoint_name)['ProductionVariants']
 
-        if old_endpoint_config['EndpointConfigName'] == new_endpoint_config['EndpointConfigName']:
-            raise Exception('Failed to update endpoint')
+        assert new_production_variants['InstanceType'] == 'ml.m4.xlarge'
+        assert old_production_variants['VariantName'] != new_production_variants['VariantName']
+        assert old_production_variants['ModelName'] == new_production_variants['ModelName']
+        assert old_production_variants['InitialInstanceCount'] == new_production_variants['InitialInstanceCount']
+        assert old_production_variants['InitialVariantWeight'] == new_production_variants['InitialVariantWeight']
+        assert old_production_variants['AcceleratorType'] == new_production_variants['AcceleratorType']
 
 
 def test_deploy_model_with_update_non_existing_endpoint(mxnet_training_job, sagemaker_session):

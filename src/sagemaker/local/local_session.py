@@ -145,7 +145,7 @@ class LocalSagemakerClient(object):
 
     def update_endpoint(self, EndpointName, EndpointConfigName):
         del EndpointName, EndpointConfigName
-        raise Exception('Update endpoint name is not supported in local session.')
+        raise NotImplementedError('Update endpoint name is not supported in local session.')
 
     def delete_endpoint(self, EndpointName):
         if EndpointName in LocalSagemakerClient._endpoints:
