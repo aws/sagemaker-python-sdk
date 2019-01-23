@@ -3,8 +3,8 @@ CHANGELOG
 =========
 
 
-1.18.1.dev
-==========
+1.18.1
+======
 
 * enhancement: Add ``tuner`` to imports in ``sagemaker/__init__.py``
 
