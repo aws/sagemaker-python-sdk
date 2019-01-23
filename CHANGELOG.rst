@@ -3,6 +3,11 @@ CHANGELOG
 =========
 
 
+1.18.1.dev
+==========
+
+* enhancement: Add ``tuner`` to imports in ``sagemaker/__init__.py``
+
 1.18.0
 ======
 
@@ -21,10 +26,8 @@ CHANGELOG
 * enhancement: Workflow: Specify tasks from which training/tuning operator to transform/deploy in related operators
 * feature: Supporting inter-container traffic encryption flag
 
-
 1.17.0
 ======
-
 
 * bug-fix: Workflow: Revert appending Airflow retry id to default job name
 * feature: support for Tensorflow 1.12
@@ -41,7 +44,6 @@ CHANGELOG
 * feature: Update TensorFlow latest version to 1.12
 * enhancement: Add Model.transformer()
 * bug-fix: HyperparameterTuner: make ``include_cls_metadata`` default to ``False`` for everything except Frameworks
-
 
 1.16.3
 ======
