@@ -12,7 +12,7 @@
 # language governing permissions and limitations under the License.
 from __future__ import absolute_import
 
-from sagemaker import estimator, parameter  # noqa: F401
+from sagemaker import estimator, parameter, tuner  # noqa: F401
 from sagemaker.amazon.kmeans import KMeans, KMeansModel, KMeansPredictor  # noqa: F401
 from sagemaker.amazon.pca import PCA, PCAModel, PCAPredictor  # noqa: F401
 from sagemaker.amazon.lda import LDA, LDAModel, LDAPredictor  # noqa: F401
