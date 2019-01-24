@@ -3,11 +3,15 @@ CHANGELOG
 =========
 
 
+1.18.2.dev
+==========
+
+* feature: Support for updating existing endpoint
+
 1.18.1
 ======
 
 * enhancement: Add ``tuner`` to imports in ``sagemaker/__init__.py``
-* feature: Support for updating existing endpoint
 
 1.18.0
 ======
