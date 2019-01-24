@@ -876,8 +876,7 @@ def test_endpoint_from_production_variants_with_accelerator_type(sagemaker_sessi
 
 
 def test_update_endpoint_succeed(sagemaker_session):
-    ims = sagemaker_session
-    ims.sagemaker_client.describe_endpoint = Mock(return_value={'EndpointStatus': 'InService'})
+    sagemaker_session.sagemaker_client.describe_endpoint = Mock(return_value={'EndpointStatus': 'InService'})
     endpoint_name = "some-endpoint"
     endpoint_config = "some-endpoint-config"
     returned_endpoint_name = sagemaker_session.update_endpoint(endpoint_name, endpoint_config)
@@ -888,7 +887,8 @@ def test_update_endpoint_non_existing_endpoint(sagemaker_session):
     ims = sagemaker_session
     error = ClientError({'Error': {'Code': 'ValidationException', 'Message': 'Could not find entity'}}, 'foo')
     ims.sagemaker_client.describe_endpoint = Mock(side_effect=error)
-    with pytest.raises(ValueError):
+    error_message = 'Endpoint with name "non-existing-endpoint" does not exist; please use an existing endpoint name'
+    with pytest.raises(ValueError, message=error_message):
         sagemaker_session.update_endpoint("non-existing-endpoint", "non-existing-config")
 
 
