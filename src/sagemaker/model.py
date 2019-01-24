@@ -220,7 +220,7 @@ class Model(object):
                 If not specified, a unique endpoint name will be created.
             update_endpoint (bool): Flag to update the model in an existing Amazon SageMaker endpoint.
                 If True, this will deploy a new EndpointConfig to an already existing endpoint and delete resources
-                corresponding to the previous EndpointConfig. Default: False
+                corresponding to the previous EndpointConfig. If False, a new endpoint will be created. Default: False
             tags(List[dict[str, str]]): The list of tags to attach to this specific endpoint.
 
         Returns:

@@ -93,7 +93,7 @@ def test_deploy_model_with_update_endpoint(mxnet_training_job, sagemaker_session
         assert old_config_name != new_config_name
         assert new_production_variants['InstanceType'] == 'ml.m4.xlarge'
         assert new_production_variants['InitialInstanceCount'] == 1
-        assert new_production_variants['AcceleratorType'] is None
+        assert not new_production_variants['AcceleratorType']
 
 
 def test_deploy_model_with_update_non_existing_endpoint(mxnet_training_job, sagemaker_session):
