@@ -98,10 +98,10 @@ def test_deploy_model_with_update_endpoint(mxnet_training_job, sagemaker_session
 
 def test_deploy_model_with_update_non_existing_endpoint(mxnet_training_job, sagemaker_session):
     endpoint_name = 'test-mxnet-deploy-model-{}'.format(sagemaker_timestamp())
-    error_message = 'Endpoint with name "{}" does not exist; please use an existing endpoint name'.format(endpoint_name)
+    expected_error_message = 'Endpoint with name "{}" does not exist; ' \
+                             'please use an existing endpoint name'.format(endpoint_name)
 
-    with timeout_and_delete_endpoint_by_name(endpoint_name, sagemaker_session), pytest.raises(ValueError,
-                                                                                              message=error_message):
+    with timeout_and_delete_endpoint_by_name(endpoint_name, sagemaker_session):
             desc = sagemaker_session.sagemaker_client.describe_training_job(TrainingJobName=mxnet_training_job)
             model_data = desc['ModelArtifacts']['S3ModelArtifacts']
             script_path = os.path.join(DATA_DIR, 'mxnet_mnist', 'mnist.py')
@@ -109,7 +109,9 @@ def test_deploy_model_with_update_non_existing_endpoint(mxnet_training_job, sage
                                py_version=PYTHON_VERSION, sagemaker_session=sagemaker_session)
             model.deploy(1, 'ml.t2.medium', endpoint_name=endpoint_name)
             sagemaker_session.describe_endpoint(EndpointName=endpoint_name)
-            model.deploy(1, 'ml.m4.xlarge', update_endpoint=True, endpoint_name='non-existing-endpoint')
+
+            with pytest.raises(ValueError, message=expected_error_message):
+                model.deploy(1, 'ml.m4.xlarge', update_endpoint=True, endpoint_name='non-existing-endpoint')
 
 
 @pytest.mark.continuous_testing
