@@ -12,6 +12,8 @@
 # language governing permissions and limitations under the License.
 from __future__ import absolute_import
 
+import pkg_resources
+
 from sagemaker import estimator, parameter, tuner  # noqa: F401
 from sagemaker.amazon.kmeans import KMeans, KMeansModel, KMeansPredictor  # noqa: F401
 from sagemaker.amazon.pca import PCA, PCAModel, PCAPredictor  # noqa: F401
@@ -39,4 +41,4 @@ from sagemaker.session import production_variant  # noqa: F401
 from sagemaker.session import s3_input  # noqa: F401
 from sagemaker.session import get_execution_role  # noqa: F401
 
-__version__ = '1.18.1'
+__version__ = pkg_resources.require('sagemaker')[0].version

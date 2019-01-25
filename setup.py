@@ -13,19 +13,10 @@
 from __future__ import absolute_import
 
 import os
-import re
 from glob import glob
 import sys
 
 from setuptools import setup, find_packages
-
-
-def get_version():
-    root = os.path.dirname(__file__)
-    version_re = re.compile(r'''__version__ = ['"]([0-9.]+((post|dev)\d+)?)['"]''')
-
-    init = read(os.path.join(root, 'src/sagemaker', '__init__.py'))
-    return version_re.search(init).group(1)
 
 
 def read(fname):
@@ -42,7 +33,7 @@ if sys.version_info < (3, 4):
     required_packages.append('enum34>=1.1.6')
 
 setup(name="sagemaker",
-      version=get_version(),
+      version='1.18.1',
       description="Open source library for training and deploying models on Amazon SageMaker.",
       packages=find_packages('src'),
       package_dir={'': 'src'},
