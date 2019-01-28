@@ -19,7 +19,7 @@ import logging
 import pytest
 import six
 from botocore.exceptions import ClientError
-from mock import Mock, patch, call
+from mock import MagicMock, Mock, patch, call, mock_open
 
 import sagemaker
 from sagemaker import s3_input, Session, get_execution_role
@@ -36,6 +36,12 @@ REGION = 'us-west-2'
 @pytest.fixture()
 def boto_session():
     boto_session = Mock(region_name=REGION)
+
+    mock_client = Mock()
+    mock_client._client_config.user_agent = \
+        'Boto3/1.9.69 Python/3.6.5 Linux/4.14.77-70.82.amzn1.x86_64 Botocore/1.12.69 Resource'
+
+    boto_session.client.return_value = mock_client
     return boto_session
 
 
@@ -137,6 +143,45 @@ def test_delete_endpoint(boto_session):
     sess.delete_endpoint('my_endpoint')
 
     boto_session.client().delete_endpoint.assert_called_with(EndpointName='my_endpoint')
+
+
+def test_user_agent_injected(boto_session):
+    assert 'AWS-SageMaker-Python-SDK' not in boto_session.client('sagemaker')._client_config.user_agent
+
+    sess = Session(boto_session)
+
+    assert 'AWS-SageMaker-Python-SDK' in sess.sagemaker_client._client_config.user_agent
+    assert 'AWS-SageMaker-Python-SDK' in sess.sagemaker_runtime_client._client_config.user_agent
+    assert 'AWS-SageMaker-Notebook-Instance' not in sess.sagemaker_client._client_config.user_agent
+    assert 'AWS-SageMaker-Notebook-Instance' not in sess.sagemaker_runtime_client._client_config.user_agent
+
+
+def test_user_agent_injected_with_nbi(boto_session):
+    assert 'AWS-SageMaker-Python-SDK' not in boto_session.client('sagemaker')._client_config.user_agent
+
+    with patch('six.moves.builtins.open', mock_open(read_data='120.0-0')) as mo:
+        sess = Session(boto_session)
+
+        mo.assert_called_with('/etc/opt/ml/sagemaker-notebook-instance-version.txt')
+
+    assert 'AWS-SageMaker-Python-SDK' in sess.sagemaker_client._client_config.user_agent
+    assert 'AWS-SageMaker-Python-SDK' in sess.sagemaker_runtime_client._client_config.user_agent
+    assert 'AWS-SageMaker-Notebook-Instance' in sess.sagemaker_client._client_config.user_agent
+    assert 'AWS-SageMaker-Notebook-Instance' in sess.sagemaker_runtime_client._client_config.user_agent
+
+
+def test_user_agent_injected_with_nbi_ioerror(boto_session):
+    assert 'AWS-SageMaker-Python-SDK' not in boto_session.client('sagemaker')._client_config.user_agent
+
+    with patch('six.moves.builtins.open', MagicMock(side_effect=IOError('File not found'))) as mo:
+        sess = Session(boto_session)
+
+        mo.assert_called_with('/etc/opt/ml/sagemaker-notebook-instance-version.txt')
+
+    assert 'AWS-SageMaker-Python-SDK' in sess.sagemaker_client._client_config.user_agent
+    assert 'AWS-SageMaker-Python-SDK' in sess.sagemaker_runtime_client._client_config.user_agent
+    assert 'AWS-SageMaker-Notebook-Instance' not in sess.sagemaker_client._client_config.user_agent
+    assert 'AWS-SageMaker-Notebook-Instance' not in sess.sagemaker_runtime_client._client_config.user_agent
 
 
 def test_s3_input_all_defaults():
