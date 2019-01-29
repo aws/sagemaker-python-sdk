@@ -4,7 +4,9 @@ CHANGELOG
 
 1.18.2
 ======
+
 * enhancement: Include SageMaker Notebook Instance version number in boto3 user agent, if available.
+* feature: Support for updating existing endpoint
 
 1.18.1
 ======
