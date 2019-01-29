@@ -920,6 +920,23 @@ def test_endpoint_from_production_variants_with_accelerator_type(sagemaker_sessi
         Tags=tags)
 
 
+def test_update_endpoint_succeed(sagemaker_session):
+    sagemaker_session.sagemaker_client.describe_endpoint = Mock(return_value={'EndpointStatus': 'InService'})
+    endpoint_name = "some-endpoint"
+    endpoint_config = "some-endpoint-config"
+    returned_endpoint_name = sagemaker_session.update_endpoint(endpoint_name, endpoint_config)
+    assert returned_endpoint_name == endpoint_name
+
+
+def test_update_endpoint_non_existing_endpoint(sagemaker_session):
+    error = ClientError({'Error': {'Code': 'ValidationException', 'Message': 'Could not find entity'}}, 'foo')
+    expected_error_message = 'Endpoint with name "non-existing-endpoint" does not exist; ' \
+                             'please use an existing endpoint name'
+    sagemaker_session.sagemaker_client.describe_endpoint = Mock(side_effect=error)
+    with pytest.raises(ValueError, message=expected_error_message):
+        sagemaker_session.update_endpoint("non-existing-endpoint", "non-existing-config")
+
+
 @patch('time.sleep')
 def test_wait_for_tuning_job(sleep, sagemaker_session):
     hyperparameter_tuning_job_desc = {'HyperParameterTuningJobStatus': 'Completed'}
