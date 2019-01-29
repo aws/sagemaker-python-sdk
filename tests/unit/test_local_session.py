@@ -310,6 +310,16 @@ def test_create_endpoint(describe_model, describe_endpoint_config, request, *arg
     assert 'my-endpoint' in sagemaker.local.local_session.LocalSagemakerClient._endpoints
 
 
+@patch('sagemaker.local.local_session.LocalSession')
+def test_update_endpoint(LocalSession):
+    local_sagemaker_client = sagemaker.local.local_session.LocalSagemakerClient()
+    endpoint_name = 'my-endpoint'
+    endpoint_config = 'my-endpoint-config'
+    expected_error_message = 'Update endpoint name is not supported in local session.'
+    with pytest.raises(NotImplementedError, message=expected_error_message):
+        local_sagemaker_client.update_endpoint(endpoint_name, endpoint_config)
+
+
 @patch('sagemaker.local.image._SageMakerContainer.serve')
 @patch('urllib3.PoolManager.request')
 def test_serve_endpoint_with_correct_accelerator(request, *args):

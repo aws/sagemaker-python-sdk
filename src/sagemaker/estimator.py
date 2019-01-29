@@ -330,7 +330,7 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):
         return estimator
 
     def deploy(self, initial_instance_count, instance_type, accelerator_type=None, endpoint_name=None,
-               use_compiled_model=False, **kwargs):
+               use_compiled_model=False, update_endpoint=False, **kwargs):
         """Deploy the trained model to an Amazon SageMaker endpoint and return a ``sagemaker.RealTimePredictor`` object.
 
         More information:
@@ -347,6 +347,9 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):
             endpoint_name (str): Name to use for creating an Amazon SageMaker endpoint. If not specified, the name of
                 the training job is used.
             use_compiled_model (bool): Flag to select whether to use compiled (optimized) model. Default: False.
+            update_endpoint (bool): Flag to update the model in an existing Amazon SageMaker endpoint.
+                If True, this will deploy a new EndpointConfig to an already existing endpoint and delete resources
+                corresponding to the previous EndpointConfig. Default: False
             **kwargs: Passed to invocation of ``create_model()``. Implementations may customize
                 ``create_model()`` to accept ``**kwargs`` to customize model creation during deploy.
                 For more, see the implementation docs.
@@ -370,7 +373,8 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):
             instance_type=instance_type,
             initial_instance_count=initial_instance_count,
             accelerator_type=accelerator_type,
-            endpoint_name=endpoint_name)
+            endpoint_name=endpoint_name,
+            update_endpoint=update_endpoint)
 
     @property
     def model_data(self):
