@@ -235,7 +235,8 @@ To enable parameter server training:
 Training with Horovod
 """""""""""""""""""""
 
-Horovod is a distributed training framework based on MPI. You can find more details at `Horovod README <https://github.com/uber/horovod>`__.
+Horovod is a distributed training framework based on MPI. Horovod is only available with TensorFlow version ``1.12`` or newer.
+You can find more details at `Horovod README <https://github.com/uber/horovod>`__.
 
 The container sets up the MPI environment and executes the ``mpirun`` command enabling you to run any Horovod
 training script with Script Mode.
