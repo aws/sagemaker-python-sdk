@@ -194,7 +194,7 @@ Here is an end to end example of how to use a SageMaker Estimator:
 
 
 Additionally, it is possible to deploy a different endpoint configuration, which links to your model, to an already existing SageMaker endpoint.
-This can be done by specifying the existing endpoint name for the `endpoint_name` parameter along with the `update_endpoint` parameter as `True` within your `deploy()` call.
+This can be done by specifying the existing endpoint name for the ``endpoint_name`` parameter along with the ``update_endpoint`` parameter as ``True`` within your ``deploy()`` call.
 For more `information <https://boto3.amazonaws.com/v1/documentation/api/latest/reference/services/sagemaker.html#SageMaker.Client.update_endpoint>`__.
 
 .. code:: python
