@@ -193,8 +193,9 @@ Here is an end to end example of how to use a SageMaker Estimator:
     mxnet_estimator.delete_endpoint()
 
 
-Or, if you want to deploy to an existing endpoint instead of letting SageMaker creating a new one, you can specify to update an endpoint.
-Note this function is not supported in local mode:
+Additionally, it is possible to deploy a different endpoint configuration, which links to your model, to an already existing SageMaker endpoint.
+This can be done by specifying the existing endpoint name for the `endpoint_name` parameter along with the `update_endpoint` parameter as `True` within your `deploy()` call.
+For more `information <https://boto3.amazonaws.com/v1/documentation/api/latest/reference/services/sagemaker.html#SageMaker.Client.update_endpoint>`__.
 
 .. code:: python
 
