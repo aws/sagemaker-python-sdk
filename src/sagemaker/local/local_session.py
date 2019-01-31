@@ -143,6 +143,9 @@ class LocalSagemakerClient(object):
         LocalSagemakerClient._endpoints[EndpointName] = endpoint
         endpoint.serve()
 
+    def update_endpoint(self, EndpointName, EndpointConfigName):  # pylint: disable=unused-argument
+        raise NotImplementedError('Update endpoint name is not supported in local session.')
+
     def delete_endpoint(self, EndpointName):
         if EndpointName in LocalSagemakerClient._endpoints:
             LocalSagemakerClient._endpoints[EndpointName].stop()
