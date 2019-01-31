@@ -1,5 +1,6 @@
-MXNet
+MXNet Classes
 =================
+
 
 MXNet Estimator
 ---------------------------
