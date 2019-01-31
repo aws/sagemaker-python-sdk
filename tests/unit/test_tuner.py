@@ -428,7 +428,7 @@ def test_stop_tuning_job(sagemaker_session, tuner):
 
 def test_stop_tuning_job_no_tuning_job(tuner):
     with pytest.raises(ValueError) as e:
-            tuner.stop_tuning_job()
+        tuner.stop_tuning_job()
     assert 'No tuning job available' in str(e)
 
 
@@ -612,7 +612,7 @@ def test_transfer_learning_tuner(sagemaker_session):
 def test_continuous_parameter():
     cont_param = ContinuousParameter(0.1, 1e-2)
     assert isinstance(cont_param, ParameterRange)
-    assert cont_param.__name__ is 'Continuous'
+    assert cont_param.__name__ == 'Continuous'
 
 
 def test_continuous_parameter_ranges():
@@ -627,7 +627,7 @@ def test_continuous_parameter_ranges():
 def test_integer_parameter():
     int_param = IntegerParameter(1, 2)
     assert isinstance(int_param, ParameterRange)
-    assert int_param.__name__ is 'Integer'
+    assert int_param.__name__ == 'Integer'
 
 
 def test_integer_parameter_ranges():
@@ -642,7 +642,7 @@ def test_integer_parameter_ranges():
 def test_categorical_parameter_list():
     cat_param = CategoricalParameter(['a', 'z'])
     assert isinstance(cat_param, ParameterRange)
-    assert cat_param.__name__ is 'Categorical'
+    assert cat_param.__name__ == 'Categorical'
 
 
 def test_categorical_parameter_list_ranges():
