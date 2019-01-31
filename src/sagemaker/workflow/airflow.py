@@ -447,8 +447,7 @@ def model_config_from_estimator(instance_type, estimator, task_id, task_type, ro
 
     Returns:
         dict: Model config that can be directly used by SageMakerModelOperator in Airflow. It can also be part
-        of the config used by SageMakerEndpointOperator.
-         SageMakerTransformOperator in Airflow.
+            of the config used by SageMakerEndpointOperator in Airflow.
     """
     update_estimator_from_task(estimator, task_id, task_type)
     if isinstance(estimator, sagemaker.estimator.Estimator):

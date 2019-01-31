@@ -325,7 +325,7 @@ class Session(object):
 
         Args:
             input_model_config (dict): the trained model and the Amazon S3 location where it is stored.
-            output_model_config (dict): - Identifies the Amazon S3 location where you want Amazon SageMaker Neo to save
+            output_model_config (dict): Identifies the Amazon S3 location where you want Amazon SageMaker Neo to save
                 the results of compilation job
             role (str): An AWS IAM role (either name or full ARN). The Amazon SageMaker Neo compilation jobs use this
                 role to access model artifacts. You must grant sufficient permissions to this role.
@@ -550,6 +550,7 @@ class Session(object):
         the inference code. Amazon SageMaker uses this information to deploy the
         model in Amazon SageMaker. This method can also be used to create a Model for an Inference Pipeline
         if you pass the list of container definitions through the containers parameter.
+
         Args:
             name (str): Name of the Amazon SageMaker ``Model`` to create.
             role (str): An AWS IAM role (either name or full ARN). The Amazon SageMaker training jobs and APIs
@@ -1177,6 +1178,7 @@ class Session(object):
 
 def container_def(image, model_data_url=None, env=None):
     """Create a definition for executing a container as part of a SageMaker model.
+
     Args:
         image (str): Docker image to run for this container.
         model_data_url (str): S3 URI of data required by this container,
@@ -1286,19 +1288,22 @@ class s3_input(object):
                 ``s3_data`` will be used to train. If 'ManifestFile' or 'AugmentedManifestFile', then ``s3_data``
                 defines a single s3 manifest file or augmented manifest file (respectively), listing the s3 data to
                 train on. Both the ManifestFile and AugmentedManifestFile formats are described in the SageMaker API
-                 documentation: https://docs.aws.amazon.com/sagemaker/latest/dg/API_S3DataSource.html
+                documentation: https://docs.aws.amazon.com/sagemaker/latest/dg/API_S3DataSource.html
             input_mode (str): Optional override for this channel's input mode (default: None). By default, channels will
                 use the input mode defined on ``sagemaker.estimator.EstimatorBase.input_mode``, but they will ignore
                 that setting if this parameter is set.
-                * None - Amazon SageMaker will use the input mode specified in the ``Estimator``.
-                * 'File' - Amazon SageMaker copies the training dataset from the S3 location to a local directory.
-                * 'Pipe' - Amazon SageMaker streams data directly from S3 to the container via a Unix-named pipe.
+
+                    * None - Amazon SageMaker will use the input mode specified in the ``Estimator``.
+                    * 'File' - Amazon SageMaker copies the training dataset from the S3 location to a local directory.
+                    * 'Pipe' - Amazon SageMaker streams data directly from S3 to the container via a Unix-named pipe.
+
             attribute_names (list[str]): A list of one or more attribute names to use that are found in a specified
                 AugmentedManifestFile.
             shuffle_config (ShuffleConfig): If specified this configuration enables shuffling on this channel. See the
                 SageMaker API documentation for more info:
                 https://docs.aws.amazon.com/sagemaker/latest/dg/API_ShuffleConfig.html
         """
+
         self.config = {
             'DataSource': {
                 'S3DataSource': {
