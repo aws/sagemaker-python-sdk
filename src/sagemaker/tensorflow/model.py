@@ -21,9 +21,9 @@ from sagemaker.tensorflow.predictor import tf_json_serializer, tf_json_deseriali
 
 
 class TensorFlowPredictor(RealTimePredictor):
-    """A ``RealTimePredictor`` for inference against TensorFlow ``Endpoint``s.
+    """A ``RealTimePredictor`` for inference against TensorFlow ``Endpoint``.
 
-    This is able to serialize Python lists, dictionaries, and numpy arrays to multidimensional tensors for MXNet
+    This is able to serialize Python lists, dictionaries, and numpy arrays to multidimensional tensors for
     inference"""
     def __init__(self, endpoint_name, sagemaker_session=None):
         """Initialize an ``TensorFlowPredictor``.

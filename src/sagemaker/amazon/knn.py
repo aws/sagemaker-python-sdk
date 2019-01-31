@@ -60,6 +60,7 @@ class KNN(AmazonAlgorithmEstimatorBase):
         KNN are documented below.
         For further information on the AWS KNN algorithm,
         please consult AWS technical documentation: https://docs.aws.amazon.com/sagemaker/latest/dg/knn.html
+
         Args:
             role (str): An AWS IAM role (either name or full ARN). The Amazon SageMaker training jobs and
                 APIs that create Amazon SageMaker endpoints use this role to access
@@ -108,6 +109,7 @@ class KNN(AmazonAlgorithmEstimatorBase):
                 * 'Subnets' (list[str]): List of subnet ids.
                 * 'SecurityGroupIds' (list[str]): List of security group ids.
         """
+
         return KNNModel(self.model_data, self.role, sagemaker_session=self.sagemaker_session,
                         vpc_config=self.get_vpc_config(vpc_config_override))
 

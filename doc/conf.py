@@ -32,6 +32,7 @@ MOCK_MODULES = ['tensorflow', 'tensorflow.core', 'tensorflow.core.framework', 't
                 'tensorflow.python.framework', 'tensorflow_serving', 'tensorflow_serving.apis',
                 'numpy', 'scipy', 'scipy.sparse']
 sys.modules.update((mod_name, Mock()) for mod_name in MOCK_MODULES)
+sys.modules.update((mod_name, Mock()) for mod_name in MOCK_MODULES)
 
 project = u'sagemaker'
 version = pkg_resources.require(project)[0].version
@@ -68,7 +69,7 @@ if 'READTHEDOCS' in os.environ:
     html_theme = 'default'
 else:
     html_theme = 'haiku'
-html_static_path = ['_static']
+html_static_path = []
 htmlhelp_basename = '%sdoc' % project
 
 # Example configuration for intersphinx: refer to the Python standard library.

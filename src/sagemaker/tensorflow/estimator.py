@@ -177,6 +177,7 @@ class TensorFlow(Framework):
                  framework_version=None, model_dir=None, requirements_file='', image_name=None,
                  script_mode=False, distributions=None, **kwargs):
         """Initialize an ``TensorFlow`` estimator.
+
         Args:
             training_steps (int): Perform this many steps of training. `None`, the default means train forever.
             evaluation_steps (int): Perform this many steps of evaluation. `None`, the default means that evaluation
@@ -195,26 +196,36 @@ class TensorFlow(Framework):
             image_name (str): If specified, the estimator will use this image for training and hosting, instead of
                 selecting the appropriate SageMaker official image based on framework_version and py_version. It can
                 be an ECR url or dockerhub image and tag.
-                    Examples:
-                        123.dkr.ecr.us-west-2.amazonaws.com/my-custom-image:1.0
-                        custom-image:latest.
+
+                Examples:
+                    123.dkr.ecr.us-west-2.amazonaws.com/my-custom-image:1.0
+                    custom-image:latest.
             script_mode (bool): If set to True will the estimator will use the Script Mode containers (default: False).
                 This will be ignored if py_version is set to 'py3'.
             distributions (dict): A dictionary with information on how to run distributed training
-                (default: None). Currently we support distributed training with parameter servers and MPI. To enable
-                parameter server use the following setup:
+                (default: None). Currently we support distributed training with parameter servers and MPI.
+                To enable parameter server use the following setup:
+
+                .. code:: python
+
+                    {
                         'parameter_server':
                         {
                             'enabled': True
                         }
                     }
+
                 To enable MPI:
+
+                .. code:: python
+
                     {
                         'mpi':
                         {
                             'enabled': True
                         }
                     }
+
             **kwargs: Additional kwargs passed to the Framework constructor.
         """
         if framework_version is None:
@@ -281,13 +292,15 @@ class TensorFlow(Framework):
         Args:
             inputs (str or dict or sagemaker.session.s3_input): Information about the training data.
                 This can be one of three types:
-                (str) - the S3 location where training data is saved.
-                (dict[str, str] or dict[str, sagemaker.session.s3_input]) - If using multiple channels for
+
+                * (str) - the S3 location where training data is saved.
+                * (dict[str, str] or dict[str, sagemaker.session.s3_input]) - If using multiple channels for
                     training data, you can specify a dict mapping channel names
                     to strings or :func:`~sagemaker.session.s3_input` objects.
-                (sagemaker.session.s3_input) - channel configuration for S3 data sources that can provide
+                * (sagemaker.session.s3_input) - channel configuration for S3 data sources that can provide
                     additional information as well as the path to the training dataset.
                     See :func:`sagemaker.session.s3_input` for full details.
+
             wait (bool): Whether the call should wait until the job completes (default: True).
             logs (bool): Whether to show the logs produced by the job.
                 Only meaningful when wait is True (default: True).
