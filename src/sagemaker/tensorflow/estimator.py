@@ -176,7 +176,7 @@ class TensorFlow(Framework):
     def __init__(self, training_steps=None, evaluation_steps=None, checkpoint_path=None, py_version='py2',
                  framework_version=None, model_dir=None, requirements_file='', image_name=None,
                  script_mode=False, distributions=None, **kwargs):
-        """Initialize an ``TensorFlow`` estimator.
+        """Initialize a ``TensorFlow`` estimator.
 
         Args:
             training_steps (int): Perform this many steps of training. `None`, the default means train forever.

@@ -21,7 +21,7 @@ from sagemaker.tensorflow.predictor import tf_json_serializer, tf_json_deseriali
 
 
 class TensorFlowPredictor(RealTimePredictor):
-    """A ``RealTimePredictor`` for inference against TensorFlow ``Endpoint``.
+    """A ``RealTimePredictor`` for inference against TensorFlow endpoint.
 
     This is able to serialize Python lists, dictionaries, and numpy arrays to multidimensional tensors for
     inference"""

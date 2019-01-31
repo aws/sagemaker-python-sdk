@@ -57,7 +57,7 @@ class SparkMLModel(Model):
     """
 
     def __init__(self, model_data, role=None, spark_version=2.2, sagemaker_session=None, **kwargs):
-        """Initialize a SparkMLModel..
+        """Initialize a SparkMLModel.
 
         Args:
             model_data (str): The S3 location of a SageMaker model data ``.tar.gz`` file. For SparkML, this will be the
