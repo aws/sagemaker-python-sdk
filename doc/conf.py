@@ -32,7 +32,6 @@ MOCK_MODULES = ['tensorflow', 'tensorflow.core', 'tensorflow.core.framework', 't
                 'tensorflow.python.framework', 'tensorflow_serving', 'tensorflow_serving.apis',
                 'numpy', 'scipy', 'scipy.sparse']
 sys.modules.update((mod_name, Mock()) for mod_name in MOCK_MODULES)
-sys.modules.update((mod_name, Mock()) for mod_name in MOCK_MODULES)
 
 project = u'sagemaker'
 version = pkg_resources.require(project)[0].version
