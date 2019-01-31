@@ -1,4 +1,4 @@
-MXNet Objects
+MXNet Classes
 =================
 
 
