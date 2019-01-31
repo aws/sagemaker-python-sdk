@@ -109,7 +109,6 @@ class KNN(AmazonAlgorithmEstimatorBase):
                 * 'Subnets' (list[str]): List of subnet ids.
                 * 'SecurityGroupIds' (list[str]): List of security group ids.
         """
-
         return KNNModel(self.model_data, self.role, sagemaker_session=self.sagemaker_session,
                         vpc_config=self.get_vpc_config(vpc_config_override))
 
