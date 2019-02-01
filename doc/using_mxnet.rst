@@ -49,7 +49,7 @@ Your MXNet training script must be a Python 2.7 or 3.5 compatible source file.
 
 The training script is very similar to a training script you might run outside of SageMaker, but you can access useful properties about the training environment through various environment variables, including the following:
 
-* ``SM_MODEL_DIR``: A string that represents the path where the training job should write the model artifacts to.
+* ``SM_MODEL_DIR``: A string that represents the path where the training job writes the model artifacts to.
   After training, artifacts in this directory are uploaded to S3 for model hosting.
 * ``SM_NUM_GPUS``: An integer representing the number of GPUs available to the host.
 * ``SM_CHANNEL_XXXX``: A string that represents the path to the directory that contains the input data for the specified channel.
