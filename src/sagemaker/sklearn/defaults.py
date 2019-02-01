@@ -12,4 +12,6 @@
 # language governing permissions and limitations under the License.
 from __future__ import absolute_import
 
+SKLEARN_NAME = "scikit-learn"
+
 SKLEARN_VERSION = '0.20.0'

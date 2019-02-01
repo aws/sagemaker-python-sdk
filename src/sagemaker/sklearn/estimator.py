@@ -17,7 +17,7 @@ import logging
 from sagemaker.estimator import Framework
 from sagemaker.fw_registry import default_framework_uri
 from sagemaker.fw_utils import framework_name_from_image, empty_framework_version_warning
-from sagemaker.sklearn.defaults import SKLEARN_VERSION
+from sagemaker.sklearn.defaults import SKLEARN_VERSION, SKLEARN_NAME
 from sagemaker.sklearn.model import SKLearnModel
 from sagemaker.vpc_utils import VPC_CONFIG_DEFAULT
 
@@ -28,7 +28,7 @@ logger = logging.getLogger('sagemaker')
 class SKLearn(Framework):
     """Handle end-to-end training and deployment of custom Scikit-learn code."""
 
-    __framework_name__ = "scikit-learn"
+    __framework_name__ = SKLEARN_NAME
 
     def __init__(self, entry_point, framework_version=SKLEARN_VERSION, source_dir=None, hyperparameters=None,
                  py_version='py3', image_name=None, **kwargs):
@@ -74,7 +74,7 @@ class SKLearn(Framework):
         train_instance_count = kwargs.get('train_instance_count')
         if train_instance_count:
             if train_instance_count != 1:
-                raise AttributeError("SciKit-Learn does not support distributed training. "
+                raise AttributeError("Scikit-Learn does not support distributed training. "
                                      "Please remove the 'train_instance_count' argument or set "
                                      "'train_instance_count=1' when initializing SKLearn.")
         super(SKLearn, self).__init__(entry_point, source_dir, hyperparameters, image_name=image_name,
@@ -154,6 +154,6 @@ def _validate_not_gpu_instance_type(training_instance_type):
                           'ml.p3.xlarge', 'ml.p3.8xlarge', 'ml.p3.16xlarge']
 
     if training_instance_type in gpu_instance_types:
-        raise ValueError("GPU training in not supported for SciKit-Learn. "
+        raise ValueError("GPU training in not supported for Scikit-Learn. "
                          "Please pick a different instance type from here: "
                          "https://aws.amazon.com/ec2/instance-types/")
