@@ -2,6 +2,11 @@
 CHANGELOG
 =========
 
+1.18.3.dev
+==========
+
+* doc-fix: update information about saving models in the MXNet README
+
 1.18.2
 ======
 
