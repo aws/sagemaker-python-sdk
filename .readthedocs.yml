@@ -1,0 +1,17 @@
+# ReadTheDocs environment customization to allow us to use conda to install
+# libraries which have C dependencies for the doc build. See:
+# https://docs.readthedocs.io/en/latest/config-file/v2.html
+
+version: 2
+
+conda:
+  environment: .rtd-environment.yml
+
+python:
+  install:
+    - method: pip
+      path: .
+
+sphinx:
+  configuration: doc/conf.py
+  fail_on_warning: true
