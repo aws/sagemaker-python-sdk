@@ -68,7 +68,7 @@ if 'READTHEDOCS' in os.environ:
     html_theme = 'default'
 else:
     html_theme = 'haiku'
-html_static_path = ['_static']
+html_static_path = []
 htmlhelp_basename = '%sdoc' % project
 
 # Example configuration for intersphinx: refer to the Python standard library.

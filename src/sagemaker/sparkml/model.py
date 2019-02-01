@@ -37,6 +37,7 @@ class SparkMLPredictor(RealTimePredictor):
         Initializes a SparkMLPredictor which should be used with SparkMLModel to perform predictions against SparkML
         models serialized via MLeap. The response is returned in text/csv format which is the default response format
         for SparkML Serving container.
+
         Args:
             endpoint (str): The name of the endpoint to perform inference on.
             sagemaker_session (sagemaker.session.Session): Session object which manages interactions with
@@ -56,7 +57,8 @@ class SparkMLModel(Model):
     """
 
     def __init__(self, model_data, role=None, spark_version=2.2, sagemaker_session=None, **kwargs):
-        """Initialize a SparkMLModel..
+        """Initialize a SparkMLModel.
+
         Args:
             model_data (str): The S3 location of a SageMaker model data ``.tar.gz`` file. For SparkML, this will be the
                 output that has been produced by the Spark job after serializing the Model via MLeap.
