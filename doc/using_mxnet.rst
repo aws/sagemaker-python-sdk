@@ -25,7 +25,7 @@ Suppose that you already have an MXNet training script called
                             role='SageMakerRole',
                             train_instance_type='ml.p3.2xlarge',
                             train_instance_count=1,
-                            framework_version='1.2.1')
+                            framework_version='1.3.0')
     mxnet_estimator.fit('s3://bucket/path/to/training/data')
 
 Where the S3 url is a path to your training data, within Amazon S3. The constructor keyword arguments define how SageMaker runs your training script and are discussed, in detail, in a later section.
@@ -119,7 +119,7 @@ When you run your script on SageMaker via the ``MXNet`` Estimator, SageMaker inj
    Depending on your problem, some common channel ideas are: "train",
    "test", "evaluation" or "images',"labels".
 -  ``output_data_dir (str)``: A directory where your training script can
-   write data that will be moved to s3 after training is complete.
+   write data that will be moved to S3 after training is complete.
 -  ``num_gpus (int)``: The number of GPU devices available on your
    training instance.
 -  ``num_cpus (int)``: The number of CPU devices available on your training instance.
@@ -312,7 +312,10 @@ The following code sample shows how you train a custom MXNet script "train.py".
     mxnet_estimator = MXNet('train.py',
                             train_instance_type='ml.p2.xlarge',
                             train_instance_count=1,
-                            framework_version='1.2.1')
+                            framework_version='1.3.0',
+                            hyperparameters={'batch-size': 100,
+                                             'epochs': 10,
+                                             'learning-rate': 0.1})
     mxnet_estimator.fit('s3://my_bucket/my_training_data/')
 
 MXNet Estimators
@@ -368,7 +371,7 @@ The following are optional arguments. When you create an ``MXNet`` object, you c
    str() will be called on keys and values to convert them before
    training.
 -  ``py_version`` Python version you want to use for executing your
-   model training code.
+   model training code. Valid values: 'py2' and 'py3'.
 -  ``train_volume_size`` Size in GB of the EBS volume to use for storing
    input data during training. Must be large enough to store training
    data if input_mode='File' is used (which is the default).
@@ -376,14 +379,12 @@ The following are optional arguments. When you create an ``MXNet`` object, you c
    SageMaker terminates the job regardless of its current status.
 -  ``input_mode`` The input mode that the algorithm supports. Valid
    modes: 'File' - Amazon SageMaker copies the training dataset from the
-   s3 location to a directory in the Docker container. 'Pipe' - Amazon
-   SageMaker streams data directly from s3 to the container via a Unix
+   S3 location to a directory in the Docker container. 'Pipe' - Amazon
+   SageMaker streams data directly from S3 to the container via a Unix
    named pipe.
--  ``output_path`` s3 location where you want the training result (model
-   artifacts and optional output files) saved. If not specified, results
-   are stored to a default bucket. If the bucket with the specific name
-   does not exist, the estimator creates the bucket during the fit()
-   method execution.
+-  ``output_path`` Location where you want the training result (model artifacts and optional output files) saved.
+   This should be an S3 location unless you're using Local Mode, which also supports local output paths.
+   If not specified, results are stored to a default S3 bucket.
 -  ``output_kms_key`` Optional KMS key ID to optionally encrypt training
    output with.
 -  ``job_name`` Name to assign for the training job that the fit()
@@ -416,11 +417,11 @@ Required argument
 '''''''''''''''''
 
 -  ``inputs``: This can take one of the following forms: A string
-   s3 URI, for example ``s3://my-bucket/my-training-data``. In this
-   case, the s3 objects rooted at the ``my-training-data`` prefix will
+   S3 URI, for example ``s3://my-bucket/my-training-data``. In this
+   case, the S3 objects rooted at the ``my-training-data`` prefix will
    be available in the default ``training`` channel. A dict from
-   string channel names to s3 URIs. In this case, the objects rooted at
-   each s3 prefix will available as files in each channel directory.
+   string channel names to S3 URIs. In this case, the objects rooted at
+   each S3 prefix will available as files in each channel directory.
 
 For example:
 
@@ -583,7 +584,7 @@ When an InvokeEndpoint operation is made against an Endpoint running a SageMaker
 -  The request Content-Type, for example "application/json"
 -  The request data body, a byte array
 
-The SageMaker MXNet model server will invoke an "input_fn" function in your training script, passing in this information. If you define an ``input_fn`` function definition, it should return an object that can be passed to ``predict_fn`` and have the following signature:
+The SageMaker MXNet model server will invoke an ``input_fn`` function in your training script, passing in this information. If you define an ``input_fn`` function definition, it should return an object that can be passed to ``predict_fn`` and have the following signature:
 
 .. code:: python
 
@@ -607,7 +608,7 @@ If you provide your own implementation of input_fn, you should abide by the ``in
 
     def input_fn(request_body, request_content_type, model):
         """An input_fn that loads a pickled numpy array"""
-        if request_content_type == "application/python-pickle":
+        if request_content_type == 'application/python-pickle':
             array = np.load(StringIO(request_body))
             array.reshape(model.data_shpaes[0])
             return mx.io.NDArrayIter(mx.ndarray(array))
@@ -676,7 +677,7 @@ You can attach an MXNet Estimator to an existing training job using the
 
 .. code:: python
 
-    my_training_job_name = "MyAwesomeMXNetTrainingJob"
+    my_training_job_name = 'MyAwesomeMXNetTrainingJob'
     mxnet_estimator = MXNet.attach(my_training_job_name)
 
 After attaching, if the training job is in a Complete status, it can be
@@ -697,9 +698,9 @@ As well as attaching to existing training jobs, you can deploy models directly f
 
 .. code:: python
 
-    mxnet_model = MXNetModel(model_data="s3://bucket/model.tar.gz", role="SageMakerRole", entry_point="trasform_script.py")
+    mxnet_model = MXNetModel(model_data='s3://bucket/model.tar.gz', role='SageMakerRole', entry_point='trasform_script.py')
 
-    predictor = mxnet_model.deploy(instance_type="ml.c4.xlarge", initial_instance_count=1)
+    predictor = mxnet_model.deploy(instance_type='ml.c4.xlarge', initial_instance_count=1)
 
 The MXNetModel constructor takes the following arguments:
 
@@ -727,7 +728,7 @@ The MXNetModel constructor takes the following arguments:
    custom code will be uploaded to. If not specified, will use the
    SageMaker default bucket created by sagemaker.Session.
 -  ``sagemaker_session (sagemaker.Session):`` The SageMaker Session
-   object, used for SageMaker interaction"""
+   object, used for SageMaker interaction
 
 Your model data must be a .tar.gz file in S3. SageMaker Training Job model data is saved to .tar.gz files in S3, however if you have local data you want to deploy, you can prepare the data yourself.
 
