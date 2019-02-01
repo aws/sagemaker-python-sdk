@@ -59,9 +59,6 @@ The training script is very similar to a training script you might run outside o
 * ``SM_MODEL_DIR``: A string that represents the path where the training job should write the model artifacts to.
   After training, artifacts in this directory are uploaded to S3 for model hosting.
 * ``SM_NUM_GPUS``: An integer representing the number of GPUs available to the host.
-* ``SM_OUTPUT_DATA_DIR``: A string that represents the path to the directory to write output artifacts to.
-  Output artifacts might include checkpoints, graphs, and other files to save, but do not include model artifacts.
-  These artifacts are compressed and uploaded to S3 to an S3 bucket with the same prefix as the model artifacts.
 * ``SM_CHANNEL_XXXX``: A string that represents the path to the directory that contains the input data for the specified channel.
   For example, if you specify two input channels in the MXNet estimator's ``fit`` call, named 'train' and 'test', the environment variables ``SM_CHANNEL_TRAIN`` and ``SM_CHANNEL_TEST`` are set.
 * ``SM_HPS``: A json dump of the hyperparameters preserving json types (boolean, integer, etc.)
