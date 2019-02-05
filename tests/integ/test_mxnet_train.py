@@ -57,7 +57,7 @@ def test_attach_deploy(mxnet_training_job, sagemaker_session):
         predictor.predict(data)
 
 
-def test_deploy_model(mxnet_training_job, sagemaker_session):
+def test_deploy_model(mxnet_training_job, sagemaker_session, mxnet_full_version):
     endpoint_name = 'test-mxnet-deploy-model-{}'.format(sagemaker_timestamp())
 
     with timeout_and_delete_endpoint_by_name(endpoint_name, sagemaker_session):
@@ -65,14 +65,15 @@ def test_deploy_model(mxnet_training_job, sagemaker_session):
         model_data = desc['ModelArtifacts']['S3ModelArtifacts']
         script_path = os.path.join(DATA_DIR, 'mxnet_mnist', 'mnist.py')
         model = MXNetModel(model_data, 'SageMakerRole', entry_point=script_path,
-                           py_version=PYTHON_VERSION, sagemaker_session=sagemaker_session)
+                           py_version=PYTHON_VERSION, sagemaker_session=sagemaker_session,
+                           framework_version=mxnet_full_version)
         predictor = model.deploy(1, 'ml.m4.xlarge', endpoint_name=endpoint_name)
 
         data = numpy.zeros(shape=(1, 1, 28, 28))
         predictor.predict(data)
 
 
-def test_deploy_model_with_update_endpoint(mxnet_training_job, sagemaker_session):
+def test_deploy_model_with_update_endpoint(mxnet_training_job, sagemaker_session, mxnet_full_version):
     endpoint_name = 'test-mxnet-deploy-model-{}'.format(sagemaker_timestamp())
 
     with timeout_and_delete_endpoint_by_name(endpoint_name, sagemaker_session):
@@ -80,7 +81,8 @@ def test_deploy_model_with_update_endpoint(mxnet_training_job, sagemaker_session
         model_data = desc['ModelArtifacts']['S3ModelArtifacts']
         script_path = os.path.join(DATA_DIR, 'mxnet_mnist', 'mnist.py')
         model = MXNetModel(model_data, 'SageMakerRole', entry_point=script_path,
-                           py_version=PYTHON_VERSION, sagemaker_session=sagemaker_session)
+                           py_version=PYTHON_VERSION, sagemaker_session=sagemaker_session,
+                           framework_version=mxnet_full_version)
         model.deploy(1, 'ml.t2.medium', endpoint_name=endpoint_name)
         old_endpoint = sagemaker_session.describe_endpoint(EndpointName=endpoint_name)
         old_config_name = old_endpoint['EndpointConfigName']
@@ -96,7 +98,7 @@ def test_deploy_model_with_update_endpoint(mxnet_training_job, sagemaker_session
         assert new_production_variants['AcceleratorType'] is None
 
 
-def test_deploy_model_with_update_non_existing_endpoint(mxnet_training_job, sagemaker_session):
+def test_deploy_model_with_update_non_existing_endpoint(mxnet_training_job, sagemaker_session, mxnet_full_version):
     endpoint_name = 'test-mxnet-deploy-model-{}'.format(sagemaker_timestamp())
     expected_error_message = 'Endpoint with name "{}" does not exist; ' \
                              'please use an existing endpoint name'.format(endpoint_name)
@@ -106,7 +108,8 @@ def test_deploy_model_with_update_non_existing_endpoint(mxnet_training_job, sage
         model_data = desc['ModelArtifacts']['S3ModelArtifacts']
         script_path = os.path.join(DATA_DIR, 'mxnet_mnist', 'mnist.py')
         model = MXNetModel(model_data, 'SageMakerRole', entry_point=script_path,
-                           py_version=PYTHON_VERSION, sagemaker_session=sagemaker_session)
+                           py_version=PYTHON_VERSION, sagemaker_session=sagemaker_session,
+                           framework_version=mxnet_full_version)
         model.deploy(1, 'ml.t2.medium', endpoint_name=endpoint_name)
         sagemaker_session.describe_endpoint(EndpointName=endpoint_name)
 
