@@ -6,6 +6,7 @@ CHANGELOG
 ==========
 
 * doc-fix: update information about saving models in the MXNet README
+* doc-fix: change ReadTheDocs links from latest to stable
 
 1.18.2
 ======
