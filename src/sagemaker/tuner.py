@@ -490,7 +490,7 @@ class HyperparameterTuner(object):
 
     @property
     def sagemaker_session(self):
-        """Convenience method for accessing the :class:~`sagemaker.session.Session` object associated
+        """Convenience method for accessing the :class:`~sagemaker.session.Session` object associated
         with the estimator for the ``HyperparameterTuner``.
         """
         return self.estimator.sagemaker_session

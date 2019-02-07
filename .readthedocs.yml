@@ -4,13 +4,12 @@
 
 version: 2
 
-conda:
-  environment: .rtd-environment.yml
-
 python:
+  version: 3.6
   install:
     - method: pip
       path: .
+    - requirements: doc/requirements.txt
 
 sphinx:
   configuration: doc/conf.py
