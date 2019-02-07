@@ -780,6 +780,24 @@ class Session(object):
         LOGGER.info('Deleting endpoint with name: {}'.format(endpoint_name))
         self.sagemaker_client.delete_endpoint(EndpointName=endpoint_name)
 
+    def delete_endpoint_config(self, endpoint_config_name):
+        """Delete an Amazon SageMaker endpoint configuration.
+
+        Args:
+            endpoint_config_name (str): Name of the Amazon SageMaker endpoint configuration to delete.
+        """
+        LOGGER.info('Deleting endpoint configuration with name: {}'.format(endpoint_config_name))
+        self.sagemaker_client.delete_endpoint_config(EndpointConfigName=endpoint_config_name)
+
+    def delete_model(self, model_name):
+        """Delete an Amazon SageMaker ``Model``.
+
+        Args:
+            model_name (str): Name of the Amazon SageMaker model to delete.
+        """
+        LOGGER.info('Deleting model with name: {}'.format(model_name))
+        self.sagemaker_client.delete_model(ModelName=model_name)
+
     def wait_for_job(self, job, poll=5):
         """Wait for an Amazon SageMaker training job to complete.
 

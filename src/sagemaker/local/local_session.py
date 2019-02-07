@@ -150,6 +150,14 @@ class LocalSagemakerClient(object):
         if EndpointName in LocalSagemakerClient._endpoints:
             LocalSagemakerClient._endpoints[EndpointName].stop()
 
+    def delete_endpoint_config(self, EndpointConfigName):
+        if EndpointConfigName in LocalSagemakerClient._endpoint_configs:
+            del LocalSagemakerClient._endpoint_configs[EndpointConfigName]
+
+    def delete_model(self, ModelName):
+        if ModelName in LocalSagemakerClient._models:
+            del LocalSagemakerClient._models[ModelName]
+
 
 class LocalSagemakerRuntimeClient(object):
     """A SageMaker Runtime client that calls a local endpoint only.

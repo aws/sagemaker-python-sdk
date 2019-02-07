@@ -157,6 +157,19 @@ def test_create_model(LocalSession):
 
 
 @patch('sagemaker.local.local_session.LocalSession')
+def test_delete_model(LocalSession):
+    local_sagemaker_client = sagemaker.local.local_session.LocalSagemakerClient()
+    model_name = 'my-model'
+    primary_container = {'ModelDataUrl': '/some/model/path', 'Environment': {'env1': 1, 'env2': 'b'}}
+
+    local_sagemaker_client.create_model(model_name, primary_container)
+    assert model_name in sagemaker.local.local_session.LocalSagemakerClient._models
+
+    local_sagemaker_client.delete_model(model_name)
+    assert model_name not in sagemaker.local.local_session.LocalSagemakerClient._models
+
+
+@patch('sagemaker.local.local_session.LocalSession')
 def test_describe_model(LocalSession):
     local_sagemaker_client = sagemaker.local.local_session.LocalSagemakerClient()
     model_name = 'test-model'
@@ -216,6 +229,19 @@ def test_create_endpoint_config(LocalSession):
     local_sagemaker_client.create_endpoint_config('my-endpoint-config', production_variants)
 
     assert 'my-endpoint-config' in sagemaker.local.local_session.LocalSagemakerClient._endpoint_configs
+
+
+@patch('sagemaker.local.local_session.LocalSession')
+def test_delete_endpoint_config(LocalSession):
+    local_sagemaker_client = sagemaker.local.local_session.LocalSagemakerClient()
+    production_variants = [{'InstanceType': 'ml.c4.99xlarge', 'InitialInstanceCount': 10}]
+    endpoint_config_name = 'my-endpoint-config'
+
+    local_sagemaker_client.create_endpoint_config(endpoint_config_name, production_variants)
+    assert endpoint_config_name in sagemaker.local.local_session.LocalSagemakerClient._endpoint_configs
+
+    local_sagemaker_client.delete_endpoint_config(endpoint_config_name)
+    assert endpoint_config_name not in sagemaker.local.local_session.LocalSagemakerClient._endpoint_configs
 
 
 @patch('sagemaker.local.image._SageMakerContainer.serve')
@@ -316,7 +342,7 @@ def test_update_endpoint(LocalSession):
     endpoint_name = 'my-endpoint'
     endpoint_config = 'my-endpoint-config'
     expected_error_message = 'Update endpoint name is not supported in local session.'
-    with pytest.raises(NotImplementedError, message=expected_error_message):
+    with pytest.raises(NotImplementedError, match=expected_error_message):
         local_sagemaker_client.update_endpoint(endpoint_name, endpoint_config)
 
 

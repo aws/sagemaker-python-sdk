@@ -7,6 +7,8 @@ CHANGELOG
 
 * doc-fix: update information about saving models in the MXNet README
 * doc-fix: change ReadTheDocs links from latest to stable
+* feature: Support for predictor to delete endpoint and endpoint configuration
+* feature: Support for transformer to delete model
 
 1.18.2
 ======

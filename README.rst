@@ -190,8 +190,13 @@ Here is an end to end example of how to use a SageMaker Estimator:
     response = mxnet_predictor.predict(data)
 
     # Tears down the SageMaker endpoint
-    mxnet_estimator.delete_endpoint()
+    mxnet_predictor.delete_endpoint()
 
+
+The above example will delete endpoint and endpoint configuration at the same time. If you want to keep endpoint configuration, you can do the following:
+
+.. code:: python
+    mxnet_predictor.delete_endpoint(delete_endpoint_config=False)
 
 Additionally, it is possible to deploy a different endpoint configuration, which links to your model, to an already existing SageMaker endpoint.
 This can be done by specifying the existing endpoint name for the ``endpoint_name`` parameter along with the ``update_endpoint`` parameter as ``True`` within your ``deploy()`` call.
@@ -221,7 +226,7 @@ For more `information <https://boto3.amazonaws.com/v1/documentation/api/latest/r
     response = mxnet_predictor.predict(data)
 
     # Tears down the SageMaker endpoint
-    mxnet_estimator.delete_endpoint()
+    mxnet_predictor.delete_endpoint()
 
 Training Metrics
 ~~~~~~~~~~~~~~~~
@@ -275,7 +280,7 @@ We can take the example in  `Using Estimators <#using-estimators>`__ , and use e
     response = mxnet_predictor.predict(data)
 
     # Tears down the endpoint container
-    mxnet_estimator.delete_endpoint()
+    mxnet_predictor.delete_endpoint()
 
 
 If you have an existing model and want to deploy it locally, don't specify a sagemaker_session argument to the ``MXNetModel`` constructor.
@@ -321,6 +326,7 @@ Here is an end-to-end example:
     transformer = mxnet_estimator.transformer(1, 'local', assemble_with='Line', max_payload=1)
     transformer.transform('s3://my/transform/data, content_type='text/csv', split_type='Line')
     transformer.wait()
+    transformer.delete_model()
 
 
 For detailed examples of running Docker in local mode, see:

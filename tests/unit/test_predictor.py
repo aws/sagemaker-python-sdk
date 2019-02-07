@@ -447,3 +447,22 @@ def test_predict_call_with_headers_and_csv():
     assert kwargs == expected_request_args
 
     assert result == CSV_RETURN_VALUE
+
+
+def test_delete_endpoint_with_config():
+    sagemaker_session = empty_sagemaker_session()
+    sagemaker_session.sagemaker_client.describe_endpoint = Mock(return_value={'EndpointConfigName': 'endpoint-config'})
+    predictor = RealTimePredictor(ENDPOINT, sagemaker_session=sagemaker_session)
+    predictor.delete_endpoint()
+
+    sagemaker_session.delete_endpoint.assert_called_with(ENDPOINT)
+    sagemaker_session.delete_endpoint_config.assert_called_with('endpoint-config')
+
+
+def test_delete_endpoint_only():
+    sagemaker_session = empty_sagemaker_session()
+    predictor = RealTimePredictor(ENDPOINT, sagemaker_session=sagemaker_session)
+    predictor.delete_endpoint(delete_endpoint_config=False)
+
+    sagemaker_session.delete_endpoint.assert_called_with(ENDPOINT)
+    sagemaker_session.delete_endpoint_config.assert_not_called()
