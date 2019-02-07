@@ -1,0 +1,4 @@
+sphinx==1.7.9
+numpy
+scipy
+requests==2.20

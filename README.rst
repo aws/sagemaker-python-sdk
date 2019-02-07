@@ -708,8 +708,8 @@ For more detailed examples of running hyperparameter tuning jobs, see:
 
 For more detailed explanations of the classes that this library provides for automatic model tuning, see:
 
-- `API docs for HyperparameterTuner and parameter range classes <https://sagemaker.readthedocs.io/en/latest/tuner.html>`__
-- `API docs for analytics classes <https://sagemaker.readthedocs.io/en/latest/analytics.html>`__
+- `API docs for HyperparameterTuner and parameter range classes <https://sagemaker.readthedocs.io/en/stable/tuner.html>`__
+- `API docs for analytics classes <https://sagemaker.readthedocs.io/en/stable/analytics.html>`__
 
 
 SageMaker Batch Transform
@@ -734,7 +734,7 @@ Alternatively, if you already have a SageMaker model, you can create an instance
                               instance_count=1,
                               instance_type='ml.m4.xlarge')
 
-For a full list of the possible options to configure by using either of these methods, see the API docs for `Estimator <https://sagemaker.readthedocs.io/en/latest/estimators.html#sagemaker.estimator.Estimator.transformer>`__ or `Transformer <https://sagemaker.readthedocs.io/en/latest/transformer.html#sagemaker.transformer.Transformer>`__.
+For a full list of the possible options to configure by using either of these methods, see the API docs for `Estimator <https://sagemaker.readthedocs.io/en/stable/estimators.html#sagemaker.estimator.Estimator.transformer>`__ or `Transformer <https://sagemaker.readthedocs.io/en/stable/transformer.html#sagemaker.transformer.Transformer>`__.
 
 After you create a ``Transformer`` object, you can invoke ``transform()`` to start a batch transform job with the S3 location of your data.
 You can also specify other attributes of your data, such as the content type.
@@ -743,7 +743,7 @@ You can also specify other attributes of your data, such as the content type.
 
     transformer.transform('s3://my-bucket/batch-transform-input')
 
-For more details about what can be specified here, see `API docs <https://sagemaker.readthedocs.io/en/latest/transformer.html#sagemaker.transformer.Transformer.transform>`__.
+For more details about what can be specified here, see `API docs <https://sagemaker.readthedocs.io/en/stable/transformer.html#sagemaker.transformer.Transformer.transform>`__.
 
 
 Secure Training and Inference with VPC
@@ -864,11 +864,11 @@ then call its ``predict()`` method with your input.
 
 You can use either the generic ``RealTimePredictor`` class, which by default does not perform any serialization/deserialization transformations on your input,
 but can be configured to do so through constructor arguments:
-http://sagemaker.readthedocs.io/en/latest/predictors.html
+http://sagemaker.readthedocs.io/en/stable/predictors.html
 
 Or you can use the TensorFlow / MXNet specific predictor classes, which have default serialization/deserialization logic:
-http://sagemaker.readthedocs.io/en/latest/sagemaker.tensorflow.html#tensorflow-predictor
-http://sagemaker.readthedocs.io/en/latest/sagemaker.mxnet.html#mxnet-predictor
+http://sagemaker.readthedocs.io/en/stable/sagemaker.tensorflow.html#tensorflow-predictor
+http://sagemaker.readthedocs.io/en/stable/sagemaker.mxnet.html#mxnet-predictor
 
 Example code using the TensorFlow predictor:
 
@@ -887,7 +887,7 @@ That is, you can bring your own model:
 
 First, package the files for the trained model into a ``.tar.gz`` file, and upload the archive to S3.
 
-Next, create a ``Model`` object that corresponds to the framework that you are using: `MXNetModel <https://sagemaker.readthedocs.io/en/latest/sagemaker.mxnet.html#mxnet-model>`__ or `TensorFlowModel <https://sagemaker.readthedocs.io/en/latest/sagemaker.tensorflow.html#tensorflow-model>`__.
+Next, create a ``Model`` object that corresponds to the framework that you are using: `MXNetModel <https://sagemaker.readthedocs.io/en/stable/sagemaker.mxnet.html#mxnet-model>`__ or `TensorFlowModel <https://sagemaker.readthedocs.io/en/stable/sagemaker.tensorflow.html#tensorflow-model>`__.
 
 Example code using ``MXNetModel``:
 
