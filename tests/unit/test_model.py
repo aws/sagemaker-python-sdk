@@ -346,6 +346,7 @@ def test_model_delete_model(sagemaker_session, tmpdir):
 
     sagemaker_session.delete_model.assert_called_with(model.name)
 <<<<<<< HEAD
+<<<<<<< HEAD
 
 
 def test_delete_non_deployed_model(sagemaker_session):
@@ -354,3 +355,13 @@ def test_delete_non_deployed_model(sagemaker_session):
         model.delete_model()
 =======
 >>>>>>> 45e5c07... Add new APIs to predictor to delete endpoint and endpoint config, and transformer to delete model.
+=======
+
+
+@patch('sagemaker.fw_utils.tar_and_upload_dir', MagicMock())
+@patch('time.strftime', MagicMock(return_value=TIMESTAMP))
+def test_delete_non_deployed_model(sagemaker_session, tmpdir):
+    model = DummyFrameworkModel(sagemaker_session, source_dir=str(tmpdir))
+    with pytest.raises(ValueError, match='The SageMaker model must be deployed first before attempting to delete.'):
+        model.delete_model()
+>>>>>>> 334a0d6... Modify some functions, tests and update docs.

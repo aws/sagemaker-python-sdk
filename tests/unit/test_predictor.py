@@ -459,6 +459,16 @@ def test_delete_endpoint_with_config():
     sagemaker_session.delete_endpoint_config.assert_called_with('endpoint-config')
 
 
+def test_delete_non_existing_endpoint():
+    sagemaker_session = empty_sagemaker_session()
+    expected_error_message = 'The endpoint this config attached to does not exist.'
+    sagemaker_session.sagemaker_client.describe_endpoint = Mock(side_effect=ValueError(expected_error_message))
+    predictor = RealTimePredictor(ENDPOINT, sagemaker_session=sagemaker_session)
+
+    with pytest.raises(ValueError, match=expected_error_message):
+        predictor.delete_endpoint()
+
+
 def test_delete_endpoint_only():
     sagemaker_session = empty_sagemaker_session()
     predictor = RealTimePredictor(ENDPOINT, sagemaker_session=sagemaker_session)
