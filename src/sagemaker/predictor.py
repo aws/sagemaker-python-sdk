@@ -108,9 +108,12 @@ class RealTimePredictor(object):
     def _delete_endpoint_config(self):
         """Delete the Amazon SageMaker endpoint configuration
         """
-        endpoint_description = self.sagemaker_session.sagemaker_client.describe_endpoint(EndpointName=self.endpoint)
-        endpoint_config_name = endpoint_description['EndpointConfigName']
-        self.sagemaker_session.delete_endpoint_config(endpoint_config_name)
+        try:
+            endpoint_description = self.sagemaker_session.sagemaker_client.describe_endpoint(EndpointName=self.endpoint)
+            endpoint_config_name = endpoint_description['EndpointConfigName']
+            self.sagemaker_session.delete_endpoint_config(endpoint_config_name)
+        except Exception:
+            raise ValueError('The endpoint this config attached to does not exist.')
 
     def delete_endpoint(self, delete_endpoint_config=True):
         """Delete the Amazon SageMaker endpoint backing this predictor. Also delete the endpoint configuration attached
@@ -121,10 +124,10 @@ class RealTimePredictor(object):
                 endpoint. If False, only endpoint will be deleted. Default: True.
 
         """
-        self.sagemaker_session.delete_endpoint(self.endpoint)
-
         if delete_endpoint_config:
             self._delete_endpoint_config()
+
+        self.sagemaker_session.delete_endpoint(self.endpoint)
 
 
 class _CsvSerializer(object):

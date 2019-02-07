@@ -87,6 +87,54 @@ def timeout_and_delete_endpoint_by_name(endpoint_name, sagemaker_session, second
                 sleep(10)
 
 
+@contextmanager
+def timeout_and_delete_model_with_transformer(transformer, sagemaker_session, seconds=0, minutes=0, hours=0):
+    with timeout(seconds=seconds, minutes=minutes, hours=hours) as t:
+        no_errors = False
+        try:
+            yield [t]
+            no_errors = True
+        finally:
+            attempts = 3
+
+            while attempts > 0:
+                attempts -= 1
+                try:
+                    transformer.delete_model()
+                    LOGGER.info('deleted SageMaker model {}'.format(transformer.model_name))
+                    if no_errors:
+                        _cleanup_model_logs(transformer.model_name, sagemaker_session)
+                        return
+                except ClientError as ce:
+                    if ce.response['Error']['Code'] == 'ValidationException':
+                        pass
+                sleep(10)
+
+
+def _show_model_logs(model_name, sagemaker_session):
+    log_group = '/aws/sagemaker/Models/{}'.format(model_name)
+    try:
+        LOGGER.info('cloudwatch logs for log group {}'.format(log_group))
+        logs = AWSLogs(log_group_name=log_group, log_stream_name='ALL', start='1d',
+                       aws_region=sagemaker_session.boto_session.region_name)
+        logs.list_logs()
+    except Exception:
+        LOGGER.exception('Failure occurred while listing cloudwatch log group %s. Swallowing exception but printing '
+                         'stacktrace for debugging.', log_group)
+
+
+def _cleanup_model_logs(model_name, sagemaker_session):
+    log_group = '/aws/sagemaker/Models/{}'.format(model_name)
+    try:
+        LOGGER.info('deleting cloudwatch log group {}:'.format(log_group))
+        cwl_client = sagemaker_session.boto_session.client('logs')
+        cwl_client.delete_log_group(logGroupName=log_group)
+        LOGGER.info('deleted cloudwatch log group: {}'.format(log_group))
+    except Exception:
+        LOGGER.exception('Failure occurred while cleaning up cloudwatch log group %s. '
+                         'Swallowing exception but printing stacktrace for debugging.', log_group)
+
+
 def _show_endpoint_logs(endpoint_name, sagemaker_session):
     log_group = '/aws/sagemaker/Endpoints/{}'.format(endpoint_name)
     try:

@@ -24,7 +24,7 @@ from sagemaker.mxnet import MXNet
 from sagemaker.transformer import Transformer
 from tests.integ import DATA_DIR, TRAINING_DEFAULT_TIMEOUT_MINUTES, TRANSFORM_DEFAULT_TIMEOUT_MINUTES
 from tests.integ.kms_utils import get_or_create_kms_key
-from tests.integ.timeout import timeout
+from tests.integ.timeout import timeout, timeout_and_delete_model_with_transformer
 from tests.integ.vpc_test_utils import get_or_create_vpc_resources
 
 
@@ -56,7 +56,8 @@ def test_transform_mxnet(sagemaker_session, mxnet_full_version):
     kms_key_arn = get_or_create_kms_key(kms_client, account_id)
 
     transformer = _create_transformer_and_transform_job(mx, transform_input, kms_key_arn)
-    with timeout(minutes=TRANSFORM_DEFAULT_TIMEOUT_MINUTES):
+    with timeout_and_delete_model_with_transformer(transformer, sagemaker_session,
+                                                   minutes=TRANSFORM_DEFAULT_TIMEOUT_MINUTES):
         transformer.wait()
 
     job_desc = transformer.sagemaker_session.sagemaker_client.describe_transform_job(
@@ -100,48 +101,49 @@ def test_attach_transform_kmeans(sagemaker_session):
 
     attached_transformer = Transformer.attach(transformer.latest_transform_job.name,
                                               sagemaker_session=sagemaker_session)
-    with timeout(minutes=TRANSFORM_DEFAULT_TIMEOUT_MINUTES):
+    with timeout_and_delete_model_with_transformer(transformer, sagemaker_session,
+                                                   minutes=TRANSFORM_DEFAULT_TIMEOUT_MINUTES):
         attached_transformer.wait()
 
 
-def test_transformer_delete_model(sagemaker_session):
-    data_path = os.path.join(DATA_DIR, 'one_p_mnist')
-    pickle_args = {} if sys.version_info.major == 2 else {'encoding': 'latin1'}
-
-    train_set_path = os.path.join(data_path, 'mnist.pkl.gz')
-    with gzip.open(train_set_path, 'rb') as f:
-        train_set, _, _ = pickle.load(f, **pickle_args)
-
-    kmeans = KMeans(role='SageMakerRole', train_instance_count=1,
-                    train_instance_type='ml.c4.xlarge', k=10, sagemaker_session=sagemaker_session,
-                    output_path='s3://{}/'.format(sagemaker_session.default_bucket()))
-
-    kmeans.init_method = 'random'
-    kmeans.max_iterations = 1
-    kmeans.tol = 1
-    kmeans.num_trials = 1
-    kmeans.local_init_method = 'kmeans++'
-    kmeans.half_life_time_size = 1
-    kmeans.epochs = 1
-
-    records = kmeans.record_set(train_set[0][:100])
-    with timeout(minutes=TRAINING_DEFAULT_TIMEOUT_MINUTES):
-        kmeans.fit(records)
-
-    transform_input_path = os.path.join(data_path, 'transform_input.csv')
-    transform_input_key_prefix = 'integ-test-data/one_p_mnist/transform'
-    transform_input = kmeans.sagemaker_session.upload_data(path=transform_input_path,
-                                                           key_prefix=transform_input_key_prefix)
-
-    transformer = _create_transformer_and_transform_job(kmeans, transform_input)
-    with timeout(minutes=TRANSFORM_DEFAULT_TIMEOUT_MINUTES):
-        transformer.wait()
-
-    transformer.delete_model()
-
-    with pytest.raises(Exception) as exception:
-        sagemaker_session.sagemaker_client.describe_model(ModelName=transformer.model_name)
-        assert 'Could not find model' in exception.value.message
+# def test_transformer_delete_model(sagemaker_session):
+#     data_path = os.path.join(DATA_DIR, 'one_p_mnist')
+#     pickle_args = {} if sys.version_info.major == 2 else {'encoding': 'latin1'}
+#
+#     train_set_path = os.path.join(data_path, 'mnist.pkl.gz')
+#     with gzip.open(train_set_path, 'rb') as f:
+#         train_set, _, _ = pickle.load(f, **pickle_args)
+#
+#     kmeans = KMeans(role='SageMakerRole', train_instance_count=1,
+#                     train_instance_type='ml.c4.xlarge', k=10, sagemaker_session=sagemaker_session,
+#                     output_path='s3://{}/'.format(sagemaker_session.default_bucket()))
+#
+#     kmeans.init_method = 'random'
+#     kmeans.max_iterations = 1
+#     kmeans.tol = 1
+#     kmeans.num_trials = 1
+#     kmeans.local_init_method = 'kmeans++'
+#     kmeans.half_life_time_size = 1
+#     kmeans.epochs = 1
+#
+#     records = kmeans.record_set(train_set[0][:100])
+#     with timeout(minutes=TRAINING_DEFAULT_TIMEOUT_MINUTES):
+#         kmeans.fit(records)
+#
+#     transform_input_path = os.path.join(data_path, 'transform_input.csv')
+#     transform_input_key_prefix = 'integ-test-data/one_p_mnist/transform'
+#     transform_input = kmeans.sagemaker_session.upload_data(path=transform_input_path,
+#                                                            key_prefix=transform_input_key_prefix)
+#
+#     transformer = _create_transformer_and_transform_job(kmeans, transform_input)
+#     with timeout(minutes=TRANSFORM_DEFAULT_TIMEOUT_MINUTES):
+#         transformer.wait()
+#
+#     transformer.delete_model()
+#
+#     with pytest.raises(Exception) as exception:
+#         sagemaker_session.sagemaker_client.describe_model(ModelName=transformer.model_name)
+#         assert 'Could not find model' in exception.value.message
 
 
 def test_transform_mxnet_vpc(sagemaker_session, mxnet_full_version):

@@ -189,13 +189,14 @@ Here is an end to end example of how to use a SageMaker Estimator:
     # Serializes data and makes a prediction request to the SageMaker endpoint
     response = mxnet_predictor.predict(data)
 
-    # Tears down the SageMaker endpoint
+    # Tears down the SageMaker endpoint and endpoint configuration
     mxnet_predictor.delete_endpoint()
 
 
-The above example will delete endpoint and endpoint configuration at the same time. If you want to keep endpoint configuration, you can do the following:
+The example above will eventually delete both the SageMaker endpoint and endpoint configuration through `delete_endpoint()`. If you want to keep your SageMaker endpoint configuration, use the value False for the `delete_endpoint_config` parameter, as shown below.
 
 .. code:: python
+    # Only delete the endpoint and keep the endpoint endpoint configuration
     mxnet_predictor.delete_endpoint(delete_endpoint_config=False)
 
 Additionally, it is possible to deploy a different endpoint configuration, which links to your model, to an already existing SageMaker endpoint.
@@ -225,7 +226,7 @@ For more `information <https://boto3.amazonaws.com/v1/documentation/api/latest/r
     # Serializes data and makes a prediction request to the SageMaker endpoint
     response = mxnet_predictor.predict(data)
 
-    # Tears down the SageMaker endpoint
+    # Tears down the SageMaker endpoint and endpoint configuration
     mxnet_predictor.delete_endpoint()
 
 Training Metrics
@@ -279,7 +280,7 @@ We can take the example in  `Using Estimators <#using-estimators>`__ , and use e
     # Serializes data and makes a prediction request to the local endpoint
     response = mxnet_predictor.predict(data)
 
-    # Tears down the endpoint container
+    # Tears down the endpoint and endpoint configuration
     mxnet_predictor.delete_endpoint()
 
 
@@ -302,7 +303,7 @@ Here is an end-to-end example:
     data = numpy.zeros(shape=(1, 1, 28, 28))
     predictor.predict(data)
 
-    # Tear down the endpoint container
+    # Tear down the endpoint and endpoint configuration
     predictor.delete_endpoint()
 
 
@@ -326,6 +327,8 @@ Here is an end-to-end example:
     transformer = mxnet_estimator.transformer(1, 'local', assemble_with='Line', max_payload=1)
     transformer.transform('s3://my/transform/data, content_type='text/csv', split_type='Line')
     transformer.wait()
+
+    # Deletes the SageMaker model
     transformer.delete_model()
 
 

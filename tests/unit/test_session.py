@@ -154,9 +154,22 @@ def test_delete_endpoint_config(boto_session):
 
 def test_delete_model(boto_session):
     sess = Session(boto_session)
-    sess.delete_model('my_model')
 
-    boto_session.client().delete_model.assert_called_with(ModelName='my_model')
+    model_name = 'my_model'
+    boto_session.client().describe_model = Mock(return_value={'ModelName': model_name})
+    sess.delete_model(model_name)
+
+    boto_session.client().delete_model.assert_called_with(ModelName=model_name)
+
+
+def test_delete_non_existing_model(boto_session):
+    sess = Session(boto_session)
+
+    expected_error_message = 'The Sagemaker model must be deployed first before attempting to delete.'
+    boto_session.client().describe_model = Mock(side_effect=ValueError(expected_error_message))
+
+    with pytest.raises(ValueError, match=expected_error_message):
+        sess.delete_model('non_existing_model')
 
 
 def test_user_agent_injected(boto_session):

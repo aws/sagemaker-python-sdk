@@ -309,7 +309,7 @@ class Model(object):
 
         """
         if self.name is None:
-            raise ValueError('The SageMaker model is not deployed yet.')
+            raise ValueError('The SageMaker model must be deployed first before attempting to delete.')
         self.sagemaker_session.delete_model(self.name)
 
 

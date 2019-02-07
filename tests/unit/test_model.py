@@ -345,3 +345,11 @@ def test_model_delete_model(sagemaker_session, tmpdir):
     model.delete_model()
 
     sagemaker_session.delete_model.assert_called_with(model.name)
+
+
+@patch('sagemaker.fw_utils.tar_and_upload_dir', MagicMock())
+@patch('time.strftime', MagicMock(return_value=TIMESTAMP))
+def test_delete_non_deployed_model(sagemaker_session, tmpdir):
+    model = DummyFrameworkModel(sagemaker_session, source_dir=str(tmpdir))
+    with pytest.raises(ValueError, match='The SageMaker model must be deployed first before attempting to delete.'):
+        model.delete_model()

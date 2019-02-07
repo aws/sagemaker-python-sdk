@@ -27,6 +27,12 @@ OK_RESPONSE.status = 200
 BAD_RESPONSE = urllib3.HTTPResponse()
 BAD_RESPONSE.status = 502
 
+ENDPOINT_CONFIG_NAME = 'test-endpoint-config'
+PRODUCTION_VARIANTS = [{'InstanceType': 'ml.c4.99xlarge', 'InitialInstanceCount': 10}]
+
+MODEL_NAME = 'test-model'
+PRIMARY_CONTAINER = {'ModelDataUrl': '/some/model/path', 'Environment': {'env1': 1, 'env2': 'b'}}
+
 
 @patch('sagemaker.local.image._SageMakerContainer.train', return_value="/some/path/to/model")
 @patch('sagemaker.local.local_session.LocalSession')
@@ -148,38 +154,32 @@ def test_create_training_job_not_fully_replicated(train, LocalSession):
 @patch('sagemaker.local.local_session.LocalSession')
 def test_create_model(LocalSession):
     local_sagemaker_client = sagemaker.local.local_session.LocalSagemakerClient()
-    model_name = 'my-model'
-    primary_container = {'ModelDataUrl': '/some/model/path', 'Environment': {'env1': 1, 'env2': 'b'}}
 
-    local_sagemaker_client.create_model(model_name, primary_container)
+    local_sagemaker_client.create_model(MODEL_NAME, PRIMARY_CONTAINER)
 
-    assert 'my-model' in sagemaker.local.local_session.LocalSagemakerClient._models
+    assert MODEL_NAME in sagemaker.local.local_session.LocalSagemakerClient._models
 
 
 @patch('sagemaker.local.local_session.LocalSession')
 def test_delete_model(LocalSession):
     local_sagemaker_client = sagemaker.local.local_session.LocalSagemakerClient()
-    model_name = 'my-model'
-    primary_container = {'ModelDataUrl': '/some/model/path', 'Environment': {'env1': 1, 'env2': 'b'}}
 
-    local_sagemaker_client.create_model(model_name, primary_container)
-    assert model_name in sagemaker.local.local_session.LocalSagemakerClient._models
+    local_sagemaker_client.create_model(MODEL_NAME, PRIMARY_CONTAINER)
+    assert MODEL_NAME in sagemaker.local.local_session.LocalSagemakerClient._models
 
-    local_sagemaker_client.delete_model(model_name)
-    assert model_name not in sagemaker.local.local_session.LocalSagemakerClient._models
+    local_sagemaker_client.delete_model(MODEL_NAME)
+    assert MODEL_NAME not in sagemaker.local.local_session.LocalSagemakerClient._models
 
 
 @patch('sagemaker.local.local_session.LocalSession')
 def test_describe_model(LocalSession):
     local_sagemaker_client = sagemaker.local.local_session.LocalSagemakerClient()
-    model_name = 'test-model'
-    primary_container = {'ModelDataUrl': '/some/model/path', 'Environment': {'env1': 1, 'env2': 'b'}}
 
     with pytest.raises(ClientError):
         local_sagemaker_client.describe_model('model-does-not-exist')
 
-    local_sagemaker_client.create_model(model_name, primary_container)
-    response = local_sagemaker_client.describe_model('test-model')
+    local_sagemaker_client.create_model(MODEL_NAME, PRIMARY_CONTAINER)
+    response = local_sagemaker_client.describe_model(MODEL_NAME)
 
     assert response['ModelName'] == 'test-model'
     assert response['PrimaryContainer']['ModelDataUrl'] == '/some/model/path'
@@ -225,23 +225,20 @@ def test_describe_endpoint_config(LocalSession):
 @patch('sagemaker.local.local_session.LocalSession')
 def test_create_endpoint_config(LocalSession):
     local_sagemaker_client = sagemaker.local.local_session.LocalSagemakerClient()
-    production_variants = [{'InstanceType': 'ml.c4.99xlarge', 'InitialInstanceCount': 10}]
-    local_sagemaker_client.create_endpoint_config('my-endpoint-config', production_variants)
+    local_sagemaker_client.create_endpoint_config(ENDPOINT_CONFIG_NAME, PRODUCTION_VARIANTS)
 
-    assert 'my-endpoint-config' in sagemaker.local.local_session.LocalSagemakerClient._endpoint_configs
+    assert ENDPOINT_CONFIG_NAME in sagemaker.local.local_session.LocalSagemakerClient._endpoint_configs
 
 
 @patch('sagemaker.local.local_session.LocalSession')
 def test_delete_endpoint_config(LocalSession):
     local_sagemaker_client = sagemaker.local.local_session.LocalSagemakerClient()
-    production_variants = [{'InstanceType': 'ml.c4.99xlarge', 'InitialInstanceCount': 10}]
-    endpoint_config_name = 'my-endpoint-config'
 
-    local_sagemaker_client.create_endpoint_config(endpoint_config_name, production_variants)
-    assert endpoint_config_name in sagemaker.local.local_session.LocalSagemakerClient._endpoint_configs
+    local_sagemaker_client.create_endpoint_config(ENDPOINT_CONFIG_NAME, PRODUCTION_VARIANTS)
+    assert ENDPOINT_CONFIG_NAME in sagemaker.local.local_session.LocalSagemakerClient._endpoint_configs
 
-    local_sagemaker_client.delete_endpoint_config(endpoint_config_name)
-    assert endpoint_config_name not in sagemaker.local.local_session.LocalSagemakerClient._endpoint_configs
+    local_sagemaker_client.delete_endpoint_config(ENDPOINT_CONFIG_NAME)
+    assert ENDPOINT_CONFIG_NAME not in sagemaker.local.local_session.LocalSagemakerClient._endpoint_configs
 
 
 @patch('sagemaker.local.image._SageMakerContainer.serve')
