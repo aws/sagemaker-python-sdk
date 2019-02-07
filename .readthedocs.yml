@@ -13,4 +13,4 @@ python:
 
 sphinx:
   configuration: doc/conf.py
-  fail_on_warning: true
+  fail_on_warning: true # http://www.sphinx-doc.org/en/master/man/sphinx-build.html#id6
