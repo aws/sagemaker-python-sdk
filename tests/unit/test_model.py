@@ -345,9 +345,12 @@ def test_model_delete_model(sagemaker_session, tmpdir):
     model.delete_model()
 
     sagemaker_session.delete_model.assert_called_with(model.name)
+<<<<<<< HEAD
 
 
 def test_delete_non_deployed_model(sagemaker_session):
     model = DummyFrameworkModel(sagemaker_session)
     with pytest.raises(ValueError, match='The SageMaker model must be created first before attempting to delete.'):
         model.delete_model()
+=======
+>>>>>>> 45e5c07... Add new APIs to predictor to delete endpoint and endpoint config, and transformer to delete model.
