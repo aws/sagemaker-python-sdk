@@ -58,15 +58,16 @@ class MXNet(Framework):
                 For convenience, this accepts other types for keys and values, but ``str()`` will be called
                 to convert them before training.
             py_version (str): Python version you want to use for executing your model training code (default: 'py2').
-                              One of 'py2' or 'py3'.
+                One of 'py2' or 'py3'.
             framework_version (str): MXNet version you want to use for executing your model training code.
                 List of supported versions https://github.com/aws/sagemaker-python-sdk#mxnet-sagemaker-estimators
             image_name (str): If specified, the estimator will use this image for training and hosting, instead of
                 selecting the appropriate SageMaker official image based on framework_version and py_version. It can
                 be an ECR url or dockerhub image and tag.
-                    Examples:
-                        123.dkr.ecr.us-west-2.amazonaws.com/my-custom-image:1.0
-                        custom-image:latest.
+
+                Examples:
+                    123.dkr.ecr.us-west-2.amazonaws.com/my-custom-image:1.0
+                    custom-image:latest.
              distributions (dict): A dictionary with information on how to run distributed training
                 (default: None).
             **kwargs: Additional kwargs passed to the :class:`~sagemaker.estimator.Framework` constructor.
@@ -126,7 +127,7 @@ class MXNet(Framework):
             model_channel_name (str): Name of the channel where pre-trained model data will be downloaded.
 
         Returns:
-             dictionary: The transformed init_params
+            dictionary: The transformed init_params
 
         """
         init_params = super(MXNet, cls)._prepare_init_params_from_job_description(job_details, model_channel_name)
