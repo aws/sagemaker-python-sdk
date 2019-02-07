@@ -357,6 +357,7 @@ The following are optional arguments. When you create an ``MXNet`` object, you c
    results in the following inside the container:
 
    .. code::
+
        opt/ml/code
          ├── train.py
          ├── common
