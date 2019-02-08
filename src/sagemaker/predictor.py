@@ -108,12 +108,9 @@ class RealTimePredictor(object):
     def _delete_endpoint_config(self):
         """Delete the Amazon SageMaker endpoint configuration
         """
-        try:
-            endpoint_description = self.sagemaker_session.sagemaker_client.describe_endpoint(EndpointName=self.endpoint)
-            endpoint_config_name = endpoint_description['EndpointConfigName']
-            self.sagemaker_session.delete_endpoint_config(endpoint_config_name)
-        except Exception:
-            raise ValueError('The endpoint this config attached to does not exist.')
+        endpoint_description = self.sagemaker_session.sagemaker_client.describe_endpoint(EndpointName=self.endpoint)
+        endpoint_config_name = endpoint_description['EndpointConfigName']
+        self.sagemaker_session.delete_endpoint_config(endpoint_config_name)
 
     def delete_endpoint(self, delete_endpoint_config=True):
         """Delete the Amazon SageMaker endpoint backing this predictor. Also delete the endpoint configuration attached

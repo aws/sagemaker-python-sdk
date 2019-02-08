@@ -196,7 +196,7 @@ Here is an end to end example of how to use a SageMaker Estimator:
 The example above will eventually delete both the SageMaker endpoint and endpoint configuration through `delete_endpoint()`. If you want to keep your SageMaker endpoint configuration, use the value False for the `delete_endpoint_config` parameter, as shown below.
 
 .. code:: python
-    # Only delete the endpoint and keep the endpoint endpoint configuration
+    # Only delete the SageMaker endpoint, while keeping the corresponding endpoint configuration.
     mxnet_predictor.delete_endpoint(delete_endpoint_config=False)
 
 Additionally, it is possible to deploy a different endpoint configuration, which links to your model, to an already existing SageMaker endpoint.

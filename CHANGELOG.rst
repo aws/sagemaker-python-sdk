@@ -7,7 +7,7 @@ CHANGELOG
 
 * doc-fix: update information about saving models in the MXNet README
 * doc-fix: change ReadTheDocs links from latest to stable
-* feature: Support for predictor to delete endpoint, and delete endpoint configuration with ``delete_endpoint()`` by default
+* feature: Make predictor to delete endpoint configuration by default when calling ``delete_endpoint()``
 * feature: Support for model class to delete SageMaker model
 * feature: Support for transformer to delete Sagemaker model
 
