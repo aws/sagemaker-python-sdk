@@ -280,7 +280,7 @@ We can take the example in  `Using Estimators <#using-estimators>`__ , and use e
     # Serializes data and makes a prediction request to the local endpoint
     response = mxnet_predictor.predict(data)
 
-    # Tears down the endpoint and endpoint configuration
+    # Tears down the endpoint container and deletes the corresponding endpoint configuration
     mxnet_predictor.delete_endpoint()
 
 
@@ -303,7 +303,7 @@ Here is an end-to-end example:
     data = numpy.zeros(shape=(1, 1, 28, 28))
     predictor.predict(data)
 
-    # Tear down the endpoint and endpoint configuration
+    # Tear down the endpoint container and delete the corresponding endpoint configuration
     predictor.delete_endpoint()
 
 

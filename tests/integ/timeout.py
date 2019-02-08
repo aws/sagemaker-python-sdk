@@ -75,9 +75,9 @@ def timeout_and_delete_endpoint_by_name(endpoint_name, sagemaker_session, second
                     sagemaker_session.delete_endpoint(endpoint_name)
                     LOGGER.info('deleted endpoint {}'.format(endpoint_name))
 
-                    _show_endpoint_logs(endpoint_name, sagemaker_session)
+                    _show_logs(endpoint_name, 'Endpoints', sagemaker_session)
                     if no_errors:
-                        _cleanup_endpoint_logs(endpoint_name, sagemaker_session)
+                        _cleanup_logs(endpoint_name, 'Endpoints', sagemaker_session)
                     return
                 except ClientError as ce:
                     if ce.response['Error']['Code'] == 'ValidationException':
@@ -102,8 +102,10 @@ def timeout_and_delete_model_with_transformer(transformer, sagemaker_session, se
                 try:
                     transformer.delete_model()
                     LOGGER.info('deleted SageMaker model {}'.format(transformer.model_name))
+
+                    _show_logs(transformer.model_name, 'Models', sagemaker_session)
                     if no_errors:
-                        _cleanup_model_logs(transformer.model_name, sagemaker_session)
+                        _cleanup_logs(transformer.model_name, 'Models', sagemaker_session)
                         return
                 except ClientError as ce:
                     if ce.response['Error']['Code'] == 'ValidationException':
@@ -111,32 +113,8 @@ def timeout_and_delete_model_with_transformer(transformer, sagemaker_session, se
                 sleep(10)
 
 
-def _show_model_logs(model_name, sagemaker_session):
-    log_group = '/aws/sagemaker/Models/{}'.format(model_name)
-    try:
-        LOGGER.info('cloudwatch logs for log group {}'.format(log_group))
-        logs = AWSLogs(log_group_name=log_group, log_stream_name='ALL', start='1d',
-                       aws_region=sagemaker_session.boto_session.region_name)
-        logs.list_logs()
-    except Exception:
-        LOGGER.exception('Failure occurred while listing cloudwatch log group %s. Swallowing exception but printing '
-                         'stacktrace for debugging.', log_group)
-
-
-def _cleanup_model_logs(model_name, sagemaker_session):
-    log_group = '/aws/sagemaker/Models/{}'.format(model_name)
-    try:
-        LOGGER.info('deleting cloudwatch log group {}:'.format(log_group))
-        cwl_client = sagemaker_session.boto_session.client('logs')
-        cwl_client.delete_log_group(logGroupName=log_group)
-        LOGGER.info('deleted cloudwatch log group: {}'.format(log_group))
-    except Exception:
-        LOGGER.exception('Failure occurred while cleaning up cloudwatch log group %s. '
-                         'Swallowing exception but printing stacktrace for debugging.', log_group)
-
-
-def _show_endpoint_logs(endpoint_name, sagemaker_session):
-    log_group = '/aws/sagemaker/Endpoints/{}'.format(endpoint_name)
+def _show_logs(resource_name, resource_type, sagemaker_session):
+    log_group = '/aws/sagemaker/{}/{}'.format(resource_type, resource_name)
     try:
         # print out logs before deletion for debuggability
         LOGGER.info('cloudwatch logs for log group {}:'.format(log_group))
@@ -148,8 +126,8 @@ def _show_endpoint_logs(endpoint_name, sagemaker_session):
                          'stacktrace for debugging.', log_group)
 
 
-def _cleanup_endpoint_logs(endpoint_name, sagemaker_session):
-    log_group = '/aws/sagemaker/Endpoints/{}'.format(endpoint_name)
+def _cleanup_logs(resource_name, resource_type, sagemaker_session):
+    log_group = '/aws/sagemaker/{}/{}'.format(resource_type, resource_name)
     try:
         # print out logs before deletion for debuggability
         LOGGER.info('deleting cloudwatch log group {}:'.format(log_group))

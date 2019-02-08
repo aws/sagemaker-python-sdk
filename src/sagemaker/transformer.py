@@ -52,8 +52,6 @@ class Transformer(object):
                 using the default AWS configuration chain.
             volume_kms_key (str): Optional. KMS key ID for encrypting the volume attached to the ML
                 compute instance (default: None).
-            model (sagemaker.model.Model): A SageMaker Model object, used for SageMaker Model interactions
-                (default: None). If not specified, model object related activities will fail.
         """
         self.model_name = model_name
         self.strategy = strategy
@@ -115,7 +113,7 @@ class Transformer(object):
                                                             split_type)
 
     def delete_model(self):
-        """Delete a SageMaker Model.
+        """Delete the corresponding SageMaker model for this Transformer.
 
         """
         self.sagemaker_session.delete_model(self.model_name)

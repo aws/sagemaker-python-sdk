@@ -795,15 +795,9 @@ class Session(object):
         Args:
             model_name (str): Name of the Amazon SageMaker model to delete.
 
-        Raises: ValueError if model is not deployed yet.
-
         """
-        try:
-            self.sagemaker_client.describe_model(ModelName=model_name)
-            LOGGER.info('Deleting model with name: {}'.format(model_name))
-            self.sagemaker_client.delete_model(ModelName=model_name)
-        except Exception:
-            raise ValueError('The Sagemaker model must be deployed first before attempting to delete.')
+        LOGGER.info('Deleting model with name: {}'.format(model_name))
+        self.sagemaker_client.delete_model(ModelName=model_name)
 
     def wait_for_job(self, job, poll=5):
         """Wait for an Amazon SageMaker training job to complete.

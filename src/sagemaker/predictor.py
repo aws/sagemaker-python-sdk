@@ -113,12 +113,11 @@ class RealTimePredictor(object):
         self.sagemaker_session.delete_endpoint_config(endpoint_config_name)
 
     def delete_endpoint(self, delete_endpoint_config=True):
-        """Delete the Amazon SageMaker endpoint backing this predictor. Also delete the endpoint configuration attached
-           to it if delete_endpoint_config is True.
+        """Delete the Amazon SageMaker endpoint and endpoint configuration backing this predictor.
 
         Args:
-            delete_endpoint_config (bool): Flag to indicate whether to delete endpoint configuration together with
-                endpoint. If False, only endpoint will be deleted. Default: True.
+            delete_endpoint_config (bool): Flag to indicate whether to delete the corresponding SageMaker endpoint
+                configuration tied to the endpoint. If False, only the endpoint will be deleted. (default: True)
 
         """
         if delete_endpoint_config:
