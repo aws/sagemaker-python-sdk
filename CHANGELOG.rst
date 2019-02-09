@@ -7,6 +7,7 @@ CHANGELOG
 
 * doc-fix: update information about saving models in the MXNet README
 * doc-fix: change ReadTheDocs links from latest to stable
+* doc-fix: add ``transform_fn`` information and fix ``input_fn`` signature in the MXNet README
 
 1.18.2
 ======
