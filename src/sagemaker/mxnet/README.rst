@@ -580,7 +580,12 @@ The above code sample shows the three function definitions that correlate to the
    according to the response content type.
 
 The SageMaker MXNet model server provides default implementations of these functions.
-These work with common content types, and Gluon API and Module API model objects.
+These work with both Gluon API and Module API model objects.
+The following content types are supported:
+
+- Gluon API: 'application/json', 'application/x-npy'
+- Module API: 'application/json', 'application/x-npy', 'text-csv'
+
 You can also provide your own implementations for these functions in your training script.
 If you omit any definition then the SageMaker MXNet model server will use its default implementation for that function.
 
@@ -686,7 +691,9 @@ The default implementation expects ``prediction`` to be an ``NDArray`` and can s
 Using ``transform_fn``
 ''''''''''''''''''''''
 
-If you would rather not structure your code around the three methods described above, you can instead define your own ``transform_fn`` to handle inference requests. This function has the following signature:
+If you would rather not structure your code around the three methods described above, you can instead define your own ``transform_fn`` to handle inference requests.
+This will override any implementation of ``input_fn``, ``predict_fn``, or ``output_fn``.
+``transform_fn`` has the following signature:
 
 .. code:: python
 
