@@ -532,8 +532,8 @@ For more information on how to enable MXNet to interact with Amazon Elastic Infe
 Model serving
 ^^^^^^^^^^^^^
 
-After the SageMaker model server has loaded your model, by calling either the default ``model_fn`` or the implementation in your script, SageMaker will serve your model.
-Model serving is the process of responding to inference requests, received by SageMaker InvokeEndpoint API calls.
+After the SageMaker model server loads your model by calling either the default ``model_fn`` or the implementation in your script, SageMaker serves your model.
+Model serving is the process of responding to inference requests received by SageMaker ``InvokeEndpoint`` API calls.
 Defining how to handle these requests can be done in one of two ways:
 
 - using ``input_fn``, ``predict_fn``, and ``output_fn``, some of which may be your own implementations
@@ -672,15 +672,15 @@ The ``output_fn`` has the following signature:
 
     def output_fn(prediction, content_type)
 
-Where ``prediction`` is the result of invoking ``predict_fn`` and
-``content_type`` is the InvokeEndpoint requested response content type. The function should return a byte array of data serialized to the expected content type.
+Where ``prediction`` is the result of invoking ``predict_fn`` and ``content_type`` is the requested response content type for ``InvokeEndpoint``.
+The function should return an array of bytes serialized to the expected content type.
 
 The default implementation expects ``prediction`` to be an ``NDArray`` and can serialize the result to either JSON or CSV. It accepts response content types of "application/json" and "text/csv".
 
 Using ``transform_fn``
 ''''''''''''''''''''''
 
-If you would rather not structure your code around the three methods described above, you can also define your own ``transform_fn`` to handle inference requests. This function has the following signature:
+If you would rather not structure your code around the three methods described above, you can instead define your own ``transform_fn`` to handle inference requests. This function has the following signature:
 
 .. code:: python
 
