@@ -137,12 +137,12 @@ def test_transform_mxnet_vpc(sagemaker_session, mxnet_full_version):
                                                        key_prefix=transform_input_key_prefix)
 
     transformer = _create_transformer_and_transform_job(mx, transform_input)
-    with timeout(minutes=TRANSFORM_DEFAULT_TIMEOUT_MINUTES):
+    with timeout_and_delete_model_with_transformer(transformer, sagemaker_session,
+                                                   minutes=TRANSFORM_DEFAULT_TIMEOUT_MINUTES):
         transformer.wait()
-
-    model_desc = sagemaker_session.sagemaker_client.describe_model(ModelName=transformer.model_name)
-    assert set(subnet_ids) == set(model_desc['VpcConfig']['Subnets'])
-    assert [security_group_id] == model_desc['VpcConfig']['SecurityGroupIds']
+        model_desc = sagemaker_session.sagemaker_client.describe_model(ModelName=transformer.model_name)
+        assert set(subnet_ids) == set(model_desc['VpcConfig']['Subnets'])
+        assert [security_group_id] == model_desc['VpcConfig']['SecurityGroupIds']
 
 
 def _create_transformer_and_transform_job(estimator, transform_input, volume_kms_key=None):
