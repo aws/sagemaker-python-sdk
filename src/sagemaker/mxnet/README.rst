@@ -538,21 +538,31 @@ For more information on how to enable MXNet to interact with Amazon Elastic Infe
 Model serving
 ^^^^^^^^^^^^^
 
-After the SageMaker model server has loaded your model, by calling either the default ``model_fn`` or the implementation in your training script, SageMaker will serve your model. Model serving is the process of responding to inference requests, received by SageMaker InvokeEndpoint API calls. The SageMaker MXNet model server breaks request handling into three steps:
+After the SageMaker model server loads your model by calling either the default ``model_fn`` or the implementation in your script, SageMaker serves your model.
+Model serving is the process of responding to inference requests received by SageMaker ``InvokeEndpoint`` API calls.
+Defining how to handle these requests can be done in one of two ways:
 
+- using ``input_fn``, ``predict_fn``, and ``output_fn``, some of which may be your own implementations
+- writing your own ``transform_fn`` for handling input processing, prediction, and output processing
 
--  input processing,
--  prediction, and
--  output processing.
+Using ``input_fn``, ``predict_fn``, and ``output_fn``
+'''''''''''''''''''''''''''''''''''''''''''''''''''''
 
-In a similar way to previous steps, you configure these steps by defining functions in your Python source file.
+The SageMaker MXNet model server breaks request handling into three steps:
 
-Each step involves invoking a python function, with information about the request and the return-value from the previous function in the chain. Inside the SageMaker MXNet model server, the process looks like:
+-  input processing
+-  prediction
+-  output processing
+
+Just like with ``model_fn``, you configure these steps by defining functions in your Python source file.
+
+Each step has its own Python function, which takes in information about the request and the return value from the previous function in the chain.
+Inside the SageMaker MXNet model server, the process looks like:
 
 .. code:: python
 
     # Deserialize the Invoke request body into an object we can perform prediction on
-    input_object = input_fn(request_body, request_content_type, model)
+    input_object = input_fn(request_body, request_content_type)
 
     # Perform prediction on the deserialized object, with the loaded model
     prediction = predict_fn(input_object, model)
@@ -560,7 +570,7 @@ Each step involves invoking a python function, with information about the reques
     # Serialize the prediction result into the desired response content type
     ouput = output_fn(prediction, response_content_type)
 
-The above code-sample shows the three function definitions:
+The above code sample shows the three function definitions that correlate to the three steps mentioned above:
 
 -  ``input_fn``: Takes request data and deserializes the data into an
    object for prediction.
@@ -569,7 +579,15 @@ The above code-sample shows the three function definitions:
 -  ``output_fn``: Takes the result of prediction and serializes this
    according to the response content type.
 
-The SageMaker MXNet model server provides default implementations of these functions. These work with common-content types, and Gluon API and Module API model objects. You can provide your own implementations for these functions in your training script. If you omit any definition then the SageMaker MXNet model server will use its default implementation for that function.
+The SageMaker MXNet model server provides default implementations of these functions.
+These work with both Gluon API and Module API model objects.
+The following content types are supported:
+
+- Gluon API: 'application/json', 'application/x-npy'
+- Module API: 'application/json', 'application/x-npy', 'text-csv'
+
+You can also provide your own implementations for these functions in your training script.
+If you omit any definition then the SageMaker MXNet model server will use its default implementation for that function.
 
 If you rely solely on the SageMaker MXNet model server defaults, you get the following functionality:
 
@@ -581,36 +599,36 @@ If you rely solely on the SageMaker MXNet model server defaults, you get the fol
 In the following sections we describe the default implementations of input_fn, predict_fn, and output_fn. We describe the input arguments and expected return types of each, so you can define your own implementations.
 
 Input processing
-''''''''''''''''
+""""""""""""""""
 
 When an InvokeEndpoint operation is made against an Endpoint running a SageMaker MXNet model server, the model server receives two pieces of information:
 
--  The request Content-Type, for example "application/json"
--  The request data body, a byte array
+-  The request's content type, for example "application/json"
+-  The request data body as a byte array
 
-The SageMaker MXNet model server will invoke an ``input_fn`` function in your training script, passing in this information. If you define an ``input_fn`` function definition, it should return an object that can be passed to ``predict_fn`` and have the following signature:
+The SageMaker MXNet model server will invoke ``input_fn``, passing in this information. If you define an ``input_fn`` function definition, it should return an object that can be passed to ``predict_fn`` and have the following signature:
 
 .. code:: python
 
-    def input_fn(request_body, request_content_type, model)
+    def input_fn(request_body, request_content_type)
 
-Where ``request_body`` is a byte buffer, ``request_content_type`` is a Python string, and model is the result of invoking ``model_fn``.
+Where ``request_body`` is a byte buffer and ``request_content_type`` is the content type of the request.
 
 The SageMaker MXNet model server provides a default implementation of ``input_fn``. This function deserializes JSON or CSV encoded data into an MXNet ``NDArrayIter`` `(external API docs) <https://mxnet.incubator.apache.org/api/python/io.html#mxnet.io.NDArrayIter>`__ multi-dimensional array iterator. This works with the default ``predict_fn`` implementation, which expects an ``NDArrayIter`` as input.
 
-Default json deserialization requires ``request_body`` contain a single json list. Sending multiple json objects within the same ``request_body`` is not supported. The list must have a dimensionality compatible with the MXNet ``net`` or ``Module`` object. Specifically, after the list is loaded, it's either padded or split to fit the first dimension of the model input shape. The list's shape must be identical to the model's input shape, for all dimensions after the first.
+Default JSON deserialization requires ``request_body`` contain a single json list. Sending multiple json objects within the same ``request_body`` is not supported. The list must have a dimensionality compatible with the MXNet ``net`` or ``Module`` object. Specifically, after the list is loaded, it's either padded or split to fit the first dimension of the model input shape. The list's shape must be identical to the model's input shape, for all dimensions after the first.
 
-Default csv deserialization requires ``request_body`` contain one or more lines of CSV numerical data. The data is loaded into a two-dimensional array, where each line break defines the boundaries of the first dimension. This two-dimensional array is then re-shaped to be compatible with the shape expected by the model object. Specifically, the first dimension is kept unchanged, but the second dimension is reshaped to be consistent with the shape of all dimensions in the model, following the first dimension.
+Default CSV deserialization requires ``request_body`` contain one or more lines of CSV numerical data. The data is loaded into a two-dimensional array, where each line break defines the boundaries of the first dimension. This two-dimensional array is then re-shaped to be compatible with the shape expected by the model object. Specifically, the first dimension is kept unchanged, but the second dimension is reshaped to be consistent with the shape of all dimensions in the model, following the first dimension.
 
 If you provide your own implementation of input_fn, you should abide by the ``input_fn`` signature. If you want to use this with the default
-``predict_fn``, then you should return an NDArrayIter. The NDArrayIter should have a shape identical to the shape of the model being predicted on. The example below shows a custom ``input_fn`` for preparing pickled numpy arrays.
+``predict_fn``, then you should return an ``NDArrayIter``. The ``NDArrayIter`` should have a shape identical to the shape of the model being predicted on. The example below shows a custom ``input_fn`` for preparing pickled numpy arrays.
 
 .. code:: python
 
     import numpy as np
     import mxnet as mx
 
-    def input_fn(request_body, request_content_type, model):
+    def input_fn(request_body, request_content_type):
         """An input_fn that loads a pickled numpy array"""
         if request_content_type == 'application/python-pickle':
             array = np.load(StringIO(request_body))
@@ -622,7 +640,7 @@ If you provide your own implementation of input_fn, you should abide by the ``in
             pass
 
 Prediction
-''''''''''
+""""""""""
 
 After the inference request has been deserialized by ``input_fn``, the SageMaker MXNet model server invokes ``predict_fn``. As with ``input_fn``, you can define your own ``predict_fn`` or use the SageMaker Mxnet default.
 
@@ -655,9 +673,9 @@ If you implement your own prediction function, you should take care to ensure th
    ``output_fn``, this should be an ``NDArrayIter``.
 
 Output processing
-'''''''''''''''''
+"""""""""""""""""
 
-After invoking ``predict_fn``, the model server invokes ``output_fn``, passing in the return-value from ``predict_fn`` and the InvokeEndpoint requested response content-type.
+After invoking ``predict_fn``, the model server invokes ``output_fn``, passing in the return value from ``predict_fn`` and the InvokeEndpoint requested response content type.
 
 The ``output_fn`` has the following signature:
 
@@ -665,10 +683,31 @@ The ``output_fn`` has the following signature:
 
     def output_fn(prediction, content_type)
 
-Where ``prediction`` is the result of invoking ``predict_fn`` and
-``content_type`` is the InvokeEndpoint requested response content-type. The function should return a byte array of data serialized to content_type.
+Where ``prediction`` is the result of invoking ``predict_fn`` and ``content_type`` is the requested response content type for ``InvokeEndpoint``.
+The function should return an array of bytes serialized to the expected content type.
 
 The default implementation expects ``prediction`` to be an ``NDArray`` and can serialize the result to either JSON or CSV. It accepts response content types of "application/json" and "text/csv".
+
+Using ``transform_fn``
+''''''''''''''''''''''
+
+If you would rather not structure your code around the three methods described above, you can instead define your own ``transform_fn`` to handle inference requests.
+This will override any implementation of ``input_fn``, ``predict_fn``, or ``output_fn``.
+``transform_fn`` has the following signature:
+
+.. code:: python
+
+    def transform_fn(model, request_body, content_type, accept_type)
+
+Where ``model`` is the model objected loaded by ``model_fn``, ``request_body`` is the data from the inference request, ``content_type`` is the content type of the request, and ``accept_type`` is the request content type for the response.
+
+This one function should handle processing the input, performing a prediction, and processing the output.
+The return object should be one of the following:
+
+- a tuple with two items: the response data and ``accept_type`` (the content type of the response data), or
+- a Flask response object: http://flask.pocoo.org/docs/1.0/api/#response-objects
+
+You can find examples of hosting scripts using this structure in the example notebooks, such as the `mxnet_gluon_sentiment <https://github.com/awslabs/amazon-sagemaker-examples/blob/master/sagemaker-python-sdk/mxnet_gluon_sentiment/sentiment.py#L344-L387>`__ notebook.
 
 Working with existing model data and training jobs
 --------------------------------------------------
@@ -786,4 +825,4 @@ The Docker images extend Ubuntu 16.04.
 You can select version of MXNet by passing a ``framework_version`` keyword arg to the MXNet Estimator constructor. Currently supported versions are listed in the above table. You can also set ``framework_version`` to only specify major and minor version, e.g ``1.2``, which will cause your training script to be run on the latest supported patch version of that minor version, which in this example would be 1.2.1.
 Alternatively, you can build your own image by following the instructions in the SageMaker MXNet containers repository, and passing ``image_name`` to the MXNet Estimator constructor.
 
-You can visit the SageMaker MXNet containers repository here: https://github.com/aws/sagemaker-mxnet-containers/
+You can visit the SageMaker MXNet containers repository here: https://github.com/aws/sagemaker-mxnet-container
