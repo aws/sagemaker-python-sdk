@@ -121,7 +121,7 @@ def test_deploy_model_with_update_non_existing_endpoint(mxnet_training_job, sage
 @pytest.mark.regional_testing
 @pytest.mark.skipif(tests.integ.test_region() not in tests.integ.EI_SUPPORTED_REGIONS,
                     reason="EI isn't supported in that specific region.")
-def test_deploy_model_with_accelerator(mxnet_training_job, sagemaker_session, ei_mxnet_version):
+def test_deploy_model_with_accelerator(mxnet_training_job, sagemaker_session, ei_mxnet_full_version):
     endpoint_name = 'test-mxnet-deploy-model-ei-{}'.format(sagemaker_timestamp())
 
     with timeout_and_delete_endpoint_by_name(endpoint_name, sagemaker_session):
@@ -129,7 +129,7 @@ def test_deploy_model_with_accelerator(mxnet_training_job, sagemaker_session, ei
         model_data = desc['ModelArtifacts']['S3ModelArtifacts']
         script_path = os.path.join(DATA_DIR, 'mxnet_mnist', 'mnist.py')
         model = MXNetModel(model_data, 'SageMakerRole', entry_point=script_path,
-                           framework_version=ei_mxnet_version, py_version=PYTHON_VERSION,
+                           framework_version=ei_mxnet_full_version, py_version=PYTHON_VERSION,
                            sagemaker_session=sagemaker_session)
         predictor = model.deploy(1, 'ml.m4.xlarge', endpoint_name=endpoint_name, accelerator_type='ml.eia1.medium')
 

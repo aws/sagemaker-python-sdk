@@ -83,7 +83,7 @@ def test_deploy_model(sagemaker_session, tf_training_job):
 @pytest.mark.skipif(tests.integ.test_region() not in tests.integ.EI_SUPPORTED_REGIONS,
                     reason="EI isn't supported in that specific region.")
 @pytest.mark.skipif(PYTHON_VERSION != 'py2', reason="TensorFlow image supports only python 2.")
-def test_deploy_model_with_accelerator(sagemaker_session, tf_training_job, ei_tf_version):
+def test_deploy_model_with_accelerator(sagemaker_session, tf_training_job, ei_tf_full_version):
     endpoint_name = 'test-tf-deploy-model-ei-{}'.format(sagemaker_timestamp())
 
     with timeout_and_delete_endpoint_by_name(endpoint_name, sagemaker_session):
@@ -92,7 +92,7 @@ def test_deploy_model_with_accelerator(sagemaker_session, tf_training_job, ei_tf
 
         script_path = os.path.join(DATA_DIR, 'iris', 'iris-dnn-classifier.py')
         model = TensorFlowModel(model_data, 'SageMakerRole', entry_point=script_path,
-                                framework_version=ei_tf_version, sagemaker_session=sagemaker_session)
+                                framework_version=ei_tf_full_version, sagemaker_session=sagemaker_session)
 
         json_predictor = model.deploy(initial_instance_count=1, instance_type='ml.c4.xlarge',
                                       endpoint_name=endpoint_name, accelerator_type='ml.eia1.medium')
