@@ -138,8 +138,8 @@ class RealTimePredictor(object):
     def _get_model_names(self):
         endpoint_desc = self.sagemaker_session.sagemaker_client.describe_endpoint(EndpointName=self.endpoint)
         endpoint_config_name = endpoint_desc['EndpointConfigName']
-        endpoint_config = self.sagemaker_session.sagemaker_client.describe_endpoint_config(EndpointConfigName=
-                                                                                               endpoint_config_name)
+        endpoint_config = self.sagemaker_session.sagemaker_client.describe_endpoint_config(
+            EndpointConfigName=endpoint_config_name)
         production_variants = endpoint_config['ProductionVariants']
         return map(lambda d: d['ModelName'], production_variants)
 
