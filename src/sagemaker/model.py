@@ -302,6 +302,17 @@ class Model(object):
                            env=env, tags=tags, base_transform_job_name=self.name,
                            volume_kms_key=volume_kms_key, sagemaker_session=self.sagemaker_session)
 
+    def delete_model(self):
+        """Delete an Amazon SageMaker Model.
+
+        Raises:
+            ValueError: if the model is not created yet.
+
+        """
+        if self.name is None:
+            raise ValueError('The SageMaker model must be created first before attempting to delete.')
+        self.sagemaker_session.delete_model(self.name)
+
 
 SCRIPT_PARAM_NAME = 'sagemaker_program'
 DIR_PARAM_NAME = 'sagemaker_submit_directory'

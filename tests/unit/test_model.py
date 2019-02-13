@@ -96,7 +96,7 @@ class DummyFrameworkModel(FrameworkModel):
                                                   sagemaker_session=sagemaker_session, **kwargs)
 
     def create_predictor(self, endpoint_name):
-        return RealTimePredictor(endpoint_name, self.sagemaker_session)
+        return RealTimePredictor(endpoint_name, sagemaker_session=self.sagemaker_session)
 
 
 @pytest.fixture()
@@ -335,3 +335,19 @@ def test_model_package_create_transformer_with_product_id(sagemaker_session):
     assert transformer.model_name == 'auto-generated-model'
     assert transformer.instance_type == 'ml.m4.xlarge'
     assert transformer.env is None
+
+
+@patch('sagemaker.fw_utils.tar_and_upload_dir', MagicMock())
+@patch('time.strftime', MagicMock(return_value=TIMESTAMP))
+def test_model_delete_model(sagemaker_session, tmpdir):
+    model = DummyFrameworkModel(sagemaker_session, source_dir=str(tmpdir))
+    model.deploy(instance_type=INSTANCE_TYPE, initial_instance_count=1)
+    model.delete_model()
+
+    sagemaker_session.delete_model.assert_called_with(model.name)
+
+
+def test_delete_non_deployed_model(sagemaker_session):
+    model = DummyFrameworkModel(sagemaker_session)
+    with pytest.raises(ValueError, match='The SageMaker model must be created first before attempting to delete.'):
+        model.delete_model()

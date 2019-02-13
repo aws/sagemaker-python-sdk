@@ -145,6 +145,22 @@ def test_delete_endpoint(boto_session):
     boto_session.client().delete_endpoint.assert_called_with(EndpointName='my_endpoint')
 
 
+def test_delete_endpoint_config(boto_session):
+    sess = Session(boto_session)
+    sess.delete_endpoint_config('my_endpoint_config')
+
+    boto_session.client().delete_endpoint_config.assert_called_with(EndpointConfigName='my_endpoint_config')
+
+
+def test_delete_model(boto_session):
+    sess = Session(boto_session)
+
+    model_name = 'my_model'
+    sess.delete_model(model_name)
+
+    boto_session.client().delete_model.assert_called_with(ModelName=model_name)
+
+
 def test_user_agent_injected(boto_session):
     assert 'AWS-SageMaker-Python-SDK' not in boto_session.client('sagemaker')._client_config.user_agent
 
@@ -933,7 +949,7 @@ def test_update_endpoint_non_existing_endpoint(sagemaker_session):
     expected_error_message = 'Endpoint with name "non-existing-endpoint" does not exist; ' \
                              'please use an existing endpoint name'
     sagemaker_session.sagemaker_client.describe_endpoint = Mock(side_effect=error)
-    with pytest.raises(ValueError, message=expected_error_message):
+    with pytest.raises(ValueError, match=expected_error_message):
         sagemaker_session.update_endpoint("non-existing-endpoint", "non-existing-config")
 
 

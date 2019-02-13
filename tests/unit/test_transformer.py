@@ -59,6 +59,12 @@ def transformer(sagemaker_session):
                        volume_kms_key=KMS_KEY_ID)
 
 
+def test_delete_model(sagemaker_session):
+    transformer = Transformer(MODEL_NAME, INSTANCE_COUNT, INSTANCE_TYPE, sagemaker_session=sagemaker_session)
+    transformer.delete_model()
+    sagemaker_session.delete_model.assert_called_with(MODEL_NAME)
+
+
 @patch('sagemaker.transformer._TransformJob.start_new')
 def test_transform_with_all_params(start_new_job, transformer):
     content_type = 'text/csv'
