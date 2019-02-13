@@ -2,8 +2,13 @@
 CHANGELOG
 =========
 
+<<<<<<< HEAD
 1.18.4.dev
 ==========
+=======
+1.18.3
+======
+>>>>>>> Bump version to v1.18.3 (#641)
 
 * doc-fix: Remove incorrect parameter for EI TFS Python README
 
