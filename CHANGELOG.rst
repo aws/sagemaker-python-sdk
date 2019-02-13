@@ -2,16 +2,16 @@
 CHANGELOG
 =========
 
-1.18.3.dev
-==========
+1.18.3
+======
 
 * doc-fix: update information about saving models in the MXNet README
 * doc-fix: change ReadTheDocs links from latest to stable
 * doc-fix: add ``transform_fn`` information and fix ``input_fn`` signature in the MXNet README
-* feature: Support for ``Predictor`` to delete endpoint configuration by default when calling ``delete_endpoint()``
-* feature: Support for ``model`` to delete SageMaker model
-* feature: Support for ``Transformer`` to delete SageMaker model
-* bug-fix: Default account for SKLearnModel fixed
+* feature: add support for ``Predictor`` to delete endpoint configuration by default when calling ``delete_endpoint()``
+* feature: add support for ``Model`` to delete SageMaker model
+* feature: add support for ``Transformer`` to delete SageMaker model
+* bug-fix: fix default account for SKLearnModel
 
 1.18.2
 ======
