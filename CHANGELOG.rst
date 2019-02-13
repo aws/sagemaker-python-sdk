@@ -11,6 +11,7 @@ CHANGELOG
 * feature: Support for ``Predictor`` to delete endpoint configuration by default when calling ``delete_endpoint()``
 * feature: Support for ``model`` to delete SageMaker model
 * feature: Support for ``Transformer`` to delete SageMaker model
+* bug-fix: Default account for SKLearnModel fixed
 
 1.18.2
 ======
