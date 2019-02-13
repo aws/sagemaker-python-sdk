@@ -2,8 +2,8 @@
 CHANGELOG
 =========
 
-1.18.3.dev
-==========
+1.18.3
+======
 
 * doc-fix: update information about saving models in the MXNet README
 * doc-fix: change ReadTheDocs links from latest to stable
