@@ -790,7 +790,7 @@ class Session(object):
         self.sagemaker_client.delete_endpoint_config(EndpointConfigName=endpoint_config_name)
 
     def delete_model(self, model_name):
-        """Delete an Amazon SageMaker ``Model``.
+        """Delete an Amazon SageMaker Model.
 
         Args:
             model_name (str): Name of the Amazon SageMaker model to delete.

@@ -349,5 +349,5 @@ def test_model_delete_model(sagemaker_session, tmpdir):
 
 def test_delete_non_deployed_model(sagemaker_session):
     model = DummyFrameworkModel(sagemaker_session)
-    with pytest.raises(ValueError, match='The SageMaker model must be deployed first before attempting to delete.'):
+    with pytest.raises(ValueError, match='The SageMaker model must be created first before attempting to delete.'):
         model.delete_model()
