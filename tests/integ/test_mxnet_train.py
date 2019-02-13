@@ -72,6 +72,11 @@ def test_deploy_model(mxnet_training_job, sagemaker_session, mxnet_full_version)
         data = numpy.zeros(shape=(1, 1, 28, 28))
         predictor.predict(data)
 
+    predictor.delete_model()
+    with pytest.raises(Exception) as exception:
+        sagemaker_session.sagemaker_client.describe_model(ModelName=model.name)
+        assert 'Could not find model' in str(exception.value)
+
 
 def test_deploy_model_with_update_endpoint(mxnet_training_job, sagemaker_session, mxnet_full_version):
     endpoint_name = 'test-mxnet-deploy-model-{}'.format(sagemaker_timestamp())

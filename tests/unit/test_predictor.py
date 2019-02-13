@@ -466,3 +466,18 @@ def test_delete_endpoint_only():
 
     sagemaker_session.delete_endpoint.assert_called_with(ENDPOINT)
     sagemaker_session.delete_endpoint_config.assert_not_called()
+
+
+def test_delete_model():
+    endpoint_desc = {
+        'ProductionVariants': [{
+            'VariantName': 'my-model'
+        }]
+    }
+    sagemaker_session = empty_sagemaker_session()
+    sagemaker_session.sagemaker_client.describe_endpoint = Mock(return_value=endpoint_desc)
+    predictor = RealTimePredictor(ENDPOINT, sagemaker_session=sagemaker_session)
+
+    predictor.delete_model()
+    sagemaker_session.delete_model.assert_called_with('my-model')
+

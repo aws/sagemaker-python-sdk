@@ -126,6 +126,22 @@ class RealTimePredictor(object):
 
         self.sagemaker_session.delete_endpoint(self.endpoint)
 
+    def delete_model(self):
+        """Deletes the Amazon SageMaker models backing this predictor.
+
+        """
+        model_names = self._get_model_names()
+        for model_name in model_names:
+            self.sagemaker_session.delete_model(model_name)
+
+    def _get_model_names(self):
+        endpoint_desc = self.sagemaker_session.sagemaker_client.describe_endpoint(EndpointName=self.endpoint)
+        endpoint_config_name = endpoint_desc['EndpointConfigName']
+        endpoint_config = self.sagemaker_session.sagemaker_client.describe_endpoint_config(EndpointConfigName=
+                                                                                               endpoint_config_name)
+        production_variants = endpoint_config['ProductionVariants']
+        return map(lambda d: d['ModelName'], production_variants)
+
 
 class _CsvSerializer(object):
     def __init__(self):
