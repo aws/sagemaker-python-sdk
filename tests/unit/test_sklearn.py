@@ -128,7 +128,17 @@ def test_train_image(sagemaker_session, sklearn_version):
     assert train_image == '246618743249.dkr.ecr.us-west-2.amazonaws.com/sagemaker-scikit-learn:0.20.0-cpu-py3'
 
 
-def test_create_model(sagemaker_session, sklearn_version):
+def test_create_model(sagemaker_session):
+    source_dir = 's3://mybucket/source'
+
+    sklearn_model = SKLearnModel(model_data=source_dir, role=ROLE, sagemaker_session=sagemaker_session,
+                                 entry_point=SCRIPT_PATH)
+    default_image_uri = _get_full_cpu_image_uri('0.20.0')
+    model_values = sklearn_model.prepare_container_def(CPU)
+    assert model_values['Image'] == default_image_uri
+
+
+def test_create_model_from_estimator(sagemaker_session, sklearn_version):
     container_log_level = '"logging.INFO"'
     source_dir = 's3://mybucket/source'
     sklearn = SKLearn(entry_point=SCRIPT_PATH, role=ROLE, sagemaker_session=sagemaker_session,
@@ -231,7 +241,7 @@ def test_fail_distributed_training(sagemaker_session, sklearn_version):
         SKLearn(entry_point=SCRIPT_PATH, role=ROLE, sagemaker_session=sagemaker_session,
                 train_instance_count=DIST_INSTANCE_COUNT, train_instance_type=INSTANCE_TYPE,
                 py_version=PYTHON_VERSION, framework_version=sklearn_version)
-    assert "SciKit-Learn does not support distributed training." in str(error)
+    assert "Scikit-Learn does not support distributed training." in str(error)
 
 
 def test_fail_GPU_training(sagemaker_session, sklearn_version):
@@ -239,7 +249,7 @@ def test_fail_GPU_training(sagemaker_session, sklearn_version):
         SKLearn(entry_point=SCRIPT_PATH, role=ROLE, sagemaker_session=sagemaker_session,
                 train_instance_type=GPU_INSTANCE_TYPE, py_version=PYTHON_VERSION,
                 framework_version=sklearn_version)
-    assert "GPU training in not supported for SciKit-Learn." in str(error)
+    assert "GPU training in not supported for Scikit-Learn." in str(error)
 
 
 def test_model(sagemaker_session):
