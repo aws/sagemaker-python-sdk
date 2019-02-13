@@ -24,7 +24,7 @@ from sagemaker.mxnet import MXNet
 from sagemaker.transformer import Transformer
 from tests.integ import DATA_DIR, TRAINING_DEFAULT_TIMEOUT_MINUTES, TRANSFORM_DEFAULT_TIMEOUT_MINUTES
 from tests.integ.kms_utils import get_or_create_kms_key
-from tests.integ.timeout import timeout
+from tests.integ.timeout import timeout, timeout_and_delete_model_with_transformer
 from tests.integ.vpc_test_utils import get_or_create_vpc_resources
 
 
@@ -56,7 +56,8 @@ def test_transform_mxnet(sagemaker_session, mxnet_full_version):
     kms_key_arn = get_or_create_kms_key(kms_client, account_id)
 
     transformer = _create_transformer_and_transform_job(mx, transform_input, kms_key_arn)
-    with timeout(minutes=TRANSFORM_DEFAULT_TIMEOUT_MINUTES):
+    with timeout_and_delete_model_with_transformer(transformer, sagemaker_session,
+                                                   minutes=TRANSFORM_DEFAULT_TIMEOUT_MINUTES):
         transformer.wait()
 
     job_desc = transformer.sagemaker_session.sagemaker_client.describe_transform_job(
@@ -100,7 +101,8 @@ def test_attach_transform_kmeans(sagemaker_session):
 
     attached_transformer = Transformer.attach(transformer.latest_transform_job.name,
                                               sagemaker_session=sagemaker_session)
-    with timeout(minutes=TRANSFORM_DEFAULT_TIMEOUT_MINUTES):
+    with timeout_and_delete_model_with_transformer(transformer, sagemaker_session,
+                                                   minutes=TRANSFORM_DEFAULT_TIMEOUT_MINUTES):
         attached_transformer.wait()
 
 
@@ -135,12 +137,12 @@ def test_transform_mxnet_vpc(sagemaker_session, mxnet_full_version):
                                                        key_prefix=transform_input_key_prefix)
 
     transformer = _create_transformer_and_transform_job(mx, transform_input)
-    with timeout(minutes=TRANSFORM_DEFAULT_TIMEOUT_MINUTES):
+    with timeout_and_delete_model_with_transformer(transformer, sagemaker_session,
+                                                   minutes=TRANSFORM_DEFAULT_TIMEOUT_MINUTES):
         transformer.wait()
-
-    model_desc = sagemaker_session.sagemaker_client.describe_model(ModelName=transformer.model_name)
-    assert set(subnet_ids) == set(model_desc['VpcConfig']['Subnets'])
-    assert [security_group_id] == model_desc['VpcConfig']['SecurityGroupIds']
+        model_desc = sagemaker_session.sagemaker_client.describe_model(ModelName=transformer.model_name)
+        assert set(subnet_ids) == set(model_desc['VpcConfig']['Subnets'])
+        assert [security_group_id] == model_desc['VpcConfig']['SecurityGroupIds']
 
 
 def _create_transformer_and_transform_job(estimator, transform_input, volume_kms_key=None):

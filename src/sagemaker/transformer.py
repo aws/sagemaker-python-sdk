@@ -112,6 +112,12 @@ class Transformer(object):
         self.latest_transform_job = _TransformJob.start_new(self, data, data_type, content_type, compression_type,
                                                             split_type)
 
+    def delete_model(self):
+        """Delete the corresponding SageMaker model for this Transformer.
+
+        """
+        self.sagemaker_session.delete_model(self.model_name)
+
     def _retrieve_image_name(self):
         model_desc = self.sagemaker_session.sagemaker_client.describe_model(ModelName=self.model_name)
         return model_desc['PrimaryContainer']['Image']

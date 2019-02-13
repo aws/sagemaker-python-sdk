@@ -32,13 +32,9 @@ def timeout(seconds=0, minutes=0, hours=0):
     """
     Add a signal-based timeout to any block of code.
     If multiple time units are specified, they will be added together to determine time limit.
-
     Usage:
-
     with timeout(seconds=5):
         my_slow_function(...)
-
-
     Args:
         - seconds: The time limit, in seconds.
         - minutes: The time limit, in minutes.
@@ -75,9 +71,9 @@ def timeout_and_delete_endpoint_by_name(endpoint_name, sagemaker_session, second
                     sagemaker_session.delete_endpoint(endpoint_name)
                     LOGGER.info('deleted endpoint {}'.format(endpoint_name))
 
-                    _show_endpoint_logs(endpoint_name, sagemaker_session)
+                    _show_logs(endpoint_name, 'Endpoints', sagemaker_session)
                     if no_errors:
-                        _cleanup_endpoint_logs(endpoint_name, sagemaker_session)
+                        _cleanup_logs(endpoint_name, 'Endpoints', sagemaker_session)
                     return
                 except ClientError as ce:
                     if ce.response['Error']['Code'] == 'ValidationException':
@@ -87,8 +83,34 @@ def timeout_and_delete_endpoint_by_name(endpoint_name, sagemaker_session, second
                 sleep(10)
 
 
-def _show_endpoint_logs(endpoint_name, sagemaker_session):
-    log_group = '/aws/sagemaker/Endpoints/{}'.format(endpoint_name)
+@contextmanager
+def timeout_and_delete_model_with_transformer(transformer, sagemaker_session, seconds=0, minutes=0, hours=0):
+    with timeout(seconds=seconds, minutes=minutes, hours=hours) as t:
+        no_errors = False
+        try:
+            yield [t]
+            no_errors = True
+        finally:
+            attempts = 3
+
+            while attempts > 0:
+                attempts -= 1
+                try:
+                    transformer.delete_model()
+                    LOGGER.info('deleted SageMaker model {}'.format(transformer.model_name))
+
+                    _show_logs(transformer.model_name, 'Models', sagemaker_session)
+                    if no_errors:
+                        _cleanup_logs(transformer.model_name, 'Models', sagemaker_session)
+                        return
+                except ClientError as ce:
+                    if ce.response['Error']['Code'] == 'ValidationException':
+                        pass
+                sleep(10)
+
+
+def _show_logs(resource_name, resource_type, sagemaker_session):
+    log_group = '/aws/sagemaker/{}/{}'.format(resource_type, resource_name)
     try:
         # print out logs before deletion for debuggability
         LOGGER.info('cloudwatch logs for log group {}:'.format(log_group))
@@ -100,8 +122,8 @@ def _show_endpoint_logs(endpoint_name, sagemaker_session):
                          'stacktrace for debugging.', log_group)
 
 
-def _cleanup_endpoint_logs(endpoint_name, sagemaker_session):
-    log_group = '/aws/sagemaker/Endpoints/{}'.format(endpoint_name)
+def _cleanup_logs(resource_name, resource_type, sagemaker_session):
+    log_group = '/aws/sagemaker/{}/{}'.format(resource_type, resource_name)
     try:
         # print out logs before deletion for debuggability
         LOGGER.info('deleting cloudwatch log group {}:'.format(log_group))
