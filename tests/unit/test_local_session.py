@@ -172,17 +172,6 @@ def test_delete_model(LocalSession):
 
 
 @patch('sagemaker.local.local_session.LocalSession')
-def test_delete_model(LocalSession):
-    local_sagemaker_client = sagemaker.local.local_session.LocalSagemakerClient()
-
-    local_sagemaker_client.create_model(MODEL_NAME, PRIMARY_CONTAINER)
-    assert MODEL_NAME in sagemaker.local.local_session.LocalSagemakerClient._models
-
-    local_sagemaker_client.delete_model(MODEL_NAME)
-    assert MODEL_NAME not in sagemaker.local.local_session.LocalSagemakerClient._models
-
-
-@patch('sagemaker.local.local_session.LocalSession')
 def test_describe_model(LocalSession):
     local_sagemaker_client = sagemaker.local.local_session.LocalSagemakerClient()
 
@@ -239,17 +228,6 @@ def test_create_endpoint_config(LocalSession):
     local_sagemaker_client.create_endpoint_config(ENDPOINT_CONFIG_NAME, PRODUCTION_VARIANTS)
 
     assert ENDPOINT_CONFIG_NAME in sagemaker.local.local_session.LocalSagemakerClient._endpoint_configs
-
-
-@patch('sagemaker.local.local_session.LocalSession')
-def test_delete_endpoint_config(LocalSession):
-    local_sagemaker_client = sagemaker.local.local_session.LocalSagemakerClient()
-
-    local_sagemaker_client.create_endpoint_config(ENDPOINT_CONFIG_NAME, PRODUCTION_VARIANTS)
-    assert ENDPOINT_CONFIG_NAME in sagemaker.local.local_session.LocalSagemakerClient._endpoint_configs
-
-    local_sagemaker_client.delete_endpoint_config(ENDPOINT_CONFIG_NAME)
-    assert ENDPOINT_CONFIG_NAME not in sagemaker.local.local_session.LocalSagemakerClient._endpoint_configs
 
 
 @patch('sagemaker.local.local_session.LocalSession')
