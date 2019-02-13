@@ -192,6 +192,8 @@ Here is an end to end example of how to use a SageMaker Estimator:
     # Tears down the SageMaker endpoint and endpoint configuration
     mxnet_predictor.delete_endpoint()
 
+    # Deletes SageMaker model
+    mxnet_predictor.delete_model()
 
 The example above will eventually delete both the SageMaker endpoint and endpoint configuration through `delete_endpoint()`. If you want to keep your SageMaker endpoint configuration, use the value False for the `delete_endpoint_config` parameter, as shown below.
 
@@ -283,6 +285,9 @@ We can take the example in  `Using Estimators <#using-estimators>`__ , and use e
     # Tears down the endpoint container and deletes the corresponding endpoint configuration
     mxnet_predictor.delete_endpoint()
 
+    # Deletes the model
+    mxnet_predictor.delete_model()
+
 
 If you have an existing model and want to deploy it locally, don't specify a sagemaker_session argument to the ``MXNetModel`` constructor.
 The correct session is generated when you call ``model.deploy()``.
@@ -305,6 +310,9 @@ Here is an end-to-end example:
 
     # Tear down the endpoint container and delete the corresponding endpoint configuration
     predictor.delete_endpoint()
+
+    # Deletes the model
+    predictor.delete_model()
 
 
 If you don't want to deploy your model locally, you can also choose to perform a Local Batch Transform Job. This is
