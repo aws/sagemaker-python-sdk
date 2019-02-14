@@ -2,6 +2,11 @@
 CHANGELOG
 =========
 
+1.18.3.post1
+============
+
+* doc-fix: fix README for PyPI
+
 1.18.3
 ======
 
