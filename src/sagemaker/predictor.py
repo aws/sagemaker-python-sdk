@@ -134,11 +134,15 @@ class RealTimePredictor(object):
         for model_name in self._model_names:
             self.sagemaker_session.delete_model(model_name)
 
-    def _get_model_names(self):
+    def _get_endpoint_config_desc(self):
         endpoint_desc = self.sagemaker_session.sagemaker_client.describe_endpoint(EndpointName=self.endpoint)
         self._endpoint_config_name = endpoint_desc['EndpointConfigName']
         endpoint_config = self.sagemaker_session.sagemaker_client.describe_endpoint_config(
             EndpointConfigName=self._endpoint_config_name)
+        return endpoint_config
+
+    def _get_model_names(self):
+        endpoint_config = self._get_endpoint_config_desc()
         production_variants = endpoint_config['ProductionVariants']
         return map(lambda d: d['ModelName'], production_variants)
 
