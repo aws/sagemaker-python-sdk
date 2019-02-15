@@ -389,6 +389,8 @@ def json_sagemaker_session():
     ims = Mock(name='sagemaker_session')
     ims.default_bucket = Mock(name='default_bucket', return_value=BUCKET_NAME)
     ims.sagemaker_runtime_client = Mock(name='sagemaker_runtime')
+    ims.sagemaker_client.describe_endpoint = Mock(return_value=ENDPOINT_DESC)
+    ims.sagemaker_client.describe_endpoint_config = Mock(return_value=ENDPOINT_CONFIG_DESC)
 
     ims.sagemaker_client.describe_endpoint = Mock(return_value=ENDPOINT_DESC)
     ims.sagemaker_client.describe_endpoint_config = Mock(return_value=ENDPOINT_CONFIG_DESC)
@@ -430,6 +432,8 @@ def ret_csv_sagemaker_session():
     ims = Mock(name='sagemaker_session')
     ims.default_bucket = Mock(name='default_bucket', return_value=BUCKET_NAME)
     ims.sagemaker_runtime_client = Mock(name='sagemaker_runtime')
+    ims.sagemaker_client.describe_endpoint = Mock(return_value=ENDPOINT_DESC)
+    ims.sagemaker_client.describe_endpoint_config = Mock(return_value=ENDPOINT_CONFIG_DESC)
 
     ims.sagemaker_client.describe_endpoint = Mock(return_value=ENDPOINT_DESC)
     ims.sagemaker_client.describe_endpoint_config = Mock(return_value=ENDPOINT_CONFIG_DESC)
