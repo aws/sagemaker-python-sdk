@@ -5,8 +5,7 @@ CHANGELOG
 1.18.4.dev
 ==========
 
-* feature: ``Predictor``: delete SageMaker Model
-* feature: ``Pipeline``: delete SageMaker Model
+* doc-fix: Remove incorrect parameter for EI TFS Python README
 
 1.18.3.post1
 ============

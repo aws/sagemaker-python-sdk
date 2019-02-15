@@ -31,8 +31,7 @@ TensorFlow serving on SageMaker has support for `Elastic Inference <https://docs
 
   predictor = estimator.deploy(initial_instance_count=1,
                                instance_type='ml.c5.xlarge',
-                               accelerator_type='ml.eia1.medium'
-                               endpoint_type='tensorflow-serving-elastic-inference')
+                               accelerator_type='ml.eia1.medium')
 
 What happens when deploy is called
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
