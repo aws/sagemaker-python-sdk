@@ -45,6 +45,15 @@ CPU = 'ml.c4.xlarge'
 CPU_C5 = 'ml.c5.xlarge'
 LAUNCH_PS_DISTRIBUTIONS_DICT = {'parameter_server': {'enabled': True}}
 
+ENDPOINT_DESC = {
+    'EndpointConfigName': 'test-endpoint'
+}
+
+ENDPOINT_CONFIG_DESC = {
+    'ProductionVariants': [{'ModelName': 'model-1'},
+                           {'ModelName': 'model-2'}]
+}
+
 
 @pytest.fixture()
 def sagemaker_session():
@@ -55,6 +64,8 @@ def sagemaker_session():
     describe = {'ModelArtifacts': {'S3ModelArtifacts': 's3://m/m.tar.gz'}}
     describe_compilation = {'ModelArtifacts': {'S3ModelArtifacts': 's3://m/model_c5.tar.gz'}}
     session.sagemaker_client.describe_training_job = Mock(return_value=describe)
+    session.sagemaker_client.describe_endpoint = Mock(return_value=ENDPOINT_DESC)
+    session.sagemaker_client.describe_endpoint_config = Mock(return_value=ENDPOINT_CONFIG_DESC)
     session.wait_for_compilation_job = Mock(return_value=describe_compilation)
     session.default_bucket = Mock(name='default_bucket', return_value=BUCKET_NAME)
     session.expand_role = Mock(name="expand_role", return_value=ROLE)

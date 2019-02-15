@@ -43,12 +43,23 @@ CSV_CONTENT_TYPE = "text/csv"
 JSON_CONTENT_TYPE = "application/json"
 PROTO_CONTENT_TYPE = "application/octet-stream"
 
+ENDPOINT_DESC = {
+    'EndpointConfigName': ENDPOINT
+}
+
+ENDPOINT_CONFIG_DESC = {
+    'ProductionVariants': [{'ModelName': 'model-1'},
+                           {'ModelName': 'model-2'}]
+}
+
 
 @pytest.fixture()
 def sagemaker_session():
     boto_mock = Mock(name='boto_session', region_name=REGION)
     ims = Mock(name='sagemaker_session', boto_session=boto_mock)
     ims.default_bucket = Mock(name='default_bucket', return_value=BUCKET_NAME)
+    ims.sagemaker_client.describe_endpoint = Mock(return_value=ENDPOINT_DESC)
+    ims.sagemaker_client.describe_endpoint_config = Mock(return_value=ENDPOINT_CONFIG_DESC)
     return ims
 
 

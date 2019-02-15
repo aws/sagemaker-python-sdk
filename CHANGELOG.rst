@@ -2,6 +2,12 @@
 CHANGELOG
 =========
 
+1.18.4.dev
+==========
+
+* feature: ``Predictor``: delete SageMaker Model
+* feature: ``Pipeline``: delete SageMaker Model
+
 1.18.3.post1
 ============
 

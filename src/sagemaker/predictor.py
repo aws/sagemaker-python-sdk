@@ -56,6 +56,7 @@ class RealTimePredictor(object):
         self.deserializer = deserializer
         self.content_type = content_type or getattr(serializer, 'content_type', None)
         self.accept = accept or getattr(deserializer, 'accept', None)
+        self._model_names = self._get_model_names()
 
     def predict(self, data, initial_args=None):
         """Return the inference from the specified endpoint.
@@ -109,17 +110,16 @@ class RealTimePredictor(object):
         """Delete the Amazon SageMaker endpoint configuration
 
         """
-        endpoint_description = self.sagemaker_session.sagemaker_client.describe_endpoint(EndpointName=self.endpoint)
-        endpoint_config_name = endpoint_description['EndpointConfigName']
-        self.sagemaker_session.delete_endpoint_config(endpoint_config_name)
+        self.sagemaker_session.delete_endpoint_config(self._endpoint_config_name)
 
     def delete_endpoint(self, delete_endpoint_config=True):
         """Delete the Amazon SageMaker endpoint backing this predictor. Also delete the endpoint configuration attached
            to it if delete_endpoint_config is True.
 
         Args:
-            delete_endpoint_config (bool): Flag to indicate whether to delete endpoint configuration together with
-                endpoint. If False, only endpoint will be deleted. Default: True.
+            delete_endpoint_config (bool, optional): Flag to indicate whether to delete endpoint configuration together
+                with endpoint. Defaults to True. If True, both endpoint and endpoint configuration will be deleted. If
+                False, only endpoint will be deleted.
 
         """
         if delete_endpoint_config:
@@ -131,15 +131,14 @@ class RealTimePredictor(object):
         """Deletes the Amazon SageMaker models backing this predictor.
 
         """
-        model_names = self._get_model_names()
-        for model_name in model_names:
+        for model_name in self._model_names:
             self.sagemaker_session.delete_model(model_name)
 
     def _get_model_names(self):
         endpoint_desc = self.sagemaker_session.sagemaker_client.describe_endpoint(EndpointName=self.endpoint)
-        endpoint_config_name = endpoint_desc['EndpointConfigName']
+        self._endpoint_config_name = endpoint_desc['EndpointConfigName']
         endpoint_config = self.sagemaker_session.sagemaker_client.describe_endpoint_config(
-            EndpointConfigName=endpoint_config_name)
+            EndpointConfigName=self._endpoint_config_name)
         production_variants = endpoint_config['ProductionVariants']
         return map(lambda d: d['ModelName'], production_variants)
 
