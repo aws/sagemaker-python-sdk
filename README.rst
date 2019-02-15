@@ -232,6 +232,9 @@ For more `information <https://boto3.amazonaws.com/v1/documentation/api/latest/r
     # Tears down the SageMaker endpoint and endpoint configuration
     mxnet_predictor.delete_endpoint()
 
+    # Deletes SageMaker model
+    mxnet_predictor.delete_model()
+
 Training Metrics
 ~~~~~~~~~~~~~~~~
 The SageMaker Python SDK allows you to specify a name and a regular expression for metrics you want to track for training.
