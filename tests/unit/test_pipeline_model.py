@@ -138,3 +138,22 @@ def test_deploy_tags(tfo, time, sagemaker_session):
           'InitialInstanceCount': 1,
           'VariantName': 'AllTraffic'}],
         tags)
+
+
+def test_delete_model_without_deploy(sagemaker_session):
+    pipeline_model = PipelineModel([], role=ROLE, sagemaker_session=sagemaker_session)
+
+    expected_error_message = 'The SageMaker model must be created before attempting to delete.'
+    with pytest.raises(ValueError, match=expected_error_message):
+        pipeline_model.delete_model()
+
+
+@patch('tarfile.open')
+@patch('time.strftime', return_value=TIMESTAMP)
+def test_delete_model(tfo, time, sagemaker_session):
+    framework_model = DummyFrameworkModel(sagemaker_session)
+    pipeline_model = PipelineModel([framework_model], role=ROLE, sagemaker_session=sagemaker_session)
+    pipeline_model.deploy(instance_type=INSTANCE_TYPE, initial_instance_count=1)
+
+    pipeline_model.delete_model()
+    sagemaker_session.delete_model.assert_called_with(pipeline_model.name)

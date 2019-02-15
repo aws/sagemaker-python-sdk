@@ -26,6 +26,15 @@ REGION = 'us-west-2'
 BUCKET_NAME = 'Some-Bucket'
 ENDPOINT = 'some-endpoint'
 
+ENDPOINT_DESC = {
+    'EndpointConfigName': ENDPOINT
+}
+
+ENDPOINT_CONFIG_DESC = {
+    'ProductionVariants': [{'ModelName': 'model-1'},
+                           {'ModelName': 'model-2'}]
+}
+
 
 @pytest.fixture()
 def sagemaker_session():
@@ -33,6 +42,8 @@ def sagemaker_session():
     sms = Mock(name='sagemaker_session', boto_session=boto_mock,
                region_name=REGION, config=None, local_mode=False)
     sms.boto_region_name = REGION
+    sms.sagemaker_client.describe_endpoint = Mock(return_value=ENDPOINT_DESC)
+    sms.sagemaker_client.describe_endpoint_config = Mock(return_value=ENDPOINT_CONFIG_DESC)
     return sms
 
 
