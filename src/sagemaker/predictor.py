@@ -57,7 +57,7 @@ class RealTimePredictor(object):
         self.content_type = content_type or getattr(serializer, 'content_type', None)
         self.accept = accept or getattr(deserializer, 'accept', None)
         self._endpoint_config_name = self._get_endpoint_config_name()
-        self._model_names = self._endpoint_config_desc_and_model_names()
+        self._model_names = self._get_model_names()
 
     def predict(self, data, initial_args=None):
         """Return the inference from the specified endpoint.
@@ -140,7 +140,7 @@ class RealTimePredictor(object):
         endpoint_config_name = endpoint_desc['EndpointConfigName']
         return endpoint_config_name
 
-    def _endpoint_config_desc_and_model_names(self):
+    def _get_model_names(self):
         endpoint_config = self.sagemaker_session.sagemaker_client.describe_endpoint_config(
             EndpointConfigName=self._endpoint_config_name)
         production_variants = endpoint_config['ProductionVariants']
