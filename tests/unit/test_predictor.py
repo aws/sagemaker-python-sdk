@@ -499,3 +499,15 @@ def test_delete_model():
     expected_call_args_list = [call('model-1'), call('model-2')]
     assert sagemaker_session.delete_model.call_count == expected_call_count
     assert sagemaker_session.delete_model.call_args_list == expected_call_args_list
+
+
+def test_delete_model_fail():
+    sagemaker_session = empty_sagemaker_session()
+    sagemaker_session.sagemaker_client.delete_model = Mock(side_effect='Could not find model.')
+    expected_error_message = 'One or more models cannot be deleted, the deletion is incomplete.'
+
+    predictor = RealTimePredictor(ENDPOINT, sagemaker_session=sagemaker_session)
+
+    with pytest.raises(Exception) as exception:
+        predictor.delete_model()
+        assert str(exception.val) == expected_error_message
