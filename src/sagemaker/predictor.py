@@ -132,11 +132,15 @@ class RealTimePredictor(object):
         """Deletes the Amazon SageMaker models backing this predictor.
 
         """
-        try:
-            for model_name in self._model_names:
+        request_failed = False
+        for model_name in self._model_names:
+            try:
                 self.sagemaker_session.delete_model(model_name)
-        except Exception:
-            raise Exception('One or more models cannot be deleted, the deletion is incomplete.')
+            except Exception:  # pylint: disable=broad-except
+                request_failed = True
+
+        if request_failed:
+            raise Exception('One or more models cannot be deleted, please retry.')
 
     def _get_endpoint_config_name(self):
         endpoint_desc = self.sagemaker_session.sagemaker_client.describe_endpoint(EndpointName=self.endpoint)
