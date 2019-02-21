@@ -133,14 +133,17 @@ class RealTimePredictor(object):
 
         """
         request_failed = False
+        failed_models = []
         for model_name in self._model_names:
             try:
                 self.sagemaker_session.delete_model(model_name)
             except Exception:  # pylint: disable=broad-except
                 request_failed = True
+                failed_models.append(model_name)
 
         if request_failed:
-            raise Exception('One or more models cannot be deleted, please retry.')
+            raise Exception('One or more models cannot be deleted, please retry. \n'
+                            'Failed models: {}'.format(', '.join(failed_models)))
 
     def _get_endpoint_config_name(self):
         endpoint_desc = self.sagemaker_session.sagemaker_client.describe_endpoint(EndpointName=self.endpoint)

@@ -503,11 +503,11 @@ def test_delete_model():
 
 def test_delete_model_fail():
     sagemaker_session = empty_sagemaker_session()
-    sagemaker_session.sagemaker_client.delete_model = Mock(side_effect='Could not find model.')
+    sagemaker_session.sagemaker_client.delete_model = Mock(side_effect=Exception('Could not find model.'))
     expected_error_message = 'One or more models cannot be deleted, please retry.'
 
     predictor = RealTimePredictor(ENDPOINT, sagemaker_session=sagemaker_session)
 
     with pytest.raises(Exception) as exception:
         predictor.delete_model()
-        assert str(exception.val) == expected_error_message
+        assert expected_error_message in str(exception.val)
