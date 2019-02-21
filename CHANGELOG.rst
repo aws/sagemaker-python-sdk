@@ -6,7 +6,6 @@ CHANGELOG
 ==========
 
 * doc-fix: Remove incorrect parameter for EI TFS Python README
-* enhancement: tox.ini: Add sphinx-build check for readthedocs
 
 1.18.3.post1
 ============
