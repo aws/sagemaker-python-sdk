@@ -103,3 +103,14 @@ class PipelineModel(object):
         self.sagemaker_session.endpoint_from_production_variants(self.endpoint_name, [production_variant], tags)
         if self.predictor_cls:
             return self.predictor_cls(self.endpoint_name, self.sagemaker_session)
+
+    def delete_model(self):
+        """Delete the SageMaker model backing this pipeline model. This does not delete the list of SageMaker models used
+        in multiple containers to build the inference pipeline.
+
+        """
+
+        if self.name is None:
+            raise ValueError('The SageMaker model must be created before attempting to delete.')
+
+        self.sagemaker_session.delete_model(self.name)

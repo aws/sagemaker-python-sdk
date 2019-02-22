@@ -92,3 +92,8 @@ def test_inference_pipeline_model_deploy(sagemaker_session):
 
         invalid_data = "1.0,28.0,C,38.0,71.5,1.0"
         assert (predictor.predict(invalid_data) is None)
+
+    model.delete_model()
+    with pytest.raises(Exception) as exception:
+        sagemaker_session.sagemaker_client.describe_model(ModelName=model.name)
+        assert 'Could not find model' in str(exception.value)

@@ -16,7 +16,7 @@ import io
 import json
 import os
 import pytest
-from mock import Mock
+from mock import Mock, call
 
 import numpy as np
 
@@ -319,11 +319,22 @@ CSV_CONTENT_TYPE = 'text/csv'
 RETURN_VALUE = 0
 CSV_RETURN_VALUE = "1,2,3\r\n"
 
+ENDPOINT_DESC = {
+    'EndpointConfigName': ENDPOINT
+}
+
+ENDPOINT_CONFIG_DESC = {
+    'ProductionVariants': [{'ModelName': 'model-1'},
+                           {'ModelName': 'model-2'}]
+}
+
 
 def empty_sagemaker_session():
     ims = Mock(name='sagemaker_session')
     ims.default_bucket = Mock(name='default_bucket', return_value=BUCKET_NAME)
     ims.sagemaker_runtime_client = Mock(name='sagemaker_runtime')
+    ims.sagemaker_client.describe_endpoint = Mock(return_value=ENDPOINT_DESC)
+    ims.sagemaker_client.describe_endpoint_config = Mock(return_value=ENDPOINT_CONFIG_DESC)
 
     response_body = Mock('body')
     response_body.read = Mock('read', return_value=RETURN_VALUE)
@@ -378,6 +389,11 @@ def json_sagemaker_session():
     ims = Mock(name='sagemaker_session')
     ims.default_bucket = Mock(name='default_bucket', return_value=BUCKET_NAME)
     ims.sagemaker_runtime_client = Mock(name='sagemaker_runtime')
+    ims.sagemaker_client.describe_endpoint = Mock(return_value=ENDPOINT_DESC)
+    ims.sagemaker_client.describe_endpoint_config = Mock(return_value=ENDPOINT_CONFIG_DESC)
+
+    ims.sagemaker_client.describe_endpoint = Mock(return_value=ENDPOINT_DESC)
+    ims.sagemaker_client.describe_endpoint_config = Mock(return_value=ENDPOINT_CONFIG_DESC)
 
     response_body = Mock('body')
     response_body.read = Mock('read', return_value=json.dumps([RETURN_VALUE]))
@@ -416,6 +432,11 @@ def ret_csv_sagemaker_session():
     ims = Mock(name='sagemaker_session')
     ims.default_bucket = Mock(name='default_bucket', return_value=BUCKET_NAME)
     ims.sagemaker_runtime_client = Mock(name='sagemaker_runtime')
+    ims.sagemaker_client.describe_endpoint = Mock(return_value=ENDPOINT_DESC)
+    ims.sagemaker_client.describe_endpoint_config = Mock(return_value=ENDPOINT_CONFIG_DESC)
+
+    ims.sagemaker_client.describe_endpoint = Mock(return_value=ENDPOINT_DESC)
+    ims.sagemaker_client.describe_endpoint_config = Mock(return_value=ENDPOINT_CONFIG_DESC)
 
     response_body = Mock('body')
     response_body.read = Mock('read', return_value=CSV_RETURN_VALUE)
@@ -466,3 +487,27 @@ def test_delete_endpoint_only():
 
     sagemaker_session.delete_endpoint.assert_called_with(ENDPOINT)
     sagemaker_session.delete_endpoint_config.assert_not_called()
+
+
+def test_delete_model():
+    sagemaker_session = empty_sagemaker_session()
+    predictor = RealTimePredictor(ENDPOINT, sagemaker_session=sagemaker_session)
+
+    predictor.delete_model()
+
+    expected_call_count = 2
+    expected_call_args_list = [call('model-1'), call('model-2')]
+    assert sagemaker_session.delete_model.call_count == expected_call_count
+    assert sagemaker_session.delete_model.call_args_list == expected_call_args_list
+
+
+def test_delete_model_fail():
+    sagemaker_session = empty_sagemaker_session()
+    sagemaker_session.sagemaker_client.delete_model = Mock(side_effect=Exception('Could not find model.'))
+    expected_error_message = 'One or more models cannot be deleted, please retry.'
+
+    predictor = RealTimePredictor(ENDPOINT, sagemaker_session=sagemaker_session)
+
+    with pytest.raises(Exception) as exception:
+        predictor.delete_model()
+        assert expected_error_message in str(exception.val)

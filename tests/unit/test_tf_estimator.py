@@ -48,6 +48,15 @@ SCRIPT_MODE_REPO_NAME = 'sagemaker-tensorflow-scriptmode'
 DISTRIBUTION_ENABLED = {'parameter_server': {'enabled': True}}
 DISTRIBUTION_MPI_ENABLED = {'mpi': {'enabled': True, 'custom_mpi_options': 'options', 'processes_per_host': 2}}
 
+ENDPOINT_DESC = {
+    'EndpointConfigName': 'test-endpoint'
+}
+
+ENDPOINT_CONFIG_DESC = {
+    'ProductionVariants': [{'ModelName': 'model-1'},
+                           {'ModelName': 'model-2'}]
+}
+
 
 @pytest.fixture()
 def sagemaker_session():
@@ -58,6 +67,8 @@ def sagemaker_session():
     session.expand_role = Mock(name="expand_role", return_value=ROLE)
     describe = {'ModelArtifacts': {'S3ModelArtifacts': 's3://m/m.tar.gz'}}
     session.sagemaker_client.describe_training_job = Mock(return_value=describe)
+    session.sagemaker_client.describe_endpoint = Mock(return_value=ENDPOINT_DESC)
+    session.sagemaker_client.describe_endpoint_config = Mock(return_value=ENDPOINT_CONFIG_DESC)
     return session
 
 
