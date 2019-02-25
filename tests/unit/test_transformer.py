@@ -15,6 +15,7 @@ from __future__ import absolute_import
 import pytest
 from mock import MagicMock, Mock, patch
 
+import sagemaker
 from sagemaker.transformer import Transformer, _TransformJob
 
 MODEL_NAME = 'model'
@@ -63,6 +64,22 @@ def test_delete_model(sagemaker_session):
     transformer = Transformer(MODEL_NAME, INSTANCE_COUNT, INSTANCE_TYPE, sagemaker_session=sagemaker_session)
     transformer.delete_model()
     sagemaker_session.delete_model.assert_called_with(MODEL_NAME)
+
+
+def test_transformer_fails_without_model(sagemaker_session):
+
+    transformer = Transformer(model_name='remote-model',
+                              sagemaker_session=sagemaker.LocalSession(),
+                              instance_type='local',
+                              instance_count=1)
+
+    with pytest.raises(ValueError) as error:
+
+        transformer.transform('empty-data')
+
+    assert str(error.value) == 'Failed to fetch model information for remote-model. ' \
+                               'Please ensure that the model exists. ' \
+                               'Local instance types require locally created models.'
 
 
 @patch('sagemaker.transformer._TransformJob.start_new')
