@@ -430,9 +430,9 @@ Supported versions of MXNet for Elastic Inference: ``1.3.0``
 
 We recommend that you use the latest supported version, because that's where we focus most of our development efforts.
 
-For more information, see `MXNet SageMaker Estimators and Models`_.
+For more information, see `Using MXNet with the SageMaker Python SDK`_.
 
-.. _MXNet SageMaker Estimators and Models: src/sagemaker/mxnet/README.rst
+.. _Using MXNet with the SageMaker Python SDK: https://sagemaker.readthedocs.io/en/stable/using_mxnet.html
 
 
 TensorFlow SageMaker Estimators
