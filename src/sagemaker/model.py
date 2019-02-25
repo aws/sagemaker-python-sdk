@@ -19,6 +19,9 @@ import sagemaker
 from sagemaker import fw_utils, local, session, utils
 from sagemaker.transformer import Transformer
 
+logging.basicConfig()
+LOGGER = logging.getLogger('sagemaker')
+LOGGER.setLevel(logging.INFO)
 
 NEO_ALLOWED_TARGET_INSTANCE_FAMILY = set(['ml_c5', 'ml_m5', 'ml_c4', 'ml_m4', 'jetson_tx1', 'jetson_tx2', 'ml_p2',
                                           'ml_p3', 'deeplens', 'rasp3b'])
@@ -190,9 +193,13 @@ class Model(object):
         self.sagemaker_session.compile_model(**config)
         job_status = self.sagemaker_session.wait_for_compilation_job(job_name)
         self.model_data = job_status['ModelArtifacts']['S3ModelArtifacts']
-        self.image = self._neo_image(self.sagemaker_session.boto_region_name, target_instance_family, framework,
-                                     framework_version)
-        self._is_compiled_model = True
+        if not target_instance_family.startswith('ml_'):
+            LOGGER.warning("{} is not supported to deploy via SageMaker,"
+                           "please deploy the model on the device by yourself.".format(target_instance_family))
+        else:
+            self.image = self._neo_image(self.sagemaker_session.boto_region_name, target_instance_family, framework,
+                                         framework_version)
+            self._is_compiled_model = True
         return self
 
     def deploy(self, initial_instance_count, instance_type, accelerator_type=None, endpoint_name=None,
