@@ -425,7 +425,9 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):
         init_params['output_path'] = job_details['OutputDataConfig']['S3OutputPath']
         init_params['output_kms_key'] = job_details['OutputDataConfig']['KmsKeyId']
 
-        init_params['hyperparameters'] = job_details['HyperParameters']
+        has_hps = 'HyperParameters' in job_details
+        init_params['hyperparameters'] = job_details['HyperParameters'] if has_hps else {}
+
         if 'TrainingImage' in job_details['AlgorithmSpecification']:
             init_params['image'] = job_details['AlgorithmSpecification']['TrainingImage']
         elif 'AlgorithmName' in job_details['AlgorithmSpecification']:
