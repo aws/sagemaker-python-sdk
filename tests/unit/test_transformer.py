@@ -15,8 +15,8 @@ from __future__ import absolute_import
 import pytest
 from mock import MagicMock, Mock, patch
 
-import sagemaker
 from sagemaker.transformer import Transformer, _TransformJob
+from tests.integ import test_local_mode
 
 MODEL_NAME = 'model'
 IMAGE_NAME = 'image-for-model'
@@ -66,10 +66,9 @@ def test_delete_model(sagemaker_session):
     sagemaker_session.delete_model.assert_called_with(MODEL_NAME)
 
 
-def test_transformer_fails_without_model(sagemaker_session):
-
+def test_transformer_fails_without_model():
     transformer = Transformer(model_name='remote-model',
-                              sagemaker_session=sagemaker.LocalSession(),
+                              sagemaker_session=test_local_mode.LocalNoS3Session(),
                               instance_type='local',
                               instance_count=1)
 
