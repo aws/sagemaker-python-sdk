@@ -2,10 +2,6 @@
 CHANGELOG
 =========
 
-1.18.4.post1
-============
-
-* Documentation: move overview content in main README into sphynx project
 
 1.18.4.dev
 ==========
@@ -13,6 +9,16 @@ CHANGELOG
 * doc-fix: Remove incorrect parameter for EI TFS Python README
 * feature: ``Predictor``: delete SageMaker model
 * feature: ``Pipeline``: delete SageMaker model
+
+1.18.3.post3
+============
+
+* Documentation: move overview content in main README into sphynx project
+
+1.18.3.post2
+============
+
+* Documentation: remove duplicate content from mxnet/README.rst
 
 1.18.3.post1
 ============
