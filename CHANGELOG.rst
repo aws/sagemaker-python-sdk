@@ -2,6 +2,11 @@
 CHANGELOG
 =========
 
+1.18.4.post1
+============
+
+* Documentation: move overview content in main README into sphynx project
+
 1.18.4.dev
 ==========
 
