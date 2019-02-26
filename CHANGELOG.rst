@@ -9,6 +9,7 @@ CHANGELOG
 * doc-fix: Remove incorrect parameter for EI TFS Python README
 * feature: ``Predictor``: delete SageMaker model
 * feature: ``Pipeline``: delete SageMaker model
+* bug-fix: Estimator.attach works with training jobs without hyperparameters
 
 1.18.3.post3
 ============
