@@ -10,21 +10,15 @@ CHANGELOG
 * feature: ``Predictor``: delete SageMaker model
 * feature: ``Pipeline``: delete SageMaker model
 * bug-fix: Estimator.attach works with training jobs without hyperparameters
+* doc-fix: remove duplicate content from mxnet/README.rst
+* doc-fix: move overview content in main README into sphynx project
 
-1.18.3.post3
-============
-
-* Documentation: move overview content in main README into sphynx project
-
-1.18.3.post2
-============
-
-* Documentation: remove duplicate content from mxnet/README.rst
 
 1.18.3.post1
 ============
 
 * doc-fix: fix README for PyPI
+
 
 1.18.3
 ======
