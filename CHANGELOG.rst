@@ -8,6 +8,7 @@ CHANGELOG
 * doc-fix: Remove incorrect parameter for EI TFS Python README
 * feature: ``Predictor``: delete SageMaker model
 * feature: ``Pipeline``: delete SageMaker model
+* bug-fix: pass accelerator_type in ``deploy`` for REST API TFS ``Model``
 
 1.18.3.post1
 ============
