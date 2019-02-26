@@ -123,7 +123,7 @@ class Model(sagemaker.Model):
         self._container_log_level = container_log_level
 
     def prepare_container_def(self, instance_type, accelerator_type=None):
-        image = self._get_image_uri(instance_type)
+        image = self._get_image_uri(instance_type, accelerator_type)
         env = self._get_container_env()
         return sagemaker.container_def(image, self.model_data, env)
 
@@ -139,10 +139,10 @@ class Model(sagemaker.Model):
         env[Model.LOG_LEVEL_PARAM_NAME] = Model.LOG_LEVEL_MAP[self._container_log_level]
         return env
 
-    def _get_image_uri(self, instance_type):
+    def _get_image_uri(self, instance_type, accelerator_type=None):
         if self.image:
             return self.image
 
         region_name = self.sagemaker_session.boto_region_name
         return create_image_uri(region_name, Model.FRAMEWORK_NAME, instance_type,
-                                self._framework_version)
+                                self._framework_version, accelerator_type=accelerator_type)
