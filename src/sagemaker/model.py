@@ -193,13 +193,13 @@ class Model(object):
         self.sagemaker_session.compile_model(**config)
         job_status = self.sagemaker_session.wait_for_compilation_job(job_name)
         self.model_data = job_status['ModelArtifacts']['S3ModelArtifacts']
-        if not target_instance_family.startswith('ml_'):
-            LOGGER.warning("{} is not supported to deploy via SageMaker,"
-                           "please deploy the model on the device by yourself.".format(target_instance_family))
-        else:
+        if target_instance_family.startswith('ml_'):
             self.image = self._neo_image(self.sagemaker_session.boto_region_name, target_instance_family, framework,
                                          framework_version)
             self._is_compiled_model = True
+        else:
+            LOGGER.warning("The intance type {} is not supported to deploy via SageMaker,"
+                           "please deploy the model on the device by yourself.".format(target_instance_family))
         return self
 
     def deploy(self, initial_instance_count, instance_type, accelerator_type=None, endpoint_name=None,
