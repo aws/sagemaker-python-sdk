@@ -34,6 +34,8 @@ estimator object to create a SageMaker Endpoint:
 
 The code block above deploys a SageMaker Endpoint with one instance of the type 'ml.c5.xlarge'.
 
+As of now, only the Python based TensorFlow serving endpoints support Elastic Inference. For more information, see `Deploying to Python-based Endpoints <https://github.com/aws/sagemaker-python-sdk/blob/master/src/sagemaker/tensorflow/deploying_python.rst#deploying-to-python-based-endpoints>`_.
+
 What happens when deploy is called
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
