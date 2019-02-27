@@ -9,6 +9,7 @@ CHANGELOG
 * feature: ``Predictor``: delete SageMaker model
 * feature: ``Pipeline``: delete SageMaker model
 * bug-fix: Estimator.attach works with training jobs without hyperparameters
+* bug-fix: pass accelerator_type in ``deploy`` for REST API TFS ``Model``
 
 1.18.3.post1
 ============
