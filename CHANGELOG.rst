@@ -13,12 +13,10 @@ CHANGELOG
 * doc-fix: remove duplicate content from mxnet/README.rst
 * doc-fix: move overview content in main README into sphynx project
 
-
 1.18.3.post1
 ============
 
 * doc-fix: fix README for PyPI
-
 
 1.18.3
 ======
