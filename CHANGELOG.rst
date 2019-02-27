@@ -10,8 +10,12 @@ CHANGELOG
 * feature: ``Predictor``: delete SageMaker model
 * feature: ``Pipeline``: delete SageMaker model
 * bug-fix: Estimator.attach works with training jobs without hyperparameters
+<<<<<<< HEAD
 * doc-fix: remove duplicate content from mxnet/README.rst
 * doc-fix: move overview content in main README into sphynx project
+=======
+* bug-fix: pass accelerator_type in ``deploy`` for REST API TFS ``Model``
+>>>>>>> 8b33a305110997e18b1f2f2a37b2d3cdd98b2f91
 
 1.18.3.post1
 ============
