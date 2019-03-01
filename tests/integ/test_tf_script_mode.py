@@ -52,6 +52,7 @@ def test_mnist(sagemaker_session, instance_type):
                            ['graph.pbtxt', 'model.ckpt-0.index', 'model.ckpt-0.meta', 'saved_model.pb'])
 
 
+@pytest.mark.canary_quick
 @pytest.mark.skipif(integ.PYTHON_VERSION != 'py3', reason="Script Mode tests are only configured to run with Python 3")
 def test_mnist_distributed(sagemaker_session, instance_type):
     estimator = TensorFlow(entry_point=SCRIPT,

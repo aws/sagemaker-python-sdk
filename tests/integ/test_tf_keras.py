@@ -23,7 +23,7 @@ from tests.integ.timeout import timeout_and_delete_endpoint_by_name, timeout
 from sagemaker.tensorflow import TensorFlow
 
 
-@pytest.mark.continuous_testing
+@pytest.mark.canary_quick
 @pytest.mark.skipif(tests.integ.PYTHON_VERSION != 'py2',
                     reason="TensorFlow image supports only python 2.")
 @pytest.mark.skipif(tests.integ.test_region() in tests.integ.HOSTING_NO_P2_REGIONS,

@@ -66,7 +66,7 @@ def test_training_with_additional_hyperparameters(sagemaker_session, chainer_ful
         return chainer.latest_training_job.name
 
 
-@pytest.mark.continuous_testing
+@pytest.mark.canary_quick
 @pytest.mark.regional_testing
 def test_attach_deploy(chainer_training_job, sagemaker_session):
     endpoint_name = 'test-chainer-attach-deploy-{}'.format(sagemaker_timestamp())

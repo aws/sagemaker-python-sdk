@@ -13,7 +13,6 @@
 from __future__ import absolute_import
 
 import os
-import pytest
 
 from sagemaker import IPInsights, IPInsightsModel
 from sagemaker.predictor import RealTimePredictor
@@ -25,7 +24,6 @@ from tests.integ.timeout import timeout, timeout_and_delete_endpoint_by_name
 FEATURE_DIM = None
 
 
-@pytest.mark.continuous_testing
 def test_ipinsights(sagemaker_session):
     with timeout(minutes=TRAINING_DEFAULT_TIMEOUT_MINUTES):
         data_path = os.path.join(DATA_DIR, 'ipinsights')
