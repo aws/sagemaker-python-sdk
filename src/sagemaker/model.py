@@ -99,7 +99,9 @@ class Model(object):
         Args:
             instance_type (str): The EC2 instance type that this Model will be used for, this is only
                 used to determine if the image needs GPU support or not.
-            accelerator_type (str): <put docs here>
+            accelerator_type (str): Type of Elastic Inference accelerator to attach to an endpoint for model loading
+                and inference, for example, 'ml.eia1.medium'. If not specified, no Elastic Inference accelerator
+                will be attached to the endpoint.
         """
         container_def = self.prepare_container_def(instance_type, accelerator_type=accelerator_type)
         self.name = self.name or utils.name_from_image(container_def['Image'])
@@ -285,10 +287,6 @@ class Model(object):
             max_payload (int): Maximum size of the payload in a single HTTP request to the container in MB.
             tags (list[dict]): List of tags for labeling a transform job. If none specified, then the tags used for
                 the training job are used for the transform job.
-            role (str): The ``ExecutionRoleArn`` IAM Role ARN for the ``Model``, which is also used during
-                transform jobs. If not specified, the role from the Model will be used.
-            model_server_workers (int): Optional. The number of worker processes used by the inference server.
-                If None, server will use one worker per vCPU.
             volume_kms_key (str): Optional. KMS key ID for encrypting the volume attached to the ML
                 compute instance (default: None).
         """
