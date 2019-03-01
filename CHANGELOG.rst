@@ -13,6 +13,7 @@ CHANGELOG
 * doc-fix: remove duplicate content from mxnet/README.rst
 * doc-fix: move overview content in main README into sphynx project
 * bug-fix: pass accelerator_type in ``deploy`` for REST API TFS ``Model``
+* doc-fix: Improve new developer experience in README
 
 1.18.3.post1
 ============
