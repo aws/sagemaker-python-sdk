@@ -20,5 +20,5 @@ phases:
         tox -e py27,py36 -- tests/unit
 
       # run integration tests
-      # TODO add missing 'do we need integ tests' check
-      - IGNORE_COVERAGE=- tox -e py27,py36 -- -n 24 --boxed tests/integ
+      - if-matching-changes "test/" "tests/" "src/*.py" "docker/*/Dockerfile" &&
+        IGNORE_COVERAGE=- tox -e py27,py36 -- -n 24 --boxed tests/integ
