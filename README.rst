@@ -75,7 +75,7 @@ Supported Python Versions
 SageMaker Python SDK is tested on:
 
 - Python 2.7
-- Python 3.5
+- Python 3.6
 
 AWS Permissions
 ~~~~~~~~~~~~~~~
