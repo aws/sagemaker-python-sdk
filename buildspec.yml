@@ -21,7 +21,7 @@ phases:
 
       # run notebook test
       - |
-        if has-matching-changes "tests/" "src/*.py" "docker/*/Dockerfile"; then
+        if has-matching-changes "src/*.py" "setup.py" "setup.cfg"; then
           echo "running notebook test"
           python setup.py sdist
           aws s3 --region us-west-2 cp ./dist/sagemaker-*.tar.gz s3://sagemaker-python-sdk-pr/
@@ -44,7 +44,7 @@ phases:
 
       # run integration tests
       - |
-        if has-matching-changes "tests/" "src/*.py" "docker/*/Dockerfile"; then
+        if has-matching-changes "tests/" "src/*.py" "setup.py" "setup.cfg"; then
           IGNORE_COVERAGE=- tox -e py27,py36 -- -n 24 --boxed tests/integ
         else
           echo "skipping integration tests"
