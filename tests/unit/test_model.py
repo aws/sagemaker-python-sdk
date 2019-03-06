@@ -366,3 +366,12 @@ def test_compile_model_for_edge_device(sagemaker_session, tmpdir):
     model = DummyFrameworkModel(sagemaker_session, source_dir=str(tmpdir))
     model.compile(target_instance_family='deeplens', input_shape={'data': [1, 3, 1024, 1024]},
                   output_path='s3://output', role='role', framework='tensorflow', job_name="compile-model")
+    assert model._is_compiled_model is False
+
+def test_compile_model_for_cloud(sagemaker_session, tmpdir):
+    sagemaker_session.wait_for_compilation_job = Mock(
+        return_value=DESCRIBE_COMPILATION_JOB_RESPONSE)
+    model = DummyFrameworkModel(sagemaker_session, source_dir=str(tmpdir))
+    model.compile(target_instance_family='ml_c4', input_shape={'data': [1, 3, 1024, 1024]},
+                  output_path='s3://output', role='role', framework='tensorflow', job_name="compile-model")
+    assert model._is_compiled_model is True
