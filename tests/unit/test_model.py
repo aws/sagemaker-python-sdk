@@ -88,6 +88,13 @@ DESCRIBE_MODEL_PACKAGE_RESPONSE = {
     'CertifyForMarketplace': False
 }
 
+DESCRIBE_COMPILATION_JOB_RESPONSE = {
+    'CompilationJobStatus': "Completed",
+    'ModelArtifacts': {
+        'S3ModelArtifacts': 's3://output-path/model.tar.gz'
+    }
+}
+
 
 class DummyFrameworkModel(FrameworkModel):
 
@@ -351,3 +358,11 @@ def test_delete_non_deployed_model(sagemaker_session):
     model = DummyFrameworkModel(sagemaker_session)
     with pytest.raises(ValueError, match='The SageMaker model must be created first before attempting to delete.'):
         model.delete_model()
+
+
+def test_compile_model_for_edge_device(sagemaker_session, tmpdir):
+    sagemaker_session.wait_for_compilation_job = Mock(
+        return_value=DESCRIBE_COMPILATION_JOB_RESPONSE)
+    model = DummyFrameworkModel(sagemaker_session, source_dir=str(tmpdir))
+    model.compile(target_instance_family='deeplens', input_shape={'data': [1, 3, 1024, 1024]},
+                  output_path='s3://output', role='role', framework='tensorflow', job_name="compile-model")
