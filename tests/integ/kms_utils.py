@@ -53,12 +53,7 @@ KEY_POLICY = '''
         "kms:ListGrants",
         "kms:RevokeGrant"
       ],
-      "Resource": "*",
-      "Condition": {{
-        "Bool": {{
-          "kms:GrantIsForAWSResource": "true"
-        }}
-      }}
+      "Resource": "*"
     }}
   ]
 }}
