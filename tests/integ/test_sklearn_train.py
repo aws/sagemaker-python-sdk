@@ -54,7 +54,7 @@ def test_training_with_additional_hyperparameters(sagemaker_session, sklearn_ful
         return sklearn.latest_training_job.name
 
 
-@pytest.mark.continuous_testing
+@pytest.mark.canary_quick
 @pytest.mark.regional_testing
 @pytest.mark.skipif(PYTHON_VERSION != 'py3', reason="Scikit-learn image supports only python 3.")
 def test_attach_deploy(sklearn_training_job, sagemaker_session):

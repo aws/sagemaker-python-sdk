@@ -39,7 +39,7 @@ def fixture_training_job(sagemaker_session, pytorch_full_version):
         return pytorch.latest_training_job.name
 
 
-@pytest.mark.continuous_testing
+@pytest.mark.canary_quick
 @pytest.mark.regional_testing
 def test_sync_fit_deploy(pytorch_training_job, sagemaker_session):
     # TODO: add tests against local mode when it's ready to be used

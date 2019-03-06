@@ -28,7 +28,7 @@ from tests.integ.timeout import timeout, timeout_and_delete_model_with_transform
 from tests.integ.vpc_test_utils import get_or_create_vpc_resources
 
 
-@pytest.mark.continuous_testing
+@pytest.mark.canary_quick
 def test_transform_mxnet(sagemaker_session, mxnet_full_version):
     data_path = os.path.join(DATA_DIR, 'mxnet_mnist')
     script_path = os.path.join(data_path, 'mnist.py')
@@ -65,7 +65,7 @@ def test_transform_mxnet(sagemaker_session, mxnet_full_version):
     assert kms_key_arn == job_desc['TransformResources']['VolumeKmsKeyId']
 
 
-@pytest.mark.continuous_testing
+@pytest.mark.canary_quick
 def test_attach_transform_kmeans(sagemaker_session):
     data_path = os.path.join(DATA_DIR, 'one_p_mnist')
     pickle_args = {} if sys.version_info.major == 2 else {'encoding': 'latin1'}
