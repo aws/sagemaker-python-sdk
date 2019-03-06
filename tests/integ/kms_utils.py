@@ -12,7 +12,7 @@
 # language governing permissions and limitations under the License.
 from __future__ import absolute_import
 
-KEY_ALIAS = "SageMakerKmsKey"
+KEY_ALIAS = "SageMakerTestKmsKey"
 KEY_POLICY = '''
 {{
   "Version": "2012-10-17",
