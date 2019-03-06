@@ -13,7 +13,6 @@
 from __future__ import absolute_import
 
 import os
-import pytest
 
 from sagemaker.predictor import RealTimePredictor
 from sagemaker import Object2Vec, Object2VecModel
@@ -26,7 +25,6 @@ from tests.integ.record_set import prepare_record_set_from_local_files
 FEATURE_NUM = None
 
 
-@pytest.mark.continuous_testing
 def test_object2vec(sagemaker_session):
     with timeout(minutes=TRAINING_DEFAULT_TIMEOUT_MINUTES):
         data_path = os.path.join(DATA_DIR, 'object2vec')

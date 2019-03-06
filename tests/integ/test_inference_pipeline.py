@@ -28,7 +28,7 @@ from sagemaker.sparkml.model import SparkMLModel
 from sagemaker.utils import sagemaker_timestamp
 
 
-@pytest.mark.continuous_testing
+@pytest.mark.canary_quick
 @pytest.mark.regional_testing
 def test_inference_pipeline_model_deploy(sagemaker_session):
     sparkml_data_path = os.path.join(DATA_DIR, 'sparkml_model')
