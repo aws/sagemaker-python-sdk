@@ -27,7 +27,7 @@ from tests.integ import DATA_DIR, TRAINING_DEFAULT_TIMEOUT_MINUTES
 from tests.integ.timeout import timeout, timeout_and_delete_endpoint_by_name
 
 
-@pytest.mark.continuous_testing
+@pytest.mark.canary_quick
 def test_linear_learner(sagemaker_session):
     with timeout(minutes=TRAINING_DEFAULT_TIMEOUT_MINUTES):
         data_path = os.path.join(DATA_DIR, 'one_p_mnist', 'mnist.pkl.gz')

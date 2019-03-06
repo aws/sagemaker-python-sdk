@@ -52,7 +52,7 @@ def tf_training_job(sagemaker_session, tf_full_version):
         return estimator.latest_training_job.name
 
 
-@pytest.mark.continuous_testing
+@pytest.mark.canary_quick
 @pytest.mark.regional_testing
 @pytest.mark.skipif(PYTHON_VERSION != 'py2', reason="TensorFlow image supports only python 2.")
 def test_deploy_model(sagemaker_session, tf_training_job):
@@ -78,7 +78,7 @@ def test_deploy_model(sagemaker_session, tf_training_job):
         assert dict_result == list_result
 
 
-@pytest.mark.continuous_testing
+@pytest.mark.canary_quick
 @pytest.mark.regional_testing
 @pytest.mark.skipif(tests.integ.test_region() not in tests.integ.EI_SUPPORTED_REGIONS,
                     reason="EI isn't supported in that specific region.")

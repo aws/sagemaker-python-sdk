@@ -132,7 +132,7 @@ def _tune(kmeans_estimator, kmeans_train_set, tuner=None,
     return tuner
 
 
-@pytest.mark.continuous_testing
+@pytest.mark.canary_quick
 def test_tuning_kmeans(sagemaker_session,
                        kmeans_train_set,
                        kmeans_estimator,
@@ -141,7 +141,6 @@ def test_tuning_kmeans(sagemaker_session,
                      hyperparameter_ranges=hyperparameter_ranges)
 
 
-@pytest.mark.continuous_testing
 def test_tuning_kmeans_identical_dataset_algorithm_tuner_raw(sagemaker_session,
                                                              kmeans_train_set,
                                                              kmeans_estimator,
@@ -191,7 +190,6 @@ def test_tuning_kmeans_identical_dataset_algorithm_tuner(sagemaker_session,
     assert child_warm_start_config_response.parents == child_tuner.warm_start_config.parents
 
 
-@pytest.mark.continuous_testing
 def test_create_tuning_kmeans_identical_dataset_algorithm_tuner(sagemaker_session,
                                                                 kmeans_train_set,
                                                                 kmeans_estimator,
@@ -249,7 +247,6 @@ def test_transfer_learning_tuner(sagemaker_session,
     assert child_warm_start_config_response.parents == child_tuner.warm_start_config.parents
 
 
-@pytest.mark.continuous_testing
 def test_create_transfer_learning_tuner(sagemaker_session,
                                         kmeans_train_set,
                                         kmeans_estimator,
@@ -284,7 +281,6 @@ def test_create_transfer_learning_tuner(sagemaker_session,
     assert child_warm_start_config_response.parents == child_tuner.warm_start_config.parents
 
 
-@pytest.mark.continuous_testing
 def test_tuning_kmeans_identical_dataset_algorithm_tuner_from_non_terminal_parent(sagemaker_session,
                                                                                   kmeans_train_set,
                                                                                   kmeans_estimator,
@@ -363,7 +359,6 @@ def test_tuning_lda(sagemaker_session):
             assert record.label['topic_mixture'] is not None
 
 
-@pytest.mark.continuous_testing
 def test_stop_tuning_job(sagemaker_session):
     feature_num = 14
     train_input = np.random.rand(1000, feature_num)
@@ -404,7 +399,7 @@ def test_stop_tuning_job(sagemaker_session):
     assert desc['HyperParameterTuningJobStatus'] == 'Stopping'
 
 
-@pytest.mark.continuous_testing
+@pytest.mark.canary_quick
 def test_tuning_mxnet(sagemaker_session, mxnet_full_version):
     with timeout(minutes=TUNING_DEFAULT_TIMEOUT_MINUTES):
         script_path = os.path.join(DATA_DIR, 'mxnet_mnist', 'mnist.py')
@@ -446,7 +441,7 @@ def test_tuning_mxnet(sagemaker_session, mxnet_full_version):
         predictor.predict(data)
 
 
-@pytest.mark.continuous_testing
+@pytest.mark.canary_quick
 @pytest.mark.skipif(PYTHON_VERSION != 'py2', reason="TensorFlow image supports only python 2.")
 def test_tuning_tf(sagemaker_session):
     with timeout(minutes=TUNING_DEFAULT_TIMEOUT_MINUTES):
@@ -538,7 +533,7 @@ def test_tuning_tf_vpc_multi(sagemaker_session):
         tuner.wait()
 
 
-@pytest.mark.continuous_testing
+@pytest.mark.canary_quick
 def test_tuning_chainer(sagemaker_session):
     with timeout(minutes=TUNING_DEFAULT_TIMEOUT_MINUTES):
         script_path = os.path.join(DATA_DIR, 'chainer_mnist', 'mnist.py')
@@ -594,7 +589,7 @@ def test_tuning_chainer(sagemaker_session):
         assert len(output) == batch_size
 
 
-@pytest.mark.continuous_testing
+@pytest.mark.canary_quick
 def test_attach_tuning_pytorch(sagemaker_session):
     mnist_dir = os.path.join(DATA_DIR, 'pytorch_mnist')
     mnist_script = os.path.join(mnist_dir, 'mnist.py')
@@ -643,7 +638,7 @@ def test_attach_tuning_pytorch(sagemaker_session):
         assert output.shape == (batch_size, 10)
 
 
-@pytest.mark.continuous_testing
+@pytest.mark.canary_quick
 def test_tuning_byo_estimator(sagemaker_session):
     """Use Factorization Machines algorithm as an example here.
 

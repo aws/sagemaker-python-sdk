@@ -44,7 +44,7 @@ def mxnet_training_job(sagemaker_session, mxnet_full_version):
         return mx.latest_training_job.name
 
 
-@pytest.mark.continuous_testing
+@pytest.mark.canary_quick
 @pytest.mark.regional_testing
 @pytest.mark.skip(reason="This should be enabled along with the Boto SDK release for Neo API changes")
 def test_attach_deploy(mxnet_training_job, sagemaker_session):

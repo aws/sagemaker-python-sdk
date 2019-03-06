@@ -14,6 +14,8 @@ CHANGELOG
 * doc-fix: move overview content in main README into sphynx project
 * bug-fix: pass accelerator_type in ``deploy`` for REST API TFS ``Model``
 * feature: ``PipelineModel``: Create a Transformer from a PipelineModel
+* doc-fix: move content from tf/README.rst into sphynx project
+* doc-fix: Improve new developer experience in README
 
 1.18.3.post1
 ============

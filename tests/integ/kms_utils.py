@@ -22,7 +22,7 @@ KEY_POLICY = '''
       "Sid": "Enable IAM User Permissions",
       "Effect": "Allow",
       "Principal": {{
-        "AWS": "arn:aws:iam::{account_id}:root"
+        "AWS": "{account_id}"
       }},
       "Action": "kms:*",
       "Resource": "*"
@@ -31,7 +31,7 @@ KEY_POLICY = '''
       "Sid": "Allow use of the key",
       "Effect": "Allow",
       "Principal": {{
-        "AWS": "arn:aws:iam::{account_id}:role/SageMakerRole"
+        "AWS": "{account_id}"
       }},
       "Action": [
         "kms:Encrypt",
@@ -46,7 +46,7 @@ KEY_POLICY = '''
       "Sid": "Allow attachment of persistent resources",
       "Effect": "Allow",
       "Principal": {{
-        "AWS": "arn:aws:iam::{account_id}:role/SageMakerRole"
+        "AWS": "{account_id}"
       }},
       "Action": [
         "kms:CreateGrant",
