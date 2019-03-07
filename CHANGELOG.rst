@@ -16,6 +16,7 @@ CHANGELOG
 * doc-fix: move content from tf/README.rst into sphynx project
 * doc-fix: move content from sklearn/README.rst into sphynx project
 * doc-fix: Improve new developer experience in README
+* feature: Add support for Coach 0.11.1 for Tensorflow
 
 1.18.3.post1
 ============
