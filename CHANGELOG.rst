@@ -3,8 +3,8 @@ CHANGELOG
 =========
 
 
-1.18.4.dev
-==========
+1.18.4
+======
 
 * doc-fix: Remove incorrect parameter for EI TFS Python README
 * feature: ``Predictor``: delete SageMaker model
