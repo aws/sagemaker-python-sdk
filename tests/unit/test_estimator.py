@@ -451,6 +451,20 @@ def test_attach_framework(sagemaker_session):
     assert framework_estimator.encrypt_inter_container_traffic is False
 
 
+def test_attach_without_hyperparameters(sagemaker_session):
+    returned_job_description = RETURNED_JOB_DESCRIPTION.copy()
+    del returned_job_description['HyperParameters']
+
+    mock_describe_training_job = Mock(name='describe_training_job',
+                                      return_value=returned_job_description)
+    sagemaker_session.sagemaker_client.describe_training_job = mock_describe_training_job
+
+    estimator = Estimator.attach(training_job_name='job',
+                                 sagemaker_session=sagemaker_session)
+
+    assert estimator.hyperparameters() == {}
+
+
 def test_attach_framework_with_tuning(sagemaker_session):
     returned_job_description = RETURNED_JOB_DESCRIPTION.copy()
     returned_job_description['HyperParameters']['_tuning_objective_metric'] = 'Validation-accuracy'

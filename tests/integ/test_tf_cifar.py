@@ -34,7 +34,7 @@ class PickleSerializer(object):
         return pickle.dumps(data, protocol=2)
 
 
-@pytest.mark.continuous_testing
+@pytest.mark.canary_quick
 @pytest.mark.skipif(tests.integ.PYTHON_VERSION != 'py2',
                     reason="TensorFlow image supports only python 2.")
 @pytest.mark.skipif(tests.integ.test_region() in tests.integ.HOSTING_NO_P2_REGIONS,

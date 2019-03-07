@@ -17,6 +17,7 @@ import os
 import time
 
 import pandas
+import pytest
 
 import sagemaker
 from sagemaker import AlgorithmEstimator, ModelPackage
@@ -42,6 +43,7 @@ MODEL_PACKAGE_ARN = 'arn:aws:sagemaker:%s:594846645681:model-package/scikit-iris
                     '154230595-8f00905c1f927a512b73ea29dd09ae30'
 
 
+@pytest.mark.canary_quick
 def test_marketplace_estimator(sagemaker_session):
     with timeout(minutes=15):
         data_path = os.path.join(DATA_DIR, 'marketplace', 'training')
@@ -112,6 +114,7 @@ def test_marketplace_attach(sagemaker_session):
         print(predictor.predict(test_x.values).decode('utf-8'))
 
 
+@pytest.mark.canary_quick
 def test_marketplace_model(sagemaker_session):
 
     def predict_wrapper(endpoint, session):

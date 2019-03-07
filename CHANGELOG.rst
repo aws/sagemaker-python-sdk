@@ -2,12 +2,21 @@
 CHANGELOG
 =========
 
-1.18.4.dev
-==========
+
+1.18.4
+======
 
 * doc-fix: Remove incorrect parameter for EI TFS Python README
 * feature: ``Predictor``: delete SageMaker model
 * feature: ``Pipeline``: delete SageMaker model
+* bug-fix: Estimator.attach works with training jobs without hyperparameters
+* doc-fix: remove duplicate content from mxnet/README.rst
+* doc-fix: move overview content in main README into sphynx project
+* bug-fix: pass accelerator_type in ``deploy`` for REST API TFS ``Model``
+* doc-fix: move content from tf/README.rst into sphynx project
+* doc-fix: move content from sklearn/README.rst into sphynx project
+* doc-fix: Improve new developer experience in README
+* feature: Add support for Coach 0.11.1 for Tensorflow
 
 1.18.3.post1
 ============

@@ -25,10 +25,10 @@ from tests.integ.timeout import timeout, timeout_and_delete_endpoint_by_name
 CPU_INSTANCE = 'ml.m4.xlarge'
 
 
-@pytest.mark.continuous_testing
+@pytest.mark.canary_quick
 @pytest.mark.skipif(PYTHON_VERSION != 'py3', reason="RL images supports only Python 3.")
-def test_coach_mxnet(sagemaker_session, rl_coach_full_version):
-    estimator = _test_coach(sagemaker_session, RLFramework.MXNET, rl_coach_full_version)
+def test_coach_mxnet(sagemaker_session, rl_coach_mxnet_full_version):
+    estimator = _test_coach(sagemaker_session, RLFramework.MXNET, rl_coach_mxnet_full_version)
 
     with timeout(minutes=15):
         estimator.fit(wait='False')
@@ -50,8 +50,8 @@ def test_coach_mxnet(sagemaker_session, rl_coach_full_version):
 
 
 @pytest.mark.skipif(PYTHON_VERSION != 'py3', reason="RL images supports only Python 3.")
-def test_coach_tf(sagemaker_session, rl_coach_full_version):
-    estimator = _test_coach(sagemaker_session, RLFramework.TENSORFLOW, rl_coach_full_version)
+def test_coach_tf(sagemaker_session, rl_coach_tf_full_version):
+    estimator = _test_coach(sagemaker_session, RLFramework.TENSORFLOW, rl_coach_tf_full_version)
 
     with timeout(minutes=15):
         estimator.fit()
@@ -89,7 +89,7 @@ def _test_coach(sagemaker_session, rl_framework, rl_coach_version):
                        })
 
 
-@pytest.mark.continuous_testing
+@pytest.mark.canary_quick
 @pytest.mark.skipif(PYTHON_VERSION != 'py3', reason="RL images supports only Python 3.")
 def test_ray_tf(sagemaker_session, rl_ray_full_version):
     source_dir = os.path.join(DATA_DIR, 'ray_cartpole')

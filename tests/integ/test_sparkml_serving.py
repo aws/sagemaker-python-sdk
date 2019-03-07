@@ -23,7 +23,7 @@ from tests.integ import DATA_DIR
 from tests.integ.timeout import timeout_and_delete_endpoint_by_name
 
 
-@pytest.mark.continuous_testing
+@pytest.mark.canary_quick
 @pytest.mark.regional_testing
 def test_sparkml_model_deploy(sagemaker_session):
     # Uploads an MLeap serialized MLeap model to S3 and use that to deploy a SparkML model to perform inference

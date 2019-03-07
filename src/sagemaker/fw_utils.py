@@ -106,7 +106,7 @@ def _accelerator_type_valid_for_framework(framework, accelerator_type=None, opti
 
     if framework not in VALID_EIA_FRAMEWORKS:
         raise ValueError('{} is not supported with Amazon Elastic Inference. Currently only '
-                         'TensorFlow and MXNet are supported for SageMaker.'.format(framework))
+                         'Python-based TensorFlow and MXNet are supported.'.format(framework))
 
     if optimized_families:
         raise ValueError('Neo does not support Amazon Elastic Inference.')
