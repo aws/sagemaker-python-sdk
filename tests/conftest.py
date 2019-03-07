@@ -39,8 +39,10 @@ def pytest_addoption(parser):
     parser.addoption('--mxnet-full-version', action='store', default=MXNet.LATEST_VERSION)
     parser.addoption('--ei-mxnet-full-version', action='store', default=MXNet.LATEST_VERSION)
     parser.addoption('--pytorch-full-version', action='store', default=PyTorch.LATEST_VERSION)
-    parser.addoption('--rl-coach-full-version', action='store',
-                     default=RLEstimator.COACH_LATEST_VERSION)
+    parser.addoption('--rl-coach-mxnet-full-version', action='store',
+                     default=RLEstimator.COACH_LATEST_VERSION_MXNET)
+    parser.addoption('--rl-coach-tf-full-version', action='store',
+                     default=RLEstimator.COACH_LATEST_VERSION_TF)
     parser.addoption('--rl-ray-full-version', action='store',
                      default=RLEstimator.RAY_LATEST_VERSION)
     parser.addoption('--sklearn-full-version', action='store', default=SKLEARN_VERSION)
@@ -128,7 +130,7 @@ def tf_version(request):
     return request.param
 
 
-@pytest.fixture(scope='module', params=['0.10.1', '0.10.1', '0.11', '0.11.0'])
+@pytest.fixture(scope='module', params=['0.10.1', '0.10.1', '0.11', '0.11.0', '0.11.1'])
 def rl_coach_tf_version(request):
     return request.param
 
@@ -164,8 +166,13 @@ def pytorch_full_version(request):
 
 
 @pytest.fixture(scope='module')
-def rl_coach_full_version(request):
-    return request.config.getoption('--rl-coach-full-version')
+def rl_coach_mxnet_full_version(request):
+    return request.config.getoption('--rl-coach-mxnet-full-version')
+
+
+@pytest.fixture(scope='module')
+def rl_coach_tf_full_version(request):
+    return request.config.getoption('--rl-coach-tf-full-version')
 
 
 @pytest.fixture(scope='module')
