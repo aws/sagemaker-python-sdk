@@ -304,9 +304,13 @@ def test_check_output():
 @patch('sagemaker.local.local_session.LocalSession', Mock())
 @patch('sagemaker.local.image._stream_output', Mock())
 @patch('sagemaker.local.image._SageMakerContainer._cleanup', Mock())
-@patch('sagemaker.local.data.get_data_source_instance', Mock())
+@patch('sagemaker.local.data.get_data_source_instance')
 @patch('subprocess.Popen')
-def test_train(popen, tmpdir, sagemaker_session):
+def test_train(popen, get_data_source_instance, tmpdir, sagemaker_session):
+    data_source = Mock()
+    data_source.get_root_dir.return_value = 'foo'
+    get_data_source_instance.return_value = data_source
+
     directories = [str(tmpdir.mkdir('container-root')), str(tmpdir.mkdir('data'))]
     with patch('sagemaker.local.image._SageMakerContainer._create_tmp_folder',
                side_effect=directories):
@@ -342,8 +346,12 @@ def test_train(popen, tmpdir, sagemaker_session):
 @patch('sagemaker.local.local_session.LocalSession', Mock())
 @patch('sagemaker.local.image._stream_output', Mock())
 @patch('sagemaker.local.image._SageMakerContainer._cleanup', Mock())
-@patch('sagemaker.local.data.get_data_source_instance', Mock())
-def test_train_with_hyperparameters_without_job_name(tmpdir, sagemaker_session):
+@patch('sagemaker.local.data.get_data_source_instance')
+def test_train_with_hyperparameters_without_job_name(get_data_source_instance, tmpdir, sagemaker_session):
+    data_source = Mock()
+    data_source.get_root_dir.return_value = 'foo'
+    get_data_source_instance.return_value = data_source
+
     directories = [str(tmpdir.mkdir('container-root')), str(tmpdir.mkdir('data'))]
     with patch('sagemaker.local.image._SageMakerContainer._create_tmp_folder',
                side_effect=directories):
@@ -364,11 +372,14 @@ def test_train_with_hyperparameters_without_job_name(tmpdir, sagemaker_session):
 @patch('sagemaker.local.local_session.LocalSession', Mock())
 @patch('sagemaker.local.image._stream_output', side_effect=RuntimeError('this is expected'))
 @patch('sagemaker.local.image._SageMakerContainer._cleanup', Mock())
-@patch('sagemaker.local.data.get_data_source_instance', Mock())
+@patch('sagemaker.local.data.get_data_source_instance')
 @patch('subprocess.Popen', Mock())
-def test_train_error(_stream_output, tmpdir, sagemaker_session):
-    directories = [str(tmpdir.mkdir('container-root')), str(tmpdir.mkdir('data'))]
+def test_train_error(get_data_source_instance, _stream_output, tmpdir, sagemaker_session):
+    data_source = Mock()
+    data_source.get_root_dir.return_value = 'foo'
+    get_data_source_instance.return_value = data_source
 
+    directories = [str(tmpdir.mkdir('container-root')), str(tmpdir.mkdir('data'))]
     with patch('sagemaker.local.image._SageMakerContainer._create_tmp_folder', side_effect=directories):
         instance_count = 2
         image = 'my-image'
@@ -384,9 +395,13 @@ def test_train_error(_stream_output, tmpdir, sagemaker_session):
 @patch('sagemaker.local.local_session.LocalSession', Mock())
 @patch('sagemaker.local.image._stream_output', Mock())
 @patch('sagemaker.local.image._SageMakerContainer._cleanup', Mock())
-@patch('sagemaker.local.data.get_data_source_instance', Mock())
+@patch('sagemaker.local.data.get_data_source_instance')
 @patch('subprocess.Popen', Mock())
-def test_train_local_code(tmpdir, sagemaker_session):
+def test_train_local_code(get_data_source_instance, tmpdir, sagemaker_session):
+    data_source = Mock()
+    data_source.get_root_dir.return_value = 'foo'
+    get_data_source_instance.return_value = data_source
+
     directories = [str(tmpdir.mkdir('container-root')), str(tmpdir.mkdir('data'))]
     with patch('sagemaker.local.image._SageMakerContainer._create_tmp_folder',
                side_effect=directories):
@@ -422,9 +437,13 @@ def test_train_local_code(tmpdir, sagemaker_session):
 @patch('sagemaker.local.local_session.LocalSession', Mock())
 @patch('sagemaker.local.image._stream_output', Mock())
 @patch('sagemaker.local.image._SageMakerContainer._cleanup', Mock())
-@patch('sagemaker.local.data.get_data_source_instance', Mock())
+@patch('sagemaker.local.data.get_data_source_instance')
 @patch('subprocess.Popen', Mock())
-def test_train_local_intermediate_output(tmpdir, sagemaker_session):
+def test_train_local_intermediate_output(get_data_source_instance, tmpdir, sagemaker_session):
+    data_source = Mock()
+    data_source.get_root_dir.return_value = 'foo'
+    get_data_source_instance.return_value = data_source
+
     directories = [str(tmpdir.mkdir('container-root')), str(tmpdir.mkdir('data'))]
     with patch('sagemaker.local.image._SageMakerContainer._create_tmp_folder',
                side_effect=directories):
