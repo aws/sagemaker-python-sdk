@@ -33,7 +33,7 @@ if sys.version_info < (3, 4):
     required_packages.append('enum34>=1.1.6')
 
 setup(name="sagemaker",
-      version='1.18.3.post1',
+      version='1.18.4',
       description="Open source library for training and deploying models on Amazon SageMaker.",
       packages=find_packages('src'),
       package_dir={'': 'src'},
@@ -50,7 +50,7 @@ setup(name="sagemaker",
           "License :: OSI Approved :: Apache Software License",
           "Programming Language :: Python",
           "Programming Language :: Python :: 2.7",
-          "Programming Language :: Python :: 3.5",
+          "Programming Language :: Python :: 3.6",
       ],
 
       install_requires=required_packages,

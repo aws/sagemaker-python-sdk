@@ -40,8 +40,11 @@ TOOLKIT_FRAMEWORK_VERSION_MAP = {
             'tensorflow': '1.11',
             'mxnet': '1.3'
         },
+        '0.11.1': {
+            'tensorflow': '1.12',
+        },
         '0.11': {
-            'tensorflow': '1.11',
+            'tensorflow': '1.12',
             'mxnet': '1.3'
         }
     },
@@ -69,7 +72,8 @@ class RLFramework(enum.Enum):
 class RLEstimator(Framework):
     """Handle end-to-end training and deployment of custom RLEstimator code."""
 
-    COACH_LATEST_VERSION = '0.11.0'
+    COACH_LATEST_VERSION_TF = '0.11.1'
+    COACH_LATEST_VERSION_MXNET = '0.11.0'
     RAY_LATEST_VERSION = '0.5.3'
 
     def __init__(self, entry_point, toolkit=None, toolkit_version=None, framework=None,

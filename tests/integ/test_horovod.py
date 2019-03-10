@@ -27,6 +27,7 @@ from tests.integ import timeout
 horovod_dir = os.path.join(os.path.dirname(__file__), '..', 'data', 'horovod')
 
 
+@pytest.mark.canary_quick
 @pytest.mark.parametrize('instance_type', ['ml.c5.xlarge', 'ml.p3.2xlarge'])
 def test_horovod(sagemaker_session, instance_type, tmpdir):
 

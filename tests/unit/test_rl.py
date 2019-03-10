@@ -76,7 +76,7 @@ def _get_full_gpu_image_uri(toolkit, toolkit_version, framework):
 
 
 def _rl_estimator(sagemaker_session, toolkit=RLToolkit.COACH,
-                  toolkit_version=RLEstimator.COACH_LATEST_VERSION, framework=RLFramework.MXNET,
+                  toolkit_version=RLEstimator.COACH_LATEST_VERSION_MXNET, framework=RLFramework.MXNET,
                   train_instance_type=None, base_job_name=None, **kwargs):
     return RLEstimator(entry_point=SCRIPT_PATH,
                        toolkit=toolkit,
@@ -466,7 +466,7 @@ def test_wrong_framework_format(sagemaker_session):
 def test_wrong_toolkit_format(sagemaker_session):
     with pytest.raises(ValueError) as e:
         RLEstimator(toolkit='coach', framework=RLFramework.TENSORFLOW,
-                    toolkit_version=RLEstimator.COACH_LATEST_VERSION,
+                    toolkit_version=RLEstimator.COACH_LATEST_VERSION_TF,
                     entry_point=SCRIPT_PATH, role=ROLE, sagemaker_session=sagemaker_session,
                     train_instance_count=INSTANCE_COUNT, train_instance_type=INSTANCE_TYPE,
                     framework_version=None)
