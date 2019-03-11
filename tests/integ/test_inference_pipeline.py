@@ -125,7 +125,7 @@ def test_inference_pipeline_model_deploy(sagemaker_session):
 
         with open(VALID_DATA_PATH, 'r') as f:
             valid_data = f.read()
-            assert predictor.predict(valid_data) == "0.714013934135"
+            assert predictor.predict(valid_data) == '0.714013934135'
 
         with open(INVALID_DATA_PATH, 'r') as f:
             invalid_data = f.read()
