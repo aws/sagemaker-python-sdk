@@ -2,6 +2,10 @@
 CHANGELOG
 =========
 
+1.18.5dev
+=========
+
+* doc-fix: Remove duplicate content from main README.rst, /tensorflow/README.rst, and /sklearn/README.rst and add links to readthedocs content
 
 1.18.4
 ======
