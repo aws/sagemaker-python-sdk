@@ -13,12 +13,15 @@
 from __future__ import absolute_import
 
 import os
+import time
+
 import pytest
 
 import boto3
 from sagemaker.tensorflow import TensorFlow
 from six.moves.urllib.parse import urlparse
 import tests.integ as integ
+from tests.integ import kms_utils
 import tests.integ.timeout as timeout
 
 RESOURCE_PATH = os.path.join(os.path.dirname(__file__), '..', 'data', 'tensorflow_mnist')
@@ -50,6 +53,33 @@ def test_mnist(sagemaker_session, instance_type):
         estimator.fit(inputs)
     _assert_s3_files_exist(estimator.model_dir,
                            ['graph.pbtxt', 'model.ckpt-0.index', 'model.ckpt-0.meta', 'saved_model.pb'])
+
+
+def test_server_side_encryption(sagemaker_session):
+
+    bucket_with_kms, kms_key = kms_utils.get_or_create_bucket_with_encryption(sagemaker_session.boto_session)
+
+    output_path = os.path.join(bucket_with_kms, 'test-server-side-encryption', time.strftime('%y%m%d-%H%M'))
+
+    estimator = TensorFlow(entry_point=SCRIPT,
+                           role='SageMakerRole',
+                           train_instance_count=1,
+                           train_instance_type='ml.c5.xlarge',
+                           sagemaker_session=sagemaker_session,
+                           py_version='py3',
+                           framework_version='1.11',
+                           base_job_name='test-server-side-encryption',
+                           code_location=output_path,
+                           output_path=output_path,
+                           model_dir='/opt/ml/model',
+                           output_kms_key=kms_key)
+
+    inputs = estimator.sagemaker_session.upload_data(
+        path=os.path.join(RESOURCE_PATH, 'data'),
+        key_prefix='scriptmode/mnist')
+
+    with timeout.timeout(minutes=integ.TRAINING_DEFAULT_TIMEOUT_MINUTES):
+        estimator.fit(inputs)
 
 
 @pytest.mark.canary_quick

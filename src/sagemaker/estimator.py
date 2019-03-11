@@ -863,18 +863,23 @@ class Framework(EstimatorBase):
 
         """
         if self.code_location is None:
-            code_bucket = self.sagemaker_session.default_bucket()
+            code_bucket, _ = parse_s3_url(self.output_path)
             code_s3_prefix = '{}/source'.format(self._current_job_name)
         else:
             code_bucket, key_prefix = parse_s3_url(self.code_location)
             code_s3_prefix = '/'.join(filter(None, [key_prefix, self._current_job_name, 'source']))
+
+        output_bucket, _ = parse_s3_url(self.output_path)
+
+        kms_key = self.output_kms_key if code_bucket == output_bucket else None
 
         return tar_and_upload_dir(session=self.sagemaker_session.boto_session,
                                   bucket=code_bucket,
                                   s3_key_prefix=code_s3_prefix,
                                   script=self.entry_point,
                                   directory=self.source_dir,
-                                  dependencies=self.dependencies)
+                                  dependencies=self.dependencies,
+                                  kms_key=kms_key)
 
     def _model_source_dir(self):
         """Get the appropriate value to pass as source_dir to model constructor on deploying

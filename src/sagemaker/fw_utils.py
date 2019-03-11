@@ -136,7 +136,8 @@ def validate_source_dir(script, directory):
     return True
 
 
-def tar_and_upload_dir(session, bucket, s3_key_prefix, script, directory, dependencies=None):
+def tar_and_upload_dir(session, bucket, s3_key_prefix, script,
+                       directory=None, dependencies=None, kms_key=None):
     """Package source files and upload a compress tar file to S3. The S3 location will be
     ``s3://<bucket>/s3_key_prefix/sourcedir.tar.gz``.
 
@@ -159,6 +160,7 @@ def tar_and_upload_dir(session, bucket, s3_key_prefix, script, directory, depend
         dependencies (List[str]): Optional. A list of paths to directories (absolute or relative)
                                 containing additional libraries that will be copied into
                                 /opt/ml/lib
+        kms_key (str):  Optional. KMS key ID used to upload objects to the bucket (default: None).
 
     Returns:
         sagemaker.fw_utils.UserCode: An object with the S3 bucket and key (S3 prefix) and
@@ -177,7 +179,12 @@ def tar_and_upload_dir(session, bucket, s3_key_prefix, script, directory, depend
         tar_file = sagemaker.utils.create_tar_file(source_files,
                                                    os.path.join(tmp, _TAR_SOURCE_FILENAME))
 
-        session.resource('s3').Object(bucket, key).upload_file(tar_file)
+        if kms_key:
+            extra_args = {'ServerSideEncryption': 'aws:kms', 'SSEKMSKeyId': kms_key}
+        else:
+            extra_args = None
+
+        session.resource('s3').Object(bucket, key).upload_file(tar_file, ExtraArgs=extra_args)
     finally:
         shutil.rmtree(tmp)
 

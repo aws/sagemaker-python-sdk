@@ -2,6 +2,10 @@
 CHANGELOG
 =========
 
+1.18.5.dev
+==========
+
+* bug-fix: pass kms id as parameter for uploading code with Server side encryption
 
 1.18.4
 ======

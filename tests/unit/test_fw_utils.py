@@ -165,6 +165,23 @@ def test_tar_and_upload_dir_s3(sagemaker_session):
     assert result == fw_utils.UploadedCode('s3://m', 'mnist.py')
 
 
+@patch('sagemaker.utils')
+def test_tar_and_upload_dir_s3_with_kms(utils, sagemaker_session):
+
+    result = fw_utils.tar_and_upload_dir(sagemaker_session,
+                                         'mybucker',
+                                         'something/source',
+                                         'mnist.py',
+                                         kms_key='kms-key')
+
+    assert result == fw_utils.UploadedCode('s3://mybucker/something/source/sourcedir.tar.gz',
+                                           'mnist.py')
+
+    extra_args = {'ServerSideEncryption': 'aws:kms', 'SSEKMSKeyId': 'kms-key'}
+    obj = sagemaker_session.resource('s3').Object('', '')
+    obj.upload_file.assert_called_with(utils.create_tar_file(), ExtraArgs=extra_args)
+
+
 def test_validate_source_dir_does_not_exits(sagemaker_session):
     script = 'mnist.py'
     directory = ' !@#$%^&*()path probably in not there.!@#$%^&*()'
