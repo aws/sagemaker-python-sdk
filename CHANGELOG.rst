@@ -6,13 +6,14 @@ CHANGELOG
 ==========
 
 * bug-fix: pass kms id as parameter for uploading code with Server side encryption
+* feature: ``PipelineModel``: Create a Transformer from a PipelineModel
 
 1.18.4
 ======
 
 * doc-fix: Remove incorrect parameter for EI TFS Python README
 * feature: ``Predictor``: delete SageMaker model
-* feature: ``Pipeline``: delete SageMaker model
+* feature: ``PipelineModel``: delete SageMaker model
 * bug-fix: Estimator.attach works with training jobs without hyperparameters
 * doc-fix: remove duplicate content from mxnet/README.rst
 * doc-fix: move overview content in main README into sphynx project

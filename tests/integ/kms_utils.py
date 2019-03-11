@@ -14,7 +14,7 @@ from __future__ import absolute_import
 
 from botocore import exceptions
 
-KEY_ALIAS = "SageMakerKmsKey"
+KEY_ALIAS = "SageMakerIntegTestKmsKey"
 KEY_POLICY = '''
 {{
   "Version": "2012-10-17",
@@ -28,39 +28,6 @@ KEY_POLICY = '''
       }},
       "Action": "kms:*",
       "Resource": "*"
-    }},
-    {{
-      "Sid": "Allow use of the key",
-      "Effect": "Allow",
-      "Principal": {{
-        "AWS": "{account_id}"
-      }},
-      "Action": [
-        "kms:Encrypt",
-        "kms:Decrypt",
-        "kms:ReEncrypt*",
-        "kms:GenerateDataKey*",
-        "kms:DescribeKey"
-      ],
-      "Resource": "*"
-    }},
-    {{
-      "Sid": "Allow attachment of persistent resources",
-      "Effect": "Allow",
-      "Principal": {{
-        "AWS": "{account_id}"
-      }},
-      "Action": [
-        "kms:CreateGrant",
-        "kms:ListGrants",
-        "kms:RevokeGrant"
-      ],
-      "Resource": "*",
-      "Condition": {{
-        "Bool": {{
-          "kms:GrantIsForAWSResource": "true"
-        }}
-      }}
     }}
   ]
 }}

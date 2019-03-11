@@ -19,6 +19,9 @@ import sagemaker
 from sagemaker import fw_utils, local, session, utils
 from sagemaker.transformer import Transformer
 
+logging.basicConfig()
+LOGGER = logging.getLogger('sagemaker')
+LOGGER.setLevel(logging.INFO)
 
 NEO_ALLOWED_TARGET_INSTANCE_FAMILY = set(['ml_c5', 'ml_m5', 'ml_c4', 'ml_m4', 'jetson_tx1', 'jetson_tx2', 'ml_p2',
                                           'ml_p3', 'deeplens', 'rasp3b'])
@@ -99,7 +102,9 @@ class Model(object):
         Args:
             instance_type (str): The EC2 instance type that this Model will be used for, this is only
                 used to determine if the image needs GPU support or not.
-            accelerator_type (str): <put docs here>
+            accelerator_type (str): Type of Elastic Inference accelerator to attach to an endpoint for model loading
+                and inference, for example, 'ml.eia1.medium'. If not specified, no Elastic Inference accelerator
+                will be attached to the endpoint.
         """
         container_def = self.prepare_container_def(instance_type, accelerator_type=accelerator_type)
         self.name = self.name or utils.name_from_image(container_def['Image'])
@@ -190,9 +195,13 @@ class Model(object):
         self.sagemaker_session.compile_model(**config)
         job_status = self.sagemaker_session.wait_for_compilation_job(job_name)
         self.model_data = job_status['ModelArtifacts']['S3ModelArtifacts']
-        self.image = self._neo_image(self.sagemaker_session.boto_region_name, target_instance_family, framework,
-                                     framework_version)
-        self._is_compiled_model = True
+        if target_instance_family.startswith('ml_'):
+            self.image = self._neo_image(self.sagemaker_session.boto_region_name, target_instance_family, framework,
+                                         framework_version)
+            self._is_compiled_model = True
+        else:
+            LOGGER.warning("The intance type {} is not supported to deploy via SageMaker,"
+                           "please deploy the model on the device by yourself.".format(target_instance_family))
         return self
 
     def deploy(self, initial_instance_count, instance_type, accelerator_type=None, endpoint_name=None,
@@ -285,10 +294,6 @@ class Model(object):
             max_payload (int): Maximum size of the payload in a single HTTP request to the container in MB.
             tags (list[dict]): List of tags for labeling a transform job. If none specified, then the tags used for
                 the training job are used for the transform job.
-            role (str): The ``ExecutionRoleArn`` IAM Role ARN for the ``Model``, which is also used during
-                transform jobs. If not specified, the role from the Model will be used.
-            model_server_workers (int): Optional. The number of worker processes used by the inference server.
-                If None, server will use one worker per vCPU.
             volume_kms_key (str): Optional. KMS key ID for encrypting the volume attached to the ML
                 compute instance (default: None).
         """
