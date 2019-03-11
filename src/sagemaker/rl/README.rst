@@ -4,7 +4,7 @@ SageMaker Reinforcement Learning Estimators
 
 With Reinforcement Learning (RL) Estimators, you can train reinforcement learning models on Amazon SageMaker.
 
-Supported versions of Coach: ``0.10.1`` with TensorFlow, ``0.11.0`` with TensorFlow or MXNet.
+Supported versions of Coach: ``0.11.1``, ``0.10.1`` with TensorFlow, ``0.11.0`` with TensorFlow or MXNet.
 For more information about Coach, see https://github.com/NervanaSystems/coach
 
 Supported versions of Ray: ``0.5.3`` with TensorFlow.
@@ -42,7 +42,7 @@ You can then create an ``RLEstimator`` with keyword arguments to point to this s
 
     rl_estimator = RLEstimator(entry_point='coach-train.py',
                                toolkit=RLToolkit.COACH,
-                               toolkit_version='0.11.0',
+                               toolkit_version='0.11.1',
                                framework=RLFramework.TENSORFLOW,
                                role='SageMakerRole',
                                train_instance_type='ml.p3.2xlarge',

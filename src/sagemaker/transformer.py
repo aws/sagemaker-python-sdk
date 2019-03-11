@@ -12,6 +12,8 @@
 # language governing permissions and limitations under the License.
 from __future__ import absolute_import
 
+from botocore import exceptions
+
 from sagemaker.job import _Job
 from sagemaker.session import Session
 from sagemaker.utils import base_name_from_image, name_from_base
@@ -119,8 +121,14 @@ class Transformer(object):
         self.sagemaker_session.delete_model(self.model_name)
 
     def _retrieve_image_name(self):
-        model_desc = self.sagemaker_session.sagemaker_client.describe_model(ModelName=self.model_name)
-        return model_desc['PrimaryContainer']['Image']
+        try:
+            model_desc = self.sagemaker_session.sagemaker_client.describe_model(ModelName=self.model_name)
+            return model_desc['PrimaryContainer']['Image']
+        except exceptions.ClientError:
+            raise ValueError('Failed to fetch model information for %s. '
+                             'Please ensure that the model exists. '
+                             'Local instance types require locally created models.'
+                             % self.model_name)
 
     def wait(self):
         self._ensure_last_transform_job()

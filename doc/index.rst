@@ -66,6 +66,11 @@ Scikit-Learn
 A managed enrionment for Scikit-learn training and hosting on Amazon SageMaker
 
 .. toctree::
+    :maxdepth: 1
+
+    using_sklearn
+
+.. toctree::
     :maxdepth: 2
 
     sagemaker.sklearn
