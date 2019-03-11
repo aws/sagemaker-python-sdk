@@ -12,8 +12,10 @@
 # language governing permissions and limitations under the License.
 from __future__ import absolute_import
 
+import numpy as np
 import os
 import pytest
+import time
 
 import boto3
 from sagemaker.tensorflow import TensorFlow
@@ -40,7 +42,7 @@ def test_mnist(sagemaker_session, instance_type):
                            train_instance_type=instance_type,
                            sagemaker_session=sagemaker_session,
                            py_version='py3',
-                           framework_version='1.11',
+                           framework_version=TensorFlow.LATEST_VERSION,
                            base_job_name='test-tf-sm-mnist')
     inputs = estimator.sagemaker_session.upload_data(
         path=os.path.join(RESOURCE_PATH, 'data'),
@@ -63,7 +65,7 @@ def test_mnist_distributed(sagemaker_session, instance_type):
                            sagemaker_session=sagemaker_session,
                            py_version=integ.PYTHON_VERSION,
                            script_mode=True,
-                           framework_version='1.11',
+                           framework_version=TensorFlow.LATEST_VERSION,
                            distributions=PARAMETER_SERVER_DISTRIBUTION,
                            base_job_name='test-tf-sm-mnist')
     inputs = estimator.sagemaker_session.upload_data(
@@ -74,6 +76,31 @@ def test_mnist_distributed(sagemaker_session, instance_type):
         estimator.fit(inputs)
     _assert_s3_files_exist(estimator.model_dir,
                            ['graph.pbtxt', 'model.ckpt-0.index', 'model.ckpt-0.meta', 'saved_model.pb'])
+
+
+def test_mnist_async(sagemaker_session):
+    estimator = TensorFlow(entry_point=SCRIPT,
+                           role='SageMakerRole',
+                           train_instance_count=1,
+                           train_instance_type='ml.c5.4xlarge',
+                           sagemaker_session=sagemaker_session,
+                           py_version='py3',
+                           framework_version=TensorFlow.LATEST_VERSION,
+                           base_job_name='test-tf-sm-mnist')
+    inputs = estimator.sagemaker_session.upload_data(
+        path=os.path.join(RESOURCE_PATH, 'data'),
+        key_prefix='scriptmode/mnist')
+    estimator.fit(inputs, wait=False)
+    training_job_name = estimator.latest_training_job.name
+    time.sleep(20)
+    endpoint_name = training_job_name
+    with timeout.timeout_and_delete_endpoint_by_name(endpoint_name, sagemaker_session):
+        estimator = TensorFlow.attach(training_job_name=training_job_name, sagemaker_session=sagemaker_session)
+        predictor = estimator.deploy(initial_instance_count=1, instance_type='ml.c4.xlarge',
+                                     endpoint_name=endpoint_name)
+
+        result = predictor.predict(np.zeros(784))
+        print('predict result: {}'.format(result))
 
 
 def _assert_s3_files_exist(s3_url, files):
