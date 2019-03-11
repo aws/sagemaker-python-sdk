@@ -111,15 +111,56 @@ def test_deploy_endpoint_name(tfo, time, sagemaker_session):
     framework_model = DummyFrameworkModel(sagemaker_session)
     sparkml_model = SparkMLModel(model_data=MODEL_DATA_2, role=ROLE, sagemaker_session=sagemaker_session)
     model = PipelineModel(models=[framework_model, sparkml_model], role=ROLE, sagemaker_session=sagemaker_session)
-    model.deploy(endpoint_name='blah', instance_type=INSTANCE_TYPE, initial_instance_count=55)
+    model.deploy(instance_type=INSTANCE_TYPE, initial_instance_count=1)
     sagemaker_session.endpoint_from_production_variants.assert_called_with(
-        'blah',
+        'mi-1-2017-10-10-14-14-15',
         [{'InitialVariantWeight': 1,
           'ModelName': 'mi-1-2017-10-10-14-14-15',
           'InstanceType': INSTANCE_TYPE,
-          'InitialInstanceCount': 55,
+          'InitialInstanceCount': 1,
           'VariantName': 'AllTraffic'}],
         None)
+
+
+@patch('tarfile.open')
+@patch('time.strftime', return_value=TIMESTAMP)
+def test_transformer(tfo, time, sagemaker_session):
+    framework_model = DummyFrameworkModel(sagemaker_session)
+    sparkml_model = SparkMLModel(model_data=MODEL_DATA_2, role=ROLE, sagemaker_session=sagemaker_session)
+    model_name = 'ModelName'
+    model = PipelineModel(models=[framework_model, sparkml_model], role=ROLE, sagemaker_session=sagemaker_session,
+                          name=model_name)
+
+    instance_count = 55
+    strategy = 'MultiRecord'
+    assemble_with = 'Line'
+    output_path = "s3://output/path"
+    output_kms_key = "output:kms:key"
+    accept = "application/jsonlines"
+    env = {"my_key": "my_value"}
+    max_concurrent_transforms = 20
+    max_payload = 5
+    tags = [{"my_tag": "my_value"}]
+    volume_kms_key = "volume:kms:key"
+    transformer = model.transformer(instance_type=INSTANCE_TYPE, instance_count=instance_count,
+                                    strategy=strategy, assemble_with=assemble_with, output_path=output_path,
+                                    output_kms_key=output_kms_key, accept=accept, env=env,
+                                    max_concurrent_transforms=max_concurrent_transforms,
+                                    max_payload=max_payload, tags=tags, volume_kms_key=volume_kms_key
+                                    )
+    assert transformer.instance_type == INSTANCE_TYPE
+    assert transformer.instance_count == instance_count
+    assert transformer.strategy == strategy
+    assert transformer.assemble_with == assemble_with
+    assert transformer.output_path == output_path
+    assert transformer.output_kms_key == output_kms_key
+    assert transformer.accept == accept
+    assert transformer.env == env
+    assert transformer.max_concurrent_transforms == max_concurrent_transforms
+    assert transformer.max_payload == max_payload
+    assert transformer.tags == tags
+    assert transformer.volume_kms_key == volume_kms_key
+    assert transformer.model_name == model_name
 
 
 @patch('tarfile.open')
