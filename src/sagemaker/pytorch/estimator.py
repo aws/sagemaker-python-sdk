@@ -114,7 +114,7 @@ class PyTorch(Framework):
         """
         init_params = super(PyTorch, cls)._prepare_init_params_from_job_description(job_details, model_channel_name)
         image_name = init_params.pop('image')
-        framework, py_version, tag = framework_name_from_image(image_name)
+        framework, py_version, tag, _ = framework_name_from_image(image_name)
 
         if not framework:
             # If we were unable to parse the framework name from the image it is not one of our

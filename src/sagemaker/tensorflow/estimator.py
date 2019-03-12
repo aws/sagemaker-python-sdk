@@ -356,12 +356,15 @@ class TensorFlow(Framework):
                 init_params[argument] = value
 
         image_name = init_params.pop('image')
-        framework, py_version, tag = fw.framework_name_from_image(image_name)
+        framework, py_version, tag, script_mode = fw.framework_name_from_image(image_name)
         if not framework:
             # If we were unable to parse the framework name from the image it is not one of our
             # officially supported images, in this case just add the image to the init params.
             init_params['image_name'] = image_name
             return init_params
+
+        if script_mode:
+            init_params['script_mode'] = True
 
         init_params['py_version'] = py_version
 
