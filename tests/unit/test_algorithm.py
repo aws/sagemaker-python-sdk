@@ -915,14 +915,16 @@ def test_algorithm_encrypt_inter_container_traffic(sagemaker_session):
     assert encrypt_inter_container_traffic is True
 
 
-@patch('sagemaker.estimator._TrainingJob', Mock())
 def test_algorithm_no_required_hyperparameters(sagemaker_session):
     some_algo = copy.deepcopy(DESCRIBE_ALGORITHM_RESPONSE)
     del some_algo['TrainingSpecification']['SupportedHyperParameters']
 
     sagemaker_session.sagemaker_client.describe_algorithm = Mock(return_value=some_algo)
 
-    estimator = AlgorithmEstimator(
+    # Calling AlgorithmEstimator() with unset required hyperparameters
+    # should fail if they are required.
+    # Pass training and hyperparameters channels. This should work
+    assert AlgorithmEstimator(
         algorithm_arn='arn:aws:sagemaker:us-east-2:1234:algorithm/scikit-decision-trees',
         role='SageMakerRole',
         train_instance_type='ml.m4.2xlarge',
@@ -930,6 +932,3 @@ def test_algorithm_no_required_hyperparameters(sagemaker_session):
         sagemaker_session=sagemaker_session,
     )
 
-    # Calling fit with unset required hyperparameters should fail if they are required.
-    # Pass training and hyperparameters channels. This should work
-    estimator.fit({'training': 's3://some/place'})
