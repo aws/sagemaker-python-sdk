@@ -51,7 +51,7 @@ def test_mnist(sagemaker_session, instance_type):
     with timeout.timeout(minutes=integ.TRAINING_DEFAULT_TIMEOUT_MINUTES):
         estimator.fit(inputs)
     _assert_s3_files_exist(estimator.model_dir,
-                           ['graph.pbtxt', 'model.ckpt-0.index', 'model.ckpt-0.meta', 'saved_model.pb'])
+                           ['graph.pbtxt', 'model.ckpt-0.index', 'model.ckpt-0.meta'])
 
 
 @pytest.mark.canary_quick
@@ -75,7 +75,7 @@ def test_mnist_distributed(sagemaker_session, instance_type):
     with timeout.timeout(minutes=integ.TRAINING_DEFAULT_TIMEOUT_MINUTES):
         estimator.fit(inputs)
     _assert_s3_files_exist(estimator.model_dir,
-                           ['graph.pbtxt', 'model.ckpt-0.index', 'model.ckpt-0.meta', 'saved_model.pb'])
+                           ['graph.pbtxt', 'model.ckpt-0.index', 'model.ckpt-0.meta'])
 
 
 def test_mnist_async(sagemaker_session):
