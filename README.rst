@@ -44,7 +44,7 @@ Table of Contents
 16. `Secure Training and Inference with VPC <https://sagemaker.readthedocs.io/en/stable/overview.html#secure-training-and-inference-with-vpc>`__
 17. `BYO Model <https://sagemaker.readthedocs.io/en/stable/overview.html#byo-model>`__
 18. `Inference Pipelines <https://sagemaker.readthedocs.io/en/stable/overview.html#inference-pipelines>`__
-19. `SageMaker Workflow <https://sagemaker.readthedocs.io/en/stable/overview.html#sagemaker-workflow>`__
+19. `SageMaker Workflow <#sagemaker-workflow>`__
 
 
 Installing the SageMaker Python SDK
@@ -293,3 +293,11 @@ For more information, see `AWS SageMaker Estimators and Models`_.
 
 .. _AWS SageMaker Estimators and Models: src/sagemaker/amazon/README.rst
 
+SageMaker Workflow
+------------------
+
+You can use Apache Airflow to author, schedule and monitor SageMaker workflow.
+
+For more information, see `SageMaker Workflow in Apache Airflow`_.
+
+.. _SageMaker Workflow in Apache Airflow: src/sagemaker/workflow/README.rst
