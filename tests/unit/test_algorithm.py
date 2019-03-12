@@ -915,7 +915,7 @@ def test_algorithm_encrypt_inter_container_traffic(sagemaker_session):
     assert encrypt_inter_container_traffic is True
 
 
-@patch('sagemaker.estimator._TrainingJob.start_new', Mock())
+@patch('sagemaker.estimator._TrainingJob', Mock())
 def test_algorithm_no_required_hyperparameters(sagemaker_session):
     some_algo = copy.deepcopy(DESCRIBE_ALGORITHM_RESPONSE)
     del some_algo['TrainingSpecification']['SupportedHyperParameters']
