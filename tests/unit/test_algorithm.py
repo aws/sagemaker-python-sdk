@@ -931,4 +931,3 @@ def test_algorithm_no_required_hyperparameters(sagemaker_session):
         train_instance_count=1,
         sagemaker_session=sagemaker_session,
     )
-
