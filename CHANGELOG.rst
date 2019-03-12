@@ -2,13 +2,18 @@
 CHANGELOG
 =========
 
+1.18.5dev
+======
+
+* feature: ``PipelineModel``: Create a Transformer from a PipelineModel
+* bug-fix: ``AlgorithmEstimator``: Make SupportedHyperParameters optional
 
 1.18.4
 ======
 
 * doc-fix: Remove incorrect parameter for EI TFS Python README
 * feature: ``Predictor``: delete SageMaker model
-* feature: ``Pipeline``: delete SageMaker model
+* feature: ``PipelineModel``: delete SageMaker model
 * bug-fix: Estimator.attach works with training jobs without hyperparameters
 * doc-fix: remove duplicate content from mxnet/README.rst
 * doc-fix: move overview content in main README into sphynx project
