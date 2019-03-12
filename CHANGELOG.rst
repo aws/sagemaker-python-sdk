@@ -6,6 +6,7 @@ CHANGELOG
 ======
 
 * feature: ``PipelineModel``: Create a Transformer from a PipelineModel
+* bug-fix: ``AlgorithmEstimator``: Make SupportedHyperParameters optional
 
 1.18.4
 ======

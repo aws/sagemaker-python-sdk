@@ -375,20 +375,23 @@ class AlgorithmEstimator(EstimatorBase):
                     raise ValueError('Required hyperparameter: %s is not set' % name)
 
     def _parse_hyperparameters(self):
-        hyperparameters = self.algorithm_spec['TrainingSpecification']['SupportedHyperParameters']
         definitions = {}
-        for h in hyperparameters:
-            parameter_type = h['Type']
-            name = h['Name']
-            parameter_class, parameter_range = self._hyperparameter_range_and_class(
-                parameter_type, h
-            )
 
-            definitions[name] = {'spec': h}
-            if parameter_range:
-                definitions[name]['range'] = parameter_range
-            if parameter_class:
-                definitions[name]['class'] = parameter_class
+        training_spec = self.algorithm_spec['TrainingSpecification']
+        if 'SupportedHyperParameters' in training_spec:
+            hyperparameters = training_spec['SupportedHyperParameters']
+            for h in hyperparameters:
+                parameter_type = h['Type']
+                name = h['Name']
+                parameter_class, parameter_range = self._hyperparameter_range_and_class(
+                    parameter_type, h
+                )
+
+                definitions[name] = {'spec': h}
+                if parameter_range:
+                    definitions[name]['range'] = parameter_range
+                if parameter_class:
+                    definitions[name]['class'] = parameter_class
 
         return definitions
 
