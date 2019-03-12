@@ -7,6 +7,7 @@ CHANGELOG
 
 * bug-fix: pass kms id as parameter for uploading code with Server side encryption
 * feature: ``PipelineModel``: Create a Transformer from a PipelineModel
+* bug-fix: ``AlgorithmEstimator``: Make SupportedHyperParameters optional
 
 1.18.4
 ======
