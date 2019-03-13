@@ -187,6 +187,6 @@ if __name__ == "__main__":
     tf.estimator.train_and_evaluate(mnist_classifier, train_spec, eval_spec)
 
     if args.current_host == args.hosts[0]:
-        mnist_classifier.export_savedmodel(args.model_dir, serving_input_fn)
+        mnist_classifier.export_savedmodel('/opt/ml/model', serving_input_fn)
 
     tf_logger.info('====== Training finished =========')

@@ -136,7 +136,7 @@ class SKLearn(Framework):
         init_params = super(SKLearn, cls)._prepare_init_params_from_job_description(job_details)
 
         image_name = init_params.pop('image')
-        framework, py_version, _ = framework_name_from_image(image_name)
+        framework, py_version, _, _ = framework_name_from_image(image_name)
         init_params['py_version'] = py_version
 
         if framework and framework != cls.__framework_name__:
