@@ -24,10 +24,7 @@ KEY_POLICY = '''
       "Sid": "Enable IAM User Permissions",
       "Effect": "Allow",
       "Principal": {{
-        "AWS": [
-                    "arn:aws:iam::{account_id}:role/SageMakerRole",
-                    "arn:aws:iam::{account_id}:root"
-                ]
+        "AWS": "*"
       }},
       "Action": "kms:*",
       "Resource": "*"
