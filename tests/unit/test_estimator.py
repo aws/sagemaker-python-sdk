@@ -761,6 +761,64 @@ def test_container_log_level(sagemaker_session):
     assert train_kwargs['hyperparameters']['sagemaker_container_log_level'] == '10'
 
 
+@patch('sagemaker.utils')
+def test_same_code_location_keeps_kms_key(utils, sagemaker_session):
+    fw = DummyFramework(entry_point=SCRIPT_PATH,
+                        role='DummyRole',
+                        sagemaker_session=sagemaker_session,
+                        train_instance_count=INSTANCE_COUNT,
+                        train_instance_type=INSTANCE_TYPE,
+                        output_kms_key='kms-key')
+
+    fw.fit(wait=False)
+
+    extra_args = {'ServerSideEncryption': 'aws:kms', 'SSEKMSKeyId': 'kms-key'}
+    obj = sagemaker_session.boto_session.resource('s3').Object
+
+    obj.assert_called_with('mybucket', '%s/source/sourcedir.tar.gz' % fw._current_job_name)
+
+    obj().upload_file.assert_called_with(utils.create_tar_file(), ExtraArgs=extra_args)
+
+
+@patch('sagemaker.utils')
+def test_different_code_location_kms_key(utils, sagemaker_session):
+    fw = DummyFramework(entry_point=SCRIPT_PATH,
+                        role='DummyRole',
+                        sagemaker_session=sagemaker_session,
+                        code_location='s3://another-location',
+                        train_instance_count=INSTANCE_COUNT,
+                        train_instance_type=INSTANCE_TYPE,
+                        output_kms_key='kms-key')
+
+    fw.fit(wait=False)
+
+    obj = sagemaker_session.boto_session.resource('s3').Object
+
+    obj.assert_called_with('another-location', '%s/source/sourcedir.tar.gz' % fw._current_job_name)
+
+    obj().upload_file.assert_called_with(utils.create_tar_file(), ExtraArgs=None)
+
+
+@patch('sagemaker.utils')
+def test_default_code_location_uses_output_path(utils, sagemaker_session):
+    fw = DummyFramework(entry_point=SCRIPT_PATH,
+                        role='DummyRole',
+                        sagemaker_session=sagemaker_session,
+                        output_path='s3://output_path',
+                        train_instance_count=INSTANCE_COUNT,
+                        train_instance_type=INSTANCE_TYPE,
+                        output_kms_key='kms-key')
+
+    fw.fit(wait=False)
+
+    obj = sagemaker_session.boto_session.resource('s3').Object
+
+    obj.assert_called_with('output_path', '%s/source/sourcedir.tar.gz' % fw._current_job_name)
+
+    extra_args = {'ServerSideEncryption': 'aws:kms', 'SSEKMSKeyId': 'kms-key'}
+    obj().upload_file.assert_called_with(utils.create_tar_file(), ExtraArgs=extra_args)
+
+
 def test_wait_without_logs(sagemaker_session):
     training_job = _TrainingJob(sagemaker_session, JOB_NAME)
 

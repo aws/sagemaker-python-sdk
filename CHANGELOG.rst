@@ -2,12 +2,14 @@
 CHANGELOG
 =========
 
-1.18.5dev
-=========
 
-* doc-fix: Remove duplicate content from main README.rst, /tensorflow/README.rst, and /sklearn/README.rst and add links to readthedocs content
+1.18.5.dev
+==========
+
+* bug-fix: pass kms id as parameter for uploading code with Server side encryption
 * feature: ``PipelineModel``: Create a Transformer from a PipelineModel
 * bug-fix: ``AlgorithmEstimator``: Make SupportedHyperParameters optional
+* doc-fix: Remove duplicate content from main README.rst, /tensorflow/README.rst, and /sklearn/README.rst and add links to readthedocs content
 
 1.18.4
 ======
