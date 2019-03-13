@@ -2,9 +2,10 @@
 CHANGELOG
 =========
 
-1.18.5dev
-======
+1.18.5.dev
+==========
 
+* bug-fix: pass kms id as parameter for uploading code with Server side encryption
 * feature: ``PipelineModel``: Create a Transformer from a PipelineModel
 * bug-fix: ``AlgorithmEstimator``: Make SupportedHyperParameters optional
 
