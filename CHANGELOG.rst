@@ -2,11 +2,12 @@
 CHANGELOG
 =========
 
-1.18.5dev
+1.18.5
 ======
 
 * feature: ``PipelineModel``: Create a Transformer from a PipelineModel
 * bug-fix: ``AlgorithmEstimator``: Make SupportedHyperParameters optional
+* feature: ``Hyperparameter``: Support scaling hyperparameters
 
 1.18.4
 ======
