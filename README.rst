@@ -30,7 +30,7 @@ Table of Contents
 2. `Using the SageMaker Python SDK <https://sagemaker.readthedocs.io/en/stable/overview.html>`__
 3. `MXNet SageMaker Estimators <#mxnet-sagemaker-estimators>`__
 4. `TensorFlow SageMaker Estimators <#tensorflow-sagemaker-estimators>`__
-5. `Chainer SageMaker Estimators <#chainer-sagemaker-estimators <`__
+5. `Chainer SageMaker Estimators <#chainer-sagemaker-estimators>`__
 6. `PyTorch SageMaker Estimators <#pytorch-sagemaker-estimators>`__
 7. `Scikit-learn SageMaker Estimators <#scikit-learn-sagemaker-estimators>`__
 8. `SageMaker Reinforcement Learning Estimators <#sagemaker-reinforcement-learning-estimators>`__
