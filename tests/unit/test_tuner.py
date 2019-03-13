@@ -71,6 +71,7 @@ TUNING_JOB_DETAILS = {
                     'MaxValue': '100',
                     'Name': 'mini_batch_size',
                     'MinValue': '10',
+                    'ScalingType': 'Auto'
                 },
             ]
         },
@@ -631,10 +632,17 @@ def test_continuous_parameter():
 def test_continuous_parameter_ranges():
     cont_param = ContinuousParameter(0.1, 1e-2)
     ranges = cont_param.as_tuning_range('some')
-    assert len(ranges.keys()) == 3
+    assert len(ranges.keys()) == 4
     assert ranges['Name'] == 'some'
     assert ranges['MinValue'] == '0.1'
     assert ranges['MaxValue'] == '0.01'
+    assert ranges['ScalingType'] == 'Auto'
+
+
+def test_continuous_parameter_scaling_type():
+    cont_param = ContinuousParameter(0.1, 2, scaling_type='ReverseLogarithmic')
+    cont_range = cont_param.as_tuning_range('range')
+    assert cont_range['ScalingType'] == 'ReverseLogarithmic'
 
 
 def test_integer_parameter():
@@ -646,10 +654,17 @@ def test_integer_parameter():
 def test_integer_parameter_ranges():
     int_param = IntegerParameter(1, 2)
     ranges = int_param.as_tuning_range('some')
-    assert len(ranges.keys()) == 3
+    assert len(ranges.keys()) == 4
     assert ranges['Name'] == 'some'
     assert ranges['MinValue'] == '1'
     assert ranges['MaxValue'] == '2'
+    assert ranges['ScalingType'] == 'Auto'
+
+
+def test_integer_parameter_scaling_type():
+    int_param = IntegerParameter(2, 3, scaling_type='Linear')
+    int_range = int_param.as_tuning_range('range')
+    assert int_range['ScalingType'] == 'Linear'
 
 
 def test_categorical_parameter_list():
