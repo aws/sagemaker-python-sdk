@@ -17,7 +17,6 @@ import os
 import time
 
 import pytest
-import time
 
 import boto3
 from sagemaker.tensorflow import TensorFlow
