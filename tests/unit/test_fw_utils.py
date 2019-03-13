@@ -371,29 +371,34 @@ def list_tar_files(folder, tar_ball, tmpdir):
 
 def test_framework_name_from_image_mxnet():
     image_name = '123.dkr.ecr.us-west-2.amazonaws.com/sagemaker-mxnet:1.1-gpu-py3'
-    assert ('mxnet', 'py3', '1.1-gpu-py3') == fw_utils.framework_name_from_image(image_name)
+    assert ('mxnet', 'py3', '1.1-gpu-py3', None) == fw_utils.framework_name_from_image(image_name)
 
 
 def test_framework_name_from_image_tf():
     image_name = '123.dkr.ecr.us-west-2.amazonaws.com/sagemaker-tensorflow:1.6-cpu-py2'
-    assert ('tensorflow', 'py2', '1.6-cpu-py2') == fw_utils.framework_name_from_image(image_name)
+    assert ('tensorflow', 'py2', '1.6-cpu-py2', None) == fw_utils.framework_name_from_image(image_name)
+
+
+def test_framework_name_from_image_tf_scriptmode():
+    image_name = '123.dkr.ecr.us-west-2.amazonaws.com/sagemaker-tensorflow-scriptmode:1.12-cpu-py3'
+    assert ('tensorflow', 'py3', '1.12-cpu-py3', 'scriptmode') == fw_utils.framework_name_from_image(image_name)
 
 
 def test_framework_name_from_image_rl():
     image_name = '123.dkr.ecr.us-west-2.amazonaws.com/sagemaker-rl-mxnet:toolkit1.1-gpu-py3'
-    assert ('mxnet', 'py3', 'toolkit1.1-gpu-py3') == fw_utils.framework_name_from_image(image_name)
+    assert ('mxnet', 'py3', 'toolkit1.1-gpu-py3', None) == fw_utils.framework_name_from_image(image_name)
 
 
 def test_legacy_name_from_framework_image():
     image_name = '123.dkr.ecr.us-west-2.amazonaws.com/sagemaker-mxnet-py3-gpu:2.5.6-gpu-py2'
-    framework, py_ver, tag = fw_utils.framework_name_from_image(image_name)
+    framework, py_ver, tag, _ = fw_utils.framework_name_from_image(image_name)
     assert framework == 'mxnet'
     assert py_ver == 'py3'
     assert tag == '2.5.6-gpu-py2'
 
 
 def test_legacy_name_from_wrong_framework():
-    framework, py_ver, tag = fw_utils.framework_name_from_image(
+    framework, py_ver, tag, _ = fw_utils.framework_name_from_image(
         '123.dkr.ecr.us-west-2.amazonaws.com/sagemaker-myown-py2-gpu:1')
     assert framework is None
     assert py_ver is None
@@ -401,7 +406,7 @@ def test_legacy_name_from_wrong_framework():
 
 
 def test_legacy_name_from_wrong_python():
-    framework, py_ver, tag = fw_utils.framework_name_from_image(
+    framework, py_ver, tag, _ = fw_utils.framework_name_from_image(
         '123.dkr.ecr.us-west-2.amazonaws.com/sagemaker-myown-py4-gpu:1')
     assert framework is None
     assert py_ver is None
@@ -409,7 +414,7 @@ def test_legacy_name_from_wrong_python():
 
 
 def test_legacy_name_from_wrong_device():
-    framework, py_ver, tag = fw_utils.framework_name_from_image(
+    framework, py_ver, tag, _ = fw_utils.framework_name_from_image(
         '123.dkr.ecr.us-west-2.amazonaws.com/sagemaker-myown-py4-gpu:1')
     assert framework is None
     assert py_ver is None
@@ -418,7 +423,7 @@ def test_legacy_name_from_wrong_device():
 
 def test_legacy_name_from_image_any_tag():
     image_name = '123.dkr.ecr.us-west-2.amazonaws.com/sagemaker-tensorflow-py2-cpu:any-tag'
-    framework, py_ver, tag = fw_utils.framework_name_from_image(image_name)
+    framework, py_ver, tag, _ = fw_utils.framework_name_from_image(image_name)
     assert framework == 'tensorflow'
     assert py_ver == 'py2'
     assert tag == 'any-tag'

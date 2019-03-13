@@ -218,16 +218,17 @@ def framework_name_from_image(image_name):
             str: The framework name
             str: The Python version
             str: The image tag
+            str: If the image is script mode
     """
     sagemaker_pattern = re.compile(r'^(\d+)(\.)dkr(\.)ecr(\.)(.+)(\.)amazonaws.com(/)(.*:.*)$')
     sagemaker_match = sagemaker_pattern.match(image_name)
     if sagemaker_match is None:
-        return None, None, None
+        return None, None, None, None
     else:
         # extract framework, python version and image tag
         # We must support both the legacy and current image name format.
         name_pattern = re.compile(
-            r'^sagemaker(?:-rl)?-(tensorflow|mxnet|chainer|pytorch|scikit-learn):(.*)-(.*?)-(py2|py3)$')
+            r'^sagemaker(?:-rl)?-(tensorflow|mxnet|chainer|pytorch|scikit-learn)(?:-)?(scriptmode)?:(.*)-(.*?)-(py2|py3)$') # noqa
         legacy_name_pattern = re.compile(
             r'^sagemaker-(tensorflow|mxnet)-(py2|py3)-(cpu|gpu):(.*)$')
 
@@ -235,12 +236,13 @@ def framework_name_from_image(image_name):
         legacy_match = legacy_name_pattern.match(sagemaker_match.group(8))
 
         if name_match is not None:
-            fw, ver, device, py = name_match.group(1), name_match.group(2), name_match.group(3), name_match.group(4)
-            return fw, py, '{}-{}-{}'.format(ver, device, py)
+            fw, scriptmode, ver, device, py = name_match.group(1), name_match.group(2), name_match.group(3),\
+                name_match.group(4), name_match.group(5)
+            return fw, py, '{}-{}-{}'.format(ver, device, py), scriptmode
         elif legacy_match is not None:
-            return legacy_match.group(1), legacy_match.group(2), legacy_match.group(4)
+            return legacy_match.group(1), legacy_match.group(2), legacy_match.group(4), None
         else:
-            return None, None, None
+            return None, None, None, None
 
 
 def framework_version_from_tag(image_tag):
