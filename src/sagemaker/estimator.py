@@ -350,7 +350,10 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):
             update_endpoint (bool): Flag to update the model in an existing Amazon SageMaker endpoint.
                 If True, this will deploy a new EndpointConfig to an already existing endpoint and delete resources
                 corresponding to the previous EndpointConfig. Default: False
-            tags(List[dict[str, str]]): Optional. The list of tags to attach to this specific endpoint.
+            tags(List[dict[str, str]]): Optional. The list of tags to attach to this specific endpoint. Example:
+                    >>> tags = [{'Key': 'tagname', 'Value': 'tagvalue'}]
+                    For more information about tags, see https://boto3.amazonaws.com/v1/documentation\
+                    /api/latest/reference/services/sagemaker.html#SageMaker.Client.add_tags
 
             **kwargs: Passed to invocation of ``create_model()``. Implementations may customize
                 ``create_model()`` to accept ``**kwargs`` to customize model creation during deploy.

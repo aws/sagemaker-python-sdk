@@ -764,10 +764,11 @@ def test_create_model_with_tags(expand_container_def, sagemaker_session):
     model = sagemaker_session.create_model(MODEL_NAME, ROLE, PRIMARY_CONTAINER, tags=tags)
 
     assert model == MODEL_NAME
+    tags = [{'Value': 'TagtestValue', 'Key': 'TagtestKey'}]
     sagemaker_session.sagemaker_client.create_model.assert_called_with(ExecutionRoleArn=EXPANDED_ROLE,
                                                                        ModelName=MODEL_NAME,
                                                                        PrimaryContainer=PRIMARY_CONTAINER,
-                                                                       Tags=[{'Value': 'TagtestValue', 'Key': 'TagtestKey'}])
+                                                                       Tags=tags)
 
 
 @patch('sagemaker.session._expand_container_def', return_value=PRIMARY_CONTAINER)
@@ -922,7 +923,7 @@ def test_create_endpoint_config_with_tags(sagemaker_session):
 
     sagemaker_session.sagemaker_client.create_endpoint_config.assert_called_with(
         EndpointConfigName='endpoint-test',
-        ProductionVariants= ANY,
+        ProductionVariants=ANY,
         Tags=tags)
 
 

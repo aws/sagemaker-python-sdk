@@ -571,7 +571,10 @@ class Session(object):
                 You can also specify the return value of ``sagemaker.container_def()``, which is used to create
                 more advanced container configurations, including model containers which need artifacts from S3. This
                 field is deprecated, please use container_defs instead.
-            tags(List[dict[str, str]]): Optional. The list of tags to add to the model.
+            tags(List[dict[str, str]]): Optional. The list of tags to add to the model. Example:
+                    >>> tags = [{'Key': 'tagname', 'Value': 'tagvalue'}]
+                    For more information about tags, see https://boto3.amazonaws.com/v1/documentation\
+                    /api/latest/reference/services/sagemaker.html#SageMaker.Client.add_tags
 
 
         Returns:
@@ -725,7 +728,10 @@ class Session(object):
             instance_type (str): Type of EC2 instance to launch, for example, 'ml.c4.xlarge'.
             accelerator_type (str): Type of Elastic Inference accelerator to attach to the instance. For example,
                 'ml.eia1.medium'. For more information: https://docs.aws.amazon.com/sagemaker/latest/dg/ei.html
-            tags(List[dict[str, str]]): Optional. The list of tags to add to the endpoint config.
+            tags(List[dict[str, str]]): Optional. The list of tags to add to the endpoint config. Example:
+                    >>> tags = [{'Key': 'tagname', 'Value': 'tagvalue'}]
+                    For more information about tags, see https://boto3.amazonaws.com/v1/documentation\
+                    /api/latest/reference/services/sagemaker.html#SageMaker.Client.add_tags
 
 
         Returns:
@@ -1396,10 +1402,7 @@ class ModelContainer(object):
 
 
 def _create_model_request(name, role, container_def=None, tags=None):  # pylint: disable=redefined-outer-name
-    request = {
-            'ModelName': name,
-            'ExecutionRoleArn': role
-        }
+    request = {'ModelName': name, 'ExecutionRoleArn': role}
 
     if isinstance(container_def, list):
         request['Containers'] = container_def

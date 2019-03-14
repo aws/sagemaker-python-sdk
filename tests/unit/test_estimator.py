@@ -895,11 +895,9 @@ def test_fit_deploy_keep_tags(sagemaker_session):
 
     estimator.deploy(INSTANCE_COUNT, INSTANCE_TYPE)
 
-    variant = [{
-                  'InstanceType': 'c4.4xlarge', 'VariantName': 'AllTraffic',
-                  'ModelName': ANY, 'InitialVariantWeight': 1,
-                  'InitialInstanceCount': 1
-              }]
+    variant = [{'InstanceType': 'c4.4xlarge', 'VariantName': 'AllTraffic',
+                'ModelName': ANY, 'InitialVariantWeight': 1,
+                'InitialInstanceCount': 1}]
 
     job_name = estimator._current_job_name
     sagemaker_session.endpoint_from_production_variants.assert_called_with(job_name,
