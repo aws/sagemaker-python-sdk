@@ -512,16 +512,22 @@ class HyperparameterTuner(object):
                         parameter_range = self._hyperparameter_ranges[value.name]
 
                         if isinstance(parameter_range, ParameterRange):
-                            for _, parameter_range_value in parameter_range.__dict__.items():
-                                # Categorical ranges
-                                if isinstance(parameter_range_value, list):
-                                    for categorical_value in parameter_range_value:
-                                        value.validate(categorical_value)
-                                # Continuous, Integer ranges
-                                else:
-                                    value.validate(parameter_range_value)
+                            self._validate_parameter_range(value, parameter_range)
                     except KeyError:
                         pass
+
+    def _validate_parameter_range(self, value_hp, parameter_range):
+        for parameter_range_key, parameter_range_value in parameter_range.__dict__.items():
+            if parameter_range_key == 'scaling_type':
+                continue
+
+            # Categorical ranges
+            if isinstance(parameter_range_value, list):
+                for categorical_value in parameter_range_value:
+                    value_hp.validate(categorical_value)
+            # Continuous, Integer ranges
+            else:
+                value_hp.validate(parameter_range_value)
 
     def transfer_learning_tuner(self, additional_parents=None, estimator=None):
         """Creates a new ``HyperparameterTuner`` by copying the request fields from the provided parent to the new

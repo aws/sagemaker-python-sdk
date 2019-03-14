@@ -502,7 +502,8 @@ def test_framework_tuning_config(sagemaker_session):
                 'ContinuousParameterRanges': [{
                     'Name': 'learning_rate',
                     'MinValue': '0.01',
-                    'MaxValue': '0.2'}],
+                    'MaxValue': '0.2',
+                    'ScalingType': 'Auto'}],
                 'CategoricalParameterRanges': [{
                     'Name': 'optimizer',
                     'Values': ['"sgd"', '"Adam"']
@@ -510,7 +511,8 @@ def test_framework_tuning_config(sagemaker_session):
                 'IntegerParameterRanges': [{
                     'Name': 'num_epoch',
                     'MinValue': '10',
-                    'MaxValue': '50'
+                    'MaxValue': '50',
+                    'ScalingType': 'Auto'
                 }]
             }},
         'TrainingJobDefinition': {
