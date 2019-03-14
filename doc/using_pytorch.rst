@@ -123,7 +123,7 @@ when instantiating PyTorch Estimator.
 For more on training environment variables, please visit `SageMaker Containers <https://github.com/aws/sagemaker-containers>`_.
 
 Running a PyTorch training script in SageMaker
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 You run PyTorch training scripts on SageMaker by creating ``PyTorch`` Estimators.
 SageMaker training of your script is invoked when you call ``fit`` on a ``PyTorch`` Estimator.
