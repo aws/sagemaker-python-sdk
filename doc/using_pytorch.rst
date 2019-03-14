@@ -1,6 +1,6 @@
-=======================================
-SageMaker PyTorch Estimators and Models
-=======================================
+===========================================
+Using PyTorch with the SageMaker Python SDK
+===========================================
 
 With PyTorch Estimators and Models, you can train and host PyTorch models on Amazon SageMaker.
 
