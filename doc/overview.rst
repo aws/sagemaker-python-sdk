@@ -676,7 +676,6 @@ For comprehensive examples on how to use Inference Pipelines please refer to the
 - `inference_pipeline_sparkml_xgboost_abalone.ipynb <https://github.com/awslabs/amazon-sagemaker-examples/blob/master/advanced_functionality/inference_pipeline_sparkml_xgboost_abalone/inference_pipeline_sparkml_xgboost_abalone.ipynb>`__
 - `inference_pipeline_sparkml_blazingtext_dbpedia.ipynb <https://github.com/awslabs/amazon-sagemaker-examples/blob/master/advanced_functionality/inference_pipeline_sparkml_blazingtext_dbpedia/inference_pipeline_sparkml_blazingtext_dbpedia.ipynb>`__
 
-
 SageMaker Workflow
 ------------------
 
@@ -684,4 +683,4 @@ You can use Apache Airflow to author, schedule and monitor SageMaker workflow.
 
 For more information, see `SageMaker Workflow in Apache Airflow`_.
 
-.. _SageMaker Workflow in Apache Airflow: src/sagemaker/workflow/README.rst
+.. _SageMaker Workflow in Apache Airflow: https://github.com/aws/sagemaker-python-sdk/blob/master/src/sagemaker/workflow/README.rst
