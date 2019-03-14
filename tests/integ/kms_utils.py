@@ -12,6 +12,8 @@
 # language governing permissions and limitations under the License.
 from __future__ import absolute_import
 
+from botocore import exceptions
+
 KEY_ALIAS = "SageMakerIntegTestKmsKey"
 KEY_POLICY = '''
 {{
@@ -22,7 +24,7 @@ KEY_POLICY = '''
       "Sid": "Enable IAM User Permissions",
       "Effect": "Allow",
       "Principal": {{
-        "AWS": "{account_id}"
+        "AWS": "*"
       }},
       "Action": "kms:*",
       "Resource": "*"
@@ -56,3 +58,78 @@ def get_or_create_kms_key(kms_client, account_id):
         return kms_key_arn
     else:
         return _create_kms_key(kms_client, account_id)
+
+
+KMS_BUCKET_POLICY = """{
+  "Version": "2012-10-17",
+  "Id": "PutObjPolicy",
+  "Statement": [
+    {
+      "Sid": "DenyIncorrectEncryptionHeader",
+      "Effect": "Deny",
+      "Principal": "*",
+      "Action": "s3:PutObject",
+      "Resource": "arn:aws:s3:::%s/*",
+      "Condition": {
+        "StringNotEquals": {
+          "s3:x-amz-server-side-encryption": "aws:kms"
+        }
+      }
+    },
+    {
+      "Sid": "DenyUnEncryptedObjectUploads",
+      "Effect": "Deny",
+      "Principal": "*",
+      "Action": "s3:PutObject",
+      "Resource": "arn:aws:s3:::%s/*",
+      "Condition": {
+        "Null": {
+          "s3:x-amz-server-side-encryption": "true"
+        }
+      }
+    }
+  ]
+}"""
+
+
+def get_or_create_bucket_with_encryption(boto_session):
+    account = boto_session.client('sts').get_caller_identity()['Account']
+    kms_key_arn = get_or_create_kms_key(boto_session.client('kms'), account)
+
+    region = boto_session.region_name
+    bucket_name = 'sagemaker-{}-{}-with-kms'.format(region, account)
+
+    s3 = boto_session.client('s3')
+    try:
+        # 'us-east-1' cannot be specified because it is the default region:
+        # https://github.com/boto/boto3/issues/125
+        if region == 'us-east-1':
+            s3.create_bucket(Bucket=bucket_name)
+        else:
+            s3.create_bucket(Bucket=bucket_name,
+                             CreateBucketConfiguration={'LocationConstraint': region})
+
+    except exceptions.ClientError as e:
+        if e.response['Error']['Code'] != 'BucketAlreadyOwnedByYou':
+            raise
+
+    s3.put_bucket_encryption(
+        Bucket=bucket_name,
+        ServerSideEncryptionConfiguration={
+            'Rules': [
+                {
+                    'ApplyServerSideEncryptionByDefault': {
+                        'SSEAlgorithm': 'aws:kms',
+                        'KMSMasterKeyID': kms_key_arn
+                    }
+                },
+            ]
+        }
+    )
+
+    s3.put_bucket_policy(
+        Bucket=bucket_name,
+        Policy=KMS_BUCKET_POLICY % (bucket_name, bucket_name)
+    )
+
+    return 's3://' + bucket_name, kms_key_arn
