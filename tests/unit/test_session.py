@@ -19,7 +19,7 @@ import logging
 import pytest
 import six
 from botocore.exceptions import ClientError
-from mock import MagicMock, Mock, patch, call, mock_open
+from mock import ANY, MagicMock, Mock, patch, call, mock_open
 
 import sagemaker
 from sagemaker import s3_input, Session, get_execution_role
@@ -759,6 +759,18 @@ def test_create_model(expand_container_def, sagemaker_session):
 
 
 @patch('sagemaker.session._expand_container_def', return_value=PRIMARY_CONTAINER)
+def test_create_model_with_tags(expand_container_def, sagemaker_session):
+    tags = [{'Key': 'TagtestKey', 'Value': 'TagtestValue'}]
+    model = sagemaker_session.create_model(MODEL_NAME, ROLE, PRIMARY_CONTAINER, tags=tags)
+
+    assert model == MODEL_NAME
+    sagemaker_session.sagemaker_client.create_model.assert_called_with(ExecutionRoleArn=EXPANDED_ROLE,
+                                                                       ModelName=MODEL_NAME,
+                                                                       PrimaryContainer=PRIMARY_CONTAINER,
+                                                                       Tags=[{'Value': 'TagtestValue', 'Key': 'TagtestKey'}])
+
+
+@patch('sagemaker.session._expand_container_def', return_value=PRIMARY_CONTAINER)
 def test_create_model_with_primary_container(expand_container_def, sagemaker_session):
     model = sagemaker_session.create_model(MODEL_NAME, ROLE, container_defs=PRIMARY_CONTAINER)
 
@@ -901,6 +913,17 @@ def test_endpoint_from_production_variants(sagemaker_session):
     sagemaker_session.sagemaker_client.create_endpoint_config.assert_called_with(
         EndpointConfigName='some-endpoint',
         ProductionVariants=pvs)
+
+
+def test_create_endpoint_config_with_tags(sagemaker_session):
+    tags = [{'Key': 'TagtestKey', 'Value': 'TagtestValue'}]
+
+    sagemaker_session.create_endpoint_config('endpoint-test', 'simple-model', 1, 'local', tags=tags)
+
+    sagemaker_session.sagemaker_client.create_endpoint_config.assert_called_with(
+        EndpointConfigName='endpoint-test',
+        ProductionVariants= ANY,
+        Tags=tags)
 
 
 def test_endpoint_from_production_variants_with_tags(sagemaker_session):

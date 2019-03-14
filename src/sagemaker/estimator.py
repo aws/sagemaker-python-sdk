@@ -350,6 +350,8 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):
             update_endpoint (bool): Flag to update the model in an existing Amazon SageMaker endpoint.
                 If True, this will deploy a new EndpointConfig to an already existing endpoint and delete resources
                 corresponding to the previous EndpointConfig. Default: False
+            tags(List[dict[str, str]]): Optional. The list of tags to attach to this specific endpoint.
+
             **kwargs: Passed to invocation of ``create_model()``. Implementations may customize
                 ``create_model()`` to accept ``**kwargs`` to customize model creation during deploy.
                 For more, see the implementation docs.
@@ -374,7 +376,8 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):
             initial_instance_count=initial_instance_count,
             accelerator_type=accelerator_type,
             endpoint_name=endpoint_name,
-            update_endpoint=update_endpoint)
+            update_endpoint=update_endpoint,
+            tags=self.tags)
 
     @property
     def model_data(self):

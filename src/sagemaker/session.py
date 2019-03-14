@@ -544,7 +544,8 @@ class Session(object):
         self.sagemaker_client.create_transform_job(**transform_request)
 
     def create_model(self, name, role, container_defs, vpc_config=None,
-                     enable_network_isolation=False, primary_container=None):
+                     enable_network_isolation=False, primary_container=None,
+                     tags=None):
         """Create an Amazon SageMaker ``Model``.
         Specify the S3 location of the model artifacts and Docker image containing
         the inference code. Amazon SageMaker uses this information to deploy the
@@ -570,6 +571,8 @@ class Session(object):
                 You can also specify the return value of ``sagemaker.container_def()``, which is used to create
                 more advanced container configurations, including model containers which need artifacts from S3. This
                 field is deprecated, please use container_defs instead.
+            tags(List[dict[str, str]]): Optional. The list of tags to add to the model.
+
 
         Returns:
             str: Name of the Amazon SageMaker ``Model`` created.
@@ -583,12 +586,16 @@ class Session(object):
             container_defs = primary_container
 
         role = self.expand_role(role)
-        create_model_request = {}
+
         if isinstance(container_defs, list):
-            create_model_request = _create_model_request(name=name, role=role, container_def=container_defs)
+            container_definition = container_defs
         else:
-            primary_container = _expand_container_def(container_defs)
-            create_model_request = _create_model_request(name=name, role=role, container_def=primary_container)
+            container_definition = _expand_container_def(container_defs)
+
+        create_model_request = _create_model_request(name=name,
+                                                     role=role,
+                                                     container_def=container_definition,
+                                                     tags=tags)
 
         if vpc_config:
             create_model_request['VpcConfig'] = vpc_config
@@ -702,7 +709,8 @@ class Session(object):
                 model_package_name, status, reason))
         return desc
 
-    def create_endpoint_config(self, name, model_name, initial_instance_count, instance_type, accelerator_type=None):
+    def create_endpoint_config(self, name, model_name, initial_instance_count, instance_type,
+                               accelerator_type=None, tags=None):
         """Create an Amazon SageMaker endpoint configuration.
 
         The endpoint configuration identifies the Amazon SageMaker model (created using the
@@ -717,6 +725,7 @@ class Session(object):
             instance_type (str): Type of EC2 instance to launch, for example, 'ml.c4.xlarge'.
             accelerator_type (str): Type of Elastic Inference accelerator to attach to the instance. For example,
                 'ml.eia1.medium'. For more information: https://docs.aws.amazon.com/sagemaker/latest/dg/ei.html
+            tags(List[dict[str, str]]): Optional. The list of tags to add to the endpoint config.
 
 
         Returns:
@@ -724,10 +733,13 @@ class Session(object):
         """
         LOGGER.info('Creating endpoint-config with name {}'.format(name))
 
+        tags = tags or []
+
         self.sagemaker_client.create_endpoint_config(
             EndpointConfigName=name,
             ProductionVariants=[production_variant(model_name, instance_type, initial_instance_count,
-                                                   accelerator_type=accelerator_type)]
+                                                   accelerator_type=accelerator_type)],
+            Tags=tags
         )
         return name
 
@@ -1383,19 +1395,21 @@ class ModelContainer(object):
         self.env = env
 
 
-def _create_model_request(name, role, container_def=None):  # pylint: disable=redefined-outer-name
+def _create_model_request(name, role, container_def=None, tags=None):  # pylint: disable=redefined-outer-name
+    request = {
+            'ModelName': name,
+            'ExecutionRoleArn': role
+        }
+
     if isinstance(container_def, list):
-        return {
-            'ModelName': name,
-            'Containers': container_def,
-            'ExecutionRoleArn': role
-        }
+        request['Containers'] = container_def
     else:
-        return {
-            'ModelName': name,
-            'PrimaryContainer': container_def,
-            'ExecutionRoleArn': role
-        }
+        request['PrimaryContainer'] = container_def
+
+    if tags:
+        request['Tags'] = tags
+
+    return request
 
 
 def _deployment_entity_exists(describe_fn):

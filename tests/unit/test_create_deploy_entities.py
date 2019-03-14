@@ -70,7 +70,7 @@ def test_create_endpoint_config(sagemaker_session):
                      'InitialVariantWeight': 1,
                      'VariantName': 'AllTraffic'}]
     sagemaker_session.sagemaker_client.create_endpoint_config.assert_called_once_with(
-        EndpointConfigName=ENDPOINT_CONFIG_NAME, ProductionVariants=expected_pvs)
+        EndpointConfigName=ENDPOINT_CONFIG_NAME, ProductionVariants=expected_pvs, Tags=[])
 
 
 def test_create_endpoint_config_with_accelerator(sagemaker_session):
@@ -87,7 +87,7 @@ def test_create_endpoint_config_with_accelerator(sagemaker_session):
                      'VariantName': 'AllTraffic',
                      'AcceleratorType': ACCELERATOR_TYPE}]
     sagemaker_session.sagemaker_client.create_endpoint_config.assert_called_once_with(
-        EndpointConfigName=ENDPOINT_CONFIG_NAME, ProductionVariants=expected_pvs)
+        EndpointConfigName=ENDPOINT_CONFIG_NAME, ProductionVariants=expected_pvs, Tags=[])
 
 
 def test_create_endpoint_no_wait(sagemaker_session):

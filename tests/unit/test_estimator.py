@@ -18,7 +18,7 @@ import os
 from time import sleep
 
 import pytest
-from mock import MagicMock, Mock, patch
+from mock import ANY, MagicMock, Mock, patch
 
 from sagemaker.amazon.amazon_estimator import registry
 from sagemaker.algorithm import AlgorithmEstimator
@@ -880,6 +880,38 @@ HYPERPARAMS = {'x': 1, 'y': 'hello'}
 STRINGIFIED_HYPERPARAMS = dict([(x, str(y)) for x, y in HYPERPARAMS.items()])
 HP_TRAIN_CALL = dict(BASE_TRAIN_CALL)
 HP_TRAIN_CALL.update({'hyperparameters': STRINGIFIED_HYPERPARAMS})
+
+
+def test_fit_deploy_keep_tags(sagemaker_session):
+    tags = [{'Key': 'TagtestKey', 'Value': 'TagtestValue'}]
+    estimator = Estimator(IMAGE_NAME,
+                          ROLE,
+                          INSTANCE_COUNT,
+                          INSTANCE_TYPE,
+                          tags=tags,
+                          sagemaker_session=sagemaker_session)
+
+    estimator.fit()
+
+    estimator.deploy(INSTANCE_COUNT, INSTANCE_TYPE)
+
+    variant = [{
+                  'InstanceType': 'c4.4xlarge', 'VariantName': 'AllTraffic',
+                  'ModelName': ANY, 'InitialVariantWeight': 1,
+                  'InitialInstanceCount': 1
+              }]
+
+    job_name = estimator._current_job_name
+    sagemaker_session.endpoint_from_production_variants.assert_called_with(job_name,
+                                                                           variant,
+                                                                           tags)
+
+    sagemaker_session.create_model.assert_called_with(
+        ANY,
+        'DummyRole',
+        {'ModelDataUrl': 's3://bucket/model.tar.gz', 'Environment': {}, 'Image': 'fakeimage'},
+        enable_network_isolation=False,
+        vpc_config=None)
 
 
 def test_generic_to_fit_no_input(sagemaker_session):
