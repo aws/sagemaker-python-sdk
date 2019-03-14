@@ -2,6 +2,11 @@
 CHANGELOG
 =========
 
+1.18.6dev
+=========
+
+* doc-fix: Move workflow and pytorch readme content into sphinx project
+
 1.18.5
 ======
 
