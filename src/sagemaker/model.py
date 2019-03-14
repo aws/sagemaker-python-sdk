@@ -96,7 +96,7 @@ class Model(object):
         """
         return False
 
-    def _create_sagemaker_model(self, instance_type, accelerator_type=None):
+    def _create_sagemaker_model(self, instance_type, accelerator_type=None, tags=None):
         """Create a SageMaker Model Entity
 
         Args:
@@ -105,6 +105,11 @@ class Model(object):
             accelerator_type (str): Type of Elastic Inference accelerator to attach to an endpoint for model loading
                 and inference, for example, 'ml.eia1.medium'. If not specified, no Elastic Inference accelerator
                 will be attached to the endpoint.
+            tags(List[dict[str, str]]): Optional. The list of tags to add to the model. Example:
+                    >>> tags = [{'Key': 'tagname', 'Value': 'tagvalue'}]
+                    For more information about tags, see https://boto3.amazonaws.com/v1/documentation\
+                    /api/latest/reference/services/sagemaker.html#SageMaker.Client.add_tags
+
         """
         container_def = self.prepare_container_def(instance_type, accelerator_type=accelerator_type)
         self.name = self.name or utils.name_from_image(container_def['Image'])
