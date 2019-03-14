@@ -25,15 +25,18 @@ class ParameterRange(object):
 
     __all_types__ = ('Continuous', 'Categorical', 'Integer')
 
-    def __init__(self, min_value, max_value):
+    def __init__(self, min_value, max_value, scaling_type='Auto'):
         """Initialize a parameter range.
 
         Args:
             min_value (float or int): The minimum value for the range.
             max_value (float or int): The maximum value for the range.
+            scaling_type (str): The scale used for searching the range during tuning (default: 'Auto').
+                Valid values: 'Auto', 'Linear', 'Logarithmic' and 'ReverseLogarithmic'.
         """
         self.min_value = min_value
         self.max_value = max_value
+        self.scaling_type = scaling_type
 
     def is_valid(self, value):
         """Determine if a value is valid within this ParameterRange.
@@ -62,7 +65,8 @@ class ParameterRange(object):
         """
         return {'Name': name,
                 'MinValue': to_str(self.min_value),
-                'MaxValue': to_str(self.max_value)}
+                'MaxValue': to_str(self.max_value),
+                'ScalingType': self.scaling_type}
 
 
 class ContinuousParameter(ParameterRange):
