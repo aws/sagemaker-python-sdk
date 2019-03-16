@@ -34,8 +34,6 @@ estimator object to create a SageMaker Endpoint:
 
 The code block above deploys a SageMaker Endpoint with one instance of the type 'ml.c5.xlarge'.
 
-As of now, only the Python-based TensorFlow serving endpoints support Elastic Inference. For more information, see `Deploying to Python-based Endpoints <https://github.com/aws/sagemaker-python-sdk/blob/master/src/sagemaker/tensorflow/deploying_python.rst#deploying-to-python-based-endpoints>`_.
-
 What happens when deploy is called
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
@@ -65,6 +63,17 @@ If you already have existing model artifacts in S3, you can skip training and de
   model = Model(model_data='s3://mybucket/model.tar.gz', role='MySageMakerRole')
 
   predictor = model.deploy(initial_instance_count=1, instance_type='ml.c5.xlarge')
+
+You can also deploy the model with Amazon Elastic Inference, which allows you to attach low-cost GPU accelerators to your Amazon EC2 and SageMaker instances.
+For more information, see `Amazon SageMaker Elastic Inference <https://docs.aws.amazon.com/sagemaker/latest/dg/ei.html>`__.
+
+.. code:: python
+
+    from sagemaker.tensorflow.serving import Model
+
+    model = Model(model_data='s3://mybucket/model.tar.gz', role='MySageMakerRole')
+
+    predictor = model.deploy(initial_instance_count=1, instance_type='ml.c5.xlarge', accelerator_type='ml.eia1.medium')
 
 Making predictions against a SageMaker Endpoint
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

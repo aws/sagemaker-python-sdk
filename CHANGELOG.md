@@ -33,6 +33,7 @@
 * bug-fix: ``AlgorithmEstimator``: Make SupportedHyperParameters optional
 * feature: ``Hyperparameter``: Support scaling hyperparameters
 * doc-fix: Remove duplicate content from main README.rst, /tensorflow/README.rst, and /sklearn/README.rst and add links to readthedocs content
+* feature: Add EI support for TFS Python
 
 ## 1.18.4
 
