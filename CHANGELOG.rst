@@ -5,7 +5,7 @@ CHANGELOG
 1.18.6dev
 =========
 
-* doc-fix: Move workflow and pytorch readme content into sphinx project
+* doc-fix: Move workflow and PyTorch readme content into sphinx project, fixed broken links in using_tensorflow.rst
 
 1.18.5
 ======
