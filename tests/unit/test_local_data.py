@@ -28,6 +28,10 @@ def test_get_data_source_instance_with_file(LocalFileDataSource, sagemaker_local
     LocalFileDataSource.assert_called_with('/my/file')
     assert data_source is not None
 
+    data_source = sagemaker.local.data.get_data_source_instance('file://relative/path', sagemaker_local_session)
+    LocalFileDataSource.assert_called_with('relative/path')
+    assert data_source is not None
+
 
 @patch('sagemaker.local.data.S3DataSource')
 def test_get_data_source_instance_with_s3(S3DataSource, sagemaker_local_session):

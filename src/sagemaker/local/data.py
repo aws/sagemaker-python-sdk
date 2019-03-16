@@ -44,7 +44,7 @@ def get_data_source_instance(data_source, sagemaker_session):
     """
     parsed_uri = urlparse(data_source)
     if parsed_uri.scheme == 'file':
-        return LocalFileDataSource(parsed_uri.path)
+        return LocalFileDataSource(parsed_uri.netloc + parsed_uri.path)
     elif parsed_uri.scheme == 's3':
         return S3DataSource(parsed_uri.netloc, parsed_uri.path, sagemaker_session)
 
