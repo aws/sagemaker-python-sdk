@@ -72,6 +72,7 @@ def test_predict(tfs_predictor, instance_type):  # pylint: disable=W0613
 
 @pytest.mark.skipif(tests.integ.test_region() not in tests.integ.EI_SUPPORTED_REGIONS,
                     reason='EI is not supported in region {}'.format(tests.integ.test_region()))
+@pytest.mark.canary_quick
 def test_predict_with_accelerator(tfs_predictor_with_accelerator):
     input_data = {'instances': [1.0, 2.0, 5.0]}
     expected_result = {'predictions': [3.5, 4.0, 5.5]}

@@ -64,8 +64,7 @@ If you already have existing model artifacts in S3, you can skip training and de
 
   predictor = model.deploy(initial_instance_count=1, instance_type='ml.c5.xlarge')
 
-You can also deploy the model with Amazon Elastic Inference, which allows you to attach low-cost GPU accelerators to your Amazon EC2 and SageMaker instances.
-For more information, see `Amazon SageMaker Elastic Inference <https://docs.aws.amazon.com/sagemaker/latest/dg/ei.html>`__.
+Python-based TensorFlow serving on SageMaker has support for `Elastic Inference <https://docs.aws.amazon.com/sagemaker/latest/dg/ei.html>`__, which allows for inference acceleration to a hosted endpoint for a fraction of the cost of using a full GPU instance. In order to attach an Elastic Inference accelerator to your endpoint provide the accelerator type to accelerator_type to your deploy call.
 
 .. code:: python
 
