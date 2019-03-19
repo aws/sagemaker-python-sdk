@@ -42,7 +42,8 @@ EMPTY_FRAMEWORK_VERSION_ERROR = 'framework_version is required for script mode e
 
 VALID_PY_VERSIONS = ['py2', 'py3']
 VALID_EIA_FRAMEWORKS = ['tensorflow', 'tensorflow-serving', 'mxnet']
-VALID_ACCOUNTS_BY_REGION = {'us-gov-west-1': '246785580436'}
+VALID_ACCOUNTS_BY_REGION = {'us-gov-west-1': '246785580436',
+                            'us-iso-east-1': '744548109606'}
 
 
 def create_image_uri(region, framework, instance_type, framework_version, py_version=None,
