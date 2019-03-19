@@ -23,6 +23,10 @@ def read(fname):
     return open(os.path.join(os.path.dirname(__file__), fname)).read()
 
 
+def read_version():
+    return read('VERSION').strip()
+
+
 # Declare minimal set for installation
 required_packages = ['boto3>=1.9.64', 'numpy>=1.9.0', 'protobuf>=3.1', 'scipy>=0.19.0',
                      'urllib3>=1.21', 'protobuf3-to-dict>=0.1.5', 'docker-compose>=1.23.0',
@@ -33,7 +37,7 @@ if sys.version_info < (3, 4):
     required_packages.append('enum34>=1.1.6')
 
 setup(name="sagemaker",
-      version='1.18.5',
+      version=read_version(),
       description="Open source library for training and deploying models on Amazon SageMaker.",
       packages=find_packages('src'),
       package_dir={'': 'src'},
