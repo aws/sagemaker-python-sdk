@@ -451,14 +451,14 @@ Endpoint:
 - The first option uses a Python-based server that allows you to specify your own custom
   input and output handling functions in a Python script. This is the default option.
 
-  See `Deploying to Python-based Endpoints <deploying_python.rst>`_ to learn how to use this option.
+  See `Deploying to Python-based Endpoints <https://github.com/aws/sagemaker-python-sdk/blob/master/src/sagemaker/tensorflow/deploying_python.rst>`_ to learn how to use this option.
 
 
 - The second option uses a TensorFlow Serving-based server to provide a super-set of the
   `TensorFlow Serving REST API <https://www.tensorflow.org/serving/api_rest>`_. This option
   does not require (or allow) a custom python script.
 
-  See `Deploying to TensorFlow Serving Endpoints <deploying_tensorflow_serving.rst>`_ to learn how to use this option.
+  See `Deploying to TensorFlow Serving Endpoints <https://github.com/aws/sagemaker-python-sdk/blob/master/src/sagemaker/tensorflow/deploying_tensorflow_serving.rst>`_ to learn how to use this option.
 
 
 SageMaker TensorFlow Docker containers
