@@ -33,13 +33,37 @@ To send us a pull request, please:
 2. Modify the source; please focus on the specific change you are contributing. If you also reformat all the code, it will be hard for us to focus on your change.
 3. Include unit tests when you contribute new features or make bug fixes, as they help to a) prove that your code works correctly, and b) guard against future breaking changes to lower the maintenance cost.
 4. Ensure local tests pass.
-5. Update the [changelog](https://github.com/aws/sagemaker-python-sdk/blob/master/CHANGELOG.rst) with a description of your changes for any code contribution.
-6. Commit to your fork using [clear and imperative commit messages](https://chris.beams.io/posts/git-commit/).
-7. Send us a pull request, answering any default questions in the pull request interface.
-8. Pay attention to any automated CI failures reported in the pull request, and stay involved in the conversation.
+5. Use commit messages (and PR titles) that follow [these guidelines](#commit-message-guidelines).
+6. Send us a pull request, answering any default questions in the pull request interface.
+7. Pay attention to any automated CI failures reported in the pull request, and stay involved in the conversation.
 
 GitHub provides additional document on [forking a repository](https://help.github.com/articles/fork-a-repo/) and 
 [creating a pull request](https://help.github.com/articles/creating-a-pull-request/).
+
+### Commit message guidelines
+
+We use commit messages to update the project version number and generate changelog entries, so it's important for them to follow the right format. Valid commit messages include a prefix, separated from the rest of the message by a colon and a space. Here are a few examples:
+
+```
+feature: support VPC config for hyperparameter tuning
+fix: fix flake8 errors
+documentation: add MXNet documentation
+```
+
+Valid prefixes are listed in the table below.
+
+| Prefix        | Use for...                                                                                     |
+|---------------|------------------------------------------------------------------------------------------------|
+| `breaking`      | Incompatible API changes.                                                                       |
+| `deprecation`   | Deprecating an existing API or feature, or removing something that was previously deprecated.  |
+| `feature`       | Adding a new feature.                                                                           |
+| `fix`           | Bug fixes.                                                                                      |
+| `change`        | Any other code change.                                                                          |
+| `documentation` | Documentation changes.                                                                          |
+
+Some of the prefixes allow abbreviation -- `break`, `feat`, `depr`, and `doc` are all valid. If you omit a prefix, the commit will be treated as a `change`.
+
+For the rest of the message, use imperative style and keep things concise but informative. See [How to Write a Git Commit Message](https://chris.beams.io/posts/git-commit/) for guidance.
 
 
 ## Finding contributions to work on
