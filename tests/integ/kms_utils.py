@@ -12,19 +12,21 @@
 # language governing permissions and limitations under the License.
 from __future__ import absolute_import
 
+import time
+
 from botocore import exceptions
 
 KEY_ALIAS = "SageMakerIntegTestKmsKey"
 KEY_POLICY = '''
 {{
   "Version": "2012-10-17",
-  "Id": "sagemaker-kms-integ-test-policy",
+  "Id": "{id}",
   "Statement": [
     {{
       "Sid": "Enable IAM User Permissions",
       "Effect": "Allow",
       "Principal": {{
-        "AWS": "*"
+        "AWS": {principal}
       }},
       "Action": "kms:*",
       "Resource": "*"
@@ -42,9 +44,16 @@ def _get_kms_key_arn(kms_client, alias):
         return None
 
 
-def _create_kms_key(kms_client, account_id):
+def _create_kms_key(kms_client, account_id, role_arn=None):
+    if role_arn:
+        principal = '["{account_id}", "{role_arn}"]'.format(account_id=account_id,
+                                                            role_arn=role_arn)
+    else:
+        principal = "{account_id}".format(account_id=account_id)
+
+    keyid = 'sagemaker-kms-integ-test-policy-' + time.strftime('%y%m%d-%H%M')
     response = kms_client.create_key(
-        Policy=KEY_POLICY.format(account_id=account_id),
+        Policy=KEY_POLICY.format(id=keyid, principal=principal),
         Description='KMS key for SageMaker Python SDK integ tests',
     )
     key_arn = response['KeyMetadata']['Arn']
@@ -52,12 +61,12 @@ def _create_kms_key(kms_client, account_id):
     return key_arn
 
 
-def get_or_create_kms_key(kms_client, account_id):
-    kms_key_arn = _get_kms_key_arn(kms_client, KEY_ALIAS)
+def get_or_create_kms_key(kms_client, account_id, role_arn=None, alias=KEY_ALIAS):
+    kms_key_arn = _get_kms_key_arn(kms_client, alias)
     if kms_key_arn is not None:
         return kms_key_arn
     else:
-        return _create_kms_key(kms_client, account_id)
+        return _create_kms_key(kms_client, account_id, role_arn)
 
 
 KMS_BUCKET_POLICY = """{
@@ -94,7 +103,8 @@ KMS_BUCKET_POLICY = """{
 
 def get_or_create_bucket_with_encryption(boto_session):
     account = boto_session.client('sts').get_caller_identity()['Account']
-    kms_key_arn = get_or_create_kms_key(boto_session.client('kms'), account)
+    role_arn = boto_session.client('sts').get_caller_identity()['Arn']
+    kms_key_arn = get_or_create_kms_key(boto_session.client('kms'), account, role_arn)
 
     region = boto_session.region_name
     bucket_name = 'sagemaker-{}-{}-with-kms'.format(region, account)
