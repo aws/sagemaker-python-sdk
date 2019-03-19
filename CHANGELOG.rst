@@ -7,6 +7,7 @@ CHANGELOG
 
 * doc-fix: Move workflow and PyTorch readme content into sphinx project
 * doc-fix: Fix broken links in using_tensorflow.rst
+* doc-fix: Update inference pipelines documentation
 
 1.18.5
 ======
