@@ -12,11 +12,12 @@
 # language governing permissions and limitations under the License.
 from __future__ import absolute_import
 
-import time
+import json
 
 from botocore import exceptions
 
 KEY_ALIAS = "SageMakerIntegTestKmsKey"
+POLICY_NAME = "default"
 KEY_POLICY = '''
 {{
   "Version": "2012-10-17",
@@ -44,6 +45,14 @@ def _get_kms_key_arn(kms_client, alias):
         return None
 
 
+def _get_kms_key_id(kms_client, alias):
+    try:
+        response = kms_client.describe_key(KeyId='alias/' + alias)
+        return response['KeyMetadata']['KeyId']
+    except kms_client.exceptions.NotFoundException:
+        return None
+
+
 def _create_kms_key(kms_client, account_id, role_arn=None):
     if role_arn:
         principal = '["{account_id}", "{role_arn}"]'.format(account_id=account_id,
@@ -51,9 +60,8 @@ def _create_kms_key(kms_client, account_id, role_arn=None):
     else:
         principal = "{account_id}".format(account_id=account_id)
 
-    keyid = 'sagemaker-kms-integ-test-policy-' + time.strftime('%y%m%d-%H%M')
     response = kms_client.create_key(
-        Policy=KEY_POLICY.format(id=keyid, principal=principal),
+        Policy=KEY_POLICY.format(id=POLICY_NAME, principal=principal),
         Description='KMS key for SageMaker Python SDK integ tests',
     )
     key_arn = response['KeyMetadata']['Arn']
@@ -61,12 +69,29 @@ def _create_kms_key(kms_client, account_id, role_arn=None):
     return key_arn
 
 
+def _add_role_to_policy(kms_client, account_id, role_arn, alias=KEY_ALIAS):
+    key_id = _get_kms_key_id(kms_client, alias)
+    policy = kms_client.get_key_policy(KeyId=key_id, PolicyName=POLICY_NAME)
+    policy = json.loads(policy['Policy'])
+    principal = policy['Statement'][0]['Principal']['AWS']
+
+    if role_arn not in principal:
+        principal = '["{account_id}", "{role_arn}"]'.format(account_id=account_id,
+                                                            role_arn=role_arn)
+        kms_client.put_key_policy(KeyId=key_id,
+                                  PolicyName=POLICY_NAME,
+                                  Policy=KEY_POLICY.format(id=POLICY_NAME, principal=principal))
+
+
 def get_or_create_kms_key(kms_client, account_id, role_arn=None, alias=KEY_ALIAS):
     kms_key_arn = _get_kms_key_arn(kms_client, alias)
-    if kms_key_arn is not None:
-        return kms_key_arn
-    else:
+
+    if kms_key_arn is None:
         return _create_kms_key(kms_client, account_id, role_arn)
+
+    _add_role_to_policy(kms_client, account_id, role_arn, alias)
+
+    return kms_key_arn
 
 
 KMS_BUCKET_POLICY = """{
