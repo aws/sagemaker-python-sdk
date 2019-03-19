@@ -672,7 +672,9 @@ request using this predictor, you should pass the data that the first container 
 output from the last container.
 
 You can also use a ``PipelineModel`` to create Transform Jobs for batch transformations. Using the same ``PipelineModel`` ``sm_model`` as above:
+
 .. code:: python
+
    # Only instance_type and instance_count are required.
    transformer = sm_model.transformer(instance_type='ml.c5.xlarge',
                                       instance_count=1,
@@ -688,6 +690,7 @@ You can also use a ``PipelineModel`` to create Transform Jobs for batch transfor
                          split_type='Line')
    # Waits for the Pipeline Transform Job to finish.
    transformer.wait()
+
 This runs a transform job against all the files under ``s3://mybucket/path/to/my/csv/data``, transforming the input
 data in order with each model container in the pipeline. For each input file that was successfully transformed, one output file in ``s3://my-output-bucket/path/to/my/output/data/``
 will be created with the same name, appended with '.out'.
