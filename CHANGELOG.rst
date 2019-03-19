@@ -2,12 +2,21 @@
 CHANGELOG
 =========
 
-1.18.5.dev
-==========
+1.18.6dev
+=========
+
+* doc-fix: Move workflow and PyTorch readme content into sphinx project
+* doc-fix: Fix broken links in using_tensorflow.rst
+* doc-fix: Update inference pipelines documentation
+
+1.18.5
+======
 
 * bug-fix: pass kms id as parameter for uploading code with Server side encryption
 * feature: ``PipelineModel``: Create a Transformer from a PipelineModel
 * bug-fix: ``AlgorithmEstimator``: Make SupportedHyperParameters optional
+* feature: ``Hyperparameter``: Support scaling hyperparameters
+* doc-fix: Remove duplicate content from main README.rst, /tensorflow/README.rst, and /sklearn/README.rst and add links to readthedocs content
 
 1.18.4
 ======

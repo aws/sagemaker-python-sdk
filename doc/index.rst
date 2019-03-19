@@ -81,6 +81,11 @@ PyTorch
 A managed environment for PyTorch training and hosting on Amazon SageMaker
 
 .. toctree::
+    :maxdepth: 1
+
+    using_pytorch
+
+.. toctree::
     :maxdepth: 2
 
     sagemaker.pytorch
@@ -139,6 +144,11 @@ Amazon provides implementations of some common machine learning algortithms opti
 Workflows
 *********
 SageMaker APIs to export configurations for creating and managing Airflow workflows.
+
+.. toctree::
+    :maxdepth: 1
+
+    using_workflow
 
 .. toctree::
     :maxdepth: 2
