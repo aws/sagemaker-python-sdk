@@ -89,7 +89,8 @@ def get_or_create_kms_key(kms_client, account_id, role_arn=None, alias=KEY_ALIAS
     if kms_key_arn is None:
         return _create_kms_key(kms_client, account_id, role_arn)
 
-    _add_role_to_policy(kms_client, account_id, role_arn, alias)
+    if role_arn:
+        _add_role_to_policy(kms_client, account_id, role_arn, alias)
 
     return kms_key_arn
 
