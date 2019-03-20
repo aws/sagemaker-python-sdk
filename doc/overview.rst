@@ -180,6 +180,7 @@ Here is an end-to-end example:
     from sagemaker.mxnet import MXNet
 
     mxnet_estimator = MXNet('train.py',
+                            role='SageMakerRole',
                             train_instance_type='local',
                             train_instance_count=1,
                             framework_version='1.2.1')
