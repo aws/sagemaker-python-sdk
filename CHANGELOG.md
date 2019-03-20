@@ -1,7 +1,6 @@
-=========
-CHANGELOG
-=========
+# Changelog
 
+<<<<<<< HEAD:CHANGELOG.rst
 1.18.6dev
 =========
 
@@ -12,6 +11,9 @@ CHANGELOG
 
 1.18.5
 ======
+=======
+## 1.18.5
+>>>>>>> 840ba48edfe655eef71d90faac8644f8f7b53820:CHANGELOG.md
 
 * bug-fix: pass kms id as parameter for uploading code with Server side encryption
 * feature: ``PipelineModel``: Create a Transformer from a PipelineModel
@@ -19,8 +21,7 @@ CHANGELOG
 * feature: ``Hyperparameter``: Support scaling hyperparameters
 * doc-fix: Remove duplicate content from main README.rst, /tensorflow/README.rst, and /sklearn/README.rst and add links to readthedocs content
 
-1.18.4
-======
+## 1.18.4
 
 * doc-fix: Remove incorrect parameter for EI TFS Python README
 * feature: ``Predictor``: delete SageMaker model
@@ -34,13 +35,11 @@ CHANGELOG
 * doc-fix: Improve new developer experience in README
 * feature: Add support for Coach 0.11.1 for Tensorflow
 
-1.18.3.post1
-============
+## 1.18.3.post1
 
 * doc-fix: fix README for PyPI
 
-1.18.3
-======
+## 1.18.3
 
 * doc-fix: update information about saving models in the MXNet README
 * doc-fix: change ReadTheDocs links from latest to stable
@@ -50,37 +49,31 @@ CHANGELOG
 * feature: add support for ``Transformer`` to delete SageMaker model
 * bug-fix: fix default account for SKLearnModel
 
-1.18.2
-======
+## 1.18.2
 
 * enhancement: Include SageMaker Notebook Instance version number in boto3 user agent, if available.
 * feature: Support for updating existing endpoint
 
-1.18.1
-======
+## 1.18.1
 
 * enhancement: Add ``tuner`` to imports in ``sagemaker/__init__.py``
 
-1.18.0
-======
+## 1.18.0
 
 * bug-fix: Handle StopIteration in CloudWatch Logs retrieval
 * feature: Update EI TensorFlow latest version to 1.12
 * feature: Support for Horovod
 
-1.17.2
-======
+## 1.17.2
 
 * feature: HyperparameterTuner: support VPC config
 
-1.17.1
-======
+## 1.17.1
 
 * enhancement: Workflow: Specify tasks from which training/tuning operator to transform/deploy in related operators
 * feature: Supporting inter-container traffic encryption flag
 
-1.17.0
-======
+## 1.17.0
 
 * bug-fix: Workflow: Revert appending Airflow retry id to default job name
 * feature: support for Tensorflow 1.12
@@ -98,8 +91,7 @@ CHANGELOG
 * enhancement: Add Model.transformer()
 * bug-fix: HyperparameterTuner: make ``include_cls_metadata`` default to ``False`` for everything except Frameworks
 
-1.16.3
-======
+## 1.16.3
 
 * bug-fix: Local Mode: Allow support for SSH in local mode
 * bug-fix: Workflow: Append retry id to default Airflow job name to avoid name collisions in retry
@@ -108,8 +100,7 @@ CHANGELOG
 * bug-fix: Local Mode: Move dependency on sagemaker_s3_output from rl.estimator to model
 * doc-fix: Fix quotes in estimator.py and model.py
 
-1.16.2
-======
+## 1.16.2
 
 * enhancement: Check for S3 paths being passed as entry point
 * feature: Add support for AugmentedManifestFile and ShuffleConfig
@@ -123,19 +114,16 @@ CHANGELOG
 * doc-fix: Add Airflow API documentation
 * feature: HyperparameterTuner: add Early Stopping support
 
-1.16.1.post1
-============
+## 1.16.1.post1
 
 * Documentation: add documentation for Reinforcement Learning Estimator.
 * Documentation: update TensorFlow README for Script Mode
 
-1.16.1
-======
+## 1.16.1
 
 * feature: update boto3 to version 1.9.55
 
-1.16.0
-======
+## 1.16.0
 
 * feature: Add 0.10.1 coach version
 * feature: Add support for SageMaker Neo
@@ -147,16 +135,13 @@ CHANGELOG
 * feature: Add support for SageMaker Inference Pipelines
 * feature: Add support for SparkML serving container
 
-
-1.15.2
-======
+## 1.15.2
 
 * bug-fix: Fix FileNotFoundError for entry_point without source_dir
 * doc-fix: Add missing feature 1.5.0 in change log
 * doc-fix: Add README for airflow
 
-1.15.1
-======
+## 1.15.1
 
 * enhancement: Local Mode: add explicit pull for serving
 * feature: Estimators: dependencies attribute allows export of additional libraries into the container
@@ -164,8 +149,7 @@ CHANGELOG
 * bug-fix: Allow code_location argument to be S3 URI in training_config API
 * enhancement: Local Mode: add explicit pull for serving
 
-1.15.0
-======
+## 1.15.0
 
 * feature: Estimator: add script mode and Python 3 support for TensorFlow
 * bug-fix: Changes to use correct S3 bucket and time range for dataframes in TrainingJobAnalytics.
@@ -179,8 +163,7 @@ CHANGELOG
 * feature: Estimator: add support for MetricDefinitions
 * feature: Estimators: add support for Amazon IP Insights algorithm
 
-1.14.2
-======
+## 1.14.2
 
 * bug-fix: support ``CustomAttributes`` argument in local mode ``invoke_endpoint`` requests
 * enhancement: add ``content_type`` parameter to ``sagemaker.tensorflow.serving.Predictor``
@@ -196,19 +179,16 @@ CHANGELOG
 * bug-fix: Changes to use correct s3 bucket and time range for dataframes in TrainingJobAnalytics.
 * enhancement: Remove MetricDefinition lookup via tuning job in TrainingJobAnalytics
 
-1.14.1
-======
+## 1.14.1
 
 * feature: Estimators: add support for Amazon Object2Vec algorithm
 
-1.14.0
-======
+## 1.14.0
 
 * feature: add support for sagemaker-tensorflow-serving container
 * feature: Estimator: make input channels optional
 
-1.13.0
-======
+## 1.13.0
 
 * feature: Estimator: add input mode to training channels
 * feature: Estimator: add model_uri and model_channel_name parameters
@@ -218,13 +198,11 @@ CHANGELOG
 * feature: Documentation: add explanation for the new training script format used with MXNet
 * feature: Estimators: add ``distributions`` for customizing distributed training with the new training script format
 
-1.12.0
-======
+## 1.12.0
 
 * feature: add support for TensorFlow 1.11.0
 
-1.11.3
-======
+## 1.11.3
 
 * feature: Local Mode: Add support for Batch Inference
 * feature: Add timestamp to secondary status in training job output
@@ -232,126 +210,106 @@ CHANGELOG
 * enhancement: Local Mode: support nvidia-docker2 natively
 * warning: Frameworks: add warning for upcoming breaking change that makes framework_version required
 
-1.11.2
-======
+## 1.11.2
 
 * enhancement: Enable setting VPC config when creating/deploying models
 * enhancement: Local Mode: accept short lived credentials with a warning message
 * bug-fix: Local Mode: pass in job name as parameter for training environment variable
 
-1.11.1
-======
+## 1.11.1
 
 * enhancement: Local Mode: add training environment variables for AWS region and job name
 * doc-fix: Instruction on how to use preview version of PyTorch - 1.0.0.dev.
 * doc-fix: add role to MXNet estimator example in readme
 * bug-fix: default TensorFlow json serializer accepts dict of numpy arrays
 
-1.11.0
-======
+## 1.11.0
 
 * bug-fix: setting health check timeout limit on local mode to 30s
 * bug-fix: make Hyperparameters in local mode optional.
 * enhancement: add support for volume KMS key to Transformer
 * feature: add support for GovCloud
 
-1.10.1
-======
+## 1.10.1
 
 * feature: add train_volume_kms_key parameter to Estimator classes
 * doc-fix: add deprecation warning for current MXNet training script format
 * doc-fix: add docs on deploying TensorFlow model directly from existing model
 * doc-fix: fix code example for using Gzip compression for TensorFlow training data
 
-1.10.0
-======
+## 1.10.0
 
 * feature: add support for TensorFlow 1.10.0
 
-1.9.3.1
-=======
+## 1.9.3.1
 
 * doc-fix: fix rst warnings in README.rst
 
-1.9.3
-=====
+## 1.9.3
 
 * bug-fix: Local Mode: Create output/data directory expected by SageMaker Container.
 * bug-fix: Estimator accepts the vpc configs made capable by 1.9.1
 
-1.9.2
-=====
+## 1.9.2
 
 * feature: add support for TensorFlow 1.9
 
-1.9.1
-=====
+## 1.9.1
 
 * bug-fix: Estimators: Fix serialization of single records
 * bug-fix: deprecate enable_cloudwatch_metrics from Framework Estimators.
 * enhancement: Enable VPC config in training job creation
 
-1.9.0
-=====
+## 1.9.0
 
 * feature: Estimators: add support for MXNet 1.2.1
 
-1.8.0
-=====
+## 1.8.0
 
 * bug-fix: removing PCA from tuner
 * feature: Estimators: add support for Amazon k-nearest neighbors(KNN) algorithm
 
-1.7.2
-=====
+## 1.7.2
 
 * bug-fix: Prediction output for the TF_JSON_SERIALIZER
 * enhancement: Add better training job status report
 
-1.7.1
-=====
+## 1.7.1
 
 * bug-fix: get_execution_role no longer fails if user can't call get_role
 * bug-fix: Session: use existing model instead of failing during ``create_model()``
 * enhancement: Estimator: allow for different role from the Estimator's when creating a Model or Transformer
 
-1.7.0
-=====
+## 1.7.0
 
 * feature: Transformer: add support for batch transform jobs
 * feature: Documentation: add instructions for using Pipe Mode with TensorFlow
 
-1.6.1
-=====
+## 1.6.1
 
 * feature: Added multiclass classification support for linear learner algorithm.
 
-1.6.0
-=====
+## 1.6.0
 
 * feature: Add Chainer 4.1.0 support
 
-1.5.4
-=====
+## 1.5.4
 
 * feature: Added Docker Registry for all 1p algorithms in amazon_estimator.py
 * feature: Added get_image_uri method for 1p algorithms in amazon_estimator.py
 * Support SageMaker algorithms in FRA and SYD regions
 
-1.5.3
-=====
+## 1.5.3
 
 * bug-fix: Can create TrainingJobAnalytics object without specifying metric_names.
 * bug-fix: Session: include role path in ``get_execution_role()`` result
 * bug-fix: Local Mode: fix RuntimeError handling
 
-1.5.2
-=====
+## 1.5.2
 
 * Support SageMaker algorithms in ICN region
 
-1.5.1
-=====
+## 1.5.1
 
 * enhancement: Let Framework models reuse code uploaded by Framework estimators
 * enhancement: Unify generation of model uploaded code location
@@ -359,8 +317,7 @@ CHANGELOG
 * feature: Allow all Framework Estimators to use a custom docker image.
 * feature: Option to add Tags on SageMaker Endpoints
 
-1.5.0
-=====
+## 1.5.0
 
 * feature: Add Support for PyTorch Framework
 * feature: Estimators: add support for TensorFlow 1.7.0
@@ -369,20 +326,17 @@ CHANGELOG
 * enhancement: Allow option for ``HyperparameterTuner`` to not include estimator metadata in job
 * bug-fix: Estimators: Join tensorboard thread after fitting
 
-1.4.2
-=====
+## 1.4.2
 
 * bug-fix: Estimators: Fix attach for LDA
 * bug-fix: Estimators: allow code_location to have no key prefix
 * bug-fix: Local Mode: Fix s3 training data download when there is a trailing slash
 
-1.4.1
-=====
+## 1.4.1
 
 * bug-fix: Local Mode: Fix for non Framework containers
 
-1.4.0
-=====
+## 1.4.0
 
 * bug-fix: Remove __all__ and add noqa in __init__
 * bug-fix: Estimators: Change max_iterations hyperparameter key for KMeans
@@ -392,14 +346,11 @@ CHANGELOG
 * feature: Analytics: Add functions for metrics in Training and Hyperparameter Tuning jobs
 * feature: Estimators: add support for tagging training jobs
 
-
-1.3.0
-=====
+## 1.3.0
 
 * feature: Add chainer
 
-1.2.5
-=====
+## 1.2.5
 
 * bug-fix: Change module names to string type in __all__
 * feature: Save training output files in local mode
@@ -408,55 +359,45 @@ CHANGELOG
 * feature: Updated TensorFlow Serving api protobuf files
 * bug-fix: No longer poll for logs from stopped training jobs
 
-1.2.4
-=====
+## 1.2.4
 
 * feature: Estimators: add support for Amazon Random Cut Forest algorithm
 
-1.2.3
-=====
+## 1.2.3
 
 * bug-fix: Fix local mode not using the right s3 bucket
 
-1.2.2
-=====
+## 1.2.2
 
 * bug-fix: Estimators: fix valid range of hyper-parameter 'loss' in linear learner
 
-1.2.1
-=====
+## 1.2.1
 
 * bug-fix: Change Local Mode to use a sagemaker-local docker network
 
-1.2.0
-=====
+## 1.2.0
 
 * feature: Add Support for Local Mode
 * feature: Estimators: add support for TensorFlow 1.6.0
 * feature: Estimators: add support for MXNet 1.1.0
 * feature: Frameworks: Use more idiomatic ECR repository naming scheme
 
-1.1.3
-=====
+## 1.1.3
 
 * bug-fix: TensorFlow: Display updated data correctly for TensorBoard launched from ``run_tensorboard_locally=True``
 * feature: Tests: create configurable ``sagemaker_session`` pytest fixture for all integration tests
 * bug-fix: Estimators: fix inaccurate hyper-parameters in kmeans, pca and linear learner
 * feature: Estimators: Add new hyperparameters for linear learner.
 
-1.1.2
-=====
+## 1.1.2
 
 * bug-fix: Estimators: do not call create bucket if data location is provided
 
-1.1.1
-=====
+## 1.1.1
 
 * feature: Estimators: add ``requirements.txt`` support for TensorFlow
 
-
-1.1.0
-=====
+## 1.1.0
 
 * feature: Estimators: add support for TensorFlow-1.5.0
 * feature: Estimators: add support for MXNet-1.0.0
@@ -466,8 +407,7 @@ CHANGELOG
 * bug-fix: Tests: fix timeouts for PCA async integration test
 * feature: Predictors: allow ``predictor.predict()`` in the JSON serializer to accept dictionaries
 
-1.0.4
-=====
+## 1.0.4
 
 * feature: Estimators: add support for Amazon Neural Topic Model(NTM) algorithm
 * feature: Documentation: fix description of an argument of sagemaker.session.train
@@ -475,8 +415,7 @@ CHANGELOG
 * feature: Estimators: add support for async fit
 * bug-fix: Estimators: fix estimator role expansion
 
-1.0.3
-=====
+## 1.0.3
 
 * feature: Estimators: add support for Amazon LDA algorithm
 * feature: Hyperparameters: add data_type to hyperparameters
@@ -484,9 +423,7 @@ CHANGELOG
 * feature: Session: support multi-part uploads
 * feature: add new SageMaker CLI
 
-
-1.0.2
-=====
+## 1.0.2
 
 * feature: Estimators: add support for Amazon FactorizationMachines algorithm
 * feature: Session: correctly handle TooManyBuckets error_code in default_bucket method
@@ -494,9 +431,7 @@ CHANGELOG
 * feature: Documentation: show how to make predictions against existing endpoint
 * feature: Estimators: implement write_spmatrix_to_sparse_tensor to support any scipy.sparse matrix
 
-
-1.0.1
-=====
+## 1.0.1
 
 * api-change: Model: Remove support for 'supplemental_containers' when creating Model
 * feature: Documentation: multiple updates
@@ -505,8 +440,6 @@ CHANGELOG
 * feature: Session: use custom user agent at all times
 * feature: Setup: add travis file
 
-
-1.0.0
-=====
+## 1.0.0
 
 * Initial commit

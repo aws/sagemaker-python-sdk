@@ -47,7 +47,7 @@ phases:
       # run integration tests
       - |
         if has-matching-changes "tests/" "src/*.py" "setup.py" "setup.cfg"; then
-          IGNORE_COVERAGE=- tox -e py27,py36 -- -n 24 --boxed tests/integ
+          IGNORE_COVERAGE=- tox -e py27,py36 -- tests/integ -n 24 --boxed --reruns 2
         else
           echo "skipping integration tests"
         fi
