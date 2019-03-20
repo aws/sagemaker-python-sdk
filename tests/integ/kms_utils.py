@@ -154,7 +154,8 @@ def get_or_create_bucket_with_encryption(boto_session, sagemaker_role):
     kms_key_arn = get_or_create_kms_key(boto_session.client('kms'),
                                         account,
                                         role_arn,
-                                        sagemaker_role)
+                                        alias=KEY_ALIAS,
+                                        sagemaker_role=sagemaker_role)
 
     region = boto_session.region_name
     bucket_name = 'sagemaker-{}-{}-with-kms'.format(region, account)
