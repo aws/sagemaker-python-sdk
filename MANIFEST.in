@@ -1,5 +1,6 @@
 recursive-include src/sagemaker *
 
+include VERSION
 include LICENSE.txt
 include README.rst
 
