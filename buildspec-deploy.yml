@@ -1,0 +1,20 @@
+version: 0.2
+
+phases:
+  build:
+    commands:
+      - PACKAGE_FILE="$CODEBUILD_SRC_DIR_ARTIFACT_1/sagemaker-*.tar.gz"
+      - PYPI_USER=$(aws secretsmanager get-secret-value --secret-id /codebuild/pypi/user --query SecretString --output text)
+      - PYPI_PASSWORD=$(aws secretsmanager get-secret-value --secret-id /codebuild/pypi/password --query SecretString --output text)
+      - GPG_PRIVATE_KEY=$(aws secretsmanager get-secret-value --secret-id /codebuild/gpg/private_key --query SecretString --output text)
+      - GPG_PASSWORD=$(aws secretsmanager get-secret-value --secret-id /codebuild/gpg/password --query SecretString --output text)
+
+      - echo 'md5sum of python package:'
+      - md5sum $PACKAGE_FILE
+
+      # import private key and ensure passphrase is cached
+      - echo "$GPG_PRIVATE_KEY" | gpg --batch --import
+      - gpg --pinentry-mode loopback --passphrase "$GPG_PASSWORD" --detach-sign -a -o /dev/null $PACKAGE_FILE
+
+      # publish to pypi
+      - python3 -m twine upload $PACKAGE_FILE --sign -u $PYPI_USER -p $PYPI_PASSWORD
