@@ -19,7 +19,7 @@ from botocore import exceptions
 PRINCIPAL_TEMPLATE = '["{account_id}", "{role_arn}", "arn:aws:iam::{account_id}:role/{' \
                      'sagemaker_role}"] '
 
-KEY_ALIAS = "SageMakerKmsKeyIntegTest"
+KEY_ALIAS = "SageMakerTestKMSKey"
 POLICY_NAME = "default"
 KEY_POLICY = '''
 {{
