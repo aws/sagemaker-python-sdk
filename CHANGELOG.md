@@ -1,5 +1,14 @@
 # Changelog
 
+## v1.18.6 (2019-03-20)
+
+### Changes
+
+ * enable new release process
+ * Update inference pipelines documentation
+ * Migrate content from workflow and pytorch readmes into sphinx project
+ * Propagate Tags from estimator to model, endpoint, and endpoint config
+
 ## 1.18.5
 
 * bug-fix: pass kms id as parameter for uploading code with Server side encryption
