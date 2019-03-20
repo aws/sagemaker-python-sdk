@@ -19,7 +19,7 @@ phases:
         tox -e py27,py36 -- tests/unit
 
       # run a subset of the integration tests
-      - IGNORE_COVERAGE=- tox -e py36 -- tests/integ -m canary_quick -n 64 --reruns 2
+      - IGNORE_COVERAGE=- tox -e py36 -- tests/integ -m canary_quick -n 64 --boxed --reruns 2
 
       # generate the distribution package
       - python3 setup.py sdist
