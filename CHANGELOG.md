@@ -1,5 +1,11 @@
 # Changelog
 
+## v1.18.6.post0 (2019-03-20)
+
+### Documentation changes
+
+ * add mandatory sagemaker_role argument to Local mode example.
+
 ## v1.18.6 (2019-03-20)
 
 ### Changes
