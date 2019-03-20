@@ -40,7 +40,8 @@ EMPTY_FRAMEWORK_VERSION_ERROR = 'framework_version is required for script mode e
 
 VALID_PY_VERSIONS = ['py2', 'py3']
 VALID_EIA_FRAMEWORKS = ['tensorflow', 'mxnet']
-VALID_ACCOUNTS_BY_REGION = {'us-gov-west-1': '246785580436'}
+VALID_ACCOUNTS_BY_REGION = {'us-gov-west-1': '246785580436',
+                            'us-iso-east-1': '744548109606'}
 
 
 def create_image_uri(region, framework, instance_type, framework_version, py_version=None,
@@ -96,8 +97,10 @@ def create_image_uri(region, framework, instance_type, framework_version, py_ver
                                              optimized_families=optimized_families):
         framework += '-eia'
 
-    return "{}.dkr.ecr.{}.amazonaws.com/sagemaker-{}:{}" \
-        .format(account, region, framework, tag)
+    domain_name = "c2s.ic.gov" if region == "us-iso-east-1" else "amazonaws.com"
+
+    return "{}.dkr.ecr.{}.{}/sagemaker-{}:{}" \
+        .format(account, region, domain_name, framework, tag)
 
 
 def _accelerator_type_valid_for_framework(framework, accelerator_type=None, optimized_families=None):

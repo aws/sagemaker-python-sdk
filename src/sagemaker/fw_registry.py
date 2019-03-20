@@ -69,6 +69,10 @@ image_registry_map = {
     "us-gov-west-1": {
         "sparkml-serving": "414596584902",
         "scikit-learn": "414596584902"
+    },
+    "us-iso-east-1": {
+        "sparkml-serving": "833128469047",
+        "scikit-learn": "833128469047"
     }
 }
 
@@ -80,7 +84,8 @@ def registry(region_name, framework=None):
     """
     try:
         account_id = image_registry_map[region_name][framework]
-        return "{}.dkr.ecr.{}.amazonaws.com".format(account_id, region_name)
+        domain_name = "c2s.ic.gov" if region_name == "us-iso-east-1" else "amazonaws.com"
+        return "{}.dkr.ecr.{}.{}".format(account_id, region_name, domain_name)
     except KeyError:
         logging.error("The specific image or region does not exist")
         raise

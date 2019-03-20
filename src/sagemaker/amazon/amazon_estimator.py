@@ -300,6 +300,7 @@ def registry(region_name, algorithm=None):
             "ca-central-1": "469771592824",
             "eu-west-2": "644912444149",
             "us-west-1": "632365934929",
+            "us-iso-east-1": "490574956308",
         }[region_name]
     elif algorithm in ["lda"]:
         account_id = {
@@ -317,6 +318,7 @@ def registry(region_name, algorithm=None):
             "ca-central-1": "469771592824",
             "eu-west-2": "644912444149",
             "us-west-1": "632365934929",
+            "us-iso-east-1": "490574956308",
         }[region_name]
     elif algorithm in ["forecasting-deepar"]:
         account_id = {
@@ -334,6 +336,7 @@ def registry(region_name, algorithm=None):
             "ca-central-1": "469771592824",
             "eu-west-2": "644912444149",
             "us-west-1": "632365934929",
+            "us-iso-east-1": "490574956308",
         }[region_name]
     elif algorithm in ["xgboost", "seq2seq", "image-classification", "blazingtext",
                        "object-detection", "semantic-segmentation"]:
@@ -352,17 +355,20 @@ def registry(region_name, algorithm=None):
             "ca-central-1": "469771592824",
             "eu-west-2": "644912444149",
             "us-west-1": "632365934929",
+            "us-iso-east-1": "490574956308",
         }[region_name]
     elif algorithm in ['image-classification-neo', 'xgboost-neo']:
         account_id = {
             'us-west-2': '301217895009',
             'us-east-1': '785573368785',
             'eu-west-1': '802834080501',
-            'us-east-2': '007439368137'
+            'us-east-2': '007439368137',
         }[region_name]
     else:
         raise ValueError("Algorithm class:{} doesn't have mapping to account_id with images".format(algorithm))
-    return "{}.dkr.ecr.{}.amazonaws.com".format(account_id, region_name)
+
+    domain_name = "c2s.ic.gov" if region_name == "us-iso-east-1" else "amazonaws.com"
+    return "{}.dkr.ecr.{}.{}".format(account_id, region_name, domain_name)
 
 
 def get_image_uri(region_name, repo_name, repo_version=1):
