@@ -58,7 +58,8 @@ def test_mnist(sagemaker_session, instance_type):
 
 def test_server_side_encryption(sagemaker_session):
 
-    bucket_with_kms, kms_key = kms_utils.get_or_create_bucket_with_encryption(sagemaker_session.boto_session)
+    bucket_with_kms, kms_key = kms_utils.get_or_create_bucket_with_encryption(sagemaker_session.boto_session,
+                                                                              'SageMakerRole')
 
     output_path = os.path.join(bucket_with_kms, 'test-server-side-encryption', time.strftime('%y%m%d-%H%M'))
 
