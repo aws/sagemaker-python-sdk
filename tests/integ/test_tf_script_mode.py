@@ -56,7 +56,6 @@ def test_mnist(sagemaker_session, instance_type):
                            ['graph.pbtxt', 'model.ckpt-0.index', 'model.ckpt-0.meta'])
 
 
-@pytest.mark.skip('this test is broken')
 def test_server_side_encryption(sagemaker_session):
 
     bucket_with_kms, kms_key = kms_utils.get_or_create_bucket_with_encryption(sagemaker_session.boto_session,
