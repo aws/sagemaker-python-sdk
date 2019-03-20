@@ -66,5 +66,4 @@ setup(name="sagemaker",
 
       entry_points={
           'console_scripts': ['sagemaker=sagemaker.cli.main:main'],
-      }
-)
+      })
