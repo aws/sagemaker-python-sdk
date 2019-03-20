@@ -20,6 +20,7 @@ PRINCIPAL_TEMPLATE = '["{account_id}", "{role_arn}", "arn:aws:iam::{account_id}:
                      'sagemaker_role}"] '
 
 KEY_ALIAS = "SageMakerTestKMSKey"
+KMS_S3_ALIAS = "SageMakerTestS3KMSKey"
 POLICY_NAME = "default"
 KEY_POLICY = '''
 {{
@@ -154,7 +155,7 @@ def get_or_create_bucket_with_encryption(boto_session, sagemaker_role):
     kms_key_arn = get_or_create_kms_key(boto_session.client('kms'),
                                         account,
                                         role_arn,
-                                        alias=KEY_ALIAS,
+                                        alias=KMS_S3_ALIAS,
                                         sagemaker_role=sagemaker_role)
 
     region = boto_session.region_name
