@@ -18,7 +18,8 @@ phases:
         AWS_CONTAINER_CREDENTIALS_RELATIVE_URI= AWS_DEFAULT_REGION=
         tox -e py27,py36 -- tests/unit
 
-      # consider running integration and tests
+      # run a subset of the integration tests
+      - IGNORE_COVERAGE=- tox -e py36 -- tests/integ -m canary_quick -n 64 --reruns 2
 
       # generate the distribution package
       - python3 setup.py sdist
