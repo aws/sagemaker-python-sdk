@@ -60,7 +60,8 @@ def _get_kms_key_id(kms_client, alias):
 def _create_kms_key(kms_client,
                     account_id,
                     role_arn=None,
-                    sagemaker_role='SageMakerRole'):
+                    sagemaker_role='SageMakerRole',
+                    alias=KEY_ALIAS):
     if role_arn:
         principal = PRINCIPAL_TEMPLATE.format(account_id=account_id,
                                               role_arn=role_arn,
@@ -73,7 +74,7 @@ def _create_kms_key(kms_client,
         Description='KMS key for SageMaker Python SDK integ tests',
     )
     key_arn = response['KeyMetadata']['Arn']
-    response = kms_client.create_alias(AliasName='alias/' + KEY_ALIAS, TargetKeyId=key_arn)
+    response = kms_client.create_alias(AliasName='alias/' + alias, TargetKeyId=key_arn)
     return key_arn
 
 
@@ -105,7 +106,7 @@ def get_or_create_kms_key(kms_client,
     kms_key_arn = _get_kms_key_arn(kms_client, alias)
 
     if kms_key_arn is None:
-        return _create_kms_key(kms_client, account_id, role_arn, sagemaker_role)
+        return _create_kms_key(kms_client, account_id, role_arn, sagemaker_role, alias)
 
     if role_arn:
         _add_role_to_policy(kms_client,
