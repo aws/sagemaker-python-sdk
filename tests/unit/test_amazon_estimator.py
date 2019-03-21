@@ -18,7 +18,7 @@ from mock import Mock, patch, call
 
 # Use PCA as a test implementation of AmazonAlgorithmEstimator
 from sagemaker.amazon.pca import PCA
-from sagemaker.amazon.amazon_estimator import upload_numpy_to_s3_shards, _build_shards, registry
+from sagemaker.amazon.amazon_estimator import upload_numpy_to_s3_shards, _build_shards, registry, get_image_uri
 
 COMMON_ARGS = {'role': 'myrole', 'train_instance_count': 1, 'train_instance_type': 'ml.c4.xlarge'}
 
@@ -59,6 +59,14 @@ def sagemaker_session():
     sms.sagemaker_client.describe_training_job = Mock(name='describe_training_job',
                                                       return_value=returned_job_description)
     return sms
+
+
+def test_gov_ecr_uri():
+    assert get_image_uri('us-gov-west-1', 'kmeans', 'latest') == \
+        '226302683700.dkr.ecr.us-gov-west-1.amazonaws.com/kmeans:latest'
+
+    assert get_image_uri('us-iso-east-1', 'kmeans', 'latest') == \
+        '490574956308.dkr.ecr.us-iso-east-1.c2s.ic.gov/kmeans:latest'
 
 
 def test_init(sagemaker_session):

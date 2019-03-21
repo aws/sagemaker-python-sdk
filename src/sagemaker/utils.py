@@ -292,6 +292,20 @@ def download_file(bucket_name, path, target, sagemaker_session):
     bucket.download_file(path, target)
 
 
+def get_ecr_image_uri_prefix(account, region):
+    """get prefix of ECR image URI
+
+    Args:
+        account (str): AWS account number
+        region (str): AWS region name
+
+    Returns:
+        (str): URI prefix of ECR image
+    """
+    domain = 'c2s.ic.gov' if region == 'us-iso-east-1' else 'amazonaws.com'
+    return '{}.dkr.ecr.{}.{}'.format(account, region, domain)
+
+
 class DeferredError(object):
     """Stores an exception and raises it at a later time if this
     object is accessed in any way.  Useful to allow soft-dependencies on imports,
