@@ -61,6 +61,12 @@ def test_create_image_uri_cpu():
     image_uri = fw_utils.create_image_uri(MOCK_REGION, MOCK_FRAMEWORK, 'local', '1.0rc', 'py2', '23')
     assert image_uri == '23.dkr.ecr.mars-south-3.amazonaws.com/sagemaker-mlfw:1.0rc-cpu-py2'
 
+    image_uri = fw_utils.create_image_uri('us-gov-west-1', MOCK_FRAMEWORK, 'ml.c4.large', '1.0rc', 'py2', '23')
+    assert image_uri == '246785580436.dkr.ecr.us-gov-west-1.amazonaws.com/sagemaker-mlfw:1.0rc-cpu-py2'
+
+    image_uri = fw_utils.create_image_uri('us-iso-east-1', MOCK_FRAMEWORK, 'ml.c4.large', '1.0rc', 'py2', '23')
+    assert image_uri == '744548109606.dkr.ecr.us-iso-east-1.c2s.ic.gov/sagemaker-mlfw:1.0rc-cpu-py2'
+
 
 def test_create_image_uri_no_python():
     image_uri = fw_utils.create_image_uri(MOCK_REGION, MOCK_FRAMEWORK, 'ml.c4.large', '1.0rc', account='23')

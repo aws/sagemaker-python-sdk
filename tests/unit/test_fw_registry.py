@@ -36,6 +36,7 @@ def test_registry_sparkml_serving():
     assert registry('eu-central-1', 'sparkml-serving') == "492215442770.dkr.ecr.eu-central-1.amazonaws.com"
     assert registry('ca-central-1', 'sparkml-serving') == "341280168497.dkr.ecr.ca-central-1.amazonaws.com"
     assert registry('us-gov-west-1', 'sparkml-serving') == "414596584902.dkr.ecr.us-gov-west-1.amazonaws.com"
+    assert registry('us-iso-east-1', 'sparkml-serving') == "833128469047.dkr.ecr.us-iso-east-1.c2s.ic.gov"
 
 
 def test_registry_sklearn():
@@ -57,6 +58,7 @@ def test_registry_sklearn():
     assert registry('eu-central-1', scikit_learn_framework_name) == "492215442770.dkr.ecr.eu-central-1.amazonaws.com"
     assert registry('ca-central-1', scikit_learn_framework_name) == "341280168497.dkr.ecr.ca-central-1.amazonaws.com"
     assert registry('us-gov-west-1', scikit_learn_framework_name) == "414596584902.dkr.ecr.us-gov-west-1.amazonaws.com"
+    assert registry('us-iso-east-1', scikit_learn_framework_name) == "833128469047.dkr.ecr.us-iso-east-1.c2s.ic.gov"
 
 
 def test_default_sklearn_image_uri():
