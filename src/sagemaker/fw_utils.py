@@ -21,6 +21,8 @@ import shutil
 import tempfile
 from six.moves.urllib.parse import urlparse
 
+from sagemaker.utils import get_ecr_image_uri_prefix
+
 _TAR_SOURCE_FILENAME = 'source.tar.gz'
 
 UploadedCode = namedtuple('UserCode', ['s3_prefix', 'script_name'])
@@ -97,10 +99,8 @@ def create_image_uri(region, framework, instance_type, framework_version, py_ver
                                              optimized_families=optimized_families):
         framework += '-eia'
 
-    domain_name = "c2s.ic.gov" if region == "us-iso-east-1" else "amazonaws.com"
-
-    return "{}.dkr.ecr.{}.{}/sagemaker-{}:{}" \
-        .format(account, region, domain_name, framework, tag)
+    return "{}/sagemaker-{}:{}" \
+        .format(get_ecr_image_uri_prefix(account, region), framework, tag)
 
 
 def _accelerator_type_valid_for_framework(framework, accelerator_type=None, optimized_families=None):

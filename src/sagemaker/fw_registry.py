@@ -13,6 +13,8 @@
 from __future__ import absolute_import
 import logging
 
+from sagemaker.utils import get_ecr_image_uri_prefix
+
 image_registry_map = {
     "us-west-1": {
         "sparkml-serving": "746614075791",
@@ -84,8 +86,7 @@ def registry(region_name, framework=None):
     """
     try:
         account_id = image_registry_map[region_name][framework]
-        domain_name = "c2s.ic.gov" if region_name == "us-iso-east-1" else "amazonaws.com"
-        return "{}.dkr.ecr.{}.{}".format(account_id, region_name, domain_name)
+        return get_ecr_image_uri_prefix(account_id, region_name)
     except KeyError:
         logging.error("The specific image or region does not exist")
         raise
