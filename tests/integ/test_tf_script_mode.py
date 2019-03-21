@@ -60,30 +60,30 @@ def test_mnist(sagemaker_session, instance_type):
 
 def test_server_side_encryption(sagemaker_session):
 
-    bucket_with_kms, kms_key = kms_utils.get_or_create_bucket_with_encryption(sagemaker_session.boto_session,
-                                                                              ROLE)
+    boto_session = sagemaker_session.boto_session
+    with kms_utils.bucket_with_encryption(boto_session, ROLE) as (bucket_with_kms, kms_key):
 
-    output_path = os.path.join(bucket_with_kms, 'test-server-side-encryption', time.strftime('%y%m%d-%H%M'))
+        output_path = os.path.join(bucket_with_kms, 'test-server-side-encryption', time.strftime('%y%m%d-%H%M'))
 
-    estimator = TensorFlow(entry_point=SCRIPT,
-                           role=ROLE,
-                           train_instance_count=1,
-                           train_instance_type='ml.c5.xlarge',
-                           sagemaker_session=sagemaker_session,
-                           py_version='py3',
-                           framework_version='1.11',
-                           base_job_name='test-server-side-encryption',
-                           code_location=output_path,
-                           output_path=output_path,
-                           model_dir='/opt/ml/model',
-                           output_kms_key=kms_key)
+        estimator = TensorFlow(entry_point=SCRIPT,
+                               role=ROLE,
+                               train_instance_count=1,
+                               train_instance_type='ml.c5.xlarge',
+                               sagemaker_session=sagemaker_session,
+                               py_version='py3',
+                               framework_version='1.11',
+                               base_job_name='test-server-side-encryption',
+                               code_location=output_path,
+                               output_path=output_path,
+                               model_dir='/opt/ml/model',
+                               output_kms_key=kms_key)
 
-    inputs = estimator.sagemaker_session.upload_data(
-        path=os.path.join(RESOURCE_PATH, 'data'),
-        key_prefix='scriptmode/mnist')
+        inputs = estimator.sagemaker_session.upload_data(
+            path=os.path.join(RESOURCE_PATH, 'data'),
+            key_prefix='scriptmode/mnist')
 
-    with timeout.timeout(minutes=integ.TRAINING_DEFAULT_TIMEOUT_MINUTES):
-        estimator.fit(inputs)
+        with timeout.timeout(minutes=integ.TRAINING_DEFAULT_TIMEOUT_MINUTES):
+            estimator.fit(inputs)
 
 
 @pytest.mark.canary_quick

@@ -12,6 +12,7 @@
 # language governing permissions and limitations under the License.
 from __future__ import absolute_import
 
+import contextlib
 import json
 
 from botocore import exceptions
@@ -74,7 +75,9 @@ def _create_kms_key(kms_client,
         Description='KMS key for SageMaker Python SDK integ tests',
     )
     key_arn = response['KeyMetadata']['Arn']
-    response = kms_client.create_alias(AliasName='alias/' + alias, TargetKeyId=key_arn)
+
+    if alias:
+        kms_client.create_alias(AliasName='alias/' + alias, TargetKeyId=key_arn)
     return key_arn
 
 
@@ -150,14 +153,13 @@ KMS_BUCKET_POLICY = """{
 }"""
 
 
-def get_or_create_bucket_with_encryption(boto_session, sagemaker_role):
+@contextlib.contextmanager
+def bucket_with_encryption(boto_session, sagemaker_role):
     account = boto_session.client('sts').get_caller_identity()['Account']
     role_arn = boto_session.client('sts').get_caller_identity()['Arn']
-    kms_key_arn = get_or_create_kms_key(boto_session.client('kms'),
-                                        account,
-                                        role_arn,
-                                        alias=KMS_S3_ALIAS,
-                                        sagemaker_role=sagemaker_role)
+
+    kms_client = boto_session.client('kms')
+    kms_key_arn = _create_kms_key(kms_client, account, role_arn, sagemaker_role, None)
 
     region = boto_session.region_name
     bucket_name = 'sagemaker-{}-{}-with-kms'.format(region, account)
@@ -195,4 +197,6 @@ def get_or_create_bucket_with_encryption(boto_session, sagemaker_role):
         Policy=KMS_BUCKET_POLICY % (bucket_name, bucket_name)
     )
 
-    return 's3://' + bucket_name, kms_key_arn
+    yield 's3://' + bucket_name, kms_key_arn
+
+    kms_client.schedule_key_deletion(KeyId=kms_key_arn, PendingWindowInDays=7)
