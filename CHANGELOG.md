@@ -1,5 +1,16 @@
 # Changelog
 
+## v1.18.7 (2019-03-21)
+
+### Other changes
+
+ * add pytest marks for integ tests using local mode
+ * add account number and unit tests for govcloud
+
+### Documentation changes
+
+ * move chainer readme content into sphinx and fix broken link in using_mxnet
+
 ## v1.18.6.post0 (2019-03-20)
 
 ### Documentation changes
