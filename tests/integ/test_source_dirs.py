@@ -14,6 +14,8 @@ from __future__ import absolute_import
 
 import os
 
+import pytest
+
 import tests.integ.local_mode_utils as local_mode_utils
 from tests.integ import DATA_DIR, PYTHON_VERSION
 
