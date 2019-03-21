@@ -16,12 +16,12 @@ import json
 
 from botocore import exceptions
 
-PRINCIPAL_TEMPLATE = '["{account_id}", "{role_arn}", "arn:aws:iam::{account_id}:role/{' \
-                     'sagemaker_role}"] '
+PRINCIPAL_TEMPLATE = '["{account_id}", "{role_arn}", ' \
+                     '"arn:aws:iam::{account_id}:role/{sagemaker_role}"] '
 
-KEY_ALIAS = "SageMakerTestKMSKey"
-KMS_S3_ALIAS = "SageMakerTestS3KMSKey"
-POLICY_NAME = "default"
+KEY_ALIAS = 'SageMakerTestKMSKey'
+KMS_S3_ALIAS = 'SageMakerTestS3KMSKey'
+POLICY_NAME = 'default'
 KEY_POLICY = '''
 {{
   "Version": "2012-10-17",

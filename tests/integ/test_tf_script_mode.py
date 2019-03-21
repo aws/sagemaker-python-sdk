@@ -25,6 +25,8 @@ import tests.integ as integ
 from tests.integ import kms_utils
 import tests.integ.timeout as timeout
 
+ROLE = 'SageMakerRole'
+
 RESOURCE_PATH = os.path.join(os.path.dirname(__file__), '..', 'data', 'tensorflow_mnist')
 SCRIPT = os.path.join(RESOURCE_PATH, 'mnist.py')
 PARAMETER_SERVER_DISTRIBUTION = {'parameter_server': {'enabled': True}}
@@ -59,12 +61,12 @@ def test_mnist(sagemaker_session, instance_type):
 def test_server_side_encryption(sagemaker_session):
 
     bucket_with_kms, kms_key = kms_utils.get_or_create_bucket_with_encryption(sagemaker_session.boto_session,
-                                                                              'SageMakerRole')
+                                                                              ROLE)
 
     output_path = os.path.join(bucket_with_kms, 'test-server-side-encryption', time.strftime('%y%m%d-%H%M'))
 
     estimator = TensorFlow(entry_point=SCRIPT,
-                           role='SageMakerRole',
+                           role=ROLE,
                            train_instance_count=1,
                            train_instance_type='ml.c5.xlarge',
                            sagemaker_session=sagemaker_session,
@@ -88,7 +90,7 @@ def test_server_side_encryption(sagemaker_session):
 @pytest.mark.skipif(integ.PYTHON_VERSION != 'py3', reason="Script Mode tests are only configured to run with Python 3")
 def test_mnist_distributed(sagemaker_session, instance_type):
     estimator = TensorFlow(entry_point=SCRIPT,
-                           role='SageMakerRole',
+                           role=ROLE,
                            train_instance_count=2,
                            # TODO: change train_instance_type to instance_type once the test is passing consistently
                            train_instance_type='ml.c5.xlarge',
@@ -110,7 +112,7 @@ def test_mnist_distributed(sagemaker_session, instance_type):
 
 def test_mnist_async(sagemaker_session):
     estimator = TensorFlow(entry_point=SCRIPT,
-                           role='SageMakerRole',
+                           role=ROLE,
                            train_instance_count=1,
                            train_instance_type='ml.c5.4xlarge',
                            sagemaker_session=sagemaker_session,
