@@ -14,12 +14,15 @@ from __future__ import absolute_import
 
 import os
 
+import pytest
+
 import tests.integ.local_mode_utils as local_mode_utils
 from tests.integ import DATA_DIR, PYTHON_VERSION
 
 from sagemaker.pytorch.estimator import PyTorch
 
 
+@pytest.mark.local_mode
 def test_source_dirs(tmpdir, sagemaker_local_session):
     source_dir = os.path.join(DATA_DIR, 'pytorch_source_dirs')
     lib = os.path.join(str(tmpdir), 'alexa.py')
