@@ -223,7 +223,7 @@ def framework_name_from_image(image_name):
             str: The image tag
             str: If the image is script mode
     """
-    sagemaker_pattern = re.compile(r'^(\d+)(\.)dkr(\.)ecr(\.)(.+)(\.)amazonaws.com(/)(.*:.*)$')
+    sagemaker_pattern = re.compile(r'^(\d+)(\.)dkr(\.)ecr(\.)(.+)(\.)(amazonaws.com|c2s.ic.gov)(/)(.*:.*)$')
     sagemaker_match = sagemaker_pattern.match(image_name)
     if sagemaker_match is None:
         return None, None, None, None
@@ -235,8 +235,8 @@ def framework_name_from_image(image_name):
         legacy_name_pattern = re.compile(
             r'^sagemaker-(tensorflow|mxnet)-(py2|py3)-(cpu|gpu):(.*)$')
 
-        name_match = name_pattern.match(sagemaker_match.group(8))
-        legacy_match = legacy_name_pattern.match(sagemaker_match.group(8))
+        name_match = name_pattern.match(sagemaker_match.group(9))
+        legacy_match = legacy_name_pattern.match(sagemaker_match.group(9))
 
         if name_match is not None:
             fw, scriptmode, ver, device, py = name_match.group(1), name_match.group(2), name_match.group(3),\

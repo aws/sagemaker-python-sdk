@@ -688,7 +688,7 @@ def _write_json_file(filename, content):
 
 def _ecr_login_if_needed(boto_session, image):
     # Only ECR images need login
-    if not ('dkr.ecr' in image and 'amazonaws.com' in image):
+    if not ('dkr.ecr' in image and ('amazonaws.com' in image or 'c2s.ic.gov' in image)):
         return False
 
     # do we have the image?
