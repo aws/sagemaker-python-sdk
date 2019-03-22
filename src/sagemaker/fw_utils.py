@@ -21,7 +21,7 @@ import shutil
 import tempfile
 from six.moves.urllib.parse import urlparse
 
-from sagemaker.utils import get_ecr_image_uri_prefix
+from sagemaker.utils import get_ecr_image_uri_prefix, ECR_URI_PATTERN
 
 _TAR_SOURCE_FILENAME = 'source.tar.gz'
 
@@ -223,7 +223,7 @@ def framework_name_from_image(image_name):
             str: The image tag
             str: If the image is script mode
     """
-    sagemaker_pattern = re.compile(r'^(\d+)(\.)dkr(\.)ecr(\.)(.+)(\.)(amazonaws.com|c2s.ic.gov)(/)(.*:.*)$')
+    sagemaker_pattern = re.compile(ECR_URI_PATTERN)
     sagemaker_match = sagemaker_pattern.match(image_name)
     if sagemaker_match is None:
         return None, None, None, None
