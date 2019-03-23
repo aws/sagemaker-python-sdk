@@ -282,7 +282,7 @@ class HyperparameterTuner(object):
         """Attach to an existing hyperparameter tuning job.
 
         Create a HyperparameterTuner bound to an existing hyperparameter tuning job. After attaching, if there exists a
-        best training job (or any other completed training job), that can be ``deploy()``ed to create
+        best training job (or any other completed training job), that can be ``deploy()``\ ed to create
         an Amazon SageMaker Endpoint and return a ``Predictor``.
 
         Args:
