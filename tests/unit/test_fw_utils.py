@@ -380,6 +380,11 @@ def test_framework_name_from_image_mxnet():
     assert ('mxnet', 'py3', '1.1-gpu-py3', None) == fw_utils.framework_name_from_image(image_name)
 
 
+def test_framework_name_from_image_mxnet_in_gov():
+    image_name = '123.dkr.ecr.region-name.c2s.ic.gov/sagemaker-mxnet:1.1-gpu-py3'
+    assert ('mxnet', 'py3', '1.1-gpu-py3', None) == fw_utils.framework_name_from_image(image_name)
+
+
 def test_framework_name_from_image_tf():
     image_name = '123.dkr.ecr.us-west-2.amazonaws.com/sagemaker-tensorflow:1.6-cpu-py2'
     assert ('tensorflow', 'py2', '1.6-cpu-py2', None) == fw_utils.framework_name_from_image(image_name)
