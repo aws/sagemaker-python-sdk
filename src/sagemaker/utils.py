@@ -27,6 +27,9 @@ from functools import wraps
 import six
 
 
+ECR_URI_PATTERN = r'^(\d+)(\.)dkr(\.)ecr(\.)(.+)(\.)(amazonaws.com|c2s.ic.gov)(/)(.*:.*)$'
+
+
 # Use the base name of the image as the job name if the user doesn't give us one
 def name_from_image(image):
     """Create a training job name based on the image name and a timestamp.
