@@ -23,7 +23,7 @@ from sagemaker.amazon.hyperparameter import Hyperparameter as hp  # noqa
 from sagemaker.amazon.common import write_numpy_to_dense_tensor
 from sagemaker.estimator import EstimatorBase, _TrainingJob
 from sagemaker.session import s3_input
-from sagemaker.utils import sagemaker_timestamp
+from sagemaker.utils import sagemaker_timestamp, get_ecr_image_uri_prefix
 
 logger = logging.getLogger(__name__)
 
@@ -283,86 +283,91 @@ def registry(region_name, algorithm=None):
 
     https://github.com/aws/sagemaker-python-sdk/tree/master/src/sagemaker/amazon
     """
-    if algorithm in [None, "pca", "kmeans", "linear-learner", "factorization-machines", "ntm",
-                     "randomcutforest", "knn", "object2vec", "ipinsights"]:
+    if algorithm in [None, 'pca', 'kmeans', 'linear-learner', 'factorization-machines', 'ntm',
+                     'randomcutforest', 'knn', 'object2vec', 'ipinsights']:
         account_id = {
-            "us-east-1": "382416733822",
-            "us-east-2": "404615174143",
-            "us-west-2": "174872318107",
-            "eu-west-1": "438346466558",
-            "eu-central-1": "664544806723",
-            "ap-northeast-1": "351501993468",
-            "ap-northeast-2": "835164637446",
-            "ap-southeast-2": "712309505854",
-            "us-gov-west-1": "226302683700",
-            "ap-southeast-1": "475088953585",
-            "ap-south-1": "991648021394",
-            "ca-central-1": "469771592824",
-            "eu-west-2": "644912444149",
-            "us-west-1": "632365934929",
+            'us-east-1': '382416733822',
+            'us-east-2': '404615174143',
+            'us-west-2': '174872318107',
+            'eu-west-1': '438346466558',
+            'eu-central-1': '664544806723',
+            'ap-northeast-1': '351501993468',
+            'ap-northeast-2': '835164637446',
+            'ap-southeast-2': '712309505854',
+            'us-gov-west-1': '226302683700',
+            'ap-southeast-1': '475088953585',
+            'ap-south-1': '991648021394',
+            'ca-central-1': '469771592824',
+            'eu-west-2': '644912444149',
+            'us-west-1': '632365934929',
+            'us-iso-east-1': '490574956308',
         }[region_name]
-    elif algorithm in ["lda"]:
+    elif algorithm in ['lda']:
         account_id = {
-            "us-east-1": "766337827248",
-            "us-east-2": "999911452149",
-            "us-west-2": "266724342769",
-            "eu-west-1": "999678624901",
-            "eu-central-1": "353608530281",
-            "ap-northeast-1": "258307448986",
-            "ap-northeast-2": "293181348795",
-            "ap-southeast-2": "297031611018",
-            "us-gov-west-1": "226302683700",
-            "ap-southeast-1": "475088953585",
-            "ap-south-1": "991648021394",
-            "ca-central-1": "469771592824",
-            "eu-west-2": "644912444149",
-            "us-west-1": "632365934929",
+            'us-east-1': '766337827248',
+            'us-east-2': '999911452149',
+            'us-west-2': '266724342769',
+            'eu-west-1': '999678624901',
+            'eu-central-1': '353608530281',
+            'ap-northeast-1': '258307448986',
+            'ap-northeast-2': '293181348795',
+            'ap-southeast-2': '297031611018',
+            'us-gov-west-1': '226302683700',
+            'ap-southeast-1': '475088953585',
+            'ap-south-1': '991648021394',
+            'ca-central-1': '469771592824',
+            'eu-west-2': '644912444149',
+            'us-west-1': '632365934929',
+            'us-iso-east-1': '490574956308',
         }[region_name]
-    elif algorithm in ["forecasting-deepar"]:
+    elif algorithm in ['forecasting-deepar']:
         account_id = {
-            "us-east-1": "522234722520",
-            "us-east-2": "566113047672",
-            "us-west-2": "156387875391",
-            "eu-west-1": "224300973850",
-            "eu-central-1": "495149712605",
-            "ap-northeast-1": "633353088612",
-            "ap-northeast-2": "204372634319",
-            "ap-southeast-2": "514117268639",
-            "us-gov-west-1": "226302683700",
-            "ap-southeast-1": "475088953585",
-            "ap-south-1": "991648021394",
-            "ca-central-1": "469771592824",
-            "eu-west-2": "644912444149",
-            "us-west-1": "632365934929",
+            'us-east-1': '522234722520',
+            'us-east-2': '566113047672',
+            'us-west-2': '156387875391',
+            'eu-west-1': '224300973850',
+            'eu-central-1': '495149712605',
+            'ap-northeast-1': '633353088612',
+            'ap-northeast-2': '204372634319',
+            'ap-southeast-2': '514117268639',
+            'us-gov-west-1': '226302683700',
+            'ap-southeast-1': '475088953585',
+            'ap-south-1': '991648021394',
+            'ca-central-1': '469771592824',
+            'eu-west-2': '644912444149',
+            'us-west-1': '632365934929',
+            'us-iso-east-1': '490574956308',
         }[region_name]
-    elif algorithm in ["xgboost", "seq2seq", "image-classification", "blazingtext",
-                       "object-detection", "semantic-segmentation"]:
+    elif algorithm in ['xgboost', 'seq2seq', 'image-classification', 'blazingtext',
+                       'object-detection', 'semantic-segmentation']:
         account_id = {
-            "us-east-1": "811284229777",
-            "us-east-2": "825641698319",
-            "us-west-2": "433757028032",
-            "eu-west-1": "685385470294",
-            "eu-central-1": "813361260812",
-            "ap-northeast-1": "501404015308",
-            "ap-northeast-2": "306986355934",
-            "ap-southeast-2": "544295431143",
-            "us-gov-west-1": "226302683700",
-            "ap-southeast-1": "475088953585",
-            "ap-south-1": "991648021394",
-            "ca-central-1": "469771592824",
-            "eu-west-2": "644912444149",
-            "us-west-1": "632365934929",
+            'us-east-1': '811284229777',
+            'us-east-2': '825641698319',
+            'us-west-2': '433757028032',
+            'eu-west-1': '685385470294',
+            'eu-central-1': '813361260812',
+            'ap-northeast-1': '501404015308',
+            'ap-northeast-2': '306986355934',
+            'ap-southeast-2': '544295431143',
+            'us-gov-west-1': '226302683700',
+            'ap-southeast-1': '475088953585',
+            'ap-south-1': '991648021394',
+            'ca-central-1': '469771592824',
+            'eu-west-2': '644912444149',
+            'us-west-1': '632365934929',
+            'us-iso-east-1': '490574956308',
         }[region_name]
     elif algorithm in ['image-classification-neo', 'xgboost-neo']:
         account_id = {
             'us-west-2': '301217895009',
             'us-east-1': '785573368785',
             'eu-west-1': '802834080501',
-            'us-east-2': '007439368137'
+            'us-east-2': '007439368137',
         }[region_name]
     else:
-        raise ValueError("Algorithm class:{} doesn't have mapping to account_id with images".format(algorithm))
-    return "{}.dkr.ecr.{}.amazonaws.com".format(account_id, region_name)
+        raise ValueError('Algorithm class:{} does not have mapping to account_id with images'.format(algorithm))
+
+    return get_ecr_image_uri_prefix(account_id, region_name)
 
 
 def get_image_uri(region_name, repo_name, repo_version=1):

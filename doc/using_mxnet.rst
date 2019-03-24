@@ -155,7 +155,7 @@ During training, SageMaker automatically starts an MXNet kvstore server and sche
 Your script runs as an MXNet worker task, with one server process on each host in your cluster.
 One host is selected arbitrarily to run the scheduler process.
 
-To learn more about writing distributed MXNet programs, please see `Distributed Training <http://newdocs.readthedocs.io/en/latest/distributed_training.html>`__ in the MXNet docs.
+To learn more about writing distributed MXNet programs, please see `Distributed Training <https://mxnet.incubator.apache.org/versions/master/faq/distributed_training.html>`__ in the MXNet docs.
 
 Saving models
 '''''''''''''

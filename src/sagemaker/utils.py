@@ -27,6 +27,9 @@ from functools import wraps
 import six
 
 
+ECR_URI_PATTERN = r'^(\d+)(\.)dkr(\.)ecr(\.)(.+)(\.)(amazonaws.com|c2s.ic.gov)(/)(.*:.*)$'
+
+
 # Use the base name of the image as the job name if the user doesn't give us one
 def name_from_image(image):
     """Create a training job name based on the image name and a timestamp.
@@ -290,6 +293,20 @@ def download_file(bucket_name, path, target, sagemaker_session):
     s3 = boto_session.resource('s3')
     bucket = s3.Bucket(bucket_name)
     bucket.download_file(path, target)
+
+
+def get_ecr_image_uri_prefix(account, region):
+    """get prefix of ECR image URI
+
+    Args:
+        account (str): AWS account number
+        region (str): AWS region name
+
+    Returns:
+        (str): URI prefix of ECR image
+    """
+    domain = 'c2s.ic.gov' if region == 'us-iso-east-1' else 'amazonaws.com'
+    return '{}.dkr.ecr.{}.{}'.format(account, region, domain)
 
 
 class DeferredError(object):

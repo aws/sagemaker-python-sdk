@@ -52,6 +52,7 @@ def test_horovod(sagemaker_session, instance_type, tmpdir):
             assert read_json('rank-%s' % rank, tmp)['rank'] == rank
 
 
+@pytest.mark.local_mode
 @pytest.mark.parametrize('instances, processes', [
     [1, 2],
     (2, 1),

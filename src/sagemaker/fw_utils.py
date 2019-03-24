@@ -21,6 +21,8 @@ import shutil
 import tempfile
 from six.moves.urllib.parse import urlparse
 
+from sagemaker.utils import get_ecr_image_uri_prefix, ECR_URI_PATTERN
+
 _TAR_SOURCE_FILENAME = 'source.tar.gz'
 
 UploadedCode = namedtuple('UserCode', ['s3_prefix', 'script_name'])
@@ -40,7 +42,8 @@ EMPTY_FRAMEWORK_VERSION_ERROR = 'framework_version is required for script mode e
 
 VALID_PY_VERSIONS = ['py2', 'py3']
 VALID_EIA_FRAMEWORKS = ['tensorflow', 'mxnet']
-VALID_ACCOUNTS_BY_REGION = {'us-gov-west-1': '246785580436'}
+VALID_ACCOUNTS_BY_REGION = {'us-gov-west-1': '246785580436',
+                            'us-iso-east-1': '744548109606'}
 
 
 def create_image_uri(region, framework, instance_type, framework_version, py_version=None,
@@ -96,8 +99,8 @@ def create_image_uri(region, framework, instance_type, framework_version, py_ver
                                              optimized_families=optimized_families):
         framework += '-eia'
 
-    return "{}.dkr.ecr.{}.amazonaws.com/sagemaker-{}:{}" \
-        .format(account, region, framework, tag)
+    return "{}/sagemaker-{}:{}" \
+        .format(get_ecr_image_uri_prefix(account, region), framework, tag)
 
 
 def _accelerator_type_valid_for_framework(framework, accelerator_type=None, optimized_families=None):
@@ -220,7 +223,7 @@ def framework_name_from_image(image_name):
             str: The image tag
             str: If the image is script mode
     """
-    sagemaker_pattern = re.compile(r'^(\d+)(\.)dkr(\.)ecr(\.)(.+)(\.)amazonaws.com(/)(.*:.*)$')
+    sagemaker_pattern = re.compile(ECR_URI_PATTERN)
     sagemaker_match = sagemaker_pattern.match(image_name)
     if sagemaker_match is None:
         return None, None, None, None
@@ -232,8 +235,8 @@ def framework_name_from_image(image_name):
         legacy_name_pattern = re.compile(
             r'^sagemaker-(tensorflow|mxnet)-(py2|py3)-(cpu|gpu):(.*)$')
 
-        name_match = name_pattern.match(sagemaker_match.group(8))
-        legacy_match = legacy_name_pattern.match(sagemaker_match.group(8))
+        name_match = name_pattern.match(sagemaker_match.group(9))
+        legacy_match = legacy_name_pattern.match(sagemaker_match.group(9))
 
         if name_match is not None:
             fw, scriptmode, ver, device, py = name_match.group(1), name_match.group(2), name_match.group(3),\

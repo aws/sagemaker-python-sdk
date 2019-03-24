@@ -1,0 +1,34 @@
+version: 0.2
+
+phases:
+  build:
+    commands:
+      # prepare the release (update versions, changelog etc.)
+      - git-release --prepare
+
+      # run linters
+      - tox -e flake8,pylint
+
+      # run package and docbuild checks
+      - tox -e twine
+      - tox -e sphinx
+
+      # run unit tests
+      - AWS_ACCESS_KEY_ID= AWS_SECRET_ACCESS_KEY= AWS_SESSION_TOKEN=
+        AWS_CONTAINER_CREDENTIALS_RELATIVE_URI= AWS_DEFAULT_REGION=
+        tox -e py27,py36 -- tests/unit
+
+      # run a subset of the integration tests
+      - IGNORE_COVERAGE=- tox -e py36 -- tests/integ -m canary_quick -n 64 --boxed --reruns 2
+
+      # generate the distribution package
+      - python3 setup.py sdist
+
+      # publish the release to github
+      - git-release --publish
+
+artifacts:
+  files:
+    - dist/sagemaker-*.tar.gz
+  name: ARTIFACT_1
+  discard-paths: yes

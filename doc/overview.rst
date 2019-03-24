@@ -180,6 +180,7 @@ Here is an end-to-end example:
     from sagemaker.mxnet import MXNet
 
     mxnet_estimator = MXNet('train.py',
+                            role='SageMakerRole',
                             train_instance_type='local',
                             train_instance_count=1,
                             framework_version='1.2.1')
@@ -658,10 +659,10 @@ the ML Pipeline.
    endpoint_name = 'inference-pipeline-endpoint'
    sm_model = PipelineModel(name=model_name, role=sagemaker_role, models=[sparkml_model, xgb_model])
 
-This will define a ``PipelineModel`` consisting of SparkML model and an XGBoost model stacked sequentially. For more
-information about how to train an XGBoost model, please refer to the XGBoost notebook here_.
+This defines a ``PipelineModel`` consisting of SparkML model and an XGBoost model stacked sequentially.
+For more information about how to train an XGBoost model, please refer to the XGBoost notebook here_.
 
-.. _here: https://docs.aws.amazon.com/sagemaker/latest/dg/xgboost.html#xgboost-sample-notebooks
+.. _here: https://github.com/awslabs/amazon-sagemaker-examples/blob/master/introduction_to_amazon_algorithms/xgboost_abalone/xgboost_abalone.ipynb
 
 .. code:: python
 
@@ -670,6 +671,35 @@ information about how to train an XGBoost model, please refer to the XGBoost not
 This returns a predictor the same way an ``Estimator`` does when ``deploy()`` is called. Whenever you make an inference
 request using this predictor, you should pass the data that the first container expects and the predictor will return the
 output from the last container.
+
+You can also use a ``PipelineModel`` to create Transform Jobs for batch transformations. Using the same ``PipelineModel`` ``sm_model`` as above:
+
+.. code:: python
+
+   # Only instance_type and instance_count are required.
+   transformer = sm_model.transformer(instance_type='ml.c5.xlarge',
+                                      instance_count=1,
+                                      strategy='MultiRecord',
+                                      max_payload=6,
+                                      max_concurrent_transforms=8,
+                                      accept='text/csv',
+                                      assemble_with='Line',
+                                      output_path='s3://my-output-bucket/path/to/my/output/data/')
+   # Only data is required.
+   transformer.transform(data='s3://my-input-bucket/path/to/my/csv/data',
+                         content_type='text/csv',
+                         split_type='Line')
+   # Waits for the Pipeline Transform Job to finish.
+   transformer.wait()
+
+This runs a transform job against all the files under ``s3://mybucket/path/to/my/csv/data``, transforming the input
+data in order with each model container in the pipeline. For each input file that was successfully transformed, one output file in ``s3://my-output-bucket/path/to/my/output/data/``
+will be created with the same name, appended with '.out'.
+This transform job will split CSV files by newline separators, which is especially useful if the input files are large.
+The Transform Job assembles the outputs with line separators when writing each input file's corresponding output file.
+Each payload entering the first model container will be up to six megabytes, and up to eight inference requests are sent at the
+same time to the first model container. Because each payload consists of a mini-batch of multiple CSV records, the model
+containers transform each mini-batch of records.
 
 For comprehensive examples on how to use Inference Pipelines please refer to the following notebooks:
 
