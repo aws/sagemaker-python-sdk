@@ -2,6 +2,8 @@
 Using Chainer with the SageMaker Python SDK
 ===========================================
 
+.. contents::
+
 With Chainer Estimators, you can train and host Chainer models on Amazon SageMaker.
 
 Supported versions of Chainer: ``4.0.0``, ``4.1.0``, ``5.0.0``
