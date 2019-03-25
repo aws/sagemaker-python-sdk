@@ -19,6 +19,7 @@ import logging
 import os
 import platform
 import random
+import re
 import shlex
 import shutil
 import string
@@ -688,7 +689,9 @@ def _write_json_file(filename, content):
 
 def _ecr_login_if_needed(boto_session, image):
     # Only ECR images need login
-    if not ('dkr.ecr' in image and 'amazonaws.com' in image):
+    sagemaker_pattern = re.compile(sagemaker.utils.ECR_URI_PATTERN)
+    sagemaker_match = sagemaker_pattern.match(image)
+    if not sagemaker_match:
         return False
 
     # do we have the image?

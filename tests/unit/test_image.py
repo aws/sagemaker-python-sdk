@@ -622,10 +622,13 @@ def test_ecr_login_non_ecr():
 
 
 @patch('sagemaker.local.image._check_output', return_value='123451324')
-def test_ecr_login_image_exists(_check_output):
+@pytest.mark.parametrize('image', [
+    '520713654638.dkr.ecr.us-east-1.amazonaws.com/image-i-have:1.0',
+    '520713654638.dkr.ecr.us-iso-east-1.c2s.ic.gov/image-i-have:1.0'
+])
+def test_ecr_login_image_exists(_check_output, image):
     session_mock = Mock()
 
-    image = '520713654638.dkr.ecr.us-east-1.amazonaws.com/image-i-have:1.0'
     result = sagemaker.local.image._ecr_login_if_needed(session_mock, image)
 
     session_mock.assert_not_called()
