@@ -108,7 +108,7 @@ Local Mode
 
 The SageMaker Python SDK supports local mode, which allows you to create estimators and deploy them to your local environment.
 This is a great way to test your deep learning scripts before running them in SageMaker's managed training or hosting environments.
-Local Mode is supported for only frameworks (e.g. TensorFlow, MXNet) and images you supply yourself.
+Local Mode is supported for frameworks images (TensorFlow, MXNet, Chainer, PyTorch, and Scikit-Learn) and images you supply yourself.
 
 We can take the example in  `Using Estimators <#using-estimators>`__ , and use either ``local`` or ``local_gpu`` as the instance type.
 
