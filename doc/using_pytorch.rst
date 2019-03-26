@@ -111,7 +111,7 @@ when instantiating PyTorch Estimator.
 For more on training environment variables, please visit `SageMaker Containers <https://github.com/aws/sagemaker-containers>`_.
 
 Using third-party libraries
-^^^^^^^^^^^^^^^^^^^^^^^^^^^
+~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 When running your training script on SageMaker, it will have access to some pre-installed third-party libraries including ``torch``, ``torchvisopm``, and ``numpy``.
 For more information on the runtime environment, including specific package versions, see `SageMaker PyTorch Docker containers <#sagemaker-pytorch-docker-containers>`__.
@@ -233,7 +233,7 @@ You start your training script by calling ``fit`` on a ``PyTorch`` Estimator. ``
 arguments.
 
 Required arguments
-""""""""""""""""""
+''''''''''''''''''
 
 -  ``inputs``: This can take one of the following forms: A string
    S3 URI, for example ``s3://my-bucket/my-training-data``. In this
@@ -252,7 +252,7 @@ For example:
 .. optional-arguments-1:
 
 Optional arguments
-""""""""""""""""""
+''''''''''''''''''
 
 -  ``wait``: Defaults to True, whether to block and wait for the
    training script to complete before returning.
@@ -450,7 +450,7 @@ In the following sections we describe the default implementations of input_fn, p
 We describe the input arguments and expected return types of each, so you can define your own implementations.
 
 Input processing
-""""""""""""""""
+''''''''''''''''
 
 When an InvokeEndpoint operation is made against an Endpoint running a SageMaker PyTorch model server,
 the model server receives two pieces of information:
@@ -503,7 +503,7 @@ The example below shows a custom ``input_fn`` for preparing pickled torch.Tensor
 
 
 Prediction
-""""""""""
+''''''''''
 
 After the inference request has been deserialized by ``input_fn``, the SageMaker PyTorch model server invokes
 ``predict_fn`` on the return value of ``input_fn``.
@@ -569,7 +569,7 @@ Working with Existing Model Data and Training Jobs
 --------------------------------------------------
 
 Attaching to existing training jobs
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 You can attach an PyTorch Estimator to an existing training job using the
 ``attach`` method.
@@ -592,7 +592,7 @@ The ``attach`` method accepts the following arguments:
    to interact with SageMaker
 
 Deploying Endpoints from model data
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 As well as attaching to existing training jobs, you can deploy models directly from model data in S3.
 The following code sample shows how to do this, using the ``PyTorchModel`` class.
