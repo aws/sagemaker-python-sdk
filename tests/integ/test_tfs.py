@@ -46,12 +46,38 @@ def tfs_predictor(instance_type, sagemaker_session, tf_full_version):
         yield predictor
 
 
+@pytest.fixture(scope='module')
+def tfs_predictor_with_accelerator(sagemaker_session, tf_full_version):
+    endpoint_name = sagemaker.utils.unique_name_from_base("sagemaker-tensorflow-serving")
+    instance_type = 'ml.c4.large'
+    accelerator_type = 'ml.eia1.medium'
+    model_data = sagemaker_session.upload_data(path='tests/data/tensorflow-serving-test-model.tar.gz',
+                                               key_prefix='tensorflow-serving/models')
+    with tests.integ.timeout.timeout_and_delete_endpoint_by_name(endpoint_name, sagemaker_session):
+        model = Model(model_data=model_data, role='SageMakerRole',
+                      framework_version=tf_full_version,
+                      sagemaker_session=sagemaker_session)
+        predictor = model.deploy(1, instance_type, endpoint_name=endpoint_name, accelerator_type=accelerator_type)
+        yield predictor
+
+
 @pytest.mark.canary_quick
 def test_predict(tfs_predictor, instance_type):  # pylint: disable=W0613
     input_data = {'instances': [1.0, 2.0, 5.0]}
     expected_result = {'predictions': [3.5, 4.0, 5.5]}
 
     result = tfs_predictor.predict(input_data)
+    assert expected_result == result
+
+
+@pytest.mark.skipif(tests.integ.test_region() not in tests.integ.EI_SUPPORTED_REGIONS,
+                    reason='EI is not supported in region {}'.format(tests.integ.test_region()))
+@pytest.mark.canary_quick
+def test_predict_with_accelerator(tfs_predictor_with_accelerator):
+    input_data = {'instances': [1.0, 2.0, 5.0]}
+    expected_result = {'predictions': [3.5, 4.0, 5.5]}
+
+    result = tfs_predictor_with_accelerator.predict(input_data)
     assert expected_result == result
 
 
