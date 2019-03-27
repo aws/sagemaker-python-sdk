@@ -201,7 +201,8 @@ class TrainingJobAnalytics(AnalyticsMetricsBase):
 
     CLOUDWATCH_NAMESPACE = '/aws/sagemaker/TrainingJobs'
 
-    def __init__(self, training_job_name, metric_names=None, sagemaker_session=None):
+    def __init__(self, training_job_name, metric_names=None, sagemaker_session=None,
+                 start_time=None, end_time=None, period=None):
         """Initialize a ``TrainingJobAnalytics`` instance.
 
         Args:
@@ -216,6 +217,10 @@ class TrainingJobAnalytics(AnalyticsMetricsBase):
         self._sage_client = sagemaker_session.sagemaker_client
         self._cloudwatch = sagemaker_session.boto_session.client('cloudwatch')
         self._training_job_name = training_job_name
+        self._start_time = start_time
+        self._end_time = end_time
+        self._period = period if period else 60
+
         if metric_names:
             self._metric_names = metric_names
         else:
@@ -245,13 +250,15 @@ class TrainingJobAnalytics(AnalyticsMetricsBase):
         covering the interval of the training job
         """
         description = self._sage_client.describe_training_job(TrainingJobName=self.name)
-        start_time = description[u'TrainingStartTime']  # datetime object
+        start_time = self._start_time if self._start_time else description[u'TrainingStartTime']  # datetime object
         # Incrementing end time by 1 min since CloudWatch drops seconds before finding the logs.
         # This results in logs being searched in the time range in which the correct log line was not present.
         # Example - Log time - 2018-10-22 08:25:55
         #           Here calculated end time would also be 2018-10-22 08:25:55 (without 1 min addition)
         #           CW will consider end time as 2018-10-22 08:25 and will not be able to search the correct log.
-        end_time = description.get(u'TrainingEndTime', datetime.datetime.utcnow()) + datetime.timedelta(minutes=1)
+        end_time = self._end_time if self._end_time else description.get(
+            u'TrainingEndTime', datetime.datetime.utcnow()) + datetime.timedelta(minutes=1)
+
         return {
             'start_time': start_time,
             'end_time': end_time,
@@ -276,7 +283,7 @@ class TrainingJobAnalytics(AnalyticsMetricsBase):
             ],
             'StartTime': self._time_interval['start_time'],
             'EndTime': self._time_interval['end_time'],
-            'Period': 60,
+            'Period': self._period,
             'Statistics': ['Average'],
         }
         raw_cwm_data = self._cloudwatch.get_metric_statistics(**request)['Datapoints']
