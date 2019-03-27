@@ -1,5 +1,18 @@
 # Changelog
 
+## v1.18.8 (2019-03-26)
+
+### Bug fixes
+
+ * fix ECR URI validation
+ * remove unrestrictive principal * from KMS policy tests.
+
+### Documentation changes
+
+ * edit description of local mode in overview.rst
+ * add table of contents to using_chainer topic
+ * fix formatting for HyperparameterTuner.attach()
+
 ## v1.18.7 (2019-03-21)
 
 ### Other changes
