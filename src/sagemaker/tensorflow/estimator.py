@@ -475,8 +475,10 @@ class TensorFlow(Framework):
             return '/opt/ml/shared/{}'.format(directory)
         elif mpi:
             return '/opt/ml/model'
-        else:
+        elif self._current_job_name:
             return os.path.join(self.output_path, self._current_job_name, directory)
+        else:
+            return None
 
     def _script_mode_enabled(self):
         return self.py_version == 'py3' or self.script_mode
