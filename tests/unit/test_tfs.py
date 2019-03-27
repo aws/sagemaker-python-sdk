@@ -25,7 +25,7 @@ JSON_CONTENT_TYPE = 'application/json'
 CSV_CONTENT_TYPE = 'text/csv'
 INSTANCE_COUNT = 1
 INSTANCE_TYPE = 'ml.c4.4xlarge'
-ACCELERATOR_TYPE = 'ml.eia.medium'
+ACCELERATOR_TYPE = 'ml.eia1.medium'
 ROLE = 'Dummy'
 REGION = 'us-west-2'
 PREDICT_INPUT = {'instances': [1.0, 2.0, 5.0]}
@@ -79,8 +79,11 @@ def test_tfs_model(sagemaker_session, tf_version):
 def test_tfs_model_image_accelerator(sagemaker_session, tf_version):
     model = Model("s3://some/data.tar.gz", role=ROLE, framework_version=tf_version,
                   sagemaker_session=sagemaker_session)
-    with pytest.raises(ValueError):
-        model.prepare_container_def(INSTANCE_TYPE, accelerator_type=ACCELERATOR_TYPE)
+    cdef = model.prepare_container_def(INSTANCE_TYPE, accelerator_type=ACCELERATOR_TYPE)
+    assert cdef['Image'].endswith('sagemaker-tensorflow-serving-eia:{}-cpu'.format(tf_version))
+
+    predictor = model.deploy(INSTANCE_COUNT, INSTANCE_TYPE)
+    assert isinstance(predictor, Predictor)
 
 
 def test_tfs_model_with_log_level(sagemaker_session, tf_version):

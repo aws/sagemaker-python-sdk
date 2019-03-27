@@ -830,3 +830,48 @@ def test_tf_script_mode_mpi(time, strftime, sagemaker_session):
 
     actual_train_args = sagemaker_session.method_calls[0][2]
     assert actual_train_args == expected_train_args
+
+
+@patch('sagemaker.utils.create_tar_file', MagicMock())
+def test_tf_script_mode_attach(sagemaker_session, tf_version):
+    training_image = '1.dkr.ecr.us-west-2.amazonaws.com/sagemaker-tensorflow-py3-cpu:{}-cpu-py3'.format(tf_version)
+    rjd = {
+        'AlgorithmSpecification': {
+            'TrainingInputMode': 'File',
+            'TrainingImage': training_image
+        },
+        'HyperParameters': {
+            'sagemaker_submit_directory': '"s3://some/sourcedir.tar.gz"',
+            'sagemaker_program': '"iris-dnn-classifier.py"',
+            'sagemaker_enable_cloudwatch_metrics': 'false',
+            'sagemaker_container_log_level': '"logging.INFO"',
+            'sagemaker_job_name': '"neo"'
+        },
+        'RoleArn': 'arn:aws:iam::366:role/SageMakerRole',
+        'ResourceConfig': {
+            'VolumeSizeInGB': 30,
+            'InstanceCount': 1,
+            'InstanceType': 'ml.c4.xlarge'
+        },
+        'StoppingCondition': {'MaxRuntimeInSeconds': 24 * 60 * 60},
+        'TrainingJobName': 'neo',
+        'TrainingJobStatus': 'Completed',
+        'OutputDataConfig': {'KmsKeyId': '', 'S3OutputPath': 's3://place/output/neo'},
+        'TrainingJobOutput': {'S3TrainingJobOutput': 's3://here/output.tar.gz'}}
+    sagemaker_session.sagemaker_client.describe_training_job = Mock(name='describe_training_job', return_value=rjd)
+
+    estimator = TensorFlow.attach(training_job_name='neo', sagemaker_session=sagemaker_session)
+    assert estimator.latest_training_job.job_name == 'neo'
+    assert estimator.py_version == 'py3'
+    assert estimator.framework_version == tf_version
+    assert estimator.role == 'arn:aws:iam::366:role/SageMakerRole'
+    assert estimator.train_instance_count == 1
+    assert estimator.train_max_run == 24 * 60 * 60
+    assert estimator.input_mode == 'File'
+    assert estimator.input_mode == 'File'
+    assert estimator.base_job_name == 'neo'
+    assert estimator.output_path == 's3://place/output/neo'
+    assert estimator.output_kms_key == ''
+    assert estimator.hyperparameters() is not None
+    assert estimator.source_dir == 's3://some/sourcedir.tar.gz'
+    assert estimator.entry_point == 'iris-dnn-classifier.py'
