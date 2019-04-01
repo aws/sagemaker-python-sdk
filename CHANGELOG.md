@@ -1,5 +1,11 @@
 # Changelog
 
+## v1.18.9.post0 (2019-04-01)
+
+### Documentation changes
+
+ * move RL readme content into sphinx project
+
 ## v1.18.9 (2019-03-28)
 
 ### Bug fixes
