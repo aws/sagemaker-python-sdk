@@ -1,5 +1,19 @@
 # Changelog
 
+## v1.18.9 (2019-03-28)
+
+### Bug fixes
+
+ * hyperparameter query failure on script mode estimator attached to complete job
+
+### Other changes
+
+ * add EI support for TFS framework
+
+### Documentation changes
+
+ * add third-party libraries sections to using_chainer and using_pytorch topics
+
 ## v1.18.8 (2019-03-26)
 
 ### Bug fixes
