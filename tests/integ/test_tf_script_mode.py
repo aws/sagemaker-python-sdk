@@ -47,7 +47,7 @@ def test_mnist(sagemaker_session, instance_type):
                            sagemaker_session=sagemaker_session,
                            py_version='py3',
                            framework_version=TensorFlow.LATEST_VERSION,
-                           metric_definitions=[{'Name': 'train:global_steps', 'Regex': 'global_step\/sec:\s(.*)'}],
+                           metric_definitions=[{'Name': 'train:global_steps', 'Regex': 'global_step\/sec:\s(.*)'}], # noqa
                            base_job_name='test-tf-sm-mnist')
     inputs = estimator.sagemaker_session.upload_data(
         path=os.path.join(RESOURCE_PATH, 'data'),

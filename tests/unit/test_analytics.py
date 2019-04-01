@@ -256,7 +256,7 @@ def test_start_time_end_time_and_period_specified():
     start_time = datetime.datetime(2018, 5, 16, 1, 3, 4)
     end_time = datetime.datetime(2018, 5, 16, 5, 1, 1)
     period = 300
-    trainer = TrainingJobAnalytics("my-training-job", ["metric"],
+    trainer = TrainingJobAnalytics('my-training-job', ['metric'],
                                    sagemaker_session=session, start_time=start_time, end_time=end_time, period=period)
 
     assert trainer._time_interval['start_time'] == start_time

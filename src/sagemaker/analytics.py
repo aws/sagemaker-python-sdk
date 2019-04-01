@@ -29,6 +29,8 @@ except ImportError as e:
     # Any subsequent attempt to use pandas will raise the ImportError
     pd = DeferredError(e)
 
+METRICS_PERIOD_DEFAULT = 60  # seconds
+
 
 class AnalyticsMetricsBase(with_metaclass(ABCMeta, object)):
     """Base class for tuning job or training job analytics classes.
@@ -219,7 +221,7 @@ class TrainingJobAnalytics(AnalyticsMetricsBase):
         self._training_job_name = training_job_name
         self._start_time = start_time
         self._end_time = end_time
-        self._period = period if period else 60
+        self._period = period if period else METRICS_PERIOD_DEFAULT
 
         if metric_names:
             self._metric_names = metric_names
