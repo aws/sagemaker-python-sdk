@@ -152,7 +152,6 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):
         Returns:
             str: The URI of the Docker image.
         """
-        pass
 
     @abstractmethod
     def hyperparameters(self):
@@ -164,7 +163,6 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):
         Returns:
             dict[str, str]: The hyperparameters.
         """
-        pass
 
     def enable_network_isolation(self):
         """Return True if this Estimator will need network isolation to run.
@@ -405,7 +403,6 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):
         Returns:
             sagemaker.model.Model: A SageMaker ``Model`` object. See :func:`~sagemaker.model.Model` for full details.
         """
-        pass
 
     @classmethod
     def _prepare_init_params_from_job_description(cls, job_details, model_channel_name=None):

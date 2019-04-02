@@ -61,7 +61,6 @@ class AnalyticsMetricsBase(with_metaclass(ABCMeta, object)):
     def _fetch_dataframe(self):
         """Sub-class must calculate the dataframe and return it.
         """
-        pass
 
     def clear_cache(self):
         """Clear the object of all local caches of API methods, so

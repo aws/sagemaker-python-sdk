@@ -116,7 +116,8 @@ class Model(object):
         enable_network_isolation = self.enable_network_isolation()
         self.sagemaker_session.create_model(self.name, self.role,
                                             container_def, vpc_config=self.vpc_config,
-                                            enable_network_isolation=enable_network_isolation)
+                                            enable_network_isolation=enable_network_isolation,
+                                            tags=tags)
 
     def _framework(self):
         return getattr(self, '__framework_name__', None)
@@ -254,7 +255,7 @@ class Model(object):
         if self._is_compiled_model:
             self.name += compiled_model_suffix
 
-        self._create_sagemaker_model(instance_type, accelerator_type)
+        self._create_sagemaker_model(instance_type, accelerator_type, tags=tags)
         production_variant = sagemaker.production_variant(self.name, instance_type, initial_instance_count,
                                                           accelerator_type=accelerator_type)
         if endpoint_name:
