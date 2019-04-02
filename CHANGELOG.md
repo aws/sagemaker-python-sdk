@@ -1,5 +1,11 @@
 # Changelog
 
+## v1.18.9.post1 (2019-04-02)
+
+### Documentation changes
+
+ * spelling error correction
+
 ## v1.18.9.post0 (2019-04-01)
 
 ### Documentation changes
