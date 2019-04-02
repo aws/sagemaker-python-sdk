@@ -255,7 +255,7 @@ class Model(object):
         if self._is_compiled_model:
             self.name += compiled_model_suffix
 
-        self._create_sagemaker_model(instance_type, accelerator_type, tags=tags)
+        self._create_sagemaker_model(instance_type, accelerator_type, tags)
         production_variant = sagemaker.production_variant(self.name, instance_type, initial_instance_count,
                                                           accelerator_type=accelerator_type)
         if endpoint_name:
