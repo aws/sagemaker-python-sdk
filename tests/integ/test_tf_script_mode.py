@@ -47,6 +47,7 @@ def test_mnist(sagemaker_session, instance_type):
                            sagemaker_session=sagemaker_session,
                            py_version='py3',
                            framework_version=TensorFlow.LATEST_VERSION,
+                           metric_definitions=[{'Name': 'train:global_steps', 'Regex': r'global_step\/sec:\s(.*)'}],
                            base_job_name='test-tf-sm-mnist')
     inputs = estimator.sagemaker_session.upload_data(
         path=os.path.join(RESOURCE_PATH, 'data'),
@@ -56,6 +57,9 @@ def test_mnist(sagemaker_session, instance_type):
         estimator.fit(inputs)
     _assert_s3_files_exist(estimator.model_dir,
                            ['graph.pbtxt', 'model.ckpt-0.index', 'model.ckpt-0.meta'])
+    df = estimator.training_job_analytics.dataframe()
+    print(df)
+    assert df.size > 0
 
 
 def test_server_side_encryption(sagemaker_session):
