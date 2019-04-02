@@ -221,7 +221,7 @@ class TrainingJobAnalytics(AnalyticsMetricsBase):
         self._training_job_name = training_job_name
         self._start_time = start_time
         self._end_time = end_time
-        self._period = period if period else METRICS_PERIOD_DEFAULT
+        self._period = period or METRICS_PERIOD_DEFAULT
 
         if metric_names:
             self._metric_names = metric_names
@@ -252,13 +252,13 @@ class TrainingJobAnalytics(AnalyticsMetricsBase):
         covering the interval of the training job
         """
         description = self._sage_client.describe_training_job(TrainingJobName=self.name)
-        start_time = self._start_time if self._start_time else description[u'TrainingStartTime']  # datetime object
+        start_time = self._start_time or description[u'TrainingStartTime']  # datetime object
         # Incrementing end time by 1 min since CloudWatch drops seconds before finding the logs.
         # This results in logs being searched in the time range in which the correct log line was not present.
         # Example - Log time - 2018-10-22 08:25:55
         #           Here calculated end time would also be 2018-10-22 08:25:55 (without 1 min addition)
         #           CW will consider end time as 2018-10-22 08:25 and will not be able to search the correct log.
-        end_time = self._end_time if self._end_time else description.get(
+        end_time = self._end_time or description.get(
             u'TrainingEndTime', datetime.datetime.utcnow()) + datetime.timedelta(minutes=1)
 
         return {
