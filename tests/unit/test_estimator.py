@@ -909,7 +909,8 @@ def test_fit_deploy_keep_tags(sagemaker_session):
         'DummyRole',
         {'ModelDataUrl': 's3://bucket/model.tar.gz', 'Environment': {}, 'Image': 'fakeimage'},
         enable_network_isolation=False,
-        vpc_config=None)
+        vpc_config=None,
+        tags=tags)
 
 
 def test_generic_to_fit_no_input(sagemaker_session):

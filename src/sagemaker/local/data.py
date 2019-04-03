@@ -97,7 +97,6 @@ class DataSource(with_metaclass(ABCMeta, object)):
         Returns:
              List[str]: List of absolute paths.
         """
-        pass
 
     @abstractmethod
     def get_root_dir(self):
@@ -106,7 +105,6 @@ class DataSource(with_metaclass(ABCMeta, object)):
         Returns:
             str: absolute path to the root directory of this data source.
         """
-        pass
 
 
 class LocalFileDataSource(DataSource):
@@ -201,7 +199,6 @@ class Splitter(with_metaclass(ABCMeta, object)):
         Returns:
             generator for the individual records that were split from the file
         """
-        pass
 
 
 class NoneSplitter(Splitter):
@@ -286,7 +283,6 @@ class BatchStrategy(with_metaclass(ABCMeta, object)):
         Returns:
             generator of records
         """
-        pass
 
 
 class MultiRecordStrategy(BatchStrategy):

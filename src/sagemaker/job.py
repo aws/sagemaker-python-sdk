@@ -42,13 +42,11 @@ class _Job(object):
         Returns:
             sagemaker.job: Constructed object that captures all information about the started job.
         """
-        pass
 
     @abstractmethod
     def wait(self):
         """Wait for the Amazon SageMaker job to finish.
         """
-        pass
 
     @staticmethod
     def _load_config(inputs, estimator, expand_role=True, validate_uri=True):
