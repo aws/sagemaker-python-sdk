@@ -229,6 +229,20 @@ def _row_to_csv(obj):
     return ','.join(obj)
 
 
+class _CsvDeserializer(object):
+    def __init__(self):
+        self.content_type = CONTENT_TYPE_CSV
+
+    def __call__(self, stream, content_type):
+        try:
+            return list(csv.reader(stream.read().decode('utf-8').splitlines()))
+        finally:
+            stream.close()
+
+
+csv_deserializer = _CsvDeserializer()
+
+
 class BytesDeserializer(object):
     """Return the response as an undecoded array of bytes.
 
