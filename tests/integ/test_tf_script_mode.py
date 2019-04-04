@@ -78,7 +78,7 @@ def test_server_side_encryption(sagemaker_session):
                                sagemaker_session=sagemaker_session,
                                py_version='py3',
                                framework_version='1.11',
-                               base_job_name='test-server-side-encryption',
+                               base_job_name=unique_name_from_base('test-server-side-encryption'),
                                code_location=output_path,
                                output_path=output_path,
                                model_dir='/opt/ml/model',
