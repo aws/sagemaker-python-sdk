@@ -171,7 +171,7 @@ class LinearLearner(AmazonAlgorithmEstimatorBase):
             normalize_label (bool): Normalizes the regression label to have a standard deviation of 1.0.
                 If set for classification, it will be ignored.
             unbias_data (bool): If true, features are modified to have mean 0.0.
-            ubias_label (bool): If true, labels are modified to have mean 0.0.
+            unbias_label (bool): If true, labels are modified to have mean 0.0.
             num_point_for_scaler (int): The number of data points to use for calculating the normalizing  and
                 unbiasing terms.
             margin (float):  the margin for hinge_loss.

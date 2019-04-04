@@ -245,3 +245,20 @@ def test_trainer_dataframe():
     trainer.export_csv(tmp_name)
     assert os.path.isfile(tmp_name)
     os.unlink(tmp_name)
+
+
+def test_start_time_end_time_and_period_specified():
+    describe_training_result = {
+        'TrainingStartTime': datetime.datetime(2018, 5, 16, 1, 2, 3),
+        'TrainingEndTime': datetime.datetime(2018, 5, 16, 5, 6, 7),
+    }
+    session = create_sagemaker_session(describe_training_result)
+    start_time = datetime.datetime(2018, 5, 16, 1, 3, 4)
+    end_time = datetime.datetime(2018, 5, 16, 5, 1, 1)
+    period = 300
+    trainer = TrainingJobAnalytics('my-training-job', ['metric'],
+                                   sagemaker_session=session, start_time=start_time, end_time=end_time, period=period)
+
+    assert trainer._time_interval['start_time'] == start_time
+    assert trainer._time_interval['end_time'] == end_time
+    assert trainer._period == period

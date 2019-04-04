@@ -73,7 +73,7 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):
                 'File' - Amazon SageMaker copies the training dataset from the S3 location to a local directory.
                 'Pipe' - Amazon SageMaker streams data directly from S3 to the container via a Unix-named pipe.
                 This argument can be overriden on a per-channel basis using ``sagemaker.session.s3_input.input_mode``.
-            output_path (str): S3 location for saving the trainig result (model artifacts and output files).
+            output_path (str): S3 location for saving the training result (model artifacts and output files).
                 If not specified, results are stored to a default bucket. If the bucket with the specific name
                 does not exist, the estimator creates the bucket during the
                 :meth:`~sagemaker.estimator.EstimatorBase.fit` method execution.
@@ -152,7 +152,6 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):
         Returns:
             str: The URI of the Docker image.
         """
-        pass
 
     @abstractmethod
     def hyperparameters(self):
@@ -164,7 +163,6 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):
         Returns:
             dict[str, str]: The hyperparameters.
         """
-        pass
 
     def enable_network_isolation(self):
         """Return True if this Estimator will need network isolation to run.
@@ -405,7 +403,6 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):
         Returns:
             sagemaker.model.Model: A SageMaker ``Model`` object. See :func:`~sagemaker.model.Model` for full details.
         """
-        pass
 
     @classmethod
     def _prepare_init_params_from_job_description(cls, job_details, model_channel_name=None):
@@ -633,7 +630,7 @@ class Estimator(EstimatorBase):
                 * 'Pipe' - Amazon SageMaker streams data directly from S3 to the container via a Unix-named pipe.
 
                 This argument can be overriden on a per-channel basis using ``sagemaker.session.s3_input.input_mode``.
-            output_path (str): S3 location for saving the trainig result (model artifacts and output files).
+            output_path (str): S3 location for saving the training result (model artifacts and output files).
                 If not specified, results are stored to a default bucket. If the bucket with the specific name
                 does not exist, the estimator creates the bucket during the
                 :meth:`~sagemaker.estimator.EstimatorBase.fit` method execution.

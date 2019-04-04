@@ -1,5 +1,27 @@
 # Changelog
 
+## v1.18.10 (2019-04-03)
+
+### Bug fixes and other changes
+
+ * make start time, end time and period configurable in sagemaker.analytics.TrainingJobAnalytics
+
+### Documentation changes
+
+ * fix typo of argument spelling in linear learner docstrings
+
+## v1.18.9.post1 (2019-04-02)
+
+### Documentation changes
+
+ * spelling error correction
+
+## v1.18.9.post0 (2019-04-01)
+
+### Documentation changes
+
+ * move RL readme content into sphinx project
+
 ## v1.18.9 (2019-03-28)
 
 ### Bug fixes
