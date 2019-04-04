@@ -230,12 +230,13 @@ def _row_to_csv(obj):
 
 
 class _CsvDeserializer(object):
-    def __init__(self):
-        self.content_type = CONTENT_TYPE_CSV
+    def __init__(self, encoding='utf-8'):
+        self.accept = CONTENT_TYPE_CSV
+        self.encoding = encoding
 
     def __call__(self, stream, content_type):
         try:
-            return list(csv.reader(stream.read().decode('utf-8').splitlines()))
+            return list(csv.reader(stream.read().decode(self.encoding).splitlines()))
         finally:
             stream.close()
 

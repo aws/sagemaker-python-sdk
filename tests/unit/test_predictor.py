@@ -142,6 +142,11 @@ def test_csv_serializer_csv_reader():
         assert result == validation_data
 
 
+def test_csv_deserializer_single_element():
+    result = csv_deserializer(io.BytesIO(b'1'), 'text/csv')
+    assert result == [['1']]
+
+
 def test_csv_deserializer_array():
     result = csv_deserializer(io.BytesIO(b'1,2,3'), 'text/csv')
     assert result == [['1', '2', '3']]
