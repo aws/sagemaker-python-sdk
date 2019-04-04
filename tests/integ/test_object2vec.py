@@ -21,11 +21,12 @@ from tests.integ import DATA_DIR, TRAINING_DEFAULT_TIMEOUT_MINUTES
 from tests.integ.timeout import timeout, timeout_and_delete_endpoint_by_name
 from tests.integ.record_set import prepare_record_set_from_local_files
 
-
 FEATURE_NUM = None
 
 
 def test_object2vec(sagemaker_session):
+    job_name = unique_name_from_base('object2vec')
+
     with timeout(minutes=TRAINING_DEFAULT_TIMEOUT_MINUTES):
         data_path = os.path.join(DATA_DIR, 'object2vec')
         data_filename = 'train.jsonl'
@@ -42,19 +43,18 @@ def test_object2vec(sagemaker_session):
             enc0_vocab_size=45000,
             enc_dim=16,
             num_classes=3,
-            sagemaker_session=sagemaker_session,
-            base_job_name='test-object2vec')
+            sagemaker_session=sagemaker_session)
 
         record_set = prepare_record_set_from_local_files(data_path, object2vec.data_location,
-                                                         num_records, FEATURE_NUM, sagemaker_session)
+                                                         num_records, FEATURE_NUM,
+                                                         sagemaker_session)
 
-        object2vec.fit(record_set, None)
+        object2vec.fit(records=record_set, job_name=job_name)
 
-    endpoint_name = unique_name_from_base('object2vec')
-
-    with timeout_and_delete_endpoint_by_name(endpoint_name, sagemaker_session):
-        model = Object2VecModel(object2vec.model_data, role='SageMakerRole', sagemaker_session=sagemaker_session)
-        predictor = model.deploy(1, 'ml.c4.xlarge', endpoint_name=endpoint_name)
+    with timeout_and_delete_endpoint_by_name(job_name, sagemaker_session):
+        model = Object2VecModel(object2vec.model_data, role='SageMakerRole',
+                                sagemaker_session=sagemaker_session)
+        predictor = model.deploy(1, 'ml.c4.xlarge', endpoint_name=job_name)
         assert isinstance(predictor, RealTimePredictor)
 
         predict_input = {'instances': [{"in0": [354, 623], "in1": [16]}]}

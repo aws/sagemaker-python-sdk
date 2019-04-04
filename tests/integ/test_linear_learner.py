@@ -29,6 +29,8 @@ from tests.integ.timeout import timeout, timeout_and_delete_endpoint_by_name
 
 @pytest.mark.canary_quick
 def test_linear_learner(sagemaker_session):
+    job_name = unique_name_from_base('linear-learner')
+
     with timeout(minutes=TRAINING_DEFAULT_TIMEOUT_MINUTES):
         data_path = os.path.join(DATA_DIR, 'one_p_mnist', 'mnist.pkl.gz')
         pickle_args = {} if sys.version_info.major == 2 else {'encoding': 'latin1'}
@@ -41,7 +43,7 @@ def test_linear_learner(sagemaker_session):
         train_set[1][100:200] = 0
         train_set = train_set[0], train_set[1].astype(np.dtype('float32'))
 
-        ll = LinearLearner('SageMakerRole', 1, 'ml.c4.2xlarge', base_job_name='test-linear-learner',
+        ll = LinearLearner('SageMakerRole', 1, 'ml.c4.2xlarge',
                            predictor_type='binary_classifier', sagemaker_session=sagemaker_session)
         ll.binary_classifier_model_selection_criteria = 'accuracy'
         ll.target_recall = 0.5
@@ -78,12 +80,10 @@ def test_linear_learner(sagemaker_session):
         ll.huber_delta = 0.1
         ll.early_stopping_tolerance = 0.0001
         ll.early_stopping_patience = 3
-        ll.fit(ll.record_set(train_set[0][:200], train_set[1][:200]))
+        ll.fit(ll.record_set(train_set[0][:200], train_set[1][:200]), job_name=job_name)
 
-    endpoint_name = unique_name_from_base('linear-learner')
-    with timeout_and_delete_endpoint_by_name(endpoint_name, sagemaker_session):
-
-        predictor = ll.deploy(1, 'ml.c4.xlarge', endpoint_name=endpoint_name)
+    with timeout_and_delete_endpoint_by_name(job_name, sagemaker_session):
+        predictor = ll.deploy(1, 'ml.c4.xlarge', endpoint_name=job_name)
 
         result = predictor.predict(train_set[0][0:100])
         assert len(result) == 100
@@ -93,6 +93,8 @@ def test_linear_learner(sagemaker_session):
 
 
 def test_linear_learner_multiclass(sagemaker_session):
+    job_name = unique_name_from_base('linear-learner')
+
     with timeout(minutes=TRAINING_DEFAULT_TIMEOUT_MINUTES):
         data_path = os.path.join(DATA_DIR, 'one_p_mnist', 'mnist.pkl.gz')
         pickle_args = {} if sys.version_info.major == 2 else {'encoding': 'latin1'}
@@ -103,16 +105,15 @@ def test_linear_learner_multiclass(sagemaker_session):
 
         train_set = train_set[0], train_set[1].astype(np.dtype('float32'))
 
-        ll = LinearLearner('SageMakerRole', 1, 'ml.c4.2xlarge', base_job_name='test-linear-learner',
-                           predictor_type='multiclass_classifier', num_classes=10, sagemaker_session=sagemaker_session)
+        ll = LinearLearner('SageMakerRole', 1, 'ml.c4.2xlarge',
+                           predictor_type='multiclass_classifier', num_classes=10,
+                           sagemaker_session=sagemaker_session)
 
         ll.epochs = 1
-        ll.fit(ll.record_set(train_set[0][:200], train_set[1][:200]))
+        ll.fit(ll.record_set(train_set[0][:200], train_set[1][:200]), job_name=job_name)
 
-    endpoint_name = unique_name_from_base('linear-learner')
-    with timeout_and_delete_endpoint_by_name(endpoint_name, sagemaker_session):
-
-        predictor = ll.deploy(1, 'ml.c4.xlarge', endpoint_name=endpoint_name)
+    with timeout_and_delete_endpoint_by_name(job_name, sagemaker_session):
+        predictor = ll.deploy(1, 'ml.c4.xlarge', endpoint_name=job_name)
 
         result = predictor.predict(train_set[0][0:100])
         assert len(result) == 100
@@ -175,14 +176,15 @@ def test_async_linear_learner(sagemaker_session):
         ll.early_stopping_tolerance = 0.0001
         ll.early_stopping_patience = 3
         ll.fit(ll.record_set(train_set[0][:200], train_set[1][:200]), wait=False)
-        training_job_name = ll.latest_training_job.name
 
         print("Waiting to re-attach to the training job: %s" % training_job_name)
         time.sleep(20)
 
     with timeout_and_delete_endpoint_by_name(endpoint_name, sagemaker_session):
-        estimator = LinearLearner.attach(training_job_name=training_job_name, sagemaker_session=sagemaker_session)
-        model = LinearLearnerModel(estimator.model_data, role='SageMakerRole', sagemaker_session=sagemaker_session)
+        estimator = LinearLearner.attach(training_job_name=training_job_name,
+                                         sagemaker_session=sagemaker_session)
+        model = LinearLearnerModel(estimator.model_data, role='SageMakerRole',
+                                   sagemaker_session=sagemaker_session)
         predictor = model.deploy(1, 'ml.c4.xlarge', endpoint_name=endpoint_name)
 
         result = predictor.predict(train_set[0][0:100])

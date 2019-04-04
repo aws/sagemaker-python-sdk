@@ -25,6 +25,8 @@ from tests.integ.timeout import timeout, timeout_and_delete_endpoint_by_name
 
 
 def test_knn_regressor(sagemaker_session):
+    job_name = unique_name_from_base('knn')
+
     with timeout(minutes=TRAINING_DEFAULT_TIMEOUT_MINUTES):
         data_path = os.path.join(DATA_DIR, 'one_p_mnist', 'mnist.pkl.gz')
         pickle_args = {} if sys.version_info.major == 2 else {'encoding': 'latin1'}
@@ -36,15 +38,15 @@ def test_knn_regressor(sagemaker_session):
         knn = KNN(role='SageMakerRole', train_instance_count=1,
                   train_instance_type='ml.c4.xlarge',
                   k=10, predictor_type='regressor', sample_size=500,
-                  sagemaker_session=sagemaker_session, base_job_name='test-knn-rr')
+                  sagemaker_session=sagemaker_session)
 
         # training labels must be 'float32'
-        knn.fit(knn.record_set(train_set[0][:200], train_set[1][:200].astype('float32')))
+        knn.fit(knn.record_set(train_set[0][:200], train_set[1][:200].astype('float32')),
+                job_name=job_name)
 
-    endpoint_name = unique_name_from_base('knn')
-    with timeout_and_delete_endpoint_by_name(endpoint_name, sagemaker_session):
+    with timeout_and_delete_endpoint_by_name(job_name, sagemaker_session):
         model = KNNModel(knn.model_data, role='SageMakerRole', sagemaker_session=sagemaker_session)
-        predictor = model.deploy(1, 'ml.c4.xlarge', endpoint_name=endpoint_name)
+        predictor = model.deploy(1, 'ml.c4.xlarge', endpoint_name=job_name)
         result = predictor.predict(train_set[0][:10])
 
         assert len(result) == 10
@@ -53,8 +55,7 @@ def test_knn_regressor(sagemaker_session):
 
 
 def test_async_knn_classifier(sagemaker_session):
-    training_job_name = ""
-    endpoint_name = unique_name_from_base('knn')
+    job_name = unique_name_from_base('knn')
 
     with timeout(minutes=5):
         data_path = os.path.join(DATA_DIR, 'one_p_mnist', 'mnist.pkl.gz')
@@ -68,22 +69,22 @@ def test_async_knn_classifier(sagemaker_session):
                   train_instance_count=1, train_instance_type='ml.c4.xlarge',
                   k=10, predictor_type='classifier', sample_size=500,
                   index_type='faiss.IVFFlat', index_metric='L2',
-                  sagemaker_session=sagemaker_session, base_job_name='test-knn-cl')
+                  sagemaker_session=sagemaker_session)
 
         # training labels must be 'float32'
-        knn.fit(knn.record_set(train_set[0][:200], train_set[1][:200].astype('float32')), wait=False)
-        training_job_name = knn.latest_training_job.name
+        knn.fit(knn.record_set(train_set[0][:200], train_set[1][:200].astype('float32')),
+                wait=False, job_name=job_name)
 
         print("Detached from training job. Will re-attach in 20 seconds")
         time.sleep(20)
         print("attaching now...")
 
-    with timeout_and_delete_endpoint_by_name(endpoint_name, sagemaker_session):
-        estimator = KNN.attach(training_job_name=training_job_name,
+    with timeout_and_delete_endpoint_by_name(job_name, sagemaker_session):
+        estimator = KNN.attach(training_job_name=job_name,
                                sagemaker_session=sagemaker_session)
         model = KNNModel(estimator.model_data, role='SageMakerRole',
                          sagemaker_session=sagemaker_session)
-        predictor = model.deploy(1, 'ml.c4.xlarge', endpoint_name=endpoint_name)
+        predictor = model.deploy(1, 'ml.c4.xlarge', endpoint_name=job_name)
         result = predictor.predict(train_set[0][:10])
 
         assert len(result) == 10
