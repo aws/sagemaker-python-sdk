@@ -1,5 +1,16 @@
 # Changelog
 
+## v1.18.11 (2019-04-04)
+
+### Bug fixes and other changes
+
+ * local data source relative path includes the first directory
+ * upgrade pylint and fix tagging with SageMaker models
+
+### Documentation changes
+
+ * add info about unique job names
+
 ## v1.18.10 (2019-04-03)
 
 ### Bug fixes and other changes
