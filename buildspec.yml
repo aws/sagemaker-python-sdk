@@ -21,12 +21,10 @@ phases:
 
       # run notebook test
       - |
-        # Temporarily disable notebook tests until we know what is wrong
-        if false; then
-        #if has-matching-changes "src/*.py" "setup.py" "setup.cfg"; then
+        if has-matching-changes "src/*.py" "setup.py" "setup.cfg"; then
           echo "running notebook test"
           python setup.py sdist
-          aws s3 --region us-west-2 cp ./dist/sagemaker-*.tar.gz s3://sagemaker-python-sdk-pr/
+          aws s3 --region us-west-2 cp ./dist/sagemaker-*.tar.gz s3://sagemaker-python-sdk-pr/sagemaker.tar.gz
           aws s3 cp s3://sagemaker-mead-cli/mead-nb-test.tar.gz mead-nb-test.tar.gz
           tar -xzf mead-nb-test.tar.gz
           git clone --depth 1 https://github.com/awslabs/amazon-sagemaker-examples.git
@@ -47,7 +45,8 @@ phases:
       # run integration tests
       - |
         if has-matching-changes "tests/" "src/*.py" "setup.py" "setup.cfg"; then
-          IGNORE_COVERAGE=- tox -e py27,py36 -- tests/integ -n 24 --boxed --reruns 2
+          IGNORE_COVERAGE=- tox -e py36 -- tests/integ -n 24 --boxed --reruns 2
+          IGNORE_COVERAGE=- tox -e py27 -- tests/integ -n 24 --boxed --reruns 2
         else
           echo "skipping integration tests"
         fi
