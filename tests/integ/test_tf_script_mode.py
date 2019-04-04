@@ -21,6 +21,7 @@ import pytest
 import boto3
 from sagemaker.tensorflow import TensorFlow
 from six.moves.urllib.parse import urlparse
+from sagemaker.utils import unique_name_from_base
 import tests.integ as integ
 from tests.integ import kms_utils
 import tests.integ.timeout as timeout
@@ -49,7 +50,7 @@ def test_mnist(sagemaker_session, instance_type):
                            py_version='py3',
                            framework_version=TensorFlow.LATEST_VERSION,
                            metric_definitions=[{'Name': 'train:global_steps', 'Regex': r'global_step\/sec:\s(.*)'}],
-                           base_job_name='test-tf-sm-mnist')
+                           base_job_name=unique_name_from_base('test-tf-sm-mnist'))
     inputs = estimator.sagemaker_session.upload_data(
         path=os.path.join(RESOURCE_PATH, 'data'),
         key_prefix='scriptmode/mnist')
@@ -104,7 +105,7 @@ def test_mnist_distributed(sagemaker_session, instance_type):
                            script_mode=True,
                            framework_version=TensorFlow.LATEST_VERSION,
                            distributions=PARAMETER_SERVER_DISTRIBUTION,
-                           base_job_name='test-tf-sm-mnist')
+                           base_job_name=unique_name_from_base('test-tf-sm-mnist'))
     inputs = estimator.sagemaker_session.upload_data(
         path=os.path.join(RESOURCE_PATH, 'data'),
         key_prefix='scriptmode/distributed_mnist')
@@ -123,7 +124,7 @@ def test_mnist_async(sagemaker_session):
                            sagemaker_session=sagemaker_session,
                            py_version='py3',
                            framework_version=TensorFlow.LATEST_VERSION,
-                           base_job_name='test-tf-sm-mnist',
+                           base_job_name=unique_name_from_base('test-tf-sm-mnist'),
                            tags=TAGS)
     inputs = estimator.sagemaker_session.upload_data(
         path=os.path.join(RESOURCE_PATH, 'data'),
@@ -132,6 +133,7 @@ def test_mnist_async(sagemaker_session):
     training_job_name = estimator.latest_training_job.name
     time.sleep(20)
     endpoint_name = training_job_name
+    _assert_training_job_tags_match(sagemaker_session.sagemaker_client, estimator.latest_training_job.name, TAGS)
     with timeout.timeout_and_delete_endpoint_by_name(endpoint_name, sagemaker_session):
         estimator = TensorFlow.attach(training_job_name=training_job_name, sagemaker_session=sagemaker_session)
         predictor = estimator.deploy(initial_instance_count=1, instance_type='ml.c4.xlarge',
@@ -141,8 +143,6 @@ def test_mnist_async(sagemaker_session):
         print('predict result: {}'.format(result))
         _assert_endpoint_tags_match(sagemaker_session.sagemaker_client, predictor.endpoint, TAGS)
         _assert_model_tags_match(sagemaker_session.sagemaker_client, estimator.latest_training_job.name, TAGS)
-
-    _assert_training_job_tags_match(sagemaker_session.sagemaker_client, estimator.latest_training_job.name, TAGS)
 
 
 def _assert_s3_files_exist(s3_url, files):
