@@ -31,6 +31,7 @@ RESOURCE_PATH = os.path.join(os.path.dirname(__file__), '..', 'data', 'tensorflo
 SCRIPT = os.path.join(RESOURCE_PATH, 'mnist.py')
 PARAMETER_SERVER_DISTRIBUTION = {'parameter_server': {'enabled': True}}
 MPI_DISTRIBUTION = {'mpi': {'enabled': True}}
+TAGS = [{'Key': 'some-key', 'Value': 'some-value'}]
 
 
 @pytest.fixture(scope='session', params=['ml.c5.xlarge', 'ml.p2.xlarge'])
@@ -122,7 +123,8 @@ def test_mnist_async(sagemaker_session):
                            sagemaker_session=sagemaker_session,
                            py_version='py3',
                            framework_version=TensorFlow.LATEST_VERSION,
-                           base_job_name='test-tf-sm-mnist')
+                           base_job_name='test-tf-sm-mnist',
+                           tags=TAGS)
     inputs = estimator.sagemaker_session.upload_data(
         path=os.path.join(RESOURCE_PATH, 'data'),
         key_prefix='scriptmode/mnist')
@@ -137,6 +139,10 @@ def test_mnist_async(sagemaker_session):
 
         result = predictor.predict(np.zeros(784))
         print('predict result: {}'.format(result))
+        _assert_endpoint_tags_match(sagemaker_session.sagemaker_client, predictor.endpoint, TAGS)
+        _assert_model_tags_match(sagemaker_session.sagemaker_client, estimator.latest_training_job.name, TAGS)
+
+    _assert_training_job_tags_match(sagemaker_session.sagemaker_client, estimator.latest_training_job.name, TAGS)
 
 
 def _assert_s3_files_exist(s3_url, files):
@@ -147,3 +153,23 @@ def _assert_s3_files_exist(s3_url, files):
         found = [x['Key'] for x in contents if x['Key'].endswith(f)]
         if not found:
             raise ValueError('File {} is not found under {}'.format(f, s3_url))
+
+
+def _assert_tags_match(sagemaker_client, resource_arn, tags):
+    actual_tags = sagemaker_client.list_tags(ResourceArn=resource_arn)['Tags']
+    assert actual_tags == tags
+
+
+def _assert_model_tags_match(sagemaker_client, model_name, tags):
+    model_description = sagemaker_client.describe_model(ModelName=model_name)
+    _assert_tags_match(sagemaker_client, model_description['ModelArn'], tags)
+
+
+def _assert_endpoint_tags_match(sagemaker_client, endpoint_name, tags):
+    endpoint_description = sagemaker_client.describe_endpoint(EndpointName=endpoint_name)
+    _assert_tags_match(sagemaker_client, endpoint_description['EndpointArn'], tags)
+
+
+def _assert_training_job_tags_match(sagemaker_client, training_job_name, tags):
+    training_job_description = sagemaker_client.describe_training_job(TrainingJobName=training_job_name)
+    _assert_tags_match(sagemaker_client, training_job_description['TrainingJobArn'], tags)
