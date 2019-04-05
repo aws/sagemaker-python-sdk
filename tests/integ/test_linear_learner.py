@@ -22,7 +22,7 @@ import numpy as np
 import pytest
 
 from sagemaker.amazon.linear_learner import LinearLearner, LinearLearnerModel
-from sagemaker.utils import unique_name_from_base, sagemaker_timestamp
+from sagemaker.utils import unique_name_from_base
 from tests.integ import DATA_DIR, TRAINING_DEFAULT_TIMEOUT_MINUTES
 from tests.integ.timeout import timeout, timeout_and_delete_endpoint_by_name
 
