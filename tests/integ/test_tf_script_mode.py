@@ -21,6 +21,7 @@ import pytest
 import boto3
 from sagemaker.tensorflow import TensorFlow
 from six.moves.urllib.parse import urlparse
+from sagemaker.utils import unique_name_from_base
 import tests.integ as integ
 from tests.integ import kms_utils
 import tests.integ.timeout as timeout
@@ -31,6 +32,7 @@ RESOURCE_PATH = os.path.join(os.path.dirname(__file__), '..', 'data', 'tensorflo
 SCRIPT = os.path.join(RESOURCE_PATH, 'mnist.py')
 PARAMETER_SERVER_DISTRIBUTION = {'parameter_server': {'enabled': True}}
 MPI_DISTRIBUTION = {'mpi': {'enabled': True}}
+TAGS = [{'Key': 'some-key', 'Value': 'some-value'}]
 
 
 @pytest.fixture(scope='session', params=['ml.c5.xlarge', 'ml.p2.xlarge'])
@@ -48,7 +50,7 @@ def test_mnist(sagemaker_session, instance_type):
                            py_version='py3',
                            framework_version=TensorFlow.LATEST_VERSION,
                            metric_definitions=[{'Name': 'train:global_steps', 'Regex': r'global_step\/sec:\s(.*)'}],
-                           base_job_name='test-tf-sm-mnist')
+                           base_job_name=unique_name_from_base('test-tf-sm-mnist'))
     inputs = estimator.sagemaker_session.upload_data(
         path=os.path.join(RESOURCE_PATH, 'data'),
         key_prefix='scriptmode/mnist')
@@ -76,7 +78,7 @@ def test_server_side_encryption(sagemaker_session):
                                sagemaker_session=sagemaker_session,
                                py_version='py3',
                                framework_version='1.11',
-                               base_job_name='test-server-side-encryption',
+                               base_job_name=unique_name_from_base('test-server-side-encryption'),
                                code_location=output_path,
                                output_path=output_path,
                                model_dir='/opt/ml/model',
@@ -103,7 +105,7 @@ def test_mnist_distributed(sagemaker_session, instance_type):
                            script_mode=True,
                            framework_version=TensorFlow.LATEST_VERSION,
                            distributions=PARAMETER_SERVER_DISTRIBUTION,
-                           base_job_name='test-tf-sm-mnist')
+                           base_job_name=unique_name_from_base('test-tf-sm-mnist'))
     inputs = estimator.sagemaker_session.upload_data(
         path=os.path.join(RESOURCE_PATH, 'data'),
         key_prefix='scriptmode/distributed_mnist')
@@ -122,7 +124,8 @@ def test_mnist_async(sagemaker_session):
                            sagemaker_session=sagemaker_session,
                            py_version='py3',
                            framework_version=TensorFlow.LATEST_VERSION,
-                           base_job_name='test-tf-sm-mnist')
+                           base_job_name=unique_name_from_base('test-tf-sm-mnist'),
+                           tags=TAGS)
     inputs = estimator.sagemaker_session.upload_data(
         path=os.path.join(RESOURCE_PATH, 'data'),
         key_prefix='scriptmode/mnist')
@@ -130,6 +133,7 @@ def test_mnist_async(sagemaker_session):
     training_job_name = estimator.latest_training_job.name
     time.sleep(20)
     endpoint_name = training_job_name
+    _assert_training_job_tags_match(sagemaker_session.sagemaker_client, estimator.latest_training_job.name, TAGS)
     with timeout.timeout_and_delete_endpoint_by_name(endpoint_name, sagemaker_session):
         estimator = TensorFlow.attach(training_job_name=training_job_name, sagemaker_session=sagemaker_session)
         predictor = estimator.deploy(initial_instance_count=1, instance_type='ml.c4.xlarge',
@@ -137,6 +141,8 @@ def test_mnist_async(sagemaker_session):
 
         result = predictor.predict(np.zeros(784))
         print('predict result: {}'.format(result))
+        _assert_endpoint_tags_match(sagemaker_session.sagemaker_client, predictor.endpoint, TAGS)
+        _assert_model_tags_match(sagemaker_session.sagemaker_client, estimator.latest_training_job.name, TAGS)
 
 
 def _assert_s3_files_exist(s3_url, files):
@@ -147,3 +153,23 @@ def _assert_s3_files_exist(s3_url, files):
         found = [x['Key'] for x in contents if x['Key'].endswith(f)]
         if not found:
             raise ValueError('File {} is not found under {}'.format(f, s3_url))
+
+
+def _assert_tags_match(sagemaker_client, resource_arn, tags):
+    actual_tags = sagemaker_client.list_tags(ResourceArn=resource_arn)['Tags']
+    assert actual_tags == tags
+
+
+def _assert_model_tags_match(sagemaker_client, model_name, tags):
+    model_description = sagemaker_client.describe_model(ModelName=model_name)
+    _assert_tags_match(sagemaker_client, model_description['ModelArn'], tags)
+
+
+def _assert_endpoint_tags_match(sagemaker_client, endpoint_name, tags):
+    endpoint_description = sagemaker_client.describe_endpoint(EndpointName=endpoint_name)
+    _assert_tags_match(sagemaker_client, endpoint_description['EndpointArn'], tags)
+
+
+def _assert_training_job_tags_match(sagemaker_client, training_job_name, tags):
+    training_job_description = sagemaker_client.describe_training_job(TrainingJobName=training_job_name)
+    _assert_tags_match(sagemaker_client, training_job_description['TrainingJobArn'], tags)
