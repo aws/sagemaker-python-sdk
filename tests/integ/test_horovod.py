@@ -20,6 +20,7 @@ from six.moves.urllib.parse import urlparse
 import boto3
 import pytest
 
+import sagemaker.utils
 import tests.integ as integ
 from sagemaker.tensorflow import TensorFlow
 from tests.integ import timeout
@@ -30,7 +31,7 @@ horovod_dir = os.path.join(os.path.dirname(__file__), '..', 'data', 'horovod')
 @pytest.mark.canary_quick
 @pytest.mark.parametrize('instance_type', ['ml.c5.xlarge', 'ml.p3.2xlarge'])
 def test_horovod(sagemaker_session, instance_type, tmpdir):
-
+    job_name = sagemaker.utils.unique_name_from_base('tf-horovod')
     estimator = TensorFlow(entry_point=os.path.join(horovod_dir, 'test_hvd_basic.py'),
                            role='SageMakerRole',
                            train_instance_count=2,
@@ -39,11 +40,10 @@ def test_horovod(sagemaker_session, instance_type, tmpdir):
                            py_version=integ.PYTHON_VERSION,
                            script_mode=True,
                            framework_version='1.12',
-                           distributions={'mpi': {'enabled': True}},
-                           base_job_name='test-tf-horovod')
+                           distributions={'mpi': {'enabled': True}})
 
     with timeout.timeout(minutes=integ.TRAINING_DEFAULT_TIMEOUT_MINUTES):
-        estimator.fit()
+        estimator.fit(job_name=job_name)
 
         tmp = str(tmpdir)
         extract_files_from_s3(estimator.model_data, tmp)
@@ -59,7 +59,7 @@ def test_horovod(sagemaker_session, instance_type, tmpdir):
     (2, 2)])
 def test_horovod_local_mode(sagemaker_local_session, instances, processes, tmpdir):
     output_path = 'file://%s' % tmpdir
-
+    job_name = sagemaker.utils.unique_name_from_base('tf-horovod')
     estimator = TensorFlow(entry_point=os.path.join(horovod_dir, 'test_hvd_basic.py'),
                            role='SageMakerRole',
                            train_instance_count=2,
@@ -70,11 +70,10 @@ def test_horovod_local_mode(sagemaker_local_session, instances, processes, tmpdi
                            output_path=output_path,
                            framework_version='1.12',
                            distributions={'mpi': {'enabled': True,
-                                                  'processes_per_host': processes}},
-                           base_job_name='test-tf-horovod')
+                                                  'processes_per_host': processes}})
 
     with timeout.timeout(minutes=integ.TRAINING_DEFAULT_TIMEOUT_MINUTES):
-        estimator.fit()
+        estimator.fit(job_name=job_name)
 
         tmp = str(tmpdir)
         extract_files(output_path.replace('file://', ''), tmp)

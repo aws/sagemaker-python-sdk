@@ -25,6 +25,8 @@ from tests.integ.record_set import prepare_record_set_from_local_files
 
 
 def test_lda(sagemaker_session):
+    job_name = unique_name_from_base('lda')
+
     with timeout(minutes=TRAINING_DEFAULT_TIMEOUT_MINUTES):
         data_path = os.path.join(DATA_DIR, 'lda')
         data_filename = 'nips-train_1.pbr'
@@ -36,16 +38,16 @@ def test_lda(sagemaker_session):
         feature_num = int(all_records[0].features['values'].float32_tensor.shape[0])
 
         lda = LDA(role='SageMakerRole', train_instance_type='ml.c4.xlarge', num_topics=10,
-                  sagemaker_session=sagemaker_session, base_job_name='test-lda')
+                  sagemaker_session=sagemaker_session)
 
         record_set = prepare_record_set_from_local_files(data_path, lda.data_location,
-                                                         len(all_records), feature_num, sagemaker_session)
-        lda.fit(record_set, 100)
+                                                         len(all_records), feature_num,
+                                                         sagemaker_session)
+        lda.fit(records=record_set, mini_batch_size=100, job_name=job_name)
 
-    endpoint_name = unique_name_from_base('lda')
-    with timeout_and_delete_endpoint_by_name(endpoint_name, sagemaker_session):
+    with timeout_and_delete_endpoint_by_name(job_name, sagemaker_session):
         model = LDAModel(lda.model_data, role='SageMakerRole', sagemaker_session=sagemaker_session)
-        predictor = model.deploy(1, 'ml.c4.xlarge', endpoint_name=endpoint_name)
+        predictor = model.deploy(1, 'ml.c4.xlarge', endpoint_name=job_name)
 
         predict_input = np.random.rand(1, feature_num)
         result = predictor.predict(predict_input)

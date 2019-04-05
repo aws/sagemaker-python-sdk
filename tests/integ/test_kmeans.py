@@ -27,6 +27,7 @@ from tests.integ.timeout import timeout, timeout_and_delete_endpoint_by_name
 
 
 def test_kmeans(sagemaker_session):
+    job_name = unique_name_from_base('kmeans')
     with timeout(minutes=TRAINING_DEFAULT_TIMEOUT_MINUTES):
         data_path = os.path.join(DATA_DIR, 'one_p_mnist', 'mnist.pkl.gz')
         pickle_args = {} if sys.version_info.major == 2 else {'encoding': 'latin1'}
@@ -37,7 +38,7 @@ def test_kmeans(sagemaker_session):
 
         kmeans = KMeans(role='SageMakerRole', train_instance_count=1,
                         train_instance_type='ml.c4.xlarge',
-                        k=10, sagemaker_session=sagemaker_session, base_job_name='test-kmeans')
+                        k=10, sagemaker_session=sagemaker_session)
 
         kmeans.init_method = 'random'
         kmeans.max_iterations = 1
@@ -61,12 +62,12 @@ def test_kmeans(sagemaker_session):
             force_dense='True',
         )
 
-        kmeans.fit(kmeans.record_set(train_set[0][:100]))
+        kmeans.fit(kmeans.record_set(train_set[0][:100]), job_name=job_name)
 
-    endpoint_name = unique_name_from_base('kmeans')
-    with timeout_and_delete_endpoint_by_name(endpoint_name, sagemaker_session):
-        model = KMeansModel(kmeans.model_data, role='SageMakerRole', sagemaker_session=sagemaker_session)
-        predictor = model.deploy(1, 'ml.c4.xlarge', endpoint_name=endpoint_name)
+    with timeout_and_delete_endpoint_by_name(job_name, sagemaker_session):
+        model = KMeansModel(kmeans.model_data, role='SageMakerRole',
+                            sagemaker_session=sagemaker_session)
+        predictor = model.deploy(1, 'ml.c4.xlarge', endpoint_name=job_name)
         result = predictor.predict(train_set[0][:10])
 
         assert len(result) == 10
@@ -81,8 +82,7 @@ def test_kmeans(sagemaker_session):
 
 
 def test_async_kmeans(sagemaker_session):
-    training_job_name = ""
-    endpoint_name = unique_name_from_base('kmeans')
+    job_name = unique_name_from_base('kmeans')
 
     with timeout(minutes=5):
         data_path = os.path.join(DATA_DIR, 'one_p_mnist', 'mnist.pkl.gz')
@@ -94,7 +94,7 @@ def test_async_kmeans(sagemaker_session):
 
         kmeans = KMeans(role='SageMakerRole', train_instance_count=1,
                         train_instance_type='ml.c4.xlarge',
-                        k=10, sagemaker_session=sagemaker_session, base_job_name='test-kmeans')
+                        k=10, sagemaker_session=sagemaker_session)
 
         kmeans.init_method = 'random'
         kmeans.max_iterations = 1
@@ -118,17 +118,17 @@ def test_async_kmeans(sagemaker_session):
             force_dense='True',
         )
 
-        kmeans.fit(kmeans.record_set(train_set[0][:100]), wait=False)
-        training_job_name = kmeans.latest_training_job.name
+        kmeans.fit(kmeans.record_set(train_set[0][:100]), wait=False, job_name=job_name)
 
         print("Detached from training job. Will re-attach in 20 seconds")
         time.sleep(20)
         print("attaching now...")
 
-    with timeout_and_delete_endpoint_by_name(endpoint_name, sagemaker_session):
-        estimator = KMeans.attach(training_job_name=training_job_name, sagemaker_session=sagemaker_session)
-        model = KMeansModel(estimator.model_data, role='SageMakerRole', sagemaker_session=sagemaker_session)
-        predictor = model.deploy(1, 'ml.c4.xlarge', endpoint_name=endpoint_name)
+    with timeout_and_delete_endpoint_by_name(job_name, sagemaker_session):
+        estimator = KMeans.attach(training_job_name=job_name, sagemaker_session=sagemaker_session)
+        model = KMeansModel(estimator.model_data, role='SageMakerRole',
+                            sagemaker_session=sagemaker_session)
+        predictor = model.deploy(1, 'ml.c4.xlarge', endpoint_name=job_name)
         result = predictor.predict(train_set[0][:10])
 
         assert len(result) == 10
