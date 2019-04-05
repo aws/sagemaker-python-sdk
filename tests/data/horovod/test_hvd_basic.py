@@ -1,11 +1,15 @@
 import json
 import os
+
 import horovod.tensorflow as hvd
 
-hvd.init()
+if __name__ == '__main__':
 
-with open(os.path.join('/opt/ml/model/rank-%s' % hvd.rank()), 'w+') as f:
-    basic_info = {'rank': hvd.rank(), 'size': hvd.size()}
+    hvd.init()
 
-    print(basic_info)
-    json.dump(basic_info, f)
+    with open(os.path.join('/opt/ml/model/rank-%s' % hvd.rank()), 'w+') as f:
+        basic_info = {'rank': hvd.rank(), 'size': hvd.size()}
+
+        json.dump(basic_info, f)
+        print('Saved file "rank-%s": %s' % (hvd.rank(), basic_info))
+
