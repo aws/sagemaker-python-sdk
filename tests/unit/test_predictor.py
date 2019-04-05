@@ -21,8 +21,9 @@ from mock import Mock, call
 import numpy as np
 
 from sagemaker.predictor import RealTimePredictor
-from sagemaker.predictor import json_serializer, json_deserializer, csv_serializer, BytesDeserializer, \
-    StringDeserializer, StreamDeserializer, numpy_deserializer, npy_serializer, _NumpyDeserializer
+from sagemaker.predictor import json_serializer, json_deserializer, csv_serializer, \
+    csv_deserializer, BytesDeserializer, StringDeserializer, StreamDeserializer, \
+    numpy_deserializer, npy_serializer, _NumpyDeserializer
 from tests.unit import DATA_DIR
 
 # testing serialization functions
@@ -139,6 +140,21 @@ def test_csv_serializer_csv_reader():
         csv_file.seek(0)
         result = csv_serializer(csv_file)
         assert result == validation_data
+
+
+def test_csv_deserializer_single_element():
+    result = csv_deserializer(io.BytesIO(b'1'), 'text/csv')
+    assert result == [['1']]
+
+
+def test_csv_deserializer_array():
+    result = csv_deserializer(io.BytesIO(b'1,2,3'), 'text/csv')
+    assert result == [['1', '2', '3']]
+
+
+def test_csv_deserializer_2dimensional():
+    result = csv_deserializer(io.BytesIO(b'1,2,3\n3,4,5'), 'text/csv')
+    assert result == [['1', '2', '3'], ['3', '4', '5']]
 
 
 def test_json_deserializer_array():
