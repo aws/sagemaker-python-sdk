@@ -54,6 +54,7 @@ def test_byo_estimator(sagemaker_session, region):
     """
     image_name = registry(region) + "/factorization-machines:1"
     training_data_path = os.path.join(DATA_DIR, 'dummy_tensor')
+    job_name = unique_name_from_base('byo')
 
     with timeout(minutes=TRAINING_DEFAULT_TIMEOUT_MINUTES):
         data_path = os.path.join(DATA_DIR, 'one_p_mnist', 'mnist.pkl.gz')
@@ -71,7 +72,7 @@ def test_byo_estimator(sagemaker_session, region):
         estimator = Estimator(image_name=image_name,
                               role='SageMakerRole', train_instance_count=1,
                               train_instance_type='ml.c4.xlarge',
-                              sagemaker_session=sagemaker_session, base_job_name='test-byo')
+                              sagemaker_session=sagemaker_session)
 
         estimator.set_hyperparameters(num_factors=10,
                                       feature_dim=784,
@@ -79,13 +80,11 @@ def test_byo_estimator(sagemaker_session, region):
                                       predictor_type='binary_classifier')
 
         # training labels must be 'float32'
-        estimator.fit({'train': s3_train_data})
+        estimator.fit({'train': s3_train_data}, job_name=job_name)
 
-    endpoint_name = unique_name_from_base('byo')
-
-    with timeout_and_delete_endpoint_by_name(endpoint_name, sagemaker_session):
+    with timeout_and_delete_endpoint_by_name(job_name, sagemaker_session):
         model = estimator.create_model()
-        predictor = model.deploy(1, 'ml.m4.xlarge', endpoint_name=endpoint_name)
+        predictor = model.deploy(1, 'ml.m4.xlarge', endpoint_name=job_name)
         predictor.serializer = fm_serializer
         predictor.content_type = 'application/json'
         predictor.deserializer = sagemaker.predictor.json_deserializer
@@ -101,7 +100,7 @@ def test_async_byo_estimator(sagemaker_session, region):
     image_name = registry(region) + "/factorization-machines:1"
     endpoint_name = unique_name_from_base('byo')
     training_data_path = os.path.join(DATA_DIR, 'dummy_tensor')
-    training_job_name = ""
+    job_name = unique_name_from_base('byo')
 
     with timeout(minutes=5):
         data_path = os.path.join(DATA_DIR, 'one_p_mnist', 'mnist.pkl.gz')
@@ -119,7 +118,7 @@ def test_async_byo_estimator(sagemaker_session, region):
         estimator = Estimator(image_name=image_name,
                               role='SageMakerRole', train_instance_count=1,
                               train_instance_type='ml.c4.xlarge',
-                              sagemaker_session=sagemaker_session, base_job_name='test-byo')
+                              sagemaker_session=sagemaker_session)
 
         estimator.set_hyperparameters(num_factors=10,
                                       feature_dim=784,
@@ -127,11 +126,11 @@ def test_async_byo_estimator(sagemaker_session, region):
                                       predictor_type='binary_classifier')
 
         # training labels must be 'float32'
-        estimator.fit({'train': s3_train_data}, wait=False)
-        training_job_name = estimator.latest_training_job.name
+        estimator.fit({'train': s3_train_data}, wait=False, job_name=job_name)
 
     with timeout_and_delete_endpoint_by_name(endpoint_name, sagemaker_session):
-        estimator = Estimator.attach(training_job_name=training_job_name, sagemaker_session=sagemaker_session)
+        estimator = Estimator.attach(training_job_name=job_name,
+                                     sagemaker_session=sagemaker_session)
         model = estimator.create_model()
         predictor = model.deploy(1, 'ml.m4.xlarge', endpoint_name=endpoint_name)
         predictor.serializer = fm_serializer
