@@ -1,5 +1,15 @@
 # Changelog
 
+## v1.18.12 (2019-04-08)
+
+### Bug fixes and other changes
+
+ * add integ test for tagging
+ * use unique names for test training jobs
+ * Wrap horovod code inside main function
+ * add csv deserializer
+ * restore notebook test
+
 ## v1.18.11 (2019-04-04)
 
 ### Bug fixes and other changes
