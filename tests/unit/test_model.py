@@ -245,7 +245,8 @@ def test_deploy_update_endpoint(sagemaker_session, tmpdir):
         model_name=model.name,
         initial_instance_count=INSTANCE_COUNT,
         instance_type=INSTANCE_TYPE,
-        accelerator_type=ACCELERATOR_TYPE
+        accelerator_type=ACCELERATOR_TYPE,
+        tags=None
     )
     config_name = sagemaker_session.create_endpoint_config(
         name=model.name,
