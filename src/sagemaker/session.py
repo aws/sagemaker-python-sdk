@@ -749,7 +749,7 @@ class Session(object):
         )
         return name
 
-    def create_endpoint(self, endpoint_name, config_name, wait=True):
+    def create_endpoint(self, endpoint_name, config_name, tags=None, wait=True):
         """Create an Amazon SageMaker ``Endpoint`` according to the endpoint configuration specified in the request.
 
         Once the ``Endpoint`` is created, client applications can send requests to obtain inferences.
@@ -764,7 +764,7 @@ class Session(object):
             str: Name of the Amazon SageMaker ``Endpoint`` created.
         """
         LOGGER.info('Creating endpoint with name {}'.format(endpoint_name))
-        self.sagemaker_client.create_endpoint(EndpointName=endpoint_name, EndpointConfigName=config_name)
+        self.sagemaker_client.create_endpoint(EndpointName=endpoint_name, EndpointConfigName=config_name, Tags=tags)
         if wait:
             self.wait_for_endpoint(endpoint_name)
         return endpoint_name
@@ -1052,7 +1052,7 @@ class Session(object):
                 config_options['Tags'] = tags
 
             self.sagemaker_client.create_endpoint_config(**config_options)
-        return self.create_endpoint(endpoint_name=name, config_name=name, wait=wait)
+        return self.create_endpoint(endpoint_name=name, config_name=name, tags=tags, wait=wait)
 
     def expand_role(self, role):
         """Expand an IAM role name into an ARN.
