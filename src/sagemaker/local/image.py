@@ -137,14 +137,15 @@ class _SageMakerContainer(object):
             # which contains the exit code and append the command line to it.
             msg = "Failed to run: %s, %s" % (compose_command, str(e))
             raise RuntimeError(msg)
+        finally:
+            artifacts = self.retrieve_artifacts(compose_data, output_data_config, job_name)
 
-        artifacts = self.retrieve_artifacts(compose_data, output_data_config, job_name)
+            # free up the training data directory as it may contain
+            # lots of data downloaded from S3. This doesn't delete any local
+            # data that was just mounted to the container.
+            dirs_to_delete = [data_dir, shared_dir]
+            self._cleanup(dirs_to_delete)
 
-        # free up the training data directory as it may contain
-        # lots of data downloaded from S3. This doesn't delete any local
-        # data that was just mounted to the container.
-        dirs_to_delete = [data_dir, shared_dir]
-        self._cleanup(dirs_to_delete)
         # Print our Job Complete line to have a similar experience to training on SageMaker where you
         # see this line at the end.
         print('===== Job Complete =====')
