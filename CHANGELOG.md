@@ -1,5 +1,12 @@
 # Changelog
 
+## v1.18.13 (2019-04-10)
+
+### Bug fixes and other changes
+
+ * skip horovod p3 test in region with no p3
+ * use unique training job names in TensorFlow script mode integ tests
+
 ## v1.18.12 (2019-04-08)
 
 ### Bug fixes and other changes
