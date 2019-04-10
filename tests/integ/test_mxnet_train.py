@@ -77,6 +77,7 @@ def test_deploy_model(mxnet_training_job, sagemaker_session, mxnet_full_version)
         sagemaker_session.sagemaker_client.describe_model(ModelName=model.name)
         assert 'Could not find model' in str(exception.value)
 
+
 def test_deploy_model_with_tags(mxnet_training_job, sagemaker_session, mxnet_full_version):
     endpoint_name = 'test-mxnet-deploy-model-{}'.format(sagemaker_timestamp())
 
@@ -88,7 +89,7 @@ def test_deploy_model_with_tags(mxnet_training_job, sagemaker_session, mxnet_ful
                            py_version=PYTHON_VERSION, sagemaker_session=sagemaker_session,
                            framework_version=mxnet_full_version)
         tags = [{'Key': 'TagtestKey', 'Value': 'TagtestValue'}]
-        predictor = model.deploy(1, 'ml.m4.xlarge', endpoint_name=endpoint_name, tags=tags)
+        model.deploy(1, 'ml.m4.xlarge', endpoint_name=endpoint_name, tags=tags)
 
         endpoint = sagemaker_session.describe_endpoint(EndpointName=endpoint_name)
         endpoint_tags = sagemaker_session.list_tags(ResourceArn=endpoint['EndpointArn'])['Tags']
@@ -102,6 +103,7 @@ def test_deploy_model_with_tags(mxnet_training_job, sagemaker_session, mxnet_ful
         assert endpoint_tags == tags
         assert production_variants[0]['InstanceType'] == 'ml.m4.xlarge'
         assert production_variants[0]['InitialInstanceCount'] == 1
+
 
 def test_deploy_model_with_update_endpoint(mxnet_training_job, sagemaker_session, mxnet_full_version):
     endpoint_name = 'test-mxnet-deploy-model-{}'.format(sagemaker_timestamp())
