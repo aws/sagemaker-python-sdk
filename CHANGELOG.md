@@ -1,5 +1,11 @@
 # Changelog
 
+## v1.18.14 (2019-04-11)
+
+### Bug fixes and other changes
+
+ * make Local Mode export artifacts even after failure
+
 ## v1.18.13 (2019-04-10)
 
 ### Bug fixes and other changes
