@@ -194,9 +194,9 @@ We recommend that you use the latest supported version, because that's where we 
 
 For more information about Chainer, see https://github.com/chainer/chainer.
 
-For more information about  Chainer SageMaker ``Estimators``, see `Chainer SageMaker Estimators and Models`_.
+For more information about  Chainer SageMaker ``Estimators``, see `Using Chainer with the SageMaker Python SDK`_.
 
-.. _Chainer SageMaker Estimators and Models: src/sagemaker/chainer/README.rst
+.. _Using Chainer with the SageMaker Python SDK: https://sagemaker.readthedocs.io/en/stable/using_chainer.html
 
 
 PyTorch SageMaker Estimators
