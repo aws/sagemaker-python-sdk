@@ -114,7 +114,7 @@ Using third-party libraries
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 When running your training script on SageMaker, it will have access to some pre-installed third-party libraries including ``torch``, ``torchvisopm``, and ``numpy``.
-For more information on the runtime environment, including specific package versions, see `SageMaker PyTorch Docker containers <#sagemaker-pytorch-docker-containers>`__.
+For more information on the runtime environment, including specific package versions, see `SageMaker PyTorch Docker containers <#id4>`__.
 
 If there are other packages you want to use with your script, you can include a ``requirements.txt`` file in the same directory as your training script to install other dependencies at runtime.
 A ``requirements.txt`` file is a text file that contains a list of items that are installed by using ``pip install``. You can also specify the version of an item to install.
@@ -223,7 +223,7 @@ The following are optional arguments. When you create a ``PyTorch`` object, you 
    serving.  If specified, the estimator will use this image for training and
    hosting, instead of selecting the appropriate SageMaker official image based on
    framework_version and py_version. Refer to: `SageMaker PyTorch Docker Containers
-   <#sagemaker-pytorch-docker-containers>`_ for details on what the Official images support
+   <#id4>`_ for details on what the Official images support
    and where to find the source code to build your custom image.
 
 Calling fit
@@ -665,7 +665,7 @@ https://github.com/awslabs/amazon-sagemaker-examples/tree/master/sagemaker-pytho
 These are also available in SageMaker Notebook Instance hosted Jupyter notebooks under the sample notebooks folder.
 
 
-SageMaker PyTorch Docker Containers
+SageMaker PyTorch Docker containers 
 -----------------------------------
 
 When training and deploying training scripts, SageMaker runs your Python script in a Docker container with several
