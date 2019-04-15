@@ -764,6 +764,9 @@ class Session(object):
             str: Name of the Amazon SageMaker ``Endpoint`` created.
         """
         LOGGER.info('Creating endpoint with name {}'.format(endpoint_name))
+
+        tags = tags or []
+
         self.sagemaker_client.create_endpoint(EndpointName=endpoint_name, EndpointConfigName=config_name, Tags=tags)
         if wait:
             self.wait_for_endpoint(endpoint_name)

@@ -91,6 +91,10 @@ def test_deploy_model_with_tags(mxnet_training_job, sagemaker_session, mxnet_ful
         tags = [{'Key': 'TagtestKey', 'Value': 'TagtestValue'}]
         model.deploy(1, 'ml.m4.xlarge', endpoint_name=endpoint_name, tags=tags)
 
+
+        returned_model = sagemaker_session.describe_model(EndpointName=model.name)
+        returned_model_tags = sagemaker_session.list_tags(ResourceArn=returned_model['ModelArn'])['Tags']
+
         endpoint = sagemaker_session.describe_endpoint(EndpointName=endpoint_name)
         endpoint_tags = sagemaker_session.list_tags(ResourceArn=endpoint['EndpointArn'])['Tags']
 
@@ -99,6 +103,7 @@ def test_deploy_model_with_tags(mxnet_training_job, sagemaker_session, mxnet_ful
 
         production_variants = endpoint_config['ProductionVariants']
 
+        assert returned_model_tags == tags
         assert endpoint_config_tags == tags
         assert endpoint_tags == tags
         assert production_variants[0]['InstanceType'] == 'ml.m4.xlarge'

@@ -911,7 +911,7 @@ def test_endpoint_from_production_variants(sagemaker_session):
     sagemaker_session.endpoint_from_production_variants('some-endpoint', pvs)
     sagemaker_session.sagemaker_client.create_endpoint.assert_called_with(EndpointConfigName='some-endpoint',
                                                                           EndpointName='some-endpoint',
-                                                                          Tags=None)
+                                                                          Tags=[])
     sagemaker_session.sagemaker_client.create_endpoint_config.assert_called_with(
         EndpointConfigName='some-endpoint',
         ProductionVariants=pvs)
