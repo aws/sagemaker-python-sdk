@@ -91,7 +91,6 @@ def test_deploy_model_with_tags(mxnet_training_job, sagemaker_session, mxnet_ful
         tags = [{'Key': 'TagtestKey', 'Value': 'TagtestValue'}]
         model.deploy(1, 'ml.m4.xlarge', endpoint_name=endpoint_name, tags=tags)
 
-
         returned_model = sagemaker_session.describe_model(EndpointName=model.name)
         returned_model_tags = sagemaker_session.list_tags(ResourceArn=returned_model['ModelArn'])['Tags']
 
