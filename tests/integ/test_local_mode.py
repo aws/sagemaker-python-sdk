@@ -1,4 +1,4 @@
-# Copyright 2017-2018 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright 2017-2019 Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -13,6 +13,7 @@
 from __future__ import absolute_import
 
 import os
+import tarfile
 
 import boto3
 import numpy
@@ -316,6 +317,26 @@ def test_mxnet_local_data_local_script(mxnet_full_version):
             predictor.predict(data)
         finally:
             mx.delete_endpoint()
+
+
+@pytest.mark.local_mode
+def test_mxnet_training_failure(sagemaker_local_session, mxnet_full_version, tmpdir):
+    script_path = os.path.join(DATA_DIR, 'mxnet_mnist', 'failure_script.py')
+
+    mx = MXNet(entry_point=script_path,
+               role='SageMakerRole',
+               framework_version=mxnet_full_version,
+               py_version=PYTHON_VERSION,
+               train_instance_count=1,
+               train_instance_type='local',
+               sagemaker_session=sagemaker_local_session,
+               output_path='file://{}'.format(tmpdir))
+
+    with pytest.raises(RuntimeError):
+        mx.fit()
+
+    with tarfile.open(os.path.join(str(tmpdir), 'output.tar.gz')) as tar:
+        tar.getmember('failure')
 
 
 @pytest.mark.local_mode

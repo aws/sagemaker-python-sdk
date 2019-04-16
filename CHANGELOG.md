@@ -1,5 +1,24 @@
 # Changelog
 
+## v1.18.14.post0 (2019-04-15)
+
+### Documentation changes
+
+ * remove duplicate content from PyTorch readme and fix internal links
+
+## v1.18.14 (2019-04-11)
+
+### Bug fixes and other changes
+
+ * make Local Mode export artifacts even after failure
+
+## v1.18.13 (2019-04-10)
+
+### Bug fixes and other changes
+
+ * skip horovod p3 test in region with no p3
+ * use unique training job names in TensorFlow script mode integ tests
+
 ## v1.18.12 (2019-04-08)
 
 ### Bug fixes and other changes

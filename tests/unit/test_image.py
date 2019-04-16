@@ -1,4 +1,4 @@
-# Copyright 2017-2018 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright 2017-2019 Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -303,10 +303,11 @@ def test_check_output():
 
 @patch('sagemaker.local.local_session.LocalSession', Mock())
 @patch('sagemaker.local.image._stream_output', Mock())
-@patch('sagemaker.local.image._SageMakerContainer._cleanup', Mock())
+@patch('sagemaker.local.image._SageMakerContainer._cleanup')
+@patch('sagemaker.local.image._SageMakerContainer.retrieve_artifacts')
 @patch('sagemaker.local.data.get_data_source_instance')
 @patch('subprocess.Popen')
-def test_train(popen, get_data_source_instance, tmpdir, sagemaker_session):
+def test_train(popen, get_data_source_instance, retrieve_artifacts, cleanup, tmpdir, sagemaker_session):
     data_source = Mock()
     data_source.get_root_dir.return_value = 'foo'
     get_data_source_instance.return_value = data_source
@@ -342,6 +343,9 @@ def test_train(popen, get_data_source_instance, tmpdir, sagemaker_session):
         assert os.path.exists(os.path.join(sagemaker_container.container_root, 'output'))
         assert os.path.exists(os.path.join(sagemaker_container.container_root, 'output/data'))
 
+    retrieve_artifacts.assert_called_once()
+    cleanup.assert_called_once()
+
 
 @patch('sagemaker.local.local_session.LocalSession', Mock())
 @patch('sagemaker.local.image._stream_output', Mock())
@@ -371,10 +375,11 @@ def test_train_with_hyperparameters_without_job_name(get_data_source_instance, t
 
 @patch('sagemaker.local.local_session.LocalSession', Mock())
 @patch('sagemaker.local.image._stream_output', side_effect=RuntimeError('this is expected'))
-@patch('sagemaker.local.image._SageMakerContainer._cleanup', Mock())
+@patch('sagemaker.local.image._SageMakerContainer._cleanup')
+@patch('sagemaker.local.image._SageMakerContainer.retrieve_artifacts')
 @patch('sagemaker.local.data.get_data_source_instance')
 @patch('subprocess.Popen', Mock())
-def test_train_error(get_data_source_instance, _stream_output, tmpdir, sagemaker_session):
+def test_train_error(get_data_source_instance, retrieve_artifacts, cleanup, _stream_output, tmpdir, sagemaker_session):
     data_source = Mock()
     data_source.get_root_dir.return_value = 'foo'
     get_data_source_instance.return_value = data_source
@@ -390,6 +395,9 @@ def test_train_error(get_data_source_instance, _stream_output, tmpdir, sagemaker
                 INPUT_DATA_CONFIG, OUTPUT_DATA_CONFIG, HYPERPARAMETERS, TRAINING_JOB_NAME)
 
         assert 'this is expected' in str(e)
+
+    retrieve_artifacts.assert_called_once()
+    cleanup.assert_called_once()
 
 
 @patch('sagemaker.local.local_session.LocalSession', Mock())
