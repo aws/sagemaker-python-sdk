@@ -1,5 +1,11 @@
 # Changelog
 
+## v1.18.14.post0 (2019-04-15)
+
+### Documentation changes
+
+ * remove duplicate content from PyTorch readme and fix internal links
+
 ## v1.18.14 (2019-04-11)
 
 ### Bug fixes and other changes
