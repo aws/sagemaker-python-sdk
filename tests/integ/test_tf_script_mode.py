@@ -49,14 +49,13 @@ def test_mnist(sagemaker_session, instance_type):
                            sagemaker_session=sagemaker_session,
                            py_version='py3',
                            framework_version=TensorFlow.LATEST_VERSION,
-                           metric_definitions=[{'Name': 'train:global_steps', 'Regex': r'global_step\/sec:\s(.*)'}],
-                           base_job_name=unique_name_from_base('test-tf-sm-mnist'))
+                           metric_definitions=[{'Name': 'train:global_steps', 'Regex': r'global_step\/sec:\s(.*)'}])
     inputs = estimator.sagemaker_session.upload_data(
         path=os.path.join(RESOURCE_PATH, 'data'),
         key_prefix='scriptmode/mnist')
 
     with timeout.timeout(minutes=integ.TRAINING_DEFAULT_TIMEOUT_MINUTES):
-        estimator.fit(inputs)
+        estimator.fit(inputs=inputs, job_name=unique_name_from_base('test-tf-sm-mnist'))
     _assert_s3_files_exist(estimator.model_dir,
                            ['graph.pbtxt', 'model.ckpt-0.index', 'model.ckpt-0.meta'])
     df = estimator.training_job_analytics.dataframe()
@@ -77,8 +76,7 @@ def test_server_side_encryption(sagemaker_session):
                                train_instance_type='ml.c5.xlarge',
                                sagemaker_session=sagemaker_session,
                                py_version='py3',
-                               framework_version='1.11',
-                               base_job_name=unique_name_from_base('test-server-side-encryption'),
+                               framework_version=TensorFlow.LATEST_VERSION,
                                code_location=output_path,
                                output_path=output_path,
                                model_dir='/opt/ml/model',
@@ -89,7 +87,7 @@ def test_server_side_encryption(sagemaker_session):
             key_prefix='scriptmode/mnist')
 
         with timeout.timeout(minutes=integ.TRAINING_DEFAULT_TIMEOUT_MINUTES):
-            estimator.fit(inputs)
+            estimator.fit(inputs=inputs, job_name=unique_name_from_base('test-server-side-encryption'))
 
 
 @pytest.mark.canary_quick
@@ -104,14 +102,13 @@ def test_mnist_distributed(sagemaker_session, instance_type):
                            py_version=integ.PYTHON_VERSION,
                            script_mode=True,
                            framework_version=TensorFlow.LATEST_VERSION,
-                           distributions=PARAMETER_SERVER_DISTRIBUTION,
-                           base_job_name=unique_name_from_base('test-tf-sm-mnist'))
+                           distributions=PARAMETER_SERVER_DISTRIBUTION)
     inputs = estimator.sagemaker_session.upload_data(
         path=os.path.join(RESOURCE_PATH, 'data'),
         key_prefix='scriptmode/distributed_mnist')
 
     with timeout.timeout(minutes=integ.TRAINING_DEFAULT_TIMEOUT_MINUTES):
-        estimator.fit(inputs)
+        estimator.fit(inputs=inputs, job_name=unique_name_from_base('test-tf-sm-distributed'))
     _assert_s3_files_exist(estimator.model_dir,
                            ['graph.pbtxt', 'model.ckpt-0.index', 'model.ckpt-0.meta'])
 
@@ -124,12 +121,11 @@ def test_mnist_async(sagemaker_session):
                            sagemaker_session=sagemaker_session,
                            py_version='py3',
                            framework_version=TensorFlow.LATEST_VERSION,
-                           base_job_name=unique_name_from_base('test-tf-sm-mnist'),
                            tags=TAGS)
     inputs = estimator.sagemaker_session.upload_data(
         path=os.path.join(RESOURCE_PATH, 'data'),
         key_prefix='scriptmode/mnist')
-    estimator.fit(inputs, wait=False)
+    estimator.fit(inputs=inputs, wait=False, job_name=unique_name_from_base('test-tf-sm-async'))
     training_job_name = estimator.latest_training_job.name
     time.sleep(20)
     endpoint_name = training_job_name
