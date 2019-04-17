@@ -1,5 +1,11 @@
 # Changelog
 
+## v1.18.14.post1 (2019-04-17)
+
+### Documentation changes
+
+ * remove duplicate content from Chainer readme
+
 ## v1.18.14.post0 (2019-04-15)
 
 ### Documentation changes
