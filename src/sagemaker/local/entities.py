@@ -327,15 +327,17 @@ class _LocalModel(object):
 
 class _LocalEndpointConfig(object):
 
-    def __init__(self, config_name, production_variants):
+    def __init__(self, config_name, production_variants, tags=None):
         self.name = config_name
         self.production_variants = production_variants
+        self.tags = tags
         self.creation_time = datetime.datetime.now()
 
     def describe(self):
         response = {
             'EndpointConfigName': self.name,
             'EndpointConfigArn': _UNUSED_ARN,
+            'Tags': self.tags,
             'CreationTime': self.creation_time,
             'ProductionVariants': self.production_variants
         }
@@ -348,7 +350,7 @@ class _LocalEndpoint(object):
     _IN_SERVICE = 'InService'
     _FAILED = 'Failed'
 
-    def __init__(self, endpoint_name, endpoint_config_name, local_session=None):
+    def __init__(self, endpoint_name, endpoint_config_name, tags=None, local_session=None):
         # runtime import since there is a cyclic dependency between entities and local_session
         from sagemaker.local import LocalSession
         self.local_session = local_session or LocalSession()
@@ -357,6 +359,7 @@ class _LocalEndpoint(object):
         self.name = endpoint_name
         self.endpoint_config = local_client.describe_endpoint_config(endpoint_config_name)
         self.production_variant = self.endpoint_config['ProductionVariants'][0]
+        self.tags = tags
 
         model_name = self.production_variant['ModelName']
         self.primary_container = local_client.describe_model(model_name)['PrimaryContainer']
@@ -392,6 +395,7 @@ class _LocalEndpoint(object):
             'EndpointConfigName': self.endpoint_config['EndpointConfigName'],
             'CreationTime': self.create_time,
             'ProductionVariants': self.endpoint_config['ProductionVariants'],
+            'Tags': self.tags,
             'EndpointName': self.name,
             'EndpointArn': _UNUSED_ARN,
             'EndpointStatus': self.state
