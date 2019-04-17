@@ -271,7 +271,8 @@ class Model(object):
                 model_name=self.name,
                 initial_instance_count=initial_instance_count,
                 instance_type=instance_type,
-                accelerator_type=accelerator_type)
+                accelerator_type=accelerator_type,
+                tags=tags)
             self.sagemaker_session.update_endpoint(self.endpoint_name, endpoint_config_name)
         else:
             self.sagemaker_session.endpoint_from_production_variants(self.endpoint_name, [production_variant], tags)

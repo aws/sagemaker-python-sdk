@@ -127,9 +127,9 @@ class LocalSagemakerClient(object):
                 'Code': 'ValidationException', 'Message': 'Could not find local endpoint config'}}
             raise ClientError(error_response, 'describe_endpoint_config')
 
-    def create_endpoint_config(self, EndpointConfigName, ProductionVariants):
+    def create_endpoint_config(self, EndpointConfigName, ProductionVariants, Tags=None):
         LocalSagemakerClient._endpoint_configs[EndpointConfigName] = _LocalEndpointConfig(
-            EndpointConfigName, ProductionVariants)
+            EndpointConfigName, ProductionVariants, Tags)
 
     def describe_endpoint(self, EndpointName):
         if EndpointName not in LocalSagemakerClient._endpoints:
@@ -138,8 +138,8 @@ class LocalSagemakerClient(object):
         else:
             return LocalSagemakerClient._endpoints[EndpointName].describe()
 
-    def create_endpoint(self, EndpointName, EndpointConfigName):
-        endpoint = _LocalEndpoint(EndpointName, EndpointConfigName, self.sagemaker_session)
+    def create_endpoint(self, EndpointName, EndpointConfigName, Tags=None):
+        endpoint = _LocalEndpoint(EndpointName, EndpointConfigName, Tags, self.sagemaker_session)
         LocalSagemakerClient._endpoints[EndpointName] = endpoint
         endpoint.serve()
 

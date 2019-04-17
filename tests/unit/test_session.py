@@ -910,7 +910,8 @@ def test_endpoint_from_production_variants(sagemaker_session):
     ims.sagemaker_client.describe_endpoint_config = Mock(side_effect=ex)
     sagemaker_session.endpoint_from_production_variants('some-endpoint', pvs)
     sagemaker_session.sagemaker_client.create_endpoint.assert_called_with(EndpointConfigName='some-endpoint',
-                                                                          EndpointName='some-endpoint')
+                                                                          EndpointName='some-endpoint',
+                                                                          Tags=[])
     sagemaker_session.sagemaker_client.create_endpoint_config.assert_called_with(
         EndpointConfigName='some-endpoint',
         ProductionVariants=pvs)
@@ -936,7 +937,8 @@ def test_endpoint_from_production_variants_with_tags(sagemaker_session):
     tags = [{'ModelName': 'TestModel'}]
     sagemaker_session.endpoint_from_production_variants('some-endpoint', pvs, tags)
     sagemaker_session.sagemaker_client.create_endpoint.assert_called_with(EndpointConfigName='some-endpoint',
-                                                                          EndpointName='some-endpoint')
+                                                                          EndpointName='some-endpoint',
+                                                                          Tags=tags)
     sagemaker_session.sagemaker_client.create_endpoint_config.assert_called_with(
         EndpointConfigName='some-endpoint',
         ProductionVariants=pvs,
@@ -953,7 +955,8 @@ def test_endpoint_from_production_variants_with_accelerator_type(sagemaker_sessi
     tags = [{'ModelName': 'TestModel'}]
     sagemaker_session.endpoint_from_production_variants('some-endpoint', pvs, tags)
     sagemaker_session.sagemaker_client.create_endpoint.assert_called_with(EndpointConfigName='some-endpoint',
-                                                                          EndpointName='some-endpoint')
+                                                                          EndpointName='some-endpoint',
+                                                                          Tags=tags)
     sagemaker_session.sagemaker_client.create_endpoint_config.assert_called_with(
         EndpointConfigName='some-endpoint',
         ProductionVariants=pvs,

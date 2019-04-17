@@ -96,7 +96,7 @@ def test_create_endpoint_no_wait(sagemaker_session):
 
     assert returned_name == ENDPOINT_NAME
     sagemaker_session.sagemaker_client.create_endpoint.assert_called_once_with(
-        EndpointName=ENDPOINT_NAME, EndpointConfigName=ENDPOINT_CONFIG_NAME)
+        EndpointName=ENDPOINT_NAME, EndpointConfigName=ENDPOINT_CONFIG_NAME, Tags=[])
 
 
 def test_create_endpoint_wait(sagemaker_session):
@@ -105,5 +105,5 @@ def test_create_endpoint_wait(sagemaker_session):
 
     assert returned_name == ENDPOINT_NAME
     sagemaker_session.sagemaker_client.create_endpoint.assert_called_once_with(
-        EndpointName=ENDPOINT_NAME, EndpointConfigName=ENDPOINT_CONFIG_NAME)
+        EndpointName=ENDPOINT_NAME, EndpointConfigName=ENDPOINT_CONFIG_NAME, Tags=[])
     sagemaker_session.wait_for_endpoint.assert_called_once_with(ENDPOINT_NAME)
