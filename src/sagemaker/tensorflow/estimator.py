@@ -29,7 +29,6 @@ from sagemaker.tensorflow.serving import Model
 from sagemaker.utils import get_config_value
 from sagemaker.vpc_utils import VPC_CONFIG_DEFAULT
 
-logging.basicConfig()
 LOGGER = logging.getLogger('sagemaker')
 
 

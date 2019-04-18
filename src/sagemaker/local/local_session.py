@@ -26,7 +26,6 @@ from sagemaker.session import Session
 from sagemaker.utils import get_config_value
 
 logger = logging.getLogger(__name__)
-logger.setLevel(logging.WARNING)
 
 
 class LocalSagemakerClient(object):

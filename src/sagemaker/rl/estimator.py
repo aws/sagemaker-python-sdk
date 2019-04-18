@@ -22,7 +22,6 @@ from sagemaker.model import FrameworkModel, SAGEMAKER_OUTPUT_LOCATION
 from sagemaker.mxnet.model import MXNetModel
 from sagemaker.vpc_utils import VPC_CONFIG_DEFAULT
 
-logging.basicConfig()
 logger = logging.getLogger('sagemaker')
 
 SAGEMAKER_ESTIMATOR = 'sagemaker_estimator'

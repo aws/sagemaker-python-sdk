@@ -31,10 +31,7 @@ from sagemaker import vpc_utils
 from sagemaker.user_agent import prepend_user_agent
 from sagemaker.utils import name_from_image, secondary_training_status_changed, secondary_training_status_message
 
-logging.basicConfig()
 LOGGER = logging.getLogger('sagemaker')
-LOGGER.setLevel(logging.INFO)
-
 
 _STATUS_CODE_TABLE = {
     'COMPLETED': 'Completed',

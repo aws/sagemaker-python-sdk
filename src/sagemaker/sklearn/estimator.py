@@ -21,7 +21,6 @@ from sagemaker.sklearn.defaults import SKLEARN_VERSION, SKLEARN_NAME
 from sagemaker.sklearn.model import SKLearnModel
 from sagemaker.vpc_utils import VPC_CONFIG_DEFAULT
 
-logging.basicConfig()
 logger = logging.getLogger('sagemaker')
 
 

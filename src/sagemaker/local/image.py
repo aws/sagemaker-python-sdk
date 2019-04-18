@@ -49,7 +49,6 @@ REGION_ENV_NAME = 'AWS_REGION'
 TRAINING_JOB_NAME_ENV_NAME = 'TRAINING_JOB_NAME'
 
 logger = logging.getLogger(__name__)
-logger.setLevel(logging.WARNING)
 
 
 class _SageMakerContainer(object):

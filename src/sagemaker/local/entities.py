@@ -26,7 +26,6 @@ from sagemaker.local.utils import copy_directory_structure, move_to_destination
 from sagemaker.utils import get_config_value
 
 logger = logging.getLogger(__name__)
-logger.setLevel(logging.WARNING)
 
 _UNUSED_ARN = 'local:arn-does-not-matter'
 HEALTH_CHECK_TIMEOUT_LIMIT = 120

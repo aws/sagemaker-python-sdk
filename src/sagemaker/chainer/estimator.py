@@ -20,7 +20,6 @@ from sagemaker.chainer.defaults import CHAINER_VERSION
 from sagemaker.chainer.model import ChainerModel
 from sagemaker.vpc_utils import VPC_CONFIG_DEFAULT
 
-logging.basicConfig()
 logger = logging.getLogger('sagemaker')
 
 
