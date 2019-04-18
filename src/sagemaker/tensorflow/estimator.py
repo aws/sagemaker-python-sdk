@@ -229,7 +229,7 @@ class TensorFlow(Framework):
             **kwargs: Additional kwargs passed to the Framework constructor.
         """
         if framework_version is None:
-            LOGGER.warning(fw.empty_framework_version_warning(TF_VERSION, TF_VERSION))
+            LOGGER.warning(fw.empty_framework_version_warning(TF_VERSION, self.LATEST_VERSION))
         self.framework_version = framework_version or TF_VERSION
 
         super(TensorFlow, self).__init__(image_name=image_name, **kwargs)
