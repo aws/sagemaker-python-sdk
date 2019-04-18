@@ -1,5 +1,11 @@
 # Changelog
 
+## v1.18.15 (2019-04-18)
+
+### Bug fixes and other changes
+
+ * fix propagation of tags to SageMaker endpoint
+
 ## v1.18.14.post1 (2019-04-17)
 
 ### Documentation changes
