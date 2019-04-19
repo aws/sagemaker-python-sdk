@@ -1,4 +1,4 @@
-# Copyright 2017-2018 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright 2017-2019 Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -19,9 +19,7 @@ import sagemaker
 from sagemaker import fw_utils, local, session, utils
 from sagemaker.transformer import Transformer
 
-logging.basicConfig()
 LOGGER = logging.getLogger('sagemaker')
-LOGGER.setLevel(logging.INFO)
 
 NEO_ALLOWED_TARGET_INSTANCE_FAMILY = set(['ml_c5', 'ml_m5', 'ml_c4', 'ml_m4', 'jetson_tx1', 'jetson_tx2', 'ml_p2',
                                           'ml_p3', 'deeplens', 'rasp3b'])

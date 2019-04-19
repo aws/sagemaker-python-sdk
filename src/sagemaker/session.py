@@ -1,4 +1,4 @@
-# Copyright 2017-2018 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright 2017-2019 Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -31,10 +31,7 @@ from sagemaker import vpc_utils
 from sagemaker.user_agent import prepend_user_agent
 from sagemaker.utils import name_from_image, secondary_training_status_changed, secondary_training_status_message
 
-logging.basicConfig()
 LOGGER = logging.getLogger('sagemaker')
-LOGGER.setLevel(logging.INFO)
-
 
 _STATUS_CODE_TABLE = {
     'COMPLETED': 'Completed',
