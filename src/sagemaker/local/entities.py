@@ -1,4 +1,4 @@
-# Copyright 2017-2018 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright 2017-2019 Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -26,7 +26,6 @@ from sagemaker.local.utils import copy_directory_structure, move_to_destination
 from sagemaker.utils import get_config_value
 
 logger = logging.getLogger(__name__)
-logger.setLevel(logging.WARNING)
 
 _UNUSED_ARN = 'local:arn-does-not-matter'
 HEALTH_CHECK_TIMEOUT_LIMIT = 120

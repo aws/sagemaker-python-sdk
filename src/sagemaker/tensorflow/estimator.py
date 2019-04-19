@@ -1,4 +1,4 @@
-# Copyright 2017-2018 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright 2017-2019 Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -29,7 +29,6 @@ from sagemaker.tensorflow.serving import Model
 from sagemaker.utils import get_config_value
 from sagemaker.vpc_utils import VPC_CONFIG_DEFAULT
 
-logging.basicConfig()
 LOGGER = logging.getLogger('sagemaker')
 
 
