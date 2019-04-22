@@ -40,6 +40,8 @@ def instance_type(request):
     return request.param
 
 
+@pytest.mark.skipif(integ.test_region() in integ.HOSTING_NO_P2_REGIONS,
+                    reason='no ml.p2 instances in these regions')
 @pytest.mark.skipif(integ.PYTHON_VERSION != 'py3', reason="Script Mode tests are only configured to run with Python 3")
 def test_mnist(sagemaker_session, instance_type):
     estimator = TensorFlow(entry_point=SCRIPT,
