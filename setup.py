@@ -29,8 +29,8 @@ def read_version():
 
 # Declare minimal set for installation
 required_packages = ['boto3>=1.9.64', 'numpy>=1.9.0', 'protobuf>=3.1', 'scipy>=0.19.0',
-                     'urllib3>=1.21', 'protobuf3-to-dict>=0.1.5', 'docker-compose>=1.23.0',
-                     'requests>=2.20.0, <2.21', 'urllib3<1.25']
+                     'urllib3>=1.21, <1.25', 'protobuf3-to-dict>=0.1.5', 'docker-compose>=1.23.0',
+                     'requests>=2.20.0, <2.21']
 
 # enum is introduced in Python 3.4. Installing enum back port
 if sys.version_info < (3, 4):
