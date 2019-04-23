@@ -300,4 +300,4 @@ You can use Apache Airflow to author, schedule and monitor SageMaker workflow.
 
 For more information, see `SageMaker Workflow in Apache Airflow`_.
 
-.. _SageMaker Workflow in Apache Airflow: src/sagemaker/workflow/README.rst
+.. _SageMaker Workflow in Apache Airflow: https://sagemaker.readthedocs.io/en/stable/using_workflow.html
