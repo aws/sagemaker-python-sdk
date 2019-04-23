@@ -101,12 +101,15 @@ def _add_role_to_policy(kms_client,
                                   Policy=KEY_POLICY.format(id=POLICY_NAME, principal=principal))
 
 
-def get_or_create_kms_key(kms_client,
-                          account_id,
+def get_or_create_kms_key(sagemaker_session,
                           role_arn=None,
                           alias=KEY_ALIAS,
                           sagemaker_role='SageMakerRole'):
+    kms_client = sagemaker_session.boto_session.client('kms')
     kms_key_arn = _get_kms_key_arn(kms_client, alias)
+
+    sts_client = sagemaker_session.boto_session.client('sts')
+    account_id = sts_client.get_caller_identity()['Account']
 
     if kms_key_arn is None:
         return _create_kms_key(kms_client, account_id, role_arn, sagemaker_role, alias)

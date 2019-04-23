@@ -50,10 +50,7 @@ def test_transform_mxnet(sagemaker_session, mxnet_full_version):
     transform_input = mx.sagemaker_session.upload_data(path=transform_input_path,
                                                        key_prefix=transform_input_key_prefix)
 
-    sts_client = sagemaker_session.boto_session.client('sts')
-    account_id = sts_client.get_caller_identity()['Account']
-    kms_client = sagemaker_session.boto_session.client('kms')
-    kms_key_arn = get_or_create_kms_key(kms_client, account_id)
+    kms_key_arn = get_or_create_kms_key(sagemaker_session)
 
     transformer = _create_transformer_and_transform_job(mx, transform_input, kms_key_arn)
     with timeout_and_delete_model_with_transformer(transformer, sagemaker_session,

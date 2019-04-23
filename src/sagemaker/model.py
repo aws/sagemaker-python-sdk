@@ -235,8 +235,8 @@ class Model(object):
                 If True, this will deploy a new EndpointConfig to an already existing endpoint and delete resources
                 corresponding to the previous EndpointConfig. If False, a new endpoint will be created. Default: False
             tags(List[dict[str, str]]): The list of tags to attach to this specific endpoint.
-            kms_key (str): The KMS key that is used to encrypt the data on the storage volume attached
-                to the instance hosting the endpoint.
+            kms_key (str): The ARN of the KMS key that is used to encrypt the data on the
+                storage volume attached to the instance hosting the endpoint.
 
         Returns:
             callable[string, sagemaker.session.Session] or None: Invocation of ``self.predictor_cls`` on
