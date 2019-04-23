@@ -23,6 +23,7 @@ from sagemaker.mxnet.estimator import MXNet
 from sagemaker.mxnet.model import MXNetModel
 from sagemaker.utils import sagemaker_timestamp
 from tests.integ import DATA_DIR, PYTHON_VERSION, TRAINING_DEFAULT_TIMEOUT_MINUTES
+from tests.integ.kms_utils import get_or_create_kms_key
 from tests.integ.timeout import timeout, timeout_and_delete_endpoint_by_name
 
 
@@ -107,6 +108,30 @@ def test_deploy_model_with_tags(mxnet_training_job, sagemaker_session, mxnet_ful
         assert endpoint_tags == tags
         assert production_variants[0]['InstanceType'] == 'ml.m4.xlarge'
         assert production_variants[0]['InitialInstanceCount'] == 1
+
+
+def test_deploy_model_with_kms_key(mxnet_training_job, sagemaker_session, mxnet_full_version):
+    endpoint_name = 'test-mxnet-deploy-model-{}'.format(sagemaker_timestamp())
+
+    with timeout_and_delete_endpoint_by_name(endpoint_name, sagemaker_session):
+        desc = sagemaker_session.sagemaker_client.describe_training_job(TrainingJobName=mxnet_training_job)
+        model_data = desc['ModelArtifacts']['S3ModelArtifacts']
+        script_path = os.path.join(DATA_DIR, 'mxnet_mnist', 'mnist.py')
+        model = MXNetModel(model_data, 'SageMakerRole', entry_point=script_path,
+                           py_version=PYTHON_VERSION, sagemaker_session=sagemaker_session,
+                           framework_version=mxnet_full_version)
+
+        sts_client = sagemaker_session.boto_session.client('sts')
+        account_id = sts_client.get_caller_identity()['Account']
+        kms_client = sagemaker_session.boto_session.client('kms')
+        kms_key_arn = get_or_create_kms_key(kms_client, account_id)
+
+        model.deploy(1, 'ml.m4.xlarge', endpoint_name=endpoint_name, kms_key=kms_key_arn)
+
+        endpoint = sagemaker_session.describe_endpoint(EndpointName=endpoint_name)
+        endpoint_config = sagemaker_session.describe_endpoint_config(EndpointConfigName=endpoint['EndpointConfigName'])
+
+        assert endpoint_config['KmsKeyId'] == kms_key_arn
 
 
 def test_deploy_model_with_update_endpoint(mxnet_training_job, sagemaker_session, mxnet_full_version):
