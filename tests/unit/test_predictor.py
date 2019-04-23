@@ -249,7 +249,7 @@ def test_npy_serializer_object():
 
     result = npy_serializer(object)
 
-    assert np.array_equal(np.array(object), np.load(io.BytesIO(result)))
+    assert np.array_equal(np.array(object), np.load(io.BytesIO(result), allow_pickle=True))
 
 
 def test_npy_serializer_list_of_empty():
