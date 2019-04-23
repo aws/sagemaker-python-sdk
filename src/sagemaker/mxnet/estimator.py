@@ -27,9 +27,10 @@ class MXNet(Framework):
     """Handle end-to-end training and deployment of custom MXNet code."""
 
     __framework_name__ = 'mxnet'
-
     _LOWEST_SCRIPT_MODE_VERSION = ['1', '3']
+
     LATEST_VERSION = '1.3'
+    """The latest version of MXNet included in the SageMaker pre-built Docker images."""
 
     def __init__(self, entry_point, source_dir=None, hyperparameters=None, py_version='py2',
                  framework_version=None, image_name=None, distributions=None, **kwargs):
@@ -59,7 +60,8 @@ class MXNet(Framework):
             py_version (str): Python version you want to use for executing your model training code (default: 'py2').
                 One of 'py2' or 'py3'.
             framework_version (str): MXNet version you want to use for executing your model training code.
-                List of supported versions https://github.com/aws/sagemaker-python-sdk#mxnet-sagemaker-estimators
+                List of supported versions https://github.com/aws/sagemaker-python-sdk#mxnet-sagemaker-estimators.
+                If not specified, this will default to 1.2.1.
             image_name (str): If specified, the estimator will use this image for training and hosting, instead of
                 selecting the appropriate SageMaker official image based on framework_version and py_version. It can
                 be an ECR url or dockerhub image and tag.

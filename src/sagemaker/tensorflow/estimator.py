@@ -170,7 +170,9 @@ class TensorFlow(Framework):
     """Handle end-to-end training and deployment of user-provided TensorFlow code."""
 
     __framework_name__ = 'tensorflow'
+
     LATEST_VERSION = '1.12'
+    """The latest version of TensorFlow included in the SageMaker pre-built Docker images."""
 
     def __init__(self, training_steps=None, evaluation_steps=None, checkpoint_path=None, py_version='py2',
                  framework_version=None, model_dir=None, requirements_file='', image_name=None,
@@ -185,7 +187,8 @@ class TensorFlow(Framework):
                 saved (default: None). For distributed model training, this parameter is required.
             py_version (str): Python version you want to use for executing your model training code (default: 'py2').
             framework_version (str): TensorFlow version you want to use for executing your model training code.
-                List of supported versions https://github.com/aws/sagemaker-python-sdk#tensorflow-sagemaker-estimators
+                List of supported versions https://github.com/aws/sagemaker-python-sdk#tensorflow-sagemaker-estimators.
+                If not specified, this will default to 1.11.
             model_dir (str): S3 location where the checkpoint data and models can be exported to during training
                 (default: None). If not specified a default S3 URI will be generated. It will be passed in the
                 training script as one of the command line arguments.

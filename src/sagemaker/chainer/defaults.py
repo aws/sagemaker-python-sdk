@@ -13,3 +13,6 @@
 from __future__ import absolute_import
 
 CHAINER_VERSION = '4.1.0'
+"""Default Chainer version for when the framework version is not specified.
+This is no longer updated so as to not break existing workflows.
+"""

@@ -29,6 +29,7 @@ class PyTorch(Framework):
     __framework_name__ = "pytorch"
 
     LATEST_VERSION = '1.0'
+    """The latest version of PyTorch included in the SageMaker pre-built Docker images."""
 
     def __init__(self, entry_point, source_dir=None, hyperparameters=None, py_version=PYTHON_VERSION,
                  framework_version=None, image_name=None, **kwargs):
@@ -58,7 +59,8 @@ class PyTorch(Framework):
             py_version (str): Python version you want to use for executing your model training code (default: 'py3').
                               One of 'py2' or 'py3'.
             framework_version (str): PyTorch version you want to use for executing your model training code.
-                List of supported versions https://github.com/aws/sagemaker-python-sdk#pytorch-sagemaker-estimators
+                List of supported versions https://github.com/aws/sagemaker-python-sdk#pytorch-sagemaker-estimators.
+                If not specified, this will default to 0.4.
             image_name (str): If specified, the estimator will use this image for training and hosting, instead of
                 selecting the appropriate SageMaker official image based on framework_version and py_version. It can
                 be an ECR url or dockerhub image and tag.
