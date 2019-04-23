@@ -165,6 +165,7 @@ def test_deploy(sagemaker_session, tmpdir):
           'InstanceType': INSTANCE_TYPE,
           'InitialInstanceCount': 1,
           'VariantName': 'AllTraffic'}],
+        None,
         None)
 
 
@@ -180,6 +181,7 @@ def test_deploy_endpoint_name(sagemaker_session, tmpdir):
           'InstanceType': INSTANCE_TYPE,
           'InitialInstanceCount': 55,
           'VariantName': 'AllTraffic'}],
+        None,
         None)
 
 
@@ -196,7 +198,8 @@ def test_deploy_tags(sagemaker_session, tmpdir):
           'InstanceType': INSTANCE_TYPE,
           'InitialInstanceCount': 1,
           'VariantName': 'AllTraffic'}],
-        tags)
+        tags,
+        None)
 
 
 @patch('sagemaker.fw_utils.tar_and_upload_dir', MagicMock())
@@ -213,7 +216,26 @@ def test_deploy_accelerator_type(tfo, time, sagemaker_session):
           'InitialInstanceCount': 1,
           'VariantName': 'AllTraffic',
           'AcceleratorType': ACCELERATOR_TYPE}],
+        None,
         None)
+
+
+@patch('sagemaker.fw_utils.tar_and_upload_dir', MagicMock())
+@patch('tarfile.open')
+@patch('time.strftime', return_value=TIMESTAMP)
+def test_deploy_kms_key(tfo, time, sagemaker_session):
+    key = 'some-key-arn'
+    model = DummyFrameworkModel(sagemaker_session)
+    model.deploy(instance_type=INSTANCE_TYPE, initial_instance_count=1, kms_key=key)
+    sagemaker_session.endpoint_from_production_variants.assert_called_with(
+        MODEL_NAME,
+        [{'InitialVariantWeight': 1,
+          'ModelName': MODEL_NAME,
+          'InstanceType': INSTANCE_TYPE,
+          'InitialInstanceCount': 1,
+          'VariantName': 'AllTraffic'}],
+        None,
+        key)
 
 
 @patch('sagemaker.session.Session')
@@ -246,7 +268,8 @@ def test_deploy_update_endpoint(sagemaker_session, tmpdir):
         initial_instance_count=INSTANCE_COUNT,
         instance_type=INSTANCE_TYPE,
         accelerator_type=ACCELERATOR_TYPE,
-        tags=None
+        tags=None,
+        kms_key=None,
     )
     config_name = sagemaker_session.create_endpoint_config(
         name=model.name,

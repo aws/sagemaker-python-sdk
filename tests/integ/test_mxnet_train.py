@@ -23,6 +23,7 @@ from sagemaker.mxnet.estimator import MXNet
 from sagemaker.mxnet.model import MXNetModel
 from sagemaker.utils import sagemaker_timestamp
 from tests.integ import DATA_DIR, PYTHON_VERSION, TRAINING_DEFAULT_TIMEOUT_MINUTES
+from tests.integ.kms_utils import get_or_create_kms_key
 from tests.integ.timeout import timeout, timeout_and_delete_endpoint_by_name
 
 
@@ -78,7 +79,7 @@ def test_deploy_model(mxnet_training_job, sagemaker_session, mxnet_full_version)
         assert 'Could not find model' in str(exception.value)
 
 
-def test_deploy_model_with_tags(mxnet_training_job, sagemaker_session, mxnet_full_version):
+def test_deploy_model_with_tags_and_kms(mxnet_training_job, sagemaker_session, mxnet_full_version):
     endpoint_name = 'test-mxnet-deploy-model-{}'.format(sagemaker_timestamp())
 
     with timeout_and_delete_endpoint_by_name(endpoint_name, sagemaker_session):
@@ -88,8 +89,11 @@ def test_deploy_model_with_tags(mxnet_training_job, sagemaker_session, mxnet_ful
         model = MXNetModel(model_data, 'SageMakerRole', entry_point=script_path,
                            py_version=PYTHON_VERSION, sagemaker_session=sagemaker_session,
                            framework_version=mxnet_full_version)
+
         tags = [{'Key': 'TagtestKey', 'Value': 'TagtestValue'}]
-        model.deploy(1, 'ml.m4.xlarge', endpoint_name=endpoint_name, tags=tags)
+        kms_key_arn = get_or_create_kms_key(sagemaker_session)
+
+        model.deploy(1, 'ml.m4.xlarge', endpoint_name=endpoint_name, tags=tags, kms_key=kms_key_arn)
 
         returned_model = sagemaker_session.describe_model(EndpointName=model.name)
         returned_model_tags = sagemaker_session.list_tags(ResourceArn=returned_model['ModelArn'])['Tags']
@@ -107,6 +111,7 @@ def test_deploy_model_with_tags(mxnet_training_job, sagemaker_session, mxnet_ful
         assert endpoint_tags == tags
         assert production_variants[0]['InstanceType'] == 'ml.m4.xlarge'
         assert production_variants[0]['InitialInstanceCount'] == 1
+        assert endpoint_config['KmsKeyId'] == kms_key_arn
 
 
 def test_deploy_model_with_update_endpoint(mxnet_training_job, sagemaker_session, mxnet_full_version):

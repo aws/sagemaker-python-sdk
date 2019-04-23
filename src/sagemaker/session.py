@@ -710,7 +710,7 @@ class Session(object):
         return desc
 
     def create_endpoint_config(self, name, model_name, initial_instance_count, instance_type,
-                               accelerator_type=None, tags=None):
+                               accelerator_type=None, tags=None, kms_key=None):
         """Create an Amazon SageMaker endpoint configuration.
 
         The endpoint configuration identifies the Amazon SageMaker model (created using the
@@ -738,12 +738,21 @@ class Session(object):
 
         tags = tags or []
 
-        self.sagemaker_client.create_endpoint_config(
-            EndpointConfigName=name,
-            ProductionVariants=[production_variant(model_name, instance_type, initial_instance_count,
-                                                   accelerator_type=accelerator_type)],
-            Tags=tags
-        )
+        request = {
+            'EndpointConfigName': name,
+            'ProductionVariants': [
+                production_variant(model_name, instance_type, initial_instance_count,
+                                   accelerator_type=accelerator_type)
+            ],
+        }
+
+        if tags is not None:
+            request['Tags'] = tags
+
+        if kms_key is not None:
+            request['KmsKeyId'] = kms_key
+
+        self.sagemaker_client.create_endpoint_config(**request)
         return name
 
     def create_endpoint(self, endpoint_name, config_name, tags=None, wait=True):
@@ -1032,13 +1041,15 @@ class Session(object):
         self.create_endpoint(endpoint_name=name, config_name=name, wait=wait)
         return name
 
-    def endpoint_from_production_variants(self, name, production_variants, tags=None, wait=True):
+    def endpoint_from_production_variants(self, name, production_variants, tags=None, kms_key=None, wait=True):
         """Create an SageMaker ``Endpoint`` from a list of production variants.
 
         Args:
             name (str): The name of the ``Endpoint`` to create.
             production_variants (list[dict[str, str]]): The list of production variants to deploy.
             tags (list[dict[str, str]]): A list of key-value pairs for tagging the endpoint (default: None).
+            kms_key (str): The KMS key that is used to encrypt the data on the storage volume attached
+                to the instance hosting the endpoint.
             wait (bool): Whether to wait for the endpoint deployment to complete before returning (default: True).
 
         Returns:
@@ -1050,6 +1061,8 @@ class Session(object):
             config_options = {'EndpointConfigName': name, 'ProductionVariants': production_variants}
             if tags:
                 config_options['Tags'] = tags
+            if kms_key:
+                config_options['KmsKeyId'] = kms_key
 
             self.sagemaker_client.create_endpoint_config(**config_options)
         return self.create_endpoint(endpoint_name=name, config_name=name, tags=tags, wait=wait)

@@ -209,7 +209,7 @@ class Model(object):
         return self
 
     def deploy(self, initial_instance_count, instance_type, accelerator_type=None, endpoint_name=None,
-               update_endpoint=False, tags=None):
+               update_endpoint=False, tags=None, kms_key=None):
         """Deploy this ``Model`` to an ``Endpoint`` and optionally return a ``Predictor``.
 
         Create a SageMaker ``Model`` and ``EndpointConfig``, and deploy an ``Endpoint`` from this ``Model``.
@@ -235,6 +235,8 @@ class Model(object):
                 If True, this will deploy a new EndpointConfig to an already existing endpoint and delete resources
                 corresponding to the previous EndpointConfig. If False, a new endpoint will be created. Default: False
             tags(List[dict[str, str]]): The list of tags to attach to this specific endpoint.
+            kms_key (str): The ARN of the KMS key that is used to encrypt the data on the
+                storage volume attached to the instance hosting the endpoint.
 
         Returns:
             callable[string, sagemaker.session.Session] or None: Invocation of ``self.predictor_cls`` on
@@ -270,10 +272,12 @@ class Model(object):
                 initial_instance_count=initial_instance_count,
                 instance_type=instance_type,
                 accelerator_type=accelerator_type,
-                tags=tags)
+                tags=tags,
+                kms_key=kms_key)
             self.sagemaker_session.update_endpoint(self.endpoint_name, endpoint_config_name)
         else:
-            self.sagemaker_session.endpoint_from_production_variants(self.endpoint_name, [production_variant], tags)
+            self.sagemaker_session.endpoint_from_production_variants(self.endpoint_name, [production_variant],
+                                                                     tags, kms_key)
 
         if self.predictor_cls:
             return self.predictor_cls(self.endpoint_name, self.sagemaker_session)
