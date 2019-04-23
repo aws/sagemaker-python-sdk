@@ -35,6 +35,7 @@ class Chainer(Framework):
     _additional_mpi_options = "sagemaker_additional_mpi_options"
 
     LATEST_VERSION = '5.0.0'
+    """The latest version of Chainer included in the SageMaker pre-built Docker images."""
 
     def __init__(self, entry_point, use_mpi=None, num_processes=None, process_slots_per_host=None,
                  additional_mpi_options=None, source_dir=None, hyperparameters=None, py_version='py3',
@@ -73,7 +74,8 @@ class Chainer(Framework):
             py_version (str): Python version you want to use for executing your model training code (default: 'py2').
                               One of 'py2' or 'py3'.
             framework_version (str): Chainer version you want to use for executing your model training code.
-                List of supported versions https://github.com/aws/sagemaker-python-sdk#chainer-sagemaker-estimators
+                List of supported versions https://github.com/aws/sagemaker-python-sdk#chainer-sagemaker-estimators.
+                If not specified, this will default to 4.1.
             image_name (str): If specified, the estimator will use this image for training and hosting, instead of
                 selecting the appropriate SageMaker official image based on framework_version and py_version. It can
                 be an ECR url or dockerhub image and tag.

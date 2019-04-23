@@ -13,3 +13,6 @@
 from __future__ import absolute_import
 
 MXNET_VERSION = '1.2'
+"""Default MXNet version for when the framework version is not specified.
+This is no longer updated so as to not break existing workflows.
+"""
