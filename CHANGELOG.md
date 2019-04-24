@@ -1,5 +1,21 @@
 # Changelog
 
+## v1.18.16 (2019-04-24)
+
+### Bug fixes and other changes
+
+ * add KMS key option for Endpoint Configs
+ * skip p2 test in regions without p2s, freeze urllib3, and specify allow_pickle=True for numpy
+ * use correct TF version in empty framework_version warning
+ * remove logging level overrides
+
+### Documentation changes
+
+ * add environment setup instructions to CONTRIBUTING.md
+ * add clarification around framework version constants
+ * remove duplicate content from workflow readme
+ * remove duplicate content from RL readme
+
 ## v1.18.15 (2019-04-18)
 
 ### Bug fixes and other changes
