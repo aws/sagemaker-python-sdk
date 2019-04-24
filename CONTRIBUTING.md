@@ -21,7 +21,18 @@ reported the issue. Please try to include as much information as you can. Detail
 
 
 ## Contributing via Pull Requests
-Contributions via pull requests are much appreciated. Before sending us a pull request, please ensure that:
+Contributions via pull requests are much appreciated. 
+
+You can use the following commands to setup your developing and testing environment after you fork sagemaker-python-sdk repository:
+
+```bash
+git clone git@github.com:<your-github-username>/sagemaker-python-sdk.git
+cd sagemaker-python-sdk
+pip install -U .
+pip install -U .[test]
+```
+
+Before sending us a pull request, please ensure that:
 
 1. You are working against the latest source on the *master* branch.
 2. You check existing open, and recently merged, pull requests to make sure someone else hasn't addressed the problem already.
