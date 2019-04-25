@@ -19,7 +19,7 @@ import pytest
 
 import tests.integ
 from sagemaker.tensorflow import TensorFlow, TensorFlowModel
-from sagemaker.utils import sagemaker_timestamp
+from sagemaker.utils import sagemaker_timestamp, unique_name_from_base
 from tests.integ import DATA_DIR, TRAINING_DEFAULT_TIMEOUT_MINUTES, PYTHON_VERSION
 from tests.integ.timeout import timeout_and_delete_endpoint_by_name, timeout
 from tests.integ.vpc_test_utils import get_or_create_vpc_resources, setup_security_group_for_encryption
@@ -46,7 +46,8 @@ def tf_training_job(sagemaker_session, tf_full_version):
                                base_job_name='test-tf')
 
         inputs = sagemaker_session.upload_data(path=DATA_PATH, key_prefix='integ-test-data/tf_iris')
-        estimator.fit(inputs)
+        job_name = unique_name_from_base('test-tf-train')
+        estimator.fit(inputs, job_name=job_name)
         print('job succeeded: {}'.format(estimator.latest_training_job.name))
 
         return estimator.latest_training_job.name
@@ -123,7 +124,8 @@ def test_tf_async(sagemaker_session):
                                base_job_name='test-tf')
 
         inputs = estimator.sagemaker_session.upload_data(path=DATA_PATH, key_prefix='integ-test-data/tf_iris')
-        estimator.fit(inputs, wait=False)
+        job_name = unique_name_from_base('test-tf-async')
+        estimator.fit(inputs, wait=False, job_name=job_name)
         training_job_name = estimator.latest_training_job.name
         time.sleep(20)
 
@@ -166,9 +168,10 @@ def test_tf_vpc_multi(sagemaker_session, tf_full_version):
                            subnets=subnet_ids,
                            security_group_ids=[security_group_id],
                            encrypt_inter_container_traffic=True)
+    job_name = unique_name_from_base('test-tf-vpc-multi')
 
     with timeout(minutes=TRAINING_DEFAULT_TIMEOUT_MINUTES):
-        estimator.fit(train_input)
+        estimator.fit(train_input, job_name=job_name)
         print('training job succeeded: {}'.format(estimator.latest_training_job.name))
 
     job_desc = sagemaker_session.sagemaker_client.describe_training_job(
@@ -209,7 +212,8 @@ def test_failed_tf_training(sagemaker_session, tf_full_version):
                                train_instance_count=1,
                                train_instance_type='ml.c4.xlarge',
                                sagemaker_session=sagemaker_session)
+        job_name = unique_name_from_base('test-tf-fail')
 
         with pytest.raises(ValueError) as e:
-            estimator.fit()
+            estimator.fit(job_name=job_name)
         assert 'This failure is expected' in str(e.value)
