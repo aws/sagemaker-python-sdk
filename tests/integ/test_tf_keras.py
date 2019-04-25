@@ -21,6 +21,7 @@ import tests.integ
 from tests.integ.timeout import timeout_and_delete_endpoint_by_name, timeout
 
 from sagemaker.tensorflow import TensorFlow
+from sagemaker.utils import unique_name_from_base
 
 
 @pytest.mark.canary_quick
@@ -43,8 +44,9 @@ def test_keras(sagemaker_session, tf_full_version):
 
         inputs = estimator.sagemaker_session.upload_data(path=dataset_path,
                                                          key_prefix='data/cifar10')
+        job_name = unique_name_from_base('test-tf-keras')
 
-        estimator.fit(inputs)
+        estimator.fit(inputs, job_name=job_name)
 
     endpoint_name = estimator.latest_training_job.name
     with timeout_and_delete_endpoint_by_name(endpoint_name, sagemaker_session):

@@ -22,6 +22,7 @@ import tests.integ
 from tests.integ.timeout import timeout_and_delete_endpoint_by_name, timeout
 
 from sagemaker.tensorflow import TensorFlow
+from sagemaker.utils import unique_name_from_base
 
 PICKLE_CONTENT_TYPE = 'application/python-pickle'
 
@@ -55,7 +56,9 @@ def test_cifar(sagemaker_session, tf_full_version):
 
         inputs = estimator.sagemaker_session.upload_data(path=dataset_path,
                                                          key_prefix='data/cifar10')
-        estimator.fit(inputs, logs=False)
+        job_name = unique_name_from_base('test-tf-cifar')
+
+        estimator.fit(inputs, logs=False, job_name=job_name)
         print('job succeeded: {}'.format(estimator.latest_training_job.name))
 
     endpoint_name = estimator.latest_training_job.name

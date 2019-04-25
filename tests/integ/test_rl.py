@@ -18,7 +18,7 @@ import numpy
 import pytest
 
 from sagemaker.rl import RLEstimator, RLFramework, RLToolkit
-from sagemaker.utils import sagemaker_timestamp
+from sagemaker.utils import sagemaker_timestamp, unique_name_from_base
 from tests.integ import DATA_DIR, PYTHON_VERSION
 from tests.integ.timeout import timeout, timeout_and_delete_endpoint_by_name
 
@@ -29,9 +29,10 @@ CPU_INSTANCE = 'ml.m4.xlarge'
 @pytest.mark.skipif(PYTHON_VERSION != 'py3', reason="RL images supports only Python 3.")
 def test_coach_mxnet(sagemaker_session, rl_coach_mxnet_full_version):
     estimator = _test_coach(sagemaker_session, RLFramework.MXNET, rl_coach_mxnet_full_version)
+    job_name = unique_name_from_base('test-coach-mxnet')
 
     with timeout(minutes=15):
-        estimator.fit(wait='False')
+        estimator.fit(wait='False', job_name=job_name)
 
         estimator = RLEstimator.attach(estimator.latest_training_job.name,
                                        sagemaker_session=sagemaker_session)
@@ -52,9 +53,10 @@ def test_coach_mxnet(sagemaker_session, rl_coach_mxnet_full_version):
 @pytest.mark.skipif(PYTHON_VERSION != 'py3', reason="RL images supports only Python 3.")
 def test_coach_tf(sagemaker_session, rl_coach_tf_full_version):
     estimator = _test_coach(sagemaker_session, RLFramework.TENSORFLOW, rl_coach_tf_full_version)
+    job_name = unique_name_from_base('test-coach-tf')
 
     with timeout(minutes=15):
-        estimator.fit()
+        estimator.fit(job_name=job_name)
 
     endpoint_name = 'test-tf-coach-deploy-{}'.format(sagemaker_timestamp())
 
@@ -104,9 +106,10 @@ def test_ray_tf(sagemaker_session, rl_ray_full_version):
                             role='SageMakerRole',
                             train_instance_type=CPU_INSTANCE,
                             train_instance_count=1)
+    job_name = unique_name_from_base('test-ray-tf')
 
     with timeout(minutes=15):
-        estimator.fit()
+        estimator.fit(job_name=job_name)
 
     with pytest.raises(NotImplementedError) as e:
         estimator.deploy(1, CPU_INSTANCE)

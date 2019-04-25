@@ -21,7 +21,7 @@ import numpy
 from sagemaker.sklearn.defaults import SKLEARN_VERSION
 from sagemaker.sklearn import SKLearn
 from sagemaker.sklearn import SKLearnModel
-from sagemaker.utils import sagemaker_timestamp
+from sagemaker.utils import sagemaker_timestamp, unique_name_from_base
 from tests.integ import DATA_DIR, PYTHON_VERSION, TRAINING_DEFAULT_TIMEOUT_MINUTES
 from tests.integ.timeout import timeout, timeout_and_delete_endpoint_by_name
 
@@ -49,8 +49,9 @@ def test_training_with_additional_hyperparameters(sagemaker_session, sklearn_ful
                                                             key_prefix='integ-test-data/sklearn_mnist/train')
         test_input = sklearn.sagemaker_session.upload_data(path=os.path.join(data_path, 'test'),
                                                            key_prefix='integ-test-data/sklearn_mnist/test')
+        job_name = unique_name_from_base('test-sklearn-hp')
 
-        sklearn.fit({'train': train_input, 'test': test_input})
+        sklearn.fit({'train': train_input, 'test': test_input}, job_name=job_name)
         return sklearn.latest_training_job.name
 
 
@@ -109,9 +110,10 @@ def test_failed_training_job(sagemaker_session, sklearn_full_version):
 
         train_input = sklearn.sagemaker_session.upload_data(path=os.path.join(data_path, 'train'),
                                                             key_prefix='integ-test-data/sklearn_mnist/train')
+        job_name = unique_name_from_base('test-sklearn-failed')
 
         with pytest.raises(ValueError):
-            sklearn.fit(train_input)
+            sklearn.fit(train_input, job_name=job_name)
 
 
 def _run_mnist_training_job(sagemaker_session, instance_type, sklearn_full_version, wait=True):
@@ -130,8 +132,9 @@ def _run_mnist_training_job(sagemaker_session, instance_type, sklearn_full_versi
                                                             key_prefix='integ-test-data/sklearn_mnist/train')
         test_input = sklearn.sagemaker_session.upload_data(path=os.path.join(data_path, 'test'),
                                                            key_prefix='integ-test-data/sklearn_mnist/test')
+        job_name = unique_name_from_base('test-sklearn-mnist')
 
-        sklearn.fit({'train': train_input, 'test': test_input}, wait=wait)
+        sklearn.fit({'train': train_input, 'test': test_input}, wait=wait, job_name=job_name)
         return sklearn.latest_training_job.name
 
 

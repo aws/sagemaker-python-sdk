@@ -22,6 +22,7 @@ import pytest
 from sagemaker import KMeans
 from sagemaker.mxnet import MXNet
 from sagemaker.transformer import Transformer
+from sagemaker.utils import unique_name_from_base
 from tests.integ import DATA_DIR, TRAINING_DEFAULT_TIMEOUT_MINUTES, TRANSFORM_DEFAULT_TIMEOUT_MINUTES
 from tests.integ.kms_utils import get_or_create_kms_key
 from tests.integ.timeout import timeout, timeout_and_delete_model_with_transformer
@@ -41,9 +42,10 @@ def test_transform_mxnet(sagemaker_session, mxnet_full_version):
                                                    key_prefix='integ-test-data/mxnet_mnist/train')
     test_input = mx.sagemaker_session.upload_data(path=os.path.join(data_path, 'test'),
                                                   key_prefix='integ-test-data/mxnet_mnist/test')
+    job_name = unique_name_from_base('test-mxnet-transform')
 
     with timeout(minutes=TRAINING_DEFAULT_TIMEOUT_MINUTES):
-        mx.fit({'train': train_input, 'test': test_input})
+        mx.fit({'train': train_input, 'test': test_input}, job_name=job_name)
 
     transform_input_path = os.path.join(data_path, 'transform', 'data.csv')
     transform_input_key_prefix = 'integ-test-data/mxnet_mnist/transform'
@@ -86,8 +88,11 @@ def test_attach_transform_kmeans(sagemaker_session):
     kmeans.epochs = 1
 
     records = kmeans.record_set(train_set[0][:100])
+
+    job_name = unique_name_from_base('test-kmeans-attach')
+
     with timeout(minutes=TRAINING_DEFAULT_TIMEOUT_MINUTES):
-        kmeans.fit(records)
+        kmeans.fit(records, job_name=job_name)
 
     transform_input_path = os.path.join(data_path, 'transform_input.csv')
     transform_input_key_prefix = 'integ-test-data/one_p_mnist/transform'
@@ -120,9 +125,10 @@ def test_transform_mxnet_vpc(sagemaker_session, mxnet_full_version):
                                                    key_prefix='integ-test-data/mxnet_mnist/train')
     test_input = mx.sagemaker_session.upload_data(path=os.path.join(data_path, 'test'),
                                                   key_prefix='integ-test-data/mxnet_mnist/test')
+    job_name = unique_name_from_base('test-mxnet-vpc')
 
     with timeout(minutes=TRAINING_DEFAULT_TIMEOUT_MINUTES):
-        mx.fit({'train': train_input, 'test': test_input})
+        mx.fit({'train': train_input, 'test': test_input}, job_name=job_name)
 
     job_desc = sagemaker_session.sagemaker_client.describe_training_job(TrainingJobName=mx.latest_training_job.name)
     assert set(subnet_ids) == set(job_desc['VpcConfig']['Subnets'])
