@@ -442,6 +442,44 @@ def test_tuning_mxnet(sagemaker_session, mxnet_full_version):
 
 
 @pytest.mark.canary_quick
+def test_tuning_tf_script_mode(sagemaker_session):
+    resource_path = os.path.join(DATA_DIR, 'tensorflow_mnist')
+    script_path = os.path.join(resource_path, 'mnist.py')
+
+    estimator = TensorFlow(entry_point=script_path,
+                           role='SageMakerRole',
+                           train_instance_count=1,
+                           train_instance_type='ml.m4.xlarge',
+                           script_mode=True,
+                           sagemaker_session=sagemaker_session,
+                           py_version=PYTHON_VERSION,
+                           framework_version=TensorFlow.LATEST_VERSION)
+
+    hyperparameter_ranges = {'epochs': IntegerParameter(1, 2)}
+    objective_metric_name = 'accuracy'
+    metric_definitions = [{'Name': objective_metric_name, 'Regex': 'accuracy = ([0-9\\.]+)'}]
+
+    tuner = HyperparameterTuner(estimator,
+                                objective_metric_name,
+                                hyperparameter_ranges,
+                                metric_definitions,
+                                max_jobs=2,
+                                max_parallel_jobs=2)
+
+    with timeout(minutes=TUNING_DEFAULT_TIMEOUT_MINUTES):
+        inputs = estimator.sagemaker_session.upload_data(path=os.path.join(resource_path, 'data'),
+                                                         key_prefix='scriptmode/mnist')
+
+        tuning_job_name = unique_name_from_base('tune-tf-script-mode', max_length=32)
+        tuner.fit(inputs, job_name=tuning_job_name)
+
+        print('Started hyperparameter tuning job with name: ' + tuning_job_name)
+
+        time.sleep(15)
+        tuner.wait()
+
+
+@pytest.mark.canary_quick
 @pytest.mark.skipif(PYTHON_VERSION != 'py2', reason="TensorFlow image supports only python 2.")
 def test_tuning_tf(sagemaker_session):
     with timeout(minutes=TUNING_DEFAULT_TIMEOUT_MINUTES):
