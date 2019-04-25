@@ -1,5 +1,11 @@
 # Changelog
 
+## v1.18.17 (2019-04-25)
+
+### Bug fixes and other changes
+
+ * use unique names for test training jobs
+
 ## v1.18.16 (2019-04-24)
 
 ### Bug fixes and other changes
