@@ -74,6 +74,10 @@ class PyTorch(Framework):
         self.framework_version = framework_version or PYTORCH_VERSION
 
         super(PyTorch, self).__init__(entry_point, source_dir, hyperparameters, image_name=image_name, **kwargs)
+
+        if py_version == 'py2':
+            logger.warning('pytorch py2 container will be deprecated soon.')
+
         self.py_version = py_version
 
     def create_model(self, model_server_workers=None, role=None, vpc_config_override=VPC_CONFIG_DEFAULT):

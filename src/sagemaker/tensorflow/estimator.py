@@ -236,6 +236,10 @@ class TensorFlow(Framework):
 
         super(TensorFlow, self).__init__(image_name=image_name, **kwargs)
         self.checkpoint_path = checkpoint_path
+
+        if py_version == 'py2':
+            LOGGER.warning('tensorflow py2 container will be deprecated soon.')
+
         self.py_version = py_version
         self.training_steps = training_steps
         self.evaluation_steps = evaluation_steps
