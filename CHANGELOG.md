@@ -1,5 +1,11 @@
 # Changelog
 
+## v1.18.18 (2019-04-29)
+
+### Bug fixes and other changes
+
+ * add automatic model tuning integ test for TF script mode
+
 ## v1.18.17 (2019-04-25)
 
 ### Bug fixes and other changes
