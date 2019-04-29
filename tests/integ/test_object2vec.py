@@ -43,6 +43,10 @@ def test_object2vec(sagemaker_session):
             enc0_vocab_size=45000,
             enc_dim=16,
             num_classes=3,
+            negative_sampling_rate=0,
+            comparator_list='hadamard,concat,abs_diff',
+            tied_token_embedding_weight=False,
+            token_embedding_storage_type='dense',
             sagemaker_session=sagemaker_session)
 
         record_set = prepare_record_set_from_local_files(data_path, object2vec.data_location,

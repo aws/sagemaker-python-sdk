@@ -111,6 +111,10 @@ def test_all_hyperparameters(sagemaker_session):
         output_layer='softmax',
         optimizer='adam',
         learning_rate=0.0001,
+        negative_sampling_rate=1,
+        comparator_list='hadamard, abs_diff',
+        tied_token_embedding_weight=True,
+        token_embedding_storage_type='row_sparse',
         enc0_network='bilstm',
         enc1_network='hcnn',
         enc0_cnn_filter_width=3,
@@ -161,7 +165,11 @@ def test_required_hyper_parameters_value(sagemaker_session, required_hyper_param
     ('optimizer', 0),
     ('enc0_cnn_filter_width', 'string'),
     ('weight_decay', 'string'),
-    ('learning_rate', 'string')
+    ('learning_rate', 'string'),
+    ('negative_sampling_rate', 'some_string'),
+    ('comparator_list', 0),
+    ('comparator_list', ['foobar']),
+    ('token_embedding_storage_type', 123),
 ])
 def test_optional_hyper_parameters_type(sagemaker_session, optional_hyper_parameters, value):
     with pytest.raises(ValueError):
@@ -182,7 +190,10 @@ def test_optional_hyper_parameters_type(sagemaker_session, optional_hyper_parame
     ('weight_decay', 200000),
     ('enc0_cnn_filter_width', 2000),
     ('learning_rate', 0),
-    ('learning_rate', 2)
+    ('learning_rate', 2),
+    ('negative_sampling_rate', -1),
+    ('comparator_list', 'hadamard,foobar'),
+    ('token_embedding_storage_type', 'foobar'),
 ])
 def test_optional_hyper_parameters_value(sagemaker_session, optional_hyper_parameters, value):
     with pytest.raises(ValueError):
