@@ -72,7 +72,7 @@ class MXNetModel(FrameworkModel):
                                          **kwargs)
 
         if py_version == 'py2':
-            logger.warning('chainer py2 container will be deprecated soon.')
+            logger.warning(python_deprecation_warning(self.__framework_name__))
 
         self.py_version = py_version
         self.framework_version = framework_version

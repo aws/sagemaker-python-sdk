@@ -15,7 +15,7 @@ from __future__ import absolute_import
 import logging
 
 import sagemaker
-from sagemaker.fw_utils import create_image_uri, model_code_key_prefix
+from sagemaker.fw_utils import create_image_uri, model_code_key_prefix, python_deprecation_warning
 from sagemaker.model import FrameworkModel, MODEL_SERVER_WORKERS_PARAM_NAME
 from sagemaker.pytorch.defaults import PYTORCH_VERSION, PYTHON_VERSION
 from sagemaker.predictor import RealTimePredictor, npy_serializer, numpy_deserializer
@@ -72,7 +72,7 @@ class PyTorchModel(FrameworkModel):
         super(PyTorchModel, self).__init__(model_data, image, role, entry_point, predictor_cls=predictor_cls, **kwargs)
 
         if py_version == 'py2':
-            logger.warning('pytorch py2 container will be deprecated soon.')
+            logger.warning(python_deprecation_warning(self.__framework_name__))
 
         self.py_version = py_version
         self.framework_version = framework_version
