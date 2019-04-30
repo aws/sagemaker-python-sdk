@@ -23,6 +23,7 @@ from sagemaker.sklearn.defaults import SKLEARN_VERSION, SKLEARN_NAME
 
 logger = logging.getLogger('sagemaker')
 
+
 class SKLearnPredictor(RealTimePredictor):
     """A RealTimePredictor for inference against Scikit-learn Endpoints.
 

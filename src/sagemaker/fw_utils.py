@@ -37,7 +37,7 @@ LATER_FRAMEWORK_VERSION_WARNING = 'This is not the latest supported version. ' \
                                   'If you would like to use version {latest}, ' \
                                   'please add framework_version={latest} to your constructor.'
 PYTHON_2_DEPRECATION_WARNING = 'The Python 2 {framework} images will be soon deprecated and may not be ' \
-                               'supported for newer upcoming versions of the {framework} images. ' \
+                               'supported for newer upcoming versions of the {framework} images.\n' \
                                'Please set the argument \"py_version=\'py3\'\" to use the Python 3 {framework} image.'
 
 

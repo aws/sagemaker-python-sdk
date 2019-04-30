@@ -15,7 +15,7 @@ from __future__ import absolute_import
 import logging
 
 import sagemaker
-from sagemaker.fw_utils import create_image_uri, model_code_key_prefix
+from sagemaker.fw_utils import create_image_uri, model_code_key_prefix, python_deprecation_warning
 from sagemaker.model import FrameworkModel, MODEL_SERVER_WORKERS_PARAM_NAME
 from sagemaker.mxnet.defaults import MXNET_VERSION
 from sagemaker.predictor import RealTimePredictor, json_serializer, json_deserializer
