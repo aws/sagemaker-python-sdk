@@ -1,5 +1,11 @@
 # Changelog
 
+## v1.18.19 (2019-04-30)
+
+### Bug fixes and other changes
+
+ * skip p2/p3 tests in eu-central-1
+
 ## v1.18.18 (2019-04-29)
 
 ### Bug fixes and other changes
