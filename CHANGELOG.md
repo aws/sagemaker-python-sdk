@@ -2,7 +2,9 @@
 
 ## v1.18.19 (2019-04-30)
 
-* feature: Add document embedding support to Object2Vec algorithm.
+### Bug fixes and other changes
+
+ * skip p2/p3 tests in eu-central-1
 
 ## v1.18.18 (2019-04-29)
 
