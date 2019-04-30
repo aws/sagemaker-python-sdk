@@ -1,5 +1,11 @@
 # Changelog
 
+## v1.19.0 (2019-04-30)
+
+### Features
+
+ * add document embedding support to Object2Vec algorithm
+
 ## v1.18.19 (2019-04-30)
 
 ### Bug fixes and other changes
