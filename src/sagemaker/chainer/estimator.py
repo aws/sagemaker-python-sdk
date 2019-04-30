@@ -92,7 +92,7 @@ class Chainer(Framework):
                                       image_name=image_name, **kwargs)
 
         if py_version == 'py2':
-            logger.warning('chainer py2 container will be deprecated soon.')
+            logger.warning('Chainer py2 container will be deprecated soon.')
 
         self.py_version = py_version
         self.use_mpi = use_mpi
