@@ -21,6 +21,19 @@ from sagemaker.session import Session
 from sagemaker.vpc_utils import VPC_CONFIG_DEFAULT
 
 
+def _list_check_subset(valid_super_list):
+    valid_superset = set(valid_super_list)
+
+    def validate(value):
+        if not isinstance(value, str):
+            return False
+
+        val_list = [s.strip() for s in value.split(',')]
+        return set(val_list).issubset(valid_superset)
+
+    return validate
+
+
 class Object2Vec(AmazonAlgorithmEstimatorBase):
 
     repo_name = 'object2vec'
@@ -57,6 +70,14 @@ class Object2Vec(AmazonAlgorithmEstimatorBase):
                    'One of "adagrad", "adam", "rmsprop", "sgd", "adadelta"', str)
     learning_rate = hp('learning_rate', (ge(1e-06), le(1.0)),
                        'A float in [1e-06, 1.0]', float)
+
+    negative_sampling_rate = hp('negative_sampling_rate', (ge(0), le(100)), 'An integer in [0, 100]', int)
+    comparator_list = hp('comparator_list', _list_check_subset(["hadamard", "concat", "abs_diff"]),
+                         'Comma-separated of hadamard, concat, abs_diff. E.g. "hadamard,abs_diff"', str)
+    tied_token_embedding_weight = hp('tied_token_embedding_weight', (), 'Either True or False', bool)
+    token_embedding_storage_type = hp('token_embedding_storage_type', isin("dense", "row_sparse"),
+                                      'One of "dense", "row_sparse"', str)
+
     enc0_network = hp('enc0_network', isin("hcnn", "bilstm", "pooled_embedding"),
                       'One of "hcnn", "bilstm", "pooled_embedding"', str)
     enc1_network = hp('enc1_network', isin("hcnn", "bilstm", "pooled_embedding", "enc0"),
@@ -104,6 +125,10 @@ class Object2Vec(AmazonAlgorithmEstimatorBase):
                  output_layer=None,
                  optimizer=None,
                  learning_rate=None,
+                 negative_sampling_rate=None,
+                 comparator_list=None,
+                 tied_token_embedding_weight=None,
+                 token_embedding_storage_type=None,
                  enc0_network=None,
                  enc1_network=None,
                  enc0_cnn_filter_width=None,
@@ -164,6 +189,10 @@ class Object2Vec(AmazonAlgorithmEstimatorBase):
             output_layer(str): Optional. Type of output layer
             optimizer(str): Optional. Type of optimizer for training
             learning_rate(float): Optional. Learning rate for SGD training
+            negative_sampling_rate(int): Optional. Negative sampling rate
+            comparator_list(str): Optional. Customization of comparator operator
+            tied_token_embedding_weight(bool): Optional. Tying of token embedding layer weight
+            token_embedding_storage_type(str): Optional. Type of token embedding storage
             enc0_network(str): Optional. Network model of encoder "enc0"
             enc1_network(str): Optional. Network model of encoder "enc1"
             enc0_cnn_filter_width(int): Optional. CNN filter width
@@ -197,6 +226,12 @@ class Object2Vec(AmazonAlgorithmEstimatorBase):
         self.output_layer = output_layer
         self.optimizer = optimizer
         self.learning_rate = learning_rate
+
+        self.negative_sampling_rate = negative_sampling_rate
+        self.comparator_list = comparator_list
+        self.tied_token_embedding_weight = tied_token_embedding_weight
+        self.token_embedding_storage_type = token_embedding_storage_type
+
         self.enc0_network = enc0_network
         self.enc1_network = enc1_network
         self.enc0_cnn_filter_width = enc0_cnn_filter_width
