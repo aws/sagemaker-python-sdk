@@ -36,6 +36,10 @@ EMPTY_FRAMEWORK_VERSION_WARNING = 'No framework_version specified, defaulting to
 LATER_FRAMEWORK_VERSION_WARNING = 'This is not the latest supported version. ' \
                                   'If you would like to use version {latest}, ' \
                                   'please add framework_version={latest} to your constructor.'
+PYTHON_2_DEPRECATION_WARNING = 'The Python 2 {framework} images will be soon deprecated and may not be ' \
+                               'supported for newer upcoming versions of the {framework} images.\n' \
+                               'Please set the argument \"py_version=\'py3\'\" to use the Python 3 {framework} image.'
+
 
 EMPTY_FRAMEWORK_VERSION_ERROR = 'framework_version is required for script mode estimator. ' \
                                 'Please add framework_version={} to your constructor to avoid this error.'
@@ -303,3 +307,7 @@ def empty_framework_version_warning(default_version, latest_version):
     if default_version != latest_version:
         msgs.append(LATER_FRAMEWORK_VERSION_WARNING.format(latest=latest_version))
     return ' '.join(msgs)
+
+
+def python_deprecation_warning(framework):
+    return PYTHON_2_DEPRECATION_WARNING.format(framework=framework)

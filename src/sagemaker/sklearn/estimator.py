@@ -16,7 +16,7 @@ import logging
 
 from sagemaker.estimator import Framework
 from sagemaker.fw_registry import default_framework_uri
-from sagemaker.fw_utils import framework_name_from_image, empty_framework_version_warning
+from sagemaker.fw_utils import framework_name_from_image, empty_framework_version_warning, python_deprecation_warning
 from sagemaker.sklearn.defaults import SKLEARN_VERSION, SKLEARN_NAME
 from sagemaker.sklearn.model import SKLearnModel
 from sagemaker.vpc_utils import VPC_CONFIG_DEFAULT
@@ -78,6 +78,9 @@ class SKLearn(Framework):
                                      "'train_instance_count=1' when initializing SKLearn.")
         super(SKLearn, self).__init__(entry_point, source_dir, hyperparameters, image_name=image_name,
                                       **dict(kwargs, train_instance_count=1))
+
+        if py_version == 'py2':
+            logger.warning(python_deprecation_warning(self.__framework_name__))
 
         self.py_version = py_version
 

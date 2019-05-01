@@ -12,12 +12,16 @@
 # language governing permissions and limitations under the License.
 from __future__ import absolute_import
 
+import logging
+
 import sagemaker
-from sagemaker.fw_utils import model_code_key_prefix
+from sagemaker.fw_utils import model_code_key_prefix, python_deprecation_warning
 from sagemaker.fw_registry import default_framework_uri
 from sagemaker.model import FrameworkModel, MODEL_SERVER_WORKERS_PARAM_NAME
 from sagemaker.predictor import RealTimePredictor, npy_serializer, numpy_deserializer
 from sagemaker.sklearn.defaults import SKLEARN_VERSION, SKLEARN_NAME
+
+logger = logging.getLogger('sagemaker')
 
 
 class SKLearnPredictor(RealTimePredictor):
@@ -68,6 +72,10 @@ class SKLearnModel(FrameworkModel):
         """
         super(SKLearnModel, self).__init__(model_data, image, role, entry_point, predictor_cls=predictor_cls,
                                            **kwargs)
+
+        if py_version == 'py2':
+            logger.warning(python_deprecation_warning(self.__framework_name__))
+
         self.py_version = py_version
         self.framework_version = framework_version
         self.model_server_workers = model_server_workers

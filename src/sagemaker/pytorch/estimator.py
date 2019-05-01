@@ -15,7 +15,8 @@ from __future__ import absolute_import
 import logging
 
 from sagemaker.estimator import Framework
-from sagemaker.fw_utils import framework_name_from_image, framework_version_from_tag, empty_framework_version_warning
+from sagemaker.fw_utils import framework_name_from_image, framework_version_from_tag, empty_framework_version_warning, \
+    python_deprecation_warning
 from sagemaker.pytorch.defaults import PYTORCH_VERSION, PYTHON_VERSION
 from sagemaker.pytorch.model import PyTorchModel
 from sagemaker.vpc_utils import VPC_CONFIG_DEFAULT
@@ -74,6 +75,10 @@ class PyTorch(Framework):
         self.framework_version = framework_version or PYTORCH_VERSION
 
         super(PyTorch, self).__init__(entry_point, source_dir, hyperparameters, image_name=image_name, **kwargs)
+
+        if py_version == 'py2':
+            logger.warning(python_deprecation_warning(self.__framework_name__))
+
         self.py_version = py_version
 
     def create_model(self, model_server_workers=None, role=None, vpc_config_override=VPC_CONFIG_DEFAULT):

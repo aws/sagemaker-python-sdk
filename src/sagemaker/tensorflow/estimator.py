@@ -29,7 +29,7 @@ from sagemaker.tensorflow.serving import Model
 from sagemaker.utils import get_config_value
 from sagemaker.vpc_utils import VPC_CONFIG_DEFAULT
 
-LOGGER = logging.getLogger('sagemaker')
+logger = logging.getLogger('sagemaker')
 
 
 _FRAMEWORK_MODE_ARGS = ('training_steps', 'evaluation_steps', 'requirements_file', 'checkpoint_path')
@@ -154,7 +154,7 @@ class Tensorboard(threading.Thread):
         """Run TensorBoard process."""
         port, tensorboard_process = self.create_tensorboard_process()
 
-        LOGGER.info('TensorBoard 0.1.7 at http://localhost:{}'.format(port))
+        logger.info('TensorBoard 0.1.7 at http://localhost:{}'.format(port))
         while not self.estimator.checkpoint_path:
             self.event.wait(1)
         with self._temporary_directory() as aws_sync_dir:
@@ -231,11 +231,15 @@ class TensorFlow(Framework):
             **kwargs: Additional kwargs passed to the Framework constructor.
         """
         if framework_version is None:
-            LOGGER.warning(fw.empty_framework_version_warning(TF_VERSION, self.LATEST_VERSION))
+            logger.warning(fw.empty_framework_version_warning(TF_VERSION, self.LATEST_VERSION))
         self.framework_version = framework_version or TF_VERSION
 
         super(TensorFlow, self).__init__(image_name=image_name, **kwargs)
         self.checkpoint_path = checkpoint_path
+
+        if py_version == 'py2':
+            logger.warning('tensorflow py2 container will be deprecated soon.')
+
         self.py_version = py_version
         self.training_steps = training_steps
         self.evaluation_steps = evaluation_steps
@@ -320,7 +324,7 @@ class TensorFlow(Framework):
             raise ValueError("Tensorboard is not supported with async fit")
 
         if self._script_mode_enabled() and run_tensorboard_locally:
-            LOGGER.warning(_SCRIPT_MODE_TENSORBOARD_WARNING.format(self.model_dir))
+            logger.warning(_SCRIPT_MODE_TENSORBOARD_WARNING.format(self.model_dir))
             fit_super()
         elif run_tensorboard_locally:
             tensorboard = Tensorboard(self)

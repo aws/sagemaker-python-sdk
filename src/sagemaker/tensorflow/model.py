@@ -12,12 +12,16 @@
 # language governing permissions and limitations under the License.
 from __future__ import absolute_import
 
+import logging
+
 import sagemaker
-from sagemaker.fw_utils import create_image_uri, model_code_key_prefix
+from sagemaker.fw_utils import create_image_uri, model_code_key_prefix, python_deprecation_warning
 from sagemaker.model import FrameworkModel, MODEL_SERVER_WORKERS_PARAM_NAME
 from sagemaker.predictor import RealTimePredictor
 from sagemaker.tensorflow.defaults import TF_VERSION
 from sagemaker.tensorflow.predictor import tf_json_serializer, tf_json_deserializer
+
+logger = logging.getLogger('sagemaker')
 
 
 class TensorFlowPredictor(RealTimePredictor):
@@ -67,6 +71,10 @@ class TensorFlowModel(FrameworkModel):
         """
         super(TensorFlowModel, self).__init__(model_data, image, role, entry_point, predictor_cls=predictor_cls,
                                               **kwargs)
+
+        if py_version == 'py2':
+            logger.warning(python_deprecation_warning(self.__framework_name__))
+
         self.py_version = py_version
         self.framework_version = framework_version
         self.model_server_workers = model_server_workers
