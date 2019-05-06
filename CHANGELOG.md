@@ -1,5 +1,11 @@
 # Changelog
 
+## v1.19.1 (2019-05-06)
+
+### Bug fixes and other changes
+
+ * add py2 deprecation message for the deep learning framework images
+
 ## v1.19.0 (2019-04-30)
 
 ### Features
