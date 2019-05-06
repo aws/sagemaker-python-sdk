@@ -570,7 +570,7 @@ class _TrainingJob(_Job):
         train_args['metric_definitions'] = estimator.metric_definitions
 
         if isinstance(inputs, s3_input):
-            if inputs.config['InputMode'] is not None:
+            if 'InputMode' in inputs.config:
                 train_args['input_mode'] = inputs.config['InputMode']
 
         if estimator.enable_network_isolation():
