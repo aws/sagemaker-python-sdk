@@ -569,6 +569,10 @@ class _TrainingJob(_Job):
         train_args['tags'] = estimator.tags
         train_args['metric_definitions'] = estimator.metric_definitions
 
+        if isinstance(inputs, s3_input):
+            if inputs.config['InputMode'] is not None:
+                train_args['input_mode'] = inputs.config['InputMode']
+
         if estimator.enable_network_isolation():
             train_args['enable_network_isolation'] = True
 
