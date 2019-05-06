@@ -263,6 +263,7 @@ def tuning_config(tuner, inputs, job_name=None):
                 'MaxParallelTrainingJobs': tuner.max_parallel_jobs,
             },
             'ParameterRanges': tuner.hyperparameter_ranges(),
+            'TrainingJobEarlyStoppingType': tuner.early_stopping_type
         },
         'TrainingJobDefinition': train_config
     }
