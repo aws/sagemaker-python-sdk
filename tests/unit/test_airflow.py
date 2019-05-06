@@ -513,7 +513,8 @@ def test_framework_tuning_config(sagemaker_session):
                     'MinValue': '10',
                     'MaxValue': '50',
                     'ScalingType': 'Auto'
-                }]
+                }],
+            'TrainingJobEarlyStoppingType': 'Off' 
             }},
         'TrainingJobDefinition': {
             'AlgorithmSpecification': {
