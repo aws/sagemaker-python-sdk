@@ -7,7 +7,7 @@ With Reinforcement Learning (RL) Estimators, you can train reinforcement learnin
 Supported versions of Coach: ``0.11.1``, ``0.10.1`` with TensorFlow, ``0.11.0`` with TensorFlow or MXNet.
 For more information about Coach, see https://github.com/NervanaSystems/coach
 
-Supported versions of Ray: ``0.5.3`` with TensorFlow.
+Supported versions of Ray: ``0.6.5``, ``0.5.3`` with TensorFlow.
 For more information about Ray, see https://github.com/ray-project/ray
 
 For information about using RL with the SageMaker Python SDK, see https://sagemaker.readthedocs.io/en/stable/using_rl.html.
@@ -23,19 +23,19 @@ SageMaker runs RL Estimator scripts in either Python 3.5 for MXNet or Python 3.6
 
 The Docker images have the following dependencies installed:
 
-+-------------------------+-------------------+-------------------+-------------------+
-| Dependencies            |      Coach 0.10.1 |      Coach 0.11.0 |         Ray 0.5.3 |
-+-------------------------+-------------------+-------------------+-------------------+
-| Python                  |               3.6 |     3.5(MXNet) or |               3.6 |
-|                         |                   |   3.6(TensorFlow) |                   |
-+-------------------------+-------------------+-------------------+-------------------+
-| CUDA (GPU image only)   |               9.0 |               9.0 |               9.0 |
-+-------------------------+-------------------+-------------------+-------------------+
-| DL Framework            | TensorFlow-1.11.0 |    MXNet-1.3.0 or | TensorFlow-1.11.0 |
-|                         |                   | TensorFlow-1.11.0 |                   |
-+-------------------------+-------------------+-------------------+-------------------+
-| gym                     |            0.10.5 |            0.10.5 |            0.10.5 |
-+-------------------------+-------------------+-------------------+-------------------+
++-------------------------+-------------------+-------------------+-------------------+-------------------+-------------------+
+| Dependencies            |      Coach 0.10.1 |      Coach 0.11.0 |      Coach 0.11.1 |         Ray 0.5.3 |         Ray 0.6.5 |
++-------------------------+-------------------+-------------------+-------------------+-------------------+-------------------+
+| Python                  |               3.6 |  3.5 (MXNet) or   |               3.6 |               3.6 |               3.6 |
+|                         |                   |  3.6 (TensorFlow) |                   |                   |                   |
++-------------------------+-------------------+-------------------+-------------------+-------------------+-------------------+
+| CUDA (GPU image only)   |               9.0 |               9.0 |               9.0 |               9.0 |               9.0 |
++-------------------------+-------------------+-------------------+-------------------+-------------------+-------------------+
+| DL Framework            | TensorFlow-1.11.0 | MXNet-1.3.0 or    | TensorFlow-1.12.0 | TensorFlow-1.11.0 | TensorFlow-1.12.0 |
+|                         |                   | TensorFlow-1.11.0 |                   |                   |                   |
++-------------------------+-------------------+-------------------+-------------------+-------------------+-------------------+
+| gym                     |            0.10.5 |            0.10.5 |            0.11.0 |            0.10.5 |            0.12.1 |
++-------------------------+-------------------+-------------------+-------------------+-------------------+-------------------+
 
 The Docker images extend Ubuntu 16.04.
 
