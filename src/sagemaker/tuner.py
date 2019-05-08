@@ -15,6 +15,7 @@ from __future__ import absolute_import
 import importlib
 import inspect
 import json
+import logging
 from enum import Enum
 
 import sagemaker
@@ -26,6 +27,7 @@ from sagemaker.job import _Job
 from sagemaker.parameter import (CategoricalParameter, ContinuousParameter,
                                  IntegerParameter, ParameterRange)
 from sagemaker.session import Session
+from sagemaker.session import s3_input
 from sagemaker.utils import base_name_from_image, name_from_base, to_str
 
 AMAZON_ESTIMATOR_MODULE = 'sagemaker'
@@ -639,6 +641,12 @@ class _TuningJob(_Job):
         tuner_args['tags'] = tuner.tags
         tuner_args['warm_start_config'] = warm_start_config_req
         tuner_args['early_stopping_type'] = tuner.early_stopping_type
+
+        if isinstance(inputs, s3_input):
+            if 'InputMode' in inputs.config:
+                logging.debug('Selecting s3_input\'s input_mode ({}) for TrainingInputMode.'
+                              .format(inputs.config['InputMode']))
+                tuner_args['input_mode'] = inputs.config['InputMode']
 
         if isinstance(tuner.estimator, sagemaker.algorithm.AlgorithmEstimator):
             tuner_args['algorithm_arn'] = tuner.estimator.algorithm_arn

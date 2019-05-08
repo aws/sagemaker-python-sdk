@@ -28,6 +28,7 @@ from sagemaker.parameter import (CategoricalParameter, ContinuousParameter,
 from sagemaker.tuner import (_TuningJob, create_identical_dataset_and_algorithm_tuner,
                              create_transfer_learning_tuner, HyperparameterTuner, WarmStartConfig,
                              WarmStartTypes)
+from sagemaker.session import s3_input
 
 DATA_DIR = os.path.join(os.path.dirname(__file__), '..', 'data')
 MODEL_DATA = "s3://bucket/model.tar.gz"
@@ -284,6 +285,31 @@ def test_fit_mxnet_with_vpc_config(sagemaker_session, tuner):
 
     _, _, tune_kwargs = sagemaker_session.tune.mock_calls[0]
     assert tune_kwargs['vpc_config'] == {'Subnets': subnets, 'SecurityGroupIds': security_group_ids}
+
+
+def test_s3_input_mode(sagemaker_session, tuner):
+    expected_input_mode = 'Pipe'
+
+    script_path = os.path.join(DATA_DIR, 'mxnet_mnist', 'failure_script.py')
+    mxnet = MXNet(entry_point=script_path,
+                  role=ROLE,
+                  framework_version=FRAMEWORK_VERSION,
+                  train_instance_count=TRAIN_INSTANCE_COUNT,
+                  train_instance_type=TRAIN_INSTANCE_TYPE,
+                  sagemaker_session=sagemaker_session)
+    tuner.estimator = mxnet
+
+    tags = [{'Name': 'some-tag-without-a-value'}]
+    tuner.tags = tags
+
+    hyperparameter_ranges = {'num_components': IntegerParameter(2, 4),
+                             'algorithm_mode': CategoricalParameter(['regular', 'randomized'])}
+    tuner._hyperparameter_ranges = hyperparameter_ranges
+
+    tuner.fit(inputs=s3_input('s3://mybucket/train_manifest', input_mode=expected_input_mode))
+
+    actual_input_mode = sagemaker_session.method_calls[1][2]['input_mode']
+    assert actual_input_mode == expected_input_mode
 
 
 def test_fit_pca_with_inter_container_traffic_encryption_flag(sagemaker_session, tuner):
