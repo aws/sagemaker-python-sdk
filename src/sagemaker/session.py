@@ -173,7 +173,7 @@ class Session(object):
 
         Args:
             sts_endpoint_url (str): Optional. URL of STS endpoint to send requests to. If not specified,
-            the global endpoint will be used (sts.amazonaws.com).
+                the global endpoint will be used (sts.amazonaws.com).
 
         Returns:
             str: The name of the default bucket, which is of the form: ``sagemaker-{region}-{AWS account ID}``.
@@ -1093,7 +1093,7 @@ class Session(object):
 
         Args:
             sts_endpoint_url (str): Optional. URL of STS endpoint to send requests to. If not specified,
-            the global endpoint will be used (sts.amazonaws.com).
+                the global endpoint will be used (sts.amazonaws.com).
 
         Returns:
             (str): The ARN user or role
