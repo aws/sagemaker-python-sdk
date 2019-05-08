@@ -60,7 +60,7 @@ def test_get_execution_role_with_sts_endpoint():
     actual = get_execution_role(session, sts_endpoint_url='https://sts.us-west-2.amazonaws.com')
     assert actual == 'arn:aws:iam::369233609183:role/SageMakerRole'
 
-    
+
 def test_get_execution_role_works_with_service_role():
     session = Mock()
     session.get_caller_identity_arn.return_value = \
