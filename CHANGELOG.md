@@ -1,5 +1,16 @@
 # Changelog
 
+## v1.20.0 (2019-05-08)
+
+### Features
+
+ * add RL Ray 0.6.5 support
+
+### Bug fixes and other changes
+
+ * prevent false positive PR test results
+ * adjust Ray test script for Ray 0.6.5
+
 ## v1.19.1 (2019-05-06)
 
 ### Bug fixes and other changes
