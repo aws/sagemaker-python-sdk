@@ -168,7 +168,7 @@ class Session(object):
             s3_uri = '{}/{}'.format(s3_uri, key_suffix)
         return s3_uri
 
-    def default_bucket(self):
+    def default_bucket(self, sts_endpoint_url=None):
         """Return the name of the default bucket to use in relevant Amazon SageMaker interactions.
 
         Returns:
@@ -177,7 +177,7 @@ class Session(object):
         if self._default_bucket:
             return self._default_bucket
 
-        account = self.boto_session.client('sts').get_caller_identity()['Account']
+        account = self.boto_session.client('sts', endpoint_url=sts_endpoint_url).get_caller_identity()['Account']
         region = self.boto_session.region_name
         default_bucket = 'sagemaker-{}-{}'.format(region, account)
 
@@ -1084,12 +1084,16 @@ class Session(object):
         else:
             return self.boto_session.resource('iam').Role(role).arn
 
-    def get_caller_identity_arn(self):
+    def get_caller_identity_arn(self, sts_endpoint_url=None):
         """Returns the ARN user or role whose credentials are used to call the API.
         Returns:
             (str): The ARN user or role
         """
-        assumed_role = self.boto_session.client('sts').get_caller_identity()['Arn']
+
+        if not sts_endpoint_url:
+            assumed_role = self.boto_session.client('sts').get_caller_identity()['Arn']
+        else:
+            assumed_role = self.boto_session.client('sts', endpoint_url=sts_endpoint_url).get_caller_identity()['Arn']
 
         if 'AmazonSageMaker-ExecutionRole' in assumed_role:
             role = re.sub(r'^(.+)sts::(\d+):assumed-role/(.+?)/.*$', r'\1iam::\2:role/service-role/\3', assumed_role)
@@ -1294,7 +1298,7 @@ def production_variant(model_name, instance_type, initial_instance_count=1, vari
     return production_variant_configuration
 
 
-def get_execution_role(sagemaker_session=None):
+def get_execution_role(sagemaker_session=None, sts_endpoint_url=None):
     """Return the role ARN whose credentials are used to call the API.
     Throws an exception if
     Args:
@@ -1304,7 +1308,7 @@ def get_execution_role(sagemaker_session=None):
     """
     if not sagemaker_session:
         sagemaker_session = Session()
-    arn = sagemaker_session.get_caller_identity_arn()
+    arn = sagemaker_session.get_caller_identity_arn(sts_endpoint_url=sts_endpoint_url)
 
     if ':role/' in arn:
         return arn
@@ -1383,6 +1387,7 @@ class ShuffleConfig(object):
     Used to configure channel shuffling using a seed. See SageMaker
     documentation for more detail: https://docs.aws.amazon.com/sagemaker/latest/dg/API_ShuffleConfig.html
     """
+
     def __init__(self, seed):
         """
         Create a ShuffleConfig.
