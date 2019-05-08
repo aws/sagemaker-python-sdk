@@ -1312,8 +1312,8 @@ def get_execution_role(sagemaker_session=None, sts_endpoint_url=None):
     Throws an exception if
     Args:
         sagemaker_session(Session): Current sagemaker session
-        sts_endpoint_url (str): Optional. URL of STS endpoint to send requests to. If not specified,
-            the global endpoint will be used (sts.amazonaws.com).
+        sts_endpoint_url (str): Optional. URL of STS endpoint to send requests to. If not specified, 
+        the global endpoint will be used (sts.amazonaws.com).
 
     Returns:
         (str): The role ARN
