@@ -21,7 +21,7 @@ phases:
 
       # run notebook test
       - |
-        if has-matching-changes "src/*.py" "setup.py" "setup.cfg"; then
+        if has-matching-changes "src/*.py" "setup.py" "setup.cfg" "buildspec.yml"; then
           echo "running notebook test"
           ./tests/scripts/run-notebook-test.sh
          else
@@ -30,7 +30,7 @@ phases:
 
       # run integration tests
       - |
-        if has-matching-changes "tests/" "src/*.py" "setup.py" "setup.cfg"; then
+        if has-matching-changes "tests/" "src/*.py" "setup.py" "setup.cfg" "buildspec.yml"; then
           IGNORE_COVERAGE=- tox -e py36,py27 -- tests/integ -n 24 --boxed --reruns 2
         else
           echo "skipping integration tests"
