@@ -180,8 +180,10 @@ class Session(object):
         """
         if self._default_bucket:
             return self._default_bucket
-
-        account = self.boto_session.client('sts', endpoint_url=sts_endpoint_url).get_caller_identity()['Account']
+        if not sts_endpoint_url:
+            account = self.boto_session.client('sts').get_caller_identity()['Account']
+        else:
+            account = self.boto_session.client('sts', endpoint_url=sts_endpoint_url).get_caller_identity()['Account']
         region = self.boto_session.region_name
         default_bucket = 'sagemaker-{}-{}'.format(region, account)
 
