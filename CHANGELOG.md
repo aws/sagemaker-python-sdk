@@ -1,5 +1,11 @@
 # Changelog
 
+## v1.20.1 (2019-05-09)
+
+### Bug fixes and other changes
+
+ * update TrainingInputMode with s3_input InputMode
+
 ## v1.20.0 (2019-05-08)
 
 ### Features
