@@ -134,6 +134,9 @@ class Transformer(object):
         self._ensure_last_transform_job()
         self.latest_transform_job.wait()
 
+    def status(self):
+        return self.latest_transform_job.status()
+
     def _ensure_last_transform_job(self):
         if self.latest_transform_job is None:
             raise ValueError('No transform job available')
@@ -207,6 +210,9 @@ class _TransformJob(_Job):
 
     def wait(self):
         self.sagemaker_session.wait_for_transform_job(self.job_name)
+
+    def status(self):
+        return self.sagemaker_session.status_for_transform_job(self.job_name)
 
     @staticmethod
     def _load_config(data, data_type, content_type, compression_type, split_type, transformer):

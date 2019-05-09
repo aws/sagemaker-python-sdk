@@ -895,6 +895,10 @@ class Session(object):
         self._check_job_status(job, desc, 'TransformJobStatus')
         return desc
 
+    def status_for_transform_job(self, job):
+        desc = self.sagemaker_client.describe_transform_job(TransformJobName=job)
+        return desc['TransformJobStatus']
+
     def _check_job_status(self, job, desc, status_key_name):
         """Check to see if the job completed successfully and, if not, construct and
         raise a ValueError.
