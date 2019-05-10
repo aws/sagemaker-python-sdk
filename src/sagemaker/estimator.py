@@ -23,7 +23,7 @@ from six import string_types
 
 import sagemaker
 from sagemaker.analytics import TrainingJobAnalytics
-from sagemaker.fw_utils import (create_image_uri, tar_and_upload_dir, parse_s3_url, UploadedCode,
+from sagemaker.fw_utils import (create_image_uri, tar_and_upload_dir, upload_file, parse_s3_url, UploadedCode,
                                 validate_source_dir)
 from sagemaker.job import _Job
 from sagemaker.local import LocalSession
@@ -51,8 +51,9 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):
     def __init__(self, role, train_instance_count, train_instance_type,
                  train_volume_size=30, train_volume_kms_key=None, train_max_run=24 * 60 * 60, input_mode='File',
                  output_path=None, output_kms_key=None, base_job_name=None, sagemaker_session=None, tags=None,
-                 subnets=None, security_group_ids=None, model_uri=None, model_channel_name='model',
-                 metric_definitions=None, encrypt_inter_container_traffic=False):
+                 subnets=None, security_group_ids=None, enable_network_isolation=False, model_uri=None,
+                 model_channel_name='model', code_uri=None, code_channel_name='code', metric_definitions=None,
+                 encrypt_inter_container_traffic=False):
         """Initialize an ``EstimatorBase`` instance.
 
         Args:
@@ -89,6 +90,10 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):
             subnets (list[str]): List of subnet ids. If not specified training job will be created without VPC config.
             security_group_ids (list[str]): List of security group ids. If not specified training job will be created
                 without VPC config.
+            enable_network_isolation (bool): Specifies whether container will run in network isolation mode. Network
+                isolation mode restricts the container access to outside networks (such as the internet). If True,
+                a code channel will be created for any user entry script for training. Also known as internet-free
+                mode (default: `False`).
             model_uri (str): URI where a pre-trained model is stored, either locally or in S3 (default: None). If
                 specified, the estimator will create a channel pointing to the model so the training job can download
                 it. This model can be a 'model.tar.gz' from a previous training job, or other artifacts coming from a
@@ -99,6 +104,9 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):
 
                 More information: https://docs.aws.amazon.com/sagemaker/latest/dg/cdf-training.html#td-deserialization
             model_channel_name (str): Name of the channel where 'model_uri' will be downloaded (default: 'model').
+            code_uri (str): URI where user entry script is stored, either locally or in S3 (default: None).
+            code_channel_name (str): Name of the channel where 'code_uri` will be downloaded in network isolation mode
+                (default: `code`).
             metric_definitions (list[dict]): A list of dictionaries that defines the metric(s) used to evaluate the
                 training jobs. Each dictionary contains two keys: 'Name' for the name of the metric, and 'Regex' for
                 the regular expression used to extract the metric from the logs. This should be defined only
@@ -115,8 +123,11 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):
         self.input_mode = input_mode
         self.tags = tags
         self.metric_definitions = metric_definitions
+        self._enable_network_isolation = enable_network_isolation
         self.model_uri = model_uri
         self.model_channel_name = model_channel_name
+        self.code_uri = code_uri
+        self.code_channel_name = code_channel_name
 
         if self.train_instance_type in ('local', 'local_gpu'):
             if self.train_instance_type == 'local_gpu' and self.train_instance_count > 1:
@@ -170,7 +181,7 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):
         Returns:
             bool: Whether this Estimator needs network isolation or not.
         """
-        return False
+        return self._enable_network_isolation
 
     def _prepare_for_training(self, job_name=None):
         """Set any values in the estimator that need to be set before training.
@@ -611,8 +622,8 @@ class Estimator(EstimatorBase):
                  train_volume_size=30, train_volume_kms_key=None, train_max_run=24 * 60 * 60,
                  input_mode='File', output_path=None, output_kms_key=None, base_job_name=None,
                  sagemaker_session=None, hyperparameters=None, tags=None, subnets=None, security_group_ids=None,
-                 model_uri=None, model_channel_name='model', metric_definitions=None,
-                 encrypt_inter_container_traffic=False):
+                 enable_network_isolation=False, model_uri=None, model_channel_name='model', code_uri=None,
+                 code_channel_name='code', metric_definitions=None, encrypt_inter_container_traffic=False):
         """Initialize an ``Estimator`` instance.
 
         Args:
@@ -653,6 +664,10 @@ class Estimator(EstimatorBase):
             subnets (list[str]): List of subnet ids. If not specified training job will be created without VPC config.
             security_group_ids (list[str]): List of security group ids. If not specified training job will be created
                 without VPC config.
+            enable_network_isolation (bool): Specifies whether container will run in network isolation mode. Network
+                isolation mode restricts the container access to outside networks (such as the internet). If True,
+                a code channel will be created for any user entry script for training. Also known as internet-free
+                mode (default: `False`).
             model_uri (str): URI where a pre-trained model is stored, either locally or in S3 (default: None). If
                 specified, the estimator will create a channel pointing to the model so the training job can download
                 it. This model can be a 'model.tar.gz' from a previous training job, or other artifacts coming from a
@@ -663,6 +678,9 @@ class Estimator(EstimatorBase):
 
                 More information: https://docs.aws.amazon.com/sagemaker/latest/dg/cdf-training.html#td-deserialization
             model_channel_name (str): Name of the channel where 'model_uri' will be downloaded (default: 'model').
+            code_uri (str): URI where user entry script is stored, either locally or in S3 (default: None).
+            code_channel_name (str): Name of the channel where 'code_uri` will be downloaded in network isolation mode
+                (default: `code`).
             metric_definitions (list[dict]): A list of dictionaries that defines the metric(s) used to evaluate the
                 training jobs. Each dictionary contains two keys: 'Name' for the name of the metric, and 'Regex' for
                 the regular expression used to extract the metric from the logs. This should be defined only
@@ -675,8 +693,10 @@ class Estimator(EstimatorBase):
         super(Estimator, self).__init__(role, train_instance_count, train_instance_type,
                                         train_volume_size, train_volume_kms_key, train_max_run, input_mode,
                                         output_path, output_kms_key, base_job_name, sagemaker_session,
-                                        tags, subnets, security_group_ids, model_uri=model_uri,
-                                        model_channel_name=model_channel_name, metric_definitions=metric_definitions,
+                                        tags, subnets, security_group_ids,
+                                        enable_network_isolation=enable_network_isolation, model_uri=model_uri,
+                                        model_channel_name=model_channel_name, code_uri=code_uri,
+                                        code_channel_name=code_channel_name, metric_definitions=metric_definitions,
                                         encrypt_inter_container_traffic=encrypt_inter_container_traffic)
 
     def train_image(self):
@@ -852,6 +872,12 @@ class Framework(EstimatorBase):
 
             code_dir = 'file://' + self.source_dir
             script = self.entry_point
+        elif self.enable_network_isolation() and self.entry_point:
+            relative_code_location = 'input/data/code'
+            self.uploaded_code = self._stage_user_code_in_s3(tar=False, s3_location=relative_code_location)
+            code_dir = "/opt/ml/{}".format(relative_code_location)
+            script = self.uploaded_code.script_name
+            self.code_uri = self.uploaded_code.s3_prefix
         else:
             self.uploaded_code = self._stage_user_code_in_s3()
             code_dir = self.uploaded_code.s3_prefix
@@ -865,7 +891,7 @@ class Framework(EstimatorBase):
         self._hyperparameters[JOB_NAME_PARAM_NAME] = self._current_job_name
         self._hyperparameters[SAGEMAKER_REGION_PARAM_NAME] = self.sagemaker_session.boto_region_name
 
-    def _stage_user_code_in_s3(self):
+    def _stage_user_code_in_s3(self, tar=True, s3_location='source'):
         """Upload the user training script to s3 and return the location.
 
         Returns: s3 uri
@@ -875,27 +901,34 @@ class Framework(EstimatorBase):
 
         if self.code_location is None and local_mode:
             code_bucket = self.sagemaker_session.default_bucket()
-            code_s3_prefix = '{}/source'.format(self._current_job_name)
+            code_s3_prefix = '{}/{}'.format(self._current_job_name, s3_location)
             kms_key = None
 
         elif self.code_location is None:
             code_bucket, _ = parse_s3_url(self.output_path)
-            code_s3_prefix = '{}/source'.format(self._current_job_name)
+            code_s3_prefix = '{}/{}'.format(self._current_job_name, s3_location)
             kms_key = self.output_kms_key
         else:
             code_bucket, key_prefix = parse_s3_url(self.code_location)
-            code_s3_prefix = '/'.join(filter(None, [key_prefix, self._current_job_name, 'source']))
+            code_s3_prefix = '/'.join(filter(None, [key_prefix, self._current_job_name, s3_location]))
 
             output_bucket, _ = parse_s3_url(self.output_path)
             kms_key = self.output_kms_key if code_bucket == output_bucket else None
 
-        return tar_and_upload_dir(session=self.sagemaker_session.boto_session,
-                                  bucket=code_bucket,
-                                  s3_key_prefix=code_s3_prefix,
-                                  script=self.entry_point,
-                                  directory=self.source_dir,
-                                  dependencies=self.dependencies,
-                                  kms_key=kms_key)
+        if tar:
+            return tar_and_upload_dir(session=self.sagemaker_session.boto_session,
+                                      bucket=code_bucket,
+                                      s3_key_prefix=code_s3_prefix,
+                                      script=self.entry_point,
+                                      directory=self.source_dir,
+                                      dependencies=self.dependencies,
+                                      kms_key=kms_key)
+        else:
+            return upload_file(session=self.sagemaker_session.boto_session,
+                               bucket=code_bucket,
+                               s3_key_prefix=code_s3_prefix,
+                               file=self.entry_point,
+                               kms_key=kms_key)
 
     def _model_source_dir(self):
         """Get the appropriate value to pass as source_dir to model constructor on deploying

@@ -29,11 +29,14 @@ VOLUME_SIZE = 1
 MAX_RUNTIME = 1
 ROLE = 'DummyRole'
 IMAGE_NAME = 'fakeimage'
+SCRIPT_NAME = 'script.py'
 JOB_NAME = 'fakejob'
 VOLUME_KMS_KEY = 'volkmskey'
-CHANNEL_NAME = 'testChannel'
+MODEL_CHANNEL_NAME = 'testModelChannel'
 MODEL_URI = 's3://bucket/prefix/model.tar.gz'
 LOCAL_MODEL_NAME = 'file://local/file.tar.gz'
+CODE_CHANNEL_NAME = 'testCodeChannel'
+CODE_URI = 's3://bucket/prefix/code.py'
 
 
 @pytest.fixture()
@@ -70,13 +73,13 @@ def test_load_config_with_model_channel(estimator):
     inputs = s3_input(BUCKET_NAME)
 
     estimator.model_uri = MODEL_URI
-    estimator.model_channel_name = CHANNEL_NAME
+    estimator.model_channel_name = MODEL_CHANNEL_NAME
 
     config = _Job._load_config(inputs, estimator)
 
     assert config['input_config'][0]['DataSource']['S3DataSource']['S3Uri'] == BUCKET_NAME
     assert config['input_config'][1]['DataSource']['S3DataSource']['S3Uri'] == MODEL_URI
-    assert config['input_config'][1]['ChannelName'] == CHANNEL_NAME
+    assert config['input_config'][1]['ChannelName'] == MODEL_CHANNEL_NAME
     assert config['role'] == ROLE
     assert config['output_config']['S3OutputPath'] == S3_OUTPUT_PATH
     assert 'KmsKeyId' not in config['output_config']
@@ -88,12 +91,35 @@ def test_load_config_with_model_channel(estimator):
 
 def test_load_config_with_model_channel_no_inputs(estimator):
     estimator.model_uri = MODEL_URI
-    estimator.model_channel_name = CHANNEL_NAME
+    estimator.model_channel_name = MODEL_CHANNEL_NAME
 
     config = _Job._load_config(inputs=None, estimator=estimator)
 
     assert config['input_config'][0]['DataSource']['S3DataSource']['S3Uri'] == MODEL_URI
-    assert config['input_config'][0]['ChannelName'] == CHANNEL_NAME
+    assert config['input_config'][0]['ChannelName'] == MODEL_CHANNEL_NAME
+    assert config['role'] == ROLE
+    assert config['output_config']['S3OutputPath'] == S3_OUTPUT_PATH
+    assert 'KmsKeyId' not in config['output_config']
+    assert config['resource_config']['InstanceCount'] == INSTANCE_COUNT
+    assert config['resource_config']['InstanceType'] == INSTANCE_TYPE
+    assert config['resource_config']['VolumeSizeInGB'] == VOLUME_SIZE
+    assert config['stop_condition']['MaxRuntimeInSeconds'] == MAX_RUNTIME
+
+
+def test_load_config_with_code_channel(estimator):
+    inputs = s3_input(BUCKET_NAME)
+
+    estimator.model_uri = MODEL_URI
+    estimator.model_channel_name = MODEL_CHANNEL_NAME
+    estimator.code_uri = CODE_URI
+    estimator.code_channel_name = CODE_CHANNEL_NAME
+    estimator._enable_network_isolation = True
+
+    config = _Job._load_config(inputs, estimator)
+
+    assert config['input_config'][0]['DataSource']['S3DataSource']['S3Uri'] == BUCKET_NAME
+    assert config['input_config'][2]['DataSource']['S3DataSource']['S3Uri'] == CODE_URI
+    assert config['input_config'][2]['ChannelName'] == CODE_CHANNEL_NAME
     assert config['role'] == ROLE
     assert config['output_config']['S3OutputPath'] == S3_OUTPUT_PATH
     assert 'KmsKeyId' not in config['output_config']
@@ -153,23 +179,28 @@ def test_format_inputs_to_input_config_list():
     assert channels[0]['DataSource']['S3DataSource']['S3DataType'] == records.s3_data_type
 
 
-def test_prepare_model_channel():
-    model_channel = _Job._prepare_model_channel([], MODEL_URI, CHANNEL_NAME)
+@pytest.mark.parametrize('channel_uri, channel_name, content_type, input_mode',
+                         [[MODEL_URI, MODEL_CHANNEL_NAME, 'application/x-sagemaker-model', 'File'],
+                          [CODE_URI, CODE_CHANNEL_NAME, None, None]])
+def test_prepare_channel(channel_uri, channel_name, content_type, input_mode):
+    channel = _Job._prepare_channel([], channel_uri, channel_name, content_type=content_type, input_mode=input_mode)
 
-    # The model channel should use all the defaults except InputMode
-    assert model_channel['DataSource']['S3DataSource']['S3Uri'] == MODEL_URI
-    assert model_channel['DataSource']['S3DataSource']['S3DataDistributionType'] == 'FullyReplicated'
-    assert model_channel['DataSource']['S3DataSource']['S3DataType'] == 'S3Prefix'
-    assert model_channel['InputMode'] == 'File'
-    assert model_channel['ChannelName'] == CHANNEL_NAME
-    assert 'CompressionType' not in model_channel
-    assert model_channel['ContentType'] == 'application/x-sagemaker-model'
-    assert 'RecordWrapperType' not in model_channel
+    assert channel['DataSource']['S3DataSource']['S3Uri'] == channel_uri
+    assert channel['DataSource']['S3DataSource']['S3DataDistributionType'] == 'FullyReplicated'
+    assert channel['DataSource']['S3DataSource']['S3DataType'] == 'S3Prefix'
+    assert channel['ChannelName'] == channel_name
+    assert 'CompressionType' not in channel
+    assert 'RecordWrapperType' not in channel
+
+    # The model channel should use all the defaults except InputMode and ContentType
+    if channel_name == MODEL_CHANNEL_NAME:
+        assert channel['ContentType'] == 'application/x-sagemaker-model'
+        assert channel['InputMode'] == 'File'
 
 
-def test_prepare_model_channel_duplicate():
+def test_prepare_channel_duplicate():
     channels = [{
-        'ChannelName': CHANNEL_NAME,
+        'ChannelName': MODEL_CHANNEL_NAME,
         'DataSource': {
             'S3DataSource': {
                 'S3DataDistributionType': 'FullyReplicated',
@@ -180,20 +211,20 @@ def test_prepare_model_channel_duplicate():
     }]
 
     with pytest.raises(ValueError) as error:
-        _Job._prepare_model_channel(channels, MODEL_URI, CHANNEL_NAME)
+        _Job._prepare_channel(channels, MODEL_URI, MODEL_CHANNEL_NAME)
 
-    assert 'Duplicate channels not allowed.' in str(error)
+    assert 'Duplicate channel {} not allowed.'.format(MODEL_CHANNEL_NAME) in str(error)
 
 
-def test_prepare_model_channel_with_missing_name():
+def test_prepare_channel_with_missing_name():
     with pytest.raises(ValueError) as ex:
-        _Job._prepare_model_channel([], model_uri=MODEL_URI, model_channel_name=None)
+        _Job._prepare_channel([], channel_uri=MODEL_URI, channel_name=None)
 
-    assert 'Expected a pre-trained model channel name if a model URL is specified.' in str(ex)
+    assert 'Expected a channel name if a channel URI {} is specified'.format(MODEL_URI) in str(ex)
 
 
-def test_prepare_model_channel_with_missing_uri():
-    assert _Job._prepare_model_channel([], model_uri=None, model_channel_name=None) is None
+def test_prepare_channel_with_missing_uri():
+    assert _Job._prepare_channel([], channel_uri=None, channel_name=None) is None
 
 
 def test_format_inputs_to_input_config_list_not_all_records():

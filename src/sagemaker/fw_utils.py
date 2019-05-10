@@ -198,6 +198,19 @@ def tar_and_upload_dir(session, bucket, s3_key_prefix, script,
     return UploadedCode(s3_prefix='s3://%s/%s' % (bucket, key), script_name=script_name)
 
 
+def upload_file(session, bucket, s3_key_prefix, file, kms_key=None):
+    file_name = os.path.basename(file)
+    key = '{}/{}'.format(s3_key_prefix, file_name)
+    if kms_key:
+        extra_args = {'ServerSideEncryption': 'aws:kms', 'SSEKMSKeyId': kms_key}
+    else:
+        extra_args = None
+
+    session.resource('s3').Object(bucket, key).upload_file(file, ExtraArgs=extra_args)
+
+    return UploadedCode(s3_prefix='s3://%s/%s' % (bucket, key), script_name=file_name)
+
+
 def _list_files_to_compress(script, directory):
     if directory is None:
         return [script]
