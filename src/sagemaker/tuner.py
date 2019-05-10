@@ -375,6 +375,7 @@ class HyperparameterTuner(object):
         accelerator_type=None,
         endpoint_name=None,
         wait=True,
+        model_name=None,
         **kwargs
     ):
         """Deploy the best trained or user specified model to an Amazon SageMaker endpoint and return a
@@ -393,6 +394,8 @@ class HyperparameterTuner(object):
             endpoint_name (str): Name to use for creating an Amazon SageMaker endpoint. If not specified,
                 the name of the training job is used.
             wait (bool): Whether the call should wait until the deployment of model completes (default: True).
+            model_name (str): Name to use for creating an Amazon SageMaker model. If not specified, the name of
+                the training job is used.
             **kwargs: Other arguments needed for deployment. Please refer to the ``create_model()`` method of
                 the associated estimator to see what other arguments are needed.
 
@@ -410,6 +413,7 @@ class HyperparameterTuner(object):
             accelerator_type=accelerator_type,
             endpoint_name=endpoint_name,
             wait=wait,
+            model_name=model_name,
             **kwargs
         )
 
