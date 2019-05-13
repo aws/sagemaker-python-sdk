@@ -1,5 +1,11 @@
 # Changelog
 
+## v1.20.2 (2019-05-13)
+
+### Bug fixes and other changes
+
+ * pin pytest version to 4.4.1 to avoid pluggy version conflict
+
 ## v1.20.1 (2019-05-09)
 
 ### Bug fixes and other changes
