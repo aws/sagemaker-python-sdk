@@ -182,9 +182,16 @@ def tar_and_upload_dir(session, bucket, s3_key_prefix, script,
     tmp = tempfile.mkdtemp()
 
     try:
-        source_files = _list_files_to_compress(script, directory) + dependencies
-        tar_file = sagemaker.utils.create_tar_file(source_files,
-                                                   os.path.join(tmp, _TAR_SOURCE_FILENAME))
+        if directory:
+            source_files = dependencies
+            dir_files = [directory]
+        else:
+            source_files = [script] + dependencies
+            dir_files = []
+
+        tar_file = sagemaker.utils.create_tar_file(source_files=source_files,
+                                                   dir_files=dir_files,
+                                                   target=os.path.join(tmp, _TAR_SOURCE_FILENAME))
 
         if kms_key:
             extra_args = {'ServerSideEncryption': 'aws:kms', 'SSEKMSKeyId': kms_key}
@@ -196,14 +203,6 @@ def tar_and_upload_dir(session, bucket, s3_key_prefix, script,
         shutil.rmtree(tmp)
 
     return UploadedCode(s3_prefix='s3://%s/%s' % (bucket, key), script_name=script_name)
-
-
-def _list_files_to_compress(script, directory):
-    if directory is None:
-        return [script]
-
-    basedir = directory if directory else os.path.dirname(script)
-    return [os.path.join(basedir, name) for name in os.listdir(basedir)]
 
 
 def framework_name_from_image(image_name):

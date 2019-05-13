@@ -268,23 +268,57 @@ def test_download_file():
 
 @patch('tarfile.open')
 def test_create_tar_file_with_provided_path(open):
-    open.return_value = open
-    open.__enter__ = Mock()
-    open.__exit__ = Mock(return_value=None)
+    files = mock_tarfile(open)
+
     file_list = ['/tmp/a', '/tmp/b']
+
     path = sagemaker.utils.create_tar_file(file_list, target='/my/custom/path.tar.gz')
     assert path == '/my/custom/path.tar.gz'
+    assert files == [['/tmp/a', 'a'], ['/tmp/b', 'b']]
+
+
+@patch('tarfile.open')
+def test_create_tar_file_with_directories(open):
+    files = mock_tarfile(open)
+
+    path = sagemaker.utils.create_tar_file(dir_files=['/tmp/a', '/tmp/b'],
+                                           target='/my/custom/path.tar.gz')
+    assert path == '/my/custom/path.tar.gz'
+    assert files == [['/tmp/a', '/'], ['/tmp/b', '/']]
+
+
+@patch('tarfile.open')
+def test_create_tar_file_with_files_and_directories(open):
+    files = mock_tarfile(open)
+
+    path = sagemaker.utils.create_tar_file(dir_files=['/tmp/a', '/tmp/b'],
+                                           source_files=['/tmp/c', '/tmp/d'],
+                                           target='/my/custom/path.tar.gz')
+    assert path == '/my/custom/path.tar.gz'
+    assert files == [['/tmp/c', 'c'], ['/tmp/d', 'd'], ['/tmp/a', '/'], ['/tmp/b', '/']]
+
+
+def mock_tarfile(open):
+    open.return_value = open
+    files = []
+
+    def add_files(filename, arcname):
+        files.append([filename, arcname])
+
+    open.__enter__ = Mock()
+    open.__enter__().add = add_files
+    open.__exit__ = Mock(return_value=None)
+    return files
 
 
 @patch('tarfile.open')
 @patch('tempfile.mkstemp', Mock(return_value=(None, '/auto/generated/path')))
 def test_create_tar_file_with_auto_generated_path(open):
-    open.return_value = open
-    open.__enter__ = Mock()
-    open.__exit__ = Mock(return_value=None)
-    file_list = ['/tmp/a', '/tmp/b']
-    path = sagemaker.utils.create_tar_file(file_list)
+    files = mock_tarfile(open)
+
+    path = sagemaker.utils.create_tar_file(['/tmp/a', '/tmp/b'])
     assert path == '/auto/generated/path'
+    assert files == [['/tmp/a', 'a'], ['/tmp/b', 'b']]
 
 
 def write_file(path, content):

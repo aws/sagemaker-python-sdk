@@ -260,11 +260,14 @@ def download_folder(bucket_name, prefix, target, sagemaker_session):
         obj.download_file(file_path)
 
 
-def create_tar_file(source_files, target=None):
-    """Create a tar file containing all the source_files
+def create_tar_file(source_files=None, target=None, dir_files=None):
+    """Create a tar file containing all the source_files and the content of all dir_files
 
     Args:
         source_files (List[str]): List of file paths that will be contained in the tar file
+        target (str): target path of the tar file
+        dir_files (List[str]): List of directories which will have their contents copy into
+         the tar file
 
     Returns:
          (str): path to created tar file
@@ -275,10 +278,17 @@ def create_tar_file(source_files, target=None):
     else:
         _, filename = tempfile.mkstemp()
 
+    dir_files = dir_files or []
+    source_files = source_files or []
+
     with tarfile.open(filename, mode='w:gz') as t:
         for sf in source_files:
             # Add all files from the directory into the root of the directory structure of the tar
             t.add(sf, arcname=os.path.basename(sf))
+
+        for dir_file in dir_files:
+            t.add(dir_file, arcname=os.path.sep)
+
     return filename
 
 
@@ -323,13 +333,11 @@ def repack_model(inference_script, source_directory, model_uri, sagemaker_sessio
     new_model_name = 'model-%s.tar.gz' % sagemaker.utils.sagemaker_short_timestamp()
 
     with _tmpdir() as tmp:
-
         tmp_model_dir = os.path.join(tmp, 'model')
         os.mkdir(tmp_model_dir)
 
         model_from_s3 = model_uri.startswith('s3://')
         if model_from_s3:
-
             local_model_path = os.path.join(tmp, 'tar_file')
             download_file_from_url(model_uri, local_model_path, sagemaker_session)
 
@@ -349,10 +357,7 @@ def repack_model(inference_script, source_directory, model_uri, sagemaker_sessio
 
         shutil.copytree(dirname, code_dir)
 
-        files_to_compress = [os.path.join(tmp_model_dir, file)
-                             for file in os.listdir(tmp_model_dir)]
-
-        tar_file = sagemaker.utils.create_tar_file(files_to_compress, new_model_path)
+        tar_file = sagemaker.utils.create_tar_file(dir_files=[tmp_model_dir], target=new_model_path)
 
         if model_from_s3:
             url = parse.urlparse(model_uri)

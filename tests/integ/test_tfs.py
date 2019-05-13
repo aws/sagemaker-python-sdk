@@ -51,8 +51,8 @@ def tfs_predictor(instance_type, sagemaker_session, tf_full_version):
 
 def tar_dir(directory, tmpdir):
 
-    source_files = [os.path.join(directory, name) for name in os.listdir(directory)]
-    return sagemaker.utils.create_tar_file(source_files, os.path.join(str(tmpdir), 'model.tar.gz'))
+    return sagemaker.utils.create_tar_file(dir_files=[directory],
+                                           target=os.path.join(str(tmpdir), 'model.tar.gz'))
 
 
 @pytest.fixture(scope='module')
