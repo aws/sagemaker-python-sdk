@@ -59,7 +59,8 @@ class Model(object):
             sagemaker_session (sagemaker.session.Session): A SageMaker Session object, used for SageMaker
                interactions (default: None). If not specified, one is created using the default AWS configuration chain.
             enable_network_isolation (Boolean): Default False. if True, enables network isolation in the endpoint,
-                isolating the model container. No inbound or outbound network calls can be made to or from the model container.
+                isolating the model container. No inbound or outbound network calls can be made to or from the
+                model container.
         """
         self.model_data = model_data
         self.image = image

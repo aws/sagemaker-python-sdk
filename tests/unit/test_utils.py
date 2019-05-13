@@ -14,7 +14,6 @@
 # language governing permissions and limitations under the License.
 from __future__ import absolute_import
 
-import contextlib
 import shutil
 import tarfile
 from datetime import datetime
@@ -150,7 +149,8 @@ def test_secondary_training_status_changed_current_missing():
 
 
 def test_secondary_training_status_changed_empty():
-    changed = sagemaker.utils.secondary_training_status_changed(TRAINING_JOB_DESCRIPTION_EMPTY, TRAINING_JOB_DESCRIPTION_1)
+    changed = sagemaker.utils.secondary_training_status_changed(TRAINING_JOB_DESCRIPTION_EMPTY,
+                                                                TRAINING_JOB_DESCRIPTION_1)
     assert changed is False
 
 
@@ -162,7 +162,8 @@ def test_secondary_training_status_message_status_changed():
         STATUS,
         MESSAGE
     )
-    assert sagemaker.utils.secondary_training_status_message(TRAINING_JOB_DESCRIPTION_1, TRAINING_JOB_DESCRIPTION_EMPTY) == expected
+    assert sagemaker.utils.secondary_training_status_message(TRAINING_JOB_DESCRIPTION_1,
+                                                             TRAINING_JOB_DESCRIPTION_EMPTY) == expected
 
 
 def test_secondary_training_status_message_status_not_changed():
@@ -173,7 +174,8 @@ def test_secondary_training_status_message_status_not_changed():
         STATUS,
         MESSAGE
     )
-    assert sagemaker.utils.secondary_training_status_message(TRAINING_JOB_DESCRIPTION_1, TRAINING_JOB_DESCRIPTION_2) == expected
+    assert sagemaker.utils.secondary_training_status_message(TRAINING_JOB_DESCRIPTION_1,
+                                                             TRAINING_JOB_DESCRIPTION_2) == expected
 
 
 def test_secondary_training_status_message_prev_missing():
@@ -316,7 +318,7 @@ def test_repack_model_without_source_dir(tmpdir):
                                                  sagemaker_session)
 
     assert list_tar_files(fake_upload_path, tmpdir) == {'/code/inference.py', '/model'}
-    assert re.match('^s3://fake/model-\d+-\d+.tar.gz$', new_model_uri)
+    assert re.match(r'^s3://fake/model-\d+-\d+.tar.gz$', new_model_uri)
 
 
 def test_repack_model_from_s3_saved_model_to_s3(tmpdir):
@@ -345,7 +347,7 @@ def test_repack_model_from_s3_saved_model_to_s3(tmpdir):
                                                  sagemaker_session)
 
     assert list_tar_files(fake_upload_path, tmpdir) == {'/code/inference.py', '/model'}
-    assert re.match('^s3://fake/model-\d+-\d+.tar.gz$', new_model_uri)
+    assert re.match(r'^s3://fake/model-\d+-\d+.tar.gz$', new_model_uri)
 
 
 def test_repack_model_from_file_saves_model_to_file(tmpdir):
@@ -405,7 +407,7 @@ def test_repack_model_with_inference_code_should_replace_the_code(tmpdir):
                                                  sagemaker_session)
 
     assert list_tar_files(fake_upload_path, tmpdir) == {'/code/new-inference.py', '/model'}
-    assert re.match('^s3://fake/model-\d+-\d+.tar.gz$', new_model_uri)
+    assert re.match(r'^s3://fake/model-\d+-\d+.tar.gz$', new_model_uri)
 
 
 def mock_s3_model_tar(contents, sagemaker_session, tmp):
