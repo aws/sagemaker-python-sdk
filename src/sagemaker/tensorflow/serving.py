@@ -13,6 +13,7 @@
 from __future__ import absolute_import
 
 import logging
+
 import sagemaker
 from sagemaker.content_types import CONTENT_TYPE_JSON
 from sagemaker.fw_utils import create_image_uri
@@ -88,7 +89,7 @@ class Predictor(sagemaker.RealTimePredictor):
         return super(Predictor, self).predict(data, args)
 
 
-class Model(sagemaker.Model):
+class Model(sagemaker.model.FrameworkModel):
     FRAMEWORK_NAME = 'tensorflow-serving'
     LOG_LEVEL_PARAM_NAME = 'SAGEMAKER_TFS_NGINX_LOGLEVEL'
     LOG_LEVEL_MAP = {
@@ -99,7 +100,7 @@ class Model(sagemaker.Model):
         logging.CRITICAL: 'crit',
     }
 
-    def __init__(self, model_data, role, image=None, framework_version=TF_VERSION,
+    def __init__(self, model_data, role, entry_point=None, image=None, framework_version=TF_VERSION,
                  container_log_level=None, predictor_cls=Predictor, **kwargs):
         """Initialize a Model.
 
@@ -118,14 +119,23 @@ class Model(sagemaker.Model):
            **kwargs: Keyword arguments passed to the ``Model`` initializer.
        """
         super(Model, self).__init__(model_data=model_data, role=role, image=image,
-                                    predictor_cls=predictor_cls, **kwargs)
+                                    predictor_cls=predictor_cls, entry_point=entry_point, **kwargs)
         self._framework_version = framework_version
         self._container_log_level = container_log_level
 
     def prepare_container_def(self, instance_type, accelerator_type=None):
         image = self._get_image_uri(instance_type, accelerator_type)
         env = self._get_container_env()
-        return sagemaker.container_def(image, self.model_data, env)
+
+        if self.entry_point:
+            model_data = sagemaker.utils.repack_model(self.entry_point,
+                                                      self.source_dir,
+                                                      self.model_data,
+                                                      self.sagemaker_session)
+        else:
+            model_data = self.model_data
+
+        return sagemaker.container_def(image, model_data, env)
 
     def _get_container_env(self):
         if not self._container_log_level:
