@@ -50,21 +50,21 @@ def tfs_predictor(instance_type, sagemaker_session, tf_full_version):
         yield predictor
 
 
-def tar_dir(directory):
-
-    tmp = tempfile.mkdtemp()
+def tar_dir(directory, tmpdir):
 
     source_files = [os.path.join(directory, name) for name in os.listdir(directory)]
-    return sagemaker.utils.create_tar_file(source_files, os.path.join(tmp, 'model.tar.gz'))
+    return sagemaker.utils.create_tar_file(source_files, os.path.join(str(tmpdir), 'model.tar.gz'))
 
 
 @pytest.fixture(scope='module')
 def tfs_predictor_with_model_and_entry_point_same_tar(instance_type,
                                                       sagemaker_session,
-                                                      tf_full_version):
+                                                      tf_full_version,
+                                                      tmpdir):
     endpoint_name = sagemaker.utils.unique_name_from_base('sagemaker-tensorflow-serving')
 
-    model_tar = tar_dir(os.path.join(tests.integ.DATA_DIR, 'tfs/tfs-test-model-with-inference'))
+    model_tar = tar_dir(os.path.join(tests.integ.DATA_DIR, 'tfs/tfs-test-model-with-inference'),
+                        tmpdir)
 
     model_data = sagemaker_session.upload_data(
         path=model_tar,

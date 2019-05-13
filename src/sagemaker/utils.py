@@ -330,27 +330,24 @@ def repack_model(inference_script, source_directory, model_uri, sagemaker_sessio
         model_from_s3 = model_uri.startswith('s3://')
         if model_from_s3:
 
-            local_model_uri = os.path.join(tmp, 'tar_file')
-            download_file_from_url(model_uri, local_model_uri, sagemaker_session)
+            local_model_path = os.path.join(tmp, 'tar_file')
+            download_file_from_url(model_uri, local_model_path, sagemaker_session)
 
             new_model_path = os.path.join(tmp, new_model_name)
         else:
-            local_model_uri = model_uri.replace('file://', '')
-            new_model_path = os.path.join(os.path.dirname(local_model_uri), new_model_name)
+            local_model_path = model_uri.replace('file://', '')
+            new_model_path = os.path.join(os.path.dirname(local_model_path), new_model_name)
 
-        with tarfile.open(name=local_model_uri, mode='r:gz') as t:
+        with tarfile.open(name=local_model_path, mode='r:gz') as t:
             t.extractall(path=tmp_model_dir)
 
         code_dir = os.path.join(tmp_model_dir, 'code')
         if os.path.exists(code_dir):
             shutil.rmtree(code_dir, ignore_errors=True)
 
-        os.mkdir(code_dir)
+        dirname = source_directory if source_directory else os.path.dirname(inference_script)
 
-        source_files = _list_files(inference_script, source_directory)
-
-        for source_file in source_files:
-            shutil.copy(source_file, code_dir)
+        shutil.copytree(dirname, code_dir)
 
         files_to_compress = [os.path.join(tmp_model_dir, file)
                              for file in os.listdir(tmp_model_dir)]
