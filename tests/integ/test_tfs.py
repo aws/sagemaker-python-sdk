@@ -55,6 +55,7 @@ def tar_dir(directory, tmpdir):
                                            target=os.path.join(str(tmpdir), 'model.tar.gz'))
 
 
+@pytest.fixture
 def tfs_predictor_with_model_and_entry_point_same_tar(instance_type,
                                                       sagemaker_session,
                                                       tf_full_version,
