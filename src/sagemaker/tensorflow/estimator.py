@@ -283,6 +283,9 @@ class TensorFlow(Framework):
         if not self.source_dir:
             raise ValueError('Must specify source_dir along with a requirements file.')
 
+        if self.source_dir.lower().startswith('s3://'):
+            return
+
         if os.path.isabs(requirements_file):
             raise ValueError('Requirements file {} is not a path relative to source_dir.'.format(
                 requirements_file))
