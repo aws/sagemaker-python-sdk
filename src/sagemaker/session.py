@@ -173,7 +173,7 @@ class Session(object):
 
         Args:
             sts_endpoint_url (str): Optional. URL of STS endpoint to send requests to. If not specified,
-                the global endpoint will be used (sts.amazonaws.com). Should be in the format of 
+                the global endpoint will be used (sts.amazonaws.com). Should be in the format of
                 sts.<region>.amazonaws.com
 
         Returns:
