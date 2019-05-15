@@ -1,5 +1,16 @@
 # Changelog
 
+## v1.20.3 (2019-05-15)
+
+### Bug fixes and other changes
+
+ * run tests if buildspec.yml has been modified
+ * skip local file check for TF requirements file when source_dir is an S3 URI
+
+### Documentation changes
+
+ * fix docs in regards to transform_fn for mxnet
+
 ## v1.20.2 (2019-05-13)
 
 ### Bug fixes and other changes
