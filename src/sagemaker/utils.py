@@ -358,14 +358,6 @@ def repack_model(inference_script, source_directory, model_uri, sagemaker_sessio
             return 'file://%s' % new_model_path
 
 
-def _list_files(script, directory):
-    if directory is None:
-        return [script]
-
-    basedir = directory if directory else os.path.dirname(script)
-    return [os.path.join(basedir, name) for name in os.listdir(basedir)]
-
-
 def download_file_from_url(url, dst, sagemaker_session):
     url = parse.urlparse(url)
     bucket, key = url.netloc, url.path.lstrip('/')
