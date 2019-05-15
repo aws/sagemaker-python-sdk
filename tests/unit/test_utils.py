@@ -277,27 +277,6 @@ def test_create_tar_file_with_provided_path(open):
     assert files == [['/tmp/a', 'a'], ['/tmp/b', 'b']]
 
 
-@patch('tarfile.open')
-def test_create_tar_file_with_directories(open):
-    files = mock_tarfile(open)
-
-    path = sagemaker.utils.create_tar_file(dir_files=['/tmp/a', '/tmp/b'],
-                                           target='/my/custom/path.tar.gz')
-    assert path == '/my/custom/path.tar.gz'
-    assert files == [['/tmp/a', '/'], ['/tmp/b', '/']]
-
-
-@patch('tarfile.open')
-def test_create_tar_file_with_files_and_directories(open):
-    files = mock_tarfile(open)
-
-    path = sagemaker.utils.create_tar_file(dir_files=['/tmp/a', '/tmp/b'],
-                                           source_files=['/tmp/c', '/tmp/d'],
-                                           target='/my/custom/path.tar.gz')
-    assert path == '/my/custom/path.tar.gz'
-    assert files == [['/tmp/c', 'c'], ['/tmp/d', 'd'], ['/tmp/a', '/'], ['/tmp/b', '/']]
-
-
 def mock_tarfile(open):
     open.return_value = open
     files = []

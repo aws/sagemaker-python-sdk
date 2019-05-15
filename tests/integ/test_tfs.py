@@ -12,6 +12,8 @@
 # language governing permissions and limitations under the License.
 from __future__ import absolute_import
 
+import tarfile
+
 import botocore.exceptions
 import os
 
@@ -50,9 +52,11 @@ def tfs_predictor(instance_type, sagemaker_session, tf_full_version):
 
 
 def tar_dir(directory, tmpdir):
+    target = os.path.join(str(tmpdir), 'model.tar.gz')
 
-    return sagemaker.utils.create_tar_file(dir_files=[directory],
-                                           target=os.path.join(str(tmpdir), 'model.tar.gz'))
+    with tarfile.open(target, mode='w:gz') as t:
+        t.add(directory, arcname=os.path.sep)
+    return target
 
 
 @pytest.fixture
