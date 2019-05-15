@@ -688,8 +688,7 @@ The default implementation expects ``prediction`` to be an ``NDArray`` and can s
 Using ``transform_fn``
 ''''''''''''''''''''''
 
-If you would rather not structure your code around the three methods described above, you can instead define your own ``transform_fn`` to handle inference requests.
-This will override any implementation of ``input_fn``, ``predict_fn``, or ``output_fn``.
+If you would rather not structure your code around the three methods described above, you can instead define your own ``transform_fn`` to handle inference requests. An error will be thrown if a ``transform_fn`` is present in conjunction with any ``input_fn``, ``predict_fn``, and/or ``output_fn``.
 ``transform_fn`` has the following signature:
 
 .. code:: python
