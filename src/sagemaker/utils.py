@@ -357,6 +357,17 @@ def repack_model(inference_script, source_directory, model_uri, sagemaker_sessio
 
         shutil.copytree(dirname, code_dir)
 
+        default_inference_script = '''
+from __future__ import absolute_import
+
+from {module_name} import *
+        '''
+
+        if inference_script != 'inference.py':
+            with open(os.path.join(code_dir, 'inference.py'), 'a') as f:
+                module_name = os.path.basename(inference_script).replace('.py', '')
+                f.write(default_inference_script.format(module_name=module_name))
+
         tar_file = sagemaker.utils.create_tar_file(dir_files=[tmp_model_dir], target=new_model_path)
 
         if model_from_s3:
