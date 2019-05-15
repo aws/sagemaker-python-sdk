@@ -140,7 +140,7 @@ def rl_coach_mxnet_version(request):
     return request.param
 
 
-@pytest.fixture(scope='module', params=['0.5', '0.5.3'])
+@pytest.fixture(scope='module', params=['0.5', '0.5.3', '0.6', '0.6.5'])
 def rl_ray_version(request):
     return request.param
 

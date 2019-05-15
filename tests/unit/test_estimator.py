@@ -315,6 +315,17 @@ def test_augmented_manifest(sagemaker_session):
     assert s3_data_source['AttributeNames'] == ['foo', 'bar']
 
 
+def test_s3_input_mode(sagemaker_session):
+    expected_input_mode = 'Pipe'
+    fw = DummyFramework(entry_point=SCRIPT_PATH, role='DummyRole', sagemaker_session=sagemaker_session,
+                        train_instance_count=INSTANCE_COUNT, train_instance_type=INSTANCE_TYPE,
+                        enable_cloudwatch_metrics=True)
+    fw.fit(inputs=s3_input('s3://mybucket/train_manifest', input_mode=expected_input_mode))
+
+    actual_input_mode = sagemaker_session.method_calls[1][2]['input_mode']
+    assert actual_input_mode == expected_input_mode
+
+
 def test_shuffle_config(sagemaker_session):
     fw = DummyFramework(entry_point=SCRIPT_PATH, role='DummyRole', sagemaker_session=sagemaker_session,
                         train_instance_count=INSTANCE_COUNT, train_instance_type=INSTANCE_TYPE,
