@@ -75,7 +75,7 @@ class Session(object):
             sagemaker_runtime_client (boto3.SageMakerRuntime.Client): Client which makes ``InvokeEndpoint``
                 calls to Amazon SageMaker (default: None). Predictors created using this ``Session`` use this client.
                 If not provided, one will be created using this instance's ``boto_session``.
-            sts_endpoint_url (str): Endpoint URL for STS endpoint. If none provided, boto3 will default to 
+            sts_endpoint_url (str): Endpoint URL for STS endpoint. If none provided, boto3 will default to
                 use sts.amazonaws.com.
         """
         self._default_bucket = None
