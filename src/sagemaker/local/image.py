@@ -235,10 +235,14 @@ class _SageMakerContainer(object):
                     sagemaker.local.utils.recursive_copy(host_dir, output_artifacts)
 
         # Tar Artifacts -> model.tar.gz and output.tar.gz
-        model_files = [os.path.join(model_artifacts, name) for name in os.listdir(model_artifacts)]
-        output_files = [os.path.join(output_artifacts, name) for name in os.listdir(output_artifacts)]
-        sagemaker.utils.create_tar_file(model_files, os.path.join(compressed_artifacts, 'model.tar.gz'))
-        sagemaker.utils.create_tar_file(output_files, os.path.join(compressed_artifacts, 'output.tar.gz'))
+        model_files = [os.path.join(model_artifacts, name) for name in
+                       os.listdir(model_artifacts)]
+        output_files = [os.path.join(output_artifacts, name) for name in
+                        os.listdir(output_artifacts)]
+        sagemaker.utils.create_tar_file(model_files,
+                                        os.path.join(compressed_artifacts, 'model.tar.gz'))
+        sagemaker.utils.create_tar_file(output_files,
+                                        os.path.join(compressed_artifacts, 'output.tar.gz'))
 
         if output_data_config['S3OutputPath'] == '':
             output_data = 'file://%s' % compressed_artifacts

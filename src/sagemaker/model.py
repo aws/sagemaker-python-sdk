@@ -37,7 +37,7 @@ class Model(object):
     """A SageMaker ``Model`` that can be deployed to an ``Endpoint``."""
 
     def __init__(self, model_data, image, role=None, predictor_cls=None, env=None, name=None, vpc_config=None,
-                 sagemaker_session=None):
+                 sagemaker_session=None, enable_network_isolation=False):
         """Initialize an SageMaker ``Model``.
 
         Args:
@@ -58,6 +58,9 @@ class Model(object):
                 * 'SecurityGroupIds' (list[str]): List of security group ids.
             sagemaker_session (sagemaker.session.Session): A SageMaker Session object, used for SageMaker
                interactions (default: None). If not specified, one is created using the default AWS configuration chain.
+            enable_network_isolation (Boolean): Default False. if True, enables network isolation in the endpoint,
+                isolating the model container. No inbound or outbound network calls can be made to or from the
+                model container.
         """
         self.model_data = model_data
         self.image = image
@@ -69,6 +72,7 @@ class Model(object):
         self.sagemaker_session = sagemaker_session
         self._model_name = None
         self._is_compiled_model = False
+        self._enable_network_isolation = enable_network_isolation
 
     def prepare_container_def(self, instance_type, accelerator_type=None):  # pylint: disable=unused-argument
         """Return a dict created by ``sagemaker.container_def()`` for deploying this model to a specified instance type.
@@ -92,7 +96,7 @@ class Model(object):
         Returns:
             bool: If network isolation should be enabled or not.
         """
-        return False
+        return self._enable_network_isolation
 
     def _create_sagemaker_model(self, instance_type, accelerator_type=None, tags=None):
         """Create a SageMaker Model Entity
