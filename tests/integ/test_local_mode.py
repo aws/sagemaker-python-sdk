@@ -38,7 +38,7 @@ class LocalNoS3Session(LocalSession):
     def __init__(self):
         super(LocalSession, self).__init__()
 
-    def _initialize(self, boto_session, sagemaker_client, sagemaker_runtime_client):
+    def _initialize(self, boto_session, sagemaker_client, sagemaker_runtime_client, sts_endpoint_url):
         self.boto_session = boto3.Session(region_name=DEFAULT_REGION)
         if self.config is None:
             self.config = {
@@ -52,6 +52,7 @@ class LocalNoS3Session(LocalSession):
         self._region_name = DEFAULT_REGION
         self.sagemaker_client = LocalSagemakerClient(self)
         self.sagemaker_runtime_client = LocalSagemakerRuntimeClient(self.config)
+        self.sts_endpoint_url = sts_endpoint_url
         self.local_mode = True
 
 
