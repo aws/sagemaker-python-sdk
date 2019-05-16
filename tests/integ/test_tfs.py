@@ -12,7 +12,11 @@
 # language governing permissions and limitations under the License.
 from __future__ import absolute_import
 
+import tarfile
+
 import botocore.exceptions
+import os
+
 import pytest
 import sagemaker
 import sagemaker.predictor
@@ -36,10 +40,66 @@ def instance_type(request):
 def tfs_predictor(instance_type, sagemaker_session, tf_full_version):
     endpoint_name = sagemaker.utils.unique_name_from_base('sagemaker-tensorflow-serving')
     model_data = sagemaker_session.upload_data(
-        path='tests/data/tensorflow-serving-test-model.tar.gz',
+        path=os.path.join(tests.integ.DATA_DIR, 'tensorflow-serving-test-model.tar.gz'),
         key_prefix='tensorflow-serving/models')
-    with tests.integ.timeout.timeout_and_delete_endpoint_by_name(endpoint_name, sagemaker_session):
+    with tests.integ.timeout.timeout_and_delete_endpoint_by_name(endpoint_name,
+                                                                 sagemaker_session):
         model = Model(model_data=model_data, role='SageMakerRole',
+                      framework_version=tf_full_version,
+                      sagemaker_session=sagemaker_session)
+        predictor = model.deploy(1, instance_type, endpoint_name=endpoint_name)
+        yield predictor
+
+
+def tar_dir(directory, tmpdir):
+    target = os.path.join(str(tmpdir), 'model.tar.gz')
+
+    with tarfile.open(target, mode='w:gz') as t:
+        t.add(directory, arcname=os.path.sep)
+    return target
+
+
+@pytest.fixture
+def tfs_predictor_with_model_and_entry_point_same_tar(instance_type,
+                                                      sagemaker_session,
+                                                      tf_full_version,
+                                                      tmpdir):
+    endpoint_name = sagemaker.utils.unique_name_from_base('sagemaker-tensorflow-serving')
+
+    model_tar = tar_dir(os.path.join(tests.integ.DATA_DIR, 'tfs/tfs-test-model-with-inference'),
+                        tmpdir)
+
+    model_data = sagemaker_session.upload_data(
+        path=model_tar,
+        key_prefix='tensorflow-serving/models')
+
+    with tests.integ.timeout.timeout_and_delete_endpoint_by_name(endpoint_name,
+                                                                 sagemaker_session):
+        model = Model(model_data=model_data,
+                      role='SageMakerRole',
+                      framework_version=tf_full_version,
+                      sagemaker_session=sagemaker_session)
+        predictor = model.deploy(1, instance_type, endpoint_name=endpoint_name)
+        yield predictor
+
+
+@pytest.fixture(scope='module')
+def tfs_predictor_with_model_and_entry_point_separated(instance_type,
+                                                       sagemaker_session, tf_full_version):
+    endpoint_name = sagemaker.utils.unique_name_from_base('sagemaker-tensorflow-serving')
+
+    model_data = sagemaker_session.upload_data(
+        path=os.path.join(tests.integ.DATA_DIR,
+                          'tensorflow-serving-test-model.tar.gz'),
+        key_prefix='tensorflow-serving/models')
+
+    with tests.integ.timeout.timeout_and_delete_endpoint_by_name(endpoint_name,
+                                                                 sagemaker_session):
+        entry_point = os.path.join(tests.integ.DATA_DIR,
+                                   'tfs/tfs-test-model-with-inference/code/inference.py')
+        model = Model(entry_point=entry_point,
+                      model_data=model_data,
+                      role='SageMakerRole',
                       framework_version=tf_full_version,
                       sagemaker_session=sagemaker_session)
         predictor = model.deploy(1, instance_type, endpoint_name=endpoint_name)
@@ -51,13 +111,16 @@ def tfs_predictor_with_accelerator(sagemaker_session, tf_full_version):
     endpoint_name = sagemaker.utils.unique_name_from_base("sagemaker-tensorflow-serving")
     instance_type = 'ml.c4.large'
     accelerator_type = 'ml.eia1.medium'
-    model_data = sagemaker_session.upload_data(path='tests/data/tensorflow-serving-test-model.tar.gz',
-                                               key_prefix='tensorflow-serving/models')
-    with tests.integ.timeout.timeout_and_delete_endpoint_by_name(endpoint_name, sagemaker_session):
+    model_data = sagemaker_session.upload_data(
+        path=os.path.join(tests.integ.DATA_DIR, 'tensorflow-serving-test-model.tar.gz'),
+        key_prefix='tensorflow-serving/models')
+    with tests.integ.timeout.timeout_and_delete_endpoint_by_name(endpoint_name,
+                                                                 sagemaker_session):
         model = Model(model_data=model_data, role='SageMakerRole',
                       framework_version=tf_full_version,
                       sagemaker_session=sagemaker_session)
-        predictor = model.deploy(1, instance_type, endpoint_name=endpoint_name, accelerator_type=accelerator_type)
+        predictor = model.deploy(1, instance_type, endpoint_name=endpoint_name,
+                                 accelerator_type=accelerator_type)
         yield predictor
 
 
@@ -78,6 +141,23 @@ def test_predict_with_accelerator(tfs_predictor_with_accelerator):
     expected_result = {'predictions': [3.5, 4.0, 5.5]}
 
     result = tfs_predictor_with_accelerator.predict(input_data)
+    assert expected_result == result
+
+
+def test_predict_with_entry_point(tfs_predictor_with_model_and_entry_point_same_tar):
+    input_data = {'instances': [1.0, 2.0, 5.0]}
+    expected_result = {'predictions': [4.0, 4.5, 6.0]}
+
+    result = tfs_predictor_with_model_and_entry_point_same_tar.predict(input_data)
+    assert expected_result == result
+
+
+def test_predict_with_model_and_entry_point_separated(
+        tfs_predictor_with_model_and_entry_point_separated):
+    input_data = {'instances': [1.0, 2.0, 5.0]}
+    expected_result = {'predictions': [4.0, 4.5, 6.0]}
+
+    result = tfs_predictor_with_model_and_entry_point_separated.predict(input_data)
     assert expected_result == result
 
 
