@@ -260,35 +260,22 @@ def download_folder(bucket_name, prefix, target, sagemaker_session):
         obj.download_file(file_path)
 
 
-def create_tar_file(source_files=None, target=None, dir_files=None):
-    """Create a tar file containing all the source_files and the content of all dir_files
-
+def create_tar_file(source_files, target=None):
+    """Create a tar file containing all the source_files
     Args:
         source_files (List[str]): List of file paths that will be contained in the tar file
-        target (str): target path of the tar file
-        dir_files (List[str]): List of directories which will have their contents copy into
-         the tar file
-
     Returns:
          (str): path to created tar file
-
     """
     if target:
         filename = target
     else:
         _, filename = tempfile.mkstemp()
 
-    dir_files = dir_files or []
-    source_files = source_files or []
-
     with tarfile.open(filename, mode='w:gz') as t:
         for sf in source_files:
             # Add all files from the directory into the root of the directory structure of the tar
             t.add(sf, arcname=os.path.basename(sf))
-
-        for dir_file in dir_files:
-            t.add(dir_file, arcname=os.path.sep)
-
     return filename
 
 
@@ -368,25 +355,18 @@ from {module_name} import *
                 module_name = os.path.basename(inference_script).replace('.py', '')
                 f.write(default_inference_script.format(module_name=module_name))
 
-        tar_file = sagemaker.utils.create_tar_file(dir_files=[tmp_model_dir], target=new_model_path)
+        with tarfile.open(new_model_path, mode='w:gz') as t:
+            t.add(tmp_model_dir, arcname=os.path.sep)
 
         if model_from_s3:
             url = parse.urlparse(model_uri)
             bucket, key = url.netloc, url.path.lstrip('/')
             new_key = key.replace(os.path.basename(key), new_model_name)
 
-            sagemaker_session.boto_session.resource('s3').Object(bucket, new_key).upload_file(tar_file)
+            sagemaker_session.boto_session.resource('s3').Object(bucket, new_key).upload_file(new_model_path)
             return 's3://%s/%s' % (bucket, new_key)
         else:
             return 'file://%s' % new_model_path
-
-
-def _list_files(script, directory):
-    if directory is None:
-        return [script]
-
-    basedir = directory if directory else os.path.dirname(script)
-    return [os.path.join(basedir, name) for name in os.listdir(basedir)]
 
 
 def download_file_from_url(url, dst, sagemaker_session):

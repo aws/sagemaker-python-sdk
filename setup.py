@@ -60,7 +60,7 @@ setup(name="sagemaker",
       install_requires=required_packages,
 
       extras_require={
-          'test': ['tox', 'flake8', 'pytest', 'pytest-cov', 'pytest-rerunfailures',
+          'test': ['tox', 'flake8', 'pytest==4.4.1', 'pytest-cov', 'pytest-rerunfailures',
                    'pytest-xdist', 'mock', 'tensorflow>=1.3.0', 'contextlib2',
                    'awslogs', 'pandas']},
 
