@@ -193,29 +193,6 @@ def test_tar_and_upload_dir_s3_with_kms(utils, sagemaker_session):
     obj.upload_file.assert_called_with(utils.create_tar_file(), ExtraArgs=extra_args)
 
 
-def test_upload_file_s3(sagemaker_session):
-    bucket = 'mybucket'
-    s3_key_prefix = 'input/data/code'
-    script = 'mnist.py'
-    result = fw_utils.upload_file(sagemaker_session, bucket, s3_key_prefix, script)
-
-    assert result == fw_utils.UploadedCode('s3://{}/{}/{}'.format(bucket, s3_key_prefix, script), script)
-
-
-def test_upload_file_s3_with_kms(sagemaker_session):
-    bucket = 'mybucket'
-    s3_key_prefix = 'input/data/code'
-    script = 'mnist.py'
-    kms_key = 'kms-key'
-    result = fw_utils.upload_file(sagemaker_session, bucket, s3_key_prefix, script, kms_key)
-
-    assert result == fw_utils.UploadedCode('s3://{}/{}/{}'.format(bucket, s3_key_prefix, script), script)
-
-    extra_args = {'ServerSideEncryption': 'aws:kms', 'SSEKMSKeyId': kms_key}
-    obj = sagemaker_session.resource('s3').Object('', '')
-    obj.upload_file.assert_called_with(script, ExtraArgs=extra_args)
-
-
 def test_validate_source_dir_does_not_exits(sagemaker_session):
     script = 'mnist.py'
     directory = ' !@#$%^&*()path probably in not there.!@#$%^&*()'

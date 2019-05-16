@@ -13,11 +13,13 @@
 from __future__ import absolute_import
 
 import pytest
+import os
 from mock import Mock
 
 from sagemaker.amazon.amazon_estimator import RecordSet
-from sagemaker.estimator import Estimator
+from sagemaker.estimator import Estimator, Framework
 from sagemaker.job import _Job
+from sagemaker.model import FrameworkModel
 from sagemaker.session import s3_input
 
 BUCKET_NAME = 's3://mybucket/train'
@@ -28,6 +30,7 @@ INSTANCE_TYPE = 'c4.4xlarge'
 VOLUME_SIZE = 1
 MAX_RUNTIME = 1
 ROLE = 'DummyRole'
+REGION = 'us-west-2'
 IMAGE_NAME = 'fakeimage'
 SCRIPT_NAME = 'script.py'
 JOB_NAME = 'fakejob'
@@ -37,6 +40,19 @@ MODEL_URI = 's3://bucket/prefix/model.tar.gz'
 LOCAL_MODEL_NAME = 'file://local/file.tar.gz'
 CODE_CHANNEL_NAME = 'testCodeChannel'
 CODE_URI = 's3://bucket/prefix/code.py'
+DATA_DIR = os.path.join(os.path.dirname(__file__), '..', 'data')
+SCRIPT_PATH = os.path.join(DATA_DIR, SCRIPT_NAME)
+MODEL_CONTAINER_DEF = {
+    'Environment': {
+        'SAGEMAKER_PROGRAM': SCRIPT_NAME,
+        'SAGEMAKER_SUBMIT_DIRECTORY': 's3://mybucket/mi-2017-10-10-14-14-15/sourcedir.tar.gz',
+        'SAGEMAKER_CONTAINER_LOG_LEVEL': '20',
+        'SAGEMAKER_REGION': REGION,
+        'SAGEMAKER_ENABLE_CLOUDWATCH_METRICS': 'false'
+    },
+    'Image': IMAGE_NAME,
+    'ModelDataUrl': MODEL_URI,
+}
 
 
 @pytest.fixture()
@@ -52,6 +68,39 @@ def sagemaker_session():
     mock_session.expand_role = Mock(name='expand_role', return_value=ROLE)
 
     return mock_session
+
+
+class DummyFramework(Framework):
+    __framework_name__ = 'dummy'
+
+    def train_image(self):
+        return IMAGE_NAME
+
+    def create_model(self, role=None, model_server_workers=None):
+        return DummyFrameworkModel(self.sagemaker_session, vpc_config=self.get_vpc_config())
+
+    @classmethod
+    def _prepare_init_params_from_job_description(cls, job_details, model_channel_name=None):
+        init_params = super(DummyFramework, cls)._prepare_init_params_from_job_description(
+            job_details, model_channel_name)
+        init_params.pop("image", None)
+        return init_params
+
+
+class DummyFrameworkModel(FrameworkModel):
+    def __init__(self, sagemaker_session, **kwargs):
+        super(DummyFrameworkModel, self).__init__(MODEL_URI, IMAGE_NAME, INSTANCE_TYPE, ROLE, SCRIPT_NAME,
+                                                  sagemaker_session=sagemaker_session, **kwargs)
+
+    def prepare_container_def(self, instance_type, accelerator_type=None):
+        return MODEL_CONTAINER_DEF
+
+
+@pytest.fixture()
+def framework(sagemaker_session):
+    return DummyFramework(entry_point=SCRIPT_PATH, role=ROLE, sagemaker_session=sagemaker_session,
+                          output_path=S3_OUTPUT_PATH, train_instance_count=INSTANCE_COUNT,
+                          train_instance_type=INSTANCE_TYPE)
 
 
 def test_load_config(estimator):
@@ -106,27 +155,41 @@ def test_load_config_with_model_channel_no_inputs(estimator):
     assert config['stop_condition']['MaxRuntimeInSeconds'] == MAX_RUNTIME
 
 
-def test_load_config_with_code_channel(estimator):
+def test_load_config_with_code_channel(framework):
     inputs = s3_input(BUCKET_NAME)
 
-    estimator.model_uri = MODEL_URI
-    estimator.model_channel_name = MODEL_CHANNEL_NAME
-    estimator.code_uri = CODE_URI
-    estimator.code_channel_name = CODE_CHANNEL_NAME
-    estimator._enable_network_isolation = True
+    framework.model_uri = MODEL_URI
+    framework.model_channel_name = MODEL_CHANNEL_NAME
+    framework.code_uri = CODE_URI
+    framework._enable_network_isolation = True
+    config = _Job._load_config(inputs, framework)
 
-    config = _Job._load_config(inputs, estimator)
-
+    assert len(config['input_config']) == 3
     assert config['input_config'][0]['DataSource']['S3DataSource']['S3Uri'] == BUCKET_NAME
     assert config['input_config'][2]['DataSource']['S3DataSource']['S3Uri'] == CODE_URI
-    assert config['input_config'][2]['ChannelName'] == CODE_CHANNEL_NAME
+    assert config['input_config'][2]['ChannelName'] == framework.code_channel_name
     assert config['role'] == ROLE
     assert config['output_config']['S3OutputPath'] == S3_OUTPUT_PATH
     assert 'KmsKeyId' not in config['output_config']
     assert config['resource_config']['InstanceCount'] == INSTANCE_COUNT
     assert config['resource_config']['InstanceType'] == INSTANCE_TYPE
-    assert config['resource_config']['VolumeSizeInGB'] == VOLUME_SIZE
-    assert config['stop_condition']['MaxRuntimeInSeconds'] == MAX_RUNTIME
+
+
+def test_load_config_with_code_channel_no_code_uri(framework):
+    inputs = s3_input(BUCKET_NAME)
+
+    framework.model_uri = MODEL_URI
+    framework.model_channel_name = MODEL_CHANNEL_NAME
+    framework._enable_network_isolation = True
+    config = _Job._load_config(inputs, framework)
+
+    assert len(config['input_config']) == 2
+    assert config['input_config'][0]['DataSource']['S3DataSource']['S3Uri'] == BUCKET_NAME
+    assert config['role'] == ROLE
+    assert config['output_config']['S3OutputPath'] == S3_OUTPUT_PATH
+    assert 'KmsKeyId' not in config['output_config']
+    assert config['resource_config']['InstanceCount'] == INSTANCE_COUNT
+    assert config['resource_config']['InstanceType'] == INSTANCE_TYPE
 
 
 def test_format_inputs_none():
