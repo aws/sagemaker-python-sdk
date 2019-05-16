@@ -363,6 +363,37 @@ def test_repack_model_from_s3_saved_model_to_s3(tmpdir):
     assert re.match(r'^s3://fake/model-\d+-\d+.tar.gz$', new_model_uri)
 
 
+def test_repack_model_with_inference_file_named_differently_should_create_inference_file(tmpdir):
+
+    tmp = str(tmpdir)
+
+    model_path = os.path.join(tmp, 'model')
+    write_file(model_path, 'model data')
+
+    source_dir = os.path.join(tmp, 'source-dir')
+    os.mkdir(source_dir)
+    script_path = os.path.join(source_dir, 'another-inference.py')
+    write_file(script_path, 'inference script')
+
+    contents = [model_path]
+
+    sagemaker_session = MagicMock()
+    mock_s3_model_tar(contents, sagemaker_session, tmp)
+    fake_upload_path = mock_s3_upload(sagemaker_session, tmp)
+
+    model_uri = 's3://fake/location'
+
+    new_model_uri = sagemaker.utils.repack_model('another-inference.py',
+                                                 source_dir,
+                                                 model_uri,
+                                                 sagemaker_session)
+
+    assert list_tar_files(fake_upload_path, tmpdir) == {'/code/another-inference.py',
+                                                        '/code/inference.py',
+                                                        '/model'}
+    assert re.match(r'^s3://fake/model-\d+-\d+.tar.gz$', new_model_uri)
+
+
 def test_repack_model_from_file_saves_model_to_file(tmpdir):
 
     tmp = str(tmpdir)

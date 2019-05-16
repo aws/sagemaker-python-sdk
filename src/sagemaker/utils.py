@@ -350,7 +350,7 @@ from __future__ import absolute_import
 from {module_name} import *
         '''
 
-        if inference_script != 'inference.py':
+        if os.path.basename(inference_script) != 'inference.py':
             with open(os.path.join(code_dir, 'inference.py'), 'a') as f:
                 module_name = os.path.basename(inference_script).replace('.py', '')
                 f.write(default_inference_script.format(module_name=module_name))
