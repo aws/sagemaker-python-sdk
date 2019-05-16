@@ -202,7 +202,7 @@ class LocalSession(Session):
         if platform.system() == 'Windows':
             logger.warning("Windows Support for Local Mode is Experimental")
 
-    def _initialize(self, boto_session, sagemaker_client, sagemaker_runtime_client):
+    def _initialize(self, boto_session, sagemaker_client, sagemaker_runtime_client, sts_endpoint_url):
         """Initialize this Local SageMaker Session."""
 
         self.boto_session = boto_session or boto3.Session()
@@ -213,6 +213,7 @@ class LocalSession(Session):
 
         self.sagemaker_client = LocalSagemakerClient(self)
         self.sagemaker_runtime_client = LocalSagemakerRuntimeClient(self.config)
+        self.sts_endpoint_url = sts_endpoint_url
         self.local_mode = True
 
     def logs_for_job(self, job_name, wait=False, poll=5):
