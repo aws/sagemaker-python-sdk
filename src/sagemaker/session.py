@@ -75,7 +75,8 @@ class Session(object):
             sagemaker_runtime_client (boto3.SageMakerRuntime.Client): Client which makes ``InvokeEndpoint``
                 calls to Amazon SageMaker (default: None). Predictors created using this ``Session`` use this client.
                 If not provided, one will be created using this instance's ``boto_session``.
-            sts_endpoint_url (str): Endpoint URL for STS endpoint. If none provided, boto3 will default to use sts.amazonaws.com.
+            sts_endpoint_url (str): Endpoint URL for STS endpoint. If none provided, boto3 will default to 
+                use sts.amazonaws.com.
         """
         self._default_bucket = None
         self.sts_endpoint_url = sts_endpoint_url
@@ -181,7 +182,8 @@ class Session(object):
             return self._default_bucket
 
         if self.sts_endpoint_url:
-            account = self.boto_session.client('sts', endpoint_url=self.sts_endpoint_url).get_caller_identity()['Account']
+            account = \
+                self.boto_session.client('sts', endpoint_url=self.sts_endpoint_url).get_caller_identity()['Account']
         else:
             account = self.boto_session.client('sts').get_caller_identity()['Account']
 
@@ -1097,7 +1099,8 @@ class Session(object):
             (str): The ARN user or role
         """
         if self.sts_endpoint_url:
-            assumed_role = self.boto_session.client('sts', endpoint_url=self.sts_endpoint_url).get_caller_identity()['Arn']
+            assumed_role = \
+                self.boto_session.client('sts', endpoint_url=self.sts_endpoint_url).get_caller_identity()['Arn']
         else:
             assumed_role = self.boto_session.client('sts').get_caller_identity()['Arn']
 
