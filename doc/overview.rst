@@ -563,7 +563,7 @@ Secure Training and Inference with Network Isolation (Internet-Free) Mode
 -------------------------------------------------------------------------
 You can enable network isolation mode when running training and inference on Amazon SageMaker.
 
-For more information about Amazon SageMaker network isolation mode, see the SageMaker documentation.
+For more information about Amazon SageMaker network isolation mode, see the `SageMaker documentation on network isolation or internet-free mode <https://docs.aws.amazon.com/sagemaker/latest/dg/mkt-algo-model-internet-free.html>`__.
 
 To train a model in network isolation mode, set the optional parameter ``enable_network_isolation`` to ``True`` in any network isolation supported Framework Estimator.
 
