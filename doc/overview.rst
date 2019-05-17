@@ -559,7 +559,7 @@ Likewise, when you create ``Transformer`` from the ``Estimator`` using ``transfo
     # Transform Job container instances will run in your VPC
     mxnet_vpc_transformer.transform('s3://my-bucket/batch-transform-input')
 
-Secure Training and Inference with Network Isolation (Internet-Free) Mode
+Secure Training with Network Isolation (Internet-Free) Mode
 -------------------------------------------------------------------------
 You can enable network isolation mode when running training and inference on Amazon SageMaker.
 
@@ -580,18 +580,11 @@ To train a model in network isolation mode, set the optional parameter ``enable_
     sklearn_estimator.fit({'train': 's3://my-data-bucket/path/to/my/training/data',
                             'test': 's3://my-data-bucket/path/to/my/test/data'})
 
-When this training job is created, the SageMaker Python SDK will upload the files in ``entry_point``, ``source_dir``, and ``dependencies`` to S3 as a compressed ``sourcedir.tar.gz`` file (``'s3://mybucket/sourcedir.tar.gz'``). A new training job channel, named ``code``, will be added with that S3 URI.  Before the training docker container is initialized, the ``sourcedir.tar.gz`` will be downloaded from S3 to the ML storage volume like any other offline input channel.
+When this training job is created, the SageMaker Python SDK will upload the files in ``entry_point``, ``source_dir``, and ``dependencies`` to S3 as a compressed ``sourcedir.tar.gz`` file (``'s3://mybucket/sourcedir.tar.gz'``).
 
-For inference, call ``deploy(...)`` on the fitted estimator with the optional parameter ``enable_network_isolation`` set to ``True``.
+A new training job channel, named ``code``, will be added with that S3 URI.  Before the training docker container is initialized, the ``sourcedir.tar.gz`` will be downloaded from S3 to the ML storage volume like any other offline input channel.
 
-.. code:: python
-
-    # Deploy estimator to a SageMaker Endpoint and get a Predictor
-    predictor = sklearn_estimator.deploy(instance_type='ml.m4.xlarge',
-                                        initial_instance_count=1,
-                                        enable_network_isolation=True)
-
-This isolates the model container. No inbound or outbound network calls can be made to or from the model container.
+Once the training job begins, the training container will look at the offline input ``code`` channel to install dependencies and run the entry script. This isolates the training container, so no inbound or outbound network calls can be made.
 
 
 FAQ
