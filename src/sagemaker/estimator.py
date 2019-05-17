@@ -769,6 +769,7 @@ class Framework(EstimatorBase):
     LAUNCH_MPI_ENV_NAME = 'sagemaker_mpi_enabled'
     MPI_NUM_PROCESSES_PER_HOST = 'sagemaker_mpi_num_of_processes_per_host'
     MPI_CUSTOM_MPI_OPTIONS = 'sagemaker_mpi_custom_mpi_options'
+    CONTAINER_CODE_CHANNEL_PATH = '/opt/ml/input/data/code'
 
     def __init__(self, entry_point, source_dir=None, hyperparameters=None, enable_cloudwatch_metrics=False,
                  container_log_level=logging.INFO, code_location=None, image_name=None, dependencies=None,
@@ -813,10 +814,10 @@ class Framework(EstimatorBase):
                     >>>     |------ virtual-env
 
             enable_network_isolation (bool): Specifies whether container will run in network isolation mode. Network
-                isolation mode restricts the container access to outside networks (such as the internet). If True,
-                a channel named "code" will be created for any user entry script for training. The user entry script,
-                files in source_dir (if specified), and dependencies will be uploaded in a tar to S3. Also known as
-                internet-free mode (default: `False`).
+                isolation mode restricts the container access to outside networks (such as the internet). The container
+                does not make any inbound or outbound network calls. If True, a channel named "code" will be created
+                for any user entry script for training. The user entry script, files in source_dir (if specified), and
+                dependencies will be uploaded in a tar to S3. Also known as internet-free mode (default: `False`).
             **kwargs: Additional kwargs passed to the ``EstimatorBase`` constructor.
         """
         super(Framework, self).__init__(**kwargs)
@@ -870,9 +871,8 @@ class Framework(EstimatorBase):
             code_dir = 'file://' + self.source_dir
             script = self.entry_point
         elif self.enable_network_isolation() and self.entry_point:
-            code_channel_location = 'input/data/code'
-            self.uploaded_code = self._stage_user_code_in_s3(s3_location=code_channel_location)
-            code_dir = "/opt/ml/{}".format(code_channel_location)
+            self.uploaded_code = self._stage_user_code_in_s3()
+            code_dir = self.CONTAINER_CODE_CHANNEL_PATH
             script = self.uploaded_code.script_name
             self.code_uri = self.uploaded_code.s3_prefix
         else:
@@ -888,7 +888,7 @@ class Framework(EstimatorBase):
         self._hyperparameters[JOB_NAME_PARAM_NAME] = self._current_job_name
         self._hyperparameters[SAGEMAKER_REGION_PARAM_NAME] = self.sagemaker_session.boto_region_name
 
-    def _stage_user_code_in_s3(self, s3_location='source'):
+    def _stage_user_code_in_s3(self):
         """Upload the user training script to s3 and return the location.
 
         Returns: s3 uri
@@ -898,16 +898,16 @@ class Framework(EstimatorBase):
 
         if self.code_location is None and local_mode:
             code_bucket = self.sagemaker_session.default_bucket()
-            code_s3_prefix = '{}/{}'.format(self._current_job_name, s3_location)
+            code_s3_prefix = '{}/{}'.format(self._current_job_name, 'source')
             kms_key = None
 
         elif self.code_location is None:
             code_bucket, _ = parse_s3_url(self.output_path)
-            code_s3_prefix = '{}/{}'.format(self._current_job_name, s3_location)
+            code_s3_prefix = '{}/{}'.format(self._current_job_name, 'source')
             kms_key = self.output_kms_key
         else:
             code_bucket, key_prefix = parse_s3_url(self.code_location)
-            code_s3_prefix = '/'.join(filter(None, [key_prefix, self._current_job_name, s3_location]))
+            code_s3_prefix = '/'.join(filter(None, [key_prefix, self._current_job_name, 'source']))
 
             output_bucket, _ = parse_s3_url(self.output_path)
             kms_key = self.output_kms_key if code_bucket == output_bucket else None
