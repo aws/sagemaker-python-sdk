@@ -27,28 +27,26 @@ from sagemaker.tensorflow.serving import Model, Predictor
 
 
 @pytest.fixture(scope='session', params=[
-    'local'
-    # 'ml.c5.xlarge',
-    # pytest.param('ml.p3.2xlarge',
-    #              marks=pytest.mark.skipif(
-    #                  tests.integ.test_region() in tests.integ.HOSTING_NO_P3_REGIONS,
-    #                  reason='no ml.p3 instances in this region'))
-])
+    'ml.c5.xlarge',
+    pytest.param('ml.p3.2xlarge',
+                 marks=pytest.mark.skipif(
+                     tests.integ.test_region() in tests.integ.HOSTING_NO_P3_REGIONS,
+                     reason='no ml.p3 instances in this region'))])
 def instance_type(request):
     return request.param
 
 
 @pytest.fixture(scope='module')
-def tfs_predictor(instance_type, sagemaker_local_session, tf_full_version):
+def tfs_predictor(instance_type, sagemaker_session, tf_full_version):
     endpoint_name = sagemaker.utils.unique_name_from_base('sagemaker-tensorflow-serving')
-    model_data = sagemaker_local_session.upload_data(
+    model_data = sagemaker_session.upload_data(
         path=os.path.join(tests.integ.DATA_DIR, 'tensorflow-serving-test-model.tar.gz'),
         key_prefix='tensorflow-serving/models')
     with tests.integ.timeout.timeout_and_delete_endpoint_by_name(endpoint_name,
-                                                                 sagemaker_local_session):
+                                                                 sagemaker_session):
         model = Model(model_data=model_data, role='SageMakerRole',
                       framework_version=tf_full_version,
-                      sagemaker_session=sagemaker_local_session)
+                      sagemaker_session=sagemaker_session)
         predictor = model.deploy(1, instance_type, endpoint_name=endpoint_name)
         yield predictor
 
@@ -63,7 +61,7 @@ def tar_dir(directory, tmpdir):
 
 @pytest.fixture
 def tfs_predictor_with_model_and_entry_point_same_tar(instance_type,
-                                                      sagemaker_local_session,
+                                                      sagemaker_session,
                                                       tf_full_version,
                                                       tmpdir):
     endpoint_name = sagemaker.utils.unique_name_from_base('sagemaker-tensorflow-serving')
@@ -71,80 +69,80 @@ def tfs_predictor_with_model_and_entry_point_same_tar(instance_type,
     model_tar = tar_dir(os.path.join(tests.integ.DATA_DIR, 'tfs/tfs-test-model-with-inference'),
                         tmpdir)
 
-    model_data = sagemaker_local_session.upload_data(
+    model_data = sagemaker_session.upload_data(
         path=model_tar,
         key_prefix='tensorflow-serving/models')
 
     with tests.integ.timeout.timeout_and_delete_endpoint_by_name(endpoint_name,
-                                                                 sagemaker_local_session):
+                                                                 sagemaker_session):
         model = Model(model_data=model_data,
                       role='SageMakerRole',
                       framework_version=tf_full_version,
-                      sagemaker_session=sagemaker_local_session)
+                      sagemaker_session=sagemaker_session)
         predictor = model.deploy(1, instance_type, endpoint_name=endpoint_name)
         yield predictor
 
 
 @pytest.fixture(scope='module')
 def tfs_predictor_with_model_and_entry_point_different_naming(instance_type,
-                                                              sagemaker_local_session,
+                                                              sagemaker_session,
                                                               tf_full_version):
     endpoint_name = sagemaker.utils.unique_name_from_base('sagemaker-tensorflow-serving')
 
-    model_data = sagemaker_local_session.upload_data(
+    model_data = sagemaker_session.upload_data(
         path=os.path.join(tests.integ.DATA_DIR,
                           'tensorflow-serving-test-model.tar.gz'),
         key_prefix='tensorflow-serving/models')
 
     with tests.integ.timeout.timeout_and_delete_endpoint_by_name(endpoint_name,
-                                                                 sagemaker_local_session):
+                                                                 sagemaker_session):
         entry_point = os.path.join(tests.integ.DATA_DIR,
                                    'tfs/tfs-test-inference-model-with-another-name/code/serving.py')
         model = Model(entry_point=entry_point,
                       model_data=model_data,
                       role='SageMakerRole',
                       framework_version=tf_full_version,
-                      sagemaker_session=sagemaker_local_session)
+                      sagemaker_session=sagemaker_session)
         predictor = model.deploy(1, instance_type, endpoint_name=endpoint_name)
         yield predictor
 
 
 @pytest.fixture(scope='module')
 def tfs_predictor_with_model_and_entry_point_separated(instance_type,
-                                                       sagemaker_local_session, tf_full_version):
+                                                       sagemaker_session, tf_full_version):
     endpoint_name = sagemaker.utils.unique_name_from_base('sagemaker-tensorflow-serving')
 
-    model_data = sagemaker_local_session.upload_data(
+    model_data = sagemaker_session.upload_data(
         path=os.path.join(tests.integ.DATA_DIR,
                           'tensorflow-serving-test-model.tar.gz'),
         key_prefix='tensorflow-serving/models')
 
     with tests.integ.timeout.timeout_and_delete_endpoint_by_name(endpoint_name,
-                                                                 sagemaker_local_session):
+                                                                 sagemaker_session):
         entry_point = os.path.join(tests.integ.DATA_DIR,
                                    'tfs/tfs-test-model-with-inference/code/inference.py')
         model = Model(entry_point=entry_point,
                       model_data=model_data,
                       role='SageMakerRole',
                       framework_version=tf_full_version,
-                      sagemaker_session=sagemaker_local_session)
+                      sagemaker_session=sagemaker_session)
         predictor = model.deploy(1, instance_type, endpoint_name=endpoint_name)
         yield predictor
 
 
 @pytest.fixture(scope='module')
-def tfs_predictor_with_accelerator(sagemaker_local_session, tf_full_version):
+def tfs_predictor_with_accelerator(sagemaker_session, tf_full_version):
     endpoint_name = sagemaker.utils.unique_name_from_base("sagemaker-tensorflow-serving")
     instance_type = 'ml.c4.large'
     accelerator_type = 'ml.eia1.medium'
-    model_data = sagemaker_local_session.upload_data(
+    model_data = sagemaker_session.upload_data(
         path=os.path.join(tests.integ.DATA_DIR, 'tensorflow-serving-test-model.tar.gz'),
         key_prefix='tensorflow-serving/models')
     with tests.integ.timeout.timeout_and_delete_endpoint_by_name(endpoint_name,
-                                                                 sagemaker_local_session):
+                                                                 sagemaker_session):
         model = Model(model_data=model_data, role='SageMakerRole',
                       framework_version=tf_full_version,
-                      sagemaker_session=sagemaker_local_session)
+                      sagemaker_session=sagemaker_session)
         predictor = model.deploy(1, instance_type, endpoint_name=endpoint_name,
                                  accelerator_type=accelerator_type)
         yield predictor
