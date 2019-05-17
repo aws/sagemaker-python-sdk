@@ -347,7 +347,7 @@ def repack_model(inference_script, source_directory, model_uri, sagemaker_sessio
 
         default_inference_script = textwrap.dedent('''
         from __future__ import absolute_import
-        
+
         from {module_name} import *
         ''')
 
