@@ -21,6 +21,7 @@ import shutil
 import sys
 import tarfile
 import tempfile
+import textwrap
 import time
 
 from datetime import datetime
@@ -344,11 +345,11 @@ def repack_model(inference_script, source_directory, model_uri, sagemaker_sessio
 
         shutil.copytree(dirname, code_dir)
 
-        default_inference_script = '''
-from __future__ import absolute_import
-
-from {module_name} import *
-'''
+        default_inference_script = textwrap.dedent('''
+        from __future__ import absolute_import
+        
+        from {module_name} import *
+        ''')
 
         if os.path.basename(inference_script) != 'inference.py':
             with open(os.path.join(code_dir, 'inference.py'), 'a') as f:
