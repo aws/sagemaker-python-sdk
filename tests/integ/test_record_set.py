@@ -30,8 +30,8 @@ def test_record_set(sagemaker_session):
     """
     data_path = os.path.join(DATA_DIR, 'one_p_mnist', 'mnist.pkl.gz')
     pickle_args = {} if sys.version_info.major == 2 else {'encoding': 'latin1'}
-    with gzip.open(data_path, 'rb') as f:
-        train_set, _, _ = pickle.load(f, **pickle_args)
+    with gzip.open(data_path, 'rb') as file_object:
+        train_set, _, _ = pickle.load(file_object, **pickle_args)
     kmeans = KMeans(role='SageMakerRole', train_instance_count=1,
                     train_instance_type='ml.c4.xlarge',
                     k=10, sagemaker_session=sagemaker_session)
