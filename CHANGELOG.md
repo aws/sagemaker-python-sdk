@@ -1,5 +1,11 @@
 # Changelog
 
+## v1.21.0 (2019-05-20)
+
+### Features
+
+ * Support for TFS preprocessing
+
 ## v1.20.3 (2019-05-15)
 
 ### Bug fixes and other changes
