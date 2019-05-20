@@ -80,6 +80,7 @@ RETURNED_JOB_DESCRIPTION = {
     },
     'TrainingJobName': 'neo',
     'TrainingJobStatus': 'Completed',
+    'TrainingJobArn': 'arn:aws:sagemaker:us-west-2:336:training-job/neo',
     'OutputDataConfig': {
         'KmsKeyId': '',
         'S3OutputPath': 's3://place/output/neo'
@@ -109,6 +110,10 @@ ENDPOINT_DESC = {
 ENDPOINT_CONFIG_DESC = {
     'ProductionVariants': [{'ModelName': 'model-1'},
                            {'ModelName': 'model-2'}]
+}
+
+LIST_TAGS_RESULT = {
+    'Tags': [{'Key': 'TagtestKey', 'Value': 'TagtestValue'}]
 }
 
 
@@ -157,6 +162,7 @@ def sagemaker_session():
                                                       return_value=DESCRIBE_TRAINING_JOB_RESULT)
     sms.sagemaker_client.describe_endpoint = Mock(return_value=ENDPOINT_DESC)
     sms.sagemaker_client.describe_endpoint_config = Mock(return_value=ENDPOINT_CONFIG_DESC)
+    sms.sagemaker_client.list_tags = Mock(return_value=LIST_TAGS_RESULT)
     return sms
 
 
@@ -460,6 +466,7 @@ def test_attach_framework(sagemaker_session):
     assert framework_estimator.subnets == ['foo']
     assert framework_estimator.security_group_ids == ['bar']
     assert framework_estimator.encrypt_inter_container_traffic is False
+    assert framework_estimator.tags == LIST_TAGS_RESULT['Tags']
 
 
 def test_attach_without_hyperparameters(sagemaker_session):
