@@ -317,6 +317,9 @@ def test_repack_model_without_source_dir(tmpdir):
     script_path = os.path.join(source_dir, 'inference.py')
     write_file(script_path, 'inference script')
 
+    script_path = os.path.join(source_dir, 'this-file-should-not-be-included.py')
+    write_file(script_path, 'This file should not be included')
+
     contents = [model_path]
 
     sagemaker_session = MagicMock()
@@ -345,6 +348,9 @@ def test_repack_model_with_entry_point_without_path_without_source_dir(tmpdir):
     os.mkdir(source_dir)
     script_path = os.path.join(source_dir, 'inference.py')
     write_file(script_path, 'inference script')
+
+    script_path = os.path.join(source_dir, 'this-file-should-not-be-included.py')
+    write_file(script_path, 'This file should not be included')
 
     contents = [model_path]
 
@@ -381,6 +387,9 @@ def test_repack_model_from_s3_saved_model_to_s3(tmpdir):
     script_path = os.path.join(source_dir, 'inference.py')
     write_file(script_path, 'inference script')
 
+    script_path = os.path.join(source_dir, 'this-file-should-be-included.py')
+    write_file(script_path, 'This file should be included')
+
     contents = [model_path]
 
     sagemaker_session = MagicMock()
@@ -394,7 +403,9 @@ def test_repack_model_from_s3_saved_model_to_s3(tmpdir):
                                                  model_uri,
                                                  sagemaker_session)
 
-    assert list_tar_files(fake_upload_path, tmpdir) == {'/code/inference.py', '/model'}
+    assert list_tar_files(fake_upload_path, tmpdir) == {'/code/this-file-should-be-included.py',
+                                                        '/code/inference.py',
+                                                        '/model'}
     assert re.match(r'^s3://fake/model-\d+-\d+.tar.gz$', new_model_uri)
 
 
