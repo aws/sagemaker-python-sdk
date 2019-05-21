@@ -302,7 +302,11 @@ def _tmpdir(suffix='', prefix='tmp'):
     shutil.rmtree(tmp)
 
 
-def repack_model(inference_script, source_directory, model_uri, sagemaker_session):
+def repack_model(inference_script,
+                 source_directory,
+                 model_uri,
+                 repacked_model_uri,
+                 sagemaker_session):
     """Unpack model tarball and creates a new model tarball with the provided code script.
 
     This function does the following:
@@ -313,58 +317,65 @@ def repack_model(inference_script, source_directory, model_uri, sagemaker_sessio
     Args:
         inference_script (str): path or basename of the inference script that will be packed into the model
         source_directory (str): path including all the files that will be packed into the model
+        repacked_model_uri (str): path or file system location where the new model will be saved
         model_uri (str): S3 or file system location of the original model tar
         sagemaker_session (:class:`sagemaker.session.Session`): a sagemaker session to interact with S3.
 
     Returns:
         str: path to the new packed model
     """
-    new_model_name = 'model-%s.tar.gz' % sagemaker.utils.sagemaker_short_timestamp()
+    new_model_name = os.path.basename(repacked_model_uri)
+    basedir = os.path.dirname(repacked_model_uri)
 
     with _tmpdir() as tmp:
-        tmp_model_dir = os.path.join(tmp, 'model')
-        os.mkdir(tmp_model_dir)
+        tmp_model_dir = _extract_model_to_dir(model_uri, tmp, sagemaker_session)
 
-        model_from_s3 = model_uri.startswith('s3://')
-        if model_from_s3:
-            local_model_path = os.path.join(tmp, 'tar_file')
-            download_file_from_url(model_uri, local_model_path, sagemaker_session)
+        _copy_code_to_dir(inference_script, source_directory, tmp_model_dir)
 
-            new_model_path = os.path.join(tmp, new_model_name)
-        else:
-            local_model_path = model_uri.replace('file://', '')
-            new_model_path = os.path.join(os.path.dirname(local_model_path), new_model_name)
+        if basedir.startswith('s3://'):
+            repack_model_path = os.path.join(tmp, new_model_name)
 
-        with tarfile.open(name=local_model_path, mode='r:gz') as t:
-            t.extractall(path=tmp_model_dir)
+            with tarfile.open(repack_model_path, mode='w:gz') as t:
+                t.add(tmp_model_dir, arcname=os.path.sep)
 
-        code_dir = os.path.join(tmp_model_dir, 'code')
-        if os.path.exists(code_dir):
-            shutil.rmtree(code_dir, ignore_errors=True)
-
-        if source_directory:
-            shutil.copytree(source_directory, code_dir)
-        else:
-            os.mkdir(code_dir)
-            shutil.copy2(inference_script, code_dir)
-
-        with tarfile.open(new_model_path, mode='w:gz') as t:
-            t.add(tmp_model_dir, arcname=os.path.sep)
-
-        if model_from_s3:
-            url = parse.urlparse(model_uri)
+            url = parse.urlparse(basedir)
             bucket, key = url.netloc, url.path.lstrip('/')
             new_key = key.replace(os.path.basename(key), new_model_name)
 
-            try:
-                sagemaker_session.boto_session.resource('s3').Object(bucket, new_key).upload_file(new_model_path)
-            except exceptions.S3UploadFailedError:
-                bucket = sagemaker_session.default_bucket()
-                sagemaker_session.boto_session.resource('s3').Object(bucket, new_key).upload_file(new_model_path)
+            sagemaker_session.boto_session.resource('s3').Object(bucket, new_key).upload_file(repack_model_path)
 
             return 's3://%s/%s' % (bucket, new_key)
         else:
-            return 'file://%s' % new_model_path
+            repack_model_path = repacked_model_uri.replace('file://', '')
+
+            with tarfile.open(repack_model_path, mode='w:gz') as t:
+                t.add(tmp_model_dir, arcname=os.path.sep)
+
+            return 'file://%s' % repack_model_path
+
+
+def _copy_code_to_dir(inference_script, source_directory, tmp_model_dir):
+    code_dir = os.path.join(tmp_model_dir, 'code')
+    if os.path.exists(code_dir):
+        shutil.rmtree(code_dir, ignore_errors=True)
+    if source_directory:
+        shutil.copytree(source_directory, code_dir)
+    else:
+        os.mkdir(code_dir)
+        shutil.copy2(inference_script, code_dir)
+
+
+def _extract_model_to_dir(model_uri, dst, sagemaker_session):
+    tmp_model_dir = os.path.join(dst, 'model')
+    os.mkdir(tmp_model_dir)
+    if model_uri.startswith('s3://'):
+        local_model_path = os.path.join(dst, 'tar_file')
+        download_file_from_url(model_uri, local_model_path, sagemaker_session)
+    else:
+        local_model_path = model_uri.replace('file://', '')
+    with tarfile.open(name=local_model_path, mode='r:gz') as t:
+        t.extractall(path=tmp_model_dir)
+    return tmp_model_dir
 
 
 def download_file_from_url(url, dst, sagemaker_session):
