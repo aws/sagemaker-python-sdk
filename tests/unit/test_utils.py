@@ -21,11 +21,13 @@ import os
 import re
 import time
 
+from boto3 import exceptions
 import pytest
 from mock import call, patch, Mock, MagicMock
 
 import sagemaker
 
+BUCKET_WITHOUT_WRITING_PERMISSION = 's3://bucket-without-writing-permission'
 
 NAME = 'base_name'
 BUCKET_NAME = 'some_bucket'
@@ -305,6 +307,38 @@ def write_file(path, content):
         f.write(content)
 
 
+def test_repack_model_data_without_upload_permissions_uses_default_bucket(tmpdir):
+    tmp = str(tmpdir)
+
+    model_path = os.path.join(tmp, 'model')
+    write_file(model_path, 'model data')
+
+    source_dir = os.path.join(tmp, 'source-dir')
+    os.mkdir(source_dir)
+    script_path = os.path.join(source_dir, 'inference.py')
+    write_file(script_path, 'inference script')
+
+    script_path = os.path.join(source_dir, 'this-file-should-not-be-included.py')
+    write_file(script_path, 'This file should not be included')
+
+    contents = [model_path]
+
+    sagemaker_session = MagicMock()
+    mock_s3_model_tar(contents, sagemaker_session, tmp)
+    fake_upload_path = mock_s3_upload(sagemaker_session, tmp)
+    sagemaker_session.default_bucket.return_value = 'default-bucket'
+
+    model_uri = '%s/resnet_50.tar.gz' % BUCKET_WITHOUT_WRITING_PERMISSION
+
+    new_model_uri = sagemaker.utils.repack_model(os.path.join(source_dir, 'inference.py'),
+                                                 None,
+                                                 model_uri,
+                                                 sagemaker_session)
+
+    assert list_tar_files(fake_upload_path, tmpdir) == {'/code/inference.py', '/model'}
+    assert re.match(r'^s3://default-bucket/model-\d+-\d+.tar.gz$', new_model_uri)
+
+
 def test_repack_model_without_source_dir(tmpdir):
 
     tmp = str(tmpdir)
@@ -492,6 +526,8 @@ def mock_s3_upload(sagemaker_session, tmp):
             self.key = key
 
         def upload_file(self, target):
+            if self.bucket in BUCKET_WITHOUT_WRITING_PERMISSION:
+                raise exceptions.S3UploadFailedError()
             shutil.copy2(target, dst)
 
     sagemaker_session.boto_session.resource().Object = MockS3Object

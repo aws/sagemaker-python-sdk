@@ -25,6 +25,8 @@ import time
 
 from datetime import datetime
 from functools import wraps
+
+from boto3 import exceptions
 from six.moves.urllib import parse
 
 import six
@@ -354,7 +356,12 @@ def repack_model(inference_script, source_directory, model_uri, sagemaker_sessio
             bucket, key = url.netloc, url.path.lstrip('/')
             new_key = key.replace(os.path.basename(key), new_model_name)
 
-            sagemaker_session.boto_session.resource('s3').Object(bucket, new_key).upload_file(new_model_path)
+            try:
+                sagemaker_session.boto_session.resource('s3').Object(bucket, new_key).upload_file(new_model_path)
+            except exceptions.S3UploadFailedError:
+                bucket = sagemaker_session.default_bucket()
+                sagemaker_session.boto_session.resource('s3').Object(bucket, new_key).upload_file(new_model_path)
+
             return 's3://%s/%s' % (bucket, new_key)
         else:
             return 'file://%s' % new_model_path
