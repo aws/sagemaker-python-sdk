@@ -1,5 +1,11 @@
 # Changelog
 
+## v1.21.1 (2019-05-21)
+
+### Bug fixes and other changes
+
+ * repack model function works without source directory
+
 ## v1.21.0 (2019-05-20)
 
 ### Features
