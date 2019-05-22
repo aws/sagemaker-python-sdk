@@ -1,5 +1,12 @@
 # Changelog
 
+## v1.21.2 (2019-05-22)
+
+### Bug fixes and other changes
+
+ * set _current_job_name in attach()
+ * emit training jobs tags to estimator
+
 ## v1.21.1 (2019-05-21)
 
 ### Bug fixes and other changes
