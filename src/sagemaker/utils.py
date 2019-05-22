@@ -323,7 +323,7 @@ def repack_model(inference_script, source_directory, model_uri, sagemaker_sessio
         tmp_model_dir = os.path.join(tmp, 'model')
         os.mkdir(tmp_model_dir)
 
-        model_from_s3 = model_uri.startswith('s3://')
+        model_from_s3 = model_uri.lower().startswith('s3://')
         if model_from_s3:
             local_model_path = os.path.join(tmp, 'tar_file')
             download_file_from_url(model_uri, local_model_path, sagemaker_session)
@@ -340,7 +340,14 @@ def repack_model(inference_script, source_directory, model_uri, sagemaker_sessio
         if os.path.exists(code_dir):
             shutil.rmtree(code_dir, ignore_errors=True)
 
-        if source_directory:
+        if source_directory and source_directory.lower().startswith('s3://'):
+            local_code_path = os.path.join(tmp, 'local_code.tar.gz')
+            download_file_from_url(source_directory, local_code_path, sagemaker_session)
+
+            with tarfile.open(name=local_model_path, mode='r:gz') as t:
+                t.extractall(path=code_dir)
+
+        elif source_directory:
             shutil.copytree(source_directory, code_dir)
         else:
             os.mkdir(code_dir)
