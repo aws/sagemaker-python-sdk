@@ -769,7 +769,7 @@ class Framework(EstimatorBase):
     LAUNCH_MPI_ENV_NAME = 'sagemaker_mpi_enabled'
     MPI_NUM_PROCESSES_PER_HOST = 'sagemaker_mpi_num_of_processes_per_host'
     MPI_CUSTOM_MPI_OPTIONS = 'sagemaker_mpi_custom_mpi_options'
-    CONTAINER_CODE_CHANNEL_PATH = '/opt/ml/input/data/code'
+    CONTAINER_CODE_CHANNEL_SOURCEDIR_PATH = '/opt/ml/input/data/code/sourcedir.tar.gz'
 
     def __init__(self, entry_point, source_dir=None, hyperparameters=None, enable_cloudwatch_metrics=False,
                  container_log_level=logging.INFO, code_location=None, image_name=None, dependencies=None,
@@ -872,7 +872,7 @@ class Framework(EstimatorBase):
             script = self.entry_point
         elif self.enable_network_isolation() and self.entry_point:
             self.uploaded_code = self._stage_user_code_in_s3()
-            code_dir = self.CONTAINER_CODE_CHANNEL_PATH
+            code_dir = self.CONTAINER_CODE_CHANNEL_SOURCEDIR_PATH
             script = self.uploaded_code.script_name
             self.code_uri = self.uploaded_code.s3_prefix
         else:
