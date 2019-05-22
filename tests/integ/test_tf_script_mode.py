@@ -30,7 +30,7 @@ ROLE = 'SageMakerRole'
 
 RESOURCE_PATH = os.path.join(os.path.dirname(__file__), '..', 'data')
 MNIST_RESOURCE_PATH = os.path.join(RESOURCE_PATH, 'tensorflow_mnist')
-TFS_RESOURCE_PATH = os.path.join(RESOURCE_PATH, 'tfs-test-entrypoint-with-handler')
+TFS_RESOURCE_PATH = os.path.join(RESOURCE_PATH, 'tfs', 'tfs-test-entrypoint-with-handler')
 
 SCRIPT = os.path.join(MNIST_RESOURCE_PATH, 'mnist.py')
 PARAMETER_SERVER_DISTRIBUTION = {'parameter_server': {'enabled': True}}
