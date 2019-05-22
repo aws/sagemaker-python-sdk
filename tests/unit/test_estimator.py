@@ -452,6 +452,7 @@ def test_attach_framework(sagemaker_session):
                                                                     return_value=returned_job_description)
 
     framework_estimator = DummyFramework.attach(training_job_name='neo', sagemaker_session=sagemaker_session)
+    assert framework_estimator._current_job_name == 'neo'
     assert framework_estimator.latest_training_job.job_name == 'neo'
     assert framework_estimator.role == 'arn:aws:iam::366:role/SageMakerRole'
     assert framework_estimator.train_instance_count == 1

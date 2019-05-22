@@ -324,6 +324,7 @@ def test_attach(sagemaker_session, sklearn_version):
                                                                     return_value=returned_job_description)
 
     estimator = SKLearn.attach(training_job_name='neo', sagemaker_session=sagemaker_session)
+    assert estimator._current_job_name == 'neo'
     assert estimator.latest_training_job.job_name == 'neo'
     assert estimator.py_version == PYTHON_VERSION
     assert estimator.framework_version == sklearn_version
