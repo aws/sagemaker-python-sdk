@@ -340,9 +340,11 @@ def repack_model(inference_script, source_directory, model_uri, sagemaker_sessio
         if os.path.exists(code_dir):
             shutil.rmtree(code_dir, ignore_errors=True)
 
-        dirname = source_directory if source_directory else os.path.dirname(inference_script)
-
-        shutil.copytree(dirname, code_dir)
+        if source_directory:
+            shutil.copytree(source_directory, code_dir)
+        else:
+            os.mkdir(code_dir)
+            shutil.copy2(inference_script, code_dir)
 
         with tarfile.open(new_model_path, mode='w:gz') as t:
             t.add(tmp_model_dir, arcname=os.path.sep)
