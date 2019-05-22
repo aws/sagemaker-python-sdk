@@ -154,12 +154,14 @@ def test_mnist_async(sagemaker_session):
                                  estimator.latest_training_job.name, TAGS)
 
 
-def test_deploy_with_input_handlers(sagemaker_session):
+@pytest.mark.skipif(tests.integ.PYTHON_VERSION != 'py3',
+                    reason="Script Mode tests are only configured to run with Python 3")
+def test_deploy_with_input_handlers(sagemaker_session, instance_type):
     estimator = TensorFlow(entry_point='inference.py',
                            source_dir=TFS_RESOURCE_PATH,
                            role=ROLE,
                            train_instance_count=1,
-                           train_instance_type='ml.c5.4xlarge',
+                           train_instance_type=instance_type,
                            sagemaker_session=sagemaker_session,
                            py_version='py3',
                            framework_version=TensorFlow.LATEST_VERSION,
@@ -171,7 +173,7 @@ def test_deploy_with_input_handlers(sagemaker_session):
 
     with timeout.timeout_and_delete_endpoint_by_name(endpoint_name, sagemaker_session):
 
-        predictor = estimator.deploy(initial_instance_count=1, instance_type='ml.c5.4xlarge',
+        predictor = estimator.deploy(initial_instance_count=1, instance_type=instance_type,
                                      endpoint_name=endpoint_name)
 
         input_data = {'instances': [1.0, 2.0, 5.0]}
