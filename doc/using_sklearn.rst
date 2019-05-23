@@ -170,7 +170,7 @@ The following are optional arguments. When you create a ``SKLearn`` object, you 
    method execution.
 -  ``output_kms_key`` Optional KMS key ID to optionally encrypt training
    output with.
--  ``job_name`` Name to assign for the training job that the fit()
+-  ``base_job_name`` Name to assign for the training job that the fit()
    method launches. If not specified, the estimator generates a default
    job name, based on the training image name and current timestamp
 -  ``image_name`` An alternative docker image to use for training and
