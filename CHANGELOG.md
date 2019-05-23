@@ -1,5 +1,15 @@
 # Changelog
 
+## v1.22.0 (2019-05-23)
+
+### Features
+
+ * add encryption option to "record_set"
+
+### Bug fixes and other changes
+
+ * honor source_dir from S3
+
 ## v1.21.2 (2019-05-22)
 
 ### Bug fixes and other changes
