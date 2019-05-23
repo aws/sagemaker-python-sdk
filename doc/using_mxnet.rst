@@ -703,7 +703,7 @@ The return object should be one of the following:
 For versions 1.4 and higher:
 ----------------------------
 - a tuple with two items: the response data and ``accept_type`` (the content type of the response data), or
-- the response data: (the content type of the response will be set to either the accept header in the initial request or a default)
+- the response data: (the content type of the response will be set to either the accept header in the initial request or default to application/json)
 
 For versions 1.3 and lower:
 ---------------------------

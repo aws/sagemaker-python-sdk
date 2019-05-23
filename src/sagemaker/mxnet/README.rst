@@ -6,7 +6,7 @@ With the SageMaker Python SDK, you can train and host MXNet models on Amazon Sag
 
 Supported versions of MXNet: ``1.4.0``, ``1.3.0``, ``1.2.1``, ``1.1.0``, ``1.0.0``, ``0.12.1``.
 
-Supported versions of MXNet for Elastic Inference: ``1.3.0``, ``1.4.0``.
+Supported versions of MXNet for Elastic Inference: ``1.4.0``, ``1.3.0``.
 
 For information about using MXNet with the SageMaker Python SDK, see https://sagemaker.readthedocs.io/en/stable/using_mxnet.html.
 
@@ -15,7 +15,7 @@ SageMaker MXNet Containers
 
 When training and deploying training scripts, SageMaker runs your Python script in a Docker container with several libraries installed. When creating the Estimator and calling deploy to create the SageMaker Endpoint, you can control the environment your script runs in.
 
-SageMaker runs MXNet Estimator scripts in either Python 2.7 or Python 3.6. You can select the Python version by passing a ``py_version`` keyword arg to the MXNet Estimator constructor. Setting this to ``py2`` (the default) will cause your training script to be run on Python 2.7. Setting this to ``py3`` will cause your training script to be run on Python 3.5. This Python version applies to both the Training Job, created by fit, and the Endpoint, created by deploy.
+SageMaker runs MXNet scripts in either Python 2.7 or Python 3.6. You can select the Python version by passing a ``py_version`` keyword arg to the MXNet Estimator constructor. Setting this to ``py2`` (the default) will cause your training script to be run on Python 2.7. Setting this to ``py3`` will cause your training script to be run on Python 3.6. This Python version applies to both the Training Job, created by fit, and the Endpoint, created by deploy.
 
 Your MXNet training script will be run on version 1.2.1 by default. (See below for how to choose a different version, and currently supported versions.) The decision to use the GPU or CPU version of MXNet is made by the ``train_instance_type``, set on the MXNet constructor. If you choose a GPU instance type, your training job will be run on a GPU version of MXNet. If you choose a CPU instance type, your training job will be run on a CPU version of MXNet. Similarly, when you call deploy, specifying a GPU or CPU deploy_instance_type, will control which MXNet build your Endpoint runs.
 
