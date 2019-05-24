@@ -436,13 +436,13 @@ class FrameworkModel(Model):
         if self.sagemaker_session.local_mode and local_code:
             self.uploaded_code = None
         elif not repack:
-                bucket = self.bucket or self.sagemaker_session.default_bucket()
-                self.uploaded_code = fw_utils.tar_and_upload_dir(session=self.sagemaker_session.boto_session,
-                                                                 bucket=bucket,
-                                                                 s3_key_prefix=key_prefix,
-                                                                 script=self.entry_point,
-                                                                 directory=self.source_dir,
-                                                                 dependencies=self.dependencies)
+            bucket = self.bucket or self.sagemaker_session.default_bucket()
+            self.uploaded_code = fw_utils.tar_and_upload_dir(session=self.sagemaker_session.boto_session,
+                                                             bucket=bucket,
+                                                             s3_key_prefix=key_prefix,
+                                                             script=self.entry_point,
+                                                             directory=self.source_dir,
+                                                             dependencies=self.dependencies)
 
         if repack:
             bucket = self.bucket or self.sagemaker_session.default_bucket()
