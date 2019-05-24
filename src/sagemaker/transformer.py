@@ -159,7 +159,7 @@ class Transformer(object):
             wait (bool): Whether the call should wait until the job completes 
                 (default: True).
             logs (bool): Whether to show the logs produced by the job.
-                Only meaningful when wait is True (default: True).
+                Only meaningful when wait is True (default: False).
         """
         local_mode = self.sagemaker_session.local_mode
         if not local_mode and not data.startswith("s3://"):

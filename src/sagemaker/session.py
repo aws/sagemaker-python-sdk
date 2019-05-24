@@ -1436,9 +1436,8 @@ class Session(object):  # pylint: disable=too-many-public-methods
         client = self.boto_session.client("logs", config=config)
         log_group = "/aws/sagemaker/TrainingJobs"
 
-        job_already_completed = status in ("Completed", "Failed", "Stopped")
+        state = _get_initial_job_state(description, 'TrainingJobStatus', wait)
 
-        state = LogState.TAILING if wait and not job_already_completed else LogState.COMPLETE
         dot = False
 
         color_wrap = sagemaker.logs.ColorWrap()
@@ -1521,7 +1520,6 @@ class Session(object):  # pylint: disable=too-many-public-methods
 
         description = self.sagemaker_client.describe_transform_job(TransformJobName=job_name)
         instance_count = description['TransformResources']['InstanceCount']
-        status = description['TransformJobStatus']
 
         stream_names = []  # The list of log streams
         positions = {}     # The current position in each stream, map of stream name -> position
@@ -1532,9 +1530,8 @@ class Session(object):  # pylint: disable=too-many-public-methods
         client = self.boto_session.client('logs', config=config)
         log_group = '/aws/sagemaker/TransformJobs'
 
-        job_already_completed = True if status == 'Completed' or status == 'Failed' or status == 'Stopped' else False
+        state = _get_initial_job_state(description, 'TransformJobStatus', wait)
 
-        state = LogState.TAILING if wait and not job_already_completed else LogState.COMPLETE
         dot = False
 
         color_wrap = sagemaker.logs.ColorWrap()
@@ -1582,9 +1579,6 @@ class Session(object):  # pylint: disable=too-many-public-methods
             self._check_job_status(job_name, description, 'TransformJobStatus')
             if dot:
                 print()
-            # Customers are not billed for hardware provisioning, so billable time is less than total time
-            billable_time = (description['TransformEndTime'] - description['TransformStartTime']) * instance_count
-            print('Billable seconds:', int(billable_time.total_seconds()) + 1)
 
 
 def container_def(image, model_data_url=None, env=None):
@@ -1924,6 +1918,12 @@ def _vpc_config_from_training_job(
     if vpc_config_override is vpc_utils.VPC_CONFIG_DEFAULT:
         return training_job_desc.get(vpc_utils.VPC_CONFIG_KEY)
     return vpc_utils.sanitize(vpc_config_override)
+
+
+def _get_initial_job_state(description, status_key, wait):
+    status = description[status_key]
+    job_already_completed = True if status == 'Completed' or status == 'Failed' or status == 'Stopped' else False
+    return LogState.TAILING if wait and not job_already_completed else LogState.COMPLETE
 
 
 def _flush_log_streams(stream_names, instance_count, client, log_group, job_name, positions, dot, color_wrap):
