@@ -1250,11 +1250,12 @@ def pipeline_container_def(models, instance_type=None):
     """
     Create a definition for executing a pipeline of containers as part of a SageMaker model.
     Args:
-        models (list[sagemaker.Model]): this will be a list of ``sagemaker.Model`` location_map in the order the inference
-        should be invoked.
+        models (list[sagemaker.Model]): this will be a list of ``sagemaker.Model``
+        location_map in the order the inference should be invoked.
         instance_type (str): The EC2 instance type to deploy this Model to. For example, 'ml.p2.xlarge' (default: None).
     Returns:
-        list[dict[str, str]]: list of container definition location_map usable with with the CreateModel API for inference
+        list[dict[str, str]]: list of container definition location_map usable with with the CreateModel
+            API for inference
         pipelines if passed via `Containers` field.
     """
     c_defs = []  # should contain list of container definitions in the same order customer passed
@@ -1334,11 +1335,12 @@ class s3_input(object):
             content_type (str): MIME type of the input data (default: None).
             record_wrapping (str): Valid values: 'RecordIO' (default: None).
             s3_data_type (str): Valid values: 'S3Prefix', 'ManifestFile', 'AugmentedManifestFile'. If 'S3Prefix',
-                ``s3_data`` defines a prefix of s3 location_map to train on. All location_map with s3 keys beginning with
-                ``s3_data`` will be used to train. If 'ManifestFile' or 'AugmentedManifestFile', then ``s3_data``
-                defines a single s3 manifest file or augmented manifest file (respectively), listing the s3 data to
-                train on. Both the ManifestFile and AugmentedManifestFile formats are described in the SageMaker API
-                documentation: https://docs.aws.amazon.com/sagemaker/latest/dg/API_S3DataSource.html
+                ``s3_data`` defines a prefix of s3 location_map to train on. All location_map with s3 keys
+                beginning with ``s3_data`` will be used to train. If 'ManifestFile' or 'AugmentedManifestFile',
+                then ``s3_data`` defines a single s3 manifest file or augmented manifest file (respectively),
+                listing the s3 data to train on. Both the ManifestFile and AugmentedManifestFile formats are d
+                escribed in the SageMaker API ocumentation:
+                https://docs.aws.amazon.com/sagemaker/latest/dg/API_S3DataSource.html
             input_mode (str): Optional override for this channel's input mode (default: None). By default, channels will
                 use the input mode defined on ``sagemaker.estimator.EstimatorBase.input_mode``, but they will ignore
                 that setting if this parameter is set.

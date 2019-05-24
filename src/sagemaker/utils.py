@@ -29,8 +29,6 @@ from six.moves.urllib import parse
 
 import six
 
-import sagemaker
-
 ECR_URI_PATTERN = r'^(\d+)(\.)dkr(\.)ecr(\.)(.+)(\.)(amazonaws.com|c2s.ic.gov)(/)(.*:.*)$'
 
 

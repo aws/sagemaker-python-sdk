@@ -61,8 +61,8 @@ class PipelineModel(object):
             instance_type (str): The EC2 instance type to deploy this Model to. For example, 'ml.p2.xlarge'.
 
         Returns:
-            list[dict[str, str]]: A list of container definition location_map usable with the CreateModel API in the scenario
-            of multiple containers (Inference Pipeline).
+            list[dict[str, str]]: A list of container definition location_map usable with the CreateModel
+            API in the scenario of multiple containers (Inference Pipeline).
         """
 
         return sagemaker.pipeline_container_def(self.models, instance_type)

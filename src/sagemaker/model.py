@@ -435,8 +435,7 @@ class FrameworkModel(Model):
         local_code = utils.get_config_value('local.local_code', self.sagemaker_session.config)
         if self.sagemaker_session.local_mode and local_code:
             self.uploaded_code = None
-        else:
-            if not repack:
+        elif not repack:
                 bucket = self.bucket or self.sagemaker_session.default_bucket()
                 self.uploaded_code = fw_utils.tar_and_upload_dir(session=self.sagemaker_session.boto_session,
                                                                  bucket=bucket,
@@ -446,7 +445,8 @@ class FrameworkModel(Model):
                                                                  dependencies=self.dependencies)
 
         if repack:
-            repack_model_uri = os.path.join(self.bucket, key_prefix, 'model.tar.gz')
+            bucket = self.bucket or self.sagemaker_session.default_bucket()
+            repack_model_uri = os.path.join(bucket, key_prefix, 'model.tar.gz')
 
             self.repacked_model_data = utils.repack_model(inference_script=self.entry_point,
                                                           source_directory=self.source_dir,

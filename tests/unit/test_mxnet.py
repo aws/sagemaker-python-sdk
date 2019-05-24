@@ -370,12 +370,13 @@ def test_model(sagemaker_session):
 def test_model_mms_version(repack_model, sagemaker_session):
     model = MXNetModel(MODEL_DATA, role=ROLE, entry_point=SCRIPT_PATH,
                        framework_version=MXNetModel._LOWEST_MMS_VERSION,
-                       sagemaker_session=sagemaker_session)
+                       sagemaker_session=sagemaker_session, name='test-mxnet-model')
     predictor = model.deploy(1, GPU)
 
     repack_model.assert_called_once_with(inference_script=SCRIPT_PATH,
                                          source_directory=None,
                                          model_uri=MODEL_DATA,
+                                         repacked_model_uri='mybucket/test-mxnet-model/model.tar.gz',
                                          sagemaker_session=sagemaker_session)
 
     assert model.model_data == MODEL_DATA
