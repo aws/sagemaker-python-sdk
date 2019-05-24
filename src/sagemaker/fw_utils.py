@@ -167,7 +167,7 @@ def tar_and_upload_dir(session, bucket, s3_key_prefix, script,
         dependencies (List[str]): Optional. A list of paths to directories (absolute or relative)
                                 containing additional libraries that will be copied into
                                 /opt/ml/lib
-        kms_key (str):  Optional. KMS key ID used to upload objects to the bucket (default: None).
+        kms_key (str):  Optional. KMS key ID used to upload location_map to the bucket (default: None).
 
     Returns:
         sagemaker.fw_utils.UserCode: An object with the S3 bucket and key (S3 prefix) and

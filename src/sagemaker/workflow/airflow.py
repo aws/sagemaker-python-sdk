@@ -65,10 +65,10 @@ def prepare_amazon_algorithm_estimator(estimator, inputs, mini_batch_size=None):
             An estimator for a built-in Amazon algorithm to get information from and update.
         inputs: The training data.
             * (sagemaker.amazon.amazon_estimator.RecordSet) - A collection of
-                Amazon :class:~`Record` objects serialized and stored in S3.
+                Amazon :class:~`Record` location_map serialized and stored in S3.
                 For use with an estimator for an Amazon algorithm.
             * (list[sagemaker.amazon.amazon_estimator.RecordSet]) - A list of
-                :class:~`sagemaker.amazon.amazon_estimator.RecordSet` objects, where each instance is
+                :class:~`sagemaker.amazon.amazon_estimator.RecordSet` location_map, where each instance is
                 a different channel of training data.
     """
     if isinstance(inputs, list):
@@ -96,15 +96,15 @@ def training_base_config(estimator, inputs=None, job_name=None, mini_batch_size=
             * (str) - The S3 location where training data is saved.
             * (dict[str, str] or dict[str, sagemaker.session.s3_input]) - If using multiple channels for
                 training data, you can specify a dict mapping channel names
-                to strings or :func:`~sagemaker.session.s3_input` objects.
+                to strings or :func:`~sagemaker.session.s3_input` location_map.
             * (sagemaker.session.s3_input) - Channel configuration for S3 data sources that can provide
                 additional information about the training dataset. See :func:`sagemaker.session.s3_input`
                 for full details.
             * (sagemaker.amazon.amazon_estimator.RecordSet) - A collection of
-                Amazon :class:~`Record` objects serialized and stored in S3.
+                Amazon :class:~`Record` location_map serialized and stored in S3.
                 For use with an estimator for an Amazon algorithm.
             * (list[sagemaker.amazon.amazon_estimator.RecordSet]) - A list of
-                :class:~`sagemaker.amazon.amazon_estimator.RecordSet` objects, where each instance is
+                :class:~`sagemaker.amazon.amazon_estimator.RecordSet` location_map, where each instance is
                 a different channel of training data.
 
         job_name (str): Specify a training job name if needed.
@@ -175,15 +175,15 @@ def training_config(estimator, inputs=None, job_name=None, mini_batch_size=None)
             * (str) - The S3 location where training data is saved.
             * (dict[str, str] or dict[str, sagemaker.session.s3_input]) - If using multiple channels for
                 training data, you can specify a dict mapping channel names
-                to strings or :func:`~sagemaker.session.s3_input` objects.
+                to strings or :func:`~sagemaker.session.s3_input` location_map.
             * (sagemaker.session.s3_input) - Channel configuration for S3 data sources that can provide
                 additional information about the training dataset. See :func:`sagemaker.session.s3_input`
                 for full details.
             * (sagemaker.amazon.amazon_estimator.RecordSet) - A collection of
-                Amazon :class:~`Record` objects serialized and stored in S3.
+                Amazon :class:~`Record` location_map serialized and stored in S3.
                 For use with an estimator for an Amazon algorithm.
             * (list[sagemaker.amazon.amazon_estimator.RecordSet]) - A list of
-                :class:~`sagemaker.amazon.amazon_estimator.RecordSet` objects, where each instance is
+                :class:~`sagemaker.amazon.amazon_estimator.RecordSet` location_map, where each instance is
                 a different channel of training data.
 
         job_name (str): Specify a training job name if needed.
@@ -215,15 +215,15 @@ def tuning_config(tuner, inputs, job_name=None):
             * (str) - The S3 location where training data is saved.
             * (dict[str, str] or dict[str, sagemaker.session.s3_input]) - If using multiple channels for
                 training data, you can specify a dict mapping channel names
-                to strings or :func:`~sagemaker.session.s3_input` objects.
+                to strings or :func:`~sagemaker.session.s3_input` location_map.
             * (sagemaker.session.s3_input) - Channel configuration for S3 data sources that can provide
                 additional information about the training dataset. See :func:`sagemaker.session.s3_input`
                 for full details.
             * (sagemaker.amazon.amazon_estimator.RecordSet) - A collection of
-                Amazon :class:~`Record` objects serialized and stored in S3.
+                Amazon :class:~`Record` location_map serialized and stored in S3.
                 For use with an estimator for an Amazon algorithm.
             * (list[sagemaker.amazon.amazon_estimator.RecordSet]) - A list of
-                :class:~`sagemaker.amazon.amazon_estimator.RecordSet` objects, where each instance is
+                :class:~`sagemaker.amazon.amazon_estimator.RecordSet` location_map, where each instance is
                 a different channel of training data.
 
         job_name (str): Specify a tuning job name if needed.
@@ -475,7 +475,7 @@ def transform_config(transformer, data, data_type='S3Prefix', content_type=None,
         data (str): Input data location in S3.
         data_type (str): What the S3 location defines (default: 'S3Prefix'). Valid values:
 
-            * 'S3Prefix' - the S3 URI defines a key name prefix. All objects with this prefix will be used as
+            * 'S3Prefix' - the S3 URI defines a key name prefix. All location_map with this prefix will be used as
                 inputs for the transform job.
             * 'ManifestFile' - the S3 URI points to a single manifest file listing each S3 object to use as
                 an input for the transform job.
@@ -551,7 +551,7 @@ def transform_config_from_estimator(estimator, task_id, task_type, instance_coun
         data (str): Input data location in S3.
         data_type (str): What the S3 location defines (default: 'S3Prefix'). Valid values:
 
-            * 'S3Prefix' - the S3 URI defines a key name prefix. All objects with this prefix will be used as
+            * 'S3Prefix' - the S3 URI defines a key name prefix. All location_map with this prefix will be used as
                 inputs for the transform job.
             * 'ManifestFile' - the S3 URI points to a single manifest file listing each S3 object to use as
                 an input for the transform job.

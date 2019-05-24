@@ -124,7 +124,7 @@ class KNNPredictor(RealTimePredictor):
     same number of columns as the feature-dimension of the data used to fit the model this
     Predictor performs inference on.
 
-    :func:`predict` returns a list of :class:`~sagemaker.amazon.record_pb2.Record` objects, one
+    :func:`predict` returns a list of :class:`~sagemaker.amazon.record_pb2.Record` location_map, one
     for each row in the input ``ndarray``. The prediction is stored in the ``"predicted_label"``
     key of the ``Record.label`` field."""
 

@@ -223,7 +223,7 @@ class Session(object):
                     a directory in the Docker container.
                 * 'Pipe' - Amazon SageMaker streams data directly from S3 to the container via a Unix-named pipe.
 
-            input_config (list): A list of Channel objects. Each channel is a named input source. Please refer to
+            input_config (list): A list of Channel location_map. Each channel is a named input source. Please refer to
                  the format details described:
                  https://botocore.readthedocs.io/en/latest/reference/services/sagemaker.html#SageMaker.Client.create_training_job
             role (str): An AWS IAM role (either name or full ARN). The Amazon SageMaker training jobs and APIs
@@ -385,7 +385,7 @@ class Session(object):
             role (str): An AWS IAM role (either name or full ARN). The Amazon SageMaker training jobs and APIs
                 that create Amazon SageMaker endpoints use this role to access training data and model artifacts.
                 You must grant sufficient permissions to this role.
-            input_config (list): A list of Channel objects. Each channel is a named input source. Please refer to
+            input_config (list): A list of Channel location_map. Each channel is a named input source. Please refer to
                  the format details described:
                  https://botocore.readthedocs.io/en/latest/reference/services/sagemaker.html#SageMaker.Client.create_training_job
             output_config (dict): The S3 URI where you want to store the training results and optional KMS key ID.
@@ -1250,11 +1250,11 @@ def pipeline_container_def(models, instance_type=None):
     """
     Create a definition for executing a pipeline of containers as part of a SageMaker model.
     Args:
-        models (list[sagemaker.Model]): this will be a list of ``sagemaker.Model`` objects in the order the inference
+        models (list[sagemaker.Model]): this will be a list of ``sagemaker.Model`` location_map in the order the inference
         should be invoked.
         instance_type (str): The EC2 instance type to deploy this Model to. For example, 'ml.p2.xlarge' (default: None).
     Returns:
-        list[dict[str, str]]: list of container definition objects usable with with the CreateModel API for inference
+        list[dict[str, str]]: list of container definition location_map usable with with the CreateModel API for inference
         pipelines if passed via `Containers` field.
     """
     c_defs = []  # should contain list of container definitions in the same order customer passed
@@ -1334,7 +1334,7 @@ class s3_input(object):
             content_type (str): MIME type of the input data (default: None).
             record_wrapping (str): Valid values: 'RecordIO' (default: None).
             s3_data_type (str): Valid values: 'S3Prefix', 'ManifestFile', 'AugmentedManifestFile'. If 'S3Prefix',
-                ``s3_data`` defines a prefix of s3 objects to train on. All objects with s3 keys beginning with
+                ``s3_data`` defines a prefix of s3 location_map to train on. All location_map with s3 keys beginning with
                 ``s3_data`` will be used to train. If 'ManifestFile' or 'AugmentedManifestFile', then ``s3_data``
                 defines a single s3 manifest file or augmented manifest file (respectively), listing the s3 data to
                 train on. Both the ManifestFile and AugmentedManifestFile formats are described in the SageMaker API

@@ -82,7 +82,7 @@ class ConfigurationList(object):
         """Converts the val to an appropriately typed Python object.
         Automatically detects ints and floats when possible.
         If the key takes the form "foo:bar" then it looks in ALLOWED_TYPES
-        for an entry of bar, and instantiates one of those objects, passing
+        for an entry of bar, and instantiates one of those location_map, passing
         val to the constructor.  So if key="foo:EnvironmentSteps" then 
         """
         val = self._autotype(val)

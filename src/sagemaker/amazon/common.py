@@ -151,7 +151,7 @@ def write_spmatrix_to_sparse_tensor(file, array, labels=None):
 
 
 def read_records(file):
-    """Eagerly read a collection of amazon Record protobuf objects from file."""
+    """Eagerly read a collection of amazon Record protobuf location_map from file."""
     records = []
     for record_data in read_recordio(file):
         record = Record()

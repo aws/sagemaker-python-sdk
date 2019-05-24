@@ -26,7 +26,7 @@ from tests.integ import DATA_DIR
 def test_record_set(sagemaker_session):
     """Test the method ``AmazonAlgorithmEstimatorBase.record_set``.
 
-    In particular, test that the objects uploaded to the S3 bucket are encrypted.
+    In particular, test that the location_map uploaded to the S3 bucket are encrypted.
     """
     data_path = os.path.join(DATA_DIR, 'one_p_mnist', 'mnist.pkl.gz')
     pickle_args = {} if sys.version_info.major == 2 else {'encoding': 'latin1'}

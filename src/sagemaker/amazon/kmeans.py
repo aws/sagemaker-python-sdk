@@ -121,7 +121,7 @@ class KMeans(AmazonAlgorithmEstimatorBase):
 
     def hyperparameters(self):
         """Return the SageMaker hyperparameters for training this KMeans Estimator"""
-        hp_dict = dict(force_dense='True')  # KMeans requires this hp to fit on Record objects
+        hp_dict = dict(force_dense='True')  # KMeans requires this hp to fit on Record location_map
         hp_dict.update(super(KMeans, self).hyperparameters())
         return hp_dict
 
@@ -134,7 +134,7 @@ class KMeansPredictor(RealTimePredictor):
     same number of columns as the feature-dimension of the data used to fit the model this
     Predictor performs inference on.
 
-    ``predict()`` returns a list of :class:`~sagemaker.amazon.record_pb2.Record` objects, one
+    ``predict()`` returns a list of :class:`~sagemaker.amazon.record_pb2.Record` location_map, one
     for each row in the input ``ndarray``. The nearest cluster is stored in the ``closest_cluster``
     key of the ``Record.label`` field."""
 

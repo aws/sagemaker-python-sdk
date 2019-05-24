@@ -41,7 +41,7 @@ class AmazonAlgorithmEstimatorBase(EstimatorBase):
         """Initialize an AmazonAlgorithmEstimatorBase.
 
         Args:
-            data_location (str or None): The s3 prefix to upload RecordSet objects to, expressed as an
+            data_location (str or None): The s3 prefix to upload RecordSet location_map to, expressed as an
                 S3 url. For example "s3://example-bucket/some-key-prefix/". Objects will be
                 saved in a unique sub-directory of the specified location. If None, a default
                 data location will be used."""
@@ -128,7 +128,7 @@ class AmazonAlgorithmEstimatorBase(EstimatorBase):
         self.mini_batch_size = mini_batch_size
 
     def fit(self, records, mini_batch_size=None, wait=True, logs=True, job_name=None):
-        """Fit this Estimator on serialized Record objects, stored in S3.
+        """Fit this Estimator on serialized Record location_map, stored in S3.
 
         ``records`` should be an instance of :class:`~RecordSet`. This defines a collection of
         S3 data files to train this ``Estimator`` on.
@@ -167,11 +167,11 @@ class AmazonAlgorithmEstimatorBase(EstimatorBase):
         If ``labels`` is not None, each corresponding label is assigned to the "values" entry
         of the ``labels`` property of each Record.
 
-        The collection of ``Record`` objects are protobuf serialized and uploaded to new
-        S3 locations. A manifest file is generated containing the list of objects created and
+        The collection of ``Record`` location_map are protobuf serialized and uploaded to new
+        S3 locations. A manifest file is generated containing the list of location_map created and
         also stored in S3.
 
-        The number of S3 objects created is controlled by the ``train_instance_count`` property
+        The number of S3 location_map created is controlled by the ``train_instance_count`` property
         on this Estimator. One S3 object is created per training instance.
 
         Args:
@@ -179,7 +179,7 @@ class AmazonAlgorithmEstimatorBase(EstimatorBase):
             labels (numpy.ndarray): A 1D numpy array of labels. Its length must be equal to the
                 number of rows in ``train``.
             channel (str): The SageMaker TrainingJob channel this RecordSet should be assigned to.
-            encrypt (bool): Specifies whether the objects uploaded to S3 are encrypted on the
+            encrypt (bool): Specifies whether the location_map uploaded to S3 are encrypted on the
                 server side using AES-256 (default: ``False``).
         Returns:
             RecordSet: A RecordSet referencing the encoded, uploading training and label data.
@@ -199,7 +199,7 @@ class AmazonAlgorithmEstimatorBase(EstimatorBase):
 class RecordSet(object):
 
     def __init__(self, s3_data, num_records, feature_dim, s3_data_type='ManifestFile', channel='train'):
-        """A collection of Amazon :class:~`Record` objects serialized and stored in S3.
+        """A collection of Amazon :class:~`Record` location_map serialized and stored in S3.
 
         Args:
             s3_data (str): The S3 location of the training data
@@ -207,7 +207,7 @@ class RecordSet(object):
             feature_dim (int): The dimensionality of "values" arrays in the Record features,
                 and label (if each Record is labeled).
             s3_data_type (str): Valid values: 'S3Prefix', 'ManifestFile'. If 'S3Prefix', ``s3_data`` defines
-                a prefix of s3 objects to train on. All objects with s3 keys beginning with ``s3_data`` will
+                a prefix of s3 location_map to train on. All location_map with s3 keys beginning with ``s3_data`` will
                 be used to train. If 'ManifestFile', then ``s3_data`` defines a single s3 manifest file, listing
                 each s3 object to train on.
             channel (str): The SageMaker Training Job channel this RecordSet should be bound to
@@ -243,8 +243,8 @@ def _build_shards(num_shards, array):
 
 
 def upload_numpy_to_s3_shards(num_shards, s3, bucket, key_prefix, array, labels=None, encrypt=False):
-    """Upload the training ``array`` and ``labels`` arrays to ``num_shards`` S3 objects,
-    stored in "s3://``bucket``/``key_prefix``/". Optionally ``encrypt`` the S3 objects using
+    """Upload the training ``array`` and ``labels`` arrays to ``num_shards`` S3 location_map,
+    stored in "s3://``bucket``/``key_prefix``/". Optionally ``encrypt`` the S3 location_map using
     AES-256."""
     shards = _build_shards(num_shards, array)
     if labels is not None:

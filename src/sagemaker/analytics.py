@@ -247,7 +247,7 @@ class TrainingJobAnalytics(AnalyticsMetricsBase):
         self._time_interval = self._determine_timeinterval()
 
     def _determine_timeinterval(self):
-        """Return a dictionary with two datetime objects, start_time and end_time,
+        """Return a dictionary with two datetime location_map, start_time and end_time,
         covering the interval of the training job
         """
         description = self._sage_client.describe_training_job(TrainingJobName=self.name)

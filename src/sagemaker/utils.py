@@ -300,7 +300,11 @@ def _tmpdir(suffix='', prefix='tmp'):
     shutil.rmtree(tmp)
 
 
-def repack_model(inference_script, source_directory, model_uri, sagemaker_session):
+def repack_model(inference_script,
+                 source_directory,
+                 model_uri,
+                 repacked_model_uri,
+                 sagemaker_session):
     """Unpack model tarball and creates a new model tarball with the provided code script.
 
     This function does the following:
@@ -311,20 +315,21 @@ def repack_model(inference_script, source_directory, model_uri, sagemaker_sessio
     Args:
         inference_script (str): path or basename of the inference script that will be packed into the model
         source_directory (str): path including all the files that will be packed into the model
+        repacked_model_uri (str): path or file system location where the new model will be saved
         model_uri (str): S3 or file system location of the original model tar
         sagemaker_session (:class:`sagemaker.session.Session`): a sagemaker session to interact with S3.
 
     Returns:
         str: path to the new packed model
     """
-    new_model_name = 'model-%s.tar.gz' % sagemaker.utils.sagemaker_short_timestamp()
+    # new_model_name = 'model-%s.tar.gz' % sagemaker.utils.sagemaker_short_timestamp()
+    new_model_name = os.path.basename(repacked_model_uri)
 
     with _tmpdir() as tmp:
         tmp_model_dir = os.path.join(tmp, 'model')
         os.mkdir(tmp_model_dir)
 
-        model_from_s3 = model_uri.lower().startswith('s3://')
-        if model_from_s3:
+        if model_uri.lower().startswith('s3://'):
             local_model_path = os.path.join(tmp, 'tar_file')
             download_file_from_url(model_uri, local_model_path, sagemaker_session)
 
@@ -356,8 +361,8 @@ def repack_model(inference_script, source_directory, model_uri, sagemaker_sessio
         with tarfile.open(new_model_path, mode='w:gz') as t:
             t.add(tmp_model_dir, arcname=os.path.sep)
 
-        if model_from_s3:
-            url = parse.urlparse(model_uri)
+        if repacked_model_uri.lower().startswith('s3://'):
+            url = parse.urlparse(repacked_model_uri)
             bucket, key = url.netloc, url.path.lstrip('/')
             new_key = key.replace(os.path.basename(key), new_model_name)
 

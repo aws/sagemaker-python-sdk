@@ -27,7 +27,7 @@ class PipelineModel(object):
 
         Args:
             models (list[sagemaker.Model]): For using multiple containers to build an inference pipeline,
-            you can pass a list of ``sagemaker.Model`` objects in the order you want the inference to happen.
+            you can pass a list of ``sagemaker.Model`` location_map in the order you want the inference to happen.
             role (str): An AWS IAM role (either name or full ARN). The Amazon SageMaker training jobs and APIs
                 that create Amazon SageMaker endpoints use this role to access training data and model artifacts.
                 After the endpoint is created, the inference code might use the IAM role,
@@ -61,7 +61,7 @@ class PipelineModel(object):
             instance_type (str): The EC2 instance type to deploy this Model to. For example, 'ml.p2.xlarge'.
 
         Returns:
-            list[dict[str, str]]: A list of container definition objects usable with the CreateModel API in the scenario
+            list[dict[str, str]]: A list of container definition location_map usable with the CreateModel API in the scenario
             of multiple containers (Inference Pipeline).
         """
 

@@ -119,7 +119,7 @@ class LDAPredictor(RealTimePredictor):
     same number of columns as the feature-dimension of the data used to fit the model this
     Predictor performs inference on.
 
-    :meth:`predict()` returns a list of :class:`~sagemaker.amazon.record_pb2.Record` objects, one
+    :meth:`predict()` returns a list of :class:`~sagemaker.amazon.record_pb2.Record` location_map, one
     for each row in the input ``ndarray``. The lower dimension vector result is stored in the ``projection``
     key of the ``Record.label`` field."""
 

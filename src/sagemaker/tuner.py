@@ -249,15 +249,15 @@ class HyperparameterTuner(object):
                 * (str) - The S3 location where training data is saved.
                 * (dict[str, str] or dict[str, sagemaker.session.s3_input]) - If using multiple channels for
                     training data, you can specify a dict mapping channel names
-                    to strings or :func:`~sagemaker.session.s3_input` objects.
+                    to strings or :func:`~sagemaker.session.s3_input` location_map.
                 * (sagemaker.session.s3_input) - Channel configuration for S3 data sources that can provide
                     additional information about the training dataset. See :func:`sagemaker.session.s3_input`
                     for full details.
                 * (sagemaker.amazon.amazon_estimator.RecordSet) - A collection of
-                    Amazon :class:~`Record` objects serialized and stored in S3.
+                    Amazon :class:~`Record` location_map serialized and stored in S3.
                     For use with an estimator for an Amazon algorithm.
                 * (list[sagemaker.amazon.amazon_estimator.RecordSet]) - A list of
-                    :class:~`sagemaker.amazon.amazon_estimator.RecordSet` objects, where each instance is
+                    :class:~`sagemaker.amazon.amazon_estimator.RecordSet` location_map, where each instance is
                     a different channel of training data.
 
             job_name (str): Tuning job name. If not specified, the tuner generates a default job name,
