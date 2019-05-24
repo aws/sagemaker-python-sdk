@@ -40,5 +40,7 @@ The Docker images extend Ubuntu 16.04.
 You can select version of MXNet by passing a ``framework_version`` keyword arg to the MXNet Estimator constructor. Currently supported versions are listed in the above table. You can also set ``framework_version`` to only specify major and minor version, e.g ``1.2``, which will cause your training script to be run on the latest supported patch version of that minor version, which in this example would be 1.2.1.
 Alternatively, you can build your own image by following the instructions in the SageMaker MXNet containers repository, and passing ``image_name`` to the MXNet Estimator constructor.
 
-You can visit the SageMaker MXNet training containers repository here: https://github.com/aws/sagemaker-mxnet-container
-You can visit the SageMaker MXNet serving containers repository here: https://github.com/aws/sagemaker-mxnet-serving-container
+You can visit the SageMaker MXNet container repositories here:
+
+- training: https://github.com/aws/sagemaker-mxnet-container
+- serving: https://github.com/aws/sagemaker-mxnet-serving-container
