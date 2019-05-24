@@ -436,16 +436,7 @@ class FrameworkModel(Model):
         if self.sagemaker_session.local_mode and local_code:
             self.uploaded_code = None
         else:
-            if repack:
-                self.repacked_model_data = utils.repack_model(inference_script=self.entry_point,
-                                                              source_directory=self.source_dir,
-                                                              model_uri=self.model_data,
-                                                              sagemaker_session=self.sagemaker_session)
-
-                self.uploaded_code = UploadedCode(s3_prefix=self.repacked_model_data,
-                                                  script_name=os.path.basename(self.entry_point))
-
-            else:
+            if not repack:
                 bucket = self.bucket or self.sagemaker_session.default_bucket()
                 self.uploaded_code = fw_utils.tar_and_upload_dir(session=self.sagemaker_session.boto_session,
                                                                  bucket=bucket,
@@ -453,6 +444,14 @@ class FrameworkModel(Model):
                                                                  script=self.entry_point,
                                                                  directory=self.source_dir,
                                                                  dependencies=self.dependencies)
+
+        if repack:
+            self.repacked_model_data = utils.repack_model(inference_script=self.entry_point,
+                                                          source_directory=self.source_dir,
+                                                          model_uri=self.model_data,
+                                                          sagemaker_session=self.sagemaker_session)
+            self.uploaded_code = UploadedCode(s3_prefix=self.repacked_model_data,
+                                              script_name=os.path.basename(self.entry_point))
 
     def _framework_env_vars(self):
         if self.uploaded_code:
