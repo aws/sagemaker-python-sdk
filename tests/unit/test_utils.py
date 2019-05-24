@@ -306,7 +306,7 @@ def create_file_tree(root, tree):
     for file in tree:
         try:
             os.makedirs(os.path.join(root, os.path.dirname(file)))
-        except FileExistsError:
+        except:  # noqa: E722 Using bare except because p2/3 incompatibility issues.
             pass
         with open(os.path.join(root, file), 'a') as f:
             f.write(file)
