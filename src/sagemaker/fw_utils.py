@@ -45,7 +45,7 @@ EMPTY_FRAMEWORK_VERSION_ERROR = 'framework_version is required for script mode e
                                 'Please add framework_version={} to your constructor to avoid this error.'
 
 VALID_PY_VERSIONS = ['py2', 'py3']
-VALID_EIA_FRAMEWORKS = ['tensorflow', 'tensorflow-serving', 'mxnet']
+VALID_EIA_FRAMEWORKS = ['tensorflow', 'tensorflow-serving', 'mxnet', 'mxnet-serving']
 VALID_ACCOUNTS_BY_REGION = {'us-gov-west-1': '246785580436',
                             'us-iso-east-1': '744548109606'}
 

@@ -30,7 +30,7 @@ class MXNet(Framework):
     __framework_name__ = 'mxnet'
     _LOWEST_SCRIPT_MODE_VERSION = ['1', '3']
 
-    LATEST_VERSION = '1.3'
+    LATEST_VERSION = '1.4'
     """The latest version of MXNet included in the SageMaker pre-built Docker images."""
 
     def __init__(self, entry_point, source_dir=None, hyperparameters=None, py_version='py2',
