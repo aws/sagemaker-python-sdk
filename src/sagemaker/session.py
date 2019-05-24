@@ -1255,8 +1255,7 @@ def pipeline_container_def(models, instance_type=None):
         instance_type (str): The EC2 instance type to deploy this Model to. For example, 'ml.p2.xlarge' (default: None).
     Returns:
         list[dict[str, str]]: list of container definition location_map usable with with the CreateModel
-            API for inference
-        pipelines if passed via `Containers` field.
+            API for inference pipelines if passed via `Containers` field.
     """
     c_defs = []  # should contain list of container definitions in the same order customer passed
     for model in models:
