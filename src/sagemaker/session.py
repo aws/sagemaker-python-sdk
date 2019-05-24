@@ -643,6 +643,7 @@ class Session(object):
             str: The name of the created ``Model``.
         """
         training_job = self.sagemaker_client.describe_training_job(TrainingJobName=training_job_name)
+        tags = self.sagemaker_client.list_tags(ResourceArn=training_job['TrainingJobArn'])['Tags']
         name = name or training_job_name
         role = role or training_job['RoleArn']
         env = env or {}
@@ -651,7 +652,7 @@ class Session(object):
             model_data_url=model_data_url or training_job['ModelArtifacts']['S3ModelArtifacts'],
             env=env)
         vpc_config = _vpc_config_from_training_job(training_job, vpc_config_override)
-        return self.create_model(name, role, primary_container, vpc_config=vpc_config)
+        return self.create_model(name, role, primary_container, vpc_config=vpc_config, tags=tags)
 
     def create_model_package_from_algorithm(self, name, description, algorithm_arn, model_data):
         """Create a SageMaker Model Package from the results of training with an Algorithm Package

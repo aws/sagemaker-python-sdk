@@ -624,7 +624,7 @@ def test_framework_transformer_creation(name_from_image, sagemaker_session):
     transformer = fw.transformer(INSTANCE_COUNT, INSTANCE_TYPE)
 
     name_from_image.assert_called_with(MODEL_IMAGE)
-    sagemaker_session.create_model.assert_called_with(MODEL_IMAGE, ROLE, MODEL_CONTAINER_DEF, None)
+    sagemaker_session.create_model.assert_called_with(MODEL_IMAGE, ROLE, MODEL_CONTAINER_DEF, None, tags=None)
 
     assert isinstance(transformer, Transformer)
     assert transformer.sagemaker_session == sagemaker_session
@@ -659,7 +659,7 @@ def test_framework_transformer_creation_with_optional_params(name_from_image, sa
                                  max_concurrent_transforms=max_concurrent_transforms, max_payload=max_payload,
                                  volume_kms_key=kms_key, env=env, role=new_role, model_server_workers=1)
 
-    sagemaker_session.create_model.assert_called_with(MODEL_IMAGE, new_role, MODEL_CONTAINER_DEF, vpc_config)
+    sagemaker_session.create_model.assert_called_with(MODEL_IMAGE, new_role, MODEL_CONTAINER_DEF, vpc_config, tags=TAGS)
     assert transformer.strategy == strategy
     assert transformer.assemble_with == assemble_with
     assert transformer.output_path == OUTPUT_PATH

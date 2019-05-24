@@ -1061,7 +1061,7 @@ class Framework(EstimatorBase):
             container_def = model.prepare_container_def(instance_type)
             model_name = model.name or name_from_image(container_def['Image'])
             vpc_config = model.vpc_config
-            self.sagemaker_session.create_model(model_name, role, container_def, vpc_config)
+            self.sagemaker_session.create_model(model_name, role, container_def, vpc_config, tags=tags)
             transform_env = model.env.copy()
             if env is not None:
                 transform_env.update(env)
