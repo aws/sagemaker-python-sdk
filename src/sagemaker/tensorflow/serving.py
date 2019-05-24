@@ -13,6 +13,7 @@
 from __future__ import absolute_import
 
 import logging
+import os
 
 import sagemaker
 from sagemaker.content_types import CONTENT_TYPE_JSON
@@ -128,9 +129,15 @@ class Model(sagemaker.model.FrameworkModel):
         env = self._get_container_env()
 
         if self.entry_point:
+            deploy_key_prefix = sagemaker.fw_utils.model_code_key_prefix(self.key_prefix, self.name,
+                                                                         self.image)
+
+            repack_model_uri = os.path.join(self.bucket, deploy_key_prefix, 'model.tar.gz')
+
             model_data = sagemaker.utils.repack_model(self.entry_point,
                                                       self.source_dir,
                                                       self.model_data,
+                                                      repack_model_uri,
                                                       self.sagemaker_session)
         else:
             model_data = self.model_data

@@ -322,7 +322,6 @@ def repack_model(inference_script,
     Returns:
         str: path to the new packed model
     """
-    # new_model_name = 'model-%s.tar.gz' % sagemaker.utils.sagemaker_short_timestamp()
     new_model_name = os.path.basename(repacked_model_uri)
 
     with _tmpdir() as tmp:
