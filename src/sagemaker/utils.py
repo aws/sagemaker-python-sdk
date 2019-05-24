@@ -344,7 +344,7 @@ def repack_model(inference_script, source_directory, model_uri, sagemaker_sessio
             local_code_path = os.path.join(tmp, 'local_code.tar.gz')
             download_file_from_url(source_directory, local_code_path, sagemaker_session)
 
-            with tarfile.open(name=local_model_path, mode='r:gz') as t:
+            with tarfile.open(name=local_code_path, mode='r:gz') as t:
                 t.extractall(path=code_dir)
 
         elif source_directory:

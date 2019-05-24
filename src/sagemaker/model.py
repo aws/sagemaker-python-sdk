@@ -14,9 +14,11 @@ from __future__ import absolute_import
 
 import json
 import logging
+import os
 
 import sagemaker
 from sagemaker import fw_utils, local, session, utils
+from sagemaker.fw_utils import UploadedCode
 from sagemaker.transformer import Transformer
 
 LOGGER = logging.getLogger('sagemaker')
@@ -408,6 +410,7 @@ class FrameworkModel(Model):
         else:
             self.bucket, self.key_prefix = None, None
         self.uploaded_code = None
+        self.repacked_model_data = None
 
     def prepare_container_def(self, instance_type, accelerator_type=None):  # pylint disable=unused-argument
         """Return a container definition with framework configuration set in model environment variables.
@@ -428,18 +431,27 @@ class FrameworkModel(Model):
         deploy_env.update(self._framework_env_vars())
         return sagemaker.container_def(self.image, self.model_data, deploy_env)
 
-    def _upload_code(self, key_prefix):
+    def _upload_code(self, key_prefix, repack=False):
         local_code = utils.get_config_value('local.local_code', self.sagemaker_session.config)
         if self.sagemaker_session.local_mode and local_code:
             self.uploaded_code = None
         else:
-            bucket = self.bucket or self.sagemaker_session.default_bucket()
-            self.uploaded_code = fw_utils.tar_and_upload_dir(session=self.sagemaker_session.boto_session,
-                                                             bucket=bucket,
-                                                             s3_key_prefix=key_prefix,
-                                                             script=self.entry_point,
-                                                             directory=self.source_dir,
-                                                             dependencies=self.dependencies)
+            if not repack:
+                bucket = self.bucket or self.sagemaker_session.default_bucket()
+                self.uploaded_code = fw_utils.tar_and_upload_dir(session=self.sagemaker_session.boto_session,
+                                                                 bucket=bucket,
+                                                                 s3_key_prefix=key_prefix,
+                                                                 script=self.entry_point,
+                                                                 directory=self.source_dir,
+                                                                 dependencies=self.dependencies)
+
+        if repack:
+            self.repacked_model_data = utils.repack_model(inference_script=self.entry_point,
+                                                          source_directory=self.source_dir,
+                                                          model_uri=self.model_data,
+                                                          sagemaker_session=self.sagemaker_session)
+            self.uploaded_code = UploadedCode(s3_prefix=self.repacked_model_data,
+                                              script_name=os.path.basename(self.entry_point))
 
     def _framework_env_vars(self):
         if self.uploaded_code:
