@@ -342,7 +342,7 @@ def repack_model(inference_script,
     with _tmpdir() as tmp:
         model_dir = _extract_model(model_uri, sagemaker_session, tmp)
 
-        _update_code(model_dir, inference_script, source_directory, dependencies, sagemaker_session, tmp)
+        _create_or_update_code_dir(model_dir, inference_script, source_directory, dependencies, sagemaker_session, tmp)
 
         tmp_model_path = os.path.join(tmp, 'temp-model.tar.gz')
         with tarfile.open(tmp_model_path, mode='w:gz') as t:
@@ -363,7 +363,8 @@ def _save_model(repacked_model_uri, tmp_model_path, sagemaker_session):
         shutil.move(tmp_model_path, repacked_model_uri.replace('file://', ''))
 
 
-def _update_code(model_dir, inference_script, source_directory, dependencies, sagemaker_session, tmp):
+def _create_or_update_code_dir(model_dir, inference_script, source_directory,
+                               dependencies, sagemaker_session, tmp):
     code_dir = os.path.join(model_dir, 'code')
     if os.path.exists(code_dir):
         shutil.rmtree(code_dir, ignore_errors=True)

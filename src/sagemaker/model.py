@@ -446,7 +446,7 @@ class FrameworkModel(Model):
 
         if repack:
             bucket = self.bucket or self.sagemaker_session.default_bucket()
-            self.repacked_model_data = 's3://' + os.path.join(bucket, key_prefix, 'model.tar.gz')
+            repacked_model_data = 's3://' + os.path.join(bucket, key_prefix, 'model.tar.gz')
 
             utils.repack_model(inference_script=self.entry_point,
                                source_directory=self.source_dir,
@@ -454,6 +454,8 @@ class FrameworkModel(Model):
                                model_uri=self.model_data,
                                repacked_model_uri=self.repacked_model_data,
                                sagemaker_session=self.sagemaker_session)
+
+            self.repacked_model_data = repacked_model_data
             self.uploaded_code = UploadedCode(s3_prefix=self.repacked_model_data,
                                               script_name=os.path.basename(self.entry_point))
 
