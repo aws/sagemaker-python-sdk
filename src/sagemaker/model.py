@@ -151,6 +151,19 @@ class Model(object):
                 'tags': tags,
                 'job_name': job_name}
 
+    def check_neo_region(self, region):
+        """Check if this ``Model`` in the available region where neo support.
+
+        Args:
+            region (str): Specifies the region where want to execute compilation
+        Returns:
+            bool: boolean value whether if neo is available in the specified region
+        """
+        if region in NEO_IMAGE_ACCOUNT:
+            return True
+        else:
+            return False
+
     def _neo_image_account(self, region):
         if region not in NEO_IMAGE_ACCOUNT:
             raise ValueError("Neo is not currently supported in {}, "
