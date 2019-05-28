@@ -465,7 +465,7 @@ class FrameworkModel(Model):
                                source_directory=self.source_dir,
                                dependencies=self.dependencies,
                                model_uri=self.model_data,
-                               repacked_model_uri=self.repacked_model_data,
+                               repacked_model_uri=repacked_model_data,
                                sagemaker_session=self.sagemaker_session)
 
             self.repacked_model_data = repacked_model_data
