@@ -1,5 +1,15 @@
 # Changelog
 
+## v1.23.0 (2019-05-27)
+
+### Features
+
+ * support MXNet 1.4 with MMS
+
+### Documentation changes
+
+ * update using_sklearn.rst parameter name
+
 ## v1.22.0 (2019-05-23)
 
 ### Features
