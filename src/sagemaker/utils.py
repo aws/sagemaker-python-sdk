@@ -300,6 +300,7 @@ def _tmpdir(suffix='', prefix='tmp'):
 
 def repack_model(inference_script,
                  source_directory,
+                 dependencies,
                  model_uri,
                  repacked_model_uri,
                  sagemaker_session):
@@ -313,6 +314,22 @@ def repack_model(inference_script,
     Args:
         inference_script (str): path or basename of the inference script that will be packed into the model
         source_directory (str): path including all the files that will be packed into the model
+        dependencies (list[str]): A list of paths to directories (absolute or relative) with
+                any additional libraries that will be exported to the container (default: []).
+                The library folders will be copied to SageMaker in the same folder where the entrypoint is copied.
+                Example:
+
+                    The following call
+                    >>> Estimator(entry_point='train.py', dependencies=['my/libs/common', 'virtual-env'])
+                    results in the following inside the container:
+
+                    >>> $ ls
+
+                    >>> opt/ml/code
+                    >>>     |------ train.py
+                    >>>     |------ common
+                    >>>     |------ virtual-env
+
         repacked_model_uri (str): path or file system location where the new model will be saved
         model_uri (str): S3 or file system location of the original model tar
         sagemaker_session (:class:`sagemaker.session.Session`): a sagemaker session to interact with S3.
@@ -320,11 +337,12 @@ def repack_model(inference_script,
     Returns:
         str: path to the new packed model
     """
+    dependencies = dependencies or []
 
     with _tmpdir() as tmp:
         model_dir = _extract_model(model_uri, sagemaker_session, tmp)
 
-        _update_code(model_dir, inference_script, source_directory, sagemaker_session, tmp)
+        _update_code(model_dir, inference_script, source_directory, dependencies, sagemaker_session, tmp)
 
         tmp_model_path = os.path.join(tmp, 'temp-model.tar.gz')
         with tarfile.open(tmp_model_path, mode='w:gz') as t:
@@ -345,7 +363,7 @@ def _save_model(repacked_model_uri, tmp_model_path, sagemaker_session):
         shutil.move(tmp_model_path, repacked_model_uri.replace('file://', ''))
 
 
-def _update_code(model_dir, inference_script, source_directory, sagemaker_session, tmp):
+def _update_code(model_dir, inference_script, source_directory, dependencies, sagemaker_session, tmp):
     code_dir = os.path.join(model_dir, 'code')
     if os.path.exists(code_dir):
         shutil.rmtree(code_dir, ignore_errors=True)
@@ -361,6 +379,12 @@ def _update_code(model_dir, inference_script, source_directory, sagemaker_sessio
     else:
         os.mkdir(code_dir)
         shutil.copy2(inference_script, code_dir)
+
+    for dependency in dependencies:
+        if os.path.isdir(dependency):
+            shutil.copytree(dependency, code_dir)
+        else:
+            shutil.copy2(dependency, code_dir)
 
 
 def _extract_model(model_uri, sagemaker_session, tmp):

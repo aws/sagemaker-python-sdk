@@ -136,6 +136,7 @@ class Model(sagemaker.model.FrameworkModel):
 
             sagemaker.utils.repack_model(self.entry_point,
                                          self.source_dir,
+                                         self.dependencies,
                                          self.model_data,
                                          model_data,
                                          self.sagemaker_session)

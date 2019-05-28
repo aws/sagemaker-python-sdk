@@ -450,6 +450,7 @@ class FrameworkModel(Model):
 
             utils.repack_model(inference_script=self.entry_point,
                                source_directory=self.source_dir,
+                               dependencies=self.dependencies,
                                model_uri=self.model_data,
                                repacked_model_uri=self.repacked_model_data,
                                sagemaker_session=self.sagemaker_session)

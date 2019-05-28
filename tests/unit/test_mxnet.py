@@ -375,6 +375,7 @@ def test_model_mms_version(repack_model, sagemaker_session):
 
     repack_model.assert_called_once_with(inference_script=SCRIPT_PATH,
                                          source_directory=None,
+                                         dependencies=[],
                                          model_uri=MODEL_DATA,
                                          repacked_model_uri='s3://mybucket/test-mxnet-model/model.tar.gz',
                                          sagemaker_session=sagemaker_session)
