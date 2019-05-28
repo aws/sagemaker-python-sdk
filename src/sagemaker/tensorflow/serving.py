@@ -129,16 +129,16 @@ class Model(sagemaker.model.FrameworkModel):
         env = self._get_container_env()
 
         if self.entry_point:
-            deploy_key_prefix = sagemaker.fw_utils.model_code_key_prefix(self.key_prefix, self.name,
-                                                                         self.image)
+            key_prefix = sagemaker.fw_utils.model_code_key_prefix(self.key_prefix, self.name, image)
 
-            repack_model_uri = os.path.join(self.bucket, deploy_key_prefix, 'model.tar.gz')
+            bucket = self.bucket or self.sagemaker_session.default_bucket()
+            model_data = 's3://' + os.path.join(bucket, key_prefix, 'model.tar.gz')
 
-            model_data = sagemaker.utils.repack_model(self.entry_point,
-                                                      self.source_dir,
-                                                      self.model_data,
-                                                      repack_model_uri,
-                                                      self.sagemaker_session)
+            sagemaker.utils.repack_model(self.entry_point,
+                                         self.source_dir,
+                                         self.model_data,
+                                         model_data,
+                                         self.sagemaker_session)
         else:
             model_data = self.model_data
 
