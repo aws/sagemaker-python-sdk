@@ -280,6 +280,47 @@ def test_mxnet(strftime, sagemaker_session, mxnet_version, skip_if_mms_version):
     assert isinstance(predictor, MXNetPredictor)
 
 
+@patch('sagemaker.utils.repack_model')
+@patch('time.strftime', return_value=TIMESTAMP)
+def test_mxnet_mms_version(strftime, repack_model, sagemaker_session, mxnet_version, skip_if_not_mms_version):
+    mx = MXNet(entry_point=SCRIPT_PATH, role=ROLE, sagemaker_session=sagemaker_session,
+               train_instance_count=INSTANCE_COUNT, train_instance_type=INSTANCE_TYPE,
+               framework_version=mxnet_version)
+
+    inputs = 's3://mybucket/train'
+
+    mx.fit(inputs=inputs)
+
+    sagemaker_call_names = [c[0] for c in sagemaker_session.method_calls]
+    assert sagemaker_call_names == ['train', 'logs_for_job']
+    boto_call_names = [c[0] for c in sagemaker_session.boto_session.method_calls]
+    assert boto_call_names == ['resource']
+
+    expected_train_args = _create_train_job(mxnet_version)
+    expected_train_args['input_config'][0]['DataSource']['S3DataSource']['S3Uri'] = inputs
+
+    actual_train_args = sagemaker_session.method_calls[0][2]
+    assert actual_train_args == expected_train_args
+
+    model = mx.create_model()
+
+    expected_image_base = _get_full_image_uri(mxnet_version, IMAGE_REPO_SERVING_NAME, 'gpu')
+    environment = {
+        'Environment': {
+            'SAGEMAKER_SUBMIT_DIRECTORY': 's3://mybucket/sagemaker-mxnet-2017-11-06-14:14:15.672/model.tar.gz',
+            'SAGEMAKER_PROGRAM': 'dummy_script.py', 'SAGEMAKER_ENABLE_CLOUDWATCH_METRICS': 'false',
+            'SAGEMAKER_REGION': 'us-west-2', 'SAGEMAKER_CONTAINER_LOG_LEVEL': '20'
+        },
+        'Image': expected_image_base.format(mxnet_version),
+        'ModelDataUrl': 's3://mybucket/sagemaker-mxnet-2017-11-06-14:14:15.672/model.tar.gz'
+    }
+    assert environment == model.prepare_container_def(GPU)
+
+    assert 'cpu' in model.prepare_container_def(CPU)['Image']
+    predictor = mx.deploy(1, GPU)
+    assert isinstance(predictor, MXNetPredictor)
+
+
 @patch('sagemaker.utils.repack_model', return_value=REPACKED_MODEL_DATA)
 @patch('time.strftime', return_value=TIMESTAMP)
 def test_mxnet_mms_version(strftime, repack_model, sagemaker_session, mxnet_version, skip_if_not_mms_version):
