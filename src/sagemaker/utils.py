@@ -371,8 +371,8 @@ def _update_code(model_dir, inference_script, source_directory, dependencies, sa
         local_code_path = os.path.join(tmp, 'local_code.tar.gz')
         download_file_from_url(source_directory, local_code_path, sagemaker_session)
 
-            with tarfile.open(name=local_code_path, mode='r:gz') as t:
-                t.extractall(path=code_dir)
+        with tarfile.open(name=local_code_path, mode='r:gz') as t:
+            t.extractall(path=code_dir)
 
     elif source_directory:
         shutil.copytree(source_directory, code_dir)
