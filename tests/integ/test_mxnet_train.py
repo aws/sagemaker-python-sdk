@@ -55,7 +55,8 @@ def test_attach_deploy(mxnet_training_job, sagemaker_session):
         estimator = MXNet.attach(mxnet_training_job, sagemaker_session=sagemaker_session)
         predictor = estimator.deploy(1, 'ml.m4.xlarge', endpoint_name=endpoint_name)
         data = numpy.zeros(shape=(1, 1, 28, 28))
-        predictor.predict(data)
+        result = predictor.predict(data)
+        assert result is not None
 
 
 def test_deploy_model(mxnet_training_job, sagemaker_session, mxnet_full_version):
@@ -71,7 +72,8 @@ def test_deploy_model(mxnet_training_job, sagemaker_session, mxnet_full_version)
         predictor = model.deploy(1, 'ml.m4.xlarge', endpoint_name=endpoint_name)
 
         data = numpy.zeros(shape=(1, 1, 28, 28))
-        predictor.predict(data)
+        result = predictor.predict(data)
+        assert result is not None
 
     predictor.delete_model()
     with pytest.raises(Exception) as exception:
@@ -175,7 +177,8 @@ def test_deploy_model_with_accelerator(mxnet_training_job, sagemaker_session, ei
         predictor = model.deploy(1, 'ml.m4.xlarge', endpoint_name=endpoint_name, accelerator_type='ml.eia1.medium')
 
         data = numpy.zeros(shape=(1, 1, 28, 28))
-        predictor.predict(data)
+        result = predictor.predict(data)
+        assert result is not None
 
 
 def test_async_fit(sagemaker_session, mxnet_full_version):
@@ -206,7 +209,8 @@ def test_async_fit(sagemaker_session, mxnet_full_version):
         estimator = MXNet.attach(training_job_name=training_job_name, sagemaker_session=sagemaker_session)
         predictor = estimator.deploy(1, 'ml.m4.xlarge', endpoint_name=endpoint_name)
         data = numpy.zeros(shape=(1, 1, 28, 28))
-        predictor.predict(data)
+        result = predictor.predict(data)
+        assert result is not None
 
 
 def test_failed_training_job(sagemaker_session, mxnet_full_version):

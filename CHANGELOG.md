@@ -1,5 +1,38 @@
 # Changelog
 
+## v1.23.0 (2019-05-27)
+
+### Features
+
+ * support MXNet 1.4 with MMS
+
+### Documentation changes
+
+ * update using_sklearn.rst parameter name
+
+## v1.22.0 (2019-05-23)
+
+### Features
+
+ * add encryption option to "record_set"
+
+### Bug fixes and other changes
+
+ * honor source_dir from S3
+
+## v1.21.2 (2019-05-22)
+
+### Bug fixes and other changes
+
+ * set _current_job_name in attach()
+ * emit training jobs tags to estimator
+
+## v1.21.1 (2019-05-21)
+
+### Bug fixes and other changes
+
+ * repack model function works without source directory
+
 ## v1.21.0 (2019-05-20)
 
 ### Features

@@ -320,10 +320,13 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):
 
         job_details = sagemaker_session.sagemaker_client.describe_training_job(TrainingJobName=training_job_name)
         init_params = cls._prepare_init_params_from_job_description(job_details, model_channel_name)
+        tags = sagemaker_session.sagemaker_client.list_tags(ResourceArn=job_details['TrainingJobArn'])['Tags']
+        init_params.update(tags=tags)
 
         estimator = cls(sagemaker_session=sagemaker_session, **init_params)
         estimator.latest_training_job = _TrainingJob(sagemaker_session=sagemaker_session,
                                                      job_name=init_params['base_job_name'])
+        estimator._current_job_name = estimator.latest_training_job.name
         estimator.latest_training_job.wait()
         return estimator
 

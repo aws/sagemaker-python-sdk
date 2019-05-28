@@ -6,9 +6,9 @@ Using MXNet with the SageMaker Python SDK
 
 With the SageMaker Python SDK, you can train and host MXNet models on Amazon SageMaker.
 
-Supported versions of MXNet: ``1.3.0``, ``1.2.1``, ``1.1.0``, ``1.0.0``, ``0.12.1``.
+Supported versions of MXNet: ``1.4.0``, ``1.3.0``, ``1.2.1``, ``1.1.0``, ``1.0.0``, ``0.12.1``.
 
-Supported versions of MXNet for Elastic Inference: ``1.3.0``.
+Supported versions of MXNet for Elastic Inference: ``1.4.0``, ``1.3.0``.
 
 Training with MXNet
 -------------------
@@ -38,7 +38,7 @@ Preparing the MXNet training script
 +----------------------------------------------------------------------------------------------------------------------------------------------------------+
 | WARNING                                                                                                                                                  |
 +==========================================================================================================================================================+
-| The structure for training scripts changed with MXNet version 1.3.                                                                                       |
+| The structure for training scripts changed starting at MXNet version 1.3.                                                                                |
 | Make sure you refer to the correct section of this README when you prepare your script.                                                                  |
 | For information on how to upgrade an old script to the new format, see `"Updating your MXNet training script" <#updating-your-mxnet-training-script>`__. |
 +----------------------------------------------------------------------------------------------------------------------------------------------------------+
@@ -700,6 +700,13 @@ Where ``model`` is the model objected loaded by ``model_fn``, ``request_body`` i
 This one function should handle processing the input, performing a prediction, and processing the output.
 The return object should be one of the following:
 
+For versions 1.4 and higher:
+----------------------------
+- a tuple with two items: the response data and ``accept_type`` (the content type of the response data), or
+- the response data: (the content type of the response will be set to either the accept header in the initial request or default to application/json)
+
+For versions 1.3 and lower:
+---------------------------
 - a tuple with two items: the response data and ``accept_type`` (the content type of the response data), or
 - a Flask response object: http://flask.pocoo.org/docs/1.0/api/#response-objects
 
@@ -802,23 +809,24 @@ Your MXNet training script will be run on version 1.2.1 by default. (See below f
 
 The Docker images have the following dependencies installed:
 
-+-------------------------+--------------+-------------+-------------+-------------+-------------+
-| Dependencies            | MXNet 0.12.1 | MXNet 1.0.0 | MXNet 1.1.0 | MXNet 1.2.1 | MXNet 1.3.0 |
-+-------------------------+--------------+-------------+-------------+-------------+-------------+
-| Python                  |   2.7 or 3.5 |   2.7 or 3.5|   2.7 or 3.5|   2.7 or 3.5|   2.7 or 3.5|
-+-------------------------+--------------+-------------+-------------+-------------+-------------+
-| CUDA (GPU image only)   |          9.0 |         9.0 |         9.0 |         9.0 |         9.0 |
-+-------------------------+--------------+-------------+-------------+-------------+-------------+
-| numpy                   |       1.13.3 |      1.13.3 |      1.13.3 |      1.14.5 |      1.14.6 |
-+-------------------------+--------------+-------------+-------------+-------------+-------------+
-| onnx                    |          N/A |         N/A |         N/A |       1.2.1 |       1.2.1 |
-+-------------------------+--------------+-------------+-------------+-------------+-------------+
-| keras-mxnet             |          N/A |         N/A |         N/A |         N/A |       2.2.2 |
-+-------------------------+--------------+-------------+-------------+-------------+-------------+
++-------------------------+--------------+-------------+-------------+-------------+-------------+-------------+
+| Dependencies            | MXNet 0.12.1 | MXNet 1.0.0 | MXNet 1.1.0 | MXNet 1.2.1 | MXNet 1.3.0 | MXNet 1.4.0 |
++-------------------------+--------------+-------------+-------------+-------------+-------------+-------------+
+| Python                  |   2.7 or 3.5 |   2.7 or 3.5|   2.7 or 3.5|   2.7 or 3.5|   2.7 or 3.5|   2.7 or 3.6|
++-------------------------+--------------+-------------+-------------+-------------+-------------+-------------+
+| CUDA (GPU image only)   |          9.0 |         9.0 |         9.0 |         9.0 |         9.0 |         9.2 |
++-------------------------+--------------+-------------+-------------+-------------+-------------+-------------+
+| numpy                   |       1.13.3 |      1.13.3 |      1.13.3 |      1.14.5 |      1.14.6 |      1.16.3 |
++-------------------------+--------------+-------------+-------------+-------------+-------------+-------------+
+| onnx                    |          N/A |         N/A |         N/A |       1.2.1 |       1.2.1 |       1.4.1 |
++-------------------------+--------------+-------------+-------------+-------------+-------------+-------------+
+| keras-mxnet             |          N/A |         N/A |         N/A |         N/A |       2.2.2 |     2.2.4.1 |
++-------------------------+--------------+-------------+-------------+-------------+-------------+-------------+
 
 The Docker images extend Ubuntu 16.04.
 
 You can select version of MXNet by passing a ``framework_version`` keyword arg to the MXNet Estimator constructor. Currently supported versions are listed in the above table. You can also set ``framework_version`` to only specify major and minor version, e.g ``1.2``, which will cause your training script to be run on the latest supported patch version of that minor version, which in this example would be 1.2.1.
 Alternatively, you can build your own image by following the instructions in the SageMaker MXNet containers repository, and passing ``image_name`` to the MXNet Estimator constructor.
 
-You can visit the SageMaker MXNet containers repository here: https://github.com/aws/sagemaker-mxnet-container
+You can visit the SageMaker MXNet training containers repository here: https://github.com/aws/sagemaker-mxnet-container
+You can visit the SageMaker MXNet serving containers repository here: https://github.com/aws/sagemaker-mxnet-serving-container
