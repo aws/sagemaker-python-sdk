@@ -97,9 +97,13 @@ def tfs_predictor_with_model_and_entry_point_separated(instance_type,
                                                                  sagemaker_session):
         entry_point = os.path.join(tests.integ.DATA_DIR,
                                    'tfs/tfs-test-model-with-inference/code/inference.py')
+        dependencies = [os.path.join(tests.integ.DATA_DIR,
+                                     'tfs/tfs-test-model-with-inference/dependency.py')]
+
         model = Model(entry_point=entry_point,
                       model_data=model_data,
                       role='SageMakerRole',
+                      dependencies= dependencies,
                       framework_version=tf_full_version,
                       sagemaker_session=sagemaker_session)
         predictor = model.deploy(1, instance_type, endpoint_name=endpoint_name)

@@ -92,21 +92,21 @@ class MXNetModel(FrameworkModel):
         Returns:
             dict[str, str]: A container definition object usable with the CreateModel API.
         """
-        mms_version = parse_version(self.framework_version) >= parse_version(self._LOWEST_MMS_VERSION)
+        is_mms_version = parse_version(self.framework_version) >= parse_version(self._LOWEST_MMS_VERSION)
 
         deploy_image = self.image
         if not deploy_image:
             region_name = self.sagemaker_session.boto_session.region_name
 
             framework_name = self.__framework_name__
-            if mms_version:
+            if is_mms_version:
                 framework_name += '-serving'
 
             deploy_image = create_image_uri(region_name, framework_name, instance_type,
                                             self.framework_version, self.py_version, accelerator_type=accelerator_type)
 
         deploy_key_prefix = model_code_key_prefix(self.key_prefix, self.name, deploy_image)
-        self._upload_code(deploy_key_prefix, mms_version)
+        self._upload_code(deploy_key_prefix, is_mms_version)
         deploy_env = dict(self.env)
         deploy_env.update(self._framework_env_vars())
 

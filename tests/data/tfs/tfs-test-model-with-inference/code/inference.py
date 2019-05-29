@@ -12,6 +12,7 @@
 # language governing permissions and limitations under the License.
 import json
 
+import dependency
 
 def input_handler(data, context):
     data = json.loads(data.read().decode('utf-8'))
