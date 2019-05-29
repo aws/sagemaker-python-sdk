@@ -154,7 +154,8 @@ DESCRIBE_ALGORITHM_RESPONSE = {
 }
 
 
-def test_algorithm_supported_input_mode_with_valid_input_types(sagemaker_session):
+@patch('sagemaker.Session')
+def test_algorithm_supported_input_mode_with_valid_input_types(session):
     # verify that the Estimator verifies the
     # input mode that an Algorithm supports.
 
@@ -178,7 +179,7 @@ def test_algorithm_supported_input_mode_with_valid_input_types(sagemaker_session
         },
     ]
 
-    sagemaker_session.sagemaker_client.describe_algorithm = Mock(return_value=file_mode_algo)
+    session.sagemaker_client.describe_algorithm = Mock(return_value=file_mode_algo)
 
     # Creating a File mode Estimator with a File mode algorithm should work
     AlgorithmEstimator(
@@ -186,7 +187,7 @@ def test_algorithm_supported_input_mode_with_valid_input_types(sagemaker_session
         role='SageMakerRole',
         train_instance_type='ml.m4.xlarge',
         train_instance_count=1,
-        sagemaker_session=sagemaker_session,
+        sagemaker_session=session,
     )
 
     pipe_mode_algo = copy.deepcopy(DESCRIBE_ALGORITHM_RESPONSE)
@@ -209,7 +210,7 @@ def test_algorithm_supported_input_mode_with_valid_input_types(sagemaker_session
         },
     ]
 
-    sagemaker_session.sagemaker_client.describe_algorithm = Mock(return_value=pipe_mode_algo)
+    session.sagemaker_client.describe_algorithm = Mock(return_value=pipe_mode_algo)
 
     # Creating a Pipe mode Estimator with a Pipe mode algorithm should work.
     AlgorithmEstimator(
@@ -218,7 +219,7 @@ def test_algorithm_supported_input_mode_with_valid_input_types(sagemaker_session
         train_instance_type='ml.m4.xlarge',
         train_instance_count=1,
         input_mode='Pipe',
-        sagemaker_session=sagemaker_session,
+        sagemaker_session=session,
     )
 
     any_input_algo = copy.deepcopy(DESCRIBE_ALGORITHM_RESPONSE)
@@ -241,7 +242,7 @@ def test_algorithm_supported_input_mode_with_valid_input_types(sagemaker_session
         },
     ]
 
-    sagemaker_session.sagemaker_client.describe_algorithm = Mock(return_value=any_input_algo)
+    session.sagemaker_client.describe_algorithm = Mock(return_value=any_input_algo)
 
     # Creating a File mode Estimator with an algorithm that supports both input modes
     # should work.
@@ -250,11 +251,12 @@ def test_algorithm_supported_input_mode_with_valid_input_types(sagemaker_session
         role='SageMakerRole',
         train_instance_type='ml.m4.xlarge',
         train_instance_count=1,
-        sagemaker_session=sagemaker_session,
+        sagemaker_session=session,
     )
 
 
-def test_algorithm_supported_input_mode_with_bad_input_types(sagemaker_session):
+@patch('sagemaker.Session')
+def test_algorithm_supported_input_mode_with_bad_input_types(session):
     # verify that the Estimator verifies raises exceptions when
     # attempting to train with an incorrect input type
 
@@ -278,7 +280,7 @@ def test_algorithm_supported_input_mode_with_bad_input_types(sagemaker_session):
         },
     ]
 
-    sagemaker_session.sagemaker_client.describe_algorithm = Mock(return_value=file_mode_algo)
+    session.sagemaker_client.describe_algorithm = Mock(return_value=file_mode_algo)
 
     # Creating a Pipe mode Estimator with a File mode algorithm should fail.
     with pytest.raises(ValueError):
@@ -288,7 +290,7 @@ def test_algorithm_supported_input_mode_with_bad_input_types(sagemaker_session):
             train_instance_type='ml.m4.xlarge',
             train_instance_count=1,
             input_mode='Pipe',
-            sagemaker_session=sagemaker_session,
+            sagemaker_session=session,
         )
 
     pipe_mode_algo = copy.deepcopy(DESCRIBE_ALGORITHM_RESPONSE)
@@ -311,7 +313,7 @@ def test_algorithm_supported_input_mode_with_bad_input_types(sagemaker_session):
         },
     ]
 
-    sagemaker_session.sagemaker_client.describe_algorithm = Mock(return_value=pipe_mode_algo)
+    session.sagemaker_client.describe_algorithm = Mock(return_value=pipe_mode_algo)
 
     # Creating a File mode Estimator with a Pipe mode algorithm should fail.
     with pytest.raises(ValueError):
@@ -320,12 +322,13 @@ def test_algorithm_supported_input_mode_with_bad_input_types(sagemaker_session):
             role='SageMakerRole',
             train_instance_type='ml.m4.xlarge',
             train_instance_count=1,
-            sagemaker_session=sagemaker_session,
+            sagemaker_session=session,
         )
 
 
 @patch('sagemaker.estimator.EstimatorBase.fit', Mock())
-def test_algorithm_trainining_channels_with_expected_channels(sagemaker_session):
+@patch('sagemaker.Session')
+def test_algorithm_trainining_channels_with_expected_channels(session):
     training_channels = copy.deepcopy(DESCRIBE_ALGORITHM_RESPONSE)
 
     training_channels['TrainingSpecification']['TrainingChannels'] = [
@@ -347,14 +350,14 @@ def test_algorithm_trainining_channels_with_expected_channels(sagemaker_session)
         },
     ]
 
-    sagemaker_session.sagemaker_client.describe_algorithm = Mock(return_value=training_channels)
+    session.sagemaker_client.describe_algorithm = Mock(return_value=training_channels)
 
     estimator = AlgorithmEstimator(
         algorithm_arn='arn:aws:sagemaker:us-east-2:1234:algorithm/scikit-decision-trees',
         role='SageMakerRole',
         train_instance_type='ml.m4.xlarge',
         train_instance_count=1,
-        sagemaker_session=sagemaker_session,
+        sagemaker_session=session,
     )
 
     # Pass training and validation channels. This should work
@@ -365,7 +368,8 @@ def test_algorithm_trainining_channels_with_expected_channels(sagemaker_session)
 
 
 @patch('sagemaker.estimator.EstimatorBase.fit', Mock())
-def test_algorithm_trainining_channels_with_invalid_channels(sagemaker_session):
+@patch('sagemaker.Session')
+def test_algorithm_trainining_channels_with_invalid_channels(session):
     training_channels = copy.deepcopy(DESCRIBE_ALGORITHM_RESPONSE)
 
     training_channels['TrainingSpecification']['TrainingChannels'] = [
@@ -387,14 +391,14 @@ def test_algorithm_trainining_channels_with_invalid_channels(sagemaker_session):
         },
     ]
 
-    sagemaker_session.sagemaker_client.describe_algorithm = Mock(return_value=training_channels)
+    session.sagemaker_client.describe_algorithm = Mock(return_value=training_channels)
 
     estimator = AlgorithmEstimator(
         algorithm_arn='arn:aws:sagemaker:us-east-2:1234:algorithm/scikit-decision-trees',
         role='SageMakerRole',
         train_instance_type='ml.m4.xlarge',
         train_instance_count=1,
-        sagemaker_session=sagemaker_session,
+        sagemaker_session=session,
     )
 
     # Passing only validation should fail as training is required.
@@ -406,7 +410,8 @@ def test_algorithm_trainining_channels_with_invalid_channels(sagemaker_session):
         estimator.fit({'training': 's3://some/data', 'training2': 's3://some/other/data'})
 
 
-def test_algorithm_train_instance_types_valid_instance_types(sagemaker_session):
+@patch('sagemaker.Session')
+def test_algorithm_train_instance_types_valid_instance_types(session):
     describe_algo_response = copy.deepcopy(DESCRIBE_ALGORITHM_RESPONSE)
     train_instance_types = ['ml.m4.xlarge', 'ml.m5.2xlarge']
 
@@ -414,7 +419,7 @@ def test_algorithm_train_instance_types_valid_instance_types(sagemaker_session):
         'SupportedTrainingInstanceTypes'
     ] = train_instance_types
 
-    sagemaker_session.sagemaker_client.describe_algorithm = Mock(
+    session.sagemaker_client.describe_algorithm = Mock(
         return_value=describe_algo_response
     )
 
@@ -423,7 +428,7 @@ def test_algorithm_train_instance_types_valid_instance_types(sagemaker_session):
         role='SageMakerRole',
         train_instance_type='ml.m4.xlarge',
         train_instance_count=1,
-        sagemaker_session=sagemaker_session,
+        sagemaker_session=session,
     )
 
     AlgorithmEstimator(
@@ -431,11 +436,12 @@ def test_algorithm_train_instance_types_valid_instance_types(sagemaker_session):
         role='SageMakerRole',
         train_instance_type='ml.m5.2xlarge',
         train_instance_count=1,
-        sagemaker_session=sagemaker_session,
+        sagemaker_session=session,
     )
 
 
-def test_algorithm_train_instance_types_invalid_instance_types(sagemaker_session):
+@patch('sagemaker.Session')
+def test_algorithm_train_instance_types_invalid_instance_types(session):
     describe_algo_response = copy.deepcopy(DESCRIBE_ALGORITHM_RESPONSE)
     train_instance_types = ['ml.m4.xlarge', 'ml.m5.2xlarge']
 
@@ -443,7 +449,7 @@ def test_algorithm_train_instance_types_invalid_instance_types(sagemaker_session
         'SupportedTrainingInstanceTypes'
     ] = train_instance_types
 
-    sagemaker_session.sagemaker_client.describe_algorithm = Mock(
+    session.sagemaker_client.describe_algorithm = Mock(
         return_value=describe_algo_response
     )
 
@@ -454,18 +460,19 @@ def test_algorithm_train_instance_types_invalid_instance_types(sagemaker_session
             role='SageMakerRole',
             train_instance_type='ml.m4.8xlarge',
             train_instance_count=1,
-            sagemaker_session=sagemaker_session,
+            sagemaker_session=session,
         )
 
 
-def test_algorithm_distributed_training_validation(sagemaker_session):
+@patch('sagemaker.Session')
+def test_algorithm_distributed_training_validation(session):
     distributed_algo = copy.deepcopy(DESCRIBE_ALGORITHM_RESPONSE)
     distributed_algo['TrainingSpecification']['SupportsDistributedTraining'] = True
 
     single_instance_algo = copy.deepcopy(DESCRIBE_ALGORITHM_RESPONSE)
     single_instance_algo['TrainingSpecification']['SupportsDistributedTraining'] = False
 
-    sagemaker_session.sagemaker_client.describe_algorithm = Mock(return_value=distributed_algo)
+    session.sagemaker_client.describe_algorithm = Mock(return_value=distributed_algo)
 
     # Distributed training should work for Distributed and Single instance.
     AlgorithmEstimator(
@@ -473,7 +480,7 @@ def test_algorithm_distributed_training_validation(sagemaker_session):
         role='SageMakerRole',
         train_instance_type='ml.m4.xlarge',
         train_instance_count=1,
-        sagemaker_session=sagemaker_session,
+        sagemaker_session=session,
     )
 
     AlgorithmEstimator(
@@ -481,10 +488,10 @@ def test_algorithm_distributed_training_validation(sagemaker_session):
         role='SageMakerRole',
         train_instance_type='ml.m4.xlarge',
         train_instance_count=2,
-        sagemaker_session=sagemaker_session,
+        sagemaker_session=session,
     )
 
-    sagemaker_session.sagemaker_client.describe_algorithm = Mock(return_value=single_instance_algo)
+    session.sagemaker_client.describe_algorithm = Mock(return_value=single_instance_algo)
 
     # distributed training on a single instance algorithm should fail.
     with pytest.raises(ValueError):
@@ -493,11 +500,12 @@ def test_algorithm_distributed_training_validation(sagemaker_session):
             role='SageMakerRole',
             train_instance_type='ml.m5.2xlarge',
             train_instance_count=2,
-            sagemaker_session=sagemaker_session,
+            sagemaker_session=session,
         )
 
 
-def test_algorithm_hyperparameter_integer_range_valid_range(sagemaker_session):
+@patch('sagemaker.Session')
+def test_algorithm_hyperparameter_integer_range_valid_range(session):
     hyperparameters = [
         {
             'Description': 'Grow a tree with max_leaf_nodes in best-first fashion.',
@@ -515,21 +523,22 @@ def test_algorithm_hyperparameter_integer_range_valid_range(sagemaker_session):
     some_algo = copy.deepcopy(DESCRIBE_ALGORITHM_RESPONSE)
     some_algo['TrainingSpecification']['SupportedHyperParameters'] = hyperparameters
 
-    sagemaker_session.sagemaker_client.describe_algorithm = Mock(return_value=some_algo)
+    session.sagemaker_client.describe_algorithm = Mock(return_value=some_algo)
 
     estimator = AlgorithmEstimator(
         algorithm_arn='arn:aws:sagemaker:us-east-2:1234:algorithm/scikit-decision-trees',
         role='SageMakerRole',
         train_instance_type='ml.m4.2xlarge',
         train_instance_count=1,
-        sagemaker_session=sagemaker_session,
+        sagemaker_session=session,
     )
 
     estimator.set_hyperparameters(max_leaf_nodes=1)
     estimator.set_hyperparameters(max_leaf_nodes=100000)
 
 
-def test_algorithm_hyperparameter_integer_range_invalid_range(sagemaker_session):
+@patch('sagemaker.Session')
+def test_algorithm_hyperparameter_integer_range_invalid_range(session):
     hyperparameters = [
         {
             'Description': 'Grow a tree with max_leaf_nodes in best-first fashion.',
@@ -547,14 +556,14 @@ def test_algorithm_hyperparameter_integer_range_invalid_range(sagemaker_session)
     some_algo = copy.deepcopy(DESCRIBE_ALGORITHM_RESPONSE)
     some_algo['TrainingSpecification']['SupportedHyperParameters'] = hyperparameters
 
-    sagemaker_session.sagemaker_client.describe_algorithm = Mock(return_value=some_algo)
+    session.sagemaker_client.describe_algorithm = Mock(return_value=some_algo)
 
     estimator = AlgorithmEstimator(
         algorithm_arn='arn:aws:sagemaker:us-east-2:1234:algorithm/scikit-decision-trees',
         role='SageMakerRole',
         train_instance_type='ml.m4.2xlarge',
         train_instance_count=1,
-        sagemaker_session=sagemaker_session,
+        sagemaker_session=session,
     )
 
     with pytest.raises(ValueError):
@@ -564,7 +573,8 @@ def test_algorithm_hyperparameter_integer_range_invalid_range(sagemaker_session)
         estimator.set_hyperparameters(max_leaf_nodes=100001)
 
 
-def test_algorithm_hyperparameter_continuous_range_valid_range(sagemaker_session):
+@patch('sagemaker.Session')
+def test_algorithm_hyperparameter_continuous_range_valid_range(session):
     hyperparameters = [
         {
             'Description': 'A continuous hyperparameter',
@@ -582,14 +592,14 @@ def test_algorithm_hyperparameter_continuous_range_valid_range(sagemaker_session
     some_algo = copy.deepcopy(DESCRIBE_ALGORITHM_RESPONSE)
     some_algo['TrainingSpecification']['SupportedHyperParameters'] = hyperparameters
 
-    sagemaker_session.sagemaker_client.describe_algorithm = Mock(return_value=some_algo)
+    session.sagemaker_client.describe_algorithm = Mock(return_value=some_algo)
 
     estimator = AlgorithmEstimator(
         algorithm_arn='arn:aws:sagemaker:us-east-2:1234:algorithm/scikit-decision-trees',
         role='SageMakerRole',
         train_instance_type='ml.m4.2xlarge',
         train_instance_count=1,
-        sagemaker_session=sagemaker_session,
+        sagemaker_session=session,
     )
 
     estimator.set_hyperparameters(max_leaf_nodes=0)
@@ -598,7 +608,8 @@ def test_algorithm_hyperparameter_continuous_range_valid_range(sagemaker_session
     estimator.set_hyperparameters(max_leaf_nodes=1)
 
 
-def test_algorithm_hyperparameter_continuous_range_invalid_range(sagemaker_session):
+@patch('sagemaker.Session')
+def test_algorithm_hyperparameter_continuous_range_invalid_range(session):
     hyperparameters = [
         {
             'Description': 'A continuous hyperparameter',
@@ -616,14 +627,14 @@ def test_algorithm_hyperparameter_continuous_range_invalid_range(sagemaker_sessi
     some_algo = copy.deepcopy(DESCRIBE_ALGORITHM_RESPONSE)
     some_algo['TrainingSpecification']['SupportedHyperParameters'] = hyperparameters
 
-    sagemaker_session.sagemaker_client.describe_algorithm = Mock(return_value=some_algo)
+    session.sagemaker_client.describe_algorithm = Mock(return_value=some_algo)
 
     estimator = AlgorithmEstimator(
         algorithm_arn='arn:aws:sagemaker:us-east-2:1234:algorithm/scikit-decision-trees',
         role='SageMakerRole',
         train_instance_type='ml.m4.2xlarge',
         train_instance_count=1,
-        sagemaker_session=sagemaker_session,
+        sagemaker_session=session,
     )
 
     with pytest.raises(ValueError):
@@ -633,7 +644,8 @@ def test_algorithm_hyperparameter_continuous_range_invalid_range(sagemaker_sessi
         estimator.set_hyperparameters(max_leaf_nodes=-0.1)
 
 
-def test_algorithm_hyperparameter_categorical_range(sagemaker_session):
+@patch('sagemaker.Session')
+def test_algorithm_hyperparameter_categorical_range(session):
     hyperparameters = [
         {
             'Description': 'A continuous hyperparameter',
@@ -649,14 +661,14 @@ def test_algorithm_hyperparameter_categorical_range(sagemaker_session):
     some_algo = copy.deepcopy(DESCRIBE_ALGORITHM_RESPONSE)
     some_algo['TrainingSpecification']['SupportedHyperParameters'] = hyperparameters
 
-    sagemaker_session.sagemaker_client.describe_algorithm = Mock(return_value=some_algo)
+    session.sagemaker_client.describe_algorithm = Mock(return_value=some_algo)
 
     estimator = AlgorithmEstimator(
         algorithm_arn='arn:aws:sagemaker:us-east-2:1234:algorithm/scikit-decision-trees',
         role='SageMakerRole',
         train_instance_type='ml.m4.2xlarge',
         train_instance_count=1,
-        sagemaker_session=sagemaker_session,
+        sagemaker_session=session,
     )
 
     estimator.set_hyperparameters(hp1='MXNet')
@@ -669,7 +681,8 @@ def test_algorithm_hyperparameter_categorical_range(sagemaker_session):
         estimator.set_hyperparameters(hp1='MxNET')
 
 
-def test_algorithm_required_hyperparameters_not_provided(sagemaker_session):
+@patch('sagemaker.Session')
+def test_algorithm_required_hyperparameters_not_provided(session):
     hyperparameters = [
         {
             'Description': 'A continuous hyperparameter',
@@ -691,14 +704,14 @@ def test_algorithm_required_hyperparameters_not_provided(sagemaker_session):
     some_algo = copy.deepcopy(DESCRIBE_ALGORITHM_RESPONSE)
     some_algo['TrainingSpecification']['SupportedHyperParameters'] = hyperparameters
 
-    sagemaker_session.sagemaker_client.describe_algorithm = Mock(return_value=some_algo)
+    session.sagemaker_client.describe_algorithm = Mock(return_value=some_algo)
 
     estimator = AlgorithmEstimator(
         algorithm_arn='arn:aws:sagemaker:us-east-2:1234:algorithm/scikit-decision-trees',
         role='SageMakerRole',
         train_instance_type='ml.m4.2xlarge',
         train_instance_count=1,
-        sagemaker_session=sagemaker_session,
+        sagemaker_session=session,
     )
 
     # hp1 is required and was not provided
@@ -711,8 +724,9 @@ def test_algorithm_required_hyperparameters_not_provided(sagemaker_session):
         estimator.fit({'training': 's3://some/place'})
 
 
+@patch('sagemaker.Session')
 @patch('sagemaker.estimator.EstimatorBase.fit', Mock())
-def test_algorithm_required_hyperparameters_are_provided(sagemaker_session):
+def test_algorithm_required_hyperparameters_are_provided(session):
     hyperparameters = [
         {
             'Description': 'A categorical hyperparameter',
@@ -741,21 +755,22 @@ def test_algorithm_required_hyperparameters_are_provided(sagemaker_session):
     some_algo = copy.deepcopy(DESCRIBE_ALGORITHM_RESPONSE)
     some_algo['TrainingSpecification']['SupportedHyperParameters'] = hyperparameters
 
-    sagemaker_session.sagemaker_client.describe_algorithm = Mock(return_value=some_algo)
+    session.sagemaker_client.describe_algorithm = Mock(return_value=some_algo)
 
     estimator = AlgorithmEstimator(
         algorithm_arn='arn:aws:sagemaker:us-east-2:1234:algorithm/scikit-decision-trees',
         role='SageMakerRole',
         train_instance_type='ml.m4.2xlarge',
         train_instance_count=1,
-        sagemaker_session=sagemaker_session,
+        sagemaker_session=session,
     )
 
     # All 3 Hyperparameters are provided
     estimator.set_hyperparameters(hp1='TF', hp2='TF2', free_text_hp1='Hello!')
 
 
-def test_algorithm_required_free_text_hyperparameter_not_provided(sagemaker_session):
+@patch('sagemaker.Session')
+def test_algorithm_required_free_text_hyperparameter_not_provided(session):
     hyperparameters = [
         {
             'Name': 'free_text_hp1',
@@ -776,14 +791,14 @@ def test_algorithm_required_free_text_hyperparameter_not_provided(sagemaker_sess
     some_algo = copy.deepcopy(DESCRIBE_ALGORITHM_RESPONSE)
     some_algo['TrainingSpecification']['SupportedHyperParameters'] = hyperparameters
 
-    sagemaker_session.sagemaker_client.describe_algorithm = Mock(return_value=some_algo)
+    session.sagemaker_client.describe_algorithm = Mock(return_value=some_algo)
 
     estimator = AlgorithmEstimator(
         algorithm_arn='arn:aws:sagemaker:us-east-2:1234:algorithm/scikit-decision-trees',
         role='SageMakerRole',
         train_instance_type='ml.m4.2xlarge',
         train_instance_count=1,
-        sagemaker_session=sagemaker_session,
+        sagemaker_session=session,
     )
 
     # Calling fit with unset required hyperparameters should fail
@@ -796,9 +811,10 @@ def test_algorithm_required_free_text_hyperparameter_not_provided(sagemaker_sess
         estimator.set_hyperparameters(free_text_hp2='some text')
 
 
+@patch('sagemaker.Session')
 @patch('sagemaker.algorithm.AlgorithmEstimator.create_model')
-def test_algorithm_create_transformer(create_model, sagemaker_session):
-    sagemaker_session.sagemaker_client.describe_algorithm = Mock(
+def test_algorithm_create_transformer(create_model, session):
+    session.sagemaker_client.describe_algorithm = Mock(
         return_value=DESCRIBE_ALGORITHM_RESPONSE)
 
     estimator = AlgorithmEstimator(
@@ -806,10 +822,10 @@ def test_algorithm_create_transformer(create_model, sagemaker_session):
         role='SageMakerRole',
         train_instance_type='ml.m4.xlarge',
         train_instance_count=1,
-        sagemaker_session=sagemaker_session,
+        sagemaker_session=session,
     )
 
-    estimator.latest_training_job = _TrainingJob(sagemaker_session, 'some-job-name')
+    estimator.latest_training_job = _TrainingJob(session, 'some-job-name')
     model = Mock()
     model.name = 'my-model'
     create_model.return_value = model
@@ -821,8 +837,9 @@ def test_algorithm_create_transformer(create_model, sagemaker_session):
     assert transformer.model_name == 'my-model'
 
 
-def test_algorithm_create_transformer_without_completed_training_job(sagemaker_session):
-    sagemaker_session.sagemaker_client.describe_algorithm = Mock(
+@patch('sagemaker.Session')
+def test_algorithm_create_transformer_without_completed_training_job(session):
+    session.sagemaker_client.describe_algorithm = Mock(
         return_value=DESCRIBE_ALGORITHM_RESPONSE)
 
     estimator = AlgorithmEstimator(
@@ -830,7 +847,7 @@ def test_algorithm_create_transformer_without_completed_training_job(sagemaker_s
         role='SageMakerRole',
         train_instance_type='ml.m4.xlarge',
         train_instance_count=1,
-        sagemaker_session=sagemaker_session,
+        sagemaker_session=session,
     )
 
     with pytest.raises(RuntimeError) as error:
@@ -839,10 +856,11 @@ def test_algorithm_create_transformer_without_completed_training_job(sagemaker_s
 
 
 @patch('sagemaker.algorithm.AlgorithmEstimator.create_model')
-def test_algorithm_create_transformer_with_product_id(create_model, sagemaker_session):
+@patch('sagemaker.Session')
+def test_algorithm_create_transformer_with_product_id(create_model, session):
     response = copy.deepcopy(DESCRIBE_ALGORITHM_RESPONSE)
     response['ProductId'] = 'some-product-id'
-    sagemaker_session.sagemaker_client.describe_algorithm = Mock(
+    session.sagemaker_client.describe_algorithm = Mock(
         return_value=response)
 
     estimator = AlgorithmEstimator(
@@ -850,10 +868,10 @@ def test_algorithm_create_transformer_with_product_id(create_model, sagemaker_se
         role='SageMakerRole',
         train_instance_type='ml.m4.xlarge',
         train_instance_count=1,
-        sagemaker_session=sagemaker_session,
+        sagemaker_session=session,
     )
 
-    estimator.latest_training_job = _TrainingJob(sagemaker_session, 'some-job-name')
+    estimator.latest_training_job = _TrainingJob(session, 'some-job-name')
     model = Mock()
     model.name = 'my-model'
     create_model.return_value = model
@@ -862,8 +880,9 @@ def test_algorithm_create_transformer_with_product_id(create_model, sagemaker_se
     assert transformer.env is None
 
 
-def test_algorithm_enable_network_isolation_no_product_id(sagemaker_session):
-    sagemaker_session.sagemaker_client.describe_algorithm = Mock(
+@patch('sagemaker.Session')
+def test_algorithm_enable_network_isolation_no_product_id(session):
+    session.sagemaker_client.describe_algorithm = Mock(
         return_value=DESCRIBE_ALGORITHM_RESPONSE)
 
     estimator = AlgorithmEstimator(
@@ -871,17 +890,18 @@ def test_algorithm_enable_network_isolation_no_product_id(sagemaker_session):
         role='SageMakerRole',
         train_instance_type='ml.m4.xlarge',
         train_instance_count=1,
-        sagemaker_session=sagemaker_session,
+        sagemaker_session=session,
     )
 
     network_isolation = estimator.enable_network_isolation()
     assert network_isolation is False
 
 
-def test_algorithm_enable_network_isolation_with_product_id(sagemaker_session):
+@patch('sagemaker.Session')
+def test_algorithm_enable_network_isolation_with_product_id(session):
     response = copy.deepcopy(DESCRIBE_ALGORITHM_RESPONSE)
     response['ProductId'] = 'some-product-id'
-    sagemaker_session.sagemaker_client.describe_algorithm = Mock(
+    session.sagemaker_client.describe_algorithm = Mock(
         return_value=response)
 
     estimator = AlgorithmEstimator(
@@ -889,17 +909,18 @@ def test_algorithm_enable_network_isolation_with_product_id(sagemaker_session):
         role='SageMakerRole',
         train_instance_type='ml.m4.xlarge',
         train_instance_count=1,
-        sagemaker_session=sagemaker_session,
+        sagemaker_session=session,
     )
 
     network_isolation = estimator.enable_network_isolation()
     assert network_isolation is True
 
 
-def test_algorithm_encrypt_inter_container_traffic(sagemaker_session):
+@patch('sagemaker.Session')
+def test_algorithm_encrypt_inter_container_traffic(session):
     response = copy.deepcopy(DESCRIBE_ALGORITHM_RESPONSE)
     response['encrypt_inter_container_traffic'] = True
-    sagemaker_session.sagemaker_client.describe_algorithm = Mock(
+    session.sagemaker_client.describe_algorithm = Mock(
         return_value=response)
 
     estimator = AlgorithmEstimator(
@@ -907,7 +928,7 @@ def test_algorithm_encrypt_inter_container_traffic(sagemaker_session):
         role='SageMakerRole',
         train_instance_type='ml.m4.xlarge',
         train_instance_count=1,
-        sagemaker_session=sagemaker_session,
+        sagemaker_session=session,
         encrypt_inter_container_traffic=True
     )
 
@@ -915,11 +936,12 @@ def test_algorithm_encrypt_inter_container_traffic(sagemaker_session):
     assert encrypt_inter_container_traffic is True
 
 
-def test_algorithm_no_required_hyperparameters(sagemaker_session):
+@patch('sagemaker.Session')
+def test_algorithm_no_required_hyperparameters(session):
     some_algo = copy.deepcopy(DESCRIBE_ALGORITHM_RESPONSE)
     del some_algo['TrainingSpecification']['SupportedHyperParameters']
 
-    sagemaker_session.sagemaker_client.describe_algorithm = Mock(return_value=some_algo)
+    session.sagemaker_client.describe_algorithm = Mock(return_value=some_algo)
 
     # Calling AlgorithmEstimator() with unset required hyperparameters
     # should fail if they are required.
@@ -929,5 +951,5 @@ def test_algorithm_no_required_hyperparameters(sagemaker_session):
         role='SageMakerRole',
         train_instance_type='ml.m4.2xlarge',
         train_instance_count=1,
-        sagemaker_session=sagemaker_session,
+        sagemaker_session=session,
     )
