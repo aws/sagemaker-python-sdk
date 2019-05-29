@@ -1,5 +1,11 @@
 # Changelog
 
+## v1.24.0 (2019-05-29)
+
+### Features
+
+ * add region check for Neo service
+
 ## v1.23.0 (2019-05-27)
 
 ### Features
