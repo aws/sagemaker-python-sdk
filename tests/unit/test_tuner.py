@@ -538,6 +538,7 @@ def test_deploy_default(tuner):
         },
         'TrainingJobName': 'neo',
         'TrainingJobStatus': 'Completed',
+        'TrainingJobArn': 'arn:aws:sagemaker:us-west-2:336:training-job/neo',
         'OutputDataConfig': {
             'KmsKeyId': '',
             'S3OutputPath': 's3://place/output/neo'
@@ -550,9 +551,12 @@ def test_deploy_default(tuner):
         }
     }
     tuning_job_description = {'BestTrainingJob': {'TrainingJobName': JOB_NAME}}
+    returned_list_tags = {'Tags': [{'Key': 'TagtestKey', 'Value': 'TagtestValue'}]}
 
     tuner.estimator.sagemaker_session.sagemaker_client.describe_training_job = \
         Mock(name='describe_training_job', return_value=returned_training_job_description)
+    tuner.estimator.sagemaker_session.sagemaker_client.list_tags = \
+        Mock(name='list_tags', return_value=returned_list_tags)
     tuner.estimator.sagemaker_session.sagemaker_client.describe_hyper_parameter_tuning_job = Mock(
         name='describe_hyper_parameter_tuning_job', return_value=tuning_job_description)
     tuner.estimator.sagemaker_session.log_for_jobs = Mock(name='log_for_jobs')

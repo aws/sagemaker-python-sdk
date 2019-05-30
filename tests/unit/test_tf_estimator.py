@@ -57,6 +57,10 @@ ENDPOINT_CONFIG_DESC = {
                            {'ModelName': 'model-2'}]
 }
 
+LIST_TAGS_RESULT = {
+    'Tags': [{'Key': 'TagtestKey', 'Value': 'TagtestValue'}]
+}
+
 
 @pytest.fixture()
 def sagemaker_session():
@@ -69,6 +73,7 @@ def sagemaker_session():
     session.sagemaker_client.describe_training_job = Mock(return_value=describe)
     session.sagemaker_client.describe_endpoint = Mock(return_value=ENDPOINT_DESC)
     session.sagemaker_client.describe_endpoint_config = Mock(return_value=ENDPOINT_CONFIG_DESC)
+    session.sagemaker_client.list_tags = Mock(return_value=LIST_TAGS_RESULT)
     return session
 
 
@@ -496,6 +501,7 @@ def test_attach(sagemaker_session, tf_version):
         'StoppingCondition': {'MaxRuntimeInSeconds': 24 * 60 * 60},
         'TrainingJobName': 'neo',
         'TrainingJobStatus': 'Completed',
+        'TrainingJobArn': 'arn:aws:sagemaker:us-west-2:336:training-job/neo',
         'OutputDataConfig': {'KmsKeyId': '', 'S3OutputPath': 's3://place/output/neo'},
         'TrainingJobOutput': {'S3TrainingJobOutput': 's3://here/output.tar.gz'}}
     sagemaker_session.sagemaker_client.describe_training_job = Mock(name='describe_training_job', return_value=rjd)
@@ -544,6 +550,7 @@ def test_attach_new_repo_name(sagemaker_session, tf_version):
         'StoppingCondition': {'MaxRuntimeInSeconds': 24 * 60 * 60},
         'TrainingJobName': 'neo',
         'TrainingJobStatus': 'Completed',
+        'TrainingJobArn': 'arn:aws:sagemaker:us-west-2:336:training-job/neo',
         'OutputDataConfig': {'KmsKeyId': '', 'S3OutputPath': 's3://place/output/neo'},
         'TrainingJobOutput': {'S3TrainingJobOutput': 's3://here/output.tar.gz'}}
     sagemaker_session.sagemaker_client.describe_training_job = Mock(name='describe_training_job', return_value=rjd)
@@ -593,6 +600,7 @@ def test_attach_old_container(sagemaker_session):
         'StoppingCondition': {'MaxRuntimeInSeconds': 24 * 60 * 60},
         'TrainingJobName': 'neo',
         'TrainingJobStatus': 'Completed',
+        'TrainingJobArn': 'arn:aws:sagemaker:us-west-2:336:training-job/neo',
         'OutputDataConfig': {'KmsKeyId': '', 'S3OutputPath': 's3://place/output/neo'},
         'TrainingJobOutput': {'S3TrainingJobOutput': 's3://here/output.tar.gz'}}
     sagemaker_session.sagemaker_client.describe_training_job = Mock(name='describe_training_job', return_value=rjd)
@@ -642,6 +650,7 @@ def test_attach_wrong_framework(sagemaker_session):
         },
         'TrainingJobName': 'neo',
         'TrainingJobStatus': 'Completed',
+        'TrainingJobArn': 'arn:aws:sagemaker:us-west-2:336:training-job/neo',
         'OutputDataConfig': {
             'KmsKeyId': '',
             'S3OutputPath': 's3://place/output/neo'
@@ -681,6 +690,7 @@ def test_attach_custom_image(sagemaker_session):
         'StoppingCondition': {'MaxRuntimeInSeconds': 24 * 60 * 60},
         'TrainingJobName': 'neo',
         'TrainingJobStatus': 'Completed',
+        'TrainingJobArn': 'arn:aws:sagemaker:us-west-2:336:training-job/neo',
         'OutputDataConfig': {'KmsKeyId': '', 'S3OutputPath': 's3://place/output/neo'},
         'TrainingJobOutput': {'S3TrainingJobOutput': 's3://here/output.tar.gz'}}
     sagemaker_session.sagemaker_client.describe_training_job = Mock(name='describe_training_job', return_value=rjd)
@@ -856,6 +866,7 @@ def test_tf_script_mode_attach(sagemaker_session, tf_version):
         'StoppingCondition': {'MaxRuntimeInSeconds': 24 * 60 * 60},
         'TrainingJobName': 'neo',
         'TrainingJobStatus': 'Completed',
+        'TrainingJobArn': 'arn:aws:sagemaker:us-west-2:336:training-job/neo',
         'OutputDataConfig': {'KmsKeyId': '', 'S3OutputPath': 's3://place/output/neo'},
         'TrainingJobOutput': {'S3TrainingJobOutput': 's3://here/output.tar.gz'}}
     sagemaker_session.sagemaker_client.describe_training_job = Mock(name='describe_training_job', return_value=rjd)

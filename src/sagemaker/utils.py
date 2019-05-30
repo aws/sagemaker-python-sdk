@@ -12,10 +12,12 @@
 # language governing permissions and limitations under the License.
 from __future__ import absolute_import
 
+import contextlib
 import errno
 import os
 import random
 import re
+import shutil
 import sys
 import tarfile
 import tempfile
@@ -23,9 +25,9 @@ import time
 
 from datetime import datetime
 from functools import wraps
+from six.moves.urllib import parse
 
 import six
-
 
 ECR_URI_PATTERN = r'^(\d+)(\.)dkr(\.)ecr(\.)(.+)(\.)(amazonaws.com|c2s.ic.gov)(/)(.*:.*)$'
 
@@ -258,13 +260,10 @@ def download_folder(bucket_name, prefix, target, sagemaker_session):
 
 def create_tar_file(source_files, target=None):
     """Create a tar file containing all the source_files
-
     Args:
         source_files (List[str]): List of file paths that will be contained in the tar file
-
     Returns:
          (str): path to created tar file
-
     """
     if target:
         filename = target
@@ -276,6 +275,137 @@ def create_tar_file(source_files, target=None):
             # Add all files from the directory into the root of the directory structure of the tar
             t.add(sf, arcname=os.path.basename(sf))
     return filename
+
+
+@contextlib.contextmanager
+def _tmpdir(suffix='', prefix='tmp'):
+    """Create a temporary directory with a context manager. The file is deleted when the context exits.
+
+    The prefix, suffix, and dir arguments are the same as for mkstemp().
+
+    Args:
+        suffix (str):  If suffix is specified, the file name will end with that suffix, otherwise there will be no
+                        suffix.
+        prefix (str):  If prefix is specified, the file name will begin with that prefix; otherwise,
+                        a default prefix is used.
+        dir (str):  If dir is specified, the file will be created in that directory; otherwise, a default directory is
+                        used.
+    Returns:
+        str: path to the directory
+    """
+    tmp = tempfile.mkdtemp(suffix=suffix, prefix=prefix, dir=None)
+    yield tmp
+    shutil.rmtree(tmp)
+
+
+def repack_model(inference_script,
+                 source_directory,
+                 dependencies,
+                 model_uri,
+                 repacked_model_uri,
+                 sagemaker_session):
+    """Unpack model tarball and creates a new model tarball with the provided code script.
+
+    This function does the following:
+    - uncompresses model tarball from S3 or local system into a temp folder
+    - replaces the inference code from the model with the new code provided
+    - compresses the new model tarball and saves it in S3 or local file system
+
+    Args:
+        inference_script (str): path or basename of the inference script that will be packed into the model
+        source_directory (str): path including all the files that will be packed into the model
+        dependencies (list[str]): A list of paths to directories (absolute or relative) with
+                any additional libraries that will be exported to the container (default: []).
+                The library folders will be copied to SageMaker in the same folder where the entrypoint is copied.
+                Example:
+
+                    The following call
+                    >>> Estimator(entry_point='train.py', dependencies=['my/libs/common', 'virtual-env'])
+                    results in the following inside the container:
+
+                    >>> $ ls
+
+                    >>> opt/ml/code
+                    >>>     |------ train.py
+                    >>>     |------ common
+                    >>>     |------ virtual-env
+
+        repacked_model_uri (str): path or file system location where the new model will be saved
+        model_uri (str): S3 or file system location of the original model tar
+        sagemaker_session (:class:`sagemaker.session.Session`): a sagemaker session to interact with S3.
+
+    Returns:
+        str: path to the new packed model
+    """
+    dependencies = dependencies or []
+
+    with _tmpdir() as tmp:
+        model_dir = _extract_model(model_uri, sagemaker_session, tmp)
+
+        _create_or_update_code_dir(model_dir, inference_script, source_directory, dependencies, sagemaker_session, tmp)
+
+        tmp_model_path = os.path.join(tmp, 'temp-model.tar.gz')
+        with tarfile.open(tmp_model_path, mode='w:gz') as t:
+            t.add(model_dir, arcname=os.path.sep)
+
+        _save_model(repacked_model_uri, tmp_model_path, sagemaker_session)
+
+
+def _save_model(repacked_model_uri, tmp_model_path, sagemaker_session):
+    if repacked_model_uri.lower().startswith('s3://'):
+        url = parse.urlparse(repacked_model_uri)
+        bucket, key = url.netloc, url.path.lstrip('/')
+        new_key = key.replace(os.path.basename(key), os.path.basename(repacked_model_uri))
+
+        sagemaker_session.boto_session.resource('s3').Object(bucket, new_key).upload_file(
+            tmp_model_path)
+    else:
+        shutil.move(tmp_model_path, repacked_model_uri.replace('file://', ''))
+
+
+def _create_or_update_code_dir(model_dir, inference_script, source_directory,
+                               dependencies, sagemaker_session, tmp):
+    code_dir = os.path.join(model_dir, 'code')
+    if os.path.exists(code_dir):
+        shutil.rmtree(code_dir, ignore_errors=True)
+    if source_directory and source_directory.lower().startswith('s3://'):
+        local_code_path = os.path.join(tmp, 'local_code.tar.gz')
+        download_file_from_url(source_directory, local_code_path, sagemaker_session)
+
+        with tarfile.open(name=local_code_path, mode='r:gz') as t:
+            t.extractall(path=code_dir)
+
+    elif source_directory:
+        shutil.copytree(source_directory, code_dir)
+    else:
+        os.mkdir(code_dir)
+        shutil.copy2(inference_script, code_dir)
+
+    for dependency in dependencies:
+        if os.path.isdir(dependency):
+            shutil.copytree(dependency, code_dir)
+        else:
+            shutil.copy2(dependency, code_dir)
+
+
+def _extract_model(model_uri, sagemaker_session, tmp):
+    tmp_model_dir = os.path.join(tmp, 'model')
+    os.mkdir(tmp_model_dir)
+    if model_uri.lower().startswith('s3://'):
+        local_model_path = os.path.join(tmp, 'tar_file')
+        download_file_from_url(model_uri, local_model_path, sagemaker_session)
+    else:
+        local_model_path = model_uri.replace('file://', '')
+    with tarfile.open(name=local_model_path, mode='r:gz') as t:
+        t.extractall(path=tmp_model_dir)
+    return tmp_model_dir
+
+
+def download_file_from_url(url, dst, sagemaker_session):
+    url = parse.urlparse(url)
+    bucket, key = url.netloc, url.path.lstrip('/')
+
+    download_file(bucket, key, dst, sagemaker_session)
 
 
 def download_file(bucket_name, path, target, sagemaker_session):

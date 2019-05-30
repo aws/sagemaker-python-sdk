@@ -14,7 +14,7 @@ from __future__ import absolute_import
 
 import numpy as np
 import pytest
-from mock import Mock, patch, call
+from mock import ANY, Mock, patch, call
 
 # Use PCA as a test implementation of AmazonAlgorithmEstimator
 from sagemaker.amazon.pca import PCA
@@ -143,6 +143,22 @@ def test_prepare_for_training_list_no_train_channel(sagemaker_session):
     assert 'Must provide train channel.' in str(ex)
 
 
+def test_prepare_for_training_encrypt(sagemaker_session):
+    pca = PCA(num_components=55, sagemaker_session=sagemaker_session, **COMMON_ARGS)
+
+    train = [[1.0, 2.0, 3.0], [4.0, 5.0, 6.0], [7.0, 8.0, 8.0], [44.0, 55.0, 66.0]]
+    labels = [99, 85, 87, 2]
+    with patch('sagemaker.amazon.amazon_estimator.upload_numpy_to_s3_shards',
+               return_value='manfiest_file') as mock_upload:
+        pca.record_set(np.array(train), np.array(labels))
+        pca.record_set(np.array(train), np.array(labels), encrypt=True)
+
+    def make_upload_call(encrypt):
+        return call(ANY, ANY, ANY, ANY, ANY, ANY, encrypt)
+
+    mock_upload.assert_has_calls([make_upload_call(False), make_upload_call(True)])
+
+
 @patch('time.strftime', return_value=TIMESTAMP)
 def test_fit_ndarray(time, sagemaker_session):
     mock_s3 = Mock()
@@ -185,9 +201,21 @@ def test_upload_numpy_to_s3_shards():
     mock_s3 = Mock()
     mock_object = Mock()
     mock_s3.Object = Mock(return_value=mock_object)
+    mock_put = mock_s3.Object.return_value.put
     array = np.array([[j for j in range(10)] for i in range(10)])
     labels = np.array([i for i in range(10)])
-    upload_numpy_to_s3_shards(3, mock_s3, BUCKET_NAME, "key-prefix", array, labels)
+    num_shards = 3
+    num_objects = num_shards + 1  # Account for the manifest file.
+
+    def make_all_put_calls(**kwargs):
+        return [call(Body=ANY, **kwargs) for i in range(num_objects)]
+
+    upload_numpy_to_s3_shards(num_shards, mock_s3, BUCKET_NAME, "key-prefix", array, labels)
     mock_s3.Object.assert_has_calls([call(BUCKET_NAME, 'key-prefix/matrix_0.pbr')])
     mock_s3.Object.assert_has_calls([call(BUCKET_NAME, 'key-prefix/matrix_1.pbr')])
     mock_s3.Object.assert_has_calls([call(BUCKET_NAME, 'key-prefix/matrix_2.pbr')])
+    mock_put.assert_has_calls(make_all_put_calls())
+
+    mock_put.reset()
+    upload_numpy_to_s3_shards(3, mock_s3, BUCKET_NAME, "key-prefix", array, labels, encrypt=True)
+    mock_put.assert_has_calls(make_all_put_calls(ServerSideEncryption='AES256'))

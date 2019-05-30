@@ -15,6 +15,8 @@ from __future__ import absolute_import
 import io
 import json
 import logging
+
+import mock
 import pytest
 from mock import Mock
 from sagemaker.tensorflow import TensorFlow
@@ -100,6 +102,60 @@ def test_tfs_model_with_custom_image(sagemaker_session, tf_version):
                   sagemaker_session=sagemaker_session)
     cdef = model.prepare_container_def(INSTANCE_TYPE)
     assert cdef['Image'] == 'my-image'
+
+
+@mock.patch('sagemaker.fw_utils.model_code_key_prefix', return_value='key-prefix')
+@mock.patch('sagemaker.utils.repack_model')
+def test_tfs_model_with_entry_point(repack_model, model_code_key_prefix, sagemaker_session,
+                                    tf_version):
+    model = Model("s3://some/data.tar.gz",
+                  entry_point='train.py',
+                  role=ROLE, framework_version=tf_version,
+                  image='my-image', sagemaker_session=sagemaker_session)
+
+    model.prepare_container_def(INSTANCE_TYPE)
+
+    model_code_key_prefix.assert_called_with(model.key_prefix, model.name, model.image)
+
+    repack_model.assert_called_with('train.py', None, [], 's3://some/data.tar.gz',
+                                    's3://my_bucket/key-prefix/model.tar.gz',
+                                    sagemaker_session)
+
+
+@mock.patch('sagemaker.fw_utils.model_code_key_prefix', return_value='key-prefix')
+@mock.patch('sagemaker.utils.repack_model')
+def test_tfs_model_with_source(repack_model, model_code_key_prefix, sagemaker_session, tf_version):
+    model = Model("s3://some/data.tar.gz",
+                  entry_point='train.py',
+                  source_dir='src',
+                  role=ROLE, framework_version=tf_version,
+                  image='my-image', sagemaker_session=sagemaker_session)
+
+    model.prepare_container_def(INSTANCE_TYPE)
+
+    model_code_key_prefix.assert_called_with(model.key_prefix, model.name, model.image)
+
+    repack_model.assert_called_with('train.py', 'src', [], 's3://some/data.tar.gz',
+                                    's3://my_bucket/key-prefix/model.tar.gz',
+                                    sagemaker_session)
+
+
+@mock.patch('sagemaker.fw_utils.model_code_key_prefix', return_value='key-prefix')
+@mock.patch('sagemaker.utils.repack_model')
+def test_tfs_model_with_dependencies(repack_model, model_code_key_prefix, sagemaker_session, tf_version):
+    model = Model("s3://some/data.tar.gz",
+                  entry_point='train.py',
+                  dependencies=['src', 'lib'],
+                  role=ROLE, framework_version=tf_version,
+                  image='my-image', sagemaker_session=sagemaker_session)
+
+    model.prepare_container_def(INSTANCE_TYPE)
+
+    model_code_key_prefix.assert_called_with(model.key_prefix, model.name, model.image)
+
+    repack_model.assert_called_with('train.py', None, ['src', 'lib'], 's3://some/data.tar.gz',
+                                    's3://my_bucket/key-prefix/model.tar.gz',
+                                    sagemaker_session)
 
 
 def test_estimator_deploy(sagemaker_session):

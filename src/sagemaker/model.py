@@ -14,9 +14,11 @@ from __future__ import absolute_import
 
 import json
 import logging
+import os
 
 import sagemaker
 from sagemaker import fw_utils, local, session, utils
+from sagemaker.fw_utils import UploadedCode
 from sagemaker.transformer import Transformer
 
 LOGGER = logging.getLogger('sagemaker')
@@ -37,7 +39,7 @@ class Model(object):
     """A SageMaker ``Model`` that can be deployed to an ``Endpoint``."""
 
     def __init__(self, model_data, image, role=None, predictor_cls=None, env=None, name=None, vpc_config=None,
-                 sagemaker_session=None):
+                 sagemaker_session=None, enable_network_isolation=False):
         """Initialize an SageMaker ``Model``.
 
         Args:
@@ -58,6 +60,9 @@ class Model(object):
                 * 'SecurityGroupIds' (list[str]): List of security group ids.
             sagemaker_session (sagemaker.session.Session): A SageMaker Session object, used for SageMaker
                interactions (default: None). If not specified, one is created using the default AWS configuration chain.
+            enable_network_isolation (Boolean): Default False. if True, enables network isolation in the endpoint,
+                isolating the model container. No inbound or outbound network calls can be made to or from the
+                model container.
         """
         self.model_data = model_data
         self.image = image
@@ -69,6 +74,7 @@ class Model(object):
         self.sagemaker_session = sagemaker_session
         self._model_name = None
         self._is_compiled_model = False
+        self._enable_network_isolation = enable_network_isolation
 
     def prepare_container_def(self, instance_type, accelerator_type=None):  # pylint: disable=unused-argument
         """Return a dict created by ``sagemaker.container_def()`` for deploying this model to a specified instance type.
@@ -92,7 +98,7 @@ class Model(object):
         Returns:
             bool: If network isolation should be enabled or not.
         """
-        return False
+        return self._enable_network_isolation
 
     def _create_sagemaker_model(self, instance_type, accelerator_type=None, tags=None):
         """Create a SageMaker Model Entity
@@ -144,6 +150,19 @@ class Model(object):
                 },
                 'tags': tags,
                 'job_name': job_name}
+
+    def check_neo_region(self, region):
+        """Check if this ``Model`` in the available region where neo support.
+
+        Args:
+            region (str): Specifies the region where want to execute compilation
+        Returns:
+            bool: boolean value whether if neo is available in the specified region
+        """
+        if region in NEO_IMAGE_ACCOUNT:
+            return True
+        else:
+            return False
 
     def _neo_image_account(self, region):
         if region not in NEO_IMAGE_ACCOUNT:
@@ -404,6 +423,7 @@ class FrameworkModel(Model):
         else:
             self.bucket, self.key_prefix = None, None
         self.uploaded_code = None
+        self.repacked_model_data = None
 
     def prepare_container_def(self, instance_type, accelerator_type=None):  # pylint disable=unused-argument
         """Return a container definition with framework configuration set in model environment variables.
@@ -424,11 +444,11 @@ class FrameworkModel(Model):
         deploy_env.update(self._framework_env_vars())
         return sagemaker.container_def(self.image, self.model_data, deploy_env)
 
-    def _upload_code(self, key_prefix):
+    def _upload_code(self, key_prefix, repack=False):
         local_code = utils.get_config_value('local.local_code', self.sagemaker_session.config)
         if self.sagemaker_session.local_mode and local_code:
             self.uploaded_code = None
-        else:
+        elif not repack:
             bucket = self.bucket or self.sagemaker_session.default_bucket()
             self.uploaded_code = fw_utils.tar_and_upload_dir(session=self.sagemaker_session.boto_session,
                                                              bucket=bucket,
@@ -436,6 +456,21 @@ class FrameworkModel(Model):
                                                              script=self.entry_point,
                                                              directory=self.source_dir,
                                                              dependencies=self.dependencies)
+
+        if repack:
+            bucket = self.bucket or self.sagemaker_session.default_bucket()
+            repacked_model_data = 's3://' + os.path.join(bucket, key_prefix, 'model.tar.gz')
+
+            utils.repack_model(inference_script=self.entry_point,
+                               source_directory=self.source_dir,
+                               dependencies=self.dependencies,
+                               model_uri=self.model_data,
+                               repacked_model_uri=repacked_model_data,
+                               sagemaker_session=self.sagemaker_session)
+
+            self.repacked_model_data = repacked_model_data
+            self.uploaded_code = UploadedCode(s3_prefix=self.repacked_model_data,
+                                              script_name=os.path.basename(self.entry_point))
 
     def _framework_env_vars(self):
         if self.uploaded_code:

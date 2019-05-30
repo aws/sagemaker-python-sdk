@@ -24,11 +24,15 @@ from six.moves.urllib.parse import urlparse
 from sagemaker.utils import unique_name_from_base
 
 import tests.integ
+from tests.integ import timeout
 
 ROLE = 'SageMakerRole'
 
-RESOURCE_PATH = os.path.join(os.path.dirname(__file__), '..', 'data', 'tensorflow_mnist')
-SCRIPT = os.path.join(RESOURCE_PATH, 'mnist.py')
+RESOURCE_PATH = os.path.join(os.path.dirname(__file__), '..', 'data')
+MNIST_RESOURCE_PATH = os.path.join(RESOURCE_PATH, 'tensorflow_mnist')
+TFS_RESOURCE_PATH = os.path.join(RESOURCE_PATH, 'tfs', 'tfs-test-entrypoint-with-handler')
+
+SCRIPT = os.path.join(MNIST_RESOURCE_PATH, 'mnist.py')
 PARAMETER_SERVER_DISTRIBUTION = {'parameter_server': {'enabled': True}}
 MPI_DISTRIBUTION = {'mpi': {'enabled': True}}
 TAGS = [{'Key': 'some-key', 'Value': 'some-value'}]
@@ -57,7 +61,7 @@ def test_mnist(sagemaker_session, instance_type):
                            metric_definitions=[
                                {'Name': 'train:global_steps', 'Regex': r'global_step\/sec:\s(.*)'}])
     inputs = estimator.sagemaker_session.upload_data(
-        path=os.path.join(RESOURCE_PATH, 'data'),
+        path=os.path.join(MNIST_RESOURCE_PATH, 'data'),
         key_prefix='scriptmode/mnist')
 
     with tests.integ.timeout.timeout(minutes=tests.integ.TRAINING_DEFAULT_TIMEOUT_MINUTES):
@@ -88,7 +92,7 @@ def test_server_side_encryption(sagemaker_session):
                                output_kms_key=kms_key)
 
         inputs = estimator.sagemaker_session.upload_data(
-            path=os.path.join(RESOURCE_PATH, 'data'),
+            path=os.path.join(MNIST_RESOURCE_PATH, 'data'),
             key_prefix='scriptmode/mnist')
 
         with tests.integ.timeout.timeout(minutes=tests.integ.TRAINING_DEFAULT_TIMEOUT_MINUTES):
@@ -110,7 +114,7 @@ def test_mnist_distributed(sagemaker_session, instance_type):
                            framework_version=TensorFlow.LATEST_VERSION,
                            distributions=PARAMETER_SERVER_DISTRIBUTION)
     inputs = estimator.sagemaker_session.upload_data(
-        path=os.path.join(RESOURCE_PATH, 'data'),
+        path=os.path.join(MNIST_RESOURCE_PATH, 'data'),
         key_prefix='scriptmode/distributed_mnist')
 
     with tests.integ.timeout.timeout(minutes=tests.integ.TRAINING_DEFAULT_TIMEOUT_MINUTES):
@@ -129,7 +133,7 @@ def test_mnist_async(sagemaker_session):
                            framework_version=TensorFlow.LATEST_VERSION,
                            tags=TAGS)
     inputs = estimator.sagemaker_session.upload_data(
-        path=os.path.join(RESOURCE_PATH, 'data'),
+        path=os.path.join(MNIST_RESOURCE_PATH, 'data'),
         key_prefix='scriptmode/mnist')
     estimator.fit(inputs=inputs, wait=False, job_name=unique_name_from_base('test-tf-sm-async'))
     training_job_name = estimator.latest_training_job.name
@@ -148,6 +152,35 @@ def test_mnist_async(sagemaker_session):
         _assert_endpoint_tags_match(sagemaker_session.sagemaker_client, predictor.endpoint, TAGS)
         _assert_model_tags_match(sagemaker_session.sagemaker_client,
                                  estimator.latest_training_job.name, TAGS)
+
+
+@pytest.mark.skipif(tests.integ.PYTHON_VERSION != 'py3',
+                    reason="Script Mode tests are only configured to run with Python 3")
+def test_deploy_with_input_handlers(sagemaker_session, instance_type):
+    estimator = TensorFlow(entry_point='inference.py',
+                           source_dir=TFS_RESOURCE_PATH,
+                           role=ROLE,
+                           train_instance_count=1,
+                           train_instance_type=instance_type,
+                           sagemaker_session=sagemaker_session,
+                           py_version='py3',
+                           framework_version=TensorFlow.LATEST_VERSION,
+                           tags=TAGS)
+
+    estimator.fit(job_name=unique_name_from_base('test-tf-tfs-deploy'))
+
+    endpoint_name = estimator.latest_training_job.name
+
+    with timeout.timeout_and_delete_endpoint_by_name(endpoint_name, sagemaker_session):
+
+        predictor = estimator.deploy(initial_instance_count=1, instance_type=instance_type,
+                                     endpoint_name=endpoint_name)
+
+        input_data = {'instances': [1.0, 2.0, 5.0]}
+        expected_result = {'predictions': [4.0, 4.5, 6.0]}
+
+        result = predictor.predict(input_data)
+        assert expected_result == result
 
 
 def _assert_s3_files_exist(s3_url, files):
