@@ -15,7 +15,7 @@ from __future__ import absolute_import
 import pytest
 from mock import MagicMock, Mock, patch
 
-from sagemaker.transformer import Transformer, _TransformJob
+from sagemaker.transformer import _TransformJob, Transformer
 from tests.integ import test_local_mode
 
 MODEL_NAME = 'model'
@@ -38,6 +38,18 @@ INIT_PARAMS = {
     'instance_count': INSTANCE_COUNT,
     'instance_type': INSTANCE_TYPE,
     'base_transform_job_name': JOB_NAME
+}
+
+MODEL_DESC_PRIMARY_CONTAINER = {
+    'PrimaryContainer': {
+        'Image': IMAGE_NAME
+    }
+}
+
+MODEL_DESC_CONTAINERS_ONLY = {
+    'Containers': [
+        {'Image': IMAGE_NAME}
+    ]
 }
 
 
@@ -97,7 +109,7 @@ def test_transform_with_all_params(start_new_job, transformer):
 
 @patch('sagemaker.transformer.name_from_base')
 @patch('sagemaker.transformer._TransformJob.start_new')
-def test_transform_with_base_job_name(start_new_job, name_from_base, transformer):
+def test_transform_with_base_job_name_provided(start_new_job, name_from_base, transformer):
     base_name = 'base-job-name'
     full_name = '{}-{}'.format(base_name, TIMESTAMP)
 
@@ -105,21 +117,72 @@ def test_transform_with_base_job_name(start_new_job, name_from_base, transformer
     name_from_base.return_value = full_name
 
     transformer.transform(DATA)
-    assert name_from_base.called_with(base_name)
+
+    name_from_base.assert_called_once_with(base_name)
+    assert transformer._current_job_name == full_name
+
+
+@patch('sagemaker.transformer.Transformer._retrieve_base_name', return_value=IMAGE_NAME)
+@patch('sagemaker.transformer.name_from_base')
+@patch('sagemaker.transformer._TransformJob.start_new')
+def test_transform_with_base_name(start_new_job, name_from_base, retrieve_base_name, transformer):
+    full_name = '{}-{}'.format(IMAGE_NAME, TIMESTAMP)
+    name_from_base.return_value = full_name
+
+    transformer.transform(DATA)
+
+    retrieve_base_name.assert_called_once_with()
+    name_from_base.assert_called_once_with(IMAGE_NAME)
     assert transformer._current_job_name == full_name
 
 
 @patch('sagemaker.transformer.Transformer._retrieve_image_name', return_value=IMAGE_NAME)
 @patch('sagemaker.transformer.name_from_base')
 @patch('sagemaker.transformer._TransformJob.start_new')
-def test_transform_with_fully_generated_job_name(start_new_job, name_from_base, retrieve_image_name, transformer):
+def test_transform_with_job_name_based_on_image(start_new_job, name_from_base, retrieve_image_name, transformer):
     full_name = '{}-{}'.format(IMAGE_NAME, TIMESTAMP)
     name_from_base.return_value = full_name
 
     transformer.transform(DATA)
 
-    assert retrieve_image_name.called_once
-    assert name_from_base.called_with(IMAGE_NAME)
+    retrieve_image_name.assert_called_once_with()
+    name_from_base.assert_called_once_with(IMAGE_NAME)
+    assert transformer._current_job_name == full_name
+
+
+@pytest.mark.parametrize('model_desc', [MODEL_DESC_PRIMARY_CONTAINER,
+                                        MODEL_DESC_CONTAINERS_ONLY])
+@patch('sagemaker.transformer.name_from_base')
+@patch('sagemaker.transformer._TransformJob.start_new')
+def test_transform_with_job_name_based_on_containers(start_new_job, name_from_base, model_desc, transformer):
+    transformer.sagemaker_session.sagemaker_client.describe_model.return_value = model_desc
+
+    full_name = '{}-{}'.format(IMAGE_NAME, TIMESTAMP)
+    name_from_base.return_value = full_name
+
+    transformer.transform(DATA)
+
+    transformer.sagemaker_session.sagemaker_client.describe_model.assert_called_once_with(ModelName=MODEL_NAME)
+    name_from_base.assert_called_once_with(IMAGE_NAME)
+    assert transformer._current_job_name == full_name
+
+
+@pytest.mark.parametrize('model_desc', [{'PrimaryContainer': dict()},
+                                        {'Containers': [dict()]},
+                                        dict(),
+                                        ])
+@patch('sagemaker.transformer.name_from_base')
+@patch('sagemaker.transformer._TransformJob.start_new')
+def test_transform_with_job_name_based_on_model_name(start_new_job, name_from_base, model_desc, transformer):
+    transformer.sagemaker_session.sagemaker_client.describe_model.return_value = model_desc
+
+    full_name = '{}-{}'.format(MODEL_NAME, TIMESTAMP)
+    name_from_base.return_value = full_name
+
+    transformer.transform(DATA)
+
+    transformer.sagemaker_session.sagemaker_client.describe_model.assert_called_once_with(ModelName=MODEL_NAME)
+    name_from_base.assert_called_once_with(MODEL_NAME)
     assert transformer._current_job_name == full_name
 
 
