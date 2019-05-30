@@ -84,8 +84,8 @@ def tfs_predictor_with_model_and_entry_point_same_tar(instance_type,
 
 
 @pytest.fixture(scope='module')
-def tfs_predictor_with_model_and_entry_point_separated(instance_type,
-                                                       sagemaker_session, tf_full_version):
+def tfs_predictor_with_model_and_entry_point_and_dependencies(instance_type,
+                                                              sagemaker_session, tf_full_version):
     endpoint_name = sagemaker.utils.unique_name_from_base('sagemaker-tensorflow-serving')
 
     model_data = sagemaker_session.upload_data(
@@ -96,10 +96,14 @@ def tfs_predictor_with_model_and_entry_point_separated(instance_type,
     with tests.integ.timeout.timeout_and_delete_endpoint_by_name(endpoint_name,
                                                                  sagemaker_session):
         entry_point = os.path.join(tests.integ.DATA_DIR,
-                                   'tfs/tfs-test-model-with-inference/code/inference.py')
+                                   'tfs/tfs-test-entrypoint-and-dependencies/inference.py')
+        dependencies = [os.path.join(tests.integ.DATA_DIR,
+                                     'tfs/tfs-test-entrypoint-and-dependencies/dependency.py')]
+
         model = Model(entry_point=entry_point,
                       model_data=model_data,
                       role='SageMakerRole',
+                      dependencies=dependencies,
                       framework_version=tf_full_version,
                       sagemaker_session=sagemaker_session)
         predictor = model.deploy(1, instance_type, endpoint_name=endpoint_name)
@@ -152,12 +156,12 @@ def test_predict_with_entry_point(tfs_predictor_with_model_and_entry_point_same_
     assert expected_result == result
 
 
-def test_predict_with_model_and_entry_point_separated(
-        tfs_predictor_with_model_and_entry_point_separated):
+def test_predict_with_model_and_entry_point_and_dependencies_separated(
+        tfs_predictor_with_model_and_entry_point_and_dependencies):
     input_data = {'instances': [1.0, 2.0, 5.0]}
     expected_result = {'predictions': [4.0, 4.5, 6.0]}
 
-    result = tfs_predictor_with_model_and_entry_point_separated.predict(input_data)
+    result = tfs_predictor_with_model_and_entry_point_and_dependencies.predict(input_data)
     assert expected_result == result
 
 

@@ -29,7 +29,6 @@ from sagemaker.mxnet import MXNetPredictor, MXNetModel
 DATA_DIR = os.path.join(os.path.dirname(__file__), '..', 'data')
 SCRIPT_PATH = os.path.join(DATA_DIR, 'dummy_script.py')
 MODEL_DATA = 's3://mybucket/model'
-REPACKED_MODEL_DATA = 's3://mybucket/repacked/model'
 TIMESTAMP = '2017-11-06-14:14:15.672'
 TIME = 1507167947
 BUCKET_NAME = 'mybucket'
@@ -280,7 +279,7 @@ def test_mxnet(strftime, sagemaker_session, mxnet_version, skip_if_mms_version):
     assert isinstance(predictor, MXNetPredictor)
 
 
-@patch('sagemaker.utils.repack_model', return_value=REPACKED_MODEL_DATA)
+@patch('sagemaker.utils.repack_model')
 @patch('time.strftime', return_value=TIMESTAMP)
 def test_mxnet_mms_version(strftime, repack_model, sagemaker_session, mxnet_version, skip_if_not_mms_version):
     mx = MXNet(entry_point=SCRIPT_PATH, role=ROLE, sagemaker_session=sagemaker_session,
@@ -307,11 +306,12 @@ def test_mxnet_mms_version(strftime, repack_model, sagemaker_session, mxnet_vers
     expected_image_base = _get_full_image_uri(mxnet_version, IMAGE_REPO_SERVING_NAME, 'gpu')
     environment = {
         'Environment': {
-            'SAGEMAKER_SUBMIT_DIRECTORY': REPACKED_MODEL_DATA,
+            'SAGEMAKER_SUBMIT_DIRECTORY': 's3://mybucket/sagemaker-mxnet-2017-11-06-14:14:15.672/model.tar.gz',
             'SAGEMAKER_PROGRAM': 'dummy_script.py', 'SAGEMAKER_ENABLE_CLOUDWATCH_METRICS': 'false',
             'SAGEMAKER_REGION': 'us-west-2', 'SAGEMAKER_CONTAINER_LOG_LEVEL': '20'
         },
-        'Image': expected_image_base.format(mxnet_version), 'ModelDataUrl': REPACKED_MODEL_DATA
+        'Image': expected_image_base.format(mxnet_version),
+        'ModelDataUrl': 's3://mybucket/sagemaker-mxnet-2017-11-06-14:14:15.672/model.tar.gz'
     }
     assert environment == model.prepare_container_def(GPU)
 
@@ -366,21 +366,23 @@ def test_model(sagemaker_session):
     assert isinstance(predictor, MXNetPredictor)
 
 
-@patch('sagemaker.utils.repack_model', return_value=REPACKED_MODEL_DATA)
+@patch('sagemaker.utils.repack_model')
 def test_model_mms_version(repack_model, sagemaker_session):
     model = MXNetModel(MODEL_DATA, role=ROLE, entry_point=SCRIPT_PATH,
                        framework_version=MXNetModel._LOWEST_MMS_VERSION,
-                       sagemaker_session=sagemaker_session)
+                       sagemaker_session=sagemaker_session, name='test-mxnet-model')
     predictor = model.deploy(1, GPU)
 
     repack_model.assert_called_once_with(inference_script=SCRIPT_PATH,
                                          source_directory=None,
+                                         dependencies=[],
                                          model_uri=MODEL_DATA,
+                                         repacked_model_uri='s3://mybucket/test-mxnet-model/model.tar.gz',
                                          sagemaker_session=sagemaker_session)
 
     assert model.model_data == MODEL_DATA
-    assert model.repacked_model_data == REPACKED_MODEL_DATA
-    assert model.uploaded_code == UploadedCode(s3_prefix=REPACKED_MODEL_DATA,
+    assert model.repacked_model_data == 's3://mybucket/test-mxnet-model/model.tar.gz'
+    assert model.uploaded_code == UploadedCode(s3_prefix='s3://mybucket/test-mxnet-model/model.tar.gz',
                                                script_name=os.path.basename(SCRIPT_PATH))
     assert isinstance(predictor, MXNetPredictor)
 
