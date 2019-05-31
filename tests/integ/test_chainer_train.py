@@ -36,7 +36,8 @@ def test_distributed_cpu_training(sagemaker_session, chainer_full_version):
     _run_mnist_training_job(sagemaker_session, "ml.c4.xlarge", 2, chainer_full_version)
 
 
-@pytest.mark.skipif(tests.integ.test_region() in tests.integ.HOSTING_NO_P2_REGIONS,
+@pytest.mark.skipif(tests.integ.test_region() in tests.integ.HOSTING_NO_P2_REGIONS
+                    or tests.integ.test_region() in tests.integ.TRAINING_NO_P2_REGIONS,
                     reason='no ml.p2 instances in these regions')
 def test_distributed_gpu_training(sagemaker_session, chainer_full_version):
     _run_mnist_training_job(sagemaker_session, "ml.p2.xlarge", 2, chainer_full_version)
