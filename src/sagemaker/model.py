@@ -14,9 +14,11 @@ from __future__ import absolute_import
 
 import json
 import logging
+import os
 
 import sagemaker
 from sagemaker import fw_utils, local, session, utils
+from sagemaker.fw_utils import UploadedCode
 from sagemaker.transformer import Transformer
 
 LOGGER = logging.getLogger('sagemaker')
@@ -148,6 +150,19 @@ class Model(object):
                 },
                 'tags': tags,
                 'job_name': job_name}
+
+    def check_neo_region(self, region):
+        """Check if this ``Model`` in the available region where neo support.
+
+        Args:
+            region (str): Specifies the region where want to execute compilation
+        Returns:
+            bool: boolean value whether if neo is available in the specified region
+        """
+        if region in NEO_IMAGE_ACCOUNT:
+            return True
+        else:
+            return False
 
     def _neo_image_account(self, region):
         if region not in NEO_IMAGE_ACCOUNT:
@@ -408,6 +423,7 @@ class FrameworkModel(Model):
         else:
             self.bucket, self.key_prefix = None, None
         self.uploaded_code = None
+        self.repacked_model_data = None
 
     def prepare_container_def(self, instance_type, accelerator_type=None):  # pylint disable=unused-argument
         """Return a container definition with framework configuration set in model environment variables.
@@ -428,11 +444,11 @@ class FrameworkModel(Model):
         deploy_env.update(self._framework_env_vars())
         return sagemaker.container_def(self.image, self.model_data, deploy_env)
 
-    def _upload_code(self, key_prefix):
+    def _upload_code(self, key_prefix, repack=False):
         local_code = utils.get_config_value('local.local_code', self.sagemaker_session.config)
         if self.sagemaker_session.local_mode and local_code:
             self.uploaded_code = None
-        else:
+        elif not repack:
             bucket = self.bucket or self.sagemaker_session.default_bucket()
             self.uploaded_code = fw_utils.tar_and_upload_dir(session=self.sagemaker_session.boto_session,
                                                              bucket=bucket,
@@ -440,6 +456,21 @@ class FrameworkModel(Model):
                                                              script=self.entry_point,
                                                              directory=self.source_dir,
                                                              dependencies=self.dependencies)
+
+        if repack:
+            bucket = self.bucket or self.sagemaker_session.default_bucket()
+            repacked_model_data = 's3://' + os.path.join(bucket, key_prefix, 'model.tar.gz')
+
+            utils.repack_model(inference_script=self.entry_point,
+                               source_directory=self.source_dir,
+                               dependencies=self.dependencies,
+                               model_uri=self.model_data,
+                               repacked_model_uri=repacked_model_data,
+                               sagemaker_session=self.sagemaker_session)
+
+            self.repacked_model_data = repacked_model_data
+            self.uploaded_code = UploadedCode(s3_prefix=self.repacked_model_data,
+                                              script_name=os.path.basename(self.entry_point))
 
     def _framework_env_vars(self):
         if self.uploaded_code:

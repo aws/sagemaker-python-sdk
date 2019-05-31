@@ -105,7 +105,11 @@ class Transformer(object):
         if job_name is not None:
             self._current_job_name = job_name
         else:
-            base_name = self.base_transform_job_name or base_name_from_image(self._retrieve_image_name())
+            base_name = self.base_transform_job_name
+
+            if base_name is None:
+                base_name = self._retrieve_base_name()
+
             self._current_job_name = name_from_base(base_name)
 
         if self.output_path is None:
@@ -120,10 +124,28 @@ class Transformer(object):
         """
         self.sagemaker_session.delete_model(self.model_name)
 
+    def _retrieve_base_name(self):
+        image_name = self._retrieve_image_name()
+
+        if image_name:
+            return base_name_from_image(image_name)
+
+        return self.model_name
+
     def _retrieve_image_name(self):
         try:
             model_desc = self.sagemaker_session.sagemaker_client.describe_model(ModelName=self.model_name)
-            return model_desc['PrimaryContainer']['Image']
+
+            primary_container = model_desc.get('PrimaryContainer')
+            if primary_container:
+                return primary_container.get('Image')
+
+            containers = model_desc.get('Containers')
+            if containers:
+                return containers[0].get('Image')
+
+            return None
+
         except exceptions.ClientError:
             raise ValueError('Failed to fetch model information for %s. '
                              'Please ensure that the model exists. '

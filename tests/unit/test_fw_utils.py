@@ -86,7 +86,7 @@ def test_create_image_uri_gpu():
     assert image_uri == '23.dkr.ecr.mars-south-3.amazonaws.com/sagemaker-mlfw:1.0rc-gpu-py3'
 
 
-def test_create_image_uri_ei():
+def test_create_image_uri_accelerator_tfs():
     image_uri = fw_utils.create_image_uri(MOCK_REGION, 'tensorflow-serving', 'ml.c4.large', '1.1.0',
                                           accelerator_type='ml.eia1.large', account='23')
     assert image_uri == '23.dkr.ecr.mars-south-3.amazonaws.com/sagemaker-tensorflow-serving-eia:1.1.0-cpu'
@@ -102,10 +102,16 @@ def test_create_image_uri_gov_cloud():
     assert image_uri == '246785580436.dkr.ecr.us-gov-west-1.amazonaws.com/sagemaker-mlfw:1.0rc-gpu-py3'
 
 
-def test_create_image_uri_accelerator():
+def test_create_image_uri_accelerator_tf():
     image_uri = fw_utils.create_image_uri(MOCK_REGION, 'tensorflow', 'ml.p3.2xlarge', '1.0rc', 'py3',
                                           accelerator_type='ml.eia1.medium')
     assert image_uri == '520713654638.dkr.ecr.mars-south-3.amazonaws.com/sagemaker-tensorflow-eia:1.0rc-gpu-py3'
+
+
+def test_create_image_uri_accelerator_mxnet_serving():
+    image_uri = fw_utils.create_image_uri(MOCK_REGION, 'mxnet-serving', 'ml.p3.2xlarge', '1.0rc', 'py3',
+                                          accelerator_type='ml.eia1.medium')
+    assert image_uri == '520713654638.dkr.ecr.mars-south-3.amazonaws.com/sagemaker-mxnet-serving-eia:1.0rc-gpu-py3'
 
 
 def test_create_image_uri_local_sagemaker_notebook_accelerator():
