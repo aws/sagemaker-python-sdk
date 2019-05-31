@@ -8,11 +8,16 @@ phases:
   build:
     commands:
       # run linters
-      - tox -e flake8,pylint
+      - apt-get install time -y
+      - time tox -e flake8,pylint
+      - echo "======= FINISHED FLAKE8 ======="
 
       # run package and docbuild checks
-      - tox -e twine
-      - tox -e sphinx
+      - time tox -e twine
+      - echo "======= FINISHED TWINE ======="
+      -
+      - time tox -e sphinx
+      - echo "======= FINISHED SPHINX ======="
 
       # run unit tests
       - AWS_ACCESS_KEY_ID= AWS_SECRET_ACCESS_KEY= AWS_SESSION_TOKEN=
