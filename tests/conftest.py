@@ -95,6 +95,7 @@ def sagemaker_session(sagemaker_client_config, sagemaker_runtime_config, boto_co
 
 @pytest.fixture(scope='session')
 def sagemaker_local_session(boto_config):
+    pytest.skip('skipped on this platform')
     if boto_config:
         boto_session = boto3.Session(**boto_config)
     else:
