@@ -8,7 +8,7 @@ phases:
   build:
     commands:
       # run linters
-      - apt-get install time -y
+      - apt-get update && apt-get install time -y
       - time tox -e flake8,pylint
       - echo "======= FINISHED FLAKE8 ======="
 
