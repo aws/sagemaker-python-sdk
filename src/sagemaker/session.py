@@ -620,7 +620,8 @@ class Session(object):
         return name
 
     def create_model_from_job(self, training_job_name, name=None, role=None, primary_container_image=None,
-                              model_data_url=None, env=None, vpc_config_override=vpc_utils.VPC_CONFIG_DEFAULT):
+                              model_data_url=None, env=None, vpc_config_override=vpc_utils.VPC_CONFIG_DEFAULT,
+                              tags=None):
         """Create an Amazon SageMaker ``Model`` from a SageMaker Training Job.
 
         Args:
@@ -638,12 +639,13 @@ class Session(object):
                 Default: use VpcConfig from training job.
                 * 'Subnets' (list[str]): List of subnet ids.
                 * 'SecurityGroupIds' (list[str]): List of security group ids.
+            tags(List[dict[str, str]]): Optional. The list of tags to add to the model. For more, see
+                https://docs.aws.amazon.com/sagemaker/latest/dg/API_Tag.html.
 
         Returns:
             str: The name of the created ``Model``.
         """
         training_job = self.sagemaker_client.describe_training_job(TrainingJobName=training_job_name)
-        tags = self.sagemaker_client.list_tags(ResourceArn=training_job['TrainingJobArn'])['Tags']
         name = name or training_job_name
         role = role or training_job['RoleArn']
         env = env or {}

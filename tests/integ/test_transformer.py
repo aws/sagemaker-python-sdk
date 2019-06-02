@@ -22,6 +22,7 @@ import pytest
 from sagemaker import KMeans
 from sagemaker.mxnet import MXNet
 from sagemaker.transformer import Transformer
+from sagemaker.estimator import Estimator
 from sagemaker.utils import unique_name_from_base
 from tests.integ import DATA_DIR, TRAINING_DEFAULT_TIMEOUT_MINUTES, TRANSFORM_DEFAULT_TIMEOUT_MINUTES
 from tests.integ.kms_utils import get_or_create_kms_key
@@ -148,7 +149,7 @@ def test_transform_mxnet_vpc(sagemaker_session, mxnet_full_version):
         assert [security_group_id] == model_desc['VpcConfig']['SecurityGroupIds']
 
 
-def test_transform_mxnet_logs(sagemaker_session, mxnet_full_version):
+def test_transform_mxnet_tags(sagemaker_session, mxnet_full_version):
     data_path = os.path.join(DATA_DIR, 'mxnet_mnist')
     script_path = os.path.join(data_path, 'mnist.py')
     tags = [{'Key': 'some-tag', 'Value': 'value-for-tag'}]
@@ -172,6 +173,55 @@ def test_transform_mxnet_logs(sagemaker_session, mxnet_full_version):
                                                        key_prefix=transform_input_key_prefix)
 
     transformer = mx.transformer(1, 'ml.m4.xlarge', tags=tags)
+    transformer.transform(transform_input, content_type='text/csv')
+
+    with timeout_and_delete_model_with_transformer(transformer, sagemaker_session,
+                                                   minutes=TRANSFORM_DEFAULT_TIMEOUT_MINUTES):
+        transformer.wait()
+        model_desc = sagemaker_session.sagemaker_client.describe_model(ModelName=transformer.model_name)
+        model_tags = sagemaker_session.sagemaker_client.list_tags(ResourceArn=model_desc['ModelArn'])['Tags']
+        assert tags == model_tags
+
+
+def test_transform_byo_estimator(sagemaker_session):
+    data_path = os.path.join(DATA_DIR, 'one_p_mnist')
+    pickle_args = {} if sys.version_info.major == 2 else {'encoding': 'latin1'}
+    tags = [{'Key': 'some-tag', 'Value': 'value-for-tag'}]
+
+    # Load the data into memory as numpy arrays
+    train_set_path = os.path.join(data_path, 'mnist.pkl.gz')
+    with gzip.open(train_set_path, 'rb') as f:
+        train_set, _, _ = pickle.load(f, **pickle_args)
+
+    kmeans = KMeans(role='SageMakerRole', train_instance_count=1,
+                    train_instance_type='ml.c4.xlarge', k=10, sagemaker_session=sagemaker_session,
+                    output_path='s3://{}/'.format(sagemaker_session.default_bucket()))
+
+    # set kmeans specific hp
+    kmeans.init_method = 'random'
+    kmeans.max_iterators = 1
+    kmeans.tol = 1
+    kmeans.num_trials = 1
+    kmeans.local_init_method = 'kmeans++'
+    kmeans.half_life_time_size = 1
+    kmeans.epochs = 1
+
+    records = kmeans.record_set(train_set[0][:100])
+
+    job_name = unique_name_from_base('test-kmeans-attach')
+
+    with timeout(minutes=TRAINING_DEFAULT_TIMEOUT_MINUTES):
+        kmeans.fit(records, job_name=job_name)
+
+    transform_input_path = os.path.join(data_path, 'transform_input.csv')
+    transform_input_key_prefix = 'integ-test-data/one_p_mnist/transform'
+    transform_input = kmeans.sagemaker_session.upload_data(path=transform_input_path,
+                                                           key_prefix=transform_input_key_prefix)
+
+    estimator = Estimator.attach(training_job_name=job_name,
+                                 sagemaker_session=sagemaker_session)
+
+    transformer = estimator.transformer(1, 'ml.m4.xlarge', tags=tags)
     transformer.transform(transform_input, content_type='text/csv')
 
     with timeout_and_delete_model_with_transformer(transformer, sagemaker_session,

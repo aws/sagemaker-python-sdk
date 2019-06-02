@@ -698,7 +698,7 @@ def test_estimator_transformer_creation(sagemaker_session):
 
     transformer = estimator.transformer(INSTANCE_COUNT, INSTANCE_TYPE)
 
-    sagemaker_session.create_model_from_job.assert_called_with(JOB_NAME, role=None)
+    sagemaker_session.create_model_from_job.assert_called_with(JOB_NAME, role=None, tags=None)
     assert isinstance(transformer, Transformer)
     assert transformer.sagemaker_session == sagemaker_session
     assert transformer.instance_count == INSTANCE_COUNT
@@ -728,7 +728,7 @@ def test_estimator_transformer_creation_with_optional_params(sagemaker_session):
                                         max_concurrent_transforms=max_concurrent_transforms, max_payload=max_payload,
                                         env=env, role=ROLE)
 
-    sagemaker_session.create_model_from_job.assert_called_with(JOB_NAME, role=ROLE)
+    sagemaker_session.create_model_from_job.assert_called_with(JOB_NAME, role=ROLE, tags=TAGS)
     assert transformer.strategy == strategy
     assert transformer.assemble_with == assemble_with
     assert transformer.output_path == OUTPUT_PATH

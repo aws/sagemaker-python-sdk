@@ -862,8 +862,19 @@ def test_create_model_failure(expand_container_def, sagemaker_session):
 def test_create_model_from_job(sagemaker_session):
     ims = sagemaker_session
     ims.sagemaker_client.describe_training_job.return_value = COMPLETED_DESCRIBE_JOB_RESULT
-    ims.sagemaker_client.list_tags.return_value = {'Tags': TAGS}
     ims.create_model_from_job(JOB_NAME)
+
+    assert call(TrainingJobName=JOB_NAME) in ims.sagemaker_client.describe_training_job.call_args_list
+    ims.sagemaker_client.create_model.assert_called_with(ExecutionRoleArn=EXPANDED_ROLE,
+                                                         ModelName=JOB_NAME,
+                                                         PrimaryContainer=PRIMARY_CONTAINER,
+                                                         VpcConfig=VPC_CONFIG)
+
+
+def test_create_model_from_job_with_tags(sagemaker_session):
+    ims = sagemaker_session
+    ims.sagemaker_client.describe_training_job.return_value = COMPLETED_DESCRIBE_JOB_RESULT
+    ims.create_model_from_job(JOB_NAME, tags=TAGS)
 
     assert call(TrainingJobName=JOB_NAME) in ims.sagemaker_client.describe_training_job.call_args_list
     ims.sagemaker_client.create_model.assert_called_with(ExecutionRoleArn=EXPANDED_ROLE,
@@ -876,7 +887,6 @@ def test_create_model_from_job(sagemaker_session):
 def test_create_model_from_job_with_image(sagemaker_session):
     ims = sagemaker_session
     ims.sagemaker_client.describe_training_job.return_value = COMPLETED_DESCRIBE_JOB_RESULT
-    ims.sagemaker_client.list_tags.return_value = {'Tags': TAGS}
     ims.create_model_from_job(JOB_NAME, primary_container_image='some-image')
     [create_model_call] = ims.sagemaker_client.create_model.call_args_list
     assert dict(create_model_call[1]['PrimaryContainer'])['Image'] == 'some-image'
@@ -885,7 +895,6 @@ def test_create_model_from_job_with_image(sagemaker_session):
 def test_create_model_from_job_with_container_def(sagemaker_session):
     ims = sagemaker_session
     ims.sagemaker_client.describe_training_job.return_value = COMPLETED_DESCRIBE_JOB_RESULT
-    ims.sagemaker_client.list_tags.return_value = {'Tags': TAGS}
     ims.create_model_from_job(JOB_NAME, primary_container_image='some-image', model_data_url='some-data',
                               env={'a': 'b'})
     [create_model_call] = ims.sagemaker_client.create_model.call_args_list
@@ -900,7 +909,6 @@ def test_create_model_from_job_with_vpc_config_override(sagemaker_session):
 
     ims = sagemaker_session
     ims.sagemaker_client.describe_training_job.return_value = COMPLETED_DESCRIBE_JOB_RESULT
-    ims.sagemaker_client.list_tags.return_value = {'Tags': TAGS}
     ims.create_model_from_job(JOB_NAME, vpc_config_override=vpc_config_override)
     assert ims.sagemaker_client.create_model.call_args[1]['VpcConfig'] == vpc_config_override
 
