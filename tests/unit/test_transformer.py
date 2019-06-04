@@ -98,13 +98,18 @@ def test_transform_with_all_params(start_new_job, transformer):
     content_type = 'text/csv'
     compression = 'Gzip'
     split = 'Line'
+    input_filter = "$.feature"
+    output_filter = "$['sagemaker_output', 'id']"
+    join_source = "Input"
 
     transformer.transform(DATA, S3_DATA_TYPE, content_type=content_type, compression_type=compression, split_type=split,
-                          job_name=JOB_NAME)
+                          job_name=JOB_NAME, input_filter=input_filter, output_filter=output_filter,
+                          join_source=join_source)
 
     assert transformer._current_job_name == JOB_NAME
     assert transformer.output_path == OUTPUT_PATH
-    start_new_job.assert_called_once_with(transformer, DATA, S3_DATA_TYPE, content_type, compression, split)
+    start_new_job.assert_called_once_with(transformer, DATA, S3_DATA_TYPE, content_type, compression,
+                                          split, input_filter, output_filter, join_source)
 
 
 @patch('sagemaker.transformer.name_from_base')
@@ -390,6 +395,23 @@ def test_prepare_output_config_with_optional_params():
 def test_prepare_resource_config():
     config = _TransformJob._prepare_resource_config(INSTANCE_COUNT, INSTANCE_TYPE, KMS_KEY_ID)
     assert config == {'InstanceCount': INSTANCE_COUNT, 'InstanceType': INSTANCE_TYPE, 'VolumeKmsKeyId': KMS_KEY_ID}
+
+
+def test_data_processing_config():
+    actual_config = _TransformJob._prepare_data_processing("$", None, None)
+    assert actual_config == {'InputFilter': "$"}
+
+    actual_config = _TransformJob._prepare_data_processing(None, "$", None)
+    assert actual_config == {'OutputFilter': "$"}
+
+    actual_config = _TransformJob._prepare_data_processing(None, None, "Input")
+    assert actual_config == {'JoinSource': "Input"}
+
+    actual_config = _TransformJob._prepare_data_processing("$[0]", "$[1]", "Input")
+    assert actual_config == {'InputFilter': "$[0]", 'OutputFilter': "$[1]", 'JoinSource': "Input"}
+
+    actual_config = _TransformJob._prepare_data_processing(None, None, None)
+    assert actual_config == None
 
 
 def test_transform_job_wait(sagemaker_session):

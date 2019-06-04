@@ -54,7 +54,8 @@ def test_transform_mxnet(sagemaker_session, mxnet_full_version):
 
     kms_key_arn = get_or_create_kms_key(sagemaker_session)
 
-    transformer = _create_transformer_and_transform_job(mx, transform_input, kms_key_arn)
+    transformer = _create_transformer_and_transform_job(mx, transform_input, kms_key_arn,
+            input_filter=None, output_filter="$", join_source=None)
     with timeout_and_delete_model_with_transformer(transformer, sagemaker_session,
                                                    minutes=TRANSFORM_DEFAULT_TIMEOUT_MINUTES):
         transformer.wait()
@@ -148,7 +149,9 @@ def test_transform_mxnet_vpc(sagemaker_session, mxnet_full_version):
         assert [security_group_id] == model_desc['VpcConfig']['SecurityGroupIds']
 
 
-def _create_transformer_and_transform_job(estimator, transform_input, volume_kms_key=None):
+def _create_transformer_and_transform_job(estimator, transform_input, volume_kms_key=None,
+        input_filter=None, output_filter=None, join_source=None):
     transformer = estimator.transformer(1, 'ml.m4.xlarge', volume_kms_key=volume_kms_key)
-    transformer.transform(transform_input, content_type='text/csv')
+    transformer.transform(transform_input, content_type='text/csv',
+        input_filter=input_filter, output_filter=output_filter, join_source=join_source)
     return transformer
