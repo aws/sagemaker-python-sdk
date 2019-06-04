@@ -28,6 +28,7 @@ PYTHON_VERSION = 'py' + str(sys.version_info.major)
 HOSTING_NO_P2_REGIONS = ['ca-central-1', 'eu-central-1', 'eu-west-2', 'us-west-1']
 HOSTING_NO_P3_REGIONS = ['ap-southeast-1', 'ap-southeast-2', 'ap-south-1', 'ca-central-1',
                          'eu-central-1', 'eu-west-2', 'us-west-1']
+TRAINING_NO_P2_REGIONS = ['ap-southeast-1', 'ap-southeast-2']
 
 # EI is currently only supported in the following regions
 # regions were derived from https://aws.amazon.com/machine-learning/elastic-inference/pricing/

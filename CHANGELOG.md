@@ -1,5 +1,26 @@
 # Changelog
 
+## v1.25.0 (2019-06-03)
+
+### Features
+
+ * repack_model support dependencies and code location
+
+### Bug fixes and other changes
+
+ * skip p2 tests in ap-south-east
+ * add better default transform job name handling within Transformer
+
+### Documentation changes
+
+ * TFS support for pre/processing functions
+
+## v1.24.0 (2019-05-29)
+
+### Features
+
+ * add region check for Neo service
+
 ## v1.23.0 (2019-05-27)
 
 ### Features
