@@ -609,6 +609,68 @@ def test_git_clone_code_succeed(sagemaker_session):
     assert os.path.isdir(fw.source_dir)
 
 
+def test_git_clone_code_clone_fail(sagemaker_session):
+    git_config = {'repo': 'https://github.com/GaryTu1020/no-such-repo.git', 'branch': 'master'}
+    fw = DummyFramework(entry_point='entry_point', git_config=git_config, role=ROLE,
+                        sagemaker_session=sagemaker_session, train_instance_count=INSTANCE_COUNT,
+                        train_instance_type=INSTANCE_TYPE, enable_cloudwatch_metrics=True)
+    with pytest.raises(ValueError) as error:
+        fw._git_clone_code()
+    assert 'Failed to clone git repo.' in str(error)
+
+
+def test_git_clone_code_branch_not_exist(sagemaker_session):
+    git_config = {'repo': 'https://github.com/GaryTu1020/python-sdk-testing.git',
+                  'branch': 'branch-that-does-not-exist',
+                  'commit': 'aea6f3acef9619f77f94772d9d654f041e16bf49'}
+    fw = DummyFramework(entry_point='source_dir/entry_point', git_config=git_config,
+                        source_dir='source_dir', role=ROLE, sagemaker_session=sagemaker_session,
+                        train_instance_count=INSTANCE_COUNT, train_instance_type=INSTANCE_TYPE,
+                        enable_cloudwatch_metrics=True)
+    with pytest.raises(ValueError) as error:
+        fw._git_clone_code()
+    assert 'Failed to checkout the required branch.' in str(error)
+
+
+def test_git_clone_code_commit_not_exist(sagemaker_session):
+    git_config = {'repo': 'https://github.com/GaryTu1020/python-sdk-testing.git',
+                  'branch': 'master',
+                  'commit': 'commit-sha-that-does-not-exist'}
+    fw = DummyFramework(entry_point='source_dir/entry_point', git_config=git_config,
+                        source_dir='source_dir', role=ROLE, sagemaker_session=sagemaker_session,
+                        train_instance_count=INSTANCE_COUNT, train_instance_type=INSTANCE_TYPE,
+                        enable_cloudwatch_metrics=True)
+    with pytest.raises(ValueError) as error:
+        fw._git_clone_code()
+    assert 'Failed to checkout the required commit.' in str(error)
+
+
+def test_git_clone_code_entry_point_not_exist(sagemaker_session):
+    git_config = {'repo': 'https://github.com/GaryTu1020/python-sdk-testing.git',
+                  'branch': 'branch1',
+                  'commit': 'aea6f3acef9619f77f94772d9d654f041e16bf49'}
+    fw = DummyFramework(entry_point='entry_point', git_config=git_config,
+                        source_dir='source_dir', role=ROLE, sagemaker_session=sagemaker_session,
+                        train_instance_count=INSTANCE_COUNT, train_instance_type=INSTANCE_TYPE,
+                        enable_cloudwatch_metrics=True)
+    with pytest.raises(ValueError) as error:
+        fw._git_clone_code()
+    assert 'Entry point does not exist in the repo.' in str(error)
+
+
+def test_git_clone_code_source_dir_not_exist(sagemaker_session):
+    git_config = {'repo': 'https://github.com/GaryTu1020/python-sdk-testing.git',
+                  'branch': 'branch1',
+                  'commit': 'aea6f3acef9619f77f94772d9d654f041e16bf49'}
+    fw = DummyFramework(entry_point='source_dir/entry_point', git_config=git_config,
+                        source_dir='source_dir_that_does_not_exist', role=ROLE,
+                        sagemaker_session=sagemaker_session, train_instance_count=INSTANCE_COUNT,
+                        train_instance_type=INSTANCE_TYPE, enable_cloudwatch_metrics=True)
+    with pytest.raises(ValueError) as error:
+        fw._git_clone_code()
+    assert 'Source directory does not exist in the repo.' in str(error)
+
+
 @patch('time.strftime', return_value=TIMESTAMP)
 def test_init_with_source_dir_s3(strftime, sagemaker_session):
     fw = DummyFramework(entry_point=SCRIPT_PATH, source_dir='s3://location', role=ROLE,
