@@ -60,7 +60,7 @@ def test_upload_data_absolute_file(sagemaker_session):
 
 
 def test_upload_data_aes_encrypted_absolute_dir(sagemaker_session):
-    result_s3_uri = sagemaker_session.upload_data(UPLOAD_DATA_TESTS_FILES_DIR, ExtraArgs=AES_ENCRYPTION_ENABLED)
+    result_s3_uri = sagemaker_session.upload_data(UPLOAD_DATA_TESTS_FILES_DIR, extra_args=AES_ENCRYPTION_ENABLED)
 
     uploaded_files_with_args = [(args[0], kwargs) for name, args, kwargs in sagemaker_session.boto_session.mock_calls
                                 if name == 'resource().Object().upload_file']
@@ -72,7 +72,7 @@ def test_upload_data_aes_encrypted_absolute_dir(sagemaker_session):
 
 
 def test_upload_data_aes_encrypted_absolute_file(sagemaker_session):
-    result_s3_uri = sagemaker_session.upload_data(UPLOAD_DATA_TESTS_SINGLE_FILE, ExtraArgs=AES_ENCRYPTION_ENABLED)
+    result_s3_uri = sagemaker_session.upload_data(UPLOAD_DATA_TESTS_SINGLE_FILE, extra_args=AES_ENCRYPTION_ENABLED)
 
     uploaded_files_with_args = [(args[0], kwargs) for name, args, kwargs in sagemaker_session.boto_session.mock_calls
                                 if name == 'resource().Object().upload_file']
