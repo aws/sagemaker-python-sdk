@@ -102,7 +102,7 @@ class Model(sagemaker.model.FrameworkModel):
     }
 
     def __init__(self, model_data, role, entry_point=None, image=None, framework_version=TF_VERSION,
-                 container_log_level=None, predictor_cls=Predictor, **kwargs):
+                 container_log_level=None, predictor_cls=Predictor, py_version='py2', **kwargs):
         """Initialize a Model.
 
        Args:
@@ -117,12 +117,15 @@ class Model(sagemaker.model.FrameworkModel):
            predictor_cls (callable[str, sagemaker.session.Session]): A function to call to create a
                 predictor with an endpoint name and SageMaker ``Session``. If specified, ``deploy()``
                 returns the result of invoking this function on the created endpoint name.
+           entry_point (str): Optional. Python script for pre/post-processing.
+           py_version (str): The string 'py2' or 'py3' (default: 'py2')
            **kwargs: Keyword arguments passed to the ``Model`` initializer.
        """
         super(Model, self).__init__(model_data=model_data, role=role, image=image,
                                     predictor_cls=predictor_cls, entry_point=entry_point, **kwargs)
         self._framework_version = framework_version
         self._container_log_level = container_log_level
+        self._py_version = py_version
 
     def prepare_container_def(self, instance_type, accelerator_type=None):
         image = self._get_image_uri(instance_type, accelerator_type)
@@ -163,4 +166,4 @@ class Model(sagemaker.model.FrameworkModel):
 
         region_name = self.sagemaker_session.boto_region_name
         return create_image_uri(region_name, Model.FRAMEWORK_NAME, instance_type,
-                                self._framework_version, accelerator_type=accelerator_type)
+                                self._framework_version, accelerator_type=accelerator_type, py_version=self._py_version)
