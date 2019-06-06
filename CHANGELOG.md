@@ -1,5 +1,11 @@
 # Changelog
 
+## v1.25.1 (2019-06-06)
+
+### Bug fixes and other changes
+
+ * use unique job name in hyperparameter tuning test
+
 ## v1.25.0 (2019-06-03)
 
 ### Features
