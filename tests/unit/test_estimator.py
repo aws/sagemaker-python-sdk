@@ -596,6 +596,19 @@ def test_prepare_for_training_force_name_generation(strftime, sagemaker_session)
     assert JOB_NAME == fw._current_job_name
 
 
+def test_git_clone_code_succeed(sagemaker_session):
+    git_config = {'repo': 'https://github.com/GaryTu1020/python-sdk-testing.git',
+                  'branch': 'branch1',
+                  'commit': 'aea6f3acef9619f77f94772d9d654f041e16bf49'}
+    fw = DummyFramework(entry_point='source_dir/entry_point', git_config=git_config,
+                        source_dir='source_dir', role=ROLE, sagemaker_session=sagemaker_session,
+                        train_instance_count=INSTANCE_COUNT, train_instance_type=INSTANCE_TYPE,
+                        enable_cloudwatch_metrics=True)
+    fw._git_clone_code()
+    assert os.path.isfile(fw.entry_point)
+    assert os.path.isdir(fw.source_dir)
+
+
 @patch('time.strftime', return_value=TIMESTAMP)
 def test_init_with_source_dir_s3(strftime, sagemaker_session):
     fw = DummyFramework(entry_point=SCRIPT_PATH, source_dir='s3://location', role=ROLE,

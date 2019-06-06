@@ -126,6 +126,28 @@ def _accelerator_type_valid_for_framework(framework, accelerator_type=None, opti
     return True
 
 
+def validate_git_config(git_config):
+    """check if a git_config param is valid
+
+    Args:
+        git_config (dict[str, str]): Git configurations used for cloning files, including 'repo', 'branch',
+            and 'commit' for now.
+
+    Raises:
+        ValueError: If:
+            1. git_config has no key 'repo'
+            2. git_config['repo'] is in the wrong format.
+    """
+    if 'repo' not in git_config:
+        raise ValueError('Please provide a repo for git_config.')
+    codecommit_url = git_config['repo'].startswith('https://git-codecommit') \
+        or git_config['repo'].startswith('ssh://git-codecommit')
+    github_url = git_config['repo'].startswith('https://github') \
+        or git_config['repo'].startswith('git@github')
+    if not codecommit_url and not github_url:
+        raise ValueError('Please provide a valid git repo url.')
+
+
 def validate_source_dir(script, directory):
     """Validate that the source directory exists and it contains the user script
 

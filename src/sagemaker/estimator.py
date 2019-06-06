@@ -15,6 +15,8 @@ from __future__ import print_function, absolute_import
 import json
 import logging
 import os
+import subprocess
+import tempfile
 import warnings
 from abc import ABCMeta
 from abc import abstractmethod
@@ -24,7 +26,7 @@ from six import string_types
 import sagemaker
 from sagemaker.analytics import TrainingJobAnalytics
 from sagemaker.fw_utils import (create_image_uri, tar_and_upload_dir, parse_s3_url, UploadedCode,
-                                validate_source_dir)
+                                validate_source_dir, validate_git_config)
 from sagemaker.job import _Job
 from sagemaker.local import LocalSession
 from sagemaker.model import Model, NEO_ALLOWED_TARGET_INSTANCE_FAMILY, NEO_ALLOWED_FRAMEWORKS
@@ -771,13 +773,17 @@ class Framework(EstimatorBase):
     MPI_NUM_PROCESSES_PER_HOST = 'sagemaker_mpi_num_of_processes_per_host'
     MPI_CUSTOM_MPI_OPTIONS = 'sagemaker_mpi_custom_mpi_options'
 
-    def __init__(self, entry_point, source_dir=None, hyperparameters=None, enable_cloudwatch_metrics=False,
-                 container_log_level=logging.INFO, code_location=None, image_name=None, dependencies=None, **kwargs):
+    def __init__(self, entry_point, git_config=None, source_dir=None, hyperparameters=None,
+                 enable_cloudwatch_metrics=False, container_log_level=logging.INFO, code_location=None,
+                 image_name=None, dependencies=None, **kwargs):
         """Base class initializer. Subclasses which override ``__init__`` should invoke ``super()``
 
         Args:
-            entry_point (str): Path (absolute or relative) to the local Python source file which should be executed
+            entry_point (str): Path (absolute or relative) to either: 1. the local Python source file if git_support
+                is False 2. the Python source file in Git repo if git_support is True, which should be executed
                 as the entry point to training. This should be compatible with either Python 2.7 or Python 3.5.
+            git_config (dict[str, str]): Git configurations used for cloning files, including 'repo', 'branch'
+                and 'commit' for now (default: None).
             source_dir (str): Path (absolute or relative) to a directory with any other training
                 source code dependencies aside from the entry point file (default: None). Structure within this
                 directory are preserved when training on Amazon SageMaker.
@@ -815,9 +821,11 @@ class Framework(EstimatorBase):
             **kwargs: Additional kwargs passed to the ``EstimatorBase`` constructor.
         """
         super(Framework, self).__init__(**kwargs)
+
         if entry_point.startswith('s3://'):
             raise ValueError('Invalid entry point script: {}. Must be a path to a local file.'.format(entry_point))
         self.entry_point = entry_point
+        self.git_config = git_config
         self.source_dir = source_dir
         self.dependencies = dependencies or []
         if enable_cloudwatch_metrics:
@@ -829,6 +837,45 @@ class Framework(EstimatorBase):
         self.image_name = image_name
 
         self._hyperparameters = hyperparameters or {}
+
+    def _git_clone_code(self):
+        """Git clone repo containing the training scripts.
+
+        This method also validate ``git_config``.
+        Set ``entry_point`` and ``source_dir`` to the right file or directory in the repo cloned.
+
+
+        """
+        validate_git_config(self.git_config)
+        # create a temporary directory to store the cloned repo
+        repo_dir = tempfile.mkdtemp()
+        try:
+            subprocess.check_call(['git', 'clone', self.git_config['repo'], repo_dir])
+        except subprocess.CalledProcessError:
+            raise ValueError('Failed to clone git repo.')
+
+        # checkout the specified branch and commit
+        os.chdir(repo_dir)
+        try:
+            subprocess.check_call(['git', 'checkout', self.git_config['branch']])
+        except subprocess.CalledProcessError:
+            raise ValueError('Failed to checkout the required branch.')
+        try:
+            subprocess.check_call(['git', 'checkout', self.git_config['commit']])
+        except subprocess.CalledProcessError:
+            raise ValueError('Failed to checkout the required commit.')
+
+        # check if the cloned repo contains entry point and source dir; if so, set ``entry_point`` and
+        # ``source_dir`` to the paths to local file system.
+        if not os.path.isfile(os.path.join(repo_dir, self.entry_point)):
+            raise ValueError('Entry point does not exist in the repo.')
+        else:
+            self.entry_point = os.path.join(repo_dir, self.entry_point)
+        if self.source_dir:
+            if not os.path.isdir(os.path.join(repo_dir, self.source_dir)):
+                raise ValueError('Source does not exist in the repo.')
+            else:
+                self.source_dir = os.path.join(repo_dir, self.source_dir)
 
     def _prepare_for_training(self, job_name=None):
         """Set hyperparameters needed for training. This method will also validate ``source_dir``.
