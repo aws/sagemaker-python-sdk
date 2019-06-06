@@ -12,16 +12,12 @@
 # language governing permissions and limitations under the License.
 from __future__ import absolute_import
 
-import gzip
 import json
 import os
-import pickle
-import sys
 
 import pytest
 
 import sagemaker
-from sagemaker.amazon.amazon_estimator import registry
 from sagemaker.estimator import Estimator
 from sagemaker.utils import unique_name_from_base
 from tests.integ import DATA_DIR, TRAINING_DEFAULT_TIMEOUT_MINUTES, dummy_container
