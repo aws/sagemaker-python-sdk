@@ -71,7 +71,7 @@ def test_tfs_model(sagemaker_session, tf_version):
     model = Model("s3://some/data.tar.gz", role=ROLE, framework_version=tf_version,
                   sagemaker_session=sagemaker_session)
     cdef = model.prepare_container_def(INSTANCE_TYPE)
-    assert cdef['Image'].endswith('sagemaker-tensorflow-serving:{}-cpu'.format(tf_version))
+    assert cdef['Image'].endswith('sagemaker-tensorflow-serving:{}-cpu-py2'.format(tf_version))
     assert cdef['Environment'] == {}
 
     predictor = model.deploy(INSTANCE_COUNT, INSTANCE_TYPE)
@@ -82,7 +82,7 @@ def test_tfs_model_image_accelerator(sagemaker_session, tf_version):
     model = Model("s3://some/data.tar.gz", role=ROLE, framework_version=tf_version,
                   sagemaker_session=sagemaker_session)
     cdef = model.prepare_container_def(INSTANCE_TYPE, accelerator_type=ACCELERATOR_TYPE)
-    assert cdef['Image'].endswith('sagemaker-tensorflow-serving-eia:{}-cpu'.format(tf_version))
+    assert cdef['Image'].endswith('sagemaker-tensorflow-serving-eia:{}-cpu-py2'.format(tf_version))
 
     predictor = model.deploy(INSTANCE_COUNT, INSTANCE_TYPE)
     assert isinstance(predictor, Predictor)
