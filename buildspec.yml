@@ -31,7 +31,7 @@ phases:
       # run integration tests
       - |
         if has-matching-changes "tests/" "src/*.py" "setup.py" "setup.cfg" "buildspec.yml"; then
-          IGNORE_COVERAGE=- tox -e py36,py27 -- tests/integ -n 24 --boxed --reruns 2
+          IGNORE_COVERAGE=- tox -e py36,py27 -- tests/integ -n 24 --boxed --reruns 2 --run-integ-tests-with-local-mode
         else
           echo "skipping integration tests"
         fi

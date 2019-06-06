@@ -283,8 +283,11 @@ class _SageMakerContainer(object):
         for c in input_data_config:
             channel_name = c['ChannelName']
             json_input_data_config[channel_name] = {
+                'RecordWrapperType': 'None',
+                'S3DistributionType': 'FullyReplicated',
                 'TrainingInputMode': 'File'
             }
+
             if 'ContentType' in c:
                 json_input_data_config[channel_name]['ContentType'] = c['ContentType']
 

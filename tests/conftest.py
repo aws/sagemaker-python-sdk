@@ -33,6 +33,7 @@ DEFAULT_REGION = 'us-west-2'
 
 def pytest_addoption(parser):
     parser.addoption('--sagemaker-client-config', action='store', default=None)
+    parser.addoption('--run-integ-tests-with-local-mode', action='store_true', default=False)
     parser.addoption('--sagemaker-runtime-config', action='store', default=None)
     parser.addoption('--boto-config', action='store', default=None)
     parser.addoption('--chainer-full-version', action='store', default=Chainer.LATEST_VERSION)
@@ -78,16 +79,28 @@ def boto_config(request):
 
 
 @pytest.fixture(scope='session')
-def sagemaker_session(sagemaker_client_config, sagemaker_runtime_config, boto_config):
-    boto_session = boto3.Session(**boto_config) if boto_config else boto3.Session(
-        region_name=DEFAULT_REGION)
-    sagemaker_client_config.setdefault('config', Config(retries=dict(max_attempts=10)))
-    sagemaker_client = boto_session.client('sagemaker',
-                                           **sagemaker_client_config) if sagemaker_client_config else None
-    runtime_client = (boto_session.client('sagemaker-runtime',
-                                          **sagemaker_runtime_config) if sagemaker_runtime_config
-                      else None)
+def sagemaker_integ_session(sagemaker_client_config, sagemaker_runtime_config, boto_config, request):
 
+    if request.config.getoption('--run-integ-tests-with-local-mode'):
+        return _sagemaker_local_session(boto_config)
+    else:
+        return _sagemaker_session(boto_config, sagemaker_client_config, sagemaker_runtime_config)
+
+
+@pytest.fixture(scope='session')
+def sagemaker_session(sagemaker_client_config, sagemaker_runtime_config, boto_config):
+    return _sagemaker_session(boto_config, sagemaker_client_config, sagemaker_runtime_config)
+
+
+def _sagemaker_session(boto_config, sagemaker_client_config, sagemaker_runtime_config):
+    sagemaker_client_config = sagemaker_client_config or {}
+    sagemaker_runtime_config = sagemaker_runtime_config or {}
+    boto_config = boto_config or {'region_name': DEFAULT_REGION}
+    boto_session = boto3.Session(**boto_config)
+    if sagemaker_client_config:
+        sagemaker_client_config.setdefault('config', Config(retries=dict(max_attempts=10)))
+    sagemaker_client = boto_session.client('sagemaker', **sagemaker_client_config)
+    runtime_client = boto_session.client('sagemaker-runtime', **sagemaker_runtime_config)
     return Session(boto_session=boto_session,
                    sagemaker_client=sagemaker_client,
                    sagemaker_runtime_client=runtime_client)
@@ -95,6 +108,10 @@ def sagemaker_session(sagemaker_client_config, sagemaker_runtime_config, boto_co
 
 @pytest.fixture(scope='session')
 def sagemaker_local_session(boto_config):
+    return _sagemaker_local_session(boto_config)
+
+
+def _sagemaker_local_session(boto_config):
     if boto_config:
         boto_session = boto3.Session(**boto_config)
     else:
