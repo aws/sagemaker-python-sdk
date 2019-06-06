@@ -1,4 +1,4 @@
-# Copyright 2017 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright 2017-2019 Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -60,7 +60,7 @@ def kmeans_train_set(sagemaker_session):
 def kmeans_estimator(sagemaker_session):
     kmeans = KMeans(role='SageMakerRole', train_instance_count=1,
                     train_instance_type='ml.c4.xlarge',
-                    k=10, sagemaker_session=sagemaker_session, base_job_name='tk',
+                    k=10, sagemaker_session=sagemaker_session,
                     output_path='s3://{}/'.format(sagemaker_session.default_bucket()))
     # set kmeans specific hp
     kmeans.init_method = 'random'
@@ -137,8 +137,9 @@ def test_tuning_kmeans(sagemaker_session,
                        kmeans_train_set,
                        kmeans_estimator,
                        hyperparameter_ranges):
+    job_name = unique_name_from_base('test-tune-kmeans')
     _tune_and_deploy(kmeans_estimator, kmeans_train_set, sagemaker_session,
-                     hyperparameter_ranges=hyperparameter_ranges)
+                     hyperparameter_ranges=hyperparameter_ranges, job_name=job_name)
 
 
 def test_tuning_kmeans_identical_dataset_algorithm_tuner_raw(sagemaker_session,
