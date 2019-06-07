@@ -132,8 +132,9 @@ class Session(object):
                 creates it).
             key_prefix (str): Optional S3 object key name prefix (default: 'data'). S3 uses the prefix to
                 create a directory structure for the bucket content that it display in the S3 console.
-            extra_args (dict): Extra arguments that may be passed to the upload operation.Please refer to the
-                ExtraArgs parameter documentation here :
+            extra_args (dict): Optional extra arguments that may be passed to the upload operation.Similar to
+                ExtraArgs parameter in S3 upload_file function.Please refer to the ExtraArgs parameter
+                documentation here :
                 https://boto3.amazonaws.com/v1/documentation/api/latest/guide/s3-uploading-files.html#the-extraargs-parameter
 
         Returns:
