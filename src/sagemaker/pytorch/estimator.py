@@ -29,7 +29,7 @@ class PyTorch(Framework):
 
     __framework_name__ = "pytorch"
 
-    LATEST_VERSION = '1.0'
+    LATEST_VERSION = '1.1.0'
     """The latest version of PyTorch included in the SageMaker pre-built Docker images."""
 
     def __init__(self, entry_point, source_dir=None, hyperparameters=None, py_version=PYTHON_VERSION,
