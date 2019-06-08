@@ -922,7 +922,8 @@ def test_fit_deploy_keep_tags(sagemaker_session):
     sagemaker_session.endpoint_from_production_variants.assert_called_with(job_name,
                                                                            variant,
                                                                            tags,
-                                                                           None)
+                                                                           None,
+                                                                           True)
 
     sagemaker_session.create_model.assert_called_with(
         ANY,

@@ -331,7 +331,7 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):
         return estimator
 
     def deploy(self, initial_instance_count, instance_type, accelerator_type=None, endpoint_name=None,
-               use_compiled_model=False, update_endpoint=False, **kwargs):
+               use_compiled_model=False, update_endpoint=False, wait=True, **kwargs):
         """Deploy the trained model to an Amazon SageMaker endpoint and return a ``sagemaker.RealTimePredictor`` object.
 
         More information:
@@ -355,6 +355,7 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):
                     >>> tags = [{'Key': 'tagname', 'Value': 'tagvalue'}]
                     For more information about tags, see https://boto3.amazonaws.com/v1/documentation\
                     /api/latest/reference/services/sagemaker.html#SageMaker.Client.add_tags
+            wait (bool): Whether the call should wait until the deployment of model completes (default: True).
 
             **kwargs: Passed to invocation of ``create_model()``. Implementations may customize
                 ``create_model()`` to accept ``**kwargs`` to customize model creation during deploy.
@@ -381,7 +382,8 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):
             accelerator_type=accelerator_type,
             endpoint_name=endpoint_name,
             update_endpoint=update_endpoint,
-            tags=self.tags)
+            tags=self.tags,
+            wait=wait)
 
     @property
     def model_data(self):

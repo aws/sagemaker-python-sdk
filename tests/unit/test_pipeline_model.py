@@ -102,7 +102,8 @@ def test_deploy(tfo, time, sagemaker_session):
           'InstanceType': INSTANCE_TYPE,
           'InitialInstanceCount': 1,
           'VariantName': 'AllTraffic'}],
-        None)
+        None,
+        wait=True)
 
 
 @patch('tarfile.open')
@@ -119,7 +120,8 @@ def test_deploy_endpoint_name(tfo, time, sagemaker_session):
           'InstanceType': INSTANCE_TYPE,
           'InitialInstanceCount': 1,
           'VariantName': 'AllTraffic'}],
-        None)
+        None,
+        wait=True)
 
 
 @patch('tarfile.open')
@@ -178,7 +180,8 @@ def test_deploy_tags(tfo, time, sagemaker_session):
           'InstanceType': INSTANCE_TYPE,
           'InitialInstanceCount': 1,
           'VariantName': 'AllTraffic'}],
-        tags)
+        tags,
+        wait=True)
 
 
 def test_delete_model_without_deploy(sagemaker_session):

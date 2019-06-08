@@ -166,7 +166,8 @@ def test_deploy(sagemaker_session, tmpdir):
           'InitialInstanceCount': 1,
           'VariantName': 'AllTraffic'}],
         None,
-        None)
+        None,
+        True)
 
 
 @patch('sagemaker.fw_utils.tar_and_upload_dir', MagicMock())
@@ -182,7 +183,8 @@ def test_deploy_endpoint_name(sagemaker_session, tmpdir):
           'InitialInstanceCount': 55,
           'VariantName': 'AllTraffic'}],
         None,
-        None)
+        None,
+        True)
 
 
 @patch('sagemaker.fw_utils.tar_and_upload_dir', MagicMock())
@@ -199,7 +201,8 @@ def test_deploy_tags(sagemaker_session, tmpdir):
           'InitialInstanceCount': 1,
           'VariantName': 'AllTraffic'}],
         tags,
-        None)
+        None,
+        True)
 
 
 @patch('sagemaker.fw_utils.tar_and_upload_dir', MagicMock())
@@ -217,7 +220,8 @@ def test_deploy_accelerator_type(tfo, time, sagemaker_session):
           'VariantName': 'AllTraffic',
           'AcceleratorType': ACCELERATOR_TYPE}],
         None,
-        None)
+        None,
+        True)
 
 
 @patch('sagemaker.fw_utils.tar_and_upload_dir', MagicMock())
@@ -235,7 +239,8 @@ def test_deploy_kms_key(tfo, time, sagemaker_session):
           'InitialInstanceCount': 1,
           'VariantName': 'AllTraffic'}],
         None,
-        key)
+        key,
+        True)
 
 
 @patch('sagemaker.session.Session')
