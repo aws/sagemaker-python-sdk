@@ -120,20 +120,6 @@ def test_create_image_uri_local_sagemaker_notebook_accelerator():
     assert image_uri == '520713654638.dkr.ecr.mars-south-3.amazonaws.com/sagemaker-mxnet-eia:1.0rc-gpu-py3'
 
 
-def test_validate_git_config_repo_not_provided():
-    git_config = {'branch': 'master', 'username': 'User1', 'password': 'passw0rd'}
-    with pytest.raises(ValueError) as error:
-        fw_utils.validate_git_config(git_config)
-    assert 'Please provide a repo for git_config.' in str(error)
-
-
-def test_validate_git_config_bad_repo_url():
-    git_config = {'repo': 'hhttps://github.com/user/repo.git', 'branch': 'master', 'password': 'passw0rd'}
-    with pytest.raises(ValueError) as error:
-        fw_utils.validate_git_config(git_config)
-    assert 'Please provide a valid git repo url.' in str(error)
-
-
 def test_invalid_accelerator():
     error_message = '{} is not a valid SageMaker Elastic Inference accelerator type.'.format(MOCK_ACCELERATOR)
     # accelerator type is missing 'ml.' prefix

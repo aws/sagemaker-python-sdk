@@ -26,7 +26,7 @@ from six import string_types
 import sagemaker
 from sagemaker.analytics import TrainingJobAnalytics
 from sagemaker.fw_utils import (create_image_uri, tar_and_upload_dir, parse_s3_url, UploadedCode,
-                                validate_source_dir, validate_git_config)
+                                validate_source_dir)
 from sagemaker.job import _Job
 from sagemaker.local import LocalSession
 from sagemaker.model import Model, NEO_ALLOWED_TARGET_INSTANCE_FAMILY, NEO_ALLOWED_FRAMEWORKS
@@ -779,14 +779,25 @@ class Framework(EstimatorBase):
         """Base class initializer. Subclasses which override ``__init__`` should invoke ``super()``
 
         Args:
-            entry_point (str): Path (absolute or relative) to either: 1. the local Python source file if git_support
-                is False 2. the Python source file in Git repo if git_support is True, which should be executed
-                as the entry point to training. This should be compatible with either Python 2.7 or Python 3.5.
+            entry_point (str): Path (absolute or relative) to either: 1. the local Python source file if git_config
+                is not provided. 2. the Python source file in Git repo if git_config is provided, which should be
+                executed as the entry point to training. This should be compatible with either Python 2.7 or Python 3.5.
             git_config (dict[str, str]): Git configurations used for cloning files, including 'repo', 'branch'
-                and 'commit' for now (default: None).
+                and 'commit' (default: None).
+                'branch' and 'commit' are optional. If 'branch' is not specified, 'master' branch will be used. If
+                'commit' is not specified, the latest commit in the required branch will be used.
+                Example:
+
+                    The following config:
+                    >>> git_config = {'repo': 'https://github.com/GaryTu1020/python-sdk-testing.git',
+                    >>>               'branch': 'master',
+                    >>>               'commit': 'aea6f3acef9619f77f94772d9d654f041e16bf49'}
+                    results in cloning the repo specified in 'repo', then checkout the 'master' branch, and checkout
+                    the specified commit.
             source_dir (str): Path (absolute or relative) to a directory with any other training
-                source code dependencies aside from the entry point file (default: None). Structure within this
-                directory are preserved when training on Amazon SageMaker.
+                source code dependencies aside from the entry point file (default: None). If git_config is not provided,
+                this should be a local path; if git_config is provided, this should be a path in the Git repo.
+                Structure within this directory are preserved when training on Amazon SageMaker.
             dependencies (list[str]): A list of paths to directories (absolute or relative) with
                 any additional libraries that will be exported to the container (default: []).
                 The library folders will be copied to SageMaker in the same folder where the entrypoint is copied.
@@ -838,44 +849,107 @@ class Framework(EstimatorBase):
 
         self._hyperparameters = hyperparameters or {}
 
-    def _git_clone_code(self):
-        """Git clone repo containing the training scripts.
+    def fit(self, inputs=None, wait=True, logs=True, job_name=None):
+        """Train a model using the input training dataset. If gif_config provided, the method does git clone first.
 
-        This method also validate ``git_config``.
-        Set ``entry_point`` and ``source_dir`` to the right file or directory in the repo cloned.
+        The API calls the Amazon SageMaker CreateTrainingJob API to start model training.
+        The API uses configuration you provided to create the estimator and the
+        specified input training data to send the CreatingTrainingJob request to Amazon SageMaker.
 
+        This is a synchronous operation. After the model training successfully completes,
+        you can call the ``deploy()`` method to host the model using the Amazon SageMaker hosting services.
 
+        Args:
+            inputs (str or dict or sagemaker.session.s3_input): Information about the training data.
+                This can be one of three types:
+
+                * (str) the S3 location where training data is saved.
+
+                * (dict[str, str] or dict[str, sagemaker.session.s3_input]) If using multiple channels for
+                    training data, you can specify a dict mapping channel names
+                    to strings or :func:`~sagemaker.session.s3_input` objects.
+                * (sagemaker.session.s3_input) - channel configuration for S3 data sources that can provide
+                    additional information as well as the path to the training dataset.
+                    See :func:`sagemaker.session.s3_input` for full details.
+            wait (bool): Whether the call should wait until the job completes (default: True).
+            logs (bool): Whether to show the logs produced by the job.
+                Only meaningful when wait is True (default: True).
+            job_name (str): Training job name. If not specified, the estimator generates a default job name,
+                based on the training image name and current timestamp.
         """
-        validate_git_config(self.git_config)
+        if self.git_config:
+            self._git_clone_code()
+        super(Framework, self).fit(inputs=inputs, wait=wait, logs=logs, job_name=job_name)
+
+    def _git_clone_code(self):
+        """Git clone repo containing the training scripts. This method also validate ``git_config``,
+        and set ``entry_point`` and ``source_dir`` to the right file or directory in the repo cloned.
+
+        Raises:
+            CalledProcessError: If 1. failed to clone git repo
+                                   2. failed to checkout the required branch
+                                   3. failed to checkout the required commit
+            ValueError: If 1. entry point specified does not exist in the repo
+                           2. source dir specified does not exist in the repo
+        """
+        self._validate_git_config()
         # create a temporary directory to store the cloned repo
         repo_dir = tempfile.mkdtemp()
         try:
             subprocess.check_call(['git', 'clone', self.git_config['repo'], repo_dir])
         except subprocess.CalledProcessError:
-            raise ValueError('Failed to clone git repo.')
+            raise subprocess.CalledProcessError(1, cmd='git clone {} {}'.format(self.git_config['repo'], repo_dir))
 
-        # checkout the specified branch and commit
-        os.chdir(repo_dir)
-        try:
-            subprocess.check_call(['git', 'checkout', self.git_config['branch']])
-        except subprocess.CalledProcessError:
-            raise ValueError('Failed to checkout the required branch.')
-        try:
-            subprocess.check_call(['git', 'checkout', self.git_config['commit']])
-        except subprocess.CalledProcessError:
-            raise ValueError('Failed to checkout the required commit.')
+        self._checkout_branch_and_commit(repo_dir)
 
         # check if the cloned repo contains entry point and source dir; if so, set ``entry_point`` and
         # ``source_dir`` to the paths to local file system.
-        if not os.path.isfile(os.path.join(repo_dir, self.entry_point)):
-            raise ValueError('Entry point does not exist in the repo.')
-        else:
-            self.entry_point = os.path.join(repo_dir, self.entry_point)
         if self.source_dir:
-            if not os.path.isdir(os.path.join(repo_dir, self.source_dir)):
-                raise ValueError('Source directory does not exist in the repo.')
-            else:
+            if os.path.isdir(os.path.join(repo_dir, self.source_dir)):
                 self.source_dir = os.path.join(repo_dir, self.source_dir)
+                os.chdir(self.source_dir)
+            else:
+                raise ValueError('Source directory does not exist in the repo.')
+            if not os.path.isfile(os.path.join(self.source_dir, self.entry_point)):
+                raise ValueError('Entry point does not exist in the repo.')
+
+    def _checkout_branch_and_commit(self, repo_dir):
+        """Enter the directory where the repo is cloned, and  checkout the required branch and commit.
+
+        Args:
+            repo_dir: the directory where the repo is cloned
+
+        Raises:
+            ValueError: If 1. entry point specified does not exist in the repo
+                           2. source dir specified does not exist in the repo
+        """
+        os.chdir(repo_dir)
+        if 'branch' in self.git_config:
+            try:
+                subprocess.check_call(['git', 'checkout', self.git_config['branch']])
+            except subprocess.CalledProcessError:
+                raise subprocess.CalledProcessError(1, cmd='git checkout {}'.format(self.git_config['branch']))
+        if 'commit' in self.git_config:
+            try:
+                subprocess.check_call(['git', 'checkout', self.git_config['commit']])
+            except subprocess.CalledProcessError:
+                raise subprocess.CalledProcessError(1, cmd='git checkout {}'.format(self.git_config['commit']))
+
+    def _validate_git_config(self):
+        """check if a git_config param is valid
+
+        Raises:
+            ValueError: If:
+                1. git_config has no key 'repo'
+                2. git_config['repo'] is in the wrong format.
+        """
+        if 'repo' not in self.git_config:
+            raise ValueError('Please provide a repo for git_config.')
+        repo = self.git_config['repo']
+        codecommit_url = repo.startswith('https://git-codecommit') or repo.startswith('ssh://git-codecommit')
+        github_url = repo.startswith('https://github') or repo.startswith('git@github')
+        if not codecommit_url and not github_url:
+            raise ValueError('Please provide a valid git repo url.')
 
     def _prepare_for_training(self, job_name=None):
         """Set hyperparameters needed for training. This method will also validate ``source_dir``.
