@@ -539,7 +539,11 @@ class _HostingContainer(Thread):
             raise RuntimeError(msg)
 
     def down(self):
-        self.process.terminate()
+        try:
+            self.process.terminate()
+        except ProcessLookupError:
+            # The process terminated already
+            pass
 
 
 class _Volume(object):

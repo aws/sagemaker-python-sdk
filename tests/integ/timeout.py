@@ -20,6 +20,8 @@ from time import sleep
 from awslogs.core import AWSLogs
 from botocore.exceptions import ClientError
 
+import sagemaker
+
 LOGGER = logging.getLogger('timeout')
 
 
@@ -74,7 +76,7 @@ def timeout_and_delete_endpoint_by_name(endpoint_name, sagemaker_session, second
                     _show_logs(endpoint_name, 'Endpoints', sagemaker_session)
                     if no_errors:
                         _cleanup_logs(endpoint_name, 'Endpoints', sagemaker_session)
-                    return
+                        break
                 except ClientError as ce:
                     if ce.response['Error']['Code'] == 'ValidationException':
                         # avoids the inner exception to be overwritten
@@ -102,7 +104,7 @@ def timeout_and_delete_model_with_transformer(transformer, sagemaker_session, se
                     _show_logs(transformer.model_name, 'Models', sagemaker_session)
                     if no_errors:
                         _cleanup_logs(transformer.model_name, 'Models', sagemaker_session)
-                        return
+                        break
                 except ClientError as ce:
                     if ce.response['Error']['Code'] == 'ValidationException':
                         pass
@@ -110,6 +112,9 @@ def timeout_and_delete_model_with_transformer(transformer, sagemaker_session, se
 
 
 def _show_logs(resource_name, resource_type, sagemaker_session):
+    if isinstance(sagemaker_session, sagemaker.LocalSession):
+        return
+
     log_group = '/aws/sagemaker/{}/{}'.format(resource_type, resource_name)
     try:
         # print out logs before deletion for debuggability
@@ -123,6 +128,9 @@ def _show_logs(resource_name, resource_type, sagemaker_session):
 
 
 def _cleanup_logs(resource_name, resource_type, sagemaker_session):
+    if isinstance(sagemaker_session, sagemaker.LocalSession):
+        return
+
     log_group = '/aws/sagemaker/{}/{}'.format(resource_type, resource_name)
     try:
         # print out logs before deletion for debuggability
