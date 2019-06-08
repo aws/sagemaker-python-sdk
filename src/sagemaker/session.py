@@ -1423,24 +1423,12 @@ class Session(object):  # pylint: disable=too-many-public-methods
         """
 
         description = self.sagemaker_client.describe_training_job(TrainingJobName=job_name)
-        print(secondary_training_status_message(description, None), end="")
-        instance_count = description["ResourceConfig"]["InstanceCount"]
-        status = description["TrainingJobStatus"]
+        print(secondary_training_status_message(description, None), end='')
 
-        stream_names = []  # The list of log streams
-        positions = {}  # The current position in each stream, map of stream name -> position
-
-        # Increase retries allowed (from default of 4), as we don't want waiting for a training job
-        # to be interrupted by a transient exception.
-        config = botocore.config.Config(retries={"max_attempts": 15})
-        client = self.boto_session.client("logs", config=config)
-        log_group = "/aws/sagemaker/TrainingJobs"
+        instance_count, stream_names, positions, client, log_group, dot, color_wrap = \
+            _logs_initializer(self, description, job='Training')
 
         state = _get_initial_job_state(description, 'TrainingJobStatus', wait)
-
-        dot = False
-
-        color_wrap = sagemaker.logs.ColorWrap()
 
         # The loop below implements a state machine that alternates between checking the job status
         # and reading whatever is available in the logs at this point. Note, that if we were
@@ -1519,22 +1507,11 @@ class Session(object):  # pylint: disable=too-many-public-methods
         """
 
         description = self.sagemaker_client.describe_transform_job(TransformJobName=job_name)
-        instance_count = description['TransformResources']['InstanceCount']
 
-        stream_names = []  # The list of log streams
-        positions = {}     # The current position in each stream, map of stream name -> position
-
-        # Increase retries allowed (from default of 4), as we don't want waiting for a training job
-        # to be interrupted by a transient exception.
-        config = botocore.config.Config(retries={'max_attempts': 15})
-        client = self.boto_session.client('logs', config=config)
-        log_group = '/aws/sagemaker/TransformJobs'
+        instance_count, stream_names, positions, client, log_group, dot, color_wrap = \
+            _logs_initializer(self, description, job='Transform')
 
         state = _get_initial_job_state(description, 'TransformJobStatus', wait)
-
-        dot = False
-
-        color_wrap = sagemaker.logs.ColorWrap()
 
         # The loop below implements a state machine that alternates between checking the job status and
         # reading whatever is available in the logs at this point. Note, that if we were called with
@@ -1924,6 +1901,28 @@ def _get_initial_job_state(description, status_key, wait):
     status = description[status_key]
     job_already_completed = True if status == 'Completed' or status == 'Failed' or status == 'Stopped' else False
     return LogState.TAILING if wait and not job_already_completed else LogState.COMPLETE
+
+
+def _logs_initializer(sagemaker_session, description, job):
+    if job == 'Training':
+        instance_count = description['ResourceConfig']['InstanceCount']
+    elif job == 'Transform':
+        instance_count = description['TransformResources']['InstanceCount']
+
+    stream_names = []  # The list of log streams
+    positions = {}     # The current position in each stream, map of stream name -> position
+
+    # Increase retries allowed (from default of 4), as we don't want waiting for a training job
+    # to be interrupted by a transient exception.
+    config = botocore.config.Config(retries={'max_attempts': 15})
+    client = sagemaker_session.boto_session.client('logs', config=config)
+    log_group = '/aws/sagemaker/' + job + 'Jobs'
+
+    dot = False
+
+    color_wrap = sagemaker.logs.ColorWrap()
+
+    return instance_count, stream_names, positions, client, log_group, dot, color_wrap
 
 
 def _flush_log_streams(stream_names, instance_count, client, log_group, job_name, positions, dot, color_wrap):

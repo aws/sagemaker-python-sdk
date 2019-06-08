@@ -450,4 +450,3 @@ def _create_transformer_and_transform_job(
         logs=logs,
     )
     return transformer
-

@@ -989,9 +989,6 @@ def test_logs_for_job_full_lifecycle(time, cw, sagemaker_session_full_lifecycle)
     ]
 
 
-MODEL_NAME = "some-model"
-
-
 @patch('sagemaker.logs.ColorWrap')
 def test_logs_for_transform_job_no_wait(cw, sagemaker_session_complete):
     ims = sagemaker_session_complete
@@ -1043,7 +1040,6 @@ def test_logs_for_transform_job_full_lifecycle(time, cw, sagemaker_session_full_
 
 
 MODEL_NAME = 'some-model'
->>>>>>> feature: Estimator.fit like logs for transformer
 PRIMARY_CONTAINER = {
     "Environment": {},
     "Image": IMAGE,
