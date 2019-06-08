@@ -115,7 +115,7 @@ class Session(object):
     def boto_region_name(self):
         return self._region_name
 
-    def upload_data(self, path, bucket=None, key_prefix='data'):
+    def upload_data(self, path, bucket=None, key_prefix='data', extra_args=None):
         """Upload local file or directory to S3.
 
         If a single file is specified for upload, the resulting S3 object key is ``{key_prefix}/{filename}``
@@ -132,6 +132,10 @@ class Session(object):
                 creates it).
             key_prefix (str): Optional S3 object key name prefix (default: 'data'). S3 uses the prefix to
                 create a directory structure for the bucket content that it display in the S3 console.
+            extra_args (dict): Optional extra arguments that may be passed to the upload operation. Similar to
+                ExtraArgs parameter in S3 upload_file function. Please refer to the ExtraArgs parameter
+                documentation here:
+                https://boto3.amazonaws.com/v1/documentation/api/latest/guide/s3-uploading-files.html#the-extraargs-parameter
 
         Returns:
             str: The S3 URI of the uploaded file(s). If a file is specified in the path argument, the URI format is:
@@ -158,7 +162,7 @@ class Session(object):
         s3 = self.boto_session.resource('s3')
 
         for local_path, s3_key in files:
-            s3.Object(bucket, s3_key).upload_file(local_path)
+            s3.Object(bucket, s3_key).upload_file(local_path, ExtraArgs=extra_args)
 
         s3_uri = 's3://{}/{}'.format(bucket, key_prefix)
         # If a specific file was used as input (instead of a directory), we return the full S3 key
