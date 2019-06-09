@@ -500,14 +500,15 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):
             volume_kms_key (str): Optional. KMS key ID for encrypting the volume attached to the ML
                 compute instance (default: None).
         """
+        tags = tags or self.tags
+
         if self.latest_training_job is not None:
-            model_name = self.sagemaker_session.create_model_from_job(self.latest_training_job.name, role=role)
+            model_name = self.sagemaker_session.create_model_from_job(self.latest_training_job.name, role=role,
+                                                                      tags=tags)
         else:
             logging.warning('No finished training job found associated with this estimator. Please make sure'
                             'this estimator is only used for building workflow config')
             model_name = self._current_job_name
-
-        tags = tags or self.tags
 
         return Transformer(model_name, instance_count, instance_type, strategy=strategy, assemble_with=assemble_with,
                            output_path=output_path, output_kms_key=output_kms_key, accept=accept,
@@ -1061,7 +1062,8 @@ class Framework(EstimatorBase):
             container_def = model.prepare_container_def(instance_type)
             model_name = model.name or name_from_image(container_def['Image'])
             vpc_config = model.vpc_config
-            self.sagemaker_session.create_model(model_name, role, container_def, vpc_config)
+            tags = tags or self.tags
+            self.sagemaker_session.create_model(model_name, role, container_def, vpc_config, tags=tags)
             transform_env = model.env.copy()
             if env is not None:
                 transform_env.update(env)
