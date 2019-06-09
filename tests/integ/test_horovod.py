@@ -1,4 +1,4 @@
-# Copyright 2017-2018 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright 2017-2019 Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -29,7 +29,7 @@ horovod_dir = os.path.join(os.path.dirname(__file__), '..', 'data', 'horovod')
 
 
 @pytest.fixture(scope='session', params=[
-    'ml.c5.xlarge',
+    'ml.c4.xlarge',
     pytest.param('ml.p3.2xlarge',
                  marks=pytest.mark.skipif(
                      test_region() in HOSTING_NO_P3_REGIONS,
