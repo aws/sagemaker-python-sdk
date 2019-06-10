@@ -291,6 +291,7 @@ DEFAULT_EXPECTED_TRAIN_JOB_ARGS = {
 }
 
 COMPLETED_DESCRIBE_JOB_RESULT = dict(DEFAULT_EXPECTED_TRAIN_JOB_ARGS)
+COMPLETED_DESCRIBE_JOB_RESULT.update({'TrainingJobArn': 'arn:aws:sagemaker:us-west-2:336:training-job/' + JOB_NAME})
 COMPLETED_DESCRIBE_JOB_RESULT.update({'TrainingJobStatus': 'Completed'})
 COMPLETED_DESCRIBE_JOB_RESULT.update(
     {'ModelArtifacts': {
@@ -868,6 +869,19 @@ def test_create_model_from_job(sagemaker_session):
                                                          ModelName=JOB_NAME,
                                                          PrimaryContainer=PRIMARY_CONTAINER,
                                                          VpcConfig=VPC_CONFIG)
+
+
+def test_create_model_from_job_with_tags(sagemaker_session):
+    ims = sagemaker_session
+    ims.sagemaker_client.describe_training_job.return_value = COMPLETED_DESCRIBE_JOB_RESULT
+    ims.create_model_from_job(JOB_NAME, tags=TAGS)
+
+    assert call(TrainingJobName=JOB_NAME) in ims.sagemaker_client.describe_training_job.call_args_list
+    ims.sagemaker_client.create_model.assert_called_with(ExecutionRoleArn=EXPANDED_ROLE,
+                                                         ModelName=JOB_NAME,
+                                                         PrimaryContainer=PRIMARY_CONTAINER,
+                                                         VpcConfig=VPC_CONFIG,
+                                                         Tags=TAGS)
 
 
 def test_create_model_from_job_with_image(sagemaker_session):
