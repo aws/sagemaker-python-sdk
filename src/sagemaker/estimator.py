@@ -779,9 +779,21 @@ class Framework(EstimatorBase):
         """Base class initializer. Subclasses which override ``__init__`` should invoke ``super()``
 
         Args:
-            entry_point (str): Path (absolute or relative) to either: 1. the local Python source file if git_config
-                is not provided. 2. the Python source file in Git repo if git_config is provided, which should be
-                executed as the entry point to training. This should be compatible with either Python 2.7 or Python 3.5.
+            entry_point (str): Path (absolute or relative) to the local Python source file which should be executed
+                as the entry point to training. This should be compatible with either Python 2.7 or Python 3.5.
+                If 'git_config' is provided, 'entry_point' should be a relative location to the Python source file in
+                the Git repo.
+                Example:
+
+                    If the following is the structure of a Git repo:
+
+                    >>> |----- README.md
+                    >>> |----- src
+                    >>>         |----- train.py
+                    >>>         |----- test.py
+
+                    and we need 'train.py' as entry point, and 'source_dir' is not provided, then 'entry_point' should
+                    be 'src/train.py'.
             git_config (dict[str, str]): Git configurations used for cloning files, including 'repo', 'branch'
                 and 'commit' (default: None).
                 'branch' and 'commit' are optional. If 'branch' is not specified, 'master' branch will be used. If
@@ -789,15 +801,28 @@ class Framework(EstimatorBase):
                 Example:
 
                     The following config:
+
                     >>> git_config = {'repo': 'https://github.com/GaryTu1020/python-sdk-testing.git',
                     >>>               'branch': 'master',
                     >>>               'commit': 'aea6f3acef9619f77f94772d9d654f041e16bf49'}
+
                     results in cloning the repo specified in 'repo', then checkout the 'master' branch, and checkout
                     the specified commit.
             source_dir (str): Path (absolute or relative) to a directory with any other training
-                source code dependencies aside from the entry point file (default: None). If git_config is not provided,
-                this should be a local path; if git_config is provided, this should be a path in the Git repo.
-                Structure within this directory are preserved when training on Amazon SageMaker.
+                source code dependencies aside from the entry point file (default: None). Structure within this
+                directory are preserved when training on Amazon SageMaker. If 'git_config' is provided,
+                source_dir should be a relative location to a directory in the Git repo.
+                Example:
+
+                    If the following is the structure of a Git repo:
+
+                    >>> |----- README.md
+                    >>> |----- src
+                    >>>         |----- train.py
+                    >>>         |----- test.py
+
+                    and we need 'train.py' as entry point and 'src' as source dir, then 'entry_point' should be
+                    'train.py', 'source_dir' should be 'src'.
             dependencies (list[str]): A list of paths to directories (absolute or relative) with
                 any additional libraries that will be exported to the container (default: []).
                 The library folders will be copied to SageMaker in the same folder where the entrypoint is copied.
@@ -849,38 +874,6 @@ class Framework(EstimatorBase):
 
         self._hyperparameters = hyperparameters or {}
 
-    def fit(self, inputs=None, wait=True, logs=True, job_name=None):
-        """Train a model using the input training dataset. If gif_config provided, the method does git clone first.
-
-        The API calls the Amazon SageMaker CreateTrainingJob API to start model training.
-        The API uses configuration you provided to create the estimator and the
-        specified input training data to send the CreatingTrainingJob request to Amazon SageMaker.
-
-        This is a synchronous operation. After the model training successfully completes,
-        you can call the ``deploy()`` method to host the model using the Amazon SageMaker hosting services.
-
-        Args:
-            inputs (str or dict or sagemaker.session.s3_input): Information about the training data.
-                This can be one of three types:
-
-                * (str) the S3 location where training data is saved.
-
-                * (dict[str, str] or dict[str, sagemaker.session.s3_input]) If using multiple channels for
-                    training data, you can specify a dict mapping channel names
-                    to strings or :func:`~sagemaker.session.s3_input` objects.
-                * (sagemaker.session.s3_input) - channel configuration for S3 data sources that can provide
-                    additional information as well as the path to the training dataset.
-                    See :func:`sagemaker.session.s3_input` for full details.
-            wait (bool): Whether the call should wait until the job completes (default: True).
-            logs (bool): Whether to show the logs produced by the job.
-                Only meaningful when wait is True (default: True).
-            job_name (str): Training job name. If not specified, the estimator generates a default job name,
-                based on the training image name and current timestamp.
-        """
-        if self.git_config:
-            self._git_clone_code()
-        super(Framework, self).fit(inputs=inputs, wait=wait, logs=logs, job_name=job_name)
-
     def _git_clone_code(self):
         """Git clone repo containing the training scripts. This method also validate ``git_config``,
         and set ``entry_point`` and ``source_dir`` to the right file or directory in the repo cloned.
@@ -911,6 +904,9 @@ class Framework(EstimatorBase):
             else:
                 raise ValueError('Source directory does not exist in the repo.')
             if not os.path.isfile(os.path.join(self.source_dir, self.entry_point)):
+                raise ValueError('Entry point does not exist in the repo.')
+        else:
+            if not os.path.isfile(os.path.join(repo_dir, self.entry_point)):
                 raise ValueError('Entry point does not exist in the repo.')
 
     def _checkout_branch_and_commit(self, repo_dir):
@@ -959,6 +955,9 @@ class Framework(EstimatorBase):
                 using the base name given to the constructor if applicable.
         """
         super(Framework, self)._prepare_for_training(job_name=job_name)
+
+        if self.git_config:
+            self._git_clone_code()
 
         # validate source dir will raise a ValueError if there is something wrong with the
         # source directory. We are intentionally not handling it because this is a critical error.

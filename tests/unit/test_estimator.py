@@ -695,8 +695,8 @@ def test_git_support_entry_point_not_exist(sagemaker_session):
     git_config = {'repo': 'https://github.com/GaryTu1020/python-sdk-testing.git',
                   'branch': 'branch1',
                   'commit': 'aea6f3acef9619f77f94772d9d654f041e16bf49'}
-    fw = DummyFramework(entry_point='entry_point_that_does_not_exist', git_config=git_config,
-                        source_dir='source_dir', role=ROLE, sagemaker_session=sagemaker_session,
+    fw = DummyFramework(entry_point='entry_point', git_config=git_config,
+                        role=ROLE, sagemaker_session=sagemaker_session,
                         train_instance_count=INSTANCE_COUNT, train_instance_type=INSTANCE_TYPE,
                         enable_cloudwatch_metrics=True)
     with pytest.raises(ValueError) as error:
