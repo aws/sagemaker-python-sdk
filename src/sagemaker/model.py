@@ -375,7 +375,7 @@ class FrameworkModel(Model):
             entry_point (str): Path (absolute or relative) to the Python source file which should be executed
                 as the entry point to model hosting. This should be compatible with either Python 2.7 or Python 3.5.
             source_dir (str): Path (absolute or relative) to a directory with any other training
-                source code dependencies aside from tne entry point file (default: None). Structure within this
+                source code dependencies aside from the entry point file (default: None). Structure within this
                 directory will be preserved when training on SageMaker.
                 If the directory points to S3, no code will be uploaded and the S3 location will be used instead.
             dependencies (list[str]): A list of paths to directories (absolute or relative) with
