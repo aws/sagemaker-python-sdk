@@ -502,14 +502,15 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):
             volume_kms_key (str): Optional. KMS key ID for encrypting the volume attached to the ML
                 compute instance (default: None).
         """
+        tags = tags or self.tags
+
         if self.latest_training_job is not None:
-            model_name = self.sagemaker_session.create_model_from_job(self.latest_training_job.name, role=role)
+            model_name = self.sagemaker_session.create_model_from_job(self.latest_training_job.name, role=role,
+                                                                      tags=tags)
         else:
             logging.warning('No finished training job found associated with this estimator. Please make sure'
                             'this estimator is only used for building workflow config')
             model_name = self._current_job_name
-
-        tags = tags or self.tags
 
         return Transformer(model_name, instance_count, instance_type, strategy=strategy, assemble_with=assemble_with,
                            output_path=output_path, output_kms_key=output_kms_key, accept=accept,
@@ -785,15 +786,14 @@ class Framework(EstimatorBase):
                 the Git repo.
                 Example:
 
-                    If the following is the structure of a Git repo:
+                    With the following GitHub repo directory structure:
 
                     >>> |----- README.md
                     >>> |----- src
                     >>>         |----- train.py
                     >>>         |----- test.py
 
-                    and we need 'train.py' as entry point, and 'source_dir' is not provided, then 'entry_point' should
-                    be 'src/train.py'.
+                    You can assign entry_point='src/train.py'.
             git_config (dict[str, str]): Git configurations used for cloning files, including 'repo', 'branch'
                 and 'commit' (default: None).
                 'branch' and 'commit' are optional. If 'branch' is not specified, 'master' branch will be used. If
@@ -814,15 +814,14 @@ class Framework(EstimatorBase):
                 source_dir should be a relative location to a directory in the Git repo.
                 Example:
 
-                    If the following is the structure of a Git repo:
+                    With the following GitHub repo directory structure:
 
                     >>> |----- README.md
                     >>> |----- src
                     >>>         |----- train.py
                     >>>         |----- test.py
 
-                    and we need 'train.py' as entry point and 'src' as source dir, then 'entry_point' should be
-                    'train.py', 'source_dir' should be 'src'.
+                    You can assign entry_point='train.py', source_dir='src'.
             dependencies (list[str]): A list of paths to directories (absolute or relative) with
                 any additional libraries that will be exported to the container (default: []).
                 The library folders will be copied to SageMaker in the same folder where the entrypoint is copied.
@@ -908,6 +907,9 @@ class Framework(EstimatorBase):
         else:
             if not os.path.isfile(os.path.join(repo_dir, self.entry_point)):
                 raise ValueError('Entry point does not exist in the repo.')
+        for path in self.dependencies:
+            if not os.path.isdir(os.path.join(repo_dir, path)):
+                raise ValueError('Dependency {} does not exist in the repo.'.format(path))
 
     def _checkout_branch_and_commit(self, repo_dir):
         """Enter the directory where the repo is cloned, and  checkout the required branch and commit.
@@ -1181,7 +1183,8 @@ class Framework(EstimatorBase):
             container_def = model.prepare_container_def(instance_type)
             model_name = model.name or name_from_image(container_def['Image'])
             vpc_config = model.vpc_config
-            self.sagemaker_session.create_model(model_name, role, container_def, vpc_config)
+            tags = tags or self.tags
+            self.sagemaker_session.create_model(model_name, role, container_def, vpc_config, tags=tags)
             transform_env = model.env.copy()
             if env is not None:
                 transform_env.update(env)

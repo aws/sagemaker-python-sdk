@@ -48,6 +48,9 @@ REGION = 'us-west-2'
 JOB_NAME = '{}-{}'.format(IMAGE_NAME, TIMESTAMP)
 TAGS = [{'Name': 'some-tag', 'Value': 'value-for-tag'}]
 OUTPUT_PATH = 's3://bucket/prefix'
+GIT_REPO = 'https://github.com/GaryTu1020/python-sdk-testing.git'
+BRANCH = 'branch1'
+COMMIT = '4893e528afa4a790331e1b5286954f073b0f14a2'
 
 DESCRIBE_TRAINING_JOB_RESULT = {
     'ModelArtifacts': {
@@ -598,9 +601,7 @@ def test_prepare_for_training_force_name_generation(strftime, sagemaker_session)
 
 
 def test_git_support_with_branch_and_commit_succeed(sagemaker_session):
-    git_config = {'repo': 'https://github.com/GaryTu1020/python-sdk-testing.git',
-                  'branch': 'branch1',
-                  'commit': 'aea6f3acef9619f77f94772d9d654f041e16bf49'}
+    git_config = {'repo': GIT_REPO, 'branch': BRANCH, 'commit': COMMIT}
     fw = DummyFramework(entry_point='entry_point', git_config=git_config,
                         source_dir='source_dir', role=ROLE, sagemaker_session=sagemaker_session,
                         train_instance_count=INSTANCE_COUNT, train_instance_type=INSTANCE_TYPE,
@@ -611,8 +612,7 @@ def test_git_support_with_branch_and_commit_succeed(sagemaker_session):
 
 
 def test_git_support_with_branch_succeed(sagemaker_session):
-    git_config = {'repo': 'https://github.com/GaryTu1020/python-sdk-testing.git',
-                  'branch': 'branch1'}
+    git_config = {'repo': GIT_REPO, 'branch': BRANCH}
     fw = DummyFramework(entry_point='entry_point', git_config=git_config,
                         source_dir='source_dir', role=ROLE, sagemaker_session=sagemaker_session,
                         train_instance_count=INSTANCE_COUNT, train_instance_type=INSTANCE_TYPE,
@@ -622,9 +622,19 @@ def test_git_support_with_branch_succeed(sagemaker_session):
     assert os.path.isdir(fw.source_dir)
 
 
+def test_git_support_with_dependencies_succeed(sagemaker_session):
+    git_config = {'repo': GIT_REPO, 'branch': BRANCH, 'commit': COMMIT}
+    fw = DummyFramework(entry_point='source_dir/entry_point', git_config=git_config,
+                        dependencies=['foo', 'foo/bar'], role=ROLE, sagemaker_session=sagemaker_session,
+                        train_instance_count=INSTANCE_COUNT, train_instance_type=INSTANCE_TYPE,
+                        enable_cloudwatch_metrics=True)
+    fw.fit()
+    assert os.path.isfile(fw.entry_point)
+
+
 def test_git_support_without_branch_and_commit_succeed(sagemaker_session):
-    git_config = {'repo': 'https://github.com/GaryTu1020/python-sdk-testing.git'}
-    fw = DummyFramework(entry_point='entry_point', git_config=git_config,
+    git_config = {'repo': GIT_REPO}
+    fw = DummyFramework(entry_point='source_dir/entry_point', git_config=git_config,
                         role=ROLE, sagemaker_session=sagemaker_session,
                         train_instance_count=INSTANCE_COUNT, train_instance_type=INSTANCE_TYPE,
                         enable_cloudwatch_metrics=True)
@@ -633,8 +643,7 @@ def test_git_support_without_branch_and_commit_succeed(sagemaker_session):
 
 
 def test_git_support_repo_not_provided(sagemaker_session):
-    git_config = {'branch': 'master',
-                  'commit': 'aea6f3acef9619f77f94772d9d654f041e16bf49'}
+    git_config = {'branch': BRANCH, 'commit': COMMIT}
     fw = DummyFramework(entry_point='entry_point', git_config=git_config,
                         source_dir='source_dir', role=ROLE,
                         sagemaker_session=sagemaker_session, train_instance_count=INSTANCE_COUNT,
@@ -645,7 +654,7 @@ def test_git_support_repo_not_provided(sagemaker_session):
 
 
 def test_git_support_bad_repo_url_format(sagemaker_session):
-    git_config = {'repo': 'hhttps://github.com/user/repo.git', 'branch': 'master', 'password': 'passw0rd'}
+    git_config = {'repo': 'hhttps://github.com/user/repo.git', 'branch': BRANCH}
     fw = DummyFramework(entry_point='entry_point', git_config=git_config,
                         source_dir='source_dir', role=ROLE,
                         sagemaker_session=sagemaker_session, train_instance_count=INSTANCE_COUNT,
@@ -656,7 +665,7 @@ def test_git_support_bad_repo_url_format(sagemaker_session):
 
 
 def test_git_support_git_clone_fail(sagemaker_session):
-    git_config = {'repo': 'https://github.com/GaryTu1020/no-such-repo.git', 'branch': 'master'}
+    git_config = {'repo': 'https://github.com/GaryTu1020/no-such-repo.git', 'branch': BRANCH}
     fw = DummyFramework(entry_point='entry_point', git_config=git_config, role=ROLE,
                         sagemaker_session=sagemaker_session, train_instance_count=INSTANCE_COUNT,
                         train_instance_type=INSTANCE_TYPE, enable_cloudwatch_metrics=True)
@@ -666,9 +675,9 @@ def test_git_support_git_clone_fail(sagemaker_session):
 
 
 def test_git_support_branch_not_exist(sagemaker_session):
-    git_config = {'repo': 'https://github.com/GaryTu1020/python-sdk-testing.git',
+    git_config = {'repo': GIT_REPO,
                   'branch': 'branch-that-does-not-exist',
-                  'commit': 'aea6f3acef9619f77f94772d9d654f041e16bf49'}
+                  'commit': COMMIT}
     fw = DummyFramework(entry_point='entry_point', git_config=git_config,
                         source_dir='source_dir', role=ROLE, sagemaker_session=sagemaker_session,
                         train_instance_count=INSTANCE_COUNT, train_instance_type=INSTANCE_TYPE,
@@ -679,8 +688,8 @@ def test_git_support_branch_not_exist(sagemaker_session):
 
 
 def test_git_support_commit_not_exist(sagemaker_session):
-    git_config = {'repo': 'https://github.com/GaryTu1020/python-sdk-testing.git',
-                  'branch': 'master',
+    git_config = {'repo': GIT_REPO,
+                  'branch': BRANCH,
                   'commit': 'commit-sha-that-does-not-exist'}
     fw = DummyFramework(entry_point='entry_point', git_config=git_config,
                         source_dir='source_dir', role=ROLE, sagemaker_session=sagemaker_session,
@@ -692,10 +701,8 @@ def test_git_support_commit_not_exist(sagemaker_session):
 
 
 def test_git_support_entry_point_not_exist(sagemaker_session):
-    git_config = {'repo': 'https://github.com/GaryTu1020/python-sdk-testing.git',
-                  'branch': 'branch1',
-                  'commit': 'aea6f3acef9619f77f94772d9d654f041e16bf49'}
-    fw = DummyFramework(entry_point='entry_point', git_config=git_config,
+    git_config = {'repo': GIT_REPO, 'branch': BRANCH, 'commit': COMMIT}
+    fw = DummyFramework(entry_point='entry_point_that_does_not_exist', git_config=git_config,
                         role=ROLE, sagemaker_session=sagemaker_session,
                         train_instance_count=INSTANCE_COUNT, train_instance_type=INSTANCE_TYPE,
                         enable_cloudwatch_metrics=True)
@@ -705,9 +712,7 @@ def test_git_support_entry_point_not_exist(sagemaker_session):
 
 
 def test_git_support_source_dir_not_exist(sagemaker_session):
-    git_config = {'repo': 'https://github.com/GaryTu1020/python-sdk-testing.git',
-                  'branch': 'branch1',
-                  'commit': 'aea6f3acef9619f77f94772d9d654f041e16bf49'}
+    git_config = {'repo': GIT_REPO, 'branch': BRANCH, 'commit': COMMIT}
     fw = DummyFramework(entry_point='entry_point', git_config=git_config,
                         source_dir='source_dir_that_does_not_exist', role=ROLE,
                         sagemaker_session=sagemaker_session, train_instance_count=INSTANCE_COUNT,
@@ -715,6 +720,17 @@ def test_git_support_source_dir_not_exist(sagemaker_session):
     with pytest.raises(ValueError) as error:
         fw.fit()
     assert 'Source directory does not exist in the repo.' in str(error)
+
+
+def test_git_support_dependencies_not_exist(sagemaker_session):
+    git_config = {'repo': GIT_REPO, 'branch': BRANCH, 'commit': COMMIT}
+    fw = DummyFramework(entry_point='entry_point', git_config=git_config,
+                        source_dir='source_dir', dependencies=['foo', 'no-such-dir'], role=ROLE,
+                        sagemaker_session=sagemaker_session, train_instance_count=INSTANCE_COUNT,
+                        train_instance_type=INSTANCE_TYPE, enable_cloudwatch_metrics=True)
+    with pytest.raises(ValueError) as error:
+        fw.fit()
+    assert 'Dependency', 'does not exist in the repo.' in str(error)
 
 
 @patch('time.strftime', return_value=TIMESTAMP)
@@ -745,7 +761,7 @@ def test_framework_transformer_creation(name_from_image, sagemaker_session):
     transformer = fw.transformer(INSTANCE_COUNT, INSTANCE_TYPE)
 
     name_from_image.assert_called_with(MODEL_IMAGE)
-    sagemaker_session.create_model.assert_called_with(MODEL_IMAGE, ROLE, MODEL_CONTAINER_DEF, None)
+    sagemaker_session.create_model.assert_called_with(MODEL_IMAGE, ROLE, MODEL_CONTAINER_DEF, None, tags=None)
 
     assert isinstance(transformer, Transformer)
     assert transformer.sagemaker_session == sagemaker_session
@@ -780,7 +796,7 @@ def test_framework_transformer_creation_with_optional_params(name_from_image, sa
                                  max_concurrent_transforms=max_concurrent_transforms, max_payload=max_payload,
                                  volume_kms_key=kms_key, env=env, role=new_role, model_server_workers=1)
 
-    sagemaker_session.create_model.assert_called_with(MODEL_IMAGE, new_role, MODEL_CONTAINER_DEF, vpc_config)
+    sagemaker_session.create_model.assert_called_with(MODEL_IMAGE, new_role, MODEL_CONTAINER_DEF, vpc_config, tags=TAGS)
     assert transformer.strategy == strategy
     assert transformer.assemble_with == assemble_with
     assert transformer.output_path == OUTPUT_PATH
@@ -819,7 +835,7 @@ def test_estimator_transformer_creation(sagemaker_session):
 
     transformer = estimator.transformer(INSTANCE_COUNT, INSTANCE_TYPE)
 
-    sagemaker_session.create_model_from_job.assert_called_with(JOB_NAME, role=None)
+    sagemaker_session.create_model_from_job.assert_called_with(JOB_NAME, role=None, tags=None)
     assert isinstance(transformer, Transformer)
     assert transformer.sagemaker_session == sagemaker_session
     assert transformer.instance_count == INSTANCE_COUNT
@@ -849,7 +865,7 @@ def test_estimator_transformer_creation_with_optional_params(sagemaker_session):
                                         max_concurrent_transforms=max_concurrent_transforms, max_payload=max_payload,
                                         env=env, role=ROLE)
 
-    sagemaker_session.create_model_from_job.assert_called_with(JOB_NAME, role=ROLE)
+    sagemaker_session.create_model_from_job.assert_called_with(JOB_NAME, role=ROLE, tags=TAGS)
     assert transformer.strategy == strategy
     assert transformer.assemble_with == assemble_with
     assert transformer.output_path == OUTPUT_PATH

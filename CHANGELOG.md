@@ -1,5 +1,20 @@
 # Changelog
 
+## v1.26.0 (2019-06-10)
+
+### Features
+
+ * emit estimator transformer tags to model
+ * Add extra_args to enable encrypted objects upload
+
+### Bug fixes and other changes
+
+ * downgrade c5 in integ tests and test all TF Script Mode images
+
+### Documentation changes
+
+ * include FrameworkModel and ModelPackage in API docs
+
 ## v1.25.1 (2019-06-06)
 
 ### Bug fixes and other changes

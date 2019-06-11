@@ -21,15 +21,16 @@ from sagemaker.pytorch.model import PyTorchModel
 from sagemaker.utils import sagemaker_timestamp
 from tests.integ import DATA_DIR, PYTHON_VERSION, TRAINING_DEFAULT_TIMEOUT_MINUTES
 from tests.integ.timeout import timeout, timeout_and_delete_endpoint_by_name
+GIT_REPO = 'https://github.com/GaryTu1020/python-sdk-testing.git'
+BRANCH = 'branch1'
+COMMIT = '4893e528afa4a790331e1b5286954f073b0f14a2'
 
 
 def test_git_support_with_pytorch(sagemaker_local_session):
     with timeout(minutes=TRAINING_DEFAULT_TIMEOUT_MINUTES):
         script_path = 'mnist.py'
         data_path = os.path.join(DATA_DIR, 'pytorch_mnist')
-        git_config = {'repo': 'https://github.com/GaryTu1020/python-sdk-testing.git',
-                      'branch': 'branch1',
-                      'commit': '1867259a76ee740b99ce7ab00d6a32b582c85e06'}
+        git_config = {'repo': GIT_REPO, 'branch': BRANCH, 'commit': COMMIT}
         pytorch = PyTorch(entry_point=script_path, role='SageMakerRole', source_dir='pytorch',
                           framework_version=PyTorch.LATEST_VERSION, py_version=PYTHON_VERSION,
                           train_instance_count=1, train_instance_type='ml.c4.xlarge',
