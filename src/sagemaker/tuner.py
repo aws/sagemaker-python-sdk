@@ -326,7 +326,8 @@ class HyperparameterTuner(object):
 
         return tuner
 
-    def deploy(self, initial_instance_count, instance_type, accelerator_type=None, endpoint_name=None, **kwargs):
+    def deploy(self, initial_instance_count, instance_type, accelerator_type=None, endpoint_name=None, wait=True,
+               **kwargs):
         """Deploy the best trained or user specified model to an Amazon SageMaker endpoint and return a
         ``sagemaker.RealTimePredictor`` object.
 
@@ -342,6 +343,7 @@ class HyperparameterTuner(object):
                 For more information: https://docs.aws.amazon.com/sagemaker/latest/dg/ei.html
             endpoint_name (str): Name to use for creating an Amazon SageMaker endpoint. If not specified,
                 the name of the training job is used.
+            wait (bool): Whether the call should wait until the deployment of model completes (default: True).
             **kwargs: Other arguments needed for deployment. Please refer to the ``create_model()`` method of
                 the associated estimator to see what other arguments are needed.
 
@@ -354,7 +356,7 @@ class HyperparameterTuner(object):
                                                sagemaker_session=self.estimator.sagemaker_session)
         return best_estimator.deploy(initial_instance_count, instance_type,
                                      accelerator_type=accelerator_type,
-                                     endpoint_name=endpoint_name, **kwargs)
+                                     endpoint_name=endpoint_name, wait=wait, **kwargs)
 
     def stop_tuning_job(self):
         """Stop latest running hyperparameter tuning job.
