@@ -1,5 +1,15 @@
 # Changelog
 
+## v1.27.0 (2019-06-11)
+
+### Features
+
+ * add wait argument to estimator deploy
+
+### Bug fixes and other changes
+
+ * fix logger creation in Chainer integ test script
+
 ## v1.26.0 (2019-06-10)
 
 ### Features
