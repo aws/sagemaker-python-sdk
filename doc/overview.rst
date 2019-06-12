@@ -86,7 +86,7 @@ For more `information <https://boto3.amazonaws.com/v1/documentation/api/latest/r
 
 Git Support
 ~~~~~~~~~~~
-The SageMaker Python SDK has Git support. If you have your training scripts in your GitHub repository, you can
+If you have your training scripts in your GitHub repository, you can
 use them directly wihtout the trouble to download them to local machine. Git support can be enabled simply by
 providing ``git_config`` parameter when initializing an estimator. If git support is enabled, then ``entry_point``,
 ``source_dir`` and  ``dependencies`` should all be relative paths in the Git repo. Git support works for frameworks
