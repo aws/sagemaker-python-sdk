@@ -50,7 +50,7 @@ TAGS = [{'Name': 'some-tag', 'Value': 'value-for-tag'}]
 OUTPUT_PATH = 's3://bucket/prefix'
 GIT_REPO = 'https://github.com/GaryTu1020/python-sdk-testing.git'
 BRANCH = 'branch1'
-COMMIT = '4893e528afa4a790331e1b5286954f073b0f14a2'
+COMMIT = 'b61c450200d6a309c8d24ac14b8adddc405acc56'
 
 DESCRIBE_TRAINING_JOB_RESULT = {
     'ModelArtifacts': {
@@ -607,7 +607,7 @@ def test_git_support_with_branch_and_commit_succeed(sagemaker_session):
                         train_instance_count=INSTANCE_COUNT, train_instance_type=INSTANCE_TYPE,
                         enable_cloudwatch_metrics=True)
     fw.fit()
-    assert os.path.isfile(fw.entry_point)
+    assert os.path.isfile(os.path.join(fw.source_dir, fw.entry_point))
     assert os.path.isdir(fw.source_dir)
 
 
@@ -618,18 +618,21 @@ def test_git_support_with_branch_succeed(sagemaker_session):
                         train_instance_count=INSTANCE_COUNT, train_instance_type=INSTANCE_TYPE,
                         enable_cloudwatch_metrics=True)
     fw.fit()
-    assert os.path.isfile(fw.entry_point)
+    assert os.path.isfile(os.path.join(fw.source_dir, fw.entry_point))
     assert os.path.isdir(fw.source_dir)
 
 
 def test_git_support_with_dependencies_succeed(sagemaker_session):
     git_config = {'repo': GIT_REPO, 'branch': BRANCH, 'commit': COMMIT}
+    dependencies = ['foo', 'foo/bar']
     fw = DummyFramework(entry_point='source_dir/entry_point', git_config=git_config,
-                        dependencies=['foo', 'foo/bar'], role=ROLE, sagemaker_session=sagemaker_session,
+                        dependencies=dependencies, role=ROLE, sagemaker_session=sagemaker_session,
                         train_instance_count=INSTANCE_COUNT, train_instance_type=INSTANCE_TYPE,
                         enable_cloudwatch_metrics=True)
     fw.fit()
     assert os.path.isfile(fw.entry_point)
+    for directory in dependencies:
+        assert os.path.exists(directory)
 
 
 def test_git_support_without_branch_and_commit_succeed(sagemaker_session):
