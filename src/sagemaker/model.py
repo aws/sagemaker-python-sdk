@@ -20,6 +20,7 @@ import sagemaker
 from sagemaker import fw_utils, local, session, utils
 from sagemaker.fw_utils import UploadedCode
 from sagemaker.transformer import Transformer
+from sagemaker.git_utils import git_clone_repo_and_enter
 
 LOGGER = logging.getLogger('sagemaker')
 
@@ -366,7 +367,7 @@ class FrameworkModel(Model):
 
     def __init__(self, model_data, image, role, entry_point, source_dir=None, predictor_cls=None, env=None, name=None,
                  enable_cloudwatch_metrics=False, container_log_level=logging.INFO, code_location=None,
-                 sagemaker_session=None, dependencies=None, **kwargs):
+                 sagemaker_session=None, dependencies=None, git_config=None, **kwargs):
         """Initialize a ``FrameworkModel``.
 
         Args:
@@ -375,24 +376,49 @@ class FrameworkModel(Model):
             role (str): An IAM role name or ARN for SageMaker to access AWS resources on your behalf.
             entry_point (str): Path (absolute or relative) to the Python source file which should be executed
                 as the entry point to model hosting. This should be compatible with either Python 2.7 or Python 3.5.
+                If 'git_config' is provided, 'entry_point' should be a relative location to the Python source file in
+                the Git repo.
+                Example:
+
+                    With the following GitHub repo directory structure:
+
+                    >>> |----- README.md
+                    >>> |----- src
+                    >>>         |----- inference.py
+                    >>>         |----- test.py
+
+                    You can assign entry_point='src/inference.py'.
             source_dir (str): Path (absolute or relative) to a directory with any other training
                 source code dependencies aside from the entry point file (default: None). Structure within this
-                directory will be preserved when training on SageMaker.
-                If the directory points to S3, no code will be uploaded and the S3 location will be used instead.
+                directory will be preserved when training on SageMaker. If 'git_config' is provided,
+                'source_dir' should be a relative location to a directory in the Git repo. If the directory points
+                to S3, no code will be uploaded and the S3 location will be used instead.
+                Example:
+
+                    With the following GitHub repo directory structure:
+
+                    >>> |----- README.md
+                    >>> |----- src
+                    >>>         |----- inference.py
+                    >>>         |----- test.py
+
+                    You can assign entry_point='inference.py', source_dir='src'.
             dependencies (list[str]): A list of paths to directories (absolute or relative) with
                 any additional libraries that will be exported to the container (default: []).
                 The library folders will be copied to SageMaker in the same folder where the entrypoint is copied.
-                If the ```source_dir``` points to S3, code will be uploaded and the S3 location will be used
-                instead. Example:
+                If 'git_config' is provided, 'dependencies' should be a list of relative locations to directories
+                with any additional libraries needed in the Git repo. If the ```source_dir``` points to S3, code
+                will be uploaded and the S3 location will be used instead.
+                Example:
 
                     The following call
-                    >>> Estimator(entry_point='train.py', dependencies=['my/libs/common', 'virtual-env'])
+                    >>> Estimator(entry_point='inference.py', dependencies=['my/libs/common', 'virtual-env'])
                     results in the following inside the container:
 
                     >>> $ ls
 
                     >>> opt/ml/code
-                    >>>     |------ train.py
+                    >>>     |------ inference.py
                     >>>     |------ common
                     >>>     |------ virtual-env
 
@@ -417,6 +443,7 @@ class FrameworkModel(Model):
         self.entry_point = entry_point
         self.source_dir = source_dir
         self.dependencies = dependencies or []
+        self.git_config = git_config
         self.enable_cloudwatch_metrics = enable_cloudwatch_metrics
         self.container_log_level = container_log_level
         if code_location:
@@ -440,6 +467,8 @@ class FrameworkModel(Model):
             dict[str, str]: A container definition object usable with the CreateModel API.
         """
         deploy_key_prefix = fw_utils.model_code_key_prefix(self.key_prefix, self.name, self.image)
+        if self.git_config:
+            git_clone_repo_and_enter(self.git_config, self.entry_point, self.source_dir, self.dependencies)
         self._upload_code(deploy_key_prefix)
         deploy_env = dict(self.env)
         deploy_env.update(self._framework_env_vars())
