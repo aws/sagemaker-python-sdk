@@ -228,6 +228,12 @@ class Transformer(object):
         self._ensure_last_transform_job()
         self.latest_transform_job.wait()
 
+    def stop_transform_job(self):
+        """Stop latest running batch transform job.
+        """
+        self._ensure_last_transform_job()
+        self.latest_transform_job.stop()
+
     def _ensure_last_transform_job(self):
         """Placeholder docstring"""
         if self.latest_transform_job is None:
@@ -344,6 +350,9 @@ class _TransformJob(_Job):
 
     def wait(self):
         self.sagemaker_session.wait_for_transform_job(self.job_name)
+
+    def stop(self):
+        self.sagemaker_session.stop_transform_job(name=self.job_name)
 
     @staticmethod
     def _load_config(data, data_type, content_type, compression_type, split_type, transformer):

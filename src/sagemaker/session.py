@@ -1052,6 +1052,27 @@ class Session(object):  # pylint: disable=too-many-public-methods
         self._check_job_status(job, desc, "TransformJobStatus")
         return desc
 
+    def stop_transform_job(self, name):
+        """Stop the Amazon SageMaker hyperparameter tuning job with the specified name.
+
+        Args:
+            name (str): Name of the Amazon SageMaker batch transform job.
+
+        Raises:
+            ClientError: If an error occurs while trying to stop the batch transform job.
+        """
+        try:
+            LOGGER.info('Stopping transform job: {}'.format(name))
+            self.sagemaker_client.stop_transform_job(TransformJobName=name)
+        except ClientError as e:
+            error_code = e.response['Error']['Code']
+            # allow to pass if the job already stopped
+            if error_code == 'ValidationException':
+                LOGGER.info('Transform job: {} is already stopped or not running.'.format(name))
+            else:
+                LOGGER.error('Error occurred while attempting to stop transform job: {}.'.format(name))
+                raise
+
     def _check_job_status(self, job, desc, status_key_name):
         """Check to see if the job completed successfully and, if not, construct and
         raise a exceptions.UnexpectedStatusException.
