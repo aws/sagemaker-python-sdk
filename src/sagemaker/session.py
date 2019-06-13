@@ -499,7 +499,7 @@ class Session(object):
                 raise
 
     def transform(self, job_name, model_name, strategy, max_concurrent_transforms, max_payload, env,
-                  input_config, output_config, resource_config, data_processing, tags):
+                  input_config, output_config, resource_config, tags, data_processing):
         """Create an Amazon SageMaker transform job.
 
         Args:
@@ -514,9 +514,9 @@ class Session(object):
             input_config (dict): A dictionary describing the input data (and its location) for the job.
             output_config (dict): A dictionary describing the output location for the job.
             resource_config (dict): A dictionary describing the resources to complete the job.
+            tags (list[dict]): List of tags for labeling a transform job.
             data_processing(dict): A dictionary describing config for combining the input data and transformed data.
-            tags (list[dict]): List of tags for labeling a transform job. For more, see
-                https://docs.aws.amazon.com/sagemaker/latest/dg/API_Tag.html.
+                                   For more, see https://docs.aws.amazon.com/sagemaker/latest/dg/API_Tag.html.
         """
         transform_request = {
             'TransformJobName': job_name,

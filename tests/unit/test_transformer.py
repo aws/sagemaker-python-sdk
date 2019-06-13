@@ -305,7 +305,8 @@ def test_start_new(transformer, sagemaker_session):
     transformer._current_job_name = JOB_NAME
 
     job = _TransformJob(sagemaker_session, JOB_NAME)
-    started_job = job.start_new(transformer, DATA, S3_DATA_TYPE, None, None, None)
+    started_job = job.start_new(transformer, DATA, S3_DATA_TYPE, None, None, None,
+                                None, None, None)
 
     assert started_job.sagemaker_session == sagemaker_session
     sagemaker_session.transform.assert_called_once()
@@ -411,7 +412,7 @@ def test_data_processing_config():
     assert actual_config == {'InputFilter': "$[0]", 'OutputFilter': "$[1]", 'JoinSource': "Input"}
 
     actual_config = _TransformJob._prepare_data_processing(None, None, None)
-    assert actual_config == None
+    assert actual_config is None
 
 
 def test_transform_job_wait(sagemaker_session):

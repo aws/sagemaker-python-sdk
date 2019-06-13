@@ -588,7 +588,7 @@ def test_transform_pack_to_request(sagemaker_session):
 
     sagemaker_session.transform(job_name=JOB_NAME, model_name=model_name, strategy=None, max_concurrent_transforms=None,
                                 max_payload=None, env=None, input_config=in_config, output_config=out_config,
-                                resource_config=resource_config, tags=None)
+                                resource_config=resource_config, tags=None, data_processing=None)
 
     _, _, actual_args = sagemaker_session.sagemaker_client.method_calls[0]
     assert actual_args == expected_args
@@ -603,7 +603,7 @@ def test_transform_pack_to_request_with_optional_params(sagemaker_session):
     sagemaker_session.transform(job_name=JOB_NAME, model_name='my-model', strategy=strategy,
                                 max_concurrent_transforms=max_concurrent_transforms,
                                 env=env, max_payload=max_payload, input_config={}, output_config={},
-                                resource_config={}, tags=TAGS)
+                                resource_config={}, tags=TAGS, data_processing=None)
 
     _, _, actual_args = sagemaker_session.sagemaker_client.method_calls[0]
     assert actual_args['BatchStrategy'] == strategy
