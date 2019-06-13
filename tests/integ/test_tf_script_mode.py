@@ -1,4 +1,4 @@
-# Copyright 2017-2018 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright 2017-2019 Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -39,7 +39,7 @@ TAGS = [{'Key': 'some-key', 'Value': 'some-value'}]
 
 
 @pytest.fixture(scope='session', params=[
-    'ml.c5.xlarge',
+    'ml.c4.xlarge',
     pytest.param('ml.p2.xlarge',
                  marks=pytest.mark.skipif(
                      tests.integ.test_region() in tests.integ.HOSTING_NO_P2_REGIONS
@@ -49,15 +49,13 @@ def instance_type(request):
     return request.param
 
 
-@pytest.mark.skipif(tests.integ.PYTHON_VERSION != 'py3',
-                    reason="Script Mode tests are only configured to run with Python 3")
 def test_mnist(sagemaker_session, instance_type):
     estimator = TensorFlow(entry_point=SCRIPT,
                            role='SageMakerRole',
                            train_instance_count=1,
                            train_instance_type=instance_type,
                            sagemaker_session=sagemaker_session,
-                           py_version='py3',
+                           script_mode=True,
                            framework_version=TensorFlow.LATEST_VERSION,
                            metric_definitions=[
                                {'Name': 'train:global_steps', 'Regex': r'global_step\/sec:\s(.*)'}])
@@ -85,7 +83,7 @@ def test_server_side_encryption(sagemaker_session):
                                train_instance_count=1,
                                train_instance_type='ml.c5.xlarge',
                                sagemaker_session=sagemaker_session,
-                               py_version='py3',
+                               script_mode=True,
                                framework_version=TensorFlow.LATEST_VERSION,
                                code_location=output_path,
                                output_path=output_path,
@@ -102,8 +100,6 @@ def test_server_side_encryption(sagemaker_session):
 
 
 @pytest.mark.canary_quick
-@pytest.mark.skipif(tests.integ.PYTHON_VERSION != 'py3',
-                    reason="Script Mode tests are only configured to run with Python 3")
 def test_mnist_distributed(sagemaker_session, instance_type):
     estimator = TensorFlow(entry_point=SCRIPT,
                            role=ROLE,
@@ -130,7 +126,7 @@ def test_mnist_async(sagemaker_session):
                            train_instance_count=1,
                            train_instance_type='ml.c5.4xlarge',
                            sagemaker_session=sagemaker_session,
-                           py_version='py3',
+                           script_mode=True,
                            framework_version=TensorFlow.LATEST_VERSION,
                            tags=TAGS)
     inputs = estimator.sagemaker_session.upload_data(
@@ -155,8 +151,6 @@ def test_mnist_async(sagemaker_session):
                                  estimator.latest_training_job.name, TAGS)
 
 
-@pytest.mark.skipif(tests.integ.PYTHON_VERSION != 'py3',
-                    reason="Script Mode tests are only configured to run with Python 3")
 def test_deploy_with_input_handlers(sagemaker_session, instance_type):
     estimator = TensorFlow(entry_point='inference.py',
                            source_dir=TFS_RESOURCE_PATH,
@@ -164,7 +158,7 @@ def test_deploy_with_input_handlers(sagemaker_session, instance_type):
                            train_instance_count=1,
                            train_instance_type=instance_type,
                            sagemaker_session=sagemaker_session,
-                           py_version='py3',
+                           script_mode=True,
                            framework_version=TensorFlow.LATEST_VERSION,
                            tags=TAGS)
 

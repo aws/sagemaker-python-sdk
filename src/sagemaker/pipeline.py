@@ -67,7 +67,7 @@ class PipelineModel(object):
 
         return sagemaker.pipeline_container_def(self.models, instance_type)
 
-    def deploy(self, initial_instance_count, instance_type, endpoint_name=None, tags=None):
+    def deploy(self, initial_instance_count, instance_type, endpoint_name=None, tags=None, wait=True):
         """Deploy this ``Model`` to an ``Endpoint`` and optionally return a ``Predictor``.
 
         Create a SageMaker ``Model`` and ``EndpointConfig``, and deploy an ``Endpoint`` from this ``Model``.
@@ -86,6 +86,7 @@ class PipelineModel(object):
             endpoint_name (str): The name of the endpoint to create (default: None).
                 If not specified, a unique endpoint name will be created.
             tags(List[dict[str, str]]): The list of tags to attach to this specific endpoint.
+            wait (bool): Whether the call should wait until the deployment of model completes (default: True).
 
         Returns:
             callable[string, sagemaker.session.Session] or None: Invocation of ``self.predictor_cls`` on
@@ -101,7 +102,8 @@ class PipelineModel(object):
 
         production_variant = sagemaker.production_variant(self.name, instance_type, initial_instance_count)
         self.endpoint_name = endpoint_name or self.name
-        self.sagemaker_session.endpoint_from_production_variants(self.endpoint_name, [production_variant], tags)
+        self.sagemaker_session.endpoint_from_production_variants(self.endpoint_name, [production_variant], tags,
+                                                                 wait=wait)
         if self.predictor_cls:
             return self.predictor_cls(self.endpoint_name, self.sagemaker_session)
 

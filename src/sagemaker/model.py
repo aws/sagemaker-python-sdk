@@ -228,7 +228,7 @@ class Model(object):
         return self
 
     def deploy(self, initial_instance_count, instance_type, accelerator_type=None, endpoint_name=None,
-               update_endpoint=False, tags=None, kms_key=None):
+               update_endpoint=False, tags=None, kms_key=None, wait=True):
         """Deploy this ``Model`` to an ``Endpoint`` and optionally return a ``Predictor``.
 
         Create a SageMaker ``Model`` and ``EndpointConfig``, and deploy an ``Endpoint`` from this ``Model``.
@@ -256,6 +256,7 @@ class Model(object):
             tags(List[dict[str, str]]): The list of tags to attach to this specific endpoint.
             kms_key (str): The ARN of the KMS key that is used to encrypt the data on the
                 storage volume attached to the instance hosting the endpoint.
+            wait (bool): Whether the call should wait until the deployment of this model completes (default: True).
 
         Returns:
             callable[string, sagemaker.session.Session] or None: Invocation of ``self.predictor_cls`` on
@@ -296,7 +297,7 @@ class Model(object):
             self.sagemaker_session.update_endpoint(self.endpoint_name, endpoint_config_name)
         else:
             self.sagemaker_session.endpoint_from_production_variants(self.endpoint_name, [production_variant],
-                                                                     tags, kms_key)
+                                                                     tags, kms_key, wait)
 
         if self.predictor_cls:
             return self.predictor_cls(self.endpoint_name, self.sagemaker_session)
@@ -375,7 +376,7 @@ class FrameworkModel(Model):
             entry_point (str): Path (absolute or relative) to the Python source file which should be executed
                 as the entry point to model hosting. This should be compatible with either Python 2.7 or Python 3.5.
             source_dir (str): Path (absolute or relative) to a directory with any other training
-                source code dependencies aside from tne entry point file (default: None). Structure within this
+                source code dependencies aside from the entry point file (default: None). Structure within this
                 directory will be preserved when training on SageMaker.
                 If the directory points to S3, no code will be uploaded and the S3 location will be used instead.
             dependencies (list[str]): A list of paths to directories (absolute or relative) with

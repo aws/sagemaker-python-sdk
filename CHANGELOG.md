@@ -1,5 +1,36 @@
 # Changelog
 
+## v1.27.0 (2019-06-11)
+
+### Features
+
+ * add wait argument to estimator deploy
+
+### Bug fixes and other changes
+
+ * fix logger creation in Chainer integ test script
+
+## v1.26.0 (2019-06-10)
+
+### Features
+
+ * emit estimator transformer tags to model
+ * Add extra_args to enable encrypted objects upload
+
+### Bug fixes and other changes
+
+ * downgrade c5 in integ tests and test all TF Script Mode images
+
+### Documentation changes
+
+ * include FrameworkModel and ModelPackage in API docs
+
+## v1.25.1 (2019-06-06)
+
+### Bug fixes and other changes
+
+ * use unique job name in hyperparameter tuning test
+
 ## v1.25.0 (2019-06-03)
 
 ### Features
