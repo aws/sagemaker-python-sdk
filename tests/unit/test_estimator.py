@@ -50,7 +50,7 @@ TAGS = [{'Name': 'some-tag', 'Value': 'value-for-tag'}]
 OUTPUT_PATH = 's3://bucket/prefix'
 GIT_REPO = 'https://github.com/GaryTu1020/python-sdk-testing.git'
 BRANCH = 'branch1'
-COMMIT = '4893e528afa4a790331e1b5286954f073b0f14a2'
+COMMIT = 'b61c450200d6a309c8d24ac14b8adddc405acc56'
 
 DESCRIBE_TRAINING_JOB_RESULT = {
     'ModelArtifacts': {
@@ -607,7 +607,7 @@ def test_git_support_with_branch_and_commit_succeed(sagemaker_session):
                         train_instance_count=INSTANCE_COUNT, train_instance_type=INSTANCE_TYPE,
                         enable_cloudwatch_metrics=True)
     fw.fit()
-    assert os.path.isfile(fw.entry_point)
+    assert os.path.isfile(os.path.join(fw.source_dir, fw.entry_point))
     assert os.path.isdir(fw.source_dir)
 
 
@@ -618,7 +618,7 @@ def test_git_support_with_branch_succeed(sagemaker_session):
                         train_instance_count=INSTANCE_COUNT, train_instance_type=INSTANCE_TYPE,
                         enable_cloudwatch_metrics=True)
     fw.fit()
-    assert os.path.isfile(fw.entry_point)
+    assert os.path.isfile(os.path.join(fw.source_dir, fw.entry_point))
     assert os.path.isdir(fw.source_dir)
 
 
@@ -630,6 +630,8 @@ def test_git_support_with_dependencies_succeed(sagemaker_session):
                         enable_cloudwatch_metrics=True)
     fw.fit()
     assert os.path.isfile(fw.entry_point)
+    for item in fw.dependencies:
+        assert os.path.exists(item)
 
 
 def test_git_support_without_branch_and_commit_succeed(sagemaker_session):
@@ -659,9 +661,9 @@ def test_git_support_bad_repo_url_format(sagemaker_session):
                         source_dir='source_dir', role=ROLE,
                         sagemaker_session=sagemaker_session, train_instance_count=INSTANCE_COUNT,
                         train_instance_type=INSTANCE_TYPE, enable_cloudwatch_metrics=True)
-    with pytest.raises(ValueError) as error:
+    with pytest.raises(subprocess.CalledProcessError) as error:
         fw.fit()
-    assert 'Please provide a valid git repo url.' in str(error)
+    assert 'returned non-zero exit status' in str(error)
 
 
 def test_git_support_git_clone_fail(sagemaker_session):
@@ -671,7 +673,7 @@ def test_git_support_git_clone_fail(sagemaker_session):
                         train_instance_type=INSTANCE_TYPE, enable_cloudwatch_metrics=True)
     with pytest.raises(subprocess.CalledProcessError) as error:
         fw.fit()
-    assert "Command 'git clone" in str(error)
+    assert 'returned non-zero exit status' in str(error)
 
 
 def test_git_support_branch_not_exist(sagemaker_session):
@@ -684,7 +686,7 @@ def test_git_support_branch_not_exist(sagemaker_session):
                         enable_cloudwatch_metrics=True)
     with pytest.raises(subprocess.CalledProcessError) as error:
         fw.fit()
-    assert "Command 'git checkout" in str(error)
+    assert 'returned non-zero exit status' in str(error)
 
 
 def test_git_support_commit_not_exist(sagemaker_session):
@@ -697,7 +699,7 @@ def test_git_support_commit_not_exist(sagemaker_session):
                         enable_cloudwatch_metrics=True)
     with pytest.raises(subprocess.CalledProcessError) as error:
         fw.fit()
-    assert "Command 'git checkout" in str(error)
+    assert 'returned non-zero exit status' in str(error)
 
 
 def test_git_support_entry_point_not_exist(sagemaker_session):
