@@ -98,13 +98,13 @@ class Transformer(object):
                 Valid values: 'None', 'Line', 'RecordIO', and 'TFRecord'.
             job_name (str): job name (default: None). If not specified, one will be generated.
             input_filter (str): A JSONPath to select a portion of the input to pass to the algorithm container for
-                               inference. If you omit the field, it gets the value '$', representing the entire input.
-                               Some examples: "$[1:]", "$.features"(default: None).
+                inference. If you omit the field, it gets the value '$', representing the entire input.
+                Some examples: "$[1:]", "$.features"(default: None).
             output_filter (str): A JSONPath to select a portion of the joined/original output to return as the output.
-                                 Some examples: "$[1:]", "$.prediction" (default: None).
-            join_source (str): The source of data to be joined to the transform output. It can be set to
-                               'Input' meaning the entire input record will be joined to the inference result. You can
-                               use OutputFilter to select the useful portion before uploading to S3. (default: None).
+                Some examples: "$[1:]", "$.prediction" (default: None).
+            join_source (str): The source of data to be joined to the transform output. It can be set to 'Input'
+                meaning the entire input record will be joined to the inference result.
+                You can use OutputFilter to select the useful portion before uploading to S3. (default: None).
                 Valid values: Input, None.
         """
         local_mode = self.sagemaker_session.local_mode
