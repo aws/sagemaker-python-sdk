@@ -15,8 +15,6 @@ from __future__ import print_function, absolute_import
 import json
 import logging
 import os
-import subprocess
-import tempfile
 import warnings
 from abc import ABCMeta
 from abc import abstractmethod
@@ -24,6 +22,7 @@ from six import with_metaclass
 from six import string_types
 
 import sagemaker
+import sagemaker.git_utils
 from sagemaker.analytics import TrainingJobAnalytics
 from sagemaker.fw_utils import (create_image_uri, tar_and_upload_dir, parse_s3_url, UploadedCode,
                                 validate_source_dir)
@@ -876,69 +875,6 @@ class Framework(EstimatorBase):
 
         self._hyperparameters = hyperparameters or {}
 
-    def _git_clone_code(self):
-        """Git clone repo containing the training scripts and enter that directory. This method also validate
-        ``git_config``, and set ``entry_point`` and ``source_dir`` to the right file or directory in the repo cloned.
-
-        Raises:
-            CalledProcessError: If 1. failed to clone git repo
-                                   2. failed to checkout the required branch
-                                   3. failed to checkout the required commit
-            ValueError: If 1. entry point specified does not exist in the repo
-                           2. source dir specified does not exist in the repo
-        """
-        self._validate_git_config()
-        # create a temporary directory to store the cloned repo
-        repo_dir = tempfile.mkdtemp()
-        # try:
-        subprocess.check_call(['git', 'clone', self.git_config['repo'], repo_dir])
-        # except subprocess.CalledProcessError:
-        #    raise subprocess.CalledProcessError(1, cmd='git clone {} {}'.format(self.git_config['repo'], repo_dir))
-
-        self._checkout_branch_and_commit(repo_dir)
-
-        # check if the cloned repo contains entry point, source directory and dependencies
-        if self.source_dir:
-            if not os.path.isdir(os.path.join(repo_dir, self.source_dir)):
-                raise ValueError('Source directory does not exist in the repo.')
-            if not os.path.isfile(os.path.join(repo_dir, self.source_dir, self.entry_point)):
-                raise ValueError('Entry point does not exist in the repo.')
-            self.source_dir = os.path.join(repo_dir, self.source_dir)
-        else:
-            if not os.path.isfile(os.path.join(repo_dir, self.entry_point)):
-                raise ValueError('Entry point does not exist in the repo.')
-            self.entry_point = os.path.join(repo_dir, self.entry_point)
-        dependencies = []
-        for path in self.dependencies:
-            if not os.path.exists(os.path.join(repo_dir, path)):
-                raise ValueError('Dependency {} does not exist in the repo.'.format(path))
-            dependencies.append(os.path.join(repo_dir, path))
-        self.dependencies = dependencies
-
-    def _validate_git_config(self):
-        """check if a git_config param is valid
-
-        Raises:
-            ValueError: If 'git_config' has no key 'repo'
-        """
-        if 'repo' not in self.git_config:
-            raise ValueError('Please provide a repo for git_config.')
-
-    def _checkout_branch_and_commit(self, repo_dir):
-        """Enter the directory where the repo is cloned, and  checkout the required branch and commit.
-
-        Args:
-            repo_dir: the directory where the repo is cloned
-
-        Raises:
-            ValueError: If 1. entry point specified does not exist in the repo
-                           2. source dir specified does not exist in the repo
-        """
-        if 'branch' in self.git_config:
-            subprocess.check_call(['git', 'checkout', self.git_config['branch']], cwd=str(repo_dir))
-        if 'commit' in self.git_config:
-            subprocess.check_call(['git', 'checkout', self.git_config['commit']], cwd=str(repo_dir))
-
     def _prepare_for_training(self, job_name=None):
         """Set hyperparameters needed for training. This method will also validate ``source_dir``.
 
@@ -949,7 +885,11 @@ class Framework(EstimatorBase):
         super(Framework, self)._prepare_for_training(job_name=job_name)
 
         if self.git_config:
-            self._git_clone_code()
+            updates = sagemaker.git_utils.git_clone_repo(self.git_config, self.entry_point,
+                                                         self.source_dir, self.dependencies)
+            self.entry_point = updates['entry_point']
+            self.source_dir = updates['source_dir']
+            self.dependencies = updates['dependencies']
 
         # validate source dir will raise a ValueError if there is something wrong with the
         # source directory. We are intentionally not handling it because this is a critical error.

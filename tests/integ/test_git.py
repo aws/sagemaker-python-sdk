@@ -19,7 +19,6 @@ import numpy
 from sagemaker.mxnet.estimator import MXNet
 from sagemaker.mxnet.model import MXNetModel
 from sagemaker.pytorch.estimator import PyTorch
-from sagemaker.pytorch.model import PyTorchModel
 from sagemaker.utils import sagemaker_timestamp
 from tests.integ import DATA_DIR, PYTHON_VERSION
 
@@ -38,7 +37,7 @@ def test_git_support_with_pytorch(sagemaker_local_session):
                       sagemaker_session=sagemaker_local_session, git_config=git_config)
 
     train_input = pytorch.sagemaker_session.upload_data(path=os.path.join(data_path, 'training'),
-                                                            key_prefix='integ-test-data/pytorch_mnist/training')
+                                                        key_prefix='integ-test-data/pytorch_mnist/training')
     pytorch.fit({'training': train_input})
 
     predictor = pytorch.deploy(initial_instance_count=1, instance_type='local')
@@ -62,7 +61,7 @@ def test_git_support_with_mxnet(sagemaker_local_session, mxnet_full_version):
     train_input = mx.sagemaker_session.upload_data(path=os.path.join(data_path, 'train'),
                                                    key_prefix='integ-test-data/mxnet_mnist/train')
     test_input = mx.sagemaker_session.upload_data(path=os.path.join(data_path, 'test'),
-                                                   key_prefix='integ-test-data/mxnet_mnist/test')
+                                                  key_prefix='integ-test-data/mxnet_mnist/test')
 
     mx.fit({'train': train_input, 'test': test_input})
 
