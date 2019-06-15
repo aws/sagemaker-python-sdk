@@ -68,7 +68,7 @@ def _create_kms_key(kms_client,
                                               role_arn=role_arn,
                                               sagemaker_role=sagemaker_role)
     else:
-        principal = "{account_id}".format(account_id=account_id)
+        principal = '"{account_id}"'.format(account_id=account_id)
 
     response = kms_client.create_key(
         Policy=KEY_POLICY.format(id=POLICY_NAME, principal=principal, sagemaker_role=sagemaker_role),

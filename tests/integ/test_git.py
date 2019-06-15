@@ -66,7 +66,7 @@ def test_git_support_with_mxnet(sagemaker_local_session, mxnet_full_version):
     mx.fit({'train': train_input, 'test': test_input})
 
     files = [file for file in os.listdir(mx.source_dir)]
-    assert files == ['some_file', 'mnist.py']
+    assert 'some_file' in files and 'mnist.py' in files
 
     endpoint_name = 'test-git_support-with-mxnet-{}'.format(sagemaker_timestamp())
 

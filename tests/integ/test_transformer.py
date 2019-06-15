@@ -54,8 +54,11 @@ def test_transform_mxnet(sagemaker_session, mxnet_full_version):
                                                        key_prefix=transform_input_key_prefix)
 
     kms_key_arn = get_or_create_kms_key(sagemaker_session)
+    output_filter = "$"
 
-    transformer = _create_transformer_and_transform_job(mx, transform_input, kms_key_arn)
+    transformer = _create_transformer_and_transform_job(mx, transform_input, kms_key_arn,
+                                                        input_filter=None, output_filter=output_filter,
+                                                        join_source=None)
     with timeout_and_delete_model_with_transformer(transformer, sagemaker_session,
                                                    minutes=TRANSFORM_DEFAULT_TIMEOUT_MINUTES):
         transformer.wait()
@@ -63,6 +66,7 @@ def test_transform_mxnet(sagemaker_session, mxnet_full_version):
     job_desc = transformer.sagemaker_session.sagemaker_client.describe_transform_job(
         TransformJobName=transformer.latest_transform_job.name)
     assert kms_key_arn == job_desc['TransformResources']['VolumeKmsKeyId']
+    assert output_filter == job_desc['DataProcessing']['OutputFilter']
 
 
 @pytest.mark.canary_quick
@@ -232,7 +236,9 @@ def test_transform_byo_estimator(sagemaker_session):
         assert tags == model_tags
 
 
-def _create_transformer_and_transform_job(estimator, transform_input, volume_kms_key=None):
+def _create_transformer_and_transform_job(estimator, transform_input, volume_kms_key=None,
+                                          input_filter=None, output_filter=None, join_source=None):
     transformer = estimator.transformer(1, 'ml.m4.xlarge', volume_kms_key=volume_kms_key)
-    transformer.transform(transform_input, content_type='text/csv')
+    transformer.transform(transform_input, content_type='text/csv', input_filter=input_filter,
+                          output_filter=output_filter, join_source=join_source)
     return transformer
