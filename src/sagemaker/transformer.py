@@ -104,7 +104,7 @@ class Transformer(object):
                 Some examples: "$[1:]", "$.prediction" (default: None).
             join_source (str): The source of data to be joined to the transform output. It can be set to 'Input'
                 meaning the entire input record will be joined to the inference result.
-                You can use OutputFilter to select the useful portion before uploading to S3. (default: None).
+                You can use OutputFilter to select the useful portion before uploading to s3. (default: None).
                 Valid values: Input, None.
         """
         local_mode = self.sagemaker_session.local_mode
