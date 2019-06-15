@@ -1429,4 +1429,3 @@ def test_encryption_flag_in_non_vpc_mode_invalid(sagemaker_session):
                               encrypt_inter_container_traffic=True)
         estimator.fit()
     assert '"EnableInterContainerTrafficEncryption" and "VpcConfig" must be provided together' in str(error)
-
