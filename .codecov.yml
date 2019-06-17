@@ -1,2 +1,0 @@
-ignore:
-  - "**/tensorflow/tensorflow_serving/.*"
