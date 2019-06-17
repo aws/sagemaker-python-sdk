@@ -19,9 +19,9 @@ from mock import patch
 from sagemaker import git_utils
 
 REPO_DIR = '/tmp/repo_dir'
-GIT_REPO = 'https://github.com/GaryTu1020/python-sdk-testing.git'
-BRANCH = 'branch1'
-COMMIT = 'b61c450200d6a309c8d24ac14b8adddc405acc56'
+GIT_REPO = 'https://github.com/GaryTu1020/sagemaker-python-sdk.git'
+BRANCH = 'git_support_testing'
+COMMIT = 'b8724a04ee00cb74c12c1b9a0c79d4f065c3801d'
 
 
 @patch('subprocess.check_call')

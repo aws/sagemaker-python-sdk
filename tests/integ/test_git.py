@@ -22,9 +22,9 @@ from sagemaker.pytorch.estimator import PyTorch
 from sagemaker.utils import sagemaker_timestamp
 from tests.integ import DATA_DIR, PYTHON_VERSION
 
-GIT_REPO = 'https://github.com/GaryTu1020/python-sdk-testing.git'
-BRANCH = 'branch1'
-COMMIT = 'b61c450200d6a309c8d24ac14b8adddc405acc56'
+GIT_REPO = 'https://github.com/GaryTu1020/sagemaker-python-sdk.git'
+BRANCH = 'git_support_testing'
+COMMIT = 'b8724a04ee00cb74c12c1b9a0c79d4f065c3801d'
 
 
 def test_git_support_with_pytorch(sagemaker_local_session):
@@ -67,17 +67,3 @@ def test_git_support_with_mxnet(sagemaker_local_session, mxnet_full_version):
 
     files = [file for file in os.listdir(mx.source_dir)]
     assert 'some_file' in files and 'mnist.py' in files
-
-    endpoint_name = 'test-git_support-with-mxnet-{}'.format(sagemaker_timestamp())
-
-    script_abs_path = os.path.join(mx.source_dir, script_path)
-    desc = sagemaker_local_session.sagemaker_client.describe_training_job(mx.latest_training_job.name)
-    model_data = desc['ModelArtifacts']['S3ModelArtifacts']
-    model = MXNetModel(model_data, 'SageMakerRole', entry_point=script_abs_path,
-                       py_version=PYTHON_VERSION, sagemaker_session=sagemaker_local_session,
-                       framework_version=mxnet_full_version)
-    predictor = model.deploy(1, 'local', endpoint_name=endpoint_name)
-
-    data = numpy.zeros(shape=(1, 1, 28, 28))
-    result = predictor.predict(data)
-    assert result is not None
