@@ -94,27 +94,3 @@ def test_git_support_with_mxnet(sagemaker_local_session, mxnet_full_version):
         data = numpy.zeros(shape=(1, 1, 28, 28))
         result = predictor.predict(data)
         assert result is not None
-
-
-# def test_git_support_for_source_dirs_and_dependencies(sagemaker_local_session):
-#     source_dir = 'pytorch_source_dirs'
-#     lib = 'alexa.py'
-#     git_config = {'repo': GIT_REPO, 'branch': BRANCH, 'commit': COMMIT}
-#
-#     with open(lib, 'w') as f:
-#         f.write('def question(to_anything): return 42')
-#
-#     estimator = PyTorch(entry_point='train.py', role='SageMakerRole', source_dir=source_dir,
-#                         dependencies=[lib], git_config=git_config,
-#                         py_version=PYTHON_VERSION, train_instance_count=1,
-#                         train_instance_type='local',
-#                         sagemaker_session=sagemaker_local_session)
-#     estimator.fit()
-#
-#     with local_mode_utils.lock():
-#         try:
-#             predictor = estimator.deploy(initial_instance_count=1, instance_type='local')
-#             predict_response = predictor.predict([7])
-#             assert predict_response == [49]
-#         finally:
-#             estimator.delete_endpoint()
