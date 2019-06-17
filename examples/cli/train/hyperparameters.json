@@ -1,7 +1,0 @@
-{
-  "batch_size": 100,
-  "epochs": 10,
-  "learning_rate": 0.1,
-  "momentum": 0.9,
-  "log_interval": 100
-}
