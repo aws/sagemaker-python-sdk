@@ -1,5 +1,11 @@
 # Changelog
 
+## v1.28.1 (2019-06-17)
+
+### Bug fixes and other changes
+
+ * Update setup.py
+
 ## v1.28.0 (2019-06-17)
 
 ### Features
