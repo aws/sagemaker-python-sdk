@@ -17,14 +17,12 @@ import os
 import numpy
 
 from sagemaker.mxnet.estimator import MXNet
-from sagemaker.mxnet.model import MXNetModel
 from sagemaker.pytorch.estimator import PyTorch
-from sagemaker.utils import sagemaker_timestamp
 from tests.integ import DATA_DIR, PYTHON_VERSION
 
-GIT_REPO = 'https://github.com/GaryTu1020/sagemaker-python-sdk.git'
-BRANCH = 'git_support_testing'
-COMMIT = 'b8724a04ee00cb74c12c1b9a0c79d4f065c3801d'
+GIT_REPO = 'https://github.com/aws/sagemaker-python-sdk.git'
+BRANCH = 'test-branch-git-config'
+COMMIT = '329bfcf884482002c05ff7f44f62599ebc9f445a'
 
 
 def test_git_support_with_pytorch(sagemaker_local_session):
