@@ -123,6 +123,10 @@ def get_config_value(key_path, config):
     return current_section
 
 
+def get_short_version(framework_version):
+    return '.'.join(framework_version.split('.')[:2])
+
+
 def to_str(value):
     """Convert the input to a string, unless it is a unicode string in Python 2.
 
