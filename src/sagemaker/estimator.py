@@ -803,9 +803,9 @@ class Framework(EstimatorBase):
 
                     The following config:
 
-                    >>> git_config = {'repo': 'https://github.com/GaryTu1020/python-sdk-testing.git',
-                    >>>               'branch': 'master',
-                    >>>               'commit': 'aea6f3acef9619f77f94772d9d654f041e16bf49'}
+                    >>> git_config = {'repo': 'https://github.com/aws/sagemaker-python-sdk.git',
+                    >>>               'branch': 'test-branch-git-config',
+                    >>>               'commit': '329bfcf884482002c05ff7f44f62599ebc9f445a'}
 
                     results in cloning the repo specified in 'repo', then checkout the 'master' branch, and checkout
                     the specified commit.

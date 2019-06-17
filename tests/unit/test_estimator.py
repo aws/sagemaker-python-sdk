@@ -48,9 +48,9 @@ REGION = 'us-west-2'
 JOB_NAME = '{}-{}'.format(IMAGE_NAME, TIMESTAMP)
 TAGS = [{'Name': 'some-tag', 'Value': 'value-for-tag'}]
 OUTPUT_PATH = 's3://bucket/prefix'
-GIT_REPO = 'https://github.com/GaryTu1020/python-sdk-testing.git'
-BRANCH = 'branch1'
-COMMIT = 'b61c450200d6a309c8d24ac14b8adddc405acc56'
+GIT_REPO = 'https://github.com/aws/sagemaker-python-sdk.git'
+BRANCH = 'test-branch-git-config'
+COMMIT = '329bfcf884482002c05ff7f44f62599ebc9f445a'
 
 DESCRIBE_TRAINING_JOB_RESULT = {
     'ModelArtifacts': {
