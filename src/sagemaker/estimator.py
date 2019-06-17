@@ -22,7 +22,7 @@ from six import with_metaclass
 from six import string_types
 
 import sagemaker
-import sagemaker.git_utils
+from sagemaker import git_utils
 from sagemaker.analytics import TrainingJobAnalytics
 from sagemaker.fw_utils import (create_image_uri, tar_and_upload_dir, parse_s3_url, UploadedCode,
                                 validate_source_dir)
@@ -885,8 +885,8 @@ class Framework(EstimatorBase):
         super(Framework, self)._prepare_for_training(job_name=job_name)
 
         if self.git_config:
-            updates = sagemaker.git_utils.git_clone_repo(self.git_config, self.entry_point,
-                                                         self.source_dir, self.dependencies)
+            updates = git_utils.git_clone_repo(self.git_config, self.entry_point,
+                                               self.source_dir, self.dependencies)
             self.entry_point = updates['entry_point']
             self.source_dir = updates['source_dir']
             self.dependencies = updates['dependencies']

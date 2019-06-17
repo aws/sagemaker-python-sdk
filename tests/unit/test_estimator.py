@@ -602,52 +602,59 @@ def test_prepare_for_training_force_name_generation(strftime, sagemaker_session)
 
 @patch('sagemaker.git_utils.git_clone_repo')
 def test_git_support_with_branch_and_commit_succeed(git_clone_repo, sagemaker_session):
-    git_clone_repo.side_effect = lambda git_config, entry_point, source_dir=None, dependencies=None: {
+    git_clone_repo.side_effect = lambda gitconfig, entrypoint, source_dir=None, dependencies=None: {
         'entry_point': '/tmp/repo_dir/entry_point', 'source_dir': None, 'dependencies': None}
-    git_conf = {'repo': GIT_REPO, 'branch': BRANCH, 'commit': COMMIT}
-
-    fw = DummyFramework(entry_point='entry_point', git_config=git_conf, role=ROLE,
+    git_config = {'repo': GIT_REPO, 'branch': BRANCH, 'commit': COMMIT}
+    entry_point = 'entry_point'
+    fw = DummyFramework(entry_point=entry_point, git_config=git_config, role=ROLE,
                         sagemaker_session=sagemaker_session, train_instance_count=INSTANCE_COUNT,
                         train_instance_type=INSTANCE_TYPE, enable_cloudwatch_metrics=True)
     fw.fit()
+    git_clone_repo.assert_called_once_with(git_config, entry_point, None, [])
 
 
 @patch('sagemaker.git_utils.git_clone_repo')
 def test_git_support_with_branch_succeed(git_clone_repo, sagemaker_session):
-    git_clone_repo.side_effect = lambda git_config, entry_point, source_dir, dependencies=None: {
+    git_clone_repo.side_effect = lambda gitconfig, entrypoint, source_dir, dependencies=None: {
         'entry_point': '/tmp/repo_dir/source_dir/entry_point', 'source_dir': None, 'dependencies': None}
-    git_conf = {'repo': GIT_REPO, 'branch': BRANCH}
-    fw = DummyFramework(entry_point='entry_point', git_config=git_conf,
+    git_config = {'repo': GIT_REPO, 'branch': BRANCH}
+    entry_point = 'entry_point'
+    fw = DummyFramework(entry_point=entry_point, git_config=git_config,
                         role=ROLE, sagemaker_session=sagemaker_session,
                         train_instance_count=INSTANCE_COUNT, train_instance_type=INSTANCE_TYPE,
                         enable_cloudwatch_metrics=True)
     fw.fit()
+    git_clone_repo.assert_called_once_with(git_config, entry_point, None, [])
 
 
 @patch('sagemaker.git_utils.git_clone_repo')
 def test_git_support_with_dependencies_succeed(git_clone_repo, sagemaker_session):
-    git_clone_repo.side_effect = lambda git_config, entry_point, source_dir, dependencies: {
+    git_clone_repo.side_effect = lambda gitconfig, entrypoint, source_dir, dependencies: {
         'entry_point': '/tmp/repo_dir/source_dir/entry_point',
         'source_dir': None,
         'dependencies': ['/tmp/repo_dir/foo', '/tmp/repo_dir/foo/bar']}
-    git_conf = {'repo': GIT_REPO, 'branch': BRANCH, 'commit': COMMIT}
-    fw = DummyFramework(entry_point='source_dir/entry_point', git_config=git_conf,
+    git_config = {'repo': GIT_REPO, 'branch': BRANCH, 'commit': COMMIT}
+    entry_point = 'source_dir/entry_point'
+    fw = DummyFramework(entry_point=entry_point, git_config=git_config,
                         dependencies=['foo', 'foo/bar'], role=ROLE, sagemaker_session=sagemaker_session,
                         train_instance_count=INSTANCE_COUNT, train_instance_type=INSTANCE_TYPE,
                         enable_cloudwatch_metrics=True)
     fw.fit()
+    git_clone_repo.assert_called_once_with(git_config, entry_point, None, ['foo', 'foo/bar'])
 
 
 @patch('sagemaker.git_utils.git_clone_repo')
 def test_git_support_without_branch_and_commit_succeed(git_clone_repo, sagemaker_session):
-    git_clone_repo.side_effect = lambda git_config, entry_point, source_dir, dependencies=None: {
+    git_clone_repo.side_effect = lambda gitconfig, entrypoint, source_dir, dependencies=None: {
         'entry_point': '/tmp/repo_dir/source_dir/entry_point', 'source_dir': None, 'dependencies': None}
-    git_conf = {'repo': GIT_REPO}
-    fw = DummyFramework(entry_point='source_dir/entry_point', git_config=git_conf,
+    git_config = {'repo': GIT_REPO}
+    entry_point = 'source_dir/entry_point'
+    fw = DummyFramework(entry_point=entry_point, git_config=git_config,
                         role=ROLE, sagemaker_session=sagemaker_session,
                         train_instance_count=INSTANCE_COUNT, train_instance_type=INSTANCE_TYPE,
                         enable_cloudwatch_metrics=True)
     fw.fit()
+    git_clone_repo.assert_called_once_with(git_config, entry_point, None, [])
 
 
 def test_git_support_repo_not_provided(sagemaker_session):
