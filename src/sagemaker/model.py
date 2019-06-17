@@ -17,10 +17,9 @@ import logging
 import os
 
 import sagemaker
-from sagemaker import fw_utils, local, session, utils
+from sagemaker import fw_utils, local, session, utils, git_utils
 from sagemaker.fw_utils import UploadedCode
 from sagemaker.transformer import Transformer
-from sagemaker.git_utils import git_clone_repo_and_enter
 
 LOGGER = logging.getLogger('sagemaker')
 
@@ -468,7 +467,11 @@ class FrameworkModel(Model):
         """
         deploy_key_prefix = fw_utils.model_code_key_prefix(self.key_prefix, self.name, self.image)
         if self.git_config:
-            git_clone_repo_and_enter(self.git_config, self.entry_point, self.source_dir, self.dependencies)
+            updates = git_utils.git_clone_repo(self.git_config, self.entry_point,
+                                               self.source_dir, self.dependencies)
+            self.entry_point = updates['entry_point']
+            self.source_dir = updates['source_dir']
+            self.dependencies = updates['dependencies']
         self._upload_code(deploy_key_prefix)
         deploy_env = dict(self.env)
         deploy_env.update(self._framework_env_vars())

@@ -421,3 +421,6 @@ def test_check_neo_region(sagemaker_session, tmpdir):
             assert model.check_neo_region(region_name) is True
         else:
             assert model.check_neo_region(region_name) is False
+
+
+def test_git_support_with

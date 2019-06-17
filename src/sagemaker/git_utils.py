@@ -17,10 +17,9 @@ import subprocess
 import tempfile
 
 
-def git_clone_repo_and_enter(git_config, entry_point, source_dir=None, dependencies=None):
+def git_clone_repo(git_config, entry_point, source_dir=None, dependencies=None):
     """Git clone repo containing the training code and serving code. This method also validate ``git_config``,
     and set ``entry_point``, ``source_dir`` and ``dependencies`` to the right file or directory in the repo cloned.
-    This method also change the current working path to the repo cloned.
 
     Args:
         git_config (dict[str, str]): Git configurations used for cloning files, including ``repo``, ``branch``
@@ -34,22 +33,23 @@ def git_clone_repo_and_enter(git_config, entry_point, source_dir=None, dependenc
         dependencies (list[str]): A list of relative locations to directories with any additional libraries that will
             be exported to the container in the Git repo (default: []).
 
-
     Raises:
         CalledProcessError: If 1. failed to clone git repo
                                2. failed to checkout the required branch
                                3. failed to checkout the required commit
         ValueError: If 1. entry point specified does not exist in the repo
                        2. source dir specified does not exist in the repo
-    """
-    validate_git_config(git_config)
-    repo_dir = tempfile.mkdtemp()
-    try:
-        subprocess.check_call(['git', 'clone', git_config['repo'], repo_dir])
-    except subprocess.CalledProcessError:
-        raise subprocess.CalledProcessError(1, cmd='git clone {} {}'.format(git_config['repo'], repo_dir))
 
-    checkout_branch_and_commit(git_config, repo_dir)
+    Returns:
+        dict: A dict that contains the updated values of entry_point, source_dir and dependencies
+    """
+    _validate_git_config(git_config)
+    repo_dir = tempfile.mkdtemp()
+    subprocess.check_call(['git', 'clone', git_config['repo'], repo_dir])
+
+    _checkout_branch_and_commit(git_config, repo_dir)
+
+    ret = {'entry_point': entry_point, 'source_dir': source_dir, 'dependencies': dependencies}
 
     # check if the cloned repo contains entry point, source directory and dependencies
     if source_dir:
@@ -57,15 +57,21 @@ def git_clone_repo_and_enter(git_config, entry_point, source_dir=None, dependenc
             raise ValueError('Source directory does not exist in the repo.')
         if not os.path.isfile(os.path.join(repo_dir, source_dir, entry_point)):
             raise ValueError('Entry point does not exist in the repo.')
+        ret['source_dir'] = os.path.join(repo_dir, source_dir)
     else:
         if not os.path.isfile(os.path.join(repo_dir, entry_point)):
             raise ValueError('Entry point does not exist in the repo.')
+        ret['entry_point'] = os.path.join(repo_dir, entry_point)
+
+    ret['dependencies'] = []
     for path in dependencies:
         if not os.path.exists(os.path.join(repo_dir, path)):
             raise ValueError('Dependency {} does not exist in the repo.'.format(path))
+        ret['dependencies'].append(os.path.join(repo_dir, path))
+    return ret
 
 
-def validate_git_config(git_config):
+def _validate_git_config(git_config):
     """check if a git_config param is valid
 
     Args:
@@ -79,14 +85,10 @@ def validate_git_config(git_config):
     """
     if 'repo' not in git_config:
         raise ValueError('Please provide a repo for git_config.')
-    repo = git_config['repo']
-    github_url = repo.startswith('https://github') or repo.startswith('git@github')
-    if not github_url:
-        raise ValueError('Please provide a valid git repo url.')
 
 
-def checkout_branch_and_commit(git_config, repo_dir):
-    """Enter the directory where the repo is cloned, and checkout the required branch and commit.
+def _checkout_branch_and_commit(git_config, repo_dir):
+    """Checkout the required branch and commit.
 
     Args:
         git_config: (dict[str, str]): Git configurations used for cloning files, including ``repo``, ``branch``
@@ -97,14 +99,7 @@ def checkout_branch_and_commit(git_config, repo_dir):
         ValueError: If 1. entry point specified does not exist in the repo
                        2. source dir specified does not exist in the repo
     """
-    os.chdir(repo_dir)
     if 'branch' in git_config:
-        try:
-            subprocess.check_call(['git', 'checkout', git_config['branch']])
-        except subprocess.CalledProcessError:
-            raise subprocess.CalledProcessError(1, cmd='git checkout {}'.format(git_config['branch']))
+        subprocess.check_call(args=['git', 'checkout', git_config['branch']], cwd=str(repo_dir))
     if 'commit' in git_config:
-        try:
-            subprocess.check_call(['git', 'checkout', git_config['commit']])
-        except subprocess.CalledProcessError:
-            raise subprocess.CalledProcessError(1, cmd='git checkout {}'.format(git_config['commit']))
+        subprocess.check_call(args=['git', 'checkout', git_config['commit']], cwd=str(repo_dir))

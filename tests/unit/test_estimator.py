@@ -48,9 +48,9 @@ REGION = 'us-west-2'
 JOB_NAME = '{}-{}'.format(IMAGE_NAME, TIMESTAMP)
 TAGS = [{'Name': 'some-tag', 'Value': 'value-for-tag'}]
 OUTPUT_PATH = 's3://bucket/prefix'
-GIT_REPO = 'https://github.com/GaryTu1020/python-sdk-testing.git'
-BRANCH = 'branch1'
-COMMIT = 'b61c450200d6a309c8d24ac14b8adddc405acc56'
+GIT_REPO = 'https://github.com/aws/sagemaker-python-sdk.git'
+BRANCH = 'test-branch-git-config'
+COMMIT = '329bfcf884482002c05ff7f44f62599ebc9f445a'
 
 DESCRIBE_TRAINING_JOB_RESULT = {
     'ModelArtifacts': {
@@ -600,49 +600,61 @@ def test_prepare_for_training_force_name_generation(strftime, sagemaker_session)
     assert JOB_NAME == fw._current_job_name
 
 
-def test_git_support_with_branch_and_commit_succeed(sagemaker_session):
+@patch('sagemaker.git_utils.git_clone_repo')
+def test_git_support_with_branch_and_commit_succeed(git_clone_repo, sagemaker_session):
+    git_clone_repo.side_effect = lambda gitconfig, entrypoint, source_dir=None, dependencies=None: {
+        'entry_point': '/tmp/repo_dir/entry_point', 'source_dir': None, 'dependencies': None}
     git_config = {'repo': GIT_REPO, 'branch': BRANCH, 'commit': COMMIT}
-    fw = DummyFramework(entry_point='entry_point', git_config=git_config,
-                        source_dir='source_dir', role=ROLE, sagemaker_session=sagemaker_session,
-                        train_instance_count=INSTANCE_COUNT, train_instance_type=INSTANCE_TYPE,
-                        enable_cloudwatch_metrics=True)
+    entry_point = 'entry_point'
+    fw = DummyFramework(entry_point=entry_point, git_config=git_config, role=ROLE,
+                        sagemaker_session=sagemaker_session, train_instance_count=INSTANCE_COUNT,
+                        train_instance_type=INSTANCE_TYPE, enable_cloudwatch_metrics=True)
     fw.fit()
-    assert os.path.isfile(os.path.join(fw.source_dir, fw.entry_point))
-    assert os.path.isdir(fw.source_dir)
+    git_clone_repo.assert_called_once_with(git_config, entry_point, None, [])
 
 
-def test_git_support_with_branch_succeed(sagemaker_session):
+@patch('sagemaker.git_utils.git_clone_repo')
+def test_git_support_with_branch_succeed(git_clone_repo, sagemaker_session):
+    git_clone_repo.side_effect = lambda gitconfig, entrypoint, source_dir, dependencies=None: {
+        'entry_point': '/tmp/repo_dir/source_dir/entry_point', 'source_dir': None, 'dependencies': None}
     git_config = {'repo': GIT_REPO, 'branch': BRANCH}
-    fw = DummyFramework(entry_point='entry_point', git_config=git_config,
-                        source_dir='source_dir', role=ROLE, sagemaker_session=sagemaker_session,
-                        train_instance_count=INSTANCE_COUNT, train_instance_type=INSTANCE_TYPE,
-                        enable_cloudwatch_metrics=True)
-    fw.fit()
-    assert os.path.isfile(os.path.join(fw.source_dir, fw.entry_point))
-    assert os.path.isdir(fw.source_dir)
-
-
-def test_git_support_with_dependencies_succeed(sagemaker_session):
-    git_config = {'repo': GIT_REPO, 'branch': BRANCH, 'commit': COMMIT}
-    dependencies = ['foo', 'foo/bar']
-    fw = DummyFramework(entry_point='source_dir/entry_point', git_config=git_config,
-                        dependencies=dependencies, role=ROLE, sagemaker_session=sagemaker_session,
-                        train_instance_count=INSTANCE_COUNT, train_instance_type=INSTANCE_TYPE,
-                        enable_cloudwatch_metrics=True)
-    fw.fit()
-    assert os.path.isfile(fw.entry_point)
-    for directory in dependencies:
-        assert os.path.exists(directory)
-
-
-def test_git_support_without_branch_and_commit_succeed(sagemaker_session):
-    git_config = {'repo': GIT_REPO}
-    fw = DummyFramework(entry_point='source_dir/entry_point', git_config=git_config,
+    entry_point = 'entry_point'
+    fw = DummyFramework(entry_point=entry_point, git_config=git_config,
                         role=ROLE, sagemaker_session=sagemaker_session,
                         train_instance_count=INSTANCE_COUNT, train_instance_type=INSTANCE_TYPE,
                         enable_cloudwatch_metrics=True)
     fw.fit()
-    assert os.path.isfile(fw.entry_point)
+    git_clone_repo.assert_called_once_with(git_config, entry_point, None, [])
+
+
+@patch('sagemaker.git_utils.git_clone_repo')
+def test_git_support_with_dependencies_succeed(git_clone_repo, sagemaker_session):
+    git_clone_repo.side_effect = lambda gitconfig, entrypoint, source_dir, dependencies: {
+        'entry_point': '/tmp/repo_dir/source_dir/entry_point',
+        'source_dir': None,
+        'dependencies': ['/tmp/repo_dir/foo', '/tmp/repo_dir/foo/bar']}
+    git_config = {'repo': GIT_REPO, 'branch': BRANCH, 'commit': COMMIT}
+    entry_point = 'source_dir/entry_point'
+    fw = DummyFramework(entry_point=entry_point, git_config=git_config,
+                        dependencies=['foo', 'foo/bar'], role=ROLE, sagemaker_session=sagemaker_session,
+                        train_instance_count=INSTANCE_COUNT, train_instance_type=INSTANCE_TYPE,
+                        enable_cloudwatch_metrics=True)
+    fw.fit()
+    git_clone_repo.assert_called_once_with(git_config, entry_point, None, ['foo', 'foo/bar'])
+
+
+@patch('sagemaker.git_utils.git_clone_repo')
+def test_git_support_without_branch_and_commit_succeed(git_clone_repo, sagemaker_session):
+    git_clone_repo.side_effect = lambda gitconfig, entrypoint, source_dir, dependencies=None: {
+        'entry_point': '/tmp/repo_dir/source_dir/entry_point', 'source_dir': None, 'dependencies': None}
+    git_config = {'repo': GIT_REPO}
+    entry_point = 'source_dir/entry_point'
+    fw = DummyFramework(entry_point=entry_point, git_config=git_config,
+                        role=ROLE, sagemaker_session=sagemaker_session,
+                        train_instance_count=INSTANCE_COUNT, train_instance_type=INSTANCE_TYPE,
+                        enable_cloudwatch_metrics=True)
+    fw.fit()
+    git_clone_repo.assert_called_once_with(git_config, entry_point, None, [])
 
 
 def test_git_support_repo_not_provided(sagemaker_session):
@@ -662,9 +674,9 @@ def test_git_support_bad_repo_url_format(sagemaker_session):
                         source_dir='source_dir', role=ROLE,
                         sagemaker_session=sagemaker_session, train_instance_count=INSTANCE_COUNT,
                         train_instance_type=INSTANCE_TYPE, enable_cloudwatch_metrics=True)
-    with pytest.raises(ValueError) as error:
+    with pytest.raises(subprocess.CalledProcessError) as error:
         fw.fit()
-    assert 'Please provide a valid git repo url.' in str(error)
+    assert 'returned non-zero exit status' in str(error)
 
 
 def test_git_support_git_clone_fail(sagemaker_session):
@@ -674,35 +686,41 @@ def test_git_support_git_clone_fail(sagemaker_session):
                         train_instance_type=INSTANCE_TYPE, enable_cloudwatch_metrics=True)
     with pytest.raises(subprocess.CalledProcessError) as error:
         fw.fit()
-    assert "Command 'git clone" in str(error)
+    assert 'returned non-zero exit status' in str(error)
 
 
+@patch('sagemaker.git_utils.git_clone_repo',
+       side_effect=subprocess.CalledProcessError(returncode=1, cmd='git checkout branch-that-does-not-exist'))
 def test_git_support_branch_not_exist(sagemaker_session):
     git_config = {'repo': GIT_REPO,
                   'branch': 'branch-that-does-not-exist',
                   'commit': COMMIT}
     fw = DummyFramework(entry_point='entry_point', git_config=git_config,
-                        source_dir='source_dir', role=ROLE, sagemaker_session=sagemaker_session,
+                        role=ROLE, sagemaker_session=sagemaker_session,
                         train_instance_count=INSTANCE_COUNT, train_instance_type=INSTANCE_TYPE,
                         enable_cloudwatch_metrics=True)
     with pytest.raises(subprocess.CalledProcessError) as error:
         fw.fit()
-    assert "Command 'git checkout" in str(error)
+    assert 'returned non-zero exit status' in str(error)
 
 
+@patch('sagemaker.git_utils.git_clone_repo',
+       side_effect=subprocess.CalledProcessError(returncode=1, cmd='commit-sha-that-does-not-exist'))
 def test_git_support_commit_not_exist(sagemaker_session):
     git_config = {'repo': GIT_REPO,
                   'branch': BRANCH,
                   'commit': 'commit-sha-that-does-not-exist'}
     fw = DummyFramework(entry_point='entry_point', git_config=git_config,
-                        source_dir='source_dir', role=ROLE, sagemaker_session=sagemaker_session,
+                        role=ROLE, sagemaker_session=sagemaker_session,
                         train_instance_count=INSTANCE_COUNT, train_instance_type=INSTANCE_TYPE,
                         enable_cloudwatch_metrics=True)
     with pytest.raises(subprocess.CalledProcessError) as error:
         fw.fit()
-    assert "Command 'git checkout" in str(error)
+    assert 'returned non-zero exit status' in str(error)
 
 
+@patch('sagemaker.git_utils.git_clone_repo',
+       side_effect=ValueError('Entry point does not exist in the repo.'))
 def test_git_support_entry_point_not_exist(sagemaker_session):
     git_config = {'repo': GIT_REPO, 'branch': BRANCH, 'commit': COMMIT}
     fw = DummyFramework(entry_point='entry_point_that_does_not_exist', git_config=git_config,
@@ -714,6 +732,8 @@ def test_git_support_entry_point_not_exist(sagemaker_session):
     assert 'Entry point does not exist in the repo.' in str(error)
 
 
+@patch('sagemaker.git_utils.git_clone_repo',
+       side_effect=ValueError('Source directory does not exist in the repo.'))
 def test_git_support_source_dir_not_exist(sagemaker_session):
     git_config = {'repo': GIT_REPO, 'branch': BRANCH, 'commit': COMMIT}
     fw = DummyFramework(entry_point='entry_point', git_config=git_config,
@@ -725,6 +745,8 @@ def test_git_support_source_dir_not_exist(sagemaker_session):
     assert 'Source directory does not exist in the repo.' in str(error)
 
 
+@patch('sagemaker.git_utils.git_clone_repo',
+       side_effect=ValueError('Dependency no-such-dir does not exist in the repo.'))
 def test_git_support_dependencies_not_exist(sagemaker_session):
     git_config = {'repo': GIT_REPO, 'branch': BRANCH, 'commit': COMMIT}
     fw = DummyFramework(entry_point='entry_point', git_config=git_config,
@@ -1414,6 +1436,3 @@ def test_encryption_flag_in_non_vpc_mode_invalid(sagemaker_session):
                               encrypt_inter_container_traffic=True)
         estimator.fit()
     assert '"EnableInterContainerTrafficEncryption" and "VpcConfig" must be provided together' in str(error)
-
-
-#################################################################################
