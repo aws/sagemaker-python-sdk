@@ -34,6 +34,7 @@ from sagemaker.utils import (
     secondary_training_status_changed,
     secondary_training_status_message,
 )
+from sagemaker import exceptions
 
 LOGGER = logging.getLogger("sagemaker")
 
@@ -793,10 +794,10 @@ class Session(object):
 
         if status != "Completed":
             reason = desc.get("FailureReason", None)
-            raise ValueError(
-                "Error creating model package {}: {} Reason: {}".format(
-                    model_package_name, status, reason
-                )
+            raise exceptions.UnexpectedStatusException(
+                message="Error creating model package {}: {} Reason: {}".format(model_package_name, status, reason),
+                allowed_statuses=["Completed"],
+                actual_status=status
             )
         return desc
 
@@ -1026,7 +1027,11 @@ class Session(object):
         if status != "Completed" and status != "Stopped":
             reason = desc.get("FailureReason", "(No reason provided)")
             job_type = status_key_name.replace("JobStatus", " job")
-            raise ValueError("Error for {} {}: {} Reason: {}".format(job_type, job, status, reason))
+            raise exceptions.UnexpectedStatusException(
+                message="Error for {} {}: {} Reason: {}".format(job_type, job, status, reason),
+                allowed_statuses=["Completed", "Stopped"],
+                actual_status=status
+            )
 
     def wait_for_endpoint(self, endpoint, poll=5):
         """Wait for an Amazon SageMaker endpoint deployment to complete.
@@ -1043,8 +1048,10 @@ class Session(object):
 
         if status != "InService":
             reason = desc.get("FailureReason", None)
-            raise ValueError(
-                "Error hosting endpoint {}: {} Reason: {}".format(endpoint, status, reason)
+            raise exceptions.UnexpectedStatusException(
+                message="Error hosting endpoint {}: {} Reason: {}".format(endpoint, status, reason),
+                allowed_statuses=["InService"],
+                actual_status=status
             )
         return desc
 
