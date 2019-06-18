@@ -705,7 +705,7 @@ def test_git_support_branch_not_exist(sagemaker_session):
 
 
 @patch('sagemaker.git_utils.git_clone_repo',
-       side_effect=subprocess.CalledProcessError(returncode=1, cmd='commit-sha-that-does-not-exist'))
+       side_effect=subprocess.CalledProcessError(returncode=1, cmd='git checkout commit-sha-that-does-not-exist'))
 def test_git_support_commit_not_exist(sagemaker_session):
     git_config = {'repo': GIT_REPO,
                   'branch': BRANCH,
