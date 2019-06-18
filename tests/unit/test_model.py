@@ -39,6 +39,9 @@ ACCELERATOR_TYPE = 'ml.eia.medium'
 IMAGE_NAME = 'fakeimage'
 REGION = 'us-west-2'
 MODEL_NAME = '{}-{}'.format(MODEL_IMAGE, TIMESTAMP)
+GIT_REPO = 'https://github.com/aws/sagemaker-python-sdk.git'
+BRANCH = 'test-branch-git-config'
+COMMIT = '329bfcf884482002c05ff7f44f62599ebc9f445a'
 
 
 DESCRIBE_MODEL_PACKAGE_RESPONSE = {
@@ -105,10 +108,15 @@ class DummyFrameworkModel(FrameworkModel):
     def create_predictor(self, endpoint_name):
         return RealTimePredictor(endpoint_name, sagemaker_session=self.sagemaker_session)
 
-class DummyFrameworkModelGit(FrameworkModel):
 
-    def __init__(self, entry_point, sagemaker_session, **kwargs):
-        super(DummyFrameworkModelGit, self).__init__(MODEL_DATA, MODEL_IMAGE, ROLE, )
+class DummyFrameworkModelForGit(FrameworkModel):
+
+    def __init__(self, sagemaker_session, entry_point, **kwargs):
+        super(DummyFrameworkModelForGit, self).__init__(MODEL_DATA, MODEL_IMAGE, ROLE, entry_point=entry_point,
+                                                        sagemaker_session=sagemaker_session, **kwargs)
+
+    def create_predictor(self, endpoint_name):
+        return RealTimePredictor(endpoint_name, sagemaker_session=self.sagemaker_session)
 
 
 @pytest.fixture()
@@ -428,4 +436,20 @@ def test_check_neo_region(sagemaker_session, tmpdir):
             assert model.check_neo_region(region_name) is False
 
 
-# def test_git_support_with_
+@patch('sagemaker.git_utils.git_clone_repo')
+@patch('sagemaker.model.FrameworkModel._upload_code')
+def test_git_support_succeed(upload_code, git_clone_repo, sagemaker_session):
+    git_clone_repo.side_effect = lambda gitconfig, entrypoint, sourcedir, dependency=None: {
+        'entry_point': 'entry_point', 'source_dir': '/tmp/repo_dir/source_dir',
+        'dependencies': ['/tmp/repo_dir/foo', '/tmp/repo_dir/bar']}
+    entry_point = 'entry_point'
+    source_dir = 'source_dir'
+    dependencies = ['foo', 'bar']
+    git_config = {'repo': GIT_REPO, 'branch': BRANCH, 'commit': COMMIT}
+    model = DummyFrameworkModelForGit(sagemaker_session=sagemaker_session,
+                                      entry_point=entry_point,
+                                      source_dir=source_dir,
+                                      dependencies=dependencies,
+                                      git_config=git_config)
+    model.deploy(instance_type=INSTANCE_TYPE, initial_instance_count=1)
+    git_clone_repo.assert_called_once_with(git_config, entry_point, source_dir, dependencies)
