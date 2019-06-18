@@ -105,6 +105,11 @@ class DummyFrameworkModel(FrameworkModel):
     def create_predictor(self, endpoint_name):
         return RealTimePredictor(endpoint_name, sagemaker_session=self.sagemaker_session)
 
+class DummyFrameworkModelGit(FrameworkModel):
+
+    def __init__(self, entry_point, sagemaker_session, **kwargs):
+        super(DummyFrameworkModelGit, self).__init__(MODEL_DATA, MODEL_IMAGE, ROLE, )
+
 
 @pytest.fixture()
 def sagemaker_session():
@@ -423,4 +428,4 @@ def test_check_neo_region(sagemaker_session, tmpdir):
             assert model.check_neo_region(region_name) is False
 
 
-def test_git_support_with
+# def test_git_support_with_

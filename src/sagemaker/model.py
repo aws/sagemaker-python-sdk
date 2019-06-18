@@ -387,6 +387,20 @@ class FrameworkModel(Model):
                     >>>         |----- test.py
 
                     You can assign entry_point='src/inference.py'.
+            git_config (dict[str, str]): Git configurations used for cloning files, including 'repo', 'branch'
+                and 'commit' (default: None).
+                'branch' and 'commit' are optional. If 'branch' is not specified, 'master' branch will be used. If
+                'commit' is not specified, the latest commit in the required branch will be used.
+                Example:
+
+                    The following config:
+
+                    >>> git_config = {'repo': 'https://github.com/aws/sagemaker-python-sdk.git',
+                    >>>               'branch': 'test-branch-git-config',
+                    >>>               'commit': '329bfcf884482002c05ff7f44f62599ebc9f445a'}
+
+                    results in cloning the repo specified in 'repo', then checkout the 'master' branch, and checkout
+                    the specified commit.
             source_dir (str): Path (absolute or relative) to a directory with any other training
                 source code dependencies aside from the entry point file (default: None). Structure within this
                 directory will be preserved when training on SageMaker. If 'git_config' is provided,
