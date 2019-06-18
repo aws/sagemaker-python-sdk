@@ -34,15 +34,16 @@ def test_git_support_with_pytorch(sagemaker_local_session):
                       train_instance_count=1, train_instance_type='local',
                       sagemaker_session=sagemaker_local_session, git_config=git_config)
 
-    train_input = pytorch.sagemaker_session.upload_data(path=os.path.join(data_path, 'training'),
-                                                        key_prefix='integ-test-data/pytorch_mnist/training')
-    pytorch.fit({'training': train_input})
+    pytorch.fit({'training': 'file://' + os.path.join(data_path, 'training')})
 
-    predictor = pytorch.deploy(initial_instance_count=1, instance_type='local')
+    try:
+        predictor = pytorch.deploy(initial_instance_count=1, instance_type='local')
 
-    data = numpy.zeros(shape=(1, 1, 28, 28)).astype(numpy.float32)
-    result = predictor.predict(data)
-    assert result is not None
+        data = numpy.zeros(shape=(1, 1, 28, 28)).astype(numpy.float32)
+        result = predictor.predict(data)
+        assert result is not None
+    finally:
+        predictor.delete_endpoint()
 
 
 def test_git_support_with_mxnet(sagemaker_local_session, mxnet_full_version):
@@ -56,12 +57,19 @@ def test_git_support_with_mxnet(sagemaker_local_session, mxnet_full_version):
                train_instance_count=1, train_instance_type='local',
                sagemaker_session=sagemaker_local_session, git_config=git_config)
 
-    train_input = mx.sagemaker_session.upload_data(path=os.path.join(data_path, 'train'),
-                                                   key_prefix='integ-test-data/mxnet_mnist/train')
-    test_input = mx.sagemaker_session.upload_data(path=os.path.join(data_path, 'test'),
-                                                  key_prefix='integ-test-data/mxnet_mnist/test')
-
-    mx.fit({'train': train_input, 'test': test_input})
+    mx.fit({'train': 'file://' + os.path.join(data_path, 'train'),
+            'test': 'file://' + os.path.join(data_path, 'test')})
 
     files = [file for file in os.listdir(mx.source_dir)]
-    assert 'some_file' in files and 'mnist.py' in files
+    assert 'some_file' in files
+    assert 'mnist.py' in files
+    assert os.path.exists(mx.dependencies[0])
+
+    try:
+        predictor = mx.deploy(initial_instance_count=1, instance_type='local')
+
+        data = numpy.zeros(shape=(1, 1, 28, 28))
+        result = predictor.predict(data)
+        assert result is not None
+    finally:
+        predictor.delete_endpoint()
