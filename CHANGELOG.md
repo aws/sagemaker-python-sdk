@@ -1,5 +1,17 @@
 # Changelog
 
+## v1.28.1 (2019-06-17)
+
+### Bug fixes and other changes
+
+ * Update setup.py
+
+## v1.28.0 (2019-06-17)
+
+### Features
+
+ * Add DataProcessing Fields for Batch Transform
+
 ## v1.27.0 (2019-06-11)
 
 ### Features
