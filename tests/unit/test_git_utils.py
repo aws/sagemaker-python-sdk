@@ -27,22 +27,19 @@ COMMIT = '329bfcf884482002c05ff7f44f62599ebc9f445a'
 
 @patch('subprocess.check_call')
 @patch('tempfile.mkdtemp', return_value=REPO_DIR)
-@patch('sagemaker.git_utils._validate_git_config')
-@patch('sagemaker.git_utils._checkout_branch_and_commit')
 @patch('os.path.isfile', return_value=True)
 @patch('os.path.isdir', return_value=True)
 @patch('os.path.exists', return_value=True)
-def test_git_clone_repo_succeed(exists, isdir, isfile, checkout_branch_and_commit,
-                                validate_git_config, mkdtemp, check_call):
+def test_git_clone_repo_succeed(exists, isdir, isfile, mkdtemp, check_call):
     git_config = {'repo': GIT_REPO, 'branch': BRANCH, 'commit': COMMIT}
     entry_point = 'entry_point'
     source_dir = 'source_dir'
     dependencies = ['foo', 'bar']
     ret = git_utils.git_clone_repo(git_config, entry_point, source_dir, dependencies)
-    validate_git_config.assert_called_with(git_config)
-    check_call.assert_called_with(['git', 'clone', git_config['repo'], REPO_DIR])
+    check_call.assert_any_call(['git', 'clone', git_config['repo'], REPO_DIR])
+    check_call.assert_any_call(args=['git', 'checkout', BRANCH], cwd=REPO_DIR)
+    check_call.assert_any_call(args=['git', 'checkout', COMMIT], cwd=REPO_DIR)
     mkdtemp.assert_called_once()
-    checkout_branch_and_commit.assert_called_with(git_config, REPO_DIR)
     assert ret['entry_point'] == 'entry_point'
     assert ret['source_dir'] == '/tmp/repo_dir/source_dir'
     assert ret['dependencies'] == ['/tmp/repo_dir/foo', '/tmp/repo_dir/bar']
@@ -50,14 +47,10 @@ def test_git_clone_repo_succeed(exists, isdir, isfile, checkout_branch_and_commi
 
 @patch('subprocess.check_call')
 @patch('tempfile.mkdtemp', return_value=REPO_DIR)
-@patch('sagemaker.git_utils._validate_git_config',
-       side_effect=ValueError('Please provide a repo for git_config.'))
-@patch('sagemaker.git_utils._checkout_branch_and_commit')
 @patch('os.path.isfile', return_value=True)
 @patch('os.path.isdir', return_value=True)
 @patch('os.path.exists', return_value=True)
-def test_git_clone_repo_repo_not_provided(exists, isdir, isfile, checkout_branch_and_commit,
-                                          validate_git_config, mkdtemp, check_call):
+def test_git_clone_repo_repo_not_provided(exists, isdir, isfile, mkdtemp, check_call):
     git_config = {'branch': BRANCH, 'commit': COMMIT}
     entry_point = 'entry_point_that_does_not_exist'
     source_dir = 'source_dir'
@@ -70,13 +63,44 @@ def test_git_clone_repo_repo_not_provided(exists, isdir, isfile, checkout_branch
 @patch('subprocess.check_call',
        side_effect=subprocess.CalledProcessError(returncode=1, cmd='git clone {} {}'.format(GIT_REPO, REPO_DIR)))
 @patch('tempfile.mkdtemp', return_value=REPO_DIR)
-@patch('sagemaker.git_utils._validate_git_config')
-@patch('sagemaker.git_utils._checkout_branch_and_commit')
 @patch('os.path.isfile', return_value=True)
 @patch('os.path.isdir', return_value=True)
 @patch('os.path.exists', return_value=True)
-def test_git_clone_repo_clone_fail(exists, isdir, isfile, checkout_branch_and_commit,
-                                   validate_git_config, mkdtemp, check_call):
+def test_git_clone_repo_clone_fail(exists, isdir, isfile, mkdtemp, check_call):
+    git_config = {'repo': GIT_REPO, 'branch': BRANCH, 'commit': COMMIT}
+    entry_point = 'entry_point'
+    source_dir = 'source_dir'
+    dependencies = ['foo', 'bar']
+    with pytest.raises(subprocess.CalledProcessError) as error:
+        git_utils.git_clone_repo(git_config, entry_point, source_dir, dependencies)
+    assert 'returned non-zero exit status' in str(error)
+
+
+@patch('subprocess.check_call',
+       side_effect=[True,
+                    subprocess.CalledProcessError(returncode=1, cmd='git checkout banana')])
+@patch('tempfile.mkdtemp', return_value=REPO_DIR)
+@patch('os.path.isfile', return_value=True)
+@patch('os.path.isdir', return_value=True)
+@patch('os.path.exists', return_value=True)
+def test_git_clone_repo_branch_not_exist(exists, isdir, isfile, mkdtemp, check_call):
+    git_config = {'repo': GIT_REPO, 'branch': BRANCH, 'commit': COMMIT}
+    entry_point = 'entry_point'
+    source_dir = 'source_dir'
+    dependencies = ['foo', 'bar']
+    with pytest.raises(subprocess.CalledProcessError) as error:
+        git_utils.git_clone_repo(git_config, entry_point, source_dir, dependencies)
+    assert 'returned non-zero exit status' in str(error)
+
+
+@patch('subprocess.check_call',
+       side_effect=[True, True,
+                    subprocess.CalledProcessError(returncode=1, cmd='git checkout {}'.format(COMMIT))])
+@patch('tempfile.mkdtemp', return_value=REPO_DIR)
+@patch('os.path.isfile', return_value=True)
+@patch('os.path.isdir', return_value=True)
+@patch('os.path.exists', return_value=True)
+def test_git_clone_repo_commit_not_exist(exists, isdir, isfile, mkdtemp, check_call):
     git_config = {'repo': GIT_REPO, 'branch': BRANCH, 'commit': COMMIT}
     entry_point = 'entry_point'
     source_dir = 'source_dir'
@@ -88,51 +112,10 @@ def test_git_clone_repo_clone_fail(exists, isdir, isfile, checkout_branch_and_co
 
 @patch('subprocess.check_call')
 @patch('tempfile.mkdtemp', return_value=REPO_DIR)
-@patch('sagemaker.git_utils._validate_git_config')
-@patch('sagemaker.git_utils._checkout_branch_and_commit',
-       side_effect=subprocess.CalledProcessError(returncode=1, cmd='git checkout {}'.format(BRANCH)))
-@patch('os.path.isfile', return_value=True)
-@patch('os.path.isdir', return_value=True)
-@patch('os.path.exists', return_value=True)
-def test_git_clone_repo_branch_not_exist(exists, isdir, isfile, checkout_branch_and_commit,
-                                         validate_git_config, mkdtemp, check_call):
-    git_config = {'repo': GIT_REPO, 'branch': BRANCH, 'commit': COMMIT}
-    entry_point = 'entry_point'
-    source_dir = 'source_dir'
-    dependencies = ['foo', 'bar']
-    with pytest.raises(subprocess.CalledProcessError) as error:
-        git_utils.git_clone_repo(git_config, entry_point, source_dir, dependencies)
-    assert 'returned non-zero exit status' in str(error)
-
-
-@patch('subprocess.check_call')
-@patch('tempfile.mkdtemp', return_value=REPO_DIR)
-@patch('sagemaker.git_utils._validate_git_config')
-@patch('sagemaker.git_utils._checkout_branch_and_commit',
-       side_effect=subprocess.CalledProcessError(returncode=1, cmd='git checkout {}'.format(COMMIT)))
-@patch('os.path.isfile', return_value=True)
-@patch('os.path.isdir', return_value=True)
-@patch('os.path.exists', return_value=True)
-def test_git_clone_repo_commit_not_exist(exists, isdir, isfile, checkout_branch_and_commit,
-                                         validate_git_config, mkdtemp, check_call):
-    git_config = {'repo': GIT_REPO, 'branch': BRANCH, 'commit': COMMIT}
-    entry_point = 'entry_point'
-    source_dir = 'source_dir'
-    dependencies = ['foo', 'bar']
-    with pytest.raises(subprocess.CalledProcessError) as error:
-        git_utils.git_clone_repo(git_config, entry_point, source_dir, dependencies)
-    assert 'returned non-zero exit status' in str(error)
-
-
-@patch('subprocess.check_call')
-@patch('tempfile.mkdtemp', return_value=REPO_DIR)
-@patch('sagemaker.git_utils._validate_git_config')
-@patch('sagemaker.git_utils._checkout_branch_and_commit')
 @patch('os.path.isfile', return_value=False)
 @patch('os.path.isdir', return_value=True)
 @patch('os.path.exists', return_value=True)
-def test_git_clone_repo_entry_point_not_exist(exists, isdir, isfile, checkout_branch_and_commit,
-                                              validate_git_config, mkdtemp, check_call):
+def test_git_clone_repo_entry_point_not_exist(exists, isdir, isfile, mkdtemp, check_call):
     git_config = {'repo': GIT_REPO, 'branch': BRANCH, 'commit': COMMIT}
     entry_point = 'entry_point_that_does_not_exist'
     source_dir = 'source_dir'
@@ -144,13 +127,10 @@ def test_git_clone_repo_entry_point_not_exist(exists, isdir, isfile, checkout_br
 
 @patch('subprocess.check_call')
 @patch('tempfile.mkdtemp', return_value=REPO_DIR)
-@patch('sagemaker.git_utils._validate_git_config')
-@patch('sagemaker.git_utils._checkout_branch_and_commit')
 @patch('os.path.isfile', return_value=True)
 @patch('os.path.isdir', return_value=False)
 @patch('os.path.exists', return_value=True)
-def test_git_clone_repo_source_dir_not_exist(exists, isdir, isfile, checkout_branch_and_commit,
-                                             validate_git_config, mkdtemp, check_call):
+def test_git_clone_repo_source_dir_not_exist(exists, isdir, isfile, mkdtemp, check_call):
     git_config = {'repo': GIT_REPO, 'branch': BRANCH, 'commit': COMMIT}
     entry_point = 'entry_point'
     source_dir = 'source_dir_that_does_not_exist'
@@ -162,13 +142,10 @@ def test_git_clone_repo_source_dir_not_exist(exists, isdir, isfile, checkout_bra
 
 @patch('subprocess.check_call')
 @patch('tempfile.mkdtemp', return_value=REPO_DIR)
-@patch('sagemaker.git_utils._validate_git_config')
-@patch('sagemaker.git_utils._checkout_branch_and_commit')
 @patch('os.path.isfile', return_value=True)
 @patch('os.path.isdir', return_value=True)
 @patch('os.path.exists', side_effect=[True, False])
-def test_git_clone_repo_dependencies_not_exist(exists, isdir, isfile, checkout_branch_and_commit,
-                                               validate_git_config, mkdtemp, check_call):
+def test_git_clone_repo_dependencies_not_exist(exists, isdir, isfile, mkdtemp, check_call):
     git_config = {'repo': GIT_REPO, 'branch': BRANCH, 'commit': COMMIT}
     entry_point = 'entry_point'
     source_dir = 'source_dir'

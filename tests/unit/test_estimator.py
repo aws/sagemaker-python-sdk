@@ -680,7 +680,7 @@ def test_git_support_bad_repo_url_format(sagemaker_session):
 
 
 def test_git_support_git_clone_fail(sagemaker_session):
-    git_config = {'repo': 'https://github.com/GaryTu1020/no-such-repo.git', 'branch': BRANCH}
+    git_config = {'repo': 'https://github.com/sagemaker-python-sdk/no-such-repo.git', 'branch': BRANCH}
     fw = DummyFramework(entry_point='entry_point', git_config=git_config, role=ROLE,
                         sagemaker_session=sagemaker_session, train_instance_count=INSTANCE_COUNT,
                         train_instance_type=INSTANCE_TYPE, enable_cloudwatch_metrics=True)
@@ -691,7 +691,7 @@ def test_git_support_git_clone_fail(sagemaker_session):
 
 @patch('sagemaker.git_utils.git_clone_repo',
        side_effect=subprocess.CalledProcessError(returncode=1, cmd='git checkout branch-that-does-not-exist'))
-def test_git_support_branch_not_exist(sagemaker_session):
+def test_git_support_branch_not_exist(git_clone_repo, sagemaker_session):
     git_config = {'repo': GIT_REPO,
                   'branch': 'branch-that-does-not-exist',
                   'commit': COMMIT}
@@ -705,7 +705,7 @@ def test_git_support_branch_not_exist(sagemaker_session):
 
 
 @patch('sagemaker.git_utils.git_clone_repo',
-       side_effect=subprocess.CalledProcessError(returncode=1, cmd='commit-sha-that-does-not-exist'))
+       side_effect=subprocess.CalledProcessError(returncode=1, cmd='git checkout commit-sha-that-does-not-exist'))
 def test_git_support_commit_not_exist(sagemaker_session):
     git_config = {'repo': GIT_REPO,
                   'branch': BRANCH,
