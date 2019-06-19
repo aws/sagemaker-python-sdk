@@ -25,6 +25,8 @@ from tests.integ import DATA_DIR, PYTHON_VERSION
 GIT_REPO = 'https://github.com/aws/sagemaker-python-sdk.git'
 BRANCH = 'test-branch-git-config'
 COMMIT = '329bfcf884482002c05ff7f44f62599ebc9f445a'
+
+# endpoint tests all use the same port, so we use this lock to prevent concurrent execution
 LOCK_PATH = os.path.join(tempfile.gettempdir(), 'sagemaker_test_git_lock')
 
 
