@@ -23,6 +23,10 @@ DEFAULT_LOCK_PATH = os.path.join(tempfile.gettempdir(), 'sagemaker_test_lock')
 
 @contextmanager
 def lock(path=DEFAULT_LOCK_PATH):
+    """Create a file lock to control concurrent test execution. Certain tests or
+    test operations need to limit concurrency to work reliably. Examples include
+    local mode endpoint tests and vpc creation tests.
+    """
     f = open(path, 'w')
     fd = f.fileno()
 

@@ -93,6 +93,7 @@ def _create_vpc_with_name(ec2_client, region, name):
 
 
 def get_or_create_vpc_resources(ec2_client, region, name=VPC_NAME):
+    # use lock to prevent race condition when tests are running concurrently
     with lock.lock(LOCK_PATH):
         if _vpc_exists(ec2_client, name):
             print('using existing vpc: {}'.format(name))

@@ -28,6 +28,7 @@ from sagemaker.local import LocalSession, LocalSagemakerRuntimeClient, LocalSage
 from sagemaker.mxnet import MXNet
 from sagemaker.tensorflow import TensorFlow
 
+# endpoint tests all use the same port, so we use this lock to prevent concurrent execution
 LOCK_PATH = os.path.join(tempfile.gettempdir(), 'sagemaker_test_local_mode_lock')
 DATA_PATH = os.path.join(DATA_DIR, 'iris', 'data')
 DEFAULT_REGION = 'us-west-2'
