@@ -25,4 +25,4 @@ venv/
 *~
 .pytest_cache/
 *.swp
-tests/data/local_mode_lock
+.docker/
