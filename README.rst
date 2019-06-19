@@ -84,7 +84,7 @@ As a managed service, Amazon SageMaker performs operations on your behalf on the
 Amazon SageMaker can perform only operations that the user permits.
 You can read more about which permissions are necessary in the `AWS Documentation <https://docs.aws.amazon.com/sagemaker/latest/dg/sagemaker-roles.html>`__.
 
-The SageMaker Python SDK should not require any additional permissions.
+The SageMaker Python SDK should not require any additional permissions aside from what is required for using SageMaker.
 However, if you are using an IAM role with a path in it, you should grant permission for ``iam:GetRole``.
 
 Licensing
@@ -117,27 +117,28 @@ To run the unit tests with tox, run:
 To run the integration tests, the following prerequisites must be met
 
 1. AWS account credentials are available in the environment for the boto3 client to use.
-2. The AWS account has an IAM role named :code:`SageMakerRole` with the AmazonSageMakerFullAccess policy attached.
+2. The AWS account has an IAM role named :code:`SageMakerRole`.
+   It should have the AmazonSageMakerFullAccess policy attached as well as a policy with `the necessary permissions to use Elastic Inference <https://docs.aws.amazon.com/sagemaker/latest/dg/ei-setup.html>`__.
 
 We recommend selectively running just those integration tests you'd like to run. You can filter by individual test function names with:
 
 ::
 
-    pytest -k 'test_i_care_about'
+    tox -- -k 'test_i_care_about'
 
 
 You can also run all of the integration tests by running the following command, which runs them in sequence, which may take a while:
 
 ::
 
-    pytest tests/integ
+    tox -- tests/integ
 
 
 You can also run them in parallel:
 
 ::
 
-    pytest -n auto tests/integ
+    tox -- -n auto tests/integ
 
 
 Building Sphinx docs
@@ -149,16 +150,16 @@ Building Sphinx docs
 
     make html
 
-You can edit the templates for any of the pages in the docs by editing the .rst files in the "doc" directory and then running "``make html``" again.
+You can edit the templates for any of the pages in the docs by editing the .rst files in the ``doc`` directory and then running ``make html`` again.
 
 MXNet SageMaker Estimators
 --------------------------
 
-By using MXNet SageMaker ``Estimators``, you can train and host MXNet models on Amazon SageMaker.
+By using MXNet SageMaker Estimators, you can train and host MXNet models on Amazon SageMaker.
 
-Supported versions of MXNet: ``1.3.0``, ``1.2.1``, ``1.1.0``, ``1.0.0``, ``0.12.1``.
+Supported versions of MXNet: ``0.12.1``. ``1.0.0``, ``1.1.0``, ``1.2.1``, ``1.3.0``, ``1.4.0``
 
-Supported versions of MXNet for Elastic Inference: ``1.3.0``
+Supported versions of MXNet for Elastic Inference: ``1.3.0``, ``1.4.0``
 
 We recommend that you use the latest supported version, because that's where we focus most of our development efforts.
 
@@ -170,7 +171,7 @@ For more information, see `Using MXNet with the SageMaker Python SDK`_.
 TensorFlow SageMaker Estimators
 -------------------------------
 
-By using TensorFlow SageMaker ``Estimators``, you can train and host TensorFlow models on Amazon SageMaker.
+By using TensorFlow SageMaker Estimators, you can train and host TensorFlow models on Amazon SageMaker.
 
 Supported versions of TensorFlow: ``1.4.1``, ``1.5.0``, ``1.6.0``, ``1.7.0``, ``1.8.0``, ``1.9.0``, ``1.10.0``, ``1.11.0``, ``1.12.0``.
 
@@ -186,7 +187,7 @@ For more information, see `Using TensorFlow with the SageMaker Python SDK`_.
 Chainer SageMaker Estimators
 ----------------------------
 
-By using Chainer SageMaker ``Estimators``, you can train and host Chainer models on Amazon SageMaker.
+By using Chainer SageMaker Estimators, you can train and host Chainer models on Amazon SageMaker.
 
 Supported versions of Chainer: ``4.0.0``, ``4.1.0``, ``5.0.0``.
 
@@ -194,7 +195,7 @@ We recommend that you use the latest supported version, because that's where we 
 
 For more information about Chainer, see https://github.com/chainer/chainer.
 
-For more information about  Chainer SageMaker ``Estimators``, see `Using Chainer with the SageMaker Python SDK`_.
+For more information about Chainer SageMaker Estimators, see `Using Chainer with the SageMaker Python SDK`_.
 
 .. _Using Chainer with the SageMaker Python SDK: https://sagemaker.readthedocs.io/en/stable/using_chainer.html
 
@@ -202,7 +203,7 @@ For more information about  Chainer SageMaker ``Estimators``, see `Using Chainer
 PyTorch SageMaker Estimators
 ----------------------------
 
-With PyTorch SageMaker ``Estimators``, you can train and host PyTorch models on Amazon SageMaker.
+With PyTorch SageMaker Estimators, you can train and host PyTorch models on Amazon SageMaker.
 
 Supported versions of PyTorch: ``0.4.0``, ``1.0.0``.
 
@@ -210,7 +211,7 @@ We recommend that you use the latest supported version, because that's where we 
 
 For more information about PyTorch, see https://github.com/pytorch/pytorch.
 
-For more information about PyTorch SageMaker ``Estimators``, see `Using PyTorch with the SageMaker Python SDK`_.
+For more information about PyTorch SageMaker Estimators, see `Using PyTorch with the SageMaker Python SDK`_.
 
 .. _Using PyTorch with the SageMaker Python SDK: https://sagemaker.readthedocs.io/en/stable/using_pytorch.html
 
@@ -218,7 +219,7 @@ For more information about PyTorch SageMaker ``Estimators``, see `Using PyTorch 
 Scikit-learn SageMaker Estimators
 ---------------------------------
 
-With Scikit-learn SageMaker ``Estimators``, you can train and host Scikit-learn models on Amazon SageMaker.
+With Scikit-learn SageMaker Estimators, you can train and host Scikit-learn models on Amazon SageMaker.
 
 Supported versions of Scikit-learn: ``0.20.0``.
 
@@ -226,7 +227,7 @@ We recommend that you use the latest supported version, because that's where we 
 
 For more information about Scikit-learn, see https://scikit-learn.org/stable/
 
-For more information about Scikit-learn SageMaker ``Estimators``, see `Using Scikit-learn with the SageMaker Python SDK`_.
+For more information about Scikit-learn SageMaker Estimators, see `Using Scikit-learn with the SageMaker Python SDK`_.
 
 .. _Using Scikit-learn with the SageMaker Python SDK: https://sagemaker.readthedocs.io/en/stable/using_sklearn.html
 
@@ -236,13 +237,13 @@ SageMaker Reinforcement Learning Estimators
 
 With Reinforcement Learning (RL) Estimators, you can use reinforcement learning to train models on Amazon SageMaker.
 
-Supported versions of Coach: ``0.10.1`` with TensorFlow, ``0.11.0`` with TensorFlow or MXNet.
+Supported versions of Coach: ``0.10.1``, ``0.11.1`` with TensorFlow, ``0.11.0`` with TensorFlow or MXNet.
 For more information about Coach, see https://github.com/NervanaSystems/coach
 
-Supported versions of Ray: ``0.5.3`` with TensorFlow.
+Supported versions of Ray: ``0.5.3``, ``0.6.5`` with TensorFlow.
 For more information about Ray, see https://github.com/ray-project/ray
 
-For more information about SageMaker RL ``Estimators``, see `SageMaker Reinforcement Learning Estimators`_.
+For more information about SageMaker RL Estimators, see `SageMaker Reinforcement Learning Estimators`_.
 
 .. _SageMaker Reinforcement Learning Estimators: src/sagemaker/rl/README.rst
 

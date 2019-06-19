@@ -35,13 +35,10 @@ In the following sections, we'll discuss how to prepare a training script for ex
 Preparing the MXNet training script
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-+----------------------------------------------------------------------------------------------------------------------------------------------------------+
-| WARNING                                                                                                                                                  |
-+==========================================================================================================================================================+
-| The structure for training scripts changed starting at MXNet version 1.3.                                                                                |
-| Make sure you refer to the correct section of this README when you prepare your script.                                                                  |
-| For information on how to upgrade an old script to the new format, see `"Updating your MXNet training script" <#updating-your-mxnet-training-script>`__. |
-+----------------------------------------------------------------------------------------------------------------------------------------------------------+
+.. warning::
+    The structure for training scripts changed starting at MXNet version 1.3.
+    Make sure you refer to the correct section of this README when you prepare your script.
+    For information on how to upgrade an old script to the new format, see `"Updating your MXNet training script" <#updating-your-mxnet-training-script>`__.
 
 For versions 1.3 and higher
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -142,7 +139,7 @@ You don't have to use all the arguments, arguments you don't care about can be i
     def train(hyperparameters, num_gpus, **kwargs):
         pass
 
-**Note: Writing a training script that imports correctly**
+**Note: Writing a training script that imports correctly:**
 When SageMaker runs your training script, it imports it as a Python module and then invokes ``train`` on the imported module. Consequently, you should not include any statements that won't execute successfully in SageMaker when your module is imported. For example, don't attempt to open any local files in top-level statements in your training script.
 
 If you want to run your training script locally via the Python interpreter, look at using a ``___name__ == '__main__'`` guard, discussed in more detail here: https://stackoverflow.com/questions/419163/what-does-if-name-main-do .
@@ -701,12 +698,12 @@ This one function should handle processing the input, performing a prediction, a
 The return object should be one of the following:
 
 For versions 1.4 and higher:
-----------------------------
+
 - a tuple with two items: the response data and ``accept_type`` (the content type of the response data), or
-- the response data: (the content type of the response will be set to either the accept header in the initial request or default to application/json)
+- the response data: (the content type of the response will be set to either the accept header in the initial request or default to "application/json")
 
 For versions 1.3 and lower:
----------------------------
+
 - a tuple with two items: the response data and ``accept_type`` (the content type of the response data), or
 - a Flask response object: http://flask.pocoo.org/docs/1.0/api/#response-objects
 
@@ -828,5 +825,7 @@ The Docker images extend Ubuntu 16.04.
 You can select version of MXNet by passing a ``framework_version`` keyword arg to the MXNet Estimator constructor. Currently supported versions are listed in the above table. You can also set ``framework_version`` to only specify major and minor version, e.g ``1.2``, which will cause your training script to be run on the latest supported patch version of that minor version, which in this example would be 1.2.1.
 Alternatively, you can build your own image by following the instructions in the SageMaker MXNet containers repository, and passing ``image_name`` to the MXNet Estimator constructor.
 
-You can visit the SageMaker MXNet training containers repository here: https://github.com/aws/sagemaker-mxnet-container
-You can visit the SageMaker MXNet serving containers repository here: https://github.com/aws/sagemaker-mxnet-serving-container
+You can visit the SageMaker MXNet container repositories here:
+
+- training: https://github.com/aws/sagemaker-mxnet-container
+- serving: https://github.com/aws/sagemaker-mxnet-serving-container
