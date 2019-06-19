@@ -126,10 +126,10 @@ The following are some examples to define estimators with Git support:
         # In this example, the entry point 'mnist.py' is all we need for source code.
         # We need to specify the path to it in the Git repo.
         mx_estimator = MXNet(entry_point='mxnet/mnist.py',
-                                    role='SageMakerRole',
-                                    git_config=git_config,
-                                    train_instance_count=1,
-                                    train_instance_type='ml.c4.xlarge')
+                             role='SageMakerRole',
+                             git_config=git_config,
+                             train_instance_count=1,
+                             train_instance_type='ml.c4.xlarge')
 
         # In this example, besides entry point and other source code in source directory, we still need some
         # dependencies for the training job. Dependencies should also be paths inside the Git repo.
