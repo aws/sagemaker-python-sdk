@@ -18,7 +18,9 @@ import tarfile
 import boto3
 import numpy
 import pytest
-import tests.integ.local_mode_utils as local_mode_utils
+import tempfile
+
+import tests.integ.lock as lock
 from tests.integ import DATA_DIR, PYTHON_VERSION
 from tests.integ.timeout import timeout
 
@@ -26,6 +28,7 @@ from sagemaker.local import LocalSession, LocalSagemakerRuntimeClient, LocalSage
 from sagemaker.mxnet import MXNet
 from sagemaker.tensorflow import TensorFlow
 
+LOCK_PATH = os.path.join(tempfile.gettempdir(), 'sagemaker_test_local_mode_lock')
 DATA_PATH = os.path.join(DATA_DIR, 'iris', 'data')
 DEFAULT_REGION = 'us-west-2'
 
@@ -101,7 +104,7 @@ def test_tf_local_mode(tf_full_version, sagemaker_local_session):
         print('job succeeded: {}'.format(estimator.latest_training_job.name))
 
     endpoint_name = estimator.latest_training_job.name
-    with local_mode_utils.lock():
+    with lock.lock(LOCK_PATH):
         try:
             json_predictor = estimator.deploy(initial_instance_count=1,
                                               instance_type='local',
@@ -140,7 +143,7 @@ def test_tf_distributed_local_mode(sagemaker_local_session):
 
     endpoint_name = estimator.latest_training_job.name
 
-    with local_mode_utils.lock():
+    with lock.lock(LOCK_PATH):
         try:
             json_predictor = estimator.deploy(initial_instance_count=1,
                                               instance_type='local',
@@ -178,7 +181,7 @@ def test_tf_local_data(sagemaker_local_session):
         print('job succeeded: {}'.format(estimator.latest_training_job.name))
 
     endpoint_name = estimator.latest_training_job.name
-    with local_mode_utils.lock():
+    with lock.lock(LOCK_PATH):
         try:
             json_predictor = estimator.deploy(initial_instance_count=1,
                                               instance_type='local',
@@ -217,7 +220,7 @@ def test_tf_local_data_local_script():
         print('job succeeded: {}'.format(estimator.latest_training_job.name))
 
     endpoint_name = estimator.latest_training_job.name
-    with local_mode_utils.lock():
+    with lock.lock(LOCK_PATH):
         try:
             json_predictor = estimator.deploy(initial_instance_count=1,
                                               instance_type='local',
@@ -241,7 +244,7 @@ def test_local_mode_serving_from_s3_model(sagemaker_local_session, mxnet_model, 
     s3_model.sagemaker_session = sagemaker_local_session
 
     predictor = None
-    with local_mode_utils.lock():
+    with lock.lock(LOCK_PATH):
         try:
             predictor = s3_model.deploy(initial_instance_count=1, instance_type='local')
             data = numpy.zeros(shape=(1, 1, 28, 28))
@@ -255,7 +258,7 @@ def test_local_mode_serving_from_s3_model(sagemaker_local_session, mxnet_model, 
 def test_local_mode_serving_from_local_model(tmpdir, sagemaker_local_session, mxnet_model):
     predictor = None
 
-    with local_mode_utils.lock():
+    with lock.lock(LOCK_PATH):
         try:
             path = 'file://%s' % (str(tmpdir))
             model = mxnet_model(path)
@@ -285,7 +288,7 @@ def test_mxnet_local_mode(sagemaker_local_session, mxnet_full_version):
     mx.fit({'train': train_input, 'test': test_input})
     endpoint_name = mx.latest_training_job.name
 
-    with local_mode_utils.lock():
+    with lock.lock(LOCK_PATH):
         try:
             predictor = mx.deploy(1, 'local', endpoint_name=endpoint_name)
             data = numpy.zeros(shape=(1, 1, 28, 28))
@@ -310,7 +313,7 @@ def test_mxnet_local_data_local_script(mxnet_full_version):
     mx.fit({'train': train_input, 'test': test_input})
     endpoint_name = mx.latest_training_job.name
 
-    with local_mode_utils.lock():
+    with lock.lock(LOCK_PATH):
         try:
             predictor = mx.deploy(1, 'local', endpoint_name=endpoint_name)
             data = numpy.zeros(shape=(1, 1, 28, 28))
@@ -365,7 +368,7 @@ def test_local_transform_mxnet(sagemaker_local_session, tmpdir, mxnet_full_versi
     transformer = mx.transformer(1, 'local', assemble_with='Line', max_payload=1,
                                  strategy='SingleRecord', output_path=output_path)
 
-    with local_mode_utils.lock():
+    with lock.lock(LOCK_PATH):
         transformer.transform(transform_input, content_type='text/csv', split_type='Line')
         transformer.wait()
 
