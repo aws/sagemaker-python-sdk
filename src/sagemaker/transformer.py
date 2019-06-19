@@ -99,8 +99,10 @@ class Transformer(object):
             job_name (str): job name (default: None). If not specified, one will be generated.
             input_filter (str): A JSONPath to select a portion of the input to pass to the algorithm container for
                 inference. If you omit the field, it gets the value '$', representing the entire input.
+                For more information, see https://docs.aws.amazon.com/sagemaker/latest/dg/API_CreateTransformJob.html
                 Some examples: "$[1:]", "$.features"(default: None).
             output_filter (str): A JSONPath to select a portion of the joined/original output to return as the output.
+                For more information, see https://docs.aws.amazon.com/sagemaker/latest/dg/API_CreateTransformJob.html
                 Some examples: "$[1:]", "$.prediction" (default: None).
             join_source (str): The source of data to be joined to the transform output. It can be set to 'Input'
                 meaning the entire input record will be joined to the inference result.

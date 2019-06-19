@@ -55,9 +55,10 @@ def test_transform_mxnet(sagemaker_session, mxnet_full_version):
 
     kms_key_arn = get_or_create_kms_key(sagemaker_session)
     output_filter = "$"
+    input_filter = "$"
 
     transformer = _create_transformer_and_transform_job(mx, transform_input, kms_key_arn,
-                                                        input_filter=None, output_filter=output_filter,
+                                                        input_filter=input_filter, output_filter=output_filter,
                                                         join_source=None)
     with timeout_and_delete_model_with_transformer(transformer, sagemaker_session,
                                                    minutes=TRANSFORM_DEFAULT_TIMEOUT_MINUTES):
@@ -67,6 +68,7 @@ def test_transform_mxnet(sagemaker_session, mxnet_full_version):
         TransformJobName=transformer.latest_transform_job.name)
     assert kms_key_arn == job_desc['TransformResources']['VolumeKmsKeyId']
     assert output_filter == job_desc['DataProcessing']['OutputFilter']
+    assert input_filter == job_desc['DataProcessing']['InputFilter']
 
 
 @pytest.mark.canary_quick

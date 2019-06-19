@@ -578,17 +578,24 @@ def test_transform_pack_to_request(sagemaker_session):
         'InstanceType': INSTANCE_TYPE,
     }
 
+    data_processing = {
+        'OutputFilter': '$',
+        'InputFilter': '$',
+        'JoinSource': 'Input'
+    }
+
     expected_args = {
         'TransformJobName': JOB_NAME,
         'ModelName': model_name,
         'TransformInput': in_config,
         'TransformOutput': out_config,
         'TransformResources': resource_config,
+        'DataProcessing': data_processing,
     }
 
     sagemaker_session.transform(job_name=JOB_NAME, model_name=model_name, strategy=None, max_concurrent_transforms=None,
                                 max_payload=None, env=None, input_config=in_config, output_config=out_config,
-                                resource_config=resource_config, tags=None, data_processing=None)
+                                resource_config=resource_config, tags=None, data_processing=data_processing)
 
     _, _, actual_args = sagemaker_session.sagemaker_client.method_calls[0]
     assert actual_args == expected_args
