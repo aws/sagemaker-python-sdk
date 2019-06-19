@@ -472,7 +472,7 @@ def test_git_support_repo_not_provided(sagemaker_session):
 
 def test_git_support_git_clone_fail(sagemaker_session):
     entry_point = 'source_dir/entry_point'
-    git_config = {'repo': 'https://github.com/sagemaker-python-sdk/no-such-repo.git', 'branch': BRANCH}
+    git_config = {'repo': 'https://github.com/aws/no-such-repo.git', 'branch': BRANCH}
     model = DummyFrameworkModelForGit(sagemaker_session=sagemaker_session,
                                       entry_point=entry_point,
                                       git_config=git_config)

@@ -88,7 +88,7 @@ Git Support
 ~~~~~~~~~~~
 If you have your training scripts in your GitHub repository, you can use them directly without the trouble to download
 them to local machine. Git support can be enabled simply by providing ``git_config`` parameter when initializing an
-estimator. If git support is enabled, then ``entry_point``, ``source_dir`` and  ``dependencies`` should all be relative
+estimator. If Git support is enabled, then ``entry_point``, ``source_dir`` and  ``dependencies`` should all be relative
 paths in the Git repo. Note that if you decided to use Git support, then everything you need for ``entry_point``,
 ``source_dir`` and ``dependencies`` should be in a single Git repo.
 
@@ -97,18 +97,18 @@ Here are ways to specify ``git_config``:
 .. code:: python
 
         # Specifies the git_config parameter
-        git_config = {'repo': 'https://github.com/GaryTu1020/python-sdk-testing.git',
+        git_config = {'repo': 'https://github.com/username/repo-with-training-scripts.git',
                       'branch': 'branch1',
                       'commit': '4893e528afa4a790331e1b5286954f073b0f14a2'}
 
         # Alternatively, you can also specify git_config by providing only 'repo' and 'branch'.
         # If this is the case, the latest commit in the branch will be used.
-        git_config = {'repo': 'https://github.com/GaryTu1020/python-sdk-testing.git',
+        git_config = {'repo': 'https://github.com/username/repo-with-training-scripts.git',
                       'branch': 'branch1'}
 
         # Only providing 'repo' is also allowed. If this is the case, latest commit in
         # 'master' branch will be used.
-        git_config = {'repo': 'https://github.com/GaryTu1020/python-sdk-testing.git'
+        git_config = {'repo': 'https://github.com/username/repo-with-training-scripts.git'
 
 The following are some examples to define estimators with Git support:
 
@@ -121,8 +121,7 @@ The following are some examples to define estimators with Git support:
                                     source_dir='pytorch',
                                     git_config=git_config,
                                     train_instance_count=1,
-                                    train_instance_type='ml.c4.xlarge',
-                                    sagemaker_session=sagemaker_local_session)
+                                    train_instance_type='ml.c4.xlarge')
 
         # In this example, the entry point 'mnist.py' is all we need for source code.
         # We need to specify the path to it in the Git repo.
@@ -130,8 +129,7 @@ The following are some examples to define estimators with Git support:
                                     role='SageMakerRole',
                                     git_config=git_config,
                                     train_instance_count=1,
-                                    train_instance_type='ml.c4.xlarge',
-                                    sagemaker_session=sagemaker_local_session)
+                                    train_instance_type='ml.c4.xlarge')
 
         # In this example, besides entry point and other source code in source directory, we still need some
         # dependencies for the training job. Dependencies should also be paths inside the Git repo.
@@ -141,8 +139,7 @@ The following are some examples to define estimators with Git support:
                                     dependencies=['dep.py', 'foo/bar.py'],
                                     git_config=git_config,
                                     train_instance_count=1,
-                                    train_instance_type='ml.c4.xlarge',
-                                    sagemaker_session=sagemaker_local_session)
+                                    train_instance_type='ml.c4.xlarge')
 
 When Git support is enabled, users can still use local mode in the same way.
 
