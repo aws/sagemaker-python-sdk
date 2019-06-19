@@ -15,7 +15,9 @@ from __future__ import absolute_import
 import os
 
 import numpy
+import tempfile
 
+from tests.integ import lock as lock
 from sagemaker.mxnet.estimator import MXNet
 from sagemaker.pytorch.estimator import PyTorch
 from tests.integ import DATA_DIR, PYTHON_VERSION
@@ -23,6 +25,7 @@ from tests.integ import DATA_DIR, PYTHON_VERSION
 GIT_REPO = 'https://github.com/aws/sagemaker-python-sdk.git'
 BRANCH = 'test-branch-git-config'
 COMMIT = '329bfcf884482002c05ff7f44f62599ebc9f445a'
+LOCK_PATH = os.path.join(tempfile.gettempdir(), 'sagemaker_test_git_lock')
 
 
 def test_git_support_with_pytorch(sagemaker_local_session):
@@ -36,14 +39,15 @@ def test_git_support_with_pytorch(sagemaker_local_session):
 
     pytorch.fit({'training': 'file://' + os.path.join(data_path, 'training')})
 
-    try:
-        predictor = pytorch.deploy(initial_instance_count=1, instance_type='local')
+    with lock.lock(LOCK_PATH):
+        try:
+            predictor = pytorch.deploy(initial_instance_count=1, instance_type='local')
 
-        data = numpy.zeros(shape=(1, 1, 28, 28)).astype(numpy.float32)
-        result = predictor.predict(data)
-        assert result is not None
-    finally:
-        predictor.delete_endpoint()
+            data = numpy.zeros(shape=(1, 1, 28, 28)).astype(numpy.float32)
+            result = predictor.predict(data)
+            assert result is not None
+        finally:
+            predictor.delete_endpoint()
 
 
 def test_git_support_with_mxnet(sagemaker_local_session, mxnet_full_version):
@@ -65,11 +69,12 @@ def test_git_support_with_mxnet(sagemaker_local_session, mxnet_full_version):
     assert 'mnist.py' in files
     assert os.path.exists(mx.dependencies[0])
 
-    try:
-        predictor = mx.deploy(initial_instance_count=1, instance_type='local')
+    with lock.lock(LOCK_PATH):
+        try:
+            predictor = mx.deploy(initial_instance_count=1, instance_type='local')
 
-        data = numpy.zeros(shape=(1, 1, 28, 28))
-        result = predictor.predict(data)
-        assert result is not None
-    finally:
-        predictor.delete_endpoint()
+            data = numpy.zeros(shape=(1, 1, 28, 28))
+            result = predictor.predict(data)
+            assert result is not None
+        finally:
+            predictor.delete_endpoint()

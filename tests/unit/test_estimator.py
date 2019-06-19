@@ -680,7 +680,7 @@ def test_git_support_bad_repo_url_format(sagemaker_session):
 
 
 def test_git_support_git_clone_fail(sagemaker_session):
-    git_config = {'repo': 'https://github.com/GaryTu1020/no-such-repo.git', 'branch': BRANCH}
+    git_config = {'repo': 'https://github.com/aws/no-such-repo.git', 'branch': BRANCH}
     fw = DummyFramework(entry_point='entry_point', git_config=git_config, role=ROLE,
                         sagemaker_session=sagemaker_session, train_instance_count=INSTANCE_COUNT,
                         train_instance_type=INSTANCE_TYPE, enable_cloudwatch_metrics=True)

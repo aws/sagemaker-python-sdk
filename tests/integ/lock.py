@@ -15,24 +15,25 @@ from __future__ import absolute_import
 import fcntl
 import os
 import time
+import tempfile
 from contextlib import contextmanager
 
-import tests.integ
-
-LOCK_PATH = os.path.join(tests.integ.DATA_DIR, 'local_mode_lock')
+DEFAULT_LOCK_PATH = os.path.join(tempfile.gettempdir(), 'sagemaker_test_lock')
 
 
 @contextmanager
-def lock():
-    # Since Local Mode uses the same port for serving, we need a lock in order
-    # to allow concurrent test execution.
-    local_mode_lock_fd = open(LOCK_PATH, 'w')
-    local_mode_lock = local_mode_lock_fd.fileno()
+def lock(path=DEFAULT_LOCK_PATH):
+    """Create a file lock to control concurrent test execution. Certain tests or
+    test operations need to limit concurrency to work reliably. Examples include
+    local mode endpoint tests and vpc creation tests.
+    """
+    f = open(path, 'w')
+    fd = f.fileno()
 
-    fcntl.lockf(local_mode_lock, fcntl.LOCK_EX)
+    fcntl.lockf(fd, fcntl.LOCK_EX)
 
     try:
         yield
     finally:
         time.sleep(5)
-        fcntl.lockf(local_mode_lock, fcntl.LOCK_UN)
+        fcntl.lockf(fd, fcntl.LOCK_UN)
