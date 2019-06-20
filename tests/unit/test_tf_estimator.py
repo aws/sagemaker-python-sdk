@@ -870,11 +870,10 @@ def test_script_mode_deprecated_args(sagemaker_session):
     ) in str(e.value)
 
 
-def test_legacy_mode_deprecation_error(sagemaker_session):
-    with pytest.raises(AttributeError) as e:
-        _build_tf(sagemaker_session=sagemaker_session, framework_version='1.13.1',
-                  py_version='py2', script_mode=False)
-    assert 'Legacy mode is deprecated' in str(e.value)
+def test_legacy_mode_deprecated(sagemaker_session):
+    tf = _build_tf(sagemaker_session=sagemaker_session, framework_version='1.13.1',
+                   py_version='py2', script_mode=False)
+    assert tf._script_mode_enabled() is True
 
 
 def test_script_mode_enabled(sagemaker_session):

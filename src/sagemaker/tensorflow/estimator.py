@@ -323,12 +323,12 @@ class TensorFlow(Framework):
                     )
                 )
 
-        if (not self._script_mode_enabled()) and \
-           [int(s) for s in self.framework_version.split('.')] >= self._LOWEST_SCRIPT_MODE_ONLY_VERSION:
-            raise AttributeError(
-                'Legacy mode is deprecated in versions 1.13 and higher.'
-                'Please set the script_mode argument to True to use Script Mode'
-            )
+        if (not self._script_mode_enabled()) and self._only_script_mode_supported():
+            logger.warning('Legacy mode is deprecated in versions 1.13 and higher. Using script mode instead.')
+            self.script_mode = True
+
+    def _only_script_mode_supported(self):
+        return [int(s) for s in self.framework_version.split('.')] >= self._LOWEST_SCRIPT_MODE_ONLY_VERSION
 
     def _validate_requirements_file(self, requirements_file):
         if not requirements_file:
