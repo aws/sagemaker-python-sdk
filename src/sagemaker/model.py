@@ -23,15 +23,18 @@ from sagemaker.transformer import Transformer
 
 LOGGER = logging.getLogger('sagemaker')
 
-NEO_ALLOWED_TARGET_INSTANCE_FAMILY = set(['ml_c5', 'ml_m5', 'ml_c4', 'ml_m4', 'jetson_tx1', 'jetson_tx2', 'ml_p2',
-                                          'ml_p3', 'deeplens', 'rasp3b'])
+NEO_ALLOWED_TARGET_INSTANCE_FAMILY = set(['ml_c5', 'ml_m5', 'ml_c4', 'ml_m4',
+                                          'jetson_tx1', 'jetson_tx2', 'jetson_nano', 'ml_p2',
+                                          'ml_p3', 'deeplens', 'rasp3b',
+                                          'rk3288', 'rk3399', 'sbe_c'])
 NEO_ALLOWED_FRAMEWORKS = set(['mxnet', 'tensorflow', 'pytorch', 'onnx', 'xgboost'])
 
 NEO_IMAGE_ACCOUNT = {
     'us-west-2': '301217895009',
     'us-east-1': '785573368785',
     'eu-west-1': '802834080501',
-    'us-east-2': '007439368137'
+    'us-east-2': '007439368137',
+    'ap-northeast-1': '941853720454'
 }
 
 
