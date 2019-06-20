@@ -1,5 +1,113 @@
 # Changelog
 
+## v1.28.3 (2019-06-20)
+
+### Bug fixes and other changes
+
+ * update Sagemaker Neo regions and instance families
+
+### Documentation changes
+
+ * fix punctuation in MXNet version list
+ * clean up MXNet and TF documentation
+
+## v1.28.2 (2019-06-19)
+
+### Bug fixes and other changes
+
+ * prevent race condition in vpc tests
+
+## v1.28.1 (2019-06-17)
+
+### Bug fixes and other changes
+
+ * Update setup.py
+
+## v1.28.0 (2019-06-17)
+
+### Features
+
+ * Add DataProcessing Fields for Batch Transform
+
+## v1.27.0 (2019-06-11)
+
+### Features
+
+ * add wait argument to estimator deploy
+
+### Bug fixes and other changes
+
+ * fix logger creation in Chainer integ test script
+
+## v1.26.0 (2019-06-10)
+
+### Features
+
+ * emit estimator transformer tags to model
+ * Add extra_args to enable encrypted objects upload
+
+### Bug fixes and other changes
+
+ * downgrade c5 in integ tests and test all TF Script Mode images
+
+### Documentation changes
+
+ * include FrameworkModel and ModelPackage in API docs
+
+## v1.25.1 (2019-06-06)
+
+### Bug fixes and other changes
+
+ * use unique job name in hyperparameter tuning test
+
+## v1.25.0 (2019-06-03)
+
+### Features
+
+ * repack_model support dependencies and code location
+
+### Bug fixes and other changes
+
+ * skip p2 tests in ap-south-east
+ * add better default transform job name handling within Transformer
+
+### Documentation changes
+
+ * TFS support for pre/processing functions
+
+## v1.24.0 (2019-05-29)
+
+### Features
+
+ * add region check for Neo service
+
+## v1.23.0 (2019-05-27)
+
+### Features
+
+ * support MXNet 1.4 with MMS
+
+### Documentation changes
+
+ * update using_sklearn.rst parameter name
+
+## v1.22.0 (2019-05-23)
+
+### Features
+
+ * add encryption option to "record_set"
+
+### Bug fixes and other changes
+
+ * honor source_dir from S3
+
+## v1.21.2 (2019-05-22)
+
+### Bug fixes and other changes
+
+ * set _current_job_name in attach()
+ * emit training jobs tags to estimator
+
 ## v1.21.1 (2019-05-21)
 
 ### Bug fixes and other changes

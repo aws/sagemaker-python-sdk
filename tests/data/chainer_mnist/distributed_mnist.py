@@ -1,4 +1,4 @@
-# Copyright 2017-2018 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright 2017-2019 Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -26,7 +26,7 @@ import chainermn
 import numpy as np
 import sagemaker_containers
 
-logger = logging.getLogger('user_script')
+logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 
 

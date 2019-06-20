@@ -79,7 +79,7 @@ class Transformer(object):
         self.sagemaker_session = sagemaker_session or Session()
 
     def transform(self, data, data_type='S3Prefix', content_type=None, compression_type=None, split_type=None,
-                  job_name=None):
+                  job_name=None, input_filter=None, output_filter=None, join_source=None):
         """Start a new transform job.
 
         Args:
@@ -97,6 +97,15 @@ class Transformer(object):
             split_type (str): The record delimiter for the input object (default: 'None').
                 Valid values: 'None', 'Line', 'RecordIO', and 'TFRecord'.
             job_name (str): job name (default: None). If not specified, one will be generated.
+            input_filter (str): A JSONPath to select a portion of the input to pass to the algorithm container for
+                inference. If you omit the field, it gets the value '$', representing the entire input.
+                Some examples: "$[1:]", "$.features"(default: None).
+            output_filter (str): A JSONPath to select a portion of the joined/original output to return as the output.
+                Some examples: "$[1:]", "$.prediction" (default: None).
+            join_source (str): The source of data to be joined to the transform output. It can be set to 'Input'
+                meaning the entire input record will be joined to the inference result.
+                You can use OutputFilter to select the useful portion before uploading to S3. (default: None).
+                Valid values: Input, None.
         """
         local_mode = self.sagemaker_session.local_mode
         if not local_mode and not data.startswith('s3://'):
@@ -105,14 +114,18 @@ class Transformer(object):
         if job_name is not None:
             self._current_job_name = job_name
         else:
-            base_name = self.base_transform_job_name or base_name_from_image(self._retrieve_image_name())
+            base_name = self.base_transform_job_name
+
+            if base_name is None:
+                base_name = self._retrieve_base_name()
+
             self._current_job_name = name_from_base(base_name)
 
         if self.output_path is None:
             self.output_path = 's3://{}/{}'.format(self.sagemaker_session.default_bucket(), self._current_job_name)
 
         self.latest_transform_job = _TransformJob.start_new(self, data, data_type, content_type, compression_type,
-                                                            split_type)
+                                                            split_type, input_filter, output_filter, join_source)
 
     def delete_model(self):
         """Delete the corresponding SageMaker model for this Transformer.
@@ -120,10 +133,28 @@ class Transformer(object):
         """
         self.sagemaker_session.delete_model(self.model_name)
 
+    def _retrieve_base_name(self):
+        image_name = self._retrieve_image_name()
+
+        if image_name:
+            return base_name_from_image(image_name)
+
+        return self.model_name
+
     def _retrieve_image_name(self):
         try:
             model_desc = self.sagemaker_session.sagemaker_client.describe_model(ModelName=self.model_name)
-            return model_desc['PrimaryContainer']['Image']
+
+            primary_container = model_desc.get('PrimaryContainer')
+            if primary_container:
+                return primary_container.get('Image')
+
+            containers = model_desc.get('Containers')
+            if containers:
+                return containers[0].get('Image')
+
+            return None
+
         except exceptions.ClientError:
             raise ValueError('Failed to fetch model information for %s. '
                              'Please ensure that the model exists. '
@@ -192,8 +223,10 @@ class Transformer(object):
 
 class _TransformJob(_Job):
     @classmethod
-    def start_new(cls, transformer, data, data_type, content_type, compression_type, split_type):
+    def start_new(cls, transformer, data, data_type, content_type, compression_type,
+                  split_type, input_filter, output_filter, join_source):
         config = _TransformJob._load_config(data, data_type, content_type, compression_type, split_type, transformer)
+        data_processing = _TransformJob._prepare_data_processing(input_filter, output_filter, join_source)
 
         transformer.sagemaker_session.transform(job_name=transformer._current_job_name,
                                                 model_name=transformer.model_name, strategy=transformer.strategy,
@@ -201,7 +234,8 @@ class _TransformJob(_Job):
                                                 max_payload=transformer.max_payload, env=transformer.env,
                                                 input_config=config['input_config'],
                                                 output_config=config['output_config'],
-                                                resource_config=config['resource_config'], tags=transformer.tags)
+                                                resource_config=config['resource_config'],
+                                                tags=transformer.tags, data_processing=data_processing)
 
         return cls(transformer.sagemaker_session, transformer._current_job_name)
 
@@ -263,5 +297,23 @@ class _TransformJob(_Job):
 
         if volume_kms_key is not None:
             config['VolumeKmsKeyId'] = volume_kms_key
+
+        return config
+
+    @staticmethod
+    def _prepare_data_processing(input_filter, output_filter, join_source):
+        config = {}
+
+        if input_filter is not None:
+            config['InputFilter'] = input_filter
+
+        if output_filter is not None:
+            config['OutputFilter'] = output_filter
+
+        if join_source is not None:
+            config['JoinSource'] = join_source
+
+        if len(config) == 0:
+            return None
 
         return config

@@ -21,11 +21,13 @@ import os
 import re
 import time
 
+from boto3 import exceptions
 import pytest
 from mock import call, patch, Mock, MagicMock
 
 import sagemaker
 
+BUCKET_WITHOUT_WRITING_PERMISSION = 's3://bucket-without-writing-permission'
 
 NAME = 'base_name'
 BUCKET_NAME = 'some_bucket'
@@ -300,207 +302,201 @@ def test_create_tar_file_with_auto_generated_path(open):
     assert files == [['/tmp/a', 'a'], ['/tmp/b', 'b']]
 
 
-def write_file(path, content):
-    with open(path, 'a') as f:
-        f.write(content)
+def create_file_tree(root, tree):
+    for file in tree:
+        try:
+            os.makedirs(os.path.join(root, os.path.dirname(file)))
+        except:  # noqa: E722 Using bare except because p2/3 incompatibility issues.
+            pass
+        with open(os.path.join(root, file), 'a') as f:
+            f.write(file)
 
 
-def test_repack_model_without_source_dir(tmpdir):
-
-    tmp = str(tmpdir)
-
-    model_path = os.path.join(tmp, 'model')
-    write_file(model_path, 'model data')
-
-    source_dir = os.path.join(tmp, 'source-dir')
-    os.mkdir(source_dir)
-    script_path = os.path.join(source_dir, 'inference.py')
-    write_file(script_path, 'inference script')
-
-    script_path = os.path.join(source_dir, 'this-file-should-not-be-included.py')
-    write_file(script_path, 'This file should not be included')
-
-    contents = [model_path]
-
-    sagemaker_session = MagicMock()
-    mock_s3_model_tar(contents, sagemaker_session, tmp)
-    fake_upload_path = mock_s3_upload(sagemaker_session, tmp)
-
-    model_uri = 's3://fake/location'
-
-    new_model_uri = sagemaker.utils.repack_model(os.path.join(source_dir, 'inference.py'),
-                                                 None,
-                                                 model_uri,
-                                                 sagemaker_session)
-
-    assert list_tar_files(fake_upload_path, tmpdir) == {'/code/inference.py', '/model'}
-    assert re.match(r'^s3://fake/model-\d+-\d+.tar.gz$', new_model_uri)
+@pytest.fixture()
+def tmp(tmpdir):
+    yield str(tmpdir)
 
 
-def test_repack_model_with_entry_point_without_path_without_source_dir(tmpdir):
+def test_repack_model_without_source_dir(tmp, fake_s3):
 
-    tmp = str(tmpdir)
+    create_file_tree(tmp, ['model-dir/model',
+                           'dependencies/a',
+                           'dependencies/b',
+                           'source-dir/inference.py',
+                           'source-dir/this-file-should-not-be-included.py'])
 
-    model_path = os.path.join(tmp, 'model')
-    write_file(model_path, 'model data')
+    fake_s3.tar_and_upload('model-dir', 's3://fake/location')
 
-    source_dir = os.path.join(tmp, 'source-dir')
-    os.mkdir(source_dir)
-    script_path = os.path.join(source_dir, 'inference.py')
-    write_file(script_path, 'inference script')
+    sagemaker.utils.repack_model(inference_script=os.path.join(tmp, 'source-dir/inference.py'),
+                                 source_directory=None,
+                                 dependencies=[os.path.join(tmp, 'dependencies/a'),
+                                               os.path.join(tmp, 'dependencies/b')],
+                                 model_uri='s3://fake/location',
+                                 repacked_model_uri='s3://destination-bucket/model.tar.gz',
+                                 sagemaker_session=fake_s3.sagemaker_session)
 
-    script_path = os.path.join(source_dir, 'this-file-should-not-be-included.py')
-    write_file(script_path, 'This file should not be included')
+    assert list_tar_files(fake_s3.fake_upload_path, tmp) == {'/model', '/code/a',
+                                                             '/code/b', '/code/inference.py'}
 
-    contents = [model_path]
 
-    sagemaker_session = MagicMock()
-    mock_s3_model_tar(contents, sagemaker_session, tmp)
-    fake_upload_path = mock_s3_upload(sagemaker_session, tmp)
+def test_repack_model_with_entry_point_without_path_without_source_dir(tmp, fake_s3):
 
-    model_uri = 's3://fake/location'
+    create_file_tree(tmp, ['model-dir/model',
+                           'source-dir/inference.py',
+                           'source-dir/this-file-should-not-be-included.py'])
+
+    fake_s3.tar_and_upload('model-dir', 's3://fake/location')
 
     cwd = os.getcwd()
     try:
-        os.chdir(source_dir)
+        os.chdir(os.path.join(tmp, 'source-dir'))
 
-        new_model_uri = sagemaker.utils.repack_model('inference.py',
-                                                     None,
-                                                     model_uri,
-                                                     sagemaker_session)
+        sagemaker.utils.repack_model('inference.py',
+                                     None,
+                                     None,
+                                     's3://fake/location',
+                                     's3://destination-bucket/model.tar.gz',
+                                     fake_s3.sagemaker_session)
     finally:
         os.chdir(cwd)
 
-    assert list_tar_files(fake_upload_path, tmpdir) == {'/code/inference.py', '/model'}
-    assert re.match(r'^s3://fake/model-\d+-\d+.tar.gz$', new_model_uri)
+    assert list_tar_files(fake_s3.fake_upload_path, tmp) == {'/code/inference.py', '/model'}
 
 
-def test_repack_model_from_s3_saved_model_to_s3(tmpdir):
+def test_repack_model_from_s3_to_s3(tmp, fake_s3):
 
-    tmp = str(tmpdir)
+    create_file_tree(tmp, ['model-dir/model',
+                           'source-dir/inference.py',
+                           'source-dir/this-file-should-be-included.py'])
 
-    model_path = os.path.join(tmp, 'model')
-    write_file(model_path, 'model data')
+    fake_s3.tar_and_upload('model-dir', 's3://fake/location')
 
-    source_dir = os.path.join(tmp, 'source-dir')
-    os.mkdir(source_dir)
-    script_path = os.path.join(source_dir, 'inference.py')
-    write_file(script_path, 'inference script')
+    sagemaker.utils.repack_model('inference.py',
+                                 os.path.join(tmp, 'source-dir'),
+                                 None,
+                                 's3://fake/location',
+                                 's3://destination-bucket/model.tar.gz',
+                                 fake_s3.sagemaker_session)
 
-    script_path = os.path.join(source_dir, 'this-file-should-be-included.py')
-    write_file(script_path, 'This file should be included')
-
-    contents = [model_path]
-
-    sagemaker_session = MagicMock()
-    mock_s3_model_tar(contents, sagemaker_session, tmp)
-    fake_upload_path = mock_s3_upload(sagemaker_session, tmp)
-
-    model_uri = 's3://fake/location'
-
-    new_model_uri = sagemaker.utils.repack_model('inference.py',
-                                                 source_dir,
-                                                 model_uri,
-                                                 sagemaker_session)
-
-    assert list_tar_files(fake_upload_path, tmpdir) == {'/code/this-file-should-be-included.py',
-                                                        '/code/inference.py',
-                                                        '/model'}
-    assert re.match(r'^s3://fake/model-\d+-\d+.tar.gz$', new_model_uri)
+    assert list_tar_files(fake_s3.fake_upload_path, tmp) == {'/code/this-file-should-be-included.py',
+                                                             '/code/inference.py',
+                                                             '/model'}
 
 
-def test_repack_model_from_file_saves_model_to_file(tmpdir):
-
-    tmp = str(tmpdir)
-
-    model_path = os.path.join(tmp, 'model')
-    write_file(model_path, 'model data')
-
-    source_dir = os.path.join(tmp, 'source-dir')
-    os.mkdir(source_dir)
-    script_path = os.path.join(source_dir, 'inference.py')
-    write_file(script_path, 'inference script')
+def test_repack_model_from_file_to_file(tmp):
+    create_file_tree(tmp, ['model',
+                           'dependencies/a',
+                           'source-dir/inference.py'])
 
     model_tar_path = os.path.join(tmp, 'model.tar.gz')
-    sagemaker.utils.create_tar_file([model_path], model_tar_path)
+    sagemaker.utils.create_tar_file([os.path.join(tmp, 'model')], model_tar_path)
 
     sagemaker_session = MagicMock()
 
     file_mode_path = 'file://%s' % model_tar_path
-    new_model_uri = sagemaker.utils.repack_model('inference.py',
-                                                 source_dir,
-                                                 file_mode_path,
-                                                 sagemaker_session)
+    destination_path = 'file://%s' % os.path.join(tmp, 'repacked-model.tar.gz')
 
-    assert os.path.dirname(new_model_uri) == os.path.dirname(file_mode_path)
-    assert list_tar_files(new_model_uri, tmpdir) == {'/code/inference.py', '/model'}
+    sagemaker.utils.repack_model('inference.py',
+                                 os.path.join(tmp, 'source-dir'),
+                                 [os.path.join(tmp, 'dependencies/a')],
+                                 file_mode_path,
+                                 destination_path,
+                                 sagemaker_session)
 
-
-def test_repack_model_with_inference_code_should_replace_the_code(tmpdir):
-
-    tmp = str(tmpdir)
-
-    model_path = os.path.join(tmp, 'model')
-    write_file(model_path, 'model data')
-
-    source_dir = os.path.join(tmp, 'source-dir')
-    os.mkdir(source_dir)
-    script_path = os.path.join(source_dir, 'new-inference.py')
-    write_file(script_path, 'inference script')
-
-    old_code_path = os.path.join(tmp, 'code')
-    os.mkdir(old_code_path)
-    old_script_path = os.path.join(old_code_path, 'old-inference.py')
-    write_file(old_script_path, 'old inference script')
-    contents = [model_path, old_code_path]
-
-    sagemaker_session = MagicMock()
-    mock_s3_model_tar(contents, sagemaker_session, tmp)
-    fake_upload_path = mock_s3_upload(sagemaker_session, tmp)
-
-    model_uri = 's3://fake/location'
-
-    new_model_uri = sagemaker.utils.repack_model('inference.py',
-                                                 source_dir,
-                                                 model_uri,
-                                                 sagemaker_session)
-
-    assert list_tar_files(fake_upload_path, tmpdir) == {'/code/new-inference.py', '/model'}
-    assert re.match(r'^s3://fake/model-\d+-\d+.tar.gz$', new_model_uri)
+    assert list_tar_files(destination_path, tmp) == {'/code/a', '/code/inference.py', '/model'}
 
 
-def mock_s3_model_tar(contents, sagemaker_session, tmp):
+def test_repack_model_with_inference_code_should_replace_the_code(tmp, fake_s3):
+    create_file_tree(tmp, ['model-dir/model',
+                           'source-dir/new-inference.py',
+                           'model-dir/code/old-inference.py'])
+
+    fake_s3.tar_and_upload('model-dir', 's3://fake/location')
+
+    sagemaker.utils.repack_model('inference.py',
+                                 os.path.join(tmp, 'source-dir'),
+                                 None,
+                                 's3://fake/location',
+                                 's3://destination-bucket/repacked-model',
+                                 fake_s3.sagemaker_session)
+
+    assert list_tar_files(fake_s3.fake_upload_path, tmp) == {'/code/new-inference.py', '/model'}
+
+
+def test_repack_model_from_file_to_folder(tmp):
+    create_file_tree(tmp, ['model',
+                           'source-dir/inference.py'])
+
     model_tar_path = os.path.join(tmp, 'model.tar.gz')
-    sagemaker.utils.create_tar_file(contents, model_tar_path)
-    mock_s3_download(sagemaker_session, model_tar_path)
+    sagemaker.utils.create_tar_file([os.path.join(tmp, 'model')], model_tar_path)
+
+    file_mode_path = 'file://%s' % model_tar_path
+
+    sagemaker.utils.repack_model('inference.py',
+                                 os.path.join(tmp, 'source-dir'),
+                                 [],
+                                 file_mode_path,
+                                 'file://%s/repacked-model.tar.gz' % tmp,
+                                 MagicMock())
+
+    assert list_tar_files('file://%s/repacked-model.tar.gz' % tmp, tmp) == {'/code/inference.py', '/model'}
 
 
-def mock_s3_download(sagemaker_session, model_tar_path):
-    def download_file(_, target):
-        shutil.copy2(model_tar_path, target)
+class FakeS3(object):
 
-    sagemaker_session.boto_session.resource().Bucket().download_file.side_effect = download_file
+    def __init__(self, tmp):
+        self.tmp = tmp
+        self.sagemaker_session = MagicMock()
+        self.location_map = {}
+        self.current_bucket = None
+
+        self.sagemaker_session.boto_session.resource().Bucket().download_file.side_effect = self.download_file
+        self.sagemaker_session.boto_session.resource().Bucket.side_effect = self.bucket
+        self.fake_upload_path = self.mock_s3_upload()
+
+    def bucket(self, name):
+        self.current_bucket = name
+        return self
+
+    def download_file(self, path, target):
+        key = '%s/%s' % (self.current_bucket, path)
+        shutil.copy2(self.location_map[key], target)
+
+    def tar_and_upload(self, path, fake_location):
+        tar_location = os.path.join(self.tmp, 'model-%s.tar.gz' % time.time())
+        with tarfile.open(tar_location, mode='w:gz') as t:
+            t.add(os.path.join(self.tmp, path), arcname=os.path.sep)
+
+        self.location_map[fake_location.replace('s3://', '')] = tar_location
+        return tar_location
+
+    def mock_s3_upload(self):
+        dst = os.path.join(self.tmp, 'dst')
+
+        class MockS3Object(object):
+
+            def __init__(self, bucket, key):
+                self.bucket = bucket
+                self.key = key
+
+            def upload_file(self, target):
+                if self.bucket in BUCKET_WITHOUT_WRITING_PERMISSION:
+                    raise exceptions.S3UploadFailedError()
+                shutil.copy2(target, dst)
+
+        self.sagemaker_session.boto_session.resource().Object = MockS3Object
+        return dst
 
 
-def mock_s3_upload(sagemaker_session, tmp):
-    dst = os.path.join(tmp, 'dst')
-
-    class MockS3Object(object):
-
-        def __init__(self, bucket, key):
-            self.bucket = bucket
-            self.key = key
-
-        def upload_file(self, target):
-            shutil.copy2(target, dst)
-
-    sagemaker_session.boto_session.resource().Object = MockS3Object
-    return dst
+@pytest.fixture()
+def fake_s3(tmp):
+    return FakeS3(tmp)
 
 
-def list_tar_files(tar_ball, tmpdir):
+def list_tar_files(tar_ball, tmp):
     tar_ball = tar_ball.replace('file://', '')
-    startpath = str(tmpdir.ensure('tmp', dir=True))
+    startpath = os.path.join(tmp, 'startpath')
+    os.mkdir(startpath)
 
     with tarfile.open(name=tar_ball, mode='r:gz') as t:
         t.extractall(path=startpath)

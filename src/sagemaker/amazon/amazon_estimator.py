@@ -159,7 +159,7 @@ class AmazonAlgorithmEstimatorBase(EstimatorBase):
         if wait:
             self.latest_training_job.wait(logs=logs)
 
-    def record_set(self, train, labels=None, channel="train"):
+    def record_set(self, train, labels=None, channel="train", encrypt=False):
         """Build a :class:`~RecordSet` from a numpy :class:`~ndarray` matrix and label vector.
 
         For the 2D ``ndarray`` ``train``, each row is converted to a :class:`~Record` object.
@@ -177,8 +177,10 @@ class AmazonAlgorithmEstimatorBase(EstimatorBase):
         Args:
             train (numpy.ndarray): A 2D numpy array of training data.
             labels (numpy.ndarray): A 1D numpy array of labels. Its length must be equal to the
-               number of rows in ``train``.
+                number of rows in ``train``.
             channel (str): The SageMaker TrainingJob channel this RecordSet should be assigned to.
+            encrypt (bool): Specifies whether the objects uploaded to S3 are encrypted on the
+                server side using AES-256 (default: ``False``).
         Returns:
             RecordSet: A RecordSet referencing the encoded, uploading training and label data.
         """
@@ -188,7 +190,8 @@ class AmazonAlgorithmEstimatorBase(EstimatorBase):
         key_prefix = key_prefix + '{}-{}/'.format(type(self).__name__, sagemaker_timestamp())
         key_prefix = key_prefix.lstrip('/')
         logger.debug('Uploading to bucket {} and key_prefix {}'.format(bucket, key_prefix))
-        manifest_s3_file = upload_numpy_to_s3_shards(self.train_instance_count, s3, bucket, key_prefix, train, labels)
+        manifest_s3_file = upload_numpy_to_s3_shards(self.train_instance_count, s3, bucket,
+                                                     key_prefix, train, labels, encrypt)
         logger.debug("Created manifest file {}".format(manifest_s3_file))
         return RecordSet(manifest_s3_file, num_records=train.shape[0], feature_dim=train.shape[1], channel=channel)
 
@@ -239,15 +242,17 @@ def _build_shards(num_shards, array):
     return shards
 
 
-def upload_numpy_to_s3_shards(num_shards, s3, bucket, key_prefix, array, labels=None):
-    """Upload the training ``array`` and ``labels`` arrays to ``num_shards`` s3 objects,
-    stored in "s3://``bucket``/``key_prefix``/"."""
+def upload_numpy_to_s3_shards(num_shards, s3, bucket, key_prefix, array, labels=None, encrypt=False):
+    """Upload the training ``array`` and ``labels`` arrays to ``num_shards`` S3 objects,
+    stored in "s3://``bucket``/``key_prefix``/". Optionally ``encrypt`` the S3 objects using
+    AES-256."""
     shards = _build_shards(num_shards, array)
     if labels is not None:
         label_shards = _build_shards(num_shards, labels)
     uploaded_files = []
     if key_prefix[-1] != '/':
         key_prefix = key_prefix + '/'
+    extra_put_kwargs = {'ServerSideEncryption': 'AES256'} if encrypt else {}
     try:
         for shard_index, shard in enumerate(shards):
             with tempfile.TemporaryFile() as file:
@@ -260,12 +265,12 @@ def upload_numpy_to_s3_shards(num_shards, s3, bucket, key_prefix, array, labels=
                 file_name = "matrix_{}.pbr".format(shard_index_string)
                 key = key_prefix + file_name
                 logger.debug("Creating object {} in bucket {}".format(key, bucket))
-                s3.Object(bucket, key).put(Body=file)
+                s3.Object(bucket, key).put(Body=file, **extra_put_kwargs)
                 uploaded_files.append(file_name)
         manifest_key = key_prefix + ".amazon.manifest"
         manifest_str = json.dumps(
             [{'prefix': 's3://{}/{}'.format(bucket, key_prefix)}] + uploaded_files)
-        s3.Object(bucket, manifest_key).put(Body=manifest_str.encode('utf-8'))
+        s3.Object(bucket, manifest_key).put(Body=manifest_str.encode('utf-8'), **extra_put_kwargs)
         return "s3://{}/{}".format(bucket, manifest_key)
     except Exception as ex:  # pylint: disable=broad-except
         try:

@@ -75,7 +75,8 @@ def test_deploy_model(pytorch_training_job, sagemaker_session):
         assert output.shape == (batch_size, 10)
 
 
-@pytest.mark.skipif(tests.integ.test_region() in tests.integ.HOSTING_NO_P2_REGIONS,
+@pytest.mark.skipif(tests.integ.test_region() in tests.integ.HOSTING_NO_P2_REGIONS
+                    or tests.integ.test_region() in tests.integ.TRAINING_NO_P2_REGIONS,
                     reason='no ml.p2 instances in these regions')
 def test_async_fit_deploy(sagemaker_session, pytorch_full_version):
     training_job_name = ""

@@ -291,6 +291,7 @@ DEFAULT_EXPECTED_TRAIN_JOB_ARGS = {
 }
 
 COMPLETED_DESCRIBE_JOB_RESULT = dict(DEFAULT_EXPECTED_TRAIN_JOB_ARGS)
+COMPLETED_DESCRIBE_JOB_RESULT.update({'TrainingJobArn': 'arn:aws:sagemaker:us-west-2:336:training-job/' + JOB_NAME})
 COMPLETED_DESCRIBE_JOB_RESULT.update({'TrainingJobStatus': 'Completed'})
 COMPLETED_DESCRIBE_JOB_RESULT.update(
     {'ModelArtifacts': {
@@ -587,7 +588,7 @@ def test_transform_pack_to_request(sagemaker_session):
 
     sagemaker_session.transform(job_name=JOB_NAME, model_name=model_name, strategy=None, max_concurrent_transforms=None,
                                 max_payload=None, env=None, input_config=in_config, output_config=out_config,
-                                resource_config=resource_config, tags=None)
+                                resource_config=resource_config, tags=None, data_processing=None)
 
     _, _, actual_args = sagemaker_session.sagemaker_client.method_calls[0]
     assert actual_args == expected_args
@@ -602,7 +603,7 @@ def test_transform_pack_to_request_with_optional_params(sagemaker_session):
     sagemaker_session.transform(job_name=JOB_NAME, model_name='my-model', strategy=strategy,
                                 max_concurrent_transforms=max_concurrent_transforms,
                                 env=env, max_payload=max_payload, input_config={}, output_config={},
-                                resource_config={}, tags=TAGS)
+                                resource_config={}, tags=TAGS, data_processing=None)
 
     _, _, actual_args = sagemaker_session.sagemaker_client.method_calls[0]
     assert actual_args['BatchStrategy'] == strategy
@@ -868,6 +869,19 @@ def test_create_model_from_job(sagemaker_session):
                                                          ModelName=JOB_NAME,
                                                          PrimaryContainer=PRIMARY_CONTAINER,
                                                          VpcConfig=VPC_CONFIG)
+
+
+def test_create_model_from_job_with_tags(sagemaker_session):
+    ims = sagemaker_session
+    ims.sagemaker_client.describe_training_job.return_value = COMPLETED_DESCRIBE_JOB_RESULT
+    ims.create_model_from_job(JOB_NAME, tags=TAGS)
+
+    assert call(TrainingJobName=JOB_NAME) in ims.sagemaker_client.describe_training_job.call_args_list
+    ims.sagemaker_client.create_model.assert_called_with(ExecutionRoleArn=EXPANDED_ROLE,
+                                                         ModelName=JOB_NAME,
+                                                         PrimaryContainer=PRIMARY_CONTAINER,
+                                                         VpcConfig=VPC_CONFIG,
+                                                         Tags=TAGS)
 
 
 def test_create_model_from_job_with_image(sagemaker_session):

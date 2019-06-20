@@ -166,7 +166,8 @@ def test_deploy(sagemaker_session, tmpdir):
           'InitialInstanceCount': 1,
           'VariantName': 'AllTraffic'}],
         None,
-        None)
+        None,
+        True)
 
 
 @patch('sagemaker.fw_utils.tar_and_upload_dir', MagicMock())
@@ -182,7 +183,8 @@ def test_deploy_endpoint_name(sagemaker_session, tmpdir):
           'InitialInstanceCount': 55,
           'VariantName': 'AllTraffic'}],
         None,
-        None)
+        None,
+        True)
 
 
 @patch('sagemaker.fw_utils.tar_and_upload_dir', MagicMock())
@@ -199,7 +201,8 @@ def test_deploy_tags(sagemaker_session, tmpdir):
           'InitialInstanceCount': 1,
           'VariantName': 'AllTraffic'}],
         tags,
-        None)
+        None,
+        True)
 
 
 @patch('sagemaker.fw_utils.tar_and_upload_dir', MagicMock())
@@ -217,7 +220,8 @@ def test_deploy_accelerator_type(tfo, time, sagemaker_session):
           'VariantName': 'AllTraffic',
           'AcceleratorType': ACCELERATOR_TYPE}],
         None,
-        None)
+        None,
+        True)
 
 
 @patch('sagemaker.fw_utils.tar_and_upload_dir', MagicMock())
@@ -235,7 +239,8 @@ def test_deploy_kms_key(tfo, time, sagemaker_session):
           'InitialInstanceCount': 1,
           'VariantName': 'AllTraffic'}],
         None,
-        key)
+        key,
+        True)
 
 
 @patch('sagemaker.session.Session')
@@ -400,3 +405,19 @@ def test_compile_model_for_cloud(sagemaker_session, tmpdir):
     model.compile(target_instance_family='ml_c4', input_shape={'data': [1, 3, 1024, 1024]},
                   output_path='s3://output', role='role', framework='tensorflow', job_name="compile-model")
     assert model._is_compiled_model is True
+
+
+def test_check_neo_region(sagemaker_session, tmpdir):
+    sagemaker_session.wait_for_compilation_job = Mock(
+        return_value=DESCRIBE_COMPILATION_JOB_RESPONSE)
+    model = DummyFrameworkModel(sagemaker_session, source_dir=str(tmpdir))
+    ec2_region_list = ['us-east-2', 'us-east-1', 'us-west-1', 'us-west-2', 'ap-east-1', 'ap-south-1',
+                       'ap-northeast-3', 'ap-northeast-2', 'ap-southeast-1', 'ap-southeast-2', 'ap-northeast-1',
+                       'ca-central-1', 'cn-north-1', 'cn-northwest-1', 'eu-central-1', ' eu-west-1', 'eu-west-2',
+                       'eu-west-3', 'eu-north-1', 'sa-east-1', 'us-gov-east-1', 'us-gov-west-1']
+    neo_support_region = ['us-west-2', 'eu-west-1', 'us-east-1', 'us-east-2', 'ap-northeast-1']
+    for region_name in ec2_region_list:
+        if region_name in neo_support_region:
+            assert model.check_neo_region(region_name) is True
+        else:
+            assert model.check_neo_region(region_name) is False

@@ -115,7 +115,7 @@ class Session(object):
     def boto_region_name(self):
         return self._region_name
 
-    def upload_data(self, path, bucket=None, key_prefix='data'):
+    def upload_data(self, path, bucket=None, key_prefix='data', extra_args=None):
         """Upload local file or directory to S3.
 
         If a single file is specified for upload, the resulting S3 object key is ``{key_prefix}/{filename}``
@@ -132,6 +132,10 @@ class Session(object):
                 creates it).
             key_prefix (str): Optional S3 object key name prefix (default: 'data'). S3 uses the prefix to
                 create a directory structure for the bucket content that it display in the S3 console.
+            extra_args (dict): Optional extra arguments that may be passed to the upload operation. Similar to
+                ExtraArgs parameter in S3 upload_file function. Please refer to the ExtraArgs parameter
+                documentation here:
+                https://boto3.amazonaws.com/v1/documentation/api/latest/guide/s3-uploading-files.html#the-extraargs-parameter
 
         Returns:
             str: The S3 URI of the uploaded file(s). If a file is specified in the path argument, the URI format is:
@@ -158,7 +162,7 @@ class Session(object):
         s3 = self.boto_session.resource('s3')
 
         for local_path, s3_key in files:
-            s3.Object(bucket, s3_key).upload_file(local_path)
+            s3.Object(bucket, s3_key).upload_file(local_path, ExtraArgs=extra_args)
 
         s3_uri = 's3://{}/{}'.format(bucket, key_prefix)
         # If a specific file was used as input (instead of a directory), we return the full S3 key
@@ -495,7 +499,7 @@ class Session(object):
                 raise
 
     def transform(self, job_name, model_name, strategy, max_concurrent_transforms, max_payload, env,
-                  input_config, output_config, resource_config, tags):
+                  input_config, output_config, resource_config, tags, data_processing):
         """Create an Amazon SageMaker transform job.
 
         Args:
@@ -510,8 +514,9 @@ class Session(object):
             input_config (dict): A dictionary describing the input data (and its location) for the job.
             output_config (dict): A dictionary describing the output location for the job.
             resource_config (dict): A dictionary describing the resources to complete the job.
-            tags (list[dict]): List of tags for labeling a training job. For more, see
-                https://docs.aws.amazon.com/sagemaker/latest/dg/API_Tag.html.
+            tags (list[dict]): List of tags for labeling a transform job.
+            data_processing(dict): A dictionary describing config for combining the input data and transformed data.
+                                   For more, see https://docs.aws.amazon.com/sagemaker/latest/dg/API_Tag.html.
         """
         transform_request = {
             'TransformJobName': job_name,
@@ -535,6 +540,9 @@ class Session(object):
 
         if tags is not None:
             transform_request['Tags'] = tags
+
+        if data_processing is not None:
+            transform_request['DataProcessing'] = data_processing
 
         LOGGER.info('Creating transform job with name: {}'.format(job_name))
         LOGGER.debug('Transform request: {}'.format(json.dumps(transform_request, indent=4)))
@@ -620,7 +628,8 @@ class Session(object):
         return name
 
     def create_model_from_job(self, training_job_name, name=None, role=None, primary_container_image=None,
-                              model_data_url=None, env=None, vpc_config_override=vpc_utils.VPC_CONFIG_DEFAULT):
+                              model_data_url=None, env=None, vpc_config_override=vpc_utils.VPC_CONFIG_DEFAULT,
+                              tags=None):
         """Create an Amazon SageMaker ``Model`` from a SageMaker Training Job.
 
         Args:
@@ -638,6 +647,8 @@ class Session(object):
                 Default: use VpcConfig from training job.
                 * 'Subnets' (list[str]): List of subnet ids.
                 * 'SecurityGroupIds' (list[str]): List of security group ids.
+            tags(List[dict[str, str]]): Optional. The list of tags to add to the model. For more, see
+                https://docs.aws.amazon.com/sagemaker/latest/dg/API_Tag.html.
 
         Returns:
             str: The name of the created ``Model``.
@@ -651,7 +662,7 @@ class Session(object):
             model_data_url=model_data_url or training_job['ModelArtifacts']['S3ModelArtifacts'],
             env=env)
         vpc_config = _vpc_config_from_training_job(training_job, vpc_config_override)
-        return self.create_model(name, role, primary_container, vpc_config=vpc_config)
+        return self.create_model(name, role, primary_container, vpc_config=vpc_config, tags=tags)
 
     def create_model_package_from_algorithm(self, name, description, algorithm_arn, model_data):
         """Create a SageMaker Model Package from the results of training with an Algorithm Package

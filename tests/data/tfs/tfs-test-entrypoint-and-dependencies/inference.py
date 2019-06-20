@@ -12,6 +12,8 @@
 # language governing permissions and limitations under the License.
 import json
 
+import dependency
+
 def input_handler(data, context):
     data = json.loads(data.read().decode('utf-8'))
     new_values = [x + 1 for x in data['instances']]

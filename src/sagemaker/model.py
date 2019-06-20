@@ -14,22 +14,27 @@ from __future__ import absolute_import
 
 import json
 import logging
+import os
 
 import sagemaker
 from sagemaker import fw_utils, local, session, utils
+from sagemaker.fw_utils import UploadedCode
 from sagemaker.transformer import Transformer
 
 LOGGER = logging.getLogger('sagemaker')
 
-NEO_ALLOWED_TARGET_INSTANCE_FAMILY = set(['ml_c5', 'ml_m5', 'ml_c4', 'ml_m4', 'jetson_tx1', 'jetson_tx2', 'ml_p2',
-                                          'ml_p3', 'deeplens', 'rasp3b'])
+NEO_ALLOWED_TARGET_INSTANCE_FAMILY = set(['ml_c5', 'ml_m5', 'ml_c4', 'ml_m4',
+                                          'jetson_tx1', 'jetson_tx2', 'jetson_nano', 'ml_p2',
+                                          'ml_p3', 'deeplens', 'rasp3b',
+                                          'rk3288', 'rk3399', 'sbe_c'])
 NEO_ALLOWED_FRAMEWORKS = set(['mxnet', 'tensorflow', 'pytorch', 'onnx', 'xgboost'])
 
 NEO_IMAGE_ACCOUNT = {
     'us-west-2': '301217895009',
     'us-east-1': '785573368785',
     'eu-west-1': '802834080501',
-    'us-east-2': '007439368137'
+    'us-east-2': '007439368137',
+    'ap-northeast-1': '941853720454'
 }
 
 
@@ -149,6 +154,19 @@ class Model(object):
                 'tags': tags,
                 'job_name': job_name}
 
+    def check_neo_region(self, region):
+        """Check if this ``Model`` in the available region where neo support.
+
+        Args:
+            region (str): Specifies the region where want to execute compilation
+        Returns:
+            bool: boolean value whether if neo is available in the specified region
+        """
+        if region in NEO_IMAGE_ACCOUNT:
+            return True
+        else:
+            return False
+
     def _neo_image_account(self, region):
         if region not in NEO_IMAGE_ACCOUNT:
             raise ValueError("Neo is not currently supported in {}, "
@@ -213,7 +231,7 @@ class Model(object):
         return self
 
     def deploy(self, initial_instance_count, instance_type, accelerator_type=None, endpoint_name=None,
-               update_endpoint=False, tags=None, kms_key=None):
+               update_endpoint=False, tags=None, kms_key=None, wait=True):
         """Deploy this ``Model`` to an ``Endpoint`` and optionally return a ``Predictor``.
 
         Create a SageMaker ``Model`` and ``EndpointConfig``, and deploy an ``Endpoint`` from this ``Model``.
@@ -241,6 +259,7 @@ class Model(object):
             tags(List[dict[str, str]]): The list of tags to attach to this specific endpoint.
             kms_key (str): The ARN of the KMS key that is used to encrypt the data on the
                 storage volume attached to the instance hosting the endpoint.
+            wait (bool): Whether the call should wait until the deployment of this model completes (default: True).
 
         Returns:
             callable[string, sagemaker.session.Session] or None: Invocation of ``self.predictor_cls`` on
@@ -281,7 +300,7 @@ class Model(object):
             self.sagemaker_session.update_endpoint(self.endpoint_name, endpoint_config_name)
         else:
             self.sagemaker_session.endpoint_from_production_variants(self.endpoint_name, [production_variant],
-                                                                     tags, kms_key)
+                                                                     tags, kms_key, wait)
 
         if self.predictor_cls:
             return self.predictor_cls(self.endpoint_name, self.sagemaker_session)
@@ -360,7 +379,7 @@ class FrameworkModel(Model):
             entry_point (str): Path (absolute or relative) to the Python source file which should be executed
                 as the entry point to model hosting. This should be compatible with either Python 2.7 or Python 3.5.
             source_dir (str): Path (absolute or relative) to a directory with any other training
-                source code dependencies aside from tne entry point file (default: None). Structure within this
+                source code dependencies aside from the entry point file (default: None). Structure within this
                 directory will be preserved when training on SageMaker.
                 If the directory points to S3, no code will be uploaded and the S3 location will be used instead.
             dependencies (list[str]): A list of paths to directories (absolute or relative) with
@@ -408,6 +427,7 @@ class FrameworkModel(Model):
         else:
             self.bucket, self.key_prefix = None, None
         self.uploaded_code = None
+        self.repacked_model_data = None
 
     def prepare_container_def(self, instance_type, accelerator_type=None):  # pylint disable=unused-argument
         """Return a container definition with framework configuration set in model environment variables.
@@ -428,11 +448,11 @@ class FrameworkModel(Model):
         deploy_env.update(self._framework_env_vars())
         return sagemaker.container_def(self.image, self.model_data, deploy_env)
 
-    def _upload_code(self, key_prefix):
+    def _upload_code(self, key_prefix, repack=False):
         local_code = utils.get_config_value('local.local_code', self.sagemaker_session.config)
         if self.sagemaker_session.local_mode and local_code:
             self.uploaded_code = None
-        else:
+        elif not repack:
             bucket = self.bucket or self.sagemaker_session.default_bucket()
             self.uploaded_code = fw_utils.tar_and_upload_dir(session=self.sagemaker_session.boto_session,
                                                              bucket=bucket,
@@ -440,6 +460,21 @@ class FrameworkModel(Model):
                                                              script=self.entry_point,
                                                              directory=self.source_dir,
                                                              dependencies=self.dependencies)
+
+        if repack:
+            bucket = self.bucket or self.sagemaker_session.default_bucket()
+            repacked_model_data = 's3://' + os.path.join(bucket, key_prefix, 'model.tar.gz')
+
+            utils.repack_model(inference_script=self.entry_point,
+                               source_directory=self.source_dir,
+                               dependencies=self.dependencies,
+                               model_uri=self.model_data,
+                               repacked_model_uri=repacked_model_data,
+                               sagemaker_session=self.sagemaker_session)
+
+            self.repacked_model_data = repacked_model_data
+            self.uploaded_code = UploadedCode(s3_prefix=self.repacked_model_data,
+                                              script_name=os.path.basename(self.entry_point))
 
     def _framework_env_vars(self):
         if self.uploaded_code:

@@ -108,7 +108,7 @@ def chainer_version(request):
 
 
 @pytest.fixture(scope='module', params=['0.12', '0.12.1', '1.0', '1.0.0', '1.1', '1.1.0', '1.2',
-                                        '1.2.1', '1.3', '1.3.0'])
+                                        '1.2.1', '1.3', '1.3.0', '1.4', '1.4.0'])
 def mxnet_version(request):
     return request.param
 
