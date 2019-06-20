@@ -77,7 +77,8 @@ def test_training_with_network_isolation(sagemaker_session, sklearn_full_version
         job_name = unique_name_from_base('test-sklearn-hp')
 
         sklearn.fit({'train': train_input, 'test': test_input}, job_name=job_name)
-        assert sagemaker_session.sagemaker_client.describe_training_job(job_name)['EnableNetworkIsolation']
+        assert sagemaker_session.sagemaker_client \
+            .describe_training_job(TrainingJobName=job_name)['EnableNetworkIsolation']
         return sklearn.latest_training_job.name
 
 
