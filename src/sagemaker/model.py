@@ -463,6 +463,12 @@ class FrameworkModel(Model):
             self.bucket, self.key_prefix = fw_utils.parse_s3_url(code_location)
         else:
             self.bucket, self.key_prefix = None, None
+        if self.git_config:
+            updates = git_utils.git_clone_repo(self.git_config, self.entry_point,
+                                               self.source_dir, self.dependencies)
+            self.entry_point = updates['entry_point']
+            self.source_dir = updates['source_dir']
+            self.dependencies = updates['dependencies']
         self.uploaded_code = None
         self.repacked_model_data = None
 
@@ -480,12 +486,6 @@ class FrameworkModel(Model):
             dict[str, str]: A container definition object usable with the CreateModel API.
         """
         deploy_key_prefix = fw_utils.model_code_key_prefix(self.key_prefix, self.name, self.image)
-        if self.git_config:
-            updates = git_utils.git_clone_repo(self.git_config, self.entry_point,
-                                               self.source_dir, self.dependencies)
-            self.entry_point = updates['entry_point']
-            self.source_dir = updates['source_dir']
-            self.dependencies = updates['dependencies']
         self._upload_code(deploy_key_prefix)
         deploy_env = dict(self.env)
         deploy_env.update(self._framework_env_vars())
