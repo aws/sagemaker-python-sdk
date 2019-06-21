@@ -781,7 +781,7 @@ class Framework(EstimatorBase):
 
     def __init__(self, entry_point, source_dir=None, hyperparameters=None, enable_cloudwatch_metrics=False,
                  container_log_level=logging.INFO, code_location=None, image_name=None, dependencies=None,
-                 enable_network_isolation=False, git_config=False, **kwargs):
+                 enable_network_isolation=False, git_config=None, **kwargs):
         """Base class initializer. Subclasses which override ``__init__`` should invoke ``super()``
 
         Args:
