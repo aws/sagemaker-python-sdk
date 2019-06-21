@@ -9,8 +9,8 @@ phases:
       # run linters
       - tox -e flake8,pylint
 
-      # run formatter
-      #- tox -e black-check # TODO: Uncomment once black formatting for all files has been pushed - knakad@
+      # run format verification
+      - tox -e black-check
 
       # run package and docbuild checks
       - tox -e twine

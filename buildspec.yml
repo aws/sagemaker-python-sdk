@@ -14,8 +14,8 @@ phases:
       - tox -e twine
       - tox -e sphinx
 
-      # run formatter
-      #- tox -e black-check # TODO: Uncomment once black formatting for all files has been pushed - knakad@
+      # run format verification
+      - tox -e black-check
 
       # run unit tests
       - AWS_ACCESS_KEY_ID= AWS_SECRET_ACCESS_KEY= AWS_SESSION_TOKEN=
