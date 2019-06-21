@@ -28,7 +28,7 @@ def model_fn(path_to_model_files):
     from mxnet.io import DataDesc
     loaded_symbol = mx.symbol.load(os.path.join(path_to_model_files, "symbol"))
     created_module = mx.mod.Module(symbol=loaded_symbol)
-    created_module.bind([DataDesc("data", (1L, 1L, 28L, 28L))])
+    created_module.bind([DataDesc("data", (1, 1, 28, 28))])
     created_module.load_params(os.path.join(path_to_model_files, "params"))
     return created_module
 
