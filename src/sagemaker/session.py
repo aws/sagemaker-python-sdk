@@ -228,13 +228,13 @@ class Session(object):
 
         return self._default_bucket
 
-    def train(
+    def train(  # noqa: C901
         self,
         input_mode,
         input_config,
         role,
         job_name,
-        output_config,  # noqa: C901
+        output_config,
         resource_config,
         vpc_config,
         hyperparameters,
@@ -1265,9 +1265,9 @@ class Session(object):
 
         return role
 
-    def logs_for_job(
+    def logs_for_job(  # noqa: C901 - suppress complexity warning for this method
         self, job_name, wait=False, poll=10
-    ):  # noqa: C901 - suppress complexity warning for this method
+    ):
         """Display the logs for a given training job, optionally tailing them until the
         job is complete. If the output is a tty or a Jupyter cell, it will be color-coded
         based on which instance the log entry is from.

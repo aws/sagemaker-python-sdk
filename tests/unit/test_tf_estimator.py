@@ -364,7 +364,7 @@ def test_tf(sagemaker_session, tf_version):
 
     environment = {
         "Environment": {
-            "SAGEMAKER_SUBMIT_DIRECTORY": "s3://mybucket/sagemaker-tensorflow-2017-11-06-14:14:15.673/source/sourcedir.tar.gz",
+            "SAGEMAKER_SUBMIT_DIRECTORY": "s3://mybucket/sagemaker-tensorflow-2017-11-06-14:14:15.673/source/sourcedir.tar.gz",  # noqa: E501
             "SAGEMAKER_PROGRAM": "dummy_script.py",
             "SAGEMAKER_REQUIREMENTS": "dummy_requirements.txt",
             "SAGEMAKER_ENABLE_CLOUDWATCH_METRICS": "false",

@@ -433,7 +433,7 @@ class HyperparameterTuner(object):
         """
         self._ensure_last_tuning_job()
 
-        tuning_job_describe_result = self.estimator.sagemaker_session.sagemaker_client.describe_hyper_parameter_tuning_job(
+        tuning_job_describe_result = self.estimator.sagemaker_session.sagemaker_client.describe_hyper_parameter_tuning_job(  # noqa: E501
             HyperParameterTuningJobName=self.latest_tuning_job.name
         )
 

@@ -18,29 +18,29 @@ from sagemaker import estimator, parameter, tuner  # noqa: F401
 from sagemaker.amazon.kmeans import KMeans, KMeansModel, KMeansPredictor  # noqa: F401
 from sagemaker.amazon.pca import PCA, PCAModel, PCAPredictor  # noqa: F401
 from sagemaker.amazon.lda import LDA, LDAModel, LDAPredictor  # noqa: F401
-from sagemaker.amazon.linear_learner import (
+from sagemaker.amazon.linear_learner import (  # noqa: F401
     LinearLearner,
     LinearLearnerModel,
     LinearLearnerPredictor,
-)  # noqa: F401
-from sagemaker.amazon.factorization_machines import (
+)
+from sagemaker.amazon.factorization_machines import (  # noqa: F401
     FactorizationMachines,
     FactorizationMachinesModel,
-)  # noqa: F401
+)
 from sagemaker.amazon.factorization_machines import FactorizationMachinesPredictor  # noqa: F401
 from sagemaker.amazon.ntm import NTM, NTMModel, NTMPredictor  # noqa: F401
-from sagemaker.amazon.randomcutforest import (
+from sagemaker.amazon.randomcutforest import (  # noqa: F401
     RandomCutForest,
-    RandomCutForestModel,  # noqa: F401
+    RandomCutForestModel,
     RandomCutForestPredictor,
 )
 from sagemaker.amazon.knn import KNN, KNNModel, KNNPredictor  # noqa: F401
 from sagemaker.amazon.object2vec import Object2Vec, Object2VecModel  # noqa: F401
-from sagemaker.amazon.ipinsights import (
+from sagemaker.amazon.ipinsights import (  # noqa: F401
     IPInsights,
     IPInsightsModel,
     IPInsightsPredictor,
-)  # noqa: F401
+)
 
 from sagemaker.algorithm import AlgorithmEstimator  # noqa: F401
 from sagemaker.analytics import TrainingJobAnalytics, HyperparameterTuningJobAnalytics  # noqa: F401
