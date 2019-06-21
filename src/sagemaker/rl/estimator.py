@@ -308,8 +308,8 @@ class RLEstimator(Framework):
     @classmethod
     def _toolkit_and_version_from_tag(cls, image_tag):
         tag_pattern = re.compile(
-            "^([A-Z]*|[a-z]*)(\d.*)-(cpu|gpu)-(py2|py3)$"
-        )  # noqa: W605,E501 pylint: disable=anomalous-backslash-in-string
+            "^([A-Z]*|[a-z]*)(\d.*)-(cpu|gpu)-(py2|py3)$"  # noqa: W605,E501 pylint: disable=anomalous-backslash-in-string
+        )
         tag_match = tag_pattern.match(image_tag)
         if tag_match is not None:
             return tag_match.group(1), tag_match.group(2)
@@ -408,9 +408,8 @@ class RLEstimator(Framework):
                 {"Name": "reward-testing", "Regex": "^Testing>.*Total reward=(.*?),"},
             ]
         elif toolkit is RLToolkit.RAY:
-            float_regex = (
-                "[-+]?[0-9]*\.?[0-9]+([eE][-+]?[0-9]+)?"
-            )  # noqa: W605, E501 pylint: disable=anomalous-backslash-in-string
+            float_regex = "[-+]?[0-9]*[.]?[0-9]+([eE][-+]?[0-9]+)?"  # noqa: W605, E501
+
             return [
                 {"Name": "episode_reward_mean", "Regex": "episode_reward_mean: (%s)" % float_regex},
                 {"Name": "episode_reward_max", "Regex": "episode_reward_max: (%s)" % float_regex},

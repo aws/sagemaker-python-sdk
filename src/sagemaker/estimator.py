@@ -1185,8 +1185,8 @@ class Framework(EstimatorBase):
                 self.__framework_name__,
                 self.train_instance_type,
                 self.framework_version,  # pylint: disable=no-member
-                py_version=self.py_version,
-            )  # pylint: disable=no-member
+                py_version=self.py_version,  # pylint: disable=no-member
+            )
 
     @classmethod
     def attach(cls, training_job_name, sagemaker_session=None, model_channel_name="model"):
@@ -1225,8 +1225,8 @@ class Framework(EstimatorBase):
         # pylint gets confused thinking that estimator is an EstimatorBase instance, but it actually
         # is a Framework or any of its derived classes. We can safely ignore the no-member errors.
         estimator.uploaded_code = UploadedCode(
-            estimator.source_dir, estimator.entry_point
-        )  # pylint: disable=no-member
+            estimator.source_dir, estimator.entry_point  # pylint: disable=no-member
+        )
         return estimator
 
     @staticmethod
