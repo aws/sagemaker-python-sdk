@@ -175,27 +175,26 @@ def test_unoptimized_gpu_family():
 
 
 def test_tar_and_upload_dir_s3(sagemaker_session):
-    bucket = 'mybucker'
+    bucket = 'mybucket'
     s3_key_prefix = 'something/source'
     script = 'mnist.py'
     directory = 's3://m'
     result = fw_utils.tar_and_upload_dir(sagemaker_session, bucket, s3_key_prefix, script, directory)
+
     assert result == fw_utils.UploadedCode('s3://m', 'mnist.py')
 
 
 @patch('sagemaker.utils')
 def test_tar_and_upload_dir_s3_with_kms(utils, sagemaker_session):
+    bucket = 'mybucket'
+    s3_key_prefix = 'something/source'
+    script = 'mnist.py'
+    kms_key = 'kms-key'
+    result = fw_utils.tar_and_upload_dir(sagemaker_session, bucket, s3_key_prefix, script, kms_key=kms_key)
 
-    result = fw_utils.tar_and_upload_dir(sagemaker_session,
-                                         'mybucker',
-                                         'something/source',
-                                         'mnist.py',
-                                         kms_key='kms-key')
+    assert result == fw_utils.UploadedCode('s3://{}/{}/sourcedir.tar.gz'.format(bucket, s3_key_prefix), script)
 
-    assert result == fw_utils.UploadedCode('s3://mybucker/something/source/sourcedir.tar.gz',
-                                           'mnist.py')
-
-    extra_args = {'ServerSideEncryption': 'aws:kms', 'SSEKMSKeyId': 'kms-key'}
+    extra_args = {'ServerSideEncryption': 'aws:kms', 'SSEKMSKeyId': kms_key}
     obj = sagemaker_session.resource('s3').Object('', '')
     obj.upload_file.assert_called_with(utils.create_tar_file(), ExtraArgs=extra_args)
 
