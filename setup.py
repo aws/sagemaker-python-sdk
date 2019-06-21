@@ -62,7 +62,7 @@ setup(name="sagemaker",
       extras_require={
           'test': ['tox', 'flake8', 'pytest==4.4.1', 'pytest-cov', 'pytest-rerunfailures',
                    'pytest-xdist', 'mock', 'tensorflow>=1.3.0', 'contextlib2',
-                   'awslogs', 'pandas']},
+                   'awslogs', 'pandas', 'black==19.3b0 ; python_version >= \'3.6\'']},
 
       entry_points={
           'console_scripts': ['sagemaker=sagemaker.cli.main:main'],
