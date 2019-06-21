@@ -60,8 +60,7 @@ def tar_dir(directory, tmpdir):
 
 
 @pytest.fixture
-def tfs_predictor_with_model_and_entry_point_same_tar(instance_type,
-                                                      sagemaker_session,
+def tfs_predictor_with_model_and_entry_point_same_tar(sagemaker_local_session,
                                                       tf_full_version,
                                                       tmpdir):
     endpoint_name = sagemaker.utils.unique_name_from_base('sagemaker-tensorflow-serving')
@@ -69,45 +68,44 @@ def tfs_predictor_with_model_and_entry_point_same_tar(instance_type,
     model_tar = tar_dir(os.path.join(tests.integ.DATA_DIR, 'tfs/tfs-test-model-with-inference'),
                         tmpdir)
 
-    model_data = sagemaker_session.upload_data(
-        path=model_tar,
-        key_prefix='tensorflow-serving/models')
+    model = Model(model_data='file://' + model_tar,
+                  role='SageMakerRole',
+                  framework_version=tf_full_version,
+                  sagemaker_session=sagemaker_local_session)
+    predictor = model.deploy(1, 'local', endpoint_name=endpoint_name)
 
-    with tests.integ.timeout.timeout_and_delete_endpoint_by_name(endpoint_name,
-                                                                 sagemaker_session):
-        model = Model(model_data=model_data,
-                      role='SageMakerRole',
-                      framework_version=tf_full_version,
-                      sagemaker_session=sagemaker_session)
-        predictor = model.deploy(1, instance_type, endpoint_name=endpoint_name)
+    try:
         yield predictor
+    finally:
+        predictor.delete_endpoint()
 
 
 @pytest.fixture(scope='module')
-def tfs_predictor_with_model_and_entry_point_and_dependencies(instance_type,
-                                                              sagemaker_session, tf_full_version):
+def tfs_predictor_with_model_and_entry_point_and_dependencies(sagemaker_local_session,
+                                                              tf_full_version):
     endpoint_name = sagemaker.utils.unique_name_from_base('sagemaker-tensorflow-serving')
 
-    model_data = sagemaker_session.upload_data(
-        path=os.path.join(tests.integ.DATA_DIR,
-                          'tensorflow-serving-test-model.tar.gz'),
-        key_prefix='tensorflow-serving/models')
+    entry_point = os.path.join(tests.integ.DATA_DIR,
+                               'tfs/tfs-test-entrypoint-and-dependencies/inference.py')
+    dependencies = [os.path.join(tests.integ.DATA_DIR,
+                                 'tfs/tfs-test-entrypoint-and-dependencies/dependency.py')]
 
-    with tests.integ.timeout.timeout_and_delete_endpoint_by_name(endpoint_name,
-                                                                 sagemaker_session):
-        entry_point = os.path.join(tests.integ.DATA_DIR,
-                                   'tfs/tfs-test-entrypoint-and-dependencies/inference.py')
-        dependencies = [os.path.join(tests.integ.DATA_DIR,
-                                     'tfs/tfs-test-entrypoint-and-dependencies/dependency.py')]
+    model_data = 'file://' + os.path.join(tests.integ.DATA_DIR,
+                                          'tensorflow-serving-test-model.tar.gz')
 
-        model = Model(entry_point=entry_point,
-                      model_data=model_data,
-                      role='SageMakerRole',
-                      dependencies=dependencies,
-                      framework_version=tf_full_version,
-                      sagemaker_session=sagemaker_session)
-        predictor = model.deploy(1, instance_type, endpoint_name=endpoint_name)
+    model = Model(entry_point=entry_point,
+                  model_data=model_data,
+                  role='SageMakerRole',
+                  dependencies=dependencies,
+                  framework_version=tf_full_version,
+                  sagemaker_session=sagemaker_local_session)
+
+    predictor = model.deploy(1, 'local', endpoint_name=endpoint_name)
+    try:
+
         yield predictor
+    finally:
+        predictor.delete_endpoint()
 
 
 @pytest.fixture(scope='module')
