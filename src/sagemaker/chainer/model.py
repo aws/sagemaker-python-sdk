@@ -20,7 +20,7 @@ from sagemaker.model import FrameworkModel, MODEL_SERVER_WORKERS_PARAM_NAME
 from sagemaker.chainer.defaults import CHAINER_VERSION
 from sagemaker.predictor import RealTimePredictor, npy_serializer, numpy_deserializer
 
-logger = logging.getLogger('sagemaker')
+logger = logging.getLogger("sagemaker")
 
 
 class ChainerPredictor(RealTimePredictor):
@@ -38,16 +38,28 @@ class ChainerPredictor(RealTimePredictor):
                 Amazon SageMaker APIs and any other AWS services needed. If not specified, the estimator creates one
                 using the default AWS configuration chain.
         """
-        super(ChainerPredictor, self).__init__(endpoint_name, sagemaker_session, npy_serializer, numpy_deserializer)
+        super(ChainerPredictor, self).__init__(
+            endpoint_name, sagemaker_session, npy_serializer, numpy_deserializer
+        )
 
 
 class ChainerModel(FrameworkModel):
     """An Chainer SageMaker ``Model`` that can be deployed to a SageMaker ``Endpoint``."""
 
-    __framework_name__ = 'chainer'
+    __framework_name__ = "chainer"
 
-    def __init__(self, model_data, role, entry_point, image=None, py_version='py3', framework_version=CHAINER_VERSION,
-                 predictor_cls=ChainerPredictor, model_server_workers=None, **kwargs):
+    def __init__(
+        self,
+        model_data,
+        role,
+        entry_point,
+        image=None,
+        py_version="py3",
+        framework_version=CHAINER_VERSION,
+        predictor_cls=ChainerPredictor,
+        model_server_workers=None,
+        **kwargs
+    ):
         """Initialize an ChainerModel.
 
         Args:
@@ -68,9 +80,10 @@ class ChainerModel(FrameworkModel):
                 If None, server will use one worker per vCPU.
             **kwargs: Keyword arguments passed to the ``FrameworkModel`` initializer.
         """
-        super(ChainerModel, self).__init__(model_data, image, role, entry_point, predictor_cls=predictor_cls,
-                                           **kwargs)
-        if py_version == 'py2':
+        super(ChainerModel, self).__init__(
+            model_data, image, role, entry_point, predictor_cls=predictor_cls, **kwargs
+        )
+        if py_version == "py2":
             logger.warning(python_deprecation_warning(self.__framework_name__))
 
         self.py_version = py_version
@@ -91,8 +104,14 @@ class ChainerModel(FrameworkModel):
         deploy_image = self.image
         if not deploy_image:
             region_name = self.sagemaker_session.boto_session.region_name
-            deploy_image = create_image_uri(region_name, self.__framework_name__, instance_type,
-                                            self.framework_version, self.py_version, accelerator_type=accelerator_type)
+            deploy_image = create_image_uri(
+                region_name,
+                self.__framework_name__,
+                instance_type,
+                self.framework_version,
+                self.py_version,
+                accelerator_type=accelerator_type,
+            )
 
         deploy_key_prefix = model_code_key_prefix(self.key_prefix, self.name, deploy_image)
         self._upload_code(deploy_key_prefix)

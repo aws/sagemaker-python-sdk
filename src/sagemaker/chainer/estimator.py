@@ -15,13 +15,17 @@ from __future__ import absolute_import
 import logging
 
 from sagemaker.estimator import Framework
-from sagemaker.fw_utils import framework_name_from_image, framework_version_from_tag, empty_framework_version_warning, \
-    python_deprecation_warning
+from sagemaker.fw_utils import (
+    framework_name_from_image,
+    framework_version_from_tag,
+    empty_framework_version_warning,
+    python_deprecation_warning,
+)
 from sagemaker.chainer.defaults import CHAINER_VERSION
 from sagemaker.chainer.model import ChainerModel
 from sagemaker.vpc_utils import VPC_CONFIG_DEFAULT
 
-logger = logging.getLogger('sagemaker')
+logger = logging.getLogger("sagemaker")
 
 
 class Chainer(Framework):
@@ -35,12 +39,23 @@ class Chainer(Framework):
     _process_slots_per_host = "sagemaker_process_slots_per_host"
     _additional_mpi_options = "sagemaker_additional_mpi_options"
 
-    LATEST_VERSION = '5.0.0'
+    LATEST_VERSION = "5.0.0"
     """The latest version of Chainer included in the SageMaker pre-built Docker images."""
 
-    def __init__(self, entry_point, use_mpi=None, num_processes=None, process_slots_per_host=None,
-                 additional_mpi_options=None, source_dir=None, hyperparameters=None, py_version='py3',
-                 framework_version=None, image_name=None, **kwargs):
+    def __init__(
+        self,
+        entry_point,
+        use_mpi=None,
+        num_processes=None,
+        process_slots_per_host=None,
+        additional_mpi_options=None,
+        source_dir=None,
+        hyperparameters=None,
+        py_version="py3",
+        framework_version=None,
+        image_name=None,
+        **kwargs
+    ):
         """
         This ``Estimator`` executes an Chainer script in a managed Chainer execution environment, within a SageMaker
         Training Job. The managed Chainer environment is an Amazon-built Docker container that executes functions
@@ -89,10 +104,11 @@ class Chainer(Framework):
             logger.warning(empty_framework_version_warning(CHAINER_VERSION, self.LATEST_VERSION))
         self.framework_version = framework_version or CHAINER_VERSION
 
-        super(Chainer, self).__init__(entry_point, source_dir, hyperparameters,
-                                      image_name=image_name, **kwargs)
+        super(Chainer, self).__init__(
+            entry_point, source_dir, hyperparameters, image_name=image_name, **kwargs
+        )
 
-        if py_version == 'py2':
+        if py_version == "py2":
             logger.warning(python_deprecation_warning(self.__framework_name__))
 
         self.py_version = py_version
@@ -105,17 +121,21 @@ class Chainer(Framework):
         """Return hyperparameters used by your custom Chainer code during training."""
         hyperparameters = super(Chainer, self).hyperparameters()
 
-        additional_hyperparameters = {Chainer._use_mpi: self.use_mpi,
-                                      Chainer._num_processes: self.num_processes,
-                                      Chainer._process_slots_per_host: self.process_slots_per_host,
-                                      Chainer._additional_mpi_options: self.additional_mpi_options}
+        additional_hyperparameters = {
+            Chainer._use_mpi: self.use_mpi,
+            Chainer._num_processes: self.num_processes,
+            Chainer._process_slots_per_host: self.process_slots_per_host,
+            Chainer._additional_mpi_options: self.additional_mpi_options,
+        }
 
         # remove unset keys.
         additional_hyperparameters = {k: v for k, v in additional_hyperparameters.items() if v}
         hyperparameters.update(Framework._json_encode_hyperparameters(additional_hyperparameters))
         return hyperparameters
 
-    def create_model(self, model_server_workers=None, role=None, vpc_config_override=VPC_CONFIG_DEFAULT):
+    def create_model(
+        self, model_server_workers=None, role=None, vpc_config_override=VPC_CONFIG_DEFAULT
+    ):
         """Create a SageMaker ``ChainerModel`` object that can be deployed to an ``Endpoint``.
 
         Args:
@@ -133,13 +153,23 @@ class Chainer(Framework):
                 See :func:`~sagemaker.chainer.model.ChainerModel` for full details.
         """
         role = role or self.role
-        return ChainerModel(self.model_data, role, self.entry_point, source_dir=self._model_source_dir(),
-                            enable_cloudwatch_metrics=self.enable_cloudwatch_metrics, name=self._current_job_name,
-                            container_log_level=self.container_log_level, code_location=self.code_location,
-                            py_version=self.py_version, framework_version=self.framework_version,
-                            model_server_workers=model_server_workers, image=self.image_name,
-                            sagemaker_session=self.sagemaker_session,
-                            vpc_config=self.get_vpc_config(vpc_config_override), dependencies=self.dependencies)
+        return ChainerModel(
+            self.model_data,
+            role,
+            self.entry_point,
+            source_dir=self._model_source_dir(),
+            enable_cloudwatch_metrics=self.enable_cloudwatch_metrics,
+            name=self._current_job_name,
+            container_log_level=self.container_log_level,
+            code_location=self.code_location,
+            py_version=self.py_version,
+            framework_version=self.framework_version,
+            model_server_workers=model_server_workers,
+            image=self.image_name,
+            sagemaker_session=self.sagemaker_session,
+            vpc_config=self.get_vpc_config(vpc_config_override),
+            dependencies=self.dependencies,
+        )
 
     @classmethod
     def _prepare_init_params_from_job_description(cls, job_details, model_channel_name=None):
@@ -153,29 +183,39 @@ class Chainer(Framework):
              dictionary: The transformed init_params
 
         """
-        init_params = super(Chainer, cls)._prepare_init_params_from_job_description(job_details, model_channel_name)
+        init_params = super(Chainer, cls)._prepare_init_params_from_job_description(
+            job_details, model_channel_name
+        )
 
-        for argument in [Chainer._use_mpi, Chainer._num_processes, Chainer._process_slots_per_host,
-                         Chainer._additional_mpi_options]:
+        for argument in [
+            Chainer._use_mpi,
+            Chainer._num_processes,
+            Chainer._process_slots_per_host,
+            Chainer._additional_mpi_options,
+        ]:
 
-            value = init_params['hyperparameters'].pop(argument, None)
+            value = init_params["hyperparameters"].pop(argument, None)
             if value:
-                init_params[argument[len('sagemaker_'):]] = value
+                init_params[argument[len("sagemaker_") :]] = value
 
-        image_name = init_params.pop('image')
+        image_name = init_params.pop("image")
         framework, py_version, tag, _ = framework_name_from_image(image_name)
 
         if not framework:
             # If we were unable to parse the framework name from the image it is not one of our
             # officially supported images, in this case just add the image to the init params.
-            init_params['image_name'] = image_name
+            init_params["image_name"] = image_name
             return init_params
 
-        init_params['py_version'] = py_version
-        init_params['framework_version'] = framework_version_from_tag(tag)
+        init_params["py_version"] = py_version
+        init_params["framework_version"] = framework_version_from_tag(tag)
 
-        training_job_name = init_params['base_job_name']
+        training_job_name = init_params["base_job_name"]
 
         if framework != cls.__framework_name__:
-            raise ValueError("Training job: {} didn't use image for requested framework".format(training_job_name))
+            raise ValueError(
+                "Training job: {} didn't use image for requested framework".format(
+                    training_job_name
+                )
+            )
         return init_params

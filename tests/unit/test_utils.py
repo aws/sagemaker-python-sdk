@@ -27,29 +27,24 @@ from mock import call, patch, Mock, MagicMock
 
 import sagemaker
 
-BUCKET_WITHOUT_WRITING_PERMISSION = 's3://bucket-without-writing-permission'
+BUCKET_WITHOUT_WRITING_PERMISSION = "s3://bucket-without-writing-permission"
 
-NAME = 'base_name'
-BUCKET_NAME = 'some_bucket'
+NAME = "base_name"
+BUCKET_NAME = "some_bucket"
 
 
 def test_get_config_value():
 
-    config = {
-        'local': {
-            'region_name': 'us-west-2',
-            'port': '123'
-        },
-        'other': {
-            'key': 1
-        }
+    config = {"local": {"region_name": "us-west-2", "port": "123"}, "other": {"key": 1}}
+
+    assert sagemaker.utils.get_config_value("local.region_name", config) == "us-west-2"
+    assert sagemaker.utils.get_config_value("local", config) == {
+        "region_name": "us-west-2",
+        "port": "123",
     }
 
-    assert sagemaker.utils.get_config_value('local.region_name', config) == 'us-west-2'
-    assert sagemaker.utils.get_config_value('local', config) == {'region_name': 'us-west-2', 'port': '123'}
-
-    assert sagemaker.utils.get_config_value('does_not.exist', config) is None
-    assert sagemaker.utils.get_config_value('other.key', None) is None
+    assert sagemaker.utils.get_config_value("does_not.exist", config) is None
+    assert sagemaker.utils.get_config_value("other.key", None) is None
 
 
 def test_deferred_error():
@@ -68,70 +63,74 @@ def test_bad_import():
         pd.DataFrame()
 
 
-@patch('sagemaker.utils.sagemaker_timestamp')
+@patch("sagemaker.utils.sagemaker_timestamp")
 def test_name_from_base(sagemaker_timestamp):
     sagemaker.utils.name_from_base(NAME, short=False)
     assert sagemaker_timestamp.called_once
 
 
-@patch('sagemaker.utils.sagemaker_short_timestamp')
+@patch("sagemaker.utils.sagemaker_short_timestamp")
 def test_name_from_base_short(sagemaker_short_timestamp):
     sagemaker.utils.name_from_base(NAME, short=True)
     assert sagemaker_short_timestamp.called_once
 
 
 def test_unique_name_from_base():
-    assert re.match(r'base-\d{10}-[a-f0-9]{4}', sagemaker.utils.unique_name_from_base('base'))
+    assert re.match(r"base-\d{10}-[a-f0-9]{4}", sagemaker.utils.unique_name_from_base("base"))
 
 
 def test_unique_name_from_base_truncated():
-    assert re.match(r'real-\d{10}-[a-f0-9]{4}',
-                    sagemaker.utils.unique_name_from_base('really-long-name', max_length=20))
+    assert re.match(
+        r"real-\d{10}-[a-f0-9]{4}",
+        sagemaker.utils.unique_name_from_base("really-long-name", max_length=20),
+    )
 
 
 def test_to_str_with_native_string():
-    value = 'some string'
+    value = "some string"
     assert sagemaker.utils.to_str(value) == value
 
 
 def test_to_str_with_unicode_string():
-    value = u'åñøthér strîng'
+    value = u"åñøthér strîng"
     assert sagemaker.utils.to_str(value) == value
 
 
 def test_name_from_tuning_arn():
-    arn = 'arn:aws:sagemaker:us-west-2:968277160000:hyper-parameter-tuning-job/resnet-sgd-tuningjob-11-07-34-11'
+    arn = "arn:aws:sagemaker:us-west-2:968277160000:hyper-parameter-tuning-job/resnet-sgd-tuningjob-11-07-34-11"
     name = sagemaker.utils.extract_name_from_job_arn(arn)
-    assert name == 'resnet-sgd-tuningjob-11-07-34-11'
+    assert name == "resnet-sgd-tuningjob-11-07-34-11"
 
 
 def test_name_from_training_arn():
-    arn = 'arn:aws:sagemaker:us-west-2:968277160000:training-job/resnet-sgd-tuningjob-11-22-38-46-002-2927640b'
+    arn = "arn:aws:sagemaker:us-west-2:968277160000:training-job/resnet-sgd-tuningjob-11-22-38-46-002-2927640b"
     name = sagemaker.utils.extract_name_from_job_arn(arn)
-    assert name == 'resnet-sgd-tuningjob-11-22-38-46-002-2927640b'
+    assert name == "resnet-sgd-tuningjob-11-22-38-46-002-2927640b"
 
 
-MESSAGE = 'message'
-STATUS = 'status'
+MESSAGE = "message"
+STATUS = "status"
 TRAINING_JOB_DESCRIPTION_1 = {
-    'SecondaryStatusTransitions': [{'StatusMessage': MESSAGE, 'Status': STATUS}]
+    "SecondaryStatusTransitions": [{"StatusMessage": MESSAGE, "Status": STATUS}]
 }
 TRAINING_JOB_DESCRIPTION_2 = {
-    'SecondaryStatusTransitions': [{'StatusMessage': 'different message', 'Status': STATUS}]
+    "SecondaryStatusTransitions": [{"StatusMessage": "different message", "Status": STATUS}]
 }
 
-TRAINING_JOB_DESCRIPTION_EMPTY = {
-    'SecondaryStatusTransitions': []
-}
+TRAINING_JOB_DESCRIPTION_EMPTY = {"SecondaryStatusTransitions": []}
 
 
 def test_secondary_training_status_changed_true():
-    changed = sagemaker.utils.secondary_training_status_changed(TRAINING_JOB_DESCRIPTION_1, TRAINING_JOB_DESCRIPTION_2)
+    changed = sagemaker.utils.secondary_training_status_changed(
+        TRAINING_JOB_DESCRIPTION_1, TRAINING_JOB_DESCRIPTION_2
+    )
     assert changed is True
 
 
 def test_secondary_training_status_changed_false():
-    changed = sagemaker.utils.secondary_training_status_changed(TRAINING_JOB_DESCRIPTION_1, TRAINING_JOB_DESCRIPTION_1)
+    changed = sagemaker.utils.secondary_training_status_changed(
+        TRAINING_JOB_DESCRIPTION_1, TRAINING_JOB_DESCRIPTION_1
+    )
     assert changed is False
 
 
@@ -151,50 +150,62 @@ def test_secondary_training_status_changed_current_missing():
 
 
 def test_secondary_training_status_changed_empty():
-    changed = sagemaker.utils.secondary_training_status_changed(TRAINING_JOB_DESCRIPTION_EMPTY,
-                                                                TRAINING_JOB_DESCRIPTION_1)
+    changed = sagemaker.utils.secondary_training_status_changed(
+        TRAINING_JOB_DESCRIPTION_EMPTY, TRAINING_JOB_DESCRIPTION_1
+    )
     assert changed is False
 
 
 def test_secondary_training_status_message_status_changed():
     now = datetime.now()
-    TRAINING_JOB_DESCRIPTION_1['LastModifiedTime'] = now
-    expected = '{} {} - {}'.format(
-        datetime.utcfromtimestamp(time.mktime(now.timetuple())).strftime('%Y-%m-%d %H:%M:%S'),
+    TRAINING_JOB_DESCRIPTION_1["LastModifiedTime"] = now
+    expected = "{} {} - {}".format(
+        datetime.utcfromtimestamp(time.mktime(now.timetuple())).strftime("%Y-%m-%d %H:%M:%S"),
         STATUS,
-        MESSAGE
+        MESSAGE,
     )
-    assert sagemaker.utils.secondary_training_status_message(TRAINING_JOB_DESCRIPTION_1,
-                                                             TRAINING_JOB_DESCRIPTION_EMPTY) == expected
+    assert (
+        sagemaker.utils.secondary_training_status_message(
+            TRAINING_JOB_DESCRIPTION_1, TRAINING_JOB_DESCRIPTION_EMPTY
+        )
+        == expected
+    )
 
 
 def test_secondary_training_status_message_status_not_changed():
     now = datetime.now()
-    TRAINING_JOB_DESCRIPTION_1['LastModifiedTime'] = now
-    expected = '{} {} - {}'.format(
-        datetime.utcfromtimestamp(time.mktime(now.timetuple())).strftime('%Y-%m-%d %H:%M:%S'),
+    TRAINING_JOB_DESCRIPTION_1["LastModifiedTime"] = now
+    expected = "{} {} - {}".format(
+        datetime.utcfromtimestamp(time.mktime(now.timetuple())).strftime("%Y-%m-%d %H:%M:%S"),
         STATUS,
-        MESSAGE
+        MESSAGE,
     )
-    assert sagemaker.utils.secondary_training_status_message(TRAINING_JOB_DESCRIPTION_1,
-                                                             TRAINING_JOB_DESCRIPTION_2) == expected
+    assert (
+        sagemaker.utils.secondary_training_status_message(
+            TRAINING_JOB_DESCRIPTION_1, TRAINING_JOB_DESCRIPTION_2
+        )
+        == expected
+    )
 
 
 def test_secondary_training_status_message_prev_missing():
     now = datetime.now()
-    TRAINING_JOB_DESCRIPTION_1['LastModifiedTime'] = now
-    expected = '{} {} - {}'.format(
-        datetime.utcfromtimestamp(time.mktime(now.timetuple())).strftime('%Y-%m-%d %H:%M:%S'),
+    TRAINING_JOB_DESCRIPTION_1["LastModifiedTime"] = now
+    expected = "{} {} - {}".format(
+        datetime.utcfromtimestamp(time.mktime(now.timetuple())).strftime("%Y-%m-%d %H:%M:%S"),
         STATUS,
-        MESSAGE
+        MESSAGE,
     )
-    assert sagemaker.utils.secondary_training_status_message(TRAINING_JOB_DESCRIPTION_1, {}) == expected
+    assert (
+        sagemaker.utils.secondary_training_status_message(TRAINING_JOB_DESCRIPTION_1, {})
+        == expected
+    )
 
 
-@patch('os.makedirs')
+@patch("os.makedirs")
 def test_download_folder(makedirs):
-    boto_mock = Mock(name='boto_session')
-    boto_mock.client('sts').get_caller_identity.return_value = {'Account': '123'}
+    boto_mock = Mock(name="boto_session")
+    boto_mock.client("sts").get_caller_identity.return_value = {"Account": "123"}
 
     session = sagemaker.Session(boto_session=boto_mock, sagemaker_client=Mock())
 
@@ -202,81 +213,84 @@ def test_download_folder(makedirs):
     validation_data = Mock()
 
     train_data.bucket_name.return_value = BUCKET_NAME
-    train_data.key = 'prefix/train/train_data.csv'
+    train_data.key = "prefix/train/train_data.csv"
     validation_data.bucket_name.return_value = BUCKET_NAME
-    validation_data.key = 'prefix/train/validation_data.csv'
+    validation_data.key = "prefix/train/validation_data.csv"
 
     s3_files = [train_data, validation_data]
-    boto_mock.resource('s3').Bucket(BUCKET_NAME).objects.filter.return_value = s3_files
+    boto_mock.resource("s3").Bucket(BUCKET_NAME).objects.filter.return_value = s3_files
 
     obj_mock = Mock()
-    boto_mock.resource('s3').Object.return_value = obj_mock
+    boto_mock.resource("s3").Object.return_value = obj_mock
 
     # all the S3 mocks are set, the test itself begins now.
-    sagemaker.utils.download_folder(BUCKET_NAME, '/prefix', '/tmp', session)
+    sagemaker.utils.download_folder(BUCKET_NAME, "/prefix", "/tmp", session)
 
     obj_mock.download_file.assert_called()
-    calls = [call(os.path.join('/tmp', 'train/train_data.csv')),
-             call(os.path.join('/tmp', 'train/validation_data.csv'))]
+    calls = [
+        call(os.path.join("/tmp", "train/train_data.csv")),
+        call(os.path.join("/tmp", "train/validation_data.csv")),
+    ]
     obj_mock.download_file.assert_has_calls(calls)
     obj_mock.reset_mock()
 
     # Testing with a trailing slash for the prefix.
-    sagemaker.utils.download_folder(BUCKET_NAME, '/prefix/', '/tmp', session)
+    sagemaker.utils.download_folder(BUCKET_NAME, "/prefix/", "/tmp", session)
     obj_mock.download_file.assert_called()
     obj_mock.download_file.assert_has_calls(calls)
 
 
-@patch('os.makedirs')
+@patch("os.makedirs")
 def test_download_folder_points_to_single_file(makedirs):
-    boto_mock = Mock(name='boto_session')
-    boto_mock.client('sts').get_caller_identity.return_value = {'Account': '123'}
+    boto_mock = Mock(name="boto_session")
+    boto_mock.client("sts").get_caller_identity.return_value = {"Account": "123"}
 
     session = sagemaker.Session(boto_session=boto_mock, sagemaker_client=Mock())
 
     train_data = Mock()
 
     train_data.bucket_name.return_value = BUCKET_NAME
-    train_data.key = 'prefix/train/train_data.csv'
+    train_data.key = "prefix/train/train_data.csv"
 
     s3_files = [train_data]
-    boto_mock.resource('s3').Bucket(BUCKET_NAME).objects.filter.return_value = s3_files
+    boto_mock.resource("s3").Bucket(BUCKET_NAME).objects.filter.return_value = s3_files
 
     obj_mock = Mock()
-    boto_mock.resource('s3').Object.return_value = obj_mock
+    boto_mock.resource("s3").Object.return_value = obj_mock
 
     # all the S3 mocks are set, the test itself begins now.
-    sagemaker.utils.download_folder(BUCKET_NAME, '/prefix/train/train_data.csv', '/tmp', session)
+    sagemaker.utils.download_folder(BUCKET_NAME, "/prefix/train/train_data.csv", "/tmp", session)
 
     obj_mock.download_file.assert_called()
-    calls = [call(os.path.join('/tmp', 'train_data.csv'))]
+    calls = [call(os.path.join("/tmp", "train_data.csv"))]
     obj_mock.download_file.assert_has_calls(calls)
-    assert boto_mock.resource('s3').Bucket(BUCKET_NAME).objects.filter.call_count == 1
+    assert boto_mock.resource("s3").Bucket(BUCKET_NAME).objects.filter.call_count == 1
     obj_mock.reset_mock()
 
 
 def test_download_file():
-    boto_mock = Mock(name='boto_session')
-    boto_mock.client('sts').get_caller_identity.return_value = {'Account': '123'}
+    boto_mock = Mock(name="boto_session")
+    boto_mock.client("sts").get_caller_identity.return_value = {"Account": "123"}
     bucket_mock = Mock()
-    boto_mock.resource('s3').Bucket.return_value = bucket_mock
+    boto_mock.resource("s3").Bucket.return_value = bucket_mock
     session = sagemaker.Session(boto_session=boto_mock, sagemaker_client=Mock())
 
-    sagemaker.utils.download_file(BUCKET_NAME, '/prefix/path/file.tar.gz',
-                                  '/tmp/file.tar.gz', session)
+    sagemaker.utils.download_file(
+        BUCKET_NAME, "/prefix/path/file.tar.gz", "/tmp/file.tar.gz", session
+    )
 
-    bucket_mock.download_file.assert_called_with('prefix/path/file.tar.gz', '/tmp/file.tar.gz')
+    bucket_mock.download_file.assert_called_with("prefix/path/file.tar.gz", "/tmp/file.tar.gz")
 
 
-@patch('tarfile.open')
+@patch("tarfile.open")
 def test_create_tar_file_with_provided_path(open):
     files = mock_tarfile(open)
 
-    file_list = ['/tmp/a', '/tmp/b']
+    file_list = ["/tmp/a", "/tmp/b"]
 
-    path = sagemaker.utils.create_tar_file(file_list, target='/my/custom/path.tar.gz')
-    assert path == '/my/custom/path.tar.gz'
-    assert files == [['/tmp/a', 'a'], ['/tmp/b', 'b']]
+    path = sagemaker.utils.create_tar_file(file_list, target="/my/custom/path.tar.gz")
+    assert path == "/my/custom/path.tar.gz"
+    assert files == [["/tmp/a", "a"], ["/tmp/b", "b"]]
 
 
 def mock_tarfile(open):
@@ -292,14 +306,14 @@ def mock_tarfile(open):
     return files
 
 
-@patch('tarfile.open')
-@patch('tempfile.mkstemp', Mock(return_value=(None, '/auto/generated/path')))
+@patch("tarfile.open")
+@patch("tempfile.mkstemp", Mock(return_value=(None, "/auto/generated/path")))
 def test_create_tar_file_with_auto_generated_path(open):
     files = mock_tarfile(open)
 
-    path = sagemaker.utils.create_tar_file(['/tmp/a', '/tmp/b'])
-    assert path == '/auto/generated/path'
-    assert files == [['/tmp/a', 'a'], ['/tmp/b', 'b']]
+    path = sagemaker.utils.create_tar_file(["/tmp/a", "/tmp/b"])
+    assert path == "/auto/generated/path"
+    assert files == [["/tmp/a", "a"], ["/tmp/b", "b"]]
 
 
 def create_file_tree(root, tree):
@@ -308,7 +322,7 @@ def create_file_tree(root, tree):
             os.makedirs(os.path.join(root, os.path.dirname(file)))
         except:  # noqa: E722 Using bare except because p2/3 incompatibility issues.
             pass
-        with open(os.path.join(root, file), 'a') as f:
+        with open(os.path.join(root, file), "a") as f:
             f.write(file)
 
 
@@ -319,138 +333,171 @@ def tmp(tmpdir):
 
 def test_repack_model_without_source_dir(tmp, fake_s3):
 
-    create_file_tree(tmp, ['model-dir/model',
-                           'dependencies/a',
-                           'dependencies/b',
-                           'source-dir/inference.py',
-                           'source-dir/this-file-should-not-be-included.py'])
+    create_file_tree(
+        tmp,
+        [
+            "model-dir/model",
+            "dependencies/a",
+            "dependencies/b",
+            "source-dir/inference.py",
+            "source-dir/this-file-should-not-be-included.py",
+        ],
+    )
 
-    fake_s3.tar_and_upload('model-dir', 's3://fake/location')
+    fake_s3.tar_and_upload("model-dir", "s3://fake/location")
 
-    sagemaker.utils.repack_model(inference_script=os.path.join(tmp, 'source-dir/inference.py'),
-                                 source_directory=None,
-                                 dependencies=[os.path.join(tmp, 'dependencies/a'),
-                                               os.path.join(tmp, 'dependencies/b')],
-                                 model_uri='s3://fake/location',
-                                 repacked_model_uri='s3://destination-bucket/model.tar.gz',
-                                 sagemaker_session=fake_s3.sagemaker_session)
+    sagemaker.utils.repack_model(
+        inference_script=os.path.join(tmp, "source-dir/inference.py"),
+        source_directory=None,
+        dependencies=[os.path.join(tmp, "dependencies/a"), os.path.join(tmp, "dependencies/b")],
+        model_uri="s3://fake/location",
+        repacked_model_uri="s3://destination-bucket/model.tar.gz",
+        sagemaker_session=fake_s3.sagemaker_session,
+    )
 
-    assert list_tar_files(fake_s3.fake_upload_path, tmp) == {'/model', '/code/a',
-                                                             '/code/b', '/code/inference.py'}
+    assert list_tar_files(fake_s3.fake_upload_path, tmp) == {
+        "/model",
+        "/code/a",
+        "/code/b",
+        "/code/inference.py",
+    }
 
 
 def test_repack_model_with_entry_point_without_path_without_source_dir(tmp, fake_s3):
 
-    create_file_tree(tmp, ['model-dir/model',
-                           'source-dir/inference.py',
-                           'source-dir/this-file-should-not-be-included.py'])
+    create_file_tree(
+        tmp,
+        [
+            "model-dir/model",
+            "source-dir/inference.py",
+            "source-dir/this-file-should-not-be-included.py",
+        ],
+    )
 
-    fake_s3.tar_and_upload('model-dir', 's3://fake/location')
+    fake_s3.tar_and_upload("model-dir", "s3://fake/location")
 
     cwd = os.getcwd()
     try:
-        os.chdir(os.path.join(tmp, 'source-dir'))
+        os.chdir(os.path.join(tmp, "source-dir"))
 
-        sagemaker.utils.repack_model('inference.py',
-                                     None,
-                                     None,
-                                     's3://fake/location',
-                                     's3://destination-bucket/model.tar.gz',
-                                     fake_s3.sagemaker_session)
+        sagemaker.utils.repack_model(
+            "inference.py",
+            None,
+            None,
+            "s3://fake/location",
+            "s3://destination-bucket/model.tar.gz",
+            fake_s3.sagemaker_session,
+        )
     finally:
         os.chdir(cwd)
 
-    assert list_tar_files(fake_s3.fake_upload_path, tmp) == {'/code/inference.py', '/model'}
+    assert list_tar_files(fake_s3.fake_upload_path, tmp) == {"/code/inference.py", "/model"}
 
 
 def test_repack_model_from_s3_to_s3(tmp, fake_s3):
 
-    create_file_tree(tmp, ['model-dir/model',
-                           'source-dir/inference.py',
-                           'source-dir/this-file-should-be-included.py'])
+    create_file_tree(
+        tmp,
+        [
+            "model-dir/model",
+            "source-dir/inference.py",
+            "source-dir/this-file-should-be-included.py",
+        ],
+    )
 
-    fake_s3.tar_and_upload('model-dir', 's3://fake/location')
+    fake_s3.tar_and_upload("model-dir", "s3://fake/location")
 
-    sagemaker.utils.repack_model('inference.py',
-                                 os.path.join(tmp, 'source-dir'),
-                                 None,
-                                 's3://fake/location',
-                                 's3://destination-bucket/model.tar.gz',
-                                 fake_s3.sagemaker_session)
+    sagemaker.utils.repack_model(
+        "inference.py",
+        os.path.join(tmp, "source-dir"),
+        None,
+        "s3://fake/location",
+        "s3://destination-bucket/model.tar.gz",
+        fake_s3.sagemaker_session,
+    )
 
-    assert list_tar_files(fake_s3.fake_upload_path, tmp) == {'/code/this-file-should-be-included.py',
-                                                             '/code/inference.py',
-                                                             '/model'}
+    assert list_tar_files(fake_s3.fake_upload_path, tmp) == {
+        "/code/this-file-should-be-included.py",
+        "/code/inference.py",
+        "/model",
+    }
 
 
 def test_repack_model_from_file_to_file(tmp):
-    create_file_tree(tmp, ['model',
-                           'dependencies/a',
-                           'source-dir/inference.py'])
+    create_file_tree(tmp, ["model", "dependencies/a", "source-dir/inference.py"])
 
-    model_tar_path = os.path.join(tmp, 'model.tar.gz')
-    sagemaker.utils.create_tar_file([os.path.join(tmp, 'model')], model_tar_path)
+    model_tar_path = os.path.join(tmp, "model.tar.gz")
+    sagemaker.utils.create_tar_file([os.path.join(tmp, "model")], model_tar_path)
 
     sagemaker_session = MagicMock()
 
-    file_mode_path = 'file://%s' % model_tar_path
-    destination_path = 'file://%s' % os.path.join(tmp, 'repacked-model.tar.gz')
+    file_mode_path = "file://%s" % model_tar_path
+    destination_path = "file://%s" % os.path.join(tmp, "repacked-model.tar.gz")
 
-    sagemaker.utils.repack_model('inference.py',
-                                 os.path.join(tmp, 'source-dir'),
-                                 [os.path.join(tmp, 'dependencies/a')],
-                                 file_mode_path,
-                                 destination_path,
-                                 sagemaker_session)
+    sagemaker.utils.repack_model(
+        "inference.py",
+        os.path.join(tmp, "source-dir"),
+        [os.path.join(tmp, "dependencies/a")],
+        file_mode_path,
+        destination_path,
+        sagemaker_session,
+    )
 
-    assert list_tar_files(destination_path, tmp) == {'/code/a', '/code/inference.py', '/model'}
+    assert list_tar_files(destination_path, tmp) == {"/code/a", "/code/inference.py", "/model"}
 
 
 def test_repack_model_with_inference_code_should_replace_the_code(tmp, fake_s3):
-    create_file_tree(tmp, ['model-dir/model',
-                           'source-dir/new-inference.py',
-                           'model-dir/code/old-inference.py'])
+    create_file_tree(
+        tmp, ["model-dir/model", "source-dir/new-inference.py", "model-dir/code/old-inference.py"]
+    )
 
-    fake_s3.tar_and_upload('model-dir', 's3://fake/location')
+    fake_s3.tar_and_upload("model-dir", "s3://fake/location")
 
-    sagemaker.utils.repack_model('inference.py',
-                                 os.path.join(tmp, 'source-dir'),
-                                 None,
-                                 's3://fake/location',
-                                 's3://destination-bucket/repacked-model',
-                                 fake_s3.sagemaker_session)
+    sagemaker.utils.repack_model(
+        "inference.py",
+        os.path.join(tmp, "source-dir"),
+        None,
+        "s3://fake/location",
+        "s3://destination-bucket/repacked-model",
+        fake_s3.sagemaker_session,
+    )
 
-    assert list_tar_files(fake_s3.fake_upload_path, tmp) == {'/code/new-inference.py', '/model'}
+    assert list_tar_files(fake_s3.fake_upload_path, tmp) == {"/code/new-inference.py", "/model"}
 
 
 def test_repack_model_from_file_to_folder(tmp):
-    create_file_tree(tmp, ['model',
-                           'source-dir/inference.py'])
+    create_file_tree(tmp, ["model", "source-dir/inference.py"])
 
-    model_tar_path = os.path.join(tmp, 'model.tar.gz')
-    sagemaker.utils.create_tar_file([os.path.join(tmp, 'model')], model_tar_path)
+    model_tar_path = os.path.join(tmp, "model.tar.gz")
+    sagemaker.utils.create_tar_file([os.path.join(tmp, "model")], model_tar_path)
 
-    file_mode_path = 'file://%s' % model_tar_path
+    file_mode_path = "file://%s" % model_tar_path
 
-    sagemaker.utils.repack_model('inference.py',
-                                 os.path.join(tmp, 'source-dir'),
-                                 [],
-                                 file_mode_path,
-                                 'file://%s/repacked-model.tar.gz' % tmp,
-                                 MagicMock())
+    sagemaker.utils.repack_model(
+        "inference.py",
+        os.path.join(tmp, "source-dir"),
+        [],
+        file_mode_path,
+        "file://%s/repacked-model.tar.gz" % tmp,
+        MagicMock(),
+    )
 
-    assert list_tar_files('file://%s/repacked-model.tar.gz' % tmp, tmp) == {'/code/inference.py', '/model'}
+    assert list_tar_files("file://%s/repacked-model.tar.gz" % tmp, tmp) == {
+        "/code/inference.py",
+        "/model",
+    }
 
 
 class FakeS3(object):
-
     def __init__(self, tmp):
         self.tmp = tmp
         self.sagemaker_session = MagicMock()
         self.location_map = {}
         self.current_bucket = None
 
-        self.sagemaker_session.boto_session.resource().Bucket().download_file.side_effect = self.download_file
+        self.sagemaker_session.boto_session.resource().Bucket().download_file.side_effect = (
+            self.download_file
+        )
         self.sagemaker_session.boto_session.resource().Bucket.side_effect = self.bucket
         self.fake_upload_path = self.mock_s3_upload()
 
@@ -459,22 +506,21 @@ class FakeS3(object):
         return self
 
     def download_file(self, path, target):
-        key = '%s/%s' % (self.current_bucket, path)
+        key = "%s/%s" % (self.current_bucket, path)
         shutil.copy2(self.location_map[key], target)
 
     def tar_and_upload(self, path, fake_location):
-        tar_location = os.path.join(self.tmp, 'model-%s.tar.gz' % time.time())
-        with tarfile.open(tar_location, mode='w:gz') as t:
+        tar_location = os.path.join(self.tmp, "model-%s.tar.gz" % time.time())
+        with tarfile.open(tar_location, mode="w:gz") as t:
             t.add(os.path.join(self.tmp, path), arcname=os.path.sep)
 
-        self.location_map[fake_location.replace('s3://', '')] = tar_location
+        self.location_map[fake_location.replace("s3://", "")] = tar_location
         return tar_location
 
     def mock_s3_upload(self):
-        dst = os.path.join(self.tmp, 'dst')
+        dst = os.path.join(self.tmp, "dst")
 
         class MockS3Object(object):
-
             def __init__(self, bucket, key):
                 self.bucket = bucket
                 self.key = key
@@ -494,18 +540,18 @@ def fake_s3(tmp):
 
 
 def list_tar_files(tar_ball, tmp):
-    tar_ball = tar_ball.replace('file://', '')
-    startpath = os.path.join(tmp, 'startpath')
+    tar_ball = tar_ball.replace("file://", "")
+    startpath = os.path.join(tmp, "startpath")
     os.mkdir(startpath)
 
-    with tarfile.open(name=tar_ball, mode='r:gz') as t:
+    with tarfile.open(name=tar_ball, mode="r:gz") as t:
         t.extractall(path=startpath)
 
     def walk():
         for root, dirs, files in os.walk(startpath):
-            path = root.replace(startpath, '')
+            path = root.replace(startpath, "")
             for f in files:
-                yield '%s/%s' % (path, f)
+                yield "%s/%s" % (path, f)
 
     result = set(walk())
     return result if result else {}

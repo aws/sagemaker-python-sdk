@@ -25,17 +25,17 @@ from sagemaker.pytorch.estimator import PyTorch
 from sagemaker.pytorch.model import PyTorchModel
 from sagemaker.utils import sagemaker_timestamp
 
-MNIST_DIR = os.path.join(DATA_DIR, 'pytorch_mnist')
-MNIST_SCRIPT = os.path.join(MNIST_DIR, 'mnist.py')
+MNIST_DIR = os.path.join(DATA_DIR, "pytorch_mnist")
+MNIST_SCRIPT = os.path.join(MNIST_DIR, "mnist.py")
 
 
-@pytest.fixture(scope='module', name='pytorch_training_job')
+@pytest.fixture(scope="module", name="pytorch_training_job")
 def fixture_training_job(sagemaker_session, pytorch_full_version):
-    instance_type = 'ml.c4.xlarge'
+    instance_type = "ml.c4.xlarge"
     with timeout(minutes=TRAINING_DEFAULT_TIMEOUT_MINUTES):
         pytorch = _get_pytorch_estimator(sagemaker_session, pytorch_full_version, instance_type)
 
-        pytorch.fit({'training': _upload_training_data(pytorch)})
+        pytorch.fit({"training": _upload_training_data(pytorch)})
         return pytorch.latest_training_job.name
 
 
@@ -43,10 +43,10 @@ def fixture_training_job(sagemaker_session, pytorch_full_version):
 @pytest.mark.regional_testing
 def test_sync_fit_deploy(pytorch_training_job, sagemaker_session):
     # TODO: add tests against local mode when it's ready to be used
-    endpoint_name = 'test-pytorch-sync-fit-attach-deploy{}'.format(sagemaker_timestamp())
+    endpoint_name = "test-pytorch-sync-fit-attach-deploy{}".format(sagemaker_timestamp())
     with timeout_and_delete_endpoint_by_name(endpoint_name, sagemaker_session):
         estimator = PyTorch.attach(pytorch_training_job, sagemaker_session=sagemaker_session)
-        predictor = estimator.deploy(1, 'ml.c4.xlarge', endpoint_name=endpoint_name)
+        predictor = estimator.deploy(1, "ml.c4.xlarge", endpoint_name=endpoint_name)
         data = numpy.zeros(shape=(1, 1, 28, 28), dtype=numpy.float32)
         predictor.predict(data)
 
@@ -58,15 +58,20 @@ def test_sync_fit_deploy(pytorch_training_job, sagemaker_session):
 
 
 def test_deploy_model(pytorch_training_job, sagemaker_session):
-    endpoint_name = 'test-pytorch-deploy-model-{}'.format(sagemaker_timestamp())
+    endpoint_name = "test-pytorch-deploy-model-{}".format(sagemaker_timestamp())
 
     with timeout_and_delete_endpoint_by_name(endpoint_name, sagemaker_session):
         desc = sagemaker_session.sagemaker_client.describe_training_job(
-            TrainingJobName=pytorch_training_job)
-        model_data = desc['ModelArtifacts']['S3ModelArtifacts']
-        model = PyTorchModel(model_data, 'SageMakerRole', entry_point=MNIST_SCRIPT,
-                             sagemaker_session=sagemaker_session)
-        predictor = model.deploy(1, 'ml.m4.xlarge', endpoint_name=endpoint_name)
+            TrainingJobName=pytorch_training_job
+        )
+        model_data = desc["ModelArtifacts"]["S3ModelArtifacts"]
+        model = PyTorchModel(
+            model_data,
+            "SageMakerRole",
+            entry_point=MNIST_SCRIPT,
+            sagemaker_session=sagemaker_session,
+        )
+        predictor = model.deploy(1, "ml.m4.xlarge", endpoint_name=endpoint_name)
 
         batch_size = 100
         data = numpy.random.rand(batch_size, 1, 28, 28).astype(numpy.float32)
@@ -75,30 +80,33 @@ def test_deploy_model(pytorch_training_job, sagemaker_session):
         assert output.shape == (batch_size, 10)
 
 
-@pytest.mark.skipif(tests.integ.test_region() in tests.integ.HOSTING_NO_P2_REGIONS
-                    or tests.integ.test_region() in tests.integ.TRAINING_NO_P2_REGIONS,
-                    reason='no ml.p2 instances in these regions')
+@pytest.mark.skipif(
+    tests.integ.test_region() in tests.integ.HOSTING_NO_P2_REGIONS
+    or tests.integ.test_region() in tests.integ.TRAINING_NO_P2_REGIONS,
+    reason="no ml.p2 instances in these regions",
+)
 def test_async_fit_deploy(sagemaker_session, pytorch_full_version):
     training_job_name = ""
     # TODO: add tests against local mode when it's ready to be used
-    instance_type = 'ml.p2.xlarge'
+    instance_type = "ml.p2.xlarge"
 
     with timeout(minutes=10):
         pytorch = _get_pytorch_estimator(sagemaker_session, pytorch_full_version, instance_type)
 
-        pytorch.fit({'training': _upload_training_data(pytorch)}, wait=False)
+        pytorch.fit({"training": _upload_training_data(pytorch)}, wait=False)
         training_job_name = pytorch.latest_training_job.name
 
         print("Waiting to re-attach to the training job: %s" % training_job_name)
         time.sleep(20)
 
     if not _is_local_mode(instance_type):
-        endpoint_name = 'test-pytorch-async-fit-attach-deploy-{}'.format(sagemaker_timestamp())
+        endpoint_name = "test-pytorch-async-fit-attach-deploy-{}".format(sagemaker_timestamp())
 
         with timeout_and_delete_endpoint_by_name(endpoint_name, sagemaker_session):
             print("Re-attaching now to: %s" % training_job_name)
-            estimator = PyTorch.attach(training_job_name=training_job_name,
-                                       sagemaker_session=sagemaker_session)
+            estimator = PyTorch.attach(
+                training_job_name=training_job_name, sagemaker_session=sagemaker_session
+            )
             predictor = estimator.deploy(1, instance_type, endpoint_name=endpoint_name)
 
             batch_size = 100
@@ -110,30 +118,38 @@ def test_async_fit_deploy(sagemaker_session, pytorch_full_version):
 
 # TODO(nadiaya): Run against local mode when errors will be propagated
 def test_failed_training_job(sagemaker_session, pytorch_full_version):
-    script_path = os.path.join(MNIST_DIR, 'failure_script.py')
+    script_path = os.path.join(MNIST_DIR, "failure_script.py")
 
     with timeout(minutes=TRAINING_DEFAULT_TIMEOUT_MINUTES):
-        pytorch = _get_pytorch_estimator(sagemaker_session, pytorch_full_version,
-                                         entry_point=script_path)
+        pytorch = _get_pytorch_estimator(
+            sagemaker_session, pytorch_full_version, entry_point=script_path
+        )
 
         with pytest.raises(ValueError) as e:
             pytorch.fit()
-        assert 'ExecuteUserScriptError' in str(e.value)
+        assert "ExecuteUserScriptError" in str(e.value)
 
 
 def _upload_training_data(pytorch):
-    return pytorch.sagemaker_session.upload_data(path=os.path.join(MNIST_DIR, 'training'),
-                                                 key_prefix='integ-test-data/pytorch_mnist/training')
+    return pytorch.sagemaker_session.upload_data(
+        path=os.path.join(MNIST_DIR, "training"),
+        key_prefix="integ-test-data/pytorch_mnist/training",
+    )
 
 
-def _get_pytorch_estimator(sagemaker_session, pytorch_full_version, instance_type='ml.c4.xlarge',
-                           entry_point=MNIST_SCRIPT):
-    return PyTorch(entry_point=entry_point, role='SageMakerRole',
-                   framework_version=pytorch_full_version,
-                   py_version=PYTHON_VERSION, train_instance_count=1,
-                   train_instance_type=instance_type,
-                   sagemaker_session=sagemaker_session)
+def _get_pytorch_estimator(
+    sagemaker_session, pytorch_full_version, instance_type="ml.c4.xlarge", entry_point=MNIST_SCRIPT
+):
+    return PyTorch(
+        entry_point=entry_point,
+        role="SageMakerRole",
+        framework_version=pytorch_full_version,
+        py_version=PYTHON_VERSION,
+        train_instance_count=1,
+        train_instance_type=instance_type,
+        sagemaker_session=sagemaker_session,
+    )
 
 
 def _is_local_mode(instance_type):
-    return instance_type == 'local'
+    return instance_type == "local"

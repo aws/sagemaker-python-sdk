@@ -24,7 +24,7 @@ from tests.integ.timeout import timeout_and_delete_endpoint_by_name, timeout
 from sagemaker.tensorflow import TensorFlow
 from sagemaker.utils import unique_name_from_base
 
-PICKLE_CONTENT_TYPE = 'application/python-pickle'
+PICKLE_CONTENT_TYPE = "application/python-pickle"
 
 
 class PickleSerializer(object):
@@ -36,38 +36,48 @@ class PickleSerializer(object):
 
 
 @pytest.mark.canary_quick
-@pytest.mark.skipif(tests.integ.PYTHON_VERSION != 'py2',
-                    reason="TensorFlow image supports only python 2.")
-@pytest.mark.skipif(tests.integ.test_region() in tests.integ.HOSTING_NO_P2_REGIONS
-                    or tests.integ.test_region() in tests.integ.TRAINING_NO_P2_REGIONS,
-                    reason='no ml.p2 instances in these regions')
+@pytest.mark.skipif(
+    tests.integ.PYTHON_VERSION != "py2", reason="TensorFlow image supports only python 2."
+)
+@pytest.mark.skipif(
+    tests.integ.test_region() in tests.integ.HOSTING_NO_P2_REGIONS
+    or tests.integ.test_region() in tests.integ.TRAINING_NO_P2_REGIONS,
+    reason="no ml.p2 instances in these regions",
+)
 def test_cifar(sagemaker_session, tf_full_version):
     with timeout(minutes=45):
-        script_path = os.path.join(tests.integ.DATA_DIR, 'cifar_10', 'source')
+        script_path = os.path.join(tests.integ.DATA_DIR, "cifar_10", "source")
 
-        dataset_path = os.path.join(tests.integ.DATA_DIR, 'cifar_10', 'data')
+        dataset_path = os.path.join(tests.integ.DATA_DIR, "cifar_10", "data")
 
-        estimator = TensorFlow(entry_point='resnet_cifar_10.py', source_dir=script_path,
-                               role='SageMakerRole',
-                               framework_version=tf_full_version, training_steps=500,
-                               evaluation_steps=5,
-                               train_instance_count=2, train_instance_type='ml.p2.xlarge',
-                               sagemaker_session=sagemaker_session, train_max_run=45 * 60,
-                               base_job_name='test-cifar')
+        estimator = TensorFlow(
+            entry_point="resnet_cifar_10.py",
+            source_dir=script_path,
+            role="SageMakerRole",
+            framework_version=tf_full_version,
+            training_steps=500,
+            evaluation_steps=5,
+            train_instance_count=2,
+            train_instance_type="ml.p2.xlarge",
+            sagemaker_session=sagemaker_session,
+            train_max_run=45 * 60,
+            base_job_name="test-cifar",
+        )
 
-        inputs = estimator.sagemaker_session.upload_data(path=dataset_path,
-                                                         key_prefix='data/cifar10')
-        job_name = unique_name_from_base('test-tf-cifar')
+        inputs = estimator.sagemaker_session.upload_data(
+            path=dataset_path, key_prefix="data/cifar10"
+        )
+        job_name = unique_name_from_base("test-tf-cifar")
 
         estimator.fit(inputs, logs=False, job_name=job_name)
-        print('job succeeded: {}'.format(estimator.latest_training_job.name))
+        print("job succeeded: {}".format(estimator.latest_training_job.name))
 
     endpoint_name = estimator.latest_training_job.name
     with timeout_and_delete_endpoint_by_name(endpoint_name, sagemaker_session):
-        predictor = estimator.deploy(initial_instance_count=1, instance_type='ml.p2.xlarge')
+        predictor = estimator.deploy(initial_instance_count=1, instance_type="ml.p2.xlarge")
         predictor.serializer = PickleSerializer()
         predictor.content_type = PICKLE_CONTENT_TYPE
 
         data = np.random.randn(32, 32, 3)
         predict_response = predictor.predict(data)
-        assert len(predict_response['outputs']['probabilities']['floatVal']) == 10
+        assert len(predict_response["outputs"]["probabilities"]["floatVal"]) == 10
