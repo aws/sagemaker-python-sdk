@@ -117,6 +117,8 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):
         self.metric_definitions = metric_definitions
         self.model_uri = model_uri
         self.model_channel_name = model_channel_name
+        self.code_uri = None
+        self.code_channel_name = 'code'
 
         if self.train_instance_type in ('local', 'local_gpu'):
             if self.train_instance_type == 'local_gpu' and self.train_instance_count > 1:
@@ -773,9 +775,11 @@ class Framework(EstimatorBase):
     LAUNCH_MPI_ENV_NAME = 'sagemaker_mpi_enabled'
     MPI_NUM_PROCESSES_PER_HOST = 'sagemaker_mpi_num_of_processes_per_host'
     MPI_CUSTOM_MPI_OPTIONS = 'sagemaker_mpi_custom_mpi_options'
+    CONTAINER_CODE_CHANNEL_SOURCEDIR_PATH = '/opt/ml/input/data/code/sourcedir.tar.gz'
 
     def __init__(self, entry_point, source_dir=None, hyperparameters=None, enable_cloudwatch_metrics=False,
-                 container_log_level=logging.INFO, code_location=None, image_name=None, dependencies=None, **kwargs):
+                 container_log_level=logging.INFO, code_location=None, image_name=None, dependencies=None,
+                 enable_network_isolation=False, **kwargs):
         """Base class initializer. Subclasses which override ``__init__`` should invoke ``super()``
 
         Args:
@@ -784,6 +788,21 @@ class Framework(EstimatorBase):
             source_dir (str): Path (absolute or relative) to a directory with any other training
                 source code dependencies aside from the entry point file (default: None). Structure within this
                 directory are preserved when training on Amazon SageMaker.
+            hyperparameters (dict): Hyperparameters that will be used for training (default: None).
+                The hyperparameters are made accessible as a dict[str, str] to the training code on SageMaker.
+                For convenience, this accepts other types for keys and values, but ``str()`` will be called
+                to convert them before training.
+            enable_cloudwatch_metrics (bool): [DEPRECATED] Now there are cloudwatch metrics emitted by all SageMaker
+                training jobs. This will be ignored for now and removed in a further release.
+            container_log_level (int): Log level to use within the container (default: logging.INFO).
+                Valid values are defined in the Python logging module.
+            code_location (str): The S3 prefix URI where custom code will be uploaded (default: None).
+                The code file uploaded in S3 is 'code_location/source/sourcedir.tar.gz'.
+                If not specified, the default code location is s3://default_bucket/job-name/. And code file
+                uploaded to S3 is s3://default_bucket/job-name/source/sourcedir.tar.gz
+            image_name (str): An alternate image name to use instead of the official Sagemaker image
+                for the framework. This is useful to run one of the Sagemaker supported frameworks
+                with an image containing custom dependencies.
             dependencies (list[str]): A list of paths to directories (absolute or relative) with
                 any additional libraries that will be exported to the container (default: []).
                 The library folders will be copied to SageMaker in the same folder where the entrypoint is copied.
@@ -800,21 +819,11 @@ class Framework(EstimatorBase):
                     >>>     |------ common
                     >>>     |------ virtual-env
 
-            hyperparameters (dict): Hyperparameters that will be used for training (default: None).
-                The hyperparameters are made accessible as a dict[str, str] to the training code on SageMaker.
-                For convenience, this accepts other types for keys and values, but ``str()`` will be called
-                to convert them before training.
-            enable_cloudwatch_metrics (bool): [DEPRECATED] Now there are cloudwatch metrics emitted by all SageMaker
-                training jobs. This will be ignored for now and removed in a further release.
-            container_log_level (int): Log level to use within the container (default: logging.INFO).
-                Valid values are defined in the Python logging module.
-            code_location (str): The S3 prefix URI where custom code will be uploaded (default: None).
-                The code file uploaded in S3 is 'code_location/source/sourcedir.tar.gz'.
-                If not specified, the default code location is s3://default_bucket/job-name/. And code file
-                uploaded to S3 is s3://default_bucket/job-name/source/sourcedir.tar.gz
-            image_name (str): An alternate image name to use instead of the official Sagemaker image
-                for the framework. This is useful to run one of the Sagemaker supported frameworks
-                with an image containing custom dependencies.
+            enable_network_isolation (bool): Specifies whether container will run in network isolation mode. Network
+                isolation mode restricts the container access to outside networks (such as the internet). The container
+                does not make any inbound or outbound network calls. If True, a channel named "code" will be created
+                for any user entry script for training. The user entry script, files in source_dir (if specified), and
+                dependencies will be uploaded in a tar to S3. Also known as internet-free mode (default: `False`).
             **kwargs: Additional kwargs passed to the ``EstimatorBase`` constructor.
         """
         super(Framework, self).__init__(**kwargs)
@@ -830,8 +839,17 @@ class Framework(EstimatorBase):
         self.container_log_level = container_log_level
         self.code_location = code_location
         self.image_name = image_name
+        self._enable_network_isolation = enable_network_isolation
 
         self._hyperparameters = hyperparameters or {}
+
+    def enable_network_isolation(self):
+        """Return True if this Estimator can use network isolation to run.
+
+        Returns:
+            bool: Whether this Estimator can use network isolation or not.
+        """
+        return self._enable_network_isolation
 
     def _prepare_for_training(self, job_name=None):
         """Set hyperparameters needed for training. This method will also validate ``source_dir``.
@@ -858,6 +876,11 @@ class Framework(EstimatorBase):
 
             code_dir = 'file://' + self.source_dir
             script = self.entry_point
+        elif self.enable_network_isolation() and self.entry_point:
+            self.uploaded_code = self._stage_user_code_in_s3()
+            code_dir = self.CONTAINER_CODE_CHANNEL_SOURCEDIR_PATH
+            script = self.uploaded_code.script_name
+            self.code_uri = self.uploaded_code.s3_prefix
         else:
             self.uploaded_code = self._stage_user_code_in_s3()
             code_dir = self.uploaded_code.s3_prefix
@@ -881,12 +904,12 @@ class Framework(EstimatorBase):
 
         if self.code_location is None and local_mode:
             code_bucket = self.sagemaker_session.default_bucket()
-            code_s3_prefix = '{}/source'.format(self._current_job_name)
+            code_s3_prefix = '{}/{}'.format(self._current_job_name, 'source')
             kms_key = None
 
         elif self.code_location is None:
             code_bucket, _ = parse_s3_url(self.output_path)
-            code_s3_prefix = '{}/source'.format(self._current_job_name)
+            code_s3_prefix = '{}/{}'.format(self._current_job_name, 'source')
             kms_key = self.output_kms_key
         else:
             code_bucket, key_prefix = parse_s3_url(self.code_location)

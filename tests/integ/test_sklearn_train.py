@@ -55,6 +55,33 @@ def test_training_with_additional_hyperparameters(sagemaker_session, sklearn_ful
         return sklearn.latest_training_job.name
 
 
+@pytest.mark.skipif(PYTHON_VERSION != 'py3', reason="Scikit-learn image supports only python 3.")
+def test_training_with_network_isolation(sagemaker_session, sklearn_full_version):
+    with timeout(minutes=TRAINING_DEFAULT_TIMEOUT_MINUTES):
+        script_path = os.path.join(DATA_DIR, 'sklearn_mnist', 'mnist.py')
+        data_path = os.path.join(DATA_DIR, 'sklearn_mnist')
+
+        sklearn = SKLearn(entry_point=script_path,
+                          role='SageMakerRole',
+                          train_instance_type="ml.c4.xlarge",
+                          framework_version=sklearn_full_version,
+                          py_version=PYTHON_VERSION,
+                          sagemaker_session=sagemaker_session,
+                          hyperparameters={'epochs': 1},
+                          enable_network_isolation=True)
+
+        train_input = sklearn.sagemaker_session.upload_data(path=os.path.join(data_path, 'train'),
+                                                            key_prefix='integ-test-data/sklearn_mnist/train')
+        test_input = sklearn.sagemaker_session.upload_data(path=os.path.join(data_path, 'test'),
+                                                           key_prefix='integ-test-data/sklearn_mnist/test')
+        job_name = unique_name_from_base('test-sklearn-hp')
+
+        sklearn.fit({'train': train_input, 'test': test_input}, job_name=job_name)
+        assert sagemaker_session.sagemaker_client \
+            .describe_training_job(TrainingJobName=job_name)['EnableNetworkIsolation']
+        return sklearn.latest_training_job.name
+
+
 @pytest.mark.canary_quick
 @pytest.mark.regional_testing
 @pytest.mark.skipif(PYTHON_VERSION != 'py3', reason="Scikit-learn image supports only python 3.")
