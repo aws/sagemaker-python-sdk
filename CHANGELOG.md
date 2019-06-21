@@ -1,5 +1,22 @@
 # Changelog
 
+## v1.28.3 (2019-06-20)
+
+### Bug fixes and other changes
+
+ * update Sagemaker Neo regions and instance families
+
+### Documentation changes
+
+ * fix punctuation in MXNet version list
+ * clean up MXNet and TF documentation
+
+## v1.28.2 (2019-06-19)
+
+### Bug fixes and other changes
+
+ * prevent race condition in vpc tests
+
 ## v1.28.1 (2019-06-17)
 
 ### Bug fixes and other changes

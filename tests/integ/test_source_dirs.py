@@ -16,7 +16,7 @@ import os
 
 import pytest
 
-import tests.integ.local_mode_utils as local_mode_utils
+import tests.integ.lock as lock
 from tests.integ import DATA_DIR, PYTHON_VERSION
 
 from sagemaker.pytorch.estimator import PyTorch
@@ -37,7 +37,8 @@ def test_source_dirs(tmpdir, sagemaker_local_session):
                         sagemaker_session=sagemaker_local_session)
     estimator.fit()
 
-    with local_mode_utils.lock():
+    # endpoint tests all use the same port, so we use this lock to prevent concurrent execution
+    with lock.lock():
         try:
             predictor = estimator.deploy(initial_instance_count=1, instance_type='local')
             predict_response = predictor.predict([7])
