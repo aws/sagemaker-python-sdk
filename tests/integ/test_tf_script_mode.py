@@ -58,7 +58,7 @@ def test_mnist(sagemaker_session, instance_type):
                            script_mode=True,
                            framework_version=TensorFlow.LATEST_VERSION,
                            metric_definitions=[
-                               {'Name': 'train:global_steps', 'Regex': r'global_step\/sec:\s(.*)'}])
+                               {'Name': 'train:global_steps', 'Regex': r'global_step\/sec:\s(.*)'}],)
     inputs = estimator.sagemaker_session.upload_data(
         path=os.path.join(MNIST_RESOURCE_PATH, 'data'),
         key_prefix='scriptmode/mnist')
@@ -69,6 +69,27 @@ def test_mnist(sagemaker_session, instance_type):
                            ['graph.pbtxt', 'model.ckpt-0.index', 'model.ckpt-0.meta'])
     df = estimator.training_job_analytics.dataframe()
     assert df.size > 0
+
+
+def test_failed_mnist_with_network_isolation(sagemaker_session):
+    with tests.integ.timeout.timeout(minutes=tests.integ.TRAINING_DEFAULT_TIMEOUT_MINUTES):
+        estimator = TensorFlow(entry_point=SCRIPT,
+                               role='SageMakerRole',
+                               train_instance_count=1,
+                               train_instance_type='ml.c4.xlarge',
+                               sagemaker_session=sagemaker_session,
+                               script_mode=True,
+                               framework_version=TensorFlow.LATEST_VERSION,
+                               metric_definitions=[
+                                   {'Name': 'train:global_steps', 'Regex': r'global_step\/sec:\s(.*)'}],
+                               enable_network_isolation=True)
+        inputs = estimator.sagemaker_session.upload_data(
+            path=os.path.join(MNIST_RESOURCE_PATH, 'data'),
+            key_prefix='scriptmode/mnist')
+
+        with pytest.raises(ValueError) as e:
+            estimator.fit(inputs=inputs, job_name=unique_name_from_base('test-tf-sm-mnist'))
+        assert 'Network isolation mode not supported for TensorFlow framework' in str(e.value)
 
 
 def test_server_side_encryption(sagemaker_session):
