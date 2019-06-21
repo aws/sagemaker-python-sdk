@@ -121,6 +121,20 @@ def test_failed_training_job(sagemaker_session, pytorch_full_version):
         assert 'ExecuteUserScriptError' in str(e.value)
 
 
+# TODO: Update PyTorch container to support network isolation and replace this test
+def test_failed_training_job_with_network_isolation(sagemaker_session, pytorch_full_version):
+
+    with timeout(minutes=TRAINING_DEFAULT_TIMEOUT_MINUTES):
+        pytorch = PyTorch(entry_point=MNIST_SCRIPT, role='SageMakerRole',
+                          framework_version=pytorch_full_version, py_version=PYTHON_VERSION,
+                          train_instance_count=1, train_instance_type='ml.c4.xlarge',
+                          sagemaker_session=sagemaker_session, enable_network_isolation=True)
+
+        with pytest.raises(ValueError) as e:
+            pytorch.fit()
+        assert 'Network isolation mode not supported for PyTorch framework' in str(e.value)
+
+
 def _upload_training_data(pytorch):
     return pytorch.sagemaker_session.upload_data(path=os.path.join(MNIST_DIR, 'training'),
                                                  key_prefix='integ-test-data/pytorch_mnist/training')

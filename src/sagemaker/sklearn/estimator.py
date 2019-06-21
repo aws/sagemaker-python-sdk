@@ -95,6 +95,14 @@ class SKLearn(Framework):
                 self.sagemaker_session.boto_region_name,
                 image_tag)
 
+    def enable_network_isolation(self):
+        """Return True if this Estimator can use network isolation to run.
+
+        Returns:
+            bool: Whether this Estimator can use network isolation or not.
+        """
+        return self._enable_network_isolation
+
     def create_model(self, model_server_workers=None, role=None,
                      vpc_config_override=VPC_CONFIG_DEFAULT, **kwargs):
         """Create a SageMaker ``SKLearnModel`` object that can be deployed to an ``Endpoint``.

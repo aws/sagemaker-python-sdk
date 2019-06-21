@@ -120,6 +120,21 @@ def test_failed_training_job(sagemaker_session, chainer_full_version):
         assert 'ExecuteUserScriptError' in str(e.value)
 
 
+# TODO: Update Chainer container to support network isolation and replace this test
+def test_failed_training_job_with_network_isolation(sagemaker_session, chainer_full_version):
+    with timeout(minutes=TRAINING_DEFAULT_TIMEOUT_MINUTES):
+        script_path = os.path.join(DATA_DIR, 'chainer_mnist', 'mnist.py')
+
+        chainer = Chainer(entry_point=script_path, role='SageMakerRole',
+                          framework_version=chainer_full_version, py_version=PYTHON_VERSION,
+                          train_instance_count=1, train_instance_type='ml.c4.xlarge',
+                          sagemaker_session=sagemaker_session, enable_network_isolation=True)
+
+        with pytest.raises(ValueError) as e:
+            chainer.fit(job_name=unique_name_from_base('test-chainer-training'))
+        assert 'Network isolation mode not supported for Chainer framework' in str(e.value)
+
+
 def _run_mnist_training_job(sagemaker_session, instance_type, instance_count,
                             chainer_full_version, wait=True):
     with timeout(minutes=TRAINING_DEFAULT_TIMEOUT_MINUTES):
