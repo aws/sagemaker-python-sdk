@@ -58,7 +58,7 @@ def test_mnist(sagemaker_session, instance_type):
                            script_mode=True,
                            framework_version=TensorFlow.LATEST_VERSION,
                            metric_definitions=[
-                               {'Name': 'train:global_steps', 'Regex': r'global_step\/sec:\s(.*)'}],)
+                               {'Name': 'train:global_steps', 'Regex': r'global_step\/sec:\s(.*)'}])
     inputs = estimator.sagemaker_session.upload_data(
         path=os.path.join(MNIST_RESOURCE_PATH, 'data'),
         key_prefix='scriptmode/mnist')
