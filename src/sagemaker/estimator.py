@@ -780,7 +780,7 @@ class Framework(EstimatorBase):
 
     def __init__(self, entry_point, source_dir=None, hyperparameters=None, enable_cloudwatch_metrics=False,
                  container_log_level=logging.INFO, code_location=None, image_name=None, dependencies=None,
-                 enable_network_isolation=False, **kwargs):
+                 enable_network_isolation=False, git_config=False, **kwargs):
         """Base class initializer. Subclasses which override ``__init__`` should invoke ``super()``
 
         Args:
@@ -814,7 +814,6 @@ class Framework(EstimatorBase):
                     the specified commit.
             source_dir (str): Path (absolute or relative) to a directory with any other training
                 source code dependencies aside from the entry point file (default: None). Structure within this
-<<<<<<< HEAD
                 directory are preserved when training on Amazon SageMaker. If 'git_config' is provided,
                 source_dir should be a relative location to a directory in the Git repo.
                 Example:
@@ -828,8 +827,6 @@ class Framework(EstimatorBase):
 
                     and you need 'train.py' as entry point and 'test.py' as training source code as well, you can
                     assign entry_point='train.py', source_dir='src'.
-=======
-                directory are preserved when training on Amazon SageMaker.
             hyperparameters (dict): Hyperparameters that will be used for training (default: None).
                 The hyperparameters are made accessible as a dict[str, str] to the training code on SageMaker.
                 For convenience, this accepts other types for keys and values, but ``str()`` will be called
@@ -845,7 +842,6 @@ class Framework(EstimatorBase):
             image_name (str): An alternate image name to use instead of the official Sagemaker image
                 for the framework. This is useful to run one of the Sagemaker supported frameworks
                 with an image containing custom dependencies.
->>>>>>> f1d34ad4073f8d856ef9c596b491f8a4cd8ef31f
             dependencies (list[str]): A list of paths to directories (absolute or relative) with
                 any additional libraries that will be exported to the container (default: []).
                 The library folders will be copied to SageMaker in the same folder where the entrypoint is copied.
