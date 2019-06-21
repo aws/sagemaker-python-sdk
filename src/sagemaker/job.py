@@ -60,11 +60,20 @@ class _Job(object):
         stop_condition = _Job._prepare_stop_condition(estimator.train_max_run)
         vpc_config = estimator.get_vpc_config()
 
-        model_channel = _Job._prepare_model_channel(input_config, estimator.model_uri, estimator.model_channel_name,
-                                                    validate_uri)
+        model_channel = _Job._prepare_channel(input_config, estimator.model_uri, estimator.model_channel_name,
+                                              validate_uri, content_type='application/x-sagemaker-model',
+                                              input_mode='File')
         if model_channel:
             input_config = [] if input_config is None else input_config
             input_config.append(model_channel)
+
+        if estimator.enable_network_isolation():
+            code_channel = _Job._prepare_channel(input_config, estimator.code_uri, estimator.code_channel_name,
+                                                 validate_uri)
+
+            if code_channel:
+                input_config = [] if input_config is None else input_config
+                input_config.append(code_channel)
 
         return {'input_config': input_config,
                 'role': role,
@@ -110,16 +119,16 @@ class _Job(object):
         return channel_config
 
     @staticmethod
-    def _format_string_uri_input(uri_input, validate_uri=True):
+    def _format_string_uri_input(uri_input, validate_uri=True, content_type=None, input_mode=None):
         if isinstance(uri_input, str) and validate_uri and uri_input.startswith('s3://'):
-            return s3_input(uri_input)
+            return s3_input(uri_input, content_type=content_type, input_mode=input_mode)
         elif isinstance(uri_input, str) and validate_uri and uri_input.startswith('file://'):
             return file_input(uri_input)
         elif isinstance(uri_input, str) and validate_uri:
-            raise ValueError('Training input data must be a valid S3 or FILE URI: must start with "s3://" or '
-                             '"file://"')
+            raise ValueError('URI input {} must be a valid S3 or FILE URI: must start with "s3://" or '
+                             '"file://"'.format(uri_input))
         elif isinstance(uri_input, str):
-            return s3_input(uri_input)
+            return s3_input(uri_input, content_type=content_type, input_mode=input_mode)
         elif isinstance(uri_input, s3_input):
             return uri_input
         elif isinstance(uri_input, file_input):
@@ -128,21 +137,22 @@ class _Job(object):
             raise ValueError('Cannot format input {}. Expecting one of str, s3_input, or file_input'.format(uri_input))
 
     @staticmethod
-    def _prepare_model_channel(input_config, model_uri=None, model_channel_name=None, validate_uri=True):
-        if not model_uri:
+    def _prepare_channel(input_config, channel_uri=None, channel_name=None, validate_uri=True, content_type=None,
+                         input_mode=None):
+        if not channel_uri:
             return
-        elif not model_channel_name:
-            raise ValueError('Expected a pre-trained model channel name if a model URL is specified.')
+        elif not channel_name:
+            raise ValueError('Expected a channel name if a channel URI {} is specified'.format(channel_uri))
 
         if input_config:
-            for channel in input_config:
-                if channel['ChannelName'] == model_channel_name:
-                    raise ValueError('Duplicate channels not allowed.')
+            for existing_channel in input_config:
+                if existing_channel['ChannelName'] == channel_name:
+                    raise ValueError('Duplicate channel {} not allowed.'.format(channel_name))
 
-        model_input = _Job._format_model_uri_input(model_uri, validate_uri)
-        model_channel = _Job._convert_input_to_channel(model_channel_name, model_input)
+        channel_input = _Job._format_string_uri_input(channel_uri, validate_uri, content_type, input_mode)
+        channel = _Job._convert_input_to_channel(channel_name, channel_input)
 
-        return model_channel
+        return channel
 
     @staticmethod
     def _format_model_uri_input(model_uri, validate_uri=True):
