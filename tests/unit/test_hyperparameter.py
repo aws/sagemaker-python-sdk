@@ -18,9 +18,9 @@ from sagemaker.amazon.hyperparameter import Hyperparameter
 
 class Test(object):
 
-    blank = Hyperparameter(name='some-name', data_type=int)
-    elizabeth = Hyperparameter(name='elizabeth')
-    validated = Hyperparameter(name='validated', validate=lambda value: value > 55, data_type=int)
+    blank = Hyperparameter(name="some-name", data_type=int)
+    elizabeth = Hyperparameter(name="elizabeth")
+    validated = Hyperparameter(name="validated", validate=lambda value: value > 55, data_type=int)
 
 
 def test_blank_access():
@@ -40,7 +40,7 @@ def test_delete():
     x = Test()
     x.blank = 97
     assert x.blank == 97
-    del(x.blank)
+    del x.blank
     with pytest.raises(AttributeError):
         x.blank
 
@@ -49,7 +49,7 @@ def test_name():
     x = Test()
     with pytest.raises(AttributeError) as excinfo:
         x.elizabeth
-        assert 'elizabeth' in excinfo
+        assert "elizabeth" in excinfo
 
 
 def test_validated():
@@ -62,7 +62,7 @@ def test_validated():
 def test_data_type():
     x = Test()
     x.validated = 66
-    assert type(x.validated) == Test.__dict__['validated'].data_type
+    assert type(x.validated) == Test.__dict__["validated"].data_type
 
 
 def test_from_string():

@@ -70,4 +70,7 @@ You can select version of TensorFlow by passing a ``framework_version`` keyword 
 Alternatively, you can build your own image by following the instructions in the SageMaker TensorFlow containers
 repository, and passing ``image_name`` to the TensorFlow Estimator constructor.
 
-For more information on the contents of the images, see the SageMaker TensorFlow containers repository here: https://github.com/aws/sagemaker-tensorflow-containers/
+For more information on the contents of the images, see the SageMaker TensorFlow containers repositories here:
+
+- training: https://github.com/aws/sagemaker-tensorflow-container
+- serving: https://github.com/aws/sagemaker-tensorflow-serving-container

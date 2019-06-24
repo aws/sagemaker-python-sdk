@@ -21,7 +21,9 @@ from sagemaker.transformer import Transformer
 class PipelineModel(object):
     """A pipeline of SageMaker ``Model``s that can be deployed to an ``Endpoint``."""
 
-    def __init__(self, models, role, predictor_cls=None, name=None, vpc_config=None, sagemaker_session=None):
+    def __init__(
+        self, models, role, predictor_cls=None, name=None, vpc_config=None, sagemaker_session=None
+    ):
         """Initialize an SageMaker ``Model`` which can be used to build an Inference Pipeline comprising of multiple
         model containers.
 
@@ -67,7 +69,9 @@ class PipelineModel(object):
 
         return sagemaker.pipeline_container_def(self.models, instance_type)
 
-    def deploy(self, initial_instance_count, instance_type, endpoint_name=None, tags=None, wait=True):
+    def deploy(
+        self, initial_instance_count, instance_type, endpoint_name=None, tags=None, wait=True
+    ):
         """Deploy this ``Model`` to an ``Endpoint`` and optionally return a ``Predictor``.
 
         Create a SageMaker ``Model`` and ``EndpointConfig``, and deploy an ``Endpoint`` from this ``Model``.
@@ -97,13 +101,18 @@ class PipelineModel(object):
 
         containers = self.pipeline_container_def(instance_type)
 
-        self.name = self.name or name_from_image(containers[0]['Image'])
-        self.sagemaker_session.create_model(self.name, self.role, containers, vpc_config=self.vpc_config)
+        self.name = self.name or name_from_image(containers[0]["Image"])
+        self.sagemaker_session.create_model(
+            self.name, self.role, containers, vpc_config=self.vpc_config
+        )
 
-        production_variant = sagemaker.production_variant(self.name, instance_type, initial_instance_count)
+        production_variant = sagemaker.production_variant(
+            self.name, instance_type, initial_instance_count
+        )
         self.endpoint_name = endpoint_name or self.name
-        self.sagemaker_session.endpoint_from_production_variants(self.endpoint_name, [production_variant], tags,
-                                                                 wait=wait)
+        self.sagemaker_session.endpoint_from_production_variants(
+            self.endpoint_name, [production_variant], tags, wait=wait
+        )
         if self.predictor_cls:
             return self.predictor_cls(self.endpoint_name, self.sagemaker_session)
 
@@ -122,12 +131,26 @@ class PipelineModel(object):
 
         containers = self.pipeline_container_def(instance_type)
 
-        self.name = self.name or name_from_image(containers[0]['Image'])
-        self.sagemaker_session.create_model(self.name, self.role, containers, vpc_config=self.vpc_config)
+        self.name = self.name or name_from_image(containers[0]["Image"])
+        self.sagemaker_session.create_model(
+            self.name, self.role, containers, vpc_config=self.vpc_config
+        )
 
-    def transformer(self, instance_count, instance_type, strategy=None, assemble_with=None, output_path=None,
-                    output_kms_key=None, accept=None, env=None, max_concurrent_transforms=None,
-                    max_payload=None, tags=None, volume_kms_key=None):
+    def transformer(
+        self,
+        instance_count,
+        instance_type,
+        strategy=None,
+        assemble_with=None,
+        output_path=None,
+        output_kms_key=None,
+        accept=None,
+        env=None,
+        max_concurrent_transforms=None,
+        max_payload=None,
+        tags=None,
+        volume_kms_key=None,
+    ):
         """Return a ``Transformer`` that uses this Model.
 
         Args:
@@ -151,11 +174,23 @@ class PipelineModel(object):
         """
         self._create_sagemaker_pipeline_model(instance_type)
 
-        return Transformer(self.name, instance_count, instance_type, strategy=strategy, assemble_with=assemble_with,
-                           output_path=output_path, output_kms_key=output_kms_key, accept=accept,
-                           max_concurrent_transforms=max_concurrent_transforms, max_payload=max_payload,
-                           env=env, tags=tags, base_transform_job_name=self.name,
-                           volume_kms_key=volume_kms_key, sagemaker_session=self.sagemaker_session)
+        return Transformer(
+            self.name,
+            instance_count,
+            instance_type,
+            strategy=strategy,
+            assemble_with=assemble_with,
+            output_path=output_path,
+            output_kms_key=output_kms_key,
+            accept=accept,
+            max_concurrent_transforms=max_concurrent_transforms,
+            max_payload=max_payload,
+            env=env,
+            tags=tags,
+            base_transform_job_name=self.name,
+            volume_kms_key=volume_kms_key,
+            sagemaker_session=self.sagemaker_session,
+        )
 
     def delete_model(self):
         """Delete the SageMaker model backing this pipeline model. This does not delete the list of SageMaker models used
@@ -164,6 +199,6 @@ class PipelineModel(object):
         """
 
         if self.name is None:
-            raise ValueError('The SageMaker model must be created before attempting to delete.')
+            raise ValueError("The SageMaker model must be created before attempting to delete.")
 
         self.sagemaker_session.delete_model(self.name)

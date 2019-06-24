@@ -28,7 +28,7 @@ def _list_check_subset(valid_super_list):
         if not isinstance(value, str):
             return False
 
-        val_list = [s.strip() for s in value.split(',')]
+        val_list = [s.strip() for s in value.split(",")]
         return set(val_list).issubset(valid_superset)
 
     return validate
@@ -36,112 +36,134 @@ def _list_check_subset(valid_super_list):
 
 class Object2Vec(AmazonAlgorithmEstimatorBase):
 
-    repo_name = 'object2vec'
+    repo_name = "object2vec"
     repo_version = 1
     MINI_BATCH_SIZE = 32
 
-    enc_dim = hp('enc_dim', (ge(4), le(10000)),
-                 'An integer in [4, 10000]', int)
-    mini_batch_size = hp('mini_batch_size', (ge(1), le(10000)),
-                         'An integer in [1, 10000]', int)
-    epochs = hp('epochs', (ge(1), le(100)),
-                'An integer in [1, 100]', int)
-    early_stopping_patience = hp('early_stopping_patience', (ge(1), le(5)),
-                                 'An integer in [1, 5]', int)
-    early_stopping_tolerance = hp('early_stopping_tolerance', (ge(1e-06), le(0.1)),
-                                  'A float in [1e-06, 0.1]', float)
-    dropout = hp('dropout', (ge(0.0), le(1.0)),
-                 'A float in [0.0, 1.0]', float)
-    weight_decay = hp('weight_decay', (ge(0.0), le(10000.0)),
-                      'A float in [0.0, 10000.0]', float)
-    bucket_width = hp('bucket_width', (ge(0), le(100)),
-                      'An integer in [0, 100]', int)
-    num_classes = hp('num_classes', (ge(2), le(30)),
-                     'An integer in [2, 30]', int)
-    mlp_layers = hp('mlp_layers', (ge(1), le(10)),
-                    'An integer in [1, 10]', int)
-    mlp_dim = hp('mlp_dim', (ge(2), le(10000)),
-                 'An integer in [2, 10000]', int)
-    mlp_activation = hp('mlp_activation', isin("tanh", "relu", "linear"),
-                        'One of "tanh", "relu", "linear"', str)
-    output_layer = hp('output_layer', isin("softmax", "mean_squared_error"),
-                      'One of "softmax", "mean_squared_error"', str)
-    optimizer = hp('optimizer', isin("adagrad", "adam", "rmsprop", "sgd", "adadelta"),
-                   'One of "adagrad", "adam", "rmsprop", "sgd", "adadelta"', str)
-    learning_rate = hp('learning_rate', (ge(1e-06), le(1.0)),
-                       'A float in [1e-06, 1.0]', float)
+    enc_dim = hp("enc_dim", (ge(4), le(10000)), "An integer in [4, 10000]", int)
+    mini_batch_size = hp("mini_batch_size", (ge(1), le(10000)), "An integer in [1, 10000]", int)
+    epochs = hp("epochs", (ge(1), le(100)), "An integer in [1, 100]", int)
+    early_stopping_patience = hp(
+        "early_stopping_patience", (ge(1), le(5)), "An integer in [1, 5]", int
+    )
+    early_stopping_tolerance = hp(
+        "early_stopping_tolerance", (ge(1e-06), le(0.1)), "A float in [1e-06, 0.1]", float
+    )
+    dropout = hp("dropout", (ge(0.0), le(1.0)), "A float in [0.0, 1.0]", float)
+    weight_decay = hp("weight_decay", (ge(0.0), le(10000.0)), "A float in [0.0, 10000.0]", float)
+    bucket_width = hp("bucket_width", (ge(0), le(100)), "An integer in [0, 100]", int)
+    num_classes = hp("num_classes", (ge(2), le(30)), "An integer in [2, 30]", int)
+    mlp_layers = hp("mlp_layers", (ge(1), le(10)), "An integer in [1, 10]", int)
+    mlp_dim = hp("mlp_dim", (ge(2), le(10000)), "An integer in [2, 10000]", int)
+    mlp_activation = hp(
+        "mlp_activation", isin("tanh", "relu", "linear"), 'One of "tanh", "relu", "linear"', str
+    )
+    output_layer = hp(
+        "output_layer",
+        isin("softmax", "mean_squared_error"),
+        'One of "softmax", "mean_squared_error"',
+        str,
+    )
+    optimizer = hp(
+        "optimizer",
+        isin("adagrad", "adam", "rmsprop", "sgd", "adadelta"),
+        'One of "adagrad", "adam", "rmsprop", "sgd", "adadelta"',
+        str,
+    )
+    learning_rate = hp("learning_rate", (ge(1e-06), le(1.0)), "A float in [1e-06, 1.0]", float)
 
-    negative_sampling_rate = hp('negative_sampling_rate', (ge(0), le(100)), 'An integer in [0, 100]', int)
-    comparator_list = hp('comparator_list', _list_check_subset(["hadamard", "concat", "abs_diff"]),
-                         'Comma-separated of hadamard, concat, abs_diff. E.g. "hadamard,abs_diff"', str)
-    tied_token_embedding_weight = hp('tied_token_embedding_weight', (), 'Either True or False', bool)
-    token_embedding_storage_type = hp('token_embedding_storage_type', isin("dense", "row_sparse"),
-                                      'One of "dense", "row_sparse"', str)
+    negative_sampling_rate = hp(
+        "negative_sampling_rate", (ge(0), le(100)), "An integer in [0, 100]", int
+    )
+    comparator_list = hp(
+        "comparator_list",
+        _list_check_subset(["hadamard", "concat", "abs_diff"]),
+        'Comma-separated of hadamard, concat, abs_diff. E.g. "hadamard,abs_diff"',
+        str,
+    )
+    tied_token_embedding_weight = hp(
+        "tied_token_embedding_weight", (), "Either True or False", bool
+    )
+    token_embedding_storage_type = hp(
+        "token_embedding_storage_type",
+        isin("dense", "row_sparse"),
+        'One of "dense", "row_sparse"',
+        str,
+    )
 
-    enc0_network = hp('enc0_network', isin("hcnn", "bilstm", "pooled_embedding"),
-                      'One of "hcnn", "bilstm", "pooled_embedding"', str)
-    enc1_network = hp('enc1_network', isin("hcnn", "bilstm", "pooled_embedding", "enc0"),
-                      'One of "hcnn", "bilstm", "pooled_embedding", "enc0"', str)
-    enc0_cnn_filter_width = hp('enc0_cnn_filter_width', (ge(1), le(9)),
-                               'An integer in [1, 9]', int)
-    enc1_cnn_filter_width = hp('enc1_cnn_filter_width', (ge(1), le(9)),
-                               'An integer in [1, 9]', int)
-    enc0_max_seq_len = hp('enc0_max_seq_len', (ge(1), le(5000)),
-                          'An integer in [1, 5000]', int)
-    enc1_max_seq_len = hp('enc1_max_seq_len', (ge(1), le(5000)),
-                          'An integer in [1, 5000]', int)
-    enc0_token_embedding_dim = hp('enc0_token_embedding_dim', (ge(2), le(1000)),
-                                  'An integer in [2, 1000]', int)
-    enc1_token_embedding_dim = hp('enc1_token_embedding_dim', (ge(2), le(1000)),
-                                  'An integer in [2, 1000]', int)
-    enc0_vocab_size = hp('enc0_vocab_size', (ge(2), le(3000000)),
-                         'An integer in [2, 3000000]', int)
-    enc1_vocab_size = hp('enc1_vocab_size', (ge(2), le(3000000)),
-                         'An integer in [2, 3000000]', int)
-    enc0_layers = hp('enc0_layers', (ge(1), le(4)),
-                     'An integer in [1, 4]', int)
-    enc1_layers = hp('enc1_layers', (ge(1), le(4)),
-                     'An integer in [1, 4]', int)
-    enc0_freeze_pretrained_embedding = hp('enc0_freeze_pretrained_embedding', (),
-                                          'Either True or False', bool)
-    enc1_freeze_pretrained_embedding = hp('enc1_freeze_pretrained_embedding', (),
-                                          'Either True or False', bool)
+    enc0_network = hp(
+        "enc0_network",
+        isin("hcnn", "bilstm", "pooled_embedding"),
+        'One of "hcnn", "bilstm", "pooled_embedding"',
+        str,
+    )
+    enc1_network = hp(
+        "enc1_network",
+        isin("hcnn", "bilstm", "pooled_embedding", "enc0"),
+        'One of "hcnn", "bilstm", "pooled_embedding", "enc0"',
+        str,
+    )
+    enc0_cnn_filter_width = hp("enc0_cnn_filter_width", (ge(1), le(9)), "An integer in [1, 9]", int)
+    enc1_cnn_filter_width = hp("enc1_cnn_filter_width", (ge(1), le(9)), "An integer in [1, 9]", int)
+    enc0_max_seq_len = hp("enc0_max_seq_len", (ge(1), le(5000)), "An integer in [1, 5000]", int)
+    enc1_max_seq_len = hp("enc1_max_seq_len", (ge(1), le(5000)), "An integer in [1, 5000]", int)
+    enc0_token_embedding_dim = hp(
+        "enc0_token_embedding_dim", (ge(2), le(1000)), "An integer in [2, 1000]", int
+    )
+    enc1_token_embedding_dim = hp(
+        "enc1_token_embedding_dim", (ge(2), le(1000)), "An integer in [2, 1000]", int
+    )
+    enc0_vocab_size = hp("enc0_vocab_size", (ge(2), le(3000000)), "An integer in [2, 3000000]", int)
+    enc1_vocab_size = hp("enc1_vocab_size", (ge(2), le(3000000)), "An integer in [2, 3000000]", int)
+    enc0_layers = hp("enc0_layers", (ge(1), le(4)), "An integer in [1, 4]", int)
+    enc1_layers = hp("enc1_layers", (ge(1), le(4)), "An integer in [1, 4]", int)
+    enc0_freeze_pretrained_embedding = hp(
+        "enc0_freeze_pretrained_embedding", (), "Either True or False", bool
+    )
+    enc1_freeze_pretrained_embedding = hp(
+        "enc1_freeze_pretrained_embedding", (), "Either True or False", bool
+    )
 
-    def __init__(self, role, train_instance_count, train_instance_type,
-                 epochs,
-                 enc0_max_seq_len,
-                 enc0_vocab_size,
-                 enc_dim=None,
-                 mini_batch_size=None,
-                 early_stopping_patience=None,
-                 early_stopping_tolerance=None,
-                 dropout=None,
-                 weight_decay=None,
-                 bucket_width=None,
-                 num_classes=None,
-                 mlp_layers=None,
-                 mlp_dim=None,
-                 mlp_activation=None,
-                 output_layer=None,
-                 optimizer=None,
-                 learning_rate=None,
-                 negative_sampling_rate=None,
-                 comparator_list=None,
-                 tied_token_embedding_weight=None,
-                 token_embedding_storage_type=None,
-                 enc0_network=None,
-                 enc1_network=None,
-                 enc0_cnn_filter_width=None,
-                 enc1_cnn_filter_width=None,
-                 enc1_max_seq_len=None,
-                 enc0_token_embedding_dim=None,
-                 enc1_token_embedding_dim=None,
-                 enc1_vocab_size=None,
-                 enc0_layers=None,
-                 enc1_layers=None,
-                 enc0_freeze_pretrained_embedding=None,
-                 enc1_freeze_pretrained_embedding=None,
-                 **kwargs):
+    def __init__(
+        self,
+        role,
+        train_instance_count,
+        train_instance_type,
+        epochs,
+        enc0_max_seq_len,
+        enc0_vocab_size,
+        enc_dim=None,
+        mini_batch_size=None,
+        early_stopping_patience=None,
+        early_stopping_tolerance=None,
+        dropout=None,
+        weight_decay=None,
+        bucket_width=None,
+        num_classes=None,
+        mlp_layers=None,
+        mlp_dim=None,
+        mlp_activation=None,
+        output_layer=None,
+        optimizer=None,
+        learning_rate=None,
+        negative_sampling_rate=None,
+        comparator_list=None,
+        tied_token_embedding_weight=None,
+        token_embedding_storage_type=None,
+        enc0_network=None,
+        enc1_network=None,
+        enc0_cnn_filter_width=None,
+        enc1_cnn_filter_width=None,
+        enc1_max_seq_len=None,
+        enc0_token_embedding_dim=None,
+        enc1_token_embedding_dim=None,
+        enc1_vocab_size=None,
+        enc0_layers=None,
+        enc1_layers=None,
+        enc0_freeze_pretrained_embedding=None,
+        enc1_freeze_pretrained_embedding=None,
+        **kwargs
+    ):
         """Object2Vec is :class:`Estimator` used for anomaly detection.
 
         This Estimator may be fit via calls to
@@ -257,14 +279,20 @@ class Object2Vec(AmazonAlgorithmEstimatorBase):
                 * 'Subnets' (list[str]): List of subnet ids.
                 * 'SecurityGroupIds' (list[str]): List of security group ids.
         """
-        return Object2VecModel(self.model_data, self.role, sagemaker_session=self.sagemaker_session,
-                               vpc_config=self.get_vpc_config(vpc_config_override))
+        return Object2VecModel(
+            self.model_data,
+            self.role,
+            sagemaker_session=self.sagemaker_session,
+            vpc_config=self.get_vpc_config(vpc_config_override),
+        )
 
     def _prepare_for_training(self, records, mini_batch_size=None, job_name=None):
         if mini_batch_size is None:
             mini_batch_size = self.MINI_BATCH_SIZE
 
-        super(Object2Vec, self)._prepare_for_training(records, mini_batch_size=mini_batch_size, job_name=job_name)
+        super(Object2Vec, self)._prepare_for_training(
+            records, mini_batch_size=mini_batch_size, job_name=job_name
+        )
 
 
 class Object2VecModel(Model):
@@ -273,10 +301,15 @@ class Object2VecModel(Model):
 
     def __init__(self, model_data, role, sagemaker_session=None, **kwargs):
         sagemaker_session = sagemaker_session or Session()
-        repo = '{}:{}'.format(Object2Vec.repo_name, Object2Vec.repo_version)
-        image = '{}/{}'.format(registry(sagemaker_session.boto_session.region_name,
-                                        Object2Vec.repo_name), repo)
-        super(Object2VecModel, self).__init__(model_data, image, role,
-                                              predictor_cls=RealTimePredictor,
-                                              sagemaker_session=sagemaker_session,
-                                              **kwargs)
+        repo = "{}:{}".format(Object2Vec.repo_name, Object2Vec.repo_version)
+        image = "{}/{}".format(
+            registry(sagemaker_session.boto_session.region_name, Object2Vec.repo_name), repo
+        )
+        super(Object2VecModel, self).__init__(
+            model_data,
+            image,
+            role,
+            predictor_cls=RealTimePredictor,
+            sagemaker_session=sagemaker_session,
+            **kwargs
+        )

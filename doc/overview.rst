@@ -183,6 +183,65 @@ Here is an example:
         # When you are done using your endpoint
         algo.delete_endpoint()
 
+Git Support
+-----------
+If you have your training scripts in your GitHub repository, you can use them directly without the trouble to download
+them to local machine. Git support can be enabled simply by providing ``git_config`` parameter when initializing an
+estimator. If Git support is enabled, then ``entry_point``, ``source_dir`` and  ``dependencies`` should all be relative
+paths in the Git repo. Note that if you decided to use Git support, then everything you need for ``entry_point``,
+``source_dir`` and ``dependencies`` should be in a single Git repo.
+
+Here are ways to specify ``git_config``:
+
+.. code:: python
+
+        # Specifies the git_config parameter
+        git_config = {'repo': 'https://github.com/username/repo-with-training-scripts.git',
+                      'branch': 'branch1',
+                      'commit': '4893e528afa4a790331e1b5286954f073b0f14a2'}
+
+        # Alternatively, you can also specify git_config by providing only 'repo' and 'branch'.
+        # If this is the case, the latest commit in the branch will be used.
+        git_config = {'repo': 'https://github.com/username/repo-with-training-scripts.git',
+                      'branch': 'branch1'}
+
+        # Only providing 'repo' is also allowed. If this is the case, latest commit in
+        # 'master' branch will be used.
+        git_config = {'repo': 'https://github.com/username/repo-with-training-scripts.git'
+
+The following are some examples to define estimators with Git support:
+
+.. code:: python
+
+        # In this example, the source directory 'pytorch' contains the entry point 'mnist.py' and other source code.
+        # and it is  relative path inside the Git repo.
+        pytorch_estimator = PyTorch(entry_point='mnist.py',
+                                    role='SageMakerRole',
+                                    source_dir='pytorch',
+                                    git_config=git_config,
+                                    train_instance_count=1,
+                                    train_instance_type='ml.c4.xlarge')
+
+        # In this example, the entry point 'mnist.py' is all we need for source code.
+        # We need to specify the path to it in the Git repo.
+        mx_estimator = MXNet(entry_point='mxnet/mnist.py',
+                             role='SageMakerRole',
+                             git_config=git_config,
+                             train_instance_count=1,
+                             train_instance_type='ml.c4.xlarge')
+
+        # In this example, besides entry point and other source code in source directory, we still need some
+        # dependencies for the training job. Dependencies should also be paths inside the Git repo.
+        pytorch_estimator = PyTorch(entry_point='mnist.py',
+                                    role='SageMakerRole',
+                                    source_dir='pytorch',
+                                    dependencies=['dep.py', 'foo/bar.py'],
+                                    git_config=git_config,
+                                    train_instance_count=1,
+                                    train_instance_type='ml.c4.xlarge')
+
+When Git support is enabled, users can still use local mode in the same way.
+
 Training Metrics
 ----------------
 The SageMaker Python SDK allows you to specify a name and a regular expression for metrics you want to track for training.
@@ -665,7 +724,113 @@ Likewise, when you create ``Transformer`` from the ``Estimator`` using ``transfo
     # Transform Job container instances will run in your VPC
     mxnet_vpc_transformer.transform('s3://my-bucket/batch-transform-input')
 
-*******************
+Secure Training with Network Isolation (Internet-Free) Mode
+-------------------------------------------------------------------------
+You can enable network isolation mode when running training and inference on Amazon SageMaker.
+
+For more information about Amazon SageMaker network isolation mode, see the `SageMaker documentation on network isolation or internet-free mode <https://docs.aws.amazon.com/sagemaker/latest/dg/mkt-algo-model-internet-free.html>`__.
+
+To train a model in network isolation mode, set the optional parameter ``enable_network_isolation`` to ``True`` in any network isolation supported Framework Estimator.
+
+.. code:: python
+
+    # set the enable_network_isolation parameter to True
+    sklearn_estimator = SKLearn('sklearn-train.py',
+                                train_instance_type='ml.m4.xlarge',
+                                framework_version='0.20.0',
+                                hyperparameters = {'epochs': 20, 'batch-size': 64, 'learning-rate': 0.1},
+                                enable_network_isolation=True)
+
+    # SageMaker Training Job will in the container without   any inbound or outbound network calls during runtime
+    sklearn_estimator.fit({'train': 's3://my-data-bucket/path/to/my/training/data',
+                            'test': 's3://my-data-bucket/path/to/my/test/data'})
+
+When this training job is created, the SageMaker Python SDK will upload the files in ``entry_point``, ``source_dir``, and ``dependencies`` to S3 as a compressed ``sourcedir.tar.gz`` file (``'s3://mybucket/sourcedir.tar.gz'``).
+
+A new training job channel, named ``code``, will be added with that S3 URI.  Before the training docker container is initialized, the ``sourcedir.tar.gz`` will be downloaded from S3 to the ML storage volume like any other offline input channel.
+
+Once the training job begins, the training container will look at the offline input ``code`` channel to install dependencies and run the entry script. This isolates the training container, so no inbound or outbound network calls can be made.
+
+
+FAQ
+---
+
+I want to train a SageMaker Estimator with local data, how do I do this?
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Upload the data to S3 before training. You can use the AWS Command Line Tool (the aws cli) to achieve this.
+
+If you don't have the aws cli, you can install it using pip:
+
+::
+
+    pip install awscli --upgrade --user
+
+If you don't have pip or want to learn more about installing the aws cli, see the official `Amazon aws cli installation guide <http://docs.aws.amazon.com/cli/latest/userguide/installing.html>`__.
+
+After you install the AWS cli, you can upload a directory of files to S3 with the following command:
+
+::
+
+    aws s3 cp /tmp/foo/ s3://bucket/path
+
+For more information about using the aws cli for manipulating S3 resources, see `AWS cli command reference <http://docs.aws.amazon.com/cli/latest/reference/s3/index.html>`__.
+
+
+How do I make predictions against an existing endpoint?
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Create a ``Predictor`` object and provide it with your endpoint name,
+then call its ``predict()`` method with your input.
+
+You can use either the generic ``RealTimePredictor`` class, which by default does not perform any serialization/deserialization transformations on your input,
+but can be configured to do so through constructor arguments:
+http://sagemaker.readthedocs.io/en/stable/predictors.html
+
+Or you can use the TensorFlow / MXNet specific predictor classes, which have default serialization/deserialization logic:
+http://sagemaker.readthedocs.io/en/stable/sagemaker.tensorflow.html#tensorflow-predictor
+http://sagemaker.readthedocs.io/en/stable/sagemaker.mxnet.html#mxnet-predictor
+
+Example code using the TensorFlow predictor:
+
+::
+
+    from sagemaker.tensorflow import TensorFlowPredictor
+
+    predictor = TensorFlowPredictor('myexistingendpoint')
+    result = predictor.predict(['my request body'])
+
+
+BYO Model
+---------
+You can also create an endpoint from an existing model rather than training one.
+That is, you can bring your own model:
+
+First, package the files for the trained model into a ``.tar.gz`` file, and upload the archive to S3.
+
+Next, create a ``Model`` object that corresponds to the framework that you are using: `MXNetModel <https://sagemaker.readthedocs.io/en/stable/sagemaker.mxnet.html#mxnet-model>`__ or `TensorFlowModel <https://sagemaker.readthedocs.io/en/stable/sagemaker.tensorflow.html#tensorflow-model>`__.
+
+Example code using ``MXNetModel``:
+
+.. code:: python
+
+   from sagemaker.mxnet.model import MXNetModel
+
+   sagemaker_model = MXNetModel(model_data='s3://path/to/model.tar.gz',
+                                role='arn:aws:iam::accid:sagemaker-role',
+                                entry_point='entry_point.py')
+
+After that, invoke the ``deploy()`` method on the ``Model``:
+
+.. code:: python
+
+   predictor = sagemaker_model.deploy(initial_instance_count=1,
+                                      instance_type='ml.m4.xlarge')
+
+This returns a predictor the same way an ``Estimator`` does when ``deploy()`` is called. You can now get inferences just like with any other model deployed on Amazon SageMaker.
+
+A full example is available in the `Amazon SageMaker examples repository <https://github.com/awslabs/amazon-sagemaker-examples/tree/master/advanced_functionality/mxnet_mnist_byom>`__.
+
+
 Inference Pipelines
 *******************
 

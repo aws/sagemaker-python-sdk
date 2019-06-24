@@ -38,15 +38,15 @@ import sagemaker.local.data
 import sagemaker.local.utils
 import sagemaker.utils
 
-CONTAINER_PREFIX = 'algo'
-DOCKER_COMPOSE_FILENAME = 'docker-compose.yaml'
-DOCKER_COMPOSE_HTTP_TIMEOUT_ENV = 'COMPOSE_HTTP_TIMEOUT'
-DOCKER_COMPOSE_HTTP_TIMEOUT = '120'
+CONTAINER_PREFIX = "algo"
+DOCKER_COMPOSE_FILENAME = "docker-compose.yaml"
+DOCKER_COMPOSE_HTTP_TIMEOUT_ENV = "COMPOSE_HTTP_TIMEOUT"
+DOCKER_COMPOSE_HTTP_TIMEOUT = "120"
 
 
 # Environment variables to be set during training
-REGION_ENV_NAME = 'AWS_REGION'
-TRAINING_JOB_NAME_ENV_NAME = 'TRAINING_JOB_NAME'
+REGION_ENV_NAME = "AWS_REGION"
+TRAINING_JOB_NAME_ENV_NAME = "TRAINING_JOB_NAME"
 
 logger = logging.getLogger(__name__)
 
@@ -73,14 +73,18 @@ class _SageMakerContainer(object):
                 with SageMaker.
         """
         from sagemaker.local.local_session import LocalSession
+
         self.sagemaker_session = sagemaker_session or LocalSession()
         self.instance_type = instance_type
         self.instance_count = instance_count
         self.image = image
         # Since we are using a single docker network, Generate a random suffix to attach to the container names.
         #  This way multiple jobs can run in parallel.
-        suffix = ''.join(random.choice(string.ascii_lowercase + string.digits) for _ in range(5))
-        self.hosts = ['{}-{}-{}'.format(CONTAINER_PREFIX, i, suffix) for i in range(1, self.instance_count + 1)]
+        suffix = "".join(random.choice(string.ascii_lowercase + string.digits) for _ in range(5))
+        self.hosts = [
+            "{}-{}-{}".format(CONTAINER_PREFIX, i, suffix)
+            for i in range(1, self.instance_count + 1)
+        ]
         self.container_root = None
         self.container = None
 
@@ -95,39 +99,45 @@ class _SageMakerContainer(object):
         Returns (str): Location of the trained model.
         """
         self.container_root = self._create_tmp_folder()
-        os.mkdir(os.path.join(self.container_root, 'output'))
+        os.mkdir(os.path.join(self.container_root, "output"))
         # create output/data folder since sagemaker-containers 2.0 expects it
-        os.mkdir(os.path.join(self.container_root, 'output', 'data'))
+        os.mkdir(os.path.join(self.container_root, "output", "data"))
         # A shared directory for all the containers. It is only mounted if the training script is
         # Local.
-        shared_dir = os.path.join(self.container_root, 'shared')
+        shared_dir = os.path.join(self.container_root, "shared")
         os.mkdir(shared_dir)
 
         data_dir = self._create_tmp_folder()
-        volumes = self._prepare_training_volumes(data_dir, input_data_config, output_data_config,
-                                                 hyperparameters)
+        volumes = self._prepare_training_volumes(
+            data_dir, input_data_config, output_data_config, hyperparameters
+        )
         # If local, source directory needs to be updated to mounted /opt/ml/code path
-        hyperparameters = self._update_local_src_path(hyperparameters, key=sagemaker.estimator.DIR_PARAM_NAME)
+        hyperparameters = self._update_local_src_path(
+            hyperparameters, key=sagemaker.estimator.DIR_PARAM_NAME
+        )
 
         # Create the configuration files for each container that we will create
         # Each container will map the additional local volumes (if any).
         for host in self.hosts:
             _create_config_file_directories(self.container_root, host)
             self.write_config_files(host, hyperparameters, input_data_config)
-            shutil.copytree(data_dir, os.path.join(self.container_root, host, 'input', 'data'))
+            shutil.copytree(data_dir, os.path.join(self.container_root, host, "input", "data"))
 
         training_env_vars = {
             REGION_ENV_NAME: self.sagemaker_session.boto_region_name,
             TRAINING_JOB_NAME_ENV_NAME: job_name,
         }
-        compose_data = self._generate_compose_file('train', additional_volumes=volumes,
-                                                   additional_env_vars=training_env_vars)
+        compose_data = self._generate_compose_file(
+            "train", additional_volumes=volumes, additional_env_vars=training_env_vars
+        )
         compose_command = self._compose()
 
         if _ecr_login_if_needed(self.sagemaker_session.boto_session, self.image):
             _pull_image(self.image)
 
-        process = subprocess.Popen(compose_command, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+        process = subprocess.Popen(
+            compose_command, stdout=subprocess.PIPE, stderr=subprocess.STDOUT
+        )
 
         try:
             _stream_output(process)
@@ -147,7 +157,7 @@ class _SageMakerContainer(object):
 
         # Print our Job Complete line to have a similar experience to training on SageMaker where you
         # see this line at the end.
-        print('===== Job Complete =====')
+        print("===== Job Complete =====")
         return artifacts
 
     def serve(self, model_dir, environment):
@@ -162,7 +172,7 @@ class _SageMakerContainer(object):
         logger.info("serving")
 
         self.container_root = self._create_tmp_folder()
-        logger.info('creating hosting dir in {}'.format(self.container_root))
+        logger.info("creating hosting dir in {}".format(self.container_root))
 
         volumes = self._prepare_serving_volumes(model_dir)
 
@@ -170,18 +180,18 @@ class _SageMakerContainer(object):
         if sagemaker.estimator.DIR_PARAM_NAME.upper() in environment:
             script_dir = environment[sagemaker.estimator.DIR_PARAM_NAME.upper()]
             parsed_uri = urlparse(script_dir)
-            if parsed_uri.scheme == 'file':
-                volumes.append(_Volume(parsed_uri.path, '/opt/ml/code'))
+            if parsed_uri.scheme == "file":
+                volumes.append(_Volume(parsed_uri.path, "/opt/ml/code"))
                 # Update path to mount location
                 environment = environment.copy()
-                environment[sagemaker.estimator.DIR_PARAM_NAME.upper()] = '/opt/ml/code'
+                environment[sagemaker.estimator.DIR_PARAM_NAME.upper()] = "/opt/ml/code"
 
         if _ecr_login_if_needed(self.sagemaker_session.boto_session, self.image):
             _pull_image(self.image)
 
-        self._generate_compose_file('serve',
-                                    additional_env_vars=environment,
-                                    additional_volumes=volumes)
+        self._generate_compose_file(
+            "serve", additional_env_vars=environment, additional_volumes=volumes
+        )
         compose_command = self._compose()
         self.container = _HostingContainer(compose_command)
         self.container.start()
@@ -213,12 +223,12 @@ class _SageMakerContainer(object):
         """
         # We need a directory to store the artfiacts from all the nodes
         # and another one to contained the compressed final artifacts
-        artifacts = os.path.join(self.container_root, 'artifacts')
-        compressed_artifacts = os.path.join(self.container_root, 'compressed_artifacts')
+        artifacts = os.path.join(self.container_root, "artifacts")
+        compressed_artifacts = os.path.join(self.container_root, "compressed_artifacts")
         os.mkdir(artifacts)
 
-        model_artifacts = os.path.join(artifacts, 'model')
-        output_artifacts = os.path.join(artifacts, 'output')
+        model_artifacts = os.path.join(artifacts, "model")
+        output_artifacts = os.path.join(artifacts, "output")
 
         artifact_dirs = [model_artifacts, output_artifacts, compressed_artifacts]
         for d in artifact_dirs:
@@ -226,38 +236,41 @@ class _SageMakerContainer(object):
 
         # Gather the artifacts from all nodes into artifacts/model and artifacts/output
         for host in self.hosts:
-            volumes = compose_data['services'][str(host)]['volumes']
+            volumes = compose_data["services"][str(host)]["volumes"]
             for volume in volumes:
-                host_dir, container_dir = volume.split(':')
-                if container_dir == '/opt/ml/model':
+                host_dir, container_dir = volume.split(":")
+                if container_dir == "/opt/ml/model":
                     sagemaker.local.utils.recursive_copy(host_dir, model_artifacts)
-                elif container_dir == '/opt/ml/output':
+                elif container_dir == "/opt/ml/output":
                     sagemaker.local.utils.recursive_copy(host_dir, output_artifacts)
 
         # Tar Artifacts -> model.tar.gz and output.tar.gz
-        model_files = [os.path.join(model_artifacts, name) for name in
-                       os.listdir(model_artifacts)]
-        output_files = [os.path.join(output_artifacts, name) for name in
-                        os.listdir(output_artifacts)]
-        sagemaker.utils.create_tar_file(model_files,
-                                        os.path.join(compressed_artifacts, 'model.tar.gz'))
-        sagemaker.utils.create_tar_file(output_files,
-                                        os.path.join(compressed_artifacts, 'output.tar.gz'))
+        model_files = [os.path.join(model_artifacts, name) for name in os.listdir(model_artifacts)]
+        output_files = [
+            os.path.join(output_artifacts, name) for name in os.listdir(output_artifacts)
+        ]
+        sagemaker.utils.create_tar_file(
+            model_files, os.path.join(compressed_artifacts, "model.tar.gz")
+        )
+        sagemaker.utils.create_tar_file(
+            output_files, os.path.join(compressed_artifacts, "output.tar.gz")
+        )
 
-        if output_data_config['S3OutputPath'] == '':
-            output_data = 'file://%s' % compressed_artifacts
+        if output_data_config["S3OutputPath"] == "":
+            output_data = "file://%s" % compressed_artifacts
         else:
             # Now we just need to move the compressed artifacts to wherever they are required
             output_data = sagemaker.local.utils.move_to_destination(
                 compressed_artifacts,
-                output_data_config['S3OutputPath'],
+                output_data_config["S3OutputPath"],
                 job_name,
-                self.sagemaker_session)
+                self.sagemaker_session,
+            )
 
         _delete_tree(model_artifacts)
         _delete_tree(output_artifacts)
 
-        return os.path.join(output_data, 'model.tar.gz')
+        return os.path.join(output_data, "model.tar.gz")
 
     def write_config_files(self, host, hyperparameters, input_data_config):
         """Write the config files for the training containers.
@@ -272,39 +285,35 @@ class _SageMakerContainer(object):
         Returns: None
 
         """
-        config_path = os.path.join(self.container_root, host, 'input', 'config')
+        config_path = os.path.join(self.container_root, host, "input", "config")
 
-        resource_config = {
-            'current_host': host,
-            'hosts': self.hosts
-        }
+        resource_config = {"current_host": host, "hosts": self.hosts}
 
         json_input_data_config = {}
         for c in input_data_config:
-            channel_name = c['ChannelName']
-            json_input_data_config[channel_name] = {
-                'TrainingInputMode': 'File'
-            }
-            if 'ContentType' in c:
-                json_input_data_config[channel_name]['ContentType'] = c['ContentType']
+            channel_name = c["ChannelName"]
+            json_input_data_config[channel_name] = {"TrainingInputMode": "File"}
+            if "ContentType" in c:
+                json_input_data_config[channel_name]["ContentType"] = c["ContentType"]
 
-        _write_json_file(os.path.join(config_path, 'hyperparameters.json'), hyperparameters)
-        _write_json_file(os.path.join(config_path, 'resourceconfig.json'), resource_config)
-        _write_json_file(os.path.join(config_path, 'inputdataconfig.json'), json_input_data_config)
+        _write_json_file(os.path.join(config_path, "hyperparameters.json"), hyperparameters)
+        _write_json_file(os.path.join(config_path, "resourceconfig.json"), resource_config)
+        _write_json_file(os.path.join(config_path, "inputdataconfig.json"), json_input_data_config)
 
-    def _prepare_training_volumes(self, data_dir, input_data_config, output_data_config,
-                                  hyperparameters):
-        shared_dir = os.path.join(self.container_root, 'shared')
-        model_dir = os.path.join(self.container_root, 'model')
+    def _prepare_training_volumes(
+        self, data_dir, input_data_config, output_data_config, hyperparameters
+    ):
+        shared_dir = os.path.join(self.container_root, "shared")
+        model_dir = os.path.join(self.container_root, "model")
         volumes = []
 
-        volumes.append(_Volume(model_dir, '/opt/ml/model'))
+        volumes.append(_Volume(model_dir, "/opt/ml/model"))
         # Set up the channels for the containers. For local data we will
         # mount the local directory to the container. For S3 Data we will download the S3 data
         # first.
         for channel in input_data_config:
-            uri = channel['DataUri']
-            channel_name = channel['ChannelName']
+            uri = channel["DataUri"]
+            channel_name = channel["ChannelName"]
             channel_dir = os.path.join(data_dir, channel_name)
             os.mkdir(channel_dir)
 
@@ -316,17 +325,20 @@ class _SageMakerContainer(object):
         if sagemaker.estimator.DIR_PARAM_NAME in hyperparameters:
             training_dir = json.loads(hyperparameters[sagemaker.estimator.DIR_PARAM_NAME])
             parsed_uri = urlparse(training_dir)
-            if parsed_uri.scheme == 'file':
-                volumes.append(_Volume(parsed_uri.path, '/opt/ml/code'))
+            if parsed_uri.scheme == "file":
+                volumes.append(_Volume(parsed_uri.path, "/opt/ml/code"))
                 # Also mount a directory that all the containers can access.
-                volumes.append(_Volume(shared_dir, '/opt/ml/shared'))
+                volumes.append(_Volume(shared_dir, "/opt/ml/shared"))
 
-        parsed_uri = urlparse(output_data_config['S3OutputPath'])
-        if parsed_uri.scheme == 'file' and sagemaker.model.SAGEMAKER_OUTPUT_LOCATION in hyperparameters:
-            intermediate_dir = os.path.join(parsed_uri.path, 'output', 'intermediate')
+        parsed_uri = urlparse(output_data_config["S3OutputPath"])
+        if (
+            parsed_uri.scheme == "file"
+            and sagemaker.model.SAGEMAKER_OUTPUT_LOCATION in hyperparameters
+        ):
+            intermediate_dir = os.path.join(parsed_uri.path, "output", "intermediate")
             if not os.path.exists(intermediate_dir):
                 os.makedirs(intermediate_dir)
-            volumes.append(_Volume(intermediate_dir, '/opt/ml/output/intermediate'))
+            volumes.append(_Volume(intermediate_dir, "/opt/ml/output/intermediate"))
 
         return volumes
 
@@ -334,9 +346,9 @@ class _SageMakerContainer(object):
         if key in params:
             src_dir = json.loads(params[key])
             parsed_uri = urlparse(src_dir)
-            if parsed_uri.scheme == 'file':
+            if parsed_uri.scheme == "file":
                 new_params = params.copy()
-                new_params[key] = json.dumps('/opt/ml/code')
+                new_params[key] = json.dumps("/opt/ml/code")
                 return new_params
         return params
 
@@ -350,14 +362,15 @@ class _SageMakerContainer(object):
         os.makedirs(host_dir)
 
         model_data_source = sagemaker.local.data.get_data_source_instance(
-            model_location, self.sagemaker_session)
+            model_location, self.sagemaker_session
+        )
 
         for filename in model_data_source.get_file_list():
             if tarfile.is_tarfile(filename):
                 with tarfile.open(filename) as tar:
                     tar.extractall(path=model_data_source.get_root_dir())
 
-        volumes.append(_Volume(model_data_source.get_root_dir(), '/opt/ml/model'))
+        volumes.append(_Volume(model_data_source.get_root_dir(), "/opt/ml/model"))
 
         return volumes
 
@@ -388,53 +401,51 @@ class _SageMakerContainer(object):
         if aws_creds is not None:
             environment.extend(aws_creds)
 
-        additional_env_var_list = ['{}={}'.format(k, v) for k, v in additional_env_vars.items()]
+        additional_env_var_list = ["{}={}".format(k, v) for k, v in additional_env_vars.items()]
         environment.extend(additional_env_var_list)
 
         if os.environ.get(DOCKER_COMPOSE_HTTP_TIMEOUT_ENV) is None:
             os.environ[DOCKER_COMPOSE_HTTP_TIMEOUT_ENV] = DOCKER_COMPOSE_HTTP_TIMEOUT
 
-        if command == 'train':
-            optml_dirs = {'output', 'output/data', 'input'}
+        if command == "train":
+            optml_dirs = {"output", "output/data", "input"}
 
         services = {
-            h: self._create_docker_host(h, environment, optml_dirs,
-                                        command, additional_volumes) for h in self.hosts
+            h: self._create_docker_host(h, environment, optml_dirs, command, additional_volumes)
+            for h in self.hosts
         }
 
         content = {
             # Use version 2.3 as a minimum so that we can specify the runtime
-            'version': '2.3',
-            'services': services,
-            'networks': {
-                'sagemaker-local': {'name': 'sagemaker-local'}
-            }
+            "version": "2.3",
+            "services": services,
+            "networks": {"sagemaker-local": {"name": "sagemaker-local"}},
         }
 
         docker_compose_path = os.path.join(self.container_root, DOCKER_COMPOSE_FILENAME)
         yaml_content = yaml.dump(content, default_flow_style=False)
-        logger.info('docker compose file: \n{}'.format(yaml_content))
-        with open(docker_compose_path, 'w') as f:
+        logger.info("docker compose file: \n{}".format(yaml_content))
+        with open(docker_compose_path, "w") as f:
             f.write(yaml_content)
 
         return content
 
     def _compose(self, detached=False):
-        compose_cmd = 'docker-compose'
+        compose_cmd = "docker-compose"
 
         command = [
             compose_cmd,
-            '-f',
+            "-f",
             os.path.join(self.container_root, DOCKER_COMPOSE_FILENAME),
-            'up',
-            '--build',
-            '--abort-on-container-exit'
+            "up",
+            "--build",
+            "--abort-on-container-exit",
         ]
 
         if detached:
-            command.append('-d')
+            command.append("-d")
 
-        logger.info('docker command: {}'.format(' '.join(command)))
+        logger.info("docker command: {}".format(" ".join(command)))
         return command
 
     def _create_docker_host(self, host, environment, optml_subdirs, command, volumes):
@@ -442,38 +453,35 @@ class _SageMakerContainer(object):
         optml_volumes.extend(volumes)
 
         host_config = {
-            'image': self.image,
-            'stdin_open': True,
-            'tty': True,
-            'volumes': [v.map for v in optml_volumes],
-            'environment': environment,
-            'command': command,
-            'networks': {
-                'sagemaker-local': {
-                    'aliases': [host]
-                }
-            }
+            "image": self.image,
+            "stdin_open": True,
+            "tty": True,
+            "volumes": [v.map for v in optml_volumes],
+            "environment": environment,
+            "command": command,
+            "networks": {"sagemaker-local": {"aliases": [host]}},
         }
 
         # for GPU support pass in nvidia as the runtime, this is equivalent
         # to setting --runtime=nvidia in the docker commandline.
-        if self.instance_type == 'local_gpu':
-            host_config['runtime'] = 'nvidia'
+        if self.instance_type == "local_gpu":
+            host_config["runtime"] = "nvidia"
 
-        if command == 'serve':
-            serving_port = sagemaker.utils.get_config_value('local.serving_port',
-                                                            self.sagemaker_session.config) or 8080
-            host_config.update({
-                'ports': [
-                    '%s:8080' % serving_port
-                ]
-            })
+        if command == "serve":
+            serving_port = (
+                sagemaker.utils.get_config_value(
+                    "local.serving_port", self.sagemaker_session.config
+                )
+                or 8080
+            )
+            host_config.update({"ports": ["%s:8080" % serving_port]})
 
         return host_config
 
     def _create_tmp_folder(self):
-        root_dir = sagemaker.utils.get_config_value('local.container_root',
-                                                    self.sagemaker_session.config)
+        root_dir = sagemaker.utils.get_config_value(
+            "local.container_root", self.sagemaker_session.config
+        )
         if root_dir:
             root_dir = os.path.abspath(root_dir)
 
@@ -482,8 +490,8 @@ class _SageMakerContainer(object):
         # Docker cannot mount Mac OS /var folder properly see
         # https://forums.docker.com/t/var-folders-isnt-mounted-properly/9600
         # Only apply this workaround if the user didn't provide an alternate storage root dir.
-        if root_dir is None and platform.system() == 'Darwin':
-            working_dir = '/private{}'.format(working_dir)
+        if root_dir is None and platform.system() == "Darwin":
+            working_dir = "/private{}".format(working_dir)
 
         return os.path.abspath(working_dir)
 
@@ -503,7 +511,7 @@ class _SageMakerContainer(object):
 
         for subdir in subdirs:
             host_dir = os.path.join(self.container_root, host, subdir)
-            container_dir = '/opt/ml/{}'.format(subdir)
+            container_dir = "/opt/ml/{}".format(subdir)
             volume = _Volume(host_dir, container_dir)
             volumes.append(volume)
 
@@ -527,9 +535,9 @@ class _HostingContainer(Thread):
         self.process = None
 
     def run(self):
-        self.process = subprocess.Popen(self.command,
-                                        stdout=subprocess.PIPE,
-                                        stderr=subprocess.PIPE)
+        self.process = subprocess.Popen(
+            self.command, stdout=subprocess.PIPE, stderr=subprocess.PIPE
+        )
         try:
             _stream_output(self.process)
         except RuntimeError as e:
@@ -558,17 +566,19 @@ class _Volume(object):
                 /opt/ml/input/data/<channel> in the container.
         """
         if not container_dir and not channel:
-            raise ValueError('Either container_dir or channel must be declared.')
+            raise ValueError("Either container_dir or channel must be declared.")
 
         if container_dir and channel:
-            raise ValueError('container_dir and channel cannot be declared together.')
+            raise ValueError("container_dir and channel cannot be declared together.")
 
-        self.container_dir = container_dir if container_dir else os.path.join('/opt/ml/input/data', channel)
+        self.container_dir = (
+            container_dir if container_dir else os.path.join("/opt/ml/input/data", channel)
+        )
         self.host_dir = host_dir
-        if platform.system() == 'Darwin' and host_dir.startswith('/var'):
-            self.host_dir = os.path.join('/private', host_dir)
+        if platform.system() == "Darwin" and host_dir.startswith("/var"):
+            self.host_dir = os.path.join("/private", host_dir)
 
-        self.map = '{}:{}'.format(self.host_dir, self.container_dir)
+        self.map = "{}:{}".format(self.host_dir, self.container_dir)
 
 
 def _stream_output(process):
@@ -616,7 +626,7 @@ def _check_output(cmd, *popenargs, **kwargs):
 
 
 def _create_config_file_directories(root, host):
-    for d in ['input', 'input/config', 'output', 'model']:
+    for d in ["input", "input/config", "output", "model"]:
         os.makedirs(os.path.join(root, host, d))
 
 
@@ -652,21 +662,25 @@ def _aws_credentials(session):
         if token is None:
             logger.info("Using the long-lived AWS credentials found in session")
             return [
-                'AWS_ACCESS_KEY_ID=%s' % (str(access_key)),
-                'AWS_SECRET_ACCESS_KEY=%s' % (str(secret_key))
+                "AWS_ACCESS_KEY_ID=%s" % (str(access_key)),
+                "AWS_SECRET_ACCESS_KEY=%s" % (str(secret_key)),
             ]
         elif not _aws_credentials_available_in_metadata_service():
-            logger.warning("Using the short-lived AWS credentials found in session. They might expire while running.")
+            logger.warning(
+                "Using the short-lived AWS credentials found in session. They might expire while running."
+            )
             return [
-                'AWS_ACCESS_KEY_ID=%s' % (str(access_key)),
-                'AWS_SECRET_ACCESS_KEY=%s' % (str(secret_key)),
-                'AWS_SESSION_TOKEN=%s' % (str(token))
+                "AWS_ACCESS_KEY_ID=%s" % (str(access_key)),
+                "AWS_SECRET_ACCESS_KEY=%s" % (str(secret_key)),
+                "AWS_SESSION_TOKEN=%s" % (str(token)),
             ]
         else:
-            logger.info("No AWS credentials found in session but credentials from EC2 Metadata Service are available.")
+            logger.info(
+                "No AWS credentials found in session but credentials from EC2 Metadata Service are available."
+            )
             return None
     except Exception as e:  # pylint: disable=broad-except
-        logger.info('Could not get AWS credentials: %s' % e)
+        logger.info("Could not get AWS credentials: %s" % e)
 
     return None
 
@@ -679,15 +693,16 @@ def _aws_credentials_available_in_metadata_service():
     session = botocore.session.Session()
     instance_metadata_provider = InstanceMetadataProvider(
         iam_role_fetcher=InstanceMetadataFetcher(
-            timeout=session.get_config_variable('metadata_service_timeout'),
-            num_attempts=session.get_config_variable('metadata_service_num_attempts'),
-            user_agent=session.user_agent())
+            timeout=session.get_config_variable("metadata_service_timeout"),
+            num_attempts=session.get_config_variable("metadata_service_num_attempts"),
+            user_agent=session.user_agent(),
+        )
     )
     return not (instance_metadata_provider.load() is None)
 
 
 def _write_json_file(filename, content):
-    with open(filename, 'w') as f:
+    with open(filename, "w") as f:
         json.dump(content, f)
 
 
@@ -699,20 +714,22 @@ def _ecr_login_if_needed(boto_session, image):
         return False
 
     # do we have the image?
-    if _check_output('docker images -q %s' % image).strip():
+    if _check_output("docker images -q %s" % image).strip():
         return False
 
     if not boto_session:
-        raise RuntimeError('A boto session is required to login to ECR.'
-                           'Please pull the image: %s manually.' % image)
+        raise RuntimeError(
+            "A boto session is required to login to ECR."
+            "Please pull the image: %s manually." % image
+        )
 
-    ecr = boto_session.client('ecr')
-    auth = ecr.get_authorization_token(registryIds=[image.split('.')[0]])
-    authorization_data = auth['authorizationData'][0]
+    ecr = boto_session.client("ecr")
+    auth = ecr.get_authorization_token(registryIds=[image.split(".")[0]])
+    authorization_data = auth["authorizationData"][0]
 
-    raw_token = base64.b64decode(authorization_data['authorizationToken'])
-    token = raw_token.decode('utf-8').strip('AWS:')
-    ecr_url = auth['authorizationData'][0]['proxyEndpoint']
+    raw_token = base64.b64decode(authorization_data["authorizationToken"])
+    token = raw_token.decode("utf-8").strip("AWS:")
+    ecr_url = auth["authorizationData"][0]["proxyEndpoint"]
 
     cmd = "docker login -u AWS -p %s %s" % (token, ecr_url)
     subprocess.check_output(cmd, shell=True)
@@ -721,8 +738,8 @@ def _ecr_login_if_needed(boto_session, image):
 
 
 def _pull_image(image):
-    pull_image_command = ('docker pull %s' % image).strip()
-    logger.info('docker command: {}'.format(pull_image_command))
+    pull_image_command = ("docker pull %s" % image).strip()
+    logger.info("docker command: {}".format(pull_image_command))
 
     subprocess.check_output(pull_image_command, shell=True)
-    logger.info('image pulled: {}'.format(image))
+    logger.info("image pulled: {}".format(image))

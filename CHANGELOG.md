@@ -1,5 +1,27 @@
 # Changelog
 
+## v1.29.0 (2019-06-24)
+
+### Features
+
+ * network isolation mode in training
+
+### Bug fixes and other changes
+
+ * Integrate black into development process
+ * moving not canary TFS tests to local mode
+
+## v1.28.3 (2019-06-20)
+
+### Bug fixes and other changes
+
+ * update Sagemaker Neo regions and instance families
+
+### Documentation changes
+
+ * fix punctuation in MXNet version list
+ * clean up MXNet and TF documentation
+
 ## v1.28.2 (2019-06-19)
 
 ### Bug fixes and other changes

@@ -24,20 +24,32 @@ from sagemaker.vpc_utils import VPC_CONFIG_DEFAULT
 
 class RandomCutForest(AmazonAlgorithmEstimatorBase):
 
-    repo_name = 'randomcutforest'
+    repo_name = "randomcutforest"
     repo_version = 1
     MINI_BATCH_SIZE = 1000
 
-    eval_metrics = hp(name='eval_metrics',
-                      validation_message='A comma separated list of "accuracy" or "precision_recall_fscore"',
-                      data_type=list)
+    eval_metrics = hp(
+        name="eval_metrics",
+        validation_message='A comma separated list of "accuracy" or "precision_recall_fscore"',
+        data_type=list,
+    )
 
-    num_trees = hp('num_trees', (ge(50), le(1000)), 'An integer in [50, 1000]', int)
-    num_samples_per_tree = hp('num_samples_per_tree', (ge(1), le(2048)), 'An integer in [1, 2048]', int)
-    feature_dim = hp("feature_dim", (ge(1), le(10000)), 'An integer in [1, 10000]', int)
+    num_trees = hp("num_trees", (ge(50), le(1000)), "An integer in [50, 1000]", int)
+    num_samples_per_tree = hp(
+        "num_samples_per_tree", (ge(1), le(2048)), "An integer in [1, 2048]", int
+    )
+    feature_dim = hp("feature_dim", (ge(1), le(10000)), "An integer in [1, 10000]", int)
 
-    def __init__(self, role, train_instance_count, train_instance_type,
-                 num_samples_per_tree=None, num_trees=None, eval_metrics=None, **kwargs):
+    def __init__(
+        self,
+        role,
+        train_instance_count,
+        train_instance_type,
+        num_samples_per_tree=None,
+        num_trees=None,
+        eval_metrics=None,
+        **kwargs
+    ):
         """RandomCutForest is :class:`Estimator` used for anomaly detection.
 
         This Estimator may be fit via calls to
@@ -77,7 +89,9 @@ class RandomCutForest(AmazonAlgorithmEstimatorBase):
             **kwargs: base class keyword argument values.
         """
 
-        super(RandomCutForest, self).__init__(role, train_instance_count, train_instance_type, **kwargs)
+        super(RandomCutForest, self).__init__(
+            role, train_instance_count, train_instance_type, **kwargs
+        )
         self.num_samples_per_tree = num_samples_per_tree
         self.num_trees = num_trees
         self.eval_metrics = eval_metrics
@@ -92,16 +106,24 @@ class RandomCutForest(AmazonAlgorithmEstimatorBase):
                 * 'Subnets' (list[str]): List of subnet ids.
                 * 'SecurityGroupIds' (list[str]): List of security group ids.
         """
-        return RandomCutForestModel(self.model_data, self.role, sagemaker_session=self.sagemaker_session,
-                                    vpc_config=self.get_vpc_config(vpc_config_override))
+        return RandomCutForestModel(
+            self.model_data,
+            self.role,
+            sagemaker_session=self.sagemaker_session,
+            vpc_config=self.get_vpc_config(vpc_config_override),
+        )
 
     def _prepare_for_training(self, records, mini_batch_size=None, job_name=None):
         if mini_batch_size is None:
             mini_batch_size = self.MINI_BATCH_SIZE
         elif mini_batch_size != self.MINI_BATCH_SIZE:
-            raise ValueError("Random Cut Forest uses a fixed mini_batch_size of {}".format(self.MINI_BATCH_SIZE))
+            raise ValueError(
+                "Random Cut Forest uses a fixed mini_batch_size of {}".format(self.MINI_BATCH_SIZE)
+            )
 
-        super(RandomCutForest, self)._prepare_for_training(records, mini_batch_size=mini_batch_size, job_name=job_name)
+        super(RandomCutForest, self)._prepare_for_training(
+            records, mini_batch_size=mini_batch_size, job_name=job_name
+        )
 
 
 class RandomCutForestPredictor(RealTimePredictor):
@@ -117,9 +139,12 @@ class RandomCutForestPredictor(RealTimePredictor):
     ``Record.label`` field."""
 
     def __init__(self, endpoint, sagemaker_session=None):
-        super(RandomCutForestPredictor, self).__init__(endpoint, sagemaker_session,
-                                                       serializer=numpy_to_record_serializer(),
-                                                       deserializer=record_deserializer())
+        super(RandomCutForestPredictor, self).__init__(
+            endpoint,
+            sagemaker_session,
+            serializer=numpy_to_record_serializer(),
+            deserializer=record_deserializer(),
+        )
 
 
 class RandomCutForestModel(Model):
@@ -128,10 +153,15 @@ class RandomCutForestModel(Model):
 
     def __init__(self, model_data, role, sagemaker_session=None, **kwargs):
         sagemaker_session = sagemaker_session or Session()
-        repo = '{}:{}'.format(RandomCutForest.repo_name, RandomCutForest.repo_version)
-        image = '{}/{}'.format(registry(sagemaker_session.boto_session.region_name,
-                                        RandomCutForest.repo_name), repo)
-        super(RandomCutForestModel, self).__init__(model_data, image, role,
-                                                   predictor_cls=RandomCutForestPredictor,
-                                                   sagemaker_session=sagemaker_session,
-                                                   **kwargs)
+        repo = "{}:{}".format(RandomCutForest.repo_name, RandomCutForest.repo_version)
+        image = "{}/{}".format(
+            registry(sagemaker_session.boto_session.region_name, RandomCutForest.repo_name), repo
+        )
+        super(RandomCutForestModel, self).__init__(
+            model_data,
+            image,
+            role,
+            predictor_cls=RandomCutForestPredictor,
+            sagemaker_session=sagemaker_session,
+            **kwargs
+        )
