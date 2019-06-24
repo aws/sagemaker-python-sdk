@@ -69,6 +69,7 @@ def tar_dir(directory, tmpdir):
     return target
 
 
+@pytest.mark.local_mode
 @pytest.fixture
 def tfs_predictor_with_model_and_entry_point_same_tar(
     sagemaker_local_session, tf_full_version, tmpdir
@@ -93,6 +94,7 @@ def tfs_predictor_with_model_and_entry_point_same_tar(
         predictor.delete_endpoint()
 
 
+@pytest.mark.local_mode
 @pytest.fixture(scope="module")
 def tfs_predictor_with_model_and_entry_point_and_dependencies(
     sagemaker_local_session, tf_full_version
