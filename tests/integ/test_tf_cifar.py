@@ -54,7 +54,7 @@ def test_cifar(sagemaker_session):
             entry_point="resnet_cifar_10.py",
             source_dir=script_path,
             role="SageMakerRole",
-            framework_version='1.12',
+            framework_version="1.12",
             training_steps=50,
             evaluation_steps=5,
             train_instance_count=2,

@@ -41,7 +41,7 @@ def test_keras(sagemaker_session):
             entry_point="keras_cnn_cifar_10.py",
             source_dir=script_path,
             role="SageMakerRole",
-            framework_version='1.12',
+            framework_version="1.12",
             sagemaker_session=sagemaker_session,
             hyperparameters={"learning_rate": 1e-4, "decay": 1e-6},
             training_steps=50,

@@ -92,7 +92,7 @@ def test_tf_local_mode(sagemaker_local_session):
         estimator = TensorFlow(
             entry_point=script_path,
             role="SageMakerRole",
-            framework_version='1.12',
+            framework_version="1.12",
             training_steps=1,
             evaluation_steps=1,
             hyperparameters={"input_tensor_name": "inputs"},
@@ -135,7 +135,7 @@ def test_tf_distributed_local_mode(sagemaker_local_session):
         estimator = TensorFlow(
             entry_point=script_path,
             role="SageMakerRole",
-            framework_version='1.12',
+            framework_version="1.12",
             training_steps=1,
             evaluation_steps=1,
             hyperparameters={"input_tensor_name": "inputs"},
@@ -177,7 +177,7 @@ def test_tf_local_data(sagemaker_local_session):
         estimator = TensorFlow(
             entry_point=script_path,
             role="SageMakerRole",
-            framework_version='1.12',
+            framework_version="1.12",
             training_steps=1,
             evaluation_steps=1,
             hyperparameters={"input_tensor_name": "inputs"},
@@ -218,7 +218,7 @@ def test_tf_local_data_local_script():
         estimator = TensorFlow(
             entry_point=script_path,
             role="SageMakerRole",
-            framework_version='1.12',
+            framework_version="1.12",
             training_steps=1,
             evaluation_steps=1,
             hyperparameters={"input_tensor_name": "inputs"},
