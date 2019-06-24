@@ -564,6 +564,12 @@ def test_git_support_repo_not_provided(sagemaker_session):
     assert "Please provide a repo for git_config." in str(error)
 
 
+@patch(
+    "sagemaker.git_utils.git_clone_repo",
+    side_effect=subprocess.CalledProcessError(
+        returncode=1, cmd="git clone https://github.com/aws/no-such-repo.git /tmp/repo_dir"
+    ),
+)
 def test_git_support_git_clone_fail(sagemaker_session):
     entry_point = "source_dir/entry_point"
     git_config = {"repo": "https://github.com/aws/no-such-repo.git", "branch": BRANCH}

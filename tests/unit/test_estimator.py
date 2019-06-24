@@ -64,7 +64,6 @@ OUTPUT_PATH = "s3://bucket/prefix"
 
 DESCRIBE_TRAINING_JOB_RESULT = {"ModelArtifacts": {"S3ModelArtifacts": MODEL_DATA}}
 
-
 RETURNED_JOB_DESCRIPTION = {
     "AlgorithmSpecification": {
         "TrainingInputMode": "File",
@@ -898,6 +897,12 @@ def test_git_support_bad_repo_url_format(sagemaker_session):
     assert "returned non-zero exit status" in str(error)
 
 
+@patch(
+    "sagemaker.git_utils.git_clone_repo",
+    side_effect=subprocess.CalledProcessError(
+        returncode=1, cmd="git clone https://github.com/aws/no-such-repo.git /tmp/repo_dir"
+    ),
+)
 def test_git_support_git_clone_fail(sagemaker_session):
     git_config = {"repo": "https://github.com/aws/no-such-repo.git", "branch": BRANCH}
     fw = DummyFramework(
