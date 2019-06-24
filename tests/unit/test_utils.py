@@ -48,8 +48,8 @@ def test_get_config_value():
 
 
 def test_get_short_version():
-    assert sagemaker.utils.get_short_version('1.13.1') == '1.13'
-    assert sagemaker.utils.get_short_version('1.13') == '1.13'
+    assert sagemaker.utils.get_short_version("1.13.1") == "1.13"
+    assert sagemaker.utils.get_short_version("1.13") == "1.13"
 
 
 def test_deferred_error():

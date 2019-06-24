@@ -132,7 +132,7 @@ def get_short_version(framework_version):
     Returns:
         str: The short version string
     """
-    return '.'.join(framework_version.split('.')[:2])
+    return ".".join(framework_version.split(".")[:2])
 
 
 def to_str(value):

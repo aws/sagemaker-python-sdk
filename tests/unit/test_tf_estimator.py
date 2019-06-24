@@ -871,12 +871,20 @@ def test_script_mode_deprecated_args(sagemaker_session):
 
 
 def test_legacy_mode_deprecated(sagemaker_session):
-    tf = _build_tf(sagemaker_session=sagemaker_session, framework_version='1.13.1',
-                   py_version='py2', script_mode=False)
+    tf = _build_tf(
+        sagemaker_session=sagemaker_session,
+        framework_version="1.13.1",
+        py_version="py2",
+        script_mode=False,
+    )
     assert tf._script_mode_enabled() is True
 
-    tf = _build_tf(sagemaker_session=sagemaker_session, framework_version='1.12',
-                   py_version='py2', script_mode=False)
+    tf = _build_tf(
+        sagemaker_session=sagemaker_session,
+        framework_version="1.12",
+        py_version="py2",
+        script_mode=False,
+    )
     assert tf._script_mode_enabled() is False
 
 
