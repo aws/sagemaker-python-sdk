@@ -25,33 +25,42 @@ from sagemaker.utils import unique_name_from_base
 
 
 @pytest.mark.canary_quick
-@pytest.mark.skipif(tests.integ.PYTHON_VERSION != 'py2',
-                    reason="TensorFlow image supports only python 2.")
-@pytest.mark.skipif(tests.integ.test_region() in tests.integ.HOSTING_NO_P2_REGIONS,
-                    reason='no ml.p2 instances in these regions')
+@pytest.mark.skipif(
+    tests.integ.PYTHON_VERSION != "py2", reason="TensorFlow image supports only python 2."
+)
+@pytest.mark.skipif(
+    tests.integ.test_region() in tests.integ.HOSTING_NO_P2_REGIONS,
+    reason="no ml.p2 instances in these regions",
+)
 def test_keras(sagemaker_session, tf_full_version):
-    script_path = os.path.join(tests.integ.DATA_DIR, 'cifar_10', 'source')
-    dataset_path = os.path.join(tests.integ.DATA_DIR, 'cifar_10', 'data')
+    script_path = os.path.join(tests.integ.DATA_DIR, "cifar_10", "source")
+    dataset_path = os.path.join(tests.integ.DATA_DIR, "cifar_10", "data")
 
     with timeout(minutes=45):
-        estimator = TensorFlow(entry_point='keras_cnn_cifar_10.py',
-                               source_dir=script_path,
-                               role='SageMakerRole', sagemaker_session=sagemaker_session,
-                               hyperparameters={'learning_rate': 1e-4, 'decay': 1e-6},
-                               training_steps=50, evaluation_steps=5,
-                               train_instance_count=1, train_instance_type='ml.c4.xlarge',
-                               train_max_run=45 * 60)
+        estimator = TensorFlow(
+            entry_point="keras_cnn_cifar_10.py",
+            source_dir=script_path,
+            role="SageMakerRole",
+            sagemaker_session=sagemaker_session,
+            hyperparameters={"learning_rate": 1e-4, "decay": 1e-6},
+            training_steps=50,
+            evaluation_steps=5,
+            train_instance_count=1,
+            train_instance_type="ml.c4.xlarge",
+            train_max_run=45 * 60,
+        )
 
-        inputs = estimator.sagemaker_session.upload_data(path=dataset_path,
-                                                         key_prefix='data/cifar10')
-        job_name = unique_name_from_base('test-tf-keras')
+        inputs = estimator.sagemaker_session.upload_data(
+            path=dataset_path, key_prefix="data/cifar10"
+        )
+        job_name = unique_name_from_base("test-tf-keras")
 
         estimator.fit(inputs, job_name=job_name)
 
     endpoint_name = estimator.latest_training_job.name
     with timeout_and_delete_endpoint_by_name(endpoint_name, sagemaker_session):
-        predictor = estimator.deploy(initial_instance_count=1, instance_type='ml.p2.xlarge')
+        predictor = estimator.deploy(initial_instance_count=1, instance_type="ml.p2.xlarge")
 
         data = np.random.randn(32, 32, 3)
         predict_response = predictor.predict(data)
-        assert len(predict_response['outputs']['probabilities']['floatVal']) == 10
+        assert len(predict_response["outputs"]["probabilities"]["floatVal"]) == 10

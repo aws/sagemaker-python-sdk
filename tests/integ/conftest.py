@@ -24,12 +24,12 @@ def create_sagemaker_local_network():
     creates the network sagemaker-local beforehand, avoiding this issue
     in CI.
     """
-    os.system('docker network create sagemaker-local')
+    os.system("docker network create sagemaker-local")
 
 
 create_sagemaker_local_network()
 
 
-@pytest.fixture(scope='session', params=['local', 'ml.c4.xlarge'])
+@pytest.fixture(scope="session", params=["local", "ml.c4.xlarge"])
 def instance_type(request):
     return request.param

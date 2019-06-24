@@ -18,47 +18,49 @@ from mock import Mock, patch
 from sagemaker.amazon.knn import KNN, KNNPredictor
 from sagemaker.amazon.amazon_estimator import registry, RecordSet
 
-ROLE = 'myrole'
+ROLE = "myrole"
 TRAIN_INSTANCE_COUNT = 1
-TRAIN_INSTANCE_TYPE = 'ml.c4.xlarge'
+TRAIN_INSTANCE_TYPE = "ml.c4.xlarge"
 K = 5
 SAMPLE_SIZE = 1000
-PREDICTOR_TYPE_REGRESSOR = 'regressor'
-PREDICTOR_TYPE_CLASSIFIER = 'classifier'
+PREDICTOR_TYPE_REGRESSOR = "regressor"
+PREDICTOR_TYPE_CLASSIFIER = "classifier"
 
-COMMON_TRAIN_ARGS = {'role': ROLE, 'train_instance_count': TRAIN_INSTANCE_COUNT,
-                     'train_instance_type': TRAIN_INSTANCE_TYPE}
-ALL_REQ_ARGS = dict({'k': K, 'sample_size': SAMPLE_SIZE,
-                     'predictor_type': PREDICTOR_TYPE_REGRESSOR}, **COMMON_TRAIN_ARGS)
+COMMON_TRAIN_ARGS = {
+    "role": ROLE,
+    "train_instance_count": TRAIN_INSTANCE_COUNT,
+    "train_instance_type": TRAIN_INSTANCE_TYPE,
+}
+ALL_REQ_ARGS = dict(
+    {"k": K, "sample_size": SAMPLE_SIZE, "predictor_type": PREDICTOR_TYPE_REGRESSOR},
+    **COMMON_TRAIN_ARGS
+)
 
 REGION = "us-west-2"
 BUCKET_NAME = "Some-Bucket"
 
-DESCRIBE_TRAINING_JOB_RESULT = {
-    'ModelArtifacts': {
-        'S3ModelArtifacts': "s3://bucket/model.tar.gz"
-    }
-}
+DESCRIBE_TRAINING_JOB_RESULT = {"ModelArtifacts": {"S3ModelArtifacts": "s3://bucket/model.tar.gz"}}
 
-ENDPOINT_DESC = {
-    'EndpointConfigName': 'test-endpoint'
-}
+ENDPOINT_DESC = {"EndpointConfigName": "test-endpoint"}
 
-ENDPOINT_CONFIG_DESC = {
-    'ProductionVariants': [{'ModelName': 'model-1'},
-                           {'ModelName': 'model-2'}]
-}
+ENDPOINT_CONFIG_DESC = {"ProductionVariants": [{"ModelName": "model-1"}, {"ModelName": "model-2"}]}
 
 
 @pytest.fixture()
 def sagemaker_session():
-    boto_mock = Mock(name='boto_session', region_name=REGION)
-    sms = Mock(name='sagemaker_session', boto_session=boto_mock,
-               region_name=REGION, config=None, local_mode=False)
+    boto_mock = Mock(name="boto_session", region_name=REGION)
+    sms = Mock(
+        name="sagemaker_session",
+        boto_session=boto_mock,
+        region_name=REGION,
+        config=None,
+        local_mode=False,
+    )
     sms.boto_region_name = REGION
-    sms.default_bucket = Mock(name='default_bucket', return_value=BUCKET_NAME)
-    sms.sagemaker_client.describe_training_job = Mock(name='describe_training_job',
-                                                      return_value=DESCRIBE_TRAINING_JOB_RESULT)
+    sms.default_bucket = Mock(name="default_bucket", return_value=BUCKET_NAME)
+    sms.sagemaker_client.describe_training_job = Mock(
+        name="describe_training_job", return_value=DESCRIBE_TRAINING_JOB_RESULT
+    )
     sms.sagemaker_client.describe_endpoint = Mock(return_value=ENDPOINT_DESC)
     sms.sagemaker_client.describe_endpoint_config = Mock(return_value=ENDPOINT_CONFIG_DESC)
 
@@ -66,9 +68,15 @@ def sagemaker_session():
 
 
 def test_init_required_positional(sagemaker_session):
-    knn = KNN(ROLE, TRAIN_INSTANCE_COUNT, TRAIN_INSTANCE_TYPE,
-              K, SAMPLE_SIZE, PREDICTOR_TYPE_REGRESSOR,
-              sagemaker_session=sagemaker_session)
+    knn = KNN(
+        ROLE,
+        TRAIN_INSTANCE_COUNT,
+        TRAIN_INSTANCE_TYPE,
+        K,
+        SAMPLE_SIZE,
+        PREDICTOR_TYPE_REGRESSOR,
+        sagemaker_session=sagemaker_session,
+    )
     assert knn.role == ROLE
     assert knn.train_instance_count == TRAIN_INSTANCE_COUNT
     assert knn.train_instance_type == TRAIN_INSTANCE_TYPE
@@ -78,58 +86,70 @@ def test_init_required_positional(sagemaker_session):
 def test_init_required_named(sagemaker_session):
     knn = KNN(sagemaker_session=sagemaker_session, **ALL_REQ_ARGS)
 
-    assert knn.role == COMMON_TRAIN_ARGS['role']
+    assert knn.role == COMMON_TRAIN_ARGS["role"]
     assert knn.train_instance_count == TRAIN_INSTANCE_COUNT
-    assert knn.train_instance_type == COMMON_TRAIN_ARGS['train_instance_type']
-    assert knn.k == ALL_REQ_ARGS['k']
+    assert knn.train_instance_type == COMMON_TRAIN_ARGS["train_instance_type"]
+    assert knn.k == ALL_REQ_ARGS["k"]
 
 
 def test_all_hyperparameters_regressor(sagemaker_session):
-    knn = KNN(sagemaker_session=sagemaker_session,
-              dimension_reduction_type='sign', dimension_reduction_target='2', index_type='faiss.Flat',
-              index_metric='COSINE', faiss_index_ivf_nlists='auto', faiss_index_pq_m=1, **ALL_REQ_ARGS)
+    knn = KNN(
+        sagemaker_session=sagemaker_session,
+        dimension_reduction_type="sign",
+        dimension_reduction_target="2",
+        index_type="faiss.Flat",
+        index_metric="COSINE",
+        faiss_index_ivf_nlists="auto",
+        faiss_index_pq_m=1,
+        **ALL_REQ_ARGS
+    )
     assert knn.hyperparameters() == dict(
-        k=str(ALL_REQ_ARGS['k']),
-        sample_size=str(ALL_REQ_ARGS['sample_size']),
-        predictor_type=str(ALL_REQ_ARGS['predictor_type']),
-        dimension_reduction_type='sign',
-        dimension_reduction_target='2',
-        index_type='faiss.Flat',
-        index_metric='COSINE',
-        faiss_index_ivf_nlists='auto',
-        faiss_index_pq_m='1'
+        k=str(ALL_REQ_ARGS["k"]),
+        sample_size=str(ALL_REQ_ARGS["sample_size"]),
+        predictor_type=str(ALL_REQ_ARGS["predictor_type"]),
+        dimension_reduction_type="sign",
+        dimension_reduction_target="2",
+        index_type="faiss.Flat",
+        index_metric="COSINE",
+        faiss_index_ivf_nlists="auto",
+        faiss_index_pq_m="1",
     )
 
 
 def test_all_hyperparameters_classifier(sagemaker_session):
     test_params = ALL_REQ_ARGS.copy()
-    test_params['predictor_type'] = PREDICTOR_TYPE_CLASSIFIER
+    test_params["predictor_type"] = PREDICTOR_TYPE_CLASSIFIER
 
-    knn = KNN(sagemaker_session=sagemaker_session,
-              dimension_reduction_type='fjlt', dimension_reduction_target='2', index_type='faiss.IVFFlat',
-              index_metric='L2', faiss_index_ivf_nlists='20', **test_params)
+    knn = KNN(
+        sagemaker_session=sagemaker_session,
+        dimension_reduction_type="fjlt",
+        dimension_reduction_target="2",
+        index_type="faiss.IVFFlat",
+        index_metric="L2",
+        faiss_index_ivf_nlists="20",
+        **test_params
+    )
     assert knn.hyperparameters() == dict(
-        k=str(ALL_REQ_ARGS['k']),
-        sample_size=str(ALL_REQ_ARGS['sample_size']),
+        k=str(ALL_REQ_ARGS["k"]),
+        sample_size=str(ALL_REQ_ARGS["sample_size"]),
         predictor_type=str(PREDICTOR_TYPE_CLASSIFIER),
-        dimension_reduction_type='fjlt',
-        dimension_reduction_target='2',
-        index_type='faiss.IVFFlat',
-        index_metric='L2',
-        faiss_index_ivf_nlists='20'
+        dimension_reduction_type="fjlt",
+        dimension_reduction_target="2",
+        index_type="faiss.IVFFlat",
+        index_metric="L2",
+        faiss_index_ivf_nlists="20",
     )
 
 
 def test_image(sagemaker_session):
     knn = KNN(sagemaker_session=sagemaker_session, **ALL_REQ_ARGS)
-    assert knn.train_image() == registry(REGION, "knn") + '/knn:1'
+    assert knn.train_image() == registry(REGION, "knn") + "/knn:1"
 
 
-@pytest.mark.parametrize('required_hyper_parameters, value', [
-    ('k', 'string'),
-    ('sample_size', 'string'),
-    ('predictor_type', 1)
-])
+@pytest.mark.parametrize(
+    "required_hyper_parameters, value",
+    [("k", "string"), ("sample_size", "string"), ("predictor_type", 1)],
+)
 def test_required_hyper_parameters_type(sagemaker_session, required_hyper_parameters, value):
     with pytest.raises(ValueError):
         test_params = ALL_REQ_ARGS.copy()
@@ -137,9 +157,7 @@ def test_required_hyper_parameters_type(sagemaker_session, required_hyper_parame
         KNN(sagemaker_session=sagemaker_session, **test_params)
 
 
-@pytest.mark.parametrize('required_hyper_parameters, value', [
-    ('predictor_type', 'random_string')
-])
+@pytest.mark.parametrize("required_hyper_parameters, value", [("predictor_type", "random_string")])
 def test_required_hyper_parameters_value(sagemaker_session, required_hyper_parameters, value):
     with pytest.raises(ValueError):
         test_params = ALL_REQ_ARGS.copy()
@@ -147,10 +165,9 @@ def test_required_hyper_parameters_value(sagemaker_session, required_hyper_param
         KNN(sagemaker_session=sagemaker_session, **test_params)
 
 
-@pytest.mark.parametrize('iterable_hyper_parameters, value', [
-    ('index_type', 1),
-    ('index_metric', 'string')
-])
+@pytest.mark.parametrize(
+    "iterable_hyper_parameters, value", [("index_type", 1), ("index_metric", "string")]
+)
 def test_error_optional_hyper_parameters_type(sagemaker_session, iterable_hyper_parameters, value):
     with pytest.raises(ValueError):
         test_params = ALL_REQ_ARGS.copy()
@@ -158,11 +175,10 @@ def test_error_optional_hyper_parameters_type(sagemaker_session, iterable_hyper_
         KNN(sagemaker_session=sagemaker_session, **test_params)
 
 
-@pytest.mark.parametrize('optional_hyper_parameters, value', [
-    ('index_type', 'faiss.random'),
-    ('index_metric', 'randomstring'),
-    ('faiss_index_pq_m', -1)
-])
+@pytest.mark.parametrize(
+    "optional_hyper_parameters, value",
+    [("index_type", "faiss.random"), ("index_metric", "randomstring"), ("faiss_index_pq_m", -1)],
+)
 def test_error_optional_hyper_parameters_value(sagemaker_session, optional_hyper_parameters, value):
     with pytest.raises(ValueError):
         test_params = ALL_REQ_ARGS.copy()
@@ -170,13 +186,16 @@ def test_error_optional_hyper_parameters_value(sagemaker_session, optional_hyper
         KNN(sagemaker_session=sagemaker_session, **test_params)
 
 
-@pytest.mark.parametrize('conditional_hyper_parameters', [
-    {'dimension_reduction_type': 'sign'},  # errors due to missing dimension_reduction_target
-    {'dimension_reduction_type': 'sign', 'dimension_reduction_target': -2},
-    {'dimension_reduction_type': 'sign', 'dimension_reduction_target': 'string'},
-    {'dimension_reduction_type': 2, 'dimension_reduction_target': 20},
-    {'dimension_reduction_type': 'randomstring', 'dimension_reduction_target': 20}
-])
+@pytest.mark.parametrize(
+    "conditional_hyper_parameters",
+    [
+        {"dimension_reduction_type": "sign"},  # errors due to missing dimension_reduction_target
+        {"dimension_reduction_type": "sign", "dimension_reduction_target": -2},
+        {"dimension_reduction_type": "sign", "dimension_reduction_target": "string"},
+        {"dimension_reduction_type": 2, "dimension_reduction_target": 20},
+        {"dimension_reduction_type": "randomstring", "dimension_reduction_target": 20},
+    ],
+)
 def test_error_conditional_hyper_parameters_value(sagemaker_session, conditional_hyper_parameters):
     with pytest.raises(ValueError):
         test_params = ALL_REQ_ARGS.copy()
@@ -193,7 +212,12 @@ MINI_BATCH_SIZE = 200
 def test_call_fit(base_fit, sagemaker_session):
     knn = KNN(base_job_name="knn", sagemaker_session=sagemaker_session, **ALL_REQ_ARGS)
 
-    data = RecordSet("s3://{}/{}".format(BUCKET_NAME, PREFIX), num_records=1, feature_dim=FEATURE_DIM, channel='train')
+    data = RecordSet(
+        "s3://{}/{}".format(BUCKET_NAME, PREFIX),
+        num_records=1,
+        feature_dim=FEATURE_DIM,
+        channel="train",
+    )
 
     knn.fit(data, MINI_BATCH_SIZE)
 
@@ -206,16 +230,24 @@ def test_call_fit(base_fit, sagemaker_session):
 def test_call_fit_none_mini_batch_size(sagemaker_session):
     knn = KNN(base_job_name="knn", sagemaker_session=sagemaker_session, **ALL_REQ_ARGS)
 
-    data = RecordSet("s3://{}/{}".format(BUCKET_NAME, PREFIX), num_records=1, feature_dim=FEATURE_DIM,
-                     channel='train')
+    data = RecordSet(
+        "s3://{}/{}".format(BUCKET_NAME, PREFIX),
+        num_records=1,
+        feature_dim=FEATURE_DIM,
+        channel="train",
+    )
     knn.fit(data)
 
 
 def test_prepare_for_training_wrong_type_mini_batch_size(sagemaker_session):
     knn = KNN(base_job_name="knn", sagemaker_session=sagemaker_session, **ALL_REQ_ARGS)
 
-    data = RecordSet("s3://{}/{}".format(BUCKET_NAME, PREFIX), num_records=1, feature_dim=FEATURE_DIM,
-                     channel='train')
+    data = RecordSet(
+        "s3://{}/{}".format(BUCKET_NAME, PREFIX),
+        num_records=1,
+        feature_dim=FEATURE_DIM,
+        channel="train",
+    )
 
     with pytest.raises((TypeError, ValueError)):
         knn._prepare_for_training(data, "some")
@@ -224,24 +256,38 @@ def test_prepare_for_training_wrong_type_mini_batch_size(sagemaker_session):
 def test_prepare_for_training_wrong_value_lower_mini_batch_size(sagemaker_session):
     knn = KNN(base_job_name="knn", sagemaker_session=sagemaker_session, **ALL_REQ_ARGS)
 
-    data = RecordSet("s3://{}/{}".format(BUCKET_NAME, PREFIX), num_records=1, feature_dim=FEATURE_DIM,
-                     channel='train')
+    data = RecordSet(
+        "s3://{}/{}".format(BUCKET_NAME, PREFIX),
+        num_records=1,
+        feature_dim=FEATURE_DIM,
+        channel="train",
+    )
     with pytest.raises(ValueError):
         knn._prepare_for_training(data, 0)
 
 
 def test_model_image(sagemaker_session):
     knn = KNN(sagemaker_session=sagemaker_session, **ALL_REQ_ARGS)
-    data = RecordSet("s3://{}/{}".format(BUCKET_NAME, PREFIX), num_records=1, feature_dim=FEATURE_DIM, channel='train')
+    data = RecordSet(
+        "s3://{}/{}".format(BUCKET_NAME, PREFIX),
+        num_records=1,
+        feature_dim=FEATURE_DIM,
+        channel="train",
+    )
     knn.fit(data, MINI_BATCH_SIZE)
 
     model = knn.create_model()
-    assert model.image == registry(REGION, "knn") + '/knn:1'
+    assert model.image == registry(REGION, "knn") + "/knn:1"
 
 
 def test_predictor_type(sagemaker_session):
     knn = KNN(sagemaker_session=sagemaker_session, **ALL_REQ_ARGS)
-    data = RecordSet("s3://{}/{}".format(BUCKET_NAME, PREFIX), num_records=1, feature_dim=FEATURE_DIM, channel='train')
+    data = RecordSet(
+        "s3://{}/{}".format(BUCKET_NAME, PREFIX),
+        num_records=1,
+        feature_dim=FEATURE_DIM,
+        channel="train",
+    )
     knn.fit(data, MINI_BATCH_SIZE)
     model = knn.create_model()
     predictor = model.deploy(1, TRAIN_INSTANCE_TYPE)

@@ -24,24 +24,45 @@ from sagemaker.vpc_utils import VPC_CONFIG_DEFAULT
 
 class KMeans(AmazonAlgorithmEstimatorBase):
 
-    repo_name = 'kmeans'
+    repo_name = "kmeans"
     repo_version = 1
 
-    k = hp('k', gt(1), 'An integer greater-than 1', int)
-    init_method = hp('init_method', isin('random', 'kmeans++'), 'One of "random", "kmeans++"', str)
-    max_iterations = hp('local_lloyd_max_iter', gt(0), 'An integer greater-than 0', int)
-    tol = hp('local_lloyd_tol', (ge(0), le(1)), 'An float in [0, 1]', float)
-    num_trials = hp('local_lloyd_num_trials', gt(0), 'An integer greater-than 0', int)
-    local_init_method = hp('local_lloyd_init_method', isin('random', 'kmeans++'), 'One of "random", "kmeans++"', str)
-    half_life_time_size = hp('half_life_time_size', ge(0), 'An integer greater-than-or-equal-to 0', int)
-    epochs = hp('epochs', gt(0), 'An integer greater-than 0', int)
-    center_factor = hp('extra_center_factor', gt(0), 'An integer greater-than 0', int)
-    eval_metrics = hp(name='eval_metrics', validation_message='A comma separated list of "msd" or "ssd"',
-                      data_type=list)
+    k = hp("k", gt(1), "An integer greater-than 1", int)
+    init_method = hp("init_method", isin("random", "kmeans++"), 'One of "random", "kmeans++"', str)
+    max_iterations = hp("local_lloyd_max_iter", gt(0), "An integer greater-than 0", int)
+    tol = hp("local_lloyd_tol", (ge(0), le(1)), "An float in [0, 1]", float)
+    num_trials = hp("local_lloyd_num_trials", gt(0), "An integer greater-than 0", int)
+    local_init_method = hp(
+        "local_lloyd_init_method", isin("random", "kmeans++"), 'One of "random", "kmeans++"', str
+    )
+    half_life_time_size = hp(
+        "half_life_time_size", ge(0), "An integer greater-than-or-equal-to 0", int
+    )
+    epochs = hp("epochs", gt(0), "An integer greater-than 0", int)
+    center_factor = hp("extra_center_factor", gt(0), "An integer greater-than 0", int)
+    eval_metrics = hp(
+        name="eval_metrics",
+        validation_message='A comma separated list of "msd" or "ssd"',
+        data_type=list,
+    )
 
-    def __init__(self, role, train_instance_count, train_instance_type, k, init_method=None,
-                 max_iterations=None, tol=None, num_trials=None, local_init_method=None,
-                 half_life_time_size=None, epochs=None, center_factor=None, eval_metrics=None, **kwargs):
+    def __init__(
+        self,
+        role,
+        train_instance_count,
+        train_instance_type,
+        k,
+        init_method=None,
+        max_iterations=None,
+        tol=None,
+        num_trials=None,
+        local_init_method=None,
+        half_life_time_size=None,
+        epochs=None,
+        center_factor=None,
+        eval_metrics=None,
+        **kwargs
+    ):
         """
         A k-means clustering :class:`~sagemaker.amazon.AmazonAlgorithmEstimatorBase`. Finds k clusters of data in an
         unlabeled dataset.
@@ -113,15 +134,21 @@ class KMeans(AmazonAlgorithmEstimatorBase):
                 * 'Subnets' (list[str]): List of subnet ids.
                 * 'SecurityGroupIds' (list[str]): List of security group ids.
         """
-        return KMeansModel(self.model_data, self.role, self.sagemaker_session,
-                           vpc_config=self.get_vpc_config(vpc_config_override))
+        return KMeansModel(
+            self.model_data,
+            self.role,
+            self.sagemaker_session,
+            vpc_config=self.get_vpc_config(vpc_config_override),
+        )
 
     def _prepare_for_training(self, records, mini_batch_size=5000, job_name=None):
-        super(KMeans, self)._prepare_for_training(records, mini_batch_size=mini_batch_size, job_name=job_name)
+        super(KMeans, self)._prepare_for_training(
+            records, mini_batch_size=mini_batch_size, job_name=job_name
+        )
 
     def hyperparameters(self):
         """Return the SageMaker hyperparameters for training this KMeans Estimator"""
-        hp_dict = dict(force_dense='True')  # KMeans requires this hp to fit on Record objects
+        hp_dict = dict(force_dense="True")  # KMeans requires this hp to fit on Record objects
         hp_dict.update(super(KMeans, self).hyperparameters())
         return hp_dict
 
@@ -139,8 +166,12 @@ class KMeansPredictor(RealTimePredictor):
     key of the ``Record.label`` field."""
 
     def __init__(self, endpoint, sagemaker_session=None):
-        super(KMeansPredictor, self).__init__(endpoint, sagemaker_session, serializer=numpy_to_record_serializer(),
-                                              deserializer=record_deserializer())
+        super(KMeansPredictor, self).__init__(
+            endpoint,
+            sagemaker_session,
+            serializer=numpy_to_record_serializer(),
+            deserializer=record_deserializer(),
+        )
 
 
 class KMeansModel(Model):
@@ -149,8 +180,13 @@ class KMeansModel(Model):
 
     def __init__(self, model_data, role, sagemaker_session=None, **kwargs):
         sagemaker_session = sagemaker_session or Session()
-        repo = '{}:{}'.format(KMeans.repo_name, KMeans.repo_version)
-        image = '{}/{}'.format(registry(sagemaker_session.boto_session.region_name), repo)
-        super(KMeansModel, self).__init__(model_data, image, role, predictor_cls=KMeansPredictor,
-                                          sagemaker_session=sagemaker_session,
-                                          **kwargs)
+        repo = "{}:{}".format(KMeans.repo_name, KMeans.repo_version)
+        image = "{}/{}".format(registry(sagemaker_session.boto_session.region_name), repo)
+        super(KMeansModel, self).__init__(
+            model_data,
+            image,
+            role,
+            predictor_cls=KMeansPredictor,
+            sagemaker_session=sagemaker_session,
+            **kwargs
+        )

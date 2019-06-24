@@ -20,7 +20,7 @@ from time import sleep
 from awslogs.core import AWSLogs
 from botocore.exceptions import ClientError
 
-LOGGER = logging.getLogger('timeout')
+LOGGER = logging.getLogger("timeout")
 
 
 class TimeoutError(Exception):
@@ -44,7 +44,7 @@ def timeout(seconds=0, minutes=0, hours=0):
     limit = seconds + 60 * minutes + 3600 * hours
 
     def handler(signum, frame):
-        raise TimeoutError('timed out after {} seconds'.format(limit))
+        raise TimeoutError("timed out after {} seconds".format(limit))
 
     try:
         signal.signal(signal.SIGALRM, handler)
@@ -56,7 +56,9 @@ def timeout(seconds=0, minutes=0, hours=0):
 
 
 @contextmanager
-def timeout_and_delete_endpoint_by_name(endpoint_name, sagemaker_session, seconds=0, minutes=45, hours=0):
+def timeout_and_delete_endpoint_by_name(
+    endpoint_name, sagemaker_session, seconds=0, minutes=45, hours=0
+):
     with timeout(seconds=seconds, minutes=minutes, hours=hours) as t:
         no_errors = False
         try:
@@ -69,14 +71,14 @@ def timeout_and_delete_endpoint_by_name(endpoint_name, sagemaker_session, second
                 attempts -= 1
                 try:
                     sagemaker_session.delete_endpoint(endpoint_name)
-                    LOGGER.info('deleted endpoint {}'.format(endpoint_name))
+                    LOGGER.info("deleted endpoint {}".format(endpoint_name))
 
-                    _show_logs(endpoint_name, 'Endpoints', sagemaker_session)
+                    _show_logs(endpoint_name, "Endpoints", sagemaker_session)
                     if no_errors:
-                        _cleanup_logs(endpoint_name, 'Endpoints', sagemaker_session)
+                        _cleanup_logs(endpoint_name, "Endpoints", sagemaker_session)
                     return
                 except ClientError as ce:
-                    if ce.response['Error']['Code'] == 'ValidationException':
+                    if ce.response["Error"]["Code"] == "ValidationException":
                         # avoids the inner exception to be overwritten
                         pass
                 # trying to delete the resource again in 10 seconds
@@ -84,7 +86,9 @@ def timeout_and_delete_endpoint_by_name(endpoint_name, sagemaker_session, second
 
 
 @contextmanager
-def timeout_and_delete_model_with_transformer(transformer, sagemaker_session, seconds=0, minutes=0, hours=0):
+def timeout_and_delete_model_with_transformer(
+    transformer, sagemaker_session, seconds=0, minutes=0, hours=0
+):
     with timeout(seconds=seconds, minutes=minutes, hours=hours) as t:
         no_errors = False
         try:
@@ -97,39 +101,49 @@ def timeout_and_delete_model_with_transformer(transformer, sagemaker_session, se
                 attempts -= 1
                 try:
                     transformer.delete_model()
-                    LOGGER.info('deleted SageMaker model {}'.format(transformer.model_name))
+                    LOGGER.info("deleted SageMaker model {}".format(transformer.model_name))
 
-                    _show_logs(transformer.model_name, 'Models', sagemaker_session)
+                    _show_logs(transformer.model_name, "Models", sagemaker_session)
                     if no_errors:
-                        _cleanup_logs(transformer.model_name, 'Models', sagemaker_session)
+                        _cleanup_logs(transformer.model_name, "Models", sagemaker_session)
                         return
                 except ClientError as ce:
-                    if ce.response['Error']['Code'] == 'ValidationException':
+                    if ce.response["Error"]["Code"] == "ValidationException":
                         pass
                 sleep(10)
 
 
 def _show_logs(resource_name, resource_type, sagemaker_session):
-    log_group = '/aws/sagemaker/{}/{}'.format(resource_type, resource_name)
+    log_group = "/aws/sagemaker/{}/{}".format(resource_type, resource_name)
     try:
         # print out logs before deletion for debuggability
-        LOGGER.info('cloudwatch logs for log group {}:'.format(log_group))
-        logs = AWSLogs(log_group_name=log_group, log_stream_name='ALL', start='1d',
-                       aws_region=sagemaker_session.boto_session.region_name)
+        LOGGER.info("cloudwatch logs for log group {}:".format(log_group))
+        logs = AWSLogs(
+            log_group_name=log_group,
+            log_stream_name="ALL",
+            start="1d",
+            aws_region=sagemaker_session.boto_session.region_name,
+        )
         logs.list_logs()
     except Exception:
-        LOGGER.exception('Failure occurred while listing cloudwatch log group %s. Swallowing exception but printing '
-                         'stacktrace for debugging.', log_group)
+        LOGGER.exception(
+            "Failure occurred while listing cloudwatch log group %s. Swallowing exception but printing "
+            "stacktrace for debugging.",
+            log_group,
+        )
 
 
 def _cleanup_logs(resource_name, resource_type, sagemaker_session):
-    log_group = '/aws/sagemaker/{}/{}'.format(resource_type, resource_name)
+    log_group = "/aws/sagemaker/{}/{}".format(resource_type, resource_name)
     try:
         # print out logs before deletion for debuggability
-        LOGGER.info('deleting cloudwatch log group {}:'.format(log_group))
-        cwl_client = sagemaker_session.boto_session.client('logs')
+        LOGGER.info("deleting cloudwatch log group {}:".format(log_group))
+        cwl_client = sagemaker_session.boto_session.client("logs")
         cwl_client.delete_log_group(logGroupName=log_group)
-        LOGGER.info('deleted cloudwatch log group: {}'.format(log_group))
+        LOGGER.info("deleted cloudwatch log group: {}".format(log_group))
     except Exception:
-        LOGGER.exception('Failure occurred while cleaning up cloudwatch log group %s. '
-                         'Swallowing exception but printing stacktrace for debugging.', log_group)
+        LOGGER.exception(
+            "Failure occurred while cleaning up cloudwatch log group %s. "
+            "Swallowing exception but printing stacktrace for debugging.",
+            log_group,
+        )

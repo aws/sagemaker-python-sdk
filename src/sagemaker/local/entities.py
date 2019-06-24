@@ -27,71 +27,76 @@ from sagemaker.utils import get_config_value
 
 logger = logging.getLogger(__name__)
 
-_UNUSED_ARN = 'local:arn-does-not-matter'
+_UNUSED_ARN = "local:arn-does-not-matter"
 HEALTH_CHECK_TIMEOUT_LIMIT = 120
 
 
 class _LocalTrainingJob(object):
 
-    _STARTING = 'Starting'
-    _TRAINING = 'Training'
-    _COMPLETED = 'Completed'
-    _states = ['Starting', 'Training', 'Completed']
+    _STARTING = "Starting"
+    _TRAINING = "Training"
+    _COMPLETED = "Completed"
+    _states = ["Starting", "Training", "Completed"]
 
     def __init__(self, container):
         self.container = container
         self.model_artifacts = None
-        self.state = 'created'
+        self.state = "created"
         self.start_time = None
         self.end_time = None
 
     def start(self, input_data_config, output_data_config, hyperparameters, job_name):
         for channel in input_data_config:
-            if channel['DataSource'] and 'S3DataSource' in channel['DataSource']:
-                data_distribution = channel['DataSource']['S3DataSource']['S3DataDistributionType']
-                data_uri = channel['DataSource']['S3DataSource']['S3Uri']
-            elif channel['DataSource'] and 'FileDataSource' in channel['DataSource']:
-                data_distribution = channel['DataSource']['FileDataSource']['FileDataDistributionType']
-                data_uri = channel['DataSource']['FileDataSource']['FileUri']
+            if channel["DataSource"] and "S3DataSource" in channel["DataSource"]:
+                data_distribution = channel["DataSource"]["S3DataSource"]["S3DataDistributionType"]
+                data_uri = channel["DataSource"]["S3DataSource"]["S3Uri"]
+            elif channel["DataSource"] and "FileDataSource" in channel["DataSource"]:
+                data_distribution = channel["DataSource"]["FileDataSource"][
+                    "FileDataDistributionType"
+                ]
+                data_uri = channel["DataSource"]["FileDataSource"]["FileUri"]
             else:
-                raise ValueError('Need channel[\'DataSource\'] to have [\'S3DataSource\'] or [\'FileDataSource\']')
+                raise ValueError(
+                    "Need channel['DataSource'] to have ['S3DataSource'] or ['FileDataSource']"
+                )
 
             # use a single Data URI - this makes handling S3 and File Data easier down the stack
-            channel['DataUri'] = data_uri
+            channel["DataUri"] = data_uri
 
-            if data_distribution != 'FullyReplicated':
-                raise RuntimeError('DataDistribution: %s is not currently supported in Local Mode' %
-                                   data_distribution)
+            if data_distribution != "FullyReplicated":
+                raise RuntimeError(
+                    "DataDistribution: %s is not currently supported in Local Mode"
+                    % data_distribution
+                )
 
         self.start_time = datetime.datetime.now()
         self.state = self._TRAINING
 
-        self.model_artifacts = self.container.train(input_data_config, output_data_config, hyperparameters, job_name)
+        self.model_artifacts = self.container.train(
+            input_data_config, output_data_config, hyperparameters, job_name
+        )
         self.end = datetime.datetime.now()
         self.state = self._COMPLETED
 
     def describe(self):
         response = {
-            'ResourceConfig': {
-                'InstanceCount': self.container.instance_count
-            },
-            'TrainingJobStatus': self.state,
-            'TrainingStartTime': self.start_time,
-            'TrainingEndTime': self.end_time,
-            'ModelArtifacts': {
-                'S3ModelArtifacts': self.model_artifacts
-            }
+            "ResourceConfig": {"InstanceCount": self.container.instance_count},
+            "TrainingJobStatus": self.state,
+            "TrainingStartTime": self.start_time,
+            "TrainingEndTime": self.end_time,
+            "ModelArtifacts": {"S3ModelArtifacts": self.model_artifacts},
         }
         return response
 
 
 class _LocalTransformJob(object):
 
-    _CREATING = 'Creating'
-    _COMPLETED = 'Completed'
+    _CREATING = "Creating"
+    _COMPLETED = "Completed"
 
     def __init__(self, transform_job_name, model_name, local_session=None):
         from sagemaker.local import LocalSession
+
         self.local_session = local_session or LocalSession()
         local_client = self.local_session.sagemaker_client
 
@@ -100,7 +105,7 @@ class _LocalTransformJob(object):
 
         # TODO - support SageMaker Models not just local models. This is not
         # ideal but it may be a good thing to do.
-        self.primary_container = local_client.describe_model(model_name)['PrimaryContainer']
+        self.primary_container = local_client.describe_model(model_name)["PrimaryContainer"]
         self.container = None
         self.start_time = None
         self.end_time = None
@@ -122,26 +127,28 @@ class _LocalTransformJob(object):
         self.input_data = input_data
         self.output_data = output_data
 
-        image = self.primary_container['Image']
-        instance_type = transform_resources['InstanceType']
+        image = self.primary_container["Image"]
+        instance_type = transform_resources["InstanceType"]
         instance_count = 1
 
         environment = self._get_container_environment(**kwargs)
 
         # Start the container, pass the environment and wait for it to start up
-        self.container = _SageMakerContainer(instance_type, instance_count, image, self.local_session)
-        self.container.serve(self.primary_container['ModelDataUrl'], environment)
+        self.container = _SageMakerContainer(
+            instance_type, instance_count, image, self.local_session
+        )
+        self.container.serve(self.primary_container["ModelDataUrl"], environment)
 
-        serving_port = get_config_value('local.serving_port', self.local_session.config) or 8080
+        serving_port = get_config_value("local.serving_port", self.local_session.config) or 8080
         _wait_for_serving_container(serving_port)
 
         # Get capabilities from Container if needed
-        endpoint_url = 'http://localhost:%s/execution-parameters' % serving_port
+        endpoint_url = "http://localhost:%s/execution-parameters" % serving_port
         response, code = _perform_request(endpoint_url)
         if code == 200:
             execution_parameters = json.loads(response.read())
             # MaxConcurrentTransforms is ignored because we currently only support 1
-            for setting in ('BatchStrategy', 'MaxPayloadInMB'):
+            for setting in ("BatchStrategy", "MaxPayloadInMB"):
                 if setting not in kwargs and setting in execution_parameters:
                     kwargs[setting] = execution_parameters[setting]
 
@@ -149,9 +156,9 @@ class _LocalTransformJob(object):
         kwargs.update(self._get_required_defaults(**kwargs))
 
         self.start_time = datetime.datetime.now()
-        self.batch_strategy = kwargs['BatchStrategy']
-        if 'Environment' in kwargs:
-            self.environment = kwargs['Environment']
+        self.batch_strategy = kwargs["BatchStrategy"]
+        if "Environment" in kwargs:
+            self.environment = kwargs["Environment"]
 
         # run the batch inference requests
         self._perform_batch_inference(input_data, output_data, **kwargs)
@@ -168,25 +175,25 @@ class _LocalTransformJob(object):
             dict: description of this _LocalTransformJob
         """
         response = {
-            'TransformJobStatus': self.state,
-            'ModelName': self.model_name,
-            'TransformJobName': self.name,
-            'TransformJobArn': _UNUSED_ARN,
-            'TransformEndTime': self.end_time,
-            'CreationTime': self.start_time,
-            'TransformStartTime': self.start_time,
-            'Environment': {},
-            'BatchStrategy': self.batch_strategy,
+            "TransformJobStatus": self.state,
+            "ModelName": self.model_name,
+            "TransformJobName": self.name,
+            "TransformJobArn": _UNUSED_ARN,
+            "TransformEndTime": self.end_time,
+            "CreationTime": self.start_time,
+            "TransformStartTime": self.start_time,
+            "Environment": {},
+            "BatchStrategy": self.batch_strategy,
         }
 
         if self.transform_resources:
-            response['TransformResources'] = self.transform_resources
+            response["TransformResources"] = self.transform_resources
 
         if self.output_data:
-            response['TransformOutput'] = self.output_data
+            response["TransformOutput"] = self.output_data
 
         if self.input_data:
-            response['TransformInput'] = self.input_data
+            response["TransformInput"] = self.input_data
 
         return response
 
@@ -204,29 +211,31 @@ class _LocalTransformJob(object):
 
         """
         environment = {}
-        environment.update(self.primary_container['Environment'])
-        environment['SAGEMAKER_BATCH'] = 'True'
-        if 'MaxPayloadInMB' in kwargs:
-            environment['SAGEMAKER_MAX_PAYLOAD_IN_MB'] = str(kwargs['MaxPayloadInMB'])
+        environment.update(self.primary_container["Environment"])
+        environment["SAGEMAKER_BATCH"] = "True"
+        if "MaxPayloadInMB" in kwargs:
+            environment["SAGEMAKER_MAX_PAYLOAD_IN_MB"] = str(kwargs["MaxPayloadInMB"])
 
-        if 'BatchStrategy' in kwargs:
-            if kwargs['BatchStrategy'] == 'SingleRecord':
-                strategy_env_value = 'SINGLE_RECORD'
-            elif kwargs['BatchStrategy'] == 'MultiRecord':
-                strategy_env_value = 'MULTI_RECORD'
+        if "BatchStrategy" in kwargs:
+            if kwargs["BatchStrategy"] == "SingleRecord":
+                strategy_env_value = "SINGLE_RECORD"
+            elif kwargs["BatchStrategy"] == "MultiRecord":
+                strategy_env_value = "MULTI_RECORD"
             else:
-                raise ValueError('Invalid BatchStrategy, must be \'SingleRecord\' or \'MultiRecord\'')
-            environment['SAGEMAKER_BATCH_STRATEGY'] = strategy_env_value
+                raise ValueError("Invalid BatchStrategy, must be 'SingleRecord' or 'MultiRecord'")
+            environment["SAGEMAKER_BATCH_STRATEGY"] = strategy_env_value
 
         # we only do 1 max concurrent transform in Local Mode
-        if 'MaxConcurrentTransforms' in kwargs and int(kwargs['MaxConcurrentTransforms']) > 1:
-            logger.warning('Local Mode only supports 1 ConcurrentTransform. Setting MaxConcurrentTransforms to 1')
-        environment['SAGEMAKER_MAX_CONCURRENT_TRANSFORMS'] = '1'
+        if "MaxConcurrentTransforms" in kwargs and int(kwargs["MaxConcurrentTransforms"]) > 1:
+            logger.warning(
+                "Local Mode only supports 1 ConcurrentTransform. Setting MaxConcurrentTransforms to 1"
+            )
+        environment["SAGEMAKER_MAX_CONCURRENT_TRANSFORMS"] = "1"
 
         # if there were environment variables passed to the Transformer we will pass them to the
         # container as well.
-        if 'Environment' in kwargs:
-            environment.update(kwargs['Environment'])
+        if "Environment" in kwargs:
+            environment.update(kwargs["Environment"])
         return environment
 
     def _get_required_defaults(self, **kwargs):
@@ -239,18 +248,18 @@ class _LocalTransformJob(object):
             dict: key/values for the default parameters that are missing.
         """
         defaults = {}
-        if 'BatchStrategy' not in kwargs:
-            defaults['BatchStrategy'] = 'MultiRecord'
+        if "BatchStrategy" not in kwargs:
+            defaults["BatchStrategy"] = "MultiRecord"
 
-        if 'MaxPayloadInMB' not in kwargs:
-            defaults['MaxPayloadInMB'] = 6
+        if "MaxPayloadInMB" not in kwargs:
+            defaults["MaxPayloadInMB"] = 6
 
         return defaults
 
     def _get_working_directory(self):
         # Root dir to use for intermediate data location. To make things simple we will write here regardless
         # of the final destination. At the end the files will either be moved or uploaded to S3 and deleted.
-        root_dir = get_config_value('local.container_root', self.local_session.config)
+        root_dir = get_config_value("local.container_root", self.local_session.config)
         if root_dir:
             root_dir = os.path.abspath(root_dir)
 
@@ -258,10 +267,10 @@ class _LocalTransformJob(object):
         return working_dir
 
     def _prepare_data_transformation(self, input_data, batch_strategy):
-        input_path = input_data['DataSource']['S3DataSource']['S3Uri']
+        input_path = input_data["DataSource"]["S3DataSource"]["S3Uri"]
         data_source = sagemaker.local.data.get_data_source_instance(input_path, self.local_session)
 
-        split_type = input_data['SplitType'] if 'SplitType' in input_data else None
+        split_type = input_data["SplitType"] if "SplitType" in input_data else None
         splitter = sagemaker.local.data.get_splitter_instance(split_type)
 
         batch_provider = sagemaker.local.data.get_batch_strategy_instance(batch_strategy, splitter)
@@ -272,12 +281,12 @@ class _LocalTransformJob(object):
         # from S3 or Local FileSystem. Split them as required (Line, RecordIO, None) and finally batch them
         # according to the batch strategy and limit the request size.
 
-        batch_strategy = kwargs['BatchStrategy']
-        max_payload = int(kwargs['MaxPayloadInMB'])
+        batch_strategy = kwargs["BatchStrategy"]
+        max_payload = int(kwargs["MaxPayloadInMB"])
         data_source, batch_provider = self._prepare_data_transformation(input_data, batch_strategy)
 
         # Output settings
-        accept = output_data['Accept'] if 'Accept' in output_data else None
+        accept = output_data["Accept"] if "Accept" in output_data else None
 
         working_dir = self._get_working_directory()
         dataset_dir = data_source.get_root_dir()
@@ -287,27 +296,27 @@ class _LocalTransformJob(object):
             relative_path = os.path.dirname(os.path.relpath(file, dataset_dir))
             filename = os.path.basename(file)
             copy_directory_structure(working_dir, relative_path)
-            destination_path = os.path.join(working_dir, relative_path, filename + '.out')
+            destination_path = os.path.join(working_dir, relative_path, filename + ".out")
 
-            with open(destination_path, 'wb') as f:
+            with open(destination_path, "wb") as f:
                 for item in batch_provider.pad(file, max_payload):
                     # call the container and add the result to inference.
                     response = self.local_session.sagemaker_runtime_client.invoke_endpoint(
-                        item, '', input_data['ContentType'], accept)
+                        item, "", input_data["ContentType"], accept
+                    )
 
-                    response_body = response['Body']
+                    response_body = response["Body"]
                     data = response_body.read().strip()
                     response_body.close()
                     f.write(data)
-                    if 'AssembleWith' in output_data and output_data['AssembleWith'] == 'Line':
-                        f.write(b'\n')
+                    if "AssembleWith" in output_data and output_data["AssembleWith"] == "Line":
+                        f.write(b"\n")
 
-        move_to_destination(working_dir, output_data['S3OutputPath'], self.name, self.local_session)
+        move_to_destination(working_dir, output_data["S3OutputPath"], self.name, self.local_session)
         self.container.stop_serving()
 
 
 class _LocalModel(object):
-
     def __init__(self, model_name, primary_container):
         self.model_name = model_name
         self.primary_container = primary_container
@@ -315,17 +324,16 @@ class _LocalModel(object):
 
     def describe(self):
         response = {
-            'ModelName': self.model_name,
-            'CreationTime': self.creation_time,
-            'ExecutionRoleArn': _UNUSED_ARN,
-            'ModelArn': _UNUSED_ARN,
-            'PrimaryContainer': self.primary_container
+            "ModelName": self.model_name,
+            "CreationTime": self.creation_time,
+            "ExecutionRoleArn": _UNUSED_ARN,
+            "ModelArn": _UNUSED_ARN,
+            "PrimaryContainer": self.primary_container,
         }
         return response
 
 
 class _LocalEndpointConfig(object):
-
     def __init__(self, config_name, production_variants, tags=None):
         self.name = config_name
         self.production_variants = production_variants
@@ -334,53 +342,60 @@ class _LocalEndpointConfig(object):
 
     def describe(self):
         response = {
-            'EndpointConfigName': self.name,
-            'EndpointConfigArn': _UNUSED_ARN,
-            'Tags': self.tags,
-            'CreationTime': self.creation_time,
-            'ProductionVariants': self.production_variants
+            "EndpointConfigName": self.name,
+            "EndpointConfigArn": _UNUSED_ARN,
+            "Tags": self.tags,
+            "CreationTime": self.creation_time,
+            "ProductionVariants": self.production_variants,
         }
         return response
 
 
 class _LocalEndpoint(object):
 
-    _CREATING = 'Creating'
-    _IN_SERVICE = 'InService'
-    _FAILED = 'Failed'
+    _CREATING = "Creating"
+    _IN_SERVICE = "InService"
+    _FAILED = "Failed"
 
     def __init__(self, endpoint_name, endpoint_config_name, tags=None, local_session=None):
         # runtime import since there is a cyclic dependency between entities and local_session
         from sagemaker.local import LocalSession
+
         self.local_session = local_session or LocalSession()
         local_client = self.local_session.sagemaker_client
 
         self.name = endpoint_name
         self.endpoint_config = local_client.describe_endpoint_config(endpoint_config_name)
-        self.production_variant = self.endpoint_config['ProductionVariants'][0]
+        self.production_variant = self.endpoint_config["ProductionVariants"][0]
         self.tags = tags
 
-        model_name = self.production_variant['ModelName']
-        self.primary_container = local_client.describe_model(model_name)['PrimaryContainer']
+        model_name = self.production_variant["ModelName"]
+        self.primary_container = local_client.describe_model(model_name)["PrimaryContainer"]
 
         self.container = None
         self.create_time = None
         self.state = _LocalEndpoint._CREATING
 
     def serve(self):
-        image = self.primary_container['Image']
-        instance_type = self.production_variant['InstanceType']
-        instance_count = self.production_variant['InitialInstanceCount']
+        image = self.primary_container["Image"]
+        instance_type = self.production_variant["InstanceType"]
+        instance_count = self.production_variant["InitialInstanceCount"]
 
-        accelerator_type = self.production_variant.get('AcceleratorType')
-        if accelerator_type == 'local_sagemaker_notebook':
-            self.primary_container['Environment']['SAGEMAKER_INFERENCE_ACCELERATOR_PRESENT'] = 'true'
+        accelerator_type = self.production_variant.get("AcceleratorType")
+        if accelerator_type == "local_sagemaker_notebook":
+            self.primary_container["Environment"][
+                "SAGEMAKER_INFERENCE_ACCELERATOR_PRESENT"
+            ] = "true"
 
         self.create_time = datetime.datetime.now()
-        self.container = _SageMakerContainer(instance_type, instance_count, image, self.local_session)
-        self.container.serve(self.primary_container['ModelDataUrl'], self.primary_container['Environment'])
+        self.container = _SageMakerContainer(
+            instance_type, instance_count, image, self.local_session
+        )
+        self.container.serve(
+            self.primary_container["ModelDataUrl"], self.primary_container["Environment"]
+        )
 
-        serving_port = get_config_value('local.serving_port', self.local_session.config) or 8080
+        serving_port = get_config_value("local.serving_port", self.local_session.config) or 8080
         _wait_for_serving_container(serving_port)
         # the container is running and it passed the healthcheck status is now InService
         self.state = _LocalEndpoint._IN_SERVICE
@@ -391,13 +406,13 @@ class _LocalEndpoint(object):
 
     def describe(self):
         response = {
-            'EndpointConfigName': self.endpoint_config['EndpointConfigName'],
-            'CreationTime': self.create_time,
-            'ProductionVariants': self.endpoint_config['ProductionVariants'],
-            'Tags': self.tags,
-            'EndpointName': self.name,
-            'EndpointArn': _UNUSED_ARN,
-            'EndpointStatus': self.state
+            "EndpointConfigName": self.endpoint_config["EndpointConfigName"],
+            "CreationTime": self.create_time,
+            "ProductionVariants": self.endpoint_config["ProductionVariants"],
+            "Tags": self.tags,
+            "EndpointName": self.name,
+            "EndpointArn": _UNUSED_ARN,
+            "EndpointStatus": self.state,
         }
         return response
 
@@ -406,16 +421,16 @@ def _wait_for_serving_container(serving_port):
     i = 0
     http = urllib3.PoolManager()
 
-    endpoint_url = 'http://localhost:%s/ping' % serving_port
+    endpoint_url = "http://localhost:%s/ping" % serving_port
     while True:
         i += 5
         if i >= HEALTH_CHECK_TIMEOUT_LIMIT:
-            raise RuntimeError('Giving up, endpoint didn\'t launch correctly')
+            raise RuntimeError("Giving up, endpoint didn't launch correctly")
 
-        logger.info('Checking if serving container is up, attempt: %s' % i)
+        logger.info("Checking if serving container is up, attempt: %s" % i)
         _, code = _perform_request(endpoint_url, http)
         if code != 200:
-            logger.info('Container still not up, got: %s' % code)
+            logger.info("Container still not up, got: %s" % code)
         else:
             return
 
@@ -425,7 +440,7 @@ def _wait_for_serving_container(serving_port):
 def _perform_request(endpoint_url, pool_manager=None):
     http = pool_manager or urllib3.PoolManager()
     try:
-        r = http.request('GET', endpoint_url)
+        r = http.request("GET", endpoint_url)
         code = r.status
     except urllib3.exceptions.RequestError:
         return None, -1

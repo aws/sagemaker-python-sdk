@@ -24,46 +24,62 @@ def read(fname):
 
 
 def read_version():
-    return read('VERSION').strip()
+    return read("VERSION").strip()
 
 
 # Declare minimal set for installation
-required_packages = ['boto3>=1.9.169', 'numpy>=1.9.0', 'protobuf>=3.1', 'scipy>=0.19.0',
-                     'urllib3>=1.21, <1.25', 'protobuf3-to-dict>=0.1.5', 'docker-compose>=1.23.0',
-                     'requests>=2.20.0, <2.21']
+required_packages = [
+    "boto3>=1.9.169",
+    "numpy>=1.9.0",
+    "protobuf>=3.1",
+    "scipy>=0.19.0",
+    "urllib3>=1.21, <1.25",
+    "protobuf3-to-dict>=0.1.5",
+    "docker-compose>=1.23.0",
+    "requests>=2.20.0, <2.21",
+]
 
 # enum is introduced in Python 3.4. Installing enum back port
 if sys.version_info < (3, 4):
-    required_packages.append('enum34>=1.1.6')
+    required_packages.append("enum34>=1.1.6")
 
-setup(name="sagemaker",
-      version=read_version(),
-      description="Open source library for training and deploying models on Amazon SageMaker.",
-      packages=find_packages('src'),
-      package_dir={'': 'src'},
-      py_modules=[os.path.splitext(os.path.basename(path))[0] for path in glob('src/*.py')],
-      long_description=read('README.rst'),
-      author="Amazon Web Services",
-      url='https://github.com/aws/sagemaker-python-sdk/',
-      license="Apache License 2.0",
-      keywords="ML Amazon AWS AI Tensorflow MXNet",
-      classifiers=[
-          "Development Status :: 5 - Production/Stable",
-          "Intended Audience :: Developers",
-          "Natural Language :: English",
-          "License :: OSI Approved :: Apache Software License",
-          "Programming Language :: Python",
-          "Programming Language :: Python :: 2.7",
-          "Programming Language :: Python :: 3.6",
-      ],
-
-      install_requires=required_packages,
-
-      extras_require={
-          'test': ['tox', 'flake8', 'pytest==4.4.1', 'pytest-cov', 'pytest-rerunfailures',
-                   'pytest-xdist', 'mock', 'tensorflow>=1.3.0', 'contextlib2',
-                   'awslogs', 'pandas']},
-
-      entry_points={
-          'console_scripts': ['sagemaker=sagemaker.cli.main:main'],
-      })
+setup(
+    name="sagemaker",
+    version=read_version(),
+    description="Open source library for training and deploying models on Amazon SageMaker.",
+    packages=find_packages("src"),
+    package_dir={"": "src"},
+    py_modules=[os.path.splitext(os.path.basename(path))[0] for path in glob("src/*.py")],
+    long_description=read("README.rst"),
+    author="Amazon Web Services",
+    url="https://github.com/aws/sagemaker-python-sdk/",
+    license="Apache License 2.0",
+    keywords="ML Amazon AWS AI Tensorflow MXNet",
+    classifiers=[
+        "Development Status :: 5 - Production/Stable",
+        "Intended Audience :: Developers",
+        "Natural Language :: English",
+        "License :: OSI Approved :: Apache Software License",
+        "Programming Language :: Python",
+        "Programming Language :: Python :: 2.7",
+        "Programming Language :: Python :: 3.6",
+    ],
+    install_requires=required_packages,
+    extras_require={
+        "test": [
+            "tox",
+            "flake8",
+            "pytest==4.4.1",
+            "pytest-cov",
+            "pytest-rerunfailures",
+            "pytest-xdist",
+            "mock",
+            "tensorflow>=1.3.0",
+            "contextlib2",
+            "awslogs",
+            "pandas",
+            "black==19.3b0 ; python_version >= '3.6'",
+        ]
+    },
+    entry_points={"console_scripts": ["sagemaker=sagemaker.cli.main:main"]},
+)

@@ -16,66 +16,21 @@ import logging
 from sagemaker.utils import get_ecr_image_uri_prefix
 
 image_registry_map = {
-    "us-west-1": {
-        "sparkml-serving": "746614075791",
-        "scikit-learn": "746614075791"
-    },
-    "us-west-2": {
-        "sparkml-serving": "246618743249",
-        "scikit-learn": "246618743249"
-    },
-    "us-east-1": {
-        "sparkml-serving": "683313688378",
-        "scikit-learn": "683313688378"
-    },
-    "us-east-2": {
-        "sparkml-serving": "257758044811",
-        "scikit-learn": "257758044811"
-    },
-    "ap-northeast-1": {
-        "sparkml-serving": "354813040037",
-        "scikit-learn": "354813040037"
-    },
-    "ap-northeast-2": {
-        "sparkml-serving": "366743142698",
-        "scikit-learn": "366743142698"
-    },
-    "ap-southeast-1": {
-        "sparkml-serving": "121021644041",
-        "scikit-learn": "121021644041"
-    },
-    "ap-southeast-2": {
-        "sparkml-serving": "783357654285",
-        "scikit-learn": "783357654285"
-    },
-    "ap-south-1": {
-        "sparkml-serving": "720646828776",
-        "scikit-learn": "720646828776"
-    },
-    "eu-west-1": {
-        "sparkml-serving": "141502667606",
-        "scikit-learn": "141502667606"
-    },
-    "eu-west-2": {
-        "sparkml-serving": "764974769150",
-        "scikit-learn": "764974769150"
-    },
-    "eu-central-1": {
-        "sparkml-serving": "492215442770",
-        "scikit-learn": "492215442770"
-    },
-    "ca-central-1": {
-        "sparkml-serving": "341280168497",
-        "scikit-learn": "341280168497"
-    },
-    "us-gov-west-1": {
-        "sparkml-serving": "414596584902",
-        "scikit-learn": "414596584902"
-    },
-    "us-iso-east-1": {
-        "sparkml-serving": "833128469047",
-        "scikit-learn": "833128469047"
-    }
+    "us-west-1": {"sparkml-serving": "746614075791", "scikit-learn": "746614075791"},
+    "us-west-2": {"sparkml-serving": "246618743249", "scikit-learn": "246618743249"},
+    "us-east-1": {"sparkml-serving": "683313688378", "scikit-learn": "683313688378"},
+    "us-east-2": {"sparkml-serving": "257758044811", "scikit-learn": "257758044811"},
+    "ap-northeast-1": {"sparkml-serving": "354813040037", "scikit-learn": "354813040037"},
+    "ap-northeast-2": {"sparkml-serving": "366743142698", "scikit-learn": "366743142698"},
+    "ap-southeast-1": {"sparkml-serving": "121021644041", "scikit-learn": "121021644041"},
+    "ap-southeast-2": {"sparkml-serving": "783357654285", "scikit-learn": "783357654285"},
+    "ap-south-1": {"sparkml-serving": "720646828776", "scikit-learn": "720646828776"},
+    "eu-west-1": {"sparkml-serving": "141502667606", "scikit-learn": "141502667606"},
+    "eu-west-2": {"sparkml-serving": "764974769150", "scikit-learn": "764974769150"},
+    "eu-central-1": {"sparkml-serving": "492215442770", "scikit-learn": "492215442770"},
+    "ca-central-1": {"sparkml-serving": "341280168497", "scikit-learn": "341280168497"},
+    "us-gov-west-1": {"sparkml-serving": "414596584902", "scikit-learn": "414596584902"},
+    "us-iso-east-1": {"sparkml-serving": "833128469047", "scikit-learn": "833128469047"},
 }
 
 
