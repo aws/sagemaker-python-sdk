@@ -26,7 +26,7 @@ import sagemaker.fw_utils as fw
 from sagemaker.tensorflow.defaults import TF_VERSION
 from sagemaker.tensorflow.model import TensorFlowModel
 from sagemaker.tensorflow.serving import Model
-from sagemaker.utils import get_config_value, get_short_version
+from sagemaker import utils
 from sagemaker.vpc_utils import VPC_CONFIG_DEFAULT
 
 logger = logging.getLogger("sagemaker")
@@ -502,7 +502,7 @@ class TensorFlow(Framework):
             image=self.image_name,
             name=self._current_job_name,
             container_log_level=self.container_log_level,
-            framework_version=get_short_version(self.framework_version),
+            framework_version=utils.get_short_version(self.framework_version),
             sagemaker_session=self.sagemaker_session,
             vpc_config=self.get_vpc_config(vpc_config_override),
         )
@@ -566,7 +566,7 @@ class TensorFlow(Framework):
         return hyperparameters
 
     def _default_s3_path(self, directory, mpi=False):
-        local_code = get_config_value("local.local_code", self.sagemaker_session.config)
+        local_code = utils.get_config_value("local.local_code", self.sagemaker_session.config)
         if self.sagemaker_session.local_mode and local_code:
             return "/opt/ml/shared/{}".format(directory)
         elif mpi:
