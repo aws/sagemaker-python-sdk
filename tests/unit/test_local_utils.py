@@ -18,19 +18,19 @@ from mock import patch, Mock
 import sagemaker.local.utils
 
 
-@patch('shutil.rmtree', Mock())
-@patch('sagemaker.local.utils.recursive_copy')
+@patch("shutil.rmtree", Mock())
+@patch("sagemaker.local.utils.recursive_copy")
 def test_move_to_destination(recursive_copy):
     # local files will just be recursively copied
-    sagemaker.local.utils.move_to_destination('/tmp/data', 'file:///target/dir/', 'job', None)
-    recursive_copy.assert_called_with('/tmp/data', '/target/dir/')
+    sagemaker.local.utils.move_to_destination("/tmp/data", "file:///target/dir/", "job", None)
+    recursive_copy.assert_called_with("/tmp/data", "/target/dir/")
 
     # s3 destination will upload to S3
     sms = Mock()
-    sagemaker.local.utils.move_to_destination('/tmp/data', 's3://bucket/path', 'job', sms)
+    sagemaker.local.utils.move_to_destination("/tmp/data", "s3://bucket/path", "job", sms)
     sms.upload_data.assert_called()
 
 
 def test_move_to_destination_illegal_destination():
     with pytest.raises(ValueError):
-        sagemaker.local.utils.move_to_destination('/tmp/data', 'ftp://ftp/in/2018', 'job', None)
+        sagemaker.local.utils.move_to_destination("/tmp/data", "ftp://ftp/in/2018", "job", None)

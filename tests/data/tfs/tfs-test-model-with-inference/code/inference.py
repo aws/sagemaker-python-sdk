@@ -12,10 +12,11 @@
 # language governing permissions and limitations under the License.
 import json
 
+
 def input_handler(data, context):
-    data = json.loads(data.read().decode('utf-8'))
-    new_values = [x + 1 for x in data['instances']]
-    dumps = json.dumps({'instances': new_values})
+    data = json.loads(data.read().decode("utf-8"))
+    new_values = [x + 1 for x in data["instances"]]
+    dumps = json.dumps({"instances": new_values})
     return dumps
 
 

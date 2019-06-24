@@ -21,28 +21,52 @@ from sagemaker import fw_utils, local, session, utils
 from sagemaker.fw_utils import UploadedCode
 from sagemaker.transformer import Transformer
 
-LOGGER = logging.getLogger('sagemaker')
+LOGGER = logging.getLogger("sagemaker")
 
-NEO_ALLOWED_TARGET_INSTANCE_FAMILY = set(['ml_c5', 'ml_m5', 'ml_c4', 'ml_m4',
-                                          'jetson_tx1', 'jetson_tx2', 'jetson_nano', 'ml_p2',
-                                          'ml_p3', 'deeplens', 'rasp3b',
-                                          'rk3288', 'rk3399', 'sbe_c'])
-NEO_ALLOWED_FRAMEWORKS = set(['mxnet', 'tensorflow', 'pytorch', 'onnx', 'xgboost'])
+NEO_ALLOWED_TARGET_INSTANCE_FAMILY = set(
+    [
+        "ml_c5",
+        "ml_m5",
+        "ml_c4",
+        "ml_m4",
+        "jetson_tx1",
+        "jetson_tx2",
+        "jetson_nano",
+        "ml_p2",
+        "ml_p3",
+        "deeplens",
+        "rasp3b",
+        "rk3288",
+        "rk3399",
+        "sbe_c",
+    ]
+)
+NEO_ALLOWED_FRAMEWORKS = set(["mxnet", "tensorflow", "pytorch", "onnx", "xgboost"])
 
 NEO_IMAGE_ACCOUNT = {
-    'us-west-2': '301217895009',
-    'us-east-1': '785573368785',
-    'eu-west-1': '802834080501',
-    'us-east-2': '007439368137',
-    'ap-northeast-1': '941853720454'
+    "us-west-2": "301217895009",
+    "us-east-1": "785573368785",
+    "eu-west-1": "802834080501",
+    "us-east-2": "007439368137",
+    "ap-northeast-1": "941853720454",
 }
 
 
 class Model(object):
     """A SageMaker ``Model`` that can be deployed to an ``Endpoint``."""
 
-    def __init__(self, model_data, image, role=None, predictor_cls=None, env=None, name=None, vpc_config=None,
-                 sagemaker_session=None, enable_network_isolation=False):
+    def __init__(
+        self,
+        model_data,
+        image,
+        role=None,
+        predictor_cls=None,
+        env=None,
+        name=None,
+        vpc_config=None,
+        sagemaker_session=None,
+        enable_network_isolation=False,
+    ):
         """Initialize an SageMaker ``Model``.
 
         Args:
@@ -79,7 +103,9 @@ class Model(object):
         self._is_compiled_model = False
         self._enable_network_isolation = enable_network_isolation
 
-    def prepare_container_def(self, instance_type, accelerator_type=None):  # pylint: disable=unused-argument
+    def prepare_container_def(
+        self, instance_type, accelerator_type=None
+    ):  # pylint: disable=unused-argument
         """Return a dict created by ``sagemaker.container_def()`` for deploying this model to a specified instance type.
 
         Subclasses can override this to provide custom container definitions for
@@ -119,40 +145,55 @@ class Model(object):
 
         """
         container_def = self.prepare_container_def(instance_type, accelerator_type=accelerator_type)
-        self.name = self.name or utils.name_from_image(container_def['Image'])
+        self.name = self.name or utils.name_from_image(container_def["Image"])
         enable_network_isolation = self.enable_network_isolation()
-        self.sagemaker_session.create_model(self.name, self.role,
-                                            container_def, vpc_config=self.vpc_config,
-                                            enable_network_isolation=enable_network_isolation,
-                                            tags=tags)
+        self.sagemaker_session.create_model(
+            self.name,
+            self.role,
+            container_def,
+            vpc_config=self.vpc_config,
+            enable_network_isolation=enable_network_isolation,
+            tags=tags,
+        )
 
     def _framework(self):
-        return getattr(self, '__framework_name__', None)
+        return getattr(self, "__framework_name__", None)
 
     def _get_framework_version(self):
-        return getattr(self, 'framework_version', None)
+        return getattr(self, "framework_version", None)
 
-    def _compilation_job_config(self, target_instance_type, input_shape, output_path, role, compile_max_run,
-                                job_name, framework, tags):
+    def _compilation_job_config(
+        self,
+        target_instance_type,
+        input_shape,
+        output_path,
+        role,
+        compile_max_run,
+        job_name,
+        framework,
+        tags,
+    ):
         input_model_config = {
-            'S3Uri': self.model_data,
-            'DataInputConfig': input_shape if type(input_shape) != dict else json.dumps(input_shape),
-            'Framework': framework
+            "S3Uri": self.model_data,
+            "DataInputConfig": input_shape
+            if type(input_shape) != dict
+            else json.dumps(input_shape),
+            "Framework": framework,
         }
         role = self.sagemaker_session.expand_role(role)
         output_model_config = {
-            'TargetDevice': target_instance_type,
-            'S3OutputLocation': output_path
+            "TargetDevice": target_instance_type,
+            "S3OutputLocation": output_path,
         }
 
-        return {'input_model_config': input_model_config,
-                'output_model_config': output_model_config,
-                'role': role,
-                'stop_condition': {
-                    'MaxRuntimeInSeconds': compile_max_run
-                },
-                'tags': tags,
-                'job_name': job_name}
+        return {
+            "input_model_config": input_model_config,
+            "output_model_config": output_model_config,
+            "role": role,
+            "stop_condition": {"MaxRuntimeInSeconds": compile_max_run},
+            "tags": tags,
+            "job_name": job_name,
+        }
 
     def check_neo_region(self, region):
         """Check if this ``Model`` in the available region where neo support.
@@ -169,20 +210,34 @@ class Model(object):
 
     def _neo_image_account(self, region):
         if region not in NEO_IMAGE_ACCOUNT:
-            raise ValueError("Neo is not currently supported in {}, "
-                             "valid regions: {}".format(region, NEO_IMAGE_ACCOUNT.keys()))
+            raise ValueError(
+                "Neo is not currently supported in {}, "
+                "valid regions: {}".format(region, NEO_IMAGE_ACCOUNT.keys())
+            )
         return NEO_IMAGE_ACCOUNT[region]
 
     def _neo_image(self, region, target_instance_type, framework, framework_version):
-        return fw_utils.create_image_uri(region,
-                                         'neo-' + framework.lower(),
-                                         target_instance_type.replace('_', '.'),
-                                         framework_version,
-                                         py_version='py3',
-                                         account=self._neo_image_account(region))
+        return fw_utils.create_image_uri(
+            region,
+            "neo-" + framework.lower(),
+            target_instance_type.replace("_", "."),
+            framework_version,
+            py_version="py3",
+            account=self._neo_image_account(region),
+        )
 
-    def compile(self, target_instance_family, input_shape, output_path, role,
-                tags=None, job_name=None, compile_max_run=5 * 60, framework=None, framework_version=None):
+    def compile(
+        self,
+        target_instance_family,
+        input_shape,
+        output_path,
+        role,
+        tags=None,
+        job_name=None,
+        compile_max_run=5 * 60,
+        framework=None,
+        framework_version=None,
+    ):
         """Compile this ``Model`` with SageMaker Neo.
 
         Args:
@@ -207,31 +262,58 @@ class Model(object):
         """
         framework = self._framework() or framework
         if framework is None:
-            raise ValueError("You must specify framework, allowed values {}".format(NEO_ALLOWED_FRAMEWORKS))
+            raise ValueError(
+                "You must specify framework, allowed values {}".format(NEO_ALLOWED_FRAMEWORKS)
+            )
         if framework not in NEO_ALLOWED_FRAMEWORKS:
-            raise ValueError("You must provide valid framework, allowed values {}".format(NEO_ALLOWED_FRAMEWORKS))
+            raise ValueError(
+                "You must provide valid framework, allowed values {}".format(NEO_ALLOWED_FRAMEWORKS)
+            )
         if job_name is None:
             raise ValueError("You must provide a compilation job name")
 
         framework = framework.upper()
         framework_version = self._get_framework_version() or framework_version
 
-        config = self._compilation_job_config(target_instance_family, input_shape, output_path, role,
-                                              compile_max_run, job_name, framework, tags)
+        config = self._compilation_job_config(
+            target_instance_family,
+            input_shape,
+            output_path,
+            role,
+            compile_max_run,
+            job_name,
+            framework,
+            tags,
+        )
         self.sagemaker_session.compile_model(**config)
         job_status = self.sagemaker_session.wait_for_compilation_job(job_name)
-        self.model_data = job_status['ModelArtifacts']['S3ModelArtifacts']
-        if target_instance_family.startswith('ml_'):
-            self.image = self._neo_image(self.sagemaker_session.boto_region_name, target_instance_family, framework,
-                                         framework_version)
+        self.model_data = job_status["ModelArtifacts"]["S3ModelArtifacts"]
+        if target_instance_family.startswith("ml_"):
+            self.image = self._neo_image(
+                self.sagemaker_session.boto_region_name,
+                target_instance_family,
+                framework,
+                framework_version,
+            )
             self._is_compiled_model = True
         else:
-            LOGGER.warning("The intance type {} is not supported to deploy via SageMaker,"
-                           "please deploy the model on the device by yourself.".format(target_instance_family))
+            LOGGER.warning(
+                "The intance type {} is not supported to deploy via SageMaker,"
+                "please deploy the model on the device by yourself.".format(target_instance_family)
+            )
         return self
 
-    def deploy(self, initial_instance_count, instance_type, accelerator_type=None, endpoint_name=None,
-               update_endpoint=False, tags=None, kms_key=None, wait=True):
+    def deploy(
+        self,
+        initial_instance_count,
+        instance_type,
+        accelerator_type=None,
+        endpoint_name=None,
+        update_endpoint=False,
+        tags=None,
+        kms_key=None,
+        wait=True,
+    ):
         """Deploy this ``Model`` to an ``Endpoint`` and optionally return a ``Predictor``.
 
         Create a SageMaker ``Model`` and ``EndpointConfig``, and deploy an ``Endpoint`` from this ``Model``.
@@ -266,7 +348,7 @@ class Model(object):
                 the created endpoint name, if ``self.predictor_cls`` is not None. Otherwise, return None.
         """
         if not self.sagemaker_session:
-            if instance_type in ('local', 'local_gpu'):
+            if instance_type in ("local", "local_gpu"):
                 self.sagemaker_session = local.LocalSession()
             else:
                 self.sagemaker_session = session.Session()
@@ -274,13 +356,14 @@ class Model(object):
         if self.role is None:
             raise ValueError("Role can not be null for deploying a model")
 
-        compiled_model_suffix = '-'.join(instance_type.split('.')[:-1])
+        compiled_model_suffix = "-".join(instance_type.split(".")[:-1])
         if self._is_compiled_model:
             self.name += compiled_model_suffix
 
         self._create_sagemaker_model(instance_type, accelerator_type, tags)
-        production_variant = sagemaker.production_variant(self.name, instance_type, initial_instance_count,
-                                                          accelerator_type=accelerator_type)
+        production_variant = sagemaker.production_variant(
+            self.name, instance_type, initial_instance_count, accelerator_type=accelerator_type
+        )
         if endpoint_name:
             self.endpoint_name = endpoint_name
         else:
@@ -296,18 +379,32 @@ class Model(object):
                 instance_type=instance_type,
                 accelerator_type=accelerator_type,
                 tags=tags,
-                kms_key=kms_key)
+                kms_key=kms_key,
+            )
             self.sagemaker_session.update_endpoint(self.endpoint_name, endpoint_config_name)
         else:
-            self.sagemaker_session.endpoint_from_production_variants(self.endpoint_name, [production_variant],
-                                                                     tags, kms_key, wait)
+            self.sagemaker_session.endpoint_from_production_variants(
+                self.endpoint_name, [production_variant], tags, kms_key, wait
+            )
 
         if self.predictor_cls:
             return self.predictor_cls(self.endpoint_name, self.sagemaker_session)
 
-    def transformer(self, instance_count, instance_type, strategy=None, assemble_with=None, output_path=None,
-                    output_kms_key=None, accept=None, env=None, max_concurrent_transforms=None,
-                    max_payload=None, tags=None, volume_kms_key=None):
+    def transformer(
+        self,
+        instance_count,
+        instance_type,
+        strategy=None,
+        assemble_with=None,
+        output_path=None,
+        output_kms_key=None,
+        accept=None,
+        env=None,
+        max_concurrent_transforms=None,
+        max_payload=None,
+        tags=None,
+        volume_kms_key=None,
+    ):
         """Return a ``Transformer`` that uses this Model.
 
         Args:
@@ -333,11 +430,23 @@ class Model(object):
         if self.enable_network_isolation():
             env = None
 
-        return Transformer(self.name, instance_count, instance_type, strategy=strategy, assemble_with=assemble_with,
-                           output_path=output_path, output_kms_key=output_kms_key, accept=accept,
-                           max_concurrent_transforms=max_concurrent_transforms, max_payload=max_payload,
-                           env=env, tags=tags, base_transform_job_name=self.name,
-                           volume_kms_key=volume_kms_key, sagemaker_session=self.sagemaker_session)
+        return Transformer(
+            self.name,
+            instance_count,
+            instance_type,
+            strategy=strategy,
+            assemble_with=assemble_with,
+            output_path=output_path,
+            output_kms_key=output_kms_key,
+            accept=accept,
+            max_concurrent_transforms=max_concurrent_transforms,
+            max_payload=max_payload,
+            env=env,
+            tags=tags,
+            base_transform_job_name=self.name,
+            volume_kms_key=volume_kms_key,
+            sagemaker_session=self.sagemaker_session,
+        )
 
     def delete_model(self):
         """Delete an Amazon SageMaker Model.
@@ -347,18 +456,20 @@ class Model(object):
 
         """
         if self.name is None:
-            raise ValueError('The SageMaker model must be created first before attempting to delete.')
+            raise ValueError(
+                "The SageMaker model must be created first before attempting to delete."
+            )
         self.sagemaker_session.delete_model(self.name)
 
 
-SCRIPT_PARAM_NAME = 'sagemaker_program'
-DIR_PARAM_NAME = 'sagemaker_submit_directory'
-CLOUDWATCH_METRICS_PARAM_NAME = 'sagemaker_enable_cloudwatch_metrics'
-CONTAINER_LOG_LEVEL_PARAM_NAME = 'sagemaker_container_log_level'
-JOB_NAME_PARAM_NAME = 'sagemaker_job_name'
-MODEL_SERVER_WORKERS_PARAM_NAME = 'sagemaker_model_server_workers'
-SAGEMAKER_REGION_PARAM_NAME = 'sagemaker_region'
-SAGEMAKER_OUTPUT_LOCATION = 'sagemaker_s3_output'
+SCRIPT_PARAM_NAME = "sagemaker_program"
+DIR_PARAM_NAME = "sagemaker_submit_directory"
+CLOUDWATCH_METRICS_PARAM_NAME = "sagemaker_enable_cloudwatch_metrics"
+CONTAINER_LOG_LEVEL_PARAM_NAME = "sagemaker_container_log_level"
+JOB_NAME_PARAM_NAME = "sagemaker_job_name"
+MODEL_SERVER_WORKERS_PARAM_NAME = "sagemaker_model_server_workers"
+SAGEMAKER_REGION_PARAM_NAME = "sagemaker_region"
+SAGEMAKER_OUTPUT_LOCATION = "sagemaker_s3_output"
 
 
 class FrameworkModel(Model):
@@ -367,9 +478,23 @@ class FrameworkModel(Model):
     This class hosts user-defined code in S3 and sets code location and configuration in model environment variables.
     """
 
-    def __init__(self, model_data, image, role, entry_point, source_dir=None, predictor_cls=None, env=None, name=None,
-                 enable_cloudwatch_metrics=False, container_log_level=logging.INFO, code_location=None,
-                 sagemaker_session=None, dependencies=None, **kwargs):
+    def __init__(
+        self,
+        model_data,
+        image,
+        role,
+        entry_point,
+        source_dir=None,
+        predictor_cls=None,
+        env=None,
+        name=None,
+        enable_cloudwatch_metrics=False,
+        container_log_level=logging.INFO,
+        code_location=None,
+        sagemaker_session=None,
+        dependencies=None,
+        **kwargs
+    ):
         """Initialize a ``FrameworkModel``.
 
         Args:
@@ -415,8 +540,16 @@ class FrameworkModel(Model):
                interactions (default: None). If not specified, one is created using the default AWS configuration chain.
             **kwargs: Keyword arguments passed to the ``Model`` initializer.
         """
-        super(FrameworkModel, self).__init__(model_data, image, role, predictor_cls=predictor_cls, env=env, name=name,
-                                             sagemaker_session=sagemaker_session, **kwargs)
+        super(FrameworkModel, self).__init__(
+            model_data,
+            image,
+            role,
+            predictor_cls=predictor_cls,
+            env=env,
+            name=name,
+            sagemaker_session=sagemaker_session,
+            **kwargs
+        )
         self.entry_point = entry_point
         self.source_dir = source_dir
         self.dependencies = dependencies or []
@@ -429,7 +562,9 @@ class FrameworkModel(Model):
         self.uploaded_code = None
         self.repacked_model_data = None
 
-    def prepare_container_def(self, instance_type, accelerator_type=None):  # pylint disable=unused-argument
+    def prepare_container_def(
+        self, instance_type, accelerator_type=None
+    ):  # pylint disable=unused-argument
         """Return a container definition with framework configuration set in model environment variables.
 
         This also uploads user-supplied code to S3.
@@ -449,32 +584,37 @@ class FrameworkModel(Model):
         return sagemaker.container_def(self.image, self.model_data, deploy_env)
 
     def _upload_code(self, key_prefix, repack=False):
-        local_code = utils.get_config_value('local.local_code', self.sagemaker_session.config)
+        local_code = utils.get_config_value("local.local_code", self.sagemaker_session.config)
         if self.sagemaker_session.local_mode and local_code:
             self.uploaded_code = None
         elif not repack:
             bucket = self.bucket or self.sagemaker_session.default_bucket()
-            self.uploaded_code = fw_utils.tar_and_upload_dir(session=self.sagemaker_session.boto_session,
-                                                             bucket=bucket,
-                                                             s3_key_prefix=key_prefix,
-                                                             script=self.entry_point,
-                                                             directory=self.source_dir,
-                                                             dependencies=self.dependencies)
+            self.uploaded_code = fw_utils.tar_and_upload_dir(
+                session=self.sagemaker_session.boto_session,
+                bucket=bucket,
+                s3_key_prefix=key_prefix,
+                script=self.entry_point,
+                directory=self.source_dir,
+                dependencies=self.dependencies,
+            )
 
         if repack:
             bucket = self.bucket or self.sagemaker_session.default_bucket()
-            repacked_model_data = 's3://' + os.path.join(bucket, key_prefix, 'model.tar.gz')
+            repacked_model_data = "s3://" + os.path.join(bucket, key_prefix, "model.tar.gz")
 
-            utils.repack_model(inference_script=self.entry_point,
-                               source_directory=self.source_dir,
-                               dependencies=self.dependencies,
-                               model_uri=self.model_data,
-                               repacked_model_uri=repacked_model_data,
-                               sagemaker_session=self.sagemaker_session)
+            utils.repack_model(
+                inference_script=self.entry_point,
+                source_directory=self.source_dir,
+                dependencies=self.dependencies,
+                model_uri=self.model_data,
+                repacked_model_uri=repacked_model_data,
+                sagemaker_session=self.sagemaker_session,
+            )
 
             self.repacked_model_data = repacked_model_data
-            self.uploaded_code = UploadedCode(s3_prefix=self.repacked_model_data,
-                                              script_name=os.path.basename(self.entry_point))
+            self.uploaded_code = UploadedCode(
+                s3_prefix=self.repacked_model_data, script_name=os.path.basename(self.entry_point)
+            )
 
     def _framework_env_vars(self):
         if self.uploaded_code:
@@ -482,22 +622,21 @@ class FrameworkModel(Model):
             dir_name = self.uploaded_code.s3_prefix
         else:
             script_name = self.entry_point
-            dir_name = 'file://' + self.source_dir
+            dir_name = "file://" + self.source_dir
 
         return {
             SCRIPT_PARAM_NAME.upper(): script_name,
             DIR_PARAM_NAME.upper(): dir_name,
             CLOUDWATCH_METRICS_PARAM_NAME.upper(): str(self.enable_cloudwatch_metrics).lower(),
             CONTAINER_LOG_LEVEL_PARAM_NAME.upper(): str(self.container_log_level),
-            SAGEMAKER_REGION_PARAM_NAME.upper(): self.sagemaker_session.boto_region_name
+            SAGEMAKER_REGION_PARAM_NAME.upper(): self.sagemaker_session.boto_region_name,
         }
 
 
 class ModelPackage(Model):
     """A SageMaker ``Model`` that can be deployed to an ``Endpoint``."""
 
-    def __init__(self, role, model_data=None, algorithm_arn=None,
-                 model_package_arn=None, **kwargs):
+    def __init__(self, role, model_data=None, algorithm_arn=None, model_package_arn=None, **kwargs):
         """Initialize a SageMaker ModelPackage.
 
         Args:
@@ -513,26 +652,24 @@ class ModelPackage(Model):
                 your account owns the Model Package. ``model_data`` is not required.
             **kwargs: Additional kwargs passed to the Model constructor.
         """
-        super(ModelPackage, self).__init__(
-            role=role,
-            model_data=model_data,
-            image=None,
-            **kwargs
-        )
+        super(ModelPackage, self).__init__(role=role, model_data=model_data, image=None, **kwargs)
 
         if model_package_arn and algorithm_arn:
-            raise ValueError('model_package_arn and algorithm_arn are mutually exclusive.'
-                             'Both were provided: model_package_arn: %s algorithm_arn: %s' %
-                             (model_package_arn, algorithm_arn))
+            raise ValueError(
+                "model_package_arn and algorithm_arn are mutually exclusive."
+                "Both were provided: model_package_arn: %s algorithm_arn: %s"
+                % (model_package_arn, algorithm_arn)
+            )
 
         if model_package_arn is None and algorithm_arn is None:
-            raise ValueError('either model_package_arn or algorithm_arn is required.'
-                             ' None was provided.')
+            raise ValueError(
+                "either model_package_arn or algorithm_arn is required." " None was provided."
+            )
 
         self.algorithm_arn = algorithm_arn
         if self.algorithm_arn is not None:
             if model_data is None:
-                raise ValueError('model_data must be provided with algorithm_arn')
+                raise ValueError("model_data must be provided with algorithm_arn")
             self.model_data = model_data
 
         self.model_package_arn = model_package_arn
@@ -540,13 +677,13 @@ class ModelPackage(Model):
 
     def _create_sagemaker_model_package(self):
         if self.algorithm_arn is None:
-            raise ValueError('No algorithm_arn was provided to create a SageMaker Model Pacakge')
+            raise ValueError("No algorithm_arn was provided to create a SageMaker Model Pacakge")
 
-        name = self.name or utils.name_from_base(self.algorithm_arn.split('/')[-1])
-        description = 'Model Package created from training with %s' % self.algorithm_arn
-        self.sagemaker_session.create_model_package_from_algorithm(name, description,
-                                                                   self.algorithm_arn,
-                                                                   self.model_data)
+        name = self.name or utils.name_from_base(self.algorithm_arn.split("/")[-1])
+        description = "Model Package created from training with %s" % self.algorithm_arn
+        self.sagemaker_session.create_model_package_from_algorithm(
+            name, description, self.algorithm_arn, self.model_data
+        )
         return name
 
     def enable_network_isolation(self):
@@ -569,8 +706,8 @@ class ModelPackage(Model):
         model_package_desc = sagemaker_session.sagemaker_client.describe_model_package(
             ModelPackageName=model_package_name
         )
-        for container in model_package_desc['InferenceSpecification']['Containers']:
-            if 'ProductId' in container:
+        for container in model_package_desc["InferenceSpecification"]["Containers"]:
+            if "ProductId" in container:
                 return True
         return False
 
@@ -593,16 +730,18 @@ class ModelPackage(Model):
             # When a ModelPackageArn is provided we just create the Model
             model_package_name = self.model_package_arn
 
-        container_def = {
-            'ModelPackageName': model_package_name,
-        }
+        container_def = {"ModelPackageName": model_package_name}
 
         if self.env != {}:
-            container_def['Environment'] = self.env
+            container_def["Environment"] = self.env
 
-        model_package_short_name = model_package_name.split('/')[-1]
+        model_package_short_name = model_package_name.split("/")[-1]
         enable_network_isolation = self.enable_network_isolation()
         self.name = self.name or utils.name_from_base(model_package_short_name)
-        self.sagemaker_session.create_model(self.name, self.role, container_def,
-                                            vpc_config=self.vpc_config,
-                                            enable_network_isolation=enable_network_isolation)
+        self.sagemaker_session.create_model(
+            self.name,
+            self.role,
+            container_def,
+            vpc_config=self.vpc_config,
+            enable_network_isolation=enable_network_isolation,
+        )

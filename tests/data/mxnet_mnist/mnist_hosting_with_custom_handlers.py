@@ -26,9 +26,10 @@ import struct
 # it is possible to specify own code to load the model, otherwise a default model loading takes place
 def model_fn(path_to_model_files):
     from mxnet.io import DataDesc
+
     loaded_symbol = mx.symbol.load(os.path.join(path_to_model_files, "symbol"))
     created_module = mx.mod.Module(symbol=loaded_symbol)
-    created_module.bind([DataDesc("data", (1L, 1L, 28L, 28L))])
+    created_module.bind([DataDesc("data", (1, 1, 28, 28))])
     created_module.load_params(os.path.join(path_to_model_files, "params"))
     return created_module
 
@@ -38,8 +39,13 @@ def model_fn(path_to_model_files):
 # returns serialized data and content type it has used
 def transform_fn(model, request_data, input_content_type, requested_output_content_type):
     # for demonstration purposes we will be calling handlers from Option2
-    return output_fn(process_request_fn(model, request_data, input_content_type), requested_output_content_type), \
-           requested_output_content_type
+    return (
+        output_fn(
+            process_request_fn(model, request_data, input_content_type),
+            requested_output_content_type,
+        ),
+        requested_output_content_type,
+    )
 
 
 # --- Option 2 - overwrite container's default input/output behavior with handlers ---
@@ -50,7 +56,9 @@ def process_request_fn(model, data, input_content_type):
     elif input_content_type == "application/json":
         prediction_input = handle_json_input(data)
     else:
-        raise NotImplementedError("This model doesnt support requested input type: " + input_content_type)
+        raise NotImplementedError(
+            "This model doesnt support requested input type: " + input_content_type
+        )
 
     return model.predict(prediction_input)
 
@@ -61,9 +69,11 @@ def handle_s3_file_path(path):
 
     if sys.version_info.major == 2:
         import urlparse
+
         parse_cmd = urlparse.urlparse
     else:
         import urllib
+
         parse_cmd = urllib.parse.urlparse
 
     import boto3
@@ -73,20 +83,23 @@ def handle_s3_file_path(path):
     parsed_url = parse_cmd(path)
 
     # get S3 client
-    s3 = boto3.resource('s3')
+    s3 = boto3.resource("s3")
 
     # read file content and pass it down
-    obj = s3.Object(parsed_url.netloc, parsed_url.path.lstrip('/'))
-    print ("loading file: " + str(obj))
+    obj = s3.Object(parsed_url.netloc, parsed_url.path.lstrip("/"))
+    print("loading file: " + str(obj))
 
     try:
-        data = obj.get()['Body']
+        data = obj.get()["Body"]
     except ClientError as ce:
-        raise ValueError("Can't download from S3 path: " + path + " : " + ce.response['Error']['Message'])
+        raise ValueError(
+            "Can't download from S3 path: " + path + " : " + ce.response["Error"]["Message"]
+        )
 
     import StringIO
+
     buf = StringIO(data.read())
-    img = gzip.GzipFile(mode='rb', fileobj=buf)
+    img = gzip.GzipFile(mode="rb", fileobj=buf)
 
     _, _, rows, cols = struct.unpack(">IIII", img.read(16))
     images = np.fromstring(img.read(), dtype=np.uint8).reshape(10000, rows, cols)
@@ -109,4 +122,6 @@ def output_fn(prediction_output, requested_output_content_type):
     if requested_output_content_type == "application/json":
         json.dumps(data_to_return.tolist), requested_output_content_type
 
-    raise NotImplementedError("Model doesn't support requested output type: " + requested_output_content_type)
+    raise NotImplementedError(
+        "Model doesn't support requested output type: " + requested_output_content_type
+    )

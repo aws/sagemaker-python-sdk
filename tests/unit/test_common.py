@@ -17,8 +17,13 @@ import tempfile
 import pytest
 import itertools
 from scipy.sparse import coo_matrix
-from sagemaker.amazon.common import (record_deserializer, write_numpy_to_dense_tensor, read_recordio,
-                                     numpy_to_record_serializer, write_spmatrix_to_sparse_tensor)
+from sagemaker.amazon.common import (
+    record_deserializer,
+    write_numpy_to_dense_tensor,
+    read_recordio,
+    numpy_to_record_serializer,
+    write_spmatrix_to_sparse_tensor,
+)
 from sagemaker.amazon.record_pb2 import Record
 
 
@@ -47,7 +52,7 @@ def test_deserializer():
     s = numpy_to_record_serializer()
     buf = s(np.array(array_data))
     d = record_deserializer()
-    for record, expected in zip(d(buf, 'who cares'), array_data):
+    for record, expected in zip(d(buf, "who cares"), array_data):
         assert record.features["values"].float64_tensor.values == expected
 
 
@@ -65,7 +70,7 @@ def test_float_write_numpy_to_dense_tensor():
 
 def test_float32_write_numpy_to_dense_tensor():
     array_data = [[1.0, 2.0, 3.0], [10.0, 20.0, 30.0]]
-    array = np.array(array_data).astype(np.dtype('float32'))
+    array = np.array(array_data).astype(np.dtype("float32"))
     with tempfile.TemporaryFile() as f:
         write_numpy_to_dense_tensor(f, array)
         f.seek(0)
@@ -104,7 +109,7 @@ def test_int_label():
 def test_float32_label():
     array_data = [[1, 2, 3], [10, 20, 3]]
     array = np.array(array_data)
-    label_data = np.array([99, 98, 97]).astype(np.dtype('float32'))
+    label_data = np.array([99, 98, 97]).astype(np.dtype("float32"))
     with tempfile.TemporaryFile() as f:
         write_numpy_to_dense_tensor(f, array, label_data)
         f.seek(0)
@@ -118,7 +123,7 @@ def test_float32_label():
 def test_float_label():
     array_data = [[1, 2, 3], [10, 20, 3]]
     array = np.array(array_data)
-    label_data = np.array([99, 98, 97]).astype(np.dtype('float64'))
+    label_data = np.array([99, 98, 97]).astype(np.dtype("float64"))
     with tempfile.TemporaryFile() as f:
         write_numpy_to_dense_tensor(f, array, label_data)
         f.seek(0)
@@ -132,7 +137,7 @@ def test_float_label():
 def test_invalid_array():
     array_data = [[[1, 2, 3], [10, 20, 3]], [[1, 2, 3], [10, 20, 3]]]
     array = np.array(array_data)
-    label_data = np.array([99, 98, 97]).astype(np.dtype('float64'))
+    label_data = np.array([99, 98, 97]).astype(np.dtype("float64"))
     with tempfile.TemporaryFile() as f:
         with pytest.raises(ValueError):
             write_numpy_to_dense_tensor(f, array, label_data)
@@ -141,7 +146,7 @@ def test_invalid_array():
 def test_invalid_label():
     array_data = [[1, 2, 3], [10, 20, 3]]
     array = np.array(array_data)
-    label_data = np.array([99, 98, 97, 1000]).astype(np.dtype('float64'))
+    label_data = np.array([99, 98, 97, 1000]).astype(np.dtype("float64"))
     with tempfile.TemporaryFile() as f:
         with pytest.raises(ValueError):
             write_numpy_to_dense_tensor(f, array, label_data)
@@ -154,7 +159,9 @@ def test_dense_float_write_spmatrix_to_sparse_tensor():
     with tempfile.TemporaryFile() as f:
         write_spmatrix_to_sparse_tensor(f, array)
         f.seek(0)
-        for record_data, expected_data, expected_keys in zip(read_recordio(f), array_data, keys_data):
+        for record_data, expected_data, expected_keys in zip(
+            read_recordio(f), array_data, keys_data
+        ):
             record = Record()
             record.ParseFromString(record_data)
             assert record.features["values"].float64_tensor.values == expected_data
@@ -165,11 +172,13 @@ def test_dense_float_write_spmatrix_to_sparse_tensor():
 def test_dense_float32_write_spmatrix_to_sparse_tensor():
     array_data = [[1.0, 2.0, 3.0], [10.0, 20.0, 30.0]]
     keys_data = [[0, 1, 2], [0, 1, 2]]
-    array = coo_matrix(np.array(array_data).astype(np.dtype('float32')))
+    array = coo_matrix(np.array(array_data).astype(np.dtype("float32")))
     with tempfile.TemporaryFile() as f:
         write_spmatrix_to_sparse_tensor(f, array)
         f.seek(0)
-        for record_data, expected_data, expected_keys in zip(read_recordio(f), array_data, keys_data):
+        for record_data, expected_data, expected_keys in zip(
+            read_recordio(f), array_data, keys_data
+        ):
             record = Record()
             record.ParseFromString(record_data)
             assert record.features["values"].float32_tensor.values == expected_data
@@ -180,11 +189,13 @@ def test_dense_float32_write_spmatrix_to_sparse_tensor():
 def test_dense_int_write_spmatrix_to_sparse_tensor():
     array_data = [[1.0, 2.0, 3.0], [10.0, 20.0, 30.0]]
     keys_data = [[0, 1, 2], [0, 1, 2]]
-    array = coo_matrix(np.array(array_data).astype(np.dtype('int')))
+    array = coo_matrix(np.array(array_data).astype(np.dtype("int")))
     with tempfile.TemporaryFile() as f:
         write_spmatrix_to_sparse_tensor(f, array)
         f.seek(0)
-        for record_data, expected_data, expected_keys in zip(read_recordio(f), array_data, keys_data):
+        for record_data, expected_data, expected_keys in zip(
+            read_recordio(f), array_data, keys_data
+        ):
             record = Record()
             record.ParseFromString(record_data)
             assert record.features["values"].int32_tensor.values == expected_data
@@ -201,10 +212,7 @@ def test_dense_int_spmatrix_to_sparse_label():
         write_spmatrix_to_sparse_tensor(f, array, label_data)
         f.seek(0)
         for record_data, expected_data, expected_keys, label in zip(
-                read_recordio(f),
-                array_data,
-                keys_data,
-                label_data
+            read_recordio(f), array_data, keys_data, label_data
         ):
             record = Record()
             record.ParseFromString(record_data)
@@ -217,16 +225,13 @@ def test_dense_int_spmatrix_to_sparse_label():
 def test_dense_float32_spmatrix_to_sparse_label():
     array_data = [[1, 2, 3], [10, 20, 3]]
     keys_data = [[0, 1, 2], [0, 1, 2]]
-    array = coo_matrix(np.array(array_data).astype('float32'))
+    array = coo_matrix(np.array(array_data).astype("float32"))
     label_data = np.array([99, 98, 97])
     with tempfile.TemporaryFile() as f:
         write_spmatrix_to_sparse_tensor(f, array, label_data)
         f.seek(0)
         for record_data, expected_data, expected_keys, label in zip(
-                read_recordio(f),
-                array_data,
-                keys_data,
-                label_data
+            read_recordio(f), array_data, keys_data, label_data
         ):
             record = Record()
             record.ParseFromString(record_data)
@@ -239,16 +244,13 @@ def test_dense_float32_spmatrix_to_sparse_label():
 def test_dense_float64_spmatrix_to_sparse_label():
     array_data = [[1, 2, 3], [10, 20, 3]]
     keys_data = [[0, 1, 2], [0, 1, 2]]
-    array = coo_matrix(np.array(array_data).astype('float64'))
+    array = coo_matrix(np.array(array_data).astype("float64"))
     label_data = np.array([99, 98, 97])
     with tempfile.TemporaryFile() as f:
         write_spmatrix_to_sparse_tensor(f, array, label_data)
         f.seek(0)
         for record_data, expected_data, expected_keys, label in zip(
-                read_recordio(f),
-                array_data,
-                keys_data,
-                label_data
+            read_recordio(f), array_data, keys_data, label_data
         ):
             record = Record()
             record.ParseFromString(record_data)
@@ -261,7 +263,7 @@ def test_dense_float64_spmatrix_to_sparse_label():
 def test_invalid_sparse_label():
     array_data = [[1, 2, 3], [10, 20, 3]]
     array = coo_matrix(np.array(array_data))
-    label_data = np.array([99, 98, 97, 1000]).astype(np.dtype('float64'))
+    label_data = np.array([99, 98, 97, 1000]).astype(np.dtype("float64"))
     with tempfile.TemporaryFile() as f:
         with pytest.raises(ValueError):
             write_spmatrix_to_sparse_tensor(f, array, label_data)
@@ -277,11 +279,13 @@ def test_sparse_float_write_spmatrix_to_sparse_tensor():
     x_indices = [[i] * len(keys_data[i]) for i in range(len(keys_data))]
     x_indices = list(itertools.chain.from_iterable(x_indices))
 
-    array = coo_matrix((flatten_data, (x_indices, y_indices)), dtype='float64')
+    array = coo_matrix((flatten_data, (x_indices, y_indices)), dtype="float64")
     with tempfile.TemporaryFile() as f:
         write_spmatrix_to_sparse_tensor(f, array)
         f.seek(0)
-        for record_data, expected_data, expected_keys in zip(read_recordio(f), array_data, keys_data):
+        for record_data, expected_data, expected_keys in zip(
+            read_recordio(f), array_data, keys_data
+        ):
             record = Record()
             record.ParseFromString(record_data)
             assert record.features["values"].float64_tensor.values == expected_data
@@ -299,11 +303,13 @@ def test_sparse_float32_write_spmatrix_to_sparse_tensor():
     x_indices = [[i] * len(keys_data[i]) for i in range(len(keys_data))]
     x_indices = list(itertools.chain.from_iterable(x_indices))
 
-    array = coo_matrix((flatten_data, (x_indices, y_indices)), dtype='float32')
+    array = coo_matrix((flatten_data, (x_indices, y_indices)), dtype="float32")
     with tempfile.TemporaryFile() as f:
         write_spmatrix_to_sparse_tensor(f, array)
         f.seek(0)
-        for record_data, expected_data, expected_keys in zip(read_recordio(f), array_data, keys_data):
+        for record_data, expected_data, expected_keys in zip(
+            read_recordio(f), array_data, keys_data
+        ):
             record = Record()
             record.ParseFromString(record_data)
             assert record.features["values"].float32_tensor.values == expected_data
@@ -321,11 +327,13 @@ def test_sparse_int_write_spmatrix_to_sparse_tensor():
     x_indices = [[i] * len(keys_data[i]) for i in range(len(keys_data))]
     x_indices = list(itertools.chain.from_iterable(x_indices))
 
-    array = coo_matrix((flatten_data, (x_indices, y_indices)), dtype='int')
+    array = coo_matrix((flatten_data, (x_indices, y_indices)), dtype="int")
     with tempfile.TemporaryFile() as f:
         write_spmatrix_to_sparse_tensor(f, array)
         f.seek(0)
-        for record_data, expected_data, expected_keys in zip(read_recordio(f), array_data, keys_data):
+        for record_data, expected_data, expected_keys in zip(
+            read_recordio(f), array_data, keys_data
+        ):
             record = Record()
             record.ParseFromString(record_data)
             assert record.features["values"].int32_tensor.values == expected_data
@@ -336,7 +344,7 @@ def test_sparse_int_write_spmatrix_to_sparse_tensor():
 def test_dense_to_sparse():
     array_data = [[1, 2, 3], [10, 20, 3]]
     array = np.array(array_data)
-    label_data = np.array([99, 98, 97]).astype(np.dtype('float64'))
+    label_data = np.array([99, 98, 97]).astype(np.dtype("float64"))
     with tempfile.TemporaryFile() as f:
         with pytest.raises(TypeError):
             write_spmatrix_to_sparse_tensor(f, array, label_data)
