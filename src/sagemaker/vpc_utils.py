@@ -12,13 +12,13 @@
 # language governing permissions and limitations under the License.
 from __future__ import absolute_import
 
-SUBNETS_KEY = 'Subnets'
-SECURITY_GROUP_IDS_KEY = 'SecurityGroupIds'
-VPC_CONFIG_KEY = 'VpcConfig'
+SUBNETS_KEY = "Subnets"
+SECURITY_GROUP_IDS_KEY = "SecurityGroupIds"
+VPC_CONFIG_KEY = "VpcConfig"
 
 # A global constant value for methods which can optionally override VpcConfig
 # Using the default implies that VpcConfig should be reused from an existing Estimator or Training Job
-VPC_CONFIG_DEFAULT = 'VPC_CONFIG_DEFAULT'
+VPC_CONFIG_DEFAULT = "VPC_CONFIG_DEFAULT"
 
 
 def to_dict(subnets, security_group_ids):
@@ -37,8 +37,7 @@ def to_dict(subnets, security_group_ids):
     """
     if subnets is None or security_group_ids is None:
         return None
-    return {SUBNETS_KEY: subnets,
-            SECURITY_GROUP_IDS_KEY: security_group_ids}
+    return {SUBNETS_KEY: subnets, SECURITY_GROUP_IDS_KEY: security_group_ids}
 
 
 def from_dict(vpc_config, do_sanitize=False):
@@ -85,24 +84,28 @@ def sanitize(vpc_config):
     if vpc_config is None:
         return vpc_config
     elif type(vpc_config) is not dict:
-        raise ValueError('vpc_config is not a dict: {}'.format(vpc_config))
+        raise ValueError("vpc_config is not a dict: {}".format(vpc_config))
     elif not vpc_config:
-        raise ValueError('vpc_config is empty')
+        raise ValueError("vpc_config is empty")
 
     subnets = vpc_config.get(SUBNETS_KEY)
     if subnets is None:
-        raise ValueError('vpc_config is missing key: {}'.format(SUBNETS_KEY))
+        raise ValueError("vpc_config is missing key: {}".format(SUBNETS_KEY))
     if type(subnets) is not list:
-        raise ValueError('vpc_config value for {} is not a list: {}'.format(SUBNETS_KEY, subnets))
+        raise ValueError("vpc_config value for {} is not a list: {}".format(SUBNETS_KEY, subnets))
     elif not subnets:
-        raise ValueError('vpc_config value for {} is empty'.format(SUBNETS_KEY))
+        raise ValueError("vpc_config value for {} is empty".format(SUBNETS_KEY))
 
     security_group_ids = vpc_config.get(SECURITY_GROUP_IDS_KEY)
     if security_group_ids is None:
-        raise ValueError('vpc_config is missing key: {}'.format(SECURITY_GROUP_IDS_KEY))
+        raise ValueError("vpc_config is missing key: {}".format(SECURITY_GROUP_IDS_KEY))
     if type(security_group_ids) is not list:
-        raise ValueError('vpc_config value for {} is not a list: {}'.format(SECURITY_GROUP_IDS_KEY, security_group_ids))
+        raise ValueError(
+            "vpc_config value for {} is not a list: {}".format(
+                SECURITY_GROUP_IDS_KEY, security_group_ids
+            )
+        )
     elif not security_group_ids:
-        raise ValueError('vpc_config value for {} is empty'.format(SECURITY_GROUP_IDS_KEY))
+        raise ValueError("vpc_config value for {} is empty".format(SECURITY_GROUP_IDS_KEY))
 
     return to_dict(subnets, security_group_ids)

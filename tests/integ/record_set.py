@@ -18,7 +18,9 @@ from sagemaker.amazon.amazon_estimator import RecordSet
 from sagemaker.utils import sagemaker_timestamp
 
 
-def prepare_record_set_from_local_files(dir_path, destination, num_records, feature_dim, sagemaker_session):
+def prepare_record_set_from_local_files(
+    dir_path, destination, num_records, feature_dim, sagemaker_session
+):
     """Build a :class:`~RecordSet` by pointing to local files.
 
     Args:
@@ -31,7 +33,7 @@ def prepare_record_set_from_local_files(dir_path, destination, num_records, feat
         RecordSet: A RecordSet specified by S3Prefix to to be used in training.
     """
     key_prefix = urlparse(destination).path
-    key_prefix = key_prefix + '{}-{}'.format("testfiles", sagemaker_timestamp())
-    key_prefix = key_prefix.lstrip('/')
+    key_prefix = key_prefix + "{}-{}".format("testfiles", sagemaker_timestamp())
+    key_prefix = key_prefix.lstrip("/")
     uploaded_location = sagemaker_session.upload_data(path=dir_path, key_prefix=key_prefix)
-    return RecordSet(uploaded_location, num_records, feature_dim, s3_data_type='S3Prefix')
+    return RecordSet(uploaded_location, num_records, feature_dim, s3_data_type="S3Prefix")

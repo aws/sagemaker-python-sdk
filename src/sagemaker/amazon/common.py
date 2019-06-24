@@ -23,8 +23,7 @@ from sagemaker.amazon.record_pb2 import Record
 
 
 class numpy_to_record_serializer(object):
-
-    def __init__(self, content_type='application/x-recordio-protobuf'):
+    def __init__(self, content_type="application/x-recordio-protobuf"):
         self.content_type = content_type
 
     def __call__(self, array):
@@ -38,8 +37,7 @@ class numpy_to_record_serializer(object):
 
 
 class record_deserializer(object):
-
-    def __init__(self, accept='application/x-recordio-protobuf'):
+    def __init__(self, accept="application/x-recordio-protobuf"):
         self.accept = accept
 
     def __call__(self, stream, content_type):
@@ -95,8 +93,11 @@ def write_numpy_to_dense_tensor(file, array, labels=None):
         if not len(labels.shape) == 1:
             raise ValueError("Labels must be a Vector")
         if labels.shape[0] not in array.shape:
-            raise ValueError("Label shape {} not compatible with array shape {}".format(
-                             labels.shape, array.shape))
+            raise ValueError(
+                "Label shape {} not compatible with array shape {}".format(
+                    labels.shape, array.shape
+                )
+            )
         resolved_label_type = _resolve_type(labels.dtype)
     resolved_type = _resolve_type(array.dtype)
 
@@ -123,8 +124,11 @@ def write_spmatrix_to_sparse_tensor(file, array, labels=None):
         if not len(labels.shape) == 1:
             raise ValueError("Labels must be a Vector")
         if labels.shape[0] not in array.shape:
-            raise ValueError("Label shape {} not compatible with array shape {}".format(
-                             labels.shape, array.shape))
+            raise ValueError(
+                "Label shape {} not compatible with array shape {}".format(
+                    labels.shape, array.shape
+                )
+            )
         resolved_label_type = _resolve_type(labels.dtype)
     resolved_type = _resolve_type(array.dtype)
 
@@ -170,27 +174,27 @@ for amount in range(4):
     else:
         padding[amount] = bytearray([0x00 for _ in range(amount)])
 
-_kmagic = 0xced7230a
+_kmagic = 0xCED7230A
 
 
 def _write_recordio(f, data):
     """Writes a single data point as a RecordIO record to the given file."""
     length = len(data)
-    f.write(struct.pack('I', _kmagic))
-    f.write(struct.pack('I', length))
+    f.write(struct.pack("I", _kmagic))
+    f.write(struct.pack("I", length))
     pad = (((length + 3) >> 2) << 2) - length
     f.write(data)
     f.write(padding[pad])
 
 
 def read_recordio(f):
-    while(True):
+    while True:
         try:
-            read_kmagic, = struct.unpack('I', f.read(4))
+            read_kmagic, = struct.unpack("I", f.read(4))
         except struct.error:
             return
         assert read_kmagic == _kmagic
-        len_record, = struct.unpack('I', f.read(4))
+        len_record, = struct.unpack("I", f.read(4))
         pad = (((len_record + 3) >> 2) << 2) - len_record
         yield f.read(len_record)
         if pad:
@@ -199,9 +203,9 @@ def read_recordio(f):
 
 def _resolve_type(dtype):
     if dtype == np.dtype(int):
-        return 'Int32'
+        return "Int32"
     elif dtype == np.dtype(float):
-        return 'Float64'
-    elif dtype == np.dtype('float32'):
-        return 'Float32'
-    raise ValueError('Unsupported dtype {} on array'.format(dtype))
+        return "Float64"
+    elif dtype == np.dtype("float32"):
+        return "Float32"
+    raise ValueError("Unsupported dtype {} on array".format(dtype))

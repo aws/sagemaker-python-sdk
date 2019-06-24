@@ -29,7 +29,7 @@ from six.moves.urllib import parse
 
 import six
 
-ECR_URI_PATTERN = r'^(\d+)(\.)dkr(\.)ecr(\.)(.+)(\.)(amazonaws.com|c2s.ic.gov)(/)(.*:.*)$'
+ECR_URI_PATTERN = r"^(\d+)(\.)dkr(\.)ecr(\.)(.+)(\.)(amazonaws.com|c2s.ic.gov)(/)(.*:.*)$"
 
 
 # Use the base name of the image as the job name if the user doesn't give us one
@@ -60,16 +60,16 @@ def name_from_base(base, max_length=63, short=False):
         str: Input parameter with appended timestamp.
     """
     timestamp = sagemaker_short_timestamp() if short else sagemaker_timestamp()
-    trimmed_base = base[:max_length - len(timestamp) - 1]
-    return '{}-{}'.format(trimmed_base, timestamp)
+    trimmed_base = base[: max_length - len(timestamp) - 1]
+    return "{}-{}".format(trimmed_base, timestamp)
 
 
 def unique_name_from_base(base, max_length=63):
-    unique = '%04x' % random.randrange(16**4)  # 4-digit hex
+    unique = "%04x" % random.randrange(16 ** 4)  # 4-digit hex
     ts = str(int(time.time()))
     available_length = max_length - 2 - len(ts) - len(unique)
     trimmed = base[:available_length]
-    return '{}-{}-{}'.format(trimmed, ts, unique)
+    return "{}-{}-{}".format(trimmed, ts, unique)
 
 
 def base_name_from_image(image):
@@ -89,17 +89,18 @@ def base_name_from_image(image):
 def sagemaker_timestamp():
     """Return a timestamp with millisecond precision."""
     moment = time.time()
-    moment_ms = repr(moment).split('.')[1][:3]
+    moment_ms = repr(moment).split(".")[1][:3]
     return time.strftime("%Y-%m-%d-%H-%M-%S-{}".format(moment_ms), time.gmtime(moment))
 
 
 def sagemaker_short_timestamp():
     """Return a timestamp that is relatively short in length"""
-    return time.strftime('%y%m%d-%H%M')
+    return time.strftime("%y%m%d-%H%M")
 
 
 def debug(func):
     """Print the function name and arguments for debugging."""
+
     @wraps(func)
     def wrapper(*args, **kwargs):
         print("{} args: {} kwargs: {}".format(func.__name__, args, kwargs))
@@ -113,7 +114,7 @@ def get_config_value(key_path, config):
         return None
 
     current_section = config
-    for key in key_path.split('.'):
+    for key in key_path.split("."):
         if key in current_section:
             current_section = current_section[key]
         else:
@@ -144,10 +145,10 @@ def extract_name_from_job_arn(arn):
     """Returns the name used in the API given a full ARN for a training job
     or hyperparameter tuning job.
     """
-    slash_pos = arn.find('/')
+    slash_pos = arn.find("/")
     if slash_pos == -1:
         raise ValueError("Cannot parse invalid ARN: %s" % arn)
-    return arn[(slash_pos + 1):]
+    return arn[(slash_pos + 1) :]
 
 
 def secondary_training_status_changed(current_job_description, prev_job_description):
@@ -161,17 +162,27 @@ def secondary_training_status_changed(current_job_description, prev_job_descript
         boolean: Whether the secondary status message of a training job changed or not.
 
     """
-    current_secondary_status_transitions = current_job_description.get('SecondaryStatusTransitions')
-    if current_secondary_status_transitions is None or len(current_secondary_status_transitions) == 0:
+    current_secondary_status_transitions = current_job_description.get("SecondaryStatusTransitions")
+    if (
+        current_secondary_status_transitions is None
+        or len(current_secondary_status_transitions) == 0
+    ):
         return False
 
-    prev_job_secondary_status_transitions = prev_job_description.get('SecondaryStatusTransitions') \
-        if prev_job_description is not None else None
+    prev_job_secondary_status_transitions = (
+        prev_job_description.get("SecondaryStatusTransitions")
+        if prev_job_description is not None
+        else None
+    )
 
-    last_message = prev_job_secondary_status_transitions[-1]['StatusMessage'] \
-        if prev_job_secondary_status_transitions is not None and len(prev_job_secondary_status_transitions) > 0 else ''
+    last_message = (
+        prev_job_secondary_status_transitions[-1]["StatusMessage"]
+        if prev_job_secondary_status_transitions is not None
+        and len(prev_job_secondary_status_transitions) > 0
+        else ""
+    )
 
-    message = current_job_description['SecondaryStatusTransitions'][-1]['StatusMessage']
+    message = current_job_description["SecondaryStatusTransitions"][-1]["StatusMessage"]
 
     return message != last_message
 
@@ -188,31 +199,41 @@ def secondary_training_status_message(job_description, prev_description):
 
     """
 
-    if job_description is None or job_description.get('SecondaryStatusTransitions') is None\
-            or len(job_description.get('SecondaryStatusTransitions')) == 0:
-        return ''
+    if (
+        job_description is None
+        or job_description.get("SecondaryStatusTransitions") is None
+        or len(job_description.get("SecondaryStatusTransitions")) == 0
+    ):
+        return ""
 
-    prev_description_secondary_transitions = prev_description.get('SecondaryStatusTransitions')\
-        if prev_description is not None else None
-    prev_transitions_num = len(prev_description['SecondaryStatusTransitions'])\
-        if prev_description_secondary_transitions is not None else 0
-    current_transitions = job_description['SecondaryStatusTransitions']
+    prev_description_secondary_transitions = (
+        prev_description.get("SecondaryStatusTransitions") if prev_description is not None else None
+    )
+    prev_transitions_num = (
+        len(prev_description["SecondaryStatusTransitions"])
+        if prev_description_secondary_transitions is not None
+        else 0
+    )
+    current_transitions = job_description["SecondaryStatusTransitions"]
 
     if len(current_transitions) == prev_transitions_num:
         # Secondary status is not changed but the message changed.
         transitions_to_print = current_transitions[-1:]
     else:
         # Secondary status is changed we need to print all the entries.
-        transitions_to_print = current_transitions[prev_transitions_num - len(current_transitions):]
+        transitions_to_print = current_transitions[
+            prev_transitions_num - len(current_transitions) :
+        ]
 
     status_strs = []
     for transition in transitions_to_print:
-        message = transition['StatusMessage']
+        message = transition["StatusMessage"]
         time_str = datetime.utcfromtimestamp(
-            time.mktime(job_description['LastModifiedTime'].timetuple())).strftime('%Y-%m-%d %H:%M:%S')
-        status_strs.append('{} {} - {}'.format(time_str, transition['Status'], message))
+            time.mktime(job_description["LastModifiedTime"].timetuple())
+        ).strftime("%Y-%m-%d %H:%M:%S")
+        status_strs.append("{} {} - {}".format(time_str, transition["Status"], message))
 
-    return '\n'.join(status_strs)
+    return "\n".join(status_strs)
 
 
 def download_folder(bucket_name, prefix, target, sagemaker_session):
@@ -226,26 +247,26 @@ def download_folder(bucket_name, prefix, target, sagemaker_session):
     """
     boto_session = sagemaker_session.boto_session
 
-    s3 = boto_session.resource('s3')
+    s3 = boto_session.resource("s3")
     bucket = s3.Bucket(bucket_name)
 
-    prefix = prefix.lstrip('/')
+    prefix = prefix.lstrip("/")
 
     # there is a chance that the prefix points to a file and not a 'directory' if that is the case
     # we should just download it.
     objects = list(bucket.objects.filter(Prefix=prefix))
 
-    if len(objects) > 0 and objects[0].key == prefix and prefix[-1] != '/':
+    if len(objects) > 0 and objects[0].key == prefix and prefix[-1] != "/":
         s3.Object(bucket_name, prefix).download_file(os.path.join(target, os.path.basename(prefix)))
         return
 
     # the prefix points to an s3 'directory' download the whole thing
     for obj_sum in bucket.objects.filter(Prefix=prefix):
         # if obj_sum is a folder object skip it.
-        if obj_sum.key != '' and obj_sum.key[-1] == '/':
+        if obj_sum.key != "" and obj_sum.key[-1] == "/":
             continue
         obj = s3.Object(obj_sum.bucket_name, obj_sum.key)
-        s3_relative_path = obj_sum.key[len(prefix):].lstrip('/')
+        s3_relative_path = obj_sum.key[len(prefix) :].lstrip("/")
         file_path = os.path.join(target, s3_relative_path)
 
         try:
@@ -270,7 +291,7 @@ def create_tar_file(source_files, target=None):
     else:
         _, filename = tempfile.mkstemp()
 
-    with tarfile.open(filename, mode='w:gz') as t:
+    with tarfile.open(filename, mode="w:gz") as t:
         for sf in source_files:
             # Add all files from the directory into the root of the directory structure of the tar
             t.add(sf, arcname=os.path.basename(sf))
@@ -278,7 +299,7 @@ def create_tar_file(source_files, target=None):
 
 
 @contextlib.contextmanager
-def _tmpdir(suffix='', prefix='tmp'):
+def _tmpdir(suffix="", prefix="tmp"):
     """Create a temporary directory with a context manager. The file is deleted when the context exits.
 
     The prefix, suffix, and dir arguments are the same as for mkstemp().
@@ -298,12 +319,14 @@ def _tmpdir(suffix='', prefix='tmp'):
     shutil.rmtree(tmp)
 
 
-def repack_model(inference_script,
-                 source_directory,
-                 dependencies,
-                 model_uri,
-                 repacked_model_uri,
-                 sagemaker_session):
+def repack_model(
+    inference_script,
+    source_directory,
+    dependencies,
+    model_uri,
+    repacked_model_uri,
+    sagemaker_session,
+):
     """Unpack model tarball and creates a new model tarball with the provided code script.
 
     This function does the following:
@@ -342,37 +365,41 @@ def repack_model(inference_script,
     with _tmpdir() as tmp:
         model_dir = _extract_model(model_uri, sagemaker_session, tmp)
 
-        _create_or_update_code_dir(model_dir, inference_script, source_directory, dependencies, sagemaker_session, tmp)
+        _create_or_update_code_dir(
+            model_dir, inference_script, source_directory, dependencies, sagemaker_session, tmp
+        )
 
-        tmp_model_path = os.path.join(tmp, 'temp-model.tar.gz')
-        with tarfile.open(tmp_model_path, mode='w:gz') as t:
+        tmp_model_path = os.path.join(tmp, "temp-model.tar.gz")
+        with tarfile.open(tmp_model_path, mode="w:gz") as t:
             t.add(model_dir, arcname=os.path.sep)
 
         _save_model(repacked_model_uri, tmp_model_path, sagemaker_session)
 
 
 def _save_model(repacked_model_uri, tmp_model_path, sagemaker_session):
-    if repacked_model_uri.lower().startswith('s3://'):
+    if repacked_model_uri.lower().startswith("s3://"):
         url = parse.urlparse(repacked_model_uri)
-        bucket, key = url.netloc, url.path.lstrip('/')
+        bucket, key = url.netloc, url.path.lstrip("/")
         new_key = key.replace(os.path.basename(key), os.path.basename(repacked_model_uri))
 
-        sagemaker_session.boto_session.resource('s3').Object(bucket, new_key).upload_file(
-            tmp_model_path)
+        sagemaker_session.boto_session.resource("s3").Object(bucket, new_key).upload_file(
+            tmp_model_path
+        )
     else:
-        shutil.move(tmp_model_path, repacked_model_uri.replace('file://', ''))
+        shutil.move(tmp_model_path, repacked_model_uri.replace("file://", ""))
 
 
-def _create_or_update_code_dir(model_dir, inference_script, source_directory,
-                               dependencies, sagemaker_session, tmp):
-    code_dir = os.path.join(model_dir, 'code')
+def _create_or_update_code_dir(
+    model_dir, inference_script, source_directory, dependencies, sagemaker_session, tmp
+):
+    code_dir = os.path.join(model_dir, "code")
     if os.path.exists(code_dir):
         shutil.rmtree(code_dir, ignore_errors=True)
-    if source_directory and source_directory.lower().startswith('s3://'):
-        local_code_path = os.path.join(tmp, 'local_code.tar.gz')
+    if source_directory and source_directory.lower().startswith("s3://"):
+        local_code_path = os.path.join(tmp, "local_code.tar.gz")
         download_file_from_url(source_directory, local_code_path, sagemaker_session)
 
-        with tarfile.open(name=local_code_path, mode='r:gz') as t:
+        with tarfile.open(name=local_code_path, mode="r:gz") as t:
             t.extractall(path=code_dir)
 
     elif source_directory:
@@ -389,21 +416,21 @@ def _create_or_update_code_dir(model_dir, inference_script, source_directory,
 
 
 def _extract_model(model_uri, sagemaker_session, tmp):
-    tmp_model_dir = os.path.join(tmp, 'model')
+    tmp_model_dir = os.path.join(tmp, "model")
     os.mkdir(tmp_model_dir)
-    if model_uri.lower().startswith('s3://'):
-        local_model_path = os.path.join(tmp, 'tar_file')
+    if model_uri.lower().startswith("s3://"):
+        local_model_path = os.path.join(tmp, "tar_file")
         download_file_from_url(model_uri, local_model_path, sagemaker_session)
     else:
-        local_model_path = model_uri.replace('file://', '')
-    with tarfile.open(name=local_model_path, mode='r:gz') as t:
+        local_model_path = model_uri.replace("file://", "")
+    with tarfile.open(name=local_model_path, mode="r:gz") as t:
         t.extractall(path=tmp_model_dir)
     return tmp_model_dir
 
 
 def download_file_from_url(url, dst, sagemaker_session):
     url = parse.urlparse(url)
-    bucket, key = url.netloc, url.path.lstrip('/')
+    bucket, key = url.netloc, url.path.lstrip("/")
 
     download_file(bucket, key, dst, sagemaker_session)
 
@@ -417,10 +444,10 @@ def download_file(bucket_name, path, target, sagemaker_session):
         target (str): destination directory for the downloaded file.
         sagemaker_session (:class:`sagemaker.session.Session`): a sagemaker session to interact with S3.
     """
-    path = path.lstrip('/')
+    path = path.lstrip("/")
     boto_session = sagemaker_session.boto_session
 
-    s3 = boto_session.resource('s3')
+    s3 = boto_session.resource("s3")
     bucket = s3.Bucket(bucket_name)
     bucket.download_file(path, target)
 
@@ -435,8 +462,8 @@ def get_ecr_image_uri_prefix(account, region):
     Returns:
         (str): URI prefix of ECR image
     """
-    domain = 'c2s.ic.gov' if region == 'us-iso-east-1' else 'amazonaws.com'
-    return '{}.dkr.ecr.{}.{}'.format(account, region, domain)
+    domain = "c2s.ic.gov" if region == "us-iso-east-1" else "amazonaws.com"
+    return "{}.dkr.ecr.{}.{}".format(account, region, domain)
 
 
 class DeferredError(object):

@@ -37,7 +37,7 @@ class ColorWrap(object):
         Args:
             force (bool): If True, render colorizes output no matter where the output is (default: False).
         """
-        self.colorize = force or sys.stdout.isatty() or os.environ.get('JPY_PARENT_PID', None)
+        self.colorize = force or sys.stdout.isatty() or os.environ.get("JPY_PARENT_PID", None)
 
     def __call__(self, index, s):
         """Print the output, colorized or not, depending on the environment.
@@ -52,7 +52,7 @@ class ColorWrap(object):
             print(s)
 
     def _color_wrap(self, index, s):
-        print('\x1b[{}m{}\x1b[0m'.format(self._stream_colors[index % len(self._stream_colors)], s))
+        print("\x1b[{}m{}\x1b[0m".format(self._stream_colors[index % len(self._stream_colors)], s))
 
 
 def argmin(arr, f):
@@ -74,7 +74,7 @@ def some(arr):
 
 # Position is a tuple that includes the last read timestamp and the number of items that were read
 # at that time. This is used to figure out which event to start with on the next read.
-Position = collections.namedtuple('Position', ['timestamp', 'skip'])
+Position = collections.namedtuple("Position", ["timestamp", "skip"])
 
 
 def multi_stream_iter(client, log_group, streams, positions=None):
@@ -93,7 +93,9 @@ def multi_stream_iter(client, log_group, streams, positions=None):
         A tuple of (stream number, cloudwatch log event).
     """
     positions = positions or {s: Position(timestamp=0, skip=0) for s in streams}
-    event_iters = [log_stream(client, log_group, s, positions[s].timestamp, positions[s].skip) for s in streams]
+    event_iters = [
+        log_stream(client, log_group, s, positions[s].timestamp, positions[s].skip) for s in streams
+    ]
     events = []
     for s in event_iters:
         if not s:
@@ -105,7 +107,7 @@ def multi_stream_iter(client, log_group, streams, positions=None):
             events.append(None)
 
     while some(events):
-        i = argmin(events, lambda x: x['timestamp'] if x else 9999999999)
+        i = argmin(events, lambda x: x["timestamp"] if x else 9999999999)
         yield (i, events[i])
         try:
             events[i] = next(event_iters[i])
@@ -137,14 +139,19 @@ def log_stream(client, log_group, stream_name, start_time=0, skip=0):
     event_count = 1
     while event_count > 0:
         if next_token is not None:
-            token_arg = {'nextToken': next_token}
+            token_arg = {"nextToken": next_token}
         else:
             token_arg = {}
 
-        response = client.get_log_events(logGroupName=log_group, logStreamName=stream_name, startTime=start_time,
-                                         startFromHead=True, **token_arg)
-        next_token = response['nextForwardToken']
-        events = response['events']
+        response = client.get_log_events(
+            logGroupName=log_group,
+            logStreamName=stream_name,
+            startTime=start_time,
+            startFromHead=True,
+            **token_arg
+        )
+        next_token = response["nextForwardToken"]
+        events = response["events"]
         event_count = len(events)
         if event_count > skip:
             events = events[skip:]

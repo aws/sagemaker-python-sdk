@@ -43,9 +43,9 @@ def get_data_source_instance(data_source, sagemaker_session):
 
     """
     parsed_uri = urlparse(data_source)
-    if parsed_uri.scheme == 'file':
+    if parsed_uri.scheme == "file":
         return LocalFileDataSource(parsed_uri.netloc + parsed_uri.path)
-    elif parsed_uri.scheme == 's3':
+    elif parsed_uri.scheme == "s3":
         return S3DataSource(parsed_uri.netloc, parsed_uri.path, sagemaker_session)
 
 
@@ -62,12 +62,12 @@ def get_splitter_instance(split_type):
     """
     if split_type is None:
         return NoneSplitter()
-    elif split_type == 'Line':
+    elif split_type == "Line":
         return LineSplitter()
-    elif split_type == 'RecordIO':
+    elif split_type == "RecordIO":
         return RecordIOSplitter()
     else:
-        raise ValueError('Invalid Split Type: %s' % split_type)
+        raise ValueError("Invalid Split Type: %s" % split_type)
 
 
 def get_batch_strategy_instance(strategy, splitter):
@@ -80,16 +80,17 @@ def get_batch_strategy_instance(strategy, splitter):
     Returns
         :class:`sagemaker.local.data.BatchStrategy`: an Instance of a BatchStrategy
     """
-    if strategy == 'SingleRecord':
+    if strategy == "SingleRecord":
         return SingleRecordStrategy(splitter)
-    elif strategy == 'MultiRecord':
+    elif strategy == "MultiRecord":
         return MultiRecordStrategy(splitter)
     else:
-        raise ValueError('Invalid Batch Strategy: %s - Valid Strategies: "SingleRecord", "MultiRecord"')
+        raise ValueError(
+            'Invalid Batch Strategy: %s - Valid Strategies: "SingleRecord", "MultiRecord"'
+        )
 
 
 class DataSource(with_metaclass(ABCMeta, object)):
-
     @abstractmethod
     def get_file_list(self):
         """Retrieve the list of absolute paths to all the files in this data source.
@@ -114,7 +115,7 @@ class LocalFileDataSource(DataSource):
     def __init__(self, root_path):
         self.root_path = os.path.abspath(root_path)
         if not os.path.exists(self.root_path):
-            raise RuntimeError('Invalid data source: %s does not exist.' % self.root_path)
+            raise RuntimeError("Invalid data source: %s does not exist." % self.root_path)
 
     def get_file_list(self):
         """Retrieve the list of absolute paths to all the files in this data source.
@@ -123,8 +124,11 @@ class LocalFileDataSource(DataSource):
              List[str] List of absolute paths.
         """
         if os.path.isdir(self.root_path):
-            return [os.path.join(self.root_path, f) for f in os.listdir(self.root_path)
-                    if os.path.isfile(os.path.join(self.root_path, f))]
+            return [
+                os.path.join(self.root_path, f)
+                for f in os.listdir(self.root_path)
+                if os.path.isfile(os.path.join(self.root_path, f))
+            ]
         else:
             return [self.root_path]
 
@@ -156,7 +160,9 @@ class S3DataSource(DataSource):
         """
 
         # Create a temporary dir to store the S3 contents
-        root_dir = sagemaker.utils.get_config_value('local.container_root', sagemaker_session.config)
+        root_dir = sagemaker.utils.get_config_value(
+            "local.container_root", sagemaker_session.config
+        )
         if root_dir:
             root_dir = os.path.abspath(root_dir)
 
@@ -164,8 +170,8 @@ class S3DataSource(DataSource):
         # Docker cannot mount Mac OS /var folder properly see
         # https://forums.docker.com/t/var-folders-isnt-mounted-properly/9600
         # Only apply this workaround if the user didn't provide an alternate storage root dir.
-        if root_dir is None and platform.system() == 'Darwin':
-            working_dir = '/private{}'.format(working_dir)
+        if root_dir is None and platform.system() == "Darwin":
+            working_dir = "/private{}".format(working_dir)
 
         sagemaker.utils.download_folder(bucket, prefix, working_dir, sagemaker_session)
         self.files = LocalFileDataSource(working_dir)
@@ -188,7 +194,6 @@ class S3DataSource(DataSource):
 
 
 class Splitter(with_metaclass(ABCMeta, object)):
-
     @abstractmethod
     def split(self, file):
         """Split a file into records using a specific strategy
@@ -216,7 +221,7 @@ class NoneSplitter(Splitter):
 
         Returns: generator for the individual records that were split from the file
         """
-        with open(file, 'r') as f:
+        with open(file, "r") as f:
             yield f.read()
 
 
@@ -234,7 +239,7 @@ class LineSplitter(Splitter):
 
         Returns: generator for the individual records that were split from the file
         """
-        with open(file, 'r') as f:
+        with open(file, "r") as f:
             for line in f:
                 yield line
 
@@ -245,6 +250,7 @@ class RecordIOSplitter(Splitter):
     Not useful for string content.
 
     """
+
     def split(self, file):
         """Split a file into records using a specific strategy
 
@@ -255,13 +261,12 @@ class RecordIOSplitter(Splitter):
 
         Returns: generator for the individual records that were split from the file
         """
-        with open(file, 'rb') as f:
+        with open(file, "rb") as f:
             for record in sagemaker.amazon.common.read_recordio(f):
                 yield record
 
 
 class BatchStrategy(with_metaclass(ABCMeta, object)):
-
     def __init__(self, splitter):
         """Create a Batch Strategy Instance
 
@@ -290,6 +295,7 @@ class MultiRecordStrategy(BatchStrategy):
 
     Will group up as many records as possible within the payload specified.
     """
+
     def pad(self, file, size=6):
         """Group together as many records as possible to fit in the specified size
 
@@ -301,7 +307,7 @@ class MultiRecordStrategy(BatchStrategy):
         Returns:
             generator of records
         """
-        buffer = ''
+        buffer = ""
         for element in self.splitter.split(file):
             if _payload_size_within_limit(buffer + element, size):
                 buffer += element
@@ -318,6 +324,7 @@ class SingleRecordStrategy(BatchStrategy):
 
     If a single record does not fit within the payload specified it will throw a RuntimeError.
     """
+
     def pad(self, file, size=6):
         """Group together as many records as possible to fit in the specified size
 
@@ -360,4 +367,4 @@ def _validate_payload_size(payload, size):
 
     if _payload_size_within_limit(payload, size):
         return True
-    raise RuntimeError('Record is larger than %sMB. Please increase your max_payload' % size)
+    raise RuntimeError("Record is larger than %sMB. Please increase your max_payload" % size)

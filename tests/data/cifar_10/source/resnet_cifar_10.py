@@ -48,7 +48,7 @@ def model_fn(features, labels, mode, params):
     """Model function for CIFAR-10."""
 
     inputs = features[INPUT_TENSOR_NAME]
-    tf.summary.image('images', inputs, max_outputs=6)
+    tf.summary.image("images", inputs, max_outputs=6)
 
     network = resnet_model.cifar10_resnet_v2_generator(RESNET_SIZE, NUM_CLASSES)
 
@@ -57,27 +57,27 @@ def model_fn(features, labels, mode, params):
     logits = network(inputs, mode == tf.estimator.ModeKeys.TRAIN)
 
     predictions = {
-        'classes': tf.argmax(logits, axis=1),
-        'probabilities': tf.nn.softmax(logits, name='softmax_tensor')
+        "classes": tf.argmax(logits, axis=1),
+        "probabilities": tf.nn.softmax(logits, name="softmax_tensor"),
     }
 
     if mode == tf.estimator.ModeKeys.PREDICT:
-        export_outputs = {
-            SIGNATURE_NAME: tf.estimator.export.PredictOutput(predictions)
-        }
-        return tf.estimator.EstimatorSpec(mode=mode, predictions=predictions, export_outputs=export_outputs)
+        export_outputs = {SIGNATURE_NAME: tf.estimator.export.PredictOutput(predictions)}
+        return tf.estimator.EstimatorSpec(
+            mode=mode, predictions=predictions, export_outputs=export_outputs
+        )
 
     # Calculate loss, which includes softmax cross entropy and L2 regularization.
-    cross_entropy = tf.losses.softmax_cross_entropy(
-        logits=logits, onehot_labels=labels)
+    cross_entropy = tf.losses.softmax_cross_entropy(logits=logits, onehot_labels=labels)
 
     # Create a tensor named cross_entropy for logging purposes.
-    tf.identity(cross_entropy, name='cross_entropy')
-    tf.summary.scalar('cross_entropy', cross_entropy)
+    tf.identity(cross_entropy, name="cross_entropy")
+    tf.summary.scalar("cross_entropy", cross_entropy)
 
     # Add weight decay to the loss.
     loss = cross_entropy + _WEIGHT_DECAY * tf.add_n(
-        [tf.nn.l2_loss(v) for v in tf.trainable_variables()])
+        [tf.nn.l2_loss(v) for v in tf.trainable_variables()]
+    )
 
     if mode == tf.estimator.ModeKeys.TRAIN:
         global_step = tf.train.get_or_create_global_step()
@@ -86,15 +86,14 @@ def model_fn(features, labels, mode, params):
         boundaries = [int(_BATCHES_PER_EPOCH * epoch) for epoch in [100, 150, 200]]
         values = [_INITIAL_LEARNING_RATE * decay for decay in [1, 0.1, 0.01, 0.001]]
         learning_rate = tf.train.piecewise_constant(
-            tf.cast(global_step, tf.int32), boundaries, values)
+            tf.cast(global_step, tf.int32), boundaries, values
+        )
 
         # Create a tensor named learning_rate for logging purposes
-        tf.identity(learning_rate, name='learning_rate')
-        tf.summary.scalar('learning_rate', learning_rate)
+        tf.identity(learning_rate, name="learning_rate")
+        tf.summary.scalar("learning_rate", learning_rate)
 
-        optimizer = tf.train.MomentumOptimizer(
-            learning_rate=learning_rate,
-            momentum=_MOMENTUM)
+        optimizer = tf.train.MomentumOptimizer(learning_rate=learning_rate, momentum=_MOMENTUM)
 
         # Batch norm requires update ops to be added as a dependency to the train_op
         update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS)
@@ -103,20 +102,16 @@ def model_fn(features, labels, mode, params):
     else:
         train_op = None
 
-    accuracy = tf.metrics.accuracy(
-        tf.argmax(labels, axis=1), predictions['classes'])
-    metrics = {'accuracy': accuracy}
+    accuracy = tf.metrics.accuracy(tf.argmax(labels, axis=1), predictions["classes"])
+    metrics = {"accuracy": accuracy}
 
     # Create a tensor named train_accuracy for logging purposes
-    tf.identity(accuracy[1], name='train_accuracy')
-    tf.summary.scalar('train_accuracy', accuracy[1])
+    tf.identity(accuracy[1], name="train_accuracy")
+    tf.summary.scalar("train_accuracy", accuracy[1])
 
     return tf.estimator.EstimatorSpec(
-        mode=mode,
-        predictions=predictions,
-        loss=loss,
-        train_op=train_op,
-        eval_metric_ops=metrics)
+        mode=mode, predictions=predictions, loss=loss, train_op=train_op, eval_metric_ops=metrics
+    )
 
 
 def serving_input_fn(hyperpameters):
@@ -135,19 +130,18 @@ def eval_input_fn(training_dir, hyperparameters):
 def _generate_synthetic_data(mode, batch_size):
     input_shape = [batch_size, HEIGHT, WIDTH, DEPTH]
     images = tf.truncated_normal(
-        input_shape,
-        dtype=tf.float32,
-        stddev=1e-1,
-        name='synthetic_images')
+        input_shape, dtype=tf.float32, stddev=1e-1, name="synthetic_images"
+    )
     labels = tf.random_uniform(
         [batch_size, NUM_CLASSES],
         minval=0,
         maxval=NUM_CLASSES - 1,
         dtype=tf.int32,
-        name='synthetic_labels')
+        name="synthetic_labels",
+    )
 
-    images = tf.contrib.framework.local_variable(images, name='images')
-    labels = tf.contrib.framework.local_variable(labels, name='labels')
+    images = tf.contrib.framework.local_variable(images, name="images")
+    labels = tf.contrib.framework.local_variable(labels, name="labels")
 
     return {INPUT_TENSOR_NAME: images}, labels
 

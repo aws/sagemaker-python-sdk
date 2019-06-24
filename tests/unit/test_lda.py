@@ -18,41 +18,33 @@ from mock import Mock, patch
 from sagemaker.amazon.lda import LDA, LDAPredictor
 from sagemaker.amazon.amazon_estimator import registry, RecordSet
 
-ROLE = 'myrole'
+ROLE = "myrole"
 TRAIN_INSTANCE_COUNT = 1
-TRAIN_INSTANCE_TYPE = 'ml.c4.xlarge'
+TRAIN_INSTANCE_TYPE = "ml.c4.xlarge"
 NUM_TOPICS = 3
 
-COMMON_TRAIN_ARGS = {'role': ROLE, 'train_instance_type': TRAIN_INSTANCE_TYPE}
-ALL_REQ_ARGS = dict({'num_topics': NUM_TOPICS}, **COMMON_TRAIN_ARGS)
+COMMON_TRAIN_ARGS = {"role": ROLE, "train_instance_type": TRAIN_INSTANCE_TYPE}
+ALL_REQ_ARGS = dict({"num_topics": NUM_TOPICS}, **COMMON_TRAIN_ARGS)
 
-REGION = 'us-west-2'
-BUCKET_NAME = 'Some-Bucket'
+REGION = "us-west-2"
+BUCKET_NAME = "Some-Bucket"
 
-DESCRIBE_TRAINING_JOB_RESULT = {
-    'ModelArtifacts': {
-        'S3ModelArtifacts': 's3://bucket/model.tar.gz'
-    }
-}
+DESCRIBE_TRAINING_JOB_RESULT = {"ModelArtifacts": {"S3ModelArtifacts": "s3://bucket/model.tar.gz"}}
 
-ENDPOINT_DESC = {
-    'EndpointConfigName': 'test-endpoint'
-}
+ENDPOINT_DESC = {"EndpointConfigName": "test-endpoint"}
 
-ENDPOINT_CONFIG_DESC = {
-    'ProductionVariants': [{'ModelName': 'model-1'},
-                           {'ModelName': 'model-2'}]
-}
+ENDPOINT_CONFIG_DESC = {"ProductionVariants": [{"ModelName": "model-1"}, {"ModelName": "model-2"}]}
 
 
 @pytest.fixture()
 def sagemaker_session():
-    boto_mock = Mock(name='boto_session', region_name=REGION)
-    sms = Mock(name='sagemaker_session', boto_session=boto_mock, config=None, local_mode=False)
+    boto_mock = Mock(name="boto_session", region_name=REGION)
+    sms = Mock(name="sagemaker_session", boto_session=boto_mock, config=None, local_mode=False)
     sms.boto_region_name = REGION
-    sms.default_bucket = Mock(name='default_bucket', return_value=BUCKET_NAME)
-    sms.sagemaker_client.describe_training_job = Mock(name='describe_training_job',
-                                                      return_value=DESCRIBE_TRAINING_JOB_RESULT)
+    sms.default_bucket = Mock(name="default_bucket", return_value=BUCKET_NAME)
+    sms.sagemaker_client.describe_training_job = Mock(
+        name="describe_training_job", return_value=DESCRIBE_TRAINING_JOB_RESULT
+    )
     sms.sagemaker_client.describe_endpoint = Mock(return_value=ENDPOINT_DESC)
     sms.sagemaker_client.describe_endpoint_config = Mock(return_value=ENDPOINT_CONFIG_DESC)
 
@@ -70,33 +62,36 @@ def test_init_required_positional(sagemaker_session):
 def test_init_required_named(sagemaker_session):
     lda = LDA(sagemaker_session=sagemaker_session, **ALL_REQ_ARGS)
 
-    assert lda.role == COMMON_TRAIN_ARGS['role']
+    assert lda.role == COMMON_TRAIN_ARGS["role"]
     assert lda.train_instance_count == TRAIN_INSTANCE_COUNT
-    assert lda.train_instance_type == COMMON_TRAIN_ARGS['train_instance_type']
-    assert lda.num_topics == ALL_REQ_ARGS['num_topics']
+    assert lda.train_instance_type == COMMON_TRAIN_ARGS["train_instance_type"]
+    assert lda.num_topics == ALL_REQ_ARGS["num_topics"]
 
 
 def test_all_hyperparameters(sagemaker_session):
-    lda = LDA(sagemaker_session=sagemaker_session,
-              alpha0=2.2, max_restarts=3, max_iterations=10, tol=3.3,
-              **ALL_REQ_ARGS)
+    lda = LDA(
+        sagemaker_session=sagemaker_session,
+        alpha0=2.2,
+        max_restarts=3,
+        max_iterations=10,
+        tol=3.3,
+        **ALL_REQ_ARGS
+    )
     assert lda.hyperparameters() == dict(
-        num_topics=str(ALL_REQ_ARGS['num_topics']),
-        alpha0='2.2',
-        max_restarts='3',
-        max_iterations='10',
-        tol='3.3',
+        num_topics=str(ALL_REQ_ARGS["num_topics"]),
+        alpha0="2.2",
+        max_restarts="3",
+        max_iterations="10",
+        tol="3.3",
     )
 
 
 def test_image(sagemaker_session):
     lda = LDA(sagemaker_session=sagemaker_session, **ALL_REQ_ARGS)
-    assert lda.train_image() == registry(REGION, 'lda') + '/lda:1'
+    assert lda.train_image() == registry(REGION, "lda") + "/lda:1"
 
 
-@pytest.mark.parametrize('required_hyper_parameters, value', [
-    ('num_topics', 'string')
-])
+@pytest.mark.parametrize("required_hyper_parameters, value", [("num_topics", "string")])
 def test_required_hyper_parameters_type(sagemaker_session, required_hyper_parameters, value):
     with pytest.raises(ValueError):
         test_params = ALL_REQ_ARGS.copy()
@@ -104,9 +99,7 @@ def test_required_hyper_parameters_type(sagemaker_session, required_hyper_parame
         LDA(sagemaker_session=sagemaker_session, **test_params)
 
 
-@pytest.mark.parametrize('required_hyper_parameters, value', [
-    ('num_topics', 0)
-])
+@pytest.mark.parametrize("required_hyper_parameters, value", [("num_topics", 0)])
 def test_required_hyper_parameters_value(sagemaker_session, required_hyper_parameters, value):
     with pytest.raises(ValueError):
         test_params = ALL_REQ_ARGS.copy()
@@ -114,12 +107,15 @@ def test_required_hyper_parameters_value(sagemaker_session, required_hyper_param
         LDA(sagemaker_session=sagemaker_session, **test_params)
 
 
-@pytest.mark.parametrize('optional_hyper_parameters, value', [
-    ('alpha0', 'string'),
-    ('max_restarts', 'string'),
-    ('max_iterations', 'string'),
-    ('tol', 'string')
-])
+@pytest.mark.parametrize(
+    "optional_hyper_parameters, value",
+    [
+        ("alpha0", "string"),
+        ("max_restarts", "string"),
+        ("max_iterations", "string"),
+        ("tol", "string"),
+    ],
+)
 def test_optional_hyper_parameters_type(sagemaker_session, optional_hyper_parameters, value):
     with pytest.raises(ValueError):
         test_params = ALL_REQ_ARGS.copy()
@@ -127,11 +123,9 @@ def test_optional_hyper_parameters_type(sagemaker_session, optional_hyper_parame
         LDA(sagemaker_session=sagemaker_session, **test_params)
 
 
-@pytest.mark.parametrize('optional_hyper_parameters, value', [
-    ('max_restarts', 0),
-    ('max_iterations', 0),
-    ('tol', 0)
-])
+@pytest.mark.parametrize(
+    "optional_hyper_parameters, value", [("max_restarts", 0), ("max_iterations", 0), ("tol", 0)]
+)
 def test_optional_hyper_parameters_value(sagemaker_session, optional_hyper_parameters, value):
     with pytest.raises(ValueError):
         test_params = ALL_REQ_ARGS.copy()
@@ -139,16 +133,21 @@ def test_optional_hyper_parameters_value(sagemaker_session, optional_hyper_param
         LDA(sagemaker_session=sagemaker_session, **test_params)
 
 
-PREFIX = 'prefix'
+PREFIX = "prefix"
 FEATURE_DIM = 10
 MINI_BATCH_SZIE = 200
 
 
-@patch('sagemaker.amazon.amazon_estimator.AmazonAlgorithmEstimatorBase.fit')
+@patch("sagemaker.amazon.amazon_estimator.AmazonAlgorithmEstimatorBase.fit")
 def test_call_fit(base_fit, sagemaker_session):
-    lda = LDA(base_job_name='lda', sagemaker_session=sagemaker_session, **ALL_REQ_ARGS)
+    lda = LDA(base_job_name="lda", sagemaker_session=sagemaker_session, **ALL_REQ_ARGS)
 
-    data = RecordSet('s3://{}/{}'.format(BUCKET_NAME, PREFIX), num_records=1, feature_dim=FEATURE_DIM, channel='train')
+    data = RecordSet(
+        "s3://{}/{}".format(BUCKET_NAME, PREFIX),
+        num_records=1,
+        feature_dim=FEATURE_DIM,
+        channel="train",
+    )
 
     lda.fit(data, MINI_BATCH_SZIE)
 
@@ -159,45 +158,67 @@ def test_call_fit(base_fit, sagemaker_session):
 
 
 def test_prepare_for_training_no_mini_batch_size(sagemaker_session):
-    lda = LDA(base_job_name='lda', sagemaker_session=sagemaker_session, **ALL_REQ_ARGS)
+    lda = LDA(base_job_name="lda", sagemaker_session=sagemaker_session, **ALL_REQ_ARGS)
 
-    data = RecordSet('s3://{}/{}'.format(BUCKET_NAME, PREFIX), num_records=1, feature_dim=FEATURE_DIM,
-                     channel='train')
+    data = RecordSet(
+        "s3://{}/{}".format(BUCKET_NAME, PREFIX),
+        num_records=1,
+        feature_dim=FEATURE_DIM,
+        channel="train",
+    )
     with pytest.raises(ValueError):
         lda._prepare_for_training(data, None)
 
 
 def test_prepare_for_training_wrong_type_mini_batch_size(sagemaker_session):
-    lda = LDA(base_job_name='lda', sagemaker_session=sagemaker_session, **ALL_REQ_ARGS)
+    lda = LDA(base_job_name="lda", sagemaker_session=sagemaker_session, **ALL_REQ_ARGS)
 
-    data = RecordSet('s3://{}/{}'.format(BUCKET_NAME, PREFIX), num_records=1, feature_dim=FEATURE_DIM,
-                     channel='train')
+    data = RecordSet(
+        "s3://{}/{}".format(BUCKET_NAME, PREFIX),
+        num_records=1,
+        feature_dim=FEATURE_DIM,
+        channel="train",
+    )
 
     with pytest.raises(ValueError):
-        lda._prepare_for_training(data, 'some')
+        lda._prepare_for_training(data, "some")
 
 
 def test_prepare_for_training_wrong_value_mini_batch_size(sagemaker_session):
-    lda = LDA(base_job_name='lda', sagemaker_session=sagemaker_session, **ALL_REQ_ARGS)
+    lda = LDA(base_job_name="lda", sagemaker_session=sagemaker_session, **ALL_REQ_ARGS)
 
-    data = RecordSet('s3://{}/{}'.format(BUCKET_NAME, PREFIX), num_records=1, feature_dim=FEATURE_DIM,
-                     channel='train')
+    data = RecordSet(
+        "s3://{}/{}".format(BUCKET_NAME, PREFIX),
+        num_records=1,
+        feature_dim=FEATURE_DIM,
+        channel="train",
+    )
     with pytest.raises(ValueError):
         lda._prepare_for_training(data, 0)
 
 
 def test_model_image(sagemaker_session):
     lda = LDA(sagemaker_session=sagemaker_session, **ALL_REQ_ARGS)
-    data = RecordSet('s3://{}/{}'.format(BUCKET_NAME, PREFIX), num_records=1, feature_dim=FEATURE_DIM, channel='train')
+    data = RecordSet(
+        "s3://{}/{}".format(BUCKET_NAME, PREFIX),
+        num_records=1,
+        feature_dim=FEATURE_DIM,
+        channel="train",
+    )
     lda.fit(data, MINI_BATCH_SZIE)
 
     model = lda.create_model()
-    assert model.image == registry(REGION, 'lda') + '/lda:1'
+    assert model.image == registry(REGION, "lda") + "/lda:1"
 
 
 def test_predictor_type(sagemaker_session):
     lda = LDA(sagemaker_session=sagemaker_session, **ALL_REQ_ARGS)
-    data = RecordSet('s3://{}/{}'.format(BUCKET_NAME, PREFIX), num_records=1, feature_dim=FEATURE_DIM, channel='train')
+    data = RecordSet(
+        "s3://{}/{}".format(BUCKET_NAME, PREFIX),
+        num_records=1,
+        feature_dim=FEATURE_DIM,
+        channel="train",
+    )
     lda.fit(data, MINI_BATCH_SZIE)
     model = lda.create_model()
     predictor = model.deploy(1, TRAIN_INSTANCE_TYPE)
