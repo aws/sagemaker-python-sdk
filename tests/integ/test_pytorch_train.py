@@ -15,6 +15,7 @@ from __future__ import absolute_import
 import os
 import time
 
+import logging
 import numpy
 import pytest
 import tests.integ
@@ -122,7 +123,8 @@ def test_failed_training_job(sagemaker_session, pytorch_full_version):
 
 
 # TODO: Update PyTorch container to support network isolation and replace this test
-def test_failed_training_job_with_network_isolation(sagemaker_session, pytorch_full_version):
+def test_warning_training_job_with_network_isolation(sagemaker_session, pytorch_full_version, caplog):
+    caplog.set_level(logging.WARNING)
 
     with timeout(minutes=TRAINING_DEFAULT_TIMEOUT_MINUTES):
         pytorch = PyTorch(entry_point=MNIST_SCRIPT, role='SageMakerRole',
@@ -130,9 +132,8 @@ def test_failed_training_job_with_network_isolation(sagemaker_session, pytorch_f
                           train_instance_count=1, train_instance_type='ml.c4.xlarge',
                           sagemaker_session=sagemaker_session, enable_network_isolation=True)
 
-        with pytest.raises(ValueError) as e:
-            pytorch.fit()
-        assert 'Network isolation mode not supported for PyTorch framework' in str(e.value)
+        pytorch.fit({'training': _upload_training_data(pytorch)})
+        assert 'Network isolation mode not supported for PyTorch framework' in caplog.text
 
 
 def _upload_training_data(pytorch):

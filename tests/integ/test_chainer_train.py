@@ -15,9 +15,11 @@ from __future__ import absolute_import
 import os
 import time
 
+import logging
 import pytest
 import numpy
 
+from mock import patch
 from sagemaker.chainer.defaults import CHAINER_VERSION
 from sagemaker.chainer.estimator import Chainer
 from sagemaker.chainer.model import ChainerModel
@@ -121,18 +123,25 @@ def test_failed_training_job(sagemaker_session, chainer_full_version):
 
 
 # TODO: Update Chainer container to support network isolation and replace this test
-def test_failed_training_job_with_network_isolation(sagemaker_session, chainer_full_version):
+def test_warning_training_job_with_network_isolation(sagemaker_session, chainer_full_version, caplog):
+    caplog.set_level(logging.WARNING)
+
     with timeout(minutes=TRAINING_DEFAULT_TIMEOUT_MINUTES):
         script_path = os.path.join(DATA_DIR, 'chainer_mnist', 'mnist.py')
+        data_path = os.path.join(DATA_DIR, 'chainer_mnist')
 
         chainer = Chainer(entry_point=script_path, role='SageMakerRole',
                           framework_version=chainer_full_version, py_version=PYTHON_VERSION,
                           train_instance_count=1, train_instance_type='ml.c4.xlarge',
                           sagemaker_session=sagemaker_session, enable_network_isolation=True)
 
-        with pytest.raises(ValueError) as e:
-            chainer.fit(job_name=unique_name_from_base('test-chainer-training'))
-        assert 'Network isolation mode not supported for Chainer framework' in str(e.value)
+        train_input = chainer.sagemaker_session.upload_data(path=os.path.join(data_path, 'train'),
+                                                            key_prefix='integ-test-data/chainer_mnist/train')
+        test_input = chainer.sagemaker_session.upload_data(path=os.path.join(data_path, 'test'),
+                                                           key_prefix='integ-test-data/chainer_mnist/test')
+
+        chainer.fit({'train': train_input, 'test': test_input})
+        assert 'Network isolation mode not supported for Chainer framework' in caplog.text
 
 
 def _run_mnist_training_job(sagemaker_session, instance_type, instance_count,

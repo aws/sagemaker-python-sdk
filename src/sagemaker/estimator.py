@@ -849,9 +849,11 @@ class Framework(EstimatorBase):
         Returns:
             bool: Whether this Estimator can use network isolation or not.
         """
-        # TODO: Migrate all frameworks to support network isolation, replace ValueError when all frameworks migrated
+        # TODO: Migrate all frameworks to support network isolation, replace when all frameworks migrated
         # Current frameworks that support network isolation override this method
-        raise ValueError("Network isolation mode not supported for {} framework".format(self.__class__.__name__))
+        if self._enable_network_isolation:
+            logging.warning("Network isolation mode not supported for {} framework".format(self.__class__.__name__))
+        return False
 
     def _prepare_for_training(self, job_name=None):
         """Set hyperparameters needed for training. This method will also validate ``source_dir``.

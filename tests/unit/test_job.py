@@ -87,6 +87,13 @@ class DummyFramework(Framework):
         return init_params
 
 
+class DummyFrameworkNetworkIsolation(DummyFramework):
+    __framework_name__ = 'dummy_network_isolation'
+
+    def enable_network_isolation(self):
+        return True
+
+
 class DummyFrameworkModel(FrameworkModel):
     def __init__(self, sagemaker_session, **kwargs):
         super(DummyFrameworkModel, self).__init__(MODEL_URI, IMAGE_NAME, INSTANCE_TYPE, ROLE, SCRIPT_NAME,
@@ -101,6 +108,13 @@ def framework(sagemaker_session):
     return DummyFramework(entry_point=SCRIPT_PATH, role=ROLE, sagemaker_session=sagemaker_session,
                           output_path=S3_OUTPUT_PATH, train_instance_count=INSTANCE_COUNT,
                           train_instance_type=INSTANCE_TYPE)
+
+
+@pytest.fixture()
+def framework_network_isolation(sagemaker_session):
+    return DummyFrameworkNetworkIsolation(entry_point=SCRIPT_PATH, role=ROLE, sagemaker_session=sagemaker_session,
+                                          output_path=S3_OUTPUT_PATH, train_instance_count=INSTANCE_COUNT,
+                                          train_instance_type=INSTANCE_TYPE, enable_network_isolation=True)
 
 
 def test_load_config(estimator):
@@ -155,19 +169,19 @@ def test_load_config_with_model_channel_no_inputs(estimator):
     assert config['stop_condition']['MaxRuntimeInSeconds'] == MAX_RUNTIME
 
 
-def test_load_config_with_code_channel(framework):
+def test_load_config_with_code_channel(framework_network_isolation):
     inputs = s3_input(BUCKET_NAME)
 
-    framework.model_uri = MODEL_URI
-    framework.model_channel_name = MODEL_CHANNEL_NAME
-    framework.code_uri = CODE_URI
-    framework._enable_network_isolation = True
-    config = _Job._load_config(inputs, framework)
+    framework_network_isolation.model_uri = MODEL_URI
+    framework_network_isolation.model_channel_name = MODEL_CHANNEL_NAME
+    framework_network_isolation.code_uri = CODE_URI
+    framework_network_isolation._enable_network_isolation = True
+    config = _Job._load_config(inputs, framework_network_isolation)
 
     assert len(config['input_config']) == 3
     assert config['input_config'][0]['DataSource']['S3DataSource']['S3Uri'] == BUCKET_NAME
     assert config['input_config'][2]['DataSource']['S3DataSource']['S3Uri'] == CODE_URI
-    assert config['input_config'][2]['ChannelName'] == framework.code_channel_name
+    assert config['input_config'][2]['ChannelName'] == framework_network_isolation.code_channel_name
     assert config['role'] == ROLE
     assert config['output_config']['S3OutputPath'] == S3_OUTPUT_PATH
     assert 'KmsKeyId' not in config['output_config']
@@ -175,13 +189,13 @@ def test_load_config_with_code_channel(framework):
     assert config['resource_config']['InstanceType'] == INSTANCE_TYPE
 
 
-def test_load_config_with_code_channel_no_code_uri(framework):
+def test_load_config_with_code_channel_no_code_uri(framework_network_isolation):
     inputs = s3_input(BUCKET_NAME)
 
-    framework.model_uri = MODEL_URI
-    framework.model_channel_name = MODEL_CHANNEL_NAME
-    framework._enable_network_isolation = True
-    config = _Job._load_config(inputs, framework)
+    framework_network_isolation.model_uri = MODEL_URI
+    framework_network_isolation.model_channel_name = MODEL_CHANNEL_NAME
+    framework_network_isolation._enable_network_isolation = True
+    config = _Job._load_config(inputs, framework_network_isolation)
 
     assert len(config['input_config']) == 2
     assert config['input_config'][0]['DataSource']['S3DataSource']['S3Uri'] == BUCKET_NAME

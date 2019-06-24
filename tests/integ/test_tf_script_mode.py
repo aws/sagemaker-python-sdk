@@ -16,6 +16,7 @@ import numpy as np
 import os
 import time
 
+import logging
 import pytest
 
 import boto3
@@ -71,7 +72,10 @@ def test_mnist(sagemaker_session, instance_type):
     assert df.size > 0
 
 
-def test_failed_mnist_with_network_isolation(sagemaker_session):
+# TODO: Update TensorFlow script mode container to support network isolation and replace this test
+def test_warning_mnist_with_network_isolation(sagemaker_session, caplog):
+    caplog.set_level(logging.WARNING)
+
     with tests.integ.timeout.timeout(minutes=tests.integ.TRAINING_DEFAULT_TIMEOUT_MINUTES):
         estimator = TensorFlow(entry_point=SCRIPT,
                                role='SageMakerRole',
@@ -83,13 +87,13 @@ def test_failed_mnist_with_network_isolation(sagemaker_session):
                                metric_definitions=[
                                    {'Name': 'train:global_steps', 'Regex': r'global_step\/sec:\s(.*)'}],
                                enable_network_isolation=True)
+
         inputs = estimator.sagemaker_session.upload_data(
             path=os.path.join(MNIST_RESOURCE_PATH, 'data'),
             key_prefix='scriptmode/mnist')
 
-        with pytest.raises(ValueError) as e:
-            estimator.fit(inputs=inputs, job_name=unique_name_from_base('test-tf-sm-mnist'))
-        assert 'Network isolation mode not supported for TensorFlow framework' in str(e.value)
+        estimator.fit(inputs=inputs)
+        assert 'Network isolation mode not supported for TensorFlow framework' in caplog.text
 
 
 def test_server_side_encryption(sagemaker_session):
