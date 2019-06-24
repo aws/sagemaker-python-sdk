@@ -19,7 +19,6 @@ import logging
 import pytest
 import numpy
 
-from mock import patch
 from sagemaker.chainer.defaults import CHAINER_VERSION
 from sagemaker.chainer.estimator import Chainer
 from sagemaker.chainer.model import ChainerModel
