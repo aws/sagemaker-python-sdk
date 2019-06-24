@@ -53,6 +53,16 @@ BRANCH = "test-branch-git-config"
 COMMIT = "329bfcf884482002c05ff7f44f62599ebc9f445a"
 
 DESCRIBE_TRAINING_JOB_RESULT = {"ModelArtifacts": {"S3ModelArtifacts": MODEL_DATA}}
+INSTANCE_TYPE = "c4.4xlarge"
+ACCELERATOR_TYPE = "ml.eia.medium"
+ROLE = "DummyRole"
+IMAGE_NAME = "fakeimage"
+REGION = "us-west-2"
+JOB_NAME = "{}-{}".format(IMAGE_NAME, TIMESTAMP)
+TAGS = [{"Name": "some-tag", "Value": "value-for-tag"}]
+OUTPUT_PATH = "s3://bucket/prefix"
+
+DESCRIBE_TRAINING_JOB_RESULT = {"ModelArtifacts": {"S3ModelArtifacts": MODEL_DATA}}
 
 
 RETURNED_JOB_DESCRIPTION = {
@@ -910,7 +920,7 @@ def test_git_support_git_clone_fail(sagemaker_session):
         returncode=1, cmd="git checkout branch-that-does-not-exist"
     ),
 )
-def test_git_support_branch_not_exist(git_clone_repo, sagemaker_session):
+def test_git_support_branch_not_exist(sagemaker_session):
     git_config = {"repo": GIT_REPO, "branch": "branch-that-does-not-exist", "commit": COMMIT}
     fw = DummyFramework(
         entry_point="entry_point",

@@ -109,7 +109,7 @@ def test_git_support_with_mxnet(sagemaker_local_session):
                 framework_version=MXNet.LATEST_VERSION,
                 git_config=git_config,
             )
-            predictor = model.deploy(1, "local")
+            predictor = model.deploy(initial_instance_count=1, instance_type="local")
 
             data = numpy.zeros(shape=(1, 1, 28, 28))
             result = predictor.predict(data)
