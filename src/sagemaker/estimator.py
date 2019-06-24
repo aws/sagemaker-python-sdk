@@ -22,6 +22,7 @@ from six import with_metaclass
 from six import string_types
 
 import sagemaker
+from sagemaker import git_utils
 from sagemaker.analytics import TrainingJobAnalytics
 from sagemaker.fw_utils import (
     create_image_uri,
@@ -933,6 +934,7 @@ class Framework(EstimatorBase):
     """
 
     __framework_name__ = None
+
     LAUNCH_PS_ENV_NAME = "sagemaker_parameter_server_enabled"
     LAUNCH_MPI_ENV_NAME = "sagemaker_mpi_enabled"
     MPI_NUM_PROCESSES_PER_HOST = "sagemaker_mpi_num_of_processes_per_host"
@@ -949,6 +951,7 @@ class Framework(EstimatorBase):
         code_location=None,
         image_name=None,
         dependencies=None,
+        git_config=None,
         enable_network_isolation=False,
         **kwargs
     ):
@@ -957,9 +960,47 @@ class Framework(EstimatorBase):
         Args:
             entry_point (str): Path (absolute or relative) to the local Python source file which should be executed
                 as the entry point to training. This should be compatible with either Python 2.7 or Python 3.5.
+                If 'git_config' is provided, 'entry_point' should be a relative location to the Python source file in
+                the Git repo.
+                Example:
+
+                    With the following GitHub repo directory structure:
+
+                    >>> |----- README.md
+                    >>> |----- src
+                    >>>         |----- train.py
+                    >>>         |----- test.py
+
+                    You can assign entry_point='src/train.py'.
+            git_config (dict[str, str]): Git configurations used for cloning files, including 'repo', 'branch'
+                and 'commit' (default: None).
+                'branch' and 'commit' are optional. If 'branch' is not specified, 'master' branch will be used. If
+                'commit' is not specified, the latest commit in the required branch will be used.
+                Example:
+
+                    The following config:
+
+                    >>> git_config = {'repo': 'https://github.com/aws/sagemaker-python-sdk.git',
+                    >>>               'branch': 'test-branch-git-config',
+                    >>>               'commit': '329bfcf884482002c05ff7f44f62599ebc9f445a'}
+
+                    results in cloning the repo specified in 'repo', then checkout the 'master' branch, and checkout
+                    the specified commit.
             source_dir (str): Path (absolute or relative) to a directory with any other training
                 source code dependencies aside from the entry point file (default: None). Structure within this
-                directory are preserved when training on Amazon SageMaker.
+                directory are preserved when training on Amazon SageMaker. If 'git_config' is provided,
+                source_dir should be a relative location to a directory in the Git repo.
+                Example:
+
+                    With the following GitHub repo directory structure:
+
+                    >>> |----- README.md
+                    >>> |----- src
+                    >>>         |----- train.py
+                    >>>         |----- test.py
+
+                    and you need 'train.py' as entry point and 'test.py' as training source code as well, you can
+                    assign entry_point='train.py', source_dir='src'.
             hyperparameters (dict): Hyperparameters that will be used for training (default: None).
                 The hyperparameters are made accessible as a dict[str, str] to the training code on SageMaker.
                 For convenience, this accepts other types for keys and values, but ``str()`` will be called
@@ -1006,6 +1047,7 @@ class Framework(EstimatorBase):
                 )
             )
         self.entry_point = entry_point
+        self.git_config = git_config
         self.source_dir = source_dir
         self.dependencies = dependencies or []
         if enable_cloudwatch_metrics:
@@ -1037,6 +1079,14 @@ class Framework(EstimatorBase):
                 using the base name given to the constructor if applicable.
         """
         super(Framework, self)._prepare_for_training(job_name=job_name)
+
+        if self.git_config:
+            updates = git_utils.git_clone_repo(
+                self.git_config, self.entry_point, self.source_dir, self.dependencies
+            )
+            self.entry_point = updates["entry_point"]
+            self.source_dir = updates["source_dir"]
+            self.dependencies = updates["dependencies"]
 
         # validate source dir will raise a ValueError if there is something wrong with the
         # source directory. We are intentionally not handling it because this is a critical error.
