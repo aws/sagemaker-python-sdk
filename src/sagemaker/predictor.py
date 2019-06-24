@@ -27,8 +27,15 @@ class RealTimePredictor(object):
     """Make prediction requests to an Amazon SageMaker endpoint.
     """
 
-    def __init__(self, endpoint, sagemaker_session=None, serializer=None, deserializer=None,
-                 content_type=None, accept=None):
+    def __init__(
+        self,
+        endpoint,
+        sagemaker_session=None,
+        serializer=None,
+        deserializer=None,
+        content_type=None,
+        accept=None,
+    ):
         """Initialize a ``RealTimePredictor``.
 
         Behavior for serialization of input data and deserialization of result data
@@ -54,8 +61,8 @@ class RealTimePredictor(object):
         self.sagemaker_session = sagemaker_session or Session()
         self.serializer = serializer
         self.deserializer = deserializer
-        self.content_type = content_type or getattr(serializer, 'content_type', None)
-        self.accept = accept or getattr(deserializer, 'accept', None)
+        self.content_type = content_type or getattr(serializer, "content_type", None)
+        self.accept = accept or getattr(deserializer, "accept", None)
         self._endpoint_config_name = self._get_endpoint_config_name()
         self._model_names = self._get_model_names()
 
@@ -81,10 +88,10 @@ class RealTimePredictor(object):
         return self._handle_response(response)
 
     def _handle_response(self, response):
-        response_body = response['Body']
+        response_body = response["Body"]
         if self.deserializer is not None:
             # It's the deserializer's responsibility to close the stream
-            return self.deserializer(response_body, response['ContentType'])
+            return self.deserializer(response_body, response["ContentType"])
         data = response_body.read()
         response_body.close()
         return data
@@ -92,19 +99,19 @@ class RealTimePredictor(object):
     def _create_request_args(self, data, initial_args=None):
         args = dict(initial_args) if initial_args else {}
 
-        if 'EndpointName' not in args:
-            args['EndpointName'] = self.endpoint
+        if "EndpointName" not in args:
+            args["EndpointName"] = self.endpoint
 
-        if self.content_type and 'ContentType' not in args:
-            args['ContentType'] = self.content_type
+        if self.content_type and "ContentType" not in args:
+            args["ContentType"] = self.content_type
 
-        if self.accept and 'Accept' not in args:
-            args['Accept'] = self.accept
+        if self.accept and "Accept" not in args:
+            args["Accept"] = self.accept
 
         if self.serializer is not None:
             data = self.serializer(data)
 
-        args['Body'] = data
+        args["Body"] = data
         return args
 
     def _delete_endpoint_config(self):
@@ -142,19 +149,24 @@ class RealTimePredictor(object):
                 failed_models.append(model_name)
 
         if request_failed:
-            raise Exception('One or more models cannot be deleted, please retry. \n'
-                            'Failed models: {}'.format(', '.join(failed_models)))
+            raise Exception(
+                "One or more models cannot be deleted, please retry. \n"
+                "Failed models: {}".format(", ".join(failed_models))
+            )
 
     def _get_endpoint_config_name(self):
-        endpoint_desc = self.sagemaker_session.sagemaker_client.describe_endpoint(EndpointName=self.endpoint)
-        endpoint_config_name = endpoint_desc['EndpointConfigName']
+        endpoint_desc = self.sagemaker_session.sagemaker_client.describe_endpoint(
+            EndpointName=self.endpoint
+        )
+        endpoint_config_name = endpoint_desc["EndpointConfigName"]
         return endpoint_config_name
 
     def _get_model_names(self):
         endpoint_config = self.sagemaker_session.sagemaker_client.describe_endpoint_config(
-            EndpointConfigName=self._endpoint_config_name)
-        production_variants = endpoint_config['ProductionVariants']
-        return map(lambda d: d['ModelName'], production_variants)
+            EndpointConfigName=self._endpoint_config_name
+        )
+        production_variants = endpoint_config["ProductionVariants"]
+        return map(lambda d: d["ModelName"], production_variants)
 
 
 class _CsvSerializer(object):
@@ -172,7 +184,7 @@ class _CsvSerializer(object):
         """
         # For inputs which represent multiple "rows", the result should be newline-separated CSV rows
         if _is_mutable_sequence_like(data) and len(data) > 0 and _is_sequence_like(data[0]):
-            return '\n'.join([_CsvSerializer._serialize_row(row) for row in data])
+            return "\n".join([_CsvSerializer._serialize_row(row) for row in data])
         return _CsvSerializer._serialize_row(data)
 
     @staticmethod
@@ -182,14 +194,14 @@ class _CsvSerializer(object):
             return data
         if isinstance(data, np.ndarray):
             data = np.ndarray.flatten(data)
-        if hasattr(data, '__len__'):
+        if hasattr(data, "__len__"):
             if len(data):
                 return _csv_serialize_python_array(data)
             else:
                 raise ValueError("Cannot serialize empty array")
 
         # files and buffers
-        if hasattr(data, 'read'):
+        if hasattr(data, "read"):
             return _csv_serialize_from_buffer(data)
 
         raise ValueError("Unable to handle input format: ", type(data))
@@ -206,31 +218,31 @@ def _csv_serialize_from_buffer(buff):
 def _csv_serialize_object(data):
     csv_buffer = StringIO()
 
-    csv_writer = csv.writer(csv_buffer, delimiter=',')
+    csv_writer = csv.writer(csv_buffer, delimiter=",")
     csv_writer.writerow(data)
-    return csv_buffer.getvalue().rstrip('\r\n')
+    return csv_buffer.getvalue().rstrip("\r\n")
 
 
 csv_serializer = _CsvSerializer()
 
 
 def _is_mutable_sequence_like(obj):
-    return _is_sequence_like(obj) and hasattr(obj, '__setitem__')
+    return _is_sequence_like(obj) and hasattr(obj, "__setitem__")
 
 
 def _is_sequence_like(obj):
     # Need to explicitly check on str since str lacks the iterable magic methods in Python 2
-    return (hasattr(obj, '__iter__') and hasattr(obj, '__getitem__')) or isinstance(obj, str)
+    return (hasattr(obj, "__iter__") and hasattr(obj, "__getitem__")) or isinstance(obj, str)
 
 
 def _row_to_csv(obj):
     if isinstance(obj, str):
         return obj
-    return ','.join(obj)
+    return ",".join(obj)
 
 
 class _CsvDeserializer(object):
-    def __init__(self, encoding='utf-8'):
+    def __init__(self, encoding="utf-8"):
         self.accept = CONTENT_TYPE_CSV
         self.encoding = encoding
 
@@ -269,7 +281,7 @@ class StringDeserializer(object):
             accept (str): The Accept header to send to the server (optional).
     """
 
-    def __init__(self, encoding='utf-8', accept=None):
+    def __init__(self, encoding="utf-8", accept=None):
         self.encoding = encoding
         self.accept = accept
 
@@ -315,7 +327,7 @@ class _JsonSerializer(object):
             return json.dumps({k: _ndarray_to_list(v) for k, v in six.iteritems(data)})
 
         # files and buffers
-        if hasattr(data, 'read'):
+        if hasattr(data, "read"):
             return _json_serialize_from_buffer(data)
 
         return json.dumps(_ndarray_to_list(data))
@@ -347,7 +359,7 @@ class _JsonDeserializer(object):
             object: Body of the response deserialized into a JSON object.
         """
         try:
-            return json.load(codecs.getreader('utf-8')(stream))
+            return json.load(codecs.getreader("utf-8")(stream))
         finally:
             stream.close()
 
@@ -372,9 +384,11 @@ class _NumpyDeserializer(object):
         """
         try:
             if content_type == CONTENT_TYPE_CSV:
-                return np.genfromtxt(codecs.getreader('utf-8')(stream), delimiter=',', dtype=self.dtype)
+                return np.genfromtxt(
+                    codecs.getreader("utf-8")(stream), delimiter=",", dtype=self.dtype
+                )
             elif content_type == CONTENT_TYPE_JSON:
-                return np.array(json.load(codecs.getreader('utf-8')(stream)), dtype=self.dtype)
+                return np.array(json.load(codecs.getreader("utf-8")(stream)), dtype=self.dtype)
             elif content_type == CONTENT_TYPE_NPY:
                 return np.load(BytesIO(stream.read()))
         finally:
@@ -408,7 +422,7 @@ class _NPYSerializer(object):
             return _npy_serialize(np.array(data, dtype))
 
         # files and buffers. Assumed to hold npy-formatted data.
-        if hasattr(data, 'read'):
+        if hasattr(data, "read"):
             return data.read()
 
         return _npy_serialize(np.array(data))

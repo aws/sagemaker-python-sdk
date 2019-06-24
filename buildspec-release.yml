@@ -9,6 +9,9 @@ phases:
       # run linters
       - tox -e flake8,pylint
 
+      # run format verification
+      - tox -e black-check
+
       # run package and docbuild checks
       - tox -e twine
       - tox -e sphinx

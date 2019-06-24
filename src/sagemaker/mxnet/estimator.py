@@ -15,26 +15,39 @@ from __future__ import absolute_import
 import logging
 
 from sagemaker.estimator import Framework
-from sagemaker.fw_utils import framework_name_from_image, framework_version_from_tag, empty_framework_version_warning, \
-    python_deprecation_warning
+from sagemaker.fw_utils import (
+    framework_name_from_image,
+    framework_version_from_tag,
+    empty_framework_version_warning,
+    python_deprecation_warning,
+)
 from sagemaker.mxnet.defaults import MXNET_VERSION
 from sagemaker.mxnet.model import MXNetModel
 from sagemaker.vpc_utils import VPC_CONFIG_DEFAULT
 
-logger = logging.getLogger('sagemaker')
+logger = logging.getLogger("sagemaker")
 
 
 class MXNet(Framework):
     """Handle end-to-end training and deployment of custom MXNet code."""
 
-    __framework_name__ = 'mxnet'
-    _LOWEST_SCRIPT_MODE_VERSION = ['1', '3']
+    __framework_name__ = "mxnet"
+    _LOWEST_SCRIPT_MODE_VERSION = ["1", "3"]
 
-    LATEST_VERSION = '1.4'
+    LATEST_VERSION = "1.4"
     """The latest version of MXNet included in the SageMaker pre-built Docker images."""
 
-    def __init__(self, entry_point, source_dir=None, hyperparameters=None, py_version='py2',
-                 framework_version=None, image_name=None, distributions=None, **kwargs):
+    def __init__(
+        self,
+        entry_point,
+        source_dir=None,
+        hyperparameters=None,
+        py_version="py2",
+        framework_version=None,
+        image_name=None,
+        distributions=None,
+        **kwargs
+    ):
         """
         This ``Estimator`` executes an MXNet script in a managed MXNet execution environment, within a SageMaker
         Training Job. The managed MXNet environment is an Amazon-built Docker container that executes functions
@@ -78,10 +91,11 @@ class MXNet(Framework):
             logger.warning(empty_framework_version_warning(MXNET_VERSION, self.LATEST_VERSION))
         self.framework_version = framework_version or MXNET_VERSION
 
-        super(MXNet, self).__init__(entry_point, source_dir, hyperparameters,
-                                    image_name=image_name, **kwargs)
+        super(MXNet, self).__init__(
+            entry_point, source_dir, hyperparameters, image_name=image_name, **kwargs
+        )
 
-        if py_version == 'py2':
+        if py_version == "py2":
             logger.warning(python_deprecation_warning(self.__framework_name__))
 
         self.py_version = py_version
@@ -91,15 +105,20 @@ class MXNet(Framework):
         if distributions is None:
             return
 
-        if self.framework_version.split('.') < self._LOWEST_SCRIPT_MODE_VERSION:
-            raise ValueError('The distributions option is valid for only versions {} and higher'
-                             .format('.'.join(self._LOWEST_SCRIPT_MODE_VERSION)))
+        if self.framework_version.split(".") < self._LOWEST_SCRIPT_MODE_VERSION:
+            raise ValueError(
+                "The distributions option is valid for only versions {} and higher".format(
+                    ".".join(self._LOWEST_SCRIPT_MODE_VERSION)
+                )
+            )
 
-        if 'parameter_server' in distributions:
-            enabled = distributions['parameter_server'].get('enabled', False)
+        if "parameter_server" in distributions:
+            enabled = distributions["parameter_server"].get("enabled", False)
             self._hyperparameters[self.LAUNCH_PS_ENV_NAME] = enabled
 
-    def create_model(self, model_server_workers=None, role=None, vpc_config_override=VPC_CONFIG_DEFAULT):
+    def create_model(
+        self, model_server_workers=None, role=None, vpc_config_override=VPC_CONFIG_DEFAULT
+    ):
         """Create a SageMaker ``MXNetModel`` object that can be deployed to an ``Endpoint``.
 
         Args:
@@ -117,12 +136,23 @@ class MXNet(Framework):
                 See :func:`~sagemaker.mxnet.model.MXNetModel` for full details.
         """
         role = role or self.role
-        return MXNetModel(self.model_data, role, self.entry_point, source_dir=self._model_source_dir(),
-                          enable_cloudwatch_metrics=self.enable_cloudwatch_metrics, name=self._current_job_name,
-                          container_log_level=self.container_log_level, code_location=self.code_location,
-                          py_version=self.py_version, framework_version=self.framework_version, image=self.image_name,
-                          model_server_workers=model_server_workers, sagemaker_session=self.sagemaker_session,
-                          vpc_config=self.get_vpc_config(vpc_config_override), dependencies=self.dependencies)
+        return MXNetModel(
+            self.model_data,
+            role,
+            self.entry_point,
+            source_dir=self._model_source_dir(),
+            enable_cloudwatch_metrics=self.enable_cloudwatch_metrics,
+            name=self._current_job_name,
+            container_log_level=self.container_log_level,
+            code_location=self.code_location,
+            py_version=self.py_version,
+            framework_version=self.framework_version,
+            image=self.image_name,
+            model_server_workers=model_server_workers,
+            sagemaker_session=self.sagemaker_session,
+            vpc_config=self.get_vpc_config(vpc_config_override),
+            dependencies=self.dependencies,
+        )
 
     @classmethod
     def _prepare_init_params_from_job_description(cls, job_details, model_channel_name=None):
@@ -136,27 +166,35 @@ class MXNet(Framework):
             dictionary: The transformed init_params
 
         """
-        init_params = super(MXNet, cls)._prepare_init_params_from_job_description(job_details, model_channel_name)
-        image_name = init_params.pop('image')
+        init_params = super(MXNet, cls)._prepare_init_params_from_job_description(
+            job_details, model_channel_name
+        )
+        image_name = init_params.pop("image")
         framework, py_version, tag, _ = framework_name_from_image(image_name)
 
         if not framework:
             # If we were unable to parse the framework name from the image it is not one of our
             # officially supported images, in this case just add the image to the init params.
-            init_params['image_name'] = image_name
+            init_params["image_name"] = image_name
             return init_params
 
-        init_params['py_version'] = py_version
+        init_params["py_version"] = py_version
 
         # We switched image tagging scheme from regular image version (e.g. '1.0') to more expressive
         # containing framework version, device type and python version (e.g. '0.12-gpu-py2').
         # For backward compatibility map deprecated image tag '1.0' to a '0.12' framework version
         # otherwise extract framework version from the tag itself.
-        init_params['framework_version'] = '0.12' if tag == '1.0' else framework_version_from_tag(tag)
+        init_params["framework_version"] = (
+            "0.12" if tag == "1.0" else framework_version_from_tag(tag)
+        )
 
-        training_job_name = init_params['base_job_name']
+        training_job_name = init_params["base_job_name"]
 
         if framework != cls.__framework_name__:
-            raise ValueError("Training job: {} didn't use image for requested framework".format(training_job_name))
+            raise ValueError(
+                "Training job: {} didn't use image for requested framework".format(
+                    training_job_name
+                )
+            )
 
         return init_params

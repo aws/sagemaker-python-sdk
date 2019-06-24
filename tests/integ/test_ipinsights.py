@@ -25,35 +25,37 @@ FEATURE_DIM = None
 
 
 def test_ipinsights(sagemaker_session):
-    job_name = unique_name_from_base('ipinsights')
+    job_name = unique_name_from_base("ipinsights")
 
     with timeout(minutes=TRAINING_DEFAULT_TIMEOUT_MINUTES):
-        data_path = os.path.join(DATA_DIR, 'ipinsights')
-        data_filename = 'train.csv'
+        data_path = os.path.join(DATA_DIR, "ipinsights")
+        data_filename = "train.csv"
 
-        with open(os.path.join(data_path, data_filename), 'rb') as f:
+        with open(os.path.join(data_path, data_filename), "rb") as f:
             num_records = len(f.readlines())
 
             ipinsights = IPInsights(
-                role='SageMakerRole',
+                role="SageMakerRole",
                 train_instance_count=1,
-                train_instance_type='ml.c4.xlarge',
+                train_instance_type="ml.c4.xlarge",
                 num_entity_vectors=10,
                 vector_dim=100,
-                sagemaker_session=sagemaker_session)
+                sagemaker_session=sagemaker_session,
+            )
 
-        record_set = prepare_record_set_from_local_files(data_path, ipinsights.data_location,
-                                                         num_records, FEATURE_DIM,
-                                                         sagemaker_session)
+        record_set = prepare_record_set_from_local_files(
+            data_path, ipinsights.data_location, num_records, FEATURE_DIM, sagemaker_session
+        )
         ipinsights.fit(records=record_set, job_name=job_name)
 
     with timeout_and_delete_endpoint_by_name(job_name, sagemaker_session):
-        model = IPInsightsModel(ipinsights.model_data, role='SageMakerRole',
-                                sagemaker_session=sagemaker_session)
-        predictor = model.deploy(1, 'ml.c4.xlarge', endpoint_name=job_name)
+        model = IPInsightsModel(
+            ipinsights.model_data, role="SageMakerRole", sagemaker_session=sagemaker_session
+        )
+        predictor = model.deploy(1, "ml.c4.xlarge", endpoint_name=job_name)
         assert isinstance(predictor, RealTimePredictor)
 
-        predict_input = [['user_1', '1.1.1.1']]
+        predict_input = [["user_1", "1.1.1.1"]]
         result = predictor.predict(predict_input)
 
         assert len(result) == 1

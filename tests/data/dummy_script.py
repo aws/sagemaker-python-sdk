@@ -12,5 +12,5 @@
 # language governing permissions and limitations under the License.
 from __future__ import absolute_import
 
-print('This is definitely code which does machine learning stuff')
-print('and not just a random file I threw together for unit testing.')
+print("This is definitely code which does machine learning stuff")
+print("and not just a random file I threw together for unit testing.")

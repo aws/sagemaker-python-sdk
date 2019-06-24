@@ -20,64 +20,80 @@ import pytest
 import sagemaker
 from tests.unit import DATA_DIR
 
-UPLOAD_DATA_TESTS_FILES_DIR = os.path.join(DATA_DIR, 'upload_data_tests')
-SINGLE_FILE_NAME = 'file1.py'
+UPLOAD_DATA_TESTS_FILES_DIR = os.path.join(DATA_DIR, "upload_data_tests")
+SINGLE_FILE_NAME = "file1.py"
 UPLOAD_DATA_TESTS_SINGLE_FILE = os.path.join(UPLOAD_DATA_TESTS_FILES_DIR, SINGLE_FILE_NAME)
-BUCKET_NAME = 'mybucket'
-AES_ENCRYPTION_ENABLED = {'ServerSideEncryption': 'AES256'}
+BUCKET_NAME = "mybucket"
+AES_ENCRYPTION_ENABLED = {"ServerSideEncryption": "AES256"}
 
 
 @pytest.fixture()
 def sagemaker_session():
-    boto_mock = Mock(name='boto_session')
+    boto_mock = Mock(name="boto_session")
     ims = sagemaker.Session(boto_session=boto_mock)
-    ims.default_bucket = Mock(name='default_bucket', return_value=BUCKET_NAME)
+    ims.default_bucket = Mock(name="default_bucket", return_value=BUCKET_NAME)
     return ims
 
 
 def test_upload_data_absolute_dir(sagemaker_session):
     result_s3_uri = sagemaker_session.upload_data(UPLOAD_DATA_TESTS_FILES_DIR)
 
-    uploaded_files_with_args = [(args[0], kwargs) for name, args, kwargs in sagemaker_session.boto_session.mock_calls
-                                if name == 'resource().Object().upload_file']
-    assert result_s3_uri == 's3://{}/data'.format(BUCKET_NAME)
+    uploaded_files_with_args = [
+        (args[0], kwargs)
+        for name, args, kwargs in sagemaker_session.boto_session.mock_calls
+        if name == "resource().Object().upload_file"
+    ]
+    assert result_s3_uri == "s3://{}/data".format(BUCKET_NAME)
     assert len(uploaded_files_with_args) == 4
     for file, kwargs in uploaded_files_with_args:
         assert os.path.exists(file)
-        assert kwargs['ExtraArgs'] is None
+        assert kwargs["ExtraArgs"] is None
 
 
 def test_upload_data_absolute_file(sagemaker_session):
     result_s3_uri = sagemaker_session.upload_data(UPLOAD_DATA_TESTS_SINGLE_FILE)
 
-    uploaded_files_with_args = [(args[0], kwargs) for name, args, kwargs in sagemaker_session.boto_session.mock_calls
-                                if name == 'resource().Object().upload_file']
-    assert result_s3_uri == 's3://{}/data/{}'.format(BUCKET_NAME, SINGLE_FILE_NAME)
+    uploaded_files_with_args = [
+        (args[0], kwargs)
+        for name, args, kwargs in sagemaker_session.boto_session.mock_calls
+        if name == "resource().Object().upload_file"
+    ]
+    assert result_s3_uri == "s3://{}/data/{}".format(BUCKET_NAME, SINGLE_FILE_NAME)
     assert len(uploaded_files_with_args) == 1
     (file, kwargs) = uploaded_files_with_args[0]
     assert os.path.exists(file)
-    assert kwargs['ExtraArgs'] is None
+    assert kwargs["ExtraArgs"] is None
 
 
 def test_upload_data_aes_encrypted_absolute_dir(sagemaker_session):
-    result_s3_uri = sagemaker_session.upload_data(UPLOAD_DATA_TESTS_FILES_DIR, extra_args=AES_ENCRYPTION_ENABLED)
+    result_s3_uri = sagemaker_session.upload_data(
+        UPLOAD_DATA_TESTS_FILES_DIR, extra_args=AES_ENCRYPTION_ENABLED
+    )
 
-    uploaded_files_with_args = [(args[0], kwargs) for name, args, kwargs in sagemaker_session.boto_session.mock_calls
-                                if name == 'resource().Object().upload_file']
-    assert result_s3_uri == 's3://{}/data'.format(BUCKET_NAME)
+    uploaded_files_with_args = [
+        (args[0], kwargs)
+        for name, args, kwargs in sagemaker_session.boto_session.mock_calls
+        if name == "resource().Object().upload_file"
+    ]
+    assert result_s3_uri == "s3://{}/data".format(BUCKET_NAME)
     assert len(uploaded_files_with_args) == 4
     for file, kwargs in uploaded_files_with_args:
         assert os.path.exists(file)
-        assert kwargs['ExtraArgs'] == AES_ENCRYPTION_ENABLED
+        assert kwargs["ExtraArgs"] == AES_ENCRYPTION_ENABLED
 
 
 def test_upload_data_aes_encrypted_absolute_file(sagemaker_session):
-    result_s3_uri = sagemaker_session.upload_data(UPLOAD_DATA_TESTS_SINGLE_FILE, extra_args=AES_ENCRYPTION_ENABLED)
+    result_s3_uri = sagemaker_session.upload_data(
+        UPLOAD_DATA_TESTS_SINGLE_FILE, extra_args=AES_ENCRYPTION_ENABLED
+    )
 
-    uploaded_files_with_args = [(args[0], kwargs) for name, args, kwargs in sagemaker_session.boto_session.mock_calls
-                                if name == 'resource().Object().upload_file']
-    assert result_s3_uri == 's3://{}/data/{}'.format(BUCKET_NAME, SINGLE_FILE_NAME)
+    uploaded_files_with_args = [
+        (args[0], kwargs)
+        for name, args, kwargs in sagemaker_session.boto_session.mock_calls
+        if name == "resource().Object().upload_file"
+    ]
+    assert result_s3_uri == "s3://{}/data/{}".format(BUCKET_NAME, SINGLE_FILE_NAME)
     assert len(uploaded_files_with_args) == 1
     (file, kwargs) = uploaded_files_with_args[0]
     assert os.path.exists(file)
-    assert kwargs['ExtraArgs'] == AES_ENCRYPTION_ENABLED
+    assert kwargs["ExtraArgs"] == AES_ENCRYPTION_ENABLED

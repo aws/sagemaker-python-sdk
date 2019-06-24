@@ -24,17 +24,26 @@ from sagemaker.vpc_utils import VPC_CONFIG_DEFAULT
 
 class LDA(AmazonAlgorithmEstimatorBase):
 
-    repo_name = 'lda'
+    repo_name = "lda"
     repo_version = 1
 
-    num_topics = hp('num_topics', gt(0), 'An integer greater than zero', int)
-    alpha0 = hp('alpha0', gt(0), 'A positive float', float)
-    max_restarts = hp('max_restarts', gt(0), 'An integer greater than zero', int)
-    max_iterations = hp('max_iterations', gt(0), 'An integer greater than zero', int)
-    tol = hp('tol', gt(0), 'A positive float', float)
+    num_topics = hp("num_topics", gt(0), "An integer greater than zero", int)
+    alpha0 = hp("alpha0", gt(0), "A positive float", float)
+    max_restarts = hp("max_restarts", gt(0), "An integer greater than zero", int)
+    max_iterations = hp("max_iterations", gt(0), "An integer greater than zero", int)
+    tol = hp("tol", gt(0), "A positive float", float)
 
-    def __init__(self, role, train_instance_type, num_topics,
-                 alpha0=None, max_restarts=None, max_iterations=None, tol=None, **kwargs):
+    def __init__(
+        self,
+        role,
+        train_instance_type,
+        num_topics,
+        alpha0=None,
+        max_restarts=None,
+        max_iterations=None,
+        tol=None,
+        **kwargs
+    ):
         """Latent Dirichlet Allocation (LDA) is :class:`Estimator` used for unsupervised learning.
 
         Amazon SageMaker Latent Dirichlet Allocation is an unsupervised learning algorithm that attempts to describe
@@ -80,8 +89,12 @@ class LDA(AmazonAlgorithmEstimatorBase):
             **kwargs: base class keyword argument values.
         """
         # this algorithm only supports single instance training
-        if kwargs.pop('train_instance_count', 1) != 1:
-            print('LDA only supports single instance training. Defaulting to 1 {}.'.format(train_instance_type))
+        if kwargs.pop("train_instance_count", 1) != 1:
+            print(
+                "LDA only supports single instance training. Defaulting to 1 {}.".format(
+                    train_instance_type
+                )
+            )
 
         super(LDA, self).__init__(role, 1, train_instance_type, **kwargs)
         self.num_topics = num_topics
@@ -100,15 +113,21 @@ class LDA(AmazonAlgorithmEstimatorBase):
                 * 'Subnets' (list[str]): List of subnet ids.
                 * 'SecurityGroupIds' (list[str]): List of security group ids.
         """
-        return LDAModel(self.model_data, self.role, sagemaker_session=self.sagemaker_session,
-                        vpc_config=self.get_vpc_config(vpc_config_override))
+        return LDAModel(
+            self.model_data,
+            self.role,
+            sagemaker_session=self.sagemaker_session,
+            vpc_config=self.get_vpc_config(vpc_config_override),
+        )
 
     def _prepare_for_training(self, records, mini_batch_size, job_name=None):
         # mini_batch_size is required, prevent explicit calls with None
         if mini_batch_size is None:
             raise ValueError("mini_batch_size must be set")
 
-        super(LDA, self)._prepare_for_training(records, mini_batch_size=mini_batch_size, job_name=job_name)
+        super(LDA, self)._prepare_for_training(
+            records, mini_batch_size=mini_batch_size, job_name=job_name
+        )
 
 
 class LDAPredictor(RealTimePredictor):
@@ -124,8 +143,12 @@ class LDAPredictor(RealTimePredictor):
     key of the ``Record.label`` field."""
 
     def __init__(self, endpoint, sagemaker_session=None):
-        super(LDAPredictor, self).__init__(endpoint, sagemaker_session, serializer=numpy_to_record_serializer(),
-                                           deserializer=record_deserializer())
+        super(LDAPredictor, self).__init__(
+            endpoint,
+            sagemaker_session,
+            serializer=numpy_to_record_serializer(),
+            deserializer=record_deserializer(),
+        )
 
 
 class LDAModel(Model):
@@ -134,7 +157,15 @@ class LDAModel(Model):
 
     def __init__(self, model_data, role, sagemaker_session=None, **kwargs):
         sagemaker_session = sagemaker_session or Session()
-        repo = '{}:{}'.format(LDA.repo_name, LDA.repo_version)
-        image = '{}/{}'.format(registry(sagemaker_session.boto_session.region_name, LDA.repo_name), repo)
-        super(LDAModel, self).__init__(model_data, image, role, predictor_cls=LDAPredictor,
-                                       sagemaker_session=sagemaker_session, **kwargs)
+        repo = "{}:{}".format(LDA.repo_name, LDA.repo_version)
+        image = "{}/{}".format(
+            registry(sagemaker_session.boto_session.region_name, LDA.repo_name), repo
+        )
+        super(LDAModel, self).__init__(
+            model_data,
+            image,
+            role,
+            predictor_cls=LDAPredictor,
+            sagemaker_session=sagemaker_session,
+            **kwargs
+        )
