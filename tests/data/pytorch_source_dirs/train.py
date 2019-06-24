@@ -13,7 +13,7 @@
 import alexa
 import json
 
-MODEL = '/opt/ml/model/answer'
+MODEL = "/opt/ml/model/answer"
 
 
 def model_fn(anything):
@@ -25,6 +25,6 @@ def predict_fn(input_object, model):
     return input_object + model
 
 
-if __name__ == '__main__':
-    with open(MODEL, 'w') as model:
-        json.dump(alexa.question('How many roads must a man walk down?'), model)
+if __name__ == "__main__":
+    with open(MODEL, "w") as model:
+        json.dump(alexa.question("How many roads must a man walk down?"), model)

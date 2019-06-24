@@ -45,29 +45,31 @@ def git_clone_repo(git_config, entry_point, source_dir=None, dependencies=None):
     """
     _validate_git_config(git_config)
     repo_dir = tempfile.mkdtemp()
-    subprocess.check_call(['git', 'clone', git_config['repo'], repo_dir])
+    subprocess.check_call(["git", "clone", git_config["repo"], repo_dir])
 
     _checkout_branch_and_commit(git_config, repo_dir)
 
-    ret = {'entry_point': entry_point, 'source_dir': source_dir, 'dependencies': dependencies}
+    ret = {"entry_point": entry_point, "source_dir": source_dir, "dependencies": dependencies}
 
     # check if the cloned repo contains entry point, source directory and dependencies
     if source_dir:
         if not os.path.isdir(os.path.join(repo_dir, source_dir)):
-            raise ValueError('Source directory does not exist in the repo.')
+            raise ValueError("Source directory does not exist in the repo.")
         if not os.path.isfile(os.path.join(repo_dir, source_dir, entry_point)):
-            raise ValueError('Entry point does not exist in the repo.')
-        ret['source_dir'] = os.path.join(repo_dir, source_dir)
+            raise ValueError("Entry point does not exist in the repo.")
+        ret["source_dir"] = os.path.join(repo_dir, source_dir)
     else:
-        if not os.path.isfile(os.path.join(repo_dir, entry_point)):
-            raise ValueError('Entry point does not exist in the repo.')
-        ret['entry_point'] = os.path.join(repo_dir, entry_point)
+        if os.path.isfile(os.path.join(repo_dir, entry_point)):
+            ret["entry_point"] = os.path.join(repo_dir, entry_point)
+        else:
+            raise ValueError("Entry point does not exist in the repo.")
 
-    ret['dependencies'] = []
+    ret["dependencies"] = []
     for path in dependencies:
-        if not os.path.exists(os.path.join(repo_dir, path)):
-            raise ValueError('Dependency {} does not exist in the repo.'.format(path))
-        ret['dependencies'].append(os.path.join(repo_dir, path))
+        if os.path.exists(os.path.join(repo_dir, path)):
+            ret["dependencies"].append(os.path.join(repo_dir, path))
+        else:
+            raise ValueError("Dependency {} does not exist in the repo.".format(path))
     return ret
 
 
@@ -83,8 +85,8 @@ def _validate_git_config(git_config):
             1. git_config has no key 'repo'
             2. git_config['repo'] is in the wrong format.
     """
-    if 'repo' not in git_config:
-        raise ValueError('Please provide a repo for git_config.')
+    if "repo" not in git_config:
+        raise ValueError("Please provide a repo for git_config.")
 
 
 def _checkout_branch_and_commit(git_config, repo_dir):
@@ -99,7 +101,7 @@ def _checkout_branch_and_commit(git_config, repo_dir):
         ValueError: If 1. entry point specified does not exist in the repo
                        2. source dir specified does not exist in the repo
     """
-    if 'branch' in git_config:
-        subprocess.check_call(args=['git', 'checkout', git_config['branch']], cwd=str(repo_dir))
-    if 'commit' in git_config:
-        subprocess.check_call(args=['git', 'checkout', git_config['commit']], cwd=str(repo_dir))
+    if "branch" in git_config:
+        subprocess.check_call(args=["git", "checkout", git_config["branch"]], cwd=str(repo_dir))
+    if "commit" in git_config:
+        subprocess.check_call(args=["git", "checkout", git_config["commit"]], cwd=str(repo_dir))

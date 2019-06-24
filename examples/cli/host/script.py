@@ -12,12 +12,12 @@ def model_fn(model_dir):
     :param: model_dir The directory where model files are stored.
     :return: a model (in this case a Gluon network)
     """
-    symbol = mx.sym.load('%s/model.json' % model_dir)
-    outputs = mx.symbol.softmax(data=symbol, name='softmax_label')
-    inputs = mx.sym.var('data')
-    param_dict = gluon.ParameterDict('model_')
+    symbol = mx.sym.load("%s/model.json" % model_dir)
+    outputs = mx.symbol.softmax(data=symbol, name="softmax_label")
+    inputs = mx.sym.var("data")
+    param_dict = gluon.ParameterDict("model_")
     net = gluon.SymbolBlock(outputs, inputs, param_dict)
-    net.load_params('%s/model.params' % model_dir, ctx=mx.cpu())
+    net.load_params("%s/model.params" % model_dir, ctx=mx.cpu())
     return net
 
 

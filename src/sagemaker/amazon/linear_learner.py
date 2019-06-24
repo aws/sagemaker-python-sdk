@@ -23,73 +23,146 @@ from sagemaker.vpc_utils import VPC_CONFIG_DEFAULT
 
 
 class LinearLearner(AmazonAlgorithmEstimatorBase):
-    repo_name = 'linear-learner'
+    repo_name = "linear-learner"
     repo_version = 1
 
     DEFAULT_MINI_BATCH_SIZE = 1000
 
-    binary_classifier_model_selection_criteria = hp('binary_classifier_model_selection_criteria',
-                                                    isin('accuracy', 'f1', 'f_beta', 'precision_at_target_recall',
-                                                         'recall_at_target_precision', 'cross_entropy_loss',
-                                                         'loss_function'), data_type=str)
-    target_recall = hp('target_recall', (gt(0), lt(1)), "A float in (0,1)", float)
-    target_precision = hp('target_precision', (gt(0), lt(1)), "A float in (0,1)", float)
-    positive_example_weight_mult = hp('positive_example_weight_mult', (),
-                                      "A float greater than 0 or 'auto' or 'balanced'", str)
-    epochs = hp('epochs', gt(0), "An integer greater-than 0", int)
-    predictor_type = hp('predictor_type', isin('binary_classifier', 'regressor', 'multiclass_classifier'),
-                        'One of "binary_classifier" or "multiclass_classifier" or "regressor"', str)
-    use_bias = hp('use_bias', (), "Either True or False", bool)
-    num_models = hp('num_models', gt(0), "An integer greater-than 0", int)
-    num_calibration_samples = hp('num_calibration_samples', gt(0), "An integer greater-than 0", int)
-    init_method = hp('init_method', isin('uniform', 'normal'), 'One of "uniform" or "normal"', str)
-    init_scale = hp('init_scale', gt(0), 'A float greater-than 0', float)
-    init_sigma = hp('init_sigma', gt(0), 'A float greater-than 0', float)
-    init_bias = hp('init_bias', (), 'A number', float)
-    optimizer = hp('optimizer', isin('sgd', 'adam', 'rmsprop', 'auto'), 'One of "sgd", "adam", "rmsprop" or "auto', str)
-    loss = hp('loss', isin('logistic', 'squared_loss', 'absolute_loss', 'hinge_loss', 'eps_insensitive_squared_loss',
-                           'eps_insensitive_absolute_loss', 'quantile_loss', 'huber_loss', 'softmax_loss', 'auto'),
-              '"logistic", "squared_loss", "absolute_loss", "hinge_loss", "eps_insensitive_squared_loss", '
-              '"eps_insensitive_absolute_loss", "quantile_loss", "huber_loss", "softmax_loss" or "auto"', str)
-    wd = hp('wd', ge(0), 'A float greater-than or equal to 0', float)
-    l1 = hp('l1', ge(0), 'A float greater-than or equal to 0', float)
-    momentum = hp('momentum', (ge(0), lt(1)), 'A float in [0,1)', float)
-    learning_rate = hp('learning_rate', gt(0), 'A float greater-than 0', float)
-    beta_1 = hp('beta_1', (ge(0), lt(1)), 'A float in [0,1)', float)
-    beta_2 = hp('beta_2', (ge(0), lt(1)), 'A float in [0,1)', float)
-    bias_lr_mult = hp('bias_lr_mult', gt(0), 'A float greater-than 0', float)
-    bias_wd_mult = hp('bias_wd_mult', ge(0), 'A float greater-than or equal to 0', float)
-    use_lr_scheduler = hp('use_lr_scheduler', (), 'A boolean', bool)
-    lr_scheduler_step = hp('lr_scheduler_step', gt(0), 'An integer greater-than 0', int)
-    lr_scheduler_factor = hp('lr_scheduler_factor', (gt(0), lt(1)), 'A float in (0,1)', float)
-    lr_scheduler_minimum_lr = hp('lr_scheduler_minimum_lr', gt(0), 'A float greater-than 0', float)
-    normalize_data = hp('normalize_data', (), 'A boolean', bool)
-    normalize_label = hp('normalize_label', (), 'A boolean', bool)
-    unbias_data = hp('unbias_data', (), 'A boolean', bool)
-    unbias_label = hp('unbias_label', (), 'A boolean', bool)
-    num_point_for_scaler = hp('num_point_for_scaler', gt(0), 'An integer greater-than 0', int)
-    margin = hp('margin', ge(0), 'A float greater-than or equal to 0', float)
-    quantile = hp('quantile', (gt(0), lt(1)), 'A float in (0,1)', float)
-    loss_insensitivity = hp('loss_insensitivity', gt(0), 'A float greater-than 0', float)
-    huber_delta = hp('huber_delta', ge(0), 'A float greater-than or equal to 0', float)
-    early_stopping_patience = hp('early_stopping_patience', gt(0), 'An integer greater-than 0', int)
-    early_stopping_tolerance = hp('early_stopping_tolerance', gt(0), 'A float greater-than 0', float)
-    num_classes = hp('num_classes', (gt(0), le(1000000)), 'An integer in [1,1000000]', int)
-    accuracy_top_k = hp('accuracy_top_k', (gt(0), le(1000000)), 'An integer in [1,1000000]', int)
-    f_beta = hp('f_beta', gt(0), 'A float greater-than 0', float)
-    balance_multiclass_weights = hp('balance_multiclass_weights', (), 'A boolean', bool)
+    binary_classifier_model_selection_criteria = hp(
+        "binary_classifier_model_selection_criteria",
+        isin(
+            "accuracy",
+            "f1",
+            "f_beta",
+            "precision_at_target_recall",
+            "recall_at_target_precision",
+            "cross_entropy_loss",
+            "loss_function",
+        ),
+        data_type=str,
+    )
+    target_recall = hp("target_recall", (gt(0), lt(1)), "A float in (0,1)", float)
+    target_precision = hp("target_precision", (gt(0), lt(1)), "A float in (0,1)", float)
+    positive_example_weight_mult = hp(
+        "positive_example_weight_mult", (), "A float greater than 0 or 'auto' or 'balanced'", str
+    )
+    epochs = hp("epochs", gt(0), "An integer greater-than 0", int)
+    predictor_type = hp(
+        "predictor_type",
+        isin("binary_classifier", "regressor", "multiclass_classifier"),
+        'One of "binary_classifier" or "multiclass_classifier" or "regressor"',
+        str,
+    )
+    use_bias = hp("use_bias", (), "Either True or False", bool)
+    num_models = hp("num_models", gt(0), "An integer greater-than 0", int)
+    num_calibration_samples = hp("num_calibration_samples", gt(0), "An integer greater-than 0", int)
+    init_method = hp("init_method", isin("uniform", "normal"), 'One of "uniform" or "normal"', str)
+    init_scale = hp("init_scale", gt(0), "A float greater-than 0", float)
+    init_sigma = hp("init_sigma", gt(0), "A float greater-than 0", float)
+    init_bias = hp("init_bias", (), "A number", float)
+    optimizer = hp(
+        "optimizer",
+        isin("sgd", "adam", "rmsprop", "auto"),
+        'One of "sgd", "adam", "rmsprop" or "auto',
+        str,
+    )
+    loss = hp(
+        "loss",
+        isin(
+            "logistic",
+            "squared_loss",
+            "absolute_loss",
+            "hinge_loss",
+            "eps_insensitive_squared_loss",
+            "eps_insensitive_absolute_loss",
+            "quantile_loss",
+            "huber_loss",
+            "softmax_loss",
+            "auto",
+        ),
+        '"logistic", "squared_loss", "absolute_loss", "hinge_loss", "eps_insensitive_squared_loss", '
+        '"eps_insensitive_absolute_loss", "quantile_loss", "huber_loss", "softmax_loss" or "auto"',
+        str,
+    )
+    wd = hp("wd", ge(0), "A float greater-than or equal to 0", float)
+    l1 = hp("l1", ge(0), "A float greater-than or equal to 0", float)
+    momentum = hp("momentum", (ge(0), lt(1)), "A float in [0,1)", float)
+    learning_rate = hp("learning_rate", gt(0), "A float greater-than 0", float)
+    beta_1 = hp("beta_1", (ge(0), lt(1)), "A float in [0,1)", float)
+    beta_2 = hp("beta_2", (ge(0), lt(1)), "A float in [0,1)", float)
+    bias_lr_mult = hp("bias_lr_mult", gt(0), "A float greater-than 0", float)
+    bias_wd_mult = hp("bias_wd_mult", ge(0), "A float greater-than or equal to 0", float)
+    use_lr_scheduler = hp("use_lr_scheduler", (), "A boolean", bool)
+    lr_scheduler_step = hp("lr_scheduler_step", gt(0), "An integer greater-than 0", int)
+    lr_scheduler_factor = hp("lr_scheduler_factor", (gt(0), lt(1)), "A float in (0,1)", float)
+    lr_scheduler_minimum_lr = hp("lr_scheduler_minimum_lr", gt(0), "A float greater-than 0", float)
+    normalize_data = hp("normalize_data", (), "A boolean", bool)
+    normalize_label = hp("normalize_label", (), "A boolean", bool)
+    unbias_data = hp("unbias_data", (), "A boolean", bool)
+    unbias_label = hp("unbias_label", (), "A boolean", bool)
+    num_point_for_scaler = hp("num_point_for_scaler", gt(0), "An integer greater-than 0", int)
+    margin = hp("margin", ge(0), "A float greater-than or equal to 0", float)
+    quantile = hp("quantile", (gt(0), lt(1)), "A float in (0,1)", float)
+    loss_insensitivity = hp("loss_insensitivity", gt(0), "A float greater-than 0", float)
+    huber_delta = hp("huber_delta", ge(0), "A float greater-than or equal to 0", float)
+    early_stopping_patience = hp("early_stopping_patience", gt(0), "An integer greater-than 0", int)
+    early_stopping_tolerance = hp(
+        "early_stopping_tolerance", gt(0), "A float greater-than 0", float
+    )
+    num_classes = hp("num_classes", (gt(0), le(1000000)), "An integer in [1,1000000]", int)
+    accuracy_top_k = hp("accuracy_top_k", (gt(0), le(1000000)), "An integer in [1,1000000]", int)
+    f_beta = hp("f_beta", gt(0), "A float greater-than 0", float)
+    balance_multiclass_weights = hp("balance_multiclass_weights", (), "A boolean", bool)
 
-    def __init__(self, role, train_instance_count, train_instance_type, predictor_type,
-                 binary_classifier_model_selection_criteria=None, target_recall=None, target_precision=None,
-                 positive_example_weight_mult=None, epochs=None, use_bias=None, num_models=None,
-                 num_calibration_samples=None, init_method=None, init_scale=None, init_sigma=None, init_bias=None,
-                 optimizer=None, loss=None, wd=None, l1=None, momentum=None, learning_rate=None, beta_1=None,
-                 beta_2=None, bias_lr_mult=None, bias_wd_mult=None, use_lr_scheduler=None, lr_scheduler_step=None,
-                 lr_scheduler_factor=None, lr_scheduler_minimum_lr=None, normalize_data=None,
-                 normalize_label=None, unbias_data=None, unbias_label=None, num_point_for_scaler=None, margin=None,
-                 quantile=None, loss_insensitivity=None, huber_delta=None, early_stopping_patience=None,
-                 early_stopping_tolerance=None, num_classes=None, accuracy_top_k=None, f_beta=None,
-                 balance_multiclass_weights=None, **kwargs):
+    def __init__(
+        self,
+        role,
+        train_instance_count,
+        train_instance_type,
+        predictor_type,
+        binary_classifier_model_selection_criteria=None,
+        target_recall=None,
+        target_precision=None,
+        positive_example_weight_mult=None,
+        epochs=None,
+        use_bias=None,
+        num_models=None,
+        num_calibration_samples=None,
+        init_method=None,
+        init_scale=None,
+        init_sigma=None,
+        init_bias=None,
+        optimizer=None,
+        loss=None,
+        wd=None,
+        l1=None,
+        momentum=None,
+        learning_rate=None,
+        beta_1=None,
+        beta_2=None,
+        bias_lr_mult=None,
+        bias_wd_mult=None,
+        use_lr_scheduler=None,
+        lr_scheduler_step=None,
+        lr_scheduler_factor=None,
+        lr_scheduler_minimum_lr=None,
+        normalize_data=None,
+        normalize_label=None,
+        unbias_data=None,
+        unbias_label=None,
+        num_point_for_scaler=None,
+        margin=None,
+        quantile=None,
+        loss_insensitivity=None,
+        huber_delta=None,
+        early_stopping_patience=None,
+        early_stopping_tolerance=None,
+        num_classes=None,
+        accuracy_top_k=None,
+        f_beta=None,
+        balance_multiclass_weights=None,
+        **kwargs
+    ):
         """An :class:`Estimator` for binary classification and regression.
 
         Amazon SageMaker Linear Learner provides a solution for both classification and regression problems, allowing
@@ -199,7 +272,9 @@ class LinearLearner(AmazonAlgorithmEstimatorBase):
             the loss function. Only used when predictor_type is multiclass_classifier.
             **kwargs: base class keyword argument values.
         """
-        super(LinearLearner, self).__init__(role, train_instance_count, train_instance_type, **kwargs)
+        super(LinearLearner, self).__init__(
+            role, train_instance_count, train_instance_type, **kwargs
+        )
         self.predictor_type = predictor_type
         self.binary_classifier_model_selection_criteria = binary_classifier_model_selection_criteria
         self.target_recall = target_recall
@@ -243,9 +318,12 @@ class LinearLearner(AmazonAlgorithmEstimatorBase):
         self.f_beta = f_beta
         self.balance_multiclass_weights = balance_multiclass_weights
 
-        if self.predictor_type == 'multiclass_classifier' and (num_classes is None or num_classes < 3):
+        if self.predictor_type == "multiclass_classifier" and (
+            num_classes is None or num_classes < 3
+        ):
             raise ValueError(
-                "For predictor_type 'multiclass_classifier', 'num_classes' should be set to a value greater than 2.")
+                "For predictor_type 'multiclass_classifier', 'num_classes' should be set to a value greater than 2."
+            )
 
     def create_model(self, vpc_config_override=VPC_CONFIG_DEFAULT):
         """Return a :class:`~sagemaker.amazon.LinearLearnerModel` referencing the latest
@@ -257,26 +335,33 @@ class LinearLearner(AmazonAlgorithmEstimatorBase):
                 * 'Subnets' (list[str]): List of subnet ids.
                 * 'SecurityGroupIds' (list[str]): List of security group ids.
         """
-        return LinearLearnerModel(self.model_data, self.role, self.sagemaker_session,
-                                  vpc_config=self.get_vpc_config(vpc_config_override))
+        return LinearLearnerModel(
+            self.model_data,
+            self.role,
+            self.sagemaker_session,
+            vpc_config=self.get_vpc_config(vpc_config_override),
+        )
 
     def _prepare_for_training(self, records, mini_batch_size=None, job_name=None):
         num_records = None
         if isinstance(records, list):
             for record in records:
-                if record.channel == 'train':
+                if record.channel == "train":
                     num_records = record.num_records
                     break
             if num_records is None:
-                raise ValueError('Must provide train channel.')
+                raise ValueError("Must provide train channel.")
         else:
             num_records = records.num_records
 
         # mini_batch_size can't be greater than number of records or training job fails
-        default_mini_batch_size = min(self.DEFAULT_MINI_BATCH_SIZE,
-                                      max(1, int(num_records / self.train_instance_count)))
+        default_mini_batch_size = min(
+            self.DEFAULT_MINI_BATCH_SIZE, max(1, int(num_records / self.train_instance_count))
+        )
         mini_batch_size = mini_batch_size or default_mini_batch_size
-        super(LinearLearner, self)._prepare_for_training(records, mini_batch_size=mini_batch_size, job_name=job_name)
+        super(LinearLearner, self)._prepare_for_training(
+            records, mini_batch_size=mini_batch_size, job_name=job_name
+        )
 
 
 class LinearLearnerPredictor(RealTimePredictor):
@@ -292,9 +377,12 @@ class LinearLearnerPredictor(RealTimePredictor):
     key of the ``Record.label`` field."""
 
     def __init__(self, endpoint, sagemaker_session=None):
-        super(LinearLearnerPredictor, self).__init__(endpoint, sagemaker_session,
-                                                     serializer=numpy_to_record_serializer(),
-                                                     deserializer=record_deserializer())
+        super(LinearLearnerPredictor, self).__init__(
+            endpoint,
+            sagemaker_session,
+            serializer=numpy_to_record_serializer(),
+            deserializer=record_deserializer(),
+        )
 
 
 class LinearLearnerModel(Model):
@@ -303,9 +391,13 @@ class LinearLearnerModel(Model):
 
     def __init__(self, model_data, role, sagemaker_session=None, **kwargs):
         sagemaker_session = sagemaker_session or Session()
-        repo = '{}:{}'.format(LinearLearner.repo_name, LinearLearner.repo_version)
-        image = '{}/{}'.format(registry(sagemaker_session.boto_session.region_name), repo)
-        super(LinearLearnerModel, self).__init__(model_data, image, role,
-                                                 predictor_cls=LinearLearnerPredictor,
-                                                 sagemaker_session=sagemaker_session,
-                                                 **kwargs)
+        repo = "{}:{}".format(LinearLearner.repo_name, LinearLearner.repo_version)
+        image = "{}/{}".format(registry(sagemaker_session.boto_session.region_name), repo)
+        super(LinearLearnerModel, self).__init__(
+            model_data,
+            image,
+            role,
+            predictor_cls=LinearLearnerPredictor,
+            sagemaker_session=sagemaker_session,
+            **kwargs
+        )

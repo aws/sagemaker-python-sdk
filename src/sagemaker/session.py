@@ -29,17 +29,21 @@ from botocore.exceptions import ClientError
 import sagemaker.logs
 from sagemaker import vpc_utils
 from sagemaker.user_agent import prepend_user_agent
-from sagemaker.utils import name_from_image, secondary_training_status_changed, secondary_training_status_message
+from sagemaker.utils import (
+    name_from_image,
+    secondary_training_status_changed,
+    secondary_training_status_message,
+)
 
-LOGGER = logging.getLogger('sagemaker')
+LOGGER = logging.getLogger("sagemaker")
 
 _STATUS_CODE_TABLE = {
-    'COMPLETED': 'Completed',
-    'INPROGRESS': 'InProgress',
-    'FAILED': 'Failed',
-    'STOPPED': 'Stopped',
-    'STOPPING': 'Stopping',
-    'STARTING': 'Starting'
+    "COMPLETED": "Completed",
+    "INPROGRESS": "InProgress",
+    "FAILED": "Failed",
+    "STOPPED": "Stopped",
+    "STOPPING": "Stopping",
+    "STARTING": "Starting",
 }
 
 
@@ -78,9 +82,9 @@ class Session(object):
         """
         self._default_bucket = None
 
-        sagemaker_config_file = os.path.join(os.path.expanduser('~'), '.sagemaker', 'config.yaml')
+        sagemaker_config_file = os.path.join(os.path.expanduser("~"), ".sagemaker", "config.yaml")
         if os.path.exists(sagemaker_config_file):
-            self.config = yaml.load(open(sagemaker_config_file, 'r'))
+            self.config = yaml.load(open(sagemaker_config_file, "r"))
         else:
             self.config = None
 
@@ -96,16 +100,20 @@ class Session(object):
 
         self._region_name = self.boto_session.region_name
         if self._region_name is None:
-            raise ValueError('Must setup local AWS configuration with a region supported by SageMaker.')
+            raise ValueError(
+                "Must setup local AWS configuration with a region supported by SageMaker."
+            )
 
-        self.sagemaker_client = sagemaker_client or self.boto_session.client('sagemaker')
+        self.sagemaker_client = sagemaker_client or self.boto_session.client("sagemaker")
         prepend_user_agent(self.sagemaker_client)
 
         if sagemaker_runtime_client is not None:
             self.sagemaker_runtime_client = sagemaker_runtime_client
         else:
             config = botocore.config.Config(read_timeout=80)
-            self.sagemaker_runtime_client = self.boto_session.client('runtime.sagemaker', config=config)
+            self.sagemaker_runtime_client = self.boto_session.client(
+                "runtime.sagemaker", config=config
+            )
 
         prepend_user_agent(self.sagemaker_runtime_client)
 
@@ -115,7 +123,7 @@ class Session(object):
     def boto_region_name(self):
         return self._region_name
 
-    def upload_data(self, path, bucket=None, key_prefix='data', extra_args=None):
+    def upload_data(self, path, bucket=None, key_prefix="data", extra_args=None):
         """Upload local file or directory to S3.
 
         If a single file is specified for upload, the resulting S3 object key is ``{key_prefix}/{filename}``
@@ -149,27 +157,29 @@ class Session(object):
             for dirpath, _, filenames in os.walk(path):
                 for name in filenames:
                     local_path = os.path.join(dirpath, name)
-                    s3_relative_prefix = '' if path == dirpath else os.path.relpath(dirpath, start=path) + '/'
-                    s3_key = '{}/{}{}'.format(key_prefix, s3_relative_prefix, name)
+                    s3_relative_prefix = (
+                        "" if path == dirpath else os.path.relpath(dirpath, start=path) + "/"
+                    )
+                    s3_key = "{}/{}{}".format(key_prefix, s3_relative_prefix, name)
                     files.append((local_path, s3_key))
         else:
             _, name = os.path.split(path)
-            s3_key = '{}/{}'.format(key_prefix, name)
+            s3_key = "{}/{}".format(key_prefix, name)
             files.append((path, s3_key))
             key_suffix = name
 
         bucket = bucket or self.default_bucket()
-        s3 = self.boto_session.resource('s3')
+        s3 = self.boto_session.resource("s3")
 
         for local_path, s3_key in files:
             s3.Object(bucket, s3_key).upload_file(local_path, ExtraArgs=extra_args)
 
-        s3_uri = 's3://{}/{}'.format(bucket, key_prefix)
+        s3_uri = "s3://{}/{}".format(bucket, key_prefix)
         # If a specific file was used as input (instead of a directory), we return the full S3 key
         # of the uploaded object. This prevents unintentionally using other files under the same prefix
         # during training.
         if key_suffix:
-            s3_uri = '{}/{}'.format(s3_uri, key_suffix)
+            s3_uri = "{}/{}".format(s3_uri, key_suffix)
         return s3_uri
 
     def default_bucket(self):
@@ -181,30 +191,34 @@ class Session(object):
         if self._default_bucket:
             return self._default_bucket
 
-        account = self.boto_session.client('sts').get_caller_identity()['Account']
+        account = self.boto_session.client("sts").get_caller_identity()["Account"]
         region = self.boto_session.region_name
-        default_bucket = 'sagemaker-{}-{}'.format(region, account)
+        default_bucket = "sagemaker-{}-{}".format(region, account)
 
-        s3 = self.boto_session.resource('s3')
+        s3 = self.boto_session.resource("s3")
         try:
             # 'us-east-1' cannot be specified because it is the default region:
             # https://github.com/boto/boto3/issues/125
-            if region == 'us-east-1':
+            if region == "us-east-1":
                 s3.create_bucket(Bucket=default_bucket)
             else:
-                s3.create_bucket(Bucket=default_bucket, CreateBucketConfiguration={'LocationConstraint': region})
+                s3.create_bucket(
+                    Bucket=default_bucket, CreateBucketConfiguration={"LocationConstraint": region}
+                )
 
-            LOGGER.info('Created S3 bucket: {}'.format(default_bucket))
+            LOGGER.info("Created S3 bucket: {}".format(default_bucket))
         except ClientError as e:
-            error_code = e.response['Error']['Code']
-            message = e.response['Error']['Message']
+            error_code = e.response["Error"]["Code"]
+            message = e.response["Error"]["Message"]
 
-            if error_code == 'BucketAlreadyOwnedByYou':
+            if error_code == "BucketAlreadyOwnedByYou":
                 pass
-            elif error_code == 'OperationAborted' and 'conflicting conditional operation' in message:
+            elif (
+                error_code == "OperationAborted" and "conflicting conditional operation" in message
+            ):
                 # If this bucket is already being concurrently created, we don't need to create it again.
                 pass
-            elif error_code == 'TooManyBuckets':
+            elif error_code == "TooManyBuckets":
                 # Succeed if the default bucket exists
                 s3.meta.client.head_bucket(Bucket=default_bucket)
             else:
@@ -214,10 +228,24 @@ class Session(object):
 
         return self._default_bucket
 
-    def train(self, input_mode, input_config, role, job_name, output_config,  # noqa: C901
-              resource_config, vpc_config, hyperparameters, stop_condition, tags, metric_definitions,
-              enable_network_isolation=False, image=None, algorithm_arn=None,
-              encrypt_inter_container_traffic=False):
+    def train(  # noqa: C901
+        self,
+        input_mode,
+        input_config,
+        role,
+        job_name,
+        output_config,
+        resource_config,
+        vpc_config,
+        hyperparameters,
+        stop_condition,
+        tags,
+        metric_definitions,
+        enable_network_isolation=False,
+        image=None,
+        algorithm_arn=None,
+        encrypt_inter_container_traffic=False,
+    ):
         """Create an Amazon SageMaker training job.
 
         Args:
@@ -271,57 +299,57 @@ class Session(object):
         """
 
         train_request = {
-            'AlgorithmSpecification': {
-                'TrainingInputMode': input_mode
-            },
-            'OutputDataConfig': output_config,
-            'TrainingJobName': job_name,
-            'StoppingCondition': stop_condition,
-            'ResourceConfig': resource_config,
-            'RoleArn': role,
+            "AlgorithmSpecification": {"TrainingInputMode": input_mode},
+            "OutputDataConfig": output_config,
+            "TrainingJobName": job_name,
+            "StoppingCondition": stop_condition,
+            "ResourceConfig": resource_config,
+            "RoleArn": role,
         }
 
         if image and algorithm_arn:
-            raise ValueError('image and algorithm_arn are mutually exclusive.'
-                             'Both were provided: image: %s algorithm_arn: %s' % (image, algorithm_arn))
+            raise ValueError(
+                "image and algorithm_arn are mutually exclusive."
+                "Both were provided: image: %s algorithm_arn: %s" % (image, algorithm_arn)
+            )
 
         if image is None and algorithm_arn is None:
-            raise ValueError('either image or algorithm_arn is required. None was provided.')
+            raise ValueError("either image or algorithm_arn is required. None was provided.")
 
         if image is not None:
-            train_request['AlgorithmSpecification']['TrainingImage'] = image
+            train_request["AlgorithmSpecification"]["TrainingImage"] = image
 
         if algorithm_arn is not None:
-            train_request['AlgorithmSpecification']['AlgorithmName'] = algorithm_arn
+            train_request["AlgorithmSpecification"]["AlgorithmName"] = algorithm_arn
 
         if input_config is not None:
-            train_request['InputDataConfig'] = input_config
+            train_request["InputDataConfig"] = input_config
 
         if metric_definitions is not None:
-            train_request['AlgorithmSpecification']['MetricDefinitions'] = metric_definitions
+            train_request["AlgorithmSpecification"]["MetricDefinitions"] = metric_definitions
 
         if hyperparameters and len(hyperparameters) > 0:
-            train_request['HyperParameters'] = hyperparameters
+            train_request["HyperParameters"] = hyperparameters
 
         if tags is not None:
-            train_request['Tags'] = tags
+            train_request["Tags"] = tags
 
         if vpc_config is not None:
-            train_request['VpcConfig'] = vpc_config
+            train_request["VpcConfig"] = vpc_config
 
         if enable_network_isolation:
-            train_request['EnableNetworkIsolation'] = enable_network_isolation
+            train_request["EnableNetworkIsolation"] = enable_network_isolation
 
         if encrypt_inter_container_traffic:
-            train_request['EnableInterContainerTrafficEncryption'] = \
-                encrypt_inter_container_traffic
+            train_request["EnableInterContainerTrafficEncryption"] = encrypt_inter_container_traffic
 
-        LOGGER.info('Creating training-job with name: {}'.format(job_name))
-        LOGGER.debug('train request: {}'.format(json.dumps(train_request, indent=4)))
+        LOGGER.info("Creating training-job with name: {}".format(job_name))
+        LOGGER.debug("train request: {}".format(json.dumps(train_request, indent=4)))
         self.sagemaker_client.create_training_job(**train_request)
 
-    def compile_model(self, input_model_config, output_model_config, role,
-                      job_name, stop_condition, tags):
+    def compile_model(
+        self, input_model_config, output_model_config, role, job_name, stop_condition, tags
+    ):
         """Create an Amazon SageMaker Neo compilation job.
 
         Args:
@@ -341,25 +369,45 @@ class Session(object):
         """
 
         compilation_job_request = {
-            'InputConfig': input_model_config,
-            'OutputConfig': output_model_config,
-            'RoleArn': role,
-            'StoppingCondition': stop_condition,
-            'CompilationJobName': job_name
+            "InputConfig": input_model_config,
+            "OutputConfig": output_model_config,
+            "RoleArn": role,
+            "StoppingCondition": stop_condition,
+            "CompilationJobName": job_name,
         }
 
         if tags is not None:
-            compilation_job_request['Tags'] = tags
+            compilation_job_request["Tags"] = tags
 
-        LOGGER.info('Creating compilation-job with name: {}'.format(job_name))
+        LOGGER.info("Creating compilation-job with name: {}".format(job_name))
         self.sagemaker_client.create_compilation_job(**compilation_job_request)
 
-    def tune(self, job_name, strategy, objective_type, objective_metric_name,
-             max_jobs, max_parallel_jobs, parameter_ranges,
-             static_hyperparameters, input_mode, metric_definitions,
-             role, input_config, output_config, resource_config, stop_condition, tags,
-             warm_start_config, enable_network_isolation=False, image=None, algorithm_arn=None,
-             early_stopping_type='Off', encrypt_inter_container_traffic=False, vpc_config=None):
+    def tune(
+        self,
+        job_name,
+        strategy,
+        objective_type,
+        objective_metric_name,
+        max_jobs,
+        max_parallel_jobs,
+        parameter_ranges,
+        static_hyperparameters,
+        input_mode,
+        metric_definitions,
+        role,
+        input_config,
+        output_config,
+        resource_config,
+        stop_condition,
+        tags,
+        warm_start_config,
+        enable_network_isolation=False,
+        image=None,
+        algorithm_arn=None,
+        early_stopping_type="Off",
+        encrypt_inter_container_traffic=False,
+        vpc_config=None,
+    ):
         """Create an Amazon SageMaker hyperparameter tuning job
 
         Args:
@@ -419,62 +467,62 @@ class Session(object):
 
         """
         tune_request = {
-            'HyperParameterTuningJobName': job_name,
-            'HyperParameterTuningJobConfig': {
-                'Strategy': strategy,
-                'HyperParameterTuningJobObjective': {
-                    'Type': objective_type,
-                    'MetricName': objective_metric_name,
+            "HyperParameterTuningJobName": job_name,
+            "HyperParameterTuningJobConfig": {
+                "Strategy": strategy,
+                "HyperParameterTuningJobObjective": {
+                    "Type": objective_type,
+                    "MetricName": objective_metric_name,
                 },
-                'ResourceLimits': {
-                    'MaxNumberOfTrainingJobs': max_jobs,
-                    'MaxParallelTrainingJobs': max_parallel_jobs,
+                "ResourceLimits": {
+                    "MaxNumberOfTrainingJobs": max_jobs,
+                    "MaxParallelTrainingJobs": max_parallel_jobs,
                 },
-                'ParameterRanges': parameter_ranges,
-                'TrainingJobEarlyStoppingType': early_stopping_type,
+                "ParameterRanges": parameter_ranges,
+                "TrainingJobEarlyStoppingType": early_stopping_type,
             },
-            'TrainingJobDefinition': {
-                'StaticHyperParameters': static_hyperparameters,
-                'RoleArn': role,
-                'OutputDataConfig': output_config,
-                'ResourceConfig': resource_config,
-                'StoppingCondition': stop_condition,
-            }
+            "TrainingJobDefinition": {
+                "StaticHyperParameters": static_hyperparameters,
+                "RoleArn": role,
+                "OutputDataConfig": output_config,
+                "ResourceConfig": resource_config,
+                "StoppingCondition": stop_condition,
+            },
         }
 
-        algorithm_spec = {
-            'TrainingInputMode': input_mode
-        }
+        algorithm_spec = {"TrainingInputMode": input_mode}
         if algorithm_arn:
-            algorithm_spec['AlgorithmName'] = algorithm_arn
+            algorithm_spec["AlgorithmName"] = algorithm_arn
         else:
-            algorithm_spec['TrainingImage'] = image
+            algorithm_spec["TrainingImage"] = image
 
-        tune_request['TrainingJobDefinition']['AlgorithmSpecification'] = algorithm_spec
+        tune_request["TrainingJobDefinition"]["AlgorithmSpecification"] = algorithm_spec
 
         if input_config is not None:
-            tune_request['TrainingJobDefinition']['InputDataConfig'] = input_config
+            tune_request["TrainingJobDefinition"]["InputDataConfig"] = input_config
 
         if warm_start_config:
-            tune_request['WarmStartConfig'] = warm_start_config
+            tune_request["WarmStartConfig"] = warm_start_config
 
         if metric_definitions is not None:
-            tune_request['TrainingJobDefinition']['AlgorithmSpecification']['MetricDefinitions'] = metric_definitions
+            tune_request["TrainingJobDefinition"]["AlgorithmSpecification"][
+                "MetricDefinitions"
+            ] = metric_definitions
 
         if tags is not None:
-            tune_request['Tags'] = tags
+            tune_request["Tags"] = tags
 
         if vpc_config is not None:
-            tune_request['TrainingJobDefinition']['VpcConfig'] = vpc_config
+            tune_request["TrainingJobDefinition"]["VpcConfig"] = vpc_config
 
         if enable_network_isolation:
-            tune_request['TrainingJobDefinition']['EnableNetworkIsolation'] = True
+            tune_request["TrainingJobDefinition"]["EnableNetworkIsolation"] = True
 
         if encrypt_inter_container_traffic:
-            tune_request['TrainingJobDefinition']['EnableInterContainerTrafficEncryption'] = True
+            tune_request["TrainingJobDefinition"]["EnableInterContainerTrafficEncryption"] = True
 
-        LOGGER.info('Creating hyperparameter tuning job with name: {}'.format(job_name))
-        LOGGER.debug('tune request: {}'.format(json.dumps(tune_request, indent=4)))
+        LOGGER.info("Creating hyperparameter tuning job with name: {}".format(job_name))
+        LOGGER.debug("tune request: {}".format(json.dumps(tune_request, indent=4)))
         self.sagemaker_client.create_hyper_parameter_tuning_job(**tune_request)
 
     def stop_tuning_job(self, name):
@@ -487,19 +535,35 @@ class Session(object):
             ClientError: If an error occurs while trying to stop the hyperparameter tuning job.
         """
         try:
-            LOGGER.info('Stopping tuning job: {}'.format(name))
+            LOGGER.info("Stopping tuning job: {}".format(name))
             self.sagemaker_client.stop_hyper_parameter_tuning_job(HyperParameterTuningJobName=name)
         except ClientError as e:
-            error_code = e.response['Error']['Code']
+            error_code = e.response["Error"]["Code"]
             # allow to pass if the job already stopped
-            if error_code == 'ValidationException':
-                LOGGER.info('Tuning job: {} is already stopped or not running.'.format(name))
+            if error_code == "ValidationException":
+                LOGGER.info("Tuning job: {} is already stopped or not running.".format(name))
             else:
-                LOGGER.error('Error occurred while attempting to stop tuning job: {}. Please try again.'.format(name))
+                LOGGER.error(
+                    "Error occurred while attempting to stop tuning job: {}. Please try again.".format(
+                        name
+                    )
+                )
                 raise
 
-    def transform(self, job_name, model_name, strategy, max_concurrent_transforms, max_payload, env,
-                  input_config, output_config, resource_config, tags, data_processing):
+    def transform(
+        self,
+        job_name,
+        model_name,
+        strategy,
+        max_concurrent_transforms,
+        max_payload,
+        env,
+        input_config,
+        output_config,
+        resource_config,
+        tags,
+        data_processing,
+    ):
         """Create an Amazon SageMaker transform job.
 
         Args:
@@ -519,38 +583,45 @@ class Session(object):
                                    For more, see https://docs.aws.amazon.com/sagemaker/latest/dg/API_Tag.html.
         """
         transform_request = {
-            'TransformJobName': job_name,
-            'ModelName': model_name,
-            'TransformInput': input_config,
-            'TransformOutput': output_config,
-            'TransformResources': resource_config,
+            "TransformJobName": job_name,
+            "ModelName": model_name,
+            "TransformInput": input_config,
+            "TransformOutput": output_config,
+            "TransformResources": resource_config,
         }
 
         if strategy is not None:
-            transform_request['BatchStrategy'] = strategy
+            transform_request["BatchStrategy"] = strategy
 
         if max_concurrent_transforms is not None:
-            transform_request['MaxConcurrentTransforms'] = max_concurrent_transforms
+            transform_request["MaxConcurrentTransforms"] = max_concurrent_transforms
 
         if max_payload is not None:
-            transform_request['MaxPayloadInMB'] = max_payload
+            transform_request["MaxPayloadInMB"] = max_payload
 
         if env is not None:
-            transform_request['Environment'] = env
+            transform_request["Environment"] = env
 
         if tags is not None:
-            transform_request['Tags'] = tags
+            transform_request["Tags"] = tags
 
         if data_processing is not None:
-            transform_request['DataProcessing'] = data_processing
+            transform_request["DataProcessing"] = data_processing
 
-        LOGGER.info('Creating transform job with name: {}'.format(job_name))
-        LOGGER.debug('Transform request: {}'.format(json.dumps(transform_request, indent=4)))
+        LOGGER.info("Creating transform job with name: {}".format(job_name))
+        LOGGER.debug("Transform request: {}".format(json.dumps(transform_request, indent=4)))
         self.sagemaker_client.create_transform_job(**transform_request)
 
-    def create_model(self, name, role, container_defs, vpc_config=None,
-                     enable_network_isolation=False, primary_container=None,
-                     tags=None):
+    def create_model(
+        self,
+        name,
+        role,
+        container_defs,
+        vpc_config=None,
+        enable_network_isolation=False,
+        primary_container=None,
+        tags=None,
+    ):
         """Create an Amazon SageMaker ``Model``.
         Specify the S3 location of the model artifacts and Docker image containing
         the inference code. Amazon SageMaker uses this information to deploy the
@@ -586,10 +657,10 @@ class Session(object):
             str: Name of the Amazon SageMaker ``Model`` created.
         """
         if container_defs and primary_container:
-            raise ValueError('Both container_defs and primary_container can not be passed as input')
+            raise ValueError("Both container_defs and primary_container can not be passed as input")
 
         if primary_container:
-            msg = 'primary_container is going to be deprecated in a future release. Please use container_defs instead.'
+            msg = "primary_container is going to be deprecated in a future release. Please use container_defs instead."
             warnings.warn(msg, DeprecationWarning)
             container_defs = primary_container
 
@@ -600,36 +671,46 @@ class Session(object):
         else:
             container_definition = _expand_container_def(container_defs)
 
-        create_model_request = _create_model_request(name=name,
-                                                     role=role,
-                                                     container_def=container_definition,
-                                                     tags=tags)
+        create_model_request = _create_model_request(
+            name=name, role=role, container_def=container_definition, tags=tags
+        )
 
         if vpc_config:
-            create_model_request['VpcConfig'] = vpc_config
+            create_model_request["VpcConfig"] = vpc_config
 
         if enable_network_isolation:
-            create_model_request['EnableNetworkIsolation'] = True
+            create_model_request["EnableNetworkIsolation"] = True
 
-        LOGGER.info('Creating model with name: {}'.format(name))
-        LOGGER.debug('CreateModel request: {}'.format(json.dumps(create_model_request, indent=4)))
+        LOGGER.info("Creating model with name: {}".format(name))
+        LOGGER.debug("CreateModel request: {}".format(json.dumps(create_model_request, indent=4)))
 
         try:
             self.sagemaker_client.create_model(**create_model_request)
         except ClientError as e:
-            error_code = e.response['Error']['Code']
-            message = e.response['Error']['Message']
+            error_code = e.response["Error"]["Code"]
+            message = e.response["Error"]["Message"]
 
-            if error_code == 'ValidationException' and 'Cannot create already existing model' in message:
-                LOGGER.warning('Using already existing model: {}'.format(name))
+            if (
+                error_code == "ValidationException"
+                and "Cannot create already existing model" in message
+            ):
+                LOGGER.warning("Using already existing model: {}".format(name))
             else:
                 raise
 
         return name
 
-    def create_model_from_job(self, training_job_name, name=None, role=None, primary_container_image=None,
-                              model_data_url=None, env=None, vpc_config_override=vpc_utils.VPC_CONFIG_DEFAULT,
-                              tags=None):
+    def create_model_from_job(
+        self,
+        training_job_name,
+        name=None,
+        role=None,
+        primary_container_image=None,
+        model_data_url=None,
+        env=None,
+        vpc_config_override=vpc_utils.VPC_CONFIG_DEFAULT,
+        tags=None,
+    ):
         """Create an Amazon SageMaker ``Model`` from a SageMaker Training Job.
 
         Args:
@@ -653,14 +734,17 @@ class Session(object):
         Returns:
             str: The name of the created ``Model``.
         """
-        training_job = self.sagemaker_client.describe_training_job(TrainingJobName=training_job_name)
+        training_job = self.sagemaker_client.describe_training_job(
+            TrainingJobName=training_job_name
+        )
         name = name or training_job_name
-        role = role or training_job['RoleArn']
+        role = role or training_job["RoleArn"]
         env = env or {}
         primary_container = container_def(
-            primary_container_image or training_job['AlgorithmSpecification']['TrainingImage'],
-            model_data_url=model_data_url or training_job['ModelArtifacts']['S3ModelArtifacts'],
-            env=env)
+            primary_container_image or training_job["AlgorithmSpecification"]["TrainingImage"],
+            model_data_url=model_data_url or training_job["ModelArtifacts"]["S3ModelArtifacts"],
+            env=env,
+        )
         vpc_config = _vpc_config_from_training_job(training_job, vpc_config_override)
         return self.create_model(name, role, primary_container, vpc_config=vpc_config, tags=tags)
 
@@ -674,29 +758,21 @@ class Session(object):
             model_data (str): s3 URI to the model artifacts produced by training
         """
         request = {
-            'ModelPackageName': name,
-            'ModelPackageDescription': description,
-            'SourceAlgorithmSpecification': {
-                'SourceAlgorithms': [
-                    {
-                        'AlgorithmName': algorithm_arn,
-                        'ModelDataUrl': model_data
-                    }
-                ]
-            }
+            "ModelPackageName": name,
+            "ModelPackageDescription": description,
+            "SourceAlgorithmSpecification": {
+                "SourceAlgorithms": [{"AlgorithmName": algorithm_arn, "ModelDataUrl": model_data}]
+            },
         }
         try:
-            LOGGER.info('Creating model package with name: {}'.format(name))
+            LOGGER.info("Creating model package with name: {}".format(name))
             self.sagemaker_client.create_model_package(**request)
         except ClientError as e:
-            error_code = e.response['Error']['Code']
-            message = e.response['Error']['Message']
+            error_code = e.response["Error"]["Code"]
+            message = e.response["Error"]["Message"]
 
-            if (
-                    error_code == 'ValidationException'
-                    and 'ModelPackage already exists' in message
-            ):
-                LOGGER.warning('Using already existing model package: {}'.format(name))
+            if error_code == "ValidationException" and "ModelPackage already exists" in message:
+                LOGGER.warning("Using already existing model package: {}".format(name))
             else:
                 raise
 
@@ -710,18 +786,30 @@ class Session(object):
         Returns:
             dict: Return value from the ``DescribeEndpoint`` API.
         """
-        desc = _wait_until(lambda: _create_model_package_status(self.sagemaker_client, model_package_name),
-                           poll)
-        status = desc['ModelPackageStatus']
+        desc = _wait_until(
+            lambda: _create_model_package_status(self.sagemaker_client, model_package_name), poll
+        )
+        status = desc["ModelPackageStatus"]
 
-        if status != 'Completed':
-            reason = desc.get('FailureReason', None)
-            raise ValueError('Error creating model package {}: {} Reason: {}'.format(
-                model_package_name, status, reason))
+        if status != "Completed":
+            reason = desc.get("FailureReason", None)
+            raise ValueError(
+                "Error creating model package {}: {} Reason: {}".format(
+                    model_package_name, status, reason
+                )
+            )
         return desc
 
-    def create_endpoint_config(self, name, model_name, initial_instance_count, instance_type,
-                               accelerator_type=None, tags=None, kms_key=None):
+    def create_endpoint_config(
+        self,
+        name,
+        model_name,
+        initial_instance_count,
+        instance_type,
+        accelerator_type=None,
+        tags=None,
+        kms_key=None,
+    ):
         """Create an Amazon SageMaker endpoint configuration.
 
         The endpoint configuration identifies the Amazon SageMaker model (created using the
@@ -745,23 +833,27 @@ class Session(object):
         Returns:
             str: Name of the endpoint point configuration created.
         """
-        LOGGER.info('Creating endpoint-config with name {}'.format(name))
+        LOGGER.info("Creating endpoint-config with name {}".format(name))
 
         tags = tags or []
 
         request = {
-            'EndpointConfigName': name,
-            'ProductionVariants': [
-                production_variant(model_name, instance_type, initial_instance_count,
-                                   accelerator_type=accelerator_type)
+            "EndpointConfigName": name,
+            "ProductionVariants": [
+                production_variant(
+                    model_name,
+                    instance_type,
+                    initial_instance_count,
+                    accelerator_type=accelerator_type,
+                )
             ],
         }
 
         if tags is not None:
-            request['Tags'] = tags
+            request["Tags"] = tags
 
         if kms_key is not None:
-            request['KmsKeyId'] = kms_key
+            request["KmsKeyId"] = kms_key
 
         self.sagemaker_client.create_endpoint_config(**request)
         return name
@@ -780,11 +872,13 @@ class Session(object):
         Returns:
             str: Name of the Amazon SageMaker ``Endpoint`` created.
         """
-        LOGGER.info('Creating endpoint with name {}'.format(endpoint_name))
+        LOGGER.info("Creating endpoint with name {}".format(endpoint_name))
 
         tags = tags or []
 
-        self.sagemaker_client.create_endpoint(EndpointName=endpoint_name, EndpointConfigName=config_name, Tags=tags)
+        self.sagemaker_client.create_endpoint(
+            EndpointName=endpoint_name, EndpointConfigName=config_name, Tags=tags
+        )
         if wait:
             self.wait_for_endpoint(endpoint_name)
         return endpoint_name
@@ -801,12 +895,18 @@ class Session(object):
         Returns:
             str: Name of the Amazon SageMaker ``Endpoint`` being updated.
         """
-        if not _deployment_entity_exists(lambda: self.sagemaker_client.describe_endpoint(EndpointName=endpoint_name)):
-            raise ValueError('Endpoint with name "{}" does not exist; please use an existing endpoint name'
-                             .format(endpoint_name))
+        if not _deployment_entity_exists(
+            lambda: self.sagemaker_client.describe_endpoint(EndpointName=endpoint_name)
+        ):
+            raise ValueError(
+                'Endpoint with name "{}" does not exist; please use an existing endpoint name'.format(
+                    endpoint_name
+                )
+            )
 
-        self.sagemaker_client.update_endpoint(EndpointName=endpoint_name,
-                                              EndpointConfigName=endpoint_config_name)
+        self.sagemaker_client.update_endpoint(
+            EndpointName=endpoint_name, EndpointConfigName=endpoint_config_name
+        )
         return endpoint_name
 
     def delete_endpoint(self, endpoint_name):
@@ -815,7 +915,7 @@ class Session(object):
         Args:
             endpoint_name (str): Name of the Amazon SageMaker ``Endpoint`` to delete.
         """
-        LOGGER.info('Deleting endpoint with name: {}'.format(endpoint_name))
+        LOGGER.info("Deleting endpoint with name: {}".format(endpoint_name))
         self.sagemaker_client.delete_endpoint(EndpointName=endpoint_name)
 
     def delete_endpoint_config(self, endpoint_config_name):
@@ -824,7 +924,7 @@ class Session(object):
         Args:
             endpoint_config_name (str): Name of the Amazon SageMaker endpoint configuration to delete.
         """
-        LOGGER.info('Deleting endpoint configuration with name: {}'.format(endpoint_config_name))
+        LOGGER.info("Deleting endpoint configuration with name: {}".format(endpoint_config_name))
         self.sagemaker_client.delete_endpoint_config(EndpointConfigName=endpoint_config_name)
 
     def delete_model(self, model_name):
@@ -834,7 +934,7 @@ class Session(object):
             model_name (str): Name of the Amazon SageMaker model to delete.
 
         """
-        LOGGER.info('Deleting model with name: {}'.format(model_name))
+        LOGGER.info("Deleting model with name: {}".format(model_name))
         self.sagemaker_client.delete_model(ModelName=model_name)
 
     def wait_for_job(self, job, poll=5):
@@ -850,9 +950,10 @@ class Session(object):
         Raises:
             ValueError: If the training job fails.
         """
-        desc = _wait_until_training_done(lambda last_desc: _train_done(self.sagemaker_client, job, last_desc),
-                                         None, poll)
-        self._check_job_status(job, desc, 'TrainingJobStatus')
+        desc = _wait_until_training_done(
+            lambda last_desc: _train_done(self.sagemaker_client, job, last_desc), None, poll
+        )
+        self._check_job_status(job, desc, "TrainingJobStatus")
         return desc
 
     def wait_for_compilation_job(self, job, poll=5):
@@ -869,7 +970,7 @@ class Session(object):
             ValueError: If the compilation job fails.
         """
         desc = _wait_until(lambda: _compilation_job_status(self.sagemaker_client, job), poll)
-        self._check_job_status(job, desc, 'CompilationJobStatus')
+        self._check_job_status(job, desc, "CompilationJobStatus")
         return desc
 
     def wait_for_tuning_job(self, job, poll=5):
@@ -886,7 +987,7 @@ class Session(object):
             ValueError: If the hyperparameter tuning job fails.
         """
         desc = _wait_until(lambda: _tuning_job_status(self.sagemaker_client, job), poll)
-        self._check_job_status(job, desc, 'HyperParameterTuningJobStatus')
+        self._check_job_status(job, desc, "HyperParameterTuningJobStatus")
         return desc
 
     def wait_for_transform_job(self, job, poll=5):
@@ -903,7 +1004,7 @@ class Session(object):
             ValueError: If the transform job fails.
         """
         desc = _wait_until(lambda: _transform_job_status(self.sagemaker_client, job), poll)
-        self._check_job_status(job, desc, 'TransformJobStatus')
+        self._check_job_status(job, desc, "TransformJobStatus")
         return desc
 
     def _check_job_status(self, job, desc, status_key_name):
@@ -922,10 +1023,10 @@ class Session(object):
         # If the status is capital case, then convert it to Camel case
         status = _STATUS_CODE_TABLE.get(status, status)
 
-        if status != 'Completed' and status != 'Stopped':
-            reason = desc.get('FailureReason', '(No reason provided)')
-            job_type = status_key_name.replace('JobStatus', ' job')
-            raise ValueError('Error for {} {}: {} Reason: {}'.format(job_type, job, status, reason))
+        if status != "Completed" and status != "Stopped":
+            reason = desc.get("FailureReason", "(No reason provided)")
+            job_type = status_key_name.replace("JobStatus", " job")
+            raise ValueError("Error for {} {}: {} Reason: {}".format(job_type, job, status, reason))
 
     def wait_for_endpoint(self, endpoint, poll=5):
         """Wait for an Amazon SageMaker endpoint deployment to complete.
@@ -938,17 +1039,28 @@ class Session(object):
             dict: Return value from the ``DescribeEndpoint`` API.
         """
         desc = _wait_until(lambda: _deploy_done(self.sagemaker_client, endpoint), poll)
-        status = desc['EndpointStatus']
+        status = desc["EndpointStatus"]
 
-        if status != 'InService':
-            reason = desc.get('FailureReason', None)
-            raise ValueError('Error hosting endpoint {}: {} Reason: {}'.format(endpoint, status, reason))
+        if status != "InService":
+            reason = desc.get("FailureReason", None)
+            raise ValueError(
+                "Error hosting endpoint {}: {} Reason: {}".format(endpoint, status, reason)
+            )
         return desc
 
-    def endpoint_from_job(self, job_name, initial_instance_count, instance_type,
-                          deployment_image=None, name=None, role=None, wait=True,
-                          model_environment_vars=None, vpc_config_override=vpc_utils.VPC_CONFIG_DEFAULT,
-                          accelerator_type=None):
+    def endpoint_from_job(
+        self,
+        job_name,
+        initial_instance_count,
+        instance_type,
+        deployment_image=None,
+        name=None,
+        role=None,
+        wait=True,
+        model_environment_vars=None,
+        vpc_config_override=vpc_utils.VPC_CONFIG_DEFAULT,
+        accelerator_type=None,
+    ):
         """Create an ``Endpoint`` using the results of a successful training job.
 
         Specify the job name, Docker image containing the inference code, and hardware configuration to deploy
@@ -983,21 +1095,38 @@ class Session(object):
             str: Name of the ``Endpoint`` that is created.
         """
         job_desc = self.sagemaker_client.describe_training_job(TrainingJobName=job_name)
-        output_url = job_desc['ModelArtifacts']['S3ModelArtifacts']
-        deployment_image = deployment_image or job_desc['AlgorithmSpecification']['TrainingImage']
-        role = role or job_desc['RoleArn']
+        output_url = job_desc["ModelArtifacts"]["S3ModelArtifacts"]
+        deployment_image = deployment_image or job_desc["AlgorithmSpecification"]["TrainingImage"]
+        role = role or job_desc["RoleArn"]
         name = name or job_name
         vpc_config_override = _vpc_config_from_training_job(job_desc, vpc_config_override)
 
-        return self.endpoint_from_model_data(model_s3_location=output_url, deployment_image=deployment_image,
-                                             initial_instance_count=initial_instance_count, instance_type=instance_type,
-                                             name=name, role=role, wait=wait,
-                                             model_environment_vars=model_environment_vars,
-                                             model_vpc_config=vpc_config_override, accelerator_type=accelerator_type)
+        return self.endpoint_from_model_data(
+            model_s3_location=output_url,
+            deployment_image=deployment_image,
+            initial_instance_count=initial_instance_count,
+            instance_type=instance_type,
+            name=name,
+            role=role,
+            wait=wait,
+            model_environment_vars=model_environment_vars,
+            model_vpc_config=vpc_config_override,
+            accelerator_type=accelerator_type,
+        )
 
-    def endpoint_from_model_data(self, model_s3_location, deployment_image, initial_instance_count, instance_type,
-                                 name=None, role=None, wait=True, model_environment_vars=None, model_vpc_config=None,
-                                 accelerator_type=None):
+    def endpoint_from_model_data(
+        self,
+        model_s3_location,
+        deployment_image,
+        initial_instance_count,
+        instance_type,
+        name=None,
+        role=None,
+        wait=True,
+        model_environment_vars=None,
+        model_vpc_config=None,
+        accelerator_type=None,
+    ):
         """Create and deploy to an ``Endpoint`` using existing model data stored in S3.
 
         Args:
@@ -1029,30 +1158,40 @@ class Session(object):
         name = name or name_from_image(deployment_image)
         model_vpc_config = vpc_utils.sanitize(model_vpc_config)
 
-        if _deployment_entity_exists(lambda: self.sagemaker_client.describe_endpoint(EndpointName=name)):
-            raise ValueError('Endpoint with name "{}" already exists; please pick a different name.'.format(name))
-
-        if not _deployment_entity_exists(lambda: self.sagemaker_client.describe_model(ModelName=name)):
-            primary_container = container_def(image=deployment_image,
-                                              model_data_url=model_s3_location,
-                                              env=model_environment_vars)
-            self.create_model(name=name,
-                              role=role,
-                              container_defs=primary_container,
-                              vpc_config=model_vpc_config)
+        if _deployment_entity_exists(
+            lambda: self.sagemaker_client.describe_endpoint(EndpointName=name)
+        ):
+            raise ValueError(
+                'Endpoint with name "{}" already exists; please pick a different name.'.format(name)
+            )
 
         if not _deployment_entity_exists(
-                lambda: self.sagemaker_client.describe_endpoint_config(EndpointConfigName=name)):
-            self.create_endpoint_config(name=name,
-                                        model_name=name,
-                                        initial_instance_count=initial_instance_count,
-                                        instance_type=instance_type,
-                                        accelerator_type=accelerator_type)
+            lambda: self.sagemaker_client.describe_model(ModelName=name)
+        ):
+            primary_container = container_def(
+                image=deployment_image, model_data_url=model_s3_location, env=model_environment_vars
+            )
+            self.create_model(
+                name=name, role=role, container_defs=primary_container, vpc_config=model_vpc_config
+            )
+
+        if not _deployment_entity_exists(
+            lambda: self.sagemaker_client.describe_endpoint_config(EndpointConfigName=name)
+        ):
+            self.create_endpoint_config(
+                name=name,
+                model_name=name,
+                initial_instance_count=initial_instance_count,
+                instance_type=instance_type,
+                accelerator_type=accelerator_type,
+            )
 
         self.create_endpoint(endpoint_name=name, config_name=name, wait=wait)
         return name
 
-    def endpoint_from_production_variants(self, name, production_variants, tags=None, kms_key=None, wait=True):
+    def endpoint_from_production_variants(
+        self, name, production_variants, tags=None, kms_key=None, wait=True
+    ):
         """Create an SageMaker ``Endpoint`` from a list of production variants.
 
         Args:
@@ -1068,12 +1207,13 @@ class Session(object):
         """
 
         if not _deployment_entity_exists(
-                lambda: self.sagemaker_client.describe_endpoint_config(EndpointConfigName=name)):
-            config_options = {'EndpointConfigName': name, 'ProductionVariants': production_variants}
+            lambda: self.sagemaker_client.describe_endpoint_config(EndpointConfigName=name)
+        ):
+            config_options = {"EndpointConfigName": name, "ProductionVariants": production_variants}
             if tags:
-                config_options['Tags'] = tags
+                config_options["Tags"] = tags
             if kms_key:
-                config_options['KmsKeyId'] = kms_key
+                config_options["KmsKeyId"] = kms_key
 
             self.sagemaker_client.create_endpoint_config(**config_options)
         return self.create_endpoint(endpoint_name=name, config_name=name, tags=tags, wait=wait)
@@ -1090,35 +1230,44 @@ class Session(object):
         Returns:
             str: The corresponding AWS IAM role ARN.
         """
-        if '/' in role:
+        if "/" in role:
             return role
         else:
-            return self.boto_session.resource('iam').Role(role).arn
+            return self.boto_session.resource("iam").Role(role).arn
 
     def get_caller_identity_arn(self):
         """Returns the ARN user or role whose credentials are used to call the API.
         Returns:
             (str): The ARN user or role
         """
-        assumed_role = self.boto_session.client('sts').get_caller_identity()['Arn']
+        assumed_role = self.boto_session.client("sts").get_caller_identity()["Arn"]
 
-        if 'AmazonSageMaker-ExecutionRole' in assumed_role:
-            role = re.sub(r'^(.+)sts::(\d+):assumed-role/(.+?)/.*$', r'\1iam::\2:role/service-role/\3', assumed_role)
+        if "AmazonSageMaker-ExecutionRole" in assumed_role:
+            role = re.sub(
+                r"^(.+)sts::(\d+):assumed-role/(.+?)/.*$",
+                r"\1iam::\2:role/service-role/\3",
+                assumed_role,
+            )
             return role
 
-        role = re.sub(r'^(.+)sts::(\d+):assumed-role/(.+?)/.*$', r'\1iam::\2:role/\3', assumed_role)
+        role = re.sub(r"^(.+)sts::(\d+):assumed-role/(.+?)/.*$", r"\1iam::\2:role/\3", assumed_role)
 
         # Call IAM to get the role's path
-        role_name = role[role.rfind('/') + 1:]
+        role_name = role[role.rfind("/") + 1 :]
         try:
-            role = self.boto_session.client('iam').get_role(RoleName=role_name)['Role']['Arn']
+            role = self.boto_session.client("iam").get_role(RoleName=role_name)["Role"]["Arn"]
         except ClientError:
-            LOGGER.warning("Couldn't call 'get_role' to get Role ARN from role name {} to get Role path."
-                           .format(role_name))
+            LOGGER.warning(
+                "Couldn't call 'get_role' to get Role ARN from role name {} to get Role path.".format(
+                    role_name
+                )
+            )
 
         return role
 
-    def logs_for_job(self, job_name, wait=False, poll=10):  # noqa: C901 - suppress complexity warning for this method
+    def logs_for_job(  # noqa: C901 - suppress complexity warning for this method
+        self, job_name, wait=False, poll=10
+    ):
         """Display the logs for a given training job, optionally tailing them until the
         job is complete. If the output is a tty or a Jupyter cell, it will be color-coded
         based on which instance the log entry is from.
@@ -1133,20 +1282,22 @@ class Session(object):
         """
 
         description = self.sagemaker_client.describe_training_job(TrainingJobName=job_name)
-        print(secondary_training_status_message(description, None), end='')
-        instance_count = description['ResourceConfig']['InstanceCount']
-        status = description['TrainingJobStatus']
+        print(secondary_training_status_message(description, None), end="")
+        instance_count = description["ResourceConfig"]["InstanceCount"]
+        status = description["TrainingJobStatus"]
 
         stream_names = []  # The list of log streams
-        positions = {}     # The current position in each stream, map of stream name -> position
+        positions = {}  # The current position in each stream, map of stream name -> position
 
         # Increase retries allowed (from default of 4), as we don't want waiting for a training job
         # to be interrupted by a transient exception.
-        config = botocore.config.Config(retries={'max_attempts': 15})
-        client = self.boto_session.client('logs', config=config)
-        log_group = '/aws/sagemaker/TrainingJobs'
+        config = botocore.config.Config(retries={"max_attempts": 15})
+        client = self.boto_session.client("logs", config=config)
+        log_group = "/aws/sagemaker/TrainingJobs"
 
-        job_already_completed = True if status == 'Completed' or status == 'Failed' or status == 'Stopped' else False
+        job_already_completed = (
+            True if status == "Completed" or status == "Failed" or status == "Stopped" else False
+        )
 
         state = LogState.TAILING if wait and not job_already_completed else LogState.COMPLETE
         dot = False
@@ -1179,32 +1330,47 @@ class Session(object):
                 # Log streams are created whenever a container starts writing to stdout/err, so this list
                 # may be dynamic until we have a stream for every instance.
                 try:
-                    streams = client.describe_log_streams(logGroupName=log_group, logStreamNamePrefix=job_name + '/',
-                                                          orderBy='LogStreamName', limit=instance_count)
-                    stream_names = [s['logStreamName'] for s in streams['logStreams']]
-                    positions.update([(s, sagemaker.logs.Position(timestamp=0, skip=0))
-                                      for s in stream_names if s not in positions])
+                    streams = client.describe_log_streams(
+                        logGroupName=log_group,
+                        logStreamNamePrefix=job_name + "/",
+                        orderBy="LogStreamName",
+                        limit=instance_count,
+                    )
+                    stream_names = [s["logStreamName"] for s in streams["logStreams"]]
+                    positions.update(
+                        [
+                            (s, sagemaker.logs.Position(timestamp=0, skip=0))
+                            for s in stream_names
+                            if s not in positions
+                        ]
+                    )
                 except ClientError as e:
                     # On the very first training job run on an account, there's no log group until
                     # the container starts logging, so ignore any errors thrown about that
-                    err = e.response.get('Error', {})
-                    if err.get('Code', None) != 'ResourceNotFoundException':
+                    err = e.response.get("Error", {})
+                    if err.get("Code", None) != "ResourceNotFoundException":
                         raise
 
             if len(stream_names) > 0:
                 if dot:
-                    print('')
+                    print("")
                     dot = False
-                for idx, event in sagemaker.logs.multi_stream_iter(client, log_group, stream_names, positions):
-                    color_wrap(idx, event['message'])
+                for idx, event in sagemaker.logs.multi_stream_iter(
+                    client, log_group, stream_names, positions
+                ):
+                    color_wrap(idx, event["message"])
                     ts, count = positions[stream_names[idx]]
-                    if event['timestamp'] == ts:
-                        positions[stream_names[idx]] = sagemaker.logs.Position(timestamp=ts, skip=count + 1)
+                    if event["timestamp"] == ts:
+                        positions[stream_names[idx]] = sagemaker.logs.Position(
+                            timestamp=ts, skip=count + 1
+                        )
                     else:
-                        positions[stream_names[idx]] = sagemaker.logs.Position(timestamp=event['timestamp'], skip=1)
+                        positions[stream_names[idx]] = sagemaker.logs.Position(
+                            timestamp=event["timestamp"], skip=1
+                        )
             else:
                 dot = True
-                print('.', end='')
+                print(".", end="")
                 sys.stdout.flush()
             if state == LogState.COMPLETE:
                 break
@@ -1219,22 +1385,24 @@ class Session(object):
 
                 if secondary_training_status_changed(description, last_description):
                     print()
-                    print(secondary_training_status_message(description, last_description), end='')
+                    print(secondary_training_status_message(description, last_description), end="")
                     last_description = description
 
-                status = description['TrainingJobStatus']
+                status = description["TrainingJobStatus"]
 
-                if status == 'Completed' or status == 'Failed' or status == 'Stopped':
+                if status == "Completed" or status == "Failed" or status == "Stopped":
                     print()
                     state = LogState.JOB_COMPLETE
 
         if wait:
-            self._check_job_status(job_name, description, 'TrainingJobStatus')
+            self._check_job_status(job_name, description, "TrainingJobStatus")
             if dot:
                 print()
             # Customers are not billed for hardware provisioning, so billable time is less than total time
-            billable_time = (description['TrainingEndTime'] - description['TrainingStartTime']) * instance_count
-            print('Billable seconds:', int(billable_time.total_seconds()) + 1)
+            billable_time = (
+                description["TrainingEndTime"] - description["TrainingStartTime"]
+            ) * instance_count
+            print("Billable seconds:", int(billable_time.total_seconds()) + 1)
 
 
 def container_def(image, model_data_url=None, env=None):
@@ -1251,9 +1419,9 @@ def container_def(image, model_data_url=None, env=None):
     """
     if env is None:
         env = {}
-    c_def = {'Image': image, 'Environment': env}
+    c_def = {"Image": image, "Environment": env}
     if model_data_url:
-        c_def['ModelDataUrl'] = model_data_url
+        c_def["ModelDataUrl"] = model_data_url
     return c_def
 
 
@@ -1274,8 +1442,14 @@ def pipeline_container_def(models, instance_type=None):
     return c_defs
 
 
-def production_variant(model_name, instance_type, initial_instance_count=1, variant_name='AllTraffic',
-                       initial_weight=1, accelerator_type=None):
+def production_variant(
+    model_name,
+    instance_type,
+    initial_instance_count=1,
+    variant_name="AllTraffic",
+    initial_weight=1,
+    accelerator_type=None,
+):
     """Create a production variant description suitable for use in a ``ProductionVariant`` list as part of a
     ``CreateEndpointConfig`` request.
 
@@ -1292,15 +1466,15 @@ def production_variant(model_name, instance_type, initial_instance_count=1, vari
         dict[str, str]: An SageMaker ``ProductionVariant`` description
     """
     production_variant_configuration = {
-        'ModelName': model_name,
-        'InstanceType': instance_type,
-        'InitialInstanceCount': initial_instance_count,
-        'VariantName': variant_name,
-        'InitialVariantWeight': initial_weight
+        "ModelName": model_name,
+        "InstanceType": instance_type,
+        "InitialInstanceCount": initial_instance_count,
+        "VariantName": variant_name,
+        "InitialVariantWeight": initial_weight,
     }
 
     if accelerator_type:
-        production_variant_configuration['AcceleratorType'] = accelerator_type
+        production_variant_configuration["AcceleratorType"] = accelerator_type
 
     return production_variant_configuration
 
@@ -1317,9 +1491,9 @@ def get_execution_role(sagemaker_session=None):
         sagemaker_session = Session()
     arn = sagemaker_session.get_caller_identity_arn()
 
-    if ':role/' in arn:
+    if ":role/" in arn:
         return arn
-    message = 'The current AWS identity is not a role: {}, therefore it cannot be used as a SageMaker execution role'
+    message = "The current AWS identity is not a role: {}, therefore it cannot be used as a SageMaker execution role"
     raise ValueError(message.format(arn))
 
 
@@ -1330,9 +1504,18 @@ class s3_input(object):
         config (dict[str, dict]): A SageMaker ``DataSource`` referencing a SageMaker ``S3DataSource``.
     """
 
-    def __init__(self, s3_data, distribution='FullyReplicated', compression=None,
-                 content_type=None, record_wrapping=None, s3_data_type='S3Prefix',
-                 input_mode=None, attribute_names=None, shuffle_config=None):
+    def __init__(
+        self,
+        s3_data,
+        distribution="FullyReplicated",
+        compression=None,
+        content_type=None,
+        record_wrapping=None,
+        s3_data_type="S3Prefix",
+        input_mode=None,
+        attribute_names=None,
+        shuffle_config=None,
+    ):
         """Create a definition for input data used by an SageMaker training job.
 
         See AWS documentation on the ``CreateTrainingJob`` API for more details on the parameters.
@@ -1366,27 +1549,27 @@ class s3_input(object):
         """
 
         self.config = {
-            'DataSource': {
-                'S3DataSource': {
-                    'S3DataDistributionType': distribution,
-                    'S3DataType': s3_data_type,
-                    'S3Uri': s3_data
+            "DataSource": {
+                "S3DataSource": {
+                    "S3DataDistributionType": distribution,
+                    "S3DataType": s3_data_type,
+                    "S3Uri": s3_data,
                 }
             }
         }
 
         if compression is not None:
-            self.config['CompressionType'] = compression
+            self.config["CompressionType"] = compression
         if content_type is not None:
-            self.config['ContentType'] = content_type
+            self.config["ContentType"] = content_type
         if record_wrapping is not None:
-            self.config['RecordWrapperType'] = record_wrapping
+            self.config["RecordWrapperType"] = record_wrapping
         if input_mode is not None:
-            self.config['InputMode'] = input_mode
+            self.config["InputMode"] = input_mode
         if attribute_names is not None:
-            self.config['DataSource']['S3DataSource']['AttributeNames'] = attribute_names
+            self.config["DataSource"]["S3DataSource"]["AttributeNames"] = attribute_names
         if shuffle_config is not None:
-            self.config['ShuffleConfig'] = {'Seed': shuffle_config.seed}
+            self.config["ShuffleConfig"] = {"Seed": shuffle_config.seed}
 
 
 class ShuffleConfig(object):
@@ -1394,6 +1577,7 @@ class ShuffleConfig(object):
     Used to configure channel shuffling using a seed. See SageMaker
     documentation for more detail: https://docs.aws.amazon.com/sagemaker/latest/dg/API_ShuffleConfig.html
     """
+
     def __init__(self, seed):
         """
         Create a ShuffleConfig.
@@ -1425,16 +1609,18 @@ class ModelContainer(object):
         self.env = env
 
 
-def _create_model_request(name, role, container_def=None, tags=None):  # pylint: disable=redefined-outer-name
-    request = {'ModelName': name, 'ExecutionRoleArn': role}
+def _create_model_request(
+    name, role, container_def=None, tags=None
+):  # pylint: disable=redefined-outer-name
+    request = {"ModelName": name, "ExecutionRoleArn": role}
 
     if isinstance(container_def, list):
-        request['Containers'] = container_def
+        request["Containers"] = container_def
     else:
-        request['PrimaryContainer'] = container_def
+        request["PrimaryContainer"] = container_def
 
     if tags:
-        request['Tags'] = tags
+        request["Tags"] = tags
 
     return request
 
@@ -1444,23 +1630,26 @@ def _deployment_entity_exists(describe_fn):
         describe_fn()
         return True
     except ClientError as ce:
-        error_code = ce.response['Error']['Code']
-        if not (error_code == 'ValidationException' and 'Could not find' in ce.response['Error']['Message']):
+        error_code = ce.response["Error"]["Code"]
+        if not (
+            error_code == "ValidationException"
+            and "Could not find" in ce.response["Error"]["Message"]
+        ):
             raise ce
         return False
 
 
 def _train_done(sagemaker_client, job_name, last_desc):
-    in_progress_statuses = ['InProgress', 'Created']
+    in_progress_statuses = ["InProgress", "Created"]
 
     desc = sagemaker_client.describe_training_job(TrainingJobName=job_name)
-    status = desc['TrainingJobStatus']
+    status = desc["TrainingJobStatus"]
 
     if secondary_training_status_changed(desc, last_desc):
         print()
-        print(secondary_training_status_message(desc, last_desc), end='')
+        print(secondary_training_status_message(desc, last_desc), end="")
     else:
-        print('.', end='')
+        print(".", end="")
     sys.stdout.flush()
 
     if status in in_progress_statuses:
@@ -1472,19 +1661,19 @@ def _train_done(sagemaker_client, job_name, last_desc):
 
 def _compilation_job_status(sagemaker_client, job_name):
     compile_status_codes = {
-        'Completed': '!',
-        'InProgress': '.',
-        'Failed': '*',
-        'Stopped': 's',
-        'Stopping': '_'
+        "Completed": "!",
+        "InProgress": ".",
+        "Failed": "*",
+        "Stopped": "s",
+        "Stopping": "_",
     }
-    in_progress_statuses = ['InProgress', 'Stopping', 'Starting']
+    in_progress_statuses = ["InProgress", "Stopping", "Starting"]
 
     desc = sagemaker_client.describe_compilation_job(CompilationJobName=job_name)
-    status = desc['CompilationJobStatus']
+    status = desc["CompilationJobStatus"]
 
     status = _STATUS_CODE_TABLE.get(status, status)
-    print(compile_status_codes.get(status, '?'), end='')
+    print(compile_status_codes.get(status, "?"), end="")
     sys.stdout.flush()
 
     if status in in_progress_statuses:
@@ -1495,62 +1684,64 @@ def _compilation_job_status(sagemaker_client, job_name):
 
 def _tuning_job_status(sagemaker_client, job_name):
     tuning_status_codes = {
-        'Completed': '!',
-        'InProgress': '.',
-        'Failed': '*',
-        'Stopped': 's',
-        'Stopping': '_'
+        "Completed": "!",
+        "InProgress": ".",
+        "Failed": "*",
+        "Stopped": "s",
+        "Stopping": "_",
     }
-    in_progress_statuses = ['InProgress', 'Stopping']
+    in_progress_statuses = ["InProgress", "Stopping"]
 
-    desc = sagemaker_client.describe_hyper_parameter_tuning_job(HyperParameterTuningJobName=job_name)
-    status = desc['HyperParameterTuningJobStatus']
+    desc = sagemaker_client.describe_hyper_parameter_tuning_job(
+        HyperParameterTuningJobName=job_name
+    )
+    status = desc["HyperParameterTuningJobStatus"]
 
-    print(tuning_status_codes.get(status, '?'), end='')
+    print(tuning_status_codes.get(status, "?"), end="")
     sys.stdout.flush()
 
     if status in in_progress_statuses:
         return None
 
-    print('')
+    print("")
     return desc
 
 
 def _transform_job_status(sagemaker_client, job_name):
     transform_job_status_codes = {
-        'Completed': '!',
-        'InProgress': '.',
-        'Failed': '*',
-        'Stopped': 's',
-        'Stopping': '_'
+        "Completed": "!",
+        "InProgress": ".",
+        "Failed": "*",
+        "Stopped": "s",
+        "Stopping": "_",
     }
-    in_progress_statuses = ['InProgress', 'Stopping']
+    in_progress_statuses = ["InProgress", "Stopping"]
 
     desc = sagemaker_client.describe_transform_job(TransformJobName=job_name)
-    status = desc['TransformJobStatus']
+    status = desc["TransformJobStatus"]
 
-    print(transform_job_status_codes.get(status, '?'), end='')
+    print(transform_job_status_codes.get(status, "?"), end="")
     sys.stdout.flush()
 
     if status in in_progress_statuses:
         return None
 
-    print('')
+    print("")
     return desc
 
 
 def _create_model_package_status(sagemaker_client, model_package_name):
-    in_progress_statuses = ['InProgress', 'Pending']
+    in_progress_statuses = ["InProgress", "Pending"]
 
     desc = sagemaker_client.describe_model_package(ModelPackageName=model_package_name)
-    status = desc['ModelPackageStatus']
-    print('.', end='')
+    status = desc["ModelPackageStatus"]
+    print(".", end="")
     sys.stdout.flush()
 
     if status in in_progress_statuses:
         return None
 
-    print('')
+    print("")
     return desc
 
 
@@ -1562,14 +1753,14 @@ def _deploy_done(sagemaker_client, endpoint_name):
         "InService": "!",
         "RollingBack": "<",
         "Deleting": "o",
-        "Failed": "*"
+        "Failed": "*",
     }
-    in_progress_statuses = ['Creating', 'Updating']
+    in_progress_statuses = ["Creating", "Updating"]
 
     desc = sagemaker_client.describe_endpoint(EndpointName=endpoint_name)
-    status = desc['EndpointStatus']
+    status = desc["EndpointStatus"]
 
-    print(hosting_status_codes.get(status, '?'), end='')
+    print(hosting_status_codes.get(status, "?"), end="")
     sys.stdout.flush()
 
     return None if status in in_progress_statuses else desc
@@ -1597,7 +1788,9 @@ def _expand_container_def(c_def):
     return c_def
 
 
-def _vpc_config_from_training_job(training_job_desc, vpc_config_override=vpc_utils.VPC_CONFIG_DEFAULT):
+def _vpc_config_from_training_job(
+    training_job_desc, vpc_config_override=vpc_utils.VPC_CONFIG_DEFAULT
+):
     if vpc_config_override is vpc_utils.VPC_CONFIG_DEFAULT:
         return training_job_desc.get(vpc_utils.VPC_CONFIG_KEY)
     else:
