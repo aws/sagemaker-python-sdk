@@ -559,6 +559,33 @@ Likewise, when you create ``Transformer`` from the ``Estimator`` using ``transfo
     # Transform Job container instances will run in your VPC
     mxnet_vpc_transformer.transform('s3://my-bucket/batch-transform-input')
 
+Secure Training with Network Isolation (Internet-Free) Mode
+-------------------------------------------------------------------------
+You can enable network isolation mode when running training and inference on Amazon SageMaker.
+
+For more information about Amazon SageMaker network isolation mode, see the `SageMaker documentation on network isolation or internet-free mode <https://docs.aws.amazon.com/sagemaker/latest/dg/mkt-algo-model-internet-free.html>`__.
+
+To train a model in network isolation mode, set the optional parameter ``enable_network_isolation`` to ``True`` in any network isolation supported Framework Estimator.
+
+.. code:: python
+
+    # set the enable_network_isolation parameter to True
+    sklearn_estimator = SKLearn('sklearn-train.py',
+                                train_instance_type='ml.m4.xlarge',
+                                framework_version='0.20.0',
+                                hyperparameters = {'epochs': 20, 'batch-size': 64, 'learning-rate': 0.1},
+                                enable_network_isolation=True)
+
+    # SageMaker Training Job will in the container without   any inbound or outbound network calls during runtime
+    sklearn_estimator.fit({'train': 's3://my-data-bucket/path/to/my/training/data',
+                            'test': 's3://my-data-bucket/path/to/my/test/data'})
+
+When this training job is created, the SageMaker Python SDK will upload the files in ``entry_point``, ``source_dir``, and ``dependencies`` to S3 as a compressed ``sourcedir.tar.gz`` file (``'s3://mybucket/sourcedir.tar.gz'``).
+
+A new training job channel, named ``code``, will be added with that S3 URI.  Before the training docker container is initialized, the ``sourcedir.tar.gz`` will be downloaded from S3 to the ML storage volume like any other offline input channel.
+
+Once the training job begins, the training container will look at the offline input ``code`` channel to install dependencies and run the entry script. This isolates the training container, so no inbound or outbound network calls can be made.
+
 
 FAQ
 ---
