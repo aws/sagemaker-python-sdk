@@ -4,12 +4,11 @@ phases:
   pre_build:
     commands:
       - start-dockerd
-      - pip install boto3
 
   build:
     commands:
       - |
-        python ci-scripts/queue_build.py
+        python3 ci-scripts/queue_build.py
         sleep 20m
 
 #      # run linters
