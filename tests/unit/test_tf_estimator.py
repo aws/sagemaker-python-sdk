@@ -15,8 +15,10 @@ from __future__ import absolute_import
 import json
 import logging
 import os
+
 import pytest
 from mock import patch, Mock, MagicMock
+
 from sagemaker.fw_utils import create_image_uri
 from sagemaker.model import MODEL_SERVER_WORKERS_PARAM_NAME
 from sagemaker.session import s3_input
