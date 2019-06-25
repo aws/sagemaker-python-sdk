@@ -23,7 +23,9 @@ from sagemaker.fw_utils import create_image_uri
 from sagemaker.model import MODEL_SERVER_WORKERS_PARAM_NAME
 from sagemaker.session import s3_input
 from sagemaker.tensorflow import defaults, TensorFlow, TensorFlowModel, TensorFlowPredictor
+from sagemaker.estimator import _TrainingJob
 import sagemaker.tensorflow.estimator as tfe
+from sagemaker.transformer import Transformer
 
 DATA_DIR = os.path.join(os.path.dirname(__file__), '..', 'data')
 SCRIPT_FILE = 'dummy_script.py'
@@ -264,10 +266,54 @@ def test_create_model_with_optional_params(sagemaker_session):
     vpc_config = {'Subnets': ['foo'], 'SecurityGroupIds': ['bar']}
     model = tf.create_model(role=new_role, model_server_workers=model_server_workers,
                             vpc_config_override=vpc_config)
-
     assert model.role == new_role
     assert model.model_server_workers == model_server_workers
     assert model.vpc_config == vpc_config
+
+
+@patch('sagemaker.tensorflow.estimator.TensorFlow._create_tfs_model')
+def test_transformer_creation_with_endpoint_type(create_tfs_model, sagemaker_session):
+    container_log_level = '"logging.INFO"'
+    source_dir = 's3://mybucket/source'
+    enable_cloudwatch_metrics = 'true'
+    base_name = 'foo'
+    tf = TensorFlow(entry_point=SCRIPT_PATH, role=ROLE, sagemaker_session=sagemaker_session,
+                    training_steps=1000, evaluation_steps=10, train_instance_count=INSTANCE_COUNT,
+                    train_instance_type=INSTANCE_TYPE, container_log_level=container_log_level, base_job_name=base_name,
+                    source_dir=source_dir, enable_cloudwatch_metrics=enable_cloudwatch_metrics)
+    tf.latest_training_job = _TrainingJob(sagemaker_session, JOB_NAME)
+    assert isinstance(tf, TensorFlow)
+    transformer = tf.transformer(INSTANCE_COUNT, INSTANCE_TYPE, endpoint_type='tensorflow-serving')
+    create_tfs_model.assert_called_once()
+    assert isinstance(transformer, Transformer)
+    assert transformer.sagemaker_session == sagemaker_session
+    assert transformer.instance_count == INSTANCE_COUNT
+    assert transformer.instance_type == INSTANCE_TYPE
+    assert transformer.tags is None
+    assert tf.script_mode is True
+    assert tf._script_mode_enabled() is True
+
+@patch('sagemaker.tensorflow.estimator.TensorFlow._create_default_model')
+def test_transformer_creation_without_endpoint_type(create_default_model, sagemaker_session):
+    container_log_level = '"logging.INFO"'
+    source_dir = 's3://mybucket/source'
+    enable_cloudwatch_metrics = 'true'
+    base_name = 'flo'
+    tf = TensorFlow(entry_point=SCRIPT_PATH, role=ROLE, sagemaker_session=sagemaker_session,
+                    training_steps=1000, evaluation_steps=10, train_instance_count=INSTANCE_COUNT,
+                    train_instance_type=INSTANCE_TYPE, container_log_level=container_log_level, base_job_name=base_name,
+                    source_dir=source_dir, enable_cloudwatch_metrics=enable_cloudwatch_metrics)
+    tf.latest_training_job = _TrainingJob(sagemaker_session, JOB_NAME)
+    assert isinstance(tf, TensorFlow)
+    transformer = tf.transformer(INSTANCE_COUNT, INSTANCE_TYPE)
+    create_default_model.assert_called_once()
+    assert isinstance(transformer, Transformer)
+    assert transformer.sagemaker_session == sagemaker_session
+    assert transformer.instance_count == INSTANCE_COUNT
+    assert transformer.instance_type == INSTANCE_TYPE
+    assert transformer.tags is None
+    assert tf.script_mode is False
+    assert tf._script_mode_enabled() is False
 
 
 def test_create_model_with_custom_image(sagemaker_session):
