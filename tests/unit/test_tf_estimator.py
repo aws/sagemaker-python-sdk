@@ -19,11 +19,11 @@ import os
 import pytest
 from mock import patch, Mock, MagicMock
 
+from sagemaker.estimator import _TrainingJob
 from sagemaker.fw_utils import create_image_uri
 from sagemaker.model import MODEL_SERVER_WORKERS_PARAM_NAME
 from sagemaker.session import s3_input
 from sagemaker.tensorflow import defaults, TensorFlow, TensorFlowModel, TensorFlowPredictor
-from sagemaker.estimator import _TrainingJob
 import sagemaker.tensorflow.estimator as tfe
 from sagemaker.transformer import Transformer
 
@@ -292,6 +292,7 @@ def test_transformer_creation_with_endpoint_type(create_tfs_model, sagemaker_ses
     assert transformer.tags is None
     assert tf.script_mode is True
     assert tf._script_mode_enabled() is True
+
 
 @patch('sagemaker.tensorflow.estimator.TensorFlow._create_default_model')
 def test_transformer_creation_without_endpoint_type(create_default_model, sagemaker_session):

@@ -531,15 +531,26 @@ class TensorFlow(Framework):
                 If None, server will use one worker per vCPU.
             volume_kms_key (str): Optional. KMS key ID for encrypting the volume attached to the ML
                 compute instance (default: None).
-            endpoint_type: Optional. Selects the software stack used by the inference server.
-                If  not specified, the model will be configured to use the default
-                SageMaker model server. If 'tensorflow-serving', the model will be configured to
+            endpoint_type (str): Optional. Selects the software stack used by the inference server.
+                If not specified, the model will be configured to use the default
+                SageMaker model server.
+                If 'tensorflow-serving', the model will be configured to
                 use the SageMaker Tensorflow Serving container.
         """
 
         if endpoint_type == 'tensorflow-serving':
             self.script_mode = True
-        return super(TensorFlow, self).transformer(instance_count, instance_type, strategy, assemble_with, output_path,
-                                            output_kms_key, accept, env, max_concurrent_transforms, max_payload,
-                                            tags, role, model_server_workers, volume_kms_key
-                                            )
+        return super(TensorFlow, self).transformer(instance_count,
+                                                   instance_type,
+                                                   strategy,
+                                                   assemble_with,
+                                                   output_path,
+                                                   output_kms_key,
+                                                   accept,
+                                                   env,
+                                                   max_concurrent_transforms,
+                                                   max_payload,
+                                                   tags,
+                                                   role,
+                                                   model_server_workers,
+                                                   volume_kms_key)
