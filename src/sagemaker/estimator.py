@@ -15,7 +15,6 @@ from __future__ import print_function, absolute_import
 import json
 import logging
 import os
-
 import warnings
 from abc import ABCMeta
 from abc import abstractmethod
@@ -25,7 +24,6 @@ from six import string_types
 import sagemaker
 from sagemaker import git_utils
 from sagemaker.analytics import TrainingJobAnalytics
-
 from sagemaker.fw_utils import (
     create_image_uri,
     tar_and_upload_dir,
