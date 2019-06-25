@@ -32,7 +32,7 @@ from sagemaker.utils import unique_name_from_base
     tests.integ.test_region() in tests.integ.HOSTING_NO_P2_REGIONS,
     reason="no ml.p2 instances in these regions",
 )
-def test_keras(sagemaker_session, tf_full_version):
+def test_keras(sagemaker_session):
     script_path = os.path.join(tests.integ.DATA_DIR, "cifar_10", "source")
     dataset_path = os.path.join(tests.integ.DATA_DIR, "cifar_10", "data")
 
@@ -41,6 +41,7 @@ def test_keras(sagemaker_session, tf_full_version):
             entry_point="keras_cnn_cifar_10.py",
             source_dir=script_path,
             role="SageMakerRole",
+            framework_version="1.12",
             sagemaker_session=sagemaker_session,
             hyperparameters={"learning_rate": 1e-4, "decay": 1e-6},
             training_steps=50,
