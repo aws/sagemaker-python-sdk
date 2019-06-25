@@ -8,7 +8,7 @@ phases:
   build:
     commands:
       - |
-        python3 -h ci-scripts/queue_build.py
+        python3 -u ci-scripts/queue_build.py
 
       # run linters
       - tox -e flake8,pylint
