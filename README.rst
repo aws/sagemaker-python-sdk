@@ -173,7 +173,7 @@ TensorFlow SageMaker Estimators
 
 By using TensorFlow SageMaker Estimators, you can train and host TensorFlow models on Amazon SageMaker.
 
-Supported versions of TensorFlow: ``1.4.1``, ``1.5.0``, ``1.6.0``, ``1.7.0``, ``1.8.0``, ``1.9.0``, ``1.10.0``, ``1.11.0``, ``1.12.0``.
+Supported versions of TensorFlow: ``1.4.1``, ``1.5.0``, ``1.6.0``, ``1.7.0``, ``1.8.0``, ``1.9.0``, ``1.10.0``, ``1.11.0``, ``1.12.0``, ``1.13.1``.
 
 Supported versions of TensorFlow for Elastic Inference: ``1.11.0``, ``1.12.0``.
 
