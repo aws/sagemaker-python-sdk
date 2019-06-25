@@ -22,7 +22,7 @@ bucket_name = 'sagemaker-us-west-2-%s' % account
 def queue_build():
     build_id = os.environ.get('CODEBUILD_BUILD_ID', 'CODEBUILD-BUILD-ID')
     source_version = os.environ.get('CODEBUILD_SOURCE_VERSION', 'CODEBUILD-SOURCE-VERSION').replace('/', '-')
-    ticket_number = int(time.time())
+    ticket_number = int(1000 * time.time())
     filename = '%s_%s_%s' % (ticket_number, build_id, source_version)
 
     print('Created queue ticket %s' % ticket_number)
@@ -84,7 +84,7 @@ def _list_tickets():
 
 
 def _file_older_than(file):
-    timelimit = 60 * 60 * 8
+    timelimit = 1000 * 60 * 60 * 8
 
     file_ticket_number, build_id, source_version = _build_info_from_file(file)
 
