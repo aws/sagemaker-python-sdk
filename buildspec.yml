@@ -46,10 +46,11 @@ phases:
                 touch ${LOCK_FILE}
 
                 aws s3 cp ${LOCK_FILE} ${S3_BUCKET_DIR}/${LOCK_FILE}
+                break
 
             else
                 echo "Waiting on lock."
-                sleep 30
+                sleep 2m
         fi
         done
 
