@@ -20,7 +20,7 @@ bucket_name = 'sagemaker-us-west-2-%s' % account
 
 def queue_build():
     build_id = os.environ.get('CODEBUILD_BUILD_ID', 'CODEBUILD-BUILD-ID')
-    source_version = os.environ.get('CODEBUILD_SOURCE_VERSION', 'CODEBUILD-SOURCE-VERSION')
+    source_version = os.environ.get('CODEBUILD_SOURCE_VERSION', 'CODEBUILD-SOURCE-VERSION').replace('/', '-')
     ticket_number = int(time.time())
     filename = '%s_%s_%s' % (ticket_number, build_id, source_version)
 
