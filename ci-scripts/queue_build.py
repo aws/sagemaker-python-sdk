@@ -17,16 +17,18 @@ import time
 import boto3
 
 account = boto3.client("sts").get_caller_identity()["Account"]
-bucket_name = 'sagemaker-us-west-2-%s' % account
+bucket_name = "sagemaker-us-west-2-%s" % account
 
 
 def queue_build():
-    build_id = os.environ.get('CODEBUILD_BUILD_ID', 'CODEBUILD-BUILD-ID')
-    source_version = os.environ.get('CODEBUILD_SOURCE_VERSION', 'CODEBUILD-SOURCE-VERSION').replace('/', '-')
+    build_id = os.environ.get("CODEBUILD_BUILD_ID", "CODEBUILD-BUILD-ID")
+    source_version = os.environ.get("CODEBUILD_SOURCE_VERSION", "CODEBUILD-SOURCE-VERSION").replace(
+        "/", "-"
+    )
     ticket_number = int(1000 * time.time())
-    filename = '%s_%s_%s' % (ticket_number, build_id, source_version)
+    filename = "%s_%s_%s" % (ticket_number, build_id, source_version)
 
-    print('Created queue ticket %s' % ticket_number)
+    print("Created queue ticket %s" % ticket_number)
 
     _write_ticket(filename)
     files = _list_tickets()
@@ -35,8 +37,8 @@ def queue_build():
 
 
 def _build_info_from_file(file):
-    filename = file.key.split('/')[1]
-    ticket_number, build_id, source_version = filename.split('_')
+    filename = file.key.split("/")[1]
+    ticket_number, build_id, source_version = filename.split("_")
     return int(ticket_number), build_id, source_version
 
 
@@ -44,12 +46,14 @@ def _wait_for_other_builds(files, ticket_number):
     newfiles = list(filter(lambda file: not _file_older_than(file), files))
     sorted_files = list(sorted(newfiles, key=lambda y: y.key))
 
-    print('build queue status:')
+    print("build queue status:")
     print()
 
     for order, file in enumerate(sorted_files):
         file_ticket_number, build_id, source_version = _build_info_from_file(file)
-        print('%s -> %s %s, ticket number: %s' % (order, build_id, source_version, file_ticket_number))
+        print(
+            "%s -> %s %s, ticket number: %s" % (order, build_id, source_version, file_ticket_number)
+        )
 
     for file in sorted_files:
         file_ticket_number, build_id, source_version = _build_info_from_file(file)
@@ -59,15 +63,17 @@ def _wait_for_other_builds(files, ticket_number):
             break
         else:
             while True:
-                client = boto3.client('codebuild')
+                client = boto3.client("codebuild")
                 response = client.batch_get_builds(ids=[build_id])
-                build_status = response['builds'][0]['buildStatus']
+                build_status = response["builds"][0]["buildStatus"]
 
-                if build_status == 'IN_PROGRESS':
-                    print('waiting on build %s %s %s' % (build_id, source_version, file_ticket_number))
+                if build_status == "IN_PROGRESS":
+                    print(
+                        "waiting on build %s %s %s" % (build_id, source_version, file_ticket_number)
+                    )
                     time.sleep(30)
                 else:
-                    print('build %s finished, deleting lock' % build_id)
+                    print("build %s finished, deleting lock" % build_id)
                     file.delete()
                     break
 
@@ -75,16 +81,16 @@ def _wait_for_other_builds(files, ticket_number):
 def _cleanup_tickets_older_than_8_hours(files):
     oldfiles = list(filter(_file_older_than, files))
     for file in oldfiles:
-        print('object %s older than 8 hours. Deleting' % file.key)
+        print("object %s older than 8 hours. Deleting" % file.key)
         file.delete()
     return files
 
 
 def _list_tickets():
-    s3 = boto3.resource('s3')
+    s3 = boto3.resource("s3")
     bucket = s3.Bucket(bucket_name)
-    objects = [file for file in bucket.objects.filter(Prefix='ci-lock/')]
-    files = list(filter(lambda x: x != 'ci-lock/', objects))
+    objects = [file for file in bucket.objects.filter(Prefix="ci-lock/")]
+    files = list(filter(lambda x: x != "ci-lock/", objects))
     return files
 
 
@@ -98,14 +104,14 @@ def _file_older_than(file):
 
 def _write_ticket(ticket_number):
 
-    if not os.path.exists('ci-lock'):
-        os.mkdir('ci-lock')
+    if not os.path.exists("ci-lock"):
+        os.mkdir("ci-lock")
 
-    filename = 'ci-lock/' + ticket_number
-    with open(filename, 'w') as file:
+    filename = "ci-lock/" + ticket_number
+    with open(filename, "w") as file:
         file.write(ticket_number)
     boto3.Session().resource("s3").Object(bucket_name, filename).upload_file(filename)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     queue_build()
