@@ -13,6 +13,7 @@
 import os
 import time
 import boto3
+import botocore.exceptions
 
 account = boto3.client("sts").get_caller_identity()["Account"]
 bucket_name = 'sagemaker-us-west-2-%s' % account
@@ -56,8 +57,14 @@ def _wait_for_other_builds(files, ticket_number):
 
             break
         else:
-            print('waiting on build %s %s %s' % (build_id, source_version, file_ticket_number))
-            file.wait_until_not_exists()
+            while True:
+                try:
+                    print('waiting on build %s %s %s' % (build_id, source_version, file_ticket_number))
+                    file.wait_until_not_exists()
+                    break
+                except botocore.exceptions.WaiterError:
+                    # keep waiting
+                    pass
 
 
 def _cleanup_tickets_older_than_8_days(files):
