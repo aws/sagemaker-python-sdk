@@ -39,7 +39,7 @@ phases:
         while true; do
             LAST_LOCK=$(aws s3 ls ${S3_BUCKET_DIR} | sort | tail -n 1 | awk '{print $4}')
 
-            if test -z "$LAST_LOCK"
+            if test -n "$LAST_LOCK"
             then
                 echo "No locks. Creating lock."
                 LOCK_FILE=$(date +%s)
