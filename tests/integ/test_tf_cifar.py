@@ -44,7 +44,7 @@ class PickleSerializer(object):
     or tests.integ.test_region() in tests.integ.TRAINING_NO_P2_REGIONS,
     reason="no ml.p2 instances in these regions",
 )
-def test_cifar(sagemaker_session, tf_full_version):
+def test_cifar(sagemaker_session):
     with timeout(minutes=45):
         script_path = os.path.join(tests.integ.DATA_DIR, "cifar_10", "source")
 
@@ -54,8 +54,8 @@ def test_cifar(sagemaker_session, tf_full_version):
             entry_point="resnet_cifar_10.py",
             source_dir=script_path,
             role="SageMakerRole",
-            framework_version=tf_full_version,
-            training_steps=500,
+            framework_version="1.12",
+            training_steps=50,
             evaluation_steps=5,
             train_instance_count=2,
             train_instance_type="ml.p2.xlarge",
