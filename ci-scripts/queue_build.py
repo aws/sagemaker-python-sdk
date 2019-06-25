@@ -60,13 +60,17 @@ def _wait_for_other_builds(files, ticket_number):
             break
         else:
             while True:
-                try:
+                client = boto3.client('codebuild')
+                response = client.batch_get_builds(ids=[build_id])
+                build_status = response['builds'][0]['buildStatus']
+
+                if build_status == 'IN_PROGRESS':
                     print('waiting on build %s %s %s' % (build_id, source_version, file_ticket_number))
-                    file.wait_until_not_exists()
+                    time.sleep(30)
+                else:
+                    print('build %s finished, deleting lock' % build_id)
+                    file.delete()
                     break
-                except botocore.exceptions.WaiterError:
-                    # keep waiting
-                    pass
 
 
 def _cleanup_tickets_older_than_8_days(files):
