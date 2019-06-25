@@ -31,6 +31,28 @@ phases:
            echo "skipping notebook test"
          fi
 
+      # wait its turn to run integration tests
+      - ACCOUNT=$(aws sts get-caller-identity --output text | awk '{print $1}')
+      - S3_BUCKET_DIR=s3://sagemaker-us-west-2-${ACCOUNT}/ci-lock
+
+      - |
+        while true; do
+            LAST_LOCK=$(aws s3 ls ${S3_BUCKET_DIR} | sort | tail -n 1 | awk '{print $4}')
+
+            if [[ -z "$LAST_LOCK" ]]
+            then
+                echo "No locks. Creating lock."
+                LOCK_FILE=$(date +%s)
+                touch ${LOCK_FILE}
+
+                aws s3 cp ${LOCK_FILE} ${S3_BUCKET_DIR}/${LOCK_FILE}
+
+            else
+                echo "Waiting on lock."
+                sleep 30
+        fi
+        done
+
       # run integration tests
       - |
         if has-matching-changes "tests/" "src/*.py" "setup.py" "setup.cfg" "buildspec.yml"; then
@@ -38,3 +60,5 @@ phases:
         else
           echo "skipping integration tests"
         fi
+    finally:
+      - aws s3 rm --recursive ${S3_BUCKET_DIR}
