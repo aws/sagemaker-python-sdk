@@ -25,9 +25,9 @@ from sagemaker.mxnet.model import MXNetModel
 from sagemaker.sklearn.model import SKLearnModel
 from tests.integ import DATA_DIR, PYTHON_VERSION
 
-GIT_REPO = "https://github.com/aws/sagemaker-python-sdk.git"
-BRANCH = "test-branch-git-config"
-COMMIT = "329bfcf884482002c05ff7f44f62599ebc9f445a"
+GIT_REPO = "https://github.com/GaryTu1020/python-sdk-testing.git"
+BRANCH = "branch1"
+COMMIT = "73538c46da0cbd522191c2fa39b194bae4a8050d"
 
 # endpoint tests all use the same port, so we use this lock to prevent concurrent execution
 LOCK_PATH = os.path.join(tempfile.gettempdir(), "sagemaker_test_git_lock")
@@ -95,13 +95,14 @@ def test_git_support_with_mxnet(sagemaker_local_session):
 
     with lock.lock(LOCK_PATH):
         try:
+            serving_script_path = 'mnist_hosting_with_custom_handlers.py'
             client = sagemaker_local_session.sagemaker_client
             desc = client.describe_training_job(TrainingJobName=mx.latest_training_job.name)
             model_data = desc["ModelArtifacts"]["S3ModelArtifacts"]
             model = MXNetModel(
                 model_data,
                 "SageMakerRole",
-                entry_point=script_path,
+                entry_point=serving_script_path,
                 source_dir=source_dir,
                 dependencies=dependencies,
                 py_version=PYTHON_VERSION,
