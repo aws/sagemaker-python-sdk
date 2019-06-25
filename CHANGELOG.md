@@ -1,5 +1,16 @@
 # Changelog
 
+## v1.30.0 (2019-06-25)
+
+### Features
+
+ * add TensorFlow 1.13 support
+ * add git_config and git_clone, validate method
+
+### Bug fixes and other changes
+
+ * add pytest.mark.local_mode annotation to broken tests
+
 ## v1.29.0 (2019-06-24)
 
 ### Features
