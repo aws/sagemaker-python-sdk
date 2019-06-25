@@ -12,7 +12,7 @@ phases:
 
       # run linters
       - tox -e flake8,pylint
-
+      - sleep 20m
       # run package and docbuild checks
       - tox -e twine
       - tox -e sphinx
