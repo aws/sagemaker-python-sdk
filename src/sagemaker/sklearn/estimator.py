@@ -16,12 +16,16 @@ import logging
 
 from sagemaker.estimator import Framework
 from sagemaker.fw_registry import default_framework_uri
-from sagemaker.fw_utils import framework_name_from_image, empty_framework_version_warning, python_deprecation_warning
+from sagemaker.fw_utils import (
+    framework_name_from_image,
+    empty_framework_version_warning,
+    python_deprecation_warning,
+)
 from sagemaker.sklearn.defaults import SKLEARN_VERSION, SKLEARN_NAME
 from sagemaker.sklearn.model import SKLearnModel
 from sagemaker.vpc_utils import VPC_CONFIG_DEFAULT
 
-logger = logging.getLogger('sagemaker')
+logger = logging.getLogger("sagemaker")
 
 
 class SKLearn(Framework):
@@ -29,8 +33,16 @@ class SKLearn(Framework):
 
     __framework_name__ = SKLEARN_NAME
 
-    def __init__(self, entry_point, framework_version=SKLEARN_VERSION, source_dir=None, hyperparameters=None,
-                 py_version='py3', image_name=None, **kwargs):
+    def __init__(
+        self,
+        entry_point,
+        framework_version=SKLEARN_VERSION,
+        source_dir=None,
+        hyperparameters=None,
+        py_version="py3",
+        image_name=None,
+        **kwargs
+    ):
         """
         This ``Estimator`` executes an Scikit-learn script in a managed Scikit-learn execution environment, within a
         SageMaker Training Job. The managed Scikit-learn environment is an Amazon-built Docker container that executes
@@ -67,19 +79,26 @@ class SKLearn(Framework):
             **kwargs: Additional kwargs passed to the :class:`~sagemaker.estimator.Framework` constructor.
         """
         # SciKit-Learn does not support distributed training or training on GPU instance types. Fail fast.
-        train_instance_type = kwargs.get('train_instance_type')
+        train_instance_type = kwargs.get("train_instance_type")
         _validate_not_gpu_instance_type(train_instance_type)
 
-        train_instance_count = kwargs.get('train_instance_count')
+        train_instance_count = kwargs.get("train_instance_count")
         if train_instance_count:
             if train_instance_count != 1:
-                raise AttributeError("Scikit-Learn does not support distributed training. "
-                                     "Please remove the 'train_instance_count' argument or set "
-                                     "'train_instance_count=1' when initializing SKLearn.")
-        super(SKLearn, self).__init__(entry_point, source_dir, hyperparameters, image_name=image_name,
-                                      **dict(kwargs, train_instance_count=1))
+                raise AttributeError(
+                    "Scikit-Learn does not support distributed training. "
+                    "Please remove the 'train_instance_count' argument or set "
+                    "'train_instance_count=1' when initializing SKLearn."
+                )
+        super(SKLearn, self).__init__(
+            entry_point,
+            source_dir,
+            hyperparameters,
+            image_name=image_name,
+            **dict(kwargs, train_instance_count=1)
+        )
 
-        if py_version == 'py2':
+        if py_version == "py2":
             logger.warning(python_deprecation_warning(self.__framework_name__))
 
         self.py_version = py_version
@@ -91,12 +110,12 @@ class SKLearn(Framework):
         if image_name is None:
             image_tag = "{}-{}-{}".format(framework_version, "cpu", py_version)
             self.image_name = default_framework_uri(
-                SKLearn.__framework_name__,
-                self.sagemaker_session.boto_region_name,
-                image_tag)
+                SKLearn.__framework_name__, self.sagemaker_session.boto_region_name, image_tag
+            )
 
-    def create_model(self, model_server_workers=None, role=None,
-                     vpc_config_override=VPC_CONFIG_DEFAULT, **kwargs):
+    def create_model(
+        self, model_server_workers=None, role=None, vpc_config_override=VPC_CONFIG_DEFAULT, **kwargs
+    ):
         """Create a SageMaker ``SKLearnModel`` object that can be deployed to an ``Endpoint``.
 
         Args:
@@ -115,14 +134,23 @@ class SKLearn(Framework):
                 See :func:`~sagemaker.sklearn.model.SKLearnModel` for full details.
         """
         role = role or self.role
-        return SKLearnModel(self.model_data, role, self.entry_point, source_dir=self._model_source_dir(),
-                            enable_cloudwatch_metrics=self.enable_cloudwatch_metrics, name=self._current_job_name,
-                            container_log_level=self.container_log_level, code_location=self.code_location,
-                            py_version=self.py_version, framework_version=self.framework_version,
-                            model_server_workers=model_server_workers, image=self.image_name,
-                            sagemaker_session=self.sagemaker_session,
-                            vpc_config=self.get_vpc_config(vpc_config_override),
-                            **kwargs)
+        return SKLearnModel(
+            self.model_data,
+            role,
+            self.entry_point,
+            source_dir=self._model_source_dir(),
+            enable_cloudwatch_metrics=self.enable_cloudwatch_metrics,
+            name=self._current_job_name,
+            container_log_level=self.container_log_level,
+            code_location=self.code_location,
+            py_version=self.py_version,
+            framework_version=self.framework_version,
+            model_server_workers=model_server_workers,
+            image=self.image_name,
+            sagemaker_session=self.sagemaker_session,
+            vpc_config=self.get_vpc_config(vpc_config_override),
+            **kwargs
+        )
 
     @classmethod
     def _prepare_init_params_from_job_description(cls, job_details, model_channel_name=None):
@@ -137,25 +165,37 @@ class SKLearn(Framework):
         """
         init_params = super(SKLearn, cls)._prepare_init_params_from_job_description(job_details)
 
-        image_name = init_params.pop('image')
+        image_name = init_params.pop("image")
         framework, py_version, _, _ = framework_name_from_image(image_name)
-        init_params['py_version'] = py_version
+        init_params["py_version"] = py_version
 
         if framework and framework != cls.__framework_name__:
-            training_job_name = init_params['base_job_name']
-            raise ValueError("Training job: {} didn't use image for requested framework".format(training_job_name))
+            training_job_name = init_params["base_job_name"]
+            raise ValueError(
+                "Training job: {} didn't use image for requested framework".format(
+                    training_job_name
+                )
+            )
         elif not framework:
             # If we were unable to parse the framework name from the image it is not one of our
             # officially supported images, in this case just add the image to the init params.
-            init_params['image_name'] = image_name
+            init_params["image_name"] = image_name
         return init_params
 
 
 def _validate_not_gpu_instance_type(training_instance_type):
-    gpu_instance_types = ['ml.p2.xlarge', 'ml.p2.8xlarge', 'ml.p2.16xlarge',
-                          'ml.p3.xlarge', 'ml.p3.8xlarge', 'ml.p3.16xlarge']
+    gpu_instance_types = [
+        "ml.p2.xlarge",
+        "ml.p2.8xlarge",
+        "ml.p2.16xlarge",
+        "ml.p3.xlarge",
+        "ml.p3.8xlarge",
+        "ml.p3.16xlarge",
+    ]
 
     if training_instance_type in gpu_instance_types:
-        raise ValueError("GPU training in not supported for Scikit-Learn. "
-                         "Please pick a different instance type from here: "
-                         "https://aws.amazon.com/ec2/instance-types/")
+        raise ValueError(
+            "GPU training in not supported for Scikit-Learn. "
+            "Please pick a different instance type from here: "
+            "https://aws.amazon.com/ec2/instance-types/"
+        )

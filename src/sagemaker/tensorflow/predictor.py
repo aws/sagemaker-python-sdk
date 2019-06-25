@@ -24,14 +24,18 @@ from sagemaker.content_types import CONTENT_TYPE_JSON, CONTENT_TYPE_OCTET_STREAM
 from sagemaker.predictor import json_serializer, csv_serializer
 from tensorflow_serving.apis import predict_pb2, classification_pb2, inference_pb2, regression_pb2
 
-_POSSIBLE_RESPONSES = [predict_pb2.PredictResponse, classification_pb2.ClassificationResponse,
-                       inference_pb2.MultiInferenceResponse, regression_pb2.RegressionResponse,
-                       tensor_pb2.TensorProto]
+_POSSIBLE_RESPONSES = [
+    predict_pb2.PredictResponse,
+    classification_pb2.ClassificationResponse,
+    inference_pb2.MultiInferenceResponse,
+    regression_pb2.RegressionResponse,
+    tensor_pb2.TensorProto,
+]
 
-REGRESSION_REQUEST = 'RegressionRequest'
-MULTI_INFERENCE_REQUEST = 'MultiInferenceRequest'
-CLASSIFICATION_REQUEST = 'ClassificationRequest'
-PREDICT_REQUEST = 'PredictRequest'
+REGRESSION_REQUEST = "RegressionRequest"
+MULTI_INFERENCE_REQUEST = "MultiInferenceRequest"
+CLASSIFICATION_REQUEST = "ClassificationRequest"
+PREDICT_REQUEST = "PredictRequest"
 
 
 class _TFProtobufSerializer(object):
@@ -43,10 +47,15 @@ class _TFProtobufSerializer(object):
         # for example sagemaker.tensorflow.tensorflow_serving.regression_pb2 and tensorflow_serving.apis.regression_pb2
         predict_type = data.__class__.__name__
 
-        available_requests = [PREDICT_REQUEST, CLASSIFICATION_REQUEST, MULTI_INFERENCE_REQUEST, REGRESSION_REQUEST]
+        available_requests = [
+            PREDICT_REQUEST,
+            CLASSIFICATION_REQUEST,
+            MULTI_INFERENCE_REQUEST,
+            REGRESSION_REQUEST,
+        ]
 
         if predict_type not in available_requests:
-            raise ValueError('request type {} is not supported'.format(predict_type))
+            raise ValueError("request type {} is not supported".format(predict_type))
         return data.SerializeToString()
 
 
@@ -72,7 +81,7 @@ class _TFProtobufDeserializer(object):
                 # given that the payload does not have the response type, there no way to infer
                 # the response without keeping state, so I'm iterating all the options.
                 pass
-        raise ValueError('data is not in the expected format')
+        raise ValueError("data is not in the expected format")
 
 
 tf_deserializer = _TFProtobufDeserializer()

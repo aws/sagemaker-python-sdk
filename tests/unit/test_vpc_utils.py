@@ -18,13 +18,10 @@ import pytest
 
 from sagemaker.vpc_utils import SUBNETS_KEY, SECURITY_GROUP_IDS_KEY, to_dict, from_dict, sanitize
 
-subnets = ['subnet']
-security_groups = ['sg']
-good_vpc_config = {SUBNETS_KEY: subnets,
-                   SECURITY_GROUP_IDS_KEY: security_groups}
-foo_vpc_config = {SUBNETS_KEY: subnets,
-                  SECURITY_GROUP_IDS_KEY: security_groups,
-                  'foo': 1}
+subnets = ["subnet"]
+security_groups = ["sg"]
+good_vpc_config = {SUBNETS_KEY: subnets, SECURITY_GROUP_IDS_KEY: security_groups}
+foo_vpc_config = {SUBNETS_KEY: subnets, SECURITY_GROUP_IDS_KEY: security_groups, "foo": 1}
 
 
 def test_to_dict():
@@ -32,8 +29,10 @@ def test_to_dict():
     assert to_dict(subnets, None) is None
     assert to_dict(None, security_groups) is None
 
-    assert to_dict(subnets, security_groups) == {SUBNETS_KEY: subnets,
-                                                 SECURITY_GROUP_IDS_KEY: security_groups}
+    assert to_dict(subnets, security_groups) == {
+        SUBNETS_KEY: subnets,
+        SECURITY_GROUP_IDS_KEY: security_groups,
+    }
 
 
 def test_from_dict():
@@ -71,8 +70,6 @@ def test_sanitize():
         sanitize({SUBNETS_KEY: []})
 
     with pytest.raises(ValueError):
-        sanitize({SECURITY_GROUP_IDS_KEY: 1,
-                  SUBNETS_KEY: subnets})
+        sanitize({SECURITY_GROUP_IDS_KEY: 1, SUBNETS_KEY: subnets})
     with pytest.raises(ValueError):
-        sanitize({SECURITY_GROUP_IDS_KEY: [],
-                  SUBNETS_KEY: subnets})
+        sanitize({SECURITY_GROUP_IDS_KEY: [], SUBNETS_KEY: subnets})

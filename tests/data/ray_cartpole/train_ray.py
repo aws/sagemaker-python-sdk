@@ -8,7 +8,7 @@ from ray.tune.logger import pretty_print
 ray.init(log_to_driver=False)
 config = ppo.DEFAULT_CONFIG.copy()
 config["num_gpus"] = int(os.environ.get("SM_NUM_GPUS", 0))
-checkpoint_dir = os.environ.get("SM_MODEL_DIR", '/Users/nadzeya/gym')
+checkpoint_dir = os.environ.get("SM_MODEL_DIR", "/Users/nadzeya/gym")
 config["num_workers"] = 1
 agent = ppo.PPOAgent(config=config, env="CartPole-v0")
 

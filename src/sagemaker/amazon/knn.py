@@ -23,26 +23,56 @@ from sagemaker.vpc_utils import VPC_CONFIG_DEFAULT
 
 
 class KNN(AmazonAlgorithmEstimatorBase):
-    repo_name = 'knn'
+    repo_name = "knn"
     repo_version = 1
 
-    k = hp('k', (ge(1)), 'An integer greater than 0', int)
-    sample_size = hp('sample_size', (ge(1)), 'An integer greater than 0', int)
-    predictor_type = hp('predictor_type', isin('classifier', 'regressor'),
-                        'One of "classifier" or "regressor"', str)
-    dimension_reduction_target = hp('dimension_reduction_target', (ge(1)),
-                                    'An integer greater than 0 and less than feature_dim', int)
-    dimension_reduction_type = hp('dimension_reduction_type', isin('sign', 'fjlt'), 'One of "sign" or "fjlt"', str)
-    index_metric = hp('index_metric', isin('COSINE', 'INNER_PRODUCT', 'L2'),
-                      'One of "COSINE", "INNER_PRODUCT", "L2"', str)
-    index_type = hp('index_type', isin('faiss.Flat', 'faiss.IVFFlat', 'faiss.IVFPQ'),
-                    'One of "faiss.Flat", "faiss.IVFFlat", "faiss.IVFPQ"', str)
-    faiss_index_ivf_nlists = hp('faiss_index_ivf_nlists', (), '"auto" or an integer greater than 0', str)
-    faiss_index_pq_m = hp('faiss_index_pq_m', (ge(1)), 'An integer greater than 0', int)
+    k = hp("k", (ge(1)), "An integer greater than 0", int)
+    sample_size = hp("sample_size", (ge(1)), "An integer greater than 0", int)
+    predictor_type = hp(
+        "predictor_type", isin("classifier", "regressor"), 'One of "classifier" or "regressor"', str
+    )
+    dimension_reduction_target = hp(
+        "dimension_reduction_target",
+        (ge(1)),
+        "An integer greater than 0 and less than feature_dim",
+        int,
+    )
+    dimension_reduction_type = hp(
+        "dimension_reduction_type", isin("sign", "fjlt"), 'One of "sign" or "fjlt"', str
+    )
+    index_metric = hp(
+        "index_metric",
+        isin("COSINE", "INNER_PRODUCT", "L2"),
+        'One of "COSINE", "INNER_PRODUCT", "L2"',
+        str,
+    )
+    index_type = hp(
+        "index_type",
+        isin("faiss.Flat", "faiss.IVFFlat", "faiss.IVFPQ"),
+        'One of "faiss.Flat", "faiss.IVFFlat", "faiss.IVFPQ"',
+        str,
+    )
+    faiss_index_ivf_nlists = hp(
+        "faiss_index_ivf_nlists", (), '"auto" or an integer greater than 0', str
+    )
+    faiss_index_pq_m = hp("faiss_index_pq_m", (ge(1)), "An integer greater than 0", int)
 
-    def __init__(self, role, train_instance_count, train_instance_type, k, sample_size, predictor_type,
-                 dimension_reduction_type=None, dimension_reduction_target=None, index_type=None,
-                 index_metric=None, faiss_index_ivf_nlists=None, faiss_index_pq_m=None, **kwargs):
+    def __init__(
+        self,
+        role,
+        train_instance_count,
+        train_instance_type,
+        k,
+        sample_size,
+        predictor_type,
+        dimension_reduction_type=None,
+        dimension_reduction_target=None,
+        index_type=None,
+        index_metric=None,
+        faiss_index_ivf_nlists=None,
+        faiss_index_pq_m=None,
+        **kwargs
+    ):
         """k-nearest neighbors (KNN) is :class:`Estimator` used for classification and regression.
         This Estimator may be fit via calls to
         :meth:`~sagemaker.amazon.amazon_estimator.AmazonAlgorithmEstimatorBase.fit`. It requires Amazon
@@ -97,7 +127,9 @@ class KNN(AmazonAlgorithmEstimatorBase):
         self.faiss_index_ivf_nlists = faiss_index_ivf_nlists
         self.faiss_index_pq_m = faiss_index_pq_m
         if dimension_reduction_type and not dimension_reduction_target:
-            raise ValueError('"dimension_reduction_target" is required when "dimension_reduction_type" is set.')
+            raise ValueError(
+                '"dimension_reduction_target" is required when "dimension_reduction_type" is set.'
+            )
 
     def create_model(self, vpc_config_override=VPC_CONFIG_DEFAULT):
         """Return a :class:`~sagemaker.amazon.KNNModel` referencing the latest
@@ -109,11 +141,17 @@ class KNN(AmazonAlgorithmEstimatorBase):
                 * 'Subnets' (list[str]): List of subnet ids.
                 * 'SecurityGroupIds' (list[str]): List of security group ids.
         """
-        return KNNModel(self.model_data, self.role, sagemaker_session=self.sagemaker_session,
-                        vpc_config=self.get_vpc_config(vpc_config_override))
+        return KNNModel(
+            self.model_data,
+            self.role,
+            sagemaker_session=self.sagemaker_session,
+            vpc_config=self.get_vpc_config(vpc_config_override),
+        )
 
     def _prepare_for_training(self, records, mini_batch_size=None, job_name=None):
-        super(KNN, self)._prepare_for_training(records, mini_batch_size=mini_batch_size, job_name=job_name)
+        super(KNN, self)._prepare_for_training(
+            records, mini_batch_size=mini_batch_size, job_name=job_name
+        )
 
 
 class KNNPredictor(RealTimePredictor):
@@ -129,8 +167,12 @@ class KNNPredictor(RealTimePredictor):
     key of the ``Record.label`` field."""
 
     def __init__(self, endpoint, sagemaker_session=None):
-        super(KNNPredictor, self).__init__(endpoint, sagemaker_session, serializer=numpy_to_record_serializer(),
-                                           deserializer=record_deserializer())
+        super(KNNPredictor, self).__init__(
+            endpoint,
+            sagemaker_session,
+            serializer=numpy_to_record_serializer(),
+            deserializer=record_deserializer(),
+        )
 
 
 class KNNModel(Model):
@@ -139,7 +181,15 @@ class KNNModel(Model):
 
     def __init__(self, model_data, role, sagemaker_session=None, **kwargs):
         sagemaker_session = sagemaker_session or Session()
-        repo = '{}:{}'.format(KNN.repo_name, KNN.repo_version)
-        image = '{}/{}'.format(registry(sagemaker_session.boto_session.region_name, KNN.repo_name), repo)
-        super(KNNModel, self).__init__(model_data, image, role, predictor_cls=KNNPredictor,
-                                       sagemaker_session=sagemaker_session, **kwargs)
+        repo = "{}:{}".format(KNN.repo_name, KNN.repo_version)
+        image = "{}/{}".format(
+            registry(sagemaker_session.boto_session.region_name, KNN.repo_name), repo
+        )
+        super(KNNModel, self).__init__(
+            model_data,
+            image,
+            role,
+            predictor_cls=KNNPredictor,
+            sagemaker_session=sagemaker_session,
+            **kwargs
+        )

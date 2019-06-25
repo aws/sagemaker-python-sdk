@@ -16,34 +16,40 @@ from __future__ import absolute_import
 def gt(minimum):
     def validate(value):
         return value > minimum
+
     return validate
 
 
 def ge(minimum):
     def validate(value):
         return value >= minimum
+
     return validate
 
 
 def lt(maximum):
     def validate(value):
         return value < maximum
+
     return validate
 
 
 def le(maximum):
     def validate(value):
         return value <= maximum
+
     return validate
 
 
 def isin(*expected):
     def validate(value):
         return value in expected
+
     return validate
 
 
 def istype(expected):
     def validate(value):
         return isinstance(value, expected)
+
     return validate

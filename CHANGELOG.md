@@ -1,5 +1,27 @@
 # Changelog
 
+## v1.30.0 (2019-06-25)
+
+### Features
+
+ * add TensorFlow 1.13 support
+ * add git_config and git_clone, validate method
+
+### Bug fixes and other changes
+
+ * add pytest.mark.local_mode annotation to broken tests
+
+## v1.29.0 (2019-06-24)
+
+### Features
+
+ * network isolation mode in training
+
+### Bug fixes and other changes
+
+ * Integrate black into development process
+ * moving not canary TFS tests to local mode
+
 ## v1.28.3 (2019-06-20)
 
 ### Bug fixes and other changes

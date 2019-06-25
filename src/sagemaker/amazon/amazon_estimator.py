@@ -32,12 +32,14 @@ class AmazonAlgorithmEstimatorBase(EstimatorBase):
     """Base class for Amazon first-party Estimator implementations. This class isn't intended
     to be instantiated directly."""
 
-    feature_dim = hp('feature_dim', validation.gt(0), data_type=int)
-    mini_batch_size = hp('mini_batch_size', validation.gt(0), data_type=int)
+    feature_dim = hp("feature_dim", validation.gt(0), data_type=int)
+    mini_batch_size = hp("mini_batch_size", validation.gt(0), data_type=int)
     repo_name = None
     repo_version = None
 
-    def __init__(self, role, train_instance_count, train_instance_type, data_location=None, **kwargs):
+    def __init__(
+        self, role, train_instance_count, train_instance_type, data_location=None, **kwargs
+    ):
         """Initialize an AmazonAlgorithmEstimatorBase.
 
         Args:
@@ -45,18 +47,19 @@ class AmazonAlgorithmEstimatorBase(EstimatorBase):
                 S3 url. For example "s3://example-bucket/some-key-prefix/". Objects will be
                 saved in a unique sub-directory of the specified location. If None, a default
                 data location will be used."""
-        super(AmazonAlgorithmEstimatorBase, self).__init__(role, train_instance_count, train_instance_type,
-                                                           **kwargs)
+        super(AmazonAlgorithmEstimatorBase, self).__init__(
+            role, train_instance_count, train_instance_type, **kwargs
+        )
 
         data_location = data_location or "s3://{}/sagemaker-record-sets/".format(
-            self.sagemaker_session.default_bucket())
+            self.sagemaker_session.default_bucket()
+        )
         self.data_location = data_location
 
     def train_image(self):
         return get_image_uri(
-            self.sagemaker_session.boto_region_name,
-            type(self).repo_name,
-            type(self).repo_version)
+            self.sagemaker_session.boto_region_name, type(self).repo_name, type(self).repo_version
+        )
 
     def hyperparameters(self):
         return hp.serialize_all(self)
@@ -67,10 +70,12 @@ class AmazonAlgorithmEstimatorBase(EstimatorBase):
 
     @data_location.setter
     def data_location(self, data_location):
-        if not data_location.startswith('s3://'):
-            raise ValueError('Expecting an S3 URL beginning with "s3://". Got "{}"'.format(data_location))
-        if data_location[-1] != '/':
-            data_location = data_location + '/'
+        if not data_location.startswith("s3://"):
+            raise ValueError(
+                'Expecting an S3 URL beginning with "s3://". Got "{}"'.format(data_location)
+            )
+        if data_location[-1] != "/":
+            data_location = data_location + "/"
         self._data_location = data_location
 
     @classmethod
@@ -85,19 +90,20 @@ class AmazonAlgorithmEstimatorBase(EstimatorBase):
              dictionary: The transformed init_params
 
         """
-        init_params = super(AmazonAlgorithmEstimatorBase, cls)._prepare_init_params_from_job_description(
-            job_details, model_channel_name)
+        init_params = super(
+            AmazonAlgorithmEstimatorBase, cls
+        )._prepare_init_params_from_job_description(job_details, model_channel_name)
 
         # The hyperparam names may not be the same as the class attribute that holds them,
         # for instance: local_lloyd_init_method is called local_init_method. We need to map these
         # and pass the correct name to the constructor.
         for attribute, value in cls.__dict__.items():
             if isinstance(value, hp):
-                if value.name in init_params['hyperparameters']:
-                    init_params[attribute] = init_params['hyperparameters'][value.name]
+                if value.name in init_params["hyperparameters"]:
+                    init_params[attribute] = init_params["hyperparameters"][value.name]
 
-        del init_params['hyperparameters']
-        del init_params['image']
+        del init_params["hyperparameters"]
+        del init_params["image"]
         return init_params
 
     def _prepare_for_training(self, records, mini_batch_size=None, job_name=None):
@@ -116,11 +122,11 @@ class AmazonAlgorithmEstimatorBase(EstimatorBase):
 
         if isinstance(records, list):
             for record in records:
-                if record.channel == 'train':
+                if record.channel == "train":
                     feature_dim = record.feature_dim
                     break
             if feature_dim is None:
-                raise ValueError('Must provide train channel.')
+                raise ValueError("Must provide train channel.")
         else:
             feature_dim = records.feature_dim
 
@@ -184,21 +190,28 @@ class AmazonAlgorithmEstimatorBase(EstimatorBase):
         Returns:
             RecordSet: A RecordSet referencing the encoded, uploading training and label data.
         """
-        s3 = self.sagemaker_session.boto_session.resource('s3')
+        s3 = self.sagemaker_session.boto_session.resource("s3")
         parsed_s3_url = urlparse(self.data_location)
         bucket, key_prefix = parsed_s3_url.netloc, parsed_s3_url.path
-        key_prefix = key_prefix + '{}-{}/'.format(type(self).__name__, sagemaker_timestamp())
-        key_prefix = key_prefix.lstrip('/')
-        logger.debug('Uploading to bucket {} and key_prefix {}'.format(bucket, key_prefix))
-        manifest_s3_file = upload_numpy_to_s3_shards(self.train_instance_count, s3, bucket,
-                                                     key_prefix, train, labels, encrypt)
+        key_prefix = key_prefix + "{}-{}/".format(type(self).__name__, sagemaker_timestamp())
+        key_prefix = key_prefix.lstrip("/")
+        logger.debug("Uploading to bucket {} and key_prefix {}".format(bucket, key_prefix))
+        manifest_s3_file = upload_numpy_to_s3_shards(
+            self.train_instance_count, s3, bucket, key_prefix, train, labels, encrypt
+        )
         logger.debug("Created manifest file {}".format(manifest_s3_file))
-        return RecordSet(manifest_s3_file, num_records=train.shape[0], feature_dim=train.shape[1], channel=channel)
+        return RecordSet(
+            manifest_s3_file,
+            num_records=train.shape[0],
+            feature_dim=train.shape[1],
+            channel=channel,
+        )
 
 
 class RecordSet(object):
-
-    def __init__(self, s3_data, num_records, feature_dim, s3_data_type='ManifestFile', channel='train'):
+    def __init__(
+        self, s3_data, num_records, feature_dim, s3_data_type="ManifestFile", channel="train"
+    ):
         """A collection of Amazon :class:~`Record` objects serialized and stored in S3.
 
         Args:
@@ -228,7 +241,7 @@ class RecordSet(object):
 
     def records_s3_input(self):
         """Return a s3_input to represent the training data"""
-        return s3_input(self.s3_data, distribution='ShardedByS3Key', s3_data_type=self.s3_data_type)
+        return s3_input(self.s3_data, distribution="ShardedByS3Key", s3_data_type=self.s3_data_type)
 
 
 def _build_shards(num_shards, array):
@@ -237,12 +250,14 @@ def _build_shards(num_shards, array):
     shard_size = int(array.shape[0] / num_shards)
     if shard_size == 0:
         raise ValueError("Array length is less than num shards")
-    shards = [array[i * shard_size:i * shard_size + shard_size] for i in range(num_shards - 1)]
-    shards.append(array[(num_shards - 1) * shard_size:])
+    shards = [array[i * shard_size : i * shard_size + shard_size] for i in range(num_shards - 1)]
+    shards.append(array[(num_shards - 1) * shard_size :])
     return shards
 
 
-def upload_numpy_to_s3_shards(num_shards, s3, bucket, key_prefix, array, labels=None, encrypt=False):
+def upload_numpy_to_s3_shards(
+    num_shards, s3, bucket, key_prefix, array, labels=None, encrypt=False
+):
     """Upload the training ``array`` and ``labels`` arrays to ``num_shards`` S3 objects,
     stored in "s3://``bucket``/``key_prefix``/". Optionally ``encrypt`` the S3 objects using
     AES-256."""
@@ -250,9 +265,9 @@ def upload_numpy_to_s3_shards(num_shards, s3, bucket, key_prefix, array, labels=
     if labels is not None:
         label_shards = _build_shards(num_shards, labels)
     uploaded_files = []
-    if key_prefix[-1] != '/':
-        key_prefix = key_prefix + '/'
-    extra_put_kwargs = {'ServerSideEncryption': 'AES256'} if encrypt else {}
+    if key_prefix[-1] != "/":
+        key_prefix = key_prefix + "/"
+    extra_put_kwargs = {"ServerSideEncryption": "AES256"} if encrypt else {}
     try:
         for shard_index, shard in enumerate(shards):
             with tempfile.TemporaryFile() as file:
@@ -269,8 +284,9 @@ def upload_numpy_to_s3_shards(num_shards, s3, bucket, key_prefix, array, labels=
                 uploaded_files.append(file_name)
         manifest_key = key_prefix + ".amazon.manifest"
         manifest_str = json.dumps(
-            [{'prefix': 's3://{}/{}'.format(bucket, key_prefix)}] + uploaded_files)
-        s3.Object(bucket, manifest_key).put(Body=manifest_str.encode('utf-8'), **extra_put_kwargs)
+            [{"prefix": "s3://{}/{}".format(bucket, key_prefix)}] + uploaded_files
+        )
+        s3.Object(bucket, manifest_key).put(Body=manifest_str.encode("utf-8"), **extra_put_kwargs)
         return "s3://{}/{}".format(bucket, manifest_key)
     except Exception as ex:  # pylint: disable=broad-except
         try:
@@ -288,94 +304,112 @@ def registry(region_name, algorithm=None):
 
     https://github.com/aws/sagemaker-python-sdk/tree/master/src/sagemaker/amazon
     """
-    if algorithm in [None, 'pca', 'kmeans', 'linear-learner', 'factorization-machines', 'ntm',
-                     'randomcutforest', 'knn', 'object2vec', 'ipinsights']:
+    if algorithm in [
+        None,
+        "pca",
+        "kmeans",
+        "linear-learner",
+        "factorization-machines",
+        "ntm",
+        "randomcutforest",
+        "knn",
+        "object2vec",
+        "ipinsights",
+    ]:
         account_id = {
-            'us-east-1': '382416733822',
-            'us-east-2': '404615174143',
-            'us-west-2': '174872318107',
-            'eu-west-1': '438346466558',
-            'eu-central-1': '664544806723',
-            'ap-northeast-1': '351501993468',
-            'ap-northeast-2': '835164637446',
-            'ap-southeast-2': '712309505854',
-            'us-gov-west-1': '226302683700',
-            'ap-southeast-1': '475088953585',
-            'ap-south-1': '991648021394',
-            'ca-central-1': '469771592824',
-            'eu-west-2': '644912444149',
-            'us-west-1': '632365934929',
-            'us-iso-east-1': '490574956308',
+            "us-east-1": "382416733822",
+            "us-east-2": "404615174143",
+            "us-west-2": "174872318107",
+            "eu-west-1": "438346466558",
+            "eu-central-1": "664544806723",
+            "ap-northeast-1": "351501993468",
+            "ap-northeast-2": "835164637446",
+            "ap-southeast-2": "712309505854",
+            "us-gov-west-1": "226302683700",
+            "ap-southeast-1": "475088953585",
+            "ap-south-1": "991648021394",
+            "ca-central-1": "469771592824",
+            "eu-west-2": "644912444149",
+            "us-west-1": "632365934929",
+            "us-iso-east-1": "490574956308",
         }[region_name]
-    elif algorithm in ['lda']:
+    elif algorithm in ["lda"]:
         account_id = {
-            'us-east-1': '766337827248',
-            'us-east-2': '999911452149',
-            'us-west-2': '266724342769',
-            'eu-west-1': '999678624901',
-            'eu-central-1': '353608530281',
-            'ap-northeast-1': '258307448986',
-            'ap-northeast-2': '293181348795',
-            'ap-southeast-2': '297031611018',
-            'us-gov-west-1': '226302683700',
-            'ap-southeast-1': '475088953585',
-            'ap-south-1': '991648021394',
-            'ca-central-1': '469771592824',
-            'eu-west-2': '644912444149',
-            'us-west-1': '632365934929',
-            'us-iso-east-1': '490574956308',
+            "us-east-1": "766337827248",
+            "us-east-2": "999911452149",
+            "us-west-2": "266724342769",
+            "eu-west-1": "999678624901",
+            "eu-central-1": "353608530281",
+            "ap-northeast-1": "258307448986",
+            "ap-northeast-2": "293181348795",
+            "ap-southeast-2": "297031611018",
+            "us-gov-west-1": "226302683700",
+            "ap-southeast-1": "475088953585",
+            "ap-south-1": "991648021394",
+            "ca-central-1": "469771592824",
+            "eu-west-2": "644912444149",
+            "us-west-1": "632365934929",
+            "us-iso-east-1": "490574956308",
         }[region_name]
-    elif algorithm in ['forecasting-deepar']:
+    elif algorithm in ["forecasting-deepar"]:
         account_id = {
-            'us-east-1': '522234722520',
-            'us-east-2': '566113047672',
-            'us-west-2': '156387875391',
-            'eu-west-1': '224300973850',
-            'eu-central-1': '495149712605',
-            'ap-northeast-1': '633353088612',
-            'ap-northeast-2': '204372634319',
-            'ap-southeast-2': '514117268639',
-            'us-gov-west-1': '226302683700',
-            'ap-southeast-1': '475088953585',
-            'ap-south-1': '991648021394',
-            'ca-central-1': '469771592824',
-            'eu-west-2': '644912444149',
-            'us-west-1': '632365934929',
-            'us-iso-east-1': '490574956308',
+            "us-east-1": "522234722520",
+            "us-east-2": "566113047672",
+            "us-west-2": "156387875391",
+            "eu-west-1": "224300973850",
+            "eu-central-1": "495149712605",
+            "ap-northeast-1": "633353088612",
+            "ap-northeast-2": "204372634319",
+            "ap-southeast-2": "514117268639",
+            "us-gov-west-1": "226302683700",
+            "ap-southeast-1": "475088953585",
+            "ap-south-1": "991648021394",
+            "ca-central-1": "469771592824",
+            "eu-west-2": "644912444149",
+            "us-west-1": "632365934929",
+            "us-iso-east-1": "490574956308",
         }[region_name]
-    elif algorithm in ['xgboost', 'seq2seq', 'image-classification', 'blazingtext',
-                       'object-detection', 'semantic-segmentation']:
+    elif algorithm in [
+        "xgboost",
+        "seq2seq",
+        "image-classification",
+        "blazingtext",
+        "object-detection",
+        "semantic-segmentation",
+    ]:
         account_id = {
-            'us-east-1': '811284229777',
-            'us-east-2': '825641698319',
-            'us-west-2': '433757028032',
-            'eu-west-1': '685385470294',
-            'eu-central-1': '813361260812',
-            'ap-northeast-1': '501404015308',
-            'ap-northeast-2': '306986355934',
-            'ap-southeast-2': '544295431143',
-            'us-gov-west-1': '226302683700',
-            'ap-southeast-1': '475088953585',
-            'ap-south-1': '991648021394',
-            'ca-central-1': '469771592824',
-            'eu-west-2': '644912444149',
-            'us-west-1': '632365934929',
-            'us-iso-east-1': '490574956308',
+            "us-east-1": "811284229777",
+            "us-east-2": "825641698319",
+            "us-west-2": "433757028032",
+            "eu-west-1": "685385470294",
+            "eu-central-1": "813361260812",
+            "ap-northeast-1": "501404015308",
+            "ap-northeast-2": "306986355934",
+            "ap-southeast-2": "544295431143",
+            "us-gov-west-1": "226302683700",
+            "ap-southeast-1": "475088953585",
+            "ap-south-1": "991648021394",
+            "ca-central-1": "469771592824",
+            "eu-west-2": "644912444149",
+            "us-west-1": "632365934929",
+            "us-iso-east-1": "490574956308",
         }[region_name]
-    elif algorithm in ['image-classification-neo', 'xgboost-neo']:
+    elif algorithm in ["image-classification-neo", "xgboost-neo"]:
         account_id = {
-            'us-west-2': '301217895009',
-            'us-east-1': '785573368785',
-            'eu-west-1': '802834080501',
-            'us-east-2': '007439368137',
+            "us-west-2": "301217895009",
+            "us-east-1": "785573368785",
+            "eu-west-1": "802834080501",
+            "us-east-2": "007439368137",
         }[region_name]
     else:
-        raise ValueError('Algorithm class:{} does not have mapping to account_id with images'.format(algorithm))
+        raise ValueError(
+            "Algorithm class:{} does not have mapping to account_id with images".format(algorithm)
+        )
 
     return get_ecr_image_uri_prefix(account_id, region_name)
 
 
 def get_image_uri(region_name, repo_name, repo_version=1):
     """Return algorithm image URI for the given AWS region, repository name, and repository version"""
-    repo = '{}:{}'.format(repo_name, repo_version)
-    return '{}/{}'.format(registry(region_name, repo_name), repo)
+    repo = "{}:{}".format(repo_name, repo_version)
+    return "{}/{}".format(registry(region_name, repo_name), repo)

@@ -27,7 +27,7 @@ class AlgorithmEstimator(EstimatorBase):
     """
 
     # These Hyperparameter Types have a range definition.
-    _hyperpameters_with_range = ('Integer', 'Continuous', 'Categorical')
+    _hyperpameters_with_range = ("Integer", "Continuous", "Categorical")
 
     def __init__(
         self,
@@ -38,7 +38,7 @@ class AlgorithmEstimator(EstimatorBase):
         train_volume_size=30,
         train_volume_kms_key=None,
         train_max_run=24 * 60 * 60,
-        input_mode='File',
+        input_mode="File",
         output_path=None,
         output_kms_key=None,
         base_job_name=None,
@@ -48,9 +48,9 @@ class AlgorithmEstimator(EstimatorBase):
         subnets=None,
         security_group_ids=None,
         model_uri=None,
-        model_channel_name='model',
+        model_channel_name="model",
         metric_definitions=None,
-        encrypt_inter_container_traffic=False
+        encrypt_inter_container_traffic=False,
     ):
         """Initialize an ``AlgorithmEstimator`` instance.
 
@@ -123,7 +123,7 @@ class AlgorithmEstimator(EstimatorBase):
             model_uri=model_uri,
             model_channel_name=model_channel_name,
             metric_definitions=metric_definitions,
-            encrypt_inter_container_traffic=encrypt_inter_container_traffic
+            encrypt_inter_container_traffic=encrypt_inter_container_traffic,
         )
 
         self.algorithm_spec = self.sagemaker_session.sagemaker_client.describe_algorithm(
@@ -137,35 +137,35 @@ class AlgorithmEstimator(EstimatorBase):
             self.set_hyperparameters(**hyperparameters)
 
     def validate_train_spec(self):
-        train_spec = self.algorithm_spec['TrainingSpecification']
-        algorithm_name = self.algorithm_spec['AlgorithmName']
+        train_spec = self.algorithm_spec["TrainingSpecification"]
+        algorithm_name = self.algorithm_spec["AlgorithmName"]
 
         # Check that the input mode provided is compatible with the training input modes for the
         # algorithm.
-        train_input_modes = self._algorithm_training_input_modes(train_spec['TrainingChannels'])
+        train_input_modes = self._algorithm_training_input_modes(train_spec["TrainingChannels"])
         if self.input_mode not in train_input_modes:
             raise ValueError(
-                'Invalid input mode: %s. %s only supports: %s'
+                "Invalid input mode: %s. %s only supports: %s"
                 % (self.input_mode, algorithm_name, train_input_modes)
             )
 
         # Check that the training instance type is compatible with the algorithm.
-        supported_instances = train_spec['SupportedTrainingInstanceTypes']
+        supported_instances = train_spec["SupportedTrainingInstanceTypes"]
         if self.train_instance_type not in supported_instances:
             raise ValueError(
-                'Invalid train_instance_type: %s. %s supports the following instance types: %s'
+                "Invalid train_instance_type: %s. %s supports the following instance types: %s"
                 % (self.train_instance_type, algorithm_name, supported_instances)
             )
 
         # Verify if distributed training is supported by the algorithm
         if (
             self.train_instance_count > 1
-            and 'SupportsDistributedTraining' in train_spec
-            and not train_spec['SupportsDistributedTraining']
+            and "SupportsDistributedTraining" in train_spec
+            and not train_spec["SupportsDistributedTraining"]
         ):
             raise ValueError(
-                'Distributed training is not supported by %s. '
-                'Please set train_instance_count=1' % algorithm_name
+                "Distributed training is not supported by %s. "
+                "Please set train_instance_count=1" % algorithm_name
             )
 
     def set_hyperparameters(self, **kwargs):
@@ -187,7 +187,7 @@ class AlgorithmEstimator(EstimatorBase):
 
         The fit() method, that does the model training, calls this method to find the image to use for model training.
         """
-        raise RuntimeError('train_image is never meant to be called on Algorithm Estimators')
+        raise RuntimeError("train_image is never meant to be called on Algorithm Estimators")
 
     def enable_network_isolation(self):
         """Return True if this Estimator will need network isolation to run.
@@ -258,9 +258,22 @@ class AlgorithmEstimator(EstimatorBase):
             **kwargs
         )
 
-    def transformer(self, instance_count, instance_type, strategy=None, assemble_with=None, output_path=None,
-                    output_kms_key=None, accept=None, env=None, max_concurrent_transforms=None,
-                    max_payload=None, tags=None, role=None, volume_kms_key=None):
+    def transformer(
+        self,
+        instance_count,
+        instance_type,
+        strategy=None,
+        assemble_with=None,
+        output_path=None,
+        output_kms_key=None,
+        accept=None,
+        env=None,
+        max_concurrent_transforms=None,
+        max_payload=None,
+        tags=None,
+        role=None,
+        volume_kms_key=None,
+    ):
         """Return a ``Transformer`` that uses a SageMaker Model based on the training job. It reuses the
         SageMaker Session and base job name used by the Estimator.
 
@@ -300,18 +313,28 @@ class AlgorithmEstimator(EstimatorBase):
 
             tags = tags or self.tags
         else:
-            raise RuntimeError('No finished training job found associated with this estimator')
+            raise RuntimeError("No finished training job found associated with this estimator")
 
-        return Transformer(model_name, instance_count, instance_type, strategy=strategy,
-                           assemble_with=assemble_with, output_path=output_path,
-                           output_kms_key=output_kms_key, accept=accept,
-                           max_concurrent_transforms=max_concurrent_transforms,
-                           max_payload=max_payload, env=transform_env, tags=tags,
-                           base_transform_job_name=self.base_job_name,
-                           volume_kms_key=volume_kms_key, sagemaker_session=self.sagemaker_session)
+        return Transformer(
+            model_name,
+            instance_count,
+            instance_type,
+            strategy=strategy,
+            assemble_with=assemble_with,
+            output_path=output_path,
+            output_kms_key=output_kms_key,
+            accept=accept,
+            max_concurrent_transforms=max_concurrent_transforms,
+            max_payload=max_payload,
+            env=transform_env,
+            tags=tags,
+            base_transform_job_name=self.base_job_name,
+            volume_kms_key=volume_kms_key,
+            sagemaker_session=self.sagemaker_session,
+        )
 
     def _is_marketplace(self):
-        return 'ProductId' in self.algorithm_spec
+        return "ProductId" in self.algorithm_spec
 
     def _prepare_for_training(self, job_name=None):
         # Validate hyperparameters
@@ -328,39 +351,39 @@ class AlgorithmEstimator(EstimatorBase):
         super(AlgorithmEstimator, self).fit(inputs, wait, logs, job_name)
 
     def _validate_input_channels(self, channels):
-        train_spec = self.algorithm_spec['TrainingSpecification']
-        algorithm_name = self.algorithm_spec['AlgorithmName']
-        training_channels = {c['Name']: c for c in train_spec['TrainingChannels']}
+        train_spec = self.algorithm_spec["TrainingSpecification"]
+        algorithm_name = self.algorithm_spec["AlgorithmName"]
+        training_channels = {c["Name"]: c for c in train_spec["TrainingChannels"]}
 
         # check for unknown channels that the algorithm does not support
         for c in channels:
             if c not in training_channels:
                 raise ValueError(
-                    'Unknown input channel: %s is not supported by: %s' % (c, algorithm_name)
+                    "Unknown input channel: %s is not supported by: %s" % (c, algorithm_name)
                 )
 
         # check for required channels that were not provided
         for name, channel in training_channels.items():
-            if name not in channels and 'IsRequired' in channel and channel['IsRequired']:
-                raise ValueError('Required input channel: %s Was not provided.' % (name))
+            if name not in channels and "IsRequired" in channel and channel["IsRequired"]:
+                raise ValueError("Required input channel: %s Was not provided." % (name))
 
     def _validate_and_cast_hyperparameter(self, name, v):
-        algorithm_name = self.algorithm_spec['AlgorithmName']
+        algorithm_name = self.algorithm_spec["AlgorithmName"]
 
         if name not in self.hyperparameter_definitions:
             raise ValueError(
-                'Invalid hyperparameter: %s is not supported by %s' % (name, algorithm_name)
+                "Invalid hyperparameter: %s is not supported by %s" % (name, algorithm_name)
             )
 
         definition = self.hyperparameter_definitions[name]
-        if 'class' in definition:
-            value = definition['class'].cast_to_type(v)
+        if "class" in definition:
+            value = definition["class"].cast_to_type(v)
         else:
             value = v
 
-        if 'range' in definition and not definition['range'].is_valid(value):
-            valid_range = definition['range'].as_tuning_range(name)
-            raise ValueError('Invalid value: %s Supported range: %s' % (value, valid_range))
+        if "range" in definition and not definition["range"].is_valid(value):
+            valid_range = definition["range"].as_tuning_range(name)
+            raise ValueError("Invalid value: %s Supported range: %s" % (value, valid_range))
         return value
 
     def _validate_and_set_default_hyperparameters(self):
@@ -368,77 +391,77 @@ class AlgorithmEstimator(EstimatorBase):
         # for one, set it.
         for name, definition in self.hyperparameter_definitions.items():
             if name not in self.hyperparam_dict:
-                spec = definition['spec']
-                if 'DefaultValue' in spec:
-                    self.hyperparam_dict[name] = spec['DefaultValue']
-                elif 'IsRequired' in spec and spec['IsRequired']:
-                    raise ValueError('Required hyperparameter: %s is not set' % name)
+                spec = definition["spec"]
+                if "DefaultValue" in spec:
+                    self.hyperparam_dict[name] = spec["DefaultValue"]
+                elif "IsRequired" in spec and spec["IsRequired"]:
+                    raise ValueError("Required hyperparameter: %s is not set" % name)
 
     def _parse_hyperparameters(self):
         definitions = {}
 
-        training_spec = self.algorithm_spec['TrainingSpecification']
-        if 'SupportedHyperParameters' in training_spec:
-            hyperparameters = training_spec['SupportedHyperParameters']
+        training_spec = self.algorithm_spec["TrainingSpecification"]
+        if "SupportedHyperParameters" in training_spec:
+            hyperparameters = training_spec["SupportedHyperParameters"]
             for h in hyperparameters:
-                parameter_type = h['Type']
-                name = h['Name']
+                parameter_type = h["Type"]
+                name = h["Name"]
                 parameter_class, parameter_range = self._hyperparameter_range_and_class(
                     parameter_type, h
                 )
 
-                definitions[name] = {'spec': h}
+                definitions[name] = {"spec": h}
                 if parameter_range:
-                    definitions[name]['range'] = parameter_range
+                    definitions[name]["range"] = parameter_range
                 if parameter_class:
-                    definitions[name]['class'] = parameter_class
+                    definitions[name]["class"] = parameter_class
 
         return definitions
 
     def _hyperparameter_range_and_class(self, parameter_type, hyperparameter):
         if parameter_type in self._hyperpameters_with_range:
-            range_name = parameter_type + 'ParameterRangeSpecification'
+            range_name = parameter_type + "ParameterRangeSpecification"
 
         parameter_class = None
         parameter_range = None
 
-        if parameter_type in ('Integer', 'Continuous'):
+        if parameter_type in ("Integer", "Continuous"):
             # Integer and Continuous are handled the same way. We get the min and max values
             # and just create an Instance of Parameter. Note that the range is optional for all
             # the Parameter Types.
-            if parameter_type == 'Integer':
+            if parameter_type == "Integer":
                 parameter_class = sagemaker.parameter.IntegerParameter
             else:
                 parameter_class = sagemaker.parameter.ContinuousParameter
 
-            if 'Range' in hyperparameter:
+            if "Range" in hyperparameter:
                 min_value = parameter_class.cast_to_type(
-                    hyperparameter['Range'][range_name]['MinValue']
+                    hyperparameter["Range"][range_name]["MinValue"]
                 )
                 max_value = parameter_class.cast_to_type(
-                    hyperparameter['Range'][range_name]['MaxValue']
+                    hyperparameter["Range"][range_name]["MaxValue"]
                 )
                 parameter_range = parameter_class(min_value, max_value)
 
-        elif parameter_type == 'Categorical':
+        elif parameter_type == "Categorical":
             parameter_class = sagemaker.parameter.CategoricalParameter
-            if 'Range' in hyperparameter:
-                values = hyperparameter['Range'][range_name]['Values']
+            if "Range" in hyperparameter:
+                values = hyperparameter["Range"][range_name]["Values"]
                 parameter_range = sagemaker.parameter.CategoricalParameter(values)
-        elif parameter_type == 'FreeText':
+        elif parameter_type == "FreeText":
             pass
         else:
             raise ValueError(
-                'Invalid Hyperparameter type: %s. Valid ones are:'
-                '(Integer, Continuous, Categorical, FreeText)' % parameter_type
+                "Invalid Hyperparameter type: %s. Valid ones are:"
+                "(Integer, Continuous, Categorical, FreeText)" % parameter_type
             )
 
         return parameter_class, parameter_range
 
     def _algorithm_training_input_modes(self, training_channels):
-        current_input_modes = {'File', 'Pipe'}
+        current_input_modes = {"File", "Pipe"}
         for channel in training_channels:
-            supported_input_modes = set(channel['SupportedInputModes'])
+            supported_input_modes = set(channel["SupportedInputModes"])
             current_input_modes = current_input_modes & supported_input_modes
 
         return current_input_modes
