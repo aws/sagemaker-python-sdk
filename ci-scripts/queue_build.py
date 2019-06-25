@@ -15,7 +15,6 @@ from __future__ import absolute_import
 import os
 import time
 import boto3
-import botocore.exceptions
 
 account = boto3.client("sts").get_caller_identity()["Account"]
 bucket_name = 'sagemaker-us-west-2-%s' % account
