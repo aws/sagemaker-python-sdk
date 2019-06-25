@@ -30,7 +30,7 @@ def queue_build():
 
     _write_ticket(filename)
     files = _list_tickets()
-    _cleanup_tickets_older_than_8_days(files)
+    _cleanup_tickets_older_than_8_hours(files)
     _wait_for_other_builds(files, ticket_number)
 
 
@@ -72,7 +72,7 @@ def _wait_for_other_builds(files, ticket_number):
                     break
 
 
-def _cleanup_tickets_older_than_8_days(files):
+def _cleanup_tickets_older_than_8_hours(files):
     oldfiles = list(filter(_file_older_than, files))
     for file in oldfiles:
         print('object %s older than 8 hours. Deleting' % file.key)

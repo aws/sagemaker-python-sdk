@@ -9,7 +9,6 @@ phases:
     commands:
       # run linters
       - tox -e flake8,pylint
-      - sleep 20m
       # run package and docbuild checks
       - tox -e twine
       - tox -e sphinx
@@ -30,10 +29,6 @@ phases:
          else
            echo "skipping notebook test"
          fi
-
-      # wait its turn to run integration tests
-      - ACCOUNT=$(aws sts get-caller-identity --output text | awk '{print $1}')
-      - S3_BUCKET_DIR=s3://sagemaker-us-west-2-${ACCOUNT}/ci-lock
 
       # run integration tests
       - |
