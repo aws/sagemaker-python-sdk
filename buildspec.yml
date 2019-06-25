@@ -4,6 +4,7 @@ phases:
   pre_build:
     commands:
       - start-dockerd
+      - pip install boto3
 
   build:
     commands:
