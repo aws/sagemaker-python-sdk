@@ -24,7 +24,7 @@ phases:
 
       # run notebook test
       - |
-        if has-matching-changes "src/*.py" "setup.py" "setup.cfg" "buildspec.yml"; then
+        if has-matching-changes "src/*.py" "setup.py" "setup.cfg"; then
           echo "running notebook test"
           ./tests/scripts/run-notebook-test.sh
          else
@@ -39,7 +39,7 @@ phases:
         while true; do
             LAST_LOCK=$(aws s3 ls ${S3_BUCKET_DIR} | sort | tail -n 1 | awk '{print $4}')
 
-            if [[ -z "$LAST_LOCK" ]]
+            if test -z "$LAST_LOCK"
             then
                 echo "No locks. Creating lock."
                 LOCK_FILE=$(date +%s)
