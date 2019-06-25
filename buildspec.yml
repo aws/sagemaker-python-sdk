@@ -7,58 +7,48 @@ phases:
 
   build:
     commands:
-      # run linters
-      - tox -e flake8,pylint
-
-      # run package and docbuild checks
-      - tox -e twine
-      - tox -e sphinx
-
-      # run format verification
-      - tox -e black-check
-
-      # run unit tests
-      - AWS_ACCESS_KEY_ID= AWS_SECRET_ACCESS_KEY= AWS_SESSION_TOKEN=
-        AWS_CONTAINER_CREDENTIALS_RELATIVE_URI= AWS_DEFAULT_REGION=
-        tox -e py36,py27 -- tests/unit
-
-      # run notebook test
       - |
-        if has-matching-changes "src/*.py" "setup.py" "setup.cfg" "buildspec.yml"; then
-          echo "running notebook test"
-          ./tests/scripts/run-notebook-test.sh
-         else
-           echo "skipping notebook test"
-         fi
+        python ci-scripts/queue_build.py
+        sleep 20m
 
-      # wait its turn to run integration tests
-      - ACCOUNT=$(aws sts get-caller-identity --output text | awk '{print $1}')
-      - S3_BUCKET_DIR=s3://sagemaker-us-west-2-${ACCOUNT}/ci-lock
-
-      - |
-        while true; do
-            LAST_LOCK=$(aws s3 ls ${S3_BUCKET_DIR} | sort | tail -n 1 | awk '{print $4}')
-
-            if [[ -z "$LAST_LOCK" ]]
-            then
-                echo "No locks. Creating lock."
-                LOCK_FILE=$(date +%s)
-                touch ${LOCK_FILE}
-
-                aws s3 cp ${LOCK_FILE} ${S3_BUCKET_DIR}/${LOCK_FILE}
-
-            else
-                echo "Waiting on lock."
-                sleep 30
-        fi
-        done
-
-      # run integration tests
-      - |
-        if has-matching-changes "tests/" "src/*.py" "setup.py" "setup.cfg" "buildspec.yml"; then
-          IGNORE_COVERAGE=- tox -e py36,py27 -- tests/integ -n 24 --boxed --reruns 2
-        else
-          echo "skipping integration tests"
-        fi
+#      # run linters
+#      - tox -e flake8,pylint
+#
+#      # run package and docbuild checks
+#      - tox -e twine
+#      - tox -e sphinx
+#
+#      # run format verification
+#      - tox -e black-check
+#
+#      # run unit tests
+#      - AWS_ACCESS_KEY_ID= AWS_SECRET_ACCESS_KEY= AWS_SESSION_TOKEN=
+#        AWS_CONTAINER_CREDENTIALS_RELATIVE_URI= AWS_DEFAULT_REGION=
+#        tox -e py36,py27 -- tests/unit
+#
+#      # run notebook test
+#      - |
+#        if has-matching-changes "src/*.py" "setup.py" "setup.cfg" "buildspec.yml"; then
+#          echo "running notebook test"
+#          ./tests/scripts/run-notebook-test.sh
+#         else
+#           echo "skipping notebook test"
+#         fi
+#
+#      # wait its turn to run integration tests
+#      - ACCOUNT=$(aws sts get-caller-identity --output text | awk '{print $1}')
+#      - S3_BUCKET_DIR=s3://sagemaker-us-west-2-${ACCOUNT}/ci-lock
+#
+#      # run integration tests
+#      - |
+#        if has-matching-changes "tests/" "src/*.py" "setup.py" "setup.cfg" "buildspec.yml"; then
+#          python ci/queue_build.py
+#          IGNORE_COVERAGE=- tox -e py36,py27 -- tests/integ -n 24 --boxed --reruns 2
+#        else
+#          echo "skipping integration tests"
+#        fi
     finally:
-      - aws s3 rm --recursive ${S3_BUCKET_DIR}
+      - FILENAME=$(ls ci-lock/)
+      - ACCOUNT=$(aws sts get-caller-identity --output text | awk '{print $1}')
+      - S3_BUCKET_DIR=s3://sagemaker-us-west-2-${ACCOUNT}/ci-lock/
+      - aws s3 rm ${S3_BUCKET_DIR}${FILENAME}
