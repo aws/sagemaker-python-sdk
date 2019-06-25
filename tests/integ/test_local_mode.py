@@ -85,14 +85,14 @@ def mxnet_model(sagemaker_local_session, mxnet_full_version):
 
 @pytest.mark.local_mode
 @pytest.mark.skipif(PYTHON_VERSION != "py2", reason="TensorFlow image supports only python 2.")
-def test_tf_local_mode(tf_full_version, sagemaker_local_session):
+def test_tf_local_mode(sagemaker_local_session):
     with timeout(minutes=5):
         script_path = os.path.join(DATA_DIR, "iris", "iris-dnn-classifier.py")
 
         estimator = TensorFlow(
             entry_point=script_path,
             role="SageMakerRole",
-            framework_version=tf_full_version,
+            framework_version="1.12",
             training_steps=1,
             evaluation_steps=1,
             hyperparameters={"input_tensor_name": "inputs"},
@@ -135,6 +135,7 @@ def test_tf_distributed_local_mode(sagemaker_local_session):
         estimator = TensorFlow(
             entry_point=script_path,
             role="SageMakerRole",
+            framework_version="1.12",
             training_steps=1,
             evaluation_steps=1,
             hyperparameters={"input_tensor_name": "inputs"},
@@ -176,6 +177,7 @@ def test_tf_local_data(sagemaker_local_session):
         estimator = TensorFlow(
             entry_point=script_path,
             role="SageMakerRole",
+            framework_version="1.12",
             training_steps=1,
             evaluation_steps=1,
             hyperparameters={"input_tensor_name": "inputs"},
@@ -216,6 +218,7 @@ def test_tf_local_data_local_script():
         estimator = TensorFlow(
             entry_point=script_path,
             role="SageMakerRole",
+            framework_version="1.12",
             training_steps=1,
             evaluation_steps=1,
             hyperparameters={"input_tensor_name": "inputs"},
