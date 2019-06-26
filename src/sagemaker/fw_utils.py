@@ -70,7 +70,7 @@ MERGED_FRAMEWORKS_LOWEST_VERSIONS = {
 
 
 def is_version_equal_or_higher(lowest_version, framework_version):
-    """Determine whether the framework_version is equal to or higher than lowest_version
+    """Determine whether the ``framework_version`` is equal to or higher than ``lowest_version``
 
     Args:
         lowest_version (List[int]): lowest version represented in an integer list
@@ -99,7 +99,6 @@ def _using_merged_images(region, framework, py_version, accelerator_type, framew
 
 
 def _registry_id(region, framework, py_version, account, accelerator_type, framework_version):
-
     if _using_merged_images(region, framework, py_version, accelerator_type, framework_version):
         return "763104351884"
     else:
