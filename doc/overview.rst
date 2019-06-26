@@ -19,11 +19,11 @@ There's also an ``Estimator`` that runs SageMaker compatible custom Docker conta
 Train a Model with the SageMaker Python SDK
 *******************************************
 
-To train a model by using the SageMaker Pthon SDK, you:
+To train a model by using the SageMaker Python SDK, you:
 
 1. Prepare a training script
 2. Create an estimator
-3. Call the `fit` method of the estimator
+3. Call the ``fit`` method of the estimator
 
 After you train a model, you can save it, and then serve the model as an endpoint to get real-time inferences or get inferences for an entire dataset by using batch transform.
 
@@ -277,6 +277,10 @@ Please refer to the full example in the examples repo:
 The example notebook is located here:
 ``advanced_functionality/scikit_bring_your_own/scikit_bring_your_own.ipynb``
 
+You can also find this notebook in the **Advanced Functionality** folder of the **SageMaker Examples** section in a notebook instance.
+For information about using sample notebooks in a SageMaker notebook instance, see `Use Example Notebooks <https://docs.aws.amazon.com/sagemaker/latest/dg/howitworks-nbexamples.html>`__
+in the AWS documentation.
+
 Incremental Training
 ====================
 
@@ -374,6 +378,10 @@ After that, invoke the ``deploy()`` method on the ``Model``:
 This returns a predictor the same way an ``Estimator`` does when ``deploy()`` is called. You can now get inferences just like with any other model deployed on Amazon SageMaker.
 
 A full example is available in the `Amazon SageMaker examples repository <https://github.com/awslabs/amazon-sagemaker-examples/tree/master/advanced_functionality/mxnet_mnist_byom>`__.
+
+You can also find this notebook in the **Advanced Functionality** section of the **SageMaker Examples** section in a notebook instance.
+For information about using sample notebooks in a SageMaker notebook instance, see `Use Example Notebooks <https://docs.aws.amazon.com/sagemaker/latest/dg/howitworks-nbexamples.html>`__
+in the AWS documentation.
 
 Consuming SageMaker Model Packages
 ==================================
@@ -493,6 +501,10 @@ For more detailed examples of running hyperparameter tuning jobs, see:
 - `Using the TensorFlow estimator with hyperparameter tuning <https://github.com/awslabs/amazon-sagemaker-examples/blob/master/hyperparameter_tuning/tensorflow_mnist/hpo_tensorflow_mnist.ipynb>`__
 - `Bringing your own estimator for hyperparameter tuning <https://github.com/awslabs/amazon-sagemaker-examples/blob/master/hyperparameter_tuning/r_bring_your_own/hpo_r_bring_your_own.ipynb>`__
 - `Analyzing results <https://github.com/awslabs/amazon-sagemaker-examples/blob/master/hyperparameter_tuning/analyze_results/HPO_Analyze_TuningJob_Results.ipynb>`__
+
+You can also find these notebooks in the **Hyperprameter Tuning** section of the **SageMaker Examples** section in a notebook instance.
+For information about using sample notebooks in a SageMaker notebook instance, see `Use Example Notebooks <https://docs.aws.amazon.com/sagemaker/latest/dg/howitworks-nbexamples.html>`__
+in the AWS documentation.
 
 For more detailed explanations of the classes that this library provides for automatic model tuning, see:
 
@@ -629,6 +641,10 @@ For detailed examples of running Docker in local mode, see:
 
 - `TensorFlow local mode example notebook <https://github.com/awslabs/amazon-sagemaker-examples/blob/master/sagemaker-python-sdk/tensorflow_distributed_mnist/tensorflow_local_mode_mnist.ipynb>`__.
 - `MXNet local mode example notebook <https://github.com/awslabs/amazon-sagemaker-examples/blob/master/sagemaker-python-sdk/mxnet_gluon_mnist/mnist_with_gluon_local_mode.ipynb>`__.
+
+You can also find these notebooks in the **SageMaker Python SDK** section of the **SageMaker Examples** section in a notebook instance.
+For information about using sample notebooks in a SageMaker notebook instance, see `Use Example Notebooks <https://docs.aws.amazon.com/sagemaker/latest/dg/howitworks-nbexamples.html>`__
+in the AWS documentation.
 
 A few important notes:
 
@@ -830,6 +846,10 @@ This returns a predictor the same way an ``Estimator`` does when ``deploy()`` is
 
 A full example is available in the `Amazon SageMaker examples repository <https://github.com/awslabs/amazon-sagemaker-examples/tree/master/advanced_functionality/mxnet_mnist_byom>`__.
 
+You can also find this notebook in the **Advanced Functionality** section of the **SageMaker Examples** section in a notebook instance.
+For information about using sample notebooks in a SageMaker notebook instance, see `Use Example Notebooks <https://docs.aws.amazon.com/sagemaker/latest/dg/howitworks-nbexamples.html>`__
+in the AWS documentation.
+
 
 Inference Pipelines
 *******************
@@ -856,6 +876,10 @@ This defines a ``PipelineModel`` consisting of SparkML model and an XGBoost mode
 For more information about how to train an XGBoost model, please refer to the XGBoost notebook here_.
 
 .. _here: https://github.com/awslabs/amazon-sagemaker-examples/blob/master/introduction_to_amazon_algorithms/xgboost_abalone/xgboost_abalone.ipynb
+
+You can also find this notebook in the **Introduction to Amazon Algorithms** section of the **SageMaker Examples** section in a notebook instance.
+For information about using sample notebooks in a SageMaker notebook instance, see `Use Example Notebooks <https://docs.aws.amazon.com/sagemaker/latest/dg/howitworks-nbexamples.html>`__
+in the AWS documentation.
 
 .. code:: python
 
@@ -898,6 +922,10 @@ For comprehensive examples on how to use Inference Pipelines please refer to the
 
 - `inference_pipeline_sparkml_xgboost_abalone.ipynb <https://github.com/awslabs/amazon-sagemaker-examples/blob/master/advanced_functionality/inference_pipeline_sparkml_xgboost_abalone/inference_pipeline_sparkml_xgboost_abalone.ipynb>`__
 - `inference_pipeline_sparkml_blazingtext_dbpedia.ipynb <https://github.com/awslabs/amazon-sagemaker-examples/blob/master/advanced_functionality/inference_pipeline_sparkml_blazingtext_dbpedia/inference_pipeline_sparkml_blazingtext_dbpedia.ipynb>`__
+
+You can also find these notebooks in the **Advanced Functionality** section of the **SageMaker Examples** section in a notebook instance.
+For information about using sample notebooks in a SageMaker notebook instance, see `Use Example Notebooks <https://docs.aws.amazon.com/sagemaker/latest/dg/howitworks-nbexamples.html>`__
+in the AWS documentation.
 
 ******************
 SageMaker Workflow
