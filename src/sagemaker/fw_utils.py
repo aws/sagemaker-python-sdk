@@ -69,11 +69,24 @@ MERGED_FRAMEWORKS_LOWEST_VERSIONS = {
 }
 
 
+def is_version_equal_or_higher(lowest_version, framework_version):
+    """Determine whether the framework_version is equal to or higher than lowest_version
+
+    Args:
+        lowest_version (List[int]): lowest version represented in an integer list
+        framework_version (str): framework version string
+
+    Returns:
+        bool: Whether or not framework_version is equal to or higher than lowest_version
+    """
+    version_list = [int(s) for s in framework_version.split(".")]
+    return version_list >= lowest_version[0 : len(version_list)]
+
+
 def _is_merged_versions(framework, framework_version):
     lowest_version_list = MERGED_FRAMEWORKS_LOWEST_VERSIONS.get(framework)
     if lowest_version_list:
-        version_list = [int(s) for s in framework_version.split(".")]
-        return version_list >= lowest_version_list[0 : len(version_list)]
+        return is_version_equal_or_higher(lowest_version_list, framework_version)
     else:
         return False
 
