@@ -47,6 +47,11 @@ def test_get_config_value():
     assert sagemaker.utils.get_config_value("other.key", None) is None
 
 
+def test_get_short_version():
+    assert sagemaker.utils.get_short_version("1.13.1") == "1.13"
+    assert sagemaker.utils.get_short_version("1.13") == "1.13"
+
+
 def test_deferred_error():
     de = sagemaker.utils.DeferredError(ImportError("pretend the import failed"))
     with pytest.raises(ImportError) as _:  # noqa: F841
