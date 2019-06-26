@@ -309,19 +309,13 @@ def test_create_model_with_optional_params(sagemaker_session):
 
 @patch('sagemaker.tensorflow.estimator.TensorFlow._create_tfs_model')
 def test_transformer_creation_with_endpoint_type(create_tfs_model, sagemaker_session):
-    container_log_level = '"logging.INFO"'
-    source_dir = 's3://mybucket/source'
-    enable_cloudwatch_metrics = 'true'
-    base_name = 'foo'
     tf = TensorFlow(entry_point=SCRIPT_PATH, role=ROLE, sagemaker_session=sagemaker_session,
-                    training_steps=1000, evaluation_steps=10, train_instance_count=INSTANCE_COUNT,
-                    train_instance_type=INSTANCE_TYPE, container_log_level=container_log_level, base_job_name=base_name,
-                    source_dir=source_dir, enable_cloudwatch_metrics=enable_cloudwatch_metrics)
+                    train_instance_count=INSTANCE_COUNT, train_instance_type=INSTANCE_TYPE)
+
     tf.latest_training_job = _TrainingJob(sagemaker_session, JOB_NAME)
-    assert isinstance(tf, TensorFlow)
     transformer = tf.transformer(INSTANCE_COUNT, INSTANCE_TYPE, endpoint_type='tensorflow-serving')
-    create_tfs_model.assert_called_once()
     assert isinstance(transformer, Transformer)
+    create_tfs_model.assert_called_once()
     assert transformer.sagemaker_session == sagemaker_session
     assert transformer.instance_count == INSTANCE_COUNT
     assert transformer.instance_type == INSTANCE_TYPE
@@ -332,19 +326,14 @@ def test_transformer_creation_with_endpoint_type(create_tfs_model, sagemaker_ses
 
 @patch('sagemaker.tensorflow.estimator.TensorFlow._create_default_model')
 def test_transformer_creation_without_endpoint_type(create_default_model, sagemaker_session):
-    container_log_level = '"logging.INFO"'
-    source_dir = 's3://mybucket/source'
-    enable_cloudwatch_metrics = 'true'
-    base_name = 'flo'
+
     tf = TensorFlow(entry_point=SCRIPT_PATH, role=ROLE, sagemaker_session=sagemaker_session,
-                    training_steps=1000, evaluation_steps=10, train_instance_count=INSTANCE_COUNT,
-                    train_instance_type=INSTANCE_TYPE, container_log_level=container_log_level, base_job_name=base_name,
-                    source_dir=source_dir, enable_cloudwatch_metrics=enable_cloudwatch_metrics)
+                    train_instance_count=INSTANCE_COUNT, train_instance_type=INSTANCE_TYPE)
+
     tf.latest_training_job = _TrainingJob(sagemaker_session, JOB_NAME)
-    assert isinstance(tf, TensorFlow)
     transformer = tf.transformer(INSTANCE_COUNT, INSTANCE_TYPE)
-    create_default_model.assert_called_once()
     assert isinstance(transformer, Transformer)
+    create_default_model.assert_called_once()
     assert transformer.sagemaker_session == sagemaker_session
     assert transformer.instance_count == INSTANCE_COUNT
     assert transformer.instance_type == INSTANCE_TYPE
