@@ -14,17 +14,11 @@ from __future__ import absolute_import, division, print_function
 
 import argparse
 import json
-import logging as _logging
 import numpy as np
 import os
-import sys as _sys
 import tensorflow as tf
-from tensorflow.python.platform import tf_logging
 
 tf.logging.set_verbosity(tf.logging.DEBUG)
-_handler = _logging.StreamHandler(_sys.stdout)
-tf_logger = tf_logging._get_logger()
-tf_logger.handlers = [_handler]
 
 
 def cnn_model_fn(features, labels, mode):
@@ -179,5 +173,3 @@ if __name__ == "__main__":
 
     if args.current_host == args.hosts[0]:
         mnist_classifier.export_savedmodel("/opt/ml/model", serving_input_fn)
-
-    tf_logger.info("====== Training finished =========")
