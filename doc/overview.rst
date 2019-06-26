@@ -9,7 +9,7 @@ SageMaker Python SDK provides several high-level abstractions for working with A
 - **Predictors**: Provide real-time inference and transformation using Python data-types against a SageMaker endpoint.
 - **Session**: Provides a collection of methods for working with SageMaker resources.
 
-``Estimator`` and ``Model`` implementations for MXNet, TensorFlow, Chainer, PyTorch, scikit-Learn, Amazon SageMaker built-in algorithms, Reinforcement Learning,  are included.
+``Estimator`` and ``Model`` implementations for MXNet, TensorFlow, Chainer, PyTorch, scikit-learn, Amazon SageMaker built-in algorithms, Reinforcement Learning,  are included.
 There's also an ``Estimator`` that runs SageMaker compatible custom Docker containers, enabling you to run your own ML algorithms by using the SageMaker Python SDK.
 
 .. contents::
