@@ -9,7 +9,7 @@ SageMaker Python SDK provides several high-level abstractions for working with A
 - **Predictors**: Provide real-time inference and transformation using Python data-types against a SageMaker endpoint.
 - **Session**: Provides a collection of methods for working with SageMaker resources.
 
-``Estimator`` and ``Model`` implementations for MXNet, TensorFlow, Chainer, PyTorch, scikit-Learn, Amazon SageMaker built-in algorithms, Reinforcement Learning,  are included.
+``Estimator`` and ``Model`` implementations for MXNet, TensorFlow, Chainer, PyTorch, scikit-learn, Amazon SageMaker built-in algorithms, Reinforcement Learning,  are included.
 There's also an ``Estimator`` that runs SageMaker compatible custom Docker containers, enabling you to run your own ML algorithms by using the SageMaker Python SDK.
 
 .. contents::
@@ -30,7 +30,7 @@ After you train a model, you can save it, and then serve the model as an endpoin
 Prepare a Training script
 =========================
 
-Your training script must be a Python 2.7 or 3.5 compatible source file.
+Your training script must be a Python 2.7 or 3.6 compatible source file.
 
 The training script is very similar to a training script you might run outside of SageMaker, but you can access useful properties about the training environment through various environment variables, including the following:
 
