@@ -54,9 +54,9 @@ def _preprocess_mnist(raw, withlabel, ndim, scale, image_dtype, label_dtype, rgb
         if rgb_format:
             images = np.broadcast_to(images, (len(images), 3) + images.shape[2:])
     elif ndim != 1:
-        raise ValueError('invalid ndim for MNIST dataset')
+        raise ValueError("invalid ndim for MNIST dataset")
     images = images.astype(image_dtype)
-    images *= scale / 255.
+    images *= scale / 255.0
 
     if withlabel:
         labels = raw['y'][-100:].astype(label_dtype)
@@ -64,61 +64,60 @@ def _preprocess_mnist(raw, withlabel, ndim, scale, image_dtype, label_dtype, rgb
     return images
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     env = sagemaker_containers.training_env()
 
     parser = argparse.ArgumentParser()
 
     # Data and model checkpoints directories
-    parser.add_argument('--epochs', type=int, default=1)
-    parser.add_argument('--batch-size', type=int, default=64)
-    parser.add_argument('--communicator', type=str, default='pure_nccl')
-    parser.add_argument('--frequency', type=int, default=20)
-    parser.add_argument('--units', type=int, default=1000)
+    parser.add_argument("--epochs", type=int, default=1)
+    parser.add_argument("--batch-size", type=int, default=64)
+    parser.add_argument("--communicator", type=str, default="pure_nccl")
+    parser.add_argument("--frequency", type=int, default=20)
+    parser.add_argument("--units", type=int, default=1000)
 
-    parser.add_argument('--model-dir', type=str)
-    parser.add_argument('--output-data-dir', type=str, default=env.output_data_dir)
-    parser.add_argument('--host', type=str, default=env.current_host)
-    parser.add_argument('--num-gpus', type=int, default=env.num_gpus)
+    parser.add_argument("--model-dir", type=str)
+    parser.add_argument("--output-data-dir", type=str, default=env.output_data_dir)
+    parser.add_argument("--host", type=str, default=env.current_host)
+    parser.add_argument("--num-gpus", type=int, default=env.num_gpus)
 
-    parser.add_argument('--train', type=str, default=env.channel_input_dirs['train'])
-    parser.add_argument('--test', type=str, default=env.channel_input_dirs['test'])
+    parser.add_argument("--train", type=str, default=env.channel_input_dirs["train"])
+    parser.add_argument("--test", type=str, default=env.channel_input_dirs["test"])
 
     args = parser.parse_args()
 
-    train_file = np.load(os.path.join(args.train, 'train.npz'))
-    test_file = np.load(os.path.join(args.test, 'test.npz'))
+    train_file = np.load(os.path.join(args.train, "train.npz"))
+    test_file = np.load(os.path.join(args.test, "test.npz"))
 
-    logger.info('Current host: {}'.format(args.host))
+    logger.info("Current host: {}".format(args.host))
 
-    communicator = 'naive' if args.num_gpus == 0 else args.communicator
+    communicator = "naive" if args.num_gpus == 0 else args.communicator
 
     comm = chainermn.create_communicator(communicator)
     device = comm.intra_rank if args.num_gpus > 0 else -1
 
-    print('==========================================')
-    print('Using {} communicator'.format(comm))
-    print('Num unit: {}'.format(args.units))
-    print('Num Minibatch-size: {}'.format(args.batch_size))
-    print('Num epoch: {}'.format(args.epochs))
-    print('==========================================')
+    print("==========================================")
+    print("Using {} communicator".format(comm))
+    print("Num unit: {}".format(args.units))
+    print("Num Minibatch-size: {}".format(args.batch_size))
+    print("Num epoch: {}".format(args.epochs))
+    print("==========================================")
 
     model = L.Classifier(MLP(args.units, 10))
     if device >= 0:
         chainer.cuda.get_device(device).use()
 
     # Create a multi node optimizer from a standard Chainer optimizer.
-    optimizer = chainermn.create_multi_node_optimizer(
-        chainer.optimizers.Adam(), comm)
+    optimizer = chainermn.create_multi_node_optimizer(chainer.optimizers.Adam(), comm)
     optimizer.setup(model)
 
     preprocess_mnist_options = {
-        'withlabel': True,
-        'ndim': 1,
-        'scale': 1.,
-        'image_dtype': np.float32,
-        'label_dtype': np.int32,
-        'rgb_format': False
+        "withlabel": True,
+        "ndim": 1,
+        "scale": 1.0,
+        "image_dtype": np.float32,
+        "label_dtype": np.int32,
+        "rgb_format": False,
     }
 
     train_dataset = _preprocess_mnist(train_file, **preprocess_mnist_options)
@@ -126,10 +125,11 @@ if __name__ == '__main__':
 
     train_iter = chainer.iterators.SerialIterator(train_dataset, args.batch_size)
     test_iter = chainer.iterators.SerialIterator(
-        test_dataset, args.batch_size, repeat=False, shuffle=False)
+        test_dataset, args.batch_size, repeat=False, shuffle=False
+    )
 
     updater = training.StandardUpdater(train_iter, optimizer, device=device)
-    trainer = training.Trainer(updater, (args.epochs, 'epoch'), out=args.output_data_dir)
+    trainer = training.Trainer(updater, (args.epochs, "epoch"), out=args.output_data_dir)
 
     # Create a multi node evaluator from a standard Chainer evaluator.
     evaluator = extensions.Evaluator(test_iter, model, device=device)
@@ -142,22 +142,29 @@ if __name__ == '__main__':
         if extensions.PlotReport.available():
             trainer.extend(
                 extensions.PlotReport(
-                    ['main/loss', 'validation/main/loss'],
-                    'epoch',
-                    file_name='loss.png'))
+                    ["main/loss", "validation/main/loss"], "epoch", file_name="loss.png"
+                )
+            )
             trainer.extend(
                 extensions.PlotReport(
-                    ['main/accuracy', 'validation/main/accuracy'],
-                    'epoch',
-                    file_name='accuracy.png'))
-        trainer.extend(extensions.snapshot(), trigger=(args.frequency, 'epoch'))
-        trainer.extend(extensions.dump_graph('main/loss'))
+                    ["main/accuracy", "validation/main/accuracy"], "epoch", file_name="accuracy.png"
+                )
+            )
+        trainer.extend(extensions.snapshot(), trigger=(args.frequency, "epoch"))
+        trainer.extend(extensions.dump_graph("main/loss"))
         trainer.extend(extensions.LogReport())
         trainer.extend(
-            extensions.PrintReport([
-                'epoch', 'main/loss', 'validation/main/loss', 'main/accuracy',
-                'validation/main/accuracy', 'elapsed_time'
-            ]))
+            extensions.PrintReport(
+                [
+                    "epoch",
+                    "main/loss",
+                    "validation/main/loss",
+                    "main/accuracy",
+                    "validation/main/accuracy",
+                    "elapsed_time",
+                ]
+            )
+        )
         trainer.extend(extensions.ProgressBar())
 
     trainer.run()
@@ -169,5 +176,5 @@ if __name__ == '__main__':
 
 def model_fn(model_dir):
     model = L.Classifier(MLP(1000, 10))
-    serializers.load_npz(os.path.join(model_dir, 'model.npz'), model)
+    serializers.load_npz(os.path.join(model_dir, "model.npz"), model)
     return model.predictor

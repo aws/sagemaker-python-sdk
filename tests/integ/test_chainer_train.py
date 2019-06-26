@@ -29,10 +29,12 @@ def chainer_local_training_job(sagemaker_local_session, chainer_full_version):
     return _run_mnist_training_job(sagemaker_local_session, "local", 1, chainer_full_version)
 
 
+@pytest.mark.local_mode
 def test_distributed_cpu_training(sagemaker_local_session, chainer_full_version):
     _run_mnist_training_job(sagemaker_local_session, "local", 2, chainer_full_version)
 
 
+@pytest.mark.local_mode
 def test_training_with_additional_hyperparameters(sagemaker_local_session, chainer_full_version):
     script_path = os.path.join(DATA_DIR, 'chainer_mnist', 'mnist.py')
     data_path = os.path.join(DATA_DIR, 'chainer_mnist')
@@ -83,6 +85,7 @@ def test_attach_deploy(sagemaker_session, chainer_full_version):
         _predict_and_assert(predictor)
 
 
+@pytest.mark.local_mode
 def test_deploy_model(chainer_local_training_job, sagemaker_local_session):
     script_path = os.path.join(DATA_DIR, 'chainer_mnist', 'mnist.py')
 
@@ -118,14 +121,14 @@ def _run_mnist_training_job(sagemaker_session, instance_type, instance_count,
 
 def _predict_and_assert(predictor):
     batch_size = 100
-    data = numpy.zeros((batch_size, 784), dtype='float32')
+    data = numpy.zeros((batch_size, 784), dtype="float32")
     output = predictor.predict(data)
     assert len(output) == batch_size
 
-    data = numpy.zeros((batch_size, 1, 28, 28), dtype='float32')
+    data = numpy.zeros((batch_size, 1, 28, 28), dtype="float32")
     output = predictor.predict(data)
     assert len(output) == batch_size
 
-    data = numpy.zeros((batch_size, 28, 28), dtype='float32')
+    data = numpy.zeros((batch_size, 28, 28), dtype="float32")
     output = predictor.predict(data)
     assert len(output) == batch_size

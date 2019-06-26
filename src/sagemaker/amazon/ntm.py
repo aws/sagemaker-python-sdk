@@ -24,29 +24,55 @@ from sagemaker.vpc_utils import VPC_CONFIG_DEFAULT
 
 class NTM(AmazonAlgorithmEstimatorBase):
 
-    repo_name = 'ntm'
+    repo_name = "ntm"
     repo_version = 1
 
-    num_topics = hp('num_topics', (ge(2), le(1000)), 'An integer in [2, 1000]', int)
-    encoder_layers = hp(name='encoder_layers', validation_message='A comma separated list of '
-                                                                  'positive integers', data_type=list)
-    epochs = hp('epochs', (ge(1), le(100)), 'An integer in [1, 100]', int)
-    encoder_layers_activation = hp('encoder_layers_activation', isin('sigmoid', 'tanh', 'relu'),
-                                   'One of "sigmoid", "tanh" or "relu"', str)
-    optimizer = hp('optimizer', isin('adagrad', 'adam', 'rmsprop', 'sgd', 'adadelta'),
-                   'One of "adagrad", "adam", "rmsprop", "sgd" and "adadelta"', str)
-    tolerance = hp('tolerance', (ge(1e-6), le(0.1)), 'A float in [1e-6, 0.1]', float)
-    num_patience_epochs = hp('num_patience_epochs', (ge(1), le(10)), 'An integer in [1, 10]', int)
-    batch_norm = hp(name='batch_norm', validation_message='Value must be a boolean', data_type=bool)
-    rescale_gradient = hp('rescale_gradient', (ge(1e-3), le(1.0)), 'A float in [1e-3, 1.0]', float)
-    clip_gradient = hp('clip_gradient', ge(1e-3), 'A float greater equal to 1e-3', float)
-    weight_decay = hp('weight_decay', (ge(0.0), le(1.0)), 'A float in [0.0, 1.0]', float)
-    learning_rate = hp('learning_rate', (ge(1e-6), le(1.0)), 'A float in [1e-6, 1.0]', float)
+    num_topics = hp("num_topics", (ge(2), le(1000)), "An integer in [2, 1000]", int)
+    encoder_layers = hp(
+        name="encoder_layers",
+        validation_message="A comma separated list of " "positive integers",
+        data_type=list,
+    )
+    epochs = hp("epochs", (ge(1), le(100)), "An integer in [1, 100]", int)
+    encoder_layers_activation = hp(
+        "encoder_layers_activation",
+        isin("sigmoid", "tanh", "relu"),
+        'One of "sigmoid", "tanh" or "relu"',
+        str,
+    )
+    optimizer = hp(
+        "optimizer",
+        isin("adagrad", "adam", "rmsprop", "sgd", "adadelta"),
+        'One of "adagrad", "adam", "rmsprop", "sgd" and "adadelta"',
+        str,
+    )
+    tolerance = hp("tolerance", (ge(1e-6), le(0.1)), "A float in [1e-6, 0.1]", float)
+    num_patience_epochs = hp("num_patience_epochs", (ge(1), le(10)), "An integer in [1, 10]", int)
+    batch_norm = hp(name="batch_norm", validation_message="Value must be a boolean", data_type=bool)
+    rescale_gradient = hp("rescale_gradient", (ge(1e-3), le(1.0)), "A float in [1e-3, 1.0]", float)
+    clip_gradient = hp("clip_gradient", ge(1e-3), "A float greater equal to 1e-3", float)
+    weight_decay = hp("weight_decay", (ge(0.0), le(1.0)), "A float in [0.0, 1.0]", float)
+    learning_rate = hp("learning_rate", (ge(1e-6), le(1.0)), "A float in [1e-6, 1.0]", float)
 
-    def __init__(self, role, train_instance_count, train_instance_type, num_topics,
-                 encoder_layers=None, epochs=None, encoder_layers_activation=None, optimizer=None, tolerance=None,
-                 num_patience_epochs=None, batch_norm=None, rescale_gradient=None, clip_gradient=None,
-                 weight_decay=None, learning_rate=None, **kwargs):
+    def __init__(
+        self,
+        role,
+        train_instance_count,
+        train_instance_type,
+        num_topics,
+        encoder_layers=None,
+        epochs=None,
+        encoder_layers_activation=None,
+        optimizer=None,
+        tolerance=None,
+        num_patience_epochs=None,
+        batch_norm=None,
+        rescale_gradient=None,
+        clip_gradient=None,
+        weight_decay=None,
+        learning_rate=None,
+        **kwargs
+    ):
         """Neural Topic Model (NTM) is :class:`Estimator` used for unsupervised learning.
 
         This Estimator may be fit via calls to
@@ -118,13 +144,19 @@ class NTM(AmazonAlgorithmEstimatorBase):
                 * 'Subnets' (list[str]): List of subnet ids.
                 * 'SecurityGroupIds' (list[str]): List of security group ids.
         """
-        return NTMModel(self.model_data, self.role, sagemaker_session=self.sagemaker_session,
-                        vpc_config=self.get_vpc_config(vpc_config_override))
+        return NTMModel(
+            self.model_data,
+            self.role,
+            sagemaker_session=self.sagemaker_session,
+            vpc_config=self.get_vpc_config(vpc_config_override),
+        )
 
     def _prepare_for_training(self, records, mini_batch_size, job_name=None):
         if mini_batch_size is not None and (mini_batch_size < 1 or mini_batch_size > 10000):
             raise ValueError("mini_batch_size must be in [1, 10000]")
-        super(NTM, self)._prepare_for_training(records, mini_batch_size=mini_batch_size, job_name=job_name)
+        super(NTM, self)._prepare_for_training(
+            records, mini_batch_size=mini_batch_size, job_name=job_name
+        )
 
 
 class NTMPredictor(RealTimePredictor):
@@ -140,8 +172,12 @@ class NTMPredictor(RealTimePredictor):
     key of the ``Record.label`` field."""
 
     def __init__(self, endpoint, sagemaker_session=None):
-        super(NTMPredictor, self).__init__(endpoint, sagemaker_session, serializer=numpy_to_record_serializer(),
-                                           deserializer=record_deserializer())
+        super(NTMPredictor, self).__init__(
+            endpoint,
+            sagemaker_session,
+            serializer=numpy_to_record_serializer(),
+            deserializer=record_deserializer(),
+        )
 
 
 class NTMModel(Model):
@@ -150,8 +186,15 @@ class NTMModel(Model):
 
     def __init__(self, model_data, role, sagemaker_session=None, **kwargs):
         sagemaker_session = sagemaker_session or Session()
-        repo = '{}:{}'.format(NTM.repo_name, NTM.repo_version)
-        image = '{}/{}'.format(registry(sagemaker_session.boto_session.region_name, NTM.repo_name), repo)
-        super(NTMModel, self).__init__(model_data, image, role, predictor_cls=NTMPredictor,
-                                       sagemaker_session=sagemaker_session,
-                                       **kwargs)
+        repo = "{}:{}".format(NTM.repo_name, NTM.repo_version)
+        image = "{}/{}".format(
+            registry(sagemaker_session.boto_session.region_name, NTM.repo_name), repo
+        )
+        super(NTMModel, self).__init__(
+            model_data,
+            image,
+            role,
+            predictor_cls=NTMPredictor,
+            sagemaker_session=sagemaker_session,
+            **kwargs
+        )

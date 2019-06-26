@@ -21,24 +21,29 @@ from tests.integ.timeout import timeout, timeout_and_delete_endpoint_by_name
 
 
 def test_randomcutforest(sagemaker_session):
-    job_name = unique_name_from_base('randomcutforest')
+    job_name = unique_name_from_base("randomcutforest")
 
     with timeout(minutes=TRAINING_DEFAULT_TIMEOUT_MINUTES):
         # Generate a thousand 14-dimensional datapoints.
         feature_num = 14
         train_input = np.random.rand(1000, feature_num)
 
-        rcf = RandomCutForest(role='SageMakerRole', train_instance_count=1,
-                              train_instance_type='ml.c4.xlarge',
-                              num_trees=50, num_samples_per_tree=20,
-                              sagemaker_session=sagemaker_session)
+        rcf = RandomCutForest(
+            role="SageMakerRole",
+            train_instance_count=1,
+            train_instance_type="ml.c4.xlarge",
+            num_trees=50,
+            num_samples_per_tree=20,
+            sagemaker_session=sagemaker_session,
+        )
 
         rcf.fit(records=rcf.record_set(train_input), job_name=job_name)
 
     with timeout_and_delete_endpoint_by_name(job_name, sagemaker_session):
-        model = RandomCutForestModel(rcf.model_data, role='SageMakerRole',
-                                     sagemaker_session=sagemaker_session)
-        predictor = model.deploy(1, 'ml.c4.xlarge', endpoint_name=job_name)
+        model = RandomCutForestModel(
+            rcf.model_data, role="SageMakerRole", sagemaker_session=sagemaker_session
+        )
+        predictor = model.deploy(1, "ml.c4.xlarge", endpoint_name=job_name)
 
         predict_input = np.random.rand(1, feature_num)
         result = predictor.predict(predict_input)

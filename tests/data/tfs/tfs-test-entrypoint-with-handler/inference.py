@@ -22,13 +22,13 @@ import shutil
 
 
 def save_model():
-    shutil.copytree('/opt/ml/code/123', '/opt/ml/model/123')
+    shutil.copytree("/opt/ml/code/123", "/opt/ml/model/123")
 
 
 def input_handler(data, context):
-    data = json.loads(data.read().decode('utf-8'))
-    new_values = [x + 1 for x in data['instances']]
-    dumps = json.dumps({'instances': new_values})
+    data = json.loads(data.read().decode("utf-8"))
+    new_values = [x + 1 for x in data["instances"]]
+    dumps = json.dumps({"instances": new_values})
     return dumps
 
 
@@ -40,4 +40,3 @@ def output_handler(data, context):
 
 if __name__ == "__main__":
     save_model()
-

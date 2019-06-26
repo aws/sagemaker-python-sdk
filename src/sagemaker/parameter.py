@@ -23,9 +23,9 @@ class ParameterRange(object):
 
     """
 
-    __all_types__ = ('Continuous', 'Categorical', 'Integer')
+    __all_types__ = ("Continuous", "Categorical", "Integer")
 
-    def __init__(self, min_value, max_value, scaling_type='Auto'):
+    def __init__(self, min_value, max_value, scaling_type="Auto"):
         """Initialize a parameter range.
 
         Args:
@@ -63,10 +63,12 @@ class ParameterRange(object):
         Returns:
             dict[str, str]: A dictionary that contains the name and values of the hyperparameter.
         """
-        return {'Name': name,
-                'MinValue': to_str(self.min_value),
-                'MaxValue': to_str(self.max_value),
-                'ScalingType': self.scaling_type}
+        return {
+            "Name": name,
+            "MinValue": to_str(self.min_value),
+            "MaxValue": to_str(self.max_value),
+            "ScalingType": self.scaling_type,
+        }
 
 
 class ContinuousParameter(ParameterRange):
@@ -75,7 +77,8 @@ class ContinuousParameter(ParameterRange):
             min_value (float): The minimum value for the range.
             max_value (float): The maximum value for the range.
     """
-    __name__ = 'Continuous'
+
+    __name__ = "Continuous"
 
     @classmethod
     def cast_to_type(cls, value):
@@ -85,7 +88,8 @@ class ContinuousParameter(ParameterRange):
 class CategoricalParameter(ParameterRange):
     """A class for representing hyperparameters that have a discrete list of possible values.
     """
-    __name__ = 'Categorical'
+
+    __name__ = "Categorical"
 
     def __init__(self, values):  # pylint: disable=super-init-not-called
         """Initialize a ``CategoricalParameter``.
@@ -109,7 +113,7 @@ class CategoricalParameter(ParameterRange):
         Returns:
             dict[str, list[str]]: A dictionary that contains the name and values of the hyperparameter.
         """
-        return {'Name': name, 'Values': self.values}
+        return {"Name": name, "Values": self.values}
 
     def as_json_range(self, name):
         """Represent the parameter range as a dictionary suitable for a request to
@@ -124,7 +128,7 @@ class CategoricalParameter(ParameterRange):
             dict[str, list[str]]: A dictionary that contains the name and values of the hyperparameter,
                 where the values are serialized as JSON.
         """
-        return {'Name': name, 'Values': [json.dumps(v) for v in self.values]}
+        return {"Name": name, "Values": [json.dumps(v) for v in self.values]}
 
     def is_valid(self, value):
         return value in self.values
@@ -140,7 +144,8 @@ class IntegerParameter(ParameterRange):
             min_value (int): The minimum value for the range.
             max_value (int): The maximum value for the range.
     """
-    __name__ = 'Integer'
+
+    __name__ = "Integer"
 
     @classmethod
     def cast_to_type(cls, value):
