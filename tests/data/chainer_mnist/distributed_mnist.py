@@ -46,7 +46,7 @@ class MLP(chainer.Chain):
 
 
 def _preprocess_mnist(raw, withlabel, ndim, scale, image_dtype, label_dtype, rgb_format):
-    images = raw['x'][-100:]
+    images = raw["x"][-100:]
     if ndim == 2:
         images = images.reshape(-1, 28, 28)
     elif ndim == 3:
@@ -59,7 +59,7 @@ def _preprocess_mnist(raw, withlabel, ndim, scale, image_dtype, label_dtype, rgb
     images *= scale / 255.0
 
     if withlabel:
-        labels = raw['y'][-100:].astype(label_dtype)
+        labels = raw["y"][-100:].astype(label_dtype)
         return tuple_dataset.TupleDataset(images, labels)
     return images
 
@@ -171,7 +171,7 @@ if __name__ == "__main__":
 
     # only save the model in the master node
     if args.host == env.hosts[0]:
-        serializers.save_npz(os.path.join(env.model_dir, 'model.npz'), model)
+        serializers.save_npz(os.path.join(env.model_dir, "model.npz"), model)
 
 
 def model_fn(model_dir):
