@@ -594,10 +594,24 @@ class TensorFlow(Framework):
 
         return super(TensorFlow, self).train_image()
 
-    def transformer(self, instance_count, instance_type, strategy=None, assemble_with=None, output_path=None,
-                    output_kms_key=None, accept=None, env=None, max_concurrent_transforms=None,
-                    max_payload=None, tags=None, role=None, model_server_workers=None, volume_kms_key=None,
-                    endpoint_type=None):
+    def transformer(
+        self,
+        instance_count,
+        instance_type,
+        strategy=None,
+        assemble_with=None,
+        output_path=None,
+        output_kms_key=None,
+        accept=None,
+        env=None,
+        max_concurrent_transforms=None,
+        max_payload=None,
+        tags=None,
+        role=None,
+        model_server_workers=None,
+        volume_kms_key=None,
+        endpoint_type=None,
+    ):
         """Return a ``Transformer`` that uses a SageMaker Model based on the training job. It reuses the
         SageMaker Session and base job name used by the Estimator.
 
@@ -630,19 +644,21 @@ class TensorFlow(Framework):
                 use the SageMaker Tensorflow Serving container.
         """
 
-        if endpoint_type == 'tensorflow-serving':
+        if endpoint_type == "tensorflow-serving":
             self.script_mode = True
-        return super(TensorFlow, self).transformer(instance_count,
-                                                   instance_type,
-                                                   strategy,
-                                                   assemble_with,
-                                                   output_path,
-                                                   output_kms_key,
-                                                   accept,
-                                                   env,
-                                                   max_concurrent_transforms,
-                                                   max_payload,
-                                                   tags,
-                                                   role,
-                                                   model_server_workers,
-                                                   volume_kms_key)
+        return super(TensorFlow, self).transformer(
+            instance_count,
+            instance_type,
+            strategy,
+            assemble_with,
+            output_path,
+            output_kms_key,
+            accept,
+            env,
+            max_concurrent_transforms,
+            max_payload,
+            tags,
+            role,
+            model_server_workers,
+            volume_kms_key,
+        )

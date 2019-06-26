@@ -298,48 +298,57 @@ def test_create_model_with_optional_params(sagemaker_session):
     new_role = "role"
     model_server_workers = 2
 
-    vpc_config = {'Subnets': ['foo'], 'SecurityGroupIds': ['bar']}
-    model = tf.create_model(role=new_role, model_server_workers=model_server_workers,
-                            vpc_config_override=vpc_config)
+    vpc_config = {"Subnets": ["foo"], "SecurityGroupIds": ["bar"]}
+    model = tf.create_model(
+        role=new_role, model_server_workers=model_server_workers, vpc_config_override=vpc_config
+    )
 
     assert model.role == new_role
     assert model.model_server_workers == model_server_workers
     assert model.vpc_config == vpc_config
 
 
-@patch('sagemaker.tensorflow.estimator.TensorFlow._create_tfs_model')
+@patch("sagemaker.tensorflow.estimator.TensorFlow._create_tfs_model")
 def test_transformer_creation_with_endpoint_type(create_tfs_model, sagemaker_session):
-    tf = TensorFlow(entry_point=SCRIPT_PATH, role=ROLE, sagemaker_session=sagemaker_session,
-                    train_instance_count=INSTANCE_COUNT, train_instance_type=INSTANCE_TYPE)
+    tf = TensorFlow(
+        entry_point=SCRIPT_PATH,
+        role=ROLE,
+        sagemaker_session=sagemaker_session,
+        train_instance_count=INSTANCE_COUNT,
+        train_instance_type=INSTANCE_TYPE,
+    )
 
     tf.latest_training_job = _TrainingJob(sagemaker_session, JOB_NAME)
-    transformer = tf.transformer(INSTANCE_COUNT, INSTANCE_TYPE, endpoint_type='tensorflow-serving')
+    transformer = tf.transformer(INSTANCE_COUNT, INSTANCE_TYPE, endpoint_type="tensorflow-serving")
     assert isinstance(transformer, Transformer)
-    create_tfs_model.assert_called_once()
     assert transformer.sagemaker_session == sagemaker_session
     assert transformer.instance_count == INSTANCE_COUNT
     assert transformer.instance_type == INSTANCE_TYPE
-    assert transformer.tags is None
     assert tf.script_mode is True
     assert tf._script_mode_enabled() is True
+    create_tfs_model.assert_called_once()
 
 
-@patch('sagemaker.tensorflow.estimator.TensorFlow._create_default_model')
+@patch("sagemaker.tensorflow.estimator.TensorFlow._create_default_model")
 def test_transformer_creation_without_endpoint_type(create_default_model, sagemaker_session):
 
-    tf = TensorFlow(entry_point=SCRIPT_PATH, role=ROLE, sagemaker_session=sagemaker_session,
-                    train_instance_count=INSTANCE_COUNT, train_instance_type=INSTANCE_TYPE)
+    tf = TensorFlow(
+        entry_point=SCRIPT_PATH,
+        role=ROLE,
+        sagemaker_session=sagemaker_session,
+        train_instance_count=INSTANCE_COUNT,
+        train_instance_type=INSTANCE_TYPE,
+    )
 
     tf.latest_training_job = _TrainingJob(sagemaker_session, JOB_NAME)
     transformer = tf.transformer(INSTANCE_COUNT, INSTANCE_TYPE)
     assert isinstance(transformer, Transformer)
-    create_default_model.assert_called_once()
     assert transformer.sagemaker_session == sagemaker_session
     assert transformer.instance_count == INSTANCE_COUNT
     assert transformer.instance_type == INSTANCE_TYPE
-    assert transformer.tags is None
     assert tf.script_mode is False
     assert tf._script_mode_enabled() is False
+    create_default_model.assert_called_once()
 
 
 def test_create_model_with_custom_image(sagemaker_session):
