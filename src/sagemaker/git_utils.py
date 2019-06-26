@@ -43,13 +43,19 @@ def git_clone_repo(git_config, entry_point, source_dir=None, dependencies=None):
     Returns:
         dict: A dict that contains the updated values of entry_point, source_dir and dependencies
     """
+    if entry_point is None:
+        raise ValueError("Please provide an entry point.")
     _validate_git_config(git_config)
     repo_dir = tempfile.mkdtemp()
     subprocess.check_call(["git", "clone", git_config["repo"], repo_dir])
 
     _checkout_branch_and_commit(git_config, repo_dir)
 
-    ret = {"entry_point": entry_point, "source_dir": source_dir, "dependencies": dependencies}
+    updated_paths = {
+        "entry_point": entry_point,
+        "source_dir": source_dir,
+        "dependencies": dependencies,
+    }
 
     # check if the cloned repo contains entry point, source directory and dependencies
     if source_dir:
@@ -57,20 +63,20 @@ def git_clone_repo(git_config, entry_point, source_dir=None, dependencies=None):
             raise ValueError("Source directory does not exist in the repo.")
         if not os.path.isfile(os.path.join(repo_dir, source_dir, entry_point)):
             raise ValueError("Entry point does not exist in the repo.")
-        ret["source_dir"] = os.path.join(repo_dir, source_dir)
+        updated_paths["source_dir"] = os.path.join(repo_dir, source_dir)
     else:
         if os.path.isfile(os.path.join(repo_dir, entry_point)):
-            ret["entry_point"] = os.path.join(repo_dir, entry_point)
+            updated_paths["entry_point"] = os.path.join(repo_dir, entry_point)
         else:
             raise ValueError("Entry point does not exist in the repo.")
 
-    ret["dependencies"] = []
+    updated_paths["dependencies"] = []
     for path in dependencies:
         if os.path.exists(os.path.join(repo_dir, path)):
-            ret["dependencies"].append(os.path.join(repo_dir, path))
+            updated_paths["dependencies"].append(os.path.join(repo_dir, path))
         else:
             raise ValueError("Dependency {} does not exist in the repo.".format(path))
-    return ret
+    return updated_paths
 
 
 def _validate_git_config(git_config):
@@ -85,6 +91,8 @@ def _validate_git_config(git_config):
             1. git_config has no key 'repo'
             2. git_config['repo'] is in the wrong format.
     """
+    if git_config is None:
+        raise ValueError("")
     if "repo" not in git_config:
         raise ValueError("Please provide a repo for git_config.")
 

@@ -554,13 +554,13 @@ class FrameworkModel(Model):
                 Example:
 
                     The following call
-                    >>> Estimator(entry_point='inference.py', dependencies=['my/libs/common', 'virtual-env'])
+                    >>> Estimator(entry_point='train.py', dependencies=['my/libs/common', 'virtual-env'])
                     results in the following inside the container:
 
                     >>> $ ls
 
                     >>> opt/ml/code
-                    >>>     |------ inference.py
+                    >>>     |------ train.py
                     >>>     |------ common
                     >>>     |------ virtual-env
 

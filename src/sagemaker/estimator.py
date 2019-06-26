@@ -1083,12 +1083,12 @@ class Framework(EstimatorBase):
         super(Framework, self)._prepare_for_training(job_name=job_name)
 
         if self.git_config:
-            updates = git_utils.git_clone_repo(
+            updated_paths = git_utils.git_clone_repo(
                 self.git_config, self.entry_point, self.source_dir, self.dependencies
             )
-            self.entry_point = updates["entry_point"]
-            self.source_dir = updates["source_dir"]
-            self.dependencies = updates["dependencies"]
+            self.entry_point = updated_paths["entry_point"]
+            self.source_dir = updated_paths["source_dir"]
+            self.dependencies = updated_paths["dependencies"]
 
         # validate source dir will raise a ValueError if there is something wrong with the
         # source directory. We are intentionally not handling it because this is a critical error.

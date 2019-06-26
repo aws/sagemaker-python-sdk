@@ -42,7 +42,7 @@ REGION = "us-west-2"
 MODEL_NAME = "{}-{}".format(MODEL_IMAGE, TIMESTAMP)
 GIT_REPO = "https://github.com/aws/sagemaker-python-sdk.git"
 BRANCH = "test-branch-git-config"
-COMMIT = "329bfcf884482002c05ff7f44f62599ebc9f445a"
+COMMIT = "ae15c9d7d5b97ea95ea451e4662ee43da3401d73"
 
 
 DESCRIBE_MODEL_PACKAGE_RESPONSE = {

@@ -50,7 +50,7 @@ TAGS = [{"Name": "some-tag", "Value": "value-for-tag"}]
 OUTPUT_PATH = "s3://bucket/prefix"
 GIT_REPO = "https://github.com/aws/sagemaker-python-sdk.git"
 BRANCH = "test-branch-git-config"
-COMMIT = "329bfcf884482002c05ff7f44f62599ebc9f445a"
+COMMIT = "ae15c9d7d5b97ea95ea451e4662ee43da3401d73"
 
 DESCRIBE_TRAINING_JOB_RESULT = {"ModelArtifacts": {"S3ModelArtifacts": MODEL_DATA}}
 INSTANCE_TYPE = "c4.4xlarge"
