@@ -34,7 +34,7 @@ phases:
       - |
         if has-matching-changes "tests/" "src/*.py" "setup.py" "setup.cfg" "buildspec.yml"; then
           python3 -u ci-scripts/queue_build.py
-          IGNORE_COVERAGE=- tox -e py36,py27 -- tests/integ -n 24 --boxed --reruns 2
+          IGNORE_COVERAGE=- tox -e py36,py27 -- tests/integ -n 24 --reruns 3
         else
           echo "skipping integration tests"
         fi
