@@ -8,19 +8,35 @@ phases:
   build:
     commands:
       # run linters
-      - tox -e flake8,pylint
-      # run package and docbuild checks
-      - tox -e twine
+      - TOX_PARALLEL_NO_SPINNER=1
+      - PY_COLORS=0
+      - tox -e flake8,pylint,twine,black-check --parallel all
       - tox -e sphinx
-
-      # run format verification
-      - tox -e black-check
 
       # run unit tests
       - AWS_ACCESS_KEY_ID= AWS_SECRET_ACCESS_KEY= AWS_SESSION_TOKEN=
         AWS_CONTAINER_CREDENTIALS_RELATIVE_URI= AWS_DEFAULT_REGION=
-        tox -e py36,py27 -- tests/unit
+        tox -e py36,py27 --parallel all -- tests/unit
 
+      # local mode tests
+      - |
+        if has-matching-changes "tests/" "src/*.py" "setup.py" "setup.cfg" "buildspec.yml"; then
+          IGNORE_COVERAGE=- tox -e py36 -- tests/integ -m local_mode --durations 50
+          IGNORE_COVERAGE=- tox -e py27 -- tests/integ -m local_mode --durations 50
+        else
+          echo "skipping integration tests"
+        fi
+        
+      # run integration tests
+      - |
+        if has-matching-changes "tests/" "src/*.py" "setup.py" "setup.cfg" "buildspec.yml"; then
+          python3 -u ci-scripts/queue_build.py
+          IGNORE_COVERAGE=- tox -e py36 -- tests/integ -m "not local_mode" -n 48  --reruns 3 --reruns-delay 5 --durations 50
+          IGNORE_COVERAGE=- tox -e py27 -- tests/integ -m "not local_mode" -n 48  --reruns 3 --reruns-delay 5 --durations 50
+        else
+          echo "skipping integration tests"
+        fi
+        
       # run notebook test
       - |
         if has-matching-changes "src/*.py" "setup.py" "setup.cfg" "buildspec.yml"; then
@@ -29,15 +45,6 @@ phases:
          else
            echo "skipping notebook test"
          fi
-
-      # run integration tests
-      - |
-        if has-matching-changes "tests/" "src/*.py" "setup.py" "setup.cfg" "buildspec.yml"; then
-          python3 -u ci-scripts/queue_build.py
-          IGNORE_COVERAGE=- tox -e py36,py27 -- tests/integ -n 24 --reruns 3
-        else
-          echo "skipping integration tests"
-        fi
   post_build:
     finally:
       - FILENAME=$(ls ci-lock/)

@@ -67,7 +67,7 @@ setup(
     install_requires=required_packages,
     extras_require={
         "test": [
-            "tox",
+            "tox==3.13.1",
             "flake8",
             "pytest==4.4.1",
             "pytest-cov",
@@ -79,6 +79,7 @@ setup(
             "awslogs",
             "pandas",
             "black==19.3b0 ; python_version >= '3.6'",
+            "stopit==1.1.2",
         ]
     },
     entry_points={"console_scripts": ["sagemaker=sagemaker.cli.main:main"]},
