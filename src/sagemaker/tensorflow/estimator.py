@@ -664,7 +664,4 @@ class TensorFlow(Framework):
             max_payload=max_payload,
             tags=None,
             volume_kms_key=volume_kms_key,
-
         )
-
-

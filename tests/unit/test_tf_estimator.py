@@ -318,11 +318,15 @@ def test_transformer_creation_with_endpoint_type(create_model, sagemaker_session
     )
     tf.latest_training_job = _TrainingJob(sagemaker_session, JOB_NAME)
 
-    tf.transformer(INSTANCE_COUNT, INSTANCE_TYPE, model_server_workers=2, endpoint_type="tensorflow-serving")
-    create_model.assert_called_with(endpoint_type='tensorflow-serving',
-                                    model_server_workers=2,
-                                    role='Dummy',
-                                    vpc_config_override='VPC_CONFIG_DEFAULT')
+    tf.transformer(
+        INSTANCE_COUNT, INSTANCE_TYPE, model_server_workers=2, endpoint_type="tensorflow-serving"
+    )
+    create_model.assert_called_with(
+        endpoint_type="tensorflow-serving",
+        model_server_workers=2,
+        role="Dummy",
+        vpc_config_override="VPC_CONFIG_DEFAULT",
+    )
 
 
 @patch("sagemaker.tensorflow.estimator.TensorFlow.create_model")
@@ -337,11 +341,13 @@ def test_transformer_creation_without_endpoint_type(create_model, sagemaker_sess
     )
 
     tf.latest_training_job = _TrainingJob(sagemaker_session, JOB_NAME)
-    transformer = tf.transformer(INSTANCE_COUNT, INSTANCE_TYPE, model_server_workers=4)
-    create_model.assert_called_with(endpoint_type=None,
-                                    model_server_workers=4,
-                                    role='Dummy',
-                                    vpc_config_override='VPC_CONFIG_DEFAULT')
+    tf.transformer(INSTANCE_COUNT, INSTANCE_TYPE, model_server_workers=4)
+    create_model.assert_called_with(
+        endpoint_type=None,
+        model_server_workers=4,
+        role="Dummy",
+        vpc_config_override="VPC_CONFIG_DEFAULT",
+    )
 
 
 def test_create_model_with_custom_image(sagemaker_session):
