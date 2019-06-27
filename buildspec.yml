@@ -9,7 +9,6 @@ phases:
     commands:
       # run linters
       - tox -e flake8,pylint
-
       # run package and docbuild checks
       - tox -e twine
       - tox -e sphinx
@@ -34,7 +33,14 @@ phases:
       # run integration tests
       - |
         if has-matching-changes "tests/" "src/*.py" "setup.py" "setup.cfg" "buildspec.yml"; then
+          python3 -u ci-scripts/queue_build.py
           IGNORE_COVERAGE=- tox -e py36,py27 -- tests/integ -n 24 --boxed --reruns 2
         else
           echo "skipping integration tests"
         fi
+  post_build:
+    finally:
+      - FILENAME=$(ls ci-lock/)
+      - ACCOUNT=$(aws sts get-caller-identity --output text | awk '{print $1}')
+      - S3_BUCKET_DIR=s3://sagemaker-us-west-2-${ACCOUNT}/ci-lock/
+      - aws s3 rm ${S3_BUCKET_DIR}${FILENAME}
