@@ -79,6 +79,7 @@ setup(
             "awslogs",
             "pandas",
             "black==19.3b0 ; python_version >= '3.6'",
+            "stopit==1.1.2",
         ]
     },
     entry_points={"console_scripts": ["sagemaker=sagemaker.cli.main:main"]},
