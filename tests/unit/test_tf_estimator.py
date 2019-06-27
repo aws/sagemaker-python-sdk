@@ -25,7 +25,7 @@ from sagemaker.model import MODEL_SERVER_WORKERS_PARAM_NAME
 from sagemaker.session import s3_input
 from sagemaker.tensorflow import defaults, TensorFlow, TensorFlowModel, TensorFlowPredictor
 import sagemaker.tensorflow.estimator as tfe
-from sagemaker.transformer import Transformer
+
 
 DATA_DIR = os.path.join(os.path.dirname(__file__), "..", "data")
 SCRIPT_FILE = "dummy_script.py"
@@ -297,7 +297,6 @@ def test_create_model_with_optional_params(sagemaker_session):
 
     new_role = "role"
     model_server_workers = 2
-
     vpc_config = {"Subnets": ["foo"], "SecurityGroupIds": ["bar"]}
     model = tf.create_model(
         role=new_role, model_server_workers=model_server_workers, vpc_config_override=vpc_config
