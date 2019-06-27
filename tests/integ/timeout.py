@@ -25,6 +25,26 @@ LOGGER = logging.getLogger("timeout")
 
 
 @contextmanager
+def timeout(seconds=0, minutes=0, hours=0):
+    """
+    Add a signal-based timeout to any block of code.
+    If multiple time units are specified, they will be added together to determine time limit.
+    Usage:
+    with timeout(seconds=5):
+        my_slow_function(...)
+    Args:
+        - seconds: The time limit, in seconds.
+        - minutes: The time limit, in minutes.
+        - hours: The time limit, in hours.
+    """
+
+    limit = seconds + 60 * minutes + 3600 * hours
+
+    with stopit.ThreadingTimeout(limit, swallow_exc=False) as t:
+        yield [t]
+
+
+@contextmanager
 def timeout_and_delete_endpoint_by_name(
     endpoint_name, sagemaker_session, seconds=0, minutes=45, hours=0
 ):
