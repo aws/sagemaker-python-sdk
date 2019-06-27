@@ -97,7 +97,7 @@ class DummyFramework(Framework):
 
 
 class DummyFrameworkNetworkIsolation(DummyFramework):
-    __framework_name__ = 'dummy_network_isolation'
+    __framework_name__ = "dummy_network_isolation"
 
     def enable_network_isolation(self):
         return True
@@ -133,9 +133,15 @@ def framework(sagemaker_session):
 
 @pytest.fixture()
 def framework_network_isolation(sagemaker_session):
-    return DummyFrameworkNetworkIsolation(entry_point=SCRIPT_PATH, role=ROLE, sagemaker_session=sagemaker_session,
-                                          output_path=S3_OUTPUT_PATH, train_instance_count=INSTANCE_COUNT,
-                                          train_instance_type=INSTANCE_TYPE, enable_network_isolation=True)
+    return DummyFrameworkNetworkIsolation(
+        entry_point=SCRIPT_PATH,
+        role=ROLE,
+        sagemaker_session=sagemaker_session,
+        output_path=S3_OUTPUT_PATH,
+        train_instance_count=INSTANCE_COUNT,
+        train_instance_type=INSTANCE_TYPE,
+        enable_network_isolation=True,
+    )
 
 
 def test_load_config(estimator):
@@ -199,15 +205,15 @@ def test_load_config_with_code_channel(framework_network_isolation):
     framework_network_isolation._enable_network_isolation = True
     config = _Job._load_config(inputs, framework_network_isolation)
 
-    assert len(config['input_config']) == 3
-    assert config['input_config'][0]['DataSource']['S3DataSource']['S3Uri'] == BUCKET_NAME
-    assert config['input_config'][2]['DataSource']['S3DataSource']['S3Uri'] == CODE_URI
-    assert config['input_config'][2]['ChannelName'] == framework_network_isolation.code_channel_name
-    assert config['role'] == ROLE
-    assert config['output_config']['S3OutputPath'] == S3_OUTPUT_PATH
-    assert 'KmsKeyId' not in config['output_config']
-    assert config['resource_config']['InstanceCount'] == INSTANCE_COUNT
-    assert config['resource_config']['InstanceType'] == INSTANCE_TYPE
+    assert len(config["input_config"]) == 3
+    assert config["input_config"][0]["DataSource"]["S3DataSource"]["S3Uri"] == BUCKET_NAME
+    assert config["input_config"][2]["DataSource"]["S3DataSource"]["S3Uri"] == CODE_URI
+    assert config["input_config"][2]["ChannelName"] == framework_network_isolation.code_channel_name
+    assert config["role"] == ROLE
+    assert config["output_config"]["S3OutputPath"] == S3_OUTPUT_PATH
+    assert "KmsKeyId" not in config["output_config"]
+    assert config["resource_config"]["InstanceCount"] == INSTANCE_COUNT
+    assert config["resource_config"]["InstanceType"] == INSTANCE_TYPE
 
 
 def test_load_config_with_code_channel_no_code_uri(framework_network_isolation):

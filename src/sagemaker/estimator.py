@@ -1072,7 +1072,11 @@ class Framework(EstimatorBase):
         # TODO: Migrate all frameworks to support network isolation, replace when all frameworks migrated
         # Current frameworks that support network isolation override this method
         if self._enable_network_isolation:
-            logging.warning("Network isolation mode not supported for {} framework".format(self.__class__.__name__))
+            logging.warning(
+                "Network isolation mode not supported for {} framework".format(
+                    self.__class__.__name__
+                )
+            )
         return False
 
     def _prepare_for_training(self, job_name=None):

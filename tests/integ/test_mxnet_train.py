@@ -305,7 +305,7 @@ def test_failed_training_job(sagemaker_session, mxnet_full_version):
 
         with pytest.raises(ValueError) as e:
             mx.fit()
-        assert 'ExecuteUserScriptError' in str(e.value)
+        assert "ExecuteUserScriptError" in str(e.value)
 
 
 # TODO: Update MXNet container to support network isolation and replace this test
@@ -313,17 +313,26 @@ def test_warning_training_job_with_network_isolation(sagemaker_session, mxnet_fu
     caplog.set_level(logging.WARNING)
 
     with timeout():
-        script_path = os.path.join(DATA_DIR, 'mxnet_mnist', 'mnist.py')
-        data_path = os.path.join(DATA_DIR, 'mxnet_mnist')
+        script_path = os.path.join(DATA_DIR, "mxnet_mnist", "mnist.py")
+        data_path = os.path.join(DATA_DIR, "mxnet_mnist")
 
-        mx = MXNet(entry_point=script_path, role='SageMakerRole', framework_version=mxnet_full_version,
-                   py_version=PYTHON_VERSION, train_instance_count=1, train_instance_type='ml.c4.xlarge',
-                   sagemaker_session=sagemaker_session, enable_network_isolation=True)
+        mx = MXNet(
+            entry_point=script_path,
+            role="SageMakerRole",
+            framework_version=mxnet_full_version,
+            py_version=PYTHON_VERSION,
+            train_instance_count=1,
+            train_instance_type="ml.c4.xlarge",
+            sagemaker_session=sagemaker_session,
+            enable_network_isolation=True,
+        )
 
-        train_input = mx.sagemaker_session.upload_data(path=os.path.join(data_path, 'train'),
-                                                       key_prefix='integ-test-data/mxnet_mnist/train')
-        test_input = mx.sagemaker_session.upload_data(path=os.path.join(data_path, 'test'),
-                                                      key_prefix='integ-test-data/mxnet_mnist/test')
+        train_input = mx.sagemaker_session.upload_data(
+            path=os.path.join(data_path, "train"), key_prefix="integ-test-data/mxnet_mnist/train"
+        )
+        test_input = mx.sagemaker_session.upload_data(
+            path=os.path.join(data_path, "test"), key_prefix="integ-test-data/mxnet_mnist/test"
+        )
 
-        mx.fit({'train': train_input, 'test': test_input})
-        assert 'Network isolation mode not supported for MXNet framework' in caplog.text
+        mx.fit({"train": train_input, "test": test_input})
+        assert "Network isolation mode not supported for MXNet framework" in caplog.text

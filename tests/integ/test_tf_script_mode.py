@@ -86,23 +86,26 @@ def test_warning_mnist_with_network_isolation(sagemaker_session, caplog):
     caplog.set_level(logging.WARNING)
 
     with tests.integ.timeout.timeout(minutes=tests.integ.TRAINING_DEFAULT_TIMEOUT_MINUTES):
-        estimator = TensorFlow(entry_point=SCRIPT,
-                               role='SageMakerRole',
-                               train_instance_count=1,
-                               train_instance_type='ml.c4.xlarge',
-                               sagemaker_session=sagemaker_session,
-                               script_mode=True,
-                               framework_version=TensorFlow.LATEST_VERSION,
-                               metric_definitions=[
-                                   {'Name': 'train:global_steps', 'Regex': r'global_step\/sec:\s(.*)'}],
-                               enable_network_isolation=True)
+        estimator = TensorFlow(
+            entry_point=SCRIPT,
+            role="SageMakerRole",
+            train_instance_count=1,
+            train_instance_type="ml.c4.xlarge",
+            sagemaker_session=sagemaker_session,
+            script_mode=True,
+            framework_version=TensorFlow.LATEST_VERSION,
+            metric_definitions=[
+                {"Name": "train:global_steps", "Regex": r"global_step\/sec:\s(.*)"}
+            ],
+            enable_network_isolation=True,
+        )
 
         inputs = estimator.sagemaker_session.upload_data(
-            path=os.path.join(MNIST_RESOURCE_PATH, 'data'),
-            key_prefix='scriptmode/mnist')
+            path=os.path.join(MNIST_RESOURCE_PATH, "data"), key_prefix="scriptmode/mnist"
+        )
 
         estimator.fit(inputs=inputs)
-        assert 'Network isolation mode not supported for TensorFlow framework' in caplog.text
+        assert "Network isolation mode not supported for TensorFlow framework" in caplog.text
 
 
 def test_server_side_encryption(sagemaker_session):

@@ -132,17 +132,25 @@ def test_failed_training_job(sagemaker_session, pytorch_full_version):
 
 
 # TODO: Update PyTorch container to support network isolation and replace this test
-def test_warning_training_job_with_network_isolation(sagemaker_session, pytorch_full_version, caplog):
+def test_warning_training_job_with_network_isolation(
+    sagemaker_session, pytorch_full_version, caplog
+):
     caplog.set_level(logging.WARNING)
 
     with timeout(minutes=TRAINING_DEFAULT_TIMEOUT_MINUTES):
-        pytorch = PyTorch(entry_point=MNIST_SCRIPT, role='SageMakerRole',
-                          framework_version=pytorch_full_version, py_version=PYTHON_VERSION,
-                          train_instance_count=1, train_instance_type='ml.c4.xlarge',
-                          sagemaker_session=sagemaker_session, enable_network_isolation=True)
+        pytorch = PyTorch(
+            entry_point=MNIST_SCRIPT,
+            role="SageMakerRole",
+            framework_version=pytorch_full_version,
+            py_version=PYTHON_VERSION,
+            train_instance_count=1,
+            train_instance_type="ml.c4.xlarge",
+            sagemaker_session=sagemaker_session,
+            enable_network_isolation=True,
+        )
 
-        pytorch.fit({'training': _upload_training_data(pytorch)})
-        assert 'Network isolation mode not supported for PyTorch framework' in caplog.text
+        pytorch.fit({"training": _upload_training_data(pytorch)})
+        assert "Network isolation mode not supported for PyTorch framework" in caplog.text
 
 
 def _upload_training_data(pytorch):
