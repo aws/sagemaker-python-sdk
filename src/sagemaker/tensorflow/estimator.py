@@ -644,21 +644,27 @@ class TensorFlow(Framework):
                 use the SageMaker Tensorflow Serving container.
         """
 
-        if endpoint_type == "tensorflow-serving":
-            self.script_mode = True
-        return super(TensorFlow, self).transformer(
+        role = role or self.role
+        model = self.create_model(
+            model_server_workers=model_server_workers,
+            role=role,
+            vpc_config_override=VPC_CONFIG_DEFAULT,
+            endpoint_type=endpoint_type,
+        )
+        return model.transformer(
             instance_count,
             instance_type,
-            strategy,
-            assemble_with,
-            output_path,
-            output_kms_key,
-            accept,
-            env,
-            max_concurrent_transforms,
-            max_payload,
-            tags,
-            role,
-            model_server_workers,
-            volume_kms_key,
+            strategy=strategy,
+            assemble_with=assemble_with,
+            output_path=output_path,
+            output_kms_key=output_kms_key,
+            accept=accept,
+            env=env,
+            max_concurrent_transforms=max_concurrent_transforms,
+            max_payload=max_payload,
+            tags=None,
+            volume_kms_key=volume_kms_key,
+
         )
+
+
