@@ -121,7 +121,6 @@ class SKLearn(Framework):
         """
         return self._enable_network_isolation
 
-
     def create_model(
         self, model_server_workers=None, role=None, vpc_config_override=VPC_CONFIG_DEFAULT, **kwargs
     ):
