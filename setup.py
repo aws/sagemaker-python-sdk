@@ -67,7 +67,7 @@ setup(
     install_requires=required_packages,
     extras_require={
         "test": [
-            "tox",
+            "tox==3.13.1",
             "flake8",
             "pytest==4.4.1",
             "pytest-cov",
