@@ -136,18 +136,59 @@ def test_create_image_uri_gov_cloud():
     )
 
 
-def test_create_image_uri_accelerator_tf():
+def test_create_image_uri_merged():
     image_uri = fw_utils.create_image_uri(
-        MOCK_REGION,
-        "tensorflow",
-        "ml.p3.2xlarge",
-        "1.0rc",
-        "py3",
-        accelerator_type="ml.eia1.medium",
+        "us-west-2", "tensorflow-scriptmode", "ml.p3.2xlarge", "1.13.1", "py3"
     )
     assert (
         image_uri
-        == "520713654638.dkr.ecr.mars-south-3.amazonaws.com/sagemaker-tensorflow-eia:1.0rc-gpu-py3"
+        == "763104351884.dkr.ecr.us-west-2.amazonaws.com/tensorflow-training:1.13.1-gpu-py3"
+    )
+
+    image_uri = fw_utils.create_image_uri(
+        "us-west-2", "tensorflow-serving", "ml.c4.2xlarge", "1.13.1"
+    )
+    assert (
+        image_uri == "763104351884.dkr.ecr.us-west-2.amazonaws.com/tensorflow-inference:1.13.1-cpu"
+    )
+
+    image_uri = fw_utils.create_image_uri("us-west-2", "mxnet", "ml.p3.2xlarge", "1.4.1", "py3")
+    assert image_uri == "763104351884.dkr.ecr.us-west-2.amazonaws.com/mxnet-training:1.4.1-gpu-py3"
+
+    image_uri = fw_utils.create_image_uri(
+        "us-west-2", "mxnet-serving", "ml.c4.2xlarge", "1.4.1", "py3"
+    )
+    assert image_uri == "763104351884.dkr.ecr.us-west-2.amazonaws.com/mxnet-inference:1.4.1-cpu-py3"
+
+
+def test_create_image_uri_merged_py2():
+    image_uri = fw_utils.create_image_uri(
+        "us-west-2", "tensorflow-scriptmode", "ml.p3.2xlarge", "1.13.1", "py2"
+    )
+    assert (
+        image_uri
+        == "520713654638.dkr.ecr.us-west-2.amazonaws.com/sagemaker-tensorflow-scriptmode:1.13.1-gpu-py2"
+    )
+
+    image_uri = fw_utils.create_image_uri("us-west-2", "mxnet", "ml.p3.2xlarge", "1.4.1", "py2")
+    assert image_uri == "520713654638.dkr.ecr.us-west-2.amazonaws.com/sagemaker-mxnet:1.4.1-gpu-py2"
+
+    image_uri = fw_utils.create_image_uri(
+        "us-west-2", "mxnet-serving", "ml.c4.2xlarge", "1.4.1", "py2"
+    )
+    assert (
+        image_uri
+        == "520713654638.dkr.ecr.us-west-2.amazonaws.com/sagemaker-mxnet-serving:1.4.1-cpu-py2"
+    )
+
+
+def test_create_image_uri_accelerator_tf():
+    image_uri = fw_utils.create_image_uri(
+        MOCK_REGION, "tensorflow", "ml.p3.2xlarge", "1.0", "py3", accelerator_type="ml.eia1.medium"
+    )
+    assert (
+        image_uri
+        == "520713654638.dkr.ecr.mars-south-3.amazonaws.com/sagemaker-tensorflow-eia:1.0-gpu-py3"
     )
 
 
@@ -156,13 +197,13 @@ def test_create_image_uri_accelerator_mxnet_serving():
         MOCK_REGION,
         "mxnet-serving",
         "ml.p3.2xlarge",
-        "1.0rc",
+        "1.0",
         "py3",
         accelerator_type="ml.eia1.medium",
     )
     assert (
         image_uri
-        == "520713654638.dkr.ecr.mars-south-3.amazonaws.com/sagemaker-mxnet-serving-eia:1.0rc-gpu-py3"
+        == "520713654638.dkr.ecr.mars-south-3.amazonaws.com/sagemaker-mxnet-serving-eia:1.0-gpu-py3"
     )
 
 
@@ -171,13 +212,13 @@ def test_create_image_uri_local_sagemaker_notebook_accelerator():
         MOCK_REGION,
         "mxnet",
         "ml.p3.2xlarge",
-        "1.0rc",
+        "1.0",
         "py3",
         accelerator_type="local_sagemaker_notebook",
     )
     assert (
         image_uri
-        == "520713654638.dkr.ecr.mars-south-3.amazonaws.com/sagemaker-mxnet-eia:1.0rc-gpu-py3"
+        == "520713654638.dkr.ecr.mars-south-3.amazonaws.com/sagemaker-mxnet-eia:1.0-gpu-py3"
     )
 
 
@@ -554,6 +595,11 @@ def test_framework_name_from_image_tf_scriptmode():
         "1.12-cpu-py3",
         "scriptmode",
     ) == fw_utils.framework_name_from_image(image_name)
+
+    image_name = "123.dkr.ecr.us-west-2.amazonaws.com/tensorflow-training:1.13-cpu-py3"
+    assert ("tensorflow", "py3", "1.13-cpu-py3", "training") == fw_utils.framework_name_from_image(
+        image_name
+    )
 
 
 def test_framework_name_from_image_rl():
