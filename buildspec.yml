@@ -23,18 +23,18 @@ phases:
       - AWS_ACCESS_KEY_ID= AWS_SECRET_ACCESS_KEY= AWS_SESSION_TOKEN=
         AWS_CONTAINER_CREDENTIALS_RELATIVE_URI= AWS_DEFAULT_REGION=
         tox -e py36,py27 --parallel all -- tests/unit
-      - ./ci-scripts/displaytime.sh 'py36,py27 unit ' $start_time
+      - ./ci-scripts/displaytime.sh 'py36,py27 unit' $start_time
 
       # local mode tests
       - |
         if has-matching-changes "tests/" "src/*.py" "setup.py" "setup.cfg" "buildspec.yml"; then
           start_time=`date +%s`
           IGNORE_COVERAGE=- tox -e py36 -- tests/integ -m local_mode --durations 50
-          ./ci-scripts/displaytime.sh 'py36 local mode ' $start_time
+          ./ci-scripts/displaytime.sh 'py36 local mode' $start_time
 
           start_time=`date +%s`
           IGNORE_COVERAGE=- tox -e py27 -- tests/integ -m local_mode --durations 50
-          ./ci-scripts/displaytime.sh 'py27 local mode ' $start_time
+          ./ci-scripts/displaytime.sh 'py27 local mode' $start_time
 
         else
           echo "skipping integration tests"
@@ -45,15 +45,15 @@ phases:
         if has-matching-changes "tests/" "src/*.py" "setup.py" "setup.cfg" "buildspec.yml"; then
           start_time=`date +%s`
           python3 -u ci-scripts/queue_build.py
-          ./ci-scripts/displaytime.sh 'Build queue' $start_time
+          ./ci-scripts/displaytime.sh 'build queue' $start_time
 
           start_time=`date +%s`
           IGNORE_COVERAGE=- tox -e py36 -- tests/integ -m "not local_mode" -n 48  --reruns 3 --reruns-delay 5 --durations 50
-          ./ci-scripts/displaytime.sh 'py36 tests/integ ' $start_time
+          ./ci-scripts/displaytime.sh 'py36 tests/integ' $start_time
 
           start_time=`date +%s`
           IGNORE_COVERAGE=- tox -e py27 -- tests/integ -m "not local_mode" -n 48  --reruns 3 --reruns-delay 5 --durations 50
-          ./ci-scripts/displaytime.sh 'py27 tests/integ ' $start_time
+          ./ci-scripts/displaytime.sh 'py27 tests/integ' $start_time
 
         else
           echo "skipping integration tests"
@@ -65,7 +65,7 @@ phases:
           echo "running notebook test"
           start_time=`date +%s`
           ./tests/scripts/run-notebook-test.sh
-          ./ci-scripts/displaytime.sh 'notebook test ' $start_time
+          ./ci-scripts/displaytime.sh 'notebook test' $start_time
 
          else
            echo "skipping notebook test"

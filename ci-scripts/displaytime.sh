@@ -14,7 +14,7 @@
 
 set -euo pipefail
 
-printf '%s execution time ' $1
+printf '\n=================== %s execution time ===================\n\n  ' $1
 
 start_time=$2
 end_time=`date +%s`
@@ -26,4 +26,4 @@ secs=$((total_time%60))
 (( $hours > 0 )) && printf '%d hours ' $hours
 (( $minutes > 0 )) && printf '%d minutes ' $minutes
 (( $hours > 0 || $minutes > 0 )) && printf 'and '
-printf '%d seconds\n' $secs
+printf '%d seconds\n\n' $secs
