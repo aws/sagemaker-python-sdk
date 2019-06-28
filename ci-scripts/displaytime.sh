@@ -14,7 +14,7 @@
 
 set -euo pipefail
 
-printf '\n=================== %s execution time ===================\n\n  ' $1
+echo =================== $1 execution time ===================
 
 start_time=$2
 end_time=`date +%s`
