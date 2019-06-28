@@ -306,8 +306,11 @@ def test_create_model_with_optional_params(sagemaker_session):
     assert model.vpc_config == vpc_config
 
 
-@patch("sagemaker.tensorflow.serving.Model.transformer")
-def test_transformer_creation_with_endpoint_type(mock_transformer, sagemaker_session):
+@patch("sagemaker.tensorflow.estimator.TensorFlow.create_model")
+def test_transformer_creation_with_endpoint_type(create_model, sagemaker_session):
+    model = Mock()
+    create_model.return_value = model
+
     source_dir = "s3://mybucket/source"
     tf = TensorFlow(
         entry_point=SCRIPT_PATH,
@@ -318,10 +321,15 @@ def test_transformer_creation_with_endpoint_type(mock_transformer, sagemaker_ses
         source_dir=source_dir,
     )
 
-    tf.fit(inputs="s3://mybucket/train", job_name=JOB_NAME)
     tf.transformer(INSTANCE_COUNT, INSTANCE_TYPE, endpoint_type="tensorflow-serving")
 
-    mock_transformer.assert_called_with(
+    create_model.assert_called_with(
+        endpoint_type="tensorflow-serving",
+        model_server_workers=None,
+        role=ROLE,
+        vpc_config_override="VPC_CONFIG_DEFAULT",
+    )
+    model.transformer.assert_called_with(
         INSTANCE_COUNT,
         INSTANCE_TYPE,
         accept=None,
@@ -337,22 +345,27 @@ def test_transformer_creation_with_endpoint_type(mock_transformer, sagemaker_ses
     )
 
 
-@patch("sagemaker.tensorflow.model.TensorFlowModel.transformer")
-def test_transformer_creation_without_endpoint_type(mock_transformer, sagemaker_session):
-    source_dir = "s3://mybucket/source"
+@patch("sagemaker.tensorflow.estimator.TensorFlow.create_model")
+def test_transformer_creation_without_endpoint_type(create_model, sagemaker_session):
+    model = Mock()
+    create_model.return_value = model
+
     tf = TensorFlow(
         entry_point=SCRIPT_PATH,
         role=ROLE,
         sagemaker_session=sagemaker_session,
         train_instance_count=INSTANCE_COUNT,
         train_instance_type=INSTANCE_TYPE,
-        source_dir=source_dir,
     )
-
-    tf.fit(inputs="s3://mybucket/train", job_name=JOB_NAME)
     tf.transformer(INSTANCE_COUNT, INSTANCE_TYPE)
 
-    mock_transformer.assert_called_with(
+    create_model.assert_called_with(
+        endpoint_type=None,
+        model_server_workers=None,
+        role=ROLE,
+        vpc_config_override="VPC_CONFIG_DEFAULT",
+    )
+    model.transformer.assert_called_with(
         INSTANCE_COUNT,
         INSTANCE_TYPE,
         accept=None,
