@@ -662,6 +662,6 @@ class TensorFlow(Framework):
             env=env,
             max_concurrent_transforms=max_concurrent_transforms,
             max_payload=max_payload,
-            tags=None,
-            volume_kms_key=volume_kms_key,
+            tags=tags,
+            volume_kms_key=volume_kms_key
         )

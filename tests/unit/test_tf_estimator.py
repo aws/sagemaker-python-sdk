@@ -19,7 +19,6 @@ import os
 import pytest
 from mock import patch, Mock, MagicMock
 
-from sagemaker.estimator import _TrainingJob
 from sagemaker.fw_utils import create_image_uri
 from sagemaker.model import MODEL_SERVER_WORKERS_PARAM_NAME
 from sagemaker.session import s3_input
@@ -307,47 +306,70 @@ def test_create_model_with_optional_params(sagemaker_session):
     assert model.vpc_config == vpc_config
 
 
-@patch("sagemaker.tensorflow.estimator.TensorFlow.create_model")
-def test_transformer_creation_with_endpoint_type(create_model, sagemaker_session):
+@patch("sagemaker.tensorflow.serving.Model.transformer")
+def test_transformer_creation_with_endpoint_type(mock_transformer, sagemaker_session):
+    source_dir = "s3://mybucket/source"
     tf = TensorFlow(
         entry_point=SCRIPT_PATH,
         role=ROLE,
         sagemaker_session=sagemaker_session,
         train_instance_count=INSTANCE_COUNT,
         train_instance_type=INSTANCE_TYPE,
+        source_dir=source_dir,
     )
-    tf.latest_training_job = _TrainingJob(sagemaker_session, JOB_NAME)
 
+    tf.fit(inputs="s3://mybucket/train", job_name=JOB_NAME)
     tf.transformer(
-        INSTANCE_COUNT, INSTANCE_TYPE, model_server_workers=2, endpoint_type="tensorflow-serving"
-    )
-    create_model.assert_called_with(
-        endpoint_type="tensorflow-serving",
-        model_server_workers=2,
-        role="Dummy",
-        vpc_config_override="VPC_CONFIG_DEFAULT",
+        INSTANCE_COUNT,
+        INSTANCE_TYPE,
+        endpoint_type="tensorflow-serving"
     )
 
+    mock_transformer.assert_called_with(
+                                        INSTANCE_COUNT,
+                                        INSTANCE_TYPE,
+                                        accept=None,
+                                        assemble_with=None,
+                                        env=None,
+                                        max_concurrent_transforms=None,
+                                        max_payload=None,
+                                        output_kms_key=None,
+                                        output_path=None,
+                                        strategy=None,
+                                        tags=None,
+                                        volume_kms_key=None)
 
-@patch("sagemaker.tensorflow.estimator.TensorFlow.create_model")
-def test_transformer_creation_without_endpoint_type(create_model, sagemaker_session):
 
+@patch("sagemaker.tensorflow.model.TensorFlowModel.transformer")
+def test_transformer_creation_without_endpoint_type(mock_transformer, sagemaker_session):
+    source_dir = "s3://mybucket/source"
     tf = TensorFlow(
         entry_point=SCRIPT_PATH,
         role=ROLE,
         sagemaker_session=sagemaker_session,
         train_instance_count=INSTANCE_COUNT,
         train_instance_type=INSTANCE_TYPE,
+        source_dir=source_dir,
     )
 
-    tf.latest_training_job = _TrainingJob(sagemaker_session, JOB_NAME)
-    tf.transformer(INSTANCE_COUNT, INSTANCE_TYPE, model_server_workers=4)
-    create_model.assert_called_with(
-        endpoint_type=None,
-        model_server_workers=4,
-        role="Dummy",
-        vpc_config_override="VPC_CONFIG_DEFAULT",
-    )
+    tf.fit(inputs="s3://mybucket/train", job_name=JOB_NAME)
+    tf.transformer(
+        INSTANCE_COUNT,
+        INSTANCE_TYPE)
+
+    mock_transformer.assert_called_with(
+                                        INSTANCE_COUNT,
+                                        INSTANCE_TYPE,
+                                        accept=None,
+                                        assemble_with=None,
+                                        env=None,
+                                        max_concurrent_transforms=None,
+                                        max_payload=None,
+                                        output_kms_key=None,
+                                        output_path=None,
+                                        strategy=None,
+                                        tags=None,
+                                        volume_kms_key=None)
 
 
 def test_create_model_with_custom_image(sagemaker_session):
