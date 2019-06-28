@@ -25,51 +25,39 @@ phases:
         tox -e py36,py27 --parallel all -- tests/unit
       - ./ci-scripts/displaytime.sh 'py36,py27 unit' $start_time
 
+      - IGNORE_COVERAGE=-
+
       # local mode tests
-      - |
-        if has-matching-changes "tests/" "src/*.py" "setup.py" "setup.cfg" "buildspec.yml"; then
-          start_time=`date +%s`
-          IGNORE_COVERAGE=- tox -e py36 -- tests/integ -m local_mode --durations 50
-          ./ci-scripts/displaytime.sh 'py36 local mode' $start_time
+      - has-matching-changes "tests/" "src/*.py" "setup.py" "setup.cfg" "buildspec.yml"; HAS_CHANGES=$?
 
-          start_time=`date +%s`
-          IGNORE_COVERAGE=- tox -e py27 -- tests/integ -m local_mode --durations 50
-          ./ci-scripts/displaytime.sh 'py27 local mode' $start_time
+      - start_time=`date +%s`
+      - test HAS_CHANGES -ne 0 && tox -e py36 -- tests/integ -m local_mode --durations 50
+      - ./ci-scripts/displaytime.sh 'py36 local mode' $start_time
 
-        else
-          echo "skipping integration tests"
-        fi
-        
+      - start_time=`date +%s`
+      - test HAS_CHANGES -ne 0 && tox -e py27 -- tests/integ -m local_mode --durations 50
+      - ./ci-scripts/displaytime.sh 'py27 local mode' $start_time
+
       # run integration tests
-      - |
-        if has-matching-changes "tests/" "src/*.py" "setup.py" "setup.cfg" "buildspec.yml"; then
-          start_time=`date +%s`
-          python3 -u ci-scripts/queue_build.py
-          ./ci-scripts/displaytime.sh 'build queue' $start_time
+      - start_time=`date +%s`
+      - test HAS_CHANGES -ne 0 && python3 -u ci-scripts/queue_build.py
+      - ./ci-scripts/displaytime.sh 'build queue' $start_time
 
-          start_time=`date +%s`
-          IGNORE_COVERAGE=- tox -e py36 -- tests/integ -m "not local_mode" -n 48  --reruns 3 --reruns-delay 5 --durations 50
-          ./ci-scripts/displaytime.sh 'py36 tests/integ' $start_time
+      - start_time=`date +%s`
+      - test HAS_CHANGES -ne 0 && tox -e py36 -- tests/integ -m "not local_mode" -n 48  --reruns 3 --reruns-delay 5 --durations 50
+      - ./ci-scripts/displaytime.sh 'py36 tests/integ' $start_time
 
-          start_time=`date +%s`
-          IGNORE_COVERAGE=- tox -e py27 -- tests/integ -m "not local_mode" -n 48  --reruns 3 --reruns-delay 5 --durations 50
-          ./ci-scripts/displaytime.sh 'py27 tests/integ' $start_time
-
-        else
-          echo "skipping integration tests"
-        fi
+      - start_time=`date +%s`
+      - test HAS_CHANGES -ne 0 && tox -e py27 -- tests/integ -m "not local_mode" -n 48  --reruns 3 --reruns-delay 5 --durations 50
+      - ./ci-scripts/displaytime.sh 'py27 tests/integ' $start_time
         
       # run notebook test
-      - |
-        if has-matching-changes "src/*.py" "setup.py" "setup.cfg" "buildspec.yml"; then
-          echo "running notebook test"
-          start_time=`date +%s`
-          ./tests/scripts/run-notebook-test.sh
-          ./ci-scripts/displaytime.sh 'notebook test' $start_time
+      - has-matching-changes "src/*.py" "setup.py" "setup.cfg"; HAS_CHANGES=$?
+      - echo "running notebook test"
+      - start_time=`date +%s`
+      - test HAS_CHANGES -ne 0 && ./tests/scripts/run-notebook-test.sh
+      - ./ci-scripts/displaytime.sh 'notebook test' $start_time
 
-         else
-           echo "skipping notebook test"
-         fi
   post_build:
     finally:
       - FILENAME=$(ls ci-lock/)
