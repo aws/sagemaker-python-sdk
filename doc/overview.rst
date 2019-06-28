@@ -516,7 +516,7 @@ SageMaker Batch Transform
 *************************
 
 After you train a model, you can use Amazon SageMaker Batch Transform to perform inferences with the model.
-Batch Transform manages all necessary compute resources, including launching instances to deploy endpoints and deleting them afterward.
+Batch transform manages all necessary compute resources, including launching instances to deploy endpoints and deleting them afterward.
 You can read more about SageMaker Batch Transform in the `AWS documentation <https://docs.aws.amazon.com/sagemaker/latest/dg/how-it-works-batch.html>`__.
 
 If you trained the model using a SageMaker Python SDK estimator,
@@ -766,55 +766,6 @@ When this training job is created, the SageMaker Python SDK will upload the file
 A new training job channel, named ``code``, will be added with that S3 URI.  Before the training docker container is initialized, the ``sourcedir.tar.gz`` will be downloaded from S3 to the ML storage volume like any other offline input channel.
 
 Once the training job begins, the training container will look at the offline input ``code`` channel to install dependencies and run the entry script. This isolates the training container, so no inbound or outbound network calls can be made.
-
-
-FAQ
----
-
-I want to train a SageMaker Estimator with local data, how do I do this?
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-Upload the data to S3 before training. You can use the AWS Command Line Tool (the aws cli) to achieve this.
-
-If you don't have the aws cli, you can install it using pip:
-
-::
-
-    pip install awscli --upgrade --user
-
-If you don't have pip or want to learn more about installing the aws cli, see the official `Amazon aws cli installation guide <http://docs.aws.amazon.com/cli/latest/userguide/installing.html>`__.
-
-After you install the AWS cli, you can upload a directory of files to S3 with the following command:
-
-::
-
-    aws s3 cp /tmp/foo/ s3://bucket/path
-
-For more information about using the aws cli for manipulating S3 resources, see `AWS cli command reference <http://docs.aws.amazon.com/cli/latest/reference/s3/index.html>`__.
-
-
-How do I make predictions against an existing endpoint?
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-Create a ``Predictor`` object and provide it with your endpoint name,
-then call its ``predict()`` method with your input.
-
-You can use either the generic ``RealTimePredictor`` class, which by default does not perform any serialization/deserialization transformations on your input,
-but can be configured to do so through constructor arguments:
-http://sagemaker.readthedocs.io/en/stable/predictors.html
-
-Or you can use the TensorFlow / MXNet specific predictor classes, which have default serialization/deserialization logic:
-http://sagemaker.readthedocs.io/en/stable/sagemaker.tensorflow.html#tensorflow-predictor
-http://sagemaker.readthedocs.io/en/stable/sagemaker.mxnet.html#mxnet-predictor
-
-Example code using the TensorFlow predictor:
-
-::
-
-    from sagemaker.tensorflow import TensorFlowPredictor
-
-    predictor = TensorFlowPredictor('myexistingendpoint')
-    result = predictor.predict(['my request body'])
-
 
 BYO Model
 ---------
