@@ -663,5 +663,5 @@ class TensorFlow(Framework):
             max_concurrent_transforms=max_concurrent_transforms,
             max_payload=max_payload,
             tags=tags,
-            volume_kms_key=volume_kms_key
+            volume_kms_key=volume_kms_key,
         )

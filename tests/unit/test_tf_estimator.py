@@ -319,25 +319,22 @@ def test_transformer_creation_with_endpoint_type(mock_transformer, sagemaker_ses
     )
 
     tf.fit(inputs="s3://mybucket/train", job_name=JOB_NAME)
-    tf.transformer(
-        INSTANCE_COUNT,
-        INSTANCE_TYPE,
-        endpoint_type="tensorflow-serving"
-    )
+    tf.transformer(INSTANCE_COUNT, INSTANCE_TYPE, endpoint_type="tensorflow-serving")
 
     mock_transformer.assert_called_with(
-                                        INSTANCE_COUNT,
-                                        INSTANCE_TYPE,
-                                        accept=None,
-                                        assemble_with=None,
-                                        env=None,
-                                        max_concurrent_transforms=None,
-                                        max_payload=None,
-                                        output_kms_key=None,
-                                        output_path=None,
-                                        strategy=None,
-                                        tags=None,
-                                        volume_kms_key=None)
+        INSTANCE_COUNT,
+        INSTANCE_TYPE,
+        accept=None,
+        assemble_with=None,
+        env=None,
+        max_concurrent_transforms=None,
+        max_payload=None,
+        output_kms_key=None,
+        output_path=None,
+        strategy=None,
+        tags=None,
+        volume_kms_key=None,
+    )
 
 
 @patch("sagemaker.tensorflow.model.TensorFlowModel.transformer")
@@ -353,23 +350,22 @@ def test_transformer_creation_without_endpoint_type(mock_transformer, sagemaker_
     )
 
     tf.fit(inputs="s3://mybucket/train", job_name=JOB_NAME)
-    tf.transformer(
-        INSTANCE_COUNT,
-        INSTANCE_TYPE)
+    tf.transformer(INSTANCE_COUNT, INSTANCE_TYPE)
 
     mock_transformer.assert_called_with(
-                                        INSTANCE_COUNT,
-                                        INSTANCE_TYPE,
-                                        accept=None,
-                                        assemble_with=None,
-                                        env=None,
-                                        max_concurrent_transforms=None,
-                                        max_payload=None,
-                                        output_kms_key=None,
-                                        output_path=None,
-                                        strategy=None,
-                                        tags=None,
-                                        volume_kms_key=None)
+        INSTANCE_COUNT,
+        INSTANCE_TYPE,
+        accept=None,
+        assemble_with=None,
+        env=None,
+        max_concurrent_transforms=None,
+        max_payload=None,
+        output_kms_key=None,
+        output_path=None,
+        strategy=None,
+        tags=None,
+        volume_kms_key=None,
+    )
 
 
 def test_create_model_with_custom_image(sagemaker_session):
