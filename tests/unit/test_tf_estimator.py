@@ -311,14 +311,12 @@ def test_transformer_creation_with_endpoint_type(create_model, sagemaker_session
     model = Mock()
     create_model.return_value = model
 
-    source_dir = "s3://mybucket/source"
     tf = TensorFlow(
         entry_point=SCRIPT_PATH,
         role=ROLE,
         sagemaker_session=sagemaker_session,
         train_instance_count=INSTANCE_COUNT,
         train_instance_type=INSTANCE_TYPE,
-        source_dir=source_dir,
     )
 
     tf.transformer(INSTANCE_COUNT, INSTANCE_TYPE, endpoint_type="tensorflow-serving")
