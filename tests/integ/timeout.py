@@ -12,19 +12,16 @@
 # language governing permissions and limitations under the License.
 from __future__ import absolute_import
 
-import signal
 from contextlib import contextmanager
 import logging
 from time import sleep
 
 from awslogs.core import AWSLogs
 from botocore.exceptions import ClientError
+import stopit
+
 
 LOGGER = logging.getLogger("timeout")
-
-
-class TimeoutError(Exception):
-    pass
 
 
 @contextmanager
@@ -43,23 +40,17 @@ def timeout(seconds=0, minutes=0, hours=0):
 
     limit = seconds + 60 * minutes + 3600 * hours
 
-    def handler(signum, frame):
-        raise TimeoutError("timed out after {} seconds".format(limit))
-
-    try:
-        signal.signal(signal.SIGALRM, handler)
-        signal.alarm(limit)
-
-        yield
-    finally:
-        signal.alarm(0)
+    with stopit.ThreadingTimeout(limit, swallow_exc=False) as t:
+        yield [t]
 
 
 @contextmanager
 def timeout_and_delete_endpoint_by_name(
     endpoint_name, sagemaker_session, seconds=0, minutes=45, hours=0
 ):
-    with timeout(seconds=seconds, minutes=minutes, hours=hours) as t:
+    limit = seconds + 60 * minutes + 3600 * hours
+
+    with stopit.ThreadingTimeout(limit, swallow_exc=False) as t:
         no_errors = False
         try:
             yield [t]
@@ -89,7 +80,9 @@ def timeout_and_delete_endpoint_by_name(
 def timeout_and_delete_model_with_transformer(
     transformer, sagemaker_session, seconds=0, minutes=0, hours=0
 ):
-    with timeout(seconds=seconds, minutes=minutes, hours=hours) as t:
+    limit = seconds + 60 * minutes + 3600 * hours
+
+    with stopit.ThreadingTimeout(limit, swallow_exc=False) as t:
         no_errors = False
         try:
             yield [t]
