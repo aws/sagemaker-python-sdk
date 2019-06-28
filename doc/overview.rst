@@ -740,8 +740,10 @@ Likewise, when you create ``Transformer`` from the ``Estimator`` using ``transfo
     # Transform Job container instances will run in your VPC
     mxnet_vpc_transformer.transform('s3://my-bucket/batch-transform-input')
 
+***********************************************************
 Secure Training with Network Isolation (Internet-Free) Mode
--------------------------------------------------------------------------
+***********************************************************
+
 You can enable network isolation mode when running training and inference on Amazon SageMaker.
 
 For more information about Amazon SageMaker network isolation mode, see the `SageMaker documentation on network isolation or internet-free mode <https://docs.aws.amazon.com/sagemaker/latest/dg/mkt-algo-model-internet-free.html>`__.
@@ -767,8 +769,10 @@ A new training job channel, named ``code``, will be added with that S3 URI.  Bef
 
 Once the training job begins, the training container will look at the offline input ``code`` channel to install dependencies and run the entry script. This isolates the training container, so no inbound or outbound network calls can be made.
 
+*********
 BYO Model
----------
+*********
+
 You can also create an endpoint from an existing model rather than training one.
 That is, you can bring your own model:
 
@@ -801,7 +805,7 @@ You can also find this notebook in the **Advanced Functionality** section of the
 For information about using sample notebooks in a SageMaker notebook instance, see `Use Example Notebooks <https://docs.aws.amazon.com/sagemaker/latest/dg/howitworks-nbexamples.html>`__
 in the AWS documentation.
 
-
+*******************
 Inference Pipelines
 *******************
 
