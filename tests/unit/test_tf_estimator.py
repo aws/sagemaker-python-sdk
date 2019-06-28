@@ -924,7 +924,7 @@ def test_script_mode_tensorboard(
         sagemaker_session=sagemaker_session,
         train_instance_count=INSTANCE_COUNT,
         train_instance_type=INSTANCE_TYPE,
-        framework_version="some_version",
+        framework_version="1.0",
         script_mode=True,
     )
     popen().poll.return_value = None

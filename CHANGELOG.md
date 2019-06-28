@@ -1,5 +1,18 @@
 # Changelog
 
+## v1.31.0 (2019-06-27)
+
+### Features
+
+ * use deep learning images
+
+### Bug fixes and other changes
+
+ * Update buildspec.yml
+ * allow only one integration test run per time
+ * remove unnecessary P3 tests from TFS integration tests
+ * add pytest.mark.local_mode annotation to broken tests
+
 ## v1.30.0 (2019-06-25)
 
 ### Features
