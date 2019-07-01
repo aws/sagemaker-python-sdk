@@ -897,7 +897,13 @@ def test_git_support_bad_repo_url_format(sagemaker_session):
     assert "returned non-zero exit status" in str(error)
 
 
-def test_git_support_git_clone_fail(sagemaker_session):
+@patch(
+    "subprocess.check_call",
+    side_effect=subprocess.CalledProcessError(
+        returncode=1, cmd="git clone https://github.com/aws/no-such-repo.git"
+    ),
+)
+def test_git_support_git_clone_fail(check_call, sagemaker_session):
     git_config = {"repo": "https://github.com/aws/no-such-repo.git", "branch": BRANCH}
     fw = DummyFramework(
         entry_point="entry_point",
