@@ -25,6 +25,7 @@ from sagemaker.session import s3_input
 from sagemaker.tensorflow import defaults, TensorFlow, TensorFlowModel, TensorFlowPredictor
 import sagemaker.tensorflow.estimator as tfe
 
+
 DATA_DIR = os.path.join(os.path.dirname(__file__), "..", "data")
 SCRIPT_FILE = "dummy_script.py"
 SCRIPT_PATH = os.path.join(DATA_DIR, SCRIPT_FILE)
@@ -303,6 +304,79 @@ def test_create_model_with_optional_params(sagemaker_session):
     assert model.role == new_role
     assert model.model_server_workers == model_server_workers
     assert model.vpc_config == vpc_config
+
+
+@patch("sagemaker.tensorflow.estimator.TensorFlow.create_model")
+def test_transformer_creation_with_endpoint_type(create_model, sagemaker_session):
+    model = Mock()
+    create_model.return_value = model
+
+    tf = TensorFlow(
+        entry_point=SCRIPT_PATH,
+        role=ROLE,
+        sagemaker_session=sagemaker_session,
+        train_instance_count=INSTANCE_COUNT,
+        train_instance_type=INSTANCE_TYPE,
+    )
+
+    tf.transformer(INSTANCE_COUNT, INSTANCE_TYPE, endpoint_type="tensorflow-serving")
+
+    create_model.assert_called_with(
+        endpoint_type="tensorflow-serving",
+        model_server_workers=None,
+        role=ROLE,
+        vpc_config_override="VPC_CONFIG_DEFAULT",
+    )
+    model.transformer.assert_called_with(
+        INSTANCE_COUNT,
+        INSTANCE_TYPE,
+        accept=None,
+        assemble_with=None,
+        env=None,
+        max_concurrent_transforms=None,
+        max_payload=None,
+        output_kms_key=None,
+        output_path=None,
+        strategy=None,
+        tags=None,
+        volume_kms_key=None,
+    )
+
+
+@patch("sagemaker.tensorflow.estimator.TensorFlow.create_model")
+def test_transformer_creation_without_endpoint_type(create_model, sagemaker_session):
+    model = Mock()
+    create_model.return_value = model
+
+    tf = TensorFlow(
+        entry_point=SCRIPT_PATH,
+        role=ROLE,
+        sagemaker_session=sagemaker_session,
+        train_instance_count=INSTANCE_COUNT,
+        train_instance_type=INSTANCE_TYPE,
+    )
+    tf.transformer(INSTANCE_COUNT, INSTANCE_TYPE)
+
+    create_model.assert_called_with(
+        endpoint_type=None,
+        model_server_workers=None,
+        role=ROLE,
+        vpc_config_override="VPC_CONFIG_DEFAULT",
+    )
+    model.transformer.assert_called_with(
+        INSTANCE_COUNT,
+        INSTANCE_TYPE,
+        accept=None,
+        assemble_with=None,
+        env=None,
+        max_concurrent_transforms=None,
+        max_payload=None,
+        output_kms_key=None,
+        output_path=None,
+        strategy=None,
+        tags=None,
+        volume_kms_key=None,
+    )
 
 
 def test_create_model_with_custom_image(sagemaker_session):
