@@ -1,5 +1,13 @@
 # Changelog
 
+## v1.31.1 (2019-07-01)
+
+### Bug fixes and other changes
+
+ * print build execution time
+ * remove unnecessary failure case tests
+ * build spec improvements.
+
 ## v1.31.0 (2019-06-27)
 
 ### Features
