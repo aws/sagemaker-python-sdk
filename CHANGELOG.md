@@ -1,5 +1,15 @@
 # Changelog
 
+## v1.32.0 (2019-07-02)
+
+### Features
+
+ * support Endpoint_type for TF transform
+
+### Bug fixes and other changes
+
+ * fix git test in test_estimator.py
+
 ## v1.31.1 (2019-07-01)
 
 ### Bug fixes and other changes
