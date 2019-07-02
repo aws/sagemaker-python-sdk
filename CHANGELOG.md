@@ -1,5 +1,47 @@
 # Changelog
 
+## v1.32.0 (2019-07-02)
+
+### Features
+
+ * support Endpoint_type for TF transform
+
+### Bug fixes and other changes
+
+ * fix git test in test_estimator.py
+
+## v1.31.1 (2019-07-01)
+
+### Bug fixes and other changes
+
+ * print build execution time
+ * remove unnecessary failure case tests
+ * build spec improvements.
+
+## v1.31.0 (2019-06-27)
+
+### Features
+
+ * use deep learning images
+
+### Bug fixes and other changes
+
+ * Update buildspec.yml
+ * allow only one integration test run per time
+ * remove unnecessary P3 tests from TFS integration tests
+ * add pytest.mark.local_mode annotation to broken tests
+
+## v1.30.0 (2019-06-25)
+
+### Features
+
+ * add TensorFlow 1.13 support
+ * add git_config and git_clone, validate method
+
+### Bug fixes and other changes
+
+ * add pytest.mark.local_mode annotation to broken tests
+
 ## v1.29.0 (2019-06-24)
 
 ### Features

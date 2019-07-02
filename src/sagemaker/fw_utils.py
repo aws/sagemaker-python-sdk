@@ -54,6 +54,56 @@ VALID_PY_VERSIONS = ["py2", "py3"]
 VALID_EIA_FRAMEWORKS = ["tensorflow", "tensorflow-serving", "mxnet", "mxnet-serving"]
 VALID_ACCOUNTS_BY_REGION = {"us-gov-west-1": "246785580436", "us-iso-east-1": "744548109606"}
 
+MERGED_FRAMEWORKS_REPO_MAP = {
+    "tensorflow-scriptmode": "tensorflow-training",
+    "mxnet": "mxnet-training",
+    "tensorflow-serving": "tensorflow-inference",
+    "mxnet-serving": "mxnet-inference",
+}
+
+MERGED_FRAMEWORKS_LOWEST_VERSIONS = {
+    "tensorflow-scriptmode": [1, 13, 1],
+    "mxnet": [1, 4, 1],
+    "tensorflow-serving": [1, 13, 0],
+    "mxnet-serving": [1, 4, 1],
+}
+
+
+def is_version_equal_or_higher(lowest_version, framework_version):
+    """Determine whether the ``framework_version`` is equal to or higher than ``lowest_version``
+
+    Args:
+        lowest_version (List[int]): lowest version represented in an integer list
+        framework_version (str): framework version string
+
+    Returns:
+        bool: Whether or not framework_version is equal to or higher than lowest_version
+    """
+    version_list = [int(s) for s in framework_version.split(".")]
+    return version_list >= lowest_version[0 : len(version_list)]
+
+
+def _is_merged_versions(framework, framework_version):
+    lowest_version_list = MERGED_FRAMEWORKS_LOWEST_VERSIONS.get(framework)
+    if lowest_version_list:
+        return is_version_equal_or_higher(lowest_version_list, framework_version)
+    else:
+        return False
+
+
+def _using_merged_images(region, framework, py_version, accelerator_type, framework_version):
+    is_gov_region = region in VALID_ACCOUNTS_BY_REGION
+    is_py3 = py_version == "py3" or py_version is None
+    is_merged_versions = _is_merged_versions(framework, framework_version)
+    return (not is_gov_region) and is_merged_versions and is_py3 and accelerator_type is None
+
+
+def _registry_id(region, framework, py_version, account, accelerator_type, framework_version):
+    if _using_merged_images(region, framework, py_version, accelerator_type, framework_version):
+        return "763104351884"
+    else:
+        return VALID_ACCOUNTS_BY_REGION.get(region, account)
+
 
 def create_image_uri(
     region,
@@ -86,8 +136,15 @@ def create_image_uri(
     if py_version and py_version not in VALID_PY_VERSIONS:
         raise ValueError("invalid py_version argument: {}".format(py_version))
 
-    # Handle Account Number for Gov Cloud
-    account = VALID_ACCOUNTS_BY_REGION.get(region, account)
+    # Handle Account Number for Gov Cloud and frameworks with DLC merged images
+    account = _registry_id(
+        region=region,
+        framework=framework,
+        py_version=py_version,
+        account=account,
+        accelerator_type=accelerator_type,
+        framework_version=framework_version,
+    )
 
     # Handle Local Mode
     if instance_type.startswith("local"):
@@ -121,7 +178,14 @@ def create_image_uri(
     ):
         framework += "-eia"
 
-    return "{}/sagemaker-{}:{}".format(get_ecr_image_uri_prefix(account, region), framework, tag)
+    if _using_merged_images(region, framework, py_version, accelerator_type, framework_version):
+        return "{}/{}:{}".format(
+            get_ecr_image_uri_prefix(account, region), MERGED_FRAMEWORKS_REPO_MAP[framework], tag
+        )
+    else:
+        return "{}/sagemaker-{}:{}".format(
+            get_ecr_image_uri_prefix(account, region), framework, tag
+        )
 
 
 def _accelerator_type_valid_for_framework(
@@ -264,7 +328,7 @@ def framework_name_from_image(image_name):
         # extract framework, python version and image tag
         # We must support both the legacy and current image name format.
         name_pattern = re.compile(
-            r"^sagemaker(?:-rl)?-(tensorflow|mxnet|chainer|pytorch|scikit-learn)(?:-)?(scriptmode)?:(.*)-(.*?)-(py2|py3)$"  # noqa: E501
+            r"^(?:sagemaker(?:-rl)?-)?(tensorflow|mxnet|chainer|pytorch|scikit-learn)(?:-)?(scriptmode|training)?:(.*)-(.*?)-(py2|py3)$"  # noqa: E501
         )
         legacy_name_pattern = re.compile(r"^sagemaker-(tensorflow|mxnet)-(py2|py3)-(cpu|gpu):(.*)$")
 

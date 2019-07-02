@@ -65,6 +65,7 @@ def test_mnist(sagemaker_session, instance_type):
         sagemaker_session=sagemaker_session,
         script_mode=True,
         framework_version=TensorFlow.LATEST_VERSION,
+        py_version=tests.integ.PYTHON_VERSION,
         metric_definitions=[{"Name": "train:global_steps", "Regex": r"global_step\/sec:\s(.*)"}],
     )
     inputs = estimator.sagemaker_session.upload_data(
@@ -98,6 +99,7 @@ def test_server_side_encryption(sagemaker_session):
             sagemaker_session=sagemaker_session,
             script_mode=True,
             framework_version=TensorFlow.LATEST_VERSION,
+            py_version=tests.integ.PYTHON_VERSION,
             code_location=output_path,
             output_path=output_path,
             model_dir="/opt/ml/model",
@@ -144,6 +146,7 @@ def test_mnist_async(sagemaker_session):
         role=ROLE,
         train_instance_count=1,
         train_instance_type="ml.c5.4xlarge",
+        py_version=tests.integ.PYTHON_VERSION,
         sagemaker_session=sagemaker_session,
         script_mode=True,
         framework_version=TensorFlow.LATEST_VERSION,
@@ -182,6 +185,7 @@ def test_deploy_with_input_handlers(sagemaker_session, instance_type):
         role=ROLE,
         train_instance_count=1,
         train_instance_type=instance_type,
+        py_version=tests.integ.PYTHON_VERSION,
         sagemaker_session=sagemaker_session,
         script_mode=True,
         framework_version=TensorFlow.LATEST_VERSION,
