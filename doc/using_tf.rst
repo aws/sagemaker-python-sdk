@@ -8,6 +8,7 @@ models on SageMaker Hosting.
 
 **Note:** This topic describes how to use script mode for TensorFlow versions 1.11 and later.
 For Documentation of the previous Legacy Mode versions, see:
+
 * `1.4.1 <https://github.com/aws/sagemaker-python-sdk/tree/v1.0.0#tensorflow-sagemaker-estimators>`_
 * `1.5.0 <https://github.com/aws/sagemaker-python-sdk/tree/v1.1.0#tensorflow-sagemaker-estimators>`_
 * `1.6.0 <https://github.com/aws/sagemaker-python-sdk/blob/v1.5.0/src/sagemaker/tensorflow/README.rst#tensorflow-sagemaker-estimators-and-models>`_
@@ -16,18 +17,15 @@ For Documentation of the previous Legacy Mode versions, see:
 * `1.9.0 <https://github.com/aws/sagemaker-python-sdk/blob/v1.9.2/src/sagemaker/tensorflow/README.rst#tensorflow-sagemaker-estimators-and-models>`_
 * `1.10.0 <https://github.com/aws/sagemaker-python-sdk/blob/v1.10.0/src/sagemaker/tensorflow/README.rst#tensorflow-sagemaker-estimators-and-models>`_
 
-+-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
-| WARNING                                                                                                                                                                     |
-+=============================================================================================================================================================================+
-| We have added a new format of your TensorFlow training script with TensorFlow version 1.11.                                                                                 |
-| This new way gives the user script more flexibility.                                                                                                                        |
-| This new format is called Script Mode, as opposed to Legacy Mode, which is what we support with TensorFlow 1.11 and older versions.                                         |
-| In addition we are adding Python 3 support with Script Mode.                                                                                                                |
-| Last supported version of Legacy Mode will be TensorFlow 1.12.                                                                                                              |
-| Script Mode is available with TensorFlow version 1.11 and newer.                                                                                                            |
-| Make sure you refer to the correct version of this README when you prepare your script.                                                                                     |
-| You can find the Legacy Mode README `here <https://github.com/aws/sagemaker-python-sdk/tree/v1.12.0/src/sagemaker/tensorflow#tensorflow-sagemaker-estimators-and-models>`_. |
-+-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+.. warning::
+    We have added a new format of your TensorFlow training script with TensorFlow version 1.11.
+    This new way gives the user script more flexibility.
+    This new format is called Script Mode, as opposed to Legacy Mode, which is what we support with TensorFlow 1.11 and older versions.
+    In addition we are adding Python 3 support with Script Mode.
+    Last supported version of Legacy Mode will be TensorFlow 1.12.
+    Script Mode is available with TensorFlow version 1.11 and newer.
+    Make sure you refer to the correct version of this README when you prepare your script.
+    You can find the Legacy Mode README `here <https://github.com/aws/sagemaker-python-sdk/tree/v1.12.0/src/sagemaker/tensorflow#tensorflow-sagemaker-estimators-and-models>`_.
 
 .. contents::
 
@@ -445,20 +443,10 @@ After a TensorFlow estimator has been fit, it saves a TensorFlow SavedModel in
 the S3 location defined by ``output_path``. You can call ``deploy`` on a TensorFlow
 estimator to create a SageMaker Endpoint.
 
-SageMaker provides two different options for deploying TensorFlow models to a SageMaker
-Endpoint:
+Your model will be deployed to a TensorFlow Serving-based server. The server provides a super-set of the
+`TensorFlow Serving REST API <https://www.tensorflow.org/serving/api_rest>`_.
 
-- The first option uses a Python-based server that allows you to specify your own custom
-  input and output handling functions in a Python script. This is the default option.
-
-  See `Deploying to Python-based Endpoints <https://github.com/aws/sagemaker-python-sdk/blob/master/src/sagemaker/tensorflow/deploying_python.rst>`_ to learn how to use this option.
-
-
-- The second option uses a TensorFlow Serving-based server to provide a super-set of the
-  `TensorFlow Serving REST API <https://www.tensorflow.org/serving/api_rest>`_. This option
-  does not require (or allow) a custom python script.
-
-  See `Deploying to TensorFlow Serving Endpoints <https://github.com/aws/sagemaker-python-sdk/blob/master/src/sagemaker/tensorflow/deploying_tensorflow_serving.rst>`_ to learn how to use this option.
+See `Deploying to TensorFlow Serving Endpoints <https://github.com/aws/sagemaker-python-sdk/blob/master/src/sagemaker/tensorflow/deploying_tensorflow_serving.rst>`_ to learn how to deploy your model and make inference requests.
 
 
 SageMaker TensorFlow Docker containers
@@ -507,4 +495,7 @@ You can select version of TensorFlow by passing a ``framework_version`` keyword 
 Alternatively, you can build your own image by following the instructions in the SageMaker TensorFlow containers
 repository, and passing ``image_name`` to the TensorFlow Estimator constructor.
 
-For more information on the contents of the images, see the SageMaker TensorFlow containers repository here: https://github.com/aws/sagemaker-tensorflow-containers/
+For more information on the contents of the images, see the SageMaker TensorFlow containers repositories here:
+
+- training: https://github.com/aws/sagemaker-tensorflow-container
+- serving: https://github.com/aws/sagemaker-tensorflow-serving-container

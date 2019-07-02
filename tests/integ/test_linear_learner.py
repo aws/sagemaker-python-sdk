@@ -29,23 +29,28 @@ from tests.integ.timeout import timeout, timeout_and_delete_endpoint_by_name
 
 @pytest.mark.canary_quick
 def test_linear_learner(sagemaker_session):
-    job_name = unique_name_from_base('linear-learner')
+    job_name = unique_name_from_base("linear-learner")
 
     with timeout(minutes=TRAINING_DEFAULT_TIMEOUT_MINUTES):
-        data_path = os.path.join(DATA_DIR, 'one_p_mnist', 'mnist.pkl.gz')
-        pickle_args = {} if sys.version_info.major == 2 else {'encoding': 'latin1'}
+        data_path = os.path.join(DATA_DIR, "one_p_mnist", "mnist.pkl.gz")
+        pickle_args = {} if sys.version_info.major == 2 else {"encoding": "latin1"}
 
         # Load the data into memory as numpy arrays
-        with gzip.open(data_path, 'rb') as f:
+        with gzip.open(data_path, "rb") as f:
             train_set, _, _ = pickle.load(f, **pickle_args)
 
         train_set[1][:100] = 1
         train_set[1][100:200] = 0
-        train_set = train_set[0], train_set[1].astype(np.dtype('float32'))
+        train_set = train_set[0], train_set[1].astype(np.dtype("float32"))
 
-        ll = LinearLearner('SageMakerRole', 1, 'ml.c4.2xlarge',
-                           predictor_type='binary_classifier', sagemaker_session=sagemaker_session)
-        ll.binary_classifier_model_selection_criteria = 'accuracy'
+        ll = LinearLearner(
+            "SageMakerRole",
+            1,
+            "ml.c4.2xlarge",
+            predictor_type="binary_classifier",
+            sagemaker_session=sagemaker_session,
+        )
+        ll.binary_classifier_model_selection_criteria = "accuracy"
         ll.target_recall = 0.5
         ll.target_precision = 0.5
         ll.positive_example_weight_mult = 0.1
@@ -53,12 +58,12 @@ def test_linear_learner(sagemaker_session):
         ll.use_bias = True
         ll.num_models = 1
         ll.num_calibration_samples = 1
-        ll.init_method = 'uniform'
+        ll.init_method = "uniform"
         ll.init_scale = 0.5
         ll.init_sigma = 0.2
         ll.init_bias = 5
-        ll.optimizer = 'adam'
-        ll.loss = 'logistic'
+        ll.optimizer = "adam"
+        ll.loss = "logistic"
         ll.wd = 0.5
         ll.l1 = 0.5
         ll.momentum = 0.5
@@ -83,7 +88,7 @@ def test_linear_learner(sagemaker_session):
         ll.fit(ll.record_set(train_set[0][:200], train_set[1][:200]), job_name=job_name)
 
     with timeout_and_delete_endpoint_by_name(job_name, sagemaker_session):
-        predictor = ll.deploy(1, 'ml.c4.xlarge', endpoint_name=job_name)
+        predictor = ll.deploy(1, "ml.c4.xlarge", endpoint_name=job_name)
 
         result = predictor.predict(train_set[0][0:100])
         assert len(result) == 100
@@ -93,27 +98,32 @@ def test_linear_learner(sagemaker_session):
 
 
 def test_linear_learner_multiclass(sagemaker_session):
-    job_name = unique_name_from_base('linear-learner')
+    job_name = unique_name_from_base("linear-learner")
 
     with timeout(minutes=TRAINING_DEFAULT_TIMEOUT_MINUTES):
-        data_path = os.path.join(DATA_DIR, 'one_p_mnist', 'mnist.pkl.gz')
-        pickle_args = {} if sys.version_info.major == 2 else {'encoding': 'latin1'}
+        data_path = os.path.join(DATA_DIR, "one_p_mnist", "mnist.pkl.gz")
+        pickle_args = {} if sys.version_info.major == 2 else {"encoding": "latin1"}
 
         # Load the data into memory as numpy arrays
-        with gzip.open(data_path, 'rb') as f:
+        with gzip.open(data_path, "rb") as f:
             train_set, _, _ = pickle.load(f, **pickle_args)
 
-        train_set = train_set[0], train_set[1].astype(np.dtype('float32'))
+        train_set = train_set[0], train_set[1].astype(np.dtype("float32"))
 
-        ll = LinearLearner('SageMakerRole', 1, 'ml.c4.2xlarge',
-                           predictor_type='multiclass_classifier', num_classes=10,
-                           sagemaker_session=sagemaker_session)
+        ll = LinearLearner(
+            "SageMakerRole",
+            1,
+            "ml.c4.2xlarge",
+            predictor_type="multiclass_classifier",
+            num_classes=10,
+            sagemaker_session=sagemaker_session,
+        )
 
         ll.epochs = 1
         ll.fit(ll.record_set(train_set[0][:200], train_set[1][:200]), job_name=job_name)
 
     with timeout_and_delete_endpoint_by_name(job_name, sagemaker_session):
-        predictor = ll.deploy(1, 'ml.c4.xlarge', endpoint_name=job_name)
+        predictor = ll.deploy(1, "ml.c4.xlarge", endpoint_name=job_name)
 
         result = predictor.predict(train_set[0][0:100])
         assert len(result) == 100
@@ -123,23 +133,28 @@ def test_linear_learner_multiclass(sagemaker_session):
 
 
 def test_async_linear_learner(sagemaker_session):
-    job_name = unique_name_from_base('linear-learner')
+    job_name = unique_name_from_base("linear-learner")
 
     with timeout(minutes=TRAINING_DEFAULT_TIMEOUT_MINUTES):
-        data_path = os.path.join(DATA_DIR, 'one_p_mnist', 'mnist.pkl.gz')
-        pickle_args = {} if sys.version_info.major == 2 else {'encoding': 'latin1'}
+        data_path = os.path.join(DATA_DIR, "one_p_mnist", "mnist.pkl.gz")
+        pickle_args = {} if sys.version_info.major == 2 else {"encoding": "latin1"}
 
         # Load the data into memory as numpy arrays
-        with gzip.open(data_path, 'rb') as f:
+        with gzip.open(data_path, "rb") as f:
             train_set, _, _ = pickle.load(f, **pickle_args)
 
         train_set[1][:100] = 1
         train_set[1][100:200] = 0
-        train_set = train_set[0], train_set[1].astype(np.dtype('float32'))
+        train_set = train_set[0], train_set[1].astype(np.dtype("float32"))
 
-        ll = LinearLearner('SageMakerRole', 1, 'ml.c4.2xlarge',
-                           predictor_type='binary_classifier', sagemaker_session=sagemaker_session)
-        ll.binary_classifier_model_selection_criteria = 'accuracy'
+        ll = LinearLearner(
+            "SageMakerRole",
+            1,
+            "ml.c4.2xlarge",
+            predictor_type="binary_classifier",
+            sagemaker_session=sagemaker_session,
+        )
+        ll.binary_classifier_model_selection_criteria = "accuracy"
         ll.target_recall = 0.5
         ll.target_precision = 0.5
         ll.positive_example_weight_mult = 0.1
@@ -147,12 +162,12 @@ def test_async_linear_learner(sagemaker_session):
         ll.use_bias = True
         ll.num_models = 1
         ll.num_calibration_samples = 1
-        ll.init_method = 'uniform'
+        ll.init_method = "uniform"
         ll.init_scale = 0.5
         ll.init_sigma = 0.2
         ll.init_bias = 5
-        ll.optimizer = 'adam'
-        ll.loss = 'logistic'
+        ll.optimizer = "adam"
+        ll.loss = "logistic"
         ll.wd = 0.5
         ll.l1 = 0.5
         ll.momentum = 0.5
@@ -180,11 +195,13 @@ def test_async_linear_learner(sagemaker_session):
         time.sleep(20)
 
     with timeout_and_delete_endpoint_by_name(job_name, sagemaker_session):
-        estimator = LinearLearner.attach(training_job_name=job_name,
-                                         sagemaker_session=sagemaker_session)
-        model = LinearLearnerModel(estimator.model_data, role='SageMakerRole',
-                                   sagemaker_session=sagemaker_session)
-        predictor = model.deploy(1, 'ml.c4.xlarge', endpoint_name=job_name)
+        estimator = LinearLearner.attach(
+            training_job_name=job_name, sagemaker_session=sagemaker_session
+        )
+        model = LinearLearnerModel(
+            estimator.model_data, role="SageMakerRole", sagemaker_session=sagemaker_session
+        )
+        predictor = model.deploy(1, "ml.c4.xlarge", endpoint_name=job_name)
 
         result = predictor.predict(train_set[0][0:100])
         assert len(result) == 100

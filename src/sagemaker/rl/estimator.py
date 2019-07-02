@@ -22,68 +22,57 @@ from sagemaker.model import FrameworkModel, SAGEMAKER_OUTPUT_LOCATION
 from sagemaker.mxnet.model import MXNetModel
 from sagemaker.vpc_utils import VPC_CONFIG_DEFAULT
 
-logger = logging.getLogger('sagemaker')
+logger = logging.getLogger("sagemaker")
 
-SAGEMAKER_ESTIMATOR = 'sagemaker_estimator'
-SAGEMAKER_ESTIMATOR_VALUE = 'RLEstimator'
-PYTHON_VERSION = 'py3'
+SAGEMAKER_ESTIMATOR = "sagemaker_estimator"
+SAGEMAKER_ESTIMATOR_VALUE = "RLEstimator"
+PYTHON_VERSION = "py3"
 TOOLKIT_FRAMEWORK_VERSION_MAP = {
-    'coach': {
-        '0.10.1': {
-            'tensorflow': '1.11'
-        },
-        '0.10': {
-            'tensorflow': '1.11'
-        },
-        '0.11.0': {
-            'tensorflow': '1.11',
-            'mxnet': '1.3'
-        },
-        '0.11.1': {
-            'tensorflow': '1.12',
-        },
-        '0.11': {
-            'tensorflow': '1.12',
-            'mxnet': '1.3'
-        }
+    "coach": {
+        "0.10.1": {"tensorflow": "1.11"},
+        "0.10": {"tensorflow": "1.11"},
+        "0.11.0": {"tensorflow": "1.11", "mxnet": "1.3"},
+        "0.11.1": {"tensorflow": "1.12"},
+        "0.11": {"tensorflow": "1.12", "mxnet": "1.3"},
     },
-    'ray': {
-        '0.5.3': {
-            'tensorflow': '1.11'
-        },
-        '0.5': {
-            'tensorflow': '1.11'
-        },
-        '0.6.5': {
-            'tensorflow': '1.12'
-        },
-        '0.6': {
-            'tensorflow': '1.12'
-        },
-    }
+    "ray": {
+        "0.5.3": {"tensorflow": "1.11"},
+        "0.5": {"tensorflow": "1.11"},
+        "0.6.5": {"tensorflow": "1.12"},
+        "0.6": {"tensorflow": "1.12"},
+    },
 }
 
 
 class RLToolkit(enum.Enum):
-    COACH = 'coach'
-    RAY = 'ray'
+    COACH = "coach"
+    RAY = "ray"
 
 
 class RLFramework(enum.Enum):
-    TENSORFLOW = 'tensorflow'
-    MXNET = 'mxnet'
+    TENSORFLOW = "tensorflow"
+    MXNET = "mxnet"
 
 
 class RLEstimator(Framework):
     """Handle end-to-end training and deployment of custom RLEstimator code."""
 
-    COACH_LATEST_VERSION_TF = '0.11.1'
-    COACH_LATEST_VERSION_MXNET = '0.11.0'
-    RAY_LATEST_VERSION = '0.6.5'
+    COACH_LATEST_VERSION_TF = "0.11.1"
+    COACH_LATEST_VERSION_MXNET = "0.11.0"
+    RAY_LATEST_VERSION = "0.6.5"
 
-    def __init__(self, entry_point, toolkit=None, toolkit_version=None, framework=None,
-                 source_dir=None, hyperparameters=None, image_name=None,
-                 metric_definitions=None, **kwargs):
+    def __init__(
+        self,
+        entry_point,
+        toolkit=None,
+        toolkit_version=None,
+        framework=None,
+        source_dir=None,
+        hyperparameters=None,
+        image_name=None,
+        metric_definitions=None,
+        **kwargs
+    ):
         """This Estimator executes an RLEstimator script in a managed
         Reinforcement Learning (RL) execution environment within a SageMaker Training Job.
         The managed RL environment is an Amazon-built Docker container that executes
@@ -137,19 +126,31 @@ class RLEstimator(Framework):
             self.toolkit = toolkit.value
             self.toolkit_version = toolkit_version
             self.framework = framework.value
-            self.framework_version = \
-                TOOLKIT_FRAMEWORK_VERSION_MAP[self.toolkit][self.toolkit_version][self.framework]
+            self.framework_version = TOOLKIT_FRAMEWORK_VERSION_MAP[self.toolkit][
+                self.toolkit_version
+            ][self.framework]
 
             # set default metric_definitions based on the toolkit
             if not metric_definitions:
                 metric_definitions = self.default_metric_definitions(toolkit)
 
-        super(RLEstimator, self).__init__(entry_point, source_dir, hyperparameters,
-                                          image_name=image_name,
-                                          metric_definitions=metric_definitions, **kwargs)
+        super(RLEstimator, self).__init__(
+            entry_point,
+            source_dir,
+            hyperparameters,
+            image_name=image_name,
+            metric_definitions=metric_definitions,
+            **kwargs
+        )
 
-    def create_model(self, role=None, vpc_config_override=VPC_CONFIG_DEFAULT,
-                     entry_point=None, source_dir=None, dependencies=None):
+    def create_model(
+        self,
+        role=None,
+        vpc_config_override=VPC_CONFIG_DEFAULT,
+        entry_point=None,
+        source_dir=None,
+        dependencies=None,
+    ):
         """Create a SageMaker ``RLEstimatorModel`` object that can be deployed to an Endpoint.
 
         Args:
@@ -185,26 +186,30 @@ class RLEstimator(Framework):
                     TensorFlow was used as RL backend.
 
         """
-        base_args = dict(model_data=self.model_data,
-                         role=role or self.role,
-                         image=self.image_name,
-                         name=self._current_job_name,
-                         container_log_level=self.container_log_level,
-                         sagemaker_session=self.sagemaker_session,
-                         vpc_config=self.get_vpc_config(vpc_config_override))
+        base_args = dict(
+            model_data=self.model_data,
+            role=role or self.role,
+            image=self.image_name,
+            name=self._current_job_name,
+            container_log_level=self.container_log_level,
+            sagemaker_session=self.sagemaker_session,
+            vpc_config=self.get_vpc_config(vpc_config_override),
+        )
 
         if not entry_point and (source_dir or dependencies):
-            raise AttributeError('Please provide an `entry_point`.')
+            raise AttributeError("Please provide an `entry_point`.")
 
         entry_point = entry_point or self.entry_point
         source_dir = source_dir or self._model_source_dir()
         dependencies = dependencies or self.dependencies
 
-        extended_args = dict(entry_point=entry_point,
-                             source_dir=source_dir,
-                             code_location=self.code_location,
-                             dependencies=dependencies,
-                             enable_cloudwatch_metrics=self.enable_cloudwatch_metrics)
+        extended_args = dict(
+            entry_point=entry_point,
+            source_dir=source_dir,
+            code_location=self.code_location,
+            dependencies=dependencies,
+            enable_cloudwatch_metrics=self.enable_cloudwatch_metrics,
+        )
         extended_args.update(base_args)
 
         if self.image_name:
@@ -212,17 +217,19 @@ class RLEstimator(Framework):
 
         if self.toolkit == RLToolkit.RAY.value:
             raise NotImplementedError(
-                'Automatic deployment of Ray models is not currently available.'
-                ' Train policy parameters are available in model checkpoints'
-                ' in the TrainingJob output.'
+                "Automatic deployment of Ray models is not currently available."
+                " Train policy parameters are available in model checkpoints"
+                " in the TrainingJob output."
             )
 
         if self.framework == RLFramework.TENSORFLOW.value:
             from sagemaker.tensorflow.serving import Model as tfsModel
+
             return tfsModel(framework_version=self.framework_version, **base_args)
         elif self.framework == RLFramework.MXNET.value:
-            return MXNetModel(framework_version=self.framework_version, py_version=PYTHON_VERSION,
-                              **extended_args)
+            return MXNetModel(
+                framework_version=self.framework_version, py_version=PYTHON_VERSION, **extended_args
+            )
 
     def train_image(self):
         """Return the Docker image to use for training.
@@ -236,11 +243,13 @@ class RLEstimator(Framework):
         if self.image_name:
             return self.image_name
         else:
-            return fw_utils.create_image_uri(self.sagemaker_session.boto_region_name,
-                                             self._image_framework(),
-                                             self.train_instance_type,
-                                             self._image_version(),
-                                             py_version=PYTHON_VERSION)
+            return fw_utils.create_image_uri(
+                self.sagemaker_session.boto_region_name,
+                self._image_framework(),
+                self.train_instance_type,
+                self._image_version(),
+                py_version=PYTHON_VERSION,
+            )
 
     @classmethod
     def _prepare_init_params_from_job_description(cls, job_details, model_channel_name=None):
@@ -254,30 +263,32 @@ class RLEstimator(Framework):
         Returns:
              dictionary: The transformed init_params
         """
-        init_params = super(RLEstimator, cls)\
-            ._prepare_init_params_from_job_description(job_details, model_channel_name)
+        init_params = super(RLEstimator, cls)._prepare_init_params_from_job_description(
+            job_details, model_channel_name
+        )
 
-        image_name = init_params.pop('image')
+        image_name = init_params.pop("image")
         framework, _, tag, _ = fw_utils.framework_name_from_image(image_name)
 
         if not framework:
             # If we were unable to parse the framework name from the image it is not one of our
             # officially supported images, in this case just add the image to the init params.
-            init_params['image_name'] = image_name
+            init_params["image_name"] = image_name
             return init_params
 
         toolkit, toolkit_version = cls._toolkit_and_version_from_tag(tag)
 
         if not cls._is_combination_supported(toolkit, toolkit_version, framework):
-            training_job_name = init_params['base_job_name']
+            training_job_name = init_params["base_job_name"]
             raise ValueError(
                 "Training job: {} didn't use image for requested framework".format(
-                    training_job_name)
+                    training_job_name
+                )
             )
 
-        init_params['toolkit'] = RLToolkit(toolkit)
-        init_params['toolkit_version'] = toolkit_version
-        init_params['framework'] = RLFramework(framework)
+        init_params["toolkit"] = RLToolkit(toolkit)
+        init_params["toolkit_version"] = toolkit_version
+        init_params["framework"] = RLFramework(framework)
 
         return init_params
 
@@ -285,16 +296,20 @@ class RLEstimator(Framework):
         """Return hyperparameters used by your custom TensorFlow code during model training."""
         hyperparameters = super(RLEstimator, self).hyperparameters()
 
-        additional_hyperparameters = {SAGEMAKER_OUTPUT_LOCATION: self.output_path,
-                                      # TODO: can be applied to all other estimators
-                                      SAGEMAKER_ESTIMATOR: SAGEMAKER_ESTIMATOR_VALUE}
+        additional_hyperparameters = {
+            SAGEMAKER_OUTPUT_LOCATION: self.output_path,
+            # TODO: can be applied to all other estimators
+            SAGEMAKER_ESTIMATOR: SAGEMAKER_ESTIMATOR_VALUE,
+        }
 
         hyperparameters.update(Framework._json_encode_hyperparameters(additional_hyperparameters))
         return hyperparameters
 
     @classmethod
     def _toolkit_and_version_from_tag(cls, image_tag):
-        tag_pattern = re.compile('^([A-Z]*|[a-z]*)(\d.*)-(cpu|gpu)-(py2|py3)$')  # noqa: W605,E501 pylint: disable=anomalous-backslash-in-string
+        tag_pattern = re.compile(
+            "^([A-Z]*|[a-z]*)(\d.*)-(cpu|gpu)-(py2|py3)$"  # noqa: W605,E501 pylint: disable=anomalous-backslash-in-string
+        )
         tag_match = tag_pattern.match(image_tag)
         if tag_match is not None:
             return tag_match.group(1), tag_match.group(2)
@@ -304,16 +319,18 @@ class RLEstimator(Framework):
     def _validate_framework_format(cls, framework):
         if framework and framework not in RLFramework:
             raise ValueError(
-                'Invalid type: {}, valid RL frameworks types are: [{}]'.format(
-                    framework, [t for t in RLFramework])
+                "Invalid type: {}, valid RL frameworks types are: [{}]".format(
+                    framework, [t for t in RLFramework]
+                )
             )
 
     @classmethod
     def _validate_toolkit_format(cls, toolkit):
         if toolkit and toolkit not in RLToolkit:
             raise ValueError(
-                'Invalid type: {}, valid RL toolkits types are: [{}]'.format(
-                    toolkit, [t for t in RLToolkit])
+                "Invalid type: {}, valid RL toolkits types are: [{}]".format(
+                    toolkit, [t for t in RLToolkit]
+                )
             )
 
     @classmethod
@@ -324,29 +341,31 @@ class RLEstimator(Framework):
         if not image_name:
             not_found_args = []
             if not toolkit:
-                not_found_args.append('toolkit')
+                not_found_args.append("toolkit")
             if not toolkit_version:
-                not_found_args.append('toolkit_version')
+                not_found_args.append("toolkit_version")
             if not framework:
-                not_found_args.append('framework')
+                not_found_args.append("framework")
             if not_found_args:
                 raise AttributeError(
-                    'Please provide `{}` or `image_name` parameter.'
-                    .format('`, `'.join(not_found_args))
+                    "Please provide `{}` or `image_name` parameter.".format(
+                        "`, `".join(not_found_args)
+                    )
                 )
         else:
             found_args = []
             if toolkit:
-                found_args.append('toolkit')
+                found_args.append("toolkit")
             if toolkit_version:
-                found_args.append('toolkit_version')
+                found_args.append("toolkit_version")
             if framework:
-                found_args.append('framework')
+                found_args.append("framework")
             if found_args:
                 logger.warning(
-                    'Parameter `image_name` is specified, '
-                    '`{}` are going to be ignored when choosing the image.'
-                    .format('`, `'.join(found_args))
+                    "Parameter `image_name` is specified, "
+                    "`{}` are going to be ignored when choosing the image.".format(
+                        "`, `".join(found_args)
+                    )
                 )
 
     @classmethod
@@ -362,15 +381,16 @@ class RLEstimator(Framework):
     def _validate_toolkit_support(cls, toolkit, toolkit_version, framework):
         if not cls._is_combination_supported(toolkit, toolkit_version, framework):
             raise AttributeError(
-                'Provided `{}-{}` and `{}` combination is not supported.'
-                .format(toolkit, toolkit_version, framework)
+                "Provided `{}-{}` and `{}` combination is not supported.".format(
+                    toolkit, toolkit_version, framework
+                )
             )
 
     def _image_version(self):
-        return '{}{}'.format(self.toolkit, self.toolkit_version)
+        return "{}{}".format(self.toolkit, self.toolkit_version)
 
     def _image_framework(self):
-        return 'rl-{}'.format(self.framework)
+        return "rl-{}".format(self.framework)
 
     @classmethod
     def default_metric_definitions(cls, toolkit):
@@ -384,16 +404,13 @@ class RLEstimator(Framework):
         """
         if toolkit is RLToolkit.COACH:
             return [
-                {'Name': 'reward-training',
-                 'Regex': '^Training>.*Total reward=(.*?),'},
-                {'Name': 'reward-testing',
-                 'Regex': '^Testing>.*Total reward=(.*?),'}
+                {"Name": "reward-training", "Regex": "^Training>.*Total reward=(.*?),"},
+                {"Name": "reward-testing", "Regex": "^Testing>.*Total reward=(.*?),"},
             ]
         elif toolkit is RLToolkit.RAY:
-            float_regex = "[-+]?[0-9]*\.?[0-9]+([eE][-+]?[0-9]+)?"  # noqa: W605, E501 pylint: disable=anomalous-backslash-in-string
+            float_regex = "[-+]?[0-9]*[.]?[0-9]+([eE][-+]?[0-9]+)?"  # noqa: W605, E501
+
             return [
-                {'Name': 'episode_reward_mean',
-                 'Regex': 'episode_reward_mean: (%s)' % float_regex},
-                {'Name': 'episode_reward_max',
-                 'Regex': 'episode_reward_max: (%s)' % float_regex}
+                {"Name": "episode_reward_mean", "Regex": "episode_reward_mean: (%s)" % float_regex},
+                {"Name": "episode_reward_max", "Regex": "episode_reward_max: (%s)" % float_regex},
             ]

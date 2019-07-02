@@ -53,16 +53,16 @@ def move_to_destination(source, destination, job_name, sagemaker_session):
         (str): destination URI
     """
     parsed_uri = urlparse(destination)
-    if parsed_uri.scheme == 'file':
+    if parsed_uri.scheme == "file":
         recursive_copy(source, parsed_uri.path)
         final_uri = destination
-    elif parsed_uri.scheme == 's3':
+    elif parsed_uri.scheme == "s3":
         bucket = parsed_uri.netloc
-        path = "%s%s" % (parsed_uri.path.lstrip('/'), job_name)
-        final_uri = 's3://%s/%s' % (bucket, path)
+        path = "%s%s" % (parsed_uri.path.lstrip("/"), job_name)
+        final_uri = "s3://%s/%s" % (bucket, path)
         sagemaker_session.upload_data(source, bucket, path)
     else:
-        raise ValueError('Invalid destination URI, must be s3:// or file://, got: %s' % destination)
+        raise ValueError("Invalid destination URI, must be s3:// or file://, got: %s" % destination)
 
     shutil.rmtree(source)
     return final_uri

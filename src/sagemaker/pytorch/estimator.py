@@ -15,13 +15,17 @@ from __future__ import absolute_import
 import logging
 
 from sagemaker.estimator import Framework
-from sagemaker.fw_utils import framework_name_from_image, framework_version_from_tag, empty_framework_version_warning, \
-    python_deprecation_warning
+from sagemaker.fw_utils import (
+    framework_name_from_image,
+    framework_version_from_tag,
+    empty_framework_version_warning,
+    python_deprecation_warning,
+)
 from sagemaker.pytorch.defaults import PYTORCH_VERSION, PYTHON_VERSION
 from sagemaker.pytorch.model import PyTorchModel
 from sagemaker.vpc_utils import VPC_CONFIG_DEFAULT
 
-logger = logging.getLogger('sagemaker')
+logger = logging.getLogger("sagemaker")
 
 
 class PyTorch(Framework):
@@ -29,11 +33,19 @@ class PyTorch(Framework):
 
     __framework_name__ = "pytorch"
 
-    LATEST_VERSION = '1.0'
+    LATEST_VERSION = "1.0"
     """The latest version of PyTorch included in the SageMaker pre-built Docker images."""
 
-    def __init__(self, entry_point, source_dir=None, hyperparameters=None, py_version=PYTHON_VERSION,
-                 framework_version=None, image_name=None, **kwargs):
+    def __init__(
+        self,
+        entry_point,
+        source_dir=None,
+        hyperparameters=None,
+        py_version=PYTHON_VERSION,
+        framework_version=None,
+        image_name=None,
+        **kwargs
+    ):
         """
         This ``Estimator`` executes an PyTorch script in a managed PyTorch execution environment, within a SageMaker
         Training Job. The managed PyTorch environment is an Amazon-built Docker container that executes functions
@@ -74,14 +86,18 @@ class PyTorch(Framework):
             logger.warning(empty_framework_version_warning(PYTORCH_VERSION, PYTORCH_VERSION))
         self.framework_version = framework_version or PYTORCH_VERSION
 
-        super(PyTorch, self).__init__(entry_point, source_dir, hyperparameters, image_name=image_name, **kwargs)
+        super(PyTorch, self).__init__(
+            entry_point, source_dir, hyperparameters, image_name=image_name, **kwargs
+        )
 
-        if py_version == 'py2':
+        if py_version == "py2":
             logger.warning(python_deprecation_warning(self.__framework_name__))
 
         self.py_version = py_version
 
-    def create_model(self, model_server_workers=None, role=None, vpc_config_override=VPC_CONFIG_DEFAULT):
+    def create_model(
+        self, model_server_workers=None, role=None, vpc_config_override=VPC_CONFIG_DEFAULT
+    ):
         """Create a SageMaker ``PyTorchModel`` object that can be deployed to an ``Endpoint``.
 
         Args:
@@ -99,12 +115,23 @@ class PyTorch(Framework):
                 See :func:`~sagemaker.pytorch.model.PyTorchModel` for full details.
         """
         role = role or self.role
-        return PyTorchModel(self.model_data, role, self.entry_point, source_dir=self._model_source_dir(),
-                            enable_cloudwatch_metrics=self.enable_cloudwatch_metrics, name=self._current_job_name,
-                            container_log_level=self.container_log_level, code_location=self.code_location,
-                            py_version=self.py_version, framework_version=self.framework_version, image=self.image_name,
-                            model_server_workers=model_server_workers, sagemaker_session=self.sagemaker_session,
-                            vpc_config=self.get_vpc_config(vpc_config_override), dependencies=self.dependencies)
+        return PyTorchModel(
+            self.model_data,
+            role,
+            self.entry_point,
+            source_dir=self._model_source_dir(),
+            enable_cloudwatch_metrics=self.enable_cloudwatch_metrics,
+            name=self._current_job_name,
+            container_log_level=self.container_log_level,
+            code_location=self.code_location,
+            py_version=self.py_version,
+            framework_version=self.framework_version,
+            image=self.image_name,
+            model_server_workers=model_server_workers,
+            sagemaker_session=self.sagemaker_session,
+            vpc_config=self.get_vpc_config(vpc_config_override),
+            dependencies=self.dependencies,
+        )
 
     @classmethod
     def _prepare_init_params_from_job_description(cls, job_details, model_channel_name=None):
@@ -118,22 +145,28 @@ class PyTorch(Framework):
              dictionary: The transformed init_params
 
         """
-        init_params = super(PyTorch, cls)._prepare_init_params_from_job_description(job_details, model_channel_name)
-        image_name = init_params.pop('image')
+        init_params = super(PyTorch, cls)._prepare_init_params_from_job_description(
+            job_details, model_channel_name
+        )
+        image_name = init_params.pop("image")
         framework, py_version, tag, _ = framework_name_from_image(image_name)
 
         if not framework:
             # If we were unable to parse the framework name from the image it is not one of our
             # officially supported images, in this case just add the image to the init params.
-            init_params['image_name'] = image_name
+            init_params["image_name"] = image_name
             return init_params
 
-        init_params['py_version'] = py_version
-        init_params['framework_version'] = framework_version_from_tag(tag)
+        init_params["py_version"] = py_version
+        init_params["framework_version"] = framework_version_from_tag(tag)
 
-        training_job_name = init_params['base_job_name']
+        training_job_name = init_params["base_job_name"]
 
         if framework != cls.__framework_name__:
-            raise ValueError("Training job: {} didn't use image for requested framework".format(training_job_name))
+            raise ValueError(
+                "Training job: {} didn't use image for requested framework".format(
+                    training_job_name
+                )
+            )
 
         return init_params

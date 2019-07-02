@@ -12,9 +12,9 @@
 # language governing permissions and limitations under the License.
 from __future__ import absolute_import
 
-PYTORCH_VERSION = '0.4'
+PYTORCH_VERSION = "0.4"
 """Default PyTorch version for when the framework version is not specified.
 This is no longer updated so as to not break existing workflows.
 """
 
-PYTHON_VERSION = 'py3'
+PYTHON_VERSION = "py3"

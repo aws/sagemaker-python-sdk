@@ -16,7 +16,7 @@ import os
 
 import pytest
 
-import tests.integ.local_mode_utils as local_mode_utils
+import tests.integ.lock as lock
 from tests.integ import DATA_DIR, PYTHON_VERSION
 
 from sagemaker.pytorch.estimator import PyTorch
@@ -24,22 +24,28 @@ from sagemaker.pytorch.estimator import PyTorch
 
 @pytest.mark.local_mode
 def test_source_dirs(tmpdir, sagemaker_local_session):
-    source_dir = os.path.join(DATA_DIR, 'pytorch_source_dirs')
-    lib = os.path.join(str(tmpdir), 'alexa.py')
+    source_dir = os.path.join(DATA_DIR, "pytorch_source_dirs")
+    lib = os.path.join(str(tmpdir), "alexa.py")
 
-    with open(lib, 'w') as f:
-        f.write('def question(to_anything): return 42')
+    with open(lib, "w") as f:
+        f.write("def question(to_anything): return 42")
 
-    estimator = PyTorch(entry_point='train.py', role='SageMakerRole', source_dir=source_dir,
-                        dependencies=[lib],
-                        py_version=PYTHON_VERSION, train_instance_count=1,
-                        train_instance_type='local',
-                        sagemaker_session=sagemaker_local_session)
+    estimator = PyTorch(
+        entry_point="train.py",
+        role="SageMakerRole",
+        source_dir=source_dir,
+        dependencies=[lib],
+        py_version=PYTHON_VERSION,
+        train_instance_count=1,
+        train_instance_type="local",
+        sagemaker_session=sagemaker_local_session,
+    )
     estimator.fit()
 
-    with local_mode_utils.lock():
+    # endpoint tests all use the same port, so we use this lock to prevent concurrent execution
+    with lock.lock():
         try:
-            predictor = estimator.deploy(initial_instance_count=1, instance_type='local')
+            predictor = estimator.deploy(initial_instance_count=1, instance_type="local")
             predict_response = predictor.predict([7])
             assert predict_response == [49]
         finally:
