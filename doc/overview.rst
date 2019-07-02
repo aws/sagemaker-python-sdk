@@ -108,7 +108,7 @@ Here are ways to specify ``git_config``:
 
         # Only providing 'repo' is also allowed. If this is the case, latest commit in
         # 'master' branch will be used.
-        git_config = {'repo': 'https://github.com/username/repo-with-training-scripts.git'
+        git_config = {'repo': 'https://github.com/username/repo-with-training-scripts.git'}
 
 The following are some examples to define estimators with Git support:
 
