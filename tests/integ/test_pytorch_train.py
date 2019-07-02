@@ -118,7 +118,9 @@ def test_async_fit_deploy(sagemaker_session, pytorch_full_version):
 
 
 # TODO: Update PyTorch container to support network isolation and replace this test
-def test_warning_training_job_with_network_isolation(sagemaker_session, pytorch_full_version, caplog):
+def test_warning_training_job_with_network_isolation(
+    sagemaker_session, pytorch_full_version, caplog
+):
     caplog.set_level(logging.WARNING)
 
     with timeout(minutes=TRAINING_DEFAULT_TIMEOUT_MINUTES):
