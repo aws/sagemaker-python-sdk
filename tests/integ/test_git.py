@@ -15,6 +15,7 @@ from __future__ import absolute_import
 import os
 
 import numpy
+import pytest
 import tempfile
 
 from tests.integ import lock as lock
@@ -33,6 +34,7 @@ COMMIT = "ae15c9d7d5b97ea95ea451e4662ee43da3401d73"
 LOCK_PATH = os.path.join(tempfile.gettempdir(), "sagemaker_test_git_lock")
 
 
+@pytest.mark.local_mode
 def test_git_support_with_pytorch(sagemaker_local_session):
     script_path = "mnist.py"
     data_path = os.path.join(DATA_DIR, "pytorch_mnist")
@@ -62,6 +64,7 @@ def test_git_support_with_pytorch(sagemaker_local_session):
             predictor.delete_endpoint()
 
 
+@pytest.mark.local_mode
 def test_git_support_with_mxnet(sagemaker_local_session):
     script_path = "mnist.py"
     data_path = os.path.join(DATA_DIR, "mxnet_mnist")

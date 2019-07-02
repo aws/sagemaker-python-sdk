@@ -20,9 +20,10 @@ import numpy
 import pytest
 import tempfile
 
+import stopit
+
 import tests.integ.lock as lock
 from tests.integ import DATA_DIR, PYTHON_VERSION
-from tests.integ.timeout import timeout
 
 from sagemaker.local import LocalSession, LocalSagemakerRuntimeClient, LocalSagemakerClient
 from sagemaker.mxnet import MXNet
@@ -85,14 +86,14 @@ def mxnet_model(sagemaker_local_session, mxnet_full_version):
 
 @pytest.mark.local_mode
 @pytest.mark.skipif(PYTHON_VERSION != "py2", reason="TensorFlow image supports only python 2.")
-def test_tf_local_mode(tf_full_version, sagemaker_local_session):
-    with timeout(minutes=5):
+def test_tf_local_mode(sagemaker_local_session):
+    with stopit.ThreadingTimeout(5 * 60, swallow_exc=False):
         script_path = os.path.join(DATA_DIR, "iris", "iris-dnn-classifier.py")
 
         estimator = TensorFlow(
             entry_point=script_path,
             role="SageMakerRole",
-            framework_version=tf_full_version,
+            framework_version="1.12",
             training_steps=1,
             evaluation_steps=1,
             hyperparameters={"input_tensor_name": "inputs"},
@@ -129,12 +130,13 @@ def test_tf_local_mode(tf_full_version, sagemaker_local_session):
 @pytest.mark.local_mode
 @pytest.mark.skipif(PYTHON_VERSION != "py2", reason="TensorFlow image supports only python 2.")
 def test_tf_distributed_local_mode(sagemaker_local_session):
-    with timeout(minutes=5):
+    with stopit.ThreadingTimeout(5 * 60, swallow_exc=False):
         script_path = os.path.join(DATA_DIR, "iris", "iris-dnn-classifier.py")
 
         estimator = TensorFlow(
             entry_point=script_path,
             role="SageMakerRole",
+            framework_version="1.12",
             training_steps=1,
             evaluation_steps=1,
             hyperparameters={"input_tensor_name": "inputs"},
@@ -170,12 +172,13 @@ def test_tf_distributed_local_mode(sagemaker_local_session):
 @pytest.mark.local_mode
 @pytest.mark.skipif(PYTHON_VERSION != "py2", reason="TensorFlow image supports only python 2.")
 def test_tf_local_data(sagemaker_local_session):
-    with timeout(minutes=5):
+    with stopit.ThreadingTimeout(5 * 60, swallow_exc=False):
         script_path = os.path.join(DATA_DIR, "iris", "iris-dnn-classifier.py")
 
         estimator = TensorFlow(
             entry_point=script_path,
             role="SageMakerRole",
+            framework_version="1.12",
             training_steps=1,
             evaluation_steps=1,
             hyperparameters={"input_tensor_name": "inputs"},
@@ -210,12 +213,13 @@ def test_tf_local_data(sagemaker_local_session):
 @pytest.mark.local_mode
 @pytest.mark.skipif(PYTHON_VERSION != "py2", reason="TensorFlow image supports only python 2.")
 def test_tf_local_data_local_script():
-    with timeout(minutes=5):
+    with stopit.ThreadingTimeout(5 * 60, swallow_exc=False):
         script_path = os.path.join(DATA_DIR, "iris", "iris-dnn-classifier.py")
 
         estimator = TensorFlow(
             entry_point=script_path,
             role="SageMakerRole",
+            framework_version="1.12",
             training_steps=1,
             evaluation_steps=1,
             hyperparameters={"input_tensor_name": "inputs"},
@@ -388,7 +392,7 @@ def test_local_transform_mxnet(sagemaker_local_session, tmpdir, mxnet_full_versi
         path=os.path.join(data_path, "test"), key_prefix="integ-test-data/mxnet_mnist/test"
     )
 
-    with timeout(minutes=15):
+    with stopit.ThreadingTimeout(5 * 60, swallow_exc=False):
         mx.fit({"train": train_input, "test": test_input})
 
     transform_input_path = os.path.join(data_path, "transform")

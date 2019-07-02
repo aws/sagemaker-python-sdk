@@ -13,6 +13,7 @@
 from __future__ import absolute_import
 
 import os
+import six
 import subprocess
 import tempfile
 
@@ -39,6 +40,8 @@ def git_clone_repo(git_config, entry_point, source_dir=None, dependencies=None):
                                3. failed to checkout the required commit
         ValueError: If 1. entry point specified does not exist in the repo
                        2. source dir specified does not exist in the repo
+                       3. dependencies specified do not exist in the repo
+                       4. git_config is in bad format
 
     Returns:
         dict: A dict that contains the updated values of entry_point, source_dir and dependencies
@@ -91,10 +94,15 @@ def _validate_git_config(git_config):
             1. git_config has no key 'repo'
             2. git_config['repo'] is in the wrong format.
     """
-    if git_config is None:
-        raise ValueError("")
     if "repo" not in git_config:
         raise ValueError("Please provide a repo for git_config.")
+    allowed_keys = ["repo", "branch", "commit"]
+    for key in allowed_keys:
+        if key in git_config and not isinstance(git_config[key], six.string_types):
+            raise ValueError("'{}' should be a string".format(key))
+    for key in git_config:
+        if key not in allowed_keys:
+            raise ValueError("Unexpected argument(s) provided for git_config!")
 
 
 def _checkout_branch_and_commit(git_config, repo_dir):
@@ -106,8 +114,8 @@ def _checkout_branch_and_commit(git_config, repo_dir):
         repo_dir (str): the directory where the repo is cloned
 
     Raises:
-        ValueError: If 1. entry point specified does not exist in the repo
-                       2. source dir specified does not exist in the repo
+        CalledProcessError: If 1. failed to checkout the required branch
+                               2. failed to checkout the required commit
     """
     if "branch" in git_config:
         subprocess.check_call(args=["git", "checkout", git_config["branch"]], cwd=str(repo_dir))
