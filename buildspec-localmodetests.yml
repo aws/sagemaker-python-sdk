@@ -1,0 +1,25 @@
+version: 0.2
+
+phases:
+  pre_build:
+    commands:
+      - start-dockerd
+
+  build:
+    commands:
+      - IGNORE_COVERAGE=-
+
+      # local mode tests
+      - start_time=`date +%s`
+      - |
+        if has-matching-changes "tests/" "src/*.py" "setup.py" "setup.cfg" "buildspec.yml"; then
+          tox -e py36 -- tests/integ -m local_mode --durations 50
+        fi
+      - ./ci-scripts/displaytime.sh 'py36 local mode' $start_time
+
+      - start_time=`date +%s`
+      - |
+        if has-matching-changes "tests/" "src/*.py" "setup.py" "setup.cfg" "buildspec.yml"; then
+          tox -e py27 -- tests/integ -m local_mode --durations 50
+        fi
+      - ./ci-scripts/displaytime.sh 'py27 local mode' $start_time
