@@ -1,0 +1,13 @@
+version: 0.2
+
+phases:
+  build:
+    commands:
+      # run notebook test
+      - echo "running notebook test"
+      - start_time=`date +%s`
+      - |
+        if has-matching-changes "src/*.py" "setup.py" "setup.cfg"; then
+          ./tests/scripts/run-notebook-test.sh
+        fi
+      - ./ci-scripts/displaytime.sh 'notebook test' $start_time
