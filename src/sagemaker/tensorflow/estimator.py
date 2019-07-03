@@ -593,3 +593,75 @@ class TensorFlow(Framework):
             )
 
         return super(TensorFlow, self).train_image()
+
+    def transformer(
+        self,
+        instance_count,
+        instance_type,
+        strategy=None,
+        assemble_with=None,
+        output_path=None,
+        output_kms_key=None,
+        accept=None,
+        env=None,
+        max_concurrent_transforms=None,
+        max_payload=None,
+        tags=None,
+        role=None,
+        model_server_workers=None,
+        volume_kms_key=None,
+        endpoint_type=None,
+    ):
+        """Return a ``Transformer`` that uses a SageMaker Model based on the training job. It reuses the
+        SageMaker Session and base job name used by the Estimator.
+
+        Args:
+            instance_count (int): Number of EC2 instances to use.
+            instance_type (str): Type of EC2 instance to use, for example, 'ml.c4.xlarge'.
+            strategy (str): The strategy used to decide how to batch records in a single request (default: None).
+                Valid values: 'MULTI_RECORD' and 'SINGLE_RECORD'.
+            assemble_with (str): How the output is assembled (default: None). Valid values: 'Line' or 'None'.
+            output_path (str): S3 location for saving the transform result. If not specified, results are stored to
+                a default bucket.
+            output_kms_key (str): Optional. KMS key ID for encrypting the transform output (default: None).
+            accept (str): The content type accepted by the endpoint deployed during the transform job.
+            env (dict): Environment variables to be set for use during the transform job (default: None).
+            max_concurrent_transforms (int): The maximum number of HTTP requests to be made to
+                each individual transform container at one time.
+            max_payload (int): Maximum size of the payload in a single HTTP request to the container in MB.
+            tags (list[dict]): List of tags for labeling a transform job. If none specified, then the tags used for
+                the training job are used for the transform job.
+            role (str): The ``ExecutionRoleArn`` IAM Role ARN for the ``Model``, which is also used during
+                transform jobs. If not specified, the role from the Estimator will be used.
+            model_server_workers (int): Optional. The number of worker processes used by the inference server.
+                If None, server will use one worker per vCPU.
+            volume_kms_key (str): Optional. KMS key ID for encrypting the volume attached to the ML
+                compute instance (default: None).
+            endpoint_type (str): Optional. Selects the software stack used by the inference server.
+                If not specified, the model will be configured to use the default
+                SageMaker model server.
+                If 'tensorflow-serving', the model will be configured to
+                use the SageMaker Tensorflow Serving container.
+        """
+
+        role = role or self.role
+        model = self.create_model(
+            model_server_workers=model_server_workers,
+            role=role,
+            vpc_config_override=VPC_CONFIG_DEFAULT,
+            endpoint_type=endpoint_type,
+        )
+        return model.transformer(
+            instance_count,
+            instance_type,
+            strategy=strategy,
+            assemble_with=assemble_with,
+            output_path=output_path,
+            output_kms_key=output_kms_key,
+            accept=accept,
+            env=env,
+            max_concurrent_transforms=max_concurrent_transforms,
+            max_payload=max_payload,
+            tags=tags,
+            volume_kms_key=volume_kms_key,
+        )
