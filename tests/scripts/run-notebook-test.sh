@@ -12,7 +12,7 @@ tar -xzf mead-nb-test.tar.gz
 git clone --depth 1 https://github.com/awslabs/amazon-sagemaker-examples.git
 export JAVA_HOME=$(get-java-home)
 echo "set JAVA_HOME=$JAVA_HOME"
-export SAGEMAKER_ROLE_ARN=$(get-sagemaker-role-arn)
+export SAGEMAKER_ROLE_ARN=$(aws iam list-roles --output text --query "Roles[?RoleName == 'SageMakerRole'].Arn")
 echo "set SAGEMAKER_ROLE_ARN=$SAGEMAKER_ROLE_ARN"
 ./runtime/bin/mead-run-nb-test \
 --instance-type ml.c4.8xlarge \
