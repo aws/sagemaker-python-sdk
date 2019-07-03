@@ -82,7 +82,7 @@ disable=
     invalid-name,
     too-many-instance-attributes,
     line-too-long, # We let Flake8 take care of this # TODO: Fix these and stop relying on flake8
-    len-as-condition, # TODO: Use if seq: and if not seq: instead
+    len-as-condition, # TODO: Enable this check once pylint 2.4.0 is released and consumed due to the fix in https://github.com/PyCQA/pylint/issues/2684
     logging-format-interpolation, # TODO: Fix logging so as to remove this.
     import-error, # TODO: Fix import errors
     logging-not-lazy, # TODO: Fix logging

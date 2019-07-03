@@ -195,7 +195,7 @@ class _CsvSerializer(object):
         if isinstance(data, np.ndarray):
             data = np.ndarray.flatten(data)
         if hasattr(data, "__len__"):
-            if len(data):
+            if len(data) > 0:
                 return _csv_serialize_python_array(data)
             else:
                 raise ValueError("Cannot serialize empty array")
