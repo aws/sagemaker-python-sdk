@@ -18,7 +18,7 @@ echo =================== $1 execution time ===================
 
 start_time=$2
 end_time=`date +%s`
-total_time=$(expr $end_time - $start_time)
+total_time=$(expr $end_time - $start_time + 1)
 hours=$((total_time/60/60%24))
 minutes=$((total_time/60%60))
 secs=$((total_time%60))
