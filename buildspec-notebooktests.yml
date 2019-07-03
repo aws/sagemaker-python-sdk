@@ -7,7 +7,7 @@ phases:
       - echo "running notebook test"
       - start_time=`date +%s`
       - |
-        if has-matching-changes "src/*.py" "setup.py" "setup.cfg"; then
+        if has-matching-changes "src/*.py" "setup.py" "setup.cfg" "tests/scripts/run-notebook-test.sh"; then
           ./tests/scripts/run-notebook-test.sh
         fi
       - ./ci-scripts/displaytime.sh 'notebook test' $start_time
