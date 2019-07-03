@@ -120,7 +120,7 @@ class Transformer(object):
         output_filter=None,
         join_source=None,
         wait=False,
-        logs=False
+        logs=False,
     ):
         """Start a new transform job.
 

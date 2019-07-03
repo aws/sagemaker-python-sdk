@@ -341,36 +341,26 @@ IN_PROGRESS_DESCRIBE_JOB_RESULT = dict(DEFAULT_EXPECTED_TRAIN_JOB_ARGS)
 IN_PROGRESS_DESCRIBE_JOB_RESULT.update({"TrainingJobStatus": "InProgress"})
 
 COMPLETED_DESCRIBE_TRANSFORM_JOB_RESULT = {
-    'TransformJobStatus': 'Completed',
-    'ModelName': 'some-model',
-    'TransformJobName': JOB_NAME,
-    'TransformResources': {
-        'InstanceCount': INSTANCE_COUNT,
-        'InstanceType': INSTANCE_TYPE
+    "TransformJobStatus": "Completed",
+    "ModelName": "some-model",
+    "TransformJobName": JOB_NAME,
+    "TransformResources": {"InstanceCount": INSTANCE_COUNT, "InstanceType": INSTANCE_TYPE},
+    "TransformEndTime": datetime.datetime(2018, 2, 17, 7, 19, 34, 953000),
+    "TransformStartTime": datetime.datetime(2018, 2, 17, 7, 15, 0, 103000),
+    "TransformOutput": {"AssembleWith": "None", "KmsKeyId": "", "S3OutputPath": S3_OUTPUT},
+    "TransformInput": {
+        "CompressionType": "None",
+        "ContentType": "text/csv",
+        "DataSource": {"S3DataType": "S3Prefix", "S3Uri": S3_INPUT_URI},
+        "SplitType": "Line",
     },
-    'TransformEndTime': datetime.datetime(2018, 2, 17, 7, 19, 34, 953000),
-    'TransformStartTime': datetime.datetime(2018, 2, 17, 7, 15, 0, 103000),
-    'TransformOutput': {
-        'AssembleWith': 'None',
-        'KmsKeyId': '',
-        'S3OutputPath': S3_OUTPUT
-    },
-    'TransformInput': {
-        'CompressionType': 'None',
-        'ContentType': 'text/csv',
-        'DataSource': {
-            'S3DataType': 'S3Prefix',
-            'S3Uri': S3_INPUT_URI
-        },
-        'SplitType': 'Line'
-    }
 }
 
 STOPPED_DESCRIBE_TRANSFORM_JOB_RESULT = dict(COMPLETED_DESCRIBE_TRANSFORM_JOB_RESULT)
-STOPPED_DESCRIBE_TRANSFORM_JOB_RESULT.update({'TransformJobStatus': 'Stopped'})
+STOPPED_DESCRIBE_TRANSFORM_JOB_RESULT.update({"TransformJobStatus": "Stopped"})
 
 IN_PROGRESS_DESCRIBE_TRANSFORM_JOB_RESULT = dict(COMPLETED_DESCRIBE_TRANSFORM_JOB_RESULT)
-IN_PROGRESS_DESCRIBE_TRANSFORM_JOB_RESULT.update({'TransformJobStatus': 'InProgress'})
+IN_PROGRESS_DESCRIBE_TRANSFORM_JOB_RESULT.update({"TransformJobStatus": "InProgress"})
 
 
 @pytest.fixture()
@@ -873,7 +863,9 @@ def sagemaker_session_complete():
     boto_mock.client("logs").get_log_events.side_effect = DEFAULT_LOG_EVENTS
     ims = sagemaker.Session(boto_session=boto_mock, sagemaker_client=Mock())
     ims.sagemaker_client.describe_training_job.return_value = COMPLETED_DESCRIBE_JOB_RESULT
-    ims.sagemaker_client.describe_transform_job.return_value = COMPLETED_DESCRIBE_TRANSFORM_JOB_RESULT
+    ims.sagemaker_client.describe_transform_job.return_value = (
+        COMPLETED_DESCRIBE_TRANSFORM_JOB_RESULT
+    )
     return ims
 
 
@@ -989,57 +981,70 @@ def test_logs_for_job_full_lifecycle(time, cw, sagemaker_session_full_lifecycle)
     ]
 
 
-@patch('sagemaker.logs.ColorWrap')
+@patch("sagemaker.logs.ColorWrap")
 def test_logs_for_transform_job_no_wait(cw, sagemaker_session_complete):
     ims = sagemaker_session_complete
     ims.logs_for_transform_job(JOB_NAME)
     ims.sagemaker_client.describe_transform_job.assert_called_once_with(TransformJobName=JOB_NAME)
-    cw().assert_called_with(0, 'hi there #1')
+    cw().assert_called_with(0, "hi there #1")
 
 
-@patch('sagemaker.logs.ColorWrap')
+@patch("sagemaker.logs.ColorWrap")
 def test_logs_for_transform_job_no_wait_stopped_job(cw, sagemaker_session_stopped):
     ims = sagemaker_session_stopped
     ims.logs_for_transform_job(JOB_NAME)
     ims.sagemaker_client.describe_transform_job.assert_called_once_with(TransformJobName=JOB_NAME)
-    cw().assert_called_with(0, 'hi there #1')
+    cw().assert_called_with(0, "hi there #1")
 
 
-@patch('sagemaker.logs.ColorWrap')
+@patch("sagemaker.logs.ColorWrap")
 def test_logs_for_transform_job_wait_on_completed(cw, sagemaker_session_complete):
     ims = sagemaker_session_complete
     ims.logs_for_transform_job(JOB_NAME, wait=True, poll=0)
-    assert ims.sagemaker_client.describe_transform_job.call_args_list == [call(TransformJobName=JOB_NAME,)]
-    cw().assert_called_with(0, 'hi there #1')
+    assert ims.sagemaker_client.describe_transform_job.call_args_list == [
+        call(TransformJobName=JOB_NAME)
+    ]
+    cw().assert_called_with(0, "hi there #1")
 
 
-@patch('sagemaker.logs.ColorWrap')
+@patch("sagemaker.logs.ColorWrap")
 def test_logs_for_transform_job_wait_on_stopped(cw, sagemaker_session_stopped):
     ims = sagemaker_session_stopped
     ims.logs_for_transform_job(JOB_NAME, wait=True, poll=0)
-    assert ims.sagemaker_client.describe_transform_job.call_args_list == [call(TransformJobName=JOB_NAME,)]
-    cw().assert_called_with(0, 'hi there #1')
+    assert ims.sagemaker_client.describe_transform_job.call_args_list == [
+        call(TransformJobName=JOB_NAME)
+    ]
+    cw().assert_called_with(0, "hi there #1")
 
 
-@patch('sagemaker.logs.ColorWrap')
+@patch("sagemaker.logs.ColorWrap")
 def test_logs_for_transform_job_no_wait_on_running(cw, sagemaker_session_ready_lifecycle):
     ims = sagemaker_session_ready_lifecycle
     ims.logs_for_transform_job(JOB_NAME)
-    assert ims.sagemaker_client.describe_transform_job.call_args_list == [call(TransformJobName=JOB_NAME,)]
-    cw().assert_called_with(0, 'hi there #1')
+    assert ims.sagemaker_client.describe_transform_job.call_args_list == [
+        call(TransformJobName=JOB_NAME)
+    ]
+    cw().assert_called_with(0, "hi there #1")
 
 
-@patch('sagemaker.logs.ColorWrap')
-@patch('time.time', side_effect=[0, 30, 60, 90, 120, 150, 180])
+@patch("sagemaker.logs.ColorWrap")
+@patch("time.time", side_effect=[0, 30, 60, 90, 120, 150, 180])
 def test_logs_for_transform_job_full_lifecycle(time, cw, sagemaker_session_full_lifecycle):
     ims = sagemaker_session_full_lifecycle
     ims.logs_for_transform_job(JOB_NAME, wait=True, poll=0)
-    assert ims.sagemaker_client.describe_transform_job.call_args_list == [call(TransformJobName=JOB_NAME,)] * 3
-    assert cw().call_args_list == [call(0, 'hi there #1'), call(0, 'hi there #2'),
-                                   call(0, 'hi there #2a'), call(0, 'hi there #3')]
+    assert (
+        ims.sagemaker_client.describe_transform_job.call_args_list
+        == [call(TransformJobName=JOB_NAME)] * 3
+    )
+    assert cw().call_args_list == [
+        call(0, "hi there #1"),
+        call(0, "hi there #2"),
+        call(0, "hi there #2a"),
+        call(0, "hi there #3"),
+    ]
 
 
-MODEL_NAME = 'some-model'
+MODEL_NAME = "some-model"
 PRIMARY_CONTAINER = {
     "Environment": {},
     "Image": IMAGE,

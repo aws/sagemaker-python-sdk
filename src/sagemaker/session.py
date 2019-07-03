@@ -1423,12 +1423,13 @@ class Session(object):  # pylint: disable=too-many-public-methods
         """
 
         description = self.sagemaker_client.describe_training_job(TrainingJobName=job_name)
-        print(secondary_training_status_message(description, None), end='')
+        print(secondary_training_status_message(description, None), end="")
 
-        instance_count, stream_names, positions, client, log_group, dot, color_wrap = \
-            _logs_initializer(self, description, job='Training')
+        instance_count, stream_names, positions, client, log_group, dot, color_wrap = _logs_initializer(
+            self, description, job="Training"
+        )
 
-        state = _get_initial_job_state(description, 'TrainingJobStatus', wait)
+        state = _get_initial_job_state(description, "TrainingJobStatus", wait)
 
         # The loop below implements a state machine that alternates between checking the job status
         # and reading whatever is available in the logs at this point. Note, that if we were
@@ -1453,7 +1454,16 @@ class Session(object):  # pylint: disable=too-many-public-methods
         last_describe_job_call = time.time()
         last_description = description
         while True:
-            _flush_log_streams(stream_names, instance_count, client, log_group, job_name, positions, dot, color_wrap)
+            _flush_log_streams(
+                stream_names,
+                instance_count,
+                client,
+                log_group,
+                job_name,
+                positions,
+                dot,
+                color_wrap,
+            )
             if state == LogState.COMPLETE:
                 break
 
@@ -1492,7 +1502,9 @@ class Session(object):  # pylint: disable=too-many-public-methods
                     saving = (1 - float(billable_time) / training_time) * 100
                     print("Managed Spot Training savings: {:.1f}%".format(saving))
 
-    def logs_for_transform_job(self, job_name, wait=False, poll=10):  # noqa: C901 - suppress complexity warning
+    def logs_for_transform_job(
+        self, job_name, wait=False, poll=10
+    ):  # noqa: C901 - suppress complexity warning
         """Display the logs for a given transform job, optionally tailing them until the
         job is complete. If the output is a tty or a Jupyter cell, it will be color-coded
         based on which instance the log entry is from.
@@ -1508,10 +1520,11 @@ class Session(object):  # pylint: disable=too-many-public-methods
 
         description = self.sagemaker_client.describe_transform_job(TransformJobName=job_name)
 
-        instance_count, stream_names, positions, client, log_group, dot, color_wrap = \
-            _logs_initializer(self, description, job='Transform')
+        instance_count, stream_names, positions, client, log_group, dot, color_wrap = _logs_initializer(
+            self, description, job="Transform"
+        )
 
-        state = _get_initial_job_state(description, 'TransformJobStatus', wait)
+        state = _get_initial_job_state(description, "TransformJobStatus", wait)
 
         # The loop below implements a state machine that alternates between checking the job status and
         # reading whatever is available in the logs at this point. Note, that if we were called with
@@ -1534,7 +1547,16 @@ class Session(object):  # pylint: disable=too-many-public-methods
         #   the job was marked complete.
         last_describe_job_call = time.time()
         while True:
-            _flush_log_streams(stream_names, instance_count, client, log_group, job_name, positions, dot, color_wrap)
+            _flush_log_streams(
+                stream_names,
+                instance_count,
+                client,
+                log_group,
+                job_name,
+                positions,
+                dot,
+                color_wrap,
+            )
             if state == LogState.COMPLETE:
                 break
 
@@ -1543,17 +1565,19 @@ class Session(object):  # pylint: disable=too-many-public-methods
             if state == LogState.JOB_COMPLETE:
                 state = LogState.COMPLETE
             elif time.time() - last_describe_job_call >= 30:
-                description = self.sagemaker_client.describe_transform_job(TransformJobName=job_name)
+                description = self.sagemaker_client.describe_transform_job(
+                    TransformJobName=job_name
+                )
                 last_describe_job_call = time.time()
 
-                status = description['TransformJobStatus']
+                status = description["TransformJobStatus"]
 
-                if status == 'Completed' or status == 'Failed' or status == 'Stopped':
+                if status == "Completed" or status == "Failed" or status == "Stopped":
                     print()
                     state = LogState.JOB_COMPLETE
 
         if wait:
-            self._check_job_status(job_name, description, 'TransformJobStatus')
+            self._check_job_status(job_name, description, "TransformJobStatus")
             if dot:
                 print()
 
@@ -1899,24 +1923,26 @@ def _vpc_config_from_training_job(
 
 def _get_initial_job_state(description, status_key, wait):
     status = description[status_key]
-    job_already_completed = True if status == 'Completed' or status == 'Failed' or status == 'Stopped' else False
+    job_already_completed = (
+        True if status == "Completed" or status == "Failed" or status == "Stopped" else False
+    )
     return LogState.TAILING if wait and not job_already_completed else LogState.COMPLETE
 
 
 def _logs_initializer(sagemaker_session, description, job):
-    if job == 'Training':
-        instance_count = description['ResourceConfig']['InstanceCount']
-    elif job == 'Transform':
-        instance_count = description['TransformResources']['InstanceCount']
+    if job == "Training":
+        instance_count = description["ResourceConfig"]["InstanceCount"]
+    elif job == "Transform":
+        instance_count = description["TransformResources"]["InstanceCount"]
 
     stream_names = []  # The list of log streams
-    positions = {}     # The current position in each stream, map of stream name -> position
+    positions = {}  # The current position in each stream, map of stream name -> position
 
     # Increase retries allowed (from default of 4), as we don't want waiting for a training job
     # to be interrupted by a transient exception.
-    config = botocore.config.Config(retries={'max_attempts': 15})
-    client = sagemaker_session.boto_session.client('logs', config=config)
-    log_group = '/aws/sagemaker/' + job + 'Jobs'
+    config = botocore.config.Config(retries={"max_attempts": 15})
+    client = sagemaker_session.boto_session.client("logs", config=config)
+    log_group = "/aws/sagemaker/" + job + "Jobs"
 
     dot = False
 
@@ -1925,35 +1951,50 @@ def _logs_initializer(sagemaker_session, description, job):
     return instance_count, stream_names, positions, client, log_group, dot, color_wrap
 
 
-def _flush_log_streams(stream_names, instance_count, client, log_group, job_name, positions, dot, color_wrap):
+def _flush_log_streams(
+    stream_names, instance_count, client, log_group, job_name, positions, dot, color_wrap
+):
     if len(stream_names) < instance_count:
         # Log streams are created whenever a container starts writing to stdout/err, so this list
         # may be dynamic until we have a stream for every instance.
         try:
-            streams = client.describe_log_streams(logGroupName=log_group, logStreamNamePrefix=job_name + '/',
-                                                  orderBy='LogStreamName', limit=instance_count)
-            stream_names = [s['logStreamName'] for s in streams['logStreams']]
-            positions.update([(s, sagemaker.logs.Position(timestamp=0, skip=0))
-                              for s in stream_names if s not in positions])
+            streams = client.describe_log_streams(
+                logGroupName=log_group,
+                logStreamNamePrefix=job_name + "/",
+                orderBy="LogStreamName",
+                limit=instance_count,
+            )
+            stream_names = [s["logStreamName"] for s in streams["logStreams"]]
+            positions.update(
+                [
+                    (s, sagemaker.logs.Position(timestamp=0, skip=0))
+                    for s in stream_names
+                    if s not in positions
+                ]
+            )
         except ClientError as e:
             # On the very first training job run on an account, there's no log group until
             # the container starts logging, so ignore any errors thrown about that
-            err = e.response.get('Error', {})
-            if err.get('Code', None) != 'ResourceNotFoundException':
+            err = e.response.get("Error", {})
+            if err.get("Code", None) != "ResourceNotFoundException":
                 raise
 
     if len(stream_names) > 0:
         if dot:
-            print('')
+            print("")
             dot = False
-        for idx, event in sagemaker.logs.multi_stream_iter(client, log_group, stream_names, positions):
-            color_wrap(idx, event['message'])
+        for idx, event in sagemaker.logs.multi_stream_iter(
+            client, log_group, stream_names, positions
+        ):
+            color_wrap(idx, event["message"])
             ts, count = positions[stream_names[idx]]
-            if event['timestamp'] == ts:
+            if event["timestamp"] == ts:
                 positions[stream_names[idx]] = sagemaker.logs.Position(timestamp=ts, skip=count + 1)
             else:
-                positions[stream_names[idx]] = sagemaker.logs.Position(timestamp=event['timestamp'], skip=1)
+                positions[stream_names[idx]] = sagemaker.logs.Position(
+                    timestamp=event["timestamp"], skip=1
+                )
     else:
         dot = True
-        print('.', end='')
+        print(".", end="")
         sys.stdout.flush()
