@@ -108,7 +108,6 @@ disable=
     chained-comparison, # TODO: Simplify chained comparison between operands
     simplifiable-if-statement, # TODO: Simplify ifs
     too-many-branches, # TODO: Simplify or ignore as appropriate
-    superfluous-parens, # TODO: Remove unnecessary parens
     missing-docstring, # TODO: Fix missing docstring
 
 [REPORTS]
