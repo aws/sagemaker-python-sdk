@@ -122,6 +122,7 @@ def test_git_support_with_mxnet(sagemaker_local_session):
             predictor.delete_endpoint()
 
 
+@pytest.mark.skipif(PYTHON_VERSION != "py3", reason="Scikit-learn image supports only python 3.")
 @pytest.mark.local_mode
 def test_git_support_with_sklearn(sagemaker_local_session, sklearn_full_version):
     script_path = "mnist.py"
