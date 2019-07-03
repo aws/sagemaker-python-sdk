@@ -723,7 +723,7 @@ After that, invoke the ``deploy()`` method on the ``Model``:
 
 This returns a predictor the same way an ``Estimator`` does when ``deploy()`` is called. You can now get inferences just like with any other model deployed on Amazon SageMaker.
 
-Git support is also available when you bring your own model, through which you can use infenrce scripts stored in your
+Git support is also available when you bring your own model, through which you can use inference scripts stored in your
 Git repositories. The process is similar to using Git support for training jobs. You can simply provide ``git_config``
 when create the ``Model`` object, and let ``entry_point``, ``source_dir`` and ``dependencies`` (if needed) be relative
 paths inside the Git repository:
