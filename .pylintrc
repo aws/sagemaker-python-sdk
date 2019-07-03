@@ -83,7 +83,6 @@ disable=
     too-many-instance-attributes,
     line-too-long, # We let Flake8 take care of this # TODO: Fix these and stop relying on flake8
     len-as-condition, # TODO: Use if seq: and if not seq: instead
-    logging-format-interpolation, # TODO: Fix logging so as to remove this.
     import-error, # TODO: Fix import errors
     logging-not-lazy, # TODO: Fix logging
     attribute-defined-outside-init, # TODO: Fix scope

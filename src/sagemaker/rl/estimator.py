@@ -363,9 +363,8 @@ class RLEstimator(Framework):
             if found_args:
                 logger.warning(
                     "Parameter `image_name` is specified, "
-                    "`{}` are going to be ignored when choosing the image.".format(
-                        "`, `".join(found_args)
-                    )
+                    "`%s` are going to be ignored when choosing the image.",
+                    "`, `".join(found_args),
                 )
 
     @classmethod
