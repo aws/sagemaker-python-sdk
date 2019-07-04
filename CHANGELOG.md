@@ -1,5 +1,19 @@
 # Changelog
 
+## v1.32.1 (2019-07-04)
+
+### Bug fixes and other changes
+
+ * correct code per len-as-condition Pylint check
+ * tighten pylint config and expand C and R exceptions
+ * Update displaytime.sh
+ * fix notebook tests
+ * separate unit, local mode, and notebook tests in different buildspecs
+
+### Documentation changes
+
+ * refactor the overview topic in the sphinx project
+
 ## v1.32.0 (2019-07-02)
 
 ### Features
