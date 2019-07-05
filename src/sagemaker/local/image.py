@@ -698,7 +698,7 @@ def _aws_credentials_available_in_metadata_service():
             user_agent=session.user_agent(),
         )
     )
-    return not (instance_metadata_provider.load() is None)
+    return not instance_metadata_provider.load() is None
 
 
 def _write_json_file(filename, content):
