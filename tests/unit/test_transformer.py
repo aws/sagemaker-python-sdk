@@ -452,7 +452,7 @@ def test_restart_output_path(start_new_job, transformer, sagemaker_session):
 
 
 def test_stop_transform_job(sagemaker_session, transformer):
-    sagemaker_session.stop_transform_job = Mock(name='stop_transform_job')
+    sagemaker_session.stop_transform_job = Mock(name="stop_transform_job")
     transformer.latest_transform_job = _TransformJob(sagemaker_session, JOB_NAME)
 
     transformer.stop_transform_job()
@@ -463,4 +463,4 @@ def test_stop_transform_job(sagemaker_session, transformer):
 def test_stop_transform_job_no_transform_job(transformer):
     with pytest.raises(ValueError) as e:
         transformer.stop_transform_job()
-    assert 'No transform job available' in str(e)
+    assert "No transform job available" in str(e)

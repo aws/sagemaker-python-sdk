@@ -1062,15 +1062,15 @@ class Session(object):  # pylint: disable=too-many-public-methods
             ClientError: If an error occurs while trying to stop the batch transform job.
         """
         try:
-            LOGGER.info('Stopping transform job: {}'.format(name))
+            LOGGER.info("Stopping transform job: %s", name)
             self.sagemaker_client.stop_transform_job(TransformJobName=name)
         except ClientError as e:
-            error_code = e.response['Error']['Code']
+            error_code = e.response["Error"]["Code"]
             # allow to pass if the job already stopped
-            if error_code == 'ValidationException':
-                LOGGER.info('Transform job: {} is already stopped or not running.'.format(name))
+            if error_code == "ValidationException":
+                LOGGER.info("Transform job: %s is already stopped or not running.", name)
             else:
-                LOGGER.error('Error occurred while attempting to stop transform job: {}.'.format(name))
+                LOGGER.error("Error occurred while attempting to stop transform job: %s.", name)
                 raise
 
     def _check_job_status(self, job, desc, status_key_name):
