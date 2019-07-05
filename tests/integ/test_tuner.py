@@ -844,7 +844,7 @@ def test_attach_tuning_pytorch(sagemaker_session):
         tuner.wait()
 
     endpoint_name = tuning_job_name
-    model_name = 'model-name-1'
+    model_name = "model-name-1"
     attached_tuner = HyperparameterTuner.attach(
         tuning_job_name, sagemaker_session=sagemaker_session
     )
@@ -948,5 +948,7 @@ def _fm_serializer(data):
 
 
 def _assert_model_name_match(sagemaker_client, endpoint_config_name, model_name):
-    endpoint_config_description = sagemaker_client.describe_endpoint_config(EndpointConfigName=endpoint_config_name)
-    assert model_name == endpoint_config_description['ProductionVariants'][0]['ModelName']
+    endpoint_config_description = sagemaker_client.describe_endpoint_config(
+        EndpointConfigName=endpoint_config_name
+    )
+    assert model_name == endpoint_config_description["ProductionVariants"][0]["ModelName"]
