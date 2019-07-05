@@ -195,11 +195,11 @@ class AmazonAlgorithmEstimatorBase(EstimatorBase):
         bucket, key_prefix = parsed_s3_url.netloc, parsed_s3_url.path
         key_prefix = key_prefix + "{}-{}/".format(type(self).__name__, sagemaker_timestamp())
         key_prefix = key_prefix.lstrip("/")
-        logger.debug("Uploading to bucket {} and key_prefix {}".format(bucket, key_prefix))
+        logger.debug("Uploading to bucket %s and key_prefix %s", bucket, key_prefix)
         manifest_s3_file = upload_numpy_to_s3_shards(
             self.train_instance_count, s3, bucket, key_prefix, train, labels, encrypt
         )
-        logger.debug("Created manifest file {}".format(manifest_s3_file))
+        logger.debug("Created manifest file %s", manifest_s3_file)
         return RecordSet(
             manifest_s3_file,
             num_records=train.shape[0],
@@ -279,7 +279,7 @@ def upload_numpy_to_s3_shards(
                 shard_index_string = str(shard_index).zfill(len(str(len(shards))))
                 file_name = "matrix_{}.pbr".format(shard_index_string)
                 key = key_prefix + file_name
-                logger.debug("Creating object {} in bucket {}".format(key, bucket))
+                logger.debug("Creating object %s in bucket %s", key, bucket)
                 s3.Object(bucket, key).put(Body=file, **extra_put_kwargs)
                 uploaded_files.append(file_name)
         manifest_key = key_prefix + ".amazon.manifest"
