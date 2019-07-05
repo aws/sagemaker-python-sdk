@@ -85,7 +85,6 @@ disable=
     len-as-condition, # TODO: Enable this check once pylint 2.4.0 is released and consumed due to the fix in https://github.com/PyCQA/pylint/issues/2684
     logging-format-interpolation, # TODO: Fix logging so as to remove this.
     import-error, # TODO: Fix import errors
-    logging-not-lazy, # TODO: Fix logging
     attribute-defined-outside-init, # TODO: Fix scope
     protected-access, # TODO: Fix access
     abstract-method, # TODO: Fix abstract methods
