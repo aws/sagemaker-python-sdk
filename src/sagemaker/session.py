@@ -206,7 +206,7 @@ class Session(object):
                     Bucket=default_bucket, CreateBucketConfiguration={"LocationConstraint": region}
                 )
 
-            LOGGER.info("Created S3 bucket: {}".format(default_bucket))
+            LOGGER.info("Created S3 bucket: %s", default_bucket)
         except ClientError as e:
             error_code = e.response["Error"]["Code"]
             message = e.response["Error"]["Message"]
@@ -343,8 +343,8 @@ class Session(object):
         if encrypt_inter_container_traffic:
             train_request["EnableInterContainerTrafficEncryption"] = encrypt_inter_container_traffic
 
-        LOGGER.info("Creating training-job with name: {}".format(job_name))
-        LOGGER.debug("train request: {}".format(json.dumps(train_request, indent=4)))
+        LOGGER.info("Creating training-job with name: %s", job_name)
+        LOGGER.debug("train request: %s", json.dumps(train_request, indent=4))
         self.sagemaker_client.create_training_job(**train_request)
 
     def compile_model(
@@ -379,7 +379,7 @@ class Session(object):
         if tags is not None:
             compilation_job_request["Tags"] = tags
 
-        LOGGER.info("Creating compilation-job with name: {}".format(job_name))
+        LOGGER.info("Creating compilation-job with name: %s", job_name)
         self.sagemaker_client.create_compilation_job(**compilation_job_request)
 
     def tune(
@@ -521,8 +521,8 @@ class Session(object):
         if encrypt_inter_container_traffic:
             tune_request["TrainingJobDefinition"]["EnableInterContainerTrafficEncryption"] = True
 
-        LOGGER.info("Creating hyperparameter tuning job with name: {}".format(job_name))
-        LOGGER.debug("tune request: {}".format(json.dumps(tune_request, indent=4)))
+        LOGGER.info("Creating hyperparameter tuning job with name: %s", job_name)
+        LOGGER.debug("tune request: %s", json.dumps(tune_request, indent=4))
         self.sagemaker_client.create_hyper_parameter_tuning_job(**tune_request)
 
     def stop_tuning_job(self, name):
@@ -535,18 +535,17 @@ class Session(object):
             ClientError: If an error occurs while trying to stop the hyperparameter tuning job.
         """
         try:
-            LOGGER.info("Stopping tuning job: {}".format(name))
+            LOGGER.info("Stopping tuning job: %s", name)
             self.sagemaker_client.stop_hyper_parameter_tuning_job(HyperParameterTuningJobName=name)
         except ClientError as e:
             error_code = e.response["Error"]["Code"]
             # allow to pass if the job already stopped
             if error_code == "ValidationException":
-                LOGGER.info("Tuning job: {} is already stopped or not running.".format(name))
+                LOGGER.info("Tuning job: %s is already stopped or not running.", name)
             else:
                 LOGGER.error(
-                    "Error occurred while attempting to stop tuning job: {}. Please try again.".format(
-                        name
-                    )
+                    "Error occurred while attempting to stop tuning job: %s. Please try again.",
+                    name,
                 )
                 raise
 
@@ -608,8 +607,8 @@ class Session(object):
         if data_processing is not None:
             transform_request["DataProcessing"] = data_processing
 
-        LOGGER.info("Creating transform job with name: {}".format(job_name))
-        LOGGER.debug("Transform request: {}".format(json.dumps(transform_request, indent=4)))
+        LOGGER.info("Creating transform job with name: %s", job_name)
+        LOGGER.debug("Transform request: %s", json.dumps(transform_request, indent=4))
         self.sagemaker_client.create_transform_job(**transform_request)
 
     def create_model(
@@ -681,8 +680,8 @@ class Session(object):
         if enable_network_isolation:
             create_model_request["EnableNetworkIsolation"] = True
 
-        LOGGER.info("Creating model with name: {}".format(name))
-        LOGGER.debug("CreateModel request: {}".format(json.dumps(create_model_request, indent=4)))
+        LOGGER.info("Creating model with name: %s", name)
+        LOGGER.debug("CreateModel request: %s", json.dumps(create_model_request, indent=4))
 
         try:
             self.sagemaker_client.create_model(**create_model_request)
@@ -694,7 +693,7 @@ class Session(object):
                 error_code == "ValidationException"
                 and "Cannot create already existing model" in message
             ):
-                LOGGER.warning("Using already existing model: {}".format(name))
+                LOGGER.warning("Using already existing model: %s", name)
             else:
                 raise
 
@@ -765,14 +764,14 @@ class Session(object):
             },
         }
         try:
-            LOGGER.info("Creating model package with name: {}".format(name))
+            LOGGER.info("Creating model package with name: %s", name)
             self.sagemaker_client.create_model_package(**request)
         except ClientError as e:
             error_code = e.response["Error"]["Code"]
             message = e.response["Error"]["Message"]
 
             if error_code == "ValidationException" and "ModelPackage already exists" in message:
-                LOGGER.warning("Using already existing model package: {}".format(name))
+                LOGGER.warning("Using already existing model package: %s", name)
             else:
                 raise
 
@@ -833,7 +832,7 @@ class Session(object):
         Returns:
             str: Name of the endpoint point configuration created.
         """
-        LOGGER.info("Creating endpoint-config with name {}".format(name))
+        LOGGER.info("Creating endpoint-config with name %s", name)
 
         tags = tags or []
 
@@ -872,7 +871,7 @@ class Session(object):
         Returns:
             str: Name of the Amazon SageMaker ``Endpoint`` created.
         """
-        LOGGER.info("Creating endpoint with name {}".format(endpoint_name))
+        LOGGER.info("Creating endpoint with name %s", endpoint_name)
 
         tags = tags or []
 
@@ -915,7 +914,7 @@ class Session(object):
         Args:
             endpoint_name (str): Name of the Amazon SageMaker ``Endpoint`` to delete.
         """
-        LOGGER.info("Deleting endpoint with name: {}".format(endpoint_name))
+        LOGGER.info("Deleting endpoint with name: %s", endpoint_name)
         self.sagemaker_client.delete_endpoint(EndpointName=endpoint_name)
 
     def delete_endpoint_config(self, endpoint_config_name):
@@ -924,7 +923,7 @@ class Session(object):
         Args:
             endpoint_config_name (str): Name of the Amazon SageMaker endpoint configuration to delete.
         """
-        LOGGER.info("Deleting endpoint configuration with name: {}".format(endpoint_config_name))
+        LOGGER.info("Deleting endpoint configuration with name: %s", endpoint_config_name)
         self.sagemaker_client.delete_endpoint_config(EndpointConfigName=endpoint_config_name)
 
     def delete_model(self, model_name):
@@ -934,7 +933,7 @@ class Session(object):
             model_name (str): Name of the Amazon SageMaker model to delete.
 
         """
-        LOGGER.info("Deleting model with name: {}".format(model_name))
+        LOGGER.info("Deleting model with name: %s", model_name)
         self.sagemaker_client.delete_model(ModelName=model_name)
 
     def wait_for_job(self, job, poll=5):
@@ -1258,9 +1257,8 @@ class Session(object):
             role = self.boto_session.client("iam").get_role(RoleName=role_name)["Role"]["Arn"]
         except ClientError:
             LOGGER.warning(
-                "Couldn't call 'get_role' to get Role ARN from role name {} to get Role path.".format(
-                    role_name
-                )
+                "Couldn't call 'get_role' to get Role ARN from role name %s to get Role path.",
+                role_name,
             )
 
         return role
