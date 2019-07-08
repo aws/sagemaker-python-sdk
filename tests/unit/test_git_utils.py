@@ -21,7 +21,7 @@ from sagemaker import git_utils
 REPO_DIR = "/tmp/repo_dir"
 GIT_REPO = "https://github.com/aws/sagemaker-python-sdk.git"
 BRANCH = "test-branch-git-config"
-COMMIT = "329bfcf884482002c05ff7f44f62599ebc9f445a"
+COMMIT = "ae15c9d7d5b97ea95ea451e4662ee43da3401d73"
 
 
 @patch("subprocess.check_call")
@@ -42,6 +42,14 @@ def test_git_clone_repo_succeed(exists, isdir, isfile, mkdtemp, check_call):
     assert ret["entry_point"] == "entry_point"
     assert ret["source_dir"] == "/tmp/repo_dir/source_dir"
     assert ret["dependencies"] == ["/tmp/repo_dir/foo", "/tmp/repo_dir/bar"]
+
+
+def test_git_clone_repo_entry_point_not_provided():
+    git_config = {"repo": GIT_REPO, "branch": BRANCH, "commit": COMMIT}
+    source_dir = "source_dir"
+    with pytest.raises(ValueError) as error:
+        git_utils.git_clone_repo(git_config=git_config, entry_point=None, source_dir=source_dir)
+    assert "Please provide an entry point." in str(error)
 
 
 @patch("subprocess.check_call")
