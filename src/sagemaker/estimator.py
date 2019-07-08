@@ -1072,9 +1072,7 @@ class Framework(EstimatorBase):
         # Current frameworks that support network isolation override this method
         if self._enable_network_isolation:
             logging.warning(
-                "Network isolation mode not supported for {} framework".format(
-                    self.__class__.__name__
-                )
+                "Network isolation mode not supported for %s framework" % self.__class__.__name__
             )
         return False
 
