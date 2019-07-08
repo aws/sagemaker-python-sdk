@@ -955,8 +955,8 @@ class Framework(EstimatorBase):
         code_location=None,
         image_name=None,
         dependencies=None,
-        git_config=None,
         enable_network_isolation=False,
+        git_config=None,
         **kwargs
     ):
         """Base class initializer. Subclasses which override ``__init__`` should invoke ``super()``
@@ -993,7 +993,7 @@ class Framework(EstimatorBase):
             source_dir (str): Path (absolute or relative) to a directory with any other training
                 source code dependencies aside from the entry point file (default: None). Structure within this
                 directory are preserved when training on Amazon SageMaker. If 'git_config' is provided,
-                source_dir should be a relative location to a directory in the Git repo.
+                'source_dir' should be a relative location to a directory in the Git repo.
                 Example:
 
                     With the following GitHub repo directory structure:
@@ -1023,6 +1023,8 @@ class Framework(EstimatorBase):
             dependencies (list[str]): A list of paths to directories (absolute or relative) with
                 any additional libraries that will be exported to the container (default: []).
                 The library folders will be copied to SageMaker in the same folder where the entrypoint is copied.
+                If 'git_config' is provided, 'dependencies' should be a list of relative locations to directories
+                with any additional libraries needed in the Git repo.
                 Example:
 
                     The following call
@@ -1085,12 +1087,12 @@ class Framework(EstimatorBase):
         super(Framework, self)._prepare_for_training(job_name=job_name)
 
         if self.git_config:
-            updates = git_utils.git_clone_repo(
+            updated_paths = git_utils.git_clone_repo(
                 self.git_config, self.entry_point, self.source_dir, self.dependencies
             )
-            self.entry_point = updates["entry_point"]
-            self.source_dir = updates["source_dir"]
-            self.dependencies = updates["dependencies"]
+            self.entry_point = updated_paths["entry_point"]
+            self.source_dir = updated_paths["source_dir"]
+            self.dependencies = updated_paths["dependencies"]
 
         # validate source dir will raise a ValueError if there is something wrong with the
         # source directory. We are intentionally not handling it because this is a critical error.

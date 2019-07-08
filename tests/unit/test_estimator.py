@@ -50,7 +50,7 @@ TAGS = [{"Name": "some-tag", "Value": "value-for-tag"}]
 OUTPUT_PATH = "s3://bucket/prefix"
 GIT_REPO = "https://github.com/aws/sagemaker-python-sdk.git"
 BRANCH = "test-branch-git-config"
-COMMIT = "329bfcf884482002c05ff7f44f62599ebc9f445a"
+COMMIT = "ae15c9d7d5b97ea95ea451e4662ee43da3401d73"
 
 DESCRIBE_TRAINING_JOB_RESULT = {"ModelArtifacts": {"S3ModelArtifacts": MODEL_DATA}}
 INSTANCE_TYPE = "c4.4xlarge"
@@ -898,12 +898,12 @@ def test_git_support_bad_repo_url_format(sagemaker_session):
 
 
 @patch(
-    "subprocess.check_call",
+    "sagemaker.git_utils.git_clone_repo",
     side_effect=subprocess.CalledProcessError(
-        returncode=1, cmd="git clone https://github.com/aws/no-such-repo.git"
+        returncode=1, cmd="git clone https://github.com/aws/no-such-repo.git /tmp/repo_dir"
     ),
 )
-def test_git_support_git_clone_fail(check_call, sagemaker_session):
+def test_git_support_git_clone_fail(sagemaker_session):
     git_config = {"repo": "https://github.com/aws/no-such-repo.git", "branch": BRANCH}
     fw = DummyFramework(
         entry_point="entry_point",
