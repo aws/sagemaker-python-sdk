@@ -1711,6 +1711,43 @@ def test_deploy_with_update_endpoint(sagemaker_session):
     sagemaker_session.create_endpoint.assert_not_called()
 
 
+def test_deploy_with_model_name(sagemaker_session):
+    estimator = Estimator(
+        IMAGE_NAME,
+        ROLE,
+        INSTANCE_COUNT,
+        INSTANCE_TYPE,
+        output_path=OUTPUT_PATH,
+        sagemaker_session=sagemaker_session,
+    )
+    estimator.set_hyperparameters(**HYPERPARAMS)
+    estimator.fit({"train": "s3://bucket/training-prefix"})
+    model_name = "model-name"
+    estimator.deploy(INSTANCE_COUNT, INSTANCE_TYPE, model_name=model_name)
+
+    sagemaker_session.create_model.assert_called_once()
+    args, kwargs = sagemaker_session.create_model.call_args
+    assert args[0] == model_name
+
+
+def test_deploy_with_no_model_name(sagemaker_session):
+    estimator = Estimator(
+        IMAGE_NAME,
+        ROLE,
+        INSTANCE_COUNT,
+        INSTANCE_TYPE,
+        output_path=OUTPUT_PATH,
+        sagemaker_session=sagemaker_session,
+    )
+    estimator.set_hyperparameters(**HYPERPARAMS)
+    estimator.fit({"train": "s3://bucket/training-prefix"})
+    estimator.deploy(INSTANCE_COUNT, INSTANCE_TYPE)
+
+    sagemaker_session.create_model.assert_called_once()
+    args, kwargs = sagemaker_session.create_model.call_args
+    assert args[0].startswith(IMAGE_NAME)
+
+
 @patch("sagemaker.estimator.LocalSession")
 @patch("sagemaker.estimator.Session")
 def test_local_mode(session_class, local_session_class):
