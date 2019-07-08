@@ -55,6 +55,7 @@ extensions = [
     "sphinx.ext.coverage",
     "sphinx.ext.autosummary",
     "sphinx.ext.napoleon",
+    "sphinx.ext.autosectionlabel"
 ]
 
 # Add any paths that contain templates here, relative to this directory.
@@ -90,3 +91,6 @@ intersphinx_mapping = {"http://docs.python.org/": None}
 
 # autosummary
 autosummary_generate = True
+
+#autosectionlabel
+autosectionlabel_prefix_document = True
