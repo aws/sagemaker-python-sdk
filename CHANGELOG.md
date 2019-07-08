@@ -34,6 +34,7 @@
 ### Bug fixes and other changes
 
  * fix git test in test_estimator.py
+ * Add ap-northeast-1 to Neo algorithms region map
 
 ## v1.31.1 (2019-07-01)
 
