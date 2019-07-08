@@ -108,9 +108,9 @@ class TrainCommand(object):
         data_url = self.upload_training_data()
         estimator = self.create_estimator()
         estimator.fit(data_url)
-        logger.debug("code location: {}".format(estimator.uploaded_code.s3_prefix))
+        logger.debug("code location: %s", estimator.uploaded_code.s3_prefix)
         logger.debug(
-            "model location: {}{}/output/model.tar.gz".format(
-                estimator.output_path, estimator._current_job_name
-            )
+            "model location: %s%s/output/model.tar.gz",
+            estimator.output_path,
+            estimator._current_job_name,
         )

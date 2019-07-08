@@ -298,8 +298,9 @@ class Model(object):
             self._is_compiled_model = True
         else:
             LOGGER.warning(
-                "The intance type {} is not supported to deploy via SageMaker,"
-                "please deploy the model on the device by yourself.".format(target_instance_family)
+                "The instance type %s is not supported to deploy via SageMaker,"
+                "please deploy the model manually.",
+                target_instance_family,
             )
         return self
 

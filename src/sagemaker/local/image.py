@@ -172,7 +172,7 @@ class _SageMakerContainer(object):
         logger.info("serving")
 
         self.container_root = self._create_tmp_folder()
-        logger.info("creating hosting dir in {}".format(self.container_root))
+        logger.info("creating hosting dir in %s", self.container_root)
 
         volumes = self._prepare_serving_volumes(model_dir)
 
@@ -424,7 +424,7 @@ class _SageMakerContainer(object):
 
         docker_compose_path = os.path.join(self.container_root, DOCKER_COMPOSE_FILENAME)
         yaml_content = yaml.dump(content, default_flow_style=False)
-        logger.info("docker compose file: \n{}".format(yaml_content))
+        logger.info("docker compose file: \n%s", yaml_content)
         with open(docker_compose_path, "w") as f:
             f.write(yaml_content)
 
@@ -445,7 +445,7 @@ class _SageMakerContainer(object):
         if detached:
             command.append("-d")
 
-        logger.info("docker command: {}".format(" ".join(command)))
+        logger.info("docker command: %s", " ".join(command))
         return command
 
     def _create_docker_host(self, host, environment, optml_subdirs, command, volumes):
@@ -739,7 +739,7 @@ def _ecr_login_if_needed(boto_session, image):
 
 def _pull_image(image):
     pull_image_command = ("docker pull %s" % image).strip()
-    logger.info("docker command: {}".format(pull_image_command))
+    logger.info("docker command: %s", pull_image_command)
 
     subprocess.check_output(pull_image_command, shell=True)
-    logger.info("image pulled: {}".format(image))
+    logger.info("image pulled: %s", image)
