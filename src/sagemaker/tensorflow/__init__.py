@@ -19,12 +19,7 @@ import os
 # classes for tensorflow serving. Currently tensorflow_serving_api can only be pip-installed for python 2.
 sys.path.append(os.path.dirname(__file__))
 
-from sagemaker.tensorflow.estimator import (  # noqa: E402,F401  # pylint: disable=wrong-import-position
-    TensorFlow,
+from sagemaker.tensorflow import (  # noqa: E402,F401  # pylint: disable=wrong-import-position
+    estimator,
 )
-from sagemaker.tensorflow.model import (  # noqa: E402,F401  # pylint: disable=wrong-import-position
-    TensorFlowModel,
-)
-from sagemaker.tensorflow.model import (  # noqa: E402,F401  # pylint: disable=wrong-import-position
-    TensorFlowPredictor,
-)
+from sagemaker.tensorflow import model  # noqa: E402,F401  # pylint: disable=wrong-import-position

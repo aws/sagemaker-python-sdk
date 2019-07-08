@@ -27,7 +27,7 @@ from tests.integ import DATA_DIR, PYTHON_VERSION
 
 from sagemaker.local import LocalSession, LocalSagemakerRuntimeClient, LocalSagemakerClient
 from sagemaker.mxnet import MXNet
-from sagemaker.tensorflow import TensorFlow
+from sagemaker.tensorflow import estimator
 
 # endpoint tests all use the same port, so we use this lock to prevent concurrent execution
 LOCK_PATH = os.path.join(tempfile.gettempdir(), "sagemaker_test_local_mode_lock")
@@ -90,7 +90,7 @@ def test_tf_local_mode(sagemaker_local_session):
     with stopit.ThreadingTimeout(5 * 60, swallow_exc=False):
         script_path = os.path.join(DATA_DIR, "iris", "iris-dnn-classifier.py")
 
-        estimator = TensorFlow(
+        tensorflow_estimator = estimator.TensorFlow(
             entry_point=script_path,
             role="SageMakerRole",
             framework_version="1.12",
@@ -103,16 +103,16 @@ def test_tf_local_mode(sagemaker_local_session):
             sagemaker_session=sagemaker_local_session,
         )
 
-        inputs = estimator.sagemaker_session.upload_data(
+        inputs = tensorflow_estimator.sagemaker_session.upload_data(
             path=DATA_PATH, key_prefix="integ-test-data/tf_iris"
         )
-        estimator.fit(inputs)
-        print("job succeeded: {}".format(estimator.latest_training_job.name))
+        tensorflow_estimator.fit(inputs)
+        print("job succeeded: {}".format(tensorflow_estimator.latest_training_job.name))
 
-    endpoint_name = estimator.latest_training_job.name
+    endpoint_name = tensorflow_estimator.latest_training_job.name
     with lock.lock(LOCK_PATH):
         try:
-            json_predictor = estimator.deploy(
+            json_predictor = tensorflow_estimator.deploy(
                 initial_instance_count=1, instance_type="local", endpoint_name=endpoint_name
             )
 
@@ -124,7 +124,7 @@ def test_tf_local_mode(sagemaker_local_session):
 
             assert dict_result == list_result
         finally:
-            estimator.delete_endpoint()
+            tensorflow_estimator.delete_endpoint()
 
 
 @pytest.mark.local_mode
@@ -133,7 +133,7 @@ def test_tf_distributed_local_mode(sagemaker_local_session):
     with stopit.ThreadingTimeout(5 * 60, swallow_exc=False):
         script_path = os.path.join(DATA_DIR, "iris", "iris-dnn-classifier.py")
 
-        estimator = TensorFlow(
+        tensorflow_estimator = estimator.TensorFlow(
             entry_point=script_path,
             role="SageMakerRole",
             framework_version="1.12",
@@ -147,14 +147,14 @@ def test_tf_distributed_local_mode(sagemaker_local_session):
         )
 
         inputs = "file://" + DATA_PATH
-        estimator.fit(inputs)
-        print("job succeeded: {}".format(estimator.latest_training_job.name))
+        tensorflow_estimator.fit(inputs)
+        print("job succeeded: {}".format(tensorflow_estimator.latest_training_job.name))
 
-    endpoint_name = estimator.latest_training_job.name
+    endpoint_name = tensorflow_estimator.latest_training_job.name
 
     with lock.lock(LOCK_PATH):
         try:
-            json_predictor = estimator.deploy(
+            json_predictor = tensorflow_estimator.deploy(
                 initial_instance_count=1, instance_type="local", endpoint_name=endpoint_name
             )
 
@@ -166,7 +166,7 @@ def test_tf_distributed_local_mode(sagemaker_local_session):
 
             assert dict_result == list_result
         finally:
-            estimator.delete_endpoint()
+            tensorflow_estimator.delete_endpoint()
 
 
 @pytest.mark.local_mode
@@ -175,7 +175,7 @@ def test_tf_local_data(sagemaker_local_session):
     with stopit.ThreadingTimeout(5 * 60, swallow_exc=False):
         script_path = os.path.join(DATA_DIR, "iris", "iris-dnn-classifier.py")
 
-        estimator = TensorFlow(
+        tensorflow_estimator = estimator.TensorFlow(
             entry_point=script_path,
             role="SageMakerRole",
             framework_version="1.12",
@@ -189,13 +189,13 @@ def test_tf_local_data(sagemaker_local_session):
         )
 
         inputs = "file://" + DATA_PATH
-        estimator.fit(inputs)
-        print("job succeeded: {}".format(estimator.latest_training_job.name))
+        tensorflow_estimator.fit(inputs)
+        print("job succeeded: {}".format(tensorflow_estimator.latest_training_job.name))
 
-    endpoint_name = estimator.latest_training_job.name
+    endpoint_name = tensorflow_estimator.latest_training_job.name
     with lock.lock(LOCK_PATH):
         try:
-            json_predictor = estimator.deploy(
+            json_predictor = tensorflow_estimator.deploy(
                 initial_instance_count=1, instance_type="local", endpoint_name=endpoint_name
             )
 
@@ -207,7 +207,7 @@ def test_tf_local_data(sagemaker_local_session):
 
             assert dict_result == list_result
         finally:
-            estimator.delete_endpoint()
+            tensorflow_estimator.delete_endpoint()
 
 
 @pytest.mark.local_mode
@@ -216,7 +216,7 @@ def test_tf_local_data_local_script():
     with stopit.ThreadingTimeout(5 * 60, swallow_exc=False):
         script_path = os.path.join(DATA_DIR, "iris", "iris-dnn-classifier.py")
 
-        estimator = TensorFlow(
+        tensorflow_estimator = estimator.TensorFlow(
             entry_point=script_path,
             role="SageMakerRole",
             framework_version="1.12",
@@ -231,13 +231,13 @@ def test_tf_local_data_local_script():
 
         inputs = "file://" + DATA_PATH
 
-        estimator.fit(inputs)
-        print("job succeeded: {}".format(estimator.latest_training_job.name))
+        tensorflow_estimator.fit(inputs)
+        print("job succeeded: {}".format(tensorflow_estimator.latest_training_job.name))
 
-    endpoint_name = estimator.latest_training_job.name
+    endpoint_name = tensorflow_estimator.latest_training_job.name
     with lock.lock(LOCK_PATH):
         try:
-            json_predictor = estimator.deploy(
+            json_predictor = tensorflow_estimator.deploy(
                 initial_instance_count=1, instance_type="local", endpoint_name=endpoint_name
             )
 
@@ -249,7 +249,7 @@ def test_tf_local_data_local_script():
 
             assert dict_result == list_result
         finally:
-            estimator.delete_endpoint()
+            tensorflow_estimator.delete_endpoint()
 
 
 @pytest.mark.local_mode
