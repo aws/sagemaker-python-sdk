@@ -1,5 +1,16 @@
 # Changelog
 
+## v1.32.2 (2019-07-08)
+
+### Bug fixes and other changes
+
+ * enable logging-format-interpolation pylint check
+ * remove superfluous parens per Pylint rule
+
+### Documentation changes
+
+ * add pypi, rtd, black badges to readme
+
 ## v1.32.1 (2019-07-04)
 
 ### Bug fixes and other changes
