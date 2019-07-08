@@ -1,46 +1,9 @@
 version: 0.2
 
 phases:
-  pre_build:
-    commands:
-      - start-dockerd
-
   build:
     commands:
-      # run linters
-      - TOX_PARALLEL_NO_SPINNER=1
-      - PY_COLORS=0
-      - start_time=`date +%s`
-      - tox -e flake8,pylint,twine,black-check --parallel all
-      - ./ci-scripts/displaytime.sh 'flake8,pylint,twine,black-check' $start_time
-
-      - start_time=`date +%s`
-      - tox -e sphinx
-      - ./ci-scripts/displaytime.sh 'sphinx' $start_time
-
-      # run unit tests
-      - start_time=`date +%s`
-      - AWS_ACCESS_KEY_ID= AWS_SECRET_ACCESS_KEY= AWS_SESSION_TOKEN=
-        AWS_CONTAINER_CREDENTIALS_RELATIVE_URI= AWS_DEFAULT_REGION=
-        tox -e py36,py27 --parallel all -- tests/unit
-      - ./ci-scripts/displaytime.sh 'py36,py27 unit' $start_time
-
       - IGNORE_COVERAGE=-
-
-      # local mode tests
-      - start_time=`date +%s`
-      - |
-        if has-matching-changes "tests/" "src/*.py" "setup.py" "setup.cfg" "buildspec.yml"; then
-          tox -e py36 -- tests/integ -m local_mode --durations 50
-        fi
-      - ./ci-scripts/displaytime.sh 'py36 local mode' $start_time
-
-      - start_time=`date +%s`
-      - |
-        if has-matching-changes "tests/" "src/*.py" "setup.py" "setup.cfg" "buildspec.yml"; then
-          tox -e py27 -- tests/integ -m local_mode --durations 50
-        fi
-      - ./ci-scripts/displaytime.sh 'py27 local mode' $start_time
 
       # run integration tests
       - start_time=`date +%s`
@@ -56,22 +19,6 @@ phases:
           tox -e py36 -- tests/integ -m "not local_mode" -n 48  --reruns 3 --reruns-delay 5 --durations 50
         fi
       - ./ci-scripts/displaytime.sh 'py36 tests/integ' $start_time
-
-      - start_time=`date +%s`
-      - |
-        if has-matching-changes "tests/" "src/*.py" "setup.py" "setup.cfg" "buildspec.yml"; then
-          tox -e py27 -- tests/integ -m "not local_mode" -n 48  --reruns 3 --reruns-delay 5 --durations 50
-        fi
-      - ./ci-scripts/displaytime.sh 'py27 tests/integ' $start_time
-        
-      # run notebook test
-      - echo "running notebook test"
-      - start_time=`date +%s`
-      - |
-        if has-matching-changes "src/*.py" "setup.py" "setup.cfg"; then
-          ./tests/scripts/run-notebook-test.sh
-        fi
-      - ./ci-scripts/displaytime.sh 'notebook test' $start_time
 
   post_build:
     finally:

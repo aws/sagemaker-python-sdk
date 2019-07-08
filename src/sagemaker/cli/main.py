@@ -134,7 +134,7 @@ def configure_logging(args):
 def main():
     args = parse_arguments(sys.argv[1:])
     configure_logging(args)
-    logger.debug("args: {}".format(args))
+    logger.debug("args: %s", args)
     args.func(args)
 
 

@@ -734,9 +734,8 @@ class _TuningJob(_Job):
         if isinstance(inputs, s3_input):
             if "InputMode" in inputs.config:
                 logging.debug(
-                    "Selecting s3_input's input_mode ({}) for TrainingInputMode.".format(
-                        inputs.config["InputMode"]
-                    )
+                    "Selecting s3_input's input_mode (%s) for TrainingInputMode.",
+                    inputs.config["InputMode"],
                 )
                 tuner_args["input_mode"] = inputs.config["InputMode"]
 
