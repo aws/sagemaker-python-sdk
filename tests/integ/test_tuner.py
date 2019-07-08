@@ -843,14 +843,17 @@ def test_attach_tuning_pytorch(sagemaker_session):
         time.sleep(15)
         tuner.wait()
 
+    endpoint_name = tuning_job_name
+    model_name = "model-name-1"
     attached_tuner = HyperparameterTuner.attach(
         tuning_job_name, sagemaker_session=sagemaker_session
     )
     assert attached_tuner.early_stopping_type == "Auto"
 
-    best_training_job = tuner.best_training_job()
-    with timeout_and_delete_endpoint_by_name(best_training_job, sagemaker_session):
-        predictor = attached_tuner.deploy(1, "ml.c4.xlarge")
+    with timeout_and_delete_endpoint_by_name(endpoint_name, sagemaker_session):
+        predictor = attached_tuner.deploy(
+            1, "ml.c4.xlarge", endpoint_name=endpoint_name, model_name=model_name
+        )
         data = np.zeros(shape=(1, 1, 28, 28), dtype=np.float32)
         predictor.predict(data)
 
@@ -859,6 +862,7 @@ def test_attach_tuning_pytorch(sagemaker_session):
         output = predictor.predict(data)
 
         assert output.shape == (batch_size, 10)
+        _assert_model_name_match(sagemaker_session.sagemaker_client, endpoint_name, model_name)
 
 
 @pytest.mark.canary_quick
@@ -941,3 +945,10 @@ def _fm_serializer(data):
     for row in data:
         js["instances"].append({"features": row.tolist()})
     return json.dumps(js)
+
+
+def _assert_model_name_match(sagemaker_client, endpoint_config_name, model_name):
+    endpoint_config_description = sagemaker_client.describe_endpoint_config(
+        EndpointConfigName=endpoint_config_name
+    )
+    assert model_name == endpoint_config_description["ProductionVariants"][0]["ModelName"]
