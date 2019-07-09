@@ -22,7 +22,7 @@ import pytest
 
 import sagemaker.utils
 import tests.integ as integ
-from sagemaker.tensorflow import TensorFlow
+from sagemaker.tensorflow import estimator
 from tests.integ import test_region, timeout, HOSTING_NO_P3_REGIONS
 
 horovod_dir = os.path.join(os.path.dirname(__file__), "..", "data", "horovod")
@@ -47,7 +47,7 @@ def instance_type(request):
 @pytest.mark.canary_quick
 def test_horovod(sagemaker_session, instance_type, tmpdir):
     job_name = sagemaker.utils.unique_name_from_base("tf-horovod")
-    estimator = TensorFlow(
+    tensorflow_estimator = estimator.TensorFlow(
         entry_point=os.path.join(horovod_dir, "test_hvd_basic.py"),
         role="SageMakerRole",
         train_instance_count=2,
@@ -60,10 +60,10 @@ def test_horovod(sagemaker_session, instance_type, tmpdir):
     )
 
     with timeout.timeout(minutes=integ.TRAINING_DEFAULT_TIMEOUT_MINUTES):
-        estimator.fit(job_name=job_name)
+        tensorflow_estimator.fit(job_name=job_name)
 
         tmp = str(tmpdir)
-        extract_files_from_s3(estimator.model_data, tmp)
+        extract_files_from_s3(tensorflow_estimator.model_data, tmp)
 
         for rank in range(2):
             assert read_json("rank-%s" % rank, tmp)["rank"] == rank
@@ -74,7 +74,7 @@ def test_horovod(sagemaker_session, instance_type, tmpdir):
 def test_horovod_local_mode(sagemaker_local_session, instances, processes, tmpdir):
     output_path = "file://%s" % tmpdir
     job_name = sagemaker.utils.unique_name_from_base("tf-horovod")
-    estimator = TensorFlow(
+    tensorflow_estimator = estimator.TensorFlow(
         entry_point=os.path.join(horovod_dir, "test_hvd_basic.py"),
         role="SageMakerRole",
         train_instance_count=2,
@@ -88,7 +88,7 @@ def test_horovod_local_mode(sagemaker_local_session, instances, processes, tmpdi
     )
 
     with timeout.timeout(minutes=integ.TRAINING_DEFAULT_TIMEOUT_MINUTES):
-        estimator.fit(job_name=job_name)
+        tensorflow_estimator.fit(job_name=job_name)
 
         tmp = str(tmpdir)
         extract_files(output_path.replace("file://", ""), tmp)
