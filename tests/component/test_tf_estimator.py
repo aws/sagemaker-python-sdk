@@ -14,7 +14,7 @@ from __future__ import absolute_import
 
 import pytest
 from mock import Mock
-from sagemaker.tensorflow import estimator
+from sagemaker.tensorflow import TensorFlow
 
 
 SCRIPT = "resnet_cifar_10.py"
@@ -53,7 +53,7 @@ def sagemaker_session():
 
 # Test that we pass all necessary fields from estimator to the session when we call deploy
 def test_deploy(sagemaker_session, tf_version):
-    tensorflow_estimator = estimator.TensorFlow(
+    estimator = TensorFlow(
         entry_point=SCRIPT,
         source_dir=SOURCE_DIR,
         role=ROLE,
@@ -64,13 +64,13 @@ def test_deploy(sagemaker_session, tf_version):
         base_job_name="test-cifar",
     )
 
-    tensorflow_estimator.fit("s3://mybucket/train")
-    print("job succeeded: {}".format(tensorflow_estimator.latest_training_job.name))
+    estimator.fit("s3://mybucket/train")
+    print("job succeeded: {}".format(estimator.latest_training_job.name))
 
-    tensorflow_estimator.deploy(initial_instance_count=1, instance_type=INSTANCE_TYPE_CPU)
+    estimator.deploy(initial_instance_count=1, instance_type=INSTANCE_TYPE_CPU)
     image = IMAGE_URI_FORMAT_STRING.format(REGION, CPU_IMAGE_NAME, tf_version, "cpu", "py2")
     sagemaker_session.create_model.assert_called_with(
-        tensorflow_estimator._current_job_name,
+        estimator._current_job_name,
         ROLE,
         {
             "Environment": {

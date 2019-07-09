@@ -20,7 +20,7 @@ import pytest
 import tests.integ
 from tests.integ.timeout import timeout_and_delete_endpoint_by_name, timeout
 
-from sagemaker.tensorflow import estimator
+from sagemaker.tensorflow import TensorFlow
 from sagemaker.utils import unique_name_from_base
 
 
@@ -37,7 +37,7 @@ def test_keras(sagemaker_session):
     dataset_path = os.path.join(tests.integ.DATA_DIR, "cifar_10", "data")
 
     with timeout(minutes=45):
-        tensorflow_estimator = estimator.TensorFlow(
+        estimator = TensorFlow(
             entry_point="keras_cnn_cifar_10.py",
             source_dir=script_path,
             role="SageMakerRole",
@@ -51,18 +51,16 @@ def test_keras(sagemaker_session):
             train_max_run=45 * 60,
         )
 
-        inputs = tensorflow_estimator.sagemaker_session.upload_data(
+        inputs = estimator.sagemaker_session.upload_data(
             path=dataset_path, key_prefix="data/cifar10"
         )
         job_name = unique_name_from_base("test-tf-keras")
 
-        tensorflow_estimator.fit(inputs, job_name=job_name)
+        estimator.fit(inputs, job_name=job_name)
 
-    endpoint_name = tensorflow_estimator.latest_training_job.name
+    endpoint_name = estimator.latest_training_job.name
     with timeout_and_delete_endpoint_by_name(endpoint_name, sagemaker_session):
-        predictor = tensorflow_estimator.deploy(
-            initial_instance_count=1, instance_type="ml.p2.xlarge"
-        )
+        predictor = estimator.deploy(initial_instance_count=1, instance_type="ml.p2.xlarge")
 
         data = np.random.randn(32, 32, 3)
         predict_response = predictor.predict(data)
