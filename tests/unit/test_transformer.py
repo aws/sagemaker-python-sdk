@@ -437,3 +437,15 @@ def test_transform_job_wait(sagemaker_session):
     job.wait()
 
     assert sagemaker_session.wait_for_transform_job.called_once
+
+
+@patch("sagemaker.transformer._TransformJob.start_new")
+def test_restart_output_path(start_new_job, transformer, sagemaker_session):
+    transformer.output_path = None
+    sagemaker_session.default_bucket.return_value = S3_BUCKET
+
+    transformer.transform(DATA, job_name="job-1")
+    assert transformer.output_path == "s3://{}/{}".format(S3_BUCKET, "job-1")
+
+    transformer.transform(DATA, job_name="job-2")
+    assert transformer.output_path == "s3://{}/{}".format(S3_BUCKET, "job-2")
