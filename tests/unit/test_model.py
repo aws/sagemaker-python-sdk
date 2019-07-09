@@ -35,6 +35,7 @@ SCRIPT_PATH = os.path.join(DATA_DIR, SCRIPT_NAME)
 TIMESTAMP = "2017-10-10-14-14-15"
 BUCKET_NAME = "mybucket"
 INSTANCE_COUNT = 1
+
 INSTANCE_TYPE = "c4.4xlarge"
 ACCELERATOR_TYPE = "ml.eia.medium"
 IMAGE_NAME = "fakeimage"

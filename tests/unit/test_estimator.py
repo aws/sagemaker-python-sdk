@@ -53,16 +53,6 @@ BRANCH = "test-branch-git-config"
 COMMIT = "ae15c9d7d5b97ea95ea451e4662ee43da3401d73"
 
 DESCRIBE_TRAINING_JOB_RESULT = {"ModelArtifacts": {"S3ModelArtifacts": MODEL_DATA}}
-INSTANCE_TYPE = "c4.4xlarge"
-ACCELERATOR_TYPE = "ml.eia.medium"
-ROLE = "DummyRole"
-IMAGE_NAME = "fakeimage"
-REGION = "us-west-2"
-JOB_NAME = "{}-{}".format(IMAGE_NAME, TIMESTAMP)
-TAGS = [{"Name": "some-tag", "Value": "value-for-tag"}]
-OUTPUT_PATH = "s3://bucket/prefix"
-
-DESCRIBE_TRAINING_JOB_RESULT = {"ModelArtifacts": {"S3ModelArtifacts": MODEL_DATA}}
 
 RETURNED_JOB_DESCRIPTION = {
     "AlgorithmSpecification": {
@@ -892,9 +882,9 @@ def test_git_support_bad_repo_url_format(sagemaker_session):
         train_instance_type=INSTANCE_TYPE,
         enable_cloudwatch_metrics=True,
     )
-    with pytest.raises(subprocess.CalledProcessError) as error:
+    with pytest.raises(ValueError) as error:
         fw.fit()
-    assert "returned non-zero exit status" in str(error)
+    assert "Invalid Git url provided." in str(error)
 
 
 @patch(

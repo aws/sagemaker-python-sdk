@@ -185,15 +185,36 @@ Here is an example:
 
 Git Support
 -----------
-If you have your training scripts in your GitHub repository, you can use them directly without the trouble to download
-them to local machine. Git support can be enabled simply by providing ``git_config`` parameter when initializing an
-estimator. If Git support is enabled, then ``entry_point``, ``source_dir`` and  ``dependencies`` should all be relative
-paths in the Git repo. Note that if you decided to use Git support, then everything you need for ``entry_point``,
-``source_dir`` and ``dependencies`` should be in a single Git repo.
+If you have your training scripts in your GitHub (or GitHub-like) repository, you can use them directly without the
+trouble to download them to local machine. Git support can be enabled simply by providing ``git_config`` parameter
+when initializing an estimator. If Git support is enabled, then ``entry_point``, ``source_dir`` and  ``dependencies``
+should all be relative paths in the Git repo. Note that if you decided to use Git support, then everything you need
+for ``entry_point``, ``source_dir`` and ``dependencies`` should be in a single Git repo.
 
-Here are ways to specify ``git_config``:
+The ``git_config`` parameter includes arguments ``repo``, ``branch``,  ``commit``, ``2FA_enabled``, ``username``,
+``password`` and ``token``. Except for ``repo``, the other arguments are optional. ``repo`` specifies the Git repository
+that you want to use. If ``branch`` is not provided, master branch will be used. If ``commit`` is not provided,
+the latest commit in the required branch will be used.
+
+``2FA_enabled``, ``username``, ``password`` and ``token`` are for authentication purpose. ``2FA_enabled`` should
+be ``True`` or ``False``, provides the information whether two-factor authentication is enabled for the GitHub (or GitHub-like) account.
+If ``2FA_enabled`` is not provided, we consider 2FA as disabled.
+
+If ``repo`` is an ssh url, you should either have no passphrase for the ssh key pairs, or have the ssh-agent configured
+so that you will not be prompted for ssh passphrase when you do 'git clone' command with ssh urls. For ssh urls, it
+makes no difference whether the 2FA is enabled or disabled.
+
+If ``repo`` is an https url, 2FA matters. When 2FA is disabled, either ``token`` or ``username``+``password`` will be
+used for authentication if provided (``token`` prioritized). When 2FA is enabled, only token will be used for
+authentication if provided. If required authentication info is not provided, python SDK will try to use local
+credentials storage to authenticate. If that fails either, an error message will be thrown.
+
+Here are some ways to specify ``git_config``:
 
 .. code:: python
+
+        # The following three examples do not provide Git credentials, so python SDK will try to use
+        # local credential storage.
 
         # Specifies the git_config parameter
         git_config = {'repo': 'https://github.com/username/repo-with-training-scripts.git',
@@ -208,6 +229,17 @@ Here are ways to specify ``git_config``:
         # Only providing 'repo' is also allowed. If this is the case, latest commit in
         # 'master' branch will be used.
         git_config = {'repo': 'https://github.com/username/repo-with-training-scripts.git'}
+
+        # This example does not provide '2FA_enabled', so 2FA is treated as disabled by default. 'username' and
+        # 'password' are provided for authentication
+        git_config = {'repo': 'https://github.com/username/repo-with-training-scripts.git',
+                      'username': 'username',
+                      'password': 'passw0rd!'}
+
+        # This example specifies that 2FA is enabled, and token is provided for authentication
+        git_config = {'repo': 'https://github.com/username/repo-with-training-scripts.git',
+                      '2FA_enabled': True,
+                      'token': 'your-token'}
 
 The following are some examples to define estimators with Git support:
 
@@ -240,7 +272,6 @@ The following are some examples to define estimators with Git support:
                                     train_instance_count=1,
                                     train_instance_type='ml.c4.xlarge')
 
-When Git support is enabled, users can still use local mode in the same way.
 
 Training Metrics
 ----------------
