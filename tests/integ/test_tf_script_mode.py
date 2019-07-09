@@ -19,7 +19,7 @@ import time
 import pytest
 
 import boto3
-from sagemaker.tensorflow import TensorFlow
+from sagemaker.tensorflow import estimator
 from six.moves.urllib.parse import urlparse
 from sagemaker.utils import unique_name_from_base
 
@@ -57,27 +57,27 @@ def instance_type(request):
 
 
 def test_mnist(sagemaker_session, instance_type):
-    estimator = TensorFlow(
+    tensorflow_estimator = estimator.TensorFlow(
         entry_point=SCRIPT,
         role="SageMakerRole",
         train_instance_count=1,
         train_instance_type=instance_type,
         sagemaker_session=sagemaker_session,
         script_mode=True,
-        framework_version=TensorFlow.LATEST_VERSION,
+        framework_version=estimator.TensorFlow.LATEST_VERSION,
         py_version=tests.integ.PYTHON_VERSION,
         metric_definitions=[{"Name": "train:global_steps", "Regex": r"global_step\/sec:\s(.*)"}],
     )
-    inputs = estimator.sagemaker_session.upload_data(
+    inputs = tensorflow_estimator.sagemaker_session.upload_data(
         path=os.path.join(MNIST_RESOURCE_PATH, "data"), key_prefix="scriptmode/mnist"
     )
 
     with tests.integ.timeout.timeout(minutes=tests.integ.TRAINING_DEFAULT_TIMEOUT_MINUTES):
-        estimator.fit(inputs=inputs, job_name=unique_name_from_base("test-tf-sm-mnist"))
+        tensorflow_estimator.fit(inputs=inputs, job_name=unique_name_from_base("test-tf-sm-mnist"))
     _assert_s3_files_exist(
-        estimator.model_dir, ["graph.pbtxt", "model.ckpt-0.index", "model.ckpt-0.meta"]
+        tensorflow_estimator.model_dir, ["graph.pbtxt", "model.ckpt-0.index", "model.ckpt-0.meta"]
     )
-    df = estimator.training_job_analytics.dataframe()
+    df = tensorflow_estimator.training_job_analytics.dataframe()
     assert df.size > 0
 
 
@@ -91,14 +91,14 @@ def test_server_side_encryption(sagemaker_session):
             bucket_with_kms, "test-server-side-encryption", time.strftime("%y%m%d-%H%M")
         )
 
-        estimator = TensorFlow(
+        tensorflow_estimator = estimator.TensorFlow(
             entry_point=SCRIPT,
             role=ROLE,
             train_instance_count=1,
             train_instance_type="ml.c5.xlarge",
             sagemaker_session=sagemaker_session,
             script_mode=True,
-            framework_version=TensorFlow.LATEST_VERSION,
+            framework_version=estimator.TensorFlow.LATEST_VERSION,
             py_version=tests.integ.PYTHON_VERSION,
             code_location=output_path,
             output_path=output_path,
@@ -106,19 +106,19 @@ def test_server_side_encryption(sagemaker_session):
             output_kms_key=kms_key,
         )
 
-        inputs = estimator.sagemaker_session.upload_data(
+        inputs = tensorflow_estimator.sagemaker_session.upload_data(
             path=os.path.join(MNIST_RESOURCE_PATH, "data"), key_prefix="scriptmode/mnist"
         )
 
         with tests.integ.timeout.timeout(minutes=tests.integ.TRAINING_DEFAULT_TIMEOUT_MINUTES):
-            estimator.fit(
+            tensorflow_estimator.fit(
                 inputs=inputs, job_name=unique_name_from_base("test-server-side-encryption")
             )
 
 
 @pytest.mark.canary_quick
 def test_mnist_distributed(sagemaker_session, instance_type):
-    estimator = TensorFlow(
+    tensorflow_estimator = estimator.TensorFlow(
         entry_point=SCRIPT,
         role=ROLE,
         train_instance_count=2,
@@ -126,22 +126,24 @@ def test_mnist_distributed(sagemaker_session, instance_type):
         sagemaker_session=sagemaker_session,
         py_version=tests.integ.PYTHON_VERSION,
         script_mode=True,
-        framework_version=TensorFlow.LATEST_VERSION,
+        framework_version=estimator.TensorFlow.LATEST_VERSION,
         distributions=PARAMETER_SERVER_DISTRIBUTION,
     )
-    inputs = estimator.sagemaker_session.upload_data(
+    inputs = tensorflow_estimator.sagemaker_session.upload_data(
         path=os.path.join(MNIST_RESOURCE_PATH, "data"), key_prefix="scriptmode/distributed_mnist"
     )
 
     with tests.integ.timeout.timeout(minutes=tests.integ.TRAINING_DEFAULT_TIMEOUT_MINUTES):
-        estimator.fit(inputs=inputs, job_name=unique_name_from_base("test-tf-sm-distributed"))
+        tensorflow_estimator.fit(
+            inputs=inputs, job_name=unique_name_from_base("test-tf-sm-distributed")
+        )
     _assert_s3_files_exist(
-        estimator.model_dir, ["graph.pbtxt", "model.ckpt-0.index", "model.ckpt-0.meta"]
+        tensorflow_estimator.model_dir, ["graph.pbtxt", "model.ckpt-0.index", "model.ckpt-0.meta"]
     )
 
 
 def test_mnist_async(sagemaker_session):
-    estimator = TensorFlow(
+    tensorflow_estimator = estimator.TensorFlow(
         entry_point=SCRIPT,
         role=ROLE,
         train_instance_count=1,
@@ -149,25 +151,27 @@ def test_mnist_async(sagemaker_session):
         py_version=tests.integ.PYTHON_VERSION,
         sagemaker_session=sagemaker_session,
         script_mode=True,
-        framework_version=TensorFlow.LATEST_VERSION,
+        framework_version=estimator.TensorFlow.LATEST_VERSION,
         tags=TAGS,
     )
-    inputs = estimator.sagemaker_session.upload_data(
+    inputs = tensorflow_estimator.sagemaker_session.upload_data(
         path=os.path.join(MNIST_RESOURCE_PATH, "data"), key_prefix="scriptmode/mnist"
     )
-    estimator.fit(inputs=inputs, wait=False, job_name=unique_name_from_base("test-tf-sm-async"))
-    training_job_name = estimator.latest_training_job.name
+    tensorflow_estimator.fit(
+        inputs=inputs, wait=False, job_name=unique_name_from_base("test-tf-sm-async")
+    )
+    training_job_name = tensorflow_estimator.latest_training_job.name
     time.sleep(20)
     endpoint_name = training_job_name
     model_name = "model-name-1"
     _assert_training_job_tags_match(
-        sagemaker_session.sagemaker_client, estimator.latest_training_job.name, TAGS
+        sagemaker_session.sagemaker_client, tensorflow_estimator.latest_training_job.name, TAGS
     )
     with tests.integ.timeout.timeout_and_delete_endpoint_by_name(endpoint_name, sagemaker_session):
-        estimator = TensorFlow.attach(
+        tensorflow_estimator = estimator.TensorFlow.attach(
             training_job_name=training_job_name, sagemaker_session=sagemaker_session
         )
-        predictor = estimator.deploy(
+        predictor = tensorflow_estimator.deploy(
             initial_instance_count=1,
             instance_type="ml.c4.xlarge",
             endpoint_name=endpoint_name,
@@ -178,13 +182,13 @@ def test_mnist_async(sagemaker_session):
         print("predict result: {}".format(result))
         _assert_endpoint_tags_match(sagemaker_session.sagemaker_client, predictor.endpoint, TAGS)
         _assert_model_tags_match(
-            sagemaker_session.sagemaker_client, estimator.latest_training_job.name, TAGS
+            sagemaker_session.sagemaker_client, tensorflow_estimator.latest_training_job.name, TAGS
         )
         _assert_model_name_match(sagemaker_session.sagemaker_client, endpoint_name, model_name)
 
 
 def test_deploy_with_input_handlers(sagemaker_session, instance_type):
-    estimator = TensorFlow(
+    tensorflow_estimator = estimator.TensorFlow(
         entry_point="inference.py",
         source_dir=TFS_RESOURCE_PATH,
         role=ROLE,
@@ -193,17 +197,17 @@ def test_deploy_with_input_handlers(sagemaker_session, instance_type):
         py_version=tests.integ.PYTHON_VERSION,
         sagemaker_session=sagemaker_session,
         script_mode=True,
-        framework_version=TensorFlow.LATEST_VERSION,
+        framework_version=estimator.TensorFlow.LATEST_VERSION,
         tags=TAGS,
     )
 
-    estimator.fit(job_name=unique_name_from_base("test-tf-tfs-deploy"))
+    tensorflow_estimator.fit(job_name=unique_name_from_base("test-tf-tfs-deploy"))
 
-    endpoint_name = estimator.latest_training_job.name
+    endpoint_name = tensorflow_estimator.latest_training_job.name
 
     with timeout.timeout_and_delete_endpoint_by_name(endpoint_name, sagemaker_session):
 
-        predictor = estimator.deploy(
+        predictor = tensorflow_estimator.deploy(
             initial_instance_count=1, instance_type=instance_type, endpoint_name=endpoint_name
         )
 

@@ -19,7 +19,7 @@ import logging
 import mock
 import pytest
 from mock import Mock
-from sagemaker.tensorflow import TensorFlow
+from sagemaker.tensorflow import estimator
 from sagemaker.tensorflow.predictor import csv_serializer
 from sagemaker.tensorflow.serving import Model, Predictor
 
@@ -208,7 +208,7 @@ def test_estimator_deploy(sagemaker_session):
     container_log_level = '"logging.INFO"'
     source_dir = "s3://mybucket/source"
     custom_image = "custom:1.0"
-    tf = TensorFlow(
+    tf = estimator.TensorFlow(
         entry_point="script.py",
         role=ROLE,
         sagemaker_session=sagemaker_session,
