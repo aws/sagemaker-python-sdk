@@ -134,7 +134,9 @@ def test_mnist_distributed(sagemaker_session, instance_type):
     )
 
     with tests.integ.timeout.timeout(minutes=tests.integ.TRAINING_DEFAULT_TIMEOUT_MINUTES):
-        tensorflow_estimator.fit(inputs=inputs, job_name=unique_name_from_base("test-tf-sm-distributed"))
+        tensorflow_estimator.fit(
+            inputs=inputs, job_name=unique_name_from_base("test-tf-sm-distributed")
+        )
     _assert_s3_files_exist(
         tensorflow_estimator.model_dir, ["graph.pbtxt", "model.ckpt-0.index", "model.ckpt-0.meta"]
     )
@@ -155,7 +157,9 @@ def test_mnist_async(sagemaker_session):
     inputs = tensorflow_estimator.sagemaker_session.upload_data(
         path=os.path.join(MNIST_RESOURCE_PATH, "data"), key_prefix="scriptmode/mnist"
     )
-    tensorflow_estimator.fit(inputs=inputs, wait=False, job_name=unique_name_from_base("test-tf-sm-async"))
+    tensorflow_estimator.fit(
+        inputs=inputs, wait=False, job_name=unique_name_from_base("test-tf-sm-async")
+    )
     training_job_name = tensorflow_estimator.latest_training_job.name
     time.sleep(20)
     endpoint_name = training_job_name

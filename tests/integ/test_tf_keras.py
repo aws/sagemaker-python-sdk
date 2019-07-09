@@ -60,7 +60,9 @@ def test_keras(sagemaker_session):
 
     endpoint_name = tensorflow_estimator.latest_training_job.name
     with timeout_and_delete_endpoint_by_name(endpoint_name, sagemaker_session):
-        predictor = tensorflow_estimator.deploy(initial_instance_count=1, instance_type="ml.p2.xlarge")
+        predictor = tensorflow_estimator.deploy(
+            initial_instance_count=1, instance_type="ml.p2.xlarge"
+        )
 
         data = np.random.randn(32, 32, 3)
         predict_response = predictor.predict(data)
