@@ -13,6 +13,7 @@
 from __future__ import absolute_import
 
 import os
+import six
 import subprocess
 import tempfile
 
@@ -39,35 +40,46 @@ def git_clone_repo(git_config, entry_point, source_dir=None, dependencies=None):
                                3. failed to checkout the required commit
         ValueError: If 1. entry point specified does not exist in the repo
                        2. source dir specified does not exist in the repo
+                       3. dependencies specified do not exist in the repo
+                       4. git_config is in bad format
 
     Returns:
         dict: A dict that contains the updated values of entry_point, source_dir and dependencies
     """
+    if entry_point is None:
+        raise ValueError("Please provide an entry point.")
     _validate_git_config(git_config)
     repo_dir = tempfile.mkdtemp()
     subprocess.check_call(["git", "clone", git_config["repo"], repo_dir])
 
     _checkout_branch_and_commit(git_config, repo_dir)
 
-    ret = {"entry_point": entry_point, "source_dir": source_dir, "dependencies": dependencies}
+    updated_paths = {
+        "entry_point": entry_point,
+        "source_dir": source_dir,
+        "dependencies": dependencies,
+    }
+
     # check if the cloned repo contains entry point, source directory and dependencies
     if source_dir:
         if not os.path.isdir(os.path.join(repo_dir, source_dir)):
             raise ValueError("Source directory does not exist in the repo.")
         if not os.path.isfile(os.path.join(repo_dir, source_dir, entry_point)):
             raise ValueError("Entry point does not exist in the repo.")
-        ret["source_dir"] = os.path.join(repo_dir, source_dir)
+        updated_paths["source_dir"] = os.path.join(repo_dir, source_dir)
     else:
-        if not os.path.isfile(os.path.join(repo_dir, entry_point)):
+        if os.path.isfile(os.path.join(repo_dir, entry_point)):
+            updated_paths["entry_point"] = os.path.join(repo_dir, entry_point)
+        else:
             raise ValueError("Entry point does not exist in the repo.")
-        ret["entry_point"] = os.path.join(repo_dir, entry_point)
 
-    ret["dependencies"] = []
+    updated_paths["dependencies"] = []
     for path in dependencies:
-        if not os.path.exists(os.path.join(repo_dir, path)):
+        if os.path.exists(os.path.join(repo_dir, path)):
+            updated_paths["dependencies"].append(os.path.join(repo_dir, path))
+        else:
             raise ValueError("Dependency {} does not exist in the repo.".format(path))
-        ret["dependencies"].append(os.path.join(repo_dir, path))
-    return ret
+    return updated_paths
 
 
 def _validate_git_config(git_config):
@@ -84,6 +96,13 @@ def _validate_git_config(git_config):
     """
     if "repo" not in git_config:
         raise ValueError("Please provide a repo for git_config.")
+    allowed_keys = ["repo", "branch", "commit"]
+    for key in allowed_keys:
+        if key in git_config and not isinstance(git_config[key], six.string_types):
+            raise ValueError("'{}' should be a string".format(key))
+    for key in git_config:
+        if key not in allowed_keys:
+            raise ValueError("Unexpected argument(s) provided for git_config!")
 
 
 def _checkout_branch_and_commit(git_config, repo_dir):
@@ -95,8 +114,8 @@ def _checkout_branch_and_commit(git_config, repo_dir):
         repo_dir (str): the directory where the repo is cloned
 
     Raises:
-        ValueError: If 1. entry point specified does not exist in the repo
-                       2. source dir specified does not exist in the repo
+        CalledProcessError: If 1. failed to checkout the required branch
+                               2. failed to checkout the required commit
     """
     if "branch" in git_config:
         subprocess.check_call(args=["git", "checkout", git_config["branch"]], cwd=str(repo_dir))

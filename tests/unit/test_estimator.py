@@ -50,7 +50,7 @@ TAGS = [{"Name": "some-tag", "Value": "value-for-tag"}]
 OUTPUT_PATH = "s3://bucket/prefix"
 GIT_REPO = "https://github.com/aws/sagemaker-python-sdk.git"
 BRANCH = "test-branch-git-config"
-COMMIT = "329bfcf884482002c05ff7f44f62599ebc9f445a"
+COMMIT = "ae15c9d7d5b97ea95ea451e4662ee43da3401d73"
 
 DESCRIBE_TRAINING_JOB_RESULT = {"ModelArtifacts": {"S3ModelArtifacts": MODEL_DATA}}
 INSTANCE_TYPE = "c4.4xlarge"
@@ -898,12 +898,12 @@ def test_git_support_bad_repo_url_format(sagemaker_session):
 
 
 @patch(
-    "subprocess.check_call",
+    "sagemaker.git_utils.git_clone_repo",
     side_effect=subprocess.CalledProcessError(
-        returncode=1, cmd="git clone https://github.com/aws/no-such-repo.git"
+        returncode=1, cmd="git clone https://github.com/aws/no-such-repo.git /tmp/repo_dir"
     ),
 )
-def test_git_support_git_clone_fail(check_call, sagemaker_session):
+def test_git_support_git_clone_fail(sagemaker_session):
     git_config = {"repo": "https://github.com/aws/no-such-repo.git", "branch": BRANCH}
     fw = DummyFramework(
         entry_point="entry_point",
@@ -1709,6 +1709,43 @@ def test_deploy_with_update_endpoint(sagemaker_session):
     assert update_endpoint_args[1].startWith(IMAGE_NAME)
 
     sagemaker_session.create_endpoint.assert_not_called()
+
+
+def test_deploy_with_model_name(sagemaker_session):
+    estimator = Estimator(
+        IMAGE_NAME,
+        ROLE,
+        INSTANCE_COUNT,
+        INSTANCE_TYPE,
+        output_path=OUTPUT_PATH,
+        sagemaker_session=sagemaker_session,
+    )
+    estimator.set_hyperparameters(**HYPERPARAMS)
+    estimator.fit({"train": "s3://bucket/training-prefix"})
+    model_name = "model-name"
+    estimator.deploy(INSTANCE_COUNT, INSTANCE_TYPE, model_name=model_name)
+
+    sagemaker_session.create_model.assert_called_once()
+    args, kwargs = sagemaker_session.create_model.call_args
+    assert args[0] == model_name
+
+
+def test_deploy_with_no_model_name(sagemaker_session):
+    estimator = Estimator(
+        IMAGE_NAME,
+        ROLE,
+        INSTANCE_COUNT,
+        INSTANCE_TYPE,
+        output_path=OUTPUT_PATH,
+        sagemaker_session=sagemaker_session,
+    )
+    estimator.set_hyperparameters(**HYPERPARAMS)
+    estimator.fit({"train": "s3://bucket/training-prefix"})
+    estimator.deploy(INSTANCE_COUNT, INSTANCE_TYPE)
+
+    sagemaker_session.create_model.assert_called_once()
+    args, kwargs = sagemaker_session.create_model.call_args
+    assert args[0].startswith(IMAGE_NAME)
 
 
 @patch("sagemaker.estimator.LocalSession")
