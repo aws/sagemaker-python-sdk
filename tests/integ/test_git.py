@@ -148,7 +148,7 @@ def test_git_support_with_sklearn(sagemaker_local_session, sklearn_full_version)
         "branch": PRIVATE_BRANCH_2FA,
         "commit": PRIVATE_COMMIT_2FA,
         "2FA_enabled": True,
-        "token": "c21f63b3d450a1d1cb7b8123d5d567d4e46a75de",
+        "token": "0d044fb764213be62979242ddc39f4e3b925d54d",
     }
     source_dir = "sklearn"
     sklearn = SKLearn(
