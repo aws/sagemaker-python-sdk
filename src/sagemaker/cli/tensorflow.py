@@ -12,9 +12,6 @@
 # language governing permissions and limitations under the License.
 from __future__ import absolute_import
 
-from sagemaker.tensorflow import estimator
-from sagemaker.tensorflow import model
-
 from sagemaker.cli.common import HostCommand, TrainCommand
 
 
@@ -33,7 +30,9 @@ class TensorFlowTrainCommand(TrainCommand):
         self.evaluation_steps = args.evaluation_steps
 
     def create_estimator(self):
-        return estimator.TensorFlow(
+        from sagemaker.tensorflow import TensorFlow
+
+        return TensorFlow(
             training_steps=self.training_steps,
             evaluation_steps=self.evaluation_steps,
             py_version=self.python,
@@ -48,7 +47,9 @@ class TensorFlowTrainCommand(TrainCommand):
 
 class TensorFlowHostCommand(HostCommand):
     def create_model(self, model_url):
-        return model.TensorFlowModel(
+        from sagemaker.tensorflow.model import TensorFlowModel
+
+        return TensorFlowModel(
             model_data=model_url,
             role=self.role_name,
             entry_point=self.script,

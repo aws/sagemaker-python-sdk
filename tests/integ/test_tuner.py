@@ -35,7 +35,7 @@ from sagemaker.estimator import Estimator
 from sagemaker.mxnet.estimator import MXNet
 from sagemaker.predictor import json_deserializer
 from sagemaker.pytorch import PyTorch
-from sagemaker.tensorflow import estimator
+from sagemaker.tensorflow import TensorFlow
 from sagemaker.tuner import (
     IntegerParameter,
     ContinuousParameter,
@@ -584,7 +584,7 @@ def test_tuning_tf_script_mode(sagemaker_session):
     resource_path = os.path.join(DATA_DIR, "tensorflow_mnist")
     script_path = os.path.join(resource_path, "mnist.py")
 
-    tensorflow_estimator = estimator.TensorFlow(
+    estimator = TensorFlow(
         entry_point=script_path,
         role="SageMakerRole",
         train_instance_count=1,
@@ -592,7 +592,7 @@ def test_tuning_tf_script_mode(sagemaker_session):
         script_mode=True,
         sagemaker_session=sagemaker_session,
         py_version=PYTHON_VERSION,
-        framework_version=estimator.TensorFlow.LATEST_VERSION,
+        framework_version=TensorFlow.LATEST_VERSION,
     )
 
     hyperparameter_ranges = {"epochs": IntegerParameter(1, 2)}
@@ -600,7 +600,7 @@ def test_tuning_tf_script_mode(sagemaker_session):
     metric_definitions = [{"Name": objective_metric_name, "Regex": "accuracy = ([0-9\\.]+)"}]
 
     tuner = HyperparameterTuner(
-        tensorflow_estimator,
+        estimator,
         objective_metric_name,
         hyperparameter_ranges,
         metric_definitions,
@@ -609,7 +609,7 @@ def test_tuning_tf_script_mode(sagemaker_session):
     )
 
     with timeout(minutes=TUNING_DEFAULT_TIMEOUT_MINUTES):
-        inputs = tensorflow_estimator.sagemaker_session.upload_data(
+        inputs = estimator.sagemaker_session.upload_data(
             path=os.path.join(resource_path, "data"), key_prefix="scriptmode/mnist"
         )
 
@@ -628,7 +628,7 @@ def test_tuning_tf(sagemaker_session):
     with timeout(minutes=TUNING_DEFAULT_TIMEOUT_MINUTES):
         script_path = os.path.join(DATA_DIR, "iris", "iris-dnn-classifier.py")
 
-        tensorflow_estimator = estimator.TensorFlow(
+        estimator = TensorFlow(
             entry_point=script_path,
             role="SageMakerRole",
             training_steps=1,
@@ -646,7 +646,7 @@ def test_tuning_tf(sagemaker_session):
         metric_definitions = [{"Name": "loss", "Regex": "loss = ([0-9\\.]+)"}]
 
         tuner = HyperparameterTuner(
-            tensorflow_estimator,
+            estimator,
             objective_metric_name,
             hyperparameter_ranges,
             metric_definitions,
@@ -690,7 +690,7 @@ def test_tuning_tf_vpc_multi(sagemaker_session):
     )
     vpc_test_utils.setup_security_group_for_encryption(ec2_client, security_group_id)
 
-    tensorflow_estimator = estimator.TensorFlow(
+    estimator = TensorFlow(
         entry_point=script_path,
         role="SageMakerRole",
         training_steps=1,
@@ -712,7 +712,7 @@ def test_tuning_tf_vpc_multi(sagemaker_session):
     metric_definitions = [{"Name": "loss", "Regex": "loss = ([0-9\\.]+)"}]
 
     tuner = HyperparameterTuner(
-        tensorflow_estimator,
+        estimator,
         objective_metric_name,
         hyperparameter_ranges,
         metric_definitions,
@@ -737,7 +737,7 @@ def test_tuning_chainer(sagemaker_session):
         script_path = os.path.join(DATA_DIR, "chainer_mnist", "mnist.py")
         data_path = os.path.join(DATA_DIR, "chainer_mnist")
 
-        chainer_estimator = Chainer(
+        estimator = Chainer(
             entry_point=script_path,
             role="SageMakerRole",
             py_version=PYTHON_VERSION,
@@ -747,10 +747,10 @@ def test_tuning_chainer(sagemaker_session):
             hyperparameters={"epochs": 1},
         )
 
-        train_input = chainer_estimator.sagemaker_session.upload_data(
+        train_input = estimator.sagemaker_session.upload_data(
             path=os.path.join(data_path, "train"), key_prefix="integ-test-data/chainer_mnist/train"
         )
-        test_input = chainer_estimator.sagemaker_session.upload_data(
+        test_input = estimator.sagemaker_session.upload_data(
             path=os.path.join(data_path, "test"), key_prefix="integ-test-data/chainer_mnist/test"
         )
 
@@ -765,7 +765,7 @@ def test_tuning_chainer(sagemaker_session):
         ]
 
         tuner = HyperparameterTuner(
-            chainer_estimator,
+            estimator,
             objective_metric_name,
             hyperparameter_ranges,
             metric_definitions,
@@ -804,7 +804,7 @@ def test_attach_tuning_pytorch(sagemaker_session):
     mnist_dir = os.path.join(DATA_DIR, "pytorch_mnist")
     mnist_script = os.path.join(mnist_dir, "mnist.py")
 
-    pytorch_estimator = PyTorch(
+    estimator = PyTorch(
         entry_point=mnist_script,
         role="SageMakerRole",
         train_instance_count=1,
@@ -821,7 +821,7 @@ def test_attach_tuning_pytorch(sagemaker_session):
         hyperparameter_ranges = {"batch-size": IntegerParameter(50, 100)}
 
         tuner = HyperparameterTuner(
-            pytorch_estimator,
+            estimator,
             objective_metric_name,
             hyperparameter_ranges,
             metric_definitions,
@@ -830,7 +830,7 @@ def test_attach_tuning_pytorch(sagemaker_session):
             early_stopping_type="Auto",
         )
 
-        training_data = pytorch_estimator.sagemaker_session.upload_data(
+        training_data = estimator.sagemaker_session.upload_data(
             path=os.path.join(mnist_dir, "training"),
             key_prefix="integ-test-data/pytorch_mnist/training",
         )
@@ -892,7 +892,7 @@ def test_tuning_byo_estimator(sagemaker_session):
             path=training_data_path, key_prefix=os.path.join(prefix, "train", key)
         )
 
-        byo_estimator = Estimator(
+        estimator = Estimator(
             image_name=image_name,
             role="SageMakerRole",
             train_instance_count=1,
@@ -900,14 +900,14 @@ def test_tuning_byo_estimator(sagemaker_session):
             sagemaker_session=sagemaker_session,
         )
 
-        byo_estimator.set_hyperparameters(
+        estimator.set_hyperparameters(
             num_factors=10, feature_dim=784, mini_batch_size=100, predictor_type="binary_classifier"
         )
 
         hyperparameter_ranges = {"mini_batch_size": IntegerParameter(100, 200)}
 
         tuner = HyperparameterTuner(
-            estimator=byo_estimator,
+            estimator=estimator,
             objective_metric_name="test:binary_classification_accuracy",
             hyperparameter_ranges=hyperparameter_ranges,
             max_jobs=2,

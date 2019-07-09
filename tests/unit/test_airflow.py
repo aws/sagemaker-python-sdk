@@ -16,8 +16,7 @@ from __future__ import absolute_import
 import pytest
 from mock import Mock, MagicMock, patch
 
-from sagemaker import chainer, estimator, model, mxnet, transformer, tuner
-from sagemaker.tensorflow import estimator as tf_estimator
+from sagemaker import chainer, estimator, model, mxnet, tensorflow, transformer, tuner
 from sagemaker.workflow import airflow
 from sagemaker.amazon import amazon_estimator
 from sagemaker.amazon import knn, ntm, pca
@@ -164,7 +163,7 @@ def test_byo_training_config_all_args(sagemaker_session):
 
 @patch("sagemaker.utils.sagemaker_timestamp", MagicMock(return_value=TIME_STAMP))
 def test_framework_training_config_required_args(sagemaker_session):
-    tf = tf_estimator.TensorFlow(
+    tf = tensorflow.TensorFlow(
         entry_point="{{ entry_point }}",
         framework_version="1.10.0",
         training_steps=1000,
@@ -233,7 +232,7 @@ def test_framework_training_config_required_args(sagemaker_session):
 
 @patch("sagemaker.utils.sagemaker_timestamp", MagicMock(return_value=TIME_STAMP))
 def test_framework_training_config_all_args(sagemaker_session):
-    tf = tf_estimator.TensorFlow(
+    tf = tensorflow.TensorFlow(
         entry_point="{{ entry_point }}",
         source_dir="{{ source_dir }}",
         enable_cloudwatch_metrics=False,

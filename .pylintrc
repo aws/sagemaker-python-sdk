@@ -100,6 +100,7 @@ disable=
     simplifiable-if-expression, # TODO: Simplify expressions
     too-many-public-methods, # TODO: Resolve
     ungrouped-imports, # TODO: Group imports
+    wrong-import-position, # TODO: Correct import positions
     consider-using-ternary, # TODO: Consider ternary expressions
     chained-comparison, # TODO: Simplify chained comparison between operands
     simplifiable-if-statement, # TODO: Simplify ifs

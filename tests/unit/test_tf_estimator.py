@@ -22,9 +22,7 @@ from mock import patch, Mock, MagicMock
 from sagemaker.fw_utils import create_image_uri
 from sagemaker.model import MODEL_SERVER_WORKERS_PARAM_NAME
 from sagemaker.session import s3_input
-from sagemaker.tensorflow import defaults
-from sagemaker.tensorflow import estimator
-from sagemaker.tensorflow import model
+from sagemaker.tensorflow import defaults, TensorFlow, TensorFlowModel, TensorFlowPredictor
 import sagemaker.tensorflow.estimator as tfe
 
 
@@ -160,7 +158,7 @@ def _build_tf(
     evaluation_steps=None,
     **kwargs
 ):
-    return estimator.TensorFlow(
+    return TensorFlow(
         entry_point=SCRIPT_PATH,
         training_steps=training_steps,
         evaluation_steps=evaluation_steps,
@@ -246,7 +244,7 @@ def test_tf_nonexistent_requirements_path(sagemaker_session):
 def test_create_model(sagemaker_session, tf_version):
     container_log_level = '"logging.INFO"'
     source_dir = "s3://mybucket/source"
-    tf = estimator.TensorFlow(
+    tf = TensorFlow(
         entry_point=SCRIPT_PATH,
         role=ROLE,
         sagemaker_session=sagemaker_session,
@@ -279,7 +277,7 @@ def test_create_model_with_optional_params(sagemaker_session):
     container_log_level = '"logging.INFO"'
     source_dir = "s3://mybucket/source"
     enable_cloudwatch_metrics = "true"
-    tf = estimator.TensorFlow(
+    tf = TensorFlow(
         entry_point=SCRIPT_PATH,
         role=ROLE,
         sagemaker_session=sagemaker_session,
@@ -313,7 +311,7 @@ def test_transformer_creation_with_endpoint_type(create_model, sagemaker_session
     model = Mock()
     create_model.return_value = model
 
-    tf = estimator.TensorFlow(
+    tf = TensorFlow(
         entry_point=SCRIPT_PATH,
         role=ROLE,
         sagemaker_session=sagemaker_session,
@@ -350,7 +348,7 @@ def test_transformer_creation_without_endpoint_type(create_model, sagemaker_sess
     model = Mock()
     create_model.return_value = model
 
-    tf = estimator.TensorFlow(
+    tf = TensorFlow(
         entry_point=SCRIPT_PATH,
         role=ROLE,
         sagemaker_session=sagemaker_session,
@@ -385,7 +383,7 @@ def test_create_model_with_custom_image(sagemaker_session):
     container_log_level = '"logging.INFO"'
     source_dir = "s3://mybucket/source"
     custom_image = "tensorflow:1.0"
-    tf = estimator.TensorFlow(
+    tf = TensorFlow(
         entry_point=SCRIPT_PATH,
         role=ROLE,
         sagemaker_session=sagemaker_session,
@@ -410,7 +408,7 @@ def test_create_model_with_custom_image(sagemaker_session):
 @patch("time.strftime", MagicMock(return_value=TIMESTAMP))
 @patch("time.time", MagicMock(return_value=TIME))
 def test_tf(sagemaker_session, tf_version):
-    tf = estimator.TensorFlow(
+    tf = TensorFlow(
         entry_point=SCRIPT_FILE,
         role=ROLE,
         sagemaker_session=sagemaker_session,
@@ -436,7 +434,7 @@ def test_tf(sagemaker_session, tf_version):
     actual_train_args = sagemaker_session.method_calls[0][2]
     assert actual_train_args == expected_train_args
 
-    tensorflow_model = tf.create_model()
+    model = tf.create_model()
 
     environment = {
         "Environment": {
@@ -450,11 +448,11 @@ def test_tf(sagemaker_session, tf_version):
         "Image": create_image_uri("us-west-2", "tensorflow", INSTANCE_TYPE, tf_version, "py2"),
         "ModelDataUrl": "s3://m/m.tar.gz",
     }
-    assert environment == tensorflow_model.prepare_container_def(INSTANCE_TYPE)
+    assert environment == model.prepare_container_def(INSTANCE_TYPE)
 
-    assert "cpu" in tensorflow_model.prepare_container_def(INSTANCE_TYPE)["Image"]
+    assert "cpu" in model.prepare_container_def(INSTANCE_TYPE)["Image"]
     predictor = tf.deploy(1, INSTANCE_TYPE)
-    assert isinstance(predictor, model.TensorFlowPredictor)
+    assert isinstance(predictor, TensorFlowPredictor)
 
 
 @patch("time.strftime", return_value=TIMESTAMP)
@@ -465,7 +463,7 @@ def test_tf(sagemaker_session, tf_version):
 def test_run_tensorboard_locally_without_tensorboard_binary(
     time, strftime, popen, call, access, sagemaker_session
 ):
-    tf = estimator.TensorFlow(
+    tf = TensorFlow(
         entry_point=SCRIPT_PATH,
         role=ROLE,
         sagemaker_session=sagemaker_session,
@@ -484,16 +482,16 @@ def test_run_tensorboard_locally_without_tensorboard_binary(
 
 @patch("sagemaker.utils.create_tar_file", MagicMock())
 def test_model(sagemaker_session, tf_version):
-    tensorflow_model = estimator.TensorFlowModel(
+    model = TensorFlowModel(
         MODEL_DATA, role=ROLE, entry_point=SCRIPT_PATH, sagemaker_session=sagemaker_session
     )
-    predictor = tensorflow_model.deploy(1, INSTANCE_TYPE)
-    assert isinstance(predictor, model.TensorFlowPredictor)
+    predictor = model.deploy(1, INSTANCE_TYPE)
+    assert isinstance(predictor, TensorFlowPredictor)
 
 
 @patch("sagemaker.fw_utils.tar_and_upload_dir", MagicMock())
 def test_model_image_accelerator(sagemaker_session):
-    model = estimator.TensorFlowModel(
+    model = TensorFlowModel(
         MODEL_DATA, role=ROLE, entry_point=SCRIPT_PATH, sagemaker_session=sagemaker_session
     )
     container_def = model.prepare_container_def(INSTANCE_TYPE, accelerator_type=ACCELERATOR_TYPE)
@@ -508,7 +506,7 @@ def test_model_image_accelerator(sagemaker_session):
 def test_run_tensorboard_locally_without_awscli_binary(
     time, strftime, popen, call, access, sagemaker_session
 ):
-    tf = estimator.TensorFlow(
+    tf = TensorFlow(
         entry_point=SCRIPT_PATH,
         role=ROLE,
         sagemaker_session=sagemaker_session,
@@ -538,7 +536,7 @@ def test_run_tensorboard_locally_without_awscli_binary(
 def test_run_tensorboard_locally(
     sleep, time, strftime, popen, call, access, rmtree, mkdtemp, sync, sagemaker_session
 ):
-    tf = estimator.TensorFlow(
+    tf = TensorFlow(
         entry_point=SCRIPT_PATH,
         role=ROLE,
         sagemaker_session=sagemaker_session,
@@ -571,7 +569,7 @@ def test_run_tensorboard_locally(
 def test_run_tensorboard_locally_port_in_use(
     sleep, time, strftime, popen, call, access, socket, rmtree, mkdtemp, sync, sagemaker_session
 ):
-    tf = estimator.TensorFlow(
+    tf = TensorFlow(
         entry_point=SCRIPT_PATH,
         role=ROLE,
         sagemaker_session=sagemaker_session,
@@ -647,7 +645,7 @@ def test_tf_checkpoint_set(sagemaker_session):
 
 @patch("sagemaker.utils.create_tar_file", MagicMock())
 def test_train_image_default(sagemaker_session):
-    tf = estimator.TensorFlow(
+    tf = TensorFlow(
         entry_point=SCRIPT_PATH,
         role=ROLE,
         sagemaker_session=sagemaker_session,
@@ -692,26 +690,24 @@ def test_attach(sagemaker_session, tf_version):
         name="describe_training_job", return_value=rjd
     )
 
-    tensorflow_estimator = estimator.TensorFlow.attach(
-        training_job_name="neo", sagemaker_session=sagemaker_session
-    )
-    assert tensorflow_estimator.latest_training_job.job_name == "neo"
-    assert tensorflow_estimator.py_version == "py2"
-    assert tensorflow_estimator.framework_version == tf_version
-    assert tensorflow_estimator.role == "arn:aws:iam::366:role/SageMakerRole"
-    assert tensorflow_estimator.train_instance_count == 1
-    assert tensorflow_estimator.train_max_run == 24 * 60 * 60
-    assert tensorflow_estimator.input_mode == "File"
-    assert tensorflow_estimator.training_steps == 100
-    assert tensorflow_estimator.evaluation_steps == 10
-    assert tensorflow_estimator.input_mode == "File"
-    assert tensorflow_estimator.base_job_name == "neo"
-    assert tensorflow_estimator.output_path == "s3://place/output/neo"
-    assert tensorflow_estimator.output_kms_key == ""
-    assert tensorflow_estimator.hyperparameters()["training_steps"] == "100"
-    assert tensorflow_estimator.source_dir == "s3://some/sourcedir.tar.gz"
-    assert tensorflow_estimator.entry_point == "iris-dnn-classifier.py"
-    assert tensorflow_estimator.checkpoint_path == "s3://other/1508872349"
+    estimator = TensorFlow.attach(training_job_name="neo", sagemaker_session=sagemaker_session)
+    assert estimator.latest_training_job.job_name == "neo"
+    assert estimator.py_version == "py2"
+    assert estimator.framework_version == tf_version
+    assert estimator.role == "arn:aws:iam::366:role/SageMakerRole"
+    assert estimator.train_instance_count == 1
+    assert estimator.train_max_run == 24 * 60 * 60
+    assert estimator.input_mode == "File"
+    assert estimator.training_steps == 100
+    assert estimator.evaluation_steps == 10
+    assert estimator.input_mode == "File"
+    assert estimator.base_job_name == "neo"
+    assert estimator.output_path == "s3://place/output/neo"
+    assert estimator.output_kms_key == ""
+    assert estimator.hyperparameters()["training_steps"] == "100"
+    assert estimator.source_dir == "s3://some/sourcedir.tar.gz"
+    assert estimator.entry_point == "iris-dnn-classifier.py"
+    assert estimator.checkpoint_path == "s3://other/1508872349"
 
 
 @patch("sagemaker.utils.create_tar_file", MagicMock())
@@ -748,27 +744,25 @@ def test_attach_new_repo_name(sagemaker_session, tf_version):
         name="describe_training_job", return_value=rjd
     )
 
-    tensorflow_estimator = estimator.TensorFlow.attach(
-        training_job_name="neo", sagemaker_session=sagemaker_session
-    )
-    assert tensorflow_estimator.latest_training_job.job_name == "neo"
-    assert tensorflow_estimator.py_version == "py2"
-    assert tensorflow_estimator.framework_version == tf_version
-    assert tensorflow_estimator.role == "arn:aws:iam::366:role/SageMakerRole"
-    assert tensorflow_estimator.train_instance_count == 1
-    assert tensorflow_estimator.train_max_run == 24 * 60 * 60
-    assert tensorflow_estimator.input_mode == "File"
-    assert tensorflow_estimator.training_steps == 100
-    assert tensorflow_estimator.evaluation_steps == 10
-    assert tensorflow_estimator.input_mode == "File"
-    assert tensorflow_estimator.base_job_name == "neo"
-    assert tensorflow_estimator.output_path == "s3://place/output/neo"
-    assert tensorflow_estimator.output_kms_key == ""
-    assert tensorflow_estimator.hyperparameters()["training_steps"] == "100"
-    assert tensorflow_estimator.source_dir == "s3://some/sourcedir.tar.gz"
-    assert tensorflow_estimator.entry_point == "iris-dnn-classifier.py"
-    assert tensorflow_estimator.checkpoint_path == "s3://other/1508872349"
-    assert tensorflow_estimator.train_image() == training_image
+    estimator = TensorFlow.attach(training_job_name="neo", sagemaker_session=sagemaker_session)
+    assert estimator.latest_training_job.job_name == "neo"
+    assert estimator.py_version == "py2"
+    assert estimator.framework_version == tf_version
+    assert estimator.role == "arn:aws:iam::366:role/SageMakerRole"
+    assert estimator.train_instance_count == 1
+    assert estimator.train_max_run == 24 * 60 * 60
+    assert estimator.input_mode == "File"
+    assert estimator.training_steps == 100
+    assert estimator.evaluation_steps == 10
+    assert estimator.input_mode == "File"
+    assert estimator.base_job_name == "neo"
+    assert estimator.output_path == "s3://place/output/neo"
+    assert estimator.output_kms_key == ""
+    assert estimator.hyperparameters()["training_steps"] == "100"
+    assert estimator.source_dir == "s3://some/sourcedir.tar.gz"
+    assert estimator.entry_point == "iris-dnn-classifier.py"
+    assert estimator.checkpoint_path == "s3://other/1508872349"
+    assert estimator.train_image() == training_image
 
 
 @patch("sagemaker.utils.create_tar_file", MagicMock())
@@ -803,26 +797,24 @@ def test_attach_old_container(sagemaker_session):
         name="describe_training_job", return_value=rjd
     )
 
-    tensorflow_estimator = estimator.TensorFlow.attach(
-        training_job_name="neo", sagemaker_session=sagemaker_session
-    )
-    assert tensorflow_estimator.latest_training_job.job_name == "neo"
-    assert tensorflow_estimator.py_version == "py2"
-    assert tensorflow_estimator.framework_version == "1.4"
-    assert tensorflow_estimator.role == "arn:aws:iam::366:role/SageMakerRole"
-    assert tensorflow_estimator.train_instance_count == 1
-    assert tensorflow_estimator.train_max_run == 24 * 60 * 60
-    assert tensorflow_estimator.input_mode == "File"
-    assert tensorflow_estimator.training_steps == 100
-    assert tensorflow_estimator.evaluation_steps == 10
-    assert tensorflow_estimator.input_mode == "File"
-    assert tensorflow_estimator.base_job_name == "neo"
-    assert tensorflow_estimator.output_path == "s3://place/output/neo"
-    assert tensorflow_estimator.output_kms_key == ""
-    assert tensorflow_estimator.hyperparameters()["training_steps"] == "100"
-    assert tensorflow_estimator.source_dir == "s3://some/sourcedir.tar.gz"
-    assert tensorflow_estimator.entry_point == "iris-dnn-classifier.py"
-    assert tensorflow_estimator.checkpoint_path == "s3://other/1508872349"
+    estimator = TensorFlow.attach(training_job_name="neo", sagemaker_session=sagemaker_session)
+    assert estimator.latest_training_job.job_name == "neo"
+    assert estimator.py_version == "py2"
+    assert estimator.framework_version == "1.4"
+    assert estimator.role == "arn:aws:iam::366:role/SageMakerRole"
+    assert estimator.train_instance_count == 1
+    assert estimator.train_max_run == 24 * 60 * 60
+    assert estimator.input_mode == "File"
+    assert estimator.training_steps == 100
+    assert estimator.evaluation_steps == 10
+    assert estimator.input_mode == "File"
+    assert estimator.base_job_name == "neo"
+    assert estimator.output_path == "s3://place/output/neo"
+    assert estimator.output_kms_key == ""
+    assert estimator.hyperparameters()["training_steps"] == "100"
+    assert estimator.source_dir == "s3://some/sourcedir.tar.gz"
+    assert estimator.entry_point == "iris-dnn-classifier.py"
+    assert estimator.checkpoint_path == "s3://other/1508872349"
 
 
 def test_attach_wrong_framework(sagemaker_session):
@@ -856,7 +848,7 @@ def test_attach_wrong_framework(sagemaker_session):
     )
 
     with pytest.raises(ValueError) as error:
-        estimator.TensorFlow.attach(training_job_name="neo", sagemaker_session=sagemaker_session)
+        TensorFlow.attach(training_job_name="neo", sagemaker_session=sagemaker_session)
     assert "didn't use image for requested framework" in str(error)
 
 
@@ -891,16 +883,14 @@ def test_attach_custom_image(sagemaker_session):
         name="describe_training_job", return_value=rjd
     )
 
-    tensorflow_estimator = estimator.TensorFlow.attach(
-        training_job_name="neo", sagemaker_session=sagemaker_session
-    )
-    assert tensorflow_estimator.image_name == training_image
-    assert tensorflow_estimator.train_image() == training_image
+    estimator = TensorFlow.attach(training_job_name="neo", sagemaker_session=sagemaker_session)
+    assert estimator.image_name == training_image
+    assert estimator.train_image() == training_image
 
 
 @patch("sagemaker.fw_utils.empty_framework_version_warning")
 def test_empty_framework_version(warning, sagemaker_session):
-    tensorflow_estimator = estimator.TensorFlow(
+    estimator = TensorFlow(
         entry_point=SCRIPT_PATH,
         role=ROLE,
         sagemaker_session=sagemaker_session,
@@ -909,8 +899,8 @@ def test_empty_framework_version(warning, sagemaker_session):
         framework_version=None,
     )
 
-    assert tensorflow_estimator.framework_version == defaults.TF_VERSION
-    warning.assert_called_with(defaults.TF_VERSION, tensorflow_estimator.LATEST_VERSION)
+    assert estimator.framework_version == defaults.TF_VERSION
+    warning.assert_called_with(defaults.TF_VERSION, estimator.LATEST_VERSION)
 
 
 def _deprecated_args_msg(args):
@@ -1002,7 +992,7 @@ def test_script_mode_create_model(create_tfs_model, sagemaker_session):
 def test_script_mode_tensorboard(
     sleep, time, strftime, popen, call, access, start, sync, sagemaker_session
 ):
-    tf = estimator.TensorFlow(
+    tf = TensorFlow(
         entry_point=SCRIPT_PATH,
         role=ROLE,
         sagemaker_session=sagemaker_session,
@@ -1020,7 +1010,7 @@ def test_script_mode_tensorboard(
 @patch("time.time", return_value=TIME)
 @patch("sagemaker.utils.create_tar_file", MagicMock())
 def test_tf_script_mode(time, strftime, sagemaker_session):
-    tf = estimator.TensorFlow(
+    tf = TensorFlow(
         entry_point=SCRIPT_FILE,
         role=ROLE,
         sagemaker_session=sagemaker_session,
@@ -1050,7 +1040,7 @@ def test_tf_script_mode(time, strftime, sagemaker_session):
 @patch("time.time", return_value=TIME)
 @patch("sagemaker.utils.create_tar_file", MagicMock())
 def test_tf_script_mode_ps(time, strftime, sagemaker_session):
-    tf = estimator.TensorFlow(
+    tf = TensorFlow(
         entry_point=SCRIPT_FILE,
         role=ROLE,
         sagemaker_session=sagemaker_session,
@@ -1072,9 +1062,7 @@ def test_tf_script_mode_ps(time, strftime, sagemaker_session):
         "1.11", script_mode=True, repo_name=SM_IMAGE_REPO_NAME, py_version="py3"
     )
     expected_train_args["input_config"][0]["DataSource"]["S3DataSource"]["S3Uri"] = inputs
-    expected_train_args["hyperparameters"][estimator.TensorFlow.LAUNCH_PS_ENV_NAME] = json.dumps(
-        True
-    )
+    expected_train_args["hyperparameters"][TensorFlow.LAUNCH_PS_ENV_NAME] = json.dumps(True)
 
     actual_train_args = sagemaker_session.method_calls[0][2]
     assert actual_train_args == expected_train_args
@@ -1084,7 +1072,7 @@ def test_tf_script_mode_ps(time, strftime, sagemaker_session):
 @patch("time.time", return_value=TIME)
 @patch("sagemaker.utils.create_tar_file", MagicMock())
 def test_tf_script_mode_mpi(time, strftime, sagemaker_session):
-    tf = estimator.TensorFlow(
+    tf = TensorFlow(
         entry_point=SCRIPT_FILE,
         role=ROLE,
         sagemaker_session=sagemaker_session,
@@ -1106,15 +1094,11 @@ def test_tf_script_mode_mpi(time, strftime, sagemaker_session):
         "1.11", script_mode=True, horovod=True, repo_name=SM_IMAGE_REPO_NAME, py_version="py3"
     )
     expected_train_args["input_config"][0]["DataSource"]["S3DataSource"]["S3Uri"] = inputs
-    expected_train_args["hyperparameters"][estimator.TensorFlow.LAUNCH_MPI_ENV_NAME] = json.dumps(
-        True
+    expected_train_args["hyperparameters"][TensorFlow.LAUNCH_MPI_ENV_NAME] = json.dumps(True)
+    expected_train_args["hyperparameters"][TensorFlow.MPI_NUM_PROCESSES_PER_HOST] = json.dumps(2)
+    expected_train_args["hyperparameters"][TensorFlow.MPI_CUSTOM_MPI_OPTIONS] = json.dumps(
+        "options"
     )
-    expected_train_args["hyperparameters"][
-        estimator.TensorFlow.MPI_NUM_PROCESSES_PER_HOST
-    ] = json.dumps(2)
-    expected_train_args["hyperparameters"][
-        estimator.TensorFlow.MPI_CUSTOM_MPI_OPTIONS
-    ] = json.dumps("options")
 
     actual_train_args = sagemaker_session.method_calls[0][2]
     assert actual_train_args == expected_train_args
@@ -1151,20 +1135,18 @@ def test_tf_script_mode_attach(sagemaker_session, tf_version):
         name="describe_training_job", return_value=rjd
     )
 
-    tensorflow_estimator = estimator.TensorFlow.attach(
-        training_job_name="neo", sagemaker_session=sagemaker_session
-    )
-    assert tensorflow_estimator.latest_training_job.job_name == "neo"
-    assert tensorflow_estimator.py_version == "py3"
-    assert tensorflow_estimator.framework_version == tf_version
-    assert tensorflow_estimator.role == "arn:aws:iam::366:role/SageMakerRole"
-    assert tensorflow_estimator.train_instance_count == 1
-    assert tensorflow_estimator.train_max_run == 24 * 60 * 60
-    assert tensorflow_estimator.input_mode == "File"
-    assert tensorflow_estimator.input_mode == "File"
-    assert tensorflow_estimator.base_job_name == "neo"
-    assert tensorflow_estimator.output_path == "s3://place/output/neo"
-    assert tensorflow_estimator.output_kms_key == ""
-    assert tensorflow_estimator.hyperparameters() is not None
-    assert tensorflow_estimator.source_dir == "s3://some/sourcedir.tar.gz"
-    assert tensorflow_estimator.entry_point == "iris-dnn-classifier.py"
+    estimator = TensorFlow.attach(training_job_name="neo", sagemaker_session=sagemaker_session)
+    assert estimator.latest_training_job.job_name == "neo"
+    assert estimator.py_version == "py3"
+    assert estimator.framework_version == tf_version
+    assert estimator.role == "arn:aws:iam::366:role/SageMakerRole"
+    assert estimator.train_instance_count == 1
+    assert estimator.train_max_run == 24 * 60 * 60
+    assert estimator.input_mode == "File"
+    assert estimator.input_mode == "File"
+    assert estimator.base_job_name == "neo"
+    assert estimator.output_path == "s3://place/output/neo"
+    assert estimator.output_kms_key == ""
+    assert estimator.hyperparameters() is not None
+    assert estimator.source_dir == "s3://some/sourcedir.tar.gz"
+    assert estimator.entry_point == "iris-dnn-classifier.py"
