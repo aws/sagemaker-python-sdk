@@ -22,6 +22,7 @@ from sagemaker.amazon import validation
 from sagemaker.amazon.hyperparameter import Hyperparameter as hp  # noqa
 from sagemaker.amazon.common import write_numpy_to_dense_tensor
 from sagemaker.estimator import EstimatorBase, _TrainingJob
+from sagemaker.model import NEO_IMAGE_ACCOUNT
 from sagemaker.session import s3_input
 from sagemaker.utils import sagemaker_timestamp, get_ecr_image_uri_prefix
 
@@ -395,12 +396,7 @@ def registry(region_name, algorithm=None):
             "us-iso-east-1": "490574956308",
         }[region_name]
     elif algorithm in ["image-classification-neo", "xgboost-neo"]:
-        account_id = {
-            "us-west-2": "301217895009",
-            "us-east-1": "785573368785",
-            "eu-west-1": "802834080501",
-            "us-east-2": "007439368137",
-        }[region_name]
+        account_id = NEO_IMAGE_ACCOUNT[region_name]
     else:
         raise ValueError(
             "Algorithm class:{} does not have mapping to account_id with images".format(algorithm)
