@@ -120,7 +120,9 @@ class LDA(AmazonAlgorithmEstimatorBase):
             vpc_config=self.get_vpc_config(vpc_config_override),
         )
 
-    def _prepare_for_training(self, records, mini_batch_size, job_name=None):
+    def _prepare_for_training(  # pylint: disable=signature-differs
+        self, records, mini_batch_size, job_name=None
+    ):
         # mini_batch_size is required, prevent explicit calls with None
         if mini_batch_size is None:
             raise ValueError("mini_batch_size must be set")

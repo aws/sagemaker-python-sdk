@@ -87,7 +87,6 @@ disable=
     attribute-defined-outside-init, # TODO: Fix scope
     protected-access, # TODO: Fix access
     abstract-method, # TODO: Fix abstract methods
-    signature-differs, # TODO: Fix signature overrides
     unidiomatic-typecheck, # TODO: Fix typechecks
     wrong-import-order, # TODO: Fix import order
     no-else-return, # TODO: Remove unnecessary elses
