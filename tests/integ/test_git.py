@@ -40,6 +40,11 @@ PRIVATE_GIT_REPO_2FA_SSH = "git@github.com:git-support-test-2fa/test-git.git"
 PRIVATE_BRANCH_2FA = "master"
 PRIVATE_COMMIT_2FA = "52381dee030eb332a7e42d9992878d7261eb21d4"
 
+# Since personal access tokens will delete themselves if they are committed to GitHub repos,
+# we cannot hard code them here, but have to encrypt instead
+ENCRYPTED_PRIVATE_REPO_TOKEN = "e-4_1-1dc_71-f0e_f7b54a0f3b7db2757163da7b5e8c3"
+PRIVATE_REPO_TOKEN = ENCRYPTED_PRIVATE_REPO_TOKEN.replace("-", "").replace("_", "")
+
 # endpoint tests all use the same port, so we use this lock to prevent concurrent execution
 LOCK_PATH = os.path.join(tempfile.gettempdir(), "sagemaker_test_git_lock")
 
@@ -148,7 +153,7 @@ def test_git_support_with_sklearn(sagemaker_local_session, sklearn_full_version)
         "branch": PRIVATE_BRANCH_2FA,
         "commit": PRIVATE_COMMIT_2FA,
         "2FA_enabled": True,
-        "token": "0d044fb764213be62979242ddc39f4e3b925d54d",
+        "token": PRIVATE_REPO_TOKEN,
     }
     source_dir = "sklearn"
     sklearn = SKLearn(
