@@ -427,10 +427,10 @@ def _wait_for_serving_container(serving_port):
         if i >= HEALTH_CHECK_TIMEOUT_LIMIT:
             raise RuntimeError("Giving up, endpoint didn't launch correctly")
 
-        logger.info("Checking if serving container is up, attempt: %s" % i)
+        logger.info("Checking if serving container is up, attempt: %s", i)
         _, code = _perform_request(endpoint_url, http)
         if code != 200:
-            logger.info("Container still not up, got: %s" % code)
+            logger.info("Container still not up, got: %s", code)
         else:
             return
 
