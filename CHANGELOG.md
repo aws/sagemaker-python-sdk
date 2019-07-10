@@ -1,5 +1,23 @@
 # Changelog
 
+## v1.33.0 (2019-07-10)
+
+### Features
+
+ * git support for hosting models
+ * allow custom model name during deploy
+
+### Bug fixes and other changes
+
+ * remove TODO comment on import-error Pylint check
+ * enable wrong-import-position pylint check
+ * Revert "change: enable wrong-import-position pylint check (#907)"
+ * enable signature-differs pylint check
+ * enable wrong-import-position pylint check
+ * enable logging-not-lazy pylint check
+ * reset default output path in Transformer.transform
+ * Add ap-northeast-1 to Neo algorithms region map
+
 ## v1.32.2 (2019-07-08)
 
 ### Bug fixes and other changes
