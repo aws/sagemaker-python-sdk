@@ -992,14 +992,15 @@ class Framework(EstimatorBase):
 
                     results in cloning the repo specified in 'repo', then checkout the 'master' branch, and checkout
                     the specified commit.
-                ``2FA_enabled``, ``username``, ``password`` and ``token`` are for authentication purpose. If
-                ``2FA_enabled`` is not provided, we consider 2FA as disabled. For GitHub and GitHub-like repos, when
-                ssh urls are provided, it does not make a difference whether 2FA is enabled or disabled; an ssh
-                passphrase should be in local storage. When https urls are provided: if 2FA is disabled, then either
-                token or username+password will be used for authentication if provided (token prioritized); if 2FA is
-                enabled, only token will be used for authentication if provided. If required authentication info is
-                not provided, python SDK will try to use local credentials storage to authenticate. If that fails
-                either, an error message will be thrown.
+                ``2FA_enabled``, ``username``, ``password`` and ``token`` are for authentication purpose.
+                ``2FA_enabled`` must be 'True' or 'False' if it is provided. If ``2FA_enabled`` is not provided,
+                we consider 2FA as disabled. For GitHub and other Git repos, when ssh urls are provided, it does not
+                make a difference whether 2FA is enabled or disabled; an ssh passphrase should be in local storage.
+                When https urls are provided: if 2FA is disabled, then either token or username+password will
+                be used for authentication if provided (token prioritized); if 2FA is enabled, only token will
+                be used for authentication if provided. If required authentication info is not provided, python SDK
+                will try to use local credentials storage to authenticate. If that fails either, an error message will
+                be thrown.
             source_dir (str): Path (absolute or relative) to a directory with any other training
                 source code dependencies aside from the entry point file (default: None). Structure within this
                 directory are preserved when training on Amazon SageMaker. If 'git_config' is provided,

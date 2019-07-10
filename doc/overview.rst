@@ -185,11 +185,11 @@ Here is an example:
 
 Git Support
 -----------
-If you have your training scripts in your GitHub (or GitHub-like) repository, you can use them directly without the
-trouble to download them to local machine. Git support can be enabled simply by providing ``git_config`` parameter
-when initializing an estimator. If Git support is enabled, then ``entry_point``, ``source_dir`` and  ``dependencies``
-should all be relative paths in the Git repo. Note that if you decided to use Git support, then everything you need
-for ``entry_point``, ``source_dir`` and ``dependencies`` should be in a single Git repo.
+If you have your training scripts or in your GitHub (or other Git) repository, you can use them directly without the
+trouble to download them locally. Git support can be enabled simply by providing ``git_config`` parameter
+when creating an ``Estimator`` object. If Git support is enabled, then ``entry_point``, ``source_dir`` and  ``dependencies``
+should all be relative paths in the Git repo if provided. Note that if you decided to use Git support, then all your
+training scripts should be in a single Git repo.
 
 The ``git_config`` parameter includes arguments ``repo``, ``branch``,  ``commit``, ``2FA_enabled``, ``username``,
 ``password`` and ``token``. Except for ``repo``, the other arguments are optional. ``repo`` specifies the Git repository
@@ -197,7 +197,7 @@ that you want to use. If ``branch`` is not provided, master branch will be used.
 the latest commit in the required branch will be used.
 
 ``2FA_enabled``, ``username``, ``password`` and ``token`` are for authentication purpose. ``2FA_enabled`` should
-be ``True`` or ``False``, provides the information whether two-factor authentication is enabled for the GitHub (or GitHub-like) account.
+be 'True' or 'False', providing the information whether two-factor authentication is enabled for the GitHub (or other Git) account.
 If ``2FA_enabled`` is not provided, we consider 2FA as disabled.
 
 If ``repo`` is an ssh url, you should either have no passphrase for the ssh key pairs, or have the ssh-agent configured
@@ -272,6 +272,8 @@ The following are some examples to define estimators with Git support:
                                     train_instance_count=1,
                                     train_instance_type='ml.c4.xlarge')
 
+Git support can be used not only for training jobs, but also for hosting models. The usage is the same as the above,
+and ``git_config`` should be provided when creating the ``FrameworkModel`` object.
 
 Training Metrics
 ----------------
