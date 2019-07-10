@@ -61,23 +61,6 @@ def test_git_clone_repo_repo_not_provided():
     assert "Please provide a repo for git_config." in str(error)
 
 
-def test_git_clone_repo_unexpected_git_argument_provided():
-    git_config = {
-        "repo": PUBLIC_GIT_REPO,
-        "branch": PUBLIC_BRANCH,
-        "commit": PUBLIC_COMMIT,
-        "what_is_this?": "i dont know",
-    }
-    entry_point = "entry_point"
-    source_dir = "source_dir"
-    dependencies = ["foo", "bar"]
-    env = os.environ.copy()
-    env["GIT_TERMINAL_PROMPT"] = "0"
-    with pytest.raises(ValueError) as error:
-        git_utils.git_clone_repo(git_config, entry_point, source_dir, dependencies)
-    assert "Unexpected git_config argument(s) provided!" in str(error)
-
-
 def test_git_clone_repo_git_argument_wrong_format():
     git_config = {
         "repo": PUBLIC_GIT_REPO,

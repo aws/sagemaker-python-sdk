@@ -93,13 +93,6 @@ def git_clone_repo(git_config, entry_point, source_dir=None, dependencies=None):
     return updated_paths
 
 
-# def _exists(git_config, key):
-#     if key == "2FA_enabled":
-#         return key in git_config and git_config[key] is True
-#     else:
-#         return key in git_config
-
-
 def _validate_git_config(git_config):
     if "repo" not in git_config:
         raise ValueError("Please provide a repo for git_config.")
@@ -112,10 +105,6 @@ def _validate_git_config(git_config):
         and git_config["2FA_enabled"] != "False"
     ):
         raise ValueError("Please enter 'True' or 'False' for 2FA_enabled'.")
-    allowed_keys = ["repo", "branch", "commit", "2FA_enabled", "username", "password", "token"]
-    for k in list(git_config):
-        if k not in allowed_keys:
-            raise ValueError("Unexpected git_config argument(s) provided!")
 
 
 def _generate_and_run_clone_command(git_config, dest_dir):
@@ -158,14 +147,7 @@ def _clone_command_for_github_like(git_config, dest_dir):
 
 
 def _clone_command_for_github_like_ssh(git_config, dest_dir):
-    if (
-        # _exists(git_config, "username")
-        # or _exists(git_config, "password")
-        # or _exists(git_config, "token")
-        "username" in git_config
-        or "password" in git_config
-        or "token" in git_config
-    ):
+    if "username" in git_config or "password" in git_config or "token" in git_config:
         warnings.warn("Unnecessary credential argument(s) provided.")
     _run_clone_command(git_config["repo"], dest_dir)
 
@@ -236,8 +218,6 @@ def _insert_token_to_repo_url(url, token):
     Returns:
         str: the component needed fot the git clone command.
     """
-    # index = len("https://")
-    # return url[:index] + token + "@" + url[index:]
     index = len("https://")
     if url.find(token) == index:
         return url
