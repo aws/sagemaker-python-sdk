@@ -52,6 +52,7 @@ def test_kmeans(sagemaker_session):
         kmeans.half_life_time_size = 1
         kmeans.epochs = 1
         kmeans.center_factor = 1
+        kmeans.eval_metrics = ["ssd", "msd"]
 
         assert kmeans.hyperparameters() == dict(
             init_method=kmeans.init_method,
