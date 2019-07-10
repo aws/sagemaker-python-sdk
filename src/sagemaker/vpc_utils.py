@@ -83,7 +83,7 @@ def sanitize(vpc_config):
     """
     if vpc_config is None:
         return vpc_config
-    elif type(vpc_config) is not dict:
+    elif not isinstance(vpc_config, dict):
         raise ValueError("vpc_config is not a dict: {}".format(vpc_config))
     elif not vpc_config:
         raise ValueError("vpc_config is empty")
@@ -91,7 +91,7 @@ def sanitize(vpc_config):
     subnets = vpc_config.get(SUBNETS_KEY)
     if subnets is None:
         raise ValueError("vpc_config is missing key: {}".format(SUBNETS_KEY))
-    if type(subnets) is not list:
+    if not isinstance(subnets, list):
         raise ValueError("vpc_config value for {} is not a list: {}".format(SUBNETS_KEY, subnets))
     elif not subnets:
         raise ValueError("vpc_config value for {} is empty".format(SUBNETS_KEY))
@@ -99,7 +99,7 @@ def sanitize(vpc_config):
     security_group_ids = vpc_config.get(SECURITY_GROUP_IDS_KEY)
     if security_group_ids is None:
         raise ValueError("vpc_config is missing key: {}".format(SECURITY_GROUP_IDS_KEY))
-    if type(security_group_ids) is not list:
+    if not isinstance(security_group_ids, list):
         raise ValueError(
             "vpc_config value for {} is not a list: {}".format(
                 SECURITY_GROUP_IDS_KEY, security_group_ids
