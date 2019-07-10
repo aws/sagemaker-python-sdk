@@ -183,76 +183,56 @@ Here is an example:
         # When you are done using your endpoint
         algo.delete_endpoint()
 
-Git Support
------------
-If you have your training scripts or in your GitHub (or other Git) repository, you can use them directly without the
-trouble to download them locally. Git support can be enabled simply by providing ``git_config`` parameter
+Use Scripts Stored in a Git Repository
+--------------------------------------
+When you create an estimator, you can specify a training script that is stored in a GitHub or other Git repository as the entry point for the estimator, so that you don't have to download the scripts locally.
+If you fo so, source directory and dependencies should be in the same repo if they are needed. Git support can be enabled simply by providing ``git_config`` parameter
 when creating an ``Estimator`` object. If Git support is enabled, then ``entry_point``, ``source_dir`` and  ``dependencies``
-should all be relative paths in the Git repo if provided. Note that if you decided to use Git support, then all your
-training scripts should be in a single Git repo.
+should be relative paths in the Git repo if provided.
 
-The ``git_config`` parameter includes arguments ``repo``, ``branch``,  ``commit``, ``2FA_enabled``, ``username``,
-``password`` and ``token``. Except for ``repo``, the other arguments are optional. ``repo`` specifies the Git repository
+The ``git_config`` parameter includes fields ``repo``, ``branch``,  ``commit``, ``2FA_enabled``, ``username``,
+``password`` and ``token``. The ``repo`` field is required. All other fields are optional. ``repo`` specifies the Git repository
 that you want to use. If ``branch`` is not provided, master branch will be used. If ``commit`` is not provided,
 the latest commit in the required branch will be used.
 
-``2FA_enabled``, ``username``, ``password`` and ``token`` are for authentication purpose. ``2FA_enabled`` should
-be 'True' or 'False', providing the information whether two-factor authentication is enabled for the GitHub (or other Git) account.
-If ``2FA_enabled`` is not provided, we consider 2FA as disabled.
+``2FA_enabled``, ``username``, ``password`` and ``token`` are used for authentication. Set ``2FA_enabled`` to 'True' if
+two-factor authentication is enabled for the GitHub (or other Git) account, otherwise set it to 'False'.
+If you do not provide a value for ``2FA_enabled``, a default value of 'False' is used.
 
-If ``repo`` is an ssh url, you should either have no passphrase for the ssh key pairs, or have the ssh-agent configured
-so that you will not be prompted for ssh passphrase when you do 'git clone' command with ssh urls. For ssh urls, it
-makes no difference whether the 2FA is enabled or disabled.
+If ``repo`` is an SSH URL, you should either have no passphrase for the SSH key pairs, or have the ``ssh-agent`` configured
+so that you are not prompted for the SSH passphrase when you run a ``git clone`` command with SSH URLs. For SSH URLs, it
+does not matter whether two-factor authentication is enabled.
 
-If ``repo`` is an https url, 2FA matters. When 2FA is disabled, either ``token`` or ``username``+``password`` will be
+If ``repo`` is an https URL, 2FA matters. When 2FA is disabled, either ``token`` or ``username``+``password`` will be
 used for authentication if provided (``token`` prioritized). When 2FA is enabled, only token will be used for
 authentication if provided. If required authentication info is not provided, python SDK will try to use local
 credentials storage to authenticate. If that fails either, an error message will be thrown.
 
-Here are some ways to specify ``git_config``:
+Here are some examples of creating estimators with Git support:
 
 .. code:: python
 
-        # The following three examples do not provide Git credentials, so python SDK will try to use
-        # local credential storage.
-
-        # Specifies the git_config parameter
+        # Specifies the git_config parameter. This example does not provide Git credentials, so python SDK will try
+        # to use local credential storage.
         git_config = {'repo': 'https://github.com/username/repo-with-training-scripts.git',
                       'branch': 'branch1',
                       'commit': '4893e528afa4a790331e1b5286954f073b0f14a2'}
 
-        # Alternatively, you can also specify git_config by providing only 'repo' and 'branch'.
-        # If this is the case, the latest commit in the branch will be used.
-        git_config = {'repo': 'https://github.com/username/repo-with-training-scripts.git',
-                      'branch': 'branch1'}
-
-        # Only providing 'repo' is also allowed. If this is the case, latest commit in
-        # 'master' branch will be used.
-        git_config = {'repo': 'https://github.com/username/repo-with-training-scripts.git'}
-
-        # This example does not provide '2FA_enabled', so 2FA is treated as disabled by default. 'username' and
-        # 'password' are provided for authentication
-        git_config = {'repo': 'https://github.com/username/repo-with-training-scripts.git',
-                      'username': 'username',
-                      'password': 'passw0rd!'}
-
-        # This example specifies that 2FA is enabled, and token is provided for authentication
-        git_config = {'repo': 'https://github.com/username/repo-with-training-scripts.git',
-                      '2FA_enabled': True,
-                      'token': 'your-token'}
-
-The following are some examples to define estimators with Git support:
-
-.. code:: python
-
         # In this example, the source directory 'pytorch' contains the entry point 'mnist.py' and other source code.
-        # and it is  relative path inside the Git repo.
+        # and it is relative path inside the Git repo.
         pytorch_estimator = PyTorch(entry_point='mnist.py',
                                     role='SageMakerRole',
                                     source_dir='pytorch',
                                     git_config=git_config,
                                     train_instance_count=1,
                                     train_instance_type='ml.c4.xlarge')
+
+.. code:: python
+
+        # You can also specify git_config by providing only 'repo' and 'branch'.
+        # If this is the case, the latest commit in that branch will be used.
+        git_config = {'repo': 'git@github.com:username/repo-with-training-scripts.git',
+                      'branch': 'branch1'}
 
         # In this example, the entry point 'mnist.py' is all we need for source code.
         # We need to specify the path to it in the Git repo.
@@ -261,6 +241,15 @@ The following are some examples to define estimators with Git support:
                              git_config=git_config,
                              train_instance_count=1,
                              train_instance_type='ml.c4.xlarge')
+
+.. code:: python
+
+        # Only providing 'repo' is also allowed. If this is the case, latest commit in 'master' branch will be used.
+        # This example does not provide '2FA_enabled', so 2FA is treated as disabled by default. 'username' and
+        # 'password' are provided for authentication
+        git_config = {'repo': 'https://github.com/username/repo-with-training-scripts.git',
+                      'username': 'username',
+                      'password': 'passw0rd!'}
 
         # In this example, besides entry point and other source code in source directory, we still need some
         # dependencies for the training job. Dependencies should also be paths inside the Git repo.
@@ -272,8 +261,23 @@ The following are some examples to define estimators with Git support:
                                     train_instance_count=1,
                                     train_instance_type='ml.c4.xlarge')
 
+.. code:: python
+
+        # This example specifies that 2FA is enabled, and token is provided for authentication
+        git_config = {'repo': 'https://github.com/username/repo-with-training-scripts.git',
+                      '2FA_enabled': True,
+                      'token': 'your-token'}
+
+        # In this exmaple, besides entry point, we also need some dependencies for the training job.
+        pytorch_estimator = PyTorch(entry_point='pytorch/mnist.py',
+                                    role='SageMakerRole',
+                                    dependencies=['dep.py'],
+                                    git_config=git_config,
+                                    train_instance_count=1,
+                                    train_instance_type='local')
+
 Git support can be used not only for training jobs, but also for hosting models. The usage is the same as the above,
-and ``git_config`` should be provided when creating the ``FrameworkModel`` object.
+and ``git_config`` should be provided when creating model objects, e.g. ``TensorFlowModel``, ``MXNetModel``, ``PyTorchModel``.
 
 Training Metrics
 ----------------
