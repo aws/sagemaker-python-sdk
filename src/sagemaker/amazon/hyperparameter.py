@@ -69,4 +69,8 @@ class Hyperparameter(object):
         """Return all non-None ``hyperparameter`` values on ``obj`` as a ``dict[str,str].``"""
         if "_hyperparameters" not in dir(obj):
             return {}
-        return {k: json.dumps(v) if type(v) is list else str(v) for k, v in obj._hyperparameters.items() if v is not None}
+        return {
+            k: json.dumps(v) if type(v) is list else str(v)
+            for k, v in obj._hyperparameters.items()
+            if v is not None
+        }
