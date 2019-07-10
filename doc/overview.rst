@@ -191,9 +191,9 @@ when creating an ``Estimator`` object. If Git support is enabled, then ``entry_p
 should be relative paths in the Git repo if provided.
 
 The ``git_config`` parameter includes fields ``repo``, ``branch``,  ``commit``, ``2FA_enabled``, ``username``,
-``password`` and ``token``. The ``repo`` field is required. All other fields are optional. ``repo`` specifies the Git repository
-that you want to use. If ``branch`` is not provided, master branch will be used. If ``commit`` is not provided,
-the latest commit in the required branch will be used.
+``password`` and ``token``. The ``repo`` field is required. All other fields are optional. ``repo`` specifies the Git
+repository where your training script is stored. If you don't provide ``branch``, the default value  'master' is used.
+If you don't provide ``commit``, the latest commit in the specified branch is used.
 
 ``2FA_enabled``, ``username``, ``password`` and ``token`` are used for authentication. Set ``2FA_enabled`` to 'True' if
 two-factor authentication is enabled for the GitHub (or other Git) account, otherwise set it to 'False'.
