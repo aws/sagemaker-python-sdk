@@ -83,7 +83,7 @@ disable=
     too-many-instance-attributes,
     line-too-long, # We let Flake8 take care of this # TODO: Fix these and stop relying on flake8
     len-as-condition, # TODO: Enable this check once pylint 2.4.0 is released and consumed due to the fix in https://github.com/PyCQA/pylint/issues/2684
-    import-error, # TODO: Fix import errors
+    import-error, # Since we run Pylint before any of our builds in tox, this will always fail
     attribute-defined-outside-init, # TODO: Fix scope
     protected-access, # TODO: Fix access
     abstract-method, # TODO: Fix abstract methods
