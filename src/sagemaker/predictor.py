@@ -195,10 +195,9 @@ class _CsvSerializer(object):
         if isinstance(data, np.ndarray):
             data = np.ndarray.flatten(data)
         if hasattr(data, "__len__"):
-            if len(data) > 0:
-                return _csv_serialize_python_array(data)
-            else:
+            if len(data) == 0:
                 raise ValueError("Cannot serialize empty array")
+            return _csv_serialize_python_array(data)
 
         # files and buffers
         if hasattr(data, "read"):
@@ -387,9 +386,9 @@ class _NumpyDeserializer(object):
                 return np.genfromtxt(
                     codecs.getreader("utf-8")(stream), delimiter=",", dtype=self.dtype
                 )
-            elif content_type == CONTENT_TYPE_JSON:
+            if content_type == CONTENT_TYPE_JSON:
                 return np.array(json.load(codecs.getreader("utf-8")(stream)), dtype=self.dtype)
-            elif content_type == CONTENT_TYPE_NPY:
+            if content_type == CONTENT_TYPE_NPY:
                 return np.load(BytesIO(stream.read()))
         finally:
             stream.close()

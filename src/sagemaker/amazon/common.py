@@ -204,8 +204,8 @@ def read_recordio(f):
 def _resolve_type(dtype):
     if dtype == np.dtype(int):
         return "Int32"
-    elif dtype == np.dtype(float):
+    if dtype == np.dtype(float):
         return "Float64"
-    elif dtype == np.dtype("float32"):
+    if dtype == np.dtype("float32"):
         return "Float32"
     raise ValueError("Unsupported dtype {} on array".format(dtype))
