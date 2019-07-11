@@ -1407,7 +1407,5 @@ def _s3_uri_without_prefix_from_input(input_data):
     if isinstance(input_data, s3_input):
         return _s3_uri_prefix("training", input_data)
     raise ValueError(
-        "Unrecognized type for S3 input data config - not str or s3_input: {}".format(
-            input_data
-        )
+        "Unrecognized type for S3 input data config - not str or s3_input: {}".format(input_data)
     )

@@ -83,9 +83,7 @@ def get_batch_strategy_instance(strategy, splitter):
         return SingleRecordStrategy(splitter)
     if strategy == "MultiRecord":
         return MultiRecordStrategy(splitter)
-    raise ValueError(
-        'Invalid Batch Strategy: %s - Valid Strategies: "SingleRecord", "MultiRecord"'
-    )
+    raise ValueError('Invalid Batch Strategy: %s - Valid Strategies: "SingleRecord", "MultiRecord"')
 
 
 class DataSource(with_metaclass(ABCMeta, object)):

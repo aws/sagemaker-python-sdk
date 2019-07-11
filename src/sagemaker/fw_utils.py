@@ -180,9 +180,7 @@ def create_image_uri(
         return "{}/{}:{}".format(
             get_ecr_image_uri_prefix(account, region), MERGED_FRAMEWORKS_REPO_MAP[framework], tag
         )
-    return "{}/sagemaker-{}:{}".format(
-        get_ecr_image_uri_prefix(account, region), framework, tag
-    )
+    return "{}/sagemaker-{}:{}".format(get_ecr_image_uri_prefix(account, region), framework, tag)
 
 
 def _accelerator_type_valid_for_framework(

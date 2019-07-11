@@ -196,9 +196,7 @@ class _Job(object):
                 distribution="FullyReplicated",
                 content_type="application/x-sagemaker-model",
             )
-        if (
-            isinstance(model_uri, string_types) and validate_uri and model_uri.startswith("file://")
-        ):
+        if isinstance(model_uri, string_types) and validate_uri and model_uri.startswith("file://"):
             return file_input(model_uri)
         if isinstance(model_uri, string_types) and validate_uri:
             raise ValueError(
