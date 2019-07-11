@@ -140,25 +140,24 @@ class _Job(object):
     def _format_string_uri_input(uri_input, validate_uri=True, content_type=None, input_mode=None):
         if isinstance(uri_input, str) and validate_uri and uri_input.startswith("s3://"):
             return s3_input(uri_input, content_type=content_type, input_mode=input_mode)
-        elif isinstance(uri_input, str) and validate_uri and uri_input.startswith("file://"):
+        if isinstance(uri_input, str) and validate_uri and uri_input.startswith("file://"):
             return file_input(uri_input)
-        elif isinstance(uri_input, str) and validate_uri:
+        if isinstance(uri_input, str) and validate_uri:
             raise ValueError(
                 'URI input {} must be a valid S3 or FILE URI: must start with "s3://" or '
                 '"file://"'.format(uri_input)
             )
-        elif isinstance(uri_input, str):
+        if isinstance(uri_input, str):
             return s3_input(uri_input, content_type=content_type, input_mode=input_mode)
-        elif isinstance(uri_input, s3_input):
+        if isinstance(uri_input, s3_input):
             return uri_input
-        elif isinstance(uri_input, file_input):
+        if isinstance(uri_input, file_input):
             return uri_input
-        else:
-            raise ValueError(
-                "Cannot format input {}. Expecting one of str, s3_input, or file_input".format(
-                    uri_input
-                )
+        raise ValueError(
+            "Cannot format input {}. Expecting one of str, s3_input, or file_input".format(
+                uri_input
             )
+        )
 
     @staticmethod
     def _prepare_channel(
@@ -171,7 +170,7 @@ class _Job(object):
     ):
         if not channel_uri:
             return
-        elif not channel_name:
+        if not channel_name:
             raise ValueError(
                 "Expected a channel name if a channel URI {} is specified".format(channel_uri)
             )
@@ -197,23 +196,20 @@ class _Job(object):
                 distribution="FullyReplicated",
                 content_type="application/x-sagemaker-model",
             )
-        elif (
-            isinstance(model_uri, string_types) and validate_uri and model_uri.startswith("file://")
-        ):
+        if isinstance(model_uri, string_types) and validate_uri and model_uri.startswith("file://"):
             return file_input(model_uri)
-        elif isinstance(model_uri, string_types) and validate_uri:
+        if isinstance(model_uri, string_types) and validate_uri:
             raise ValueError(
                 'Model URI must be a valid S3 or FILE URI: must start with "s3://" or ' '"file://'
             )
-        elif isinstance(model_uri, string_types):
+        if isinstance(model_uri, string_types):
             return s3_input(
                 model_uri,
                 input_mode="File",
                 distribution="FullyReplicated",
                 content_type="application/x-sagemaker-model",
             )
-        else:
-            raise ValueError("Cannot format model URI {}. Expecting str".format(model_uri))
+        raise ValueError("Cannot format model URI {}. Expecting str".format(model_uri))
 
     @staticmethod
     def _format_record_set_list_input(inputs):

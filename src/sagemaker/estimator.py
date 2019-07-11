@@ -643,8 +643,7 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):
         """
         if vpc_config_override is vpc_utils.VPC_CONFIG_DEFAULT:
             return vpc_utils.to_dict(self.subnets, self.security_group_ids)
-        else:
-            return vpc_utils.sanitize(vpc_config_override)
+        return vpc_utils.sanitize(vpc_config_override)
 
     def _ensure_latest_training_job(
         self, error_message="Estimator is not associated with a training job"
@@ -1235,14 +1234,13 @@ class Framework(EstimatorBase):
         """
         if self.image_name:
             return self.image_name
-        else:
-            return create_image_uri(
-                self.sagemaker_session.boto_region_name,
-                self.__framework_name__,
-                self.train_instance_type,
-                self.framework_version,  # pylint: disable=no-member
-                py_version=self.py_version,  # pylint: disable=no-member
-            )
+        return create_image_uri(
+            self.sagemaker_session.boto_region_name,
+            self.__framework_name__,
+            self.train_instance_type,
+            self.framework_version,  # pylint: disable=no-member
+            py_version=self.py_version,  # pylint: disable=no-member
+        )
 
     @classmethod
     def attach(cls, training_job_name, sagemaker_session=None, model_channel_name="model"):
@@ -1404,13 +1402,10 @@ def _s3_uri_without_prefix_from_input(input_data):
         for channel_name, channel_s3_uri in input_data.items():
             response.update(_s3_uri_prefix(channel_name, channel_s3_uri))
         return response
-    elif isinstance(input_data, str):
+    if isinstance(input_data, str):
         return _s3_uri_prefix("training", input_data)
-    elif isinstance(input_data, s3_input):
+    if isinstance(input_data, s3_input):
         return _s3_uri_prefix("training", input_data)
-    else:
-        raise ValueError(
-            "Unrecognized type for S3 input data config - not str or s3_input: {}".format(
-                input_data
-            )
-        )
+    raise ValueError(
+        "Unrecognized type for S3 input data config - not str or s3_input: {}".format(input_data)
+    )

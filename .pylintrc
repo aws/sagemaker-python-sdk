@@ -88,10 +88,8 @@ disable=
     protected-access, # TODO: Fix access
     abstract-method, # TODO: Fix abstract methods
     wrong-import-order, # TODO: Fix import order
-    no-else-return, # TODO: Remove unnecessary elses
     useless-object-inheritance, # TODO: Remove unnecessary imports
     cyclic-import, # TODO: Resolve cyclic imports
-    no-else-raise, # TODO: Remove unnecessary elses
     no-self-use, # TODO: Convert methods to functions where appropriate
     inconsistent-return-statements, # TODO: Make returns consistent
     consider-merging-isinstance, # TODO: Merge isinstance where appropriate

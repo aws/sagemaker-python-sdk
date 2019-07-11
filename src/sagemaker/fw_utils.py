@@ -87,8 +87,7 @@ def _is_merged_versions(framework, framework_version):
     lowest_version_list = MERGED_FRAMEWORKS_LOWEST_VERSIONS.get(framework)
     if lowest_version_list:
         return is_version_equal_or_higher(lowest_version_list, framework_version)
-    else:
-        return False
+    return False
 
 
 def _using_merged_images(region, framework, py_version, accelerator_type, framework_version):
@@ -101,8 +100,7 @@ def _using_merged_images(region, framework, py_version, accelerator_type, framew
 def _registry_id(region, framework, py_version, account, accelerator_type, framework_version):
     if _using_merged_images(region, framework, py_version, accelerator_type, framework_version):
         return "763104351884"
-    else:
-        return VALID_ACCOUNTS_BY_REGION.get(region, account)
+    return VALID_ACCOUNTS_BY_REGION.get(region, account)
 
 
 def create_image_uri(
@@ -182,10 +180,7 @@ def create_image_uri(
         return "{}/{}:{}".format(
             get_ecr_image_uri_prefix(account, region), MERGED_FRAMEWORKS_REPO_MAP[framework], tag
         )
-    else:
-        return "{}/sagemaker-{}:{}".format(
-            get_ecr_image_uri_prefix(account, region), framework, tag
-        )
+    return "{}/sagemaker-{}:{}".format(get_ecr_image_uri_prefix(account, region), framework, tag)
 
 
 def _accelerator_type_valid_for_framework(
@@ -324,30 +319,28 @@ def framework_name_from_image(image_name):
     sagemaker_match = sagemaker_pattern.match(image_name)
     if sagemaker_match is None:
         return None, None, None, None
-    else:
-        # extract framework, python version and image tag
-        # We must support both the legacy and current image name format.
-        name_pattern = re.compile(
-            r"^(?:sagemaker(?:-rl)?-)?(tensorflow|mxnet|chainer|pytorch|scikit-learn)(?:-)?(scriptmode|training)?:(.*)-(.*?)-(py2|py3)$"  # noqa: E501
+    # extract framework, python version and image tag
+    # We must support both the legacy and current image name format.
+    name_pattern = re.compile(
+        r"^(?:sagemaker(?:-rl)?-)?(tensorflow|mxnet|chainer|pytorch|scikit-learn)(?:-)?(scriptmode|training)?:(.*)-(.*?)-(py2|py3)$"  # noqa: E501
+    )
+    legacy_name_pattern = re.compile(r"^sagemaker-(tensorflow|mxnet)-(py2|py3)-(cpu|gpu):(.*)$")
+
+    name_match = name_pattern.match(sagemaker_match.group(9))
+    legacy_match = legacy_name_pattern.match(sagemaker_match.group(9))
+
+    if name_match is not None:
+        fw, scriptmode, ver, device, py = (
+            name_match.group(1),
+            name_match.group(2),
+            name_match.group(3),
+            name_match.group(4),
+            name_match.group(5),
         )
-        legacy_name_pattern = re.compile(r"^sagemaker-(tensorflow|mxnet)-(py2|py3)-(cpu|gpu):(.*)$")
-
-        name_match = name_pattern.match(sagemaker_match.group(9))
-        legacy_match = legacy_name_pattern.match(sagemaker_match.group(9))
-
-        if name_match is not None:
-            fw, scriptmode, ver, device, py = (
-                name_match.group(1),
-                name_match.group(2),
-                name_match.group(3),
-                name_match.group(4),
-                name_match.group(5),
-            )
-            return fw, py, "{}-{}-{}".format(ver, device, py), scriptmode
-        elif legacy_match is not None:
-            return (legacy_match.group(1), legacy_match.group(2), legacy_match.group(4), None)
-        else:
-            return None, None, None, None
+        return fw, py, "{}-{}-{}".format(ver, device, py), scriptmode
+    if legacy_match is not None:
+        return (legacy_match.group(1), legacy_match.group(2), legacy_match.group(4), None)
+    return None, None, None, None
 
 
 def framework_version_from_tag(image_tag):
