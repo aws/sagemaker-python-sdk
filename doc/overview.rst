@@ -186,7 +186,7 @@ Here is an example:
 Use Scripts Stored in a Git Repository
 --------------------------------------
 When you create an estimator, you can specify a training script that is stored in a GitHub or other Git repository as the entry point for the estimator, so that you don't have to download the scripts locally.
-If you fo so, source directory and dependencies should be in the same repo if they are needed. Git support can be enabled simply by providing ``git_config`` parameter
+If you do so, source directory and dependencies should be in the same repo if they are needed. Git support can be enabled simply by providing ``git_config`` parameter
 when creating an ``Estimator`` object. If Git support is enabled, then ``entry_point``, ``source_dir`` and  ``dependencies``
 should be relative paths in the Git repo if provided.
 
