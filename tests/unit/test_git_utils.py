@@ -298,7 +298,7 @@ def test_git_clone_repo_with_token_no_2fa_unnecessary_creds_provided(isfile, mkd
     with pytest.warns(UserWarning) as warn:
         ret = git_utils.git_clone_repo(git_config=git_config, entry_point=entry_point)
     assert (
-        "Using token for authentication, but unnecessary credential argument(s) provided."
+        "Using token for authentication, other credentials will be ignored."
         in warn[0].message.args[0]
     )
     check_call.assert_any_call(
@@ -334,7 +334,10 @@ def test_git_clone_repo_with_token_2fa_unnecessary_creds_provided(isfile, mkdtem
     env["GIT_TERMINAL_PROMPT"] = "0"
     with pytest.warns(UserWarning) as warn:
         ret = git_utils.git_clone_repo(git_config=git_config, entry_point=entry_point)
-    assert "unnecessary credential argument(s) provided." in warn[0].message.args[0]
+    assert (
+        "Using token for authentication, other credentials will be ignored."
+        in warn[0].message.args[0]
+    )
     check_call.assert_any_call(
         [
             "git",
