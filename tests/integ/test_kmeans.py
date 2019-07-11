@@ -13,6 +13,7 @@
 from __future__ import absolute_import
 
 import gzip
+import json
 import os
 import pickle
 import sys
@@ -64,6 +65,7 @@ def test_kmeans(sagemaker_session):
             epochs=str(kmeans.epochs),
             extra_center_factor=str(kmeans.center_factor),
             k=str(kmeans.k),
+            eval_metrics=json.dumps(kmeans.eval_metrics),
             force_dense="True",
         )
 

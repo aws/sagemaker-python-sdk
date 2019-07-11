@@ -70,7 +70,7 @@ class Hyperparameter(object):
         if "_hyperparameters" not in dir(obj):
             return {}
         return {
-            k: json.dumps(v) if type(v) is list else str(v)
+            k: json.dumps(v) if isinstance(v, list) else str(v)
             for k, v in obj._hyperparameters.items()
             if v is not None
         }
