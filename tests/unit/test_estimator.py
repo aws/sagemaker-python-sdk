@@ -1066,7 +1066,7 @@ def test_git_support_with_token_2fa(git_clone_repo, sagemaker_session):
         "branch": PRIVATE_BRANCH,
         "commit": PRIVATE_COMMIT,
         "token": "my-token",
-        "2FA_enabled": "True",
+        "2FA_enabled": True,
     }
     entry_point = "entry_point"
     fw = DummyFramework(

@@ -25,12 +25,12 @@ def git_clone_repo(git_config, entry_point, source_dir=None, dependencies=None):
     and set ``entry_point``, ``source_dir`` and ``dependencies`` to the right file or directory in the repo cloned.
 
     Args:
-        git_config (dict[str, str]): Git configurations used for cloning files, including ``repo``, ``branch``,
+        git_config (dict[str, object]): Git configurations used for cloning files, including ``repo``, ``branch``,
             ``commit``, ``2FA_enabled``, ``username``, ``password`` and ``token``. The fields are optional except
             ``repo``. If ``branch`` is not specified, master branch will be used. If ``commit`` is not specified,
             the latest commit in the required branch will be used. ``2FA_enabled``, ``username``, ``password`` and
             ``token`` are for authentication purpose.
-            ``2FA_enabled`` must be 'True' or 'False' if it is provided. If ``2FA_enabled`` is not provided, we
+            ``2FA_enabled`` must be ``True`` or ``False`` if it is provided. If ``2FA_enabled`` is not provided, we
             consider 2FA as disabled. For GitHub and other Git repos, when ssh urls are provided, it does not make a
             difference whether 2FA is enabled or disabled; an ssh passphrase should be in local storage. When
             https urls are provided: if 2FA is disabled, then either token or username+password will be used for
@@ -97,14 +97,11 @@ def _validate_git_config(git_config):
     if "repo" not in git_config:
         raise ValueError("Please provide a repo for git_config.")
     for key in git_config:
-        if key in git_config and not isinstance(git_config[key], six.string_types):
+        if key == "2FA_enabled":
+            if not isinstance(git_config["2FA_enabled"], bool):
+                raise ValueError("Please enter a bool type for 2FA_enabled'.")
+        elif not isinstance(git_config[key], six.string_types):
             raise ValueError("'{}' must be a string.".format(key))
-    if (
-        "2FA_enabled" in git_config
-        and git_config["2FA_enabled"] != "True"
-        and git_config["2FA_enabled"] != "False"
-    ):
-        raise ValueError("Please enter 'True' or 'False' for 2FA_enabled'.")
 
 
 def _generate_and_run_clone_command(git_config, dest_dir):
@@ -140,7 +137,7 @@ def _clone_command_for_github_like(git_config, dest_dir):
         raise ValueError("Invalid Git url provided.")
     if is_ssh:
         _clone_command_for_github_like_ssh(git_config, dest_dir)
-    elif "2FA_enabled" in git_config and git_config["2FA_enabled"] == "True":
+    elif "2FA_enabled" in git_config and git_config["2FA_enabled"] is True:
         _clone_command_for_github_like_https_2fa_enabled(git_config, dest_dir)
     else:
         _clone_command_for_github_like_https_2fa_disabled(git_config, dest_dir)

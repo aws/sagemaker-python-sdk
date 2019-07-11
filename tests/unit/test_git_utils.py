@@ -214,7 +214,7 @@ def test_git_clone_repo_with_token_no_2fa(isfile, mkdtemp, check_call):
         "branch": PRIVATE_BRANCH,
         "commit": PRIVATE_COMMIT,
         "token": "08c13d80a861f37150cb5c64520bfe14a85ca191",
-        "2FA_enabled": "False",
+        "2FA_enabled": False,
     }
     entry_point = "entry_point"
     env = os.environ.copy()
@@ -244,7 +244,7 @@ def test_git_clone_repo_with_token_2fa(isfile, mkdtemp, check_call):
         "repo": PRIVATE_GIT_REPO,
         "branch": PRIVATE_BRANCH,
         "commit": PRIVATE_COMMIT,
-        "2FA_enabled": "True",
+        "2FA_enabled": True,
         "username": "username",
         "token": "08c13d80a861f37150cb5c64520bfe14a85ca191",
     }
@@ -325,7 +325,7 @@ def test_git_clone_repo_with_token_2fa_unnecessary_creds_provided(isfile, mkdtem
         "repo": PRIVATE_GIT_REPO,
         "branch": PRIVATE_BRANCH,
         "commit": PRIVATE_COMMIT,
-        "2FA_enabled": "True",
+        "2FA_enabled": True,
         "username": "username",
         "token": "08c13d80a861f37150cb5c64520bfe14a85ca191",
     }
@@ -363,7 +363,7 @@ def test_git_clone_repo_with_username_and_password_wrong_creds(mkdtemp, check_ca
         "repo": PRIVATE_GIT_REPO,
         "branch": PRIVATE_BRANCH,
         "commit": PRIVATE_COMMIT,
-        "2FA_enabled": "False",
+        "2FA_enabled": False,
         "username": "username",
         "password": "wrong-password",
     }
@@ -387,7 +387,7 @@ def test_git_clone_repo_with_token_wrong_creds(mkdtemp, check_call):
         "repo": PRIVATE_GIT_REPO,
         "branch": PRIVATE_BRANCH,
         "commit": PRIVATE_COMMIT,
-        "2FA_enabled": "False",
+        "2FA_enabled": False,
         "token": "wrong-token",
     }
     entry_point = "entry_point"
@@ -410,7 +410,7 @@ def test_git_clone_repo_with_and_token_2fa_wrong_creds(mkdtemp, check_call):
         "repo": PRIVATE_GIT_REPO,
         "branch": PRIVATE_BRANCH,
         "commit": PRIVATE_COMMIT,
-        "2FA_enabled": "False",
+        "2FA_enabled": False,
         "token": "wrong-token",
     }
     entry_point = "entry_point"

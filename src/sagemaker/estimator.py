@@ -993,7 +993,7 @@ class Framework(EstimatorBase):
                     results in cloning the repo specified in 'repo', then checkout the 'master' branch, and checkout
                     the specified commit.
                 ``2FA_enabled``, ``username``, ``password`` and ``token`` are for authentication purpose.
-                ``2FA_enabled`` must be 'True' or 'False' if it is provided. If ``2FA_enabled`` is not provided,
+                ``2FA_enabled`` must be ``True`` or ``False`` if it is provided. If ``2FA_enabled`` is not provided,
                 we consider 2FA as disabled. For GitHub and other Git repos, when ssh urls are provided, it does not
                 make a difference whether 2FA is enabled or disabled; an ssh passphrase should be in local storage.
                 When https urls are provided: if 2FA is disabled, then either token or username+password will

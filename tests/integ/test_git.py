@@ -87,7 +87,7 @@ def test_git_support_with_mxnet(sagemaker_local_session):
         "repo": PRIVATE_GIT_REPO,
         "branch": PRIVATE_BRANCH,
         "commit": PRIVATE_COMMIT,
-        "2FA_enabled": "False",
+        "2FA_enabled": False,
         "username": "git-support-test",
         "password": "passw0rd@ %",
     }
@@ -152,7 +152,7 @@ def test_git_support_with_sklearn(sagemaker_local_session, sklearn_full_version)
         "repo": PRIVATE_GIT_REPO_2FA,
         "branch": PRIVATE_BRANCH_2FA,
         "commit": PRIVATE_COMMIT_2FA,
-        "2FA_enabled": "True",
+        "2FA_enabled": True,
         "token": PRIVATE_REPO_TOKEN,
     }
     source_dir = "sklearn"

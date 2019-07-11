@@ -717,7 +717,7 @@ def test_git_support_with_token_2fa(tar_and_upload_dir, git_clone_repo, sagemake
         "branch": PRIVATE_BRANCH,
         "commit": PRIVATE_COMMIT,
         "token": "my-token",
-        "2FA_enabled": "True",
+        "2FA_enabled": True,
     }
     model = DummyFrameworkModelForGit(
         sagemaker_session=sagemaker_session, entry_point=entry_point, git_config=git_config
