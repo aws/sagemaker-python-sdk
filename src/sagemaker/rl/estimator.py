@@ -226,7 +226,7 @@ class RLEstimator(Framework):
             from sagemaker.tensorflow.serving import Model as tfsModel
 
             return tfsModel(framework_version=self.framework_version, **base_args)
-        elif self.framework == RLFramework.MXNET.value:
+        if self.framework == RLFramework.MXNET.value:
             return MXNetModel(
                 framework_version=self.framework_version, py_version=PYTHON_VERSION, **extended_args
             )
@@ -242,14 +242,13 @@ class RLEstimator(Framework):
         """
         if self.image_name:
             return self.image_name
-        else:
-            return fw_utils.create_image_uri(
-                self.sagemaker_session.boto_region_name,
-                self._image_framework(),
-                self.train_instance_type,
-                self._image_version(),
-                py_version=PYTHON_VERSION,
-            )
+        return fw_utils.create_image_uri(
+            self.sagemaker_session.boto_region_name,
+            self._image_framework(),
+            self.train_instance_type,
+            self._image_version(),
+            py_version=PYTHON_VERSION,
+        )
 
     @classmethod
     def _prepare_init_params_from_job_description(cls, job_details, model_channel_name=None):
@@ -406,7 +405,7 @@ class RLEstimator(Framework):
                 {"Name": "reward-training", "Regex": "^Training>.*Total reward=(.*?),"},
                 {"Name": "reward-testing", "Regex": "^Testing>.*Total reward=(.*?),"},
             ]
-        elif toolkit is RLToolkit.RAY:
+        if toolkit is RLToolkit.RAY:
             float_regex = "[-+]?[0-9]*[.]?[0-9]+([eE][-+]?[0-9]+)?"  # noqa: W605, E501
 
             return [

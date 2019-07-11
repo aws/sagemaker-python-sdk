@@ -205,8 +205,7 @@ class Model(object):
         """
         if region in NEO_IMAGE_ACCOUNT:
             return True
-        else:
-            return False
+        return False
 
     def _neo_image_account(self, region):
         if region not in NEO_IMAGE_ACCOUNT:
