@@ -43,6 +43,11 @@ MODEL_NAME = "{}-{}".format(MODEL_IMAGE, TIMESTAMP)
 GIT_REPO = "https://github.com/aws/sagemaker-python-sdk.git"
 BRANCH = "test-branch-git-config"
 COMMIT = "ae15c9d7d5b97ea95ea451e4662ee43da3401d73"
+PRIVATE_GIT_REPO_SSH = "git@github.com:testAccount/private-repo.git"
+PRIVATE_GIT_REPO = "https://github.com/testAccount/private-repo.git"
+PRIVATE_BRANCH = "test-branch"
+PRIVATE_COMMIT = "329bfcf884482002c05ff7f44f62599ebc9f445a"
+REPO_DIR = "/tmp/repo_dir"
 
 
 DESCRIBE_MODEL_PACKAGE_RESPONSE = {
@@ -666,3 +671,97 @@ def test_git_support_dependencies_not_exist(sagemaker_session):
         )
         model.prepare_container_def(instance_type=INSTANCE_TYPE)
     assert "Dependency", "does not exist in the repo." in str(error)
+
+
+@patch(
+    "sagemaker.git_utils.git_clone_repo",
+    side_effect=lambda gitconfig, entrypoint, source_dir=None, dependencies=None: {
+        "entry_point": "/tmp/repo_dir/entry_point",
+        "source_dir": None,
+        "dependencies": None,
+    },
+)
+@patch("sagemaker.model.fw_utils.tar_and_upload_dir")
+def test_git_support_with_username_password_no_2fa(
+    tar_and_upload_dir, git_clone_repo, sagemaker_session
+):
+    entry_point = "entry_point"
+    git_config = {
+        "repo": PRIVATE_GIT_REPO,
+        "branch": PRIVATE_BRANCH,
+        "commit": PRIVATE_COMMIT,
+        "username": "username",
+        "password": "passw0rd!",
+    }
+    model = DummyFrameworkModelForGit(
+        sagemaker_session=sagemaker_session, entry_point=entry_point, git_config=git_config
+    )
+    model.prepare_container_def(instance_type=INSTANCE_TYPE)
+    git_clone_repo.assert_called_with(git_config, entry_point, None, [])
+    assert model.entry_point == "/tmp/repo_dir/entry_point"
+
+
+@patch(
+    "sagemaker.git_utils.git_clone_repo",
+    side_effect=lambda gitconfig, entrypoint, source_dir=None, dependencies=None: {
+        "entry_point": "/tmp/repo_dir/entry_point",
+        "source_dir": None,
+        "dependencies": None,
+    },
+)
+@patch("sagemaker.model.fw_utils.tar_and_upload_dir")
+def test_git_support_with_token_2fa(tar_and_upload_dir, git_clone_repo, sagemaker_session):
+    entry_point = "entry_point"
+    git_config = {
+        "repo": PRIVATE_GIT_REPO,
+        "branch": PRIVATE_BRANCH,
+        "commit": PRIVATE_COMMIT,
+        "token": "my-token",
+        "2FA_enabled": True,
+    }
+    model = DummyFrameworkModelForGit(
+        sagemaker_session=sagemaker_session, entry_point=entry_point, git_config=git_config
+    )
+    model.prepare_container_def(instance_type=INSTANCE_TYPE)
+    git_clone_repo.assert_called_with(git_config, entry_point, None, [])
+    assert model.entry_point == "/tmp/repo_dir/entry_point"
+
+
+@patch(
+    "sagemaker.git_utils.git_clone_repo",
+    side_effect=lambda gitconfig, entrypoint, source_dir=None, dependencies=None: {
+        "entry_point": "/tmp/repo_dir/entry_point",
+        "source_dir": None,
+        "dependencies": None,
+    },
+)
+@patch("sagemaker.model.fw_utils.tar_and_upload_dir")
+def test_git_support_ssh_no_passphrase_needed(
+    tar_and_upload_dir, git_clone_repo, sagemaker_session
+):
+    entry_point = "entry_point"
+    git_config = {"repo": PRIVATE_GIT_REPO_SSH, "branch": PRIVATE_BRANCH, "commit": PRIVATE_COMMIT}
+    model = DummyFrameworkModelForGit(
+        sagemaker_session=sagemaker_session, entry_point=entry_point, git_config=git_config
+    )
+    model.prepare_container_def(instance_type=INSTANCE_TYPE)
+    git_clone_repo.assert_called_with(git_config, entry_point, None, [])
+    assert model.entry_point == "/tmp/repo_dir/entry_point"
+
+
+@patch(
+    "sagemaker.git_utils.git_clone_repo",
+    side_effect=subprocess.CalledProcessError(
+        returncode=1, cmd="git clone {} {}".format(PRIVATE_GIT_REPO_SSH, REPO_DIR)
+    ),
+)
+@patch("sagemaker.model.fw_utils.tar_and_upload_dir")
+def test_git_support_ssh_passphrase_required(tar_and_upload_dir, git_clone_repo, sagemaker_session):
+    entry_point = "entry_point"
+    git_config = {"repo": PRIVATE_GIT_REPO_SSH, "branch": PRIVATE_BRANCH, "commit": PRIVATE_COMMIT}
+    with pytest.raises(subprocess.CalledProcessError) as error:
+        model = DummyFrameworkModelForGit(
+            sagemaker_session=sagemaker_session, entry_point=entry_point, git_config=git_config
+        )
+        model.prepare_container_def(instance_type=INSTANCE_TYPE)
+    assert "returned non-zero exit status" in str(error)

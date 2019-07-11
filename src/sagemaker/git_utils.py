@@ -16,6 +16,8 @@ import os
 import six
 import subprocess
 import tempfile
+import warnings
+from six.moves import urllib
 
 
 def git_clone_repo(git_config, entry_point, source_dir=None, dependencies=None):
@@ -23,9 +25,18 @@ def git_clone_repo(git_config, entry_point, source_dir=None, dependencies=None):
     and set ``entry_point``, ``source_dir`` and ``dependencies`` to the right file or directory in the repo cloned.
 
     Args:
-        git_config (dict[str, str]): Git configurations used for cloning files, including ``repo``, ``branch``
-            and ``commit``. ``branch`` and ``commit`` are optional. If ``branch`` is not specified, master branch
-            will be used. If ``commit`` is not specified, the latest commit in the required branch will be used.
+        git_config (dict[str, object]): Git configurations used for cloning files, including ``repo``, ``branch``,
+            ``commit``, ``2FA_enabled``, ``username``, ``password`` and ``token``. The fields are optional except
+            ``repo``. If ``branch`` is not specified, master branch will be used. If ``commit`` is not specified,
+            the latest commit in the required branch will be used. ``2FA_enabled``, ``username``, ``password`` and
+            ``token`` are for authentication purpose.
+            ``2FA_enabled`` must be ``True`` or ``False`` if it is provided. If ``2FA_enabled`` is not provided, we
+            consider 2FA as disabled. For GitHub and other Git repos, when ssh urls are provided, it does not make a
+            difference whether 2FA is enabled or disabled; an ssh passphrase should be in local storage. When
+            https urls are provided: if 2FA is disabled, then either token or username+password will be used for
+            authentication if provided (token prioritized); if 2FA is enabled, only token will be used for
+            authentication if provided. If required authentication info is not provided, python SDK will try to use
+            local credentials storage to authenticate. If that fails either, an error message will be thrown.
         entry_point (str): A relative location to the Python source file which should be executed as the entry point
             to training or model hosting in the Git repo.
         source_dir (str): A relative location to a directory with other training or model hosting source code
@@ -41,18 +52,18 @@ def git_clone_repo(git_config, entry_point, source_dir=None, dependencies=None):
         ValueError: If 1. entry point specified does not exist in the repo
                        2. source dir specified does not exist in the repo
                        3. dependencies specified do not exist in the repo
-                       4. git_config is in bad format
+                       4. wrong format is provided for git_config
 
     Returns:
-        dict: A dict that contains the updated values of entry_point, source_dir and dependencies
+        dict: A dict that contains the updated values of entry_point, source_dir and dependencies.
     """
     if entry_point is None:
         raise ValueError("Please provide an entry point.")
     _validate_git_config(git_config)
-    repo_dir = tempfile.mkdtemp()
-    subprocess.check_call(["git", "clone", git_config["repo"], repo_dir])
+    dest_dir = tempfile.mkdtemp()
+    _generate_and_run_clone_command(git_config, dest_dir)
 
-    _checkout_branch_and_commit(git_config, repo_dir)
+    _checkout_branch_and_commit(git_config, dest_dir)
 
     updated_paths = {
         "entry_point": entry_point,
@@ -62,62 +73,180 @@ def git_clone_repo(git_config, entry_point, source_dir=None, dependencies=None):
 
     # check if the cloned repo contains entry point, source directory and dependencies
     if source_dir:
-        if not os.path.isdir(os.path.join(repo_dir, source_dir)):
+        if not os.path.isdir(os.path.join(dest_dir, source_dir)):
             raise ValueError("Source directory does not exist in the repo.")
-        if not os.path.isfile(os.path.join(repo_dir, source_dir, entry_point)):
+        if not os.path.isfile(os.path.join(dest_dir, source_dir, entry_point)):
             raise ValueError("Entry point does not exist in the repo.")
-        updated_paths["source_dir"] = os.path.join(repo_dir, source_dir)
+        updated_paths["source_dir"] = os.path.join(dest_dir, source_dir)
     else:
-        if os.path.isfile(os.path.join(repo_dir, entry_point)):
-            updated_paths["entry_point"] = os.path.join(repo_dir, entry_point)
+        if os.path.isfile(os.path.join(dest_dir, entry_point)):
+            updated_paths["entry_point"] = os.path.join(dest_dir, entry_point)
         else:
             raise ValueError("Entry point does not exist in the repo.")
-
-    updated_paths["dependencies"] = []
-    for path in dependencies:
-        if os.path.exists(os.path.join(repo_dir, path)):
-            updated_paths["dependencies"].append(os.path.join(repo_dir, path))
-        else:
-            raise ValueError("Dependency {} does not exist in the repo.".format(path))
+    if dependencies is not None:
+        updated_paths["dependencies"] = []
+        for path in dependencies:
+            if os.path.exists(os.path.join(dest_dir, path)):
+                updated_paths["dependencies"].append(os.path.join(dest_dir, path))
+            else:
+                raise ValueError("Dependency {} does not exist in the repo.".format(path))
     return updated_paths
 
 
 def _validate_git_config(git_config):
-    """check if a git_config param is valid
+    if "repo" not in git_config:
+        raise ValueError("Please provide a repo for git_config.")
+    for key in git_config:
+        if key == "2FA_enabled":
+            if not isinstance(git_config["2FA_enabled"], bool):
+                raise ValueError("Please enter a bool type for 2FA_enabled'.")
+        elif not isinstance(git_config[key], six.string_types):
+            raise ValueError("'{}' must be a string.".format(key))
+
+
+def _generate_and_run_clone_command(git_config, dest_dir):
+    """check if a git_config param is valid, if it is, create the command to git clone the repo, and run it.
 
     Args:
         git_config ((dict[str, str]): Git configurations used for cloning files, including ``repo``, ``branch``
             and ``commit``.
+        dest_dir (str): The local directory to clone the Git repo into.
 
     Raises:
-        ValueError: If:
-            1. git_config has no key 'repo'
-            2. git_config['repo'] is in the wrong format.
+        CalledProcessError: If failed to clone git repo.
     """
-    if "repo" not in git_config:
-        raise ValueError("Please provide a repo for git_config.")
-    allowed_keys = ["repo", "branch", "commit"]
-    for key in allowed_keys:
-        if key in git_config and not isinstance(git_config[key], six.string_types):
-            raise ValueError("'{}' should be a string".format(key))
-    for key in git_config:
-        if key not in allowed_keys:
-            raise ValueError("Unexpected argument(s) provided for git_config!")
+    _clone_command_for_github_like(git_config, dest_dir)
 
 
-def _checkout_branch_and_commit(git_config, repo_dir):
+def _clone_command_for_github_like(git_config, dest_dir):
+    """check if a git_config param representing a GitHub (or like) repo is valid, if it is, create the command to
+    git clone the repo, and run it.
+
+    Args:
+        git_config ((dict[str, str]): Git configurations used for cloning files, including ``repo``, ``branch``
+            and ``commit``.
+        dest_dir (str): The local directory to clone the Git repo into.
+
+    Raises:
+        ValueError: If git_config['repo'] is in the wrong format.
+        CalledProcessError: If failed to clone git repo.
+    """
+    is_https = git_config["repo"].startswith("https://")
+    is_ssh = git_config["repo"].startswith("git@")
+    if not is_https and not is_ssh:
+        raise ValueError("Invalid Git url provided.")
+    if is_ssh:
+        _clone_command_for_github_like_ssh(git_config, dest_dir)
+    elif "2FA_enabled" in git_config and git_config["2FA_enabled"] is True:
+        _clone_command_for_github_like_https_2fa_enabled(git_config, dest_dir)
+    else:
+        _clone_command_for_github_like_https_2fa_disabled(git_config, dest_dir)
+
+
+def _clone_command_for_github_like_ssh(git_config, dest_dir):
+    if "username" in git_config or "password" in git_config or "token" in git_config:
+        warnings.warn("SSH cloning, authentication information in git config will be ignored.")
+    _run_clone_command(git_config["repo"], dest_dir)
+
+
+def _clone_command_for_github_like_https_2fa_disabled(git_config, dest_dir):
+    updated_url = git_config["repo"]
+    if "token" in git_config:
+        if "username" in git_config or "password" in git_config:
+            warnings.warn("Using token for authentication, " "other credentials will be ignored.")
+        updated_url = _insert_token_to_repo_url(url=git_config["repo"], token=git_config["token"])
+    elif "username" in git_config and "password" in git_config:
+        updated_url = _insert_username_and_password_to_repo_url(
+            url=git_config["repo"], username=git_config["username"], password=git_config["password"]
+        )
+    elif "username" in git_config or "password" in git_config:
+        warnings.warn("Credentials provided in git config will be ignored.")
+    _run_clone_command(updated_url, dest_dir)
+
+
+def _clone_command_for_github_like_https_2fa_enabled(git_config, dest_dir):
+    updated_url = git_config["repo"]
+    if "token" in git_config:
+        if "username" in git_config or "password" in git_config:
+            warnings.warn("Using token for authentication, " "other credentials will be ignored.")
+        updated_url = _insert_token_to_repo_url(url=git_config["repo"], token=git_config["token"])
+    _run_clone_command(updated_url, dest_dir)
+
+
+def _run_clone_command(repo_url, dest_dir):
+    """Run the 'git clone' command with the repo url and the directory to clone the repo into.
+
+    Args:
+        repo_url (str): Git repo url to be cloned.
+        dest_dir: (str): Local path where the repo should be cloned into.
+
+    Raises:
+        CalledProcessError: If failed to clone git repo.
+    """
+    my_env = os.environ.copy()
+    if repo_url.startswith("https://"):
+        my_env["GIT_TERMINAL_PROMPT"] = "0"
+        subprocess.check_call(["git", "clone", repo_url, dest_dir], env=my_env)
+    elif repo_url.startswith("git@"):
+        with tempfile.NamedTemporaryFile() as sshnoprompt:
+            write_pipe = open(sshnoprompt.name, "w")
+            write_pipe.write("ssh -oBatchMode=yes $@")
+            write_pipe.close()
+            # 511 in decimal is same as 777 in octal
+            os.chmod(sshnoprompt.name, 511)
+            my_env["GIT_SSH"] = sshnoprompt.name
+            subprocess.check_call(["git", "clone", repo_url, dest_dir], env=my_env)
+
+
+def _insert_token_to_repo_url(url, token):
+    """Insert the token to the Git repo url, to make a component of the git clone command. This method can
+    only be called when repo_url is an https url.
+
+    Args:
+        url (str): Git repo url where the token should be inserted into.
+        token (str): Token to be inserted.
+
+    Returns:
+        str: the component needed fot the git clone command.
+    """
+    index = len("https://")
+    if url.find(token) == index:
+        return url
+    return url.replace("https://", "https://" + token + "@")
+
+
+def _insert_username_and_password_to_repo_url(url, username, password):
+    """Insert the username and the password to the Git repo url, to make a component of the git clone command.
+    This method can only be called when repo_url is an https url.
+
+    Args:
+        url (str): Git repo url where the token should be inserted into.
+        username (str): Username to be inserted.
+        password (str): Password to be inserted.
+
+    Returns:
+        str: the component needed for the git clone command.
+    """
+    password = urllib.parse.quote_plus(password)
+    # urllib parses ' ' as '+', but what we need is '%20' here
+    password = password.replace("+", "%20")
+    index = len("https://")
+    return url[:index] + username + ":" + password + "@" + url[index:]
+
+
+def _checkout_branch_and_commit(git_config, dest_dir):
     """Checkout the required branch and commit.
 
     Args:
-        git_config: (dict[str, str]): Git configurations used for cloning files, including ``repo``, ``branch``
+        git_config (dict[str, str]): Git configurations used for cloning files, including ``repo``, ``branch``
             and ``commit``.
-        repo_dir (str): the directory where the repo is cloned
+        dest_dir (str): the directory where the repo is cloned
 
     Raises:
         CalledProcessError: If 1. failed to checkout the required branch
                                2. failed to checkout the required commit
     """
     if "branch" in git_config:
-        subprocess.check_call(args=["git", "checkout", git_config["branch"]], cwd=str(repo_dir))
+        subprocess.check_call(args=["git", "checkout", git_config["branch"]], cwd=str(dest_dir))
     if "commit" in git_config:
-        subprocess.check_call(args=["git", "checkout", git_config["commit"]], cwd=str(repo_dir))
+        subprocess.check_call(args=["git", "checkout", git_config["commit"]], cwd=str(dest_dir))

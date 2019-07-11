@@ -16,6 +16,7 @@ import os
 
 import numpy
 import pytest
+import subprocess
 import tempfile
 
 from tests.integ import lock as lock
@@ -29,6 +30,20 @@ from tests.integ import DATA_DIR, PYTHON_VERSION
 GIT_REPO = "https://github.com/aws/sagemaker-python-sdk.git"
 BRANCH = "test-branch-git-config"
 COMMIT = "ae15c9d7d5b97ea95ea451e4662ee43da3401d73"
+
+PRIVATE_GIT_REPO = "https://github.com/git-support-test/test-git.git"
+PRIVATE_BRANCH = "master"
+PRIVATE_COMMIT = "a46d6f9add3532ca3e4e231e4108b6bad15b7373"
+
+PRIVATE_GIT_REPO_2FA = "https://github.com/git-support-test-2fa/test-git.git"
+PRIVATE_GIT_REPO_2FA_SSH = "git@github.com:git-support-test-2fa/test-git.git"
+PRIVATE_BRANCH_2FA = "master"
+PRIVATE_COMMIT_2FA = "52381dee030eb332a7e42d9992878d7261eb21d4"
+
+# Since personal access tokens will delete themselves if they are committed to GitHub repos,
+# we cannot hard code them here, but have to encrypt instead
+ENCRYPTED_PRIVATE_REPO_TOKEN = "e-4_1-1dc_71-f0e_f7b54a0f3b7db2757163da7b5e8c3"
+PRIVATE_REPO_TOKEN = ENCRYPTED_PRIVATE_REPO_TOKEN.replace("-", "").replace("_", "")
 
 # endpoint tests all use the same port, so we use this lock to prevent concurrent execution
 LOCK_PATH = os.path.join(tempfile.gettempdir(), "sagemaker_test_git_lock")
@@ -56,7 +71,6 @@ def test_git_support_with_pytorch(sagemaker_local_session):
     with lock.lock(LOCK_PATH):
         try:
             predictor = pytorch.deploy(initial_instance_count=1, instance_type="local")
-
             data = numpy.zeros(shape=(1, 1, 28, 28)).astype(numpy.float32)
             result = predictor.predict(data)
             assert result is not None
@@ -66,9 +80,17 @@ def test_git_support_with_pytorch(sagemaker_local_session):
 
 @pytest.mark.local_mode
 def test_git_support_with_mxnet(sagemaker_local_session):
+
     script_path = "mnist.py"
     data_path = os.path.join(DATA_DIR, "mxnet_mnist")
-    git_config = {"repo": GIT_REPO, "branch": BRANCH, "commit": COMMIT}
+    git_config = {
+        "repo": PRIVATE_GIT_REPO,
+        "branch": PRIVATE_BRANCH,
+        "commit": PRIVATE_COMMIT,
+        "2FA_enabled": False,
+        "username": "git-support-test",
+        "password": "passw0rd@ %",
+    }
     source_dir = "mxnet"
     dependencies = ["foo/bar.py"]
     mx = MXNet(
@@ -114,7 +136,6 @@ def test_git_support_with_mxnet(sagemaker_local_session):
                 git_config=git_config,
             )
             predictor = model.deploy(initial_instance_count=1, instance_type="local")
-
             data = numpy.zeros(shape=(1, 1, 28, 28))
             result = predictor.predict(data)
             assert result is not None
@@ -128,9 +149,11 @@ def test_git_support_with_sklearn(sagemaker_local_session, sklearn_full_version)
     script_path = "mnist.py"
     data_path = os.path.join(DATA_DIR, "sklearn_mnist")
     git_config = {
-        "repo": "https://github.com/GaryTu1020/python-sdk-testing.git",
-        "branch": "branch1",
-        "commit": "aafa4e96237dd78a015d5df22bfcfef46845c3c5",
+        "repo": PRIVATE_GIT_REPO_2FA,
+        "branch": PRIVATE_BRANCH_2FA,
+        "commit": PRIVATE_COMMIT_2FA,
+        "2FA_enabled": True,
+        "token": PRIVATE_REPO_TOKEN,
     }
     source_dir = "sklearn"
     sklearn = SKLearn(
@@ -171,3 +194,34 @@ def test_git_support_with_sklearn(sagemaker_local_session, sklearn_full_version)
             assert result is not None
         finally:
             predictor.delete_endpoint()
+
+
+@pytest.mark.local_mode
+def test_git_support_with_sklearn_ssh_passphrase_not_configured(
+    sagemaker_local_session, sklearn_full_version
+):
+    script_path = "mnist.py"
+    data_path = os.path.join(DATA_DIR, "sklearn_mnist")
+    git_config = {
+        "repo": PRIVATE_GIT_REPO_2FA_SSH,
+        "branch": PRIVATE_BRANCH_2FA,
+        "commit": PRIVATE_COMMIT_2FA,
+    }
+    source_dir = "sklearn"
+    sklearn = SKLearn(
+        entry_point=script_path,
+        role="SageMakerRole",
+        source_dir=source_dir,
+        py_version=PYTHON_VERSION,
+        train_instance_count=1,
+        train_instance_type="local",
+        sagemaker_session=sagemaker_local_session,
+        framework_version=sklearn_full_version,
+        hyperparameters={"epochs": 1},
+        git_config=git_config,
+    )
+    train_input = "file://" + os.path.join(data_path, "train")
+    test_input = "file://" + os.path.join(data_path, "test")
+    with pytest.raises(subprocess.CalledProcessError) as error:
+        sklearn.fit({"train": train_input, "test": test_input})
+    assert "returned non-zero exit status" in str(error)

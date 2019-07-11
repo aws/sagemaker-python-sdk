@@ -516,10 +516,12 @@ class FrameworkModel(Model):
                     >>>         |----- test.py
 
                     You can assign entry_point='src/inference.py'.
-            git_config (dict[str, str]): Git configurations used for cloning files, including 'repo', 'branch'
-                and 'commit' (default: None).
-                'branch' and 'commit' are optional. If 'branch' is not specified, 'master' branch will be used. If
-                'commit' is not specified, the latest commit in the required branch will be used.
+            git_config (dict[str, str]): Git configurations used for cloning files, including ``repo``, ``branch``,
+                ``commit``, ``2FA_enabled``, ``username``, ``password`` and ``token`` (default: None). The fields are
+                optional except ``repo``. If ``branch`` is not specified, master branch will be used. If ``commit``
+                is not specified, the latest commit in the required branch will be used. 'branch' and 'commit' are
+                optional. If 'branch' is not specified, 'master' branch will be used. If 'commit' is not specified,
+                the latest commit in the required branch will be used.
                 Example:
 
                     The following config:
@@ -530,6 +532,15 @@ class FrameworkModel(Model):
 
                     results in cloning the repo specified in 'repo', then checkout the 'master' branch, and checkout
                     the specified commit.
+                ``2FA_enabled``, ``username``, ``password`` and ``token`` are for authentication purpose.
+                ``2FA_enabled`` must be ``True`` or ``False`` if it is provided. If ``2FA_enabled`` is not provided,
+                we consider 2FA as disabled. For GitHub and other Git repos, when ssh urls are provided, it does not
+                make a difference whether 2FA is enabled or disabled; an ssh passphrase should be in local storage.
+                When https urls are provided: if 2FA is disabled, then either token or username+password will
+                be used for authentication if provided (token prioritized); if 2FA is enabled, only token will
+                be used for authentication if provided. If required authentication info is not provided, python SDK
+                will try to use local credentials storage to authenticate. If that fails either, an error message will
+                be thrown.
             source_dir (str): Path (absolute or relative) to a directory with any other training
                 source code dependencies aside from the entry point file (default: None). Structure within this
                 directory will be preserved when training on SageMaker. If 'git_config' is provided,
@@ -554,13 +565,13 @@ class FrameworkModel(Model):
                 Example:
 
                     The following call
-                    >>> Estimator(entry_point='train.py', dependencies=['my/libs/common', 'virtual-env'])
+                    >>> Estimator(entry_point='inference.py', dependencies=['my/libs/common', 'virtual-env'])
                     results in the following inside the container:
 
                     >>> $ ls
 
                     >>> opt/ml/code
-                    >>>     |------ train.py
+                    >>>     |------ inference.py
                     >>>     |------ common
                     >>>     |------ virtual-env
 
