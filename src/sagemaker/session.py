@@ -1292,9 +1292,7 @@ class Session(object):
         client = self.boto_session.client("logs", config=config)
         log_group = "/aws/sagemaker/TrainingJobs"
 
-        job_already_completed = (
-            True if status == "Completed" or status == "Failed" or status == "Stopped" else False
-        )
+        job_already_completed = status == "Completed" or status == "Failed" or status == "Stopped"
 
         state = LogState.TAILING if wait and not job_already_completed else LogState.COMPLETE
         dot = False
