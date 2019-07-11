@@ -1231,8 +1231,7 @@ class Session(object):
         """
         if "/" in role:
             return role
-        else:
-            return self.boto_session.resource("iam").Role(role).arn
+        return self.boto_session.resource("iam").Role(role).arn
 
     def get_caller_identity_arn(self):
         """Returns the ARN user or role whose credentials are used to call the API.
@@ -1791,5 +1790,4 @@ def _vpc_config_from_training_job(
 ):
     if vpc_config_override is vpc_utils.VPC_CONFIG_DEFAULT:
         return training_job_desc.get(vpc_utils.VPC_CONFIG_KEY)
-    else:
-        return vpc_utils.sanitize(vpc_config_override)
+    return vpc_utils.sanitize(vpc_config_override)

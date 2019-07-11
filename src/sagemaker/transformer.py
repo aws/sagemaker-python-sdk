@@ -90,6 +90,7 @@ class Transformer(object):
         self.base_transform_job_name = base_transform_job_name
         self._current_job_name = None
         self.latest_transform_job = None
+        self._reset_output_path = False
 
         self.sagemaker_session = sagemaker_session or Session()
 
@@ -146,10 +147,11 @@ class Transformer(object):
 
             self._current_job_name = name_from_base(base_name)
 
-        if self.output_path is None:
+        if self.output_path is None or self._reset_output_path is True:
             self.output_path = "s3://{}/{}".format(
                 self.sagemaker_session.default_bucket(), self._current_job_name
             )
+            self._reset_output_path = True
 
         self.latest_transform_job = _TransformJob.start_new(
             self,

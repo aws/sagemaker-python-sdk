@@ -569,12 +569,11 @@ class TensorFlow(Framework):
         local_code = utils.get_config_value("local.local_code", self.sagemaker_session.config)
         if self.sagemaker_session.local_mode and local_code:
             return "/opt/ml/shared/{}".format(directory)
-        elif mpi:
+        if mpi:
             return "/opt/ml/model"
-        elif self._current_job_name:
+        if self._current_job_name:
             return os.path.join(self.output_path, self._current_job_name, directory)
-        else:
-            return None
+        return None
 
     def _script_mode_enabled(self):
         return self.py_version == "py3" or self.script_mode

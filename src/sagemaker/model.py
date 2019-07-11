@@ -176,7 +176,7 @@ class Model(object):
         input_model_config = {
             "S3Uri": self.model_data,
             "DataInputConfig": input_shape
-            if type(input_shape) != dict
+            if not isinstance(input_shape, dict)
             else json.dumps(input_shape),
             "Framework": framework,
         }
@@ -205,8 +205,7 @@ class Model(object):
         """
         if region in NEO_IMAGE_ACCOUNT:
             return True
-        else:
-            return False
+        return False
 
     def _neo_image_account(self, region):
         if region not in NEO_IMAGE_ACCOUNT:

@@ -619,7 +619,7 @@ def _check_output(cmd, *popenargs, **kwargs):
 
     output = output.decode("utf-8")
     if not success:
-        logger.error("Command output: %s" % output)
+        logger.error("Command output: %s", output)
         raise Exception("Failed to run %s" % ",".join(cmd))
 
     return output
@@ -639,9 +639,9 @@ def _delete_tree(path):
         # files. We expect this to happen, so we handle EACCESS. Any other error we will raise the
         # exception up.
         if exc.errno == errno.EACCES:
-            logger.warning("Failed to delete: %s Please remove it manually." % path)
+            logger.warning("Failed to delete: %s Please remove it manually.", path)
         else:
-            logger.error("Failed to delete: %s" % path)
+            logger.error("Failed to delete: %s", path)
             raise
 
 
@@ -665,7 +665,7 @@ def _aws_credentials(session):
                 "AWS_ACCESS_KEY_ID=%s" % (str(access_key)),
                 "AWS_SECRET_ACCESS_KEY=%s" % (str(secret_key)),
             ]
-        elif not _aws_credentials_available_in_metadata_service():
+        if not _aws_credentials_available_in_metadata_service():
             logger.warning(
                 "Using the short-lived AWS credentials found in session. They might expire while running."
             )
@@ -674,13 +674,12 @@ def _aws_credentials(session):
                 "AWS_SECRET_ACCESS_KEY=%s" % (str(secret_key)),
                 "AWS_SESSION_TOKEN=%s" % (str(token)),
             ]
-        else:
-            logger.info(
-                "No AWS credentials found in session but credentials from EC2 Metadata Service are available."
-            )
-            return None
+        logger.info(
+            "No AWS credentials found in session but credentials from EC2 Metadata Service are available."
+        )
+        return None
     except Exception as e:  # pylint: disable=broad-except
-        logger.info("Could not get AWS credentials: %s" % e)
+        logger.info("Could not get AWS credentials: %s", e)
 
     return None
 

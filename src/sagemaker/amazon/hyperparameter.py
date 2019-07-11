@@ -12,6 +12,8 @@
 # language governing permissions and limitations under the License.
 from __future__ import absolute_import
 
+import json
+
 
 class Hyperparameter(object):
     """An algorithm hyperparameter with optional validation. Implemented as a python
@@ -67,4 +69,8 @@ class Hyperparameter(object):
         """Return all non-None ``hyperparameter`` values on ``obj`` as a ``dict[str,str].``"""
         if "_hyperparameters" not in dir(obj):
             return {}
-        return {k: str(v) for k, v in obj._hyperparameters.items() if v is not None}
+        return {
+            k: json.dumps(v) if isinstance(v, list) else str(v)
+            for k, v in obj._hyperparameters.items()
+            if v is not None
+        }
