@@ -176,7 +176,7 @@ class SKLearn(Framework):
                     training_job_name
                 )
             )
-        elif not framework:
+        if not framework:
             # If we were unable to parse the framework name from the image it is not one of our
             # officially supported images, in this case just add the image to the init params.
             init_params["image_name"] = image_name

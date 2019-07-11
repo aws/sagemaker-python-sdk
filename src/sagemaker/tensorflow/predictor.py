@@ -94,8 +94,7 @@ class _TFJsonSerializer(object):
     def __call__(self, data):
         if isinstance(data, tensor_pb2.TensorProto):
             return json_format.MessageToJson(data)
-        else:
-            return json_serializer(data)
+        return json_serializer(data)
 
 
 tf_json_serializer = _TFJsonSerializer()

@@ -107,8 +107,7 @@ class LocalSagemakerClient(object):
                 }
             }
             raise ClientError(error_response, "describe_training_job")
-        else:
-            return LocalSagemakerClient._training_jobs[TrainingJobName].describe()
+        return LocalSagemakerClient._training_jobs[TrainingJobName].describe()
 
     def create_transform_job(
         self,
@@ -132,8 +131,7 @@ class LocalSagemakerClient(object):
                 }
             }
             raise ClientError(error_response, "describe_transform_job")
-        else:
-            return LocalSagemakerClient._transform_jobs[TransformJobName].describe()
+        return LocalSagemakerClient._transform_jobs[TransformJobName].describe()
 
     def create_model(
         self, ModelName, PrimaryContainer, *args, **kwargs
@@ -152,13 +150,10 @@ class LocalSagemakerClient(object):
                 "Error": {"Code": "ValidationException", "Message": "Could not find local model"}
             }
             raise ClientError(error_response, "describe_model")
-        else:
-            return LocalSagemakerClient._models[ModelName].describe()
+        return LocalSagemakerClient._models[ModelName].describe()
 
     def describe_endpoint_config(self, EndpointConfigName):
-        if EndpointConfigName in LocalSagemakerClient._endpoint_configs:
-            return LocalSagemakerClient._endpoint_configs[EndpointConfigName].describe()
-        else:
+        if EndpointConfigName not in LocalSagemakerClient._endpoint_configs:
             error_response = {
                 "Error": {
                     "Code": "ValidationException",
@@ -166,6 +161,7 @@ class LocalSagemakerClient(object):
                 }
             }
             raise ClientError(error_response, "describe_endpoint_config")
+        return LocalSagemakerClient._endpoint_configs[EndpointConfigName].describe()
 
     def create_endpoint_config(self, EndpointConfigName, ProductionVariants, Tags=None):
         LocalSagemakerClient._endpoint_configs[EndpointConfigName] = _LocalEndpointConfig(
@@ -178,8 +174,7 @@ class LocalSagemakerClient(object):
                 "Error": {"Code": "ValidationException", "Message": "Could not find local endpoint"}
             }
             raise ClientError(error_response, "describe_endpoint")
-        else:
-            return LocalSagemakerClient._endpoints[EndpointName].describe()
+        return LocalSagemakerClient._endpoints[EndpointName].describe()
 
     def create_endpoint(self, EndpointName, EndpointConfigName, Tags=None):
         endpoint = _LocalEndpoint(EndpointName, EndpointConfigName, Tags, self.sagemaker_session)

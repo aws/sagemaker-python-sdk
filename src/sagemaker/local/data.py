@@ -45,7 +45,7 @@ def get_data_source_instance(data_source, sagemaker_session):
     parsed_uri = urlparse(data_source)
     if parsed_uri.scheme == "file":
         return LocalFileDataSource(parsed_uri.netloc + parsed_uri.path)
-    elif parsed_uri.scheme == "s3":
+    if parsed_uri.scheme == "s3":
         return S3DataSource(parsed_uri.netloc, parsed_uri.path, sagemaker_session)
 
 
@@ -62,12 +62,11 @@ def get_splitter_instance(split_type):
     """
     if split_type is None:
         return NoneSplitter()
-    elif split_type == "Line":
+    if split_type == "Line":
         return LineSplitter()
-    elif split_type == "RecordIO":
+    if split_type == "RecordIO":
         return RecordIOSplitter()
-    else:
-        raise ValueError("Invalid Split Type: %s" % split_type)
+    raise ValueError("Invalid Split Type: %s" % split_type)
 
 
 def get_batch_strategy_instance(strategy, splitter):
@@ -82,12 +81,9 @@ def get_batch_strategy_instance(strategy, splitter):
     """
     if strategy == "SingleRecord":
         return SingleRecordStrategy(splitter)
-    elif strategy == "MultiRecord":
+    if strategy == "MultiRecord":
         return MultiRecordStrategy(splitter)
-    else:
-        raise ValueError(
-            'Invalid Batch Strategy: %s - Valid Strategies: "SingleRecord", "MultiRecord"'
-        )
+    raise ValueError('Invalid Batch Strategy: %s - Valid Strategies: "SingleRecord", "MultiRecord"')
 
 
 class DataSource(with_metaclass(ABCMeta, object)):
@@ -129,8 +125,7 @@ class LocalFileDataSource(DataSource):
                 for f in os.listdir(self.root_path)
                 if os.path.isfile(os.path.join(self.root_path, f))
             ]
-        else:
-            return [self.root_path]
+        return [self.root_path]
 
     def get_root_dir(self):
         """Retrieve the absolute path to the root directory of this data source.
@@ -140,8 +135,7 @@ class LocalFileDataSource(DataSource):
         """
         if os.path.isdir(self.root_path):
             return self.root_path
-        else:
-            return os.path.dirname(self.root_path)
+        return os.path.dirname(self.root_path)
 
 
 class S3DataSource(DataSource):
