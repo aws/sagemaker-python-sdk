@@ -545,9 +545,12 @@ class TensorFlow(Framework):
                 mpi_dict = self.distributions["mpi"]
                 mpi_enabled = mpi_dict.get("enabled", False)
                 additional_hyperparameters[self.LAUNCH_MPI_ENV_NAME] = mpi_enabled
-                additional_hyperparameters[self.MPI_NUM_PROCESSES_PER_HOST] = mpi_dict.get(
-                    "processes_per_host", 1
-                )
+
+                if mpi_dict.get("processes_per_host"):
+                    additional_hyperparameters[self.MPI_NUM_PROCESSES_PER_HOST] = mpi_dict.get(
+                        "processes_per_host"
+                    )
+
                 additional_hyperparameters[self.MPI_CUSTOM_MPI_OPTIONS] = mpi_dict.get(
                     "custom_mpi_options", ""
                 )
