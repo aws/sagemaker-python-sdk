@@ -211,7 +211,7 @@ credentials storage to authenticate. If that fails either, an error message will
 
 For CodeCommit repos, please make sure you have completed the authentication setup: https://docs.aws.amazon.com/codecommit/latest/userguide/setting-up.html.
 2FA is not supported by CodeCommit, so ``2FA_enabled`` should not be provided. There is no token in CodeCommit, so
-``token`` should not be provided too. If ``repo`` is an SSH URL, the requirements are the same as GitHub repos.
+``token`` should not be provided either. If ``repo`` is an SSH URL, the requirements are the same as GitHub repos.
 If ``repo`` is an HTTPS URL, ``username``+``password`` will be used for authentication if they are provided; otherwise,
 Python SDK will try to use either CodeCommit credential helper or local credential storage for authentication.
 

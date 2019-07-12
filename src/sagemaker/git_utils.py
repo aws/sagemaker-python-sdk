@@ -204,9 +204,9 @@ def _clone_command_for_codecommit(git_config, dest_dir):
     if not is_https and not is_ssh:
         raise ValueError("Invalid Git url provided.")
     if "2FA_enabled" in git_config:
-        warnings.warn("CodeCommit does not support 2FA, '2FA_enabled' is ignored.")
+        warnings.warn("CodeCommit does not support 2FA, '2FA_enabled' will be ignored.")
     if "token" in git_config:
-        warnings.warn("There are no tokens in CodeCommit, the token provided is ignored.")
+        warnings.warn("There are no tokens in CodeCommit, the token provided will be ignored.")
     if is_ssh:
         _clone_command_for_ssh(git_config, dest_dir)
     else:
