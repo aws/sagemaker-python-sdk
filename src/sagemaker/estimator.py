@@ -976,11 +976,10 @@ class Framework(EstimatorBase):
 
                     You can assign entry_point='src/train.py'.
             git_config (dict[str, str]): Git configurations used for cloning files, including ``repo``, ``branch``,
-                ``commit``, ``2FA_enabled``, ``username``, ``password`` and ``token`` (default: None). The fields are
-                optional except ``repo``. If ``branch`` is not specified, master branch will be used. If ``commit``
-                is not specified, the latest commit in the required branch will be used. 'branch' and 'commit' are
-                optional. If 'branch' is not specified, 'master' branch will be used. If 'commit' is not specified,
-                the latest commit in the required branch will be used.
+                ``commit``, ``2FA_enabled``, ``username``, ``password`` and ``token``. The ``repo`` field is required.
+                All other fields are optional. ``repo`` specifies the Git repository where your training script is
+                stored. If you don't provide ``branch``, the default value  'master' is used. If you don't provide
+                ``commit``, the latest commit in the specified branch is used.
                 Example:
 
                     The following config:
@@ -991,15 +990,25 @@ class Framework(EstimatorBase):
 
                     results in cloning the repo specified in 'repo', then checkout the 'master' branch, and checkout
                     the specified commit.
-                ``2FA_enabled``, ``username``, ``password`` and ``token`` are for authentication purpose.
-                ``2FA_enabled`` must be ``True`` or ``False`` if it is provided. If ``2FA_enabled`` is not provided,
-                we consider 2FA as disabled. For GitHub and other Git repos, when ssh urls are provided, it does not
-                make a difference whether 2FA is enabled or disabled; an ssh passphrase should be in local storage.
-                When https urls are provided: if 2FA is disabled, then either token or username+password will
-                be used for authentication if provided (token prioritized); if 2FA is enabled, only token will
-                be used for authentication if provided. If required authentication info is not provided, python SDK
-                will try to use local credentials storage to authenticate. If that fails either, an error message will
-                be thrown.
+                ``2FA_enabled``, ``username``, ``password`` and ``token`` are used for authentication. For GitHub
+                (or other Git) accounts, set ``2FA_enabled`` to 'True' if two-factor authentication is enabled for the
+                account, otherwise set it to 'False'. If you do not provide a value for ``2FA_enabled``, a default
+                value of 'False' is used. CodeCommit does not support two-factor authentication, so do not provide
+                "2FA_enabled" with CodeCommit repositories.
+
+                For GitHub and other Git repos, when SSH URLs are provided, it doesn't matter whether 2FA is
+                enabled or disabled; you should either have no passphrase for the SSH key pairs, or have the ssh-agent
+                configured so that you will not be prompted for SSH passphrase when you do 'git clone' command with SSH
+                URLs. When HTTPS URLs are provided: if 2FA is disabled, then either token or username+password will be
+                used for authentication if provided (token prioritized); if 2FA is enabled, only token will be used for
+                authentication if provided. If required authentication info is not provided, python SDK will try to use
+                local credentials storage to authenticate. If that fails either, an error message will be thrown.
+
+                For CodeCommit repos, 2FA is not supported, so '2FA_enabled' should not be provided. There is no token
+                in CodeCommit, so 'token' should not be provided too. When 'repo' is an SSH URL, the requirements are
+                the same as GitHub-like repos. When 'repo' is an HTTPS URL, username+password will be used for
+                authentication if they are provided; otherwise, python SDK will try to use either CodeCommit credential
+                helper or local credential storage for authentication.
             source_dir (str): Path (absolute or relative) to a directory with any other training
                 source code dependencies aside from the entry point file (default: None). Structure within this
                 directory are preserved when training on Amazon SageMaker. If 'git_config' is provided,

@@ -25,18 +25,26 @@ def git_clone_repo(git_config, entry_point, source_dir=None, dependencies=None):
     and set ``entry_point``, ``source_dir`` and ``dependencies`` to the right file or directory in the repo cloned.
 
     Args:
-        git_config (dict[str, object]): Git configurations used for cloning files, including ``repo``, ``branch``,
-            ``commit``, ``2FA_enabled``, ``username``, ``password`` and ``token``. The fields are optional except
-            ``repo``. If ``branch`` is not specified, master branch will be used. If ``commit`` is not specified,
-            the latest commit in the required branch will be used. ``2FA_enabled``, ``username``, ``password`` and
-            ``token`` are for authentication purpose.
-            ``2FA_enabled`` must be ``True`` or ``False`` if it is provided. If ``2FA_enabled`` is not provided, we
-            consider 2FA as disabled. For GitHub and other Git repos, when ssh urls are provided, it does not make a
-            difference whether 2FA is enabled or disabled; an ssh passphrase should be in local storage. When
-            https urls are provided: if 2FA is disabled, then either token or username+password will be used for
-            authentication if provided (token prioritized); if 2FA is enabled, only token will be used for
+        git_config (dict[str, str]): Git configurations used for cloning files, including ``repo``, ``branch``,
+            ``commit``, ``2FA_enabled``, ``username``, ``password`` and ``token``. The ``repo`` field is required.
+            All other fields are optional. ``repo`` specifies the Git repository where your training script is stored.
+            If you don't provide ``branch``, the default value  'master' is used. If you don't provide ``commit``,
+            the latest commit in the specified branch is used. ``2FA_enabled``, ``username``, ``password`` and
+            ``token`` are for authentication purpose. If ``2FA_enabled`` is not provided, we consider 2FA as disabled.
+
+            For GitHub and GitHub-like repos, when SSH URLs are provided, it doesn't matter whether 2FA is
+            enabled or disabled; you should either have no passphrase for the SSH key pairs, or have the ssh-agent
+            configured so that you will not be prompted for SSH passphrase when you do 'git clone' command with SSH
+            URLs. When https URLs are provided: if 2FA is disabled, then either token or username+password will be
+            used for authentication if provided (token prioritized); if 2FA is enabled, only token will be used for
             authentication if provided. If required authentication info is not provided, python SDK will try to use
             local credentials storage to authenticate. If that fails either, an error message will be thrown.
+
+            For CodeCommit repos, 2FA is not supported, so '2FA_enabled' should not be provided. There is no token in
+            CodeCommit, so 'token' should not be provided too. When 'repo' is an SSH URL, the requirements are the
+            same as GitHub-like repos. When 'repo' is an https URL, username+password will be used for
+            authentication if they are provided; otherwise, python SDK will try to use either CodeCommit credential
+            helper or local credential storage for authentication.
         entry_point (str): A relative location to the Python source file which should be executed as the entry point
             to training or model hosting in the Git repo.
         source_dir (str): A relative location to a directory with other training or model hosting source code
@@ -115,7 +123,12 @@ def _generate_and_run_clone_command(git_config, dest_dir):
     Raises:
         CalledProcessError: If failed to clone git repo.
     """
-    _clone_command_for_github_like(git_config, dest_dir)
+    if git_config["repo"].startswith("https://git-codecommit") or git_config["repo"].startswith(
+        "ssh://git-codecommit"
+    ):
+        _clone_command_for_codecommit(git_config, dest_dir)
+    else:
+        _clone_command_for_github_like(git_config, dest_dir)
 
 
 def _clone_command_for_github_like(git_config, dest_dir):
@@ -136,14 +149,14 @@ def _clone_command_for_github_like(git_config, dest_dir):
     if not is_https and not is_ssh:
         raise ValueError("Invalid Git url provided.")
     if is_ssh:
-        _clone_command_for_github_like_ssh(git_config, dest_dir)
+        _clone_command_for_ssh(git_config, dest_dir)
     elif "2FA_enabled" in git_config and git_config["2FA_enabled"] is True:
         _clone_command_for_github_like_https_2fa_enabled(git_config, dest_dir)
     else:
         _clone_command_for_github_like_https_2fa_disabled(git_config, dest_dir)
 
 
-def _clone_command_for_github_like_ssh(git_config, dest_dir):
+def _clone_command_for_ssh(git_config, dest_dir):
     if "username" in git_config or "password" in git_config or "token" in git_config:
         warnings.warn("SSH cloning, authentication information in git config will be ignored.")
     _run_clone_command(git_config["repo"], dest_dir)
@@ -170,6 +183,44 @@ def _clone_command_for_github_like_https_2fa_enabled(git_config, dest_dir):
         if "username" in git_config or "password" in git_config:
             warnings.warn("Using token for authentication, " "other credentials will be ignored.")
         updated_url = _insert_token_to_repo_url(url=git_config["repo"], token=git_config["token"])
+    _run_clone_command(updated_url, dest_dir)
+
+
+def _clone_command_for_codecommit(git_config, dest_dir):
+    """check if a git_config param representing a CodeCommit repo is valid, if it is, create the command to
+        git clone the repo, and run it.
+
+        Args:
+            git_config ((dict[str, str]): Git configurations used for cloning files, including ``repo``, ``branch``
+                and ``commit``.
+            dest_dir (str): The local directory to clone the Git repo into.
+
+        Raises:
+            ValueError: If git_config['repo'] is in the wrong format.
+            CalledProcessError: If failed to clone git repo.
+    """
+    is_https = git_config["repo"].startswith("https://git-codecommit")
+    is_ssh = git_config["repo"].startswith("ssh://git-codecommit")
+    if not is_https and not is_ssh:
+        raise ValueError("Invalid Git url provided.")
+    if "2FA_enabled" in git_config:
+        warnings.warn("CodeCommit does not support 2FA, '2FA_enabled' will be ignored.")
+    if "token" in git_config:
+        warnings.warn("There are no tokens in CodeCommit, the token provided will be ignored.")
+    if is_ssh:
+        _clone_command_for_ssh(git_config, dest_dir)
+    else:
+        _clone_command_for_codecommit_https(git_config, dest_dir)
+
+
+def _clone_command_for_codecommit_https(git_config, dest_dir):
+    updated_url = git_config["repo"]
+    if "username" in git_config and "password" in git_config:
+        updated_url = _insert_username_and_password_to_repo_url(
+            url=git_config["repo"], username=git_config["username"], password=git_config["password"]
+        )
+    elif "username" in git_config or "password" in git_config:
+        warnings.warn("Credentials provided in git config will be ignored.")
     _run_clone_command(updated_url, dest_dir)
 
 
