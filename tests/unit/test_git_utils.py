@@ -27,6 +27,9 @@ PRIVATE_GIT_REPO_SSH = "git@github.com:testAccount/private-repo.git"
 PRIVATE_GIT_REPO = "https://github.com/testAccount/private-repo.git"
 PRIVATE_BRANCH = "test-branch"
 PRIVATE_COMMIT = "329bfcf884482002c05ff7f44f62599ebc9f445a"
+CODECOMMIT_REPO = "https://git-codecommit.us-west-2.amazonaws.com/v1/repos/test-repo/"
+CODECOMMIT_REPO_SSH = "ssh://git-codecommit.us-west-2.amazonaws.com/v1/repos/test-repo/"
+CODECOMMIT_BRANCH = "master"
 
 
 @patch("subprocess.check_call")
@@ -213,7 +216,7 @@ def test_git_clone_repo_with_token_no_2fa(isfile, mkdtemp, check_call):
         "repo": PRIVATE_GIT_REPO,
         "branch": PRIVATE_BRANCH,
         "commit": PRIVATE_COMMIT,
-        "token": "08c13d80a861f37150cb5c64520bfe14a85ca191",
+        "token": "my-token",
         "2FA_enabled": False,
     }
     entry_point = "entry_point"
@@ -221,12 +224,7 @@ def test_git_clone_repo_with_token_no_2fa(isfile, mkdtemp, check_call):
     env["GIT_TERMINAL_PROMPT"] = "0"
     ret = git_utils.git_clone_repo(git_config=git_config, entry_point=entry_point)
     check_call.assert_any_call(
-        [
-            "git",
-            "clone",
-            "https://08c13d80a861f37150cb5c64520bfe14a85ca191@github.com/testAccount/private-repo.git",
-            REPO_DIR,
-        ],
+        ["git", "clone", "https://my-token@github.com/testAccount/private-repo.git", REPO_DIR],
         env=env,
     )
     check_call.assert_any_call(args=["git", "checkout", PRIVATE_BRANCH], cwd=REPO_DIR)
@@ -246,19 +244,14 @@ def test_git_clone_repo_with_token_2fa(isfile, mkdtemp, check_call):
         "commit": PRIVATE_COMMIT,
         "2FA_enabled": True,
         "username": "username",
-        "token": "08c13d80a861f37150cb5c64520bfe14a85ca191",
+        "token": "my-token",
     }
     entry_point = "entry_point"
     env = os.environ.copy()
     env["GIT_TERMINAL_PROMPT"] = "0"
     ret = git_utils.git_clone_repo(git_config=git_config, entry_point=entry_point)
     check_call.assert_any_call(
-        [
-            "git",
-            "clone",
-            "https://08c13d80a861f37150cb5c64520bfe14a85ca191@github.com/testAccount/private-repo.git",
-            REPO_DIR,
-        ],
+        ["git", "clone", "https://my-token@github.com/testAccount/private-repo.git", REPO_DIR],
         env=env,
     )
     check_call.assert_any_call(args=["git", "checkout", PRIVATE_BRANCH], cwd=REPO_DIR)
@@ -290,7 +283,7 @@ def test_git_clone_repo_with_token_no_2fa_unnecessary_creds_provided(isfile, mkd
         "commit": PRIVATE_COMMIT,
         "username": "username",
         "password": "passw0rd!",
-        "token": "08c13d80a861f37150cb5c64520bfe14a85ca191",
+        "token": "my-token",
     }
     entry_point = "entry_point"
     env = os.environ.copy()
@@ -302,12 +295,7 @@ def test_git_clone_repo_with_token_no_2fa_unnecessary_creds_provided(isfile, mkd
         in warn[0].message.args[0]
     )
     check_call.assert_any_call(
-        [
-            "git",
-            "clone",
-            "https://08c13d80a861f37150cb5c64520bfe14a85ca191@github.com/testAccount/private-repo.git",
-            REPO_DIR,
-        ],
+        ["git", "clone", "https://my-token@github.com/testAccount/private-repo.git", REPO_DIR],
         env=env,
     )
     check_call.assert_any_call(args=["git", "checkout", PRIVATE_BRANCH], cwd=REPO_DIR)
@@ -327,7 +315,7 @@ def test_git_clone_repo_with_token_2fa_unnecessary_creds_provided(isfile, mkdtem
         "commit": PRIVATE_COMMIT,
         "2FA_enabled": True,
         "username": "username",
-        "token": "08c13d80a861f37150cb5c64520bfe14a85ca191",
+        "token": "my-token",
     }
     entry_point = "entry_point"
     env = os.environ.copy()
@@ -339,12 +327,7 @@ def test_git_clone_repo_with_token_2fa_unnecessary_creds_provided(isfile, mkdtem
         in warn[0].message.args[0]
     )
     check_call.assert_any_call(
-        [
-            "git",
-            "clone",
-            "https://08c13d80a861f37150cb5c64520bfe14a85ca191@github.com/testAccount/private-repo.git",
-            REPO_DIR,
-        ],
+        ["git", "clone", "https://my-token@github.com/testAccount/private-repo.git", REPO_DIR],
         env=env,
     )
     check_call.assert_any_call(args=["git", "checkout", PRIVATE_BRANCH], cwd=REPO_DIR)
@@ -421,4 +404,63 @@ def test_git_clone_repo_with_and_token_2fa_wrong_creds(mkdtemp, check_call):
     env["GIT_TERMINAL_PROMPT"] = "0"
     with pytest.raises(subprocess.CalledProcessError) as error:
         git_utils.git_clone_repo(git_config=git_config, entry_point=entry_point)
+    assert "returned non-zero exit status" in str(error)
+
+
+@patch("subprocess.check_call")
+@patch("tempfile.mkdtemp", return_value=REPO_DIR)
+@patch("os.path.isfile", return_value=True)
+def test_git_clone_repo_codecommit_https_with_username_and_password(isfile, mkdtemp, check_call):
+    git_config = {
+        "repo": CODECOMMIT_REPO,
+        "branch": CODECOMMIT_BRANCH,
+        "username": "username",
+        "password": "my-codecommit-password",
+    }
+    entry_point = "entry_point"
+    env = os.environ.copy()
+    env["GIT_TERMINAL_PROMPT"] = "0"
+    ret = git_utils.git_clone_repo(git_config=git_config, entry_point=entry_point)
+    check_call.assert_any_call(
+        [
+            "git",
+            "clone",
+            "https://username:my-codecommit-password@git-codecommit.us-west-2.amazonaws.com/v1/repos/test-repo/",
+            REPO_DIR,
+        ],
+        env=env,
+    )
+    check_call.assert_any_call(args=["git", "checkout", CODECOMMIT_BRANCH], cwd=REPO_DIR)
+    assert ret["entry_point"] == "/tmp/repo_dir/entry_point"
+    assert ret["source_dir"] is None
+    assert ret["dependencies"] is None
+
+
+@patch(
+    "subprocess.check_call",
+    side_effect=subprocess.CalledProcessError(
+        returncode=128, cmd="git clone {} {}".format(CODECOMMIT_REPO_SSH, REPO_DIR)
+    ),
+)
+@patch("tempfile.mkdtemp", return_value=REPO_DIR)
+def test_git_clone_repo_codecommit_ssh_passphrase_required(mkdtemp, check_call):
+    git_config = {"repo": CODECOMMIT_REPO_SSH, "branch": CODECOMMIT_BRANCH}
+    entry_point = "entry_point"
+    with pytest.raises(subprocess.CalledProcessError) as error:
+        git_utils.git_clone_repo(git_config, entry_point)
+    assert "returned non-zero exit status" in str(error)
+
+
+@patch(
+    "subprocess.check_call",
+    side_effect=subprocess.CalledProcessError(
+        returncode=128, cmd="git clone {} {}".format(CODECOMMIT_REPO, REPO_DIR)
+    ),
+)
+@patch("tempfile.mkdtemp", return_value=REPO_DIR)
+def test_git_clone_repo_codecommit_https_creds_not_stored_locally(mkdtemp, check_call):
+    git_config = {"repo": CODECOMMIT_REPO, "branch": CODECOMMIT_BRANCH}
+    entry_point = "entry_point"
+    with pytest.raises(subprocess.CalledProcessError) as error:
+        git_utils.git_clone_repo(git_config, entry_point)
     assert "returned non-zero exit status" in str(error)
