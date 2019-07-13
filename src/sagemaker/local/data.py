@@ -38,8 +38,11 @@ def get_data_source_instance(data_source, sagemaker_session):
         sagemaker_session (:class:`sagemaker.session.Session`): a SageMaker Session to interact with
             S3 if required.
 
-    Returns
+    Returns:
         :class:`sagemaker.local.data.DataSource`: an Instance of a Data Source
+
+    Raises:
+        ValueError: If parsed_uri scheme is neither `file` nor `s3`, raise an error.
 
     """
     parsed_uri = urlparse(data_source)
@@ -47,6 +50,9 @@ def get_data_source_instance(data_source, sagemaker_session):
         return LocalFileDataSource(parsed_uri.netloc + parsed_uri.path)
     if parsed_uri.scheme == "s3":
         return S3DataSource(parsed_uri.netloc, parsed_uri.path, sagemaker_session)
+    raise ValueError(
+        "data_source must be either file or s3. parsed_uri.scheme: {}".format(parsed_uri.scheme)
+    )
 
 
 def get_splitter_instance(split_type):

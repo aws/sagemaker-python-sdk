@@ -169,7 +169,7 @@ class _Job(object):
         input_mode=None,
     ):
         if not channel_uri:
-            return
+            return None
         if not channel_name:
             raise ValueError(
                 "Expected a channel name if a channel URI {} is specified".format(channel_uri)

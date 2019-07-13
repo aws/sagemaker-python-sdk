@@ -115,6 +115,7 @@ class PipelineModel(object):
         )
         if self.predictor_cls:
             return self.predictor_cls(self.endpoint_name, self.sagemaker_session)
+        return None
 
     def _create_sagemaker_pipeline_model(self, instance_type):
         """Create a SageMaker Model Entity

@@ -184,7 +184,8 @@ class RLEstimator(Framework):
                     MXNet was used as RL backend;
                 * sagemaker.tensorflow.serving.Model - if image_name wasn't specified and
                     TensorFlow was used as RL backend.
-
+        Raises:
+            ValueError: If image_name was not specified and framework enum is not valid.
         """
         base_args = dict(
             model_data=self.model_data,
@@ -230,6 +231,9 @@ class RLEstimator(Framework):
             return MXNetModel(
                 framework_version=self.framework_version, py_version=PYTHON_VERSION, **extended_args
             )
+        raise ValueError(
+            "An unknown RLFramework enum was passed in. framework: {}".format(self.framework)
+        )
 
     def train_image(self):
         """Return the Docker image to use for training.
@@ -399,6 +403,9 @@ class RLEstimator(Framework):
 
         Returns:
             list: metric definitions
+
+        Raises:
+            ValueError: If toolkit enum is not valid.
         """
         if toolkit is RLToolkit.COACH:
             return [
@@ -412,3 +419,4 @@ class RLEstimator(Framework):
                 {"Name": "episode_reward_mean", "Regex": "episode_reward_mean: (%s)" % float_regex},
                 {"Name": "episode_reward_max", "Regex": "episode_reward_max: (%s)" % float_regex},
             ]
+        raise ValueError("An unknown RLToolkit enum was passed in. toolkit: {}".format(toolkit))
