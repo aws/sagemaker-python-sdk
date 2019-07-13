@@ -93,7 +93,6 @@ disable=
     no-self-use, # TODO: Convert methods to functions where appropriate
     consider-merging-isinstance, # TODO: Merge isinstance where appropriate
     consider-using-in, # TODO: Consider merging comparisons with "in"
-    simplifiable-if-expression, # TODO: Simplify expressions
     too-many-public-methods, # TODO: Resolve
     ungrouped-imports, # TODO: Group imports
     consider-using-ternary, # TODO: Consider ternary expressions
