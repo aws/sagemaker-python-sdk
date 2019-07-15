@@ -55,7 +55,7 @@ class AmazonAlgorithmEstimatorBase(EstimatorBase):
         data_location = data_location or "s3://{}/sagemaker-record-sets/".format(
             self.sagemaker_session.default_bucket()
         )
-        self.data_location = data_location
+        self._data_location = data_location
 
     def train_image(self):
         return get_image_uri(

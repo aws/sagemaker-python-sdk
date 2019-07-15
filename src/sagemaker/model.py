@@ -100,6 +100,7 @@ class Model(object):
         self.vpc_config = vpc_config
         self.sagemaker_session = sagemaker_session
         self._model_name = None
+        self.endpoint_name = None
         self._is_compiled_model = False
         self._enable_network_isolation = enable_network_isolation
 

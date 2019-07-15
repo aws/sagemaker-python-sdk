@@ -75,7 +75,7 @@ class _LocalTrainingJob(object):
         self.model_artifacts = self.container.train(
             input_data_config, output_data_config, hyperparameters, job_name
         )
-        self.end = datetime.datetime.now()
+        self.end_time = datetime.datetime.now()
         self.state = self._COMPLETED
 
     def describe(self):
@@ -110,6 +110,9 @@ class _LocalTransformJob(object):
         self.start_time = None
         self.end_time = None
         self.batch_strategy = None
+        self.transform_resources = None
+        self.input_data = None
+        self.output_data = None
         self.environment = {}
         self.state = _LocalTransformJob._CREATING
 

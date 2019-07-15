@@ -247,6 +247,7 @@ class HyperparameterTuner(object):
         self.latest_tuning_job = None
         self.warm_start_config = warm_start_config
         self.early_stopping_type = early_stopping_type
+        self.static_hyperparameters = None
 
     def _prepare_for_training(self, job_name=None, include_cls_metadata=False):
         if job_name is not None:
