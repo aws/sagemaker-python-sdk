@@ -497,9 +497,7 @@ class HyperparameterTuner(object):
         )
 
     @classmethod
-    def _prepare_estimator_from_job_description(
-        cls, estimator_cls, job_details, sagemaker_session
-    ):
+    def _prepare_estimator_from_job_description(cls, estimator_cls, job_details, sagemaker_session):
         training_details = job_details["TrainingJobDefinition"]
 
         # Swap name for static hyperparameters to what an estimator would expect
@@ -511,9 +509,11 @@ class HyperparameterTuner(object):
 
         # Add missing hyperparameters defined in the hyperparameter ranges,
         # as potentially required in the Amazon algorithm estimator's constructor
-        if isinstance(estimator_cls, AmazonAlgorithmEstimatorBase):
+        if issubclass(estimator_cls, AmazonAlgorithmEstimatorBase):
             parameter_ranges = job_details["HyperParameterTuningJobConfig"]["ParameterRanges"]
-            additional_hyperparameters = cls._extract_hyperparmeters_from_parameter_ranges(parameter_ranges)
+            additional_hyperparameters = cls._extract_hyperparmeters_from_parameter_ranges(
+                parameter_ranges
+            )
             training_details["HyperParameters"].update(additional_hyperparameters)
 
         # Add items expected by the estimator (but aren't needed otherwise)
