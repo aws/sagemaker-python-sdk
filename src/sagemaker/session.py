@@ -20,9 +20,9 @@ import sys
 import time
 import warnings
 
+import six
 import boto3
 import botocore.config
-import six
 import yaml
 from botocore.exceptions import ClientError
 

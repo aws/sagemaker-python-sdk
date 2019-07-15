@@ -86,7 +86,6 @@ disable=
     import-error, # Since we run Pylint before any of our builds in tox, this will always fail
     protected-access, # TODO: Fix access
     abstract-method, # TODO: Fix abstract methods
-    wrong-import-order, # TODO: Fix import order
     useless-object-inheritance, # TODO: Remove unnecessary imports
     cyclic-import, # TODO: Resolve cyclic imports
     no-self-use, # TODO: Convert methods to functions where appropriate

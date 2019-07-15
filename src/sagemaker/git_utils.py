@@ -13,10 +13,10 @@
 from __future__ import absolute_import
 
 import os
-import six
 import subprocess
 import tempfile
 import warnings
+import six
 from six.moves import urllib
 
 

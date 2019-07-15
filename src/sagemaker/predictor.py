@@ -15,9 +15,9 @@ from __future__ import print_function, absolute_import
 import codecs
 import csv
 import json
-import numpy as np
 import six
 from six import StringIO, BytesIO
+import numpy as np
 
 from sagemaker.content_types import CONTENT_TYPE_JSON, CONTENT_TYPE_CSV, CONTENT_TYPE_NPY
 from sagemaker.session import Session
