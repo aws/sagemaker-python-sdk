@@ -392,6 +392,11 @@ class _NumpyDeserializer(object):
                 return np.load(BytesIO(stream.read()))
         finally:
             stream.close()
+        raise ValueError(
+            "content_type must be one of the following: CSV, JSON, NPY. content_type: {}".format(
+                content_type
+            )
+        )
 
 
 numpy_deserializer = _NumpyDeserializer()
