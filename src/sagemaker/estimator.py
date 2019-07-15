@@ -166,6 +166,7 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):
         self.output_path = output_path
         self.output_kms_key = output_kms_key
         self.latest_training_job = None
+        self.deploy_instance_type = None
 
         self._compiled_models = {}
 
@@ -1085,6 +1086,8 @@ class Framework(EstimatorBase):
         self.code_location = code_location
         self.image_name = image_name
         self._enable_network_isolation = enable_network_isolation
+
+        self.uploaded_code = None
 
         self._hyperparameters = hyperparameters or {}
 

@@ -51,6 +51,7 @@ class PipelineModel(object):
         self.vpc_config = vpc_config
         self.sagemaker_session = sagemaker_session
         self._model_name = None
+        self.endpoint_name = None
 
     def pipeline_container_def(self, instance_type):
         """Return a dict created by ``sagemaker.pipeline_container_def()`` for deploying this model to a specified
