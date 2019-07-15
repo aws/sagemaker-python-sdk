@@ -89,7 +89,6 @@ disable=
     useless-object-inheritance, # TODO: Remove unnecessary imports
     cyclic-import, # TODO: Resolve cyclic imports
     no-self-use, # TODO: Convert methods to functions where appropriate
-    too-many-public-methods, # TODO: Resolve
     consider-using-ternary, # TODO: Consider ternary expressions
     chained-comparison, # TODO: Simplify chained comparison between operands
     too-many-branches, # TODO: Simplify or ignore as appropriate

@@ -55,7 +55,7 @@ class LogState(object):
     COMPLETE = 5
 
 
-class Session(object):
+class Session(object):  # pylint: disable=too-many-public-methods
     """Manage interactions with the Amazon SageMaker APIs and any other AWS services needed.
 
     This class provides convenient methods for manipulating entities and resources that Amazon SageMaker uses,
