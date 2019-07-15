@@ -460,12 +460,15 @@ def test_tuning_lda(sagemaker_session):
         time.sleep(15)
         tuner.wait()
 
-    desc = tuner.latest_tuning_job.sagemaker_session.sagemaker_client.describe_hyper_parameter_tuning_job(
-        HyperParameterTuningJobName=latest_tuning_job_name
+    attached_tuner = HyperparameterTuner.attach(
+        tuning_job_name, sagemaker_session=sagemaker_session
     )
-    assert desc["HyperParameterTuningJobConfig"]["TrainingJobEarlyStoppingType"] == "Auto"
+    assert attached_tuner.early_stopping_type == "Auto"
+    assert attached_tuner.estimator.alpha0 == 1.0
+    assert attached_tuner.estimator.num_topics == 1
 
-    best_training_job = tuner.best_training_job()
+    best_training_job = attached_tuner.best_training_job()
+
     with timeout_and_delete_endpoint_by_name(best_training_job, sagemaker_session):
         predictor = tuner.deploy(1, "ml.c4.xlarge")
         predict_input = np.random.rand(1, feature_num)
