@@ -15,9 +15,9 @@ from __future__ import print_function, absolute_import
 import codecs
 import csv
 import json
-import numpy as np
 import six
 from six import StringIO, BytesIO
+import numpy as np
 
 from sagemaker.content_types import CONTENT_TYPE_JSON, CONTENT_TYPE_CSV, CONTENT_TYPE_NPY
 from sagemaker.session import Session
@@ -392,6 +392,11 @@ class _NumpyDeserializer(object):
                 return np.load(BytesIO(stream.read()))
         finally:
             stream.close()
+        raise ValueError(
+            "content_type must be one of the following: CSV, JSON, NPY. content_type: {}".format(
+                content_type
+            )
+        )
 
 
 numpy_deserializer = _NumpyDeserializer()

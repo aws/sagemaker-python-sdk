@@ -37,6 +37,9 @@ class AnalyticsMetricsBase(with_metaclass(ABCMeta, object)):
     Understands common functionality like persistence and caching.
     """
 
+    def __init__(self):
+        self._dataframe = None
+
     def export_csv(self, filename):
         """Persists the analytics dataframe to a file.
 
@@ -88,6 +91,9 @@ class HyperparameterTuningJobAnalytics(AnalyticsMetricsBase):
         sagemaker_session = sagemaker_session or Session()
         self._sage_client = sagemaker_session.sagemaker_client
         self._tuning_job_name = hyperparameter_tuning_job_name
+        self._tuning_job_describe_result = None
+        self._training_job_summaries = None
+        super(HyperparameterTuningJobAnalytics, self).__init__()
         self.clear_cache()
 
     @property
@@ -240,6 +246,8 @@ class TrainingJobAnalytics(AnalyticsMetricsBase):
             self._metric_names = metric_names
         else:
             self._metric_names = self._metric_names_for_training_job()
+
+        super(TrainingJobAnalytics, self).__init__()
         self.clear_cache()
 
     @property

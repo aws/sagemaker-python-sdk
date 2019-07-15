@@ -16,11 +16,11 @@ from collections import namedtuple
 
 import os
 import re
-import sagemaker.utils
 import shutil
 import tempfile
 from six.moves.urllib.parse import urlparse
 
+import sagemaker.utils
 from sagemaker.utils import get_ecr_image_uri_prefix, ECR_URI_PATTERN
 
 _TAR_SOURCE_FILENAME = "source.tar.gz"
