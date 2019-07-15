@@ -307,7 +307,7 @@ class HyperparameterTuner(object):
             **kwargs: Other arguments needed for training. Please refer to the ``fit()`` method of the associated
                 estimator to see what other arguments are needed.
         """
-        if isinstance(inputs, list) or isinstance(inputs, RecordSet):
+        if isinstance(inputs, (list, RecordSet)):
             self.estimator._prepare_for_training(inputs, **kwargs)
         else:
             self.estimator._prepare_for_training(job_name)
