@@ -511,7 +511,7 @@ class HyperparameterTuner(object):
         # as potentially required in the Amazon algorithm estimator's constructor
         if issubclass(estimator_cls, AmazonAlgorithmEstimatorBase):
             parameter_ranges = job_details["HyperParameterTuningJobConfig"]["ParameterRanges"]
-            additional_hyperparameters = cls._extract_hyperparmeters_from_parameter_ranges(
+            additional_hyperparameters = cls._extract_hyperparameters_from_parameter_ranges(
                 parameter_ranges
             )
             training_details["HyperParameters"].update(additional_hyperparameters)
@@ -569,7 +569,7 @@ class HyperparameterTuner(object):
         return ranges
 
     @classmethod
-    def _extract_hyperparmeters_from_parameter_ranges(cls, parameter_ranges):
+    def _extract_hyperparameters_from_parameter_ranges(cls, parameter_ranges):
         hyperparameters = {}
 
         for parameter in parameter_ranges["CategoricalParameterRanges"]:
