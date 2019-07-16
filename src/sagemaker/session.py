@@ -1022,7 +1022,7 @@ class Session(object):
         # If the status is capital case, then convert it to Camel case
         status = _STATUS_CODE_TABLE.get(status, status)
 
-        if status != "Completed" and status != "Stopped":
+        if status not in ("Completed", "Stopped"):
             reason = desc.get("FailureReason", "(No reason provided)")
             job_type = status_key_name.replace("JobStatus", " job")
             raise ValueError("Error for {} {}: {} Reason: {}".format(job_type, job, status, reason))
@@ -1292,7 +1292,7 @@ class Session(object):
         client = self.boto_session.client("logs", config=config)
         log_group = "/aws/sagemaker/TrainingJobs"
 
-        job_already_completed = status == "Completed" or status == "Failed" or status == "Stopped"
+        job_already_completed = status in ("Completed", "Failed", "Stopped")
 
         state = LogState.TAILING if wait and not job_already_completed else LogState.COMPLETE
         dot = False
@@ -1385,7 +1385,7 @@ class Session(object):
 
                 status = description["TrainingJobStatus"]
 
-                if status == "Completed" or status == "Failed" or status == "Stopped":
+                if status in ("Completed", "Failed", "Stopped"):
                     print()
                     state = LogState.JOB_COMPLETE
 
