@@ -12,9 +12,9 @@
 # language governing permissions and limitations under the License.
 from __future__ import absolute_import
 
-import pkg_resources
 import platform
 import sys
+import pkg_resources
 
 import boto3
 import botocore

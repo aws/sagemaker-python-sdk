@@ -51,16 +51,14 @@ OUTPUT_PATH = "s3://bucket/prefix"
 GIT_REPO = "https://github.com/aws/sagemaker-python-sdk.git"
 BRANCH = "test-branch-git-config"
 COMMIT = "ae15c9d7d5b97ea95ea451e4662ee43da3401d73"
-
-DESCRIBE_TRAINING_JOB_RESULT = {"ModelArtifacts": {"S3ModelArtifacts": MODEL_DATA}}
-INSTANCE_TYPE = "c4.4xlarge"
-ACCELERATOR_TYPE = "ml.eia.medium"
-ROLE = "DummyRole"
-IMAGE_NAME = "fakeimage"
-REGION = "us-west-2"
-JOB_NAME = "{}-{}".format(IMAGE_NAME, TIMESTAMP)
-TAGS = [{"Name": "some-tag", "Value": "value-for-tag"}]
-OUTPUT_PATH = "s3://bucket/prefix"
+PRIVATE_GIT_REPO_SSH = "git@github.com:testAccount/private-repo.git"
+PRIVATE_GIT_REPO = "https://github.com/testAccount/private-repo.git"
+PRIVATE_BRANCH = "test-branch"
+PRIVATE_COMMIT = "329bfcf884482002c05ff7f44f62599ebc9f445a"
+CODECOMMIT_REPO = "https://git-codecommit.us-west-2.amazonaws.com/v1/repos/test-repo/"
+CODECOMMIT_REPO_SSH = "ssh://git-codecommit.us-west-2.amazonaws.com/v1/repos/test-repo/"
+CODECOMMIT_BRANCH = "master"
+REPO_DIR = "/tmp/repo_dir"
 
 DESCRIBE_TRAINING_JOB_RESULT = {"ModelArtifacts": {"S3ModelArtifacts": MODEL_DATA}}
 
@@ -892,9 +890,9 @@ def test_git_support_bad_repo_url_format(sagemaker_session):
         train_instance_type=INSTANCE_TYPE,
         enable_cloudwatch_metrics=True,
     )
-    with pytest.raises(subprocess.CalledProcessError) as error:
+    with pytest.raises(ValueError) as error:
         fw.fit()
-    assert "returned non-zero exit status" in str(error)
+    assert "Invalid Git url provided." in str(error)
 
 
 @patch(
@@ -1024,6 +1022,173 @@ def test_git_support_dependencies_not_exist(sagemaker_session):
     with pytest.raises(ValueError) as error:
         fw.fit()
     assert "Dependency", "does not exist in the repo." in str(error)
+
+
+@patch(
+    "sagemaker.git_utils.git_clone_repo",
+    side_effect=lambda gitconfig, entrypoint, source_dir=None, dependencies=None: {
+        "entry_point": "/tmp/repo_dir/entry_point",
+        "source_dir": None,
+        "dependencies": None,
+    },
+)
+def test_git_support_with_username_password_no_2fa(git_clone_repo, sagemaker_session):
+    git_config = {
+        "repo": PRIVATE_GIT_REPO,
+        "branch": PRIVATE_BRANCH,
+        "commit": PRIVATE_COMMIT,
+        "username": "username",
+        "password": "passw0rd!",
+    }
+    entry_point = "entry_point"
+    fw = DummyFramework(
+        entry_point=entry_point,
+        git_config=git_config,
+        role=ROLE,
+        sagemaker_session=sagemaker_session,
+        train_instance_count=INSTANCE_COUNT,
+        train_instance_type=INSTANCE_TYPE,
+        enable_cloudwatch_metrics=True,
+    )
+    fw.fit()
+    git_clone_repo.assert_called_once_with(git_config, entry_point, None, [])
+    assert fw.entry_point == "/tmp/repo_dir/entry_point"
+
+
+@patch(
+    "sagemaker.git_utils.git_clone_repo",
+    side_effect=lambda gitconfig, entrypoint, source_dir=None, dependencies=None: {
+        "entry_point": "/tmp/repo_dir/entry_point",
+        "source_dir": None,
+        "dependencies": None,
+    },
+)
+def test_git_support_with_token_2fa(git_clone_repo, sagemaker_session):
+    git_config = {
+        "repo": PRIVATE_GIT_REPO,
+        "branch": PRIVATE_BRANCH,
+        "commit": PRIVATE_COMMIT,
+        "token": "my-token",
+        "2FA_enabled": True,
+    }
+    entry_point = "entry_point"
+    fw = DummyFramework(
+        entry_point=entry_point,
+        git_config=git_config,
+        role=ROLE,
+        sagemaker_session=sagemaker_session,
+        train_instance_count=INSTANCE_COUNT,
+        train_instance_type=INSTANCE_TYPE,
+        enable_cloudwatch_metrics=True,
+    )
+    fw.fit()
+    git_clone_repo.assert_called_once_with(git_config, entry_point, None, [])
+    assert fw.entry_point == "/tmp/repo_dir/entry_point"
+
+
+@patch(
+    "sagemaker.git_utils.git_clone_repo",
+    side_effect=lambda gitconfig, entrypoint, source_dir=None, dependencies=None: {
+        "entry_point": "/tmp/repo_dir/entry_point",
+        "source_dir": None,
+        "dependencies": None,
+    },
+)
+def test_git_support_ssh_no_passphrase_needed(git_clone_repo, sagemaker_session):
+    git_config = {"repo": PRIVATE_GIT_REPO_SSH, "branch": PRIVATE_BRANCH, "commit": PRIVATE_COMMIT}
+    entry_point = "entry_point"
+    fw = DummyFramework(
+        entry_point=entry_point,
+        git_config=git_config,
+        role=ROLE,
+        sagemaker_session=sagemaker_session,
+        train_instance_count=INSTANCE_COUNT,
+        train_instance_type=INSTANCE_TYPE,
+        enable_cloudwatch_metrics=True,
+    )
+    fw.fit()
+    git_clone_repo.assert_called_once_with(git_config, entry_point, None, [])
+    assert fw.entry_point == "/tmp/repo_dir/entry_point"
+
+
+@patch(
+    "sagemaker.git_utils.git_clone_repo",
+    side_effect=subprocess.CalledProcessError(
+        returncode=1, cmd="git clone {} {}".format(PRIVATE_GIT_REPO_SSH, REPO_DIR)
+    ),
+)
+def test_git_support_ssh_passphrase_required(git_clone_repo, sagemaker_session):
+    git_config = {"repo": PRIVATE_GIT_REPO_SSH, "branch": PRIVATE_BRANCH, "commit": PRIVATE_COMMIT}
+    entry_point = "entry_point"
+    fw = DummyFramework(
+        entry_point=entry_point,
+        git_config=git_config,
+        role=ROLE,
+        sagemaker_session=sagemaker_session,
+        train_instance_count=INSTANCE_COUNT,
+        train_instance_type=INSTANCE_TYPE,
+        enable_cloudwatch_metrics=True,
+    )
+    with pytest.raises(subprocess.CalledProcessError) as error:
+        fw.fit()
+    assert "returned non-zero exit status" in str(error)
+
+
+@patch(
+    "sagemaker.git_utils.git_clone_repo",
+    side_effect=lambda gitconfig, entrypoint, source_dir=None, dependencies=None: {
+        "entry_point": "/tmp/repo_dir/entry_point",
+        "source_dir": None,
+        "dependencies": None,
+    },
+)
+def test_git_support_codecommit_with_username_and_password_succeed(
+    git_clone_repo, sagemaker_session
+):
+    git_config = {
+        "repo": CODECOMMIT_REPO,
+        "branch": CODECOMMIT_BRANCH,
+        "username": "username",
+        "password": "passw0rd!",
+    }
+    entry_point = "entry_point"
+    fw = DummyFramework(
+        entry_point=entry_point,
+        git_config=git_config,
+        role=ROLE,
+        sagemaker_session=sagemaker_session,
+        train_instance_count=INSTANCE_COUNT,
+        train_instance_type=INSTANCE_TYPE,
+        enable_cloudwatch_metrics=True,
+    )
+    fw.fit()
+    git_clone_repo.assert_called_once_with(git_config, entry_point, None, [])
+    assert fw.entry_point == "/tmp/repo_dir/entry_point"
+
+
+@patch(
+    "sagemaker.git_utils.git_clone_repo",
+    side_effect=lambda gitconfig, entrypoint, source_dir=None, dependencies=None: {
+        "entry_point": "/tmp/repo_dir/entry_point",
+        "source_dir": None,
+        "dependencies": None,
+    },
+)
+def test_git_support_codecommit_with_ssh_no_passphrase_needed(git_clone_repo, sagemaker_session):
+    git_config = {"repo": CODECOMMIT_REPO_SSH, "branch": CODECOMMIT_BRANCH}
+    entry_point = "entry_point"
+    fw = DummyFramework(
+        entry_point=entry_point,
+        git_config=git_config,
+        role=ROLE,
+        sagemaker_session=sagemaker_session,
+        train_instance_count=INSTANCE_COUNT,
+        train_instance_type=INSTANCE_TYPE,
+        # enable_cloudwatch_metrics=True,
+    )
+    fw.fit()
+    git_clone_repo.assert_called_once_with(git_config, entry_point, None, [])
+    assert fw.entry_point == "/tmp/repo_dir/entry_point"
 
 
 @patch("time.strftime", return_value=TIMESTAMP)
