@@ -89,8 +89,6 @@ disable=
     useless-object-inheritance, # TODO: Remove unnecessary imports
     cyclic-import, # TODO: Resolve cyclic imports
     no-self-use, # TODO: Convert methods to functions where appropriate
-    consider-using-in, # TODO: Consider merging comparisons with "in"
-    too-many-public-methods, # TODO: Resolve
     consider-using-ternary, # TODO: Consider ternary expressions
     too-many-branches, # TODO: Simplify or ignore as appropriate
     missing-docstring, # TODO: Fix missing docstring
