@@ -19,7 +19,7 @@ import logging
 from enum import Enum
 
 import sagemaker
-from sagemaker.amazon.amazon_estimator import RecordSet
+from sagemaker.amazon.amazon_estimator import RecordSet, AmazonAlgorithmEstimatorBase
 from sagemaker.amazon.hyperparameter import Hyperparameter as hp  # noqa
 from sagemaker.analytics import HyperparameterTuningJobAnalytics
 from sagemaker.estimator import Framework
@@ -358,7 +358,7 @@ class HyperparameterTuner(object):
             estimator_cls, job_details["TrainingJobDefinition"]
         )
         estimator = cls._prepare_estimator_from_job_description(
-            estimator_cls, job_details["TrainingJobDefinition"], sagemaker_session
+            estimator_cls, job_details, sagemaker_session
         )
         init_params = cls._prepare_init_params_from_job_description(job_details)
 
@@ -497,15 +497,24 @@ class HyperparameterTuner(object):
         )
 
     @classmethod
-    def _prepare_estimator_from_job_description(
-        cls, estimator_cls, training_details, sagemaker_session
-    ):
+    def _prepare_estimator_from_job_description(cls, estimator_cls, job_details, sagemaker_session):
+        training_details = job_details["TrainingJobDefinition"]
+
         # Swap name for static hyperparameters to what an estimator would expect
         training_details["HyperParameters"] = training_details["StaticHyperParameters"]
         del training_details["StaticHyperParameters"]
 
         # Remove hyperparameter reserved by SageMaker for tuning jobs
         del training_details["HyperParameters"]["_tuning_objective_metric"]
+
+        # Add missing hyperparameters defined in the hyperparameter ranges,
+        # as potentially required in the Amazon algorithm estimator's constructor
+        if issubclass(estimator_cls, AmazonAlgorithmEstimatorBase):
+            parameter_ranges = job_details["HyperParameterTuningJobConfig"]["ParameterRanges"]
+            additional_hyperparameters = cls._extract_hyperparameters_from_parameter_ranges(
+                parameter_ranges
+            )
+            training_details["HyperParameters"].update(additional_hyperparameters)
 
         # Add items expected by the estimator (but aren't needed otherwise)
         training_details["TrainingJobName"] = ""
@@ -558,6 +567,21 @@ class HyperparameterTuner(object):
             )
 
         return ranges
+
+    @classmethod
+    def _extract_hyperparameters_from_parameter_ranges(cls, parameter_ranges):
+        hyperparameters = {}
+
+        for parameter in parameter_ranges["CategoricalParameterRanges"]:
+            hyperparameters[parameter["Name"]] = parameter["Values"][0]
+
+        for parameter in parameter_ranges["ContinuousParameterRanges"]:
+            hyperparameters[parameter["Name"]] = float(parameter["MinValue"])
+
+        for parameter in parameter_ranges["IntegerParameterRanges"]:
+            hyperparameters[parameter["Name"]] = int(parameter["MinValue"])
+
+        return hyperparameters
 
     def hyperparameter_ranges(self):
         """Return the hyperparameter ranges in a dictionary to be used as part of a request for creating a
