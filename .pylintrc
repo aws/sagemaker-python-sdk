@@ -92,7 +92,6 @@ disable=
     consider-using-in, # TODO: Consider merging comparisons with "in"
     too-many-public-methods, # TODO: Resolve
     consider-using-ternary, # TODO: Consider ternary expressions
-    chained-comparison, # TODO: Simplify chained comparison between operands
     too-many-branches, # TODO: Simplify or ignore as appropriate
     missing-docstring, # TODO: Fix missing docstring
 
