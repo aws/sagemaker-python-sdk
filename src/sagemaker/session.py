@@ -23,8 +23,8 @@ import warnings
 import six
 import boto3
 import botocore.config
-import yaml
 from botocore.exceptions import ClientError
+import yaml
 
 import sagemaker.logs
 from sagemaker import vpc_utils
