@@ -28,8 +28,8 @@ import sys
 import tarfile
 import tempfile
 
-from six.moves.urllib.parse import urlparse
 from threading import Thread
+from six.moves.urllib.parse import urlparse
 
 import yaml
 
