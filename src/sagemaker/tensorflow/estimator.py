@@ -487,11 +487,13 @@ class TensorFlow(Framework):
                 as the entry point to training. If not specified and ``endpoint_type`` is 'tensorflow-serving',
                 no entry point is used. If ``endpoint_type`` is also ``None``, then the training entry point is used.
             source_dir (str): Path (absolute or relative) to a directory with any other serving
-                source code dependencies aside from the entry point file.
-                If not specified, the model source directory from training is used.
+                source code dependencies aside from the entry point file. If not specified and
+                ``endpoint_type`` is 'tensorflow-serving', no source_dir is used. If ``endpoint_type`` is also ``None``,
+                then the model source directory from training is used.
             dependencies (list[str]): A list of paths to directories (absolute or relative) with
                 any additional libraries that will be exported to the container.
-                If not specified, the dependencies from training are used.
+                If not specified and ``endpoint_type`` is 'tensorflow-serving', ``dependencies`` is set to ``None``.
+                If ``endpoint_type`` is also ``None``, then the dependencies from training are used.
 
         Returns:
             sagemaker.tensorflow.model.TensorFlowModel or sagemaker.tensorflow.serving.Model: A ``Model`` object.
@@ -536,6 +538,8 @@ class TensorFlow(Framework):
             sagemaker_session=self.sagemaker_session,
             vpc_config=self.get_vpc_config(vpc_config_override),
             entry_point=entry_point,
+            source_dir=source_dir,
+            dependencies=dependencies,
         )
 
     def _create_default_model(
@@ -551,7 +555,7 @@ class TensorFlow(Framework):
             self.model_data,
             role,
             entry_point or self.entry_point,
-            source_dir=self._model_source_dir(),
+            source_dir=source_dir or self._model_source_dir(),
             enable_cloudwatch_metrics=self.enable_cloudwatch_metrics,
             env={"SAGEMAKER_REQUIREMENTS": self.requirements_file},
             image=self.image_name,
@@ -563,7 +567,7 @@ class TensorFlow(Framework):
             model_server_workers=model_server_workers,
             sagemaker_session=self.sagemaker_session,
             vpc_config=self.get_vpc_config(vpc_config_override),
-            dependencies=self.dependencies,
+            dependencies=dependencies or self.dependencies,
         )
 
     def hyperparameters(self):
