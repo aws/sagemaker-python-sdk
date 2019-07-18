@@ -552,7 +552,7 @@ class FrameworkModel(Model):
                 the same as GitHub-like repos. When 'repo' is an HTTPS URL, username+password will be used for
                 authentication if they are provided; otherwise, python SDK will try to use either CodeCommit credential
                 helper or local credential storage for authentication.
-            source_dir (str): Path (absolute or relative) to a directory with any other training
+            source_dir (str): Path (absolute or relative) to a directory with any other serving
                 source code dependencies aside from the entry point file (default: None). Structure within this
                 directory will be preserved when training on SageMaker. If 'git_config' is provided,
                 'source_dir' should be a relative location to a directory in the Git repo. If the directory points
