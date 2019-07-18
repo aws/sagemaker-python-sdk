@@ -528,9 +528,6 @@ Create a Transformer Object
 ---------------------------
 
 If you used an estimator to train your model, you can call the ``transformer`` method of the estimator to create a ``Transformer`` object.
-To use a model trained outside of SageMaker, you can package the model as a SageMaker model, and call the ``transformer`` method of the SageMaker model.
-For information about how to package a model as a SageMaker model, see :ref:`overview:BYO Model`.
-When you call the ``tranformer`` method, you specify the type and number of instances to use for the batch transform job, and the location where the results are stored in S3.
 
 For example:
 
@@ -542,6 +539,26 @@ For example:
   batch_output = 's3://{}/{}/results'.format(bucket, prefix) # The location to store the results
 
   tf_transformer = tf_estimator.transformer(instance_count=1, instance_type='ml.m4.xlarge, output_path=batch_output)
+
+To use a model trained outside of SageMaker, you can package the model as a SageMaker model, and call the ``transformer`` method of the SageMaker model.
+
+For example:
+
+For example:
+
+.. code:: python
+
+  bucket = myBucket # The name of the S3 bucket where the results are stored
+  prefix = 'batch-results' # The folder in the S3 bucket where the results are stored
+
+  batch_output = 's3://{}/{}/results'.format(bucket, prefix) # The location to store the results
+
+  tf_transformer = tensorflow_serving_model.transformer(instance_count=1, instance_type='ml.m4.xlarge, output_path=batch_output)
+
+For information about how to package a model as a SageMaker model, see :ref:`overview:BYO Model`.
+When you call the ``tranformer`` method, you specify the type and number of instances to use for the batch transform job, and the location where the results are stored in S3.
+
+
 
 Call transform
 --------------
