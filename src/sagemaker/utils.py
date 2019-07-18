@@ -10,6 +10,7 @@
 # distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
+"""Placeholder docstring"""
 from __future__ import absolute_import
 
 import contextlib
@@ -40,7 +41,8 @@ def name_from_image(image):
         image (str): Image name.
 
     Returns:
-        str: Training job name using the algorithm from the image name and a timestamp.
+        str: Training job name using the algorithm from the image name and a
+        timestamp.
     """
     return name_from_base(base_name_from_image(image))
 
@@ -48,8 +50,9 @@ def name_from_image(image):
 def name_from_base(base, max_length=63, short=False):
     """Append a timestamp to the provided string.
 
-    This function assures that the total length of the resulting string is not
-    longer than the specified max length, trimming the input parameter if necessary.
+    This function assures that the total length of the resulting string is
+    not longer than the specified max length, trimming the input parameter if
+    necessary.
 
     Args:
         base (str): String used as prefix to generate the unique name.
@@ -65,6 +68,11 @@ def name_from_base(base, max_length=63, short=False):
 
 
 def unique_name_from_base(base, max_length=63):
+    """
+    Args:
+        base:
+        max_length:
+    """
     unique = "%04x" % random.randrange(16 ** 4)  # 4-digit hex
     ts = str(int(time.time()))
     available_length = max_length - 2 - len(ts) - len(unique)
@@ -73,7 +81,8 @@ def unique_name_from_base(base, max_length=63):
 
 
 def base_name_from_image(image):
-    """Extract the base name of the image to use as the 'algorithm name' for the job.
+    """Extract the base name of the image to use as the 'algorithm name' for the
+    job.
 
     Args:
         image (str): Image name.
@@ -99,7 +108,11 @@ def sagemaker_short_timestamp():
 
 
 def debug(func):
-    """Print the function name and arguments for debugging."""
+    """Print the function name and arguments for debugging.
+
+    Args:
+        func:
+    """
 
     @wraps(func)
     def wrapper(*args, **kwargs):
@@ -110,6 +123,11 @@ def debug(func):
 
 
 def get_config_value(key_path, config):
+    """
+    Args:
+        key_path:
+        config:
+    """
     if config is None:
         return None
 
@@ -138,15 +156,16 @@ def get_short_version(framework_version):
 def to_str(value):
     """Convert the input to a string, unless it is a unicode string in Python 2.
 
-    Unicode strings are supported as native strings in Python 3, but ``str()`` cannot be
-    invoked on unicode strings in Python 2, so we need to check for that case when
-    converting user-specified values to strings.
+    Unicode strings are supported as native strings in Python 3, but
+    ``str()`` cannot be invoked on unicode strings in Python 2, so we need to
+    check for that case when converting user-specified values to strings.
 
     Args:
         value: The value to convert to a string.
 
     Returns:
-        str or unicode: The string representation of the value or the unicode string itself.
+        str or unicode: The string representation of the value or the unicode
+        string itself.
     """
     if sys.version_info.major < 3 and isinstance(value, six.string_types):
         return value
@@ -154,8 +173,11 @@ def to_str(value):
 
 
 def extract_name_from_job_arn(arn):
-    """Returns the name used in the API given a full ARN for a training job
-    or hyperparameter tuning job.
+    """Returns the name used in the API given a full ARN for a training job or
+    hyperparameter tuning job.
+
+    Args:
+        arn:
     """
     slash_pos = arn.find("/")
     if slash_pos == -1:
@@ -167,12 +189,12 @@ def secondary_training_status_changed(current_job_description, prev_job_descript
     """Returns true if training job's secondary status message has changed.
 
     Args:
-        current_job_desc: Current job description, returned from DescribeTrainingJob call.
-        prev_job_desc: Previous job description, returned from DescribeTrainingJob call.
+        current_job_description: Current job description, returned from DescribeTrainingJob call.
+        prev_job_description: Previous job description, returned from DescribeTrainingJob call.
 
     Returns:
-        boolean: Whether the secondary status message of a training job changed or not.
-
+        boolean: Whether the secondary status message of a training job changed
+        or not.
     """
     current_secondary_status_transitions = current_job_description.get("SecondaryStatusTransitions")
     if (
@@ -200,7 +222,8 @@ def secondary_training_status_changed(current_job_description, prev_job_descript
 
 
 def secondary_training_status_message(job_description, prev_description):
-    """Returns a string contains last modified time and the secondary training job status message.
+    """Returns a string contains last modified time and the secondary training
+    job status message.
 
     Args:
         job_description: Returned response from DescribeTrainingJob call
@@ -208,7 +231,6 @@ def secondary_training_status_message(job_description, prev_description):
 
     Returns:
         str: Job status string to be printed.
-
     """
 
     if (
@@ -253,9 +275,11 @@ def download_folder(bucket_name, prefix, target, sagemaker_session):
 
     Args:
         bucket_name (str): S3 bucket name
-        prefix (str): S3 prefix within the bucket that will be downloaded. Can be a single file.
+        prefix (str): S3 prefix within the bucket that will be downloaded. Can
+            be a single file.
         target (str): destination path where the downloaded items will be placed
-        sagemaker_session (:class:`sagemaker.session.Session`): a sagemaker session to interact with S3.
+        sagemaker_session (sagemaker.session.Session): a sagemaker session to
+            interact with S3.
     """
     boto_session = sagemaker_session.boto_session
 
@@ -293,10 +317,13 @@ def download_folder(bucket_name, prefix, target, sagemaker_session):
 
 def create_tar_file(source_files, target=None):
     """Create a tar file containing all the source_files
+
     Args:
-        source_files (List[str]): List of file paths that will be contained in the tar file
+        source_files: (List[str]): List of file paths that will be contained in the tar file
+        target:
+
     Returns:
-         (str): path to created tar file
+        (str): path to created tar file
     """
     if target:
         filename = target
@@ -312,17 +339,17 @@ def create_tar_file(source_files, target=None):
 
 @contextlib.contextmanager
 def _tmpdir(suffix="", prefix="tmp"):
-    """Create a temporary directory with a context manager. The file is deleted when the context exits.
+    """Create a temporary directory with a context manager. The file is deleted
+    when the context exits.
 
     The prefix, suffix, and dir arguments are the same as for mkstemp().
 
     Args:
-        suffix (str):  If suffix is specified, the file name will end with that suffix, otherwise there will be no
-                        suffix.
-        prefix (str):  If prefix is specified, the file name will begin with that prefix; otherwise,
-                        a default prefix is used.
-        dir (str):  If dir is specified, the file will be created in that directory; otherwise, a default directory is
-                        used.
+        suffix (str): If suffix is specified, the file name will end with that
+            suffix, otherwise there will be no suffix.
+        prefix (str): If prefix is specified, the file name will begin with that
+            prefix; otherwise, a default prefix is used.
+
     Returns:
         str: path to the directory
     """
@@ -339,35 +366,40 @@ def repack_model(
     repacked_model_uri,
     sagemaker_session,
 ):
-    """Unpack model tarball and creates a new model tarball with the provided code script.
+    """Unpack model tarball and creates a new model tarball with the provided
+    code script.
 
-    This function does the following:
-    - uncompresses model tarball from S3 or local system into a temp folder
-    - replaces the inference code from the model with the new code provided
-    - compresses the new model tarball and saves it in S3 or local file system
+    This function does the following: - uncompresses model tarball from S3 or
+    local system into a temp folder - replaces the inference code from the model
+    with the new code provided - compresses the new model tarball and saves it
+    in S3 or local file system
 
     Args:
-        inference_script (str): path or basename of the inference script that will be packed into the model
-        source_directory (str): path including all the files that will be packed into the model
-        dependencies (list[str]): A list of paths to directories (absolute or relative) with
-                any additional libraries that will be exported to the container (default: []).
-                The library folders will be copied to SageMaker in the same folder where the entrypoint is copied.
-                Example:
+        inference_script (str): path or basename of the inference script that
+            will be packed into the model
+        source_directory (str): path including all the files that will be packed
+            into the model
+        dependencies (list[str]): A list of paths to directories (absolute or
+            relative) with any additional libraries that will be exported to the
+            container (default: []). The library folders will be copied to
+            SageMaker in the same folder where the entrypoint is copied.
+            Example
 
-                    The following call
-                    >>> Estimator(entry_point='train.py', dependencies=['my/libs/common', 'virtual-env'])
-                    results in the following inside the container:
+                The following call >>> Estimator(entry_point='train.py',
+                dependencies=['my/libs/common', 'virtual-env']) results in the
+                following inside the container:
 
-                    >>> $ ls
+                >>> $ ls
 
-                    >>> opt/ml/code
-                    >>>     |------ train.py
-                    >>>     |------ common
-                    >>>     |------ virtual-env
-
-        repacked_model_uri (str): path or file system location where the new model will be saved
+                >>> opt/ml/code
+                >>>     |------ train.py
+                >>>     |------ common
+                >>>     |------ virtual-env
         model_uri (str): S3 or file system location of the original model tar
-        sagemaker_session (:class:`sagemaker.session.Session`): a sagemaker session to interact with S3.
+        repacked_model_uri (str): path or file system location where the new
+            model will be saved
+        sagemaker_session (sagemaker.session.Session): a sagemaker session to
+            interact with S3.
 
     Returns:
         str: path to the new packed model
@@ -389,6 +421,12 @@ def repack_model(
 
 
 def _save_model(repacked_model_uri, tmp_model_path, sagemaker_session):
+    """
+    Args:
+        repacked_model_uri:
+        tmp_model_path:
+        sagemaker_session:
+    """
     if repacked_model_uri.lower().startswith("s3://"):
         url = parse.urlparse(repacked_model_uri)
         bucket, key = url.netloc, url.path.lstrip("/")
@@ -404,6 +442,15 @@ def _save_model(repacked_model_uri, tmp_model_path, sagemaker_session):
 def _create_or_update_code_dir(
     model_dir, inference_script, source_directory, dependencies, sagemaker_session, tmp
 ):
+    """
+    Args:
+        model_dir:
+        inference_script:
+        source_directory:
+        dependencies:
+        sagemaker_session:
+        tmp:
+    """
     code_dir = os.path.join(model_dir, "code")
     if os.path.exists(code_dir):
         shutil.rmtree(code_dir, ignore_errors=True)
@@ -428,6 +475,12 @@ def _create_or_update_code_dir(
 
 
 def _extract_model(model_uri, sagemaker_session, tmp):
+    """
+    Args:
+        model_uri:
+        sagemaker_session:
+        tmp:
+    """
     tmp_model_dir = os.path.join(tmp, "model")
     os.mkdir(tmp_model_dir)
     if model_uri.lower().startswith("s3://"):
@@ -441,6 +494,12 @@ def _extract_model(model_uri, sagemaker_session, tmp):
 
 
 def download_file_from_url(url, dst, sagemaker_session):
+    """
+    Args:
+        url:
+        dst:
+        sagemaker_session:
+    """
     url = parse.urlparse(url)
     bucket, key = url.netloc, url.path.lstrip("/")
 
@@ -454,7 +513,8 @@ def download_file(bucket_name, path, target, sagemaker_session):
         bucket_name (str): S3 bucket name
         path (str): file path within the bucket
         target (str): destination directory for the downloaded file.
-        sagemaker_session (:class:`sagemaker.session.Session`): a sagemaker session to interact with S3.
+        sagemaker_session (sagemaker.session.Session): a sagemaker session to
+            interact with S3.
     """
     path = path.lstrip("/")
     boto_session = sagemaker_session.boto_session
@@ -479,10 +539,10 @@ def get_ecr_image_uri_prefix(account, region):
 
 
 class DeferredError(object):
-    """Stores an exception and raises it at a later time if this
-    object is accessed in any way.  Useful to allow soft-dependencies on imports,
-    so that the ImportError can be raised again later if code actually
-    relies on the missing library.
+    """Stores an exception and raises it at a later time if this object is
+    accessed in any way. Useful to allow soft-dependencies on imports, so that
+    the ImportError can be raised again later if code actually relies on the
+    missing library.
 
     Example::
 
@@ -494,11 +554,18 @@ class DeferredError(object):
     """
 
     def __init__(self, exception):
+        """
+        Args:
+            exception:
+        """
         self.exc = exception
 
     def __getattr__(self, name):
-        """Called by Python interpreter before using any method or property
-        on the object.  So this will short-circuit essentially any access to this
+        """Called by Python interpreter before using any method or property on
+        the object. So this will short-circuit essentially any access to this
         object.
+
+        Args:
+            name:
         """
         raise self.exc

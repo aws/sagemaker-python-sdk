@@ -10,6 +10,7 @@
 # distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
+"""Placeholder docstring"""
 from __future__ import absolute_import, print_function
 
 import json
@@ -48,6 +49,8 @@ _STATUS_CODE_TABLE = {
 
 
 class LogState(object):
+    """Placeholder docstring"""
+
     STARTING = 1
     WAIT_IN_PROGRESS = 2
     TAILING = 3
@@ -121,6 +124,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
 
     @property
     def boto_region_name(self):
+        """Placeholder docstring"""
         return self._region_name
 
     def upload_data(self, path, bucket=None, key_prefix="data", extra_args=None):
@@ -1607,6 +1611,7 @@ class ModelContainer(object):
 def _create_model_request(
     name, role, container_def=None, tags=None
 ):  # pylint: disable=redefined-outer-name
+    """Placeholder docstring"""
     request = {"ModelName": name, "ExecutionRoleArn": role}
 
     if isinstance(container_def, list):
@@ -1621,6 +1626,7 @@ def _create_model_request(
 
 
 def _deployment_entity_exists(describe_fn):
+    """Placeholder docstring"""
     try:
         describe_fn()
         return True
@@ -1635,6 +1641,7 @@ def _deployment_entity_exists(describe_fn):
 
 
 def _train_done(sagemaker_client, job_name, last_desc):
+    """Placeholder docstring"""
     in_progress_statuses = ["InProgress", "Created"]
 
     desc = sagemaker_client.describe_training_job(TrainingJobName=job_name)
@@ -1655,6 +1662,7 @@ def _train_done(sagemaker_client, job_name, last_desc):
 
 
 def _compilation_job_status(sagemaker_client, job_name):
+    """Placeholder docstring"""
     compile_status_codes = {
         "Completed": "!",
         "InProgress": ".",
@@ -1678,6 +1686,7 @@ def _compilation_job_status(sagemaker_client, job_name):
 
 
 def _tuning_job_status(sagemaker_client, job_name):
+    """Placeholder docstring"""
     tuning_status_codes = {
         "Completed": "!",
         "InProgress": ".",
@@ -1703,6 +1712,7 @@ def _tuning_job_status(sagemaker_client, job_name):
 
 
 def _transform_job_status(sagemaker_client, job_name):
+    """Placeholder docstring"""
     transform_job_status_codes = {
         "Completed": "!",
         "InProgress": ".",
@@ -1726,6 +1736,7 @@ def _transform_job_status(sagemaker_client, job_name):
 
 
 def _create_model_package_status(sagemaker_client, model_package_name):
+    """Placeholder docstring"""
     in_progress_statuses = ["InProgress", "Pending"]
 
     desc = sagemaker_client.describe_model_package(ModelPackageName=model_package_name)
@@ -1741,6 +1752,7 @@ def _create_model_package_status(sagemaker_client, model_package_name):
 
 
 def _deploy_done(sagemaker_client, endpoint_name):
+    """Placeholder docstring"""
     hosting_status_codes = {
         "OutOfService": "x",
         "Creating": "-",
@@ -1762,6 +1774,7 @@ def _deploy_done(sagemaker_client, endpoint_name):
 
 
 def _wait_until_training_done(callable_fn, desc, poll=5):
+    """Placeholder docstring"""
     job_desc, finished = callable_fn(desc)
     while not finished:
         time.sleep(poll)
@@ -1770,6 +1783,7 @@ def _wait_until_training_done(callable_fn, desc, poll=5):
 
 
 def _wait_until(callable_fn, poll=5):
+    """Placeholder docstring"""
     result = callable_fn()
     while result is None:
         time.sleep(poll)
@@ -1778,6 +1792,7 @@ def _wait_until(callable_fn, poll=5):
 
 
 def _expand_container_def(c_def):
+    """Placeholder docstring"""
     if isinstance(c_def, six.string_types):
         return container_def(c_def)
     return c_def
@@ -1786,6 +1801,7 @@ def _expand_container_def(c_def):
 def _vpc_config_from_training_job(
     training_job_desc, vpc_config_override=vpc_utils.VPC_CONFIG_DEFAULT
 ):
+    """Placeholder docstring"""
     if vpc_config_override is vpc_utils.VPC_CONFIG_DEFAULT:
         return training_job_desc.get(vpc_utils.VPC_CONFIG_KEY)
     return vpc_utils.sanitize(vpc_config_override)

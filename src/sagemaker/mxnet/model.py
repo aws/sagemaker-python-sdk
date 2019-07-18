@@ -10,6 +10,7 @@
 # distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
+"""Placeholder docstring"""
 from __future__ import absolute_import
 
 import logging
@@ -28,16 +29,19 @@ logger = logging.getLogger("sagemaker")
 class MXNetPredictor(RealTimePredictor):
     """A RealTimePredictor for inference against MXNet Endpoints.
 
-    This is able to serialize Python lists, dictionaries, and numpy arrays to multidimensional tensors for MXNet
-    inference."""
+    This is able to serialize Python lists, dictionaries, and numpy arrays to
+    multidimensional tensors for MXNet inference.
+    """
 
     def __init__(self, endpoint_name, sagemaker_session=None):
         """Initialize an ``MXNetPredictor``.
 
         Args:
-            endpoint_name (str): The name of the endpoint to perform inference on.
-            sagemaker_session (sagemaker.session.Session): Session object which manages interactions with
-                Amazon SageMaker APIs and any other AWS services needed. If not specified, the estimator creates one
+            endpoint_name (str): The name of the endpoint to perform inference
+                on.
+            sagemaker_session (sagemaker.session.Session): Session object which
+                manages interactions with Amazon SageMaker APIs and any other
+                AWS services needed. If not specified, the estimator creates one
                 using the default AWS configuration chain.
         """
         super(MXNetPredictor, self).__init__(
@@ -66,22 +70,32 @@ class MXNetModel(FrameworkModel):
         """Initialize an MXNetModel.
 
         Args:
-            model_data (str): The S3 location of a SageMaker model data ``.tar.gz`` file.
-            role (str): An AWS IAM role (either name or full ARN). The Amazon SageMaker training jobs and APIs
-                that create Amazon SageMaker endpoints use this role to access training data and model artifacts.
-                After the endpoint is created, the inference code might use the IAM role,
-                if it needs to access an AWS resource.
-            entry_point (str): Path (absolute or relative) to the Python source file which should be executed
-                as the entry point to model hosting. This should be compatible with either Python 2.7 or Python 3.5.
-            image (str): A Docker image URI (default: None). If not specified, a default image for MXNet will be used.
-            py_version (str): Python version you want to use for executing your model training code (default: 'py2').
-            framework_version (str): MXNet version you want to use for executing your model training code.
-            predictor_cls (callable[str, sagemaker.session.Session]): A function to call to create a predictor
-                with an endpoint name and SageMaker ``Session``. If specified, ``deploy()`` returns the result of
-                invoking this function on the created endpoint name.
-            model_server_workers (int): Optional. The number of worker processes used by the inference server.
-                If None, server will use one worker per vCPU.
-            **kwargs: Keyword arguments passed to the ``FrameworkModel`` initializer.
+            model_data (str): The S3 location of a SageMaker model data
+                ``.tar.gz`` file.
+            role (str): An AWS IAM role (either name or full ARN). The Amazon
+                SageMaker training jobs and APIs that create Amazon SageMaker
+                endpoints use this role to access training data and model
+                artifacts. After the endpoint is created, the inference code
+                might use the IAM role, if it needs to access an AWS resource.
+            entry_point (str): Path (absolute or relative) to the Python source
+                file which should be executed as the entry point to model
+                hosting. This should be compatible with either Python 2.7 or
+                Python 3.5.
+            image (str): A Docker image URI (default: None). If not specified, a
+                default image for MXNet will be used.
+            py_version (str): Python version you want to use for executing your
+                model training code (default: 'py2').
+            framework_version (str): MXNet version you want to use for executing
+                your model training code.
+            predictor_cls (callable[str, sagemaker.session.Session]): A function
+                to call to create a predictor with an endpoint name and
+                SageMaker ``Session``. If specified, ``deploy()`` returns the
+                result of invoking this function on the created endpoint name.
+            model_server_workers (int): Optional. The number of worker processes
+                used by the inference server. If None, server will use one
+                worker per vCPU.
+            **kwargs: Keyword arguments passed to the ``FrameworkModel``
+                initializer.
         """
         super(MXNetModel, self).__init__(
             model_data, image, role, entry_point, predictor_cls=predictor_cls, **kwargs
@@ -95,15 +109,19 @@ class MXNetModel(FrameworkModel):
         self.model_server_workers = model_server_workers
 
     def prepare_container_def(self, instance_type, accelerator_type=None):
-        """Return a container definition with framework configuration set in model environment variables.
+        """Return a container definition with framework configuration set in
+        model environment variables.
 
         Args:
-            instance_type (str): The EC2 instance type to deploy this Model to. For example, 'ml.p2.xlarge'.
-            accelerator_type (str): The Elastic Inference accelerator type to deploy to the instance for loading and
-                making inferences to the model. For example, 'ml.eia1.medium'.
+            instance_type (str): The EC2 instance type to deploy this Model to.
+                For example, 'ml.p2.xlarge'.
+            accelerator_type (str): The Elastic Inference accelerator type to
+                deploy to the instance for loading and making inferences to the
+                model. For example, 'ml.eia1.medium'.
 
         Returns:
-            dict[str, str]: A container definition object usable with the CreateModel API.
+            dict[str, str]: A container definition object usable with the
+            CreateModel API.
         """
         is_mms_version = parse_version(self.framework_version) >= parse_version(
             self._LOWEST_MMS_VERSION
