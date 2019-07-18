@@ -1,5 +1,48 @@
 # Changelog
 
+## v1.33.0 (2019-07-10)
+
+### Features
+
+ * git support for hosting models
+ * allow custom model name during deploy
+
+### Bug fixes and other changes
+
+ * remove TODO comment on import-error Pylint check
+ * enable wrong-import-position pylint check
+ * Revert "change: enable wrong-import-position pylint check (#907)"
+ * enable signature-differs pylint check
+ * enable wrong-import-position pylint check
+ * enable logging-not-lazy pylint check
+ * reset default output path in Transformer.transform
+ * Add ap-northeast-1 to Neo algorithms region map
+
+## v1.32.2 (2019-07-08)
+
+### Bug fixes and other changes
+
+ * enable logging-format-interpolation pylint check
+ * remove superfluous parens per Pylint rule
+
+### Documentation changes
+
+ * add pypi, rtd, black badges to readme
+
+## v1.32.1 (2019-07-04)
+
+### Bug fixes and other changes
+
+ * correct code per len-as-condition Pylint check
+ * tighten pylint config and expand C and R exceptions
+ * Update displaytime.sh
+ * fix notebook tests
+ * separate unit, local mode, and notebook tests in different buildspecs
+
+### Documentation changes
+
+ * refactor the overview topic in the sphinx project
+
 ## v1.32.0 (2019-07-02)
 
 ### Features
@@ -9,6 +52,7 @@
 ### Bug fixes and other changes
 
  * fix git test in test_estimator.py
+ * Add ap-northeast-1 to Neo algorithms region map
 
 ## v1.31.1 (2019-07-01)
 

@@ -37,6 +37,9 @@ class AnalyticsMetricsBase(with_metaclass(ABCMeta, object)):
     Understands common functionality like persistence and caching.
     """
 
+    def __init__(self):
+        self._dataframe = None
+
     def export_csv(self, filename):
         """Persists the analytics dataframe to a file.
 
@@ -88,6 +91,9 @@ class HyperparameterTuningJobAnalytics(AnalyticsMetricsBase):
         sagemaker_session = sagemaker_session or Session()
         self._sage_client = sagemaker_session.sagemaker_client
         self._tuning_job_name = hyperparameter_tuning_job_name
+        self._tuning_job_describe_result = None
+        self._training_job_summaries = None
+        super(HyperparameterTuningJobAnalytics, self).__init__()
         self.clear_cache()
 
     @property
@@ -186,14 +192,14 @@ class HyperparameterTuningJobAnalytics(AnalyticsMetricsBase):
         output = []
         next_args = {}
         for count in range(100):
-            logging.debug("Calling list_training_jobs_for_hyper_parameter_tuning_job %d" % count)
+            logging.debug("Calling list_training_jobs_for_hyper_parameter_tuning_job %d", count)
             raw_result = self._sage_client.list_training_jobs_for_hyper_parameter_tuning_job(
                 HyperParameterTuningJobName=self.name, MaxResults=100, **next_args
             )
             new_output = raw_result["TrainingJobSummaries"]
             output.extend(new_output)
             logging.debug(
-                "Got %d more TrainingJobs. Total so far: %d" % (len(new_output), len(output))
+                "Got %d more TrainingJobs. Total so far: %d", len(new_output), len(output)
             )
             if ("NextToken" in raw_result) and (len(new_output) > 0):
                 next_args["NextToken"] = raw_result["NextToken"]
@@ -240,6 +246,8 @@ class TrainingJobAnalytics(AnalyticsMetricsBase):
             self._metric_names = metric_names
         else:
             self._metric_names = self._metric_names_for_training_job()
+
+        super(TrainingJobAnalytics, self).__init__()
         self.clear_cache()
 
     @property
@@ -296,7 +304,7 @@ class TrainingJobAnalytics(AnalyticsMetricsBase):
         }
         raw_cwm_data = self._cloudwatch.get_metric_statistics(**request)["Datapoints"]
         if len(raw_cwm_data) == 0:
-            logging.warning("Warning: No metrics called %s found" % metric_name)
+            logging.warning("Warning: No metrics called %s found", metric_name)
             return
 
         # Process data: normalize to starting time, and sort.

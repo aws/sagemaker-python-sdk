@@ -28,8 +28,8 @@ import sys
 import tarfile
 import tempfile
 
-from six.moves.urllib.parse import urlparse
 from threading import Thread
+from six.moves.urllib.parse import urlparse
 
 import yaml
 
@@ -172,7 +172,7 @@ class _SageMakerContainer(object):
         logger.info("serving")
 
         self.container_root = self._create_tmp_folder()
-        logger.info("creating hosting dir in {}".format(self.container_root))
+        logger.info("creating hosting dir in %s", self.container_root)
 
         volumes = self._prepare_serving_volumes(model_dir)
 
@@ -424,7 +424,7 @@ class _SageMakerContainer(object):
 
         docker_compose_path = os.path.join(self.container_root, DOCKER_COMPOSE_FILENAME)
         yaml_content = yaml.dump(content, default_flow_style=False)
-        logger.info("docker compose file: \n{}".format(yaml_content))
+        logger.info("docker compose file: \n%s", yaml_content)
         with open(docker_compose_path, "w") as f:
             f.write(yaml_content)
 
@@ -445,7 +445,7 @@ class _SageMakerContainer(object):
         if detached:
             command.append("-d")
 
-        logger.info("docker command: {}".format(" ".join(command)))
+        logger.info("docker command: %s", " ".join(command))
         return command
 
     def _create_docker_host(self, host, environment, optml_subdirs, command, volumes):
@@ -619,7 +619,7 @@ def _check_output(cmd, *popenargs, **kwargs):
 
     output = output.decode("utf-8")
     if not success:
-        logger.error("Command output: %s" % output)
+        logger.error("Command output: %s", output)
         raise Exception("Failed to run %s" % ",".join(cmd))
 
     return output
@@ -639,9 +639,9 @@ def _delete_tree(path):
         # files. We expect this to happen, so we handle EACCESS. Any other error we will raise the
         # exception up.
         if exc.errno == errno.EACCES:
-            logger.warning("Failed to delete: %s Please remove it manually." % path)
+            logger.warning("Failed to delete: %s Please remove it manually.", path)
         else:
-            logger.error("Failed to delete: %s" % path)
+            logger.error("Failed to delete: %s", path)
             raise
 
 
@@ -665,7 +665,7 @@ def _aws_credentials(session):
                 "AWS_ACCESS_KEY_ID=%s" % (str(access_key)),
                 "AWS_SECRET_ACCESS_KEY=%s" % (str(secret_key)),
             ]
-        elif not _aws_credentials_available_in_metadata_service():
+        if not _aws_credentials_available_in_metadata_service():
             logger.warning(
                 "Using the short-lived AWS credentials found in session. They might expire while running."
             )
@@ -674,13 +674,12 @@ def _aws_credentials(session):
                 "AWS_SECRET_ACCESS_KEY=%s" % (str(secret_key)),
                 "AWS_SESSION_TOKEN=%s" % (str(token)),
             ]
-        else:
-            logger.info(
-                "No AWS credentials found in session but credentials from EC2 Metadata Service are available."
-            )
-            return None
+        logger.info(
+            "No AWS credentials found in session but credentials from EC2 Metadata Service are available."
+        )
+        return None
     except Exception as e:  # pylint: disable=broad-except
-        logger.info("Could not get AWS credentials: %s" % e)
+        logger.info("Could not get AWS credentials: %s", e)
 
     return None
 
@@ -698,7 +697,7 @@ def _aws_credentials_available_in_metadata_service():
             user_agent=session.user_agent(),
         )
     )
-    return not (instance_metadata_provider.load() is None)
+    return not instance_metadata_provider.load() is None
 
 
 def _write_json_file(filename, content):
@@ -739,7 +738,7 @@ def _ecr_login_if_needed(boto_session, image):
 
 def _pull_image(image):
     pull_image_command = ("docker pull %s" % image).strip()
-    logger.info("docker command: {}".format(pull_image_command))
+    logger.info("docker command: %s", pull_image_command)
 
     subprocess.check_output(pull_image_command, shell=True)
-    logger.info("image pulled: {}".format(image))
+    logger.info("image pulled: %s", image)

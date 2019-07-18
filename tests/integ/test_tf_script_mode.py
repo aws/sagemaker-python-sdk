@@ -159,6 +159,7 @@ def test_mnist_async(sagemaker_session):
     training_job_name = estimator.latest_training_job.name
     time.sleep(20)
     endpoint_name = training_job_name
+    model_name = "model-name-1"
     _assert_training_job_tags_match(
         sagemaker_session.sagemaker_client, estimator.latest_training_job.name, TAGS
     )
@@ -167,7 +168,10 @@ def test_mnist_async(sagemaker_session):
             training_job_name=training_job_name, sagemaker_session=sagemaker_session
         )
         predictor = estimator.deploy(
-            initial_instance_count=1, instance_type="ml.c4.xlarge", endpoint_name=endpoint_name
+            initial_instance_count=1,
+            instance_type="ml.c4.xlarge",
+            endpoint_name=endpoint_name,
+            model_name=model_name,
         )
 
         result = predictor.predict(np.zeros(784))
@@ -176,6 +180,7 @@ def test_mnist_async(sagemaker_session):
         _assert_model_tags_match(
             sagemaker_session.sagemaker_client, estimator.latest_training_job.name, TAGS
         )
+        _assert_model_name_match(sagemaker_session.sagemaker_client, endpoint_name, model_name)
 
 
 def test_deploy_with_input_handlers(sagemaker_session, instance_type):
@@ -241,3 +246,10 @@ def _assert_training_job_tags_match(sagemaker_client, training_job_name, tags):
         TrainingJobName=training_job_name
     )
     _assert_tags_match(sagemaker_client, training_job_description["TrainingJobArn"], tags)
+
+
+def _assert_model_name_match(sagemaker_client, endpoint_config_name, model_name):
+    endpoint_config_description = sagemaker_client.describe_endpoint_config(
+        EndpointConfigName=endpoint_config_name
+    )
+    assert model_name == endpoint_config_description["ProductionVariants"][0]["ModelName"]

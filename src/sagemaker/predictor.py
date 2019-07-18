@@ -15,9 +15,9 @@ from __future__ import print_function, absolute_import
 import codecs
 import csv
 import json
-import numpy as np
 import six
 from six import StringIO, BytesIO
+import numpy as np
 
 from sagemaker.content_types import CONTENT_TYPE_JSON, CONTENT_TYPE_CSV, CONTENT_TYPE_NPY
 from sagemaker.session import Session
@@ -195,10 +195,9 @@ class _CsvSerializer(object):
         if isinstance(data, np.ndarray):
             data = np.ndarray.flatten(data)
         if hasattr(data, "__len__"):
-            if len(data):
-                return _csv_serialize_python_array(data)
-            else:
+            if len(data) == 0:
                 raise ValueError("Cannot serialize empty array")
+            return _csv_serialize_python_array(data)
 
         # files and buffers
         if hasattr(data, "read"):
@@ -232,7 +231,9 @@ def _is_mutable_sequence_like(obj):
 
 def _is_sequence_like(obj):
     # Need to explicitly check on str since str lacks the iterable magic methods in Python 2
-    return (hasattr(obj, "__iter__") and hasattr(obj, "__getitem__")) or isinstance(obj, str)
+    return (  # pylint: disable=consider-using-ternary
+        hasattr(obj, "__iter__") and hasattr(obj, "__getitem__")
+    ) or isinstance(obj, str)
 
 
 def _row_to_csv(obj):
@@ -387,12 +388,17 @@ class _NumpyDeserializer(object):
                 return np.genfromtxt(
                     codecs.getreader("utf-8")(stream), delimiter=",", dtype=self.dtype
                 )
-            elif content_type == CONTENT_TYPE_JSON:
+            if content_type == CONTENT_TYPE_JSON:
                 return np.array(json.load(codecs.getreader("utf-8")(stream)), dtype=self.dtype)
-            elif content_type == CONTENT_TYPE_NPY:
+            if content_type == CONTENT_TYPE_NPY:
                 return np.load(BytesIO(stream.read()))
         finally:
             stream.close()
+        raise ValueError(
+            "content_type must be one of the following: CSV, JSON, NPY. content_type: {}".format(
+                content_type
+            )
+        )
 
 
 numpy_deserializer = _NumpyDeserializer()

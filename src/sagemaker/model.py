@@ -17,7 +17,7 @@ import logging
 import os
 
 import sagemaker
-from sagemaker import fw_utils, local, session, utils
+from sagemaker import fw_utils, local, session, utils, git_utils
 from sagemaker.fw_utils import UploadedCode
 from sagemaker.transformer import Transformer
 
@@ -100,6 +100,7 @@ class Model(object):
         self.vpc_config = vpc_config
         self.sagemaker_session = sagemaker_session
         self._model_name = None
+        self.endpoint_name = None
         self._is_compiled_model = False
         self._enable_network_isolation = enable_network_isolation
 
@@ -176,7 +177,7 @@ class Model(object):
         input_model_config = {
             "S3Uri": self.model_data,
             "DataInputConfig": input_shape
-            if type(input_shape) != dict
+            if not isinstance(input_shape, dict)
             else json.dumps(input_shape),
             "Framework": framework,
         }
@@ -205,8 +206,7 @@ class Model(object):
         """
         if region in NEO_IMAGE_ACCOUNT:
             return True
-        else:
-            return False
+        return False
 
     def _neo_image_account(self, region):
         if region not in NEO_IMAGE_ACCOUNT:
@@ -298,8 +298,9 @@ class Model(object):
             self._is_compiled_model = True
         else:
             LOGGER.warning(
-                "The intance type {} is not supported to deploy via SageMaker,"
-                "please deploy the model on the device by yourself.".format(target_instance_family)
+                "The instance type %s is not supported to deploy via SageMaker,"
+                "please deploy the model manually.",
+                target_instance_family,
             )
         return self
 
@@ -389,6 +390,7 @@ class Model(object):
 
         if self.predictor_cls:
             return self.predictor_cls(self.endpoint_name, self.sagemaker_session)
+        return None
 
     def transformer(
         self,
@@ -493,6 +495,7 @@ class FrameworkModel(Model):
         code_location=None,
         sagemaker_session=None,
         dependencies=None,
+        git_config=None,
         **kwargs
     ):
         """Initialize a ``FrameworkModel``.
@@ -503,24 +506,83 @@ class FrameworkModel(Model):
             role (str): An IAM role name or ARN for SageMaker to access AWS resources on your behalf.
             entry_point (str): Path (absolute or relative) to the Python source file which should be executed
                 as the entry point to model hosting. This should be compatible with either Python 2.7 or Python 3.5.
+                If 'git_config' is provided, 'entry_point' should be a relative location to the Python source file in
+                the Git repo.
+                Example:
+
+                    With the following GitHub repo directory structure:
+
+                    >>> |----- README.md
+                    >>> |----- src
+                    >>>         |----- inference.py
+                    >>>         |----- test.py
+
+                    You can assign entry_point='src/inference.py'.
+            git_config (dict[str, str]): Git configurations used for cloning files, including ``repo``, ``branch``,
+                ``commit``, ``2FA_enabled``, ``username``, ``password`` and ``token``. The ``repo`` field is required.
+                All other fields are optional. ``repo`` specifies the Git repository where your training script is
+                stored. If you don't provide ``branch``, the default value  'master' is used. If you don't provide
+                ``commit``, the latest commit in the specified branch is used.
+                Example:
+
+                    The following config:
+
+                    >>> git_config = {'repo': 'https://github.com/aws/sagemaker-python-sdk.git',
+                    >>>               'branch': 'test-branch-git-config',
+                    >>>               'commit': '329bfcf884482002c05ff7f44f62599ebc9f445a'}
+
+                    results in cloning the repo specified in 'repo', then checkout the 'master' branch, and checkout
+                    the specified commit.
+                ``2FA_enabled``, ``username``, ``password`` and ``token`` are used for authentication. For GitHub
+                (or other Git) accounts, set ``2FA_enabled`` to 'True' if two-factor authentication is enabled for the
+                account, otherwise set it to 'False'. If you do not provide a value for ``2FA_enabled``, a default
+                value of 'False' is used. CodeCommit does not support two-factor authentication, so do not provide
+                "2FA_enabled" with CodeCommit repositories.
+
+                For GitHub and other Git repos, when SSH URLs are provided, it doesn't matter whether 2FA is
+                enabled or disabled; you should either have no passphrase for the SSH key pairs, or have the ssh-agent
+                configured so that you will not be prompted for SSH passphrase when you do 'git clone' command with SSH
+                URLs. When HTTPS URLs are provided: if 2FA is disabled, then either token or username+password will be
+                used for authentication if provided (token prioritized); if 2FA is enabled, only token will be used for
+                authentication if provided. If required authentication info is not provided, python SDK will try to use
+                local credentials storage to authenticate. If that fails either, an error message will be thrown.
+
+                For CodeCommit repos, 2FA is not supported, so '2FA_enabled' should not be provided. There is no token
+                in CodeCommit, so 'token' should not be provided too. When 'repo' is an SSH URL, the requirements are
+                the same as GitHub-like repos. When 'repo' is an HTTPS URL, username+password will be used for
+                authentication if they are provided; otherwise, python SDK will try to use either CodeCommit credential
+                helper or local credential storage for authentication.
             source_dir (str): Path (absolute or relative) to a directory with any other training
                 source code dependencies aside from the entry point file (default: None). Structure within this
-                directory will be preserved when training on SageMaker.
-                If the directory points to S3, no code will be uploaded and the S3 location will be used instead.
+                directory will be preserved when training on SageMaker. If 'git_config' is provided,
+                'source_dir' should be a relative location to a directory in the Git repo. If the directory points
+                to S3, no code will be uploaded and the S3 location will be used instead.
+                Example:
+
+                    With the following GitHub repo directory structure:
+
+                    >>> |----- README.md
+                    >>> |----- src
+                    >>>         |----- inference.py
+                    >>>         |----- test.py
+
+                    You can assign entry_point='inference.py', source_dir='src'.
             dependencies (list[str]): A list of paths to directories (absolute or relative) with
                 any additional libraries that will be exported to the container (default: []).
                 The library folders will be copied to SageMaker in the same folder where the entrypoint is copied.
-                If the ```source_dir``` points to S3, code will be uploaded and the S3 location will be used
-                instead. Example:
+                If 'git_config' is provided, 'dependencies' should be a list of relative locations to directories
+                with any additional libraries needed in the Git repo. If the ```source_dir``` points to S3, code
+                will be uploaded and the S3 location will be used instead.
+                Example:
 
                     The following call
-                    >>> Estimator(entry_point='train.py', dependencies=['my/libs/common', 'virtual-env'])
+                    >>> Estimator(entry_point='inference.py', dependencies=['my/libs/common', 'virtual-env'])
                     results in the following inside the container:
 
                     >>> $ ls
 
                     >>> opt/ml/code
-                    >>>     |------ train.py
+                    >>>     |------ inference.py
                     >>>     |------ common
                     >>>     |------ virtual-env
 
@@ -553,12 +615,20 @@ class FrameworkModel(Model):
         self.entry_point = entry_point
         self.source_dir = source_dir
         self.dependencies = dependencies or []
+        self.git_config = git_config
         self.enable_cloudwatch_metrics = enable_cloudwatch_metrics
         self.container_log_level = container_log_level
         if code_location:
             self.bucket, self.key_prefix = fw_utils.parse_s3_url(code_location)
         else:
             self.bucket, self.key_prefix = None, None
+        if self.git_config:
+            updates = git_utils.git_clone_repo(
+                self.git_config, self.entry_point, self.source_dir, self.dependencies
+            )
+            self.entry_point = updates["entry_point"]
+            self.source_dir = updates["source_dir"]
+            self.dependencies = updates["dependencies"]
         self.uploaded_code = None
         self.repacked_model_data = None
 

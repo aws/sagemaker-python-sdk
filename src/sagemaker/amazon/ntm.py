@@ -151,7 +151,9 @@ class NTM(AmazonAlgorithmEstimatorBase):
             vpc_config=self.get_vpc_config(vpc_config_override),
         )
 
-    def _prepare_for_training(self, records, mini_batch_size, job_name=None):
+    def _prepare_for_training(  # pylint: disable=signature-differs
+        self, records, mini_batch_size, job_name=None
+    ):
         if mini_batch_size is not None and (mini_batch_size < 1 or mini_batch_size > 10000):
             raise ValueError("mini_batch_size must be in [1, 10000]")
         super(NTM, self)._prepare_for_training(

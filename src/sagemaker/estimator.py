@@ -20,10 +20,10 @@ from abc import ABCMeta
 from abc import abstractmethod
 from six import with_metaclass
 from six import string_types
-
 import sagemaker
 from sagemaker import git_utils
 from sagemaker.analytics import TrainingJobAnalytics
+
 from sagemaker.fw_utils import (
     create_image_uri,
     tar_and_upload_dir,
@@ -166,6 +166,7 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):
         self.output_path = output_path
         self.output_kms_key = output_kms_key
         self.latest_training_job = None
+        self.deploy_instance_type = None
 
         self._compiled_models = {}
 
@@ -392,6 +393,7 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):
         use_compiled_model=False,
         update_endpoint=False,
         wait=True,
+        model_name=None,
         **kwargs
     ):
         """Deploy the trained model to an Amazon SageMaker endpoint and return a ``sagemaker.RealTimePredictor`` object.
@@ -413,11 +415,13 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):
             update_endpoint (bool): Flag to update the model in an existing Amazon SageMaker endpoint.
                 If True, this will deploy a new EndpointConfig to an already existing endpoint and delete resources
                 corresponding to the previous EndpointConfig. Default: False
+            wait (bool): Whether the call should wait until the deployment of model completes (default: True).
+            model_name (str): Name to use for creating an Amazon SageMaker model. If not specified, the name of
+                the training job is used.
             tags(List[dict[str, str]]): Optional. The list of tags to attach to this specific endpoint. Example:
                     >>> tags = [{'Key': 'tagname', 'Value': 'tagvalue'}]
                     For more information about tags, see https://boto3.amazonaws.com/v1/documentation\
                     /api/latest/reference/services/sagemaker.html#SageMaker.Client.add_tags
-            wait (bool): Whether the call should wait until the deployment of model completes (default: True).
 
             **kwargs: Passed to invocation of ``create_model()``. Implementations may customize
                 ``create_model()`` to accept ``**kwargs`` to customize model creation during deploy.
@@ -429,6 +433,7 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):
         """
         self._ensure_latest_training_job()
         endpoint_name = endpoint_name or self.latest_training_job.name
+        model_name = model_name or self.latest_training_job.name
         self.deploy_instance_type = instance_type
         if use_compiled_model:
             family = "_".join(instance_type.split(".")[:-1])
@@ -440,6 +445,7 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):
             model = self._compiled_models[family]
         else:
             model = self.create_model(**kwargs)
+        model.name = model_name
         return model.deploy(
             instance_type=instance_type,
             initial_instance_count=initial_instance_count,
@@ -638,8 +644,7 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):
         """
         if vpc_config_override is vpc_utils.VPC_CONFIG_DEFAULT:
             return vpc_utils.to_dict(self.subnets, self.security_group_ids)
-        else:
-            return vpc_utils.sanitize(vpc_config_override)
+        return vpc_utils.sanitize(vpc_config_override)
 
     def _ensure_latest_training_job(
         self, error_message="Estimator is not associated with a training job"
@@ -687,9 +692,8 @@ class _TrainingJob(_Job):
         if isinstance(inputs, s3_input):
             if "InputMode" in inputs.config:
                 logging.debug(
-                    "Selecting s3_input's input_mode ({}) for TrainingInputMode.".format(
-                        inputs.config["InputMode"]
-                    )
+                    "Selecting s3_input's input_mode (%s) for TrainingInputMode.",
+                    inputs.config["InputMode"],
                 )
                 train_args["input_mode"] = inputs.config["InputMode"]
 
@@ -951,8 +955,8 @@ class Framework(EstimatorBase):
         code_location=None,
         image_name=None,
         dependencies=None,
-        git_config=None,
         enable_network_isolation=False,
+        git_config=None,
         **kwargs
     ):
         """Base class initializer. Subclasses which override ``__init__`` should invoke ``super()``
@@ -972,10 +976,11 @@ class Framework(EstimatorBase):
                     >>>         |----- test.py
 
                     You can assign entry_point='src/train.py'.
-            git_config (dict[str, str]): Git configurations used for cloning files, including 'repo', 'branch'
-                and 'commit' (default: None).
-                'branch' and 'commit' are optional. If 'branch' is not specified, 'master' branch will be used. If
-                'commit' is not specified, the latest commit in the required branch will be used.
+            git_config (dict[str, str]): Git configurations used for cloning files, including ``repo``, ``branch``,
+                ``commit``, ``2FA_enabled``, ``username``, ``password`` and ``token``. The ``repo`` field is required.
+                All other fields are optional. ``repo`` specifies the Git repository where your training script is
+                stored. If you don't provide ``branch``, the default value  'master' is used. If you don't provide
+                ``commit``, the latest commit in the specified branch is used.
                 Example:
 
                     The following config:
@@ -986,10 +991,29 @@ class Framework(EstimatorBase):
 
                     results in cloning the repo specified in 'repo', then checkout the 'master' branch, and checkout
                     the specified commit.
+                ``2FA_enabled``, ``username``, ``password`` and ``token`` are used for authentication. For GitHub
+                (or other Git) accounts, set ``2FA_enabled`` to 'True' if two-factor authentication is enabled for the
+                account, otherwise set it to 'False'. If you do not provide a value for ``2FA_enabled``, a default
+                value of 'False' is used. CodeCommit does not support two-factor authentication, so do not provide
+                "2FA_enabled" with CodeCommit repositories.
+
+                For GitHub and other Git repos, when SSH URLs are provided, it doesn't matter whether 2FA is
+                enabled or disabled; you should either have no passphrase for the SSH key pairs, or have the ssh-agent
+                configured so that you will not be prompted for SSH passphrase when you do 'git clone' command with SSH
+                URLs. When HTTPS URLs are provided: if 2FA is disabled, then either token or username+password will be
+                used for authentication if provided (token prioritized); if 2FA is enabled, only token will be used for
+                authentication if provided. If required authentication info is not provided, python SDK will try to use
+                local credentials storage to authenticate. If that fails either, an error message will be thrown.
+
+                For CodeCommit repos, 2FA is not supported, so '2FA_enabled' should not be provided. There is no token
+                in CodeCommit, so 'token' should not be provided too. When 'repo' is an SSH URL, the requirements are
+                the same as GitHub-like repos. When 'repo' is an HTTPS URL, username+password will be used for
+                authentication if they are provided; otherwise, python SDK will try to use either CodeCommit credential
+                helper or local credential storage for authentication.
             source_dir (str): Path (absolute or relative) to a directory with any other training
                 source code dependencies aside from the entry point file (default: None). Structure within this
                 directory are preserved when training on Amazon SageMaker. If 'git_config' is provided,
-                source_dir should be a relative location to a directory in the Git repo.
+                'source_dir' should be a relative location to a directory in the Git repo.
                 Example:
 
                     With the following GitHub repo directory structure:
@@ -1019,6 +1043,8 @@ class Framework(EstimatorBase):
             dependencies (list[str]): A list of paths to directories (absolute or relative) with
                 any additional libraries that will be exported to the container (default: []).
                 The library folders will be copied to SageMaker in the same folder where the entrypoint is copied.
+                If 'git_config' is provided, 'dependencies' should be a list of relative locations to directories
+                with any additional libraries needed in the Git repo.
                 Example:
 
                     The following call
@@ -1061,6 +1087,8 @@ class Framework(EstimatorBase):
         self.image_name = image_name
         self._enable_network_isolation = enable_network_isolation
 
+        self.uploaded_code = None
+
         self._hyperparameters = hyperparameters or {}
 
     def enable_network_isolation(self):
@@ -1081,12 +1109,12 @@ class Framework(EstimatorBase):
         super(Framework, self)._prepare_for_training(job_name=job_name)
 
         if self.git_config:
-            updates = git_utils.git_clone_repo(
+            updated_paths = git_utils.git_clone_repo(
                 self.git_config, self.entry_point, self.source_dir, self.dependencies
             )
-            self.entry_point = updates["entry_point"]
-            self.source_dir = updates["source_dir"]
-            self.dependencies = updates["dependencies"]
+            self.entry_point = updated_paths["entry_point"]
+            self.source_dir = updated_paths["source_dir"]
+            self.dependencies = updated_paths["dependencies"]
 
         # validate source dir will raise a ValueError if there is something wrong with the
         # source directory. We are intentionally not handling it because this is a critical error.
@@ -1229,14 +1257,13 @@ class Framework(EstimatorBase):
         """
         if self.image_name:
             return self.image_name
-        else:
-            return create_image_uri(
-                self.sagemaker_session.boto_region_name,
-                self.__framework_name__,
-                self.train_instance_type,
-                self.framework_version,  # pylint: disable=no-member
-                py_version=self.py_version,  # pylint: disable=no-member
-            )
+        return create_image_uri(
+            self.sagemaker_session.boto_region_name,
+            self.__framework_name__,
+            self.train_instance_type,
+            self.framework_version,  # pylint: disable=no-member
+            py_version=self.py_version,  # pylint: disable=no-member
+        )
 
     @classmethod
     def attach(cls, training_job_name, sagemaker_session=None, model_channel_name="model"):
@@ -1398,13 +1425,10 @@ def _s3_uri_without_prefix_from_input(input_data):
         for channel_name, channel_s3_uri in input_data.items():
             response.update(_s3_uri_prefix(channel_name, channel_s3_uri))
         return response
-    elif isinstance(input_data, str):
+    if isinstance(input_data, str):
         return _s3_uri_prefix("training", input_data)
-    elif isinstance(input_data, s3_input):
+    if isinstance(input_data, s3_input):
         return _s3_uri_prefix("training", input_data)
-    else:
-        raise ValueError(
-            "Unrecognized type for S3 input data config - not str or s3_input: {}".format(
-                input_data
-            )
-        )
+    raise ValueError(
+        "Unrecognized type for S3 input data config - not str or s3_input: {}".format(input_data)
+    )

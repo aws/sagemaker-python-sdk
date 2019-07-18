@@ -46,7 +46,7 @@ _SCRIPT_MODE_SERVING_ERROR_MSG = (
 )
 _SCRIPT_MODE_TENSORBOARD_WARNING = (
     "Tensorboard is not supported with script mode. You can run the following "
-    "command: tensorboard --logdir {} --host localhost --port 6006 This can be "
+    "command: tensorboard --logdir %s --host localhost --port 6006 This can be "
     "run from anywhere with access to the S3 URI used as the logdir."
 )
 
@@ -173,7 +173,7 @@ class Tensorboard(threading.Thread):
         """Run TensorBoard process."""
         port, tensorboard_process = self.create_tensorboard_process()
 
-        logger.info("TensorBoard 0.1.7 at http://localhost:{}".format(port))
+        logger.info("TensorBoard 0.1.7 at http://localhost:%s", port)
         while not self.estimator.checkpoint_path:
             self.event.wait(1)
         with self._temporary_directory() as aws_sync_dir:
@@ -388,7 +388,7 @@ class TensorFlow(Framework):
             raise ValueError("Tensorboard is not supported with async fit")
 
         if self._script_mode_enabled() and run_tensorboard_locally:
-            logger.warning(_SCRIPT_MODE_TENSORBOARD_WARNING.format(self.model_dir))
+            logger.warning(_SCRIPT_MODE_TENSORBOARD_WARNING, self.model_dir)
             fit_super()
         elif run_tensorboard_locally:
             tensorboard = Tensorboard(self)
@@ -545,9 +545,12 @@ class TensorFlow(Framework):
                 mpi_dict = self.distributions["mpi"]
                 mpi_enabled = mpi_dict.get("enabled", False)
                 additional_hyperparameters[self.LAUNCH_MPI_ENV_NAME] = mpi_enabled
-                additional_hyperparameters[self.MPI_NUM_PROCESSES_PER_HOST] = mpi_dict.get(
-                    "processes_per_host", 1
-                )
+
+                if mpi_dict.get("processes_per_host"):
+                    additional_hyperparameters[self.MPI_NUM_PROCESSES_PER_HOST] = mpi_dict.get(
+                        "processes_per_host"
+                    )
+
                 additional_hyperparameters[self.MPI_CUSTOM_MPI_OPTIONS] = mpi_dict.get(
                     "custom_mpi_options", ""
                 )
@@ -569,12 +572,11 @@ class TensorFlow(Framework):
         local_code = utils.get_config_value("local.local_code", self.sagemaker_session.config)
         if self.sagemaker_session.local_mode and local_code:
             return "/opt/ml/shared/{}".format(directory)
-        elif mpi:
+        if mpi:
             return "/opt/ml/model"
-        elif self._current_job_name:
+        if self._current_job_name:
             return os.path.join(self.output_path, self._current_job_name, directory)
-        else:
-            return None
+        return None
 
     def _script_mode_enabled(self):
         return self.py_version == "py3" or self.script_mode

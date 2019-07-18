@@ -47,7 +47,7 @@ class ParameterRange(object):
         Returns:
             bool: True if valid, False otherwise.
         """
-        return value >= self.min_value and value <= self.max_value
+        return self.min_value <= value <= self.max_value
 
     @classmethod
     def cast_to_type(cls, value):

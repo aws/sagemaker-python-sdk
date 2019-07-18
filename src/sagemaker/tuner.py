@@ -19,7 +19,7 @@ import logging
 from enum import Enum
 
 import sagemaker
-from sagemaker.amazon.amazon_estimator import RecordSet
+from sagemaker.amazon.amazon_estimator import RecordSet, AmazonAlgorithmEstimatorBase
 from sagemaker.amazon.hyperparameter import Hyperparameter as hp  # noqa
 from sagemaker.analytics import HyperparameterTuningJobAnalytics
 from sagemaker.estimator import Framework
@@ -247,6 +247,7 @@ class HyperparameterTuner(object):
         self.latest_tuning_job = None
         self.warm_start_config = warm_start_config
         self.early_stopping_type = early_stopping_type
+        self.static_hyperparameters = None
 
     def _prepare_for_training(self, job_name=None, include_cls_metadata=False):
         if job_name is not None:
@@ -307,7 +308,7 @@ class HyperparameterTuner(object):
             **kwargs: Other arguments needed for training. Please refer to the ``fit()`` method of the associated
                 estimator to see what other arguments are needed.
         """
-        if isinstance(inputs, list) or isinstance(inputs, RecordSet):
+        if isinstance(inputs, (list, RecordSet)):
             self.estimator._prepare_for_training(inputs, **kwargs)
         else:
             self.estimator._prepare_for_training(job_name)
@@ -357,7 +358,7 @@ class HyperparameterTuner(object):
             estimator_cls, job_details["TrainingJobDefinition"]
         )
         estimator = cls._prepare_estimator_from_job_description(
-            estimator_cls, job_details["TrainingJobDefinition"], sagemaker_session
+            estimator_cls, job_details, sagemaker_session
         )
         init_params = cls._prepare_init_params_from_job_description(job_details)
 
@@ -375,6 +376,7 @@ class HyperparameterTuner(object):
         accelerator_type=None,
         endpoint_name=None,
         wait=True,
+        model_name=None,
         **kwargs
     ):
         """Deploy the best trained or user specified model to an Amazon SageMaker endpoint and return a
@@ -393,6 +395,8 @@ class HyperparameterTuner(object):
             endpoint_name (str): Name to use for creating an Amazon SageMaker endpoint. If not specified,
                 the name of the training job is used.
             wait (bool): Whether the call should wait until the deployment of model completes (default: True).
+            model_name (str): Name to use for creating an Amazon SageMaker model. If not specified, the name of
+                the training job is used.
             **kwargs: Other arguments needed for deployment. Please refer to the ``create_model()`` method of
                 the associated estimator to see what other arguments are needed.
 
@@ -410,6 +414,7 @@ class HyperparameterTuner(object):
             accelerator_type=accelerator_type,
             endpoint_name=endpoint_name,
             wait=wait,
+            model_name=model_name,
             **kwargs
         )
 
@@ -492,15 +497,24 @@ class HyperparameterTuner(object):
         )
 
     @classmethod
-    def _prepare_estimator_from_job_description(
-        cls, estimator_cls, training_details, sagemaker_session
-    ):
+    def _prepare_estimator_from_job_description(cls, estimator_cls, job_details, sagemaker_session):
+        training_details = job_details["TrainingJobDefinition"]
+
         # Swap name for static hyperparameters to what an estimator would expect
         training_details["HyperParameters"] = training_details["StaticHyperParameters"]
         del training_details["StaticHyperParameters"]
 
         # Remove hyperparameter reserved by SageMaker for tuning jobs
         del training_details["HyperParameters"]["_tuning_objective_metric"]
+
+        # Add missing hyperparameters defined in the hyperparameter ranges,
+        # as potentially required in the Amazon algorithm estimator's constructor
+        if issubclass(estimator_cls, AmazonAlgorithmEstimatorBase):
+            parameter_ranges = job_details["HyperParameterTuningJobConfig"]["ParameterRanges"]
+            additional_hyperparameters = cls._extract_hyperparameters_from_parameter_ranges(
+                parameter_ranges
+            )
+            training_details["HyperParameters"].update(additional_hyperparameters)
 
         # Add items expected by the estimator (but aren't needed otherwise)
         training_details["TrainingJobName"] = ""
@@ -553,6 +567,21 @@ class HyperparameterTuner(object):
             )
 
         return ranges
+
+    @classmethod
+    def _extract_hyperparameters_from_parameter_ranges(cls, parameter_ranges):
+        hyperparameters = {}
+
+        for parameter in parameter_ranges["CategoricalParameterRanges"]:
+            hyperparameters[parameter["Name"]] = parameter["Values"][0]
+
+        for parameter in parameter_ranges["ContinuousParameterRanges"]:
+            hyperparameters[parameter["Name"]] = float(parameter["MinValue"])
+
+        for parameter in parameter_ranges["IntegerParameterRanges"]:
+            hyperparameters[parameter["Name"]] = int(parameter["MinValue"])
+
+        return hyperparameters
 
     def hyperparameter_ranges(self):
         """Return the hyperparameter ranges in a dictionary to be used as part of a request for creating a
@@ -734,9 +763,8 @@ class _TuningJob(_Job):
         if isinstance(inputs, s3_input):
             if "InputMode" in inputs.config:
                 logging.debug(
-                    "Selecting s3_input's input_mode ({}) for TrainingInputMode.".format(
-                        inputs.config["InputMode"]
-                    )
+                    "Selecting s3_input's input_mode (%s) for TrainingInputMode.",
+                    inputs.config["InputMode"],
                 )
                 tuner_args["input_mode"] = inputs.config["InputMode"]
 

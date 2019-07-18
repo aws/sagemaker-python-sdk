@@ -184,7 +184,8 @@ class RLEstimator(Framework):
                     MXNet was used as RL backend;
                 * sagemaker.tensorflow.serving.Model - if image_name wasn't specified and
                     TensorFlow was used as RL backend.
-
+        Raises:
+            ValueError: If image_name was not specified and framework enum is not valid.
         """
         base_args = dict(
             model_data=self.model_data,
@@ -226,10 +227,13 @@ class RLEstimator(Framework):
             from sagemaker.tensorflow.serving import Model as tfsModel
 
             return tfsModel(framework_version=self.framework_version, **base_args)
-        elif self.framework == RLFramework.MXNET.value:
+        if self.framework == RLFramework.MXNET.value:
             return MXNetModel(
                 framework_version=self.framework_version, py_version=PYTHON_VERSION, **extended_args
             )
+        raise ValueError(
+            "An unknown RLFramework enum was passed in. framework: {}".format(self.framework)
+        )
 
     def train_image(self):
         """Return the Docker image to use for training.
@@ -242,14 +246,13 @@ class RLEstimator(Framework):
         """
         if self.image_name:
             return self.image_name
-        else:
-            return fw_utils.create_image_uri(
-                self.sagemaker_session.boto_region_name,
-                self._image_framework(),
-                self.train_instance_type,
-                self._image_version(),
-                py_version=PYTHON_VERSION,
-            )
+        return fw_utils.create_image_uri(
+            self.sagemaker_session.boto_region_name,
+            self._image_framework(),
+            self.train_instance_type,
+            self._image_version(),
+            py_version=PYTHON_VERSION,
+        )
 
     @classmethod
     def _prepare_init_params_from_job_description(cls, job_details, model_channel_name=None):
@@ -363,9 +366,8 @@ class RLEstimator(Framework):
             if found_args:
                 logger.warning(
                     "Parameter `image_name` is specified, "
-                    "`{}` are going to be ignored when choosing the image.".format(
-                        "`, `".join(found_args)
-                    )
+                    "`%s` are going to be ignored when choosing the image.",
+                    "`, `".join(found_args),
                 )
 
     @classmethod
@@ -401,16 +403,20 @@ class RLEstimator(Framework):
 
         Returns:
             list: metric definitions
+
+        Raises:
+            ValueError: If toolkit enum is not valid.
         """
         if toolkit is RLToolkit.COACH:
             return [
                 {"Name": "reward-training", "Regex": "^Training>.*Total reward=(.*?),"},
                 {"Name": "reward-testing", "Regex": "^Testing>.*Total reward=(.*?),"},
             ]
-        elif toolkit is RLToolkit.RAY:
+        if toolkit is RLToolkit.RAY:
             float_regex = "[-+]?[0-9]*[.]?[0-9]+([eE][-+]?[0-9]+)?"  # noqa: W605, E501
 
             return [
                 {"Name": "episode_reward_mean", "Regex": "episode_reward_mean: (%s)" % float_regex},
                 {"Name": "episode_reward_max", "Regex": "episode_reward_max: (%s)" % float_regex},
             ]
+        raise ValueError("An unknown RLToolkit enum was passed in. toolkit: {}".format(toolkit))
