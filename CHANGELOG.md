@@ -1,5 +1,128 @@
 # Changelog
 
+## v1.34.0 (2019-07-18)
+
+### Features
+
+ * Git integration for CodeCommit
+ * deal with credentials for Git support for GitHub
+
+### Bug fixes and other changes
+
+ * modify TODO on disabled Pylint check
+ * enable consider-using-ternary Pylint check
+ * enable chained-comparison Pylint check
+ * enable too-many-public-methods Pylint check
+ * enable consider-using-in Pylint check
+ * set num_processes_per_host only if provided by user
+ * fix attach for 1P algorithm estimators
+ * enable ungrouped-imports Pylint check
+ * enable wrong-import-order Pylint check
+ * enable attribute-defined-outside-init Pylint check
+ * enable consider-merging-isinstance Pylint check
+ * enable inconsistent-return-statements Pylint check
+ * enable simplifiable-if-expression pylint checks
+ * fix list serialization for 1P algos
+ * enable no-else-return and no-else-raise pylint checks
+ * enable unidiomatic-typecheck pylint check
+
+## v1.33.0 (2019-07-10)
+
+### Features
+
+ * git support for hosting models
+ * allow custom model name during deploy
+
+### Bug fixes and other changes
+
+ * remove TODO comment on import-error Pylint check
+ * enable wrong-import-position pylint check
+ * Revert "change: enable wrong-import-position pylint check (#907)"
+ * enable signature-differs pylint check
+ * enable wrong-import-position pylint check
+ * enable logging-not-lazy pylint check
+ * reset default output path in Transformer.transform
+ * Add ap-northeast-1 to Neo algorithms region map
+
+## v1.32.2 (2019-07-08)
+
+### Bug fixes and other changes
+
+ * enable logging-format-interpolation pylint check
+ * remove superfluous parens per Pylint rule
+
+### Documentation changes
+
+ * add pypi, rtd, black badges to readme
+
+## v1.32.1 (2019-07-04)
+
+### Bug fixes and other changes
+
+ * correct code per len-as-condition Pylint check
+ * tighten pylint config and expand C and R exceptions
+ * Update displaytime.sh
+ * fix notebook tests
+ * separate unit, local mode, and notebook tests in different buildspecs
+
+### Documentation changes
+
+ * refactor the overview topic in the sphinx project
+
+## v1.32.0 (2019-07-02)
+
+### Features
+
+ * support Endpoint_type for TF transform
+
+### Bug fixes and other changes
+
+ * fix git test in test_estimator.py
+ * Add ap-northeast-1 to Neo algorithms region map
+
+## v1.31.1 (2019-07-01)
+
+### Bug fixes and other changes
+
+ * print build execution time
+ * remove unnecessary failure case tests
+ * build spec improvements.
+
+## v1.31.0 (2019-06-27)
+
+### Features
+
+ * use deep learning images
+
+### Bug fixes and other changes
+
+ * Update buildspec.yml
+ * allow only one integration test run per time
+ * remove unnecessary P3 tests from TFS integration tests
+ * add pytest.mark.local_mode annotation to broken tests
+
+## v1.30.0 (2019-06-25)
+
+### Features
+
+ * add TensorFlow 1.13 support
+ * add git_config and git_clone, validate method
+
+### Bug fixes and other changes
+
+ * add pytest.mark.local_mode annotation to broken tests
+
+## v1.29.0 (2019-06-24)
+
+### Features
+
+ * network isolation mode in training
+
+### Bug fixes and other changes
+
+ * Integrate black into development process
+ * moving not canary TFS tests to local mode
+
 ## v1.28.3 (2019-06-20)
 
 ### Bug fixes and other changes

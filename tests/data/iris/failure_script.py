@@ -12,6 +12,7 @@
 # language governing permissions and limitations under the License.
 from __future__ import absolute_import
 
+
 def estimator_fn(run_config, params):
     """For use with integration tests expecting failures."""
-    raise Exception('This failure is expected.')
+    raise Exception("This failure is expected.")

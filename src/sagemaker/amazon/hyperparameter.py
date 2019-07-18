@@ -12,6 +12,8 @@
 # language governing permissions and limitations under the License.
 from __future__ import absolute_import
 
+import json
+
 
 class Hyperparameter(object):
     """An algorithm hyperparameter with optional validation. Implemented as a python
@@ -46,7 +48,7 @@ class Hyperparameter(object):
                 raise ValueError(error_message)
 
     def __get__(self, obj, objtype):
-        if '_hyperparameters' not in dir(obj) or self.name not in obj._hyperparameters:
+        if "_hyperparameters" not in dir(obj) or self.name not in obj._hyperparameters:
             raise AttributeError()
         return obj._hyperparameters[self.name]
 
@@ -54,7 +56,7 @@ class Hyperparameter(object):
         """Validate the supplied value and set this hyperparameter to value"""
         value = None if value is None else self.data_type(value)
         self.validate(value)
-        if '_hyperparameters' not in dir(obj):
+        if "_hyperparameters" not in dir(obj):
             obj._hyperparameters = dict()
         obj._hyperparameters[self.name] = value
 
@@ -65,6 +67,10 @@ class Hyperparameter(object):
     @staticmethod
     def serialize_all(obj):
         """Return all non-None ``hyperparameter`` values on ``obj`` as a ``dict[str,str].``"""
-        if '_hyperparameters' not in dir(obj):
+        if "_hyperparameters" not in dir(obj):
             return {}
-        return {k: str(v) for k, v in obj._hyperparameters.items() if v is not None}
+        return {
+            k: json.dumps(v) if isinstance(v, list) else str(v)
+            for k, v in obj._hyperparameters.items()
+            if v is not None
+        }

@@ -25,43 +25,45 @@ FEATURE_NUM = None
 
 
 def test_object2vec(sagemaker_session):
-    job_name = unique_name_from_base('object2vec')
+    job_name = unique_name_from_base("object2vec")
 
     with timeout(minutes=TRAINING_DEFAULT_TIMEOUT_MINUTES):
-        data_path = os.path.join(DATA_DIR, 'object2vec')
-        data_filename = 'train.jsonl'
+        data_path = os.path.join(DATA_DIR, "object2vec")
+        data_filename = "train.jsonl"
 
-        with open(os.path.join(data_path, data_filename), 'r') as f:
+        with open(os.path.join(data_path, data_filename), "r") as f:
             num_records = len(f.readlines())
 
         object2vec = Object2Vec(
-            role='SageMakerRole',
+            role="SageMakerRole",
             train_instance_count=1,
-            train_instance_type='ml.c4.xlarge',
+            train_instance_type="ml.c4.xlarge",
             epochs=3,
             enc0_max_seq_len=20,
             enc0_vocab_size=45000,
             enc_dim=16,
             num_classes=3,
             negative_sampling_rate=0,
-            comparator_list='hadamard,concat,abs_diff',
+            comparator_list="hadamard,concat,abs_diff",
             tied_token_embedding_weight=False,
-            token_embedding_storage_type='dense',
-            sagemaker_session=sagemaker_session)
+            token_embedding_storage_type="dense",
+            sagemaker_session=sagemaker_session,
+        )
 
-        record_set = prepare_record_set_from_local_files(data_path, object2vec.data_location,
-                                                         num_records, FEATURE_NUM,
-                                                         sagemaker_session)
+        record_set = prepare_record_set_from_local_files(
+            data_path, object2vec.data_location, num_records, FEATURE_NUM, sagemaker_session
+        )
 
         object2vec.fit(records=record_set, job_name=job_name)
 
     with timeout_and_delete_endpoint_by_name(job_name, sagemaker_session):
-        model = Object2VecModel(object2vec.model_data, role='SageMakerRole',
-                                sagemaker_session=sagemaker_session)
-        predictor = model.deploy(1, 'ml.c4.xlarge', endpoint_name=job_name)
+        model = Object2VecModel(
+            object2vec.model_data, role="SageMakerRole", sagemaker_session=sagemaker_session
+        )
+        predictor = model.deploy(1, "ml.c4.xlarge", endpoint_name=job_name)
         assert isinstance(predictor, RealTimePredictor)
 
-        predict_input = {'instances': [{"in0": [354, 623], "in1": [16]}]}
+        predict_input = {"instances": [{"in0": [354, 623], "in1": [16]}]}
 
         result = predictor.predict(predict_input)
 

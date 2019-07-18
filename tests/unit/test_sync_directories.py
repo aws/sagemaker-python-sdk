@@ -34,13 +34,13 @@ def create_test_directory(directory, variable_content="hello world"):
         directory (str): The path to a directory to create with fake files
         variable_content (str): Content to put in one of the files
     """
-    child_dir = os.path.join(directory, 'child_directory')
+    child_dir = os.path.join(directory, "child_directory")
     os.mkdir(child_dir)
-    with open(os.path.join(directory, 'foo1.txt'), 'w') as f:
-        f.write('bar1')
-    with open(os.path.join(directory, 'foo2.txt'), 'w') as f:
-        f.write('bar2')
-    with open(os.path.join(child_dir, 'hello.txt'), 'w') as f:
+    with open(os.path.join(directory, "foo1.txt"), "w") as f:
+        f.write("bar1")
+    with open(os.path.join(directory, "foo2.txt"), "w") as f:
+        f.write("bar2")
+    with open(os.path.join(child_dir, "hello.txt"), "w") as f:
         f.write(variable_content)
 
 
@@ -69,7 +69,7 @@ def same_dirs(a, b):
 def test_to_directory_doesnt_exist():
     with Tensorboard._temporary_directory() as from_dir:
         create_test_directory(from_dir)
-        to_dir = './not_a_real_place_{}'.format(random.getrandbits(64))
+        to_dir = "./not_a_real_place_{}".format(random.getrandbits(64))
         Tensorboard._sync_directories(from_dir, to_dir)
         assert same_dirs(from_dir, to_dir)
         shutil.rmtree(to_dir)

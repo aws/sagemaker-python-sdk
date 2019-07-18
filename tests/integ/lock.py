@@ -18,7 +18,7 @@ import time
 import tempfile
 from contextlib import contextmanager
 
-DEFAULT_LOCK_PATH = os.path.join(tempfile.gettempdir(), 'sagemaker_test_lock')
+DEFAULT_LOCK_PATH = os.path.join(tempfile.gettempdir(), "sagemaker_test_lock")
 
 
 @contextmanager
@@ -27,7 +27,7 @@ def lock(path=DEFAULT_LOCK_PATH):
     test operations need to limit concurrency to work reliably. Examples include
     local mode endpoint tests and vpc creation tests.
     """
-    f = open(path, 'w')
+    f = open(path, "w")
     fd = f.fileno()
 
     fcntl.lockf(fd, fcntl.LOCK_EX)

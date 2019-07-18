@@ -18,29 +18,29 @@ from mock import Mock
 from sagemaker.fw_registry import registry
 from sagemaker.sparkml import SparkMLModel, SparkMLPredictor
 
-MODEL_DATA = 's3://bucket/model.tar.gz'
-ROLE = 'myrole'
-TRAIN_INSTANCE_TYPE = 'ml.c4.xlarge'
+MODEL_DATA = "s3://bucket/model.tar.gz"
+ROLE = "myrole"
+TRAIN_INSTANCE_TYPE = "ml.c4.xlarge"
 
-REGION = 'us-west-2'
-BUCKET_NAME = 'Some-Bucket'
-ENDPOINT = 'some-endpoint'
+REGION = "us-west-2"
+BUCKET_NAME = "Some-Bucket"
+ENDPOINT = "some-endpoint"
 
-ENDPOINT_DESC = {
-    'EndpointConfigName': ENDPOINT
-}
+ENDPOINT_DESC = {"EndpointConfigName": ENDPOINT}
 
-ENDPOINT_CONFIG_DESC = {
-    'ProductionVariants': [{'ModelName': 'model-1'},
-                           {'ModelName': 'model-2'}]
-}
+ENDPOINT_CONFIG_DESC = {"ProductionVariants": [{"ModelName": "model-1"}, {"ModelName": "model-2"}]}
 
 
 @pytest.fixture()
 def sagemaker_session():
-    boto_mock = Mock(name='boto_session', region_name=REGION)
-    sms = Mock(name='sagemaker_session', boto_session=boto_mock,
-               region_name=REGION, config=None, local_mode=False)
+    boto_mock = Mock(name="boto_session", region_name=REGION)
+    sms = Mock(
+        name="sagemaker_session",
+        boto_session=boto_mock,
+        region_name=REGION,
+        config=None,
+        local_mode=False,
+    )
     sms.boto_region_name = REGION
     sms.sagemaker_client.describe_endpoint = Mock(return_value=ENDPOINT_DESC)
     sms.sagemaker_client.describe_endpoint_config = Mock(return_value=ENDPOINT_CONFIG_DESC)
@@ -49,7 +49,7 @@ def sagemaker_session():
 
 def test_sparkml_model(sagemaker_session):
     sparkml = SparkMLModel(sagemaker_session=sagemaker_session, model_data=MODEL_DATA, role=ROLE)
-    assert sparkml.image == registry(REGION, 'sparkml-serving') + '/sagemaker-sparkml-serving:2.2'
+    assert sparkml.image == registry(REGION, "sparkml-serving") + "/sagemaker-sparkml-serving:2.2"
 
 
 def test_predictor_type(sagemaker_session):

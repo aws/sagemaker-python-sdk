@@ -24,21 +24,38 @@ from sagemaker.vpc_utils import VPC_CONFIG_DEFAULT
 
 class PCA(AmazonAlgorithmEstimatorBase):
 
-    repo_name = 'pca'
+    repo_name = "pca"
     repo_version = 1
 
     DEFAULT_MINI_BATCH_SIZE = 500
 
-    num_components = hp('num_components', gt(0), 'Value must be an integer greater than zero', int)
-    algorithm_mode = hp('algorithm_mode', isin('regular', 'randomized'),
-                        'Value must be one of "regular" and "randomized"', str)
-    subtract_mean = hp(name='subtract_mean', validation_message='Value must be a boolean', data_type=bool)
-    extra_components = hp(name='extra_components',
-                          validation_message="Value must be an integer greater than or equal to 0, or -1.",
-                          data_type=int)
+    num_components = hp("num_components", gt(0), "Value must be an integer greater than zero", int)
+    algorithm_mode = hp(
+        "algorithm_mode",
+        isin("regular", "randomized"),
+        'Value must be one of "regular" and "randomized"',
+        str,
+    )
+    subtract_mean = hp(
+        name="subtract_mean", validation_message="Value must be a boolean", data_type=bool
+    )
+    extra_components = hp(
+        name="extra_components",
+        validation_message="Value must be an integer greater than or equal to 0, or -1.",
+        data_type=int,
+    )
 
-    def __init__(self, role, train_instance_count, train_instance_type, num_components,
-                 algorithm_mode=None, subtract_mean=None, extra_components=None, **kwargs):
+    def __init__(
+        self,
+        role,
+        train_instance_count,
+        train_instance_type,
+        num_components,
+        algorithm_mode=None,
+        subtract_mean=None,
+        extra_components=None,
+        **kwargs
+    ):
         """A Principal Components Analysis (PCA) :class:`~sagemaker.amazon.amazon_estimator.AmazonAlgorithmEstimatorBase`.
 
         This Estimator may be fit via calls to
@@ -97,8 +114,12 @@ class PCA(AmazonAlgorithmEstimatorBase):
                 * 'Subnets' (list[str]): List of subnet ids.
                 * 'SecurityGroupIds' (list[str]): List of security group ids.
         """
-        return PCAModel(self.model_data, self.role, sagemaker_session=self.sagemaker_session,
-                        vpc_config=self.get_vpc_config(vpc_config_override))
+        return PCAModel(
+            self.model_data,
+            self.role,
+            sagemaker_session=self.sagemaker_session,
+            vpc_config=self.get_vpc_config(vpc_config_override),
+        )
 
     def _prepare_for_training(self, records, mini_batch_size=None, job_name=None):
         """Set hyperparameters needed for training.
@@ -113,20 +134,23 @@ class PCA(AmazonAlgorithmEstimatorBase):
         num_records = None
         if isinstance(records, list):
             for record in records:
-                if record.channel == 'train':
+                if record.channel == "train":
                     num_records = record.num_records
                     break
             if num_records is None:
-                raise ValueError('Must provide train channel.')
+                raise ValueError("Must provide train channel.")
         else:
             num_records = records.num_records
 
         # mini_batch_size is a required parameter
-        default_mini_batch_size = min(self.DEFAULT_MINI_BATCH_SIZE,
-                                      max(1, int(num_records / self.train_instance_count)))
+        default_mini_batch_size = min(
+            self.DEFAULT_MINI_BATCH_SIZE, max(1, int(num_records / self.train_instance_count))
+        )
         use_mini_batch_size = mini_batch_size or default_mini_batch_size
 
-        super(PCA, self)._prepare_for_training(records=records, mini_batch_size=use_mini_batch_size, job_name=job_name)
+        super(PCA, self)._prepare_for_training(
+            records=records, mini_batch_size=use_mini_batch_size, job_name=job_name
+        )
 
 
 class PCAPredictor(RealTimePredictor):
@@ -142,8 +166,12 @@ class PCAPredictor(RealTimePredictor):
     key of the ``Record.label`` field."""
 
     def __init__(self, endpoint, sagemaker_session=None):
-        super(PCAPredictor, self).__init__(endpoint, sagemaker_session, serializer=numpy_to_record_serializer(),
-                                           deserializer=record_deserializer())
+        super(PCAPredictor, self).__init__(
+            endpoint,
+            sagemaker_session,
+            serializer=numpy_to_record_serializer(),
+            deserializer=record_deserializer(),
+        )
 
 
 class PCAModel(Model):
@@ -152,8 +180,13 @@ class PCAModel(Model):
 
     def __init__(self, model_data, role, sagemaker_session=None, **kwargs):
         sagemaker_session = sagemaker_session or Session()
-        repo = '{}:{}'.format(PCA.repo_name, PCA.repo_version)
-        image = '{}/{}'.format(registry(sagemaker_session.boto_session.region_name), repo)
-        super(PCAModel, self).__init__(model_data, image, role, predictor_cls=PCAPredictor,
-                                       sagemaker_session=sagemaker_session,
-                                       **kwargs)
+        repo = "{}:{}".format(PCA.repo_name, PCA.repo_version)
+        image = "{}/{}".format(registry(sagemaker_session.boto_session.region_name), repo)
+        super(PCAModel, self).__init__(
+            model_data,
+            image,
+            role,
+            predictor_cls=PCAPredictor,
+            sagemaker_session=sagemaker_session,
+            **kwargs
+        )

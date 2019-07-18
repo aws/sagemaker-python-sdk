@@ -24,47 +24,85 @@ from sagemaker.vpc_utils import VPC_CONFIG_DEFAULT
 
 class FactorizationMachines(AmazonAlgorithmEstimatorBase):
 
-    repo_name = 'factorization-machines'
+    repo_name = "factorization-machines"
     repo_version = 1
 
-    num_factors = hp('num_factors', gt(0), 'An integer greater than zero', int)
-    predictor_type = hp('predictor_type', isin('binary_classifier', 'regressor'),
-                        'Value "binary_classifier" or "regressor"', str)
-    epochs = hp('epochs', gt(0), "An integer greater than 0", int)
-    clip_gradient = hp('clip_gradient', (), "A float value", float)
-    eps = hp('eps', (), "A float value", float)
-    rescale_grad = hp('rescale_grad', (), "A float value", float)
-    bias_lr = hp('bias_lr', ge(0), "A non-negative float", float)
-    linear_lr = hp('linear_lr', ge(0), "A non-negative float", float)
-    factors_lr = hp('factors_lr', ge(0), "A non-negative float", float)
-    bias_wd = hp('bias_wd', ge(0), "A non-negative float", float)
-    linear_wd = hp('linear_wd', ge(0), "A non-negative float", float)
-    factors_wd = hp('factors_wd', ge(0), "A non-negative float", float)
-    bias_init_method = hp('bias_init_method', isin('normal', 'uniform', 'constant'),
-                          'Value "normal", "uniform" or "constant"', str)
-    bias_init_scale = hp('bias_init_scale', ge(0), "A non-negative float", float)
-    bias_init_sigma = hp('bias_init_sigma', ge(0), "A non-negative float", float)
-    bias_init_value = hp('bias_init_value', (), "A float value", float)
-    linear_init_method = hp('linear_init_method', isin('normal', 'uniform', 'constant'),
-                            'Value "normal", "uniform" or "constant"', str)
-    linear_init_scale = hp('linear_init_scale', ge(0), "A non-negative float", float)
-    linear_init_sigma = hp('linear_init_sigma', ge(0), "A non-negative float", float)
-    linear_init_value = hp('linear_init_value', (), "A float value", float)
-    factors_init_method = hp('factors_init_method', isin('normal', 'uniform', 'constant'),
-                             'Value "normal", "uniform" or "constant"', str)
-    factors_init_scale = hp('factors_init_scale', ge(0), "A non-negative float", float)
-    factors_init_sigma = hp('factors_init_sigma', ge(0), "A non-negative float", float)
-    factors_init_value = hp('factors_init_value', (), "A float value", float)
+    num_factors = hp("num_factors", gt(0), "An integer greater than zero", int)
+    predictor_type = hp(
+        "predictor_type",
+        isin("binary_classifier", "regressor"),
+        'Value "binary_classifier" or "regressor"',
+        str,
+    )
+    epochs = hp("epochs", gt(0), "An integer greater than 0", int)
+    clip_gradient = hp("clip_gradient", (), "A float value", float)
+    eps = hp("eps", (), "A float value", float)
+    rescale_grad = hp("rescale_grad", (), "A float value", float)
+    bias_lr = hp("bias_lr", ge(0), "A non-negative float", float)
+    linear_lr = hp("linear_lr", ge(0), "A non-negative float", float)
+    factors_lr = hp("factors_lr", ge(0), "A non-negative float", float)
+    bias_wd = hp("bias_wd", ge(0), "A non-negative float", float)
+    linear_wd = hp("linear_wd", ge(0), "A non-negative float", float)
+    factors_wd = hp("factors_wd", ge(0), "A non-negative float", float)
+    bias_init_method = hp(
+        "bias_init_method",
+        isin("normal", "uniform", "constant"),
+        'Value "normal", "uniform" or "constant"',
+        str,
+    )
+    bias_init_scale = hp("bias_init_scale", ge(0), "A non-negative float", float)
+    bias_init_sigma = hp("bias_init_sigma", ge(0), "A non-negative float", float)
+    bias_init_value = hp("bias_init_value", (), "A float value", float)
+    linear_init_method = hp(
+        "linear_init_method",
+        isin("normal", "uniform", "constant"),
+        'Value "normal", "uniform" or "constant"',
+        str,
+    )
+    linear_init_scale = hp("linear_init_scale", ge(0), "A non-negative float", float)
+    linear_init_sigma = hp("linear_init_sigma", ge(0), "A non-negative float", float)
+    linear_init_value = hp("linear_init_value", (), "A float value", float)
+    factors_init_method = hp(
+        "factors_init_method",
+        isin("normal", "uniform", "constant"),
+        'Value "normal", "uniform" or "constant"',
+        str,
+    )
+    factors_init_scale = hp("factors_init_scale", ge(0), "A non-negative float", float)
+    factors_init_sigma = hp("factors_init_sigma", ge(0), "A non-negative float", float)
+    factors_init_value = hp("factors_init_value", (), "A float value", float)
 
-    def __init__(self, role, train_instance_count, train_instance_type,
-                 num_factors, predictor_type,
-                 epochs=None, clip_gradient=None, eps=None, rescale_grad=None,
-                 bias_lr=None, linear_lr=None, factors_lr=None,
-                 bias_wd=None, linear_wd=None, factors_wd=None,
-                 bias_init_method=None, bias_init_scale=None, bias_init_sigma=None, bias_init_value=None,
-                 linear_init_method=None, linear_init_scale=None, linear_init_sigma=None, linear_init_value=None,
-                 factors_init_method=None, factors_init_scale=None, factors_init_sigma=None, factors_init_value=None,
-                 **kwargs):
+    def __init__(
+        self,
+        role,
+        train_instance_count,
+        train_instance_type,
+        num_factors,
+        predictor_type,
+        epochs=None,
+        clip_gradient=None,
+        eps=None,
+        rescale_grad=None,
+        bias_lr=None,
+        linear_lr=None,
+        factors_lr=None,
+        bias_wd=None,
+        linear_wd=None,
+        factors_wd=None,
+        bias_init_method=None,
+        bias_init_scale=None,
+        bias_init_sigma=None,
+        bias_init_value=None,
+        linear_init_method=None,
+        linear_init_scale=None,
+        linear_init_sigma=None,
+        linear_init_value=None,
+        factors_init_method=None,
+        factors_init_scale=None,
+        factors_init_sigma=None,
+        factors_init_value=None,
+        **kwargs
+    ):
         """Factorization Machines is :class:`Estimator` for general-purpose supervised learning.
 
         Amazon SageMaker Factorization Machines is a general-purpose supervised learning algorithm that you can use
@@ -137,7 +175,9 @@ class FactorizationMachines(AmazonAlgorithmEstimatorBase):
                 effect when factors_init_method parameter is 'constant'.
             **kwargs: base class keyword argument values.
         """
-        super(FactorizationMachines, self).__init__(role, train_instance_count, train_instance_type, **kwargs)
+        super(FactorizationMachines, self).__init__(
+            role, train_instance_count, train_instance_type, **kwargs
+        )
 
         self.num_factors = num_factors
         self.predictor_type = predictor_type
@@ -175,8 +215,12 @@ class FactorizationMachines(AmazonAlgorithmEstimatorBase):
                 * 'SecurityGroupIds' (list[str]): List of security group ids.
 
         """
-        return FactorizationMachinesModel(self.model_data, self.role, sagemaker_session=self.sagemaker_session,
-                                          vpc_config=self.get_vpc_config(vpc_config_override))
+        return FactorizationMachinesModel(
+            self.model_data,
+            self.role,
+            sagemaker_session=self.sagemaker_session,
+            vpc_config=self.get_vpc_config(vpc_config_override),
+        )
 
 
 class FactorizationMachinesPredictor(RealTimePredictor):
@@ -194,10 +238,12 @@ class FactorizationMachinesPredictor(RealTimePredictor):
     """
 
     def __init__(self, endpoint, sagemaker_session=None):
-        super(FactorizationMachinesPredictor, self).__init__(endpoint,
-                                                             sagemaker_session,
-                                                             serializer=numpy_to_record_serializer(),
-                                                             deserializer=record_deserializer())
+        super(FactorizationMachinesPredictor, self).__init__(
+            endpoint,
+            sagemaker_session,
+            serializer=numpy_to_record_serializer(),
+            deserializer=record_deserializer(),
+        )
 
 
 class FactorizationMachinesModel(Model):
@@ -206,11 +252,13 @@ class FactorizationMachinesModel(Model):
 
     def __init__(self, model_data, role, sagemaker_session=None, **kwargs):
         sagemaker_session = sagemaker_session or Session()
-        repo = '{}:{}'.format(FactorizationMachines.repo_name, FactorizationMachines.repo_version)
-        image = '{}/{}'.format(registry(sagemaker_session.boto_session.region_name), repo)
-        super(FactorizationMachinesModel, self).__init__(model_data,
-                                                         image,
-                                                         role,
-                                                         predictor_cls=FactorizationMachinesPredictor,
-                                                         sagemaker_session=sagemaker_session,
-                                                         **kwargs)
+        repo = "{}:{}".format(FactorizationMachines.repo_name, FactorizationMachines.repo_version)
+        image = "{}/{}".format(registry(sagemaker_session.boto_session.region_name), repo)
+        super(FactorizationMachinesModel, self).__init__(
+            model_data,
+            image,
+            role,
+            predictor_cls=FactorizationMachinesPredictor,
+            sagemaker_session=sagemaker_session,
+            **kwargs
+        )
