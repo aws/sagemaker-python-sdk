@@ -10,6 +10,7 @@
 # distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
+"""Placeholder docstring"""
 from __future__ import absolute_import
 
 import argparse
@@ -27,6 +28,10 @@ DEFAULT_BOTOCORE_LOG_LEVEL = "warning"
 
 
 def parse_arguments(args):
+    """
+    Args:
+        args:
+    """
     parser = argparse.ArgumentParser(
         description="Launch SageMaker training jobs or hosting endpoints"
     )
@@ -125,6 +130,10 @@ def parse_arguments(args):
 
 
 def configure_logging(args):
+    """
+    Args:
+        args:
+    """
     log_format = "%(asctime)s %(levelname)s %(name)s: %(message)s"
     log_level = logging.getLevelName(args.log_level.upper())
     logging.basicConfig(format=log_format, level=log_level)
@@ -132,6 +141,7 @@ def configure_logging(args):
 
 
 def main():
+    """Placeholder docstring"""
     args = parse_arguments(sys.argv[1:])
     configure_logging(args)
     logger.debug("args: %s", args)

@@ -10,6 +10,7 @@
 # distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
+"""Placeholder docstring"""
 from __future__ import absolute_import
 
 import contextlib
@@ -52,6 +53,8 @@ _SCRIPT_MODE_TENSORBOARD_WARNING = (
 
 
 class Tensorboard(threading.Thread):
+    """Placeholder docstring"""
+
     def __init__(self, estimator, logdir=None):
         """Initialize ``Tensorboard`` instance.
 
@@ -66,6 +69,7 @@ class Tensorboard(threading.Thread):
 
     @staticmethod
     def _cmd_exists(cmd):
+        """Placeholder docstring"""
         return any(
             os.access(os.path.join(path, cmd), os.X_OK)
             for path in os.environ["PATH"].split(os.pathsep)
@@ -301,6 +305,7 @@ class TensorFlow(Framework):
         requirements_file,
         checkpoint_path,
     ):
+        """Placeholder docstring"""
 
         if py_version == "py3" or script_mode:
 
@@ -330,11 +335,13 @@ class TensorFlow(Framework):
             self.script_mode = True
 
     def _only_script_mode_supported(self):
+        """Placeholder docstring"""
         return [
             int(s) for s in self.framework_version.split(".")
         ] >= self._LOWEST_SCRIPT_MODE_ONLY_VERSION
 
     def _validate_requirements_file(self, requirements_file):
+        """Placeholder docstring"""
         if not requirements_file:
             return
 
@@ -482,7 +489,7 @@ class TensorFlow(Framework):
 
         Returns:
             sagemaker.tensorflow.model.TensorFlowModel: A SageMaker ``TensorFlowModel`` object.
-                See :func:`~sagemaker.tensorflow.model.TensorFlowModel` for full details.
+            See :func:`~sagemaker.tensorflow.model.TensorFlowModel` for full details.
         """
 
         role = role or self.role
@@ -496,6 +503,7 @@ class TensorFlow(Framework):
         )
 
     def _create_tfs_model(self, role=None, vpc_config_override=VPC_CONFIG_DEFAULT):
+        """Placeholder docstring"""
         return Model(
             model_data=self.model_data,
             role=role,
@@ -508,6 +516,7 @@ class TensorFlow(Framework):
         )
 
     def _create_default_model(self, model_server_workers, role, vpc_config_override):
+        """Placeholder docstring"""
         return TensorFlowModel(
             self.model_data,
             role,
@@ -569,6 +578,7 @@ class TensorFlow(Framework):
         return hyperparameters
 
     def _default_s3_path(self, directory, mpi=False):
+        """Placeholder docstring"""
         local_code = utils.get_config_value("local.local_code", self.sagemaker_session.config)
         if self.sagemaker_session.local_mode and local_code:
             return "/opt/ml/shared/{}".format(directory)
@@ -579,9 +589,11 @@ class TensorFlow(Framework):
         return None
 
     def _script_mode_enabled(self):
+        """Placeholder docstring"""
         return self.py_version == "py3" or self.script_mode
 
     def train_image(self):
+        """Placeholder docstring"""
         if self.image_name:
             return self.image_name
 
