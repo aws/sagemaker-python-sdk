@@ -135,6 +135,7 @@ def chainer_version(request):
         "1.3.0",
         "1.4",
         "1.4.0",
+        "1.4.1",
     ],
 )
 def mxnet_version(request):
