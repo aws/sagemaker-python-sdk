@@ -10,21 +10,36 @@
 # distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
+"""Placeholder docstring"""
 from __future__ import absolute_import
 
 from sagemaker.cli.common import HostCommand, TrainCommand
 
 
 def train(args):
+    """
+    Args:
+        args:
+    """
     TensorFlowTrainCommand(args).start()
 
 
 def host(args):
+    """
+    Args:
+        args:
+    """
     TensorFlowHostCommand(args).start()
 
 
 class TensorFlowTrainCommand(TrainCommand):
+    """Placeholder docstring"""
+
     def __init__(self, args):
+        """
+        Args:
+            args:
+        """
         super(TensorFlowTrainCommand, self).__init__(args)
         self.training_steps = args.training_steps
         self.evaluation_steps = args.evaluation_steps
@@ -46,7 +61,13 @@ class TensorFlowTrainCommand(TrainCommand):
 
 
 class TensorFlowHostCommand(HostCommand):
+    """Placeholder docstring"""
+
     def create_model(self, model_url):
+        """
+        Args:
+            model_url:
+        """
         from sagemaker.tensorflow.model import TensorFlowModel
 
         return TensorFlowModel(

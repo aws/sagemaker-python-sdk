@@ -10,6 +10,7 @@
 # distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
+"""Placeholder docstring"""
 from __future__ import absolute_import
 
 from sagemaker.amazon.amazon_estimator import AmazonAlgorithmEstimatorBase, registry
@@ -23,6 +24,7 @@ from sagemaker.vpc_utils import VPC_CONFIG_DEFAULT
 
 
 class NTM(AmazonAlgorithmEstimatorBase):
+    """Placeholder docstring"""
 
     repo_name = "ntm"
     repo_version = 1
@@ -73,49 +75,68 @@ class NTM(AmazonAlgorithmEstimatorBase):
         learning_rate=None,
         **kwargs
     ):
-        """Neural Topic Model (NTM) is :class:`Estimator` used for unsupervised learning.
+        """Neural Topic Model (NTM) is :class:`Estimator` used for unsupervised
+        learning.
 
         This Estimator may be fit via calls to
-        :meth:`~sagemaker.amazon.amazon_estimator.AmazonAlgorithmEstimatorBase.fit`. It requires Amazon
-        :class:`~sagemaker.amazon.record_pb2.Record` protobuf serialized data to be stored in S3.
-        There is an utility :meth:`~sagemaker.amazon.amazon_estimator.AmazonAlgorithmEstimatorBase.record_set` that
-        can be used to upload data to S3 and creates :class:`~sagemaker.amazon.amazon_estimator.RecordSet` to be passed
-        to the `fit` call.
+        :meth:`~sagemaker.amazon.amazon_estimator.AmazonAlgorithmEstimatorBase.fit`.
+        It requires Amazon :class:`~sagemaker.amazon.record_pb2.Record` protobuf
+        serialized data to be stored in S3. There is an utility
+        :meth:`~sagemaker.amazon.amazon_estimator.AmazonAlgorithmEstimatorBase.record_set`
+        that can be used to upload data to S3 and creates
+        :class:`~sagemaker.amazon.amazon_estimator.RecordSet` to be passed to
+        the `fit` call.
 
-        To learn more about the Amazon protobuf Record class and how to prepare bulk data in this format, please
-        consult AWS technical documentation: https://docs.aws.amazon.com/sagemaker/latest/dg/cdf-training.html
+        To learn more about the Amazon protobuf Record class and how to
+        prepare bulk data in this format, please consult AWS technical
+        documentation:
+        https://docs.aws.amazon.com/sagemaker/latest/dg/cdf-training.html
 
-        After this Estimator is fit, model data is stored in S3. The model may be deployed to an Amazon SageMaker
-        Endpoint by invoking :meth:`~sagemaker.amazon.estimator.EstimatorBase.deploy`. As well as deploying an Endpoint,
-        deploy returns a :class:`~sagemaker.amazon.ntm.NTMPredictor` object that can be used
-        for inference calls using the trained model hosted in the SageMaker Endpoint.
+        After this Estimator is fit, model data is stored in S3. The model
+        may be deployed to an Amazon SageMaker Endpoint by invoking
+        :meth:`~sagemaker.amazon.estimator.EstimatorBase.deploy`. As well as
+        deploying an Endpoint, deploy returns a
+        :class:`~sagemaker.amazon.ntm.NTMPredictor` object that can be used for
+        inference calls using the trained model hosted in the SageMaker
+        Endpoint.
 
-        NTM Estimators can be configured by setting hyperparameters. The available hyperparameters for
-        NTM are documented below.
+        NTM Estimators can be configured by setting hyperparameters. The
+        available hyperparameters for NTM are documented below.
 
-        For further information on the AWS NTM algorithm,
-        please consult AWS technical documentation: https://docs.aws.amazon.com/sagemaker/latest/dg/ntm.html
+        For further information on the AWS NTM algorithm, please consult AWS
+        technical documentation:
+        https://docs.aws.amazon.com/sagemaker/latest/dg/ntm.html
 
         Args:
-            role (str): An AWS IAM role (either name or full ARN). The Amazon SageMaker training jobs and
-                APIs that create Amazon SageMaker endpoints use this role to access
-                training data and model artifacts. After the endpoint is created,
-                the inference code might use the IAM role, if accessing AWS resource.
-            train_instance_type (str): Type of EC2 instance to use for training, for example, 'ml.c4.xlarge'.
-            num_topics (int): Required. The number of topics for NTM to find within the data.
-            encoder_layers (list): Optional. Represents number of layers in the encoder and the output size of
-                each layer.
-            epochs (int): Optional. Maximum number of passes over the training data.
-            encoder_layers_activation (str): Optional. Activation function to use in the encoder layers.
+            role (str): An AWS IAM role (either name or full ARN). The Amazon
+                SageMaker training jobs and APIs that create Amazon SageMaker
+                endpoints use this role to access training data and model
+                artifacts. After the endpoint is created, the inference code
+                might use the IAM role, if accessing AWS resource.
+            train_instance_count:
+            train_instance_type (str): Type of EC2 instance to use for training,
+                for example, 'ml.c4.xlarge'.
+            num_topics (int): Required. The number of topics for NTM to find
+                within the data.
+            encoder_layers (list): Optional. Represents number of layers in the
+                encoder and the output size of each layer.
+            epochs (int): Optional. Maximum number of passes over the training
+                data.
+            encoder_layers_activation (str): Optional. Activation function to
+                use in the encoder layers.
             optimizer (str): Optional. Optimizer to use for training.
-            tolerance (float): Optional. Maximum relative change in the loss function within the last
-                num_patience_epochs number of epochs below which early stopping is triggered.
-            num_patience_epochs (int): Optional. Number of successive epochs over which early stopping criterion
-                is evaluated.
-            batch_norm (bool): Optional. Whether to use batch normalization during training.
+            tolerance (float): Optional. Maximum relative change in the loss
+                function within the last num_patience_epochs number of epochs
+                below which early stopping is triggered.
+            num_patience_epochs (int): Optional. Number of successive epochs
+                over which early stopping criterion is evaluated.
+            batch_norm (bool): Optional. Whether to use batch normalization
+                during training.
             rescale_gradient (float): Optional. Rescale factor for gradient.
-            clip_gradient (float): Optional. Maximum magnitude for each gradient component.
-            weight_decay (float): Optional. Weight decay coefficient. Adds L2 regularization.
+            clip_gradient (float): Optional. Maximum magnitude for each gradient
+                component.
+            weight_decay (float): Optional. Weight decay coefficient. Adds L2
+                regularization.
             learning_rate (float): Optional. Learning rate for the optimizer.
             **kwargs: base class keyword argument values.
         """
@@ -139,8 +160,8 @@ class NTM(AmazonAlgorithmEstimatorBase):
         s3 model data produced by this Estimator.
 
         Args:
-            vpc_config_override (dict[str, list[str]]): Optional override for VpcConfig set on the model.
-                Default: use subnets and security groups from this Estimator.
+            vpc_config_override (dict[str, list[str]]): Optional override for VpcConfig set on
+                the model. Default: use subnets and security groups from this Estimator.
                 * 'Subnets' (list[str]): List of subnet ids.
                 * 'SecurityGroupIds' (list[str]): List of security group ids.
         """
@@ -154,6 +175,12 @@ class NTM(AmazonAlgorithmEstimatorBase):
     def _prepare_for_training(  # pylint: disable=signature-differs
         self, records, mini_batch_size, job_name=None
     ):
+        """
+        Args:
+            records:
+            mini_batch_size:
+            job_name:
+        """
         if mini_batch_size is not None and (mini_batch_size < 1 or mini_batch_size > 10000):
             raise ValueError("mini_batch_size must be in [1, 10000]")
         super(NTM, self)._prepare_for_training(
@@ -164,16 +191,24 @@ class NTM(AmazonAlgorithmEstimatorBase):
 class NTMPredictor(RealTimePredictor):
     """Transforms input vectors to lower-dimesional representations.
 
-    The implementation of :meth:`~sagemaker.predictor.RealTimePredictor.predict` in this
-    `RealTimePredictor` requires a numpy ``ndarray`` as input. The array should contain the
-    same number of columns as the feature-dimension of the data used to fit the model this
-    Predictor performs inference on.
+    The implementation of
+    :meth:`~sagemaker.predictor.RealTimePredictor.predict` in this
+    `RealTimePredictor` requires a numpy ``ndarray`` as input. The array should
+    contain the same number of columns as the feature-dimension of the data used
+    to fit the model this Predictor performs inference on.
 
-    :meth:`predict()` returns a list of :class:`~sagemaker.amazon.record_pb2.Record` objects, one
-    for each row in the input ``ndarray``. The lower dimension vector result is stored in the ``projection``
-    key of the ``Record.label`` field."""
+    :meth:`predict()` returns a list of
+    :class:`~sagemaker.amazon.record_pb2.Record` objects, one for each row in
+    the input ``ndarray``. The lower dimension vector result is stored in the
+    ``projection`` key of the ``Record.label`` field.
+    """
 
     def __init__(self, endpoint, sagemaker_session=None):
+        """
+        Args:
+            endpoint:
+            sagemaker_session:
+        """
         super(NTMPredictor, self).__init__(
             endpoint,
             sagemaker_session,
@@ -183,10 +218,19 @@ class NTMPredictor(RealTimePredictor):
 
 
 class NTMModel(Model):
-    """Reference NTM s3 model data. Calling :meth:`~sagemaker.model.Model.deploy` creates an Endpoint and return
-    a Predictor that transforms vectors to a lower-dimensional representation."""
+    """Reference NTM s3 model data. Calling
+    :meth:`~sagemaker.model.Model.deploy` creates an Endpoint and return a
+    Predictor that transforms vectors to a lower-dimensional representation.
+    """
 
     def __init__(self, model_data, role, sagemaker_session=None, **kwargs):
+        """
+        Args:
+            model_data:
+            role:
+            sagemaker_session:
+            **kwargs:
+        """
         sagemaker_session = sagemaker_session or Session()
         repo = "{}:{}".format(NTM.repo_name, NTM.repo_version)
         image = "{}/{}".format(
