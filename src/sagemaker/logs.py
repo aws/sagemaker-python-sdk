@@ -10,6 +10,7 @@
 # distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
+"""Placeholder docstring"""
 from __future__ import absolute_import
 
 import collections
@@ -25,8 +26,9 @@ import sys
 
 
 class ColorWrap(object):
-    """A callable that will print text in a different color depending on the instance (up
-    to 6 if standard output is a terminal or a Jupyter notebook cell).
+    """A callable that will print text in a different color depending on the
+    instance (up to 6 if standard output is a terminal or a Jupyter notebook
+    cell).
     """
 
     _stream_colors = [31, 32, 33, 34, 35, 36]
@@ -35,16 +37,17 @@ class ColorWrap(object):
         """Initialize the class.
 
         Args:
-            force (bool): If True, render colorizes output no matter where the output is (default: False).
+            force (bool): If True, render colorizes output no matter where the
+                output is (default: False).
         """
-        self.colorize = force or sys.stdout.isatty() or os.environ.get('JPY_PARENT_PID', None)
+        self.colorize = force or sys.stdout.isatty() or os.environ.get("JPY_PARENT_PID", None)
 
     def __call__(self, index, s):
         """Print the output, colorized or not, depending on the environment.
 
-           Args:
-               index (int): The instance number.
-               s (str): The string to print.
+        Args:
+            index (int): The instance number.
+            s (str): The string to print.
         """
         if self.colorize:
             self._color_wrap(index, s)
@@ -52,11 +55,21 @@ class ColorWrap(object):
             print(s)
 
     def _color_wrap(self, index, s):
-        print('\x1b[{}m{}\x1b[0m'.format(self._stream_colors[index % len(self._stream_colors)], s))
+        """
+        Args:
+            index:
+            s:
+        """
+        print("\x1b[{}m{}\x1b[0m".format(self._stream_colors[index % len(self._stream_colors)], s))
 
 
 def argmin(arr, f):
-    """Return the index, i, in arr that minimizes f(arr[i])"""
+    """Return the index, i, in arr that minimizes f(arr[i])
+
+    Args:
+        arr:
+        f:
+    """
     m = None
     i = None
     for idx, item in enumerate(arr):
@@ -68,13 +81,17 @@ def argmin(arr, f):
 
 
 def some(arr):
-    """Return True iff there is an element, a, of arr such that a is not None"""
+    """Return True iff there is an element, a, of arr such that a is not None
+
+    Args:
+        arr:
+    """
     return functools.reduce(lambda x, y: x or (y is not None), arr, False)
 
 
 # Position is a tuple that includes the last read timestamp and the number of items that were read
 # at that time. This is used to figure out which event to start with on the next read.
-Position = collections.namedtuple('Position', ['timestamp', 'skip'])
+Position = collections.namedtuple("Position", ["timestamp", "skip"])
 
 
 def multi_stream_iter(client, log_group, streams, positions=None):
@@ -84,16 +101,18 @@ def multi_stream_iter(client, log_group, streams, positions=None):
     Args:
         client (boto3 client): The boto client for logs.
         log_group (str): The name of the log group.
-        streams (list of str): A list of the log stream names. The position of the stream in this list is
-                               the stream number.
-        positions: (list of Positions): A list of pairs of (timestamp, skip) which represents the last record
-                                     read from each stream.
+        streams (list of str): A list of the log stream names. The position of the stream in
+        this list is the stream number.
+        positions: (list of Positions): A list of pairs of (timestamp, skip) which represents
+        the last record read from each stream.
 
     Yields:
         A tuple of (stream number, cloudwatch log event).
     """
     positions = positions or {s: Position(timestamp=0, skip=0) for s in streams}
-    event_iters = [log_stream(client, log_group, s, positions[s].timestamp, positions[s].skip) for s in streams]
+    event_iters = [
+        log_stream(client, log_group, s, positions[s].timestamp, positions[s].skip) for s in streams
+    ]
     events = []
     for s in event_iters:
         if not s:
@@ -105,7 +124,7 @@ def multi_stream_iter(client, log_group, streams, positions=None):
             events.append(None)
 
     while some(events):
-        i = argmin(events, lambda x: x['timestamp'] if x else 9999999999)
+        i = argmin(events, lambda x: x["timestamp"] if x else 9999999999)
         yield (i, events[i])
         try:
             events[i] = next(event_iters[i])
@@ -122,8 +141,8 @@ def log_stream(client, log_group, stream_name, start_time=0, skip=0):
         log_group (str): The name of the log group.
         stream_name (str): The name of the specific stream.
         start_time (int): The time stamp value to start reading the logs from (default: 0).
-        skip (int): The number of log entries to skip at the start (default: 0). This is for when there are
-                    multiple entries at the same timestamp.
+        skip (int): The number of log entries to skip at the start (default: 0). This is for
+        when there are multiple entries at the same timestamp.
 
     Yields:
        dict: A CloudWatch log event with the following key-value pairs:
@@ -137,14 +156,19 @@ def log_stream(client, log_group, stream_name, start_time=0, skip=0):
     event_count = 1
     while event_count > 0:
         if next_token is not None:
-            token_arg = {'nextToken': next_token}
+            token_arg = {"nextToken": next_token}
         else:
             token_arg = {}
 
-        response = client.get_log_events(logGroupName=log_group, logStreamName=stream_name, startTime=start_time,
-                                         startFromHead=True, **token_arg)
-        next_token = response['nextForwardToken']
-        events = response['events']
+        response = client.get_log_events(
+            logGroupName=log_group,
+            logStreamName=stream_name,
+            startTime=start_time,
+            startFromHead=True,
+            **token_arg
+        )
+        next_token = response["nextForwardToken"]
+        events = response["events"]
         event_count = len(events)
         if event_count > skip:
             events = events[skip:]

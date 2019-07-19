@@ -10,6 +10,7 @@
 # distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
+"""Placeholder docstring"""
 from __future__ import absolute_import
 
 import json
@@ -24,29 +25,44 @@ from sagemaker.content_types import CONTENT_TYPE_JSON, CONTENT_TYPE_OCTET_STREAM
 from sagemaker.predictor import json_serializer, csv_serializer
 from tensorflow_serving.apis import predict_pb2, classification_pb2, inference_pb2, regression_pb2
 
-_POSSIBLE_RESPONSES = [predict_pb2.PredictResponse, classification_pb2.ClassificationResponse,
-                       inference_pb2.MultiInferenceResponse, regression_pb2.RegressionResponse,
-                       tensor_pb2.TensorProto]
+_POSSIBLE_RESPONSES = [
+    predict_pb2.PredictResponse,
+    classification_pb2.ClassificationResponse,
+    inference_pb2.MultiInferenceResponse,
+    regression_pb2.RegressionResponse,
+    tensor_pb2.TensorProto,
+]
 
-REGRESSION_REQUEST = 'RegressionRequest'
-MULTI_INFERENCE_REQUEST = 'MultiInferenceRequest'
-CLASSIFICATION_REQUEST = 'ClassificationRequest'
-PREDICT_REQUEST = 'PredictRequest'
+REGRESSION_REQUEST = "RegressionRequest"
+MULTI_INFERENCE_REQUEST = "MultiInferenceRequest"
+CLASSIFICATION_REQUEST = "ClassificationRequest"
+PREDICT_REQUEST = "PredictRequest"
 
 
 class _TFProtobufSerializer(object):
+    """Placeholder docstring"""
+
     def __init__(self):
         self.content_type = CONTENT_TYPE_OCTET_STREAM
 
     def __call__(self, data):
         # isinstance does not work here because a same protobuf message can be imported from a different module.
         # for example sagemaker.tensorflow.tensorflow_serving.regression_pb2 and tensorflow_serving.apis.regression_pb2
+        """
+        Args:
+            data:
+        """
         predict_type = data.__class__.__name__
 
-        available_requests = [PREDICT_REQUEST, CLASSIFICATION_REQUEST, MULTI_INFERENCE_REQUEST, REGRESSION_REQUEST]
+        available_requests = [
+            PREDICT_REQUEST,
+            CLASSIFICATION_REQUEST,
+            MULTI_INFERENCE_REQUEST,
+            REGRESSION_REQUEST,
+        ]
 
         if predict_type not in available_requests:
-            raise ValueError('request type {} is not supported'.format(predict_type))
+            raise ValueError("request type {} is not supported".format(predict_type))
         return data.SerializeToString()
 
 
@@ -54,10 +70,18 @@ tf_serializer = _TFProtobufSerializer()
 
 
 class _TFProtobufDeserializer(object):
+    """Placeholder docstring"""
+
     def __init__(self):
+        """Placeholder docstring"""
         self.accept = CONTENT_TYPE_OCTET_STREAM
 
     def __call__(self, stream, content_type):
+        """
+        Args:
+            stream:
+            content_type:
+        """
         try:
             data = stream.read()
         finally:
@@ -72,31 +96,43 @@ class _TFProtobufDeserializer(object):
                 # given that the payload does not have the response type, there no way to infer
                 # the response without keeping state, so I'm iterating all the options.
                 pass
-        raise ValueError('data is not in the expected format')
+        raise ValueError("data is not in the expected format")
 
 
 tf_deserializer = _TFProtobufDeserializer()
 
 
 class _TFJsonSerializer(object):
+    """Placeholder docstring"""
+
     def __init__(self):
         self.content_type = CONTENT_TYPE_JSON
 
     def __call__(self, data):
+        """
+        Args:
+            data:
+        """
         if isinstance(data, tensor_pb2.TensorProto):
             return json_format.MessageToJson(data)
-        else:
-            return json_serializer(data)
+        return json_serializer(data)
 
 
 tf_json_serializer = _TFJsonSerializer()
 
 
 class _TFJsonDeserializer(object):
+    """Placeholder docstring"""
+
     def __init__(self):
         self.accept = CONTENT_TYPE_JSON
 
     def __call__(self, stream, content_type):
+        """
+        Args:
+            stream:
+            content_type:
+        """
         try:
             data = stream.read()
         finally:
@@ -116,10 +152,16 @@ tf_json_deserializer = _TFJsonDeserializer()
 
 
 class _TFCsvSerializer(object):
+    """Placeholder docstring"""
+
     def __init__(self):
         self.content_type = CONTENT_TYPE_CSV
 
     def __call__(self, data):
+        """
+        Args:
+            data:
+        """
         to_serialize = data
         if isinstance(data, tensor_pb2.TensorProto):
             to_serialize = tensor_util.MakeNdarray(data)

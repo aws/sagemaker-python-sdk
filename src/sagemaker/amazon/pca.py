@@ -10,6 +10,7 @@
 # distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
+"""Placeholder docstring"""
 from __future__ import absolute_import
 
 from sagemaker.amazon.amazon_estimator import AmazonAlgorithmEstimatorBase, registry
@@ -23,62 +24,94 @@ from sagemaker.vpc_utils import VPC_CONFIG_DEFAULT
 
 
 class PCA(AmazonAlgorithmEstimatorBase):
+    """Placeholder docstring"""
 
-    repo_name = 'pca'
+    repo_name = "pca"
     repo_version = 1
 
     DEFAULT_MINI_BATCH_SIZE = 500
 
-    num_components = hp('num_components', gt(0), 'Value must be an integer greater than zero', int)
-    algorithm_mode = hp('algorithm_mode', isin('regular', 'randomized'),
-                        'Value must be one of "regular" and "randomized"', str)
-    subtract_mean = hp(name='subtract_mean', validation_message='Value must be a boolean', data_type=bool)
-    extra_components = hp(name='extra_components',
-                          validation_message="Value must be an integer greater than or equal to 0, or -1.",
-                          data_type=int)
+    num_components = hp("num_components", gt(0), "Value must be an integer greater than zero", int)
+    algorithm_mode = hp(
+        "algorithm_mode",
+        isin("regular", "randomized"),
+        'Value must be one of "regular" and "randomized"',
+        str,
+    )
+    subtract_mean = hp(
+        name="subtract_mean", validation_message="Value must be a boolean", data_type=bool
+    )
+    extra_components = hp(
+        name="extra_components",
+        validation_message="Value must be an integer greater than or equal to 0, or -1.",
+        data_type=int,
+    )
 
-    def __init__(self, role, train_instance_count, train_instance_type, num_components,
-                 algorithm_mode=None, subtract_mean=None, extra_components=None, **kwargs):
-        """A Principal Components Analysis (PCA) :class:`~sagemaker.amazon.amazon_estimator.AmazonAlgorithmEstimatorBase`.
+    def __init__(
+        self,
+        role,
+        train_instance_count,
+        train_instance_type,
+        num_components,
+        algorithm_mode=None,
+        subtract_mean=None,
+        extra_components=None,
+        **kwargs
+    ):
+        """A Principal Components Analysis (PCA)
+        :class:`~sagemaker.amazon.amazon_estimator.AmazonAlgorithmEstimatorBase`.
 
         This Estimator may be fit via calls to
         :meth:`~sagemaker.amazon.amazon_estimator.AmazonAlgorithmEstimatorBase.fit_ndarray`
-        or :meth:`~sagemaker.amazon.amazon_estimator.AmazonAlgorithmEstimatorBase.fit`. The former allows a PCA model
-        to be fit on a 2-dimensional numpy array. The latter requires Amazon
-        :class:`~sagemaker.amazon.record_pb2.Record` protobuf serialized data to be stored in S3.
+        or
+        :meth:`~sagemaker.amazon.amazon_estimator.AmazonAlgorithmEstimatorBase.fit`.
+        The former allows a PCA model to be fit on a 2-dimensional numpy array.
+        The latter requires Amazon :class:`~sagemaker.amazon.record_pb2.Record`
+        protobuf serialized data to be stored in S3.
 
-        To learn more about the Amazon protobuf Record class and how to prepare bulk data in this format, please
-        consult AWS technical documentation: https://docs.aws.amazon.com/sagemaker/latest/dg/cdf-training.html
+        To learn more about the Amazon protobuf Record class and how to
+        prepare bulk data in this format, please consult AWS technical
+        documentation:
+        https://docs.aws.amazon.com/sagemaker/latest/dg/cdf-training.html
 
-        After this Estimator is fit, model data is stored in S3. The model may be deployed to an Amazon SageMaker
-        Endpoint by invoking :meth:`~sagemaker.amazon.estimator.EstimatorBase.deploy`. As well as deploying an Endpoint,
-        deploy returns a :class:`~sagemaker.amazon.pca.PCAPredictor` object that can be used to project
-        input vectors to the learned lower-dimensional representation, using the trained PCA model hosted in the
-        SageMaker Endpoint.
+        After this Estimator is fit, model data is stored in S3. The model
+        may be deployed to an Amazon SageMaker Endpoint by invoking
+        :meth:`~sagemaker.amazon.estimator.EstimatorBase.deploy`. As well as
+        deploying an Endpoint, deploy returns a
+        :class:`~sagemaker.amazon.pca.PCAPredictor` object that can be used to
+        project input vectors to the learned lower-dimensional representation,
+        using the trained PCA model hosted in the SageMaker Endpoint.
 
-        PCA Estimators can be configured by setting hyperparameters. The available hyperparameters for PCA
-        are documented below. For further information on the AWS PCA algorithm, please consult AWS technical
+        PCA Estimators can be configured by setting hyperparameters. The
+        available hyperparameters for PCA are documented below. For further
+        information on the AWS PCA algorithm, please consult AWS technical
         documentation: https://docs.aws.amazon.com/sagemaker/latest/dg/pca.html
 
-        This Estimator uses Amazon SageMaker PCA to perform training and host deployed models. To
-        learn more about Amazon SageMaker PCA, please read:
+        This Estimator uses Amazon SageMaker PCA to perform training and host
+        deployed models. To learn more about Amazon SageMaker PCA, please read:
         https://docs.aws.amazon.com/sagemaker/latest/dg/how-pca-works.html
 
         Args:
-            role (str): An AWS IAM role (either name or full ARN). The Amazon SageMaker training jobs and
-                APIs that create Amazon SageMaker endpoints use this role to access
-                training data and model artifacts. After the endpoint is created,
-                the inference code might use the IAM role, if accessing AWS resource.
-            train_instance_count (int): Number of Amazon EC2 instances to use for training.
-            train_instance_type (str): Type of EC2 instance to use for training, for example, 'ml.c4.xlarge'.
-            num_components(int): The number of principal components. Must be greater than zero.
-            algorithm_mode (str): Mode for computing the principal components. One of 'regular' or
-                'randomized'.
-            subtract_mean (bool): Whether the data should be unbiased both during train and at inference.
-            extra_components (int): As the value grows larger, the solution becomes more accurate but the
-                runtime and memory consumption increase linearly. If this value is unset or set to -1,
-                then a default value equal to the maximum of 10 and num_components will be used.
-                Valid for randomized mode only.
+            role (str): An AWS IAM role (either name or full ARN). The Amazon
+                SageMaker training jobs and APIs that create Amazon SageMaker
+                endpoints use this role to access training data and model
+                artifacts. After the endpoint is created, the inference code
+                might use the IAM role, if accessing AWS resource.
+            train_instance_count (int): Number of Amazon EC2 instances to use
+                for training.
+            train_instance_type (str): Type of EC2 instance to use for training,
+                for example, 'ml.c4.xlarge'.
+            num_components (int): The number of principal components. Must be
+                greater than zero.
+            algorithm_mode (str): Mode for computing the principal components.
+                One of 'regular' or 'randomized'.
+            subtract_mean (bool): Whether the data should be unbiased both
+                during train and at inference.
+            extra_components (int): As the value grows larger, the solution
+                becomes more accurate but the runtime and memory consumption
+                increase linearly. If this value is unset or set to -1, then a
+                default value equal to the maximum of 10 and num_components will
+                be used. Valid for randomized mode only.
             **kwargs: base class keyword argument values.
         """
         super(PCA, self).__init__(role, train_instance_count, train_instance_type, **kwargs)
@@ -88,72 +121,106 @@ class PCA(AmazonAlgorithmEstimatorBase):
         self.extra_components = extra_components
 
     def create_model(self, vpc_config_override=VPC_CONFIG_DEFAULT):
-        """Return a :class:`~sagemaker.amazon.pca.PCAModel` referencing the latest
-        s3 model data produced by this Estimator.
+        """Return a :class:`~sagemaker.amazon.pca.PCAModel` referencing the
+        latest s3 model data produced by this Estimator.
 
         Args:
-            vpc_config_override (dict[str, list[str]]): Optional override for VpcConfig set on the model.
-                Default: use subnets and security groups from this Estimator.
+            vpc_config_override (dict[str, list[str]]): Optional override for VpcConfig set on
+                the model. Default: use subnets and security groups from this Estimator.
                 * 'Subnets' (list[str]): List of subnet ids.
                 * 'SecurityGroupIds' (list[str]): List of security group ids.
         """
-        return PCAModel(self.model_data, self.role, sagemaker_session=self.sagemaker_session,
-                        vpc_config=self.get_vpc_config(vpc_config_override))
+        return PCAModel(
+            self.model_data,
+            self.role,
+            sagemaker_session=self.sagemaker_session,
+            vpc_config=self.get_vpc_config(vpc_config_override),
+        )
 
     def _prepare_for_training(self, records, mini_batch_size=None, job_name=None):
         """Set hyperparameters needed for training.
 
         Args:
-            * records (:class:`~RecordSet`): The records to train this ``Estimator`` on.
-            * mini_batch_size (int or None): The size of each mini-batch to use when training. If ``None``, a
-                default value will be used.
-            * job_name (str): Name of the training job to be created. If not specified, one is generated,
-                using the base name given to the constructor if applicable.
+            records (:class:`~RecordSet`): The records to train this ``Estimator`` on.
+            mini_batch_size (int or None): The size of each mini-batch to use when
+                training. If ``None``, a default value will be used.
+            job_name (str): Name of the training job to be created. If not
+                specified, one is generated, using the base name given to the
+                constructor if applicable.
         """
         num_records = None
         if isinstance(records, list):
             for record in records:
-                if record.channel == 'train':
+                if record.channel == "train":
                     num_records = record.num_records
                     break
             if num_records is None:
-                raise ValueError('Must provide train channel.')
+                raise ValueError("Must provide train channel.")
         else:
             num_records = records.num_records
 
         # mini_batch_size is a required parameter
-        default_mini_batch_size = min(self.DEFAULT_MINI_BATCH_SIZE,
-                                      max(1, int(num_records / self.train_instance_count)))
+        default_mini_batch_size = min(
+            self.DEFAULT_MINI_BATCH_SIZE, max(1, int(num_records / self.train_instance_count))
+        )
         use_mini_batch_size = mini_batch_size or default_mini_batch_size
 
-        super(PCA, self)._prepare_for_training(records=records, mini_batch_size=use_mini_batch_size, job_name=job_name)
+        super(PCA, self)._prepare_for_training(
+            records=records, mini_batch_size=use_mini_batch_size, job_name=job_name
+        )
 
 
 class PCAPredictor(RealTimePredictor):
     """Transforms input vectors to lower-dimesional representations.
 
-    The implementation of :meth:`~sagemaker.predictor.RealTimePredictor.predict` in this
-    `RealTimePredictor` requires a numpy ``ndarray`` as input. The array should contain the
-    same number of columns as the feature-dimension of the data used to fit the model this
-    Predictor performs inference on.
+    The implementation of
+    :meth:`~sagemaker.predictor.RealTimePredictor.predict` in this
+    `RealTimePredictor` requires a numpy ``ndarray`` as input. The array should
+    contain the same number of columns as the feature-dimension of the data used
+    to fit the model this Predictor performs inference on.
 
-    :meth:`predict()` returns a list of :class:`~sagemaker.amazon.record_pb2.Record` objects, one
-    for each row in the input ``ndarray``. The lower dimension vector result is stored in the ``projection``
-    key of the ``Record.label`` field."""
+    :meth:`predict()` returns a list of
+    :class:`~sagemaker.amazon.record_pb2.Record` objects, one for each row in
+    the input ``ndarray``. The lower dimension vector result is stored in the
+    ``projection`` key of the ``Record.label`` field.
+    """
 
     def __init__(self, endpoint, sagemaker_session=None):
-        super(PCAPredictor, self).__init__(endpoint, sagemaker_session, serializer=numpy_to_record_serializer(),
-                                           deserializer=record_deserializer())
+        """
+        Args:
+            endpoint:
+            sagemaker_session:
+        """
+        super(PCAPredictor, self).__init__(
+            endpoint,
+            sagemaker_session,
+            serializer=numpy_to_record_serializer(),
+            deserializer=record_deserializer(),
+        )
 
 
 class PCAModel(Model):
-    """Reference PCA s3 model data. Calling :meth:`~sagemaker.model.Model.deploy` creates an Endpoint and return
-    a Predictor that transforms vectors to a lower-dimensional representation."""
+    """Reference PCA s3 model data. Calling
+    :meth:`~sagemaker.model.Model.deploy` creates an Endpoint and return a
+    Predictor that transforms vectors to a lower-dimensional representation.
+    """
 
     def __init__(self, model_data, role, sagemaker_session=None, **kwargs):
+        """
+        Args:
+            model_data:
+            role:
+            sagemaker_session:
+            **kwargs:
+        """
         sagemaker_session = sagemaker_session or Session()
-        repo = '{}:{}'.format(PCA.repo_name, PCA.repo_version)
-        image = '{}/{}'.format(registry(sagemaker_session.boto_session.region_name), repo)
-        super(PCAModel, self).__init__(model_data, image, role, predictor_cls=PCAPredictor,
-                                       sagemaker_session=sagemaker_session,
-                                       **kwargs)
+        repo = "{}:{}".format(PCA.repo_name, PCA.repo_version)
+        image = "{}/{}".format(registry(sagemaker_session.boto_session.region_name), repo)
+        super(PCAModel, self).__init__(
+            model_data,
+            image,
+            role,
+            predictor_cls=PCAPredictor,
+            sagemaker_session=sagemaker_session,
+            **kwargs
+        )

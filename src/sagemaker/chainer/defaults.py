@@ -10,9 +10,10 @@
 # distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
+"""Placeholder docstring"""
 from __future__ import absolute_import
 
-CHAINER_VERSION = '4.1.0'
+CHAINER_VERSION = "4.1.0"
 """Default Chainer version for when the framework version is not specified.
 This is no longer updated so as to not break existing workflows.
 """
