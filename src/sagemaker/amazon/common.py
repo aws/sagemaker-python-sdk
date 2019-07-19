@@ -10,6 +10,7 @@
 # distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
+"""Placeholder docstring"""
 from __future__ import absolute_import
 
 import io
@@ -23,10 +24,20 @@ from sagemaker.amazon.record_pb2 import Record
 
 
 class numpy_to_record_serializer(object):
+    """Placeholder docstring"""
+
     def __init__(self, content_type="application/x-recordio-protobuf"):
+        """
+        Args:
+            content_type:
+        """
         self.content_type = content_type
 
     def __call__(self, array):
+        """
+        Args:
+            array:
+        """
         if len(array.shape) == 1:
             array = array.reshape(1, array.shape[0])
         assert len(array.shape) == 2, "Expecting a 1 or 2 dimensional array"
@@ -37,10 +48,21 @@ class numpy_to_record_serializer(object):
 
 
 class record_deserializer(object):
+    """Placeholder docstring"""
+
     def __init__(self, accept="application/x-recordio-protobuf"):
+        """
+        Args:
+            accept:
+        """
         self.accept = accept
 
     def __call__(self, stream, content_type):
+        """
+        Args:
+            stream:
+            content_type:
+        """
         try:
             return read_records(stream)
         finally:
@@ -48,6 +70,12 @@ class record_deserializer(object):
 
 
 def _write_feature_tensor(resolved_type, record, vector):
+    """
+    Args:
+        resolved_type:
+        record:
+        vector:
+    """
     if resolved_type == "Int32":
         record.features["values"].int32_tensor.values.extend(vector)
     elif resolved_type == "Float64":
@@ -57,6 +85,12 @@ def _write_feature_tensor(resolved_type, record, vector):
 
 
 def _write_label_tensor(resolved_type, record, scalar):
+    """
+    Args:
+        resolved_type:
+        record:
+        scalar:
+    """
     if resolved_type == "Int32":
         record.label["values"].int32_tensor.values.extend([scalar])
     elif resolved_type == "Float64":
@@ -66,6 +100,12 @@ def _write_label_tensor(resolved_type, record, scalar):
 
 
 def _write_keys_tensor(resolved_type, record, vector):
+    """
+    Args:
+        resolved_type:
+        record:
+        vector:
+    """
     if resolved_type == "Int32":
         record.features["values"].int32_tensor.keys.extend(vector)
     elif resolved_type == "Float64":
@@ -75,6 +115,12 @@ def _write_keys_tensor(resolved_type, record, vector):
 
 
 def _write_shape(resolved_type, record, scalar):
+    """
+    Args:
+        resolved_type:
+        record:
+        scalar:
+    """
     if resolved_type == "Int32":
         record.features["values"].int32_tensor.shape.extend([scalar])
     elif resolved_type == "Float64":
@@ -84,7 +130,13 @@ def _write_shape(resolved_type, record, scalar):
 
 
 def write_numpy_to_dense_tensor(file, array, labels=None):
-    """Writes a numpy array to a dense tensor"""
+    """Writes a numpy array to a dense tensor
+
+    Args:
+        file:
+        array:
+        labels:
+    """
 
     # Validate shape of array and labels, resolve array and label types
     if not len(array.shape) == 2:
@@ -112,7 +164,13 @@ def write_numpy_to_dense_tensor(file, array, labels=None):
 
 
 def write_spmatrix_to_sparse_tensor(file, array, labels=None):
-    """Writes a scipy sparse matrix to a sparse tensor"""
+    """Writes a scipy sparse matrix to a sparse tensor
+
+    Args:
+        file:
+        array:
+        labels:
+    """
 
     if not issparse(array):
         raise TypeError("Array must be sparse")
@@ -155,7 +213,11 @@ def write_spmatrix_to_sparse_tensor(file, array, labels=None):
 
 
 def read_records(file):
-    """Eagerly read a collection of amazon Record protobuf objects from file."""
+    """Eagerly read a collection of amazon Record protobuf objects from file.
+
+    Args:
+        file:
+    """
     records = []
     for record_data in read_recordio(file):
         record = Record()
@@ -178,7 +240,12 @@ _kmagic = 0xCED7230A
 
 
 def _write_recordio(f, data):
-    """Writes a single data point as a RecordIO record to the given file."""
+    """Writes a single data point as a RecordIO record to the given file.
+
+    Args:
+        f:
+        data:
+    """
     length = len(data)
     f.write(struct.pack("I", _kmagic))
     f.write(struct.pack("I", length))
@@ -188,6 +255,10 @@ def _write_recordio(f, data):
 
 
 def read_recordio(f):
+    """
+    Args:
+        f:
+    """
     while True:
         try:
             read_kmagic, = struct.unpack("I", f.read(4))
@@ -202,6 +273,10 @@ def read_recordio(f):
 
 
 def _resolve_type(dtype):
+    """
+    Args:
+        dtype:
+    """
     if dtype == np.dtype(int):
         return "Int32"
     if dtype == np.dtype(float):

@@ -10,22 +10,33 @@
 # distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
+"""Placeholder docstring"""
 from __future__ import absolute_import
 
 import json
 
 
 class Hyperparameter(object):
-    """An algorithm hyperparameter with optional validation. Implemented as a python
-    descriptor object."""
+    """An algorithm hyperparameter with optional validation. Implemented as a
+    python descriptor object.
+    """
 
     def __init__(self, name, validate=lambda _: True, validation_message="", data_type=str):
-        """Args:
-            name (str): The name of this hyperparameter
-            validate (callable[object]->[bool]): A validation function or list of validation functions.
-                Each function validates an object and returns False if the object value is invalid for
-                this hyperparameter.
-            validation_message (str): A usage guide to display on validation failure.
+        """Args: name (str): The name of this hyperparameter validate
+        (callable[object]->[bool]): A validation function or list of validation
+        functions.
+
+            Each function validates an object and returns False if the object
+            value is invalid for this hyperparameter.
+
+        validation_message (str): A usage guide to display on validation
+        failure.
+
+        Args:
+            name:
+            validate:
+            validation_message:
+            data_type:
         """
         self.validation = validate
         self.validation_message = validation_message
@@ -37,6 +48,10 @@ class Hyperparameter(object):
             self.validation = [self.validation]
 
     def validate(self, value):
+        """
+        Args:
+            value:
+        """
         if value is None:  # We allow assignment from None, but Nones are not sent to training.
             return
 
@@ -48,12 +63,22 @@ class Hyperparameter(object):
                 raise ValueError(error_message)
 
     def __get__(self, obj, objtype):
+        """
+        Args:
+            obj:
+            objtype:
+        """
         if "_hyperparameters" not in dir(obj) or self.name not in obj._hyperparameters:
             raise AttributeError()
         return obj._hyperparameters[self.name]
 
     def __set__(self, obj, value):
-        """Validate the supplied value and set this hyperparameter to value"""
+        """Validate the supplied value and set this hyperparameter to value
+
+        Args:
+            obj:
+            value:
+        """
         value = None if value is None else self.data_type(value)
         self.validate(value)
         if "_hyperparameters" not in dir(obj):
@@ -61,12 +86,21 @@ class Hyperparameter(object):
         obj._hyperparameters[self.name] = value
 
     def __delete__(self, obj):
-        """Delete this hyperparameter"""
+        """Delete this hyperparameter
+
+        Args:
+            obj:
+        """
         del obj._hyperparameters[self.name]
 
     @staticmethod
     def serialize_all(obj):
-        """Return all non-None ``hyperparameter`` values on ``obj`` as a ``dict[str,str].``"""
+        """Return all non-None ``hyperparameter`` values on ``obj`` as a
+        ``dict[str,str].``
+
+        Args:
+            obj:
+        """
         if "_hyperparameters" not in dir(obj):
             return {}
         return {

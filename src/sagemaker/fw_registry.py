@@ -10,6 +10,7 @@
 # distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
+"""Placeholder docstring"""
 from __future__ import absolute_import
 import logging
 
@@ -35,9 +36,12 @@ image_registry_map = {
 
 
 def registry(region_name, framework=None):
-    """
-    Return docker registry for the given AWS region for the given framework.
+    """Return docker registry for the given AWS region for the given framework.
     This is only used for SparkML and Scikit-learn for now.
+
+    Args:
+        region_name:
+        framework:
     """
     try:
         account_id = image_registry_map[region_name][framework]
@@ -48,6 +52,12 @@ def registry(region_name, framework=None):
 
 
 def default_framework_uri(framework, region_name, image_tag):
+    """
+    Args:
+        framework:
+        region_name:
+        image_tag:
+    """
     repository_name = "sagemaker-{}".format(framework)
     account_name = registry(region_name, framework)
     return "{}/{}:{}".format(account_name, repository_name, image_tag)

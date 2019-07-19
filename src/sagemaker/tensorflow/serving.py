@@ -10,6 +10,7 @@
 # distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
+"""Placeholder docstring"""
 from __future__ import absolute_import
 
 import logging
@@ -23,7 +24,8 @@ from sagemaker.tensorflow.defaults import TF_VERSION
 
 
 class Predictor(sagemaker.RealTimePredictor):
-    """A ``RealTimePredictor`` implementation for inference against TensorFlow Serving endpoints.
+    """A ``RealTimePredictor`` implementation for inference against TensorFlow
+    Serving endpoints.
     """
 
     def __init__(
@@ -36,23 +38,29 @@ class Predictor(sagemaker.RealTimePredictor):
         model_name=None,
         model_version=None,
     ):
-        """Initialize a ``TFSPredictor``. See ``sagemaker.RealTimePredictor`` for
-        more info about parameters.
+        """Initialize a ``TFSPredictor``. See ``sagemaker.RealTimePredictor``
+        for more info about parameters.
 
         Args:
-            endpoint_name (str): The name of the endpoint to perform inference on.
-            sagemaker_session (sagemaker.session.Session): Session object which manages interactions
-                with Amazon SageMaker APIs and any other AWS services needed. If not specified,
-                the estimator creates one using the default AWS configuration chain.
-            serializer (callable): Optional. Default serializes input data to json. Handles dicts,
-                lists, and numpy arrays.
-            deserializer (callable): Optional. Default parses the response using ``json.load(...)``.
-            content_type (str): Optional. The "ContentType" for invocation requests. If specified,
-                overrides the ``content_type`` from the serializer (default: None).
-            model_name (str): Optional. The name of the SavedModel model that should handle the
-                request. If not specified, the endpoint's default model will handle the request.
-            model_version (str): Optional. The version of the SavedModel model that should handle
-                the request. If not specified, the latest version of the model will be used.
+            endpoint_name (str): The name of the endpoint to perform inference
+                on.
+            sagemaker_session (sagemaker.session.Session): Session object which
+                manages interactions with Amazon SageMaker APIs and any other
+                AWS services needed. If not specified, the estimator creates one
+                using the default AWS configuration chain.
+            serializer (callable): Optional. Default serializes input data to
+                json. Handles dicts, lists, and numpy arrays.
+            deserializer (callable): Optional. Default parses the response using
+                ``json.load(...)``.
+            content_type (str): Optional. The "ContentType" for invocation
+                requests. If specified, overrides the ``content_type`` from the
+                serializer (default: None).
+            model_name (str): Optional. The name of the SavedModel model that
+                should handle the request. If not specified, the endpoint's
+                default model will handle the request.
+            model_version (str): Optional. The version of the SavedModel model
+                that should handle the request. If not specified, the latest
+                version of the model will be used.
         """
         super(Predictor, self).__init__(
             endpoint_name, sagemaker_session, serializer, deserializer, content_type
@@ -66,12 +74,25 @@ class Predictor(sagemaker.RealTimePredictor):
         self._model_attributes = ",".join(attributes) if attributes else None
 
     def classify(self, data):
+        """
+        Args:
+            data:
+        """
         return self._classify_or_regress(data, "classify")
 
     def regress(self, data):
+        """
+        Args:
+            data:
+        """
         return self._classify_or_regress(data, "regress")
 
     def _classify_or_regress(self, data, method):
+        """
+        Args:
+            data:
+            method:
+        """
         if method not in ["classify", "regress"]:
             raise ValueError("invalid TensorFlow Serving method: {}".format(method))
 
@@ -83,6 +104,11 @@ class Predictor(sagemaker.RealTimePredictor):
         return self.predict(data, args)
 
     def predict(self, data, initial_args=None):
+        """
+        Args:
+            data:
+            initial_args:
+        """
         args = dict(initial_args) if initial_args else {}
         if self._model_attributes:
             if "CustomAttributes" in args:
@@ -94,6 +120,8 @@ class Predictor(sagemaker.RealTimePredictor):
 
 
 class Model(sagemaker.model.FrameworkModel):
+    """Placeholder docstring"""
+
     FRAMEWORK_NAME = "tensorflow-serving"
     LOG_LEVEL_PARAM_NAME = "SAGEMAKER_TFS_NGINX_LOGLEVEL"
     LOG_LEVEL_MAP = {
@@ -117,20 +145,26 @@ class Model(sagemaker.model.FrameworkModel):
     ):
         """Initialize a Model.
 
-       Args:
-           model_data (str): The S3 location of a SageMaker model data ``.tar.gz`` file.
-           role (str): An AWS IAM role (either name or full ARN). The Amazon SageMaker APIs that
-                create Amazon SageMaker endpoints use this role to access model artifacts.
-           image (str): A Docker image URI (default: None). If not specified, a default image for
-                TensorFlow Serving will be used.
-           framework_version (str): Optional. TensorFlow Serving version you want to use.
-           container_log_level (int): Log level to use within the container (default: logging.ERROR).
-                Valid values are defined in the Python logging module.
-           predictor_cls (callable[str, sagemaker.session.Session]): A function to call to create a
-                predictor with an endpoint name and SageMaker ``Session``. If specified, ``deploy()``
-                returns the result of invoking this function on the created endpoint name.
-           **kwargs: Keyword arguments passed to the ``Model`` initializer.
-       """
+        Args:
+            model_data (str): The S3 location of a SageMaker model data
+                ``.tar.gz`` file.
+            role (str): An AWS IAM role (either name or full ARN). The Amazon
+                SageMaker APIs that create Amazon SageMaker endpoints use this
+                role to access model artifacts.
+            entry_point:
+            image (str): A Docker image URI (default: None). If not specified, a
+                default image for TensorFlow Serving will be used.
+            framework_version (str): Optional. TensorFlow Serving version you
+                want to use.
+            container_log_level (int): Log level to use within the container
+                (default: logging.ERROR). Valid values are defined in the Python
+                logging module.
+            predictor_cls (callable[str, sagemaker.session.Session]): A function
+                to call to create a predictor with an endpoint name and
+                SageMaker ``Session``. If specified, ``deploy()`` returns the
+                result of invoking this function on the created endpoint name.
+            **kwargs: Keyword arguments passed to the ``Model`` initializer.
+        """
         super(Model, self).__init__(
             model_data=model_data,
             role=role,
@@ -143,6 +177,11 @@ class Model(sagemaker.model.FrameworkModel):
         self._container_log_level = container_log_level
 
     def prepare_container_def(self, instance_type, accelerator_type=None):
+        """
+        Args:
+            instance_type:
+            accelerator_type:
+        """
         image = self._get_image_uri(instance_type, accelerator_type)
         env = self._get_container_env()
 
@@ -166,6 +205,7 @@ class Model(sagemaker.model.FrameworkModel):
         return sagemaker.container_def(image, model_data, env)
 
     def _get_container_env(self):
+        """Placeholder docstring"""
         if not self._container_log_level:
             return self.env
 
@@ -178,6 +218,11 @@ class Model(sagemaker.model.FrameworkModel):
         return env
 
     def _get_image_uri(self, instance_type, accelerator_type=None):
+        """
+        Args:
+            instance_type:
+            accelerator_type:
+        """
         if self.image:
             return self.image
 
