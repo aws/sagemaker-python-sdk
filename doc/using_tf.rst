@@ -29,9 +29,15 @@ Train a Model with TensorFlow
 
 To train a TensorFlow model by using the SageMaker Python SDK:
 
+.. |create tf estimator| replace:: Create a ``sagemaker.tensorflow.TensorFlow estimator``
+.. _create tf estimator: #create-an-estimator
+
+.. |call fit| replace:: Call the estimator's ``fit`` method
+.. _call fit: #call-the-fit-method
+
 1. `Prepare a training script <#prepare-a-script-mode-training-script>`_
-2. `Create a ``sagemaker.tensorflow.TensorFlow`` estimator <#create-an-estimator>`_
-3. `Call the estimator's `fit` method <#call-fit>`_
+2. |create tf estimator|_
+3. |call fit|_
 
 Prepare a Script Mode Training Script
 ======================================
@@ -85,7 +91,7 @@ is good practice.
 Note that SageMaker doesn't support argparse actions.
 For example, if you want to use a boolean hyperparameter, specify ``type`` as ``bool`` in your script and provide an explicit ``True`` or ``False`` value for this hyperparameter when you create the TensorFlow estimator.
 
-For a complete example of a TensorFlow training script, see <
+For a complete example of a TensorFlow training script, see `mnist.py <https://github.com/awslabs/amazon-sagemaker-examples/blob/master/sagemaker-python-sdk/tensorflow_distributed_mnist/mnist.py>`__.
 
    
 Adapting your local TensorFlow script
@@ -162,8 +168,8 @@ The constructor keyword arguments define how SageMaker runs your training script
 
 For more information about the sagemaker.tensorflow.TensorFlow estimator, see `sagemaker.tensorflow.TensorFlow Class`_.
 
-Call ``fit``
-============
+Call the fit Method
+===================
 
 You start your training script by calling the ``fit`` method on a ``TensorFlow`` estimator. ``fit`` takes
 both required and optional arguments.
@@ -541,8 +547,6 @@ For example:
   tf_transformer = tf_estimator.transformer(instance_count=1, instance_type='ml.m4.xlarge, output_path=batch_output)
 
 To use a model trained outside of SageMaker, you can package the model as a SageMaker model, and call the ``transformer`` method of the SageMaker model.
-
-For example:
 
 For example:
 
