@@ -185,7 +185,7 @@ def test_mnist_async(sagemaker_session):
 
 def test_deploy_with_input_handlers(sagemaker_session, instance_type):
     estimator = TensorFlow(
-        entry_point="inference.py",
+        entry_point="training.py",
         source_dir=TFS_RESOURCE_PATH,
         role=ROLE,
         train_instance_count=1,
@@ -202,9 +202,11 @@ def test_deploy_with_input_handlers(sagemaker_session, instance_type):
     endpoint_name = estimator.latest_training_job.name
 
     with timeout.timeout_and_delete_endpoint_by_name(endpoint_name, sagemaker_session):
-
         predictor = estimator.deploy(
-            initial_instance_count=1, instance_type=instance_type, endpoint_name=endpoint_name
+            initial_instance_count=1,
+            instance_type=instance_type,
+            endpoint_name=endpoint_name,
+            entry_point=os.path.join(TFS_RESOURCE_PATH, "inference.py"),
         )
 
         input_data = {"instances": [1.0, 2.0, 5.0]}

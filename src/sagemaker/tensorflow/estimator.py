@@ -470,8 +470,12 @@ class TensorFlow(Framework):
         role=None,
         vpc_config_override=VPC_CONFIG_DEFAULT,
         endpoint_type=None,
+        entry_point=None,
+        source_dir=None,
+        dependencies=None,
     ):
-        """Create a SageMaker ``TensorFlowModel`` object that can be deployed to an ``Endpoint``.
+        """Create a ``Model`` object that can be used for creating SageMaker model entities,
+        deploying to a SageMaker endpoint, or starting SageMaker Batch Transform jobs.
 
         Args:
             role (str): The ``ExecutionRoleArn`` IAM Role ARN for the ``Model``, which is also used during
@@ -482,27 +486,55 @@ class TensorFlow(Framework):
                 Default: use subnets and security groups from this Estimator.
                 * 'Subnets' (list[str]): List of subnet ids.
                 * 'SecurityGroupIds' (list[str]): List of security group ids.
-            endpoint_type: Optional. Selects the software stack used by the inference server.
+            endpoint_type (str): Optional. Selects the software stack used by the inference server.
                 If  not specified, the model will be configured to use the default
                 SageMaker model server. If 'tensorflow-serving', the model will be configured to
                 use the SageMaker Tensorflow Serving container.
+            entry_point (str): Path (absolute or relative) to the local Python source file which should be executed
+                as the entry point to training. If not specified and ``endpoint_type`` is 'tensorflow-serving',
+                no entry point is used. If ``endpoint_type`` is also ``None``, then the training entry point is used.
+            source_dir (str): Path (absolute or relative) to a directory with any other serving
+                source code dependencies aside from the entry point file. If not specified and
+                ``endpoint_type`` is 'tensorflow-serving', no source_dir is used. If ``endpoint_type`` is also ``None``,
+                then the model source directory from training is used.
+            dependencies (list[str]): A list of paths to directories (absolute or relative) with
+                any additional libraries that will be exported to the container.
+                If not specified and ``endpoint_type`` is 'tensorflow-serving', ``dependencies`` is set to ``None``.
+                If ``endpoint_type`` is also ``None``, then the dependencies from training are used.
 
         Returns:
-            sagemaker.tensorflow.model.TensorFlowModel: A SageMaker ``TensorFlowModel`` object.
-            See :func:`~sagemaker.tensorflow.model.TensorFlowModel` for full details.
+            sagemaker.tensorflow.model.TensorFlowModel or sagemaker.tensorflow.serving.Model: A ``Model`` object.
+                See :class:`~sagemaker.tensorflow.serving.Model` or :class:`~sagemaker.tensorflow.model.TensorFlowModel`
+                for full details.
         """
-
         role = role or self.role
+
         if endpoint_type == "tensorflow-serving" or self._script_mode_enabled():
-            return self._create_tfs_model(role=role, vpc_config_override=vpc_config_override)
+            return self._create_tfs_model(
+                role=role,
+                vpc_config_override=vpc_config_override,
+                entry_point=entry_point,
+                source_dir=source_dir,
+                dependencies=dependencies,
+            )
 
         return self._create_default_model(
             model_server_workers=model_server_workers,
             role=role,
             vpc_config_override=vpc_config_override,
+            entry_point=entry_point,
+            source_dir=source_dir,
+            dependencies=dependencies,
         )
 
-    def _create_tfs_model(self, role=None, vpc_config_override=VPC_CONFIG_DEFAULT):
+    def _create_tfs_model(
+        self,
+        role=None,
+        vpc_config_override=VPC_CONFIG_DEFAULT,
+        entry_point=None,
+        source_dir=None,
+        dependencies=None,
+    ):
         """Placeholder docstring"""
         return Model(
             model_data=self.model_data,
@@ -513,15 +545,26 @@ class TensorFlow(Framework):
             framework_version=utils.get_short_version(self.framework_version),
             sagemaker_session=self.sagemaker_session,
             vpc_config=self.get_vpc_config(vpc_config_override),
+            entry_point=entry_point,
+            source_dir=source_dir,
+            dependencies=dependencies,
         )
 
-    def _create_default_model(self, model_server_workers, role, vpc_config_override):
+    def _create_default_model(
+        self,
+        model_server_workers,
+        role,
+        vpc_config_override,
+        entry_point=None,
+        source_dir=None,
+        dependencies=None,
+    ):
         """Placeholder docstring"""
         return TensorFlowModel(
             self.model_data,
             role,
-            self.entry_point,
-            source_dir=self._model_source_dir(),
+            entry_point or self.entry_point,
+            source_dir=source_dir or self._model_source_dir(),
             enable_cloudwatch_metrics=self.enable_cloudwatch_metrics,
             env={"SAGEMAKER_REQUIREMENTS": self.requirements_file},
             image=self.image_name,
@@ -533,7 +576,7 @@ class TensorFlow(Framework):
             model_server_workers=model_server_workers,
             sagemaker_session=self.sagemaker_session,
             vpc_config=self.get_vpc_config(vpc_config_override),
-            dependencies=self.dependencies,
+            dependencies=dependencies or self.dependencies,
         )
 
     def hyperparameters(self):
@@ -625,6 +668,7 @@ class TensorFlow(Framework):
         model_server_workers=None,
         volume_kms_key=None,
         endpoint_type=None,
+        entry_point=None,
     ):
         """Return a ``Transformer`` that uses a SageMaker Model based on the training job. It reuses the
         SageMaker Session and base job name used by the Estimator.
@@ -656,6 +700,9 @@ class TensorFlow(Framework):
                 SageMaker model server.
                 If 'tensorflow-serving', the model will be configured to
                 use the SageMaker Tensorflow Serving container.
+            entry_point (str): Path (absolute or relative) to the local Python source file which should be executed
+                as the entry point to training. If not specified and ``endpoint_type`` is 'tensorflow-serving',
+                no entry point is used. If ``endpoint_type`` is also ``None``, then the training entry point is used.
         """
 
         role = role or self.role
@@ -664,6 +711,7 @@ class TensorFlow(Framework):
             role=role,
             vpc_config_override=VPC_CONFIG_DEFAULT,
             endpoint_type=endpoint_type,
+            entry_point=entry_point,
         )
         return model.transformer(
             instance_count,
