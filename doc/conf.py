@@ -92,5 +92,5 @@ intersphinx_mapping = {"http://docs.python.org/": None}
 # autosummary
 autosummary_generate = True
 
-#autosectionlabel
+# autosectionlabel
 autosectionlabel_prefix_document = True
