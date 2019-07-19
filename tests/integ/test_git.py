@@ -21,6 +21,7 @@ import tempfile
 
 from tests.integ import lock as lock
 from sagemaker.mxnet.estimator import MXNet
+from sagemaker.pytorch.defaults import PYTORCH_VERSION
 from sagemaker.pytorch.estimator import PyTorch
 from sagemaker.sklearn.estimator import SKLearn
 from sagemaker.mxnet.model import MXNetModel
@@ -60,7 +61,7 @@ def test_git_support_with_pytorch(sagemaker_local_session):
         entry_point=script_path,
         role="SageMakerRole",
         source_dir="pytorch",
-        framework_version=PyTorch.LATEST_VERSION,
+        framework_version=PYTORCH_VERSION,
         py_version=PYTHON_VERSION,
         train_instance_count=1,
         train_instance_type="local",
