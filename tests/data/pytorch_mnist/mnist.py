@@ -47,6 +47,7 @@ def _get_train_data_loader(training_dir, is_distributed, batch_size, **kwargs):
         transform=transforms.Compose(
             [transforms.ToTensor(), transforms.Normalize((0.1307,), (0.3081,))]
         ),
+        download=True,
     )
     train_sampler = (
         torch.utils.data.distributed.DistributedSampler(dataset) if is_distributed else None
@@ -70,6 +71,7 @@ def _get_test_data_loader(training_dir, **kwargs):
             transform=transforms.Compose(
                 [transforms.ToTensor(), transforms.Normalize((0.1307,), (0.3081,))]
             ),
+            download=True,
         ),
         batch_size=1000,
         shuffle=True,
