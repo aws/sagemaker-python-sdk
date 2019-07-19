@@ -67,12 +67,13 @@ def test_transform_mxnet(sagemaker_session, mxnet_full_version):
 
     kms_key_arn = get_or_create_kms_key(sagemaker_session)
     output_filter = "$"
+    input_filter = "$"
 
     transformer = _create_transformer_and_transform_job(
         mx,
         transform_input,
         kms_key_arn,
-        input_filter=None,
+        input_filter=input_filter,
         output_filter=output_filter,
         join_source=None,
     )
@@ -86,6 +87,7 @@ def test_transform_mxnet(sagemaker_session, mxnet_full_version):
     )
     assert kms_key_arn == job_desc["TransformResources"]["VolumeKmsKeyId"]
     assert output_filter == job_desc["DataProcessing"]["OutputFilter"]
+    assert input_filter == job_desc["DataProcessing"]["InputFilter"]
 
 
 @pytest.mark.canary_quick

@@ -676,12 +676,15 @@ def test_transform_pack_to_request(sagemaker_session):
 
     resource_config = {"InstanceCount": INSTANCE_COUNT, "InstanceType": INSTANCE_TYPE}
 
+    data_processing = {"OutputFilter": "$", "InputFilter": "$", "JoinSource": "Input"}
+
     expected_args = {
         "TransformJobName": JOB_NAME,
         "ModelName": model_name,
         "TransformInput": in_config,
         "TransformOutput": out_config,
         "TransformResources": resource_config,
+        "DataProcessing": data_processing,
     }
 
     sagemaker_session.transform(
@@ -695,7 +698,7 @@ def test_transform_pack_to_request(sagemaker_session):
         output_config=out_config,
         resource_config=resource_config,
         tags=None,
-        data_processing=None,
+        data_processing=data_processing,
     )
 
     _, _, actual_args = sagemaker_session.sagemaker_client.method_calls[0]
