@@ -10,6 +10,7 @@
 # distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
+"""Placeholder docstring"""
 from __future__ import absolute_import
 
 from sagemaker.amazon.amazon_estimator import AmazonAlgorithmEstimatorBase, registry
@@ -22,6 +23,10 @@ from sagemaker.vpc_utils import VPC_CONFIG_DEFAULT
 
 
 def _list_check_subset(valid_super_list):
+    """
+    Args:
+        valid_super_list:
+    """
     valid_superset = set(valid_super_list)
 
     def validate(value):
@@ -35,6 +40,7 @@ def _list_check_subset(valid_super_list):
 
 
 class Object2Vec(AmazonAlgorithmEstimatorBase):
+    """Placeholder docstring"""
 
     repo_name = "object2vec"
     repo_version = 1
@@ -168,66 +174,86 @@ class Object2Vec(AmazonAlgorithmEstimatorBase):
 
         This Estimator may be fit via calls to
         :meth:`~sagemaker.amazon.amazon_estimator.AmazonAlgorithmEstimatorBase.fit`.
-        There is an utility :meth:`~sagemaker.amazon.amazon_estimator.AmazonAlgorithmEstimatorBase.record_set` that
-        can be used to upload data to S3 and creates :class:`~sagemaker.amazon.amazon_estimator.RecordSet` to be passed
-        to the `fit` call.
+        There is an utility
+        :meth:`~sagemaker.amazon.amazon_estimator.AmazonAlgorithmEstimatorBase.record_set`
+        that can be used to upload data to S3 and creates
+        :class:`~sagemaker.amazon.amazon_estimator.RecordSet` to be passed to
+        the `fit` call.
 
-        After this Estimator is fit, model data is stored in S3. The model may be deployed to an Amazon SageMaker
-        Endpoint by invoking :meth:`~sagemaker.amazon.estimator.EstimatorBase.deploy`. As well as deploying an
-        Endpoint, deploy returns a :class:`~sagemaker.amazon.RealTimePredictor` object that can be used
-        for inference calls using the trained model hosted in the SageMaker Endpoint.
+        After this Estimator is fit, model data is stored in S3. The model
+        may be deployed to an Amazon SageMaker Endpoint by invoking
+        :meth:`~sagemaker.amazon.estimator.EstimatorBase.deploy`. As well as
+        deploying an Endpoint, deploy returns a
+        :class:`~sagemaker.amazon.RealTimePredictor` object that can be used for
+        inference calls using the trained model hosted in the SageMaker
+        Endpoint.
 
-        Object2Vec Estimators can be configured by setting hyperparameters. The available hyperparameters for
-        Object2Vec are documented below.
+        Object2Vec Estimators can be configured by setting hyperparameters.
+        The available hyperparameters for Object2Vec are documented below.
 
-        For further information on the AWS Object2Vec algorithm,
-        please consult AWS technical documentation: https://docs.aws.amazon.com/sagemaker/latest/dg/object2vec.html
+        For further information on the AWS Object2Vec algorithm, please
+        consult AWS technical documentation:
+        https://docs.aws.amazon.com/sagemaker/latest/dg/object2vec.html
 
         Args:
-            role (str): An AWS IAM role (either name or full ARN). The Amazon SageMaker training jobs and
-                APIs that create Amazon SageMaker endpoints use this role to access
-                training data and model artifacts. After the endpoint is created,
-                the inference code might use the IAM role, if accessing AWS resource.
-            train_instance_count (int): Number of Amazon EC2 instances to use for training.
-            train_instance_type (str): Type of EC2 instance to use for training, for example, 'ml.c4.xlarge'.
-
-            epochs(int): Total number of epochs for SGD training
-            enc0_max_seq_len(int): Maximum sequence length
-            enc0_vocab_size(int): Vocabulary size of tokens
-
-            enc_dim(int): Optional. Dimension of the output of the embedding layer
-            mini_batch_size(int): Optional. mini batch size for SGD training
-            early_stopping_patience(int): Optional. The allowed number of consecutive epochs without improvement
-                before early stopping is applied
-            early_stopping_tolerance(float): Optional. The value used to determine whether the algorithm has made
-                improvement between two consecutive epochs for early stopping
-            dropout(float): Optional. Dropout probability on network layers
-            weight_decay(float): Optional. Weight decay parameter during optimization
-            bucket_width(int): Optional. The allowed difference between data sequence length when bucketing is enabled
-            num_classes(int): Optional. Number of classes for classification training (ignored for regression problems)
-            mlp_layers(int): Optional. Number of MLP layers in the network
-            mlp_dim(int): Optional. Dimension of the output of MLP layer
-            mlp_activation(str): Optional. Type of activation function for the MLP layer
-            output_layer(str): Optional. Type of output layer
-            optimizer(str): Optional. Type of optimizer for training
-            learning_rate(float): Optional. Learning rate for SGD training
-            negative_sampling_rate(int): Optional. Negative sampling rate
-            comparator_list(str): Optional. Customization of comparator operator
-            tied_token_embedding_weight(bool): Optional. Tying of token embedding layer weight
-            token_embedding_storage_type(str): Optional. Type of token embedding storage
-            enc0_network(str): Optional. Network model of encoder "enc0"
-            enc1_network(str): Optional. Network model of encoder "enc1"
-            enc0_cnn_filter_width(int): Optional. CNN filter width
-            enc1_cnn_filter_width(int): Optional. CNN filter width
-            enc1_max_seq_len(int): Optional. Maximum sequence length
-            enc0_token_embedding_dim(int): Optional. Output dimension of token embedding layer
-            enc1_token_embedding_dim(int): Optional. Output dimension of token embedding layer
-            enc1_vocab_size(int): Optional. Vocabulary size of tokens
-            enc0_layers(int): Optional. Number of layers in encoder
-            enc1_layers(int): Optional. Number of layers in encoder
-            enc0_freeze_pretrained_embedding(bool): Optional. Freeze pretrained embedding weights
-            enc1_freeze_pretrained_embedding(bool): Optional. Freeze pretrained embedding weights
-
+            role (str): An AWS IAM role (either name or full ARN). The Amazon
+                SageMaker training jobs and APIs that create Amazon SageMaker
+                endpoints use this role to access training data and model
+                artifacts. After the endpoint is created, the inference code
+                might use the IAM role, if accessing AWS resource.
+            train_instance_count (int): Number of Amazon EC2 instances to use
+                for training.
+            train_instance_type (str): Type of EC2 instance to use for training,
+                for example, 'ml.c4.xlarge'.
+            epochs (int): Total number of epochs for SGD training
+            enc0_max_seq_len (int): Maximum sequence length
+            enc0_vocab_size (int): Vocabulary size of tokens
+            enc_dim (int): Optional. Dimension of the output of the embedding
+                layer
+            mini_batch_size (int): Optional. mini batch size for SGD training
+            early_stopping_patience (int): Optional. The allowed number of
+                consecutive epochs without improvement before early stopping is
+                applied
+            early_stopping_tolerance (float): Optional. The value used to
+                determine whether the algorithm has made improvement between two
+                consecutive epochs for early stopping
+            dropout (float): Optional. Dropout probability on network layers
+            weight_decay (float): Optional. Weight decay parameter during
+                optimization
+            bucket_width (int): Optional. The allowed difference between data
+                sequence length when bucketing is enabled
+            num_classes (int): Optional. Number of classes for classification
+                training (ignored for regression problems)
+            mlp_layers (int): Optional. Number of MLP layers in the network
+            mlp_dim (int): Optional. Dimension of the output of MLP layer
+            mlp_activation (str): Optional. Type of activation function for the
+                MLP layer
+            output_layer (str): Optional. Type of output layer
+            optimizer (str): Optional. Type of optimizer for training
+            learning_rate (float): Optional. Learning rate for SGD training
+            negative_sampling_rate (int): Optional. Negative sampling rate
+            comparator_list (str): Optional. Customization of comparator
+                operator
+            tied_token_embedding_weight (bool): Optional. Tying of token
+                embedding layer weight
+            token_embedding_storage_type (str): Optional. Type of token
+                embedding storage
+            enc0_network (str): Optional. Network model of encoder "enc0"
+            enc1_network (str): Optional. Network model of encoder "enc1"
+            enc0_cnn_filter_width (int): Optional. CNN filter width
+            enc1_cnn_filter_width (int): Optional. CNN filter width
+            enc1_max_seq_len (int): Optional. Maximum sequence length
+            enc0_token_embedding_dim (int): Optional. Output dimension of token
+                embedding layer
+            enc1_token_embedding_dim (int): Optional. Output dimension of token
+                embedding layer
+            enc1_vocab_size (int): Optional. Vocabulary size of tokens
+            enc0_layers (int): Optional. Number of layers in encoder
+            enc1_layers (int): Optional. Number of layers in encoder
+            enc0_freeze_pretrained_embedding (bool): Optional. Freeze pretrained
+                embedding weights
+            enc1_freeze_pretrained_embedding (bool): Optional. Freeze pretrained
+                embedding weights
             **kwargs: base class keyword argument values.
         """
 
@@ -270,12 +296,12 @@ class Object2Vec(AmazonAlgorithmEstimatorBase):
         self.enc1_freeze_pretrained_embedding = enc1_freeze_pretrained_embedding
 
     def create_model(self, vpc_config_override=VPC_CONFIG_DEFAULT):
-        """Return a :class:`~sagemaker.amazon.Object2VecModel` referencing the latest
-        s3 model data produced by this Estimator.
+        """Return a :class:`~sagemaker.amazon.Object2VecModel` referencing the
+        latest s3 model data produced by this Estimator.
 
         Args:
-            vpc_config_override (dict[str, list[str]]): Optional override for VpcConfig set on the model.
-                Default: use subnets and security groups from this Estimator.
+            vpc_config_override (dict[str, list[str]]): Optional override for VpcConfig set on
+                the model. Default: use subnets and security groups from this Estimator.
                 * 'Subnets' (list[str]): List of subnet ids.
                 * 'SecurityGroupIds' (list[str]): List of security group ids.
         """
@@ -287,6 +313,12 @@ class Object2Vec(AmazonAlgorithmEstimatorBase):
         )
 
     def _prepare_for_training(self, records, mini_batch_size=None, job_name=None):
+        """
+        Args:
+            records:
+            mini_batch_size:
+            job_name:
+        """
         if mini_batch_size is None:
             mini_batch_size = self.MINI_BATCH_SIZE
 
@@ -296,10 +328,19 @@ class Object2Vec(AmazonAlgorithmEstimatorBase):
 
 
 class Object2VecModel(Model):
-    """Reference Object2Vec s3 model data. Calling :meth:`~sagemaker.model.Model.deploy` creates an
-    Endpoint and returns a Predictor that calculates anomaly scores for datapoints."""
+    """Reference Object2Vec s3 model data. Calling
+    :meth:`~sagemaker.model.Model.deploy` creates an Endpoint and returns a
+    Predictor that calculates anomaly scores for datapoints.
+    """
 
     def __init__(self, model_data, role, sagemaker_session=None, **kwargs):
+        """
+        Args:
+            model_data:
+            role:
+            sagemaker_session:
+            **kwargs:
+        """
         sagemaker_session = sagemaker_session or Session()
         repo = "{}:{}".format(Object2Vec.repo_name, Object2Vec.repo_version)
         image = "{}/{}".format(

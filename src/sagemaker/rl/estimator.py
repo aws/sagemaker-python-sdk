@@ -10,6 +10,7 @@
 # distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
+"""Placeholder docstring"""
 from __future__ import absolute_import
 
 import enum
@@ -45,11 +46,15 @@ TOOLKIT_FRAMEWORK_VERSION_MAP = {
 
 
 class RLToolkit(enum.Enum):
+    """Placeholder docstring"""
+
     COACH = "coach"
     RAY = "ray"
 
 
 class RLFramework(enum.Enum):
+    """Placeholder docstring"""
+
     TENSORFLOW = "tensorflow"
     MXNET = "mxnet"
 
@@ -74,50 +79,58 @@ class RLEstimator(Framework):
         **kwargs
     ):
         """This Estimator executes an RLEstimator script in a managed
-        Reinforcement Learning (RL) execution environment within a SageMaker Training Job.
-        The managed RL environment is an Amazon-built Docker container that executes
-        functions defined in the supplied ``entry_point`` Python script.
+        Reinforcement Learning (RL) execution environment within a SageMaker
+        Training Job. The managed RL environment is an Amazon-built Docker
+        container that executes functions defined in the supplied
+        ``entry_point`` Python script.
 
-        Training is started by calling :meth:`~sagemaker.amazon.estimator.Framework.fit`
-        on this Estimator. After training is complete, calling
-        :meth:`~sagemaker.amazon.estimator.Framework.deploy` creates a
-        hosted SageMaker endpoint and based on the specified framework returns
-        an :class:`~sagemaker.amazon.mxnet.model.MXNetPredictor` or
-        :class:`~sagemaker.amazon.tensorflow.serving.Predictor` instance
-        that can be used to perform inference against the hosted model.
+        Training is started by calling
+        :meth:`~sagemaker.amazon.estimator.Framework.fit` on this Estimator.
+        After training is complete, calling
+        :meth:`~sagemaker.amazon.estimator.Framework.deploy` creates a hosted
+        SageMaker endpoint and based on the specified framework returns an
+        :class:`~sagemaker.amazon.mxnet.model.MXNetPredictor` or
+        :class:`~sagemaker.amazon.tensorflow.serving.Predictor` instance that
+        can be used to perform inference against the hosted model.
 
-        Technical documentation on preparing RLEstimator scripts for SageMaker training
-        and using the RLEstimator is available on the project homepage:
-        https://github.com/aws/sagemaker-python-sdk
+        Technical documentation on preparing RLEstimator scripts for
+        SageMaker training and using the RLEstimator is available on the project
+        homepage: https://github.com/aws/sagemaker-python-sdk
 
         Args:
-            entry_point (str): Path (absolute or relative) to the Python source file
-                which should be executed as the entry point to training.
-                This should be compatible with Python 3.5 for MXNet or Python 3.6 for TensorFlow.
-            toolkit (sagemaker.rl.RLToolkit): RL toolkit you want to use
-                for executing your model training code.
-            toolkit_version (str): RL toolkit version you want to be use
-                for executing your model training code.
-            framework (sagemaker.rl.RLFramework): Framework (MXNet or TensorFlow)
-                you want to be used as a toolkit backed for reinforcement learning training.
-            source_dir (str): Path (absolute or relative) to a directory with any other training
-                source code dependencies aside from the entry point file (default: None).
-                Structure within this directory is preserved when training on Amazon SageMaker.
-            hyperparameters (dict): Hyperparameters that will be used for training (default: None).
-                The hyperparameters are made accessible as a dict[str, str]
-                to the training code on SageMaker. For convenience, this accepts other types
-                for keys and values.
-            image_name (str): An ECR url. If specified, the estimator will use this image
-                for training and hosting, instead of selecting the appropriate SageMaker
-                official image based on framework_version and py_version.
-                Example: 123.dkr.ecr.us-west-2.amazonaws.com/my-custom-image:1.0
-            metric_definitions (list[dict]): A list of dictionaries that defines the metric(s)
-                used to evaluate the training jobs. Each dictionary contains two keys:
-                'Name' for the name of the metric, and 'Regex' for the regular expression used to
-                extract the metric from the logs. This should be defined only for jobs
-                that don't use an Amazon algorithm.
-            **kwargs: Additional kwargs passed to the :class:`~sagemaker.estimator.Framework`
-                constructor.
+            entry_point (str): Path (absolute or relative) to the Python source
+                file which should be executed as the entry point to training.
+                This should be compatible with Python 3.5 for MXNet or Python
+                3.6 for TensorFlow.
+            toolkit (sagemaker.rl.RLToolkit): RL toolkit you want to use for
+                executing your model training code.
+            toolkit_version (str): RL toolkit version you want to be use for
+                executing your model training code.
+            framework (sagemaker.rl.RLFramework): Framework (MXNet or
+                TensorFlow) you want to be used as a toolkit backed for
+                reinforcement learning training.
+            source_dir (str): Path (absolute or relative) to a directory with
+                any other training source code dependencies aside from the entry
+                point file (default: None). Structure within this directory is
+                preserved when training on Amazon SageMaker.
+            hyperparameters (dict): Hyperparameters that will be used for
+                training (default: None). The hyperparameters are made
+                accessible as a dict[str, str] to the training code on
+                SageMaker. For convenience, this accepts other types for keys
+                and values.
+            image_name (str): An ECR url. If specified, the estimator will use
+                this image for training and hosting, instead of selecting the
+                appropriate SageMaker official image based on framework_version
+                and py_version. Example:
+                123.dkr.ecr.us-west-2.amazonaws.com/my-custom-image:1.0
+            metric_definitions (list[dict]): A list of dictionaries that defines
+                the metric(s) used to evaluate the training jobs. Each
+                dictionary contains two keys: 'Name' for the name of the metric,
+                and 'Regex' for the regular expression used to extract the
+                metric from the logs. This should be defined only for jobs that
+                don't use an Amazon algorithm.
+            **kwargs: Additional kwargs passed to the
+                :class:`~sagemaker.estimator.Framework` constructor.
         """
         self._validate_images_args(toolkit, toolkit_version, framework, image_name)
 
@@ -151,28 +164,31 @@ class RLEstimator(Framework):
         source_dir=None,
         dependencies=None,
     ):
-        """Create a SageMaker ``RLEstimatorModel`` object that can be deployed to an Endpoint.
+        """Create a SageMaker ``RLEstimatorModel`` object that can be deployed
+        to an Endpoint.
 
         Args:
-            role (str): The ``ExecutionRoleArn`` IAM Role ARN for the ``Model``, which is also used
-                during transform jobs. If not specified, the role from the Estimator will be used.
-            vpc_config_override (dict[str, list[str]]): Optional override for VpcConfig
-                set on the model. Default: use subnets and security groups from this Estimator.
-
+            role (str): The ``ExecutionRoleArn`` IAM Role ARN for the ``Model``,
+                which is also used during transform jobs. If not specified, the
+                role from the Estimator will be used.
+            vpc_config_override (dict[str, list[str]]): Optional override for VpcConfig set on
+                the model. Default: use subnets and security groups from this Estimator.
                 * 'Subnets' (list[str]): List of subnet ids.
                 * 'SecurityGroupIds' (list[str]): List of security group ids.
-
-            entry_point (str): Path (absolute or relative) to the Python source file
-                which should be executed as the entry point for MXNet hosting.
-                This should be compatible with Python 3.5 (default: self.entry_point)
-            source_dir (str): Path (absolute or relative) to a directory with any other training
-                source code dependencies aside from tne entry point file (default: self.source_dir).
-                Structure within this directory are preserved when hosting on Amazon SageMaker.
-            dependencies (list[str]): A list of paths to directories (absolute or relative) with
-                any additional libraries that will be exported to the container
-                (default: self.dependencies). The library folders will be copied to SageMaker
-                in the same folder where the entry_point is copied. If the ```source_dir``` points
-                to S3, code will be uploaded and the S3 location will be used instead.
+            entry_point (str): Path (absolute or relative) to the Python source
+                file which should be executed as the entry point for MXNet
+                hosting. This should be compatible with Python 3.5 (default:
+                self.entry_point)
+            source_dir (str): Path (absolute or relative) to a directory with
+                any other training source code dependencies aside from tne entry
+                point file (default: self.source_dir). Structure within this
+                directory are preserved when hosting on Amazon SageMaker.
+            dependencies (list[str]): A list of paths to directories (absolute
+                or relative) with any additional libraries that will be exported
+                to the container (default: self.dependencies). The library
+                folders will be copied to SageMaker in the same folder where the
+                entry_point is copied. If the ```source_dir``` points to S3,
+                code will be uploaded and the S3 location will be used instead.
 
         Returns:
             sagemaker.model.FrameworkModel: Depending on input parameters returns
@@ -238,8 +254,9 @@ class RLEstimator(Framework):
     def train_image(self):
         """Return the Docker image to use for training.
 
-        The :meth:`~sagemaker.estimator.EstimatorBase.fit` method, which does the model training,
-        calls this method to find the image to use for model training.
+        The :meth:`~sagemaker.estimator.EstimatorBase.fit` method, which does
+        the model training, calls this method to find the image to use for model
+        training.
 
         Returns:
             str: The URI of the Docker image.
@@ -256,15 +273,17 @@ class RLEstimator(Framework):
 
     @classmethod
     def _prepare_init_params_from_job_description(cls, job_details, model_channel_name=None):
-        """Convert the job description to init params that can be handled by the class constructor
+        """Convert the job description to init params that can be handled by the
+        class constructor
 
         Args:
-            job_details: the returned job details from a describe_training_job API call.
-            model_channel_name (str): Name of the channel where pre-trained model data will be
-                downloaded.
+            job_details: the returned job details from a describe_training_job
+                API call.
+            model_channel_name (str): Name of the channel where pre-trained
+                model data will be downloaded.
 
         Returns:
-             dictionary: The transformed init_params
+            dictionary: The transformed init_params
         """
         init_params = super(RLEstimator, cls)._prepare_init_params_from_job_description(
             job_details, model_channel_name
@@ -296,7 +315,9 @@ class RLEstimator(Framework):
         return init_params
 
     def hyperparameters(self):
-        """Return hyperparameters used by your custom TensorFlow code during model training."""
+        """Return hyperparameters used by your custom TensorFlow code during
+        model training.
+        """
         hyperparameters = super(RLEstimator, self).hyperparameters()
 
         additional_hyperparameters = {
@@ -310,6 +331,10 @@ class RLEstimator(Framework):
 
     @classmethod
     def _toolkit_and_version_from_tag(cls, image_tag):
+        """
+        Args:
+            image_tag:
+        """
         tag_pattern = re.compile(
             "^([A-Z]*|[a-z]*)(\d.*)-(cpu|gpu)-(py2|py3)$"  # noqa: W605,E501 pylint: disable=anomalous-backslash-in-string
         )
@@ -320,6 +345,10 @@ class RLEstimator(Framework):
 
     @classmethod
     def _validate_framework_format(cls, framework):
+        """
+        Args:
+            framework:
+        """
         if framework and framework not in RLFramework:
             raise ValueError(
                 "Invalid type: {}, valid RL frameworks types are: [{}]".format(
@@ -329,6 +358,10 @@ class RLEstimator(Framework):
 
     @classmethod
     def _validate_toolkit_format(cls, toolkit):
+        """
+        Args:
+            toolkit:
+        """
         if toolkit and toolkit not in RLToolkit:
             raise ValueError(
                 "Invalid type: {}, valid RL toolkits types are: [{}]".format(
@@ -338,6 +371,13 @@ class RLEstimator(Framework):
 
     @classmethod
     def _validate_images_args(cls, toolkit, toolkit_version, framework, image_name):
+        """
+        Args:
+            toolkit:
+            toolkit_version:
+            framework:
+            image_name:
+        """
         cls._validate_toolkit_format(toolkit)
         cls._validate_framework_format(framework)
 
@@ -372,6 +412,12 @@ class RLEstimator(Framework):
 
     @classmethod
     def _is_combination_supported(cls, toolkit, toolkit_version, framework):
+        """
+        Args:
+            toolkit:
+            toolkit_version:
+            framework:
+        """
         supported_versions = TOOLKIT_FRAMEWORK_VERSION_MAP.get(toolkit, None)
         if supported_versions:
             supported_frameworks = supported_versions.get(toolkit_version, None)
@@ -381,6 +427,12 @@ class RLEstimator(Framework):
 
     @classmethod
     def _validate_toolkit_support(cls, toolkit, toolkit_version, framework):
+        """
+        Args:
+            toolkit:
+            toolkit_version:
+            framework:
+        """
         if not cls._is_combination_supported(toolkit, toolkit_version, framework):
             raise AttributeError(
                 "Provided `{}-{}` and `{}` combination is not supported.".format(
@@ -389,9 +441,11 @@ class RLEstimator(Framework):
             )
 
     def _image_version(self):
+        """Placeholder docstring"""
         return "{}{}".format(self.toolkit, self.toolkit_version)
 
     def _image_framework(self):
+        """Placeholder docstring"""
         return "rl-{}".format(self.framework)
 
     @classmethod
@@ -399,7 +453,8 @@ class RLEstimator(Framework):
         """Provides default metric definitions based on provided toolkit.
 
         Args:
-            toolkit(sagemaker.rl.RLToolkit): RL Toolkit to be used for training.
+            toolkit (sagemaker.rl.RLToolkit): RL Toolkit to be used for
+                training.
 
         Returns:
             list: metric definitions
