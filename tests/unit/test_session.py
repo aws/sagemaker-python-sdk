@@ -677,9 +677,9 @@ def test_transform_pack_to_request(sagemaker_session):
     resource_config = {"InstanceCount": INSTANCE_COUNT, "InstanceType": INSTANCE_TYPE}
 
     data_processing = {
-        'OutputFilter': '$',
-        'InputFilter': '$',
-        'JoinSource': 'Input'
+        "OutputFilter": "$",
+        "InputFilter": "$",
+        "JoinSource": "Input",
     }
 
     expected_args = {
