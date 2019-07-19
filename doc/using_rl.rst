@@ -174,11 +174,11 @@ The following are optional arguments. When you create an ``RlEstimator`` object,
 Calling fit
 ~~~~~~~~~~~
 
-You start your training script by calling ``fit`` on an ``RLEstimator``. ``fit`` takes both a few optional
+You start your training script by calling ``fit`` on an ``RLEstimator``. ``fit`` takes a few optional
 arguments.
 
-Optional arguments
-''''''''''''''''''
+fit Optional arguments
+''''''''''''''''''''''
 
 -  ``inputs``: This can take one of the following forms: A string
    S3 URI, for example ``s3://my-bucket/my-training-data``. In this
