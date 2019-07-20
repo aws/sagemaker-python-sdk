@@ -10,11 +10,12 @@
 # distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
+"""Placeholder docstring"""
 from __future__ import absolute_import
 
-import pkg_resources
 import platform
 import sys
+import pkg_resources
 
 import boto3
 import botocore
@@ -28,6 +29,7 @@ PYTHON_VERSION = "{}.{}.{}".format(
 
 
 def determine_prefix():
+    """Placeholder docstring"""
     prefix = "AWS-SageMaker-Python-SDK/{} Python/{} {}/{} Boto3/{} Botocore/{}".format(
         SDK_VERSION, PYTHON_VERSION, OS_NAME, OS_VERSION, boto3.__version__, botocore.__version__
     )
@@ -45,6 +47,10 @@ def determine_prefix():
 
 
 def prepend_user_agent(client):
+    """
+    Args:
+        client:
+    """
     prefix = determine_prefix()
 
     if client._client_config.user_agent is None:

@@ -10,6 +10,7 @@
 # distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
+"""Placeholder docstring"""
 from __future__ import absolute_import
 
 import os
@@ -20,6 +21,10 @@ from setuptools import setup, find_packages
 
 
 def read(fname):
+    """
+    Args:
+        fname:
+    """
     return open(os.path.join(os.path.dirname(__file__), fname)).read()
 
 
@@ -67,7 +72,7 @@ setup(
     install_requires=required_packages,
     extras_require={
         "test": [
-            "tox",
+            "tox==3.13.1",
             "flake8",
             "pytest==4.4.1",
             "pytest-cov",
@@ -79,6 +84,7 @@ setup(
             "awslogs",
             "pandas",
             "black==19.3b0 ; python_version >= '3.6'",
+            "stopit==1.1.2",
         ]
     },
     entry_points={"console_scripts": ["sagemaker=sagemaker.cli.main:main"]},

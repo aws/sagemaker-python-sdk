@@ -67,12 +67,13 @@ def test_transform_mxnet(sagemaker_session, mxnet_full_version):
 
     kms_key_arn = get_or_create_kms_key(sagemaker_session)
     output_filter = "$"
+    input_filter = "$"
 
     transformer = _create_transformer_and_transform_job(
         mx,
         transform_input,
         kms_key_arn,
-        input_filter=None,
+        input_filter=input_filter,
         output_filter=output_filter,
         join_source=None,
     )
@@ -86,6 +87,7 @@ def test_transform_mxnet(sagemaker_session, mxnet_full_version):
     )
     assert kms_key_arn == job_desc["TransformResources"]["VolumeKmsKeyId"]
     assert output_filter == job_desc["DataProcessing"]["OutputFilter"]
+    assert input_filter == job_desc["DataProcessing"]["InputFilter"]
 
 
 @pytest.mark.canary_quick
@@ -299,6 +301,53 @@ def test_transform_byo_estimator(sagemaker_session):
             ResourceArn=model_desc["ModelArn"]
         )["Tags"]
         assert tags == model_tags
+
+
+def test_single_transformer_multiple_jobs(sagemaker_session, mxnet_full_version):
+    data_path = os.path.join(DATA_DIR, "mxnet_mnist")
+    script_path = os.path.join(data_path, "mnist.py")
+
+    mx = MXNet(
+        entry_point=script_path,
+        role="SageMakerRole",
+        train_instance_count=1,
+        train_instance_type="ml.c4.xlarge",
+        sagemaker_session=sagemaker_session,
+        framework_version=mxnet_full_version,
+    )
+
+    train_input = mx.sagemaker_session.upload_data(
+        path=os.path.join(data_path, "train"), key_prefix="integ-test-data/mxnet_mnist/train"
+    )
+    test_input = mx.sagemaker_session.upload_data(
+        path=os.path.join(data_path, "test"), key_prefix="integ-test-data/mxnet_mnist/test"
+    )
+    job_name = unique_name_from_base("test-mxnet-transform")
+
+    with timeout(minutes=TRAINING_DEFAULT_TIMEOUT_MINUTES):
+        mx.fit({"train": train_input, "test": test_input}, job_name=job_name)
+
+    transform_input_path = os.path.join(data_path, "transform", "data.csv")
+    transform_input_key_prefix = "integ-test-data/mxnet_mnist/transform"
+    transform_input = mx.sagemaker_session.upload_data(
+        path=transform_input_path, key_prefix=transform_input_key_prefix
+    )
+
+    transformer = mx.transformer(1, "ml.m4.xlarge")
+
+    job_name = unique_name_from_base("test-mxnet-transform")
+    transformer.transform(transform_input, content_type="text/csv", job_name=job_name)
+    with timeout_and_delete_model_with_transformer(
+        transformer, sagemaker_session, minutes=TRANSFORM_DEFAULT_TIMEOUT_MINUTES
+    ):
+        assert transformer.output_path == "s3://{}/{}".format(
+            sagemaker_session.default_bucket(), job_name
+        )
+        job_name = unique_name_from_base("test-mxnet-transform")
+        transformer.transform(transform_input, content_type="text/csv", job_name=job_name)
+        assert transformer.output_path == "s3://{}/{}".format(
+            sagemaker_session.default_bucket(), job_name
+        )
 
 
 def _create_transformer_and_transform_job(

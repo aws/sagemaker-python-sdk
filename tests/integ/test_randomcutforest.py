@@ -34,6 +34,7 @@ def test_randomcutforest(sagemaker_session):
             train_instance_type="ml.c4.xlarge",
             num_trees=50,
             num_samples_per_tree=20,
+            eval_metrics=["accuracy", "precision_recall_fscore"],
             sagemaker_session=sagemaker_session,
         )
 

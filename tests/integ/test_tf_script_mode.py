@@ -65,6 +65,7 @@ def test_mnist(sagemaker_session, instance_type):
         sagemaker_session=sagemaker_session,
         script_mode=True,
         framework_version=TensorFlow.LATEST_VERSION,
+        py_version=tests.integ.PYTHON_VERSION,
         metric_definitions=[{"Name": "train:global_steps", "Regex": r"global_step\/sec:\s(.*)"}],
     )
     inputs = estimator.sagemaker_session.upload_data(
@@ -98,6 +99,7 @@ def test_server_side_encryption(sagemaker_session):
             sagemaker_session=sagemaker_session,
             script_mode=True,
             framework_version=TensorFlow.LATEST_VERSION,
+            py_version=tests.integ.PYTHON_VERSION,
             code_location=output_path,
             output_path=output_path,
             model_dir="/opt/ml/model",
@@ -144,6 +146,7 @@ def test_mnist_async(sagemaker_session):
         role=ROLE,
         train_instance_count=1,
         train_instance_type="ml.c5.4xlarge",
+        py_version=tests.integ.PYTHON_VERSION,
         sagemaker_session=sagemaker_session,
         script_mode=True,
         framework_version=TensorFlow.LATEST_VERSION,
@@ -156,6 +159,7 @@ def test_mnist_async(sagemaker_session):
     training_job_name = estimator.latest_training_job.name
     time.sleep(20)
     endpoint_name = training_job_name
+    model_name = "model-name-1"
     _assert_training_job_tags_match(
         sagemaker_session.sagemaker_client, estimator.latest_training_job.name, TAGS
     )
@@ -164,7 +168,10 @@ def test_mnist_async(sagemaker_session):
             training_job_name=training_job_name, sagemaker_session=sagemaker_session
         )
         predictor = estimator.deploy(
-            initial_instance_count=1, instance_type="ml.c4.xlarge", endpoint_name=endpoint_name
+            initial_instance_count=1,
+            instance_type="ml.c4.xlarge",
+            endpoint_name=endpoint_name,
+            model_name=model_name,
         )
 
         result = predictor.predict(np.zeros(784))
@@ -173,15 +180,17 @@ def test_mnist_async(sagemaker_session):
         _assert_model_tags_match(
             sagemaker_session.sagemaker_client, estimator.latest_training_job.name, TAGS
         )
+        _assert_model_name_match(sagemaker_session.sagemaker_client, endpoint_name, model_name)
 
 
 def test_deploy_with_input_handlers(sagemaker_session, instance_type):
     estimator = TensorFlow(
-        entry_point="inference.py",
+        entry_point="training.py",
         source_dir=TFS_RESOURCE_PATH,
         role=ROLE,
         train_instance_count=1,
         train_instance_type=instance_type,
+        py_version=tests.integ.PYTHON_VERSION,
         sagemaker_session=sagemaker_session,
         script_mode=True,
         framework_version=TensorFlow.LATEST_VERSION,
@@ -193,9 +202,11 @@ def test_deploy_with_input_handlers(sagemaker_session, instance_type):
     endpoint_name = estimator.latest_training_job.name
 
     with timeout.timeout_and_delete_endpoint_by_name(endpoint_name, sagemaker_session):
-
         predictor = estimator.deploy(
-            initial_instance_count=1, instance_type=instance_type, endpoint_name=endpoint_name
+            initial_instance_count=1,
+            instance_type=instance_type,
+            endpoint_name=endpoint_name,
+            entry_point=os.path.join(TFS_RESOURCE_PATH, "inference.py"),
         )
 
         input_data = {"instances": [1.0, 2.0, 5.0]}
@@ -237,3 +248,10 @@ def _assert_training_job_tags_match(sagemaker_client, training_job_name, tags):
         TrainingJobName=training_job_name
     )
     _assert_tags_match(sagemaker_client, training_job_description["TrainingJobArn"], tags)
+
+
+def _assert_model_name_match(sagemaker_client, endpoint_config_name, model_name):
+    endpoint_config_description = sagemaker_client.describe_endpoint_config(
+        EndpointConfigName=endpoint_config_name
+    )
+    assert model_name == endpoint_config_description["ProductionVariants"][0]["ModelName"]

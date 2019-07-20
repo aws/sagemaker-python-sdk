@@ -78,7 +78,7 @@ TUNING_JOB_DETAILS = {
             "IntegerParameterRanges": [
                 {
                     "MaxValue": "100",
-                    "Name": "mini_batch_size",
+                    "Name": "num_components",
                     "MinValue": "10",
                     "ScalingType": "Auto",
                 }
@@ -416,7 +416,7 @@ def test_attach_tuning_job_with_estimator_from_hyperparameters(sagemaker_session
     assert tuner.estimator.output_kms_key == ""
 
     assert "_tuning_objective_metric" not in tuner.estimator.hyperparameters()
-    assert tuner.estimator.hyperparameters()["num_components"] == "1"
+    assert tuner.estimator.hyperparameters()["num_components"] == "10"
 
 
 def test_attach_tuning_job_with_estimator_from_hyperparameters_with_early_stopping(
@@ -645,7 +645,8 @@ def test_deploy_default(tuner):
 
     tuner.estimator.sagemaker_session.create_model.assert_called_once()
     args = tuner.estimator.sagemaker_session.create_model.call_args[0]
-    assert args[0].startswith(IMAGE_NAME)
+
+    assert args[0] == "neo"
     assert args[1] == ROLE
     assert args[2]["Image"] == IMAGE_NAME
     assert args[2]["ModelDataUrl"] == MODEL_DATA

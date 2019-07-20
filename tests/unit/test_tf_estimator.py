@@ -1,4 +1,4 @@
-# Copyright 2017-2018 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright 2017-2019 Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -25,9 +25,11 @@ from sagemaker.session import s3_input
 from sagemaker.tensorflow import defaults, TensorFlow, TensorFlowModel, TensorFlowPredictor
 import sagemaker.tensorflow.estimator as tfe
 
+
 DATA_DIR = os.path.join(os.path.dirname(__file__), "..", "data")
 SCRIPT_FILE = "dummy_script.py"
 SCRIPT_PATH = os.path.join(DATA_DIR, SCRIPT_FILE)
+SERVING_SCRIPT_FILE = "another_dummy_script.py"
 MODEL_DATA = "s3://some/data.tar.gz"
 REQUIREMENTS_FILE = "dummy_requirements.txt"
 TIMESTAMP = "2017-11-06-14:14:15.673"
@@ -297,12 +299,96 @@ def test_create_model_with_optional_params(sagemaker_session):
     model_server_workers = 2
     vpc_config = {"Subnets": ["foo"], "SecurityGroupIds": ["bar"]}
     model = tf.create_model(
-        role=new_role, model_server_workers=model_server_workers, vpc_config_override=vpc_config
+        role=new_role,
+        model_server_workers=model_server_workers,
+        vpc_config_override=vpc_config,
+        entry_point=SERVING_SCRIPT_FILE,
     )
 
     assert model.role == new_role
     assert model.model_server_workers == model_server_workers
     assert model.vpc_config == vpc_config
+    assert model.entry_point == SERVING_SCRIPT_FILE
+
+
+@patch("sagemaker.tensorflow.estimator.TensorFlow.create_model")
+def test_transformer_creation_with_endpoint_type(create_model, sagemaker_session):
+    model = Mock()
+    create_model.return_value = model
+
+    tf = TensorFlow(
+        entry_point=SCRIPT_PATH,
+        role=ROLE,
+        sagemaker_session=sagemaker_session,
+        train_instance_count=INSTANCE_COUNT,
+        train_instance_type=INSTANCE_TYPE,
+    )
+
+    tf.transformer(
+        INSTANCE_COUNT,
+        INSTANCE_TYPE,
+        endpoint_type="tensorflow-serving",
+        entry_point=SERVING_SCRIPT_FILE,
+    )
+
+    create_model.assert_called_with(
+        endpoint_type="tensorflow-serving",
+        model_server_workers=None,
+        role=ROLE,
+        vpc_config_override="VPC_CONFIG_DEFAULT",
+        entry_point=SERVING_SCRIPT_FILE,
+    )
+    model.transformer.assert_called_with(
+        INSTANCE_COUNT,
+        INSTANCE_TYPE,
+        accept=None,
+        assemble_with=None,
+        env=None,
+        max_concurrent_transforms=None,
+        max_payload=None,
+        output_kms_key=None,
+        output_path=None,
+        strategy=None,
+        tags=None,
+        volume_kms_key=None,
+    )
+
+
+@patch("sagemaker.tensorflow.estimator.TensorFlow.create_model")
+def test_transformer_creation_without_endpoint_type(create_model, sagemaker_session):
+    model = Mock()
+    create_model.return_value = model
+
+    tf = TensorFlow(
+        entry_point=SCRIPT_PATH,
+        role=ROLE,
+        sagemaker_session=sagemaker_session,
+        train_instance_count=INSTANCE_COUNT,
+        train_instance_type=INSTANCE_TYPE,
+    )
+    tf.transformer(INSTANCE_COUNT, INSTANCE_TYPE)
+
+    create_model.assert_called_with(
+        endpoint_type=None,
+        model_server_workers=None,
+        role=ROLE,
+        vpc_config_override="VPC_CONFIG_DEFAULT",
+        entry_point=None,
+    )
+    model.transformer.assert_called_with(
+        INSTANCE_COUNT,
+        INSTANCE_TYPE,
+        accept=None,
+        assemble_with=None,
+        env=None,
+        max_concurrent_transforms=None,
+        max_payload=None,
+        output_kms_key=None,
+        output_path=None,
+        strategy=None,
+        tags=None,
+        volume_kms_key=None,
+    )
 
 
 def test_create_model_with_custom_image(sagemaker_session):
@@ -924,7 +1010,7 @@ def test_script_mode_tensorboard(
         sagemaker_session=sagemaker_session,
         train_instance_count=INSTANCE_COUNT,
         train_instance_type=INSTANCE_TYPE,
-        framework_version="some_version",
+        framework_version="1.0",
         script_mode=True,
     )
     popen().poll.return_value = None

@@ -10,17 +10,18 @@
 # distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
+"""Placeholder docstring"""
 from __future__ import absolute_import
 
 from collections import namedtuple
 
 import os
 import re
-import sagemaker.utils
 import shutil
 import tempfile
 from six.moves.urllib.parse import urlparse
 
+import sagemaker.utils
 from sagemaker.utils import get_ecr_image_uri_prefix, ECR_URI_PATTERN
 
 _TAR_SOURCE_FILENAME = "source.tar.gz"
@@ -54,6 +55,79 @@ VALID_PY_VERSIONS = ["py2", "py3"]
 VALID_EIA_FRAMEWORKS = ["tensorflow", "tensorflow-serving", "mxnet", "mxnet-serving"]
 VALID_ACCOUNTS_BY_REGION = {"us-gov-west-1": "246785580436", "us-iso-east-1": "744548109606"}
 
+MERGED_FRAMEWORKS_REPO_MAP = {
+    "tensorflow-scriptmode": "tensorflow-training",
+    "mxnet": "mxnet-training",
+    "tensorflow-serving": "tensorflow-inference",
+    "mxnet-serving": "mxnet-inference",
+}
+
+MERGED_FRAMEWORKS_LOWEST_VERSIONS = {
+    "tensorflow-scriptmode": [1, 13, 1],
+    "mxnet": [1, 4, 1],
+    "tensorflow-serving": [1, 13, 0],
+    "mxnet-serving": [1, 4, 1],
+}
+
+
+def is_version_equal_or_higher(lowest_version, framework_version):
+    """Determine whether the ``framework_version`` is equal to or higher than
+    ``lowest_version``
+
+    Args:
+        lowest_version (List[int]): lowest version represented in an integer
+            list
+        framework_version (str): framework version string
+
+    Returns:
+        bool: Whether or not framework_version is equal to or higher than
+        lowest_version
+    """
+    version_list = [int(s) for s in framework_version.split(".")]
+    return version_list >= lowest_version[0 : len(version_list)]
+
+
+def _is_merged_versions(framework, framework_version):
+    """
+    Args:
+        framework:
+        framework_version:
+    """
+    lowest_version_list = MERGED_FRAMEWORKS_LOWEST_VERSIONS.get(framework)
+    if lowest_version_list:
+        return is_version_equal_or_higher(lowest_version_list, framework_version)
+    return False
+
+
+def _using_merged_images(region, framework, py_version, accelerator_type, framework_version):
+    """
+    Args:
+        region:
+        framework:
+        py_version:
+        accelerator_type:
+        framework_version:
+    """
+    is_gov_region = region in VALID_ACCOUNTS_BY_REGION
+    is_py3 = py_version == "py3" or py_version is None
+    is_merged_versions = _is_merged_versions(framework, framework_version)
+    return (not is_gov_region) and is_merged_versions and is_py3 and accelerator_type is None
+
+
+def _registry_id(region, framework, py_version, account, accelerator_type, framework_version):
+    """
+    Args:
+        region:
+        framework:
+        py_version:
+        account:
+        accelerator_type:
+        framework_version:
+    """
+    if _using_merged_images(region, framework, py_version, accelerator_type, framework_version):
+        return "763104351884"
+    return VALID_ACCOUNTS_BY_REGION.get(region, account)
+
 
 def create_image_uri(
     region,
@@ -70,13 +144,17 @@ def create_image_uri(
     Args:
         region (str): AWS region where the image is uploaded.
         framework (str): framework used by the image.
-        instance_type (str): SageMaker instance type. Used to determine device type (cpu/gpu/family-specific optimized).
+        instance_type (str): SageMaker instance type. Used to determine device
+            type (cpu/gpu/family-specific optimized).
         framework_version (str): The version of the framework.
-        py_version (str): Optional. Python version. If specified, should be one of 'py2' or 'py3'.
-            If not specified, image uri will not include a python component.
-        account (str): AWS account that contains the image. (default: '520713654638')
+        py_version (str): Optional. Python version. If specified, should be one
+            of 'py2' or 'py3'. If not specified, image uri will not include a
+            python component.
+        account (str): AWS account that contains the image. (default:
+            '520713654638')
         accelerator_type (str): SageMaker Elastic Inference accelerator type.
-        optimized_families (str): Instance families for which there exist specific optimized images.
+        optimized_families (str): Instance families for which there exist
+            specific optimized images.
 
     Returns:
         str: The appropriate image URI based on the given parameters.
@@ -86,8 +164,15 @@ def create_image_uri(
     if py_version and py_version not in VALID_PY_VERSIONS:
         raise ValueError("invalid py_version argument: {}".format(py_version))
 
-    # Handle Account Number for Gov Cloud
-    account = VALID_ACCOUNTS_BY_REGION.get(region, account)
+    # Handle Account Number for Gov Cloud and frameworks with DLC merged images
+    account = _registry_id(
+        region=region,
+        framework=framework,
+        py_version=py_version,
+        account=account,
+        accelerator_type=accelerator_type,
+        framework_version=framework_version,
+    )
 
     # Handle Local Mode
     if instance_type.startswith("local"):
@@ -121,12 +206,22 @@ def create_image_uri(
     ):
         framework += "-eia"
 
+    if _using_merged_images(region, framework, py_version, accelerator_type, framework_version):
+        return "{}/{}:{}".format(
+            get_ecr_image_uri_prefix(account, region), MERGED_FRAMEWORKS_REPO_MAP[framework], tag
+        )
     return "{}/sagemaker-{}:{}".format(get_ecr_image_uri_prefix(account, region), framework, tag)
 
 
 def _accelerator_type_valid_for_framework(
     framework, accelerator_type=None, optimized_families=None
 ):
+    """
+    Args:
+        framework:
+        accelerator_type:
+        optimized_families:
+    """
     if accelerator_type is None:
         return False
 
@@ -155,11 +250,12 @@ def validate_source_dir(script, directory):
     """Validate that the source directory exists and it contains the user script
 
     Args:
-        script (str):  Script filename.
+        script (str): Script filename.
         directory (str): Directory containing the source file.
 
     Raises:
-        ValueError: If ``directory`` does not exist, is not a directory, or does not contain ``script``.
+        ValueError: If ``directory`` does not exist, is not a directory, or does
+            not contain ``script``.
     """
     if directory:
         if not os.path.isfile(os.path.join(directory, script)):
@@ -173,29 +269,32 @@ def validate_source_dir(script, directory):
 def tar_and_upload_dir(
     session, bucket, s3_key_prefix, script, directory=None, dependencies=None, kms_key=None
 ):
-    """Package source files and upload a compress tar file to S3. The S3 location will be
-    ``s3://<bucket>/s3_key_prefix/sourcedir.tar.gz``.
+    """Package source files and upload a compress tar file to S3. The S3
+    location will be ``s3://<bucket>/s3_key_prefix/sourcedir.tar.gz``.
 
-    If directory is an S3 URI, an UploadedCode object will be returned, but nothing will be
-    uploaded to S3 (this allow reuse of code already in S3).
+    If directory is an S3 URI, an UploadedCode object will be returned, but
+    nothing will be uploaded to S3 (this allow reuse of code already in S3).
 
-    If directory is None, the script will be added to the archive at ``./<basename of script>``.
+    If directory is None, the script will be added to the archive at
+    ``./<basename of script>``.
 
-    If directory is not None, the (recursive) contents of the directory will be added to
-    the archive. directory is treated as the base path of the archive, and the script name is
-    assumed to be a filename or relative path inside the directory.
+    If directory is not None, the (recursive) contents of the directory will
+    be added to the archive. directory is treated as the base path of the
+    archive, and the script name is assumed to be a filename or relative path
+    inside the directory.
 
     Args:
         session (boto3.Session): Boto session used to access S3.
         bucket (str): S3 bucket to which the compressed file is uploaded.
         s3_key_prefix (str): Prefix for the S3 key.
         script (str): Script filename or path.
-        directory (str): Optional. Directory containing the source file. If it starts with "s3://",
-            no action is taken.
-        dependencies (List[str]): Optional. A list of paths to directories (absolute or relative)
-                                containing additional libraries that will be copied into
-                                /opt/ml/lib
-        kms_key (str):  Optional. KMS key ID used to upload objects to the bucket (default: None).
+        directory (str): Optional. Directory containing the source file. If it
+            starts with "s3://", no action is taken.
+        dependencies (List[str]): Optional. A list of paths to directories
+            (absolute or relative) containing additional libraries that will be
+            copied into /opt/ml/lib
+        kms_key (str): Optional. KMS key ID used to upload objects to the bucket
+            (default: None).
 
     Returns:
         sagemaker.fw_utils.UserCode: An object with the S3 bucket and key (S3 prefix) and
@@ -228,6 +327,11 @@ def tar_and_upload_dir(
 
 
 def _list_files_to_compress(script, directory):
+    """
+    Args:
+        script:
+        directory:
+    """
     if directory is None:
         return [script]
 
@@ -251,46 +355,43 @@ def framework_name_from_image(image_name):
 
     Returns:
         tuple: A tuple containing:
-            str: The framework name
-            str: The Python version
-            str: The image tag
+            str: The framework name str: The Python version str: The image tag
             str: If the image is script mode
     """
     sagemaker_pattern = re.compile(ECR_URI_PATTERN)
     sagemaker_match = sagemaker_pattern.match(image_name)
     if sagemaker_match is None:
         return None, None, None, None
-    else:
-        # extract framework, python version and image tag
-        # We must support both the legacy and current image name format.
-        name_pattern = re.compile(
-            r"^sagemaker(?:-rl)?-(tensorflow|mxnet|chainer|pytorch|scikit-learn)(?:-)?(scriptmode)?:(.*)-(.*?)-(py2|py3)$"  # noqa: E501
+    # extract framework, python version and image tag
+    # We must support both the legacy and current image name format.
+    name_pattern = re.compile(
+        r"^(?:sagemaker(?:-rl)?-)?(tensorflow|mxnet|chainer|pytorch|scikit-learn)(?:-)?(scriptmode|training)?:(.*)-(.*?)-(py2|py3)$"  # noqa: E501
+    )
+    legacy_name_pattern = re.compile(r"^sagemaker-(tensorflow|mxnet)-(py2|py3)-(cpu|gpu):(.*)$")
+
+    name_match = name_pattern.match(sagemaker_match.group(9))
+    legacy_match = legacy_name_pattern.match(sagemaker_match.group(9))
+
+    if name_match is not None:
+        fw, scriptmode, ver, device, py = (
+            name_match.group(1),
+            name_match.group(2),
+            name_match.group(3),
+            name_match.group(4),
+            name_match.group(5),
         )
-        legacy_name_pattern = re.compile(r"^sagemaker-(tensorflow|mxnet)-(py2|py3)-(cpu|gpu):(.*)$")
-
-        name_match = name_pattern.match(sagemaker_match.group(9))
-        legacy_match = legacy_name_pattern.match(sagemaker_match.group(9))
-
-        if name_match is not None:
-            fw, scriptmode, ver, device, py = (
-                name_match.group(1),
-                name_match.group(2),
-                name_match.group(3),
-                name_match.group(4),
-                name_match.group(5),
-            )
-            return fw, py, "{}-{}-{}".format(ver, device, py), scriptmode
-        elif legacy_match is not None:
-            return (legacy_match.group(1), legacy_match.group(2), legacy_match.group(4), None)
-        else:
-            return None, None, None, None
+        return fw, py, "{}-{}-{}".format(ver, device, py), scriptmode
+    if legacy_match is not None:
+        return (legacy_match.group(1), legacy_match.group(2), legacy_match.group(4), None)
+    return None, None, None, None
 
 
 def framework_version_from_tag(image_tag):
     """Extract the framework version from the image tag.
 
     Args:
-        image_tag (str): Image tag, which should take the form '<framework_version>-<device>-<py_version>'
+        image_tag (str): Image tag, which should take the form
+            '<framework_version>-<device>-<py_version>'
 
     Returns:
         str: The framework version.
@@ -301,15 +402,15 @@ def framework_version_from_tag(image_tag):
 
 
 def parse_s3_url(url):
-    """Returns an (s3 bucket, key name/prefix) tuple from a url with an s3 scheme
+    """Returns an (s3 bucket, key name/prefix) tuple from a url with an s3
+    scheme
 
     Args:
         url (str):
 
     Returns:
         tuple: A tuple containing:
-            str: S3 bucket name
-            str: S3 key
+            str: S3 bucket name str: S3 key
     """
     parsed_url = urlparse(url)
     if parsed_url.scheme != "s3":
@@ -337,6 +438,11 @@ def model_code_key_prefix(code_location_key_prefix, model_name, image):
 
 
 def empty_framework_version_warning(default_version, latest_version):
+    """
+    Args:
+        default_version:
+        latest_version:
+    """
     msgs = [EMPTY_FRAMEWORK_VERSION_WARNING.format(default_version)]
     if default_version != latest_version:
         msgs.append(LATER_FRAMEWORK_VERSION_WARNING.format(latest=latest_version))
@@ -344,4 +450,8 @@ def empty_framework_version_warning(default_version, latest_version):
 
 
 def python_deprecation_warning(framework):
+    """
+    Args:
+        framework:
+    """
     return PYTHON_2_DEPRECATION_WARNING.format(framework=framework)
