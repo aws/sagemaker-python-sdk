@@ -56,6 +56,7 @@ def pytest_addoption(parser):
     parser.addoption("--sklearn-full-version", action="store", default=SKLEARN_VERSION)
     parser.addoption("--tf-full-version", action="store", default=TensorFlow.LATEST_VERSION)
     parser.addoption("--ei-tf-full-version", action="store", default=TensorFlow.LATEST_VERSION)
+    parser.addoption("--xgboost-full-version", action="store", default=SKLEARN_VERSION)
 
 
 def pytest_configure(config):
@@ -152,6 +153,11 @@ def pytorch_version(request):
 
 @pytest.fixture(scope="module", params=["0.20.0"])
 def sklearn_version(request):
+    return request.param
+
+
+@pytest.fixture(scope="module", params=["0.90-1"])
+def xgboost_version(request):
     return request.param
 
 
@@ -275,3 +281,8 @@ def pytest_generate_tests(metafunc):
         ):
             params.append("ml.p2.xlarge")
         metafunc.parametrize("instance_type", params, scope="session")
+
+
+@pytest.fixture(scope="module")
+def xgboost_full_version(request):
+    return request.config.getoption("--xgboost-full-version")
