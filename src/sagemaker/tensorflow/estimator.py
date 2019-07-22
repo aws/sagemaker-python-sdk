@@ -503,22 +503,25 @@ class TensorFlow(Framework):
                 If  not specified, the model will be configured to use the default
                 SageMaker model server. If 'tensorflow-serving', the model will be configured to
                 use the SageMaker Tensorflow Serving container.
-            entry_point (str): Path (absolute or relative) to the local Python source file which should be executed
-                as the entry point to training. If not specified and ``endpoint_type`` is 'tensorflow-serving',
-                no entry point is used. If ``endpoint_type`` is also ``None``, then the training entry point is used.
+            entry_point (str): Path (absolute or relative) to the local Python source file which
+                should be executed as the entry point to training. If not specified and
+                ``endpoint_type`` is 'tensorflow-serving', no entry point is used. If
+                ``endpoint_type`` is also ``None``, then the training entry point is used.
             source_dir (str): Path (absolute or relative) to a directory with any other serving
                 source code dependencies aside from the entry point file. If not specified and
-                ``endpoint_type`` is 'tensorflow-serving', no source_dir is used. If ``endpoint_type`` is also ``None``,
-                then the model source directory from training is used.
+                ``endpoint_type`` is 'tensorflow-serving', no source_dir is used. If
+                ``endpoint_type`` is also ``None``, then the model source directory from training
+                is used.
             dependencies (list[str]): A list of paths to directories (absolute or relative) with
                 any additional libraries that will be exported to the container.
-                If not specified and ``endpoint_type`` is 'tensorflow-serving', ``dependencies`` is set to ``None``.
+                If not specified and ``endpoint_type`` is 'tensorflow-serving', ``dependencies`` is
+                set to ``None``.
                 If ``endpoint_type`` is also ``None``, then the dependencies from training are used.
 
         Returns:
-            sagemaker.tensorflow.model.TensorFlowModel or sagemaker.tensorflow.serving.Model: A ``Model`` object.
-                See :class:`~sagemaker.tensorflow.serving.Model` or :class:`~sagemaker.tensorflow.model.TensorFlowModel`
-                for full details.
+            sagemaker.tensorflow.model.TensorFlowModel or sagemaker.tensorflow.serving.Model: A
+                ``Model`` object. See :class:`~sagemaker.tensorflow.serving.Model` or
+                :class:`~sagemaker.tensorflow.model.TensorFlowModel` for full details.
         """
         role = role or self.role
 
@@ -719,9 +722,10 @@ class TensorFlow(Framework):
                 SageMaker model server.
                 If 'tensorflow-serving', the model will be configured to
                 use the SageMaker Tensorflow Serving container.
-            entry_point (str): Path (absolute or relative) to the local Python source file which should be executed
-                as the entry point to training. If not specified and ``endpoint_type`` is 'tensorflow-serving',
-                no entry point is used. If ``endpoint_type`` is also ``None``, then the training entry point is used.
+            entry_point (str): Path (absolute or relative) to the local Python source file which
+                should be executed as the entry point to training. If not specified and
+                ``endpoint_type`` is 'tensorflow-serving', no entry point is used. If
+                ``endpoint_type`` is also ``None``, then the training entry point is used.
         """
 
         role = role or self.role

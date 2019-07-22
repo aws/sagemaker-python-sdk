@@ -1560,8 +1560,9 @@ class Framework(EstimatorBase):
                 worker per vCPU.
             volume_kms_key (str): Optional. KMS key ID for encrypting the volume
                 attached to the ML compute instance (default: None).
-            entry_point (str): Path (absolute or relative) to the local Python source file which should be executed
-                as the entry point to training. If not specified, the training entry point is used.
+            entry_point (str): Path (absolute or relative) to the local Python source file which
+                should be executed as the entry point to training. If not specified, the training
+                entry point is used.
 
         Returns:
             sagemaker.transformer.Transformer: a ``Transformer`` object that can be used to start a

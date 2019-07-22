@@ -130,8 +130,9 @@ class PyTorch(Framework):
                 the model. Default: use subnets and security groups from this Estimator.
                 * 'Subnets' (list[str]): List of subnet ids.
                 * 'SecurityGroupIds' (list[str]): List of security group ids.
-            entry_point (str): Path (absolute or relative) to the local Python source file which should be executed
-                as the entry point to training. If not specified, the training entry point is used.
+            entry_point (str): Path (absolute or relative) to the local Python source file which
+                should be executed as the entry point to training. If not specified, the training
+                entry point is used.
             source_dir (str): Path (absolute or relative) to a directory with any other serving
                 source code dependencies aside from the entry point file.
                 If not specified, the model source directory from training is used.
