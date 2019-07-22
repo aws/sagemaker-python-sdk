@@ -128,7 +128,7 @@ class AlgorithmEstimator(EstimatorBase):
                     (default: None). If specified, the estimator will create a channel pointing to
                     the model so the training job can download it. This model
                     can be a 'model.tar.gz' from a previous training job, or
-                    other artifacts coming from a different source. More
+                    other artifacts coming from a different source.
                     More information:
                     https://docs.aws.amazon.com/sagemaker/latest/dg/cdf-training.html#td-deserialization
 

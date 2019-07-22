@@ -176,7 +176,7 @@ class HyperparameterTuningJobAnalytics(AnalyticsMetricsBase):
         if force_refresh:
             self.clear_cache()
         if not self._tuning_job_describe_result:
-            self._tuning_job_describe_result = self._sage_client.describe_hyper_parameter_tuning_job(
+            self._tuning_job_describe_result = self._sage_client.describe_hyper_parameter_tuning_job(  # noqa: E501 # pylint: disable=line-too-long
                 HyperParameterTuningJobName=self.name
             )
         return self._tuning_job_describe_result
@@ -288,10 +288,12 @@ class TrainingJobAnalytics(AnalyticsMetricsBase):
         description = self._sage_client.describe_training_job(TrainingJobName=self.name)
         start_time = self._start_time or description[u"TrainingStartTime"]  # datetime object
         # Incrementing end time by 1 min since CloudWatch drops seconds before finding the logs.
-        # This results in logs being searched in the time range in which the correct log line was not present.
+        # This results in logs being searched in the time range in which the correct log line was
+        # not present.
         # Example - Log time - 2018-10-22 08:25:55
-        #           Here calculated end time would also be 2018-10-22 08:25:55 (without 1 min addition)
-        #           CW will consider end time as 2018-10-22 08:25 and will not be able to search the correct log.
+        #       Here calculated end time would also be 2018-10-22 08:25:55 (without 1 min addition)
+        #       CW will consider end time as 2018-10-22 08:25 and will not be able to search the
+        #           correct log.
         end_time = self._end_time or description.get(
             u"TrainingEndTime", datetime.datetime.utcnow()
         ) + datetime.timedelta(minutes=1)

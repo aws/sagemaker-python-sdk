@@ -126,11 +126,11 @@ class Transformer(object):
             data_type (str): What the S3 location defines (default: 'S3Prefix').
                 Valid values:
 
-                * 'S3Prefix' - the S3 URI defines a key name prefix. All objects with this prefix will be used as
-                      inputs for the transform job.
+                * 'S3Prefix' - the S3 URI defines a key name prefix. All objects with this prefix
+                    will be used as inputs for the transform job.
 
-                * 'ManifestFile' - the S3 URI points to a single manifest file listing each S3 object to use as
-                      an input for the transform job.
+                * 'ManifestFile' - the S3 URI points to a single manifest file listing each S3
+                    object to use as an input for the transform job.
             content_type (str): MIME type of the input data (default: None).
             compression_type (str): Compression type of the input data, if
                 compressed (default: None). Valid values: 'Gzip', None.

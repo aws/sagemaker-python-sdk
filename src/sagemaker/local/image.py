@@ -81,8 +81,8 @@ class _SageMakerContainer(object):
         self.instance_type = instance_type
         self.instance_count = instance_count
         self.image = image
-        # Since we are using a single docker network, Generate a random suffix to attach to the container names.
-        #  This way multiple jobs can run in parallel.
+        # Since we are using a single docker network, Generate a random suffix to attach to the
+        # container names. This way multiple jobs can run in parallel.
         suffix = "".join(random.choice(string.ascii_lowercase + string.digits) for _ in range(5))
         self.hosts = [
             "{}-{}-{}".format(CONTAINER_PREFIX, i, suffix)
@@ -160,8 +160,8 @@ class _SageMakerContainer(object):
             dirs_to_delete = [data_dir, shared_dir]
             self._cleanup(dirs_to_delete)
 
-        # Print our Job Complete line to have a similar experience to training on SageMaker where you
-        # see this line at the end.
+        # Print our Job Complete line to have a similar experience to training on SageMaker where
+        # you see this line at the end.
         print("===== Job Complete =====")
         return artifacts
 
@@ -702,10 +702,10 @@ def _delete_tree(path):
     try:
         shutil.rmtree(path)
     except OSError as exc:
-        # on Linux, when docker writes to any mounted volume, it uses the container's user. In most cases
-        # this is root. When the container exits and we try to delete them we can't because root owns those
-        # files. We expect this to happen, so we handle EACCESS. Any other error we will raise the
-        # exception up.
+        # on Linux, when docker writes to any mounted volume, it uses the container's user. In most
+        # cases this is root. When the container exits and we try to delete them we can't because
+        # root owns those files. We expect this to happen, so we handle EACCESS. Any other error
+        # we will raise the exception up.
         if exc.errno == errno.EACCES:
             logger.warning("Failed to delete: %s Please remove it manually.", path)
         else:
@@ -724,13 +724,14 @@ def _aws_credentials(session):
         secret_key = creds.secret_key
         token = creds.token
 
-        # The presence of a token indicates the credentials are short-lived and as such are risky to be used as they
-        # might expire while running.
+        # The presence of a token indicates the credentials are short-lived and as such are risky
+        # to be used as they might expire while running.
         # Long-lived credentials are available either through
         # 1. boto session
-        # 2. EC2 Metadata Service (SageMaker Notebook instances or EC2 instances with roles attached them)
-        # Short-lived credentials available via boto session are permitted to support running on machines with no
-        # EC2 Metadata Service but a warning is provided about their danger
+        # 2. EC2 Metadata Service (SageMaker Notebook instances or EC2 instances with roles
+        #       attached them)
+        # Short-lived credentials available via boto session are permitted to support running on
+        # machines with no EC2 Metadata Service but a warning is provided about their danger
         if token is None:
             logger.info("Using the long-lived AWS credentials found in session")
             return [
@@ -739,7 +740,8 @@ def _aws_credentials(session):
             ]
         if not _aws_credentials_available_in_metadata_service():
             logger.warning(
-                "Using the short-lived AWS credentials found in session. They might expire while running."
+                "Using the short-lived AWS credentials found in session. They might expire while "
+                "running."
             )
             return [
                 "AWS_ACCESS_KEY_ID=%s" % (str(access_key)),
@@ -747,7 +749,8 @@ def _aws_credentials(session):
                 "AWS_SESSION_TOKEN=%s" % (str(token)),
             ]
         logger.info(
-            "No AWS credentials found in session but credentials from EC2 Metadata Service are available."
+            "No AWS credentials found in session but credentials from EC2 Metadata Service are "
+            "available."
         )
         return None
     except Exception as e:  # pylint: disable=broad-except

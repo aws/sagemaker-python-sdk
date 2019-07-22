@@ -406,9 +406,9 @@ class Model(object):
                 this model completes (default: True).
 
         Returns:
-            callable[string, sagemaker.session.Session] or None: Invocation of ``self.predictor_cls`` on
-                the created endpoint name, if ``self.predictor_cls`` is not
-                None. Otherwise, return None.
+            callable[string, sagemaker.session.Session] or None: Invocation of
+                ``self.predictor_cls`` on the created endpoint name, if ``self.predictor_cls``
+                is not None. Otherwise, return None.
         """
         if not self.sagemaker_session:
             if instance_type in ("local", "local_gpu"):
