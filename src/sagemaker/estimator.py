@@ -1,4 +1,4 @@
-# Copyright 2017-2018 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright 2017-2019 Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -1522,6 +1522,7 @@ class Framework(EstimatorBase):
         role=None,
         model_server_workers=None,
         volume_kms_key=None,
+        entry_point=None,
     ):
         """Return a ``Transformer`` that uses a SageMaker Model based on the
         training job. It reuses the SageMaker Session and base job name used by
@@ -1559,11 +1560,19 @@ class Framework(EstimatorBase):
                 worker per vCPU.
             volume_kms_key (str): Optional. KMS key ID for encrypting the volume
                 attached to the ML compute instance (default: None).
+            entry_point (str): Path (absolute or relative) to the local Python source file which should be executed
+                as the entry point to training. If not specified, the training entry point is used.
+
+        Returns:
+            sagemaker.transformer.Transformer: a ``Transformer`` object that can be used to start a
+                SageMaker Batch Transform job.
         """
         role = role or self.role
 
         if self.latest_training_job is not None:
-            model = self.create_model(role=role, model_server_workers=model_server_workers)
+            model = self.create_model(
+                role=role, model_server_workers=model_server_workers, entry_point=entry_point
+            )
 
             container_def = model.prepare_container_def(instance_type)
             model_name = model.name or name_from_image(container_def["Image"])

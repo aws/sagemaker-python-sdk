@@ -133,7 +133,13 @@ class MXNet(Framework):
             self._hyperparameters[self.LAUNCH_PS_ENV_NAME] = enabled
 
     def create_model(
-        self, model_server_workers=None, role=None, vpc_config_override=VPC_CONFIG_DEFAULT
+        self,
+        model_server_workers=None,
+        role=None,
+        vpc_config_override=VPC_CONFIG_DEFAULT,
+        entry_point=None,
+        source_dir=None,
+        dependencies=None,
     ):
         """Create a SageMaker ``MXNetModel`` object that can be deployed to an
         ``Endpoint``.
@@ -149,17 +155,24 @@ class MXNet(Framework):
                 the model. Default: use subnets and security groups from this Estimator.
                 * 'Subnets' (list[str]): List of subnet ids.
                 * 'SecurityGroupIds' (list[str]): List of security group ids.
+            entry_point (str): Path (absolute or relative) to the local Python source file which should be executed
+                as the entry point to training. If not specified, the training entry point is used.
+            source_dir (str): Path (absolute or relative) to a directory with any other serving
+                source code dependencies aside from the entry point file.
+                If not specified, the model source directory from training is used.
+            dependencies (list[str]): A list of paths to directories (absolute or relative) with
+                any additional libraries that will be exported to the container.
+                If not specified, the dependencies from training are used.
 
         Returns:
             sagemaker.mxnet.model.MXNetModel: A SageMaker ``MXNetModel`` object.
             See :func:`~sagemaker.mxnet.model.MXNetModel` for full details.
         """
-        role = role or self.role
         return MXNetModel(
             self.model_data,
-            role,
-            self.entry_point,
-            source_dir=self._model_source_dir(),
+            role or self.role,
+            entry_point or self.entry_point,
+            source_dir=(source_dir or self._model_source_dir()),
             enable_cloudwatch_metrics=self.enable_cloudwatch_metrics,
             name=self._current_job_name,
             container_log_level=self.container_log_level,
@@ -170,7 +183,7 @@ class MXNet(Framework):
             model_server_workers=model_server_workers,
             sagemaker_session=self.sagemaker_session,
             vpc_config=self.get_vpc_config(vpc_config_override),
-            dependencies=self.dependencies,
+            dependencies=(dependencies or self.dependencies),
         )
 
     @classmethod
