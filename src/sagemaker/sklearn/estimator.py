@@ -91,7 +91,8 @@ class SKLearn(Framework):
             **kwargs: Additional kwargs passed to the
                 :class:`~sagemaker.estimator.Framework` constructor.
         """
-        # SciKit-Learn does not support distributed training or training on GPU instance types. Fail fast.
+        # SciKit-Learn does not support distributed training or training on GPU instance types.
+        # Fail fast.
         train_instance_type = kwargs.get("train_instance_type")
         _validate_not_gpu_instance_type(train_instance_type)
 

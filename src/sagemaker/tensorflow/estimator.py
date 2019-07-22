@@ -60,7 +60,8 @@ class Tensorboard(threading.Thread):
 
         Args:
             estimator (sagemaker.estimator.Framework): A SageMaker ``Estimator``.
-            logdir (str): Directory for logs (default: None). If not specified, a temporary directory is made.
+            logdir (str): Directory for logs (default: None). If not specified, a temporary
+                directory is made.
         """
         threading.Thread.__init__(self)
         self.event = threading.Event()
@@ -216,32 +217,40 @@ class TensorFlow(Framework):
         """Initialize a ``TensorFlow`` estimator.
 
         Args:
-            training_steps (int): Perform this many steps of training. `None`, the default means train forever.
-            evaluation_steps (int): Perform this many steps of evaluation. `None`, the default means that evaluation
-                runs until input from eval_input_fn is exhausted (or another exception is raised).
-            checkpoint_path (str): Identifies S3 location where checkpoint data during model training can be
-                saved (default: None). For distributed model training, this parameter is required.
-            py_version (str): Python version you want to use for executing your model training code (default: 'py2').
-            framework_version (str): TensorFlow version you want to use for executing your model training code.
-                List of supported versions https://github.com/aws/sagemaker-python-sdk#tensorflow-sagemaker-estimators.
+            training_steps (int): Perform this many steps of training. `None`, the default means
+                train forever.
+            evaluation_steps (int): Perform this many steps of evaluation. `None`, the default
+                means that evaluation runs until input from eval_input_fn is exhausted (or another
+                exception is raised).
+            checkpoint_path (str): Identifies S3 location where checkpoint data during model
+                training can be saved (default: None). For distributed model training, this
+                parameter is required.
+            py_version (str): Python version you want to use for executing your model training
+                code (default: 'py2').
+            framework_version (str): TensorFlow version you want to use for executing your model
+                training code. List of supported versions
+                https://github.com/aws/sagemaker-python-sdk#tensorflow-sagemaker-estimators.
                 If not specified, this will default to 1.11.
-            model_dir (str): S3 location where the checkpoint data and models can be exported to during training
-                (default: None). If not specified a default S3 URI will be generated. It will be passed in the
-                training script as one of the command line arguments.
-            requirements_file (str): Path to a ``requirements.txt`` file (default: ''). The path should be within and
-                relative to ``source_dir``. Details on the format can be found in the
-                `Pip User Guide <https://pip.pypa.io/en/stable/reference/pip_install/#requirements-file-format>`_.
-            image_name (str): If specified, the estimator will use this image for training and hosting, instead of
-                selecting the appropriate SageMaker official image based on framework_version and py_version. It can
-                be an ECR url or dockerhub image and tag.
+            model_dir (str): S3 location where the checkpoint data and models can be exported to
+                during training (default: None). If not specified a default S3 URI will be
+                generated. It will be passed in the training script as one of the command line
+                arguments.
+            requirements_file (str): Path to a ``requirements.txt`` file (default: ''). The path
+                should be within and relative to ``source_dir``. Details on the format can be
+                found in the Pip User Guide:
+                 <https://pip.pypa.io/en/stable/reference/pip_install/#requirements-file-format>
+            image_name (str): If specified, the estimator will use this image for training and
+                hosting, instead of selecting the appropriate SageMaker official image based on
+                framework_version and py_version. It can be an ECR url or dockerhub image and tag.
 
                 Examples:
                     123.dkr.ecr.us-west-2.amazonaws.com/my-custom-image:1.0
                     custom-image:latest.
-            script_mode (bool): If set to True will the estimator will use the Script Mode containers (default: False).
-                This will be ignored if py_version is set to 'py3'.
+            script_mode (bool): If set to True will the estimator will use the Script Mode
+                containers (default: False). This will be ignored if py_version is set to 'py3'.
             distributions (dict): A dictionary with information on how to run distributed training
-                (default: None). Currently we support distributed training with parameter servers and MPI.
+                (default: None). Currently we support distributed training with parameter servers
+                and MPI.
                 To enable parameter server use the following setup:
 
                 .. code:: python
@@ -371,21 +380,22 @@ class TensorFlow(Framework):
                 This can be one of three types:
 
                 * (str) - the S3 location where training data is saved.
-                * (dict[str, str] or dict[str, sagemaker.session.s3_input]) - If using multiple channels for
-                    training data, you can specify a dict mapping channel names
+                * (dict[str, str] or dict[str, sagemaker.session.s3_input]) - If using multiple
+                    channels for training data, you can specify a dict mapping channel names
                     to strings or :func:`~sagemaker.session.s3_input` objects.
-                * (sagemaker.session.s3_input) - channel configuration for S3 data sources that can provide
-                    additional information as well as the path to the training dataset.
+                * (sagemaker.session.s3_input) - channel configuration for S3 data sources that
+                    can provide additional information as well as the path to the training dataset.
                     See :func:`sagemaker.session.s3_input` for full details.
 
             wait (bool): Whether the call should wait until the job completes (default: True).
             logs (bool): Whether to show the logs produced by the job.
                 Only meaningful when wait is True (default: True).
-            job_name (str): Training job name. If not specified, the estimator generates a default job name,
-                based on the training image name and current timestamp.
-            run_tensorboard_locally (bool): Whether to execute TensorBoard in a different process with
-                downloaded checkpoint information (default: False). This is an experimental feature, and requires
-                TensorBoard and AWS CLI to be installed. It terminates TensorBoard when execution ends.
+            job_name (str): Training job name. If not specified, the estimator generates a default
+                job name, based on the training image name and current timestamp.
+            run_tensorboard_locally (bool): Whether to execute TensorBoard in a different process
+                with downloaded checkpoint information (default: False). This is an experimental
+                feature, and requires TensorBoard and AWS CLI to be installed. It terminates
+                TensorBoard when execution ends.
         """
 
         def fit_super():
@@ -427,7 +437,8 @@ class TensorFlow(Framework):
             job_details, model_channel_name
         )
 
-        # Move some of the tensorflow specific init params from hyperparameters into the main init params.
+        # Move some of the tensorflow specific init params from hyperparameters into the main init
+        # params.
         for argument in ("checkpoint_path", "training_steps", "evaluation_steps", "model_dir"):
             value = init_params["hyperparameters"].pop(argument, None)
             if value is not None:
@@ -446,10 +457,10 @@ class TensorFlow(Framework):
 
         init_params["py_version"] = py_version
 
-        # We switched image tagging scheme from regular image version (e.g. '1.0') to more expressive
-        # containing framework version, device type and python version (e.g. '1.5-gpu-py2').
-        # For backward compatibility map deprecated image tag '1.0' to a '1.4' framework version
-        # otherwise extract framework version from the tag itself.
+        # We switched image tagging scheme from regular image version (e.g. '1.0') to more
+        # expressive containing framework version, device type and python version
+        # (e.g. '1.5-gpu-py2'). For backward compatibility map deprecated image tag '1.0' to a
+        # '1.4' framework version otherwise extract framework version from the tag itself.
         init_params["framework_version"] = (
             "1.4" if tag == "1.0" else fw.framework_version_from_tag(tag)
         )
@@ -474,11 +485,13 @@ class TensorFlow(Framework):
         """Create a SageMaker ``TensorFlowModel`` object that can be deployed to an ``Endpoint``.
 
         Args:
-            role (str): The ``ExecutionRoleArn`` IAM Role ARN for the ``Model``, which is also used during
-                transform jobs. If not specified, the role from the Estimator will be used.
-            model_server_workers (int): Optional. The number of worker processes used by the inference server.
-                If None, server will use one worker per vCPU.
-            vpc_config_override (dict[str, list[str]]): Optional override for VpcConfig set on the model.
+            role (str): The ``ExecutionRoleArn`` IAM Role ARN for the ``Model``, which is also
+                used during transform jobs. If not specified, the role from the Estimator will be
+                used.
+            model_server_workers (int): Optional. The number of worker processes used by the
+                inference server. If None, server will use one worker per vCPU.
+            vpc_config_override (dict[str, list[str]]): Optional override for VpcConfig set on the
+                model.
                 Default: use subnets and security groups from this Estimator.
                 * 'Subnets' (list[str]): List of subnet ids.
                 * 'SecurityGroupIds' (list[str]): List of security group ids.
@@ -626,29 +639,35 @@ class TensorFlow(Framework):
         volume_kms_key=None,
         endpoint_type=None,
     ):
-        """Return a ``Transformer`` that uses a SageMaker Model based on the training job. It reuses the
-        SageMaker Session and base job name used by the Estimator.
+        """Return a ``Transformer`` that uses a SageMaker Model based on the training job. It
+        reuses the SageMaker Session and base job name used by the Estimator.
 
         Args:
             instance_count (int): Number of EC2 instances to use.
             instance_type (str): Type of EC2 instance to use, for example, 'ml.c4.xlarge'.
-            strategy (str): The strategy used to decide how to batch records in a single request (default: None).
-                Valid values: 'MULTI_RECORD' and 'SINGLE_RECORD'.
-            assemble_with (str): How the output is assembled (default: None). Valid values: 'Line' or 'None'.
-            output_path (str): S3 location for saving the transform result. If not specified, results are stored to
-                a default bucket.
-            output_kms_key (str): Optional. KMS key ID for encrypting the transform output (default: None).
-            accept (str): The content type accepted by the endpoint deployed during the transform job.
-            env (dict): Environment variables to be set for use during the transform job (default: None).
+            strategy (str): The strategy used to decide how to batch records in a single request
+                (default: None). Valid values: 'MULTI_RECORD' and 'SINGLE_RECORD'.
+            assemble_with (str): How the output is assembled (default: None). Valid values: 'Line'
+                or 'None'.
+            output_path (str): S3 location for saving the transform result. If not specified,
+                results are stored to a default bucket.
+            output_kms_key (str): Optional. KMS key ID for encrypting the transform output
+                (default: None).
+            accept (str): The content type accepted by the endpoint deployed during the transform
+                job.
+            env (dict): Environment variables to be set for use during the transform job
+                (default: None).
             max_concurrent_transforms (int): The maximum number of HTTP requests to be made to
                 each individual transform container at one time.
-            max_payload (int): Maximum size of the payload in a single HTTP request to the container in MB.
-            tags (list[dict]): List of tags for labeling a transform job. If none specified, then the tags used for
-                the training job are used for the transform job.
-            role (str): The ``ExecutionRoleArn`` IAM Role ARN for the ``Model``, which is also used during
-                transform jobs. If not specified, the role from the Estimator will be used.
-            model_server_workers (int): Optional. The number of worker processes used by the inference server.
-                If None, server will use one worker per vCPU.
+            max_payload (int): Maximum size of the payload in a single HTTP request to the
+                container in MB.
+            tags (list[dict]): List of tags for labeling a transform job. If none specified, then
+                the tags used for the training job are used for the transform job.
+            role (str): The ``ExecutionRoleArn`` IAM Role ARN for the ``Model``, which is also
+                used during transform jobs. If not specified, the role from the Estimator will be
+                used.
+            model_server_workers (int): Optional. The number of worker processes used by the
+                inference server. If None, server will use one worker per vCPU.
             volume_kms_key (str): Optional. KMS key ID for encrypting the volume attached to the ML
                 compute instance (default: None).
             endpoint_type (str): Optional. Selects the software stack used by the inference server.

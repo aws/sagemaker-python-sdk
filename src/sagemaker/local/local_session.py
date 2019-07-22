@@ -82,9 +82,8 @@ class LocalSagemakerClient(object):
           OutputDataConfig(dict): Identifies the location where you want to save the results of
             model training.
           ResourceConfig(dict): Identifies the resources to use for local model training.
-          HyperParameters(dict) [optional]: Specifies these algorithm-specific parameters to influence the
-            quality of
-        the final model.
+          HyperParameters(dict) [optional]: Specifies these algorithm-specific parameters to
+            influence the quality of the final model.
           **kwargs:
 
         Returns:

@@ -61,27 +61,30 @@ class LogState(object):
 class Session(object):  # pylint: disable=too-many-public-methods
     """Manage interactions with the Amazon SageMaker APIs and any other AWS services needed.
 
-    This class provides convenient methods for manipulating entities and resources that Amazon SageMaker uses,
-    such as training jobs, endpoints, and input datasets in S3.
+    This class provides convenient methods for manipulating entities and resources that Amazon
+    SageMaker uses, such as training jobs, endpoints, and input datasets in S3.
 
     AWS service calls are delegated to an underlying Boto3 session, which by default
-    is initialized using the AWS configuration chain. When you make an Amazon SageMaker API call that
-    accesses an S3 bucket location and one is not specified, the ``Session`` creates a default bucket based on
-    a naming convention which includes the current AWS account ID.
+    is initialized using the AWS configuration chain. When you make an Amazon SageMaker API call
+    that accesses an S3 bucket location and one is not specified, the ``Session`` creates a default
+    bucket based on a naming convention which includes the current AWS account ID.
     """
 
     def __init__(self, boto_session=None, sagemaker_client=None, sagemaker_runtime_client=None):
         """Initialize a SageMaker ``Session``.
 
         Args:
-            boto_session (boto3.session.Session): The underlying Boto3 session which AWS service calls
-                are delegated to (default: None). If not provided, one is created with default AWS configuration chain.
-            sagemaker_client (boto3.SageMaker.Client): Client which makes Amazon SageMaker service calls other
-                than ``InvokeEndpoint`` (default: None). Estimators created using this ``Session`` use this client.
-                If not provided, one will be created using this instance's ``boto_session``.
-            sagemaker_runtime_client (boto3.SageMakerRuntime.Client): Client which makes ``InvokeEndpoint``
-                calls to Amazon SageMaker (default: None). Predictors created using this ``Session`` use this client.
-                If not provided, one will be created using this instance's ``boto_session``.
+            boto_session (boto3.session.Session): The underlying Boto3 session which AWS service
+                calls are delegated to (default: None). If not provided, one is created with
+                default AWS configuration chain.
+            sagemaker_client (boto3.SageMaker.Client): Client which makes Amazon SageMaker service
+                calls other than ``InvokeEndpoint`` (default: None). Estimators created using this
+                ``Session`` use this client. If not provided, one will be created using this
+                instance's ``boto_session``.
+            sagemaker_runtime_client (boto3.SageMakerRuntime.Client): Client which makes
+                ``InvokeEndpoint`` calls to Amazon SageMaker (default: None). Predictors created
+                using this ``Session`` use this client. If not provided, one will be created using
+                this instance's ``boto_session``.
         """
         self._default_bucket = None
 
@@ -130,8 +133,8 @@ class Session(object):  # pylint: disable=too-many-public-methods
     def upload_data(self, path, bucket=None, key_prefix="data", extra_args=None):
         """Upload local file or directory to S3.
 
-        If a single file is specified for upload, the resulting S3 object key is ``{key_prefix}/{filename}``
-        (filename does not include the local path, if any specified).
+        If a single file is specified for upload, the resulting S3 object key is
+        ``{key_prefix}/{filename}`` (filename does not include the local path, if any specified).
 
         If a directory is specified for upload, the API uploads all content, recursively,
         preserving relative structure of subdirectories. The resulting object key names are:
@@ -140,19 +143,21 @@ class Session(object):  # pylint: disable=too-many-public-methods
         Args:
             path (str): Path (absolute or relative) of local file or directory to upload.
             bucket (str): Name of the S3 Bucket to upload to (default: None). If not specified, the
-                default bucket of the ``Session`` is used (if default bucket does not exist, the ``Session``
-                creates it).
-            key_prefix (str): Optional S3 object key name prefix (default: 'data'). S3 uses the prefix to
-                create a directory structure for the bucket content that it display in the S3 console.
-            extra_args (dict): Optional extra arguments that may be passed to the upload operation. Similar to
-                ExtraArgs parameter in S3 upload_file function. Please refer to the ExtraArgs parameter
-                documentation here:
+                default bucket of the ``Session`` is used (if default bucket does not exist, the
+                ``Session`` creates it).
+            key_prefix (str): Optional S3 object key name prefix (default: 'data'). S3 uses the
+                prefix to create a directory structure for the bucket content that it display in
+                the S3 console.
+            extra_args (dict): Optional extra arguments that may be passed to the upload operation.
+                Similar to ExtraArgs parameter in S3 upload_file function. Please refer to the
+                ExtraArgs parameter documentation here:
                 https://boto3.amazonaws.com/v1/documentation/api/latest/guide/s3-uploading-files.html#the-extraargs-parameter
 
         Returns:
-            str: The S3 URI of the uploaded file(s). If a file is specified in the path argument, the URI format is:
-                ``s3://{bucket name}/{key_prefix}/{original_file_name}``.
-                If a directory is specified in the path argument, the URI format is ``s3://{bucket name}/{key_prefix}``.
+            str: The S3 URI of the uploaded file(s). If a file is specified in the path argument,
+                the URI format is: ``s3://{bucket name}/{key_prefix}/{original_file_name}``.
+                If a directory is specified in the path argument, the URI format is
+                ``s3://{bucket name}/{key_prefix}``.
         """
         # Generate a tuple for each file that we want to upload of the form (local_path, s3_key).
         files = []
@@ -180,8 +185,8 @@ class Session(object):  # pylint: disable=too-many-public-methods
 
         s3_uri = "s3://{}/{}".format(bucket, key_prefix)
         # If a specific file was used as input (instead of a directory), we return the full S3 key
-        # of the uploaded object. This prevents unintentionally using other files under the same prefix
-        # during training.
+        # of the uploaded object. This prevents unintentionally using other files under the same
+        # prefix during training.
         if key_suffix:
             s3_uri = "{}/{}".format(s3_uri, key_suffix)
         return s3_uri
@@ -190,7 +195,8 @@ class Session(object):  # pylint: disable=too-many-public-methods
         """Return the name of the default bucket to use in relevant Amazon SageMaker interactions.
 
         Returns:
-            str: The name of the default bucket, which is of the form: ``sagemaker-{region}-{AWS account ID}``.
+            str: The name of the default bucket, which is of the form:
+                ``sagemaker-{region}-{AWS account ID}``.
         """
         if self._default_bucket:
             return self._default_bucket
@@ -220,7 +226,8 @@ class Session(object):  # pylint: disable=too-many-public-methods
             elif (
                 error_code == "OperationAborted" and "conflicting conditional operation" in message
             ):
-                # If this bucket is already being concurrently created, we don't need to create it again.
+                # If this bucket is already being concurrently created, we don't need to create it
+                # again.
                 pass
             elif error_code == "TooManyBuckets":
                 # Succeed if the default bucket exists
@@ -254,49 +261,51 @@ class Session(object):  # pylint: disable=too-many-public-methods
 
         Args:
             input_mode (str): The input mode that the algorithm supports. Valid modes:
-
                 * 'File' - Amazon SageMaker copies the training dataset from the S3 location to
                     a directory in the Docker container.
-                * 'Pipe' - Amazon SageMaker streams data directly from S3 to the container via a Unix-named pipe.
+                * 'Pipe' - Amazon SageMaker streams data directly from S3 to the container via a
+                    Unix-named pipe.
 
-            input_config (list): A list of Channel objects. Each channel is a named input source. Please refer to
-                 the format details described:
-                 https://botocore.readthedocs.io/en/latest/reference/services/sagemaker.html#SageMaker.Client.create_training_job
-            role (str): An AWS IAM role (either name or full ARN). The Amazon SageMaker training jobs and APIs
-                that create Amazon SageMaker endpoints use this role to access training data and model artifacts.
-                You must grant sufficient permissions to this role.
+            input_config (list): A list of Channel objects. Each channel is a named input source.
+                Please refer to the format details described:
+                https://botocore.readthedocs.io/en/latest/reference/services/sagemaker.html#SageMaker.Client.create_training_job
+            role (str): An AWS IAM role (either name or full ARN). The Amazon SageMaker training
+                jobs and APIs that create Amazon SageMaker endpoints use this role to access
+                training data and model artifacts. You must grant sufficient permissions to this
+                role.
             job_name (str): Name of the training job being created.
-            output_config (dict): The S3 URI where you want to store the training results and optional KMS key ID.
+            output_config (dict): The S3 URI where you want to store the training results and
+                optional KMS key ID.
             resource_config (dict): Contains values for ResourceConfig:
-
                 * instance_count (int): Number of EC2 instances to use for training.
                     The key in resource_config is 'InstanceCount'.
-                * instance_type (str): Type of EC2 instance to use for training, for example, 'ml.c4.xlarge'.
-                    The key in resource_config is 'InstanceType'.
+                * instance_type (str): Type of EC2 instance to use for training, for example,
+                    'ml.c4.xlarge'. The key in resource_config is 'InstanceType'.
 
             vpc_config (dict): Contains values for VpcConfig:
-
                 * subnets (list[str]): List of subnet ids.
                     The key in vpc_config is 'Subnets'.
                 * security_group_ids (list[str]): List of security group ids.
                     The key in vpc_config is 'SecurityGroupIds'.
 
-            hyperparameters (dict): Hyperparameters for model training. The hyperparameters are made accessible as
-                a dict[str, str] to the training code on SageMaker. For convenience, this accepts other types for
-                keys and values, but ``str()`` will be called to convert them before training.
-            stop_condition (dict): Defines when training shall finish. Contains entries that can be understood by the
-                service like ``MaxRuntimeInSeconds``.
+            hyperparameters (dict): Hyperparameters for model training. The hyperparameters are
+                made accessible as a dict[str, str] to the training code on SageMaker. For
+                convenience, this accepts other types for keys and values, but ``str()`` will be
+                called to convert them before training.
+            stop_condition (dict): Defines when training shall finish. Contains entries that can
+                be understood by the service like ``MaxRuntimeInSeconds``.
             tags (list[dict]): List of tags for labeling a training job. For more, see
                 https://docs.aws.amazon.com/sagemaker/latest/dg/API_Tag.html.
-            metric_definitions (list[dict]): A list of dictionaries that defines the metric(s) used to evaluate the
-                training jobs. Each dictionary contains two keys: 'Name' for the name of the metric, and 'Regex' for
-                the regular expression used to extract the metric from the logs.
+            metric_definitions (list[dict]): A list of dictionaries that defines the metric(s)
+                used to evaluate the training jobs. Each dictionary contains two keys: 'Name' for
+                the name of the metric, and 'Regex' for the regular expression used to extract the
+                metric from the logs.
             enable_network_isolation (bool): Whether to request for the training job to run with
                 network isolation or not.
             image (str): Docker image containing training code.
             algorithm_arn (str): Algorithm Arn from Marketplace.
-            encrypt_inter_container_traffic (bool): Specifies whether traffic between training containers is
-                encrypted for the training job (default: ``False``).
+            encrypt_inter_container_traffic (bool): Specifies whether traffic between training
+                containers is encrypted for the training job (default: ``False``).
 
         Returns:
             str: ARN of the training job, if it is created.
@@ -357,14 +366,16 @@ class Session(object):  # pylint: disable=too-many-public-methods
         """Create an Amazon SageMaker Neo compilation job.
 
         Args:
-            input_model_config (dict): the trained model and the Amazon S3 location where it is stored.
-            output_model_config (dict): Identifies the Amazon S3 location where you want Amazon SageMaker Neo to save
-                the results of compilation job
-            role (str): An AWS IAM role (either name or full ARN). The Amazon SageMaker Neo compilation jobs use this
-                role to access model artifacts. You must grant sufficient permissions to this role.
+            input_model_config (dict): the trained model and the Amazon S3 location where it is
+                stored.
+            output_model_config (dict): Identifies the Amazon S3 location where you want Amazon
+                SageMaker Neo to save the results of compilation job
+            role (str): An AWS IAM role (either name or full ARN). The Amazon SageMaker Neo
+                compilation jobs use this role to access model artifacts. You must grant
+                sufficient permissions to this role.
             job_name (str): Name of the compilation job being created.
-            stop_condition (dict): Defines when compilation job shall finish. Contains entries that can be understood
-                by the service like ``MaxRuntimeInSeconds``.
+            stop_condition (dict): Defines when compilation job shall finish. Contains entries
+                that can be understood by the service like ``MaxRuntimeInSeconds``.
             tags (list[dict]): List of tags for labeling a compile model job. For more, see
                 https://docs.aws.amazon.com/sagemaker/latest/dg/API_Tag.html.
 
@@ -417,40 +428,44 @@ class Session(object):  # pylint: disable=too-many-public-methods
         Args:
             job_name (str): Name of the tuning job being created.
             strategy (str): Strategy to be used for hyperparameter estimations.
-            objective_type (str): The type of the objective metric for evaluating training jobs. This value can be
-                either 'Minimize' or 'Maximize'.
+            objective_type (str): The type of the objective metric for evaluating training jobs.
+                This value can be either 'Minimize' or 'Maximize'.
             objective_metric_name (str): Name of the metric for evaluating training jobs.
-            max_jobs (int): Maximum total number of training jobs to start for the hyperparameter tuning job.
+            max_jobs (int): Maximum total number of training jobs to start for the hyperparameter
+                tuning job.
             max_parallel_jobs (int): Maximum number of parallel training jobs to start.
-            parameter_ranges (dict): Dictionary of parameter ranges. These parameter ranges can be one of three types:
-                 Continuous, Integer, or Categorical.
-            static_hyperparameters (dict): Hyperparameters for model training. These hyperparameters remain
-                unchanged across all of the training jobs for the hyperparameter tuning job. The hyperparameters are
-                made accessible as a dictionary for the training code on SageMaker.
+            parameter_ranges (dict): Dictionary of parameter ranges. These parameter ranges can be
+                one of three types: Continuous, Integer, or Categorical.
+            static_hyperparameters (dict): Hyperparameters for model training. These
+                hyperparameters remain unchanged across all of the training jobs for the
+                hyperparameter tuning job. The hyperparameters are made accessible as a dictionary
+                for the training code on SageMaker.
             image (str): Docker image containing training code.
             input_mode (str): The input mode that the algorithm supports. Valid modes:
-
                 * 'File' - Amazon SageMaker copies the training dataset from the S3 location to
                     a directory in the Docker container.
-                * 'Pipe' - Amazon SageMaker streams data directly from S3 to the container via a Unix-named pipe.
+                * 'Pipe' - Amazon SageMaker streams data directly from S3 to the container via a
+                    Unix-named pipe.
 
-            metric_definitions (list[dict]): A list of dictionaries that defines the metric(s) used to evaluate the
-                training jobs. Each dictionary contains two keys: 'Name' for the name of the metric, and 'Regex' for
-                the regular expression used to extract the metric from the logs. This should be defined only for
-                jobs that don't use an Amazon algorithm.
-            role (str): An AWS IAM role (either name or full ARN). The Amazon SageMaker training jobs and APIs
-                that create Amazon SageMaker endpoints use this role to access training data and model artifacts.
-                You must grant sufficient permissions to this role.
-            input_config (list): A list of Channel objects. Each channel is a named input source. Please refer to
-                 the format details described:
-                 https://botocore.readthedocs.io/en/latest/reference/services/sagemaker.html#SageMaker.Client.create_training_job
-            output_config (dict): The S3 URI where you want to store the training results and optional KMS key ID.
+            metric_definitions (list[dict]): A list of dictionaries that defines the metric(s)
+                used to evaluate the training jobs. Each dictionary contains two keys: 'Name' for
+                the name of the metric, and 'Regex' for the regular expression used to extract the
+                metric from the logs. This should be defined only for jobs that don't use an
+                Amazon algorithm.
+            role (str): An AWS IAM role (either name or full ARN). The Amazon SageMaker
+                training jobs and APIs that create Amazon SageMaker endpoints use this role to
+                access training data and model artifacts. You must grant sufficient permissions
+                to this role.
+            input_config (list): A list of Channel objects. Each channel is a named input source.
+                Please refer to the format details described:
+                https://botocore.readthedocs.io/en/latest/reference/services/sagemaker.html#SageMaker.Client.create_training_job
+            output_config (dict): The S3 URI where you want to store the training results and
+                optional KMS key ID.
             resource_config (dict): Contains values for ResourceConfig:
-
                 * instance_count (int): Number of EC2 instances to use for training.
                     The key in resource_config is 'InstanceCount'.
-                * instance_type (str): Type of EC2 instance to use for training, for example, 'ml.c4.xlarge'.
-                    The key in resource_config is 'InstanceType'.
+                * instance_type (str): Type of EC2 instance to use for training, for example,
+                    'ml.c4.xlarge'. The key in resource_config is 'InstanceType'.
 
             stop_condition (dict): When training should finish, e.g. ``MaxRuntimeInSeconds``.
             tags (list[dict]): List of tags for labeling the tuning job. For more, see
@@ -458,12 +473,13 @@ class Session(object):  # pylint: disable=too-many-public-methods
             warm_start_config (dict): Configuration defining the type of warm start and
                 other required configurations.
             early_stopping_type (str): Specifies whether early stopping is enabled for the job.
-                Can be either 'Auto' or 'Off'. If set to 'Off', early stopping will not be attempted.
-                If set to 'Auto', early stopping of some training jobs may happen, but is not guaranteed to.
-            encrypt_inter_container_traffic (bool): Specifies whether traffic between training containers
-                is encrypted for the training jobs started for this hyperparameter tuning job (default: ``False``).
+                Can be either 'Auto' or 'Off'. If set to 'Off', early stopping will not be
+                attempted. If set to 'Auto', early stopping of some training jobs may happen, but
+                is not guaranteed to.
+            encrypt_inter_container_traffic (bool): Specifies whether traffic between training
+                containers is encrypted for the training jobs started for this hyperparameter
+                tuning job (default: ``False``).
             vpc_config (dict): Contains values for VpcConfig (default: None):
-
                 * subnets (list[str]): List of subnet ids.
                     The key in vpc_config is 'Subnets'.
                 * security_group_ids (list[str]): List of security group ids.
@@ -576,14 +592,17 @@ class Session(object):  # pylint: disable=too-many-public-methods
                 Possible values are 'MULTI_RECORD' and 'SINGLE_RECORD'.
             max_concurrent_transforms (int): The maximum number of HTTP requests to be made to
                 each individual transform container at one time.
-            max_payload (int): Maximum size of the payload in a single HTTP request to the container in MB.
+            max_payload (int): Maximum size of the payload in a single HTTP request to the
+                container in MB.
             env (dict): Environment variables to be set for use during the transform job.
-            input_config (dict): A dictionary describing the input data (and its location) for the job.
+            input_config (dict): A dictionary describing the input data (and its location) for the
+                job.
             output_config (dict): A dictionary describing the output location for the job.
             resource_config (dict): A dictionary describing the resources to complete the job.
             tags (list[dict]): List of tags for labeling a transform job.
-            data_processing(dict): A dictionary describing config for combining the input data and transformed data.
-                                   For more, see https://docs.aws.amazon.com/sagemaker/latest/dg/API_Tag.html.
+            data_processing(dict): A dictionary describing config for combining the input data and
+                transformed data. For more, see
+                https://docs.aws.amazon.com/sagemaker/latest/dg/API_Tag.html.
         """
         transform_request = {
             "TransformJobName": job_name,
@@ -628,32 +647,38 @@ class Session(object):  # pylint: disable=too-many-public-methods
         """Create an Amazon SageMaker ``Model``.
         Specify the S3 location of the model artifacts and Docker image containing
         the inference code. Amazon SageMaker uses this information to deploy the
-        model in Amazon SageMaker. This method can also be used to create a Model for an Inference Pipeline
-        if you pass the list of container definitions through the containers parameter.
+        model in Amazon SageMaker. This method can also be used to create a Model for an Inference
+        Pipeline if you pass the list of container definitions through the containers parameter.
 
         Args:
             name (str): Name of the Amazon SageMaker ``Model`` to create.
-            role (str): An AWS IAM role (either name or full ARN). The Amazon SageMaker training jobs and APIs
-                that create Amazon SageMaker endpoints use this role to access training data and model artifacts.
-                You must grant sufficient permissions to this role.
-            container_defs (list[dict[str, str]] or [dict[str, str]]): A single container definition or a list of
-                container definitions which will be invoked sequentially while performing the prediction. If the list
-                contains only one container, then it'll be passed to SageMaker Hosting as the ``PrimaryContainer`` and
-                otherwise, it'll be passed as ``Containers``.You can also specify the  return value of
-                ``sagemaker.get_container_def()`` or ``sagemaker.pipeline_container_def()``, which will used to
-                create more advanced container configurations ,including model containers which need artifacts from S3.
+            role (str): An AWS IAM role (either name or full ARN). The Amazon SageMaker training
+                jobs and APIs that create Amazon SageMaker endpoints use this role to access
+                training data and model artifacts. You must grant sufficient permissions to this
+                role.
+            container_defs (list[dict[str, str]] or [dict[str, str]]): A single container
+                definition or a list of container definitions which will be invoked sequentially
+                while performing the prediction. If the list contains only one container, then
+                it'll be passed to SageMaker Hosting as the ``PrimaryContainer`` and otherwise,
+                it'll be passed as ``Containers``.You can also specify the  return value of
+                ``sagemaker.get_container_def()`` or ``sagemaker.pipeline_container_def()``,
+                which will used to create more advanced container configurations, including model
+                containers which need artifacts from S3.
             vpc_config (dict[str, list[str]]): The VpcConfig set on the model (default: None)
                 * 'Subnets' (list[str]): List of subnet ids.
                 * 'SecurityGroupIds' (list[str]): List of security group ids.
             enable_network_isolation (bool): Wether the model requires network isolation or not.
-            primary_container (str or dict[str, str]): Docker image which defines the inference code.
-                You can also specify the return value of ``sagemaker.container_def()``, which is used to create
-                more advanced container configurations, including model containers which need artifacts from S3. This
-                field is deprecated, please use container_defs instead.
-            tags(List[dict[str, str]]): Optional. The list of tags to add to the model. Example:
-                    >>> tags = [{'Key': 'tagname', 'Value': 'tagvalue'}]
-                    For more information about tags, see https://boto3.amazonaws.com/v1/documentation\
-                    /api/latest/reference/services/sagemaker.html#SageMaker.Client.add_tags
+            primary_container (str or dict[str, str]): Docker image which defines the inference
+                code. You can also specify the return value of ``sagemaker.container_def()``,
+                which is used to create more advanced container configurations, including model
+                containers which need artifacts from S3. This field is deprecated, please use
+                container_defs instead.
+            tags(List[dict[str, str]]): Optional. The list of tags to add to the model.
+
+        Example:
+            >>> tags = [{'Key': 'tagname', 'Value': 'tagvalue'}]
+            For more information about tags, see https://boto3.amazonaws.com/v1/documentation\
+            /api/latest/reference/services/sagemaker.html#SageMaker.Client.add_tags
 
 
         Returns:
@@ -663,7 +688,10 @@ class Session(object):  # pylint: disable=too-many-public-methods
             raise ValueError("Both container_defs and primary_container can not be passed as input")
 
         if primary_container:
-            msg = "primary_container is going to be deprecated in a future release. Please use container_defs instead."
+            msg = (
+                "primary_container is going to be deprecated in a future release. Please use "
+                "container_defs instead."
+            )
             warnings.warn(msg, DeprecationWarning)
             container_defs = primary_container
 
@@ -720,19 +748,21 @@ class Session(object):  # pylint: disable=too-many-public-methods
             training_job_name (str): The Amazon SageMaker Training Job name.
             name (str): The name of the SageMaker ``Model`` to create (default: None).
                 If not specified, the training job name is used.
-            role (str): The ``ExecutionRoleArn`` IAM Role ARN for the ``Model``, specified either by an IAM role name or
-                role ARN. If None, the ``RoleArn`` from the SageMaker Training Job will be used.
-            primary_container_image (str): The Docker image reference (default: None). If None, it defaults to
-                the Training Image in ``training_job_name``.
-            model_data_url (str): S3 location of the model data (default: None). If None, defaults to
-                the ``ModelS3Artifacts`` of ``training_job_name``.
+            role (str): The ``ExecutionRoleArn`` IAM Role ARN for the ``Model``, specified either
+                by an IAM role name or role ARN. If None, the ``RoleArn`` from the SageMaker
+                Training Job will be used.
+            primary_container_image (str): The Docker image reference (default: None). If None, it
+                defaults to the Training Image in ``training_job_name``.
+            model_data_url (str): S3 location of the model data (default: None). If None, defaults
+                to the ``ModelS3Artifacts`` of ``training_job_name``.
             env (dict[string,string]): Model environment variables (default: {}).
-            vpc_config_override (dict[str, list[str]]): Optional override for VpcConfig set on the model.
+            vpc_config_override (dict[str, list[str]]): Optional override for VpcConfig set on the
+                model.
                 Default: use VpcConfig from training job.
                 * 'Subnets' (list[str]): List of subnet ids.
                 * 'SecurityGroupIds' (list[str]): List of security group ids.
-            tags(List[dict[str, str]]): Optional. The list of tags to add to the model. For more, see
-                https://docs.aws.amazon.com/sagemaker/latest/dg/API_Tag.html.
+            tags(List[dict[str, str]]): Optional. The list of tags to add to the model.
+                For more, see https://docs.aws.amazon.com/sagemaker/latest/dg/API_Tag.html.
 
         Returns:
             str: The name of the created ``Model``.
@@ -816,21 +846,26 @@ class Session(object):  # pylint: disable=too-many-public-methods
         """Create an Amazon SageMaker endpoint configuration.
 
         The endpoint configuration identifies the Amazon SageMaker model (created using the
-        ``CreateModel`` API) and the hardware configuration on which to deploy the model. Provide this
-        endpoint configuration to the ``CreateEndpoint`` API, which then launches the hardware and deploys the model.
+        ``CreateModel`` API) and the hardware configuration on which to deploy the model. Provide
+            this endpoint configuration to the ``CreateEndpoint`` API, which then launches the
+            hardware and deploys the model.
 
         Args:
             name (str): Name of the Amazon SageMaker endpoint configuration to create.
             model_name (str): Name of the Amazon SageMaker ``Model``.
-            initial_instance_count (int): Minimum number of EC2 instances to launch. The actual number of
-                active instances for an endpoint at any given time varies due to autoscaling.
+            initial_instance_count (int): Minimum number of EC2 instances to launch. The actual
+                number of active instances for an endpoint at any given time varies due to
+                autoscaling.
             instance_type (str): Type of EC2 instance to launch, for example, 'ml.c4.xlarge'.
-            accelerator_type (str): Type of Elastic Inference accelerator to attach to the instance. For example,
-                'ml.eia1.medium'. For more information: https://docs.aws.amazon.com/sagemaker/latest/dg/ei.html
-            tags(List[dict[str, str]]): Optional. The list of tags to add to the endpoint config. Example:
-                    >>> tags = [{'Key': 'tagname', 'Value': 'tagvalue'}]
-                    For more information about tags, see https://boto3.amazonaws.com/v1/documentation\
-                    /api/latest/reference/services/sagemaker.html#SageMaker.Client.add_tags
+            accelerator_type (str): Type of Elastic Inference accelerator to attach to the
+                instance. For example, 'ml.eia1.medium'.
+                For more information: https://docs.aws.amazon.com/sagemaker/latest/dg/ei.html
+            tags(List[dict[str, str]]): Optional. The list of tags to add to the endpoint config.
+
+        Example:
+            >>> tags = [{'Key': 'tagname', 'Value': 'tagvalue'}]
+            For more information about tags, see https://boto3.amazonaws.com/v1/documentation\
+            /api/latest/reference/services/sagemaker.html#SageMaker.Client.add_tags
 
 
         Returns:
@@ -862,15 +897,17 @@ class Session(object):  # pylint: disable=too-many-public-methods
         return name
 
     def create_endpoint(self, endpoint_name, config_name, tags=None, wait=True):
-        """Create an Amazon SageMaker ``Endpoint`` according to the endpoint configuration specified in the request.
+        """Create an Amazon SageMaker ``Endpoint`` according to the endpoint configuration
+        specified in the request.
 
-        Once the ``Endpoint`` is created, client applications can send requests to obtain inferences.
-        The endpoint configuration is created using the ``CreateEndpointConfig`` API.
+        Once the ``Endpoint`` is created, client applications can send requests to obtain
+        inferences. The endpoint configuration is created using the ``CreateEndpointConfig`` API.
 
         Args:
             endpoint_name (str): Name of the Amazon SageMaker ``Endpoint`` being created.
             config_name (str): Name of the Amazon SageMaker endpoint configuration to deploy.
-            wait (bool): Whether to wait for the endpoint deployment to complete before returning (default: True).
+            wait (bool): Whether to wait for the endpoint deployment to complete before returning
+                (default: True).
 
         Returns:
             str: Name of the Amazon SageMaker ``Endpoint`` created.
@@ -887,13 +924,15 @@ class Session(object):  # pylint: disable=too-many-public-methods
         return endpoint_name
 
     def update_endpoint(self, endpoint_name, endpoint_config_name):
-        """ Update an Amazon SageMaker ``Endpoint`` according to the endpoint configuration specified in the request
+        """ Update an Amazon SageMaker ``Endpoint`` according to the endpoint configuration
+        specified in the request
 
         Raise an error if endpoint with endpoint_name does not exist.
 
         Args:
             endpoint_name (str): Name of the Amazon SageMaker ``Endpoint`` to update.
-            endpoint_config_name (str): Name of the Amazon SageMaker endpoint configuration to deploy.
+            endpoint_config_name (str): Name of the Amazon SageMaker endpoint configuration to
+                deploy.
 
         Returns:
             str: Name of the Amazon SageMaker ``Endpoint`` being updated.
@@ -902,9 +941,8 @@ class Session(object):  # pylint: disable=too-many-public-methods
             lambda: self.sagemaker_client.describe_endpoint(EndpointName=endpoint_name)
         ):
             raise ValueError(
-                'Endpoint with name "{}" does not exist; please use an existing endpoint name'.format(
-                    endpoint_name
-                )
+                "Endpoint with name '{}' does not exist; please use an "
+                "existing endpoint name".format(endpoint_name)
             )
 
         self.sagemaker_client.update_endpoint(
@@ -925,7 +963,8 @@ class Session(object):  # pylint: disable=too-many-public-methods
         """Delete an Amazon SageMaker endpoint configuration.
 
         Args:
-            endpoint_config_name (str): Name of the Amazon SageMaker endpoint configuration to delete.
+            endpoint_config_name (str): Name of the Amazon SageMaker endpoint configuration to
+                delete.
         """
         LOGGER.info("Deleting endpoint configuration with name: %s", endpoint_config_name)
         self.sagemaker_client.delete_endpoint_config(EndpointConfigName=endpoint_config_name)
@@ -1066,33 +1105,40 @@ class Session(object):  # pylint: disable=too-many-public-methods
     ):
         """Create an ``Endpoint`` using the results of a successful training job.
 
-        Specify the job name, Docker image containing the inference code, and hardware configuration to deploy
-        the model. Internally the API, creates an Amazon SageMaker model (that describes the model artifacts and
-        the Docker image containing inference code), endpoint configuration (describing the hardware to deploy
-        for hosting the model), and creates an ``Endpoint`` (launches the EC2 instances and deploys the model on them).
-        In response, the API returns the endpoint name to which you can send requests for inferences.
+        Specify the job name, Docker image containing the inference code, and hardware
+        configuration to deploy the model. Internally the API, creates an Amazon SageMaker model
+        (that describes the model artifacts and the Docker image containing inference code),
+        endpoint configuration (describing the hardware to deploy for hosting the model), and
+        creates an ``Endpoint`` (launches the EC2 instances and deploys the model on them). In
+        response, the API returns the endpoint name to which you can send requests for inferences.
 
         Args:
             job_name (str): Name of the training job to deploy the results of.
-            initial_instance_count (int): Minimum number of EC2 instances to launch. The actual number of
-                active instances for an endpoint at any given time varies due to autoscaling.
+            initial_instance_count (int): Minimum number of EC2 instances to launch. The actual
+                number of active instances for an endpoint at any given time varies due to
+                autoscaling.
             instance_type (str): Type of EC2 instance to deploy to an endpoint for prediction,
                 for example, 'ml.c4.xlarge'.
-            deployment_image (str): The Docker image which defines the inference code to be used as the entry point for
-                accepting prediction requests. If not specified, uses the image used for the training job.
-            name (str): Name of the ``Endpoint`` to create. If not specified, uses the training job name.
-            role (str): An AWS IAM role (either name or full ARN). The Amazon SageMaker training jobs and APIs
-                that create Amazon SageMaker endpoints use this role to access training data and model artifacts.
-                You must grant sufficient permissions to this role.
-            wait (bool): Whether to wait for the endpoint deployment to complete before returning (default: True).
-            model_environment_vars (dict[str, str]): Environment variables to set on the model container
-                (default: None).
+            deployment_image (str): The Docker image which defines the inference code to be used
+                as the entry point for accepting prediction requests. If not specified, uses the
+                image used for the training job.
+            name (str): Name of the ``Endpoint`` to create. If not specified, uses the training job
+                name.
+            role (str): An AWS IAM role (either name or full ARN). The Amazon SageMaker training
+                jobs and APIs that create Amazon SageMaker endpoints use this role to access
+                training data and model artifacts. You must grant sufficient permissions to this
+                role.
+            wait (bool): Whether to wait for the endpoint deployment to complete before returning
+                (default: True).
+            model_environment_vars (dict[str, str]): Environment variables to set on the model
+                container (default: None).
             vpc_config_override (dict[str, list[str]]): Overrides VpcConfig set on the model.
                 Default: use VpcConfig from training job.
                 * 'Subnets' (list[str]): List of subnet ids.
                 * 'SecurityGroupIds' (list[str]): List of security group ids.
-            accelerator_type (str): Type of Elastic Inference accelerator to attach to the instance. For example,
-                'ml.eia1.medium'. For more information: https://docs.aws.amazon.com/sagemaker/latest/dg/ei.html
+            accelerator_type (str): Type of Elastic Inference accelerator to attach to the
+                instance. For example, 'ml.eia1.medium'.
+                For more information: https://docs.aws.amazon.com/sagemaker/latest/dg/ei.html
 
         Returns:
             str: Name of the ``Endpoint`` that is created.
@@ -1136,22 +1182,27 @@ class Session(object):  # pylint: disable=too-many-public-methods
             model_s3_location (str): S3 URI of the model artifacts to use for the endpoint.
             deployment_image (str): The Docker image which defines the runtime code to be used as
                 the entry point for accepting prediction requests.
-            initial_instance_count (int): Minimum number of EC2 instances to launch. The actual number of
-                active instances for an endpoint at any given time varies due to autoscaling.
-            instance_type (str): Type of EC2 instance to deploy to an endpoint for prediction, e.g. 'ml.c4.xlarge'.
-            name (str): Name of the ``Endpoint`` to create. If not specified, uses a name generated by
-                combining the image name with a timestamp.
-            role (str): An AWS IAM role (either name or full ARN). The Amazon SageMaker training jobs and APIs
-                that create Amazon SageMaker endpoints use this role to access training data and model artifacts.
+            initial_instance_count (int): Minimum number of EC2 instances to launch. The actual
+                number of active instances for an endpoint at any given time varies due to
+                autoscaling.
+            instance_type (str): Type of EC2 instance to deploy to an endpoint for prediction,
+                e.g. 'ml.c4.xlarge'.
+            name (str): Name of the ``Endpoint`` to create. If not specified, uses a name
+                generated by combining the image name with a timestamp.
+            role (str): An AWS IAM role (either name or full ARN). The Amazon SageMaker training
+                jobs and APIs that create Amazon SageMaker endpoints use this role to access
+                training data and model artifacts.
                 You must grant sufficient permissions to this role.
-            wait (bool): Whether to wait for the endpoint deployment to complete before returning (default: True).
-            model_environment_vars (dict[str, str]): Environment variables to set on the model container
-                (default: None).
+            wait (bool): Whether to wait for the endpoint deployment to complete before returning
+                (default: True).
+            model_environment_vars (dict[str, str]): Environment variables to set on the model
+                container (default: None).
             model_vpc_config (dict[str, list[str]]): The VpcConfig set on the model (default: None)
                 * 'Subnets' (list[str]): List of subnet ids.
                 * 'SecurityGroupIds' (list[str]): List of security group ids.
-            accelerator_type (str): Type of Elastic Inference accelerator to attach to the instance. For example,
-                'ml.eia1.medium'. For more information: https://docs.aws.amazon.com/sagemaker/latest/dg/ei.html
+            accelerator_type (str): Type of Elastic Inference accelerator to attach to the instance.
+                For example, 'ml.eia1.medium'.
+                For more information: https://docs.aws.amazon.com/sagemaker/latest/dg/ei.html
 
         Returns:
             str: Name of the ``Endpoint`` that is created.
@@ -1200,10 +1251,12 @@ class Session(object):  # pylint: disable=too-many-public-methods
         Args:
             name (str): The name of the ``Endpoint`` to create.
             production_variants (list[dict[str, str]]): The list of production variants to deploy.
-            tags (list[dict[str, str]]): A list of key-value pairs for tagging the endpoint (default: None).
-            kms_key (str): The KMS key that is used to encrypt the data on the storage volume attached
-                to the instance hosting the endpoint.
-            wait (bool): Whether to wait for the endpoint deployment to complete before returning (default: True).
+            tags (list[dict[str, str]]): A list of key-value pairs for tagging the endpoint
+                (default: None).
+            kms_key (str): The KMS key that is used to encrypt the data on the storage volume
+                attached to the instance hosting the endpoint.
+            wait (bool): Whether to wait for the endpoint deployment to complete before returning
+                (default: True).
 
         Returns:
             str: The name of the created ``Endpoint``.
@@ -1224,8 +1277,8 @@ class Session(object):  # pylint: disable=too-many-public-methods
     def expand_role(self, role):
         """Expand an IAM role name into an ARN.
 
-        If the role is already in the form of an ARN, then the role is simply returned. Otherwise we retrieve the full
-        ARN and return it.
+        If the role is already in the form of an ARN, then the role is simply returned. Otherwise
+        we retrieve the full ARN and return it.
 
         Args:
             role (str): An AWS IAM role (either name or full ARN).
@@ -1275,8 +1328,10 @@ class Session(object):  # pylint: disable=too-many-public-methods
 
         Args:
             job_name (str): Name of the training job to display the logs for.
-            wait (bool): Whether to keep looking for new log entries until the job completes (default: False).
-            poll (int): The interval in seconds between polling for new log entries and job completion (default: 5).
+            wait (bool): Whether to keep looking for new log entries until the job completes
+                (default: False).
+            poll (int): The interval in seconds between polling for new log entries and job
+                completion (default: 5).
 
         Raises:
             ValueError: If waiting and the training job fails.
@@ -1303,12 +1358,13 @@ class Session(object):  # pylint: disable=too-many-public-methods
 
         color_wrap = sagemaker.logs.ColorWrap()
 
-        # The loop below implements a state machine that alternates between checking the job status and
-        # reading whatever is available in the logs at this point. Note, that if we were called with
-        # wait == False, we never check the job status.
+        # The loop below implements a state machine that alternates between checking the job status
+        # and reading whatever is available in the logs at this point. Note, that if we were
+        # called with wait == False, we never check the job status.
         #
         # If wait == TRUE and job is not completed, the initial state is TAILING
-        # If wait == FALSE, the initial state is COMPLETE (doesn't matter if the job really is complete).
+        # If wait == FALSE, the initial state is COMPLETE (doesn't matter if the job really is
+        # complete).
         #
         # The state table:
         #
@@ -1320,14 +1376,14 @@ class Session(object):  # pylint: disable=too-many-public-methods
         # COMPLETE            Read logs, Exit                                      N/A
         #
         # Notes:
-        # - The JOB_COMPLETE state forces us to do an extra pause and read any items that got to Cloudwatch after
-        #   the job was marked complete.
+        # - The JOB_COMPLETE state forces us to do an extra pause and read any items that got to
+        #   Cloudwatch after the job was marked complete.
         last_describe_job_call = time.time()
         last_description = description
         while True:
             if len(stream_names) < instance_count:
-                # Log streams are created whenever a container starts writing to stdout/err, so this list
-                # may be dynamic until we have a stream for every instance.
+                # Log streams are created whenever a container starts writing to stdout/err, so
+                # this list # may be dynamic until we have a stream for every instance.
                 try:
                     streams = client.describe_log_streams(
                         logGroupName=log_group,
@@ -1397,7 +1453,8 @@ class Session(object):  # pylint: disable=too-many-public-methods
             self._check_job_status(job_name, description, "TrainingJobStatus")
             if dot:
                 print()
-            # Customers are not billed for hardware provisioning, so billable time is less than total time
+            # Customers are not billed for hardware provisioning, so billable time is less than
+            # total time
             billable_time = (
                 description["TrainingEndTime"] - description["TrainingStartTime"]
             ) * instance_count
@@ -1413,8 +1470,8 @@ def container_def(image, model_data_url=None, env=None):
             e.g. SageMaker training job model artifacts (default: None).
         env (dict[str, str]): Environment variables to set inside the container (default: None).
     Returns:
-        dict[str, str]: A complete container definition object usable with the CreateModel API if passed via
-        `PrimaryContainers` field.
+        dict[str, str]: A complete container definition object usable with the CreateModel API if
+        passed via `PrimaryContainers` field.
     """
     if env is None:
         env = {}
@@ -1428,12 +1485,13 @@ def pipeline_container_def(models, instance_type=None):
     """
     Create a definition for executing a pipeline of containers as part of a SageMaker model.
     Args:
-        models (list[sagemaker.Model]): this will be a list of ``sagemaker.Model`` objects in the order the inference
-        should be invoked.
-        instance_type (str): The EC2 instance type to deploy this Model to. For example, 'ml.p2.xlarge' (default: None).
+        models (list[sagemaker.Model]): this will be a list of ``sagemaker.Model`` objects in the
+            order the inference should be invoked.
+        instance_type (str): The EC2 instance type to deploy this Model to. For example,
+            'ml.p2.xlarge' (default: None).
     Returns:
-        list[dict[str, str]]: list of container definition objects usable with with the CreateModel API for inference
-        pipelines if passed via `Containers` field.
+        list[dict[str, str]]: list of container definition objects usable with with the
+            CreateModel API for inference pipelines if passed via `Containers` field.
     """
     c_defs = []  # should contain list of container definitions in the same order customer passed
     for model in models:
@@ -1449,17 +1507,22 @@ def production_variant(
     initial_weight=1,
     accelerator_type=None,
 ):
-    """Create a production variant description suitable for use in a ``ProductionVariant`` list as part of a
-    ``CreateEndpointConfig`` request.
+    """Create a production variant description suitable for use in a ``ProductionVariant`` list as
+    part of a ``CreateEndpointConfig`` request.
 
     Args:
         model_name (str): The name of the SageMaker model this production variant references.
-        instance_type (str): The EC2 instance type for this production variant. For example, 'ml.c4.8xlarge'.
-        initial_instance_count (int): The initial instance count for this production variant (default: 1).
-        variant_name (string): The ``VariantName`` of this production variant (default: 'AllTraffic').
-        initial_weight (int): The relative ``InitialVariantWeight`` of this production variant (default: 1).
-        accelerator_type (str): Type of Elastic Inference accelerator for this production variant. For example,
-            'ml.eia1.medium'. For more information: https://docs.aws.amazon.com/sagemaker/latest/dg/ei.html
+        instance_type (str): The EC2 instance type for this production variant. For example,
+            'ml.c4.8xlarge'.
+        initial_instance_count (int): The initial instance count for this production variant
+            (default: 1).
+        variant_name (string): The ``VariantName`` of this production variant
+            (default: 'AllTraffic').
+        initial_weight (int): The relative ``InitialVariantWeight`` of this production variant
+            (default: 1).
+        accelerator_type (str): Type of Elastic Inference accelerator for this production variant.
+            For example, 'ml.eia1.medium'.
+            For more information: https://docs.aws.amazon.com/sagemaker/latest/dg/ei.html
 
     Returns:
         dict[str, str]: An SageMaker ``ProductionVariant`` description
@@ -1492,7 +1555,10 @@ def get_execution_role(sagemaker_session=None):
 
     if ":role/" in arn:
         return arn
-    message = "The current AWS identity is not a role: {}, therefore it cannot be used as a SageMaker execution role"
+    message = (
+        "The current AWS identity is not a role: {}, therefore it cannot be used as a "
+        "SageMaker execution role"
+    )
     raise ValueError(message.format(arn))
 
 
@@ -1500,7 +1566,8 @@ class s3_input(object):
     """Amazon SageMaker channel configurations for S3 data sources.
 
     Attributes:
-        config (dict[str, dict]): A SageMaker ``DataSource`` referencing a SageMaker ``S3DataSource``.
+        config (dict[str, dict]): A SageMaker ``DataSource`` referencing a SageMaker
+            ``S3DataSource``.
     """
 
     def __init__(
@@ -1523,27 +1590,32 @@ class s3_input(object):
             s3_data (str): Defines the location of s3 data to train on.
             distribution (str): Valid values: 'FullyReplicated', 'ShardedByS3Key'
                 (default: 'FullyReplicated').
-            compression (str): Valid values: 'Gzip', None (default: None). This is used only in Pipe input mode.
+            compression (str): Valid values: 'Gzip', None (default: None). This is used only in
+                Pipe input mode.
             content_type (str): MIME type of the input data (default: None).
             record_wrapping (str): Valid values: 'RecordIO' (default: None).
-            s3_data_type (str): Valid values: 'S3Prefix', 'ManifestFile', 'AugmentedManifestFile'. If 'S3Prefix',
-                ``s3_data`` defines a prefix of s3 objects to train on. All objects with s3 keys beginning with
-                ``s3_data`` will be used to train. If 'ManifestFile' or 'AugmentedManifestFile', then ``s3_data``
-                defines a single s3 manifest file or augmented manifest file (respectively), listing the s3 data to
-                train on. Both the ManifestFile and AugmentedManifestFile formats are described in the SageMaker API
+            s3_data_type (str): Valid values: 'S3Prefix', 'ManifestFile', 'AugmentedManifestFile'.
+                If 'S3Prefix', ``s3_data`` defines a prefix of s3 objects to train on. All objects
+                with s3 keys beginning with ``s3_data`` will be used to train. If 'ManifestFile'
+                or 'AugmentedManifestFile', then ``s3_data`` defines a single s3 manifest file or
+                augmented manifest file (respectively), listing the s3 data to train on. Both the
+                ManifestFile and AugmentedManifestFile formats are described in the SageMaker API
                 documentation: https://docs.aws.amazon.com/sagemaker/latest/dg/API_S3DataSource.html
-            input_mode (str): Optional override for this channel's input mode (default: None). By default, channels will
-                use the input mode defined on ``sagemaker.estimator.EstimatorBase.input_mode``, but they will ignore
-                that setting if this parameter is set.
+            input_mode (str): Optional override for this channel's input mode (default: None). By
+                default, channels will use the input mode defined on
+                ``sagemaker.estimator.EstimatorBase.input_mode``, but they will ignore that setting
+                if this parameter is set.
+                    * None - Amazon SageMaker will use the input mode specified in the
+                        ``Estimator``.
+                    * 'File' - Amazon SageMaker copies the training dataset from the S3 location
+                        to a local directory.
+                    * 'Pipe' - Amazon SageMaker streams data directly from S3 to the container via
+                        a Unix-named pipe.
 
-                    * None - Amazon SageMaker will use the input mode specified in the ``Estimator``.
-                    * 'File' - Amazon SageMaker copies the training dataset from the S3 location to a local directory.
-                    * 'Pipe' - Amazon SageMaker streams data directly from S3 to the container via a Unix-named pipe.
-
-            attribute_names (list[str]): A list of one or more attribute names to use that are found in a specified
-                AugmentedManifestFile.
-            shuffle_config (ShuffleConfig): If specified this configuration enables shuffling on this channel. See the
-                SageMaker API documentation for more info:
+            attribute_names (list[str]): A list of one or more attribute names to use that are
+                found in a specified AugmentedManifestFile.
+            shuffle_config (ShuffleConfig): If specified this configuration enables shuffling on
+                this channel. See the SageMaker API documentation for more info:
                 https://docs.aws.amazon.com/sagemaker/latest/dg/API_ShuffleConfig.html
         """
 
@@ -1573,8 +1645,8 @@ class s3_input(object):
 
 class ShuffleConfig(object):
     """
-    Used to configure channel shuffling using a seed. See SageMaker
-    documentation for more detail: https://docs.aws.amazon.com/sagemaker/latest/dg/API_ShuffleConfig.html
+    Used to configure channel shuffling using a seed. See SageMaker documentation for
+    more detail: https://docs.aws.amazon.com/sagemaker/latest/dg/API_ShuffleConfig.html
     """
 
     def __init__(self, seed):
@@ -1601,7 +1673,8 @@ class ModelContainer(object):
         Args:
             model_data (str): The S3 location of a SageMaker model data ``.tar.gz`` file.
             image (str): A Docker image URI.
-            env (dict[str, str]): Environment variables to run with ``image`` when hosted in SageMaker (default: None).
+            env (dict[str, str]): Environment variables to run with ``image`` when hosted in
+                SageMaker (default: None).
         """
         self.model_data = model_data
         self.image = image

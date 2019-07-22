@@ -86,17 +86,15 @@ class MXNet(Framework):
                 your model training code. List of supported versions
                 https://github.com/aws/sagemaker-python-sdk#mxnet-sagemaker-estimators.
                 If not specified, this will default to 1.2.1.
-            image_name (str): If specified, the estimator will use this image for training and hosting, instead of
-                    selecting the appropriate SageMaker official image based on
-                    framework_version and py_version. It can be an ECR url or
-                    dockerhub image and tag.
+            image_name (str): If specified, the estimator will use this image for training and
+                hosting, instead of selecting the appropriate SageMaker official image based on
+                framework_version and py_version. It can be an ECR url or dockerhub image and tag.
+                Examples:
+                    123.dkr.ecr.us-west-2.amazonaws.com/my-custom-image:1.0
+                    custom-image:latest.
 
-                    Examples:
-                        123.dkr.ecr.us-west-2.amazonaws.com/my-custom-image:1.0
-                        custom-image:latest.
-
-                distributions (dict): A dictionary with information on how to run distributed training
-                    (default: None).
+                distributions (dict): A dictionary with information on how to run distributed
+                    training (default: None).
             distributions:
             **kwargs: Additional kwargs passed to the
                 :class:`~sagemaker.estimator.Framework` constructor.
@@ -203,10 +201,10 @@ class MXNet(Framework):
 
         init_params["py_version"] = py_version
 
-        # We switched image tagging scheme from regular image version (e.g. '1.0') to more expressive
-        # containing framework version, device type and python version (e.g. '0.12-gpu-py2').
-        # For backward compatibility map deprecated image tag '1.0' to a '0.12' framework version
-        # otherwise extract framework version from the tag itself.
+        # We switched image tagging scheme from regular image version (e.g. '1.0') to more
+        # expressive containing framework version, device type and python version
+        # (e.g. '0.12-gpu-py2'). For backward compatibility map deprecated image tag '1.0' to a
+        # '0.12' framework version otherwise extract framework version from the tag itself.
         init_params["framework_version"] = (
             "0.12" if tag == "1.0" else framework_version_from_tag(tag)
         )

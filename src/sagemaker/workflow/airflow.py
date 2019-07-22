@@ -188,12 +188,12 @@ def training_config(estimator, inputs=None, job_name=None, mini_batch_size=None)
             method of the associated estimator, as this can take any of the following forms:
             * (str) - The S3 location where training data is saved.
 
-            * (dict[str, str] or dict[str, sagemaker.session.s3_input]) - If using multiple channels for
-                  training data, you can specify a dict mapping channel names to
+            * (dict[str, str] or dict[str, sagemaker.session.s3_input]) - If using multiple
+                  channels for training data, you can specify a dict mapping channel names to
                   strings or :func:`~sagemaker.session.s3_input` objects.
 
-            * (sagemaker.session.s3_input) - Channel configuration for S3 data sources that can provide
-                  additional information about the training dataset. See
+            * (sagemaker.session.s3_input) - Channel configuration for S3 data sources that can
+                  provide additional information about the training dataset. See
                   :func:`sagemaker.session.s3_input` for full details.
 
             * (sagemaker.amazon.amazon_estimator.RecordSet) - A collection of
@@ -235,12 +235,12 @@ def tuning_config(tuner, inputs, job_name=None):
 
             * (str) - The S3 location where training data is saved.
 
-            * (dict[str, str] or dict[str, sagemaker.session.s3_input]) - If using multiple channels for
-                  training data, you can specify a dict mapping channel names to
+            * (dict[str, str] or dict[str, sagemaker.session.s3_input]) - If using multiple
+                  channels for training data, you can specify a dict mapping channel names to
                   strings or :func:`~sagemaker.session.s3_input` objects.
 
-            * (sagemaker.session.s3_input) - Channel configuration for S3 data sources that can provide
-                  additional information about the training dataset. See
+            * (sagemaker.session.s3_input) - Channel configuration for S3 data sources that can
+                  provide additional information about the training dataset. See
                   :func:`sagemaker.session.s3_input` for full details.
 
             * (sagemaker.amazon.amazon_estimator.RecordSet) - A collection of
@@ -359,8 +359,8 @@ def update_estimator_from_task(estimator, task_id, task_type):
         )
         # need to strip the double quotes in json to get the string
         job_name = (
-            "{{ ti.xcom_pull(task_ids='%s')['Tuning']['TrainingJobDefinition']['StaticHyperParameters']"
-            "['sagemaker_job_name'].strip('%s') }}" % (task_id, '"')
+            "{{ ti.xcom_pull(task_ids='%s')['Tuning']['TrainingJobDefinition']"
+            "['StaticHyperParameters']['sagemaker_job_name'].strip('%s') }}" % (task_id, '"')
         )
     else:
         raise ValueError("task_type must be either 'training', 'tuning' or None.")
@@ -508,8 +508,8 @@ def model_config_from_estimator(
             * 'SecurityGroupIds' (list[str]): List of security group ids.
 
     Returns:
-        dict: Model config that can be directly used by SageMakerModelOperator in Airflow. It can also be part
-            of the config used by SageMakerEndpointOperator in Airflow.
+        dict: Model config that can be directly used by SageMakerModelOperator in Airflow. It can
+            also be part of the config used by SageMakerEndpointOperator in Airflow.
     """
     update_estimator_from_task(estimator, task_id, task_type)
     if isinstance(estimator, sagemaker.estimator.Estimator):
@@ -552,11 +552,11 @@ def transform_config(
         data_type (str): What the S3 location defines (default: 'S3Prefix').
             Valid values:
 
-            * 'S3Prefix' - the S3 URI defines a key name prefix. All objects with this prefix will be used as
-                  inputs for the transform job.
+            * 'S3Prefix' - the S3 URI defines a key name prefix. All objects with this prefix will
+                  be used as inputs for the transform job.
 
-            * 'ManifestFile' - the S3 URI points to a single manifest file listing each S3 object to use as
-                  an input for the transform job.
+            * 'ManifestFile' - the S3 URI points to a single manifest file listing each S3 object
+                  to use as an input for the transform job.
         content_type (str): MIME type of the input data (default: None).
         compression_type (str): Compression type of the input data, if
             compressed (default: None). Valid values: 'Gzip', None.
@@ -661,11 +661,11 @@ def transform_config_from_estimator(
         data_type (str): What the S3 location defines (default: 'S3Prefix').
             Valid values:
 
-            * 'S3Prefix' - the S3 URI defines a key name prefix. All objects with this prefix will be used as
-                  inputs for the transform job.
+            * 'S3Prefix' - the S3 URI defines a key name prefix. All objects with this prefix will
+                  be used as inputs for the transform job.
 
-            * 'ManifestFile' - the S3 URI points to a single manifest file listing each S3 object to use as
-                  an input for the transform job.
+            * 'ManifestFile' - the S3 URI points to a single manifest file listing each S3 object
+                  to use as an input for the transform job.
         content_type (str): MIME type of the input data (default: None).
         compression_type (str): Compression type of the input data, if
             compressed (default: None). Valid values: 'Gzip', None.

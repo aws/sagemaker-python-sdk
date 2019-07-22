@@ -69,7 +69,7 @@ class WarmStartConfig(object):
     ``HyperparameterTuner``, with type and parents for warm start.
 
     Examples:
-        >>> warm_start_config = WarmStartConfig(type=WarmStartTypes.TransferLearning, parents={"p1","p2"})
+        >>> warm_start_config = WarmStartConfig(type=WarmStartTypes.TransferLearning, parents={"p1","p2"})  # pylint: disable=line-too-long
         >>> warm_start_config.type
         "TransferLearning"
         >>> warm_start_config.parents
@@ -491,7 +491,7 @@ class HyperparameterTuner(object):
         """
         self._ensure_last_tuning_job()
 
-        tuning_job_describe_result = self.estimator.sagemaker_session.sagemaker_client.describe_hyper_parameter_tuning_job(  # noqa: E501
+        tuning_job_describe_result = self.estimator.sagemaker_session.sagemaker_client.describe_hyper_parameter_tuning_job(  # noqa: E501 # pylint: disable=line-too-long
             HyperParameterTuningJobName=self.latest_tuning_job.name
         )
 
@@ -669,7 +669,8 @@ class HyperparameterTuner(object):
             parameter_ranges = []
             for parameter_name, parameter in self._hyperparameter_ranges.items():
                 if parameter is not None and parameter.__name__ == range_type:
-                    # Categorical parameters needed to be serialized as JSON for our framework containers
+                    # Categorical parameters needed to be serialized as JSON for our framework
+                    # containers
                     if isinstance(parameter, CategoricalParameter) and isinstance(
                         self.estimator, Framework
                     ):
@@ -701,9 +702,10 @@ class HyperparameterTuner(object):
             for _, value in kls.__dict__.items():
                 if isinstance(value, hp):
                     try:
-                        # The hyperparam names may not be the same as the class attribute that holds them,
-                        # for instance: local_lloyd_init_method is called local_init_method. We need to map these
-                        # and pass the correct name to the constructor.
+                        # The hyperparam names may not be the same as the class attribute that
+                        # holds them, for instance: local_lloyd_init_method is called
+                        # local_init_method. We need to map these and pass the correct name to
+                        # the constructor.
                         parameter_range = self._hyperparameter_ranges[value.name]
 
                         if isinstance(parameter_range, ParameterRange):
@@ -739,7 +741,8 @@ class HyperparameterTuner(object):
 
         Examples:
             >>> parent_tuner = HyperparameterTuner.attach(tuning_job_name="parent-job-1")
-            >>> transfer_learning_tuner = parent_tuner.transfer_learning_tuner(additional_parents={"parent-job-2"})
+            >>> transfer_learning_tuner = parent_tuner.transfer_learning_tuner(
+            >>>                                             additional_parents={"parent-job-2"})
             Later On:
             >>> transfer_learning_tuner.fit(inputs={})
 
@@ -772,7 +775,7 @@ class HyperparameterTuner(object):
         Examples:
             >>> parent_tuner = HyperparameterTuner.attach(tuning_job_name="parent-job-1")
             >>> identical_dataset_algo_tuner = parent_tuner.identical_dataset_and_algorithm_tuner(
-            >>>                                                             additional_parents={"parent-job-2"})
+            >>>                                                additional_parents={"parent-job-2"})
             Later On:
             >>> identical_dataset_algo_tuner.fit(inputs={})
 
@@ -896,8 +899,8 @@ class _TuningJob(_Job):
 def create_identical_dataset_and_algorithm_tuner(
     parent, additional_parents=None, sagemaker_session=None
 ):
-    """Creates a new tuner by copying the request fields from the provided parent to the new instance of
-        ``HyperparameterTuner`` followed by addition of warm start configuration
+    """Creates a new tuner by copying the request fields from the provided parent to the new
+        instance of ``HyperparameterTuner`` followed by addition of warm start configuration
         with the type as "IdenticalDataAndAlgorithm" and ``parents`` as the
         union of provided list of ``additional_parents`` and the ``parent``.
 
