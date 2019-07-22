@@ -411,8 +411,8 @@ Calling fit
 
 You start your training script by calling ``fit`` on an ``MXNet`` Estimator. ``fit`` takes both required and optional arguments.
 
-Required argument
-'''''''''''''''''
+fit Required argument
+'''''''''''''''''''''
 
 -  ``inputs``: This can take one of the following forms: A string
    S3 URI, for example ``s3://my-bucket/my-training-data``. In this
@@ -430,8 +430,8 @@ For example:
 
 .. optional-arguments-1:
 
-Optional arguments
-''''''''''''''''''
+fit Optional arguments
+''''''''''''''''''''''
 
 -  ``wait``: Defaults to True, whether to block and wait for the
    training script to complete before returning.
