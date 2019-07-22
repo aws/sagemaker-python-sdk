@@ -176,7 +176,7 @@ class HyperparameterTuningJobAnalytics(AnalyticsMetricsBase):
         if force_refresh:
             self.clear_cache()
         if not self._tuning_job_describe_result:
-            self._tuning_job_describe_result = self._sage_client.describe_hyper_parameter_tuning_job(  # pylint: disable=line-too-long
+            self._tuning_job_describe_result = self._sage_client.describe_hyper_parameter_tuning_job(  # noqa: E501 # pylint: disable=line-too-long
                 HyperParameterTuningJobName=self.name
             )
         return self._tuning_job_describe_result

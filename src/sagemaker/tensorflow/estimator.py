@@ -238,7 +238,7 @@ class TensorFlow(Framework):
             requirements_file (str): Path to a ``requirements.txt`` file (default: ''). The path
                 should be within and relative to ``source_dir``. Details on the format can be
                 found in the Pip User Guide:
-                 <https://pip.pypa.io/en/stable/reference/pip_install/#requirements-file-format>
+                <https://pip.pypa.io/en/stable/reference/pip_install/#requirements-file-format>
             image_name (str): If specified, the estimator will use this image for training and
                 hosting, instead of selecting the appropriate SageMaker official image based on
                 framework_version and py_version. It can be an ECR url or dockerhub image and tag.

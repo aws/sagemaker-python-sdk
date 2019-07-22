@@ -262,9 +262,9 @@ class Session(object):  # pylint: disable=too-many-public-methods
         Args:
             input_mode (str): The input mode that the algorithm supports. Valid modes:
                 * 'File' - Amazon SageMaker copies the training dataset from the S3 location to
-                    a directory in the Docker container.
+                a directory in the Docker container.
                 * 'Pipe' - Amazon SageMaker streams data directly from S3 to the container via a
-                    Unix-named pipe.
+                Unix-named pipe.
 
             input_config (list): A list of Channel objects. Each channel is a named input source.
                 Please refer to the format details described:
@@ -278,15 +278,15 @@ class Session(object):  # pylint: disable=too-many-public-methods
                 optional KMS key ID.
             resource_config (dict): Contains values for ResourceConfig:
                 * instance_count (int): Number of EC2 instances to use for training.
-                    The key in resource_config is 'InstanceCount'.
+                The key in resource_config is 'InstanceCount'.
                 * instance_type (str): Type of EC2 instance to use for training, for example,
-                    'ml.c4.xlarge'. The key in resource_config is 'InstanceType'.
+                'ml.c4.xlarge'. The key in resource_config is 'InstanceType'.
 
             vpc_config (dict): Contains values for VpcConfig:
                 * subnets (list[str]): List of subnet ids.
-                    The key in vpc_config is 'Subnets'.
+                The key in vpc_config is 'Subnets'.
                 * security_group_ids (list[str]): List of security group ids.
-                    The key in vpc_config is 'SecurityGroupIds'.
+                The key in vpc_config is 'SecurityGroupIds'.
 
             hyperparameters (dict): Hyperparameters for model training. The hyperparameters are
                 made accessible as a dict[str, str] to the training code on SageMaker. For
@@ -443,9 +443,9 @@ class Session(object):  # pylint: disable=too-many-public-methods
             image (str): Docker image containing training code.
             input_mode (str): The input mode that the algorithm supports. Valid modes:
                 * 'File' - Amazon SageMaker copies the training dataset from the S3 location to
-                    a directory in the Docker container.
+                a directory in the Docker container.
                 * 'Pipe' - Amazon SageMaker streams data directly from S3 to the container via a
-                    Unix-named pipe.
+                Unix-named pipe.
 
             metric_definitions (list[dict]): A list of dictionaries that defines the metric(s)
                 used to evaluate the training jobs. Each dictionary contains two keys: 'Name' for
@@ -463,9 +463,9 @@ class Session(object):  # pylint: disable=too-many-public-methods
                 optional KMS key ID.
             resource_config (dict): Contains values for ResourceConfig:
                 * instance_count (int): Number of EC2 instances to use for training.
-                    The key in resource_config is 'InstanceCount'.
+                The key in resource_config is 'InstanceCount'.
                 * instance_type (str): Type of EC2 instance to use for training, for example,
-                    'ml.c4.xlarge'. The key in resource_config is 'InstanceType'.
+                'ml.c4.xlarge'. The key in resource_config is 'InstanceType'.
 
             stop_condition (dict): When training should finish, e.g. ``MaxRuntimeInSeconds``.
             tags (list[dict]): List of tags for labeling the tuning job. For more, see
@@ -481,9 +481,9 @@ class Session(object):  # pylint: disable=too-many-public-methods
                 tuning job (default: ``False``).
             vpc_config (dict): Contains values for VpcConfig (default: None):
                 * subnets (list[str]): List of subnet ids.
-                    The key in vpc_config is 'Subnets'.
+                The key in vpc_config is 'Subnets'.
                 * security_group_ids (list[str]): List of security group ids.
-                    The key in vpc_config is 'SecurityGroupIds'.
+                The key in vpc_config is 'SecurityGroupIds'.
 
         """
         tune_request = {
@@ -847,8 +847,8 @@ class Session(object):  # pylint: disable=too-many-public-methods
 
         The endpoint configuration identifies the Amazon SageMaker model (created using the
         ``CreateModel`` API) and the hardware configuration on which to deploy the model. Provide
-            this endpoint configuration to the ``CreateEndpoint`` API, which then launches the
-            hardware and deploys the model.
+        this endpoint configuration to the ``CreateEndpoint`` API, which then launches the
+        hardware and deploys the model.
 
         Args:
             name (str): Name of the Amazon SageMaker endpoint configuration to create.
@@ -864,8 +864,8 @@ class Session(object):  # pylint: disable=too-many-public-methods
 
         Example:
             >>> tags = [{'Key': 'tagname', 'Value': 'tagvalue'}]
-            For more information about tags, see https://boto3.amazonaws.com/v1/documentation\
-            /api/latest/reference/services/sagemaker.html#SageMaker.Client.add_tags
+            For more information about tags, see
+            https://boto3.amazonaws.com/v1/documentation/api/latest/reference/services/sagemaker.html#SageMaker.Client.add_tags
 
 
         Returns:
@@ -1482,13 +1482,14 @@ def container_def(image, model_data_url=None, env=None):
 
 
 def pipeline_container_def(models, instance_type=None):
-    """
-    Create a definition for executing a pipeline of containers as part of a SageMaker model.
+    """Create a definition for executing a pipeline of containers as part of a SageMaker model.
+
     Args:
         models (list[sagemaker.Model]): this will be a list of ``sagemaker.Model`` objects in the
             order the inference should be invoked.
         instance_type (str): The EC2 instance type to deploy this Model to. For example,
             'ml.p2.xlarge' (default: None).
+
     Returns:
         list[dict[str, str]]: list of container definition objects usable with with the
             CreateModel API for inference pipelines if passed via `Containers` field.
@@ -1605,12 +1606,12 @@ class s3_input(object):
                 default, channels will use the input mode defined on
                 ``sagemaker.estimator.EstimatorBase.input_mode``, but they will ignore that setting
                 if this parameter is set.
-                    * None - Amazon SageMaker will use the input mode specified in the
-                        ``Estimator``.
-                    * 'File' - Amazon SageMaker copies the training dataset from the S3 location
-                        to a local directory.
-                    * 'Pipe' - Amazon SageMaker streams data directly from S3 to the container via
-                        a Unix-named pipe.
+                * None - Amazon SageMaker will use the input mode specified in the
+                ``Estimator``.
+                * 'File' - Amazon SageMaker copies the training dataset from the S3 location
+                to a local directory.
+                * 'Pipe' - Amazon SageMaker streams data directly from S3 to the container via
+                a Unix-named pipe.
 
             attribute_names (list[str]): A list of one or more attribute names to use that are
                 found in a specified AugmentedManifestFile.
@@ -1659,8 +1660,8 @@ class ShuffleConfig(object):
 
 
 class ModelContainer(object):
-    """
-    Amazon SageMaker Model configurations for inference pipelines.
+    """Amazon SageMaker Model configurations for inference pipelines.
+
     Attributes:
         model_data (str): S3 Model artifact location
         image (str): Docker image URL in ECR
@@ -1668,8 +1669,8 @@ class ModelContainer(object):
     """
 
     def __init__(self, model_data, image, env=None):
-        """
-        Create a definition of a model which can be part of an Inference Pipeline
+        """Create a definition of a model which can be part of an Inference Pipeline
+
         Args:
             model_data (str): The S3 location of a SageMaker model data ``.tar.gz`` file.
             image (str): A Docker image URI.

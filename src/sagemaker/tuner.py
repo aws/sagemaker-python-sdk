@@ -69,7 +69,8 @@ class WarmStartConfig(object):
     ``HyperparameterTuner``, with type and parents for warm start.
 
     Examples:
-        >>> warm_start_config = WarmStartConfig(type=WarmStartTypes.TransferLearning, parents={"p1","p2"})  # pylint: disable=line-too-long
+        >>> warm_start_config = WarmStartConfig(
+        >>>                         type=WarmStartTypes.TransferLearning, parents={"p1","p2"})
         >>> warm_start_config.type
         "TransferLearning"
         >>> warm_start_config.parents

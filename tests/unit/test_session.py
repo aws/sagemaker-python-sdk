@@ -1174,7 +1174,7 @@ def test_update_endpoint_non_existing_endpoint(sagemaker_session):
         {"Error": {"Code": "ValidationException", "Message": "Could not find entity"}}, "foo"
     )
     expected_error_message = (
-        'Endpoint with name "non-existing-endpoint" does not exist; '
+        "Endpoint with name 'non-existing-endpoint' does not exist; "
         "please use an existing endpoint name"
     )
     sagemaker_session.sagemaker_client.describe_endpoint = Mock(side_effect=error)
