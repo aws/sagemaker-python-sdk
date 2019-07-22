@@ -112,9 +112,9 @@ class PipelineModel(object):
                 model completes (default: True).
 
         Returns:
-            callable[string, sagemaker.session.Session] or None: Invocation of ``self.predictor_cls`` on
-                the created endpoint name, if ``self.predictor_cls`` is not
-                None. Otherwise, return None.
+            callable[string, sagemaker.session.Session] or None: Invocation of
+            ``self.predictor_cls`` on the created endpoint name, if ``self.predictor_cls``
+            is not None. Otherwise, return None.
         """
         if not self.sagemaker_session:
             self.sagemaker_session = Session()

@@ -17,7 +17,8 @@ import sys
 import os
 
 # Hack to use our local copy of tensorflow_serving.apis, which contains the protobuf-generated
-# classes for tensorflow serving. Currently tensorflow_serving_api can only be pip-installed for python 2.
+# classes for tensorflow serving. Currently tensorflow_serving_api can only be pip-installed for
+# python 2.
 sys.path.append(os.path.dirname(__file__))
 
 from sagemaker.tensorflow.estimator import (  # noqa: E402, F401 # pylint: disable=wrong-import-position

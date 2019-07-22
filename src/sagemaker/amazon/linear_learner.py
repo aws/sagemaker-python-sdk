@@ -83,8 +83,8 @@ class LinearLearner(AmazonAlgorithmEstimatorBase):
             "softmax_loss",
             "auto",
         ),
-        '"logistic", "squared_loss", "absolute_loss", "hinge_loss", "eps_insensitive_squared_loss", '
-        '"eps_insensitive_absolute_loss", "quantile_loss", "huber_loss", "softmax_loss" or "auto"',
+        '"logistic", "squared_loss", "absolute_loss", "hinge_loss", "eps_insensitive_squared_loss",'
+        ' "eps_insensitive_absolute_loss", "quantile_loss", "huber_loss", "softmax_loss" or "auto"',
         str,
     )
     wd = hp("wd", ge(0), "A float greater-than or equal to 0", float)
@@ -369,7 +369,8 @@ class LinearLearner(AmazonAlgorithmEstimatorBase):
             num_classes is None or num_classes < 3
         ):
             raise ValueError(
-                "For predictor_type 'multiclass_classifier', 'num_classes' should be set to a value greater than 2."
+                "For predictor_type 'multiclass_classifier', 'num_classes' should be set to a "
+                "value greater than 2."
             )
 
     def create_model(self, vpc_config_override=VPC_CONFIG_DEFAULT):

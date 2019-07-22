@@ -185,8 +185,9 @@ def create_image_uri(
     else:
         family = instance_type.split(".")[1]
 
-        # For some frameworks, we have optimized images for specific families, e.g c5 or p3. In those cases,
-        # we use the family name in the image tag. In other cases, we use 'cpu' or 'gpu'.
+        # For some frameworks, we have optimized images for specific families, e.g c5 or p3.
+        # In those cases, we use the family name in the image tag. In other cases, we use
+        # 'cpu' or 'gpu'.
         if family in optimized_families:
             device_type = family
         elif family[0] in ["g", "p"]:
@@ -340,6 +341,7 @@ def _list_files_to_compress(script, directory):
 
 
 def framework_name_from_image(image_name):
+    # noinspection LongLine
     """Extract the framework and Python version from the image name.
 
     Args:
@@ -357,7 +359,7 @@ def framework_name_from_image(image_name):
         tuple: A tuple containing:
             str: The framework name str: The Python version str: The image tag
             str: If the image is script mode
-    """
+        """
     sagemaker_pattern = re.compile(ECR_URI_PATTERN)
     sagemaker_match = sagemaker_pattern.match(image_name)
     if sagemaker_match is None:
@@ -365,7 +367,7 @@ def framework_name_from_image(image_name):
     # extract framework, python version and image tag
     # We must support both the legacy and current image name format.
     name_pattern = re.compile(
-        r"^(?:sagemaker(?:-rl)?-)?(tensorflow|mxnet|chainer|pytorch|scikit-learn)(?:-)?(scriptmode|training)?:(.*)-(.*?)-(py2|py3)$"  # noqa: E501
+        r"^(?:sagemaker(?:-rl)?-)?(tensorflow|mxnet|chainer|pytorch|scikit-learn)(?:-)?(scriptmode|training)?:(.*)-(.*?)-(py2|py3)$"  # noqa: E501 # pylint: disable=line-too-long
     )
     legacy_name_pattern = re.compile(r"^sagemaker-(tensorflow|mxnet)-(py2|py3)-(cpu|gpu):(.*)$")
 

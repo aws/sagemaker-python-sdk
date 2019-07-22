@@ -256,7 +256,8 @@ class _LocalTransformJob(object):
         # we only do 1 max concurrent transform in Local Mode
         if "MaxConcurrentTransforms" in kwargs and int(kwargs["MaxConcurrentTransforms"]) > 1:
             logger.warning(
-                "Local Mode only supports 1 ConcurrentTransform. Setting MaxConcurrentTransforms to 1"
+                "Local Mode only supports 1 ConcurrentTransform. Setting MaxConcurrentTransforms "
+                "to 1"
             )
         environment["SAGEMAKER_MAX_CONCURRENT_TRANSFORMS"] = "1"
 
@@ -287,8 +288,9 @@ class _LocalTransformJob(object):
 
     def _get_working_directory(self):
         """Placeholder docstring"""
-        # Root dir to use for intermediate data location. To make things simple we will write here regardless
-        # of the final destination. At the end the files will either be moved or uploaded to S3 and deleted.
+        # Root dir to use for intermediate data location. To make things simple we will write here
+        # regardless of the final destination. At the end the files will either be moved or
+        # uploaded to S3 and deleted.
         root_dir = get_config_value("local.container_root", self.local_session.config)
         if root_dir:
             root_dir = os.path.abspath(root_dir)
@@ -313,8 +315,8 @@ class _LocalTransformJob(object):
 
     def _perform_batch_inference(self, input_data, output_data, **kwargs):
         # Transform the input data to feed the serving container. We need to first gather the files
-        # from S3 or Local FileSystem. Split them as required (Line, RecordIO, None) and finally batch them
-        # according to the batch strategy and limit the request size.
+        # from S3 or Local FileSystem. Split them as required (Line, RecordIO, None) and finally
+        # batch them according to the batch strategy and limit the request size.
 
         """
         Args:
