@@ -10,6 +10,7 @@
 # distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
+"""Placeholder docstring"""
 from __future__ import absolute_import
 
 from botocore import exceptions
@@ -20,7 +21,8 @@ from sagemaker.utils import base_name_from_image, name_from_base
 
 
 class Transformer(object):
-    """A class for handling creating and interacting with Amazon SageMaker transform jobs.
+    """A class for handling creating and interacting with Amazon SageMaker
+    transform jobs.
     """
 
     def __init__(
@@ -44,31 +46,42 @@ class Transformer(object):
         """Initialize a ``Transformer``.
 
         Args:
-            model_name (str): Name of the SageMaker model being used for the transform job.
+            model_name (str): Name of the SageMaker model being used for the
+                transform job.
             instance_count (int): Number of EC2 instances to use.
-            instance_type (str): Type of EC2 instance to use, for example, 'ml.c4.xlarge'.
-            strategy (str): The strategy used to decide how to batch records in a single request (default: None).
-                Valid values: 'MultiRecord' and 'SingleRecord'.
-            assemble_with (str): How the output is assembled (default: None). Valid values: 'Line' or 'None'.
-            output_path (str): S3 location for saving the transform result. If not specified, results are stored to
-                a default bucket.
-            output_kms_key (str): Optional. KMS key ID for encrypting the transform output (default: None).
-            accept (str): The content type accepted by the endpoint deployed during the transform job.
-            max_concurrent_transforms (int): The maximum number of HTTP requests to be made to
-                each individual transform container at one time.
-            max_payload (int): Maximum size of the payload in a single HTTP request to the container in MB.
-            env (dict): Environment variables to be set for use during the transform job (default: None).
-            tags (list[dict]): List of tags for labeling a transform job (default: None). For more, see
+            instance_type (str): Type of EC2 instance to use, for example,
+                'ml.c4.xlarge'.
+            strategy (str): The strategy used to decide how to batch records in
+                a single request (default: None). Valid values: 'MultiRecord'
+                and 'SingleRecord'.
+            assemble_with (str): How the output is assembled (default: None).
+                Valid values: 'Line' or 'None'.
+            output_path (str): S3 location for saving the transform result. If
+                not specified, results are stored to a default bucket.
+            output_kms_key (str): Optional. KMS key ID for encrypting the
+                transform output (default: None).
+            accept (str): The content type accepted by the endpoint deployed
+                during the transform job.
+            max_concurrent_transforms (int): The maximum number of HTTP requests
+                to be made to each individual transform container at one time.
+            max_payload (int): Maximum size of the payload in a single HTTP
+                request to the container in MB.
+            tags (list[dict]): List of tags for labeling a transform job
+                (default: None). For more, see
                 https://docs.aws.amazon.com/sagemaker/latest/dg/API_Tag.html.
+            env (dict): Environment variables to be set for use during the
+                transform job (default: None).
             base_transform_job_name (str): Prefix for the transform job when the
-                :meth:`~sagemaker.transformer.Transformer.transform` method launches. If not specified, a default prefix
-                will be generated based on the training image name that was used to train the model associated with
-                the transform job.
-            sagemaker_session (sagemaker.session.Session): Session object which manages interactions with
-                Amazon SageMaker APIs and any other AWS services needed. If not specified, the estimator creates one
+                :meth:`~sagemaker.transformer.Transformer.transform` method
+                launches. If not specified, a default prefix will be generated
+                based on the training image name that was used to train the
+                model associated with the transform job.
+            sagemaker_session (sagemaker.session.Session): Session object which
+                manages interactions with Amazon SageMaker APIs and any other
+                AWS services needed. If not specified, the estimator creates one
                 using the default AWS configuration chain.
-            volume_kms_key (str): Optional. KMS key ID for encrypting the volume attached to the ML
-                compute instance (default: None).
+            volume_kms_key (str): Optional. KMS key ID for encrypting the volume
+                attached to the ML compute instance (default: None).
         """
         self.model_name = model_name
         self.strategy = strategy
@@ -110,28 +123,36 @@ class Transformer(object):
 
         Args:
             data (str): Input data location in S3.
-            data_type (str): What the S3 location defines (default: 'S3Prefix'). Valid values:
+            data_type (str): What the S3 location defines (default: 'S3Prefix').
+                Valid values:
 
-                * 'S3Prefix' - the S3 URI defines a key name prefix. All objects with this prefix will be used as
-                    inputs for the transform job.
-                * 'ManifestFile' - the S3 URI points to a single manifest file listing each S3 object to use as
-                    an input for the transform job.
+                * 'S3Prefix' - the S3 URI defines a key name prefix. All objects with this prefix
+                    will be used as inputs for the transform job.
 
+                * 'ManifestFile' - the S3 URI points to a single manifest file listing each S3
+                    object to use as an input for the transform job.
             content_type (str): MIME type of the input data (default: None).
-            compression_type (str): Compression type of the input data, if compressed (default: None).
-                Valid values: 'Gzip', None.
-            split_type (str): The record delimiter for the input object (default: 'None').
-                Valid values: 'None', 'Line', 'RecordIO', and 'TFRecord'.
-            job_name (str): job name (default: None). If not specified, one will be generated.
-            input_filter (str): A JSONPath to select a portion of the input to pass to the algorithm container for
-                inference. If you omit the field, it gets the value '$', representing the entire input.
-                Some examples: "$[1:]", "$.features"(default: None).
-            output_filter (str): A JSONPath to select a portion of the joined/original output to return as the output.
+            compression_type (str): Compression type of the input data, if
+                compressed (default: None). Valid values: 'Gzip', None.
+            split_type (str): The record delimiter for the input object
+                (default: 'None'). Valid values: 'None', 'Line', 'RecordIO', and
+                'TFRecord'.
+            job_name (str): job name (default: None). If not specified, one will
+                be generated.
+            input_filter (str): A JSONPath to select a portion of the input to
+                pass to the algorithm container for inference. If you omit the
+                field, it gets the value '$', representing the entire input.
+                For more information, see https://docs.aws.amazon.com/sagemaker/latest/dg/API_CreateTransformJob.html.
+                Some examples: "$[1:]", "$.features" (default: None).
+            output_filter (str): A JSONPath to select a portion of the
+                joined/original output to return as the output.
+                For more information, see https://docs.aws.amazon.com/sagemaker/latest/dg/API_CreateTransformJob.html.
                 Some examples: "$[1:]", "$.prediction" (default: None).
-            join_source (str): The source of data to be joined to the transform output. It can be set to 'Input'
-                meaning the entire input record will be joined to the inference result.
-                You can use OutputFilter to select the useful portion before uploading to S3. (default: None).
-                Valid values: Input, None.
+            join_source (str): The source of data to be joined to the transform
+                output. It can be set to 'Input' meaning the entire input record
+                will be joined to the inference result. You can use OutputFilter
+                to select the useful portion before uploading to S3. (default:
+                None). Valid values: Input, None.
         """
         local_mode = self.sagemaker_session.local_mode
         if not local_mode and not data.startswith("s3://"):
@@ -166,12 +187,11 @@ class Transformer(object):
         )
 
     def delete_model(self):
-        """Delete the corresponding SageMaker model for this Transformer.
-
-        """
+        """Delete the corresponding SageMaker model for this Transformer."""
         self.sagemaker_session.delete_model(self.model_name)
 
     def _retrieve_base_name(self):
+        """Placeholder docstring"""
         image_name = self._retrieve_image_name()
 
         if image_name:
@@ -180,6 +200,7 @@ class Transformer(object):
         return self.model_name
 
     def _retrieve_image_name(self):
+        """Placeholder docstring"""
         try:
             model_desc = self.sagemaker_session.sagemaker_client.describe_model(
                 ModelName=self.model_name
@@ -203,10 +224,12 @@ class Transformer(object):
             )
 
     def wait(self):
+        """Placeholder docstring"""
         self._ensure_last_transform_job()
         self.latest_transform_job.wait()
 
     def _ensure_last_transform_job(self):
+        """Placeholder docstring"""
         if self.latest_transform_job is None:
             raise ValueError("No transform job available")
 
@@ -216,13 +239,14 @@ class Transformer(object):
 
         Args:
             transform_job_name (str): Name for the transform job to be attached.
-            sagemaker_session (sagemaker.session.Session): Session object which manages interactions with
-                Amazon SageMaker APIs and any other AWS services needed. If not specified, one will be created
-                using the default AWS configuration chain.
+            sagemaker_session (sagemaker.session.Session): Session object which
+                manages interactions with Amazon SageMaker APIs and any other
+                AWS services needed. If not specified, one will be created using
+                the default AWS configuration chain.
 
         Returns:
-            sagemaker.transformer.Transformer: The Transformer instance with the specified transform job attached.
-
+            sagemaker.transformer.Transformer: The Transformer instance with the
+            specified transform job attached.
         """
         sagemaker_session = sagemaker_session or Session()
 
@@ -239,10 +263,12 @@ class Transformer(object):
 
     @classmethod
     def _prepare_init_params_from_job_description(cls, job_details):
-        """Convert the transform job description to init params that can be handled by the class constructor
+        """Convert the transform job description to init params that can be
+        handled by the class constructor
 
         Args:
-            job_details (dict): the returned job details from a describe_transform_job API call.
+            job_details (dict): the returned job details from a
+                describe_transform_job API call.
 
         Returns:
             dict: The transformed init_params
@@ -266,6 +292,8 @@ class Transformer(object):
 
 
 class _TransformJob(_Job):
+    """Placeholder docstring"""
+
     @classmethod
     def start_new(
         cls,
@@ -279,6 +307,18 @@ class _TransformJob(_Job):
         output_filter,
         join_source,
     ):
+        """
+        Args:
+            transformer:
+            data:
+            data_type:
+            content_type:
+            compression_type:
+            split_type:
+            input_filter:
+            output_filter:
+            join_source:
+        """
         config = _TransformJob._load_config(
             data, data_type, content_type, compression_type, split_type, transformer
         )
@@ -307,6 +347,15 @@ class _TransformJob(_Job):
 
     @staticmethod
     def _load_config(data, data_type, content_type, compression_type, split_type, transformer):
+        """
+        Args:
+            data:
+            data_type:
+            content_type:
+            compression_type:
+            split_type:
+            transformer:
+        """
         input_config = _TransformJob._format_inputs_to_input_config(
             data, data_type, content_type, compression_type, split_type
         )
@@ -330,6 +379,14 @@ class _TransformJob(_Job):
 
     @staticmethod
     def _format_inputs_to_input_config(data, data_type, content_type, compression_type, split_type):
+        """
+        Args:
+            data:
+            data_type:
+            content_type:
+            compression_type:
+            split_type:
+        """
         config = {"DataSource": {"S3DataSource": {"S3DataType": data_type, "S3Uri": data}}}
 
         if content_type is not None:
@@ -345,6 +402,13 @@ class _TransformJob(_Job):
 
     @staticmethod
     def _prepare_output_config(s3_path, kms_key_id, assemble_with, accept):
+        """
+        Args:
+            s3_path:
+            kms_key_id:
+            assemble_with:
+            accept:
+        """
         config = super(_TransformJob, _TransformJob)._prepare_output_config(s3_path, kms_key_id)
 
         if assemble_with is not None:
@@ -357,6 +421,12 @@ class _TransformJob(_Job):
 
     @staticmethod
     def _prepare_resource_config(instance_count, instance_type, volume_kms_key):
+        """
+        Args:
+            instance_count:
+            instance_type:
+            volume_kms_key:
+        """
         config = {"InstanceCount": instance_count, "InstanceType": instance_type}
 
         if volume_kms_key is not None:
@@ -366,6 +436,12 @@ class _TransformJob(_Job):
 
     @staticmethod
     def _prepare_data_processing(input_filter, output_filter, join_source):
+        """
+        Args:
+            input_filter:
+            output_filter:
+            join_source:
+        """
         config = {}
 
         if input_filter is not None:

@@ -10,6 +10,7 @@
 # distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
+"""Placeholder docstring"""
 from __future__ import absolute_import
 
 SUBNETS_KEY = "Subnets"
@@ -17,23 +18,25 @@ SECURITY_GROUP_IDS_KEY = "SecurityGroupIds"
 VPC_CONFIG_KEY = "VpcConfig"
 
 # A global constant value for methods which can optionally override VpcConfig
-# Using the default implies that VpcConfig should be reused from an existing Estimator or Training Job
+# Using the default implies that VpcConfig should be reused from an existing Estimator or
+# Training Job
 VPC_CONFIG_DEFAULT = "VPC_CONFIG_DEFAULT"
 
 
 def to_dict(subnets, security_group_ids):
-    """
-    Prepares a VpcConfig dict containing keys 'Subnets' and 'SecurityGroupIds'
-    This is the dict format expected by SageMaker CreateTrainingJob and CreateModel APIs
-    See https://docs.aws.amazon.com/sagemaker/latest/dg/API_VpcConfig.html
+    """Prepares a VpcConfig dict containing keys 'Subnets' and
+    'SecurityGroupIds' This is the dict format expected by SageMaker
+    CreateTrainingJob and CreateModel APIs See
+    https://docs.aws.amazon.com/sagemaker/latest/dg/API_VpcConfig.html
 
     Args:
         subnets (list): list of subnet IDs to use in VpcConfig
-        security_group_ids (list): list of security group IDs to use in VpcConfig
+        security_group_ids (list): list of security group IDs to use in
+            VpcConfig
 
     Returns:
-        A VpcConfig dict containing keys 'Subnets' and 'SecurityGroupIds'
-        If either or both parameters are None, returns None
+        A VpcConfig dict containing keys 'Subnets' and 'SecurityGroupIds' If
+        either or both parameters are None, returns None
     """
     if subnets is None or security_group_ids is None:
         return None
@@ -41,20 +44,22 @@ def to_dict(subnets, security_group_ids):
 
 
 def from_dict(vpc_config, do_sanitize=False):
-    """
-    Extracts subnets and security group ids as lists from a VpcConfig dict
+    """Extracts subnets and security group ids as lists from a VpcConfig dict
 
     Args:
-        vpc_config (dict): a VpcConfig dict containing 'Subnets' and 'SecurityGroupIds'
-        do_sanitize (bool): whether to sanitize the VpcConfig dict before extracting values
+        vpc_config (dict): a VpcConfig dict containing 'Subnets' and
+            'SecurityGroupIds'
+        do_sanitize (bool): whether to sanitize the VpcConfig dict before
+            extracting values
 
     Returns:
-        Tuple of lists as (subnets, security_group_ids)
-        If vpc_config parameter is None, returns (None, None)
+        Tuple of lists as (subnets, security_group_ids) If vpc_config parameter
+        is None, returns (None, None)
 
     Raises:
-        ValueError if sanitize enabled and vpc_config is invalid
-        KeyError if sanitize disabled and vpc_config is missing key(s)
+        * ValueError if sanitize enabled and vpc_config is invalid
+
+        * KeyError if sanitize disabled and vpc_config is missing key(s)
     """
     if do_sanitize:
         vpc_config = sanitize(vpc_config)
@@ -64,16 +69,18 @@ def from_dict(vpc_config, do_sanitize=False):
 
 
 def sanitize(vpc_config):
-    """
-    Checks that an instance of VpcConfig has the expected keys and values, removes unexpected keys,
-    and raises ValueErrors if any expectations are violated
+    """Checks that an instance of VpcConfig has the expected keys and values,
+    removes unexpected keys, and raises ValueErrors if any expectations are
+    violated
 
     Args:
-        vpc_config (dict): a VpcConfig dict containing 'Subnets' and 'SecurityGroupIds'
+        vpc_config (dict): a VpcConfig dict containing 'Subnets' and
+            'SecurityGroupIds'
 
     Returns:
-        A valid VpcConfig dict containing only 'Subnets' and 'SecurityGroupIds' from the vpc_config parameter
-        If vpc_config parameter is None, returns None
+        A valid VpcConfig dict containing only 'Subnets' and 'SecurityGroupIds'
+        from the vpc_config parameter If vpc_config parameter is None, returns
+        None
 
     Raises:
         ValueError if any expectations are violated:

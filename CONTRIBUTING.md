@@ -19,6 +19,23 @@ reported the issue. Please try to include as much information as you can. Detail
 * Any modifications you've made relevant to the bug
 * A description of your environment or deployment
 
+## Setting up your development environment [optional, but recommended]
+
+* Set up the Cloud9 environment:
+  * Instance type: You'll need at least 4 GB of RAM to avoid running into memory issues. We recommend at least a t3.medium to run the unit tests. Larger hosts will reduce the chance of encountering resource limits.
+  * Follow the instructions at [Creating a Cloud9 EC2 Environment](https://docs.aws.amazon.com/cloud9/latest/user-guide/create-environment.html#create-environment-main) to set up a Cloud9 EC2 environment
+* Expand the storage of the EC2 instance from 10GB to 20GB
+  * Because you'll need a minimum of 11GB of disk storage on the EC2 instance to run the package's unit tests, you'll need to expand your EC2 volume size. We recommend at least 20GB. A larger volume will reduce the chance of encountering resource limits. 
+  * Follow the instructions at [Modifying an EBS Volume Using Elastic Volumes (Console)](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/requesting-ebs-volume-modifications.html#modify-ebs-volume) to increase the EBS volume size associated with the newly created EC2 instance.
+  * Wait 5-10min for the new EBS volume increase to take effect.
+  * Allow EC2 to claim the additional space by stopping and then starting your EC2 host.
+* Create a fork of this package on GitHub. You should end up with a fork at `https://github.com/<username>/sagemaker-python-sdk`
+  * Follow the instructions at [Fork a repo](https://help.github.com/en/articles/fork-a-repo) to fork a GitHub repository.
+* In the Cloud9 UI, pull down this package by clicking on "Clone from Github" or running the following command in the Cloud9 terminal: `git clone https://github.com/<username>/sagemaker-python-sdk` where <username> is your github username.
+* Install tox using `pip install tox`
+* Install coverage using `pip install .[test]`
+* cd into the sagemaker-python-sdk package: `cd sagemaker-python-sdk` or `cd /environment/sagemaker-python-sdk`
+* Run the following tox command and verify that all unit tests pass: `tox tests/unit`
 
 ## Contributing via Pull Requests
 Contributions via pull requests are much appreciated. 

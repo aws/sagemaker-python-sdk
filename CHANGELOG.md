@@ -1,5 +1,49 @@
 # Changelog
 
+## v1.34.1 (2019-07-23)
+
+### Bug fixes and other changes
+
+ * enable line-too-long Pylint check
+ * improving Chainer integ tests
+ * update TensorFlow script mode dependency list
+ * improve documentation of some functions
+ * update PyTorch version
+ * allow serving script to be defined for deploy() and transformer() with frameworks
+ * format and add missing docstring placeholders
+ * add MXNet 1.4.1 support
+
+### Documentation changes
+
+ * add instructions for setting up Cloud9 environment.
+ * update using_tensorflow topic
+
+## v1.34.0 (2019-07-18)
+
+### Features
+
+ * Git integration for CodeCommit
+ * deal with credentials for Git support for GitHub
+
+### Bug fixes and other changes
+
+ * modify TODO on disabled Pylint check
+ * enable consider-using-ternary Pylint check
+ * enable chained-comparison Pylint check
+ * enable too-many-public-methods Pylint check
+ * enable consider-using-in Pylint check
+ * set num_processes_per_host only if provided by user
+ * fix attach for 1P algorithm estimators
+ * enable ungrouped-imports Pylint check
+ * enable wrong-import-order Pylint check
+ * enable attribute-defined-outside-init Pylint check
+ * enable consider-merging-isinstance Pylint check
+ * enable inconsistent-return-statements Pylint check
+ * enable simplifiable-if-expression pylint checks
+ * fix list serialization for 1P algos
+ * enable no-else-return and no-else-raise pylint checks
+ * enable unidiomatic-typecheck pylint check
+
 ## v1.33.0 (2019-07-10)
 
 ### Features

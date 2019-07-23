@@ -10,21 +10,33 @@
 # distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
+"""Placeholder docstring"""
 from __future__ import absolute_import
 
 from sagemaker.cli.common import HostCommand, TrainCommand
 
 
 def train(args):
+    """
+    Args:
+        args:
+    """
     MXNetTrainCommand(args).start()
 
 
 def host(args):
+    """
+    Args:
+        args:
+    """
     MXNetHostCommand(args).start()
 
 
 class MXNetTrainCommand(TrainCommand):
+    """Placeholder docstring"""
+
     def create_estimator(self):
+        """Placeholder docstring"""
         from sagemaker.mxnet.estimator import MXNet
 
         return MXNet(
@@ -39,7 +51,13 @@ class MXNetTrainCommand(TrainCommand):
 
 
 class MXNetHostCommand(HostCommand):
+    """Placeholder docstring"""
+
     def create_model(self, model_url):
+        """
+        Args:
+            model_url:
+        """
         from sagemaker.mxnet.model import MXNetModel
 
         return MXNetModel(

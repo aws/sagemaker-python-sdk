@@ -1,4 +1,4 @@
-# Copyright 2017-2018 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright 2017-2019 Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -112,8 +112,10 @@ class DummyFramework(Framework):
     def train_image(self):
         return IMAGE_NAME
 
-    def create_model(self, role=None, model_server_workers=None):
-        return DummyFrameworkModel(self.sagemaker_session, vpc_config=self.get_vpc_config())
+    def create_model(self, role=None, model_server_workers=None, entry_point=None):
+        return DummyFrameworkModel(
+            self.sagemaker_session, vpc_config=self.get_vpc_config(), entry_point=entry_point
+        )
 
     @classmethod
     def _prepare_init_params_from_job_description(cls, job_details, model_channel_name=None):
@@ -125,13 +127,13 @@ class DummyFramework(Framework):
 
 
 class DummyFrameworkModel(FrameworkModel):
-    def __init__(self, sagemaker_session, **kwargs):
+    def __init__(self, sagemaker_session, entry_point=None, **kwargs):
         super(DummyFrameworkModel, self).__init__(
             MODEL_DATA,
             MODEL_IMAGE,
             INSTANCE_TYPE,
             ROLE,
-            ENTRY_POINT,
+            entry_point or ENTRY_POINT,
             sagemaker_session=sagemaker_session,
             **kwargs
         )

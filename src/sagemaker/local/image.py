@@ -10,6 +10,7 @@
 # distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
+"""Placeholder docstring"""
 from __future__ import absolute_import
 
 import base64
@@ -52,25 +53,27 @@ logger = logging.getLogger(__name__)
 
 
 class _SageMakerContainer(object):
-    """Handle the lifecycle and configuration of a local docker container execution.
+    """Handle the lifecycle and configuration of a local docker container
+    execution.
 
-    This class is responsible for creating the directories and configuration files that
-    the docker containers will use for either training or serving.
+    This class is responsible for creating the directories and configuration
+    files that the docker containers will use for either training or serving.
     """
 
     def __init__(self, instance_type, instance_count, image, sagemaker_session=None):
         """Initialize a SageMakerContainer instance
 
-        It uses a :class:`sagemaker.session.Session` for general interaction with user configuration
-        such as getting the default sagemaker S3 bucket. However this class does not call any of the
-        SageMaker APIs.
+        It uses a :class:`sagemaker.session.Session` for general interaction
+        with user configuration such as getting the default sagemaker S3 bucket.
+        However this class does not call any of the SageMaker APIs.
 
         Args:
-            instance_type (str): The instance type to use. Either 'local' or 'local_gpu'
+            instance_type (str): The instance type to use. Either 'local' or
+                'local_gpu'
             instance_count (int): The number of instances to create.
             image (str): docker image to use.
-            sagemaker_session (sagemaker.session.Session): a sagemaker session to use when interacting
-                with SageMaker.
+            sagemaker_session (sagemaker.session.Session): a sagemaker session
+                to use when interacting with SageMaker.
         """
         from sagemaker.local.local_session import LocalSession
 
@@ -78,8 +81,8 @@ class _SageMakerContainer(object):
         self.instance_type = instance_type
         self.instance_count = instance_count
         self.image = image
-        # Since we are using a single docker network, Generate a random suffix to attach to the container names.
-        #  This way multiple jobs can run in parallel.
+        # Since we are using a single docker network, Generate a random suffix to attach to the
+        # container names. This way multiple jobs can run in parallel.
         suffix = "".join(random.choice(string.ascii_lowercase + string.digits) for _ in range(5))
         self.hosts = [
             "{}-{}-{}".format(CONTAINER_PREFIX, i, suffix)
@@ -90,9 +93,11 @@ class _SageMakerContainer(object):
 
     def train(self, input_data_config, output_data_config, hyperparameters, job_name):
         """Run a training job locally using docker-compose.
+
         Args:
             input_data_config (dict): The Input Data Configuration, this contains data such as the
                 channels to be used for training.
+            output_data_config:
             hyperparameters (dict): The HyperParameters for the training job.
             job_name (str): Name of the local training job being run.
 
@@ -155,8 +160,8 @@ class _SageMakerContainer(object):
             dirs_to_delete = [data_dir, shared_dir]
             self._cleanup(dirs_to_delete)
 
-        # Print our Job Complete line to have a similar experience to training on SageMaker where you
-        # see this line at the end.
+        # Print our Job Complete line to have a similar experience to training on SageMaker where
+        # you see this line at the end.
         print("===== Job Complete =====")
         return artifacts
 
@@ -166,7 +171,8 @@ class _SageMakerContainer(object):
             primary_container (dict): dictionary containing the container runtime settings
                 for serving. Expected keys:
                 - 'ModelDataUrl' pointing to a file or s3:// location.
-                - 'Environment' a dictionary of environment variables to be passed to the hosting container.
+                - 'Environment' a dictionary of environment variables to be passed to the
+                    hosting container.
 
         """
         logger.info("serving")
@@ -199,7 +205,8 @@ class _SageMakerContainer(object):
     def stop_serving(self):
         """Stop the serving container.
 
-        The serving container runs in async mode to allow the SDK to do other tasks.
+        The serving container runs in async mode to allow the SDK to do other
+        tasks.
         """
         if self.container:
             self.container.down()
@@ -211,15 +218,18 @@ class _SageMakerContainer(object):
     def retrieve_artifacts(self, compose_data, output_data_config, job_name):
         """Get the model artifacts from all the container nodes.
 
-        Used after training completes to gather the data from all the individual containers. As the
-        official SageMaker Training Service, it will override duplicate files if multiple containers have
-        the same file names.
+        Used after training completes to gather the data from all the
+        individual containers. As the official SageMaker Training Service, it
+        will override duplicate files if multiple containers have the same file
+        names.
 
         Args:
-            compose_data(dict): Docker-Compose configuration in dictionary format.
+            compose_data (dict): Docker-Compose configuration in dictionary
+                format.
+            output_data_config:
+            job_name:
 
         Returns: Local path to the collected model artifacts.
-
         """
         # We need a directory to store the artfiacts from all the nodes
         # and another one to contained the compressed final artifacts
@@ -275,15 +285,16 @@ class _SageMakerContainer(object):
     def write_config_files(self, host, hyperparameters, input_data_config):
         """Write the config files for the training containers.
 
-        This method writes the hyperparameters, resources and input data configuration files.
+        This method writes the hyperparameters, resources and input data
+        configuration files.
+
+        Returns: None
 
         Args:
             host (str): Host to write the configuration for
             hyperparameters (dict): Hyperparameters for training.
-            input_data_config (dict): Training input channels to be used for training.
-
-        Returns: None
-
+            input_data_config (dict): Training input channels to be used for
+                training.
         """
         config_path = os.path.join(self.container_root, host, "input", "config")
 
@@ -303,6 +314,13 @@ class _SageMakerContainer(object):
     def _prepare_training_volumes(
         self, data_dir, input_data_config, output_data_config, hyperparameters
     ):
+        """
+        Args:
+            data_dir:
+            input_data_config:
+            output_data_config:
+            hyperparameters:
+        """
         shared_dir = os.path.join(self.container_root, "shared")
         model_dir = os.path.join(self.container_root, "model")
         volumes = []
@@ -343,6 +361,11 @@ class _SageMakerContainer(object):
         return volumes
 
     def _update_local_src_path(self, params, key):
+        """
+        Args:
+            params:
+            key:
+        """
         if key in params:
             src_dir = json.loads(params[key])
             parsed_uri = urlparse(src_dir)
@@ -353,6 +376,10 @@ class _SageMakerContainer(object):
         return params
 
     def _prepare_serving_volumes(self, model_location):
+        """
+        Args:
+            model_location:
+        """
         volumes = []
         host = self.hosts[0]
         # Make the model available to the container. If this is a local file just mount it to
@@ -375,21 +402,22 @@ class _SageMakerContainer(object):
         return volumes
 
     def _generate_compose_file(self, command, additional_volumes=None, additional_env_vars=None):
-        """Writes a config file describing a training/hosting  environment.
+        """Writes a config file describing a training/hosting environment.
 
-        This method generates a docker compose configuration file, it has an entry for each container
-        that will be created (based on self.hosts). it calls
-        :meth:~sagemaker.local_session.SageMakerContainer._create_docker_host to generate the config
-        for each individual container.
+        This method generates a docker compose configuration file, it has an
+        entry for each container that will be created (based on self.hosts). it
+        calls
+        :meth:~sagemaker.local_session.SageMakerContainer._create_docker_host to
+        generate the config for each individual container.
 
         Args:
             command (str): either 'train' or 'serve'
-            additional_volumes (list): a list of volumes that will be mapped to the containers
-            additional_env_vars (dict): a dictionary with additional environment variables to be
-                passed on to the containers.
+            additional_volumes (list): a list of volumes that will be mapped to
+                the containers
+            additional_env_vars (dict): a dictionary with additional environment
+                variables to be passed on to the containers.
 
         Returns: (dict) A dictionary representation of the configuration that was written.
-
         """
         boto_session = self.sagemaker_session.boto_session
         additional_volumes = additional_volumes or []
@@ -431,6 +459,10 @@ class _SageMakerContainer(object):
         return content
 
     def _compose(self, detached=False):
+        """
+        Args:
+            detached:
+        """
         compose_cmd = "docker-compose"
 
         command = [
@@ -449,6 +481,14 @@ class _SageMakerContainer(object):
         return command
 
     def _create_docker_host(self, host, environment, optml_subdirs, command, volumes):
+        """
+        Args:
+            host:
+            environment:
+            optml_subdirs:
+            command:
+            volumes:
+        """
         optml_volumes = self._build_optml_volumes(host, optml_subdirs)
         optml_volumes.extend(volumes)
 
@@ -479,6 +519,7 @@ class _SageMakerContainer(object):
         return host_config
 
     def _create_tmp_folder(self):
+        """Placeholder docstring"""
         root_dir = sagemaker.utils.get_config_value(
             "local.container_root", self.sagemaker_session.config
         )
@@ -496,14 +537,16 @@ class _SageMakerContainer(object):
         return os.path.abspath(working_dir)
 
     def _build_optml_volumes(self, host, subdirs):
-        """Generate a list of :class:`~sagemaker.local_session.Volume` required for the container to start.
+        """Generate a list of :class:`~sagemaker.local_session.Volume` required
+        for the container to start.
 
-        It takes a folder with the necessary files for training and creates a list of opt volumes that
-        the Container needs to start.
+        It takes a folder with the necessary files for training and creates a
+        list of opt volumes that the Container needs to start.
 
         Args:
             host (str): container for which the volumes will be generated.
-            subdirs (list): list of subdirectories that will be mapped. For example: ['input', 'output', 'model']
+            subdirs (list): list of subdirectories that will be mapped. For
+                example: ['input', 'output', 'model']
 
         Returns: (list) List of :class:`~sagemaker.local_session.Volume`
         """
@@ -518,6 +561,10 @@ class _SageMakerContainer(object):
         return volumes
 
     def _cleanup(self, dirs_to_delete=None):
+        """
+        Args:
+            dirs_to_delete:
+        """
         if dirs_to_delete:
             for d in dirs_to_delete:
                 _delete_tree(d)
@@ -529,12 +576,19 @@ class _SageMakerContainer(object):
 
 
 class _HostingContainer(Thread):
+    """Placeholder docstring"""
+
     def __init__(self, command):
+        """
+        Args:
+            command:
+        """
         Thread.__init__(self)
         self.command = command
         self.process = None
 
     def run(self):
+        """Placeholder docstring"""
         self.process = subprocess.Popen(
             self.command, stdout=subprocess.PIPE, stderr=subprocess.PIPE
         )
@@ -547,13 +601,12 @@ class _HostingContainer(Thread):
             raise RuntimeError(msg)
 
     def down(self):
+        """Placeholder docstring"""
         self.process.terminate()
 
 
 class _Volume(object):
-    """Represent a Volume that will be mapped to a container.
-
-    """
+    """Represent a Volume that will be mapped to a container."""
 
     def __init__(self, host_dir, container_dir=None, channel=None):
         """Create a Volume instance
@@ -584,11 +637,11 @@ class _Volume(object):
 def _stream_output(process):
     """Stream the output of a process to stdout
 
-    This function takes an existing process that will be polled for output. Only stdout
-    will be polled and sent to sys.stdout.
+    This function takes an existing process that will be polled for output.
+    Only stdout will be polled and sent to sys.stdout.
 
     Args:
-        process(subprocess.Popen): a process that has been started with
+        process (subprocess.Popen): a process that has been started with
             stdout=PIPE and stderr=STDOUT
 
     Returns (int): process exit code
@@ -607,6 +660,12 @@ def _stream_output(process):
 
 
 def _check_output(cmd, *popenargs, **kwargs):
+    """
+    Args:
+        cmd:
+        *popenargs:
+        **kwargs:
+    """
     if isinstance(cmd, str):
         cmd = shlex.split(cmd)
 
@@ -626,18 +685,27 @@ def _check_output(cmd, *popenargs, **kwargs):
 
 
 def _create_config_file_directories(root, host):
+    """
+    Args:
+        root:
+        host:
+    """
     for d in ["input", "input/config", "output", "model"]:
         os.makedirs(os.path.join(root, host, d))
 
 
 def _delete_tree(path):
+    """
+    Args:
+        path:
+    """
     try:
         shutil.rmtree(path)
     except OSError as exc:
-        # on Linux, when docker writes to any mounted volume, it uses the container's user. In most cases
-        # this is root. When the container exits and we try to delete them we can't because root owns those
-        # files. We expect this to happen, so we handle EACCESS. Any other error we will raise the
-        # exception up.
+        # on Linux, when docker writes to any mounted volume, it uses the container's user. In most
+        # cases this is root. When the container exits and we try to delete them we can't because
+        # root owns those files. We expect this to happen, so we handle EACCESS. Any other error
+        # we will raise the exception up.
         if exc.errno == errno.EACCES:
             logger.warning("Failed to delete: %s Please remove it manually.", path)
         else:
@@ -646,19 +714,24 @@ def _delete_tree(path):
 
 
 def _aws_credentials(session):
+    """
+    Args:
+        session:
+    """
     try:
         creds = session.get_credentials()
         access_key = creds.access_key
         secret_key = creds.secret_key
         token = creds.token
 
-        # The presence of a token indicates the credentials are short-lived and as such are risky to be used as they
-        # might expire while running.
+        # The presence of a token indicates the credentials are short-lived and as such are risky
+        # to be used as they might expire while running.
         # Long-lived credentials are available either through
         # 1. boto session
-        # 2. EC2 Metadata Service (SageMaker Notebook instances or EC2 instances with roles attached them)
-        # Short-lived credentials available via boto session are permitted to support running on machines with no
-        # EC2 Metadata Service but a warning is provided about their danger
+        # 2. EC2 Metadata Service (SageMaker Notebook instances or EC2 instances with roles
+        #       attached them)
+        # Short-lived credentials available via boto session are permitted to support running on
+        # machines with no EC2 Metadata Service but a warning is provided about their danger
         if token is None:
             logger.info("Using the long-lived AWS credentials found in session")
             return [
@@ -667,7 +740,8 @@ def _aws_credentials(session):
             ]
         if not _aws_credentials_available_in_metadata_service():
             logger.warning(
-                "Using the short-lived AWS credentials found in session. They might expire while running."
+                "Using the short-lived AWS credentials found in session. They might expire while "
+                "running."
             )
             return [
                 "AWS_ACCESS_KEY_ID=%s" % (str(access_key)),
@@ -675,7 +749,8 @@ def _aws_credentials(session):
                 "AWS_SESSION_TOKEN=%s" % (str(token)),
             ]
         logger.info(
-            "No AWS credentials found in session but credentials from EC2 Metadata Service are available."
+            "No AWS credentials found in session but credentials from EC2 Metadata Service are "
+            "available."
         )
         return None
     except Exception as e:  # pylint: disable=broad-except
@@ -685,6 +760,7 @@ def _aws_credentials(session):
 
 
 def _aws_credentials_available_in_metadata_service():
+    """Placeholder docstring"""
     import botocore
     from botocore.credentials import InstanceMetadataProvider
     from botocore.utils import InstanceMetadataFetcher
@@ -701,12 +777,22 @@ def _aws_credentials_available_in_metadata_service():
 
 
 def _write_json_file(filename, content):
+    """
+    Args:
+        filename:
+        content:
+    """
     with open(filename, "w") as f:
         json.dump(content, f)
 
 
 def _ecr_login_if_needed(boto_session, image):
     # Only ECR images need login
+    """
+    Args:
+        boto_session:
+        image:
+    """
     sagemaker_pattern = re.compile(sagemaker.utils.ECR_URI_PATTERN)
     sagemaker_match = sagemaker_pattern.match(image)
     if not sagemaker_match:
@@ -737,6 +823,10 @@ def _ecr_login_if_needed(boto_session, image):
 
 
 def _pull_image(image):
+    """
+    Args:
+        image:
+    """
     pull_image_command = ("docker pull %s" % image).strip()
     logger.info("docker command: %s", pull_image_command)
 

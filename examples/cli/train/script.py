@@ -12,6 +12,12 @@ logger = logging.getLogger(__name__)
 def train(channel_input_dirs, hyperparameters, **kwargs):
     # SageMaker passes num_cpus, num_gpus and other args we can use to tailor training to
     # the current container environment, but here we just use simple cpu context.
+    """
+    Args:
+        channel_input_dirs:
+        hyperparameters:
+        **kwargs:
+    """
     ctx = mx.cpu()
 
     # retrieve the hyperparameters we set in notebook (with some defaults)
@@ -80,6 +86,11 @@ def train(channel_input_dirs, hyperparameters, **kwargs):
 
 def save(net, model_dir):
     # save the model
+    """
+    Args:
+        net:
+        model_dir:
+    """
     y = net(mx.sym.var("data"))
     y.save("%s/model.json" % model_dir)
     net.collect_params().save("%s/model.params" % model_dir)
@@ -95,11 +106,21 @@ def define_network():
 
 
 def input_transformer(data, label):
+    """
+    Args:
+        data:
+        label:
+    """
     data = data.reshape((-1,)).astype(np.float32) / 255
     return data, label
 
 
 def get_train_data(data_dir, batch_size):
+    """
+    Args:
+        data_dir:
+        batch_size:
+    """
     return gluon.data.DataLoader(
         gluon.data.vision.MNIST(data_dir, train=True, transform=input_transformer),
         batch_size=batch_size,
@@ -109,6 +130,11 @@ def get_train_data(data_dir, batch_size):
 
 
 def get_val_data(data_dir, batch_size):
+    """
+    Args:
+        data_dir:
+        batch_size:
+    """
     return gluon.data.DataLoader(
         gluon.data.vision.MNIST(data_dir, train=False, transform=input_transformer),
         batch_size=batch_size,
@@ -117,6 +143,12 @@ def get_val_data(data_dir, batch_size):
 
 
 def test(ctx, net, val_data):
+    """
+    Args:
+        ctx:
+        net:
+        val_data:
+    """
     metric = mx.metric.Accuracy()
     for data, label in val_data:
         data = data.as_in_context(ctx)

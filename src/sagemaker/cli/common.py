@@ -10,6 +10,7 @@
 # distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
+"""Placeholder docstring"""
 from __future__ import absolute_import
 
 import json
@@ -25,7 +26,13 @@ logger = logging.getLogger(__name__)
 
 
 class HostCommand(object):
+    """Placeholder docstring"""
+
     def __init__(self, args):
+        """
+        Args:
+            args:
+        """
         self.endpoint_name = args.job_name
         self.bucket = args.bucket_name  # may be None
         self.role_name = args.role_name
@@ -39,6 +46,7 @@ class HostCommand(object):
         self.session = sagemaker.Session()
 
     def upload_model(self):
+        """Placeholder docstring"""
         prefix = "{}/model".format(self.endpoint_name)
 
         archive = self.create_model_archive(self.data)
@@ -49,6 +57,10 @@ class HostCommand(object):
 
     @staticmethod
     def create_model_archive(src):
+        """
+        Args:
+            src:
+        """
         if os.path.isdir(src):
             arcname = "."
         else:
@@ -62,9 +74,14 @@ class HostCommand(object):
         return archive
 
     def create_model(self, model_url):
+        """
+        Args:
+            model_url:
+        """
         raise NotImplementedError  # subclasses must override
 
     def start(self):
+        """Placeholder docstring"""
         model_url = self.upload_model()
         model = self.create_model(model_url)
         predictor = model.deploy(
@@ -75,7 +92,13 @@ class HostCommand(object):
 
 
 class TrainCommand(object):
+    """Placeholder docstring"""
+
     def __init__(self, args):
+        """
+        Args:
+            args:
+        """
         self.job_name = args.job_name
         self.bucket = args.bucket_name  # may be None
         self.role_name = args.role_name
@@ -90,6 +113,10 @@ class TrainCommand(object):
 
     @staticmethod
     def load_hyperparameters(src):
+        """
+        Args:
+            src:
+        """
         hp = {}
         if src and os.path.exists(src):
             with open(src, "r") as f:
@@ -97,14 +124,17 @@ class TrainCommand(object):
         return hp
 
     def upload_training_data(self):
+        """Placeholder docstring"""
         prefix = "{}/data".format(self.job_name)
         data_url = self.session.upload_data(path=self.data, bucket=self.bucket, key_prefix=prefix)
         return data_url
 
     def create_estimator(self):
+        """Placeholder docstring"""
         raise NotImplementedError  # subclasses must override
 
     def start(self):
+        """Placeholder docstring"""
         data_url = self.upload_training_data()
         estimator = self.create_estimator()
         estimator.fit(data_url)

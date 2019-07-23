@@ -10,6 +10,7 @@
 # distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
+"""Placeholder docstring"""
 from __future__ import absolute_import
 
 import os
@@ -22,6 +23,10 @@ from unittest.mock import MagicMock
 class Mock(MagicMock):
     @classmethod
     def __getattr__(cls, name):
+        """
+        Args:
+            name:
+        """
         if name == "__version__":
             return "1.4.0"
         else:
@@ -55,6 +60,7 @@ extensions = [
     "sphinx.ext.coverage",
     "sphinx.ext.autosummary",
     "sphinx.ext.napoleon",
+    "sphinx.ext.autosectionlabel",
 ]
 
 # Add any paths that contain templates here, relative to this directory.
@@ -90,3 +96,6 @@ intersphinx_mapping = {"http://docs.python.org/": None}
 
 # autosummary
 autosummary_generate = True
+
+# autosectionlabel
+autosectionlabel_prefix_document = True

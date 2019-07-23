@@ -6,9 +6,9 @@ Using MXNet with the SageMaker Python SDK
 
 With the SageMaker Python SDK, you can train and host MXNet models on Amazon SageMaker.
 
-Supported versions of MXNet: ``1.4.0``, ``1.3.0``, ``1.2.1``, ``1.1.0``, ``1.0.0``, ``0.12.1``.
+Supported versions of MXNet: ``0.12.1``, ``1.0.0``, ``1.1.0``, ``1.2.1``, ``1.3.0``, ``1.4.0``, ``1.4.1``.
 
-Supported versions of MXNet for Elastic Inference: ``1.4.0``, ``1.3.0``.
+Supported versions of MXNet for Elastic Inference: ``1.3.0``, ``1.4.0``, ``1.4.1``.
 
 Training with MXNet
 -------------------
@@ -411,8 +411,8 @@ Calling fit
 
 You start your training script by calling ``fit`` on an ``MXNet`` Estimator. ``fit`` takes both required and optional arguments.
 
-Required argument
-'''''''''''''''''
+fit Required argument
+'''''''''''''''''''''
 
 -  ``inputs``: This can take one of the following forms: A string
    S3 URI, for example ``s3://my-bucket/my-training-data``. In this
@@ -430,8 +430,8 @@ For example:
 
 .. optional-arguments-1:
 
-Optional arguments
-''''''''''''''''''
+fit Optional arguments
+''''''''''''''''''''''
 
 -  ``wait``: Defaults to True, whether to block and wait for the
    training script to complete before returning.
@@ -806,23 +806,23 @@ Your MXNet training script will be run on version 1.2.1 by default. (See below f
 
 The Docker images have the following dependencies installed:
 
-+-------------------------+--------------+-------------+-------------+-------------+-------------+-------------+
-| Dependencies            | MXNet 0.12.1 | MXNet 1.0.0 | MXNet 1.1.0 | MXNet 1.2.1 | MXNet 1.3.0 | MXNet 1.4.0 |
-+-------------------------+--------------+-------------+-------------+-------------+-------------+-------------+
-| Python                  |   2.7 or 3.5 |   2.7 or 3.5|   2.7 or 3.5|   2.7 or 3.5|   2.7 or 3.5|   2.7 or 3.6|
-+-------------------------+--------------+-------------+-------------+-------------+-------------+-------------+
-| CUDA (GPU image only)   |          9.0 |         9.0 |         9.0 |         9.0 |         9.0 |         9.2 |
-+-------------------------+--------------+-------------+-------------+-------------+-------------+-------------+
-| numpy                   |       1.13.3 |      1.13.3 |      1.13.3 |      1.14.5 |      1.14.6 |      1.16.3 |
-+-------------------------+--------------+-------------+-------------+-------------+-------------+-------------+
-| onnx                    |          N/A |         N/A |         N/A |       1.2.1 |       1.2.1 |       1.4.1 |
-+-------------------------+--------------+-------------+-------------+-------------+-------------+-------------+
-| keras-mxnet             |          N/A |         N/A |         N/A |         N/A |       2.2.2 |     2.2.4.1 |
-+-------------------------+--------------+-------------+-------------+-------------+-------------+-------------+
++-------------------------+--------------+-------------+-------------+-------------+-------------+-------------+-------------+
+| Dependencies            | MXNet 0.12.1 | MXNet 1.0.0 | MXNet 1.1.0 | MXNet 1.2.1 | MXNet 1.3.0 | MXNet 1.4.0 | MXNet 1.4.1 |
++-------------------------+--------------+-------------+-------------+-------------+-------------+-------------+-------------+
+| Python                  |   2.7 or 3.5 |   2.7 or 3.5|   2.7 or 3.5|   2.7 or 3.5|   2.7 or 3.5|   2.7 or 3.6|   2.7 or 3.6|
++-------------------------+--------------+-------------+-------------+-------------+-------------+-------------+-------------+
+| CUDA (GPU image only)   |          9.0 |         9.0 |         9.0 |         9.0 |         9.0 |         9.2 |        10.0 |
++-------------------------+--------------+-------------+-------------+-------------+-------------+-------------+-------------+
+| numpy                   |       1.13.3 |      1.13.3 |      1.13.3 |      1.14.5 |      1.14.6 |      1.16.3 |      1.14.5 |
++-------------------------+--------------+-------------+-------------+-------------+-------------+-------------+-------------+
+| onnx                    |          N/A |         N/A |         N/A |       1.2.1 |       1.2.1 |       1.4.1 |       1.4.1 |
++-------------------------+--------------+-------------+-------------+-------------+-------------+-------------+-------------+
+| keras-mxnet             |          N/A |         N/A |         N/A |         N/A |       2.2.2 |     2.2.4.1 |     2.2.4.1 |
++-------------------------+--------------+-------------+-------------+-------------+-------------+-------------+-------------+
 
 The Docker images extend Ubuntu 16.04.
 
-You can select version of MXNet by passing a ``framework_version`` keyword arg to the MXNet Estimator constructor. Currently supported versions are listed in the above table. You can also set ``framework_version`` to only specify major and minor version, e.g ``1.2``, which will cause your training script to be run on the latest supported patch version of that minor version, which in this example would be 1.2.1.
+You can select version of MXNet by passing a ``framework_version`` keyword arg to the MXNet Estimator constructor. Currently supported versions are listed in the above table. You can also set ``framework_version`` to only specify major and minor version, e.g ``1.4``, which will cause your training script to be run on the latest supported patch version of that minor version, which in this example would be 1.4.1.
 Alternatively, you can build your own image by following the instructions in the SageMaker MXNet containers repository, and passing ``image_name`` to the MXNet Estimator constructor.
 
 You can visit the SageMaker MXNet container repositories here:
