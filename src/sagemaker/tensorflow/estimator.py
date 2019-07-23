@@ -579,7 +579,7 @@ class TensorFlow(Framework):
         return TensorFlowModel(
             self.model_data,
             role,
-            entry_point or self.entry_point,
+            entry_point or self.uploaded_code.script_name,
             source_dir=source_dir or self._model_source_dir(),
             enable_cloudwatch_metrics=self.enable_cloudwatch_metrics,
             env={"SAGEMAKER_REQUIREMENTS": self.requirements_file},

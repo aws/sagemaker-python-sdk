@@ -154,7 +154,7 @@ class SKLearn(Framework):
         return SKLearnModel(
             self.model_data,
             role,
-            self.entry_point,
+            self.uploaded_code.script_name,
             source_dir=self._model_source_dir(),
             enable_cloudwatch_metrics=self.enable_cloudwatch_metrics,
             name=self._current_job_name,
