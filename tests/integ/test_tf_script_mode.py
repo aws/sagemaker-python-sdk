@@ -38,11 +38,6 @@ MPI_DISTRIBUTION = {"mpi": {"enabled": True}}
 TAGS = [{"Key": "some-key", "Value": "some-value"}]
 
 
-@pytest.fixture(scope="session", params=["ml.c4.xlarge"])
-def instance_type(request):
-    return request.param
-
-
 def test_mnist(sagemaker_session, instance_type):
     estimator = TensorFlow(
         entry_point=SCRIPT,
@@ -127,7 +122,7 @@ def test_mnist_distributed(sagemaker_session, instance_type):
     )
 
 
-def test_mnist_async(sagemaker_session):
+def test_mnist_async(sagemaker_session, cpu_instance_type):
     estimator = TensorFlow(
         entry_point=SCRIPT,
         role=ROLE,
@@ -156,7 +151,7 @@ def test_mnist_async(sagemaker_session):
         model_name = "model-mnist-async"
         predictor = estimator.deploy(
             initial_instance_count=1,
-            instance_type="ml.c4.xlarge",
+            instance_type=cpu_instance_type,
             endpoint_name=endpoint_name,
             model_name=model_name,
         )

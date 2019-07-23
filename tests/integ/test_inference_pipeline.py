@@ -52,7 +52,7 @@ SCHEMA = json.dumps(
 
 @pytest.mark.continuous_testing
 @pytest.mark.regional_testing
-def test_inference_pipeline_batch_transform(sagemaker_session):
+def test_inference_pipeline_batch_transform(sagemaker_session, cpu_instance_type):
     sparkml_model_data = sagemaker_session.upload_data(
         path=os.path.join(SPARKML_DATA_PATH, "mleap_model.tar.gz"),
         key_prefix="integ-test-data/sparkml/model",
@@ -77,7 +77,7 @@ def test_inference_pipeline_batch_transform(sagemaker_session):
         sagemaker_session=sagemaker_session,
         name=batch_job_name,
     )
-    transformer = model.transformer(1, "ml.m4.xlarge")
+    transformer = model.transformer(1, cpu_instance_type)
     transform_input_key_prefix = "integ-test-data/sparkml_xgboost/transform"
     transform_input = transformer.sagemaker_session.upload_data(
         path=VALID_DATA_PATH, key_prefix=transform_input_key_prefix
@@ -94,11 +94,7 @@ def test_inference_pipeline_batch_transform(sagemaker_session):
 
 @pytest.mark.canary_quick
 @pytest.mark.regional_testing
-@pytest.mark.skip(
-    reason="This test has always failed, but the failure was masked by a bug. "
-    "This test should be fixed. Details in https://github.com/aws/sagemaker-python-sdk/pull/968"
-)
-def test_inference_pipeline_model_deploy(sagemaker_session):
+def test_inference_pipeline_model_deploy(sagemaker_session, cpu_instance_type):
     sparkml_data_path = os.path.join(DATA_DIR, "sparkml_model")
     xgboost_data_path = os.path.join(DATA_DIR, "xgboost_model")
     endpoint_name = "test-inference-pipeline-deploy-{}".format(sagemaker_timestamp())
@@ -127,7 +123,7 @@ def test_inference_pipeline_model_deploy(sagemaker_session):
             sagemaker_session=sagemaker_session,
             name=endpoint_name,
         )
-        model.deploy(1, "ml.m4.xlarge", endpoint_name=endpoint_name)
+        model.deploy(1, cpu_instance_type, endpoint_name=endpoint_name)
         predictor = RealTimePredictor(
             endpoint=endpoint_name,
             sagemaker_session=sagemaker_session,

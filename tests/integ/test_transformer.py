@@ -35,7 +35,7 @@ from tests.integ.vpc_test_utils import get_or_create_vpc_resources
 
 
 @pytest.mark.canary_quick
-def test_transform_mxnet(sagemaker_session, mxnet_full_version):
+def test_transform_mxnet(sagemaker_session, mxnet_full_version, cpu_instance_type):
     data_path = os.path.join(DATA_DIR, "mxnet_mnist")
     script_path = os.path.join(data_path, "mnist.py")
 
@@ -43,7 +43,7 @@ def test_transform_mxnet(sagemaker_session, mxnet_full_version):
         entry_point=script_path,
         role="SageMakerRole",
         train_instance_count=1,
-        train_instance_type="ml.c4.xlarge",
+        train_instance_type=cpu_instance_type,
         sagemaker_session=sagemaker_session,
         framework_version=mxnet_full_version,
     )
@@ -72,6 +72,7 @@ def test_transform_mxnet(sagemaker_session, mxnet_full_version):
     transformer = _create_transformer_and_transform_job(
         mx,
         transform_input,
+        cpu_instance_type,
         kms_key_arn,
         input_filter=input_filter,
         output_filter=output_filter,
@@ -91,7 +92,7 @@ def test_transform_mxnet(sagemaker_session, mxnet_full_version):
 
 
 @pytest.mark.canary_quick
-def test_attach_transform_kmeans(sagemaker_session):
+def test_attach_transform_kmeans(sagemaker_session, cpu_instance_type):
     data_path = os.path.join(DATA_DIR, "one_p_mnist")
     pickle_args = {} if sys.version_info.major == 2 else {"encoding": "latin1"}
 
@@ -103,7 +104,7 @@ def test_attach_transform_kmeans(sagemaker_session):
     kmeans = KMeans(
         role="SageMakerRole",
         train_instance_count=1,
-        train_instance_type="ml.c4.xlarge",
+        train_instance_type=cpu_instance_type,
         k=10,
         sagemaker_session=sagemaker_session,
         output_path="s3://{}/".format(sagemaker_session.default_bucket()),
@@ -131,7 +132,7 @@ def test_attach_transform_kmeans(sagemaker_session):
         path=transform_input_path, key_prefix=transform_input_key_prefix
     )
 
-    transformer = _create_transformer_and_transform_job(kmeans, transform_input)
+    transformer = _create_transformer_and_transform_job(kmeans, transform_input, cpu_instance_type)
 
     attached_transformer = Transformer.attach(
         transformer.latest_transform_job.name, sagemaker_session=sagemaker_session
@@ -142,7 +143,7 @@ def test_attach_transform_kmeans(sagemaker_session):
         attached_transformer.wait()
 
 
-def test_transform_mxnet_vpc(sagemaker_session, mxnet_full_version):
+def test_transform_mxnet_vpc(sagemaker_session, mxnet_full_version, cpu_instance_type):
     data_path = os.path.join(DATA_DIR, "mxnet_mnist")
     script_path = os.path.join(data_path, "mnist.py")
 
@@ -155,7 +156,7 @@ def test_transform_mxnet_vpc(sagemaker_session, mxnet_full_version):
         entry_point=script_path,
         role="SageMakerRole",
         train_instance_count=1,
-        train_instance_type="ml.c4.xlarge",
+        train_instance_type=cpu_instance_type,
         sagemaker_session=sagemaker_session,
         framework_version=mxnet_full_version,
         subnets=subnet_ids,
@@ -185,7 +186,7 @@ def test_transform_mxnet_vpc(sagemaker_session, mxnet_full_version):
         path=transform_input_path, key_prefix=transform_input_key_prefix
     )
 
-    transformer = _create_transformer_and_transform_job(mx, transform_input)
+    transformer = _create_transformer_and_transform_job(mx, transform_input, cpu_instance_type)
     with timeout_and_delete_model_with_transformer(
         transformer, sagemaker_session, minutes=TRANSFORM_DEFAULT_TIMEOUT_MINUTES
     ):
@@ -197,7 +198,7 @@ def test_transform_mxnet_vpc(sagemaker_session, mxnet_full_version):
         assert [security_group_id] == model_desc["VpcConfig"]["SecurityGroupIds"]
 
 
-def test_transform_mxnet_tags(sagemaker_session, mxnet_full_version):
+def test_transform_mxnet_tags(sagemaker_session, mxnet_full_version, cpu_instance_type):
     data_path = os.path.join(DATA_DIR, "mxnet_mnist")
     script_path = os.path.join(data_path, "mnist.py")
     tags = [{"Key": "some-tag", "Value": "value-for-tag"}]
@@ -206,7 +207,7 @@ def test_transform_mxnet_tags(sagemaker_session, mxnet_full_version):
         entry_point=script_path,
         role="SageMakerRole",
         train_instance_count=1,
-        train_instance_type="ml.c4.xlarge",
+        train_instance_type=cpu_instance_type,
         sagemaker_session=sagemaker_session,
         framework_version=mxnet_full_version,
     )
@@ -228,7 +229,7 @@ def test_transform_mxnet_tags(sagemaker_session, mxnet_full_version):
         path=transform_input_path, key_prefix=transform_input_key_prefix
     )
 
-    transformer = mx.transformer(1, "ml.m4.xlarge", tags=tags)
+    transformer = mx.transformer(1, cpu_instance_type, tags=tags)
     transformer.transform(transform_input, content_type="text/csv")
 
     with timeout_and_delete_model_with_transformer(
@@ -244,7 +245,7 @@ def test_transform_mxnet_tags(sagemaker_session, mxnet_full_version):
         assert tags == model_tags
 
 
-def test_transform_byo_estimator(sagemaker_session):
+def test_transform_byo_estimator(sagemaker_session, cpu_instance_type):
     data_path = os.path.join(DATA_DIR, "one_p_mnist")
     pickle_args = {} if sys.version_info.major == 2 else {"encoding": "latin1"}
     tags = [{"Key": "some-tag", "Value": "value-for-tag"}]
@@ -257,7 +258,7 @@ def test_transform_byo_estimator(sagemaker_session):
     kmeans = KMeans(
         role="SageMakerRole",
         train_instance_count=1,
-        train_instance_type="ml.c4.xlarge",
+        train_instance_type=cpu_instance_type,
         k=10,
         sagemaker_session=sagemaker_session,
         output_path="s3://{}/".format(sagemaker_session.default_bucket()),
@@ -287,7 +288,7 @@ def test_transform_byo_estimator(sagemaker_session):
 
     estimator = Estimator.attach(training_job_name=job_name, sagemaker_session=sagemaker_session)
 
-    transformer = estimator.transformer(1, "ml.m4.xlarge", tags=tags)
+    transformer = estimator.transformer(1, cpu_instance_type, tags=tags)
     transformer.transform(transform_input, content_type="text/csv")
 
     with timeout_and_delete_model_with_transformer(
@@ -303,7 +304,7 @@ def test_transform_byo_estimator(sagemaker_session):
         assert tags == model_tags
 
 
-def test_single_transformer_multiple_jobs(sagemaker_session, mxnet_full_version):
+def test_single_transformer_multiple_jobs(sagemaker_session, mxnet_full_version, cpu_instance_type):
     data_path = os.path.join(DATA_DIR, "mxnet_mnist")
     script_path = os.path.join(data_path, "mnist.py")
 
@@ -311,7 +312,7 @@ def test_single_transformer_multiple_jobs(sagemaker_session, mxnet_full_version)
         entry_point=script_path,
         role="SageMakerRole",
         train_instance_count=1,
-        train_instance_type="ml.c4.xlarge",
+        train_instance_type=cpu_instance_type,
         sagemaker_session=sagemaker_session,
         framework_version=mxnet_full_version,
     )
@@ -333,7 +334,7 @@ def test_single_transformer_multiple_jobs(sagemaker_session, mxnet_full_version)
         path=transform_input_path, key_prefix=transform_input_key_prefix
     )
 
-    transformer = mx.transformer(1, "ml.m4.xlarge")
+    transformer = mx.transformer(1, cpu_instance_type)
 
     job_name = unique_name_from_base("test-mxnet-transform")
     transformer.transform(transform_input, content_type="text/csv", job_name=job_name)
@@ -353,12 +354,13 @@ def test_single_transformer_multiple_jobs(sagemaker_session, mxnet_full_version)
 def _create_transformer_and_transform_job(
     estimator,
     transform_input,
+    instance_type,
     volume_kms_key=None,
     input_filter=None,
     output_filter=None,
     join_source=None,
 ):
-    transformer = estimator.transformer(1, "ml.m4.xlarge", volume_kms_key=volume_kms_key)
+    transformer = estimator.transformer(1, instance_type, volume_kms_key=volume_kms_key)
     transformer.transform(
         transform_input,
         content_type="text/csv",

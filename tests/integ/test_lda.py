@@ -16,6 +16,8 @@ import os
 
 import numpy as np
 
+import pytest
+import tests.integ
 from sagemaker import LDA, LDAModel
 from sagemaker.amazon.common import read_records
 from sagemaker.utils import unique_name_from_base
@@ -24,7 +26,11 @@ from tests.integ.timeout import timeout, timeout_and_delete_endpoint_by_name
 from tests.integ.record_set import prepare_record_set_from_local_files
 
 
-def test_lda(sagemaker_session):
+@pytest.mark.skipif(
+    tests.integ.test_region() in tests.integ.NO_LDA_REGIONS,
+    reason="LDA image is not supported in certain regions",
+)
+def test_lda(sagemaker_session, cpu_instance_type):
     job_name = unique_name_from_base("lda")
 
     with timeout(minutes=TRAINING_DEFAULT_TIMEOUT_MINUTES):
@@ -39,7 +45,7 @@ def test_lda(sagemaker_session):
 
         lda = LDA(
             role="SageMakerRole",
-            train_instance_type="ml.c4.xlarge",
+            train_instance_type=cpu_instance_type,
             num_topics=10,
             sagemaker_session=sagemaker_session,
         )
@@ -51,7 +57,7 @@ def test_lda(sagemaker_session):
 
     with timeout_and_delete_endpoint_by_name(job_name, sagemaker_session):
         model = LDAModel(lda.model_data, role="SageMakerRole", sagemaker_session=sagemaker_session)
-        predictor = model.deploy(1, "ml.c4.xlarge", endpoint_name=job_name)
+        predictor = model.deploy(1, cpu_instance_type, endpoint_name=job_name)
 
         predict_input = np.random.rand(1, feature_num)
         result = predictor.predict(predict_input)

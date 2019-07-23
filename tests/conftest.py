@@ -17,6 +17,7 @@ import os
 
 import boto3
 import pytest
+import tests.integ
 from botocore.config import Config
 
 from sagemaker import Session
@@ -29,6 +30,8 @@ from sagemaker.sklearn.defaults import SKLEARN_VERSION
 from sagemaker.tensorflow.estimator import TensorFlow
 
 DEFAULT_REGION = "us-west-2"
+
+NO_M4_REGIONS = ["eu-west-3", "eu-north-1", "ap-east-1"]
 
 
 def pytest_addoption(parser):
@@ -242,3 +245,33 @@ def tf_full_version(request):
 @pytest.fixture(scope="module")
 def ei_tf_full_version(request):
     return request.config.getoption("--ei-tf-full-version")
+
+
+@pytest.fixture(scope="session")
+def cpu_instance_type(sagemaker_session, request):
+    region = sagemaker_session.boto_session.region_name
+    if region in NO_M4_REGIONS:
+        return "ml.m5.xlarge"
+    else:
+        return "ml.m4.xlarge"
+
+
+@pytest.fixture(scope="session")
+def cpu_instance_family(cpu_instance_type):
+    "_".join(cpu_instance_type.split(".")[0:2])
+
+
+def pytest_generate_tests(metafunc):
+    if "instance_type" in metafunc.fixturenames:
+        boto_config = metafunc.config.getoption("--boto-config")
+        parsed_config = json.loads(boto_config) if boto_config else {}
+        region = parsed_config.get("region_name", DEFAULT_REGION)
+        cpu_instance_type = "ml.m5.xlarge" if region in NO_M4_REGIONS else "ml.m4.xlarge"
+
+        params = [cpu_instance_type]
+        if not (
+            region in tests.integ.HOSTING_NO_P2_REGIONS
+            or region in tests.integ.TRAINING_NO_P2_REGIONS
+        ):
+            params.append("ml.p2.xlarge")
+        metafunc.parametrize("instance_type", params, scope="session")

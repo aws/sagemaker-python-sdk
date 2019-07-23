@@ -20,6 +20,7 @@ import pandas
 import pytest
 
 import sagemaker
+import tests.integ
 from sagemaker import AlgorithmEstimator, ModelPackage
 from sagemaker.tuner import IntegerParameter, HyperparameterTuner
 from sagemaker.utils import sagemaker_timestamp
@@ -49,11 +50,11 @@ MODEL_PACKAGE_ARN = (
 
 
 @pytest.mark.canary_quick
-@pytest.mark.skip(
-    reason="This test has always failed, but the failure was masked by a bug. "
-    "This test should be fixed. Details in https://github.com/aws/sagemaker-python-sdk/pull/968"
+@pytest.mark.skipif(
+    tests.integ.test_region() in tests.integ.NO_MARKET_PLACE_REGIONS,
+    reason="Marketplace is not available in {}".format(tests.integ.test_region()),
 )
-def test_marketplace_estimator(sagemaker_session):
+def test_marketplace_estimator(sagemaker_session, cpu_instance_type):
     with timeout(minutes=15):
         data_path = os.path.join(DATA_DIR, "marketplace", "training")
         region = sagemaker_session.boto_region_name
@@ -64,7 +65,7 @@ def test_marketplace_estimator(sagemaker_session):
             algorithm_arn=algorithm_arn,
             role="SageMakerRole",
             train_instance_count=1,
-            train_instance_type="ml.c4.xlarge",
+            train_instance_type=cpu_instance_type,
             sagemaker_session=sagemaker_session,
         )
 
@@ -76,7 +77,7 @@ def test_marketplace_estimator(sagemaker_session):
 
     endpoint_name = "test-marketplace-estimator{}".format(sagemaker_timestamp())
     with timeout_and_delete_endpoint_by_name(endpoint_name, sagemaker_session, minutes=20):
-        predictor = algo.deploy(1, "ml.m4.xlarge", endpoint_name=endpoint_name)
+        predictor = algo.deploy(1, cpu_instance_type, endpoint_name=endpoint_name)
         shape = pandas.read_csv(os.path.join(data_path, "iris.csv"), header=None)
 
         a = [50 * i for i in range(3)]
@@ -89,7 +90,11 @@ def test_marketplace_estimator(sagemaker_session):
         print(predictor.predict(test_x.values).decode("utf-8"))
 
 
-def test_marketplace_attach(sagemaker_session):
+@pytest.mark.skipif(
+    tests.integ.test_region() in tests.integ.NO_MARKET_PLACE_REGIONS,
+    reason="Marketplace is not available in {}".format(tests.integ.test_region()),
+)
+def test_marketplace_attach(sagemaker_session, cpu_instance_type):
     with timeout(minutes=15):
         data_path = os.path.join(DATA_DIR, "marketplace", "training")
         region = sagemaker_session.boto_region_name
@@ -100,7 +105,7 @@ def test_marketplace_attach(sagemaker_session):
             algorithm_arn=algorithm_arn,
             role="SageMakerRole",
             train_instance_count=1,
-            train_instance_type="ml.c4.xlarge",
+            train_instance_type=cpu_instance_type,
             sagemaker_session=sagemaker_session,
             base_job_name="test-marketplace",
         )
@@ -123,7 +128,7 @@ def test_marketplace_attach(sagemaker_session):
         )
         predictor = estimator.deploy(
             1,
-            "ml.m4.xlarge",
+            cpu_instance_type,
             endpoint_name=endpoint_name,
             serializer=sagemaker.predictor.csv_serializer,
         )
@@ -139,7 +144,11 @@ def test_marketplace_attach(sagemaker_session):
 
 
 @pytest.mark.canary_quick
-def test_marketplace_model(sagemaker_session):
+@pytest.mark.skipif(
+    tests.integ.test_region() in tests.integ.NO_MARKET_PLACE_REGIONS,
+    reason="Marketplace is not available in {}".format(tests.integ.test_region()),
+)
+def test_marketplace_model(sagemaker_session, cpu_instance_type):
     region = sagemaker_session.boto_region_name
     account = REGION_ACCOUNT_MAP[region]
     model_package_arn = MODEL_PACKAGE_ARN % (region, account)
@@ -158,7 +167,7 @@ def test_marketplace_model(sagemaker_session):
 
     endpoint_name = "test-marketplace-model-endpoint{}".format(sagemaker_timestamp())
     with timeout_and_delete_endpoint_by_name(endpoint_name, sagemaker_session, minutes=20):
-        predictor = model.deploy(1, "ml.m4.xlarge", endpoint_name=endpoint_name)
+        predictor = model.deploy(1, cpu_instance_type, endpoint_name=endpoint_name)
         data_path = os.path.join(DATA_DIR, "marketplace", "training")
         shape = pandas.read_csv(os.path.join(data_path, "iris.csv"), header=None)
         a = [50 * i for i in range(3)]
@@ -171,7 +180,11 @@ def test_marketplace_model(sagemaker_session):
         print(predictor.predict(test_x.values).decode("utf-8"))
 
 
-def test_marketplace_tuning_job(sagemaker_session):
+@pytest.mark.skipif(
+    tests.integ.test_region() in tests.integ.NO_MARKET_PLACE_REGIONS,
+    reason="Marketplace is not available in {}".format(tests.integ.test_region()),
+)
+def test_marketplace_tuning_job(sagemaker_session, cpu_instance_type):
     data_path = os.path.join(DATA_DIR, "marketplace", "training")
     region = sagemaker_session.boto_region_name
     account = REGION_ACCOUNT_MAP[region]
@@ -181,7 +194,7 @@ def test_marketplace_tuning_job(sagemaker_session):
         algorithm_arn=algorithm_arn,
         role="SageMakerRole",
         train_instance_count=1,
-        train_instance_type="ml.c4.xlarge",
+        train_instance_type=cpu_instance_type,
         sagemaker_session=sagemaker_session,
         base_job_name="test-marketplace",
     )
@@ -208,7 +221,11 @@ def test_marketplace_tuning_job(sagemaker_session):
     tuner.wait()
 
 
-def test_marketplace_transform_job(sagemaker_session):
+@pytest.mark.skipif(
+    tests.integ.test_region() in tests.integ.NO_MARKET_PLACE_REGIONS,
+    reason="Marketplace is not available in {}".format(tests.integ.test_region()),
+)
+def test_marketplace_transform_job(sagemaker_session, cpu_instance_type):
     data_path = os.path.join(DATA_DIR, "marketplace", "training")
     region = sagemaker_session.boto_region_name
     account = REGION_ACCOUNT_MAP[region]
@@ -218,7 +235,7 @@ def test_marketplace_transform_job(sagemaker_session):
         algorithm_arn=algorithm_arn,
         role="SageMakerRole",
         train_instance_count=1,
-        train_instance_type="ml.c4.xlarge",
+        train_instance_type=cpu_instance_type,
         sagemaker_session=sagemaker_session,
         base_job_name="test-marketplace",
     )
@@ -237,12 +254,16 @@ def test_marketplace_transform_job(sagemaker_session):
 
     algo.fit({"training": train_input})
 
-    transformer = algo.transformer(1, "ml.m4.xlarge")
+    transformer = algo.transformer(1, cpu_instance_type)
     transformer.transform(transform_input, content_type="text/csv")
     transformer.wait()
 
 
-def test_marketplace_transform_job_from_model_package(sagemaker_session):
+@pytest.mark.skipif(
+    tests.integ.test_region() in tests.integ.NO_MARKET_PLACE_REGIONS,
+    reason="Marketplace is not available in {}".format(tests.integ.test_region()),
+)
+def test_marketplace_transform_job_from_model_package(sagemaker_session, cpu_instance_type):
     data_path = os.path.join(DATA_DIR, "marketplace", "training")
     shape = pandas.read_csv(data_path + "/iris.csv", header=None).drop([0], axis=1)
 
@@ -262,6 +283,6 @@ def test_marketplace_transform_job_from_model_package(sagemaker_session):
         sagemaker_session=sagemaker_session,
     )
 
-    transformer = model.transformer(1, "ml.m4.xlarge")
+    transformer = model.transformer(1, cpu_instance_type)
     transformer.transform(transform_input, content_type="text/csv")
     transformer.wait()
