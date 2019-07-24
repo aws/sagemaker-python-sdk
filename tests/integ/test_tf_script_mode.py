@@ -40,7 +40,9 @@ TAGS = [{"Key": "some-key", "Value": "some-value"}]
 
 @pytest.fixture(
     scope="session",
-    params=["ml.c4.xlarge"]
+    params=[
+        "ml.c4.xlarge",
+    ],
 )
 def instance_type(request):
     return request.param
