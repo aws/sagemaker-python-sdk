@@ -40,17 +40,7 @@ TAGS = [{"Key": "some-key", "Value": "some-value"}]
 
 @pytest.fixture(
     scope="session",
-    params=[
-        "ml.c4.xlarge",
-        pytest.param(
-            "ml.p2.xlarge",
-            marks=pytest.mark.skipif(
-                tests.integ.test_region() in tests.integ.HOSTING_NO_P2_REGIONS
-                or tests.integ.test_region() in tests.integ.TRAINING_NO_P2_REGIONS,
-                reason="no ml.p2 instances in this region",
-            ),
-        ),
-    ],
+    params=["ml.c4.xlarge"]
 )
 def instance_type(request):
     return request.param
