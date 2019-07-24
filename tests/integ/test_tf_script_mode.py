@@ -38,12 +38,7 @@ MPI_DISTRIBUTION = {"mpi": {"enabled": True}}
 TAGS = [{"Key": "some-key", "Value": "some-value"}]
 
 
-@pytest.fixture(
-    scope="session",
-    params=[
-        "ml.c4.xlarge",
-    ],
-)
+@pytest.fixture(scope="session", params=["ml.c4.xlarge"])
 def instance_type(request):
     return request.param
 
