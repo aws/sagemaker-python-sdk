@@ -13,11 +13,9 @@
 from __future__ import absolute_import
 
 import os
-import time
 
 import numpy
 import pytest
-import tests.integ
 from tests.integ import DATA_DIR, PYTHON_VERSION, TRAINING_DEFAULT_TIMEOUT_MINUTES
 from tests.integ.timeout import timeout, timeout_and_delete_endpoint_by_name
 
@@ -78,42 +76,6 @@ def test_deploy_model(pytorch_training_job, sagemaker_session):
         output = predictor.predict(data)
 
         assert output.shape == (batch_size, 10)
-
-
-@pytest.mark.skipif(
-    tests.integ.test_region() in tests.integ.HOSTING_NO_P2_REGIONS
-    or tests.integ.test_region() in tests.integ.TRAINING_NO_P2_REGIONS,
-    reason="no ml.p2 instances in these regions",
-)
-def test_async_fit_deploy(sagemaker_session, pytorch_full_version):
-    training_job_name = ""
-    # TODO: add tests against local mode when it's ready to be used
-    instance_type = "ml.p2.xlarge"
-
-    with timeout(minutes=10):
-        pytorch = _get_pytorch_estimator(sagemaker_session, pytorch_full_version, instance_type)
-
-        pytorch.fit({"training": _upload_training_data(pytorch)}, wait=False)
-        training_job_name = pytorch.latest_training_job.name
-
-        print("Waiting to re-attach to the training job: %s" % training_job_name)
-        time.sleep(20)
-
-    if not _is_local_mode(instance_type):
-        endpoint_name = "test-pytorch-async-fit-attach-deploy-{}".format(sagemaker_timestamp())
-
-        with timeout_and_delete_endpoint_by_name(endpoint_name, sagemaker_session):
-            print("Re-attaching now to: %s" % training_job_name)
-            estimator = PyTorch.attach(
-                training_job_name=training_job_name, sagemaker_session=sagemaker_session
-            )
-            predictor = estimator.deploy(1, instance_type, endpoint_name=endpoint_name)
-
-            batch_size = 100
-            data = numpy.random.rand(batch_size, 1, 28, 28).astype(numpy.float32)
-            output = predictor.predict(data)
-
-            assert output.shape == (batch_size, 10)
 
 
 def _upload_training_data(pytorch):

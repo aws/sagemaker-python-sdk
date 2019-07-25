@@ -23,23 +23,12 @@ import pytest
 import sagemaker.utils
 import tests.integ as integ
 from sagemaker.tensorflow import TensorFlow
-from tests.integ import test_region, timeout, HOSTING_NO_P3_REGIONS
+from tests.integ import timeout
 
 horovod_dir = os.path.join(os.path.dirname(__file__), "..", "data", "horovod")
 
 
-@pytest.fixture(
-    scope="session",
-    params=[
-        "ml.c4.xlarge",
-        pytest.param(
-            "ml.p3.2xlarge",
-            marks=pytest.mark.skipif(
-                test_region() in HOSTING_NO_P3_REGIONS, reason="no ml.p3 instances in this region"
-            ),
-        ),
-    ],
-)
+@pytest.fixture(scope="session", params=["ml.c4.xlarge"])
 def instance_type(request):
     return request.param
 

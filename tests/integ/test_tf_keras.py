@@ -28,10 +28,6 @@ from sagemaker.utils import unique_name_from_base
 @pytest.mark.skipif(
     tests.integ.PYTHON_VERSION != "py2", reason="TensorFlow image supports only python 2."
 )
-@pytest.mark.skipif(
-    tests.integ.test_region() in tests.integ.HOSTING_NO_P2_REGIONS,
-    reason="no ml.p2 instances in these regions",
-)
 def test_keras(sagemaker_session):
     script_path = os.path.join(tests.integ.DATA_DIR, "cifar_10", "source")
     dataset_path = os.path.join(tests.integ.DATA_DIR, "cifar_10", "data")
@@ -60,7 +56,7 @@ def test_keras(sagemaker_session):
 
     endpoint_name = estimator.latest_training_job.name
     with timeout_and_delete_endpoint_by_name(endpoint_name, sagemaker_session):
-        predictor = estimator.deploy(initial_instance_count=1, instance_type="ml.p2.xlarge")
+        predictor = estimator.deploy(initial_instance_count=1, instance_type="ml.c4.xlarge")
 
         data = np.random.randn(32, 32, 3)
         predict_response = predictor.predict(data)
