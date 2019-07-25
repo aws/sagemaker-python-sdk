@@ -27,7 +27,8 @@ from sagemaker.mxnet import MXNet
 from sagemaker.mxnet import MXNetPredictor, MXNetModel
 
 DATA_DIR = os.path.join(os.path.dirname(__file__), "..", "data")
-SCRIPT_PATH = os.path.join(DATA_DIR, "dummy_script.py")
+SCRIPT_NAME = "dummy_script.py"
+SCRIPT_PATH = os.path.join(DATA_DIR, SCRIPT_NAME)
 SERVING_SCRIPT_FILE = "another_dummy_script.py"
 MODEL_DATA = "s3://mybucket/model"
 TIMESTAMP = "2017-11-06-14:14:15.672"
@@ -183,13 +184,46 @@ def test_create_model(sagemaker_session, mxnet_version):
     assert model.sagemaker_session == sagemaker_session
     assert model.framework_version == mxnet_version
     assert model.py_version == mx.py_version
-    assert model.entry_point == SCRIPT_PATH
     assert model.role == ROLE
     assert model.name == job_name
     assert model.container_log_level == container_log_level
     assert model.source_dir == source_dir
     assert model.image is None
     assert model.vpc_config is None
+
+
+@patch("sagemaker.utils.create_tar_file", MagicMock())
+def test_create_model_default_entry_with_mms(sagemaker_session, mxnet_version, skip_if_not_mms_version):
+    mx = MXNet(
+        entry_point=SCRIPT_PATH,
+        role=ROLE,
+        sagemaker_session=sagemaker_session,
+        train_instance_count=INSTANCE_COUNT,
+        train_instance_type=INSTANCE_TYPE,
+        framework_version=mxnet_version,
+    )
+
+    mx.fit()
+    model = mx.create_model()
+
+    assert model.entry_point == SCRIPT_PATH
+
+
+@patch("sagemaker.utils.create_tar_file", MagicMock())
+def test_create_model_default_entry_not_mms(sagemaker_session, mxnet_version, skip_if_mms_version):
+    mx = MXNet(
+        entry_point=SCRIPT_PATH,
+        role=ROLE,
+        sagemaker_session=sagemaker_session,
+        train_instance_count=INSTANCE_COUNT,
+        train_instance_type=INSTANCE_TYPE,
+        framework_version=mxnet_version,
+    )
+
+    mx.fit()
+    model = mx.create_model()
+
+    assert model.entry_point == SCRIPT_NAME
 
 
 def test_create_model_with_optional_params(sagemaker_session):

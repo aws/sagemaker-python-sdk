@@ -152,4 +152,6 @@ class MXNetModel(FrameworkModel):
         )
 
     def _is_mms_version(self):
+        """Return if the MXNet version uses MMS.
+        """
         return parse_version(self.framework_version) >= parse_version(self._LOWEST_MMS_VERSION)
