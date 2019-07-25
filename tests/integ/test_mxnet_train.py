@@ -30,11 +30,16 @@ from tests.integ.timeout import timeout, timeout_and_delete_endpoint_by_name
 @pytest.fixture(scope="module")
 def mxnet_training_job(sagemaker_session, mxnet_full_version):
     with timeout(minutes=TRAINING_DEFAULT_TIMEOUT_MINUTES):
-        script_path = os.path.join(DATA_DIR, "mxnet_mnist", "mnist.py")
+        s3_prefix = "integ-test-data/mxnet_mnist"
         data_path = os.path.join(DATA_DIR, "mxnet_mnist")
 
+        s3_source = sagemaker_session.upload_data(
+            path=os.path.join(data_path, "sourcedir.tar.gz"), key_prefix="{}/src".format(s3_prefix)
+        )
+
         mx = MXNet(
-            entry_point=script_path,
+            entry_point=os.path.join("mxnet_mnist", "mnist.py"),
+            source_dir=s3_source,
             role="SageMakerRole",
             framework_version=mxnet_full_version,
             py_version=PYTHON_VERSION,
@@ -44,10 +49,10 @@ def mxnet_training_job(sagemaker_session, mxnet_full_version):
         )
 
         train_input = mx.sagemaker_session.upload_data(
-            path=os.path.join(data_path, "train"), key_prefix="integ-test-data/mxnet_mnist/train"
+            path=os.path.join(data_path, "train"), key_prefix="{}/train".format(s3_prefix)
         )
         test_input = mx.sagemaker_session.upload_data(
-            path=os.path.join(data_path, "test"), key_prefix="integ-test-data/mxnet_mnist/test"
+            path=os.path.join(data_path, "test"), key_prefix="{}/test".format(s3_prefix)
         )
 
         mx.fit({"train": train_input, "test": test_input})
