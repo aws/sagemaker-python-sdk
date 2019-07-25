@@ -10,6 +10,7 @@
 # distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
+"""Placeholder docstring"""
 from __future__ import absolute_import
 
 import json
@@ -30,8 +31,9 @@ logger = logging.getLogger(__name__)
 
 
 class AmazonAlgorithmEstimatorBase(EstimatorBase):
-    """Base class for Amazon first-party Estimator implementations. This class isn't intended
-    to be instantiated directly."""
+    """Base class for Amazon first-party Estimator implementations. This class
+    isn't intended to be instantiated directly.
+    """
 
     feature_dim = hp("feature_dim", validation.gt(0), data_type=int)
     mini_batch_size = hp("mini_batch_size", validation.gt(0), data_type=int)
@@ -44,10 +46,16 @@ class AmazonAlgorithmEstimatorBase(EstimatorBase):
         """Initialize an AmazonAlgorithmEstimatorBase.
 
         Args:
-            data_location (str or None): The s3 prefix to upload RecordSet objects to, expressed as an
-                S3 url. For example "s3://example-bucket/some-key-prefix/". Objects will be
-                saved in a unique sub-directory of the specified location. If None, a default
-                data location will be used."""
+            role:
+            train_instance_count:
+            train_instance_type:
+            data_location (str or None): The s3 prefix to upload RecordSet
+                objects to, expressed as an S3 url. For example
+                "s3://example-bucket/some-key-prefix/". Objects will be saved in
+                a unique sub-directory of the specified location. If None, a
+                default data location will be used.
+            **kwargs:
+        """
         super(AmazonAlgorithmEstimatorBase, self).__init__(
             role, train_instance_count, train_instance_type, **kwargs
         )
@@ -55,22 +63,29 @@ class AmazonAlgorithmEstimatorBase(EstimatorBase):
         data_location = data_location or "s3://{}/sagemaker-record-sets/".format(
             self.sagemaker_session.default_bucket()
         )
-        self.data_location = data_location
+        self._data_location = data_location
 
     def train_image(self):
+        """Placeholder docstring"""
         return get_image_uri(
             self.sagemaker_session.boto_region_name, type(self).repo_name, type(self).repo_version
         )
 
     def hyperparameters(self):
+        """Placeholder docstring"""
         return hp.serialize_all(self)
 
     @property
     def data_location(self):
+        """Placeholder docstring"""
         return self._data_location
 
     @data_location.setter
     def data_location(self, data_location):
+        """
+        Args:
+            data_location:
+        """
         if not data_location.startswith("s3://"):
             raise ValueError(
                 'Expecting an S3 URL beginning with "s3://". Got "{}"'.format(data_location)
@@ -81,15 +96,17 @@ class AmazonAlgorithmEstimatorBase(EstimatorBase):
 
     @classmethod
     def _prepare_init_params_from_job_description(cls, job_details, model_channel_name=None):
-        """Convert the job description to init params that can be handled by the class constructor
+        """Convert the job description to init params that can be handled by the
+        class constructor
 
         Args:
-            job_details: the returned job details from a describe_training_job API call.
-            model_channel_name (str): Name of the channel where pre-trained model data will be downloaded.
+            job_details: the returned job details from a describe_training_job
+                API call.
+            model_channel_name (str): Name of the channel where pre-trained
+                model data will be downloaded.
 
         Returns:
-             dictionary: The transformed init_params
-
+            dictionary: The transformed init_params
         """
         init_params = super(
             AmazonAlgorithmEstimatorBase, cls
@@ -111,11 +128,12 @@ class AmazonAlgorithmEstimatorBase(EstimatorBase):
         """Set hyperparameters needed for training.
 
         Args:
-            * records (:class:`~RecordSet`): The records to train this ``Estimator`` on.
-            * mini_batch_size (int or None): The size of each mini-batch to use when training. If ``None``, a
-                default value will be used.
-            * job_name (str): Name of the training job to be created. If not specified, one is generated,
-                using the base name given to the constructor if applicable.
+            records (:class:`~RecordSet`): The records to train this ``Estimator`` on.
+            mini_batch_size (int or None): The size of each mini-batch to use when
+                training. If ``None``, a default value will be used.
+            job_name (str): Name of the training job to be created. If not
+                specified, one is generated, using the base name given to the
+                constructor if applicable.
         """
         super(AmazonAlgorithmEstimatorBase, self)._prepare_for_training(job_name=job_name)
 
@@ -137,28 +155,31 @@ class AmazonAlgorithmEstimatorBase(EstimatorBase):
     def fit(self, records, mini_batch_size=None, wait=True, logs=True, job_name=None):
         """Fit this Estimator on serialized Record objects, stored in S3.
 
-        ``records`` should be an instance of :class:`~RecordSet`. This defines a collection of
-        S3 data files to train this ``Estimator`` on.
+        ``records`` should be an instance of :class:`~RecordSet`. This
+        defines a collection of S3 data files to train this ``Estimator`` on.
 
-        Training data is expected to be encoded as dense or sparse vectors in the "values" feature
-        on each Record. If the data is labeled, the label is expected to be encoded as a list of
-        scalas in the "values" feature of the Record label.
+        Training data is expected to be encoded as dense or sparse vectors in
+        the "values" feature on each Record. If the data is labeled, the label
+        is expected to be encoded as a list of scalas in the "values" feature of
+        the Record label.
 
         More information on the Amazon Record format is available at:
         https://docs.aws.amazon.com/sagemaker/latest/dg/cdf-training.html
 
-        See :meth:`~AmazonAlgorithmEstimatorBase.record_set` to construct a ``RecordSet`` object
-        from :class:`~numpy.ndarray` arrays.
+        See :meth:`~AmazonAlgorithmEstimatorBase.record_set` to construct a
+        ``RecordSet`` object from :class:`~numpy.ndarray` arrays.
 
         Args:
             records (:class:`~RecordSet`): The records to train this ``Estimator`` on
-            mini_batch_size (int or None): The size of each mini-batch to use when training. If ``None``, a
-                default value will be used.
-            wait (bool): Whether the call should wait until the job completes (default: True).
-            logs (bool): Whether to show the logs produced by the job.
-                Only meaningful when wait is True (default: True).
-            job_name (str): Training job name. If not specified, the estimator generates a default job name,
-                based on the training image name and current timestamp.
+            mini_batch_size (int or None): The size of each mini-batch to use
+                when training. If ``None``, a default value will be used.
+            wait (bool): Whether the call should wait until the job completes
+                (default: True).
+            logs (bool): Whether to show the logs produced by the job. Only
+                meaningful when wait is True (default: True).
+            job_name (str): Training job name. If not specified, the estimator
+                generates a default job name, based on the training image name
+                and current timestamp.
         """
         self._prepare_for_training(records, job_name=job_name, mini_batch_size=mini_batch_size)
 
@@ -167,29 +188,35 @@ class AmazonAlgorithmEstimatorBase(EstimatorBase):
             self.latest_training_job.wait(logs=logs)
 
     def record_set(self, train, labels=None, channel="train", encrypt=False):
-        """Build a :class:`~RecordSet` from a numpy :class:`~ndarray` matrix and label vector.
+        """Build a :class:`~RecordSet` from a numpy :class:`~ndarray` matrix and
+        label vector.
 
-        For the 2D ``ndarray`` ``train``, each row is converted to a :class:`~Record` object.
-        The vector is stored in the "values" entry of the ``features`` property of each Record.
-        If ``labels`` is not None, each corresponding label is assigned to the "values" entry
-        of the ``labels`` property of each Record.
+        For the 2D ``ndarray`` ``train``, each row is converted to a
+        :class:`~Record` object. The vector is stored in the "values" entry of
+        the ``features`` property of each Record. If ``labels`` is not None,
+        each corresponding label is assigned to the "values" entry of the
+        ``labels`` property of each Record.
 
-        The collection of ``Record`` objects are protobuf serialized and uploaded to new
-        S3 locations. A manifest file is generated containing the list of objects created and
-        also stored in S3.
+        The collection of ``Record`` objects are protobuf serialized and
+        uploaded to new S3 locations. A manifest file is generated containing
+        the list of objects created and also stored in S3.
 
-        The number of S3 objects created is controlled by the ``train_instance_count`` property
-        on this Estimator. One S3 object is created per training instance.
+        The number of S3 objects created is controlled by the
+        ``train_instance_count`` property on this Estimator. One S3 object is
+        created per training instance.
 
         Args:
             train (numpy.ndarray): A 2D numpy array of training data.
-            labels (numpy.ndarray): A 1D numpy array of labels. Its length must be equal to the
-                number of rows in ``train``.
-            channel (str): The SageMaker TrainingJob channel this RecordSet should be assigned to.
-            encrypt (bool): Specifies whether the objects uploaded to S3 are encrypted on the
-                server side using AES-256 (default: ``False``).
+            labels (numpy.ndarray): A 1D numpy array of labels. Its length must
+                be equal to the number of rows in ``train``.
+            channel (str): The SageMaker TrainingJob channel this RecordSet
+                should be assigned to.
+            encrypt (bool): Specifies whether the objects uploaded to S3 are
+                encrypted on the server side using AES-256 (default: ``False``).
+
         Returns:
-            RecordSet: A RecordSet referencing the encoded, uploading training and label data.
+            RecordSet: A RecordSet referencing the encoded, uploading training
+            and label data.
         """
         s3 = self.sagemaker_session.boto_session.resource("s3")
         parsed_s3_url = urlparse(self.data_location)
@@ -210,21 +237,26 @@ class AmazonAlgorithmEstimatorBase(EstimatorBase):
 
 
 class RecordSet(object):
+    """Placeholder docstring"""
+
     def __init__(
         self, s3_data, num_records, feature_dim, s3_data_type="ManifestFile", channel="train"
     ):
-        """A collection of Amazon :class:~`Record` objects serialized and stored in S3.
+        """A collection of Amazon :class:~`Record` objects serialized and stored
+        in S3.
 
         Args:
             s3_data (str): The S3 location of the training data
             num_records (int): The number of records in the set.
-            feature_dim (int): The dimensionality of "values" arrays in the Record features,
-                and label (if each Record is labeled).
-            s3_data_type (str): Valid values: 'S3Prefix', 'ManifestFile'. If 'S3Prefix', ``s3_data`` defines
-                a prefix of s3 objects to train on. All objects with s3 keys beginning with ``s3_data`` will
-                be used to train. If 'ManifestFile', then ``s3_data`` defines a single s3 manifest file, listing
-                each s3 object to train on.
-            channel (str): The SageMaker Training Job channel this RecordSet should be bound to
+            feature_dim (int): The dimensionality of "values" arrays in the
+                Record features, and label (if each Record is labeled).
+            s3_data_type (str): Valid values: 'S3Prefix', 'ManifestFile'. If
+                'S3Prefix', ``s3_data`` defines a prefix of s3 objects to train
+                on. All objects with s3 keys beginning with ``s3_data`` will be
+                used to train. If 'ManifestFile', then ``s3_data`` defines a
+                single s3 manifest file, listing each s3 object to train on.
+            channel (str): The SageMaker Training Job channel this RecordSet
+                should be bound to
         """
         self.s3_data = s3_data
         self.feature_dim = feature_dim
@@ -237,7 +269,9 @@ class RecordSet(object):
         return str((RecordSet, self.__dict__))
 
     def data_channel(self):
-        """Return a dictionary to represent the training data in a channel for use with ``fit()``"""
+        """Return a dictionary to represent the training data in a channel for
+        use with ``fit()``
+        """
         return {self.channel: self.records_s3_input()}
 
     def records_s3_input(self):
@@ -246,6 +280,11 @@ class RecordSet(object):
 
 
 def _build_shards(num_shards, array):
+    """
+    Args:
+        num_shards:
+        array:
+    """
     if num_shards < 1:
         raise ValueError("num_shards must be >= 1")
     shard_size = int(array.shape[0] / num_shards)
@@ -259,9 +298,19 @@ def _build_shards(num_shards, array):
 def upload_numpy_to_s3_shards(
     num_shards, s3, bucket, key_prefix, array, labels=None, encrypt=False
 ):
-    """Upload the training ``array`` and ``labels`` arrays to ``num_shards`` S3 objects,
-    stored in "s3://``bucket``/``key_prefix``/". Optionally ``encrypt`` the S3 objects using
-    AES-256."""
+    """Upload the training ``array`` and ``labels`` arrays to ``num_shards`` S3
+    objects, stored in "s3:// ``bucket`` / ``key_prefix`` /". Optionally
+    ``encrypt`` the S3 objects using AES-256.
+
+    Args:
+        num_shards:
+        s3:
+        bucket:
+        key_prefix:
+        array:
+        labels:
+        encrypt:
+    """
     shards = _build_shards(num_shards, array)
     if labels is not None:
         label_shards = _build_shards(num_shards, labels)
@@ -300,10 +349,14 @@ def upload_numpy_to_s3_shards(
 def registry(region_name, algorithm=None):
     """Return docker registry for the given AWS region
 
-    Note: Not all the algorithms listed below have an Amazon Estimator implemented. For full list of
-    pre-implemented Estimators, look at:
+    Note: Not all the algorithms listed below have an Amazon Estimator
+    implemented. For full list of pre-implemented Estimators, look at:
 
     https://github.com/aws/sagemaker-python-sdk/tree/master/src/sagemaker/amazon
+
+    Args:
+        region_name:
+        algorithm:
     """
     if algorithm in [
         None,
@@ -406,6 +459,13 @@ def registry(region_name, algorithm=None):
 
 
 def get_image_uri(region_name, repo_name, repo_version=1):
-    """Return algorithm image URI for the given AWS region, repository name, and repository version"""
+    """Return algorithm image URI for the given AWS region, repository name, and
+    repository version
+
+    Args:
+        region_name:
+        repo_name:
+        repo_version:
+    """
     repo = "{}:{}".format(repo_name, repo_version)
     return "{}/{}".format(registry(region_name, repo_name), repo)

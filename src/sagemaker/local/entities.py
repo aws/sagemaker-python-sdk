@@ -10,6 +10,7 @@
 # distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
+"""Placeholder docstring"""
 from __future__ import absolute_import
 
 import datetime
@@ -32,6 +33,7 @@ HEALTH_CHECK_TIMEOUT_LIMIT = 120
 
 
 class _LocalTrainingJob(object):
+    """Placeholder docstring"""
 
     _STARTING = "Starting"
     _TRAINING = "Training"
@@ -39,6 +41,10 @@ class _LocalTrainingJob(object):
     _states = ["Starting", "Training", "Completed"]
 
     def __init__(self, container):
+        """
+        Args:
+            container:
+        """
         self.container = container
         self.model_artifacts = None
         self.state = "created"
@@ -46,6 +52,13 @@ class _LocalTrainingJob(object):
         self.end_time = None
 
     def start(self, input_data_config, output_data_config, hyperparameters, job_name):
+        """
+        Args:
+            input_data_config:
+            output_data_config:
+            hyperparameters:
+            job_name:
+        """
         for channel in input_data_config:
             if channel["DataSource"] and "S3DataSource" in channel["DataSource"]:
                 data_distribution = channel["DataSource"]["S3DataSource"]["S3DataDistributionType"]
@@ -75,10 +88,11 @@ class _LocalTrainingJob(object):
         self.model_artifacts = self.container.train(
             input_data_config, output_data_config, hyperparameters, job_name
         )
-        self.end = datetime.datetime.now()
+        self.end_time = datetime.datetime.now()
         self.state = self._COMPLETED
 
     def describe(self):
+        """Placeholder docstring"""
         response = {
             "ResourceConfig": {"InstanceCount": self.container.instance_count},
             "TrainingJobStatus": self.state,
@@ -90,11 +104,18 @@ class _LocalTrainingJob(object):
 
 
 class _LocalTransformJob(object):
+    """Placeholder docstring"""
 
     _CREATING = "Creating"
     _COMPLETED = "Completed"
 
     def __init__(self, transform_job_name, model_name, local_session=None):
+        """
+        Args:
+            transform_job_name:
+            model_name:
+            local_session:
+        """
         from sagemaker.local import LocalSession
 
         self.local_session = local_session or LocalSession()
@@ -110,6 +131,9 @@ class _LocalTransformJob(object):
         self.start_time = None
         self.end_time = None
         self.batch_strategy = None
+        self.transform_resources = None
+        self.input_data = None
+        self.output_data = None
         self.environment = {}
         self.state = _LocalTransformJob._CREATING
 
@@ -117,10 +141,12 @@ class _LocalTransformJob(object):
         """Start the Local Transform Job
 
         Args:
-            input_data (dict): Describes the dataset to be transformed and the location where it is stored.
-            output_data (dict): Identifies the location where to save the results from the transform job
-            transform_resources (dict): compute instances for the transform job. Currently only supports local or
-                local_gpu
+            input_data (dict): Describes the dataset to be transformed and the
+                location where it is stored.
+            output_data (dict): Identifies the location where to save the
+                results from the transform job
+            transform_resources (dict): compute instances for the transform job.
+                Currently only supports local or local_gpu
             **kwargs: additional arguments coming from the boto request object
         """
         self.transform_resources = transform_resources
@@ -168,8 +194,8 @@ class _LocalTransformJob(object):
     def describe(self):
         """Describe this _LocalTransformJob
 
-        The response is a JSON-like dictionary that follows the response of the
-        boto describe_transform_job() API.
+        The response is a JSON-like dictionary that follows the response of
+        the boto describe_transform_job() API.
 
         Returns:
             dict: description of this _LocalTransformJob
@@ -198,17 +224,19 @@ class _LocalTransformJob(object):
         return response
 
     def _get_container_environment(self, **kwargs):
-        """Get all the Environment variables that will be passed to the container
+        """Get all the Environment variables that will be passed to the
+        container
 
-        Certain input fields such as BatchStrategy have different values for the API vs the Environment
-        variables, such as SingleRecord vs SINGLE_RECORD. This method also handles this conversion.
+        Certain input fields such as BatchStrategy have different values for
+        the API vs the Environment variables, such as SingleRecord vs
+        SINGLE_RECORD. This method also handles this conversion.
 
         Args:
             **kwargs: existing transform arguments
 
         Returns:
-            dict: All the environment variables that should be set in the container
-
+            dict: All the environment variables that should be set in the
+            container
         """
         environment = {}
         environment.update(self.primary_container["Environment"])
@@ -228,7 +256,8 @@ class _LocalTransformJob(object):
         # we only do 1 max concurrent transform in Local Mode
         if "MaxConcurrentTransforms" in kwargs and int(kwargs["MaxConcurrentTransforms"]) > 1:
             logger.warning(
-                "Local Mode only supports 1 ConcurrentTransform. Setting MaxConcurrentTransforms to 1"
+                "Local Mode only supports 1 ConcurrentTransform. Setting MaxConcurrentTransforms "
+                "to 1"
             )
         environment["SAGEMAKER_MAX_CONCURRENT_TRANSFORMS"] = "1"
 
@@ -239,7 +268,8 @@ class _LocalTransformJob(object):
         return environment
 
     def _get_required_defaults(self, **kwargs):
-        """Return the default values for anything that was not provided by either the user or the container
+        """Return the default values for anything that was not provided by
+        either the user or the container
 
         Args:
             **kwargs: current transform arguments
@@ -257,8 +287,10 @@ class _LocalTransformJob(object):
         return defaults
 
     def _get_working_directory(self):
-        # Root dir to use for intermediate data location. To make things simple we will write here regardless
-        # of the final destination. At the end the files will either be moved or uploaded to S3 and deleted.
+        """Placeholder docstring"""
+        # Root dir to use for intermediate data location. To make things simple we will write here
+        # regardless of the final destination. At the end the files will either be moved or
+        # uploaded to S3 and deleted.
         root_dir = get_config_value("local.container_root", self.local_session.config)
         if root_dir:
             root_dir = os.path.abspath(root_dir)
@@ -267,6 +299,11 @@ class _LocalTransformJob(object):
         return working_dir
 
     def _prepare_data_transformation(self, input_data, batch_strategy):
+        """
+        Args:
+            input_data:
+            batch_strategy:
+        """
         input_path = input_data["DataSource"]["S3DataSource"]["S3Uri"]
         data_source = sagemaker.local.data.get_data_source_instance(input_path, self.local_session)
 
@@ -278,9 +315,15 @@ class _LocalTransformJob(object):
 
     def _perform_batch_inference(self, input_data, output_data, **kwargs):
         # Transform the input data to feed the serving container. We need to first gather the files
-        # from S3 or Local FileSystem. Split them as required (Line, RecordIO, None) and finally batch them
-        # according to the batch strategy and limit the request size.
+        # from S3 or Local FileSystem. Split them as required (Line, RecordIO, None) and finally
+        # batch them according to the batch strategy and limit the request size.
 
+        """
+        Args:
+            input_data:
+            output_data:
+            **kwargs:
+        """
         batch_strategy = kwargs["BatchStrategy"]
         max_payload = int(kwargs["MaxPayloadInMB"])
         data_source, batch_provider = self._prepare_data_transformation(input_data, batch_strategy)
@@ -317,12 +360,20 @@ class _LocalTransformJob(object):
 
 
 class _LocalModel(object):
+    """Placeholder docstring"""
+
     def __init__(self, model_name, primary_container):
+        """
+        Args:
+            model_name:
+            primary_container:
+        """
         self.model_name = model_name
         self.primary_container = primary_container
         self.creation_time = datetime.datetime.now()
 
     def describe(self):
+        """Placeholder docstring"""
         response = {
             "ModelName": self.model_name,
             "CreationTime": self.creation_time,
@@ -334,13 +385,22 @@ class _LocalModel(object):
 
 
 class _LocalEndpointConfig(object):
+    """Placeholder docstring"""
+
     def __init__(self, config_name, production_variants, tags=None):
+        """
+        Args:
+            config_name:
+            production_variants:
+            tags:
+        """
         self.name = config_name
         self.production_variants = production_variants
         self.tags = tags
         self.creation_time = datetime.datetime.now()
 
     def describe(self):
+        """Placeholder docstring"""
         response = {
             "EndpointConfigName": self.name,
             "EndpointConfigArn": _UNUSED_ARN,
@@ -352,6 +412,7 @@ class _LocalEndpointConfig(object):
 
 
 class _LocalEndpoint(object):
+    """Placeholder docstring"""
 
     _CREATING = "Creating"
     _IN_SERVICE = "InService"
@@ -359,6 +420,13 @@ class _LocalEndpoint(object):
 
     def __init__(self, endpoint_name, endpoint_config_name, tags=None, local_session=None):
         # runtime import since there is a cyclic dependency between entities and local_session
+        """
+        Args:
+            endpoint_name:
+            endpoint_config_name:
+            tags:
+            local_session:
+        """
         from sagemaker.local import LocalSession
 
         self.local_session = local_session or LocalSession()
@@ -377,6 +445,7 @@ class _LocalEndpoint(object):
         self.state = _LocalEndpoint._CREATING
 
     def serve(self):
+        """Placeholder docstring"""
         image = self.primary_container["Image"]
         instance_type = self.production_variant["InstanceType"]
         instance_count = self.production_variant["InitialInstanceCount"]
@@ -401,10 +470,12 @@ class _LocalEndpoint(object):
         self.state = _LocalEndpoint._IN_SERVICE
 
     def stop(self):
+        """Placeholder docstring"""
         if self.container:
             self.container.stop_serving()
 
     def describe(self):
+        """Placeholder docstring"""
         response = {
             "EndpointConfigName": self.endpoint_config["EndpointConfigName"],
             "CreationTime": self.create_time,
@@ -418,6 +489,10 @@ class _LocalEndpoint(object):
 
 
 def _wait_for_serving_container(serving_port):
+    """
+    Args:
+        serving_port:
+    """
     i = 0
     http = urllib3.PoolManager()
 
@@ -438,6 +513,11 @@ def _wait_for_serving_container(serving_port):
 
 
 def _perform_request(endpoint_url, pool_manager=None):
+    """
+    Args:
+        endpoint_url:
+        pool_manager:
+    """
     http = pool_manager or urllib3.PoolManager()
     try:
         r = http.request("GET", endpoint_url)

@@ -104,7 +104,7 @@ def test_all_hyperparameters(sagemaker_session):
         half_life_time_size="0",
         epochs="10",
         extra_center_factor="2",
-        eval_metrics="['msd', 'ssd']",
+        eval_metrics='["msd", "ssd"]',
         force_dense="True",
     )
 

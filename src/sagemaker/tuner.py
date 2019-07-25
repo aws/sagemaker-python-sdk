@@ -10,6 +10,7 @@
 # distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
+"""Placeholder docstring"""
 from __future__ import absolute_import
 
 import importlib
@@ -19,7 +20,7 @@ import logging
 from enum import Enum
 
 import sagemaker
-from sagemaker.amazon.amazon_estimator import RecordSet
+from sagemaker.amazon.amazon_estimator import RecordSet, AmazonAlgorithmEstimatorBase
 from sagemaker.amazon.hyperparameter import Hyperparameter as hp  # noqa
 from sagemaker.analytics import HyperparameterTuningJobAnalytics
 from sagemaker.estimator import Framework
@@ -52,10 +53,11 @@ WARM_START_TYPE = "WarmStartType"
 
 class WarmStartTypes(Enum):
     """Warm Start Configuration type. There can be two types of warm start jobs:
-        * IdenticalDataAndAlgorithm: Type of warm start that allows users to reuse training results from existing
-        tuning jobs that have the same algorithm code and datasets.
-        * TransferLearning: Type of warm start that allows users to reuse training results from existing tuning jobs
-        that have similar algorithm code and datasets.
+    * IdenticalDataAndAlgorithm: Type of warm start that allows users to reuse
+    training results from existing tuning jobs that have the same algorithm code
+    and datasets. * TransferLearning: Type of warm start that allows users to
+    reuse training results from existing tuning jobs that have similar algorithm
+    code and datasets.
     """
 
     IDENTICAL_DATA_AND_ALGORITHM = "IdenticalDataAndAlgorithm"
@@ -63,11 +65,12 @@ class WarmStartTypes(Enum):
 
 
 class WarmStartConfig(object):
-    """Warm Start Configuration which defines the nature of the warm start ``HyperparameterTuner``, with type and
-    parents for warm start.
+    """Warm Start Configuration which defines the nature of the warm start
+    ``HyperparameterTuner``, with type and parents for warm start.
 
     Examples:
-        >>> warm_start_config = WarmStartConfig(type=WarmStartTypes.TransferLearning, parents={"p1","p2"})
+        >>> warm_start_config = WarmStartConfig(
+        >>>                         type=WarmStartTypes.TransferLearning, parents={"p1","p2"})
         >>> warm_start_config.type
         "TransferLearning"
         >>> warm_start_config.parents
@@ -75,12 +78,14 @@ class WarmStartConfig(object):
     """
 
     def __init__(self, warm_start_type, parents):
-        """Initializes the ``WarmStartConfig`` with the provided ``WarmStartTypes`` and parents.
+        """Initializes the ``WarmStartConfig`` with the provided
+        ``WarmStartTypes`` and parents.
 
         Args:
-            warm_start_type (sagemaker.tuner.WarmStartTypes): This should be one of the supported warm start types
-            in WarmStartType
-            parents (set{str}): Set of parent tuning jobs which will be used to warm start the new tuning job.
+            warm_start_type (sagemaker.tuner.WarmStartTypes): This should be one
+                of the supported warm start types in WarmStartType
+            parents (set{str}): Set of parent tuning jobs which will be used to
+                warm start the new tuning job.
         """
 
         if warm_start_type not in WarmStartTypes:
@@ -100,19 +105,8 @@ class WarmStartConfig(object):
 
     @classmethod
     def from_job_desc(cls, warm_start_config):
-        """Creates an instance of ``WarmStartConfig`` class, from warm start configuration response from
-        DescribeTrainingJob.
-
-        Args:
-            warm_start_config (dict): The expected format of the ``warm_start_config`` contains two first-class
-            fields:
-                * "type": Type of warm start tuner, currently two supported types - "IdenticalDataAndAlgorithm" and
-                "TransferLearning".
-                * "parents": List of tuning job names from which the warm start should be done.
-
-        Returns:
-            sagemaker.tuner.WarmStartConfig: De-serialized instance of WarmStartConfig containing the type and parents
-            provided as part of ``warm_start_config``.
+        """Creates an instance of ``WarmStartConfig`` class, from warm start
+        configuration response from DescribeTrainingJob.
 
         Examples:
             >>> warm_start_config = WarmStartConfig.from_job_desc(warm_start_config={
@@ -126,6 +120,15 @@ class WarmStartConfig(object):
             "TransferLearning"
             >>> warm_start_config.parents
             ["p1","p2"]
+
+        Args:
+            warm_start_config (dict): The expected format of the
+                ``warm_start_config`` contains two first-class
+
+        Returns:
+            sagemaker.tuner.WarmStartConfig: De-serialized instance of
+            WarmStartConfig containing the type and parents provided as part of
+            ``warm_start_config``.
         """
         if (
             not warm_start_config
@@ -145,11 +148,11 @@ class WarmStartConfig(object):
     def to_input_req(self):
         """Converts the ``self`` instance to the desired input request format.
 
-        Returns:
-            dict: Containing the "WarmStartType" and "ParentHyperParameterTuningJobs" as the first class fields.
-
         Examples:
-            >>> warm_start_config = WarmStartConfig(warm_start_type=WarmStartTypes.TransferLearning,parents=["p1,p2"])
+            >>> warm_start_config = WarmStartConfig
+            (
+                warm_start_type=WarmStartTypes.TransferLearning,parents=["p1,p2"]
+            )
             >>> warm_start_config.to_input_req()
             {
                 "WarmStartType":"TransferLearning",
@@ -158,6 +161,10 @@ class WarmStartConfig(object):
                     {'HyperParameterTuningJobName': "p2"},
                 ]
             }
+
+        Returns:
+            dict: Containing the "WarmStartType" and
+            "ParentHyperParameterTuningJobs" as the first class fields.
         """
         return {
             WARM_START_TYPE: self.type.value,
@@ -168,8 +175,8 @@ class WarmStartConfig(object):
 
 
 class HyperparameterTuner(object):
-    """A class for creating and interacting with Amazon SageMaker hyperparameter tuning jobs, as well as
-    deploying the resulting model(s).
+    """A class for creating and interacting with Amazon SageMaker hyperparameter
+    tuning jobs, as well as deploying the resulting model(s).
     """
 
     TUNING_JOB_NAME_MAX_LENGTH = 32
@@ -195,37 +202,55 @@ class HyperparameterTuner(object):
         warm_start_config=None,
         early_stopping_type="Off",
     ):
-        """Initialize a ``HyperparameterTuner``. It takes an estimator to obtain configuration information
-        for training jobs that are created as the result of a hyperparameter tuning job.
+        """Initialize a ``HyperparameterTuner``. It takes an estimator to obtain
+        configuration information for training jobs that are created as the
+        result of a hyperparameter tuning job.
 
         Args:
-            estimator (sagemaker.estimator.EstimatorBase): An estimator object that has been initialized with
-                the desired configuration. There does not need to be a training job associated with this instance.
-            objective_metric_name (str): Name of the metric for evaluating training jobs.
-            hyperparameter_ranges (dict[str, sagemaker.parameter.ParameterRange]): Dictionary of parameter ranges.
-                These parameter ranges can be one of three types: Continuous, Integer, or Categorical. The keys of the
-                dictionary are the names of the hyperparameter, and the values are the appropriate parameter range class
-                to represent the range.
-            metric_definitions (list[dict]): A list of dictionaries that defines the metric(s) used to evaluate the
-                training jobs (default: None). Each dictionary contains two keys: 'Name' for the name of the metric, and
-                'Regex' for the regular expression used to extract the metric from the logs. This should be defined only
-                for hyperparameter tuning jobs that don't use an Amazon algorithm.
-            strategy (str): Strategy to be used for hyperparameter estimations (default: 'Bayesian').
-            objective_type (str): The type of the objective metric for evaluating training jobs. This value can be
-                either 'Minimize' or 'Maximize' (default: 'Maximize').
-            max_jobs (int): Maximum total number of training jobs to start for the hyperparameter tuning job
-                (default: 1).
-            max_parallel_jobs (int): Maximum number of parallel training jobs to start (default: 1).
-            tags (list[dict]): List of tags for labeling the tuning job (default: None). For more, see
+            estimator (sagemaker.estimator.EstimatorBase): An estimator object
+                that has been initialized with the desired configuration. There
+                does not need to be a training job associated with this
+                instance.
+            objective_metric_name (str): Name of the metric for evaluating
+                training jobs.
+            hyperparameter_ranges (dict[str, sagemaker.parameter.ParameterRange]): Dictionary of
+                parameter ranges. These parameter ranges can be one
+                of three types: Continuous, Integer, or Categorical. The keys of
+                the dictionary are the names of the hyperparameter, and the
+                values are the appropriate parameter range class to represent
+                the range.
+            metric_definitions (list[dict]): A list of dictionaries that defines
+                the metric(s) used to evaluate the training jobs (default:
+                None). Each dictionary contains two keys: 'Name' for the name of
+                the metric, and 'Regex' for the regular expression used to
+                extract the metric from the logs. This should be defined only
+                for hyperparameter tuning jobs that don't use an Amazon
+                algorithm.
+            strategy (str): Strategy to be used for hyperparameter estimations
+                (default: 'Bayesian').
+            objective_type (str): The type of the objective metric for
+                evaluating training jobs. This value can be either 'Minimize' or
+                'Maximize' (default: 'Maximize').
+            max_jobs (int): Maximum total number of training jobs to start for
+                the hyperparameter tuning job (default: 1).
+            max_parallel_jobs (int): Maximum number of parallel training jobs to
+                start (default: 1).
+            tags (list[dict]): List of tags for labeling the tuning job
+                (default: None). For more, see
                 https://docs.aws.amazon.com/sagemaker/latest/dg/API_Tag.html.
-            base_tuning_job_name (str): Prefix for the hyperparameter tuning job name when the
-                :meth:`~sagemaker.tuner.HyperparameterTuner.fit` method launches. If not specified,
-                a default job name is generated, based on the training image name and current timestamp.
-            warm_start_config (sagemaker.tuner.WarmStartConfig): A ``WarmStartConfig`` object that has been initialized
-                with the configuration defining the nature of warm start tuning job.
-            early_stopping_type (str): Specifies whether early stopping is enabled for the job.
-                Can be either 'Auto' or 'Off' (default: 'Off'). If set to 'Off', early stopping will not be attempted.
-                If set to 'Auto', early stopping of some training jobs may happen, but is not guaranteed to.
+            base_tuning_job_name (str): Prefix for the hyperparameter tuning job
+                name when the :meth:`~sagemaker.tuner.HyperparameterTuner.fit`
+                method launches. If not specified, a default job name is
+                generated, based on the training image name and current
+                timestamp.
+            warm_start_config (sagemaker.tuner.WarmStartConfig): A
+                ``WarmStartConfig`` object that has been initialized with the
+                configuration defining the nature of warm start tuning job.
+            early_stopping_type (str): Specifies whether early stopping is
+                enabled for the job. Can be either 'Auto' or 'Off' (default:
+                'Off'). If set to 'Off', early stopping will not be attempted.
+                If set to 'Auto', early stopping of some training jobs may
+                happen, but is not guaranteed to.
         """
         self._hyperparameter_ranges = hyperparameter_ranges
         if self._hyperparameter_ranges is None or len(self._hyperparameter_ranges) == 0:
@@ -247,8 +272,14 @@ class HyperparameterTuner(object):
         self.latest_tuning_job = None
         self.warm_start_config = warm_start_config
         self.early_stopping_type = early_stopping_type
+        self.static_hyperparameters = None
 
     def _prepare_for_training(self, job_name=None, include_cls_metadata=False):
+        """
+        Args:
+            job_name:
+            include_cls_metadata:
+        """
         if job_name is not None:
             self._current_job_name = job_name
         else:
@@ -279,35 +310,44 @@ class HyperparameterTuner(object):
         """Start a hyperparameter tuning job.
 
         Args:
-            inputs: Information about the training data. Please refer to the ``fit()`` method of
-                the associated estimator, as this can take any of the following forms:
+            inputs: Information about the training data. Please refer to the
+                ``fit()`` method of the associated estimator, as this can take
+                any of the following forms:
 
                 * (str) - The S3 location where training data is saved.
-                * (dict[str, str] or dict[str, sagemaker.session.s3_input]) - If using multiple channels for
-                    training data, you can specify a dict mapping channel names
-                    to strings or :func:`~sagemaker.session.s3_input` objects.
-                * (sagemaker.session.s3_input) - Channel configuration for S3 data sources that can provide
-                    additional information about the training dataset. See :func:`sagemaker.session.s3_input`
-                    for full details.
-                * (sagemaker.amazon.amazon_estimator.RecordSet) - A collection of
-                    Amazon :class:~`Record` objects serialized and stored in S3.
-                    For use with an estimator for an Amazon algorithm.
-                * (list[sagemaker.amazon.amazon_estimator.RecordSet]) - A list of
-                    :class:~`sagemaker.amazon.amazon_estimator.RecordSet` objects, where each instance is
-                    a different channel of training data.
 
-            job_name (str): Tuning job name. If not specified, the tuner generates a default job name,
-                based on the training image name and current timestamp.
-            include_cls_metadata (bool): Whether or not the hyperparameter tuning job should include
-                information about the estimator class (default: False). This information is passed
-                as a hyperparameter, so if the algorithm you are using cannot handle
-                unknown hyperparameters (e.g. an Amazon SageMaker built-in algorithm that
-                does not have a custom estimator in the Python SDK), then set
-                ``include_cls_metadata`` to ``False``.
-            **kwargs: Other arguments needed for training. Please refer to the ``fit()`` method of the associated
-                estimator to see what other arguments are needed.
+                * (dict[str, str] or dict[str, sagemaker.session.s3_input]) - If using multiple
+                      channels for training data, you can specify a dict mapping channel
+                      names to strings or :func:`~sagemaker.session.s3_input`
+                      objects.
+
+                * (sagemaker.session.s3_input) - Channel configuration for S3 data sources that can
+                      provide additional information about the training dataset. See
+                      :func:`sagemaker.session.s3_input` for full details.
+
+                * (sagemaker.amazon.amazon_estimator.RecordSet) - A collection of
+                      Amazon :class:~`Record` objects serialized and stored in
+                      S3. For use with an estimator for an Amazon algorithm.
+
+                * (list[sagemaker.amazon.amazon_estimator.RecordSet]) - A list of
+                      :class:~`sagemaker.amazon.amazon_estimator.RecordSet`
+                      objects, where each instance is a different channel of
+                      training data.
+            job_name (str): Tuning job name. If not specified, the tuner
+                generates a default job name, based on the training image name
+                and current timestamp.
+            include_cls_metadata (bool): Whether or not the hyperparameter
+                tuning job should include information about the estimator class
+                (default: False). This information is passed as a
+                hyperparameter, so if the algorithm you are using cannot handle
+                unknown hyperparameters (e.g. an Amazon SageMaker built-in
+                algorithm that does not have a custom estimator in the Python
+                SDK), then set ``include_cls_metadata`` to ``False``.
+            **kwargs: Other arguments needed for training. Please refer to the
+                ``fit()`` method of the associated estimator to see what other
+                arguments are needed.
         """
-        if isinstance(inputs, list) or isinstance(inputs, RecordSet):
+        if isinstance(inputs, (list, RecordSet)):
             self.estimator._prepare_for_training(inputs, **kwargs)
         else:
             self.estimator._prepare_for_training(job_name)
@@ -319,21 +359,10 @@ class HyperparameterTuner(object):
     def attach(cls, tuning_job_name, sagemaker_session=None, job_details=None, estimator_cls=None):
         """Attach to an existing hyperparameter tuning job.
 
-        Create a HyperparameterTuner bound to an existing hyperparameter tuning job. After attaching, if there exists a
-        best training job (or any other completed training job), that can be deployed to create
-        an Amazon SageMaker Endpoint and return a ``Predictor``.
-
-        Args:
-            tuning_job_name (str): The name of the hyperparameter tuning job to attach to.
-            sagemaker_session (sagemaker.session.Session): Session object which manages interactions with
-                Amazon SageMaker APIs and any other AWS services needed. If not specified, one is created
-                using the default AWS configuration chain.
-            job_details (dict): The response to a ``DescribeHyperParameterTuningJob`` call. If not specified,
-                the ``HyperparameterTuner`` will perform one such call with the provided hyperparameter tuning job name.
-            estimator_cls (str): The estimator class name associated with the training jobs,
-                e.g. 'sagemaker.estimator.Estimator'. If not specified, the ``HyperparameterTuner`` will try to derive
-                the correct estimator class from training job metadata, defaulting to
-                :class:~`sagemaker.estimator.Estimator` if it is unable to determine a more specific class.
+        Create a HyperparameterTuner bound to an existing hyperparameter
+        tuning job. After attaching, if there exists a best training job (or any
+        other completed training job), that can be deployed to create an Amazon
+        SageMaker Endpoint and return a ``Predictor``.
 
         Examples:
             >>> my_tuner.fit()
@@ -342,9 +371,27 @@ class HyperparameterTuner(object):
             >>> attached_tuner = HyperparameterTuner.attach(job_name)
             >>> attached_tuner.deploy()
 
+        Args:
+            tuning_job_name (str): The name of the hyperparameter tuning job to
+                attach to.
+            sagemaker_session (sagemaker.session.Session): Session object which
+                manages interactions with Amazon SageMaker APIs and any other
+                AWS services needed. If not specified, one is created using the
+                default AWS configuration chain.
+            job_details (dict): The response to a
+                ``DescribeHyperParameterTuningJob`` call. If not specified, the
+                ``HyperparameterTuner`` will perform one such call with the
+                provided hyperparameter tuning job name.
+            estimator_cls (str): The estimator class name associated with the
+                training jobs, e.g. 'sagemaker.estimator.Estimator'. If not
+                specified, the ``HyperparameterTuner`` will try to derive the
+                correct estimator class from training job metadata, defaulting
+                to :class:~`sagemaker.estimator.Estimator` if it is unable to
+                determine a more specific class.
+
         Returns:
-            sagemaker.tuner.HyperparameterTuner: A ``HyperparameterTuner`` instance with the attached hyperparameter
-                tuning job.
+            sagemaker.tuner.HyperparameterTuner: A ``HyperparameterTuner``
+            instance with the attached hyperparameter tuning job.
         """
         sagemaker_session = sagemaker_session or Session()
 
@@ -357,7 +404,7 @@ class HyperparameterTuner(object):
             estimator_cls, job_details["TrainingJobDefinition"]
         )
         estimator = cls._prepare_estimator_from_job_description(
-            estimator_cls, job_details["TrainingJobDefinition"], sagemaker_session
+            estimator_cls, job_details, sagemaker_session
         )
         init_params = cls._prepare_init_params_from_job_description(job_details)
 
@@ -378,30 +425,38 @@ class HyperparameterTuner(object):
         model_name=None,
         **kwargs
     ):
-        """Deploy the best trained or user specified model to an Amazon SageMaker endpoint and return a
-        ``sagemaker.RealTimePredictor`` object.
+        """Deploy the best trained or user specified model to an Amazon
+        SageMaker endpoint and return a ``sagemaker.RealTimePredictor`` object.
 
-        For more information: http://docs.aws.amazon.com/sagemaker/latest/dg/how-it-works-training.html
+        For more information:
+        http://docs.aws.amazon.com/sagemaker/latest/dg/how-it-works-training.html
 
         Args:
-            initial_instance_count (int): Minimum number of EC2 instances to deploy to an endpoint for prediction.
-            instance_type (str): Type of EC2 instance to deploy to an endpoint for prediction,
-                for example, 'ml.c4.xlarge'.
-            accelerator_type (str): Type of Elastic Inference accelerator to attach to an endpoint for model loading
-                and inference, for example, 'ml.eia1.medium'. If not specified, no Elastic Inference accelerator
-                will be attached to the endpoint.
-                For more information: https://docs.aws.amazon.com/sagemaker/latest/dg/ei.html
-            endpoint_name (str): Name to use for creating an Amazon SageMaker endpoint. If not specified,
-                the name of the training job is used.
-            wait (bool): Whether the call should wait until the deployment of model completes (default: True).
-            model_name (str): Name to use for creating an Amazon SageMaker model. If not specified, the name of
-                the training job is used.
-            **kwargs: Other arguments needed for deployment. Please refer to the ``create_model()`` method of
-                the associated estimator to see what other arguments are needed.
+            initial_instance_count (int): Minimum number of EC2 instances to
+                deploy to an endpoint for prediction.
+            instance_type (str): Type of EC2 instance to deploy to an endpoint
+                for prediction, for example, 'ml.c4.xlarge'.
+            accelerator_type (str): Type of Elastic Inference accelerator to
+                attach to an endpoint for model loading and inference, for
+                example, 'ml.eia1.medium'. If not specified, no Elastic
+                Inference accelerator will be attached to the endpoint. For more
+                information:
+                https://docs.aws.amazon.com/sagemaker/latest/dg/ei.html
+            endpoint_name (str): Name to use for creating an Amazon SageMaker
+                endpoint. If not specified, the name of the training job is
+                used.
+            wait (bool): Whether the call should wait until the deployment of
+                model completes (default: True).
+            model_name (str): Name to use for creating an Amazon SageMaker
+                model. If not specified, the name of the training job is used.
+            **kwargs: Other arguments needed for deployment. Please refer to the
+                ``create_model()`` method of the associated estimator to see
+                what other arguments are needed.
 
         Returns:
             sagemaker.predictor.RealTimePredictor: A predictor that provides a ``predict()`` method,
-                which can be used to send requests to the Amazon SageMaker endpoint and obtain inferences.
+                which can be used to send requests to the Amazon SageMaker
+                endpoint and obtain inferences.
         """
         endpoint_name = endpoint_name or self.best_training_job()
         best_estimator = self.estimator.attach(
@@ -418,26 +473,26 @@ class HyperparameterTuner(object):
         )
 
     def stop_tuning_job(self):
-        """Stop latest running hyperparameter tuning job.
-        """
+        """Stop latest running hyperparameter tuning job."""
         self._ensure_last_tuning_job()
         self.latest_tuning_job.stop()
 
     def wait(self):
-        """Wait for latest hyperparameter tuning job to finish.
-        """
+        """Wait for latest hyperparameter tuning job to finish."""
         self._ensure_last_tuning_job()
         self.latest_tuning_job.wait()
 
     def best_training_job(self):
-        """Return name of the best training job for the latest hyperparameter tuning job.
+        """Return name of the best training job for the latest hyperparameter
+        tuning job.
 
         Raises:
-            Exception: If there is no best training job available for the hyperparameter tuning job.
+            Exception: If there is no best training job available for the
+                hyperparameter tuning job.
         """
         self._ensure_last_tuning_job()
 
-        tuning_job_describe_result = self.estimator.sagemaker_session.sagemaker_client.describe_hyper_parameter_tuning_job(  # noqa: E501
+        tuning_job_describe_result = self.estimator.sagemaker_session.sagemaker_client.describe_hyper_parameter_tuning_job(  # noqa: E501 # pylint: disable=line-too-long
             HyperParameterTuningJobName=self.latest_tuning_job.name
         )
 
@@ -453,8 +508,8 @@ class HyperparameterTuner(object):
     def delete_endpoint(self, endpoint_name=None):
         """Delete an Amazon SageMaker endpoint.
 
-        If an endpoint name is not specified, this defaults to looking for an endpoint that
-        shares a name with the best training job for deletion.
+        If an endpoint name is not specified, this defaults to looking for an
+        endpoint that shares a name with the best training job for deletion.
 
         Args:
             endpoint_name (str): Name of the endpoint to delete
@@ -463,12 +518,18 @@ class HyperparameterTuner(object):
         self.sagemaker_session.delete_endpoint(endpoint_name)
 
     def _ensure_last_tuning_job(self):
+        """Placeholder docstring"""
         if self.latest_tuning_job is None:
             raise ValueError("No tuning job available")
 
     @classmethod
     def _prepare_estimator_cls(cls, estimator_cls, training_details):
         # Check for customer-specified estimator first
+        """
+        Args:
+            estimator_cls:
+            training_details:
+        """
         if estimator_cls is not None:
             module, cls_name = estimator_cls.rsplit(".", 1)
             return getattr(importlib.import_module(module), cls_name)
@@ -496,15 +557,30 @@ class HyperparameterTuner(object):
         )
 
     @classmethod
-    def _prepare_estimator_from_job_description(
-        cls, estimator_cls, training_details, sagemaker_session
-    ):
+    def _prepare_estimator_from_job_description(cls, estimator_cls, job_details, sagemaker_session):
+        """
+        Args:
+            estimator_cls:
+            job_details:
+            sagemaker_session:
+        """
+        training_details = job_details["TrainingJobDefinition"]
+
         # Swap name for static hyperparameters to what an estimator would expect
         training_details["HyperParameters"] = training_details["StaticHyperParameters"]
         del training_details["StaticHyperParameters"]
 
         # Remove hyperparameter reserved by SageMaker for tuning jobs
         del training_details["HyperParameters"]["_tuning_objective_metric"]
+
+        # Add missing hyperparameters defined in the hyperparameter ranges,
+        # as potentially required in the Amazon algorithm estimator's constructor
+        if issubclass(estimator_cls, AmazonAlgorithmEstimatorBase):
+            parameter_ranges = job_details["HyperParameterTuningJobConfig"]["ParameterRanges"]
+            additional_hyperparameters = cls._extract_hyperparameters_from_parameter_ranges(
+                parameter_ranges
+            )
+            training_details["HyperParameters"].update(additional_hyperparameters)
 
         # Add items expected by the estimator (but aren't needed otherwise)
         training_details["TrainingJobName"] = ""
@@ -518,6 +594,10 @@ class HyperparameterTuner(object):
 
     @classmethod
     def _prepare_init_params_from_job_description(cls, job_details):
+        """
+        Args:
+            job_details:
+        """
         tuning_config = job_details["HyperParameterTuningJobConfig"]
         return {
             "metric_definitions": job_details["TrainingJobDefinition"]["AlgorithmSpecification"][
@@ -541,6 +621,10 @@ class HyperparameterTuner(object):
 
     @classmethod
     def _prepare_parameter_ranges(cls, parameter_ranges):
+        """
+        Args:
+            parameter_ranges:
+        """
         ranges = {}
 
         for parameter in parameter_ranges["CategoricalParameterRanges"]:
@@ -558,16 +642,36 @@ class HyperparameterTuner(object):
 
         return ranges
 
+    @classmethod
+    def _extract_hyperparameters_from_parameter_ranges(cls, parameter_ranges):
+        """
+        Args:
+            parameter_ranges:
+        """
+        hyperparameters = {}
+
+        for parameter in parameter_ranges["CategoricalParameterRanges"]:
+            hyperparameters[parameter["Name"]] = parameter["Values"][0]
+
+        for parameter in parameter_ranges["ContinuousParameterRanges"]:
+            hyperparameters[parameter["Name"]] = float(parameter["MinValue"])
+
+        for parameter in parameter_ranges["IntegerParameterRanges"]:
+            hyperparameters[parameter["Name"]] = int(parameter["MinValue"])
+
+        return hyperparameters
+
     def hyperparameter_ranges(self):
-        """Return the hyperparameter ranges in a dictionary to be used as part of a request for creating a
-        hyperparameter tuning job.
+        """Return the hyperparameter ranges in a dictionary to be used as part
+        of a request for creating a hyperparameter tuning job.
         """
         hyperparameter_ranges = dict()
         for range_type in ParameterRange.__all_types__:
             parameter_ranges = []
             for parameter_name, parameter in self._hyperparameter_ranges.items():
                 if parameter is not None and parameter.__name__ == range_type:
-                    # Categorical parameters needed to be serialized as JSON for our framework containers
+                    # Categorical parameters needed to be serialized as JSON for our framework
+                    # containers
                     if isinstance(parameter, CategoricalParameter) and isinstance(
                         self.estimator, Framework
                     ):
@@ -580,25 +684,29 @@ class HyperparameterTuner(object):
 
     @property
     def sagemaker_session(self):
-        """Convenience method for accessing the :class:`~sagemaker.session.Session` object associated
-        with the estimator for the ``HyperparameterTuner``.
+        """Convenience method for accessing the
+        :class:`~sagemaker.session.Session` object associated with the estimator
+        for the ``HyperparameterTuner``.
         """
         return self.estimator.sagemaker_session
 
     def analytics(self):
-        """An instance of HyperparameterTuningJobAnalytics for this latest tuning job of this tuner.
-        Analytics olbject gives you access to tuning results summarized into a pandas dataframe.
+        """An instance of HyperparameterTuningJobAnalytics for this latest
+        tuning job of this tuner. Analytics olbject gives you access to tuning
+        results summarized into a pandas dataframe.
         """
         return HyperparameterTuningJobAnalytics(self.latest_tuning_job.name, self.sagemaker_session)
 
     def _validate_parameter_ranges(self):
+        """Placeholder docstring"""
         for kls in inspect.getmro(self.estimator.__class__)[::-1]:
             for _, value in kls.__dict__.items():
                 if isinstance(value, hp):
                     try:
-                        # The hyperparam names may not be the same as the class attribute that holds them,
-                        # for instance: local_lloyd_init_method is called local_init_method. We need to map these
-                        # and pass the correct name to the constructor.
+                        # The hyperparam names may not be the same as the class attribute that
+                        # holds them, for instance: local_lloyd_init_method is called
+                        # local_init_method. We need to map these and pass the correct name to
+                        # the constructor.
                         parameter_range = self._hyperparameter_ranges[value.name]
 
                         if isinstance(parameter_range, ParameterRange):
@@ -607,6 +715,11 @@ class HyperparameterTuner(object):
                         pass
 
     def _validate_parameter_range(self, value_hp, parameter_range):
+        """
+        Args:
+            value_hp:
+            parameter_range:
+        """
         for (parameter_range_key, parameter_range_value) in parameter_range.__dict__.items():
             if parameter_range_key == "scaling_type":
                 continue
@@ -620,26 +733,31 @@ class HyperparameterTuner(object):
                 value_hp.validate(parameter_range_value)
 
     def transfer_learning_tuner(self, additional_parents=None, estimator=None):
-        """Creates a new ``HyperparameterTuner`` by copying the request fields from the provided parent to the new
-        instance of ``HyperparameterTuner``. Followed by addition of warm start configuration with the type as
-        "TransferLearning" and parents as the union of provided list of ``additional_parents`` and the ``self``.
-        Also, training image in the new tuner's estimator is updated with the provided ``training_image``.
-
-        Args:
-            additional_parents (set{str}): Set of additional parents along with the self to be used in warm starting
-            the transfer learning tuner.
-            estimator (sagemaker.estimator.EstimatorBase): An estimator object that has been initialized with
-                the desired configuration. There does not need to be a training job associated with this instance.
-
-        Returns:
-            sagemaker.tuner.HyperparameterTuner: ``HyperparameterTuner`` instance which can be used to launch transfer
-            learning tuning job.
+        """Creates a new ``HyperparameterTuner`` by copying the request fields
+        from the provided parent to the new instance of ``HyperparameterTuner``.
+        Followed by addition of warm start configuration with the type as
+        "TransferLearning" and parents as the union of provided list of
+        ``additional_parents`` and the ``self``. Also, training image in the new
+        tuner's estimator is updated with the provided ``training_image``.
 
         Examples:
             >>> parent_tuner = HyperparameterTuner.attach(tuning_job_name="parent-job-1")
-            >>> transfer_learning_tuner = parent_tuner.transfer_learning_tuner(additional_parents={"parent-job-2"})
+            >>> transfer_learning_tuner = parent_tuner.transfer_learning_tuner(
+            >>>                                             additional_parents={"parent-job-2"})
             Later On:
             >>> transfer_learning_tuner.fit(inputs={})
+
+        Args:
+            additional_parents (set{str}): Set of additional parents along with
+                the self to be used in warm starting
+            estimator (sagemaker.estimator.EstimatorBase): An estimator object
+                that has been initialized with the desired configuration. There
+                does not need to be a training job associated with this
+                instance.
+
+        Returns:
+            sagemaker.tuner.HyperparameterTuner: ``HyperparameterTuner``
+            instance which can be used to launch transfer learning tuning job.
         """
 
         return self._create_warm_start_tuner(
@@ -649,24 +767,27 @@ class HyperparameterTuner(object):
         )
 
     def identical_dataset_and_algorithm_tuner(self, additional_parents=None):
-        """Creates a new ``HyperparameterTuner`` by copying the request fields from the provided parent to the new
-        instance of ``HyperparameterTuner``. Followed by addition of warm start configuration with the type as
-        "IdenticalDataAndAlgorithm" and parents as the union of provided list of ``additional_parents`` and the ``self``
-
-        Args:
-            additional_parents (set{str}): Set of additional parents along with the self to be used in warm starting
-            the identical dataset and algorithm tuner.
-
-        Returns:
-            sagemaker.tuner.HyperparameterTuner: HyperparameterTuner instance which can be used to launch identical
-            dataset and algorithm tuning job.
+        """Creates a new ``HyperparameterTuner`` by copying the request fields
+        from the provided parent to the new instance of ``HyperparameterTuner``.
+        Followed by addition of warm start configuration with the type as
+        "IdenticalDataAndAlgorithm" and parents as the union of provided list of
+        ``additional_parents`` and the ``self``
 
         Examples:
             >>> parent_tuner = HyperparameterTuner.attach(tuning_job_name="parent-job-1")
             >>> identical_dataset_algo_tuner = parent_tuner.identical_dataset_and_algorithm_tuner(
-            >>>                                                             additional_parents={"parent-job-2"})
+            >>>                                                additional_parents={"parent-job-2"})
             Later On:
             >>> identical_dataset_algo_tuner.fit(inputs={})
+
+        Args:
+            additional_parents (set{str}): Set of additional parents along with
+                the self to be used in warm starting
+
+        Returns:
+            sagemaker.tuner.HyperparameterTuner: HyperparameterTuner instance
+            which can be used to launch identical dataset and algorithm tuning
+            job.
         """
 
         return self._create_warm_start_tuner(
@@ -675,16 +796,20 @@ class HyperparameterTuner(object):
         )
 
     def _create_warm_start_tuner(self, additional_parents, warm_start_type, estimator=None):
-        """Creates a new ``HyperparameterTuner`` with ``WarmStartConfig``, where type will be equal to
-        ``warm_start_type`` and``parents`` would be equal to union of ``additional_parents`` and self.
+        """Creates a new ``HyperparameterTuner`` with ``WarmStartConfig``, where
+        type will be equal to ``warm_start_type`` and``parents`` would be equal
+        to union of ``additional_parents`` and self.
 
         Args:
-            additional_parents (set{str}): Additional parents along with self, to be used for warm starting.
-            warm_start_type (sagemaker.tuner.WarmStartTypes): Type of warm start job.
+            additional_parents (set{str}): Additional parents along with self,
+                to be used for warm starting.
+            warm_start_type (sagemaker.tuner.WarmStartTypes): Type of warm start
+                job.
+            estimator:
 
         Returns:
-            sagemaker.tuner.HyperparameterTuner: Instance with the request fields copied from self along with the
-            warm start configuration
+            sagemaker.tuner.HyperparameterTuner: Instance with the request
+            fields copied from self along with the warm start configuration
         """
         all_parents = {self.latest_tuning_job.name}
         if additional_parents:
@@ -702,16 +827,22 @@ class HyperparameterTuner(object):
 
 
 class _TuningJob(_Job):
+    """Placeholder docstring"""
+
     @classmethod
     def start_new(cls, tuner, inputs):
-        """Create a new Amazon SageMaker hyperparameter tuning job from the HyperparameterTuner.
+        """Create a new Amazon SageMaker hyperparameter tuning job from the
+        HyperparameterTuner.
 
         Args:
-            tuner (sagemaker.tuner.HyperparameterTuner): HyperparameterTuner object created by the user.
-            inputs (str): Parameters used when called :meth:`~sagemaker.estimator.EstimatorBase.fit`.
+            tuner (sagemaker.tuner.HyperparameterTuner): HyperparameterTuner
+                object created by the user.
+            inputs (str): Parameters used when called
+                :meth:`~sagemaker.estimator.EstimatorBase.fit`.
 
         Returns:
-            sagemaker.tuner._TuningJob: Constructed object that captures all information about the started job.
+            sagemaker.tuner._TuningJob: Constructed object that captures all
+            information about the started job.
         """
         config = _Job._load_config(inputs, tuner.estimator)
 
@@ -758,31 +889,36 @@ class _TuningJob(_Job):
         return cls(tuner.sagemaker_session, tuner._current_job_name)
 
     def stop(self):
+        """Placeholder docstring"""
         self.sagemaker_session.stop_tuning_job(name=self.name)
 
     def wait(self):
+        """Placeholder docstring"""
         self.sagemaker_session.wait_for_tuning_job(self.name)
 
 
 def create_identical_dataset_and_algorithm_tuner(
     parent, additional_parents=None, sagemaker_session=None
 ):
-    """Creates a new tuner by copying the request fields from the provided parent to the new instance of
-        ``HyperparameterTuner`` followed by addition of warm start configuration with the type as
-        "IdenticalDataAndAlgorithm" and ``parents`` as the union of provided list of ``additional_parents`` and the
-        ``parent``.
+    """Creates a new tuner by copying the request fields from the provided parent to the new
+        instance of ``HyperparameterTuner`` followed by addition of warm start configuration
+        with the type as "IdenticalDataAndAlgorithm" and ``parents`` as the
+        union of provided list of ``additional_parents`` and the ``parent``.
 
     Args:
-        parent (str): Primary parent tuning job's name from which the Tuner and Estimator configuration has to be copied
-        additional_parents (set{str}): Set of additional parent tuning job's names along with the primary parent tuning
-            job name to be used in warm starting the transfer learning tuner.
-        sagemaker_session (sagemaker.session.Session): Session object which manages interactions with
-                Amazon SageMaker APIs and any other AWS services needed. If not specified, one is created
-                using the default AWS configuration chain.
+        parent (str): Primary parent tuning job's name from which the Tuner and
+            Estimator configuration has to be copied
+        additional_parents (set{str}): Set of additional parent tuning job's
+            names along with the primary parent tuning job name to be used in
+            warm starting the transfer learning tuner.
+        sagemaker_session (sagemaker.session.Session): Session object which
+            manages interactions with Amazon SageMaker APIs and any other AWS
+            services needed. If not specified, one is created using the default
+            AWS configuration chain.
 
     Returns:
-        sagemaker.tuner.HyperparameterTuner: a new ``HyperparameterTuner`` object for the warm-started
-        hyperparameter tuning job
+        sagemaker.tuner.HyperparameterTuner: a new ``HyperparameterTuner``
+        object for the warm-started hyperparameter tuning job
     """
 
     parent_tuner = HyperparameterTuner.attach(
@@ -794,22 +930,29 @@ def create_identical_dataset_and_algorithm_tuner(
 def create_transfer_learning_tuner(
     parent, additional_parents=None, estimator=None, sagemaker_session=None
 ):
-    """Creates a new ``HyperParameterTuner`` by copying the request fields from the provided parent to the new instance
-        of ``HyperparameterTuner`` followed by addition of warm start configuration with the type as "TransferLearning"
-        and ``parents`` as the union of provided list of ``additional_parents`` and the ``parent``.
+    """Creates a new ``HyperParameterTuner`` by copying the request fields from the
+    provided parent to the new instance
+        of ``HyperparameterTuner`` followed by addition of warm start
+        configuration with the type as "TransferLearning" and ``parents`` as the
+        union of provided list of ``additional_parents`` and the ``parent``.
 
     Args:
-        parent (str): Primary parent tuning job's name from which the Tuner and Estimator configuration has to be copied
-        additional_parents (set{str}): Set of additional parent tuning job's names along with the primary parent tuning
-            job name to be used in warm starting the identical dataset and algorithm tuner.
-        estimator (sagemaker.estimator.EstimatorBase): An estimator object that has been initialized with
-                the desired configuration. There does not need to be a training job associated with this instance.
-        sagemaker_session (sagemaker.session.Session): Session object which manages interactions with
-                Amazon SageMaker APIs and any other AWS services needed. If not specified, one is created
-                using the default AWS configuration chain.
+        parent (str): Primary parent tuning job's name from which the Tuner and
+            Estimator configuration has to be copied
+        additional_parents (set{str}): Set of additional parent tuning job's
+            names along with the primary parent tuning job name to be used in
+            warm starting the identical dataset and algorithm tuner.
+        estimator (sagemaker.estimator.EstimatorBase): An estimator object that
+            has been initialized with the desired configuration. There does not
+            need to be a training job associated with this instance.
+        sagemaker_session (sagemaker.session.Session): Session object which
+            manages interactions with Amazon SageMaker APIs and any other AWS
+            services needed. If not specified, one is created using the default
+            AWS configuration chain.
 
     Returns:
-        sagemaker.tuner.HyperparameterTuner: New instance of warm started HyperparameterTuner
+        sagemaker.tuner.HyperparameterTuner: New instance of warm started
+        HyperparameterTuner
     """
 
     parent_tuner = HyperparameterTuner.attach(

@@ -10,6 +10,7 @@
 # distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
+"""Placeholder docstring"""
 from __future__ import absolute_import
 
 from sagemaker.amazon.amazon_estimator import AmazonAlgorithmEstimatorBase, registry
@@ -23,6 +24,7 @@ from sagemaker.vpc_utils import VPC_CONFIG_DEFAULT
 
 
 class RandomCutForest(AmazonAlgorithmEstimatorBase):
+    """Placeholder docstring"""
 
     repo_name = "randomcutforest"
     repo_version = 1
@@ -53,39 +55,54 @@ class RandomCutForest(AmazonAlgorithmEstimatorBase):
         """RandomCutForest is :class:`Estimator` used for anomaly detection.
 
         This Estimator may be fit via calls to
-        :meth:`~sagemaker.amazon.amazon_estimator.AmazonAlgorithmEstimatorBase.fit`. It requires Amazon
-        :class:`~sagemaker.amazon.record_pb2.Record` protobuf serialized data to be stored in S3.
-        There is an utility :meth:`~sagemaker.amazon.amazon_estimator.AmazonAlgorithmEstimatorBase.record_set` that
-        can be used to upload data to S3 and creates :class:`~sagemaker.amazon.amazon_estimator.RecordSet` to be passed
-        to the `fit` call.
+        :meth:`~sagemaker.amazon.amazon_estimator.AmazonAlgorithmEstimatorBase.fit`.
+        It requires Amazon :class:`~sagemaker.amazon.record_pb2.Record` protobuf
+        serialized data to be stored in S3. There is an utility
+        :meth:`~sagemaker.amazon.amazon_estimator.AmazonAlgorithmEstimatorBase.record_set`
+        that can be used to upload data to S3 and creates
+        :class:`~sagemaker.amazon.amazon_estimator.RecordSet` to be passed to
+        the `fit` call.
 
-        To learn more about the Amazon protobuf Record class and how to prepare bulk data in this format, please
-        consult AWS technical documentation: https://docs.aws.amazon.com/sagemaker/latest/dg/cdf-training.html
+        To learn more about the Amazon protobuf Record class and how to
+        prepare bulk data in this format, please consult AWS technical
+        documentation:
+        https://docs.aws.amazon.com/sagemaker/latest/dg/cdf-training.html
 
-        After this Estimator is fit, model data is stored in S3. The model may be deployed to an Amazon SageMaker
-        Endpoint by invoking :meth:`~sagemaker.amazon.estimator.EstimatorBase.deploy`. As well as deploying an
-        Endpoint, deploy returns a :class:`~sagemaker.amazon.ntm.RandomCutForestPredictor` object that can be used
-        for inference calls using the trained model hosted in the SageMaker Endpoint.
+        After this Estimator is fit, model data is stored in S3. The model
+        may be deployed to an Amazon SageMaker Endpoint by invoking
+        :meth:`~sagemaker.amazon.estimator.EstimatorBase.deploy`. As well as
+        deploying an Endpoint, deploy returns a
+        :class:`~sagemaker.amazon.ntm.RandomCutForestPredictor` object that can
+        be used for inference calls using the trained model hosted in the
+        SageMaker Endpoint.
 
-        RandomCutForest Estimators can be configured by setting hyperparameters. The available hyperparameters for
-        RandomCutForest are documented below.
+        RandomCutForest Estimators can be configured by setting
+        hyperparameters. The available hyperparameters for RandomCutForest are
+        documented below.
 
         For further information on the AWS Random Cut Forest algorithm,
-        please consult AWS technical documentation: https://docs.aws.amazon.com/sagemaker/latest/dg/randomcutforest.html
+        please consult AWS technical documentation:
+        https://docs.aws.amazon.com/sagemaker/latest/dg/randomcutforest.html
 
         Args:
-            role (str): An AWS IAM role (either name or full ARN). The Amazon SageMaker training jobs and
-                APIs that create Amazon SageMaker endpoints use this role to access
-                training data and model artifacts. After the endpoint is created,
-                the inference code might use the IAM role, if accessing AWS resource.
-            train_instance_count (int): Number of Amazon EC2 instances to use for training.
-            train_instance_type (str): Type of EC2 instance to use for training, for example, 'ml.c4.xlarge'.
-            num_samples_per_tree (int): Optional. The number of samples used to build each tree in the forest.
-                The total number of samples drawn from the train dataset is num_trees * num_samples_per_tree.
+            role (str): An AWS IAM role (either name or full ARN). The Amazon
+                SageMaker training jobs and APIs that create Amazon SageMaker
+                endpoints use this role to access training data and model
+                artifacts. After the endpoint is created, the inference code
+                might use the IAM role, if accessing AWS resource.
+            train_instance_count (int): Number of Amazon EC2 instances to use
+                for training.
+            train_instance_type (str): Type of EC2 instance to use for training,
+                for example, 'ml.c4.xlarge'.
+            num_samples_per_tree (int): Optional. The number of samples used to
+                build each tree in the forest. The total number of samples drawn
+                from the train dataset is num_trees * num_samples_per_tree.
             num_trees (int): Optional. The number of trees used in the forest.
-            eval_metrics(list): Optional. JSON list of metrics types to be used for reporting the score for the model.
-                Allowed values are "accuracy", "precision_recall_fscore": positive and negative precision, recall,
-                and f1 scores. If test data is provided, the score shall be reported in terms of all requested metrics.
+            eval_metrics (list): Optional. JSON list of metrics types to be used
+                for reporting the score for the model. Allowed values are
+                "accuracy", "precision_recall_fscore": positive and negative
+                precision, recall, and f1 scores. If test data is provided, the
+                score shall be reported in terms of all requested metrics.
             **kwargs: base class keyword argument values.
         """
 
@@ -97,12 +114,12 @@ class RandomCutForest(AmazonAlgorithmEstimatorBase):
         self.eval_metrics = eval_metrics
 
     def create_model(self, vpc_config_override=VPC_CONFIG_DEFAULT):
-        """Return a :class:`~sagemaker.amazon.RandomCutForestModel` referencing the latest
-        s3 model data produced by this Estimator.
+        """Return a :class:`~sagemaker.amazon.RandomCutForestModel` referencing
+        the latest s3 model data produced by this Estimator.
 
         Args:
-            vpc_config_override (dict[str, list[str]]): Optional override for VpcConfig set on the model.
-                Default: use subnets and security groups from this Estimator.
+            vpc_config_override (dict[str, list[str]]): Optional override for VpcConfig set on
+                the model. Default: use subnets and security groups from this Estimator.
                 * 'Subnets' (list[str]): List of subnet ids.
                 * 'SecurityGroupIds' (list[str]): List of security group ids.
         """
@@ -114,6 +131,12 @@ class RandomCutForest(AmazonAlgorithmEstimatorBase):
         )
 
     def _prepare_for_training(self, records, mini_batch_size=None, job_name=None):
+        """
+        Args:
+            records:
+            mini_batch_size:
+            job_name:
+        """
         if mini_batch_size is None:
             mini_batch_size = self.MINI_BATCH_SIZE
         elif mini_batch_size != self.MINI_BATCH_SIZE:
@@ -129,16 +152,24 @@ class RandomCutForest(AmazonAlgorithmEstimatorBase):
 class RandomCutForestPredictor(RealTimePredictor):
     """Assigns an anomaly score to each of the datapoints provided.
 
-    The implementation of :meth:`~sagemaker.predictor.RealTimePredictor.predict` in this
-    `RealTimePredictor` requires a numpy ``ndarray`` as input. The array should contain the
-    same number of columns as the feature-dimension of the data used to fit the model this
-    Predictor performs inference on.
+    The implementation of
+    :meth:`~sagemaker.predictor.RealTimePredictor.predict` in this
+    `RealTimePredictor` requires a numpy ``ndarray`` as input. The array should
+    contain the same number of columns as the feature-dimension of the data used
+    to fit the model this Predictor performs inference on.
 
-    :meth:`predict()` returns a list of :class:`~sagemaker.amazon.record_pb2.Record` objects,
-    one for each row in the input. Each row's score is stored in the key ``score`` of the
-    ``Record.label`` field."""
+    :meth:`predict()` returns a list of
+    :class:`~sagemaker.amazon.record_pb2.Record` objects, one for each row in
+    the input. Each row's score is stored in the key ``score`` of the
+    ``Record.label`` field.
+    """
 
     def __init__(self, endpoint, sagemaker_session=None):
+        """
+        Args:
+            endpoint:
+            sagemaker_session:
+        """
         super(RandomCutForestPredictor, self).__init__(
             endpoint,
             sagemaker_session,
@@ -148,10 +179,19 @@ class RandomCutForestPredictor(RealTimePredictor):
 
 
 class RandomCutForestModel(Model):
-    """Reference RandomCutForest s3 model data. Calling :meth:`~sagemaker.model.Model.deploy` creates an
-    Endpoint and returns a Predictor that calculates anomaly scores for datapoints."""
+    """Reference RandomCutForest s3 model data. Calling
+    :meth:`~sagemaker.model.Model.deploy` creates an Endpoint and returns a
+    Predictor that calculates anomaly scores for datapoints.
+    """
 
     def __init__(self, model_data, role, sagemaker_session=None, **kwargs):
+        """
+        Args:
+            model_data:
+            role:
+            sagemaker_session:
+            **kwargs:
+        """
         sagemaker_session = sagemaker_session or Session()
         repo = "{}:{}".format(RandomCutForest.repo_name, RandomCutForest.repo_version)
         image = "{}/{}".format(

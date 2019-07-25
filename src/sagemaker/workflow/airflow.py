@@ -10,6 +10,7 @@
 # distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
+"""Placeholder docstring"""
 from __future__ import print_function, absolute_import
 
 import os
@@ -21,12 +22,14 @@ from sagemaker.amazon import amazon_estimator
 
 
 def prepare_framework(estimator, s3_operations):
-    """Prepare S3 operations (specify where to upload `source_dir`) and environment variables
-    related to framework.
+    """Prepare S3 operations (specify where to upload `source_dir` ) and
+    environment variables related to framework.
 
     Args:
-        estimator (sagemaker.estimator.Estimator): The framework estimator to get information from and update.
-        s3_operations (dict): The dict to specify s3 operations (upload `source_dir`).
+        estimator (sagemaker.estimator.Estimator): The framework estimator to
+            get information from and update.
+        s3_operations (dict): The dict to specify s3 operations (upload
+            `source_dir` ).
     """
     if estimator.code_location is not None:
         bucket, key = fw_utils.parse_s3_url(estimator.code_location)
@@ -59,18 +62,22 @@ def prepare_framework(estimator, s3_operations):
 
 
 def prepare_amazon_algorithm_estimator(estimator, inputs, mini_batch_size=None):
-    """ Set up amazon algorithm estimator, adding the required `feature_dim` hyperparameter from training data.
+    """Set up amazon algorithm estimator, adding the required `feature_dim`
+    hyperparameter from training data.
 
     Args:
-        estimator (sagemaker.amazon.amazon_estimator.AmazonAlgorithmEstimatorBase):
-            An estimator for a built-in Amazon algorithm to get information from and update.
+        estimator (sagemaker.amazon.amazon_estimator.AmazonAlgorithmEstimatorBase): An estimator
+            for a built-in Amazon algorithm to get information from and update.
         inputs: The training data.
-            * (sagemaker.amazon.amazon_estimator.RecordSet) - A collection of
-                Amazon :class:~`Record` objects serialized and stored in S3.
-                For use with an estimator for an Amazon algorithm.
+           * (sagemaker.amazon.amazon_estimator.RecordSet) - A collection of
+
+                Amazon :class:~`Record` objects serialized and stored in S3. For
+                use with an estimator for an Amazon algorithm.
+
             * (list[sagemaker.amazon.amazon_estimator.RecordSet]) - A list of
-                :class:~`sagemaker.amazon.amazon_estimator.RecordSet` objects, where each instance is
-                a different channel of training data.
+                  :class:~`sagemaker.amazon.amazon_estimator.RecordSet` objects,
+                  where each instance is a different channel of training data.
+        mini_batch_size:
     """
     if isinstance(inputs, list):
         for record in inputs:
@@ -88,32 +95,39 @@ def training_base_config(estimator, inputs=None, job_name=None, mini_batch_size=
     """Export Airflow base training config from an estimator
 
     Args:
-        estimator (sagemaker.estimator.EstimatorBase):
-            The estimator to export training config from. Can be a BYO estimator,
-            Framework estimator or Amazon algorithm estimator.
-        inputs: Information about the training data. Please refer to the ``fit()`` method of
-                the associated estimator, as this can take any of the following forms:
+        estimator (sagemaker.estimator.EstimatorBase): The estimator to export
+            training config from. Can be a BYO estimator, Framework estimator or
+            Amazon algorithm estimator.
+        inputs: Information about the training data. Please refer to the ``fit()``
+            method of
+                the associated estimator, as this can take any of the following
+                forms:
 
             * (str) - The S3 location where training data is saved.
-            * (dict[str, str] or dict[str, sagemaker.session.s3_input]) - If using multiple channels for
-                training data, you can specify a dict mapping channel names
-                to strings or :func:`~sagemaker.session.s3_input` objects.
-            * (sagemaker.session.s3_input) - Channel configuration for S3 data sources that can provide
-                additional information about the training dataset. See :func:`sagemaker.session.s3_input`
-                for full details.
-            * (sagemaker.amazon.amazon_estimator.RecordSet) - A collection of
-                Amazon :class:~`Record` objects serialized and stored in S3.
-                For use with an estimator for an Amazon algorithm.
-            * (list[sagemaker.amazon.amazon_estimator.RecordSet]) - A list of
-                :class:~`sagemaker.amazon.amazon_estimator.RecordSet` objects, where each instance is
-                a different channel of training data.
 
+            * (dict[str, str] or dict[str, sagemaker.session.s3_input]) - If using multiple
+                  channels for training data, you can specify a dict mapping channel names to
+                  strings or :func:`~sagemaker.session.s3_input` objects.
+
+            * (sagemaker.session.s3_input) - Channel configuration for S3 data sources that can
+                  provide additional information about the training dataset. See
+                  :func:`sagemaker.session.s3_input` for full details.
+
+            * (sagemaker.amazon.amazon_estimator.RecordSet) - A collection of
+                  Amazon :class:~`Record` objects serialized and stored in S3.
+                  For use with an estimator for an Amazon algorithm.
+
+            * (list[sagemaker.amazon.amazon_estimator.RecordSet]) - A list of
+                  :class:~`sagemaker.amazon.amazon_estimator.RecordSet` objects,
+                  where each instance is a different channel of training data.
         job_name (str): Specify a training job name if needed.
-        mini_batch_size (int): Specify this argument only when estimator is a built-in estimator of an
-            Amazon algorithm. For other estimators, batch size should be specified in the estimator.
+        mini_batch_size (int): Specify this argument only when estimator is a
+            built-in estimator of an Amazon algorithm. For other estimators,
+            batch size should be specified in the estimator.
 
     Returns:
-        dict: Training config that can be directly used by SageMakerTrainingOperator in Airflow.
+        dict: Training config that can be directly used by
+        SageMakerTrainingOperator in Airflow.
     """
     default_bucket = estimator.sagemaker_session.default_bucket()
     s3_operations = {}
@@ -167,32 +181,36 @@ def training_config(estimator, inputs=None, job_name=None, mini_batch_size=None)
     """Export Airflow training config from an estimator
 
     Args:
-        estimator (sagemaker.estimator.EstimatorBase):
-            The estimator to export training config from. Can be a BYO estimator,
-            Framework estimator or Amazon algorithm estimator.
-        inputs: Information about the training data. Please refer to the ``fit()`` method of
-                the associated estimator, as this can take any of the following forms:
-
+        estimator (sagemaker.estimator.EstimatorBase): The estimator to export
+            training config from. Can be a BYO estimator, Framework estimator or
+            Amazon algorithm estimator.
+        inputs: Information about the training data. Please refer to the ``fit()``
+            method of the associated estimator, as this can take any of the following forms:
             * (str) - The S3 location where training data is saved.
-            * (dict[str, str] or dict[str, sagemaker.session.s3_input]) - If using multiple channels for
-                training data, you can specify a dict mapping channel names
-                to strings or :func:`~sagemaker.session.s3_input` objects.
-            * (sagemaker.session.s3_input) - Channel configuration for S3 data sources that can provide
-                additional information about the training dataset. See :func:`sagemaker.session.s3_input`
-                for full details.
-            * (sagemaker.amazon.amazon_estimator.RecordSet) - A collection of
-                Amazon :class:~`Record` objects serialized and stored in S3.
-                For use with an estimator for an Amazon algorithm.
-            * (list[sagemaker.amazon.amazon_estimator.RecordSet]) - A list of
-                :class:~`sagemaker.amazon.amazon_estimator.RecordSet` objects, where each instance is
-                a different channel of training data.
 
+            * (dict[str, str] or dict[str, sagemaker.session.s3_input]) - If using multiple
+                  channels for training data, you can specify a dict mapping channel names to
+                  strings or :func:`~sagemaker.session.s3_input` objects.
+
+            * (sagemaker.session.s3_input) - Channel configuration for S3 data sources that can
+                  provide additional information about the training dataset. See
+                  :func:`sagemaker.session.s3_input` for full details.
+
+            * (sagemaker.amazon.amazon_estimator.RecordSet) - A collection of
+                  Amazon :class:~`Record` objects serialized and stored in S3.
+                  For use with an estimator for an Amazon algorithm.
+
+            * (list[sagemaker.amazon.amazon_estimator.RecordSet]) - A list of
+                  :class:~`sagemaker.amazon.amazon_estimator.RecordSet` objects,
+                  where each instance is a different channel of training data.
         job_name (str): Specify a training job name if needed.
-        mini_batch_size (int): Specify this argument only when estimator is a built-in estimator of an
-            Amazon algorithm. For other estimators, batch size should be specified in the estimator.
+        mini_batch_size (int): Specify this argument only when estimator is a
+            built-in estimator of an Amazon algorithm. For other estimators,
+            batch size should be specified in the estimator.
 
     Returns:
-        dict: Training config that can be directly used by SageMakerTrainingOperator in Airflow.
+        dict: Training config that can be directly used by
+        SageMakerTrainingOperator in Airflow.
     """
 
     train_config = training_base_config(estimator, inputs, job_name, mini_batch_size)
@@ -209,24 +227,29 @@ def tuning_config(tuner, inputs, job_name=None):
     """Export Airflow tuning config from an estimator
 
     Args:
-        tuner (sagemaker.tuner.HyperparameterTuner): The tuner to export tuning config from.
-        inputs: Information about the training data. Please refer to the ``fit()`` method of
-                the associated estimator in the tuner, as this can take any of the following forms:
+        tuner (sagemaker.tuner.HyperparameterTuner): The tuner to export tuning
+            config from.
+        inputs: Information about the training data. Please refer to the ``fit()``
+            method of the associated estimator in the tuner, as this can take any of the
+            following forms:
 
             * (str) - The S3 location where training data is saved.
-            * (dict[str, str] or dict[str, sagemaker.session.s3_input]) - If using multiple channels for
-                training data, you can specify a dict mapping channel names
-                to strings or :func:`~sagemaker.session.s3_input` objects.
-            * (sagemaker.session.s3_input) - Channel configuration for S3 data sources that can provide
-                additional information about the training dataset. See :func:`sagemaker.session.s3_input`
-                for full details.
-            * (sagemaker.amazon.amazon_estimator.RecordSet) - A collection of
-                Amazon :class:~`Record` objects serialized and stored in S3.
-                For use with an estimator for an Amazon algorithm.
-            * (list[sagemaker.amazon.amazon_estimator.RecordSet]) - A list of
-                :class:~`sagemaker.amazon.amazon_estimator.RecordSet` objects, where each instance is
-                a different channel of training data.
 
+            * (dict[str, str] or dict[str, sagemaker.session.s3_input]) - If using multiple
+                  channels for training data, you can specify a dict mapping channel names to
+                  strings or :func:`~sagemaker.session.s3_input` objects.
+
+            * (sagemaker.session.s3_input) - Channel configuration for S3 data sources that can
+                  provide additional information about the training dataset. See
+                  :func:`sagemaker.session.s3_input` for full details.
+
+            * (sagemaker.amazon.amazon_estimator.RecordSet) - A collection of
+                  Amazon :class:~`Record` objects serialized and stored in S3.
+                  For use with an estimator for an Amazon algorithm.
+
+            * (list[sagemaker.amazon.amazon_estimator.RecordSet]) - A list of
+                  :class:~`sagemaker.amazon.amazon_estimator.RecordSet` objects,
+                  where each instance is a different channel of training data.
         job_name (str): Specify a tuning job name if needed.
 
     Returns:
@@ -291,7 +314,8 @@ def update_submit_s3_uri(estimator, job_name):
     """Updated the S3 URI of the framework source directory in given estimator.
 
     Args:
-        estimator (sagemaker.estimator.Framework): The Framework estimator to update.
+        estimator (sagemaker.estimator.Framework): The Framework estimator to
+            update.
         job_name (str): The new job name included in the submit S3 URI
 
     Returns:
@@ -315,10 +339,13 @@ def update_estimator_from_task(estimator, task_id, task_type):
 
     Args:
         estimator (sagemaker.estimator.EstimatorBase): The estimator to update
-        task_id (str): The task id of any airflow.contrib.operators.SageMakerTrainingOperator or
-            airflow.contrib.operators.SageMakerTuningOperator that generates training jobs in the DAG.
-        task_type (str): Whether the task is from SageMakerTrainingOperator or SageMakerTuningOperator. Values can be
-            'training', 'tuning' or None (which means training job is not from any task).
+        task_id (str): The task id of any
+            airflow.contrib.operators.SageMakerTrainingOperator or
+            airflow.contrib.operators.SageMakerTuningOperator that generates
+            training jobs in the DAG.
+        task_type (str): Whether the task is from SageMakerTrainingOperator or
+            SageMakerTuningOperator. Values can be 'training', 'tuning' or None
+            (which means training job is not from any task).
     """
     if task_type is None:
         return
@@ -332,8 +359,8 @@ def update_estimator_from_task(estimator, task_id, task_type):
         )
         # need to strip the double quotes in json to get the string
         job_name = (
-            "{{ ti.xcom_pull(task_ids='%s')['Tuning']['TrainingJobDefinition']['StaticHyperParameters']"
-            "['sagemaker_job_name'].strip('%s') }}" % (task_id, '"')
+            "{{ ti.xcom_pull(task_ids='%s')['Tuning']['TrainingJobDefinition']"
+            "['StaticHyperParameters']['sagemaker_job_name'].strip('%s') }}" % (task_id, '"')
         )
     else:
         raise ValueError("task_type must be either 'training', 'tuning' or None.")
@@ -343,13 +370,15 @@ def update_estimator_from_task(estimator, task_id, task_type):
 
 
 def prepare_framework_container_def(model, instance_type, s3_operations):
-    """Prepare the framework model container information. Specify related S3 operations for Airflow to perform.
-    (Upload `source_dir`)
+    """Prepare the framework model container information. Specify related S3
+    operations for Airflow to perform. (Upload `source_dir` )
 
     Args:
         model (sagemaker.model.FrameworkModel): The framework model
-        instance_type (str): The EC2 instance type to deploy this Model to. For example, 'ml.p2.xlarge'.
-        s3_operations (dict): The dict to specify S3 operations (upload `source_dir`).
+        instance_type (str): The EC2 instance type to deploy this Model to. For
+            example, 'ml.p2.xlarge'.
+        s3_operations (dict): The dict to specify S3 operations (upload
+            `source_dir` ).
 
     Returns:
         dict: The container information of this framework model.
@@ -401,14 +430,17 @@ def model_config(instance_type, model, role=None, image=None):
     """Export Airflow model config from a SageMaker model
 
     Args:
-        instance_type (str): The EC2 instance type to deploy this Model to. For example, 'ml.p2.xlarge'
-        model (sagemaker.model.FrameworkModel): The SageMaker model to export Airflow config from
+        instance_type (str): The EC2 instance type to deploy this Model to. For
+            example, 'ml.p2.xlarge'
+        model (sagemaker.model.FrameworkModel): The SageMaker model to export
+            Airflow config from
         role (str): The ``ExecutionRoleArn`` IAM Role ARN for the model
         image (str): An container image to use for deploying the model
 
     Returns:
-        dict: Model config that can be directly used by SageMakerModelOperator in Airflow. It can also be part
-        of the config used by SageMakerEndpointOperator and SageMakerTransformOperator in Airflow.
+        dict: Model config that can be directly used by SageMakerModelOperator
+        in Airflow. It can also be part of the config used by
+        SageMakerEndpointOperator and SageMakerTransformOperator in Airflow.
     """
     s3_operations = {}
     model.image = image or model.image
@@ -451,28 +483,33 @@ def model_config_from_estimator(
     """Export Airflow model config from a SageMaker estimator
 
     Args:
-        instance_type (str): The EC2 instance type to deploy this Model to. For example, 'ml.p2.xlarge'
-        estimator (sagemaker.model.EstimatorBase): The SageMaker estimator to export Airflow config from.
-            It has to be an estimator associated with a training job.
-        task_id (str): The task id of any airflow.contrib.operators.SageMakerTrainingOperator or
-            airflow.contrib.operators.SageMakerTuningOperator that generates training jobs in the DAG. The model config
-            is built based on the training job generated in this operator.
-        task_type (str): Whether the task is from SageMakerTrainingOperator or SageMakerTuningOperator. Values can be
-            'training', 'tuning' or None (which means training job is not from any task).
+        instance_type (str): The EC2 instance type to deploy this Model to. For
+            example, 'ml.p2.xlarge'
+        estimator (sagemaker.model.EstimatorBase): The SageMaker estimator to
+            export Airflow config from. It has to be an estimator associated
+            with a training job.
+        task_id (str): The task id of any
+            airflow.contrib.operators.SageMakerTrainingOperator or
+            airflow.contrib.operators.SageMakerTuningOperator that generates
+            training jobs in the DAG. The model config is built based on the
+            training job generated in this operator.
+        task_type (str): Whether the task is from SageMakerTrainingOperator or
+            SageMakerTuningOperator. Values can be 'training', 'tuning' or None
+            (which means training job is not from any task).
         role (str): The ``ExecutionRoleArn`` IAM Role ARN for the model
         image (str): An container image to use for deploying the model
         name (str): Name of the model
-        model_server_workers (int): The number of worker processes used by the inference server.
-            If None, server will use one worker per vCPU. Only effective when estimator is a
-            SageMaker framework.
-        vpc_config_override (dict[str, list[str]]): Override for VpcConfig set on the model.
-            Default: use subnets and security groups from this Estimator.
+        model_server_workers (int): The number of worker processes used by the
+            inference server. If None, server will use one worker per vCPU. Only
+            effective when estimator is a SageMaker framework.
+        vpc_config_override (dict[str, list[str]]): Override for VpcConfig set on
+            the model. Default: use subnets and security groups from this Estimator.
             * 'Subnets' (list[str]): List of subnet ids.
             * 'SecurityGroupIds' (list[str]): List of security group ids.
 
     Returns:
-        dict: Model config that can be directly used by SageMakerModelOperator in Airflow. It can also be part
-            of the config used by SageMakerEndpointOperator in Airflow.
+        dict: Model config that can be directly used by SageMakerModelOperator in Airflow. It can
+            also be part of the config used by SageMakerEndpointOperator in Airflow.
     """
     update_estimator_from_task(estimator, task_id, task_type)
     if isinstance(estimator, sagemaker.estimator.Estimator):
@@ -509,25 +546,28 @@ def transform_config(
     """Export Airflow transform config from a SageMaker transformer
 
     Args:
-        transformer (sagemaker.transformer.Transformer): The SageMaker transformer to export Airflow
-            config from.
+        transformer (sagemaker.transformer.Transformer): The SageMaker
+            transformer to export Airflow config from.
         data (str): Input data location in S3.
-        data_type (str): What the S3 location defines (default: 'S3Prefix'). Valid values:
+        data_type (str): What the S3 location defines (default: 'S3Prefix').
+            Valid values:
 
-            * 'S3Prefix' - the S3 URI defines a key name prefix. All objects with this prefix will be used as
-                inputs for the transform job.
-            * 'ManifestFile' - the S3 URI points to a single manifest file listing each S3 object to use as
-                an input for the transform job.
+            * 'S3Prefix' - the S3 URI defines a key name prefix. All objects with this prefix will
+                  be used as inputs for the transform job.
 
+            * 'ManifestFile' - the S3 URI points to a single manifest file listing each S3 object
+                  to use as an input for the transform job.
         content_type (str): MIME type of the input data (default: None).
-        compression_type (str): Compression type of the input data, if compressed (default: None).
-            Valid values: 'Gzip', None.
-        split_type (str): The record delimiter for the input object (default: 'None').
-            Valid values: 'None', 'Line', 'RecordIO', and 'TFRecord'.
-        job_name (str): job name (default: None). If not specified, one will be generated.
+        compression_type (str): Compression type of the input data, if
+            compressed (default: None). Valid values: 'Gzip', None.
+        split_type (str): The record delimiter for the input object (default:
+            'None'). Valid values: 'None', 'Line', 'RecordIO', and 'TFRecord'.
+        job_name (str): job name (default: None). If not specified, one will be
+            generated.
 
     Returns:
-        dict: Transform config that can be directly used by SageMakerTransformOperator in Airflow.
+        dict: Transform config that can be directly used by
+        SageMakerTransformOperator in Airflow.
     """
     if job_name is not None:
         transformer._current_job_name = job_name
@@ -603,57 +643,75 @@ def transform_config_from_estimator(
     """Export Airflow transform config from a SageMaker estimator
 
     Args:
-        estimator (sagemaker.model.EstimatorBase): The SageMaker estimator to export Airflow config from.
-            It has to be an estimator associated with a training job.
-        task_id (str): The task id of any airflow.contrib.operators.SageMakerTrainingOperator or
-            airflow.contrib.operators.SageMakerTuningOperator that generates training jobs in the DAG. The transform
-            config is built based on the training job generated in this operator.
-        task_type (str): Whether the task is from SageMakerTrainingOperator or SageMakerTuningOperator. Values can be
-            'training', 'tuning' or None (which means training job is not from any task).
+        estimator (sagemaker.model.EstimatorBase): The SageMaker estimator to
+            export Airflow config from. It has to be an estimator associated
+            with a training job.
+        task_id (str): The task id of any
+            airflow.contrib.operators.SageMakerTrainingOperator or
+            airflow.contrib.operators.SageMakerTuningOperator that generates
+            training jobs in the DAG. The transform config is built based on the
+            training job generated in this operator.
+        task_type (str): Whether the task is from SageMakerTrainingOperator or
+            SageMakerTuningOperator. Values can be 'training', 'tuning' or None
+            (which means training job is not from any task).
         instance_count (int): Number of EC2 instances to use.
-        instance_type (str): Type of EC2 instance to use, for example, 'ml.c4.xlarge'.
+        instance_type (str): Type of EC2 instance to use, for example,
+            'ml.c4.xlarge'.
         data (str): Input data location in S3.
-        data_type (str): What the S3 location defines (default: 'S3Prefix'). Valid values:
+        data_type (str): What the S3 location defines (default: 'S3Prefix').
+            Valid values:
 
-            * 'S3Prefix' - the S3 URI defines a key name prefix. All objects with this prefix will be used as
-                inputs for the transform job.
-            * 'ManifestFile' - the S3 URI points to a single manifest file listing each S3 object to use as
-                an input for the transform job.
+            * 'S3Prefix' - the S3 URI defines a key name prefix. All objects with this prefix will
+                  be used as inputs for the transform job.
 
+            * 'ManifestFile' - the S3 URI points to a single manifest file listing each S3 object
+                  to use as an input for the transform job.
         content_type (str): MIME type of the input data (default: None).
-        compression_type (str): Compression type of the input data, if compressed (default: None).
-            Valid values: 'Gzip', None.
-        split_type (str): The record delimiter for the input object (default: 'None').
-            Valid values: 'None', 'Line', 'RecordIO', and 'TFRecord'.
-        job_name (str): transform job name (default: None). If not specified, one will be generated.
-        model_name (str): model name (default: None). If not specified, one will be generated.
-        strategy (str): The strategy used to decide how to batch records in a single request (default: None).
-            Valid values: 'MULTI_RECORD' and 'SINGLE_RECORD'.
-        assemble_with (str): How the output is assembled (default: None). Valid values: 'Line' or 'None'.
-        output_path (str): S3 location for saving the transform result. If not specified, results are stored to
-            a default bucket.
-        output_kms_key (str): Optional. KMS key ID for encrypting the transform output (default: None).
-        accept (str): The content type accepted by the endpoint deployed during the transform job.
-        env (dict): Environment variables to be set for use during the transform job (default: None).
-        max_concurrent_transforms (int): The maximum number of HTTP requests to be made to
-            each individual transform container at one time.
-        max_payload (int): Maximum size of the payload in a single HTTP request to the container in MB.
-        tags (list[dict]): List of tags for labeling a transform job. If none specified, then the tags used for
-            the training job are used for the transform job.
-        role (str): The ``ExecutionRoleArn`` IAM Role ARN for the ``Model``, which is also used during
-            transform jobs. If not specified, the role from the Estimator will be used.
-        volume_kms_key (str): Optional. KMS key ID for encrypting the volume attached to the ML
-            compute instance (default: None).
-        model_server_workers (int): Optional. The number of worker processes used by the inference server.
-            If None, server will use one worker per vCPU.
+        compression_type (str): Compression type of the input data, if
+            compressed (default: None). Valid values: 'Gzip', None.
+        split_type (str): The record delimiter for the input object (default:
+            'None'). Valid values: 'None', 'Line', 'RecordIO', and 'TFRecord'.
+        job_name (str): transform job name (default: None). If not specified,
+            one will be generated.
+        model_name (str): model name (default: None). If not specified, one will
+            be generated.
+        strategy (str): The strategy used to decide how to batch records in a
+            single request (default: None). Valid values: 'MULTI_RECORD' and
+            'SINGLE_RECORD'.
+        assemble_with (str): How the output is assembled (default: None). Valid
+            values: 'Line' or 'None'.
+        output_path (str): S3 location for saving the transform result. If not
+            specified, results are stored to a default bucket.
+        output_kms_key (str): Optional. KMS key ID for encrypting the transform
+            output (default: None).
+        accept (str): The content type accepted by the endpoint deployed during
+            the transform job.
+        env (dict): Environment variables to be set for use during the transform
+            job (default: None).
+        max_concurrent_transforms (int): The maximum number of HTTP requests to
+            be made to each individual transform container at one time.
+        max_payload (int): Maximum size of the payload in a single HTTP request
+            to the container in MB.
+        tags (list[dict]): List of tags for labeling a transform job. If none
+            specified, then the tags used for the training job are used for the
+            transform job.
+        role (str): The ``ExecutionRoleArn`` IAM Role ARN for the ``Model``,
+            which is also used during transform jobs. If not specified, the role
+            from the Estimator will be used.
+        volume_kms_key (str): Optional. KMS key ID for encrypting the volume
+            attached to the ML compute instance (default: None).
+        model_server_workers (int): Optional. The number of worker processes
+            used by the inference server. If None, server will use one worker
+            per vCPU.
         image (str): An container image to use for deploying the model
-        vpc_config_override (dict[str, list[str]]): Override for VpcConfig set on the model.
-            Default: use subnets and security groups from this Estimator.
+        vpc_config_override (dict[str, list[str]]): Override for VpcConfig set on
+            the model. Default: use subnets and security groups from this Estimator.
             * 'Subnets' (list[str]): List of subnet ids.
             * 'SecurityGroupIds' (list[str]): List of security group ids.
 
     Returns:
-        dict: Transform config that can be directly used by SageMakerTransformOperator in Airflow.
+        dict: Transform config that can be directly used by
+        SageMakerTransformOperator in Airflow.
     """
     model_base_config = model_config_from_estimator(
         instance_type=instance_type,
@@ -715,18 +773,20 @@ def deploy_config(model, initial_instance_count, instance_type, endpoint_name=No
     """Export Airflow deploy config from a SageMaker model
 
     Args:
-        model (sagemaker.model.Model): The SageMaker model to export the Airflow config from.
-        instance_type (str): The EC2 instance type to deploy this Model to. For example, 'ml.p2.xlarge'.
-        initial_instance_count (int): The initial number of instances to run in the
-            ``Endpoint`` created from this ``Model``.
+        model (sagemaker.model.Model): The SageMaker model to export the Airflow
+            config from.
+        initial_instance_count (int): The initial number of instances to run in
+            the ``Endpoint`` created from this ``Model``.
+        instance_type (str): The EC2 instance type to deploy this Model to. For
+            example, 'ml.p2.xlarge'.
         endpoint_name (str): The name of the endpoint to create (default: None).
             If not specified, a unique endpoint name will be created.
-        tags (list[dict]): List of tags for labeling a training job. For more, see
-            https://docs.aws.amazon.com/sagemaker/latest/dg/API_Tag.html.
+        tags (list[dict]): List of tags for labeling a training job. For more,
+            see https://docs.aws.amazon.com/sagemaker/latest/dg/API_Tag.html.
 
     Returns:
-        dict: Deploy config that can be directly used by SageMakerEndpointOperator in Airflow.
-
+        dict: Deploy config that can be directly used by
+        SageMakerEndpointOperator in Airflow.
     """
     model_base_config = model_config(instance_type, model)
 
@@ -769,27 +829,34 @@ def deploy_config_from_estimator(
     """Export Airflow deploy config from a SageMaker estimator
 
     Args:
-        estimator (sagemaker.model.EstimatorBase): The SageMaker estimator to export Airflow config from.
-            It has to be an estimator associated with a training job.
-        task_id (str): The task id of any airflow.contrib.operators.SageMakerTrainingOperator or
-            airflow.contrib.operators.SageMakerTuningOperator that generates training jobs in the DAG. The endpoint
-            config is built based on the training job generated in this operator.
-        task_type (str): Whether the task is from SageMakerTrainingOperator or SageMakerTuningOperator. Values can be
-            'training', 'tuning' or None (which means training job is not from any task).
-        initial_instance_count (int): Minimum number of EC2 instances to deploy to an endpoint for prediction.
-        instance_type (str): Type of EC2 instance to deploy to an endpoint for prediction,
-            for example, 'ml.c4.xlarge'.
-        model_name (str): Name to use for creating an Amazon SageMaker model. If not specified, one will be generated.
-        endpoint_name (str): Name to use for creating an Amazon SageMaker endpoint. If not specified, the name of
-            the SageMaker model is used.
-        tags (list[dict]): List of tags for labeling a training job. For more, see
-            https://docs.aws.amazon.com/sagemaker/latest/dg/API_Tag.html.
-        **kwargs: Passed to invocation of ``create_model()``. Implementations may customize
-            ``create_model()`` to accept ``**kwargs`` to customize model creation during deploy.
-            For more, see the implementation docs.
+        estimator (sagemaker.model.EstimatorBase): The SageMaker estimator to
+            export Airflow config from. It has to be an estimator associated
+            with a training job.
+        task_id (str): The task id of any
+            airflow.contrib.operators.SageMakerTrainingOperator or
+            airflow.contrib.operators.SageMakerTuningOperator that generates
+            training jobs in the DAG. The endpoint config is built based on the
+            training job generated in this operator.
+        task_type (str): Whether the task is from SageMakerTrainingOperator or
+            SageMakerTuningOperator. Values can be 'training', 'tuning' or None
+            (which means training job is not from any task).
+        initial_instance_count (int): Minimum number of EC2 instances to deploy
+            to an endpoint for prediction.
+        instance_type (str): Type of EC2 instance to deploy to an endpoint for
+            prediction, for example, 'ml.c4.xlarge'.
+        model_name (str): Name to use for creating an Amazon SageMaker model. If
+            not specified, one will be generated.
+        endpoint_name (str): Name to use for creating an Amazon SageMaker
+            endpoint. If not specified, the name of the SageMaker model is used.
+        tags (list[dict]): List of tags for labeling a training job. For more,
+            see https://docs.aws.amazon.com/sagemaker/latest/dg/API_Tag.html.
+        **kwargs: Passed to invocation of ``create_model()``. Implementations
+            may customize ``create_model()`` to accept ``**kwargs`` to customize
+            model creation during deploy. For more, see the implementation docs.
 
     Returns:
-        dict: Deploy config that can be directly used by SageMakerEndpointOperator in Airflow.
+        dict: Deploy config that can be directly used by
+        SageMakerEndpointOperator in Airflow.
     """
     update_estimator_from_task(estimator, task_id, task_type)
     model = estimator.create_model(**kwargs)

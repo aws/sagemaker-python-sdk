@@ -173,9 +173,9 @@ MXNet SageMaker Estimators
 
 By using MXNet SageMaker Estimators, you can train and host MXNet models on Amazon SageMaker.
 
-Supported versions of MXNet: ``0.12.1``, ``1.0.0``, ``1.1.0``, ``1.2.1``, ``1.3.0``, ``1.4.0``.
+Supported versions of MXNet: ``0.12.1``, ``1.0.0``, ``1.1.0``, ``1.2.1``, ``1.3.0``, ``1.4.0``, ``1.4.1``.
 
-Supported versions of MXNet for Elastic Inference: ``1.3.0``, ``1.4.0``.
+Supported versions of MXNet for Elastic Inference: ``1.3.0``, ``1.4.0``, ``1.4.1``.
 
 We recommend that you use the latest supported version, because that's where we focus most of our development efforts.
 
@@ -191,7 +191,7 @@ By using TensorFlow SageMaker Estimators, you can train and host TensorFlow mode
 
 Supported versions of TensorFlow: ``1.4.1``, ``1.5.0``, ``1.6.0``, ``1.7.0``, ``1.8.0``, ``1.9.0``, ``1.10.0``, ``1.11.0``, ``1.12.0``, ``1.13.1``.
 
-Supported versions of TensorFlow for Elastic Inference: ``1.11.0``, ``1.12.0``.
+Supported versions of TensorFlow for Elastic Inference: ``1.11.0``, ``1.12.0``, ``1.13.0``
 
 We recommend that you use the latest supported version, because that's where we focus most of our development efforts.
 
@@ -221,7 +221,7 @@ PyTorch SageMaker Estimators
 
 With PyTorch SageMaker Estimators, you can train and host PyTorch models on Amazon SageMaker.
 
-Supported versions of PyTorch: ``0.4.0``, ``1.0.0``.
+Supported versions of PyTorch: ``0.4.0``, ``1.0.0``, ``1.1.0``.
 
 We recommend that you use the latest supported version, because that's where we focus most of our development efforts.
 

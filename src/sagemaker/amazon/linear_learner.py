@@ -10,6 +10,7 @@
 # distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
+"""Placeholder docstring"""
 from __future__ import absolute_import
 
 from sagemaker.amazon.amazon_estimator import AmazonAlgorithmEstimatorBase, registry
@@ -23,6 +24,8 @@ from sagemaker.vpc_utils import VPC_CONFIG_DEFAULT
 
 
 class LinearLearner(AmazonAlgorithmEstimatorBase):
+    """Placeholder docstring"""
+
     repo_name = "linear-learner"
     repo_version = 1
 
@@ -80,8 +83,8 @@ class LinearLearner(AmazonAlgorithmEstimatorBase):
             "softmax_loss",
             "auto",
         ),
-        '"logistic", "squared_loss", "absolute_loss", "hinge_loss", "eps_insensitive_squared_loss", '
-        '"eps_insensitive_absolute_loss", "quantile_loss", "huber_loss", "softmax_loss" or "auto"',
+        '"logistic", "squared_loss", "absolute_loss", "hinge_loss", "eps_insensitive_squared_loss",'
+        ' "eps_insensitive_absolute_loss", "quantile_loss", "huber_loss", "softmax_loss" or "auto"',
         str,
     )
     wd = hp("wd", ge(0), "A float greater-than or equal to 0", float)
@@ -165,111 +168,155 @@ class LinearLearner(AmazonAlgorithmEstimatorBase):
     ):
         """An :class:`Estimator` for binary classification and regression.
 
-        Amazon SageMaker Linear Learner provides a solution for both classification and regression problems, allowing
-        for exploring different training objectives simultaneously and choosing the best solution from a validation set.
-        It allows the user to explore a large number of models and choose the best, which optimizes either continuous
-        objectives such as mean square error, cross entropy loss, absolute error, etc., or discrete objectives suited
-        for classification such as F1 measure, precision@recall, accuracy. The implementation provides a significant
-        speedup over naive hyperparameter optimization techniques and an added convenience, when compared with
-        solutions providing a solution only to continuous objectives.
+        Amazon SageMaker Linear Learner provides a solution for both
+        classification and regression problems, allowing for exploring different
+        training objectives simultaneously and choosing the best solution from a
+        validation set. It allows the user to explore a large number of models
+        and choose the best, which optimizes either continuous objectives such
+        as mean square error, cross entropy loss, absolute error, etc., or
+        discrete objectives suited for classification such as F1 measure,
+        precision@recall, accuracy. The implementation provides a significant
+        speedup over naive hyperparameter optimization techniques and an added
+        convenience, when compared with solutions providing a solution only to
+        continuous objectives.
 
         This Estimator may be fit via calls to
         :meth:`~sagemaker.amazon.amazon_estimator.AmazonAlgorithmEstimatorBase.fit_ndarray`
-        or :meth:`~sagemaker.amazon.amazon_estimator.AmazonAlgorithmEstimatorBase.fit`. The former allows a
-        LinearLearner model to be fit on a 2-dimensional numpy array. The latter requires Amazon
-        :class:`~sagemaker.amazon.record_pb2.Record` protobuf serialized data to be stored in S3.
+        or
+        :meth:`~sagemaker.amazon.amazon_estimator.AmazonAlgorithmEstimatorBase.fit`.
+        The former allows a LinearLearner model to be fit on a 2-dimensional
+        numpy array. The latter requires Amazon
+        :class:`~sagemaker.amazon.record_pb2.Record` protobuf serialized data to
+        be stored in S3.
 
-        To learn more about the Amazon protobuf Record class and how to prepare bulk data in this format, please
-        consult AWS technical documentation: https://docs.aws.amazon.com/sagemaker/latest/dg/cdf-training.html
+        To learn more about the Amazon protobuf Record class and how to
+        prepare bulk data in this format, please consult AWS technical
+        documentation:
+        https://docs.aws.amazon.com/sagemaker/latest/dg/cdf-training.html
 
-        After this Estimator is fit, model data is stored in S3. The model may be deployed to an Amazon SageMaker
-        Endpoint by invoking :meth:`~sagemaker.amazon.estimator.EstimatorBase.deploy`. As well as deploying an Endpoint,
-        ``deploy`` returns a :class:`~sagemaker.amazon.linear_learner.LinearLearnerPredictor` object that can be used
-        to make class or regression predictions, using the trained model.
+        After this Estimator is fit, model data is stored in S3. The model
+        may be deployed to an Amazon SageMaker Endpoint by invoking
+        :meth:`~sagemaker.amazon.estimator.EstimatorBase.deploy`. As well as
+        deploying an Endpoint, ``deploy`` returns a
+        :class:`~sagemaker.amazon.linear_learner.LinearLearnerPredictor` object
+        that can be used to make class or regression predictions, using the
+        trained model.
 
-        LinearLearner Estimators can be configured by setting hyperparameters. The available hyperparameters for
-        LinearLearner are documented below. For further information on the AWS LinearLearner algorithm, please consult
-        AWS technical documentation: https://docs.aws.amazon.com/sagemaker/latest/dg/linear-learner.html
+        LinearLearner Estimators can be configured by setting
+        hyperparameters. The available hyperparameters for LinearLearner are
+        documented below. For further information on the AWS LinearLearner
+        algorithm, please consult AWS technical documentation:
+        https://docs.aws.amazon.com/sagemaker/latest/dg/linear-learner.html
 
         Args:
-            role (str): An AWS IAM role (either name or full ARN). The Amazon SageMaker training jobs and
-                APIs that create Amazon SageMaker endpoints use this role to access
-                training data and model artifacts. After the endpoint is created,
-                the inference code might use the IAM role, if accessing AWS resource.
-            train_instance_count (int): Number of Amazon EC2 instances to use for training.
-            train_instance_type (str): Type of EC2 instance to use for training, for example, 'ml.c4.xlarge'.
-            predictor_type (str): The type of predictor to learn. Either "binary_classifier" or
-            "multiclass_classifier" or "regressor".
-            binary_classifier_model_selection_criteria (str): One of 'accuracy', 'f1', 'f_beta',
-            'precision_at_target_recall', 'recall_at_target_precision', 'cross_entropy_loss', 'loss_function'
-            target_recall (float): Target recall. Only applicable if binary_classifier_model_selection_criteria is
+            role (str): An AWS IAM role (either name or full ARN). The Amazon
+                SageMaker training jobs and APIs that create Amazon SageMaker
+                endpoints use this role to access training data and model
+                artifacts. After the endpoint is created, the inference code
+                might use the IAM role, if accessing AWS resource.
+            train_instance_count (int): Number of Amazon EC2 instances to use
+                for training.
+            train_instance_type (str): Type of EC2 instance to use for training,
+                for example, 'ml.c4.xlarge'.
+            predictor_type (str): The type of predictor to learn. Either
+                "binary_classifier" or "multiclass_classifier" or "regressor".
+            binary_classifier_model_selection_criteria (str): One of 'accuracy',
+                'f1', 'f_beta', 'precision_at_target_recall', 'recall_at_target_precision',
+                'cross_entropy_loss', 'loss_function'
+            target_recall (float): Target recall. Only applicable if
+                binary_classifier_model_selection_criteria is
                 precision_at_target_recall.
-            target_precision (float): Target precision. Only applicable if binary_classifier_model_selection_criteria
-                is recall_at_target_precision.
-            positive_example_weight_mult (float): The importance weight of positive examples is multiplied by this
-               constant. Useful for skewed datasets. Only applies for classification tasks.
-            epochs (int): The maximum number of passes to make over the training data.
+            target_precision (float): Target precision. Only applicable if
+                binary_classifier_model_selection_criteria is
+                recall_at_target_precision.
+            positive_example_weight_mult (float): The importance weight of
+                positive examples is multiplied by this constant. Useful for
+                skewed datasets. Only applies for classification tasks.
+            epochs (int): The maximum number of passes to make over the training
+                data.
             use_bias (bool): Whether to include a bias field
-            num_models (int): Number of models to train in parallel. If not set, the number of parallel models to
-                train will be decided by the algorithm itself. One model will be trained according to the given training
-            parameter (regularization, optimizer, loss) and the rest by close by parameters.
-            num_calibration_samples (int): Number of observations to use from validation dataset for doing model
-            calibration (finding the best threshold).
-            init_method (str): Function to use to set the initial model weights. One of "uniform" or "normal"
+            num_models (int): Number of models to train in parallel. If not set,
+                the number of parallel models to train will be decided by the
+                algorithm itself. One model will be trained according to the
+                given training parameter (regularization, optimizer, loss) and
+                the rest by close by parameters.
+            num_calibration_samples (int): Number of observations to use from
+                validation dataset for doing model calibration (finding the best threshold).
+            init_method (str): Function to use to set the initial model weights.
+                One of "uniform" or "normal"
             init_scale (float): For "uniform" init, the range of values.
             init_sigma (float): For "normal" init, the standard-deviation.
-            init_bias (float):  Initial weight for bias term
+            init_bias (float): Initial weight for bias term
             optimizer (str): One of 'sgd', 'adam', 'rmsprop' or 'auto'
-            loss (str): One of  'logistic', 'squared_loss', 'absolute_loss', 'hinge_loss',
-            'eps_insensitive_squared_loss', 'eps_insensitive_absolute_loss', 'quantile_loss', 'huber_loss' or
+            loss (str): One of 'logistic', 'squared_loss', 'absolute_loss',
+                'hinge_loss', 'eps_insensitive_squared_loss', 'eps_insensitive_absolute_loss',
+                'quantile_loss', 'huber_loss' or
             'softmax_loss' or 'auto'.
-            wd (float): L2 regularization parameter i.e. the weight decay parameter. Use 0 for no L2 regularization.
-            l1 (float): L1 regularization parameter. Use 0 for no L1 regularization.
+            wd (float): L2 regularization parameter i.e. the weight decay
+                parameter. Use 0 for no L2 regularization.
+            l1 (float): L1 regularization parameter. Use 0 for no L1
+                regularization.
             momentum (float): Momentum parameter of sgd optimizer.
             learning_rate (float): The SGD learning rate
-            beta_1 (float): Exponential decay rate for first moment estimates. Only applies for adam optimizer.
-            beta_2 (float): Exponential decay rate for second moment estimates. Only applies for adam optimizer.
-            bias_lr_mult (float): Allows different learning rate for the bias term. The actual learning rate for the
-            bias is learning rate times bias_lr_mult.
-            bias_wd_mult (float): Allows different regularization for the bias term. The actual L2 regularization weight
-            for the bias is wd times bias_wd_mult. By default there is no regularization on the bias term.
-            use_lr_scheduler (bool): If true, we use a scheduler for the learning rate.
-            lr_scheduler_step (int): The number of steps between decreases of the learning rate. Only applies to
-                learning rate scheduler.
-            lr_scheduler_factor (float): Every lr_scheduler_step the learning rate will decrease by this quantity.
-                Only applies for learning rate scheduler.
-            lr_scheduler_minimum_lr (float): The learning rate will never decrease to a value lower than this.
-            lr_scheduler_minimum_lr (float): Only applies for learning rate scheduler.
-            normalize_data (bool): Normalizes the features before training to have standard deviation of 1.0.
-            normalize_label (bool): Normalizes the regression label to have a standard deviation of 1.0.
-                If set for classification, it will be ignored.
+            beta_1 (float): Exponential decay rate for first moment estimates.
+                Only applies for adam optimizer.
+            beta_2 (float): Exponential decay rate for second moment estimates.
+                Only applies for adam optimizer.
+            bias_lr_mult (float): Allows different learning rate for the bias
+                term. The actual learning rate for the bias is learning rate times bias_lr_mult.
+            bias_wd_mult (float): Allows different regularization for the bias
+                term. The actual L2 regularization weight for the bias is wd times bias_wd_mult.
+                By default there is no regularization on the bias term.
+            use_lr_scheduler (bool): If true, we use a scheduler for the
+                learning rate.
+            lr_scheduler_step (int): The number of steps between decreases of
+                the learning rate. Only applies to learning rate scheduler.
+            lr_scheduler_factor (float): Every lr_scheduler_step the learning
+                rate will decrease by this quantity. Only applies for learning
+                rate scheduler.
+            lr_scheduler_minimum_lr (float): The learning rate will never
+                decrease to a value lower than this. Only applies for learning rate scheduler.
+            normalize_data (bool): Normalizes the features before training to
+                have standard deviation of 1.0.
+            normalize_label (bool): Normalizes the regression label to have a
+                standard deviation of 1.0. If set for classification, it will be
+                ignored.
             unbias_data (bool): If true, features are modified to have mean 0.0.
             unbias_label (bool): If true, labels are modified to have mean 0.0.
-            num_point_for_scaler (int): The number of data points to use for calculating the normalizing  and
-                unbiasing terms.
-            margin (float):  the margin for hinge_loss.
-            quantile (float): Quantile for quantile loss. For quantile q, the model will attempt to produce
-            predictions such that true_label < prediction with probability q.
-            loss_insensitivity (float): Parameter for epsilon insensitive loss type. During training and metric
-            evaluation, any error smaller than this is considered to be zero.
-            huber_delta (float): Parameter for Huber loss. During training and metric evaluation, compute L2 loss for
-            errors smaller than delta and L1 loss for errors larger than delta.
-            early_stopping_patience (int): the number of epochs to wait before ending training if no improvement is
-            made. The improvement is training loss if validation data is not provided, or else it is the validation
-            loss or the binary classification model selection criteria like accuracy, f1-score etc. To disable early
-            stopping, set early_stopping_patience to a value larger than epochs.
-            early_stopping_tolerance (float):  Relative tolerance to measure an improvement in loss. If the ratio of
-            the improvement in loss divided by the previous best loss is smaller than this value, early stopping will
+            num_point_for_scaler (int): The number of data points to use for
+                calculating the normalizing and unbiasing terms.
+            margin (float): the margin for hinge_loss.
+            quantile (float): Quantile for quantile loss. For quantile q, the
+                model will attempt to produce predictions such that true_label < prediction with
+                probability q.
+            loss_insensitivity (float): Parameter for epsilon insensitive loss
+                type. During training and metric evaluation, any error smaller than this is
+                considered to be zero.
+            huber_delta (float): Parameter for Huber loss. During training and
+                metric evaluation, compute L2 loss for errors smaller than delta and L1 loss for
+                errors larger than delta.
+            early_stopping_patience (int): the number of epochs to wait before ending training
+            if no improvement is made. The improvement is training loss if validation data is
+            not provided, or else it is the validation loss or the binary classification model
+            selection criteria like accuracy, f1-score etc. To disable early stopping,
+            set early_stopping_patience to a value larger than epochs.
+            early_stopping_tolerance (float): Relative tolerance to measure an
+                improvement in loss. If the ratio of the improvement in loss divided by the
+                previous best loss is smaller than this value, early stopping will
             consider the improvement to be zero.
-            num_classes (int): The number of classes for the response variable. Required when predictor_type is
-            multiclass_classifier and ignored otherwise. The classes are assumed to be labeled 0, ..., num_classes - 1.
-            accuracy_top_k (int): The value of k when computing the Top K Accuracy metric for multiclass
-            classification. An example is scored as correct if the model assigns one of the top k scores to the true
+            num_classes (int): The number of classes for the response variable.
+                Required when predictor_type is multiclass_classifier and ignored otherwise. The
+                classes are assumed to be labeled 0, ..., num_classes - 1.
+            accuracy_top_k (int): The value of k when computing the Top K
+                Accuracy metric for multiclass classification. An example is scored as correct
+                if the model assigns one of the top k scores to the true
             label.
-            f_beta (float): The value of beta to use when calculating F score metrics for binary or multiclass
-            classification. Also used if binary_classifier_model_selection_criteria is f_beta.
-            balance_multiclass_weights (bool): Whether to use class weights which give each class equal importance in
-            the loss function. Only used when predictor_type is multiclass_classifier.
+            f_beta (float): The value of beta to use when calculating F score
+                metrics for binary or multiclass classification. Also used if
+                binary_classifier_model_selection_criteria is f_beta.
+            balance_multiclass_weights (bool): Whether to use class weights
+                which give each class equal importance in the loss function. Only used when
+                predictor_type is multiclass_classifier.
             **kwargs: base class keyword argument values.
         """
         super(LinearLearner, self).__init__(
@@ -322,16 +369,17 @@ class LinearLearner(AmazonAlgorithmEstimatorBase):
             num_classes is None or num_classes < 3
         ):
             raise ValueError(
-                "For predictor_type 'multiclass_classifier', 'num_classes' should be set to a value greater than 2."
+                "For predictor_type 'multiclass_classifier', 'num_classes' should be set to a "
+                "value greater than 2."
             )
 
     def create_model(self, vpc_config_override=VPC_CONFIG_DEFAULT):
-        """Return a :class:`~sagemaker.amazon.LinearLearnerModel` referencing the latest
-        s3 model data produced by this Estimator.
+        """Return a :class:`~sagemaker.amazon.LinearLearnerModel` referencing
+        the latest s3 model data produced by this Estimator.
 
         Args:
-            vpc_config_override (dict[str, list[str]]): Optional override for VpcConfig set on the model.
-                Default: use subnets and security groups from this Estimator.
+            vpc_config_override (dict[str, list[str]]): Optional override for VpcConfig set on
+                the model. Default: use subnets and security groups from this Estimator.
                 * 'Subnets' (list[str]): List of subnet ids.
                 * 'SecurityGroupIds' (list[str]): List of security group ids.
         """
@@ -343,6 +391,12 @@ class LinearLearner(AmazonAlgorithmEstimatorBase):
         )
 
     def _prepare_for_training(self, records, mini_batch_size=None, job_name=None):
+        """
+        Args:
+            records:
+            mini_batch_size:
+            job_name:
+        """
         num_records = None
         if isinstance(records, list):
             for record in records:
@@ -365,18 +419,27 @@ class LinearLearner(AmazonAlgorithmEstimatorBase):
 
 
 class LinearLearnerPredictor(RealTimePredictor):
-    """Performs binary-classification or regression prediction from input vectors.
+    """Performs binary-classification or regression prediction from input
+    vectors.
 
-    The implementation of :meth:`~sagemaker.predictor.RealTimePredictor.predict` in this
-    `RealTimePredictor` requires a numpy ``ndarray`` as input. The array should contain the
-    same number of columns as the feature-dimension of the data used to fit the model this
-    Predictor performs inference on.
+    The implementation of
+    :meth:`~sagemaker.predictor.RealTimePredictor.predict` in this
+    `RealTimePredictor` requires a numpy ``ndarray`` as input. The array should
+    contain the same number of columns as the feature-dimension of the data used
+    to fit the model this Predictor performs inference on.
 
-    :func:`predict` returns a list of :class:`~sagemaker.amazon.record_pb2.Record` objects, one
-    for each row in the input ``ndarray``. The prediction is stored in the ``"predicted_label"``
-    key of the ``Record.label`` field."""
+    :func:`predict` returns a list of
+    :class:`~sagemaker.amazon.record_pb2.Record` objects, one for each row in
+    the input ``ndarray``. The prediction is stored in the ``"predicted_label"``
+    key of the ``Record.label`` field.
+    """
 
     def __init__(self, endpoint, sagemaker_session=None):
+        """
+        Args:
+            endpoint:
+            sagemaker_session:
+        """
         super(LinearLearnerPredictor, self).__init__(
             endpoint,
             sagemaker_session,
@@ -386,10 +449,19 @@ class LinearLearnerPredictor(RealTimePredictor):
 
 
 class LinearLearnerModel(Model):
-    """Reference LinearLearner s3 model data. Calling :meth:`~sagemaker.model.Model.deploy` creates an Endpoint
-    and returns a :class:`LinearLearnerPredictor`"""
+    """Reference LinearLearner s3 model data. Calling
+    :meth:`~sagemaker.model.Model.deploy` creates an Endpoint and returns a
+    :class:`LinearLearnerPredictor`
+    """
 
     def __init__(self, model_data, role, sagemaker_session=None, **kwargs):
+        """
+        Args:
+            model_data:
+            role:
+            sagemaker_session:
+            **kwargs:
+        """
         sagemaker_session = sagemaker_session or Session()
         repo = "{}:{}".format(LinearLearner.repo_name, LinearLearner.repo_version)
         image = "{}/{}".format(registry(sagemaker_session.boto_session.region_name), repo)
