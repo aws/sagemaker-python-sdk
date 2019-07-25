@@ -15,6 +15,7 @@ from __future__ import absolute_import
 from abc import abstractmethod
 from six import string_types
 
+from sagemaker.inputs import FileSystemInput
 from sagemaker.local import file_input
 from sagemaker.session import s3_input
 
@@ -119,6 +120,8 @@ class _Job(object):
                 input_dict[k] = _Job._format_string_uri_input(v, validate_uri)
         elif isinstance(inputs, list):
             input_dict = _Job._format_record_set_list_input(inputs)
+        elif isinstance(inputs, FileSystemInput):
+            input_dict["training"] = inputs
         else:
             raise ValueError(
                 "Cannot format input {}. Expecting one of str, dict or s3_input".format(inputs)
@@ -131,8 +134,8 @@ class _Job(object):
         return channels
 
     @staticmethod
-    def _convert_input_to_channel(channel_name, channel_s3_input):
-        channel_config = channel_s3_input.config.copy()
+    def _convert_input_to_channel(channel_name, channel_input):
+        channel_config = channel_input.config.copy()
         channel_config["ChannelName"] = channel_name
         return channel_config
 
