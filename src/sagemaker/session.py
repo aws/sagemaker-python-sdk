@@ -35,6 +35,7 @@ from sagemaker.utils import (
     secondary_training_status_changed,
     secondary_training_status_message,
 )
+from sagemaker import exceptions
 
 LOGGER = logging.getLogger("sagemaker")
 
@@ -826,10 +827,12 @@ class Session(object):  # pylint: disable=too-many-public-methods
 
         if status != "Completed":
             reason = desc.get("FailureReason", None)
-            raise ValueError(
-                "Error creating model package {}: {} Reason: {}".format(
-                    model_package_name, status, reason
-                )
+            raise exceptions.UnexpectedStatusException(
+                message="Error creating model package {package}: {status} Reason: {reason}".format(
+                    package=model_package_name, status=status, reason=reason
+                ),
+                allowed_statuses=["Completed"],
+                actual_status=status,
             )
         return desc
 
@@ -990,7 +993,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
             (dict): Return value from the ``DescribeTrainingJob`` API.
 
         Raises:
-            ValueError: If the training job fails.
+            exceptions.UnexpectedStatusException: If the training job fails.
         """
         desc = _wait_until_training_done(
             lambda last_desc: _train_done(self.sagemaker_client, job, last_desc), None, poll
@@ -1009,7 +1012,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
             (dict): Return value from the ``DescribeCompilationJob`` API.
 
         Raises:
-            ValueError: If the compilation job fails.
+            exceptions.UnexpectedStatusException: If the compilation job fails.
         """
         desc = _wait_until(lambda: _compilation_job_status(self.sagemaker_client, job), poll)
         self._check_job_status(job, desc, "CompilationJobStatus")
@@ -1026,7 +1029,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
             (dict): Return value from the ``DescribeHyperParameterTuningJob`` API.
 
         Raises:
-            ValueError: If the hyperparameter tuning job fails.
+            exceptions.UnexpectedStatusException: If the hyperparameter tuning job fails.
         """
         desc = _wait_until(lambda: _tuning_job_status(self.sagemaker_client, job), poll)
         self._check_job_status(job, desc, "HyperParameterTuningJobStatus")
@@ -1043,7 +1046,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
             (dict): Return value from the ``DescribeTransformJob`` API.
 
         Raises:
-            ValueError: If the transform job fails.
+            exceptions.UnexpectedStatusException: If the transform job fails.
         """
         desc = _wait_until(lambda: _transform_job_status(self.sagemaker_client, job), poll)
         self._check_job_status(job, desc, "TransformJobStatus")
@@ -1051,7 +1054,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
 
     def _check_job_status(self, job, desc, status_key_name):
         """Check to see if the job completed successfully and, if not, construct and
-        raise a ValueError.
+        raise a exceptions.UnexpectedStatusException.
 
         Args:
             job (str): The name of the job to check.
@@ -1059,7 +1062,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
             status_key_name (str): Status key name to check for.
 
         Raises:
-            ValueError: If the training job fails.
+            exceptions.UnexpectedStatusException: If the training job fails.
         """
         status = desc[status_key_name]
         # If the status is capital case, then convert it to Camel case
@@ -1068,7 +1071,13 @@ class Session(object):  # pylint: disable=too-many-public-methods
         if status not in ("Completed", "Stopped"):
             reason = desc.get("FailureReason", "(No reason provided)")
             job_type = status_key_name.replace("JobStatus", " job")
-            raise ValueError("Error for {} {}: {} Reason: {}".format(job_type, job, status, reason))
+            raise exceptions.UnexpectedStatusException(
+                message="Error for {job_type} {job_name}: {status}. Reason: {reason}".format(
+                    job_type=job_type, job_name=job, status=status, reason=reason
+                ),
+                allowed_statuses=["Completed", "Stopped"],
+                actual_status=status,
+            )
 
     def wait_for_endpoint(self, endpoint, poll=5):
         """Wait for an Amazon SageMaker endpoint deployment to complete.
@@ -1085,8 +1094,12 @@ class Session(object):  # pylint: disable=too-many-public-methods
 
         if status != "InService":
             reason = desc.get("FailureReason", None)
-            raise ValueError(
-                "Error hosting endpoint {}: {} Reason: {}".format(endpoint, status, reason)
+            raise exceptions.UnexpectedStatusException(
+                message="Error hosting endpoint {endpoint}: {status}. Reason: {reason}.".format(
+                    endpoint=endpoint, status=status, reason=reason
+                ),
+                allowed_statuses=["InService"],
+                actual_status=status,
             )
         return desc
 
@@ -1334,7 +1347,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
                 completion (default: 5).
 
         Raises:
-            ValueError: If waiting and the training job fails.
+            exceptions.UnexpectedStatusException: If waiting and the training job fails.
         """
 
         description = self.sagemaker_client.describe_training_job(TrainingJobName=job_name)
