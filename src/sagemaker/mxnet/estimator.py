@@ -169,10 +169,10 @@ class MXNet(Framework):
             sagemaker.mxnet.model.MXNetModel: A SageMaker ``MXNetModel`` object.
             See :func:`~sagemaker.mxnet.model.MXNetModel` for full details.
         """
-        return MXNetModel(
+        model = MXNetModel(
             self.model_data,
             role or self.role,
-            entry_point or self.uploaded_code.script_name,
+            entry_point,
             source_dir=(source_dir or self._model_source_dir()),
             enable_cloudwatch_metrics=self.enable_cloudwatch_metrics,
             name=self._current_job_name,
@@ -186,6 +186,13 @@ class MXNet(Framework):
             vpc_config=self.get_vpc_config(vpc_config_override),
             dependencies=(dependencies or self.dependencies),
         )
+
+        if entry_point is None:
+            model.entry_point = (
+                self.entry_point if model._is_mms_version() else self.uploaded_code.script_name
+            )
+
+        return model
 
     @classmethod
     def _prepare_init_params_from_job_description(cls, job_details, model_channel_name=None):

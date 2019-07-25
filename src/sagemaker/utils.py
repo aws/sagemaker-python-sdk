@@ -432,9 +432,10 @@ def _save_model(repacked_model_uri, tmp_model_path, sagemaker_session):
         bucket, key = url.netloc, url.path.lstrip("/")
         new_key = key.replace(os.path.basename(key), os.path.basename(repacked_model_uri))
 
-        sagemaker_session.boto_session.resource("s3").Object(bucket, new_key).upload_file(
-            tmp_model_path
+        s3 = sagemaker_session.boto_session.resource(
+            "s3", region_name=sagemaker_session.boto_region_name
         )
+        s3.Object(bucket, new_key).upload_file(tmp_model_path)
     else:
         shutil.move(tmp_model_path, repacked_model_uri.replace("file://", ""))
 
