@@ -104,8 +104,9 @@ class _Job(object):
 
         # Deferred import due to circular dependency
         from sagemaker.amazon.amazon_estimator import RecordSet
+        from sagemaker.amazon.amazon_estimator import FileSystemRecordSet
 
-        if isinstance(inputs, RecordSet):
+        if isinstance(inputs, (RecordSet, FileSystemRecordSet)):
             inputs = inputs.data_channel()
 
         input_dict = {}
@@ -124,7 +125,9 @@ class _Job(object):
             input_dict["training"] = inputs
         else:
             raise ValueError(
-                "Cannot format input {}. Expecting one of str, dict or s3_input".format(inputs)
+                "Cannot format input {}. Expecting one of str, dict, s3_input or FileSystemInput".format(
+                    inputs
+                )
             )
 
         channels = [
@@ -152,12 +155,10 @@ class _Job(object):
             )
         if isinstance(uri_input, str):
             return s3_input(uri_input, content_type=content_type, input_mode=input_mode)
-        if isinstance(uri_input, s3_input):
-            return uri_input
-        if isinstance(uri_input, file_input):
+        if isinstance(uri_input, (s3_input, file_input, FileSystemInput)):
             return uri_input
         raise ValueError(
-            "Cannot format input {}. Expecting one of str, s3_input, or file_input".format(
+            "Cannot format input {}. Expecting one of str, s3_input, file_input or FileSystemInput".format(
                 uri_input
             )
         )

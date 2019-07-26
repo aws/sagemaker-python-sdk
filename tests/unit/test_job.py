@@ -16,8 +16,9 @@ import pytest
 import os
 from mock import Mock
 
-from sagemaker.amazon.amazon_estimator import RecordSet
+from sagemaker.amazon.amazon_estimator import RecordSet, FileSystemRecordSet
 from sagemaker.estimator import Estimator, Framework
+from sagemaker.inputs import FileSystemInput
 from sagemaker.job import _Job
 from sagemaker.model import FrameworkModel
 from sagemaker.session import s3_input
@@ -255,6 +256,26 @@ def test_format_inputs_to_input_config_record_set():
     assert channels[0]["DataSource"]["S3DataSource"]["S3DataType"] == inputs.s3_data_type
 
 
+def test_format_inputs_to_input_config_file_system_record_set():
+    file_system_id = "fs-0a48d2a1"
+    file_system_type = "EFS"
+    directory_path = "ipinsights"
+    num_records = 1
+    feature_dim = 1
+    records = FileSystemRecordSet(
+        file_system_id=file_system_id,
+        file_system_type=file_system_type,
+        directory_path=directory_path,
+        num_records=num_records,
+        feature_dim=feature_dim,
+    )
+    channels = _Job._format_inputs_to_input_config(records)
+    assert channels[0]["DataSource"]["FileSystemDataSource"]["DirectoryPath"] == directory_path
+    assert channels[0]["DataSource"]["FileSystemDataSource"]["FileSystemId"] == file_system_id
+    assert channels[0]["DataSource"]["FileSystemDataSource"]["FileSystemType"] == file_system_type
+    assert channels[0]["DataSource"]["FileSystemDataSource"]["FileSystemAccessMode"] == "ro"
+
+
 def test_format_inputs_to_input_config_list():
     records = RecordSet(s3_data=BUCKET_NAME, num_records=1, feature_dim=1)
     inputs = [records]
@@ -463,6 +484,21 @@ def test_format_string_uri_input_string():
     s3_uri_input = _Job._format_string_uri_input(inputs)
 
     assert s3_uri_input.config["DataSource"]["S3DataSource"]["S3Uri"] == inputs
+
+
+def test_format_string_uri_file_system_input():
+    file_system_id = "fs-fd85e556"
+    file_system_type = "EFS"
+    directory_path = "ipinsights"
+
+    file_system_input = FileSystemInput(
+        file_system_id=file_system_id,
+        file_system_type=file_system_type,
+        directory_path=directory_path,
+    )
+
+    uri_input = _Job._format_string_uri_input(file_system_input)
+    assert uri_input == file_system_input
 
 
 def test_format_string_uri_input_string_exception():

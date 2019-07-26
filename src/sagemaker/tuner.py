@@ -19,7 +19,11 @@ import logging
 from enum import Enum
 
 import sagemaker
-from sagemaker.amazon.amazon_estimator import RecordSet, AmazonAlgorithmEstimatorBase
+from sagemaker.amazon.amazon_estimator import (
+    RecordSet,
+    AmazonAlgorithmEstimatorBase,
+    FileSystemRecordSet,
+)
 from sagemaker.amazon.hyperparameter import Hyperparameter as hp  # noqa
 from sagemaker.analytics import HyperparameterTuningJobAnalytics
 from sagemaker.estimator import Framework
@@ -290,11 +294,18 @@ class HyperparameterTuner(object):
                 * (sagemaker.session.s3_input) - Channel configuration for S3 data sources that can provide
                     additional information about the training dataset. See :func:`sagemaker.session.s3_input`
                     for full details.
+                * (sagemaker.session.FileSystemInput) - channel configuration for file system data source
+                    that can provide additional information as well as the path to the training dataset.
                 * (sagemaker.amazon.amazon_estimator.RecordSet) - A collection of
                     Amazon :class:~`Record` objects serialized and stored in S3.
                     For use with an estimator for an Amazon algorithm.
+                * (sagemaker.amazon.amazon_estimator.FileSystemRecordSet) - Amazon SageMaker channel configuration
+                    for a file system data source for Amazon algorithms
                 * (list[sagemaker.amazon.amazon_estimator.RecordSet]) - A list of
                     :class:~`sagemaker.amazon.amazon_estimator.RecordSet` objects, where each instance is
+                    a different channel of training data.
+                * (list[sagemaker.amazon.amazon_estimator.FileSystemRecordSet]) - A list of
+                    :class:~`sagemaker.amazon.amazon_estimator.FileSystemRecordSet` objects, where each instance is
                     a different channel of training data.
 
             job_name (str): Tuning job name. If not specified, the tuner generates a default job name,
@@ -308,7 +319,7 @@ class HyperparameterTuner(object):
             **kwargs: Other arguments needed for training. Please refer to the ``fit()`` method of the associated
                 estimator to see what other arguments are needed.
         """
-        if isinstance(inputs, (list, RecordSet)):
+        if isinstance(inputs, (list, RecordSet, FileSystemRecordSet)):
             self.estimator._prepare_for_training(inputs, **kwargs)
         else:
             self.estimator._prepare_for_training(job_name)

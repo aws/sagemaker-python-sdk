@@ -25,7 +25,6 @@ from sagemaker.session import s3_input
 from sagemaker.tensorflow import defaults, TensorFlow, TensorFlowModel, TensorFlowPredictor
 import sagemaker.tensorflow.estimator as tfe
 
-
 DATA_DIR = os.path.join(os.path.dirname(__file__), "..", "data")
 SCRIPT_FILE = "dummy_script.py"
 SCRIPT_PATH = os.path.join(DATA_DIR, SCRIPT_FILE)
