@@ -18,7 +18,8 @@ SECURITY_GROUP_IDS_KEY = "SecurityGroupIds"
 VPC_CONFIG_KEY = "VpcConfig"
 
 # A global constant value for methods which can optionally override VpcConfig
-# Using the default implies that VpcConfig should be reused from an existing Estimator or Training Job
+# Using the default implies that VpcConfig should be reused from an existing Estimator or
+# Training Job
 VPC_CONFIG_DEFAULT = "VPC_CONFIG_DEFAULT"
 
 

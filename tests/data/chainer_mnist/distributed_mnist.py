@@ -46,7 +46,7 @@ class MLP(chainer.Chain):
 
 
 def _preprocess_mnist(raw, withlabel, ndim, scale, image_dtype, label_dtype, rgb_format):
-    images = raw["x"]
+    images = raw["x"][-100:]
     if ndim == 2:
         images = images.reshape(-1, 28, 28)
     elif ndim == 3:
@@ -59,7 +59,7 @@ def _preprocess_mnist(raw, withlabel, ndim, scale, image_dtype, label_dtype, rgb
     images *= scale / 255.0
 
     if withlabel:
-        labels = raw["y"].astype(label_dtype)
+        labels = raw["y"][-100:].astype(label_dtype)
         return tuple_dataset.TupleDataset(images, labels)
     return images
 
@@ -110,9 +110,6 @@ if __name__ == "__main__":
     # Create a multi node optimizer from a standard Chainer optimizer.
     optimizer = chainermn.create_multi_node_optimizer(chainer.optimizers.Adam(), comm)
     optimizer.setup(model)
-
-    train_file = np.load(os.path.join(args.train, "train.npz"))
-    test_file = np.load(os.path.join(args.test, "test.npz"))
 
     preprocess_mnist_options = {
         "withlabel": True,
@@ -173,7 +170,7 @@ if __name__ == "__main__":
     trainer.run()
 
     # only save the model in the master node
-    if args.host == "algo-1":
+    if args.host == env.hosts[0]:
         serializers.save_npz(os.path.join(env.model_dir, "model.npz"), model)
 
 

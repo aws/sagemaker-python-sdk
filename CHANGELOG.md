@@ -1,5 +1,23 @@
 # Changelog
 
+## v1.34.1 (2019-07-23)
+
+### Bug fixes and other changes
+
+ * enable line-too-long Pylint check
+ * improving Chainer integ tests
+ * update TensorFlow script mode dependency list
+ * improve documentation of some functions
+ * update PyTorch version
+ * allow serving script to be defined for deploy() and transformer() with frameworks
+ * format and add missing docstring placeholders
+ * add MXNet 1.4.1 support
+
+### Documentation changes
+
+ * add instructions for setting up Cloud9 environment.
+ * update using_tensorflow topic
+
 ## v1.34.0 (2019-07-18)
 
 ### Features

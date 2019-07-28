@@ -205,7 +205,8 @@ class _CsvSerializer(object):
         Returns:
             object: Sequence of bytes to be used for the request body.
         """
-        # For inputs which represent multiple "rows", the result should be newline-separated CSV rows
+        # For inputs which represent multiple "rows", the result should be newline-separated CSV
+        # rows
         if _is_mutable_sequence_like(data) and len(data) > 0 and _is_sequence_like(data[0]):
             return "\n".join([_CsvSerializer._serialize_row(row) for row in data])
         return _CsvSerializer._serialize_row(data)
@@ -418,7 +419,8 @@ class _JsonSerializer(object):
             object: Serialized data used for the request.
         """
         if isinstance(data, dict):
-            # convert each value in dict from a numpy array to a list if necessary, so they can be json serialized
+            # convert each value in dict from a numpy array to a list if necessary, so they can be
+            # json serialized
             return json.dumps({k: _ndarray_to_list(v) for k, v in six.iteritems(data)})
 
         # files and buffers

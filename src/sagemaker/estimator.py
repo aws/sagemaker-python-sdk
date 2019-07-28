@@ -279,15 +279,13 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):
 
                 * (str) the S3 location where training data is saved.
 
-                * (dict[str, str] or dict[str, sagemaker.session.s3_input]) If using multiple channels for
-                      training data, you can specify a dict mapping channel
-                      names to strings or :func:`~sagemaker.session.s3_input`
-                      objects.
+                * (dict[str, str] or dict[str, sagemaker.session.s3_input]) If using multiple
+                    channels for training data, you can specify a dict mapping channel names to
+                    strings or :func:`~sagemaker.session.s3_input` objects.
 
-                * (sagemaker.session.s3_input) - channel configuration for S3 data sources that can provide
-                      additional information as well as the path to the training
-                      dataset. See :func:`sagemaker.session.s3_input` for full
-                      details.
+                * (sagemaker.session.s3_input) - channel configuration for S3 data sources that can
+                    provide additional information as well as the path to the training dataset.
+                    See :func:`sagemaker.session.s3_input` for full details.
             wait (bool): Whether the call should wait until the job completes
                 (default: True).
             logs (bool): Whether to show the logs produced by the job. Only
@@ -990,9 +988,9 @@ class Estimator(EstimatorBase):
     ):
         """Create a model to deploy.
 
-        The serializer, deserializer, content_type, and accept arguments are only used to define a default
-        RealTimePredictor. They are ignored if an explicit predictor class is passed in. Other arguments
-        are passed through to the Model class.
+        The serializer, deserializer, content_type, and accept arguments are only used to define a
+        default RealTimePredictor. They are ignored if an explicit predictor class is passed in.
+        Other arguments are passed through to the Model class.
 
         Args:
             role (str): The ``ExecutionRoleArn`` IAM Role ARN for the ``Model``,
@@ -1562,8 +1560,9 @@ class Framework(EstimatorBase):
                 worker per vCPU.
             volume_kms_key (str): Optional. KMS key ID for encrypting the volume
                 attached to the ML compute instance (default: None).
-            entry_point (str): Path (absolute or relative) to the local Python source file which should be executed
-                as the entry point to training. If not specified, the training entry point is used.
+            entry_point (str): Path (absolute or relative) to the local Python source file which
+                should be executed as the entry point to training. If not specified, the training
+                entry point is used.
 
         Returns:
             sagemaker.transformer.Transformer: a ``Transformer`` object that can be used to start a

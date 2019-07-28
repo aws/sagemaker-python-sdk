@@ -83,7 +83,6 @@ disable=
     too-many-arguments,
     invalid-name,
     too-many-instance-attributes,
-    line-too-long, # We let Flake8 take care of this # TODO: Fix these and stop relying on flake8
     len-as-condition, # TODO: Enable this check once pylint 2.4.0 is released and consumed due to the fix in https://github.com/PyCQA/pylint/issues/2684
     import-error, # Since we run Pylint before any of our builds in tox, this will always fail
     protected-access, # TODO: Fix access
@@ -228,8 +227,9 @@ max-nested-blocks=5
 # Maximum number of characters on a single line.
 max-line-length=100
 
-# Regexp for a line that is allowed to be longer than the limit.
-ignore-long-lines=^\s*(# )?<?https?://\S+>?$
+# Regexp for a line that is allowed to be longer than the limit. Can only be a single regex.
+# The following matches any semblance of a url of any sort.
+ignore-long-lines=^\s*.*(# )?(<?https?:\/\/)?[-a-zA-Z0-9@:%%._\+~#=><]{1,256}\.[a-zA-Z0-9()]{1,6}\b[-a-zA-Z0-9()@:%%_\+.~#?&\/\/=<>]*\S*>?$
 
 # Allow the body of an if to be on the same line as the test if there is no
 # else.

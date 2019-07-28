@@ -140,8 +140,8 @@ class CategoricalParameter(ParameterRange):
             name (str): The name of the hyperparameter.
 
         Returns:
-            dict[str, list[str]]: A dictionary that contains the name and values of the hyperparameter,
-                where the values are serialized as JSON.
+            dict[str, list[str]]: A dictionary that contains the name and values of the
+            hyperparameter, where the values are serialized as JSON.
         """
         return {"Name": name, "Values": [json.dumps(v) for v in self.values]}
 
