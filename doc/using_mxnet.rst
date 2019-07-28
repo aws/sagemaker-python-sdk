@@ -16,8 +16,8 @@ Train a Model with MXNet
 
 To train an MXNet model by using the SageMaker Python SDK:
 
-.. |create mxnet estimator| replace:: Create a ``sagemaker.mxnet.MXNet estimator``
-.. _create tf estimator: #create-an-estimator
+.. |create mxnet estimator| replace:: Create a ``sagemaker.mxnet.MXNet`` Estimator
+.. _create mxnet estimator: #create-an-estimator
 
 .. |call fit| replace:: Call the estimator's ``fit`` method
 .. _call fit: #call-the-fit-method
@@ -281,8 +281,8 @@ If there are other packages you want to use with your script, you can include a 
 A ``requirements.txt`` file is a text file that contains a list of items that are installed by using ``pip install``. You can also specify the version of an item to install.
 For information about the format of a ``requirements.txt`` file, see `Requirements Files <https://pip.pypa.io/en/stable/user_guide/#requirements-files>`__ in the pip documentation.
 
-Create a ``sagemaker.mxnet.MXNet estimator``
-============================================
+Create an Estimator
+===================
 
 You run MXNet training scripts on SageMaker by creating an ``MXNet`` estimator.
 When you call ``fit`` on an ``MXNet`` estimator, SageMaker starts a training job using your script as training code.
