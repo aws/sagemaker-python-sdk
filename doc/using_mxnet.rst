@@ -805,3 +805,5 @@ For information about SageMaker MXNet containers, see the following topics:
 
 - training: https://github.com/aws/sagemaker-mxnet-container
 - serving: https://github.com/aws/sagemaker-mxnet-serving-container
+
+For information about the dependencies installed in SageMaker MXNet containers, see https://github.com/aws/sagemaker-python-sdk/blob/master/src/sagemaker/mxnet/README.rst#sagemaker-mxnet-containers.
