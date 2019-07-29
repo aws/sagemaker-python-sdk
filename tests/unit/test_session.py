@@ -766,8 +766,16 @@ SAMPLE_INPUT = [
 SAMPLE_OUTPUT = {"S3OutputPath": S3_OUTPUT}
 
 SAMPLE_OBJECTIVE = {"Type": "Maximize", "MetricName": "val-score"}
+SAMPLE_OBJECTIVE_2 = {"Type": "Maximize", "MetricName": "value-score"}
 
 SAMPLE_METRIC_DEF = [{"Name": "train:progress", "Regex": "regex-1"}]
+SAMPLE_METRIC_DEF_2 = [{"Name": "value-score", "Regex": "regex-2"}]
+
+STATIC_HPs = {"feature_dim": "784"}
+STATIC_HPs_2 = {"gamma": "0.1"}
+
+SAMPLE_PARAM_RANGES = [{"Name": "mini_batch_size", "MinValue": "10", "MaxValue": "100"}]
+SAMPLE_PARAM_RANGES_2 = [{"Name": "kernel", "Values": ["rbf", "sigmoid"]}]
 
 SAMPLE_TUNING_JOB_REQUEST = {
     "HyperParameterTuningJobName": "dummy-tuning-1",
@@ -791,6 +799,53 @@ SAMPLE_TUNING_JOB_REQUEST = {
         "ResourceConfig": RESOURCE_CONFIG,
         "StoppingCondition": SAMPLE_STOPPING_CONDITION,
     },
+}
+
+SAMPLE_MULTI_ALGO_TUNING_JOB_REQUEST = {
+    "HyperParameterTuningJobName": "dummy-tuning-1",
+    "HyperParameterTuningJobConfig": {
+        "Strategy": "Bayesian",
+        "ResourceLimits": {"MaxNumberOfTrainingJobs": 100, "MaxParallelTrainingJobs": 5},
+        "TrainingJobEarlyStoppingType": "Off",
+        "TrainingJobInstancePools": [
+            {"InstanceType": "ml.m4.4xlarge", "PoolSize": 3},
+            {"InstanceType": "ml.p2.xlarge", "PoolSize": 1},
+        ],
+    },
+    "TrainingJobDefinitions": [
+        {
+            "DefinitionName": "estimator_1",
+            "TuningObjective": SAMPLE_OBJECTIVE,
+            "HyperParameterRanges": SAMPLE_PARAM_RANGES,
+            "StaticHyperParameters": STATIC_HPs,
+            "AlgorithmSpecification": {
+                "TrainingImage": "dummy-image-1",
+                "TrainingInputMode": "File",
+                "MetricDefinitions": SAMPLE_METRIC_DEF,
+            },
+            "RoleArn": EXPANDED_ROLE,
+            "InputDataConfig": SAMPLE_INPUT,
+            "OutputDataConfig": SAMPLE_OUTPUT,
+            "ResourceConfig": RESOURCE_CONFIG,
+            "StoppingCondition": SAMPLE_STOPPING_CONDITION,
+        },
+        {
+            "DefinitionName": "estimator_2",
+            "TuningObjective": SAMPLE_OBJECTIVE_2,
+            "HyperParameterRanges": SAMPLE_PARAM_RANGES_2,
+            "StaticHyperParameters": STATIC_HPs_2,
+            "AlgorithmSpecification": {
+                "TrainingImage": "dummy-image-2",
+                "TrainingInputMode": "File",
+                "MetricDefinitions": SAMPLE_METRIC_DEF_2,
+            },
+            "RoleArn": EXPANDED_ROLE,
+            "InputDataConfig": SAMPLE_INPUT,
+            "OutputDataConfig": SAMPLE_OUTPUT,
+            "ResourceConfig": RESOURCE_CONFIG,
+            "StoppingCondition": SAMPLE_STOPPING_CONDITION,
+        },
+    ],
 }
 
 
@@ -837,6 +892,155 @@ def test_tune_warm_start(sagemaker_session, warm_start_type, parents):
         warm_start_config=WarmStartConfig(
             warm_start_type=WarmStartTypes(warm_start_type), parents=parents
         ).to_input_req(),
+    )
+
+
+def test_create_tuning_job_without_training_config_or_list(sagemaker_session):
+    with pytest.raises(
+        ValueError, match="Either training_config or training_config_list should be provided."
+    ):
+        sagemaker_session.create_tuning_job(
+            job_name="dummy-tuning-1",
+            tuning_config={
+                "strategy": "Bayesian",
+                "objective_type": "Maximize",
+                "objective_metric_name": "val-score",
+                "max_jobs": 100,
+                "max_parallel_jobs": 5,
+                "parameter_ranges": SAMPLE_PARAM_RANGES,
+            },
+        )
+
+
+def test_create_tuning_job_with_both_training_config_and_list(sagemaker_session):
+    with pytest.raises(
+        ValueError, match="Only one of training_config and training_config_list should be provided."
+    ):
+        sagemaker_session.create_tuning_job(
+            job_name="dummy-tuning-1",
+            tuning_config={
+                "strategy": "Bayesian",
+                "objective_type": "Maximize",
+                "objective_metric_name": "val-score",
+                "max_jobs": 100,
+                "max_parallel_jobs": 5,
+                "parameter_ranges": SAMPLE_PARAM_RANGES,
+            },
+            training_config={"static_hyperparameters": STATIC_HPs, "image": "dummy-image-1"},
+            training_config_list=[
+                {
+                    "static_hyperparameters": STATIC_HPs,
+                    "image": "dummy-image-1",
+                    "estimator_name": "estimator_1",
+                },
+                {
+                    "static_hyperparameters": STATIC_HPs_2,
+                    "image": "dummy-image-2",
+                    "estimator_name": "estimator_2",
+                },
+            ],
+        )
+
+
+def test_create_tuning_job(sagemaker_session):
+    def assert_create_tuning_job_request(**kwrags):
+        assert (
+            kwrags["HyperParameterTuningJobConfig"]
+            == SAMPLE_TUNING_JOB_REQUEST["HyperParameterTuningJobConfig"]
+        )
+        assert kwrags["HyperParameterTuningJobName"] == "dummy-tuning-1"
+        assert kwrags["TrainingJobDefinition"] == SAMPLE_TUNING_JOB_REQUEST["TrainingJobDefinition"]
+        assert "TrainingJobDefinitions" not in kwrags
+        assert kwrags.get("WarmStartConfig", None) is None
+
+    sagemaker_session.sagemaker_client.create_hyper_parameter_tuning_job.side_effect = (
+        assert_create_tuning_job_request
+    )
+    sagemaker_session.create_tuning_job(
+        job_name="dummy-tuning-1",
+        tuning_config={
+            "strategy": "Bayesian",
+            "objective_type": "Maximize",
+            "objective_metric_name": "val-score",
+            "max_jobs": 100,
+            "max_parallel_jobs": 5,
+            "parameter_ranges": SAMPLE_PARAM_RANGES,
+        },
+        training_config={
+            "static_hyperparameters": STATIC_HPs,
+            "image": "dummy-image-1",
+            "input_mode": "File",
+            "metric_definitions": SAMPLE_METRIC_DEF,
+            "role": EXPANDED_ROLE,
+            "input_config": SAMPLE_INPUT,
+            "output_config": SAMPLE_OUTPUT,
+            "resource_config": RESOURCE_CONFIG,
+            "stop_condition": SAMPLE_STOPPING_CONDITION,
+        },
+        tags=None,
+        warm_start_config=None,
+    )
+
+
+def test_create_tuning_job_multi_algo(sagemaker_session):
+    def assert_create_tuning_job_request(**kwrags):
+        expected_tuning_config = SAMPLE_MULTI_ALGO_TUNING_JOB_REQUEST[
+            "HyperParameterTuningJobConfig"
+        ]
+        assert kwrags["HyperParameterTuningJobConfig"] == expected_tuning_config
+        assert kwrags["HyperParameterTuningJobName"] == "dummy-tuning-1"
+        assert "TrainingJobDefinition" not in kwrags
+        assert (
+            kwrags["TrainingJobDefinitions"]
+            == SAMPLE_MULTI_ALGO_TUNING_JOB_REQUEST["TrainingJobDefinitions"]
+        )
+        assert kwrags.get("WarmStartConfig", None) is None
+
+    sagemaker_session.sagemaker_client.create_hyper_parameter_tuning_job.side_effect = (
+        assert_create_tuning_job_request
+    )
+    sagemaker_session.create_tuning_job(
+        job_name="dummy-tuning-1",
+        tuning_config={
+            "strategy": "Bayesian",
+            "max_jobs": 100,
+            "max_parallel_jobs": 5,
+            "training_instance_pools": {"ml.m4.4xlarge": 3, "ml.p2.xlarge": 1},
+        },
+        training_config_list=[
+            {
+                "static_hyperparameters": STATIC_HPs,
+                "image": "dummy-image-1",
+                "input_mode": "File",
+                "metric_definitions": SAMPLE_METRIC_DEF,
+                "role": EXPANDED_ROLE,
+                "input_config": SAMPLE_INPUT,
+                "output_config": SAMPLE_OUTPUT,
+                "resource_config": RESOURCE_CONFIG,
+                "stop_condition": SAMPLE_STOPPING_CONDITION,
+                "estimator_name": "estimator_1",
+                "objective_type": "Maximize",
+                "objective_metric_name": "val-score",
+                "parameter_ranges": SAMPLE_PARAM_RANGES,
+            },
+            {
+                "static_hyperparameters": STATIC_HPs_2,
+                "image": "dummy-image-2",
+                "input_mode": "File",
+                "metric_definitions": SAMPLE_METRIC_DEF_2,
+                "role": EXPANDED_ROLE,
+                "input_config": SAMPLE_INPUT,
+                "output_config": SAMPLE_OUTPUT,
+                "resource_config": RESOURCE_CONFIG,
+                "stop_condition": SAMPLE_STOPPING_CONDITION,
+                "estimator_name": "estimator_2",
+                "objective_type": "Maximize",
+                "objective_metric_name": "value-score",
+                "parameter_ranges": SAMPLE_PARAM_RANGES_2,
+            },
+        ],
+        tags=None,
+        warm_start_config=None,
     )
 
 

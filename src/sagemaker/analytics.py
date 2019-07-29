@@ -142,6 +142,8 @@ class HyperparameterTuningJobAnalytics(AnalyticsMetricsBase):
             out["TrainingEndTime"] = end_time
             if start_time and end_time:
                 out["TrainingElapsedTimeSeconds"] = (end_time - start_time).total_seconds()
+            if "TrainingJobDefinitionName" in training_summary:
+                out["TrainingJobDefinitionName"] = training_summary["TrainingJobDefinitionName"]
             return out
 
         # Run that helper over all the summaries.
@@ -152,11 +154,59 @@ class HyperparameterTuningJobAnalytics(AnalyticsMetricsBase):
     def tuning_ranges(self):
         """A dictionary describing the ranges of all tuned hyperparameters. The
         keys are the names of the hyperparameter, and the values are the ranges.
+
+        The output can take one of two forms:
+
+            * If the 'TrainingJobDefinition' field is present in the job description, the output
+                is a dictionary constructed from 'ParameterRanges' in
+                'HyperParameterTuningJobConfig' of the job description. The keys are the
+                parameter names, while the values are the parameter ranges.
+                Example:
+                >>> {
+                >>>     "eta": {"MaxValue": "1", "MinValue": "0", "Name": "eta"},
+                >>>     "gamma": {"MaxValue": "10", "MinValue": "0", "Name": "gamma"},
+                >>>     "iterations": {"MaxValue": "100", "MinValue": "50", "Name": "iterations"},
+                >>>     "num_layers": {"MaxValue": "30", "MinValue": "5", "Name": "num_layers"},
+                >>> }
+            * If the 'TrainingJobDefinitions' field (list) is present in the job description,
+                the output is a dictionary with keys as the 'DefinitionName' values from
+                all items in 'TrainingJobDefinitions', and each value would be a dictionary
+                constructed from 'HyperParameterRanges' in each item in 'TrainingJobDefinitions'
+                in the same format as above
+                Example:
+                >>> {
+                >>>     "estimator_1": {
+                >>>         "eta": {"MaxValue": "1", "MinValue": "0", "Name": "eta"},
+                >>>         "gamma": {"MaxValue": "10", "MinValue": "0", "Name": "gamma"},
+                >>>     },
+                >>>     "estimator_2": {
+                >>>         "framework": {"Values": ["TF", "MXNet"], "Name": "framework"},
+                >>>         "gamma": {"MaxValue": "1.0", "MinValue": "0.2", "Name": "gamma"}
+                >>>     }
+                >>> }
+
+        For more details about the 'TrainingJobDefinition' and 'TrainingJobDefinitions' fields
+        in job description, see
+        https://botocore.readthedocs.io/en/latest/reference/services/sagemaker.html#SageMaker.Client.create_hyper_parameter_tuning_job
         """
+        description = self.description()
+
+        if "TrainingJobDefinition" in description:
+            return self._prepare_parameter_ranges(
+                description["HyperParameterTuningJobConfig"]["ParameterRanges"]
+            )
+
+        return {
+            training_job_definition["DefinitionName"]: self._prepare_parameter_ranges(
+                training_job_definition["HyperParameterRanges"]
+            )
+            for training_job_definition in description["TrainingJobDefinitions"]
+        }
+
+    def _prepare_parameter_ranges(self, parameter_ranges):
+        """Convert parameter ranges a dictionary using the parameter range names as the keys"""
         out = {}
-        for _, ranges in self.description()["HyperParameterTuningJobConfig"][
-            "ParameterRanges"
-        ].items():
+        for _, ranges in parameter_ranges.items():
             for param in ranges:
                 out[param["Name"]] = param
         return out

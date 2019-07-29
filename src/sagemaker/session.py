@@ -618,6 +618,8 @@ class Session(object):  # pylint: disable=too-many-public-methods
                 hyperparameter tuning job. The hyperparameters are made accessible as a dictionary
                 for the training code on SageMaker.
             image (str): Docker image containing training code.
+            algorithm_arn (str): Resource ARN for training algorithm created on or subscribed from
+                AWS Marketplace (default: None).
             input_mode (str): The input mode that the algorithm supports. Valid modes:
                 * 'File' - Amazon SageMaker copies the training dataset from the S3 location to
                 a directory in the Docker container.
@@ -653,6 +655,8 @@ class Session(object):  # pylint: disable=too-many-public-methods
                 Can be either 'Auto' or 'Off'. If set to 'Off', early stopping will not be
                 attempted. If set to 'Auto', early stopping of some training jobs may happen, but
                 is not guaranteed to.
+            enable_network_isolation (bool): Specifies whether to isolate the training container
+                (default: ``False``).
             encrypt_inter_container_traffic (bool): Specifies whether traffic between training
                 containers is encrypted for the training jobs started for this hyperparameter
                 tuning job (default: ``False``).
@@ -675,73 +679,337 @@ class Session(object):  # pylint: disable=too-many-public-methods
                 (default: ``None``).
 
         """
+
         tune_request = {
             "HyperParameterTuningJobName": job_name,
-            "HyperParameterTuningJobConfig": {
-                "Strategy": strategy,
-                "HyperParameterTuningJobObjective": {
-                    "Type": objective_type,
-                    "MetricName": objective_metric_name,
-                },
-                "ResourceLimits": {
-                    "MaxNumberOfTrainingJobs": max_jobs,
-                    "MaxParallelTrainingJobs": max_parallel_jobs,
-                },
-                "ParameterRanges": parameter_ranges,
-                "TrainingJobEarlyStoppingType": early_stopping_type,
+            "HyperParameterTuningJobConfig": self._map_tuning_config(
+                strategy=strategy,
+                max_jobs=max_jobs,
+                max_parallel_jobs=max_parallel_jobs,
+                objective_type=objective_type,
+                objective_metric_name=objective_metric_name,
+                parameter_ranges=parameter_ranges,
+                early_stopping_type=early_stopping_type,
+            ),
+            "TrainingJobDefinition": self._map_training_config(
+                static_hyperparameters=static_hyperparameters,
+                role=role,
+                input_mode=input_mode,
+                image=image,
+                algorithm_arn=algorithm_arn,
+                metric_definitions=metric_definitions,
+                input_config=input_config,
+                output_config=output_config,
+                resource_config=resource_config,
+                vpc_config=vpc_config,
+                stop_condition=stop_condition,
+                enable_network_isolation=enable_network_isolation,
+                encrypt_inter_container_traffic=encrypt_inter_container_traffic,
+                train_use_spot_instances=train_use_spot_instances,
+                checkpoint_s3_uri=checkpoint_s3_uri,
+                checkpoint_local_path=checkpoint_local_path,
+            ),
+        }
+
+        if warm_start_config is not None:
+            tune_request["WarmStartConfig"] = warm_start_config
+
+        if tags is not None:
+            tune_request["Tags"] = tags
+
+        LOGGER.info("Creating hyperparameter tuning job with name: %s", job_name)
+        LOGGER.debug("tune request: %s", json.dumps(tune_request, indent=4))
+        self.sagemaker_client.create_hyper_parameter_tuning_job(**tune_request)
+
+    def create_tuning_job(
+        self,
+        job_name,
+        tuning_config,
+        training_config=None,
+        training_config_list=None,
+        warm_start_config=None,
+        tags=None,
+    ):
+        """Create an Amazon SageMaker hyperparameter tuning job. This method supports creating
+        tuning jobs with single or multiple training algorithms (estimators), while the ``tune()``
+        method above only supports creating tuning jobs with single training algorithm.
+
+        Args:
+            job_name (str): Name of the tuning job being created.
+            tuning_config (dict): Configuration to launch the tuning job.
+            training_config (dict): Configuration to launch training jobs under the tuning job
+                using a single algorithm.
+            training_config_list (list[dict]): A list of configurations to launch training jobs
+                under the tuning job using one or multiple algorithms. Either training_config
+                or training_config_list should be provided, but not both.
+            warm_start_config (dict): Configuration defining the type of warm start and
+                other required configurations.
+            tags (list[dict]): List of tags for labeling the tuning job. For more, see
+                https://docs.aws.amazon.com/sagemaker/latest/dg/API_Tag.html.
+        """
+
+        if training_config is None and training_config_list is None:
+            raise ValueError("Either training_config or training_config_list should be provided.")
+        if training_config is not None and training_config_list is not None:
+            raise ValueError(
+                "Only one of training_config and training_config_list should be provided."
+            )
+
+        tune_request = {
+            "HyperParameterTuningJobName": job_name,
+            "HyperParameterTuningJobConfig": self._map_tuning_config(**tuning_config),
+        }
+
+        if training_config is not None:
+            tune_request["TrainingJobDefinition"] = self._map_training_config(**training_config)
+
+        if training_config_list is not None:
+            tune_request["TrainingJobDefinitions"] = [
+                self._map_training_config(**training_cfg) for training_cfg in training_config_list
+            ]
+
+        if warm_start_config is not None:
+            tune_request["WarmStartConfig"] = warm_start_config
+
+        if tags is not None:
+            tune_request["Tags"] = tags
+
+        LOGGER.info("Creating hyperparameter tuning job with name: %s", job_name)
+        LOGGER.debug("tune request: %s", json.dumps(tune_request, indent=4))
+        self.sagemaker_client.create_hyper_parameter_tuning_job(**tune_request)
+
+    @classmethod
+    def _map_tuning_config(
+        cls,
+        strategy,
+        max_jobs,
+        max_parallel_jobs,
+        early_stopping_type="Off",
+        objective_type=None,
+        objective_metric_name=None,
+        parameter_ranges=None,
+        training_instance_pools=None,
+    ):
+        """
+        Construct tuning job configuration dictionary.
+
+        Args:
+            strategy (str): Strategy to be used for hyperparameter estimations.
+            max_jobs (int): Maximum total number of training jobs to start for the hyperparameter
+                tuning job.
+            max_parallel_jobs (int): Maximum number of parallel training jobs to start.
+            early_stopping_type (str): Specifies whether early stopping is enabled for the job.
+                Can be either 'Auto' or 'Off'. If set to 'Off', early stopping will not be
+                attempted. If set to 'Auto', early stopping of some training jobs may happen,
+                but is not guaranteed to.
+            objective_type (str): The type of the objective metric for evaluating training jobs.
+                This value can be either 'Minimize' or 'Maximize'.
+            objective_metric_name (str): Name of the metric for evaluating training jobs.
+            parameter_ranges (dict): Dictionary of parameter ranges. These parameter ranges can
+                be one of three types: Continuous, Integer, or Categorical.
+            training_instance_pools (dict[str, int]): Dictionary to specify how many ML instances
+                of different types to be reserved before starting the hyperparameter tuning job.
+                The keys are the ML instance types, and the values are the numbers of the
+                instances to be reserved.
+
+        Returns:
+            A dictionary of tuning job configuration. For format details, please refer to
+            HyperParameterTuningJobConfig as described in
+            https://botocore.readthedocs.io/en/latest/reference/services/sagemaker.html#SageMaker.Client.create_hyper_parameter_tuning_job
+        """
+
+        tuning_config = {
+            "Strategy": strategy,
+            "ResourceLimits": {
+                "MaxNumberOfTrainingJobs": max_jobs,
+                "MaxParallelTrainingJobs": max_parallel_jobs,
             },
-            "TrainingJobDefinition": {
-                "StaticHyperParameters": static_hyperparameters,
-                "RoleArn": role,
-                "OutputDataConfig": output_config,
-                "ResourceConfig": resource_config,
-                "StoppingCondition": stop_condition,
-            },
+            "TrainingJobEarlyStoppingType": early_stopping_type,
+        }
+
+        tuning_objective = cls._map_tuning_objective(objective_type, objective_metric_name)
+        if tuning_objective is not None:
+            tuning_config["HyperParameterTuningJobObjective"] = tuning_objective
+
+        if parameter_ranges is not None:
+            tuning_config["ParameterRanges"] = parameter_ranges
+
+        if training_instance_pools is not None:
+            tuning_config["TrainingJobInstancePools"] = [
+                {"InstanceType": instance_type, "PoolSize": training_instance_pools[instance_type]}
+                for instance_type in sorted(training_instance_pools.keys())
+            ]
+
+        return tuning_config
+
+    @classmethod
+    def _map_tuning_objective(cls, objective_type, objective_metric_name):
+        """
+        Construct a dictionary of tuning objective from the arguments
+
+        Args:
+            objective_type (str): The type of the objective metric for evaluating training jobs.
+                This value can be either 'Minimize' or 'Maximize'.
+            objective_metric_name (str): Name of the metric for evaluating training jobs.
+
+        Returns:
+            A dictionary of tuning objective. For format details, please refer to
+            HyperParameterTuningJobObjective as described in
+            https://botocore.readthedocs.io/en/latest/reference/services/sagemaker.html#SageMaker.Client.create_hyper_parameter_tuning_job
+        """
+
+        tuning_objective = None
+
+        if objective_type is not None or objective_metric_name is not None:
+            tuning_objective = {}
+
+        if objective_type is not None:
+            tuning_objective["Type"] = objective_type
+
+        if objective_metric_name is not None:
+            tuning_objective["MetricName"] = objective_metric_name
+
+        return tuning_objective
+
+    @classmethod
+    def _map_training_config(
+        cls,
+        static_hyperparameters,
+        input_mode,
+        role,
+        output_config,
+        resource_config,
+        stop_condition,
+        input_config=None,
+        metric_definitions=None,
+        image=None,
+        algorithm_arn=None,
+        vpc_config=None,
+        enable_network_isolation=False,
+        encrypt_inter_container_traffic=False,
+        estimator_name=None,
+        objective_type=None,
+        objective_metric_name=None,
+        parameter_ranges=None,
+        train_use_spot_instances=False,
+        checkpoint_s3_uri=None,
+        checkpoint_local_path=None,
+    ):
+        """
+        Construct a dictionary of training job configuration from the arguments
+
+        Args:
+            static_hyperparameters (dict): Hyperparameters for model training. These
+                hyperparameters remain unchanged across all of the training jobs for the
+                hyperparameter tuning job. The hyperparameters are made accessible as a dictionary
+                for the training code on SageMaker.
+            input_mode (str): The input mode that the algorithm supports. Valid modes:
+
+                * 'File' - Amazon SageMaker copies the training dataset from the S3 location to
+                    a directory in the Docker container.
+                * 'Pipe' - Amazon SageMaker streams data directly from S3 to the container via a
+                    Unix-named pipe.
+
+            role (str): An AWS IAM role (either name or full ARN). The Amazon SageMaker training
+                jobs and APIs that create Amazon SageMaker endpoints use this role to access
+                training data and model artifacts. You must grant sufficient permissions to
+                this role.
+            output_config (dict): The S3 URI where you want to store the training results and
+                optional KMS key ID.
+            resource_config (dict): Contains values for ResourceConfig:
+
+                * instance_count (int): Number of EC2 instances to use for training.
+                    The key in resource_config is 'InstanceCount'.
+                * instance_type (str): Type of EC2 instance to use for training, for example,
+                    'ml.c4.xlarge'. The key in resource_config is 'InstanceType'.
+
+            stop_condition (dict): When training should finish, e.g. ``MaxRuntimeInSeconds``.
+            input_config (list): A list of Channel objects. Each channel is a named input source.
+                Please refer to the format details described:
+                https://botocore.readthedocs.io/en/latest/reference/services/sagemaker.html#SageMaker.Client.create_training_job
+            metric_definitions (list[dict]): A list of dictionaries that defines the metric(s)
+                used to evaluate the training jobs. Each dictionary contains two keys: 'Name' for
+                the name of the metric, and 'Regex' for the regular expression used to extract the
+                metric from the logs. This should be defined only for jobs that don't use an
+                Amazon algorithm.
+            image (str): Docker image containing training code.
+            algorithm_arn (str): Resource ARN for training algorithm created or subscribed on
+                AWS Marketplace
+            vpc_config (dict): Contains values for VpcConfig (default: None):
+
+                * subnets (list[str]): List of subnet ids.
+                    The key in vpc_config is 'Subnets'.
+                * security_group_ids (list[str]): List of security group ids.
+                    The key in vpc_config is 'SecurityGroupIds'.
+
+            enable_network_isolation (bool): Specifies whether to isolate the training container
+            encrypt_inter_container_traffic (bool): Specifies whether traffic between training
+                containers is encrypted for the training jobs started for this hyperparameter
+                tuning job (default: ``False``).
+            estimator_name (str): Unique name for the estimator.
+            objective_type (str): The type of the objective metric for evaluating training jobs.
+                This value can be either 'Minimize' or 'Maximize'.
+            objective_metric_name (str): Name of the metric for evaluating training jobs.
+            parameter_ranges (dict): Dictionary of parameter ranges. These parameter ranges can
+                be one of three types: Continuous, Integer, or Categorical.
+
+        Returns:
+            A dictionary of training job configuration. For format details, please refer to
+            TrainingJobDefinition as described in
+            https://botocore.readthedocs.io/en/latest/reference/services/sagemaker.html#SageMaker.Client.create_hyper_parameter_tuning_job
+
+        """
+
+        training_job_definition = {
+            "StaticHyperParameters": static_hyperparameters,
+            "RoleArn": role,
+            "OutputDataConfig": output_config,
+            "ResourceConfig": resource_config,
+            "StoppingCondition": stop_condition,
         }
 
         algorithm_spec = {"TrainingInputMode": input_mode}
+        if metric_definitions is not None:
+            algorithm_spec["MetricDefinitions"] = metric_definitions
+
         if algorithm_arn:
             algorithm_spec["AlgorithmName"] = algorithm_arn
         else:
             algorithm_spec["TrainingImage"] = image
 
-        tune_request["TrainingJobDefinition"]["AlgorithmSpecification"] = algorithm_spec
+        training_job_definition["AlgorithmSpecification"] = algorithm_spec
 
         if input_config is not None:
-            tune_request["TrainingJobDefinition"]["InputDataConfig"] = input_config
-
-        if warm_start_config:
-            tune_request["WarmStartConfig"] = warm_start_config
-
-        if metric_definitions is not None:
-            tune_request["TrainingJobDefinition"]["AlgorithmSpecification"][
-                "MetricDefinitions"
-            ] = metric_definitions
-
-        if tags is not None:
-            tune_request["Tags"] = tags
+            training_job_definition["InputDataConfig"] = input_config
 
         if vpc_config is not None:
-            tune_request["TrainingJobDefinition"]["VpcConfig"] = vpc_config
+            training_job_definition["VpcConfig"] = vpc_config
 
         if enable_network_isolation:
-            tune_request["TrainingJobDefinition"]["EnableNetworkIsolation"] = True
+            training_job_definition["EnableNetworkIsolation"] = True
 
         if encrypt_inter_container_traffic:
-            tune_request["TrainingJobDefinition"]["EnableInterContainerTrafficEncryption"] = True
+            training_job_definition["EnableInterContainerTrafficEncryption"] = True
 
         if train_use_spot_instances:
-            tune_request["TrainingJobDefinition"]["EnableManagedSpotTraining"] = True
+            training_job_definition["EnableManagedSpotTraining"] = True
 
         if checkpoint_s3_uri:
             checkpoint_config = {"S3Uri": checkpoint_s3_uri}
             if checkpoint_local_path:
                 checkpoint_config["LocalPath"] = checkpoint_local_path
-            tune_request["TrainingJobDefinition"]["CheckpointConfig"] = checkpoint_config
+            training_job_definition["CheckpointConfig"] = checkpoint_config
+        if estimator_name is not None:
+            training_job_definition["DefinitionName"] = estimator_name
 
-        LOGGER.info("Creating hyperparameter tuning job with name: %s", job_name)
-        LOGGER.debug("tune request: %s", json.dumps(tune_request, indent=4))
-        self.sagemaker_client.create_hyper_parameter_tuning_job(**tune_request)
+        tuning_objective = cls._map_tuning_objective(objective_type, objective_metric_name)
+        if tuning_objective is not None:
+            training_job_definition["TuningObjective"] = tuning_objective
+
+        if parameter_ranges is not None:
+            training_job_definition["HyperParameterRanges"] = parameter_ranges
+
+        return training_job_definition
 
     def stop_tuning_job(self, name):
         """Stop the Amazon SageMaker hyperparameter tuning job with the specified name.

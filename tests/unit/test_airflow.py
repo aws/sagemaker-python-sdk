@@ -19,7 +19,7 @@ from mock import Mock, MagicMock, patch
 from sagemaker import chainer, estimator, model, mxnet, tensorflow, transformer, tuner
 from sagemaker.workflow import airflow
 from sagemaker.amazon import amazon_estimator
-from sagemaker.amazon import knn, ntm, pca
+from sagemaker.amazon import knn, linear_learner, ntm, pca
 
 
 REGION = "us-west-2"
@@ -546,6 +546,7 @@ def test_framework_tuning_config(sagemaker_session):
                     {"Name": "num_epoch", "MinValue": "10", "MaxValue": "50", "ScalingType": "Auto"}
                 ],
             },
+            "TrainingJobEarlyStoppingType": "Off",
         },
         "TrainingJobDefinition": {
             "AlgorithmSpecification": {
@@ -584,6 +585,8 @@ def test_framework_tuning_config(sagemaker_session):
                 "sagemaker_container_log_level": "20",
                 "sagemaker_job_name": '"{{ base_job_name }}-%s"' % TIME_STAMP,
                 "sagemaker_region": '"us-west-2"',
+                "sagemaker_estimator_module": '"sagemaker.mxnet.estimator"',
+                "sagemaker_estimator_class_name": '"MXNet"',
             },
         },
         "Tags": [{"{{ key }}": "{{ value }}"}],
@@ -598,8 +601,288 @@ def test_framework_tuning_config(sagemaker_session):
             ]
         },
     }
+    assert config == expected_config
+
+
+@patch("sagemaker.utils.sagemaker_timestamp", MagicMock(return_value=TIME_STAMP))
+@patch("sagemaker.utils.sagemaker_short_timestamp", MagicMock(return_value=TIME_STAMP))
+@patch("os.path.isfile", MagicMock(return_value=True))
+@patch("sagemaker.estimator.tar_and_upload_dir", MagicMock())
+@patch(
+    "sagemaker.fw_utils.parse_s3_url",
+    MagicMock(
+        return_value=[
+            "output",
+            "{{{{ base_job_name }}}}-{0}/source/sourcedir.tar.gz".format(TIME_STAMP),
+        ]
+    ),
+)
+def test_multi_estimator_tuning_config(sagemaker_session):
+    estimator_dict = {}
+    hyperparameter_ranges_dict = {}
+    objective_metric_name_dict = {}
+    metric_definitions_dict = {}
+
+    mxnet_estimator_name = "mxnet"
+    estimator_dict[mxnet_estimator_name] = mxnet.MXNet(
+        entry_point="{{ entry_point }}",
+        source_dir="{{ source_dir }}",
+        py_version="py3",
+        framework_version="1.3.0",
+        role="{{ role }}",
+        train_instance_count=1,
+        train_instance_type="ml.m4.xlarge",
+        sagemaker_session=sagemaker_session,
+        base_job_name="{{ base_job_name }}",
+        hyperparameters={"batch_size": 100},
+    )
+    hyperparameter_ranges_dict[mxnet_estimator_name] = {
+        "optimizer": tuner.CategoricalParameter(["sgd", "Adam"]),
+        "learning_rate": tuner.ContinuousParameter(0.01, 0.2),
+        "num_epoch": tuner.IntegerParameter(10, 50),
+    }
+    objective_metric_name_dict[mxnet_estimator_name] = "Validation-accuracy"
+    metric_definitions_dict[mxnet_estimator_name] = [
+        {"Name": "Validation-accuracy", "Regex": "Validation-accuracy=([0-9\\.]+)"}
+    ]
+
+    ll_estimator_name = "linear_learner"
+    estimator_dict[ll_estimator_name] = linear_learner.LinearLearner(
+        predictor_type="binary_classifier",
+        role="{{ role }}",
+        train_instance_count=1,
+        train_instance_type="ml.c4.2xlarge",
+        sagemaker_session=sagemaker_session,
+    )
+    hyperparameter_ranges_dict[ll_estimator_name] = {
+        "learning_rate": tuner.ContinuousParameter(0.2, 0.5),
+        "use_bias": tuner.CategoricalParameter([True, False]),
+    }
+    objective_metric_name_dict[ll_estimator_name] = "validation:binary_classification_accuracy"
+
+    multi_estimator_tuner = tuner.HyperparameterTuner.create(
+        estimator_dict=estimator_dict,
+        objective_metric_name_dict=objective_metric_name_dict,
+        hyperparameter_ranges_dict=hyperparameter_ranges_dict,
+        metric_definitions_dict=metric_definitions_dict,
+        strategy="Bayesian",
+        objective_type="Maximize",
+        max_jobs="{{ max_job }}",
+        max_parallel_jobs="{{ max_parallel_job }}",
+        tags=[{"{{ key }}": "{{ value }}"}],
+        base_tuning_job_name="{{ base_job_name }}",
+        training_instance_pools={"ml.m4.xlarge": 4, "ml.c4.2xlarge": 10},
+    )
+
+    data = {
+        mxnet_estimator_name: "{{ training_data_mxnet }}",
+        ll_estimator_name: amazon_estimator.RecordSet("{{ record }}", 10000, 100, "S3Prefix"),
+    }
+
+    config = airflow.tuning_config(multi_estimator_tuner, inputs=data, include_cls_metadata={})
+
+    expected_config = {
+        "HyperParameterTuningJobName": "{{ base_job_name }}-%s" % TIME_STAMP,
+        "HyperParameterTuningJobConfig": {
+            "Strategy": "Bayesian",
+            "ResourceLimits": {
+                "MaxNumberOfTrainingJobs": "{{ max_job }}",
+                "MaxParallelTrainingJobs": "{{ max_parallel_job }}",
+            },
+            "TrainingJobEarlyStoppingType": "Off",
+            "TrainingJobInstancePools": [
+                {"InstanceType": "ml.c4.2xlarge", "PoolSize": 10},
+                {"InstanceType": "ml.m4.xlarge", "PoolSize": 4},
+            ],
+        },
+        "TrainingJobDefinitions": [
+            {
+                "DefinitionName": "linear_learner",
+                "TuningObjective": {
+                    "MetricName": "validation:binary_classification_accuracy",
+                    "Type": "Maximize",
+                },
+                "HyperParameterRanges": {
+                    "CategoricalParameterRanges": [
+                        {"Name": "use_bias", "Values": ["True", "False"]}
+                    ],
+                    "ContinuousParameterRanges": [
+                        {
+                            "MaxValue": "0.5",
+                            "MinValue": "0.2",
+                            "Name": "learning_rate",
+                            "ScalingType": "Auto",
+                        }
+                    ],
+                    "IntegerParameterRanges": [],
+                },
+                "StaticHyperParameters": {
+                    "feature_dim": "100",
+                    "predictor_type": "binary_classifier",
+                },
+                "AlgorithmSpecification": {
+                    "MetricDefinitions": None,
+                    "TrainingImage": "174872318107.dkr.ecr.us-west-2.amazonaws.com/linear-learner:1",
+                    "TrainingInputMode": "File",
+                },
+                "InputDataConfig": [
+                    {
+                        "ChannelName": "train",
+                        "DataSource": {
+                            "S3DataSource": {
+                                "S3DataDistributionType": "ShardedByS3Key",
+                                "S3DataType": "S3Prefix",
+                                "S3Uri": "{{ record }}",
+                            }
+                        },
+                    }
+                ],
+                "OutputDataConfig": {"S3OutputPath": "s3://output/"},
+                "ResourceConfig": {
+                    "InstanceCount": 1,
+                    "InstanceType": "ml.c4.2xlarge",
+                    "VolumeSizeInGB": 30,
+                },
+                "RoleArn": "{{ role }}",
+                "StoppingCondition": {"MaxRuntimeInSeconds": 86400},
+            },
+            {
+                "DefinitionName": "mxnet",
+                "TuningObjective": {"MetricName": "Validation-accuracy", "Type": "Maximize"},
+                "HyperParameterRanges": {
+                    "CategoricalParameterRanges": [
+                        {"Name": "optimizer", "Values": ['"sgd"', '"Adam"']}
+                    ],
+                    "ContinuousParameterRanges": [
+                        {
+                            "MaxValue": "0.2",
+                            "MinValue": "0.01",
+                            "Name": "learning_rate",
+                            "ScalingType": "Auto",
+                        }
+                    ],
+                    "IntegerParameterRanges": [
+                        {
+                            "MaxValue": "50",
+                            "MinValue": "10",
+                            "Name": "num_epoch",
+                            "ScalingType": "Auto",
+                        }
+                    ],
+                },
+                "StaticHyperParameters": {
+                    "batch_size": "100",
+                    "sagemaker_container_log_level": "20",
+                    "sagemaker_enable_cloudwatch_metrics": "false",
+                    "sagemaker_estimator_class_name": '"MXNet"',
+                    "sagemaker_estimator_module": '"sagemaker.mxnet.estimator"',
+                    "sagemaker_job_name": '"{{ base_job_name }}-%s"' % TIME_STAMP,
+                    "sagemaker_program": '"{{ entry_point }}"',
+                    "sagemaker_region": '"us-west-2"',
+                    "sagemaker_submit_directory": '"s3://output/{{ base_job_name }}-%s/source/sourcedir.tar.gz"'
+                    % TIME_STAMP,
+                },
+                "AlgorithmSpecification": {
+                    "MetricDefinitions": [
+                        {"Name": "Validation-accuracy", "Regex": "Validation-accuracy=([0-9\\.]+)"}
+                    ],
+                    "TrainingImage": "520713654638.dkr.ecr.us-west-2.amazonaws.com/sagemaker-mxnet:1.3.0-cpu-py3",
+                    "TrainingInputMode": "File",
+                },
+                "InputDataConfig": [
+                    {
+                        "ChannelName": "training",
+                        "DataSource": {
+                            "S3DataSource": {
+                                "S3DataDistributionType": "FullyReplicated",
+                                "S3DataType": "S3Prefix",
+                                "S3Uri": "{{ training_data_mxnet }}",
+                            }
+                        },
+                    }
+                ],
+                "OutputDataConfig": {"S3OutputPath": "s3://output/"},
+                "ResourceConfig": {
+                    "InstanceCount": 1,
+                    "InstanceType": "ml.m4.xlarge",
+                    "VolumeSizeInGB": 30,
+                },
+                "RoleArn": "{{ role }}",
+                "StoppingCondition": {"MaxRuntimeInSeconds": 86400},
+            },
+        ],
+        "S3Operations": {
+            "S3Upload": [
+                {
+                    "Bucket": "output",
+                    "Key": "{{ base_job_name }}-%s/source/sourcedir.tar.gz" % TIME_STAMP,
+                    "Path": "{{ source_dir }}",
+                    "Tar": True,
+                }
+            ]
+        },
+        "Tags": [{"{{ key }}": "{{ value }}"}],
+    }
 
     assert config == expected_config
+
+
+def test_merge_s3_operations():
+    s3_operations_list = [
+        {
+            "S3Upload": [
+                {
+                    "Bucket": "output",
+                    "Key": "base_job_name-111/source/sourcedir.tar.gz",
+                    "Path": "source_dir",
+                    "Tar": True,
+                }
+            ]
+        },
+        {
+            "S3Upload": [
+                {
+                    "Bucket": "output",
+                    "Key": "base_job_name-111/source/sourcedir.tar.gz",
+                    "Path": "source_dir",
+                    "Tar": True,
+                }
+            ],
+            "S3CreateBucket": [{"Bucket": "output"}],
+        },
+        {
+            "S3Upload": [
+                {
+                    "Bucket": "output_2",
+                    "Key": "base_job_name-111/source/sourcedir_2.tar.gz",
+                    "Path": "source_dir_2",
+                    "Tar": True,
+                }
+            ]
+        },
+        {"S3CreateBucket": [{"Bucket": "output_2"}]},
+        {},
+    ]
+
+    expected_result = {
+        "S3Upload": [
+            {
+                "Bucket": "output",
+                "Key": "base_job_name-111/source/sourcedir.tar.gz",
+                "Path": "source_dir",
+                "Tar": True,
+            },
+            {
+                "Bucket": "output_2",
+                "Key": "base_job_name-111/source/sourcedir_2.tar.gz",
+                "Path": "source_dir_2",
+                "Tar": True,
+            },
+        ],
+        "S3CreateBucket": [{"Bucket": "output"}, {"Bucket": "output_2"}],
+    }
+
+    assert airflow._merge_s3_operations(s3_operations_list) == expected_result
 
 
 def test_byo_model_config(sagemaker_session):
