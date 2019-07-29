@@ -286,6 +286,28 @@ def test_format_inputs_to_input_config_list():
     assert channels[0]["DataSource"]["S3DataSource"]["S3DataType"] == records.s3_data_type
 
 
+def test_format_record_set_list_input():
+    records = FileSystemRecordSet(
+        file_system_id="fs-fd85e556",
+        file_system_type="EFS",
+        directory_path="ipinsights",
+        num_records=100,
+        feature_dim=1,
+    )
+    test_records = FileSystemRecordSet(
+        file_system_id="fs-fd85e556",
+        file_system_type="EFS",
+        directory_path="ipinsights",
+        num_records=20,
+        feature_dim=1,
+        channel="validation",
+    )
+    inputs = [records, test_records]
+    input_dict = _Job._format_record_set_list_input(inputs)
+    assert isinstance(input_dict["train"], FileSystemInput)
+    assert isinstance(input_dict["validation"], FileSystemInput)
+
+
 @pytest.mark.parametrize(
     "channel_uri, channel_name, content_type, input_mode",
     [
@@ -349,7 +371,7 @@ def test_format_inputs_to_input_config_list_not_all_records():
     with pytest.raises(ValueError) as ex:
         _Job._format_inputs_to_input_config(inputs)
 
-    assert "List compatible only with RecordSets." in str(ex)
+    assert "List compatible only with RecordSets or FileSystemRecordSets." in str(ex)
 
 
 def test_format_inputs_to_input_config_list_duplicate_channel():

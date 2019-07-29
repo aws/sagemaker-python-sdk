@@ -218,17 +218,19 @@ class _Job(object):
     @staticmethod
     def _format_record_set_list_input(inputs):
         # Deferred import due to circular dependency
-        from sagemaker.amazon.amazon_estimator import RecordSet
+        from sagemaker.amazon.amazon_estimator import RecordSet, FileSystemRecordSet
 
         input_dict = {}
         for record in inputs:
-            if not isinstance(record, RecordSet):
-                raise ValueError("List compatible only with RecordSets.")
+            if not isinstance(record, (RecordSet, FileSystemRecordSet)):
+                raise ValueError("List compatible only with RecordSets or FileSystemRecordSets.")
 
             if record.channel in input_dict:
                 raise ValueError("Duplicate channels not allowed.")
-
-            input_dict[record.channel] = record.records_s3_input()
+            if isinstance(record, RecordSet):
+                input_dict[record.channel] = record.records_s3_input()
+            if isinstance(record, FileSystemRecordSet):
+                input_dict[record.channel] = record.file_system_input
 
         return input_dict
 
