@@ -1,5 +1,16 @@
 # Changelog
 
+## v1.34.2 (2019-07-29)
+
+### Bug fixes and other changes
+
+ * removing unnecessary tests cases
+ * Replaced generic ValueError with custom subclass when reporting unexpected resource status
+
+### Documentation changes
+
+ * correct wording for Cloud9 environment setup instructions
+
 ## v1.34.1 (2019-07-23)
 
 ### Bug fixes and other changes
