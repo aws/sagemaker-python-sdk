@@ -221,6 +221,8 @@ class Splitter(with_metaclass(ABCMeta, object)):
 class NoneSplitter(Splitter):
     """Does not split records, essentially reads the whole file."""
 
+    _textchars = bytearray({7, 8, 9, 10, 12, 13, 27} | set(range(0x20, 0x100)) - {0x7F})
+
     def split(self, file):
         """Split a file into records using a specific strategy.
 
@@ -233,8 +235,24 @@ class NoneSplitter(Splitter):
         Returns: generator for the individual records that were split from
         the file
         """
-        with open(file, "r+b") as f:
-            yield f.read()
+        with open(file, "rb") as f:
+            buf = f.read()
+            if not self._is_binary(buf):
+                buf = buf.decode()
+            yield buf
+
+    def _is_binary(self, buf):
+        """binary check.
+
+        binary or text check.
+
+        Args:
+            buf (bytes): bytes in target file.
+
+        Returns:
+            is binary(True) or text(False).
+        """
+        return bool(buf.translate(None, self._textchars))
 
 
 class LineSplitter(Splitter):
