@@ -1,5 +1,11 @@
 # Changelog
 
+## v1.34.3 (2019-07-30)
+
+### Bug fixes and other changes
+
+ * waiting for training tags to propagate in the test
+
 ## v1.34.2 (2019-07-29)
 
 ### Bug fixes and other changes
