@@ -17,8 +17,6 @@ import os
 import platform
 import sys
 import tempfile
-import imghdr
-
 from abc import ABCMeta
 from abc import abstractmethod
 from six import with_metaclass
@@ -235,8 +233,7 @@ class NoneSplitter(Splitter):
         Returns: generator for the individual records that were split from
         the file
         """
-        mode = "r" if imghdr.what(file) is None else "rb"
-        with open(file, mode) as f:
+        with open(file, "r+b") as f:
             yield f.read()
 
 
