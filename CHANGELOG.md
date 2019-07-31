@@ -1,5 +1,11 @@
 # Changelog
 
+## v1.35.0 (2019-07-31)
+
+### Features
+
+ * allow serving image to be specified when calling MXNet.deploy
+
 ## v1.34.3 (2019-07-30)
 
 ### Bug fixes and other changes
