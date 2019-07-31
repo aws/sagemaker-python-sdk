@@ -140,6 +140,7 @@ class MXNet(Framework):
         entry_point=None,
         source_dir=None,
         dependencies=None,
+        image_name=None,
     ):
         """Create a SageMaker ``MXNetModel`` object that can be deployed to an
         ``Endpoint``.
@@ -164,6 +165,12 @@ class MXNet(Framework):
             dependencies (list[str]): A list of paths to directories (absolute or relative) with
                 any additional libraries that will be exported to the container.
                 If not specified, the dependencies from training are used.
+            image_name (str): If specified, the estimator will use this image for hosting, instead
+                of selecting the appropriate SageMaker official image based on framework_version
+                and py_version. It can be an ECR url or dockerhub image and tag.
+                Examples:
+                    123.dkr.ecr.us-west-2.amazonaws.com/my-custom-image:1.0
+                    custom-image:latest.
 
         Returns:
             sagemaker.mxnet.model.MXNetModel: A SageMaker ``MXNetModel`` object.
@@ -180,7 +187,7 @@ class MXNet(Framework):
             code_location=self.code_location,
             py_version=self.py_version,
             framework_version=self.framework_version,
-            image=self.image_name,
+            image=(image_name or self.image_name),
             model_server_workers=model_server_workers,
             sagemaker_session=self.sagemaker_session,
             vpc_config=self.get_vpc_config(vpc_config_override),
