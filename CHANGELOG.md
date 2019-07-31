@@ -1,5 +1,28 @@
 # Changelog
 
+## v1.35.0 (2019-07-31)
+
+### Features
+
+ * allow serving image to be specified when calling MXNet.deploy
+
+## v1.34.3 (2019-07-30)
+
+### Bug fixes and other changes
+
+ * waiting for training tags to propagate in the test
+
+## v1.34.2 (2019-07-29)
+
+### Bug fixes and other changes
+
+ * removing unnecessary tests cases
+ * Replaced generic ValueError with custom subclass when reporting unexpected resource status
+
+### Documentation changes
+
+ * correct wording for Cloud9 environment setup instructions
+
 ## v1.34.1 (2019-07-23)
 
 ### Bug fixes and other changes
