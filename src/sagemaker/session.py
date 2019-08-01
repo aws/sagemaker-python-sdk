@@ -1404,9 +1404,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
 
         return role
 
-    def logs_for_job(  # noqa: C901 - suppress complexity warning for this method
-        self, job_name, wait=False, poll=10
-    ):
+    def logs_for_job(self, job_name, wait=False, poll=10):
         """Display the logs for a given training job, optionally tailing them until the
         job is complete. If the output is a tty or a Jupyter cell, it will be color-coded
         based on which instance the log entry is from.
@@ -1425,7 +1423,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
         description = self.sagemaker_client.describe_training_job(TrainingJobName=job_name)
         print(secondary_training_status_message(description, None), end="")
 
-        instance_count, stream_names, positions, client, log_group, dot, color_wrap = _logs_initializer(
+        instance_count, stream_names, positions, client, log_group, dot, color_wrap = _logs_init(
             self, description, job="Training"
         )
 
@@ -1502,17 +1500,17 @@ class Session(object):  # pylint: disable=too-many-public-methods
                     saving = (1 - float(billable_time) / training_time) * 100
                     print("Managed Spot Training savings: {:.1f}%".format(saving))
 
-    def logs_for_transform_job(
-        self, job_name, wait=False, poll=10
-    ):  # noqa: C901 - suppress complexity warning
+    def logs_for_transform_job(self, job_name, wait=False, poll=10):
         """Display the logs for a given transform job, optionally tailing them until the
         job is complete. If the output is a tty or a Jupyter cell, it will be color-coded
         based on which instance the log entry is from.
 
         Args:
             job_name (str): Name of the transform job to display the logs for.
-            wait (bool): Whether to keep looking for new log entries until the job completes (default: False).
-            poll (int): The interval in seconds between polling for new log entries and job completion (default: 5).
+            wait (bool): Whether to keep looking for new log entries until the job completes
+                (default: False).
+            poll (int): The interval in seconds between polling for new log entries and job
+                completion (default: 5).
 
         Raises:
             ValueError: If the transform job fails.
@@ -1520,18 +1518,19 @@ class Session(object):  # pylint: disable=too-many-public-methods
 
         description = self.sagemaker_client.describe_transform_job(TransformJobName=job_name)
 
-        instance_count, stream_names, positions, client, log_group, dot, color_wrap = _logs_initializer(
+        instance_count, stream_names, positions, client, log_group, dot, color_wrap = _logs_init(
             self, description, job="Transform"
         )
 
         state = _get_initial_job_state(description, "TransformJobStatus", wait)
 
-        # The loop below implements a state machine that alternates between checking the job status and
-        # reading whatever is available in the logs at this point. Note, that if we were called with
-        # wait == False, we never check the job status.
+        # The loop below implements a state machine that alternates between checking the job status
+        # and reading whatever is available in the logs at this point. Note, that if we were
+        # called with wait == False, we never check the job status.
         #
         # If wait == TRUE and job is not completed, the initial state is TAILING
-        # If wait == FALSE, the initial state is COMPLETE (doesn't matter if the job really is complete).
+        # If wait == FALSE, the initial state is COMPLETE (doesn't matter if the job really is
+        # complete).
         #
         # The state table:
         #
@@ -1543,8 +1542,8 @@ class Session(object):  # pylint: disable=too-many-public-methods
         # COMPLETE            Read logs, Exit                                      N/A
         #
         # Notes:
-        # - The JOB_COMPLETE state forces us to do an extra pause and read any items that got to Cloudwatch after
-        #   the job was marked complete.
+        # - The JOB_COMPLETE state forces us to do an extra pause and read any items that got to
+        #   Cloudwatch after the job was marked complete.
         last_describe_job_call = time.time()
         while True:
             _flush_log_streams(
@@ -1572,7 +1571,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
 
                 status = description["TransformJobStatus"]
 
-                if status == "Completed" or status == "Failed" or status == "Stopped":
+                if status in ("Completed", "Failed", "Stopped"):
                     print()
                     state = LogState.JOB_COMPLETE
 
@@ -1922,14 +1921,14 @@ def _vpc_config_from_training_job(
 
 
 def _get_initial_job_state(description, status_key, wait):
+    """Placeholder docstring"""
     status = description[status_key]
-    job_already_completed = (
-        True if status == "Completed" or status == "Failed" or status == "Stopped" else False
-    )
+    job_already_completed = status in ("Completed", "Failed", "Stopped")
     return LogState.TAILING if wait and not job_already_completed else LogState.COMPLETE
 
 
-def _logs_initializer(sagemaker_session, description, job):
+def _logs_init(sagemaker_session, description, job):
+    """Placeholder docstring"""
     if job == "Training":
         instance_count = description["ResourceConfig"]["InstanceCount"]
     elif job == "Transform":
@@ -1954,6 +1953,7 @@ def _logs_initializer(sagemaker_session, description, job):
 def _flush_log_streams(
     stream_names, instance_count, client, log_group, job_name, positions, dot, color_wrap
 ):
+    """Placeholder docstring"""
     if len(stream_names) < instance_count:
         # Log streams are created whenever a container starts writing to stdout/err, so this list
         # may be dynamic until we have a stream for every instance.

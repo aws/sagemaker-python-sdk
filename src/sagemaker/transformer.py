@@ -156,7 +156,7 @@ class Transformer(object):
                 will be joined to the inference result. You can use OutputFilter
                 to select the useful portion before uploading to S3. (default:
                 None). Valid values: Input, None.
-            wait (bool): Whether the call should wait until the job completes 
+            wait (bool): Whether the call should wait until the job completes
                 (default: True).
             logs (bool): Whether to show the logs produced by the job.
                 Only meaningful when wait is True (default: False).
