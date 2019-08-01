@@ -1,5 +1,15 @@
 # Changelog
 
+## v1.35.1 (2019-08-01)
+
+### Bug fixes and other changes
+
+ * update sklearn document to include 3p dependency installation
+
+### Documentation changes
+
+ * refactor and edit using_mxnet topic
+
 ## v1.35.0 (2019-07-31)
 
 ### Features
