@@ -177,10 +177,32 @@ class Model(sagemaker.model.FrameworkModel):
         self._framework_version = framework_version
         self._container_log_level = container_log_level
 
+    def deploy(
+        self,
+        initial_instance_count,
+        instance_type,
+        accelerator_type=None,
+        endpoint_name=None,
+        update_endpoint=False,
+        tags=None,
+        kms_key=None,
+        wait=True,
+    ):
+
         if not self._eia_supported():
             msg = "The TensorFlow version %s doesn't support EIA." % self._framework_version
 
             raise AttributeError(msg)
+        return super(Model, self).deploy(
+            initial_instance_count,
+            instance_type,
+            accelerator_type,
+            endpoint_name,
+            update_endpoint,
+            tags,
+            kms_key,
+            wait,
+        )
 
     def _eia_supported(self):
         """Return true if TF version is EIA enabled"""
