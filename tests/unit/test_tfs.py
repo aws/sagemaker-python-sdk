@@ -96,6 +96,13 @@ def test_tfs_model_image_accelerator(sagemaker_session, tf_version):
     assert isinstance(predictor, Predictor)
 
 
+def test_tfs_model_image_accelerator_not_supported():
+    with pytest.raises(AttributeError) as e:
+        Model("s3://some/data.tar.gz", role=ROLE, framework_version="1.14")
+
+    assert str(e.value) == "The TensorFlow version 1.14 doesn't support EIA."
+
+
 def test_tfs_model_with_log_level(sagemaker_session, tf_version):
     model = Model(
         "s3://some/data.tar.gz",
