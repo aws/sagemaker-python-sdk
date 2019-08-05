@@ -221,6 +221,7 @@ class Splitter(with_metaclass(ABCMeta, object)):
 class NoneSplitter(Splitter):
     """Does not split records, essentially reads the whole file."""
 
+    #  non-utf8 charactors.
     _textchars = bytearray({7, 8, 9, 10, 12, 13, 27} | set(range(0x20, 0x100)) - {0x7F})
 
     def split(self, file):
