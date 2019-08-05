@@ -246,6 +246,11 @@ class NoneSplitter(Splitter):
 
         binary or text check.
 
+        binary charactor is below.(non-utf8)
+        0x07-0x0a, 0x0c-0x0d, 0x20-0x7e, 0x80-0xFF
+
+        if there are include, it's binary judgment.
+
         Args:
             buf (bytes): bytes in target file.
 
