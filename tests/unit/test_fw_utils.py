@@ -138,6 +138,13 @@ def test_create_image_uri_gov_cloud():
 
 def test_create_image_uri_merged():
     image_uri = fw_utils.create_image_uri(
+        "us-west-2", "tensorflow-scriptmode", "ml.p3.2xlarge", "1.14", "py3"
+    )
+    assert (
+        image_uri == "763104351884.dkr.ecr.us-west-2.amazonaws.com/tensorflow-training:1.14-gpu-py3"
+    )
+
+    image_uri = fw_utils.create_image_uri(
         "us-west-2", "tensorflow-scriptmode", "ml.p3.2xlarge", "1.13.1", "py3"
     )
     assert (
