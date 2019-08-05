@@ -100,6 +100,19 @@ def test_tfs_model_image_accelerator_not_supported(sagemaker_session):
     model = Model(
         "s3://some/data.tar.gz",
         role=ROLE,
+        framework_version="1.13.1",
+        sagemaker_session=sagemaker_session,
+    )
+
+    # assert error is not raised
+
+    model.deploy(
+        instance_type="ml.c4.xlarge", initial_instance_count=1, accelerator_type="ml.eia1.medium"
+    )
+
+    model = Model(
+        "s3://some/data.tar.gz",
+        role=ROLE,
         framework_version="1.14",
         sagemaker_session=sagemaker_session,
     )
