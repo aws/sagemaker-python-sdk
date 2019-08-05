@@ -104,6 +104,13 @@ def test_tfs_model_image_accelerator_not_supported(sagemaker_session):
         sagemaker_session=sagemaker_session,
     )
 
+    # assert error is not raised
+
+    model.deploy(
+        instance_type="ml.c4.xlarge",
+        initial_instance_count=1,
+    )
+
     with pytest.raises(AttributeError) as e:
         model.deploy(
             instance_type="ml.c4.xlarge",

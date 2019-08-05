@@ -189,7 +189,7 @@ class Model(sagemaker.model.FrameworkModel):
         wait=True,
     ):
 
-        if not self._eia_supported():
+        if accelerator_type and not self._eia_supported():
             msg = "The TensorFlow version %s doesn't support EIA." % self._framework_version
 
             raise AttributeError(msg)
