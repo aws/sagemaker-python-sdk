@@ -195,17 +195,18 @@ class TensorFlow(Framework):
 
     __framework_name__ = "tensorflow"
 
-    LATEST_VERSION = "1.13"
+    LATEST_VERSION = "1.14"
     """The latest version of TensorFlow included in the SageMaker pre-built Docker images."""
 
     _LOWEST_SCRIPT_MODE_ONLY_VERSION = [1, 13]
+    _LOWEST_PYTHON_2_ONLY_VERSION = [1, 14]
 
     def __init__(
         self,
         training_steps=None,
         evaluation_steps=None,
         checkpoint_path=None,
-        py_version="py2",
+        py_version=None,
         framework_version=None,
         model_dir=None,
         requirements_file="",
@@ -279,6 +280,9 @@ class TensorFlow(Framework):
             logger.warning(fw.empty_framework_version_warning(TF_VERSION, self.LATEST_VERSION))
         self.framework_version = framework_version or TF_VERSION
 
+        if not py_version:
+            py_version = "py3" if self._only_python_3_supported() else "py2"
+
         super(TensorFlow, self).__init__(image_name=image_name, **kwargs)
         self.checkpoint_path = checkpoint_path
 
@@ -337,6 +341,13 @@ class TensorFlow(Framework):
                     )
                 )
 
+        if py_version == "py2" and self._only_python_3_supported():
+            msg = (
+                "Python 2 containers are only available until TensorFlow version 1.13.1. "
+                "Please use a Python 3 container."
+            )
+            raise AttributeError(msg)
+
         if (not self._script_mode_enabled()) and self._only_script_mode_supported():
             logger.warning(
                 "Legacy mode is deprecated in versions 1.13 and higher. Using script mode instead."
@@ -348,6 +359,12 @@ class TensorFlow(Framework):
         return [
             int(s) for s in self.framework_version.split(".")
         ] >= self._LOWEST_SCRIPT_MODE_ONLY_VERSION
+
+    def _only_python_3_supported(self):
+        """Placeholder docstring"""
+        return [
+            int(s) for s in self.framework_version.split(".")
+        ] >= self._LOWEST_PYTHON_2_ONLY_VERSION
 
     def _validate_requirements_file(self, requirements_file):
         """Placeholder docstring"""
