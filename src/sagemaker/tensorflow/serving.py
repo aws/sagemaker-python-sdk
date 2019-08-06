@@ -131,6 +131,7 @@ class Model(sagemaker.model.FrameworkModel):
         logging.ERROR: "error",
         logging.CRITICAL: "crit",
     }
+    LATEST_EIA_VERSION = [1, 13]
 
     def __init__(
         self,
@@ -175,6 +176,37 @@ class Model(sagemaker.model.FrameworkModel):
         )
         self._framework_version = framework_version
         self._container_log_level = container_log_level
+
+    def deploy(
+        self,
+        initial_instance_count,
+        instance_type,
+        accelerator_type=None,
+        endpoint_name=None,
+        update_endpoint=False,
+        tags=None,
+        kms_key=None,
+        wait=True,
+    ):
+
+        if accelerator_type and not self._eia_supported():
+            msg = "The TensorFlow version %s doesn't support EIA." % self._framework_version
+
+            raise AttributeError(msg)
+        return super(Model, self).deploy(
+            initial_instance_count,
+            instance_type,
+            accelerator_type,
+            endpoint_name,
+            update_endpoint,
+            tags,
+            kms_key,
+            wait,
+        )
+
+    def _eia_supported(self):
+        """Return true if TF version is EIA enabled"""
+        return [int(s) for s in self._framework_version.split(".")][:2] <= self.LATEST_EIA_VERSION
 
     def prepare_container_def(self, instance_type, accelerator_type=None):
         """
