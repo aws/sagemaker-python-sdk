@@ -38,20 +38,7 @@ MPI_DISTRIBUTION = {"mpi": {"enabled": True}}
 TAGS = [{"Key": "some-key", "Value": "some-value"}]
 
 
-@pytest.fixture(
-    scope="session",
-    params=[
-        "ml.c4.xlarge",
-        pytest.param(
-            "ml.p2.xlarge",
-            marks=pytest.mark.skipif(
-                tests.integ.test_region() in tests.integ.HOSTING_NO_P2_REGIONS
-                or tests.integ.test_region() in tests.integ.TRAINING_NO_P2_REGIONS,
-                reason="no ml.p2 instances in this region",
-            ),
-        ),
-    ],
-)
+@pytest.fixture(scope="session", params=["ml.c4.xlarge"])
 def instance_type(request):
     return request.param
 
@@ -159,7 +146,6 @@ def test_mnist_async(sagemaker_session):
     training_job_name = estimator.latest_training_job.name
     time.sleep(20)
     endpoint_name = training_job_name
-    model_name = "model-name-1"
     _assert_training_job_tags_match(
         sagemaker_session.sagemaker_client, estimator.latest_training_job.name, TAGS
     )
@@ -167,6 +153,7 @@ def test_mnist_async(sagemaker_session):
         estimator = TensorFlow.attach(
             training_job_name=training_job_name, sagemaker_session=sagemaker_session
         )
+        model_name = "model-mnist-async"
         predictor = estimator.deploy(
             initial_instance_count=1,
             instance_type="ml.c4.xlarge",
@@ -228,8 +215,15 @@ def _assert_s3_files_exist(s3_url, files):
             raise ValueError("File {} is not found under {}".format(f, s3_url))
 
 
-def _assert_tags_match(sagemaker_client, resource_arn, tags):
-    actual_tags = sagemaker_client.list_tags(ResourceArn=resource_arn)["Tags"]
+def _assert_tags_match(sagemaker_client, resource_arn, tags, retries=15):
+    actual_tags = None
+    for _ in range(retries):
+        actual_tags = sagemaker_client.list_tags(ResourceArn=resource_arn)["Tags"]
+        if actual_tags:
+            break
+        else:
+            # endpoint and training tags might take minutes to propagate. Sleeping.
+            time.sleep(30)
     assert actual_tags == tags
 
 
@@ -240,6 +234,7 @@ def _assert_model_tags_match(sagemaker_client, model_name, tags):
 
 def _assert_endpoint_tags_match(sagemaker_client, endpoint_name, tags):
     endpoint_description = sagemaker_client.describe_endpoint(EndpointName=endpoint_name)
+
     _assert_tags_match(sagemaker_client, endpoint_description["EndpointArn"], tags)
 
 

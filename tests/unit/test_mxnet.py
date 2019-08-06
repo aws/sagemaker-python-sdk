@@ -738,3 +738,26 @@ def test_empty_framework_version(warning, sagemaker_session):
 
     assert mx.framework_version == defaults.MXNET_VERSION
     warning.assert_called_with(defaults.MXNET_VERSION, mx.LATEST_VERSION)
+
+
+def test_create_model_with_custom_hosting_image(sagemaker_session):
+    container_log_level = '"logging.INFO"'
+    source_dir = "s3://mybucket/source"
+    custom_image = "mxnet:2.0"
+    custom_hosting_image = "mxnet_hosting:2.0"
+    mx = MXNet(
+        entry_point=SCRIPT_PATH,
+        role=ROLE,
+        sagemaker_session=sagemaker_session,
+        train_instance_count=INSTANCE_COUNT,
+        train_instance_type=INSTANCE_TYPE,
+        image_name=custom_image,
+        container_log_level=container_log_level,
+        base_job_name="job",
+        source_dir=source_dir,
+    )
+
+    mx.fit(inputs="s3://mybucket/train", job_name="new_name")
+    model = mx.create_model(image_name=custom_hosting_image)
+
+    assert model.image == custom_hosting_image
