@@ -83,7 +83,13 @@ class PipelineModel(object):
         return sagemaker.pipeline_container_def(self.models, instance_type)
 
     def deploy(
-        self, initial_instance_count, instance_type, endpoint_name=None, tags=None, wait=True
+        self,
+        initial_instance_count,
+        instance_type,
+        endpoint_name=None,
+        tags=None,
+        wait=True,
+        update_endpoint=False,
     ):
         """Deploy this ``Model`` to an ``Endpoint`` and optionally return a
         ``Predictor``.
@@ -110,6 +116,11 @@ class PipelineModel(object):
                 specific endpoint.
             wait (bool): Whether the call should wait until the deployment of
                 model completes (default: True).
+            update_endpoint (bool): Flag to update the model in an existing
+                Amazon SageMaker endpoint. If True, this will deploy a new
+                EndpointConfig to an already existing endpoint and delete
+                resources corresponding to the previous EndpointConfig. If
+                False, a new endpoint will be created. Default: False
 
         Returns:
             callable[string, sagemaker.session.Session] or None: Invocation of
@@ -130,9 +141,21 @@ class PipelineModel(object):
             self.name, instance_type, initial_instance_count
         )
         self.endpoint_name = endpoint_name or self.name
-        self.sagemaker_session.endpoint_from_production_variants(
-            self.endpoint_name, [production_variant], tags, wait=wait
-        )
+
+        if update_endpoint:
+            endpoint_config_name = self.sagemaker_session.create_endpoint_config(
+                name=self.name,
+                model_name=self.name,
+                initial_instance_count=initial_instance_count,
+                instance_type=instance_type,
+                tags=tags,
+            )
+            self.sagemaker_session.update_endpoint(self.endpoint_name, endpoint_config_name)
+        else:
+            self.sagemaker_session.endpoint_from_production_variants(
+                self.endpoint_name, [production_variant], tags, wait=wait
+            )
+
         if self.predictor_cls:
             return self.predictor_cls(self.endpoint_name, self.sagemaker_session)
         return None
