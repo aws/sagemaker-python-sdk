@@ -1,4 +1,4 @@
-# Copyright 2017-2019 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright 2019 Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -16,8 +16,13 @@ This is to prevent regressions that cause the timeout function to hide failed te
 """
 from __future__ import absolute_import
 
+import time
+
 import pytest
-from mock import MagicMock, patch
+from mock import Mock, patch
+import stopit
+
+from botocore.exceptions import ClientError
 
 from tests.integ.timeout import (
     timeout,
@@ -26,45 +31,200 @@ from tests.integ.timeout import (
 )
 
 
+BOTO_SESSION_NAME = "boto_session_name"
+SAGEMAKER_SESSION_NAME = "sagemaker_session_name"
+DEFAULT_BUCKET_NAME = "default_bucket_name"
+TRANSFORMER_NAME = "transformer.name"
+REGION = "us-west-2"
+BUCKET_NAME = "bucket-name"
+ENDPOINT_NAME = "endpoint_name"
+
 EXCEPTION_MESSAGE = "This Exception is expected and should not be swallowed by the timeout."
+SHORT_TIMEOUT_TO_FORCE_TIMEOUT_TO_OCCUR = 0.001
+LONG_DURATION_TO_EXCEED_TIMEOUT = 0.002
+LONG_TIMEOUT_THAT_WILL_NEVER_BE_EXCEEDED = 10
+DURATION_TO_SLEEP_TO_ALLOW_BACKGROUND_THREAD_TO_COMPLETE = 0.2
 
 
-def test_timeout_fails_correctly_when_calling_test_throws_exception():
+@pytest.fixture()
+def session():
+    boto_mock = Mock(name=BOTO_SESSION_NAME, region_name=REGION)
+    sms = Mock(
+        name=SAGEMAKER_SESSION_NAME,
+        boto_session=boto_mock,
+        boto_region_name=REGION,
+        config=None,
+        local_mode=True,
+    )
+    sms.default_bucket = Mock(name=DEFAULT_BUCKET_NAME, return_value=BUCKET_NAME)
+    return sms
+
+
+@pytest.fixture()
+def transformer():
+    return Mock(name=TRANSFORMER_NAME, region_name=REGION)
+
+
+def test_timeout_fails_correctly_when_method_throws_exception():
     with pytest.raises(ValueError) as exception:
-        with timeout(minutes=1):
+        with timeout(hours=0, minutes=0, seconds=LONG_TIMEOUT_THAT_WILL_NEVER_BE_EXCEEDED):
             raise ValueError(EXCEPTION_MESSAGE)
         assert EXCEPTION_MESSAGE in str(exception.value)
 
 
-@patch("sagemaker.session")
-def test_timeout_and_delete_endpoint_by_name_fails_when_calling_test_throws_exception(session):
-    session.delete_endpoint = MagicMock()
+def test_timeout_does_not_throw_exception_when_method_ends_gracefully():
+    with timeout(hours=0, minutes=0, seconds=LONG_TIMEOUT_THAT_WILL_NEVER_BE_EXCEEDED):
+        pass
 
+
+@patch("tests.integ.timeout._show_logs", return_value=None, autospec=True)
+@patch("tests.integ.timeout._cleanup_logs", return_value=None, autospec=True)
+def test_timeout_and_delete_endpoint_by_name_fails_when_method_throws_exception(
+    _show_logs, _cleanup_logs, session
+):
     with pytest.raises(ValueError) as exception:
         with timeout_and_delete_endpoint_by_name(
-            endpoint_name="fake-endpoint_name",
+            endpoint_name=ENDPOINT_NAME,
             sagemaker_session=session,
-            minutes=1,
+            hours=0,
+            minutes=0,
+            seconds=LONG_TIMEOUT_THAT_WILL_NEVER_BE_EXCEEDED,
             sleep_between_cleanup_attempts=0,
         ):
             raise ValueError(EXCEPTION_MESSAGE)
         assert EXCEPTION_MESSAGE in str(exception.value)
+    assert session.delete_endpoint.call_count == 1
+
+
+@patch("tests.integ.timeout._show_logs", return_value=None, autospec=True)
+@patch("tests.integ.timeout._cleanup_logs", return_value=None, autospec=True)
+def test_timeout_and_delete_endpoint_by_name_throws_timeout_exception_when_method_times_out(
+    _show_logs, _cleanup_logs, session
+):
+    with pytest.raises(stopit.utils.TimeoutException):
+        with timeout_and_delete_endpoint_by_name(
+            endpoint_name=ENDPOINT_NAME,
+            sagemaker_session=session,
+            hours=0,
+            minutes=0,
+            seconds=SHORT_TIMEOUT_TO_FORCE_TIMEOUT_TO_OCCUR,
+            sleep_between_cleanup_attempts=0,
+        ):
+            time.sleep(LONG_DURATION_TO_EXCEED_TIMEOUT)
+
+
+@patch("tests.integ.timeout._show_logs", return_value=None, autospec=True)
+@patch("tests.integ.timeout._cleanup_logs", return_value=None, autospec=True)
+def test_timeout_and_delete_endpoint_by_name_does_not_throw_exception_when_method_ends_gracefully(
+    _show_logs, _cleanup_logs, session
+):
+    with timeout_and_delete_endpoint_by_name(
+        endpoint_name=ENDPOINT_NAME,
+        sagemaker_session=session,
+        hours=0,
+        minutes=0,
+        seconds=LONG_TIMEOUT_THAT_WILL_NEVER_BE_EXCEEDED,
+        sleep_between_cleanup_attempts=0,
+    ):
+        pass
+    assert session.delete_endpoint.call_count == 1
+
+
+@patch("tests.integ.timeout._show_logs", return_value=None, autospec=True)
+@patch("tests.integ.timeout._cleanup_logs", return_value=None, autospec=True)
+def test_timeout_and_delete_endpoint_by_name_retries_resource_deletion_on_failure(
+    _show_logs, _cleanup_logs, session
+):
+    session.delete_endpoint = Mock(
+        side_effect=ClientError(
+            error_response={"Error": {"Code": 403, "Message": "ValidationException"}},
+            operation_name="Unit Test",
+        )
+    )
+
+    with timeout_and_delete_endpoint_by_name(
+        endpoint_name=ENDPOINT_NAME,
+        sagemaker_session=session,
+        hours=0,
+        minutes=0,
+        seconds=LONG_TIMEOUT_THAT_WILL_NEVER_BE_EXCEEDED,
+        sleep_between_cleanup_attempts=0,
+    ):
+        pass
     assert session.delete_endpoint.call_count == 3
 
 
-@patch("sagemaker.session")
-def test_timeout_and_delete_model_with_transformer_fails_when_calling_test_throws_exception(
-    session
+@patch("tests.integ.timeout._show_logs", return_value=None, autospec=True)
+@patch("tests.integ.timeout._cleanup_logs", return_value=None, autospec=True)
+def test_timeout_and_delete_model_with_transformer_fails_when_method_throws_exception(
+    _show_logs, _cleanup_logs, session, transformer
 ):
-    transformer = MagicMock()
-
     with pytest.raises(ValueError) as exception:
         with timeout_and_delete_model_with_transformer(
             sagemaker_session=session,
             transformer=transformer,
+            hours=0,
             minutes=1,
             sleep_between_cleanup_attempts=0,
         ):
             raise ValueError(EXCEPTION_MESSAGE)
         assert EXCEPTION_MESSAGE in str(exception.value)
+    assert transformer.delete_model.call_count == 1
+
+
+@patch("tests.integ.timeout._show_logs", return_value=None, autospec=True)
+@patch("tests.integ.timeout._cleanup_logs", return_value=None, autospec=True)
+def test_timeout_and_delete_model_with_transformer_throws_timeout_exception_when_method_times_out(
+    _show_logs, _cleanup_logs, session, transformer
+):
+    with pytest.raises(stopit.utils.TimeoutException):
+        with timeout_and_delete_model_with_transformer(
+            sagemaker_session=session,
+            transformer=transformer,
+            hours=0,
+            minutes=0,
+            seconds=SHORT_TIMEOUT_TO_FORCE_TIMEOUT_TO_OCCUR,
+            sleep_between_cleanup_attempts=0,
+        ):
+            time.sleep(LONG_DURATION_TO_EXCEED_TIMEOUT)
+
+
+@patch("tests.integ.timeout._show_logs", return_value=None, autospec=True)
+@patch("tests.integ.timeout._cleanup_logs", return_value=None, autospec=True)
+def test_timeout_and_delete_model_with_transformer_does_not_throw_when_method_ends_gracefully(
+    _show_logs, _cleanup_logs, session, transformer
+):
+    with timeout_and_delete_model_with_transformer(
+        sagemaker_session=session,
+        transformer=transformer,
+        hours=0,
+        minutes=0,
+        seconds=LONG_TIMEOUT_THAT_WILL_NEVER_BE_EXCEEDED,
+        sleep_between_cleanup_attempts=0,
+    ):
+        pass
+    assert transformer.delete_model.call_count == 1
+
+
+@patch("tests.integ.timeout._show_logs", return_value=None, autospec=True)
+@patch("tests.integ.timeout._cleanup_logs", return_value=None, autospec=True)
+def test_timeout_and_delete_model_with_transformer_retries_resource_deletion_on_failure(
+    _show_logs, _cleanup_logs, session, transformer
+):
+    transformer.delete_model = Mock(
+        side_effect=ClientError(
+            error_response={"Error": {"Code": 403, "Message": "ValidationException"}},
+            operation_name="Unit Test",
+        )
+    )
+
+    with timeout_and_delete_model_with_transformer(
+        sagemaker_session=session,
+        transformer=transformer,
+        hours=0,
+        minutes=0,
+        seconds=LONG_TIMEOUT_THAT_WILL_NEVER_BE_EXCEEDED,
+        sleep_between_cleanup_attempts=0,
+    ):
+        pass
     assert transformer.delete_model.call_count == 3
