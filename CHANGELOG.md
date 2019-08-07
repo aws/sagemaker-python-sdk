@@ -1,5 +1,16 @@
 # Changelog
 
+## v1.36.0 (2019-08-07)
+
+### Features
+
+ * support for TensorFlow 1.14
+
+### Bug fixes and other changes
+
+ * ignore FI18 flake8 rule
+ * allow Airflow enabled estimators to use absolute path entry_point
+
 ## v1.35.1 (2019-08-01)
 
 ### Bug fixes and other changes
