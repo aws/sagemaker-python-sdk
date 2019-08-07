@@ -148,3 +148,53 @@ def test_inference_pipeline_model_deploy(sagemaker_session, cpu_instance_type):
     with pytest.raises(Exception) as exception:
         sagemaker_session.sagemaker_client.describe_model(ModelName=model.name)
         assert "Could not find model" in str(exception.value)
+
+
+def test_inference_pipeline_model_deploy_with_update_endpoint(sagemaker_session):
+    sparkml_data_path = os.path.join(DATA_DIR, "sparkml_model")
+    xgboost_data_path = os.path.join(DATA_DIR, "xgboost_model")
+    endpoint_name = "test-inference-pipeline-deploy-{}".format(sagemaker_timestamp())
+    sparkml_model_data = sagemaker_session.upload_data(
+        path=os.path.join(sparkml_data_path, "mleap_model.tar.gz"),
+        key_prefix="integ-test-data/sparkml/model",
+    )
+    xgb_model_data = sagemaker_session.upload_data(
+        path=os.path.join(xgboost_data_path, "xgb_model.tar.gz"),
+        key_prefix="integ-test-data/xgboost/model",
+    )
+
+    with timeout_and_delete_endpoint_by_name(endpoint_name, sagemaker_session):
+        sparkml_model = SparkMLModel(
+            model_data=sparkml_model_data,
+            env={"SAGEMAKER_SPARKML_SCHEMA": SCHEMA},
+            sagemaker_session=sagemaker_session,
+        )
+        xgb_image = get_image_uri(sagemaker_session.boto_region_name, "xgboost")
+        xgb_model = Model(
+            model_data=xgb_model_data, image=xgb_image, sagemaker_session=sagemaker_session
+        )
+        model = PipelineModel(
+            models=[sparkml_model, xgb_model],
+            role="SageMakerRole",
+            sagemaker_session=sagemaker_session,
+            name=endpoint_name,
+        )
+        model.deploy(1, "ml.m4.xlarge", endpoint_name=endpoint_name)
+        old_endpoint = sagemaker_session.describe_endpoint(EndpointName=endpoint_name)
+        old_config_name = old_endpoint["EndpointConfigName"]
+
+        model.deploy(1, "ml.m4.xlarge", update_endpoint=True, endpoint_name=endpoint_name)
+        new_endpoint = sagemaker_session.describe_endpoint(EndpointName=endpoint_name)[
+            "ProductionVariants"
+        ]
+        new_production_variants = new_endpoint["ProductionVariants"]
+        new_config_name = new_endpoint["EndpointConfigName"]
+
+        assert old_config_name != new_config_name
+        assert new_production_variants["InstanceType"] == "ml.m4.xlarge"
+        assert new_production_variants["InitialInstanceCount"] == 1
+
+    model.delete_model()
+    with pytest.raises(Exception) as exception:
+        sagemaker_session.sagemaker_client.describe_model(ModelName=model.name)
+        assert "Could not find model" in str(exception.value)
