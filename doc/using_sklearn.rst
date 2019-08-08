@@ -103,7 +103,7 @@ Using third-party libraries
 When running your training script on SageMaker, it will have access to some pre-installed third-party libraries including ``scikit-learn``, ``numpy``, and ``pandas``.
 For more information on the runtime environment, including specific package versions, see `SageMaker Scikit-learn Docker containers <https://github.com/aws/sagemaker-scikit-learn-container>`__.
 
-If there are other packages you want to use with your script, you can include a ``requirements.txte` file in the same directory as your training script to install other dependencies at runtime.
+If there are other packages you want to use with your script, you can include a ``requirements.txt`` file in the same directory as your training script to install other dependencies at runtime.
 A ``requirements.txt`` file is a text file that contains a list of items that are installed by using ``pip install``. You can also specify the version of an item to install.
 For information about the format of a ``requirements.txt`` file, see `Requirements Files <https://pip.pypa.io/en/stable/user_guide/#requirements-files>`__ in the pip documentation.
 
