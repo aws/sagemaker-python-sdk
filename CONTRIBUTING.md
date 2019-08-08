@@ -76,7 +76,8 @@ Before sending us a pull request, please ensure that:
 1. Run the following tox command and verify that all code checks and unit tests pass: `tox tests/unit`
 
 You can also run a single test with the following command: `tox -e py36 -- -s -vv <path_to_file><file_name>::<test_function_name>`  
-Example: `tox -e py36 -- -s -vv tests/unit/test_estimator.py::test_sagemaker_model_s3_uri_invalid`
+  * Note that the coverage test will fail if you only run a single test, so make sure to surround the command with `export IGNORE_COVERAGE=-` and `unset IGNORE_COVERAGE`
+  * Example: `export IGNORE_COVERAGE=- ; tox -e py36 -- -s -vv tests/unit/test_estimator.py::test_sagemaker_model_s3_uri_invalid ; unset IGNORE_COVERAGE`
 
 
 ### Running the Integration Tests
@@ -84,9 +85,10 @@ Example: `tox -e py36 -- -s -vv tests/unit/test_estimator.py::test_sagemaker_mod
 Our CI system runs integration tests (the ones in the `tests/integ` directory), in parallel, for every Pull Request.  
 You should only worry about manually running any new integration tests that you write, or integration tests that test an area of code that you've modified.  
 
-* To run a test, specify the test file and method you want to run per the following command: `tox -e py36 -- -s -vv <path_to_file><file_name>::<test_function_name>`
-  * Note that the coverage test will fail if you only run a single test, so make sure to surround the command with `export IGNORE_COVERAGE=-` and `unset IGNORE_COVERAGE`
-  * Example: `export IGNORE_COVERAGE=- ; tox -e py36 -- -s -vv tests/integ/test_tf_script_mode.py::test_mnist ; unset IGNORE_COVERAGE`
+1. Follow the instructions at [Set Up the AWS Command Line Interface (AWS CLI)](https://docs.aws.amazon.com/polly/latest/dg/setup-aws-cli.html).
+1. To run a test, specify the test file and method you want to run per the following command: `tox -e py36 -- -s -vv <path_to_file><file_name>::<test_function_name>`
+   * Note that the coverage test will fail if you only run a single test, so make sure to surround the command with `export IGNORE_COVERAGE=-` and `unset IGNORE_COVERAGE`
+   * Example: `export IGNORE_COVERAGE=- ; tox -e py36 -- -s -vv tests/integ/test_tf_script_mode.py::test_mnist ; unset IGNORE_COVERAGE`
 
 If you are writing or modifying a test that creates a SageMaker job (training, tuner, or transform) or endpoint, it's important to assign a concurrency-friendly `job_name` (or `endpoint_name`), or your tests may fail randomly due to name collisions. We have a helper method `sagemaker.utils.unique_name_from_base(base, max_length)` that makes test-friendly names. You can find examples of how to use it [here](https://github.com/aws/sagemaker-python-sdk/blob/3816a5658d3737c9767e01bc8d37fc3ed5551593/tests/integ/test_tfs.py#L37) and 
 [here](https://github.com/aws/sagemaker-python-sdk/blob/3816a5658d3737c9767e01bc8d37fc3ed5551593/tests/integ/test_tuner.py#L616), or by searching for "unique\_name\_from\_base" in our test code.
