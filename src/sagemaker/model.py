@@ -498,7 +498,7 @@ class Model(object):
             volume_kms_key (str): Optional. KMS key ID for encrypting the volume
                 attached to the ML compute instance (default: None).
         """
-        self._create_sagemaker_model(instance_type)
+        self._create_sagemaker_model(instance_type, tags=tags)
         if self.enable_network_isolation():
             env = None
 
