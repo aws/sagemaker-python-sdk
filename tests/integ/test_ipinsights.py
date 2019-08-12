@@ -59,6 +59,4 @@ def test_ipinsights(sagemaker_session):
         result = predictor.predict(predict_input)
 
         assert len(result["predictions"]) == 1
-        assert (
-            result["predictions"][0]["dot_product"] is not None
-        )  # The actual dot_product differs between test runs, so it cannot be verified here.
+        assert 0 > result["predictions"][0]["dot_product"] > -1  # We expect ~ -0.22
