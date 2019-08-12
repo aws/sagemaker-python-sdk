@@ -14,8 +14,6 @@ from __future__ import absolute_import
 
 import os
 
-import pytest
-
 from sagemaker import IPInsights, IPInsightsModel
 from sagemaker.predictor import RealTimePredictor
 from sagemaker.utils import unique_name_from_base
@@ -61,4 +59,6 @@ def test_ipinsights(sagemaker_session):
         result = predictor.predict(predict_input)
 
         assert len(result["predictions"]) == 1
-        assert result["predictions"][0]["dot_product"] is not None
+        assert (
+            result["predictions"][0]["dot_product"] is not None
+        )  # The actual dot_product differs between test runs, so it cannot be verified here.
