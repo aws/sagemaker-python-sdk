@@ -1,5 +1,11 @@
 # Changelog
 
+## v1.36.2 (2019-08-12)
+
+### Bug fixes and other changes
+
+ * rework CONTRIBUTING.md to include a development workflow
+
 ## v1.36.1 (2019-08-08)
 
 ### Bug fixes and other changes
