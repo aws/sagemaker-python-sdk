@@ -317,7 +317,7 @@ def test_transform_multiple_values_for_entry_point_issue(sagemaker_session, skle
 
     sklearn.fit(inputs=inputs)
 
-    transformer = sklearn.transformer(instance_count=1, instance_type='ml.m4.xlarge')
+    transformer = sklearn.transformer(instance_count=1, instance_type="ml.m4.xlarge")
     # if we got here, we didn't get a "multiple values" error
     assert transformer is not None
 
