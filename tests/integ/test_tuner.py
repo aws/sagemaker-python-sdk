@@ -803,10 +803,6 @@ def test_tuning_chainer(sagemaker_session):
 
 
 @pytest.mark.canary_quick
-@pytest.mark.skip(
-    reason="This test has always failed, but the failure was masked by a bug. "
-    "This test should be fixed. Details in https://github.com/aws/sagemaker-python-sdk/pull/968"
-)
 def test_attach_tuning_pytorch(sagemaker_session):
     mnist_dir = os.path.join(DATA_DIR, "pytorch_mnist")
     mnist_script = os.path.join(mnist_dir, "mnist.py")

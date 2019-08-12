@@ -127,10 +127,6 @@ def test_mnist_distributed(sagemaker_session, instance_type):
     )
 
 
-@pytest.mark.skip(
-    reason="This test has always failed, but the failure was masked by a bug. "
-    "This test should be fixed. Details in https://github.com/aws/sagemaker-python-sdk/pull/968"
-)
 def test_mnist_async(sagemaker_session):
     estimator = TensorFlow(
         entry_point=SCRIPT,
@@ -168,9 +164,7 @@ def test_mnist_async(sagemaker_session):
         result = predictor.predict(np.zeros(784))
         print("predict result: {}".format(result))
         _assert_endpoint_tags_match(sagemaker_session.sagemaker_client, predictor.endpoint, TAGS)
-        _assert_model_tags_match(
-            sagemaker_session.sagemaker_client, estimator.latest_training_job.name, TAGS
-        )
+        _assert_model_tags_match(sagemaker_session.sagemaker_client, model_name, TAGS)
         _assert_model_name_match(sagemaker_session.sagemaker_client, endpoint_name, model_name)
 
 
