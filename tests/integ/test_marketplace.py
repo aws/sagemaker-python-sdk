@@ -35,7 +35,7 @@ from tests.integ.marketplace_utils import REGION_ACCOUNT_MAP
 # Pre-Trained Model: Scikit Decision Trees - Pretrained Model
 # https://aws.amazon.com/marketplace/pp/prodview-7qop4x5ahrdhe
 #
-# Both are  written by Amazon and are free to subscribe.
+# Both are written by Amazon and are free to subscribe.
 
 ALGORITHM_ARN = (
     "arn:aws:sagemaker:%s:%s:algorithm/scikit-decision-trees-"
