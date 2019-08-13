@@ -110,7 +110,7 @@ After your training job is complete, SageMaker will compress and upload the seri
 will available in the s3 ``output_path`` you specified when you created the Chainer Estimator.
 
 Using third-party libraries
-^^^^^^^^^^^^^^^^^^^^^^^^^^^
+---------------------------
 
 When running your training script on SageMaker, it will have access to some pre-installed third-party libraries including ``chainer``, ``numpy``, and ``cupy``.
 For more information on the runtime environment, including specific package versions, see `SageMaker Chainer Docker containers <#sagemaker-chainer-docker-containers>`__.
