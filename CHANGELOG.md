@@ -1,5 +1,40 @@
 # Changelog
 
+## v1.36.3 (2019-08-13)
+
+### Bug fixes and other changes
+
+ * fix integration test failures masked by timeout bug
+ * prevent multiple values error in sklearn.transformer()
+ * model.transformer() passes tags to create_model()
+
+## v1.36.2 (2019-08-12)
+
+### Bug fixes and other changes
+
+ * rework CONTRIBUTING.md to include a development workflow
+
+## v1.36.1 (2019-08-08)
+
+### Bug fixes and other changes
+
+ * prevent integration test's timeout functions from hiding failures
+
+### Documentation changes
+
+ * correct typo in using_sklearn.rst
+
+## v1.36.0 (2019-08-07)
+
+### Features
+
+ * support for TensorFlow 1.14
+
+### Bug fixes and other changes
+
+ * ignore FI18 flake8 rule
+ * allow Airflow enabled estimators to use absolute path entry_point
+
 ## v1.35.1 (2019-08-01)
 
 ### Bug fixes and other changes

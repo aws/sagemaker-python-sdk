@@ -46,7 +46,12 @@ def timeout(seconds=0, minutes=0, hours=0):
 
 @contextmanager
 def timeout_and_delete_endpoint_by_name(
-    endpoint_name, sagemaker_session, seconds=0, minutes=45, hours=0
+    endpoint_name,
+    sagemaker_session,
+    seconds=0,
+    minutes=45,
+    hours=0,
+    sleep_between_cleanup_attempts=10,
 ):
     limit = seconds + 60 * minutes + 3600 * hours
 
@@ -67,18 +72,18 @@ def timeout_and_delete_endpoint_by_name(
                     _show_logs(endpoint_name, "Endpoints", sagemaker_session)
                     if no_errors:
                         _cleanup_logs(endpoint_name, "Endpoints", sagemaker_session)
-                    return
+                    break
                 except ClientError as ce:
                     if ce.response["Error"]["Code"] == "ValidationException":
                         # avoids the inner exception to be overwritten
                         pass
                 # trying to delete the resource again in 10 seconds
-                sleep(10)
+                sleep(sleep_between_cleanup_attempts)
 
 
 @contextmanager
 def timeout_and_delete_model_with_transformer(
-    transformer, sagemaker_session, seconds=0, minutes=0, hours=0
+    transformer, sagemaker_session, seconds=0, minutes=0, hours=0, sleep_between_cleanup_attempts=10
 ):
     limit = seconds + 60 * minutes + 3600 * hours
 
@@ -99,11 +104,11 @@ def timeout_and_delete_model_with_transformer(
                     _show_logs(transformer.model_name, "Models", sagemaker_session)
                     if no_errors:
                         _cleanup_logs(transformer.model_name, "Models", sagemaker_session)
-                        return
+                    break
                 except ClientError as ce:
                     if ce.response["Error"]["Code"] == "ValidationException":
                         pass
-                sleep(10)
+                sleep(sleep_between_cleanup_attempts)
 
 
 def _show_logs(resource_name, resource_type, sagemaker_session):
