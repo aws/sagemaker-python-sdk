@@ -1,5 +1,15 @@
 # Changelog
 
+## v1.36.4 (2019-08-13)
+
+### Bug fixes and other changes
+
+ * region build from staging pr
+
+### Documentation changes
+
+ * Refactor Using PyTorch topic for consistency
+
 ## v1.36.3 (2019-08-13)
 
 ### Bug fixes and other changes
