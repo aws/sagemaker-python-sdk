@@ -27,7 +27,7 @@ from tests.integ import DATA_DIR, TRAINING_DEFAULT_TIMEOUT_MINUTES
 from tests.integ.timeout import timeout, timeout_and_delete_endpoint_by_name
 
 
-def test_kmeans(sagemaker_session):
+def test_kmeans(sagemaker_session, cpu_instance_type):
     job_name = unique_name_from_base("kmeans")
     with timeout(minutes=TRAINING_DEFAULT_TIMEOUT_MINUTES):
         data_path = os.path.join(DATA_DIR, "one_p_mnist", "mnist.pkl.gz")
@@ -40,7 +40,7 @@ def test_kmeans(sagemaker_session):
         kmeans = KMeans(
             role="SageMakerRole",
             train_instance_count=1,
-            train_instance_type="ml.c4.xlarge",
+            train_instance_type=cpu_instance_type,
             k=10,
             sagemaker_session=sagemaker_session,
         )
@@ -75,7 +75,7 @@ def test_kmeans(sagemaker_session):
         model = KMeansModel(
             kmeans.model_data, role="SageMakerRole", sagemaker_session=sagemaker_session
         )
-        predictor = model.deploy(1, "ml.c4.xlarge", endpoint_name=job_name)
+        predictor = model.deploy(1, cpu_instance_type, endpoint_name=job_name)
         result = predictor.predict(train_set[0][:10])
 
         assert len(result) == 10
@@ -89,7 +89,7 @@ def test_kmeans(sagemaker_session):
         assert "Could not find model" in str(exception.value)
 
 
-def test_async_kmeans(sagemaker_session):
+def test_async_kmeans(sagemaker_session, cpu_instance_type):
     job_name = unique_name_from_base("kmeans")
 
     with timeout(minutes=5):
@@ -103,7 +103,7 @@ def test_async_kmeans(sagemaker_session):
         kmeans = KMeans(
             role="SageMakerRole",
             train_instance_count=1,
-            train_instance_type="ml.c4.xlarge",
+            train_instance_type=cpu_instance_type,
             k=10,
             sagemaker_session=sagemaker_session,
         )
@@ -141,7 +141,7 @@ def test_async_kmeans(sagemaker_session):
         model = KMeansModel(
             estimator.model_data, role="SageMakerRole", sagemaker_session=sagemaker_session
         )
-        predictor = model.deploy(1, "ml.c4.xlarge", endpoint_name=job_name)
+        predictor = model.deploy(1, cpu_instance_type, endpoint_name=job_name)
         result = predictor.predict(train_set[0][:10])
 
         assert len(result) == 10
