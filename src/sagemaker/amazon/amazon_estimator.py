@@ -386,6 +386,10 @@ def registry(region_name, algorithm=None):
             "eu-west-2": "644912444149",
             "us-west-1": "632365934929",
             "us-iso-east-1": "490574956308",
+            "ap-east-1": "286214385809",
+            "eu-north-1": "669576153137",
+            "eu-west-3": "749696950732",
+            "sa-east-1": "855470959533",
         }[region_name]
     elif algorithm in ["lda"]:
         account_id = {
@@ -422,6 +426,10 @@ def registry(region_name, algorithm=None):
             "eu-west-2": "644912444149",
             "us-west-1": "632365934929",
             "us-iso-east-1": "490574956308",
+            "ap-east-1": "286214385809",
+            "eu-north-1": "669576153137",
+            "eu-west-3": "749696950732",
+            "sa-east-1": "855470959533",
         }[region_name]
     elif algorithm in [
         "xgboost",
@@ -447,6 +455,10 @@ def registry(region_name, algorithm=None):
             "eu-west-2": "644912444149",
             "us-west-1": "632365934929",
             "us-iso-east-1": "490574956308",
+            "ap-east-1": "286214385809",
+            "eu-north-1": "669576153137",
+            "eu-west-3": "749696950732",
+            "sa-east-1": "855470959533",
         }[region_name]
     elif algorithm in ["image-classification-neo", "xgboost-neo"]:
         account_id = NEO_IMAGE_ACCOUNT[region_name]
