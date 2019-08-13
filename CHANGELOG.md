@@ -1,5 +1,13 @@
 # Changelog
 
+## v1.36.3 (2019-08-13)
+
+### Bug fixes and other changes
+
+ * fix integration test failures masked by timeout bug
+ * prevent multiple values error in sklearn.transformer()
+ * model.transformer() passes tags to create_model()
+
 ## v1.36.2 (2019-08-12)
 
 ### Bug fixes and other changes
