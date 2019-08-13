@@ -16,7 +16,7 @@ You can visit the PyTorch repository at https://github.com/pytorch/pytorch.
 Train a Model with PyTorch
 **************************
 
-To train an PyTorch model by using the SageMaker Python SDK:
+To train a PyTorch model by using the SageMaker Python SDK:
 
 .. |create pytorch estimator| replace:: Create a ``sagemaker.pytorch.PyTorch`` Estimator
 .. _create pytorch estimator: #create-an-estimator
@@ -218,7 +218,7 @@ Supported backends:
 Deploy PyTorch Models
 *********************
 
-After an PyTorch Estimator has been fit, you can host the newly created model in SageMaker.
+After a PyTorch Estimator has been fit, you can host the newly created model in SageMaker.
 
 After calling ``fit``, you can call ``deploy`` on a ``PyTorch`` Estimator to create a SageMaker Endpoint.
 The Endpoint runs a SageMaker-provided PyTorch model server and hosts the model produced by your training script,
@@ -261,7 +261,7 @@ The model server loads the model that was saved by your training script and perf
 to SageMaker InvokeEndpoint API calls.
 
 You can configure two components of the SageMaker PyTorch model server: Model loading and model serving.
-Model loading is the process of deserializing your saved model back into an PyTorch model.
+Model loading is the process of deserializing your saved model back into a PyTorch model.
 Serving is the process of translating InvokeEndpoint requests to inference calls on the loaded model.
 
 You configure the PyTorch model server by defining functions in the Python source file you passed to the PyTorch constructor.
@@ -473,7 +473,7 @@ Working with Existing Model Data and Training Jobs
 Attach to existing training jobs
 --------------------------------
 
-You can attach an PyTorch Estimator to an existing training job using the
+You can attach a PyTorch Estimator to an existing training job using the
 ``attach`` method.
 
 .. code:: python
@@ -626,7 +626,7 @@ The following are optional arguments. When you create a ``PyTorch`` object, you 
    model training code.
 -  ``framework_version`` PyTorch version you want to use for executing
    your model training code. You can find the list of supported versions
-   in `the section below <#sagemaker-pytorch-docker-containers>`__.
+   in `SageMaker PyTorch Docker Containers <#id4>`_.
 -  ``train_volume_size`` Size in GB of the EBS volume to use for storing
    input data during training. Must be large enough to store training
    data if input_mode='File' is used (which is the default).
@@ -655,7 +655,7 @@ The following are optional arguments. When you create a ``PyTorch`` object, you 
    and where to find the source code to build your custom image.
 
 ***********************************
-SageMaker PyTorch Docker containers 
+SageMaker PyTorch Docker Containers 
 ***********************************
 
 For information about SageMaker PyTorch containers, see  `the SageMaker PyTorch containers repository <https://github.com/aws/sagemaker-pytorch-containers>`_.
