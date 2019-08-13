@@ -498,7 +498,7 @@ class Model(object):
             volume_kms_key (str): Optional. KMS key ID for encrypting the volume
                 attached to the ML compute instance (default: None).
         """
-        self._create_sagemaker_model(instance_type)
+        self._create_sagemaker_model(instance_type, tags=tags)
         if self.enable_network_isolation():
             env = None
 
@@ -895,11 +895,14 @@ class ModelPackage(Model):
                 return True
         return False
 
-    def _create_sagemaker_model(self, *args):  # pylint: disable=unused-argument
+    def _create_sagemaker_model(self, *args, **kwargs):  # pylint: disable=unused-argument
         """Create a SageMaker Model Entity
 
         Args:
-            *args: Arguments coming from the caller. This class does not require
+            args: Positional arguments coming from the caller. This class does not require
+                any so they are ignored.
+
+            kwargs: Keyword arguments coming from the caller. This class does not require
                 any so they are ignored.
         """
         if self.algorithm_arn:

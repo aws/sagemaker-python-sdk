@@ -58,6 +58,5 @@ def test_ipinsights(sagemaker_session):
         predict_input = [["user_1", "1.1.1.1"]]
         result = predictor.predict(predict_input)
 
-        assert len(result) == 1
-        for record in result:
-            assert record.label["dot_product"] is not None
+        assert len(result["predictions"]) == 1
+        assert 0 > result["predictions"][0]["dot_product"] > -1  # We expect ~ -0.22

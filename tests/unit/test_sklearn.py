@@ -302,6 +302,26 @@ def test_sklearn(strftime, sagemaker_session, sklearn_version):
     assert isinstance(predictor, SKLearnPredictor)
 
 
+def test_transform_multiple_values_for_entry_point_issue(sagemaker_session, sklearn_version):
+    # https://github.com/aws/sagemaker-python-sdk/issues/974
+    sklearn = SKLearn(
+        entry_point=SCRIPT_PATH,
+        role=ROLE,
+        sagemaker_session=sagemaker_session,
+        train_instance_type=INSTANCE_TYPE,
+        py_version=PYTHON_VERSION,
+        framework_version=sklearn_version,
+    )
+
+    inputs = "s3://mybucket/train"
+
+    sklearn.fit(inputs=inputs)
+
+    transformer = sklearn.transformer(instance_count=1, instance_type="ml.m4.xlarge")
+    # if we got here, we didn't get a "multiple values" error
+    assert transformer is not None
+
+
 def test_fail_distributed_training(sagemaker_session, sklearn_version):
     with pytest.raises(AttributeError) as error:
         SKLearn(

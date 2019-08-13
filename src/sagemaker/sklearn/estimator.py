@@ -151,6 +151,12 @@ class SKLearn(Framework):
             object. See :func:`~sagemaker.sklearn.model.SKLearnModel` for full details.
         """
         role = role or self.role
+
+        # remove unwanted entry_point kwarg
+        if "entry_point" in kwargs:
+            logger.debug("removing unused entry_point argument: %s", str(kwargs["entry_point"]))
+            kwargs = {k: v for k, v in kwargs.items() if k != "entry_point"}
+
         return SKLearnModel(
             self.model_data,
             role,
