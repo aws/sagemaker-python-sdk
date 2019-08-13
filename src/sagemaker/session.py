@@ -257,6 +257,9 @@ class Session(object):  # pylint: disable=too-many-public-methods
         image=None,
         algorithm_arn=None,
         encrypt_inter_container_traffic=False,
+        train_use_spot_instances=False,
+        checkpoint_s3_uri=None,
+        checkpoint_local_path=None,
     ):
         """Create an Amazon SageMaker training job.
 
@@ -307,6 +310,18 @@ class Session(object):  # pylint: disable=too-many-public-methods
             algorithm_arn (str): Algorithm Arn from Marketplace.
             encrypt_inter_container_traffic (bool): Specifies whether traffic between training
                 containers is encrypted for the training job (default: ``False``).
+            train_use_spot_instances (bool): whether to use spot instances for training.
+            checkpoint_s3_uri (str): The S3 URI in which to persist checkpoints
+                that the algorithm persists (if any) during training. (default:
+                ``None``).
+            checkpoint_local_path (str): The local path that the algorithm
+                writes its checkpoints to. SageMaker will persist all files
+                under this path to `checkpoint_s3_uri` continually during
+                training. On job startup the reverse happens - data from the
+                s3 location is downloaded to this path before the algorithm is
+                started. If the path is unset then SageMaker assumes the
+                checkpoints will be provided under `/opt/ml/checkpoints/`.
+                (default: ``None``).
 
         Returns:
             str: ARN of the training job, if it is created.
@@ -356,6 +371,15 @@ class Session(object):  # pylint: disable=too-many-public-methods
 
         if encrypt_inter_container_traffic:
             train_request["EnableInterContainerTrafficEncryption"] = encrypt_inter_container_traffic
+
+        if train_use_spot_instances:
+            train_request["EnableManagedSpotTraining"] = train_use_spot_instances
+
+        if checkpoint_s3_uri:
+            checkpoint_config = {"S3Uri": checkpoint_s3_uri}
+            if checkpoint_local_path:
+                checkpoint_config["LocalPath"] = checkpoint_local_path
+            train_request["CheckpointConfig"] = checkpoint_config
 
         LOGGER.info("Creating training-job with name: %s", job_name)
         LOGGER.debug("train request: %s", json.dumps(train_request, indent=4))
@@ -1468,10 +1492,12 @@ class Session(object):  # pylint: disable=too-many-public-methods
                 print()
             # Customers are not billed for hardware provisioning, so billable time is less than
             # total time
-            billable_time = (
-                description["TrainingEndTime"] - description["TrainingStartTime"]
-            ) * instance_count
-            print("Billable seconds:", int(billable_time.total_seconds()) + 1)
+            training_time = description.get("TrainingTimeInSeconds")
+            billable_time = description.get("BillableTimeInSeconds")
+            if training_time is not None:
+                print("Training seconds:", training_time * instance_count)
+            if billable_time is not None:
+                print("Billable seconds:", billable_time * instance_count)
 
 
 def container_def(image, model_data_url=None, env=None):
