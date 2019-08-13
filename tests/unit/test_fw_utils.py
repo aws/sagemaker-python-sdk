@@ -33,6 +33,7 @@ TIMESTAMP = "2017-10-10-14-14-15"
 MOCK_FRAMEWORK = "mlfw"
 MOCK_REGION = "mars-south-3"
 MOCK_ACCELERATOR = "eia1.medium"
+MOCK_HKG_REGION = "ap-east-1"
 
 
 @contextmanager
@@ -134,6 +135,15 @@ def test_create_image_uri_gov_cloud():
     assert (
         image_uri == "246785580436.dkr.ecr.us-gov-west-1.amazonaws.com/sagemaker-mlfw:1.0rc-gpu-py3"
     )
+
+
+def test_create_image_uri_hkg():
+    image_uri = fw_utils.create_image_uri(
+        MOCK_HKG_REGION, MOCK_FRAMEWORK, "ml.p3.2xlarge", "1.0rc", "py3"
+    )
+    assert {
+        image_uri == "871362719292.dkr.ecr.ap-east-1.amazonaws.com/sagemaker-mlfw:1.0rc-gpu-py3"
+    }
 
 
 def test_create_image_uri_merged():

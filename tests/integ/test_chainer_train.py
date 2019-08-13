@@ -62,7 +62,7 @@ def test_training_with_additional_hyperparameters(sagemaker_local_session, chain
 
 @pytest.mark.canary_quick
 @pytest.mark.regional_testing
-def test_attach_deploy(sagemaker_session, chainer_full_version):
+def test_attach_deploy(sagemaker_session, chainer_full_version, cpu_instance_type):
     with timeout(minutes=TRAINING_DEFAULT_TIMEOUT_MINUTES):
         script_path = os.path.join(DATA_DIR, "chainer_mnist", "mnist.py")
         data_path = os.path.join(DATA_DIR, "chainer_mnist")
@@ -73,7 +73,7 @@ def test_attach_deploy(sagemaker_session, chainer_full_version):
             framework_version=chainer_full_version,
             py_version=PYTHON_VERSION,
             train_instance_count=1,
-            train_instance_type="ml.c4.xlarge",
+            train_instance_type=cpu_instance_type,
             sagemaker_session=sagemaker_session,
             hyperparameters={"epochs": 1},
         )
@@ -95,7 +95,7 @@ def test_attach_deploy(sagemaker_session, chainer_full_version):
         estimator = Chainer.attach(
             chainer.latest_training_job.name, sagemaker_session=sagemaker_session
         )
-        predictor = estimator.deploy(1, "ml.m4.xlarge", endpoint_name=endpoint_name)
+        predictor = estimator.deploy(1, cpu_instance_type, endpoint_name=endpoint_name)
         _predict_and_assert(predictor)
 
 

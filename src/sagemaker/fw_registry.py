@@ -32,6 +32,10 @@ image_registry_map = {
     "ca-central-1": {"sparkml-serving": "341280168497", "scikit-learn": "341280168497"},
     "us-gov-west-1": {"sparkml-serving": "414596584902", "scikit-learn": "414596584902"},
     "us-iso-east-1": {"sparkml-serving": "833128469047", "scikit-learn": "833128469047"},
+    "ap-east-1": {"sparkml-serving": "651117190479", "scikit-learn": "651117190479"},
+    "sa-east-1": {"sparkml-serving": "737474898029", "scikit-learn": "737474898029"},
+    "eu-north-1": {"sparkml-serving": "662702820516", "scikit-learn": "662702820516"},
+    "eu-west-3": {"sparkml-serving": "659782779980", "scikit-learn": "659782779980"},
 }
 
 
