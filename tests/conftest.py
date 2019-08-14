@@ -31,7 +31,7 @@ from sagemaker.tensorflow.estimator import TensorFlow
 
 DEFAULT_REGION = "us-west-2"
 
-NO_M4_REGIONS = ["eu-west-3", "eu-north-1", "ap-east-1"]
+NO_M4_REGIONS = ["eu-west-3", "eu-north-1", "ap-east-1", "sa-east-1"]
 
 
 def pytest_addoption(parser):

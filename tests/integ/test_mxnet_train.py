@@ -175,7 +175,7 @@ def test_deploy_model_with_update_endpoint(
         )
         old_config_name = old_endpoint["EndpointConfigName"]
 
-        model.deploy(1, "ml.m4.xlarge", update_endpoint=True, endpoint_name=endpoint_name)
+        model.deploy(1, cpu_instance_type, update_endpoint=True, endpoint_name=endpoint_name)
 
         # Wait for endpoint to finish updating
         max_retry_count = 40  # Endpoint update takes ~7min. 40 retries * 30s sleeps = 20min timeout
@@ -197,7 +197,7 @@ def test_deploy_model_with_update_endpoint(
         )
 
         assert old_config_name != new_config_name
-        assert new_config["ProductionVariants"][0]["InstanceType"] == "ml.m4.xlarge"
+        assert new_config["ProductionVariants"][0]["InstanceType"] == cpu_instance_type
         assert new_config["ProductionVariants"][0]["InitialInstanceCount"] == 1
 
 
