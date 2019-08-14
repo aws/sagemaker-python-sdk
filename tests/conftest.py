@@ -31,7 +31,9 @@ from sagemaker.tensorflow.estimator import TensorFlow
 
 DEFAULT_REGION = "us-west-2"
 
-NO_M4_REGIONS = ["eu-west-3", "eu-north-1", "ap-east-1"]
+NO_M4_REGIONS = ["eu-west-3", "eu-north-1", "ap-east-1", "sa-east-1"]
+
+NO_T2_REGIONS = ["eu-north-1", "ap-east-1"]
 
 
 def pytest_addoption(parser):
@@ -260,6 +262,15 @@ def cpu_instance_type(sagemaker_session, request):
         return "ml.m5.xlarge"
     else:
         return "ml.m4.xlarge"
+
+@pytest.fixture(scope="session")
+def alternative_cpu_instance_type(sagemaker_session, request):
+    region = sagemaker_session.boto_session.region_name
+    if region in NO_T2_REGIONS:
+        # T3 is not supported by hosting yet
+        return "ml.c5.xlarge"
+    else:
+        return "ml.t2.medium"
 
 
 @pytest.fixture(scope="session")

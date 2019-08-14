@@ -151,7 +151,8 @@ def test_deploy_model_with_tags_and_kms(
 
 
 def test_deploy_model_with_update_endpoint(
-    mxnet_training_job, sagemaker_session, mxnet_full_version, cpu_instance_type
+    mxnet_training_job, sagemaker_session, mxnet_full_version, cpu_instance_type,
+    alternative_cpu_instance_type
 ):
     endpoint_name = "test-mxnet-deploy-model-{}".format(sagemaker_timestamp())
 
@@ -169,13 +170,13 @@ def test_deploy_model_with_update_endpoint(
             sagemaker_session=sagemaker_session,
             framework_version=mxnet_full_version,
         )
-        model.deploy(1, "ml.t2.medium", endpoint_name=endpoint_name)
+        model.deploy(1, alternative_cpu_instance_type, endpoint_name=endpoint_name)
         old_endpoint = sagemaker_session.sagemaker_client.describe_endpoint(
             EndpointName=endpoint_name
         )
         old_config_name = old_endpoint["EndpointConfigName"]
 
-        model.deploy(1, "ml.m4.xlarge", update_endpoint=True, endpoint_name=endpoint_name)
+        model.deploy(1, cpu_instance_type, update_endpoint=True, endpoint_name=endpoint_name)
 
         # Wait for endpoint to finish updating
         max_retry_count = 40  # Endpoint update takes ~7min. 40 retries * 30s sleeps = 20min timeout
@@ -197,12 +198,13 @@ def test_deploy_model_with_update_endpoint(
         )
 
         assert old_config_name != new_config_name
-        assert new_config["ProductionVariants"][0]["InstanceType"] == "ml.m4.xlarge"
+        assert new_config["ProductionVariants"][0]["InstanceType"] == cpu_instance_type
         assert new_config["ProductionVariants"][0]["InitialInstanceCount"] == 1
 
 
 def test_deploy_model_with_update_non_existing_endpoint(
-    mxnet_training_job, sagemaker_session, mxnet_full_version, cpu_instance_type
+    mxnet_training_job, sagemaker_session, mxnet_full_version, cpu_instance_type,
+    alternative_cpu_instance_type
 ):
     endpoint_name = "test-mxnet-deploy-model-{}".format(sagemaker_timestamp())
     expected_error_message = (
@@ -224,7 +226,7 @@ def test_deploy_model_with_update_non_existing_endpoint(
             sagemaker_session=sagemaker_session,
             framework_version=mxnet_full_version,
         )
-        model.deploy(1, "ml.t2.medium", endpoint_name=endpoint_name)
+        model.deploy(1, alternative_cpu_instance_type, endpoint_name=endpoint_name)
         sagemaker_session.sagemaker_client.describe_endpoint(EndpointName=endpoint_name)
 
         with pytest.raises(ValueError, message=expected_error_message):
