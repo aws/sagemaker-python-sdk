@@ -14,6 +14,7 @@ from __future__ import absolute_import
 
 import json
 import os
+import time
 
 import pytest
 from tests.integ import DATA_DIR, TRANSFORM_DEFAULT_TIMEOUT_MINUTES
@@ -177,22 +178,37 @@ def test_inference_pipeline_model_deploy_with_update_endpoint(sagemaker_session)
             models=[sparkml_model, xgb_model],
             role="SageMakerRole",
             sagemaker_session=sagemaker_session,
-            name=endpoint_name,
         )
-        model.deploy(1, "ml.m4.xlarge", endpoint_name=endpoint_name)
-        old_endpoint = sagemaker_session.describe_endpoint(EndpointName=endpoint_name)
+        model.deploy(1, "ml.t2.medium", endpoint_name=endpoint_name)
+        old_endpoint = sagemaker_session.sagemaker_client.describe_endpoint(
+            EndpointName=endpoint_name
+        )
         old_config_name = old_endpoint["EndpointConfigName"]
 
         model.deploy(1, "ml.m4.xlarge", update_endpoint=True, endpoint_name=endpoint_name)
-        new_endpoint = sagemaker_session.describe_endpoint(EndpointName=endpoint_name)[
-            "ProductionVariants"
-        ]
-        new_production_variants = new_endpoint["ProductionVariants"]
+
+        # Wait for endpoint to finish updating
+        max_retry_count = 40  # Endpoint update takes ~7min. 40 retries * 30s sleeps = 20min timeout
+        current_retry_count = 0
+        while current_retry_count <= max_retry_count:
+            if current_retry_count >= max_retry_count:
+                raise Exception("Endpoint status not 'InService' within expected timeout.")
+            time.sleep(30)
+            new_endpoint = sagemaker_session.sagemaker_client.describe_endpoint(
+                EndpointName=endpoint_name
+            )
+            current_retry_count += 1
+            if new_endpoint["EndpointStatus"] == "InService":
+                break
+
         new_config_name = new_endpoint["EndpointConfigName"]
+        new_config = sagemaker_session.sagemaker_client.describe_endpoint_config(
+            EndpointConfigName=new_config_name
+        )
 
         assert old_config_name != new_config_name
-        assert new_production_variants["InstanceType"] == "ml.m4.xlarge"
-        assert new_production_variants["InitialInstanceCount"] == 1
+        assert new_config["ProductionVariants"][0]["InstanceType"] == "ml.m4.xlarge"
+        assert new_config["ProductionVariants"][0]["InitialInstanceCount"] == 1
 
     model.delete_model()
     with pytest.raises(Exception) as exception:
