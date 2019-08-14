@@ -26,6 +26,8 @@ from sagemaker.estimator import EstimatorBase, _TrainingJob
 from sagemaker.model import NEO_IMAGE_ACCOUNT
 from sagemaker.session import s3_input
 from sagemaker.utils import sagemaker_timestamp, get_ecr_image_uri_prefix
+from sagemaker.xgboost.estimator import get_xgboost_image_uri
+from sagemaker.xgboost.defaults import XGBOOST_LATEST_VERSION
 
 logger = logging.getLogger(__name__)
 
@@ -479,5 +481,15 @@ def get_image_uri(region_name, repo_name, repo_version=1):
         repo_name:
         repo_version:
     """
+    if repo_name == "xgboost":
+        if repo_version in ["0.90", "0.90-1", "0.90-1-cpu-py3"]:
+            return get_xgboost_image_uri(region_name, XGBOOST_LATEST_VERSION)
+        logging.warning(
+            "There is a more up to date SageMaker XGBoost image."
+            "To use the newer image, please set 'repo_version'="
+            "'0.90-1. For example:\n"
+            "\tget_image_uri(region, 'xgboost', %s).",
+            XGBOOST_LATEST_VERSION,
+        )
     repo = "{}:{}".format(repo_name, repo_version)
     return "{}/{}".format(registry(region_name, repo_name), repo)
