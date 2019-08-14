@@ -49,6 +49,9 @@ EMPTY_FRAMEWORK_VERSION_ERROR = (
     "framework_version is required for script mode estimator. "
     "Please add framework_version={} to your constructor to avoid this error."
 )
+UNSUPPORTED_FRAMEWORK_VERSION_ERROR = (
+    "{} framework does not support version {}. Please use one of the following: {}."
+)
 
 VALID_PY_VERSIONS = ["py2", "py3"]
 VALID_EIA_FRAMEWORKS = ["tensorflow", "tensorflow-serving", "mxnet", "mxnet-serving"]
@@ -359,7 +362,7 @@ def framework_name_from_image(image_name):
     # extract framework, python version and image tag
     # We must support both the legacy and current image name format.
     name_pattern = re.compile(
-        r"^(?:sagemaker(?:-rl)?-)?(tensorflow|mxnet|chainer|pytorch|scikit-learn)(?:-)?(scriptmode|training)?:(.*)-(.*?)-(py2|py3)$"  # noqa: E501 # pylint: disable=line-too-long
+        r"^(?:sagemaker(?:-rl)?-)?(tensorflow|mxnet|chainer|pytorch|scikit-learn|xgboost)(?:-)?(scriptmode|training)?:(.*)-(.*?)-(py2|py3)$"  # noqa: E501 # pylint: disable=line-too-long
     )
     legacy_name_pattern = re.compile(r"^sagemaker-(tensorflow|mxnet)-(py2|py3)-(cpu|gpu):(.*)$")
 
@@ -434,6 +437,25 @@ def empty_framework_version_warning(default_version, latest_version):
     if default_version != latest_version:
         msgs.append(LATER_FRAMEWORK_VERSION_WARNING.format(latest=latest_version))
     return " ".join(msgs)
+
+
+def get_unsupported_framework_version_error(
+    framework_name, unsupported_version, supported_versions
+):
+    """Return error message for unsupported framework version.
+
+    This should also return the supported versions for customers.
+
+    :param framework_name:
+    :param unsupported_version:
+    :param supported_versions:
+    :return:
+    """
+    return UNSUPPORTED_FRAMEWORK_VERSION_ERROR.format(
+        framework_name,
+        unsupported_version,
+        ", ".join('"{}"'.format(version) for version in supported_versions),
+    )
 
 
 def python_deprecation_warning(framework):
