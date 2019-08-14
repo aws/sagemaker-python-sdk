@@ -37,6 +37,7 @@ required_packages = [
     "protobuf3-to-dict>=0.1.5",
     "docker-compose>=1.23.0",
     "requests>=2.20.0, <2.21",
+    "fabric>=2.0",
 ]
 
 # enum is introduced in Python 3.4. Installing enum back port

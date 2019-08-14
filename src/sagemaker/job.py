@@ -218,7 +218,7 @@ class _Job(object):
     @staticmethod
     def _format_record_set_list_input(inputs):
         # Deferred import due to circular dependency
-        from sagemaker.amazon.amazon_estimator import RecordSet, FileSystemRecordSet
+        from sagemaker.amazon.amazon_estimator import FileSystemRecordSet, RecordSet
 
         input_dict = {}
         for record in inputs:
