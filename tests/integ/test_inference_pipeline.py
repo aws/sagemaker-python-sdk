@@ -151,7 +151,9 @@ def test_inference_pipeline_model_deploy(sagemaker_session, cpu_instance_type):
         assert "Could not find model" in str(exception.value)
 
 
-def test_inference_pipeline_model_deploy_with_update_endpoint(sagemaker_session):
+def test_inference_pipeline_model_deploy_with_update_endpoint(
+    sagemaker_session, cpu_instance_type, alternative_cpu_instance_type
+):
     sparkml_data_path = os.path.join(DATA_DIR, "sparkml_model")
     xgboost_data_path = os.path.join(DATA_DIR, "xgboost_model")
     endpoint_name = "test-inference-pipeline-deploy-{}".format(sagemaker_timestamp())
@@ -179,13 +181,13 @@ def test_inference_pipeline_model_deploy_with_update_endpoint(sagemaker_session)
             role="SageMakerRole",
             sagemaker_session=sagemaker_session,
         )
-        model.deploy(1, "ml.t2.medium", endpoint_name=endpoint_name)
+        model.deploy(1, alternative_cpu_instance_type, endpoint_name=endpoint_name)
         old_endpoint = sagemaker_session.sagemaker_client.describe_endpoint(
             EndpointName=endpoint_name
         )
         old_config_name = old_endpoint["EndpointConfigName"]
 
-        model.deploy(1, "ml.m4.xlarge", update_endpoint=True, endpoint_name=endpoint_name)
+        model.deploy(1, cpu_instance_type, update_endpoint=True, endpoint_name=endpoint_name)
 
         # Wait for endpoint to finish updating
         max_retry_count = 40  # Endpoint update takes ~7min. 40 retries * 30s sleeps = 20min timeout
@@ -207,7 +209,7 @@ def test_inference_pipeline_model_deploy_with_update_endpoint(sagemaker_session)
         )
 
         assert old_config_name != new_config_name
-        assert new_config["ProductionVariants"][0]["InstanceType"] == "ml.m4.xlarge"
+        assert new_config["ProductionVariants"][0]["InstanceType"] == cpu_instance_type
         assert new_config["ProductionVariants"][0]["InitialInstanceCount"] == 1
 
     model.delete_model()

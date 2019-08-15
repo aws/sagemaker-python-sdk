@@ -52,7 +52,7 @@ def test_horovod_local_mode(sagemaker_local_session, instances, processes, tmpdi
     output_path = "file://%s" % tmpdir
     job_name = sagemaker.utils.unique_name_from_base("tf-horovod")
     estimator = TensorFlow(
-        entry_point=os.path.join(horovod_dir, "test_hvd_basic.py"),
+        entry_point=os.path.join(horovod_dir, "hvd_basic.py"),
         role="SageMakerRole",
         train_instance_count=2,
         train_instance_type="local",
@@ -100,7 +100,7 @@ def extract_files_from_s3(s3_url, tmpdir):
 def __create_and_fit_estimator(sagemaker_session, instance_type, tmpdir):
     job_name = sagemaker.utils.unique_name_from_base("tf-horovod")
     estimator = TensorFlow(
-        entry_point=os.path.join(horovod_dir, "test_hvd_basic.py"),
+        entry_point=os.path.join(horovod_dir, "hvd_basic.py"),
         role="SageMakerRole",
         train_instance_count=2,
         train_instance_type=instance_type,
