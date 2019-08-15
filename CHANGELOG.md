@@ -1,5 +1,20 @@
 # Changelog
 
+## v1.37.0 (2019-08-15)
+
+### Features
+
+ * add XGBoost Estimator as new framework
+
+### Bug fixes and other changes
+
+ * fix tests for new regions
+ * add update_endpoint for PipelineModel
+
+### Documentation changes
+
+ * refactor the using Chainer topic
+
 ## v1.36.4 (2019-08-13)
 
 ### Bug fixes and other changes
