@@ -151,8 +151,11 @@ def test_deploy_model_with_tags_and_kms(
 
 
 def test_deploy_model_with_update_endpoint(
-    mxnet_training_job, sagemaker_session, mxnet_full_version, cpu_instance_type,
-    alternative_cpu_instance_type
+    mxnet_training_job,
+    sagemaker_session,
+    mxnet_full_version,
+    cpu_instance_type,
+    alternative_cpu_instance_type,
 ):
     endpoint_name = "test-mxnet-deploy-model-{}".format(sagemaker_timestamp())
 
@@ -203,8 +206,11 @@ def test_deploy_model_with_update_endpoint(
 
 
 def test_deploy_model_with_update_non_existing_endpoint(
-    mxnet_training_job, sagemaker_session, mxnet_full_version, cpu_instance_type,
-    alternative_cpu_instance_type
+    mxnet_training_job,
+    sagemaker_session,
+    mxnet_full_version,
+    cpu_instance_type,
+    alternative_cpu_instance_type,
 ):
     endpoint_name = "test-mxnet-deploy-model-{}".format(sagemaker_timestamp())
     expected_error_message = (

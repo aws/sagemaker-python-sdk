@@ -151,7 +151,9 @@ def test_inference_pipeline_model_deploy(sagemaker_session, cpu_instance_type):
         assert "Could not find model" in str(exception.value)
 
 
-def test_inference_pipeline_model_deploy_with_update_endpoint(sagemaker_session, cpu_instance_type, alternative_cpu_instance_type):
+def test_inference_pipeline_model_deploy_with_update_endpoint(
+    sagemaker_session, cpu_instance_type, alternative_cpu_instance_type
+):
     sparkml_data_path = os.path.join(DATA_DIR, "sparkml_model")
     xgboost_data_path = os.path.join(DATA_DIR, "xgboost_model")
     endpoint_name = "test-inference-pipeline-deploy-{}".format(sagemaker_timestamp())

@@ -263,6 +263,7 @@ def cpu_instance_type(sagemaker_session, request):
     else:
         return "ml.m4.xlarge"
 
+
 @pytest.fixture(scope="session")
 def alternative_cpu_instance_type(sagemaker_session, request):
     region = sagemaker_session.boto_session.region_name

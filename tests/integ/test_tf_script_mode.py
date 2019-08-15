@@ -57,7 +57,9 @@ def test_mnist(sagemaker_session, instance_type):
     with tests.integ.timeout.timeout(minutes=tests.integ.TRAINING_DEFAULT_TIMEOUT_MINUTES):
         estimator.fit(inputs=inputs, job_name=unique_name_from_base("test-tf-sm-mnist"))
     _assert_s3_files_exist(
-        estimator.model_dir, ["graph.pbtxt", "model.ckpt-0.index", "model.ckpt-0.meta"]
+        estimator.model_dir,
+        ["graph.pbtxt", "model.ckpt-0.index", "model.ckpt-0.meta"],
+        sagemaker_session.boto_region_name,
     )
     df = estimator.training_job_analytics.dataframe()
     assert df.size > 0
@@ -118,7 +120,9 @@ def test_mnist_distributed(sagemaker_session, instance_type):
     with tests.integ.timeout.timeout(minutes=tests.integ.TRAINING_DEFAULT_TIMEOUT_MINUTES):
         estimator.fit(inputs=inputs, job_name=unique_name_from_base("test-tf-sm-distributed"))
     _assert_s3_files_exist(
-        estimator.model_dir, ["graph.pbtxt", "model.ckpt-0.index", "model.ckpt-0.meta"]
+        estimator.model_dir,
+        ["graph.pbtxt", "model.ckpt-0.index", "model.ckpt-0.meta"],
+        sagemaker_session.boto_region_name,
     )
 
 
@@ -196,9 +200,9 @@ def test_deploy_with_input_handlers(sagemaker_session, instance_type):
         assert expected_result == result
 
 
-def _assert_s3_files_exist(s3_url, files):
+def _assert_s3_files_exist(s3_url, files, region):
     parsed_url = urlparse(s3_url)
-    s3 = boto3.client("s3")
+    s3 = boto3.client("s3", region_name=region)
     contents = s3.list_objects_v2(Bucket=parsed_url.netloc, Prefix=parsed_url.path.lstrip("/"))[
         "Contents"
     ]
