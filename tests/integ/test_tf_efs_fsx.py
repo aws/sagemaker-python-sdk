@@ -23,8 +23,8 @@ from sagemaker.tensorflow import TensorFlow
 from sagemaker.tuner import HyperparameterTuner
 from sagemaker.utils import unique_name_from_base
 from tests.integ import TRAINING_DEFAULT_TIMEOUT_MINUTES, TUNING_DEFAULT_TIMEOUT_MINUTES
+from tests.integ.s3_utils import assert_s3_files_exist
 from tests.integ.test_file_system_input_utils import tear_down, set_up_efs_fsx
-from tests.integ.test_tf_script_mode import _assert_s3_files_exist
 from tests.integ.timeout import timeout
 
 RESOURCE_PATH = os.path.join(os.path.dirname(__file__), "..", "data")
@@ -73,8 +73,11 @@ def test_mnist_efs(efs_fsx_setup, sagemaker_session):
     )
     with timeout(minutes=TRAINING_DEFAULT_TIMEOUT_MINUTES):
         estimator.fit(inputs=file_system_input, job_name=unique_name_from_base("test-mnist-efs"))
-    _assert_s3_files_exist(
-        estimator.model_dir, ["graph.pbtxt", "model.ckpt-0.index", "model.ckpt-0.meta"]
+
+    assert_s3_files_exist(
+        sagemaker_session,
+        estimator.model_dir,
+        ["graph.pbtxt", "model.ckpt-0.index", "model.ckpt-0.meta"],
     )
 
 
@@ -104,8 +107,10 @@ def test_mnist_lustre(efs_fsx_setup, sagemaker_session):
 
     with timeout(minutes=TRAINING_DEFAULT_TIMEOUT_MINUTES):
         estimator.fit(inputs=file_system_input, job_name=unique_name_from_base("test-mnist-lustre"))
-    _assert_s3_files_exist(
-        estimator.model_dir, ["graph.pbtxt", "model.ckpt-0.index", "model.ckpt-0.meta"]
+    assert_s3_files_exist(
+        sagemaker_session,
+        estimator.model_dir,
+        ["graph.pbtxt", "model.ckpt-0.index", "model.ckpt-0.meta"],
     )
 
 
@@ -150,8 +155,7 @@ def test_tuning_tf_script_mode_efs(efs_fsx_setup, sagemaker_session):
         time.sleep(15)
         tuner.wait()
     best_training_job = tuner.best_training_job()
-    index = best_training_job.find("test-tuning-tf")
-    assert index >= 0
+    assert best_training_job
 
 
 def test_tuning_tf_script_mode_lustre(efs_fsx_setup, sagemaker_session):
@@ -195,5 +199,4 @@ def test_tuning_tf_script_mode_lustre(efs_fsx_setup, sagemaker_session):
         time.sleep(15)
         tuner.wait()
     best_training_job = tuner.best_training_job()
-    index = best_training_job.find("test-tuning-tf")
-    assert index >= 0
+    assert best_training_job

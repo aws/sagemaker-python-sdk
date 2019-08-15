@@ -18,13 +18,12 @@ import time
 
 import pytest
 
-import boto3
 from sagemaker.tensorflow import TensorFlow
-from six.moves.urllib.parse import urlparse
 from sagemaker.utils import unique_name_from_base
 
 import tests.integ
 from tests.integ import timeout
+from tests.integ.s3_utils import assert_s3_files_exist
 
 ROLE = "SageMakerRole"
 
@@ -74,8 +73,10 @@ def test_mnist(sagemaker_session, instance_type):
 
     with tests.integ.timeout.timeout(minutes=tests.integ.TRAINING_DEFAULT_TIMEOUT_MINUTES):
         estimator.fit(inputs=inputs, job_name=unique_name_from_base("test-tf-sm-mnist"))
-    _assert_s3_files_exist(
-        estimator.model_dir, ["graph.pbtxt", "model.ckpt-0.index", "model.ckpt-0.meta"]
+    assert_s3_files_exist(
+        sagemaker_session,
+        estimator.model_dir,
+        ["graph.pbtxt", "model.ckpt-0.index", "model.ckpt-0.meta"],
     )
     df = estimator.training_job_analytics.dataframe()
     assert df.size > 0
@@ -135,8 +136,10 @@ def test_mnist_distributed(sagemaker_session, instance_type):
 
     with tests.integ.timeout.timeout(minutes=tests.integ.TRAINING_DEFAULT_TIMEOUT_MINUTES):
         estimator.fit(inputs=inputs, job_name=unique_name_from_base("test-tf-sm-distributed"))
-    _assert_s3_files_exist(
-        estimator.model_dir, ["graph.pbtxt", "model.ckpt-0.index", "model.ckpt-0.meta"]
+    assert_s3_files_exist(
+        sagemaker_session,
+        estimator.model_dir,
+        ["graph.pbtxt", "model.ckpt-0.index", "model.ckpt-0.meta"],
     )
 
 
@@ -212,18 +215,6 @@ def test_deploy_with_input_handlers(sagemaker_session, instance_type):
 
         result = predictor.predict(input_data)
         assert expected_result == result
-
-
-def _assert_s3_files_exist(s3_url, files):
-    parsed_url = urlparse(s3_url)
-    s3 = boto3.client("s3")
-    contents = s3.list_objects_v2(Bucket=parsed_url.netloc, Prefix=parsed_url.path.lstrip("/"))[
-        "Contents"
-    ]
-    for f in files:
-        found = [x["Key"] for x in contents if x["Key"].endswith(f)]
-        if not found:
-            raise ValueError("File {} is not found under {}".format(f, s3_url))
 
 
 def _assert_tags_match(sagemaker_client, resource_arn, tags):
