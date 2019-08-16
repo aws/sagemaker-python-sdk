@@ -4,9 +4,9 @@ Using Chainer with the SageMaker Python SDK
 
 With Chainer Estimators, you can train and host Chainer models on Amazon SageMaker.
 
-Supported versions of Chainer: ``4.0.0``, ``4.1.0``, ``5.0.0``
+For information about supported versions of Chainer, see the `Chainer README <https://github.com/aws/sagemaker-python-sdk/blob/master/src/sagemaker/chainer/README.rst>`__.
 
-You can visit the Chainer repository at https://github.com/chainer/chainer.
+For general information about using the SageMaker Python SDK, see :ref:`overview:Using the SageMaker Python SDK`.
 
 .. contents::
 
@@ -635,6 +635,6 @@ The following are optional arguments. When you create a ``Chainer`` object, you 
 SageMaker Chainer Docker containers
 ***********************************
 
-You can visit the SageMaker Chainer containers repository here: https://github.com/aws/sagemaker-chainer-containers/
+You can visit the SageMaker Chainer containers repository here: https://github.com/aws/sagemaker-chainer-container
 
-For information about SageMaker TensorFlow Docker containers and their dependencies, see `SageMaker Chainer Docker containers <https://github.com/aws/sagemaker-python-sdk/tree/master/src/sagemaker/chainer#sagemaker-chainer-docker-containers>`_.
+For information about SageMaker Chainer Docker containers and their dependencies, see `SageMaker Chainer Docker containers <https://github.com/aws/sagemaker-python-sdk/tree/master/src/sagemaker/chainer#sagemaker-chainer-docker-containers>`_.
