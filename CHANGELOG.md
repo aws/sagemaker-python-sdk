@@ -1,5 +1,15 @@
 # Changelog
 
+## v1.37.1 (2019-08-19)
+
+### Bug fixes and other changes
+
+ * eliminate dependency on mnist dataset website
+
+### Documentation changes
+
+ * refactor using_sklearn and fix minor errors in using_pytorch and using_chainer
+
 ## v1.37.0 (2019-08-15)
 
 ### Features
