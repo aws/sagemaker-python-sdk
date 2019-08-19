@@ -1498,6 +1498,9 @@ class Session(object):  # pylint: disable=too-many-public-methods
                 print("Training seconds:", training_time * instance_count)
             if billable_time is not None:
                 print("Billable seconds:", billable_time * instance_count)
+                if description.get("EnableManagedSpotTraining"):
+                    saving = (1 - float(billable_time) / training_time) * 100
+                    print("Managed Spot Training savings: {:.1f}%".format(saving))
 
 
 def container_def(image, model_data_url=None, env=None):
