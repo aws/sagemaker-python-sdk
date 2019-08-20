@@ -28,10 +28,9 @@ MNIST_SCRIPT = os.path.join(MNIST_DIR, "mnist.py")
 
 
 @pytest.fixture(scope="module", name="pytorch_training_job")
-def fixture_training_job(sagemaker_session, pytorch_full_version):
-    instance_type = "ml.c4.xlarge"
+def fixture_training_job(sagemaker_session, pytorch_full_version, cpu_instance_type):
     with timeout(minutes=TRAINING_DEFAULT_TIMEOUT_MINUTES):
-        pytorch = _get_pytorch_estimator(sagemaker_session, pytorch_full_version, instance_type)
+        pytorch = _get_pytorch_estimator(sagemaker_session, pytorch_full_version, cpu_instance_type)
 
         pytorch.fit({"training": _upload_training_data(pytorch)})
         return pytorch.latest_training_job.name
@@ -39,12 +38,12 @@ def fixture_training_job(sagemaker_session, pytorch_full_version):
 
 @pytest.mark.canary_quick
 @pytest.mark.regional_testing
-def test_sync_fit_deploy(pytorch_training_job, sagemaker_session):
+def test_sync_fit_deploy(pytorch_training_job, sagemaker_session, cpu_instance_type):
     # TODO: add tests against local mode when it's ready to be used
     endpoint_name = "test-pytorch-sync-fit-attach-deploy{}".format(sagemaker_timestamp())
     with timeout_and_delete_endpoint_by_name(endpoint_name, sagemaker_session):
         estimator = PyTorch.attach(pytorch_training_job, sagemaker_session=sagemaker_session)
-        predictor = estimator.deploy(1, "ml.c4.xlarge", endpoint_name=endpoint_name)
+        predictor = estimator.deploy(1, cpu_instance_type, endpoint_name=endpoint_name)
         data = numpy.zeros(shape=(1, 1, 28, 28), dtype=numpy.float32)
         predictor.predict(data)
 
@@ -55,7 +54,7 @@ def test_sync_fit_deploy(pytorch_training_job, sagemaker_session):
         assert output.shape == (batch_size, 10)
 
 
-def test_deploy_model(pytorch_training_job, sagemaker_session):
+def test_deploy_model(pytorch_training_job, sagemaker_session, cpu_instance_type):
     endpoint_name = "test-pytorch-deploy-model-{}".format(sagemaker_timestamp())
 
     with timeout_and_delete_endpoint_by_name(endpoint_name, sagemaker_session):
@@ -69,7 +68,7 @@ def test_deploy_model(pytorch_training_job, sagemaker_session):
             entry_point=MNIST_SCRIPT,
             sagemaker_session=sagemaker_session,
         )
-        predictor = model.deploy(1, "ml.m4.xlarge", endpoint_name=endpoint_name)
+        predictor = model.deploy(1, cpu_instance_type, endpoint_name=endpoint_name)
 
         batch_size = 100
         data = numpy.random.rand(batch_size, 1, 28, 28).astype(numpy.float32)
@@ -86,7 +85,7 @@ def _upload_training_data(pytorch):
 
 
 def _get_pytorch_estimator(
-    sagemaker_session, pytorch_full_version, instance_type="ml.c4.xlarge", entry_point=MNIST_SCRIPT
+    sagemaker_session, pytorch_full_version, instance_type, entry_point=MNIST_SCRIPT
 ):
     return PyTorch(
         entry_point=entry_point,

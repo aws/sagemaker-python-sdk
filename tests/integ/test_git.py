@@ -28,6 +28,8 @@ from sagemaker.mxnet.model import MXNetModel
 from sagemaker.sklearn.model import SKLearnModel
 from tests.integ import DATA_DIR, PYTHON_VERSION
 
+MNIST_FOLDER_NAME = "MNIST"
+
 GIT_REPO = "https://github.com/aws/sagemaker-python-sdk.git"
 BRANCH = "test-branch-git-config"
 COMMIT = "ae15c9d7d5b97ea95ea451e4662ee43da3401d73"
@@ -69,7 +71,7 @@ def test_git_support_with_pytorch(sagemaker_local_session):
         git_config=git_config,
     )
 
-    pytorch.fit({"training": "file://" + os.path.join(data_path, "training")})
+    pytorch.fit({"training": "file://" + os.path.join(data_path, "training", MNIST_FOLDER_NAME)})
 
     with lock.lock(LOCK_PATH):
         try:

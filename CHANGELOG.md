@@ -1,5 +1,82 @@
 # Changelog
 
+## v1.37.2 (2019-08-20)
+
+### Bug fixes and other changes
+
+ * Add support for Managed Spot Training and Checkpoint support
+ * Integration Tests now dynamically checks AZs
+
+## v1.37.1 (2019-08-19)
+
+### Bug fixes and other changes
+
+ * eliminate dependency on mnist dataset website
+
+### Documentation changes
+
+ * refactor using_sklearn and fix minor errors in using_pytorch and using_chainer
+
+## v1.37.0 (2019-08-15)
+
+### Features
+
+ * add XGBoost Estimator as new framework
+
+### Bug fixes and other changes
+
+ * fix tests for new regions
+ * add update_endpoint for PipelineModel
+
+### Documentation changes
+
+ * refactor the using Chainer topic
+
+## v1.36.4 (2019-08-13)
+
+### Bug fixes and other changes
+
+ * region build from staging pr
+
+### Documentation changes
+
+ * Refactor Using PyTorch topic for consistency
+
+## v1.36.3 (2019-08-13)
+
+### Bug fixes and other changes
+
+ * fix integration test failures masked by timeout bug
+ * prevent multiple values error in sklearn.transformer()
+ * model.transformer() passes tags to create_model()
+
+## v1.36.2 (2019-08-12)
+
+### Bug fixes and other changes
+
+ * rework CONTRIBUTING.md to include a development workflow
+
+## v1.36.1 (2019-08-08)
+
+### Bug fixes and other changes
+
+ * prevent integration test's timeout functions from hiding failures
+
+### Documentation changes
+
+ * correct typo in using_sklearn.rst
+
+## v1.36.0 (2019-08-07)
+
+### Features
+
+ * support for TensorFlow 1.14
+
+### Bug fixes and other changes
+
+ * ignore FI18 flake8 rule
+ * allow Airflow enabled estimators to use absolute path entry_point
+
 ## v1.35.1 (2019-08-01)
 
 ### Bug fixes and other changes

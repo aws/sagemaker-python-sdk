@@ -45,7 +45,12 @@ def prepare_framework(estimator, s3_operations):
         code_dir = "s3://{}/{}".format(bucket, key)
         estimator.uploaded_code = fw_utils.UploadedCode(s3_prefix=code_dir, script_name=script)
         s3_operations["S3Upload"] = [
-            {"Path": estimator.source_dir or script, "Bucket": bucket, "Key": key, "Tar": True}
+            {
+                "Path": estimator.source_dir or estimator.entry_point,
+                "Bucket": bucket,
+                "Key": key,
+                "Tar": True,
+            }
         ]
     estimator._hyperparameters[sagemaker.model.DIR_PARAM_NAME] = code_dir
     estimator._hyperparameters[sagemaker.model.SCRIPT_PARAM_NAME] = script

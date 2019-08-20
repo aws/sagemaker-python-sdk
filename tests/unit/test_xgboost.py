@@ -21,9 +21,9 @@ from mock import Mock
 from mock import patch
 
 
-from sagemaker.sklearn import defaults
-from sagemaker.sklearn import SKLearn
-from sagemaker.sklearn import SKLearnPredictor, SKLearnModel
+from sagemaker.xgboost.defaults import XGBOOST_LATEST_VERSION
+from sagemaker.xgboost import XGBoost
+from sagemaker.xgboost import XGBoostPredictor, XGBoostModel
 
 
 DATA_DIR = os.path.join(os.path.dirname(__file__), "..", "data")
@@ -36,7 +36,7 @@ DIST_INSTANCE_COUNT = 2
 INSTANCE_TYPE = "ml.c4.4xlarge"
 GPU_INSTANCE_TYPE = "ml.p2.xlarge"
 PYTHON_VERSION = "py3"
-IMAGE_NAME = "sagemaker-scikit-learn"
+IMAGE_NAME = "sagemaker-xgboost"
 JOB_NAME = "{}-{}".format(IMAGE_NAME, TIMESTAMP)
 IMAGE_URI_FORMAT_STRING = "246618743249.dkr.ecr.{}.amazonaws.com/{}:{}-{}-{}"
 ROLE = "Dummy"
@@ -75,26 +75,29 @@ def _get_full_cpu_image_uri(version):
     return IMAGE_URI_FORMAT_STRING.format(REGION, IMAGE_NAME, version, "cpu", PYTHON_VERSION)
 
 
-def _sklearn_estimator(
+def _xgboost_estimator(
     sagemaker_session,
-    framework_version=defaults.SKLEARN_VERSION,
+    framework_version=XGBOOST_LATEST_VERSION,
     train_instance_type=None,
+    train_instance_count=1,
     base_job_name=None,
     **kwargs
 ):
-    return SKLearn(
+
+    return XGBoost(
         entry_point=SCRIPT_PATH,
         framework_version=framework_version,
         role=ROLE,
         sagemaker_session=sagemaker_session,
         train_instance_type=train_instance_type if train_instance_type else INSTANCE_TYPE,
+        train_instance_count=train_instance_count,
         base_job_name=base_job_name,
         py_version=PYTHON_VERSION,
         **kwargs
     )
 
 
-def _create_train_job(version):
+def _create_train_job(version, instance_count=1):
     return {
         "image": _get_full_cpu_image_uri(version),
         "input_mode": "File",
@@ -114,7 +117,7 @@ def _create_train_job(version):
         "output_config": {"S3OutputPath": "s3://{}/".format(BUCKET_NAME)},
         "resource_config": {
             "InstanceType": "ml.c4.4xlarge",
-            "InstanceCount": 1,
+            "InstanceCount": instance_count,
             "VolumeSizeInGB": 30,
         },
         "hyperparameters": {
@@ -134,51 +137,54 @@ def _create_train_job(version):
     }
 
 
-def test_train_image(sagemaker_session, sklearn_version):
+def test_train_image(sagemaker_session, xgboost_version):
     container_log_level = '"logging.INFO"'
     source_dir = "s3://mybucket/source"
-    sklearn = SKLearn(
+    xgboost = XGBoost(
         entry_point=SCRIPT_PATH,
         role=ROLE,
         sagemaker_session=sagemaker_session,
         train_instance_type=INSTANCE_TYPE,
-        framework_version=sklearn_version,
+        train_instance_count=1,
+        framework_version=xgboost_version,
         container_log_level=container_log_level,
         py_version=PYTHON_VERSION,
         base_job_name="job",
         source_dir=source_dir,
     )
 
-    train_image = sklearn.train_image()
+    train_image = xgboost.train_image()
     assert (
         train_image
-        == "246618743249.dkr.ecr.us-west-2.amazonaws.com/sagemaker-scikit-learn:0.20.0-cpu-py3"
+        == "246618743249.dkr.ecr.us-west-2.amazonaws.com/sagemaker-xgboost:0.90-1-cpu-py3"
     )
 
 
 def test_create_model(sagemaker_session):
     source_dir = "s3://mybucket/source"
 
-    sklearn_model = SKLearnModel(
+    xgboost_model = XGBoostModel(
         model_data=source_dir,
         role=ROLE,
         sagemaker_session=sagemaker_session,
         entry_point=SCRIPT_PATH,
+        framework_version=XGBOOST_LATEST_VERSION,
     )
-    default_image_uri = _get_full_cpu_image_uri("0.20.0")
-    model_values = sklearn_model.prepare_container_def(CPU)
+    default_image_uri = _get_full_cpu_image_uri("0.90-1")
+    model_values = xgboost_model.prepare_container_def(CPU)
     assert model_values["Image"] == default_image_uri
 
 
-def test_create_model_from_estimator(sagemaker_session, sklearn_version):
+def test_create_model_from_estimator(sagemaker_session, xgboost_version):
     container_log_level = '"logging.INFO"'
     source_dir = "s3://mybucket/source"
-    sklearn = SKLearn(
+    xgboost = XGBoost(
         entry_point=SCRIPT_PATH,
         role=ROLE,
         sagemaker_session=sagemaker_session,
         train_instance_type=INSTANCE_TYPE,
-        framework_version=sklearn_version,
+        train_instance_count=1,
+        framework_version=xgboost_version,
         container_log_level=container_log_level,
         py_version=PYTHON_VERSION,
         base_job_name="job",
@@ -186,12 +192,12 @@ def test_create_model_from_estimator(sagemaker_session, sklearn_version):
     )
 
     job_name = "new_name"
-    sklearn.fit(inputs="s3://mybucket/train", job_name=job_name)
-    model = sklearn.create_model()
+    xgboost.fit(inputs="s3://mybucket/train", job_name=job_name)
+    model = xgboost.create_model()
 
     assert model.sagemaker_session == sagemaker_session
-    assert model.framework_version == sklearn_version
-    assert model.py_version == sklearn.py_version
+    assert model.framework_version == xgboost_version
+    assert model.py_version == xgboost.py_version
     assert model.entry_point == SCRIPT_PATH
     assert model.role == ROLE
     assert model.name == job_name
@@ -204,11 +210,13 @@ def test_create_model_with_optional_params(sagemaker_session):
     container_log_level = '"logging.INFO"'
     source_dir = "s3://mybucket/source"
     enable_cloudwatch_metrics = "true"
-    sklearn = SKLearn(
+    xgboost = XGBoost(
         entry_point=SCRIPT_PATH,
         role=ROLE,
+        framework_version=XGBOOST_LATEST_VERSION,
         sagemaker_session=sagemaker_session,
         train_instance_type=INSTANCE_TYPE,
+        train_instance_count=1,
         container_log_level=container_log_level,
         py_version=PYTHON_VERSION,
         base_job_name="job",
@@ -216,12 +224,12 @@ def test_create_model_with_optional_params(sagemaker_session):
         enable_cloudwatch_metrics=enable_cloudwatch_metrics,
     )
 
-    sklearn.fit(inputs="s3://mybucket/train", job_name="new_name")
+    xgboost.fit(inputs="s3://mybucket/train", job_name="new_name")
 
     new_role = "role"
     model_server_workers = 2
     vpc_config = {"Subnets": ["foo"], "SecurityGroupIds": ["bar"]}
-    model = sklearn.create_model(
+    model = xgboost.create_model(
         role=new_role, model_server_workers=model_server_workers, vpc_config_override=vpc_config
     )
 
@@ -234,11 +242,13 @@ def test_create_model_with_custom_image(sagemaker_session):
     container_log_level = '"logging.INFO"'
     source_dir = "s3://mybucket/source"
     custom_image = "ubuntu:latest"
-    sklearn = SKLearn(
+    xgboost = XGBoost(
         entry_point=SCRIPT_PATH,
         role=ROLE,
+        framework_version=XGBOOST_LATEST_VERSION,
         sagemaker_session=sagemaker_session,
         train_instance_type=INSTANCE_TYPE,
+        train_instance_count=1,
         image_name=custom_image,
         container_log_level=container_log_level,
         py_version=PYTHON_VERSION,
@@ -246,46 +256,45 @@ def test_create_model_with_custom_image(sagemaker_session):
         source_dir=source_dir,
     )
 
-    sklearn.fit(inputs="s3://mybucket/train", job_name="new_name")
-    model = sklearn.create_model()
+    xgboost.fit(inputs="s3://mybucket/train", job_name="new_name")
+    model = xgboost.create_model()
 
     assert model.image == custom_image
 
 
 @patch("time.strftime", return_value=TIMESTAMP)
-def test_sklearn(strftime, sagemaker_session, sklearn_version):
-    sklearn = SKLearn(
+def test_xgboost(strftime, sagemaker_session, xgboost_version):
+    xgboost = XGBoost(
         entry_point=SCRIPT_PATH,
         role=ROLE,
         sagemaker_session=sagemaker_session,
         train_instance_type=INSTANCE_TYPE,
+        train_instance_count=1,
         py_version=PYTHON_VERSION,
-        framework_version=sklearn_version,
+        framework_version=xgboost_version,
     )
 
     inputs = "s3://mybucket/train"
 
-    sklearn.fit(inputs=inputs)
+    xgboost.fit(inputs=inputs)
 
     sagemaker_call_names = [c[0] for c in sagemaker_session.method_calls]
     assert sagemaker_call_names == ["train", "logs_for_job"]
     boto_call_names = [c[0] for c in sagemaker_session.boto_session.method_calls]
     assert boto_call_names == ["resource"]
 
-    expected_train_args = _create_train_job(sklearn_version)
+    expected_train_args = _create_train_job(xgboost_version)
     expected_train_args["input_config"][0]["DataSource"]["S3DataSource"]["S3Uri"] = inputs
 
     actual_train_args = sagemaker_session.method_calls[0][2]
     assert actual_train_args == expected_train_args
 
-    model = sklearn.create_model()
+    model = xgboost.create_model()
 
-    expected_image_base = (
-        "246618743249.dkr.ecr.us-west-2.amazonaws.com/sagemaker-scikit-learn:{}-cpu-{}"
-    )
+    expected_image_base = "246618743249.dkr.ecr.us-west-2.amazonaws.com/sagemaker-xgboost:{}-cpu-{}"
     assert {
         "Environment": {
-            "SAGEMAKER_SUBMIT_DIRECTORY": "s3://mybucket/sagemaker-scikit-learn-{}/source/sourcedir.tar.gz".format(
+            "SAGEMAKER_SUBMIT_DIRECTORY": "s3://mybucket/sagemaker-xgboost-{}/source/sourcedir.tar.gz".format(
                 TIMESTAMP
             ),
             "SAGEMAKER_PROGRAM": "dummy_script.py",
@@ -293,103 +302,108 @@ def test_sklearn(strftime, sagemaker_session, sklearn_version):
             "SAGEMAKER_REGION": "us-west-2",
             "SAGEMAKER_CONTAINER_LOG_LEVEL": "20",
         },
-        "Image": expected_image_base.format(sklearn_version, PYTHON_VERSION),
+        "Image": expected_image_base.format(xgboost_version, PYTHON_VERSION),
         "ModelDataUrl": "s3://m/m.tar.gz",
     } == model.prepare_container_def(CPU)
 
     assert "cpu" in model.prepare_container_def(CPU)["Image"]
-    predictor = sklearn.deploy(1, CPU)
-    assert isinstance(predictor, SKLearnPredictor)
+    predictor = xgboost.deploy(1, CPU)
+    assert isinstance(predictor, XGBoostPredictor)
 
 
-def test_transform_multiple_values_for_entry_point_issue(sagemaker_session, sklearn_version):
-    # https://github.com/aws/sagemaker-python-sdk/issues/974
-    sklearn = SKLearn(
+@patch("time.strftime", return_value=TIMESTAMP)
+def test_distributed_training(strftime, sagemaker_session, xgboost_version):
+    xgboost = XGBoost(
         entry_point=SCRIPT_PATH,
         role=ROLE,
         sagemaker_session=sagemaker_session,
+        train_instance_count=DIST_INSTANCE_COUNT,
         train_instance_type=INSTANCE_TYPE,
         py_version=PYTHON_VERSION,
-        framework_version=sklearn_version,
+        framework_version=xgboost_version,
     )
 
     inputs = "s3://mybucket/train"
 
-    sklearn.fit(inputs=inputs)
+    xgboost.fit(inputs=inputs)
 
-    transformer = sklearn.transformer(instance_count=1, instance_type="ml.m4.xlarge")
-    # if we got here, we didn't get a "multiple values" error
-    assert transformer is not None
+    sagemaker_call_names = [c[0] for c in sagemaker_session.method_calls]
+    assert sagemaker_call_names == ["train", "logs_for_job"]
+    boto_call_names = [c[0] for c in sagemaker_session.boto_session.method_calls]
+    assert boto_call_names == ["resource"]
 
+    expected_train_args = _create_train_job(xgboost_version, DIST_INSTANCE_COUNT)
+    expected_train_args["input_config"][0]["DataSource"]["S3DataSource"]["S3Uri"] = inputs
 
-def test_fail_distributed_training(sagemaker_session, sklearn_version):
-    with pytest.raises(AttributeError) as error:
-        SKLearn(
-            entry_point=SCRIPT_PATH,
-            role=ROLE,
-            sagemaker_session=sagemaker_session,
-            train_instance_count=DIST_INSTANCE_COUNT,
-            train_instance_type=INSTANCE_TYPE,
-            py_version=PYTHON_VERSION,
-            framework_version=sklearn_version,
-        )
-    assert "Scikit-Learn does not support distributed training." in str(error)
+    actual_train_args = sagemaker_session.method_calls[0][2]
+    assert actual_train_args == expected_train_args
 
+    model = xgboost.create_model()
 
-def test_fail_GPU_training(sagemaker_session, sklearn_version):
-    with pytest.raises(ValueError) as error:
-        SKLearn(
-            entry_point=SCRIPT_PATH,
-            role=ROLE,
-            sagemaker_session=sagemaker_session,
-            train_instance_type=GPU_INSTANCE_TYPE,
-            py_version=PYTHON_VERSION,
-            framework_version=sklearn_version,
-        )
-    assert "GPU training in not supported for Scikit-Learn." in str(error)
+    expected_image_base = "246618743249.dkr.ecr.us-west-2.amazonaws.com/sagemaker-xgboost:{}-cpu-{}"
+    assert {
+        "Environment": {
+            "SAGEMAKER_SUBMIT_DIRECTORY": "s3://mybucket/sagemaker-xgboost-{}/source/sourcedir.tar.gz".format(
+                TIMESTAMP
+            ),
+            "SAGEMAKER_PROGRAM": "dummy_script.py",
+            "SAGEMAKER_ENABLE_CLOUDWATCH_METRICS": "false",
+            "SAGEMAKER_REGION": "us-west-2",
+            "SAGEMAKER_CONTAINER_LOG_LEVEL": "20",
+        },
+        "Image": expected_image_base.format(xgboost_version, PYTHON_VERSION),
+        "ModelDataUrl": "s3://m/m.tar.gz",
+    } == model.prepare_container_def(CPU)
+
+    assert "cpu" in model.prepare_container_def(CPU)["Image"]
+    predictor = xgboost.deploy(1, CPU)
+    assert isinstance(predictor, XGBoostPredictor)
 
 
 def test_model(sagemaker_session):
-    model = SKLearnModel(
+    model = XGBoostModel(
         "s3://some/data.tar.gz",
         role=ROLE,
+        framework_version=XGBOOST_LATEST_VERSION,
         entry_point=SCRIPT_PATH,
         sagemaker_session=sagemaker_session,
     )
     predictor = model.deploy(1, CPU)
-    assert isinstance(predictor, SKLearnPredictor)
+    assert isinstance(predictor, XGBoostPredictor)
 
 
 def test_train_image_default(sagemaker_session):
-    sklearn = SKLearn(
+    xgboost = XGBoost(
         entry_point=SCRIPT_PATH,
         role=ROLE,
+        framework_version=XGBOOST_LATEST_VERSION,
         sagemaker_session=sagemaker_session,
         train_instance_type=INSTANCE_TYPE,
+        train_instance_count=1,
         py_version=PYTHON_VERSION,
     )
 
-    assert _get_full_cpu_image_uri(defaults.SKLEARN_VERSION) in sklearn.train_image()
+    assert _get_full_cpu_image_uri(XGBOOST_LATEST_VERSION) in xgboost.train_image()
 
 
-def test_train_image_cpu_instances(sagemaker_session, sklearn_version):
-    sklearn = _sklearn_estimator(
-        sagemaker_session, sklearn_version, train_instance_type="ml.c2.2xlarge"
+def test_train_image_cpu_instances(sagemaker_session, xgboost_version):
+    xgboost = _xgboost_estimator(
+        sagemaker_session, xgboost_version, train_instance_type="ml.c2.2xlarge"
     )
-    assert sklearn.train_image() == _get_full_cpu_image_uri(sklearn_version)
+    assert xgboost.train_image() == _get_full_cpu_image_uri(xgboost_version)
 
-    sklearn = _sklearn_estimator(
-        sagemaker_session, sklearn_version, train_instance_type="ml.c4.2xlarge"
+    xgboost = _xgboost_estimator(
+        sagemaker_session, xgboost_version, train_instance_type="ml.c4.2xlarge"
     )
-    assert sklearn.train_image() == _get_full_cpu_image_uri(sklearn_version)
+    assert xgboost.train_image() == _get_full_cpu_image_uri(xgboost_version)
 
-    sklearn = _sklearn_estimator(sagemaker_session, sklearn_version, train_instance_type="ml.m16")
-    assert sklearn.train_image() == _get_full_cpu_image_uri(sklearn_version)
+    xgboost = _xgboost_estimator(sagemaker_session, xgboost_version, train_instance_type="ml.m16")
+    assert xgboost.train_image() == _get_full_cpu_image_uri(xgboost_version)
 
 
-def test_attach(sagemaker_session, sklearn_version):
-    training_image = "1.dkr.ecr.us-west-2.amazonaws.com/sagemaker-scikit-learn:{}-cpu-{}".format(
-        sklearn_version, PYTHON_VERSION
+def test_attach(sagemaker_session, xgboost_version):
+    training_image = "1.dkr.ecr.us-west-2.amazonaws.com/sagemaker-xgboost:{}-cpu-{}".format(
+        xgboost_version, PYTHON_VERSION
     )
     returned_job_description = {
         "AlgorithmSpecification": {"TrainingInputMode": "File", "TrainingImage": training_image},
@@ -420,11 +434,11 @@ def test_attach(sagemaker_session, sklearn_version):
         name="describe_training_job", return_value=returned_job_description
     )
 
-    estimator = SKLearn.attach(training_job_name="neo", sagemaker_session=sagemaker_session)
+    estimator = XGBoost.attach(training_job_name="neo", sagemaker_session=sagemaker_session)
     assert estimator._current_job_name == "neo"
     assert estimator.latest_training_job.job_name == "neo"
     assert estimator.py_version == PYTHON_VERSION
-    assert estimator.framework_version == sklearn_version
+    assert estimator.framework_version == xgboost_version
     assert estimator.role == "arn:aws:iam::366:role/SageMakerRole"
     assert estimator.train_instance_count == 1
     assert estimator.train_max_run == 24 * 60 * 60
@@ -470,12 +484,12 @@ def test_attach_wrong_framework(sagemaker_session):
     )
 
     with pytest.raises(ValueError) as error:
-        SKLearn.attach(training_job_name="neo", sagemaker_session=sagemaker_session)
+        XGBoost.attach(training_job_name="neo", sagemaker_session=sagemaker_session)
     assert "didn't use image for requested framework" in str(error)
 
 
 def test_attach_custom_image(sagemaker_session):
-    training_image = "1.dkr.ecr.us-west-2.amazonaws.com/my_custom_sklearn_image:latest"
+    training_image = "1.dkr.ecr.us-west-2.amazonaws.com/my_custom_xgboost_image:latest"
     returned_job_description = {
         "AlgorithmSpecification": {"TrainingInputMode": "File", "TrainingImage": training_image},
         "HyperParameters": {
@@ -505,6 +519,6 @@ def test_attach_custom_image(sagemaker_session):
         name="describe_training_job", return_value=returned_job_description
     )
 
-    estimator = SKLearn.attach(training_job_name="neo", sagemaker_session=sagemaker_session)
-    assert estimator.image_name == training_image
-    assert estimator.train_image() == training_image
+    with pytest.raises(TypeError) as error:
+        XGBoost.attach(training_job_name="neo", sagemaker_session=sagemaker_session)
+    assert "expected string" in str(error)

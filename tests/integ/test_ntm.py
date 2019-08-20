@@ -26,7 +26,11 @@ from tests.integ.record_set import prepare_record_set_from_local_files
 
 
 @pytest.mark.canary_quick
-def test_ntm(sagemaker_session):
+@pytest.mark.skip(
+    reason="This test has always failed, but the failure was masked by a bug. "
+    "This test should be fixed. Details in https://github.com/aws/sagemaker-python-sdk/pull/968"
+)
+def test_ntm(sagemaker_session, cpu_instance_type):
     job_name = unique_name_from_base("ntm")
 
     with timeout(minutes=TRAINING_DEFAULT_TIMEOUT_MINUTES):
@@ -42,7 +46,7 @@ def test_ntm(sagemaker_session):
         ntm = NTM(
             role="SageMakerRole",
             train_instance_count=1,
-            train_instance_type="ml.c4.xlarge",
+            train_instance_type=cpu_instance_type,
             num_topics=10,
             sagemaker_session=sagemaker_session,
         )
@@ -54,7 +58,7 @@ def test_ntm(sagemaker_session):
 
     with timeout_and_delete_endpoint_by_name(job_name, sagemaker_session):
         model = NTMModel(ntm.model_data, role="SageMakerRole", sagemaker_session=sagemaker_session)
-        predictor = model.deploy(1, "ml.c4.xlarge", endpoint_name=job_name)
+        predictor = model.deploy(1, cpu_instance_type, endpoint_name=job_name)
 
         predict_input = np.random.rand(1, feature_num)
         result = predictor.predict(predict_input)

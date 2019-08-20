@@ -263,3 +263,14 @@ def test_upload_numpy_to_s3_shards():
     mock_put.reset()
     upload_numpy_to_s3_shards(3, mock_s3, BUCKET_NAME, "key-prefix", array, labels, encrypt=True)
     mock_put.assert_has_calls(make_all_put_calls(ServerSideEncryption="AES256"))
+
+
+def test_get_xgboost_image_uri():
+    legacy_xgb_image_uri = get_image_uri(REGION, "xgboost")
+    assert legacy_xgb_image_uri == "433757028032.dkr.ecr.us-west-2.amazonaws.com/xgboost:1"
+
+    updated_xgb_image_uri = get_image_uri(REGION, "xgboost", "0.90-1")
+    assert (
+        updated_xgb_image_uri
+        == "246618743249.dkr.ecr.us-west-2.amazonaws.com/sagemaker-xgboost:0.90-1-cpu-py3"
+    )

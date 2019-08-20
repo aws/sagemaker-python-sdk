@@ -10,19 +10,9 @@
 # distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
+"""Placeholder docstring"""
 from __future__ import absolute_import
 
-import os
-
-
-def create_sagemaker_local_network():
-    """
-    Docker has a known race condition which allows two parallel processes
-    to create duplicated networks with the same name. This function
-    creates the network sagemaker-local beforehand, avoiding this issue
-    in CI.
-    """
-    os.system("docker network create sagemaker-local")
-
-
-create_sagemaker_local_network()
+XGBOOST_NAME = "xgboost"
+XGBOOST_LATEST_VERSION = "0.90-1"
+XGBOOST_SUPPORTED_VERSIONS = [XGBOOST_LATEST_VERSION]

@@ -24,7 +24,7 @@ from tests.integ import DATA_DIR, TRAINING_DEFAULT_TIMEOUT_MINUTES
 from tests.integ.timeout import timeout, timeout_and_delete_endpoint_by_name
 
 
-def test_pca(sagemaker_session):
+def test_pca(sagemaker_session, cpu_instance_type):
     job_name = unique_name_from_base("pca")
 
     with timeout(minutes=TRAINING_DEFAULT_TIMEOUT_MINUTES):
@@ -38,7 +38,7 @@ def test_pca(sagemaker_session):
         pca = sagemaker.amazon.pca.PCA(
             role="SageMakerRole",
             train_instance_count=1,
-            train_instance_type="ml.m4.xlarge",
+            train_instance_type=cpu_instance_type,
             num_components=48,
             sagemaker_session=sagemaker_session,
         )
@@ -53,7 +53,7 @@ def test_pca(sagemaker_session):
             model_data=pca.model_data, role="SageMakerRole", sagemaker_session=sagemaker_session
         )
         predictor = pca_model.deploy(
-            initial_instance_count=1, instance_type="ml.c4.xlarge", endpoint_name=job_name
+            initial_instance_count=1, instance_type=cpu_instance_type, endpoint_name=job_name
         )
 
         result = predictor.predict(train_set[0][:5])
@@ -63,7 +63,7 @@ def test_pca(sagemaker_session):
             assert record.label["projection"] is not None
 
 
-def test_async_pca(sagemaker_session):
+def test_async_pca(sagemaker_session, cpu_instance_type):
     job_name = unique_name_from_base("pca")
 
     with timeout(minutes=5):
@@ -77,7 +77,7 @@ def test_async_pca(sagemaker_session):
         pca = sagemaker.amazon.pca.PCA(
             role="SageMakerRole",
             train_instance_count=1,
-            train_instance_type="ml.m4.xlarge",
+            train_instance_type=cpu_instance_type,
             num_components=48,
             sagemaker_session=sagemaker_session,
             base_job_name="test-pca",
@@ -100,7 +100,7 @@ def test_async_pca(sagemaker_session):
             estimator.model_data, role="SageMakerRole", sagemaker_session=sagemaker_session
         )
         predictor = model.deploy(
-            initial_instance_count=1, instance_type="ml.c4.xlarge", endpoint_name=job_name
+            initial_instance_count=1, instance_type=cpu_instance_type, endpoint_name=job_name
         )
 
         result = predictor.predict(train_set[0][:5])

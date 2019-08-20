@@ -25,7 +25,6 @@ from sagemaker.session import s3_input
 from sagemaker.tensorflow import defaults, TensorFlow, TensorFlowModel, TensorFlowPredictor
 import sagemaker.tensorflow.estimator as tfe
 
-
 DATA_DIR = os.path.join(os.path.dirname(__file__), "..", "data")
 SCRIPT_FILE = "dummy_script.py"
 SCRIPT_PATH = os.path.join(DATA_DIR, SCRIPT_FILE)
@@ -954,6 +953,30 @@ def test_script_mode_deprecated_args(sagemaker_session):
     assert _deprecated_args_msg(
         "training_steps, evaluation_steps, requirements_file, checkpoint_path"
     ) in str(e.value)
+
+
+def test_py2_version_deprecated(sagemaker_session):
+    with pytest.raises(AttributeError) as e:
+        _build_tf(sagemaker_session=sagemaker_session, framework_version="1.14", py_version="py2")
+
+    msg = "Python 2 containers are only available until TensorFlow version 1.13.1. Please use a Python 3 container."
+    assert msg in str(e.value)
+
+
+def test_py3_is_default_version_after_tf1_14(sagemaker_session):
+    estimator = _build_tf(sagemaker_session=sagemaker_session, framework_version="1.14")
+
+    assert estimator.py_version == "py3"
+
+
+def test_py3_is_default_version_before_tf1_14(sagemaker_session):
+    estimator = _build_tf(sagemaker_session=sagemaker_session, framework_version="1.13")
+
+    assert estimator.py_version == "py2"
+
+    estimator = _build_tf(sagemaker_session=sagemaker_session, framework_version="1.10")
+
+    assert estimator.py_version == "py2"
 
 
 def test_legacy_mode_deprecated(sagemaker_session):

@@ -24,7 +24,7 @@ import time
 
 
 @pytest.fixture(scope="module")
-def mxnet_training_job(sagemaker_session, mxnet_full_version):
+def mxnet_training_job(sagemaker_session, mxnet_full_version, cpu_instance_type):
     with timeout(minutes=TRAINING_DEFAULT_TIMEOUT_MINUTES):
         script_path = os.path.join(DATA_DIR, "mxnet_mnist", "mnist_neo.py")
         data_path = os.path.join(DATA_DIR, "mxnet_mnist")
@@ -35,7 +35,7 @@ def mxnet_training_job(sagemaker_session, mxnet_full_version):
             framework_version=mxnet_full_version,
             py_version=PYTHON_VERSION,
             train_instance_count=1,
-            train_instance_type="ml.c4.xlarge",
+            train_instance_type=cpu_instance_type,
             sagemaker_session=sagemaker_session,
         )
 
@@ -55,20 +55,22 @@ def mxnet_training_job(sagemaker_session, mxnet_full_version):
 @pytest.mark.skip(
     reason="This should be enabled along with the Boto SDK release for Neo API changes"
 )
-def test_attach_deploy(mxnet_training_job, sagemaker_session):
+def test_attach_deploy(
+    mxnet_training_job, sagemaker_session, cpu_instance_type, cpu_instance_family
+):
     endpoint_name = "test-mxnet-attach-deploy-{}".format(sagemaker_timestamp())
 
     with timeout_and_delete_endpoint_by_name(endpoint_name, sagemaker_session):
         estimator = MXNet.attach(mxnet_training_job, sagemaker_session=sagemaker_session)
 
         estimator.compile_model(
-            target_instance_family="ml_m4",
+            target_instance_family=cpu_instance_family,
             input_shape={"data": [1, 1, 28, 28]},
             output_path=estimator.output_path,
         )
 
         predictor = estimator.deploy(
-            1, "ml.m4.xlarge", use_compiled_model=True, endpoint_name=endpoint_name
+            1, cpu_instance_type, use_compiled_model=True, endpoint_name=endpoint_name
         )
         predictor.content_type = "application/vnd+python.numpy+binary"
         data = numpy.zeros(shape=(1, 1, 28, 28))
@@ -78,7 +80,9 @@ def test_attach_deploy(mxnet_training_job, sagemaker_session):
 @pytest.mark.skip(
     reason="This should be enabled along with the Boto SDK release for Neo API changes"
 )
-def test_deploy_model(mxnet_training_job, sagemaker_session):
+def test_deploy_model(
+    mxnet_training_job, sagemaker_session, cpu_instance_type, cpu_instance_family
+):
     endpoint_name = "test-mxnet-deploy-model-{}".format(sagemaker_timestamp())
 
     with timeout_and_delete_endpoint_by_name(endpoint_name, sagemaker_session):
@@ -97,13 +101,13 @@ def test_deploy_model(mxnet_training_job, sagemaker_session):
         )
 
         model.compile(
-            target_instance_family="ml_m4",
+            target_instance_family=cpu_instance_family,
             input_shape={"data": [1, 1, 28, 28]},
             role=role,
             job_name="test-deploy-model-compilation-job-{}".format(int(time.time())),
             output_path="/".join(model_data.split("/")[:-1]),
         )
-        predictor = model.deploy(1, "ml.m4.xlarge", endpoint_name=endpoint_name)
+        predictor = model.deploy(1, cpu_instance_type, endpoint_name=endpoint_name)
 
         predictor.content_type = "application/vnd+python.numpy+binary"
         data = numpy.zeros(shape=(1, 1, 28, 28))

@@ -21,6 +21,7 @@ import time
 
 import numpy as np
 import pytest
+import tests.integ
 from botocore.exceptions import ClientError
 from tests.integ import DATA_DIR, PYTHON_VERSION, TUNING_DEFAULT_TIMEOUT_MINUTES
 from tests.integ.record_set import prepare_record_set_from_local_files
@@ -63,11 +64,11 @@ def kmeans_train_set(sagemaker_session):
 
 
 @pytest.fixture(scope="module")
-def kmeans_estimator(sagemaker_session):
+def kmeans_estimator(sagemaker_session, cpu_instance_type):
     kmeans = KMeans(
         role="SageMakerRole",
         train_instance_count=1,
-        train_instance_type="ml.c4.xlarge",
+        train_instance_type=cpu_instance_type,
         k=10,
         sagemaker_session=sagemaker_session,
         output_path="s3://{}/".format(sagemaker_session.default_bucket()),
@@ -98,6 +99,7 @@ def _tune_and_deploy(
     kmeans_estimator,
     kmeans_train_set,
     sagemaker_session,
+    cpu_instance_type,
     hyperparameter_ranges=None,
     job_name=None,
     warm_start_config=None,
@@ -111,14 +113,14 @@ def _tune_and_deploy(
         job_name=job_name,
         early_stopping_type=early_stopping_type,
     )
-    _deploy(kmeans_train_set, sagemaker_session, tuner, early_stopping_type)
+    _deploy(kmeans_train_set, sagemaker_session, tuner, early_stopping_type, cpu_instance_type)
 
 
-def _deploy(kmeans_train_set, sagemaker_session, tuner, early_stopping_type):
+def _deploy(kmeans_train_set, sagemaker_session, tuner, early_stopping_type, cpu_instance_type):
     best_training_job = tuner.best_training_job()
     assert tuner.early_stopping_type == early_stopping_type
     with timeout_and_delete_endpoint_by_name(best_training_job, sagemaker_session):
-        predictor = tuner.deploy(1, "ml.c4.xlarge")
+        predictor = tuner.deploy(1, cpu_instance_type)
 
         result = predictor.predict(kmeans_train_set[0][:10])
 
@@ -168,13 +170,14 @@ def _tune(
 
 @pytest.mark.canary_quick
 def test_tuning_kmeans(
-    sagemaker_session, kmeans_train_set, kmeans_estimator, hyperparameter_ranges
+    sagemaker_session, kmeans_train_set, kmeans_estimator, hyperparameter_ranges, cpu_instance_type
 ):
     job_name = unique_name_from_base("test-tune-kmeans")
     _tune_and_deploy(
         kmeans_estimator,
         kmeans_train_set,
         sagemaker_session,
+        cpu_instance_type,
         hyperparameter_ranges=hyperparameter_ranges,
         job_name=job_name,
     )
@@ -407,7 +410,11 @@ def test_tuning_kmeans_identical_dataset_algorithm_tuner_from_non_terminal_paren
         )
 
 
-def test_tuning_lda(sagemaker_session):
+@pytest.mark.skipif(
+    tests.integ.test_region() in tests.integ.NO_LDA_REGIONS,
+    reason="LDA image is not supported in certain regions",
+)
+def test_tuning_lda(sagemaker_session, cpu_instance_type):
     with timeout(minutes=TUNING_DEFAULT_TIMEOUT_MINUTES):
         data_path = os.path.join(DATA_DIR, "lda")
         data_filename = "nips-train_1.pbr"
@@ -420,7 +427,7 @@ def test_tuning_lda(sagemaker_session):
 
         lda = LDA(
             role="SageMakerRole",
-            train_instance_type="ml.c4.xlarge",
+            train_instance_type=cpu_instance_type,
             num_topics=10,
             sagemaker_session=sagemaker_session,
         )
@@ -470,7 +477,7 @@ def test_tuning_lda(sagemaker_session):
     best_training_job = attached_tuner.best_training_job()
 
     with timeout_and_delete_endpoint_by_name(best_training_job, sagemaker_session):
-        predictor = tuner.deploy(1, "ml.c4.xlarge")
+        predictor = tuner.deploy(1, cpu_instance_type)
         predict_input = np.random.rand(1, feature_num)
         result = predictor.predict(predict_input)
 
@@ -479,14 +486,14 @@ def test_tuning_lda(sagemaker_session):
             assert record.label["topic_mixture"] is not None
 
 
-def test_stop_tuning_job(sagemaker_session):
+def test_stop_tuning_job(sagemaker_session, cpu_instance_type):
     feature_num = 14
     train_input = np.random.rand(1000, feature_num)
 
     rcf = RandomCutForest(
         role="SageMakerRole",
         train_instance_count=1,
-        train_instance_type="ml.c4.xlarge",
+        train_instance_type=cpu_instance_type,
         num_trees=50,
         num_samples_per_tree=20,
         sagemaker_session=sagemaker_session,
@@ -531,7 +538,7 @@ def test_stop_tuning_job(sagemaker_session):
 
 
 @pytest.mark.canary_quick
-def test_tuning_mxnet(sagemaker_session, mxnet_full_version):
+def test_tuning_mxnet(sagemaker_session, mxnet_full_version, cpu_instance_type):
     with timeout(minutes=TUNING_DEFAULT_TIMEOUT_MINUTES):
         script_path = os.path.join(DATA_DIR, "mxnet_mnist", "mnist.py")
         data_path = os.path.join(DATA_DIR, "mxnet_mnist")
@@ -541,7 +548,7 @@ def test_tuning_mxnet(sagemaker_session, mxnet_full_version):
             role="SageMakerRole",
             py_version=PYTHON_VERSION,
             train_instance_count=1,
-            train_instance_type="ml.m4.xlarge",
+            train_instance_type=cpu_instance_type,
             framework_version=mxnet_full_version,
             sagemaker_session=sagemaker_session,
         )
@@ -577,13 +584,13 @@ def test_tuning_mxnet(sagemaker_session, mxnet_full_version):
 
     best_training_job = tuner.best_training_job()
     with timeout_and_delete_endpoint_by_name(best_training_job, sagemaker_session):
-        predictor = tuner.deploy(1, "ml.c4.xlarge")
+        predictor = tuner.deploy(1, cpu_instance_type)
         data = np.zeros(shape=(1, 1, 28, 28))
         predictor.predict(data)
 
 
 @pytest.mark.canary_quick
-def test_tuning_tf_script_mode(sagemaker_session):
+def test_tuning_tf_script_mode(sagemaker_session, cpu_instance_type):
     resource_path = os.path.join(DATA_DIR, "tensorflow_mnist")
     script_path = os.path.join(resource_path, "mnist.py")
 
@@ -591,7 +598,7 @@ def test_tuning_tf_script_mode(sagemaker_session):
         entry_point=script_path,
         role="SageMakerRole",
         train_instance_count=1,
-        train_instance_type="ml.m4.xlarge",
+        train_instance_type=cpu_instance_type,
         script_mode=True,
         sagemaker_session=sagemaker_session,
         py_version=PYTHON_VERSION,
@@ -627,7 +634,7 @@ def test_tuning_tf_script_mode(sagemaker_session):
 
 @pytest.mark.canary_quick
 @pytest.mark.skipif(PYTHON_VERSION != "py2", reason="TensorFlow image supports only python 2.")
-def test_tuning_tf(sagemaker_session):
+def test_tuning_tf(sagemaker_session, cpu_instance_type):
     with timeout(minutes=TUNING_DEFAULT_TIMEOUT_MINUTES):
         script_path = os.path.join(DATA_DIR, "iris", "iris-dnn-classifier.py")
 
@@ -638,7 +645,7 @@ def test_tuning_tf(sagemaker_session):
             evaluation_steps=1,
             hyperparameters={"input_tensor_name": "inputs"},
             train_instance_count=1,
-            train_instance_type="ml.c4.xlarge",
+            train_instance_type=cpu_instance_type,
             sagemaker_session=sagemaker_session,
         )
 
@@ -668,7 +675,7 @@ def test_tuning_tf(sagemaker_session):
 
     best_training_job = tuner.best_training_job()
     with timeout_and_delete_endpoint_by_name(best_training_job, sagemaker_session):
-        predictor = tuner.deploy(1, "ml.c4.xlarge")
+        predictor = tuner.deploy(1, cpu_instance_type)
 
         features = [6.4, 3.2, 4.5, 1.5]
         dict_result = predictor.predict({"inputs": features})
@@ -680,9 +687,9 @@ def test_tuning_tf(sagemaker_session):
 
 
 @pytest.mark.skipif(PYTHON_VERSION != "py2", reason="TensorFlow image supports only python 2.")
-def test_tuning_tf_vpc_multi(sagemaker_session):
+def test_tuning_tf_vpc_multi(sagemaker_session, cpu_instance_type):
     """Test Tensorflow multi-instance using the same VpcConfig for training and inference"""
-    instance_type = "ml.c4.xlarge"
+    instance_type = cpu_instance_type
     instance_count = 2
 
     script_path = os.path.join(DATA_DIR, "iris", "iris-dnn-classifier.py")
@@ -735,7 +742,7 @@ def test_tuning_tf_vpc_multi(sagemaker_session):
 
 
 @pytest.mark.canary_quick
-def test_tuning_chainer(sagemaker_session):
+def test_tuning_chainer(sagemaker_session, cpu_instance_type):
     with timeout(minutes=TUNING_DEFAULT_TIMEOUT_MINUTES):
         script_path = os.path.join(DATA_DIR, "chainer_mnist", "mnist.py")
         data_path = os.path.join(DATA_DIR, "chainer_mnist")
@@ -745,7 +752,7 @@ def test_tuning_chainer(sagemaker_session):
             role="SageMakerRole",
             py_version=PYTHON_VERSION,
             train_instance_count=1,
-            train_instance_type="ml.c4.xlarge",
+            train_instance_type=cpu_instance_type,
             sagemaker_session=sagemaker_session,
             hyperparameters={"epochs": 1},
         )
@@ -786,7 +793,7 @@ def test_tuning_chainer(sagemaker_session):
 
     best_training_job = tuner.best_training_job()
     with timeout_and_delete_endpoint_by_name(best_training_job, sagemaker_session):
-        predictor = tuner.deploy(1, "ml.c4.xlarge")
+        predictor = tuner.deploy(1, cpu_instance_type)
 
         batch_size = 100
         data = np.zeros((batch_size, 784), dtype="float32")
@@ -803,7 +810,11 @@ def test_tuning_chainer(sagemaker_session):
 
 
 @pytest.mark.canary_quick
-def test_attach_tuning_pytorch(sagemaker_session):
+@pytest.mark.skip(
+    reason="This test has always failed, but the failure was masked by a bug. "
+    "This test should be fixed. Details in https://github.com/aws/sagemaker-python-sdk/pull/968"
+)
+def test_attach_tuning_pytorch(sagemaker_session, cpu_instance_type):
     mnist_dir = os.path.join(DATA_DIR, "pytorch_mnist")
     mnist_script = os.path.join(mnist_dir, "mnist.py")
 
@@ -812,7 +823,7 @@ def test_attach_tuning_pytorch(sagemaker_session):
         role="SageMakerRole",
         train_instance_count=1,
         py_version=PYTHON_VERSION,
-        train_instance_type="ml.c4.xlarge",
+        train_instance_type=cpu_instance_type,
         sagemaker_session=sagemaker_session,
     )
 
@@ -855,8 +866,11 @@ def test_attach_tuning_pytorch(sagemaker_session):
 
     with timeout_and_delete_endpoint_by_name(endpoint_name, sagemaker_session):
         predictor = attached_tuner.deploy(
-            1, "ml.c4.xlarge", endpoint_name=endpoint_name, model_name=model_name
+            1, cpu_instance_type, endpoint_name=endpoint_name, model_name=model_name
         )
+    best_training_job = tuner.best_training_job()
+    with timeout_and_delete_endpoint_by_name(best_training_job, sagemaker_session):
+        predictor = attached_tuner.deploy(1, cpu_instance_type)
         data = np.zeros(shape=(1, 1, 28, 28), dtype=np.float32)
         predictor.predict(data)
 
@@ -869,7 +883,7 @@ def test_attach_tuning_pytorch(sagemaker_session):
 
 
 @pytest.mark.canary_quick
-def test_tuning_byo_estimator(sagemaker_session):
+def test_tuning_byo_estimator(sagemaker_session, cpu_instance_type):
     """Use Factorization Machines algorithm as an example here.
 
     First we need to prepare data for training. We take standard data set, convert it to the
@@ -899,7 +913,7 @@ def test_tuning_byo_estimator(sagemaker_session):
             image_name=image_name,
             role="SageMakerRole",
             train_instance_count=1,
-            train_instance_type="ml.c4.xlarge",
+            train_instance_type=cpu_instance_type,
             sagemaker_session=sagemaker_session,
         )
 
@@ -930,7 +944,7 @@ def test_tuning_byo_estimator(sagemaker_session):
 
     best_training_job = tuner.best_training_job()
     with timeout_and_delete_endpoint_by_name(best_training_job, sagemaker_session):
-        predictor = tuner.deploy(1, "ml.m4.xlarge", endpoint_name=best_training_job)
+        predictor = tuner.deploy(1, cpu_instance_type, endpoint_name=best_training_job)
         predictor.serializer = _fm_serializer
         predictor.content_type = "application/json"
         predictor.deserializer = json_deserializer

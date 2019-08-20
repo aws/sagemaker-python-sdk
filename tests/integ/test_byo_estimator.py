@@ -41,7 +41,7 @@ def fm_serializer(data):
 
 
 @pytest.mark.canary_quick
-def test_byo_estimator(sagemaker_session, region):
+def test_byo_estimator(sagemaker_session, region, cpu_instance_type):
     """Use Factorization Machines algorithm as an example here.
 
     First we need to prepare data for training. We take standard data set, convert it to the
@@ -74,7 +74,7 @@ def test_byo_estimator(sagemaker_session, region):
             image_name=image_name,
             role="SageMakerRole",
             train_instance_count=1,
-            train_instance_type="ml.c4.xlarge",
+            train_instance_type=cpu_instance_type,
             sagemaker_session=sagemaker_session,
         )
 
@@ -87,7 +87,7 @@ def test_byo_estimator(sagemaker_session, region):
 
     with timeout_and_delete_endpoint_by_name(job_name, sagemaker_session):
         model = estimator.create_model()
-        predictor = model.deploy(1, "ml.m4.xlarge", endpoint_name=job_name)
+        predictor = model.deploy(1, cpu_instance_type, endpoint_name=job_name)
         predictor.serializer = fm_serializer
         predictor.content_type = "application/json"
         predictor.deserializer = sagemaker.predictor.json_deserializer
@@ -99,7 +99,7 @@ def test_byo_estimator(sagemaker_session, region):
             assert prediction["score"] is not None
 
 
-def test_async_byo_estimator(sagemaker_session, region):
+def test_async_byo_estimator(sagemaker_session, region, cpu_instance_type):
     image_name = registry(region) + "/factorization-machines:1"
     endpoint_name = unique_name_from_base("byo")
     training_data_path = os.path.join(DATA_DIR, "dummy_tensor")
@@ -123,7 +123,7 @@ def test_async_byo_estimator(sagemaker_session, region):
             image_name=image_name,
             role="SageMakerRole",
             train_instance_count=1,
-            train_instance_type="ml.c4.xlarge",
+            train_instance_type=cpu_instance_type,
             sagemaker_session=sagemaker_session,
         )
 
@@ -139,7 +139,7 @@ def test_async_byo_estimator(sagemaker_session, region):
             training_job_name=job_name, sagemaker_session=sagemaker_session
         )
         model = estimator.create_model()
-        predictor = model.deploy(1, "ml.m4.xlarge", endpoint_name=endpoint_name)
+        predictor = model.deploy(1, cpu_instance_type, endpoint_name=endpoint_name)
         predictor.serializer = fm_serializer
         predictor.content_type = "application/json"
         predictor.deserializer = sagemaker.predictor.json_deserializer

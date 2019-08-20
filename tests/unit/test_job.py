@@ -563,10 +563,22 @@ def test_prepare_resource_config_with_volume_kms():
 
 def test_prepare_stop_condition():
     max_run = 1
+    max_wait = 2
 
-    stop_condition = _Job._prepare_stop_condition(max_run)
+    stop_condition = _Job._prepare_stop_condition(max_run, max_wait)
 
     assert stop_condition["MaxRuntimeInSeconds"] == max_run
+    assert stop_condition["MaxWaitTimeInSeconds"] == max_wait
+
+
+def test_prepare_stop_condition_no_wait():
+    max_run = 1
+    max_wait = None
+
+    stop_condition = _Job._prepare_stop_condition(max_run, max_wait)
+
+    assert stop_condition["MaxRuntimeInSeconds"] == max_run
+    assert "MaxWaitTimeInSeconds" not in stop_condition
 
 
 def test_name(sagemaker_session):
