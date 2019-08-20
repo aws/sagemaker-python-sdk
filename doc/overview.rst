@@ -363,11 +363,11 @@ Here are examples of how to use Amazon FSx for Lustre as input for training:
         # you chose for your Amazon EC2 instance
 
         estimator = TensorFlow(entry_point='tensorflow_mnist/mnist.py',
-                                       role='SageMakerRole',
-                                       train_instance_count=1,
-                                       train_instance_type='ml.c4.xlarge',
-                                       subnets=['subnet-1', 'subnet-2']
-                                       security_group_ids=['sg-1'])
+                               role='SageMakerRole',
+                               train_instance_count=1,
+                               train_instance_type='ml.c4.xlarge',
+                               subnets=['subnet-1', 'subnet-2']
+                               security_group_ids=['sg-1'])
 
 
         file_system_input = FileSystemInput(file_system_id='fs-2',
