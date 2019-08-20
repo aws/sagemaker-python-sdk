@@ -52,12 +52,17 @@ def _create_vpc_with_name(ec2_client, region, name):
     print("created vpc: {}".format(vpc_id))
 
     # sagemaker endpoints require subnets in at least 2 different AZs for vpc mode
+    availability_zones = ec2_client.describe_availability_zones()["AvailabilityZones"]
+
+    if len(availability_zones) < 2:
+        raise Exception("Sagemaker vpc mode cannot run in this region, as 2 AZs are required.")
+
     subnet_id_a = ec2_client.create_subnet(
-        CidrBlock="10.0.0.0/24", VpcId=vpc_id, AvailabilityZone=(region + "a")
+        CidrBlock="10.0.0.0/24", VpcId=vpc_id, AvailabilityZone=availability_zones[0]["ZoneName"]
     )["Subnet"]["SubnetId"]
     print("created subnet: {}".format(subnet_id_a))
     subnet_id_b = ec2_client.create_subnet(
-        CidrBlock="10.0.1.0/24", VpcId=vpc_id, AvailabilityZone=(region + "b")
+        CidrBlock="10.0.1.0/24", VpcId=vpc_id, AvailabilityZone=availability_zones[1]["ZoneName"]
     )["Subnet"]["SubnetId"]
     print("created subnet: {}".format(subnet_id_b))
 
