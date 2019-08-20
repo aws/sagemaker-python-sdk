@@ -1,4 +1,4 @@
-# Copyright 2017-2018 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright 2017-2019 Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -28,6 +28,7 @@ from sagemaker.mxnet import MXNetPredictor, MXNetModel
 
 DATA_DIR = os.path.join(os.path.dirname(__file__), "..", "data")
 SCRIPT_PATH = os.path.join(DATA_DIR, "dummy_script.py")
+SERVING_SCRIPT_FILE = "another_dummy_script.py"
 MODEL_DATA = "s3://mybucket/model"
 TIMESTAMP = "2017-11-06-14:14:15.672"
 TIME = 1507167947
@@ -213,12 +214,16 @@ def test_create_model_with_optional_params(sagemaker_session):
     model_server_workers = 2
     vpc_config = {"Subnets": ["foo"], "SecurityGroupIds": ["bar"]}
     model = mx.create_model(
-        role=new_role, model_server_workers=model_server_workers, vpc_config_override=vpc_config
+        role=new_role,
+        model_server_workers=model_server_workers,
+        vpc_config_override=vpc_config,
+        entry_point=SERVING_SCRIPT_FILE,
     )
 
     assert model.role == new_role
     assert model.model_server_workers == model_server_workers
     assert model.vpc_config == vpc_config
+    assert model.entry_point == SERVING_SCRIPT_FILE
 
 
 def test_create_model_with_custom_image(sagemaker_session):
@@ -699,3 +704,26 @@ def test_empty_framework_version(warning, sagemaker_session):
 
     assert mx.framework_version == defaults.MXNET_VERSION
     warning.assert_called_with(defaults.MXNET_VERSION, mx.LATEST_VERSION)
+
+
+def test_create_model_with_custom_hosting_image(sagemaker_session):
+    container_log_level = '"logging.INFO"'
+    source_dir = "s3://mybucket/source"
+    custom_image = "mxnet:2.0"
+    custom_hosting_image = "mxnet_hosting:2.0"
+    mx = MXNet(
+        entry_point=SCRIPT_PATH,
+        role=ROLE,
+        sagemaker_session=sagemaker_session,
+        train_instance_count=INSTANCE_COUNT,
+        train_instance_type=INSTANCE_TYPE,
+        image_name=custom_image,
+        container_log_level=container_log_level,
+        base_job_name="job",
+        source_dir=source_dir,
+    )
+
+    mx.fit(inputs="s3://mybucket/train", job_name="new_name")
+    model = mx.create_model(image_name=custom_hosting_image)
+
+    assert model.image == custom_hosting_image

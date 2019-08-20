@@ -361,15 +361,19 @@ def test_model_create_transformer(sagemaker_session):
         return_value=DESCRIBE_MODEL_PACKAGE_RESPONSE
     )
 
+    tags = [{"Key": "k", "Value": "v"}]
     model = DummyFrameworkModel(sagemaker_session=sagemaker_session)
+    instance_type = "ml.m4.xlarge"
     model.name = "auto-generated-model"
     transformer = model.transformer(
-        instance_count=1, instance_type="ml.m4.xlarge", env={"test": True}
+        instance_count=1, instance_type=instance_type, env={"test": True}, tags=tags
     )
     assert isinstance(transformer, sagemaker.transformer.Transformer)
     assert transformer.model_name == "auto-generated-model"
     assert transformer.instance_type == "ml.m4.xlarge"
     assert transformer.env == {"test": True}
+
+    sagemaker.model.Model._create_sagemaker_model.assert_called_with(instance_type, tags=tags)
 
 
 def test_model_package_enable_network_isolation_with_no_product_id(sagemaker_session):

@@ -21,11 +21,14 @@ import tempfile
 
 from tests.integ import lock as lock
 from sagemaker.mxnet.estimator import MXNet
+from sagemaker.pytorch.defaults import PYTORCH_VERSION
 from sagemaker.pytorch.estimator import PyTorch
 from sagemaker.sklearn.estimator import SKLearn
 from sagemaker.mxnet.model import MXNetModel
 from sagemaker.sklearn.model import SKLearnModel
 from tests.integ import DATA_DIR, PYTHON_VERSION
+
+MNIST_FOLDER_NAME = "MNIST"
 
 GIT_REPO = "https://github.com/aws/sagemaker-python-sdk.git"
 BRANCH = "test-branch-git-config"
@@ -60,7 +63,7 @@ def test_git_support_with_pytorch(sagemaker_local_session):
         entry_point=script_path,
         role="SageMakerRole",
         source_dir="pytorch",
-        framework_version=PyTorch.LATEST_VERSION,
+        framework_version=PYTORCH_VERSION,
         py_version=PYTHON_VERSION,
         train_instance_count=1,
         train_instance_type="local",
@@ -68,7 +71,7 @@ def test_git_support_with_pytorch(sagemaker_local_session):
         git_config=git_config,
     )
 
-    pytorch.fit({"training": "file://" + os.path.join(data_path, "training")})
+    pytorch.fit({"training": "file://" + os.path.join(data_path, "training", MNIST_FOLDER_NAME)})
 
     with lock.lock(LOCK_PATH):
         try:

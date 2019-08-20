@@ -10,11 +10,13 @@
 # distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
+"""Placeholder docstring"""
 from __future__ import absolute_import
 
 PYTORCH_VERSION = "0.4"
 """Default PyTorch version for when the framework version is not specified.
-This is no longer updated so as to not break existing workflows.
+The latest PyTorch version is 1.1.0, but the default version is no longer updated so as to not
+break existing workflows.
 """
 
 PYTHON_VERSION = "py3"

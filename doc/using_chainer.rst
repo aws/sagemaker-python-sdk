@@ -1,55 +1,40 @@
-===========================================
+###########################################
 Using Chainer with the SageMaker Python SDK
-===========================================
-
-.. contents::
+###########################################
 
 With Chainer Estimators, you can train and host Chainer models on Amazon SageMaker.
 
-Supported versions of Chainer: ``4.0.0``, ``4.1.0``, ``5.0.0``
+For information about supported versions of Chainer, see the `Chainer README <https://github.com/aws/sagemaker-python-sdk/blob/master/src/sagemaker/chainer/README.rst>`__.
 
-You can visit the Chainer repository at https://github.com/chainer/chainer.
+For general information about using the SageMaker Python SDK, see :ref:`overview:Using the SageMaker Python SDK`.
+
+.. contents::
+
+**************************
+Train a Model with Chainer
+**************************
+
+To train a Chainer model by using the SageMaker Python SDK:
+
+.. |create chainer estimator| replace:: Create a ``sagemaker.chainer.Chainer`` Estimator
+.. _create chainer estimator: #create-an-estimator
+
+.. |call fit| replace:: Call the estimator's ``fit`` method
+.. _call fit: #call-the-fit-method
+
+1. `Prepare a training script <#prepare-a-chainer-training-script>`_
+2. |create chainer estimator|_
+3. |call fit|_
 
 
-Training with Chainer
-~~~~~~~~~~~~~~~~~~~~~
-
-Training Chainer models using ``Chainer`` Estimators is a two-step process:
-
-1. Prepare a Chainer script to run on SageMaker
-2. Run this script on SageMaker via a ``Chainer`` Estimator.
-
-
-First, you prepare your training script, then second, you run this on SageMaker via a ``Chainer`` Estimator.
-You should prepare your script in a separate source file than the notebook, terminal session, or source file you're
-using to submit the script to SageMaker via a ``Chainer`` Estimator.
-
-Suppose that you already have an Chainer training script called
-``chainer-train.py``. You can run this script in SageMaker as follows:
-
-.. code:: python
-
-    from sagemaker.chainer import Chainer
-    chainer_estimator = Chainer(entry_point='chainer-train.py',
-                                role='SageMakerRole',
-                                train_instance_type='ml.p3.2xlarge',
-                                train_instance_count=1,
-                                framework_version='5.0.0')
-    chainer_estimator.fit('s3://bucket/path/to/training/data')
-
-Where the S3 URL is a path to your training data, within Amazon S3. The constructor keyword arguments define how
-SageMaker runs your training script and are discussed in detail in a later section.
-
-In the following sections, we'll discuss how to prepare a training script for execution on SageMaker,
-then how to run that script on SageMaker using a ``Chainer`` Estimator.
-
-Preparing the Chainer training script
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Prepare a Chainer training script
+=================================
 
 Your Chainer training script must be a Python 2.7 or 3.5 compatible source file.
 
-The training script is very similar to a training script you might run outside of SageMaker, but you
-can access useful properties about the training environment through various environment variables, such as
+The training script is similar to a training script you might run outside of SageMaker, but you
+can access useful properties about the training environment through various environment variables,
+such as the following:
 
 * ``SM_MODEL_DIR``: A string representing the path to the directory to write model artifacts to.
   These artifacts are uploaded to S3 for model hosting.
@@ -58,8 +43,8 @@ can access useful properties about the training environment through various envi
   include checkpoints, graphs, and other files to save, not including model artifacts. These artifacts are compressed
   and uploaded to S3 to the same S3 prefix as the model artifacts.
 
-Supposing two input channels, 'train' and 'test', were used in the call to the Chainer estimator's ``fit()`` method,
-the following will be set, following the format "SM_CHANNEL_[channel_name]":
+Suppose you use two input channels, named 'train' and 'test', in the call to the Chainer estimator's ``fit()`` method.
+The following environment variables are set, following the format "SM_CHANNEL_[channel_name]":
 
 * ``SM_CHANNEL_TRAIN``: A string representing the path to the directory containing data in the 'train' channel
 * ``SM_CHANNEL_TEST``: Same as above, but for the 'test' channel.
@@ -99,176 +84,8 @@ inadvertently run your training code at the wrong point in execution.
 
 For more on training environment variables, please visit https://github.com/aws/sagemaker-containers.
 
-Using third-party libraries
-^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-When running your training script on SageMaker, it will have access to some pre-installed third-party libraries including ``chainer``, ``numpy``, and ``cupy``.
-For more information on the runtime environment, including specific package versions, see `SageMaker Chainer Docker containers <#sagemaker-chainer-docker-containers>`__.
-
-If there are other packages you want to use with your script, you can include a ``requirements.txt`` file in the same directory as your training script to install other dependencies at runtime.
-A ``requirements.txt`` file is a text file that contains a list of items that are installed by using ``pip install``. You can also specify the version of an item to install.
-For information about the format of a ``requirements.txt`` file, see `Requirements Files <https://pip.pypa.io/en/stable/user_guide/#requirements-files>`__ in the pip documentation.
-
-Running a Chainer training script in SageMaker
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-You run Chainer training scripts on SageMaker by creating ``Chainer`` Estimators.
-SageMaker training of your script is invoked when you call ``fit`` on a ``Chainer`` Estimator.
-The following code sample shows how you train a custom Chainer script "chainer-train.py", passing
-in three hyperparameters ('epochs', 'batch-size', and 'learning-rate'), and using two input channel
-directories ('train' and 'test').
-
-.. code:: python
-
-    chainer_estimator = Chainer('chainer-train.py',
-                                train_instance_type='ml.p3.2xlarge',
-                                train_instance_count=1,
-                                framework_version='5.0.0',
-                                hyperparameters = {'epochs': 20, 'batch-size': 64, 'learning-rate': 0.1})
-    chainer_estimator.fit({'train': 's3://my-data-bucket/path/to/my/training/data',
-                           'test': 's3://my-data-bucket/path/to/my/test/data'})
-
-
-Chainer Estimators
-^^^^^^^^^^^^^^^^^^
-
-The `Chainer` constructor takes both required and optional arguments.
-
-Required arguments
-''''''''''''''''''
-
-The following are required arguments to the ``Chainer`` constructor. When you create a Chainer object, you must include
-these in the constructor, either positionally or as keyword arguments.
-
--  ``entry_point`` Path (absolute or relative) to the Python file which
-   should be executed as the entry point to training.
--  ``role`` An AWS IAM role (either name or full ARN). The Amazon
-   SageMaker training jobs and APIs that create Amazon SageMaker
-   endpoints use this role to access training data and model artifacts.
-   After the endpoint is created, the inference code might use the IAM
-   role, if accessing AWS resource.
--  ``train_instance_count`` Number of Amazon EC2 instances to use for
-   training.
--  ``train_instance_type`` Type of EC2 instance to use for training, for
-   example, 'ml.m4.xlarge'.
-
-Optional arguments
-''''''''''''''''''
-
-The following are optional arguments. When you create a ``Chainer`` object, you can specify these as keyword arguments.
-
--  ``source_dir`` Path (absolute or relative) to a directory with any
-   other training source code dependencies including the entry point
-   file. Structure within this directory will be preserved when training
-   on SageMaker.
-- ``dependencies (list[str])`` A list of paths to directories (absolute or relative) with
-        any additional libraries that will be exported to the container (default: []).
-        The library folders will be copied to SageMaker in the same folder where the entrypoint is copied.
-        If the ```source_dir``` points to S3, code will be uploaded and the S3 location will be used
-        instead. Example:
-
-            The following call
-            >>> Chainer(entry_point='train.py', dependencies=['my/libs/common', 'virtual-env'])
-            results in the following inside the container:
-
-            >>> $ ls
-
-            >>> opt/ml/code
-            >>>     ├── train.py
-            >>>     ├── common
-            >>>     └── virtual-env
-
--  ``hyperparameters`` Hyperparameters that will be used for training.
-   Will be made accessible as a dict[str, str] to the training code on
-   SageMaker. For convenience, accepts other types besides str, but
-   str() will be called on keys and values to convert them before
-   training.
--  ``py_version`` Python version you want to use for executing your
-   model training code.
--  ``train_volume_size`` Size in GB of the EBS volume to use for storing
-   input data during training. Must be large enough to store training
-   data if input_mode='File' is used (which is the default).
--  ``train_max_run`` Timeout in seconds for training, after which Amazon
-   SageMaker terminates the job regardless of its current status.
--  ``input_mode`` The input mode that the algorithm supports. Valid
-   modes: 'File' - Amazon SageMaker copies the training dataset from the
-   s3 location to a directory in the Docker container. 'Pipe' - Amazon
-   SageMaker streams data directly from s3 to the container via a Unix
-   named pipe.
--  ``output_path`` s3 location where you want the training result (model
-   artifacts and optional output files) saved. If not specified, results
-   are stored to a default bucket. If the bucket with the specific name
-   does not exist, the estimator creates the bucket during the fit()
-   method execution.
--  ``output_kms_key`` Optional KMS key ID to optionally encrypt training
-   output with.
--  ``job_name`` Name to assign for the training job that the fit()
-   method launches. If not specified, the estimator generates a default
-   job name, based on the training image name and current timestamp
--  ``image_name`` An alternative docker image to use for training and
-   serving.  If specified, the estimator will use this image for training and
-   hosting, instead of selecting the appropriate SageMaker official image based on
-   framework_version and py_version. Refer to: `SageMaker Chainer Docker Containers
-   <#sagemaker-chainer-docker-containers>`__ for details on what the Official images support
-   and where to find the source code to build your custom image.
-
-
-Distributed Chainer Training
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-
-Chainer allows you to train a model on multiple nodes using ChainerMN_, which distributes training with MPI.
-
-.. _ChainerMN: https://github.com/chainer/chainermn
-
-In order to run distributed Chainer training on SageMaker, your training script should use a ``chainermn`` Communicator
-object to coordinate training between multiple hosts.
-
-SageMaker runs your script with ``mpirun`` if ``train_instance_count`` is greater than two.
-The following are optional arguments modify how MPI runs your distributed training script.
-
--  ``use_mpi`` Boolean that overrides whether to run your training script with MPI.
--  ``num_processes`` Integer that determines how many total processes to run with MPI. By default, this is equal to ``process_slots_per_host`` times the number of nodes.
--  ``process_slots_per_host`` Integer that determines how many processes can be run on each host. By default, this is equal to one process per host on CPU instances, or one process per GPU on GPU instances.
--  ``additional_mpi_options`` String of additional options to pass to the ``mpirun`` command.
-
-
-Calling fit
-^^^^^^^^^^^
-
-You start your training script by calling ``fit`` on a ``Chainer`` Estimator. ``fit`` takes both required and optional
-arguments.
-
-Required arguments
-''''''''''''''''''
-
--  ``inputs``: This can take one of the following forms: A string
-   s3 URI, for example ``s3://my-bucket/my-training-data``. In this
-   case, the s3 objects rooted at the ``my-training-data`` prefix will
-   be available in the default ``train`` channel. A dict from
-   string channel names to s3 URIs. In this case, the objects rooted at
-   each s3 prefix will available as files in each channel directory.
-
-For example:
-
-.. code:: python
-
-    {'train':'s3://my-bucket/my-training-data',
-     'eval':'s3://my-bucket/my-evaluation-data'}
-
-.. optional-arguments-1:
-
-Optional arguments
-''''''''''''''''''
-
--  ``wait``: Defaults to True, whether to block and wait for the
-   training script to complete before returning.
--  ``logs``: Defaults to True, whether to show logs produced by training
-   job in the Python session. Only meaningful when wait is True.
-
-
-Saving models
-~~~~~~~~~~~~~
+Save the Model
+--------------
 
 In order to save your trained Chainer model for deployment on SageMaker, your training script should save your model
 to a certain filesystem path called `model_dir`. This value is accessible through the environment variable
@@ -292,8 +109,92 @@ to a certain filesystem path called `model_dir`. This value is accessible throug
 After your training job is complete, SageMaker will compress and upload the serialized model to S3, and your model data
 will available in the s3 ``output_path`` you specified when you created the Chainer Estimator.
 
-Deploying Chainer models
-~~~~~~~~~~~~~~~~~~~~~~~~
+Using third-party libraries
+---------------------------
+
+When running your training script on SageMaker, it will have access to some pre-installed third-party libraries including ``chainer``, ``numpy``, and ``cupy``.
+For more information on the runtime environment, including specific package versions, see `SageMaker Chainer Docker containers <#sagemaker-chainer-docker-containers>`__.
+
+If there are other packages you want to use with your script, you can include a ``requirements.txt`` file in the same directory as your training script to install other dependencies at runtime.
+A ``requirements.txt`` file is a text file that contains a list of items that are installed by using ``pip install``. You can also specify the version of an item to install.
+For information about the format of a ``requirements.txt`` file, see `Requirements Files <https://pip.pypa.io/en/stable/user_guide/#requirements-files>`__ in the pip documentation.
+
+Create an Estimator
+===================
+
+You run Chainer training scripts on SageMaker by creating ``Chainer`` Estimators.
+SageMaker training of your script is invoked when you call ``fit`` on a ``Chainer`` Estimator.
+The following code sample shows how you train a custom Chainer script "chainer-train.py", passing
+in three hyperparameters ('epochs', 'batch-size', and 'learning-rate'), and using two input channel
+directories ('train' and 'test').
+
+.. code:: python
+
+    chainer_estimator = Chainer('chainer-train.py',
+                                train_instance_type='ml.p3.2xlarge',
+                                train_instance_count=1,
+                                framework_version='5.0.0',
+                                hyperparameters = {'epochs': 20, 'batch-size': 64, 'learning-rate': 0.1})
+    chainer_estimator.fit({'train': 's3://my-data-bucket/path/to/my/training/data',
+                           'test': 's3://my-data-bucket/path/to/my/test/data'})
+
+
+Call the fit Method
+===================
+
+You start your training script by calling ``fit`` on a ``Chainer`` Estimator. ``fit`` takes both required and optional
+arguments.
+
+fit Required arguments
+----------------------
+
+-  ``inputs``: This can take one of the following forms: A string
+   s3 URI, for example ``s3://my-bucket/my-training-data``. In this
+   case, the s3 objects rooted at the ``my-training-data`` prefix will
+   be available in the default ``train`` channel. A dict from
+   string channel names to s3 URIs. In this case, the objects rooted at
+   each s3 prefix will available as files in each channel directory.
+
+For example:
+
+.. code:: python
+
+    {'train':'s3://my-bucket/my-training-data',
+     'eval':'s3://my-bucket/my-evaluation-data'}
+
+.. optional-arguments-1:
+
+fit Optional arguments
+----------------------
+
+-  ``wait``: Defaults to True, whether to block and wait for the
+   training script to complete before returning.
+-  ``logs``: Defaults to True, whether to show logs produced by training
+   job in the Python session. Only meaningful when wait is True.
+
+Distributed Training
+====================
+
+
+Chainer allows you to train a model on multiple nodes using ChainerMN_, which distributes training with MPI.
+
+.. _ChainerMN: https://github.com/chainer/chainermn
+
+In order to run distributed Chainer training on SageMaker, your training script should use a ``chainermn`` Communicator
+object to coordinate training between multiple hosts.
+
+SageMaker runs your script with ``mpirun`` if ``train_instance_count`` is greater than two.
+The following are optional arguments modify how MPI runs your distributed training script.
+
+-  ``use_mpi`` Boolean that overrides whether to run your training script with MPI.
+-  ``num_processes`` Integer that determines how many total processes to run with MPI. By default, this is equal to ``process_slots_per_host`` times the number of nodes.
+-  ``process_slots_per_host`` Integer that determines how many processes can be run on each host. By default, this is equal to one process per host on CPU instances, or one process per GPU on GPU instances.
+-  ``additional_mpi_options`` String of additional options to pass to the ``mpirun`` command.
+
+
+*********************
+Deploy Chainer models
+*********************
 
 After an Chainer Estimator has been fit, you can host the newly created model in SageMaker.
 
@@ -331,7 +232,7 @@ You can access the name of the Endpoint by the ``name`` property on the returned
 
 
 The SageMaker Chainer Model Server
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+==================================
 
 The Chainer Endpoint you create with ``deploy`` runs a SageMaker Chainer model server.
 The model server loads the model that was saved by your training script and performs inference on the model in response
@@ -343,8 +244,8 @@ Serving is the process of translating InvokeEndpoint requests to inference calls
 
 You configure the Chainer model server by defining functions in the Python source file you passed to the Chainer constructor.
 
-Model loading
-^^^^^^^^^^^^^
+Load a Model
+------------
 
 Before a model can be served, it must be loaded. The SageMaker Chainer model server loads your model by invoking a
 ``model_fn`` function that you must provide in your script. The ``model_fn`` should have the following signature:
@@ -373,8 +274,8 @@ It loads the model parameters from a ``model.npz`` file in the SageMaker model d
         chainer.serializers.load_npz(os.path.join(model_dir, 'model.npz'), model)
         return model.predictor
 
-Model serving
-^^^^^^^^^^^^^
+Serve a Model
+-------------
 
 After the SageMaker model server has loaded your model by calling ``model_fn``, SageMaker will serve your model.
 Model serving is the process of responding to inference requests, received by SageMaker InvokeEndpoint API calls.
@@ -431,8 +332,8 @@ data.
 In the following sections we describe the default implementations of input_fn, predict_fn, and output_fn.
 We describe the input arguments and expected return types of each, so you can define your own implementations.
 
-Input processing
-''''''''''''''''
+Process Input
+^^^^^^^^^^^^^
 
 When an InvokeEndpoint operation is made against an Endpoint running a SageMaker Chainer model server,
 the model server receives two pieces of information:
@@ -483,8 +384,8 @@ The example below shows a custom ``input_fn`` for preparing pickled NumPy arrays
 
 
 
-Prediction
-''''''''''
+Get Predictions
+---------------
 
 After the inference request has been deserialized by ``input_fn``, the SageMaker Chainer model server invokes
 ``predict_fn`` on the return value of ``input_fn``.
@@ -529,8 +430,8 @@ If you implement your own prediction function, you should take care to ensure th
    first argument to ``output_fn``. If you use the default
    ``output_fn``, this should be a NumPy array.
 
-Output processing
-'''''''''''''''''
+Process Output
+^^^^^^^^^^^^^^
 
 After invoking ``predict_fn``, the model server invokes ``output_fn``, passing in the return-value from ``predict_fn``
 and the InvokeEndpoint requested response content-type.
@@ -549,10 +450,10 @@ The default implementation expects ``prediction`` to be an NumPy and can seriali
 It accepts response content types of "application/json", "text/csv", and "application/x-npy".
 
 Working with existing model data and training jobs
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+==================================================
 
-Attaching to existing training jobs
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Attach to Existing Training Jobs
+--------------------------------
 
 You can attach an Chainer Estimator to an existing training job using the
 ``attach`` method.
@@ -574,8 +475,8 @@ The ``attach`` method accepts the following arguments:
 -  ``sagemaker_session (sagemaker.Session or None):`` The Session used
    to interact with SageMaker
 
-Deploying Endpoints from model data
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Deploy Endpoints from Model Data
+--------------------------------
 
 As well as attaching to existing training jobs, you can deploy models directly from model data in S3.
 The following code sample shows how to do this, using the ``ChainerModel`` class.
@@ -635,8 +536,9 @@ This uploads the contents of my_model to a gzip compressed tar file to S3 in the
 To run this command, you'll need the aws cli tool installed. Please refer to our `FAQ <#FAQ>`__ for more information on
 installing this.
 
-Chainer Training Examples
-~~~~~~~~~~~~~~~~~~~~~~~~~
+********
+Examples
+********
 
 Amazon provides several example Jupyter notebooks that demonstrate end-to-end training on Amazon SageMaker using Chainer.
 Please refer to:
@@ -645,55 +547,94 @@ https://github.com/awslabs/amazon-sagemaker-examples/tree/master/sagemaker-pytho
 
 These are also available in SageMaker Notebook Instance hosted Jupyter notebooks under the "sample notebooks" folder.
 
+*******************************
+sagemaker.chainer.Chainer Class
+*******************************
 
+The `Chainer` constructor takes both required and optional arguments.
+
+Required arguments
+==================
+
+The following are required arguments to the ``Chainer`` constructor. When you create a Chainer object, you must include
+these in the constructor, either positionally or as keyword arguments.
+
+-  ``entry_point`` Path (absolute or relative) to the Python file which
+   should be executed as the entry point to training.
+-  ``role`` An AWS IAM role (either name or full ARN). The Amazon
+   SageMaker training jobs and APIs that create Amazon SageMaker
+   endpoints use this role to access training data and model artifacts.
+   After the endpoint is created, the inference code might use the IAM
+   role, if accessing AWS resource.
+-  ``train_instance_count`` Number of Amazon EC2 instances to use for
+   training.
+-  ``train_instance_type`` Type of EC2 instance to use for training, for
+   example, 'ml.m4.xlarge'.
+
+Optional arguments
+==================
+
+The following are optional arguments. When you create a ``Chainer`` object, you can specify these as keyword arguments.
+
+-  ``source_dir`` Path (absolute or relative) to a directory with any
+   other training source code dependencies including the entry point
+   file. Structure within this directory will be preserved when training
+   on SageMaker.
+- ``dependencies (list[str])`` A list of paths to directories (absolute or relative) with
+        any additional libraries that will be exported to the container (default: []).
+        The library folders will be copied to SageMaker in the same folder where the entrypoint is copied.
+        If the ```source_dir``` points to S3, code will be uploaded and the S3 location will be used
+        instead. Example:
+
+            The following call
+            >>> Chainer(entry_point='train.py', dependencies=['my/libs/common', 'virtual-env'])
+            results in the following inside the container:
+
+            >>> $ ls
+
+            >>> opt/ml/code
+            >>>     ├── train.py
+            >>>     ├── common
+            >>>     └── virtual-env
+
+-  ``hyperparameters`` Hyperparameters that will be used for training.
+   Will be made accessible as a dict[str, str] to the training code on
+   SageMaker. For convenience, accepts other types besides str, but
+   str() will be called on keys and values to convert them before
+   training.
+-  ``py_version`` Python version you want to use for executing your
+   model training code.
+-  ``train_volume_size`` Size in GB of the EBS volume to use for storing
+   input data during training. Must be large enough to store training
+   data if input_mode='File' is used (which is the default).
+-  ``train_max_run`` Timeout in seconds for training, after which Amazon
+   SageMaker terminates the job regardless of its current status.
+-  ``input_mode`` The input mode that the algorithm supports. Valid
+   modes: 'File' - Amazon SageMaker copies the training dataset from the
+   s3 location to a directory in the Docker container. 'Pipe' - Amazon
+   SageMaker streams data directly from s3 to the container via a Unix
+   named pipe.
+-  ``output_path`` s3 location where you want the training result (model
+   artifacts and optional output files) saved. If not specified, results
+   are stored to a default bucket. If the bucket with the specific name
+   does not exist, the estimator creates the bucket during the fit()
+   method execution.
+-  ``output_kms_key`` Optional KMS key ID to optionally encrypt training
+   output with.
+-  ``job_name`` Name to assign for the training job that the fit()
+   method launches. If not specified, the estimator generates a default
+   job name, based on the training image name and current timestamp
+-  ``image_name`` An alternative docker image to use for training and
+   serving.  If specified, the estimator will use this image for training and
+   hosting, instead of selecting the appropriate SageMaker official image based on
+   framework_version and py_version. Refer to: `SageMaker Chainer Docker Containers
+   <#sagemaker-chainer-docker-containers>`__ for details on what the Official images support
+   and where to find the source code to build your custom image.
+
+***********************************
 SageMaker Chainer Docker containers
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+***********************************
 
-When training and deploying training scripts, SageMaker runs your Python script in a Docker container with several
-libraries installed. When creating the Estimator and calling deploy to create the SageMaker Endpoint, you can control
-the environment your script runs in.
+You can visit the SageMaker Chainer containers repository here: https://github.com/aws/sagemaker-chainer-container
 
-SageMaker runs Chainer Estimator scripts in either Python 2.7 or Python 3.5. You can select the Python version by
-passing a py_version keyword arg to the Chainer Estimator constructor. Setting this to py3 (the default) will cause your
-training script to be run on Python 3.5. Setting this to py2 will cause your training script to be run on Python 2.7
-This Python version applies to both the Training Job, created by fit, and the Endpoint, created by deploy.
-
-The Chainer Docker images have the following dependencies installed:
-
-+-----------------------------+-------------+-------------+-------------+
-| Dependencies                | chainer 4.0 | chainer 4.1 | chainer 5.0 |
-+-----------------------------+-------------+-------------+-------------+
-| chainer                     | 4.0.0       | 4.1.0       | 5.0.0       |
-+-----------------------------+-------------+-------------+-------------+
-| chainercv                   | 0.9.0       | 0.10.0      | 0.10.0      |
-+-----------------------------+-------------+-------------+-------------+
-| chainermn                   | 1.2.0       | 1.3.0       | N/A         |
-+-----------------------------+-------------+-------------+-------------+
-| CUDA (GPU image only)       | 9.0         | 9.0         | 9.0         |
-+-----------------------------+-------------+-------------+-------------+
-| cupy                        | 4.0.0       | 4.1.0       | 5.0.0       |
-+-----------------------------+-------------+-------------+-------------+
-| matplotlib                  | 2.2.0       | 2.2.0       | 2.2.0       |
-+-----------------------------+-------------+-------------+-------------+
-| mpi4py                      | 3.0.0       | 3.0.0       | 3.0.0       |
-+-----------------------------+-------------+-------------+-------------+
-| numpy                       | 1.14.3      | 1.15.3      | 1.15.4      |
-+-----------------------------+-------------+-------------+-------------+
-| opencv-python               | 3.4.0.12    | 3.4.0.12    | 3.4.0.12    |
-+-----------------------------+-------------+-------------+-------------+
-| Pillow                      | 5.1.0       | 5.3.0       | 5.3.0       |
-+-----------------------------+-------------+-------------+-------------+
-| Python                      | 2.7 or 3.5  | 2.7 or 3.5  | 2.7 or 3.5  |
-+-----------------------------+-------------+-------------+-------------+
-
-The Docker images extend Ubuntu 16.04.
-
-You must select a version of Chainer by passing a ``framework_version`` keyword arg to the Chainer Estimator
-constructor. Currently supported versions are listed in the above table. You can also set framework_version to only
-specify major and minor version, which will cause your training script to be run on the latest supported patch
-version of that minor version.
-
-Alternatively, you can build your own image by following the instructions in the SageMaker Chainer containers
-repository, and passing ``image_name`` to the Chainer Estimator constructor.
-
-You can visit the SageMaker Chainer containers repository here: https://github.com/aws/sagemaker-chainer-containers/
+For information about SageMaker Chainer Docker containers and their dependencies, see `SageMaker Chainer Docker containers <https://github.com/aws/sagemaker-python-sdk/tree/master/src/sagemaker/chainer#sagemaker-chainer-docker-containers>`_.

@@ -23,50 +23,27 @@ import pytest
 import sagemaker.utils
 import tests.integ as integ
 from sagemaker.tensorflow import TensorFlow
-from tests.integ import test_region, timeout, HOSTING_NO_P3_REGIONS
+from tests.integ import timeout
 
 horovod_dir = os.path.join(os.path.dirname(__file__), "..", "data", "horovod")
 
 
-@pytest.fixture(
-    scope="session",
-    params=[
-        "ml.c4.xlarge",
-        pytest.param(
-            "ml.p3.2xlarge",
-            marks=pytest.mark.skipif(
-                test_region() in HOSTING_NO_P3_REGIONS, reason="no ml.p3 instances in this region"
-            ),
-        ),
-    ],
-)
-def instance_type(request):
-    return request.param
+@pytest.fixture(scope="module")
+def gpu_instance_type(request):
+    return "ml.p3.2xlarge"
 
 
 @pytest.mark.canary_quick
-def test_horovod(sagemaker_session, instance_type, tmpdir):
-    job_name = sagemaker.utils.unique_name_from_base("tf-horovod")
-    estimator = TensorFlow(
-        entry_point=os.path.join(horovod_dir, "test_hvd_basic.py"),
-        role="SageMakerRole",
-        train_instance_count=2,
-        train_instance_type=instance_type,
-        sagemaker_session=sagemaker_session,
-        py_version=integ.PYTHON_VERSION,
-        script_mode=True,
-        framework_version="1.12",
-        distributions={"mpi": {"enabled": True}},
-    )
+def test_hvd_cpu(sagemaker_session, cpu_instance_type, tmpdir):
+    __create_and_fit_estimator(sagemaker_session, cpu_instance_type, tmpdir)
 
-    with timeout.timeout(minutes=integ.TRAINING_DEFAULT_TIMEOUT_MINUTES):
-        estimator.fit(job_name=job_name)
 
-        tmp = str(tmpdir)
-        extract_files_from_s3(estimator.model_data, tmp)
-
-        for rank in range(2):
-            assert read_json("rank-%s" % rank, tmp)["rank"] == rank
+@pytest.mark.canary_quick
+@pytest.mark.skipif(
+    integ.test_region() in integ.HOSTING_NO_P3_REGIONS, reason="no ml.p3 instances in this region"
+)
+def test_hvd_gpu(sagemaker_session, gpu_instance_type, tmpdir):
+    __create_and_fit_estimator(sagemaker_session, gpu_instance_type, tmpdir)
 
 
 @pytest.mark.local_mode
@@ -75,7 +52,7 @@ def test_horovod_local_mode(sagemaker_local_session, instances, processes, tmpdi
     output_path = "file://%s" % tmpdir
     job_name = sagemaker.utils.unique_name_from_base("tf-horovod")
     estimator = TensorFlow(
-        entry_point=os.path.join(horovod_dir, "test_hvd_basic.py"),
+        entry_point=os.path.join(horovod_dir, "hvd_basic.py"),
         role="SageMakerRole",
         train_instance_count=2,
         train_instance_type="local",
@@ -118,3 +95,27 @@ def extract_files_from_s3(s3_url, tmpdir):
 
     with tarfile.open(model, "r") as tar_file:
         tar_file.extractall(tmpdir)
+
+
+def __create_and_fit_estimator(sagemaker_session, instance_type, tmpdir):
+    job_name = sagemaker.utils.unique_name_from_base("tf-horovod")
+    estimator = TensorFlow(
+        entry_point=os.path.join(horovod_dir, "hvd_basic.py"),
+        role="SageMakerRole",
+        train_instance_count=2,
+        train_instance_type=instance_type,
+        sagemaker_session=sagemaker_session,
+        py_version=integ.PYTHON_VERSION,
+        script_mode=True,
+        framework_version="1.12",
+        distributions={"mpi": {"enabled": True}},
+    )
+
+    with timeout.timeout(minutes=integ.TRAINING_DEFAULT_TIMEOUT_MINUTES):
+        estimator.fit(job_name=job_name)
+
+        tmp = str(tmpdir)
+        extract_files_from_s3(estimator.model_data, tmp)
+
+        for rank in range(2):
+            assert read_json("rank-%s" % rank, tmp)["rank"] == rank

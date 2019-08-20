@@ -33,6 +33,7 @@ TIMESTAMP = "2017-10-10-14-14-15"
 MOCK_FRAMEWORK = "mlfw"
 MOCK_REGION = "mars-south-3"
 MOCK_ACCELERATOR = "eia1.medium"
+MOCK_HKG_REGION = "ap-east-1"
 
 
 @contextmanager
@@ -136,7 +137,23 @@ def test_create_image_uri_gov_cloud():
     )
 
 
+def test_create_image_uri_hkg():
+    image_uri = fw_utils.create_image_uri(
+        MOCK_HKG_REGION, MOCK_FRAMEWORK, "ml.p3.2xlarge", "1.0rc", "py3"
+    )
+    assert {
+        image_uri == "871362719292.dkr.ecr.ap-east-1.amazonaws.com/sagemaker-mlfw:1.0rc-gpu-py3"
+    }
+
+
 def test_create_image_uri_merged():
+    image_uri = fw_utils.create_image_uri(
+        "us-west-2", "tensorflow-scriptmode", "ml.p3.2xlarge", "1.14", "py3"
+    )
+    assert (
+        image_uri == "763104351884.dkr.ecr.us-west-2.amazonaws.com/tensorflow-training:1.14-gpu-py3"
+    )
+
     image_uri = fw_utils.create_image_uri(
         "us-west-2", "tensorflow-scriptmode", "ml.p3.2xlarge", "1.13.1", "py3"
     )

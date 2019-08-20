@@ -1,8 +1,6 @@
-===========================================
+###########################################
 Using PyTorch with the SageMaker Python SDK
-===========================================
-
-.. contents::
+###########################################
 
 With PyTorch Estimators and Models, you can train and host PyTorch models on Amazon SageMaker.
 
@@ -12,50 +10,35 @@ We recommend that you use the latest supported version, because that's where we 
 
 You can visit the PyTorch repository at https://github.com/pytorch/pytorch.
 
-Training with PyTorch
-------------------------
+.. contents::
 
-Training PyTorch models using ``PyTorch`` Estimators is a two-step process:
+**************************
+Train a Model with PyTorch
+**************************
 
-1. Prepare a PyTorch script to run on SageMaker
-2. Run this script on SageMaker via a ``PyTorch`` Estimator.
+To train a PyTorch model by using the SageMaker Python SDK:
 
+.. |create pytorch estimator| replace:: Create a ``sagemaker.pytorch.PyTorch`` Estimator
+.. _create pytorch estimator: #create-an-estimator
 
-First, you prepare your training script, then second, you run this on SageMaker via a ``PyTorch`` Estimator.
-You should prepare your script in a separate source file than the notebook, terminal session, or source file you're
-using to submit the script to SageMaker via a ``PyTorch`` Estimator. This will be discussed in further detail below.
+.. |call fit| replace:: Call the estimator's ``fit`` method
+.. _call fit: #call-the-fit-method
 
-Suppose that you already have a PyTorch training script called `pytorch-train.py`.
-You can then setup a ``PyTorch`` Estimator with keyword arguments to point to this script and define how SageMaker runs it:
+1. `Prepare a training script <#prepare-a-pytorch-training-script>`_
+2. |create pytorch estimator|_
+3. |call fit|_
 
-.. code:: python
-
-    from sagemaker.pytorch import PyTorch
-
-    pytorch_estimator = PyTorch(entry_point='pytorch-train.py',
-                                role='SageMakerRole',
-                                train_instance_type='ml.p3.2xlarge',
-                                train_instance_count=1,
-                                framework_version='1.0.0')
-
-After that, you simply tell the estimator to start a training job and provide an S3 URL
-that is the path to your training data within Amazon S3:
-
-.. code:: python
-
-    pytorch_estimator.fit('s3://bucket/path/to/training/data')
-
-In the following sections, we'll discuss how to prepare a training script for execution on SageMaker,
-then how to run that script on SageMaker using a ``PyTorch`` Estimator.
-
-
-Preparing the PyTorch Training Script
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Prepare a PyTorch Training Script
+=================================
 
 Your PyTorch training script must be a Python 2.7 or 3.5 compatible source file.
 
+Prepare your script in a separate source file than the notebook, terminal session, or source file you're
+using to submit the script to SageMaker via a ``PyTorch`` Estimator. This will be discussed in further detail below.
+
 The training script is very similar to a training script you might run outside of SageMaker, but you
-can access useful properties about the training environment through various environment variables, such as
+can access useful properties about the training environment through various environment variables.
+For example:
 
 * ``SM_MODEL_DIR``: A string representing the path to the directory to write model artifacts to.
   These artifacts are uploaded to S3 for model hosting.
@@ -64,7 +47,7 @@ can access useful properties about the training environment through various envi
   include checkpoints, graphs, and other files to save, not including model artifacts. These artifacts are compressed
   and uploaded to S3 to the same S3 prefix as the model artifacts.
 
-Supposing two input channels, 'train' and 'test', were used in the call to the PyTorch estimator's ``fit`` method,
+Suppose that two input channels, 'train' and 'test', were used in the call to the PyTorch estimator's ``fit`` method,
 the following will be set, following the format "SM_CHANNEL_[channel_name]":
 
 * ``SM_CHANNEL_TRAIN``: A string representing the path to the directory containing data in the 'train' channel
@@ -110,8 +93,34 @@ when instantiating PyTorch Estimator.
 
 For more on training environment variables, please visit `SageMaker Containers <https://github.com/aws/sagemaker-containers>`_.
 
+Save the Model
+--------------
+
+In order to save your trained PyTorch model for deployment on SageMaker, your training script should save your model
+to a certain filesystem path called ``model_dir``. This value is accessible through the environment variable
+``SM_MODEL_DIR``. The following code demonstrates how to save a trained PyTorch model named ``model`` as
+``model.pth`` at the :
+
+.. code:: python
+
+    import argparse
+    import os
+    import torch
+
+    if __name__=='__main__':
+        # default to the value in environment variable `SM_MODEL_DIR`. Using args makes the script more portable.
+        parser.add_argument('--model-dir', type=str, default=os.environ['SM_MODEL_DIR'])
+        args, _ = parser.parse_known_args()
+
+        # ... train `model`, then save it to `model_dir`
+        with open(os.path.join(args.model_dir, 'model.pth'), 'wb') as f:
+            torch.save(model.state_dict(), f)
+
+After your training job is complete, SageMaker will compress and upload the serialized model to S3, and your model data
+will be available in the S3 ``output_path`` you specified when you created the PyTorch Estimator.
+
 Using third-party libraries
-~~~~~~~~~~~~~~~~~~~~~~~~~~~
+---------------------------
 
 When running your training script on SageMaker, it will have access to some pre-installed third-party libraries including ``torch``, ``torchvisopm``, and ``numpy``.
 For more information on the runtime environment, including specific package versions, see `SageMaker PyTorch Docker containers <#id4>`__.
@@ -120,8 +129,9 @@ If there are other packages you want to use with your script, you can include a 
 A ``requirements.txt`` file is a text file that contains a list of items that are installed by using ``pip install``. You can also specify the version of an item to install.
 For information about the format of a ``requirements.txt`` file, see `Requirements Files <https://pip.pypa.io/en/stable/user_guide/#requirements-files>`__ in the pip documentation.
 
-Running a PyTorch training script in SageMaker
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Create an Estimator
+===================
 
 You run PyTorch training scripts on SageMaker by creating ``PyTorch`` Estimators.
 SageMaker training of your script is invoked when you call ``fit`` on a ``PyTorch`` Estimator.
@@ -140,100 +150,16 @@ directories ('train' and 'test').
                            'test': 's3://my-data-bucket/path/to/my/test/data'})
 
 
-PyTorch Estimators
-------------------
 
-The `PyTorch` constructor takes both required and optional arguments.
 
-Required arguments
-~~~~~~~~~~~~~~~~~~
-
-The following are required arguments to the ``PyTorch`` constructor. When you create a PyTorch object, you must include
-these in the constructor, either positionally or as keyword arguments.
-
--  ``entry_point`` Path (absolute or relative) to the Python file which
-   should be executed as the entry point to training.
--  ``role`` An AWS IAM role (either name or full ARN). The Amazon
-   SageMaker training jobs and APIs that create Amazon SageMaker
-   endpoints use this role to access training data and model artifacts.
-   After the endpoint is created, the inference code might use the IAM
-   role, if accessing AWS resource.
--  ``train_instance_count`` Number of Amazon EC2 instances to use for
-   training.
--  ``train_instance_type`` Type of EC2 instance to use for training, for
-   example, 'ml.m4.xlarge'.
-
-Optional arguments
-~~~~~~~~~~~~~~~~~~
-
-The following are optional arguments. When you create a ``PyTorch`` object, you can specify these as keyword arguments.
-
--  ``source_dir`` Path (absolute or relative) to a directory with any
-   other training source code dependencies including the entry point
-   file. Structure within this directory will be preserved when training
-   on SageMaker.
-- ``dependencies (list[str])`` A list of paths to directories (absolute or relative) with
-        any additional libraries that will be exported to the container (default: []).
-        The library folders will be copied to SageMaker in the same folder where the entrypoint is copied.
-        If the ```source_dir``` points to S3, code will be uploaded and the S3 location will be used
-        instead. Example:
-
-            The following call
-            >>> PyTorch(entry_point='train.py', dependencies=['my/libs/common', 'virtual-env'])
-            results in the following inside the container:
-
-            >>> $ ls
-
-            >>> opt/ml/code
-            >>>     ├── train.py
-            >>>     ├── common
-            >>>     └── virtual-env
-
--  ``hyperparameters`` Hyperparameters that will be used for training.
-   Will be made accessible as a dict[str, str] to the training code on
-   SageMaker. For convenience, accepts other types besides strings, but
-   ``str`` will be called on keys and values to convert them before
-   training.
--  ``py_version`` Python version you want to use for executing your
-   model training code.
--  ``framework_version`` PyTorch version you want to use for executing
-   your model training code. You can find the list of supported versions
-   in `the section below <#sagemaker-pytorch-docker-containers>`__.
--  ``train_volume_size`` Size in GB of the EBS volume to use for storing
-   input data during training. Must be large enough to store training
-   data if input_mode='File' is used (which is the default).
--  ``train_max_run`` Timeout in seconds for training, after which Amazon
-   SageMaker terminates the job regardless of its current status.
--  ``input_mode`` The input mode that the algorithm supports. Valid
-   modes: 'File' - Amazon SageMaker copies the training dataset from the
-   S3 location to a directory in the Docker container. 'Pipe' - Amazon
-   SageMaker streams data directly from S3 to the container via a Unix
-   named pipe.
--  ``output_path`` S3 location where you want the training result (model
-   artifacts and optional output files) saved. If not specified, results
-   are stored to a default bucket. If the bucket with the specific name
-   does not exist, the estimator creates the bucket during the ``fit``
-   method execution.
--  ``output_kms_key`` Optional KMS key ID to optionally encrypt training
-   output with.
--  ``job_name`` Name to assign for the training job that the ``fit```
-   method launches. If not specified, the estimator generates a default
-   job name, based on the training image name and current timestamp
--  ``image_name`` An alternative docker image to use for training and
-   serving.  If specified, the estimator will use this image for training and
-   hosting, instead of selecting the appropriate SageMaker official image based on
-   framework_version and py_version. Refer to: `SageMaker PyTorch Docker Containers
-   <#id4>`_ for details on what the Official images support
-   and where to find the source code to build your custom image.
-
-Calling fit
-~~~~~~~~~~~
+Call the fit Method
+===================
 
 You start your training script by calling ``fit`` on a ``PyTorch`` Estimator. ``fit`` takes both required and optional
 arguments.
 
-Required arguments
-''''''''''''''''''
+fit Required Arguments
+----------------------
 
 -  ``inputs``: This can take one of the following forms: A string
    S3 URI, for example ``s3://my-bucket/my-training-data``. In this
@@ -251,8 +177,8 @@ For example:
 
 .. optional-arguments-1:
 
-Optional arguments
-''''''''''''''''''
+fit Optional Arguments
+----------------------
 
 -  ``wait``: Defaults to True, whether to block and wait for the
    training script to complete before returning.
@@ -261,7 +187,7 @@ Optional arguments
 
 
 Distributed PyTorch Training
-----------------------------
+============================
 
 You can run a multi-machine, distributed PyTorch training using the PyTorch Estimator. By default, PyTorch objects will
 submit single-machine training jobs to SageMaker. If you set ``train_instance_count`` to be greater than one, multi-machine
@@ -287,36 +213,12 @@ Supported backends:
 -  `gloo` and `tcp` for cpu instances
 -  `gloo` and `nccl` for gpu instances
 
-Saving models
--------------
 
-In order to save your trained PyTorch model for deployment on SageMaker, your training script should save your model
-to a certain filesystem path called ``model_dir``. This value is accessible through the environment variable
-``SM_MODEL_DIR``. The following code demonstrates how to save a trained PyTorch model named ``model`` as
-``model.pth`` at the :
+*********************
+Deploy PyTorch Models
+*********************
 
-.. code:: python
-
-    import argparse
-    import os
-    import torch
-
-    if __name__=='__main__':
-        # default to the value in environment variable `SM_MODEL_DIR`. Using args makes the script more portable.
-        parser.add_argument('--model-dir', type=str, default=os.environ['SM_MODEL_DIR'])
-        args, _ = parser.parse_known_args()
-
-        # ... train `model`, then save it to `model_dir`
-        with open(os.path.join(args.model_dir, 'model.pth'), 'wb') as f:
-            torch.save(model.state_dict(), f)
-
-After your training job is complete, SageMaker will compress and upload the serialized model to S3, and your model data
-will be available in the S3 ``output_path`` you specified when you created the PyTorch Estimator.
-
-Deploying PyTorch Models
-------------------------
-
-After an PyTorch Estimator has been fit, you can host the newly created model in SageMaker.
+After a PyTorch Estimator has been fit, you can host the newly created model in SageMaker.
 
 After calling ``fit``, you can call ``deploy`` on a ``PyTorch`` Estimator to create a SageMaker Endpoint.
 The Endpoint runs a SageMaker-provided PyTorch model server and hosts the model produced by your training script,
@@ -352,20 +254,20 @@ You can access the name of the Endpoint by the ``name`` property on the returned
 
 
 The SageMaker PyTorch Model Server
-----------------------------------
+==================================
 
 The PyTorch Endpoint you create with ``deploy`` runs a SageMaker PyTorch model server.
 The model server loads the model that was saved by your training script and performs inference on the model in response
 to SageMaker InvokeEndpoint API calls.
 
 You can configure two components of the SageMaker PyTorch model server: Model loading and model serving.
-Model loading is the process of deserializing your saved model back into an PyTorch model.
+Model loading is the process of deserializing your saved model back into a PyTorch model.
 Serving is the process of translating InvokeEndpoint requests to inference calls on the loaded model.
 
 You configure the PyTorch model server by defining functions in the Python source file you passed to the PyTorch constructor.
 
-Model loading
-~~~~~~~~~~~~~
+Load a Model
+------------
 
 Before a model can be served, it must be loaded. The SageMaker PyTorch model server loads your model by invoking a
 ``model_fn`` function that you must provide in your script. The ``model_fn`` should have the following signature:
@@ -391,8 +293,8 @@ It loads the model parameters from a ``model.pth`` file in the SageMaker model d
             model.load_state_dict(torch.load(f))
         return model
 
-Model serving
-~~~~~~~~~~~~~
+Serve a PyTorch Model
+---------------------
 
 After the SageMaker model server has loaded your model by calling ``model_fn``, SageMaker will serve your model.
 Model serving is the process of responding to inference requests, received by SageMaker InvokeEndpoint API calls.
@@ -449,8 +351,8 @@ data.
 In the following sections we describe the default implementations of input_fn, predict_fn, and output_fn.
 We describe the input arguments and expected return types of each, so you can define your own implementations.
 
-Input processing
-''''''''''''''''
+Process Model Input
+^^^^^^^^^^^^^^^^^^^
 
 When an InvokeEndpoint operation is made against an Endpoint running a SageMaker PyTorch model server,
 the model server receives two pieces of information:
@@ -502,8 +404,8 @@ The example below shows a custom ``input_fn`` for preparing pickled torch.Tensor
 
 
 
-Prediction
-''''''''''
+Get Predictions from a PyTorch Model
+------------------------------------
 
 After the inference request has been deserialized by ``input_fn``, the SageMaker PyTorch model server invokes
 ``predict_fn`` on the return value of ``input_fn``.
@@ -546,8 +448,8 @@ If you implement your own prediction function, you should take care to ensure th
    first argument to ``output_fn``. If you use the default
    ``output_fn``, this should be a torch.Tensor.
 
-Output processing
-'''''''''''''''''
+Process Model Output
+^^^^^^^^^^^^^^^^^^^^
 
 After invoking ``predict_fn``, the model server invokes ``output_fn``, passing in the return value from ``predict_fn``
 and the content type for the response, as specified by the InvokeEndpoint request.
@@ -566,12 +468,12 @@ The default implementation expects ``prediction`` to be a torch.Tensor and can s
 It accepts response content types of "application/json", "text/csv", and "application/x-npy".
 
 Working with Existing Model Data and Training Jobs
---------------------------------------------------
+==================================================
 
-Attaching to existing training jobs
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Attach to existing training jobs
+--------------------------------
 
-You can attach an PyTorch Estimator to an existing training job using the
+You can attach a PyTorch Estimator to an existing training job using the
 ``attach`` method.
 
 .. code:: python
@@ -591,10 +493,10 @@ The ``attach`` method accepts the following arguments:
 -  ``sagemaker_session:`` The Session used
    to interact with SageMaker
 
-Deploying Endpoints from model data
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Deploy Endpoints from model data
+--------------------------------
 
-As well as attaching to existing training jobs, you can deploy models directly from model data in S3.
+In addition to attaching to existing training jobs, you can deploy models directly from model data in S3.
 The following code sample shows how to do this, using the ``PyTorchModel`` class.
 
 .. code:: python
@@ -654,8 +556,9 @@ installing this.
 
 .. _FAQ: ../../../README.rst#faq
 
+*************************
 PyTorch Training Examples
--------------------------
+*************************
 
 Amazon provides several example Jupyter notebooks that demonstrate end-to-end training on Amazon SageMaker using PyTorch.
 Please refer to:
@@ -664,68 +567,97 @@ https://github.com/awslabs/amazon-sagemaker-examples/tree/master/sagemaker-pytho
 
 These are also available in SageMaker Notebook Instance hosted Jupyter notebooks under the sample notebooks folder.
 
+******************
+PyTorch Estimators
+******************
 
-SageMaker PyTorch Docker containers 
------------------------------------
+The `PyTorch` constructor takes both required and optional arguments.
 
-When training and deploying training scripts, SageMaker runs your Python script in a Docker container with several
-libraries installed. When creating the Estimator and calling deploy to create the SageMaker Endpoint, you can control
-the environment your script runs in.
+Required arguments
+==================
 
-SageMaker runs PyTorch Estimator scripts in either Python 2 or Python 3. You can select the Python version by
-passing a ``py_version`` keyword arg to the PyTorch Estimator constructor. Setting this to `py3` (the default) will cause your
-training script to be run on Python 3.5. Setting this to `py2` will cause your training script to be run on Python 2.7
-This Python version applies to both the Training Job, created by fit, and the Endpoint, created by deploy.
+The following are required arguments to the ``PyTorch`` constructor. When you create a PyTorch object, you must include
+these in the constructor, either positionally or as keyword arguments.
 
-The PyTorch Docker images have the following dependencies installed:
+-  ``entry_point`` Path (absolute or relative) to the Python file which
+   should be executed as the entry point to training.
+-  ``role`` An AWS IAM role (either name or full ARN). The Amazon
+   SageMaker training jobs and APIs that create Amazon SageMaker
+   endpoints use this role to access training data and model artifacts.
+   After the endpoint is created, the inference code might use the IAM
+   role, if accessing AWS resource.
+-  ``train_instance_count`` Number of Amazon EC2 instances to use for
+   training.
+-  ``train_instance_type`` Type of EC2 instance to use for training, for
+   example, 'ml.m4.xlarge'.
 
-+-----------------------------+---------------+-------------------+
-| Dependencies                | pytorch 0.4.0 | pytorch 1.0.0     |
-+-----------------------------+---------------+-------------------+
-| boto3                       | >=1.7.35      | >=1.9.11          |
-+-----------------------------+---------------+-------------------+
-| botocore                    | >=1.10.35     | >=1.12.11         |
-+-----------------------------+---------------+-------------------+
-| CUDA (GPU image only)       | 9.0           | 9.0               |
-+-----------------------------+---------------+-------------------+
-| numpy                       | >=1.14.3      | >=1.15.2          |
-+-----------------------------+---------------+-------------------+
-| Pillow                      | >=5.1.0       | >=5.2.0           |
-+-----------------------------+---------------+-------------------+
-| pip                         | >=10.0.1      | >=18.0            |
-+-----------------------------+---------------+-------------------+
-| python-dateutil             | >=2.7.3       | >=2.7.3           |
-+-----------------------------+---------------+-------------------+
-| retrying                    | >=1.3.3       | >=1.3.3           |
-+-----------------------------+---------------+-------------------+
-| s3transfer                  | >=0.1.13      | >=0.1.13          |
-+-----------------------------+---------------+-------------------+
-| sagemaker-containers        | >=2.1.0       | >=2.1.0           |
-+-----------------------------+---------------+-------------------+
-| sagemaker-pytorch-container | 1.0           | 1.0               |
-+-----------------------------+---------------+-------------------+
-| setuptools                  | >=39.2.0      | >=40.4.3          |
-+-----------------------------+---------------+-------------------+
-| six                         | >=1.11.0      | >=1.11.0          |
-+-----------------------------+---------------+-------------------+
-| torch                       | 0.4.0         | 1.0.0             |
-+-----------------------------+---------------+-------------------+
-| torchvision                 | 0.2.1         | 0.2.1             |
-+-----------------------------+---------------+-------------------+
-| Python                      | 2.7 or 3.5    | 2.7 or 3.6        |
-+-----------------------------+---------------+-------------------+
+Optional arguments
+==================
 
-The Docker images extend Ubuntu 16.04.
+The following are optional arguments. When you create a ``PyTorch`` object, you can specify these as keyword arguments.
 
-If you need to install other dependencies you can put them into `requirements.txt` file and put it in the source directory
-(``source_dir``) you provide to the `PyTorch Estimator <#pytorch-estimators>`__.
+-  ``source_dir`` Path (absolute or relative) to a directory with any
+   other training source code dependencies including the entry point
+   file. Structure within this directory will be preserved when training
+   on SageMaker.
+- ``dependencies (list[str])`` A list of paths to directories (absolute or relative) with
+        any additional libraries that will be exported to the container (default: []).
+        The library folders will be copied to SageMaker in the same folder where the entrypoint is copied.
+        If the ```source_dir``` points to S3, code will be uploaded and the S3 location will be used
+        instead. Example:
 
-You can select version of PyTorch by passing a ``framework_version`` keyword arg to the PyTorch Estimator constructor.
-Currently supported versions are listed in the above table. You can also set ``framework_version`` to only specify major and
-minor version, which will cause your training script to be run on the latest supported patch version of that minor
-version.
+            The following call
+            >>> PyTorch(entry_point='train.py', dependencies=['my/libs/common', 'virtual-env'])
+            results in the following inside the container:
 
-Alternatively, you can build your own image by following the instructions in the SageMaker Chainer containers
-repository, and passing ``image_name`` to the Chainer Estimator constructor.
+            >>> $ ls
 
-You can visit `the SageMaker PyTorch containers repository <https://github.com/aws/sagemaker-pytorch-containers>`_.
+            >>> opt/ml/code
+            >>>     ├── train.py
+            >>>     ├── common
+            >>>     └── virtual-env
+
+-  ``hyperparameters`` Hyperparameters that will be used for training.
+   Will be made accessible as a dict[str, str] to the training code on
+   SageMaker. For convenience, accepts other types besides strings, but
+   ``str`` will be called on keys and values to convert them before
+   training.
+-  ``py_version`` Python version you want to use for executing your
+   model training code.
+-  ``framework_version`` PyTorch version you want to use for executing
+   your model training code. You can find the list of supported versions
+   in `SageMaker PyTorch Docker Containers <#id4>`_.
+-  ``train_volume_size`` Size in GB of the EBS volume to use for storing
+   input data during training. Must be large enough to store training
+   data if input_mode='File' is used (which is the default).
+-  ``train_max_run`` Timeout in seconds for training, after which Amazon
+   SageMaker terminates the job regardless of its current status.
+-  ``input_mode`` The input mode that the algorithm supports. Valid
+   modes: 'File' - Amazon SageMaker copies the training dataset from the
+   S3 location to a directory in the Docker container. 'Pipe' - Amazon
+   SageMaker streams data directly from S3 to the container via a Unix
+   named pipe.
+-  ``output_path`` S3 location where you want the training result (model
+   artifacts and optional output files) saved. If not specified, results
+   are stored to a default bucket. If the bucket with the specific name
+   does not exist, the estimator creates the bucket during the ``fit``
+   method execution.
+-  ``output_kms_key`` Optional KMS key ID to optionally encrypt training
+   output with.
+-  ``job_name`` Name to assign for the training job that the ``fit```
+   method launches. If not specified, the estimator generates a default
+   job name, based on the training image name and current timestamp
+-  ``image_name`` An alternative docker image to use for training and
+   serving.  If specified, the estimator will use this image for training and
+   hosting, instead of selecting the appropriate SageMaker official image based on
+   framework_version and py_version. Refer to: `SageMaker PyTorch Docker Containers
+   <#id4>`_ for details on what the Official images support
+   and where to find the source code to build your custom image.
+
+***********************************
+SageMaker PyTorch Docker Containers 
+***********************************
+
+For information about SageMaker PyTorch containers, see  `the SageMaker PyTorch containers repository <https://github.com/aws/sagemaker-pytorch-container>`_.
+
+For information about SageMaker PyTorch container dependencies, see `SageMaker PyTorch Containers <https://github.com/aws/sagemaker-python-sdk/tree/master/src/sagemaker/pytorch#sagemaker-pytorch-docker-containers>`_.

@@ -412,3 +412,14 @@ def test_file_system_record_set_data_channel():
     actual = record_set.data_channel()
     expected = {"train": file_system_input}
     assert actual == expected
+
+
+def test_get_xgboost_image_uri():
+    legacy_xgb_image_uri = get_image_uri(REGION, "xgboost")
+    assert legacy_xgb_image_uri == "433757028032.dkr.ecr.us-west-2.amazonaws.com/xgboost:1"
+
+    updated_xgb_image_uri = get_image_uri(REGION, "xgboost", "0.90-1")
+    assert (
+        updated_xgb_image_uri
+        == "246618743249.dkr.ecr.us-west-2.amazonaws.com/sagemaker-xgboost:0.90-1-cpu-py3"
+    )

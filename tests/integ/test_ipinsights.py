@@ -24,7 +24,7 @@ from tests.integ.timeout import timeout, timeout_and_delete_endpoint_by_name
 FEATURE_DIM = None
 
 
-def test_ipinsights(sagemaker_session):
+def test_ipinsights(sagemaker_session, cpu_instance_type):
     job_name = unique_name_from_base("ipinsights")
 
     with timeout(minutes=TRAINING_DEFAULT_TIMEOUT_MINUTES):
@@ -37,7 +37,7 @@ def test_ipinsights(sagemaker_session):
             ipinsights = IPInsights(
                 role="SageMakerRole",
                 train_instance_count=1,
-                train_instance_type="ml.c4.xlarge",
+                train_instance_type=cpu_instance_type,
                 num_entity_vectors=10,
                 vector_dim=100,
                 sagemaker_session=sagemaker_session,
@@ -52,12 +52,11 @@ def test_ipinsights(sagemaker_session):
         model = IPInsightsModel(
             ipinsights.model_data, role="SageMakerRole", sagemaker_session=sagemaker_session
         )
-        predictor = model.deploy(1, "ml.c4.xlarge", endpoint_name=job_name)
+        predictor = model.deploy(1, cpu_instance_type, endpoint_name=job_name)
         assert isinstance(predictor, RealTimePredictor)
 
         predict_input = [["user_1", "1.1.1.1"]]
         result = predictor.predict(predict_input)
 
-        assert len(result) == 1
-        for record in result:
-            assert record.label["dot_product"] is not None
+        assert len(result["predictions"]) == 1
+        assert 0 > result["predictions"][0]["dot_product"] > -1  # We expect ~ -0.22

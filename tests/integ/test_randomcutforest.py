@@ -20,7 +20,7 @@ from tests.integ import TRAINING_DEFAULT_TIMEOUT_MINUTES
 from tests.integ.timeout import timeout, timeout_and_delete_endpoint_by_name
 
 
-def test_randomcutforest(sagemaker_session):
+def test_randomcutforest(sagemaker_session, cpu_instance_type):
     job_name = unique_name_from_base("randomcutforest")
 
     with timeout(minutes=TRAINING_DEFAULT_TIMEOUT_MINUTES):
@@ -31,7 +31,7 @@ def test_randomcutforest(sagemaker_session):
         rcf = RandomCutForest(
             role="SageMakerRole",
             train_instance_count=1,
-            train_instance_type="ml.c4.xlarge",
+            train_instance_type=cpu_instance_type,
             num_trees=50,
             num_samples_per_tree=20,
             eval_metrics=["accuracy", "precision_recall_fscore"],
@@ -44,7 +44,7 @@ def test_randomcutforest(sagemaker_session):
         model = RandomCutForestModel(
             rcf.model_data, role="SageMakerRole", sagemaker_session=sagemaker_session
         )
-        predictor = model.deploy(1, "ml.c4.xlarge", endpoint_name=job_name)
+        predictor = model.deploy(1, cpu_instance_type, endpoint_name=job_name)
 
         predict_input = np.random.rand(1, feature_num)
         result = predictor.predict(predict_input)

@@ -28,7 +28,7 @@ from tests.integ.timeout import timeout, timeout_and_delete_endpoint_by_name
 
 
 @pytest.mark.canary_quick
-def test_linear_learner(sagemaker_session):
+def test_linear_learner(sagemaker_session, cpu_instance_type):
     job_name = unique_name_from_base("linear-learner")
 
     with timeout(minutes=TRAINING_DEFAULT_TIMEOUT_MINUTES):
@@ -46,7 +46,7 @@ def test_linear_learner(sagemaker_session):
         ll = LinearLearner(
             "SageMakerRole",
             1,
-            "ml.c4.2xlarge",
+            cpu_instance_type,
             predictor_type="binary_classifier",
             sagemaker_session=sagemaker_session,
         )
@@ -88,7 +88,7 @@ def test_linear_learner(sagemaker_session):
         ll.fit(ll.record_set(train_set[0][:200], train_set[1][:200]), job_name=job_name)
 
     with timeout_and_delete_endpoint_by_name(job_name, sagemaker_session):
-        predictor = ll.deploy(1, "ml.c4.xlarge", endpoint_name=job_name)
+        predictor = ll.deploy(1, cpu_instance_type, endpoint_name=job_name)
 
         result = predictor.predict(train_set[0][0:100])
         assert len(result) == 100
@@ -97,7 +97,7 @@ def test_linear_learner(sagemaker_session):
             assert record.label["score"] is not None
 
 
-def test_linear_learner_multiclass(sagemaker_session):
+def test_linear_learner_multiclass(sagemaker_session, cpu_instance_type):
     job_name = unique_name_from_base("linear-learner")
 
     with timeout(minutes=TRAINING_DEFAULT_TIMEOUT_MINUTES):
@@ -113,7 +113,7 @@ def test_linear_learner_multiclass(sagemaker_session):
         ll = LinearLearner(
             "SageMakerRole",
             1,
-            "ml.c4.2xlarge",
+            cpu_instance_type,
             predictor_type="multiclass_classifier",
             num_classes=10,
             sagemaker_session=sagemaker_session,
@@ -123,7 +123,7 @@ def test_linear_learner_multiclass(sagemaker_session):
         ll.fit(ll.record_set(train_set[0][:200], train_set[1][:200]), job_name=job_name)
 
     with timeout_and_delete_endpoint_by_name(job_name, sagemaker_session):
-        predictor = ll.deploy(1, "ml.c4.xlarge", endpoint_name=job_name)
+        predictor = ll.deploy(1, cpu_instance_type, endpoint_name=job_name)
 
         result = predictor.predict(train_set[0][0:100])
         assert len(result) == 100
@@ -132,7 +132,7 @@ def test_linear_learner_multiclass(sagemaker_session):
             assert record.label["score"] is not None
 
 
-def test_async_linear_learner(sagemaker_session):
+def test_async_linear_learner(sagemaker_session, cpu_instance_type):
     job_name = unique_name_from_base("linear-learner")
 
     with timeout(minutes=TRAINING_DEFAULT_TIMEOUT_MINUTES):
@@ -150,7 +150,7 @@ def test_async_linear_learner(sagemaker_session):
         ll = LinearLearner(
             "SageMakerRole",
             1,
-            "ml.c4.2xlarge",
+            cpu_instance_type,
             predictor_type="binary_classifier",
             sagemaker_session=sagemaker_session,
         )
@@ -201,7 +201,7 @@ def test_async_linear_learner(sagemaker_session):
         model = LinearLearnerModel(
             estimator.model_data, role="SageMakerRole", sagemaker_session=sagemaker_session
         )
-        predictor = model.deploy(1, "ml.c4.xlarge", endpoint_name=job_name)
+        predictor = model.deploy(1, cpu_instance_type, endpoint_name=job_name)
 
         result = predictor.predict(train_set[0][0:100])
         assert len(result) == 100

@@ -23,7 +23,7 @@ from sagemaker import KMeans
 from tests.integ import DATA_DIR
 
 
-def test_record_set(sagemaker_session):
+def test_record_set(sagemaker_session, cpu_instance_type):
     """Test the method ``AmazonAlgorithmEstimatorBase.record_set``.
 
     In particular, test that the objects uploaded to the S3 bucket are encrypted.
@@ -35,7 +35,7 @@ def test_record_set(sagemaker_session):
     kmeans = KMeans(
         role="SageMakerRole",
         train_instance_count=1,
-        train_instance_type="ml.c4.xlarge",
+        train_instance_type=cpu_instance_type,
         k=10,
         sagemaker_session=sagemaker_session,
     )

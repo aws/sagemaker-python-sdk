@@ -934,59 +934,6 @@ A new training job channel, named ``code``, will be added with that S3 URI.  Bef
 
 Once the training job begins, the training container will look at the offline input ``code`` channel to install dependencies and run the entry script. This isolates the training container, so no inbound or outbound network calls can be made.
 
-*********
-BYO Model
-*********
-
-You can also create an endpoint from an existing model rather than training one.
-That is, you can bring your own model:
-
-First, package the files for the trained model into a ``.tar.gz`` file, and upload the archive to S3.
-
-Next, create a ``Model`` object that corresponds to the framework that you are using: `MXNetModel <https://sagemaker.readthedocs.io/en/stable/sagemaker.mxnet.html#mxnet-model>`__ or `TensorFlowModel <https://sagemaker.readthedocs.io/en/stable/sagemaker.tensorflow.html#tensorflow-model>`__.
-
-Example code using ``MXNetModel``:
-
-.. code:: python
-
-   from sagemaker.mxnet.model import MXNetModel
-
-   sagemaker_model = MXNetModel(model_data='s3://path/to/model.tar.gz',
-                                role='arn:aws:iam::accid:sagemaker-role',
-                                entry_point='entry_point.py')
-
-After that, invoke the ``deploy()`` method on the ``Model``:
-
-.. code:: python
-
-   predictor = sagemaker_model.deploy(initial_instance_count=1,
-                                      instance_type='ml.m4.xlarge')
-
-This returns a predictor the same way an ``Estimator`` does when ``deploy()`` is called. You can now get inferences just like with any other model deployed on Amazon SageMaker.
-
-Git support is also available when you bring your own model, through which you can use inference scripts stored in your
-Git repositories. The process is similar to using Git support for training jobs. You can simply provide ``git_config``
-when create the ``Model`` object, and let ``entry_point``, ``source_dir`` and ``dependencies`` (if needed) be relative
-paths inside the Git repository:
-
-.. code:: python
-
-    git_config = {'repo': 'https://github.com/username/repo-with-training-scripts.git',
-                  'branch': 'branch1',
-                  'commit': '4893e528afa4a790331e1b5286954f073b0f14a2'}
-
-    sagemaker_model = MXNetModel(model_data='s3://path/to/model.tar.gz',
-                                role='arn:aws:iam::accid:sagemaker-role',
-                                entry_point='inference.py',
-                                source_dir='mxnet',
-                                git_config=git_config)
-
-A full example is available in the `Amazon SageMaker examples repository <https://github.com/awslabs/amazon-sagemaker-examples/tree/master/advanced_functionality/mxnet_mnist_byom>`__.
-
-You can also find this notebook in the **Advanced Functionality** section of the **SageMaker Examples** section in a notebook instance.
-For information about using sample notebooks in a SageMaker notebook instance, see `Use Example Notebooks <https://docs.aws.amazon.com/sagemaker/latest/dg/howitworks-nbexamples.html>`__
-in the AWS documentation.
-
 *******************
 Inference Pipelines
 *******************

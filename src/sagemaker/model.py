@@ -10,6 +10,7 @@
 # distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
+"""Placeholder docstring"""
 from __future__ import absolute_import
 
 import json
@@ -70,26 +71,37 @@ class Model(object):
         """Initialize an SageMaker ``Model``.
 
         Args:
-            model_data (str): The S3 location of a SageMaker model data ``.tar.gz`` file.
+            model_data (str): The S3 location of a SageMaker model data
+                ``.tar.gz`` file.
             image (str): A Docker image URI.
-            role (str): An AWS IAM role (either name or full ARN). The Amazon SageMaker training jobs and APIs
-                that create Amazon SageMaker endpoints use this role to access training data and model artifacts.
-                After the endpoint is created, the inference code might use the IAM role if it needs to access some AWS
-                resources. It can be null if this is being used to create a Model to pass to a ``PipelineModel`` which
-                has its own Role field. (default: None)
-            predictor_cls (callable[string, sagemaker.session.Session]): A function to call to create
-               a predictor (default: None). If not None, ``deploy`` will return the result of invoking
-               this function on the created endpoint name.
-            env (dict[str, str]): Environment variables to run with ``image`` when hosted in SageMaker (default: None).
-            name (str): The model name. If None, a default model name will be selected on each ``deploy``.
-            vpc_config (dict[str, list[str]]): The VpcConfig set on the model (default: None)
+            role (str): An AWS IAM role (either name or full ARN). The Amazon
+                SageMaker training jobs and APIs that create Amazon SageMaker
+                endpoints use this role to access training data and model
+                artifacts. After the endpoint is created, the inference code
+                might use the IAM role if it needs to access some AWS resources.
+                It can be null if this is being used to create a Model to pass
+                to a ``PipelineModel`` which has its own Role field. (default:
+                None)
+            predictor_cls (callable[string, sagemaker.session.Session]): A
+                function to call to create a predictor (default: None). If not
+                None, ``deploy`` will return the result of invoking this
+                function on the created endpoint name.
+            env (dict[str, str]): Environment variables to run with ``image``
+                when hosted in SageMaker (default: None).
+            name (str): The model name. If None, a default model name will be
+                selected on each ``deploy``.
+            vpc_config (dict[str, list[str]]): The VpcConfig set on the model
+                (default: None)
                 * 'Subnets' (list[str]): List of subnet ids.
                 * 'SecurityGroupIds' (list[str]): List of security group ids.
-            sagemaker_session (sagemaker.session.Session): A SageMaker Session object, used for SageMaker
-               interactions (default: None). If not specified, one is created using the default AWS configuration chain.
-            enable_network_isolation (Boolean): Default False. if True, enables network isolation in the endpoint,
-                isolating the model container. No inbound or outbound network calls can be made to or from the
-                model container.
+            sagemaker_session (sagemaker.session.Session): A SageMaker Session
+                object, used for SageMaker interactions (default: None). If not
+                specified, one is created using the default AWS configuration
+                chain.
+            enable_network_isolation (Boolean): Default False. if True, enables
+                network isolation in the endpoint, isolating the model
+                container. No inbound or outbound network calls can be made to
+                or from the model container.
         """
         self.model_data = model_data
         self.image = image
@@ -107,15 +119,18 @@ class Model(object):
     def prepare_container_def(
         self, instance_type, accelerator_type=None
     ):  # pylint: disable=unused-argument
-        """Return a dict created by ``sagemaker.container_def()`` for deploying this model to a specified instance type.
+        """Return a dict created by ``sagemaker.container_def()`` for deploying
+        this model to a specified instance type.
 
-        Subclasses can override this to provide custom container definitions for
-        deployment to a specific instance type. Called by ``deploy()``.
+        Subclasses can override this to provide custom container definitions
+        for deployment to a specific instance type. Called by ``deploy()``.
 
         Args:
-            instance_type (str): The EC2 instance type to deploy this Model to. For example, 'ml.p2.xlarge'.
-            accelerator_type (str): The Elastic Inference accelerator type to deploy to the instance for loading and
-                making inferences to the model. For example, 'ml.eia1.medium'.
+            instance_type (str): The EC2 instance type to deploy this Model to.
+                For example, 'ml.p2.xlarge'.
+            accelerator_type (str): The Elastic Inference accelerator type to
+                deploy to the instance for loading and making inferences to the
+                model. For example, 'ml.eia1.medium'.
 
         Returns:
             dict: A container definition object usable with the CreateModel API.
@@ -134,16 +149,18 @@ class Model(object):
         """Create a SageMaker Model Entity
 
         Args:
-            instance_type (str): The EC2 instance type that this Model will be used for, this is only
-                used to determine if the image needs GPU support or not.
-            accelerator_type (str): Type of Elastic Inference accelerator to attach to an endpoint for model loading
-                and inference, for example, 'ml.eia1.medium'. If not specified, no Elastic Inference accelerator
-                will be attached to the endpoint.
-            tags(List[dict[str, str]]): Optional. The list of tags to add to the model. Example:
-                    >>> tags = [{'Key': 'tagname', 'Value': 'tagvalue'}]
-                    For more information about tags, see https://boto3.amazonaws.com/v1/documentation\
-                    /api/latest/reference/services/sagemaker.html#SageMaker.Client.add_tags
-
+            instance_type (str): The EC2 instance type that this Model will be
+                used for, this is only used to determine if the image needs GPU
+                support or not.
+            accelerator_type (str): Type of Elastic Inference accelerator to
+                attach to an endpoint for model loading and inference, for
+                example, 'ml.eia1.medium'. If not specified, no Elastic
+                Inference accelerator will be attached to the endpoint.
+            tags (List[dict[str, str]]): Optional. The list of tags to add to
+                the model. Example: >>> tags = [{'Key': 'tagname', 'Value':
+                'tagvalue'}] For more information about tags, see
+                https://boto3.amazonaws.com/v1/documentation
+                /api/latest/reference/services/sagemaker.html#SageMaker.Client.add_tags
         """
         container_def = self.prepare_container_def(instance_type, accelerator_type=accelerator_type)
         self.name = self.name or utils.name_from_image(container_def["Image"])
@@ -158,9 +175,11 @@ class Model(object):
         )
 
     def _framework(self):
+        """Placeholder docstring"""
         return getattr(self, "__framework_name__", None)
 
     def _get_framework_version(self):
+        """Placeholder docstring"""
         return getattr(self, "framework_version", None)
 
     def _compilation_job_config(
@@ -174,6 +193,17 @@ class Model(object):
         framework,
         tags,
     ):
+        """
+        Args:
+            target_instance_type:
+            input_shape:
+            output_path:
+            role:
+            compile_max_run:
+            job_name:
+            framework:
+            tags:
+        """
         input_model_config = {
             "S3Uri": self.model_data,
             "DataInputConfig": input_shape
@@ -201,14 +231,20 @@ class Model(object):
 
         Args:
             region (str): Specifies the region where want to execute compilation
+
         Returns:
-            bool: boolean value whether if neo is available in the specified region
+            bool: boolean value whether if neo is available in the specified
+            region
         """
         if region in NEO_IMAGE_ACCOUNT:
             return True
         return False
 
     def _neo_image_account(self, region):
+        """
+        Args:
+            region:
+        """
         if region not in NEO_IMAGE_ACCOUNT:
             raise ValueError(
                 "Neo is not currently supported in {}, "
@@ -217,6 +253,13 @@ class Model(object):
         return NEO_IMAGE_ACCOUNT[region]
 
     def _neo_image(self, region, target_instance_type, framework, framework_version):
+        """
+        Args:
+            region:
+            target_instance_type:
+            framework:
+            framework_version:
+        """
         return fw_utils.create_image_uri(
             region,
             "neo-" + framework.lower(),
@@ -241,24 +284,31 @@ class Model(object):
         """Compile this ``Model`` with SageMaker Neo.
 
         Args:
-            target_instance_family (str): Identifies the device that you want to run your model after compilation, for
-                example: ml_c5. Allowed strings are: ml_c5, ml_m5, ml_c4, ml_m4, jetsontx1, jetsontx2, ml_p2, ml_p3,
-                deeplens, rasp3b
-            input_shape (dict): Specifies the name and shape of the expected inputs for your trained model in json
-                dictionary form, for example: {'data':[1,3,1024,1024]}, or {'var1': [1,1,28,28], 'var2':[1,1,28,28]}
+            target_instance_family (str): Identifies the device that you want to
+                run your model after compilation, for example: ml_c5. Allowed
+                strings are: ml_c5, ml_m5, ml_c4, ml_m4, jetsontx1, jetsontx2,
+                ml_p2, ml_p3, deeplens, rasp3b
+            input_shape (dict): Specifies the name and shape of the expected
+                inputs for your trained model in json dictionary form, for
+                example: {'data':[1,3,1024,1024]}, or {'var1': [1,1,28,28],
+                'var2':[1,1,28,28]}
             output_path (str): Specifies where to store the compiled model
             role (str): Execution role
-            tags (list[dict]): List of tags for labeling a compilation job. For more, see
+            tags (list[dict]): List of tags for labeling a compilation job. For
+                more, see
                 https://docs.aws.amazon.com/sagemaker/latest/dg/API_Tag.html.
             job_name (str): The name of the compilation job
-            compile_max_run (int): Timeout in seconds for compilation (default: 3 * 60).
-                After this amount of time Amazon SageMaker Neo terminates the compilation job regardless of its
-                current status.
-            framework (str): The framework that is used to train the original model. Allowed values: 'mxnet',
-                'tensorflow', 'pytorch', 'onnx', 'xgboost'
-            framework_version (str)
+            compile_max_run (int): Timeout in seconds for compilation (default:
+                3 * 60). After this amount of time Amazon SageMaker Neo
+                terminates the compilation job regardless of its current status.
+            framework (str): The framework that is used to train the original
+                model. Allowed values: 'mxnet', 'tensorflow', 'pytorch', 'onnx',
+                'xgboost'
+            framework_version (str):
+
         Returns:
-            sagemaker.model.Model: A SageMaker ``Model`` object. See :func:`~sagemaker.model.Model` for full details.
+            sagemaker.model.Model: A SageMaker ``Model`` object. See
+            :func:`~sagemaker.model.Model` for full details.
         """
         framework = self._framework() or framework
         if framework is None:
@@ -315,38 +365,50 @@ class Model(object):
         kms_key=None,
         wait=True,
     ):
-        """Deploy this ``Model`` to an ``Endpoint`` and optionally return a ``Predictor``.
+        """Deploy this ``Model`` to an ``Endpoint`` and optionally return a
+        ``Predictor``.
 
-        Create a SageMaker ``Model`` and ``EndpointConfig``, and deploy an ``Endpoint`` from this ``Model``.
-        If ``self.predictor_cls`` is not None, this method returns a the result of invoking
-        ``self.predictor_cls`` on the created endpoint name.
+        Create a SageMaker ``Model`` and ``EndpointConfig``, and deploy an
+        ``Endpoint`` from this ``Model``. If ``self.predictor_cls`` is not None,
+        this method returns a the result of invoking ``self.predictor_cls`` on
+        the created endpoint name.
 
-        The name of the created model is accessible in the ``name`` field of this ``Model`` after deploy returns
+        The name of the created model is accessible in the ``name`` field of
+        this ``Model`` after deploy returns
 
-        The name of the created endpoint is accessible in the ``endpoint_name``
-        field of this ``Model`` after deploy returns.
+        The name of the created endpoint is accessible in the
+        ``endpoint_name`` field of this ``Model`` after deploy returns.
 
         Args:
-            instance_type (str): The EC2 instance type to deploy this Model to. For example, 'ml.p2.xlarge'.
-            initial_instance_count (int): The initial number of instances to run in the
-                ``Endpoint`` created from this ``Model``.
-            accelerator_type (str): Type of Elastic Inference accelerator to deploy this model for model loading
-                and inference, for example, 'ml.eia1.medium'. If not specified, no Elastic Inference accelerator
-                will be attached to the endpoint.
-                For more information: https://docs.aws.amazon.com/sagemaker/latest/dg/ei.html
-            endpoint_name (str): The name of the endpoint to create (default: None).
-                If not specified, a unique endpoint name will be created.
-            update_endpoint (bool): Flag to update the model in an existing Amazon SageMaker endpoint.
-                If True, this will deploy a new EndpointConfig to an already existing endpoint and delete resources
-                corresponding to the previous EndpointConfig. If False, a new endpoint will be created. Default: False
-            tags(List[dict[str, str]]): The list of tags to attach to this specific endpoint.
-            kms_key (str): The ARN of the KMS key that is used to encrypt the data on the
-                storage volume attached to the instance hosting the endpoint.
-            wait (bool): Whether the call should wait until the deployment of this model completes (default: True).
+            initial_instance_count (int): The initial number of instances to run
+                in the ``Endpoint`` created from this ``Model``.
+            instance_type (str): The EC2 instance type to deploy this Model to.
+                For example, 'ml.p2.xlarge'.
+            accelerator_type (str): Type of Elastic Inference accelerator to
+                deploy this model for model loading and inference, for example,
+                'ml.eia1.medium'. If not specified, no Elastic Inference
+                accelerator will be attached to the endpoint. For more
+                information:
+                https://docs.aws.amazon.com/sagemaker/latest/dg/ei.html
+            endpoint_name (str): The name of the endpoint to create (default:
+                None). If not specified, a unique endpoint name will be created.
+            update_endpoint (bool): Flag to update the model in an existing
+                Amazon SageMaker endpoint. If True, this will deploy a new
+                EndpointConfig to an already existing endpoint and delete
+                resources corresponding to the previous EndpointConfig. If
+                False, a new endpoint will be created. Default: False
+            tags (List[dict[str, str]]): The list of tags to attach to this
+                specific endpoint.
+            kms_key (str): The ARN of the KMS key that is used to encrypt the
+                data on the storage volume attached to the instance hosting the
+                endpoint.
+            wait (bool): Whether the call should wait until the deployment of
+                this model completes (default: True).
 
         Returns:
-            callable[string, sagemaker.session.Session] or None: Invocation of ``self.predictor_cls`` on
-                the created endpoint name, if ``self.predictor_cls`` is not None. Otherwise, return None.
+            callable[string, sagemaker.session.Session] or None: Invocation of
+                ``self.predictor_cls`` on the created endpoint name, if ``self.predictor_cls``
+                is not None. Otherwise, return None.
         """
         if not self.sagemaker_session:
             if instance_type in ("local", "local_gpu"):
@@ -411,24 +473,32 @@ class Model(object):
 
         Args:
             instance_count (int): Number of EC2 instances to use.
-            instance_type (str): Type of EC2 instance to use, for example, 'ml.c4.xlarge'.
-            strategy (str): The strategy used to decide how to batch records in a single request (default: None).
-                Valid values: 'MULTI_RECORD' and 'SINGLE_RECORD'.
-            assemble_with (str): How the output is assembled (default: None). Valid values: 'Line' or 'None'.
-            output_path (str): S3 location for saving the transform result. If not specified, results are stored to
-                a default bucket.
-            output_kms_key (str): Optional. KMS key ID for encrypting the transform output (default: None).
-            accept (str): The content type accepted by the endpoint deployed during the transform job.
-            env (dict): Environment variables to be set for use during the transform job (default: None).
-            max_concurrent_transforms (int): The maximum number of HTTP requests to be made to
-                each individual transform container at one time.
-            max_payload (int): Maximum size of the payload in a single HTTP request to the container in MB.
-            tags (list[dict]): List of tags for labeling a transform job. If none specified, then the tags used for
-                the training job are used for the transform job.
-            volume_kms_key (str): Optional. KMS key ID for encrypting the volume attached to the ML
-                compute instance (default: None).
+            instance_type (str): Type of EC2 instance to use, for example,
+                'ml.c4.xlarge'.
+            strategy (str): The strategy used to decide how to batch records in
+                a single request (default: None). Valid values: 'MULTI_RECORD'
+                and 'SINGLE_RECORD'.
+            assemble_with (str): How the output is assembled (default: None).
+                Valid values: 'Line' or 'None'.
+            output_path (str): S3 location for saving the transform result. If
+                not specified, results are stored to a default bucket.
+            output_kms_key (str): Optional. KMS key ID for encrypting the
+                transform output (default: None).
+            accept (str): The content type accepted by the endpoint deployed
+                during the transform job.
+            env (dict): Environment variables to be set for use during the
+                transform job (default: None).
+            max_concurrent_transforms (int): The maximum number of HTTP requests
+                to be made to each individual transform container at one time.
+            max_payload (int): Maximum size of the payload in a single HTTP
+                request to the container in MB.
+            tags (list[dict]): List of tags for labeling a transform job. If
+                none specified, then the tags used for the training job are used
+                for the transform job.
+            volume_kms_key (str): Optional. KMS key ID for encrypting the volume
+                attached to the ML compute instance (default: None).
         """
-        self._create_sagemaker_model(instance_type)
+        self._create_sagemaker_model(instance_type, tags=tags)
         if self.enable_network_isolation():
             env = None
 
@@ -455,7 +525,6 @@ class Model(object):
 
         Raises:
             ValueError: if the model is not created yet.
-
         """
         if self.name is None:
             raise ValueError(
@@ -477,7 +546,8 @@ SAGEMAKER_OUTPUT_LOCATION = "sagemaker_s3_output"
 class FrameworkModel(Model):
     """A Model for working with an SageMaker ``Framework``.
 
-    This class hosts user-defined code in S3 and sets code location and configuration in model environment variables.
+    This class hosts user-defined code in S3 and sets code location and
+    configuration in model environment variables.
     """
 
     def __init__(
@@ -501,14 +571,17 @@ class FrameworkModel(Model):
         """Initialize a ``FrameworkModel``.
 
         Args:
-            model_data (str): The S3 location of a SageMaker model data ``.tar.gz`` file.
+            model_data (str): The S3 location of a SageMaker model data
+                ``.tar.gz`` file.
             image (str): A Docker image URI.
-            role (str): An IAM role name or ARN for SageMaker to access AWS resources on your behalf.
-            entry_point (str): Path (absolute or relative) to the Python source file which should be executed
-                as the entry point to model hosting. This should be compatible with either Python 2.7 or Python 3.5.
-                If 'git_config' is provided, 'entry_point' should be a relative location to the Python source file in
-                the Git repo.
-                Example:
+            role (str): An IAM role name or ARN for SageMaker to access AWS
+                resources on your behalf.
+            entry_point (str): Path (absolute or relative) to the Python source
+                file which should be executed as the entry point to model
+                hosting. This should be compatible with either Python 2.7 or
+                Python 3.5. If 'git_config' is provided, 'entry_point' should be
+                a relative location to the Python source file in the Git repo.
+                Example
 
                     With the following GitHub repo directory structure:
 
@@ -518,46 +591,14 @@ class FrameworkModel(Model):
                     >>>         |----- test.py
 
                     You can assign entry_point='src/inference.py'.
-            git_config (dict[str, str]): Git configurations used for cloning files, including ``repo``, ``branch``,
-                ``commit``, ``2FA_enabled``, ``username``, ``password`` and ``token``. The ``repo`` field is required.
-                All other fields are optional. ``repo`` specifies the Git repository where your training script is
-                stored. If you don't provide ``branch``, the default value  'master' is used. If you don't provide
-                ``commit``, the latest commit in the specified branch is used.
-                Example:
-
-                    The following config:
-
-                    >>> git_config = {'repo': 'https://github.com/aws/sagemaker-python-sdk.git',
-                    >>>               'branch': 'test-branch-git-config',
-                    >>>               'commit': '329bfcf884482002c05ff7f44f62599ebc9f445a'}
-
-                    results in cloning the repo specified in 'repo', then checkout the 'master' branch, and checkout
-                    the specified commit.
-                ``2FA_enabled``, ``username``, ``password`` and ``token`` are used for authentication. For GitHub
-                (or other Git) accounts, set ``2FA_enabled`` to 'True' if two-factor authentication is enabled for the
-                account, otherwise set it to 'False'. If you do not provide a value for ``2FA_enabled``, a default
-                value of 'False' is used. CodeCommit does not support two-factor authentication, so do not provide
-                "2FA_enabled" with CodeCommit repositories.
-
-                For GitHub and other Git repos, when SSH URLs are provided, it doesn't matter whether 2FA is
-                enabled or disabled; you should either have no passphrase for the SSH key pairs, or have the ssh-agent
-                configured so that you will not be prompted for SSH passphrase when you do 'git clone' command with SSH
-                URLs. When HTTPS URLs are provided: if 2FA is disabled, then either token or username+password will be
-                used for authentication if provided (token prioritized); if 2FA is enabled, only token will be used for
-                authentication if provided. If required authentication info is not provided, python SDK will try to use
-                local credentials storage to authenticate. If that fails either, an error message will be thrown.
-
-                For CodeCommit repos, 2FA is not supported, so '2FA_enabled' should not be provided. There is no token
-                in CodeCommit, so 'token' should not be provided too. When 'repo' is an SSH URL, the requirements are
-                the same as GitHub-like repos. When 'repo' is an HTTPS URL, username+password will be used for
-                authentication if they are provided; otherwise, python SDK will try to use either CodeCommit credential
-                helper or local credential storage for authentication.
-            source_dir (str): Path (absolute or relative) to a directory with any other training
-                source code dependencies aside from the entry point file (default: None). Structure within this
-                directory will be preserved when training on SageMaker. If 'git_config' is provided,
-                'source_dir' should be a relative location to a directory in the Git repo. If the directory points
-                to S3, no code will be uploaded and the S3 location will be used instead.
-                Example:
+            source_dir (str): Path (absolute or relative) to a directory with
+                any other training source code dependencies aside from the entry
+                point file (default: None). Structure within this directory will
+                be preserved when training on SageMaker. If 'git_config' is
+                provided, 'source_dir' should be a relative location to a
+                directory in the Git repo. If the directory points to S3, no
+                code will be uploaded and the S3 location will be used instead.
+                .. admonition:: Example
 
                     With the following GitHub repo directory structure:
 
@@ -567,17 +608,40 @@ class FrameworkModel(Model):
                     >>>         |----- test.py
 
                     You can assign entry_point='inference.py', source_dir='src'.
-            dependencies (list[str]): A list of paths to directories (absolute or relative) with
-                any additional libraries that will be exported to the container (default: []).
-                The library folders will be copied to SageMaker in the same folder where the entrypoint is copied.
-                If 'git_config' is provided, 'dependencies' should be a list of relative locations to directories
-                with any additional libraries needed in the Git repo. If the ```source_dir``` points to S3, code
-                will be uploaded and the S3 location will be used instead.
-                Example:
+            predictor_cls (callable[string, sagemaker.session.Session]): A
+                function to call to create a predictor (default: None). If not
+                None, ``deploy`` will return the result of invoking this
+                function on the created endpoint name.
+            env (dict[str, str]): Environment variables to run with ``image``
+                when hosted in SageMaker (default: None).
+            name (str): The model name. If None, a default model name will be
+                selected on each ``deploy``.
+            enable_cloudwatch_metrics (bool): Whether training and hosting
+                containers will generate CloudWatch metrics under the
+                AWS/SageMakerContainer namespace (default: False).
+            container_log_level (int): Log level to use within the container
+                (default: logging.INFO). Valid values are defined in the Python
+                logging module.
+            code_location (str): Name of the S3 bucket where custom code is
+                uploaded (default: None). If not specified, default bucket
+                created by ``sagemaker.session.Session`` is used.
+            sagemaker_session (sagemaker.session.Session): A SageMaker Session
+                object, used for SageMaker interactions (default: None). If not
+                specified, one is created using the default AWS configuration
+                chain.
+            dependencies (list[str]): A list of paths to directories (absolute
+                or relative) with any additional libraries that will be exported
+                to the container (default: []). The library folders will be
+                copied to SageMaker in the same folder where the entrypoint is
+                copied. If 'git_config' is provided, 'dependencies' should be a
+                list of relative locations to directories with any additional
+                libraries needed in the Git repo. If the ```source_dir``` points
+                to S3, code will be uploaded and the S3 location will be used
+                instead. .. admonition:: Example
 
-                    The following call
-                    >>> Estimator(entry_point='inference.py', dependencies=['my/libs/common', 'virtual-env'])
-                    results in the following inside the container:
+                    The following call >>> Estimator(entry_point='inference.py',
+                    dependencies=['my/libs/common', 'virtual-env']) results in
+                    the following inside the container:
 
                     >>> $ ls
 
@@ -585,21 +649,55 @@ class FrameworkModel(Model):
                     >>>     |------ inference.py
                     >>>     |------ common
                     >>>     |------ virtual-env
+            git_config (dict[str, str]): Git configurations used for cloning
+                files, including ``repo``, ``branch``, ``commit``,
+                ``2FA_enabled``, ``username``, ``password`` and ``token``. The
+                ``repo`` field is required. All other fields are optional.
+                ``repo`` specifies the Git repository where your training script
+                is stored. If you don't provide ``branch``, the default value
+                'master' is used. If you don't provide ``commit``, the latest
+                commit in the specified branch is used. .. admonition:: Example
 
-            predictor_cls (callable[string, sagemaker.session.Session]): A function to call to create
-               a predictor (default: None). If not None, ``deploy`` will return the result of invoking
-               this function on the created endpoint name.
-            env (dict[str, str]): Environment variables to run with ``image`` when hosted in SageMaker
-               (default: None).
-            name (str): The model name. If None, a default model name will be selected on each ``deploy``.
-            enable_cloudwatch_metrics (bool): Whether training and hosting containers will
-               generate CloudWatch metrics under the AWS/SageMakerContainer namespace (default: False).
-            container_log_level (int): Log level to use within the container (default: logging.INFO).
-                Valid values are defined in the Python logging module.
-            code_location (str): Name of the S3 bucket where custom code is uploaded (default: None).
-                If not specified, default bucket created by ``sagemaker.session.Session`` is used.
-            sagemaker_session (sagemaker.session.Session): A SageMaker Session object, used for SageMaker
-               interactions (default: None). If not specified, one is created using the default AWS configuration chain.
+                    The following config:
+
+                    >>> git_config = {'repo': 'https://github.com/aws/sagemaker-python-sdk.git',
+                    >>>               'branch': 'test-branch-git-config',
+                    >>>               'commit': '329bfcf884482002c05ff7f44f62599ebc9f445a'}
+
+                    results in cloning the repo specified in 'repo', then
+                    checkout the 'master' branch, and checkout the specified
+                    commit.
+
+                ``2FA_enabled``, ``username``, ``password`` and ``token`` are
+                used for authentication. For GitHub (or other Git) accounts, set
+                ``2FA_enabled`` to 'True' if two-factor authentication is
+                enabled for the account, otherwise set it to 'False'. If you do
+                not provide a value for ``2FA_enabled``, a default value of
+                'False' is used. CodeCommit does not support two-factor
+                authentication, so do not provide "2FA_enabled" with CodeCommit
+                repositories.
+
+                For GitHub and other Git repos, when SSH URLs are provided, it
+                doesn't matter whether 2FA is enabled or disabled; you should
+                either have no passphrase for the SSH key pairs, or have the
+                ssh-agent configured so that you will not be prompted for SSH
+                passphrase when you do 'git clone' command with SSH URLs. When
+                HTTPS URLs are provided: if 2FA is disabled, then either token
+                or username+password will be used for authentication if provided
+                (token prioritized); if 2FA is enabled, only token will be used
+                for authentication if provided. If required authentication info
+                is not provided, python SDK will try to use local credentials
+                storage to authenticate. If that fails either, an error message
+                will be thrown.
+
+                For CodeCommit repos, 2FA is not supported, so '2FA_enabled'
+                should not be provided. There is no token in CodeCommit, so
+                'token' should not be provided too. When 'repo' is an SSH URL,
+                the requirements are the same as GitHub-like repos. When 'repo'
+                is an HTTPS URL, username+password will be used for
+                authentication if they are provided; otherwise, python SDK will
+                try to use either CodeCommit credential helper or local
+                credential storage for authentication.
             **kwargs: Keyword arguments passed to the ``Model`` initializer.
         """
         super(FrameworkModel, self).__init__(
@@ -635,17 +733,21 @@ class FrameworkModel(Model):
     def prepare_container_def(
         self, instance_type, accelerator_type=None
     ):  # pylint disable=unused-argument
-        """Return a container definition with framework configuration set in model environment variables.
+        """Return a container definition with framework configuration set in
+        model environment variables.
 
         This also uploads user-supplied code to S3.
 
         Args:
-            instance_type (str): The EC2 instance type to deploy this Model to. For example, 'ml.p2.xlarge'.
-            accelerator_type (str): The Elastic Inference accelerator type to deploy to the instance for loading and
-                making inferences to the model. For example, 'ml.eia1.medium'.
+            instance_type (str): The EC2 instance type to deploy this Model to.
+                For example, 'ml.p2.xlarge'.
+            accelerator_type (str): The Elastic Inference accelerator type to
+                deploy to the instance for loading and making inferences to the
+                model. For example, 'ml.eia1.medium'.
 
         Returns:
-            dict[str, str]: A container definition object usable with the CreateModel API.
+            dict[str, str]: A container definition object usable with the
+            CreateModel API.
         """
         deploy_key_prefix = fw_utils.model_code_key_prefix(self.key_prefix, self.name, self.image)
         self._upload_code(deploy_key_prefix)
@@ -654,6 +756,11 @@ class FrameworkModel(Model):
         return sagemaker.container_def(self.image, self.model_data, deploy_env)
 
     def _upload_code(self, key_prefix, repack=False):
+        """
+        Args:
+            key_prefix:
+            repack:
+        """
         local_code = utils.get_config_value("local.local_code", self.sagemaker_session.config)
         if self.sagemaker_session.local_mode and local_code:
             self.uploaded_code = None
@@ -687,6 +794,7 @@ class FrameworkModel(Model):
             )
 
     def _framework_env_vars(self):
+        """Placeholder docstring"""
         if self.uploaded_code:
             script_name = self.uploaded_code.script_name
             dir_name = self.uploaded_code.s3_prefix
@@ -710,16 +818,19 @@ class ModelPackage(Model):
         """Initialize a SageMaker ModelPackage.
 
         Args:
-            role (str): An AWS IAM role (either name or full ARN). The Amazon SageMaker training jobs and APIs
-                that create Amazon SageMaker endpoints use this role to access training data and model artifacts.
-                After the endpoint is created, the inference code might use the IAM role,
-                if it needs to access an AWS resource.
-            model_data (str): The S3 location of a SageMaker model data ``.tar.gz`` file. Must be
-                provided if algorithm_arn is provided.
-            algorithm_arn (str): algorithm arn used to train the model, can be just the name if your
-                account owns the algorithm. Must also provide ``model_data``.
-            model_package_arn (str): An existing SageMaker Model Package arn, can be just the name if
-                your account owns the Model Package. ``model_data`` is not required.
+            role (str): An AWS IAM role (either name or full ARN). The Amazon
+                SageMaker training jobs and APIs that create Amazon SageMaker
+                endpoints use this role to access training data and model
+                artifacts. After the endpoint is created, the inference code
+                might use the IAM role, if it needs to access an AWS resource.
+            model_data (str): The S3 location of a SageMaker model data
+                ``.tar.gz`` file. Must be provided if algorithm_arn is provided.
+            algorithm_arn (str): algorithm arn used to train the model, can be
+                just the name if your account owns the algorithm. Must also
+                provide ``model_data``.
+            model_package_arn (str): An existing SageMaker Model Package arn,
+                can be just the name if your account owns the Model Package.
+                ``model_data`` is not required.
             **kwargs: Additional kwargs passed to the Model constructor.
         """
         super(ModelPackage, self).__init__(role=role, model_data=model_data, image=None, **kwargs)
@@ -746,6 +857,7 @@ class ModelPackage(Model):
         self._created_model_package_name = None
 
     def _create_sagemaker_model_package(self):
+        """Placeholder docstring"""
         if self.algorithm_arn is None:
             raise ValueError("No algorithm_arn was provided to create a SageMaker Model Pacakge")
 
@@ -757,7 +869,8 @@ class ModelPackage(Model):
         return name
 
     def enable_network_isolation(self):
-        """Whether to enable network isolation when creating a model out of this ModelPackage
+        """Whether to enable network isolation when creating a model out of this
+        ModelPackage
 
         Returns:
             bool: If network isolation should be enabled or not.
@@ -765,6 +878,7 @@ class ModelPackage(Model):
         return self._is_marketplace()
 
     def _is_marketplace(self):
+        """Placeholder docstring"""
         model_package_name = self.model_package_arn or self._created_model_package_name
         if model_package_name is None:
             return True
@@ -781,12 +895,15 @@ class ModelPackage(Model):
                 return True
         return False
 
-    def _create_sagemaker_model(self, *args):  # pylint: disable=unused-argument
+    def _create_sagemaker_model(self, *args, **kwargs):  # pylint: disable=unused-argument
         """Create a SageMaker Model Entity
 
         Args:
-            *args: Arguments coming from the caller. This class
-                does not require any so they are ignored.
+            args: Positional arguments coming from the caller. This class does not require
+                any so they are ignored.
+
+            kwargs: Keyword arguments coming from the caller. This class does not require
+                any so they are ignored.
         """
         if self.algorithm_arn:
             # When ModelPackage is created using an algorithm_arn we need to first

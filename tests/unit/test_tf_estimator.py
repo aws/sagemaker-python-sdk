@@ -1,4 +1,4 @@
-# Copyright 2017-2018 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright 2017-2019 Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -28,6 +28,7 @@ import sagemaker.tensorflow.estimator as tfe
 DATA_DIR = os.path.join(os.path.dirname(__file__), "..", "data")
 SCRIPT_FILE = "dummy_script.py"
 SCRIPT_PATH = os.path.join(DATA_DIR, SCRIPT_FILE)
+SERVING_SCRIPT_FILE = "another_dummy_script.py"
 MODEL_DATA = "s3://some/data.tar.gz"
 REQUIREMENTS_FILE = "dummy_requirements.txt"
 TIMESTAMP = "2017-11-06-14:14:15.673"
@@ -297,12 +298,16 @@ def test_create_model_with_optional_params(sagemaker_session):
     model_server_workers = 2
     vpc_config = {"Subnets": ["foo"], "SecurityGroupIds": ["bar"]}
     model = tf.create_model(
-        role=new_role, model_server_workers=model_server_workers, vpc_config_override=vpc_config
+        role=new_role,
+        model_server_workers=model_server_workers,
+        vpc_config_override=vpc_config,
+        entry_point=SERVING_SCRIPT_FILE,
     )
 
     assert model.role == new_role
     assert model.model_server_workers == model_server_workers
     assert model.vpc_config == vpc_config
+    assert model.entry_point == SERVING_SCRIPT_FILE
 
 
 @patch("sagemaker.tensorflow.estimator.TensorFlow.create_model")
@@ -318,13 +323,19 @@ def test_transformer_creation_with_endpoint_type(create_model, sagemaker_session
         train_instance_type=INSTANCE_TYPE,
     )
 
-    tf.transformer(INSTANCE_COUNT, INSTANCE_TYPE, endpoint_type="tensorflow-serving")
+    tf.transformer(
+        INSTANCE_COUNT,
+        INSTANCE_TYPE,
+        endpoint_type="tensorflow-serving",
+        entry_point=SERVING_SCRIPT_FILE,
+    )
 
     create_model.assert_called_with(
         endpoint_type="tensorflow-serving",
         model_server_workers=None,
         role=ROLE,
         vpc_config_override="VPC_CONFIG_DEFAULT",
+        entry_point=SERVING_SCRIPT_FILE,
     )
     model.transformer.assert_called_with(
         INSTANCE_COUNT,
@@ -361,6 +372,7 @@ def test_transformer_creation_without_endpoint_type(create_model, sagemaker_sess
         model_server_workers=None,
         role=ROLE,
         vpc_config_override="VPC_CONFIG_DEFAULT",
+        entry_point=None,
     )
     model.transformer.assert_called_with(
         INSTANCE_COUNT,
@@ -941,6 +953,30 @@ def test_script_mode_deprecated_args(sagemaker_session):
     assert _deprecated_args_msg(
         "training_steps, evaluation_steps, requirements_file, checkpoint_path"
     ) in str(e.value)
+
+
+def test_py2_version_deprecated(sagemaker_session):
+    with pytest.raises(AttributeError) as e:
+        _build_tf(sagemaker_session=sagemaker_session, framework_version="1.14", py_version="py2")
+
+    msg = "Python 2 containers are only available until TensorFlow version 1.13.1. Please use a Python 3 container."
+    assert msg in str(e.value)
+
+
+def test_py3_is_default_version_after_tf1_14(sagemaker_session):
+    estimator = _build_tf(sagemaker_session=sagemaker_session, framework_version="1.14")
+
+    assert estimator.py_version == "py3"
+
+
+def test_py3_is_default_version_before_tf1_14(sagemaker_session):
+    estimator = _build_tf(sagemaker_session=sagemaker_session, framework_version="1.13")
+
+    assert estimator.py_version == "py2"
+
+    estimator = _build_tf(sagemaker_session=sagemaker_session, framework_version="1.10")
+
+    assert estimator.py_version == "py2"
 
 
 def test_legacy_mode_deprecated(sagemaker_session):

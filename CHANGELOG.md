@@ -1,5 +1,152 @@
 # Changelog
 
+## v1.37.1 (2019-08-19)
+
+### Bug fixes and other changes
+
+ * eliminate dependency on mnist dataset website
+
+### Documentation changes
+
+ * refactor using_sklearn and fix minor errors in using_pytorch and using_chainer
+
+## v1.37.0 (2019-08-15)
+
+### Features
+
+ * add XGBoost Estimator as new framework
+
+### Bug fixes and other changes
+
+ * fix tests for new regions
+ * add update_endpoint for PipelineModel
+
+### Documentation changes
+
+ * refactor the using Chainer topic
+
+## v1.36.4 (2019-08-13)
+
+### Bug fixes and other changes
+
+ * region build from staging pr
+
+### Documentation changes
+
+ * Refactor Using PyTorch topic for consistency
+
+## v1.36.3 (2019-08-13)
+
+### Bug fixes and other changes
+
+ * fix integration test failures masked by timeout bug
+ * prevent multiple values error in sklearn.transformer()
+ * model.transformer() passes tags to create_model()
+
+## v1.36.2 (2019-08-12)
+
+### Bug fixes and other changes
+
+ * rework CONTRIBUTING.md to include a development workflow
+
+## v1.36.1 (2019-08-08)
+
+### Bug fixes and other changes
+
+ * prevent integration test's timeout functions from hiding failures
+
+### Documentation changes
+
+ * correct typo in using_sklearn.rst
+
+## v1.36.0 (2019-08-07)
+
+### Features
+
+ * support for TensorFlow 1.14
+
+### Bug fixes and other changes
+
+ * ignore FI18 flake8 rule
+ * allow Airflow enabled estimators to use absolute path entry_point
+
+## v1.35.1 (2019-08-01)
+
+### Bug fixes and other changes
+
+ * update sklearn document to include 3p dependency installation
+
+### Documentation changes
+
+ * refactor and edit using_mxnet topic
+
+## v1.35.0 (2019-07-31)
+
+### Features
+
+ * allow serving image to be specified when calling MXNet.deploy
+
+## v1.34.3 (2019-07-30)
+
+### Bug fixes and other changes
+
+ * waiting for training tags to propagate in the test
+
+## v1.34.2 (2019-07-29)
+
+### Bug fixes and other changes
+
+ * removing unnecessary tests cases
+ * Replaced generic ValueError with custom subclass when reporting unexpected resource status
+
+### Documentation changes
+
+ * correct wording for Cloud9 environment setup instructions
+
+## v1.34.1 (2019-07-23)
+
+### Bug fixes and other changes
+
+ * enable line-too-long Pylint check
+ * improving Chainer integ tests
+ * update TensorFlow script mode dependency list
+ * improve documentation of some functions
+ * update PyTorch version
+ * allow serving script to be defined for deploy() and transformer() with frameworks
+ * format and add missing docstring placeholders
+ * add MXNet 1.4.1 support
+
+### Documentation changes
+
+ * add instructions for setting up Cloud9 environment.
+ * update using_tensorflow topic
+
+## v1.34.0 (2019-07-18)
+
+### Features
+
+ * Git integration for CodeCommit
+ * deal with credentials for Git support for GitHub
+
+### Bug fixes and other changes
+
+ * modify TODO on disabled Pylint check
+ * enable consider-using-ternary Pylint check
+ * enable chained-comparison Pylint check
+ * enable too-many-public-methods Pylint check
+ * enable consider-using-in Pylint check
+ * set num_processes_per_host only if provided by user
+ * fix attach for 1P algorithm estimators
+ * enable ungrouped-imports Pylint check
+ * enable wrong-import-order Pylint check
+ * enable attribute-defined-outside-init Pylint check
+ * enable consider-merging-isinstance Pylint check
+ * enable inconsistent-return-statements Pylint check
+ * enable simplifiable-if-expression pylint checks
+ * fix list serialization for 1P algos
+ * enable no-else-return and no-else-raise pylint checks
+ * enable unidiomatic-typecheck pylint check
+
 ## v1.33.0 (2019-07-10)
 
 ### Features

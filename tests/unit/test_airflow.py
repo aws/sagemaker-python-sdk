@@ -164,7 +164,7 @@ def test_byo_training_config_all_args(sagemaker_session):
 @patch("sagemaker.utils.sagemaker_timestamp", MagicMock(return_value=TIME_STAMP))
 def test_framework_training_config_required_args(sagemaker_session):
     tf = tensorflow.TensorFlow(
-        entry_point="{{ entry_point }}",
+        entry_point="/some/script.py",
         framework_version="1.10.0",
         training_steps=1000,
         evaluation_steps=100,
@@ -206,7 +206,7 @@ def test_framework_training_config_required_args(sagemaker_session):
         "HyperParameters": {
             "sagemaker_submit_directory": '"s3://output/sagemaker-tensorflow-%s/source/sourcedir.tar.gz"'
             % TIME_STAMP,
-            "sagemaker_program": '"{{ entry_point }}"',
+            "sagemaker_program": '"script.py"',
             "sagemaker_enable_cloudwatch_metrics": "false",
             "sagemaker_container_log_level": "20",
             "sagemaker_job_name": '"sagemaker-tensorflow-%s"' % TIME_STAMP,
@@ -219,7 +219,7 @@ def test_framework_training_config_required_args(sagemaker_session):
         "S3Operations": {
             "S3Upload": [
                 {
-                    "Path": "{{ entry_point }}",
+                    "Path": "/some/script.py",
                     "Bucket": "output",
                     "Key": "sagemaker-tensorflow-%s/source/sourcedir.tar.gz" % TIME_STAMP,
                     "Tar": True,

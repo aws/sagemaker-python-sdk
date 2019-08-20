@@ -10,6 +10,7 @@
 # distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
+"""Placeholder docstring"""
 from __future__ import absolute_import
 
 import logging
@@ -40,6 +41,11 @@ class LocalSagemakerClient(object):
     a boto client to interact with S3 but it won't perform any SageMaker call.
 
     Implements the methods with the same signature as the boto SageMakerClient.
+
+    Args:
+
+    Returns:
+
     """
 
     _training_jobs = {}
@@ -66,16 +72,22 @@ class LocalSagemakerClient(object):
         InputDataConfig=None,
         **kwargs
     ):
-        """
-        Create a training job in Local Mode
+        """Create a training job in Local Mode
+
         Args:
-            TrainingJobName (str): local training job name.
-            AlgorithmSpecification (dict): Identifies the training algorithm to use.
-            InputDataConfig (dict): Describes the training dataset and the location where it is stored.
-            OutputDataConfig (dict): Identifies the location where you want to save the results of model training.
-            ResourceConfig (dict): Identifies the resources to use for local model traininig.
-            HyperParameters (dict) [optional]: Specifies these algorithm-specific parameters to influence the quality of
-                the final model.
+          TrainingJobName(str): local training job name.
+          AlgorithmSpecification(dict): Identifies the training algorithm to use.
+          InputDataConfig(dict, optional): Describes the training dataset and the location where
+            it is stored. (Default value = None)
+          OutputDataConfig(dict): Identifies the location where you want to save the results of
+            model training.
+          ResourceConfig(dict): Identifies the resources to use for local model training.
+          HyperParameters(dict) [optional]: Specifies these algorithm-specific parameters to
+            influence the quality of the final model.
+          **kwargs:
+
+        Returns:
+
         """
         InputDataConfig = InputDataConfig or {}
         container = _SageMakerContainer(
@@ -94,9 +106,10 @@ class LocalSagemakerClient(object):
         """Describe a local training job.
 
         Args:
-            TrainingJobName (str): Training job name to describe.
-
+          TrainingJobName(str): Training job name to describe.
         Returns: (dict) DescribeTrainingJob Response.
+
+        Returns:
 
         """
         if TrainingJobName not in LocalSagemakerClient._training_jobs:
@@ -118,11 +131,32 @@ class LocalSagemakerClient(object):
         TransformResources,
         **kwargs
     ):
+        """
+
+        Args:
+          TransformJobName:
+          ModelName:
+          TransformInput:
+          TransformOutput:
+          TransformResources:
+          **kwargs:
+
+        Returns:
+
+        """
         transform_job = _LocalTransformJob(TransformJobName, ModelName, self.sagemaker_session)
         LocalSagemakerClient._transform_jobs[TransformJobName] = transform_job
         transform_job.start(TransformInput, TransformOutput, TransformResources, **kwargs)
 
     def describe_transform_job(self, TransformJobName):
+        """
+
+        Args:
+          TransformJobName:
+
+        Returns:
+
+        """
         if TransformJobName not in LocalSagemakerClient._transform_jobs:
             error_response = {
                 "Error": {
@@ -138,13 +172,26 @@ class LocalSagemakerClient(object):
     ):  # pylint: disable=unused-argument
         """Create a Local Model Object
 
+
         Args:
-            ModelName (str): the Model Name
-            PrimaryContainer (dict): a SageMaker primary container definition
+          ModelName (str): the Model Name
+          PrimaryContainer (dict): a SageMaker primary container definition
+          *args:
+          **kwargs:
+
+        Returns:
         """
         LocalSagemakerClient._models[ModelName] = _LocalModel(ModelName, PrimaryContainer)
 
     def describe_model(self, ModelName):
+        """
+
+        Args:
+          ModelName:
+
+        Returns:
+
+        """
         if ModelName not in LocalSagemakerClient._models:
             error_response = {
                 "Error": {"Code": "ValidationException", "Message": "Could not find local model"}
@@ -153,6 +200,14 @@ class LocalSagemakerClient(object):
         return LocalSagemakerClient._models[ModelName].describe()
 
     def describe_endpoint_config(self, EndpointConfigName):
+        """
+
+        Args:
+          EndpointConfigName:
+
+        Returns:
+
+        """
         if EndpointConfigName not in LocalSagemakerClient._endpoint_configs:
             error_response = {
                 "Error": {
@@ -164,11 +219,29 @@ class LocalSagemakerClient(object):
         return LocalSagemakerClient._endpoint_configs[EndpointConfigName].describe()
 
     def create_endpoint_config(self, EndpointConfigName, ProductionVariants, Tags=None):
+        """
+
+        Args:
+          EndpointConfigName:
+          ProductionVariants:
+          Tags:  (Default value = None)
+
+        Returns:
+
+        """
         LocalSagemakerClient._endpoint_configs[EndpointConfigName] = _LocalEndpointConfig(
             EndpointConfigName, ProductionVariants, Tags
         )
 
     def describe_endpoint(self, EndpointName):
+        """
+
+        Args:
+          EndpointName:
+
+        Returns:
+
+        """
         if EndpointName not in LocalSagemakerClient._endpoints:
             error_response = {
                 "Error": {"Code": "ValidationException", "Message": "Could not find local endpoint"}
@@ -177,30 +250,71 @@ class LocalSagemakerClient(object):
         return LocalSagemakerClient._endpoints[EndpointName].describe()
 
     def create_endpoint(self, EndpointName, EndpointConfigName, Tags=None):
+        """
+
+        Args:
+          EndpointName:
+          EndpointConfigName:
+          Tags:  (Default value = None)
+
+        Returns:
+
+        """
         endpoint = _LocalEndpoint(EndpointName, EndpointConfigName, Tags, self.sagemaker_session)
         LocalSagemakerClient._endpoints[EndpointName] = endpoint
         endpoint.serve()
 
     def update_endpoint(self, EndpointName, EndpointConfigName):  # pylint: disable=unused-argument
+        """
+
+        Args:
+          EndpointName:
+          EndpointConfigName:
+
+        Returns:
+
+        """
         raise NotImplementedError("Update endpoint name is not supported in local session.")
 
     def delete_endpoint(self, EndpointName):
+        """
+
+        Args:
+          EndpointName:
+
+        Returns:
+
+        """
         if EndpointName in LocalSagemakerClient._endpoints:
             LocalSagemakerClient._endpoints[EndpointName].stop()
 
     def delete_endpoint_config(self, EndpointConfigName):
+        """
+
+        Args:
+          EndpointConfigName:
+
+        Returns:
+
+        """
         if EndpointConfigName in LocalSagemakerClient._endpoint_configs:
             del LocalSagemakerClient._endpoint_configs[EndpointConfigName]
 
     def delete_model(self, ModelName):
+        """
+
+        Args:
+          ModelName:
+
+        Returns:
+
+        """
         if ModelName in LocalSagemakerClient._models:
             del LocalSagemakerClient._models[ModelName]
 
 
 class LocalSagemakerRuntimeClient(object):
-    """A SageMaker Runtime client that calls a local endpoint only.
-
-    """
+    """A SageMaker Runtime client that calls a local endpoint only."""
 
     def __init__(self, config=None):
         """Initializes a LocalSageMakerRuntimeClient
@@ -222,6 +336,17 @@ class LocalSagemakerRuntimeClient(object):
         Accept=None,
         CustomAttributes=None,
     ):
+        """
+
+        Args:
+          Body:
+          EndpointName:
+          Accept:  (Default value = None)
+          CustomAttributes:  (Default value = None)
+
+        Returns:
+
+        """
         url = "http://localhost:%s/invocations" % self.serving_port
         headers = {}
 
@@ -240,6 +365,8 @@ class LocalSagemakerRuntimeClient(object):
 
 
 class LocalSession(Session):
+    """Placeholder docstring"""
+
     def __init__(self, boto_session=None):
         super(LocalSession, self).__init__(boto_session)
 
@@ -247,7 +374,16 @@ class LocalSession(Session):
             logger.warning("Windows Support for Local Mode is Experimental")
 
     def _initialize(self, boto_session, sagemaker_client, sagemaker_runtime_client):
-        """Initialize this Local SageMaker Session."""
+        """Initialize this Local SageMaker Session.
+
+        Args:
+          boto_session:
+          sagemaker_client:
+          sagemaker_runtime_client:
+
+        Returns:
+
+        """
 
         self.boto_session = boto_session or boto3.Session()
         self._region_name = self.boto_session.region_name
@@ -262,17 +398,23 @@ class LocalSession(Session):
         self.local_mode = True
 
     def logs_for_job(self, job_name, wait=False, poll=5):
+        """
+
+        Args:
+          job_name:
+          wait:  (Default value = False)
+          poll:  (Default value = 5)
+
+        Returns:
+
+        """
         # override logs_for_job() as it doesn't need to perform any action
         # on local mode.
-        pass
+        pass  # pylint: disable=unnecessary-pass
 
 
 class file_input(object):
-    """Amazon SageMaker channel configuration for FILE data sources, used in local mode.
-
-    Attributes:
-        config (dict[str, dict]): A SageMaker ``DataSource`` referencing a SageMaker ``FileDataSource``.
-    """
+    """Amazon SageMaker channel configuration for FILE data sources, used in local mode."""
 
     def __init__(self, fileUri, content_type=None):
         """Create a definition for input data used by an SageMaker training job in local mode.
