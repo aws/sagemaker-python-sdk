@@ -227,6 +227,69 @@ def test_framework_all_init_args(sagemaker_session):
     }
 
 
+def test_framework_with_spot_and_checkpoints(sagemaker_session):
+    f = DummyFramework(
+        "my_script.py",
+        role="DummyRole",
+        train_instance_count=3,
+        train_instance_type="ml.m4.xlarge",
+        sagemaker_session=sagemaker_session,
+        train_volume_size=123,
+        train_volume_kms_key="volumekms",
+        train_max_run=456,
+        input_mode="inputmode",
+        output_path="outputpath",
+        output_kms_key="outputkms",
+        base_job_name="basejobname",
+        tags=[{"foo": "bar"}],
+        subnets=["123", "456"],
+        security_group_ids=["789", "012"],
+        metric_definitions=[{"Name": "validation-rmse", "Regex": "validation-rmse=(\\d+)"}],
+        encrypt_inter_container_traffic=True,
+        train_use_spot_instances=True,
+        train_max_wait=500,
+        checkpoint_s3_uri="s3://mybucket/checkpoints/",
+        checkpoint_local_path="/tmp/checkpoints",
+    )
+    _TrainingJob.start_new(f, "s3://mydata")
+    sagemaker_session.train.assert_called_once()
+    _, args = sagemaker_session.train.call_args
+    assert args == {
+        "input_mode": "inputmode",
+        "tags": [{"foo": "bar"}],
+        "hyperparameters": {},
+        "image": "fakeimage",
+        "input_config": [
+            {
+                "ChannelName": "training",
+                "DataSource": {
+                    "S3DataSource": {
+                        "S3DataType": "S3Prefix",
+                        "S3DataDistributionType": "FullyReplicated",
+                        "S3Uri": "s3://mydata",
+                    }
+                },
+            }
+        ],
+        "output_config": {"KmsKeyId": "outputkms", "S3OutputPath": "outputpath"},
+        "vpc_config": {"Subnets": ["123", "456"], "SecurityGroupIds": ["789", "012"]},
+        "stop_condition": {"MaxRuntimeInSeconds": 456, "MaxWaitTimeInSeconds": 500},
+        "role": sagemaker_session.expand_role(),
+        "job_name": None,
+        "resource_config": {
+            "VolumeSizeInGB": 123,
+            "InstanceCount": 3,
+            "VolumeKmsKeyId": "volumekms",
+            "InstanceType": "ml.m4.xlarge",
+        },
+        "metric_definitions": [{"Name": "validation-rmse", "Regex": "validation-rmse=(\\d+)"}],
+        "encrypt_inter_container_traffic": True,
+        "train_use_spot_instances": True,
+        "checkpoint_s3_uri": "s3://mybucket/checkpoints/",
+        "checkpoint_local_path": "/tmp/checkpoints",
+    }
+
+
 def test_framework_init_s3_entry_point_invalid(sagemaker_session):
     with pytest.raises(ValueError) as error:
         DummyFramework(

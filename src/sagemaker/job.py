@@ -80,7 +80,9 @@ class _Job(object):
             estimator.train_volume_size,
             estimator.train_volume_kms_key,
         )
-        stop_condition = _Job._prepare_stop_condition(estimator.train_max_run)
+        stop_condition = _Job._prepare_stop_condition(
+            estimator.train_max_run, estimator.train_max_wait
+        )
         vpc_config = estimator.get_vpc_config()
 
         model_channel = _Job._prepare_channel(
@@ -312,11 +314,14 @@ class _Job(object):
         return resource_config
 
     @staticmethod
-    def _prepare_stop_condition(max_run):
+    def _prepare_stop_condition(max_run, max_wait):
         """
         Args:
             max_run:
+            max_wait:
         """
+        if max_wait:
+            return {"MaxRuntimeInSeconds": max_run, "MaxWaitTimeInSeconds": max_wait}
         return {"MaxRuntimeInSeconds": max_run}
 
     @property
