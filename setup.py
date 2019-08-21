@@ -34,7 +34,7 @@ def read_version():
 
 # Declare minimal set for installation
 required_packages = [
-    "boto3>=1.9.169",
+    "boto3>=1.9.213",
     "numpy>=1.9.0",
     "protobuf>=3.1",
     "scipy>=0.19.0",

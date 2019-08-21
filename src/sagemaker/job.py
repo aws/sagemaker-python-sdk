@@ -148,11 +148,8 @@ class _Job(object):
         elif isinstance(inputs, FileSystemInput):
             input_dict["training"] = inputs
         else:
-            raise ValueError(
-                "Cannot format input {}. Expecting one of str, dict, s3_input or FileSystemInput".format(
-                    inputs
-                )
-            )
+            msg = "Cannot format input {}. Expecting one of str, dict, s3_input or FileSystemInput"
+            raise ValueError(msg.format(inputs))
 
         channels = [
             _Job._convert_input_to_channel(name, input) for name, input in input_dict.items()
@@ -193,10 +190,10 @@ class _Job(object):
             return s3_input(uri_input, content_type=content_type, input_mode=input_mode)
         if isinstance(uri_input, (s3_input, file_input, FileSystemInput)):
             return uri_input
+
         raise ValueError(
-            "Cannot format input {}. Expecting one of str, s3_input, file_input or FileSystemInput".format(
-                uri_input
-            )
+            "Cannot format input {}. Expecting one of str, s3_input, file_input or "
+            "FileSystemInput".format(uri_input)
         )
 
     @staticmethod

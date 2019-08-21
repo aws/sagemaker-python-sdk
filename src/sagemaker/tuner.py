@@ -319,36 +319,39 @@ class HyperparameterTuner(object):
                 any of the following forms:
 
                 * (str) - The S3 location where training data is saved.
-                * (dict[str, str] or dict[str, sagemaker.session.s3_input]) - If using multiple channels for
-                    training data, you can specify a dict mapping channel names
-                    to strings or :func:`~sagemaker.session.s3_input` objects.
-                * (sagemaker.session.s3_input) - Channel configuration for S3 data sources that can provide
-                    additional information about the training dataset. See :func:`sagemaker.session.s3_input`
-                    for full details.
-                * (sagemaker.session.FileSystemInput) - channel configuration for file system data source
-                    that can provide additional information as well as the path to the training dataset.
+                * (dict[str, str] or dict[str, sagemaker.session.s3_input]) -
+                    If using multiple channels for training data, you can specify
+                    a dict mapping channel names to strings or
+                    :func:`~sagemaker.session.s3_input` objects.
+                * (sagemaker.session.s3_input) - Channel configuration for S3 data sources that can
+                    provide additional information about the training dataset.
+                    See :func:`sagemaker.session.s3_input` for full details.
+                * (sagemaker.session.FileSystemInput) - channel configuration for
+                    a file system data source that can provide additional information as well as
+                    the path to the training dataset.
                 * (sagemaker.amazon.amazon_estimator.RecordSet) - A collection of
                     Amazon :class:~`Record` objects serialized and stored in S3.
                     For use with an estimator for an Amazon algorithm.
-                * (sagemaker.amazon.amazon_estimator.FileSystemRecordSet) - Amazon SageMaker channel configuration
-                    for a file system data source for Amazon algorithms
+                * (sagemaker.amazon.amazon_estimator.FileSystemRecordSet) -
+                    Amazon SageMaker channel configuration for a file system data source for
+                    Amazon algorithms.
                 * (list[sagemaker.amazon.amazon_estimator.RecordSet]) - A list of
-                    :class:~`sagemaker.amazon.amazon_estimator.RecordSet` objects, where each instance is
-                    a different channel of training data.
+                    :class:~`sagemaker.amazon.amazon_estimator.RecordSet` objects,
+                    where each instance is a different channel of training data.
                 * (list[sagemaker.amazon.amazon_estimator.FileSystemRecordSet]) - A list of
-                    :class:~`sagemaker.amazon.amazon_estimator.FileSystemRecordSet` objects, where each instance is
-                    a different channel of training data.
+                    :class:~`sagemaker.amazon.amazon_estimator.FileSystemRecordSet` objects,
+                    where each instance is a different channel of training data.
 
-            job_name (str): Tuning job name. If not specified, the tuner generates a default job name,
-                based on the training image name and current timestamp.
+            job_name (str): Tuning job name. If not specified, the tuner generates
+                a default job name, based on the training image name and current timestamp.
             include_cls_metadata (bool): Whether or not the hyperparameter tuning job should include
                 information about the estimator class (default: False). This information is passed
                 as a hyperparameter, so if the algorithm you are using cannot handle
                 unknown hyperparameters (e.g. an Amazon SageMaker built-in algorithm that
                 does not have a custom estimator in the Python SDK), then set
                 ``include_cls_metadata`` to ``False``.
-            **kwargs: Other arguments needed for training. Please refer to the ``fit()`` method of the associated
-                estimator to see what other arguments are needed.
+            **kwargs: Other arguments needed for training. Please refer to the ``fit()`` method of
+                the associated estimator to see what other arguments are needed.
         """
         if isinstance(inputs, (list, RecordSet, FileSystemRecordSet)):
             self.estimator._prepare_for_training(inputs, **kwargs)
