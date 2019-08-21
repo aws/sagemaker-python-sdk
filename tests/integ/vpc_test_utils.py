@@ -21,8 +21,7 @@ VPC_NAME = "sagemaker-python-sdk-test-vpc"
 LOCK_PATH = os.path.join(tempfile.gettempdir(), "sagemaker_test_vpc_lock")
 
 
-def _subnet_ids_by_name(sagemaker_session, name):
-    ec2_client = sagemaker_session.boto_session.client("ec2")
+def _subnet_ids_by_name(ec2_client, name):
     desc = ec2_client.describe_subnets(Filters=[{"Name": "tag-value", "Values": [name]}])
     if len(desc["Subnets"]) == 0:
         return None
@@ -47,8 +46,7 @@ def _security_group_ids_by_vpc_id(sagemaker_session, vpc_id):
     return security_group_ids
 
 
-def _vpc_exists(sagemaker_session, name):
-    ec2_client = sagemaker_session.boto_session.client("ec2")
+def _vpc_exists(ec2_client, name):
     desc = ec2_client.describe_vpcs(Filters=[{"Name": "tag-value", "Values": [name]}])
     return len(desc["Vpcs"]) > 0
 
