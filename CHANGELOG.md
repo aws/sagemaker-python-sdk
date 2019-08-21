@@ -1,5 +1,12 @@
 # Changelog
 
+## v1.37.2 (2019-08-20)
+
+### Bug fixes and other changes
+
+ * Add support for Managed Spot Training and Checkpoint support
+ * Integration Tests now dynamically checks AZs
+
 ## v1.37.1 (2019-08-19)
 
 ### Bug fixes and other changes

@@ -82,6 +82,10 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):
         model_channel_name="model",
         metric_definitions=None,
         encrypt_inter_container_traffic=False,
+        train_use_spot_instances=False,
+        train_max_wait=None,
+        checkpoint_s3_uri=None,
+        checkpoint_local_path=None,
     ):
         """Initialize an ``EstimatorBase`` instance.
 
@@ -157,6 +161,28 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):
             encrypt_inter_container_traffic (bool): Specifies whether traffic
                 between training containers is encrypted for the training job
                 (default: ``False``).
+            train_use_spot_instances (bool): Specifies whether to use SageMaker
+                Managed Spot instances for training. If enabled then the
+                `train_max_wait` arg should also be set.
+
+                More information:
+                https://docs.aws.amazon.com/sagemaker/latest/dg/model-managed-spot-training.html
+                (default: ``False``).
+            train_max_wait (int): Timeout in seconds waiting for spot training
+                instances (default: None). After this amount of time Amazon
+                SageMaker will stop waiting for Spot instances to become
+                available (default: ``None``).
+            checkpoint_s3_uri (str): The S3 URI in which to persist checkpoints
+                that the algorithm persists (if any) during training. (default:
+                ``None``).
+            checkpoint_local_path (str): The local path that the algorithm
+                writes its checkpoints to. SageMaker will persist all files
+                under this path to `checkpoint_s3_uri` continually during
+                training. On job startup the reverse happens - data from the
+                s3 location is downloaded to this path before the algorithm is
+                started. If the path is unset then SageMaker assumes the
+                checkpoints will be provided under `/opt/ml/checkpoints/`.
+                (default: ``None``).
         """
         self.role = role
         self.train_instance_count = train_instance_count
@@ -199,6 +225,10 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):
         self.security_group_ids = security_group_ids
 
         self.encrypt_inter_container_traffic = encrypt_inter_container_traffic
+        self.train_use_spot_instances = train_use_spot_instances
+        self.train_max_wait = train_max_wait
+        self.checkpoint_s3_uri = checkpoint_s3_uri
+        self.checkpoint_local_path = checkpoint_local_path
 
     @abstractmethod
     def train_image(self):
@@ -795,9 +825,34 @@ class _TrainingJob(_Job):
         else:
             train_args["image"] = estimator.train_image()
 
+        cls._add_spot_checkpoint_args(local_mode, estimator, train_args)
+
         estimator.sagemaker_session.train(**train_args)
 
         return cls(estimator.sagemaker_session, estimator._current_job_name)
+
+    @classmethod
+    def _add_spot_checkpoint_args(cls, local_mode, estimator, train_args):
+        """
+        Args:
+            local_mode:
+            estimator:
+            train_args:
+        """
+        if estimator.train_use_spot_instances:
+            if local_mode:
+                raise ValueError("Spot training is not supported in local mode.")
+            train_args["train_use_spot_instances"] = True
+
+        if estimator.checkpoint_s3_uri:
+            if local_mode:
+                raise ValueError("Setting checkpoint_s3_uri is not supported in local mode.")
+            train_args["checkpoint_s3_uri"] = estimator.checkpoint_s3_uri
+
+        if estimator.checkpoint_local_path:
+            if local_mode:
+                raise ValueError("Setting checkpoint_local_path is not supported in local mode.")
+            train_args["checkpoint_local_path"] = estimator.checkpoint_local_path
 
     @classmethod
     def _is_local_channel(cls, input_uri):
@@ -845,6 +900,10 @@ class Estimator(EstimatorBase):
         model_channel_name="model",
         metric_definitions=None,
         encrypt_inter_container_traffic=False,
+        train_use_spot_instances=False,
+        train_max_wait=None,
+        checkpoint_s3_uri=None,
+        checkpoint_local_path=None,
     ):
         """Initialize an ``Estimator`` instance.
 
@@ -926,6 +985,28 @@ class Estimator(EstimatorBase):
             encrypt_inter_container_traffic (bool): Specifies whether traffic
                 between training containers is encrypted for the training job
                 (default: ``False``).
+            train_use_spot_instances (bool): Specifies whether to use SageMaker
+                Managed Spot instances for training. If enabled then the
+                `train_max_wait` arg should also be set.
+
+                More information:
+                https://docs.aws.amazon.com/sagemaker/latest/dg/model-managed-spot-training.html
+                (default: ``False``).
+            train_max_wait (int): Timeout in seconds waiting for spot training
+                instances (default: None). After this amount of time Amazon
+                SageMaker will stop waiting for Spot instances to become
+                available (default: ``None``).
+            checkpoint_s3_uri (str): The S3 URI in which to persist checkpoints
+                that the algorithm persists (if any) during training. (default:
+                ``None``).
+            checkpoint_local_path (str): The local path that the algorithm
+                writes its checkpoints to. SageMaker will persist all files
+                under this path to `checkpoint_s3_uri` continually during
+                training. On job startup the reverse happens - data from the
+                s3 location is downloaded to this path before the algorithm is
+                started. If the path is unset then SageMaker assumes the
+                checkpoints will be provided under `/opt/ml/checkpoints/`.
+                (default: ``None``).
         """
         self.image_name = image_name
         self.hyperparam_dict = hyperparameters.copy() if hyperparameters else {}
@@ -948,6 +1029,10 @@ class Estimator(EstimatorBase):
             model_channel_name=model_channel_name,
             metric_definitions=metric_definitions,
             encrypt_inter_container_traffic=encrypt_inter_container_traffic,
+            train_use_spot_instances=train_use_spot_instances,
+            train_max_wait=train_max_wait,
+            checkpoint_s3_uri=checkpoint_s3_uri,
+            checkpoint_local_path=checkpoint_local_path,
         )
 
     def train_image(self):
