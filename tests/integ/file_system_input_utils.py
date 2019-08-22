@@ -83,11 +83,10 @@ def set_up_efs_fsx(sagemaker_session):
         subnet_ids[0],
     )
 
-    file_system_efs_id, mount_efs_target_id = _check_or_create_efs(sagemaker_session)
-    file_system_fsx_id = _check_or_create_fsx(sagemaker_session)
+    file_system_efs_id = _check_or_create_efs(sagemaker_session)
+    mount_efs_target_id = _create_efs_mount(sagemaker_session, file_system_efs_id)
 
-    connected_instance = _connect_ec2_instance(ec2_instance)
-    _upload_data_and_mount_fs(connected_instance, file_system_efs_id, file_system_fsx_id)
+    file_system_fsx_id = _check_or_create_fsx(sagemaker_session)
 
     fs_resources = FsResources(
         KEY_NAME,
@@ -100,6 +99,14 @@ def set_up_efs_fsx(sagemaker_session):
         ec2_instance.id,
         mount_efs_target_id,
     )
+
+    try:
+        connected_instance = _connect_ec2_instance(ec2_instance)
+        _upload_data_and_mount_fs(connected_instance, file_system_efs_id, file_system_fsx_id)
+    except Exception:
+        tear_down(sagemaker_session, fs_resources)
+        raise
+
     return fs_resources
 
 
@@ -155,8 +162,7 @@ def _check_or_create_efs(sagemaker_session):
         if status == "available":
             break
 
-    mount_target_id = _create_efs_mount(sagemaker_session, efs_id)
-    return efs_id, mount_target_id
+    return efs_id
 
 
 def _create_efs_mount(sagemaker_session, file_system_id):
@@ -334,6 +340,7 @@ def tear_down(sagemaker_session, fs_resources):
             break
 
     efs_client.delete_file_system(FileSystemId=file_system_efs_id)
+
     ec2_resource = sagemaker_session.boto_session.resource("ec2")
     instance_id = fs_resources.ec2_instance_id
     _terminate_instance(ec2_resource, [instance_id])
