@@ -21,7 +21,7 @@ from sagemaker.tuner import HyperparameterTuner
 from sagemaker.utils import unique_name_from_base
 from tests.integ import TRAINING_DEFAULT_TIMEOUT_MINUTES, TUNING_DEFAULT_TIMEOUT_MINUTES
 from tests.integ.s3_utils import assert_s3_files_exist
-from tests.integ.test_file_system_input_utils import set_up_efs_fsx, tear_down
+from tests.integ.file_system_input_utils import set_up_efs_fsx, tear_down
 from tests.integ.timeout import timeout
 
 TRAIN_INSTANCE_TYPE = "ml.c4.xlarge"
