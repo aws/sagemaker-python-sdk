@@ -62,7 +62,7 @@ def _route_table_id(ec2_client, vpc_id):
     return desc["RouteTables"][0]["RouteTableId"]
 
 
-def check_or_create_vpc_resources_efs_fsx(sagemaker_session, region, name):
+def check_or_create_vpc_resources_efs_fsx(sagemaker_session, region, name=VPC_NAME):
     # use lock to prevent race condition when tests are running concurrently
     with lock.lock(LOCK_PATH):
         ec2_client = sagemaker_session.boto_session.client("ec2")
