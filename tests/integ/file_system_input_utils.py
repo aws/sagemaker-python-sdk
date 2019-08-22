@@ -133,8 +133,7 @@ def _check_or_create_efs(sagemaker_session):
         efs_id = create_response["FileSystemId"]
     except ClientError as e:
         error_code = e.response["Error"]["Code"]
-        message = e.response["Error"]["Message"]
-        if error_code == "FileSystemAlreadyExists" and EFS_CREATION_TOKEN in message:
+        if error_code == "FileSystemAlreadyExists":
             file_system_exists = True
             logging.warning(
                 "File system with given creation token %s already exists", EFS_CREATION_TOKEN
