@@ -51,8 +51,7 @@ def _vpc_exists(ec2_client, name):
     return len(desc["Vpcs"]) > 0
 
 
-def _vpc_id_by_name(sagemaker_session, name):
-    ec2_client = sagemaker_session.boto_session.client("ec2")
+def _vpc_id_by_name(ec2_client, name):
     desc = ec2_client.describe_vpcs(Filters=[{"Name": "tag-value", "Values": [name]}])
     vpc_id = desc["Vpcs"][0]["VpcId"]
     return vpc_id
@@ -66,18 +65,19 @@ def _route_table_id(ec2_client, vpc_id):
 def check_or_create_vpc_resources_efs_fsx(sagemaker_session, region, name):
     # use lock to prevent race condition when tests are running concurrently
     with lock.lock(LOCK_PATH):
-        if _vpc_exists(sagemaker_session, name):
-            vpc_id = _vpc_id_by_name(sagemaker_session, name)
+        ec2_client = sagemaker_session.boto_session.client("ec2")
+
+        if _vpc_exists(ec2_client, name):
+            vpc_id = _vpc_id_by_name(ec2_client, name)
             return (
-                _subnet_ids_by_name(sagemaker_session, name),
+                _subnet_ids_by_name(ec2_client, name),
                 _security_group_ids_by_vpc_id(sagemaker_session, vpc_id),
             )
         else:
-            return _create_vpc_with_name_efs_fsx(sagemaker_session, region, name)
+            return _create_vpc_with_name_efs_fsx(ec2_client, region, name)
 
 
-def _create_vpc_with_name_efs_fsx(sagemaker_session, region, name):
-    ec2_client = sagemaker_session.boto_session.client("ec2")
+def _create_vpc_with_name_efs_fsx(ec2_client, region, name):
     vpc_id, [subnet_id_a, subnet_id_b], security_group_id = _create_vpc_resources(
         ec2_client, region, name
     )
