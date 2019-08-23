@@ -27,7 +27,7 @@ from tests.integ.timeout import timeout
 TRAIN_INSTANCE_TYPE = "ml.c4.xlarge"
 TRAIN_INSTANCE_COUNT = 1
 OBJECTIVE_METRIC_NAME = "test:msd"
-EFS_DIR_PATH = "one_p_mnist"
+EFS_DIR_PATH = "/one_p_mnist"
 FSX_DIR_PATH = "/fsx/one_p_mnist"
 MAX_JOBS = 2
 MAX_PARALLEL_JOBS = 2
