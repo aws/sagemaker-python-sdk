@@ -1,4 +1,4 @@
-# Copyright 2017 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright 2017-2019 Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -16,6 +16,7 @@ from __future__ import absolute_import
 from abc import abstractmethod
 from six import string_types
 
+from sagemaker.inputs import FileSystemInput
 from sagemaker.local import file_input
 from sagemaker.session import s3_input
 
@@ -127,8 +128,9 @@ class _Job(object):
 
         # Deferred import due to circular dependency
         from sagemaker.amazon.amazon_estimator import RecordSet
+        from sagemaker.amazon.amazon_estimator import FileSystemRecordSet
 
-        if isinstance(inputs, RecordSet):
+        if isinstance(inputs, (RecordSet, FileSystemRecordSet)):
             inputs = inputs.data_channel()
 
         input_dict = {}
@@ -143,10 +145,11 @@ class _Job(object):
                 input_dict[k] = _Job._format_string_uri_input(v, validate_uri)
         elif isinstance(inputs, list):
             input_dict = _Job._format_record_set_list_input(inputs)
+        elif isinstance(inputs, FileSystemInput):
+            input_dict["training"] = inputs
         else:
-            raise ValueError(
-                "Cannot format input {}. Expecting one of str, dict or s3_input".format(inputs)
-            )
+            msg = "Cannot format input {}. Expecting one of str, dict, s3_input or FileSystemInput"
+            raise ValueError(msg.format(inputs))
 
         channels = [
             _Job._convert_input_to_channel(name, input) for name, input in input_dict.items()
@@ -185,14 +188,12 @@ class _Job(object):
             )
         if isinstance(uri_input, str):
             return s3_input(uri_input, content_type=content_type, input_mode=input_mode)
-        if isinstance(uri_input, s3_input):
+        if isinstance(uri_input, (s3_input, file_input, FileSystemInput)):
             return uri_input
-        if isinstance(uri_input, file_input):
-            return uri_input
+
         raise ValueError(
-            "Cannot format input {}. Expecting one of str, s3_input, or file_input".format(
-                uri_input
-            )
+            "Cannot format input {}. Expecting one of str, s3_input, file_input or "
+            "FileSystemInput".format(uri_input)
         )
 
     @staticmethod
@@ -263,22 +264,24 @@ class _Job(object):
 
     @staticmethod
     def _format_record_set_list_input(inputs):
-        # Deferred import due to circular dependency
         """
         Args:
             inputs:
         """
-        from sagemaker.amazon.amazon_estimator import RecordSet
+        # Deferred import due to circular dependency
+        from sagemaker.amazon.amazon_estimator import FileSystemRecordSet, RecordSet
 
         input_dict = {}
         for record in inputs:
-            if not isinstance(record, RecordSet):
-                raise ValueError("List compatible only with RecordSets.")
+            if not isinstance(record, (RecordSet, FileSystemRecordSet)):
+                raise ValueError("List compatible only with RecordSets or FileSystemRecordSets.")
 
             if record.channel in input_dict:
                 raise ValueError("Duplicate channels not allowed.")
-
-            input_dict[record.channel] = record.records_s3_input()
+            if isinstance(record, RecordSet):
+                input_dict[record.channel] = record.records_s3_input()
+            if isinstance(record, FileSystemRecordSet):
+                input_dict[record.channel] = record.file_system_input
 
         return input_dict
 

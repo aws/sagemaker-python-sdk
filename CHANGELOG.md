@@ -1,5 +1,11 @@
 # Changelog
 
+## v1.38.0 (2019-08-23)
+
+### Features
+
+ * support training inputs from EFS and FSx
+
 ## v1.37.2 (2019-08-20)
 
 ### Bug fixes and other changes
