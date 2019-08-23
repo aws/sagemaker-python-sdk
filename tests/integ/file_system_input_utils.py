@@ -26,6 +26,7 @@ from fabric import Connection
 
 from tests.integ.vpc_test_utils import check_or_create_vpc_resources_efs_fsx
 
+VPC_NAME = "sagemaker-efs-fsx-vpc"
 EFS_CREATION_TOKEN = str(uuid.uuid4())
 PREFIX = "ec2_fs_key_"
 KEY_NAME = PREFIX + str(uuid.uuid4().hex.upper()[0:8])
@@ -69,7 +70,7 @@ def set_up_efs_fsx(sagemaker_session):
     _check_or_create_key_pair(sagemaker_session)
     _check_or_create_iam_profile_and_attach_role(sagemaker_session)
     subnet_ids, security_group_ids = check_or_create_vpc_resources_efs_fsx(
-        sagemaker_session, REGION
+        sagemaker_session, REGION, VPC_NAME
     )
 
     ec2_instance = _create_ec2_instance(
@@ -167,7 +168,7 @@ def _check_or_create_efs(sagemaker_session):
 
 def _create_efs_mount(sagemaker_session, file_system_id):
     subnet_ids, security_group_ids = check_or_create_vpc_resources_efs_fsx(
-        sagemaker_session, REGION
+        sagemaker_session, REGION, VPC_NAME
     )
     efs_client = sagemaker_session.boto_session.client("efs")
     mount_response = efs_client.create_mount_target(
@@ -187,7 +188,7 @@ def _create_efs_mount(sagemaker_session, file_system_id):
 def _check_or_create_fsx(sagemaker_session):
     fsx_client = sagemaker_session.boto_session.client("fsx")
     subnet_ids, security_group_ids = check_or_create_vpc_resources_efs_fsx(
-        sagemaker_session, REGION
+        sagemaker_session, REGION, VPC_NAME
     )
     create_response = fsx_client.create_file_system(
         FileSystemType="LUSTRE",
