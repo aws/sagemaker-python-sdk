@@ -116,19 +116,23 @@ def _using_merged_images(region, framework, py_version, accelerator_type, framew
     return (
         (not is_gov_region)
         and is_merged_versions
-        and (is_py3 or _is_tf_14(framework, framework_version))
+        and (is_py3 or _is_tf_14_or_later(framework, framework_version))
         and accelerator_type is None
     )
 
 
-def _is_tf_14(framework, framework_version):
+def _is_tf_14_or_later(framework, framework_version):
     """
     Args:
         framework:
         framework_version:
     """
     # Asimov team now owns Tensorflow 1.14.0 py2 and py3
-    return framework == "tensorflow-scriptmode" and framework_version in ("1.14", "1.14.0")
+    asimov_lowest_tf_py2 = [1, 14, 0]
+    version = [int(s) for s in framework_version.split(".")]
+    return (
+        framework == "tensorflow-scriptmode" and version >= asimov_lowest_tf_py2[0 : len(version)]
+    )
 
 
 def _registry_id(region, framework, py_version, account, accelerator_type, framework_version):
