@@ -121,14 +121,15 @@ def _connect_ec2_instance(ec2_instance):
 
 def _upload_data_and_mount_fs(connected_instance, file_system_efs_id, file_system_fsx_id):
     connected_instance.put(FS_MOUNT_SCRIPT, ".")
-    connected_instance.run("mkdir temp_tf; mkdir temp_one_p")
+    connected_instance.run("mkdir temp_tf; mkdir temp_one_p", in_stream=False)
     for dir_name, subdir_list, file_list in os.walk(MNIST_LOCAL_DATA):
         for fname in file_list:
             local_file = os.path.join(MNIST_LOCAL_DATA, fname)
             connected_instance.put(local_file, "temp_tf/")
     connected_instance.put(ONE_P_LOCAL_DATA, "temp_one_p/")
     connected_instance.run(
-        "sudo sh fs_mount_setup.sh {} {}".format(file_system_efs_id, file_system_fsx_id)
+        "sudo sh fs_mount_setup.sh {} {}".format(file_system_efs_id, file_system_fsx_id),
+        in_stream=False,
     )
 
 

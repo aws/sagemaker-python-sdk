@@ -21,7 +21,7 @@ VPC_NAME = "sagemaker-python-sdk-test-vpc"
 LOCK_PATH = os.path.join(tempfile.gettempdir(), "sagemaker_test_vpc_lock")
 
 
-def _subnet_ids_by_name(ec2_client, name):
+def _get_subnet_ids_by_name(ec2_client, name):
     desc = ec2_client.describe_subnets(Filters=[{"Name": "tag-value", "Values": [name]}])
     if len(desc["Subnets"]) == 0:
         return None
@@ -29,7 +29,7 @@ def _subnet_ids_by_name(ec2_client, name):
         return [subnet["SubnetId"] for subnet in desc["Subnets"]]
 
 
-def _security_id_by_name(ec2_client, name):
+def _get_security_id_by_name(ec2_client, name):
     desc = ec2_client.describe_security_groups(Filters=[{"Name": "tag-value", "Values": [name]}])
     if len(desc["SecurityGroups"]) == 0:
         return None
@@ -70,7 +70,7 @@ def check_or_create_vpc_resources_efs_fsx(sagemaker_session, region, name=VPC_NA
         if _vpc_exists(ec2_client, name):
             vpc_id = _vpc_id_by_name(ec2_client, name)
             return (
-                _subnet_ids_by_name(ec2_client, name),
+                _get_subnet_ids_by_name(ec2_client, name),
                 _security_group_ids_by_vpc_id(sagemaker_session, vpc_id),
             )
         else:
@@ -184,7 +184,10 @@ def get_or_create_vpc_resources(ec2_client, region, name=VPC_NAME):
     with lock.lock(LOCK_PATH):
         if _vpc_exists(ec2_client, name):
             print("using existing vpc: {}".format(name))
-            return (_subnet_ids_by_name(ec2_client, name), _security_id_by_name(ec2_client, name))
+            return (
+                _get_subnet_ids_by_name(ec2_client, name),
+                _get_security_id_by_name(ec2_client, name),
+            )
         else:
             print("creating new vpc: {}".format(name))
             return _create_vpc_with_name(ec2_client, region, name)
