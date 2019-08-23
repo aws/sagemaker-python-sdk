@@ -114,7 +114,7 @@ class FileSystemInput(object):
             file_system_id (str): An Amazon file system ID starting with 'fs-'.
             file_system_type (str): The type of file system used for the input.
                 Valid values: 'EFS', 'FSxLustre'.
-            directory_path (str): Relative path to the root directory (mount point) in
+            directory_path (str): Absolute or normalized path to the root directory (mount point) in
                 the file system.
                 Reference: https://docs.aws.amazon.com/efs/latest/ug/mounting-fs.html and
                 https://docs.aws.amazon.com/fsx/latest/LustreGuide/mount-fs-auto-mount-onreboot.html
