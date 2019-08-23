@@ -327,7 +327,7 @@ Here are examples of how to use Amazon EFS as input for training:
 
         file_system_input = FileSystemInput(file_system_id='fs-1',
                                             file_system_type='EFS',
-                                            directory_path='tensorflow',
+                                            directory_path='/tensorflow',
                                             file_system_access_mode='ro')
 
         # Start an Amazon SageMaker training job with EFS using the FileSystemInput class
@@ -347,7 +347,7 @@ Here are examples of how to use Amazon EFS as input for training:
 
         records = FileSystemRecordSet(file_system_id='fs-1,
                                       file_system_type='EFS',
-                                      directory_path='kmeans',
+                                      directory_path='/kmeans',
                                       num_records=784,
                                       feature_dim=784)
 
@@ -372,7 +372,7 @@ Here are examples of how to use Amazon FSx for Lustre as input for training:
 
         file_system_input = FileSystemInput(file_system_id='fs-2',
                                             file_system_type='FSxLustre',
-                                            directory_path='tensorflow',
+                                            directory_path='/fsx/tensorflow',
                                             file_system_access_mode='ro')
 
         # Start an Amazon SageMaker training job with FSx using the FileSystemInput class
@@ -392,7 +392,7 @@ Here are examples of how to use Amazon FSx for Lustre as input for training:
 
         records = FileSystemRecordSet(file_system_id='fs-=2,
                                       file_system_type='FSxLustre',
-                                      directory_path='kmeans',
+                                      directory_path='/fsx/kmeans',
                                       num_records=784,
                                       feature_dim=784)
 
