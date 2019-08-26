@@ -161,8 +161,8 @@ class AmazonAlgorithmEstimatorBase(EstimatorBase):
         ``records`` should be an instance of :class:`~RecordSet`. This
         defines a collection of S3 data files to train this ``Estimator`` on.
 
-        Training data is expected to be encoded as dense or sparse vectors in
-        the "values" feature on each Record. If the data is labeled, the label
+        Training data is expected to be encoded as dense or sparse vectors in the
+        "values" feature on each Record. If the data is labeled, the label
         is expected to be encoded as a list of scalas in the "values" feature of
         the Record label.
 
