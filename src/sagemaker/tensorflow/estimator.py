@@ -345,7 +345,7 @@ class TensorFlow(Framework):
 
         if py_version == "py2" and self._only_python_3_supported():
             msg = (
-                "Python 2 containers are only available until TensorFlow version 1.14.0. "
+                "Python 2 containers are only available until January 1st, 2020. "
                 "Please use a Python 3 container."
             )
             raise AttributeError(msg)
