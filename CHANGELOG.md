@@ -1,5 +1,16 @@
 # Changelog
 
+## v1.38.1 (2019-08-26)
+
+### Bug fixes and other changes
+
+ * update py2 warning message
+ * add logic to use asimov image for TF 1.14 py2
+
+### Documentation changes
+
+ * changed EFS directory path instructions in documentation and Docstrings
+
 ## v1.38.0 (2019-08-23)
 
 ### Features
