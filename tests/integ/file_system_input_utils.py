@@ -14,6 +14,7 @@ from __future__ import absolute_import
 
 import collections
 import logging
+from operator import itemgetter
 import os
 from os import path
 import stat
@@ -32,7 +33,6 @@ PREFIX = "ec2_fs_key_"
 KEY_NAME = PREFIX + str(uuid.uuid4().hex.upper()[0:8])
 ROLE_NAME = "SageMakerRole"
 EC2_INSTANCE_TYPE = "t2.micro"
-AMI_ID = "ami-082b5a644766e0e6f"
 MIN_COUNT = 1
 MAX_COUNT = 1
 
@@ -47,28 +47,6 @@ FS_MOUNT_SCRIPT = os.path.join(SCRIPTS_FOLDER, "fs_mount_setup.sh")
 FILE_NAME = KEY_NAME + ".pem"
 KEY_PATH = os.path.join(tempfile.gettempdir(), FILE_NAME)
 STORAGE_CAPACITY_IN_BYTES = 3600
-
-AWSRegionArch2AMI = {
-    "us-east-1": "ami-0ff8a91507f77f867",
-    "us-west-2": "ami-a0cfeed8",
-    "us-west-1": "ami-0bdb828fd58c52235",
-    "eu-west-1": "ami-047bb4163c506cd98",
-    "eu-west-2": "ami-f976839e",
-    "eu-west-3": "ami-0ebc281c20e89ba4b",
-    "eu-central-1": "ami-0233214e13e500f77",
-    "ap-northeast-1": "ami-06cd52961ce9f0d85",
-    "ap-northeast-2": "ami-0a10b2721688ce9d2",
-    "ap-northeast-3": "ami-0d98120a9fb693f07",
-    "ap-southeast-1": "ami-08569b978cc4dfa10",
-    "ap-southeast-2": "ami-09b42976632b27e9b",
-    "ap-south-1": "ami-0912f71e06545ad88",
-    "us-east-2": "ami-0b59bfac6be064b78",
-    "ca-central-1": "ami-0b18956f",
-    "sa-east-1": "ami-07b14488da8ea02a0",
-    "cn-north-1": "ami-0a4eaf6c4454eda75",
-    "cn-northwest-1": "ami-6b6a7d09",
-    "us-gov-west-1": "ami-906cf0f1",
-}
 
 FsResources = collections.namedtuple(
     "FsResources",
@@ -93,10 +71,11 @@ def set_up_efs_fsx(sagemaker_session):
         sagemaker_session, VPC_NAME
     )
 
+    ami_id = _dynamic_ami_id(sagemaker_session)
     region = sagemaker_session.boto_region_name
     ec2_instance = _create_ec2_instance(
         sagemaker_session,
-        AWSRegionArch2AMI[region],
+        ami_id,
         EC2_INSTANCE_TYPE,
         KEY_NAME,
         MIN_COUNT,
@@ -124,12 +103,30 @@ def set_up_efs_fsx(sagemaker_session):
 
     try:
         connected_instance = _connect_ec2_instance(ec2_instance)
-        _upload_data_and_mount_fs(connected_instance, file_system_efs_id, file_system_fsx_id)
+        _upload_data_and_mount_fs(
+            connected_instance, file_system_efs_id, file_system_fsx_id, region
+        )
     except Exception:
         tear_down(sagemaker_session, fs_resources)
         raise
 
     return fs_resources
+
+
+def _dynamic_ami_id(sagemaker_session):
+    ec2_client = sagemaker_session.boto_session.client("ec2")
+    filters = [
+        {"Name": "name", "Values": ["amzn-ami-hvm-????.??.?.????????-x86_64-gp2"]},
+        {"Name": "state", "Values": ["available"]},
+    ]
+    response = ec2_client.describe_images(Filters=filters)
+
+    image_details = sorted(response["Images"], key=itemgetter("CreationDate"), reverse=True)
+    if len(image_details) > 0:
+        ami_id = image_details[0]["ImageId"]
+        return ami_id
+    else:
+        raise Exception("AMI was not found based on current search criteria: {}".format(filters))
 
 
 def _connect_ec2_instance(ec2_instance):
@@ -140,7 +137,7 @@ def _connect_ec2_instance(ec2_instance):
     return connected_instance
 
 
-def _upload_data_and_mount_fs(connected_instance, file_system_efs_id, file_system_fsx_id):
+def _upload_data_and_mount_fs(connected_instance, file_system_efs_id, file_system_fsx_id, region):
     connected_instance.put(FS_MOUNT_SCRIPT, ".")
     connected_instance.run("mkdir temp_tf; mkdir temp_one_p", in_stream=False)
     for dir_name, subdir_list, file_list in os.walk(MNIST_LOCAL_DATA):
@@ -149,7 +146,7 @@ def _upload_data_and_mount_fs(connected_instance, file_system_efs_id, file_syste
             connected_instance.put(local_file, "temp_tf/")
     connected_instance.put(ONE_P_LOCAL_DATA, "temp_one_p/")
     connected_instance.run(
-        "sudo sh fs_mount_setup.sh {} {}".format(file_system_efs_id, file_system_fsx_id),
+        "sudo sh fs_mount_setup.sh {} {} {}".format(file_system_efs_id, file_system_fsx_id, region),
         in_stream=False,
     )
 
