@@ -28,6 +28,7 @@ from tests.integ.retry import retries
 from tests.integ.vpc_test_utils import check_or_create_vpc_resources_efs_fsx
 
 VPC_NAME = "sagemaker-efs-fsx-vpc"
+ALINUX_AMI_NAME_FILTER = "amzn-ami-hvm-????.??.?.????????-x86_64-gp2"
 EFS_CREATION_TOKEN = str(uuid.uuid4())
 PREFIX = "ec2_fs_key_"
 KEY_NAME = PREFIX + str(uuid.uuid4().hex.upper()[0:8])
@@ -47,11 +48,6 @@ FS_MOUNT_SCRIPT = os.path.join(SCRIPTS_FOLDER, "fs_mount_setup.sh")
 FILE_NAME = KEY_NAME + ".pem"
 KEY_PATH = os.path.join(tempfile.gettempdir(), FILE_NAME)
 STORAGE_CAPACITY_IN_BYTES = 3600
-
-AMI_FILTERS = [
-    {"Name": "name", "Values": ["amzn-ami-hvm-????.??.?.????????-x86_64-gp2"]},
-    {"Name": "state", "Values": ["available"]},
-]
 
 FsResources = collections.namedtuple(
     "FsResources",
@@ -120,13 +116,15 @@ def set_up_efs_fsx(sagemaker_session):
 
 def _ami_id_for_region(sagemaker_session):
     ec2_client = sagemaker_session.boto_session.client("ec2")
-    response = ec2_client.describe_images(Filters=AMI_FILTERS)
+    filters = [
+        {"Name": "name", "Values": [ALINUX_AMI_NAME_FILTER]},
+        {"Name": "state", "Values": ["available"]},
+    ]
+    response = ec2_client.describe_images(Filters=filters)
     image_details = sorted(response["Images"], key=itemgetter("CreationDate"), reverse=True)
 
     if len(image_details) == 0:
-        raise Exception(
-            "AMI was not found based on current search criteria: {}".format(AMI_FILTERS)
-        )
+        raise Exception("AMI was not found based on current search criteria: {}".format(filters))
 
     return image_details[0]["ImageId"]
 
