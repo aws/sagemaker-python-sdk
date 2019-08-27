@@ -72,7 +72,6 @@ def set_up_efs_fsx(sagemaker_session):
     )
 
     ami_id = _dynamic_ami_id(sagemaker_session)
-    region = sagemaker_session.boto_region_name
     ec2_instance = _create_ec2_instance(
         sagemaker_session,
         ami_id,
@@ -101,6 +100,7 @@ def set_up_efs_fsx(sagemaker_session):
         mount_efs_target_id,
     )
 
+    region = sagemaker_session.boto_region_name
     try:
         connected_instance = _connect_ec2_instance(ec2_instance)
         _upload_data_and_mount_fs(
