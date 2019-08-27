@@ -18,12 +18,12 @@ import os
 from os import path
 import stat
 import tempfile
-import time
 import uuid
 
 from botocore.exceptions import ClientError
 from fabric import Connection
 
+from tests.integ.retry import retries
 from tests.integ.vpc_test_utils import check_or_create_vpc_resources_efs_fsx
 
 VPC_NAME = "sagemaker-efs-fsx-vpc"
@@ -35,7 +35,6 @@ EC2_INSTANCE_TYPE = "t2.micro"
 AMI_ID = "ami-082b5a644766e0e6f"
 MIN_COUNT = 1
 MAX_COUNT = 1
-TIME_SLEEP_DURATION = 10
 
 RESOURCE_PATH = os.path.join(os.path.dirname(__file__), "..", "data")
 MNIST_RESOURCE_PATH = os.path.join(RESOURCE_PATH, "tensorflow_mnist")
@@ -327,21 +326,6 @@ def _instance_profile_exists(sagemaker_session):
         else:
             raise
     return True
-
-
-def retries(max_retry_count, exception_message_prefix):
-    current_retry_count = 0
-    while current_retry_count <= max_retry_count:
-        yield current_retry_count
-
-        current_retry_count += 1
-        time.sleep(TIME_SLEEP_DURATION)
-
-    raise Exception(
-        "{} has reached the maximum retry count {}".format(
-            exception_message_prefix, max_retry_count
-        )
-    )
 
 
 def tear_down(sagemaker_session, fs_resources):

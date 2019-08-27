@@ -199,6 +199,8 @@ class TensorFlow(Framework):
     """The latest version of TensorFlow included in the SageMaker pre-built Docker images."""
 
     _LOWEST_SCRIPT_MODE_ONLY_VERSION = [1, 13]
+    # 1.14.0 now supports py2
+    # we will need to update this version number if future versions do not support py2 anymore
     _LOWEST_PYTHON_2_ONLY_VERSION = [1, 14]
 
     def __init__(
@@ -343,7 +345,7 @@ class TensorFlow(Framework):
 
         if py_version == "py2" and self._only_python_3_supported():
             msg = (
-                "Python 2 containers are only available until TensorFlow version 1.13.1. "
+                "Python 2 containers are only available until January 1st, 2020. "
                 "Please use a Python 3 container."
             )
             raise AttributeError(msg)

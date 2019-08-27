@@ -23,6 +23,7 @@ from sagemaker.utils import unique_name_from_base
 
 import tests.integ
 from tests.integ import timeout
+from tests.integ.retry import retries
 from tests.integ.s3_utils import assert_s3_files_exist
 
 ROLE = "SageMakerRole"
@@ -199,15 +200,13 @@ def test_deploy_with_input_handlers(sagemaker_session, instance_type):
         assert expected_result == result
 
 
-def _assert_tags_match(sagemaker_client, resource_arn, tags, retries=15):
-    actual_tags = None
-    for _ in range(retries):
+def _assert_tags_match(sagemaker_client, resource_arn, tags, retry_count=15):
+    # endpoint and training tags might take minutes to propagate.
+    for _ in retries(retry_count, "Getting endpoint tags", seconds_to_sleep=30):
         actual_tags = sagemaker_client.list_tags(ResourceArn=resource_arn)["Tags"]
         if actual_tags:
             break
-        else:
-            # endpoint and training tags might take minutes to propagate. Sleeping.
-            time.sleep(30)
+
     assert actual_tags == tags
 
 
