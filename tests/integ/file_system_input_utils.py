@@ -127,8 +127,8 @@ def _ami_id_for_region(sagemaker_session):
         raise Exception(
             "AMI was not found based on current search criteria: {}".format(AMI_FILTERS)
         )
-    else:
-        return image_details[0]["ImageId"]
+
+    return image_details[0]["ImageId"]
 
 
 def _connect_ec2_instance(ec2_instance):
