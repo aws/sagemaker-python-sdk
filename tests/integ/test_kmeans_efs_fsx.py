@@ -14,14 +14,15 @@ from __future__ import absolute_import
 
 import pytest
 
+import tests.integ
 from sagemaker import KMeans
 from sagemaker.amazon.amazon_estimator import FileSystemRecordSet
 from sagemaker.parameter import IntegerParameter, CategoricalParameter
 from sagemaker.tuner import HyperparameterTuner
 from sagemaker.utils import unique_name_from_base
 from tests.integ import TRAINING_DEFAULT_TIMEOUT_MINUTES, TUNING_DEFAULT_TIMEOUT_MINUTES
-from tests.integ.s3_utils import assert_s3_files_exist
 from tests.integ.file_system_input_utils import set_up_efs_fsx, tear_down
+from tests.integ.s3_utils import assert_s3_files_exist
 from tests.integ.timeout import timeout
 
 TRAIN_INSTANCE_TYPE = "ml.c4.xlarge"
@@ -45,7 +46,10 @@ def efs_fsx_setup(sagemaker_session):
         tear_down(sagemaker_session, fs_resources)
 
 
-@pytest.mark.canary_quick
+@pytest.mark.skipif(
+    tests.integ.test_region() not in tests.integ.EFS_TEST_ENABLED_REGION,
+    reason="EFS integration tests need to be fixed before running in all regions.",
+)
 def test_kmeans_efs(efs_fsx_setup, sagemaker_session):
     with timeout(minutes=TRAINING_DEFAULT_TIMEOUT_MINUTES):
         subnets = [efs_fsx_setup.subnet_id]
@@ -76,7 +80,10 @@ def test_kmeans_efs(efs_fsx_setup, sagemaker_session):
         assert_s3_files_exist(sagemaker_session, model_path, ["model.tar.gz"])
 
 
-@pytest.mark.canary_quick
+@pytest.mark.skipif(
+    tests.integ.test_region() not in tests.integ.EFS_TEST_ENABLED_REGION,
+    reason="EFS integration tests need to be fixed before running in all regions.",
+)
 def test_kmeans_fsx(efs_fsx_setup, sagemaker_session):
     with timeout(minutes=TRAINING_DEFAULT_TIMEOUT_MINUTES):
         subnets = [efs_fsx_setup.subnet_id]
@@ -107,6 +114,10 @@ def test_kmeans_fsx(efs_fsx_setup, sagemaker_session):
         assert_s3_files_exist(sagemaker_session, model_path, ["model.tar.gz"])
 
 
+@pytest.mark.skipif(
+    tests.integ.test_region() not in tests.integ.EFS_TEST_ENABLED_REGION,
+    reason="EFS integration tests need to be fixed before running in all regions.",
+)
 def test_tuning_kmeans_efs(efs_fsx_setup, sagemaker_session):
     subnets = [efs_fsx_setup.subnet_id]
     security_group_ids = efs_fsx_setup.security_group_ids
@@ -163,6 +174,10 @@ def test_tuning_kmeans_efs(efs_fsx_setup, sagemaker_session):
         assert best_training_job
 
 
+@pytest.mark.skipif(
+    tests.integ.test_region() not in tests.integ.EFS_TEST_ENABLED_REGION,
+    reason="EFS integration tests need to be fixed before running in all regions.",
+)
 def test_tuning_kmeans_fsx(efs_fsx_setup, sagemaker_session):
     subnets = [efs_fsx_setup.subnet_id]
     security_group_ids = efs_fsx_setup.security_group_ids
