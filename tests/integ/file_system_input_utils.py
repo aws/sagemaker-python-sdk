@@ -48,6 +48,11 @@ FILE_NAME = KEY_NAME + ".pem"
 KEY_PATH = os.path.join(tempfile.gettempdir(), FILE_NAME)
 STORAGE_CAPACITY_IN_BYTES = 3600
 
+AMI_FILTERS = [
+    {"Name": "name", "Values": ["amzn-ami-hvm-????.??.?.????????-x86_64-gp2"]},
+    {"Name": "state", "Values": ["available"]},
+]
+
 FsResources = collections.namedtuple(
     "FsResources",
     [
@@ -71,7 +76,7 @@ def set_up_efs_fsx(sagemaker_session):
         sagemaker_session, VPC_NAME
     )
 
-    ami_id = _dynamic_ami_id(sagemaker_session)
+    ami_id = _ami_id_for_region(sagemaker_session)
     ec2_instance = _create_ec2_instance(
         sagemaker_session,
         ami_id,
@@ -113,20 +118,17 @@ def set_up_efs_fsx(sagemaker_session):
     return fs_resources
 
 
-def _dynamic_ami_id(sagemaker_session):
+def _ami_id_for_region(sagemaker_session):
     ec2_client = sagemaker_session.boto_session.client("ec2")
-    filters = [
-        {"Name": "name", "Values": ["amzn-ami-hvm-????.??.?.????????-x86_64-gp2"]},
-        {"Name": "state", "Values": ["available"]},
-    ]
-    response = ec2_client.describe_images(Filters=filters)
-
+    response = ec2_client.describe_images(Filters=AMI_FILTERS)
     image_details = sorted(response["Images"], key=itemgetter("CreationDate"), reverse=True)
-    if len(image_details) > 0:
-        ami_id = image_details[0]["ImageId"]
-        return ami_id
+
+    if len(image_details) == 0:
+        raise Exception(
+            "AMI was not found based on current search criteria: {}".format(AMI_FILTERS)
+        )
     else:
-        raise Exception("AMI was not found based on current search criteria: {}".format(filters))
+        return image_details[0]["ImageId"]
 
 
 def _connect_ec2_instance(ec2_instance):
