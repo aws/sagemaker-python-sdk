@@ -31,7 +31,6 @@ EFS_CREATION_TOKEN = str(uuid.uuid4())
 PREFIX = "ec2_fs_key_"
 KEY_NAME = PREFIX + str(uuid.uuid4().hex.upper()[0:8])
 ROLE_NAME = "SageMakerRole"
-REGION = "us-west-2"
 EC2_INSTANCE_TYPE = "t2.micro"
 AMI_ID = "ami-082b5a644766e0e6f"
 MIN_COUNT = 1
@@ -49,6 +48,28 @@ FS_MOUNT_SCRIPT = os.path.join(SCRIPTS_FOLDER, "fs_mount_setup.sh")
 FILE_NAME = KEY_NAME + ".pem"
 KEY_PATH = os.path.join(tempfile.gettempdir(), FILE_NAME)
 STORAGE_CAPACITY_IN_BYTES = 3600
+
+AWSRegionArch2AMI = {
+    "us-east-1": "ami-0ff8a91507f77f867",
+    "us-west-2": "ami-a0cfeed8",
+    "us-west-1": "ami-0bdb828fd58c52235",
+    "eu-west-1": "ami-047bb4163c506cd98",
+    "eu-west-2": "ami-f976839e",
+    "eu-west-3": "ami-0ebc281c20e89ba4b",
+    "eu-central-1": "ami-0233214e13e500f77",
+    "ap-northeast-1": "ami-06cd52961ce9f0d85",
+    "ap-northeast-2": "ami-0a10b2721688ce9d2",
+    "ap-northeast-3": "ami-0d98120a9fb693f07",
+    "ap-southeast-1": "ami-08569b978cc4dfa10",
+    "ap-southeast-2": "ami-09b42976632b27e9b",
+    "ap-south-1": "ami-0912f71e06545ad88",
+    "us-east-2": "ami-0b59bfac6be064b78",
+    "ca-central-1": "ami-0b18956f",
+    "sa-east-1": "ami-07b14488da8ea02a0",
+    "cn-north-1": "ami-0a4eaf6c4454eda75",
+    "cn-northwest-1": "ami-6b6a7d09",
+    "us-gov-west-1": "ami-906cf0f1",
+}
 
 FsResources = collections.namedtuple(
     "FsResources",
@@ -70,12 +91,13 @@ def set_up_efs_fsx(sagemaker_session):
     _check_or_create_key_pair(sagemaker_session)
     _check_or_create_iam_profile_and_attach_role(sagemaker_session)
     subnet_ids, security_group_ids = check_or_create_vpc_resources_efs_fsx(
-        sagemaker_session, REGION, VPC_NAME
+        sagemaker_session, VPC_NAME
     )
 
+    region = sagemaker_session.boto_region_name
     ec2_instance = _create_ec2_instance(
         sagemaker_session,
-        AMI_ID,
+        AWSRegionArch2AMI[region],
         EC2_INSTANCE_TYPE,
         KEY_NAME,
         MIN_COUNT,
@@ -169,7 +191,7 @@ def _check_or_create_efs(sagemaker_session):
 
 def _create_efs_mount(sagemaker_session, file_system_id):
     subnet_ids, security_group_ids = check_or_create_vpc_resources_efs_fsx(
-        sagemaker_session, REGION, VPC_NAME
+        sagemaker_session, VPC_NAME
     )
     efs_client = sagemaker_session.boto_session.client("efs")
     mount_response = efs_client.create_mount_target(
@@ -189,7 +211,7 @@ def _create_efs_mount(sagemaker_session, file_system_id):
 def _check_or_create_fsx(sagemaker_session):
     fsx_client = sagemaker_session.boto_session.client("fsx")
     subnet_ids, security_group_ids = check_or_create_vpc_resources_efs_fsx(
-        sagemaker_session, REGION, VPC_NAME
+        sagemaker_session, VPC_NAME
     )
     create_response = fsx_client.create_file_system(
         FileSystemType="LUSTRE",
