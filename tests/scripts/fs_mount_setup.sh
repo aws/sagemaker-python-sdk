@@ -16,18 +16,19 @@
 # Mounting EFS and FSx for Lustre file systems for integration Tests
 FILE_SYSTEM_EFS_ID=$1
 FILE_SYSTEM_FSX_ID=$2
+REGION=$3
 
 echo "Mounting EFS File Systems"
-sudo yum install -y amazon-efs-utils.noarch 0:1.10-1.amzn2
+sudo yum install -y amazon-efs-utils
 sudo mkdir efs
 sudo mount -t efs "$FILE_SYSTEM_EFS_ID":/ efs
 sudo mkdir efs/tensorflow
 sudo mkdir efs/one_p_mnist
 
 echo "Mounting FSx for Lustre File System"
-sudo amazon-linux-extras install -y lustre2.10
+sudo yum install -y lustre-client
 sudo mkdir -p /mnt/fsx
-sudo mount -t lustre -o noatime,flock "$FILE_SYSTEM_FSX_ID".fsx.us-west-2.amazonaws.com@tcp:/fsx /mnt/fsx
+sudo mount -t lustre -o noatime,flock "$FILE_SYSTEM_FSX_ID".fsx."$REGION".amazonaws.com@tcp:/fsx /mnt/fsx
 sudo mkdir /mnt/fsx/tensorflow
 sudo mkdir /mnt/fsx/one_p_mnist
 

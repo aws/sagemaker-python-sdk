@@ -62,7 +62,7 @@ def _route_table_id(ec2_client, vpc_id):
     return desc["RouteTables"][0]["RouteTableId"]
 
 
-def check_or_create_vpc_resources_efs_fsx(sagemaker_session, region, name=VPC_NAME):
+def check_or_create_vpc_resources_efs_fsx(sagemaker_session, name=VPC_NAME):
     # use lock to prevent race condition when tests are running concurrently
     with lock.lock(LOCK_PATH):
         ec2_client = sagemaker_session.boto_session.client("ec2")
@@ -74,13 +74,11 @@ def check_or_create_vpc_resources_efs_fsx(sagemaker_session, region, name=VPC_NA
                 _security_group_ids_by_vpc_id(sagemaker_session, vpc_id),
             )
         else:
-            return _create_vpc_with_name_efs_fsx(ec2_client, region, name)
+            return _create_vpc_with_name_efs_fsx(ec2_client, name)
 
 
-def _create_vpc_with_name_efs_fsx(ec2_client, region, name):
-    vpc_id, [subnet_id_a, subnet_id_b], security_group_id = _create_vpc_resources(
-        ec2_client, region, name
-    )
+def _create_vpc_with_name_efs_fsx(ec2_client, name):
+    vpc_id, [subnet_id_a, subnet_id_b], security_group_id = _create_vpc_resources(ec2_client, name)
     ec2_client.modify_vpc_attribute(EnableDnsHostnames={"Value": True}, VpcId=vpc_id)
 
     ig = ec2_client.create_internet_gateway()
@@ -121,7 +119,7 @@ def _create_vpc_with_name_efs_fsx(ec2_client, region, name):
     return [subnet_id_a], [security_group_id]
 
 
-def _create_vpc_resources(ec2_client, region, name):
+def _create_vpc_resources(ec2_client, name):
     vpc_id = ec2_client.create_vpc(CidrBlock="10.0.0.0/16")["Vpc"]["VpcId"]
     print("created vpc: {}".format(vpc_id))
 

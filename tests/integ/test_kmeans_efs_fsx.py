@@ -14,7 +14,6 @@ from __future__ import absolute_import
 
 import pytest
 
-import tests.integ
 from sagemaker import KMeans
 from sagemaker.amazon.amazon_estimator import FileSystemRecordSet
 from sagemaker.parameter import IntegerParameter, CategoricalParameter
@@ -25,7 +24,6 @@ from tests.integ.file_system_input_utils import set_up_efs_fsx, tear_down
 from tests.integ.s3_utils import assert_s3_files_exist
 from tests.integ.timeout import timeout
 
-TRAIN_INSTANCE_TYPE = "ml.c4.xlarge"
 TRAIN_INSTANCE_COUNT = 1
 OBJECTIVE_METRIC_NAME = "test:msd"
 EFS_DIR_PATH = "/one_p_mnist"
@@ -46,11 +44,7 @@ def efs_fsx_setup(sagemaker_session):
         tear_down(sagemaker_session, fs_resources)
 
 
-@pytest.mark.skipif(
-    tests.integ.test_region() not in tests.integ.EFS_TEST_ENABLED_REGION,
-    reason="EFS integration tests need to be fixed before running in all regions.",
-)
-def test_kmeans_efs(efs_fsx_setup, sagemaker_session):
+def test_kmeans_efs(efs_fsx_setup, sagemaker_session, cpu_instance_type):
     with timeout(minutes=TRAINING_DEFAULT_TIMEOUT_MINUTES):
         subnets = [efs_fsx_setup.subnet_id]
         security_group_ids = efs_fsx_setup.security_group_ids
@@ -58,7 +52,7 @@ def test_kmeans_efs(efs_fsx_setup, sagemaker_session):
         kmeans = KMeans(
             role=role,
             train_instance_count=TRAIN_INSTANCE_COUNT,
-            train_instance_type=TRAIN_INSTANCE_TYPE,
+            train_instance_type=cpu_instance_type,
             k=K,
             sagemaker_session=sagemaker_session,
             subnets=subnets,
@@ -80,11 +74,7 @@ def test_kmeans_efs(efs_fsx_setup, sagemaker_session):
         assert_s3_files_exist(sagemaker_session, model_path, ["model.tar.gz"])
 
 
-@pytest.mark.skipif(
-    tests.integ.test_region() not in tests.integ.EFS_TEST_ENABLED_REGION,
-    reason="EFS integration tests need to be fixed before running in all regions.",
-)
-def test_kmeans_fsx(efs_fsx_setup, sagemaker_session):
+def test_kmeans_fsx(efs_fsx_setup, sagemaker_session, cpu_instance_type):
     with timeout(minutes=TRAINING_DEFAULT_TIMEOUT_MINUTES):
         subnets = [efs_fsx_setup.subnet_id]
         security_group_ids = efs_fsx_setup.security_group_ids
@@ -92,7 +82,7 @@ def test_kmeans_fsx(efs_fsx_setup, sagemaker_session):
         kmeans = KMeans(
             role=role,
             train_instance_count=TRAIN_INSTANCE_COUNT,
-            train_instance_type=TRAIN_INSTANCE_TYPE,
+            train_instance_type=cpu_instance_type,
             k=K,
             sagemaker_session=sagemaker_session,
             subnets=subnets,
@@ -114,18 +104,14 @@ def test_kmeans_fsx(efs_fsx_setup, sagemaker_session):
         assert_s3_files_exist(sagemaker_session, model_path, ["model.tar.gz"])
 
 
-@pytest.mark.skipif(
-    tests.integ.test_region() not in tests.integ.EFS_TEST_ENABLED_REGION,
-    reason="EFS integration tests need to be fixed before running in all regions.",
-)
-def test_tuning_kmeans_efs(efs_fsx_setup, sagemaker_session):
+def test_tuning_kmeans_efs(efs_fsx_setup, sagemaker_session, cpu_instance_type):
     subnets = [efs_fsx_setup.subnet_id]
     security_group_ids = efs_fsx_setup.security_group_ids
     role = efs_fsx_setup.role_name
     kmeans = KMeans(
         role=role,
         train_instance_count=TRAIN_INSTANCE_COUNT,
-        train_instance_type=TRAIN_INSTANCE_TYPE,
+        train_instance_type=cpu_instance_type,
         k=K,
         sagemaker_session=sagemaker_session,
         subnets=subnets,
@@ -174,18 +160,14 @@ def test_tuning_kmeans_efs(efs_fsx_setup, sagemaker_session):
         assert best_training_job
 
 
-@pytest.mark.skipif(
-    tests.integ.test_region() not in tests.integ.EFS_TEST_ENABLED_REGION,
-    reason="EFS integration tests need to be fixed before running in all regions.",
-)
-def test_tuning_kmeans_fsx(efs_fsx_setup, sagemaker_session):
+def test_tuning_kmeans_fsx(efs_fsx_setup, sagemaker_session, cpu_instance_type):
     subnets = [efs_fsx_setup.subnet_id]
     security_group_ids = efs_fsx_setup.security_group_ids
     role = efs_fsx_setup.role_name
     kmeans = KMeans(
         role=role,
         train_instance_count=TRAIN_INSTANCE_COUNT,
-        train_instance_type=TRAIN_INSTANCE_TYPE,
+        train_instance_type=cpu_instance_type,
         k=K,
         sagemaker_session=sagemaker_session,
         subnets=subnets,

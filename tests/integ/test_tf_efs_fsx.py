@@ -17,7 +17,6 @@ import time
 
 import pytest
 
-import tests.integ
 from sagemaker.inputs import FileSystemInput
 from sagemaker.parameter import IntegerParameter
 from sagemaker.tensorflow import TensorFlow
@@ -32,7 +31,6 @@ RESOURCE_PATH = os.path.join(os.path.dirname(__file__), "..", "data")
 MNIST_RESOURCE_PATH = os.path.join(RESOURCE_PATH, "tensorflow_mnist")
 SCRIPT = os.path.join(MNIST_RESOURCE_PATH, "mnist.py")
 TFS_RESOURCE_PATH = os.path.join(RESOURCE_PATH, "tfs", "tfs-test-entrypoint-with-handler")
-INSTANCE_TYPE = "ml.c4.xlarge"
 EFS_DIR_PATH = "/tensorflow"
 FSX_DIR_PATH = "/fsx/tensorflow"
 MAX_JOBS = 2
@@ -49,11 +47,7 @@ def efs_fsx_setup(sagemaker_session):
         tear_down(sagemaker_session, fs_resources)
 
 
-@pytest.mark.skipif(
-    tests.integ.test_region() not in tests.integ.EFS_TEST_ENABLED_REGION,
-    reason="EFS integration tests need to be fixed before running in all regions.",
-)
-def test_mnist_efs(efs_fsx_setup, sagemaker_session):
+def test_mnist_efs(efs_fsx_setup, sagemaker_session, cpu_instance_type):
     role = efs_fsx_setup.role_name
     subnets = [efs_fsx_setup.subnet_id]
     security_group_ids = efs_fsx_setup.security_group_ids
@@ -62,7 +56,7 @@ def test_mnist_efs(efs_fsx_setup, sagemaker_session):
         entry_point=SCRIPT,
         role=role,
         train_instance_count=1,
-        train_instance_type=INSTANCE_TYPE,
+        train_instance_type=cpu_instance_type,
         sagemaker_session=sagemaker_session,
         script_mode=True,
         framework_version=TensorFlow.LATEST_VERSION,
@@ -85,11 +79,7 @@ def test_mnist_efs(efs_fsx_setup, sagemaker_session):
     )
 
 
-@pytest.mark.skipif(
-    tests.integ.test_region() not in tests.integ.EFS_TEST_ENABLED_REGION,
-    reason="EFS integration tests need to be fixed before running in all regions.",
-)
-def test_mnist_lustre(efs_fsx_setup, sagemaker_session):
+def test_mnist_lustre(efs_fsx_setup, sagemaker_session, cpu_instance_type):
     role = efs_fsx_setup.role_name
     subnets = [efs_fsx_setup.subnet_id]
     security_group_ids = efs_fsx_setup.security_group_ids
@@ -98,7 +88,7 @@ def test_mnist_lustre(efs_fsx_setup, sagemaker_session):
         entry_point=SCRIPT,
         role=role,
         train_instance_count=1,
-        train_instance_type=INSTANCE_TYPE,
+        train_instance_type=cpu_instance_type,
         sagemaker_session=sagemaker_session,
         script_mode=True,
         framework_version=TensorFlow.LATEST_VERSION,
@@ -121,11 +111,7 @@ def test_mnist_lustre(efs_fsx_setup, sagemaker_session):
     )
 
 
-@pytest.mark.skipif(
-    tests.integ.test_region() not in tests.integ.EFS_TEST_ENABLED_REGION,
-    reason="EFS integration tests need to be fixed before running in all regions.",
-)
-def test_tuning_tf_script_mode_efs(efs_fsx_setup, sagemaker_session):
+def test_tuning_tf_script_mode_efs(efs_fsx_setup, sagemaker_session, cpu_instance_type):
     role = efs_fsx_setup.role_name
     subnets = [efs_fsx_setup.subnet_id]
     security_group_ids = efs_fsx_setup.security_group_ids
@@ -134,7 +120,7 @@ def test_tuning_tf_script_mode_efs(efs_fsx_setup, sagemaker_session):
         entry_point=SCRIPT,
         role=role,
         train_instance_count=1,
-        train_instance_type=INSTANCE_TYPE,
+        train_instance_type=cpu_instance_type,
         script_mode=True,
         sagemaker_session=sagemaker_session,
         py_version=PY_VERSION,
@@ -169,11 +155,7 @@ def test_tuning_tf_script_mode_efs(efs_fsx_setup, sagemaker_session):
     assert best_training_job
 
 
-@pytest.mark.skipif(
-    tests.integ.test_region() not in tests.integ.EFS_TEST_ENABLED_REGION,
-    reason="EFS integration tests need to be fixed before running in all regions.",
-)
-def test_tuning_tf_script_mode_lustre(efs_fsx_setup, sagemaker_session):
+def test_tuning_tf_script_mode_lustre(efs_fsx_setup, sagemaker_session, cpu_instance_type):
     role = efs_fsx_setup.role_name
     subnets = [efs_fsx_setup.subnet_id]
     security_group_ids = efs_fsx_setup.security_group_ids
@@ -182,7 +164,7 @@ def test_tuning_tf_script_mode_lustre(efs_fsx_setup, sagemaker_session):
         entry_point=SCRIPT,
         role=role,
         train_instance_count=1,
-        train_instance_type=INSTANCE_TYPE,
+        train_instance_type=cpu_instance_type,
         script_mode=True,
         sagemaker_session=sagemaker_session,
         py_version=PY_VERSION,

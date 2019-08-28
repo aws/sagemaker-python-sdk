@@ -14,6 +14,7 @@ from __future__ import absolute_import
 
 import collections
 import logging
+from operator import itemgetter
 import os
 from os import path
 import stat
@@ -27,13 +28,12 @@ from tests.integ.retry import retries
 from tests.integ.vpc_test_utils import check_or_create_vpc_resources_efs_fsx
 
 VPC_NAME = "sagemaker-efs-fsx-vpc"
+ALINUX_AMI_NAME_FILTER = "amzn-ami-hvm-????.??.?.????????-x86_64-gp2"
 EFS_CREATION_TOKEN = str(uuid.uuid4())
 PREFIX = "ec2_fs_key_"
 KEY_NAME = PREFIX + str(uuid.uuid4().hex.upper()[0:8])
 ROLE_NAME = "SageMakerRole"
-REGION = "us-west-2"
 EC2_INSTANCE_TYPE = "t2.micro"
-AMI_ID = "ami-082b5a644766e0e6f"
 MIN_COUNT = 1
 MAX_COUNT = 1
 
@@ -69,12 +69,13 @@ def set_up_efs_fsx(sagemaker_session):
     _check_or_create_key_pair(sagemaker_session)
     _check_or_create_iam_profile_and_attach_role(sagemaker_session)
     subnet_ids, security_group_ids = check_or_create_vpc_resources_efs_fsx(
-        sagemaker_session, REGION, VPC_NAME
+        sagemaker_session, VPC_NAME
     )
 
+    ami_id = _ami_id_for_region(sagemaker_session)
     ec2_instance = _create_ec2_instance(
         sagemaker_session,
-        AMI_ID,
+        ami_id,
         EC2_INSTANCE_TYPE,
         KEY_NAME,
         MIN_COUNT,
@@ -100,14 +101,32 @@ def set_up_efs_fsx(sagemaker_session):
         mount_efs_target_id,
     )
 
+    region = sagemaker_session.boto_region_name
     try:
         connected_instance = _connect_ec2_instance(ec2_instance)
-        _upload_data_and_mount_fs(connected_instance, file_system_efs_id, file_system_fsx_id)
+        _upload_data_and_mount_fs(
+            connected_instance, file_system_efs_id, file_system_fsx_id, region
+        )
     except Exception:
         tear_down(sagemaker_session, fs_resources)
         raise
 
     return fs_resources
+
+
+def _ami_id_for_region(sagemaker_session):
+    ec2_client = sagemaker_session.boto_session.client("ec2")
+    filters = [
+        {"Name": "name", "Values": [ALINUX_AMI_NAME_FILTER]},
+        {"Name": "state", "Values": ["available"]},
+    ]
+    response = ec2_client.describe_images(Filters=filters)
+    image_details = sorted(response["Images"], key=itemgetter("CreationDate"), reverse=True)
+
+    if len(image_details) == 0:
+        raise Exception("AMI was not found based on current search criteria: {}".format(filters))
+
+    return image_details[0]["ImageId"]
 
 
 def _connect_ec2_instance(ec2_instance):
@@ -118,7 +137,7 @@ def _connect_ec2_instance(ec2_instance):
     return connected_instance
 
 
-def _upload_data_and_mount_fs(connected_instance, file_system_efs_id, file_system_fsx_id):
+def _upload_data_and_mount_fs(connected_instance, file_system_efs_id, file_system_fsx_id, region):
     connected_instance.put(FS_MOUNT_SCRIPT, ".")
     connected_instance.run("mkdir temp_tf; mkdir temp_one_p", in_stream=False)
     for dir_name, subdir_list, file_list in os.walk(MNIST_LOCAL_DATA):
@@ -127,7 +146,7 @@ def _upload_data_and_mount_fs(connected_instance, file_system_efs_id, file_syste
             connected_instance.put(local_file, "temp_tf/")
     connected_instance.put(ONE_P_LOCAL_DATA, "temp_one_p/")
     connected_instance.run(
-        "sudo sh fs_mount_setup.sh {} {}".format(file_system_efs_id, file_system_fsx_id),
+        "sudo sh fs_mount_setup.sh {} {} {}".format(file_system_efs_id, file_system_fsx_id, region),
         in_stream=False,
     )
 
@@ -168,7 +187,7 @@ def _check_or_create_efs(sagemaker_session):
 
 def _create_efs_mount(sagemaker_session, file_system_id):
     subnet_ids, security_group_ids = check_or_create_vpc_resources_efs_fsx(
-        sagemaker_session, REGION, VPC_NAME
+        sagemaker_session, VPC_NAME
     )
     efs_client = sagemaker_session.boto_session.client("efs")
     mount_response = efs_client.create_mount_target(
@@ -188,7 +207,7 @@ def _create_efs_mount(sagemaker_session, file_system_id):
 def _check_or_create_fsx(sagemaker_session):
     fsx_client = sagemaker_session.boto_session.client("fsx")
     subnet_ids, security_group_ids = check_or_create_vpc_resources_efs_fsx(
-        sagemaker_session, REGION, VPC_NAME
+        sagemaker_session, VPC_NAME
     )
     create_response = fsx_client.create_file_system(
         FileSystemType="LUSTRE",
