@@ -265,6 +265,15 @@ def cpu_instance_type(sagemaker_session, request):
 
 
 @pytest.fixture(scope="session")
+def ec2_instance_type(sagemaker_session, request):
+    region = sagemaker_session.boto_session.region_name
+    if region in NO_M4_REGIONS:
+        return "m5.xlarge"
+    else:
+        return "m4.xlarge"
+
+
+@pytest.fixture(scope="session")
 def alternative_cpu_instance_type(sagemaker_session, request):
     region = sagemaker_session.boto_session.region_name
     if region in NO_T2_REGIONS:

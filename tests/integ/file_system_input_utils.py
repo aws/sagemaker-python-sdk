@@ -33,7 +33,6 @@ EFS_CREATION_TOKEN = str(uuid.uuid4())
 PREFIX = "ec2_fs_key_"
 KEY_NAME = PREFIX + str(uuid.uuid4().hex.upper()[0:8])
 ROLE_NAME = "SageMakerRole"
-EC2_INSTANCE_TYPE = "t2.micro"
 MIN_COUNT = 1
 MAX_COUNT = 1
 
@@ -51,12 +50,14 @@ STORAGE_CAPACITY_IN_BYTES = 3600
 
 FsResources = collections.namedtuple(
     "FsResources",
+    ["role_name", "subnet_id", "security_group_ids", "file_system_efs_id", "file_system_fsx_id"],
+)
+
+FsResourcesToDelete = collections.namedtuple(
+    "FsResourcesToDelete",
     [
         "key_name",
         "key_path",
-        "role_name",
-        "subnet_id",
-        "security_group_ids",
         "file_system_efs_id",
         "file_system_fsx_id",
         "ec2_instance_id",
@@ -65,53 +66,73 @@ FsResources = collections.namedtuple(
 )
 
 
-def set_up_efs_fsx(sagemaker_session):
-    _check_or_create_key_pair(sagemaker_session)
-    _check_or_create_iam_profile_and_attach_role(sagemaker_session)
-    subnet_ids, security_group_ids = check_or_create_vpc_resources_efs_fsx(
-        sagemaker_session, VPC_NAME
-    )
+def set_up_efs_fsx(sagemaker_session, ec2_instance_type):
+    subnet_id = ""
+    security_group_ids = []
+    file_system_efs_id = ""
+    file_system_fsx_id = ""
+    ec2_instance_id = ""
+    mount_efs_target_id = ""
 
-    ami_id = _ami_id_for_region(sagemaker_session)
-    ec2_instance = _create_ec2_instance(
-        sagemaker_session,
-        ami_id,
-        EC2_INSTANCE_TYPE,
-        KEY_NAME,
-        MIN_COUNT,
-        MAX_COUNT,
-        security_group_ids,
-        subnet_ids[0],
-    )
-
-    file_system_efs_id = _check_or_create_efs(sagemaker_session)
-    mount_efs_target_id = _create_efs_mount(sagemaker_session, file_system_efs_id)
-
-    file_system_fsx_id = _check_or_create_fsx(sagemaker_session)
-
-    fs_resources = FsResources(
-        KEY_NAME,
-        KEY_PATH,
-        ROLE_NAME,
-        subnet_ids[0],
-        security_group_ids,
-        file_system_efs_id,
-        file_system_fsx_id,
-        ec2_instance.id,
-        mount_efs_target_id,
-    )
-
-    region = sagemaker_session.boto_region_name
     try:
+        _check_or_create_key_pair(sagemaker_session)
+        _check_or_create_iam_profile_and_attach_role(sagemaker_session)
+
+        subnet_ids, security_group_ids = check_or_create_vpc_resources_efs_fsx(
+            sagemaker_session, VPC_NAME
+        )
+        subnet_id = subnet_ids[0]
+
+        ami_id = _ami_id_for_region(sagemaker_session)
+        ec2_instance = _create_ec2_instance(
+            sagemaker_session,
+            ami_id,
+            ec2_instance_type,
+            KEY_NAME,
+            MIN_COUNT,
+            MAX_COUNT,
+            security_group_ids,
+            subnet_id,
+        )
+        ec2_instance_id = ec2_instance.id
+
+        file_system_efs_id = _check_or_create_efs(sagemaker_session)
+        mount_efs_target_id = _create_efs_mount(sagemaker_session, file_system_efs_id)
+        file_system_fsx_id = _check_or_create_fsx(sagemaker_session)
+
         connected_instance = _connect_ec2_instance(ec2_instance)
+        region = sagemaker_session.boto_region_name
         _upload_data_and_mount_fs(
             connected_instance, file_system_efs_id, file_system_fsx_id, region
         )
-    except Exception:
-        tear_down(sagemaker_session, fs_resources)
-        raise
 
-    return fs_resources
+        fs_resources = FsResources(
+            ROLE_NAME, subnet_id, security_group_ids, file_system_efs_id, file_system_fsx_id
+        )
+
+        fs_resources_to_delete = FsResourcesToDelete(
+            KEY_NAME,
+            KEY_PATH,
+            file_system_efs_id,
+            file_system_fsx_id,
+            ec2_instance_id,
+            mount_efs_target_id,
+        )
+
+        return fs_resources, fs_resources_to_delete
+
+    except Exception:
+        fs_resources_to_delete = FsResourcesToDelete(
+            KEY_NAME,
+            KEY_PATH,
+            file_system_efs_id,
+            file_system_fsx_id,
+            ec2_instance_id,
+            mount_efs_target_id,
+        )
+
+        tear_down(sagemaker_session, fs_resources_to_delete)
+        raise
 
 
 def _ami_id_for_region(sagemaker_session):
@@ -325,29 +346,31 @@ def _instance_profile_exists(sagemaker_session):
     return True
 
 
-def tear_down(sagemaker_session, fs_resources):
-    fsx_client = sagemaker_session.boto_session.client("fsx")
-    file_system_fsx_id = fs_resources.file_system_fsx_id
-    fsx_client.delete_file_system(FileSystemId=file_system_fsx_id)
+def tear_down(sagemaker_session, fs_resources_to_delete):
+    if fs_resources_to_delete.file_system_fsx_id:
+        fsx_client = sagemaker_session.boto_session.client("fsx")
+        fsx_client.delete_file_system(FileSystemId=fs_resources_to_delete.file_system_fsx_id)
 
     efs_client = sagemaker_session.boto_session.client("efs")
-    mount_efs_target_id = fs_resources.mount_efs_target_id
-    efs_client.delete_mount_target(MountTargetId=mount_efs_target_id)
-
-    file_system_efs_id = fs_resources.file_system_efs_id
-    for _ in retries(30, "Checking mount target deleting status"):
-        desc = efs_client.describe_mount_targets(FileSystemId=file_system_efs_id)
-        if len(desc["MountTargets"]) > 0:
-            status = desc["MountTargets"][0]["LifeCycleState"]
-            if status == "deleted":
+    if fs_resources_to_delete.mount_efs_target_id:
+        efs_client.delete_mount_target(MountTargetId=fs_resources_to_delete.mount_efs_target_id)
+    file_system_efs_id = fs_resources_to_delete.file_system_efs_id
+    if file_system_efs_id:
+        for _ in retries(30, "Checking mount target deleting status"):
+            desc = efs_client.describe_mount_targets(FileSystemId=file_system_efs_id)
+            if len(desc["MountTargets"]) > 0:
+                status = desc["MountTargets"][0]["LifeCycleState"]
+                if status == "deleted":
+                    break
+            else:
                 break
-        else:
-            break
 
-    efs_client.delete_file_system(FileSystemId=file_system_efs_id)
+        efs_client.delete_file_system(FileSystemId=file_system_efs_id)
 
-    ec2_resource = sagemaker_session.boto_session.resource("ec2")
-    instance_id = fs_resources.ec2_instance_id
-    _terminate_instance(ec2_resource, [instance_id])
+    instance_id = fs_resources_to_delete.ec2_instance_id
+    if instance_id:
+        ec2_resource = sagemaker_session.boto_session.resource("ec2")
+        instance_id = fs_resources_to_delete.ec2_instance_id
+        _terminate_instance(ec2_resource, [instance_id])
 
     _delete_key_pair(sagemaker_session)
