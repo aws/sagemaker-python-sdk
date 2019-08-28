@@ -1,5 +1,11 @@
 # Changelog
 
+## v1.38.3 (2019-08-28)
+
+### Bug fixes and other changes
+
+ * change AMI ids in tests to be dynamic based on regions
+
 ## v1.38.2 (2019-08-27)
 
 ### Bug fixes and other changes
