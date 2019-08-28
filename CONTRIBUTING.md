@@ -106,6 +106,7 @@ If you are writing or modifying a test that creates a SageMaker job (training, t
       1. Guard against future breaking changes to lower the maintenance cost.
    1. Please focus on the specific change you are contributing. If you also reformat all the code, it will be hard for us to focus on your change.
 1. Run all the unit tests as per [Running the Unit Tests](#running-the-unit-tests), and verify that all checks and tests pass.
+   1. Note that this also runs tools that may be necessary for the automated build to pass (ex: code reformatting by 'black').  
 
 
 ### Committing Your Change
