@@ -1,4 +1,4 @@
-# Copyright 2017-2018 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright 2017-2019 Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -37,17 +37,89 @@ def _get_security_id_by_name(ec2_client, name):
         return desc["SecurityGroups"][0]["GroupId"]
 
 
+def _security_group_ids_by_vpc_id(sagemaker_session, vpc_id):
+    ec2_resource = sagemaker_session.boto_session.resource("ec2")
+    security_group_ids = []
+    vpc = ec2_resource.Vpc(vpc_id)
+    for sg in vpc.security_groups.all():
+        security_group_ids.append(sg.id)
+    return security_group_ids
+
+
 def _vpc_exists(ec2_client, name):
     desc = ec2_client.describe_vpcs(Filters=[{"Name": "tag-value", "Values": [name]}])
     return len(desc["Vpcs"]) > 0
 
 
-def _get_route_table_id(ec2_client, vpc_id):
+def _vpc_id_by_name(ec2_client, name):
+    desc = ec2_client.describe_vpcs(Filters=[{"Name": "tag-value", "Values": [name]}])
+    vpc_id = desc["Vpcs"][0]["VpcId"]
+    return vpc_id
+
+
+def _route_table_id(ec2_client, vpc_id):
     desc = ec2_client.describe_route_tables(Filters=[{"Name": "vpc-id", "Values": [vpc_id]}])
     return desc["RouteTables"][0]["RouteTableId"]
 
 
-def _create_vpc_with_name(ec2_client, region, name):
+def check_or_create_vpc_resources_efs_fsx(sagemaker_session, name=VPC_NAME):
+    # use lock to prevent race condition when tests are running concurrently
+    with lock.lock(LOCK_PATH):
+        ec2_client = sagemaker_session.boto_session.client("ec2")
+
+        if _vpc_exists(ec2_client, name):
+            vpc_id = _vpc_id_by_name(ec2_client, name)
+            return (
+                _get_subnet_ids_by_name(ec2_client, name),
+                _security_group_ids_by_vpc_id(sagemaker_session, vpc_id),
+            )
+        else:
+            return _create_vpc_with_name_efs_fsx(ec2_client, name)
+
+
+def _create_vpc_with_name_efs_fsx(ec2_client, name):
+    vpc_id, [subnet_id_a, subnet_id_b], security_group_id = _create_vpc_resources(ec2_client, name)
+    ec2_client.modify_vpc_attribute(EnableDnsHostnames={"Value": True}, VpcId=vpc_id)
+
+    ig = ec2_client.create_internet_gateway()
+    internet_gateway_id = ig["InternetGateway"]["InternetGatewayId"]
+    ec2_client.attach_internet_gateway(InternetGatewayId=internet_gateway_id, VpcId=vpc_id)
+
+    route_table_id = _route_table_id(ec2_client, vpc_id)
+    ec2_client.create_route(
+        DestinationCidrBlock="0.0.0.0/0", GatewayId=internet_gateway_id, RouteTableId=route_table_id
+    )
+    ec2_client.associate_route_table(RouteTableId=route_table_id, SubnetId=subnet_id_a)
+    ec2_client.associate_route_table(RouteTableId=route_table_id, SubnetId=subnet_id_b)
+
+    ec2_client.authorize_security_group_ingress(
+        GroupId=security_group_id,
+        IpPermissions=[
+            {
+                "IpProtocol": "tcp",
+                "FromPort": 988,
+                "ToPort": 988,
+                "UserIdGroupPairs": [{"GroupId": security_group_id}],
+            },
+            {
+                "IpProtocol": "tcp",
+                "FromPort": 2049,
+                "ToPort": 2049,
+                "UserIdGroupPairs": [{"GroupId": security_group_id}],
+            },
+            {
+                "IpProtocol": "tcp",
+                "FromPort": 22,
+                "ToPort": 22,
+                "IpRanges": [{"CidrIp": "0.0.0.0/0", "Description": "For SSH to EC2"}],
+            },
+        ],
+    )
+
+    return [subnet_id_a], [security_group_id]
+
+
+def _create_vpc_resources(ec2_client, name):
     vpc_id = ec2_client.create_vpc(CidrBlock="10.0.0.0/16")["Vpc"]["VpcId"]
     print("created vpc: {}".format(vpc_id))
 
@@ -68,9 +140,7 @@ def _create_vpc_with_name(ec2_client, region, name):
         s for s in ec2_client.describe_vpc_endpoint_services()["ServiceNames"] if s.endswith("s3")
     ][0]
     ec2_client.create_vpc_endpoint(
-        VpcId=vpc_id,
-        ServiceName=s3_service,
-        RouteTableIds=[_get_route_table_id(ec2_client, vpc_id)],
+        VpcId=vpc_id, ServiceName=s3_service, RouteTableIds=[_route_table_id(ec2_client, vpc_id)]
     )
     print("created s3 vpc endpoint")
 
@@ -97,6 +167,13 @@ def _create_vpc_with_name(ec2_client, region, name):
         Tags=[{"Key": "Name", "Value": name}],
     )
 
+    return vpc_id, [subnet_id_a, subnet_id_b], security_group_id
+
+
+def _create_vpc_with_name(ec2_client, region, name):
+    vpc_id, [subnet_id_a, subnet_id_b], security_group_id = _create_vpc_resources(
+        ec2_client, region, name
+    )
     return [subnet_id_a, subnet_id_b], security_group_id
 
 

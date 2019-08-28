@@ -299,6 +299,114 @@ Here are some examples of creating estimators with Git support:
 Git support can be used not only for training jobs, but also for hosting models. The usage is the same as the above,
 and ``git_config`` should be provided when creating model objects, e.g. ``TensorFlowModel``, ``MXNetModel``, ``PyTorchModel``.
 
+Use File Systems as Training Inputs
+-------------------------------------
+Amazon SageMaker supports using Amazon Elastic File System (EFS) and FSx for Lustre as data sources to use during training.
+If you want use those data sources, create a file system (EFS/FSx) and mount the file system on an Amazon EC2 instance.
+For more information about setting up EFS and FSx, see the following documentation:
+
+- `Using File Systems in Amazon EFS <https://docs.aws.amazon.com/efs/latest/ug/using-fs.html>`__
+- `Getting Started with Amazon FSx for Lustre <https://aws.amazon.com/fsx/lustre/getting-started/>`__
+
+The general experience uses either the ``FileSystemInput`` or ``FileSystemRecordSet`` class, which encapsulates
+all of the necessary arguments required by the service to use EFS or Lustre.
+
+Here are examples of how to use Amazon EFS as input for training:
+
+.. code:: python
+
+        # This example shows how to use FileSystemInput class
+        # Configure an estimator with subnets and security groups from your VPC. The EFS volume must be in
+        # the same VPC as your Amazon EC2 instance
+        estimator = TensorFlow(entry_point='tensorflow_mnist/mnist.py',
+                               role='SageMakerRole',
+                               train_instance_count=1,
+                               train_instance_type='ml.c4.xlarge',
+                               subnets=['subnet-1', 'subnet-2']
+                               security_group_ids=['sg-1'])
+
+        file_system_input = FileSystemInput(file_system_id='fs-1',
+                                            file_system_type='EFS',
+                                            directory_path='/tensorflow',
+                                            file_system_access_mode='ro')
+
+        # Start an Amazon SageMaker training job with EFS using the FileSystemInput class
+        estimator.fit(file_system_input)
+
+.. code:: python
+
+        # This example shows how to use FileSystemRecordSet class
+        # Configure an estimator with subnets and security groups from your VPC. The EFS volume must be in
+        # the same VPC as your Amazon EC2 instance
+        kmeans = KMeans(role='SageMakerRole',
+                        train_instance_count=1,
+                        train_instance_type='ml.c4.xlarge',
+                        k=10,
+                        subnets=['subnet-1', 'subnet-2'],
+                        security_group_ids=['sg-1'])
+
+        records = FileSystemRecordSet(file_system_id='fs-1,
+                                      file_system_type='EFS',
+                                      directory_path='/kmeans',
+                                      num_records=784,
+                                      feature_dim=784)
+
+        # Start an Amazon SageMaker training job with EFS using the FileSystemRecordSet class
+        kmeans.fit(records)
+
+Here are examples of how to use Amazon FSx for Lustre as input for training:
+
+.. code:: python
+
+        # This example shows how to use FileSystemInput class
+        # Configure an estimator with subnets and security groups from your VPC. The VPC should be the same as that
+        # you chose for your Amazon EC2 instance
+
+        estimator = TensorFlow(entry_point='tensorflow_mnist/mnist.py',
+                               role='SageMakerRole',
+                               train_instance_count=1,
+                               train_instance_type='ml.c4.xlarge',
+                               subnets=['subnet-1', 'subnet-2']
+                               security_group_ids=['sg-1'])
+
+
+        file_system_input = FileSystemInput(file_system_id='fs-2',
+                                            file_system_type='FSxLustre',
+                                            directory_path='/fsx/tensorflow',
+                                            file_system_access_mode='ro')
+
+        # Start an Amazon SageMaker training job with FSx using the FileSystemInput class
+        estimator.fit(file_system_input)
+
+.. code:: python
+
+        # This example shows how to use FileSystemRecordSet class
+        # Configure an estimator with subnets and security groups from your VPC. The VPC should be the same as that
+        # you chose for your Amazon EC2 instance
+        kmeans = KMeans(role='SageMakerRole',
+                        train_instance_count=1,
+                        train_instance_type='ml.c4.xlarge',
+                        k=10,
+                        subnets=['subnet-1', 'subnet-2'],
+                        security_group_ids=['sg-1'])
+
+        records = FileSystemRecordSet(file_system_id='fs-=2,
+                                      file_system_type='FSxLustre',
+                                      directory_path='/fsx/kmeans',
+                                      num_records=784,
+                                      feature_dim=784)
+
+        # Start an Amazon SageMaker training job with FSx using the FileSystemRecordSet class
+        kmeans.fit(records)
+
+Data sources from EFS and FSx can also be used for hyperparameter tuning jobs. The usage is the same as above.
+
+A few important notes:
+
+- Local mode is not supported if using EFS and FSx as data sources
+
+- Pipe mode is not supported if using EFS as data source
+
 Training Metrics
 ----------------
 The SageMaker Python SDK allows you to specify a name and a regular expression for metrics you want to track for training.

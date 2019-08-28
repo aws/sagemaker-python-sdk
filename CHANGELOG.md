@@ -1,5 +1,35 @@
 # Changelog
 
+## v1.38.3 (2019-08-28)
+
+### Bug fixes and other changes
+
+ * change AMI ids in tests to be dynamic based on regions
+
+## v1.38.2 (2019-08-27)
+
+### Bug fixes and other changes
+
+ * skip efs tests in non us-west-2 regions
+ * refactor tests to use common retry method
+
+## v1.38.1 (2019-08-26)
+
+### Bug fixes and other changes
+
+ * update py2 warning message
+ * add logic to use asimov image for TF 1.14 py2
+
+### Documentation changes
+
+ * changed EFS directory path instructions in documentation and Docstrings
+
+## v1.38.0 (2019-08-23)
+
+### Features
+
+ * support training inputs from EFS and FSx
+
 ## v1.37.2 (2019-08-20)
 
 ### Bug fixes and other changes

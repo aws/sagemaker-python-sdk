@@ -308,21 +308,21 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):
                 about the training data. This can be one of three types:
 
                 * (str) the S3 location where training data is saved.
-
                 * (dict[str, str] or dict[str, sagemaker.session.s3_input]) If using multiple
                     channels for training data, you can specify a dict mapping channel names to
                     strings or :func:`~sagemaker.session.s3_input` objects.
-
                 * (sagemaker.session.s3_input) - channel configuration for S3 data sources that can
                     provide additional information as well as the path to the training dataset.
                     See :func:`sagemaker.session.s3_input` for full details.
-            wait (bool): Whether the call should wait until the job completes
-                (default: True).
-            logs (bool): Whether to show the logs produced by the job. Only
-                meaningful when wait is True (default: True).
-            job_name (str): Training job name. If not specified, the estimator
-                generates a default job name, based on the training image name
-                and current timestamp.
+                * (sagemaker.session.FileSystemInput) - channel configuration for
+                    a file system data source that can provide additional information as well as
+                    the path to the training dataset.
+
+            wait (bool): Whether the call should wait until the job completes (default: True).
+            logs (bool): Whether to show the logs produced by the job.
+                Only meaningful when wait is True (default: True).
+            job_name (str): Training job name. If not specified, the estimator generates
+                a default job name, based on the training image name and current timestamp.
         """
         self._prepare_for_training(job_name=job_name)
 
