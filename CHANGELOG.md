@@ -1,5 +1,12 @@
 # Changelog
 
+## v1.38.2 (2019-08-27)
+
+### Bug fixes and other changes
+
+ * skip efs tests in non us-west-2 regions
+ * refactor tests to use common retry method
+
 ## v1.38.1 (2019-08-26)
 
 ### Bug fixes and other changes
