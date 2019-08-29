@@ -37,20 +37,21 @@ FEATURE_DIM = 784
 
 @pytest.fixture(scope="module")
 def efs_fsx_setup(sagemaker_session, ec2_instance_type):
-    fs_resources_to_delete = None
+    fs_resources = None
     try:
-        fs_resources, fs_resources_to_delete = set_up_efs_fsx(sagemaker_session, ec2_instance_type)
-        yield fs_resources, fs_resources_to_delete
+        fs_resources = set_up_efs_fsx(sagemaker_session, ec2_instance_type)
+        yield fs_resources
     finally:
-        if fs_resources_to_delete:
-            tear_down(sagemaker_session, fs_resources_to_delete)
+        if fs_resources:
+            tear_down(sagemaker_session, fs_resources)
 
 
 def test_kmeans_efs(efs_fsx_setup, sagemaker_session, cpu_instance_type):
     with timeout(minutes=TRAINING_DEFAULT_TIMEOUT_MINUTES):
-        subnets = [efs_fsx_setup[0].subnet_id]
-        security_group_ids = efs_fsx_setup[0].security_group_ids
-        role = efs_fsx_setup[0].role_name
+        role = efs_fsx_setup["role_name"]
+        subnets = [efs_fsx_setup["subnet_id"]]
+        security_group_ids = efs_fsx_setup["security_group_ids"]
+
         kmeans = KMeans(
             role=role,
             train_instance_count=TRAIN_INSTANCE_COUNT,
@@ -61,7 +62,7 @@ def test_kmeans_efs(efs_fsx_setup, sagemaker_session, cpu_instance_type):
             security_group_ids=security_group_ids,
         )
 
-        file_system_efs_id = efs_fsx_setup[0].file_system_efs_id
+        file_system_efs_id = efs_fsx_setup["file_system_efs_id"]
         records = FileSystemRecordSet(
             file_system_id=file_system_efs_id,
             file_system_type="EFS",
@@ -78,9 +79,9 @@ def test_kmeans_efs(efs_fsx_setup, sagemaker_session, cpu_instance_type):
 
 def test_kmeans_fsx(efs_fsx_setup, sagemaker_session, cpu_instance_type):
     with timeout(minutes=TRAINING_DEFAULT_TIMEOUT_MINUTES):
-        subnets = [efs_fsx_setup[0].subnet_id]
-        security_group_ids = efs_fsx_setup[0].security_group_ids
-        role = efs_fsx_setup[0].role_name
+        role = efs_fsx_setup["role_name"]
+        subnets = [efs_fsx_setup["subnet_id"]]
+        security_group_ids = efs_fsx_setup["security_group_ids"]
         kmeans = KMeans(
             role=role,
             train_instance_count=TRAIN_INSTANCE_COUNT,
@@ -91,7 +92,7 @@ def test_kmeans_fsx(efs_fsx_setup, sagemaker_session, cpu_instance_type):
             security_group_ids=security_group_ids,
         )
 
-        file_system_fsx_id = efs_fsx_setup[0].file_system_fsx_id
+        file_system_fsx_id = efs_fsx_setup["file_system_fsx_id"]
         records = FileSystemRecordSet(
             file_system_id=file_system_fsx_id,
             file_system_type="FSxLustre",
@@ -107,9 +108,9 @@ def test_kmeans_fsx(efs_fsx_setup, sagemaker_session, cpu_instance_type):
 
 
 def test_tuning_kmeans_efs(efs_fsx_setup, sagemaker_session, cpu_instance_type):
-    subnets = [efs_fsx_setup[0].subnet_id]
-    security_group_ids = efs_fsx_setup[0].security_group_ids
-    role = efs_fsx_setup[0].role_name
+    role = efs_fsx_setup["role_name"]
+    subnets = [efs_fsx_setup["subnet_id"]]
+    security_group_ids = efs_fsx_setup["security_group_ids"]
     kmeans = KMeans(
         role=role,
         train_instance_count=TRAIN_INSTANCE_COUNT,
@@ -137,7 +138,7 @@ def test_tuning_kmeans_efs(efs_fsx_setup, sagemaker_session, cpu_instance_type):
             max_parallel_jobs=MAX_PARALLEL_JOBS,
         )
 
-        file_system_efs_id = efs_fsx_setup[0].file_system_efs_id
+        file_system_efs_id = efs_fsx_setup["file_system_efs_id"]
         train_records = FileSystemRecordSet(
             file_system_id=file_system_efs_id,
             file_system_type="EFS",
@@ -163,9 +164,9 @@ def test_tuning_kmeans_efs(efs_fsx_setup, sagemaker_session, cpu_instance_type):
 
 
 def test_tuning_kmeans_fsx(efs_fsx_setup, sagemaker_session, cpu_instance_type):
-    subnets = [efs_fsx_setup[0].subnet_id]
-    security_group_ids = efs_fsx_setup[0].security_group_ids
-    role = efs_fsx_setup[0].role_name
+    role = efs_fsx_setup["role_name"]
+    subnets = [efs_fsx_setup["subnet_id"]]
+    security_group_ids = efs_fsx_setup["security_group_ids"]
     kmeans = KMeans(
         role=role,
         train_instance_count=TRAIN_INSTANCE_COUNT,
@@ -193,7 +194,7 @@ def test_tuning_kmeans_fsx(efs_fsx_setup, sagemaker_session, cpu_instance_type):
             max_parallel_jobs=MAX_PARALLEL_JOBS,
         )
 
-        file_system_fsx_id = efs_fsx_setup[0].file_system_fsx_id
+        file_system_fsx_id = efs_fsx_setup["file_system_fsx_id"]
         train_records = FileSystemRecordSet(
             file_system_id=file_system_fsx_id,
             file_system_type="FSxLustre",
