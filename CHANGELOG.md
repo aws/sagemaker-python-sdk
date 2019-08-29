@@ -1,5 +1,16 @@
 # Changelog
 
+## v1.38.4 (2019-08-29)
+
+### Bug fixes and other changes
+
+ * skip EFS tests until they are confirmed fixed.
+
+### Documentation changes
+
+ * add note to CONTRIBUTING to clarify automated formatting
+ * add checkpoint section to using_mxnet topic
+
 ## v1.38.3 (2019-08-28)
 
 ### Bug fixes and other changes
