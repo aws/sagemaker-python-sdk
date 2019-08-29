@@ -12,7 +12,6 @@
 # language governing permissions and limitations under the License.
 from __future__ import absolute_import
 
-import logging
 from operator import itemgetter
 import os
 from os import path
@@ -131,33 +130,9 @@ def _upload_data_and_mount_fs(connected_instance, file_system_efs_id, file_syste
 
 def _check_or_create_efs(sagemaker_session):
     efs_client = sagemaker_session.boto_session.client("efs")
-    file_system_exists = False
-    efs_id = ""
-    try:
-        create_response = efs_client.create_file_system(CreationToken=EFS_CREATION_TOKEN)
-        efs_id = create_response["FileSystemId"]
-        fs_resources["file_system_efs_id"] = efs_id
-
-    except ClientError as e:
-        error_code = e.response["Error"]["Code"]
-        if error_code == "FileSystemAlreadyExists":
-            file_system_exists = True
-            logging.warning(
-                "File system with given creation token %s already exists", EFS_CREATION_TOKEN
-            )
-        else:
-            raise
-
-    if file_system_exists:
-        desc = efs_client.describe_file_systems(CreationToken=EFS_CREATION_TOKEN)
-        efs_id = desc["FileSystems"][0]["FileSystemId"]
-        mount_target_id = efs_client.describe_mount_targets(FileSystemId=efs_id)["MountTargets"][0][
-            "MountTargetId"
-        ]
-        fs_resources["file_system_efs_id"] = efs_id
-        fs_resources["mount_efs_target_id"] = mount_target_id
-        return efs_id, mount_target_id
-
+    create_response = efs_client.create_file_system(CreationToken=EFS_CREATION_TOKEN)
+    efs_id = create_response["FileSystemId"]
+    fs_resources["file_system_efs_id"] = efs_id
     for _ in retries(50, "Checking EFS creating status"):
         desc = efs_client.describe_file_systems(CreationToken=EFS_CREATION_TOKEN)
         status = desc["FileSystems"][0]["LifeCycleState"]
