@@ -17,6 +17,7 @@ import time
 
 import pytest
 
+import tests.integ
 from sagemaker.inputs import FileSystemInput
 from sagemaker.parameter import IntegerParameter
 from sagemaker.tensorflow import TensorFlow
@@ -49,6 +50,10 @@ def efs_fsx_setup(sagemaker_session, ec2_instance_type):
             tear_down(sagemaker_session, fs_resources)
 
 
+@pytest.mark.skipif(
+    tests.integ.test_region() not in tests.integ.EFS_TEST_ENABLED_REGION,
+    reason="EFS integration tests need to be fixed before running in all regions.",
+)
 def test_mnist_efs(efs_fsx_setup, sagemaker_session, cpu_instance_type):
     role = efs_fsx_setup["role_name"]
     subnets = [efs_fsx_setup["subnet_id"]]
@@ -81,6 +86,10 @@ def test_mnist_efs(efs_fsx_setup, sagemaker_session, cpu_instance_type):
     )
 
 
+@pytest.mark.skipif(
+    tests.integ.test_region() not in tests.integ.EFS_TEST_ENABLED_REGION,
+    reason="EFS integration tests need to be fixed before running in all regions.",
+)
 def test_mnist_lustre(efs_fsx_setup, sagemaker_session, cpu_instance_type):
     role = efs_fsx_setup["role_name"]
     subnets = [efs_fsx_setup["subnet_id"]]
@@ -113,6 +122,10 @@ def test_mnist_lustre(efs_fsx_setup, sagemaker_session, cpu_instance_type):
     )
 
 
+@pytest.mark.skipif(
+    tests.integ.test_region() not in tests.integ.EFS_TEST_ENABLED_REGION,
+    reason="EFS integration tests need to be fixed before running in all regions.",
+)
 def test_tuning_tf_script_mode_efs(efs_fsx_setup, sagemaker_session, cpu_instance_type):
     role = efs_fsx_setup["role_name"]
     subnets = [efs_fsx_setup["subnet_id"]]
@@ -157,6 +170,10 @@ def test_tuning_tf_script_mode_efs(efs_fsx_setup, sagemaker_session, cpu_instanc
     assert best_training_job
 
 
+@pytest.mark.skipif(
+    tests.integ.test_region() not in tests.integ.EFS_TEST_ENABLED_REGION,
+    reason="EFS integration tests need to be fixed before running in all regions.",
+)
 def test_tuning_tf_script_mode_lustre(efs_fsx_setup, sagemaker_session, cpu_instance_type):
     role = efs_fsx_setup["role_name"]
     subnets = [efs_fsx_setup["subnet_id"]]
