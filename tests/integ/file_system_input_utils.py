@@ -75,8 +75,8 @@ def set_up_efs_fsx(sagemaker_session, ec2_instance_type):
             subnet_ids[0],
         )
 
-        file_system_efs_id, mount_efs_target_id = _check_or_create_efs(sagemaker_session)
-        file_system_fsx_id = _check_or_create_fsx(sagemaker_session)
+        file_system_efs_id, mount_efs_target_id = _create_efs(sagemaker_session)
+        file_system_fsx_id = _create_fsx(sagemaker_session)
 
         connected_instance = _connect_ec2_instance(ec2_instance)
         region = sagemaker_session.boto_region_name
@@ -128,7 +128,7 @@ def _upload_data_and_mount_fs(connected_instance, file_system_efs_id, file_syste
     )
 
 
-def _check_or_create_efs(sagemaker_session):
+def _create_efs(sagemaker_session):
     efs_client = sagemaker_session.boto_session.client("efs")
     create_response = efs_client.create_file_system(CreationToken=EFS_CREATION_TOKEN)
     efs_id = create_response["FileSystemId"]
@@ -163,7 +163,7 @@ def _create_efs_mount(sagemaker_session, file_system_id):
     return mount_target_id
 
 
-def _check_or_create_fsx(sagemaker_session):
+def _create_fsx(sagemaker_session):
     fsx_client = sagemaker_session.boto_session.client("fsx")
     subnet_ids, security_group_ids = check_or_create_vpc_resources_efs_fsx(
         sagemaker_session, VPC_NAME
