@@ -40,12 +40,14 @@ PY_VERSION = "py3"
 
 
 @pytest.fixture(scope="module")
-def efs_fsx_setup(sagemaker_session):
-    fs_resources = set_up_efs_fsx(sagemaker_session)
+def efs_fsx_setup(sagemaker_session, ec2_instance_type):
+    fs_resources = None
     try:
+        fs_resources = set_up_efs_fsx(sagemaker_session, ec2_instance_type)
         yield fs_resources
     finally:
-        tear_down(sagemaker_session, fs_resources)
+        if fs_resources:
+            tear_down(sagemaker_session, fs_resources)
 
 
 @pytest.mark.skipif(
@@ -53,9 +55,9 @@ def efs_fsx_setup(sagemaker_session):
     reason="EFS integration tests need to be fixed before running in all regions.",
 )
 def test_mnist_efs(efs_fsx_setup, sagemaker_session, cpu_instance_type):
-    role = efs_fsx_setup.role_name
-    subnets = [efs_fsx_setup.subnet_id]
-    security_group_ids = efs_fsx_setup.security_group_ids
+    role = efs_fsx_setup["role_name"]
+    subnets = [efs_fsx_setup["subnet_id"]]
+    security_group_ids = efs_fsx_setup["security_group_ids"]
 
     estimator = TensorFlow(
         entry_point=SCRIPT,
@@ -70,7 +72,7 @@ def test_mnist_efs(efs_fsx_setup, sagemaker_session, cpu_instance_type):
         security_group_ids=security_group_ids,
     )
 
-    file_system_efs_id = efs_fsx_setup.file_system_efs_id
+    file_system_efs_id = efs_fsx_setup["file_system_efs_id"]
     file_system_input = FileSystemInput(
         file_system_id=file_system_efs_id, file_system_type="EFS", directory_path=EFS_DIR_PATH
     )
@@ -89,9 +91,9 @@ def test_mnist_efs(efs_fsx_setup, sagemaker_session, cpu_instance_type):
     reason="EFS integration tests need to be fixed before running in all regions.",
 )
 def test_mnist_lustre(efs_fsx_setup, sagemaker_session, cpu_instance_type):
-    role = efs_fsx_setup.role_name
-    subnets = [efs_fsx_setup.subnet_id]
-    security_group_ids = efs_fsx_setup.security_group_ids
+    role = efs_fsx_setup["role_name"]
+    subnets = [efs_fsx_setup["subnet_id"]]
+    security_group_ids = efs_fsx_setup["security_group_ids"]
 
     estimator = TensorFlow(
         entry_point=SCRIPT,
@@ -106,7 +108,7 @@ def test_mnist_lustre(efs_fsx_setup, sagemaker_session, cpu_instance_type):
         security_group_ids=security_group_ids,
     )
 
-    file_system_fsx_id = efs_fsx_setup.file_system_fsx_id
+    file_system_fsx_id = efs_fsx_setup["file_system_fsx_id"]
     file_system_input = FileSystemInput(
         file_system_id=file_system_fsx_id, file_system_type="FSxLustre", directory_path=FSX_DIR_PATH
     )
@@ -125,9 +127,9 @@ def test_mnist_lustre(efs_fsx_setup, sagemaker_session, cpu_instance_type):
     reason="EFS integration tests need to be fixed before running in all regions.",
 )
 def test_tuning_tf_script_mode_efs(efs_fsx_setup, sagemaker_session, cpu_instance_type):
-    role = efs_fsx_setup.role_name
-    subnets = [efs_fsx_setup.subnet_id]
-    security_group_ids = efs_fsx_setup.security_group_ids
+    role = efs_fsx_setup["role_name"]
+    subnets = [efs_fsx_setup["subnet_id"]]
+    security_group_ids = efs_fsx_setup["security_group_ids"]
 
     estimator = TensorFlow(
         entry_point=SCRIPT,
@@ -154,7 +156,7 @@ def test_tuning_tf_script_mode_efs(efs_fsx_setup, sagemaker_session, cpu_instanc
         max_parallel_jobs=MAX_PARALLEL_JOBS,
     )
 
-    file_system_efs_id = efs_fsx_setup.file_system_efs_id
+    file_system_efs_id = efs_fsx_setup["file_system_efs_id"]
     file_system_input = FileSystemInput(
         file_system_id=file_system_efs_id, file_system_type="EFS", directory_path=EFS_DIR_PATH
     )
@@ -173,9 +175,9 @@ def test_tuning_tf_script_mode_efs(efs_fsx_setup, sagemaker_session, cpu_instanc
     reason="EFS integration tests need to be fixed before running in all regions.",
 )
 def test_tuning_tf_script_mode_lustre(efs_fsx_setup, sagemaker_session, cpu_instance_type):
-    role = efs_fsx_setup.role_name
-    subnets = [efs_fsx_setup.subnet_id]
-    security_group_ids = efs_fsx_setup.security_group_ids
+    role = efs_fsx_setup["role_name"]
+    subnets = [efs_fsx_setup["subnet_id"]]
+    security_group_ids = efs_fsx_setup["security_group_ids"]
 
     estimator = TensorFlow(
         entry_point=SCRIPT,
@@ -202,7 +204,7 @@ def test_tuning_tf_script_mode_lustre(efs_fsx_setup, sagemaker_session, cpu_inst
         max_parallel_jobs=MAX_PARALLEL_JOBS,
     )
 
-    file_system_fsx_id = efs_fsx_setup.file_system_fsx_id
+    file_system_fsx_id = efs_fsx_setup["file_system_fsx_id"]
     file_system_input = FileSystemInput(
         file_system_id=file_system_fsx_id, file_system_type="FSxLustre", directory_path=FSX_DIR_PATH
     )
