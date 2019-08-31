@@ -126,6 +126,7 @@ def _create_vpc_resources(ec2_client, name):
     availability_zone_name = ec2_client.describe_availability_zones()["AvailabilityZones"][0][
         "ZoneName"
     ]
+    print("avaliability zone name = ", availability_zone_name)
 
     subnet_id_a = ec2_client.create_subnet(
         CidrBlock="10.0.0.0/24", VpcId=vpc_id, AvailabilityZone=availability_zone_name
@@ -170,25 +171,25 @@ def _create_vpc_resources(ec2_client, name):
     return vpc_id, [subnet_id_a, subnet_id_b], security_group_id
 
 
-def _create_vpc_with_name(ec2_client, region, name):
+def _create_vpc_with_name(ec2_client,  region, name):
     vpc_id, [subnet_id_a, subnet_id_b], security_group_id = _create_vpc_resources(
-        ec2_client, region, name
+        ec2_client, name
     )
     return [subnet_id_a, subnet_id_b], security_group_id
 
 
-def get_or_create_vpc_resources(ec2_client, region, name=VPC_NAME):
+def get_or_create_vpc_resources(ec2_client, region):
     # use lock to prevent race condition when tests are running concurrently
     with lock.lock(LOCK_PATH):
-        if _vpc_exists(ec2_client, name):
-            print("using existing vpc: {}".format(name))
+        if _vpc_exists(ec2_client, VPC_NAME):
+            print("using existing vpc: {}".format(VPC_NAME))
             return (
-                _get_subnet_ids_by_name(ec2_client, name),
-                _get_security_id_by_name(ec2_client, name),
+                _get_subnet_ids_by_name(ec2_client, VPC_NAME),
+                _get_security_id_by_name(ec2_client, VPC_NAME),
             )
         else:
-            print("creating new vpc: {}".format(name))
-            return _create_vpc_with_name(ec2_client, region, name)
+            print("creating new vpc: {}".format(VPC_NAME))
+            return _create_vpc_with_name(ec2_client, region, VPC_NAME)
 
 
 def setup_security_group_for_encryption(ec2_client, security_group_id):
