@@ -890,6 +890,10 @@ class _TuningJob(_Job):
             "encrypt_inter_container_traffic"
         ] = tuner.estimator.encrypt_inter_container_traffic
 
+        tuner_args["train_use_spot_instances"] = tuner.estimator.train_use_spot_instances
+        tuner_args["checkpoint_s3_uri"] = tuner.estimator.checkpoint_s3_uri
+        tuner_args["checkpoint_local_path"] = tuner.estimator.checkpoint_local_path
+
         tuner.estimator.sagemaker_session.tune(**tuner_args)
 
         return cls(tuner.sagemaker_session, tuner._current_job_name)

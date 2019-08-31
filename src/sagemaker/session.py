@@ -450,6 +450,9 @@ class Session(object):  # pylint: disable=too-many-public-methods
         early_stopping_type="Off",
         encrypt_inter_container_traffic=False,
         vpc_config=None,
+        train_use_spot_instances=False,
+        checkpoint_s3_uri=None,
+        checkpoint_local_path=None,
     ):
         """Create an Amazon SageMaker hyperparameter tuning job
 
@@ -512,6 +515,18 @@ class Session(object):  # pylint: disable=too-many-public-methods
                 The key in vpc_config is 'Subnets'.
                 * security_group_ids (list[str]): List of security group ids.
                 The key in vpc_config is 'SecurityGroupIds'.
+            train_use_spot_instances (bool): whether to use spot instances for training.
+            checkpoint_s3_uri (str): The S3 URI in which to persist checkpoints
+                that the algorithm persists (if any) during training. (default:
+                ``None``).
+            checkpoint_local_path (str): The local path that the algorithm
+                writes its checkpoints to. SageMaker will persist all files
+                under this path to `checkpoint_s3_uri` continually during
+                training. On job startup the reverse happens - data from the
+                s3 location is downloaded to this path before the algorithm is
+                started. If the path is unset then SageMaker assumes the
+                checkpoints will be provided under `/opt/ml/checkpoints/`.
+                (default: ``None``).
 
         """
         tune_request = {
@@ -568,6 +583,17 @@ class Session(object):  # pylint: disable=too-many-public-methods
 
         if encrypt_inter_container_traffic:
             tune_request["TrainingJobDefinition"]["EnableInterContainerTrafficEncryption"] = True
+
+        if train_use_spot_instances:
+            tune_request["TrainingJobDefinition"][
+                "EnableManagedSpotTraining"
+            ] = train_use_spot_instances
+
+        if checkpoint_s3_uri:
+            checkpoint_config = {"S3Uri": checkpoint_s3_uri}
+            if checkpoint_local_path:
+                checkpoint_config["LocalPath"] = checkpoint_local_path
+            tune_request["TrainingJobDefinition"]["CheckpointConfig"] = checkpoint_config
 
         LOGGER.info("Creating hyperparameter tuning job with name: %s", job_name)
         LOGGER.debug("tune request: %s", json.dumps(tune_request, indent=4))
