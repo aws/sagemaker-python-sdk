@@ -86,10 +86,9 @@ def set_up_efs_fsx(sagemaker_session, ec2_instance_type):
         _upload_data_and_mount_fs(
             connected_instance, file_system_efs_id, file_system_fsx_id, region
         )
-        test_tear_down(sagemaker_session, fs_resources)
         return fs_resources
     except Exception:
-        test_tear_down(sagemaker_session, fs_resources)
+        tear_down(sagemaker_session, fs_resources)
         raise
 
 

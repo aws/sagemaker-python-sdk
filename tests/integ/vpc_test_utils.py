@@ -64,6 +64,7 @@ def _route_table_id(ec2_client, vpc_id):
 
 def check_or_create_vpc_resources_efs_fsx(sagemaker_session, name=VPC_NAME):
     # use lock to prevent race condition when tests are running concurrently
+    print("vpc name = ", name)
     with lock.lock(LOCK_PATH):
         ec2_client = sagemaker_session.boto_session.client("ec2")
 
@@ -126,7 +127,9 @@ def _create_vpc_resources(ec2_client, name):
     availability_zone_name = ec2_client.describe_availability_zones()["AvailabilityZones"][0][
         "ZoneName"
     ]
-    print("avaliability zone name = ", availability_zone_name)
+    print(
+        "avaliability zone name = ", ec2_client.describe_availability_zones()["AvailabilityZones"]
+    )
 
     subnet_id_a = ec2_client.create_subnet(
         CidrBlock="10.0.0.0/24", VpcId=vpc_id, AvailabilityZone=availability_zone_name
@@ -171,10 +174,9 @@ def _create_vpc_resources(ec2_client, name):
     return vpc_id, [subnet_id_a, subnet_id_b], security_group_id
 
 
-def _create_vpc_with_name(ec2_client,  region, name):
-    vpc_id, [subnet_id_a, subnet_id_b], security_group_id = _create_vpc_resources(
-        ec2_client, name
-    )
+def _create_vpc_with_name(ec2_client, region, name):
+    print("region = ", region)
+    vpc_id, [subnet_id_a, subnet_id_b], security_group_id = _create_vpc_resources(ec2_client, name)
     return [subnet_id_a, subnet_id_b], security_group_id
 
 
