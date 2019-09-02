@@ -124,6 +124,10 @@ def _create_vpc_with_name_efs_fsx(ec2_client, name):
 def _create_vpc_resources(ec2_client, name):
     print("vpc name before create_vpc operation = ", name)
     vpc_id = ec2_client.create_vpc(CidrBlock="10.0.0.0/16")["Vpc"]["VpcId"]
+    ec2_client.create_tags(
+        Resources=[vpc_id],
+        Tags=[{"Key": "Name", "Value": name}],
+    )
     print("created vpc: {}".format(vpc_id))
 
     availability_zone_name = ec2_client.describe_availability_zones()["AvailabilityZones"][0][
@@ -169,12 +173,9 @@ def _create_vpc_resources(ec2_client, name):
     )
 
     ec2_client.create_tags(
-        Resources=[vpc_id, subnet_id_a, subnet_id_b, security_group_id],
+        Resources=[subnet_id_a, subnet_id_b, security_group_id],
         Tags=[{"Key": "Name", "Value": name}],
     )
-    print("vpc_id = ", vpc_id)
-    print("vpc_name = ", name)
-
     return vpc_id, [subnet_id_a, subnet_id_b], security_group_id
 
 
