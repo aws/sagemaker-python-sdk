@@ -75,6 +75,7 @@ def check_or_create_vpc_resources_efs_fsx(sagemaker_session, name=VPC_NAME):
                 _security_group_ids_by_vpc_id(sagemaker_session, vpc_id),
             )
         else:
+            print("crete new vpc efs fsx = ", name)
             return _create_vpc_with_name_efs_fsx(ec2_client, name)
 
 
@@ -121,6 +122,7 @@ def _create_vpc_with_name_efs_fsx(ec2_client, name):
 
 
 def _create_vpc_resources(ec2_client, name):
+    print("vpc name before create_vpc operation = ", name)
     vpc_id = ec2_client.create_vpc(CidrBlock="10.0.0.0/16")["Vpc"]["VpcId"]
     print("created vpc: {}".format(vpc_id))
 
@@ -170,6 +172,8 @@ def _create_vpc_resources(ec2_client, name):
         Resources=[vpc_id, subnet_id_a, subnet_id_b, security_group_id],
         Tags=[{"Key": "Name", "Value": name}],
     )
+    print("vpc_id = ", vpc_id)
+    print("vpc_name = ", name)
 
     return vpc_id, [subnet_id_a, subnet_id_b], security_group_id
 
