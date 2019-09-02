@@ -19,6 +19,7 @@ import tests.integ.lock as lock
 
 VPC_NAME = "sagemaker-python-sdk-test-vpc"
 LOCK_PATH = os.path.join(tempfile.gettempdir(), "sagemaker_test_vpc_lock")
+LOCK_PATH_EFS = os.path.join(tempfile.gettempdir(), "sagemaker_efs_fsx_vpc_lock")
 
 
 def _get_subnet_ids_by_name(ec2_client, name):
@@ -65,7 +66,7 @@ def _route_table_id(ec2_client, vpc_id):
 def check_or_create_vpc_resources_efs_fsx(sagemaker_session, name=VPC_NAME):
     # use lock to prevent race condition when tests are running concurrently
     print("vpc name = ", name)
-    with lock.lock(LOCK_PATH):
+    with lock.lock(LOCK_PATH_EFS):
         ec2_client = sagemaker_session.boto_session.client("ec2")
 
         if _vpc_exists(ec2_client, name):
