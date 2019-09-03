@@ -171,9 +171,7 @@ def _create_vpc_resources(ec2_client, name):
 
 
 def _create_vpc_with_name(ec2_client, region, name):
-    vpc_id, [subnet_id_a, subnet_id_b], security_group_id = _create_vpc_resources(
-        ec2_client, region, name
-    )
+    vpc_id, [subnet_id_a, subnet_id_b], security_group_id = _create_vpc_resources(ec2_client, name)
     return [subnet_id_a, subnet_id_b], security_group_id
 
 
