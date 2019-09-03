@@ -425,7 +425,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
         LOGGER.info("Creating compilation-job with name: %s", job_name)
         self.sagemaker_client.create_compilation_job(**compilation_job_request)
 
-    def tune(
+    def tune(  # noqa: C901
         self,
         job_name,
         strategy,
@@ -585,9 +585,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
             tune_request["TrainingJobDefinition"]["EnableInterContainerTrafficEncryption"] = True
 
         if train_use_spot_instances:
-            tune_request["TrainingJobDefinition"][
-                "EnableManagedSpotTraining"
-            ] = train_use_spot_instances
+            tune_request["TrainingJobDefinition"]["EnableManagedSpotTraining"] = True
 
         if checkpoint_s3_uri:
             checkpoint_config = {"S3Uri": checkpoint_s3_uri}
