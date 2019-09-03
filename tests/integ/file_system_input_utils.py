@@ -152,7 +152,6 @@ def _create_efs_mount(sagemaker_session, file_system_id):
         FileSystemId=file_system_id, SubnetId=subnet_ids[0], SecurityGroups=security_group_ids
     )
     mount_target_id = mount_response["MountTargetId"]
-    print("mount_tarte_id in creating = ", mount_target_id)
     fs_resources["mount_efs_target_id"] = mount_target_id
 
     for _ in retries(50, "Checking EFS mounting target status"):
