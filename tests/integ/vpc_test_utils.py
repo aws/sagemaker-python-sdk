@@ -65,7 +65,6 @@ def _route_table_id(ec2_client, vpc_id):
 
 def check_or_create_vpc_resources_efs_fsx(sagemaker_session, name=VPC_NAME):
     # use lock to prevent race condition when tests are running concurrently
-    print("vpc name = ", name)
     with lock.lock(LOCK_PATH_EFS):
         ec2_client = sagemaker_session.boto_session.client("ec2")
 
@@ -76,7 +75,6 @@ def check_or_create_vpc_resources_efs_fsx(sagemaker_session, name=VPC_NAME):
                 _security_group_ids_by_vpc_id(sagemaker_session, vpc_id),
             )
         else:
-            print("crete new vpc efs fsx = ", name)
             return _create_vpc_with_name_efs_fsx(ec2_client, name)
 
 
@@ -123,20 +121,12 @@ def _create_vpc_with_name_efs_fsx(ec2_client, name):
 
 
 def _create_vpc_resources(ec2_client, name):
-    print("vpc name before create_vpc operation = ", name)
     vpc_id = ec2_client.create_vpc(CidrBlock="10.0.0.0/16")["Vpc"]["VpcId"]
-    ec2_client.create_tags(
-        Resources=[vpc_id],
-        Tags=[{"Key": "Name", "Value": name}],
-    )
-    print("created vpc: {}".format(vpc_id))
+    ec2_client.create_tags(Resources=[vpc_id], Tags=[{"Key": "Name", "Value": name}])
 
     availability_zone_name = ec2_client.describe_availability_zones()["AvailabilityZones"][0][
         "ZoneName"
     ]
-    print(
-        "avaliability zone name = ", ec2_client.describe_availability_zones()["AvailabilityZones"]
-    )
 
     subnet_id_a = ec2_client.create_subnet(
         CidrBlock="10.0.0.0/24", VpcId=vpc_id, AvailabilityZone=availability_zone_name
@@ -180,13 +170,12 @@ def _create_vpc_resources(ec2_client, name):
     return vpc_id, [subnet_id_a, subnet_id_b], security_group_id
 
 
-def _create_vpc_with_name(ec2_client, region, name):
-    print("region = ", region)
+def _create_vpc_with_name(ec2_client, name):
     vpc_id, [subnet_id_a, subnet_id_b], security_group_id = _create_vpc_resources(ec2_client, name)
     return [subnet_id_a, subnet_id_b], security_group_id
 
 
-def get_or_create_vpc_resources(ec2_client, region):
+def get_or_create_vpc_resources(ec2_client):
     # use lock to prevent race condition when tests are running concurrently
     with lock.lock(LOCK_PATH):
         if _vpc_exists(ec2_client, VPC_NAME):
@@ -197,7 +186,7 @@ def get_or_create_vpc_resources(ec2_client, region):
             )
         else:
             print("creating new vpc: {}".format(VPC_NAME))
-            return _create_vpc_with_name(ec2_client, region, VPC_NAME)
+            return _create_vpc_with_name(ec2_client, VPC_NAME)
 
 
 def setup_security_group_for_encryption(ec2_client, security_group_id):

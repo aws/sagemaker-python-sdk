@@ -14,7 +14,6 @@ from __future__ import absolute_import
 
 import pytest
 
-import tests.integ
 from sagemaker import KMeans
 from sagemaker.amazon.amazon_estimator import FileSystemRecordSet
 from sagemaker.parameter import IntegerParameter, CategoricalParameter

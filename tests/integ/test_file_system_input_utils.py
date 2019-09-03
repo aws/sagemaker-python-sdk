@@ -76,10 +76,7 @@ def set_up_efs_fsx(sagemaker_session, ec2_instance_type):
         )
 
         file_system_efs_id, mount_efs_target_id = _create_efs(sagemaker_session)
-        print("file_system_efs_id = ", file_system_efs_id)
-        print("mount_efs_target_id = ", mount_efs_target_id)
         file_system_fsx_id = _create_fsx(sagemaker_session)
-        print("file_system_fsx_id = ", file_system_fsx_id)
 
         connected_instance = _connect_ec2_instance(ec2_instance)
         region = sagemaker_session.boto_region_name
@@ -291,7 +288,6 @@ def _instance_profile_exists(sagemaker_session):
 
 def tear_down(sagemaker_session, fs_resources={}):
     try:
-        print("fs_resources = ", fs_resources)
         if "file_system_fsx_id" in fs_resources:
             fsx_client = sagemaker_session.boto_session.client("fsx")
             fsx_client.delete_file_system(FileSystemId=fs_resources["file_system_fsx_id"])

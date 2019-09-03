@@ -17,7 +17,6 @@ import time
 
 import pytest
 
-import tests.integ
 from sagemaker.inputs import FileSystemInput
 from sagemaker.parameter import IntegerParameter
 from sagemaker.tensorflow import TensorFlow
