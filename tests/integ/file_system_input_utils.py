@@ -285,31 +285,35 @@ def _instance_profile_exists(sagemaker_session):
     return True
 
 
-def tear_down(sagemaker_session, fs_resources):
-    if "file_system_fsx_id" in fs_resources:
-        fsx_client = sagemaker_session.boto_session.client("fsx")
-        fsx_client.delete_file_system(FileSystemId=fs_resources["file_system_fsx_id"])
+def tear_down(sagemaker_session, fs_resources={}):
+    try:
+        if "file_system_fsx_id" in fs_resources:
+            fsx_client = sagemaker_session.boto_session.client("fsx")
+            fsx_client.delete_file_system(FileSystemId=fs_resources["file_system_fsx_id"])
 
-    efs_client = sagemaker_session.boto_session.client("efs")
-    if "mount_efs_target_id" in fs_resources:
-        efs_client.delete_mount_target(MountTargetId=fs_resources["mount_efs_target_id"])
+        efs_client = sagemaker_session.boto_session.client("efs")
+        if "mount_efs_target_id" in fs_resources:
+            efs_client.delete_mount_target(MountTargetId=fs_resources["mount_efs_target_id"])
 
-    if "file_system_efs_id" in fs_resources:
-        for _ in retries(30, "Checking mount target deleting status"):
-            desc = efs_client.describe_mount_targets(
-                FileSystemId=fs_resources["file_system_efs_id"]
-            )
-            if len(desc["MountTargets"]) > 0:
-                status = desc["MountTargets"][0]["LifeCycleState"]
-                if status == "deleted":
+        if "file_system_efs_id" in fs_resources:
+            for _ in retries(30, "Checking mount target deleting status"):
+                desc = efs_client.describe_mount_targets(
+                    FileSystemId=fs_resources["file_system_efs_id"]
+                )
+                if len(desc["MountTargets"]) > 0:
+                    status = desc["MountTargets"][0]["LifeCycleState"]
+                    if status == "deleted":
+                        break
+                else:
                     break
-            else:
-                break
 
-        efs_client.delete_file_system(FileSystemId=fs_resources["file_system_efs_id"])
+            efs_client.delete_file_system(FileSystemId=fs_resources["file_system_efs_id"])
 
-    if "ec2_instance_id" in fs_resources:
-        ec2_resource = sagemaker_session.boto_session.resource("ec2")
-        _terminate_instance(ec2_resource, [fs_resources["ec2_instance_id"]])
+        if "ec2_instance_id" in fs_resources:
+            ec2_resource = sagemaker_session.boto_session.resource("ec2")
+            _terminate_instance(ec2_resource, [fs_resources["ec2_instance_id"]])
 
-    _delete_key_pair(sagemaker_session)
+        _delete_key_pair(sagemaker_session)
+
+    except Exception:
+        pass

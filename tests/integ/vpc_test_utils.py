@@ -19,6 +19,7 @@ import tests.integ.lock as lock
 
 VPC_NAME = "sagemaker-python-sdk-test-vpc"
 LOCK_PATH = os.path.join(tempfile.gettempdir(), "sagemaker_test_vpc_lock")
+LOCK_PATH_EFS = os.path.join(tempfile.gettempdir(), "sagemaker_efs_fsx_vpc_lock")
 
 
 def _get_subnet_ids_by_name(ec2_client, name):
@@ -64,7 +65,7 @@ def _route_table_id(ec2_client, vpc_id):
 
 def check_or_create_vpc_resources_efs_fsx(sagemaker_session, name=VPC_NAME):
     # use lock to prevent race condition when tests are running concurrently
-    with lock.lock(LOCK_PATH):
+    with lock.lock(LOCK_PATH_EFS):
         ec2_client = sagemaker_session.boto_session.client("ec2")
 
         if _vpc_exists(ec2_client, name):
@@ -121,7 +122,7 @@ def _create_vpc_with_name_efs_fsx(ec2_client, name):
 
 def _create_vpc_resources(ec2_client, name):
     vpc_id = ec2_client.create_vpc(CidrBlock="10.0.0.0/16")["Vpc"]["VpcId"]
-    print("created vpc: {}".format(vpc_id))
+    ec2_client.create_tags(Resources=[vpc_id], Tags=[{"Key": "Name", "Value": name}])
 
     availability_zone_name = ec2_client.describe_availability_zones()["AvailabilityZones"][0][
         "ZoneName"
@@ -163,30 +164,29 @@ def _create_vpc_resources(ec2_client, name):
     )
 
     ec2_client.create_tags(
-        Resources=[vpc_id, subnet_id_a, subnet_id_b, security_group_id],
+        Resources=[subnet_id_a, subnet_id_b, security_group_id],
         Tags=[{"Key": "Name", "Value": name}],
     )
-
     return vpc_id, [subnet_id_a, subnet_id_b], security_group_id
 
 
-def _create_vpc_with_name(ec2_client, region, name):
+def _create_vpc_with_name(ec2_client, name):
     vpc_id, [subnet_id_a, subnet_id_b], security_group_id = _create_vpc_resources(ec2_client, name)
     return [subnet_id_a, subnet_id_b], security_group_id
 
 
-def get_or_create_vpc_resources(ec2_client, region, name=VPC_NAME):
+def get_or_create_vpc_resources(ec2_client):
     # use lock to prevent race condition when tests are running concurrently
     with lock.lock(LOCK_PATH):
-        if _vpc_exists(ec2_client, name):
-            print("using existing vpc: {}".format(name))
+        if _vpc_exists(ec2_client, VPC_NAME):
+            print("using existing vpc: {}".format(VPC_NAME))
             return (
-                _get_subnet_ids_by_name(ec2_client, name),
-                _get_security_id_by_name(ec2_client, name),
+                _get_subnet_ids_by_name(ec2_client, VPC_NAME),
+                _get_security_id_by_name(ec2_client, VPC_NAME),
             )
         else:
-            print("creating new vpc: {}".format(name))
-            return _create_vpc_with_name(ec2_client, region, name)
+            print("creating new vpc: {}".format(VPC_NAME))
+            return _create_vpc_with_name(ec2_client, VPC_NAME)
 
 
 def setup_security_group_for_encryption(ec2_client, security_group_id):
