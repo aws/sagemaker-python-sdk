@@ -17,12 +17,12 @@ import time
 
 import pytest
 
-import tests
 from sagemaker.inputs import FileSystemInput
 from sagemaker.parameter import IntegerParameter
 from sagemaker.tensorflow import TensorFlow
 from sagemaker.tuner import HyperparameterTuner
 from sagemaker.utils import unique_name_from_base
+import tests
 from tests.integ import TRAINING_DEFAULT_TIMEOUT_MINUTES, TUNING_DEFAULT_TIMEOUT_MINUTES
 from tests.integ.file_system_input_utils import tear_down, set_up_efs_fsx
 from tests.integ.s3_utils import assert_s3_files_exist
