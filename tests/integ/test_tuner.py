@@ -695,9 +695,7 @@ def test_tuning_tf_vpc_multi(sagemaker_session, cpu_instance_type):
     script_path = os.path.join(DATA_DIR, "iris", "iris-dnn-classifier.py")
 
     ec2_client = sagemaker_session.boto_session.client("ec2")
-    subnet_ids, security_group_id = vpc_test_utils.get_or_create_vpc_resources(
-        ec2_client, sagemaker_session.boto_region_name
-    )
+    subnet_ids, security_group_id = vpc_test_utils.get_or_create_vpc_resources(ec2_client)
     vpc_test_utils.setup_security_group_for_encryption(ec2_client, security_group_id)
 
     estimator = TensorFlow(

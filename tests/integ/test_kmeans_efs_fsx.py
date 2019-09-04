@@ -14,12 +14,12 @@ from __future__ import absolute_import
 
 import pytest
 
-import tests.integ
 from sagemaker import KMeans
 from sagemaker.amazon.amazon_estimator import FileSystemRecordSet
 from sagemaker.parameter import IntegerParameter, CategoricalParameter
 from sagemaker.tuner import HyperparameterTuner
 from sagemaker.utils import unique_name_from_base
+import tests
 from tests.integ import TRAINING_DEFAULT_TIMEOUT_MINUTES, TUNING_DEFAULT_TIMEOUT_MINUTES
 from tests.integ.file_system_input_utils import set_up_efs_fsx, tear_down
 from tests.integ.s3_utils import assert_s3_files_exist

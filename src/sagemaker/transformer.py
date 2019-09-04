@@ -60,8 +60,9 @@ class Transformer(object):
                 not specified, results are stored to a default bucket.
             output_kms_key (str): Optional. KMS key ID for encrypting the
                 transform output (default: None).
-            accept (str): The content type accepted by the endpoint deployed
-                during the transform job.
+            accept (str): The accept header passed by the client to
+                the inference endpoint. If it is supported by the endpoint,
+                it will be the format of the batch transform output.
             max_concurrent_transforms (int): The maximum number of HTTP requests
                 to be made to each individual transform container at one time.
             max_payload (int): Maximum size of the payload in a single HTTP

@@ -817,7 +817,13 @@ A few important notes:
 - If you are using S3 data as input, it is pulled from S3 to your local environment. Ensure you have sufficient space to store the data locally.
 - If you run into problems it often due to different Docker containers conflicting. Killing these containers and re-running often solves your problems.
 - Local Mode requires Docker Compose and `nvidia-docker2 <https://github.com/NVIDIA/nvidia-docker>`__ for ``local_gpu``.
-- Distributed training is not yet supported for ``local_gpu``.
+
+.. warning::
+
+  Local Mode does not yet support the following:
+
+  - Distributed training for ``local_gpu``
+  - Gzip compression, Pipe Mode, or manifest files for inputs
 
 **************************************
 Secure Training and Inference with VPC
