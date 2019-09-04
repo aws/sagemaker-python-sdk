@@ -1,5 +1,17 @@
 # Changelog
 
+## v1.38.6 (2019-09-04)
+
+### Bug fixes and other changes
+
+ * update: disable efs fsx integ tests in non-pdx regions
+ * fix canary test failure issues
+ * use us-east-1 for PR test runs
+
+### Documentation changes
+
+ * updated description for "accept" parameter in batch transform
+
 ## v1.38.5 (2019-09-02)
 
 ### Bug fixes and other changes
