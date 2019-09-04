@@ -29,6 +29,9 @@ import yaml
 
 import sagemaker.logs
 from sagemaker import vpc_utils
+
+# import s3_input for backward compatibility
+from sagemaker.inputs import s3_input  # noqa # pylint: disable=unused-import
 from sagemaker.user_agent import prepend_user_agent
 from sagemaker.utils import (
     name_from_image,
@@ -422,7 +425,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
         LOGGER.info("Creating compilation-job with name: %s", job_name)
         self.sagemaker_client.create_compilation_job(**compilation_job_request)
 
-    def tune(
+    def tune(  # noqa: C901
         self,
         job_name,
         strategy,
@@ -447,6 +450,9 @@ class Session(object):  # pylint: disable=too-many-public-methods
         early_stopping_type="Off",
         encrypt_inter_container_traffic=False,
         vpc_config=None,
+        train_use_spot_instances=False,
+        checkpoint_s3_uri=None,
+        checkpoint_local_path=None,
     ):
         """Create an Amazon SageMaker hyperparameter tuning job
 
@@ -509,6 +515,18 @@ class Session(object):  # pylint: disable=too-many-public-methods
                 The key in vpc_config is 'Subnets'.
                 * security_group_ids (list[str]): List of security group ids.
                 The key in vpc_config is 'SecurityGroupIds'.
+            train_use_spot_instances (bool): whether to use spot instances for training.
+            checkpoint_s3_uri (str): The S3 URI in which to persist checkpoints
+                that the algorithm persists (if any) during training. (default:
+                ``None``).
+            checkpoint_local_path (str): The local path that the algorithm
+                writes its checkpoints to. SageMaker will persist all files
+                under this path to `checkpoint_s3_uri` continually during
+                training. On job startup the reverse happens - data from the
+                s3 location is downloaded to this path before the algorithm is
+                started. If the path is unset then SageMaker assumes the
+                checkpoints will be provided under `/opt/ml/checkpoints/`.
+                (default: ``None``).
 
         """
         tune_request = {
@@ -565,6 +583,15 @@ class Session(object):  # pylint: disable=too-many-public-methods
 
         if encrypt_inter_container_traffic:
             tune_request["TrainingJobDefinition"]["EnableInterContainerTrafficEncryption"] = True
+
+        if train_use_spot_instances:
+            tune_request["TrainingJobDefinition"]["EnableManagedSpotTraining"] = True
+
+        if checkpoint_s3_uri:
+            checkpoint_config = {"S3Uri": checkpoint_s3_uri}
+            if checkpoint_local_path:
+                checkpoint_config["LocalPath"] = checkpoint_local_path
+            tune_request["TrainingJobDefinition"]["CheckpointConfig"] = checkpoint_config
 
         LOGGER.info("Creating hyperparameter tuning job with name: %s", job_name)
         LOGGER.debug("tune request: %s", json.dumps(tune_request, indent=4))
@@ -1624,87 +1651,6 @@ def get_execution_role(sagemaker_session=None):
         "SageMaker execution role"
     )
     raise ValueError(message.format(arn))
-
-
-class s3_input(object):
-    """Amazon SageMaker channel configurations for S3 data sources.
-
-    Attributes:
-        config (dict[str, dict]): A SageMaker ``DataSource`` referencing a SageMaker
-            ``S3DataSource``.
-    """
-
-    def __init__(
-        self,
-        s3_data,
-        distribution="FullyReplicated",
-        compression=None,
-        content_type=None,
-        record_wrapping=None,
-        s3_data_type="S3Prefix",
-        input_mode=None,
-        attribute_names=None,
-        shuffle_config=None,
-    ):
-        """Create a definition for input data used by an SageMaker training job.
-
-        See AWS documentation on the ``CreateTrainingJob`` API for more details on the parameters.
-
-        Args:
-            s3_data (str): Defines the location of s3 data to train on.
-            distribution (str): Valid values: 'FullyReplicated', 'ShardedByS3Key'
-                (default: 'FullyReplicated').
-            compression (str): Valid values: 'Gzip', None (default: None). This is used only in
-                Pipe input mode.
-            content_type (str): MIME type of the input data (default: None).
-            record_wrapping (str): Valid values: 'RecordIO' (default: None).
-            s3_data_type (str): Valid values: 'S3Prefix', 'ManifestFile', 'AugmentedManifestFile'.
-                If 'S3Prefix', ``s3_data`` defines a prefix of s3 objects to train on. All objects
-                with s3 keys beginning with ``s3_data`` will be used to train. If 'ManifestFile'
-                or 'AugmentedManifestFile', then ``s3_data`` defines a single s3 manifest file or
-                augmented manifest file (respectively), listing the s3 data to train on. Both the
-                ManifestFile and AugmentedManifestFile formats are described in the SageMaker API
-                documentation: https://docs.aws.amazon.com/sagemaker/latest/dg/API_S3DataSource.html
-            input_mode (str): Optional override for this channel's input mode (default: None). By
-                default, channels will use the input mode defined on
-                ``sagemaker.estimator.EstimatorBase.input_mode``, but they will ignore that setting
-                if this parameter is set.
-                * None - Amazon SageMaker will use the input mode specified in the
-                ``Estimator``.
-                * 'File' - Amazon SageMaker copies the training dataset from the S3 location
-                to a local directory.
-                * 'Pipe' - Amazon SageMaker streams data directly from S3 to the container via
-                a Unix-named pipe.
-
-            attribute_names (list[str]): A list of one or more attribute names to use that are
-                found in a specified AugmentedManifestFile.
-            shuffle_config (ShuffleConfig): If specified this configuration enables shuffling on
-                this channel. See the SageMaker API documentation for more info:
-                https://docs.aws.amazon.com/sagemaker/latest/dg/API_ShuffleConfig.html
-        """
-
-        self.config = {
-            "DataSource": {
-                "S3DataSource": {
-                    "S3DataDistributionType": distribution,
-                    "S3DataType": s3_data_type,
-                    "S3Uri": s3_data,
-                }
-            }
-        }
-
-        if compression is not None:
-            self.config["CompressionType"] = compression
-        if content_type is not None:
-            self.config["ContentType"] = content_type
-        if record_wrapping is not None:
-            self.config["RecordWrapperType"] = record_wrapping
-        if input_mode is not None:
-            self.config["InputMode"] = input_mode
-        if attribute_names is not None:
-            self.config["DataSource"]["S3DataSource"]["AttributeNames"] = attribute_names
-        if shuffle_config is not None:
-            self.config["ShuffleConfig"] = {"Seed": shuffle_config.seed}
 
 
 class ShuffleConfig(object):

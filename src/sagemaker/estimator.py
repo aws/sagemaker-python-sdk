@@ -308,21 +308,21 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):
                 about the training data. This can be one of three types:
 
                 * (str) the S3 location where training data is saved.
-
                 * (dict[str, str] or dict[str, sagemaker.session.s3_input]) If using multiple
                     channels for training data, you can specify a dict mapping channel names to
                     strings or :func:`~sagemaker.session.s3_input` objects.
-
                 * (sagemaker.session.s3_input) - channel configuration for S3 data sources that can
                     provide additional information as well as the path to the training dataset.
                     See :func:`sagemaker.session.s3_input` for full details.
-            wait (bool): Whether the call should wait until the job completes
-                (default: True).
-            logs (bool): Whether to show the logs produced by the job. Only
-                meaningful when wait is True (default: True).
-            job_name (str): Training job name. If not specified, the estimator
-                generates a default job name, based on the training image name
-                and current timestamp.
+                * (sagemaker.session.FileSystemInput) - channel configuration for
+                    a file system data source that can provide additional information as well as
+                    the path to the training dataset.
+
+            wait (bool): Whether the call should wait until the job completes (default: True).
+            logs (bool): Whether to show the logs produced by the job.
+                Only meaningful when wait is True (default: True).
+            job_name (str): Training job name. If not specified, the estimator generates
+                a default job name, based on the training image name and current timestamp.
         """
         self._prepare_for_training(job_name=job_name)
 
@@ -685,8 +685,9 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):
                 not specified, results are stored to a default bucket.
             output_kms_key (str): Optional. KMS key ID for encrypting the
                 transform output (default: None).
-            accept (str): The content type accepted by the endpoint deployed
-                during the transform job.
+            accept (str): The accept header passed by the client to
+                the inference endpoint. If it is supported by the endpoint,
+                it will be the format of the batch transform output.
             env (dict): Environment variables to be set for use during the
                 transform job (default: None).
             max_concurrent_transforms (int): The maximum number of HTTP requests
@@ -1626,8 +1627,9 @@ class Framework(EstimatorBase):
                 not specified, results are stored to a default bucket.
             output_kms_key (str): Optional. KMS key ID for encrypting the
                 transform output (default: None).
-            accept (str): The content type accepted by the endpoint deployed
-                during the transform job.
+            accept (str): The accept header passed by the client to
+                the inference endpoint. If it is supported by the endpoint,
+                it will be the format of the batch transform output.
             env (dict): Environment variables to be set for use during the
                 transform job (default: None).
             max_concurrent_transforms (int): The maximum number of HTTP requests

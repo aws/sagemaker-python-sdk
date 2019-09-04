@@ -1,5 +1,64 @@
 # Changelog
 
+## v1.38.6 (2019-09-04)
+
+### Bug fixes and other changes
+
+ * update: disable efs fsx integ tests in non-pdx regions
+ * fix canary test failure issues
+ * use us-east-1 for PR test runs
+
+### Documentation changes
+
+ * updated description for "accept" parameter in batch transform
+
+## v1.38.5 (2019-09-02)
+
+### Bug fixes and other changes
+
+ * clean up resources created by file system set up when setup fails
+
+## v1.38.4 (2019-08-29)
+
+### Bug fixes and other changes
+
+ * skip EFS tests until they are confirmed fixed.
+
+### Documentation changes
+
+ * add note to CONTRIBUTING to clarify automated formatting
+ * add checkpoint section to using_mxnet topic
+
+## v1.38.3 (2019-08-28)
+
+### Bug fixes and other changes
+
+ * change AMI ids in tests to be dynamic based on regions
+
+## v1.38.2 (2019-08-27)
+
+### Bug fixes and other changes
+
+ * skip efs tests in non us-west-2 regions
+ * refactor tests to use common retry method
+
+## v1.38.1 (2019-08-26)
+
+### Bug fixes and other changes
+
+ * update py2 warning message
+ * add logic to use asimov image for TF 1.14 py2
+
+### Documentation changes
+
+ * changed EFS directory path instructions in documentation and Docstrings
+
+## v1.38.0 (2019-08-23)
+
+### Features
+
+ * support training inputs from EFS and FSx
+
 ## v1.37.2 (2019-08-20)
 
 ### Bug fixes and other changes

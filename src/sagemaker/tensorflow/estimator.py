@@ -199,6 +199,8 @@ class TensorFlow(Framework):
     """The latest version of TensorFlow included in the SageMaker pre-built Docker images."""
 
     _LOWEST_SCRIPT_MODE_ONLY_VERSION = [1, 13]
+    # 1.14.0 now supports py2
+    # we will need to update this version number if future versions do not support py2 anymore
     _LOWEST_PYTHON_2_ONLY_VERSION = [1, 14]
 
     def __init__(
@@ -343,7 +345,7 @@ class TensorFlow(Framework):
 
         if py_version == "py2" and self._only_python_3_supported():
             msg = (
-                "Python 2 containers are only available until TensorFlow version 1.13.1. "
+                "Python 2 containers are only available until January 1st, 2020. "
                 "Please use a Python 3 container."
             )
             raise AttributeError(msg)
@@ -717,8 +719,9 @@ class TensorFlow(Framework):
                 results are stored to a default bucket.
             output_kms_key (str): Optional. KMS key ID for encrypting the transform output
                 (default: None).
-            accept (str): The content type accepted by the endpoint deployed during the transform
-                job.
+            accept (str): The accept header passed by the client to
+                the inference endpoint. If it is supported by the endpoint,
+                it will be the format of the batch transform output.
             env (dict): Environment variables to be set for use during the transform job
                 (default: None).
             max_concurrent_transforms (int): The maximum number of HTTP requests to be made to

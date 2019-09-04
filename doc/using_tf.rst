@@ -9,9 +9,6 @@ models on SageMaker Hosting.
 For general information about using the SageMaker Python SDK, see :ref:`overview:Using the SageMaker Python SDK`.
 
 .. warning::
-    The TensorFlow estimator is available only for Python 3, starting by the TensorFlow version 1.14.
-
-.. warning::
     We have added a new format of your TensorFlow training script with TensorFlow version 1.11.
     This new way gives the user script more flexibility.
     This new format is called Script Mode, as opposed to Legacy Mode, which is what we support with TensorFlow 1.11 and older versions.

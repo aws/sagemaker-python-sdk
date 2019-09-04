@@ -565,6 +565,51 @@ def test_tune_with_encryption_flag(sagemaker_session):
     )
 
 
+def test_tune_with_spot_and_checkpoints(sagemaker_session):
+    def assert_create_tuning_job_request(**kwrags):
+        assert (
+            kwrags["HyperParameterTuningJobConfig"]
+            == SAMPLE_TUNING_JOB_REQUEST["HyperParameterTuningJobConfig"]
+        )
+        assert kwrags["HyperParameterTuningJobName"] == "dummy-tuning-1"
+        assert kwrags["TrainingJobDefinition"]["EnableManagedSpotTraining"] is True
+        assert (
+            kwrags["TrainingJobDefinition"]["CheckpointConfig"]["S3Uri"]
+            == "s3://mybucket/checkpoints/"
+        )
+        assert (
+            kwrags["TrainingJobDefinition"]["CheckpointConfig"]["LocalPath"] == "/tmp/checkpoints"
+        )
+        assert kwrags.get("WarmStartConfig", None) is None
+
+    sagemaker_session.sagemaker_client.create_hyper_parameter_tuning_job.side_effect = (
+        assert_create_tuning_job_request
+    )
+    sagemaker_session.tune(
+        job_name="dummy-tuning-1",
+        strategy="Bayesian",
+        objective_type="Maximize",
+        objective_metric_name="val-score",
+        max_jobs=100,
+        max_parallel_jobs=5,
+        parameter_ranges=SAMPLE_PARAM_RANGES,
+        static_hyperparameters=STATIC_HPs,
+        image="dummy-image-1",
+        input_mode="File",
+        metric_definitions=SAMPLE_METRIC_DEF,
+        role=EXPANDED_ROLE,
+        input_config=SAMPLE_INPUT,
+        output_config=SAMPLE_OUTPUT,
+        resource_config=RESOURCE_CONFIG,
+        stop_condition=SAMPLE_STOPPING_CONDITION,
+        tags=None,
+        warm_start_config=None,
+        train_use_spot_instances=True,
+        checkpoint_s3_uri="s3://mybucket/checkpoints/",
+        checkpoint_local_path="/tmp/checkpoints",
+    )
+
+
 def test_stop_tuning_job(sagemaker_session):
     sms = sagemaker_session
     sms.sagemaker_client.stop_hyper_parameter_tuning_job = Mock(

@@ -18,13 +18,13 @@ import time
 
 import pytest
 
-import boto3
 from sagemaker.tensorflow import TensorFlow
-from six.moves.urllib.parse import urlparse
 from sagemaker.utils import unique_name_from_base
 
 import tests.integ
 from tests.integ import timeout
+from tests.integ.retry import retries
+from tests.integ.s3_utils import assert_s3_files_exist
 
 ROLE = "SageMakerRole"
 
@@ -56,10 +56,10 @@ def test_mnist(sagemaker_session, instance_type):
 
     with tests.integ.timeout.timeout(minutes=tests.integ.TRAINING_DEFAULT_TIMEOUT_MINUTES):
         estimator.fit(inputs=inputs, job_name=unique_name_from_base("test-tf-sm-mnist"))
-    _assert_s3_files_exist(
+    assert_s3_files_exist(
+        sagemaker_session,
         estimator.model_dir,
         ["graph.pbtxt", "model.ckpt-0.index", "model.ckpt-0.meta"],
-        sagemaker_session.boto_region_name,
     )
     df = estimator.training_job_analytics.dataframe()
     assert df.size > 0
@@ -119,10 +119,10 @@ def test_mnist_distributed(sagemaker_session, instance_type):
 
     with tests.integ.timeout.timeout(minutes=tests.integ.TRAINING_DEFAULT_TIMEOUT_MINUTES):
         estimator.fit(inputs=inputs, job_name=unique_name_from_base("test-tf-sm-distributed"))
-    _assert_s3_files_exist(
+    assert_s3_files_exist(
+        sagemaker_session,
         estimator.model_dir,
         ["graph.pbtxt", "model.ckpt-0.index", "model.ckpt-0.meta"],
-        sagemaker_session.boto_region_name,
     )
 
 
@@ -200,27 +200,13 @@ def test_deploy_with_input_handlers(sagemaker_session, instance_type):
         assert expected_result == result
 
 
-def _assert_s3_files_exist(s3_url, files, region):
-    parsed_url = urlparse(s3_url)
-    s3 = boto3.client("s3", region_name=region)
-    contents = s3.list_objects_v2(Bucket=parsed_url.netloc, Prefix=parsed_url.path.lstrip("/"))[
-        "Contents"
-    ]
-    for f in files:
-        found = [x["Key"] for x in contents if x["Key"].endswith(f)]
-        if not found:
-            raise ValueError("File {} is not found under {}".format(f, s3_url))
-
-
-def _assert_tags_match(sagemaker_client, resource_arn, tags, retries=15):
-    actual_tags = None
-    for _ in range(retries):
+def _assert_tags_match(sagemaker_client, resource_arn, tags, retry_count=15):
+    # endpoint and training tags might take minutes to propagate.
+    for _ in retries(retry_count, "Getting endpoint tags", seconds_to_sleep=30):
         actual_tags = sagemaker_client.list_tags(ResourceArn=resource_arn)["Tags"]
         if actual_tags:
             break
-        else:
-            # endpoint and training tags might take minutes to propagate. Sleeping.
-            time.sleep(30)
+
     assert actual_tags == tags
 
 

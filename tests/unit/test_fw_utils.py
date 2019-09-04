@@ -187,6 +187,13 @@ def test_create_image_uri_merged_py2():
         == "520713654638.dkr.ecr.us-west-2.amazonaws.com/sagemaker-tensorflow-scriptmode:1.13.1-gpu-py2"
     )
 
+    image_uri = fw_utils.create_image_uri(
+        "us-west-2", "tensorflow-scriptmode", "ml.p3.2xlarge", "1.14", "py2"
+    )
+    assert (
+        image_uri == "763104351884.dkr.ecr.us-west-2.amazonaws.com/tensorflow-training:1.14-gpu-py2"
+    )
+
     image_uri = fw_utils.create_image_uri("us-west-2", "mxnet", "ml.p3.2xlarge", "1.4.1", "py2")
     assert image_uri == "520713654638.dkr.ecr.us-west-2.amazonaws.com/sagemaker-mxnet:1.4.1-gpu-py2"
 

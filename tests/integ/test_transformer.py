@@ -149,9 +149,7 @@ def test_transform_mxnet_vpc(sagemaker_session, mxnet_full_version, cpu_instance
     script_path = os.path.join(data_path, "mnist.py")
 
     ec2_client = sagemaker_session.boto_session.client("ec2")
-    subnet_ids, security_group_id = get_or_create_vpc_resources(
-        ec2_client, sagemaker_session.boto_session.region_name
-    )
+    subnet_ids, security_group_id = get_or_create_vpc_resources(ec2_client)
 
     mx = MXNet(
         entry_point=script_path,
