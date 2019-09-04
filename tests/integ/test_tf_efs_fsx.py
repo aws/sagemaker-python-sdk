@@ -22,6 +22,7 @@ from sagemaker.parameter import IntegerParameter
 from sagemaker.tensorflow import TensorFlow
 from sagemaker.tuner import HyperparameterTuner
 from sagemaker.utils import unique_name_from_base
+import tests
 from tests.integ import TRAINING_DEFAULT_TIMEOUT_MINUTES, TUNING_DEFAULT_TIMEOUT_MINUTES
 from tests.integ.file_system_input_utils import tear_down, set_up_efs_fsx
 from tests.integ.s3_utils import assert_s3_files_exist
@@ -49,6 +50,10 @@ def efs_fsx_setup(sagemaker_session, ec2_instance_type):
             tear_down(sagemaker_session, fs_resources)
 
 
+@pytest.mark.skipif(
+    tests.integ.test_region() not in tests.integ.EFS_TEST_ENABLED_REGION,
+    reason="EFS integration tests need to be fixed before running in all regions.",
+)
 def test_mnist_efs(efs_fsx_setup, sagemaker_session, cpu_instance_type):
     role = efs_fsx_setup["role_name"]
     subnets = [efs_fsx_setup["subnet_id"]]
@@ -81,6 +86,10 @@ def test_mnist_efs(efs_fsx_setup, sagemaker_session, cpu_instance_type):
     )
 
 
+@pytest.mark.skipif(
+    tests.integ.test_region() not in tests.integ.EFS_TEST_ENABLED_REGION,
+    reason="EFS integration tests need to be fixed before running in all regions.",
+)
 def test_mnist_lustre(efs_fsx_setup, sagemaker_session, cpu_instance_type):
     role = efs_fsx_setup["role_name"]
     subnets = [efs_fsx_setup["subnet_id"]]
@@ -113,6 +122,10 @@ def test_mnist_lustre(efs_fsx_setup, sagemaker_session, cpu_instance_type):
     )
 
 
+@pytest.mark.skipif(
+    tests.integ.test_region() not in tests.integ.EFS_TEST_ENABLED_REGION,
+    reason="EFS integration tests need to be fixed before running in all regions.",
+)
 def test_tuning_tf_script_mode_efs(efs_fsx_setup, sagemaker_session, cpu_instance_type):
     role = efs_fsx_setup["role_name"]
     subnets = [efs_fsx_setup["subnet_id"]]
@@ -157,6 +170,10 @@ def test_tuning_tf_script_mode_efs(efs_fsx_setup, sagemaker_session, cpu_instanc
     assert best_training_job
 
 
+@pytest.mark.skipif(
+    tests.integ.test_region() not in tests.integ.EFS_TEST_ENABLED_REGION,
+    reason="EFS integration tests need to be fixed before running in all regions.",
+)
 def test_tuning_tf_script_mode_lustre(efs_fsx_setup, sagemaker_session, cpu_instance_type):
     role = efs_fsx_setup["role_name"]
     subnets = [efs_fsx_setup["subnet_id"]]
