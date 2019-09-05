@@ -14,6 +14,7 @@
 from __future__ import absolute_import
 
 import logging
+import pkg_resources
 
 import sagemaker
 from sagemaker.fw_utils import create_image_uri, model_code_key_prefix, python_deprecation_warning
@@ -53,6 +54,7 @@ class PyTorchModel(FrameworkModel):
     """
 
     __framework_name__ = "pytorch"
+    _LOWEST_MMS_VERSION = "1.2"
 
     def __init__(
         self,
@@ -122,19 +124,28 @@ class PyTorchModel(FrameworkModel):
             dict[str, str]: A container definition object usable with the
             CreateModel API.
         """
+        lowest_mms_version = pkg_resources.parse_version(self._LOWEST_MMS_VERSION)
+        framework_version = pkg_resources.parse_version(self.framework_version)
+        is_mms_version = framework_version >= lowest_mms_version
+
         deploy_image = self.image
         if not deploy_image:
             region_name = self.sagemaker_session.boto_session.region_name
+
+            framework_name = self.__framework_name__
+            if is_mms_version:
+                framework_name += "-serving"
+
             deploy_image = create_image_uri(
                 region_name,
-                self.__framework_name__,
+                framework_name,
                 instance_type,
                 self.framework_version,
                 self.py_version,
                 accelerator_type=accelerator_type,
             )
         deploy_key_prefix = model_code_key_prefix(self.key_prefix, self.name, deploy_image)
-        self._upload_code(deploy_key_prefix)
+        self._upload_code(deploy_key_prefix, repack=is_mms_version)
         deploy_env = dict(self.env)
         deploy_env.update(self._framework_env_vars())
 
