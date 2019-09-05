@@ -60,8 +60,9 @@ class Transformer(object):
                 not specified, results are stored to a default bucket.
             output_kms_key (str): Optional. KMS key ID for encrypting the
                 transform output (default: None).
-            accept (str): The content type accepted by the endpoint deployed
-                during the transform job.
+            accept (str): The accept header passed by the client to
+                the inference endpoint. If it is supported by the endpoint,
+                it will be the format of the batch transform output.
             max_concurrent_transforms (int): The maximum number of HTTP requests
                 to be made to each individual transform container at one time.
             max_payload (int): Maximum size of the payload in a single HTTP
@@ -228,6 +229,14 @@ class Transformer(object):
         self._ensure_last_transform_job()
         self.latest_transform_job.wait()
 
+    def stop_transform_job(self, wait=True):
+        """Stop latest running batch transform job.
+        """
+        self._ensure_last_transform_job()
+        self.latest_transform_job.stop()
+        if wait:
+            self.latest_transform_job.wait()
+
     def _ensure_last_transform_job(self):
         """Placeholder docstring"""
         if self.latest_transform_job is None:
@@ -344,6 +353,10 @@ class _TransformJob(_Job):
 
     def wait(self):
         self.sagemaker_session.wait_for_transform_job(self.job_name)
+
+    def stop(self):
+        """Placeholder docstring"""
+        self.sagemaker_session.stop_transform_job(name=self.job_name)
 
     @staticmethod
     def _load_config(data, data_type, content_type, compression_type, split_type, transformer):
