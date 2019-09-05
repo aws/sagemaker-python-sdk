@@ -44,8 +44,9 @@ def mxnet_training_job(sagemaker_session, mxnet_full_version):
             framework_version=mxnet_full_version,
             py_version=PYTHON_VERSION,
             train_instance_count=1,
-            train_instance_type="ml.c4.xlarge",
-            sagemaker_session=sagemaker_session,
+            train_instance_type="local",  # "ml.c4.xlarge",
+            # sagemaker_session=sagemaker_session,
+            image_name="583851319346.dkr.ecr.us-west-2.amazonaws.com/sagemaker-mxnet:1.4.1-cpu-py3",
         )
 
         train_input = mx.sagemaker_session.upload_data(
@@ -57,6 +58,10 @@ def mxnet_training_job(sagemaker_session, mxnet_full_version):
 
         mx.fit({"train": train_input, "test": test_input})
         return mx.latest_training_job.name
+
+
+def test_foo(mxnet_training_job):
+    mxnet_training_job
 
 
 @pytest.mark.canary_quick
