@@ -1,4 +1,4 @@
-# Copyright 2017-2018 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright 2017-2019 Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -31,6 +31,7 @@ STATIC_HPs = {"feature_dim": "784"}
 SAMPLE_PARAM_RANGES = [{"Name": "mini_batch_size", "MinValue": "10", "MaxValue": "100"}]
 
 REGION = "us-west-2"
+STS_ENDPOINT = "sts.us-west-2.amazonaws.com"
 
 
 @pytest.fixture()
@@ -88,7 +89,7 @@ def test_get_execution_role_throws_exception_if_arn_is_not_role_with_role_in_nam
 def test_get_caller_identity_arn_from_an_user(boto_session):
     sess = Session(boto_session)
     arn = "arn:aws:iam::369233609183:user/mia"
-    sess.boto_session.client("sts").get_caller_identity.return_value = {"Arn": arn}
+    sess.boto_session.client("sts", endpoint_url=STS_ENDPOINT).get_caller_identity.return_value = {"Arn": arn}
     sess.boto_session.client("iam").get_role.return_value = {"Role": {"Arn": arn}}
 
     actual = sess.get_caller_identity_arn()
@@ -98,7 +99,7 @@ def test_get_caller_identity_arn_from_an_user(boto_session):
 def test_get_caller_identity_arn_from_an_user_without_permissions(boto_session):
     sess = Session(boto_session)
     arn = "arn:aws:iam::369233609183:user/mia"
-    sess.boto_session.client("sts").get_caller_identity.return_value = {"Arn": arn}
+    sess.boto_session.client("sts", endpoint_url=STS_ENDPOINT).get_caller_identity.return_value = {"Arn": arn}
     sess.boto_session.client("iam").get_role.side_effect = ClientError({}, {})
 
     with patch("logging.Logger.warning") as mock_logger:
@@ -112,7 +113,7 @@ def test_get_caller_identity_arn_from_a_role(boto_session):
     arn = (
         "arn:aws:sts::369233609183:assumed-role/SageMakerRole/6d009ef3-5306-49d5-8efc-78db644d8122"
     )
-    sess.boto_session.client("sts").get_caller_identity.return_value = {"Arn": arn}
+    sess.boto_session.client("sts", endpoint_url=STS_ENDPOINT).get_caller_identity.return_value = {"Arn": arn}
 
     expected_role = "arn:aws:iam::369233609183:role/SageMakerRole"
     sess.boto_session.client("iam").get_role.return_value = {"Role": {"Arn": expected_role}}
@@ -124,7 +125,7 @@ def test_get_caller_identity_arn_from_a_role(boto_session):
 def test_get_caller_identity_arn_from_a_execution_role(boto_session):
     sess = Session(boto_session)
     arn = "arn:aws:sts::369233609183:assumed-role/AmazonSageMaker-ExecutionRole-20171129T072388/SageMaker"
-    sess.boto_session.client("sts").get_caller_identity.return_value = {"Arn": arn}
+    sess.boto_session.client("sts", endpoint_url=STS_ENDPOINT).get_caller_identity.return_value = {"Arn": arn}
     sess.boto_session.client("iam").get_role.return_value = {"Role": {"Arn": arn}}
 
     actual = sess.get_caller_identity_arn()
@@ -138,7 +139,7 @@ def test_get_caller_identity_arn_from_role_with_path(boto_session):
     sess = Session(boto_session)
     arn_prefix = "arn:aws:iam::369233609183:role"
     role_name = "name"
-    sess.boto_session.client("sts").get_caller_identity.return_value = {
+    sess.boto_session.client("sts", endpoint_url=STS_ENDPOINT).get_caller_identity.return_value = {
         "Arn": "/".join([arn_prefix, role_name])
     }
 
@@ -344,7 +345,7 @@ IN_PROGRESS_DESCRIBE_JOB_RESULT.update({"TrainingJobStatus": "InProgress"})
 @pytest.fixture()
 def sagemaker_session():
     boto_mock = Mock(name="boto_session")
-    boto_mock.client("sts").get_caller_identity.return_value = {"Account": "123"}
+    boto_mock.client("sts", endpoint_url=STS_ENDPOINT).get_caller_identity.return_value = {"Account": "123"}
     ims = sagemaker.Session(boto_session=boto_mock, sagemaker_client=Mock())
     ims.expand_role = Mock(return_value=EXPANDED_ROLE)
     return ims
