@@ -354,7 +354,10 @@ def test_repack_model_without_source_dir(tmp, fake_s3):
     sagemaker.utils.repack_model(
         inference_script=os.path.join(tmp, "source-dir/inference.py"),
         source_directory=None,
-        dependencies=[os.path.join(tmp, "dependencies/a"), os.path.join(tmp, "dependencies/some/dir")],
+        dependencies=[
+            os.path.join(tmp, "dependencies/a"),
+            os.path.join(tmp, "dependencies/some/dir"),
+        ],
         model_uri="s3://fake/location",
         repacked_model_uri="s3://destination-bucket/model.tar.gz",
         sagemaker_session=fake_s3.sagemaker_session,

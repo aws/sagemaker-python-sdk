@@ -468,7 +468,7 @@ def _create_or_update_code_dir(
         shutil.copy2(inference_script, code_dir)
 
     for dependency in dependencies:
-        lib_dir = os.path.join(code_dir, 'lib')
+        lib_dir = os.path.join(code_dir, "lib")
         if os.path.isdir(dependency):
             shutil.copytree(dependency, os.path.join(lib_dir, os.path.basename(dependency)))
         else:
