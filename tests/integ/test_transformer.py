@@ -350,7 +350,7 @@ def test_single_transformer_multiple_jobs(sagemaker_session, mxnet_full_version,
         )
 
 
-def test_stop_transform_job(sagemaker_session, mxnet_full_version):
+def test_stop_transform_job(sagemaker_session, mxnet_full_version, cpu_instance_type):
     data_path = os.path.join(DATA_DIR, "mxnet_mnist")
     script_path = os.path.join(data_path, "mnist.py")
     tags = [{"Key": "some-tag", "Value": "value-for-tag"}]
@@ -359,7 +359,7 @@ def test_stop_transform_job(sagemaker_session, mxnet_full_version):
         entry_point=script_path,
         role="SageMakerRole",
         train_instance_count=1,
-        train_instance_type="ml.c4.xlarge",
+        train_instance_type=cpu_instance_type,
         sagemaker_session=sagemaker_session,
         framework_version=mxnet_full_version,
     )
@@ -381,7 +381,7 @@ def test_stop_transform_job(sagemaker_session, mxnet_full_version):
         path=transform_input_path, key_prefix=transform_input_key_prefix
     )
 
-    transformer = mx.transformer(1, "ml.m4.xlarge", tags=tags)
+    transformer = mx.transformer(1, cpu_instance_type, tags=tags)
     transformer.transform(transform_input, content_type="text/csv")
 
     time.sleep(15)
