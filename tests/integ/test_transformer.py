@@ -398,7 +398,7 @@ def test_stop_transform_job(sagemaker_session, mxnet_full_version):
     assert desc["TransformJobStatus"] == "Stopped"
 
 
-def test_transform_mxnet_logs(sagemaker_session, mxnet_full_version):
+def test_transform_mxnet_logs(sagemaker_session, mxnet_full_version, cpu_instance_type):
     data_path = os.path.join(DATA_DIR, "mxnet_mnist")
     script_path = os.path.join(data_path, "mnist.py")
 
@@ -406,7 +406,7 @@ def test_transform_mxnet_logs(sagemaker_session, mxnet_full_version):
         entry_point=script_path,
         role="SageMakerRole",
         train_instance_count=1,
-        train_instance_type="ml.c4.xlarge",
+        train_instance_type=cpu_instance_type,
         sagemaker_session=sagemaker_session,
         framework_version=mxnet_full_version,
     )
@@ -430,7 +430,7 @@ def test_transform_mxnet_logs(sagemaker_session, mxnet_full_version):
 
     with timeout(minutes=45):
         transformer = _create_transformer_and_transform_job(
-            mx, transform_input, wait=True, logs=True
+            mx, transform_input, cpu_instance_type, wait=True, logs=True
         )
 
     with timeout_and_delete_model_with_transformer(
