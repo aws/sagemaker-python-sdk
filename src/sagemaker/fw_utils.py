@@ -117,14 +117,15 @@ def _using_merged_images(region, framework, py_version, accelerator_type, framew
     is_gov_region = region in VALID_ACCOUNTS_BY_REGION
     is_py3 = py_version == "py3" or py_version is None
     is_merged_versions = _is_merged_versions(framework, framework_version)
-    if_tf_14_or_later = _is_tf_14_or_later(framework, framework_version)
-    is_pt_12_or_later = _is_pt_12_or_later(framework, framework_version)
-    is_valid_framework = is_py3 or if_tf_14_or_later or is_pt_12_or_later
 
     return (
         (not is_gov_region)
         and is_merged_versions
-        and is_valid_framework
+        and (
+            is_py3
+            or _is_tf_14_or_later(framework, framework_version)
+            or _is_pt_12_or_later(framework, framework_version)
+        )
         and accelerator_type is None
     )
 
