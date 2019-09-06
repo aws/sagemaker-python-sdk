@@ -905,6 +905,7 @@ class Estimator(EstimatorBase):
         train_max_wait=None,
         checkpoint_s3_uri=None,
         checkpoint_local_path=None,
+        enable_network_isolation=False,
     ):
         """Initialize an ``Estimator`` instance.
 
@@ -1008,9 +1009,18 @@ class Estimator(EstimatorBase):
                 started. If the path is unset then SageMaker assumes the
                 checkpoints will be provided under `/opt/ml/checkpoints/`.
                 (default: ``None``).
+            enable_network_isolation (bool): Specifies whether container will
+                run in network isolation mode. Network isolation mode restricts
+                the container access to outside networks (such as the Internet).
+                The container does not make any inbound or outbound network
+                calls. If ``True``, a channel named "code" will be created for any
+                user entry script for training. The user entry script, files in
+                source_dir (if specified), and dependencies will be uploaded in
+                a tar to S3. Also known as internet-free mode (default: ``False``).
         """
         self.image_name = image_name
         self.hyperparam_dict = hyperparameters.copy() if hyperparameters else {}
+        self._enable_network_isolation = enable_network_isolation
         super(Estimator, self).__init__(
             role,
             train_instance_count,
@@ -1035,6 +1045,14 @@ class Estimator(EstimatorBase):
             checkpoint_s3_uri=checkpoint_s3_uri,
             checkpoint_local_path=checkpoint_local_path,
         )
+
+    def enable_network_isolation(self):
+        """If this Estimator can use network isolation when running.
+
+        Returns:
+            bool: Whether this Estimator can use network isolation or not.
+        """
+        return self._enable_network_isolation
 
     def train_image(self):
         """Returns the docker image to use for training.
