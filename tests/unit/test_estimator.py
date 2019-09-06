@@ -1779,6 +1779,24 @@ def test_generic_to_fit_with_encrypt_inter_container_traffic_flag(sagemaker_sess
     assert args["encrypt_inter_container_traffic"] is True
 
 
+def test_generic_to_fit_with_network_isolation(sagemaker_session):
+    e = Estimator(
+        IMAGE_NAME,
+        ROLE,
+        INSTANCE_COUNT,
+        INSTANCE_TYPE,
+        output_path=OUTPUT_PATH,
+        sagemaker_session=sagemaker_session,
+        enable_network_isolation=True,
+    )
+
+    e.fit()
+
+    sagemaker_session.train.assert_called_once()
+    args = sagemaker_session.train.call_args[1]
+    assert args["enable_network_isolation"]
+
+
 def test_generic_to_deploy(sagemaker_session):
     e = Estimator(
         IMAGE_NAME,
