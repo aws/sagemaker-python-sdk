@@ -84,8 +84,8 @@ def test_git_support_with_pytorch(sagemaker_local_session):
 
 
 @pytest.mark.local_mode
+@pytest.mark.skip("needs a secure authentication approach")
 def test_git_support_with_mxnet(sagemaker_local_session):
-
     script_path = "mnist.py"
     data_path = os.path.join(DATA_DIR, "mxnet_mnist")
     git_config = {
@@ -94,7 +94,7 @@ def test_git_support_with_mxnet(sagemaker_local_session):
         "commit": PRIVATE_COMMIT,
         "2FA_enabled": False,
         "username": "git-support-test",
-        "password": "passw0rd@ %",
+        "password": "",  # TODO: find a more secure approach
     }
     source_dir = "mxnet"
     dependencies = ["foo/bar.py"]
