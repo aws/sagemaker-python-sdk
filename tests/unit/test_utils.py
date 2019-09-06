@@ -560,3 +560,8 @@ def list_tar_files(tar_ball, tmp):
 
     result = set(walk())
     return result if result else {}
+
+
+def test_sts_regional_endpoint():
+    endpoint = sagemaker.utils.sts_regional_endpoint("us-west-2")
+    assert endpoint == "sts.us-west-2.amazonaws.com"
