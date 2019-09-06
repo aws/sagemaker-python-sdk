@@ -119,6 +119,8 @@ class Transformer(object):
         input_filter=None,
         output_filter=None,
         join_source=None,
+        wait=False,
+        logs=False,
     ):
         """Start a new transform job.
 
@@ -154,6 +156,10 @@ class Transformer(object):
                 will be joined to the inference result. You can use OutputFilter
                 to select the useful portion before uploading to S3. (default:
                 None). Valid values: Input, None.
+            wait (bool): Whether the call should wait until the job completes
+                (default: True).
+            logs (bool): Whether to show the logs produced by the job.
+                Only meaningful when wait is True (default: False).
         """
         local_mode = self.sagemaker_session.local_mode
         if not local_mode and not data.startswith("s3://"):
@@ -186,6 +192,9 @@ class Transformer(object):
             output_filter,
             join_source,
         )
+
+        if wait:
+            self.latest_transform_job.wait(logs=logs)
 
     def delete_model(self):
         """Delete the corresponding SageMaker model for this Transformer."""
@@ -224,10 +233,10 @@ class Transformer(object):
                 "Local instance types require locally created models." % self.model_name
             )
 
-    def wait(self):
+    def wait(self, logs=True):
         """Placeholder docstring"""
         self._ensure_last_transform_job()
-        self.latest_transform_job.wait()
+        self.latest_transform_job.wait(logs=logs)
 
     def stop_transform_job(self, wait=True):
         """Stop latest running batch transform job.
@@ -351,8 +360,11 @@ class _TransformJob(_Job):
 
         return cls(transformer.sagemaker_session, transformer._current_job_name)
 
-    def wait(self):
-        self.sagemaker_session.wait_for_transform_job(self.job_name)
+    def wait(self, logs=True):
+        if logs:
+            self.sagemaker_session.logs_for_transform_job(self.job_name, wait=True)
+        else:
+            self.sagemaker_session.wait_for_transform_job(self.job_name)
 
     def stop(self):
         """Placeholder docstring"""
