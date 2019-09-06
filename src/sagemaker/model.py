@@ -45,11 +45,23 @@ NEO_ALLOWED_TARGET_INSTANCE_FAMILY = set(
 NEO_ALLOWED_FRAMEWORKS = set(["mxnet", "tensorflow", "pytorch", "onnx", "xgboost"])
 
 NEO_IMAGE_ACCOUNT = {
+    "us-west-1": "710691900526",
     "us-west-2": "301217895009",
     "us-east-1": "785573368785",
-    "eu-west-1": "802834080501",
     "us-east-2": "007439368137",
+    "eu-west-1": "802834080501",
+    "eu-west-2": "205493899709",
+    "eu-west-3": "254080097072",
+    "eu-central-1": "746233611703",
+    "eu-north-1": "601324751636",
     "ap-northeast-1": "941853720454",
+    "ap-northeast-2": "151534178276",
+    "ap-east-1": "110948597952",
+    "ap-southeast-1": "324986816169",
+    "ap-southeast-2": "355873309152",
+    "ap-south-1": "763008648453",
+    "sa-east-1": "756306329178",
+    "ca-central-1": "464438896020",
 }
 
 

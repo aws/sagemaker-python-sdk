@@ -37,6 +37,7 @@ from sagemaker.utils import (
     name_from_image,
     secondary_training_status_changed,
     secondary_training_status_message,
+    sts_regional_endpoint,
 )
 from sagemaker import exceptions
 
@@ -1377,10 +1378,13 @@ class Session(object):  # pylint: disable=too-many-public-methods
 
     def get_caller_identity_arn(self):
         """Returns the ARN user or role whose credentials are used to call the API.
+
         Returns:
-            (str): The ARN user or role
+            str: The ARN user or role
         """
-        assumed_role = self.boto_session.client("sts").get_caller_identity()["Arn"]
+        assumed_role = self.boto_session.client(
+            "sts", endpoint_url=sts_regional_endpoint(self.boto_region_name)
+        ).get_caller_identity()["Arn"]
 
         if "AmazonSageMaker-ExecutionRole" in assumed_role:
             role = re.sub(
