@@ -233,7 +233,7 @@ def test_git_support_with_sklearn_ssh_passphrase_not_configured(
 
 
 @pytest.mark.local_mode
-@pytest.skip(reason="needs a secure authentication approach")
+@pytest.mark.skip("needs a secure authentication approach")
 def test_git_support_codecommit_with_mxnet(sagemaker_local_session):
     script_path = "mnist.py"
     data_path = os.path.join(DATA_DIR, "mxnet_mnist")
