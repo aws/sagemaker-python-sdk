@@ -1,4 +1,4 @@
-# Copyright 2017-2018 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright 2017-2019 Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -538,6 +538,24 @@ def get_ecr_image_uri_prefix(account, region):
     """
     domain = "c2s.ic.gov" if region == "us-iso-east-1" else "amazonaws.com"
     return "{}.dkr.ecr.{}.{}".format(account, region, domain)
+
+
+def sts_regional_endpoint(region):
+    """Get the AWS STS endpoint specific for the given region.
+
+    We need this function because the AWS SDK does not yet honor
+    the ``region_name`` parameter when creating an AWS STS client.
+
+    For the list of regional endpoints, see
+    https://docs.aws.amazon.com/IAM/latest/UserGuide/id_credentials_temp_enable-regions.html#id_credentials_region-endpoints.
+
+    Args:
+        region (str): AWS region name
+
+    Returns:
+        str: AWS STS regional endpoint
+    """
+    return "https://sts.{}.amazonaws.com".format(region)
 
 
 class DeferredError(object):

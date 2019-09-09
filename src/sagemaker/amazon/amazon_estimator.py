@@ -538,7 +538,7 @@ def get_image_uri(region_name, repo_name, repo_version=1):
             "There is a more up to date SageMaker XGBoost image."
             "To use the newer image, please set 'repo_version'="
             "'0.90-1. For example:\n"
-            "\tget_image_uri(region, 'xgboost', %s).",
+            "\tget_image_uri(region, 'xgboost', '%s').",
             XGBOOST_LATEST_VERSION,
         )
     repo = "{}:{}".format(repo_name, repo_version)

@@ -22,6 +22,7 @@ import re
 import time
 
 from boto3 import exceptions
+import botocore
 import pytest
 from mock import call, patch, Mock, MagicMock
 
@@ -563,3 +564,9 @@ def list_tar_files(tar_ball, tmp):
 
     result = set(walk())
     return result if result else {}
+
+
+def test_sts_regional_endpoint():
+    endpoint = sagemaker.utils.sts_regional_endpoint("us-west-2")
+    assert endpoint == "https://sts.us-west-2.amazonaws.com"
+    assert botocore.utils.is_valid_endpoint_url(endpoint)

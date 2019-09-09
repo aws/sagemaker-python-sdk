@@ -1,5 +1,28 @@
 # Changelog
 
+## v1.39.0 (2019-09-09)
+
+### Features
+
+ * Estimator.fit like logs for transformer
+ * handler for stopping transform job
+
+### Bug fixes and other changes
+
+ * remove hardcoded creds from integ test
+ * remove hardcoded creds from integ test
+ * Fix get_image_uri warning log for default xgboost version.
+ * add enable_network_isolation to generic Estimator class
+ * use regional endpoint when creating AWS STS client
+ * update Sagemaker Neo regions
+ * use cpu_instance_type fixture for stop_transform_job test
+ * hyperparameter tuning with spot instances and checkpoints
+ * skip efs and fsx integ tests in all regions
+
+### Documentation changes
+
+ * clarify some Local Mode limitations
+
 ## v1.38.6 (2019-09-04)
 
 ### Bug fixes and other changes
