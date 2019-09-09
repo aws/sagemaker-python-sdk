@@ -15,6 +15,7 @@ from __future__ import absolute_import
 import datetime
 import io
 import logging
+import os
 
 import pytest
 import six
@@ -23,7 +24,12 @@ from mock import ANY, MagicMock, Mock, patch, call, mock_open
 
 import sagemaker
 from sagemaker import s3_input, Session, get_execution_role
-from sagemaker.session import _tuning_job_status, _transform_job_status, _train_done
+from sagemaker.session import (
+    _tuning_job_status,
+    _transform_job_status,
+    _train_done,
+    NOTEBOOK_METADATA_FILE,
+)
 from sagemaker.tuner import WarmStartConfig, WarmStartTypes
 
 STATIC_HPs = {"feature_dim": "784"}
@@ -45,6 +51,18 @@ def boto_session():
 
     boto_session.client.return_value = mock_client
     return boto_session
+
+
+def mock_exists(filepath_to_mock, exists_result):
+    unmocked_exists = os.path.exists
+
+    def side_effect(filepath):
+        if filepath == filepath_to_mock:
+            return exists_result
+        else:
+            return unmocked_exists(filepath)
+
+    return Mock(side_effect=side_effect)
 
 
 def test_get_execution_role():
@@ -86,6 +104,51 @@ def test_get_execution_role_throws_exception_if_arn_is_not_role_with_role_in_nam
     assert "ValueError: The current AWS identity is not a role" in str(error)
 
 
+@patch("six.moves.builtins.open", mock_open(read_data='{"ResourceName": "SageMakerInstance"}'))
+@patch("os.path.exists", side_effect=mock_exists(NOTEBOOK_METADATA_FILE, True))
+def test_get_caller_identity_arn_from_describe_notebook_instance(boto_session):
+    sess = Session(boto_session)
+    expected_role = "arn:aws:iam::369233609183:role/service-role/SageMakerRole-20171129T072388"
+    sess.sagemaker_client.describe_notebook_instance.return_value = {"RoleArn": expected_role}
+
+    actual = sess.get_caller_identity_arn()
+
+    assert actual == expected_role
+    sess.sagemaker_client.describe_notebook_instance.assert_called_once_with(
+        NotebookInstanceName="SageMakerInstance"
+    )
+
+
+@patch("six.moves.builtins.open", mock_open(read_data='{"ResourceName": "SageMakerInstance"}'))
+@patch("os.path.exists", side_effect=mock_exists(NOTEBOOK_METADATA_FILE, True))
+def test_get_caller_identity_arn_from_a_role_after_describe_notebook_exception(boto_session):
+    sess = Session(boto_session)
+    exception = ClientError(
+        {"Error": {"Code": "ValidationException", "Message": "RecordNotFound"}}, "Operation"
+    )
+    sess.sagemaker_client.describe_notebook_instance.side_effect = exception
+
+    arn = (
+        "arn:aws:sts::369233609183:assumed-role/SageMakerRole/6d009ef3-5306-49d5-8efc-78db644d8122"
+    )
+    sess.boto_session.client("sts", endpoint_url=STS_ENDPOINT).get_caller_identity.return_value = {
+        "Arn": arn
+    }
+
+    expected_role = "arn:aws:iam::369233609183:role/SageMakerRole"
+    sess.boto_session.client("iam").get_role.return_value = {"Role": {"Arn": expected_role}}
+
+    with patch("logging.Logger.warning") as mock_logger:
+        actual = sess.get_caller_identity_arn()
+        mock_logger.assert_called_once()
+
+    sess.sagemaker_client.describe_notebook_instance.assert_called_once_with(
+        NotebookInstanceName="SageMakerInstance"
+    )
+    assert actual == expected_role
+
+
+@patch("os.path.exists", side_effect=mock_exists(NOTEBOOK_METADATA_FILE, False))
 def test_get_caller_identity_arn_from_an_user(boto_session):
     sess = Session(boto_session)
     arn = "arn:aws:iam::369233609183:user/mia"
@@ -98,6 +161,7 @@ def test_get_caller_identity_arn_from_an_user(boto_session):
     assert actual == "arn:aws:iam::369233609183:user/mia"
 
 
+@patch("os.path.exists", side_effect=mock_exists(NOTEBOOK_METADATA_FILE, False))
 def test_get_caller_identity_arn_from_an_user_without_permissions(boto_session):
     sess = Session(boto_session)
     arn = "arn:aws:iam::369233609183:user/mia"
@@ -112,6 +176,7 @@ def test_get_caller_identity_arn_from_an_user_without_permissions(boto_session):
         mock_logger.assert_called_once()
 
 
+@patch("os.path.exists", side_effect=mock_exists(NOTEBOOK_METADATA_FILE, False))
 def test_get_caller_identity_arn_from_a_role(boto_session):
     sess = Session(boto_session)
     arn = (
@@ -128,6 +193,7 @@ def test_get_caller_identity_arn_from_a_role(boto_session):
     assert actual == expected_role
 
 
+@patch("os.path.exists", side_effect=mock_exists(NOTEBOOK_METADATA_FILE, False))
 def test_get_caller_identity_arn_from_a_execution_role(boto_session):
     sess = Session(boto_session)
     arn = "arn:aws:sts::369233609183:assumed-role/AmazonSageMaker-ExecutionRole-20171129T072388/SageMaker"
@@ -143,6 +209,7 @@ def test_get_caller_identity_arn_from_a_execution_role(boto_session):
     )
 
 
+@patch("os.path.exists", side_effect=mock_exists(NOTEBOOK_METADATA_FILE, False))
 def test_get_caller_identity_arn_from_role_with_path(boto_session):
     sess = Session(boto_session)
     arn_prefix = "arn:aws:iam::369233609183:role"
