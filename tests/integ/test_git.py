@@ -145,11 +145,12 @@ def test_private_github_with_2fa(sagemaker_local_session, sklearn_full_version):
         "token": "",  # TODO: find a secure approach
     }
     source_dir = "sklearn"
+
     sklearn = SKLearn(
         entry_point=script_path,
         role="SageMakerRole",
         source_dir=source_dir,
-        py_version="py3",
+        py_version="py3",  # Scikit-learn supports only Python 3
         train_instance_count=1,
         train_instance_type="local",
         sagemaker_session=sagemaker_local_session,
@@ -195,11 +196,12 @@ def test_github_with_ssh_passphrase_not_configured(sagemaker_local_session, skle
         "commit": PRIVATE_COMMIT_2FA,
     }
     source_dir = "sklearn"
+
     sklearn = SKLearn(
         entry_point=script_path,
         role="SageMakerRole",
         source_dir=source_dir,
-        py_version=PYTHON_VERSION,
+        py_version="py3",  # Scikit-learn supports only Python 3
         train_instance_count=1,
         train_instance_type="local",
         sagemaker_session=sagemaker_local_session,
