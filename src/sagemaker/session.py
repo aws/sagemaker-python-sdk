@@ -43,6 +43,8 @@ from sagemaker import exceptions
 
 LOGGER = logging.getLogger("sagemaker")
 
+NOTEBOOK_METADATA_FILE = "/opt/ml/metadata/resource-metadata.json"
+
 _STATUS_CODE_TABLE = {
     "COMPLETED": "Completed",
     "INPROGRESS": "InProgress",
@@ -1382,6 +1384,21 @@ class Session(object):  # pylint: disable=too-many-public-methods
         Returns:
             str: The ARN user or role
         """
+        if os.path.exists(NOTEBOOK_METADATA_FILE):
+            with open(NOTEBOOK_METADATA_FILE, "rb") as f:
+                instance_name = json.loads(f.read())["ResourceName"]
+            try:
+                instance_desc = self.sagemaker_client.describe_notebook_instance(
+                    NotebookInstanceName=instance_name
+                )
+                return instance_desc["RoleArn"]
+            except ClientError:
+                LOGGER.warning(
+                    "Couldn't call 'describe_notebook_instance' to get the Role "
+                    "ARN of the instance %s.",
+                    instance_name,
+                )
+
         assumed_role = self.boto_session.client(
             "sts", endpoint_url=sts_regional_endpoint(self.boto_region_name)
         ).get_caller_identity()["Arn"]
