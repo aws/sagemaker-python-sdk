@@ -553,7 +553,7 @@ def sts_regional_endpoint(region):
     Returns:
         str: AWS STS regional endpoint
     """
-    return "sts.{}.amazonaws.com".format(region)
+    return "https://sts.{}.amazonaws.com".format(region)
 
 
 class DeferredError(object):
