@@ -35,12 +35,17 @@ def test_distributed_cpu_training(sagemaker_local_session, chainer_full_version)
 
 
 @pytest.mark.local_mode
-def test_training_with_additional_hyperparameters(sagemaker_local_session, chainer_full_version):
-    script_path = os.path.join(DATA_DIR, "chainer_mnist", "mnist.py")
+def test_training_with_additional_hyperparameters(sagemaker_session, sagemaker_local_session, chainer_full_version):
+    script_path = os.path.join("chainer_mnist", "mnist.py")
     data_path = os.path.join(DATA_DIR, "chainer_mnist")
+
+    s3_source = sagemaker_session.upload_data(
+        path=os.path.join(data_path, "sourcedir.tar.gz"), key_prefix="integ-test-data/chainer/src"
+    )
 
     chainer = Chainer(
         entry_point=script_path,
+        source_dir=s3_source,
         role="SageMakerRole",
         train_instance_count=1,
         train_instance_type="local",
@@ -48,7 +53,7 @@ def test_training_with_additional_hyperparameters(sagemaker_local_session, chain
         py_version=PYTHON_VERSION,
         sagemaker_session=sagemaker_local_session,
         hyperparameters={"epochs": 1},
-        use_mpi=True,
+        use_mpi=False,
         num_processes=2,
         process_slots_per_host=2,
         additional_mpi_options="-x NCCL_DEBUG=INFO",
