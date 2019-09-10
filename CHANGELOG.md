@@ -1,5 +1,14 @@
 # Changelog
 
+## v1.39.1 (2019-09-10)
+
+### Bug fixes and other changes
+
+ * copy dependencies into new folder when repacking model
+ * make get_caller_identity_arn get role from DescribeNotebookInstance
+ * add https to regional STS endpoint
+ * clean up git support integ tests
+
 ## v1.39.0 (2019-09-09)
 
 ### Features
