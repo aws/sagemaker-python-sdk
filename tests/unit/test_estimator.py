@@ -1836,6 +1836,25 @@ def test_generic_to_deploy(sagemaker_session):
     assert predictor.sagemaker_session == sagemaker_session
 
 
+def test_generic_to_deploy_network_isolation(sagemaker_session):
+    e = Estimator(
+        IMAGE_NAME,
+        ROLE,
+        INSTANCE_COUNT,
+        INSTANCE_TYPE,
+        output_path=OUTPUT_PATH,
+        enable_network_isolation=True,
+        sagemaker_session=sagemaker_session,
+    )
+
+    e.fit()
+    e.deploy(INSTANCE_COUNT, INSTANCE_TYPE)
+
+    sagemaker_session.create_model.assert_called_once()
+    _, kwargs = sagemaker_session.create_model.call_args
+    assert kwargs["enable_network_isolation"]
+
+
 def test_generic_training_job_analytics(sagemaker_session):
     sagemaker_session.sagemaker_client.describe_training_job = Mock(
         name="describe_training_job",

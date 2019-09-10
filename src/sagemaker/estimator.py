@@ -1142,6 +1142,7 @@ class Estimator(EstimatorBase):
             vpc_config=self.get_vpc_config(vpc_config_override),
             sagemaker_session=self.sagemaker_session,
             predictor_cls=predictor_cls,
+            enable_network_isolation=self.enable_network_isolation(),
             **kwargs
         )
 
