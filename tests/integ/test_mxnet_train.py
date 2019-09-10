@@ -46,7 +46,7 @@ def mxnet_training_job(sagemaker_session, mxnet_full_version):
             train_instance_count=1,
             train_instance_type="local",  # "ml.c4.xlarge",
             # sagemaker_session=sagemaker_session,
-            image_name="583851319346.dkr.ecr.us-west-2.amazonaws.com/sagemaker-mxnet:1.4.1-cpu-py3",
+            image_name="sagemaker-mxnet:1.4.1-cpu-py3",
         )
 
         train_input = mx.sagemaker_session.upload_data(
