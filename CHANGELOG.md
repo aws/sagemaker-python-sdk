@@ -1,5 +1,12 @@
 # Changelog
 
+## v1.39.2 (2019-09-11)
+
+### Bug fixes and other changes
+
+ * pass enable_network_isolation in Estimator.create_model
+ * use p2 instead of p3 for the Horovod test
+
 ## v1.39.1 (2019-09-10)
 
 ### Bug fixes and other changes
