@@ -381,7 +381,7 @@ The ``predict_fn`` function has the following signature:
 Where ``input_object`` is the object returned from ``input_fn`` and
 ``model`` is the model loaded by ``model_fn``.
 
-The default implementation of ``predict_fn`` invokes the loaded model's ``__call__`` function on ``input_object``,
+The default implementation of ``predict_fn`` invokes the loaded model's ``predict`` function on ``input_object``,
 and returns the resulting value. The return-type should be a NumPy array to be compatible with the default
 ``output_fn``.
 
