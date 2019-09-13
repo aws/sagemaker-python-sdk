@@ -1392,6 +1392,7 @@ def test_ensure_latest_training_job_failure(sagemaker_session):
     assert "Estimator is not associated with a training job" in str(e)
 
 
+@patch("sagemaker.estimator.Estimator.create_model", return_value=Mock())
 def test_estimator_transformer_creation(sagemaker_session):
     estimator = Estimator(
         image_name=IMAGE_NAME,
@@ -1401,11 +1402,9 @@ def test_estimator_transformer_creation(sagemaker_session):
         sagemaker_session=sagemaker_session,
     )
     estimator.latest_training_job = _TrainingJob(sagemaker_session, JOB_NAME)
-    sagemaker_session.create_model_from_job.return_value = JOB_NAME
 
     transformer = estimator.transformer(INSTANCE_COUNT, INSTANCE_TYPE)
 
-    sagemaker_session.create_model_from_job.assert_called_with(JOB_NAME, role=None, tags=None)
     assert isinstance(transformer, Transformer)
     assert transformer.sagemaker_session == sagemaker_session
     assert transformer.instance_count == INSTANCE_COUNT
@@ -1414,6 +1413,7 @@ def test_estimator_transformer_creation(sagemaker_session):
     assert transformer.tags is None
 
 
+@patch("sagemaker.estimator.Estimator.create_model", return_value=Mock())
 def test_estimator_transformer_creation_with_optional_params(sagemaker_session):
     base_name = "foo"
     estimator = Estimator(
@@ -1425,7 +1425,6 @@ def test_estimator_transformer_creation_with_optional_params(sagemaker_session):
         base_job_name=base_name,
     )
     estimator.latest_training_job = _TrainingJob(sagemaker_session, JOB_NAME)
-    sagemaker_session.create_model_from_job.return_value = JOB_NAME
 
     strategy = "MultiRecord"
     assemble_with = "Line"
@@ -1450,7 +1449,6 @@ def test_estimator_transformer_creation_with_optional_params(sagemaker_session):
         role=ROLE,
     )
 
-    sagemaker_session.create_model_from_job.assert_called_with(JOB_NAME, role=ROLE, tags=TAGS)
     assert transformer.strategy == strategy
     assert transformer.assemble_with == assemble_with
     assert transformer.output_path == OUTPUT_PATH

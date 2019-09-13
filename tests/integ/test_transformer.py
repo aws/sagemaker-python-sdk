@@ -279,13 +279,14 @@ def test_transform_byo_estimator(sagemaker_session, cpu_instance_type):
     with timeout(minutes=TRAINING_DEFAULT_TIMEOUT_MINUTES):
         kmeans.fit(records, job_name=job_name)
 
+    estimator = Estimator.attach(training_job_name=job_name, sagemaker_session=sagemaker_session)
+    estimator._enable_network_isolation = True
+
     transform_input_path = os.path.join(data_path, "transform_input.csv")
     transform_input_key_prefix = "integ-test-data/one_p_mnist/transform"
     transform_input = kmeans.sagemaker_session.upload_data(
         path=transform_input_path, key_prefix=transform_input_key_prefix
     )
-
-    estimator = Estimator.attach(training_job_name=job_name, sagemaker_session=sagemaker_session)
 
     transformer = estimator.transformer(1, cpu_instance_type, tags=tags)
     transformer.transform(transform_input, content_type="text/csv")
@@ -297,6 +298,8 @@ def test_transform_byo_estimator(sagemaker_session, cpu_instance_type):
         model_desc = sagemaker_session.sagemaker_client.describe_model(
             ModelName=transformer.model_name
         )
+        assert model_desc["EnableNetworkIsolation"]
+
         model_tags = sagemaker_session.sagemaker_client.list_tags(
             ResourceArn=model_desc["ModelArn"]
         )["Tags"]

@@ -705,16 +705,23 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):
         """
         tags = tags or self.tags
 
-        if self.latest_training_job is not None:
-            model_name = self.sagemaker_session.create_model_from_job(
-                self.latest_training_job.name, role=role, tags=tags
-            )
-        else:
+        if self.latest_training_job is None:
             logging.warning(
                 "No finished training job found associated with this estimator. Please make sure"
                 "this estimator is only used for building workflow config"
             )
             model_name = self._current_job_name
+        else:
+            model_name = self.latest_training_job.name
+
+        model = self.create_model()
+
+        # not all create_model() implementations have the same kwargs
+        model.name = model_name
+        if role is not None:
+            model.role = role
+
+        model._create_sagemaker_model(instance_type, tags=tags)
 
         return Transformer(
             model_name,
