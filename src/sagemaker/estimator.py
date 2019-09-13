@@ -47,7 +47,7 @@ from sagemaker.predictor import RealTimePredictor
 from sagemaker.session import Session
 from sagemaker.session import s3_input
 from sagemaker.transformer import Transformer
-from sagemaker.utils import base_name_from_image, name_from_base, name_from_image, get_config_value
+from sagemaker.utils import base_name_from_image, name_from_base, get_config_value
 from sagemaker import vpc_utils
 
 
@@ -667,6 +667,7 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):
         tags=None,
         role=None,
         volume_kms_key=None,
+        vpc_config_override=vpc_utils.VPC_CONFIG_DEFAULT,
     ):
         """Return a ``Transformer`` that uses a SageMaker Model based on the
         training job. It reuses the SageMaker Session and base job name used by
@@ -702,6 +703,11 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):
                 role from the Estimator will be used.
             volume_kms_key (str): Optional. KMS key ID for encrypting the volume
                 attached to the ML compute instance (default: None).
+            vpc_config_override (dict[str, list[str]]): Optional override for the
+                VpcConfig set on the model.
+                Default: use subnets and security groups from this Estimator.
+                * 'Subnets' (list[str]): List of subnet ids.
+                * 'SecurityGroupIds' (list[str]): List of security group ids.
         """
         tags = tags or self.tags
 
@@ -714,7 +720,7 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):
         else:
             model_name = self.latest_training_job.name
 
-        model = self.create_model()
+        model = self.create_model(vpc_config_override=vpc_config_override)
 
         # not all create_model() implementations have the same kwargs
         model.name = model_name
@@ -1635,6 +1641,7 @@ class Framework(EstimatorBase):
         model_server_workers=None,
         volume_kms_key=None,
         entry_point=None,
+        vpc_config_override=vpc_utils.VPC_CONFIG_DEFAULT,
     ):
         """Return a ``Transformer`` that uses a SageMaker Model based on the
         training job. It reuses the SageMaker Session and base job name used by
@@ -1676,25 +1683,29 @@ class Framework(EstimatorBase):
             entry_point (str): Path (absolute or relative) to the local Python source file which
                 should be executed as the entry point to training. If not specified, the training
                 entry point is used.
+            vpc_config_override (dict[str, list[str]]): Optional override for
+                the VpcConfig set on the model.
+                Default: use subnets and security groups from this Estimator.
+                * 'Subnets' (list[str]): List of subnet ids.
+                * 'SecurityGroupIds' (list[str]): List of security group ids.
 
         Returns:
             sagemaker.transformer.Transformer: a ``Transformer`` object that can be used to start a
                 SageMaker Batch Transform job.
         """
         role = role or self.role
+        tags = tags or self.tags
 
         if self.latest_training_job is not None:
             model = self.create_model(
-                role=role, model_server_workers=model_server_workers, entry_point=entry_point
+                role=role,
+                model_server_workers=model_server_workers,
+                entry_point=entry_point,
+                vpc_config_override=vpc_config_override,
             )
+            model._create_sagemaker_model(instance_type, tags=tags)
 
-            container_def = model.prepare_container_def(instance_type)
-            model_name = model.name or name_from_image(container_def["Image"])
-            vpc_config = model.vpc_config
-            tags = tags or self.tags
-            self.sagemaker_session.create_model(
-                model_name, role, container_def, vpc_config, tags=tags
-            )
+            model_name = model.name
             transform_env = model.env.copy()
             if env is not None:
                 transform_env.update(env)
@@ -1706,7 +1717,6 @@ class Framework(EstimatorBase):
             model_name = self._current_job_name
             transform_env = env or {}
 
-        tags = tags or self.tags
         return Transformer(
             model_name,
             instance_count,

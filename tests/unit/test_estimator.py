@@ -21,6 +21,7 @@ from time import sleep
 import pytest
 from mock import ANY, MagicMock, Mock, patch
 
+from sagemaker import vpc_utils
 from sagemaker.amazon.amazon_estimator import registry
 from sagemaker.algorithm import AlgorithmEstimator
 from sagemaker.estimator import Estimator, EstimatorBase, Framework, _TrainingJob
@@ -112,9 +113,19 @@ class DummyFramework(Framework):
     def train_image(self):
         return IMAGE_NAME
 
-    def create_model(self, role=None, model_server_workers=None, entry_point=None):
+    def create_model(
+        self,
+        role=None,
+        model_server_workers=None,
+        entry_point=None,
+        vpc_config_override=vpc_utils.VPC_CONFIG_DEFAULT,
+    ):
         return DummyFrameworkModel(
-            self.sagemaker_session, vpc_config=self.get_vpc_config(), entry_point=entry_point
+            self.sagemaker_session,
+            vpc_config=self.get_vpc_config(vpc_config_override),
+            entry_point=entry_point,
+            enable_network_isolation=self.enable_network_isolation(),
+            role=role,
         )
 
     @classmethod
@@ -127,12 +138,11 @@ class DummyFramework(Framework):
 
 
 class DummyFrameworkModel(FrameworkModel):
-    def __init__(self, sagemaker_session, entry_point=None, **kwargs):
+    def __init__(self, sagemaker_session, entry_point=None, role=ROLE, **kwargs):
         super(DummyFrameworkModel, self).__init__(
             MODEL_DATA,
             MODEL_IMAGE,
-            INSTANCE_TYPE,
-            ROLE,
+            role,
             entry_point or ENTRY_POINT,
             sagemaker_session=sagemaker_session,
             **kwargs
@@ -141,7 +151,7 @@ class DummyFrameworkModel(FrameworkModel):
     def create_predictor(self, endpoint_name):
         return None
 
-    def prepare_container_def(self, instance_type):
+    def prepare_container_def(self, instance_type, accelerator_type=None):
         return MODEL_CONTAINER_DEF
 
 
@@ -1280,14 +1290,17 @@ def test_init_with_source_dir_s3(strftime, sagemaker_session):
     assert fw._hyperparameters == expected_hyperparameters
 
 
-@patch("sagemaker.estimator.name_from_image", return_value=MODEL_IMAGE)
+@patch("sagemaker.model.utils.name_from_image", return_value=MODEL_IMAGE)
 def test_framework_transformer_creation(name_from_image, sagemaker_session):
+    vpc_config = {"Subnets": ["foo"], "SecurityGroupIds": ["bar"]}
     fw = DummyFramework(
         entry_point=SCRIPT_PATH,
         role=ROLE,
         train_instance_count=INSTANCE_COUNT,
         train_instance_type=INSTANCE_TYPE,
         sagemaker_session=sagemaker_session,
+        subnets=vpc_config["Subnets"],
+        security_group_ids=vpc_config["SecurityGroupIds"],
     )
     fw.latest_training_job = _TrainingJob(sagemaker_session, JOB_NAME)
 
@@ -1295,7 +1308,12 @@ def test_framework_transformer_creation(name_from_image, sagemaker_session):
 
     name_from_image.assert_called_with(MODEL_IMAGE)
     sagemaker_session.create_model.assert_called_with(
-        MODEL_IMAGE, ROLE, MODEL_CONTAINER_DEF, None, tags=None
+        MODEL_IMAGE,
+        ROLE,
+        MODEL_CONTAINER_DEF,
+        tags=None,
+        vpc_config=vpc_config,
+        enable_network_isolation=False,
     )
 
     assert isinstance(transformer, Transformer)
@@ -1307,7 +1325,7 @@ def test_framework_transformer_creation(name_from_image, sagemaker_session):
     assert transformer.env == {}
 
 
-@patch("sagemaker.estimator.name_from_image", return_value=MODEL_IMAGE)
+@patch("sagemaker.model.utils.name_from_image", return_value=MODEL_IMAGE)
 def test_framework_transformer_creation_with_optional_params(name_from_image, sagemaker_session):
     base_name = "foo"
     vpc_config = {"Subnets": ["foo"], "SecurityGroupIds": ["bar"]}
@@ -1320,6 +1338,7 @@ def test_framework_transformer_creation_with_optional_params(name_from_image, sa
         base_job_name=base_name,
         subnets=vpc_config["Subnets"],
         security_group_ids=vpc_config["SecurityGroupIds"],
+        enable_network_isolation=True,
     )
     fw.latest_training_job = _TrainingJob(sagemaker_session, JOB_NAME)
 
@@ -1331,6 +1350,7 @@ def test_framework_transformer_creation_with_optional_params(name_from_image, sa
     max_payload = 6
     env = {"FOO": "BAR"}
     new_role = "dummy-model-role"
+    new_vpc_config = {"Subnets": ["x"], "SecurityGroupIds": ["y"]}
 
     transformer = fw.transformer(
         INSTANCE_COUNT,
@@ -1347,10 +1367,16 @@ def test_framework_transformer_creation_with_optional_params(name_from_image, sa
         env=env,
         role=new_role,
         model_server_workers=1,
+        vpc_config_override=new_vpc_config,
     )
 
     sagemaker_session.create_model.assert_called_with(
-        MODEL_IMAGE, new_role, MODEL_CONTAINER_DEF, vpc_config, tags=TAGS
+        MODEL_IMAGE,
+        new_role,
+        MODEL_CONTAINER_DEF,
+        vpc_config=new_vpc_config,
+        tags=TAGS,
+        enable_network_isolation=True,
     )
     assert transformer.strategy == strategy
     assert transformer.assemble_with == assemble_with
