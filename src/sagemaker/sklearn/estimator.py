@@ -172,6 +172,7 @@ class SKLearn(Framework):
             image=self.image_name,
             sagemaker_session=self.sagemaker_session,
             vpc_config=self.get_vpc_config(vpc_config_override),
+            enable_network_isolation=self.enable_network_isolation(),
             **kwargs
         )
 
