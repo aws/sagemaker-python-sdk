@@ -1,4 +1,4 @@
-# Copyright 2017 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright 2017-2019 Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -16,7 +16,7 @@ import copy
 import os
 
 import pytest
-from mock import Mock
+from mock import Mock, patch
 
 from sagemaker import RealTimePredictor
 from sagemaker.amazon.amazon_estimator import RecordSet
@@ -654,6 +654,51 @@ def test_deploy_default(tuner):
     assert isinstance(predictor, RealTimePredictor)
     assert predictor.endpoint.startswith(JOB_NAME)
     assert predictor.sagemaker_session == tuner.estimator.sagemaker_session
+
+
+@patch("sagemaker.estimator.Estimator.attach")
+@patch("sagemaker.tuner.HyperparameterTuner.best_training_job")
+def test_deploy_optional_params(best_training_job, estimator_attach, tuner):
+    tuner.fit()
+
+    estimator = Mock()
+    estimator_attach.return_value = estimator
+
+    training_job = "best-job-ever"
+    best_training_job.return_value = training_job
+
+    accelerator = "ml.eia1.medium"
+    endpoint_name = "foo"
+    model_name = "bar"
+    kms_key = "key"
+    kwargs = {"some_arg": "some_value"}
+
+    tuner.deploy(
+        TRAIN_INSTANCE_COUNT,
+        TRAIN_INSTANCE_TYPE,
+        accelerator_type=accelerator,
+        endpoint_name=endpoint_name,
+        wait=False,
+        model_name=model_name,
+        kms_key=kms_key,
+        **kwargs,
+    )
+
+    estimator_attach.assert_called_with(
+        training_job,
+        sagemaker_session=tuner.estimator.sagemaker_session,
+    )
+
+    estimator.deploy.assert_called_with(
+        TRAIN_INSTANCE_COUNT,
+        TRAIN_INSTANCE_TYPE,
+        accelerator_type=accelerator,
+        endpoint_name=endpoint_name,
+        wait=False,
+        model_name=model_name,
+        kms_key=kms_key,
+        **kwargs,
+    )
 
 
 def test_wait(tuner):

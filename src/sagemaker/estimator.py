@@ -471,6 +471,7 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):
         update_endpoint=False,
         wait=True,
         model_name=None,
+        kms_key=None,
         **kwargs
     ):
         """Deploy the trained model to an Amazon SageMaker endpoint and return a
@@ -510,6 +511,9 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):
                 For more information about tags, see
                 https://boto3.amazonaws.com/v1/documentation\
                 /api/latest/reference/services/sagemaker.html#SageMaker.Client.add_tags
+            kms_key (str): The ARN of the KMS key that is used to encrypt the
+                data on the storage volume attached to the instance hosting the
+                endpoint.
             **kwargs: Passed to invocation of ``create_model()``.
                 Implementations may customize ``create_model()`` to accept
                 ``**kwargs`` to customize model creation during deploy.
@@ -543,6 +547,7 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):
             update_endpoint=update_endpoint,
             tags=self.tags,
             wait=wait,
+            kms_key=kms_key,
         )
 
     @property
