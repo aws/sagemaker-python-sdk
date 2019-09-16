@@ -685,8 +685,7 @@ def test_deploy_optional_params(best_training_job, estimator_attach, tuner):
     )
 
     estimator_attach.assert_called_with(
-        training_job,
-        sagemaker_session=tuner.estimator.sagemaker_session,
+        training_job, sagemaker_session=tuner.estimator.sagemaker_session
     )
 
     estimator.deploy.assert_called_with(
