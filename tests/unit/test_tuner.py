@@ -681,7 +681,7 @@ def test_deploy_optional_params(best_training_job, estimator_attach, tuner):
         wait=False,
         model_name=model_name,
         kms_key=kms_key,
-        **kwargs,
+        **kwargs
     )
 
     estimator_attach.assert_called_with(
@@ -696,7 +696,7 @@ def test_deploy_optional_params(best_training_job, estimator_attach, tuner):
         wait=False,
         model_name=model_name,
         kms_key=kms_key,
-        **kwargs,
+        **kwargs
     )
 
 
