@@ -583,6 +583,7 @@ class TensorFlow(Framework):
             entry_point=entry_point,
             source_dir=source_dir,
             dependencies=dependencies,
+            enable_network_isolation=self.enable_network_isolation(),
         )
 
     def _create_default_model(
@@ -612,6 +613,7 @@ class TensorFlow(Framework):
             sagemaker_session=self.sagemaker_session,
             vpc_config=self.get_vpc_config(vpc_config_override),
             dependencies=dependencies or self.dependencies,
+            enable_network_isolation=self.enable_network_isolation(),
         )
 
     def hyperparameters(self):

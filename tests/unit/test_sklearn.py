@@ -1,4 +1,4 @@
-# Copyright 2017-2018 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright 2017-2019 Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -20,11 +20,9 @@ import pytest
 from mock import Mock
 from mock import patch
 
-
 from sagemaker.sklearn import defaults
 from sagemaker.sklearn import SKLearn
 from sagemaker.sklearn import SKLearnPredictor, SKLearnModel
-
 
 DATA_DIR = os.path.join(os.path.dirname(__file__), "..", "data")
 SCRIPT_PATH = os.path.join(DATA_DIR, "dummy_script.py")
@@ -183,6 +181,7 @@ def test_create_model_from_estimator(sagemaker_session, sklearn_version):
         py_version=PYTHON_VERSION,
         base_job_name="job",
         source_dir=source_dir,
+        enable_network_isolation=True,
     )
 
     job_name = "new_name"
@@ -198,6 +197,7 @@ def test_create_model_from_estimator(sagemaker_session, sklearn_version):
     assert model.container_log_level == container_log_level
     assert model.source_dir == source_dir
     assert model.vpc_config is None
+    assert model.enable_network_isolation()
 
 
 def test_create_model_with_optional_params(sagemaker_session):
