@@ -1,5 +1,12 @@
 # Changelog
 
+## v1.39.3 (2019-09-16)
+
+### Bug fixes and other changes
+
+ * expose vpc_config_override in transformer() methods
+ * use Estimator.create_model in Estimator.transformer
+
 ## v1.39.2 (2019-09-11)
 
 ### Bug fixes and other changes
