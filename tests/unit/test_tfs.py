@@ -113,7 +113,7 @@ def test_tfs_model_image_accelerator_not_supported(sagemaker_session):
     model = Model(
         "s3://some/data.tar.gz",
         role=ROLE,
-        framework_version="1.14",
+        framework_version="1.15",
         sagemaker_session=sagemaker_session,
     )
 
@@ -128,7 +128,7 @@ def test_tfs_model_image_accelerator_not_supported(sagemaker_session):
             initial_instance_count=1,
         )
 
-    assert str(e.value) == "The TensorFlow version 1.14 doesn't support EIA."
+    assert str(e.value) == "The TensorFlow version 1.15 doesn't support EIA."
 
 
 def test_tfs_model_with_log_level(sagemaker_session, tf_version):
