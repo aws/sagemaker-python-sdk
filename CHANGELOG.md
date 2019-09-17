@@ -1,5 +1,11 @@
 # Changelog
 
+## v1.39.4 (2019-09-17)
+
+### Bug fixes and other changes
+
+ * pass enable_network_isolation when creating TF and SKLearn models
+
 ## v1.39.3 (2019-09-16)
 
 ### Bug fixes and other changes
