@@ -105,7 +105,7 @@ def _is_merged_versions(framework, framework_version):
     return False
 
 
-def _using_merged_images(region, framework, py_version, accelerator_type, framework_version):
+def _using_merged_images(region, framework, py_version, framework_version):
     """
     Args:
         region:
@@ -155,7 +155,7 @@ def _is_mxnet_serving_141_or_later(framework, framework_version):
     )
 
 
-def _registry_id(region, framework, py_version, account, accelerator_type, framework_version):
+def _registry_id(region, framework, py_version, account, framework_version):
     """
     Args:
         region:
@@ -165,7 +165,7 @@ def _registry_id(region, framework, py_version, account, accelerator_type, frame
         accelerator_type:
         framework_version:
     """
-    if _using_merged_images(region, framework, py_version, accelerator_type, framework_version):
+    if _using_merged_images(region, framework, py_version, framework_version):
         if region in ASIMOV_OPT_IN_ACCOUNTS_BY_REGION:
             return ASIMOV_OPT_IN_ACCOUNTS_BY_REGION.get(region)
         return "763104351884"
@@ -213,7 +213,6 @@ def create_image_uri(
         framework=framework,
         py_version=py_version,
         account=account,
-        accelerator_type=accelerator_type,
         framework_version=framework_version,
     )
 
@@ -245,9 +244,7 @@ def create_image_uri(
     ):
         framework += "-eia"
 
-    using_merged_images = _using_merged_images(
-        region, framework, py_version, accelerator_type, framework_version
-    )
+    using_merged_images = _using_merged_images(region, framework, py_version, framework_version)
 
     if not py_version or (using_merged_images and framework == "tensorflow-serving-eia"):
         tag = "{}-{}".format(framework_version, device_type)
