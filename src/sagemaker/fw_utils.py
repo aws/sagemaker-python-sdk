@@ -63,14 +63,18 @@ MERGED_FRAMEWORKS_REPO_MAP = {
     "tensorflow-scriptmode": "tensorflow-training",
     "mxnet": "mxnet-training",
     "tensorflow-serving": "tensorflow-inference",
+    "tensorflow-serving-eia": "tensorflow-inference-eia",
     "mxnet-serving": "mxnet-inference",
+    "mxnet-serving-eia": "mxnet-inference-eia",
 }
 
 MERGED_FRAMEWORKS_LOWEST_VERSIONS = {
     "tensorflow-scriptmode": [1, 13, 1],
     "mxnet": [1, 4, 1],
     "tensorflow-serving": [1, 13, 0],
+    "tensorflow-serving-eia": [1, 14, 0],
     "mxnet-serving": [1, 4, 1],
+    "mxnet-serving-eia": [1, 4, 1],
 }
 
 
@@ -116,8 +120,11 @@ def _using_merged_images(region, framework, py_version, accelerator_type, framew
     return (
         (not is_gov_region)
         and is_merged_versions
-        and (is_py3 or _is_tf_14_or_later(framework, framework_version))
-        and accelerator_type is None
+        and (
+            is_py3
+            or _is_tf_14_or_later(framework, framework_version)
+            or _is_mxnet_serving_141_or_later(framework, framework_version)
+        )
     )
 
 
@@ -132,6 +139,19 @@ def _is_tf_14_or_later(framework, framework_version):
     version = [int(s) for s in framework_version.split(".")]
     return (
         framework == "tensorflow-scriptmode" and version >= asimov_lowest_tf_py2[0 : len(version)]
+    )
+
+
+def _is_mxnet_serving_141_or_later(framework, framework_version):
+    """
+    Args:
+        framework:
+        framework_version:
+    """
+    asimov_lowest_mxnet = [1, 4, 1]
+    version = [int(s) for s in framework_version.split(".")]
+    return (
+        framework.startswith("mxnet-serving") and version >= asimov_lowest_mxnet[0 : len(version)]
     )
 
 
@@ -218,11 +238,6 @@ def create_image_uri(
         else:
             device_type = "cpu"
 
-    if py_version:
-        tag = "{}-{}-{}".format(framework_version, device_type, py_version)
-    else:
-        tag = "{}-{}".format(framework_version, device_type)
-
     if _accelerator_type_valid_for_framework(
         framework=framework,
         accelerator_type=accelerator_type,
@@ -230,7 +245,16 @@ def create_image_uri(
     ):
         framework += "-eia"
 
-    if _using_merged_images(region, framework, py_version, accelerator_type, framework_version):
+    using_merged_images = _using_merged_images(
+        region, framework, py_version, accelerator_type, framework_version
+    )
+
+    if not py_version or (using_merged_images and framework == "tensorflow-serving-eia"):
+        tag = "{}-{}".format(framework_version, device_type)
+    else:
+        tag = "{}-{}-{}".format(framework_version, device_type, py_version)
+
+    if using_merged_images:
         return "{}/{}:{}".format(
             get_ecr_image_uri_prefix(account, region), MERGED_FRAMEWORKS_REPO_MAP[framework], tag
         )
