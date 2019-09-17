@@ -1,5 +1,11 @@
 # Changelog
 
+## v1.40.0 (2019-09-17)
+
+### Features
+
+ * add support to TF 1.14 serving with elastic accelerator.
+
 ## v1.39.4 (2019-09-17)
 
 ### Bug fixes and other changes
