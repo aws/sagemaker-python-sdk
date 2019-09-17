@@ -336,7 +336,13 @@ def test_mxnet_mms_version(
 
     model = mx.create_model()
 
-    expected_image_base = _get_full_image_uri(mxnet_version, IMAGE_REPO_SERVING_NAME, "gpu")
+    if mxnet_version == "1.4.1":
+        expected_image_base = (
+            "763104351884.dkr.ecr.us-west-2.amazonaws.com/mxnet-inference:1.4.1-gpu-py2"
+        )
+    else:
+        expected_image_base = _get_full_image_uri(mxnet_version, IMAGE_REPO_SERVING_NAME, "gpu")
+
     environment = {
         "Environment": {
             "SAGEMAKER_SUBMIT_DIRECTORY": "s3://mybucket/sagemaker-mxnet-2017-11-06-14:14:15.672/model.tar.gz",

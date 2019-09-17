@@ -149,7 +149,12 @@ def _is_mxnet_serving_141_or_later(framework, framework_version):
         framework_version:
     """
     asimov_lowest_mxnet = [1, 4, 1]
+
     version = [int(s) for s in framework_version.split(".")]
+
+    if len(version) == 2:
+        version.append(0)
+
     return (
         framework.startswith("mxnet-serving") and version >= asimov_lowest_mxnet[0 : len(version)]
     )
