@@ -64,7 +64,6 @@ MERGED_FRAMEWORKS_REPO_MAP = {
     "mxnet": "mxnet-training",
     "tensorflow-serving": "tensorflow-inference",
     "tensorflow-serving-eia": "tensorflow-inference-eia",
-    "mxnet-serving": "mxnet-inference",
     "mxnet-serving-eia": "mxnet-inference-eia",
 }
 
@@ -73,7 +72,6 @@ MERGED_FRAMEWORKS_LOWEST_VERSIONS = {
     "mxnet": [1, 4, 1],
     "tensorflow-serving": [1, 13, 0],
     "tensorflow-serving-eia": [1, 14, 0],
-    "mxnet-serving": [1, 4, 1],
     "mxnet-serving-eia": [1, 4, 1],
 }
 
@@ -212,6 +210,13 @@ def create_image_uri(
     if py_version and py_version not in VALID_PY_VERSIONS:
         raise ValueError("invalid py_version argument: {}".format(py_version))
 
+    if _accelerator_type_valid_for_framework(
+        framework=framework,
+        accelerator_type=accelerator_type,
+        optimized_families=optimized_families,
+    ):
+        framework += "-eia"
+
     # Handle Account Number for Gov Cloud and frameworks with DLC merged images
     account = _registry_id(
         region=region,
@@ -241,13 +246,6 @@ def create_image_uri(
             device_type = "gpu"
         else:
             device_type = "cpu"
-
-    if _accelerator_type_valid_for_framework(
-        framework=framework,
-        accelerator_type=accelerator_type,
-        optimized_families=optimized_families,
-    ):
-        framework += "-eia"
 
     using_merged_images = _using_merged_images(region, framework, py_version, framework_version)
 
