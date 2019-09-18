@@ -1985,9 +1985,20 @@ def _flush_log_streams(
                 logGroupName=log_group,
                 logStreamNamePrefix=job_name + "/",
                 orderBy="LogStreamName",
-                limit=instance_count,
+                limit=min(instance_count, 50),
             )
             stream_names = [s["logStreamName"] for s in streams["logStreams"]]
+
+            while "nextToken" in streams:
+                streams = client.describe_log_streams(
+                    logGroupName=log_group,
+                    logStreamNamePrefix=job_name + "/",
+                    orderBy="LogStreamName",
+                    limit=50,
+                )
+
+                stream_names.extend([s["logStreamName"] for s in streams["logStreams"]])
+
             positions.update(
                 [
                     (s, sagemaker.logs.Position(timestamp=0, skip=0))
