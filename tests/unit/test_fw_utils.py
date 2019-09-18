@@ -146,6 +146,49 @@ def test_create_image_uri_hkg():
     }
 
 
+def test_tf_eia_images():
+    image_uri = fw_utils.create_image_uri(
+        "us-west-2",
+        "tensorflow-serving",
+        "ml.p3.2xlarge",
+        "1.14.0",
+        "py3",
+        accelerator_type="ml.eia1.medium",
+    )
+    assert (
+        image_uri
+        == "763104351884.dkr.ecr.us-west-2.amazonaws.com/tensorflow-inference-eia:1.14.0-gpu"
+    )
+
+
+def test_mxnet_eia_images():
+    image_uri = fw_utils.create_image_uri(
+        "us-west-2",
+        "mxnet-serving",
+        "ml.p3.2xlarge",
+        "1.4.1",
+        "py2",
+        accelerator_type="ml.eia1.medium",
+    )
+    assert (
+        image_uri
+        == "763104351884.dkr.ecr.us-west-2.amazonaws.com/mxnet-inference-eia:1.4.1-gpu-py2"
+    )
+
+    image_uri = fw_utils.create_image_uri(
+        "us-east-1",
+        "mxnet-serving",
+        "ml.c4.2xlarge",
+        "1.4.1",
+        "py3",
+        accelerator_type="ml.eia1.large",
+    )
+    assert (
+        image_uri
+        == "763104351884.dkr.ecr.us-east-1.amazonaws.com/mxnet-inference-eia:1.4.1-cpu-py3"
+    )
+
+
 def test_create_image_uri_merged():
     image_uri = fw_utils.create_image_uri(
         "us-west-2", "tensorflow-scriptmode", "ml.p3.2xlarge", "1.14", "py3"
@@ -175,7 +218,23 @@ def test_create_image_uri_merged():
     image_uri = fw_utils.create_image_uri(
         "us-west-2", "mxnet-serving", "ml.c4.2xlarge", "1.4.1", "py3"
     )
-    assert image_uri == "763104351884.dkr.ecr.us-west-2.amazonaws.com/mxnet-inference:1.4.1-cpu-py3"
+    assert (
+        image_uri
+        == "520713654638.dkr.ecr.us-west-2.amazonaws.com/sagemaker-mxnet-serving:1.4.1-cpu-py3"
+    )
+
+    image_uri = fw_utils.create_image_uri(
+        "us-west-2",
+        "mxnet-serving",
+        "ml.c4.2xlarge",
+        "1.4.1",
+        "py3",
+        accelerator_type="ml.eia1.medium",
+    )
+    assert (
+        image_uri
+        == "763104351884.dkr.ecr.us-west-2.amazonaws.com/mxnet-inference-eia:1.4.1-cpu-py3"
+    )
 
 
 def test_create_image_uri_merged_py2():
@@ -198,11 +257,11 @@ def test_create_image_uri_merged_py2():
     assert image_uri == "520713654638.dkr.ecr.us-west-2.amazonaws.com/sagemaker-mxnet:1.4.1-gpu-py2"
 
     image_uri = fw_utils.create_image_uri(
-        "us-west-2", "mxnet-serving", "ml.c4.2xlarge", "1.4.1", "py2"
+        "us-west-2", "mxnet-serving", "ml.c4.2xlarge", "1.3.1", "py2"
     )
     assert (
         image_uri
-        == "520713654638.dkr.ecr.us-west-2.amazonaws.com/sagemaker-mxnet-serving:1.4.1-cpu-py2"
+        == "520713654638.dkr.ecr.us-west-2.amazonaws.com/sagemaker-mxnet-serving:1.3.1-cpu-py2"
     )
 
 
