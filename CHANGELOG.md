@@ -1,5 +1,15 @@
 # Changelog
 
+## v1.40.1 (2019-09-18)
+
+### Bug fixes and other changes
+
+ * expose kms_key parameter for deploying from training and hyperparameter tuning jobs
+
+### Documentation changes
+
+ * Update sklearn default predict_fn
+
 ## v1.40.0 (2019-09-17)
 
 ### Features
