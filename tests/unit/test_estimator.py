@@ -1879,6 +1879,37 @@ def test_generic_to_deploy_network_isolation(sagemaker_session):
     assert kwargs["enable_network_isolation"]
 
 
+@patch("sagemaker.estimator.Estimator.create_model")
+def test_generic_to_deploy_kms(create_model, sagemaker_session):
+    e = Estimator(
+        IMAGE_NAME,
+        ROLE,
+        INSTANCE_COUNT,
+        INSTANCE_TYPE,
+        output_path=OUTPUT_PATH,
+        sagemaker_session=sagemaker_session,
+    )
+    e.fit()
+
+    model = MagicMock()
+    create_model.return_value = model
+
+    endpoint_name = "foo"
+    kms_key = "key"
+    e.deploy(INSTANCE_COUNT, INSTANCE_TYPE, endpoint_name=endpoint_name, kms_key=kms_key)
+
+    model.deploy.assert_called_with(
+        instance_type=INSTANCE_TYPE,
+        initial_instance_count=INSTANCE_COUNT,
+        accelerator_type=None,
+        endpoint_name=endpoint_name,
+        update_endpoint=False,
+        tags=None,
+        wait=True,
+        kms_key=kms_key,
+    )
+
+
 def test_generic_training_job_analytics(sagemaker_session):
     sagemaker_session.sagemaker_client.describe_training_job = Mock(
         name="describe_training_job",
