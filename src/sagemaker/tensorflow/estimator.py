@@ -583,6 +583,7 @@ class TensorFlow(Framework):
             entry_point=entry_point,
             source_dir=source_dir,
             dependencies=dependencies,
+            enable_network_isolation=self.enable_network_isolation(),
         )
 
     def _create_default_model(
@@ -612,6 +613,7 @@ class TensorFlow(Framework):
             sagemaker_session=self.sagemaker_session,
             vpc_config=self.get_vpc_config(vpc_config_override),
             dependencies=dependencies or self.dependencies,
+            enable_network_isolation=self.enable_network_isolation(),
         )
 
     def hyperparameters(self):
@@ -704,6 +706,7 @@ class TensorFlow(Framework):
         volume_kms_key=None,
         endpoint_type=None,
         entry_point=None,
+        vpc_config_override=VPC_CONFIG_DEFAULT,
     ):
         """Return a ``Transformer`` that uses a SageMaker Model based on the training job. It
         reuses the SageMaker Session and base job name used by the Estimator.
@@ -746,13 +749,18 @@ class TensorFlow(Framework):
                 should be executed as the entry point to training. If not specified and
                 ``endpoint_type`` is 'tensorflow-serving', no entry point is used. If
                 ``endpoint_type`` is also ``None``, then the training entry point is used.
+            vpc_config_override (dict[str, list[str]]): Optional override for
+                the VpcConfig set on the model.
+                Default: use subnets and security groups from this Estimator.
+                * 'Subnets' (list[str]): List of subnet ids.
+                * 'SecurityGroupIds' (list[str]): List of security group ids.
         """
 
         role = role or self.role
         model = self.create_model(
             model_server_workers=model_server_workers,
             role=role,
-            vpc_config_override=VPC_CONFIG_DEFAULT,
+            vpc_config_override=vpc_config_override,
             endpoint_type=endpoint_type,
             entry_point=entry_point,
         )

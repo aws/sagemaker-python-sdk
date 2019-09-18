@@ -337,6 +337,7 @@ def test_mxnet_mms_version(
     model = mx.create_model()
 
     expected_image_base = _get_full_image_uri(mxnet_version, IMAGE_REPO_SERVING_NAME, "gpu")
+
     environment = {
         "Environment": {
             "SAGEMAKER_SUBMIT_DIRECTORY": "s3://mybucket/sagemaker-mxnet-2017-11-06-14:14:15.672/model.tar.gz",

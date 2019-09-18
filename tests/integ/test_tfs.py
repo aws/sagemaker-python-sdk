@@ -121,7 +121,7 @@ def tfs_predictor_with_accelerator(sagemaker_session, tf_full_version, cpu_insta
         model = Model(
             model_data=model_data,
             role="SageMakerRole",
-            framework_version="1.13",
+            framework_version="1.14",
             sagemaker_session=sagemaker_session,
         )
         predictor = model.deploy(
