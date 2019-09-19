@@ -1,4 +1,4 @@
-# Copyright 2017-2018 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright 2017-2019 Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -150,31 +150,18 @@ def test_tf_eia_images():
     image_uri = fw_utils.create_image_uri(
         "us-west-2",
         "tensorflow-serving",
-        "ml.p3.2xlarge",
+        "ml.m4.xlarge",
         "1.14.0",
         "py3",
         accelerator_type="ml.eia1.medium",
     )
     assert (
         image_uri
-        == "763104351884.dkr.ecr.us-west-2.amazonaws.com/tensorflow-inference-eia:1.14.0-gpu"
+        == "763104351884.dkr.ecr.us-west-2.amazonaws.com/tensorflow-inference-eia:1.14.0-cpu"
     )
 
 
 def test_mxnet_eia_images():
-    image_uri = fw_utils.create_image_uri(
-        "us-west-2",
-        "mxnet-serving",
-        "ml.p3.2xlarge",
-        "1.4.1",
-        "py2",
-        accelerator_type="ml.eia1.medium",
-    )
-    assert (
-        image_uri
-        == "763104351884.dkr.ecr.us-west-2.amazonaws.com/mxnet-inference-eia:1.4.1-gpu-py2"
-    )
-
     image_uri = fw_utils.create_image_uri(
         "us-east-1",
         "mxnet-serving",
@@ -218,10 +205,7 @@ def test_create_image_uri_merged():
     image_uri = fw_utils.create_image_uri(
         "us-west-2", "mxnet-serving", "ml.c4.2xlarge", "1.4.1", "py3"
     )
-    assert (
-        image_uri
-        == "520713654638.dkr.ecr.us-west-2.amazonaws.com/sagemaker-mxnet-serving:1.4.1-cpu-py3"
-    )
+    assert image_uri == "763104351884.dkr.ecr.us-west-2.amazonaws.com/mxnet-inference:1.4.1-cpu-py3"
 
     image_uri = fw_utils.create_image_uri(
         "us-west-2",
@@ -262,6 +246,49 @@ def test_create_image_uri_merged_py2():
     assert (
         image_uri
         == "520713654638.dkr.ecr.us-west-2.amazonaws.com/sagemaker-mxnet-serving:1.3.1-cpu-py2"
+    )
+
+
+def test_create_image_uri_merged_gov_regions():
+    image_uri = fw_utils.create_image_uri(
+        "us-iso-east-1", "tensorflow-scriptmode", "ml.m4.xlarge", "1.13.1", "py3"
+    )
+    assert (
+        image_uri
+        == "886529160074.dkr.ecr.us-iso-east-1.c2s.ic.gov/tensorflow-training:1.13.1-cpu-py3"
+    )
+
+    image_uri = fw_utils.create_image_uri(
+        "us-iso-east-1", "tensorflow-scriptmode", "ml.p3.2xlarge", "1.14", "py2"
+    )
+    assert (
+        image_uri
+        == "886529160074.dkr.ecr.us-iso-east-1.c2s.ic.gov/tensorflow-training:1.14-gpu-py2"
+    )
+
+    image_uri = fw_utils.create_image_uri(
+        "us-iso-east-1", "tensorflow-serving", "ml.m4.xlarge", "1.13.0"
+    )
+    assert (
+        image_uri == "886529160074.dkr.ecr.us-iso-east-1.c2s.ic.gov/tensorflow-inference:1.13.0-cpu"
+    )
+
+    image_uri = fw_utils.create_image_uri("us-iso-east-1", "mxnet", "ml.p3.2xlarge", "1.4.1", "py3")
+    assert image_uri == "886529160074.dkr.ecr.us-iso-east-1.c2s.ic.gov/mxnet-training:1.4.1-gpu-py3"
+
+    image_uri = fw_utils.create_image_uri(
+        "us-iso-east-1", "mxnet-serving", "ml.c4.2xlarge", "1.4.1", "py3"
+    )
+    assert (
+        image_uri == "886529160074.dkr.ecr.us-iso-east-1.c2s.ic.gov/mxnet-inference:1.4.1-cpu-py3"
+    )
+
+    image_uri = fw_utils.create_image_uri(
+        "us-iso-east-1", "mxnet-serving", "ml.c4.2xlarge", "1.3.1", "py3"
+    )
+    assert (
+        image_uri
+        == "744548109606.dkr.ecr.us-iso-east-1.c2s.ic.gov/sagemaker-mxnet-serving:1.3.1-cpu-py3"
     )
 
 
