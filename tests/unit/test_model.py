@@ -156,6 +156,25 @@ def test_prepare_container_def(time, sagemaker_session):
 
 @patch("shutil.rmtree", MagicMock())
 @patch("tarfile.open", MagicMock())
+@patch("os.listdir", MagicMock(return_value=["blah.py"]))
+@patch("time.strftime", return_value=TIMESTAMP)
+def test_prepare_container_def_with_network_isolation(time, sagemaker_session):
+    model = DummyFrameworkModel(sagemaker_session, enable_network_isolation=True)
+    assert model.prepare_container_def(INSTANCE_TYPE) == {
+        "Environment": {
+            "SAGEMAKER_PROGRAM": ENTRY_POINT,
+            "SAGEMAKER_SUBMIT_DIRECTORY": "/opt/ml/model/code",
+            "SAGEMAKER_CONTAINER_LOG_LEVEL": "20",
+            "SAGEMAKER_REGION": REGION,
+            "SAGEMAKER_ENABLE_CLOUDWATCH_METRICS": "false",
+        },
+        "Image": MODEL_IMAGE,
+        "ModelDataUrl": MODEL_DATA,
+    }
+
+
+@patch("shutil.rmtree", MagicMock())
+@patch("tarfile.open", MagicMock())
 @patch("os.path.exists", MagicMock(return_value=True))
 @patch("os.path.isdir", MagicMock(return_value=True))
 @patch("os.listdir", MagicMock(return_value=["blah.py"]))
