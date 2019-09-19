@@ -1,5 +1,11 @@
 # Changelog
 
+## v1.40.2 (2019-09-19)
+
+### Bug fixes and other changes
+
+ * use new ECR images in us-iso-east-1 for TF and MXNet
+
 ## v1.40.1 (2019-09-18)
 
 ### Bug fixes and other changes
