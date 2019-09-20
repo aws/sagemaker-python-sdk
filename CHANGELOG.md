@@ -1,5 +1,15 @@
 # Changelog
 
+## v1.42.0 (2019-09-20)
+
+### Features
+
+ * add estimator preparation to airflow configuration
+
+### Bug fixes and other changes
+
+ * correct airflow workflow for BYO estimators.
+
 ## v1.41.0 (2019-09-20)
 
 ### Features
