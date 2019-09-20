@@ -810,7 +810,10 @@ class FrameworkModel(Model):
         """Placeholder docstring"""
         if self.uploaded_code:
             script_name = self.uploaded_code.script_name
-            dir_name = self.uploaded_code.s3_prefix
+            if self.enable_network_isolation():
+                dir_name = "/opt/ml/model/code"
+            else:
+                dir_name = self.uploaded_code.s3_prefix
         else:
             script_name = self.entry_point
             dir_name = "file://" + self.source_dir
