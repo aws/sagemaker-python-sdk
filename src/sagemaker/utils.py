@@ -536,7 +536,7 @@ def get_ecr_image_uri_prefix(account, region):
     Returns:
         (str): URI prefix of ECR image
     """
-    domain = "c2s.ic.gov" if region == "us-iso-east-1" else "amazonaws.com"
+    domain = _domain_for_region(region)
     return "{}.dkr.ecr.{}.{}".format(account, region, domain)
 
 
@@ -555,7 +555,20 @@ def sts_regional_endpoint(region):
     Returns:
         str: AWS STS regional endpoint
     """
-    return "https://sts.{}.amazonaws.com".format(region)
+    domain = _domain_for_region(region)
+    return "https://sts.{}.{}".format(region, domain)
+
+
+def _domain_for_region(region):
+    """Get the DNS suffix for the given region.
+
+    Args:
+        region (str): AWS region name
+
+    Returns:
+        str: the DNS suffix
+    """
+    return "c2s.ic.gov" if region == "us-iso-east-1" else "amazonaws.com"
 
 
 class DeferredError(object):
