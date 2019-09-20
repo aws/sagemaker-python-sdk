@@ -561,7 +561,7 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):
             )["ModelArtifacts"]["S3ModelArtifacts"]
         else:
             logging.warning(
-                "No finished training job found associated with this estimator. Please make sure"
+                "No finished training job found associated with this estimator. Please make sure "
                 "this estimator is only used for building workflow config"
             )
             model_uri = os.path.join(
@@ -718,21 +718,20 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):
 
         if self.latest_training_job is None:
             logging.warning(
-                "No finished training job found associated with this estimator. Please make sure"
+                "No finished training job found associated with this estimator. Please make sure "
                 "this estimator is only used for building workflow config"
             )
             model_name = self._current_job_name
         else:
             model_name = self.latest_training_job.name
+            model = self.create_model(vpc_config_override=vpc_config_override)
 
-        model = self.create_model(vpc_config_override=vpc_config_override)
+            # not all create_model() implementations have the same kwargs
+            model.name = model_name
+            if role is not None:
+                model.role = role
 
-        # not all create_model() implementations have the same kwargs
-        model.name = model_name
-        if role is not None:
-            model.role = role
-
-        model._create_sagemaker_model(instance_type, tags=tags)
+            model._create_sagemaker_model(instance_type, tags=tags)
 
         return Transformer(
             model_name,
@@ -1716,7 +1715,7 @@ class Framework(EstimatorBase):
                 transform_env.update(env)
         else:
             logging.warning(
-                "No finished training job found associated with this estimator. Please make sure"
+                "No finished training job found associated with this estimator. Please make sure "
                 "this estimator is only used for building workflow config"
             )
             model_name = self._current_job_name
