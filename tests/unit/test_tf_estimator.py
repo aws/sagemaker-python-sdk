@@ -20,6 +20,7 @@ import pytest
 from mock import patch, Mock, MagicMock
 
 from sagemaker.fw_utils import create_image_uri
+from sagemaker.estimator import _TrainingJob
 from sagemaker.model import MODEL_SERVER_WORKERS_PARAM_NAME
 from sagemaker.session import s3_input
 from sagemaker.tensorflow import defaults, serving, TensorFlow, TensorFlowModel, TensorFlowPredictor
@@ -324,7 +325,7 @@ def test_transformer_creation_with_endpoint_type(create_model, sagemaker_session
         train_instance_count=INSTANCE_COUNT,
         train_instance_type=INSTANCE_TYPE,
     )
-
+    tf.latest_training_job = _TrainingJob(sagemaker_session, "some-job-name")
     tf.transformer(
         INSTANCE_COUNT,
         INSTANCE_TYPE,
@@ -367,6 +368,7 @@ def test_transformer_creation_without_endpoint_type(create_model, sagemaker_sess
         train_instance_count=INSTANCE_COUNT,
         train_instance_type=INSTANCE_TYPE,
     )
+    tf.latest_training_job = _TrainingJob(sagemaker_session, "some-job-name")
     tf.transformer(INSTANCE_COUNT, INSTANCE_TYPE)
 
     create_model.assert_called_with(

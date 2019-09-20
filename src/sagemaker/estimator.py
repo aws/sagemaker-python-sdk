@@ -261,6 +261,16 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):
         """
         return False
 
+    def prepare_workflow_for_training(self, job_name=None):
+        """Calls _prepare_for_training. Used when setting up a workflow.
+
+        Args:
+            job_name (str): Name of the training job to be created. If not
+                specified, one is generated, using the base name given to the
+                constructor if applicable.
+        """
+        self._prepare_for_training(job_name=job_name)
+
     def _prepare_for_training(self, job_name=None):
         """Set any values in the estimator that need to be set before training.
 
