@@ -570,3 +570,7 @@ def test_sts_regional_endpoint():
     endpoint = sagemaker.utils.sts_regional_endpoint("us-west-2")
     assert endpoint == "https://sts.us-west-2.amazonaws.com"
     assert botocore.utils.is_valid_endpoint_url(endpoint)
+
+    endpoint = sagemaker.utils.sts_regional_endpoint("us-iso-east-1")
+    assert endpoint == "https://sts.us-iso-east-1.c2s.ic.gov"
+    assert botocore.utils.is_valid_endpoint_url(endpoint)

@@ -34,10 +34,14 @@ def prepare_framework(estimator, s3_operations):
     if estimator.code_location is not None:
         bucket, key = fw_utils.parse_s3_url(estimator.code_location)
         key = os.path.join(key, estimator._current_job_name, "source", "sourcedir.tar.gz")
+    elif estimator.uploaded_code is not None:
+        bucket, key = fw_utils.parse_s3_url(estimator.uploaded_code.s3_prefix)
     else:
         bucket = estimator.sagemaker_session._default_bucket
         key = os.path.join(estimator._current_job_name, "source", "sourcedir.tar.gz")
+
     script = os.path.basename(estimator.entry_point)
+
     if estimator.source_dir and estimator.source_dir.lower().startswith("s3://"):
         code_dir = estimator.source_dir
         estimator.uploaded_code = fw_utils.UploadedCode(s3_prefix=code_dir, script_name=script)
@@ -96,7 +100,7 @@ def prepare_amazon_algorithm_estimator(estimator, inputs, mini_batch_size=None):
     estimator.mini_batch_size = mini_batch_size
 
 
-def training_base_config(estimator, inputs=None, job_name=None, mini_batch_size=None):
+def training_base_config(estimator, inputs=None, job_name=None, mini_batch_size=None):  # noqa: C901
     """Export Airflow base training config from an estimator
 
     Args:
@@ -134,6 +138,13 @@ def training_base_config(estimator, inputs=None, job_name=None, mini_batch_size=
         dict: Training config that can be directly used by
         SageMakerTrainingOperator in Airflow.
     """
+    if isinstance(estimator, sagemaker.amazon.amazon_estimator.AmazonAlgorithmEstimatorBase):
+        estimator.prepare_workflow_for_training(
+            records=inputs, mini_batch_size=mini_batch_size, job_name=job_name
+        )
+    else:
+        estimator.prepare_workflow_for_training(job_name=job_name)
+
     default_bucket = estimator.sagemaker_session.default_bucket()
     s3_operations = {}
 
@@ -528,6 +539,7 @@ def model_config_from_estimator(
             model_server_workers=model_server_workers,
             role=role,
             vpc_config_override=vpc_config_override,
+            entry_point=estimator.entry_point,
         )
     else:
         raise TypeError(
