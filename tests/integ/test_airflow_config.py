@@ -16,6 +16,7 @@ import gzip
 import os
 import pickle
 import sys
+import pytest
 
 import numpy as np
 
@@ -30,7 +31,7 @@ from sagemaker import (
     PCA,
     RandomCutForest,
 )
-from sagemaker.amazon.amazon_estimator import registry
+from sagemaker.amazon.amazon_estimator import get_image_uri
 from sagemaker.amazon.common import read_records
 from sagemaker.chainer import Chainer
 from sagemaker.estimator import Estimator
@@ -65,13 +66,11 @@ ROLE = "SageMakerRole"
 SINGLE_INSTANCE_COUNT = 1
 
 
+@pytest.mark.canary_quick
 def test_byo_airflow_config_uploads_data_source_to_s3_when_inputs_provided(
     sagemaker_session, cpu_instance_type
 ):
     with timeout(seconds=AIRFLOW_CONFIG_TIMEOUT_IN_SECONDS):
-        image_name = (
-            registry(sagemaker_session.boto_session.region_name) + "/factorization-machines:1"
-        )
         training_data_path = os.path.join(DATA_DIR, "dummy_tensor")
 
         data_source_location = "test-airflow-config-{}".format(sagemaker_timestamp())
@@ -80,7 +79,9 @@ def test_byo_airflow_config_uploads_data_source_to_s3_when_inputs_provided(
         )
 
         estimator = Estimator(
-            image_name=image_name,
+            image_name=get_image_uri(
+                sagemaker_session.boto_session.region_name, "factorization-machines"
+            ),
             role=ROLE,
             train_instance_count=SINGLE_INSTANCE_COUNT,
             train_instance_type=cpu_instance_type,
@@ -95,6 +96,7 @@ def test_byo_airflow_config_uploads_data_source_to_s3_when_inputs_provided(
         )
 
 
+@pytest.mark.canary_quick
 def test_kmeans_airflow_config_uploads_data_source_to_s3(sagemaker_session, cpu_instance_type):
     with timeout(seconds=AIRFLOW_CONFIG_TIMEOUT_IN_SECONDS):
         data_path = os.path.join(DATA_DIR, "one_p_mnist", "mnist.pkl.gz")
@@ -132,6 +134,7 @@ def test_kmeans_airflow_config_uploads_data_source_to_s3(sagemaker_session, cpu_
         )
 
 
+@pytest.mark.canary_quick
 def test_fm_airflow_config_uploads_data_source_to_s3(sagemaker_session, cpu_instance_type):
     with timeout(seconds=AIRFLOW_CONFIG_TIMEOUT_IN_SECONDS):
         data_path = os.path.join(DATA_DIR, "one_p_mnist", "mnist.pkl.gz")
@@ -164,6 +167,7 @@ def test_fm_airflow_config_uploads_data_source_to_s3(sagemaker_session, cpu_inst
         )
 
 
+@pytest.mark.canary_quick
 def test_ipinsights_airflow_config_uploads_data_source_to_s3(sagemaker_session, cpu_instance_type):
     with timeout(seconds=AIRFLOW_CONFIG_TIMEOUT_IN_SECONDS):
         data_path = os.path.join(DATA_DIR, "ipinsights")
@@ -193,6 +197,7 @@ def test_ipinsights_airflow_config_uploads_data_source_to_s3(sagemaker_session, 
         )
 
 
+@pytest.mark.canary_quick
 def test_knn_airflow_config_uploads_data_source_to_s3(sagemaker_session, cpu_instance_type):
     with timeout(seconds=AIRFLOW_CONFIG_TIMEOUT_IN_SECONDS):
         data_path = os.path.join(DATA_DIR, "one_p_mnist", "mnist.pkl.gz")
@@ -222,6 +227,7 @@ def test_knn_airflow_config_uploads_data_source_to_s3(sagemaker_session, cpu_ins
         )
 
 
+@pytest.mark.canary_quick
 def test_lda_airflow_config_uploads_data_source_to_s3(sagemaker_session, cpu_instance_type):
     with timeout(seconds=AIRFLOW_CONFIG_TIMEOUT_IN_SECONDS):
         data_path = os.path.join(DATA_DIR, "lda")
@@ -252,6 +258,7 @@ def test_lda_airflow_config_uploads_data_source_to_s3(sagemaker_session, cpu_ins
         )
 
 
+@pytest.mark.canary_quick
 def test_linearlearner_airflow_config_uploads_data_source_to_s3(
     sagemaker_session, cpu_instance_type
 ):
@@ -320,6 +327,7 @@ def test_linearlearner_airflow_config_uploads_data_source_to_s3(
         )
 
 
+@pytest.mark.canary_quick
 def test_ntm_airflow_config_uploads_data_source_to_s3(sagemaker_session, cpu_instance_type):
     with timeout(seconds=AIRFLOW_CONFIG_TIMEOUT_IN_SECONDS):
         data_path = os.path.join(DATA_DIR, "ntm")
@@ -351,6 +359,7 @@ def test_ntm_airflow_config_uploads_data_source_to_s3(sagemaker_session, cpu_ins
         )
 
 
+@pytest.mark.canary_quick
 def test_pca_airflow_config_uploads_data_source_to_s3(sagemaker_session, cpu_instance_type):
     with timeout(seconds=AIRFLOW_CONFIG_TIMEOUT_IN_SECONDS):
         data_path = os.path.join(DATA_DIR, "one_p_mnist", "mnist.pkl.gz")
@@ -382,6 +391,7 @@ def test_pca_airflow_config_uploads_data_source_to_s3(sagemaker_session, cpu_ins
         )
 
 
+@pytest.mark.canary_quick
 def test_rcf_airflow_config_uploads_data_source_to_s3(sagemaker_session, cpu_instance_type):
     with timeout(seconds=AIRFLOW_CONFIG_TIMEOUT_IN_SECONDS):
         # Generate a thousand 14-dimensional datapoints.
@@ -408,6 +418,7 @@ def test_rcf_airflow_config_uploads_data_source_to_s3(sagemaker_session, cpu_ins
         )
 
 
+@pytest.mark.canary_quick
 def test_chainer_airflow_config_uploads_data_source_to_s3(sagemaker_session, chainer_full_version):
     with timeout(seconds=AIRFLOW_CONFIG_TIMEOUT_IN_SECONDS):
         script_path = os.path.join(DATA_DIR, "chainer_mnist", "mnist.py")
@@ -441,6 +452,7 @@ def test_chainer_airflow_config_uploads_data_source_to_s3(sagemaker_session, cha
         )
 
 
+@pytest.mark.canary_quick
 def test_mxnet_airflow_config_uploads_data_source_to_s3(
     sagemaker_session, cpu_instance_type, mxnet_full_version
 ):
@@ -469,6 +481,7 @@ def test_mxnet_airflow_config_uploads_data_source_to_s3(
         )
 
 
+@pytest.mark.canary_quick
 def test_sklearn_airflow_config_uploads_data_source_to_s3(
     sagemaker_session, cpu_instance_type, sklearn_full_version
 ):
@@ -503,14 +516,13 @@ def test_sklearn_airflow_config_uploads_data_source_to_s3(
         )
 
 
+@pytest.mark.canary_quick
 def test_tf_airflow_config_uploads_data_source_to_s3(sagemaker_session, cpu_instance_type):
     with timeout(seconds=AIRFLOW_CONFIG_TIMEOUT_IN_SECONDS):
-        image_name = (
-            registry(sagemaker_session.boto_session.region_name) + "/factorization-machines:1"
-        )
-
         tf = TensorFlow(
-            image_name=image_name,
+            image_name=get_image_uri(
+                sagemaker_session.boto_session.region_name, "factorization-machines"
+            ),
             entry_point=SCRIPT,
             role=ROLE,
             train_instance_count=SINGLE_INSTANCE_COUNT,
@@ -535,6 +547,7 @@ def test_tf_airflow_config_uploads_data_source_to_s3(sagemaker_session, cpu_inst
         )
 
 
+@pytest.mark.canary_quick
 def test_xgboost_airflow_config_uploads_data_source_to_s3(sagemaker_session, cpu_instance_type):
     with timeout(seconds=AIRFLOW_CONFIG_TIMEOUT_IN_SECONDS):
 
@@ -559,6 +572,7 @@ def test_xgboost_airflow_config_uploads_data_source_to_s3(sagemaker_session, cpu
         )
 
 
+@pytest.mark.canary_quick
 def test_pytorch_airflow_config_uploads_data_source_to_s3_when_inputs_not_provided(
     sagemaker_session, cpu_instance_type
 ):
