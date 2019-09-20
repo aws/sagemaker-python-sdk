@@ -1,5 +1,11 @@
 # Changelog
 
+## v1.41.0 (2019-09-20)
+
+### Features
+
+ * enable sklearn for network isolation mode
+
 ## v1.40.2 (2019-09-19)
 
 ### Bug fixes and other changes
