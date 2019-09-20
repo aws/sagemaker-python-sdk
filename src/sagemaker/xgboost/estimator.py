@@ -145,6 +145,12 @@ class XGBoost(Framework):
                 See :func:`~sagemaker.xgboost.model.XGBoostModel` for full details.
         """
         role = role or self.role
+
+        # Remove unwanted entry_point kwarg
+        if "entry_point" in kwargs:
+            logger.debug("Removing unused entry_point argument: %s", str(kwargs["entry_point"]))
+            kwargs = {k: v for k, v in kwargs.items() if k != "entry_point"}
+
         return XGBoostModel(
             self.model_data,
             role,
