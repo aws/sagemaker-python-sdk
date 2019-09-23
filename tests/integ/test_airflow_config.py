@@ -17,6 +17,7 @@ import os
 import pickle
 import sys
 import pytest
+import tests.integ
 
 import numpy as np
 
@@ -232,6 +233,10 @@ def test_knn_airflow_config_uploads_data_source_to_s3(sagemaker_session, cpu_ins
         )
 
 
+@pytest.mark.skipif(
+    tests.integ.test_region() in tests.integ.NO_LDA_REGIONS,
+    reason="LDA image is not supported in certain regions",
+)
 @pytest.mark.canary_quick
 @pytest.mark.skip(reason="Test fails during release build with no stack trace")
 def test_lda_airflow_config_uploads_data_source_to_s3(sagemaker_session, cpu_instance_type):
