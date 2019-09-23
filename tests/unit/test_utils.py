@@ -534,7 +534,7 @@ class FakeS3(object):
                 self.bucket = bucket
                 self.key = key
 
-            def upload_file(self, target):
+            def upload_file(self, target, **kwargs):
                 if self.bucket in BUCKET_WITHOUT_WRITING_PERMISSION:
                     raise exceptions.S3UploadFailedError()
                 shutil.copy2(target, dst)

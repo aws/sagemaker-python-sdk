@@ -115,6 +115,7 @@ class PyTorch(Framework):
         entry_point=None,
         source_dir=None,
         dependencies=None,
+        **kwargs
     ):
         """Create a SageMaker ``PyTorchModel`` object that can be deployed to an
         ``Endpoint``.

@@ -504,6 +504,7 @@ class TensorFlow(Framework):
         entry_point=None,
         source_dir=None,
         dependencies=None,
+        **kwargs
     ):
         """Create a ``Model`` object that can be used for creating SageMaker model entities,
         deploying to a SageMaker endpoint, or starting SageMaker Batch Transform jobs.
@@ -552,6 +553,7 @@ class TensorFlow(Framework):
                 entry_point=entry_point,
                 source_dir=source_dir,
                 dependencies=dependencies,
+                **kwargs
             )
 
         return self._create_default_model(
@@ -561,6 +563,7 @@ class TensorFlow(Framework):
             entry_point=entry_point,
             source_dir=source_dir,
             dependencies=dependencies,
+            **kwargs
         )
 
     def _create_tfs_model(
@@ -570,6 +573,7 @@ class TensorFlow(Framework):
         entry_point=None,
         source_dir=None,
         dependencies=None,
+        **kwargs
     ):
         """Placeholder docstring"""
         return Model(
@@ -585,6 +589,7 @@ class TensorFlow(Framework):
             source_dir=source_dir,
             dependencies=dependencies,
             enable_network_isolation=self.enable_network_isolation(),
+            **kwargs
         )
 
     def _create_default_model(
@@ -595,6 +600,7 @@ class TensorFlow(Framework):
         entry_point=None,
         source_dir=None,
         dependencies=None,
+        **kwargs
     ):
         """Placeholder docstring"""
         return TensorFlowModel(
@@ -615,6 +621,7 @@ class TensorFlow(Framework):
             vpc_config=self.get_vpc_config(vpc_config_override),
             dependencies=dependencies or self.dependencies,
             enable_network_isolation=self.enable_network_isolation(),
+            **kwargs
         )
 
     def hyperparameters(self):

@@ -141,6 +141,7 @@ class MXNet(Framework):
         source_dir=None,
         dependencies=None,
         image_name=None,
+        **kwargs
     ):
         """Create a SageMaker ``MXNetModel`` object that can be deployed to an
         ``Endpoint``.

@@ -23,6 +23,7 @@ from sagemaker.utils import unique_name_from_base
 
 import tests.integ
 from tests.integ import timeout
+from tests.integ import kms_utils
 from tests.integ.retry import retries
 from tests.integ.s3_utils import assert_s3_files_exist
 
@@ -67,16 +68,14 @@ def test_mnist(sagemaker_session, instance_type):
 
 def test_server_side_encryption(sagemaker_session):
     boto_session = sagemaker_session.boto_session
-    with tests.integ.kms_utils.bucket_with_encryption(boto_session, ROLE) as (
-        bucket_with_kms,
-        kms_key,
-    ):
+    with kms_utils.bucket_with_encryption(boto_session, ROLE) as (bucket_with_kms, kms_key):
         output_path = os.path.join(
             bucket_with_kms, "test-server-side-encryption", time.strftime("%y%m%d-%H%M")
         )
 
         estimator = TensorFlow(
-            entry_point=SCRIPT,
+            entry_point="training.py",
+            source_dir=TFS_RESOURCE_PATH,
             role=ROLE,
             train_instance_count=1,
             train_instance_type="ml.c5.xlarge",
@@ -97,6 +96,15 @@ def test_server_side_encryption(sagemaker_session):
         with tests.integ.timeout.timeout(minutes=tests.integ.TRAINING_DEFAULT_TIMEOUT_MINUTES):
             estimator.fit(
                 inputs=inputs, job_name=unique_name_from_base("test-server-side-encryption")
+            )
+
+        endpoint_name = unique_name_from_base("test-server-side-encryption")
+        with timeout.timeout_and_delete_endpoint_by_name(endpoint_name, sagemaker_session):
+            estimator.deploy(
+                initial_instance_count=1,
+                instance_type="ml.c5.xlarge",
+                endpoint_name=endpoint_name,
+                entry_point=os.path.join(TFS_RESOURCE_PATH, "inference.py"),
             )
 
 
