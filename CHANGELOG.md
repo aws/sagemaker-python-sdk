@@ -1,5 +1,15 @@
 # Changelog
 
+## v1.42.1 (2019-09-24)
+
+### Bug fixes and other changes
+
+ * lazy import of tensorflow module
+ * skip airflow_config tests as they're blocking the release build
+ * skip lda tests in regions that does not support it.
+ * add airflow_config tests to canaries
+ * use correct STS endpoint for us-iso-east-1
+
 ## v1.42.0 (2019-09-20)
 
 ### Features
