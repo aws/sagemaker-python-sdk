@@ -119,6 +119,7 @@ class DummyFramework(Framework):
         model_server_workers=None,
         entry_point=None,
         vpc_config_override=vpc_utils.VPC_CONFIG_DEFAULT,
+        **kwargs
     ):
         return DummyFrameworkModel(
             self.sagemaker_session,
@@ -126,6 +127,7 @@ class DummyFramework(Framework):
             entry_point=entry_point,
             enable_network_isolation=self.enable_network_isolation(),
             role=role,
+            **kwargs
         )
 
     @classmethod

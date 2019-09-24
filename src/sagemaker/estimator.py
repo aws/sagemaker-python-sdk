@@ -1717,6 +1717,7 @@ class Framework(EstimatorBase):
                 model_server_workers=model_server_workers,
                 entry_point=entry_point,
                 vpc_config_override=vpc_config_override,
+                model_kms_key=self.output_kms_key,
             )
             model._create_sagemaker_model(instance_type, tags=tags)
 
