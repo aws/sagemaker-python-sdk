@@ -59,6 +59,14 @@ class AmazonAlgorithmEstimatorBase(EstimatorBase):
                 default data location will be used.
             **kwargs:
         """
+
+        if "enable_network_isolation" in kwargs:
+            logger.debug(
+                "removing unused enable_network_isolation argument: %s",
+                str(kwargs["enable_network_isolation"]),
+            )
+            kwargs = {k: v for k, v in kwargs.items() if k != "enable_network_isolation"}
+
         super(AmazonAlgorithmEstimatorBase, self).__init__(
             role, train_instance_count, train_instance_type, **kwargs
         )
