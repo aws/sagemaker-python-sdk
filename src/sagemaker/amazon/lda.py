@@ -44,7 +44,7 @@ class LDA(AmazonAlgorithmEstimatorBase):
         max_restarts=None,
         max_iterations=None,
         tol=None,
-        **kwargs,
+        **kwargs
     ):
         """Latent Dirichlet Allocation (LDA) is :class:`Estimator` used for
         unsupervised learning.
@@ -139,7 +139,7 @@ class LDA(AmazonAlgorithmEstimatorBase):
             self.role,
             sagemaker_session=self.sagemaker_session,
             vpc_config=self.get_vpc_config(vpc_config_override),
-            **kwargs,
+            **kwargs
         )
 
     def _prepare_for_training(  # pylint: disable=signature-differs
@@ -214,5 +214,5 @@ class LDAModel(Model):
             role,
             predictor_cls=LDAPredictor,
             sagemaker_session=sagemaker_session,
-            **kwargs,
+            **kwargs
         )
