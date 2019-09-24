@@ -115,6 +115,8 @@ class Model(object):
                 network isolation in the endpoint, isolating the model
                 container. No inbound or outbound network calls can be made to
                 or from the model container.
+            output_kms_key (str): KMS key ARN, it's only used to encrypt the
+                repacked model archive file.
         """
         self.model_data = model_data
         self.image = image
