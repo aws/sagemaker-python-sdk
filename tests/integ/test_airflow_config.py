@@ -68,7 +68,6 @@ SINGLE_INSTANCE_COUNT = 1
 
 
 @pytest.mark.canary_quick
-@pytest.mark.skip(reason="Test fails during release build with no stack trace")
 def test_byo_airflow_config_uploads_data_source_to_s3_when_inputs_provided(
     sagemaker_session, cpu_instance_type
 ):
@@ -99,7 +98,6 @@ def test_byo_airflow_config_uploads_data_source_to_s3_when_inputs_provided(
 
 
 @pytest.mark.canary_quick
-@pytest.mark.skip(reason="Test fails during release build with no stack trace")
 def test_kmeans_airflow_config_uploads_data_source_to_s3(sagemaker_session, cpu_instance_type):
     with timeout(seconds=AIRFLOW_CONFIG_TIMEOUT_IN_SECONDS):
         data_path = os.path.join(DATA_DIR, "one_p_mnist", "mnist.pkl.gz")
@@ -137,8 +135,6 @@ def test_kmeans_airflow_config_uploads_data_source_to_s3(sagemaker_session, cpu_
         )
 
 
-@pytest.mark.canary_quick
-@pytest.mark.skip(reason="Test fails during release build with no stack trace")
 def test_fm_airflow_config_uploads_data_source_to_s3(sagemaker_session, cpu_instance_type):
     with timeout(seconds=AIRFLOW_CONFIG_TIMEOUT_IN_SECONDS):
         data_path = os.path.join(DATA_DIR, "one_p_mnist", "mnist.pkl.gz")
@@ -172,7 +168,6 @@ def test_fm_airflow_config_uploads_data_source_to_s3(sagemaker_session, cpu_inst
 
 
 @pytest.mark.canary_quick
-@pytest.mark.skip(reason="Test fails during release build with no stack trace")
 def test_ipinsights_airflow_config_uploads_data_source_to_s3(sagemaker_session, cpu_instance_type):
     with timeout(seconds=AIRFLOW_CONFIG_TIMEOUT_IN_SECONDS):
         data_path = os.path.join(DATA_DIR, "ipinsights")
@@ -202,8 +197,6 @@ def test_ipinsights_airflow_config_uploads_data_source_to_s3(sagemaker_session, 
         )
 
 
-@pytest.mark.canary_quick
-@pytest.mark.skip(reason="Test fails during release build with no stack trace")
 def test_knn_airflow_config_uploads_data_source_to_s3(sagemaker_session, cpu_instance_type):
     with timeout(seconds=AIRFLOW_CONFIG_TIMEOUT_IN_SECONDS):
         data_path = os.path.join(DATA_DIR, "one_p_mnist", "mnist.pkl.gz")
@@ -238,7 +231,6 @@ def test_knn_airflow_config_uploads_data_source_to_s3(sagemaker_session, cpu_ins
     reason="LDA image is not supported in certain regions",
 )
 @pytest.mark.canary_quick
-@pytest.mark.skip(reason="Test fails during release build with no stack trace")
 def test_lda_airflow_config_uploads_data_source_to_s3(sagemaker_session, cpu_instance_type):
     with timeout(seconds=AIRFLOW_CONFIG_TIMEOUT_IN_SECONDS):
         data_path = os.path.join(DATA_DIR, "lda")
@@ -270,7 +262,6 @@ def test_lda_airflow_config_uploads_data_source_to_s3(sagemaker_session, cpu_ins
 
 
 @pytest.mark.canary_quick
-@pytest.mark.skip(reason="Test fails during release build with no stack trace")
 def test_linearlearner_airflow_config_uploads_data_source_to_s3(
     sagemaker_session, cpu_instance_type
 ):
@@ -340,7 +331,6 @@ def test_linearlearner_airflow_config_uploads_data_source_to_s3(
 
 
 @pytest.mark.canary_quick
-@pytest.mark.skip(reason="Test fails during release build with no stack trace")
 def test_ntm_airflow_config_uploads_data_source_to_s3(sagemaker_session, cpu_instance_type):
     with timeout(seconds=AIRFLOW_CONFIG_TIMEOUT_IN_SECONDS):
         data_path = os.path.join(DATA_DIR, "ntm")
@@ -373,7 +363,6 @@ def test_ntm_airflow_config_uploads_data_source_to_s3(sagemaker_session, cpu_ins
 
 
 @pytest.mark.canary_quick
-@pytest.mark.skip(reason="Test fails during release build with no stack trace")
 def test_pca_airflow_config_uploads_data_source_to_s3(sagemaker_session, cpu_instance_type):
     with timeout(seconds=AIRFLOW_CONFIG_TIMEOUT_IN_SECONDS):
         data_path = os.path.join(DATA_DIR, "one_p_mnist", "mnist.pkl.gz")
@@ -406,7 +395,6 @@ def test_pca_airflow_config_uploads_data_source_to_s3(sagemaker_session, cpu_ins
 
 
 @pytest.mark.canary_quick
-@pytest.mark.skip(reason="Test fails during release build with no stack trace")
 def test_rcf_airflow_config_uploads_data_source_to_s3(sagemaker_session, cpu_instance_type):
     with timeout(seconds=AIRFLOW_CONFIG_TIMEOUT_IN_SECONDS):
         # Generate a thousand 14-dimensional datapoints.
@@ -434,7 +422,6 @@ def test_rcf_airflow_config_uploads_data_source_to_s3(sagemaker_session, cpu_ins
 
 
 @pytest.mark.canary_quick
-@pytest.mark.skip(reason="Test fails during release build with no stack trace")
 def test_chainer_airflow_config_uploads_data_source_to_s3(sagemaker_session, chainer_full_version):
     with timeout(seconds=AIRFLOW_CONFIG_TIMEOUT_IN_SECONDS):
         script_path = os.path.join(DATA_DIR, "chainer_mnist", "mnist.py")
@@ -469,7 +456,6 @@ def test_chainer_airflow_config_uploads_data_source_to_s3(sagemaker_session, cha
 
 
 @pytest.mark.canary_quick
-@pytest.mark.skip(reason="Test fails during release build with no stack trace")
 def test_mxnet_airflow_config_uploads_data_source_to_s3(
     sagemaker_session, cpu_instance_type, mxnet_full_version
 ):
@@ -499,7 +485,6 @@ def test_mxnet_airflow_config_uploads_data_source_to_s3(
 
 
 @pytest.mark.canary_quick
-@pytest.mark.skip(reason="Test fails during release build with no stack trace")
 def test_sklearn_airflow_config_uploads_data_source_to_s3(
     sagemaker_session, cpu_instance_type, sklearn_full_version
 ):
@@ -535,7 +520,6 @@ def test_sklearn_airflow_config_uploads_data_source_to_s3(
 
 
 @pytest.mark.canary_quick
-@pytest.mark.skip(reason="Test fails during release build with no stack trace")
 def test_tf_airflow_config_uploads_data_source_to_s3(sagemaker_session, cpu_instance_type):
     with timeout(seconds=AIRFLOW_CONFIG_TIMEOUT_IN_SECONDS):
         tf = TensorFlow(
@@ -567,7 +551,6 @@ def test_tf_airflow_config_uploads_data_source_to_s3(sagemaker_session, cpu_inst
 
 
 @pytest.mark.canary_quick
-@pytest.mark.skip(reason="Test fails during release build with no stack trace")
 def test_xgboost_airflow_config_uploads_data_source_to_s3(sagemaker_session, cpu_instance_type):
     with timeout(seconds=AIRFLOW_CONFIG_TIMEOUT_IN_SECONDS):
 
@@ -593,7 +576,6 @@ def test_xgboost_airflow_config_uploads_data_source_to_s3(sagemaker_session, cpu
 
 
 @pytest.mark.canary_quick
-@pytest.mark.skip(reason="Test fails during release build with no stack trace")
 def test_pytorch_airflow_config_uploads_data_source_to_s3_when_inputs_not_provided(
     sagemaker_session, cpu_instance_type
 ):
