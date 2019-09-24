@@ -547,7 +547,7 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):
                 )
             model = self._compiled_models[family]
         else:
-            kwargs["output_kms_key"] = self.output_kms_key
+            kwargs["model_kms_key"] = self.output_kms_key
             model = self.create_model(**kwargs)
         model.name = model_name
         return model.deploy(

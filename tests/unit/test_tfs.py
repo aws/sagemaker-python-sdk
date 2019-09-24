@@ -167,7 +167,7 @@ def test_tfs_model_with_entry_point(
         framework_version=tf_version,
         image="my-image",
         sagemaker_session=sagemaker_session,
-        output_kms_key="kms-key",
+        model_kms_key="kms-key",
     )
 
     model.prepare_container_def(INSTANCE_TYPE)

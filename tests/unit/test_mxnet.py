@@ -416,7 +416,7 @@ def test_model(sagemaker_session):
 
 @patch("sagemaker.utils.repack_model")
 def test_model_mms_version(repack_model, sagemaker_session):
-    output_kms_key = "kms-key"
+    model_kms_key = "kms-key"
     model = MXNetModel(
         MODEL_DATA,
         role=ROLE,
@@ -424,7 +424,7 @@ def test_model_mms_version(repack_model, sagemaker_session):
         framework_version=MXNetModel._LOWEST_MMS_VERSION,
         sagemaker_session=sagemaker_session,
         name="test-mxnet-model",
-        output_kms_key=output_kms_key,
+        model_kms_key=model_kms_key,
     )
     predictor = model.deploy(1, GPU)
 
@@ -435,7 +435,7 @@ def test_model_mms_version(repack_model, sagemaker_session):
         model_uri=MODEL_DATA,
         repacked_model_uri="s3://mybucket/test-mxnet-model/model.tar.gz",
         sagemaker_session=sagemaker_session,
-        kms_key=output_kms_key,
+        kms_key=model_kms_key,
     )
 
     assert model.model_data == MODEL_DATA

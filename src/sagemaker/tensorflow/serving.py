@@ -230,7 +230,7 @@ class Model(sagemaker.model.FrameworkModel):
                 self.model_data,
                 model_data,
                 self.sagemaker_session,
-                kms_key=self.output_kms_key,
+                kms_key=self.model_kms_key,
             )
         else:
             model_data = self.model_data
