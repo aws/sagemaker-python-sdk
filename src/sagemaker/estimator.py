@@ -619,6 +619,8 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):
         init_params["base_job_name"] = job_details["TrainingJobName"]
         init_params["output_path"] = job_details["OutputDataConfig"]["S3OutputPath"]
         init_params["output_kms_key"] = job_details["OutputDataConfig"]["KmsKeyId"]
+        if "EnableNetworkIsolation" in job_details:
+            init_params["enable_network_isolation"] = job_details["EnableNetworkIsolation"]
 
         has_hps = "HyperParameters" in job_details
         init_params["hyperparameters"] = job_details["HyperParameters"] if has_hps else {}
