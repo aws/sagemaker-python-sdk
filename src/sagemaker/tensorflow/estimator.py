@@ -538,8 +538,8 @@ class TensorFlow(Framework):
                 If not specified and ``endpoint_type`` is 'tensorflow-serving', ``dependencies`` is
                 set to ``None``.
                 If ``endpoint_type`` is also ``None``, then the dependencies from training are used.
-            **kwargs: Additional kwargs passed to ``_create_tfs_model`` and
-                ``_create_default_model``.
+            **kwargs: Additional kwargs passed to ``sagemaker.tensorflow.serving.Model`` constructor
+                and ``sagemaker.tensorflow.model.TensorFlowModel`` constructor.
 
         Returns:
             sagemaker.tensorflow.model.TensorFlowModel or sagemaker.tensorflow.serving.Model: A

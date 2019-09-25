@@ -735,7 +735,10 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):
             model_name = self._current_job_name
         else:
             model_name = self.latest_training_job.name
-            model = self.create_model(vpc_config_override=vpc_config_override)
+            model = self.create_model(
+                vpc_config_override=vpc_config_override,
+                model_kms_key=self.output_kms_key
+            )
 
             # not all create_model() implementations have the same kwargs
             model.name = model_name
