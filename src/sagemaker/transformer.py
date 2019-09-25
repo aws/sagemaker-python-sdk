@@ -60,8 +60,9 @@ class Transformer(object):
                 not specified, results are stored to a default bucket.
             output_kms_key (str): Optional. KMS key ID for encrypting the
                 transform output (default: None).
-            accept (str): The content type accepted by the endpoint deployed
-                during the transform job.
+            accept (str): The accept header passed by the client to
+                the inference endpoint. If it is supported by the endpoint,
+                it will be the format of the batch transform output.
             max_concurrent_transforms (int): The maximum number of HTTP requests
                 to be made to each individual transform container at one time.
             max_payload (int): Maximum size of the payload in a single HTTP
@@ -118,6 +119,8 @@ class Transformer(object):
         input_filter=None,
         output_filter=None,
         join_source=None,
+        wait=False,
+        logs=False,
     ):
         """Start a new transform job.
 
@@ -153,6 +156,10 @@ class Transformer(object):
                 will be joined to the inference result. You can use OutputFilter
                 to select the useful portion before uploading to S3. (default:
                 None). Valid values: Input, None.
+            wait (bool): Whether the call should wait until the job completes
+                (default: True).
+            logs (bool): Whether to show the logs produced by the job.
+                Only meaningful when wait is True (default: False).
         """
         local_mode = self.sagemaker_session.local_mode
         if not local_mode and not data.startswith("s3://"):
@@ -185,6 +192,9 @@ class Transformer(object):
             output_filter,
             join_source,
         )
+
+        if wait:
+            self.latest_transform_job.wait(logs=logs)
 
     def delete_model(self):
         """Delete the corresponding SageMaker model for this Transformer."""
@@ -223,10 +233,18 @@ class Transformer(object):
                 "Local instance types require locally created models." % self.model_name
             )
 
-    def wait(self):
+    def wait(self, logs=True):
         """Placeholder docstring"""
         self._ensure_last_transform_job()
-        self.latest_transform_job.wait()
+        self.latest_transform_job.wait(logs=logs)
+
+    def stop_transform_job(self, wait=True):
+        """Stop latest running batch transform job.
+        """
+        self._ensure_last_transform_job()
+        self.latest_transform_job.stop()
+        if wait:
+            self.latest_transform_job.wait()
 
     def _ensure_last_transform_job(self):
         """Placeholder docstring"""
@@ -342,8 +360,15 @@ class _TransformJob(_Job):
 
         return cls(transformer.sagemaker_session, transformer._current_job_name)
 
-    def wait(self):
-        self.sagemaker_session.wait_for_transform_job(self.job_name)
+    def wait(self, logs=True):
+        if logs:
+            self.sagemaker_session.logs_for_transform_job(self.job_name, wait=True)
+        else:
+            self.sagemaker_session.wait_for_transform_job(self.job_name)
+
+    def stop(self):
+        """Placeholder docstring"""
+        self.sagemaker_session.stop_transform_job(name=self.job_name)
 
     @staticmethod
     def _load_config(data, data_type, content_type, compression_type, split_type, transformer):

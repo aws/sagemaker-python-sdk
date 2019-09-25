@@ -162,6 +162,17 @@ def test_byo_training_config_all_args(sagemaker_session):
 
 
 @patch("sagemaker.utils.sagemaker_timestamp", MagicMock(return_value=TIME_STAMP))
+@patch("os.path.isfile", MagicMock(return_value=True))
+@patch("sagemaker.estimator.tar_and_upload_dir", MagicMock())
+@patch(
+    "sagemaker.fw_utils.parse_s3_url",
+    MagicMock(
+        return_value=[
+            "output",
+            "sagemaker-tensorflow-{}/source/sourcedir.tar.gz".format(TIME_STAMP),
+        ]
+    ),
+)
 def test_framework_training_config_required_args(sagemaker_session):
     tf = tensorflow.TensorFlow(
         entry_point="/some/script.py",
@@ -231,6 +242,12 @@ def test_framework_training_config_required_args(sagemaker_session):
 
 
 @patch("sagemaker.utils.sagemaker_timestamp", MagicMock(return_value=TIME_STAMP))
+@patch("os.path.isfile", MagicMock(return_value=True))
+@patch("sagemaker.estimator.tar_and_upload_dir", MagicMock())
+@patch(
+    "sagemaker.estimator.parse_s3_url",
+    MagicMock(return_value=["{{ output_path }}", "{{ output_path }}"]),
+)
 def test_framework_training_config_all_args(sagemaker_session):
     tf = tensorflow.TensorFlow(
         entry_point="{{ entry_point }}",
@@ -450,6 +467,17 @@ def test_amazon_alg_training_config_all_args(sagemaker_session):
 
 @patch("sagemaker.utils.sagemaker_timestamp", MagicMock(return_value=TIME_STAMP))
 @patch("sagemaker.utils.sagemaker_short_timestamp", MagicMock(return_value=TIME_STAMP))
+@patch("os.path.isfile", MagicMock(return_value=True))
+@patch("sagemaker.estimator.tar_and_upload_dir", MagicMock())
+@patch(
+    "sagemaker.fw_utils.parse_s3_url",
+    MagicMock(
+        return_value=[
+            "output",
+            "{{{{ base_job_name }}}}-{0}/source/sourcedir.tar.gz".format(TIME_STAMP),
+        ]
+    ),
+)
 def test_framework_tuning_config(sagemaker_session):
     mxnet_estimator = mxnet.MXNet(
         entry_point="{{ entry_point }}",
@@ -708,6 +736,17 @@ def test_amazon_alg_model_config(sagemaker_session):
 
 
 @patch("sagemaker.utils.sagemaker_timestamp", MagicMock(return_value=TIME_STAMP))
+@patch("os.path.isfile", MagicMock(return_value=True))
+@patch("sagemaker.estimator.tar_and_upload_dir", MagicMock())
+@patch(
+    "sagemaker.fw_utils.parse_s3_url",
+    MagicMock(
+        return_value=[
+            "output",
+            "{{{{ base_job_name }}}}-{0}/source/sourcedir.tar.gz".format(TIME_STAMP),
+        ]
+    ),
+)
 def test_model_config_from_framework_estimator(sagemaker_session):
     mxnet_estimator = mxnet.MXNet(
         entry_point="{{ entry_point }}",
@@ -851,6 +890,17 @@ def test_transform_config(sagemaker_session):
 
 
 @patch("sagemaker.utils.sagemaker_timestamp", MagicMock(return_value=TIME_STAMP))
+@patch("os.path.isfile", MagicMock(return_value=True))
+@patch("sagemaker.estimator.tar_and_upload_dir", MagicMock())
+@patch(
+    "sagemaker.fw_utils.parse_s3_url",
+    MagicMock(
+        return_value=[
+            "output",
+            "{{{{ base_job_name }}}}-{0}/source/sourcedir.tar.gz".format(TIME_STAMP),
+        ]
+    ),
+)
 def test_transform_config_from_framework_estimator(sagemaker_session):
     mxnet_estimator = mxnet.MXNet(
         entry_point="{{ entry_point }}",
@@ -1081,6 +1131,17 @@ def test_deploy_amazon_alg_model_config(sagemaker_session):
 
 
 @patch("sagemaker.utils.sagemaker_timestamp", MagicMock(return_value=TIME_STAMP))
+@patch("os.path.isfile", MagicMock(return_value=True))
+@patch("sagemaker.estimator.tar_and_upload_dir", MagicMock())
+@patch(
+    "sagemaker.fw_utils.parse_s3_url",
+    MagicMock(
+        return_value=[
+            "output",
+            "{{{{ base_job_name }}}}-{0}/source/sourcedir.tar.gz".format(TIME_STAMP),
+        ]
+    ),
+)
 def test_deploy_config_from_framework_estimator(sagemaker_session):
     mxnet_estimator = mxnet.MXNet(
         entry_point="{{ entry_point }}",

@@ -1,4 +1,4 @@
-# Copyright 2017-2018 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright 2017-2019 Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -468,10 +468,12 @@ def _create_or_update_code_dir(
         shutil.copy2(inference_script, code_dir)
 
     for dependency in dependencies:
+        lib_dir = os.path.join(code_dir, "lib")
         if os.path.isdir(dependency):
-            shutil.copytree(dependency, code_dir)
+            shutil.copytree(dependency, os.path.join(lib_dir, os.path.basename(dependency)))
         else:
-            shutil.copy2(dependency, code_dir)
+            os.mkdir(lib_dir)
+            shutil.copy2(dependency, lib_dir)
 
 
 def _extract_model(model_uri, sagemaker_session, tmp):
@@ -534,8 +536,39 @@ def get_ecr_image_uri_prefix(account, region):
     Returns:
         (str): URI prefix of ECR image
     """
-    domain = "c2s.ic.gov" if region == "us-iso-east-1" else "amazonaws.com"
+    domain = _domain_for_region(region)
     return "{}.dkr.ecr.{}.{}".format(account, region, domain)
+
+
+def sts_regional_endpoint(region):
+    """Get the AWS STS endpoint specific for the given region.
+
+    We need this function because the AWS SDK does not yet honor
+    the ``region_name`` parameter when creating an AWS STS client.
+
+    For the list of regional endpoints, see
+    https://docs.aws.amazon.com/IAM/latest/UserGuide/id_credentials_temp_enable-regions.html#id_credentials_region-endpoints.
+
+    Args:
+        region (str): AWS region name
+
+    Returns:
+        str: AWS STS regional endpoint
+    """
+    domain = _domain_for_region(region)
+    return "https://sts.{}.{}".format(region, domain)
+
+
+def _domain_for_region(region):
+    """Get the DNS suffix for the given region.
+
+    Args:
+        region (str): AWS region name
+
+    Returns:
+        str: the DNS suffix
+    """
+    return "c2s.ic.gov" if region == "us-iso-east-1" else "amazonaws.com"
 
 
 class DeferredError(object):

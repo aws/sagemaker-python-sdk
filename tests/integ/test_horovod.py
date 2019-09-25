@@ -30,7 +30,7 @@ horovod_dir = os.path.join(os.path.dirname(__file__), "..", "data", "horovod")
 
 @pytest.fixture(scope="module")
 def gpu_instance_type(request):
-    return "ml.p3.2xlarge"
+    return "ml.p2.xlarge"
 
 
 @pytest.mark.canary_quick
@@ -40,7 +40,7 @@ def test_hvd_cpu(sagemaker_session, cpu_instance_type, tmpdir):
 
 @pytest.mark.canary_quick
 @pytest.mark.skipif(
-    integ.test_region() in integ.HOSTING_NO_P3_REGIONS, reason="no ml.p3 instances in this region"
+    integ.test_region() in integ.HOSTING_NO_P2_REGIONS, reason="no ml.p2 instances in this region"
 )
 def test_hvd_gpu(sagemaker_session, gpu_instance_type, tmpdir):
     __create_and_fit_estimator(sagemaker_session, gpu_instance_type, tmpdir)

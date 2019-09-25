@@ -1,4 +1,4 @@
-# Copyright 2017-2018 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright 2017-2019 Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -20,11 +20,10 @@ import pytest
 from mock import Mock
 from mock import patch
 
-
 from sagemaker.sklearn import defaults
 from sagemaker.sklearn import SKLearn
 from sagemaker.sklearn import SKLearnPredictor, SKLearnModel
-
+from sagemaker.fw_utils import UploadedCode
 
 DATA_DIR = os.path.join(os.path.dirname(__file__), "..", "data")
 SCRIPT_PATH = os.path.join(DATA_DIR, "dummy_script.py")
@@ -170,6 +169,25 @@ def test_create_model(sagemaker_session):
     assert model_values["Image"] == default_image_uri
 
 
+@patch("sagemaker.model.FrameworkModel._upload_code")
+def test_create_model_with_network_isolation(upload, sagemaker_session):
+    source_dir = "s3://mybucket/source"
+    repacked_model_data = "s3://mybucket/prefix/model.tar.gz"
+
+    sklearn_model = SKLearnModel(
+        model_data=source_dir,
+        role=ROLE,
+        sagemaker_session=sagemaker_session,
+        entry_point=SCRIPT_PATH,
+        enable_network_isolation=True,
+    )
+    sklearn_model.uploaded_code = UploadedCode(s3_prefix=repacked_model_data, script_name="script")
+    sklearn_model.repacked_model_data = repacked_model_data
+    model_values = sklearn_model.prepare_container_def(CPU)
+    assert model_values["Environment"]["SAGEMAKER_SUBMIT_DIRECTORY"] == "/opt/ml/model/code"
+    assert model_values["ModelDataUrl"] == repacked_model_data
+
+
 def test_create_model_from_estimator(sagemaker_session, sklearn_version):
     container_log_level = '"logging.INFO"'
     source_dir = "s3://mybucket/source"
@@ -183,6 +201,7 @@ def test_create_model_from_estimator(sagemaker_session, sklearn_version):
         py_version=PYTHON_VERSION,
         base_job_name="job",
         source_dir=source_dir,
+        enable_network_isolation=True,
     )
 
     job_name = "new_name"
@@ -198,6 +217,7 @@ def test_create_model_from_estimator(sagemaker_session, sklearn_version):
     assert model.container_log_level == container_log_level
     assert model.source_dir == source_dir
     assert model.vpc_config is None
+    assert model.enable_network_isolation()
 
 
 def test_create_model_with_optional_params(sagemaker_session):

@@ -45,11 +45,23 @@ NEO_ALLOWED_TARGET_INSTANCE_FAMILY = set(
 NEO_ALLOWED_FRAMEWORKS = set(["mxnet", "tensorflow", "pytorch", "onnx", "xgboost"])
 
 NEO_IMAGE_ACCOUNT = {
+    "us-west-1": "710691900526",
     "us-west-2": "301217895009",
     "us-east-1": "785573368785",
-    "eu-west-1": "802834080501",
     "us-east-2": "007439368137",
+    "eu-west-1": "802834080501",
+    "eu-west-2": "205493899709",
+    "eu-west-3": "254080097072",
+    "eu-central-1": "746233611703",
+    "eu-north-1": "601324751636",
     "ap-northeast-1": "941853720454",
+    "ap-northeast-2": "151534178276",
+    "ap-east-1": "110948597952",
+    "ap-southeast-1": "324986816169",
+    "ap-southeast-2": "355873309152",
+    "ap-south-1": "763008648453",
+    "sa-east-1": "756306329178",
+    "ca-central-1": "464438896020",
 }
 
 
@@ -484,8 +496,9 @@ class Model(object):
                 not specified, results are stored to a default bucket.
             output_kms_key (str): Optional. KMS key ID for encrypting the
                 transform output (default: None).
-            accept (str): The content type accepted by the endpoint deployed
-                during the transform job.
+            accept (str): The accept header passed by the client to
+                the inference endpoint. If it is supported by the endpoint,
+                it will be the format of the batch transform output.
             env (dict): Environment variables to be set for use during the
                 transform job (default: None).
             max_concurrent_transforms (int): The maximum number of HTTP requests
@@ -797,7 +810,10 @@ class FrameworkModel(Model):
         """Placeholder docstring"""
         if self.uploaded_code:
             script_name = self.uploaded_code.script_name
-            dir_name = self.uploaded_code.s3_prefix
+            if self.enable_network_isolation():
+                dir_name = "/opt/ml/model/code"
+            else:
+                dir_name = self.uploaded_code.s3_prefix
         else:
             script_name = self.entry_point
             dir_name = "file://" + self.source_dir

@@ -29,7 +29,7 @@ from tests.integ.timeout import timeout, timeout_and_delete_endpoint_by_name
 from tests.integ import vpc_test_utils
 
 from sagemaker import KMeans, LDA, RandomCutForest
-from sagemaker.amazon.amazon_estimator import registry
+from sagemaker.amazon.amazon_estimator import get_image_uri
 from sagemaker.amazon.common import read_records
 from sagemaker.chainer import Chainer
 from sagemaker.estimator import Estimator
@@ -695,9 +695,7 @@ def test_tuning_tf_vpc_multi(sagemaker_session, cpu_instance_type):
     script_path = os.path.join(DATA_DIR, "iris", "iris-dnn-classifier.py")
 
     ec2_client = sagemaker_session.boto_session.client("ec2")
-    subnet_ids, security_group_id = vpc_test_utils.get_or_create_vpc_resources(
-        ec2_client, sagemaker_session.boto_region_name
-    )
+    subnet_ids, security_group_id = vpc_test_utils.get_or_create_vpc_resources(ec2_client)
     vpc_test_utils.setup_security_group_for_encryption(ec2_client, security_group_id)
 
     estimator = TensorFlow(
@@ -893,7 +891,7 @@ def test_tuning_byo_estimator(sagemaker_session, cpu_instance_type):
     Later the trained model is deployed and prediction is called against the endpoint.
     Default predictor is updated with json serializer and deserializer.
     """
-    image_name = registry(sagemaker_session.boto_session.region_name) + "/factorization-machines:1"
+    image_name = get_image_uri(sagemaker_session.boto_session.region_name, "factorization-machines")
     training_data_path = os.path.join(DATA_DIR, "dummy_tensor")
 
     with timeout(minutes=TUNING_DEFAULT_TIMEOUT_MINUTES):

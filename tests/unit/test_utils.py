@@ -22,6 +22,7 @@ import re
 import time
 
 from boto3 import exceptions
+import botocore
 import pytest
 from mock import call, patch, Mock, MagicMock
 
@@ -343,7 +344,7 @@ def test_repack_model_without_source_dir(tmp, fake_s3):
         [
             "model-dir/model",
             "dependencies/a",
-            "dependencies/b",
+            "dependencies/some/dir/b",
             "source-dir/inference.py",
             "source-dir/this-file-should-not-be-included.py",
         ],
@@ -354,7 +355,10 @@ def test_repack_model_without_source_dir(tmp, fake_s3):
     sagemaker.utils.repack_model(
         inference_script=os.path.join(tmp, "source-dir/inference.py"),
         source_directory=None,
-        dependencies=[os.path.join(tmp, "dependencies/a"), os.path.join(tmp, "dependencies/b")],
+        dependencies=[
+            os.path.join(tmp, "dependencies/a"),
+            os.path.join(tmp, "dependencies/some/dir"),
+        ],
         model_uri="s3://fake/location",
         repacked_model_uri="s3://destination-bucket/model.tar.gz",
         sagemaker_session=fake_s3.sagemaker_session,
@@ -362,8 +366,8 @@ def test_repack_model_without_source_dir(tmp, fake_s3):
 
     assert list_tar_files(fake_s3.fake_upload_path, tmp) == {
         "/model",
-        "/code/a",
-        "/code/b",
+        "/code/lib/a",
+        "/code/lib/dir/b",
         "/code/inference.py",
     }
 
@@ -448,7 +452,7 @@ def test_repack_model_from_file_to_file(tmp):
         sagemaker_session,
     )
 
-    assert list_tar_files(destination_path, tmp) == {"/code/a", "/code/inference.py", "/model"}
+    assert list_tar_files(destination_path, tmp) == {"/code/lib/a", "/code/inference.py", "/model"}
 
 
 def test_repack_model_with_inference_code_should_replace_the_code(tmp, fake_s3):
@@ -560,3 +564,13 @@ def list_tar_files(tar_ball, tmp):
 
     result = set(walk())
     return result if result else {}
+
+
+def test_sts_regional_endpoint():
+    endpoint = sagemaker.utils.sts_regional_endpoint("us-west-2")
+    assert endpoint == "https://sts.us-west-2.amazonaws.com"
+    assert botocore.utils.is_valid_endpoint_url(endpoint)
+
+    endpoint = sagemaker.utils.sts_regional_endpoint("us-iso-east-1")
+    assert endpoint == "https://sts.us-iso-east-1.c2s.ic.gov"
+    assert botocore.utils.is_valid_endpoint_url(endpoint)

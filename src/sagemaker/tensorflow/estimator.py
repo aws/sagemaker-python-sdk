@@ -27,6 +27,7 @@ import sagemaker.fw_utils as fw
 from sagemaker.tensorflow.defaults import TF_VERSION
 from sagemaker.tensorflow.model import TensorFlowModel
 from sagemaker.tensorflow.serving import Model
+from sagemaker.transformer import Transformer
 from sagemaker import utils
 from sagemaker.vpc_utils import VPC_CONFIG_DEFAULT
 
@@ -345,7 +346,7 @@ class TensorFlow(Framework):
 
         if py_version == "py2" and self._only_python_3_supported():
             msg = (
-                "Python 2 containers are only available until TensorFlow version 1.14.0. "
+                "Python 2 containers are only available until January 1st, 2020. "
                 "Please use a Python 3 container."
             )
             raise AttributeError(msg)
@@ -583,6 +584,7 @@ class TensorFlow(Framework):
             entry_point=entry_point,
             source_dir=source_dir,
             dependencies=dependencies,
+            enable_network_isolation=self.enable_network_isolation(),
         )
 
     def _create_default_model(
@@ -612,6 +614,7 @@ class TensorFlow(Framework):
             sagemaker_session=self.sagemaker_session,
             vpc_config=self.get_vpc_config(vpc_config_override),
             dependencies=dependencies or self.dependencies,
+            enable_network_isolation=self.enable_network_isolation(),
         )
 
     def hyperparameters(self):
@@ -704,6 +707,7 @@ class TensorFlow(Framework):
         volume_kms_key=None,
         endpoint_type=None,
         entry_point=None,
+        vpc_config_override=VPC_CONFIG_DEFAULT,
     ):
         """Return a ``Transformer`` that uses a SageMaker Model based on the training job. It
         reuses the SageMaker Session and base job name used by the Estimator.
@@ -719,8 +723,9 @@ class TensorFlow(Framework):
                 results are stored to a default bucket.
             output_kms_key (str): Optional. KMS key ID for encrypting the transform output
                 (default: None).
-            accept (str): The content type accepted by the endpoint deployed during the transform
-                job.
+            accept (str): The accept header passed by the client to
+                the inference endpoint. If it is supported by the endpoint,
+                it will be the format of the batch transform output.
             env (dict): Environment variables to be set for use during the transform job
                 (default: None).
             max_concurrent_transforms (int): The maximum number of HTTP requests to be made to
@@ -745,13 +750,41 @@ class TensorFlow(Framework):
                 should be executed as the entry point to training. If not specified and
                 ``endpoint_type`` is 'tensorflow-serving', no entry point is used. If
                 ``endpoint_type`` is also ``None``, then the training entry point is used.
+            vpc_config_override (dict[str, list[str]]): Optional override for
+                the VpcConfig set on the model.
+                Default: use subnets and security groups from this Estimator.
+                * 'Subnets' (list[str]): List of subnet ids.
+                * 'SecurityGroupIds' (list[str]): List of security group ids.
         """
-
         role = role or self.role
+
+        if self.latest_training_job is None:
+            logging.warning(
+                "No finished training job found associated with this estimator. Please make sure "
+                "this estimator is only used for building workflow config"
+            )
+            return Transformer(
+                self._current_job_name,
+                instance_count,
+                instance_type,
+                strategy=strategy,
+                assemble_with=assemble_with,
+                output_path=output_path,
+                output_kms_key=output_kms_key,
+                accept=accept,
+                max_concurrent_transforms=max_concurrent_transforms,
+                max_payload=max_payload,
+                env=env or {},
+                tags=tags,
+                base_transform_job_name=self.base_job_name,
+                volume_kms_key=volume_kms_key,
+                sagemaker_session=self.sagemaker_session,
+            )
+
         model = self.create_model(
             model_server_workers=model_server_workers,
             role=role,
-            vpc_config_override=VPC_CONFIG_DEFAULT,
+            vpc_config_override=vpc_config_override,
             endpoint_type=endpoint_type,
             entry_point=entry_point,
         )

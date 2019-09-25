@@ -1,4 +1,4 @@
-# Copyright 2017-2018 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright 2017-2019 Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -24,6 +24,7 @@ from sagemaker.mxnet.model import MXNetModel
 from sagemaker.utils import sagemaker_timestamp
 from tests.integ import DATA_DIR, PYTHON_VERSION, TRAINING_DEFAULT_TIMEOUT_MINUTES
 from tests.integ.kms_utils import get_or_create_kms_key
+from tests.integ.retry import retries
 from tests.integ.timeout import timeout, timeout_and_delete_endpoint_by_name
 
 
@@ -182,16 +183,11 @@ def test_deploy_model_with_update_endpoint(
         model.deploy(1, cpu_instance_type, update_endpoint=True, endpoint_name=endpoint_name)
 
         # Wait for endpoint to finish updating
-        max_retry_count = 40  # Endpoint update takes ~7min. 40 retries * 30s sleeps = 20min timeout
-        current_retry_count = 0
-        while current_retry_count <= max_retry_count:
-            if current_retry_count >= max_retry_count:
-                raise Exception("Endpoint status not 'InService' within expected timeout.")
-            time.sleep(30)
+        # Endpoint update takes ~7min. 40 retries * 30s sleeps = 20min timeout
+        for _ in retries(40, "Waiting for 'InService' endpoint status", seconds_to_sleep=30):
             new_endpoint = sagemaker_session.sagemaker_client.describe_endpoint(
                 EndpointName=endpoint_name
             )
-            current_retry_count += 1
             if new_endpoint["EndpointStatus"] == "InService":
                 break
 

@@ -1,5 +1,158 @@
 # Changelog
 
+## v1.42.1 (2019-09-24)
+
+### Bug fixes and other changes
+
+ * lazy import of tensorflow module
+ * skip airflow_config tests as they're blocking the release build
+ * skip lda tests in regions that does not support it.
+ * add airflow_config tests to canaries
+ * use correct STS endpoint for us-iso-east-1
+
+## v1.42.0 (2019-09-20)
+
+### Features
+
+ * add estimator preparation to airflow configuration
+
+### Bug fixes and other changes
+
+ * correct airflow workflow for BYO estimators.
+
+## v1.41.0 (2019-09-20)
+
+### Features
+
+ * enable sklearn for network isolation mode
+
+## v1.40.2 (2019-09-19)
+
+### Bug fixes and other changes
+
+ * use new ECR images in us-iso-east-1 for TF and MXNet
+
+## v1.40.1 (2019-09-18)
+
+### Bug fixes and other changes
+
+ * expose kms_key parameter for deploying from training and hyperparameter tuning jobs
+
+### Documentation changes
+
+ * Update sklearn default predict_fn
+
+## v1.40.0 (2019-09-17)
+
+### Features
+
+ * add support to TF 1.14 serving with elastic accelerator.
+
+## v1.39.4 (2019-09-17)
+
+### Bug fixes and other changes
+
+ * pass enable_network_isolation when creating TF and SKLearn models
+
+## v1.39.3 (2019-09-16)
+
+### Bug fixes and other changes
+
+ * expose vpc_config_override in transformer() methods
+ * use Estimator.create_model in Estimator.transformer
+
+## v1.39.2 (2019-09-11)
+
+### Bug fixes and other changes
+
+ * pass enable_network_isolation in Estimator.create_model
+ * use p2 instead of p3 for the Horovod test
+
+## v1.39.1 (2019-09-10)
+
+### Bug fixes and other changes
+
+ * copy dependencies into new folder when repacking model
+ * make get_caller_identity_arn get role from DescribeNotebookInstance
+ * add https to regional STS endpoint
+ * clean up git support integ tests
+
+## v1.39.0 (2019-09-09)
+
+### Features
+
+ * Estimator.fit like logs for transformer
+ * handler for stopping transform job
+
+### Bug fixes and other changes
+
+ * remove hardcoded creds from integ test
+ * remove hardcoded creds from integ test
+ * Fix get_image_uri warning log for default xgboost version.
+ * add enable_network_isolation to generic Estimator class
+ * use regional endpoint when creating AWS STS client
+ * update Sagemaker Neo regions
+ * use cpu_instance_type fixture for stop_transform_job test
+ * hyperparameter tuning with spot instances and checkpoints
+ * skip efs and fsx integ tests in all regions
+
+### Documentation changes
+
+ * clarify some Local Mode limitations
+
+## v1.38.6 (2019-09-04)
+
+### Bug fixes and other changes
+
+ * update: disable efs fsx integ tests in non-pdx regions
+ * fix canary test failure issues
+ * use us-east-1 for PR test runs
+
+### Documentation changes
+
+ * updated description for "accept" parameter in batch transform
+
+## v1.38.5 (2019-09-02)
+
+### Bug fixes and other changes
+
+ * clean up resources created by file system set up when setup fails
+
+## v1.38.4 (2019-08-29)
+
+### Bug fixes and other changes
+
+ * skip EFS tests until they are confirmed fixed.
+
+### Documentation changes
+
+ * add note to CONTRIBUTING to clarify automated formatting
+ * add checkpoint section to using_mxnet topic
+
+## v1.38.3 (2019-08-28)
+
+### Bug fixes and other changes
+
+ * change AMI ids in tests to be dynamic based on regions
+
+## v1.38.2 (2019-08-27)
+
+### Bug fixes and other changes
+
+ * skip efs tests in non us-west-2 regions
+ * refactor tests to use common retry method
+
+## v1.38.1 (2019-08-26)
+
+### Bug fixes and other changes
+
+ * update py2 warning message
+ * add logic to use asimov image for TF 1.14 py2
+
+### Documentation changes
+
+ * changed EFS directory path instructions in documentation and Docstrings
+
 ## v1.38.0 (2019-08-23)
 
 ### Features

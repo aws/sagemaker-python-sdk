@@ -20,9 +20,10 @@ import pytest
 from mock import patch, Mock, MagicMock
 
 from sagemaker.fw_utils import create_image_uri
+from sagemaker.estimator import _TrainingJob
 from sagemaker.model import MODEL_SERVER_WORKERS_PARAM_NAME
 from sagemaker.session import s3_input
-from sagemaker.tensorflow import defaults, TensorFlow, TensorFlowModel, TensorFlowPredictor
+from sagemaker.tensorflow import defaults, serving, TensorFlow, TensorFlowModel, TensorFlowPredictor
 import sagemaker.tensorflow.estimator as tfe
 
 DATA_DIR = os.path.join(os.path.dirname(__file__), "..", "data")
@@ -256,6 +257,7 @@ def test_create_model(sagemaker_session, tf_version):
         container_log_level=container_log_level,
         base_job_name="job",
         source_dir=source_dir,
+        enable_network_isolation=True,
     )
 
     job_name = "doing something"
@@ -271,6 +273,7 @@ def test_create_model(sagemaker_session, tf_version):
     assert model.container_log_level == container_log_level
     assert model.source_dir == source_dir
     assert model.vpc_config is None
+    assert model.enable_network_isolation()
 
 
 def test_create_model_with_optional_params(sagemaker_session):
@@ -322,7 +325,7 @@ def test_transformer_creation_with_endpoint_type(create_model, sagemaker_session
         train_instance_count=INSTANCE_COUNT,
         train_instance_type=INSTANCE_TYPE,
     )
-
+    tf.latest_training_job = _TrainingJob(sagemaker_session, "some-job-name")
     tf.transformer(
         INSTANCE_COUNT,
         INSTANCE_TYPE,
@@ -365,6 +368,7 @@ def test_transformer_creation_without_endpoint_type(create_model, sagemaker_sess
         train_instance_count=INSTANCE_COUNT,
         train_instance_type=INSTANCE_TYPE,
     )
+    tf.latest_training_job = _TrainingJob(sagemaker_session, "some-job-name")
     tf.transformer(INSTANCE_COUNT, INSTANCE_TYPE)
 
     create_model.assert_called_with(
@@ -959,7 +963,7 @@ def test_py2_version_deprecated(sagemaker_session):
     with pytest.raises(AttributeError) as e:
         _build_tf(sagemaker_session=sagemaker_session, framework_version="1.14.1", py_version="py2")
 
-    msg = "Python 2 containers are only available until TensorFlow version 1.14.0. Please use a Python 3 container."
+    msg = "Python 2 containers are only available until January 1st, 2020. Please use a Python 3 container."
     assert msg in str(e.value)
 
 
@@ -1002,11 +1006,23 @@ def test_script_mode_enabled(sagemaker_session):
     assert tf._script_mode_enabled() is False
 
 
-@patch("sagemaker.tensorflow.estimator.TensorFlow._create_tfs_model")
-def test_script_mode_create_model(create_tfs_model, sagemaker_session):
-    tf = _build_tf(sagemaker_session=sagemaker_session, py_version="py3")
-    tf.create_model()
-    create_tfs_model.assert_called_once()
+def test_script_mode_create_model(sagemaker_session):
+    tf = _build_tf(
+        sagemaker_session=sagemaker_session, py_version="py3", enable_network_isolation=True
+    )
+    tf._prepare_for_training()  # set output_path and job name as if training happened
+
+    model = tf.create_model()
+
+    assert isinstance(model, serving.Model)
+
+    assert model.model_data == tf.model_data
+    assert model.role == tf.role
+    assert model.name == tf._current_job_name
+    assert model.container_log_level == tf.container_log_level
+    assert model._framework_version == "1.11"
+    assert model.sagemaker_session == sagemaker_session
+    assert model.enable_network_isolation()
 
 
 @patch("sagemaker.utils.create_tar_file", MagicMock())

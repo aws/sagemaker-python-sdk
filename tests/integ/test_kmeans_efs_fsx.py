@@ -19,12 +19,12 @@ from sagemaker.amazon.amazon_estimator import FileSystemRecordSet
 from sagemaker.parameter import IntegerParameter, CategoricalParameter
 from sagemaker.tuner import HyperparameterTuner
 from sagemaker.utils import unique_name_from_base
+import tests
 from tests.integ import TRAINING_DEFAULT_TIMEOUT_MINUTES, TUNING_DEFAULT_TIMEOUT_MINUTES
-from tests.integ.s3_utils import assert_s3_files_exist
 from tests.integ.file_system_input_utils import set_up_efs_fsx, tear_down
+from tests.integ.s3_utils import assert_s3_files_exist
 from tests.integ.timeout import timeout
 
-TRAIN_INSTANCE_TYPE = "ml.c4.xlarge"
 TRAIN_INSTANCE_COUNT = 1
 OBJECTIVE_METRIC_NAME = "test:msd"
 EFS_DIR_PATH = "/one_p_mnist"
@@ -37,31 +37,37 @@ FEATURE_DIM = 784
 
 
 @pytest.fixture(scope="module")
-def efs_fsx_setup(sagemaker_session):
-    fs_resources = set_up_efs_fsx(sagemaker_session)
+def efs_fsx_setup(sagemaker_session, ec2_instance_type):
+    fs_resources = None
     try:
+        fs_resources = set_up_efs_fsx(sagemaker_session, ec2_instance_type)
         yield fs_resources
     finally:
-        tear_down(sagemaker_session, fs_resources)
+        if fs_resources:
+            tear_down(sagemaker_session, fs_resources)
 
 
-@pytest.mark.canary_quick
-def test_kmeans_efs(efs_fsx_setup, sagemaker_session):
+@pytest.mark.skipif(
+    tests.integ.test_region() not in tests.integ.EFS_TEST_ENABLED_REGION,
+    reason="EFS integration tests need to be fixed before running in all regions.",
+)
+def test_kmeans_efs(efs_fsx_setup, sagemaker_session, cpu_instance_type):
     with timeout(minutes=TRAINING_DEFAULT_TIMEOUT_MINUTES):
-        subnets = [efs_fsx_setup.subnet_id]
-        security_group_ids = efs_fsx_setup.security_group_ids
-        role = efs_fsx_setup.role_name
+        role = efs_fsx_setup["role_name"]
+        subnets = [efs_fsx_setup["subnet_id"]]
+        security_group_ids = efs_fsx_setup["security_group_ids"]
+
         kmeans = KMeans(
             role=role,
             train_instance_count=TRAIN_INSTANCE_COUNT,
-            train_instance_type=TRAIN_INSTANCE_TYPE,
+            train_instance_type=cpu_instance_type,
             k=K,
             sagemaker_session=sagemaker_session,
             subnets=subnets,
             security_group_ids=security_group_ids,
         )
 
-        file_system_efs_id = efs_fsx_setup.file_system_efs_id
+        file_system_efs_id = efs_fsx_setup["file_system_efs_id"]
         records = FileSystemRecordSet(
             file_system_id=file_system_efs_id,
             file_system_type="EFS",
@@ -76,23 +82,26 @@ def test_kmeans_efs(efs_fsx_setup, sagemaker_session):
         assert_s3_files_exist(sagemaker_session, model_path, ["model.tar.gz"])
 
 
-@pytest.mark.canary_quick
-def test_kmeans_fsx(efs_fsx_setup, sagemaker_session):
+@pytest.mark.skipif(
+    tests.integ.test_region() not in tests.integ.EFS_TEST_ENABLED_REGION,
+    reason="EFS integration tests need to be fixed before running in all regions.",
+)
+def test_kmeans_fsx(efs_fsx_setup, sagemaker_session, cpu_instance_type):
     with timeout(minutes=TRAINING_DEFAULT_TIMEOUT_MINUTES):
-        subnets = [efs_fsx_setup.subnet_id]
-        security_group_ids = efs_fsx_setup.security_group_ids
-        role = efs_fsx_setup.role_name
+        role = efs_fsx_setup["role_name"]
+        subnets = [efs_fsx_setup["subnet_id"]]
+        security_group_ids = efs_fsx_setup["security_group_ids"]
         kmeans = KMeans(
             role=role,
             train_instance_count=TRAIN_INSTANCE_COUNT,
-            train_instance_type=TRAIN_INSTANCE_TYPE,
+            train_instance_type=cpu_instance_type,
             k=K,
             sagemaker_session=sagemaker_session,
             subnets=subnets,
             security_group_ids=security_group_ids,
         )
 
-        file_system_fsx_id = efs_fsx_setup.file_system_fsx_id
+        file_system_fsx_id = efs_fsx_setup["file_system_fsx_id"]
         records = FileSystemRecordSet(
             file_system_id=file_system_fsx_id,
             file_system_type="FSxLustre",
@@ -107,14 +116,18 @@ def test_kmeans_fsx(efs_fsx_setup, sagemaker_session):
         assert_s3_files_exist(sagemaker_session, model_path, ["model.tar.gz"])
 
 
-def test_tuning_kmeans_efs(efs_fsx_setup, sagemaker_session):
-    subnets = [efs_fsx_setup.subnet_id]
-    security_group_ids = efs_fsx_setup.security_group_ids
-    role = efs_fsx_setup.role_name
+@pytest.mark.skipif(
+    tests.integ.test_region() not in tests.integ.EFS_TEST_ENABLED_REGION,
+    reason="EFS integration tests need to be fixed before running in all regions.",
+)
+def test_tuning_kmeans_efs(efs_fsx_setup, sagemaker_session, cpu_instance_type):
+    role = efs_fsx_setup["role_name"]
+    subnets = [efs_fsx_setup["subnet_id"]]
+    security_group_ids = efs_fsx_setup["security_group_ids"]
     kmeans = KMeans(
         role=role,
         train_instance_count=TRAIN_INSTANCE_COUNT,
-        train_instance_type=TRAIN_INSTANCE_TYPE,
+        train_instance_type=cpu_instance_type,
         k=K,
         sagemaker_session=sagemaker_session,
         subnets=subnets,
@@ -138,7 +151,7 @@ def test_tuning_kmeans_efs(efs_fsx_setup, sagemaker_session):
             max_parallel_jobs=MAX_PARALLEL_JOBS,
         )
 
-        file_system_efs_id = efs_fsx_setup.file_system_efs_id
+        file_system_efs_id = efs_fsx_setup["file_system_efs_id"]
         train_records = FileSystemRecordSet(
             file_system_id=file_system_efs_id,
             file_system_type="EFS",
@@ -163,14 +176,18 @@ def test_tuning_kmeans_efs(efs_fsx_setup, sagemaker_session):
         assert best_training_job
 
 
-def test_tuning_kmeans_fsx(efs_fsx_setup, sagemaker_session):
-    subnets = [efs_fsx_setup.subnet_id]
-    security_group_ids = efs_fsx_setup.security_group_ids
-    role = efs_fsx_setup.role_name
+@pytest.mark.skipif(
+    tests.integ.test_region() not in tests.integ.EFS_TEST_ENABLED_REGION,
+    reason="EFS integration tests need to be fixed before running in all regions.",
+)
+def test_tuning_kmeans_fsx(efs_fsx_setup, sagemaker_session, cpu_instance_type):
+    role = efs_fsx_setup["role_name"]
+    subnets = [efs_fsx_setup["subnet_id"]]
+    security_group_ids = efs_fsx_setup["security_group_ids"]
     kmeans = KMeans(
         role=role,
         train_instance_count=TRAIN_INSTANCE_COUNT,
-        train_instance_type=TRAIN_INSTANCE_TYPE,
+        train_instance_type=cpu_instance_type,
         k=K,
         sagemaker_session=sagemaker_session,
         subnets=subnets,
@@ -194,7 +211,7 @@ def test_tuning_kmeans_fsx(efs_fsx_setup, sagemaker_session):
             max_parallel_jobs=MAX_PARALLEL_JOBS,
         )
 
-        file_system_fsx_id = efs_fsx_setup.file_system_fsx_id
+        file_system_fsx_id = efs_fsx_setup["file_system_fsx_id"]
         train_records = FileSystemRecordSet(
             file_system_id=file_system_fsx_id,
             file_system_type="FSxLustre",

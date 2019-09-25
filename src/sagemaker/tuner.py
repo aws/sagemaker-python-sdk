@@ -429,6 +429,7 @@ class HyperparameterTuner(object):
         endpoint_name=None,
         wait=True,
         model_name=None,
+        kms_key=None,
         **kwargs
     ):
         """Deploy the best trained or user specified model to an Amazon
@@ -455,6 +456,9 @@ class HyperparameterTuner(object):
                 model completes (default: True).
             model_name (str): Name to use for creating an Amazon SageMaker
                 model. If not specified, the name of the training job is used.
+            kms_key (str): The ARN of the KMS key that is used to encrypt the
+                data on the storage volume attached to the instance hosting the
+                endpoint.
             **kwargs: Other arguments needed for deployment. Please refer to the
                 ``create_model()`` method of the associated estimator to see
                 what other arguments are needed.
@@ -475,6 +479,7 @@ class HyperparameterTuner(object):
             endpoint_name=endpoint_name,
             wait=wait,
             model_name=model_name,
+            kms_key=kms_key,
             **kwargs
         )
 
@@ -889,6 +894,10 @@ class _TuningJob(_Job):
         tuner_args[
             "encrypt_inter_container_traffic"
         ] = tuner.estimator.encrypt_inter_container_traffic
+
+        tuner_args["train_use_spot_instances"] = tuner.estimator.train_use_spot_instances
+        tuner_args["checkpoint_s3_uri"] = tuner.estimator.checkpoint_s3_uri
+        tuner_args["checkpoint_local_path"] = tuner.estimator.checkpoint_local_path
 
         tuner.estimator.sagemaker_session.tune(**tuner_args)
 
