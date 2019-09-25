@@ -53,6 +53,7 @@ class AlgorithmEstimator(EstimatorBase):
         model_channel_name="model",
         metric_definitions=None,
         encrypt_inter_container_traffic=False,
+        **kwargs  # noqa
     ):
         """Initialize an ``AlgorithmEstimator`` instance.
 
@@ -162,6 +163,7 @@ class AlgorithmEstimator(EstimatorBase):
             model_channel_name:
             metric_definitions:
             encrypt_inter_container_traffic:
+            **kwargs: Additional kwargs.
         """
         self.algorithm_arn = algorithm_arn
         super(AlgorithmEstimator, self).__init__(
