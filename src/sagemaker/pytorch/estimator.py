@@ -115,6 +115,7 @@ class PyTorch(Framework):
         entry_point=None,
         source_dir=None,
         dependencies=None,
+        **kwargs
     ):
         """Create a SageMaker ``PyTorchModel`` object that can be deployed to an
         ``Endpoint``.
@@ -139,6 +140,7 @@ class PyTorch(Framework):
             dependencies (list[str]): A list of paths to directories (absolute or relative) with
                 any additional libraries that will be exported to the container.
                 If not specified, the dependencies from training are used.
+            **kwargs: Additional kwargs passed to the PyTorchModel constructor.
 
         Returns:
             sagemaker.pytorch.model.PyTorchModel: A SageMaker ``PyTorchModel``
