@@ -163,8 +163,8 @@ class AlgorithmEstimator(EstimatorBase):
             model_channel_name:
             metric_definitions:
             encrypt_inter_container_traffic:
-            **kwargs: Additional kwargs. This is unused. It's only added for AlgorithmEstimator to ignore
-                the irrelevant arguments.
+            **kwargs: Additional kwargs. This is unused. It's only added for AlgorithmEstimator
+                to ignore the irrelevant arguments.
         """
         self.algorithm_arn = algorithm_arn
         super(AlgorithmEstimator, self).__init__(
