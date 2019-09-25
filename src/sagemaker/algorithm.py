@@ -53,7 +53,7 @@ class AlgorithmEstimator(EstimatorBase):
         model_channel_name="model",
         metric_definitions=None,
         encrypt_inter_container_traffic=False,
-        **kwargs  # noqa
+        **kwargs  # pylint: disable=W0613
     ):
         """Initialize an ``AlgorithmEstimator`` instance.
 
