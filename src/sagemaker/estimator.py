@@ -547,6 +547,7 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):
                 )
             model = self._compiled_models[family]
         else:
+            kwargs["model_kms_key"] = self.output_kms_key
             model = self.create_model(**kwargs)
         model.name = model_name
         return model.deploy(
@@ -734,7 +735,9 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):
             model_name = self._current_job_name
         else:
             model_name = self.latest_training_job.name
-            model = self.create_model(vpc_config_override=vpc_config_override)
+            model = self.create_model(
+                vpc_config_override=vpc_config_override, model_kms_key=self.output_kms_key
+            )
 
             # not all create_model() implementations have the same kwargs
             model.name = model_name
@@ -1716,6 +1719,7 @@ class Framework(EstimatorBase):
                 model_server_workers=model_server_workers,
                 entry_point=entry_point,
                 vpc_config_override=vpc_config_override,
+                model_kms_key=self.output_kms_key,
             )
             model._create_sagemaker_model(instance_type, tags=tags)
 
