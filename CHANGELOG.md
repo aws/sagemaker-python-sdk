@@ -1,5 +1,11 @@
 # Changelog
 
+## v1.42.2 (2019-09-25)
+
+### Bug fixes and other changes
+
+ * re-enable airflow_config tests
+
 ## v1.42.1 (2019-09-24)
 
 ### Bug fixes and other changes
