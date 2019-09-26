@@ -1,5 +1,14 @@
 # Changelog
 
+## v1.42.3 (2019-09-26)
+
+### Bug fixes and other changes
+
+ * preserve EnableNetworkIsolation setting in attach
+ * enable kms support for repack_model
+ * support binary by NoneSplitter.
+ * stop CI unit test code checks from running in parallel
+
 ## v1.42.2 (2019-09-25)
 
 ### Bug fixes and other changes
