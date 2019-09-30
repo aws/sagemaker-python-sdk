@@ -135,7 +135,6 @@ def test_kmeans_airflow_config_uploads_data_source_to_s3(sagemaker_session, cpu_
         )
 
 
-@pytest.mark.canary_quick
 def test_fm_airflow_config_uploads_data_source_to_s3(sagemaker_session, cpu_instance_type):
     with timeout(seconds=AIRFLOW_CONFIG_TIMEOUT_IN_SECONDS):
         data_path = os.path.join(DATA_DIR, "one_p_mnist", "mnist.pkl.gz")
@@ -198,7 +197,6 @@ def test_ipinsights_airflow_config_uploads_data_source_to_s3(sagemaker_session, 
         )
 
 
-@pytest.mark.canary_quick
 def test_knn_airflow_config_uploads_data_source_to_s3(sagemaker_session, cpu_instance_type):
     with timeout(seconds=AIRFLOW_CONFIG_TIMEOUT_IN_SECONDS):
         data_path = os.path.join(DATA_DIR, "one_p_mnist", "mnist.pkl.gz")

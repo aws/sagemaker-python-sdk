@@ -79,6 +79,7 @@ class Model(object):
         vpc_config=None,
         sagemaker_session=None,
         enable_network_isolation=False,
+        model_kms_key=None,
     ):
         """Initialize an SageMaker ``Model``.
 
@@ -114,6 +115,8 @@ class Model(object):
                 network isolation in the endpoint, isolating the model
                 container. No inbound or outbound network calls can be made to
                 or from the model container.
+            model_kms_key (str): KMS key ARN used to encrypt the repacked
+                model archive file if the model is repacked
         """
         self.model_data = model_data
         self.image = image
@@ -127,6 +130,7 @@ class Model(object):
         self.endpoint_name = None
         self._is_compiled_model = False
         self._enable_network_isolation = enable_network_isolation
+        self.model_kms_key = model_kms_key
 
     def prepare_container_def(
         self, instance_type, accelerator_type=None
@@ -800,6 +804,7 @@ class FrameworkModel(Model):
                 model_uri=self.model_data,
                 repacked_model_uri=repacked_model_data,
                 sagemaker_session=self.sagemaker_session,
+                kms_key=self.model_kms_key,
             )
 
             self.repacked_model_data = repacked_model_data
