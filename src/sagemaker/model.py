@@ -446,13 +446,14 @@ class Model(object):
         if endpoint_name:
             self.endpoint_name = endpoint_name
         else:
-            self.endpoint_name = self.name
+            self.endpoint_name = self.name + "-" + instance_type.replace(".", "-")
             if self._is_compiled_model and not self.endpoint_name.endswith(compiled_model_suffix):
                 self.endpoint_name += compiled_model_suffix
 
         if update_endpoint:
+            self.sagemaker_session.delete_endpoint_config(endpoint_config_name=self.endpoint_name)
             endpoint_config_name = self.sagemaker_session.create_endpoint_config(
-                name=self.name,
+                name=self.endpoint_name,
                 model_name=self.name,
                 initial_instance_count=initial_instance_count,
                 instance_type=instance_type,

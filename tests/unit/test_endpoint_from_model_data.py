@@ -30,6 +30,7 @@ VPC_CONFIG = {"Subnets": ["foo"], "SecurityGroupIds": ["bar"]}
 DEPLOY_ROLE = "mydeployrole"
 ENV_VARS = {"PYTHONUNBUFFERED": "TRUE", "some": "nonsense"}
 NAME_FROM_IMAGE = "namefromimage"
+DEFAULT_ENDPOINT_NAME = "namefromimage-ml-c4-xlarge"
 REGION = "us-west-2"
 
 
@@ -64,28 +65,28 @@ def test_all_defaults_no_existing_entities(name_from_image_mock, sagemaker_sessi
     )
 
     sagemaker_session.sagemaker_client.describe_endpoint.assert_called_once_with(
-        EndpointName=NAME_FROM_IMAGE
+        EndpointName=DEFAULT_ENDPOINT_NAME
     )
     sagemaker_session.sagemaker_client.describe_model.assert_called_once_with(
         ModelName=NAME_FROM_IMAGE
     )
     sagemaker_session.sagemaker_client.describe_endpoint_config.assert_called_once_with(
-        EndpointConfigName=NAME_FROM_IMAGE
+        EndpointConfigName=DEFAULT_ENDPOINT_NAME
     )
     sagemaker_session.create_model.assert_called_once_with(
         name=NAME_FROM_IMAGE, role=DEPLOY_ROLE, container_defs=CONTAINER_DEF, vpc_config=None
     )
     sagemaker_session.create_endpoint_config.assert_called_once_with(
-        name=NAME_FROM_IMAGE,
+        name=DEFAULT_ENDPOINT_NAME,
         model_name=NAME_FROM_IMAGE,
         initial_instance_count=INITIAL_INSTANCE_COUNT,
         instance_type=INSTANCE_TYPE,
         accelerator_type=None,
     )
     sagemaker_session.create_endpoint.assert_called_once_with(
-        endpoint_name=NAME_FROM_IMAGE, config_name=NAME_FROM_IMAGE, wait=False
+        endpoint_name=DEFAULT_ENDPOINT_NAME, config_name=DEFAULT_ENDPOINT_NAME, wait=False
     )
-    assert returned_name == NAME_FROM_IMAGE
+    assert returned_name == DEFAULT_ENDPOINT_NAME
 
 
 @patch("sagemaker.session.name_from_image", return_value=NAME_FROM_IMAGE)
@@ -152,7 +153,7 @@ def test_model_and_endpoint_config_exist(name_from_image_mock, sagemaker_session
     sagemaker_session.create_model.assert_not_called()
     sagemaker_session.create_endpoint_config.assert_not_called()
     sagemaker_session.create_endpoint.assert_called_once_with(
-        endpoint_name=NAME_FROM_IMAGE, config_name=NAME_FROM_IMAGE, wait=False
+        endpoint_name=DEFAULT_ENDPOINT_NAME, config_name=DEFAULT_ENDPOINT_NAME, wait=False
     )
 
 
