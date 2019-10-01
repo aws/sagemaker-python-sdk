@@ -26,6 +26,7 @@ from mock import MagicMock, Mock, patch
 MODEL_DATA = "s3://bucket/model.tar.gz"
 MODEL_IMAGE = "mi"
 ENTRY_POINT = "blah.py"
+INSTANCE_TYPE = "p2.xlarge"
 ROLE = "some-role"
 
 DATA_DIR = os.path.join(os.path.dirname(__file__), "..", "data")
@@ -39,7 +40,6 @@ ACCELERATOR_TYPE = "ml.eia.medium"
 IMAGE_NAME = "fakeimage"
 REGION = "us-west-2"
 MODEL_NAME = "{}-{}".format(MODEL_IMAGE, TIMESTAMP)
-ENDPOINT_NAME = "{}-{}".format(MODEL_NAME, INSTANCE_TYPE.replace(".", "-"))
 GIT_REPO = "https://github.com/aws/sagemaker-python-sdk.git"
 BRANCH = "test-branch-git-config"
 COMMIT = "ae15c9d7d5b97ea95ea451e4662ee43da3401d73"
@@ -210,7 +210,7 @@ def test_deploy(sagemaker_session, tmpdir):
     model = DummyFrameworkModel(sagemaker_session, source_dir=str(tmpdir))
     model.deploy(instance_type=INSTANCE_TYPE, initial_instance_count=1)
     sagemaker_session.endpoint_from_production_variants.assert_called_with(
-        ENDPOINT_NAME,
+        MODEL_NAME,
         [
             {
                 "InitialVariantWeight": 1,
@@ -255,7 +255,7 @@ def test_deploy_tags(sagemaker_session, tmpdir):
     tags = [{"ModelName": "TestModel"}]
     model.deploy(instance_type=INSTANCE_TYPE, initial_instance_count=1, tags=tags)
     sagemaker_session.endpoint_from_production_variants.assert_called_with(
-        ENDPOINT_NAME,
+        MODEL_NAME,
         [
             {
                 "InitialVariantWeight": 1,
@@ -280,7 +280,7 @@ def test_deploy_accelerator_type(tfo, time, sagemaker_session):
         instance_type=INSTANCE_TYPE, initial_instance_count=1, accelerator_type=ACCELERATOR_TYPE
     )
     sagemaker_session.endpoint_from_production_variants.assert_called_with(
-        ENDPOINT_NAME,
+        MODEL_NAME,
         [
             {
                 "InitialVariantWeight": 1,
@@ -305,7 +305,7 @@ def test_deploy_kms_key(tfo, time, sagemaker_session):
     model = DummyFrameworkModel(sagemaker_session)
     model.deploy(instance_type=INSTANCE_TYPE, initial_instance_count=1, kms_key=key)
     sagemaker_session.endpoint_from_production_variants.assert_called_with(
-        ENDPOINT_NAME,
+        MODEL_NAME,
         [
             {
                 "InitialVariantWeight": 1,
@@ -350,7 +350,7 @@ def test_deploy_update_endpoint(sagemaker_session, tmpdir):
         accelerator_type=ACCELERATOR_TYPE,
     )
     sagemaker_session.create_endpoint_config.assert_called_with(
-        name=endpoint_name,
+        name=model.name,
         model_name=model.name,
         initial_instance_count=INSTANCE_COUNT,
         instance_type=INSTANCE_TYPE,
@@ -359,7 +359,7 @@ def test_deploy_update_endpoint(sagemaker_session, tmpdir):
         kms_key=None,
     )
     config_name = sagemaker_session.create_endpoint_config(
-        name=endpoint_name,
+        name=model.name,
         model_name=model.name,
         initial_instance_count=INSTANCE_COUNT,
         instance_type=INSTANCE_TYPE,
