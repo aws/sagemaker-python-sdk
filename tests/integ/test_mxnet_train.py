@@ -196,7 +196,7 @@ def test_deploy_model_with_update_endpoint(
             EndpointConfigName=new_config_name
         )
 
-        assert old_config_name == new_config_name
+        assert old_config_name != new_config_name
         assert new_config["ProductionVariants"][0]["InstanceType"] == cpu_instance_type
         assert new_config["ProductionVariants"][0]["InitialInstanceCount"] == 1
 

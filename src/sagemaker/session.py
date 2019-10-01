@@ -1297,47 +1297,39 @@ class Session(object):  # pylint: disable=too-many-public-methods
         """
 
         model_environment_vars = model_environment_vars or {}
-        model_name = name or name_from_image(deployment_image)
-        endpoint_name = name or (
-            name_from_image(deployment_image) + "-" + instance_type.replace(".", "-")
-        )
+        name = name or name_from_image(deployment_image)
         model_vpc_config = vpc_utils.sanitize(model_vpc_config)
 
         if _deployment_entity_exists(
-            lambda: self.sagemaker_client.describe_endpoint(EndpointName=endpoint_name)
+            lambda: self.sagemaker_client.describe_endpoint(EndpointName=name)
         ):
             raise ValueError(
-                'Endpoint with name "{}" already exists; please pick a different name.'.format(
-                    endpoint_name
-                )
+                'Endpoint with name "{}" already exists; please pick a different name.'.format(name)
             )
 
         if not _deployment_entity_exists(
-            lambda: self.sagemaker_client.describe_model(ModelName=model_name)
+            lambda: self.sagemaker_client.describe_model(ModelName=name)
         ):
             primary_container = container_def(
                 image=deployment_image, model_data_url=model_s3_location, env=model_environment_vars
             )
             self.create_model(
-                name=model_name,
-                role=role,
-                container_defs=primary_container,
-                vpc_config=model_vpc_config,
+                name=name, role=role, container_defs=primary_container, vpc_config=model_vpc_config
             )
 
         if not _deployment_entity_exists(
-            lambda: self.sagemaker_client.describe_endpoint_config(EndpointConfigName=endpoint_name)
+            lambda: self.sagemaker_client.describe_endpoint_config(EndpointConfigName=name)
         ):
             self.create_endpoint_config(
-                name=endpoint_name,
-                model_name=model_name,
+                name=name,
+                model_name=name,
                 initial_instance_count=initial_instance_count,
                 instance_type=instance_type,
                 accelerator_type=accelerator_type,
             )
 
-        self.create_endpoint(endpoint_name=endpoint_name, config_name=endpoint_name, wait=wait)
-        return endpoint_name
+        self.create_endpoint(endpoint_name=name, config_name=name, wait=wait)
+        return name
 
     def endpoint_from_production_variants(
         self, name, production_variants, tags=None, kms_key=None, wait=True

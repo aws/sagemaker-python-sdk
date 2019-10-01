@@ -1,5 +1,12 @@
 # Changelog
 
+## v1.42.4 (2019-10-01)
+
+### Bug fixes and other changes
+
+ * Revert "fix issue-987 error by adding instance_type in endpoint_name (#1058)"
+ * fix issue-987 error by adding instance_type in endpoint_name
+
 ## v1.42.3 (2019-09-26)
 
 ### Bug fixes and other changes
