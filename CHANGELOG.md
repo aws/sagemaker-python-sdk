@@ -1,5 +1,11 @@
 # Changelog
 
+## v1.42.5 (2019-10-02)
+
+### Bug fixes and other changes
+
+ * update using_mxnet.rst
+
 ## v1.42.4 (2019-10-01)
 
 ### Bug fixes and other changes
