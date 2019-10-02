@@ -113,6 +113,33 @@ def test_file_system_input_all_arguments():
     assert actual.config == expected
 
 
+def test_file_system_input_content_type():
+    file_system_id = "fs-0a48d2a1"
+    file_system_type = "FSxLustre"
+    directory_path = "tensorflow"
+    file_system_access_mode = "rw"
+    content_type = "application/json"
+    actual = FileSystemInput(
+        file_system_id=file_system_id,
+        file_system_type=file_system_type,
+        directory_path=directory_path,
+        file_system_access_mode=file_system_access_mode,
+        content_type=content_type,
+    )
+    expected = {
+        "DataSource": {
+            "FileSystemDataSource": {
+                "FileSystemId": file_system_id,
+                "FileSystemType": file_system_type,
+                "DirectoryPath": directory_path,
+                "FileSystemAccessMode": "rw",
+            }
+        },
+        "ContentType": content_type,
+    }
+    assert actual.config == expected
+
+
 def test_file_system_input_type_invalid():
     with pytest.raises(ValueError) as excinfo:
         file_system_id = "fs-0a48d2a1"

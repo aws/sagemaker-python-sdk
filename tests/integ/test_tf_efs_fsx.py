@@ -73,8 +73,12 @@ def test_mnist_efs(efs_fsx_setup, sagemaker_session, cpu_instance_type):
     )
 
     file_system_efs_id = efs_fsx_setup["file_system_efs_id"]
+    content_type = "application/json"
     file_system_input = FileSystemInput(
-        file_system_id=file_system_efs_id, file_system_type="EFS", directory_path=EFS_DIR_PATH
+        file_system_id=file_system_efs_id,
+        file_system_type="EFS",
+        directory_path=EFS_DIR_PATH,
+        content_type=content_type,
     )
     with timeout(minutes=TRAINING_DEFAULT_TIMEOUT_MINUTES):
         estimator.fit(inputs=file_system_input, job_name=unique_name_from_base("test-mnist-efs"))

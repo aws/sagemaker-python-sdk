@@ -107,7 +107,10 @@ def _ami_id_for_region(sagemaker_session):
 def _connect_ec2_instance(ec2_instance):
     public_ip_address = ec2_instance.public_ip_address
     connected_instance = Connection(
-        host=public_ip_address, port=22, user="ec2-user", connect_kwargs={"key_filename": KEY_PATH}
+        host=public_ip_address,
+        port=22,
+        user="ec2-user",
+        connect_kwargs={"key_filename": [KEY_PATH]},
     )
     return connected_instance
 
