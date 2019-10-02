@@ -148,7 +148,7 @@ class KMeans(AmazonAlgorithmEstimatorBase):
         self.center_factor = center_factor
         self.eval_metrics = eval_metrics
 
-    def create_model(self, vpc_config_override=VPC_CONFIG_DEFAULT):
+    def create_model(self, vpc_config_override=VPC_CONFIG_DEFAULT, **kwargs):
         """Return a :class:`~sagemaker.amazon.kmeans.KMeansModel` referencing
         the latest s3 model data produced by this Estimator.
 
@@ -158,12 +158,14 @@ class KMeans(AmazonAlgorithmEstimatorBase):
                 Default: use subnets and security groups from this Estimator.
                 * 'Subnets' (list[str]): List of subnet ids.
                 * 'SecurityGroupIds' (list[str]): List of security group ids.
+            **kwargs: Additional kwargs passed to the KMeansModel constructor.
         """
         return KMeansModel(
             self.model_data,
             self.role,
             self.sagemaker_session,
             vpc_config=self.get_vpc_config(vpc_config_override),
+            **kwargs
         )
 
     def _prepare_for_training(self, records, mini_batch_size=5000, job_name=None):

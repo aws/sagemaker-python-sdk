@@ -110,14 +110,23 @@ def test_get_splitter_instance_with_invalid_types():
 
 
 def test_none_splitter(tmpdir):
+    splitter = sagemaker.local.data.NoneSplitter()
+
     test_file_path = tmpdir.join("none_test.txt")
 
     with test_file_path.open("w") as f:
         f.write("this\nis\na\ntest")
 
-    splitter = sagemaker.local.data.NoneSplitter()
     data = [x for x in splitter.split(str(test_file_path))]
     assert data == ["this\nis\na\ntest"]
+
+    test_bin_file_path = tmpdir.join("none_test.bin")
+
+    with test_bin_file_path.open("wb") as f:
+        f.write(b"\xff\xd8\xff\xe0\x00\x10JFIF\x00\x01\x01\x00\x00\x01\x00\x01\x00\x00C")
+
+    data = [x for x in splitter.split(str(test_bin_file_path))]
+    assert data == [b"\xff\xd8\xff\xe0\x00\x10JFIF\x00\x01\x01\x00\x00\x01\x00\x01\x00\x00C"]
 
 
 def test_line_splitter(tmpdir):

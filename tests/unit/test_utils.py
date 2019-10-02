@@ -534,7 +534,7 @@ class FakeS3(object):
                 self.bucket = bucket
                 self.key = key
 
-            def upload_file(self, target):
+            def upload_file(self, target, **kwargs):
                 if self.bucket in BUCKET_WITHOUT_WRITING_PERMISSION:
                     raise exceptions.S3UploadFailedError()
                 shutil.copy2(target, dst)
@@ -569,4 +569,8 @@ def list_tar_files(tar_ball, tmp):
 def test_sts_regional_endpoint():
     endpoint = sagemaker.utils.sts_regional_endpoint("us-west-2")
     assert endpoint == "https://sts.us-west-2.amazonaws.com"
+    assert botocore.utils.is_valid_endpoint_url(endpoint)
+
+    endpoint = sagemaker.utils.sts_regional_endpoint("us-iso-east-1")
+    assert endpoint == "https://sts.us-iso-east-1.c2s.ic.gov"
     assert botocore.utils.is_valid_endpoint_url(endpoint)

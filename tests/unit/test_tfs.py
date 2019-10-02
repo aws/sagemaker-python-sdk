@@ -167,6 +167,7 @@ def test_tfs_model_with_entry_point(
         framework_version=tf_version,
         image="my-image",
         sagemaker_session=sagemaker_session,
+        model_kms_key="kms-key",
     )
 
     model.prepare_container_def(INSTANCE_TYPE)
@@ -180,6 +181,7 @@ def test_tfs_model_with_entry_point(
         "s3://some/data.tar.gz",
         "s3://my_bucket/key-prefix/model.tar.gz",
         sagemaker_session,
+        kms_key="kms-key",
     )
 
 
@@ -207,6 +209,7 @@ def test_tfs_model_with_source(repack_model, model_code_key_prefix, sagemaker_se
         "s3://some/data.tar.gz",
         "s3://my_bucket/key-prefix/model.tar.gz",
         sagemaker_session,
+        kms_key=None,
     )
 
 
@@ -236,6 +239,7 @@ def test_tfs_model_with_dependencies(
         "s3://some/data.tar.gz",
         "s3://my_bucket/key-prefix/model.tar.gz",
         sagemaker_session,
+        kms_key=None,
     )
 
 

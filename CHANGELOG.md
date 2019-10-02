@@ -1,5 +1,75 @@
 # Changelog
 
+## v1.42.5 (2019-10-02)
+
+### Bug fixes and other changes
+
+ * update using_mxnet.rst
+
+## v1.42.4 (2019-10-01)
+
+### Bug fixes and other changes
+
+ * Revert "fix issue-987 error by adding instance_type in endpoint_name (#1058)"
+ * fix issue-987 error by adding instance_type in endpoint_name
+
+## v1.42.3 (2019-09-26)
+
+### Bug fixes and other changes
+
+ * preserve EnableNetworkIsolation setting in attach
+ * enable kms support for repack_model
+ * support binary by NoneSplitter.
+ * stop CI unit test code checks from running in parallel
+
+## v1.42.2 (2019-09-25)
+
+### Bug fixes and other changes
+
+ * re-enable airflow_config tests
+
+## v1.42.1 (2019-09-24)
+
+### Bug fixes and other changes
+
+ * lazy import of tensorflow module
+ * skip airflow_config tests as they're blocking the release build
+ * skip lda tests in regions that does not support it.
+ * add airflow_config tests to canaries
+ * use correct STS endpoint for us-iso-east-1
+
+## v1.42.0 (2019-09-20)
+
+### Features
+
+ * add estimator preparation to airflow configuration
+
+### Bug fixes and other changes
+
+ * correct airflow workflow for BYO estimators.
+
+## v1.41.0 (2019-09-20)
+
+### Features
+
+ * enable sklearn for network isolation mode
+
+## v1.40.2 (2019-09-19)
+
+### Bug fixes and other changes
+
+ * use new ECR images in us-iso-east-1 for TF and MXNet
+
+## v1.40.1 (2019-09-18)
+
+### Bug fixes and other changes
+
+ * expose kms_key parameter for deploying from training and hyperparameter tuning jobs
+
+### Documentation changes
+
+ * Update sklearn default predict_fn
+
 ## v1.40.0 (2019-09-17)
 
 ### Features

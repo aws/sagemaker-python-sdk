@@ -261,6 +261,16 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):
         """
         return False
 
+    def prepare_workflow_for_training(self, job_name=None):
+        """Calls _prepare_for_training. Used when setting up a workflow.
+
+        Args:
+            job_name (str): Name of the training job to be created. If not
+                specified, one is generated, using the base name given to the
+                constructor if applicable.
+        """
+        self._prepare_for_training(job_name=job_name)
+
     def _prepare_for_training(self, job_name=None):
         """Set any values in the estimator that need to be set before training.
 
@@ -471,6 +481,7 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):
         update_endpoint=False,
         wait=True,
         model_name=None,
+        kms_key=None,
         **kwargs
     ):
         """Deploy the trained model to an Amazon SageMaker endpoint and return a
@@ -510,6 +521,9 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):
                 For more information about tags, see
                 https://boto3.amazonaws.com/v1/documentation\
                 /api/latest/reference/services/sagemaker.html#SageMaker.Client.add_tags
+            kms_key (str): The ARN of the KMS key that is used to encrypt the
+                data on the storage volume attached to the instance hosting the
+                endpoint.
             **kwargs: Passed to invocation of ``create_model()``.
                 Implementations may customize ``create_model()`` to accept
                 ``**kwargs`` to customize model creation during deploy.
@@ -533,6 +547,7 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):
                 )
             model = self._compiled_models[family]
         else:
+            kwargs["model_kms_key"] = self.output_kms_key
             model = self.create_model(**kwargs)
         model.name = model_name
         return model.deploy(
@@ -543,6 +558,7 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):
             update_endpoint=update_endpoint,
             tags=self.tags,
             wait=wait,
+            kms_key=kms_key,
         )
 
     @property
@@ -556,7 +572,7 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):
             )["ModelArtifacts"]["S3ModelArtifacts"]
         else:
             logging.warning(
-                "No finished training job found associated with this estimator. Please make sure"
+                "No finished training job found associated with this estimator. Please make sure "
                 "this estimator is only used for building workflow config"
             )
             model_uri = os.path.join(
@@ -604,6 +620,8 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):
         init_params["base_job_name"] = job_details["TrainingJobName"]
         init_params["output_path"] = job_details["OutputDataConfig"]["S3OutputPath"]
         init_params["output_kms_key"] = job_details["OutputDataConfig"]["KmsKeyId"]
+        if "EnableNetworkIsolation" in job_details:
+            init_params["enable_network_isolation"] = job_details["EnableNetworkIsolation"]
 
         has_hps = "HyperParameters" in job_details
         init_params["hyperparameters"] = job_details["HyperParameters"] if has_hps else {}
@@ -713,21 +731,22 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):
 
         if self.latest_training_job is None:
             logging.warning(
-                "No finished training job found associated with this estimator. Please make sure"
+                "No finished training job found associated with this estimator. Please make sure "
                 "this estimator is only used for building workflow config"
             )
             model_name = self._current_job_name
         else:
             model_name = self.latest_training_job.name
+            model = self.create_model(
+                vpc_config_override=vpc_config_override, model_kms_key=self.output_kms_key
+            )
 
-        model = self.create_model(vpc_config_override=vpc_config_override)
+            # not all create_model() implementations have the same kwargs
+            model.name = model_name
+            if role is not None:
+                model.role = role
 
-        # not all create_model() implementations have the same kwargs
-        model.name = model_name
-        if role is not None:
-            model.role = role
-
-        model._create_sagemaker_model(instance_type, tags=tags)
+            model._create_sagemaker_model(instance_type, tags=tags)
 
         return Transformer(
             model_name,
@@ -1702,6 +1721,7 @@ class Framework(EstimatorBase):
                 model_server_workers=model_server_workers,
                 entry_point=entry_point,
                 vpc_config_override=vpc_config_override,
+                model_kms_key=self.output_kms_key,
             )
             model._create_sagemaker_model(instance_type, tags=tags)
 
@@ -1711,7 +1731,7 @@ class Framework(EstimatorBase):
                 transform_env.update(env)
         else:
             logging.warning(
-                "No finished training job found associated with this estimator. Please make sure"
+                "No finished training job found associated with this estimator. Please make sure "
                 "this estimator is only used for building workflow config"
             )
             model_name = self._current_job_name

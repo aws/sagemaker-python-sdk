@@ -23,6 +23,7 @@ from mock import patch
 from sagemaker.sklearn import defaults
 from sagemaker.sklearn import SKLearn
 from sagemaker.sklearn import SKLearnPredictor, SKLearnModel
+from sagemaker.fw_utils import UploadedCode
 
 DATA_DIR = os.path.join(os.path.dirname(__file__), "..", "data")
 SCRIPT_PATH = os.path.join(DATA_DIR, "dummy_script.py")
@@ -166,6 +167,25 @@ def test_create_model(sagemaker_session):
     default_image_uri = _get_full_cpu_image_uri("0.20.0")
     model_values = sklearn_model.prepare_container_def(CPU)
     assert model_values["Image"] == default_image_uri
+
+
+@patch("sagemaker.model.FrameworkModel._upload_code")
+def test_create_model_with_network_isolation(upload, sagemaker_session):
+    source_dir = "s3://mybucket/source"
+    repacked_model_data = "s3://mybucket/prefix/model.tar.gz"
+
+    sklearn_model = SKLearnModel(
+        model_data=source_dir,
+        role=ROLE,
+        sagemaker_session=sagemaker_session,
+        entry_point=SCRIPT_PATH,
+        enable_network_isolation=True,
+    )
+    sklearn_model.uploaded_code = UploadedCode(s3_prefix=repacked_model_data, script_name="script")
+    sklearn_model.repacked_model_data = repacked_model_data
+    model_values = sklearn_model.prepare_container_def(CPU)
+    assert model_values["Environment"]["SAGEMAKER_SUBMIT_DIRECTORY"] == "/opt/ml/model/code"
+    assert model_values["ModelDataUrl"] == repacked_model_data
 
 
 def test_create_model_from_estimator(sagemaker_session, sklearn_version):
