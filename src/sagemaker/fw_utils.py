@@ -59,6 +59,7 @@ VALID_ACCOUNTS_BY_REGION = {"us-gov-west-1": "246785580436", "us-iso-east-1": "7
 ASIMOV_VALID_ACCOUNTS_BY_REGION = {"us-iso-east-1": "886529160074"}
 OPT_IN_ACCOUNTS_BY_REGION = {"ap-east-1": "057415533634"}
 ASIMOV_OPT_IN_ACCOUNTS_BY_REGION = {"ap-east-1": "871362719292"}
+DEFAULT_ACCOUNT = "520713654638"
 
 MERGED_FRAMEWORKS_REPO_MAP = {
     "tensorflow-scriptmode": "tensorflow-training",
@@ -166,7 +167,7 @@ def create_image_uri(
     instance_type,
     framework_version,
     py_version=None,
-    account="520713654638",
+    account=None,
     accelerator_type=None,
     optimized_families=None,
 ):
@@ -201,13 +202,14 @@ def create_image_uri(
         framework += "-eia"
 
     # Handle Account Number for Gov Cloud and frameworks with DLC merged images
-    account = _registry_id(
-        region=region,
-        framework=framework,
-        py_version=py_version,
-        account=account,
-        framework_version=framework_version,
-    )
+    if account is None:
+        account = _registry_id(
+            region=region,
+            framework=framework,
+            py_version=py_version,
+            account=DEFAULT_ACCOUNT,
+            framework_version=framework_version,
+        )
 
     # Handle Local Mode
     if instance_type.startswith("local"):
