@@ -79,6 +79,7 @@ RETURNED_JOB_DESCRIPTION = {
     },
     "RoleArn": "arn:aws:iam::366:role/SageMakerRole",
     "ResourceConfig": {"VolumeSizeInGB": 30, "InstanceCount": 1, "InstanceType": "ml.c4.xlarge"},
+    "EnableNetworkIsolation": False,
     "StoppingCondition": {"MaxRuntimeInSeconds": 24 * 60 * 60},
     "TrainingJobName": "neo",
     "TrainingJobStatus": "Completed",
@@ -119,6 +120,7 @@ class DummyFramework(Framework):
         model_server_workers=None,
         entry_point=None,
         vpc_config_override=vpc_utils.VPC_CONFIG_DEFAULT,
+        **kwargs
     ):
         return DummyFrameworkModel(
             self.sagemaker_session,
@@ -126,6 +128,7 @@ class DummyFramework(Framework):
             entry_point=entry_point,
             enable_network_isolation=self.enable_network_isolation(),
             role=role,
+            **kwargs
         )
 
     @classmethod
@@ -669,6 +672,7 @@ def test_enable_cloudwatch_metrics(sagemaker_session):
 def test_attach_framework(sagemaker_session):
     returned_job_description = RETURNED_JOB_DESCRIPTION.copy()
     returned_job_description["VpcConfig"] = {"Subnets": ["foo"], "SecurityGroupIds": ["bar"]}
+    returned_job_description["EnableNetworkIsolation"] = True
     sagemaker_session.sagemaker_client.describe_training_job = Mock(
         name="describe_training_job", return_value=returned_job_description
     )
@@ -692,6 +696,7 @@ def test_attach_framework(sagemaker_session):
     assert framework_estimator.security_group_ids == ["bar"]
     assert framework_estimator.encrypt_inter_container_traffic is False
     assert framework_estimator.tags == LIST_TAGS_RESULT["Tags"]
+    assert framework_estimator.enable_network_isolation() is True
 
 
 def test_attach_without_hyperparameters(sagemaker_session):

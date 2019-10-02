@@ -141,6 +141,7 @@ class MXNet(Framework):
         source_dir=None,
         dependencies=None,
         image_name=None,
+        **kwargs
     ):
         """Create a SageMaker ``MXNetModel`` object that can be deployed to an
         ``Endpoint``.
@@ -171,6 +172,7 @@ class MXNet(Framework):
                 Examples:
                     123.dkr.ecr.us-west-2.amazonaws.com/my-custom-image:1.0
                     custom-image:latest.
+            **kwargs: Additional kwargs passed to the MXNetModel constructor.
 
         Returns:
             sagemaker.mxnet.model.MXNetModel: A SageMaker ``MXNetModel`` object.
