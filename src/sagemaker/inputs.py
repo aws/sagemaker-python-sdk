@@ -106,7 +106,12 @@ class FileSystemInput(object):
     """
 
     def __init__(
-        self, file_system_id, file_system_type, directory_path, file_system_access_mode="ro"
+        self,
+        file_system_id,
+        file_system_type,
+        directory_path,
+        file_system_access_mode="ro",
+        content_type=None,
     ):
         """Create a new file system input used by an SageMaker training job.
 
@@ -144,3 +149,6 @@ class FileSystemInput(object):
                 }
             }
         }
+
+        if content_type:
+            self.config["ContentType"] = content_type
