@@ -27,6 +27,7 @@ import sagemaker.fw_utils as fw
 from sagemaker.tensorflow.defaults import TF_VERSION
 from sagemaker.tensorflow.model import TensorFlowModel
 from sagemaker.tensorflow.serving import Model
+from sagemaker.transformer import Transformer
 from sagemaker import utils
 from sagemaker.vpc_utils import VPC_CONFIG_DEFAULT
 
@@ -503,6 +504,7 @@ class TensorFlow(Framework):
         entry_point=None,
         source_dir=None,
         dependencies=None,
+        **kwargs
     ):
         """Create a ``Model`` object that can be used for creating SageMaker model entities,
         deploying to a SageMaker endpoint, or starting SageMaker Batch Transform jobs.
@@ -536,6 +538,8 @@ class TensorFlow(Framework):
                 If not specified and ``endpoint_type`` is 'tensorflow-serving', ``dependencies`` is
                 set to ``None``.
                 If ``endpoint_type`` is also ``None``, then the dependencies from training are used.
+            **kwargs: Additional kwargs passed to ``sagemaker.tensorflow.serving.Model`` constructor
+                and ``sagemaker.tensorflow.model.TensorFlowModel`` constructor.
 
         Returns:
             sagemaker.tensorflow.model.TensorFlowModel or sagemaker.tensorflow.serving.Model: A
@@ -551,6 +555,7 @@ class TensorFlow(Framework):
                 entry_point=entry_point,
                 source_dir=source_dir,
                 dependencies=dependencies,
+                **kwargs
             )
 
         return self._create_default_model(
@@ -560,6 +565,7 @@ class TensorFlow(Framework):
             entry_point=entry_point,
             source_dir=source_dir,
             dependencies=dependencies,
+            **kwargs
         )
 
     def _create_tfs_model(
@@ -569,6 +575,7 @@ class TensorFlow(Framework):
         entry_point=None,
         source_dir=None,
         dependencies=None,
+        **kwargs
     ):
         """Placeholder docstring"""
         return Model(
@@ -583,6 +590,8 @@ class TensorFlow(Framework):
             entry_point=entry_point,
             source_dir=source_dir,
             dependencies=dependencies,
+            enable_network_isolation=self.enable_network_isolation(),
+            **kwargs
         )
 
     def _create_default_model(
@@ -593,6 +602,7 @@ class TensorFlow(Framework):
         entry_point=None,
         source_dir=None,
         dependencies=None,
+        **kwargs
     ):
         """Placeholder docstring"""
         return TensorFlowModel(
@@ -612,6 +622,8 @@ class TensorFlow(Framework):
             sagemaker_session=self.sagemaker_session,
             vpc_config=self.get_vpc_config(vpc_config_override),
             dependencies=dependencies or self.dependencies,
+            enable_network_isolation=self.enable_network_isolation(),
+            **kwargs
         )
 
     def hyperparameters(self):
@@ -704,6 +716,7 @@ class TensorFlow(Framework):
         volume_kms_key=None,
         endpoint_type=None,
         entry_point=None,
+        vpc_config_override=VPC_CONFIG_DEFAULT,
     ):
         """Return a ``Transformer`` that uses a SageMaker Model based on the training job. It
         reuses the SageMaker Session and base job name used by the Estimator.
@@ -746,13 +759,41 @@ class TensorFlow(Framework):
                 should be executed as the entry point to training. If not specified and
                 ``endpoint_type`` is 'tensorflow-serving', no entry point is used. If
                 ``endpoint_type`` is also ``None``, then the training entry point is used.
+            vpc_config_override (dict[str, list[str]]): Optional override for
+                the VpcConfig set on the model.
+                Default: use subnets and security groups from this Estimator.
+                * 'Subnets' (list[str]): List of subnet ids.
+                * 'SecurityGroupIds' (list[str]): List of security group ids.
         """
-
         role = role or self.role
+
+        if self.latest_training_job is None:
+            logging.warning(
+                "No finished training job found associated with this estimator. Please make sure "
+                "this estimator is only used for building workflow config"
+            )
+            return Transformer(
+                self._current_job_name,
+                instance_count,
+                instance_type,
+                strategy=strategy,
+                assemble_with=assemble_with,
+                output_path=output_path,
+                output_kms_key=output_kms_key,
+                accept=accept,
+                max_concurrent_transforms=max_concurrent_transforms,
+                max_payload=max_payload,
+                env=env or {},
+                tags=tags,
+                base_transform_job_name=self.base_job_name,
+                volume_kms_key=volume_kms_key,
+                sagemaker_session=self.sagemaker_session,
+            )
+
         model = self.create_model(
             model_server_workers=model_server_workers,
             role=role,
-            vpc_config_override=VPC_CONFIG_DEFAULT,
+            vpc_config_override=vpc_config_override,
             endpoint_type=endpoint_type,
             entry_point=entry_point,
         )

@@ -59,6 +59,14 @@ class AmazonAlgorithmEstimatorBase(EstimatorBase):
                 default data location will be used.
             **kwargs:
         """
+
+        if "enable_network_isolation" in kwargs:
+            logger.debug(
+                "removing unused enable_network_isolation argument: %s",
+                str(kwargs["enable_network_isolation"]),
+            )
+            del kwargs["enable_network_isolation"]
+
         super(AmazonAlgorithmEstimatorBase, self).__init__(
             role, train_instance_count, train_instance_type, **kwargs
         )
@@ -126,6 +134,21 @@ class AmazonAlgorithmEstimatorBase(EstimatorBase):
         del init_params["hyperparameters"]
         del init_params["image"]
         return init_params
+
+    def prepare_workflow_for_training(self, records=None, mini_batch_size=None, job_name=None):
+        """Calls _prepare_for_training. Used when setting up a workflow.
+
+        Args:
+            records (:class:`~RecordSet`): The records to train this ``Estimator`` on.
+            mini_batch_size (int or None): The size of each mini-batch to use when
+                training. If ``None``, a default value will be used.
+            job_name (str): Name of the training job to be created. If not
+                specified, one is generated, using the base name given to the
+                constructor if applicable.
+        """
+        self._prepare_for_training(
+            records=records, mini_batch_size=mini_batch_size, job_name=job_name
+        )
 
     def _prepare_for_training(self, records, mini_batch_size=None, job_name=None):
         """Set hyperparameters needed for training.
@@ -538,7 +561,7 @@ def get_image_uri(region_name, repo_name, repo_version=1):
             "There is a more up to date SageMaker XGBoost image."
             "To use the newer image, please set 'repo_version'="
             "'0.90-1. For example:\n"
-            "\tget_image_uri(region, 'xgboost', %s).",
+            "\tget_image_uri(region, 'xgboost', '%s').",
             XGBOOST_LATEST_VERSION,
         )
     repo = "{}:{}".format(repo_name, repo_version)

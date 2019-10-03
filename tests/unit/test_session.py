@@ -15,6 +15,7 @@ from __future__ import absolute_import
 import datetime
 import io
 import logging
+import os
 
 import pytest
 import six
@@ -23,7 +24,12 @@ from mock import ANY, MagicMock, Mock, patch, call, mock_open
 
 import sagemaker
 from sagemaker import s3_input, Session, get_execution_role
-from sagemaker.session import _tuning_job_status, _transform_job_status, _train_done
+from sagemaker.session import (
+    _tuning_job_status,
+    _transform_job_status,
+    _train_done,
+    NOTEBOOK_METADATA_FILE,
+)
 from sagemaker.tuner import WarmStartConfig, WarmStartTypes
 
 STATIC_HPs = {"feature_dim": "784"}
@@ -45,6 +51,18 @@ def boto_session():
 
     boto_session.client.return_value = mock_client
     return boto_session
+
+
+def mock_exists(filepath_to_mock, exists_result):
+    unmocked_exists = os.path.exists
+
+    def side_effect(filepath):
+        if filepath == filepath_to_mock:
+            return exists_result
+        else:
+            return unmocked_exists(filepath)
+
+    return Mock(side_effect=side_effect)
 
 
 def test_get_execution_role():
@@ -86,6 +104,51 @@ def test_get_execution_role_throws_exception_if_arn_is_not_role_with_role_in_nam
     assert "ValueError: The current AWS identity is not a role" in str(error)
 
 
+@patch("six.moves.builtins.open", mock_open(read_data='{"ResourceName": "SageMakerInstance"}'))
+@patch("os.path.exists", side_effect=mock_exists(NOTEBOOK_METADATA_FILE, True))
+def test_get_caller_identity_arn_from_describe_notebook_instance(boto_session):
+    sess = Session(boto_session)
+    expected_role = "arn:aws:iam::369233609183:role/service-role/SageMakerRole-20171129T072388"
+    sess.sagemaker_client.describe_notebook_instance.return_value = {"RoleArn": expected_role}
+
+    actual = sess.get_caller_identity_arn()
+
+    assert actual == expected_role
+    sess.sagemaker_client.describe_notebook_instance.assert_called_once_with(
+        NotebookInstanceName="SageMakerInstance"
+    )
+
+
+@patch("six.moves.builtins.open", mock_open(read_data='{"ResourceName": "SageMakerInstance"}'))
+@patch("os.path.exists", side_effect=mock_exists(NOTEBOOK_METADATA_FILE, True))
+def test_get_caller_identity_arn_from_a_role_after_describe_notebook_exception(boto_session):
+    sess = Session(boto_session)
+    exception = ClientError(
+        {"Error": {"Code": "ValidationException", "Message": "RecordNotFound"}}, "Operation"
+    )
+    sess.sagemaker_client.describe_notebook_instance.side_effect = exception
+
+    arn = (
+        "arn:aws:sts::369233609183:assumed-role/SageMakerRole/6d009ef3-5306-49d5-8efc-78db644d8122"
+    )
+    sess.boto_session.client("sts", endpoint_url=STS_ENDPOINT).get_caller_identity.return_value = {
+        "Arn": arn
+    }
+
+    expected_role = "arn:aws:iam::369233609183:role/SageMakerRole"
+    sess.boto_session.client("iam").get_role.return_value = {"Role": {"Arn": expected_role}}
+
+    with patch("logging.Logger.warning") as mock_logger:
+        actual = sess.get_caller_identity_arn()
+        mock_logger.assert_called_once()
+
+    sess.sagemaker_client.describe_notebook_instance.assert_called_once_with(
+        NotebookInstanceName="SageMakerInstance"
+    )
+    assert actual == expected_role
+
+
+@patch("os.path.exists", side_effect=mock_exists(NOTEBOOK_METADATA_FILE, False))
 def test_get_caller_identity_arn_from_an_user(boto_session):
     sess = Session(boto_session)
     arn = "arn:aws:iam::369233609183:user/mia"
@@ -98,6 +161,7 @@ def test_get_caller_identity_arn_from_an_user(boto_session):
     assert actual == "arn:aws:iam::369233609183:user/mia"
 
 
+@patch("os.path.exists", side_effect=mock_exists(NOTEBOOK_METADATA_FILE, False))
 def test_get_caller_identity_arn_from_an_user_without_permissions(boto_session):
     sess = Session(boto_session)
     arn = "arn:aws:iam::369233609183:user/mia"
@@ -112,6 +176,7 @@ def test_get_caller_identity_arn_from_an_user_without_permissions(boto_session):
         mock_logger.assert_called_once()
 
 
+@patch("os.path.exists", side_effect=mock_exists(NOTEBOOK_METADATA_FILE, False))
 def test_get_caller_identity_arn_from_a_role(boto_session):
     sess = Session(boto_session)
     arn = (
@@ -128,6 +193,7 @@ def test_get_caller_identity_arn_from_a_role(boto_session):
     assert actual == expected_role
 
 
+@patch("os.path.exists", side_effect=mock_exists(NOTEBOOK_METADATA_FILE, False))
 def test_get_caller_identity_arn_from_a_execution_role(boto_session):
     sess = Session(boto_session)
     arn = "arn:aws:sts::369233609183:assumed-role/AmazonSageMaker-ExecutionRole-20171129T072388/SageMaker"
@@ -143,6 +209,7 @@ def test_get_caller_identity_arn_from_a_execution_role(boto_session):
     )
 
 
+@patch("os.path.exists", side_effect=mock_exists(NOTEBOOK_METADATA_FILE, False))
 def test_get_caller_identity_arn_from_role_with_path(boto_session):
     sess = Session(boto_session)
     arn_prefix = "arn:aws:iam::369233609183:role"
@@ -348,6 +415,28 @@ STOPPED_DESCRIBE_JOB_RESULT.update({"TrainingJobStatus": "Stopped"})
 
 IN_PROGRESS_DESCRIBE_JOB_RESULT = dict(DEFAULT_EXPECTED_TRAIN_JOB_ARGS)
 IN_PROGRESS_DESCRIBE_JOB_RESULT.update({"TrainingJobStatus": "InProgress"})
+
+COMPLETED_DESCRIBE_TRANSFORM_JOB_RESULT = {
+    "TransformJobStatus": "Completed",
+    "ModelName": "some-model",
+    "TransformJobName": JOB_NAME,
+    "TransformResources": {"InstanceCount": INSTANCE_COUNT, "InstanceType": INSTANCE_TYPE},
+    "TransformEndTime": datetime.datetime(2018, 2, 17, 7, 19, 34, 953000),
+    "TransformStartTime": datetime.datetime(2018, 2, 17, 7, 15, 0, 103000),
+    "TransformOutput": {"AssembleWith": "None", "KmsKeyId": "", "S3OutputPath": S3_OUTPUT},
+    "TransformInput": {
+        "CompressionType": "None",
+        "ContentType": "text/csv",
+        "DataSource": {"S3DataType": "S3Prefix", "S3Uri": S3_INPUT_URI},
+        "SplitType": "Line",
+    },
+}
+
+STOPPED_DESCRIBE_TRANSFORM_JOB_RESULT = dict(COMPLETED_DESCRIBE_TRANSFORM_JOB_RESULT)
+STOPPED_DESCRIBE_TRANSFORM_JOB_RESULT.update({"TransformJobStatus": "Stopped"})
+
+IN_PROGRESS_DESCRIBE_TRANSFORM_JOB_RESULT = dict(COMPLETED_DESCRIBE_TRANSFORM_JOB_RESULT)
+IN_PROGRESS_DESCRIBE_TRANSFORM_JOB_RESULT.update({"TransformJobStatus": "InProgress"})
 
 
 @pytest.fixture()
@@ -852,6 +941,9 @@ def sagemaker_session_complete():
     boto_mock.client("logs").get_log_events.side_effect = DEFAULT_LOG_EVENTS
     ims = sagemaker.Session(boto_session=boto_mock, sagemaker_client=Mock())
     ims.sagemaker_client.describe_training_job.return_value = COMPLETED_DESCRIBE_JOB_RESULT
+    ims.sagemaker_client.describe_transform_job.return_value = (
+        COMPLETED_DESCRIBE_TRANSFORM_JOB_RESULT
+    )
     return ims
 
 
@@ -862,6 +954,7 @@ def sagemaker_session_stopped():
     boto_mock.client("logs").get_log_events.side_effect = DEFAULT_LOG_EVENTS
     ims = sagemaker.Session(boto_session=boto_mock, sagemaker_client=Mock())
     ims.sagemaker_client.describe_training_job.return_value = STOPPED_DESCRIBE_JOB_RESULT
+    ims.sagemaker_client.describe_transform_job.return_value = STOPPED_DESCRIBE_TRANSFORM_JOB_RESULT
     return ims
 
 
@@ -876,6 +969,11 @@ def sagemaker_session_ready_lifecycle():
         IN_PROGRESS_DESCRIBE_JOB_RESULT,
         COMPLETED_DESCRIBE_JOB_RESULT,
     ]
+    ims.sagemaker_client.describe_transform_job.side_effect = [
+        IN_PROGRESS_DESCRIBE_TRANSFORM_JOB_RESULT,
+        IN_PROGRESS_DESCRIBE_TRANSFORM_JOB_RESULT,
+        COMPLETED_DESCRIBE_TRANSFORM_JOB_RESULT,
+    ]
     return ims
 
 
@@ -889,6 +987,11 @@ def sagemaker_session_full_lifecycle():
         IN_PROGRESS_DESCRIBE_JOB_RESULT,
         IN_PROGRESS_DESCRIBE_JOB_RESULT,
         COMPLETED_DESCRIBE_JOB_RESULT,
+    ]
+    ims.sagemaker_client.describe_transform_job.side_effect = [
+        IN_PROGRESS_DESCRIBE_TRANSFORM_JOB_RESULT,
+        IN_PROGRESS_DESCRIBE_TRANSFORM_JOB_RESULT,
+        COMPLETED_DESCRIBE_TRANSFORM_JOB_RESULT,
     ]
     return ims
 
@@ -947,6 +1050,69 @@ def test_logs_for_job_full_lifecycle(time, cw, sagemaker_session_full_lifecycle)
     assert (
         ims.sagemaker_client.describe_training_job.call_args_list
         == [call(TrainingJobName=JOB_NAME)] * 3
+    )
+    assert cw().call_args_list == [
+        call(0, "hi there #1"),
+        call(0, "hi there #2"),
+        call(0, "hi there #2a"),
+        call(0, "hi there #3"),
+    ]
+
+
+@patch("sagemaker.logs.ColorWrap")
+def test_logs_for_transform_job_no_wait(cw, sagemaker_session_complete):
+    ims = sagemaker_session_complete
+    ims.logs_for_transform_job(JOB_NAME)
+    ims.sagemaker_client.describe_transform_job.assert_called_once_with(TransformJobName=JOB_NAME)
+    cw().assert_called_with(0, "hi there #1")
+
+
+@patch("sagemaker.logs.ColorWrap")
+def test_logs_for_transform_job_no_wait_stopped_job(cw, sagemaker_session_stopped):
+    ims = sagemaker_session_stopped
+    ims.logs_for_transform_job(JOB_NAME)
+    ims.sagemaker_client.describe_transform_job.assert_called_once_with(TransformJobName=JOB_NAME)
+    cw().assert_called_with(0, "hi there #1")
+
+
+@patch("sagemaker.logs.ColorWrap")
+def test_logs_for_transform_job_wait_on_completed(cw, sagemaker_session_complete):
+    ims = sagemaker_session_complete
+    ims.logs_for_transform_job(JOB_NAME, wait=True, poll=0)
+    assert ims.sagemaker_client.describe_transform_job.call_args_list == [
+        call(TransformJobName=JOB_NAME)
+    ]
+    cw().assert_called_with(0, "hi there #1")
+
+
+@patch("sagemaker.logs.ColorWrap")
+def test_logs_for_transform_job_wait_on_stopped(cw, sagemaker_session_stopped):
+    ims = sagemaker_session_stopped
+    ims.logs_for_transform_job(JOB_NAME, wait=True, poll=0)
+    assert ims.sagemaker_client.describe_transform_job.call_args_list == [
+        call(TransformJobName=JOB_NAME)
+    ]
+    cw().assert_called_with(0, "hi there #1")
+
+
+@patch("sagemaker.logs.ColorWrap")
+def test_logs_for_transform_job_no_wait_on_running(cw, sagemaker_session_ready_lifecycle):
+    ims = sagemaker_session_ready_lifecycle
+    ims.logs_for_transform_job(JOB_NAME)
+    assert ims.sagemaker_client.describe_transform_job.call_args_list == [
+        call(TransformJobName=JOB_NAME)
+    ]
+    cw().assert_called_with(0, "hi there #1")
+
+
+@patch("sagemaker.logs.ColorWrap")
+@patch("time.time", side_effect=[0, 30, 60, 90, 120, 150, 180])
+def test_logs_for_transform_job_full_lifecycle(time, cw, sagemaker_session_full_lifecycle):
+    ims = sagemaker_session_full_lifecycle
+    ims.logs_for_transform_job(JOB_NAME, wait=True, poll=0)
+    assert (
+        ims.sagemaker_client.describe_transform_job.call_args_list
+        == [call(TransformJobName=JOB_NAME)] * 3
     )
     assert cw().call_args_list == [
         call(0, "hi there #1"),

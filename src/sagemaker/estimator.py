@@ -47,7 +47,7 @@ from sagemaker.predictor import RealTimePredictor
 from sagemaker.session import Session
 from sagemaker.session import s3_input
 from sagemaker.transformer import Transformer
-from sagemaker.utils import base_name_from_image, name_from_base, name_from_image, get_config_value
+from sagemaker.utils import base_name_from_image, name_from_base, get_config_value
 from sagemaker import vpc_utils
 
 
@@ -261,6 +261,16 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):
         """
         return False
 
+    def prepare_workflow_for_training(self, job_name=None):
+        """Calls _prepare_for_training. Used when setting up a workflow.
+
+        Args:
+            job_name (str): Name of the training job to be created. If not
+                specified, one is generated, using the base name given to the
+                constructor if applicable.
+        """
+        self._prepare_for_training(job_name=job_name)
+
     def _prepare_for_training(self, job_name=None):
         """Set any values in the estimator that need to be set before training.
 
@@ -471,6 +481,7 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):
         update_endpoint=False,
         wait=True,
         model_name=None,
+        kms_key=None,
         **kwargs
     ):
         """Deploy the trained model to an Amazon SageMaker endpoint and return a
@@ -510,6 +521,9 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):
                 For more information about tags, see
                 https://boto3.amazonaws.com/v1/documentation\
                 /api/latest/reference/services/sagemaker.html#SageMaker.Client.add_tags
+            kms_key (str): The ARN of the KMS key that is used to encrypt the
+                data on the storage volume attached to the instance hosting the
+                endpoint.
             **kwargs: Passed to invocation of ``create_model()``.
                 Implementations may customize ``create_model()`` to accept
                 ``**kwargs`` to customize model creation during deploy.
@@ -533,6 +547,7 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):
                 )
             model = self._compiled_models[family]
         else:
+            kwargs["model_kms_key"] = self.output_kms_key
             model = self.create_model(**kwargs)
         model.name = model_name
         return model.deploy(
@@ -543,6 +558,7 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):
             update_endpoint=update_endpoint,
             tags=self.tags,
             wait=wait,
+            kms_key=kms_key,
         )
 
     @property
@@ -556,7 +572,7 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):
             )["ModelArtifacts"]["S3ModelArtifacts"]
         else:
             logging.warning(
-                "No finished training job found associated with this estimator. Please make sure"
+                "No finished training job found associated with this estimator. Please make sure "
                 "this estimator is only used for building workflow config"
             )
             model_uri = os.path.join(
@@ -604,6 +620,8 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):
         init_params["base_job_name"] = job_details["TrainingJobName"]
         init_params["output_path"] = job_details["OutputDataConfig"]["S3OutputPath"]
         init_params["output_kms_key"] = job_details["OutputDataConfig"]["KmsKeyId"]
+        if "EnableNetworkIsolation" in job_details:
+            init_params["enable_network_isolation"] = job_details["EnableNetworkIsolation"]
 
         has_hps = "HyperParameters" in job_details
         init_params["hyperparameters"] = job_details["HyperParameters"] if has_hps else {}
@@ -667,6 +685,7 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):
         tags=None,
         role=None,
         volume_kms_key=None,
+        vpc_config_override=vpc_utils.VPC_CONFIG_DEFAULT,
     ):
         """Return a ``Transformer`` that uses a SageMaker Model based on the
         training job. It reuses the SageMaker Session and base job name used by
@@ -702,19 +721,32 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):
                 role from the Estimator will be used.
             volume_kms_key (str): Optional. KMS key ID for encrypting the volume
                 attached to the ML compute instance (default: None).
+            vpc_config_override (dict[str, list[str]]): Optional override for the
+                VpcConfig set on the model.
+                Default: use subnets and security groups from this Estimator.
+                * 'Subnets' (list[str]): List of subnet ids.
+                * 'SecurityGroupIds' (list[str]): List of security group ids.
         """
         tags = tags or self.tags
 
-        if self.latest_training_job is not None:
-            model_name = self.sagemaker_session.create_model_from_job(
-                self.latest_training_job.name, role=role, tags=tags
-            )
-        else:
+        if self.latest_training_job is None:
             logging.warning(
-                "No finished training job found associated with this estimator. Please make sure"
+                "No finished training job found associated with this estimator. Please make sure "
                 "this estimator is only used for building workflow config"
             )
             model_name = self._current_job_name
+        else:
+            model_name = self.latest_training_job.name
+            model = self.create_model(
+                vpc_config_override=vpc_config_override, model_kms_key=self.output_kms_key
+            )
+
+            # not all create_model() implementations have the same kwargs
+            model.name = model_name
+            if role is not None:
+                model.role = role
+
+            model._create_sagemaker_model(instance_type, tags=tags)
 
         return Transformer(
             model_name,
@@ -905,6 +937,7 @@ class Estimator(EstimatorBase):
         train_max_wait=None,
         checkpoint_s3_uri=None,
         checkpoint_local_path=None,
+        enable_network_isolation=False,
     ):
         """Initialize an ``Estimator`` instance.
 
@@ -1008,9 +1041,18 @@ class Estimator(EstimatorBase):
                 started. If the path is unset then SageMaker assumes the
                 checkpoints will be provided under `/opt/ml/checkpoints/`.
                 (default: ``None``).
+            enable_network_isolation (bool): Specifies whether container will
+                run in network isolation mode. Network isolation mode restricts
+                the container access to outside networks (such as the Internet).
+                The container does not make any inbound or outbound network
+                calls. If ``True``, a channel named "code" will be created for any
+                user entry script for training. The user entry script, files in
+                source_dir (if specified), and dependencies will be uploaded in
+                a tar to S3. Also known as internet-free mode (default: ``False``).
         """
         self.image_name = image_name
         self.hyperparam_dict = hyperparameters.copy() if hyperparameters else {}
+        self._enable_network_isolation = enable_network_isolation
         super(Estimator, self).__init__(
             role,
             train_instance_count,
@@ -1035,6 +1077,14 @@ class Estimator(EstimatorBase):
             checkpoint_s3_uri=checkpoint_s3_uri,
             checkpoint_local_path=checkpoint_local_path,
         )
+
+    def enable_network_isolation(self):
+        """If this Estimator can use network isolation when running.
+
+        Returns:
+            bool: Whether this Estimator can use network isolation or not.
+        """
+        return self._enable_network_isolation
 
     def train_image(self):
         """Returns the docker image to use for training.
@@ -1124,6 +1174,7 @@ class Estimator(EstimatorBase):
             vpc_config=self.get_vpc_config(vpc_config_override),
             sagemaker_session=self.sagemaker_session,
             predictor_cls=predictor_cls,
+            enable_network_isolation=self.enable_network_isolation(),
             **kwargs
         )
 
@@ -1609,6 +1660,7 @@ class Framework(EstimatorBase):
         model_server_workers=None,
         volume_kms_key=None,
         entry_point=None,
+        vpc_config_override=vpc_utils.VPC_CONFIG_DEFAULT,
     ):
         """Return a ``Transformer`` that uses a SageMaker Model based on the
         training job. It reuses the SageMaker Session and base job name used by
@@ -1650,37 +1702,41 @@ class Framework(EstimatorBase):
             entry_point (str): Path (absolute or relative) to the local Python source file which
                 should be executed as the entry point to training. If not specified, the training
                 entry point is used.
+            vpc_config_override (dict[str, list[str]]): Optional override for
+                the VpcConfig set on the model.
+                Default: use subnets and security groups from this Estimator.
+                * 'Subnets' (list[str]): List of subnet ids.
+                * 'SecurityGroupIds' (list[str]): List of security group ids.
 
         Returns:
             sagemaker.transformer.Transformer: a ``Transformer`` object that can be used to start a
                 SageMaker Batch Transform job.
         """
         role = role or self.role
+        tags = tags or self.tags
 
         if self.latest_training_job is not None:
             model = self.create_model(
-                role=role, model_server_workers=model_server_workers, entry_point=entry_point
+                role=role,
+                model_server_workers=model_server_workers,
+                entry_point=entry_point,
+                vpc_config_override=vpc_config_override,
+                model_kms_key=self.output_kms_key,
             )
+            model._create_sagemaker_model(instance_type, tags=tags)
 
-            container_def = model.prepare_container_def(instance_type)
-            model_name = model.name or name_from_image(container_def["Image"])
-            vpc_config = model.vpc_config
-            tags = tags or self.tags
-            self.sagemaker_session.create_model(
-                model_name, role, container_def, vpc_config, tags=tags
-            )
+            model_name = model.name
             transform_env = model.env.copy()
             if env is not None:
                 transform_env.update(env)
         else:
             logging.warning(
-                "No finished training job found associated with this estimator. Please make sure"
+                "No finished training job found associated with this estimator. Please make sure "
                 "this estimator is only used for building workflow config"
             )
             model_name = self._current_job_name
             transform_env = env or {}
 
-        tags = tags or self.tags
         return Transformer(
             model_name,
             instance_count,

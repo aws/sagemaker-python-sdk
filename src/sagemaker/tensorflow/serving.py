@@ -131,7 +131,7 @@ class Model(sagemaker.model.FrameworkModel):
         logging.ERROR: "error",
         logging.CRITICAL: "crit",
     }
-    LATEST_EIA_VERSION = [1, 13]
+    LATEST_EIA_VERSION = [1, 14]
 
     def __init__(
         self,
@@ -230,6 +230,7 @@ class Model(sagemaker.model.FrameworkModel):
                 self.model_data,
                 model_data,
                 self.sagemaker_session,
+                kms_key=self.model_kms_key,
             )
         else:
             model_data = self.model_data

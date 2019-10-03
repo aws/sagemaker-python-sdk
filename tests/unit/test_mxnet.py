@@ -337,6 +337,7 @@ def test_mxnet_mms_version(
     model = mx.create_model()
 
     expected_image_base = _get_full_image_uri(mxnet_version, IMAGE_REPO_SERVING_NAME, "gpu")
+
     environment = {
         "Environment": {
             "SAGEMAKER_SUBMIT_DIRECTORY": "s3://mybucket/sagemaker-mxnet-2017-11-06-14:14:15.672/model.tar.gz",
@@ -415,6 +416,7 @@ def test_model(sagemaker_session):
 
 @patch("sagemaker.utils.repack_model")
 def test_model_mms_version(repack_model, sagemaker_session):
+    model_kms_key = "kms-key"
     model = MXNetModel(
         MODEL_DATA,
         role=ROLE,
@@ -422,6 +424,7 @@ def test_model_mms_version(repack_model, sagemaker_session):
         framework_version=MXNetModel._LOWEST_MMS_VERSION,
         sagemaker_session=sagemaker_session,
         name="test-mxnet-model",
+        model_kms_key=model_kms_key,
     )
     predictor = model.deploy(1, GPU)
 
@@ -432,6 +435,7 @@ def test_model_mms_version(repack_model, sagemaker_session):
         model_uri=MODEL_DATA,
         repacked_model_uri="s3://mybucket/test-mxnet-model/model.tar.gz",
         sagemaker_session=sagemaker_session,
+        kms_key=model_kms_key,
     )
 
     assert model.model_data == MODEL_DATA

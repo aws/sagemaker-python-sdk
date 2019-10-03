@@ -365,6 +365,7 @@ def repack_model(
     model_uri,
     repacked_model_uri,
     sagemaker_session,
+    kms_key=None,
 ):
     """Unpack model tarball and creates a new model tarball with the provided
     code script.
@@ -400,6 +401,7 @@ def repack_model(
             model will be saved
         sagemaker_session (sagemaker.session.Session): a sagemaker session to
             interact with S3.
+        kms_key (str): KMS key ARN for encrypting the repacked model file
 
     Returns:
         str: path to the new packed model
@@ -417,10 +419,10 @@ def repack_model(
         with tarfile.open(tmp_model_path, mode="w:gz") as t:
             t.add(model_dir, arcname=os.path.sep)
 
-        _save_model(repacked_model_uri, tmp_model_path, sagemaker_session)
+        _save_model(repacked_model_uri, tmp_model_path, sagemaker_session, kms_key=kms_key)
 
 
-def _save_model(repacked_model_uri, tmp_model_path, sagemaker_session):
+def _save_model(repacked_model_uri, tmp_model_path, sagemaker_session, kms_key):
     """
     Args:
         repacked_model_uri:
@@ -432,8 +434,12 @@ def _save_model(repacked_model_uri, tmp_model_path, sagemaker_session):
         bucket, key = url.netloc, url.path.lstrip("/")
         new_key = key.replace(os.path.basename(key), os.path.basename(repacked_model_uri))
 
+        if kms_key:
+            extra_args = {"ServerSideEncryption": "aws:kms", "SSEKMSKeyId": kms_key}
+        else:
+            extra_args = None
         sagemaker_session.boto_session.resource("s3").Object(bucket, new_key).upload_file(
-            tmp_model_path
+            tmp_model_path, ExtraArgs=extra_args
         )
     else:
         shutil.move(tmp_model_path, repacked_model_uri.replace("file://", ""))
@@ -468,10 +474,12 @@ def _create_or_update_code_dir(
         shutil.copy2(inference_script, code_dir)
 
     for dependency in dependencies:
+        lib_dir = os.path.join(code_dir, "lib")
         if os.path.isdir(dependency):
-            shutil.copytree(dependency, code_dir)
+            shutil.copytree(dependency, os.path.join(lib_dir, os.path.basename(dependency)))
         else:
-            shutil.copy2(dependency, code_dir)
+            os.mkdir(lib_dir)
+            shutil.copy2(dependency, lib_dir)
 
 
 def _extract_model(model_uri, sagemaker_session, tmp):
@@ -534,7 +542,7 @@ def get_ecr_image_uri_prefix(account, region):
     Returns:
         (str): URI prefix of ECR image
     """
-    domain = "c2s.ic.gov" if region == "us-iso-east-1" else "amazonaws.com"
+    domain = _domain_for_region(region)
     return "{}.dkr.ecr.{}.{}".format(account, region, domain)
 
 
@@ -553,7 +561,20 @@ def sts_regional_endpoint(region):
     Returns:
         str: AWS STS regional endpoint
     """
-    return "sts.{}.amazonaws.com".format(region)
+    domain = _domain_for_region(region)
+    return "https://sts.{}.{}".format(region, domain)
+
+
+def _domain_for_region(region):
+    """Get the DNS suffix for the given region.
+
+    Args:
+        region (str): AWS region name
+
+    Returns:
+        str: the DNS suffix
+    """
+    return "c2s.ic.gov" if region == "us-iso-east-1" else "amazonaws.com"
 
 
 class DeferredError(object):

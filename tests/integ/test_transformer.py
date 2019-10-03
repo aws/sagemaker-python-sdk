@@ -279,13 +279,14 @@ def test_transform_byo_estimator(sagemaker_session, cpu_instance_type):
     with timeout(minutes=TRAINING_DEFAULT_TIMEOUT_MINUTES):
         kmeans.fit(records, job_name=job_name)
 
+    estimator = Estimator.attach(training_job_name=job_name, sagemaker_session=sagemaker_session)
+    estimator._enable_network_isolation = True
+
     transform_input_path = os.path.join(data_path, "transform_input.csv")
     transform_input_key_prefix = "integ-test-data/one_p_mnist/transform"
     transform_input = kmeans.sagemaker_session.upload_data(
         path=transform_input_path, key_prefix=transform_input_key_prefix
     )
-
-    estimator = Estimator.attach(training_job_name=job_name, sagemaker_session=sagemaker_session)
 
     transformer = estimator.transformer(1, cpu_instance_type, tags=tags)
     transformer.transform(transform_input, content_type="text/csv")
@@ -297,6 +298,8 @@ def test_transform_byo_estimator(sagemaker_session, cpu_instance_type):
         model_desc = sagemaker_session.sagemaker_client.describe_model(
             ModelName=transformer.model_name
         )
+        assert model_desc["EnableNetworkIsolation"]
+
         model_tags = sagemaker_session.sagemaker_client.list_tags(
             ResourceArn=model_desc["ModelArn"]
         )["Tags"]
@@ -398,6 +401,47 @@ def test_stop_transform_job(sagemaker_session, mxnet_full_version, cpu_instance_
     assert desc["TransformJobStatus"] == "Stopped"
 
 
+def test_transform_mxnet_logs(sagemaker_session, mxnet_full_version, cpu_instance_type):
+    data_path = os.path.join(DATA_DIR, "mxnet_mnist")
+    script_path = os.path.join(data_path, "mnist.py")
+
+    mx = MXNet(
+        entry_point=script_path,
+        role="SageMakerRole",
+        train_instance_count=1,
+        train_instance_type=cpu_instance_type,
+        sagemaker_session=sagemaker_session,
+        framework_version=mxnet_full_version,
+    )
+
+    train_input = mx.sagemaker_session.upload_data(
+        path=os.path.join(data_path, "train"), key_prefix="integ-test-data/mxnet_mnist/train"
+    )
+    test_input = mx.sagemaker_session.upload_data(
+        path=os.path.join(data_path, "test"), key_prefix="integ-test-data/mxnet_mnist/test"
+    )
+    job_name = unique_name_from_base("test-mxnet-transform")
+
+    with timeout(minutes=TRAINING_DEFAULT_TIMEOUT_MINUTES):
+        mx.fit({"train": train_input, "test": test_input}, job_name=job_name)
+
+    transform_input_path = os.path.join(data_path, "transform", "data.csv")
+    transform_input_key_prefix = "integ-test-data/mxnet_mnist/transform"
+    transform_input = mx.sagemaker_session.upload_data(
+        path=transform_input_path, key_prefix=transform_input_key_prefix
+    )
+
+    with timeout(minutes=45):
+        transformer = _create_transformer_and_transform_job(
+            mx, transform_input, cpu_instance_type, wait=True, logs=True
+        )
+
+    with timeout_and_delete_model_with_transformer(
+        transformer, sagemaker_session, minutes=TRANSFORM_DEFAULT_TIMEOUT_MINUTES
+    ):
+        transformer.wait()
+
+
 def _create_transformer_and_transform_job(
     estimator,
     transform_input,
@@ -406,6 +450,8 @@ def _create_transformer_and_transform_job(
     input_filter=None,
     output_filter=None,
     join_source=None,
+    wait=False,
+    logs=False,
 ):
     transformer = estimator.transformer(1, instance_type, volume_kms_key=volume_kms_key)
     transformer.transform(
@@ -414,5 +460,7 @@ def _create_transformer_and_transform_job(
         input_filter=input_filter,
         output_filter=output_filter,
         join_source=join_source,
+        wait=wait,
+        logs=logs,
     )
     return transformer

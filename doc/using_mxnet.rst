@@ -567,7 +567,7 @@ If you provide your own implementation of input_fn, you should abide by the ``in
         """An input_fn that loads a pickled numpy array"""
         if request_content_type == 'application/python-pickle':
             array = np.load(StringIO(request_body))
-            array.reshape(model.data_shpaes[0])
+            array.reshape(model.data_shapes[0])
             return mx.io.NDArrayIter(mx.ndarray(array))
         else:
             # Handle other content-types here or raise an Exception
