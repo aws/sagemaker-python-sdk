@@ -424,15 +424,14 @@ in the following code:
 You can also bring in external dependencies to help with your data
 processing. There are 2 ways to do this:
 
-1. If you included ``requirements.txt`` in your ``source_dir`` or in
-   your dependencies, the container installs the Python dependencies at runtime using ``pip install -r``:
+1. If you included ``requirements.txt`` in your ``source_dir``, the container installs the Python dependencies at runtime using ``pip install -r``:
 
 .. code::
 
     from sagemaker.tensorflow.serving import Model
 
     model = Model(entry_point='inference.py',
-                  dependencies=['requirements.txt'],
+                  source_dir='source/directory',
                   model_data='s3://mybucket/model.tar.gz',
                   role='MySageMakerRole')
 
