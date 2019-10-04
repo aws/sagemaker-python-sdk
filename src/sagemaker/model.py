@@ -398,7 +398,7 @@ class Model(object):
         Args:
             initial_instance_count (int): The initial number of instances to run
                 in the ``Endpoint`` created from this ``Model``.
-            instance_type (str): The EC2 instance type to deploy this Model to,
+            instance_type (str): The EC2 instance type to deploy this Model to.
                 For example, 'ml.p2.xlarge', or 'local' for local mode.
             accelerator_type (str): Type of Elastic Inference accelerator to
                 deploy this model for model loading and inference, for example,
