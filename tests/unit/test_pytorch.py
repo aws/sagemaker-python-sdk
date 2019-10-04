@@ -309,6 +309,7 @@ def test_mms_model(repack_model, sagemaker_session):
     repack_model.assert_called_with(
         dependencies=[],
         inference_script=SCRIPT_PATH,
+        kms_key=None,
         model_uri="s3://some/data.tar.gz",
         repacked_model_uri=ANY,
         sagemaker_session=sagemaker_session,
