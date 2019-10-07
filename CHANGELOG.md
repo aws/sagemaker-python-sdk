@@ -1,5 +1,11 @@
 # Changelog
 
+## v1.42.6.post0 (2019-10-07)
+
+### Documentation changes
+
+ * model local mode
+
 ## v1.42.6 (2019-10-03)
 
 ### Bug fixes and other changes
