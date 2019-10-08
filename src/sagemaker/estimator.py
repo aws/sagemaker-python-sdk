@@ -1227,6 +1227,8 @@ class Framework(EstimatorBase):
         dependencies=None,
         enable_network_isolation=False,
         git_config=None,
+        checkpoint_s3_uri=None,
+        checkpoint_local_path=None,
         **kwargs
     ):
         """Base class initializer. Subclasses which override ``__init__`` should
@@ -1391,6 +1393,8 @@ class Framework(EstimatorBase):
         self.uploaded_code = None
 
         self._hyperparameters = hyperparameters or {}
+        self.checkpoint_s3_uri = checkpoint_s3_uri
+        self.checkpoint_local_path = checkpoint_local_path
 
     def enable_network_isolation(self):
         """Return True if this Estimator can use network isolation to run.
