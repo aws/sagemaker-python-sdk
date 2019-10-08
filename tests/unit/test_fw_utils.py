@@ -68,14 +68,14 @@ def test_create_image_uri_cpu():
     assert image_uri == "23.dkr.ecr.mars-south-3.amazonaws.com/sagemaker-mlfw:1.0rc-cpu-py2"
 
     image_uri = fw_utils.create_image_uri(
-        "us-gov-west-1", MOCK_FRAMEWORK, "ml.c4.large", "1.0rc", "py2", "23"
+        "us-gov-west-1", MOCK_FRAMEWORK, "ml.c4.large", "1.0rc", "py2"
     )
     assert (
         image_uri == "246785580436.dkr.ecr.us-gov-west-1.amazonaws.com/sagemaker-mlfw:1.0rc-cpu-py2"
     )
 
     image_uri = fw_utils.create_image_uri(
-        "us-iso-east-1", MOCK_FRAMEWORK, "ml.c4.large", "1.0rc", "py2", "23"
+        "us-iso-east-1", MOCK_FRAMEWORK, "ml.c4.large", "1.0rc", "py2"
     )
     assert image_uri == "744548109606.dkr.ecr.us-iso-east-1.c2s.ic.gov/sagemaker-mlfw:1.0rc-cpu-py2"
 
@@ -174,6 +174,27 @@ def test_mxnet_eia_images():
         image_uri
         == "763104351884.dkr.ecr.us-east-1.amazonaws.com/mxnet-inference-eia:1.4.1-cpu-py3"
     )
+
+
+def test_create_image_uri_override_account():
+    image_uri = fw_utils.create_image_uri(
+        "us-west-1", MOCK_FRAMEWORK, "ml.p3.2xlarge", "1.0rc", "py3", account="fake"
+    )
+    assert image_uri == "fake.dkr.ecr.us-west-1.amazonaws.com/sagemaker-mlfw:1.0rc-gpu-py3"
+
+
+def test_create_image_uri_gov_cloud_override_account():
+    image_uri = fw_utils.create_image_uri(
+        "us-gov-west-1", MOCK_FRAMEWORK, "ml.p3.2xlarge", "1.0rc", "py3", account="fake"
+    )
+    assert image_uri == "fake.dkr.ecr.us-gov-west-1.amazonaws.com/sagemaker-mlfw:1.0rc-gpu-py3"
+
+
+def test_create_image_uri_hkg_override_account():
+    image_uri = fw_utils.create_image_uri(
+        MOCK_HKG_REGION, MOCK_FRAMEWORK, "ml.p3.2xlarge", "1.0rc", "py3", account="fake"
+    )
+    assert {image_uri == "fake.dkr.ecr.ap-east-1.amazonaws.com/sagemaker-mlfw:1.0rc-gpu-py3"}
 
 
 def test_create_image_uri_merged():
