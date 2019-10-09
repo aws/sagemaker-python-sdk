@@ -67,8 +67,8 @@ def test_mnist(sagemaker_session, instance_type):
 
 
 def test_checkpoint_config(sagemaker_session, instance_type):
-    checkpoint_s3_uri = 's3://142577830533-sagemaker-checkpoint'
-    checkpoint_local_path = '/test/checkpoint/path'
+    checkpoint_s3_uri = "s3://142577830533-sagemaker-checkpoint"
+    checkpoint_local_path = "/test/checkpoint/path"
     estimator = TensorFlow(
         entry_point=SCRIPT,
         role="SageMakerRole",
@@ -79,7 +79,7 @@ def test_checkpoint_config(sagemaker_session, instance_type):
         framework_version=TensorFlow.LATEST_VERSION,
         py_version=tests.integ.PYTHON_VERSION,
         checkpoint_s3_uri=checkpoint_s3_uri,
-        checkpoint_local_path=checkpoint_local_path
+        checkpoint_local_path=checkpoint_local_path,
     )
     inputs = estimator.sagemaker_session.upload_data(
         path=os.path.join(MNIST_RESOURCE_PATH, "data"), key_prefix="script/mnist"
@@ -89,11 +89,12 @@ def test_checkpoint_config(sagemaker_session, instance_type):
         estimator.fit(inputs=inputs, job_name=training_job_name)
 
     expected_training_checkpoint_config = {
-        'S3Uri': checkpoint_s3_uri,
-        'LocalPath': checkpoint_local_path
+        "S3Uri": checkpoint_s3_uri,
+        "LocalPath": checkpoint_local_path,
     }
     actual_training_checkpoint_config = sagemaker_session.sagemaker_client.describe_training_job(
-        TrainingJobName=training_job_name)['CheckpointConfig']
+        TrainingJobName=training_job_name
+    )["CheckpointConfig"]
     assert actual_training_checkpoint_config == expected_training_checkpoint_config
 
 
