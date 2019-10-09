@@ -66,8 +66,12 @@ def test_mnist(sagemaker_session, instance_type):
     assert df.size > 0
 
 
+@pytest.mark.skipif(
+    tests.integ.test_region() != "us-east-1",
+    reason="checkpoint s3 bucket is in us-east-1, ListObjectsV2 will fail in other regions",
+)
 def test_checkpoint_config(sagemaker_session, instance_type):
-    checkpoint_s3_uri = "s3://142577830533-sagemaker-checkpoint"
+    checkpoint_s3_uri = "s3://142577830533-us-east-1-sagemaker-checkpoint"
     checkpoint_local_path = "/test/checkpoint/path"
     estimator = TensorFlow(
         entry_point=SCRIPT,
