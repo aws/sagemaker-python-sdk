@@ -120,7 +120,7 @@ class PCA(AmazonAlgorithmEstimatorBase):
         self.subtract_mean = subtract_mean
         self.extra_components = extra_components
 
-    def create_model(self, vpc_config_override=VPC_CONFIG_DEFAULT):
+    def create_model(self, vpc_config_override=VPC_CONFIG_DEFAULT, **kwargs):
         """Return a :class:`~sagemaker.amazon.pca.PCAModel` referencing the
         latest s3 model data produced by this Estimator.
 
@@ -129,12 +129,14 @@ class PCA(AmazonAlgorithmEstimatorBase):
                 the model. Default: use subnets and security groups from this Estimator.
                 * 'Subnets' (list[str]): List of subnet ids.
                 * 'SecurityGroupIds' (list[str]): List of security group ids.
+            **kwargs: Additional kwargs passed to the PCAModel constructor.
         """
         return PCAModel(
             self.model_data,
             self.role,
             sagemaker_session=self.sagemaker_session,
             vpc_config=self.get_vpc_config(vpc_config_override),
+            **kwargs
         )
 
     def _prepare_for_training(self, records, mini_batch_size=None, job_name=None):

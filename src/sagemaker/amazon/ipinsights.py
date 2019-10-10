@@ -131,7 +131,7 @@ class IPInsights(AmazonAlgorithmEstimatorBase):
         self.shuffled_negative_sampling_rate = shuffled_negative_sampling_rate
         self.weight_decay = weight_decay
 
-    def create_model(self, vpc_config_override=VPC_CONFIG_DEFAULT):
+    def create_model(self, vpc_config_override=VPC_CONFIG_DEFAULT, **kwargs):
         """Create a model for the latest s3 model produced by this estimator.
 
         Args:
@@ -140,6 +140,7 @@ class IPInsights(AmazonAlgorithmEstimatorBase):
                 Default: use subnets and security groups from this Estimator.
                 * 'Subnets' (list[str]): List of subnet ids.
                 * 'SecurityGroupIds' (list[str]): List of security group ids.
+            **kwargs: Additional kwargs passed to the IPInsightsModel constructor.
         Returns:
             :class:`~sagemaker.amazon.IPInsightsModel`: references the latest s3 model
             data produced by this estimator.
@@ -149,6 +150,7 @@ class IPInsights(AmazonAlgorithmEstimatorBase):
             self.role,
             sagemaker_session=self.sagemaker_session,
             vpc_config=self.get_vpc_config(vpc_config_override),
+            **kwargs
         )
 
     def _prepare_for_training(self, records, mini_batch_size=None, job_name=None):

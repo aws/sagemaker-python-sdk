@@ -1,5 +1,17 @@
 # Changelog
 
+## v1.42.8 (2019-10-10)
+
+### Bug fixes and other changes
+
+ * add kwargs to create_model for 1p to work with kms
+
+## v1.42.7 (2019-10-09)
+
+### Bug fixes and other changes
+
+ * paginating describe log streams
+
 ## v1.42.6.post0 (2019-10-07)
 
 ### Documentation changes
