@@ -66,6 +66,42 @@ def test_mnist(sagemaker_session, instance_type):
     assert df.size > 0
 
 
+@pytest.mark.skipif(
+    tests.integ.test_region() != "us-east-1",
+    reason="checkpoint s3 bucket is in us-east-1, ListObjectsV2 will fail in other regions",
+)
+def test_checkpoint_config(sagemaker_session, instance_type):
+    checkpoint_s3_uri = "s3://142577830533-us-east-1-sagemaker-checkpoint"
+    checkpoint_local_path = "/test/checkpoint/path"
+    estimator = TensorFlow(
+        entry_point=SCRIPT,
+        role="SageMakerRole",
+        train_instance_count=1,
+        train_instance_type=instance_type,
+        sagemaker_session=sagemaker_session,
+        script_mode=True,
+        framework_version=TensorFlow.LATEST_VERSION,
+        py_version=tests.integ.PYTHON_VERSION,
+        checkpoint_s3_uri=checkpoint_s3_uri,
+        checkpoint_local_path=checkpoint_local_path,
+    )
+    inputs = estimator.sagemaker_session.upload_data(
+        path=os.path.join(MNIST_RESOURCE_PATH, "data"), key_prefix="script/mnist"
+    )
+    training_job_name = unique_name_from_base("test-tf-sm-checkpoint")
+    with tests.integ.timeout.timeout(minutes=tests.integ.TRAINING_DEFAULT_TIMEOUT_MINUTES):
+        estimator.fit(inputs=inputs, job_name=training_job_name)
+
+    expected_training_checkpoint_config = {
+        "S3Uri": checkpoint_s3_uri,
+        "LocalPath": checkpoint_local_path,
+    }
+    actual_training_checkpoint_config = sagemaker_session.sagemaker_client.describe_training_job(
+        TrainingJobName=training_job_name
+    )["CheckpointConfig"]
+    assert actual_training_checkpoint_config == expected_training_checkpoint_config
+
+
 def test_server_side_encryption(sagemaker_session):
     boto_session = sagemaker_session.boto_session
     with kms_utils.bucket_with_encryption(boto_session, ROLE) as (bucket_with_kms, kms_key):
