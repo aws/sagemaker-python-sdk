@@ -235,7 +235,7 @@ class FactorizationMachines(AmazonAlgorithmEstimatorBase):
         self.factors_init_sigma = factors_init_sigma
         self.factors_init_value = factors_init_value
 
-    def create_model(self, vpc_config_override=VPC_CONFIG_DEFAULT):
+    def create_model(self, vpc_config_override=VPC_CONFIG_DEFAULT, **kwargs):
         """Return a :class:`~sagemaker.amazon.FactorizationMachinesModel`
         referencing the latest s3 model data produced by this Estimator.
 
@@ -244,12 +244,14 @@ class FactorizationMachines(AmazonAlgorithmEstimatorBase):
                 the model. Default: use subnets and security groups from this Estimator.
                 * 'Subnets' (list[str]): List of subnet ids.
                 * 'SecurityGroupIds' (list[str]): List of security group ids.
+            **kwargs: Additional kwargs passed to the FactorizationMachinesModel constructor.
         """
         return FactorizationMachinesModel(
             self.model_data,
             self.role,
             sagemaker_session=self.sagemaker_session,
             vpc_config=self.get_vpc_config(vpc_config_override),
+            **kwargs
         )
 
 

@@ -295,7 +295,7 @@ class Object2Vec(AmazonAlgorithmEstimatorBase):
         self.enc0_freeze_pretrained_embedding = enc0_freeze_pretrained_embedding
         self.enc1_freeze_pretrained_embedding = enc1_freeze_pretrained_embedding
 
-    def create_model(self, vpc_config_override=VPC_CONFIG_DEFAULT):
+    def create_model(self, vpc_config_override=VPC_CONFIG_DEFAULT, **kwargs):
         """Return a :class:`~sagemaker.amazon.Object2VecModel` referencing the
         latest s3 model data produced by this Estimator.
 
@@ -304,12 +304,14 @@ class Object2Vec(AmazonAlgorithmEstimatorBase):
                 the model. Default: use subnets and security groups from this Estimator.
                 * 'Subnets' (list[str]): List of subnet ids.
                 * 'SecurityGroupIds' (list[str]): List of security group ids.
+            **kwargs: Additional kwargs passed to the Object2VecModel constructor.
         """
         return Object2VecModel(
             self.model_data,
             self.role,
             sagemaker_session=self.sagemaker_session,
             vpc_config=self.get_vpc_config(vpc_config_override),
+            **kwargs
         )
 
     def _prepare_for_training(self, records, mini_batch_size=None, job_name=None):
