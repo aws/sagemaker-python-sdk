@@ -71,7 +71,7 @@ def test_mnist(sagemaker_session, instance_type):
     reason="checkpoint s3 bucket is in us-east-1, ListObjectsV2 will fail in other regions",
 )
 def test_checkpoint_config(sagemaker_session, instance_type):
-    checkpoint_s3_uri = "s3://142577830533-us-east-1-sagemaker-checkpoint"
+    checkpoint_s3_uri = "s3://{}".format(sagemaker_session.default_bucket())
     checkpoint_local_path = "/test/checkpoint/path"
     estimator = TensorFlow(
         entry_point=SCRIPT,
