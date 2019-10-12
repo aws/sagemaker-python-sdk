@@ -40,7 +40,7 @@ TAGS = [{"Key": "some-key", "Value": "some-value"}]
 
 
 def test_mnist_with_checkpoint_config(sagemaker_session, instance_type):
-    checkpoint_s3_uri = "s3://{}//checkpoints/tf-{}".format(
+    checkpoint_s3_uri = "s3://{}/checkpoints/tf-{}".format(
         sagemaker_session.default_bucket(), sagemaker_timestamp()
     )
     checkpoint_local_path = "/test/checkpoint/path"
