@@ -19,7 +19,7 @@ import time
 import pytest
 
 from sagemaker.tensorflow import TensorFlow
-from sagemaker.utils import unique_name_from_base
+from sagemaker.utils import unique_name_from_base, sagemaker_timestamp
 
 import tests.integ
 from tests.integ import timeout
@@ -39,35 +39,10 @@ MPI_DISTRIBUTION = {"mpi": {"enabled": True}}
 TAGS = [{"Key": "some-key", "Value": "some-value"}]
 
 
-def test_mnist(sagemaker_session, instance_type):
-    estimator = TensorFlow(
-        entry_point=SCRIPT,
-        role="SageMakerRole",
-        train_instance_count=1,
-        train_instance_type=instance_type,
-        sagemaker_session=sagemaker_session,
-        script_mode=True,
-        framework_version=TensorFlow.LATEST_VERSION,
-        py_version=tests.integ.PYTHON_VERSION,
-        metric_definitions=[{"Name": "train:global_steps", "Regex": r"global_step\/sec:\s(.*)"}],
+def test_mnist_with_checkpoint_config(sagemaker_session, instance_type):
+    checkpoint_s3_uri = "s3://{}/tf-{}".format(
+        sagemaker_session.default_bucket(), sagemaker_timestamp()
     )
-    inputs = estimator.sagemaker_session.upload_data(
-        path=os.path.join(MNIST_RESOURCE_PATH, "data"), key_prefix="scriptmode/mnist"
-    )
-
-    with tests.integ.timeout.timeout(minutes=tests.integ.TRAINING_DEFAULT_TIMEOUT_MINUTES):
-        estimator.fit(inputs=inputs, job_name=unique_name_from_base("test-tf-sm-mnist"))
-    assert_s3_files_exist(
-        sagemaker_session,
-        estimator.model_dir,
-        ["graph.pbtxt", "model.ckpt-0.index", "model.ckpt-0.meta"],
-    )
-    df = estimator.training_job_analytics.dataframe()
-    assert df.size > 0
-
-
-def test_checkpoint_config(sagemaker_session, instance_type):
-    checkpoint_s3_uri = "s3://{}".format(sagemaker_session.default_bucket())
     checkpoint_local_path = "/test/checkpoint/path"
     estimator = TensorFlow(
         entry_point=SCRIPT,
@@ -78,15 +53,24 @@ def test_checkpoint_config(sagemaker_session, instance_type):
         script_mode=True,
         framework_version=TensorFlow.LATEST_VERSION,
         py_version=tests.integ.PYTHON_VERSION,
+        metric_definitions=[{"Name": "train:global_steps", "Regex": r"global_step\/sec:\s(.*)"}],
         checkpoint_s3_uri=checkpoint_s3_uri,
-        checkpoint_local_path=checkpoint_local_path,
+        checkpoint_local_path=checkpoint_local_path
     )
     inputs = estimator.sagemaker_session.upload_data(
-        path=os.path.join(MNIST_RESOURCE_PATH, "data"), key_prefix="script/mnist"
+        path=os.path.join(MNIST_RESOURCE_PATH, "data"), key_prefix="scriptmode/mnist"
     )
-    training_job_name = unique_name_from_base("test-tf-sm-checkpoint")
+
+    training_job_name = unique_name_from_base("test-tf-sm-mnist")
     with tests.integ.timeout.timeout(minutes=tests.integ.TRAINING_DEFAULT_TIMEOUT_MINUTES):
         estimator.fit(inputs=inputs, job_name=training_job_name)
+    assert_s3_files_exist(
+        sagemaker_session,
+        estimator.model_dir,
+        ["graph.pbtxt", "model.ckpt-0.index", "model.ckpt-0.meta"],
+    )
+    df = estimator.training_job_analytics.dataframe()
+    assert df.size > 0
 
     expected_training_checkpoint_config = {
         "S3Uri": checkpoint_s3_uri,
