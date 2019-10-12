@@ -40,7 +40,7 @@ TAGS = [{"Key": "some-key", "Value": "some-value"}]
 
 
 def test_mnist_with_checkpoint_config(sagemaker_session, instance_type):
-    checkpoint_s3_uri = "s3://{}/tf-{}".format(
+    checkpoint_s3_uri = "s3://{}//checkpoints/tf-{}".format(
         sagemaker_session.default_bucket(), sagemaker_timestamp()
     )
     checkpoint_local_path = "/test/checkpoint/path"
@@ -55,7 +55,7 @@ def test_mnist_with_checkpoint_config(sagemaker_session, instance_type):
         py_version=tests.integ.PYTHON_VERSION,
         metric_definitions=[{"Name": "train:global_steps", "Regex": r"global_step\/sec:\s(.*)"}],
         checkpoint_s3_uri=checkpoint_s3_uri,
-        checkpoint_local_path=checkpoint_local_path
+        checkpoint_local_path=checkpoint_local_path,
     )
     inputs = estimator.sagemaker_session.upload_data(
         path=os.path.join(MNIST_RESOURCE_PATH, "data"), key_prefix="scriptmode/mnist"
