@@ -151,4 +151,6 @@ class PyTorchModel(FrameworkModel):
 
         if self.model_server_workers:
             deploy_env[MODEL_SERVER_WORKERS_PARAM_NAME.upper()] = str(self.model_server_workers)
-        return sagemaker.container_def(deploy_image, self.model_data, deploy_env)
+        return sagemaker.container_def(
+            deploy_image, self.repacked_model_data or self.model_data, deploy_env
+        )

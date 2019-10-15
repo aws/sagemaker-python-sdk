@@ -155,7 +155,8 @@ def _is_pt_12_or_later(framework, framework_version):
         framework: Name of the frameowork
         framework_version: framework version
     """
-    asimov_lowest_pt = [1, 12, 0]
+    # Asimov team now owns PyTorch 1.2.0 py2 and py3
+    asimov_lowest_pt = [1, 2, 0]
     version = [int(s) for s in framework_version.split(".")]
     is_pytorch = framework in ("pytorch", "pytorch-serving")
     return is_pytorch and version >= asimov_lowest_pt[0 : len(version)]

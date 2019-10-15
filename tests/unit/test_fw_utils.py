@@ -315,27 +315,27 @@ def test_create_image_uri_merged_gov_regions():
 
 def test_create_image_uri_merged_pytorch():
 
-    image_uri = fw_utils.create_image_uri("us-west-2", "pytorch", "ml.p3.2xlarge", "1.12", "py2")
-    assert image_uri == "763104351884.dkr.ecr.us-west-2.amazonaws.com/pytorch-training:1.12-gpu-py2"
+    image_uri = fw_utils.create_image_uri("us-west-2", "pytorch", "ml.p3.2xlarge", "1.2", "py2")
+    assert image_uri == "763104351884.dkr.ecr.us-west-2.amazonaws.com/pytorch-training:1.2-gpu-py2"
 
-    image_uri = fw_utils.create_image_uri("us-west-2", "pytorch", "ml.p3.2xlarge", "1.11", "py2")
+    image_uri = fw_utils.create_image_uri("us-west-2", "pytorch", "ml.p3.2xlarge", "1.1", "py2")
     assert (
-        image_uri == "520713654638.dkr.ecr.us-west-2.amazonaws.com/sagemaker-pytorch:1.11-gpu-py2"
+        image_uri == "520713654638.dkr.ecr.us-west-2.amazonaws.com/sagemaker-pytorch:1.1-gpu-py2"
     )
 
     image_uri = fw_utils.create_image_uri(
-        "us-west-2", "pytorch-serving", "ml.c4.2xlarge", "1.12", "py2"
+        "us-west-2", "pytorch-serving", "ml.c4.2xlarge", "1.2", "py2"
     )
     assert (
-        image_uri == "763104351884.dkr.ecr.us-west-2.amazonaws.com/pytorch-inference:1.12-cpu-py2"
+        image_uri == "763104351884.dkr.ecr.us-west-2.amazonaws.com/pytorch-inference:1.2-cpu-py2"
     )
 
     image_uri = fw_utils.create_image_uri(
-        "us-west-2", "pytorch-serving", "ml.c4.2xlarge", "1.11", "py2"
+        "us-west-2", "pytorch-serving", "ml.c4.2xlarge", "1.1", "py2"
     )
     assert (
         image_uri
-        == "520713654638.dkr.ecr.us-west-2.amazonaws.com/sagemaker-pytorch-serving:1.11-cpu-py2"
+        == "520713654638.dkr.ecr.us-west-2.amazonaws.com/sagemaker-pytorch-serving:1.1-cpu-py2"
     )
 
 
