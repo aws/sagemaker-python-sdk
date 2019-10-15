@@ -67,6 +67,8 @@ MERGED_FRAMEWORKS_REPO_MAP = {
     "tensorflow-serving-eia": "tensorflow-inference-eia",
     "mxnet": "mxnet-training",
     "mxnet-serving": "mxnet-inference",
+    "pytorch": "pytorch-training",
+    "pytorch-serving": "pytorch-inference",
     "mxnet-serving-eia": "mxnet-inference-eia",
 }
 
@@ -76,6 +78,8 @@ MERGED_FRAMEWORKS_LOWEST_VERSIONS = {
     "tensorflow-serving-eia": [1, 14, 0],
     "mxnet": [1, 4, 1],
     "mxnet-serving": [1, 4, 1],
+    "pytorch": [1, 2, 0],
+    "pytorch-serving": [1, 2, 0],
     "mxnet-serving-eia": [1, 4, 1],
 }
 
@@ -119,10 +123,15 @@ def _using_merged_images(region, framework, py_version, framework_version):
     is_gov_region = region in VALID_ACCOUNTS_BY_REGION
     is_py3 = py_version == "py3" or py_version is None
     is_merged_versions = _is_merged_versions(framework, framework_version)
+
     return (
         ((not is_gov_region) or region in ASIMOV_VALID_ACCOUNTS_BY_REGION)
         and is_merged_versions
-        and (is_py3 or _is_tf_14_or_later(framework, framework_version))
+        and (
+            is_py3
+            or _is_tf_14_or_later(framework, framework_version)
+            or _is_pt_12_or_later(framework, framework_version)
+        )
     )
 
 
@@ -138,6 +147,19 @@ def _is_tf_14_or_later(framework, framework_version):
     return (
         framework == "tensorflow-scriptmode" and version >= asimov_lowest_tf_py2[0 : len(version)]
     )
+
+
+def _is_pt_12_or_later(framework, framework_version):
+    """
+    Args:
+        framework: Name of the frameowork
+        framework_version: framework version
+    """
+    # Asimov team now owns PyTorch 1.2.0 py2 and py3
+    asimov_lowest_pt = [1, 2, 0]
+    version = [int(s) for s in framework_version.split(".")]
+    is_pytorch = framework in ("pytorch", "pytorch-serving")
+    return is_pytorch and version >= asimov_lowest_pt[0 : len(version)]
 
 
 def _registry_id(region, framework, py_version, account, framework_version):

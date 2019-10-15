@@ -54,6 +54,31 @@ def test_sync_fit_deploy(pytorch_training_job, sagemaker_session, cpu_instance_t
         assert output.shape == (batch_size, 10)
 
 
+@pytest.mark.local_mode
+def test_fit_deploy(sagemaker_local_session, pytorch_full_version):
+    pytorch = PyTorch(
+        entry_point=MNIST_SCRIPT,
+        role="SageMakerRole",
+        framework_version=pytorch_full_version,
+        py_version="py3",
+        train_instance_count=1,
+        train_instance_type="local",
+        sagemaker_session=sagemaker_local_session,
+    )
+
+    pytorch.fit({"training": "file://" + os.path.join(MNIST_DIR, "training")})
+
+    predictor = pytorch.deploy(1, "local")
+    try:
+        batch_size = 100
+        data = numpy.random.rand(batch_size, 1, 28, 28).astype(numpy.float32)
+        output = predictor.predict(data)
+
+        assert output.shape == (batch_size, 10)
+    finally:
+        predictor.delete_endpoint()
+
+
 def test_deploy_model(pytorch_training_job, sagemaker_session, cpu_instance_type):
     endpoint_name = "test-pytorch-deploy-model-{}".format(sagemaker_timestamp())
 
