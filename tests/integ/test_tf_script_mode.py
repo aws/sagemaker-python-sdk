@@ -19,7 +19,7 @@ import time
 import pytest
 
 from sagemaker.tensorflow import TensorFlow
-from sagemaker.utils import unique_name_from_base
+from sagemaker.utils import unique_name_from_base, sagemaker_timestamp
 
 import tests.integ
 from tests.integ import timeout
@@ -39,7 +39,11 @@ MPI_DISTRIBUTION = {"mpi": {"enabled": True}}
 TAGS = [{"Key": "some-key", "Value": "some-value"}]
 
 
-def test_mnist(sagemaker_session, instance_type):
+def test_mnist_with_checkpoint_config(sagemaker_session, instance_type):
+    checkpoint_s3_uri = "s3://{}/checkpoints/tf-{}".format(
+        sagemaker_session.default_bucket(), sagemaker_timestamp()
+    )
+    checkpoint_local_path = "/test/checkpoint/path"
     estimator = TensorFlow(
         entry_point=SCRIPT,
         role="SageMakerRole",
@@ -50,13 +54,16 @@ def test_mnist(sagemaker_session, instance_type):
         framework_version=TensorFlow.LATEST_VERSION,
         py_version=tests.integ.PYTHON_VERSION,
         metric_definitions=[{"Name": "train:global_steps", "Regex": r"global_step\/sec:\s(.*)"}],
+        checkpoint_s3_uri=checkpoint_s3_uri,
+        checkpoint_local_path=checkpoint_local_path,
     )
     inputs = estimator.sagemaker_session.upload_data(
         path=os.path.join(MNIST_RESOURCE_PATH, "data"), key_prefix="scriptmode/mnist"
     )
 
+    training_job_name = unique_name_from_base("test-tf-sm-mnist")
     with tests.integ.timeout.timeout(minutes=tests.integ.TRAINING_DEFAULT_TIMEOUT_MINUTES):
-        estimator.fit(inputs=inputs, job_name=unique_name_from_base("test-tf-sm-mnist"))
+        estimator.fit(inputs=inputs, job_name=training_job_name)
     assert_s3_files_exist(
         sagemaker_session,
         estimator.model_dir,
@@ -64,6 +71,15 @@ def test_mnist(sagemaker_session, instance_type):
     )
     df = estimator.training_job_analytics.dataframe()
     assert df.size > 0
+
+    expected_training_checkpoint_config = {
+        "S3Uri": checkpoint_s3_uri,
+        "LocalPath": checkpoint_local_path,
+    }
+    actual_training_checkpoint_config = sagemaker_session.sagemaker_client.describe_training_job(
+        TrainingJobName=training_job_name
+    )["CheckpointConfig"]
+    assert actual_training_checkpoint_config == expected_training_checkpoint_config
 
 
 def test_server_side_encryption(sagemaker_session):

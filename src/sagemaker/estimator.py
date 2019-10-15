@@ -1227,6 +1227,8 @@ class Framework(EstimatorBase):
         dependencies=None,
         enable_network_isolation=False,
         git_config=None,
+        checkpoint_s3_uri=None,
+        checkpoint_local_path=None,
         **kwargs
     ):
         """Base class initializer. Subclasses which override ``__init__`` should
@@ -1363,6 +1365,17 @@ class Framework(EstimatorBase):
                 authentication if they are provided; otherwise, python SDK will
                 try to use either CodeCommit credential helper or local
                 credential storage for authentication.
+            checkpoint_s3_uri (str): The S3 URI in which to persist checkpoints
+                that the algorithm persists (if any) during training. (default:
+                ``None``).
+            checkpoint_local_path (str): The local path that the algorithm
+                writes its checkpoints to. SageMaker will persist all files
+                under this path to `checkpoint_s3_uri` continually during
+                training. On job startup the reverse happens - data from the
+                s3 location is downloaded to this path before the algorithm is
+                started. If the path is unset then SageMaker assumes the
+                checkpoints will be provided under `/opt/ml/checkpoints/`.
+                (default: ``None``).
             **kwargs: Additional kwargs passed to the ``EstimatorBase``
                 constructor.
         """
@@ -1391,6 +1404,8 @@ class Framework(EstimatorBase):
         self.uploaded_code = None
 
         self._hyperparameters = hyperparameters or {}
+        self.checkpoint_s3_uri = checkpoint_s3_uri
+        self.checkpoint_local_path = checkpoint_local_path
 
     def enable_network_isolation(self):
         """Return True if this Estimator can use network isolation to run.

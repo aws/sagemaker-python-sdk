@@ -203,6 +203,8 @@ def test_framework_all_init_args(sagemaker_session):
         security_group_ids=["789", "012"],
         metric_definitions=[{"Name": "validation-rmse", "Regex": "validation-rmse=(\\d+)"}],
         encrypt_inter_container_traffic=True,
+        checkpoint_s3_uri="s3://bucket/checkpoint",
+        checkpoint_local_path="file://local/checkpoint",
     )
     _TrainingJob.start_new(f, "s3://mydata")
     sagemaker_session.train.assert_called_once()
@@ -237,6 +239,8 @@ def test_framework_all_init_args(sagemaker_session):
         },
         "metric_definitions": [{"Name": "validation-rmse", "Regex": "validation-rmse=(\\d+)"}],
         "encrypt_inter_container_traffic": True,
+        "checkpoint_s3_uri": "s3://bucket/checkpoint",
+        "checkpoint_local_path": "file://local/checkpoint",
     }
 
 

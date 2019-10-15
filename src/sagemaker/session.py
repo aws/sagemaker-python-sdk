@@ -208,8 +208,10 @@ class Session(object):  # pylint: disable=too-many-public-methods
         if self._default_bucket:
             return self._default_bucket
 
-        account = self.boto_session.client("sts").get_caller_identity()["Account"]
         region = self.boto_session.region_name
+        account = self.boto_session.client(
+            "sts", region_name=region, endpoint_url=sts_regional_endpoint(region)
+        ).get_caller_identity()["Account"]
         default_bucket = "sagemaker-{}-{}".format(region, account)
 
         s3 = self.boto_session.resource("s3")
@@ -1400,7 +1402,9 @@ class Session(object):  # pylint: disable=too-many-public-methods
                 )
 
         assumed_role = self.boto_session.client(
-            "sts", endpoint_url=sts_regional_endpoint(self.boto_region_name)
+            "sts",
+            region_name=self.boto_region_name,
+            endpoint_url=sts_regional_endpoint(self.boto_region_name),
         ).get_caller_identity()["Arn"]
 
         if "AmazonSageMaker-ExecutionRole" in assumed_role:
@@ -1985,9 +1989,20 @@ def _flush_log_streams(
                 logGroupName=log_group,
                 logStreamNamePrefix=job_name + "/",
                 orderBy="LogStreamName",
-                limit=instance_count,
+                limit=min(instance_count, 50),
             )
             stream_names = [s["logStreamName"] for s in streams["logStreams"]]
+
+            while "nextToken" in streams:
+                streams = client.describe_log_streams(
+                    logGroupName=log_group,
+                    logStreamNamePrefix=job_name + "/",
+                    orderBy="LogStreamName",
+                    limit=50,
+                )
+
+                stream_names.extend([s["logStreamName"] for s in streams["logStreams"]])
+
             positions.update(
                 [
                     (s, sagemaker.logs.Position(timestamp=0, skip=0))

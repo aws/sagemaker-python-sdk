@@ -1,5 +1,32 @@
 # Changelog
 
+## v1.42.9 (2019-10-14)
+
+### Bug fixes and other changes
+
+ * use default bucket for checkpoint_s3_uri integ test
+ * use sts regional endpoint when creating default bucket
+ * use us-west-2 endpoint for sts in buildspec
+ * take checkpoint_s3_uri and checkpoint_local_path in Framework class
+
+## v1.42.8 (2019-10-10)
+
+### Bug fixes and other changes
+
+ * add kwargs to create_model for 1p to work with kms
+
+## v1.42.7 (2019-10-09)
+
+### Bug fixes and other changes
+
+ * paginating describe log streams
+
+## v1.42.6.post0 (2019-10-07)
+
+### Documentation changes
+
+ * model local mode
+
 ## v1.42.6 (2019-10-03)
 
 ### Bug fixes and other changes
