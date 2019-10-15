@@ -17,8 +17,7 @@ import json
 import os
 import pytest
 import sys
-from mock import MagicMock, Mock
-from mock import patch
+from mock import ANY, MagicMock, Mock, patch
 
 from sagemaker.pytorch import defaults
 from sagemaker.pytorch import PyTorch
@@ -294,6 +293,42 @@ def test_model(sagemaker_session):
     )
     predictor = model.deploy(1, GPU)
     assert isinstance(predictor, PyTorchPredictor)
+
+
+@patch("sagemaker.utils.create_tar_file", MagicMock())
+@patch("sagemaker.utils.repack_model")
+def test_mms_model(repack_model, sagemaker_session):
+    PyTorchModel(
+        MODEL_DATA,
+        role=ROLE,
+        entry_point=SCRIPT_PATH,
+        sagemaker_session=sagemaker_session,
+        framework_version="1.2",
+    ).deploy(1, GPU)
+
+    repack_model.assert_called_with(
+        dependencies=[],
+        inference_script=SCRIPT_PATH,
+        kms_key=None,
+        model_uri="s3://some/data.tar.gz",
+        repacked_model_uri=ANY,
+        sagemaker_session=sagemaker_session,
+        source_directory=None,
+    )
+
+
+@patch("sagemaker.utils.create_tar_file", MagicMock())
+@patch("sagemaker.utils.repack_model")
+def test_non_mms_model(repack_model, sagemaker_session):
+    PyTorchModel(
+        MODEL_DATA,
+        role=ROLE,
+        entry_point=SCRIPT_PATH,
+        sagemaker_session=sagemaker_session,
+        framework_version="1.1",
+    ).deploy(1, GPU)
+
+    repack_model.assert_not_called()
 
 
 @patch("sagemaker.fw_utils.tar_and_upload_dir", MagicMock())
