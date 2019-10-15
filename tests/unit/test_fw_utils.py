@@ -319,16 +319,12 @@ def test_create_image_uri_merged_pytorch():
     assert image_uri == "763104351884.dkr.ecr.us-west-2.amazonaws.com/pytorch-training:1.2-gpu-py2"
 
     image_uri = fw_utils.create_image_uri("us-west-2", "pytorch", "ml.p3.2xlarge", "1.1", "py2")
-    assert (
-        image_uri == "520713654638.dkr.ecr.us-west-2.amazonaws.com/sagemaker-pytorch:1.1-gpu-py2"
-    )
+    assert image_uri == "520713654638.dkr.ecr.us-west-2.amazonaws.com/sagemaker-pytorch:1.1-gpu-py2"
 
     image_uri = fw_utils.create_image_uri(
         "us-west-2", "pytorch-serving", "ml.c4.2xlarge", "1.2", "py2"
     )
-    assert (
-        image_uri == "763104351884.dkr.ecr.us-west-2.amazonaws.com/pytorch-inference:1.2-cpu-py2"
-    )
+    assert image_uri == "763104351884.dkr.ecr.us-west-2.amazonaws.com/pytorch-inference:1.2-cpu-py2"
 
     image_uri = fw_utils.create_image_uri(
         "us-west-2", "pytorch-serving", "ml.c4.2xlarge", "1.1", "py2"
