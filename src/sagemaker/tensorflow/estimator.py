@@ -302,7 +302,7 @@ class TensorFlow(Framework):
         self._validate_args(
             py_version=py_version,
             script_mode=script_mode,
-            framework_version=framework_version,
+            framework_version=self.framework_version,
             training_steps=training_steps,
             evaluation_steps=evaluation_steps,
             requirements_file=requirements_file,
