@@ -1,5 +1,11 @@
 # Changelog
 
+## v1.43.0 (2019-10-16)
+
+### Features
+
+ * Add support for PyTorch 1.2.0
+
 ## v1.42.9 (2019-10-14)
 
 ### Bug fixes and other changes
