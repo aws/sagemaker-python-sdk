@@ -1,5 +1,11 @@
 # Changelog
 
+## v1.43.1 (2019-10-17)
+
+### Bug fixes and other changes
+
+ * validation args now use default framework_version for TensorFlow
+
 ## v1.43.0 (2019-10-16)
 
 ### Features
