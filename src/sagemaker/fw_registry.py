@@ -112,6 +112,11 @@ image_registry_map = {
         "scikit-learn": "659782779980",
         "xgboost": "659782779980",
     },
+    "me-south-1": {
+        "sparkml-serving": "801668240914",
+        "scikit-learn": "801668240914",
+        "xgboost": "801668240914",
+    },
 }
 
 
