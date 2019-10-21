@@ -1,5 +1,11 @@
 # Changelog
 
+## v1.43.2 (2019-10-21)
+
+### Bug fixes and other changes
+
+ * add support for me-south-1 region
+
 ## v1.43.1 (2019-10-17)
 
 ### Bug fixes and other changes
