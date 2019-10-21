@@ -35,15 +35,15 @@ def gpu_instance_type(request):
 
 @pytest.mark.canary_quick
 def test_hvd_cpu(sagemaker_session, cpu_instance_type, tmpdir):
-    __create_and_fit_estimator(sagemaker_session, cpu_instance_type, tmpdir)
+    _create_and_fit_estimator(sagemaker_session, cpu_instance_type, tmpdir)
 
 
 @pytest.mark.canary_quick
 @pytest.mark.skipif(
-    integ.test_region() in integ.HOSTING_NO_P2_REGIONS, reason="no ml.p2 instances in this region"
+    integ.test_region() in integ.TRAINING_NO_P2_REGIONS, reason="no ml.p2 instances in this region"
 )
 def test_hvd_gpu(sagemaker_session, gpu_instance_type, tmpdir):
-    __create_and_fit_estimator(sagemaker_session, gpu_instance_type, tmpdir)
+    _create_and_fit_estimator(sagemaker_session, gpu_instance_type, tmpdir)
 
 
 @pytest.mark.local_mode
@@ -97,7 +97,7 @@ def extract_files_from_s3(s3_url, tmpdir):
         tar_file.extractall(tmpdir)
 
 
-def __create_and_fit_estimator(sagemaker_session, instance_type, tmpdir):
+def _create_and_fit_estimator(sagemaker_session, instance_type, tmpdir):
     job_name = sagemaker.utils.unique_name_from_base("tf-horovod")
     estimator = TensorFlow(
         entry_point=os.path.join(horovod_dir, "hvd_basic.py"),

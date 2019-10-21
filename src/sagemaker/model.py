@@ -40,6 +40,9 @@ NEO_ALLOWED_TARGET_INSTANCE_FAMILY = set(
         "rk3288",
         "rk3399",
         "sbe_c",
+        "aisage",
+        "qcs603",
+        "qcs605",
     ]
 )
 NEO_ALLOWED_FRAMEWORKS = set(["mxnet", "tensorflow", "pytorch", "onnx", "xgboost"])
@@ -62,6 +65,7 @@ NEO_IMAGE_ACCOUNT = {
     "ap-south-1": "763008648453",
     "sa-east-1": "756306329178",
     "ca-central-1": "464438896020",
+    "me-south-1": "836785723513",
 }
 
 
