@@ -1,5 +1,11 @@
 # Changelog
 
+## v1.43.3 (2019-10-23)
+
+### Bug fixes and other changes
+
+ * exclude regions for P2 tests
+
 ## v1.43.2 (2019-10-21)
 
 ### Bug fixes and other changes
