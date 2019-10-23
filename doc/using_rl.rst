@@ -123,7 +123,7 @@ The following are optional arguments. When you create an ``RlEstimator`` object,
    The library folders will be copied to SageMaker in the same folder where the entrypoint is copied.
    If the ``source_dir`` points to S3, code will be uploaded and the S3 location will be used
    instead.
-   
+
    For example, the following call:
 
    .. code:: python
@@ -244,7 +244,7 @@ In case if ``image_name`` was specified it would use provided image for the depl
 
     response = predictor.predict(data)
 
-For more information please see `The SageMaker MXNet Model Server <https://github.com/aws/sagemaker-python-sdk/tree/master/src/sagemaker/mxnet#the-sagemaker-mxnet-model-server>`_
+For more information please see `The SageMaker MXNet Model Server <https://sagemaker.readthedocs.io/en/stable/using_mxnet.html#the-sagemaker-mxnet-model-server>`_
 and `Deploying to TensorFlow Serving Endpoints <https://github.com/aws/sagemaker-python-sdk/blob/master/src/sagemaker/tensorflow/deploying_tensorflow_serving.rst>`_ documentation.
 
 
