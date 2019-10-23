@@ -26,47 +26,51 @@ PYTHON_VERSION = "py" + str(sys.version_info.major)
 
 # these regions have some p2 and p3 instances, but not enough for continuous testing
 HOSTING_NO_P2_REGIONS = [
+    "ap-east-1",
     "ca-central-1",
     "eu-central-1",
-    "eu-west-2",
-    "us-west-1",
-    "eu-west-3",
     "eu-north-1",
+    "eu-west-2",
+    "eu-west-3",
     "sa-east-1",
-    "ap-east-1",
+    "us-west-1",
 ]
 HOSTING_NO_P3_REGIONS = [
+    "ap-east-1",
+    "ap-south-1",
     "ap-southeast-1",
     "ap-southeast-2",
-    "ap-south-1",
     "ca-central-1",
     "eu-central-1",
-    "eu-west-2",
-    "us-west-1",
-    "eu-west-3",
     "eu-north-1",
+    "eu-west-2",
+    "eu-west-3",
     "sa-east-1",
-    "ap-east-1",
+    "us-west-1",
 ]
 TRAINING_NO_P2_REGIONS = [
+    "ap-east-1",
     "ap-southeast-1",
     "ap-southeast-2",
-    "eu-west-3",
+    "ca-central-1",
+    "eu-central-1",
     "eu-north-1",
-    "sa-east-1",
-    "ap-east-1",
+    "eu-west-2",
+    "eu-west-3",
     "me-south-1",
+    "sa-east-1",
+    "us-west-1",
 ]
 
 # EI is currently only supported in the following regions
 # regions were derived from https://aws.amazon.com/machine-learning/elastic-inference/pricing/
 EI_SUPPORTED_REGIONS = [
+    "ap-northeast-1",
+    "ap-northeast-2",
+    "eu-west-1",
     "us-east-1",
     "us-east-2",
     "us-west-2",
-    "eu-west-1",
-    "ap-northeast-1",
-    "ap-northeast-2",
 ]
 
 NO_LDA_REGIONS = ["eu-west-3", "eu-north-1", "sa-east-1", "ap-east-1", "me-south-1"]
