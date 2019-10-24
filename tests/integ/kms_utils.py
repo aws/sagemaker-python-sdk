@@ -160,7 +160,7 @@ KMS_BUCKET_POLICY = """{
 @contextlib.contextmanager
 def bucket_with_encryption(boto_session, sagemaker_role):
     region = boto_session.region_name
-    sts_client = sagemaker_session.boto_session.client(
+    sts_client = boto_session.client(
         "sts", region_name=region, endpoint_url=utils.sts_regional_endpoint(region)
     )
 
