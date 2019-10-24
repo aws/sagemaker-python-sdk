@@ -16,7 +16,9 @@ import os
 import time
 import boto3
 
-account = boto3.client("sts").get_caller_identity()["Account"]
+account = boto3.client(
+    "sts", region_name="us-west-2", endpoint_url="https://sts.us-west-2.amazonaws.com"
+).get_caller_identity()["Account"]
 bucket_name = "sagemaker-us-west-2-%s" % account
 
 
