@@ -1,5 +1,15 @@
 # Changelog
 
+## v1.43.4 (2019-10-24)
+
+### Bug fixes and other changes
+
+ * use regional endpoint for STS in builds and tests
+
+### Documentation changes
+
+ * update link to point to ReadTheDocs
+
 ## v1.43.3 (2019-10-23)
 
 ### Bug fixes and other changes
