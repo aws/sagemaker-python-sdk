@@ -93,9 +93,9 @@ class MXNet(Framework):
                     123.dkr.ecr.us-west-2.amazonaws.com/my-custom-image:1.0
                     custom-image:latest.
 
-                distributions (dict): A dictionary with information on how to run distributed
-                    training (default: None).
-            distributions:
+            distributions (dict): A dictionary with information on how to run distributed
+                training (default: None). To have parameter servers launched for training,
+                set this value to be ``{'parameter_server': {'enabled': True}}``.
             **kwargs: Additional kwargs passed to the
                 :class:`~sagemaker.estimator.Framework` constructor.
         """
