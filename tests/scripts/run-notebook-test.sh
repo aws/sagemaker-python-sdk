@@ -8,9 +8,9 @@ set -euo pipefail
 python setup.py sdist
 aws s3 --region us-west-2 cp ./dist/sagemaker-*.tar.gz s3://sagemaker-python-sdk-pr/sagemaker.tar.gz
 aws s3 cp s3://sagemaker-mead-cli/mead-nb-test.tar.gz mead-nb-test.tar.gz
+tar xzf mead-nb-test.tar.gz
 ls -l
-tar vxzf mead-nb-test.tar.gz
-ls
+ls -l runtime/bin/mead-run-nb-test
 git clone --depth 1 https://github.com/awslabs/amazon-sagemaker-examples.git
 export JAVA_HOME=$(get-java-home)
 echo "set JAVA_HOME=$JAVA_HOME"
