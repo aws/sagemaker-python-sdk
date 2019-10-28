@@ -1,5 +1,11 @@
 # Changelog
 
+## v1.43.4.post0 (2019-10-28)
+
+### Documentation changes
+
+ * clarify how to use parameter servers with distributed MXNet training
+
 ## v1.43.4 (2019-10-24)
 
 ### Bug fixes and other changes
