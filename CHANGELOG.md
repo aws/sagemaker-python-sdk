@@ -1,5 +1,11 @@
 # Changelog
 
+## v1.43.4.post1 (2019-10-29)
+
+### Documentation changes
+
+ * clarify that source_dir can be an S3 URI
+
 ## v1.43.4.post0 (2019-10-28)
 
 ### Documentation changes
