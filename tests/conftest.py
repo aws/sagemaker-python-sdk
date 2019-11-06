@@ -112,6 +112,32 @@ def sagemaker_session(sagemaker_client_config, sagemaker_runtime_config, boto_co
     )
 
 
+# TODO-reinvent-2019: Remove this beta session entirely
+@pytest.fixture(scope="session")
+def sagemaker_beta_session(sagemaker_client_config, sagemaker_runtime_config, boto_config):
+    boto_session = boto3.Session(region_name="us-west-2")
+    sagemaker_client_config.setdefault("config", Config(retries=dict(max_attempts=10)))
+    sagemaker_client_config[
+        "endpoint_url"
+    ] = "https://sagemaker.beta.us-west-2.ml-platform.aws.a2z.com"
+    sagemaker_client = (
+        boto_session.client("sagemaker", **sagemaker_client_config)
+        if sagemaker_client_config
+        else None
+    )
+    runtime_client = (
+        boto_session.client("sagemaker-runtime", **sagemaker_runtime_config)
+        if sagemaker_runtime_config
+        else None
+    )
+
+    return Session(
+        boto_session=boto_session,
+        sagemaker_client=sagemaker_client,
+        sagemaker_runtime_client=runtime_client,
+    )
+
+
 @pytest.fixture(scope="session")
 def sagemaker_local_session(boto_config):
     if boto_config:

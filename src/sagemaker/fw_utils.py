@@ -19,10 +19,10 @@ import os
 import re
 import shutil
 import tempfile
-from six.moves.urllib.parse import urlparse
 
 import sagemaker.utils
 from sagemaker.utils import get_ecr_image_uri_prefix, ECR_URI_PATTERN
+from sagemaker import s3
 
 _TAR_SOURCE_FILENAME = "source.tar.gz"
 
@@ -447,18 +447,17 @@ def framework_version_from_tag(image_tag):
 
 
 def parse_s3_url(url):
-    """Returns an (s3 bucket, key name/prefix) tuple from a url with an s3
-    scheme
+    """Calls the method with the same name in the s3 module.
+
+    :func:~sagemaker.s3.parse_s3_url
+
     Args:
-        url (str):
-    Returns:
-        tuple: A tuple containing:
-            str: S3 bucket name str: S3 key
+        url: A URL, expected with an s3 scheme.
+
+    Returns: The return value of s3.parse_s3_url, which is a tuple containing:
+        str: S3 bucket name str: S3 key
     """
-    parsed_url = urlparse(url)
-    if parsed_url.scheme != "s3":
-        raise ValueError("Expecting 's3' scheme, got: {} in {}".format(parsed_url.scheme, url))
-    return parsed_url.netloc, parsed_url.path.lstrip("/")
+    return s3.parse_s3_url(url)
 
 
 def model_code_key_prefix(code_location_key_prefix, model_name, image):
