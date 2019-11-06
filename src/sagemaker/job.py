@@ -59,6 +59,14 @@ class _Job(object):
     def wait(self):
         """Wait for the Amazon SageMaker job to finish."""
 
+    @abstractmethod
+    def describe(self):
+        """Describe the job."""
+
+    @abstractmethod
+    def stop(self):
+        """Stop the job."""
+
     @staticmethod
     def _load_config(inputs, estimator, expand_role=True, validate_uri=True):
         """

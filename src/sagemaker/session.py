@@ -194,6 +194,62 @@ class Session(object):  # pylint: disable=too-many-public-methods
             s3_uri = "{}/{}".format(s3_uri, key_suffix)
         return s3_uri
 
+    def download_data(self, path, bucket, key_prefix="", extra_args=None):
+        """Download file or directory from S3.
+
+        Args:
+            path (str): Local path where the file or directory should be downloaded to.
+            bucket (str): Name of the S3 Bucket to download from.
+            key_prefix (str): Optional S3 object key name prefix.
+            extra_args (dict): Optional extra arguments that may be passed to the
+                download operation. Please refer to the ExtraArgs parameter in the boto3
+                documentation here:
+                https://boto3.amazonaws.com/v1/documentation/api/latest/guide/s3-example-download-file.html
+
+        Returns:
+
+        """
+        # Initialize the S3 client.
+        s3 = self.boto_session.client("s3")
+
+        # Initialize the variables used to loop through the contents of the S3 bucket.
+        keys = []
+        directories = []
+        next_token = ""
+        base_parameters = {"Bucket": bucket, "Prefix": key_prefix}
+
+        # Loop through the contents of the bucket, 1,000 objects at a time.
+        while next_token is not None:
+            request_parameters = base_parameters.copy()
+            if next_token != "":
+                request_parameters.update({"ContinuationToken": next_token})
+            response = s3.list_objects_v2(**request_parameters)
+            contents = response.get("Contents")
+            # For each object, save its key or directory.
+            for s3_object in contents:
+                key = s3_object.get("Key")
+                if key[-1] != "/":
+                    keys.append(key)
+                else:
+                    directories.append(key)
+            next_token = response.get("NextContinuationToken")
+
+        # For each directory, create the directory on the local machine.
+        for directory in directories:
+            destination_path = os.path.join(path, directory)
+            if not os.path.exists(os.path.dirname(destination_path)):
+                os.makedirs(os.path.dirname(destination_path))
+
+        # For each object key, create the directory on the local machine,
+        # and then download the file.
+        for key in keys:
+            destination_path = os.path.join(path, key)
+            if not os.path.exists(os.path.dirname(destination_path)):
+                os.makedirs(os.path.dirname(destination_path))
+            s3.download_file(
+                bucket=bucket, key=key, filename=destination_path, extra_args=extra_args
+            )
+
     def default_bucket(self):
         """Return the name of the default bucket to use in relevant Amazon SageMaker interactions.
 
@@ -388,6 +444,95 @@ class Session(object):  # pylint: disable=too-many-public-methods
         LOGGER.info("Creating training-job with name: %s", job_name)
         LOGGER.debug("train request: %s", json.dumps(train_request, indent=4))
         self.sagemaker_client.create_training_job(**train_request)
+
+    def process(
+        self,
+        inputs,
+        outputs,
+        job_name,
+        resources,
+        stopping_condition,
+        app_specification,
+        environment,
+        network_config,
+        role_arn,
+        tags,
+    ):
+        """Create an Amazon SageMaker processing job.
+
+        Args:
+            inputs ([dict]): List of up to 10 ProcessingInput dictionaries.
+            outputs ([dict]): List of up to 10 ProcessingOutput dictionaries.
+            job_name (str): The name of the processing job. The name must be unique
+                within an AWS Region in an AWS account. Names should have minimum
+                length of 1 and maximum length of 63 characters.
+            resources (dict): Encapsulates the resources, including ML instances
+                and storage, to use for the processing job.
+            stopping_condition (dict[str,int]): Specifies a limit to how long
+                the processing job can run, in seconds.
+            app_specification (dict[str,str]): Configures the processing job to
+                run the given image. Details are in the processing container
+                specification.
+            environment (dict): Environment variables to start the processing
+                container with.
+            network_config (dict): Specifies networking options, such as network
+                traffic encryption between processing containers, whether to allow
+                inbound and outbound network calls to and from processing containers,
+                and VPC subnets and security groups to use for VPC-enabled processing
+                jobs.
+            role_arn (str): The Amazon Resource Name (ARN) of an IAM role that
+                Amazon SageMaker can assume to perform tasks on your behalf.
+            tags ([dict[str,str]]): A list of dictionaries containing key-value
+                pairs.
+        """
+        process_request = {
+            "AnalyticsJobName": job_name,
+            "AnalyticsResources": resources,
+            "AppSpecification": app_specification,
+            "RoleArn": role_arn,
+        }
+
+        if inputs:
+            process_request["AnalyticsInputs"] = inputs
+
+        if outputs:
+            process_request["AnalyticsOutputs"] = outputs
+
+        if environment is not None:
+            process_request["Environment"] = environment
+
+        if network_config is not None:
+            process_request["NetworkConfig"] = network_config
+
+        if stopping_condition is not None:
+            process_request["StoppingCondition"] = stopping_condition
+
+        if tags is not None:
+            process_request["Tags"] = tags
+
+        LOGGER.info("Creating processing-job with name %s", job_name)
+        LOGGER.debug("process request: %s", json.dumps(process_request, indent=4))
+        self.sagemaker_client.create_analytics_job(**process_request)
+
+    def describe_analytics_job(self, job_name):
+        """Calls the DescribeProcessingJob API for the given job name
+        and returns the response.
+
+        Args:
+            job_name (str): The name of the processing job to describe.
+
+        Returns:
+            dict: A dictionary response with the processing job description.
+        """
+        return self.sagemaker_client.describe_analytics_job(AnalyticsJobName=job_name)
+
+    def stop_processing_job(self, job_name):
+        """Calls the StopProcessingJob API for the given job name.
+
+        Args:
+            job_name (str): The name of the processing job to stop.
+        """
+        self.sagemaker_client.stop_processing_job(AnalyticsJobName=job_name)
 
     def compile_model(
         self, input_model_config, output_model_config, role, job_name, stop_condition, tags
@@ -1053,6 +1198,23 @@ class Session(object):  # pylint: disable=too-many-public-methods
         self._check_job_status(job, desc, "TrainingJobStatus")
         return desc
 
+    def wait_for_processing_job(self, job, poll=5):
+        """Wait for an Amazon SageMaker Processing job to complete.
+
+        Args:
+            job (str): Name of the processing job to wait for.
+            poll (int): Polling interval in seconds (default: 5).
+
+        Returns:
+            (dict): Return value from the ``DescribeProcessingJob`` API.
+
+        Raises:
+            exceptions.UnexpectedStatusException: If the compilation job fails.
+        """
+        desc = _wait_until(lambda: _processing_job_status(self.sagemaker_client, job), poll)
+        self._check_job_status(job, desc, "AnalyticsJobStatus")
+        return desc
+
     def wait_for_compilation_job(self, job, poll=5):
         """Wait for an Amazon SageMaker Neo compilation job to complete.
 
@@ -1523,6 +1685,85 @@ class Session(object):  # pylint: disable=too-many-public-methods
                     saving = (1 - float(billable_time) / training_time) * 100
                     print("Managed Spot Training savings: {:.1f}%".format(saving))
 
+    def logs_for_processing_job(self, job_name, wait=False, poll=10):
+        """Display the logs for a given processing job, optionally tailing them until the
+        job is complete.
+
+        Args:
+            job_name (str): Name of the processing job to display the logs for.
+            wait (bool): Whether to keep looking for new log entries until the job completes
+                (default: False).
+            poll (int): The interval in seconds between polling for new log entries and job
+                completion (default: 5).
+
+        Raises:
+            ValueError: If the processing job fails.
+        """
+
+        description = self.sagemaker_client.describe_analytics_job(AnalyticsJobName=job_name)
+
+        instance_count, stream_names, positions, client, log_group, dot, color_wrap = _logs_init(
+            self, description, job="Analytics"
+        )
+
+        state = _get_initial_job_state(description, "AnalyticsJobStatus", wait)
+
+        # The loop below implements a state machine that alternates between checking the job status
+        # and reading whatever is available in the logs at this point. Note, that if we were
+        # called with wait == False, we never check the job status.
+        #
+        # If wait == TRUE and job is not completed, the initial state is TAILING
+        # If wait == FALSE, the initial state is COMPLETE (doesn't matter if the job really is
+        # complete).
+        #
+        # The state table:
+        #
+        # STATE               ACTIONS                        CONDITION             NEW STATE
+        # ----------------    ----------------               -----------------     ----------------
+        # TAILING             Read logs, Pause, Get status   Job complete          JOB_COMPLETE
+        #                                                    Else                  TAILING
+        # JOB_COMPLETE        Read logs, Pause               Any                   COMPLETE
+        # COMPLETE            Read logs, Exit                                      N/A
+        #
+        # Notes:
+        # - The JOB_COMPLETE state forces us to do an extra pause and read any items that got to
+        #   Cloudwatch after the job was marked complete.
+        last_describe_job_call = time.time()
+        while True:
+            _flush_log_streams(
+                stream_names,
+                instance_count,
+                client,
+                log_group,
+                job_name,
+                positions,
+                dot,
+                color_wrap,
+            )
+            if state == LogState.COMPLETE:
+                break
+
+            time.sleep(poll)
+
+            if state == LogState.JOB_COMPLETE:
+                state = LogState.COMPLETE
+            elif time.time() - last_describe_job_call >= 30:
+                description = self.sagemaker_client.describe_analytics_job(
+                    AnalyticsJobName=job_name
+                )
+                last_describe_job_call = time.time()
+
+                status = description["AnalyticsJobStatus"]
+
+                if status in ("Completed", "Failed", "Stopped"):
+                    print()
+                    state = LogState.JOB_COMPLETE
+
+        if wait:
+            self._check_job_status(job_name, description, "AnalyticsJobStatus")
+            if dot:
+                print()
+
     def logs_for_transform_job(self, job_name, wait=False, poll=10):
         """Display the logs for a given transform job, optionally tailing them until the
         job is complete. If the output is a tty or a Jupyter cell, it will be color-coded
@@ -1797,6 +2038,41 @@ def _train_done(sagemaker_client, job_name, last_desc):
     return desc, True
 
 
+def _processing_job_status(sagemaker_client, job_name):
+    """Prints the job status for the given processing job name.
+    Returns the job description.
+
+    Args:
+        sagemaker_client: The boto3 SageMaker client.
+        job_name (str): The name of the job for which the status
+            is requested.
+
+    Returns:
+        dict: The processing job description.
+
+    """
+    compile_status_codes = {
+        "Completed": "!",
+        "InProgress": ".",
+        "Failed": "*",
+        "Stopped": "s",
+        "Stopping": "_",
+    }
+    in_progress_statuses = ["InProgress", "Stopping", "Starting"]
+
+    desc = sagemaker_client.describe_analytics_job(AnalyticsJobName=job_name)
+    status = desc["AnalyticsJobStatus"]
+
+    status = _STATUS_CODE_TABLE.get(status, status)
+    print(compile_status_codes.get(status, "?"), end="")
+    sys.stdout.flush()
+
+    if status in in_progress_statuses:
+        return None
+
+    return desc
+
+
 def _compilation_job_status(sagemaker_client, job_name):
     """Placeholder docstring"""
     compile_status_codes = {
@@ -1956,6 +2232,8 @@ def _logs_init(sagemaker_session, description, job):
         instance_count = description["ResourceConfig"]["InstanceCount"]
     elif job == "Transform":
         instance_count = description["TransformResources"]["InstanceCount"]
+    elif job == "Analytics":
+        instance_count = description["AnalyticsResources"]["ClusterConfig"]["InstanceCount"]
 
     stream_names = []  # The list of log streams
     positions = {}  # The current position in each stream, map of stream name -> position

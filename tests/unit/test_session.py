@@ -39,18 +39,264 @@ SAMPLE_PARAM_RANGES = [{"Name": "mini_batch_size", "MinValue": "10", "MaxValue":
 REGION = "us-west-2"
 STS_ENDPOINT = "sts.us-west-2.amazonaws.com"
 
+DESCRIBE_ANALYTICS_JOB_RESPONSE = {
+    "AnalyticsJobArn": "arn:aws:sagemaker:us-west-2:012345678901:analytics-job/sklearn-analytics-2019-12-06-02-31-56",
+    "AnalyticsInputs": [
+        {
+            "InputName": "holdout_dataset",
+            "S3Input": {
+                "S3Uri": "s3://my-input-data-bucket/path/to/test/data",
+                "LocalPath": "/data/holdout",
+                "S3DataType": "S3Prefix",
+                "S3DownloadMode": "Continuous",
+                "S3DataDistributionType": "FullyReplicated",
+                "S3InputMode": "Pipe",
+            },
+        },
+        {
+            "InputName": "model_data",
+            "S3Input": {
+                "S3Uri": "s3://my-model-data-bucket/path/to/model.tar.gz",
+                "LocalPath": "/data/model",
+                "CompressionType": "Tar/Gzip",
+            },
+        },
+    ],
+    "AnalyticsOutputs": [
+        {
+            "OutputName": "model_evaluation_output",
+            "S3Output": {
+                "S3Uri": "s3://my-output-data-bucket/path/to/output/artifacts",
+                "LocalPath": "/output/model_eval_output",
+                "KmsKeyId": "arn:aws:kms:us-west-2:012345678901:key/kms-key",
+                "S3UploadMode": "None",
+                "Role": "arn:aws:iam::012345678901:role/sagemaker-write-role",
+            },
+        }
+    ],
+    "AnalyticsJobName": "sklearn-analytics-2019-12-06-02-31-56",
+    "AnalyticsJobStatus": "Failed",
+    "AnalyticsResources": {
+        "ClusterConfig": {"InstanceType": "ml.m5.xlarge", "InstanceCount": 1, "VolumeSizeInGB": 500}
+    },
+    "AppSpecification": {
+        "ImageUri": "012345678901.dkr.ecr.us-west-2.amazonaws.com/sklearn-analytics:latest",
+        "ContainerEntrypoint": ["python3", "analytics.py"],
+        "ContainerArguments": ["--arg", "value", "--flag"],
+    },
+    "Environment": {
+        "task": "model_eval",
+        "evaluation_metric": "roc_auc",
+        "task_parameters": '{ "average": "weighted" }',
+        "failure_threshold": "0.85",
+    },
+    "FailureReason": "AlgorithmFailure: model eval metric roc_auc value 0.8316 did not meet minimum 0.85",
+    "NetworkConfig": {
+        "EnableInterContainerTrafficEncryption": False,
+        "EnableNetworkIsolation": True,
+        "VpcConfig": {
+            "SecurityGroupIds": ["sg-ab1cd2e3"],
+            "Subnets": ["subnet-123ab456", "subnet-789zy654", "subnet-164mx256"],
+        },
+    },
+    "RoleArn": "arn:aws:iam::012345678901:role/SageMakerRole",
+    "StoppingCondition": {"MaxRuntimeInSeconds": 3600},
+    "Tags": [{"Key": "TrainingJobName", "Value": "sklearn-training-job-2019-12-01-02-34-12"}],
+    "CreationTime": "2019-12-05-01:01:01.108",
+    "AnalyticsStartTime": "2019-12-05-01:03:07.671",
+    "AnalyticsEndTime": "2019-12-05-01:12:23.671",
+    "LastModifiedTime": "2019-12-05-01:12:23.671",
+    "ResponseMetadata": "...",
+}
+
 
 @pytest.fixture()
 def boto_session():
-    boto_session = Mock(region_name=REGION)
+    boto_mock = Mock(name="boto_session", region_name=REGION)
 
-    mock_client = Mock()
-    mock_client._client_config.user_agent = (
+    client_mock = Mock()
+    client_mock._client_config.user_agent = (
         "Boto3/1.9.69 Python/3.6.5 Linux/4.14.77-70.82.amzn1.x86_64 Botocore/1.12.69 Resource"
     )
+    boto_mock.client.return_value = client_mock
+    return boto_mock
 
-    boto_session.client.return_value = mock_client
-    return boto_session
+
+def test_process(boto_session):
+    session = Session(boto_session)
+
+    process_request_args = {
+        "inputs": [
+            {
+                "InputName": "input-1",
+                "S3Input": {
+                    "S3Uri": "mocked_s3_uri_from_upload_data",
+                    "LocalPath": "/container/path/",
+                    "S3DataType": "Archive",
+                    "S3InputMode": "File",
+                    "S3DownloadMode": "Continuous",
+                    "S3DataDistributionType": "FullyReplicated",
+                    "S3CompressionType": "None",
+                },
+            },
+            {
+                "InputName": "my_dataset",
+                "S3Input": {
+                    "S3Uri": "s3://path/to/my/dataset/census.csv",
+                    "LocalPath": "/container/path/",
+                    "S3DataType": "Archive",
+                    "S3InputMode": "File",
+                    "S3DownloadMode": "Continuous",
+                    "S3DataDistributionType": "FullyReplicated",
+                    "S3CompressionType": "None",
+                },
+            },
+            {
+                "InputName": "source",
+                "S3Input": {
+                    "S3Uri": "mocked_s3_uri_from_upload_data",
+                    "LocalPath": "/code/source",
+                    "S3DataType": "Archive",
+                    "S3InputMode": "File",
+                    "S3DownloadMode": "Continuous",
+                    "S3DataDistributionType": "FullyReplicated",
+                    "S3CompressionType": "None",
+                },
+            },
+        ],
+        "outputs": [
+            {
+                "OutputName": "output-1",
+                "S3Output": {
+                    "S3Uri": "s3://mybucket/current_job_name/output",
+                    "LocalPath": "/data/output",
+                    "S3UploadMode": "Continuous",
+                },
+            },
+            {
+                "OutputName": "my_output",
+                "S3Output": {
+                    "S3Uri": "s3://uri/",
+                    "LocalPath": "/container/path/",
+                    "S3UploadMode": "Continuous",
+                    "KmsKeyId": "arn:aws:kms:us-west-2:012345678901:key/kms-key",
+                },
+            },
+        ],
+        "job_name": "current_job_name",
+        "resources": {
+            "ClusterConfig": {
+                "InstanceType": "ml.m4.xlarge",
+                "InstanceCount": 1,
+                "VolumeSizeInGB": 100,
+            }
+        },
+        "stopping_condition": {"MaxRuntimeInSeconds": 3600},
+        "app_specification": {
+            "ImageUri": "520713654638.dkr.ecr.us-west-2.amazonaws.com/sagemaker-sklearn:0.20.0-cpu-py3",
+            "ContainerArguments": ["--drop-columns", "'SelfEmployed'"],
+            "ContainerEntrypoint": ["python3", "/code/source/sklearn_transformer.py"],
+        },
+        "environment": {"my_env_variable": 20},
+        "network_config": {
+            "EnableInterContainerTrafficEncryption": True,
+            "EnableNetworkIsolation": True,
+            "VpcConfig": {
+                "SecurityGroupIds": ["my_security_group_id"],
+                "Subnets": ["my_subnet_id"],
+            },
+        },
+        "role_arn": ROLE,
+        "tags": [{"Name": "my-tag", "Value": "my-tag-value"}],
+    }
+    session.process(**process_request_args)
+
+    expected_request = {
+        "AnalyticsJobName": "current_job_name",
+        "AnalyticsResources": {
+            "ClusterConfig": {
+                "InstanceType": "ml.m4.xlarge",
+                "InstanceCount": 1,
+                "VolumeSizeInGB": 100,
+            }
+        },
+        "AppSpecification": {
+            "ImageUri": "520713654638.dkr.ecr.us-west-2.amazonaws.com/sagemaker-sklearn:0.20.0-cpu-py3",
+            "ContainerArguments": ["--drop-columns", "'SelfEmployed'"],
+            "ContainerEntrypoint": ["python3", "/code/source/sklearn_transformer.py"],
+        },
+        "RoleArn": ROLE,
+        "AnalyticsInputs": [
+            {
+                "InputName": "input-1",
+                "S3Input": {
+                    "S3Uri": "mocked_s3_uri_from_upload_data",
+                    "LocalPath": "/container/path/",
+                    "S3DataType": "Archive",
+                    "S3InputMode": "File",
+                    "S3DownloadMode": "Continuous",
+                    "S3DataDistributionType": "FullyReplicated",
+                    "S3CompressionType": "None",
+                },
+            },
+            {
+                "InputName": "my_dataset",
+                "S3Input": {
+                    "S3Uri": "s3://path/to/my/dataset/census.csv",
+                    "LocalPath": "/container/path/",
+                    "S3DataType": "Archive",
+                    "S3InputMode": "File",
+                    "S3DownloadMode": "Continuous",
+                    "S3DataDistributionType": "FullyReplicated",
+                    "S3CompressionType": "None",
+                },
+            },
+            {
+                "InputName": "source",
+                "S3Input": {
+                    "S3Uri": "mocked_s3_uri_from_upload_data",
+                    "LocalPath": "/code/source",
+                    "S3DataType": "Archive",
+                    "S3InputMode": "File",
+                    "S3DownloadMode": "Continuous",
+                    "S3DataDistributionType": "FullyReplicated",
+                    "S3CompressionType": "None",
+                },
+            },
+        ],
+        "AnalyticsOutputs": [
+            {
+                "OutputName": "output-1",
+                "S3Output": {
+                    "S3Uri": "s3://mybucket/current_job_name/output",
+                    "LocalPath": "/data/output",
+                    "S3UploadMode": "Continuous",
+                },
+            },
+            {
+                "OutputName": "my_output",
+                "S3Output": {
+                    "S3Uri": "s3://uri/",
+                    "LocalPath": "/container/path/",
+                    "S3UploadMode": "Continuous",
+                    "KmsKeyId": "arn:aws:kms:us-west-2:012345678901:key/kms-key",
+                },
+            },
+        ],
+        "Environment": {"my_env_variable": 20},
+        "NetworkConfig": {
+            "EnableInterContainerTrafficEncryption": True,
+            "EnableNetworkIsolation": True,
+            "VpcConfig": {
+                "SecurityGroupIds": ["my_security_group_id"],
+                "Subnets": ["my_subnet_id"],
+            },
+        },
+        "StoppingCondition": {"MaxRuntimeInSeconds": 3600},
+        "Tags": [{"Name": "my-tag", "Value": "my-tag-value"}],
+    }
+
+    session.sagemaker_client.create_analytics_job.assert_called_with(**expected_request)
 
 
 def mock_exists(filepath_to_mock, exists_result):
@@ -666,21 +912,21 @@ def test_tune_with_encryption_flag(sagemaker_session):
 
 
 def test_tune_with_spot_and_checkpoints(sagemaker_session):
-    def assert_create_tuning_job_request(**kwrags):
+    def assert_create_tuning_job_request(**kwargs):
         assert (
-            kwrags["HyperParameterTuningJobConfig"]
+            kwargs["HyperParameterTuningJobConfig"]
             == SAMPLE_TUNING_JOB_REQUEST["HyperParameterTuningJobConfig"]
         )
-        assert kwrags["HyperParameterTuningJobName"] == "dummy-tuning-1"
-        assert kwrags["TrainingJobDefinition"]["EnableManagedSpotTraining"] is True
+        assert kwargs["HyperParameterTuningJobName"] == "dummy-tuning-1"
+        assert kwargs["TrainingJobDefinition"]["EnableManagedSpotTraining"] is True
         assert (
-            kwrags["TrainingJobDefinition"]["CheckpointConfig"]["S3Uri"]
+            kwargs["TrainingJobDefinition"]["CheckpointConfig"]["S3Uri"]
             == "s3://mybucket/checkpoints/"
         )
         assert (
-            kwrags["TrainingJobDefinition"]["CheckpointConfig"]["LocalPath"] == "/tmp/checkpoints"
+            kwargs["TrainingJobDefinition"]["CheckpointConfig"]["LocalPath"] == "/tmp/checkpoints"
         )
-        assert kwrags.get("WarmStartConfig", None) is None
+        assert kwargs.get("WarmStartConfig", None) is None
 
     sagemaker_session.sagemaker_client.create_hyper_parameter_tuning_job.side_effect = (
         assert_create_tuning_job_request
