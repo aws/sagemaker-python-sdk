@@ -15,3 +15,4 @@ from __future__ import absolute_import
 
 from sagemaker.sklearn.estimator import SKLearn  # noqa: F401
 from sagemaker.sklearn.model import SKLearnModel, SKLearnPredictor  # noqa: F401
+from sagemaker.sklearn.processor import SKLearnProcessor  # noqa: F401
