@@ -216,6 +216,7 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):
         self.output_path = output_path
         self.output_kms_key = output_kms_key
         self.latest_training_job = None
+        self.jobs = []
         self.deploy_instance_type = None
 
         self._compiled_models = {}
@@ -337,6 +338,7 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):
         self._prepare_for_training(job_name=job_name)
 
         self.latest_training_job = _TrainingJob.start_new(self, inputs)
+        self.jobs.append(self.latest_training_job)
         if wait:
             self.latest_training_job.wait(logs=logs)
 
