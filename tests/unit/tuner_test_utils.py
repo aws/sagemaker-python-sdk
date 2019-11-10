@@ -59,7 +59,6 @@ HYPERPARAMETER_RANGES_TWO = {
 
 METRIC_DEFINITIONS = "mock_metric_definitions"
 
-TRAINING_INSTANCE_POOLS = {"ml.m4.4xlarge": 5, "ml.p2.8xlarge": 2}
 MAX_JOBS = 10
 MAX_PARALLEL_JOBS = 5
 TAGS = [{"key1": "value1"}]
@@ -165,10 +164,6 @@ MULTI_ALGO_TUNING_JOB_DETAILS = {
         "ResourceLimits": {"MaxParallelTrainingJobs": 2, "MaxNumberOfTrainingJobs": 4},
         "Strategy": "Bayesian",
         "TrainingJobEarlyStoppingType": "Off",
-        "TrainingJobInstancePools": [
-            {"InstanceType": instance_type, "PoolSize": pool_size}
-            for (instance_type, pool_size) in TRAINING_INSTANCE_POOLS.items()
-        ],
     },
     "HyperParameterTuningJobName": JOB_NAME,
     "TrainingJobDefinitions": [

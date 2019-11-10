@@ -807,10 +807,6 @@ SAMPLE_MULTI_ALGO_TUNING_JOB_REQUEST = {
         "Strategy": "Bayesian",
         "ResourceLimits": {"MaxNumberOfTrainingJobs": 100, "MaxParallelTrainingJobs": 5},
         "TrainingJobEarlyStoppingType": "Off",
-        "TrainingJobInstancePools": [
-            {"InstanceType": "ml.m4.4xlarge", "PoolSize": 3},
-            {"InstanceType": "ml.p2.xlarge", "PoolSize": 1},
-        ],
     },
     "TrainingJobDefinitions": [
         {
@@ -1001,12 +997,7 @@ def test_create_tuning_job_multi_algo(sagemaker_session):
     )
     sagemaker_session.create_tuning_job(
         job_name="dummy-tuning-1",
-        tuning_config={
-            "strategy": "Bayesian",
-            "max_jobs": 100,
-            "max_parallel_jobs": 5,
-            "training_instance_pools": {"ml.m4.4xlarge": 3, "ml.p2.xlarge": 1},
-        },
+        tuning_config={"strategy": "Bayesian", "max_jobs": 100, "max_parallel_jobs": 5},
         training_config_list=[
             {
                 "static_hyperparameters": STATIC_HPs,

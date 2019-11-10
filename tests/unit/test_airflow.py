@@ -671,7 +671,6 @@ def test_multi_estimator_tuning_config(sagemaker_session):
         max_parallel_jobs="{{ max_parallel_job }}",
         tags=[{"{{ key }}": "{{ value }}"}],
         base_tuning_job_name="{{ base_job_name }}",
-        training_instance_pools={"ml.m4.xlarge": 4, "ml.c4.2xlarge": 10},
     )
 
     data = {
@@ -690,10 +689,6 @@ def test_multi_estimator_tuning_config(sagemaker_session):
                 "MaxParallelTrainingJobs": "{{ max_parallel_job }}",
             },
             "TrainingJobEarlyStoppingType": "Off",
-            "TrainingJobInstancePools": [
-                {"InstanceType": "ml.c4.2xlarge", "PoolSize": 10},
-                {"InstanceType": "ml.m4.xlarge", "PoolSize": 4},
-            ],
         },
         "TrainingJobDefinitions": [
             {

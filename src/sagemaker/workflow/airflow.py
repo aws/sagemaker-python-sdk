@@ -357,15 +357,6 @@ def _extract_tuning_job_config(tuner):
     if parameter_ranges:
         tuning_job_config["ParameterRanges"] = parameter_ranges
 
-    if tuner.training_instance_pools:
-        tuning_job_config["TrainingJobInstancePools"] = [
-            {
-                "InstanceType": instance_type,
-                "PoolSize": tuner.training_instance_pools[instance_type],
-            }
-            for instance_type in sorted(tuner.training_instance_pools.keys())
-        ]
-
     return tuning_job_config
 
 

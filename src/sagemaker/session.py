@@ -788,7 +788,6 @@ class Session(object):  # pylint: disable=too-many-public-methods
         objective_type=None,
         objective_metric_name=None,
         parameter_ranges=None,
-        training_instance_pools=None,
     ):
         """
         Construct tuning job configuration dictionary.
@@ -807,10 +806,6 @@ class Session(object):  # pylint: disable=too-many-public-methods
             objective_metric_name (str): Name of the metric for evaluating training jobs.
             parameter_ranges (dict): Dictionary of parameter ranges. These parameter ranges can
                 be one of three types: Continuous, Integer, or Categorical.
-            training_instance_pools (dict[str, int]): Dictionary to specify how many ML instances
-                of different types to be reserved before starting the hyperparameter tuning job.
-                The keys are the ML instance types, and the values are the numbers of the
-                instances to be reserved.
 
         Returns:
             A dictionary of tuning job configuration. For format details, please refer to
@@ -833,12 +828,6 @@ class Session(object):  # pylint: disable=too-many-public-methods
 
         if parameter_ranges is not None:
             tuning_config["ParameterRanges"] = parameter_ranges
-
-        if training_instance_pools is not None:
-            tuning_config["TrainingJobInstancePools"] = [
-                {"InstanceType": instance_type, "PoolSize": training_instance_pools[instance_type]}
-                for instance_type in sorted(training_instance_pools.keys())
-            ]
 
         return tuning_config
 

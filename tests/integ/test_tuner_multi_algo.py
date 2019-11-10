@@ -68,11 +68,6 @@ def data_set():
     return data_set
 
 
-@pytest.fixture(scope="module")
-def training_instance_pools(cpu_instance_type):
-    return {cpu_instance_type: 2}
-
-
 @pytest.fixture(scope="function")
 def estimator_fm(sagemaker_session, cpu_instance_type):
     fm_image = get_image_uri(
@@ -114,12 +109,7 @@ def estimator_knn(sagemaker_session, cpu_instance_type):
 
 @pytest.mark.canary_quick
 def test_multi_estimator_tuning(
-    sagemaker_session,
-    estimator_fm,
-    estimator_knn,
-    training_instance_pools,
-    data_set,
-    cpu_instance_type,
+    sagemaker_session, estimator_fm, estimator_knn, data_set, cpu_instance_type
 ):
     tuner = HyperparameterTuner.create(
         base_tuning_job_name=BASE_TUNING_JOB_NAME,
@@ -136,7 +126,6 @@ def test_multi_estimator_tuning(
         objective_type=OBJECTIVE_TYPE,
         max_jobs=MAX_JOBS,
         max_parallel_jobs=MAX_PARALLEL_JOBS,
-        training_instance_pools=training_instance_pools,
         tags=TAGS,
     )
 

@@ -376,7 +376,6 @@ def test_fit_multi_estimators(sagemaker_session):
     assert tune_kwargs["tuning_config"]["max_jobs"] == MAX_JOBS
     assert tune_kwargs["tuning_config"]["max_parallel_jobs"] == MAX_PARALLEL_JOBS
     assert tune_kwargs["tuning_config"]["early_stopping_type"] == EARLY_STOPPING_TYPE
-    assert tune_kwargs["tuning_config"]["training_instance_pools"] == TRAINING_INSTANCE_POOLS
 
     assert "tuning_objective" not in tune_kwargs["tuning_config"]
     assert "parameter_ranges" not in tune_kwargs["tuning_config"]
@@ -455,7 +454,6 @@ def _create_multi_estimator_tuner(sagemaker_session):
             ESTIMATOR_NAME_TWO: HYPERPARAMETER_RANGES_TWO,
         },
         metric_definitions_dict={ESTIMATOR_NAME: METRIC_DEFINITIONS},
-        training_instance_pools=TRAINING_INSTANCE_POOLS,
         strategy=STRATEGY,
         objective_type=OBJECTIVE_TYPE,
         max_jobs=MAX_JOBS,
@@ -612,8 +610,6 @@ def test_attach_tuning_job_with_multi_estimators(sagemaker_session):
     assert tuner.max_parallel_jobs == 2
     assert tuner.early_stopping_type == "Off"
     assert tuner.warm_start_config is None
-
-    assert tuner.training_instance_pools == TRAINING_INSTANCE_POOLS
 
     assert tuner.estimator is None
     assert tuner.objective_metric_name is None
@@ -1001,7 +997,6 @@ def test_create_tuner(estimator_dict, obj_metric_name_dict, param_ranges_dict, m
         objective_metric_name_dict=obj_metric_name_dict,
         hyperparameter_ranges_dict=param_ranges_dict,
         metric_definitions_dict=metric_def_dict,
-        training_instance_pools=TRAINING_INSTANCE_POOLS,
         strategy="Bayesian",
         objective_type="Minimize",
         max_jobs=MAX_JOBS,
@@ -1019,7 +1014,6 @@ def test_create_tuner(estimator_dict, obj_metric_name_dict, param_ranges_dict, m
     assert tuner.metric_definitions_dict == metric_def_dict
 
     assert tuner.base_tuning_job_name == BASE_JOB_NAME
-    assert tuner.training_instance_pools == TRAINING_INSTANCE_POOLS
     assert tuner.strategy == "Bayesian"
     assert tuner.objective_type == "Minimize"
     assert tuner.max_jobs == MAX_JOBS
@@ -1103,7 +1097,6 @@ def test_create_tuner_negative(
             objective_metric_name_dict=obj_metric_name_dict,
             hyperparameter_ranges_dict=param_ranges_dict,
             metric_definitions_dict=metric_def_dict,
-            training_instance_pools=TRAINING_INSTANCE_POOLS,
             strategy="Bayesian",
             objective_type="Minimize",
             max_jobs=MAX_JOBS,
