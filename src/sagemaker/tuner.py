@@ -206,7 +206,6 @@ class HyperparameterTuner(object):
         warm_start_config=None,
         early_stopping_type="Off",
         estimator_name=None,
-        training_instance_pools=None,
     ):
         """Initialize a ``HyperparameterTuner``. It takes an estimator to obtain
         configuration information for training jobs that are created as the
@@ -260,19 +259,6 @@ class HyperparameterTuner(object):
             estimator_name (str): A unique name to identify an estimator within the
                 hyperparameter tuning job, when more than one estimator is used with
                 the same tuning job (default: None).
-            training_instance_pools (dict[str, str]): Dictionary to specify how many
-                ML instances of different types to be reserved before starting the
-                hyperparameter tuning job (default: None). The keys are the ML instance
-                types, and the values are the numbers of the instances to be reserved.
-                The following example specifies two instance pools. One pool has
-                10 ml.m4.4xlarge instances, while the other has 2 ml.p2.8xlarge
-                instances.
-                >>> {
-                >>>     'ml.m4.4xlarge': 10,
-                >>>     'ml.p2.8xlarge': 2
-                >>> }
-                For more details, see
-                https://botocore.readthedocs.io/en/latest/reference/services/sagemaker.html#SageMaker.Client.create_hyper_parameter_tuning_job
         """
         if hyperparameter_ranges is None or len(hyperparameter_ranges) == 0:
             raise ValueError("Need to specify hyperparameter ranges")
@@ -313,7 +299,6 @@ class HyperparameterTuner(object):
         self.latest_tuning_job = None
         self.warm_start_config = warm_start_config
         self.early_stopping_type = early_stopping_type
-        self.training_instance_pools = training_instance_pools
 
     def _prepare_for_tuning(self, job_name=None, include_cls_metadata=False):
         """Prepare the tuner instance for tuning (fit)"""
@@ -952,12 +937,6 @@ class HyperparameterTuner(object):
                 tuning_config["ParameterRanges"]
             )
 
-        if "TrainingJobInstancePools" in tuning_config:
-            params["training_instance_pools"] = {
-                instance_pool["InstanceType"]: instance_pool["PoolSize"]
-                for instance_pool in tuning_config["TrainingJobInstancePools"]
-            }
-
         if "TrainingJobDefinition" in job_details:
             params["metric_definitions"] = job_details["TrainingJobDefinition"][
                 "AlgorithmSpecification"
@@ -1230,7 +1209,6 @@ class HyperparameterTuner(object):
             max_jobs=self.max_jobs,
             max_parallel_jobs=self.max_parallel_jobs,
             warm_start_config=WarmStartConfig(warm_start_type=warm_start_type, parents=all_parents),
-            training_instance_pools=self.training_instance_pools,
             early_stopping_type=self.early_stopping_type,
         )
 
@@ -1241,7 +1219,6 @@ class HyperparameterTuner(object):
         objective_metric_name_dict,
         hyperparameter_ranges_dict,
         metric_definitions_dict=None,
-        training_instance_pools=None,
         base_tuning_job_name=None,
         strategy="Bayesian",
         objective_type="Maximize",
@@ -1284,10 +1261,6 @@ class HyperparameterTuner(object):
                 name of the metric, and 'Regex' for the regular expression used to extract the
                 metric from the logs. This should be defined only for hyperparameter tuning jobs
                 that don't use an Amazon algorithm.
-            training_instance_pools (dict[str, str]): Dictionary to specify how many ML instances
-                of different types to be reserved before starting the hyperparameter tuning job.
-                The keys are the ML instance types, and the values are the numbers of the instances
-                to be reserved.
             base_tuning_job_name (str): Prefix for the hyperparameter tuning job name when the
                 :meth:`~sagemaker.tuner.HyperparameterTuner.fit` method launches. If not specified,
                 a default job name is generated, based on the training image name and current
@@ -1344,7 +1317,6 @@ class HyperparameterTuner(object):
             max_jobs=max_jobs,
             max_parallel_jobs=max_parallel_jobs,
             tags=tags,
-            training_instance_pools=training_instance_pools,
             warm_start_config=warm_start_config,
             early_stopping_type=early_stopping_type,
         )
@@ -1483,9 +1455,6 @@ class _TuningJob(_Job):
         parameter_ranges = tuner.hyperparameter_ranges()
         if parameter_ranges is not None:
             tuning_config["parameter_ranges"] = parameter_ranges
-
-        if tuner.training_instance_pools is not None:
-            tuning_config["training_instance_pools"] = tuner.training_instance_pools
 
         tuner_args = {
             "job_name": tuner._current_job_name,
