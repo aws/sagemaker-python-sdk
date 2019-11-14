@@ -14,8 +14,8 @@ from __future__ import absolute_import
 
 import os
 
-from sagemaker.processor import FileInput
-from sagemaker.sklearn.processor import SKLearnProcessor
+from sagemaker.processing import ProcessingInput
+from sagemaker.sklearn.processing import SKLearnProcessor
 from tests.integ import DATA_DIR
 
 # TODO-reinvent-2019: Replace this role ARN
@@ -29,14 +29,15 @@ def test_sklearn(sagemaker_beta_session, sklearn_full_version, cpu_instance_type
     sklearn_processor = SKLearnProcessor(
         framework_version=sklearn_full_version,
         role=ROLE,
-        processing_instance_type=cpu_instance_type,
+        instance_type=cpu_instance_type,
         sagemaker_session=sagemaker_beta_session,
     )
 
     sklearn_processor.run(
-        source=script_path,
-        inputs=[FileInput(source=input_file_path, destination="/inputs/")],
+        code=script_path,
+        inputs=[ProcessingInput(source=input_file_path, destination="/inputs/")],
         wait=False,
+        logs=False,
     )
 
     job_description = sklearn_processor.latest_job.describe()
@@ -48,6 +49,6 @@ def test_sklearn(sagemaker_beta_session, sklearn_full_version, cpu_instance_type
     assert job_description["StoppingCondition"] == {"MaxRuntimeInSeconds": 86400}
     assert job_description["AppSpecification"]["ContainerEntrypoint"] == [
         "python3",
-        "/code/source/dummy_script.py",
+        "/input/code/dummy_script.py",
     ]
     assert job_description["RoleArn"] == ROLE
