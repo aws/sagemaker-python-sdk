@@ -193,7 +193,7 @@ def test_process(boto_session):
         },
         "stopping_condition": {"MaxRuntimeInSeconds": 3600},
         "app_specification": {
-            "ImageUri": "520713654638.dkr.ecr.us-west-2.amazonaws.com/sagemaker-sklearn:0.20.0-cpu-py3",
+            "ImageUri": "520713654638.dkr.ecr.us-west-2.amazonaws.com/sagemaker-scikit-learn:0.20.0-cpu-py3",
             "ContainerArguments": ["--drop-columns", "'SelfEmployed'"],
             "ContainerEntrypoint": ["python3", "/code/source/sklearn_transformer.py"],
         },
@@ -221,7 +221,7 @@ def test_process(boto_session):
             }
         },
         "AppSpecification": {
-            "ImageUri": "520713654638.dkr.ecr.us-west-2.amazonaws.com/sagemaker-sklearn:0.20.0-cpu-py3",
+            "ImageUri": "520713654638.dkr.ecr.us-west-2.amazonaws.com/sagemaker-scikit-learn:0.20.0-cpu-py3",
             "ContainerArguments": ["--drop-columns", "'SelfEmployed'"],
             "ContainerEntrypoint": ["python3", "/code/source/sklearn_transformer.py"],
         },

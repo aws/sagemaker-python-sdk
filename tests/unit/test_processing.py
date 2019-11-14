@@ -14,14 +14,6 @@ from __future__ import absolute_import
 
 import pytest
 from mock import Mock, patch
-from sagemaker.s3 import (
-    S3DataType,
-    S3InputMode,
-    S3DownloadMode,
-    S3DataDistributionType,
-    S3CompressionType,
-    S3UploadMode,
-)
 
 from sagemaker.processing import ProcessingInput, ProcessingOutput, Processor
 from sagemaker.sklearn.processing import SKLearnProcessor
@@ -61,6 +53,7 @@ def test_sklearn(sagemaker_session):
 
     with patch("os.path.isfile", return_value=True):
         sklearn_processor.run(
+            command=["python3"],
             code="/local/path/to/sklearn_transformer.py",
             inputs=[
                 ProcessingInput(source="/local/path/to/my/dataset/census.csv", destination="/data/")
@@ -105,7 +98,7 @@ def test_sklearn(sagemaker_session):
         },
         "stopping_condition": {"MaxRuntimeInSeconds": 24 * 60 * 60},
         "app_specification": {
-            "ImageUri": "520713654638.dkr.ecr.us-west-2.amazonaws.com/sagemaker-sklearn:0.20.0-cpu-py3",
+            "ImageUri": "520713654638.dkr.ecr.us-west-2.amazonaws.com/sagemaker-scikit-learn:0.20.0-cpu-py3",
             "ContainerEntrypoint": ["python3", "/input/code/sklearn_transformer.py"],
         },
         "environment": None,
@@ -122,7 +115,6 @@ def test_sklearn_with_all_customizations(sagemaker_session):
         role=ROLE,
         instance_type="ml.m4.xlarge",
         py_version="py3",
-        arguments=["--drop-columns", "'SelfEmployed'"],
         volume_size_in_gb=100,
         volume_kms_key=None,
         max_runtime_in_seconds=3600,
@@ -140,6 +132,7 @@ def test_sklearn_with_all_customizations(sagemaker_session):
 
     with patch("os.path.isdir", return_value=True):
         sklearn_processor.run(
+            command=["python3"],
             code="/local/path/to/code",
             script_name="sklearn_transformer.py",
             inputs=[
@@ -151,11 +144,11 @@ def test_sklearn_with_all_customizations(sagemaker_session):
                     source="s3://path/to/my/dataset/census.csv",
                     destination="/container/path/",
                     input_name="my_dataset",
-                    s3_data_type=S3DataType.MANIFEST_FILE,
-                    s3_input_mode=S3InputMode.FILE,
-                    s3_download_mode=S3DownloadMode.CONTINUOUS,
-                    s3_data_distribution_type=S3DataDistributionType.FULLY_REPLICATED,
-                    s3_compression_type=S3CompressionType.NONE,
+                    s3_data_type="ManifestFile",
+                    s3_input_mode="File",
+                    s3_download_mode="Continuous",
+                    s3_data_distribution_type="FullyReplicated",
+                    s3_compression_type="None",
                 ),
             ],
             outputs=[
@@ -164,9 +157,10 @@ def test_sklearn_with_all_customizations(sagemaker_session):
                     destination="s3://uri/",
                     output_name="my_output",
                     kms_key_id="arn:aws:kms:us-west-2:012345678901:key/kms-key",
-                    s3_upload_mode=S3UploadMode.CONTINUOUS,
+                    s3_upload_mode="Continuous",
                 )
             ],
+            arguments=["--drop-columns", "'SelfEmployed'"],
             wait=True,
             logs=False,
             job_name="my_job_name",
@@ -232,7 +226,7 @@ def test_sklearn_with_all_customizations(sagemaker_session):
         },
         "stopping_condition": {"MaxRuntimeInSeconds": 3600},
         "app_specification": {
-            "ImageUri": "520713654638.dkr.ecr.us-west-2.amazonaws.com/sagemaker-sklearn:0.20.0-cpu-py3",
+            "ImageUri": "520713654638.dkr.ecr.us-west-2.amazonaws.com/sagemaker-scikit-learn:0.20.0-cpu-py3",
             "ContainerArguments": ["--drop-columns", "'SelfEmployed'"],
             "ContainerEntrypoint": ["python3", "/input/code/sklearn_transformer.py"],
         },
@@ -258,14 +252,14 @@ def test_byo_container_with_custom_script(sagemaker_session):
         instance_count=1,
         instance_type="ml.m4.xlarge",
         entrypoint="sklearn_transformer.py",
-        arguments=["CensusTract", "County"],
         sagemaker_session=sagemaker_session,
     )
 
     custom_processor.run(
         inputs=[
             ProcessingInput(source="/local/path/to/my/dataset/census.csv", destination="/data/")
-        ]
+        ],
+        arguments=["CensusTract", "County"],
     )
 
     expected_args = {
@@ -312,14 +306,14 @@ def test_byo_container_with_baked_in_script(sagemaker_session):
         image_uri=CUSTOM_IMAGE_URI,
         instance_count=1,
         instance_type="ml.m4.xlarge",
-        arguments=["CensusTract", "County"],
         sagemaker_session=sagemaker_session,
     )
 
     custom_processor.run(
         inputs=[
             ProcessingInput(source="/local/path/to/my/sklearn_transformer", destination="/code/")
-        ]
+        ],
+        arguments=["CensusTract", "County"],
     )
 
     expected_args = {

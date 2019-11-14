@@ -24,15 +24,7 @@ from six.moves.urllib.parse import urlparse
 from sagemaker.job import _Job
 from sagemaker.utils import base_name_from_image, name_from_base
 from sagemaker.session import Session
-from sagemaker.s3 import (
-    S3CompressionType,
-    S3DataDistributionType,
-    S3DataType,
-    S3DownloadMode,
-    S3InputMode,
-    S3UploadMode,
-    S3Uploader,
-)
+from sagemaker.s3 import S3Uploader
 from sagemaker.network import NetworkConfig  # noqa: F401 # pylint: disable=unused-import
 
 
@@ -46,7 +38,6 @@ class Processor(object):
         instance_count,
         instance_type,
         entrypoint=None,
-        arguments=None,
         volume_size_in_gb=30,
         volume_kms_key=None,
         max_runtime_in_seconds=24 * 60 * 60,
@@ -72,8 +63,6 @@ class Processor(object):
             instance_type (str): Type of EC2 instance to use for
                 processing, for example, 'ml.c4.xlarge'.
             entrypoint (str): The entrypoint for the processing job.
-            arguments ([str]): A list of string arguments to be passed to a
-                processing job.
             volume_size_in_gb (int): Size in GB of the EBS volume
                 to use for storing data during processing (default: 30).
             volume_kms_key (str): A KMS key for the processing
@@ -99,7 +88,6 @@ class Processor(object):
         self.instance_count = instance_count
         self.instance_type = instance_type
         self.entrypoint = entrypoint
-        self.arguments = arguments
         self.volume_size_in_gb = volume_size_in_gb
         self.volume_kms_key = volume_kms_key
         self.max_runtime_in_seconds = max_runtime_in_seconds
@@ -112,8 +100,9 @@ class Processor(object):
         self.jobs = []
         self.latest_job = None
         self._current_job_name = None
+        self.arguments = None
 
-    def run(self, inputs=None, outputs=None, wait=True, logs=True, job_name=None):
+    def run(self, inputs=None, outputs=None, arguments=None, wait=True, logs=True, job_name=None):
         """Run a processing job.
 
         Args:
@@ -122,6 +111,8 @@ class Processor(object):
             outputs ([sagemaker.processor.ProcessingOutput]): Outputs for the processing
                 job. These can be specified as either a path string or a ProcessingOutput
                 object.
+            arguments ([str]): A list of string arguments to be passed to a
+                processing job.
             wait (bool): Whether the call should wait until the job completes (default: True).
             logs (bool): Whether to show the logs produced by the job.
                 Only meaningful when wait is True (default: True).
@@ -138,6 +129,7 @@ class Processor(object):
 
         normalized_inputs = self._normalize_inputs(inputs)
         normalized_outputs = self._normalize_outputs(outputs)
+        self.arguments = arguments
 
         self.latest_job = ProcessingJob.start_new(self, normalized_inputs, normalized_outputs)
         self.jobs.append(self.latest_job)
@@ -243,7 +235,7 @@ class Processor(object):
         return normalized_outputs
 
 
-class ScriptModeProcessor(Processor):
+class ScriptProcessor(Processor):
     """Handles Amazon SageMaker processing tasks for jobs using a machine learning framework."""
 
     def __init__(
@@ -252,8 +244,6 @@ class ScriptModeProcessor(Processor):
         image_uri,
         instance_count,
         instance_type,
-        py_version="py3",
-        arguments=None,
         volume_size_in_gb=30,
         volume_kms_key=None,
         max_runtime_in_seconds=24 * 60 * 60,
@@ -263,7 +253,7 @@ class ScriptModeProcessor(Processor):
         tags=None,
         network_config=None,
     ):
-        """Initialize a ``ScriptModeProcessor`` instance. The ScriptModeProcessor
+        """Initialize a ``ScriptProcessor`` instance. The ScriptProcessor
         handles Amazon SageMaker processing tasks for jobs using script mode.
 
         Args:
@@ -279,8 +269,6 @@ class ScriptModeProcessor(Processor):
             instance_type (str): Type of EC2 instance to use for
                 processing, for example, 'ml.c4.xlarge'.
             py_version (str): The python version to use, for example, 'py3'.
-            arguments ([str]): A list of string arguments to be passed to a
-                processing job.
             volume_size_in_gb (int): Size in GB of the EBS volume
                 to use for storing data during processing (default: 30).
             volume_kms_key (str): A KMS key for the processing
@@ -301,16 +289,14 @@ class ScriptModeProcessor(Processor):
                 object that configures network isolation, encryption of
                 inter-container traffic, security group IDs, and subnets.
         """
-        self.py_version = py_version
         self._CODE_CONTAINER_BASE_PATH = "/input/"
         self._CODE_CONTAINER_INPUT_NAME = "code"
 
-        super(ScriptModeProcessor, self).__init__(
+        super(ScriptProcessor, self).__init__(
             role=role,
             image_uri=image_uri,
             instance_count=instance_count,
             instance_type=instance_type,
-            arguments=arguments,
             volume_size_in_gb=volume_size_in_gb,
             volume_kms_key=volume_kms_key,
             max_runtime_in_seconds=max_runtime_in_seconds,
@@ -322,11 +308,22 @@ class ScriptModeProcessor(Processor):
         )
 
     def run(
-        self, code, script_name=None, inputs=None, outputs=None, wait=True, logs=True, job_name=None
+        self,
+        command,
+        code,
+        script_name=None,
+        inputs=None,
+        outputs=None,
+        arguments=None,
+        wait=True,
+        logs=True,
+        job_name=None,
     ):
         """Run a processing job with Script Mode.
 
         Args:
+            command([str]): This is a list of strings that includes the executable, along
+                with any command-line flags. For example: ["python3", "-v"]
             code (str): This can be an S3 uri or a local path to either
                 a directory or a file with the user's script to run.
             script_name (str): If the user provides a directory for source,
@@ -337,6 +334,8 @@ class ScriptModeProcessor(Processor):
             outputs ([str or sagemaker.processor.ProcessingOutput]): Outputs for the processing
                 job. These can be specified as either a path string or a ProcessingOutput
                 object.
+            arguments ([str]): A list of string arguments to be passed to a
+                processing job.
             wait (bool): Whether the call should wait until the job completes (default: True).
             logs (bool): Whether to show the logs produced by the job.
                 Only meaningful when wait is True (default: True).
@@ -349,10 +348,15 @@ class ScriptModeProcessor(Processor):
         customer_code_s3_uri = self._upload_code(code)
         inputs_with_code = self._convert_code_and_add_to_inputs(inputs, customer_code_s3_uri)
 
-        self._set_entrypoint(customer_script_name)
+        self._set_entrypoint(command, customer_script_name)
 
-        super(ScriptModeProcessor, self).run(
-            inputs=inputs_with_code, outputs=outputs, wait=wait, logs=logs, job_name=job_name
+        super(ScriptProcessor, self).run(
+            inputs=inputs_with_code,
+            outputs=outputs,
+            arguments=arguments,
+            wait=wait,
+            logs=logs,
+            job_name=job_name,
         )
 
     def _get_customer_script_name(self, code, script_name):
@@ -418,7 +422,6 @@ class ScriptModeProcessor(Processor):
                 the ProcessingInput object created from s3_uri appended to the list.
 
         """
-        input_list = inputs
         code_file_input = ProcessingInput(
             source=s3_uri,
             destination=os.path.join(
@@ -426,35 +429,9 @@ class ScriptModeProcessor(Processor):
             ),
             input_name=self._CODE_CONTAINER_INPUT_NAME,
         )
-        input_list.append(code_file_input)
-        return input_list
+        return inputs + [code_file_input]
 
-    def _get_execution_program(self, script_name):
-        """Determine which executable to run the user's script with
-        based on the file extension.
-
-        Args:
-            script_name (str): A filename with an extension.
-
-        Returns:
-            str: A name of an executable to run the user's script with.
-        """
-        file_extension = os.path.splitext(script_name)[1]
-        if file_extension == ".py":
-            if self.py_version == "py3":
-                return "python3"
-            if self.py_version == "py2":
-                return "python2"
-            return "python"
-        if file_extension == ".sh":
-            return "bash"
-        raise ValueError(
-            """Script Mode supports Python or Bash scripts.
-            To use a custom entrypoint, please use Processor.
-            """
-        )
-
-    def _set_entrypoint(self, customer_script_name):
+    def _set_entrypoint(self, command, customer_script_name):
         """Sets the entrypoint based on the customer's script and corresponding executable.
 
         Args:
@@ -463,8 +440,7 @@ class ScriptModeProcessor(Processor):
         customer_script_location = os.path.join(
             self._CODE_CONTAINER_BASE_PATH, self._CODE_CONTAINER_INPUT_NAME, customer_script_name
         )
-        execution_program = self._get_execution_program(customer_script_name)
-        self.entrypoint = [execution_program, customer_script_location]
+        self.entrypoint = command + [customer_script_location]
 
 
 class ProcessingJob(_Job):
@@ -564,11 +540,11 @@ class ProcessingInput(object):
         source,
         destination,
         input_name=None,
-        s3_data_type=S3DataType.MANIFEST_FILE,
-        s3_input_mode=S3InputMode.FILE,
-        s3_download_mode=S3DownloadMode.CONTINUOUS,
-        s3_data_distribution_type=S3DataDistributionType.FULLY_REPLICATED,
-        s3_compression_type=S3CompressionType.NONE,
+        s3_data_type="ManifestFile",
+        s3_input_mode="File",
+        s3_download_mode="Continuous",
+        s3_data_distribution_type="FullyReplicated",
+        s3_compression_type="None",
     ):
         """Initialize a ``ProcessingInput`` instance. ProcessingInput accepts parameters
         that specify an S3 input for a processing job and provides a method
@@ -579,11 +555,12 @@ class ProcessingInput(object):
             destination (str): The destination of the input.
             input_name (str): The user-provided name for the input. If a name
                 is not provided, one will be generated.
-            s3_data_type (sagemaker.s3.S3DataType):
-            s3_input_mode (sagemaker.s3.S3InputMode):
-            s3_download_mode (sagemaker.s3.S3DownloadMode):
-            s3_data_distribution_type (sagemaker.s3.S3DataDistributionType):
-            s3_compression_type (sagemaker.s3.S3CompressionType):
+            s3_data_type (str): Valid options are "ManifestFile" or "S3Prefix".
+            s3_input_mode (str): Valid options are "Pipe" or "File".
+            s3_download_mode (str): Valid options are "StartOfJob" or "Continuous".
+            s3_data_distribution_type (str): Valid options are "FullyReplicated"
+                or "ShardedByS3Key".
+            s3_compression_type (str): Valid options are "None" or "Gzip".
         """
         self.source = source
         self.destination = destination
@@ -602,21 +579,18 @@ class ProcessingInput(object):
             "S3Input": {
                 "S3Uri": self.source,
                 "LocalPath": self.destination,
-                "S3DataType": self.s3_data_type.value,
-                "S3InputMode": self.s3_input_mode.value,
-                "S3DownloadMode": self.s3_download_mode.value,
-                "S3DataDistributionType": self.s3_data_distribution_type.value,
+                "S3DataType": self.s3_data_type,
+                "S3InputMode": self.s3_input_mode,
+                "S3DownloadMode": self.s3_download_mode,
+                "S3DataDistributionType": self.s3_data_distribution_type,
             },
         }
 
         # Check the compression type, then add it to the dictionary.
-        if (
-            self.s3_compression_type == S3CompressionType.GZIP
-            and self.s3_input_mode != S3InputMode.PIPE
-        ):
+        if self.s3_compression_type == "Gzip" and self.s3_input_mode != "Pipe":
             raise ValueError("Data can only be gzipped when the input mode is Pipe.")
         if self.s3_compression_type is not None:
-            s3_input_request["S3Input"]["S3CompressionType"] = self.s3_compression_type.value
+            s3_input_request["S3Input"]["S3CompressionType"] = self.s3_compression_type
 
         # Return the request dictionary.
         return s3_input_request
@@ -627,12 +601,7 @@ class ProcessingOutput(object):
     a method to turn those parameters into a dictionary."""
 
     def __init__(
-        self,
-        source,
-        destination,
-        output_name=None,
-        kms_key_id=None,
-        s3_upload_mode=S3UploadMode.CONTINUOUS,
+        self, source, destination, output_name=None, kms_key_id=None, s3_upload_mode="Continuous"
     ):
         """Initialize a ``ProcessingOutput`` instance. ProcessingOutput accepts parameters that
         specify an S3 output for a processing job and provides a method to turn
@@ -643,7 +612,7 @@ class ProcessingOutput(object):
             destination (str): The destination of the output.
             output_name (str): The name of the output.
             kms_key_id (str): The KMS key id for the output.
-            s3_upload_mode (sagemaker.s3.S3UploadMode):
+            s3_upload_mode (str): Valid options are "EndOfJob" or "Continuous".
         """
         self.source = source
         self.destination = destination
@@ -659,7 +628,7 @@ class ProcessingOutput(object):
             "S3Output": {
                 "S3Uri": self.destination,
                 "LocalPath": self.source,
-                "S3UploadMode": self.s3_upload_mode.value,
+                "S3UploadMode": self.s3_upload_mode,
             },
         }
 

@@ -34,6 +34,7 @@ def test_sklearn(sagemaker_beta_session, sklearn_full_version, cpu_instance_type
     )
 
     sklearn_processor.run(
+        command=["python3"],
         code=script_path,
         inputs=[ProcessingInput(source=input_file_path, destination="/inputs/")],
         wait=False,
