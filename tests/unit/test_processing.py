@@ -12,8 +12,6 @@
 # language governing permissions and limitations under the License.
 from __future__ import absolute_import
 
-import os
-
 import pytest
 from mock import Mock, patch
 from sagemaker.s3 import (
@@ -25,8 +23,8 @@ from sagemaker.s3 import (
     S3UploadMode,
 )
 
-from sagemaker.processor import FileInput, FileOutput, Processor
-from sagemaker.sklearn.processor import SKLearnProcessor
+from sagemaker.processing import ProcessingInput, ProcessingOutput, Processor
+from sagemaker.sklearn.processing import SKLearnProcessor
 from sagemaker.network import NetworkConfig
 
 BUCKET_NAME = "mybucket"
@@ -57,14 +55,16 @@ def test_sklearn(sagemaker_session):
     sklearn_processor = SKLearnProcessor(
         framework_version="0.20.0",
         role=ROLE,
-        processing_instance_type="ml.m4.xlarge",
+        instance_type="ml.m4.xlarge",
         sagemaker_session=sagemaker_session,
     )
 
     with patch("os.path.isfile", return_value=True):
         sklearn_processor.run(
-            source="/local/path/to/sklearn_transformer.py",
-            inputs=[FileInput(source="/local/path/to/my/dataset/census.csv", destination="/data/")],
+            code="/local/path/to/sklearn_transformer.py",
+            inputs=[
+                ProcessingInput(source="/local/path/to/my/dataset/census.csv", destination="/data/")
+            ],
         )
 
     expected_args = {
@@ -82,10 +82,10 @@ def test_sklearn(sagemaker_session):
                 },
             },
             {
-                "InputName": "source",
+                "InputName": "code",
                 "S3Input": {
                     "S3Uri": "mocked_s3_uri_from_upload_data",
-                    "LocalPath": "/code/source",
+                    "LocalPath": "/input/code",
                     "S3DataType": "ManifestFile",
                     "S3InputMode": "File",
                     "S3DownloadMode": "Continuous",
@@ -106,7 +106,7 @@ def test_sklearn(sagemaker_session):
         "stopping_condition": {"MaxRuntimeInSeconds": 24 * 60 * 60},
         "app_specification": {
             "ImageUri": "520713654638.dkr.ecr.us-west-2.amazonaws.com/sagemaker-sklearn:0.20.0-cpu-py3",
-            "ContainerEntrypoint": ["python3", "/code/source/sklearn_transformer.py"],
+            "ContainerEntrypoint": ["python3", "/input/code/sklearn_transformer.py"],
         },
         "environment": None,
         "network_config": None,
@@ -120,12 +120,12 @@ def test_sklearn_with_all_customizations(sagemaker_session):
     sklearn_processor = SKLearnProcessor(
         framework_version="0.20.0",
         role=ROLE,
-        processing_instance_type="ml.m4.xlarge",
+        instance_type="ml.m4.xlarge",
         py_version="py3",
         arguments=["--drop-columns", "'SelfEmployed'"],
-        processing_volume_size_in_gb=100,
-        processing_volume_kms_key=None,
-        processing_max_runtime_in_seconds=3600,
+        volume_size_in_gb=100,
+        volume_kms_key=None,
+        max_runtime_in_seconds=3600,
         base_job_name="my_sklearn_processor",
         env={"my_env_variable": 20},
         tags=[{"Name": "my-tag", "Value": "my-tag-value"}],
@@ -140,14 +140,14 @@ def test_sklearn_with_all_customizations(sagemaker_session):
 
     with patch("os.path.isdir", return_value=True):
         sklearn_processor.run(
-            source="/local/path/to/code",
+            code="/local/path/to/code",
             script_name="sklearn_transformer.py",
             inputs=[
-                FileInput(
+                ProcessingInput(
                     source="/local/path/to/my/sklearn_transformer.py",
                     destination="/container/path/",
                 ),
-                FileInput(
+                ProcessingInput(
                     source="s3://path/to/my/dataset/census.csv",
                     destination="/container/path/",
                     input_name="my_dataset",
@@ -159,14 +159,13 @@ def test_sklearn_with_all_customizations(sagemaker_session):
                 ),
             ],
             outputs=[
-                "/data/output",
-                FileOutput(
+                ProcessingOutput(
                     source="/container/path/",
                     destination="s3://uri/",
                     output_name="my_output",
                     kms_key_id="arn:aws:kms:us-west-2:012345678901:key/kms-key",
                     s3_upload_mode=S3UploadMode.CONTINUOUS,
-                ),
+                )
             ],
             wait=True,
             logs=False,
@@ -200,10 +199,10 @@ def test_sklearn_with_all_customizations(sagemaker_session):
                 },
             },
             {
-                "InputName": "source",
+                "InputName": "code",
                 "S3Input": {
                     "S3Uri": "mocked_s3_uri_from_upload_data",
-                    "LocalPath": "/code/source",
+                    "LocalPath": "/input/code",
                     "S3DataType": "ManifestFile",
                     "S3InputMode": "File",
                     "S3DownloadMode": "Continuous",
@@ -214,19 +213,6 @@ def test_sklearn_with_all_customizations(sagemaker_session):
         ],
         "outputs": [
             {
-                "OutputName": "output-1",
-                "S3Output": {
-                    "S3Uri": os.path.join(
-                        "s3://",
-                        sagemaker_session.default_bucket(),
-                        sklearn_processor._current_job_name,
-                        "output",
-                    ),
-                    "LocalPath": "/data/output",
-                    "S3UploadMode": "Continuous",
-                },
-            },
-            {
                 "OutputName": "my_output",
                 "S3Output": {
                     "S3Uri": "s3://uri/",
@@ -234,7 +220,7 @@ def test_sklearn_with_all_customizations(sagemaker_session):
                     "S3UploadMode": "Continuous",
                     "KmsKeyId": "arn:aws:kms:us-west-2:012345678901:key/kms-key",
                 },
-            },
+            }
         ],
         "job_name": sklearn_processor._current_job_name,
         "resources": {
@@ -248,7 +234,7 @@ def test_sklearn_with_all_customizations(sagemaker_session):
         "app_specification": {
             "ImageUri": "520713654638.dkr.ecr.us-west-2.amazonaws.com/sagemaker-sklearn:0.20.0-cpu-py3",
             "ContainerArguments": ["--drop-columns", "'SelfEmployed'"],
-            "ContainerEntrypoint": ["python3", "/code/source/sklearn_transformer.py"],
+            "ContainerEntrypoint": ["python3", "/input/code/sklearn_transformer.py"],
         },
         "environment": {"my_env_variable": 20},
         "network_config": {
@@ -269,15 +255,17 @@ def test_byo_container_with_custom_script(sagemaker_session):
     custom_processor = Processor(
         role=ROLE,
         image_uri=CUSTOM_IMAGE_URI,
-        processing_instance_count=1,
-        processing_instance_type="ml.m4.xlarge",
+        instance_count=1,
+        instance_type="ml.m4.xlarge",
         entrypoint="sklearn_transformer.py",
         arguments=["CensusTract", "County"],
         sagemaker_session=sagemaker_session,
     )
 
     custom_processor.run(
-        inputs=[FileInput(source="/local/path/to/my/dataset/census.csv", destination="/data/")]
+        inputs=[
+            ProcessingInput(source="/local/path/to/my/dataset/census.csv", destination="/data/")
+        ]
     )
 
     expected_args = {
@@ -322,14 +310,16 @@ def test_byo_container_with_baked_in_script(sagemaker_session):
     custom_processor = Processor(
         role=ROLE,
         image_uri=CUSTOM_IMAGE_URI,
-        processing_instance_count=1,
-        processing_instance_type="ml.m4.xlarge",
+        instance_count=1,
+        instance_type="ml.m4.xlarge",
         arguments=["CensusTract", "County"],
         sagemaker_session=sagemaker_session,
     )
 
     custom_processor.run(
-        inputs=[FileInput(source="/local/path/to/my/sklearn_transformer", destination="/code/")]
+        inputs=[
+            ProcessingInput(source="/local/path/to/my/sklearn_transformer", destination="/code/")
+        ]
     )
 
     expected_args = {

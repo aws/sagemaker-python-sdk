@@ -18,7 +18,7 @@ and interpretation on SageMaker.
 from __future__ import absolute_import
 
 from sagemaker import Session
-from sagemaker.processor import ScriptModeProcessor
+from sagemaker.processing import ScriptModeProcessor
 from sagemaker.fw_utils import create_image_uri
 
 
@@ -29,12 +29,12 @@ class SKLearnProcessor(ScriptModeProcessor):
         self,
         framework_version,
         role,
-        processing_instance_type,
+        instance_type,
         py_version="py3",
         arguments=None,
-        processing_volume_size_in_gb=30,
-        processing_volume_kms_key=None,
-        processing_max_runtime_in_seconds=24 * 60 * 60,
+        volume_size_in_gb=30,
+        volume_kms_key=None,
+        max_runtime_in_seconds=24 * 60 * 60,
         base_job_name=None,
         sagemaker_session=None,
         env=None,
@@ -51,16 +51,16 @@ class SKLearnProcessor(ScriptModeProcessor):
                 to access training data and model artifacts. After the endpoint
                 is created, the inference code might use the IAM role, if it
                 needs to access an AWS resource.
-            processing_instance_type (str): Type of EC2 instance to use for
+            instance_type (str): Type of EC2 instance to use for
                 processing, for example, 'ml.c4.xlarge'.
             py_version (str): The python version to use, for example, 'py3'.
             arguments ([str]): A list of string arguments to be passed to a
                 processing job.
-            processing_volume_size_in_gb (int): Size in GB of the EBS volume
+            volume_size_in_gb (int): Size in GB of the EBS volume
                 to use for storing data during processing (default: 30).
-            processing_volume_kms_key (str): A KMS key for the processing
+            volume_kms_key (str): A KMS key for the processing
                 volume.
-            processing_max_runtime_in_seconds (int): Timeout in seconds
+            max_runtime_in_seconds (int): Timeout in seconds
                 (default: 24 * 60 * 60). After this amount of time Amazon
                 SageMaker terminates the job regardless of its current status.
             base_job_name (str): Prefix for processing name. If not specified,
@@ -81,7 +81,7 @@ class SKLearnProcessor(ScriptModeProcessor):
         image_uri = create_image_uri(
             region=region,
             framework="sklearn",
-            instance_type=processing_instance_type,
+            instance_type=instance_type,
             framework_version=framework_version,
             py_version=py_version,
         )
@@ -89,13 +89,13 @@ class SKLearnProcessor(ScriptModeProcessor):
         super(SKLearnProcessor, self).__init__(
             role=role,
             image_uri=image_uri,
-            processing_instance_count=1,
-            processing_instance_type=processing_instance_type,
+            instance_count=1,
+            instance_type=instance_type,
             py_version=py_version,
             arguments=arguments,
-            processing_volume_size_in_gb=processing_volume_size_in_gb,
-            processing_volume_kms_key=processing_volume_kms_key,
-            processing_max_runtime_in_seconds=processing_max_runtime_in_seconds,
+            volume_size_in_gb=volume_size_in_gb,
+            volume_kms_key=volume_kms_key,
+            max_runtime_in_seconds=max_runtime_in_seconds,
             base_job_name=base_job_name,
             sagemaker_session=session,
             env=env,
