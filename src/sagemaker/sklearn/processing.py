@@ -18,11 +18,11 @@ and interpretation on SageMaker.
 from __future__ import absolute_import
 
 from sagemaker import Session
-from sagemaker.processing import ScriptModeProcessor
+from sagemaker.processing import ScriptProcessor
 from sagemaker.fw_utils import create_image_uri
 
 
-class SKLearnProcessor(ScriptModeProcessor):
+class SKLearnProcessor(ScriptProcessor):
     """Handles Amazon SageMaker processing tasks for jobs using scikit-learn."""
 
     def __init__(
@@ -31,7 +31,6 @@ class SKLearnProcessor(ScriptModeProcessor):
         role,
         instance_type,
         py_version="py3",
-        arguments=None,
         volume_size_in_gb=30,
         volume_kms_key=None,
         max_runtime_in_seconds=24 * 60 * 60,
@@ -54,8 +53,6 @@ class SKLearnProcessor(ScriptModeProcessor):
             instance_type (str): Type of EC2 instance to use for
                 processing, for example, 'ml.c4.xlarge'.
             py_version (str): The python version to use, for example, 'py3'.
-            arguments ([str]): A list of string arguments to be passed to a
-                processing job.
             volume_size_in_gb (int): Size in GB of the EBS volume
                 to use for storing data during processing (default: 30).
             volume_kms_key (str): A KMS key for the processing
@@ -80,7 +77,7 @@ class SKLearnProcessor(ScriptModeProcessor):
         region = session.boto_region_name
         image_uri = create_image_uri(
             region=region,
-            framework="sklearn",
+            framework="scikit-learn",
             instance_type=instance_type,
             framework_version=framework_version,
             py_version=py_version,
@@ -91,8 +88,6 @@ class SKLearnProcessor(ScriptModeProcessor):
             image_uri=image_uri,
             instance_count=1,
             instance_type=instance_type,
-            py_version=py_version,
-            arguments=arguments,
             volume_size_in_gb=volume_size_in_gb,
             volume_kms_key=volume_kms_key,
             max_runtime_in_seconds=max_runtime_in_seconds,

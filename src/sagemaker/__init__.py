@@ -50,7 +50,7 @@ from sagemaker.local.local_session import LocalSession  # noqa: F401
 from sagemaker.model import Model, ModelPackage  # noqa: F401
 from sagemaker.pipeline import PipelineModel  # noqa: F401
 from sagemaker.predictor import RealTimePredictor  # noqa: F401
-from sagemaker.processing import Processor, ScriptModeProcessor  # noqa: F401
+from sagemaker.processing import Processor, ScriptProcessor  # noqa: F401
 from sagemaker.session import Session  # noqa: F401
 from sagemaker.session import container_def, pipeline_container_def  # noqa: F401
 from sagemaker.session import production_variant  # noqa: F401

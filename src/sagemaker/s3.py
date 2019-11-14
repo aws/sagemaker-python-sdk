@@ -13,52 +13,8 @@
 """This module contains Enums and helper methods related to S3."""
 from __future__ import print_function, absolute_import
 
-from enum import Enum
-
 from six.moves.urllib.parse import urlparse
 from sagemaker.session import Session
-
-
-class S3DataType(Enum):
-    """Provides enumerated values of S3 data types."""
-
-    MANIFEST_FILE = "ManifestFile"
-    S3_PREFIX = "S3Prefix"
-
-
-class S3InputMode(Enum):
-    """Provides enumerated values of S3 input modes."""
-
-    PIPE = "Pipe"
-    FILE = "File"
-
-
-class S3DownloadMode(Enum):
-    """Provides enumerated values of S3 download modes."""
-
-    START_OF_JOB = "StartOfJob"
-    CONTINUOUS = "Continuous"
-
-
-class S3DataDistributionType(Enum):
-    """Provides enumerated values of S3 data distribution types."""
-
-    FULLY_REPLICATED = "FullyReplicated"
-    SHARDED_BY_S3_KEY = "ShardedByS3Key"
-
-
-class S3CompressionType(Enum):
-    """Provides enumerated values of S3 compression types."""
-
-    NONE = "None"
-    GZIP = "Gzip"
-
-
-class S3UploadMode(Enum):
-    """Provides enumerated values of S3 upload modes."""
-
-    END_OF_JOB = "EndOfJob"
-    CONTINUOUS = "Continuous"
 
 
 def parse_s3_url(url):
