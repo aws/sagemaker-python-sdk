@@ -448,7 +448,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
     def process(
         self,
         inputs,
-        outputs,
+        output_config,
         job_name,
         resources,
         stopping_condition,
@@ -462,7 +462,8 @@ class Session(object):  # pylint: disable=too-many-public-methods
 
         Args:
             inputs ([dict]): List of up to 10 ProcessingInput dictionaries.
-            outputs ([dict]): List of up to 10 ProcessingOutput dictionaries.
+            output_config (dict): A config dictionary, which contains a list of up
+                to 10 ProcessingOutput dictionaries, as well as an optional KMS key ID.
             job_name (str): The name of the processing job. The name must be unique
                 within an AWS Region in an AWS account. Names should have minimum
                 length of 1 and maximum length of 63 characters.
@@ -486,17 +487,17 @@ class Session(object):  # pylint: disable=too-many-public-methods
                 pairs.
         """
         process_request = {
-            "AnalyticsJobName": job_name,
-            "AnalyticsResources": resources,
+            "ProcessingJobName": job_name,
+            "ProcessingResources": resources,
             "AppSpecification": app_specification,
             "RoleArn": role_arn,
         }
 
         if inputs:
-            process_request["AnalyticsInputs"] = inputs
+            process_request["ProcessingInputs"] = inputs
 
-        if outputs:
-            process_request["AnalyticsOutputs"] = outputs
+        if output_config["Outputs"]:
+            process_request["ProcessingOutputConfig"] = output_config
 
         if environment is not None:
             process_request["Environment"] = environment
@@ -512,9 +513,9 @@ class Session(object):  # pylint: disable=too-many-public-methods
 
         LOGGER.info("Creating processing-job with name %s", job_name)
         LOGGER.debug("process request: %s", json.dumps(process_request, indent=4))
-        self.sagemaker_client.create_analytics_job(**process_request)
+        self.sagemaker_client.create_processing_job(**process_request)
 
-    def describe_analytics_job(self, job_name):
+    def describe_processing_job(self, job_name):
         """Calls the DescribeProcessingJob API for the given job name
         and returns the response.
 
@@ -524,7 +525,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
         Returns:
             dict: A dictionary response with the processing job description.
         """
-        return self.sagemaker_client.describe_analytics_job(AnalyticsJobName=job_name)
+        return self.sagemaker_client.describe_processing_job(ProcessingJobName=job_name)
 
     def stop_processing_job(self, job_name):
         """Calls the StopProcessingJob API for the given job name.
@@ -532,7 +533,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
         Args:
             job_name (str): The name of the processing job to stop.
         """
-        self.sagemaker_client.stop_processing_job(AnalyticsJobName=job_name)
+        self.sagemaker_client.stop_processing_job(ProcessingJobName=job_name)
 
     def compile_model(
         self, input_model_config, output_model_config, role, job_name, stop_condition, tags
@@ -1469,7 +1470,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
             exceptions.UnexpectedStatusException: If the compilation job fails.
         """
         desc = _wait_until(lambda: _processing_job_status(self.sagemaker_client, job), poll)
-        self._check_job_status(job, desc, "AnalyticsJobStatus")
+        self._check_job_status(job, desc, "ProcessingJobStatus")
         return desc
 
     def wait_for_compilation_job(self, job, poll=5):
@@ -1957,13 +1958,13 @@ class Session(object):  # pylint: disable=too-many-public-methods
             ValueError: If the processing job fails.
         """
 
-        description = self.sagemaker_client.describe_analytics_job(AnalyticsJobName=job_name)
+        description = self.sagemaker_client.describe_processing_job(ProcessingJobName=job_name)
 
         instance_count, stream_names, positions, client, log_group, dot, color_wrap = _logs_init(
-            self, description, job="Analytics"
+            self, description, job="Processing"
         )
 
-        state = _get_initial_job_state(description, "AnalyticsJobStatus", wait)
+        state = _get_initial_job_state(description, "ProcessingJobStatus", wait)
 
         # The loop below implements a state machine that alternates between checking the job status
         # and reading whatever is available in the logs at this point. Note, that if we were
@@ -2005,19 +2006,19 @@ class Session(object):  # pylint: disable=too-many-public-methods
             if state == LogState.JOB_COMPLETE:
                 state = LogState.COMPLETE
             elif time.time() - last_describe_job_call >= 30:
-                description = self.sagemaker_client.describe_analytics_job(
-                    AnalyticsJobName=job_name
+                description = self.sagemaker_client.describe_processing_job(
+                    ProcessingJobName=job_name
                 )
                 last_describe_job_call = time.time()
 
-                status = description["AnalyticsJobStatus"]
+                status = description["ProcessingJobStatus"]
 
                 if status in ("Completed", "Failed", "Stopped"):
                     print()
                     state = LogState.JOB_COMPLETE
 
         if wait:
-            self._check_job_status(job_name, description, "AnalyticsJobStatus")
+            self._check_job_status(job_name, description, "ProcessingJobStatus")
             if dot:
                 print()
 
@@ -2317,8 +2318,8 @@ def _processing_job_status(sagemaker_client, job_name):
     }
     in_progress_statuses = ["InProgress", "Stopping", "Starting"]
 
-    desc = sagemaker_client.describe_analytics_job(AnalyticsJobName=job_name)
-    status = desc["AnalyticsJobStatus"]
+    desc = sagemaker_client.describe_processing_job(ProcessingJobName=job_name)
+    status = desc["ProcessingJobStatus"]
 
     status = _STATUS_CODE_TABLE.get(status, status)
     print(compile_status_codes.get(status, "?"), end="")
@@ -2489,8 +2490,8 @@ def _logs_init(sagemaker_session, description, job):
         instance_count = description["ResourceConfig"]["InstanceCount"]
     elif job == "Transform":
         instance_count = description["TransformResources"]["InstanceCount"]
-    elif job == "Analytics":
-        instance_count = description["AnalyticsResources"]["ClusterConfig"]["InstanceCount"]
+    elif job == "Processing":
+        instance_count = description["ProcessingResources"]["ClusterConfig"]["InstanceCount"]
 
     stream_names = []  # The list of log streams
     positions = {}  # The current position in each stream, map of stream name -> position

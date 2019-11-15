@@ -31,7 +31,10 @@
     "CreateMonitoringSchedule": null,
     "CreateNotebookInstance": "<p>Creates an Amazon SageMaker notebook instance. A notebook instance is an ML compute instance running on a Jupyter notebook. </p> <p>In a <code>CreateNotebookInstance</code> request, you specify the type of ML compute instance that you want to run. Amazon SageMaker launches the instance, installs common libraries that you can use to explore datasets for model training, and attaches an ML storage volume to the notebook instance. </p> <p>Amazon SageMaker also provides a set of example notebooks. Each notebook demonstrates how to use Amazon SageMaker with a specific an algorithm or with a machine learning framework. </p> <p>After receiving the request, Amazon SageMaker does the following:</p> <ol> <li> <p>Creates a network interface in the Amazon SageMaker VPC.</p> </li> <li> <p>(Option) If you specified <code>SubnetId</code>, creates a network interface in your own VPC, which is inferred from the subnet ID that you provide in the input. When creating this network interface, Amazon SageMaker attaches the security group that you specified in the request to the network interface that it creates in your VPC.</p> </li> <li> <p>Launches an EC2 instance of the type specified in the request in the Amazon SageMaker VPC. If you specified <code>SubnetId</code> of your VPC, Amazon SageMaker specifies both network interfaces when launching this instance. This enables inbound traffic from your own VPC to the notebook instance, assuming that the security groups allow it.</p> </li> </ol> <p>After creating the notebook instance, Amazon SageMaker returns its Amazon Resource Name (ARN).</p> <p>After Amazon SageMaker creates the notebook instance, you can connect to the Jupyter server and work in Jupyter notebooks. For example, you can write code to explore a dataset that you can use for model training, train a model, host models by creating Amazon SageMaker endpoints, and validate hosted models. </p> <p>For more information, see <a href=\"https://docs.aws.amazon.com/sagemaker/latest/dg/how-it-works.html\">How It Works</a>. </p>",
     "CreateNotebookInstanceLifecycleConfig": null,
+    "CreatePresignedDomainUrl": null,
     "CreatePresignedNotebookInstanceUrl": "<p>Returns a URL that you can use to connect to the Juypter server from a notebook instance. In the Amazon SageMaker console, when you choose <code>Open</code> next to a notebook instance, Amazon SageMaker opens a new tab showing the Jupyter server home page from the notebook instance. The console uses this API to get the URL and show the page. </p>",
+    "CreateProcessingJob": null,
+    "CreateProcessingJobInternal": null,
     "CreateTrainingJob": "<p> Starts a model training job. After training completes, Amazon SageMaker saves the resulting model artifacts to an Amazon S3 location that you specify. </p> <p>If you choose to host your model using Amazon SageMaker hosting services, you can use the resulting model artifacts as part of the model. You can also use the artifacts in a deep learning service other than Amazon SageMaker, provided that you know how to use them for inferences. </p> <p>In the request body, you provide the following: </p> <ul> <li> <p> <code>AlgorithmSpecification</code> - Identifies the training algorithm to use. </p> </li> <li> <p> <code>HyperParameters</code> - Specify these algorithm-specific parameters to influence the quality of the final model. For a list of hyperparameters for each training algorithm provided by Amazon SageMaker, see <a href=\"https://docs.aws.amazon.com/sagemaker/latest/dg/algos.html\">Algorithms</a>. </p> </li> <li> <p> <code>InputDataConfig</code> - Describes the training dataset and the Amazon S3 location where it is stored.</p> </li> <li> <p> <code>OutputDataConfig</code> - Identifies the Amazon S3 location where you want Amazon SageMaker to save the results of model training. </p> <p/> </li> <li> <p> <code>ResourceConfig</code> - Identifies the resources, ML compute instances, and ML storage volumes to deploy for model training. In distributed training, you specify more than one instance. </p> </li> <li> <p> <code>RoleARN</code> - The Amazon Resource Number (ARN) that Amazon SageMaker assumes to perform tasks on your behalf during model training. You must grant this role the necessary permissions so that Amazon SageMaker can successfully complete model training. </p> </li> <li> <p> <code>StoppingCondition</code> - Sets a duration for training. Use this parameter to cap model training costs. </p> </li> </ul> <p> For more information about Amazon SageMaker, see <a href=\"https://docs.aws.amazon.com/sagemaker/latest/dg/how-it-works.html\">How It Works</a>. </p>",
     "CreateTrainingJobInternal": null,
     "CreateTransformJob": null,
@@ -41,6 +44,7 @@
     "CreateUserProfile": null,
     "CreateWorkteam": null,
     "DeleteAlgorithm": null,
+    "DeleteApp": null,
     "DeleteCodeRepository": null,
     "DeleteDomain": null,
     "DeleteEndpoint": "<p>Deletes an endpoint. Amazon SageMaker frees up all of the resources that were deployed when the endpoint was created. </p>",
@@ -48,6 +52,8 @@
     "DeleteEnvironment": null,
     "DeleteEnvironmentVersion": null,
     "DeleteExperiment": null,
+    "DeleteFlowDefinition": null,
+    "DeleteHumanTaskUi": null,
     "DeleteModel": "<p>Deletes a model. The <code>DeleteModel</code> API deletes only the model entry that was created in Amazon SageMaker when you called the <a href=\"https://docs.aws.amazon.com/sagemaker/latest/dg/API_CreateModel.html\">CreateModel</a> API. It does not delete model artifacts, inference code, or the IAM role that you specified when creating the model. </p>",
     "DeleteModelPackage": null,
     "DeleteMonitoringSchedule": null,
@@ -80,6 +86,7 @@
     "DescribeMonitoringSchedule": null,
     "DescribeNotebookInstance": "<p>Returns information about a notebook instance.</p>",
     "DescribeNotebookInstanceLifecycleConfig": null,
+    "DescribeProcessingJob": null,
     "DescribeSubscribedWorkteam": null,
     "DescribeTrainingJob": "<p>Returns information about a training job.</p>",
     "DescribeTransformJob": null,
@@ -115,8 +122,10 @@
     "ListMonitoringSchedules": null,
     "ListNotebookInstanceLifecycleConfigs": null,
     "ListNotebookInstances": "<p>Returns a list of the Amazon SageMaker notebook instances in the requester's account in an AWS Region. </p>",
+    "ListProcessingJobs": null,
     "ListSubscribedWorkteams": null,
     "ListTags": "<p>Returns the tags for the specified Amazon SageMaker resource.</p>",
+    "ListTagsInternal": null,
     "ListTrainingJobs": "<p>Lists training jobs.</p>",
     "ListTrainingJobsForHyperParameterTuningJob": null,
     "ListTransformJobs": null,
@@ -131,7 +140,6 @@
     "StartNotebookInstance": "<p>Launches an ML compute instance with the latest version of the libraries and attaches your ML storage volume. After configuring the notebook instance, Amazon SageMaker sets the notebook instance status to <code>InService</code>. A notebook instance's status must be <code>InService</code> before you can connect to your Jupyter notebook. </p>",
     "StopAnalyticsJob": null,
     "StopAnalyticsJobInternal": null,
-    "StopApp": null,
     "StopAutoMLJob": null,
     "StopCompilationJob": null,
     "StopHyperParameterTuningJob": null,
@@ -139,6 +147,8 @@
     "StopLabelingJob": null,
     "StopMonitoringSchedule": null,
     "StopNotebookInstance": "<p>Terminates the ML compute instance. Before terminating the instance, Amazon SageMaker disconnects the ML storage volume from it. Amazon SageMaker preserves the ML storage volume. </p> <p>To access data on the ML storage volume for a notebook instance that has been terminated, call the <code>StartNotebookInstance</code> API. <code>StartNotebookInstance</code> launches another ML compute instance, configures it, and attaches the preserved ML storage volume so you can continue your work. </p>",
+    "StopProcessingJob": null,
+    "StopProcessingJobInternal": null,
     "StopTrainingJob": "<p>Stops a training job. To stop a job, Amazon SageMaker sends the algorithm the <code>SIGTERM</code> signal, which delays job termination for 120 seconds. Algorithms might use this 120-second window to save the model artifacts, so the results of the training is not lost. </p> <p>Training algorithms provided by Amazon SageMaker save the intermediate results of a model training job. This intermediate data is a valid model artifact. You can use the model artifacts that are saved when Amazon SageMaker stops a training job to create a model. </p> <p>When it receives a <code>StopTrainingJob</code> request, Amazon SageMaker changes the status of the job to <code>Stopping</code>. After Amazon SageMaker stops the job, it sets the status to <code>Stopped</code>.</p>",
     "StopTrainingJobInternal": null,
     "StopTransformJob": null,
@@ -153,6 +163,7 @@
     "UpdateMonitoringSchedule": null,
     "UpdateNotebookInstance": "<p>Updates a notebook instance. NotebookInstance updates include upgrading or downgrading the ML compute instance used for your notebook instance to accommodate changes in your workload requirements. You can also update the VPC security groups.</p>",
     "UpdateNotebookInstanceLifecycleConfig": null,
+    "UpdateTrial": null,
     "UpdateTrialComponent": null,
     "UpdateUserProfile": null,
     "UpdateWorkforce": null,
@@ -205,6 +216,7 @@
       "base": null,
       "refs": {
         "AlgorithmSpecification$TrainingImage": "<p>The registry path of the Docker image that contains the training algorithm. For information about using your own algorithms, see <a href=\"https://docs.aws.amazon.com/sagemaker/latest/dg/algos-docker-registry-paths.html\">Docker Registry Paths for Algorithms Provided by Amazon SageMaker </a>. </p>",
+        "DebugRuleConfiguration$RuleEvaluatorImage": null,
         "HyperParameterAlgorithmSpecification$TrainingImage": null,
         "ImageUrlOverrides$DataBuilderImageUrl": null,
         "ImageUrlOverrides$PipelineRecommenderImageUrl": null,
@@ -284,11 +296,16 @@
         "DescribeAlgorithmOutput$ValidationSpecification": null
       }
     },
+    "AllowIncludeNotebookOutput": {
+      "base": null,
+      "refs": {
+        "SharingSettings$AllowIncludeNotebookOutput": null
+      }
+    },
     "AnalyticsClusterConfig": {
       "base": null,
       "refs": {
-        "AnalyticsResources$ClusterConfig": null,
-        "MonitoringResources$ClusterConfig": null
+        "AnalyticsResources$ClusterConfig": null
       }
     },
     "AnalyticsEnvironmentKey": {
@@ -329,13 +346,15 @@
     "AnalyticsInstanceCount": {
       "base": null,
       "refs": {
-        "AnalyticsClusterConfig$InstanceCount": null
+        "AnalyticsClusterConfig$InstanceCount": null,
+        "MonitoringClusterConfig$InstanceCount": null
       }
     },
     "AnalyticsInstanceType": {
       "base": null,
       "refs": {
-        "AnalyticsClusterConfig$InstanceType": null
+        "AnalyticsClusterConfig$InstanceType": null,
+        "MonitoringClusterConfig$InstanceType": null
       }
     },
     "AnalyticsJobArn": {
@@ -344,8 +363,7 @@
         "AnalyticsJobSummary$AnalyticsJobArn": null,
         "CreateAnalyticsJobResponse$AnalyticsJobArn": null,
         "DescribeAnalyticsJobResponse$AnalyticsJobArn": null,
-        "LastMonitoringExecutionSummary$AnalyticsJobArn": null,
-        "MonitoringExecutionSummary$AnalyticsJobArn": null
+        "MonitoringExecutionSummary$ProcessingJobArn": null
       }
     },
     "AnalyticsJobName": {
@@ -387,7 +405,6 @@
         "AnalyticsS3Output$LocalPath": null,
         "AnalyticsUpstreamS3Output$LocalPath": null,
         "EndpointInput$LocalPath": null,
-        "MonitoringS3Input$LocalPath": null,
         "MonitoringS3Output$LocalPath": null
       }
     },
@@ -422,31 +439,26 @@
     "AnalyticsS3CompressionType": {
       "base": null,
       "refs": {
-        "AnalyticsS3Input$S3CompressionType": null,
-        "MonitoringS3Input$S3CompressionType": null
+        "AnalyticsS3Input$S3CompressionType": null
       }
     },
     "AnalyticsS3DataDistributionType": {
       "base": null,
       "refs": {
         "AnalyticsS3Input$S3DataDistributionType": null,
-        "EndpointInput$S3DataDistributionType": null,
-        "MonitoringS3Input$S3DataDistributionType": null
+        "EndpointInput$S3DataDistributionType": null
       }
     },
     "AnalyticsS3DataType": {
       "base": null,
       "refs": {
-        "AnalyticsS3Input$S3DataType": null,
-        "MonitoringS3Input$S3DataType": null
+        "AnalyticsS3Input$S3DataType": null
       }
     },
     "AnalyticsS3DownloadMode": {
       "base": null,
       "refs": {
-        "AnalyticsS3Input$S3DownloadMode": null,
-        "EndpointInput$S3DownloadMode": null,
-        "MonitoringS3Input$S3DownloadMode": null
+        "AnalyticsS3Input$S3DownloadMode": null
       }
     },
     "AnalyticsS3Input": {
@@ -459,8 +471,7 @@
       "base": null,
       "refs": {
         "AnalyticsS3Input$S3InputMode": null,
-        "EndpointInput$S3InputMode": null,
-        "MonitoringS3Input$S3InputMode": null
+        "EndpointInput$S3InputMode": null
       }
     },
     "AnalyticsS3Output": {
@@ -501,7 +512,8 @@
     "AnalyticsVolumeSizeInGB": {
       "base": null,
       "refs": {
-        "AnalyticsClusterConfig$VolumeSizeInGB": null
+        "AnalyticsClusterConfig$VolumeSizeInGB": null,
+        "MonitoringClusterConfig$VolumeSizeInGB": null
       }
     },
     "AnnotationConsolidationConfig": {
@@ -527,10 +539,10 @@
       "refs": {
         "AppDetails$AppName": null,
         "CreateAppRequest$AppName": null,
+        "DeleteAppRequest$AppName": null,
         "DescribeAppRequest$AppName": null,
         "DescribeAppResponse$AppName": null,
-        "ListAppsRequest$AppNameContains": null,
-        "StopAppRequest$AppName": null
+        "ListAppsRequest$AppNameContains": null
       }
     },
     "AppSettings": {
@@ -550,7 +562,10 @@
       "refs": {
         "CreateAnalyticsJobInternalRequest$AppSpecification": null,
         "CreateAnalyticsJobRequest$AppSpecification": null,
-        "DescribeAnalyticsJobResponse$AppSpecification": null
+        "CreateProcessingJobInternalRequest$AppSpecification": null,
+        "CreateProcessingJobRequest$AppSpecification": null,
+        "DescribeAnalyticsJobResponse$AppSpecification": null,
+        "DescribeProcessingJobResponse$AppSpecification": null
       }
     },
     "AppStatus": {
@@ -566,10 +581,10 @@
       "refs": {
         "AppDetails$AppType": null,
         "CreateAppRequest$AppType": null,
+        "DeleteAppRequest$AppType": null,
         "DescribeAppRequest$AppType": null,
         "DescribeAppResponse$AppType": null,
-        "ListAppsRequest$AppTypeEquals": null,
-        "StopAppRequest$AppType": null
+        "ListAppsRequest$AppTypeEquals": null
       }
     },
     "ArnOrName": {
@@ -611,6 +626,12 @@
         "S3DataSource$AttributeNames": null
       }
     },
+    "AuthMode": {
+      "base": null,
+      "refs": {
+        "CreateDomainRequest$AuthMode": null
+      }
+    },
     "AutoMLAlgorithm": {
       "base": null,
       "refs": {
@@ -633,6 +654,18 @@
       "base": null,
       "refs": {
         "AutoMLChannel$ChannelName": null
+      }
+    },
+    "AutoMLContainerDefinition": {
+      "base": null,
+      "refs": {
+        "AutoMLContainerDefinitions$member": null
+      }
+    },
+    "AutoMLContainerDefinitions": {
+      "base": null,
+      "refs": {
+        "AutoMLTrialSummary$InferenceContainers": null
       }
     },
     "AutoMLContentType": {
@@ -671,10 +704,12 @@
         "CreateAnalyticsJobInternalRequest$AutoMLJobArn": null,
         "CreateAutoMLJobResponse$AutoMLJobArn": null,
         "CreateHyperParameterTuningJobInternalRequest$AutoMLJobArn": null,
+        "CreateProcessingJobInternalRequest$AutoMLJobArn": null,
         "CreateTrainingJobInternalRequest$AutoMLJobArn": null,
         "CreateTransformJobInternalRequest$AutoMLJobArn": null,
         "DescribeAnalyticsJobResponse$AutoMLJobArn": null,
         "DescribeAutoMLJobResponse$AutoMLJobArn": null,
+        "DescribeProcessingJobResponse$AutoMLJobArn": null,
         "DescribeTrainingJobResponse$AutoMLJobArn": null,
         "DescribeTransformJobResponse$AutoMLJobArn": null,
         "TrainingJob$AutoMLJobArn": null,
@@ -948,6 +983,12 @@
         "TrainingJob$BillableTimeInSeconds": null
       }
     },
+    "BillingOption": {
+      "base": null,
+      "refs": {
+        "CreateProcessingJobInternalRequest$BillingOption": null
+      }
+    },
     "Boolean": {
       "base": null,
       "refs": {
@@ -1185,6 +1226,30 @@
         "CognitoMemberDefinition$UserPool": null
       }
     },
+    "CollectionConfiguration": {
+      "base": null,
+      "refs": {
+        "CollectionConfigurations$member": null
+      }
+    },
+    "CollectionConfigurations": {
+      "base": null,
+      "refs": {
+        "DebugHookConfig$CollectionConfigurations": null
+      }
+    },
+    "CollectionName": {
+      "base": null,
+      "refs": {
+        "CollectionConfiguration$CollectionName": null
+      }
+    },
+    "CollectionParameters": {
+      "base": null,
+      "refs": {
+        "CollectionConfiguration$CollectionParameters": null
+      }
+    },
     "CompilationJobArn": {
       "base": null,
       "refs": {
@@ -1280,12 +1345,18 @@
     "ConfigKey": {
       "base": null,
       "refs": {
+        "CollectionParameters$key": null,
+        "HookParameters$key": null,
+        "RuleParameters$key": null,
         "RuntimeConfigurations$key": null
       }
     },
     "ConfigValue": {
       "base": null,
       "refs": {
+        "CollectionParameters$value": null,
+        "HookParameters$value": null,
+        "RuleParameters$value": null,
         "RuntimeConfigurations$value": null
       }
     },
@@ -1648,6 +1719,16 @@
       "refs": {
       }
     },
+    "CreatePresignedDomainUrlRequest": {
+      "base": null,
+      "refs": {
+      }
+    },
+    "CreatePresignedDomainUrlResponse": {
+      "base": null,
+      "refs": {
+      }
+    },
     "CreatePresignedNotebookInstanceUrlInput": {
       "base": null,
       "refs": {
@@ -1656,6 +1737,27 @@
     "CreatePresignedNotebookInstanceUrlOutput": {
       "base": null,
       "refs": {
+      }
+    },
+    "CreateProcessingJobInternalRequest": {
+      "base": null,
+      "refs": {
+      }
+    },
+    "CreateProcessingJobInternalResponse": {
+      "base": null,
+      "refs": {
+      }
+    },
+    "CreateProcessingJobRequest": {
+      "base": null,
+      "refs": {
+      }
+    },
+    "CreateProcessingJobResponse": {
+      "base": null,
+      "refs": {
+        "CreateProcessingJobInternalResponse$ProcessingJobResponse": null
       }
     },
     "CreateTrainingJobInternalRequest": {
@@ -1749,13 +1851,9 @@
         "DescribeAlgorithmOutput$CreationTime": null,
         "DescribeCodeRepositoryOutput$CreationTime": null,
         "DescribeCompilationJobResponse$CreationTime": null,
-        "DescribeEnvironmentResponse$CreationTime": null,
-        "DescribeEnvironmentVersionResponse$CreationTime": null,
         "DescribeModelPackageOutput$CreationTime": null,
         "DescribeNotebookInstanceLifecycleConfigOutput$CreationTime": null,
         "DescribeNotebookInstanceOutput$CreationTime": "<p>A timestamp. Use this parameter to return the time when the notebook instance was created</p>",
-        "EnvironmentSummary$CreationTime": null,
-        "EnvironmentVersionSummary$CreationTime": null,
         "ListAlgorithmsInput$CreationTimeAfter": null,
         "ListAlgorithmsInput$CreationTimeBefore": null,
         "ListCodeRepositoriesInput$CreationTimeAfter": null,
@@ -1773,25 +1871,12 @@
         "NotebookInstanceSummary$CreationTime": "<p>A timestamp that shows when the notebook instance was created.</p>"
       }
     },
-    "CreationTimeAfter": {
-      "base": null,
-      "refs": {
-        "ListEnvironmentVersionsRequest$CreationTimeAfter": null,
-        "ListEnvironmentsRequest$CreationTimeAfter": null
-      }
-    },
-    "CreationTimeBefore": {
-      "base": null,
-      "refs": {
-        "ListEnvironmentVersionsRequest$CreationTimeBefore": null,
-        "ListEnvironmentsRequest$CreationTimeBefore": null
-      }
-    },
     "CredentialProviderLambdaFunctionArn": {
       "base": null,
       "refs": {
         "CreateAnalyticsJobInternalRequest$CredentialProviderFunction": null,
         "CreateAnalyticsJobRequest$CredentialProviderFunction": null,
+        "CreateProcessingJobInternalRequest$CredentialProviderFunction": null,
         "CreateTransformJobInternalRequest$CredentialProviderFunction": null,
         "CreateTransformJobRequest$CredentialProviderFunction": null
       }
@@ -1813,10 +1898,12 @@
       "refs": {
         "CreateAnalyticsJobInternalRequest$CustomerDetails": null,
         "CreateHyperParameterTuningJobInternalRequest$CustomerDetails": null,
+        "CreateProcessingJobInternalRequest$CustomerDetails": null,
         "CreateTrainingJobInternalRequest$CustomerDetails": null,
         "CreateTransformJobInternalRequest$CustomerDetails": null,
         "StopAnalyticsJobInternalRequest$CustomerDetails": null,
         "StopHyperParameterTuningJobInternalRequest$CustomerDetails": null,
+        "StopProcessingJobInternalRequest$CustomerDetails": null,
         "StopTrainingJobInternalRequest$CustomerDetails": null,
         "StopTransformJobInternalRequest$CustomerDetails": null
       }
@@ -1882,6 +1969,33 @@
         "DebugHookConfig$DebugHookSpecificationList": null
       }
     },
+    "DebugRuleConfiguration": {
+      "base": null,
+      "refs": {
+        "DebugRuleConfigurations$member": null
+      }
+    },
+    "DebugRuleConfigurations": {
+      "base": null,
+      "refs": {
+        "CreateTrainingJobRequest$DebugRuleConfigurations": null,
+        "DescribeTrainingJobResponse$DebugRuleConfigurations": null,
+        "TrainingJob$DebugRuleConfigurations": null
+      }
+    },
+    "DebugRuleEvaluationStatus": {
+      "base": null,
+      "refs": {
+        "DebugRuleEvaluationStatuses$member": null
+      }
+    },
+    "DebugRuleEvaluationStatuses": {
+      "base": null,
+      "refs": {
+        "DescribeTrainingJobResponse$DebugRuleEvaluationStatuses": null,
+        "TrainingJob$DebugRuleEvaluationStatuses": null
+      }
+    },
     "DefaultResourceManagerSpec": {
       "base": null,
       "refs": {
@@ -1891,6 +2005,16 @@
       }
     },
     "DeleteAlgorithmInput": {
+      "base": null,
+      "refs": {
+      }
+    },
+    "DeleteAppRequest": {
+      "base": null,
+      "refs": {
+      }
+    },
+    "DeleteAppResponse": {
       "base": null,
       "refs": {
       }
@@ -1945,10 +2069,30 @@
       "refs": {
       }
     },
+    "DeleteFlowDefinitionRequest": {
+      "base": null,
+      "refs": {
+      }
+    },
+    "DeleteFlowDefinitionResponse": {
+      "base": null,
+      "refs": {
+      }
+    },
     "DeleteHomeEfsFileSystem": {
       "base": null,
       "refs": {
         "DeleteDomainRequest$DeleteHomeEfsFileSystem": null
+      }
+    },
+    "DeleteHumanTaskUiRequest": {
+      "base": null,
+      "refs": {
+      }
+    },
+    "DeleteHumanTaskUiResponse": {
+      "base": null,
+      "refs": {
       }
     },
     "DeleteModelInput": {
@@ -2258,6 +2402,16 @@
       "refs": {
       }
     },
+    "DescribeProcessingJobRequest": {
+      "base": null,
+      "refs": {
+      }
+    },
+    "DescribeProcessingJobResponse": {
+      "base": null,
+      "refs": {
+      }
+    },
     "DescribeSubscribedWorkteamRequest": {
       "base": null,
       "refs": {
@@ -2369,6 +2523,13 @@
         "ModelPackageStatusItem$Status": null
       }
     },
+    "DiffId": {
+      "base": null,
+      "refs": {
+        "EnvironmentDefinitionLayer$DiffId": null,
+        "EnvironmentLayer$DiffId": null
+      }
+    },
     "DirectInternetAccess": {
       "base": null,
       "refs": {
@@ -2381,8 +2542,10 @@
       "refs": {
         "CheckpointConfig$LocalPath": null,
         "DebugHookConfig$LocalPath": null,
+        "DebugRuleConfiguration$LocalPath": null,
         "FileSystemDataSource$DirectoryPath": null,
-        "RuleConfig$LocalPath": null
+        "RuleConfig$LocalPath": null,
+        "TensorBoardOutputConfig$LocalPath": null
       }
     },
     "DisassociateAdditionalCodeRepositories": {
@@ -2698,8 +2861,10 @@
     "EnvironmentMap": {
       "base": null,
       "refs": {
+        "AutoMLContainerDefinition$Environment": null,
         "ContainerDefinition$Environment": "<p>The environment variables to set in the Docker container. Each key and value in the <code>Environment</code> string to string map can have length of up to 1024. We support up to 16 entries in the map. </p>",
-        "DescribeAnalyticsJobResponse$Environment": null
+        "DescribeAnalyticsJobResponse$Environment": null,
+        "DescribeProcessingJobResponse$Environment": null
       }
     },
     "EnvironmentName": {
@@ -2714,6 +2879,7 @@
         "DescribeEnvironmentVersionRequest$EnvironmentName": null,
         "DescribeEnvironmentVersionResponse$EnvironmentName": null,
         "EnvironmentSummary$EnvironmentName": null,
+        "EnvironmentVersionSummary$EnvironmentName": null,
         "ListEnvironmentVersionsRequest$EnvironmentName": null,
         "UpdateEnvironmentRequest$EnvironmentName": null,
         "UpdateEnvironmentVersionStatusRequest$EnvironmentName": null
@@ -2729,6 +2895,13 @@
       "base": null,
       "refs": {
         "ListEnvironmentsRequest$SortOrder": null
+      }
+    },
+    "EnvironmentStatus": {
+      "base": null,
+      "refs": {
+        "DescribeEnvironmentResponse$EnvironmentStatus": null,
+        "EnvironmentSummary$EnvironmentStatus": null
       }
     },
     "EnvironmentSummaries": {
@@ -2809,6 +2982,7 @@
       "base": null,
       "refs": {
         "DescribeEnvironmentVersionResponse$EnvironmentVersionStatus": null,
+        "EnvironmentVersionSummary$EnvironmentVersionStatus": null,
         "UpdateEnvironmentVersionStatusRequest$EnvironmentVersionStatus": null
       }
     },
@@ -2827,7 +3001,6 @@
     "ExecutionStatus": {
       "base": null,
       "refs": {
-        "LastMonitoringExecutionSummary$MonitoringExecutionStatus": null,
         "ListMonitoringExecutionsRequest$StatusEquals": null,
         "MonitoringExecutionSummary$MonitoringExecutionStatus": null
       }
@@ -2836,7 +3009,9 @@
       "base": null,
       "refs": {
         "AnalyticsJobSummary$ExitMessage": null,
-        "DescribeAnalyticsJobResponse$ExitMessage": null
+        "DescribeAnalyticsJobResponse$ExitMessage": null,
+        "DescribeProcessingJobResponse$ExitMessage": null,
+        "ProcessingJobSummary$ExitMessage": null
       }
     },
     "Experiment": {
@@ -2861,11 +3036,14 @@
       "refs": {
         "CreateAnalyticsJobInternalRequest$ExperimentConfig": null,
         "CreateAnalyticsJobRequest$ExperimentConfig": null,
+        "CreateProcessingJobInternalRequest$ExperimentConfig": null,
+        "CreateProcessingJobRequest$ExperimentConfig": null,
         "CreateTrainingJobInternalRequest$ExperimentConfig": null,
         "CreateTrainingJobRequest$ExperimentConfig": null,
         "CreateTransformJobInternalRequest$ExperimentConfig": null,
         "CreateTransformJobRequest$ExperimentConfig": null,
         "DescribeAnalyticsJobResponse$ExperimentConfig": null,
+        "DescribeProcessingJobResponse$ExperimentConfig": null,
         "DescribeTrainingJobResponse$ExperimentConfig": null,
         "DescribeTransformJobResponse$ExperimentConfig": null,
         "TrainingJob$ExperimentConfig": null,
@@ -2884,8 +3062,8 @@
       "base": null,
       "refs": {
         "CreateExperimentRequest$Description": null,
-        "DescribeExperimentResponse$ExperimentDescription": null,
-        "Experiment$ExperimentDescription": null,
+        "DescribeExperimentResponse$Description": null,
+        "Experiment$Description": null,
         "UpdateExperimentRequest$Description": null
       }
     },
@@ -2895,25 +3073,31 @@
         "AssociateTrialComponentRequest$TrialComponentName": null,
         "AssociateTrialComponentRequest$TrialName": null,
         "CreateExperimentRequest$ExperimentName": null,
+        "CreateExperimentRequest$DisplayName": null,
         "CreateTrialComponentRequest$TrialComponentName": null,
         "CreateTrialComponentRequest$DisplayName": null,
         "CreateTrialRequest$TrialName": null,
+        "CreateTrialRequest$DisplayName": null,
         "CreateTrialRequest$ExperimentName": null,
         "DeleteExperimentRequest$ExperimentName": null,
         "DeleteTrialComponentRequest$TrialComponentName": null,
         "DeleteTrialRequest$TrialName": null,
         "DescribeExperimentRequest$ExperimentName": null,
         "DescribeExperimentResponse$ExperimentName": null,
+        "DescribeExperimentResponse$DisplayName": null,
         "DescribeTrialComponentRequest$TrialComponentName": null,
         "DescribeTrialComponentResponse$TrialComponentName": null,
-        "DescribeTrialComponentResponse$TrialComponentDisplayName": null,
+        "DescribeTrialComponentResponse$DisplayName": null,
         "DescribeTrialRequest$TrialName": null,
         "DescribeTrialResponse$TrialName": null,
+        "DescribeTrialResponse$DisplayName": null,
         "DescribeTrialResponse$ExperimentName": null,
         "DisassociateTrialComponentRequest$TrialComponentName": null,
         "DisassociateTrialComponentRequest$TrialName": null,
         "Experiment$ExperimentName": null,
+        "Experiment$DisplayName": null,
         "ExperimentSummary$ExperimentName": null,
+        "ExperimentSummary$DisplayName": null,
         "ListTrialComponentsRequest$ExperimentName": null,
         "ListTrialComponentsRequest$TrialName": null,
         "ListTrialsRequest$ExperimentName": null,
@@ -2921,16 +3105,21 @@
         "Parent$TrialName": null,
         "Parent$ExperimentName": null,
         "Trial$TrialName": null,
+        "Trial$DisplayName": null,
         "Trial$ExperimentName": null,
         "TrialComponent$TrialComponentName": null,
-        "TrialComponent$TrialComponentDisplayName": null,
+        "TrialComponent$DisplayName": null,
         "TrialComponentSimpleSummary$TrialComponentName": null,
         "TrialComponentSummary$TrialComponentName": null,
-        "TrialComponentSummary$TrialComponentDisplayName": null,
+        "TrialComponentSummary$DisplayName": null,
         "TrialSummary$TrialName": null,
+        "TrialSummary$DisplayName": null,
         "UpdateExperimentRequest$ExperimentName": null,
+        "UpdateExperimentRequest$DisplayName": null,
         "UpdateTrialComponentRequest$TrialComponentName": null,
-        "UpdateTrialComponentRequest$DisplayName": null
+        "UpdateTrialComponentRequest$DisplayName": null,
+        "UpdateTrialRequest$TrialName": null,
+        "UpdateTrialRequest$DisplayName": null
       }
     },
     "ExperimentSource": {
@@ -2992,12 +3181,16 @@
         "DescribeEndpointOutput$FailureReason": "<p>If the status of the endpoint is <code>Failed</code>, the reason why it failed. </p>",
         "DescribeHyperParameterTuningJobResponse$FailureReason": null,
         "DescribeLabelingJobResponse$FailureReason": null,
+        "DescribeMonitoringScheduleResponse$FailureReason": null,
         "DescribeNotebookInstanceOutput$FailureReason": "<p>If staus is failed, the reason it failed.</p>",
+        "DescribeProcessingJobResponse$FailureReason": null,
         "DescribeTrainingJobResponse$FailureReason": "<p>If the training job failed, the reason it failed. </p>",
         "DescribeTransformJobResponse$FailureReason": null,
         "FlowDefinitionSummary$FailureReason": null,
         "HyperParameterTrainingJobSummary$FailureReason": null,
         "LabelingJobSummary$FailureReason": null,
+        "MonitoringExecutionSummary$FailureReason": null,
+        "ProcessingJobSummary$FailureReason": null,
         "ResourceInUse$Message": null,
         "ResourceLimitExceeded$Message": null,
         "ResourceNotFound$Message": null,
@@ -3011,6 +3204,7 @@
       "base": null,
       "refs": {
         "CreateAnalyticsJobInternalRequest$FasCredentials": null,
+        "CreateProcessingJobInternalRequest$FasCredentials": null,
         "CreateTrainingJobInternalRequest$FasCredentials": null,
         "CreateTransformJobInternalRequest$FasCredentials": null
       }
@@ -3097,6 +3291,7 @@
       "base": null,
       "refs": {
         "CreateFlowDefinitionRequest$FlowDefinitionName": null,
+        "DeleteFlowDefinitionRequest$FlowDefinitionName": null,
         "DescribeFlowDefinitionRequest$FlowDefinitionName": null,
         "DescribeFlowDefinitionResponse$FlowDefinitionName": null,
         "FlowDefinitionSummary$FlowDefinitionName": null,
@@ -3214,6 +3409,12 @@
         "UserSettings$GlobalIdleTimeoutInMinutes": null
       }
     },
+    "HookParameters": {
+      "base": null,
+      "refs": {
+        "DebugHookConfig$HookParameters": null
+      }
+    },
     "HumanLoopActivationConditions": {
       "base": null,
       "refs": {
@@ -3266,6 +3467,7 @@
       "base": null,
       "refs": {
         "CreateHumanTaskUiRequest$HumanTaskUiName": null,
+        "DeleteHumanTaskUiRequest$HumanTaskUiName": null,
         "DescribeHumanTaskUiRequest$HumanTaskUiName": null,
         "DescribeHumanTaskUiResponse$HumanTaskUiName": null,
         "HumanTaskUiSummary$HumanTaskUiName": null,
@@ -3480,24 +3682,23 @@
       "refs": {
         "AppDetails$IdentityId": null,
         "CreateAppRequest$IdentityId": null,
+        "CreatePresignedDomainUrlRequest$IdentityId": null,
         "CreateUserProfileRequest$IdentityId": null,
-        "CreateUserProfileResponse$IdentityId": null,
+        "DeleteAppRequest$IdentityId": null,
         "DeleteUserProfileRequest$IdentityId": null,
-        "DeleteUserProfileResponse$IdentityId": null,
         "DescribeAppRequest$IdentityId": null,
         "DescribeAppResponse$IdentityId": null,
         "DescribeUserProfileRequest$IdentityId": null,
         "DescribeUserProfileResponse$IdentityId": null,
         "ListAppsRequest$IdentityIdEquals": null,
-        "StopAppRequest$IdentityId": null,
         "UpdateUserProfileRequest$IdentityId": null,
-        "UpdateUserProfileResponse$IdentityId": null,
         "UserProfileDetails$IdentityId": null
       }
     },
     "Image": {
       "base": null,
       "refs": {
+        "AutoMLContainerDefinition$Image": null,
         "ContainerDefinition$Image": "<p>The Amazon EC2 Container Registry (Amazon ECR) path where inference code is stored. If you are using your own custom algorithm instead of an algorithm provided by Amazon SageMaker, the inference code must meet Amazon SageMaker requirements. For more information, see <a href=\"https://docs.aws.amazon.com/sagemaker/latest/dg/your-algorithms.html\">Using Your Own Algorithms with Amazon SageMaker</a> </p>",
         "DeployedImage$SpecifiedImage": null,
         "DeployedImage$ResolvedImage": null,
@@ -3610,6 +3811,12 @@
         "UpdateDomainRequest$IsDefaultDomain": null
       }
     },
+    "IterationNumbers": {
+      "base": null,
+      "refs": {
+        "MetricQueryResult$IterationNumbers": null
+      }
+    },
     "JobReferenceCode": {
       "base": null,
       "refs": {
@@ -3668,22 +3875,32 @@
         "CreateAnalyticsJobRequest$CredentialProviderEncryptionKey": null,
         "CreateDomainRequest$KmsKeyId": null,
         "CreateEndpointConfigInput$KmsKeyId": null,
+        "CreateEnvironmentRequest$KmsKeyId": null,
         "CreateNotebookInstanceInput$KmsKeyId": "<p> If you provide a AWS KMS key ID, Amazon SageMaker uses it to encrypt data at rest on the ML storage volume that is attached to your notebook instance. </p>",
+        "CreateProcessingJobInternalRequest$CredentialProviderEncryptionKey": null,
         "CreateTransformJobInternalRequest$CredentialProviderEncryptionKey": null,
         "CreateTransformJobRequest$CredentialProviderEncryptionKey": null,
         "DataCaptureConfig$KmsKeyId": null,
         "DataCaptureConfigSummary$KmsKeyId": null,
         "DescribeDomainResponse$KmsKeyId": null,
         "DescribeEndpointConfigOutput$KmsKeyId": null,
+        "DescribeEnvironmentResponse$KmsKeyId": null,
         "DescribeNotebookInstanceOutput$KmsKeyId": "<p> AWS KMS key ID Amazon SageMaker uses to encrypt data when storing it on the ML storage volume attached to the instance. </p>",
         "FlowDefinitionOutputConfig$KmsKeyId": null,
         "LabelingJobOutputConfig$KmsKeyId": null,
         "LabelingJobResourceConfig$VolumeKmsKeyId": null,
-        "MonitoringS3Output$KmsKeyId": null,
+        "MonitoringClusterConfig$VolumeKmsKeyId": null,
+        "MonitoringOutputConfig$KmsKeyId": null,
         "OutputDataConfig$KmsKeyId": "<p>The AWS Key Management Service (AWS KMS) key that Amazon SageMaker uses to encrypt the model artifacts at rest using Amazon S3 server-side encryption. </p> <note> <p>If the configuration of the output S3 bucket requires server-side encryption for objects, and you don't provide the KMS key ID, Amazon SageMaker uses the default service key. For more information, see <a href=\"https://docs.aws.amazon.com/AmazonS3/latest/dev/UsingKMSEncryption.html\">KMS-Managed Encryption Keys</a> in Amazon Simple Storage Service developer guide.</p> </note> <note> <p> The KMS key policy must grant permission to the IAM role you specify in your <code>CreateTrainingJob</code> request. <a href=\"http://docs.aws.amazon.com/kms/latest/developerguide/key-policies.html\">Using Key Policies in AWS KMS</a> in the AWS Key Management Service Developer Guide. </p> </note>",
+        "ProcessingClusterConfig$VolumeKmsKeyId": null,
+        "ProcessingOutputConfig$KmsKeyId": null,
+        "ProcessingS3Output$KmsKeyId": null,
+        "ProcessingUpstreamS3Output$KmsKeyId": null,
         "ResourceConfig$VolumeKmsKeyId": null,
         "TransformOutput$KmsKeyId": null,
-        "TransformResources$VolumeKmsKeyId": null
+        "TransformResources$VolumeKmsKeyId": null,
+        "UpdateEnvironmentRequest$KmsKeyId": null,
+        "UpstreamProcessingOutputConfig$KmsKeyId": null
       }
     },
     "LabelAttributeName": {
@@ -3858,12 +4075,8 @@
         "CompilationJobSummary$LastModifiedTime": null,
         "DescribeCodeRepositoryOutput$LastModifiedTime": null,
         "DescribeCompilationJobResponse$LastModifiedTime": null,
-        "DescribeEnvironmentResponse$LastModifiedTime": null,
-        "DescribeEnvironmentVersionResponse$LastModifiedTime": null,
         "DescribeNotebookInstanceLifecycleConfigOutput$LastModifiedTime": null,
         "DescribeNotebookInstanceOutput$LastModifiedTime": "<p>A timestamp. Use this parameter to retrieve the time when the notebook instance was last modified. </p>",
-        "EnvironmentSummary$LastModifiedTime": null,
-        "EnvironmentVersionSummary$LastModifiedTime": null,
         "ListCompilationJobsRequest$LastModifiedTimeAfter": null,
         "ListCompilationJobsRequest$LastModifiedTimeBefore": null,
         "ListNotebookInstanceLifecycleConfigsInput$LastModifiedTimeBefore": null,
@@ -3872,26 +4085,6 @@
         "ListNotebookInstancesInput$LastModifiedTimeAfter": "<p>A filter that returns only notebook instances that were modified after the specified time (timestamp).</p>",
         "NotebookInstanceLifecycleConfigSummary$LastModifiedTime": null,
         "NotebookInstanceSummary$LastModifiedTime": "<p>A timestamp that shows when the notebook instance was last modified.</p>"
-      }
-    },
-    "LastModifiedTimeAfter": {
-      "base": null,
-      "refs": {
-        "ListEnvironmentVersionsRequest$LastModifiedTimeAfter": null,
-        "ListEnvironmentsRequest$LastModifiedTimeAfter": null
-      }
-    },
-    "LastModifiedTimeBefore": {
-      "base": null,
-      "refs": {
-        "ListEnvironmentVersionsRequest$LastModifiedTimeBefore": null,
-        "ListEnvironmentsRequest$LastModifiedTimeBefore": null
-      }
-    },
-    "LastMonitoringExecutionSummary": {
-      "base": null,
-      "refs": {
-        "DescribeMonitoringScheduleResponse$LastMonitoringExecutionSummary": null
       }
     },
     "LayerStatus": {
@@ -4152,6 +4345,16 @@
       "refs": {
       }
     },
+    "ListProcessingJobsRequest": {
+      "base": null,
+      "refs": {
+      }
+    },
+    "ListProcessingJobsResponse": {
+      "base": null,
+      "refs": {
+      }
+    },
     "ListSubscribedWorkteamsRequest": {
       "base": null,
       "refs": {
@@ -4167,10 +4370,21 @@
       "refs": {
       }
     },
+    "ListTagsInternalInput": {
+      "base": null,
+      "refs": {
+      }
+    },
+    "ListTagsInternalOutput": {
+      "base": null,
+      "refs": {
+      }
+    },
     "ListTagsMaxResults": {
       "base": null,
       "refs": {
-        "ListTagsInput$MaxResults": "<p>Maximum number of tags to return.</p>"
+        "ListTagsInput$MaxResults": "<p>Maximum number of tags to return.</p>",
+        "ListTagsInternalInput$MaxResults": null
       }
     },
     "ListTagsOutput": {
@@ -4354,6 +4568,7 @@
         "ListMonitoringSchedulesRequest$MaxResults": null,
         "ListNotebookInstanceLifecycleConfigsInput$MaxResults": null,
         "ListNotebookInstancesInput$MaxResults": "<p>The maximum number of notebook instances to return.</p>",
+        "ListProcessingJobsRequest$MaxResults": null,
         "ListSubscribedWorkteamsRequest$MaxResults": null,
         "ListTrainingJobsForHyperParameterTuningJobRequest$MaxResults": null,
         "ListTrainingJobsRequest$MaxResults": "<p>The maximum number of training jobs to return in the response.</p>",
@@ -4683,6 +4898,12 @@
         "MonitoringJobDefinition$BaselineConfig": null
       }
     },
+    "MonitoringClusterConfig": {
+      "base": null,
+      "refs": {
+        "MonitoringResources$ClusterConfig": null
+      }
+    },
     "MonitoringConstraintsResource": {
       "base": null,
       "refs": {
@@ -4710,6 +4931,7 @@
     "MonitoringExecutionSummary": {
       "base": null,
       "refs": {
+        "DescribeMonitoringScheduleResponse$LastMonitoringExecutionSummary": null,
         "MonitoringExecutionSummaryList$member": null
       }
     },
@@ -4743,34 +4965,22 @@
         "MonitoringOutputs$member": null
       }
     },
+    "MonitoringOutputConfig": {
+      "base": null,
+      "refs": {
+        "MonitoringJobDefinition$MonitoringOutputConfig": null
+      }
+    },
     "MonitoringOutputs": {
       "base": null,
       "refs": {
-        "MonitoringJobDefinition$MonitoringOutputs": null
+        "MonitoringOutputConfig$MonitoringOutputs": null
       }
     },
     "MonitoringResources": {
       "base": null,
       "refs": {
         "MonitoringJobDefinition$MonitoringResources": null
-      }
-    },
-    "MonitoringS3CaptureContentType": {
-      "base": null,
-      "refs": {
-        "MonitoringS3ContentType$Type": null
-      }
-    },
-    "MonitoringS3ContentType": {
-      "base": null,
-      "refs": {
-        "MonitoringS3Input$S3ContentType": null
-      }
-    },
-    "MonitoringS3Input": {
-      "base": null,
-      "refs": {
-        "MonitoringInput$S3Input": null
       }
     },
     "MonitoringS3Output": {
@@ -4782,7 +4992,6 @@
     "MonitoringS3Uri": {
       "base": null,
       "refs": {
-        "MonitoringS3Input$S3Uri": null,
         "MonitoringS3Output$S3Uri": null
       }
     },
@@ -4791,8 +5000,10 @@
       "refs": {
         "CreateAnalyticsJobInternalRequest$MonitoringScheduleArn": null,
         "CreateMonitoringScheduleResponse$MonitoringScheduleArn": null,
+        "CreateProcessingJobInternalRequest$MonitoringScheduleArn": null,
         "DescribeAnalyticsJobResponse$MonitoringScheduleArn": null,
         "DescribeMonitoringScheduleResponse$MonitoringScheduleArn": null,
+        "DescribeProcessingJobResponse$MonitoringScheduleArn": null,
         "MonitoringScheduleSummary$MonitoringScheduleArn": null,
         "UpdateMonitoringScheduleResponse$MonitoringScheduleArn": null
       }
@@ -4875,7 +5086,10 @@
       "refs": {
         "CreateAnalyticsJobInternalRequest$NetworkConfig": null,
         "CreateAnalyticsJobRequest$NetworkConfig": null,
+        "CreateProcessingJobInternalRequest$NetworkConfig": null,
+        "CreateProcessingJobRequest$NetworkConfig": null,
         "DescribeAnalyticsJobResponse$NetworkConfig": null,
+        "DescribeProcessingJobResponse$NetworkConfig": null,
         "MonitoringJobDefinition$NetworkConfig": null
       }
     },
@@ -4930,9 +5144,13 @@
         "ListNotebookInstanceLifecycleConfigsOutput$NextToken": null,
         "ListNotebookInstancesInput$NextToken": "<p> If the previous call to the <code>ListNotebookInstances</code> is truncated, the response includes a <code>NextToken</code>. You can use this token in your subsequent <code>ListNotebookInstances</code> request to fetch the next set of notebook instances. </p> <note> <p> You might specify a filter or a sort order in your request. When response is truncated, you must use the same values for the filer and sort order in the next request. </p> </note>",
         "ListNotebookInstancesOutput$NextToken": "<p>If the response to the previous <code>ListNotebookInstances</code> request was truncated, Amazon SageMaker returns this token. To retrieve the next set of notebook instances, use the token in the next request.</p>",
+        "ListProcessingJobsRequest$NextToken": null,
+        "ListProcessingJobsResponse$NextToken": null,
         "ListSubscribedWorkteamsRequest$NextToken": null,
         "ListSubscribedWorkteamsResponse$NextToken": null,
         "ListTagsInput$NextToken": "<p> If the response to the previous <code>ListTags</code> request is truncated, Amazon SageMaker returns this token. To retrieve the next set of tags, use it in the subsequent request. </p>",
+        "ListTagsInternalInput$NextToken": null,
+        "ListTagsInternalOutput$NextToken": null,
         "ListTagsOutput$NextToken": "<p> If response is truncated, Amazon SageMaker includes a token in the response. You can use this token in your subsequent request to fetch next set of tokens. </p>",
         "ListTrainingJobsForHyperParameterTuningJobRequest$NextToken": null,
         "ListTrainingJobsForHyperParameterTuningJobResponse$NextToken": null,
@@ -4957,16 +5175,10 @@
     "NonNegativeInteger": {
       "base": null,
       "refs": {
+        "IterationNumbers$member": null,
+        "MetricQuery$StartIterationNumber": null,
+        "MetricQuery$EndIterationNumber": null,
         "RawMetricData$IterationNumber": null
-      }
-    },
-    "NonNegativeLong": {
-      "base": null,
-      "refs": {
-        "MetricQuery$Start": null,
-        "MetricQuery$End": null,
-        "RawMetricData$Timestamp": null,
-        "XAxisValues$member": null
       }
     },
     "NotebookInstanceAcceleratorType": {
@@ -5230,12 +5442,6 @@
         "TrainingJobDefinition$OutputDataConfig": null
       }
     },
-    "OverwriteLastUnnamedVersion": {
-      "base": null,
-      "refs": {
-        "CreateEnvironmentVersionRequest$OverwriteLastUnnamedVersion": null
-      }
-    },
     "PaginationToken": {
       "base": null,
       "refs": {
@@ -5334,6 +5540,12 @@
         "TrialComponent$Parents": null
       }
     },
+    "Payer": {
+      "base": null,
+      "refs": {
+        "StopProcessingJobInternalRequest$Payer": null
+      }
+    },
     "Period": {
       "base": null,
       "refs": {
@@ -5346,11 +5558,247 @@
         "AutoMLResourcePool$PoolSize": null
       }
     },
+    "PresignedDomainUrl": {
+      "base": null,
+      "refs": {
+        "CreatePresignedDomainUrlResponse$AuthorizedUrl": null
+      }
+    },
     "ProblemType": {
       "base": null,
       "refs": {
         "CreateAutoMLJobRequest$ProblemType": null,
         "DescribeAutoMLJobResponse$ProblemType": null
+      }
+    },
+    "ProcessingClusterConfig": {
+      "base": null,
+      "refs": {
+        "ProcessingResources$ClusterConfig": null
+      }
+    },
+    "ProcessingEnvironmentKey": {
+      "base": null,
+      "refs": {
+        "ProcessingEnvironmentMap$key": null
+      }
+    },
+    "ProcessingEnvironmentMap": {
+      "base": null,
+      "refs": {
+        "CreateProcessingJobInternalRequest$Environment": null,
+        "CreateProcessingJobRequest$Environment": null
+      }
+    },
+    "ProcessingEnvironmentValue": {
+      "base": null,
+      "refs": {
+        "ProcessingEnvironmentMap$value": null
+      }
+    },
+    "ProcessingInput": {
+      "base": null,
+      "refs": {
+        "ProcessingInputs$member": null
+      }
+    },
+    "ProcessingInputInternal": {
+      "base": null,
+      "refs": {
+        "ProcessingInputsInternal$member": null
+      }
+    },
+    "ProcessingInputs": {
+      "base": null,
+      "refs": {
+        "CreateProcessingJobRequest$ProcessingInputs": null,
+        "DescribeProcessingJobResponse$ProcessingInputs": null
+      }
+    },
+    "ProcessingInputsInternal": {
+      "base": null,
+      "refs": {
+        "CreateProcessingJobInternalRequest$ProcessingInputs": null
+      }
+    },
+    "ProcessingInstanceCount": {
+      "base": null,
+      "refs": {
+        "ProcessingClusterConfig$InstanceCount": null
+      }
+    },
+    "ProcessingInstanceType": {
+      "base": null,
+      "refs": {
+        "ProcessingClusterConfig$InstanceType": null
+      }
+    },
+    "ProcessingJobArn": {
+      "base": null,
+      "refs": {
+        "CreateProcessingJobResponse$ProcessingJobArn": null,
+        "DescribeProcessingJobResponse$ProcessingJobArn": null,
+        "ProcessingJobSummary$ProcessingJobArn": null
+      }
+    },
+    "ProcessingJobName": {
+      "base": null,
+      "refs": {
+        "CreateProcessingJobInternalRequest$ProcessingJobName": null,
+        "CreateProcessingJobRequest$ProcessingJobName": null,
+        "DescribeProcessingJobRequest$ProcessingJobName": null,
+        "DescribeProcessingJobResponse$ProcessingJobName": null,
+        "ProcessingJobSummary$ProcessingJobName": null,
+        "StopProcessingJobInternalRequest$ProcessingJobName": null,
+        "StopProcessingJobRequest$ProcessingJobName": null
+      }
+    },
+    "ProcessingJobStatus": {
+      "base": null,
+      "refs": {
+        "DescribeProcessingJobResponse$ProcessingJobStatus": null,
+        "ListProcessingJobsRequest$StatusEquals": null,
+        "ProcessingJobSummary$ProcessingJobStatus": null
+      }
+    },
+    "ProcessingJobSummaries": {
+      "base": null,
+      "refs": {
+        "ListProcessingJobsResponse$ProcessingJobSummaries": null
+      }
+    },
+    "ProcessingJobSummary": {
+      "base": null,
+      "refs": {
+        "ProcessingJobSummaries$member": null
+      }
+    },
+    "ProcessingLocalPath": {
+      "base": null,
+      "refs": {
+        "ProcessingS3Input$LocalPath": null,
+        "ProcessingS3InputInternal$LocalPath": null,
+        "ProcessingS3Output$LocalPath": null,
+        "ProcessingUpstreamS3Output$LocalPath": null
+      }
+    },
+    "ProcessingMaxRuntimeInSeconds": {
+      "base": null,
+      "refs": {
+        "ProcessingStoppingCondition$MaxRuntimeInSeconds": null
+      }
+    },
+    "ProcessingOutput": {
+      "base": null,
+      "refs": {
+        "ProcessingOutputs$member": null
+      }
+    },
+    "ProcessingOutputConfig": {
+      "base": null,
+      "refs": {
+        "CreateProcessingJobInternalRequest$ProcessingOutputConfig": null,
+        "CreateProcessingJobRequest$ProcessingOutputConfig": null,
+        "DescribeProcessingJobResponse$ProcessingOutputConfig": null
+      }
+    },
+    "ProcessingOutputs": {
+      "base": null,
+      "refs": {
+        "ProcessingOutputConfig$Outputs": null
+      }
+    },
+    "ProcessingResources": {
+      "base": null,
+      "refs": {
+        "CreateProcessingJobInternalRequest$ProcessingResources": null,
+        "CreateProcessingJobRequest$ProcessingResources": null,
+        "DescribeProcessingJobResponse$ProcessingResources": null
+      }
+    },
+    "ProcessingS3CompressionType": {
+      "base": null,
+      "refs": {
+        "ProcessingS3Input$S3CompressionType": null,
+        "ProcessingS3InputInternal$S3CompressionType": null
+      }
+    },
+    "ProcessingS3DataDistributionType": {
+      "base": null,
+      "refs": {
+        "ProcessingS3Input$S3DataDistributionType": null,
+        "ProcessingS3InputInternal$S3DataDistributionType": null
+      }
+    },
+    "ProcessingS3DataType": {
+      "base": null,
+      "refs": {
+        "ProcessingS3Input$S3DataType": null,
+        "ProcessingS3InputInternal$S3DataType": null
+      }
+    },
+    "ProcessingS3DownloadMode": {
+      "base": null,
+      "refs": {
+        "ProcessingS3InputInternal$S3DownloadMode": null
+      }
+    },
+    "ProcessingS3Input": {
+      "base": null,
+      "refs": {
+        "ProcessingInput$S3Input": null
+      }
+    },
+    "ProcessingS3InputInternal": {
+      "base": null,
+      "refs": {
+        "ProcessingInputInternal$S3Input": null
+      }
+    },
+    "ProcessingS3InputMode": {
+      "base": null,
+      "refs": {
+        "ProcessingS3Input$S3InputMode": null,
+        "ProcessingS3InputInternal$S3InputMode": null
+      }
+    },
+    "ProcessingS3Output": {
+      "base": null,
+      "refs": {
+        "ProcessingOutput$S3Output": null
+      }
+    },
+    "ProcessingS3UploadMode": {
+      "base": null,
+      "refs": {
+        "ProcessingS3Output$S3UploadMode": null,
+        "ProcessingUpstreamS3Output$S3UploadMode": null
+      }
+    },
+    "ProcessingStateMachineArnProviderLambdaArn": {
+      "base": null,
+      "refs": {
+        "CreateProcessingJobInternalRequest$StateMachineArnProviderLambdaArn": null
+      }
+    },
+    "ProcessingStoppingCondition": {
+      "base": null,
+      "refs": {
+        "CreateProcessingJobInternalRequest$StoppingCondition": null,
+        "CreateProcessingJobRequest$StoppingCondition": null,
+        "DescribeProcessingJobResponse$StoppingCondition": null
+      }
+    },
+    "ProcessingUpstreamS3Output": {
+      "base": null,
+      "refs": {
+        "UpstreamProcessingOutput$UpstreamS3Output": null
+      }
+    },
+    "ProcessingVolumeSizeInGB": {
+      "base": null,
+      "refs": {
+        "ProcessingClusterConfig$VolumeSizeInGB": null
       }
     },
     "ProductId": {
@@ -5435,6 +5883,8 @@
         "CreateAnalyticsJobInternalRequest$CustomerCredentialToken": null,
         "CreateAnalyticsJobRequest$PlatformCredentialToken": null,
         "CreateAnalyticsJobRequest$CustomerCredentialToken": null,
+        "CreateProcessingJobInternalRequest$PlatformCredentialToken": null,
+        "CreateProcessingJobInternalRequest$CustomerCredentialToken": null,
         "CreateTransformJobInternalRequest$PlatformCredentialToken": null,
         "CreateTransformJobInternalRequest$CustomerCredentialToken": null,
         "CreateTransformJobRequest$PlatformCredentialToken": null,
@@ -5531,7 +5981,8 @@
       "refs": {
         "AddTagsInput$ResourceArn": "<p>The Amazon Resource Name (ARN) of the resource that you want to tag. </p>",
         "DeleteTagsInput$ResourceArn": "<p>The Amazon Resource Name (ARN) of the resource whose tags you want to delete.</p>",
-        "ListTagsInput$ResourceArn": "<p>The Amazon Resource Name (ARN) of the resource whose tags you want to retrieve.</p>"
+        "ListTagsInput$ResourceArn": "<p>The Amazon Resource Name (ARN) of the resource whose tags you want to retrieve.</p>",
+        "ListTagsInternalInput$ResourceArn": null
       }
     },
     "ResourceConfig": {
@@ -5551,7 +6002,9 @@
       "refs": {
         "AppDetails$DomainId": null,
         "CreateAppRequest$DomainId": null,
+        "CreatePresignedDomainUrlRequest$DomainId": null,
         "CreateUserProfileRequest$DomainId": null,
+        "DeleteAppRequest$DomainId": null,
         "DeleteDomainRequest$DomainId": null,
         "DeleteUserProfileRequest$DomainId": null,
         "DescribeAppRequest$DomainId": null,
@@ -5560,7 +6013,6 @@
         "DescribeDomainResponse$HomeEfsFileSystemId": null,
         "DescribeUserProfileRequest$DomainId": null,
         "ListAppsRequest$DomainIdEquals": null,
-        "StopAppRequest$DomainId": null,
         "UpdateDomainRequest$DomainId": null,
         "UpdateUserProfileRequest$DomainId": null
       }
@@ -5647,6 +6099,8 @@
         "CreateLabelingJobRequest$RoleArn": null,
         "CreateModelInput$ExecutionRoleArn": "<p>The Amazon Resource Name (ARN) of the IAM role that Amazon SageMaker can assume to access model artifacts and docker image for deployment on ML compute instances. Deploying on ML compute instances is part of model hosting. For more information, see <a href=\"https://docs.aws.amazon.com/sagemaker/latest/dg/sagemaker-roles.html\">Amazon SageMaker Roles</a>. </p>",
         "CreateNotebookInstanceInput$RoleArn": "<p> When you send any requests to AWS resources from the notebook instance, Amazon SageMaker assumes this role to perform tasks on your behalf. You must grant this role necessary permissions so Amazon SageMaker can perform these tasks. The policy must allow the Amazon SageMaker service principal (sagemaker.amazonaws.com) permissions to assume this role. For more information, see <a href=\"https://docs.aws.amazon.com/sagemaker/latest/dg/sagemaker-roles.html\">Amazon SageMaker Roles</a>. </p>",
+        "CreateProcessingJobInternalRequest$RoleArn": null,
+        "CreateProcessingJobRequest$RoleArn": null,
         "CreateTrainingJobInternalRequest$RoleArn": null,
         "CreateTrainingJobInternalRequest$ChainedCustomerRoleArn": null,
         "CreateTrainingJobRequest$RoleArn": "<p>The Amazon Resource Name (ARN) of an IAM role that Amazon SageMaker can assume to perform tasks on your behalf. </p> <p>During model training, Amazon SageMaker needs your permission to read input data from an S3 bucket, download a Docker image that contains training code, write model artifacts to an S3 bucket, write logs to Amazon CloudWatch Logs, and publish metrics to Amazon CloudWatch. You grant permissions for all of these tasks to an IAM role. For more information, see <a href=\"https://docs.aws.amazon.com/sagemaker/latest/dg/sagemaker-roles.html\">Amazon SageMaker Roles</a>. </p>",
@@ -5659,10 +6113,12 @@
         "DescribeLabelingJobResponse$RoleArn": null,
         "DescribeModelOutput$ExecutionRoleArn": "<p>The Amazon Resource Name (ARN) of the IAM role that you specified for the model.</p>",
         "DescribeNotebookInstanceOutput$RoleArn": "<p> Amazon Resource Name (ARN) of the IAM role associated with the instance. </p>",
+        "DescribeProcessingJobResponse$RoleArn": null,
         "DescribeTrainingJobResponse$RoleArn": "<p>The AWS Identity and Access Management (IAM) role configured for the training job. </p>",
         "HyperParameterTrainingJobDefinition$RoleArn": null,
         "ModelPackageValidationSpecification$ValidationRole": null,
         "MonitoringJobDefinition$RoleArn": null,
+        "ProcessingUpstreamS3Output$RoleArn": null,
         "RenderUiTemplateRequest$RoleArn": null,
         "TrainingJob$RoleArn": null,
         "UpdateEnvironmentRequest$RoleArn": null,
@@ -5684,6 +6140,19 @@
         "DebugConfig$RuleConfig": null
       }
     },
+    "RuleConfigurationName": {
+      "base": null,
+      "refs": {
+        "DebugRuleConfiguration$RuleConfigurationName": null,
+        "DebugRuleEvaluationStatus$RuleConfigurationName": null
+      }
+    },
+    "RuleEvaluationStatus": {
+      "base": null,
+      "refs": {
+        "DebugRuleEvaluationStatus$RuleEvaluationStatus": null
+      }
+    },
     "RuleMonitoringStatus": {
       "base": null,
       "refs": {
@@ -5702,6 +6171,12 @@
       "refs": {
         "RuleMonitoringStatus$RuleName": null,
         "RuleSpecification$RuleName": null
+      }
+    },
+    "RuleParameters": {
+      "base": null,
+      "refs": {
+        "DebugRuleConfiguration$RuleParameters": null
       }
     },
     "RuleSpecification": {
@@ -5772,6 +6247,7 @@
         "CheckpointConfig$S3Uri": null,
         "CreateLabelingJobRequest$LabelCategoryConfigS3Uri": null,
         "DebugHookConfig$S3OutputPath": null,
+        "DebugRuleConfiguration$S3OutputPath": null,
         "DescribeLabelingJobResponse$LabelCategoryConfigS3Uri": null,
         "FlowDefinitionOutputConfig$S3OutputPath": null,
         "InputConfig$S3Uri": null,
@@ -5781,14 +6257,19 @@
         "ModelArtifacts$S3ModelArtifacts": "<p>The path of the S3 object that contains the model artifacts. For example, <code>s3://bucket-name/keynameprefix/model.tar.gz</code>.</p>",
         "MonitoringAppSpecification$RecordPreprocessorSourceUri": null,
         "MonitoringAppSpecification$PostAnalyticsProcessorSourceUri": null,
-        "MonitoringAppSpecification$AnalyticsSourceS3Uri": null,
         "MonitoringConstraintsResource$S3Uri": null,
         "MonitoringStatisticsResource$S3Uri": null,
         "OutputConfig$S3OutputLocation": null,
         "OutputDataConfig$S3OutputPath": "<p>Identifies the S3 path where you want Amazon SageMaker to store the model artifacts. For example, <code>s3://bucket-name/key-name-prefix</code>. </p>",
+        "ProcessingS3Input$S3Uri": null,
+        "ProcessingS3InputInternal$S3Uri": null,
+        "ProcessingS3Output$S3Uri": null,
+        "ProcessingUpstreamS3Output$S3Uri": null,
         "RuleConfig$S3OutputPath": null,
         "RuleSpecification$SourceS3Uri": null,
         "S3DataSource$S3Uri": "<p>Depending on the value specified for the <code>S3DataType</code>, identifies either a key name prefix or a manifest. For example: </p> <ul> <li> <p> A key name prefix might look like this: <code>s3://bucketname/exampleprefix</code>. </p> </li> <li> <p> A manifest might look like this: <code>s3://bucketname/example.manifest</code> </p> <p> The manifest is an S3 object which is a JSON file with the following format: </p> <p> <code>[</code> </p> <p> <code> {\"prefix\": \"s3://customer_bucket/some/prefix/\"},</code> </p> <p> <code> \"relative/path/to/custdata-1\",</code> </p> <p> <code> \"relative/path/custdata-2\",</code> </p> <p> <code> ...</code> </p> <p> <code> ]</code> </p> <p> The preceding JSON matches the following <code>s3Uris</code>: </p> <p> <code>s3://customer_bucket/some/prefix/relative/path/to/custdata-1</code> </p> <p> <code>s3://customer_bucket/some/prefix/relative/path/custdata-1</code> </p> <p> <code>...</code> </p> <p> The complete set of <code>s3uris</code> in this manifest constitutes the input data for the channel for this datasource. The object that each <code>s3uris</code> points to must readable by the IAM role that Amazon SageMaker uses to perform tasks on your behalf. </p> </li> </ul>",
+        "SharingSettings$S3Uri": null,
+        "TensorBoardOutputConfig$S3OutputPath": null,
         "TrainingJobOutput$S3TrainingJobOutput": "<p>Provides information about the S3 bucket where training job output (model artifacts) is stored. For example, <code>s3://bucket-name/keyname-prefix/output.tar.gz</code>.</p>",
         "TransformOutput$S3OutputPath": null,
         "TransformS3DataSource$S3Uri": null,
@@ -5819,12 +6300,6 @@
       "base": null,
       "refs": {
         "ScheduleConfig$ScheduleExpression": null
-      }
-    },
-    "ScheduleState": {
-      "base": null,
-      "refs": {
-        "ScheduleConfig$State": null
       }
     },
     "ScheduleStatus": {
@@ -5935,7 +6410,14 @@
     "SessionExpirationDurationInSeconds": {
       "base": null,
       "refs": {
+        "CreatePresignedDomainUrlRequest$SessionExpirationDurationInSeconds": null,
         "CreatePresignedNotebookInstanceUrlInput$SessionExpirationDurationInSeconds": "<p>The duration of the session, in seconds. The default is 12 hours.</p>"
+      }
+    },
+    "SharingSettings": {
+      "base": null,
+      "refs": {
+        "UserSettings$SharingSettings": null
       }
     },
     "ShuffleConfig": {
@@ -5945,6 +6427,13 @@
         "Channel$ShuffleConfig": null
       }
     },
+    "SizeInBytes": {
+      "base": null,
+      "refs": {
+        "EnvironmentDefinitionLayer$SizeInBytes": null,
+        "EnvironmentLayer$SizeInBytes": null
+      }
+    },
     "SortBy": {
       "base": null,
       "refs": {
@@ -5952,6 +6441,7 @@
         "ListFlowDefinitionsRequest$SortBy": null,
         "ListHumanTaskUisRequest$SortBy": null,
         "ListLabelingJobsRequest$SortBy": null,
+        "ListProcessingJobsRequest$SortBy": null,
         "ListTrainingJobsRequest$SortBy": "<p>The field to sort results by. The default is <code>CreationTime</code>.</p>",
         "ListTransformJobsRequest$SortBy": null
       }
@@ -5978,6 +6468,7 @@
         "ListModelPackagesInput$SortOrder": null,
         "ListMonitoringExecutionsRequest$SortOrder": null,
         "ListMonitoringSchedulesRequest$SortOrder": null,
+        "ListProcessingJobsRequest$SortOrder": null,
         "ListTrainingJobsForHyperParameterTuningJobRequest$SortOrder": null,
         "ListTrainingJobsRequest$SortOrder": "<p>The sort order for results. The default is <code>Ascending</code>.</p>",
         "ListTransformJobsRequest$SortOrder": null,
@@ -6053,6 +6544,12 @@
         "CreateTransformJobInternalRequest$StateMachineArnProviderLambdaArn": null
       }
     },
+    "StatusDetails": {
+      "base": null,
+      "refs": {
+        "DebugRuleEvaluationStatus$StatusDetails": null
+      }
+    },
     "StatusMessage": {
       "base": null,
       "refs": {
@@ -6067,16 +6564,6 @@
       }
     },
     "StopAnalyticsJobRequest": {
-      "base": null,
-      "refs": {
-      }
-    },
-    "StopAppRequest": {
-      "base": null,
-      "refs": {
-      }
-    },
-    "StopAppResponse": {
       "base": null,
       "refs": {
       }
@@ -6112,6 +6599,16 @@
       }
     },
     "StopNotebookInstanceInput": {
+      "base": null,
+      "refs": {
+      }
+    },
+    "StopProcessingJobInternalRequest": {
+      "base": null,
+      "refs": {
+      }
+    },
+    "StopProcessingJobRequest": {
       "base": null,
       "refs": {
       }
@@ -6169,9 +6666,13 @@
         "DescribeTrainingJobRequest$DelegatedAccountId": null,
         "DisassociateTrialComponentRequest$DelegatedAccountId": null,
         "ListAnalyticsJobsRequest$NameContains": null,
+        "ListProcessingJobsRequest$NameContains": null,
         "ListTrialComponentsRequest$DelegatedAccountId": null,
         "MetricQueryResult$Message": null,
         "ModelPackageStatusItem$FailureReason": null,
+        "ProcessingInput$InputName": null,
+        "ProcessingInputInternal$InputName": null,
+        "ProcessingOutput$OutputName": null,
         "ProductListings$member": null,
         "RenderUiTemplateResponse$RenderedContent": null,
         "RenderingError$Code": null,
@@ -6181,7 +6682,9 @@
         "SubscribedWorkteam$ListingId": null,
         "UpdateExperimentRequest$DelegatedAccountId": null,
         "UpdateTrialComponentRequest$DelegatedAccountId": null,
+        "UpdateTrialRequest$DelegatedAccountId": null,
         "UpstreamAnalyticsOutput$OutputName": null,
+        "UpstreamProcessingOutput$OutputName": null,
         "UserContext$UserArn": null,
         "UserContext$IdentityArn": null,
         "UserContext$UserId": null,
@@ -6225,13 +6728,16 @@
       "refs": {
         "CreateAppResponse$AppArn": null,
         "CreateDomainResponse$DomainArn": null,
+        "CreateUserProfileResponse$IdentityArn": null,
+        "DeleteAppResponse$AppArn": null,
         "DeleteDomainResponse$DomainArn": null,
+        "DeleteUserProfileResponse$IdentityArn": null,
         "DescribeDomainResponse$DomainArn": null,
         "DomainDetails$DomainArn": null,
         "ListTrialComponentsRequest$SourceArn": null,
         "ResourceSpec$EnvironmentArn": null,
-        "StopAppResponse$AppArn": null,
-        "UpdateDomainResponse$DomainArn": null
+        "UpdateDomainResponse$DomainArn": null,
+        "UpdateUserProfileResponse$IdentityArn": null
       }
     },
     "StringParameterValue": {
@@ -6313,7 +6819,6 @@
         "CreateCrossAccountTrainingJobRequest$Tags": null,
         "CreateEndpointConfigInput$Tags": "<p>An array of key-value pairs. For more information, see <a href=\"https://docs.aws.amazon.com/awsaccountbilling/latest/aboutv2/cost-alloc-tags.html#allocation-what\">Using Cost Allocation Tags</a> in the <i>AWS Billing and Cost Management User Guide</i>. </p>",
         "CreateEndpointInput$Tags": "<p>An array of key-value pairs. For more information, see <a href=\"https://docs.aws.amazon.com/awsaccountbilling/latest/aboutv2/cost-alloc-tags.html#allocation-what\">Using Cost Allocation Tags</a>in the <i>AWS Billing and Cost Management User Guide</i>. </p>",
-        "CreateEnvironmentRequest$Tags": null,
         "CreateExperimentRequest$Tags": null,
         "CreateFlowDefinitionRequest$Tags": null,
         "CreateHumanTaskUiRequest$Tags": null,
@@ -6321,7 +6826,10 @@
         "CreateHyperParameterTuningJobRequest$Tags": null,
         "CreateLabelingJobRequest$Tags": null,
         "CreateModelInput$Tags": "<p>An array of key-value pairs. For more information, see <a href=\"https://docs.aws.amazon.com/awsaccountbilling/latest/aboutv2/cost-alloc-tags.html#allocation-what\">Using Cost Allocation Tags</a> in the <i>AWS Billing and Cost Management User Guide</i>. </p>",
+        "CreateMonitoringScheduleRequest$Tags": null,
         "CreateNotebookInstanceInput$Tags": "<p>A list of tags to associate with the notebook instance. You can add tags later by using the <code>CreateTags</code> API.</p>",
+        "CreateProcessingJobInternalRequest$Tags": null,
+        "CreateProcessingJobRequest$Tags": null,
         "CreateTrainingJobInternalRequest$Tags": null,
         "CreateTrainingJobRequest$Tags": "<p>An array of key-value pairs. For more information, see <a href=\"https://docs.aws.amazon.com/awsaccountbilling/latest/aboutv2/cost-alloc-tags.html#allocation-what\">Using Cost Allocation Tags</a> in the <i>AWS Billing and Cost Management User Guide</i>. </p>",
         "CreateTransformJobInternalRequest$Tags": null,
@@ -6331,8 +6839,8 @@
         "CreateWorkteamRequest$Tags": null,
         "DescribeLabelingJobResponse$Tags": null,
         "Experiment$Tags": null,
+        "ListTagsInternalOutput$Tags": null,
         "ListTagsOutput$Tags": "<p>An array of <code>Tag</code> objects, each with a tag key and a value.</p>",
-        "MonitoringJobDefinition$Tags": null,
         "TrainingJob$Tags": null,
         "Trial$Tags": null,
         "TrialComponent$Tags": null
@@ -6546,6 +7054,14 @@
         "UiTemplateInfo$Url": null
       }
     },
+    "TensorBoardOutputConfig": {
+      "base": null,
+      "refs": {
+        "CreateTrainingJobRequest$TensorBoardOutputConfig": null,
+        "DescribeTrainingJobResponse$TensorBoardOutputConfig": null,
+        "TrainingJob$TensorBoardOutputConfig": null
+      }
+    },
     "TensorRegex": {
       "base": null,
       "refs": {
@@ -6577,8 +7093,10 @@
         "ComponentJobSummary$LastModifiedTime": null,
         "ComponentJobSummary$CreationTime": null,
         "ComponentJobSummary$EndTime": null,
+        "CreateEnvironmentResponse$CreationTime": null,
         "CreateTrialComponentRequest$StartTime": null,
         "CreateTrialComponentRequest$EndTime": null,
+        "DebugRuleEvaluationStatus$LastModifiedTime": null,
         "DeployedImage$ResolutionTime": null,
         "DescribeAnalyticsJobResponse$AnalyticsEndTime": null,
         "DescribeAnalyticsJobResponse$AnalyticsStartTime": null,
@@ -6594,6 +7112,10 @@
         "DescribeEndpointConfigOutput$CreationTime": "<p>A timestamp that shows when the endpoint configuration was created.</p>",
         "DescribeEndpointOutput$CreationTime": "<p>A timestamp that shows when the endpoint was created.</p>",
         "DescribeEndpointOutput$LastModifiedTime": "<p>A timestamp that shows when the endpoint was last modified.</p>",
+        "DescribeEnvironmentResponse$CreationTime": null,
+        "DescribeEnvironmentResponse$LastModifiedTime": null,
+        "DescribeEnvironmentVersionResponse$CreationTime": null,
+        "DescribeEnvironmentVersionResponse$LastModifiedTime": null,
         "DescribeExperimentResponse$CreationTime": null,
         "DescribeExperimentResponse$LastModifiedTime": null,
         "DescribeFlowDefinitionResponse$CreationTime": null,
@@ -6607,6 +7129,10 @@
         "DescribeModelOutput$CreationTime": "<p>A timestamp that shows when the model was created.</p>",
         "DescribeMonitoringScheduleResponse$CreationTime": null,
         "DescribeMonitoringScheduleResponse$LastModifiedTime": null,
+        "DescribeProcessingJobResponse$ProcessingEndTime": null,
+        "DescribeProcessingJobResponse$ProcessingStartTime": null,
+        "DescribeProcessingJobResponse$LastModifiedTime": null,
+        "DescribeProcessingJobResponse$CreationTime": null,
         "DescribeTrainingJobResponse$CreationTime": "<p>A timestamp that indicates when the training job was created.</p>",
         "DescribeTrainingJobResponse$TrainingStartTime": "<p>A timestamp that indicates when training started.</p>",
         "DescribeTrainingJobResponse$TrainingEndTime": "<p>A timestamp that indicates when model training ended.</p>",
@@ -6623,6 +7149,10 @@
         "EndpointConfigSummary$CreationTime": "<p>A timestamp that shows when the endpoint configuration was created.</p>",
         "EndpointSummary$CreationTime": "<p>A timestamp that shows when the endpoint was created.</p>",
         "EndpointSummary$LastModifiedTime": "<p>A timestamp that shows when the endpoint was last modified.</p>",
+        "EnvironmentSummary$CreationTime": null,
+        "EnvironmentSummary$LastModifiedTime": null,
+        "EnvironmentVersionSummary$CreationTime": null,
+        "EnvironmentVersionSummary$LastModifiedTime": null,
         "Experiment$CreationTime": null,
         "Experiment$LastModifiedTime": null,
         "ExperimentSummary$CreationTime": null,
@@ -6640,9 +7170,6 @@
         "LabelingJobForWorkteamSummary$CreationTime": null,
         "LabelingJobSummary$CreationTime": null,
         "LabelingJobSummary$LastModifiedTime": null,
-        "LastMonitoringExecutionSummary$ScheduledTime": null,
-        "LastMonitoringExecutionSummary$CreationTime": null,
-        "LastMonitoringExecutionSummary$LastModifiedTime": null,
         "ListAnalyticsJobsRequest$CreationTimeAfter": null,
         "ListAnalyticsJobsRequest$CreationTimeBefore": null,
         "ListAnalyticsJobsRequest$LastModifiedTimeAfter": null,
@@ -6661,6 +7188,14 @@
         "ListEndpointsInput$CreationTimeAfter": "<p>A filter that returns only endpoints that were created after the specified time (timestamp).</p>",
         "ListEndpointsInput$LastModifiedTimeBefore": "<p> A filter that returns only endpoints that were modified before the specified timestamp. </p>",
         "ListEndpointsInput$LastModifiedTimeAfter": "<p> A filter that returns only endpoints that were modified after the specified timestamp. </p>",
+        "ListEnvironmentVersionsRequest$CreationTimeAfter": null,
+        "ListEnvironmentVersionsRequest$CreationTimeBefore": null,
+        "ListEnvironmentVersionsRequest$LastModifiedTimeAfter": null,
+        "ListEnvironmentVersionsRequest$LastModifiedTimeBefore": null,
+        "ListEnvironmentsRequest$CreationTimeAfter": null,
+        "ListEnvironmentsRequest$CreationTimeBefore": null,
+        "ListEnvironmentsRequest$LastModifiedTimeAfter": null,
+        "ListEnvironmentsRequest$LastModifiedTimeBefore": null,
         "ListExperimentsRequest$CreatedAfter": null,
         "ListExperimentsRequest$CreatedBefore": null,
         "ListFlowDefinitionsRequest$CreationTimeAfter": null,
@@ -6693,6 +7228,10 @@
         "ListMonitoringSchedulesRequest$CreationTimeAfter": null,
         "ListMonitoringSchedulesRequest$LastModifiedTimeBefore": null,
         "ListMonitoringSchedulesRequest$LastModifiedTimeAfter": null,
+        "ListProcessingJobsRequest$CreationTimeAfter": null,
+        "ListProcessingJobsRequest$CreationTimeBefore": null,
+        "ListProcessingJobsRequest$LastModifiedTimeAfter": null,
+        "ListProcessingJobsRequest$LastModifiedTimeBefore": null,
         "ListTrainingJobsRequest$CreationTimeAfter": "<p>A filter that only training jobs created after the specified time (timestamp).</p>",
         "ListTrainingJobsRequest$CreationTimeBefore": "<p>A filter that returns only training jobs created before the specified time (timestamp).</p>",
         "ListTrainingJobsRequest$LastModifiedTimeAfter": "<p>A filter that returns only training jobs modified after the specified time (timestamp).</p>",
@@ -6706,15 +7245,22 @@
         "ListTrialsRequest$CreatedAfter": null,
         "ListTrialsRequest$CreatedBefore": null,
         "MetricData$Timestamp": null,
+        "MetricQuery$Start": null,
+        "MetricQuery$End": null,
         "ModelSummary$CreationTime": "<p>A timestamp that indicates when the model was created.</p>",
         "MonitoringExecutionSummary$ScheduledTime": null,
         "MonitoringExecutionSummary$CreationTime": null,
         "MonitoringExecutionSummary$LastModifiedTime": null,
         "MonitoringScheduleSummary$CreationTime": null,
         "MonitoringScheduleSummary$LastModifiedTime": null,
+        "ProcessingJobSummary$CreationTime": null,
+        "ProcessingJobSummary$ProcessingEndTime": null,
+        "ProcessingJobSummary$LastModifiedTime": null,
+        "RawMetricData$Timestamp": null,
         "RuleMonitoringStatus$LastModifiedTime": null,
         "SecondaryStatusTransition$StartTime": null,
         "SecondaryStatusTransition$EndTime": null,
+        "Timestamps$member": null,
         "TrainingJob$CreationTime": null,
         "TrainingJob$TrainingStartTime": null,
         "TrainingJob$TrainingEndTime": null,
@@ -6749,6 +7295,12 @@
         "Workteam$LastUpdatedDate": null
       }
     },
+    "Timestamps": {
+      "base": null,
+      "refs": {
+        "MetricQueryResult$Timestamps": null
+      }
+    },
     "TrainingInputMode": {
       "base": null,
       "refs": {
@@ -6769,6 +7321,7 @@
     "TrainingInstanceType": {
       "base": null,
       "refs": {
+        "DebugRuleConfiguration$InstanceType": null,
         "HyperParameterTrainingJobInstancePool$InstanceType": null,
         "ResourceConfig$InstanceType": "<p>The ML compute instance type. </p>",
         "RuleSpecification$InstanceType": null,
@@ -6793,8 +7346,11 @@
       "refs": {
         "CreateAnalyticsJobInternalRequest$TrainingJobArn": null,
         "CreateCrossAccountTrainingJobResponse$TrainingJobArn": null,
+        "CreateProcessingJobInternalRequest$TrainingJobArn": null,
         "CreateTrainingJobResponse$TrainingJobArn": "<p>The Amazon Resource Name (ARN) of the training job.</p>",
+        "DebugRuleEvaluationStatus$RuleEvaluationJobArn": null,
         "DescribeAnalyticsJobResponse$TrainingJobArn": null,
+        "DescribeProcessingJobResponse$TrainingJobArn": null,
         "DescribeTrainingJobResponse$TrainingJobArn": "<p>The Amazon Resource Name (ARN) of the training job.</p>",
         "HyperParameterTrainingJobSummary$TrainingJobArn": null,
         "RuleMonitoringStatus$RuleExecutionJobArn": null,
@@ -7057,7 +7613,8 @@
         "DescribeTrialResponse$TrialArn": null,
         "DisassociateTrialComponentResponse$TrialArn": null,
         "Trial$TrialArn": null,
-        "TrialSummary$TrialArn": null
+        "TrialSummary$TrialArn": null,
+        "UpdateTrialResponse$TrialArn": null
       }
     },
     "TrialComponent": {
@@ -7154,7 +7711,7 @@
     "TrialComponentPrimaryStatus": {
       "base": null,
       "refs": {
-        "TrialComponentStatus$Status": null
+        "TrialComponentStatus$PrimaryStatus": null
       }
     },
     "TrialComponentSimpleSummaries": {
@@ -7197,9 +7754,9 @@
       "base": null,
       "refs": {
         "CreateTrialComponentRequest$Status": null,
-        "DescribeTrialComponentResponse$TrialComponentStatus": null,
-        "TrialComponent$TrialComponentStatus": null,
-        "TrialComponentSummary$TrialComponentStatus": null,
+        "DescribeTrialComponentResponse$Status": null,
+        "TrialComponent$Status": null,
+        "TrialComponentSummary$Status": null,
         "UpdateTrialComponentRequest$Status": null
       }
     },
@@ -7440,6 +7997,16 @@
       "refs": {
       }
     },
+    "UpdateTrialRequest": {
+      "base": null,
+      "refs": {
+      }
+    },
+    "UpdateTrialResponse": {
+      "base": null,
+      "refs": {
+      }
+    },
     "UpdateUserProfileRequest": {
       "base": null,
       "refs": {
@@ -7483,9 +8050,28 @@
         "CreateAnalyticsJobRequest$UpstreamAnalyticsOutputs": null
       }
     },
+    "UpstreamProcessingOutput": {
+      "base": null,
+      "refs": {
+        "UpstreamProcessingOutputs$member": null
+      }
+    },
+    "UpstreamProcessingOutputConfig": {
+      "base": null,
+      "refs": {
+        "CreateProcessingJobInternalRequest$UpstreamProcessingOutputConfig": null
+      }
+    },
+    "UpstreamProcessingOutputs": {
+      "base": null,
+      "refs": {
+        "UpstreamProcessingOutputConfig$Outputs": null
+      }
+    },
     "Url": {
       "base": null,
       "refs": {
+        "AutoMLContainerDefinition$ModelDataUrl": null,
         "ContainerDefinition$ModelDataUrl": "<p>The S3 path where the model artifacts, which result from model training, are stored. This path must point to a single gzip compressed tar archive (.tar.gz suffix). </p>",
         "ModelPackageContainerDefinition$ModelDataUrl": null,
         "SourceAlgorithm$ModelDataUrl": null
@@ -7587,6 +8173,7 @@
     "VolumeSizeInGB": {
       "base": null,
       "refs": {
+        "DebugRuleConfiguration$VolumeSizeInGB": null,
         "ResourceConfig$VolumeSizeInGB": "<p>The size of the ML storage volume that you want to provision. </p> <p>ML storage volumes store model artifacts and incremental states. Training algorithms might also use the ML storage volume for scratch space. If you want to store the training data in the ML storage volume, choose <code>File</code> as the <code>TrainingInputMode</code> in the algorithm specification. </p> <p>You must specify sufficient ML storage for your scenario. </p> <note> <p> Amazon SageMaker supports only the General Purpose SSD (gp2) ML storage volume type. </p> </note>",
         "RuleSpecification$VolumeSizeInGB": null
       }
@@ -7688,12 +8275,6 @@
       "base": null,
       "refs": {
         "MetricQuery$XAxisType": null
-      }
-    },
-    "XAxisValues": {
-      "base": null,
-      "refs": {
-        "MetricQueryResult$XAxisValues": null
       }
     }
   }
