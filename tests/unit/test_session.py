@@ -39,76 +39,6 @@ SAMPLE_PARAM_RANGES = [{"Name": "mini_batch_size", "MinValue": "10", "MaxValue":
 REGION = "us-west-2"
 STS_ENDPOINT = "sts.us-west-2.amazonaws.com"
 
-DESCRIBE_ANALYTICS_JOB_RESPONSE = {
-    "AnalyticsJobArn": "arn:aws:sagemaker:us-west-2:012345678901:analytics-job/sklearn-analytics-2019-12-06-02-31-56",
-    "AnalyticsInputs": [
-        {
-            "InputName": "holdout_dataset",
-            "S3Input": {
-                "S3Uri": "s3://my-input-data-bucket/path/to/test/data",
-                "LocalPath": "/data/holdout",
-                "S3DataType": "S3Prefix",
-                "S3DownloadMode": "Continuous",
-                "S3DataDistributionType": "FullyReplicated",
-                "S3InputMode": "Pipe",
-            },
-        },
-        {
-            "InputName": "model_data",
-            "S3Input": {
-                "S3Uri": "s3://my-model-data-bucket/path/to/model.tar.gz",
-                "LocalPath": "/data/model",
-                "CompressionType": "Tar/Gzip",
-            },
-        },
-    ],
-    "AnalyticsOutputs": [
-        {
-            "OutputName": "model_evaluation_output",
-            "S3Output": {
-                "S3Uri": "s3://my-output-data-bucket/path/to/output/artifacts",
-                "LocalPath": "/output/model_eval_output",
-                "KmsKeyId": "arn:aws:kms:us-west-2:012345678901:key/kms-key",
-                "S3UploadMode": "None",
-                "Role": "arn:aws:iam::012345678901:role/sagemaker-write-role",
-            },
-        }
-    ],
-    "AnalyticsJobName": "sklearn-analytics-2019-12-06-02-31-56",
-    "AnalyticsJobStatus": "Failed",
-    "AnalyticsResources": {
-        "ClusterConfig": {"InstanceType": "ml.m5.xlarge", "InstanceCount": 1, "VolumeSizeInGB": 500}
-    },
-    "AppSpecification": {
-        "ImageUri": "012345678901.dkr.ecr.us-west-2.amazonaws.com/sklearn-analytics:latest",
-        "ContainerEntrypoint": ["python3", "analytics.py"],
-        "ContainerArguments": ["--arg", "value", "--flag"],
-    },
-    "Environment": {
-        "task": "model_eval",
-        "evaluation_metric": "roc_auc",
-        "task_parameters": '{ "average": "weighted" }',
-        "failure_threshold": "0.85",
-    },
-    "FailureReason": "AlgorithmFailure: model eval metric roc_auc value 0.8316 did not meet minimum 0.85",
-    "NetworkConfig": {
-        "EnableInterContainerTrafficEncryption": False,
-        "EnableNetworkIsolation": True,
-        "VpcConfig": {
-            "SecurityGroupIds": ["sg-ab1cd2e3"],
-            "Subnets": ["subnet-123ab456", "subnet-789zy654", "subnet-164mx256"],
-        },
-    },
-    "RoleArn": "arn:aws:iam::012345678901:role/SageMakerRole",
-    "StoppingCondition": {"MaxRuntimeInSeconds": 3600},
-    "Tags": [{"Key": "TrainingJobName", "Value": "sklearn-training-job-2019-12-01-02-34-12"}],
-    "CreationTime": "2019-12-05-01:01:01.108",
-    "AnalyticsStartTime": "2019-12-05-01:03:07.671",
-    "AnalyticsEndTime": "2019-12-05-01:12:23.671",
-    "LastModifiedTime": "2019-12-05-01:12:23.671",
-    "ResponseMetadata": "...",
-}
-
 
 @pytest.fixture()
 def boto_session():
@@ -164,25 +94,27 @@ def test_process(boto_session):
                 },
             },
         ],
-        "outputs": [
-            {
-                "OutputName": "output-1",
-                "S3Output": {
-                    "S3Uri": "s3://mybucket/current_job_name/output",
-                    "LocalPath": "/data/output",
-                    "S3UploadMode": "Continuous",
+        "output_config": {
+            "Outputs": [
+                {
+                    "OutputName": "output-1",
+                    "S3Output": {
+                        "S3Uri": "s3://mybucket/current_job_name/output",
+                        "LocalPath": "/data/output",
+                        "S3UploadMode": "Continuous",
+                    },
                 },
-            },
-            {
-                "OutputName": "my_output",
-                "S3Output": {
-                    "S3Uri": "s3://uri/",
-                    "LocalPath": "/container/path/",
-                    "S3UploadMode": "Continuous",
-                    "KmsKeyId": "arn:aws:kms:us-west-2:012345678901:key/kms-key",
+                {
+                    "OutputName": "my_output",
+                    "S3Output": {
+                        "S3Uri": "s3://uri/",
+                        "LocalPath": "/container/path/",
+                        "S3UploadMode": "Continuous",
+                    },
                 },
-            },
-        ],
+            ],
+            "KmsKeyId": "arn:aws:kms:us-west-2:012345678901:key/kms-key",
+        },
         "job_name": "current_job_name",
         "resources": {
             "ClusterConfig": {
@@ -212,8 +144,8 @@ def test_process(boto_session):
     session.process(**process_request_args)
 
     expected_request = {
-        "AnalyticsJobName": "current_job_name",
-        "AnalyticsResources": {
+        "ProcessingJobName": "current_job_name",
+        "ProcessingResources": {
             "ClusterConfig": {
                 "InstanceType": "ml.m4.xlarge",
                 "InstanceCount": 1,
@@ -226,7 +158,7 @@ def test_process(boto_session):
             "ContainerEntrypoint": ["python3", "/code/source/sklearn_transformer.py"],
         },
         "RoleArn": ROLE,
-        "AnalyticsInputs": [
+        "ProcessingInputs": [
             {
                 "InputName": "input-1",
                 "S3Input": {
@@ -264,25 +196,27 @@ def test_process(boto_session):
                 },
             },
         ],
-        "AnalyticsOutputs": [
-            {
-                "OutputName": "output-1",
-                "S3Output": {
-                    "S3Uri": "s3://mybucket/current_job_name/output",
-                    "LocalPath": "/data/output",
-                    "S3UploadMode": "Continuous",
+        "ProcessingOutputConfig": {
+            "Outputs": [
+                {
+                    "OutputName": "output-1",
+                    "S3Output": {
+                        "S3Uri": "s3://mybucket/current_job_name/output",
+                        "LocalPath": "/data/output",
+                        "S3UploadMode": "Continuous",
+                    },
                 },
-            },
-            {
-                "OutputName": "my_output",
-                "S3Output": {
-                    "S3Uri": "s3://uri/",
-                    "LocalPath": "/container/path/",
-                    "S3UploadMode": "Continuous",
-                    "KmsKeyId": "arn:aws:kms:us-west-2:012345678901:key/kms-key",
+                {
+                    "OutputName": "my_output",
+                    "S3Output": {
+                        "S3Uri": "s3://uri/",
+                        "LocalPath": "/container/path/",
+                        "S3UploadMode": "Continuous",
+                    },
                 },
-            },
-        ],
+            ],
+            "KmsKeyId": "arn:aws:kms:us-west-2:012345678901:key/kms-key",
+        },
         "Environment": {"my_env_variable": 20},
         "NetworkConfig": {
             "EnableInterContainerTrafficEncryption": True,
@@ -296,7 +230,7 @@ def test_process(boto_session):
         "Tags": [{"Name": "my-tag", "Value": "my-tag-value"}],
     }
 
-    session.sagemaker_client.create_analytics_job.assert_called_with(**expected_request)
+    session.sagemaker_client.create_processing_job.assert_called_with(**expected_request)
 
 
 def mock_exists(filepath_to_mock, exists_result):

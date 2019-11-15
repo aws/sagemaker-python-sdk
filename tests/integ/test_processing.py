@@ -43,8 +43,8 @@ def test_sklearn(sagemaker_beta_session, sklearn_full_version, cpu_instance_type
 
     job_description = sklearn_processor.latest_job.describe()
 
-    assert len(job_description["AnalyticsInputs"]) == 2
-    assert job_description["AnalyticsResources"] == {
+    assert len(job_description["ProcessingInputs"]) == 2
+    assert job_description["ProcessingResources"] == {
         "ClusterConfig": {"InstanceCount": 1, "InstanceType": "ml.m4.xlarge", "VolumeSizeInGB": 30}
     }
     assert job_description["StoppingCondition"] == {"MaxRuntimeInSeconds": 86400}

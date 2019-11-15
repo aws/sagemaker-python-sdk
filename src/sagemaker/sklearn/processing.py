@@ -17,9 +17,10 @@ and interpretation on SageMaker.
 """
 from __future__ import absolute_import
 
+from sagemaker.fw_registry import default_framework_uri
+
 from sagemaker import Session
 from sagemaker.processing import ScriptProcessor
-from sagemaker.fw_utils import create_image_uri
 
 
 class SKLearnProcessor(ScriptProcessor):
@@ -33,7 +34,8 @@ class SKLearnProcessor(ScriptProcessor):
         py_version="py3",
         volume_size_in_gb=30,
         volume_kms_key=None,
-        max_runtime_in_seconds=24 * 60 * 60,
+        output_kms_key=None,
+        max_runtime_in_seconds=None,
         base_job_name=None,
         sagemaker_session=None,
         env=None,
@@ -57,9 +59,10 @@ class SKLearnProcessor(ScriptProcessor):
                 to use for storing data during processing (default: 30).
             volume_kms_key (str): A KMS key for the processing
                 volume.
-            max_runtime_in_seconds (int): Timeout in seconds
-                (default: 24 * 60 * 60). After this amount of time Amazon
-                SageMaker terminates the job regardless of its current status.
+            output_kms_key (str): The KMS key id for all ProcessingOutputs.
+            max_runtime_in_seconds (int): Timeout in seconds.
+                After this amount of time Amazon SageMaker terminates the job
+                regardless of its current status.
             base_job_name (str): Prefix for processing name. If not specified,
                 the processor generates a default job name, based on the
                 training image name and current timestamp.
@@ -75,13 +78,9 @@ class SKLearnProcessor(ScriptProcessor):
         """
         session = sagemaker_session or Session()
         region = session.boto_region_name
-        image_uri = create_image_uri(
-            region=region,
-            framework="scikit-learn",
-            instance_type=instance_type,
-            framework_version=framework_version,
-            py_version=py_version,
-        )
+
+        image_tag = "{}-{}-{}".format(framework_version, "cpu", py_version)
+        image_uri = default_framework_uri("scikit-learn", region, image_tag)
 
         super(SKLearnProcessor, self).__init__(
             role=role,
@@ -90,6 +89,7 @@ class SKLearnProcessor(ScriptProcessor):
             instance_type=instance_type,
             volume_size_in_gb=volume_size_in_gb,
             volume_kms_key=volume_kms_key,
+            output_kms_key=output_kms_key,
             max_runtime_in_seconds=max_runtime_in_seconds,
             base_job_name=base_job_name,
             sagemaker_session=session,

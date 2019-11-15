@@ -40,7 +40,8 @@ class Processor(object):
         entrypoint=None,
         volume_size_in_gb=30,
         volume_kms_key=None,
-        max_runtime_in_seconds=24 * 60 * 60,
+        output_kms_key=None,
+        max_runtime_in_seconds=None,
         base_job_name=None,
         sagemaker_session=None,
         env=None,
@@ -67,9 +68,10 @@ class Processor(object):
                 to use for storing data during processing (default: 30).
             volume_kms_key (str): A KMS key for the processing
                 volume.
+            output_kms_key (str): The KMS key id for all ProcessingOutputs.
             max_runtime_in_seconds (int): Timeout in seconds
-                (default: 24 * 60 * 60). After this amount of time Amazon
-                SageMaker terminates the job regardless of its current status.
+                After this amount of time Amazon SageMaker terminates the job
+                regardless of its current status.
             base_job_name (str): Prefix for processing name. If not specified,
                 the processor generates a default job name, based on the
                 training image name and current timestamp.
@@ -90,6 +92,7 @@ class Processor(object):
         self.entrypoint = entrypoint
         self.volume_size_in_gb = volume_size_in_gb
         self.volume_kms_key = volume_kms_key
+        self.output_kms_key = output_kms_key
         self.max_runtime_in_seconds = max_runtime_in_seconds
         self.base_job_name = base_job_name
         self.sagemaker_session = sagemaker_session or Session()
@@ -106,9 +109,9 @@ class Processor(object):
         """Run a processing job.
 
         Args:
-            inputs ([sagemaker.processor.ProcessingInput]): Input files for the processing
+            inputs ([sagemaker.processing.ProcessingInput]): Input files for the processing
                 job. These must be provided as ProcessingInput objects.
-            outputs ([sagemaker.processor.ProcessingOutput]): Outputs for the processing
+            outputs ([sagemaker.processing.ProcessingOutput]): Outputs for the processing
                 job. These can be specified as either a path string or a ProcessingOutput
                 object.
             arguments ([str]): A list of string arguments to be passed to a
@@ -161,11 +164,11 @@ class Processor(object):
         """Ensure that all the ProcessingInput objects have names and S3 uris.
 
         Args:
-            inputs ([sagemaker.processor.ProcessingInput]): A list of ProcessingInput
+            inputs ([sagemaker.processing.ProcessingInput]): A list of ProcessingInput
                 objects to be normalized.
 
         Returns:
-            [sagemaker.processor.ProcessingInput]: The list of normalized
+            [sagemaker.processing.ProcessingInput]: The list of normalized
             ProcessingInput objects.
         """
         # Initialize a list of normalized ProcessingInput objects.
@@ -203,12 +206,12 @@ class Processor(object):
         names and S3 uris.
 
         Args:
-            outputs ([sagemaker.processor.ProcessingOutput]): A list
+            outputs ([sagemaker.processing.ProcessingOutput]): A list
                 of outputs to be normalized. Can be either strings or
                 ProcessingOutput objects.
 
         Returns:
-            [sagemaker.processor.ProcessingOutput]: The list of normalized
+            [sagemaker.processing.ProcessingOutput]: The list of normalized
                 ProcessingOutput objects.
         """
         # Initialize a list of normalized ProcessingOutput objects.
@@ -246,7 +249,8 @@ class ScriptProcessor(Processor):
         instance_type,
         volume_size_in_gb=30,
         volume_kms_key=None,
-        max_runtime_in_seconds=24 * 60 * 60,
+        output_kms_key=None,
+        max_runtime_in_seconds=None,
         base_job_name=None,
         sagemaker_session=None,
         env=None,
@@ -273,9 +277,10 @@ class ScriptProcessor(Processor):
                 to use for storing data during processing (default: 30).
             volume_kms_key (str): A KMS key for the processing
                 volume.
-            max_runtime_in_seconds (int): Timeout in seconds
-                (default: 24 * 60 * 60). After this amount of time Amazon
-                SageMaker terminates the job regardless of its current status.
+            output_kms_key (str): The KMS key id for all ProcessingOutputs.
+            max_runtime_in_seconds (int): Timeout in seconds.
+                After this amount of time Amazon SageMaker terminates the job
+                regardless of its current status.
             base_job_name (str): Prefix for processing name. If not specified,
                 the processor generates a default job name, based on the
                 training image name and current timestamp.
@@ -299,6 +304,7 @@ class ScriptProcessor(Processor):
             instance_type=instance_type,
             volume_size_in_gb=volume_size_in_gb,
             volume_kms_key=volume_kms_key,
+            output_kms_key=output_kms_key,
             max_runtime_in_seconds=max_runtime_in_seconds,
             base_job_name=base_job_name,
             sagemaker_session=sagemaker_session,
@@ -329,9 +335,9 @@ class ScriptProcessor(Processor):
             script_name (str): If the user provides a directory for source,
                 they must specify script_name as the file within that
                 directory to use.
-            inputs ([sagemaker.processor.ProcessingInput]): Input files for the processing
+            inputs ([sagemaker.processing.ProcessingInput]): Input files for the processing
                 job. These must be provided as ProcessingInput objects.
-            outputs ([str or sagemaker.processor.ProcessingOutput]): Outputs for the processing
+            outputs ([str or sagemaker.processing.ProcessingOutput]): Outputs for the processing
                 job. These can be specified as either a path string or a ProcessingOutput
                 object.
             arguments ([str]): A list of string arguments to be passed to a
@@ -414,11 +420,11 @@ class ScriptProcessor(Processor):
         """Creates a ProcessingInput object from an S3 uri and adds it to the list of inputs.
 
         Args:
-            inputs ([sagemaker.processor.ProcessingInput]): List of ProcessingInput objects.
+            inputs ([sagemaker.processing.ProcessingInput]): List of ProcessingInput objects.
             s3_uri (str): S3 uri of the input to be added to inputs.
 
         Returns:
-            [sagemaker.processor.ProcessingInput]: A new list of ProcessingInput objects, with
+            [sagemaker.processing.ProcessingInput]: A new list of ProcessingInput objects, with
                 the ProcessingInput object created from s3_uri appended to the list.
 
         """
@@ -429,7 +435,7 @@ class ScriptProcessor(Processor):
             ),
             input_name=self._CODE_CONTAINER_INPUT_NAME,
         )
-        return inputs + [code_file_input]
+        return (inputs or []) + [code_file_input]
 
     def _set_entrypoint(self, command, customer_script_name):
         """Sets the entrypoint based on the customer's script and corresponding executable.
@@ -458,8 +464,8 @@ class ProcessingJob(_Job):
         Args:
             processor (sagemaker.processing.Processor): The Processor instance
                 that started the job.
-            inputs ([sagemaker.processor.ProcessingInput]): A list of ProcessingInput objects.
-            outputs ([sagemaker.processor.ProcessingOutput]): A list of ProcessingOutput objects.
+            inputs ([sagemaker.processing.ProcessingInput]): A list of ProcessingInput objects.
+            outputs ([sagemaker.processing.ProcessingOutput]): A list of ProcessingOutput objects.
 
         Returns:
             sagemaker.processing.ProcessingJob: The instance of ProcessingJob created
@@ -471,8 +477,15 @@ class ProcessingJob(_Job):
 
         # Add arguments to the dictionary.
         process_request_args["inputs"] = [input.to_request_dict() for input in inputs]
-        process_request_args["outputs"] = [output.to_request_dict() for output in outputs]
+
+        process_request_args["output_config"] = {
+            "Outputs": [output.to_request_dict() for output in outputs]
+        }
+        if processor.output_kms_key is not None:
+            process_request_args["output_config"]["KmsKeyId"] = processor.output_kms_key
+
         process_request_args["job_name"] = processor._current_job_name
+
         process_request_args["resources"] = {
             "ClusterConfig": {
                 "InstanceType": processor.instance_type,
@@ -480,26 +493,35 @@ class ProcessingJob(_Job):
                 "VolumeSizeInGB": processor.volume_size_in_gb,
             }
         }
-        process_request_args["stopping_condition"] = {
-            "MaxRuntimeInSeconds": processor.max_runtime_in_seconds
-        }
+
+        if processor.max_runtime_in_seconds is not None:
+            process_request_args["stopping_condition"] = {
+                "MaxRuntimeInSeconds": processor.max_runtime_in_seconds
+            }
+        else:
+            process_request_args["stopping_condition"] = None
+
         process_request_args["app_specification"] = {"ImageUri": processor.image_uri}
         if processor.arguments is not None:
             process_request_args["app_specification"]["ContainerArguments"] = processor.arguments
         if processor.entrypoint is not None:
             process_request_args["app_specification"]["ContainerEntrypoint"] = processor.entrypoint
+
         process_request_args["environment"] = processor.env
+
         if processor.network_config is not None:
             process_request_args["network_config"] = processor.network_config.to_request_dict()
         else:
             process_request_args["network_config"] = None
+
         process_request_args["role_arn"] = processor.role
+
         process_request_args["tags"] = processor.tags
 
         # Print the job name and the user's inputs and outputs as lists of dictionaries.
         print("Job Name: ", process_request_args["job_name"])
         print("Inputs: ", process_request_args["inputs"])
-        print("Outputs: ", process_request_args["outputs"])
+        print("Outputs: ", process_request_args["output_config"]["Outputs"])
 
         # Call sagemaker_session.process using the arguments dictionary.
         processor.sagemaker_session.process(**process_request_args)
@@ -521,7 +543,7 @@ class ProcessingJob(_Job):
 
     def describe(self, print_response=True):
         """Prints out a response from the DescribeProcessingJob API call."""
-        describe_response = self.sagemaker_session.describe_analytics_job(self.job_name)
+        describe_response = self.sagemaker_session.describe_processing_job(self.job_name)
         if print_response:
             print(describe_response)
         return describe_response
@@ -540,9 +562,8 @@ class ProcessingInput(object):
         source,
         destination,
         input_name=None,
-        s3_data_type="ManifestFile",
+        s3_data_type="S3Prefix",
         s3_input_mode="File",
-        s3_download_mode="Continuous",
         s3_data_distribution_type="FullyReplicated",
         s3_compression_type="None",
     ):
@@ -557,7 +578,6 @@ class ProcessingInput(object):
                 is not provided, one will be generated.
             s3_data_type (str): Valid options are "ManifestFile" or "S3Prefix".
             s3_input_mode (str): Valid options are "Pipe" or "File".
-            s3_download_mode (str): Valid options are "StartOfJob" or "Continuous".
             s3_data_distribution_type (str): Valid options are "FullyReplicated"
                 or "ShardedByS3Key".
             s3_compression_type (str): Valid options are "None" or "Gzip".
@@ -567,7 +587,6 @@ class ProcessingInput(object):
         self.input_name = input_name
         self.s3_data_type = s3_data_type
         self.s3_input_mode = s3_input_mode
-        self.s3_download_mode = s3_download_mode
         self.s3_data_distribution_type = s3_data_distribution_type
         self.s3_compression_type = s3_compression_type
 
@@ -581,7 +600,6 @@ class ProcessingInput(object):
                 "LocalPath": self.destination,
                 "S3DataType": self.s3_data_type,
                 "S3InputMode": self.s3_input_mode,
-                "S3DownloadMode": self.s3_download_mode,
                 "S3DataDistributionType": self.s3_data_distribution_type,
             },
         }
@@ -600,9 +618,7 @@ class ProcessingOutput(object):
     """Accepts parameters that specify an S3 output for a processing job and provides
     a method to turn those parameters into a dictionary."""
 
-    def __init__(
-        self, source, destination, output_name=None, kms_key_id=None, s3_upload_mode="Continuous"
-    ):
+    def __init__(self, source, destination=None, output_name=None, s3_upload_mode="EndOfJob"):
         """Initialize a ``ProcessingOutput`` instance. ProcessingOutput accepts parameters that
         specify an S3 output for a processing job and provides a method to turn
         those parameters into a dictionary.
@@ -611,13 +627,11 @@ class ProcessingOutput(object):
             source (str): The source for the output.
             destination (str): The destination of the output.
             output_name (str): The name of the output.
-            kms_key_id (str): The KMS key id for the output.
             s3_upload_mode (str): Valid options are "EndOfJob" or "Continuous".
         """
         self.source = source
         self.destination = destination
         self.output_name = output_name
-        self.kms_key_id = kms_key_id
         self.s3_upload_mode = s3_upload_mode
 
     def to_request_dict(self):
@@ -631,10 +645,6 @@ class ProcessingOutput(object):
                 "S3UploadMode": self.s3_upload_mode,
             },
         }
-
-        # Check the KMS key ID, then add it to the dictionary.
-        if self.kms_key_id is not None:
-            s3_output_request["S3Output"]["KmsKeyId"] = self.kms_key_id
 
         # Return the request dictionary.
         return s3_output_request
