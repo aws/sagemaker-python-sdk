@@ -165,8 +165,8 @@ def test_sklearn_with_all_customizations(sagemaker_session):
         output_kms_key="arn:aws:kms:us-west-2:012345678901:key/kms-key",
         max_runtime_in_seconds=3600,
         base_job_name="my_sklearn_processor",
-        env={"my_env_variable": 20},
-        tags=[{"Name": "my-tag", "Value": "my-tag-value"}],
+        env={"my_env_variable": "my_env_variable_value"},
+        tags=[{"Key": "my-tag", "Value": "my-tag-value"}],
         network_config=NetworkConfig(
             subnets=["my_subnet_id"],
             security_group_ids=["my_security_group_id"],
@@ -273,7 +273,7 @@ def test_sklearn_with_all_customizations(sagemaker_session):
             "ContainerArguments": ["--drop-columns", "'SelfEmployed'"],
             "ContainerEntrypoint": ["python3", "/input/code/sklearn_transformer.py"],
         },
-        "environment": {"my_env_variable": 20},
+        "environment": {"my_env_variable": "my_env_variable_value"},
         "network_config": {
             "EnableInterContainerTrafficEncryption": True,
             "EnableNetworkIsolation": True,
@@ -283,7 +283,7 @@ def test_sklearn_with_all_customizations(sagemaker_session):
             },
         },
         "role_arn": ROLE,
-        "tags": [{"Name": "my-tag", "Value": "my-tag-value"}],
+        "tags": [{"Key": "my-tag", "Value": "my-tag-value"}],
     }
     sagemaker_session.process.assert_called_with(**expected_args)
 
