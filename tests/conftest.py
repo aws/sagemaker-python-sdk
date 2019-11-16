@@ -112,14 +112,14 @@ def sagemaker_session(sagemaker_client_config, sagemaker_runtime_config, boto_co
     )
 
 
-# TODO-reinvent-2019: Remove this beta session entirely
+# TODO-reinvent-2019: Remove this gamma session entirely
 @pytest.fixture(scope="session")
-def sagemaker_beta_session(sagemaker_client_config, sagemaker_runtime_config, boto_config):
+def sagemaker_gamma_session(sagemaker_client_config, sagemaker_runtime_config, boto_config):
     boto_session = boto3.Session(region_name="us-west-2")
     sagemaker_client_config.setdefault("config", Config(retries=dict(max_attempts=10)))
     sagemaker_client_config[
         "endpoint_url"
-    ] = "https://sagemaker.beta.us-west-2.ml-platform.aws.a2z.com"
+    ] = "https://sagemaker.gamma.us-west-2.ml-platform.aws.a2z.com"
     sagemaker_client = (
         boto_session.client("sagemaker", **sagemaker_client_config)
         if sagemaker_client_config
