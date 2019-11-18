@@ -248,7 +248,11 @@ class _SageMakerContainer(object):
         for host in self.hosts:
             volumes = compose_data["services"][str(host)]["volumes"]
             for volume in volumes:
-                host_dir, container_dir = volume.split(":")
+                if re.search(r"[A-Za-z]:", volume):
+                    unit, host_dir, container_dir = volume.split(":")
+                    host_dir = unit + ":" + host_dir
+                else:
+                    host_dir, container_dir = volume.split(":")
                 if container_dir == "/opt/ml/model":
                     sagemaker.local.utils.recursive_copy(host_dir, model_artifacts)
                 elif container_dir == "/opt/ml/output":
@@ -625,7 +629,8 @@ class _Volume(object):
             raise ValueError("container_dir and channel cannot be declared together.")
 
         self.container_dir = (
-            container_dir if container_dir else os.path.join("/opt/ml/input/data", channel)
+            # path separator should be always in unix format, because docker vm is running unix
+            container_dir if container_dir else "/opt/ml/input/data/" + channel
         )
         self.host_dir = host_dir
         if platform.system() == "Darwin" and host_dir.startswith("/var"):
