@@ -1,5 +1,11 @@
 # Changelog
 
+## v1.43.5 (2019-11-18)
+
+### Bug fixes and other changes
+
+ * remove red from possible colors when streaming logs
+
 ## v1.43.4.post1 (2019-10-29)
 
 ### Documentation changes
