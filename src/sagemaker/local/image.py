@@ -77,6 +77,14 @@ class _SageMakerContainer(object):
         """
         from sagemaker.local.local_session import LocalSession
 
+        # check if docker-compose is installed
+        if shutil.which('docker-compose') is None:
+            raise ImportError(
+                "'docker-compose' is not installed. Local mode feature will be broken. " +
+                "For more information on how to install 'docker-compose', please, see " +
+                "https://docs.docker.com/compose/install/"
+            )
+
         self.sagemaker_session = sagemaker_session or LocalSession()
         self.instance_type = instance_type
         self.instance_count = instance_count
