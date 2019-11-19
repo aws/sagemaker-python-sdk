@@ -44,7 +44,6 @@ DOCKER_COMPOSE_FILENAME = "docker-compose.yaml"
 DOCKER_COMPOSE_HTTP_TIMEOUT_ENV = "COMPOSE_HTTP_TIMEOUT"
 DOCKER_COMPOSE_HTTP_TIMEOUT = "120"
 
-
 # Environment variables to be set during training
 REGION_ENV_NAME = "AWS_REGION"
 TRAINING_JOB_NAME_ENV_NAME = "TRAINING_JOB_NAME"
@@ -248,7 +247,7 @@ class _SageMakerContainer(object):
         for host in self.hosts:
             volumes = compose_data["services"][str(host)]["volumes"]
             for volume in volumes:
-                if re.search(r"[A-Za-z]:", volume):
+                if re.search(r"^[A-Za-z]:", volume):
                     unit, host_dir, container_dir = volume.split(":")
                     host_dir = unit + ":" + host_dir
                 else:
@@ -628,10 +627,7 @@ class _Volume(object):
         if container_dir and channel:
             raise ValueError("container_dir and channel cannot be declared together.")
 
-        self.container_dir = (
-            # path separator should be always in unix format, because docker vm is running unix
-            container_dir if container_dir else "/opt/ml/input/data/" + channel
-        )
+        self.container_dir = container_dir if container_dir else "/opt/ml/input/data/" + channel
         self.host_dir = host_dir
         if platform.system() == "Darwin" and host_dir.startswith("/var"):
             self.host_dir = os.path.join("/private", host_dir)
