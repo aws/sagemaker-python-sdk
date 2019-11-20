@@ -86,7 +86,7 @@ setup(
             "black==19.3b0 ; python_version >= '3.6'",
             "stopit==1.1.2",
             "apache-airflow==1.10.5",
-            "docker-compose>=1.23.0"
+            "docker-compose>=1.23.0",
         ]
     },
     entry_points={"console_scripts": ["sagemaker=sagemaker.cli.main:main"]},

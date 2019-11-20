@@ -79,7 +79,7 @@ class _SageMakerContainer(object):
         from sagemaker.local.local_session import LocalSession
 
         # check if docker-compose is installed
-        if find_executable('docker-compose') is None:
+        if find_executable("docker-compose") is None:
             raise ImportError(
                 "'docker-compose' is not installed. "
                 "Local Mode features will not work without docker-compose. "
