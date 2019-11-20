@@ -40,7 +40,6 @@ required_packages = [
     "scipy>=0.19.0",
     "urllib3>=1.21, <1.25",
     "protobuf3-to-dict>=0.1.5",
-    "docker-compose>=1.23.0",
     "requests>=2.20.0, <2.21",
     "fabric>=2.0",
 ]
@@ -87,6 +86,7 @@ setup(
             "black==19.3b0 ; python_version >= '3.6'",
             "stopit==1.1.2",
             "apache-airflow==1.10.5",
+            "docker-compose>=1.23.0",
         ]
     },
     entry_points={"console_scripts": ["sagemaker=sagemaker.cli.main:main"]},
