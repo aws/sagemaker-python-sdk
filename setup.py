@@ -43,7 +43,11 @@ required_packages = [
 ]
 
 # Specific use case dependencies
-extras = {"analytics": ["pandas"], "local": ["urllib3>=1.21, <1.25", "docker-compose>=1.23.0"]}
+extras = {
+    "analytics": ["pandas"],
+    "local": ["urllib3>=1.21, <1.25", "docker-compose>=1.23.0"],
+    "tensorflow": ["tensorflow>=1.3.0"],
+}
 # Meta dependency groups
 extras["all"] = [item for group in extras.values() for item in group]
 # Tests specific dependencies (do not need to be included in 'all')
@@ -57,7 +61,6 @@ extras["test"] = (
         "pytest-rerunfailures",
         "pytest-xdist",
         "mock",
-        "tensorflow>=1.3.0",
         "contextlib2",
         "awslogs",
         "black==19.3b0 ; python_version >= '3.6'",
