@@ -44,10 +44,7 @@ required_packages = [
 ]
 
 # Specific use case dependencies
-extras = {
-    "analytics": ["pandas"],
-    "local": ["urllib3>=1.21, <1.25", "docker-compose>=1.23.0"],
-}
+extras = {"analytics": ["pandas"], "local": ["urllib3>=1.21, <1.25", "docker-compose>=1.23.0"]}
 # Meta dependency groups
 extras["all"] = [item for group in extras.values() for item in group]
 # Tests specific dependencies (do not need to be included in 'all')
