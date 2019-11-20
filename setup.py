@@ -40,7 +40,6 @@ required_packages = [
     "scipy>=0.19.0",
     "protobuf3-to-dict>=0.1.5",
     "requests>=2.20.0, <2.21",
-    "fabric>=2.0",
 ]
 
 # Specific use case dependencies
@@ -64,6 +63,7 @@ extras["test"] = (
         "black==19.3b0 ; python_version >= '3.6'",
         "stopit==1.1.2",
         "apache-airflow==1.10.5",
+        "fabric>=2.0",
     ],
 )
 
