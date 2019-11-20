@@ -31,18 +31,46 @@ def read(fname):
 def read_version():
     return read("VERSION").strip()
 
+# Specific use case dependencies
+extras = {
+    "core": [
+        "boto3>=1.9.213",
+        "numpy>=1.9.0",
+        "protobuf>=3.1",
+        "scipy>=0.19.0",
+        "protobuf3-to-dict>=0.1.5",
+        "requests>=2.20.0, <2.21",
+        "fabric>=2.0",
+    ],
+    "analytics": [
+        "pandas",
+    ],
+    "local": [
+        "urllib3>=1.21, <1.25",
+        "docker-compose>=1.23.0",
+    ],
+}
+# Meta dependency groups
+extras['all'] = [item for group in extras.values() for item in group]
+# Tests specific dependencies (do not need to be included in 'all')
+extras['test'] = [
+                     "tox==3.13.1",
+                     "flake8",
+                     "pytest==4.4.1",
+                     "pytest-cov",
+                     "pytest-rerunfailures",
+                     "pytest-xdist",
+                     "mock",
+                     "tensorflow>=1.3.0",
+                     "contextlib2",
+                     "awslogs",
+                     "black==19.3b0 ; python_version >= '3.6'",
+                     "stopit==1.1.2",
+                     "apache-airflow==1.10.5",
+                 ],
 
 # Declare minimal set for installation
-required_packages = [
-    "boto3>=1.9.213",
-    "numpy>=1.9.0",
-    "protobuf>=3.1",
-    "scipy>=0.19.0",
-    "urllib3>=1.21, <1.25",
-    "protobuf3-to-dict>=0.1.5",
-    "requests>=2.20.0, <2.21",
-    "fabric>=2.0",
-]
+required_packages = [extras['core'], extras['local']]
 
 # enum is introduced in Python 3.4. Installing enum back port
 if sys.version_info < (3, 4):
@@ -70,24 +98,6 @@ setup(
         "Programming Language :: Python :: 3.6",
     ],
     install_requires=required_packages,
-    extras_require={
-        "test": [
-            "tox==3.13.1",
-            "flake8",
-            "pytest==4.4.1",
-            "pytest-cov",
-            "pytest-rerunfailures",
-            "pytest-xdist",
-            "mock",
-            "tensorflow>=1.3.0",
-            "contextlib2",
-            "awslogs",
-            "pandas",
-            "black==19.3b0 ; python_version >= '3.6'",
-            "stopit==1.1.2",
-            "apache-airflow==1.10.5",
-            "docker-compose>=1.23.0",
-        ]
-    },
+    extras_require=extras,
     entry_points={"console_scripts": ["sagemaker=sagemaker.cli.main:main"]},
 )
