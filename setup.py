@@ -50,6 +50,7 @@ extras["all"] = [item for group in extras.values() for item in group]
 # Tests specific dependencies (do not need to be included in 'all')
 extras["test"] = (
     [
+        extras["all"],
         "tox==3.13.1",
         "flake8",
         "pytest==4.4.1",
