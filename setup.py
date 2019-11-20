@@ -32,17 +32,19 @@ def read_version():
     return read("VERSION").strip()
 
 
+# Declare minimal set for installation
+required_packages = [
+    "boto3>=1.9.213",
+    "numpy>=1.9.0",
+    "protobuf>=3.1",
+    "scipy>=0.19.0",
+    "protobuf3-to-dict>=0.1.5",
+    "requests>=2.20.0, <2.21",
+    "fabric>=2.0",
+]
+
 # Specific use case dependencies
 extras = {
-    "core": [
-        "boto3>=1.9.213",
-        "numpy>=1.9.0",
-        "protobuf>=3.1",
-        "scipy>=0.19.0",
-        "protobuf3-to-dict>=0.1.5",
-        "requests>=2.20.0, <2.21",
-        "fabric>=2.0",
-    ],
     "analytics": ["pandas"],
     "local": ["urllib3>=1.21, <1.25", "docker-compose>=1.23.0"],
 }
@@ -66,9 +68,6 @@ extras["test"] = (
         "apache-airflow==1.10.5",
     ],
 )
-
-# Declare minimal set for installation
-required_packages = [extras["core"], extras["local"]]
 
 # enum is introduced in Python 3.4. Installing enum back port
 if sys.version_info < (3, 4):
