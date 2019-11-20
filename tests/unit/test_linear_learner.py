@@ -210,6 +210,13 @@ def test_num_classes_is_required_for_multiclass_classifier(sagemaker_session):
     )
 
 
+def test_num_classes_can_be_string_for_multiclass_classifier(sagemaker_session):
+    test_params = ALL_REQ_ARGS.copy()
+    test_params["predictor_type"] = "multiclass_classifier"
+    test_params["num_classes"] = "3"
+    LinearLearner(sagemaker_session=sagemaker_session, **test_params)
+
+
 @pytest.mark.parametrize("iterable_hyper_parameters, value", [("eval_metrics", 0)])
 def test_iterable_hyper_parameters_type(sagemaker_session, iterable_hyper_parameters, value):
     with pytest.raises(TypeError):
@@ -374,7 +381,7 @@ def test_prepare_for_training_multiple_channel_no_train(sagemaker_session):
     with pytest.raises(ValueError) as ex:
         lr._prepare_for_training([data, data])
 
-    assert "Must provide train channel." in str(ex)
+        assert "Must provide train channel." in str(ex)
 
 
 @patch("sagemaker.amazon.amazon_estimator.AmazonAlgorithmEstimatorBase.fit")
