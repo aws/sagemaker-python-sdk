@@ -1,5 +1,11 @@
 # Changelog
 
+## v1.44.1 (2019-11-21)
+
+### Bug fixes and other changes
+
+ * Remove local mode dependencies from required.
+
 ## v1.44.0 (2019-11-21)
 
 ### Features
