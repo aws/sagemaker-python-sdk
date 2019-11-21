@@ -38,10 +38,8 @@ required_packages = [
     "numpy>=1.9.0",
     "protobuf>=3.1",
     "scipy>=0.19.0",
-    "urllib3>=1.21, <1.25",  # local mode dependencies -> remove in the next release
     "protobuf3-to-dict>=0.1.5",
     "requests>=2.20.0, <2.21",
-    "docker-compose>=1.23.0",  # local mode dependencies -> remove in the next release
 ]
 
 # Specific use case dependencies
