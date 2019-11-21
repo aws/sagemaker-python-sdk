@@ -1,5 +1,15 @@
 # Changelog
 
+## v1.44.0 (2019-11-21)
+
+### Features
+
+ * separating sagemaker dependencies into more use case specific installable components.
+
+### Bug fixes and other changes
+
+ * remove docker-compose as a required dependency.
+
 ## v1.43.5 (2019-11-18)
 
 ### Bug fixes and other changes
