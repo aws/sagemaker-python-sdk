@@ -29,6 +29,7 @@ import sys
 import tarfile
 import tempfile
 
+from distutils.spawn import find_executable
 from threading import Thread
 from six.moves.urllib.parse import urlparse
 
@@ -76,6 +77,15 @@ class _SageMakerContainer(object):
                 to use when interacting with SageMaker.
         """
         from sagemaker.local.local_session import LocalSession
+
+        # check if docker-compose is installed
+        if find_executable("docker-compose") is None:
+            raise ImportError(
+                "'docker-compose' is not installed. "
+                "Local Mode features will not work without docker-compose. "
+                "For more information on how to install 'docker-compose', please, see "
+                "https://docs.docker.com/compose/install/"
+            )
 
         self.sagemaker_session = sagemaker_session or LocalSession()
         self.instance_type = instance_type
