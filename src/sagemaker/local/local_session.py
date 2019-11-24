@@ -413,7 +413,7 @@ class LocalSession(Session):
 
             self.config = yaml.load(open(sagemaker_config_file, "r"))
 
-    def logs_for_job(self, job_name, wait=False, poll=5):
+    def logs_for_job(self, job_name, wait=False, poll=5, log_type="All"):
         """
 
         Args:

@@ -136,6 +136,13 @@ def _create_train_job(version):
         "tags": None,
         "vpc_config": None,
         "metric_definitions": None,
+        "debugger_hook_config": {
+            "CollectionConfigurations": [],
+            "S3OutputPath": "s3://{}/{}/tensors".format(BUCKET_NAME, JOB_NAME),
+        },
+        "tensorboard_output_config": {
+            "S3OutputPath": "s3://{}/{}/tensorboard".format(BUCKET_NAME, JOB_NAME)
+        },
     }
 
 

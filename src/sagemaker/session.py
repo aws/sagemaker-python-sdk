@@ -107,7 +107,9 @@ class Session(object):  # pylint: disable=too-many-public-methods
         """
         self.boto_session = boto_session or boto3.Session()
 
-        self._region_name = self.boto_session.region_name
+        # TODO-reinvent-2019 [akarpur]: REMOVE HARDCODED REGION
+        self._region_name = "us-east-2"
+        # self._region_name = self.boto_session.region_name
         if self._region_name is None:
             raise ValueError(
                 "Must setup local AWS configuration with a region supported by SageMaker."
@@ -320,6 +322,9 @@ class Session(object):  # pylint: disable=too-many-public-methods
         train_use_spot_instances=False,
         checkpoint_s3_uri=None,
         checkpoint_local_path=None,
+        debugger_rule_configs=None,
+        debugger_hook_config=None,
+        tensorboard_output_config=None,
     ):
         """Create an Amazon SageMaker training job.
 
@@ -441,6 +446,15 @@ class Session(object):  # pylint: disable=too-many-public-methods
                 checkpoint_config["LocalPath"] = checkpoint_local_path
             train_request["CheckpointConfig"] = checkpoint_config
 
+        if debugger_rule_configs is not None:
+            train_request["DebugRuleConfigurations"] = debugger_rule_configs
+
+        if debugger_hook_config is not None:
+            train_request["DebugHookConfig"] = debugger_hook_config
+
+        if tensorboard_output_config is not None:
+            train_request["TensorBoardOutputConfig"] = tensorboard_output_config
+
         LOGGER.info("Creating training-job with name: %s", job_name)
         LOGGER.debug("train request: %s", json.dumps(train_request, indent=4))
         self.sagemaker_client.create_training_job(**train_request)
@@ -534,6 +548,26 @@ class Session(object):  # pylint: disable=too-many-public-methods
             job_name (str): The name of the processing job to stop.
         """
         self.sagemaker_client.stop_processing_job(ProcessingJobName=job_name)
+
+    def stop_training_job(self, job_name):
+        """Calls the StopTrainingJob API for the given job name.
+
+        Args:
+            job_name (str): The name of the training job to stop.
+        """
+        self.sagemaker_client.stop_training_job(TrainingJobName=job_name)
+
+    def describe_training_job(self, job_name):
+        """Calls the DescribeTrainingJob API for the given job name
+        and returns the response.
+
+        Args:
+            job_name (str): The name of the training job to describe.
+
+        Returns:
+            dict: A dictionary response with the training job description.
+        """
+        return self.sagemaker_client.describe_training_job(TrainingJobName=job_name)
 
     def compile_model(
         self, input_model_config, output_model_config, role, job_name, stop_condition, tags
@@ -1846,7 +1880,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
         return role
 
     def logs_for_job(  # noqa: C901 - suppress complexity warning for this method
-        self, job_name, wait=False, poll=10
+        self, job_name, wait=False, poll=10, log_type="All"
     ):
         """Display the logs for a given training job, optionally tailing them until the
         job is complete. If the output is a tty or a Jupyter cell, it will be color-coded
@@ -1894,6 +1928,8 @@ class Session(object):  # pylint: disable=too-many-public-methods
         #   Cloudwatch after the job was marked complete.
         last_describe_job_call = time.time()
         last_description = description
+        last_debug_rule_statuses = None
+
         while True:
             _flush_log_streams(
                 stream_names,
@@ -1926,6 +1962,26 @@ class Session(object):  # pylint: disable=too-many-public-methods
                 if status in ("Completed", "Failed", "Stopped"):
                     print()
                     state = LogState.JOB_COMPLETE
+
+                # Print prettified logs related to the status of SageMaker Debugger rules.
+                debug_rule_statuses = description.get("DebugRuleEvaluationStatuses", {})
+                if (
+                    debug_rule_statuses
+                    and _debug_rule_statuses_changed(debug_rule_statuses, last_debug_rule_statuses)
+                    and (log_type in {"All", "Rules"})
+                ):
+                    print()
+                    print("********* Debugger Rule Status *********")
+                    print("*")
+                    for status in debug_rule_statuses:
+                        rule_log = "* {:>18}: {:<18}".format(
+                            status["RuleConfigurationName"], status["RuleEvaluationStatus"]
+                        )
+                        print(rule_log)
+                    print("*")
+                    print("*" * 40)
+
+                    last_debug_rule_statuses = debug_rule_statuses
 
         if wait:
             self._check_job_status(job_name, description, "TrainingJobStatus")
@@ -2482,6 +2538,20 @@ def _get_initial_job_state(description, status_key, wait):
     status = description[status_key]
     job_already_completed = status in ("Completed", "Failed", "Stopped")
     return LogState.TAILING if wait and not job_already_completed else LogState.COMPLETE
+
+
+def _debug_rule_statuses_changed(current_statuses, last_statuses):
+    """Checks the rule evaluation statuses for SageMaker Debugger rules."""
+    if not last_statuses:
+        return True
+
+    for current, last in zip(current_statuses, last_statuses):
+        if (current["RuleConfigurationName"] == last["RuleConfigurationName"]) and (
+            current["RuleEvaluationStatus"] != last["RuleEvaluationStatus"]
+        ):
+            return True
+
+    return False
 
 
 def _logs_init(sagemaker_session, description, job):

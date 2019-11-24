@@ -32,7 +32,8 @@
       "input":{"shape":"AssociateTrialComponentRequest"},
       "output":{"shape":"AssociateTrialComponentResponse"},
       "errors":[
-        {"shape":"ResourceNotFound"}
+        {"shape":"ResourceNotFound"},
+        {"shape":"ResourceLimitExceeded"}
       ],
       "internalonly":true
     },
@@ -64,35 +65,6 @@
       },
       "input":{"shape":"CreateAlgorithmInput"},
       "output":{"shape":"CreateAlgorithmOutput"}
-    },
-    "CreateAnalyticsJob":{
-      "name":"CreateAnalyticsJob",
-      "http":{
-        "method":"POST",
-        "requestUri":"/"
-      },
-      "input":{"shape":"CreateAnalyticsJobRequest"},
-      "output":{"shape":"CreateAnalyticsJobResponse"},
-      "errors":[
-        {"shape":"ResourceInUse"},
-        {"shape":"ResourceLimitExceeded"},
-        {"shape":"ResourceNotFound"}
-      ],
-      "internalonly":true
-    },
-    "CreateAnalyticsJobInternal":{
-      "name":"CreateAnalyticsJobInternal",
-      "http":{
-        "method":"POST",
-        "requestUri":"/"
-      },
-      "input":{"shape":"CreateAnalyticsJobInternalRequest"},
-      "output":{"shape":"CreateAnalyticsJobInternalResponse"},
-      "errors":[
-        {"shape":"ResourceInUse"},
-        {"shape":"ResourceNotFound"}
-      ],
-      "internalonly":true
     },
     "CreateApp":{
       "name":"CreateApp",
@@ -232,6 +204,9 @@
       },
       "input":{"shape":"CreateExperimentRequest"},
       "output":{"shape":"CreateExperimentResponse"},
+      "errors":[
+        {"shape":"ResourceLimitExceeded"}
+      ],
       "internalonly":true
     },
     "CreateFlowDefinition":{
@@ -483,7 +458,8 @@
       "input":{"shape":"CreateTrialRequest"},
       "output":{"shape":"CreateTrialResponse"},
       "errors":[
-        {"shape":"ResourceNotFound"}
+        {"shape":"ResourceNotFound"},
+        {"shape":"ResourceLimitExceeded"}
       ],
       "internalonly":true
     },
@@ -495,6 +471,9 @@
       },
       "input":{"shape":"CreateTrialComponentRequest"},
       "output":{"shape":"CreateTrialComponentResponse"},
+      "errors":[
+        {"shape":"ResourceLimitExceeded"}
+      ],
       "internalonly":true
     },
     "CreateUserProfile":{
@@ -539,7 +518,6 @@
         "requestUri":"/"
       },
       "input":{"shape":"DeleteAppRequest"},
-      "output":{"shape":"DeleteAppResponse"},
       "errors":[
         {"shape":"ResourceInUse"},
         {"shape":"ResourceNotFound"}
@@ -561,7 +539,6 @@
         "requestUri":"/"
       },
       "input":{"shape":"DeleteDomainRequest"},
-      "output":{"shape":"DeleteDomainResponse"},
       "errors":[
         {"shape":"ResourceInUse"},
         {"shape":"ResourceNotFound"}
@@ -583,31 +560,6 @@
         "requestUri":"/"
       },
       "input":{"shape":"DeleteEndpointConfigInput"}
-    },
-    "DeleteEnvironment":{
-      "name":"DeleteEnvironment",
-      "http":{
-        "method":"POST",
-        "requestUri":"/"
-      },
-      "input":{"shape":"DeleteEnvironmentRequest"},
-      "errors":[
-        {"shape":"ResourceNotFound"}
-      ],
-      "internalonly":true
-    },
-    "DeleteEnvironmentVersion":{
-      "name":"DeleteEnvironmentVersion",
-      "http":{
-        "method":"POST",
-        "requestUri":"/"
-      },
-      "input":{"shape":"DeleteEnvironmentVersionRequest"},
-      "output":{"shape":"DeleteEnvironmentVersionResponse"},
-      "errors":[
-        {"shape":"ResourceNotFound"}
-      ],
-      "internalonly":true
     },
     "DeleteExperiment":{
       "name":"DeleteExperiment",
@@ -731,7 +683,6 @@
         "requestUri":"/"
       },
       "input":{"shape":"DeleteUserProfileRequest"},
-      "output":{"shape":"DeleteUserProfileResponse"},
       "errors":[
         {"shape":"ResourceInUse"},
         {"shape":"ResourceNotFound"}
@@ -758,19 +709,6 @@
       },
       "input":{"shape":"DescribeAlgorithmInput"},
       "output":{"shape":"DescribeAlgorithmOutput"}
-    },
-    "DescribeAnalyticsJob":{
-      "name":"DescribeAnalyticsJob",
-      "http":{
-        "method":"POST",
-        "requestUri":"/"
-      },
-      "input":{"shape":"DescribeAnalyticsJobRequest"},
-      "output":{"shape":"DescribeAnalyticsJobResponse"},
-      "errors":[
-        {"shape":"ResourceNotFound"}
-      ],
-      "internalonly":true
     },
     "DescribeApp":{
       "name":"DescribeApp",
@@ -1118,20 +1056,6 @@
       ],
       "internalonly":true
     },
-    "ExportAutoMLTrialToModel":{
-      "name":"ExportAutoMLTrialToModel",
-      "http":{
-        "method":"POST",
-        "requestUri":"/"
-      },
-      "input":{"shape":"ExportAutoMLTrialToModelRequest"},
-      "output":{"shape":"ExportAutoMLTrialToModelResponse"},
-      "errors":[
-        {"shape":"ResourceLimitExceeded"},
-        {"shape":"ResourceNotFound"}
-      ],
-      "internalonly":true
-    },
     "GetSearchSuggestions":{
       "name":"GetSearchSuggestions",
       "http":{
@@ -1149,16 +1073,6 @@
       },
       "input":{"shape":"ListAlgorithmsInput"},
       "output":{"shape":"ListAlgorithmsOutput"}
-    },
-    "ListAnalyticsJobs":{
-      "name":"ListAnalyticsJobs",
-      "http":{
-        "method":"POST",
-        "requestUri":"/"
-      },
-      "input":{"shape":"ListAnalyticsJobsRequest"},
-      "output":{"shape":"ListAnalyticsJobsResponse"},
-      "internalonly":true
     },
     "ListApps":{
       "name":"ListApps",
@@ -1178,6 +1092,19 @@
       },
       "input":{"shape":"ListAutoMLJobsRequest"},
       "output":{"shape":"ListAutoMLJobsResponse"},
+      "internalonly":true
+    },
+    "ListCandidatesForAutoMLJob":{
+      "name":"ListCandidatesForAutoMLJob",
+      "http":{
+        "method":"POST",
+        "requestUri":"/"
+      },
+      "input":{"shape":"ListCandidatesForAutoMLJobRequest"},
+      "output":{"shape":"ListCandidatesForAutoMLJobResponse"},
+      "errors":[
+        {"shape":"ResourceNotFound"}
+      ],
       "internalonly":true
     },
     "ListCodeRepositories":{
@@ -1466,19 +1393,6 @@
       "output":{"shape":"ListTrialsResponse"},
       "internalonly":true
     },
-    "ListTrialsForAutoMLJob":{
-      "name":"ListTrialsForAutoMLJob",
-      "http":{
-        "method":"POST",
-        "requestUri":"/"
-      },
-      "input":{"shape":"ListTrialsForAutoMLJobRequest"},
-      "output":{"shape":"ListTrialsForAutoMLJobResponse"},
-      "errors":[
-        {"shape":"ResourceNotFound"}
-      ],
-      "internalonly":true
-    },
     "ListUserProfiles":{
       "name":"ListUserProfiles",
       "http":{
@@ -1538,30 +1452,6 @@
       "errors":[
         {"shape":"ResourceLimitExceeded"}
       ]
-    },
-    "StopAnalyticsJob":{
-      "name":"StopAnalyticsJob",
-      "http":{
-        "method":"POST",
-        "requestUri":"/"
-      },
-      "input":{"shape":"StopAnalyticsJobRequest"},
-      "errors":[
-        {"shape":"ResourceNotFound"}
-      ],
-      "internalonly":true
-    },
-    "StopAnalyticsJobInternal":{
-      "name":"StopAnalyticsJobInternal",
-      "http":{
-        "method":"POST",
-        "requestUri":"/"
-      },
-      "input":{"shape":"StopAnalyticsJobInternalRequest"},
-      "errors":[
-        {"shape":"ResourceNotFound"}
-      ],
-      "internalonly":true
     },
     "StopAutoMLJob":{
       "name":"StopAutoMLJob",
@@ -1772,19 +1662,6 @@
       ],
       "internalonly":true
     },
-    "UpdateEnvironmentVersionStatus":{
-      "name":"UpdateEnvironmentVersionStatus",
-      "http":{
-        "method":"POST",
-        "requestUri":"/"
-      },
-      "input":{"shape":"UpdateEnvironmentVersionStatusRequest"},
-      "errors":[
-        {"shape":"ResourceInUse"},
-        {"shape":"ResourceLimitExceeded"}
-      ],
-      "internalonly":true
-    },
     "UpdateExperiment":{
       "name":"UpdateExperiment",
       "http":{
@@ -1794,6 +1671,7 @@
       "input":{"shape":"UpdateExperimentRequest"},
       "output":{"shape":"UpdateExperimentResponse"},
       "errors":[
+        {"shape":"ConflictException"},
         {"shape":"ResourceNotFound"}
       ],
       "internalonly":true
@@ -1845,6 +1723,7 @@
       "input":{"shape":"UpdateTrialRequest"},
       "output":{"shape":"UpdateTrialResponse"},
       "errors":[
+        {"shape":"ConflictException"},
         {"shape":"ResourceNotFound"}
       ],
       "internalonly":true
@@ -1858,7 +1737,7 @@
       "input":{"shape":"UpdateTrialComponentRequest"},
       "output":{"shape":"UpdateTrialComponentResponse"},
       "errors":[
-        {"shape":"TrialComponentConcurrentModificationException"},
+        {"shape":"ConflictException"},
         {"shape":"ResourceNotFound"}
       ],
       "internalonly":true
@@ -2061,287 +1940,6 @@
         "ValidationProfiles":{"shape":"AlgorithmValidationProfiles"}
       }
     },
-    "AllowIncludeNotebookOutput":{"type":"boolean"},
-    "AnalyticsClusterConfig":{
-      "type":"structure",
-      "required":[
-        "InstanceCount",
-        "InstanceType",
-        "VolumeSizeInGB"
-      ],
-      "members":{
-        "InstanceCount":{"shape":"AnalyticsInstanceCount"},
-        "InstanceType":{"shape":"AnalyticsInstanceType"},
-        "VolumeSizeInGB":{"shape":"AnalyticsVolumeSizeInGB"},
-        "VolumeKmsKeyId":{"shape":"KmsKeyId"}
-      }
-    },
-    "AnalyticsEnvironmentKey":{
-      "type":"string",
-      "max":256,
-      "pattern":"[a-zA-Z_][a-zA-Z0-9_]*"
-    },
-    "AnalyticsEnvironmentMap":{
-      "type":"map",
-      "key":{"shape":"AnalyticsEnvironmentKey"},
-      "value":{"shape":"AnalyticsEnvironmentValue"},
-      "max":100
-    },
-    "AnalyticsEnvironmentValue":{
-      "type":"string",
-      "max":256,
-      "pattern":"[\\S\\s]*"
-    },
-    "AnalyticsInput":{
-      "type":"structure",
-      "required":[
-        "InputName",
-        "S3Input"
-      ],
-      "members":{
-        "InputName":{"shape":"String"},
-        "S3Input":{"shape":"AnalyticsS3Input"}
-      }
-    },
-    "AnalyticsInputs":{
-      "type":"list",
-      "member":{"shape":"AnalyticsInput"},
-      "max":10,
-      "min":0
-    },
-    "AnalyticsInstanceCount":{
-      "type":"integer",
-      "max":100,
-      "min":1
-    },
-    "AnalyticsInstanceType":{
-      "type":"string",
-      "enum":[
-        "ml.t3.medium",
-        "ml.t3.large",
-        "ml.t3.xlarge",
-        "ml.t3.2xlarge",
-        "ml.m4.xlarge",
-        "ml.m4.2xlarge",
-        "ml.m4.4xlarge",
-        "ml.m4.10xlarge",
-        "ml.m4.16xlarge",
-        "ml.c4.xlarge",
-        "ml.c4.2xlarge",
-        "ml.c4.4xlarge",
-        "ml.c4.8xlarge",
-        "ml.p2.xlarge",
-        "ml.p2.8xlarge",
-        "ml.p2.16xlarge",
-        "ml.p3.2xlarge",
-        "ml.p3.8xlarge",
-        "ml.p3.16xlarge",
-        "ml.c5.xlarge",
-        "ml.c5.2xlarge",
-        "ml.c5.4xlarge",
-        "ml.c5.9xlarge",
-        "ml.c5.18xlarge",
-        "ml.m5.large",
-        "ml.m5.xlarge",
-        "ml.m5.2xlarge",
-        "ml.m5.4xlarge",
-        "ml.m5.12xlarge",
-        "ml.m5.24xlarge",
-        "ml.r5.large",
-        "ml.r5.xlarge",
-        "ml.r5.2xlarge",
-        "ml.r5.4xlarge",
-        "ml.r5.12xlarge",
-        "ml.r5.24xlarge"
-      ]
-    },
-    "AnalyticsJobArn":{
-      "type":"string",
-      "max":256,
-      "pattern":"arn:aws[a-z\\-]*:sagemaker:[a-z0-9\\-]*:[0-9]{12}:analytics-job/.*"
-    },
-    "AnalyticsJobName":{
-      "type":"string",
-      "max":63,
-      "min":1,
-      "pattern":"^[a-zA-Z0-9](-*[a-zA-Z0-9])*"
-    },
-    "AnalyticsJobStatus":{
-      "type":"string",
-      "enum":[
-        "InProgress",
-        "Completed",
-        "Failed",
-        "Stopping",
-        "Stopped"
-      ]
-    },
-    "AnalyticsJobSummaries":{
-      "type":"list",
-      "member":{"shape":"AnalyticsJobSummary"}
-    },
-    "AnalyticsJobSummary":{
-      "type":"structure",
-      "required":[
-        "AnalyticsJobName",
-        "AnalyticsJobArn",
-        "CreationTime",
-        "AnalyticsJobStatus"
-      ],
-      "members":{
-        "AnalyticsJobName":{"shape":"AnalyticsJobName"},
-        "AnalyticsJobArn":{"shape":"AnalyticsJobArn"},
-        "CreationTime":{"shape":"Timestamp"},
-        "AnalyticsEndTime":{"shape":"Timestamp"},
-        "LastModifiedTime":{"shape":"Timestamp"},
-        "AnalyticsJobStatus":{"shape":"AnalyticsJobStatus"},
-        "FailureReason":{"shape":"FailureReason"},
-        "ExitMessage":{"shape":"ExitMessage"}
-      }
-    },
-    "AnalyticsLocalPath":{
-      "type":"string",
-      "max":256,
-      "pattern":".*"
-    },
-    "AnalyticsMaxRuntimeInSeconds":{
-      "type":"integer",
-      "max":604800,
-      "min":1
-    },
-    "AnalyticsOutput":{
-      "type":"structure",
-      "required":[
-        "OutputName",
-        "S3Output"
-      ],
-      "members":{
-        "OutputName":{"shape":"String"},
-        "S3Output":{"shape":"AnalyticsS3Output"}
-      }
-    },
-    "AnalyticsOutputs":{
-      "type":"list",
-      "member":{"shape":"AnalyticsOutput"},
-      "max":10,
-      "min":0
-    },
-    "AnalyticsResources":{
-      "type":"structure",
-      "required":["ClusterConfig"],
-      "members":{
-        "ClusterConfig":{"shape":"AnalyticsClusterConfig"}
-      }
-    },
-    "AnalyticsS3CompressionType":{
-      "type":"string",
-      "enum":[
-        "None",
-        "Gzip"
-      ]
-    },
-    "AnalyticsS3DataDistributionType":{
-      "type":"string",
-      "enum":[
-        "FullyReplicated",
-        "ShardedByS3Key"
-      ]
-    },
-    "AnalyticsS3DataType":{
-      "type":"string",
-      "enum":[
-        "ManifestFile",
-        "S3Prefix"
-      ]
-    },
-    "AnalyticsS3DownloadMode":{
-      "type":"string",
-      "enum":[
-        "Continuous",
-        "StartOfJob"
-      ]
-    },
-    "AnalyticsS3Input":{
-      "type":"structure",
-      "required":[
-        "S3Uri",
-        "LocalPath",
-        "S3DataType",
-        "S3InputMode",
-        "S3DownloadMode",
-        "S3DataDistributionType"
-      ],
-      "members":{
-        "S3Uri":{"shape":"S3Uri"},
-        "LocalPath":{"shape":"AnalyticsLocalPath"},
-        "S3DataType":{"shape":"AnalyticsS3DataType"},
-        "S3InputMode":{"shape":"AnalyticsS3InputMode"},
-        "S3DownloadMode":{"shape":"AnalyticsS3DownloadMode"},
-        "S3DataDistributionType":{"shape":"AnalyticsS3DataDistributionType"},
-        "S3CompressionType":{"shape":"AnalyticsS3CompressionType"}
-      }
-    },
-    "AnalyticsS3InputMode":{
-      "type":"string",
-      "enum":[
-        "Pipe",
-        "File"
-      ]
-    },
-    "AnalyticsS3Output":{
-      "type":"structure",
-      "required":[
-        "S3Uri",
-        "LocalPath",
-        "S3UploadMode"
-      ],
-      "members":{
-        "S3Uri":{"shape":"S3Uri"},
-        "LocalPath":{"shape":"AnalyticsLocalPath"},
-        "KmsKeyId":{"shape":"KmsKeyId"},
-        "S3UploadMode":{"shape":"AnalyticsS3UploadMode"}
-      }
-    },
-    "AnalyticsS3UploadMode":{
-      "type":"string",
-      "enum":[
-        "Continuous",
-        "EndOfJob"
-      ]
-    },
-    "AnalyticsStateMachineArnProviderLambdaArn":{
-      "type":"string",
-      "max":512,
-      "min":0,
-      "pattern":".*"
-    },
-    "AnalyticsStoppingCondition":{
-      "type":"structure",
-      "required":["MaxRuntimeInSeconds"],
-      "members":{
-        "MaxRuntimeInSeconds":{"shape":"AnalyticsMaxRuntimeInSeconds"}
-      }
-    },
-    "AnalyticsUpstreamS3Output":{
-      "type":"structure",
-      "required":[
-        "S3Uri",
-        "LocalPath",
-        "S3UploadMode"
-      ],
-      "members":{
-        "S3Uri":{"shape":"S3Uri"},
-        "LocalPath":{"shape":"AnalyticsLocalPath"},
-        "KmsKeyId":{"shape":"KmsKeyId"},
-        "S3UploadMode":{"shape":"AnalyticsS3UploadMode"},
-        "RoleArn":{"shape":"RoleArn"}
-      }
-    },
-    "AnalyticsVolumeSizeInGB":{
-      "type":"integer",
-      "max":16384,
-      "min":1
-    },
     "AnnotationConsolidationConfig":{
       "type":"structure",
       "required":["AnnotationConsolidationLambdaArn"],
@@ -2349,19 +1947,58 @@
         "AnnotationConsolidationLambdaArn":{"shape":"LambdaFunctionArn"}
       }
     },
+    "AppArn":{
+      "type":"string",
+      "max":256,
+      "pattern":"arn:aws[a-z\\-]*:sagemaker:[a-z0-9\\-]*:[0-9]{12}:app/.*"
+    },
     "AppDetails":{
       "type":"structure",
       "members":{
         "DomainId":{"shape":"ResourceId"},
-        "IdentityId":{"shape":"IdentityId"},
+        "UserProfileName":{"shape":"UserProfileName"},
         "AppType":{"shape":"AppType"},
         "AppName":{"shape":"AppName"},
         "Status":{"shape":"AppStatus"},
-        "ResourceSpec":{"shape":"ResourceSpec"},
-        "EffectiveResourceSpec":{"shape":"ResourceSpec"},
-        "LastHealthCheckTimestamp":{"shape":"Timestamp"},
-        "LastUserActivityTimestamp":{"shape":"Timestamp"}
+        "CreationTime":{"shape":"CreationTime"}
       }
+    },
+    "AppInstanceType":{
+      "type":"string",
+      "enum":[
+        "system",
+        "ml.t3.micro",
+        "ml.t3.small",
+        "ml.t3.medium",
+        "ml.t3.large",
+        "ml.t3.xlarge",
+        "ml.t3.2xlarge",
+        "ml.m5.large",
+        "ml.m5.xlarge",
+        "ml.m5.2xlarge",
+        "ml.m5.4xlarge",
+        "ml.m5.8xlarge",
+        "ml.m5.12xlarge",
+        "ml.m5.16xlarge",
+        "ml.m5.24xlarge",
+        "ml.c5.large",
+        "ml.c5.xlarge",
+        "ml.c5.2xlarge",
+        "ml.c5.4xlarge",
+        "ml.c5.9xlarge",
+        "ml.c5.12xlarge",
+        "ml.c5.18xlarge",
+        "ml.c5.24xlarge",
+        "ml.p3.2xlarge",
+        "ml.p3.8xlarge",
+        "ml.p3.16xlarge",
+        "ml.g4dn.xlarge",
+        "ml.g4dn.2xlarge",
+        "ml.g4dn.4xlarge",
+        "ml.g4dn.8xlarge",
+        "ml.g4dn.12xlarge",
+        "ml.g4dn.16xlarge"
+      ]
     },
     "AppList":{
       "type":"list",
@@ -2369,25 +2006,12 @@
     },
     "AppName":{
       "type":"string",
-      "max":256
-    },
-    "AppSettings":{
-      "type":"structure",
-      "members":{
-        "JupyterServer":{"shape":"DefaultResourceManagerSpec"},
-        "KernelGateway":{"shape":"DefaultResourceManagerSpec"},
-        "TensorBoard":{"shape":"DefaultResourceManagerSpec"}
-      }
+      "max":63,
+      "pattern":"^[a-zA-Z0-9](-*[a-zA-Z0-9])*"
     },
     "AppSortKey":{
       "type":"string",
-      "enum":[
-        "LastUserActivityTime",
-        "AppType",
-        "AppName",
-        "AppStatus",
-        "DomainId"
-      ]
+      "enum":["CreationTime"]
     },
     "AppSpecification":{
       "type":"structure",
@@ -2401,6 +2025,7 @@
     "AppStatus":{
       "type":"string",
       "enum":[
+        "Deleted",
         "Deleting",
         "Failed",
         "InService",
@@ -2412,7 +2037,7 @@
       "enum":[
         "JupyterServer",
         "KernelGateway",
-        "RStudio"
+        "TensorBoard"
       ]
     },
     "ArnOrName":{
@@ -2468,42 +2093,57 @@
         "IAM"
       ]
     },
-    "AutoMLAlgorithm":{
-      "type":"string",
-      "enum":[
-        "linear-learner",
-        "factorization-machines",
-        "xgboost",
-        "knn"
-      ]
+    "AutoMLCandidate":{
+      "type":"structure",
+      "required":[
+        "CandidateName",
+        "ObjectiveStatus",
+        "CandidateSteps",
+        "CandidateStatus",
+        "CreationTime",
+        "LastModifiedTime"
+      ],
+      "members":{
+        "CandidateName":{"shape":"CandidateName"},
+        "FinalAutoMLJobObjectiveMetric":{"shape":"FinalAutoMLJobObjectiveMetric"},
+        "ObjectiveStatus":{"shape":"ObjectiveStatus"},
+        "CandidateSteps":{"shape":"CandidateSteps"},
+        "CandidateStatus":{"shape":"CandidateStatus"},
+        "InferenceContainers":{"shape":"AutoMLContainerDefinitions"},
+        "CreationTime":{"shape":"Timestamp"},
+        "EndTime":{"shape":"Timestamp"},
+        "LastModifiedTime":{"shape":"Timestamp"},
+        "FailureReason":{"shape":"AutoMLFailureReason"}
+      }
     },
-    "AutoMLAlgorithms":{
+    "AutoMLCandidateStep":{
+      "type":"structure",
+      "required":[
+        "CandidateStepType",
+        "CandidateStepArn",
+        "CandidateStepName"
+      ],
+      "members":{
+        "CandidateStepType":{"shape":"CandidateStepType"},
+        "CandidateStepArn":{"shape":"CandidateStepArn"},
+        "CandidateStepName":{"shape":"CandidateStepName"}
+      }
+    },
+    "AutoMLCandidates":{
       "type":"list",
-      "member":{"shape":"AutoMLAlgorithm"}
+      "member":{"shape":"AutoMLCandidate"}
     },
     "AutoMLChannel":{
       "type":"structure",
       "required":[
-        "ChannelName",
         "DataSource",
         "TargetAttributeName"
       ],
       "members":{
-        "ChannelName":{"shape":"AutoMLChannelName"},
-        "DataSource":{"shape":"DataSource"},
-        "ContentType":{"shape":"AutoMLContentType"},
+        "DataSource":{"shape":"AutoMLDataSource"},
         "CompressionType":{"shape":"CompressionType"},
-        "RecordWrapperType":{"shape":"AutoMLRecordWrapper"},
-        "InputMode":{"shape":"AutoMLTrainingInputMode"},
-        "ShuffleConfig":{"shape":"ShuffleConfig"},
         "TargetAttributeName":{"shape":"TargetAttributeName"}
       }
-    },
-    "AutoMLChannelName":{
-      "type":"string",
-      "max":64,
-      "min":1,
-      "pattern":"[A-Za-z0-9\\.\\-_]+"
     },
     "AutoMLContainerDefinition":{
       "type":"structure",
@@ -2522,14 +2162,33 @@
       "member":{"shape":"AutoMLContainerDefinition"},
       "max":5
     },
-    "AutoMLContentType":{
-      "type":"string",
-      "max":256,
-      "pattern":".*"
+    "AutoMLDataSource":{
+      "type":"structure",
+      "required":["S3DataSource"],
+      "members":{
+        "S3DataSource":{"shape":"AutoMLS3DataSource"},
+        "FileSystemDataSource":{"shape":"AutoMLFileSystemDataSource"}
+      }
     },
     "AutoMLFailureReason":{
       "type":"string",
       "max":1024
+    },
+    "AutoMLFileSystemDataSource":{
+      "type":"structure",
+      "required":[
+        "FileSystemId",
+        "FileSystemAccessMode",
+        "FileSystemType",
+        "DirectoryPath"
+      ],
+      "members":{
+        "FileSystemId":{"shape":"FileSystemId"},
+        "FileSystemAccessMode":{"shape":"FileSystemAccessMode"},
+        "FileSystemType":{"shape":"FileSystemType"},
+        "DirectoryPath":{"shape":"DirectoryPath"}
+      },
+      "internalonly":true
     },
     "AutoMLInputDataConfig":{
       "type":"list",
@@ -2537,54 +2196,33 @@
       "max":20,
       "min":1
     },
-    "AutoMLInstanceType":{
-      "type":"string",
-      "enum":[
-        "ml.m5.xlarge",
-        "ml.m5.2xlarge",
-        "ml.m5.4xlarge",
-        "ml.m5.12xlarge",
-        "ml.m5.24xlarge"
-      ]
-    },
     "AutoMLJobArn":{
       "type":"string",
-      "max":256
+      "max":256,
+      "min":1,
+      "pattern":"arn:aws[a-z\\-]*:sagemaker:[a-z0-9\\-]*:[0-9]{12}:automl-job/.*"
     },
     "AutoMLJobArtifacts":{
       "type":"structure",
       "members":{
-        "EnsembledModelLocation":{"shape":"EnsembledModelLocation"},
-        "AutoMLJobSummaryNotebookLocation":{"shape":"AutoMLJobSummaryNotebookLocation"},
-        "DryRunNotebookLocation":{"shape":"DryRunNotebookLocation"},
-        "BestEnsembleNotebook":{"shape":"BestEnsembleNotebook"},
-        "BestTrialNotebookLocation":{"shape":"BestTrialNotebookLocation"},
-        "ResultVisualizationNotebookLocation":{"shape":"ResultVisualizationNotebookLocation"},
-        "InterpretedModelLocation":{"shape":"InterpretedModelLocation"}
+        "CandidateDefinitionNotebookLocation":{"shape":"CandidateDefinitionNotebookLocation"},
+        "DataExplorationNotebookLocation":{"shape":"DataExplorationNotebookLocation"}
+      }
+    },
+    "AutoMLJobCompletionCriteria":{
+      "type":"structure",
+      "members":{
+        "MaxCandidates":{"shape":"MaxCandidates"},
+        "MaxRuntimePerTrainingJobInSeconds":{"shape":"MaxRuntimePerTrainingJobInSeconds"},
+        "MaxAutoMLJobRuntimeInSeconds":{"shape":"MaxAutoMLJobRuntimeInSeconds"}
       }
     },
     "AutoMLJobConfig":{
       "type":"structure",
-      "required":[
-        "AutoMLResourcePools",
-        "StoppingCondition"
-      ],
       "members":{
-        "AutoMLResourcePools":{"shape":"AutoMLResourcePools"},
-        "VolumeKmsKeyId":{"shape":"KmsKeyId"},
-        "StoppingCondition":{"shape":"AutoMLJobStoppingCondition"},
-        "SecurityConfig":{"shape":"AutoMLSecurityConfig"},
-        "BlacklistedSageMakerAlgorithms":{"shape":"AutoMLAlgorithms"}
+        "CompletionCriteria":{"shape":"AutoMLJobCompletionCriteria"},
+        "SecurityConfig":{"shape":"AutoMLSecurityConfig"}
       }
-    },
-    "AutoMLJobCounter":{
-      "type":"integer",
-      "min":0
-    },
-    "AutoMLJobDescription":{
-      "type":"string",
-      "max":3072,
-      "min":0
     },
     "AutoMLJobName":{
       "type":"string",
@@ -2594,9 +2232,9 @@
     },
     "AutoMLJobObjective":{
       "type":"structure",
+      "required":["MetricName"],
       "members":{
-        "Type":{"shape":"AutoMLJobObjectiveType"},
-        "MetricName":{"shape":"MetricName"}
+        "MetricName":{"shape":"AutoMLMetricEnum"}
       }
     },
     "AutoMLJobObjectiveType":{
@@ -2614,11 +2252,11 @@
         "FeatureEngineering",
         "ModelTuning",
         "MaxCandidatesReached",
-        "TargetObjectiveReached",
         "Failed",
         "Stopped",
         "MaxAutoMLJobRuntimeReached",
-        "Stopping"
+        "Stopping",
+        "CandidateDefinitionsGenerated"
       ]
     },
     "AutoMLJobStatus":{
@@ -2631,15 +2269,6 @@
         "Stopping"
       ]
     },
-    "AutoMLJobStoppingCondition":{
-      "type":"structure",
-      "members":{
-        "MaxTrials":{"shape":"MaxTrials"},
-        "MaxRuntimePerTrainingJobInSeconds":{"shape":"MaxRuntimePerTrainingJobInSeconds"},
-        "TargetObjective":{"shape":"TargetObjective"},
-        "MaxWaitTimeInSeconds":{"shape":"AutoMLMaxWaitTimeInSeconds"}
-      }
-    },
     "AutoMLJobSummaries":{
       "type":"list",
       "member":{"shape":"AutoMLJobSummary"}
@@ -2649,37 +2278,35 @@
       "required":[
         "AutoMLJobName",
         "AutoMLJobArn",
-        "AutoMLResourcePools",
         "AutoMLJobStatus",
         "AutoMLJobSecondaryStatus",
-        "TrialStatusCounters",
-        "ObjectiveStatusCounters",
-        "JobCreationTime",
-        "JobLastModifiedTime"
+        "CreationTime",
+        "LastModifiedTime"
       ],
       "members":{
         "AutoMLJobName":{"shape":"AutoMLJobName"},
         "AutoMLJobArn":{"shape":"AutoMLJobArn"},
-        "AutoMLResourcePools":{"shape":"AutoMLResourcePools"},
         "AutoMLJobStatus":{"shape":"AutoMLJobStatus"},
         "AutoMLJobSecondaryStatus":{"shape":"AutoMLJobSecondaryStatus"},
-        "TrialStatusCounters":{"shape":"TrialStatusCounters"},
-        "ObjectiveStatusCounters":{"shape":"ObjectiveStatusCounters"},
-        "JobCreationTime":{"shape":"Timestamp"},
-        "JobEndTime":{"shape":"Timestamp"},
-        "JobLastModifiedTime":{"shape":"Timestamp"},
+        "CreationTime":{"shape":"Timestamp"},
+        "EndTime":{"shape":"Timestamp"},
+        "LastModifiedTime":{"shape":"Timestamp"},
         "FailureReason":{"shape":"AutoMLFailureReason"}
       }
     },
-    "AutoMLJobSummaryNotebookLocation":{"type":"string"},
     "AutoMLMaxResults":{
       "type":"integer",
       "max":100,
       "min":1
     },
-    "AutoMLMaxWaitTimeInSeconds":{
-      "type":"integer",
-      "min":1
+    "AutoMLMetricEnum":{
+      "type":"string",
+      "enum":[
+        "Accuracy",
+        "MSE",
+        "F1",
+        "F1macro"
+      ]
     },
     "AutoMLNameContains":{
       "type":"string",
@@ -2691,42 +2318,32 @@
       "required":["S3OutputPath"],
       "members":{
         "KmsKeyId":{"shape":"KmsKeyId"},
-        "S3OutputPath":{"shape":"S3Uri"},
-        "RemoveJobNameFromS3OutputPath":{
-          "shape":"AutoMLRemoveJobNameFromS3OutputPath",
-          "internalonly":true
-        }
+        "S3OutputPath":{"shape":"S3Uri"}
       }
     },
-    "AutoMLRecordWrapper":{
-      "type":"string",
-      "enum":[
-        "None",
-        "RecordIO"
-      ]
-    },
-    "AutoMLRemoveJobNameFromS3OutputPath":{"type":"boolean"},
-    "AutoMLResourcePool":{
+    "AutoMLS3DataSource":{
       "type":"structure",
       "required":[
-        "InstanceType",
-        "PoolSize"
+        "S3DataType",
+        "S3Uri"
       ],
       "members":{
-        "InstanceType":{"shape":"AutoMLInstanceType"},
-        "PoolSize":{"shape":"PoolSize"}
+        "S3DataType":{"shape":"AutoMLS3DataType"},
+        "S3Uri":{"shape":"S3Uri"}
       }
     },
-    "AutoMLResourcePools":{
-      "type":"list",
-      "member":{"shape":"AutoMLResourcePool"},
-      "min":1
+    "AutoMLS3DataType":{
+      "type":"string",
+      "enum":[
+        "ManifestFile",
+        "S3Prefix"
+      ]
     },
     "AutoMLSecurityConfig":{
       "type":"structure",
       "members":{
+        "VolumeKmsKeyId":{"shape":"KmsKeyId"},
         "EnableInterContainerTrafficEncryption":{"shape":"Boolean"},
-        "EnableNetworkIsolation":{"shape":"Boolean"},
         "VpcConfig":{"shape":"VpcConfig"}
       }
     },
@@ -2745,64 +2362,11 @@
         "Descending"
       ]
     },
-    "AutoMLTrainingInputMode":{
-      "type":"string",
-      "enum":[
-        "Pipe",
-        "File"
-      ]
-    },
-    "AutoMLTrialStep":{
-      "type":"structure",
-      "required":[
-        "TrialStepType",
-        "TrialStepArn"
-      ],
-      "members":{
-        "TrialStepType":{"shape":"TrialStepType"},
-        "TrialStepArn":{"shape":"TrialStepArn"}
-      }
-    },
-    "AutoMLTrialSteps":{
-      "type":"list",
-      "member":{"shape":"AutoMLTrialStep"}
-    },
-    "AutoMLTrialSummaries":{
-      "type":"list",
-      "member":{"shape":"AutoMLTrialSummary"}
-    },
-    "AutoMLTrialSummary":{
-      "type":"structure",
-      "required":[
-        "TrialIdentifier",
-        "ObjectiveStatus",
-        "TrialSteps",
-        "TrialStatus",
-        "TrialSecondaryStatus",
-        "TrialCreationTime",
-        "LastModifiedTime",
-        "TrialDescription"
-      ],
-      "members":{
-        "TrialIdentifier":{"shape":"TrialIdentifier"},
-        "FinalAutoMLJobObjectiveMetric":{"shape":"FinalAutoMLJobObjectiveMetric"},
-        "ObjectiveStatus":{"shape":"ObjectiveStatus"},
-        "TrialSteps":{"shape":"AutoMLTrialSteps"},
-        "TrialStatus":{"shape":"TrialStatus"},
-        "TrialSecondaryStatus":{"shape":"TrialSecondaryStatus"},
-        "TrialCreationTime":{"shape":"Timestamp"},
-        "TrialEndTime":{"shape":"Timestamp"},
-        "LastModifiedTime":{"shape":"Timestamp"},
-        "FailureReason":{"shape":"AutoMLFailureReason"},
-        "TrialDescription":{"shape":"TrialDescription"},
-        "InferenceContainers":{"shape":"AutoMLContainerDefinitions"}
-      }
-    },
     "AwsManagedHumanLoopRequestSource":{
       "type":"string",
       "enum":[
-        "AWS/Rekognition/Image/ContentModeration/V3",
-        "AWS/Textract/DocumentAnalysis/KeyValueExtraction"
+        "AWS/Rekognition/DetectModerationLabels/Image/V3",
+        "AWS/Textract/AnalyzeDocument/Forms/V1"
       ]
     },
     "BatchGetMetricsRequest":{
@@ -2861,8 +2425,6 @@
         "SingleRecord"
       ]
     },
-    "BestEnsembleNotebook":{"type":"string"},
-    "BestTrialNotebookLocation":{"type":"string"},
     "BillableTimeInSeconds":{
       "type":"integer",
       "min":1
@@ -2887,6 +2449,56 @@
       "max":1024,
       "min":1,
       "pattern":"[^ ~^:?*\\[]+"
+    },
+    "CandidateDefinitionNotebookLocation":{
+      "type":"string",
+      "min":1
+    },
+    "CandidateName":{
+      "type":"string",
+      "max":64,
+      "min":1
+    },
+    "CandidateSortBy":{
+      "type":"string",
+      "enum":[
+        "CreationTime",
+        "Status",
+        "FinalObjectiveMetricValue"
+      ]
+    },
+    "CandidateStatus":{
+      "type":"string",
+      "enum":[
+        "Completed",
+        "InProgress",
+        "Failed",
+        "Stopped",
+        "Stopping"
+      ]
+    },
+    "CandidateStepArn":{
+      "type":"string",
+      "max":256,
+      "min":1,
+      "pattern":"arn:aws[a-z\\-]*:sagemaker:[a-z0-9\\-]*:[0-9]{12}:.*/.*"
+    },
+    "CandidateStepName":{
+      "type":"string",
+      "max":64,
+      "min":1
+    },
+    "CandidateStepType":{
+      "type":"string",
+      "enum":[
+        "AWS::SageMaker::TrainingJob",
+        "AWS::SageMaker::TransformJob",
+        "AWS::SageMaker::ProcessingJob"
+      ]
+    },
+    "CandidateSteps":{
+      "type":"list",
+      "member":{"shape":"AutoMLCandidateStep"}
     },
     "CaptureContentTypeHeader":{
       "type":"structure",
@@ -3016,8 +2628,9 @@
     },
     "ClientToken":{
       "type":"string",
-      "max":8192,
-      "pattern":".*"
+      "max":36,
+      "min":1,
+      "pattern":"^[a-zA-Z0-9-]+$"
     },
     "CodeRepositoryArn":{
       "type":"string",
@@ -3177,9 +2790,22 @@
       "type":"long",
       "min":0
     },
-    "ComponentJobArn":{"type":"string"},
-    "ComponentJobDescription":{"type":"string"},
-    "ComponentJobName":{"type":"string"},
+    "ComponentJobArn":{
+      "type":"string",
+      "max":256,
+      "min":1,
+      "pattern":"arn:aws[a-z\\-]*:sagemaker:[a-z0-9\\-]*:[0-9]{12}:.*/.*"
+    },
+    "ComponentJobDescription":{
+      "type":"string",
+      "max":3072,
+      "min":0
+    },
+    "ComponentJobName":{
+      "type":"string",
+      "max":64,
+      "min":1
+    },
     "ComponentJobStatus":{
       "type":"string",
       "enum":[
@@ -3187,6 +2813,7 @@
         "Pending",
         "InProgress",
         "Failed",
+        "Stopping",
         "Stopped"
       ]
     },
@@ -3196,26 +2823,15 @@
     },
     "ComponentJobSummary":{
       "type":"structure",
-      "required":[
-        "AutoMLJobName",
-        "AutoMLJobArn",
-        "LastModifiedTime",
-        "Status",
-        "CreationTime",
-        "JobType",
-        "JobName",
-        "JobArn",
-        "Description"
-      ],
       "members":{
         "AutoMLJobName":{"shape":"AutoMLJobName"},
         "AutoMLJobArn":{"shape":"AutoMLJobArn"},
         "LastModifiedTime":{"shape":"Timestamp"},
         "Status":{"shape":"ComponentJobStatus"},
         "CreationTime":{"shape":"Timestamp"},
-        "JobType":{"shape":"ComponentJobType"},
-        "JobName":{"shape":"ComponentJobName"},
-        "JobArn":{"shape":"ComponentJobArn"},
+        "ComponentJobType":{"shape":"ComponentJobType"},
+        "ComponentJobName":{"shape":"ComponentJobName"},
+        "ComponentJobArn":{"shape":"ComponentJobArn"},
         "EndTime":{"shape":"Timestamp"},
         "FailureReason":{"shape":"AutoMLFailureReason"},
         "Description":{"shape":"ComponentJobDescription"}
@@ -3226,7 +2842,8 @@
       "enum":[
         "AWS::Sagemaker::Training",
         "AWS::SageMaker::HyperParameterTuning",
-        "AWS::SageMaker::Transform"
+        "AWS::SageMaker::Transform",
+        "AWS::SageMaker::Processing"
       ]
     },
     "CompressionType":{
@@ -3250,6 +2867,13 @@
       "type":"string",
       "max":256,
       "pattern":".*"
+    },
+    "ConflictException":{
+      "type":"structure",
+      "members":{
+        "Message":{"shape":"FailureReason"}
+      },
+      "exception":true
     },
     "ContainerArgument":{
       "type":"string",
@@ -3306,7 +2930,8 @@
     },
     "Content":{
       "type":"string",
-      "max":16384
+      "max":16384,
+      "pattern":"[\\S\\s]+"
     },
     "ContentClassifier":{
       "type":"string",
@@ -3386,120 +3011,27 @@
         "AlgorithmArn":{"shape":"AlgorithmArn"}
       }
     },
-    "CreateAnalyticsJobInternalRequest":{
-      "type":"structure",
-      "required":[
-        "AnalyticsJobName",
-        "AnalyticsResources",
-        "StoppingCondition",
-        "AppSpecification",
-        "RoleArn",
-        "CustomerDetails"
-      ],
-      "members":{
-        "AnalyticsInputs":{"shape":"AnalyticsInputs"},
-        "AnalyticsOutputs":{"shape":"AnalyticsOutputs"},
-        "AnalyticsJobName":{"shape":"AnalyticsJobName"},
-        "AnalyticsResources":{"shape":"AnalyticsResources"},
-        "StoppingCondition":{"shape":"AnalyticsStoppingCondition"},
-        "AppSpecification":{"shape":"AppSpecification"},
-        "Environment":{"shape":"AnalyticsEnvironmentMap"},
-        "NetworkConfig":{"shape":"NetworkConfig"},
-        "RoleArn":{"shape":"RoleArn"},
-        "Tags":{"shape":"TagList"},
-        "CustomerDetails":{"shape":"CustomerDetails"},
-        "UpstreamAnalyticsOutputs":{"shape":"UpstreamAnalyticsOutputs"},
-        "MonitoringScheduleArn":{"shape":"MonitoringScheduleArn"},
-        "AutoMLJobArn":{"shape":"AutoMLJobArn"},
-        "TrainingJobArn":{"shape":"TrainingJobArn"},
-        "StateMachineArnProviderLambdaArn":{"shape":"AnalyticsStateMachineArnProviderLambdaArn"},
-        "FasCredentials":{"shape":"FasCredentials"},
-        "PlatformCredentialToken":{"shape":"ProxyToken"},
-        "CustomerCredentialToken":{"shape":"ProxyToken"},
-        "CredentialProviderFunction":{"shape":"CredentialProviderLambdaFunctionArn"},
-        "CredentialProviderEncryptionKey":{"shape":"KmsKeyId"},
-        "ExperimentConfig":{"shape":"ExperimentConfig"}
-      }
-    },
-    "CreateAnalyticsJobInternalResponse":{
-      "type":"structure",
-      "members":{
-        "AnalyticsJobResponse":{"shape":"CreateAnalyticsJobResponse"}
-      }
-    },
-    "CreateAnalyticsJobRequest":{
-      "type":"structure",
-      "required":[
-        "AnalyticsJobName",
-        "AnalyticsResources",
-        "StoppingCondition",
-        "AppSpecification",
-        "RoleArn"
-      ],
-      "members":{
-        "AnalyticsInputs":{"shape":"AnalyticsInputs"},
-        "AnalyticsOutputs":{"shape":"AnalyticsOutputs"},
-        "AnalyticsJobName":{"shape":"AnalyticsJobName"},
-        "AnalyticsResources":{"shape":"AnalyticsResources"},
-        "StoppingCondition":{"shape":"AnalyticsStoppingCondition"},
-        "AppSpecification":{"shape":"AppSpecification"},
-        "Environment":{"shape":"AnalyticsEnvironmentMap"},
-        "NetworkConfig":{"shape":"NetworkConfig"},
-        "RoleArn":{"shape":"RoleArn"},
-        "Tags":{"shape":"TagList"},
-        "ExperimentConfig":{
-          "shape":"ExperimentConfig",
-          "internalonly":true
-        },
-        "UpstreamAnalyticsOutputs":{
-          "shape":"UpstreamAnalyticsOutputs",
-          "internalonly":true
-        },
-        "PlatformCredentialToken":{
-          "shape":"ProxyToken",
-          "internalonly":true
-        },
-        "CustomerCredentialToken":{
-          "shape":"ProxyToken",
-          "internalonly":true
-        },
-        "CredentialProviderFunction":{
-          "shape":"CredentialProviderLambdaFunctionArn",
-          "internalonly":true
-        },
-        "CredentialProviderEncryptionKey":{
-          "shape":"KmsKeyId",
-          "internalonly":true
-        }
-      }
-    },
-    "CreateAnalyticsJobResponse":{
-      "type":"structure",
-      "required":["AnalyticsJobArn"],
-      "members":{
-        "AnalyticsJobArn":{"shape":"AnalyticsJobArn"}
-      }
-    },
     "CreateAppRequest":{
       "type":"structure",
       "required":[
         "DomainId",
-        "IdentityId",
+        "UserProfileName",
         "AppType",
         "AppName"
       ],
       "members":{
         "DomainId":{"shape":"ResourceId"},
-        "IdentityId":{"shape":"IdentityId"},
+        "UserProfileName":{"shape":"UserProfileName"},
         "AppType":{"shape":"AppType"},
         "AppName":{"shape":"AppName"},
+        "Tags":{"shape":"TagList"},
         "ResourceSpec":{"shape":"ResourceSpec"}
       }
     },
     "CreateAppResponse":{
       "type":"structure",
       "members":{
-        "AppArn":{"shape":"String256"}
+        "AppArn":{"shape":"AppArn"}
       }
     },
     "CreateAutoMLJobRequest":{
@@ -3508,7 +3040,6 @@
         "AutoMLJobName",
         "InputDataConfig",
         "OutputDataConfig",
-        "JobConfig",
         "RoleArn"
       ],
       "members":{
@@ -3516,12 +3047,11 @@
         "InputDataConfig":{"shape":"AutoMLInputDataConfig"},
         "OutputDataConfig":{"shape":"AutoMLOutputDataConfig"},
         "ProblemType":{"shape":"ProblemType"},
-        "JobObjective":{"shape":"AutoMLJobObjective"},
-        "JobConfig":{"shape":"AutoMLJobConfig"},
+        "AutoMLJobObjective":{"shape":"AutoMLJobObjective"},
+        "AutoMLJobConfig":{"shape":"AutoMLJobConfig"},
         "RoleArn":{"shape":"RoleArn"},
-        "DryRun":{"shape":"DryRun"},
+        "GenerateCandidateDefinitionsOnly":{"shape":"GenerateCandidateDefinitionsOnly"},
         "Tags":{"shape":"TagList"},
-        "Description":{"shape":"AutoMLJobDescription"},
         "ImageUrlOverrides":{
           "shape":"ImageUrlOverrides",
           "internalonly":true
@@ -3615,24 +3145,31 @@
     "CreateDomainRequest":{
       "type":"structure",
       "required":[
+        "DomainName",
         "AuthMode",
-        "DefaultSettings",
+        "DefaultUserSettings",
         "SubnetIds",
         "VpcId"
       ],
       "members":{
+        "DomainName":{"shape":"DomainName"},
         "AuthMode":{"shape":"AuthMode"},
-        "DefaultSettings":{"shape":"UserSettings"},
-        "DomainPolicy":{"shape":"String2048"},
-        "KmsKeyId":{"shape":"KmsKeyId"},
+        "DefaultUserSettings":{"shape":"UserSettings"},
         "SubnetIds":{"shape":"Subnets"},
-        "VpcId":{"shape":"VpcId"}
+        "VpcId":{"shape":"VpcId"},
+        "Tags":{"shape":"TagList"},
+        "DomainPolicy":{
+          "shape":"String2048",
+          "internalonly":true
+        },
+        "EnableNetworkIsolation":{"shape":"Boolean"},
+        "HomeEfsFileSystemKmsKeyId":{"shape":"KmsKeyId"}
       }
     },
     "CreateDomainResponse":{
       "type":"structure",
       "members":{
-        "DomainArn":{"shape":"String256"},
+        "DomainArn":{"shape":"DomainArn"},
         "Url":{"shape":"String1024"}
       }
     },
@@ -3691,14 +3228,6 @@
         "RoleArn":{"shape":"RoleArn"},
         "EnableNetworkIsolation":{"shape":"EnableNetworkIsolation"},
         "VpcConfig":{"shape":"VpcConfig"},
-        "ExpirationInDays":{
-          "shape":"ExpirationInDays",
-          "internalonly":true
-        },
-        "KeepS3ArtifactsOnDelete":{
-          "shape":"KeepS3ArtifactsOnDelete",
-          "internalonly":true
-        },
         "Metadata":{"shape":"Metadata"},
         "S3ArtifactPath":{"shape":"S3ArtifactPath"},
         "KmsKeyId":{"shape":"KmsKeyId"}
@@ -3727,18 +3256,18 @@
         "EnvironmentVersionNames":{"shape":"EnvironmentVersionNames"},
         "EnvironmentDefinitionLayers":{"shape":"EnvironmentDefinitionLayers"},
         "Metadata":{"shape":"Metadata"},
-        "ClientToken":{"shape":"ClientToken"}
+        "ClientToken":{
+          "shape":"ClientToken",
+          "idempotencyToken":true
+        }
       }
     },
     "CreateEnvironmentVersionResponse":{
       "type":"structure",
-      "required":[
-        "EnvironmentVersionArn",
-        "EnvironmentVersionNumber"
-      ],
       "members":{
         "EnvironmentVersionArn":{"shape":"EnvironmentVersionArn"},
-        "EnvironmentVersionNumber":{"shape":"EnvironmentVersionNumber"}
+        "EnvironmentVersionNumber":{"shape":"EnvironmentVersionNumber"},
+        "CreationTime":{"shape":"Timestamp"}
       }
     },
     "CreateExperimentRequest":{
@@ -3749,12 +3278,16 @@
         "DisplayName":{"shape":"ExperimentEntityName"},
         "Description":{"shape":"ExperimentDescription"},
         "Source":{
-          "shape":"ExperimentSource",
+          "shape":"InputExperimentSource",
           "internalonly":true
         },
         "Tags":{"shape":"TagList"},
         "DelegatedAccountId":{
           "shape":"String",
+          "internalonly":true
+        },
+        "CreatedBy":{
+          "shape":"UserContext",
           "internalonly":true
         }
       }
@@ -4016,11 +3549,11 @@
       "type":"structure",
       "required":[
         "DomainId",
-        "IdentityId"
+        "UserProfileName"
       ],
       "members":{
         "DomainId":{"shape":"ResourceId"},
-        "IdentityId":{"shape":"IdentityId"},
+        "UserProfileName":{"shape":"UserProfileName"},
         "SessionExpirationDurationInSeconds":{"shape":"SessionExpirationDurationInSeconds"}
       }
     },
@@ -4185,8 +3718,8 @@
         "EnableInterContainerTrafficEncryption":{"shape":"Boolean"},
         "EnableManagedSpotTraining":{"shape":"Boolean"},
         "CheckpointConfig":{"shape":"CheckpointConfig"},
-        "DebugConfig":{
-          "shape":"DebugConfig",
+        "DebugHookConfig":{
+          "shape":"DebugHookConfig",
           "internalonly":true
         },
         "DebugRuleConfigurations":{
@@ -4307,7 +3840,7 @@
         "TrialComponentName":{"shape":"ExperimentEntityName"},
         "DisplayName":{"shape":"ExperimentEntityName"},
         "Source":{
-          "shape":"TrialComponentSource",
+          "shape":"InputTrialComponentSource",
           "internalonly":true
         },
         "Status":{"shape":"TrialComponentStatus"},
@@ -4341,11 +3874,15 @@
         "ExperimentName":{"shape":"ExperimentEntityName"},
         "Tags":{"shape":"TagList"},
         "Source":{
-          "shape":"TrialSource",
+          "shape":"InputTrialSource",
           "internalonly":true
         },
         "DelegatedAccountId":{
           "shape":"String",
+          "internalonly":true
+        },
+        "CreatedBy":{
+          "shape":"UserContext",
           "internalonly":true
         }
       }
@@ -4360,21 +3897,25 @@
       "type":"structure",
       "required":[
         "DomainId",
-        "IdentityId",
-        "UserPolicy",
-        "UserSettings"
+        "UserProfileName"
       ],
       "members":{
         "DomainId":{"shape":"ResourceId"},
-        "IdentityId":{"shape":"IdentityId"},
-        "UserPolicy":{"shape":"String2048"},
+        "UserProfileName":{"shape":"UserProfileName"},
+        "SingleSignOnUserIdentifier":{"shape":"SingleSignOnUserIdentifier"},
+        "SingleSignOnUserValue":{"shape":"String256"},
+        "Tags":{"shape":"TagList"},
+        "UserPolicy":{
+          "shape":"String2048",
+          "internalonly":true
+        },
         "UserSettings":{"shape":"UserSettings"}
       }
     },
     "CreateUserProfileResponse":{
       "type":"structure",
       "members":{
-        "IdentityArn":{"shape":"String256"}
+        "UserProfileArn":{"shape":"UserProfileArn"}
       }
     },
     "CreateWorkteamRequest":{
@@ -4454,6 +3995,10 @@
         "KmsKeyId":{"shape":"KmsKeyId"}
       }
     },
+    "DataExplorationNotebookLocation":{
+      "type":"string",
+      "min":1
+    },
     "DataInputConfig":{
       "type":"string",
       "max":1024,
@@ -4475,51 +4020,28 @@
         "FileSystemDataSource":{"shape":"FileSystemDataSource"}
       }
     },
-    "DebugConfig":{
-      "type":"structure",
-      "members":{
-        "DebugHookConfig":{"shape":"DebugHookConfig"},
-        "RuleConfig":{"shape":"RuleConfig"}
-      }
-    },
     "DebugHookConfig":{
       "type":"structure",
       "required":["S3OutputPath"],
       "members":{
         "LocalPath":{"shape":"DirectoryPath"},
         "S3OutputPath":{"shape":"S3Uri"},
-        "DebugHookSpecificationList":{"shape":"DebugHookSpecificationList"},
         "HookParameters":{"shape":"HookParameters"},
         "CollectionConfigurations":{"shape":"CollectionConfigurations"}
       }
-    },
-    "DebugHookSpecification":{
-      "type":"structure",
-      "members":{
-        "TensorRegex":{"shape":"TensorRegex"},
-        "RuntimeConfigurations":{"shape":"RuntimeConfigurations"}
-      }
-    },
-    "DebugHookSpecificationList":{
-      "type":"list",
-      "member":{"shape":"DebugHookSpecification"},
-      "max":20,
-      "min":0
     },
     "DebugRuleConfiguration":{
       "type":"structure",
       "required":[
         "RuleConfigurationName",
-        "RuleEvaluatorImage",
-        "InstanceType",
-        "VolumeSizeInGB"
+        "RuleEvaluatorImage"
       ],
       "members":{
         "RuleConfigurationName":{"shape":"RuleConfigurationName"},
         "LocalPath":{"shape":"DirectoryPath"},
         "S3OutputPath":{"shape":"S3Uri"},
         "RuleEvaluatorImage":{"shape":"AlgorithmImage"},
-        "InstanceType":{"shape":"TrainingInstanceType"},
+        "InstanceType":{"shape":"ProcessingInstanceType"},
         "VolumeSizeInGB":{"shape":"VolumeSizeInGB"},
         "RuleParameters":{"shape":"RuleParameters"}
       }
@@ -4534,7 +4056,7 @@
       "type":"structure",
       "members":{
         "RuleConfigurationName":{"shape":"RuleConfigurationName"},
-        "RuleEvaluationJobArn":{"shape":"TrainingJobArn"},
+        "RuleEvaluationJobArn":{"shape":"ProcessingJobArn"},
         "RuleEvaluationStatus":{"shape":"RuleEvaluationStatus"},
         "StatusDetails":{"shape":"StatusDetails"},
         "LastModifiedTime":{"shape":"Timestamp"}
@@ -4545,12 +4067,6 @@
       "member":{"shape":"DebugRuleEvaluationStatus"},
       "max":20,
       "min":0
-    },
-    "DefaultResourceManagerSpec":{
-      "type":"structure",
-      "members":{
-        "DefaultResourceSpec":{"shape":"ResourceSpec"}
-      }
     },
     "DeleteAlgorithmInput":{
       "type":"structure",
@@ -4563,21 +4079,15 @@
       "type":"structure",
       "required":[
         "DomainId",
-        "IdentityId",
+        "UserProfileName",
         "AppType",
         "AppName"
       ],
       "members":{
         "DomainId":{"shape":"ResourceId"},
-        "IdentityId":{"shape":"IdentityId"},
+        "UserProfileName":{"shape":"UserProfileName"},
         "AppType":{"shape":"AppType"},
         "AppName":{"shape":"AppName"}
-      }
-    },
-    "DeleteAppResponse":{
-      "type":"structure",
-      "members":{
-        "AppArn":{"shape":"String256"}
       }
     },
     "DeleteCodeRepositoryInput":{
@@ -4592,14 +4102,7 @@
       "required":["DomainId"],
       "members":{
         "DomainId":{"shape":"ResourceId"},
-        "DeleteHomeEfsFileSystem":{"shape":"DeleteHomeEfsFileSystem"},
-        "IsDefaultDomain":{"shape":"IsDefaultDomain"}
-      }
-    },
-    "DeleteDomainResponse":{
-      "type":"structure",
-      "members":{
-        "DomainArn":{"shape":"String256"}
+        "RetentionPolicy":{"shape":"RetentionPolicy"}
       }
     },
     "DeleteEndpointConfigInput":{
@@ -4614,33 +4117,6 @@
       "required":["EndpointName"],
       "members":{
         "EndpointName":{"shape":"EndpointName"}
-      }
-    },
-    "DeleteEnvironmentRequest":{
-      "type":"structure",
-      "required":["EnvironmentName"],
-      "members":{
-        "EnvironmentName":{"shape":"EnvironmentName"}
-      }
-    },
-    "DeleteEnvironmentVersionRequest":{
-      "type":"structure",
-      "required":["EnvironmentName"],
-      "members":{
-        "EnvironmentName":{"shape":"EnvironmentName"},
-        "EnvironmentVersionNumber":{"shape":"EnvironmentVersionNumber"},
-        "EnvironmentVersionName":{"shape":"EnvironmentVersionName"}
-      }
-    },
-    "DeleteEnvironmentVersionResponse":{
-      "type":"structure",
-      "required":[
-        "EnvironmentVersionArn",
-        "EnvironmentVersionNumber"
-      ],
-      "members":{
-        "EnvironmentVersionArn":{"shape":"EnvironmentVersionArn"},
-        "EnvironmentVersionNumber":{"shape":"EnvironmentVersionNumber"}
       }
     },
     "DeleteExperimentRequest":{
@@ -4668,7 +4144,6 @@
       "members":{
       }
     },
-    "DeleteHomeEfsFileSystem":{"type":"boolean"},
     "DeleteHumanTaskUiRequest":{
       "type":"structure",
       "required":["HumanTaskUiName"],
@@ -4762,17 +4237,11 @@
       "type":"structure",
       "required":[
         "DomainId",
-        "IdentityId"
+        "UserProfileName"
       ],
       "members":{
         "DomainId":{"shape":"ResourceId"},
-        "IdentityId":{"shape":"IdentityId"}
-      }
-    },
-    "DeleteUserProfileResponse":{
-      "type":"structure",
-      "members":{
-        "IdentityArn":{"shape":"String256"}
+        "UserProfileName":{"shape":"UserProfileName"}
       }
     },
     "DeleteWorkteamRequest":{
@@ -4832,59 +4301,17 @@
         "CertifyForMarketplace":{"shape":"CertifyForMarketplace"}
       }
     },
-    "DescribeAnalyticsJobRequest":{
-      "type":"structure",
-      "required":["AnalyticsJobName"],
-      "members":{
-        "AnalyticsJobName":{"shape":"AnalyticsJobName"}
-      }
-    },
-    "DescribeAnalyticsJobResponse":{
-      "type":"structure",
-      "required":[
-        "AnalyticsJobName",
-        "AnalyticsResources",
-        "StoppingCondition",
-        "AppSpecification",
-        "AnalyticsJobArn",
-        "AnalyticsJobStatus",
-        "CreationTime"
-      ],
-      "members":{
-        "AnalyticsInputs":{"shape":"AnalyticsInputs"},
-        "AnalyticsOutputs":{"shape":"AnalyticsOutputs"},
-        "AnalyticsJobName":{"shape":"AnalyticsJobName"},
-        "AnalyticsResources":{"shape":"AnalyticsResources"},
-        "StoppingCondition":{"shape":"AnalyticsStoppingCondition"},
-        "AppSpecification":{"shape":"AppSpecification"},
-        "Environment":{"shape":"EnvironmentMap"},
-        "NetworkConfig":{"shape":"NetworkConfig"},
-        "RoleArn":{"shape":"RoleArn"},
-        "ExperimentConfig":{"shape":"ExperimentConfig"},
-        "AnalyticsJobArn":{"shape":"AnalyticsJobArn"},
-        "AnalyticsJobStatus":{"shape":"AnalyticsJobStatus"},
-        "ExitMessage":{"shape":"ExitMessage"},
-        "FailureReason":{"shape":"FailureReason"},
-        "AnalyticsEndTime":{"shape":"Timestamp"},
-        "AnalyticsStartTime":{"shape":"Timestamp"},
-        "LastModifiedTime":{"shape":"Timestamp"},
-        "CreationTime":{"shape":"Timestamp"},
-        "MonitoringScheduleArn":{"shape":"MonitoringScheduleArn"},
-        "AutoMLJobArn":{"shape":"AutoMLJobArn"},
-        "TrainingJobArn":{"shape":"TrainingJobArn"}
-      }
-    },
     "DescribeAppRequest":{
       "type":"structure",
       "required":[
         "DomainId",
-        "IdentityId",
+        "UserProfileName",
         "AppType",
         "AppName"
       ],
       "members":{
         "DomainId":{"shape":"ResourceId"},
-        "IdentityId":{"shape":"IdentityId"},
+        "UserProfileName":{"shape":"UserProfileName"},
         "AppType":{"shape":"AppType"},
         "AppName":{"shape":"AppName"}
       }
@@ -4892,15 +4319,16 @@
     "DescribeAppResponse":{
       "type":"structure",
       "members":{
-        "DomainId":{"shape":"ResourceId"},
-        "IdentityId":{"shape":"IdentityId"},
+        "AppArn":{"shape":"AppArn"},
         "AppType":{"shape":"AppType"},
         "AppName":{"shape":"AppName"},
+        "DomainId":{"shape":"ResourceId"},
+        "UserProfileName":{"shape":"UserProfileName"},
         "Status":{"shape":"AppStatus"},
-        "ResourceSpec":{"shape":"ResourceSpec"},
-        "EffectiveResourceSpec":{"shape":"ResourceSpec"},
         "LastHealthCheckTimestamp":{"shape":"Timestamp"},
-        "LastUserActivityTimestamp":{"shape":"Timestamp"}
+        "LastUserActivityTimestamp":{"shape":"Timestamp"},
+        "CreationTime":{"shape":"CreationTime"},
+        "ResourceSpec":{"shape":"ResourceSpec"}
       }
     },
     "DescribeAutoMLJobRequest":{
@@ -4918,9 +4346,8 @@
         "InputDataConfig",
         "OutputDataConfig",
         "RoleArn",
-        "JobConfig",
-        "JobCreationTime",
-        "JobLastModifiedTime",
+        "CreationTime",
+        "LastModifiedTime",
         "AutoMLJobStatus",
         "AutoMLJobSecondaryStatus"
       ],
@@ -4930,24 +4357,23 @@
         "InputDataConfig":{"shape":"AutoMLInputDataConfig"},
         "OutputDataConfig":{"shape":"AutoMLOutputDataConfig"},
         "RoleArn":{"shape":"RoleArn"},
-        "JobObjective":{"shape":"AutoMLJobObjective"},
+        "AutoMLJobObjective":{"shape":"AutoMLJobObjective"},
         "ProblemType":{"shape":"ProblemType"},
-        "JobConfig":{"shape":"AutoMLJobConfig"},
-        "JobCreationTime":{"shape":"Timestamp"},
-        "JobEndTime":{"shape":"Timestamp"},
-        "JobLastModifiedTime":{"shape":"Timestamp"},
+        "AutoMLJobConfig":{"shape":"AutoMLJobConfig"},
+        "CreationTime":{"shape":"Timestamp"},
+        "EndTime":{"shape":"Timestamp"},
+        "LastModifiedTime":{"shape":"Timestamp"},
         "FailureReason":{"shape":"AutoMLFailureReason"},
-        "TrialStatusCounters":{"shape":"TrialStatusCounters"},
-        "BestTrial":{"shape":"AutoMLTrialSummary"},
+        "BestCandidate":{"shape":"AutoMLCandidate"},
         "AutoMLJobStatus":{"shape":"AutoMLJobStatus"},
         "AutoMLJobSecondaryStatus":{"shape":"AutoMLJobSecondaryStatus"},
-        "ObjectiveStatusCounters":{"shape":"ObjectiveStatusCounters"},
-        "DryRun":{"shape":"DryRun"},
+        "GenerateCandidateDefinitionsOnly":{"shape":"GenerateCandidateDefinitionsOnly"},
         "AutoMLJobArtifacts":{"shape":"AutoMLJobArtifacts"},
         "ImageUrlOverrides":{
           "shape":"ImageUrlOverrides",
           "internalonly":true
-        }
+        },
+        "ResolvedAttributes":{"shape":"ResolvedAttributes"}
       }
     },
     "DescribeCodeRepositoryInput":{
@@ -5015,21 +4441,27 @@
       "type":"structure",
       "required":["DomainId"],
       "members":{
-        "DomainId":{"shape":"ResourceId"},
-        "IsDefaultDomain":{"shape":"IsDefaultDomain"}
+        "DomainId":{"shape":"ResourceId"}
       }
     },
     "DescribeDomainResponse":{
       "type":"structure",
       "members":{
-        "DefaultSettings":{"shape":"UserSettings"},
-        "DomainArn":{"shape":"String256"},
-        "DomainPolicy":{"shape":"String2048"},
+        "DomainArn":{"shape":"DomainArn"},
+        "DomainId":{"shape":"String256"},
+        "DomainName":{"shape":"DomainName"},
         "HomeEfsFileSystemId":{"shape":"ResourceId"},
-        "IsDefaultDomain":{"shape":"IsDefaultDomain"},
-        "KmsKeyId":{"shape":"KmsKeyId"},
-        "SecurityGroups":{"shape":"SecurityGroupIds"},
+        "SingleSignOnManagedApplicationInstanceId":{"shape":"String256"},
         "Status":{"shape":"DomainStatus"},
+        "CreationTime":{"shape":"CreationTime"},
+        "LastModifiedTime":{"shape":"LastModifiedTime"},
+        "DefaultUserSettings":{"shape":"UserSettings"},
+        "DomainPolicy":{
+          "shape":"String2048",
+          "internalonly":true
+        },
+        "EnableNetworkIsolation":{"shape":"Boolean"},
+        "HomeEfsFileSystemKmsKeyId":{"shape":"KmsKeyId"},
         "SubnetIds":{"shape":"Subnets"},
         "Url":{"shape":"String1024"},
         "VpcId":{"shape":"VpcId"}
@@ -5109,9 +4541,7 @@
         "CreationTime",
         "LastModifiedTime",
         "EnableNetworkIsolation",
-        "ExpirationInDays",
         "Metadata",
-        "KeepS3ArtifactsOnDelete",
         "S3ArtifactPath"
       ],
       "members":{
@@ -5123,15 +4553,7 @@
         "RoleArn":{"shape":"RoleArn"},
         "EnableNetworkIsolation":{"shape":"EnableNetworkIsolation"},
         "VpcConfig":{"shape":"VpcConfig"},
-        "ExpirationInDays":{
-          "shape":"ExpirationInDays",
-          "internalonly":true
-        },
         "Metadata":{"shape":"Metadata"},
-        "KeepS3ArtifactsOnDelete":{
-          "shape":"KeepS3ArtifactsOnDelete",
-          "internalonly":true
-        },
         "S3ArtifactPath":{"shape":"S3ArtifactPath"},
         "KmsKeyId":{"shape":"KmsKeyId"},
         "EnvironmentStatus":{"shape":"EnvironmentStatus"}
@@ -5600,12 +5022,8 @@
         "CheckpointConfig":{"shape":"CheckpointConfig"},
         "TrainingTimeInSeconds":{"shape":"TrainingTimeInSeconds"},
         "BillableTimeInSeconds":{"shape":"BillableTimeInSeconds"},
-        "DebugConfig":{
-          "shape":"DebugConfig",
-          "internalonly":true
-        },
-        "RuleMonitoringStatuses":{
-          "shape":"RuleMonitoringStatuses",
+        "DebugHookConfig":{
+          "shape":"DebugHookConfig",
           "internalonly":true
         },
         "ExperimentConfig":{
@@ -5728,20 +5146,29 @@
       "type":"structure",
       "required":[
         "DomainId",
-        "IdentityId"
+        "UserProfileName"
       ],
       "members":{
         "DomainId":{"shape":"ResourceId"},
-        "IdentityId":{"shape":"IdentityId"}
+        "UserProfileName":{"shape":"UserProfileName"}
       }
     },
     "DescribeUserProfileResponse":{
       "type":"structure",
       "members":{
-        "EfsUid":{"shape":"EfsUid"},
-        "IdentityId":{"shape":"IdentityId"},
-        "Status":{"shape":"UserStatus"},
-        "UserPolicy":{"shape":"String2048"},
+        "DomainId":{"shape":"ResourceId"},
+        "UserProfileArn":{"shape":"UserProfileArn"},
+        "UserProfileName":{"shape":"UserProfileName"},
+        "HomeEfsFileSystemUid":{"shape":"EfsUid"},
+        "Status":{"shape":"UserProfileStatus"},
+        "LastModifiedTime":{"shape":"LastModifiedTime"},
+        "CreationTime":{"shape":"CreationTime"},
+        "SingleSignOnUserIdentifier":{"shape":"SingleSignOnUserIdentifier"},
+        "SingleSignOnUserValue":{"shape":"String256"},
+        "UserPolicy":{
+          "shape":"String2048",
+          "internalonly":true
+        },
         "UserSettings":{"shape":"UserSettings"}
       }
     },
@@ -5812,7 +5239,8 @@
     },
     "DiffId":{
       "type":"string",
-      "pattern":"(^(?i)sha256:[A-Fa-f0-9]{64})|(^(?i)sha512:[A-Fa-f0-9]{128})"
+      "max":135,
+      "pattern":"(^(sha256|SHA256):[A-Fa-f0-9]{64})$|(^(sha512|SHA512):[A-Fa-f0-9]{128})$"
     },
     "DirectInternetAccess":{
       "type":"string",
@@ -5857,21 +5285,35 @@
       "max":1,
       "min":0
     },
+    "DomainArn":{
+      "type":"string",
+      "max":256,
+      "pattern":"arn:aws[a-z\\-]*:sagemaker:[a-z0-9\\-]*:[0-9]{12}:domain/.*"
+    },
     "DomainDetails":{
       "type":"structure",
       "members":{
-        "DefaultSettings":{"shape":"UserSettings"},
-        "DomainArn":{"shape":"String256"},
-        "IsDefaultDomain":{"shape":"IsDefaultDomain"},
+        "DomainArn":{"shape":"DomainArn"},
+        "DomainId":{"shape":"DomainId"},
+        "DomainName":{"shape":"DomainName"},
         "Status":{"shape":"DomainStatus"},
-        "SubnetIds":{"shape":"Subnets"},
-        "Url":{"shape":"String1024"},
-        "VpcId":{"shape":"VpcId"}
+        "CreationTime":{"shape":"CreationTime"},
+        "LastModifiedTime":{"shape":"LastModifiedTime"},
+        "Url":{"shape":"String1024"}
       }
+    },
+    "DomainId":{
+      "type":"string",
+      "max":63
     },
     "DomainList":{
       "type":"list",
       "member":{"shape":"DomainDetails"}
+    },
+    "DomainName":{
+      "type":"string",
+      "max":63,
+      "pattern":"^[a-zA-Z0-9](-*[a-zA-Z0-9])*"
     },
     "DomainStatus":{
       "type":"string",
@@ -5882,9 +5324,8 @@
         "Pending"
       ]
     },
+    "Double":{"type":"double"},
     "DoubleParameterValue":{"type":"double"},
-    "DryRun":{"type":"boolean"},
-    "DryRunNotebookLocation":{"type":"string"},
     "EfsUid":{
       "type":"string",
       "max":10,
@@ -5946,9 +5387,9 @@
       ],
       "members":{
         "EndpointName":{"shape":"EndpointName"},
-        "LocalPath":{"shape":"AnalyticsLocalPath"},
-        "S3InputMode":{"shape":"AnalyticsS3InputMode"},
-        "S3DataDistributionType":{"shape":"AnalyticsS3DataDistributionType"}
+        "LocalPath":{"shape":"ProcessingLocalPath"},
+        "S3InputMode":{"shape":"ProcessingS3InputMode"},
+        "S3DataDistributionType":{"shape":"ProcessingS3DataDistributionType"}
       }
     },
     "EndpointName":{
@@ -6003,7 +5444,6 @@
       "type":"list",
       "member":{"shape":"EndpointSummary"}
     },
-    "EnsembledModelLocation":{"type":"string"},
     "EntityDescription":{
       "type":"string",
       "max":1024,
@@ -6017,6 +5457,7 @@
     },
     "EnvironmentArn":{
       "type":"string",
+      "max":256,
       "pattern":"^arn:aws(-[\\w]+)*:sagemaker:.+:[0-9]{12}:environment/[a-z0-9](-*[a-z0-9]){0,62}$"
     },
     "EnvironmentDefinitionLayer":{
@@ -6045,7 +5486,9 @@
     },
     "EnvironmentDefinitionLayers":{
       "type":"list",
-      "member":{"shape":"EnvironmentDefinitionLayer"}
+      "member":{"shape":"EnvironmentDefinitionLayer"},
+      "max":127,
+      "min":1
     },
     "EnvironmentKey":{
       "type":"string",
@@ -6089,6 +5532,13 @@
       "max":63,
       "min":1,
       "pattern":"^[a-zA-Z0-9](-*[a-zA-Z0-9])*"
+    },
+    "EnvironmentSettings":{
+      "type":"structure",
+      "members":{
+        "DefaultS3ArtifactPath":{"shape":"S3Uri"},
+        "DefaultS3KmsKeyId":{"shape":"KmsKeyId"}
+      }
     },
     "EnvironmentSortBy":{
       "type":"string",
@@ -6141,22 +5591,23 @@
     },
     "EnvironmentVersionArn":{
       "type":"string",
+      "max":256,
       "pattern":"^arn:aws(-[\\w]+)*:sagemaker:.+:[0-9]{12}:environment-version/[a-z0-9](-*[a-z0-9]){0,62}/[0-9]+$"
     },
     "EnvironmentVersionName":{
       "type":"string",
       "max":63,
-      "pattern":"^[a-zA-Z0-9.]+"
+      "pattern":"^[a-zA-Z0-9\\-.]+$"
     },
     "EnvironmentVersionNameContains":{
       "type":"string",
       "max":63,
-      "pattern":"^[a-zA-Z0-9.]+"
+      "pattern":"^[a-zA-Z0-9\\-.]+$"
     },
     "EnvironmentVersionNames":{
       "type":"list",
       "member":{"shape":"EnvironmentVersionName"},
-      "max":20
+      "max":5
     },
     "EnvironmentVersionNumber":{
       "type":"integer",
@@ -6275,7 +5726,7 @@
     },
     "ExperimentEntityName":{
       "type":"string",
-      "max":80,
+      "max":82,
       "min":1,
       "pattern":"^[a-zA-Z0-9](-*[a-zA-Z0-9])*"
     },
@@ -6283,7 +5734,8 @@
       "type":"structure",
       "required":["SourceArn"],
       "members":{
-        "SourceArn":{"shape":"ExperimentSourceArn"}
+        "SourceArn":{"shape":"ExperimentSourceArn"},
+        "SourceType":{"shape":"SourceType"}
       }
     },
     "ExperimentSourceArn":{
@@ -6301,32 +5753,9 @@
         "ExperimentArn":{"shape":"ExperimentArn"},
         "ExperimentName":{"shape":"ExperimentEntityName"},
         "DisplayName":{"shape":"ExperimentEntityName"},
+        "ExperimentSource":{"shape":"ExperimentSource"},
         "CreationTime":{"shape":"Timestamp"},
         "LastModifiedTime":{"shape":"Timestamp"}
-      }
-    },
-    "ExpirationInDays":{
-      "type":"integer",
-      "min":0
-    },
-    "ExportAutoMLTrialToModelRequest":{
-      "type":"structure",
-      "required":[
-        "AutoMLJobName",
-        "TrialIdentifier",
-        "ModelName"
-      ],
-      "members":{
-        "AutoMLJobName":{"shape":"AutoMLJobName"},
-        "TrialIdentifier":{"shape":"TrialIdentifier"},
-        "ModelName":{"shape":"ModelName"}
-      }
-    },
-    "ExportAutoMLTrialToModelResponse":{
-      "type":"structure",
-      "required":["ModelArn"],
-      "members":{
-        "ModelArn":{"shape":"ModelArn"}
       }
     },
     "FailedObjects":{
@@ -6404,7 +5833,7 @@
       ],
       "members":{
         "Type":{"shape":"AutoMLJobObjectiveType"},
-        "MetricName":{"shape":"MetricName"},
+        "MetricName":{"shape":"AutoMLMetricEnum"},
         "Value":{"shape":"MetricValue"}
       }
     },
@@ -6436,7 +5865,7 @@
       "type":"string",
       "max":63,
       "min":1,
-      "pattern":"^[a-zA-Z0-9](-*[a-zA-Z0-9])*"
+      "pattern":"^[a-z0-9](-*[a-z0-9])*"
     },
     "FlowDefinitionOutputConfig":{
       "type":"structure",
@@ -6451,7 +5880,9 @@
       "enum":[
         "Initializing",
         "Active",
-        "Failed"
+        "Failed",
+        "Deleting",
+        "Deleted"
       ]
     },
     "FlowDefinitionSummaries":{
@@ -6471,7 +5902,6 @@
         "FlowDefinitionArn":{"shape":"FlowDefinitionArn"},
         "FlowDefinitionStatus":{"shape":"FlowDefinitionStatus"},
         "CreationTime":{"shape":"Timestamp"},
-        "LastModifiedTime":{"shape":"Timestamp"},
         "FailureReason":{"shape":"FailureReason"}
       }
     },
@@ -6482,7 +5912,7 @@
     },
     "FlowDefinitionTaskCount":{
       "type":"integer",
-      "max":9,
+      "max":3,
       "min":1
     },
     "FlowDefinitionTaskDescription":{
@@ -6524,6 +5954,7 @@
         "XGBOOST"
       ]
     },
+    "GenerateCandidateDefinitionsOnly":{"type":"boolean"},
     "GetSearchSuggestionsRequest":{
       "type":"structure",
       "required":["Resource"],
@@ -6557,7 +5988,6 @@
       "type":"string",
       "pattern":"^https://([^/]+)/?(.*)$"
     },
-    "GlobalIdleTimeoutInMinutes":{"type":"integer"},
     "HookParameters":{
       "type":"map",
       "key":{"shape":"ConfigKey"},
@@ -6573,12 +6003,18 @@
       "type":"structure",
       "required":["HumanLoopActivationConditions"],
       "members":{
-        "HumanLoopActivationConditions":{"shape":"HumanLoopActivationConditions"}
+        "HumanLoopActivationConditions":{
+          "shape":"HumanLoopActivationConditions",
+          "jsonvalue":true
+        }
       }
     },
     "HumanLoopActivationConfig":{
       "type":"structure",
-      "required":["HumanLoopRequestSource"],
+      "required":[
+        "HumanLoopRequestSource",
+        "HumanLoopActivationConditionsConfig"
+      ],
       "members":{
         "HumanLoopRequestSource":{"shape":"HumanLoopRequestSource"},
         "HumanLoopActivationConditionsConfig":{"shape":"HumanLoopActivationConditionsConfig"}
@@ -6601,7 +6037,8 @@
         "TaskCount":{"shape":"FlowDefinitionTaskCount"},
         "TaskAvailabilityLifetimeInSeconds":{"shape":"FlowDefinitionTaskAvailabilityLifetimeInSeconds"},
         "TaskTimeLimitInSeconds":{"shape":"FlowDefinitionTaskTimeLimitInSeconds"},
-        "TaskKeywords":{"shape":"FlowDefinitionTaskKeywords"}
+        "TaskKeywords":{"shape":"FlowDefinitionTaskKeywords"},
+        "PublicWorkforceTaskPrice":{"shape":"PublicWorkforceTaskPrice"}
       }
     },
     "HumanLoopRequestSource":{
@@ -6647,7 +6084,7 @@
       "type":"string",
       "max":63,
       "min":1,
-      "pattern":"^[a-zA-Z0-9](-*[a-zA-Z0-9])*"
+      "pattern":"^[a-z0-9](-*[a-z0-9])*"
     },
     "HumanTaskUiSummaries":{
       "type":"list",
@@ -6658,14 +6095,12 @@
       "required":[
         "HumanTaskUiName",
         "HumanTaskUiArn",
-        "CreationTime",
-        "LastModifiedTime"
+        "CreationTime"
       ],
       "members":{
         "HumanTaskUiName":{"shape":"HumanTaskUiName"},
         "HumanTaskUiArn":{"shape":"HumanTaskUiArn"},
-        "CreationTime":{"shape":"Timestamp"},
-        "LastModifiedTime":{"shape":"Timestamp"}
+        "CreationTime":{"shape":"Timestamp"}
       }
     },
     "HyperParameterAlgorithmSpecification":{
@@ -6942,10 +6377,6 @@
       "max":100,
       "min":0
     },
-    "IdentityId":{
-      "type":"string",
-      "max":32
-    },
     "Image":{
       "type":"string",
       "max":255,
@@ -7004,10 +6435,31 @@
       "max":20,
       "min":1
     },
+    "InputExperimentSource":{
+      "type":"structure",
+      "required":["SourceArn"],
+      "members":{
+        "SourceArn":{"shape":"ExperimentSourceArn"}
+      }
+    },
     "InputModes":{
       "type":"list",
       "member":{"shape":"TrainingInputMode"},
       "min":1
+    },
+    "InputTrialComponentSource":{
+      "type":"structure",
+      "required":["SourceArn"],
+      "members":{
+        "SourceArn":{"shape":"TrialComponentSourceArn"}
+      }
+    },
+    "InputTrialSource":{
+      "type":"structure",
+      "required":["SourceArn"],
+      "members":{
+        "SourceArn":{"shape":"TrialSourceArn"}
+      }
     },
     "InstanceType":{
       "type":"string",
@@ -7084,8 +6536,6 @@
       "max":20,
       "min":0
     },
-    "InterpretedModelLocation":{"type":"string"},
-    "IsDefaultDomain":{"type":"boolean"},
     "IterationNumbers":{
       "type":"list",
       "member":{"shape":"NonNegativeInteger"}
@@ -7124,7 +6574,18 @@
       "max":63,
       "min":0
     },
-    "KeepS3ArtifactsOnDelete":{"type":"boolean"},
+    "JupyterServerAppSettings":{
+      "type":"structure",
+      "members":{
+        "DefaultResourceSpec":{"shape":"ResourceSpec"}
+      }
+    },
+    "KernelGatewayAppSettings":{
+      "type":"structure",
+      "members":{
+        "DefaultResourceSpec":{"shape":"ResourceSpec"}
+      }
+    },
     "KmsKeyId":{
       "type":"string",
       "max":2048,
@@ -7337,32 +6798,6 @@
         "NextToken":{"shape":"NextToken"}
       }
     },
-    "ListAnalyticsJobsRequest":{
-      "type":"structure",
-      "members":{
-        "CreationTimeAfter":{"shape":"Timestamp"},
-        "CreationTimeBefore":{"shape":"Timestamp"},
-        "LastModifiedTimeAfter":{"shape":"Timestamp"},
-        "LastModifiedTimeBefore":{"shape":"Timestamp"},
-        "NameContains":{"shape":"String"},
-        "StatusEquals":{"shape":"AnalyticsJobStatus"},
-        "SortBy":{"shape":"SortBy"},
-        "SortOrder":{"shape":"SortOrder"},
-        "NextToken":{"shape":"NextToken"},
-        "MaxResults":{
-          "shape":"MaxResults",
-          "box":true
-        }
-      }
-    },
-    "ListAnalyticsJobsResponse":{
-      "type":"structure",
-      "required":["AnalyticsJobSummaries"],
-      "members":{
-        "AnalyticsJobSummaries":{"shape":"AnalyticsJobSummaries"},
-        "NextToken":{"shape":"NextToken"}
-      }
-    },
     "ListAppsRequest":{
       "type":"structure",
       "members":{
@@ -7370,13 +6805,8 @@
         "MaxResults":{"shape":"MaxResults"},
         "SortOrder":{"shape":"SortOrder"},
         "SortBy":{"shape":"AppSortKey"},
-        "LastUserActivityBefore":{"shape":"Timestamp"},
-        "LastUserActivityAfter":{"shape":"Timestamp"},
-        "DomainIdEquals":{"shape":"ResourceId"},
-        "IdentityIdEquals":{"shape":"IdentityId"},
-        "AppTypeEquals":{"shape":"AppType"},
-        "AppNameContains":{"shape":"AppName"},
-        "StatusEquals":{"shape":"AppStatus"}
+        "DomainIdEquals":{"shape":"DomainId"},
+        "UserProfileNameEquals":{"shape":"UserProfileName"}
       }
     },
     "ListAppsResponse":{
@@ -7409,6 +6839,30 @@
       "required":["AutoMLJobSummaries"],
       "members":{
         "AutoMLJobSummaries":{"shape":"AutoMLJobSummaries"},
+        "NextToken":{"shape":"NextToken"}
+      }
+    },
+    "ListCandidatesForAutoMLJobRequest":{
+      "type":"structure",
+      "required":["AutoMLJobName"],
+      "members":{
+        "AutoMLJobName":{"shape":"AutoMLJobName"},
+        "StatusEquals":{"shape":"CandidateStatus"},
+        "CandidateNameEquals":{"shape":"CandidateName"},
+        "SortOrder":{"shape":"AutoMLSortOrder"},
+        "SortBy":{"shape":"CandidateSortBy"},
+        "MaxResults":{
+          "shape":"AutoMLMaxResults",
+          "box":true
+        },
+        "NextToken":{"shape":"NextToken"}
+      }
+    },
+    "ListCandidatesForAutoMLJobResponse":{
+      "type":"structure",
+      "required":["Candidates"],
+      "members":{
+        "Candidates":{"shape":"AutoMLCandidates"},
         "NextToken":{"shape":"NextToken"}
       }
     },
@@ -7619,11 +7073,6 @@
       "members":{
         "CreationTimeAfter":{"shape":"Timestamp"},
         "CreationTimeBefore":{"shape":"Timestamp"},
-        "LastModifiedTimeAfter":{"shape":"Timestamp"},
-        "LastModifiedTimeBefore":{"shape":"Timestamp"},
-        "NameContains":{"shape":"FlowDefinitionName"},
-        "StatusEquals":{"shape":"FlowDefinitionStatus"},
-        "SortBy":{"shape":"SortBy"},
         "SortOrder":{"shape":"SortOrder"},
         "NextToken":{"shape":"NextToken"},
         "MaxResults":{
@@ -7645,10 +7094,6 @@
       "members":{
         "CreationTimeAfter":{"shape":"Timestamp"},
         "CreationTimeBefore":{"shape":"Timestamp"},
-        "LastModifiedTimeAfter":{"shape":"Timestamp"},
-        "LastModifiedTimeBefore":{"shape":"Timestamp"},
-        "NameContains":{"shape":"HumanTaskUiName"},
-        "SortBy":{"shape":"SortBy"},
         "SortOrder":{"shape":"SortOrder"},
         "NextToken":{"shape":"NextToken"},
         "MaxResults":{
@@ -8060,29 +7505,6 @@
         "NextToken":{"shape":"NextToken"}
       }
     },
-    "ListTrialsForAutoMLJobRequest":{
-      "type":"structure",
-      "required":["AutoMLJobName"],
-      "members":{
-        "AutoMLJobName":{"shape":"AutoMLJobName"},
-        "StatusEquals":{"shape":"TrialStatus"},
-        "SortOrder":{"shape":"AutoMLSortOrder"},
-        "SortBy":{"shape":"TrialSortBy"},
-        "MaxResults":{
-          "shape":"AutoMLMaxResults",
-          "box":true
-        },
-        "NextToken":{"shape":"NextToken"}
-      }
-    },
-    "ListTrialsForAutoMLJobResponse":{
-      "type":"structure",
-      "required":["AutoMLTrialSummaries"],
-      "members":{
-        "AutoMLTrialSummaries":{"shape":"AutoMLTrialSummaries"},
-        "NextToken":{"shape":"NextToken"}
-      }
-    },
     "ListTrialsRequest":{
       "type":"structure",
       "members":{
@@ -8112,7 +7534,9 @@
         "NextToken":{"shape":"NextToken"},
         "MaxResults":{"shape":"MaxResults"},
         "SortOrder":{"shape":"SortOrder"},
-        "SortBy":{"shape":"UserProfileSortKey"}
+        "SortBy":{"shape":"UserProfileSortKey"},
+        "DomainIdEquals":{"shape":"DomainId"},
+        "UserProfileNameContains":{"shape":"UserProfileName"}
       }
     },
     "ListUserProfilesResponse":{
@@ -8154,6 +7578,14 @@
       "type":"string",
       "max":1024,
       "pattern":"(^(https|s3)://([^/]+)/?(.*)$)|(^[0-9]{12}\\.dkr\\.ecr\\.[a-zA-Z0-9-]+\\.amazonaws\\.com\\/?[a-zA-Z_0-9+=,.:@\\-_/]+$)"
+    },
+    "MaxAutoMLJobRuntimeInSeconds":{
+      "type":"integer",
+      "min":1
+    },
+    "MaxCandidates":{
+      "type":"integer",
+      "min":1
     },
     "MaxConcurrentTaskCount":{
       "type":"integer",
@@ -8198,7 +7630,6 @@
       "type":"integer",
       "min":1
     },
-    "MaxTrials":{"type":"integer"},
     "MaxWaitTimeInSeconds":{
       "type":"integer",
       "min":1
@@ -8229,12 +7660,22 @@
     },
     "MetadataContainsKey":{
       "type":"string",
-      "max":64,
+      "max":128,
       "min":1,
-      "pattern":"[-._a-zA-Z0-9]+"
+      "pattern":"^[-_.:a-zA-Z0-9]+$"
     },
-    "MetadataKey":{"type":"string"},
-    "MetadataValue":{"type":"string"},
+    "MetadataKey":{
+      "type":"string",
+      "max":128,
+      "min":1,
+      "pattern":"^[-_.:a-zA-Z0-9]+$"
+    },
+    "MetadataValue":{
+      "type":"string",
+      "max":1024,
+      "min":1,
+      "pattern":"^[\\S][\\S\\s]*$"
+    },
     "MetricData":{
       "type":"structure",
       "members":{
@@ -8354,7 +7795,7 @@
     "MetricValue":{"type":"float"},
     "MetricValues":{
       "type":"list",
-      "member":{"shape":"Float"}
+      "member":{"shape":"Double"}
     },
     "ModelArn":{
       "type":"string",
@@ -8541,9 +7982,9 @@
         "VolumeSizeInGB"
       ],
       "members":{
-        "InstanceCount":{"shape":"AnalyticsInstanceCount"},
-        "InstanceType":{"shape":"AnalyticsInstanceType"},
-        "VolumeSizeInGB":{"shape":"AnalyticsVolumeSizeInGB"},
+        "InstanceCount":{"shape":"ProcessingInstanceCount"},
+        "InstanceType":{"shape":"ProcessingInstanceType"},
+        "VolumeSizeInGB":{"shape":"ProcessingVolumeSizeInGB"},
         "VolumeKmsKeyId":{"shape":"KmsKeyId"}
       }
     },
@@ -8561,8 +8002,8 @@
     },
     "MonitoringEnvironmentMap":{
       "type":"map",
-      "key":{"shape":"AnalyticsEnvironmentKey"},
-      "value":{"shape":"AnalyticsEnvironmentValue"},
+      "key":{"shape":"ProcessingEnvironmentKey"},
+      "value":{"shape":"ProcessingEnvironmentValue"},
       "max":50
     },
     "MonitoringExecutionSortKey":{
@@ -8588,7 +8029,7 @@
         "CreationTime":{"shape":"Timestamp"},
         "LastModifiedTime":{"shape":"Timestamp"},
         "MonitoringExecutionStatus":{"shape":"ExecutionStatus"},
-        "ProcessingJobArn":{"shape":"AnalyticsJobArn"},
+        "ProcessingJobArn":{"shape":"ProcessingJobArn"},
         "EndpointName":{"shape":"EndpointName"},
         "FailureReason":{"shape":"FailureReason"}
       }
@@ -8599,6 +8040,7 @@
     },
     "MonitoringInput":{
       "type":"structure",
+      "required":["EndpointInput"],
       "members":{
         "EndpointInput":{"shape":"EndpointInput"}
       }
@@ -8612,6 +8054,8 @@
     "MonitoringJobDefinition":{
       "type":"structure",
       "required":[
+        "MonitoringInputs",
+        "MonitoringOutputConfig",
         "MonitoringResources",
         "MonitoringAppSpecification",
         "RoleArn"
@@ -8622,11 +8066,16 @@
         "MonitoringOutputConfig":{"shape":"MonitoringOutputConfig"},
         "MonitoringResources":{"shape":"MonitoringResources"},
         "MonitoringAppSpecification":{"shape":"MonitoringAppSpecification"},
-        "StoppingCondition":{"shape":"AnalyticsStoppingCondition"},
+        "StoppingCondition":{"shape":"MonitoringStoppingCondition"},
         "Environment":{"shape":"MonitoringEnvironmentMap"},
         "NetworkConfig":{"shape":"NetworkConfig"},
         "RoleArn":{"shape":"RoleArn"}
       }
+    },
+    "MonitoringMaxRuntimeInSeconds":{
+      "type":"integer",
+      "max":86400,
+      "min":1
     },
     "MonitoringOutput":{
       "type":"structure",
@@ -8664,8 +8113,8 @@
       ],
       "members":{
         "S3Uri":{"shape":"MonitoringS3Uri"},
-        "LocalPath":{"shape":"AnalyticsLocalPath"},
-        "S3UploadMode":{"shape":"AnalyticsS3UploadMode"}
+        "LocalPath":{"shape":"ProcessingLocalPath"},
+        "S3UploadMode":{"shape":"ProcessingS3UploadMode"}
       }
     },
     "MonitoringS3Uri":{
@@ -8680,10 +8129,7 @@
     },
     "MonitoringScheduleConfig":{
       "type":"structure",
-      "required":[
-        "ScheduleConfig",
-        "MonitoringJobDefinition"
-      ],
+      "required":["MonitoringJobDefinition"],
       "members":{
         "ScheduleConfig":{"shape":"ScheduleConfig"},
         "MonitoringJobDefinition":{"shape":"MonitoringJobDefinition"}
@@ -8731,6 +8177,13 @@
         "S3Uri":{"shape":"S3Uri"}
       }
     },
+    "MonitoringStoppingCondition":{
+      "type":"structure",
+      "required":["MaxRuntimeInSeconds"],
+      "members":{
+        "MaxRuntimeInSeconds":{"shape":"MonitoringMaxRuntimeInSeconds"}
+      }
+    },
     "NameContains":{
       "type":"string",
       "max":63,
@@ -8756,7 +8209,6 @@
     "NetworkConfig":{
       "type":"structure",
       "members":{
-        "EnableInterContainerTrafficEncryption":{"shape":"Boolean"},
         "EnableNetworkIsolation":{"shape":"Boolean"},
         "VpcConfig":{"shape":"VpcConfig"}
       }
@@ -8919,6 +8371,13 @@
       "max":16384,
       "min":5
     },
+    "NotebookOutputOption":{
+      "type":"string",
+      "enum":[
+        "Allowed",
+        "Disabled"
+      ]
+    },
     "NotificationConfiguration":{
       "type":"structure",
       "members":{
@@ -8963,7 +8422,9 @@
         "GreaterThanOrEqualTo",
         "LessThan",
         "LessThanOrEqualTo",
-        "Contains"
+        "Contains",
+        "Exists",
+        "NotExists"
       ]
     },
     "OptionalDouble":{"type":"double"},
@@ -8997,6 +8458,18 @@
           "internalonly":true
         }
       }
+    },
+    "OutputPrefix":{
+      "type":"string",
+      "internalonly":true,
+      "max":64,
+      "pattern":"^[a-zA-Z0-9.-]*$"
+    },
+    "OutputSuffix":{
+      "type":"string",
+      "internalonly":true,
+      "max":64,
+      "pattern":"^[a-zA-Z0-9.-]*$"
     },
     "PaginationToken":{
       "type":"string",
@@ -9096,13 +8569,12 @@
         "IterationNumber"
       ]
     },
-    "PoolSize":{"type":"integer"},
     "PresignedDomainUrl":{"type":"string"},
     "ProblemType":{
       "type":"string",
       "enum":[
         "BinaryClassification",
-        "MultiClassClassification",
+        "MulticlassClassification",
         "Regression"
       ]
     },
@@ -9381,7 +8853,6 @@
       "members":{
         "S3Uri":{"shape":"S3Uri"},
         "LocalPath":{"shape":"ProcessingLocalPath"},
-        "KmsKeyId":{"shape":"KmsKeyId"},
         "S3UploadMode":{"shape":"ProcessingS3UploadMode"}
       }
     },
@@ -9415,7 +8886,6 @@
       "members":{
         "S3Uri":{"shape":"S3Uri"},
         "LocalPath":{"shape":"ProcessingLocalPath"},
-        "KmsKeyId":{"shape":"KmsKeyId"},
         "S3UploadMode":{"shape":"ProcessingS3UploadMode"},
         "RoleArn":{"shape":"RoleArn"}
       }
@@ -9613,7 +9083,7 @@
           "shape":"NonNegativeInteger",
           "box":true
         },
-        "Value":{"shape":"Float"}
+        "Value":{"shape":"Double"}
       }
     },
     "RawMetricDataList":{
@@ -9686,6 +9156,14 @@
       "pattern":"(^[0-9]{12}\\.dkr\\.ecr\\.[a-zA-Z0-9-]+\\.amazonaws\\.com\\/?[a-zA-Z_0-9+=,.:@\\-_/]+$)|(^arn:aws(-[\\w]+)*:ecr:.+:[0-9]{12}:repository/?.+$)"
     },
     "RequireImageScan":{"type":"boolean"},
+    "ResolvedAttributes":{
+      "type":"structure",
+      "members":{
+        "AutoMLJobObjective":{"shape":"AutoMLJobObjective"},
+        "ProblemType":{"shape":"ProblemType"},
+        "CompletionCriteria":{"shape":"AutoMLJobCompletionCriteria"}
+      }
+    },
     "ResourceArn":{
       "type":"string",
       "max":256,
@@ -9750,9 +9228,8 @@
     "ResourceSpec":{
       "type":"structure",
       "members":{
-        "EnvironmentArn":{"shape":"String256"},
-        "InstanceType":{"shape":"InstanceType"},
-        "TempVolumeSizeInGB":{"shape":"TempVolumeSizeInGB"}
+        "EnvironmentArn":{"shape":"EnvironmentArn"},
+        "InstanceType":{"shape":"AppInstanceType"}
       }
     },
     "ResourceType":{
@@ -9774,7 +9251,19 @@
       "type":"list",
       "member":{"shape":"ResponseMIMEType"}
     },
-    "ResultVisualizationNotebookLocation":{"type":"string"},
+    "RetentionPolicy":{
+      "type":"structure",
+      "members":{
+        "HomeEfsFileSystem":{"shape":"RetentionType"}
+      }
+    },
+    "RetentionType":{
+      "type":"string",
+      "enum":[
+        "Retain",
+        "Delete"
+      ]
+    },
     "RoleArn":{
       "type":"string",
       "max":2048,
@@ -9788,15 +9277,6 @@
         "Disabled"
       ]
     },
-    "RuleConfig":{
-      "type":"structure",
-      "required":["RuleSpecificationList"],
-      "members":{
-        "LocalPath":{"shape":"DirectoryPath"},
-        "S3OutputPath":{"shape":"S3Uri"},
-        "RuleSpecificationList":{"shape":"RuleSpecificationList"}
-      }
-    },
     "RuleConfigurationName":{
       "type":"string",
       "max":256,
@@ -9806,7 +9286,6 @@
     "RuleEvaluationStatus":{
       "type":"string",
       "enum":[
-        "NotStarted",
         "InProgress",
         "NoIssuesFound",
         "IssuesFound",
@@ -9815,70 +9294,7 @@
         "Stopped"
       ]
     },
-    "RuleMonitoringStatus":{
-      "type":"structure",
-      "members":{
-        "RuleName":{"shape":"RuleName"},
-        "RuleExecutionJobArn":{"shape":"TrainingJobArn"},
-        "RuleStatus":{"shape":"RuleStatus"},
-        "FailureReason":{"shape":"FailureReason"},
-        "LastModifiedTime":{"shape":"Timestamp"}
-      }
-    },
-    "RuleMonitoringStatuses":{
-      "type":"list",
-      "member":{"shape":"RuleMonitoringStatus"},
-      "max":20,
-      "min":0
-    },
-    "RuleName":{
-      "type":"string",
-      "max":256,
-      "min":1
-    },
     "RuleParameters":{
-      "type":"map",
-      "key":{"shape":"ConfigKey"},
-      "value":{"shape":"ConfigValue"},
-      "max":20,
-      "min":0
-    },
-    "RuleSpecification":{
-      "type":"structure",
-      "required":[
-        "RuleName",
-        "RuleEvaluatorImage",
-        "InstanceType",
-        "VolumeSizeInGB"
-      ],
-      "members":{
-        "RuleName":{"shape":"RuleName"},
-        "RuleEvaluatorImage":{"shape":"AlgorithmImage"},
-        "SourceS3Uri":{"shape":"S3Uri"},
-        "InstanceType":{"shape":"TrainingInstanceType"},
-        "VolumeSizeInGB":{"shape":"VolumeSizeInGB"},
-        "RuntimeConfigurations":{"shape":"RuntimeConfigurations"}
-      }
-    },
-    "RuleSpecificationList":{
-      "type":"list",
-      "member":{"shape":"RuleSpecification"},
-      "max":20,
-      "min":0
-    },
-    "RuleStatus":{
-      "type":"string",
-      "enum":[
-        "NotStarted",
-        "InProgress",
-        "Success",
-        "RuleExecutionError",
-        "Failed",
-        "Stopping",
-        "Stopped"
-      ]
-    },
-    "RuntimeConfigurations":{
       "type":"map",
       "key":{"shape":"ConfigKey"},
       "value":{"shape":"ConfigValue"},
@@ -9954,7 +9370,7 @@
     },
     "ScheduleExpression":{
       "type":"string",
-      "max":512,
+      "max":256,
       "min":1
     },
     "ScheduleStatus":{
@@ -10107,8 +9523,9 @@
     "SharingSettings":{
       "type":"structure",
       "members":{
-        "S3Uri":{"shape":"S3Uri"},
-        "AllowIncludeNotebookOutput":{"shape":"AllowIncludeNotebookOutput"}
+        "NotebookOutputOption":{"shape":"NotebookOutputOption"},
+        "S3OutputPath":{"shape":"S3Uri"},
+        "S3KmsKeyId":{"shape":"KmsKeyId"}
       }
     },
     "ShuffleConfig":{
@@ -10117,6 +9534,10 @@
       "members":{
         "Seed":{"shape":"Seed"}
       }
+    },
+    "SingleSignOnUserIdentifier":{
+      "type":"string",
+      "pattern":"UserName"
     },
     "SizeInBytes":{
       "type":"long",
@@ -10190,6 +9611,10 @@
         "Cidrs":{"shape":"Cidrs"}
       }
     },
+    "SourceType":{
+      "type":"string",
+      "max":128
+    },
     "SplitType":{
       "type":"string",
       "enum":[
@@ -10224,26 +9649,7 @@
       "max":1024,
       "pattern":".*"
     },
-    "StatusMessage":{
-      "type":"string",
-      "max":1024,
-      "pattern":".*"
-    },
-    "StopAnalyticsJobInternalRequest":{
-      "type":"structure",
-      "required":["AnalyticsJobName"],
-      "members":{
-        "AnalyticsJobName":{"shape":"AnalyticsJobName"},
-        "CustomerDetails":{"shape":"CustomerDetails"}
-      }
-    },
-    "StopAnalyticsJobRequest":{
-      "type":"structure",
-      "required":["AnalyticsJobName"],
-      "members":{
-        "AnalyticsJobName":{"shape":"AnalyticsJobName"}
-      }
-    },
+    "StatusMessage":{"type":"string"},
     "StopAutoMLJobRequest":{
       "type":"structure",
       "required":["AutoMLJobName"],
@@ -10558,7 +9964,7 @@
     "TagrisVersion":{"type":"long"},
     "TargetAttributeName":{
       "type":"string",
-      "min":0
+      "min":1
     },
     "TargetDevice":{
       "type":"string",
@@ -10570,6 +9976,7 @@
         "ml_c5",
         "ml_p2",
         "ml_p3",
+        "ml_inf1",
         "jetson_tx1",
         "jetson_tx2",
         "jetson_nano",
@@ -10583,7 +9990,6 @@
         "qcs603"
       ]
     },
-    "TargetObjective":{"type":"float"},
     "TargetObjectiveMetricValue":{"type":"float"},
     "TaskAvailabilityLifetimeInSeconds":{
       "type":"integer",
@@ -10629,7 +10035,6 @@
       "min":1,
       "pattern":"^[\\t\\n\\r -\\uD7FF\\uE000-\\uFFFD]*$"
     },
-    "TempVolumeSizeInGB":{"type":"integer"},
     "TemplateContent":{
       "type":"string",
       "max":128000,
@@ -10646,6 +10051,12 @@
       "max":2048,
       "min":1
     },
+    "TensorBoardAppSettings":{
+      "type":"structure",
+      "members":{
+        "DefaultResourceSpec":{"shape":"ResourceSpec"}
+      }
+    },
     "TensorBoardOutputConfig":{
       "type":"structure",
       "required":["S3OutputPath"],
@@ -10653,11 +10064,6 @@
         "LocalPath":{"shape":"DirectoryPath"},
         "S3OutputPath":{"shape":"S3Uri"}
       }
-    },
-    "TensorRegex":{
-      "type":"string",
-      "max":256,
-      "min":1
     },
     "TenthFractionsOfACent":{
       "type":"integer",
@@ -10755,12 +10161,8 @@
         "CheckpointConfig":{"shape":"CheckpointConfig"},
         "TrainingTimeInSeconds":{"shape":"TrainingTimeInSeconds"},
         "BillableTimeInSeconds":{"shape":"BillableTimeInSeconds"},
-        "DebugConfig":{
-          "shape":"DebugConfig",
-          "internalonly":true
-        },
-        "RuleMonitoringStatuses":{
-          "shape":"RuleMonitoringStatuses",
+        "DebugHookConfig":{
+          "shape":"DebugHookConfig",
           "internalonly":true
         },
         "ExperimentConfig":{
@@ -11082,7 +10484,15 @@
         "S3OutputPath":{"shape":"S3Uri"},
         "Accept":{"shape":"Accept"},
         "AssembleWith":{"shape":"AssemblyType"},
-        "KmsKeyId":{"shape":"KmsKeyId"}
+        "KmsKeyId":{"shape":"KmsKeyId"},
+        "OutputPrefix":{
+          "shape":"OutputPrefix",
+          "internalonly":true
+        },
+        "OutputSuffix":{
+          "shape":"OutputSuffix",
+          "internalonly":true
+        }
       }
     },
     "TransformResources":{
@@ -11175,14 +10585,7 @@
       "type":"map",
       "key":{"shape":"TrialComponentKey64"},
       "value":{"shape":"TrialComponentArtifact"},
-      "max":10
-    },
-    "TrialComponentConcurrentModificationException":{
-      "type":"structure",
-      "members":{
-        "Message":{"shape":"String1024"}
-      },
-      "exception":true
+      "max":30
     },
     "TrialComponentKey256":{
       "type":"string",
@@ -11223,7 +10626,7 @@
       "type":"map",
       "key":{"shape":"TrialComponentKey256"},
       "value":{"shape":"TrialComponentParameterValue"},
-      "max":100
+      "max":150
     },
     "TrialComponentPrimaryStatus":{
       "type":"string",
@@ -11242,7 +10645,7 @@
       "members":{
         "TrialComponentName":{"shape":"ExperimentEntityName"},
         "TrialComponentArn":{"shape":"TrialComponentArn"},
-        "SourceArn":{"shape":"TrialComponentSourceArn"},
+        "TrialComponentSource":{"shape":"TrialComponentSource"},
         "CreationTime":{"shape":"Timestamp"},
         "CreatedBy":{"shape":"UserContext"}
       }
@@ -11251,7 +10654,8 @@
       "type":"structure",
       "required":["SourceArn"],
       "members":{
-        "SourceArn":{"shape":"TrialComponentSourceArn"}
+        "SourceArn":{"shape":"TrialComponentSourceArn"},
+        "SourceType":{"shape":"SourceType"}
       }
     },
     "TrialComponentSourceArn":{
@@ -11288,7 +10692,7 @@
         "TrialComponentName":{"shape":"ExperimentEntityName"},
         "TrialComponentArn":{"shape":"TrialComponentArn"},
         "DisplayName":{"shape":"ExperimentEntityName"},
-        "SourceArn":{"shape":"TrialComponentSourceArn"},
+        "TrialComponentSource":{"shape":"TrialComponentSource"},
         "Status":{"shape":"TrialComponentStatus"},
         "StartTime":{"shape":"Timestamp"},
         "EndTime":{"shape":"Timestamp"},
@@ -11298,63 +10702,18 @@
         "LastModifiedBy":{"shape":"UserContext"}
       }
     },
-    "TrialDescription":{"type":"string"},
-    "TrialIdentifier":{
-      "type":"string",
-      "max":64,
-      "min":1
-    },
-    "TrialSecondaryStatus":{"type":"string"},
-    "TrialSortBy":{
-      "type":"string",
-      "enum":[
-        "CreationTime",
-        "Status",
-        "FinalObjectiveMetricValue"
-      ]
-    },
     "TrialSource":{
       "type":"structure",
       "required":["SourceArn"],
       "members":{
-        "SourceArn":{"shape":"TrialSourceArn"}
+        "SourceArn":{"shape":"TrialSourceArn"},
+        "SourceType":{"shape":"SourceType"}
       }
     },
     "TrialSourceArn":{
       "type":"string",
       "max":256,
       "pattern":"arn:aws[a-z\\-]*:sagemaker:[a-z0-9\\-]*:[0-9]{12}:.*"
-    },
-    "TrialStatus":{
-      "type":"string",
-      "enum":[
-        "Completed",
-        "InProgress",
-        "Failed",
-        "Stopped",
-        "Stopping"
-      ]
-    },
-    "TrialStatusCounters":{
-      "type":"structure",
-      "members":{
-        "Completed":{"shape":"AutoMLJobCounter"},
-        "Stopping":{"shape":"AutoMLJobCounter"},
-        "Stopped":{"shape":"AutoMLJobCounter"},
-        "Failed":{"shape":"AutoMLJobCounter"},
-        "InProgress":{"shape":"AutoMLJobCounter"}
-      }
-    },
-    "TrialStepArn":{
-      "type":"string",
-      "max":256
-    },
-    "TrialStepType":{
-      "type":"string",
-      "enum":[
-        "AWS::Sagemaker::TrainingJob",
-        "AWS::Sagemaker::TransformJob"
-      ]
     },
     "TrialSummaries":{
       "type":"list",
@@ -11366,6 +10725,7 @@
         "TrialArn":{"shape":"TrialArn"},
         "TrialName":{"shape":"ExperimentEntityName"},
         "DisplayName":{"shape":"ExperimentEntityName"},
+        "TrialSource":{"shape":"TrialSource"},
         "CreationTime":{"shape":"Timestamp"},
         "LastModifiedTime":{"shape":"Timestamp"}
       }
@@ -11432,10 +10792,12 @@
       "type":"structure",
       "required":["DomainId"],
       "members":{
-        "DefaultSettings":{"shape":"UserSettings"},
         "DomainId":{"shape":"ResourceId"},
-        "DomainPolicy":{"shape":"String2048"},
-        "IsDefaultDomain":{"shape":"IsDefaultDomain"}
+        "DefaultUserSettings":{"shape":"UserSettings"},
+        "DomainPolicy":{
+          "shape":"String2048",
+          "internalonly":true
+        }
       }
     },
     "UpdateDomainResponse":{
@@ -11497,14 +10859,6 @@
         "RoleArn":{"shape":"RoleArn"},
         "EnableNetworkIsolation":{"shape":"EnableNetworkIsolation"},
         "VpcConfig":{"shape":"VpcConfig"},
-        "ExpirationInDays":{
-          "shape":"ExpirationInDays",
-          "internalonly":true
-        },
-        "KeepS3ArtifactsOnDelete":{
-          "shape":"KeepS3ArtifactsOnDelete",
-          "internalonly":true
-        },
         "Metadata":{"shape":"Metadata"},
         "S3ArtifactPath":{"shape":"S3ArtifactPath"},
         "KmsKeyId":{"shape":"KmsKeyId"}
@@ -11515,20 +10869,6 @@
       "required":["EnvironmentArn"],
       "members":{
         "EnvironmentArn":{"shape":"EnvironmentArn"}
-      }
-    },
-    "UpdateEnvironmentVersionStatusRequest":{
-      "type":"structure",
-      "required":[
-        "EnvironmentName",
-        "EnvironmentVersionNumber",
-        "EnvironmentVersionStatus"
-      ],
-      "members":{
-        "EnvironmentName":{"shape":"EnvironmentName"},
-        "EnvironmentVersionNumber":{"shape":"EnvironmentVersionNumber"},
-        "EnvironmentVersionStatus":{"shape":"EnvironmentVersionStatus"},
-        "StatusMessage":{"shape":"StatusMessage"}
       }
     },
     "UpdateExperimentRequest":{
@@ -11655,19 +10995,22 @@
       "type":"structure",
       "required":[
         "DomainId",
-        "IdentityId"
+        "UserProfileName"
       ],
       "members":{
         "DomainId":{"shape":"ResourceId"},
-        "IdentityId":{"shape":"IdentityId"},
-        "UserPolicy":{"shape":"String2048"},
+        "UserProfileName":{"shape":"UserProfileName"},
+        "UserPolicy":{
+          "shape":"String2048",
+          "internalonly":true
+        },
         "UserSettings":{"shape":"UserSettings"}
       }
     },
     "UpdateUserProfileResponse":{
       "type":"structure",
       "members":{
-        "IdentityArn":{"shape":"String256"}
+        "UserProfileArn":{"shape":"UserProfileArn"}
       }
     },
     "UpdateWorkforceRequest":{
@@ -11702,23 +11045,6 @@
         "Workteam":{"shape":"Workteam"}
       }
     },
-    "UpstreamAnalyticsOutput":{
-      "type":"structure",
-      "required":[
-        "OutputName",
-        "UpstreamS3Output"
-      ],
-      "members":{
-        "OutputName":{"shape":"String"},
-        "UpstreamS3Output":{"shape":"AnalyticsUpstreamS3Output"}
-      }
-    },
-    "UpstreamAnalyticsOutputs":{
-      "type":"list",
-      "member":{"shape":"UpstreamAnalyticsOutput"},
-      "max":5,
-      "min":0
-    },
     "UpstreamProcessingOutput":{
       "type":"structure",
       "required":[
@@ -11752,41 +11078,43 @@
     "UserContext":{
       "type":"structure",
       "members":{
-        "UserArn":{"shape":"String"},
-        "IdentityArn":{"shape":"String"},
-        "UserId":{"shape":"String"},
+        "UserProfileArn":{"shape":"String"},
+        "UserProfileName":{"shape":"String"},
         "DomainId":{"shape":"String"}
       }
+    },
+    "UserProfileArn":{
+      "type":"string",
+      "max":256,
+      "pattern":"arn:aws[a-z\\-]*:sagemaker:[a-z0-9\\-]*:[0-9]{12}:user-profile/.*"
     },
     "UserProfileDetails":{
       "type":"structure",
       "members":{
-        "EfsUid":{"shape":"EfsUid"},
-        "IdentityId":{"shape":"IdentityId"},
-        "Status":{"shape":"UserStatus"},
-        "UserPolicy":{"shape":"String2048"},
-        "UserSettings":{"shape":"UserSettings"}
+        "DomainId":{"shape":"DomainId"},
+        "UserProfileName":{"shape":"UserProfileName"},
+        "Status":{"shape":"UserProfileStatus"},
+        "CreationTime":{"shape":"CreationTime"},
+        "LastModifiedTime":{"shape":"LastModifiedTime"}
       }
     },
     "UserProfileList":{
       "type":"list",
       "member":{"shape":"UserProfileDetails"}
     },
+    "UserProfileName":{
+      "type":"string",
+      "max":63,
+      "pattern":"^[a-zA-Z0-9](-*[a-zA-Z0-9])*"
+    },
     "UserProfileSortKey":{
       "type":"string",
-      "enum":["IdentityId"]
+      "enum":[
+        "CreationTime",
+        "LastModifiedTime"
+      ]
     },
-    "UserSettings":{
-      "type":"structure",
-      "members":{
-        "AppSettings":{"shape":"AppSettings"},
-        "ExecutionRole":{"shape":"RoleArn"},
-        "GlobalIdleTimeoutInMinutes":{"shape":"GlobalIdleTimeoutInMinutes"},
-        "SecurityGroups":{"shape":"SecurityGroupIds"},
-        "SharingSettings":{"shape":"SharingSettings"}
-      }
-    },
-    "UserStatus":{
+    "UserProfileStatus":{
       "type":"string",
       "enum":[
         "Deleting",
@@ -11794,6 +11122,18 @@
         "InService",
         "Pending"
       ]
+    },
+    "UserSettings":{
+      "type":"structure",
+      "members":{
+        "ExecutionRole":{"shape":"RoleArn"},
+        "EnvironmentSettings":{"shape":"EnvironmentSettings"},
+        "SecurityGroups":{"shape":"SecurityGroupIds"},
+        "SharingSettings":{"shape":"SharingSettings"},
+        "JupyterServerAppSettings":{"shape":"JupyterServerAppSettings"},
+        "KernelGatewayAppSettings":{"shape":"KernelGatewayAppSettings"},
+        "TensorBoardAppSettings":{"shape":"TensorBoardAppSettings"}
+      }
     },
     "VariantName":{
       "type":"string",
