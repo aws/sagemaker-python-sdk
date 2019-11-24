@@ -1,16 +1,16 @@
 {
   "pagination": {
-    "ListAnalyticsJobs": {
-      "input_token": "NextToken",
-      "output_token": "NextToken",
-      "limit_key": "MaxResults"
-    },
     "ListApps": {
       "input_token": "NextToken",
       "output_token": "NextToken",
       "limit_key": "MaxResults"
     },
     "ListAutoMLJobs": {
+      "input_token": "NextToken",
+      "output_token": "NextToken",
+      "limit_key": "MaxResults"
+    },
+    "ListCandidatesForAutoMLJob": {
       "input_token": "NextToken",
       "output_token": "NextToken",
       "limit_key": "MaxResults"
@@ -116,11 +116,6 @@
       "limit_key": "MaxResults"
     },
     "ListTransformJobs": {
-      "input_token": "NextToken",
-      "output_token": "NextToken",
-      "limit_key": "MaxResults"
-    },
-    "ListTrialsForAutoMLJob": {
       "input_token": "NextToken",
       "output_token": "NextToken",
       "limit_key": "MaxResults"

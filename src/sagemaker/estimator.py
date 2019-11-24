@@ -16,14 +16,19 @@ from __future__ import print_function, absolute_import
 import json
 import logging
 import os
+import uuid
 import warnings
 from abc import ABCMeta
 from abc import abstractmethod
+
 from six import with_metaclass
 from six import string_types
+from six.moves.urllib.parse import urlparse
 import sagemaker
 from sagemaker import git_utils
 from sagemaker.analytics import TrainingJobAnalytics
+from sagemaker.debugger import DebuggerHookConfig, TensorBoardOutputConfig
+from sagemaker.s3 import S3Uploader
 
 from sagemaker.fw_utils import (
     create_image_uri,
@@ -86,6 +91,9 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):
         train_max_wait=None,
         checkpoint_s3_uri=None,
         checkpoint_local_path=None,
+        rules=None,
+        debugger_hook_config=None,
+        tensorboard_output_config=None,
     ):
         """Initialize an ``EstimatorBase`` instance.
 
@@ -231,6 +239,13 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):
         self.checkpoint_s3_uri = checkpoint_s3_uri
         self.checkpoint_local_path = checkpoint_local_path
 
+        self.rules = rules
+        self.debugger_hook_config = debugger_hook_config
+        self.tensorboard_output_config = tensorboard_output_config
+
+        self.debugger_rule_configs = None
+        self.collection_configs = None
+
     @abstractmethod
     def train_image(self):
         """Return the Docker image to use for training.
@@ -302,7 +317,63 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):
             else:
                 self.output_path = "s3://{}/".format(self.sagemaker_session.default_bucket())
 
-    def fit(self, inputs=None, wait=True, logs=True, job_name=None):
+        # Prepare rules and debugger configs for training.
+        if self.rules and not self.debugger_hook_config:
+            self.debugger_hook_config = DebuggerHookConfig(
+                s3_output_path=os.path.join(self.output_path, self._current_job_name, "tensors")
+            )
+        self._prepare_rules()
+        self._prepare_collection_configs()
+
+    def _prepare_rules(self):
+        """Set any necessary values in debugger rules, if they are provided."""
+        self.debugger_rule_configs = []
+        if self.rules is not None:
+            # Iterate through each of the provided rules.
+            for rule in self.rules:
+                # Set the instance type and volume size using the Estimator's defaults.
+                rule.instance_type = self.train_instance_type
+                rule.volume_size_in_gb = self.train_volume_size
+                # Set the image URI using the default rule evaluator image and the region.
+                if rule.image_uri == "DEFAULT_RULE_EVALUATOR_IMAGE":
+                    # TODO-reinvent-2019 [akarpur]: Replace this image URI with the latest version
+                    rule.image_uri = "453379255795.dkr.ecr.{}.amazonaws.com/script-rule-executor:latest".format(
+                        self.sagemaker_session.boto_region_name
+                    )
+                # If source was provided as a rule parameter, upload to S3 and save the S3 uri.
+                if "source_s3_uri" in (rule.rule_parameters or {}):
+                    parse_result = urlparse(rule.rule_parameters["source_s3_uri"])
+                    if parse_result.scheme != "s3":
+                        desired_s3_uri = os.path.join(
+                            "s3://",
+                            self.sagemaker_session.default_bucket(),
+                            rule.name,
+                            str(uuid.uuid4()),
+                        )
+                        s3_uri = S3Uploader.upload(
+                            local_path=rule.rule_parameters["source_s3_uri"],
+                            desired_s3_uri=desired_s3_uri,
+                            session=self.sagemaker_session,
+                        )
+                        rule.rule_parameters["source_s3_uri"] = s3_uri
+                # Save the request dictionary for the rule.
+                self.debugger_rule_configs.append(rule.to_debugger_rule_config_dict())
+
+    def _prepare_collection_configs(self):
+        """De-duplicate any collection configurations and save them
+        in the debugger hook configuration.
+        """
+        # Create a set to de-duplicate CollectionConfigs.
+        self.collection_configs = set()
+        # Iterate through the rules and add their respective CollectionConfigs to the set.
+        if self.rules is not None:
+            for rule in self.rules:
+                self.collection_configs.update(rule.collection_configs)
+        # Add the CollectionConfigs from DebuggerHookConfig to the set.
+        if self.debugger_hook_config is not None:
+            self.collection_configs.update(self.debugger_hook_config.collection_configs or [])
+
+    def fit(self, inputs=None, wait=True, logs="All", job_name=None):
         """Train a model using the input training dataset.
 
         The API calls the Amazon SageMaker CreateTrainingJob API to start
@@ -330,8 +401,10 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):
                     the path to the training dataset.
 
             wait (bool): Whether the call should wait until the job completes (default: True).
-            logs (bool): Whether to show the logs produced by the job.
-                Only meaningful when wait is True (default: True).
+            logs ([str]): A list of strings specifying which logs to print. Acceptable
+                strings are "All", "None", "Training", or "Rules". To maintain backwards
+                compatibility, boolean values are also accepted and converted to strings.
+                Only meaningful when wait is True.
             job_name (str): Training job name. If not specified, the estimator generates
                 a default job name, based on the training image name and current timestamp.
         """
@@ -860,6 +933,18 @@ class _TrainingJob(_Job):
         else:
             train_args["image"] = estimator.train_image()
 
+        if estimator.debugger_rule_configs:
+            train_args["debugger_rule_configs"] = estimator.debugger_rule_configs
+
+        if estimator.debugger_hook_config:
+            estimator.debugger_hook_config.collection_configs = estimator.collection_configs
+            train_args["debugger_hook_config"] = estimator.debugger_hook_config.to_request_dict()
+
+        if estimator.tensorboard_output_config:
+            train_args[
+                "tensorboard_output_config"
+            ] = estimator.tensorboard_output_config.to_request_dict()
+
         cls._add_spot_checkpoint_args(local_mode, estimator, train_args)
 
         estimator.sagemaker_session.train(**train_args)
@@ -897,15 +982,36 @@ class _TrainingJob(_Job):
         """
         return isinstance(input_uri, string_types) and input_uri.startswith("file://")
 
-    def wait(self, logs=True):
+    def wait(self, logs="All"):
         """
         Args:
-            logs:
+            logs ([str]): A list of strings specifying which logs to print. Acceptable
+                strings are "All", "None", "Training", or "Rules". To maintain backwards
+                compatibility, boolean values are also accepted and converted to strings.
         """
-        if logs:
-            self.sagemaker_session.logs_for_job(self.job_name, wait=True)
+        # Convert boolean values of logs to strings.
+        log_string_map = {True: "All", False: "None"}
+        if isinstance(logs, bool):
+            logs = log_string_map[logs]
+        # If logs are requested, call logs_for_jobs.
+        if logs != "None":
+            self.sagemaker_session.logs_for_job(self.job_name, wait=True, log_type=logs)
         else:
             self.sagemaker_session.wait_for_job(self.job_name)
+
+    def describe(self):
+        """Returns a response from the DescribeTrainingJob API call."""
+        return self.sagemaker_session.describe_training_job(self.job_name)
+
+    def rule_job_summary(self):
+        """Calls describe_training_job and returns the
+        DebugRuleEvaluationStatuses dictionary.
+        """
+        return self.describe()["DebugRuleEvaluationStatuses"]
+
+    def stop(self):
+        """Stops the training job."""
+        self.sagemaker_session.stop_training_job(self.name)
 
 
 class Estimator(EstimatorBase):
@@ -940,6 +1046,9 @@ class Estimator(EstimatorBase):
         checkpoint_s3_uri=None,
         checkpoint_local_path=None,
         enable_network_isolation=False,
+        rules=None,
+        debugger_hook_config=None,
+        tensorboard_output_config=None,
     ):
         """Initialize an ``Estimator`` instance.
 
@@ -1078,6 +1187,9 @@ class Estimator(EstimatorBase):
             train_max_wait=train_max_wait,
             checkpoint_s3_uri=checkpoint_s3_uri,
             checkpoint_local_path=checkpoint_local_path,
+            rules=rules,
+            debugger_hook_config=debugger_hook_config,
+            tensorboard_output_config=tensorboard_output_config,
         )
 
     def enable_network_isolation(self):
@@ -1468,6 +1580,16 @@ class Framework(EstimatorBase):
         self._hyperparameters[CONTAINER_LOG_LEVEL_PARAM_NAME] = self.container_log_level
         self._hyperparameters[JOB_NAME_PARAM_NAME] = self._current_job_name
         self._hyperparameters[SAGEMAKER_REGION_PARAM_NAME] = self.sagemaker_session.boto_region_name
+
+        # Set defaults for debugging.
+        if self.debugger_hook_config is None:
+            self.debugger_hook_config = DebuggerHookConfig(
+                s3_output_path=os.path.join(self.output_path, self._current_job_name, "tensors")
+            )
+        if self.tensorboard_output_config is None:
+            self.tensorboard_output_config = TensorBoardOutputConfig(
+                s3_output_path=os.path.join(self.output_path, self._current_job_name, "tensorboard")
+            )
 
     def _stage_user_code_in_s3(self):
         """Upload the user training script to s3 and return the location.
