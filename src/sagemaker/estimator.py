@@ -557,6 +557,7 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):
         wait=True,
         model_name=None,
         kms_key=None,
+        data_capture_config=None,
         **kwargs
     ):
         """Deploy the trained model to an Amazon SageMaker endpoint and return a
@@ -599,6 +600,9 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):
             kms_key (str): The ARN of the KMS key that is used to encrypt the
                 data on the storage volume attached to the instance hosting the
                 endpoint.
+            data_capture_config (DataCaptureConfig): Specifies configuration
+                related to Endpoint data capture for use with
+                Amazon SageMaker Model Monitoring. Default: None.
             **kwargs: Passed to invocation of ``create_model()``.
                 Implementations may customize ``create_model()`` to accept
                 ``**kwargs`` to customize model creation during deploy.
@@ -624,7 +628,9 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):
         else:
             kwargs["model_kms_key"] = self.output_kms_key
             model = self.create_model(**kwargs)
+
         model.name = model_name
+
         return model.deploy(
             instance_type=instance_type,
             initial_instance_count=initial_instance_count,
@@ -634,6 +640,7 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):
             tags=self.tags,
             wait=wait,
             kms_key=kms_key,
+            data_capture_config=data_capture_config,
         )
 
     @property

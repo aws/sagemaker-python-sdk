@@ -63,7 +63,7 @@ class Processor(object):
                 the Processing job with.
             instance_type (str): Type of EC2 instance to use for
                 processing, for example, 'ml.c4.xlarge'.
-            entrypoint (str): The entrypoint for the processing job.
+            entrypoint ([str]): The entrypoint for the processing job.
             volume_size_in_gb (int): Size in GB of the EBS volume
                 to use for storing data during processing (default: 30).
             volume_kms_key (str): A KMS key for the processing
@@ -294,7 +294,7 @@ class ScriptProcessor(Processor):
                 object that configures network isolation, encryption of
                 inter-container traffic, security group IDs, and subnets.
         """
-        self._CODE_CONTAINER_BASE_PATH = "/input/"
+        self._CODE_CONTAINER_BASE_PATH = "/opt/ml/processing/input/"
         self._CODE_CONTAINER_INPUT_NAME = "code"
 
         super(ScriptProcessor, self).__init__(
@@ -494,6 +494,11 @@ class ProcessingJob(_Job):
             }
         }
 
+        if processor.volume_kms_key is not None:
+            process_request_args["resources"]["ClusterConfig"][
+                "VolumeKmsKeyId"
+            ] = processor.volume_kms_key
+
         if processor.max_runtime_in_seconds is not None:
             process_request_args["stopping_condition"] = {
                 "MaxRuntimeInSeconds": processor.max_runtime_in_seconds
@@ -519,6 +524,7 @@ class ProcessingJob(_Job):
         process_request_args["tags"] = processor.tags
 
         # Print the job name and the user's inputs and outputs as lists of dictionaries.
+        print()
         print("Job Name: ", process_request_args["job_name"])
         print("Inputs: ", process_request_args["inputs"])
         print("Outputs: ", process_request_args["output_config"]["Outputs"])

@@ -73,6 +73,7 @@ def test_all_defaults_no_existing_entities(sagemaker_session):
     expected_args["model_environment_vars"] = None
     expected_args["model_vpc_config"] = VPC_CONFIG
     expected_args["accelerator_type"] = None
+    expected_args["data_capture_config"] = None
     sagemaker_session.endpoint_from_model_data.assert_called_once_with(**expected_args)
     assert returned_name == ENDPOINT_FROM_MODEL_RETURNED_NAME
 
@@ -99,5 +100,6 @@ def test_no_defaults_no_existing_entities(sagemaker_session):
     expected_args.pop("job_name")
     expected_args["model_s3_location"] = S3_MODEL_ARTIFACTS
     expected_args["model_vpc_config"] = expected_args.pop("vpc_config_override")
+    expected_args["data_capture_config"] = None
     sagemaker_session.endpoint_from_model_data.assert_called_once_with(**expected_args)
     assert returned_name == ENDPOINT_FROM_MODEL_RETURNED_NAME

@@ -695,6 +695,7 @@ class HyperparameterTuner(object):
         wait=True,
         model_name=None,
         kms_key=None,
+        data_capture_config=None,
         **kwargs
     ):
         """Deploy the best trained or user specified model to an Amazon
@@ -724,6 +725,9 @@ class HyperparameterTuner(object):
             kms_key (str): The ARN of the KMS key that is used to encrypt the
                 data on the storage volume attached to the instance hosting the
                 endpoint.
+            data_capture_config (DataCaptureConfig): Specifies configuration
+                related to Endpoint data capture for use with
+                Amazon SageMaker Model Monitoring. Default: None.
             **kwargs: Other arguments needed for deployment. Please refer to the
                 ``create_model()`` method of the associated estimator to see
                 what other arguments are needed.
@@ -744,6 +748,7 @@ class HyperparameterTuner(object):
             wait=wait,
             model_name=model_name,
             kms_key=kms_key,
+            data_capture_config=data_capture_config,
             **kwargs
         )
 

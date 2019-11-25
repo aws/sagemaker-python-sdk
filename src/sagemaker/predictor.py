@@ -21,7 +21,9 @@ from six import StringIO, BytesIO
 import numpy as np
 
 from sagemaker.content_types import CONTENT_TYPE_JSON, CONTENT_TYPE_CSV, CONTENT_TYPE_NPY
+from sagemaker.model_monitor import DataCaptureConfig
 from sagemaker.session import Session
+from sagemaker.utils import name_from_base
 
 
 class RealTimePredictor(object):
@@ -171,6 +173,50 @@ class RealTimePredictor(object):
                 "One or more models cannot be deleted, please retry. \n"
                 "Failed models: {}".format(", ".join(failed_models))
             )
+
+    def enable_data_capture(self):
+        """Updates the DataCaptureConfig for the Predictor's associated Amazon SageMaker Endpoint
+        to enable data capture. For a more customized experience, refer to
+        update_data_capture_config, instead.
+        """
+        self.update_data_capture_config(data_capture_config=DataCaptureConfig(enable_capture=True))
+
+    def disable_data_capture(self):
+        """Updates the DataCaptureConfig for the Predictor's associated Amazon SageMaker Endpoint
+        to disable data capture. For a more customized experience, refer to
+        update_data_capture_config, instead.
+        """
+        self.update_data_capture_config(data_capture_config=DataCaptureConfig(enable_capture=False))
+
+    def update_data_capture_config(self, data_capture_config):
+        """Updates the DataCaptureConfig for the Predictor's associated Amazon SageMaker Endpoint
+        with the provided DataCaptureConfig.
+
+        Args:
+            data_capture_config (sagemaker.model_monitor.DataCaptureConfig): The
+                DataCaptureConfig to update the predictor's endpoint to use.
+        """
+        endpoint_desc = self.sagemaker_session.sagemaker_client.describe_endpoint(
+            EndpointName=self.endpoint
+        )
+
+        new_config_name = name_from_base(base=self.endpoint)
+
+        data_capture_config_dict = (
+            data_capture_config.to_request_dict() if data_capture_config else None
+        )
+
+        self.sagemaker_session.create_endpoint_config_from_existing(
+            existing_config_name=endpoint_desc["EndpointConfigName"],
+            new_config_name=new_config_name,
+            new_data_capture_config_dict=data_capture_config_dict,
+        )
+
+        self.sagemaker_session.update_endpoint(
+            endpoint_name=self.endpoint,
+            endpoint_config_name=new_config_name,
+            retain_all_variant_properties=True,
+        )
 
     def _get_endpoint_config_name(self):
         """Placeholder docstring"""

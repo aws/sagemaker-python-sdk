@@ -41,7 +41,6 @@ MOCK_MODULES = [
     "tensorflow.python.framework",
     "tensorflow_serving",
     "tensorflow_serving.apis",
-    "numpy",
     "scipy",
     "scipy.sparse",
 ]
