@@ -77,7 +77,7 @@ def test_sklearn(sagemaker_session):
                 "InputName": "code",
                 "S3Input": {
                     "S3Uri": "mocked_s3_uri_from_upload_data",
-                    "LocalPath": "/input/code",
+                    "LocalPath": "/opt/ml/processing/input/code",
                     "S3DataType": "S3Prefix",
                     "S3InputMode": "File",
                     "S3DataDistributionType": "FullyReplicated",
@@ -97,7 +97,10 @@ def test_sklearn(sagemaker_session):
         "stopping_condition": None,
         "app_specification": {
             "ImageUri": "246618743249.dkr.ecr.us-west-2.amazonaws.com/sagemaker-scikit-learn:0.20.0-cpu-py3",
-            "ContainerEntrypoint": ["python3", "/input/code/sklearn_transformer.py"],
+            "ContainerEntrypoint": [
+                "python3",
+                "/opt/ml/processing/input/code/sklearn_transformer.py",
+            ],
         },
         "environment": None,
         "network_config": None,
@@ -124,7 +127,7 @@ def test_sklearn_with_no_inputs(sagemaker_session):
                 "InputName": "code",
                 "S3Input": {
                     "S3Uri": "mocked_s3_uri_from_upload_data",
-                    "LocalPath": "/input/code",
+                    "LocalPath": "/opt/ml/processing/input/code",
                     "S3DataType": "S3Prefix",
                     "S3InputMode": "File",
                     "S3DataDistributionType": "FullyReplicated",
@@ -144,7 +147,10 @@ def test_sklearn_with_no_inputs(sagemaker_session):
         "stopping_condition": None,
         "app_specification": {
             "ImageUri": "246618743249.dkr.ecr.us-west-2.amazonaws.com/sagemaker-scikit-learn:0.20.0-cpu-py3",
-            "ContainerEntrypoint": ["python3", "/input/code/sklearn_transformer.py"],
+            "ContainerEntrypoint": [
+                "python3",
+                "/opt/ml/processing/input/code/sklearn_transformer.py",
+            ],
         },
         "environment": None,
         "network_config": None,
@@ -171,7 +177,6 @@ def test_sklearn_with_all_customizations(sagemaker_session):
             subnets=["my_subnet_id"],
             security_group_ids=["my_security_group_id"],
             enable_network_isolation=True,
-            encrypt_inter_container_traffic=True,
         ),
         sagemaker_session=sagemaker_session,
     )
@@ -238,7 +243,7 @@ def test_sklearn_with_all_customizations(sagemaker_session):
                 "InputName": "code",
                 "S3Input": {
                     "S3Uri": "mocked_s3_uri_from_upload_data",
-                    "LocalPath": "/input/code",
+                    "LocalPath": "/opt/ml/processing/input/code",
                     "S3DataType": "S3Prefix",
                     "S3InputMode": "File",
                     "S3DataDistributionType": "FullyReplicated",
@@ -271,11 +276,13 @@ def test_sklearn_with_all_customizations(sagemaker_session):
         "app_specification": {
             "ImageUri": "246618743249.dkr.ecr.us-west-2.amazonaws.com/sagemaker-scikit-learn:0.20.0-cpu-py3",
             "ContainerArguments": ["--drop-columns", "'SelfEmployed'"],
-            "ContainerEntrypoint": ["python3", "/input/code/sklearn_transformer.py"],
+            "ContainerEntrypoint": [
+                "python3",
+                "/opt/ml/processing/input/code/sklearn_transformer.py",
+            ],
         },
         "environment": {"my_env_variable": "my_env_variable_value"},
         "network_config": {
-            "EnableInterContainerTrafficEncryption": True,
             "EnableNetworkIsolation": True,
             "VpcConfig": {
                 "SecurityGroupIds": ["my_security_group_id"],
@@ -323,7 +330,7 @@ def test_byo_container_with_script_processor(sagemaker_session):
                 "InputName": "code",
                 "S3Input": {
                     "S3Uri": "mocked_s3_uri_from_upload_data",
-                    "LocalPath": "/input/code",
+                    "LocalPath": "/opt/ml/processing/input/code",
                     "S3DataType": "S3Prefix",
                     "S3InputMode": "File",
                     "S3DataDistributionType": "FullyReplicated",
@@ -343,7 +350,10 @@ def test_byo_container_with_script_processor(sagemaker_session):
         "stopping_condition": None,
         "app_specification": {
             "ImageUri": CUSTOM_IMAGE_URI,
-            "ContainerEntrypoint": ["python3", "/input/code/sklearn_transformer.py"],
+            "ContainerEntrypoint": [
+                "python3",
+                "/opt/ml/processing/input/code/sklearn_transformer.py",
+            ],
         },
         "environment": None,
         "network_config": None,

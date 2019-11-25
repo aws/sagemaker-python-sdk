@@ -20,35 +20,31 @@ class NetworkConfig(object):
     """Accepts network configuration parameters and provides a method to turn these parameters
     into a dictionary."""
 
-    def __init__(
-        self,
-        enable_network_isolation=False,
-        encrypt_inter_container_traffic=False,
-        security_group_ids=None,
-        subnets=None,
-    ):
+    def __init__(self, enable_network_isolation=False, security_group_ids=None, subnets=None):
         """Initialize a ``NetworkConfig`` instance. NetworkConfig accepts network configuration
         parameters and provides a method to turn these parameters into a dictionary.
 
         Args:
             enable_network_isolation (bool): Boolean that determines whether to enable
                 network isolation.
-            encrypt_inter_container_traffic (bool): Boolean that determines whether to
-                encrypt inter-container traffic.
             security_group_ids ([str]): A list of strings representing security group IDs.
             subnets ([str]): A list of strings representing subnets.
         """
         self.enable_network_isolation = enable_network_isolation
-        self.encrypt_inter_container_traffic = encrypt_inter_container_traffic
         self.security_group_ids = security_group_ids
         self.subnets = subnets
 
     def to_request_dict(self):
         """Generates a request dictionary using the parameters provided to the class."""
-        network_config_request = {
-            "EnableInterContainerTrafficEncryption": self.encrypt_inter_container_traffic,
-            "EnableNetworkIsolation": self.enable_network_isolation,
-            "VpcConfig": {"SecurityGroupIds": self.security_group_ids, "Subnets": self.subnets},
-        }
+        network_config_request = {"EnableNetworkIsolation": self.enable_network_isolation}
+
+        if self.security_group_ids is not None or self.subnets is not None:
+            network_config_request["VpcConfig"] = {}
+
+        if self.security_group_ids is not None:
+            network_config_request["VpcConfig"]["SecurityGroupIds"] = self.security_group_ids
+
+        if self.subnets is not None:
+            network_config_request["VpcConfig"]["Subnets"] = self.subnets
 
         return network_config_request

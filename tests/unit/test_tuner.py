@@ -885,6 +885,7 @@ def test_deploy_optional_params(_get_best_training_job, best_estimator, tuner):
         wait=False,
         model_name=model_name,
         kms_key=kms_key,
+        data_capture_config=None,
         **kwargs
     )
 

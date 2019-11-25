@@ -92,7 +92,10 @@ def boto_config(request):
 def sagemaker_session(sagemaker_client_config, sagemaker_runtime_config, boto_config):
     # TODO-reinvent-2019 [akarpur]: remove this session fixture with hardcoded region
     #  and uncomment below block of code
-    boto_session = boto3.Session(region_name="us-east-2")
+    # boto_session = boto3.Session(region_name="us-east-2")
+    boto_session = (
+        boto3.Session(**boto_config) if boto_config else boto3.Session(region_name=DEFAULT_REGION)
+    )
     sagemaker_client_config.setdefault("config", Config(retries=dict(max_attempts=10)))
     # sagemaker_client_config[
     #     "endpoint_url"

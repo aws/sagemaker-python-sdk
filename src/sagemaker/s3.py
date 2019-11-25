@@ -43,12 +43,17 @@ class S3Uploader(object):
             local_path (str): A local path to a file or directory.
             desired_s3_uri (str): The desired S3 uri to upload to.
             kms_key (str): A KMS key to be provided as an extra argument.
-            session (sagemaker.session.Session):
+            session (sagemaker.session.Session): Session object which
+                manages interactions with Amazon SageMaker APIs and any other
+                AWS services needed. If not specified, the estimator creates one
+                using the default AWS configuration chain.
 
-        Returns: The S3 uri of the uploaded file(s).
+        Returns:
+            The S3 uri of the uploaded file(s).
+
         """
         sagemaker_session = session or Session()
-        bucket, key_prefix = parse_s3_url(desired_s3_uri)
+        bucket, key_prefix = parse_s3_url(url=desired_s3_uri)
         if kms_key is not None:
             extra_args = {"SSEKMSKeyId": kms_key}
         else:
@@ -57,6 +62,30 @@ class S3Uploader(object):
         return sagemaker_session.upload_data(
             path=local_path, bucket=bucket, key_prefix=key_prefix, extra_args=extra_args
         )
+
+    @staticmethod
+    def upload_string_as_file_body(body, desired_s3_uri=None, kms_key=None, session=None):
+        """Static method that uploads a given file or directory to S3.
+
+        Args:
+            body (str): String representing the body of the file.
+            desired_s3_uri (str): The desired S3 uri to upload to.
+            kms_key (str): A KMS key to be provided as an extra argument.
+            session (sagemaker.session.Session): AWS session to use. Automatically
+                generates one if not provided.
+
+        Returns:
+            str: The S3 uri of the uploaded file(s).
+
+        """
+        sagemaker_session = session or Session()
+        bucket, key = parse_s3_url(desired_s3_uri)
+
+        sagemaker_session.upload_string_as_file_body(
+            body=body, bucket=bucket, key=key, kms_key=kms_key
+        )
+
+        return desired_s3_uri
 
 
 class S3Downloader(object):
@@ -70,10 +99,14 @@ class S3Downloader(object):
             s3_uri (str): An S3 uri to download from.
             local_path (str): A local path to download the file(s) to.
             kms_key (str): A KMS key to be provided as an extra argument.
-            session (sagemaker.session.Session):
+            session (sagemaker.session.Session): Session object which
+                manages interactions with Amazon SageMaker APIs and any other
+                AWS services needed. If not specified, the estimator creates one
+                using the default AWS configuration chain.
+
         """
         sagemaker_session = session or Session()
-        bucket, key_prefix = parse_s3_url(s3_uri)
+        bucket, key_prefix = parse_s3_url(url=s3_uri)
         if kms_key is not None:
             extra_args = {"SSEKMSKeyId": kms_key}
         else:
@@ -82,3 +115,22 @@ class S3Downloader(object):
         sagemaker_session.download_data(
             path=local_path, bucket=bucket, key_prefix=key_prefix, extra_args=extra_args
         )
+
+    @staticmethod
+    def read_file(s3_uri, kms_key=None, session=None):
+        """Static method that returns the contents of an s3 uri file body as a string.
+
+        Args:
+            s3_uri (str): An S3 uri that refers to a single file.
+            kms_key (str): A KMS key to be provided as an extra argument.
+            session (sagemaker.session.Session): AWS session to use. Automatically
+                generates one if not provided.
+
+        Returns:
+            str: The body of the file.
+
+        """
+        sagemaker_session = session or Session()
+        bucket, key_prefix = parse_s3_url(url=s3_uri)
+
+        return sagemaker_session.read_s3_file(bucket=bucket, key_prefix=key_prefix, kms_key=kms_key)

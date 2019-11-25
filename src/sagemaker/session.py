@@ -107,9 +107,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
         """
         self.boto_session = boto_session or boto3.Session()
 
-        # TODO-reinvent-2019 [akarpur]: REMOVE HARDCODED REGION
-        self._region_name = "us-east-2"
-        # self._region_name = self.boto_session.region_name
+        self._region_name = self.boto_session.region_name
         if self._region_name is None:
             raise ValueError(
                 "Must setup local AWS configuration with a region supported by SageMaker."
@@ -196,6 +194,32 @@ class Session(object):  # pylint: disable=too-many-public-methods
             s3_uri = "{}/{}".format(s3_uri, key_suffix)
         return s3_uri
 
+    def upload_string_as_file_body(self, body, bucket, key, kms_key=None):
+        """Upload a string as a file body.
+
+        Args:
+            body (str): String representing the body of the file.
+            bucket (str): Name of the S3 Bucket to upload to (default: None). If not specified, the
+                default bucket of the ``Session`` is used (if default bucket does not exist, the
+                ``Session`` creates it).
+            key (str): S3 object key. This is the s3 path to the file.
+            kms_key (str): The KMS key to use for decrypting the file.
+
+        Returns:
+            str: The S3 URI of the uploaded file(s). If a file is specified in the path argument,
+                the URI format is: ``s3://{bucket name}/{key_prefix}/{original_file_name}``.
+                If a directory is specified in the path argument, the URI format is
+                ``s3://{bucket name}/{key_prefix}``.
+        """
+        s3 = self.boto_session.resource("s3")
+        s3_object = s3.Object(bucket_name=bucket, key=key)
+
+        if kms_key is not None:
+            print("kms_key: " + kms_key)
+            s3_object.put(Body=body, SSEKMSKeyId=kms_key, ServerSideEncryption="aws:kms")
+        else:
+            s3_object.put(Body=body)
+
     def download_data(self, path, bucket, key_prefix="", extra_args=None):
         """Download file or directory from S3.
 
@@ -251,6 +275,27 @@ class Session(object):  # pylint: disable=too-many-public-methods
             s3.download_file(
                 bucket=bucket, key=key, filename=destination_path, extra_args=extra_args
             )
+
+    def read_s3_file(self, bucket, key_prefix, kms_key=None):
+        """Read a single file from S3.
+
+        Args:
+            bucket (str): Name of the S3 Bucket to download from.
+            key_prefix (str): S3 object key name prefix.
+            kms_key (str): The KMS key to use for decrypting the file.
+
+        Returns:
+
+        """
+        s3 = self.boto_session.client("s3")
+
+        # Explicitly passing a None kms_key to boto3 throws a validation error.
+        if kms_key:
+            s3_object = s3.get_object(Bucket=bucket, Key=key_prefix)
+        else:
+            s3_object = s3.get_object(Bucket=bucket, Key=key_prefix)
+
+        return s3_object["Body"].read()
 
     def default_bucket(self):
         """Return the name of the default bucket to use in relevant Amazon SageMaker interactions.
@@ -499,6 +544,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
                 Amazon SageMaker can assume to perform tasks on your behalf.
             tags ([dict[str,str]]): A list of dictionaries containing key-value
                 pairs.
+
         """
         process_request = {
             "ProcessingJobName": job_name,
@@ -529,6 +575,551 @@ class Session(object):  # pylint: disable=too-many-public-methods
         LOGGER.debug("process request: %s", json.dumps(process_request, indent=4))
         self.sagemaker_client.create_processing_job(**process_request)
 
+    def create_monitoring_schedule(
+        self,
+        monitoring_schedule_name,
+        schedule_expression,
+        statistics_s3_uri,
+        constraints_s3_uri,
+        monitoring_inputs,
+        monitoring_output_config,
+        instance_count,
+        instance_type,
+        volume_size_in_gb,
+        volume_kms_key,
+        image_uri,
+        entrypoint,
+        arguments,
+        record_preprocessor_source_uri,
+        post_analytics_processor_source_uri,
+        max_runtime_in_seconds,
+        environment,
+        network_config,
+        role_arn,
+        tags,
+    ):
+        """Create an Amazon SageMaker monitoring schedule.
+
+        Args:
+            monitoring_schedule_name (str): The name of the monitoring schedule. The name must be
+                unique within an AWS Region in an AWS account. Names should have a minimum length
+                of 1 and a maximum length of 63 characters.
+            schedule_expression (str): The cron expression that dictates the monitoring execution
+                schedule.
+            statistics_s3_uri (str): The S3 uri of the statistics file to use.
+            constraints_s3_uri (str): The S3 uri of the constraints file to use.
+            monitoring_inputs ([dict]): List of MonitoringInput dictionaries.
+            monitoring_output_config (dict): A config dictionary, which contains a list of
+                MonitoringOutput dictionaries, as well as an optional KMS key ID.
+            instance_count (int): The number of instances to run.
+            instance_type (str): The type of instance to run.
+            volume_size_in_gb (int): Size of the volume in GB.
+            volume_kms_key (str): KMS key to use when encrypting the volume.
+            image_uri (str): The image uri to use for monitoring executions.
+            entrypoint (str): The entrypoint to the monitoring execution image.
+            arguments (str): The arguments to pass to the monitoring execution image.
+            record_preprocessor_source_uri (str or None): The S3 uri that points to the script that
+                pre-processes the dataset (only applicable to first-party images).
+            post_analytics_processor_source_uri (str or None): The S3 uri that points to the script
+                that post-processes the dataset (only applicable to first-party images).
+            max_runtime_in_seconds (int): Specifies a limit to how long
+                the processing job can run, in seconds.
+            environment (dict): Environment variables to start the monitoring execution
+                container with.
+            network_config (dict): Specifies networking options, such as network
+                traffic encryption between processing containers, whether to allow
+                inbound and outbound network calls to and from processing containers,
+                and VPC subnets and security groups to use for VPC-enabled processing
+                jobs.
+            role_arn (str): The Amazon Resource Name (ARN) of an IAM role that
+                Amazon SageMaker can assume to perform tasks on your behalf.
+            tags ([dict[str,str]]): A list of dictionaries containing key-value
+                pairs.
+
+        """
+        monitoring_schedule_request = {
+            "MonitoringScheduleName": monitoring_schedule_name,
+            "MonitoringScheduleConfig": {
+                "ScheduleConfig": {"ScheduleExpression": schedule_expression},
+                "MonitoringJobDefinition": {
+                    "MonitoringInputs": monitoring_inputs,
+                    "MonitoringResources": {
+                        "ClusterConfig": {
+                            "InstanceCount": instance_count,
+                            "InstanceType": instance_type,
+                            "VolumeSizeInGB": volume_size_in_gb,
+                        }
+                    },
+                    "MonitoringAppSpecification": {"ImageUri": image_uri},
+                    "RoleArn": role_arn,
+                },
+            },
+        }
+
+        if monitoring_output_config is not None:
+            monitoring_schedule_request["MonitoringScheduleConfig"]["MonitoringJobDefinition"][
+                "MonitoringOutputConfig"
+            ] = monitoring_output_config
+
+        if statistics_s3_uri is not None or constraints_s3_uri is not None:
+            monitoring_schedule_request["MonitoringScheduleConfig"]["MonitoringJobDefinition"][
+                "BaselineConfig"
+            ] = {}
+
+        if statistics_s3_uri is not None:
+            monitoring_schedule_request["MonitoringScheduleConfig"]["MonitoringJobDefinition"][
+                "BaselineConfig"
+            ]["StatisticsResource"] = {"S3Uri": statistics_s3_uri}
+
+        if constraints_s3_uri is not None:
+            monitoring_schedule_request["MonitoringScheduleConfig"]["MonitoringJobDefinition"][
+                "BaselineConfig"
+            ]["ConstraintsResource"] = {"S3Uri": constraints_s3_uri}
+
+        if record_preprocessor_source_uri is not None:
+            monitoring_schedule_request["MonitoringScheduleConfig"]["MonitoringJobDefinition"][
+                "MonitoringAppSpecification"
+            ]["RecordPreprocessorSourceUri"] = record_preprocessor_source_uri
+
+        if post_analytics_processor_source_uri is not None:
+            monitoring_schedule_request["MonitoringScheduleConfig"]["MonitoringJobDefinition"][
+                "MonitoringAppSpecification"
+            ]["PostAnalyticsProcessorSourceUri"] = post_analytics_processor_source_uri
+
+        if entrypoint is not None:
+            monitoring_schedule_request["MonitoringScheduleConfig"]["MonitoringJobDefinition"][
+                "MonitoringAppSpecification"
+            ]["ContainerEntrypoint"] = entrypoint
+
+        if arguments is not None:
+            monitoring_schedule_request["MonitoringScheduleConfig"]["MonitoringJobDefinition"][
+                "MonitoringAppSpecification"
+            ]["ContainerArguments"] = arguments
+
+        if volume_kms_key is not None:
+            monitoring_schedule_request["MonitoringScheduleConfig"]["MonitoringJobDefinition"][
+                "MonitoringResources"
+            ]["ClusterConfig"]["VolumeKmsKeyId"] = volume_kms_key
+
+        if max_runtime_in_seconds is not None:
+            monitoring_schedule_request["MonitoringScheduleConfig"]["MonitoringJobDefinition"][
+                "StoppingCondition"
+            ] = {"MaxRuntimeInSeconds": max_runtime_in_seconds}
+
+        if environment is not None:
+            monitoring_schedule_request["MonitoringScheduleConfig"]["MonitoringJobDefinition"][
+                "Environment"
+            ] = environment
+
+        if network_config is not None:
+            monitoring_schedule_request["MonitoringScheduleConfig"]["MonitoringJobDefinition"][
+                "NetworkConfig"
+            ] = network_config
+
+        if tags is not None:
+            monitoring_schedule_request["Tags"] = tags
+
+        LOGGER.info("Creating monitoring schedule name %s.", monitoring_schedule_name)
+        LOGGER.debug(
+            "monitoring_schedule_request= %s", json.dumps(monitoring_schedule_request, indent=4)
+        )
+        self.sagemaker_client.create_monitoring_schedule(**monitoring_schedule_request)
+
+    def update_monitoring_schedule(
+        self,
+        monitoring_schedule_name,
+        schedule_expression=None,
+        statistics_s3_uri=None,
+        constraints_s3_uri=None,
+        monitoring_inputs=None,
+        monitoring_output_config=None,
+        instance_count=None,
+        instance_type=None,
+        volume_size_in_gb=None,
+        volume_kms_key=None,
+        image_uri=None,
+        entrypoint=None,
+        arguments=None,
+        record_preprocessor_source_uri=None,
+        post_analytics_processor_source_uri=None,
+        max_runtime_in_seconds=None,
+        environment=None,
+        network_config=None,
+        role_arn=None,
+    ):
+        """Update an Amazon SageMaker monitoring schedule.
+
+        Args:
+            monitoring_schedule_name (str): The name of the monitoring schedule. The name must be
+                unique within an AWS Region in an AWS account. Names should have a minimum length
+                of 1 and a maximum length of 63 characters.
+            schedule_expression (str): The cron expression that dictates the monitoring execution
+                schedule.
+            statistics_s3_uri (str): The S3 uri of the statistics file to use.
+            constraints_s3_uri (str): The S3 uri of the constraints file to use.
+            monitoring_inputs ([dict]): List of MonitoringInput dictionaries.
+            monitoring_output_config (dict): A config dictionary, which contains a list of
+                MonitoringOutput dictionaries, as well as an optional KMS key ID.
+            instance_count (int): The number of instances to run.
+            instance_type (str): The type of instance to run.
+            volume_size_in_gb (int): Size of the volume in GB.
+            volume_kms_key (str): KMS key to use when encrypting the volume.
+            image_uri (str): The image uri to use for monitoring executions.
+            entrypoint (str): The entrypoint to the monitoring execution image.
+            arguments (str): The arguments to pass to the monitoring execution image.
+            record_preprocessor_source_uri (str or None): The S3 uri that points to the script that
+                pre-processes the dataset (only applicable to first-party images).
+            post_analytics_processor_source_uri (str or None): The S3 uri that points to the script
+                that post-processes the dataset (only applicable to first-party images).
+            max_runtime_in_seconds (int): Specifies a limit to how long
+                the processing job can run, in seconds.
+            environment (dict): Environment variables to start the monitoring execution
+                container with.
+            network_config (dict): Specifies networking options, such as network
+                traffic encryption between processing containers, whether to allow
+                inbound and outbound network calls to and from processing containers,
+                and VPC subnets and security groups to use for VPC-enabled processing
+                jobs.
+            role_arn (str): The Amazon Resource Name (ARN) of an IAM role that
+                Amazon SageMaker can assume to perform tasks on your behalf.
+            tags ([dict[str,str]]): A list of dictionaries containing key-value
+                pairs.
+
+        """
+        existing_desc = self.sagemaker_client.describe_monitoring_schedule(
+            MonitoringScheduleName=monitoring_schedule_name
+        )
+
+        request_schedule_expression = (
+            schedule_expression
+            or existing_desc["MonitoringScheduleConfig"]["ScheduleConfig"]["ScheduleExpression"]
+        )
+        request_monitoring_inputs = (
+            monitoring_inputs
+            or existing_desc["MonitoringScheduleConfig"]["MonitoringJobDefinition"][
+                "MonitoringInputs"
+            ]
+        )
+        request_instance_count = (
+            instance_count
+            or existing_desc["MonitoringScheduleConfig"]["MonitoringJobDefinition"][
+                "MonitoringResources"
+            ]["ClusterConfig"]["InstanceCount"]
+        )
+        request_instance_type = (
+            instance_type
+            or existing_desc["MonitoringScheduleConfig"]["MonitoringJobDefinition"][
+                "MonitoringResources"
+            ]["ClusterConfig"]["InstanceType"]
+        )
+        request_volume_size_in_gb = (
+            volume_size_in_gb
+            or existing_desc["MonitoringScheduleConfig"]["MonitoringJobDefinition"][
+                "MonitoringResources"
+            ]["ClusterConfig"]["VolumeSizeInGB"]
+        )
+        request_image_uri = (
+            image_uri
+            or existing_desc["MonitoringScheduleConfig"]["MonitoringJobDefinition"][
+                "MonitoringAppSpecification"
+            ]["ImageUri"]
+        )
+        request_role_arn = (
+            role_arn
+            or existing_desc["MonitoringScheduleConfig"]["MonitoringJobDefinition"]["RoleArn"]
+        )
+
+        monitoring_schedule_request = {
+            "MonitoringScheduleName": monitoring_schedule_name,
+            "MonitoringScheduleConfig": {
+                "ScheduleConfig": {"ScheduleExpression": request_schedule_expression},
+                "MonitoringJobDefinition": {
+                    "MonitoringInputs": request_monitoring_inputs,
+                    "MonitoringResources": {
+                        "ClusterConfig": {
+                            "InstanceCount": request_instance_count,
+                            "InstanceType": request_instance_type,
+                            "VolumeSizeInGB": request_volume_size_in_gb,
+                        }
+                    },
+                    "MonitoringAppSpecification": {"ImageUri": request_image_uri},
+                    "RoleArn": request_role_arn,
+                },
+            },
+        }
+
+        existing_monitoring_output_config = existing_desc["MonitoringScheduleConfig"][
+            "MonitoringJobDefinition"
+        ].get("MonitoringOutputConfig")
+        if monitoring_output_config is not None or existing_monitoring_output_config is not None:
+            monitoring_schedule_request["MonitoringScheduleConfig"]["MonitoringJobDefinition"][
+                "MonitoringOutputConfig"
+            ] = (monitoring_output_config or existing_monitoring_output_config)
+
+        existing_statistics_s3_uri = None
+        existing_constraints_s3_uri = None
+        if (
+            existing_desc["MonitoringScheduleConfig"]["MonitoringJobDefinition"].get(
+                "BaselineConfig"
+            )
+            is not None
+        ):
+            if (
+                existing_desc["MonitoringScheduleConfig"]["MonitoringJobDefinition"][
+                    "BaselineConfig"
+                ].get("StatisticsResource")
+                is not None
+            ):
+                existing_statistics_s3_uri = existing_desc["MonitoringScheduleConfig"][
+                    "MonitoringJobDefinition"
+                ]["BaselineConfig"]["StatisticsResource"]["S3Uri"]
+
+            if (
+                existing_desc["MonitoringScheduleConfig"]["MonitoringJobDefinition"][
+                    "BaselineConfig"
+                ].get("ConstraintsResource")
+                is not None
+            ):
+                existing_statistics_s3_uri = existing_desc["MonitoringScheduleConfig"][
+                    "MonitoringJobDefinition"
+                ]["BaselineConfig"]["ConstraintsResource"]["S3Uri"]
+
+        if (
+            statistics_s3_uri is not None
+            or constraints_s3_uri is not None
+            or existing_statistics_s3_uri is not None
+            or existing_constraints_s3_uri is not None
+        ):
+            monitoring_schedule_request["MonitoringScheduleConfig"]["MonitoringJobDefinition"][
+                "BaselineConfig"
+            ] = {}
+
+        if statistics_s3_uri is not None or existing_statistics_s3_uri is not None:
+            monitoring_schedule_request["MonitoringScheduleConfig"]["MonitoringJobDefinition"][
+                "BaselineConfig"
+            ]["StatisticsResource"] = {"S3Uri": statistics_s3_uri or existing_statistics_s3_uri}
+
+        if constraints_s3_uri is not None or existing_constraints_s3_uri is not None:
+            monitoring_schedule_request["MonitoringScheduleConfig"]["MonitoringJobDefinition"][
+                "BaselineConfig"
+            ]["ConstraintsResource"] = {"S3Uri": constraints_s3_uri or existing_constraints_s3_uri}
+
+        existing_record_preprocessor_source_uri = existing_desc["MonitoringScheduleConfig"][
+            "MonitoringJobDefinition"
+        ]["MonitoringAppSpecification"].get("RecordPreprocessorSourceUri")
+        if (
+            record_preprocessor_source_uri is not None
+            or existing_record_preprocessor_source_uri is not None
+        ):
+            monitoring_schedule_request["MonitoringScheduleConfig"]["MonitoringJobDefinition"][
+                "MonitoringAppSpecification"
+            ]["RecordPreprocessorSourceUri"] = (
+                record_preprocessor_source_uri or existing_record_preprocessor_source_uri
+            )
+
+        existing_post_analytics_processor_source_uri = existing_desc["MonitoringScheduleConfig"][
+            "MonitoringJobDefinition"
+        ]["MonitoringAppSpecification"].get("PostAnalyticsProcessorSourceUri")
+        if (
+            post_analytics_processor_source_uri is not None
+            or existing_post_analytics_processor_source_uri is not None
+        ):
+            monitoring_schedule_request["MonitoringScheduleConfig"]["MonitoringJobDefinition"][
+                "MonitoringAppSpecification"
+            ]["PostAnalyticsProcessorSourceUri"] = (
+                post_analytics_processor_source_uri or existing_post_analytics_processor_source_uri
+            )
+
+        existing_entrypoint = existing_desc["MonitoringScheduleConfig"]["MonitoringJobDefinition"][
+            "MonitoringAppSpecification"
+        ].get("ContainerEntrypoint")
+        if entrypoint is not None or existing_entrypoint is not None:
+            monitoring_schedule_request["MonitoringScheduleConfig"]["MonitoringJobDefinition"][
+                "MonitoringAppSpecification"
+            ]["ContainerEntrypoint"] = (entrypoint or existing_entrypoint)
+
+        existing_arguments = existing_desc["MonitoringScheduleConfig"]["MonitoringJobDefinition"][
+            "MonitoringAppSpecification"
+        ].get("ContainerArguments")
+        if arguments is not None or existing_arguments is not None:
+            monitoring_schedule_request["MonitoringScheduleConfig"]["MonitoringJobDefinition"][
+                "MonitoringAppSpecification"
+            ]["ContainerArguments"] = (arguments or existing_arguments)
+
+        existing_volume_kms_key = existing_desc["MonitoringScheduleConfig"][
+            "MonitoringJobDefinition"
+        ]["MonitoringResources"]["ClusterConfig"].get("VolumeKmsKeyId")
+
+        if volume_kms_key is not None or existing_volume_kms_key is not None:
+            monitoring_schedule_request["MonitoringScheduleConfig"]["MonitoringJobDefinition"][
+                "MonitoringResources"
+            ]["ClusterConfig"]["VolumeKmsKeyId"] = (volume_kms_key or existing_volume_kms_key)
+
+        existing_max_runtime_in_seconds = None
+        if existing_desc["MonitoringScheduleConfig"]["MonitoringJobDefinition"].get(
+            "StoppingCondition"
+        ):
+            existing_max_runtime_in_seconds = existing_desc["MonitoringScheduleConfig"][
+                "MonitoringJobDefinition"
+            ]["StoppingCondition"].get("MaxRuntimeInSeconds")
+
+        if max_runtime_in_seconds is not None or existing_max_runtime_in_seconds is not None:
+            monitoring_schedule_request["MonitoringScheduleConfig"]["MonitoringJobDefinition"][
+                "StoppingCondition"
+            ] = {"MaxRuntimeInSeconds": max_runtime_in_seconds or existing_max_runtime_in_seconds}
+
+        existing_environment = existing_desc["MonitoringScheduleConfig"][
+            "MonitoringJobDefinition"
+        ].get("Environment")
+        if environment is not None or existing_environment is not None:
+            monitoring_schedule_request["MonitoringScheduleConfig"]["MonitoringJobDefinition"][
+                "Environment"
+            ] = (environment or existing_environment)
+
+        existing_network_config = existing_desc["MonitoringScheduleConfig"][
+            "MonitoringJobDefinition"
+        ].get("NetworkConfig")
+        if network_config is not None or existing_network_config is not None:
+            monitoring_schedule_request["MonitoringScheduleConfig"]["MonitoringJobDefinition"][
+                "NetworkConfig"
+            ] = (network_config or existing_network_config)
+
+        LOGGER.info("Updating monitoring schedule with name: %s .", monitoring_schedule_name)
+        LOGGER.debug(
+            "monitoring_schedule_request= %s", json.dumps(monitoring_schedule_request, indent=4)
+        )
+        self.sagemaker_client.update_monitoring_schedule(**monitoring_schedule_request)
+
+    def start_monitoring_schedule(self, monitoring_schedule_name):
+        """Starts a monitoring schedule.
+
+        Args:
+            monitoring_schedule_name (str): The name of the Amazon SageMaker Monitoring
+                Schedule to start.
+
+        """
+        print()
+        print("Starting Monitoring Schedule with name: {}".format(monitoring_schedule_name))
+        self.sagemaker_client.start_monitoring_schedule(
+            MonitoringScheduleName=monitoring_schedule_name
+        )
+
+    def stop_monitoring_schedule(self, monitoring_schedule_name):
+        """Stops a monitoring schedule.
+
+        Args:
+            monitoring_schedule_name (str): The name of the Amazon SageMaker Monitoring
+                Schedule to stop.
+
+        """
+        print()
+        print("Stopping Monitoring Schedule with name: {}".format(monitoring_schedule_name))
+        self.sagemaker_client.stop_monitoring_schedule(
+            MonitoringScheduleName=monitoring_schedule_name
+        )
+
+    def delete_monitoring_schedule(self, monitoring_schedule_name):
+        """Deletes a monitoring schedule.
+
+        Args:
+            monitoring_schedule_name (str): The name of the Amazon SageMaker Monitoring
+                Schedule to delete.
+
+        """
+        print()
+        print("Deleting Monitoring Schedule with name: {}".format(monitoring_schedule_name))
+        self.sagemaker_client.delete_monitoring_schedule(
+            MonitoringScheduleName=monitoring_schedule_name
+        )
+
+    def describe_monitoring_schedule(self, monitoring_schedule_name):
+        """Calls the DescribeMonitoringSchedule API for the given monitoring schedule name
+        and returns the response.
+
+        Args:
+            monitoring_schedule_name (str): The name of the processing job to describe.
+
+        Returns:
+            dict: A dictionary response with the processing job description.
+
+        """
+        return self.sagemaker_client.describe_monitoring_schedule(
+            MonitoringScheduleName=monitoring_schedule_name
+        )
+
+    def list_monitoring_executions(
+        self,
+        monitoring_schedule_name,
+        sort_by="ScheduledTime",
+        sort_order="Descending",
+        max_results=100,
+    ):
+        """Lists the monitoring executions associated with the given monitoring_schedule_name.
+
+        Args:
+            monitoring_schedule_name (str): The monitoring_schedule_name for which to retrieve the
+                monitoring executions.
+            sort_by (str): The field to sort by. Can be one of: "CreationTime", "ScheduledTime",
+                "Status". Default: "ScheduledTime".
+            sort_order (str): The sort order. Can be one of: "Ascending", "Descending".
+                Default: "Descending".
+            max_results (int): The maximum number of results to return. Must be between 1 and 100.
+
+        Returns:
+            dict: Dictionary of monitoring schedule executions.
+        """
+        response = self.sagemaker_client.list_monitoring_executions(
+            MonitoringScheduleName=monitoring_schedule_name.lower(),
+            SortBy=sort_by,
+            SortOrder=sort_order,
+            MaxResults=max_results,
+        )
+        return response
+
+    def list_monitoring_schedules(
+        self, endpoint_name=None, sort_by="CreationTime", sort_order="Descending", max_results=100
+    ):
+        """Lists the monitoring executions associated with the given monitoring_schedule_name.
+
+        Args:
+            endpoint_name (str): The name of the endpoint to filter on. If not provided, does not
+                filter on it. Default: None.
+            sort_by (str): The field to sort by. Can be one of: "Name", "CreationTime", "Status".
+                Default: "CreationTime".
+            sort_order (str): The sort order. Can be one of: "Ascending", "Descending".
+                Default: "Descending".
+            max_results (int): The maximum number of results to return. Must be between 1 and 100.
+
+        Returns:
+            dict: Dictionary of monitoring schedule executions.
+        """
+        if endpoint_name is not None:
+            response = self.sagemaker_client.list_monitoring_schedules(
+                EndpointName=endpoint_name,
+                SortBy=sort_by,
+                SortOrder=sort_order,
+                MaxResults=max_results,
+            )
+        else:
+            response = self.sagemaker_client.list_monitoring_schedules(
+                SortBy=sort_by, SortOrder=sort_order, MaxResults=max_results
+            )
+
+        return response
+
+    def was_processing_job_successful(self, job_name):
+        """Calls the DescribeProcessingJob API for the given job name
+        and returns the True if the job was successful. False otherwise.
+
+        Args:
+            job_name (str): The name of the processing job to describe.
+
+        Returns:
+            bool: Whether the processing job was successful.
+        """
+        job_desc = self.sagemaker_client.describe_processing_job(ProcessingJobName=job_name)
+        return job_desc["ProcessingJobStatus"] == "Completed"
+
     def describe_processing_job(self, job_name):
         """Calls the DescribeProcessingJob API for the given job name
         and returns the response.
@@ -546,6 +1137,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
 
         Args:
             job_name (str): The name of the processing job to stop.
+
         """
         self.sagemaker_client.stop_processing_job(ProcessingJobName=job_name)
 
@@ -590,8 +1182,8 @@ class Session(object):  # pylint: disable=too-many-public-methods
 
         Returns:
             str: ARN of the compile model job, if it is created.
-        """
 
+        """
         compilation_job_request = {
             "InputConfig": input_model_config,
             "OutputConfig": output_model_config,
@@ -1334,6 +1926,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
         accelerator_type=None,
         tags=None,
         kms_key=None,
+        data_capture_config_dict=None,
     ):
         """Create an Amazon SageMaker endpoint configuration.
 
@@ -1353,15 +1946,19 @@ class Session(object):  # pylint: disable=too-many-public-methods
                 instance. For example, 'ml.eia1.medium'.
                 For more information: https://docs.aws.amazon.com/sagemaker/latest/dg/ei.html
             tags(List[dict[str, str]]): Optional. The list of tags to add to the endpoint config.
+            kms_key (str): The KMS key that is used to encrypt the data on the storage volume
+                attached to the instance hosting the endpoint.
+            data_capture_config_dict (dict): Specifies configuration related to Endpoint data
+                capture for use with Amazon SageMaker Model Monitoring. Default: None.
 
         Example:
             >>> tags = [{'Key': 'tagname', 'Value': 'tagvalue'}]
             For more information about tags, see
             https://boto3.amazonaws.com/v1/documentation/api/latest/reference/services/sagemaker.html#SageMaker.Client.add_tags
 
-
         Returns:
             str: Name of the endpoint point configuration created.
+
         """
         LOGGER.info("Creating endpoint-config with name %s", name)
 
@@ -1385,8 +1982,74 @@ class Session(object):  # pylint: disable=too-many-public-methods
         if kms_key is not None:
             request["KmsKeyId"] = kms_key
 
+        if data_capture_config_dict is not None:
+            request["DataCaptureConfig"] = data_capture_config_dict
+
         self.sagemaker_client.create_endpoint_config(**request)
         return name
+
+    def create_endpoint_config_from_existing(
+        self,
+        existing_config_name,
+        new_config_name,
+        new_tags=None,
+        new_kms_key=None,
+        new_data_capture_config_dict=None,
+    ):
+        """Create an Amazon SageMaker endpoint configuration from an existing one. Updating any
+        values that were passed in.
+
+        The endpoint configuration identifies the Amazon SageMaker model (created using the
+        ``CreateModel`` API) and the hardware configuration on which to deploy the model. Provide
+        this endpoint configuration to the ``CreateEndpoint`` API, which then launches the
+        hardware and deploys the model.
+
+        Args:
+            new_config_name (str): Name of the Amazon SageMaker endpoint configuration to create.
+            existing_config_name (str): Name of the existing Amazon SageMaker endpoint
+                configuration.
+            new_tags(List[dict[str, str]]): Optional. The list of tags to add to the endpoint
+                config.
+            new_kms_key (str): The KMS key that is used to encrypt the data on the storage volume
+                attached to the instance hosting the endpoint.
+            new_data_capture_config_dict (dict): Specifies configuration related to Endpoint data
+                capture for use with Amazon SageMaker Model Monitoring. Default: None.
+
+        Returns:
+            str: Name of the endpoint point configuration created.
+
+        """
+        LOGGER.info("Creating endpoint-config with name %s", new_config_name)
+
+        existing_endpoint_config_desc = self.sagemaker_client.describe_endpoint_config(
+            EndpointConfigName=existing_config_name
+        )
+
+        existing_tags = self.sagemaker_client.list_tags(
+            ResourceArn=existing_endpoint_config_desc["EndpointConfigArn"]
+        )
+
+        request_tags = new_tags or existing_tags["Tags"]
+
+        request = {
+            "EndpointConfigName": new_config_name,
+            "ProductionVariants": existing_endpoint_config_desc["ProductionVariants"],
+        }
+
+        if request_tags:
+            request["Tags"] = request_tags
+
+        if new_kms_key is not None or existing_endpoint_config_desc.get("KmsKeyId") is not None:
+            request["KmsKeyId"] = new_kms_key or existing_endpoint_config_desc.get("KmsKeyId")
+
+        request_data_capture_config_dict = (
+            new_data_capture_config_dict or existing_endpoint_config_desc.get("DataCaptureConfig")
+        )
+
+        if request_data_capture_config_dict is not None:
+            request["DataCaptureConfig"] = request_data_capture_config_dict
+
+        self.sagemaker_client.create_endpoint_config(**request)
 
     def create_endpoint(self, endpoint_name, config_name, tags=None, wait=True):
         """Create an Amazon SageMaker ``Endpoint`` according to the endpoint configuration
@@ -1415,7 +2078,9 @@ class Session(object):  # pylint: disable=too-many-public-methods
             self.wait_for_endpoint(endpoint_name)
         return endpoint_name
 
-    def update_endpoint(self, endpoint_name, endpoint_config_name):
+    def update_endpoint(
+        self, endpoint_name, endpoint_config_name, retain_all_variant_properties=False
+    ):
         """ Update an Amazon SageMaker ``Endpoint`` according to the endpoint configuration
         specified in the request
 
@@ -1425,9 +2090,12 @@ class Session(object):  # pylint: disable=too-many-public-methods
             endpoint_name (str): Name of the Amazon SageMaker ``Endpoint`` to update.
             endpoint_config_name (str): Name of the Amazon SageMaker endpoint configuration to
                 deploy.
+            retain_all_variant_properties: Retains all variant properties on the active endpoint,
+                in case they have diverged from the original config.
 
         Returns:
             str: Name of the Amazon SageMaker ``Endpoint`` being updated.
+
         """
         if not _deployment_entity_exists(
             lambda: self.sagemaker_client.describe_endpoint(EndpointName=endpoint_name)
@@ -1438,7 +2106,9 @@ class Session(object):  # pylint: disable=too-many-public-methods
             )
 
         self.sagemaker_client.update_endpoint(
-            EndpointName=endpoint_name, EndpointConfigName=endpoint_config_name
+            EndpointName=endpoint_name,
+            EndpointConfigName=endpoint_config_name,
+            RetainAllVariantProperties=retain_all_variant_properties,
         )
         return endpoint_name
 
@@ -1471,6 +2141,40 @@ class Session(object):  # pylint: disable=too-many-public-methods
         LOGGER.info("Deleting model with name: %s", model_name)
         self.sagemaker_client.delete_model(ModelName=model_name)
 
+    def list_tags(self, resource_arn, max_results=50):
+        """List the tags given an Amazon Resource Name
+
+        Args:
+            resource_arn (str): The Amazon Resource Name (ARN) for which to get the tags list.
+            max_results (int): The maximum number of results to include in a single page.
+                This method takes care of that abstraction and returns a full list.
+
+        """
+        tags_list = []
+
+        try:
+            list_tags_response = self.sagemaker_client.list_tags(
+                ResourceArn=resource_arn, MaxResults=max_results
+            )
+            tags_list = tags_list + list_tags_response["Tags"]
+
+            next_token = list_tags_response.get("nextToken")
+            while next_token is not None:
+                list_tags_response = self.sagemaker_client.list_tags(
+                    ResourceArn=resource_arn, MaxResults=max_results, NextToken=next_token
+                )
+                tags_list = tags_list + list_tags_response["Tags"]
+                next_token = list_tags_response.get("nextToken")
+
+            non_aws_tags = []
+            for tag in tags_list:
+                if "aws:" not in tag["Key"]:
+                    non_aws_tags.append(tag)
+            return non_aws_tags
+        except ClientError as error:
+            print("Error retrieving tags. resource_arn: {}".format(resource_arn))
+            raise error
+
     def wait_for_job(self, job, poll=5):
         """Wait for an Amazon SageMaker training job to complete.
 
@@ -1483,6 +2187,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
 
         Raises:
             exceptions.UnexpectedStatusException: If the training job fails.
+
         """
         desc = _wait_until_training_done(
             lambda last_desc: _train_done(self.sagemaker_client, job, last_desc), None, poll
@@ -1642,6 +2347,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
         model_environment_vars=None,
         vpc_config_override=vpc_utils.VPC_CONFIG_DEFAULT,
         accelerator_type=None,
+        data_capture_config=None,
     ):
         """Create an ``Endpoint`` using the results of a successful training job.
 
@@ -1679,9 +2385,13 @@ class Session(object):  # pylint: disable=too-many-public-methods
             accelerator_type (str): Type of Elastic Inference accelerator to attach to the
                 instance. For example, 'ml.eia1.medium'.
                 For more information: https://docs.aws.amazon.com/sagemaker/latest/dg/ei.html
+            data_capture_config (DataCaptureConfig): Specifies configuration
+                related to Endpoint data capture for use with
+                Amazon SageMaker Model Monitoring. Default: None.
 
         Returns:
             str: Name of the ``Endpoint`` that is created.
+
         """
         job_desc = self.sagemaker_client.describe_training_job(TrainingJobName=job_name)
         output_url = job_desc["ModelArtifacts"]["S3ModelArtifacts"]
@@ -1701,6 +2411,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
             model_environment_vars=model_environment_vars,
             model_vpc_config=vpc_config_override,
             accelerator_type=accelerator_type,
+            data_capture_config=data_capture_config,
         )
 
     def endpoint_from_model_data(
@@ -1715,6 +2426,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
         model_environment_vars=None,
         model_vpc_config=None,
         accelerator_type=None,
+        data_capture_config=None,
     ):
         """Create and deploy to an ``Endpoint`` using existing model data stored in S3.
 
@@ -1743,11 +2455,14 @@ class Session(object):  # pylint: disable=too-many-public-methods
             accelerator_type (str): Type of Elastic Inference accelerator to attach to the instance.
                 For example, 'ml.eia1.medium'.
                 For more information: https://docs.aws.amazon.com/sagemaker/latest/dg/ei.html
+            data_capture_config (DataCaptureConfig): Specifies configuration
+                related to Endpoint data capture for use with
+                Amazon SageMaker Model Monitoring. Default: None.
 
         Returns:
             str: Name of the ``Endpoint`` that is created.
-        """
 
+        """
         model_environment_vars = model_environment_vars or {}
         name = name or name_from_image(deployment_image)
         model_vpc_config = vpc_utils.sanitize(model_vpc_config)
@@ -1769,6 +2484,10 @@ class Session(object):  # pylint: disable=too-many-public-methods
                 name=name, role=role, container_defs=primary_container, vpc_config=model_vpc_config
             )
 
+        data_capture_config_dict = (
+            data_capture_config.to_request_dict() if data_capture_config else None
+        )
+
         if not _deployment_entity_exists(
             lambda: self.sagemaker_client.describe_endpoint_config(EndpointConfigName=name)
         ):
@@ -1778,13 +2497,20 @@ class Session(object):  # pylint: disable=too-many-public-methods
                 initial_instance_count=initial_instance_count,
                 instance_type=instance_type,
                 accelerator_type=accelerator_type,
+                data_capture_config_dict=data_capture_config_dict,
             )
 
         self.create_endpoint(endpoint_name=name, config_name=name, wait=wait)
         return name
 
     def endpoint_from_production_variants(
-        self, name, production_variants, tags=None, kms_key=None, wait=True
+        self,
+        name,
+        production_variants,
+        tags=None,
+        kms_key=None,
+        wait=True,
+        data_capture_config_dict=None,
     ):
         """Create an SageMaker ``Endpoint`` from a list of production variants.
 
@@ -1797,11 +2523,13 @@ class Session(object):  # pylint: disable=too-many-public-methods
                 attached to the instance hosting the endpoint.
             wait (bool): Whether to wait for the endpoint deployment to complete before returning
                 (default: True).
+            data_capture_config_dict (dict): Specifies configuration related to Endpoint data
+                capture for use with Amazon SageMaker Model Monitoring. Default: None.
 
         Returns:
             str: The name of the created ``Endpoint``.
-        """
 
+        """
         if not _deployment_entity_exists(
             lambda: self.sagemaker_client.describe_endpoint_config(EndpointConfigName=name)
         ):
@@ -1810,6 +2538,8 @@ class Session(object):  # pylint: disable=too-many-public-methods
                 config_options["Tags"] = tags
             if kms_key:
                 config_options["KmsKeyId"] = kms_key
+            if data_capture_config_dict is not None:
+                config_options["DataCaptureConfig"] = data_capture_config_dict
 
             self.sagemaker_client.create_endpoint_config(**config_options)
         return self.create_endpoint(endpoint_name=name, config_name=name, tags=tags, wait=wait)

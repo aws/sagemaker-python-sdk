@@ -210,8 +210,8 @@ def test_deploy(sagemaker_session, tmpdir):
     model = DummyFrameworkModel(sagemaker_session, source_dir=str(tmpdir))
     model.deploy(instance_type=INSTANCE_TYPE, initial_instance_count=1)
     sagemaker_session.endpoint_from_production_variants.assert_called_with(
-        MODEL_NAME,
-        [
+        name=MODEL_NAME,
+        production_variants=[
             {
                 "InitialVariantWeight": 1,
                 "ModelName": MODEL_NAME,
@@ -220,9 +220,10 @@ def test_deploy(sagemaker_session, tmpdir):
                 "VariantName": "AllTraffic",
             }
         ],
-        None,
-        None,
-        True,
+        tags=None,
+        kms_key=None,
+        wait=True,
+        data_capture_config_dict=None,
     )
 
 
@@ -232,8 +233,8 @@ def test_deploy_endpoint_name(sagemaker_session, tmpdir):
     model = DummyFrameworkModel(sagemaker_session, source_dir=str(tmpdir))
     model.deploy(endpoint_name="blah", instance_type=INSTANCE_TYPE, initial_instance_count=55)
     sagemaker_session.endpoint_from_production_variants.assert_called_with(
-        "blah",
-        [
+        name="blah",
+        production_variants=[
             {
                 "InitialVariantWeight": 1,
                 "ModelName": MODEL_NAME,
@@ -242,9 +243,10 @@ def test_deploy_endpoint_name(sagemaker_session, tmpdir):
                 "VariantName": "AllTraffic",
             }
         ],
-        None,
-        None,
-        True,
+        tags=None,
+        kms_key=None,
+        wait=True,
+        data_capture_config_dict=None,
     )
 
 
@@ -255,8 +257,8 @@ def test_deploy_tags(sagemaker_session, tmpdir):
     tags = [{"ModelName": "TestModel"}]
     model.deploy(instance_type=INSTANCE_TYPE, initial_instance_count=1, tags=tags)
     sagemaker_session.endpoint_from_production_variants.assert_called_with(
-        MODEL_NAME,
-        [
+        name=MODEL_NAME,
+        production_variants=[
             {
                 "InitialVariantWeight": 1,
                 "ModelName": MODEL_NAME,
@@ -265,9 +267,10 @@ def test_deploy_tags(sagemaker_session, tmpdir):
                 "VariantName": "AllTraffic",
             }
         ],
-        tags,
-        None,
-        True,
+        tags=tags,
+        kms_key=None,
+        wait=True,
+        data_capture_config_dict=None,
     )
 
 
@@ -280,8 +283,8 @@ def test_deploy_accelerator_type(tfo, time, sagemaker_session):
         instance_type=INSTANCE_TYPE, initial_instance_count=1, accelerator_type=ACCELERATOR_TYPE
     )
     sagemaker_session.endpoint_from_production_variants.assert_called_with(
-        MODEL_NAME,
-        [
+        name=MODEL_NAME,
+        production_variants=[
             {
                 "InitialVariantWeight": 1,
                 "ModelName": MODEL_NAME,
@@ -291,9 +294,10 @@ def test_deploy_accelerator_type(tfo, time, sagemaker_session):
                 "AcceleratorType": ACCELERATOR_TYPE,
             }
         ],
-        None,
-        None,
-        True,
+        tags=None,
+        kms_key=None,
+        wait=True,
+        data_capture_config_dict=None,
     )
 
 
@@ -305,8 +309,8 @@ def test_deploy_kms_key(tfo, time, sagemaker_session):
     model = DummyFrameworkModel(sagemaker_session)
     model.deploy(instance_type=INSTANCE_TYPE, initial_instance_count=1, kms_key=key)
     sagemaker_session.endpoint_from_production_variants.assert_called_with(
-        MODEL_NAME,
-        [
+        name=MODEL_NAME,
+        production_variants=[
             {
                 "InitialVariantWeight": 1,
                 "ModelName": MODEL_NAME,
@@ -315,9 +319,10 @@ def test_deploy_kms_key(tfo, time, sagemaker_session):
                 "VariantName": "AllTraffic",
             }
         ],
-        None,
-        key,
-        True,
+        tags=None,
+        kms_key=key,
+        wait=True,
+        data_capture_config_dict=None,
     )
 
 
@@ -357,6 +362,7 @@ def test_deploy_update_endpoint(sagemaker_session, tmpdir):
         accelerator_type=ACCELERATOR_TYPE,
         tags=None,
         kms_key=None,
+        data_capture_config_dict=None,
     )
     config_name = sagemaker_session.create_endpoint_config(
         name=model.name,

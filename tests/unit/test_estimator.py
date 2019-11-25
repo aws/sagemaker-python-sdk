@@ -1710,7 +1710,12 @@ def test_fit_deploy_keep_tags(sagemaker_session):
 
     job_name = estimator._current_job_name
     sagemaker_session.endpoint_from_production_variants.assert_called_with(
-        job_name, variant, tags, None, True
+        name=job_name,
+        production_variants=variant,
+        tags=tags,
+        kms_key=None,
+        wait=True,
+        data_capture_config_dict=None,
     )
 
     sagemaker_session.create_model.assert_called_with(
@@ -1916,6 +1921,7 @@ def test_generic_to_deploy_kms(create_model, sagemaker_session):
         tags=None,
         wait=True,
         kms_key=kms_key,
+        data_capture_config=None,
     )
 
 
@@ -2012,11 +2018,12 @@ def test_generic_deploy_accelerator_type(sagemaker_session):
     e.fit({"train": "s3://bucket/training-prefix"})
     e.deploy(INSTANCE_COUNT, INSTANCE_TYPE, ACCELERATOR_TYPE)
 
-    args = e.sagemaker_session.endpoint_from_production_variants.call_args[0]
-    assert args[0].startswith(IMAGE_NAME)
-    assert args[1][0]["AcceleratorType"] == ACCELERATOR_TYPE
-    assert args[1][0]["InitialInstanceCount"] == INSTANCE_COUNT
-    assert args[1][0]["InstanceType"] == INSTANCE_TYPE
+    args = e.sagemaker_session.endpoint_from_production_variants.call_args[1]
+    print(args)
+    assert args["name"].startswith(IMAGE_NAME)
+    assert args["production_variants"][0]["AcceleratorType"] == ACCELERATOR_TYPE
+    assert args["production_variants"][0]["InitialInstanceCount"] == INSTANCE_COUNT
+    assert args["production_variants"][0]["InstanceType"] == INSTANCE_TYPE
 
 
 def test_deploy_with_update_endpoint(sagemaker_session):

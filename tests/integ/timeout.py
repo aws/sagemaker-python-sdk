@@ -66,6 +66,9 @@ def timeout_and_delete_endpoint_by_name(
             while attempts > 0:
                 attempts -= 1
                 try:
+                    _delete_schedules_associated_with_endpoint(
+                        sagemaker_session=sagemaker_session, endpoint_name=endpoint_name
+                    )
                     sagemaker_session.delete_endpoint(endpoint_name)
                     LOGGER.info("deleted endpoint {}".format(endpoint_name))
 
@@ -109,6 +112,15 @@ def timeout_and_delete_model_with_transformer(
                     if ce.response["Error"]["Code"] == "ValidationException":
                         pass
                 sleep(sleep_between_cleanup_attempts)
+
+
+def _delete_schedules_associated_with_endpoint(sagemaker_session, endpoint_name):
+    response = sagemaker_session.list_monitoring_schedules(endpoint_name=endpoint_name)
+    schedule_list = response["MonitoringScheduleSummaries"]
+    for schedule in schedule_list:
+        sagemaker_session.delete_monitoring_schedule(
+            monitoring_schedule_name=schedule["MonitoringScheduleName"]
+        )
 
 
 def _show_logs(resource_name, resource_type, sagemaker_session):

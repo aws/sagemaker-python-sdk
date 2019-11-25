@@ -19,7 +19,6 @@ from sagemaker.processing import ProcessingInput, ProcessingOutput, ScriptProces
 from sagemaker.sklearn.processing import SKLearnProcessor
 from tests.integ import DATA_DIR
 
-# TODO-reinvent-2019: Replace this role ARN
 
 ROLE = "arn:aws:iam::142577830533:role/SageMakerRole"
 CUSTOM_IMAGE_URI = (
@@ -45,7 +44,7 @@ def test_sklearn(sagemaker_gamma_session, sklearn_full_version, cpu_instance_typ
     sklearn_processor.run(
         command=["python3"],
         code=script_path,
-        inputs=[ProcessingInput(source=input_file_path, destination="/inputs/")],
+        inputs=[ProcessingInput(source=input_file_path, destination="/opt/ml/processing/inputs/")],
         wait=False,
         logs=False,
     )
@@ -59,7 +58,7 @@ def test_sklearn(sagemaker_gamma_session, sklearn_full_version, cpu_instance_typ
     assert job_description["StoppingCondition"] == {"MaxRuntimeInSeconds": 3600}
     assert job_description["AppSpecification"]["ContainerEntrypoint"] == [
         "python3",
-        "/input/code/dummy_script.py",
+        "/opt/ml/processing/input/code/dummy_script.py",
     ]
     assert job_description["RoleArn"] == ROLE
 
@@ -92,7 +91,7 @@ def test_sklearn(sagemaker_gamma_session, sklearn_full_version, cpu_instance_typ
 #         inputs=[
 #             ProcessingInput(
 #                 source=input_file_path,
-#                 destination="/input/container/path/",
+#                 destination="/opt/ml/processing/input/container/path/",
 #                 input_name="dummy_input",
 #                 s3_data_type="S3Prefix",
 #                 s3_input_mode="File",
@@ -102,7 +101,7 @@ def test_sklearn(sagemaker_gamma_session, sklearn_full_version, cpu_instance_typ
 #         ],
 #         outputs=[
 #             ProcessingOutput(
-#                 source="/output/container/path/",
+#                 source="/opt/ml/processing/output/container/path/",
 #                 output_name="dummy_output",
 #                 s3_upload_mode="EndOfJob",
 #             )
@@ -135,7 +134,7 @@ def test_sklearn(sagemaker_gamma_session, sklearn_full_version, cpu_instance_typ
 #     assert job_description["AppSpecification"]["ContainerArguments"] == ["-v"]
 #     assert job_description["AppSpecification"]["ContainerEntrypoint"] == [
 #         "python3",
-#         "/input/code/dummy_script.py",
+#         "/opt/ml/processing/input/code/dummy_script.py",
 #     ]
 #     assert (
 #         job_description["AppSpecification"]["ImageUri"]
@@ -191,7 +190,7 @@ def test_sklearn(sagemaker_gamma_session, sklearn_full_version, cpu_instance_typ
 #     assert job_description["AppSpecification"]["ContainerArguments"] == ["-v"]
 #     assert job_description["AppSpecification"]["ContainerEntrypoint"] == [
 #         "python3",
-#         "/input/code/dummy_script.py",
+#         "/opt/ml/processing/input/code/dummy_script.py",
 #     ]
 #     assert (
 #         job_description["AppSpecification"]["ImageUri"]
@@ -230,7 +229,7 @@ def test_script_processor(sagemaker_gamma_session, cpu_instance_type):
         inputs=[
             ProcessingInput(
                 source=input_file_path,
-                destination="/input/container/path/",
+                destination="/opt/ml/processing/input/container/path/",
                 input_name="dummy_input",
                 s3_data_type="S3Prefix",
                 s3_input_mode="File",
@@ -240,7 +239,7 @@ def test_script_processor(sagemaker_gamma_session, cpu_instance_type):
         ],
         outputs=[
             ProcessingOutput(
-                source="/output/container/path/",
+                source="/opt/ml/processing/output/container/path/",
                 output_name="dummy_output",
                 s3_upload_mode="EndOfJob",
             )
@@ -273,7 +272,7 @@ def test_script_processor(sagemaker_gamma_session, cpu_instance_type):
     assert job_description["AppSpecification"]["ContainerArguments"] == ["-v"]
     assert job_description["AppSpecification"]["ContainerEntrypoint"] == [
         "python3",
-        "/input/code/dummy_script.py",
+        "/opt/ml/processing/input/code/dummy_script.py",
     ]
     assert (
         job_description["AppSpecification"]["ImageUri"]
@@ -326,7 +325,7 @@ def test_script_processor_with_no_inputs_or_outputs(sagemaker_gamma_session, cpu
     assert job_description["AppSpecification"]["ContainerArguments"] == ["-v"]
     assert job_description["AppSpecification"]["ContainerEntrypoint"] == [
         "python3",
-        "/input/code/dummy_script.py",
+        "/opt/ml/processing/input/code/dummy_script.py",
     ]
     assert (
         job_description["AppSpecification"]["ImageUri"]
@@ -348,7 +347,7 @@ def test_processor(sagemaker_gamma_session, cpu_instance_type):
         image_uri=CUSTOM_IMAGE_URI,
         instance_count=1,
         instance_type=cpu_instance_type,
-        entrypoint=["python3", "/input/code/dummy_script.py"],
+        entrypoint=["python3", "/opt/ml/processing/input/code/dummy_script.py"],
         volume_size_in_gb=100,
         volume_kms_key=None,
         output_kms_key="arn:aws:kms:us-west-2:012345678901:key/kms-key",
@@ -360,10 +359,14 @@ def test_processor(sagemaker_gamma_session, cpu_instance_type):
     )
 
     processor.run(
-        inputs=[ProcessingInput(source=script_path, destination="/input/code/", input_name="code")],
+        inputs=[
+            ProcessingInput(
+                source=script_path, destination="/opt/ml/processing/input/code/", input_name="code"
+            )
+        ],
         outputs=[
             ProcessingOutput(
-                source="/output/container/path/",
+                source="/opt/ml/processing/output/container/path/",
                 output_name="dummy_output",
                 s3_upload_mode="EndOfJob",
             )
@@ -394,7 +397,7 @@ def test_processor(sagemaker_gamma_session, cpu_instance_type):
     assert job_description["AppSpecification"]["ContainerArguments"] == ["-v"]
     assert job_description["AppSpecification"]["ContainerEntrypoint"] == [
         "python3",
-        "/input/code/dummy_script.py",
+        "/opt/ml/processing/input/code/dummy_script.py",
     ]
     assert (
         job_description["AppSpecification"]["ImageUri"]
