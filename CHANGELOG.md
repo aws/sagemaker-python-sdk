@@ -1,5 +1,15 @@
 # Changelog
 
+## v1.44.2 (2019-11-25)
+
+### Bug fixes and other changes
+
+ * add pyyaml dependencies to the required list.
+
+### Documentation changes
+
+ * Correct info on code_location parameter
+
 ## v1.44.1 (2019-11-21)
 
 ### Bug fixes and other changes
