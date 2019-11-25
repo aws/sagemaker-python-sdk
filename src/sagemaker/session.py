@@ -25,7 +25,6 @@ import six
 import boto3
 import botocore.config
 from botocore.exceptions import ClientError
-import yaml
 
 import sagemaker.logs
 from sagemaker import vpc_utils
@@ -95,11 +94,8 @@ class Session(object):  # pylint: disable=too-many-public-methods
         """
         self._default_bucket = None
 
-        sagemaker_config_file = os.path.join(os.path.expanduser("~"), ".sagemaker", "config.yaml")
-        if os.path.exists(sagemaker_config_file):
-            self.config = yaml.load(open(sagemaker_config_file, "r"))
-        else:
-            self.config = None
+        # currently is used for local_code in local mode
+        self.config = None
 
         self._initialize(boto_session, sagemaker_client, sagemaker_runtime_client)
 

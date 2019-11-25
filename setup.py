@@ -39,14 +39,17 @@ required_packages = [
     "protobuf>=3.1",
     "scipy>=0.19.0",
     "protobuf3-to-dict>=0.1.5",
-    "PyYAML>=3.10, <5",  # required for session
     "requests>=2.20.0, <2.21",
 ]
 
 # Specific use case dependencies
 extras = {
     "analytics": ["pandas"],
-    "local": ["urllib3>=1.21, <1.25", "docker-compose>=1.23.0"],
+    "local": [
+        "urllib3>=1.21, <1.25",
+        "docker-compose>=1.23.0",
+        "PyYAML>=3.10, <5",  # PyYAML version has to match docker-compose requirements
+    ],
     "tensorflow": ["tensorflow>=1.3.0"],
 }
 # Meta dependency groups

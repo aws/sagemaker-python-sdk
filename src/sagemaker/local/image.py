@@ -33,8 +33,6 @@ from distutils.spawn import find_executable
 from threading import Thread
 from six.moves.urllib.parse import urlparse
 
-import yaml
-
 import sagemaker
 import sagemaker.local.data
 import sagemaker.local.utils
@@ -461,6 +459,16 @@ class _SageMakerContainer(object):
         }
 
         docker_compose_path = os.path.join(self.container_root, DOCKER_COMPOSE_FILENAME)
+
+        try:
+            import yaml
+        except ImportError as e:
+            logging.warning(
+                "yaml failed to import. Local mode features will be impaired or broken."
+            )
+            # Any subsequent attempt to use yaml will raise the ImportError
+            yaml = sagemaker.utils.DeferredError(e)
+
         yaml_content = yaml.dump(content, default_flow_style=False)
         logger.info("docker compose file: \n%s", yaml_content)
         with open(docker_compose_path, "w") as f:
