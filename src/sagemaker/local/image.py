@@ -463,11 +463,8 @@ class _SageMakerContainer(object):
         try:
             import yaml
         except ImportError as e:
-            logging.warning(
-                "yaml failed to import. Local mode features will be impaired or broken."
-            )
-            # Any subsequent attempt to use yaml will raise the ImportError
-            yaml = sagemaker.utils.DeferredError(e)
+            logging.error(sagemaker.utils._module_import_error("yaml", "Local mode", "local"))
+            raise e
 
         yaml_content = yaml.dump(content, default_flow_style=False)
         logger.info("docker compose file: \n%s", yaml_content)

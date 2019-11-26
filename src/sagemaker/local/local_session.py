@@ -29,7 +29,7 @@ from sagemaker.local.entities import (
     _LocalTransformJob,
 )
 from sagemaker.session import Session
-from sagemaker.utils import DeferredError, get_config_value
+from sagemaker.utils import get_config_value, _module_import_error
 
 logger = logging.getLogger(__name__)
 
@@ -326,11 +326,8 @@ class LocalSagemakerRuntimeClient(object):
         try:
             import urllib3
         except ImportError as e:
-            logging.warning(
-                "urllib3 failed to import. Local mode features will be impaired or broken."
-            )
-            # Any subsequent attempt to use urllib3 will raise the ImportError
-            urllib3 = DeferredError(e)
+            logging.error(_module_import_error("urllib3", "Local mode", "local"))
+            raise e
 
         self.http = urllib3.PoolManager()
         self.serving_port = 8080
@@ -411,11 +408,8 @@ class LocalSession(Session):
             try:
                 import yaml
             except ImportError as e:
-                logging.warning(
-                    "yaml failed to import. Local mode features will be impaired or broken."
-                )
-                # Any subsequent attempt to use yaml will raise the ImportError
-                yaml = DeferredError(e)
+                logging.error(_module_import_error("yaml", "Local mode", "local"))
+                raise e
 
             self.config = yaml.load(open(sagemaker_config_file, "r"))
 
