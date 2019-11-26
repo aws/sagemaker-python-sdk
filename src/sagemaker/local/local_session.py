@@ -14,8 +14,8 @@
 from __future__ import absolute_import
 
 import logging
-import platform
 import os
+import platform
 
 import boto3
 from botocore.exceptions import ClientError
