@@ -27,7 +27,11 @@ from six.moves.urllib.parse import urlparse
 import sagemaker
 from sagemaker import git_utils
 from sagemaker.analytics import TrainingJobAnalytics
-from sagemaker.debugger import DebuggerHookConfig, TensorBoardOutputConfig
+from sagemaker.debugger import (
+    DebuggerHookConfig,
+    TensorBoardOutputConfig,
+    get_rule_container_image_uri,
+)
 from sagemaker.s3 import S3Uploader
 
 from sagemaker.fw_utils import (
@@ -319,9 +323,7 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):
 
         # Prepare rules and debugger configs for training.
         if self.rules and not self.debugger_hook_config:
-            self.debugger_hook_config = DebuggerHookConfig(
-                s3_output_path=os.path.join(self.output_path, self._current_job_name, "tensors")
-            )
+            self.debugger_hook_config = DebuggerHookConfig(s3_output_path=self.output_path)
         self._prepare_rules()
         self._prepare_collection_configs()
 
@@ -332,14 +334,16 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):
             # Iterate through each of the provided rules.
             for rule in self.rules:
                 # Set the instance type and volume size using the Estimator's defaults.
-                rule.instance_type = self.train_instance_type
-                rule.volume_size_in_gb = self.train_volume_size
                 # Set the image URI using the default rule evaluator image and the region.
                 if rule.image_uri == "DEFAULT_RULE_EVALUATOR_IMAGE":
-                    # TODO-reinvent-2019 [akarpur]: Replace this image URI with the latest version
-                    rule.image_uri = "453379255795.dkr.ecr.{}.amazonaws.com/script-rule-executor:latest".format(
+                    rule.image_uri = get_rule_container_image_uri(
                         self.sagemaker_session.boto_region_name
                     )
+                    rule.instance_type = None
+                    rule.volume_size_in_gb = None
+                else:
+                    rule.instance_type = self.train_instance_type
+                    rule.volume_size_in_gb = self.train_volume_size
                 # If source was provided as a rule parameter, upload to S3 and save the S3 uri.
                 if "source_s3_uri" in (rule.rule_parameters or {}):
                     parse_result = urlparse(rule.rule_parameters["source_s3_uri"])
@@ -1590,12 +1594,10 @@ class Framework(EstimatorBase):
 
         # Set defaults for debugging.
         if self.debugger_hook_config is None:
-            self.debugger_hook_config = DebuggerHookConfig(
-                s3_output_path=os.path.join(self.output_path, self._current_job_name, "tensors")
-            )
+            self.debugger_hook_config = DebuggerHookConfig(s3_output_path=self.output_path)
         if self.tensorboard_output_config is None:
             self.tensorboard_output_config = TensorBoardOutputConfig(
-                s3_output_path=os.path.join(self.output_path, self._current_job_name, "tensorboard")
+                s3_output_path=self.output_path
             )
 
     def _stage_user_code_in_s3(self):

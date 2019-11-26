@@ -148,11 +148,9 @@ def _create_train_job(toolkit, toolkit_version, framework):
         ],
         "debugger_hook_config": {
             "CollectionConfigurations": [],
-            "S3OutputPath": "s3://{}/{}/tensors".format(BUCKET_NAME, job_name),
+            "S3OutputPath": "s3://{}/".format(BUCKET_NAME),
         },
-        "tensorboard_output_config": {
-            "S3OutputPath": "s3://{}/{}/tensorboard".format(BUCKET_NAME, job_name)
-        },
+        "tensorboard_output_config": {"S3OutputPath": "s3://{}/".format(BUCKET_NAME)},
     }
 
 
