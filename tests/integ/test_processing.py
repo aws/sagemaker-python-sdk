@@ -15,18 +15,48 @@ from __future__ import absolute_import
 import logging
 import os
 
+import pytest
+from sagemaker.fw_registry import default_framework_uri
+
 from sagemaker.processing import ProcessingInput, ProcessingOutput, ScriptProcessor, Processor
 from sagemaker.sklearn.processing import SKLearnProcessor
 from tests.integ import DATA_DIR
-
+from tests.integ.kms_utils import get_or_create_kms_key
 
 ROLE = "arn:aws:iam::142577830533:role/SageMakerRole"
-CUSTOM_IMAGE_URI = (
-    "246618743249.dkr.ecr.us-west-2.amazonaws.com/sagemaker-scikit-learn:0.20.0-cpu-py3"
-)
 
 
-def test_sklearn(sagemaker_gamma_session, sklearn_full_version, cpu_instance_type):
+@pytest.fixture(scope="module")
+def image_uri(sagemaker_session):
+    image_tag = "{}-{}-{}".format("0.20.0", "cpu", "py3")
+    return default_framework_uri(
+        "scikit-learn", sagemaker_session.boto_session.region_name, image_tag
+    )
+
+
+@pytest.fixture(scope="module")
+def volume_kms_key(sagemaker_session):
+    return get_or_create_kms_key(
+        sagemaker_session=sagemaker_session,
+        role_arn=ROLE,
+        alias="integ-test-processing-volume-kms-key-{}".format(
+            sagemaker_session.boto_session.region_name
+        ),
+    )
+
+
+@pytest.fixture(scope="module")
+def output_kms_key(sagemaker_session):
+    return get_or_create_kms_key(
+        sagemaker_session=sagemaker_session,
+        role_arn=ROLE,
+        alias="integ-test-processing-output-kms-key-{}".format(
+            sagemaker_session.boto_session.region_name
+        ),
+    )
+
+
+def test_sklearn(sagemaker_session, sklearn_full_version, cpu_instance_type):
     logging.getLogger().setLevel(logging.DEBUG)  # TODO-reinvent-2019: REMOVE
 
     script_path = os.path.join(DATA_DIR, "dummy_script.py")
@@ -36,7 +66,7 @@ def test_sklearn(sagemaker_gamma_session, sklearn_full_version, cpu_instance_typ
         framework_version=sklearn_full_version,
         role=ROLE,
         instance_type=cpu_instance_type,
-        sagemaker_session=sagemaker_gamma_session,
+        sagemaker_session=sagemaker_session,
         max_runtime_in_seconds=3600,  # TODO-reinvent-2019: REMOVE
         base_job_name="test-sklearn",
     )
@@ -65,7 +95,7 @@ def test_sklearn(sagemaker_gamma_session, sklearn_full_version, cpu_instance_typ
 
 # TODO-reinvent-2019 [akarpur]: uncomment this test
 # def test_sklearn_with_customizations(
-#     sagemaker_gamma_session, sklearn_full_version, cpu_instance_type
+#     sagemaker_session, image_uri, sklearn_full_version, cpu_instance_type, output_kms_key
 # ):
 #     input_file_path = os.path.join(DATA_DIR, "dummy_input.txt")
 #
@@ -76,12 +106,12 @@ def test_sklearn(sagemaker_gamma_session, sklearn_full_version, cpu_instance_typ
 #         py_version="py3",
 #         volume_size_in_gb=100,
 #         volume_kms_key=None,
-#         output_kms_key="arn:aws:kms:us-west-2:012345678901:key/kms-key",
+#         output_kms_key=output_kms_key,
 #         max_runtime_in_seconds=3600,
 #         base_job_name="test-sklearn-with-customizations",
 #         env={"DUMMY_ENVIRONMENT_VARIABLE": "dummy-value"},
 #         tags=[{"Key": "dummy-tag", "Value": "dummy-tag-value"}],
-#         sagemaker_session=sagemaker_gamma_session,
+#         sagemaker_session=sagemaker_session,
 #     )
 #
 #     sklearn_processor.run(
@@ -123,7 +153,7 @@ def test_sklearn(sagemaker_gamma_session, sklearn_full_version, cpu_instance_typ
 #
 #     assert (
 #         job_description["ProcessingOutputConfig"]["KmsKeyId"]
-#         == "arn:aws:kms:us-west-2:012345678901:key/kms-key"
+#         == output_kms_key
 #     )
 #     assert job_description["ProcessingOutputConfig"]["Outputs"][0]["OutputName"] == "dummy_output"
 #
@@ -138,7 +168,7 @@ def test_sklearn(sagemaker_gamma_session, sklearn_full_version, cpu_instance_typ
 #     ]
 #     assert (
 #         job_description["AppSpecification"]["ImageUri"]
-#         == "246618743249.dkr.ecr.us-west-2.amazonaws.com/sagemaker-scikit-learn:0.20.0-cpu-py3"
+#         == image_uri
 #     )
 #
 #     assert job_description["Environment"] == {"DUMMY_ENVIRONMENT_VARIABLE": "dummy-value"}
@@ -150,7 +180,7 @@ def test_sklearn(sagemaker_gamma_session, sklearn_full_version, cpu_instance_typ
 
 # TODO-reinvent-2019 [akarpur]: uncomment this test
 # def test_sklearn_with_no_inputs_or_outputs(
-#     sagemaker_gamma_session, sklearn_full_version, cpu_instance_type
+#     sagemaker_session, image_uri, sklearn_full_version, cpu_instance_type
 # ):
 #     sklearn_processor = SKLearnProcessor(
 #         framework_version=sklearn_full_version,
@@ -163,7 +193,7 @@ def test_sklearn(sagemaker_gamma_session, sklearn_full_version, cpu_instance_typ
 #         base_job_name="test-sklearn-with-no-inputs-or-outputs",
 #         env={"DUMMY_ENVIRONMENT_VARIABLE": "dummy-value"},
 #         tags=[{"Key": "dummy-tag", "Value": "dummy-tag-value"}],
-#         sagemaker_session=sagemaker_gamma_session,
+#         sagemaker_session=sagemaker_session,
 #     )
 #
 #     sklearn_processor.run(
@@ -194,7 +224,7 @@ def test_sklearn(sagemaker_gamma_session, sklearn_full_version, cpu_instance_typ
 #     ]
 #     assert (
 #         job_description["AppSpecification"]["ImageUri"]
-#         == "246618743249.dkr.ecr.us-west-2.amazonaws.com/sagemaker-scikit-learn:0.20.0-cpu-py3"
+#         == image_uri
 #     )
 #
 #     assert job_description["Environment"] == {"DUMMY_ENVIRONMENT_VARIABLE": "dummy-value"}
@@ -204,22 +234,22 @@ def test_sklearn(sagemaker_gamma_session, sklearn_full_version, cpu_instance_typ
 #     assert job_description["StoppingCondition"] == {"MaxRuntimeInSeconds": 3600}
 
 
-def test_script_processor(sagemaker_gamma_session, cpu_instance_type):
+def test_script_processor(sagemaker_session, image_uri, cpu_instance_type, output_kms_key):
     input_file_path = os.path.join(DATA_DIR, "dummy_input.txt")
 
     script_processor = ScriptProcessor(
         role=ROLE,
-        image_uri=CUSTOM_IMAGE_URI,
+        image_uri=image_uri,
         instance_count=1,
         instance_type=cpu_instance_type,
         volume_size_in_gb=100,
         volume_kms_key=None,
-        output_kms_key="arn:aws:kms:us-west-2:012345678901:key/kms-key",
+        output_kms_key=output_kms_key,
         max_runtime_in_seconds=3600,
         base_job_name="test-script-processor",
         env={"DUMMY_ENVIRONMENT_VARIABLE": "dummy-value"},
         tags=[{"Key": "dummy-tag", "Value": "dummy-tag-value"}],
-        sagemaker_session=sagemaker_gamma_session,
+        sagemaker_session=sagemaker_session,
     )
 
     script_processor.run(
@@ -259,10 +289,7 @@ def test_script_processor(sagemaker_gamma_session, cpu_instance_type):
 
     assert job_description["ProcessingJobStatus"] == "Completed"
 
-    assert (
-        job_description["ProcessingOutputConfig"]["KmsKeyId"]
-        == "arn:aws:kms:us-west-2:012345678901:key/kms-key"
-    )
+    assert job_description["ProcessingOutputConfig"]["KmsKeyId"] == output_kms_key
     assert job_description["ProcessingOutputConfig"]["Outputs"][0]["OutputName"] == "dummy_output"
 
     assert job_description["ProcessingResources"] == {
@@ -274,10 +301,7 @@ def test_script_processor(sagemaker_gamma_session, cpu_instance_type):
         "python3",
         "/opt/ml/processing/input/code/dummy_script.py",
     ]
-    assert (
-        job_description["AppSpecification"]["ImageUri"]
-        == "246618743249.dkr.ecr.us-west-2.amazonaws.com/sagemaker-scikit-learn:0.20.0-cpu-py3"
-    )
+    assert job_description["AppSpecification"]["ImageUri"] == image_uri
 
     assert job_description["Environment"] == {"DUMMY_ENVIRONMENT_VARIABLE": "dummy-value"}
 
@@ -286,10 +310,12 @@ def test_script_processor(sagemaker_gamma_session, cpu_instance_type):
     assert job_description["StoppingCondition"] == {"MaxRuntimeInSeconds": 3600}
 
 
-def test_script_processor_with_no_inputs_or_outputs(sagemaker_gamma_session, cpu_instance_type):
+def test_script_processor_with_no_inputs_or_outputs(
+    sagemaker_session, image_uri, cpu_instance_type
+):
     script_processor = ScriptProcessor(
         role=ROLE,
-        image_uri=CUSTOM_IMAGE_URI,
+        image_uri=image_uri,
         instance_count=1,
         instance_type=cpu_instance_type,
         volume_size_in_gb=100,
@@ -298,7 +324,7 @@ def test_script_processor_with_no_inputs_or_outputs(sagemaker_gamma_session, cpu
         base_job_name="test-script-processor-with-no-inputs-or-outputs",
         env={"DUMMY_ENVIRONMENT_VARIABLE": "dummy-value"},
         tags=[{"Key": "dummy-tag", "Value": "dummy-tag-value"}],
-        sagemaker_session=sagemaker_gamma_session,
+        sagemaker_session=sagemaker_session,
     )
 
     script_processor.run(
@@ -327,10 +353,7 @@ def test_script_processor_with_no_inputs_or_outputs(sagemaker_gamma_session, cpu
         "python3",
         "/opt/ml/processing/input/code/dummy_script.py",
     ]
-    assert (
-        job_description["AppSpecification"]["ImageUri"]
-        == "246618743249.dkr.ecr.us-west-2.amazonaws.com/sagemaker-scikit-learn:0.20.0-cpu-py3"
-    )
+    assert job_description["AppSpecification"]["ImageUri"] == image_uri
 
     assert job_description["Environment"] == {"DUMMY_ENVIRONMENT_VARIABLE": "dummy-value"}
 
@@ -339,23 +362,23 @@ def test_script_processor_with_no_inputs_or_outputs(sagemaker_gamma_session, cpu
     assert job_description["StoppingCondition"] == {"MaxRuntimeInSeconds": 3600}
 
 
-def test_processor(sagemaker_gamma_session, cpu_instance_type):
+def test_processor(sagemaker_session, image_uri, cpu_instance_type, output_kms_key):
     script_path = os.path.join(DATA_DIR, "dummy_script.py")
 
     processor = Processor(
         role=ROLE,
-        image_uri=CUSTOM_IMAGE_URI,
+        image_uri=image_uri,
         instance_count=1,
         instance_type=cpu_instance_type,
         entrypoint=["python3", "/opt/ml/processing/input/code/dummy_script.py"],
         volume_size_in_gb=100,
         volume_kms_key=None,
-        output_kms_key="arn:aws:kms:us-west-2:012345678901:key/kms-key",
+        output_kms_key=output_kms_key,
         max_runtime_in_seconds=3600,
         base_job_name="test-processor",
         env={"DUMMY_ENVIRONMENT_VARIABLE": "dummy-value"},
         tags=[{"Key": "dummy-tag", "Value": "dummy-tag-value"}],
-        sagemaker_session=sagemaker_gamma_session,
+        sagemaker_session=sagemaker_session,
     )
 
     processor.run(
@@ -384,10 +407,7 @@ def test_processor(sagemaker_gamma_session, cpu_instance_type):
 
     assert job_description["ProcessingJobStatus"] == "Completed"
 
-    assert (
-        job_description["ProcessingOutputConfig"]["KmsKeyId"]
-        == "arn:aws:kms:us-west-2:012345678901:key/kms-key"
-    )
+    assert job_description["ProcessingOutputConfig"]["KmsKeyId"] == output_kms_key
     assert job_description["ProcessingOutputConfig"]["Outputs"][0]["OutputName"] == "dummy_output"
 
     assert job_description["ProcessingResources"] == {
@@ -399,10 +419,7 @@ def test_processor(sagemaker_gamma_session, cpu_instance_type):
         "python3",
         "/opt/ml/processing/input/code/dummy_script.py",
     ]
-    assert (
-        job_description["AppSpecification"]["ImageUri"]
-        == "246618743249.dkr.ecr.us-west-2.amazonaws.com/sagemaker-scikit-learn:0.20.0-cpu-py3"
-    )
+    assert job_description["AppSpecification"]["ImageUri"] == image_uri
 
     assert job_description["Environment"] == {"DUMMY_ENVIRONMENT_VARIABLE": "dummy-value"}
 
