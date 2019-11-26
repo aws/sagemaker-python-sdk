@@ -98,6 +98,7 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):
         rules=None,
         debugger_hook_config=None,
         tensorboard_output_config=None,
+        enable_sagemaker_metrics=None,
     ):
         """Initialize an ``EstimatorBase`` instance.
 
@@ -195,6 +196,10 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):
                 started. If the path is unset then SageMaker assumes the
                 checkpoints will be provided under `/opt/ml/checkpoints/`.
                 (default: ``None``).
+            enable_sagemaker_metrics (bool): enable SageMaker Metrics Time
+                Series. For more information see:
+                https://docs.aws.amazon.com/sagemaker/latest/dg/API_AlgorithmSpecification.html#SageMaker-Type-AlgorithmSpecification-EnableSageMakerMetricsTimeSeries
+                (default: ``None``).
         """
         self.role = role
         self.train_instance_count = train_instance_count
@@ -249,6 +254,8 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):
 
         self.debugger_rule_configs = None
         self.collection_configs = None
+
+        self.enable_sagemaker_metrics = enable_sagemaker_metrics
 
     @abstractmethod
     def train_image(self):
@@ -958,6 +965,9 @@ class _TrainingJob(_Job):
 
         cls._add_spot_checkpoint_args(local_mode, estimator, train_args)
 
+        if estimator.enable_sagemaker_metrics is not None:
+            train_args["enable_sagemaker_metrics"] = estimator.enable_sagemaker_metrics
+
         estimator.sagemaker_session.train(**train_args)
 
         return cls(estimator.sagemaker_session, estimator._current_job_name)
@@ -1060,6 +1070,7 @@ class Estimator(EstimatorBase):
         rules=None,
         debugger_hook_config=None,
         tensorboard_output_config=None,
+        enable_sagemaker_metrics=None,
     ):
         """Initialize an ``Estimator`` instance.
 
@@ -1171,6 +1182,10 @@ class Estimator(EstimatorBase):
                 user entry script for training. The user entry script, files in
                 source_dir (if specified), and dependencies will be uploaded in
                 a tar to S3. Also known as internet-free mode (default: ``False``).
+            enable_sagemaker_metrics (bool): enable SageMaker Metrics Time
+                Series. For more information see:
+                https://docs.aws.amazon.com/sagemaker/latest/dg/API_AlgorithmSpecification.html#SageMaker-Type-AlgorithmSpecification-EnableSageMakerMetricsTimeSeries
+                (default: ``None``).
         """
         self.image_name = image_name
         self.hyperparam_dict = hyperparameters.copy() if hyperparameters else {}
@@ -1201,6 +1216,7 @@ class Estimator(EstimatorBase):
             rules=rules,
             debugger_hook_config=debugger_hook_config,
             tensorboard_output_config=tensorboard_output_config,
+            enable_sagemaker_metrics=enable_sagemaker_metrics,
         )
 
     def enable_network_isolation(self):
@@ -1354,6 +1370,7 @@ class Framework(EstimatorBase):
         git_config=None,
         checkpoint_s3_uri=None,
         checkpoint_local_path=None,
+        enable_sagemaker_metrics=None,
         **kwargs
     ):
         """Base class initializer. Subclasses which override ``__init__`` should
@@ -1500,6 +1517,10 @@ class Framework(EstimatorBase):
                 started. If the path is unset then SageMaker assumes the
                 checkpoints will be provided under `/opt/ml/checkpoints/`.
                 (default: ``None``).
+            enable_sagemaker_metrics (bool): enable SageMaker Metrics Time
+                Series. For more information see:
+                https://docs.aws.amazon.com/sagemaker/latest/dg/API_AlgorithmSpecification.html#SageMaker-Type-AlgorithmSpecification-EnableSageMakerMetricsTimeSeries
+                (default: ``None``).
             **kwargs: Additional kwargs passed to the ``EstimatorBase``
                 constructor.
         """
@@ -1530,6 +1551,7 @@ class Framework(EstimatorBase):
         self._hyperparameters = hyperparameters or {}
         self.checkpoint_s3_uri = checkpoint_s3_uri
         self.checkpoint_local_path = checkpoint_local_path
+        self.enable_sagemaker_metrics = enable_sagemaker_metrics
 
     def enable_network_isolation(self):
         """Return True if this Estimator can use network isolation to run.

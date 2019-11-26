@@ -523,3 +523,25 @@ def test_empty_framework_version(warning, sagemaker_session):
 
     assert estimator.framework_version == defaults.PYTORCH_VERSION
     warning.assert_called_with(defaults.PYTORCH_VERSION, defaults.PYTORCH_VERSION)
+
+
+def test_pt_enable_sm_metrics(sagemaker_session):
+    pytorch = _pytorch_estimator(sagemaker_session, enable_sagemaker_metrics=True)
+    assert pytorch.enable_sagemaker_metrics
+
+
+def test_pt_disable_sm_metrics(sagemaker_session):
+    pytorch = _pytorch_estimator(sagemaker_session, enable_sagemaker_metrics=False)
+    assert not pytorch.enable_sagemaker_metrics
+
+
+def test_pt_disable_sm_metrics_if_pt_ver_is_less_than_1_15(sagemaker_session):
+    for fw_version in ["1.1", "1.2"]:
+        pytorch = _pytorch_estimator(sagemaker_session, framework_version=fw_version)
+        assert pytorch.enable_sagemaker_metrics is None
+
+
+def test_pt_enable_sm_metrics_if_fw_ver_is_at_least_1_15(sagemaker_session):
+    for fw_version in ["1.3", "1.4", "2.0", "2.1"]:
+        pytorch = _pytorch_estimator(sagemaker_session, framework_version=fw_version)
+        assert pytorch.enable_sagemaker_metrics

@@ -286,6 +286,11 @@ class TensorFlow(Framework):
         if not py_version:
             py_version = "py3" if self._only_python_3_supported() else "py2"
 
+        if "enable_sagemaker_metrics" not in kwargs:
+            # enable sagemaker metrics for TF v1.15 or greater:
+            if fw.is_version_equal_or_higher([1, 15], self.framework_version):
+                kwargs["enable_sagemaker_metrics"] = True
+
         super(TensorFlow, self).__init__(image_name=image_name, **kwargs)
         self.checkpoint_path = checkpoint_path
 
