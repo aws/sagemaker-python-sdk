@@ -616,13 +616,14 @@ def _module_import_error(py_module, feature, extras):
 
     Args:
         py_module (str): Module that failed to be imported
-        feature (str): Affected sagemaker feature
-        extras (str): Name of the extra_requirements to install all of the dependencies
+        feature (str): Affected SageMaker feature
+        extras (str): Name of the `extras_require` to install the relevant dependencies
+
     Returns:
         str: Error message with installation instructions.
     """
     error_msg = (
-        "Failed to import {}. {} features will be impaired or broken."
+        "Failed to import {}. {} features will be impaired or broken. "
         "Please run \"pip install 'sagemaker[{}]'\" "
         "to install all required dependencies."
     )
