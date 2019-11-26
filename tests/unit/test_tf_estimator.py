@@ -1200,3 +1200,29 @@ def test_tf_script_mode_attach(sagemaker_session, tf_version):
     assert estimator.hyperparameters() is not None
     assert estimator.source_dir == "s3://some/sourcedir.tar.gz"
     assert estimator.entry_point == "iris-dnn-classifier.py"
+
+
+@patch("sagemaker.utils.create_tar_file", MagicMock())
+def test_tf_enable_sm_metrics(sagemaker_session):
+    tf = _build_tf(sagemaker_session, enable_sagemaker_metrics=True)
+    assert tf.enable_sagemaker_metrics
+
+
+@patch("sagemaker.utils.create_tar_file", MagicMock())
+def test_tf_disable_sm_metrics(sagemaker_session):
+    tf = _build_tf(sagemaker_session, enable_sagemaker_metrics=False)
+    assert not tf.enable_sagemaker_metrics
+
+
+@patch("sagemaker.utils.create_tar_file", MagicMock())
+def test_tf_disable_sm_metrics_if_fw_ver_is_less_than_1_15(sagemaker_session):
+    for fw_version in ["1.11", "1.12", "1.13", "1.14"]:
+        tf = _build_tf(sagemaker_session, framework_version=fw_version)
+        assert tf.enable_sagemaker_metrics is None
+
+
+@patch("sagemaker.utils.create_tar_file", MagicMock())
+def test_tf_enable_sm_metrics_if_fw_ver_is_at_least_1_15(sagemaker_session):
+    for fw_version in ["1.15", "1.16", "2.0", "2.1"]:
+        tf = _build_tf(sagemaker_session, framework_version=fw_version)
+        assert tf.enable_sagemaker_metrics

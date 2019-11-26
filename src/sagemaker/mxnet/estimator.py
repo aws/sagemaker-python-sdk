@@ -21,6 +21,7 @@ from sagemaker.fw_utils import (
     framework_version_from_tag,
     empty_framework_version_warning,
     python_deprecation_warning,
+    is_version_equal_or_higher,
 )
 from sagemaker.mxnet.defaults import MXNET_VERSION
 from sagemaker.mxnet.model import MXNetModel
@@ -102,6 +103,11 @@ class MXNet(Framework):
         if framework_version is None:
             logger.warning(empty_framework_version_warning(MXNET_VERSION, self.LATEST_VERSION))
         self.framework_version = framework_version or MXNET_VERSION
+
+        if "enable_sagemaker_metrics" not in kwargs:
+            # enable sagemaker metrics for MXNet v1.6 or greater:
+            if is_version_equal_or_higher([1, 6], self.framework_version):
+                kwargs["enable_sagemaker_metrics"] = True
 
         super(MXNet, self).__init__(
             entry_point, source_dir, hyperparameters, image_name=image_name, **kwargs

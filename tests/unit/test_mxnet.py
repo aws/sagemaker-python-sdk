@@ -736,3 +736,53 @@ def test_create_model_with_custom_hosting_image(sagemaker_session):
     model = mx.create_model(image_name=custom_hosting_image)
 
     assert model.image == custom_hosting_image
+
+
+def test_mx_enable_sm_metrics(sagemaker_session):
+    mx = MXNet(
+        entry_point=SCRIPT_PATH,
+        role=ROLE,
+        sagemaker_session=sagemaker_session,
+        train_instance_count=INSTANCE_COUNT,
+        train_instance_type=INSTANCE_TYPE,
+        enable_sagemaker_metrics=True,
+    )
+    assert mx.enable_sagemaker_metrics
+
+
+def test_mx_disable_sm_metrics(sagemaker_session):
+    mx = MXNet(
+        entry_point=SCRIPT_PATH,
+        role=ROLE,
+        sagemaker_session=sagemaker_session,
+        train_instance_count=INSTANCE_COUNT,
+        train_instance_type=INSTANCE_TYPE,
+        enable_sagemaker_metrics=False,
+    )
+    assert not mx.enable_sagemaker_metrics
+
+
+def test_mx_disable_sm_metrics_if_pt_ver_is_less_than_1_6(sagemaker_session):
+    for fw_version in ["1.1", "1.2", "1.3", "1.4", "1.5"]:
+        mx = MXNet(
+            entry_point=SCRIPT_PATH,
+            role=ROLE,
+            sagemaker_session=sagemaker_session,
+            train_instance_count=INSTANCE_COUNT,
+            train_instance_type=INSTANCE_TYPE,
+            framework_version=fw_version,
+        )
+        assert mx.enable_sagemaker_metrics is None
+
+
+def test_mx_enable_sm_metrics_if_fw_ver_is_at_least_1_6(sagemaker_session):
+    for fw_version in ["1.6", "1.7", "2.0", "2.1"]:
+        mx = MXNet(
+            entry_point=SCRIPT_PATH,
+            role=ROLE,
+            sagemaker_session=sagemaker_session,
+            train_instance_count=INSTANCE_COUNT,
+            train_instance_type=INSTANCE_TYPE,
+            framework_version=fw_version,
+        )
+        assert mx.enable_sagemaker_metrics

@@ -205,6 +205,7 @@ def test_framework_all_init_args(sagemaker_session):
         encrypt_inter_container_traffic=True,
         checkpoint_s3_uri="s3://bucket/checkpoint",
         checkpoint_local_path="file://local/checkpoint",
+        enable_sagemaker_metrics=True,
     )
     _TrainingJob.start_new(f, "s3://mydata")
     sagemaker_session.train.assert_called_once()
@@ -241,6 +242,7 @@ def test_framework_all_init_args(sagemaker_session):
         "encrypt_inter_container_traffic": True,
         "checkpoint_s3_uri": "s3://bucket/checkpoint",
         "checkpoint_local_path": "file://local/checkpoint",
+        "enable_sagemaker_metrics": True,
     }
 
 
@@ -1833,6 +1835,59 @@ def test_generic_to_fit_with_network_isolation(sagemaker_session):
     sagemaker_session.train.assert_called_once()
     args = sagemaker_session.train.call_args[1]
     assert args["enable_network_isolation"]
+
+
+def test_generic_to_fit_with_sagemaker_metrics_missing(sagemaker_session):
+    e = Estimator(
+        IMAGE_NAME,
+        ROLE,
+        INSTANCE_COUNT,
+        INSTANCE_TYPE,
+        output_path=OUTPUT_PATH,
+        sagemaker_session=sagemaker_session,
+    )
+
+    e.fit()
+
+    sagemaker_session.train.assert_called_once()
+    args = sagemaker_session.train.call_args[1]
+    assert "enable_sagemaker_metrics" not in args
+
+
+def test_generic_to_fit_with_sagemaker_metrics_enabled(sagemaker_session):
+    e = Estimator(
+        IMAGE_NAME,
+        ROLE,
+        INSTANCE_COUNT,
+        INSTANCE_TYPE,
+        output_path=OUTPUT_PATH,
+        sagemaker_session=sagemaker_session,
+        enable_sagemaker_metrics=True,
+    )
+
+    e.fit()
+
+    sagemaker_session.train.assert_called_once()
+    args = sagemaker_session.train.call_args[1]
+    assert args["enable_sagemaker_metrics"]
+
+
+def test_generic_to_fit_with_sagemaker_metrics_disabled(sagemaker_session):
+    e = Estimator(
+        IMAGE_NAME,
+        ROLE,
+        INSTANCE_COUNT,
+        INSTANCE_TYPE,
+        output_path=OUTPUT_PATH,
+        sagemaker_session=sagemaker_session,
+        enable_sagemaker_metrics=False,
+    )
+
+    e.fit()
+
+    sagemaker_session.train.assert_called_once()
+    args = sagemaker_session.train.call_args[1]
+    assert not args["enable_sagemaker_metrics"]
 
 
 def test_generic_to_deploy(sagemaker_session):

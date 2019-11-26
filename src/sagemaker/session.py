@@ -370,6 +370,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
         debugger_rule_configs=None,
         debugger_hook_config=None,
         tensorboard_output_config=None,
+        enable_sagemaker_metrics=None,
     ):
         """Create an Amazon SageMaker training job.
 
@@ -432,6 +433,10 @@ class Session(object):  # pylint: disable=too-many-public-methods
                 started. If the path is unset then SageMaker assumes the
                 checkpoints will be provided under `/opt/ml/checkpoints/`.
                 (default: ``None``).
+            enable_sagemaker_metrics (bool): enable SageMaker Metrics Time
+                Series. For more information see:
+                https://docs.aws.amazon.com/sagemaker/latest/dg/API_AlgorithmSpecification.html#SageMaker-Type-AlgorithmSpecification-EnableSageMakerMetricsTimeSeries
+                (default: ``None``).
 
         Returns:
             str: ARN of the training job, if it is created.
@@ -466,6 +471,11 @@ class Session(object):  # pylint: disable=too-many-public-methods
 
         if metric_definitions is not None:
             train_request["AlgorithmSpecification"]["MetricDefinitions"] = metric_definitions
+
+        if enable_sagemaker_metrics is not None:
+            train_request["AlgorithmSpecification"][
+                "EnableSageMakerMetricsTimeSeries"
+            ] = enable_sagemaker_metrics
 
         if hyperparameters and len(hyperparameters) > 0:
             train_request["HyperParameters"] = hyperparameters
