@@ -14,6 +14,7 @@
 from __future__ import absolute_import
 
 import logging
+import os
 import platform
 
 import boto3
@@ -28,14 +29,7 @@ from sagemaker.local.entities import (
     _LocalTransformJob,
 )
 from sagemaker.session import Session
-from sagemaker.utils import DeferredError, get_config_value
-
-try:
-    import urllib3
-except ImportError as e:
-    logging.warning("urllib3 failed to import. Local mode features will be impaired or broken.")
-    # Any subsequent attempt to use urllib3 will raise the ImportError
-    urllib3 = DeferredError(e)
+from sagemaker.utils import get_config_value, _module_import_error
 
 logger = logging.getLogger(__name__)
 
@@ -329,6 +323,12 @@ class LocalSagemakerRuntimeClient(object):
             config (dict): Optional configuration for this client. In particular only
                 the local port is read.
         """
+        try:
+            import urllib3
+        except ImportError as e:
+            logging.error(_module_import_error("urllib3", "Local mode", "local"))
+            raise e
+
         self.http = urllib3.PoolManager()
         self.serving_port = 8080
         self.config = config
@@ -402,6 +402,16 @@ class LocalSession(Session):
         self.sagemaker_client = LocalSagemakerClient(self)
         self.sagemaker_runtime_client = LocalSagemakerRuntimeClient(self.config)
         self.local_mode = True
+
+        sagemaker_config_file = os.path.join(os.path.expanduser("~"), ".sagemaker", "config.yaml")
+        if os.path.exists(sagemaker_config_file):
+            try:
+                import yaml
+            except ImportError as e:
+                logging.error(_module_import_error("yaml", "Local mode", "local"))
+                raise e
+
+            self.config = yaml.load(open(sagemaker_config_file, "r"))
 
     def logs_for_job(self, job_name, wait=False, poll=5):
         """
