@@ -1,5 +1,15 @@
 # Changelog
 
+## v1.44.3 (2019-11-26)
+
+### Bug fixes and other changes
+
+ * move sagemaker config loading to LocalSession since it is only used for local code support.
+
+### Documentation changes
+
+ * fix docstring wording.
+
 ## v1.44.2 (2019-11-25)
 
 ### Bug fixes and other changes
