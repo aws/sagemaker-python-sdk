@@ -27,8 +27,8 @@ from sagemaker.inputs import FileSystemInput
 from sagemaker.model import NEO_IMAGE_ACCOUNT
 from sagemaker.session import s3_input
 from sagemaker.utils import sagemaker_timestamp, get_ecr_image_uri_prefix
+from sagemaker.xgboost.defaults import XGBOOST_VERSION_1, XGBOOST_SUPPORTED_VERSIONS
 from sagemaker.xgboost.estimator import get_xgboost_image_uri
-from sagemaker.xgboost.defaults import XGBOOST_LATEST_VERSION
 
 logger = logging.getLogger(__name__)
 
@@ -559,13 +559,23 @@ def get_image_uri(region_name, repo_name, repo_version=1):
     """
     if repo_name == "xgboost":
         if repo_version in ["0.90", "0.90-1", "0.90-1-cpu-py3"]:
-            return get_xgboost_image_uri(region_name, XGBOOST_LATEST_VERSION)
+            return get_xgboost_image_uri(region_name, XGBOOST_VERSION_1)
+
+        supported_version = [
+            version
+            for version in XGBOOST_SUPPORTED_VERSIONS
+            if repo_version in (version, version + "-cpu-py3")
+        ]
+        if supported_version:
+            return get_xgboost_image_uri(region_name, supported_version[0])
+
         logging.warning(
-            "There is a more up to date SageMaker XGBoost image."
+            "There is a more up to date SageMaker XGBoost image. "
             "To use the newer image, please set 'repo_version'="
-            "'0.90-1. For example:\n"
+            "'%s'. For example:\n"
             "\tget_image_uri(region, 'xgboost', '%s').",
-            XGBOOST_LATEST_VERSION,
+            XGBOOST_VERSION_1,
+            XGBOOST_VERSION_1,
         )
     repo = "{}:{}".format(repo_name, repo_version)
     return "{}/{}".format(registry(region_name, repo_name), repo)
