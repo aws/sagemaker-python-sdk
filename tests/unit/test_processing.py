@@ -46,6 +46,7 @@ def sagemaker_session():
 def test_sklearn(sagemaker_session):
     sklearn_processor = SKLearnProcessor(
         framework_version="0.20.0",
+        command=["python3"],
         role=ROLE,
         instance_type="ml.m4.xlarge",
         sagemaker_session=sagemaker_session,
@@ -53,7 +54,6 @@ def test_sklearn(sagemaker_session):
 
     with patch("os.path.isfile", return_value=True):
         sklearn_processor.run(
-            command=["python3"],
             code="/local/path/to/sklearn_transformer.py",
             inputs=[
                 ProcessingInput(source="/local/path/to/my/dataset/census.csv", destination="/data/")
@@ -115,12 +115,13 @@ def test_sklearn_with_no_inputs(sagemaker_session):
     sklearn_processor = SKLearnProcessor(
         framework_version="0.20.0",
         role=ROLE,
+        command=["python3"],
         instance_type="ml.m4.xlarge",
         sagemaker_session=sagemaker_session,
     )
 
     with patch("os.path.isfile", return_value=True):
-        sklearn_processor.run(command=["python3"], code="/local/path/to/sklearn_transformer.py")
+        sklearn_processor.run(code="/local/path/to/sklearn_transformer.py")
 
     expected_args = {
         "inputs": [
@@ -166,6 +167,7 @@ def test_sklearn_with_all_customizations(sagemaker_session):
     sklearn_processor = SKLearnProcessor(
         framework_version="0.20.0",
         role=ROLE,
+        command=["python3"],
         instance_type="ml.m4.xlarge",
         py_version="py3",
         volume_size_in_gb=100,
@@ -185,14 +187,8 @@ def test_sklearn_with_all_customizations(sagemaker_session):
 
     with patch("os.path.isdir", return_value=True):
         sklearn_processor.run(
-            command=["python3"],
-            code="/local/path/to/code",
-            script_name="sklearn_transformer.py",
+            code="/local/path/to/sklearn_transformer.py",
             inputs=[
-                ProcessingInput(
-                    source="/local/path/to/my/sklearn_transformer.py",
-                    destination="/container/path/",
-                ),
                 ProcessingInput(
                     source="s3://path/to/my/dataset/census.csv",
                     destination="/container/path/",
@@ -201,7 +197,7 @@ def test_sklearn_with_all_customizations(sagemaker_session):
                     s3_input_mode="File",
                     s3_data_distribution_type="FullyReplicated",
                     s3_compression_type="None",
-                ),
+                )
             ],
             outputs=[
                 ProcessingOutput(
@@ -220,17 +216,6 @@ def test_sklearn_with_all_customizations(sagemaker_session):
 
     expected_args = {
         "inputs": [
-            {
-                "InputName": "input-1",
-                "S3Input": {
-                    "S3Uri": "mocked_s3_uri_from_upload_data",
-                    "LocalPath": "/container/path/",
-                    "S3DataType": "S3Prefix",
-                    "S3InputMode": "File",
-                    "S3DataDistributionType": "FullyReplicated",
-                    "S3CompressionType": "None",
-                },
-            },
             {
                 "InputName": "my_dataset",
                 "S3Input": {
@@ -303,6 +288,7 @@ def test_byo_container_with_script_processor(sagemaker_session):
     script_processor = ScriptProcessor(
         role=ROLE,
         image_uri=CUSTOM_IMAGE_URI,
+        command=["python3"],
         instance_count=1,
         instance_type="ml.m4.xlarge",
         sagemaker_session=sagemaker_session,
@@ -310,7 +296,6 @@ def test_byo_container_with_script_processor(sagemaker_session):
 
     with patch("os.path.isfile", return_value=True):
         script_processor.run(
-            command=["python3"],
             code="/local/path/to/sklearn_transformer.py",
             inputs=[
                 ProcessingInput(source="/local/path/to/my/dataset/census.csv", destination="/data/")

@@ -11,7 +11,7 @@
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
 """This module contains code related to the Processor class, which is used
-for Processing jobs. These jobs let customers perform data pre-processing,
+for Processing jobs. These jobs let users perform data pre-processing,
 post-processing, feature engineering, data validation, and model evaluation
 and interpretation on SageMaker.
 """
@@ -148,7 +148,10 @@ class Processor(object):
         self.arguments = arguments
 
         self.latest_job = ProcessingJob.start_new(
-            self, normalized_inputs, normalized_outputs, experiment_config
+            processor=self,
+            inputs=normalized_inputs,
+            outputs=normalized_outputs,
+            experiment_config=experiment_config,
         )
         self.jobs.append(self.latest_job)
         if wait:
@@ -260,6 +263,7 @@ class ScriptProcessor(Processor):
         self,
         role,
         image_uri,
+        command,
         instance_count,
         instance_type,
         volume_size_in_gb=30,
@@ -283,11 +287,12 @@ class ScriptProcessor(Processor):
                 needs to access an AWS resource.
             image_uri (str): The uri of the image to use for the processing
                 jobs started by the Processor.
+            command ([str]): The command to run, along with any command-line flags.
+                Example: ["python3", "-v"].
             instance_count (int): The number of instances to run
                 the Processing job with.
             instance_type (str): Type of EC2 instance to use for
                 processing, for example, 'ml.c4.xlarge'.
-            py_version (str): The python version to use, for example, 'py3'.
             volume_size_in_gb (int): Size in GB of the EBS volume
                 to use for storing data during processing (default: 30).
             volume_kms_key (str): A KMS key for the processing
@@ -311,6 +316,7 @@ class ScriptProcessor(Processor):
         """
         self._CODE_CONTAINER_BASE_PATH = "/opt/ml/processing/input/"
         self._CODE_CONTAINER_INPUT_NAME = "code"
+        self.command = command
 
         super(ScriptProcessor, self).__init__(
             role=role,
@@ -330,9 +336,7 @@ class ScriptProcessor(Processor):
 
     def run(
         self,
-        command,
         code,
-        script_name=None,
         inputs=None,
         outputs=None,
         arguments=None,
@@ -344,13 +348,8 @@ class ScriptProcessor(Processor):
         """Run a processing job with Script Mode.
 
         Args:
-            command([str]): This is a list of strings that includes the executable, along
-                with any command-line flags. For example: ["python3", "-v"]
             code (str): This can be an S3 uri or a local path to either
                 a directory or a file with the user's script to run.
-            script_name (str): If the user provides a directory for source,
-                they must specify script_name as the file within that
-                directory to use.
             inputs ([sagemaker.processing.ProcessingInput]): Input files for the processing
                 job. These must be provided as ProcessingInput objects.
             outputs ([str or sagemaker.processing.ProcessingOutput]): Outputs for the processing
@@ -369,50 +368,45 @@ class ScriptProcessor(Processor):
         """
         self._current_job_name = self._generate_current_job_name(job_name=job_name)
 
-        customer_script_name = self._get_customer_script_name(code, script_name)
-        customer_code_s3_uri = self._upload_code(code)
-        inputs_with_code = self._convert_code_and_add_to_inputs(inputs, customer_code_s3_uri)
+        user_script_name = self._get_user_script_name(code)
+        user_code_s3_uri = self._upload_code(code)
+        inputs_with_code = self._convert_code_and_add_to_inputs(inputs, user_code_s3_uri)
 
-        self._set_entrypoint(command, customer_script_name)
+        self._set_entrypoint(self.command, user_script_name)
 
-        super(ScriptProcessor, self).run(
-            inputs=inputs_with_code,
-            outputs=outputs,
-            arguments=arguments,
-            wait=wait,
-            logs=logs,
-            job_name=job_name,
+        normalized_inputs = self._normalize_inputs(inputs_with_code)
+        normalized_outputs = self._normalize_outputs(outputs)
+        self.arguments = arguments
+
+        self.latest_job = ProcessingJob.start_new(
+            processor=self,
+            inputs=normalized_inputs,
+            outputs=normalized_outputs,
             experiment_config=experiment_config,
         )
+        self.jobs.append(self.latest_job)
+        if wait:
+            self.latest_job.wait(logs=logs)
 
-    def _get_customer_script_name(self, code, script_name):
-        """Finds the customer script name using the provided code file,
+    def _get_user_script_name(self, code):
+        """Finds the user script name using the provided code file,
         directory, or script name.
 
         Args:
             code (str): This can be an S3 uri or a local path to either
                 a directory or a file.
-            script_name (str): If the user provides a directory as source,
-                they must specify script_name as the file within that
-                directory to use.
 
         Returns:
             str: The script name from the S3 uri or from the file found
                 on the user's local machine.
         """
-        parse_result = urlparse(code)
-
-        if os.path.isdir(code) and script_name is None:
+        if os.path.isdir(code) is None or not os.path.splitext(code)[1]:
             raise ValueError(
-                """You provided a directory without providing a script name.
-                Please provide a script name inside the directory that you specified.
+                """You cannot provide a directory. Please package your code inside of a .whl
+                file and pass that in, instead.
                 """
             )
-        if (parse_result.scheme == "s3" or os.path.isdir(code)) and script_name is not None:
-            return script_name
-        if parse_result.scheme == "s3" or os.path.isfile(code):
-            return os.path.basename(code)
-        raise ValueError("The file or directory you specified does not exist.")
+        return os.path.basename(code)
 
     def _upload_code(self, code):
         """Uploads a code file or directory specified as a string
@@ -457,16 +451,16 @@ class ScriptProcessor(Processor):
         )
         return (inputs or []) + [code_file_input]
 
-    def _set_entrypoint(self, command, customer_script_name):
-        """Sets the entrypoint based on the customer's script and corresponding executable.
+    def _set_entrypoint(self, command, user_script_name):
+        """Sets the entrypoint based on the user's script and corresponding executable.
 
         Args:
-            customer_script_name (str): A filename with an extension.
+            user_script_name (str): A filename with an extension.
         """
-        customer_script_location = os.path.join(
-            self._CODE_CONTAINER_BASE_PATH, self._CODE_CONTAINER_INPUT_NAME, customer_script_name
+        user_script_location = os.path.join(
+            self._CODE_CONTAINER_BASE_PATH, self._CODE_CONTAINER_INPUT_NAME, user_script_name
         )
-        self.entrypoint = command + [customer_script_location]
+        self.entrypoint = command + [user_script_location]
 
 
 class ProcessingJob(_Job):
@@ -602,7 +596,7 @@ class ProcessingInput(object):
             source (str): The source for the input.
             destination (str): The destination of the input.
             input_name (str): The user-provided name for the input. If a name
-                is not provided, one will be generated.
+                is not provided, one will be generated (eg. "input-1").
             s3_data_type (str): Valid options are "ManifestFile" or "S3Prefix".
             s3_input_mode (str): Valid options are "Pipe" or "File".
             s3_data_distribution_type (str): Valid options are "FullyReplicated"
@@ -652,8 +646,10 @@ class ProcessingOutput(object):
 
         Args:
             source (str): The source for the output.
-            destination (str): The destination of the output.
-            output_name (str): The name of the output.
+            destination (str): The destination of the output. If a destination
+                is not provided, one will be generated (eg. "s3://bucket/job_name/output").
+            output_name (str): The name of the output. If a name
+                is not provided, one will be generated (eg. "output-1").
             s3_upload_mode (str): Valid options are "EndOfJob" or "Continuous".
         """
         self.source = source

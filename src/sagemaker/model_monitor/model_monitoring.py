@@ -989,7 +989,7 @@ class DefaultModelMonitor(ModelMonitor):
         Args:
             role (str): An AWS IAM role. The Amazon SageMaker jobs use this role.
             instance_count (int): The number of instances to run the jobs with.
-            instance_type (str): Type of EC2 instance to use forthe job, for example,
+            instance_type (str): Type of EC2 instance to use for the job, for example,
                 'ml.m5.xlarge'.
             volume_size_in_gb (int): Size in GB of the EBS volume
                 to use for storing data during processing (default: 30).
