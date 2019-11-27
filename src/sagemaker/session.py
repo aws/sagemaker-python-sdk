@@ -1196,6 +1196,216 @@ class Session(object):  # pylint: disable=too-many-public-methods
         """
         return self.sagemaker_client.describe_training_job(TrainingJobName=job_name)
 
+    def auto_ml(
+        self,
+        input_config,
+        output_config,
+        auto_ml_job_config,
+        role,
+        job_name,
+        problem_type=None,
+        job_objective=None,
+        generate_candidate_definitions_only=False,
+        tags=None,
+    ):
+        """Create an Amazon SageMaker AutoML job.
+
+        Args:
+            input_config (list[dict]): A list of Channel objects. Each channel contains "DataSource"
+                and "TargetAttributeName", "CompressionType" is an optional field.
+            output_config (dict): The S3 URI where you want to store the training results and
+                optional KMS key ID.
+            auto_ml_job_config (dict): A dict of AutoMLJob config, containing "StoppingCondition",
+                "SecurityConfig", optionally contains "VolumeKmsKeyId".
+            role (str): The Amazon Resource Name (ARN) of an IAM role that
+                Amazon SageMaker can assume to perform tasks on your behalf.
+            job_name (str): A string that can be used to identify an AutoMLJob. Each AutoMLJob
+                should have a unique job name.
+            problem_type (str): The type of problem of this AutoMLJob. Valid values are
+                "Regression", "BinaryClassification", "MultiClassClassification". If None,
+                SageMaker AutoMLJob will infer the problem type automatically.
+            job_objective (dict): AutoMLJob objective, contains "AutoMLJobObjectiveType" (optional),
+                "MetricName" and "Value".
+            generate_candidate_definitions_only (bool): Indicates whether to only generate candidate
+                definitions. If True, AutoML.list_candidates() cannot be called. Default: False.
+            tags ([dict[str,str]]): A list of dictionaries containing key-value
+                pairs.
+
+        Returns:
+
+        """
+        auto_ml_job_request = {
+            "AutoMLJobName": job_name,
+            "InputDataConfig": input_config,
+            "OutputDataConfig": output_config,
+            "AutoMLJobConfig": auto_ml_job_config,
+            "RoleArn": role,
+            "GenerateCandidateDefinitionsOnly": generate_candidate_definitions_only,
+        }
+
+        if job_objective is not None:
+            auto_ml_job_request["AutoMLJobObjective"] = job_objective
+        if problem_type is not None:
+            auto_ml_job_request["ProblemType"] = problem_type
+        if tags is not None:
+            auto_ml_job_request["Tags"] = tags
+
+        LOGGER.info("Creating auto-ml-job with name: %s", job_name)
+        LOGGER.debug("auto ml request: %s", json.dumps(auto_ml_job_request, indent=4))
+        self.sagemaker_client.create_auto_ml_job(**auto_ml_job_request)
+
+    def describe_auto_ml_job(self, job_name):
+        """Calls the DescribeAutoMLJob API for the given job name
+        and returns the response.
+        Args:
+            job_name (str): The name of the AutoML job to describe.
+        Returns:
+            dict: A dictionary response with the AutoML Job description.
+        """
+        return self.sagemaker_client.describe_auto_ml_job(AutoMLJobName=job_name)
+
+    def list_candidates(
+        self,
+        job_name,
+        status_equals=None,
+        candidate_name=None,
+        candidate_arn=None,
+        sort_order=None,
+        sort_by=None,
+        max_results=None,
+    ):
+        """Returns the list of candidates of an AutoML job for a given name.
+
+        Args:
+            job_name (str): The name of the AutoML job. If None, will use object's
+                latest_auto_ml_job name.
+            status_equals (str): Filter the result with candidate status, values could be
+                "Completed", "InProgress", "Failed", "Stopped", "Stopping"
+            candidate_name (str): The name of a specified candidate to list.
+                Default to None.
+            candidate_arn (str): The Arn of a specified candidate to list.
+                Default to None.
+            sort_order (str): The order that the candidates will be listed in result.
+                Default to None.
+            sort_by (str): The value that the candidates will be sorted by.
+                Default to None.
+            max_results (int): The number of candidates will be listed in results,
+                between 1 to 100. Default to None. If None, will return all the candidates.
+        Returns:
+            list: A list of dictionaries with candidates information
+        """
+        list_candidates_args = {"AutoMLJobName": job_name}
+
+        if status_equals:
+            list_candidates_args["StatusEquals"] = status_equals
+        if candidate_name:
+            list_candidates_args["CandidateNameEquals"] = candidate_name
+        if candidate_arn:
+            list_candidates_args["CandidateArnEquals"] = candidate_arn
+        if sort_order:
+            list_candidates_args["SortOrder"] = sort_order
+        if sort_by:
+            list_candidates_args["SortBy"] = sort_by
+        if max_results:
+            list_candidates_args["MaxResults"] = max_results
+
+        return self.sagemaker_client.list_candidates_for_auto_ml_job(**list_candidates_args)
+
+    def wait_for_auto_ml_job(self, job, poll=5):
+        """Wait for an Amazon SageMaker AutoML job to complete.
+
+        Args:
+            job (str): Name of the transform job to wait for.
+            poll (int): Polling interval in seconds (default: 5).
+        Returns:
+            (dict): Return value from the ``DescribeTransformJob`` API.
+        Raises:
+            exceptions.UnexpectedStatusException: If the transform job fails.
+        """
+        desc = _wait_until(lambda: _auto_ml_job_status(self.sagemaker_client, job), poll)
+        self._check_job_status(job, desc, "AutoMLJobStatus")
+        return desc
+
+    def logs_for_auto_ml_job(  # noqa: C901 - suppress complexity warning for this method
+        self, job_name, wait=False, poll=10
+    ):
+        """Display the logs for a given AutoML job, optionally tailing them until the
+        job is complete. If the output is a tty or a Jupyter cell, it will be color-coded
+        based on which instance the log entry is from.
+
+        Args:
+            job_name (str): Name of the Auto ML job to display the logs for.
+            wait (bool): Whether to keep looking for new log entries until the job completes
+                (default: False).
+            poll (int): The interval in seconds between polling for new log entries and job
+                completion (default: 5).
+
+        Raises:
+            exceptions.UnexpectedStatusException: If waiting and the training job fails.
+        """
+
+        description = self.sagemaker_client.describe_auto_ml_job(AutoMLJobName=job_name)
+
+        instance_count, stream_names, positions, client, log_group, dot, color_wrap = _logs_init(
+            self, description, job="AutoML"
+        )
+
+        state = _get_initial_job_state(description, "AutoMLJobStatus", wait)
+
+        # The loop below implements a state machine that alternates between checking the job status
+        # and reading whatever is available in the logs at this point. Note, that if we were
+        # called with wait == False, we never check the job status.
+        #
+        # If wait == TRUE and job is not completed, the initial state is TAILING
+        # If wait == FALSE, the initial state is COMPLETE (doesn't matter if the job really is
+        # complete).
+        #
+        # The state table:
+        #
+        # STATE               ACTIONS                        CONDITION             NEW STATE
+        # ----------------    ----------------               -----------------     ----------------
+        # TAILING             Read logs, Pause, Get status   Job complete          JOB_COMPLETE
+        #                                                    Else                  TAILING
+        # JOB_COMPLETE        Read logs, Pause               Any                   COMPLETE
+        # COMPLETE            Read logs, Exit                                      N/A
+        #
+        # Notes:
+        # - The JOB_COMPLETE state forces us to do an extra pause and read any items that got to
+        #   Cloudwatch after the job was marked complete.
+        last_describe_job_call = time.time()
+        while True:
+            _flush_log_streams(
+                stream_names,
+                instance_count,
+                client,
+                log_group,
+                job_name,
+                positions,
+                dot,
+                color_wrap,
+            )
+            if state == LogState.COMPLETE:
+                break
+
+            time.sleep(poll)
+
+            if state == LogState.JOB_COMPLETE:
+                state = LogState.COMPLETE
+            elif time.time() - last_describe_job_call >= 30:
+                description = self.sagemaker_client.describe_auto_ml_job(AutoMLJobName=job_name)
+                last_describe_job_call = time.time()
+
+                status = description["AutoMLJobStatus"]
+
+                if status in ("Completed", "Failed", "Stopped"):
+                    print()
+                    state = LogState.JOB_COMPLETE
+
+        if wait:
+            self._check_job_status(job_name, description, "AutoMLJobStatus")
+            if dot:
+                print()
+
     def compile_model(
         self, input_model_config, output_model_config, role, job_name, stop_condition, tags
     ):
@@ -3233,6 +3443,30 @@ def _transform_job_status(sagemaker_client, job_name):
     return desc
 
 
+def _auto_ml_job_status(sagemaker_client, job_name):
+    """Placeholder docstring"""
+    auto_ml_job_status_codes = {
+        "Completed": "!",
+        "InProgress": ".",
+        "Failed": "*",
+        "Stopped": "s",
+        "Stopping": "_",
+    }
+    in_progress_statuses = ["InProgress", "Stopping"]
+
+    desc = sagemaker_client.describe_auto_ml_job(AutoMLJobName=job_name)
+    status = desc["AutoMLJobStatus"]
+
+    print(auto_ml_job_status_codes.get(status, "?"), end="")
+    sys.stdout.flush()
+
+    if status in in_progress_statuses:
+        return None
+
+    print("")
+    return desc
+
+
 def _create_model_package_status(sagemaker_client, model_package_name):
     """Placeholder docstring"""
     in_progress_statuses = ["InProgress", "Pending"]
@@ -3334,6 +3568,8 @@ def _logs_init(sagemaker_session, description, job):
         instance_count = description["TransformResources"]["InstanceCount"]
     elif job == "Processing":
         instance_count = description["ProcessingResources"]["ClusterConfig"]["InstanceCount"]
+    elif job == "AutoML":
+        instance_count = 0
 
     stream_names = []  # The list of log streams
     positions = {}  # The current position in each stream, map of stream name -> position
