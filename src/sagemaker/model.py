@@ -425,8 +425,8 @@ class Model(object):
                 endpoint.
             wait (bool): Whether the call should wait until the deployment of
                 this model completes (default: True).
-            data_capture_config (DataCaptureConfig): Specifies configuration
-                related to Endpoint data capture for use with
+            data_capture_config (sagemaker.model_monitor.DataCaptureConfig): Specifies
+                configuration related to Endpoint data capture for use with
                 Amazon SageMaker Model Monitoring. Default: None.
 
         Returns:
@@ -458,9 +458,9 @@ class Model(object):
             if self._is_compiled_model and not self.endpoint_name.endswith(compiled_model_suffix):
                 self.endpoint_name += compiled_model_suffix
 
-        data_capture_config_dict = (
-            data_capture_config.to_request_dict() if data_capture_config else None
-        )
+        data_capture_config_dict = None
+        if data_capture_config is not None:
+            data_capture_config_dict = data_capture_config.to_request_dict()
 
         if update_endpoint:
             endpoint_config_name = self.sagemaker_session.create_endpoint_config(

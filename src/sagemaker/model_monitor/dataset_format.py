@@ -42,7 +42,7 @@ class DatasetFormat(object):
         """Returns a DatasetFormat JSON string for use with a DefaultModelMonitor.
 
         Args:
-            lines (bool): Read the file as a json object per line. Default: True.
+            lines (bool): Whether the file should be read as a json object per line. Default: True.
 
         Returns:
             dict: JSON string containing DatasetFormat to be used by DefaultModelMonitor.
