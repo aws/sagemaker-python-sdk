@@ -345,7 +345,6 @@ from __future__ import absolute_import
 #         rules = [
 #             Rule.sagemaker(rule_configs.vanishing_gradient()),
 #             Rule.sagemaker(rule_configs.all_zero()),
-#             Rule.sagemaker(rule_configs.check_input_images()),
 #             Rule.sagemaker(rule_configs.similar_across_runs()),
 #             Rule.sagemaker(rule_configs.weight_update_ratio()),
 #             Rule.sagemaker(rule_configs.exploding_tensor()),

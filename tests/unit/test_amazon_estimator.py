@@ -423,3 +423,9 @@ def test_get_xgboost_image_uri():
         updated_xgb_image_uri
         == "246618743249.dkr.ecr.us-west-2.amazonaws.com/sagemaker-xgboost:0.90-1-cpu-py3"
     )
+
+    updated_xgb_image_uri_v2 = get_image_uri(REGION, "xgboost", "0.90-2")
+    assert (
+        updated_xgb_image_uri_v2
+        == "246618743249.dkr.ecr.us-west-2.amazonaws.com/sagemaker-xgboost:0.90-2-cpu-py3"
+    )

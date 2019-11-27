@@ -175,7 +175,7 @@ def test_create_model(sagemaker_session):
         entry_point=SCRIPT_PATH,
         framework_version=XGBOOST_LATEST_VERSION,
     )
-    default_image_uri = _get_full_cpu_image_uri("0.90-1")
+    default_image_uri = _get_full_cpu_image_uri(XGBOOST_LATEST_VERSION)
     model_values = xgboost_model.prepare_container_def(CPU)
     assert model_values["Image"] == default_image_uri
 
