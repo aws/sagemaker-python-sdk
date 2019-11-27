@@ -35,8 +35,7 @@
       "errors":[
         {"shape":"ResourceNotFound"},
         {"shape":"ResourceLimitExceeded"}
-      ],
-      "internalonly":true
+      ]
     },
     "BatchGetMetrics":{
       "name":"BatchGetMetrics",
@@ -79,8 +78,7 @@
       "errors":[
         {"shape":"ResourceLimitExceeded"},
         {"shape":"ResourceInUse"}
-      ],
-      "internalonly":true
+      ]
     },
     "CreateAutoMLJob":{
       "name":"CreateAutoMLJob",
@@ -93,8 +91,7 @@
       "errors":[
         {"shape":"ResourceInUse"},
         {"shape":"ResourceLimitExceeded"}
-      ],
-      "internalonly":true
+      ]
     },
     "CreateCodeRepository":{
       "name":"CreateCodeRepository",
@@ -144,8 +141,7 @@
       "output":{"shape":"CreateDomainResponse"},
       "errors":[
         {"shape":"ResourceLimitExceeded"}
-      ],
-      "internalonly":true
+      ]
     },
     "CreateEndpoint":{
       "name":"CreateEndpoint",
@@ -212,8 +208,7 @@
       "output":{"shape":"CreateExperimentResponse"},
       "errors":[
         {"shape":"ResourceLimitExceeded"}
-      ],
-      "internalonly":true
+      ]
     },
     "CreateFlowDefinition":{
       "name":"CreateFlowDefinition",
@@ -226,8 +221,7 @@
       "errors":[
         {"shape":"ResourceLimitExceeded"},
         {"shape":"ResourceInUse"}
-      ],
-      "internalonly":true
+      ]
     },
     "CreateHumanTaskUi":{
       "name":"CreateHumanTaskUi",
@@ -240,8 +234,7 @@
       "errors":[
         {"shape":"ResourceLimitExceeded"},
         {"shape":"ResourceInUse"}
-      ],
-      "internalonly":true
+      ]
     },
     "CreateHyperParameterTuningJob":{
       "name":"CreateHyperParameterTuningJob",
@@ -328,8 +321,7 @@
       "errors":[
         {"shape":"ResourceLimitExceeded"},
         {"shape":"ResourceInUse"}
-      ],
-      "internalonly":true
+      ]
     },
     "CreateNotebookInstance":{
       "name":"CreateNotebookInstance",
@@ -364,8 +356,7 @@
         "requestUri":"/"
       },
       "input":{"shape":"CreatePresignedDomainUrlRequest"},
-      "output":{"shape":"CreatePresignedDomainUrlResponse"},
-      "internalonly":true
+      "output":{"shape":"CreatePresignedDomainUrlResponse"}
     },
     "CreatePresignedNotebookInstanceUrl":{
       "name":"CreatePresignedNotebookInstanceUrl",
@@ -389,8 +380,7 @@
         {"shape":"ResourceInUse"},
         {"shape":"ResourceLimitExceeded"},
         {"shape":"ResourceNotFound"}
-      ],
-      "internalonly":true
+      ]
     },
     "CreateProcessingJobInternal":{
       "name":"CreateProcessingJobInternal",
@@ -475,8 +465,7 @@
       "errors":[
         {"shape":"ResourceNotFound"},
         {"shape":"ResourceLimitExceeded"}
-      ],
-      "internalonly":true
+      ]
     },
     "CreateTrialComponent":{
       "name":"CreateTrialComponent",
@@ -488,8 +477,7 @@
       "output":{"shape":"CreateTrialComponentResponse"},
       "errors":[
         {"shape":"ResourceLimitExceeded"}
-      ],
-      "internalonly":true
+      ]
     },
     "CreateUserProfile":{
       "name":"CreateUserProfile",
@@ -502,8 +490,7 @@
       "errors":[
         {"shape":"ResourceLimitExceeded"},
         {"shape":"ResourceInUse"}
-      ],
-      "internalonly":true
+      ]
     },
     "CreateWorkteam":{
       "name":"CreateWorkteam",
@@ -538,8 +525,7 @@
       "errors":[
         {"shape":"ResourceInUse"},
         {"shape":"ResourceNotFound"}
-      ],
-      "internalonly":true
+      ]
     },
     "DeleteCodeRepository":{
       "name":"DeleteCodeRepository",
@@ -560,8 +546,7 @@
       "errors":[
         {"shape":"ResourceInUse"},
         {"shape":"ResourceNotFound"}
-      ],
-      "internalonly":true
+      ]
     },
     "DeleteEndpoint":{
       "name":"DeleteEndpoint",
@@ -591,8 +576,7 @@
       "output":{"shape":"DeleteExperimentResponse"},
       "errors":[
         {"shape":"ResourceNotFound"}
-      ],
-      "internalonly":true
+      ]
     },
     "DeleteFlowDefinition":{
       "name":"DeleteFlowDefinition",
@@ -604,8 +588,7 @@
       "output":{"shape":"DeleteFlowDefinitionResponse"},
       "errors":[
         {"shape":"ResourceNotFound"}
-      ],
-      "internalonly":true
+      ]
     },
     "DeleteHumanTaskUi":{
       "name":"DeleteHumanTaskUi",
@@ -645,7 +628,9 @@
         "requestUri":"/"
       },
       "input":{"shape":"DeleteMonitoringScheduleRequest"},
-      "internalonly":true
+      "errors":[
+        {"shape":"ResourceNotFound"}
+      ]
     },
     "DeleteNotebookInstance":{
       "name":"DeleteNotebookInstance",
@@ -685,8 +670,7 @@
       "output":{"shape":"DeleteTrialResponse"},
       "errors":[
         {"shape":"ResourceNotFound"}
-      ],
-      "internalonly":true
+      ]
     },
     "DeleteTrialComponent":{
       "name":"DeleteTrialComponent",
@@ -698,8 +682,7 @@
       "output":{"shape":"DeleteTrialComponentResponse"},
       "errors":[
         {"shape":"ResourceNotFound"}
-      ],
-      "internalonly":true
+      ]
     },
     "DeleteUserProfile":{
       "name":"DeleteUserProfile",
@@ -711,8 +694,7 @@
       "errors":[
         {"shape":"ResourceInUse"},
         {"shape":"ResourceNotFound"}
-      ],
-      "internalonly":true
+      ]
     },
     "DeleteWorkteam":{
       "name":"DeleteWorkteam",
@@ -747,8 +729,7 @@
       "output":{"shape":"DescribeAppResponse"},
       "errors":[
         {"shape":"ResourceNotFound"}
-      ],
-      "internalonly":true
+      ]
     },
     "DescribeAutoMLJob":{
       "name":"DescribeAutoMLJob",
@@ -760,8 +741,7 @@
       "output":{"shape":"DescribeAutoMLJobResponse"},
       "errors":[
         {"shape":"ResourceNotFound"}
-      ],
-      "internalonly":true
+      ]
     },
     "DescribeCodeRepository":{
       "name":"DescribeCodeRepository",
@@ -796,8 +776,7 @@
       "output":{"shape":"DescribeDomainResponse"},
       "errors":[
         {"shape":"ResourceNotFound"}
-      ],
-      "internalonly":true
+      ]
     },
     "DescribeEndpoint":{
       "name":"DescribeEndpoint",
@@ -855,8 +834,7 @@
       "output":{"shape":"DescribeExperimentResponse"},
       "errors":[
         {"shape":"ResourceNotFound"}
-      ],
-      "internalonly":true
+      ]
     },
     "DescribeFlowDefinition":{
       "name":"DescribeFlowDefinition",
@@ -868,8 +846,7 @@
       "output":{"shape":"DescribeFlowDefinitionResponse"},
       "errors":[
         {"shape":"ResourceNotFound"}
-      ],
-      "internalonly":true
+      ]
     },
     "DescribeHumanTaskUi":{
       "name":"DescribeHumanTaskUi",
@@ -881,8 +858,7 @@
       "output":{"shape":"DescribeHumanTaskUiResponse"},
       "errors":[
         {"shape":"ResourceNotFound"}
-      ],
-      "internalonly":true
+      ]
     },
     "DescribeHyperParameterTuningJob":{
       "name":"DescribeHyperParameterTuningJob",
@@ -953,8 +929,7 @@
       "output":{"shape":"DescribeMonitoringScheduleResponse"},
       "errors":[
         {"shape":"ResourceNotFound"}
-      ],
-      "internalonly":true
+      ]
     },
     "DescribeNotebookInstance":{
       "name":"DescribeNotebookInstance",
@@ -986,8 +961,7 @@
       "output":{"shape":"DescribeProcessingJobResponse"},
       "errors":[
         {"shape":"ResourceNotFound"}
-      ],
-      "internalonly":true
+      ]
     },
     "DescribeSubscribedWorkteam":{
       "name":"DescribeSubscribedWorkteam",
@@ -1035,8 +1009,7 @@
       "output":{"shape":"DescribeTrialResponse"},
       "errors":[
         {"shape":"ResourceNotFound"}
-      ],
-      "internalonly":true
+      ]
     },
     "DescribeTrialComponent":{
       "name":"DescribeTrialComponent",
@@ -1048,8 +1021,7 @@
       "output":{"shape":"DescribeTrialComponentResponse"},
       "errors":[
         {"shape":"ResourceNotFound"}
-      ],
-      "internalonly":true
+      ]
     },
     "DescribeUserProfile":{
       "name":"DescribeUserProfile",
@@ -1061,8 +1033,7 @@
       "output":{"shape":"DescribeUserProfileResponse"},
       "errors":[
         {"shape":"ResourceNotFound"}
-      ],
-      "internalonly":true
+      ]
     },
     "DescribeWorkforce":{
       "name":"DescribeWorkforce",
@@ -1094,8 +1065,7 @@
       "output":{"shape":"DisassociateTrialComponentResponse"},
       "errors":[
         {"shape":"ResourceNotFound"}
-      ],
-      "internalonly":true
+      ]
     },
     "GetSearchSuggestions":{
       "name":"GetSearchSuggestions",
@@ -1124,8 +1094,7 @@
         "requestUri":"/"
       },
       "input":{"shape":"ListAppsRequest"},
-      "output":{"shape":"ListAppsResponse"},
-      "internalonly":true
+      "output":{"shape":"ListAppsResponse"}
     },
     "ListAutoMLJobs":{
       "name":"ListAutoMLJobs",
@@ -1134,8 +1103,7 @@
         "requestUri":"/"
       },
       "input":{"shape":"ListAutoMLJobsRequest"},
-      "output":{"shape":"ListAutoMLJobsResponse"},
-      "internalonly":true
+      "output":{"shape":"ListAutoMLJobsResponse"}
     },
     "ListCandidatesForAutoMLJob":{
       "name":"ListCandidatesForAutoMLJob",
@@ -1147,8 +1115,7 @@
       "output":{"shape":"ListCandidatesForAutoMLJobResponse"},
       "errors":[
         {"shape":"ResourceNotFound"}
-      ],
-      "internalonly":true
+      ]
     },
     "ListCodeRepositories":{
       "name":"ListCodeRepositories",
@@ -1190,8 +1157,7 @@
         "requestUri":"/"
       },
       "input":{"shape":"ListDomainsRequest"},
-      "output":{"shape":"ListDomainsResponse"},
-      "internalonly":true
+      "output":{"shape":"ListDomainsResponse"}
     },
     "ListEndpointConfigs":{
       "name":"ListEndpointConfigs",
@@ -1243,8 +1209,7 @@
         "requestUri":"/"
       },
       "input":{"shape":"ListExperimentsRequest"},
-      "output":{"shape":"ListExperimentsResponse"},
-      "internalonly":true
+      "output":{"shape":"ListExperimentsResponse"}
     },
     "ListFlowDefinitions":{
       "name":"ListFlowDefinitions",
@@ -1253,8 +1218,7 @@
         "requestUri":"/"
       },
       "input":{"shape":"ListFlowDefinitionsRequest"},
-      "output":{"shape":"ListFlowDefinitionsResponse"},
-      "internalonly":true
+      "output":{"shape":"ListFlowDefinitionsResponse"}
     },
     "ListHumanTaskUis":{
       "name":"ListHumanTaskUis",
@@ -1263,8 +1227,7 @@
         "requestUri":"/"
       },
       "input":{"shape":"ListHumanTaskUisRequest"},
-      "output":{"shape":"ListHumanTaskUisResponse"},
-      "internalonly":true
+      "output":{"shape":"ListHumanTaskUisResponse"}
     },
     "ListHyperParameterTuningJobs":{
       "name":"ListHyperParameterTuningJobs",
@@ -1326,8 +1289,7 @@
         "requestUri":"/"
       },
       "input":{"shape":"ListMonitoringExecutionsRequest"},
-      "output":{"shape":"ListMonitoringExecutionsResponse"},
-      "internalonly":true
+      "output":{"shape":"ListMonitoringExecutionsResponse"}
     },
     "ListMonitoringSchedules":{
       "name":"ListMonitoringSchedules",
@@ -1336,8 +1298,7 @@
         "requestUri":"/"
       },
       "input":{"shape":"ListMonitoringSchedulesRequest"},
-      "output":{"shape":"ListMonitoringSchedulesResponse"},
-      "internalonly":true
+      "output":{"shape":"ListMonitoringSchedulesResponse"}
     },
     "ListNotebookInstanceLifecycleConfigs":{
       "name":"ListNotebookInstanceLifecycleConfigs",
@@ -1366,8 +1327,7 @@
         "requestUri":"/"
       },
       "input":{"shape":"ListProcessingJobsRequest"},
-      "output":{"shape":"ListProcessingJobsResponse"},
-      "internalonly":true
+      "output":{"shape":"ListProcessingJobsResponse"}
     },
     "ListSubscribedWorkteams":{
       "name":"ListSubscribedWorkteams",
@@ -1439,8 +1399,7 @@
         "requestUri":"/"
       },
       "input":{"shape":"ListTrialComponentsRequest"},
-      "output":{"shape":"ListTrialComponentsResponse"},
-      "internalonly":true
+      "output":{"shape":"ListTrialComponentsResponse"}
     },
     "ListTrials":{
       "name":"ListTrials",
@@ -1449,8 +1408,7 @@
         "requestUri":"/"
       },
       "input":{"shape":"ListTrialsRequest"},
-      "output":{"shape":"ListTrialsResponse"},
-      "internalonly":true
+      "output":{"shape":"ListTrialsResponse"}
     },
     "ListUserProfiles":{
       "name":"ListUserProfiles",
@@ -1459,8 +1417,7 @@
         "requestUri":"/"
       },
       "input":{"shape":"ListUserProfilesRequest"},
-      "output":{"shape":"ListUserProfilesResponse"},
-      "internalonly":true
+      "output":{"shape":"ListUserProfilesResponse"}
     },
     "ListWorkteams":{
       "name":"ListWorkteams",
@@ -1501,8 +1458,7 @@
       "input":{"shape":"StartMonitoringScheduleRequest"},
       "errors":[
         {"shape":"ResourceNotFound"}
-      ],
-      "internalonly":true
+      ]
     },
     "StartNotebookInstance":{
       "name":"StartNotebookInstance",
@@ -1525,8 +1481,7 @@
       "input":{"shape":"StopAutoMLJobRequest"},
       "errors":[
         {"shape":"ResourceNotFound"}
-      ],
-      "internalonly":true
+      ]
     },
     "StopCompilationJob":{
       "name":"StopCompilationJob",
@@ -1585,8 +1540,7 @@
       "input":{"shape":"StopMonitoringScheduleRequest"},
       "errors":[
         {"shape":"ResourceNotFound"}
-      ],
-      "internalonly":true
+      ]
     },
     "StopNotebookInstance":{
       "name":"StopNotebookInstance",
@@ -1606,8 +1560,7 @@
       "input":{"shape":"StopProcessingJobRequest"},
       "errors":[
         {"shape":"ResourceNotFound"}
-      ],
-      "internalonly":true
+      ]
     },
     "StopProcessingJobInternal":{
       "name":"StopProcessingJobInternal",
@@ -1691,8 +1644,7 @@
         {"shape":"ResourceLimitExceeded"},
         {"shape":"ResourceInUse"},
         {"shape":"ResourceNotFound"}
-      ],
-      "internalonly":true
+      ]
     },
     "UpdateEndpoint":{
       "name":"UpdateEndpoint",
@@ -1745,8 +1697,7 @@
       "errors":[
         {"shape":"ConflictException"},
         {"shape":"ResourceNotFound"}
-      ],
-      "internalonly":true
+      ]
     },
     "UpdateMonitoringSchedule":{
       "name":"UpdateMonitoringSchedule",
@@ -1759,8 +1710,7 @@
       "errors":[
         {"shape":"ResourceLimitExceeded"},
         {"shape":"ResourceNotFound"}
-      ],
-      "internalonly":true
+      ]
     },
     "UpdateNotebookInstance":{
       "name":"UpdateNotebookInstance",
@@ -1799,8 +1749,7 @@
       "errors":[
         {"shape":"ConflictException"},
         {"shape":"ResourceNotFound"}
-      ],
-      "internalonly":true
+      ]
     },
     "UpdateTrialComponent":{
       "name":"UpdateTrialComponent",
@@ -1813,8 +1762,7 @@
       "errors":[
         {"shape":"ConflictException"},
         {"shape":"ResourceNotFound"}
-      ],
-      "internalonly":true
+      ]
     },
     "UpdateUserProfile":{
       "name":"UpdateUserProfile",
@@ -1828,8 +1776,7 @@
         {"shape":"ResourceLimitExceeded"},
         {"shape":"ResourceInUse"},
         {"shape":"ResourceNotFound"}
-      ],
-      "internalonly":true
+      ]
     },
     "UpdateWorkforce":{
       "name":"UpdateWorkforce",
@@ -1951,7 +1898,8 @@
         "MetricDefinitions":{
           "shape":"MetricDefinitionList",
           "documentation":"<p>A list of metric definition objects. Each object specifies the metric name and regular expressions used to parse algorithm logs. Amazon SageMaker publishes each metric to Amazon CloudWatch.</p>"
-        }
+        },
+        "EnableSageMakerMetricsTimeSeries":{"shape":"Boolean"}
       },
       "documentation":"<p>Specifies the training algorithm to use in a <a href=\"https://docs.aws.amazon.com/sagemaker/latest/dg/API_CreateTrainingJob.html\">CreateTrainingJob</a> request.</p> <p>For more information about algorithms provided by Amazon SageMaker, see <a href=\"https://docs.aws.amazon.com/sagemaker/latest/dg/algos.html\">Algorithms</a>. For information about using your own algorithms, see <a href=\"https://docs.aws.amazon.com/sagemaker/latest/dg/your-algorithms.html\">Using Your Own Algorithms with Amazon SageMaker</a>. </p>"
     },
@@ -2106,7 +2054,7 @@
     "AppDetails":{
       "type":"structure",
       "members":{
-        "DomainId":{"shape":"ResourceId"},
+        "DomainId":{"shape":"DomainId"},
         "UserProfileName":{"shape":"UserProfileName"},
         "AppType":{"shape":"AppType"},
         "AppName":{"shape":"AppName"},
@@ -2159,6 +2107,13 @@
       "type":"string",
       "max":63,
       "pattern":"^[a-zA-Z0-9](-*[a-zA-Z0-9])*"
+    },
+    "AppNetworkAccess":{
+      "type":"string",
+      "enum":[
+        "DirectInternetOnly",
+        "VpcOnly"
+      ]
     },
     "AppSortKey":{
       "type":"string",
@@ -3158,10 +3113,7 @@
           "shape":"Image",
           "documentation":"<p>The Amazon EC2 Container Registry (Amazon ECR) path where inference code is stored. If you are using your own custom algorithm instead of an algorithm provided by Amazon SageMaker, the inference code must meet Amazon SageMaker requirements. Amazon SageMaker supports both <code>registry/repository[:tag]</code> and <code>registry/repository[@digest]</code> image path formats. For more information, see <a href=\"https://docs.aws.amazon.com/sagemaker/latest/dg/your-algorithms.html\">Using Your Own Algorithms with Amazon SageMaker</a> </p>"
         },
-        "Mode":{
-          "shape":"ContainerMode",
-          "internalonly":true
-        },
+        "Mode":{"shape":"ContainerMode"},
         "ModelDataUrl":{
           "shape":"Url",
           "documentation":"<p>The S3 path where the model artifacts, which result from model training, are stored. This path must point to a single gzip compressed tar archive (.tar.gz suffix). The S3 path is required for Amazon SageMaker built-in algorithms, but not if you use your own algorithms. For more information on built-in algorithms, see <a href=\"https://docs.aws.amazon.com/sagemaker/latest/dg/sagemaker-algo-docker-registry-paths.html\">Common Parameters</a>. </p> <p>If you provide a value for this parameter, Amazon SageMaker uses AWS Security Token Service to download model artifacts from the S3 path you provide. AWS STS is activated in your IAM user account by default. If you previously deactivated AWS STS for a region, you need to reactivate AWS STS for that region. For more information, see <a href=\"https://docs.aws.amazon.com/IAM/latest/UserGuide/id_credentials_temp_enable-regions.html\">Activating and Deactivating AWS STS in an AWS Region</a> in the <i>AWS Identity and Access Management User Guide</i>.</p> <important> <p>If you use a built-in algorithm to create a model, Amazon SageMaker requires that you provide a S3 path to the model artifacts in <code>ModelDataUrl</code>.</p> </important>"
@@ -3338,7 +3290,7 @@
         "AppName"
       ],
       "members":{
-        "DomainId":{"shape":"ResourceId"},
+        "DomainId":{"shape":"DomainId"},
         "UserProfileName":{"shape":"UserProfileName"},
         "AppType":{"shape":"AppType"},
         "AppName":{"shape":"AppName"},
@@ -3508,7 +3460,7 @@
           "shape":"String2048",
           "internalonly":true
         },
-        "EnableNetworkIsolation":{"shape":"Boolean"},
+        "AppNetworkAccess":{"shape":"AppNetworkAccess"},
         "HomeEfsFileSystemKmsKeyId":{"shape":"KmsKeyId"}
       }
     },
@@ -3534,10 +3486,7 @@
           "shape":"ProductionVariantList",
           "documentation":"<p>An list of <code>ProductionVariant</code> objects, one for each model that you want to host at this endpoint.</p>"
         },
-        "DataCaptureConfig":{
-          "shape":"DataCaptureConfig",
-          "internalonly":true
-        },
+        "DataCaptureConfig":{"shape":"DataCaptureConfig"},
         "Tags":{
           "shape":"TagList",
           "documentation":"<p>A list of key-value pairs. For more information, see <a href=\"https://docs.aws.amazon.com/awsaccountbilling/latest/aboutv2/cost-alloc-tags.html#allocation-what\">Using Cost Allocation Tags</a> in the <i> AWS Billing and Cost Management User Guide</i>. </p>"
@@ -3758,10 +3707,7 @@
           "shape":"HyperParameterTrainingJobDefinition",
           "documentation":"<p>The <a>HyperParameterTrainingJobDefinition</a> object that describes the training jobs that this tuning job launches, including static hyperparameters, input data configuration, output data configuration, resource configuration, and stopping condition.</p>"
         },
-        "TrainingJobDefinitions":{
-          "shape":"HyperParameterTrainingJobDefinitions",
-          "internalonly":true
-        },
+        "TrainingJobDefinitions":{"shape":"HyperParameterTrainingJobDefinitions"},
         "WarmStartConfig":{
           "shape":"HyperParameterTuningJobWarmStartConfig",
           "documentation":"<p>Specifies the configuration for starting the hyperparameter tuning job using one or more previous tuning jobs as a starting point. The results of previous tuning jobs are used to inform which combinations of hyperparameters to search over in the new tuning job.</p> <p>All training jobs launched by the new hyperparameter tuning job are evaluated by using the objective metric. If you specify <code>IDENTICAL_DATA_AND_ALGORITHM</code> as the <code>WarmStartType</code> value for the warm start configuration, the training job that performs the best in the new tuning job is compared to the best training jobs from the parent tuning jobs. From these, the training job that performs the best as measured by the objective metric is returned as the overall best training job.</p> <note> <p>All training jobs launched by parent hyperparameter tuning jobs and the new hyperparameter tuning jobs count against the limit of training jobs for the tuning job.</p> </note>"
@@ -4078,7 +4024,7 @@
         "UserProfileName"
       ],
       "members":{
-        "DomainId":{"shape":"ResourceId"},
+        "DomainId":{"shape":"DomainId"},
         "UserProfileName":{"shape":"UserProfileName"},
         "SessionExpirationDurationInSeconds":{"shape":"SessionExpirationDurationInSeconds"}
       }
@@ -4172,10 +4118,7 @@
         "NetworkConfig":{"shape":"NetworkConfig"},
         "RoleArn":{"shape":"RoleArn"},
         "Tags":{"shape":"TagList"},
-        "ExperimentConfig":{
-          "shape":"ExperimentConfig",
-          "internalonly":true
-        }
+        "ExperimentConfig":{"shape":"ExperimentConfig"}
       }
     },
     "CreateProcessingJobResponse":{
@@ -4295,22 +4238,10 @@
           "shape":"CheckpointConfig",
           "documentation":"<p>Contains information about the output location for managed spot training checkpoint data.</p>"
         },
-        "DebugHookConfig":{
-          "shape":"DebugHookConfig",
-          "internalonly":true
-        },
-        "DebugRuleConfigurations":{
-          "shape":"DebugRuleConfigurations",
-          "internalonly":true
-        },
-        "TensorBoardOutputConfig":{
-          "shape":"TensorBoardOutputConfig",
-          "internalonly":true
-        },
-        "ExperimentConfig":{
-          "shape":"ExperimentConfig",
-          "internalonly":true
-        }
+        "DebugHookConfig":{"shape":"DebugHookConfig"},
+        "DebugRuleConfigurations":{"shape":"DebugRuleConfigurations"},
+        "TensorBoardOutputConfig":{"shape":"TensorBoardOutputConfig"},
+        "ExperimentConfig":{"shape":"ExperimentConfig"}
       }
     },
     "CreateTrainingJobResponse":{
@@ -4433,10 +4364,7 @@
           "shape":"KmsKeyId",
           "internalonly":true
         },
-        "ExperimentConfig":{
-          "shape":"ExperimentConfig",
-          "internalonly":true
-        }
+        "ExperimentConfig":{"shape":"ExperimentConfig"}
       }
     },
     "CreateTransformJobResponse":{
@@ -4516,7 +4444,7 @@
         "UserProfileName"
       ],
       "members":{
-        "DomainId":{"shape":"ResourceId"},
+        "DomainId":{"shape":"DomainId"},
         "UserProfileName":{"shape":"UserProfileName"},
         "SingleSignOnUserIdentifier":{"shape":"SingleSignOnUserIdentifier"},
         "SingleSignOnUserValue":{"shape":"String256"},
@@ -4693,7 +4621,7 @@
         "S3OutputPath":{"shape":"S3Uri"},
         "RuleEvaluatorImage":{"shape":"AlgorithmImage"},
         "InstanceType":{"shape":"ProcessingInstanceType"},
-        "VolumeSizeInGB":{"shape":"VolumeSizeInGB"},
+        "VolumeSizeInGB":{"shape":"OptionalVolumeSizeInGB"},
         "RuleParameters":{"shape":"RuleParameters"}
       }
     },
@@ -4738,7 +4666,7 @@
         "AppName"
       ],
       "members":{
-        "DomainId":{"shape":"ResourceId"},
+        "DomainId":{"shape":"DomainId"},
         "UserProfileName":{"shape":"UserProfileName"},
         "AppType":{"shape":"AppType"},
         "AppName":{"shape":"AppName"}
@@ -4758,7 +4686,7 @@
       "type":"structure",
       "required":["DomainId"],
       "members":{
-        "DomainId":{"shape":"ResourceId"},
+        "DomainId":{"shape":"DomainId"},
         "RetentionPolicy":{"shape":"RetentionPolicy"}
       }
     },
@@ -4921,7 +4849,7 @@
         "UserProfileName"
       ],
       "members":{
-        "DomainId":{"shape":"ResourceId"},
+        "DomainId":{"shape":"DomainId"},
         "UserProfileName":{"shape":"UserProfileName"}
       }
     },
@@ -5043,7 +4971,7 @@
         "AppName"
       ],
       "members":{
-        "DomainId":{"shape":"ResourceId"},
+        "DomainId":{"shape":"DomainId"},
         "UserProfileName":{"shape":"UserProfileName"},
         "AppType":{"shape":"AppType"},
         "AppName":{"shape":"AppName"}
@@ -5055,12 +4983,13 @@
         "AppArn":{"shape":"AppArn"},
         "AppType":{"shape":"AppType"},
         "AppName":{"shape":"AppName"},
-        "DomainId":{"shape":"ResourceId"},
+        "DomainId":{"shape":"DomainId"},
         "UserProfileName":{"shape":"UserProfileName"},
         "Status":{"shape":"AppStatus"},
         "LastHealthCheckTimestamp":{"shape":"Timestamp"},
         "LastUserActivityTimestamp":{"shape":"Timestamp"},
         "CreationTime":{"shape":"CreationTime"},
+        "FailureReason":{"shape":"FailureReason"},
         "ResourceSpec":{"shape":"ResourceSpec"}
       }
     },
@@ -5234,26 +5163,28 @@
       "type":"structure",
       "required":["DomainId"],
       "members":{
-        "DomainId":{"shape":"ResourceId"}
+        "DomainId":{"shape":"DomainId"}
       }
     },
     "DescribeDomainResponse":{
       "type":"structure",
       "members":{
         "DomainArn":{"shape":"DomainArn"},
-        "DomainId":{"shape":"String256"},
+        "DomainId":{"shape":"DomainId"},
         "DomainName":{"shape":"DomainName"},
         "HomeEfsFileSystemId":{"shape":"ResourceId"},
         "SingleSignOnManagedApplicationInstanceId":{"shape":"String256"},
         "Status":{"shape":"DomainStatus"},
         "CreationTime":{"shape":"CreationTime"},
         "LastModifiedTime":{"shape":"LastModifiedTime"},
+        "FailureReason":{"shape":"FailureReason"},
+        "AuthMode":{"shape":"AuthMode"},
         "DefaultUserSettings":{"shape":"UserSettings"},
         "DomainPolicy":{
           "shape":"String2048",
           "internalonly":true
         },
-        "EnableNetworkIsolation":{"shape":"Boolean"},
+        "AppNetworkAccess":{"shape":"AppNetworkAccess"},
         "HomeEfsFileSystemKmsKeyId":{"shape":"KmsKeyId"},
         "SubnetIds":{"shape":"Subnets"},
         "Url":{"shape":"String1024"},
@@ -5291,10 +5222,7 @@
           "shape":"ProductionVariantList",
           "documentation":"<p>An array of <code>ProductionVariant</code> objects, one for each model that you want to host at this endpoint.</p>"
         },
-        "DataCaptureConfig":{
-          "shape":"DataCaptureConfig",
-          "internalonly":true
-        },
+        "DataCaptureConfig":{"shape":"DataCaptureConfig"},
         "KmsKeyId":{
           "shape":"KmsKeyId",
           "documentation":"<p>AWS KMS key ID Amazon SageMaker uses to encrypt data when storing it on the ML storage volume attached to the instance.</p>"
@@ -5342,10 +5270,7 @@
           "shape":"ProductionVariantSummaryList",
           "documentation":"<p> An array of <a>ProductionVariantSummary</a> objects, one for each model hosted behind this endpoint. </p>"
         },
-        "DataCaptureConfig":{
-          "shape":"DataCaptureConfigSummary",
-          "internalonly":true
-        },
+        "DataCaptureConfig":{"shape":"DataCaptureConfigSummary"},
         "EndpointStatus":{
           "shape":"EndpointStatus",
           "documentation":"<p>The status of the endpoint.</p> <ul> <li> <p> <code>OutOfService</code>: Endpoint is not available to take incoming requests.</p> </li> <li> <p> <code>Creating</code>: <a>CreateEndpoint</a> is executing.</p> </li> <li> <p> <code>Updating</code>: <a>UpdateEndpoint</a> or <a>UpdateEndpointWeightsAndCapacities</a> is executing.</p> </li> <li> <p> <code>SystemUpdating</code>: Endpoint is undergoing maintenance and cannot be updated or deleted or re-scaled until it has completed. This maintenance operation does not change any customer-specified values such as VPC config, KMS encryption, model, instance type, or instance count.</p> </li> <li> <p> <code>RollingBack</code>: Endpoint fails to scale up or down or change its variant weight and is in the process of rolling back to its previous configuration. Once the rollback completes, endpoint returns to an <code>InService</code> status. This transitional status only applies to an endpoint that has autoscaling enabled and is undergoing variant weight or capacity changes as part of an <a>UpdateEndpointWeightsAndCapacities</a> call or when the <a>UpdateEndpointWeightsAndCapacities</a> operation is called explicitly.</p> </li> <li> <p> <code>InService</code>: Endpoint is available to process incoming requests.</p> </li> <li> <p> <code>Deleting</code>: <a>DeleteEndpoint</a> is executing.</p> </li> <li> <p> <code>Failed</code>: Endpoint could not be created, updated, or re-scaled. Use <a>DescribeEndpointOutput$FailureReason</a> for information about the failure. <a>DeleteEndpoint</a> is the only operation that can be performed on a failed endpoint.</p> </li> </ul>"
@@ -5479,7 +5404,8 @@
         "HumanLoopActivationConfig":{"shape":"HumanLoopActivationConfig"},
         "HumanLoopConfig":{"shape":"HumanLoopConfig"},
         "OutputConfig":{"shape":"FlowDefinitionOutputConfig"},
-        "RoleArn":{"shape":"RoleArn"}
+        "RoleArn":{"shape":"RoleArn"},
+        "FailureReason":{"shape":"FailureReason"}
       }
     },
     "DescribeHumanTaskUiRequest":{
@@ -5501,7 +5427,6 @@
         "HumanTaskUiArn":{"shape":"HumanTaskUiArn"},
         "HumanTaskUiName":{"shape":"HumanTaskUiName"},
         "CreationTime":{"shape":"Timestamp"},
-        "LastModifiedTime":{"shape":"Timestamp"},
         "UiTemplate":{"shape":"UiTemplateInfo"}
       }
     },
@@ -5543,10 +5468,7 @@
           "shape":"HyperParameterTrainingJobDefinition",
           "documentation":"<p>The <a>HyperParameterTrainingJobDefinition</a> object that specifies the definition of the training jobs that this tuning job launches.</p>"
         },
-        "TrainingJobDefinitions":{
-          "shape":"HyperParameterTrainingJobDefinitions",
-          "internalonly":true
-        },
+        "TrainingJobDefinitions":{"shape":"HyperParameterTrainingJobDefinitions"},
         "HyperParameterTuningJobStatus":{
           "shape":"HyperParameterTuningJobStatus",
           "documentation":"<p>The status of the tuning job: InProgress, Completed, Failed, Stopping, or Stopped.</p>"
@@ -6014,7 +5936,7 @@
         "ProcessingResources":{"shape":"ProcessingResources"},
         "StoppingCondition":{"shape":"ProcessingStoppingCondition"},
         "AppSpecification":{"shape":"AppSpecification"},
-        "Environment":{"shape":"EnvironmentMap"},
+        "Environment":{"shape":"ProcessingEnvironmentMap"},
         "NetworkConfig":{"shape":"NetworkConfig"},
         "RoleArn":{"shape":"RoleArn"},
         "ExperimentConfig":{"shape":"ExperimentConfig"},
@@ -6095,10 +6017,7 @@
           "shape":"LabelingJobArn",
           "documentation":"<p>The Amazon Resource Name (ARN) of the Amazon SageMaker Ground Truth labeling job that created the transform or training job.</p>"
         },
-        "AutoMLJobArn":{
-          "shape":"AutoMLJobArn",
-          "internalonly":true
-        },
+        "AutoMLJobArn":{"shape":"AutoMLJobArn"},
         "ModelArtifacts":{
           "shape":"ModelArtifacts",
           "documentation":"<p>Information about the Amazon S3 location that is configured for storing model artifacts. </p>"
@@ -6197,26 +6116,11 @@
           "shape":"BillableTimeInSeconds",
           "documentation":"<p>The billable time in seconds.</p> <p>You can calculate the savings from using managed spot training using the formula <code>(1 - BillableTimeInSeconds / TrainingTimeInSeconds) * 100</code>. For example, if <code>BillableTimeInSeconds</code> is 100 and <code>TrainingTimeInSeconds</code> is 500, the savings is 80%.</p>"
         },
-        "DebugHookConfig":{
-          "shape":"DebugHookConfig",
-          "internalonly":true
-        },
-        "ExperimentConfig":{
-          "shape":"ExperimentConfig",
-          "internalonly":true
-        },
-        "DebugRuleConfigurations":{
-          "shape":"DebugRuleConfigurations",
-          "internalonly":true
-        },
-        "TensorBoardOutputConfig":{
-          "shape":"TensorBoardOutputConfig",
-          "internalonly":true
-        },
-        "DebugRuleEvaluationStatuses":{
-          "shape":"DebugRuleEvaluationStatuses",
-          "internalonly":true
-        }
+        "DebugHookConfig":{"shape":"DebugHookConfig"},
+        "ExperimentConfig":{"shape":"ExperimentConfig"},
+        "DebugRuleConfigurations":{"shape":"DebugRuleConfigurations"},
+        "TensorBoardOutputConfig":{"shape":"TensorBoardOutputConfig"},
+        "DebugRuleEvaluationStatuses":{"shape":"DebugRuleEvaluationStatuses"}
       }
     },
     "DescribeTransformJobRequest":{
@@ -6305,19 +6209,13 @@
           "shape":"LabelingJobArn",
           "documentation":"<p>The Amazon Resource Name (ARN) of the Amazon SageMaker Ground Truth labeling job that created the transform or training job.</p>"
         },
-        "AutoMLJobArn":{
-          "shape":"AutoMLJobArn",
-          "internalonly":true
-        },
+        "AutoMLJobArn":{"shape":"AutoMLJobArn"},
         "TransformJobProgress":{
           "shape":"TransformJobProgress",
           "internalonly":true
         },
         "DataProcessing":{"shape":"DataProcessing"},
-        "ExperimentConfig":{
-          "shape":"ExperimentConfig",
-          "internalonly":true
-        }
+        "ExperimentConfig":{"shape":"ExperimentConfig"}
       }
     },
     "DescribeTrialComponentRequest":{
@@ -6375,20 +6273,21 @@
         "UserProfileName"
       ],
       "members":{
-        "DomainId":{"shape":"ResourceId"},
+        "DomainId":{"shape":"DomainId"},
         "UserProfileName":{"shape":"UserProfileName"}
       }
     },
     "DescribeUserProfileResponse":{
       "type":"structure",
       "members":{
-        "DomainId":{"shape":"ResourceId"},
+        "DomainId":{"shape":"DomainId"},
         "UserProfileArn":{"shape":"UserProfileArn"},
         "UserProfileName":{"shape":"UserProfileName"},
         "HomeEfsFileSystemUid":{"shape":"EfsUid"},
         "Status":{"shape":"UserProfileStatus"},
         "LastModifiedTime":{"shape":"LastModifiedTime"},
         "CreationTime":{"shape":"CreationTime"},
+        "FailureReason":{"shape":"FailureReason"},
         "SingleSignOnUserIdentifier":{"shape":"SingleSignOnUserIdentifier"},
         "SingleSignOnUserValue":{"shape":"String256"},
         "UserPolicy":{
@@ -6524,7 +6423,7 @@
     },
     "Dollars":{
       "type":"integer",
-      "max":1,
+      "max":2,
       "min":0
     },
     "DomainArn":{
@@ -6738,7 +6637,8 @@
         "Content":{"shape":"Content"},
         "SizeInBytes":{"shape":"SizeInBytes"},
         "DiffId":{"shape":"DiffId"}
-      }
+      },
+      "internalonly":true
     },
     "EnvironmentDefinitionLayerType":{
       "type":"string",
@@ -6755,6 +6655,7 @@
     "EnvironmentDefinitionLayers":{
       "type":"list",
       "member":{"shape":"EnvironmentDefinitionLayer"},
+      "internalonly":true,
       "max":127,
       "min":1
     },
@@ -6774,7 +6675,8 @@
         "LayerStatus":{"shape":"LayerStatus"},
         "SizeInBytes":{"shape":"SizeInBytes"},
         "DiffId":{"shape":"DiffId"}
-      }
+      },
+      "internalonly":true
     },
     "EnvironmentLayerType":{
       "type":"string",
@@ -6787,7 +6689,8 @@
     },
     "EnvironmentLayers":{
       "type":"list",
-      "member":{"shape":"EnvironmentLayer"}
+      "member":{"shape":"EnvironmentLayer"},
+      "internalonly":true
     },
     "EnvironmentMap":{
       "type":"map",
@@ -6806,7 +6709,8 @@
       "members":{
         "DefaultS3ArtifactPath":{"shape":"S3Uri"},
         "DefaultS3KmsKeyId":{"shape":"KmsKeyId"}
-      }
+      },
+      "internalonly":true
     },
     "EnvironmentSortBy":{
       "type":"string",
@@ -6832,7 +6736,8 @@
     },
     "EnvironmentSummaries":{
       "type":"list",
-      "member":{"shape":"EnvironmentSummary"}
+      "member":{"shape":"EnvironmentSummary"},
+      "internalonly":true
     },
     "EnvironmentSummary":{
       "type":"structure",
@@ -6850,7 +6755,8 @@
         "EnvironmentName":{"shape":"EnvironmentName"},
         "Metadata":{"shape":"Metadata"},
         "EnvironmentStatus":{"shape":"EnvironmentStatus"}
-      }
+      },
+      "internalonly":true
     },
     "EnvironmentValue":{
       "type":"string",
@@ -6911,7 +6817,8 @@
     },
     "EnvironmentVersionSummaries":{
       "type":"list",
-      "member":{"shape":"EnvironmentVersionSummary"}
+      "member":{"shape":"EnvironmentVersionSummary"},
+      "internalonly":true
     },
     "EnvironmentVersionSummary":{
       "type":"structure",
@@ -6933,7 +6840,8 @@
         "EnvironmentVersionNumber":{"shape":"EnvironmentVersionNumber"},
         "EnvironmentVersionStatus":{"shape":"EnvironmentVersionStatus"},
         "Metadata":{"shape":"Metadata"}
-      }
+      },
+      "internalonly":true
     },
     "ExecutionStatus":{
       "type":"string",
@@ -6965,8 +6873,7 @@
         "LastModifiedTime":{"shape":"Timestamp"},
         "LastModifiedBy":{"shape":"UserContext"},
         "Tags":{"shape":"TagList"}
-      },
-      "internalonly":true
+      }
     },
     "ExperimentArn":{
       "type":"string",
@@ -7554,18 +7461,9 @@
         "StoppingCondition"
       ],
       "members":{
-        "DefinitionName":{
-          "shape":"HyperParameterTrainingJobDefinitionName",
-          "internalonly":true
-        },
-        "TuningObjective":{
-          "shape":"HyperParameterTuningJobObjective",
-          "internalonly":true
-        },
-        "HyperParameterRanges":{
-          "shape":"ParameterRanges",
-          "internalonly":true
-        },
+        "DefinitionName":{"shape":"HyperParameterTrainingJobDefinitionName"},
+        "TuningObjective":{"shape":"HyperParameterTuningJobObjective"},
+        "HyperParameterRanges":{"shape":"ParameterRanges"},
         "StaticHyperParameters":{
           "shape":"HyperParameters",
           "documentation":"<p>Specifies the values of hyperparameters that do not change for the tuning job.</p>"
@@ -7657,10 +7555,7 @@
         "TunedHyperParameters"
       ],
       "members":{
-        "TrainingJobDefinitionName":{
-          "shape":"HyperParameterTrainingJobDefinitionName",
-          "internalonly":true
-        },
+        "TrainingJobDefinitionName":{"shape":"HyperParameterTrainingJobDefinitionName"},
         "TrainingJobName":{
           "shape":"TrainingJobName",
           "documentation":"<p>The name of the training job.</p>"
@@ -7744,10 +7639,7 @@
           "shape":"HyperParameterTrainingJobInstancePools",
           "internalonly":true
         },
-        "TuningJobCompletionCriteria":{
-          "shape":"TuningJobCompletionCriteria",
-          "internalonly":true
-        }
+        "TuningJobCompletionCriteria":{"shape":"TuningJobCompletionCriteria"}
       },
       "documentation":"<p>Configures a hyperparameter tuning job.</p>"
     },
@@ -9701,7 +9593,10 @@
           "shape":"ExperimentEntityName",
           "internalonly":true
         },
-        "TrialName":{"shape":"ExperimentEntityName"},
+        "TrialName":{
+          "shape":"ExperimentEntityName",
+          "internalonly":true
+        },
         "SourceArn":{"shape":"String256"},
         "CreatedAfter":{"shape":"Timestamp"},
         "CreatedBefore":{"shape":"Timestamp"},
@@ -10832,6 +10727,10 @@
     },
     "OptionalDouble":{"type":"double"},
     "OptionalInteger":{"type":"integer"},
+    "OptionalVolumeSizeInGB":{
+      "type":"integer",
+      "min":0
+    },
     "OrderKey":{
       "type":"string",
       "enum":[
@@ -11769,6 +11668,10 @@
       "type":"structure",
       "members":{
         "EnvironmentArn":{"shape":"EnvironmentArn"},
+        "EnvironmentVersionArn":{
+          "shape":"EnvironmentVersionArn",
+          "internalonly":true
+        },
         "InstanceType":{"shape":"AppInstanceType"}
       }
     },
@@ -11970,18 +11873,9 @@
           "shape":"TrainingJob",
           "documentation":"<p>A <code>TrainingJob</code> object that is returned as part of a <code>Search</code> request.</p>"
         },
-        "Experiment":{
-          "shape":"Experiment",
-          "internalonly":true
-        },
-        "Trial":{
-          "shape":"Trial",
-          "internalonly":true
-        },
-        "TrialComponent":{
-          "shape":"TrialComponent",
-          "internalonly":true
-        },
+        "Experiment":{"shape":"Experiment"},
+        "Trial":{"shape":"Trial"},
+        "TrialComponent":{"shape":"TrialComponent"},
         "TransformJob":{
           "shape":"TransformJob",
           "internalonly":true
@@ -12816,10 +12710,7 @@
           "shape":"LabelingJobArn",
           "documentation":"<p>The Amazon Resource Name (ARN) of the labeling job.</p>"
         },
-        "AutoMLJobArn":{
-          "shape":"AutoMLJobArn",
-          "internalonly":true
-        },
+        "AutoMLJobArn":{"shape":"AutoMLJobArn"},
         "ModelArtifacts":{
           "shape":"ModelArtifacts",
           "documentation":"<p>Information about the Amazon S3 location that is configured for storing model artifacts.</p>"
@@ -12908,26 +12799,11 @@
         "CheckpointConfig":{"shape":"CheckpointConfig"},
         "TrainingTimeInSeconds":{"shape":"TrainingTimeInSeconds"},
         "BillableTimeInSeconds":{"shape":"BillableTimeInSeconds"},
-        "DebugHookConfig":{
-          "shape":"DebugHookConfig",
-          "internalonly":true
-        },
-        "ExperimentConfig":{
-          "shape":"ExperimentConfig",
-          "internalonly":true
-        },
-        "DebugRuleConfigurations":{
-          "shape":"DebugRuleConfigurations",
-          "internalonly":true
-        },
-        "TensorBoardOutputConfig":{
-          "shape":"TensorBoardOutputConfig",
-          "internalonly":true
-        },
-        "DebugRuleEvaluationStatuses":{
-          "shape":"DebugRuleEvaluationStatuses",
-          "internalonly":true
-        },
+        "DebugHookConfig":{"shape":"DebugHookConfig"},
+        "ExperimentConfig":{"shape":"ExperimentConfig"},
+        "DebugRuleConfigurations":{"shape":"DebugRuleConfigurations"},
+        "TensorBoardOutputConfig":{"shape":"TensorBoardOutputConfig"},
+        "DebugRuleEvaluationStatuses":{"shape":"DebugRuleEvaluationStatuses"},
         "Tags":{
           "shape":"TagList",
           "documentation":"<p>An array of key-value pairs. For more information, see <a href=\"https://docs.aws.amazon.com/awsaccountbilling/latest/aboutv2/cost-alloc-tags.html#allocation-what\">Using Cost Allocation Tags</a> in the <i>AWS Billing and Cost Management User Guide</i>.</p>"
@@ -13116,7 +12992,7 @@
         },
         "SupportsDistributedTraining":{
           "shape":"Boolean",
-          "documentation":"<p>Indicates whether the algorithm supports distributed training.</p>"
+          "documentation":"<p>Indicates whether the algorithm supports distributed training. If set to false, buyers can't request more than one instance during training.</p>"
         },
         "MetricDefinitions":{
           "shape":"MetricDefinitionList",
@@ -13246,19 +13122,13 @@
         "TransformStartTime":{"shape":"Timestamp"},
         "TransformEndTime":{"shape":"Timestamp"},
         "LabelingJobArn":{"shape":"LabelingJobArn"},
-        "AutoMLJobArn":{
-          "shape":"AutoMLJobArn",
-          "internalonly":true
-        },
+        "AutoMLJobArn":{"shape":"AutoMLJobArn"},
         "TransformJobProgress":{
           "shape":"TransformJobProgress",
           "internalonly":true
         },
         "DataProcessing":{"shape":"DataProcessing"},
-        "ExperimentConfig":{
-          "shape":"ExperimentConfig",
-          "internalonly":true
-        }
+        "ExperimentConfig":{"shape":"ExperimentConfig"}
       },
       "internalonly":true
     },
@@ -13457,8 +13327,7 @@
         "LastModifiedBy":{"shape":"UserContext"},
         "Tags":{"shape":"TagList"},
         "TrialComponentSummaries":{"shape":"TrialComponentSimpleSummaries"}
-      },
-      "internalonly":true
+      }
     },
     "TrialArn":{
       "type":"string",
@@ -13744,7 +13613,7 @@
       "type":"structure",
       "required":["DomainId"],
       "members":{
-        "DomainId":{"shape":"ResourceId"},
+        "DomainId":{"shape":"DomainId"},
         "DefaultUserSettings":{"shape":"UserSettings"},
         "DomainPolicy":{
           "shape":"String2048",
@@ -13755,7 +13624,7 @@
     "UpdateDomainResponse":{
       "type":"structure",
       "members":{
-        "DomainArn":{"shape":"String256"}
+        "DomainArn":{"shape":"DomainArn"}
       }
     },
     "UpdateEndpointInput":{
@@ -14016,7 +13885,7 @@
         "UserProfileName"
       ],
       "members":{
-        "DomainId":{"shape":"ResourceId"},
+        "DomainId":{"shape":"DomainId"},
         "UserProfileName":{"shape":"UserProfileName"},
         "UserPolicy":{
           "shape":"String2048",
