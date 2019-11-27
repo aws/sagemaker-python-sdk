@@ -22,6 +22,7 @@ DATA_DIR = os.path.join(os.path.dirname(__file__), "..", "data")
 TRAINING_DEFAULT_TIMEOUT_MINUTES = 20
 TUNING_DEFAULT_TIMEOUT_MINUTES = 20
 TRANSFORM_DEFAULT_TIMEOUT_MINUTES = 20
+AUTO_ML_DEFAULT_TIMEMOUT_MINUTES = 60
 PYTHON_VERSION = "py" + str(sys.version_info.major)
 
 # these regions have some p2 and p3 instances, but not enough for continuous testing

@@ -1902,3 +1902,160 @@ def test_train_done_in_progress(sagemaker_session):
 
     assert actual_job_desc["TrainingJobStatus"] == "InProgress"
     assert training_finished is False
+
+
+DEFAULT_EXPECTED_AUTO_ML_JOB_ARGS = {
+    "AutoMLJobName": JOB_NAME,
+    "InputDataConfig": [
+        {
+            "DataSource": {"S3DataSource": {"S3DataType": "S3Prefix", "S3Uri": S3_INPUT_URI}},
+            "TargetAttributeName": "y",
+        }
+    ],
+    "OutputDataConfig": {"S3OutputPath": S3_OUTPUT},
+    "AutoMLJobConfig": {
+        "CompletionCriteria": {
+            "MaxCandidates": 10,
+            "MaxAutoMLJobRuntimeInSeconds": 36000,
+            "MaxRuntimePerTrainingJobInSeconds": 3600 * 2,
+        }
+    },
+    "RoleArn": EXPANDED_ROLE,
+    "GenerateCandidateDefinitionsOnly": False,
+}
+
+
+COMPLETE_EXPECTED_AUTO_ML_JOB_ARGS = {
+    "AutoMLJobName": JOB_NAME,
+    "InputDataConfig": [
+        {
+            "DataSource": {"S3DataSource": {"S3DataType": "S3Prefix", "S3Uri": S3_INPUT_URI}},
+            "CompressionType": "Gzip",
+            "TargetAttributeName": "y",
+        }
+    ],
+    "OutputDataConfig": {"S3OutputPath": S3_OUTPUT},
+    "ProblemType": "Regression",
+    "AutoMLJobObjective": {"Type": "type", "MetricName": "metric-name"},
+    "AutoMLJobConfig": {
+        "CompletionCriteria": {
+            "MaxCandidates": 10,
+            "MaxAutoMLJobRuntimeInSeconds": 36000,
+            "MaxRuntimePerTrainingJobInSeconds": 3600 * 2,
+        },
+        "SecurityConfig": {
+            "VolumeKmsKeyId": "volume-kms-key-id-string",
+            "EnableInterContainerTrafficEncryption": False,
+            "VpcConfig": {"SecurityGroupIds": ["security-group-id"], "Subnets": ["subnet"]},
+        },
+    },
+    "RoleArn": EXPANDED_ROLE,
+    "GenerateCandidateDefinitionsOnly": True,
+    "Tags": ["tag"],
+}
+
+COMPLETE_EXPECTED_LIST_CANDIDATES_ARGS = {
+    "AutoMLJobName": JOB_NAME,
+    "StatusEquals": "Completed",
+    "SortOrder": "Descending",
+    "SortBy": "Status",
+    "MaxResults": 10,
+}
+
+
+def test_auto_ml_pack_to_request(sagemaker_session):
+    input_config = [
+        {
+            "DataSource": {"S3DataSource": {"S3DataType": "S3Prefix", "S3Uri": S3_INPUT_URI}},
+            "TargetAttributeName": "y",
+        }
+    ]
+
+    output_config = {"S3OutputPath": S3_OUTPUT}
+
+    auto_ml_job_config = {
+        "CompletionCriteria": {
+            "MaxCandidates": 10,
+            "MaxAutoMLJobRuntimeInSeconds": 36000,
+            "MaxRuntimePerTrainingJobInSeconds": 3600 * 2,
+        }
+    }
+
+    job_name = JOB_NAME
+    role = EXPANDED_ROLE
+
+    sagemaker_session.auto_ml(input_config, output_config, auto_ml_job_config, role, job_name)
+
+    assert sagemaker_session.sagemaker_client.method_calls[0] == (
+        "create_auto_ml_job",
+        (),
+        DEFAULT_EXPECTED_AUTO_ML_JOB_ARGS,
+    )
+
+
+def test_auto_ml_pack_to_request_with_optional_args(sagemaker_session):
+    input_config = [
+        {
+            "DataSource": {"S3DataSource": {"S3DataType": "S3Prefix", "S3Uri": S3_INPUT_URI}},
+            "CompressionType": "Gzip",
+            "TargetAttributeName": "y",
+        }
+    ]
+
+    output_config = {"S3OutputPath": S3_OUTPUT}
+
+    auto_ml_job_config = {
+        "CompletionCriteria": {
+            "MaxCandidates": 10,
+            "MaxAutoMLJobRuntimeInSeconds": 36000,
+            "MaxRuntimePerTrainingJobInSeconds": 3600 * 2,
+        },
+        "SecurityConfig": {
+            "VolumeKmsKeyId": "volume-kms-key-id-string",
+            "EnableInterContainerTrafficEncryption": False,
+            "VpcConfig": {"SecurityGroupIds": ["security-group-id"], "Subnets": ["subnet"]},
+        },
+    }
+
+    job_name = JOB_NAME
+    role = EXPANDED_ROLE
+
+    sagemaker_session.auto_ml(
+        input_config,
+        output_config,
+        auto_ml_job_config,
+        role,
+        job_name,
+        problem_type="Regression",
+        job_objective={"Type": "type", "MetricName": "metric-name"},
+        generate_candidate_definitions_only=True,
+        tags=["tag"],
+    )
+
+    assert sagemaker_session.sagemaker_client.method_calls[0] == (
+        "create_auto_ml_job",
+        (),
+        COMPLETE_EXPECTED_AUTO_ML_JOB_ARGS,
+    )
+
+
+def test_list_candidates_for_auto_ml_job_default(sagemaker_session):
+    sagemaker_session.list_candidates(job_name=JOB_NAME)
+    sagemaker_session.sagemaker_client.list_candidates_for_auto_ml_job.assert_called_once()
+    sagemaker_session.sagemaker_client.list_candidates_for_auto_ml_job.assert_called_with(
+        AutoMLJobName=JOB_NAME
+    )
+
+
+def test_list_candidates_for_auto_ml_job_with_optional_args(sagemaker_session):
+    sagemaker_session.list_candidates(
+        job_name=JOB_NAME,
+        status_equals="Completed",
+        sort_order="Descending",
+        sort_by="Status",
+        max_results=10,
+    )
+    sagemaker_session.sagemaker_client.list_candidates_for_auto_ml_job.assert_called_once()
+    sagemaker_session.sagemaker_client.list_candidates_for_auto_ml_job.assert_called_with(
+        **COMPLETE_EXPECTED_LIST_CANDIDATES_ARGS
+    )

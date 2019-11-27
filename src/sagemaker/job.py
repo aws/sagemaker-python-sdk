@@ -177,16 +177,31 @@ class _Job(object):
         return channel_config
 
     @staticmethod
-    def _format_string_uri_input(uri_input, validate_uri=True, content_type=None, input_mode=None):
+    def _format_string_uri_input(
+        uri_input,
+        validate_uri=True,
+        content_type=None,
+        input_mode=None,
+        compression=None,
+        target_attribute_name=None,
+    ):
         """
         Args:
             uri_input:
             validate_uri:
             content_type:
             input_mode:
+            compression:
+            target_attribute_name:
         """
         if isinstance(uri_input, str) and validate_uri and uri_input.startswith("s3://"):
-            return s3_input(uri_input, content_type=content_type, input_mode=input_mode)
+            return s3_input(
+                uri_input,
+                content_type=content_type,
+                input_mode=input_mode,
+                compression=compression,
+                target_attribute_name=target_attribute_name,
+            )
         if isinstance(uri_input, str) and validate_uri and uri_input.startswith("file://"):
             return file_input(uri_input)
         if isinstance(uri_input, str) and validate_uri:
@@ -195,7 +210,13 @@ class _Job(object):
                 '"file://"'.format(uri_input)
             )
         if isinstance(uri_input, str):
-            return s3_input(uri_input, content_type=content_type, input_mode=input_mode)
+            return s3_input(
+                uri_input,
+                content_type=content_type,
+                input_mode=input_mode,
+                compression=compression,
+                target_attribute_name=target_attribute_name,
+            )
         if isinstance(uri_input, (s3_input, file_input, FileSystemInput)):
             return uri_input
 
