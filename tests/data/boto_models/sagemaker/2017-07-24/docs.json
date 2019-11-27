@@ -326,6 +326,13 @@
         "DescribeAppResponse$AppName": null
       }
     },
+    "AppNetworkAccess": {
+      "base": null,
+      "refs": {
+        "CreateDomainRequest$AppNetworkAccess": null,
+        "DescribeDomainResponse$AppNetworkAccess": null
+      }
+    },
     "AppSortKey": {
       "base": null,
       "refs": {
@@ -399,7 +406,8 @@
     "AuthMode": {
       "base": null,
       "refs": {
-        "CreateDomainRequest$AuthMode": null
+        "CreateDomainRequest$AuthMode": null,
+        "DescribeDomainResponse$AuthMode": null
       }
     },
     "AutoMLCandidate": {
@@ -684,16 +692,15 @@
     "Boolean": {
       "base": null,
       "refs": {
+        "AlgorithmSpecification$EnableSageMakerMetricsTimeSeries": null,
         "AutoMLSecurityConfig$EnableInterContainerTrafficEncryption": null,
         "ChannelSpecification$IsRequired": "<p>Indicates whether the channel is required by the algorithm.</p>",
-        "CreateDomainRequest$EnableNetworkIsolation": null,
         "CreateModelInput$EnableNetworkIsolation": "<p>Isolates the model container. No inbound or outbound network calls can be made to or from the model container.</p> <note> <p>The Semantic Segmentation built-in algorithm does not support network isolation.</p> </note>",
         "CreateTrainingJobInternalRequest$EnableNetworkIsolation": null,
         "CreateTrainingJobInternalRequest$EnableInterContainerTrafficEncryption": null,
         "CreateTrainingJobRequest$EnableNetworkIsolation": "<p>Isolates the training container. No inbound or outbound network calls can be made, except for calls between peers within a training cluster for distributed training. If you enable network isolation for training jobs that are configured to use a VPC, Amazon SageMaker downloads and uploads customer data and model artifacts through the specified VPC, but the training container does not have network access.</p> <note> <p>The Semantic Segmentation built-in algorithm does not support network isolation.</p> </note>",
         "CreateTrainingJobRequest$EnableInterContainerTrafficEncryption": "<p>To encrypt all communications between ML compute instances in distributed training, choose <code>True</code>. Encryption provides greater security for distributed training, but training might take longer. How long it takes depends on the amount of communication between compute instances, especially if you use a deep learning algorithm in distributed training. For more information, see <a href=\"https://docs.aws.amazon.com/sagemaker/latest/dg/train-encrypt.html\">Protect Communications Between ML Compute Instances in a Distributed Training Job</a>.</p>",
         "CreateTrainingJobRequest$EnableManagedSpotTraining": "<p>To train models using managed spot training, choose <code>True</code>. Managed spot training provides a fully managed and scalable infrastructure for training machine learning models. this option is useful when training jobs can be interrupted and when there is flexibility when the training job is run. </p> <p>The complete and intermediate results of jobs are stored in an Amazon S3 bucket, and can be used as a starting point to train models incrementally. Amazon SageMaker provides metrics and logs in CloudWatch. They can be used to see when managed spot training jobs are running, interrupted, resumed, or completed. </p>",
-        "DescribeDomainResponse$EnableNetworkIsolation": null,
         "DescribeModelOutput$EnableNetworkIsolation": "<p>If <code>True</code>, no inbound or outbound network calls can be made to or from the model container.</p> <note> <p>The Semantic Segmentation built-in algorithm does not support network isolation.</p> </note>",
         "DescribeTrainingJobResponse$EnableNetworkIsolation": "<p>If you want to allow inbound or outbound network calls, except for calls between peers within a training cluster for distributed training, choose <code>True</code>. If you enable network isolation for training jobs that are configured to use a VPC, Amazon SageMaker downloads and uploads customer data and model artifacts through the specified VPC, but the training container does not have network access.</p> <note> <p>The Semantic Segmentation built-in algorithm does not support network isolation.</p> </note>",
         "DescribeTrainingJobResponse$EnableInterContainerTrafficEncryption": "<p>To encrypt all communications between ML compute instances in distributed training, choose <code>True</code>. Encryption provides greater security for distributed training, but training might take longer. How long it takes depends on the amount of communication between compute instances, especially if you use a deep learning algorithms in distributed training.</p>",
@@ -707,7 +714,7 @@
         "TrainingJob$EnableNetworkIsolation": "<p>If the <code>TrainingJob</code> was created with network isolation, the value is set to <code>true</code>. If network isolation is enabled, nodes can't communicate beyond the VPC they run in.</p>",
         "TrainingJob$EnableInterContainerTrafficEncryption": "<p>To encrypt all communications between ML compute instances in distributed training, choose <code>True</code>. Encryption provides greater security for distributed training, but training might take longer. How long it takes depends on the amount of communication between compute instances, especially if you use a deep learning algorithm in distributed training.</p>",
         "TrainingJob$EnableManagedSpotTraining": null,
-        "TrainingSpecification$SupportsDistributedTraining": "<p>Indicates whether the algorithm supports distributed training.</p>",
+        "TrainingSpecification$SupportsDistributedTraining": "<p>Indicates whether the algorithm supports distributed training. If set to false, buyers can't request more than one instance during training.</p>",
         "UpdateEndpointInput$RetainAllVariantProperties": null
       }
     },
@@ -2252,7 +2259,8 @@
       "refs": {
         "CreateDomainResponse$DomainArn": null,
         "DescribeDomainResponse$DomainArn": null,
-        "DomainDetails$DomainArn": null
+        "DomainDetails$DomainArn": null,
+        "UpdateDomainResponse$DomainArn": null
       }
     },
     "DomainDetails": {
@@ -2264,9 +2272,24 @@
     "DomainId": {
       "base": null,
       "refs": {
+        "AppDetails$DomainId": null,
+        "CreateAppRequest$DomainId": null,
+        "CreatePresignedDomainUrlRequest$DomainId": null,
+        "CreateUserProfileRequest$DomainId": null,
+        "DeleteAppRequest$DomainId": null,
+        "DeleteDomainRequest$DomainId": null,
+        "DeleteUserProfileRequest$DomainId": null,
+        "DescribeAppRequest$DomainId": null,
+        "DescribeAppResponse$DomainId": null,
+        "DescribeDomainRequest$DomainId": null,
+        "DescribeDomainResponse$DomainId": null,
+        "DescribeUserProfileRequest$DomainId": null,
+        "DescribeUserProfileResponse$DomainId": null,
         "DomainDetails$DomainId": null,
         "ListAppsRequest$DomainIdEquals": null,
         "ListUserProfilesRequest$DomainIdEquals": null,
+        "UpdateDomainRequest$DomainId": null,
+        "UpdateUserProfileRequest$DomainId": null,
         "UserProfileDetails$DomainId": null
       }
     },
@@ -2534,8 +2557,7 @@
       "base": null,
       "refs": {
         "AutoMLContainerDefinition$Environment": null,
-        "ContainerDefinition$Environment": "<p>The environment variables to set in the Docker container. Each key and value in the <code>Environment</code> string to string map can have length of up to 1024. We support up to 16 entries in the map. </p>",
-        "DescribeProcessingJobResponse$Environment": null
+        "ContainerDefinition$Environment": "<p>The environment variables to set in the Docker container. Each key and value in the <code>Environment</code> string to string map can have length of up to 1024. We support up to 16 entries in the map. </p>"
       }
     },
     "EnvironmentName": {
@@ -2602,7 +2624,8 @@
         "CreateEnvironmentVersionResponse$EnvironmentVersionArn": null,
         "EnvironmentDefinitionLayer$EnvironmentVersionArn": null,
         "EnvironmentLayer$EnvironmentVersionArn": null,
-        "EnvironmentVersionSummary$EnvironmentVersionArn": null
+        "EnvironmentVersionSummary$EnvironmentVersionArn": null,
+        "ResourceSpec$EnvironmentVersionArn": null
       }
     },
     "EnvironmentVersionName": {
@@ -2822,8 +2845,11 @@
       "base": null,
       "refs": {
         "ConflictException$Message": null,
+        "DescribeAppResponse$FailureReason": null,
         "DescribeCompilationJobResponse$FailureReason": "<p>If a model compilation job failed, the reason it failed. </p>",
+        "DescribeDomainResponse$FailureReason": null,
         "DescribeEndpointOutput$FailureReason": "<p>If the status of the endpoint is <code>Failed</code>, the reason why it failed. </p>",
+        "DescribeFlowDefinitionResponse$FailureReason": null,
         "DescribeHyperParameterTuningJobResponse$FailureReason": "<p>If the tuning job failed, the reason it failed.</p>",
         "DescribeLabelingJobResponse$FailureReason": "<p>If the job failed, the reason that it failed. </p>",
         "DescribeMonitoringScheduleResponse$FailureReason": null,
@@ -2831,6 +2857,7 @@
         "DescribeProcessingJobResponse$FailureReason": null,
         "DescribeTrainingJobResponse$FailureReason": "<p>If the training job failed, the reason it failed. </p>",
         "DescribeTransformJobResponse$FailureReason": "<p>If the transform job failed, <code>FailureReason</code> describes why it failed. A transform job creates a log file, which includes error messages, and stores it as an Amazon S3 object. For more information, see <a href=\"https://docs.aws.amazon.com/sagemaker/latest/dg/logging-cloudwatch.html\">Log Amazon SageMaker Events with Amazon CloudWatch</a>.</p>",
+        "DescribeUserProfileResponse$FailureReason": null,
         "FlowDefinitionSummary$FailureReason": null,
         "HyperParameterTrainingJobSummary$FailureReason": "<p>The reason that the training job failed. </p>",
         "LabelingJobSummary$FailureReason": "<p>If the <code>LabelingJobStatus</code> field is <code>Failed</code>, this field contains a description of the error.</p>",
@@ -5043,6 +5070,12 @@
         "TrialComponentMetricSummary$Count": null
       }
     },
+    "OptionalVolumeSizeInGB": {
+      "base": null,
+      "refs": {
+        "DebugRuleConfiguration$VolumeSizeInGB": null
+      }
+    },
     "OrderKey": {
       "base": null,
       "refs": {
@@ -5223,7 +5256,8 @@
       "base": null,
       "refs": {
         "CreateProcessingJobInternalRequest$Environment": null,
-        "CreateProcessingJobRequest$Environment": null
+        "CreateProcessingJobRequest$Environment": null,
+        "DescribeProcessingJobResponse$Environment": null
       }
     },
     "ProcessingEnvironmentValue": {
@@ -5651,21 +5685,7 @@
     "ResourceId": {
       "base": null,
       "refs": {
-        "AppDetails$DomainId": null,
-        "CreateAppRequest$DomainId": null,
-        "CreatePresignedDomainUrlRequest$DomainId": null,
-        "CreateUserProfileRequest$DomainId": null,
-        "DeleteAppRequest$DomainId": null,
-        "DeleteDomainRequest$DomainId": null,
-        "DeleteUserProfileRequest$DomainId": null,
-        "DescribeAppRequest$DomainId": null,
-        "DescribeAppResponse$DomainId": null,
-        "DescribeDomainRequest$DomainId": null,
-        "DescribeDomainResponse$HomeEfsFileSystemId": null,
-        "DescribeUserProfileRequest$DomainId": null,
-        "DescribeUserProfileResponse$DomainId": null,
-        "UpdateDomainRequest$DomainId": null,
-        "UpdateUserProfileRequest$DomainId": null
+        "DescribeDomainResponse$HomeEfsFileSystemId": null
       }
     },
     "ResourceInUse": {
@@ -6316,11 +6336,9 @@
       "base": null,
       "refs": {
         "CreateUserProfileRequest$SingleSignOnUserValue": null,
-        "DescribeDomainResponse$DomainId": null,
         "DescribeDomainResponse$SingleSignOnManagedApplicationInstanceId": null,
         "DescribeUserProfileResponse$SingleSignOnUserValue": null,
-        "ListTrialComponentsRequest$SourceArn": null,
-        "UpdateDomainResponse$DomainArn": null
+        "ListTrialComponentsRequest$SourceArn": null
       }
     },
     "StringParameterValue": {
@@ -6683,7 +6701,6 @@
         "DescribeExperimentResponse$LastModifiedTime": null,
         "DescribeFlowDefinitionResponse$CreationTime": null,
         "DescribeHumanTaskUiResponse$CreationTime": null,
-        "DescribeHumanTaskUiResponse$LastModifiedTime": null,
         "DescribeHyperParameterTuningJobResponse$CreationTime": "<p>The date and time that the tuning job started.</p>",
         "DescribeHyperParameterTuningJobResponse$HyperParameterTuningEndTime": "<p>The date and time that the tuning job ended.</p>",
         "DescribeHyperParameterTuningJobResponse$LastModifiedTime": "<p>The date and time that the status of the tuning job was modified. </p>",
@@ -7671,7 +7688,6 @@
     "VolumeSizeInGB": {
       "base": null,
       "refs": {
-        "DebugRuleConfiguration$VolumeSizeInGB": null,
         "ResourceConfig$VolumeSizeInGB": "<p>The size of the ML storage volume that you want to provision. </p> <p>ML storage volumes store model artifacts and incremental states. Training algorithms might also use the ML storage volume for scratch space. If you want to store the training data in the ML storage volume, choose <code>File</code> as the <code>TrainingInputMode</code> in the algorithm specification. </p> <p>You must specify sufficient ML storage for your scenario. </p> <note> <p> Amazon SageMaker supports only the General Purpose SSD (gp2) ML storage volume type. </p> </note> <note> <p>Certain Nitro-based instances include local storage with a fixed total size, dependent on the instance type. When using these instances for training, Amazon SageMaker mounts the local instance storage instead of Amazon EBS gp2 storage. You can't request a <code>VolumeSizeInGB</code> greater than the total size of the local instance storage.</p> <p>For a list of instance types that support local instance storage, including the total size per instance type, see <a href=\"https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/InstanceStorage.html#instance-store-volumes\">Instance Store Volumes</a>.</p> </note>"
       }
     },

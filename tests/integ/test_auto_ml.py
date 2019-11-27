@@ -20,6 +20,7 @@ import pytest
 from sagemaker.automl.automl import AutoML
 from sagemaker.automl.candidate_estimator import CandidateEstimator
 from sagemaker.exceptions import UnexpectedStatusException
+from sagemaker.utils import unique_name_from_base
 from tests.integ import DATA_DIR, AUTO_ML_DEFAULT_TIMEMOUT_MINUTES
 from tests.integ.timeout import timeout
 
@@ -190,7 +191,7 @@ def test_candidate_estimator_default_rerun_and_deploy(sagemaker_session):
 
     candidate_estimator = CandidateEstimator(candidate, sagemaker_session)
     inputs = sagemaker_session.upload_data(path=TEST_DATA, key_prefix=PREFIX + "/input")
-    endpoint_name = "sagemaker-auto-ml-rerun-candidate-test"
+    endpoint_name = unique_name_from_base("sagemaker-auto-ml-rerun-candidate-test")
     with timeout(minutes=AUTO_ML_DEFAULT_TIMEMOUT_MINUTES):
         candidate_estimator.fit(inputs)
         auto_ml.deploy(
@@ -217,7 +218,7 @@ def test_candidate_estimator_rerun_with_optional_args(sagemaker_session):
 
     candidate_estimator = CandidateEstimator(candidate, sagemaker_session)
     inputs = sagemaker_session.upload_data(path=TEST_DATA, key_prefix=PREFIX + "/input")
-    endpoint_name = "sagemaker-auto-ml-rerun-candidate-test"
+    endpoint_name = unique_name_from_base("sagemaker-auto-ml-rerun-candidate-test")
     with timeout(minutes=AUTO_ML_DEFAULT_TIMEMOUT_MINUTES):
         candidate_estimator.fit(inputs, encrypt_inter_container_traffic=True)
         auto_ml.deploy(
