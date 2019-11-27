@@ -395,7 +395,15 @@ class TensorFlow(Framework):
         if not os.path.exists(os.path.join(self.source_dir, requirements_file)):
             raise ValueError("Requirements file {} does not exist.".format(requirements_file))
 
-    def fit(self, inputs=None, wait=True, logs=True, job_name=None, run_tensorboard_locally=False):
+    def fit(
+        self,
+        inputs=None,
+        wait=True,
+        logs=True,
+        job_name=None,
+        experiment_config=None,
+        run_tensorboard_locally=False,
+    ):
         """Train a model using the input training dataset.
 
         See :func:`~sagemaker.estimator.EstimatorBase.fit` for more details.
@@ -417,6 +425,7 @@ class TensorFlow(Framework):
                 Only meaningful when wait is True (default: True).
             job_name (str): Training job name. If not specified, the estimator generates a default
                 job name, based on the training image name and current timestamp.
+            experiment_config (dict[str, str]): Experiment management configuration.
             run_tensorboard_locally (bool): Whether to execute TensorBoard in a different process
                 with downloaded checkpoint information (default: False). This is an experimental
                 feature, and requires TensorBoard and AWS CLI to be installed. It terminates
@@ -424,7 +433,7 @@ class TensorFlow(Framework):
         """
 
         def fit_super():
-            super(TensorFlow, self).fit(inputs, wait, logs, job_name)
+            super(TensorFlow, self).fit(inputs, wait, logs, job_name, experiment_config)
 
         if run_tensorboard_locally and wait is False:
             raise ValueError("Tensorboard is not supported with async fit")

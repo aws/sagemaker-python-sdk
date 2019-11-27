@@ -105,7 +105,16 @@ class Processor(object):
         self._current_job_name = None
         self.arguments = None
 
-    def run(self, inputs=None, outputs=None, arguments=None, wait=True, logs=True, job_name=None):
+    def run(
+        self,
+        inputs=None,
+        outputs=None,
+        arguments=None,
+        wait=True,
+        logs=True,
+        job_name=None,
+        experiment_config=None,
+    ):
         """Run a processing job.
 
         Args:
@@ -121,6 +130,10 @@ class Processor(object):
                 Only meaningful when wait is True (default: True).
             job_name (str): Processing job name. If not specified, the processor generates
                 a default job name, based on the image name and current timestamp.
+            experiment_config (dict[str, str]): Experiment management configuration.
+                Dictionary contains three optional keys,
+                'ExperimentName', 'TrialName', and 'TrialComponentDisplayName'.
+
         """
         if logs and not wait:
             raise ValueError(
@@ -134,7 +147,9 @@ class Processor(object):
         normalized_outputs = self._normalize_outputs(outputs)
         self.arguments = arguments
 
-        self.latest_job = ProcessingJob.start_new(self, normalized_inputs, normalized_outputs)
+        self.latest_job = ProcessingJob.start_new(
+            self, normalized_inputs, normalized_outputs, experiment_config
+        )
         self.jobs.append(self.latest_job)
         if wait:
             self.latest_job.wait(logs=logs)
@@ -324,6 +339,7 @@ class ScriptProcessor(Processor):
         wait=True,
         logs=True,
         job_name=None,
+        experiment_config=None,
     ):
         """Run a processing job with Script Mode.
 
@@ -347,6 +363,9 @@ class ScriptProcessor(Processor):
                 Only meaningful when wait is True (default: True).
             job_name (str): Processing job name. If not specified, the processor generates
                 a default job name, based on the image name and current timestamp.
+            experiment_config (dict[str, str]): Experiment management configuration.
+                Dictionary contains three optional keys,
+                'ExperimentName', 'TrialName', and 'TrialComponentDisplayName'.
         """
         self._current_job_name = self._generate_current_job_name(job_name=job_name)
 
@@ -363,6 +382,7 @@ class ScriptProcessor(Processor):
             wait=wait,
             logs=logs,
             job_name=job_name,
+            experiment_config=experiment_config,
         )
 
     def _get_customer_script_name(self, code, script_name):
@@ -458,7 +478,7 @@ class ProcessingJob(_Job):
         super(ProcessingJob, self).__init__(sagemaker_session=sagemaker_session, job_name=job_name)
 
     @classmethod
-    def start_new(cls, processor, inputs, outputs):
+    def start_new(cls, processor, inputs, outputs, experiment_config):
         """Start a new processing job using the provided inputs and outputs.
 
         Args:
@@ -466,6 +486,9 @@ class ProcessingJob(_Job):
                 that started the job.
             inputs ([sagemaker.processing.ProcessingInput]): A list of ProcessingInput objects.
             outputs ([sagemaker.processing.ProcessingOutput]): A list of ProcessingOutput objects.
+            experiment_config (dict[str, str]): Experiment management configuration.
+                Dictionary contains three optional keys,
+                'ExperimentName', 'TrialName', and 'TrialComponentDisplayName'.
 
         Returns:
             sagemaker.processing.ProcessingJob: The instance of ProcessingJob created
@@ -484,6 +507,7 @@ class ProcessingJob(_Job):
         if processor.output_kms_key is not None:
             process_request_args["output_config"]["KmsKeyId"] = processor.output_kms_key
 
+        process_request_args["experiment_config"] = experiment_config
         process_request_args["job_name"] = processor._current_job_name
 
         process_request_args["resources"] = {

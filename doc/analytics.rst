@@ -15,3 +15,8 @@ Analytics
     :members:
     :undoc-members:
     :show-inheritance:
+
+.. autoclass:: sagemaker.analytics.ExperimentAnalytics
+    :members:
+    :undoc-members:
+    :show-inheritance:

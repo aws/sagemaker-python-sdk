@@ -178,7 +178,15 @@ class AmazonAlgorithmEstimatorBase(EstimatorBase):
         self.feature_dim = feature_dim
         self.mini_batch_size = mini_batch_size
 
-    def fit(self, records, mini_batch_size=None, wait=True, logs=True, job_name=None):
+    def fit(
+        self,
+        records,
+        mini_batch_size=None,
+        wait=True,
+        logs=True,
+        job_name=None,
+        experiment_config=None,
+    ):
         """Fit this Estimator on serialized Record objects, stored in S3.
 
         ``records`` should be an instance of :class:`~RecordSet`. This
@@ -206,10 +214,16 @@ class AmazonAlgorithmEstimatorBase(EstimatorBase):
             job_name (str): Training job name. If not specified, the estimator
                 generates a default job name, based on the training image name
                 and current timestamp.
+            experiment_config (dict[str, str]): Experiment management configuration.
+                Dictionary contains three optional keys, 'ExperimentName',
+                'TrialName', and 'TrialComponentName'
+                (default: ``None``).
         """
         self._prepare_for_training(records, job_name=job_name, mini_batch_size=mini_batch_size)
 
-        self.latest_training_job = _TrainingJob.start_new(self, records)
+        self.latest_training_job = _TrainingJob.start_new(
+            self, records, experiment_config=experiment_config
+        )
         if wait:
             self.latest_training_job.wait(logs=logs)
 

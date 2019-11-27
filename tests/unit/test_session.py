@@ -139,6 +139,7 @@ def test_process(boto_session):
         },
         "role_arn": ROLE,
         "tags": [{"Name": "my-tag", "Value": "my-tag-value"}],
+        "experiment_config": {"ExperimentName": "AnExperiment"},
     }
     session.process(**process_request_args)
 
@@ -226,6 +227,7 @@ def test_process(boto_session):
         },
         "StoppingCondition": {"MaxRuntimeInSeconds": 3600},
         "Tags": [{"Name": "my-tag", "Value": "my-tag-value"}],
+        "ExperimentConfig": {"ExperimentName": "AnExperiment"},
     }
 
     session.sagemaker_client.create_processing_job.assert_called_with(**expected_request)
@@ -545,6 +547,11 @@ JOB_NAME = "jobname"
 TAGS = [{"Name": "some-tag", "Value": "value-for-tag"}]
 VPC_CONFIG = {"Subnets": ["foo"], "SecurityGroupIds": ["bar"]}
 METRIC_DEFINITONS = [{"Name": "validation-rmse", "Regex": "validation-rmse=(\\d+)"}]
+EXPERIMENT_CONFIG = {
+    "ExperimentName": "dummyExp",
+    "TrialName": "dummyT",
+    "TrialComponentDisplayName": "dummyTC",
+}
 
 DEFAULT_EXPECTED_TRAIN_JOB_ARGS = {
     "OutputDataConfig": {"S3OutputPath": S3_OUTPUT},
@@ -570,6 +577,7 @@ DEFAULT_EXPECTED_TRAIN_JOB_ARGS = {
     "TrainingJobName": JOB_NAME,
     "StoppingCondition": {"MaxRuntimeInSeconds": MAX_TIME},
     "VpcConfig": VPC_CONFIG,
+    "ExperimentConfig": EXPERIMENT_CONFIG,
 }
 
 COMPLETED_DESCRIBE_JOB_RESULT = dict(DEFAULT_EXPECTED_TRAIN_JOB_ARGS)
@@ -665,6 +673,7 @@ def test_train_pack_to_request(sagemaker_session):
         tags=None,
         vpc_config=VPC_CONFIG,
         metric_definitions=None,
+        experiment_config=EXPERIMENT_CONFIG,
         enable_sagemaker_metrics=None,
     )
 
@@ -1224,6 +1233,7 @@ def test_transform_pack_to_request(sagemaker_session):
         input_config=in_config,
         output_config=out_config,
         resource_config=resource_config,
+        experiment_config=None,
         tags=None,
         data_processing=data_processing,
     )
@@ -1248,6 +1258,7 @@ def test_transform_pack_to_request_with_optional_params(sagemaker_session):
         input_config={},
         output_config={},
         resource_config={},
+        experiment_config=EXPERIMENT_CONFIG,
         tags=TAGS,
         data_processing=None,
     )
@@ -1258,6 +1269,7 @@ def test_transform_pack_to_request_with_optional_params(sagemaker_session):
     assert actual_args["MaxPayloadInMB"] == max_payload
     assert actual_args["Environment"] == env
     assert actual_args["Tags"] == TAGS
+    assert actual_args["ExperimentConfig"] == EXPERIMENT_CONFIG
 
 
 @patch("sys.stdout", new_callable=io.BytesIO if six.PY2 else io.StringIO)

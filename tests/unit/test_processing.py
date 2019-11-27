@@ -106,6 +106,7 @@ def test_sklearn(sagemaker_session):
         "network_config": None,
         "role_arn": ROLE,
         "tags": None,
+        "experiment_config": None,
     }
     sagemaker_session.process.assert_called_with(**expected_args)
 
@@ -156,6 +157,7 @@ def test_sklearn_with_no_inputs(sagemaker_session):
         "network_config": None,
         "role_arn": ROLE,
         "tags": None,
+        "experiment_config": None,
     }
     sagemaker_session.process.assert_called_with(**expected_args)
 
@@ -213,6 +215,7 @@ def test_sklearn_with_all_customizations(sagemaker_session):
             wait=True,
             logs=False,
             job_name="my_job_name",
+            experiment_config={"ExperimentName": "AnExperiment"},
         )
 
     expected_args = {
@@ -291,6 +294,7 @@ def test_sklearn_with_all_customizations(sagemaker_session):
         },
         "role_arn": ROLE,
         "tags": [{"Key": "my-tag", "Value": "my-tag-value"}],
+        "experiment_config": {"ExperimentName": "AnExperiment"},
     }
     sagemaker_session.process.assert_called_with(**expected_args)
 
@@ -311,6 +315,7 @@ def test_byo_container_with_script_processor(sagemaker_session):
             inputs=[
                 ProcessingInput(source="/local/path/to/my/dataset/census.csv", destination="/data/")
             ],
+            experiment_config={"ExperimentName": "AnExperiment"},
         )
 
     expected_args = {
@@ -359,6 +364,7 @@ def test_byo_container_with_script_processor(sagemaker_session):
         "network_config": None,
         "role_arn": ROLE,
         "tags": None,
+        "experiment_config": {"ExperimentName": "AnExperiment"},
     }
     sagemaker_session.process.assert_called_with(**expected_args)
 
@@ -413,6 +419,7 @@ def test_byo_container_with_custom_script(sagemaker_session):
         "network_config": None,
         "role_arn": ROLE,
         "tags": None,
+        "experiment_config": None,
     }
     sagemaker_session.process.assert_called_with(**expected_args)
 
@@ -465,5 +472,6 @@ def test_byo_container_with_baked_in_script(sagemaker_session):
         "network_config": None,
         "role_arn": ROLE,
         "tags": None,
+        "experiment_config": None,
     }
     sagemaker_session.process.assert_called_with(**expected_args)
