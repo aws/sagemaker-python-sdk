@@ -384,7 +384,7 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):
         if self.debugger_hook_config is not None:
             self.collection_configs.update(self.debugger_hook_config.collection_configs or [])
 
-    def fit(self, inputs=None, wait=True, logs="All", job_name=None):
+    def fit(self, inputs=None, wait=True, logs="All", job_name=None, experiment_config=None):
         """Train a model using the input training dataset.
 
         The API calls the Amazon SageMaker CreateTrainingJob API to start
@@ -418,10 +418,14 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):
                 Only meaningful when wait is True.
             job_name (str): Training job name. If not specified, the estimator generates
                 a default job name, based on the training image name and current timestamp.
+            experiment_config (dict[str, str]): Experiment management configuration.
+                Dictionary contains three optional keys,
+                'ExperimentName', 'TrialName', and 'TrialComponentDisplayName'.
+
         """
         self._prepare_for_training(job_name=job_name)
 
-        self.latest_training_job = _TrainingJob.start_new(self, inputs)
+        self.latest_training_job = _TrainingJob.start_new(self, inputs, experiment_config)
         self.jobs.append(self.latest_training_job)
         if wait:
             self.latest_training_job.wait(logs=logs)
@@ -896,7 +900,7 @@ class _TrainingJob(_Job):
     """Placeholder docstring"""
 
     @classmethod
-    def start_new(cls, estimator, inputs):
+    def start_new(cls, estimator, inputs, experiment_config):
         """Create a new Amazon SageMaker training job from the estimator.
 
         Args:
@@ -904,6 +908,10 @@ class _TrainingJob(_Job):
                 created by the user.
             inputs (str): Parameters used when called
                 :meth:`~sagemaker.estimator.EstimatorBase.fit`.
+            experiment_config (dict[str, str]): Experiment management configuration used when called
+                :meth:`~sagemaker.estimator.EstimatorBase.fit`.  Dictionary contains
+                three optional keys, 'ExperimentName', 'TrialName', and 'TrialComponentDisplayName'.
+
 
         Returns:
             sagemaker.estimator._TrainingJob: Constructed object that captures
@@ -931,6 +939,7 @@ class _TrainingJob(_Job):
         train_args["hyperparameters"] = hyperparameters
         train_args["tags"] = estimator.tags
         train_args["metric_definitions"] = estimator.metric_definitions
+        train_args["experiment_config"] = experiment_config
 
         if isinstance(inputs, s3_input):
             if "InputMode" in inputs.config:

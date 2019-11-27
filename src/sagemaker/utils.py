@@ -27,9 +27,10 @@ import time
 
 from datetime import datetime
 from functools import wraps
-from six.moves.urllib import parse
 
 import six
+from six.moves.urllib import parse
+
 
 ECR_URI_PATTERN = r"^(\d+)(\.)dkr(\.)ecr(\.)(.+)(\.)(amazonaws.com|c2s.ic.gov)(/)(.*:.*)$"
 MAX_BUCKET_PATHS_COUNT = 5

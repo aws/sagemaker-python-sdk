@@ -58,6 +58,12 @@ ENDPOINT_CONFIG_DESC = {"ProductionVariants": [{"ModelName": "model-1"}, {"Model
 
 LIST_TAGS_RESULT = {"Tags": [{"Key": "TagtestKey", "Value": "TagtestValue"}]}
 
+EXPERIMENT_CONFIG = {
+    "ExperimentName": "exp",
+    "TrialName": "trial",
+    "TrialComponentDisplayName": "tc",
+}
+
 
 @pytest.fixture()
 def sagemaker_session():
@@ -146,6 +152,7 @@ def _create_train_job(
         "tags": None,
         "vpc_config": None,
         "metric_definitions": None,
+        "experiment_config": None,
         "debugger_hook_config": {
             "CollectionConfigurations": [],
             "S3OutputPath": "s3://{}/".format(BUCKET_NAME),
@@ -443,13 +450,14 @@ def test_tf(sagemaker_session, tf_version):
 
     inputs = "s3://mybucket/train"
 
-    tf.fit(inputs=inputs)
+    tf.fit(inputs=inputs, experiment_config=EXPERIMENT_CONFIG)
 
     call_names = [c[0] for c in sagemaker_session.method_calls]
     assert call_names == ["train", "logs_for_job"]
 
     expected_train_args = _create_train_job(tf_version)
     expected_train_args["input_config"][0]["DataSource"]["S3DataSource"]["S3Uri"] = inputs
+    expected_train_args["experiment_config"] = EXPERIMENT_CONFIG
 
     actual_train_args = sagemaker_session.method_calls[0][2]
     assert actual_train_args == expected_train_args

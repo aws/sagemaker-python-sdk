@@ -207,7 +207,7 @@ def test_framework_all_init_args(sagemaker_session):
         checkpoint_local_path="file://local/checkpoint",
         enable_sagemaker_metrics=True,
     )
-    _TrainingJob.start_new(f, "s3://mydata")
+    _TrainingJob.start_new(f, "s3://mydata", None)
     sagemaker_session.train.assert_called_once()
     _, args = sagemaker_session.train.call_args
     assert args == {
@@ -240,6 +240,7 @@ def test_framework_all_init_args(sagemaker_session):
         },
         "metric_definitions": [{"Name": "validation-rmse", "Regex": "validation-rmse=(\\d+)"}],
         "encrypt_inter_container_traffic": True,
+        "experiment_config": None,
         "checkpoint_s3_uri": "s3://bucket/checkpoint",
         "checkpoint_local_path": "file://local/checkpoint",
         "enable_sagemaker_metrics": True,
@@ -270,7 +271,7 @@ def test_framework_with_spot_and_checkpoints(sagemaker_session):
         checkpoint_s3_uri="s3://mybucket/checkpoints/",
         checkpoint_local_path="/tmp/checkpoints",
     )
-    _TrainingJob.start_new(f, "s3://mydata")
+    _TrainingJob.start_new(f, "s3://mydata", None)
     sagemaker_session.train.assert_called_once()
     _, args = sagemaker_session.train.call_args
     assert args == {
@@ -306,6 +307,7 @@ def test_framework_with_spot_and_checkpoints(sagemaker_session):
         "train_use_spot_instances": True,
         "checkpoint_s3_uri": "s3://mybucket/checkpoints/",
         "checkpoint_local_path": "/tmp/checkpoints",
+        "experiment_config": None,
     }
 
 
@@ -371,7 +373,7 @@ def test_sagemaker_model_default_channel_name(sagemaker_session):
         sagemaker_session=sagemaker_session,
         model_uri="s3://model-bucket/prefix/model.tar.gz",
     )
-    _TrainingJob.start_new(f, {})
+    _TrainingJob.start_new(f, {}, None)
     sagemaker_session.train.assert_called_once()
     _, args = sagemaker_session.train.call_args
     assert args["input_config"] == [
@@ -400,7 +402,7 @@ def test_sagemaker_model_custom_channel_name(sagemaker_session):
         model_uri="s3://model-bucket/prefix/model.tar.gz",
         model_channel_name="testModelChannel",
     )
-    _TrainingJob.start_new(f, {})
+    _TrainingJob.start_new(f, {}, None)
     sagemaker_session.train.assert_called_once()
     _, args = sagemaker_session.train.call_args
     assert args["input_config"] == [
@@ -1514,11 +1516,14 @@ def test_start_new(sagemaker_session):
         hyperparameters=hyperparameters,
     )
 
-    started_training_job = training_job.start_new(estimator, inputs)
+    exp_config = {"ExperimentName": "exp", "TrialName": "t", "TrialComponentDisplayName": "tc"}
+
+    started_training_job = training_job.start_new(estimator, inputs, experiment_config=exp_config)
     called_args = sagemaker_session.train.call_args
 
     assert started_training_job.sagemaker_session == sagemaker_session
     assert called_args[1]["hyperparameters"] == hyperparameters
+    assert called_args[1]["experiment_config"] == exp_config
     sagemaker_session.train.assert_called_once()
 
 
@@ -1535,7 +1540,7 @@ def test_start_new_not_local_mode_error(sagemaker_session):
         sagemaker_session=sagemaker_session,
     )
     with pytest.raises(ValueError) as error:
-        training_job.start_new(estimator, inputs)
+        training_job.start_new(estimator, inputs, None)
         assert "File URIs are supported in local mode only. Please use a S3 URI instead." == str(
             error
         )
@@ -1661,6 +1666,7 @@ NO_INPUT_TRAIN_CALL = {
     "tags": None,
     "vpc_config": None,
     "metric_definitions": None,
+    "experiment_config": None,
 }
 
 INPUT_CONFIG = [
@@ -1683,6 +1689,17 @@ HYPERPARAMS = {"x": 1, "y": "hello"}
 STRINGIFIED_HYPERPARAMS = dict([(x, str(y)) for x, y in HYPERPARAMS.items()])
 HP_TRAIN_CALL = dict(BASE_TRAIN_CALL)
 HP_TRAIN_CALL.update({"hyperparameters": STRINGIFIED_HYPERPARAMS})
+
+EXP_TRAIN_CALL = dict(BASE_TRAIN_CALL)
+EXP_TRAIN_CALL.update(
+    {
+        "experiment_config": {
+            "ExperimentName": "exp",
+            "TrialName": "trial",
+            "TrialComponentDisplayName": "tc",
+        }
+    }
+)
 
 
 def test_fit_deploy_keep_tags(sagemaker_session):
@@ -1799,6 +1816,36 @@ def test_generic_to_fit_with_hps(sagemaker_session):
     args.pop("role")
 
     assert args == HP_TRAIN_CALL
+
+
+def test_generic_to_fit_with_experiment_config(sagemaker_session):
+    e = Estimator(
+        IMAGE_NAME,
+        ROLE,
+        INSTANCE_COUNT,
+        INSTANCE_TYPE,
+        output_path=OUTPUT_PATH,
+        sagemaker_session=sagemaker_session,
+    )
+
+    e.fit(
+        inputs={"train": "s3://bucket/training-prefix"},
+        experiment_config={
+            "ExperimentName": "exp",
+            "TrialName": "trial",
+            "TrialComponentDisplayName": "tc",
+        },
+    )
+
+    sagemaker_session.train.assert_called_once()
+    assert len(sagemaker_session.train.call_args[0]) == 0
+    args = sagemaker_session.train.call_args[1]
+    assert args["job_name"].startswith(IMAGE_NAME)
+
+    args.pop("job_name")
+    args.pop("role")
+
+    assert args == EXP_TRAIN_CALL
 
 
 def test_generic_to_fit_with_encrypt_inter_container_traffic_flag(sagemaker_session):

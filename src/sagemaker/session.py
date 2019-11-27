@@ -367,6 +367,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
         train_use_spot_instances=False,
         checkpoint_s3_uri=None,
         checkpoint_local_path=None,
+        experiment_config=None,
         debugger_rule_configs=None,
         debugger_hook_config=None,
         tensorboard_output_config=None,
@@ -433,6 +434,9 @@ class Session(object):  # pylint: disable=too-many-public-methods
                 started. If the path is unset then SageMaker assumes the
                 checkpoints will be provided under `/opt/ml/checkpoints/`.
                 (default: ``None``).
+            experiment_config (dict): Experiment management configuration. Dictionary contains
+                three optional keys, 'ExperimentName', 'TrialName', and 'TrialComponentDisplayName'.
+                (default: ``None``)
             enable_sagemaker_metrics (bool): enable SageMaker Metrics Time
                 Series. For more information see:
                 https://docs.aws.amazon.com/sagemaker/latest/dg/API_AlgorithmSpecification.html#SageMaker-Type-AlgorithmSpecification-EnableSageMakerMetricsTimeSeries
@@ -486,6 +490,9 @@ class Session(object):  # pylint: disable=too-many-public-methods
         if vpc_config is not None:
             train_request["VpcConfig"] = vpc_config
 
+        if experiment_config and len(experiment_config) > 0:
+            train_request["ExperimentConfig"] = experiment_config
+
         if enable_network_isolation:
             train_request["EnableNetworkIsolation"] = enable_network_isolation
 
@@ -526,6 +533,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
         network_config,
         role_arn,
         tags,
+        experiment_config=None,
     ):
         """Create an Amazon SageMaker processing job.
 
@@ -554,7 +562,9 @@ class Session(object):  # pylint: disable=too-many-public-methods
                 Amazon SageMaker can assume to perform tasks on your behalf.
             tags ([dict[str,str]]): A list of dictionaries containing key-value
                 pairs.
-
+            experiment_config (dict): Experiment management configuration. Dictionary contains
+                three optional keys, 'ExperimentName', 'TrialName', and 'TrialComponentDisplayName'.
+                (default: ``None``)
         """
         process_request = {
             "ProcessingJobName": job_name,
@@ -580,6 +590,9 @@ class Session(object):  # pylint: disable=too-many-public-methods
 
         if tags is not None:
             process_request["Tags"] = tags
+
+        if experiment_config:
+            process_request["ExperimentConfig"] = experiment_config
 
         LOGGER.info("Creating processing-job with name %s", job_name)
         LOGGER.debug("process request: %s", json.dumps(process_request, indent=4))
@@ -1672,6 +1685,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
         input_config,
         output_config,
         resource_config,
+        experiment_config,
         tags,
         data_processing,
     ):
@@ -1691,6 +1705,9 @@ class Session(object):  # pylint: disable=too-many-public-methods
                 job.
             output_config (dict): A dictionary describing the output location for the job.
             resource_config (dict): A dictionary describing the resources to complete the job.
+            experiment_config (dict): A dictionary describing the experiment configuration for the
+                job. Dictionary contains three optional keys,
+                'ExperimentName', 'TrialName', and 'TrialComponentDisplayName'.
             tags (list[dict]): List of tags for labeling a transform job.
             data_processing(dict): A dictionary describing config for combining the input data and
                 transformed data. For more, see
@@ -1721,6 +1738,9 @@ class Session(object):  # pylint: disable=too-many-public-methods
 
         if data_processing is not None:
             transform_request["DataProcessing"] = data_processing
+
+        if experiment_config and len(experiment_config) > 0:
+            transform_request["ExperimentConfig"] = experiment_config
 
         LOGGER.info("Creating transform job with name: %s", job_name)
         LOGGER.debug("Transform request: %s", json.dumps(transform_request, indent=4))
