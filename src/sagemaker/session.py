@@ -215,7 +215,6 @@ class Session(object):  # pylint: disable=too-many-public-methods
         s3_object = s3.Object(bucket_name=bucket, key=key)
 
         if kms_key is not None:
-            print("kms_key: " + kms_key)
             s3_object.put(Body=body, SSEKMSKeyId=kms_key, ServerSideEncryption="aws:kms")
         else:
             s3_object.put(Body=body)
@@ -276,24 +275,21 @@ class Session(object):  # pylint: disable=too-many-public-methods
                 bucket=bucket, key=key, filename=destination_path, extra_args=extra_args
             )
 
-    def read_s3_file(self, bucket, key_prefix, kms_key=None):
+    def read_s3_file(self, bucket, key_prefix):
         """Read a single file from S3.
 
         Args:
             bucket (str): Name of the S3 Bucket to download from.
             key_prefix (str): S3 object key name prefix.
-            kms_key (str): The KMS key to use for decrypting the file.
 
         Returns:
+            str: The body of the s3 file as a string.
 
         """
         s3 = self.boto_session.client("s3")
 
         # Explicitly passing a None kms_key to boto3 throws a validation error.
-        if kms_key:
-            s3_object = s3.get_object(Bucket=bucket, Key=key_prefix)
-        else:
-            s3_object = s3.get_object(Bucket=bucket, Key=key_prefix)
+        s3_object = s3.get_object(Bucket=bucket, Key=key_prefix)
 
         return s3_object["Body"].read()
 
@@ -663,7 +659,6 @@ class Session(object):  # pylint: disable=too-many-public-methods
         monitoring_schedule_request = {
             "MonitoringScheduleName": monitoring_schedule_name,
             "MonitoringScheduleConfig": {
-                "ScheduleConfig": {"ScheduleExpression": schedule_expression},
                 "MonitoringJobDefinition": {
                     "MonitoringInputs": monitoring_inputs,
                     "MonitoringResources": {
@@ -675,9 +670,14 @@ class Session(object):  # pylint: disable=too-many-public-methods
                     },
                     "MonitoringAppSpecification": {"ImageUri": image_uri},
                     "RoleArn": role_arn,
-                },
+                }
             },
         }
+
+        if schedule_expression is not None:
+            monitoring_schedule_request["MonitoringScheduleConfig"]["ScheduleConfig"] = {
+                "ScheduleExpression": schedule_expression
+            }
 
         if monitoring_output_config is not None:
             monitoring_schedule_request["MonitoringScheduleConfig"]["MonitoringJobDefinition"][
@@ -813,10 +813,18 @@ class Session(object):  # pylint: disable=too-many-public-methods
             MonitoringScheduleName=monitoring_schedule_name
         )
 
-        request_schedule_expression = (
-            schedule_expression
-            or existing_desc["MonitoringScheduleConfig"]["ScheduleConfig"]["ScheduleExpression"]
-        )
+        existing_schedule_config = None
+        if (
+            existing_desc.get("MonitoringScheduleConfig") is not None
+            and existing_desc["MonitoringScheduleConfig"].get("ScheduleConfig") is not None
+            and existing_desc["MonitoringScheduleConfig"]["ScheduleConfig"]["ScheduleExpression"]
+            is not None
+        ):
+            existing_schedule_config = existing_desc["MonitoringScheduleConfig"]["ScheduleConfig"][
+                "ScheduleExpression"
+            ]
+
+        request_schedule_expression = schedule_expression or existing_schedule_config
         request_monitoring_inputs = (
             monitoring_inputs
             or existing_desc["MonitoringScheduleConfig"]["MonitoringJobDefinition"][
@@ -855,7 +863,6 @@ class Session(object):  # pylint: disable=too-many-public-methods
         monitoring_schedule_request = {
             "MonitoringScheduleName": monitoring_schedule_name,
             "MonitoringScheduleConfig": {
-                "ScheduleConfig": {"ScheduleExpression": request_schedule_expression},
                 "MonitoringJobDefinition": {
                     "MonitoringInputs": request_monitoring_inputs,
                     "MonitoringResources": {
@@ -867,9 +874,14 @@ class Session(object):  # pylint: disable=too-many-public-methods
                     },
                     "MonitoringAppSpecification": {"ImageUri": request_image_uri},
                     "RoleArn": request_role_arn,
-                },
+                }
             },
         }
+
+        if existing_schedule_config is not None:
+            monitoring_schedule_request["MonitoringScheduleConfig"]["ScheduleConfig"] = {
+                "ScheduleExpression": request_schedule_expression
+            }
 
         existing_monitoring_output_config = existing_desc["MonitoringScheduleConfig"][
             "MonitoringJobDefinition"
@@ -1092,7 +1104,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
             dict: Dictionary of monitoring schedule executions.
         """
         response = self.sagemaker_client.list_monitoring_executions(
-            MonitoringScheduleName=monitoring_schedule_name.lower(),
+            MonitoringScheduleName=monitoring_schedule_name,
             SortBy=sort_by,
             SortOrder=sort_order,
             MaxResults=max_results,
@@ -2415,8 +2427,8 @@ class Session(object):  # pylint: disable=too-many-public-methods
             accelerator_type (str): Type of Elastic Inference accelerator to attach to the
                 instance. For example, 'ml.eia1.medium'.
                 For more information: https://docs.aws.amazon.com/sagemaker/latest/dg/ei.html
-            data_capture_config (DataCaptureConfig): Specifies configuration
-                related to Endpoint data capture for use with
+            data_capture_config (sagemaker.model_monitor.DataCaptureConfig): Specifies
+                configuration related to Endpoint data capture for use with
                 Amazon SageMaker Model Monitoring. Default: None.
 
         Returns:
@@ -2485,8 +2497,8 @@ class Session(object):  # pylint: disable=too-many-public-methods
             accelerator_type (str): Type of Elastic Inference accelerator to attach to the instance.
                 For example, 'ml.eia1.medium'.
                 For more information: https://docs.aws.amazon.com/sagemaker/latest/dg/ei.html
-            data_capture_config (DataCaptureConfig): Specifies configuration
-                related to Endpoint data capture for use with
+            data_capture_config (sagemaker.model_monitor.DataCaptureConfig): Specifies
+                configuration related to Endpoint data capture for use with
                 Amazon SageMaker Model Monitoring. Default: None.
 
         Returns:
@@ -2514,9 +2526,9 @@ class Session(object):  # pylint: disable=too-many-public-methods
                 name=name, role=role, container_defs=primary_container, vpc_config=model_vpc_config
             )
 
-        data_capture_config_dict = (
-            data_capture_config.to_request_dict() if data_capture_config else None
-        )
+        data_capture_config_dict = None
+        if data_capture_config is not None:
+            data_capture_config_dict = data_capture_config.to_request_dict()
 
         if not _deployment_entity_exists(
             lambda: self.sagemaker_client.describe_endpoint_config(EndpointConfigName=name)

@@ -117,12 +117,11 @@ class S3Downloader(object):
         )
 
     @staticmethod
-    def read_file(s3_uri, kms_key=None, session=None):
+    def read_file(s3_uri, session=None):
         """Static method that returns the contents of an s3 uri file body as a string.
 
         Args:
             s3_uri (str): An S3 uri that refers to a single file.
-            kms_key (str): A KMS key to be provided as an extra argument.
             session (sagemaker.session.Session): AWS session to use. Automatically
                 generates one if not provided.
 
@@ -133,4 +132,4 @@ class S3Downloader(object):
         sagemaker_session = session or Session()
         bucket, key_prefix = parse_s3_url(url=s3_uri)
 
-        return sagemaker_session.read_s3_file(bucket=bucket, key_prefix=key_prefix, kms_key=kms_key)
+        return sagemaker_session.read_s3_file(bucket=bucket, key_prefix=key_prefix)

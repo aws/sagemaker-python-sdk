@@ -49,7 +49,7 @@ class DataCaptureConfig(object):
             sampling_percentage (int): Optional. Default=20. The percentage of data to sample.
                 Must be between 0 and 100.
             destination_s3_uri (str): Optional. Defaults to "s3://<default-session-bucket>/
-                <model-monitor>/data-capture
+                model-monitor/data-capture".
             kms_key_id (str): Optional. Default=None. The kms key to use when writing to S3.
             capture_options ([str]): Optional. Must be a list containing any combination of the
                 following values: "REQUEST", "RESPONSE". Default=["REQUEST", "RESPONSE"]. Denotes
@@ -78,8 +78,9 @@ class DataCaptureConfig(object):
             "InitialSamplingPercentage": self.sampling_percentage,
             "DestinationS3Uri": self.destination_s3_uri,
             "CaptureOptions": [
-                {"CaptureMode": dict(self.API_MAPPING).get(capture_option.upper(), capture_option)}
-                for capture_option in list(self.capture_options)
+                #  Convert to API values or pass value directly through if unable to convert.
+                {"CaptureMode": self.API_MAPPING.get(capture_option.upper(), capture_option)}
+                for capture_option in self.capture_options
             ],
         }
 

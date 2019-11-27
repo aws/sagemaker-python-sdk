@@ -10,12 +10,13 @@
 # distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
-"""This module contains code related to Amazon SageMaker Monitoring Schedules. These
-classes assist with suggesting baselines and creating monitoring schedules for data captured
+"""This module contains code related to Amazon SageMaker Model Monitoring. These classes
+assist with suggesting baselines and creating monitoring schedules for data captured
 by SageMaker Endpoints.
 """
 from __future__ import print_function, absolute_import
 
+import copy
 import json
 import os
 import logging
@@ -35,10 +36,10 @@ from sagemaker.processing import Processor
 from sagemaker.processing import ProcessingJob
 from sagemaker.processing import ProcessingInput
 from sagemaker.processing import ProcessingOutput
-from sagemaker.model_monitor.cron_expression_generator import CronExpressionGenerator
 from sagemaker.model_monitor.monitoring_files import Constraints, ConstraintViolations
 from sagemaker.model_monitor.monitoring_files import Statistics
 from sagemaker.exceptions import UnexpectedStatusException
+from sagemaker.utils import retries
 
 _DEFAULT_MONITOR_IMAGE_URI_WITH_PLACEHOLDERS = (
     "{}.dkr.ecr.{}.amazonaws.com/sagemaker-model-monitor-analyzer"
@@ -58,8 +59,7 @@ _DEFAULT_MONITOR_IMAGE_REGION_ACCOUNT_MAPPING = {
     "ap-northeast-2": "709848358524",
     "eu-west-2": "749857270468",
     "ap-northeast-1": "574779866223",
-    "us-west-2": "159807026194",  # Prod
-    # "us-west-2": "894667893881",  # Gamma. # TODO-reinvent-2019 [knakad]: Remove this.
+    "us-west-2": "159807026194",
     "us-west-1": "890145073186",
     "ap-southeast-1": "245545462676",
     "ap-southeast-2": "563025443158",
@@ -86,7 +86,6 @@ _INPUT_S3_PATH = "input"
 
 _SUGGESTION_JOB_BASE_NAME = "baseline-suggestion-job"
 _MONITORING_SCHEDULE_BASE_NAME = "monitoring-schedule"
-_SCHEDULE_NAME_SUFFIX = "monitoring-schedule"
 
 _DATASET_SOURCE_PATH_ENV_NAME = "dataset_source"
 _DATASET_FORMAT_ENV_NAME = "dataset_format"
@@ -96,7 +95,6 @@ _POST_ANALYTICS_PROCESSOR_SCRIPT_ENV_NAME = "post_analytics_processor_script"
 _PUBLISH_CLOUDWATCH_METRICS_ENV_NAME = "publish_cloudwatch_metrics"
 
 _LOGGER = logging.getLogger(__name__)
-# TODO-reinvent-2019 [knakad]: Review all docstrings.
 
 
 class ModelMonitor(object):
@@ -239,8 +237,8 @@ class ModelMonitor(object):
         output,
         statistics=None,
         constraints=None,
-        monitor_schedule_name=None,  # TODO-reinvent-2019 [knakad]: Change to mon_sched_name evwhere
-        schedule_cron_expression=CronExpressionGenerator.hourly(),
+        monitor_schedule_name=None,
+        schedule_cron_expression=None,
     ):
         """Creates a monitoring schedule to monitor an Amazon SageMaker Endpoint.
 
@@ -266,9 +264,18 @@ class ModelMonitor(object):
                 a default job name, based on the image name and current timestamp.
             schedule_cron_expression (str): The cron expression that dictates the frequency that
                 this job runs at. See sagemaker.model_monitor.CronExpressionGenerator for valid
-                expressions.
+                expressions. Default: Daily.
 
         """
+        if self.monitoring_schedule_name is not None:
+            message = (
+                "It seems that this object was already used to create an Amazon Model "
+                "Monitoring Schedule. To create another, first delete the existing one "
+                "using my_monitor.delete_monitoring_schedule()."
+            )
+            print(message)
+            raise ValueError(message)
+
         self.monitoring_schedule_name = self._generate_monitoring_schedule_name(
             schedule_name=monitor_schedule_name
         )
@@ -474,11 +481,15 @@ class ModelMonitor(object):
             role_arn=role,
         )
 
+        self._wait_for_schedule_changes_to_apply()
+
     def start_monitoring_schedule(self):
         """Starts the monitoring schedule."""
         self.sagemaker_session.start_monitoring_schedule(
             monitoring_schedule_name=self.monitoring_schedule_name
         )
+
+        self._wait_for_schedule_changes_to_apply()
 
     def stop_monitoring_schedule(self):
         """Stops the monitoring schedule."""
@@ -486,11 +497,14 @@ class ModelMonitor(object):
             monitoring_schedule_name=self.monitoring_schedule_name
         )
 
+        self._wait_for_schedule_changes_to_apply()
+
     def delete_monitoring_schedule(self):
         """Deletes the monitoring schedule."""
         self.sagemaker_session.delete_monitoring_schedule(
             monitoring_schedule_name=self.monitoring_schedule_name
         )
+        self.monitoring_schedule_name = None
 
     def baseline_statistics(self, file_name=STATISTICS_JSON_DEFAULT_FILE_NAME):
         """Returns a Statistics object representing the statistics json file generated by the
@@ -665,7 +679,7 @@ class ModelMonitor(object):
         ]["ClusterConfig"]["InstanceType"]
         entrypoint = schedule_desc["MonitoringScheduleConfig"]["MonitoringJobDefinition"][
             "MonitoringAppSpecification"
-        ]["ContainerEntrypoint"]
+        ].get("ContainerEntrypoint")
         volume_size_in_gb = schedule_desc["MonitoringScheduleConfig"]["MonitoringJobDefinition"][
             "MonitoringResources"
         ]["ClusterConfig"]["VolumeSizeInGB"]
@@ -744,7 +758,7 @@ class ModelMonitor(object):
             return job_name
 
         if self.base_job_name:
-            base_name = "{}-{}".format(self.base_job_name, _SCHEDULE_NAME_SUFFIX)
+            base_name = self.base_job_name
         else:
             base_name = _SUGGESTION_JOB_BASE_NAME
 
@@ -932,6 +946,20 @@ class ModelMonitor(object):
             path = os.path.join(s3_uri, os.path.basename(path))
         return path
 
+    def _wait_for_schedule_changes_to_apply(self):
+        """Waits for the schedule associated with this monitor to no longer be in the 'Pending'
+        state.
+
+        """
+        for _ in retries(
+            max_retry_count=36,  # 36*5 = 3min
+            exception_message_prefix="Waiting for schedule to leave 'Pending' status",
+            seconds_to_sleep=5,
+        ):
+            schedule_desc = self.describe_schedule()
+            if schedule_desc["MonitoringScheduleStatus"] != "Pending":
+                break
+
 
 class DefaultModelMonitor(ModelMonitor):
     """Sets up Amazon SageMaker Monitoring Schedules and baseline suggestions. Use this class when
@@ -1088,7 +1116,6 @@ class DefaultModelMonitor(ModelMonitor):
             dataset_format=dataset_format,
             output_path=normalized_baseline_output.source,
             enable_cloudwatch_metrics=False,  # Only supported for monitoring schedules
-            # TODO-reinvent-2019 [knakad]: Remove this once API stops failing if not provided.
             dataset_source_container_path=baseline_dataset_container_path,
             record_preprocessor_script_container_path=record_preprocessor_script_container_path,
             post_processor_script_container_path=post_processor_script_container_path,
@@ -1147,8 +1174,7 @@ class DefaultModelMonitor(ModelMonitor):
         constraints=None,
         statistics=None,
         monitor_schedule_name=None,
-        schedule_cron_expression=CronExpressionGenerator.hourly(),
-        # TODO-reinvent-2019 [knakad]: Service to default this to daily at a random hour
+        schedule_cron_expression=None,
         enable_cloudwatch_metrics=True,
     ):
         """Creates a monitoring schedule to monitor an Amazon SageMaker Endpoint.
@@ -1179,11 +1205,20 @@ class DefaultModelMonitor(ModelMonitor):
                 a default job name, based on the image name and current timestamp.
             schedule_cron_expression (str): The cron expression that dictates the frequency that
                 this job run. See sagemaker.model_monitor.CronExpressionGenerator for valid
-                expressions.
+                expressions. Default: Daily.
             enable_cloudwatch_metrics (bool): Whether to publish cloudwatch metrics as part of
                 the baselining or monitoring jobs.
 
         """
+        if self.monitoring_schedule_name is not None:
+            message = (
+                "It seems that this object was already used to create an Amazon Model "
+                "Monitoring Schedule. To create another, first delete the existing one "
+                "using my_monitor.delete_monitoring_schedule()."
+            )
+            print(message)
+            raise ValueError(message)
+
         self.monitoring_schedule_name = self._generate_monitoring_schedule_name(
             schedule_name=monitor_schedule_name
         )
@@ -1354,12 +1389,7 @@ class DefaultModelMonitor(ModelMonitor):
             self.env = env
 
         normalized_env = self._generate_env_map(
-            env=env,
-            # dataset_format=DatasetFormat.sagemaker_capture_json(),
-            output_path=output_path,
-            enable_cloudwatch_metrics=enable_cloudwatch_metrics,
-            # record_preprocessor_script_input=record_preprocessor_script_input,
-            # post_analytics_processor_script_input=post_analytics_processor_script_input,
+            env=env, output_path=output_path, enable_cloudwatch_metrics=enable_cloudwatch_metrics
         )
 
         statistics_object, constraints_object = self._get_baseline_files(
@@ -1421,6 +1451,8 @@ class DefaultModelMonitor(ModelMonitor):
             network_config=network_config_dict,
             role_arn=role,
         )
+
+        self._wait_for_schedule_changes_to_apply()
 
     def run_baseline(self):
         """'.run_baseline()' is only allowed for ModelMonitor objects. Please use suggest_baseline
@@ -1569,8 +1601,8 @@ class DefaultModelMonitor(ModelMonitor):
         except ClientError:
             status = latest_monitoring_execution.describe()["ProcessingJobStatus"]
             print(
-                "Unable to retrieve statistics as job is in status '{}'. Latest violations only "
-                "available for completed executions.".format(status)
+                "Unable to retrieve constraint violations as job is in status '{}'. Latest "
+                "violations only available for completed executions.".format(status)
             )
 
     def _normalize_baseline_output(self, output_s3_uri=None):
@@ -1649,7 +1681,7 @@ class DefaultModelMonitor(ModelMonitor):
         cloudwatch_env_map = {True: "Enabled", False: "Disabled"}
 
         if env is not None:
-            env = env.copy()
+            env = copy.deepcopy(env)
         env = env or {}
 
         if output_path is not None:
@@ -1671,12 +1703,6 @@ class DefaultModelMonitor(ModelMonitor):
 
         if dataset_source_container_path is not None:
             env[_DATASET_SOURCE_PATH_ENV_NAME] = dataset_source_container_path
-
-        # if dataset_source_input is not None:
-        #     dataset_source_input_container_path = os.path.join(
-        #         dataset_source_input.destination, os.path.basename(dataset_source_input.source)
-        #     )
-        #     env[_DATASET_SOURCE_PATH_ENV_NAME] = dataset_source_input_container_path
 
         return env
 
@@ -1808,7 +1834,7 @@ class BaseliningJob(ProcessingJob):
                         actual_status=status,
                     )
             else:
-                raise
+                raise client_error
 
     def suggested_constraints(self, file_name=CONSTRAINTS_JSON_DEFAULT_FILE_NAME, kms_key=None):
         """Returns a sagemaker.model_monitor.Constraints object representing the constraints
@@ -1845,7 +1871,7 @@ class BaseliningJob(ProcessingJob):
                         actual_status=status,
                     )
             else:
-                raise
+                raise client_error
 
 
 class MonitoringExecution(ProcessingJob):
@@ -1956,7 +1982,7 @@ class MonitoringExecution(ProcessingJob):
                         actual_status=status,
                     )
             else:
-                raise
+                raise client_error
 
     def constraint_violations(
         self, file_name=CONSTRAINT_VIOLATIONS_JSON_DEFAULT_FILE_NAME, kms_key=None
@@ -1997,7 +2023,7 @@ class MonitoringExecution(ProcessingJob):
                         actual_status=status,
                     )
             else:
-                raise
+                raise client_error
 
 
 class EndpointInput(object):

@@ -37,6 +37,7 @@ MAX_BUCKET_PATHS_COUNT = 5
 S3_PREFIX = "s3://"
 HTTP_PREFIX = "http://"
 HTTPS_PREFIX = "https://"
+DEFAULT_SLEEP_TIME_SECONDS = 10
 
 
 # Use the base name of the image as the job name if the user doesn't give us one
@@ -618,6 +619,26 @@ def sts_regional_endpoint(region):
     """
     domain = _domain_for_region(region)
     return "https://sts.{}.{}".format(region, domain)
+
+
+def retries(max_retry_count, exception_message_prefix, seconds_to_sleep=DEFAULT_SLEEP_TIME_SECONDS):
+    """Retries until max retry count is reached.
+
+    Args:
+        max_retry_count (int): The retry count.
+        exception_message_prefix (str): The message to include in the exception on failure.
+        seconds_to_sleep (int): The number of seconds to sleep between executions.
+
+    """
+    for i in range(max_retry_count):
+        yield i
+        time.sleep(seconds_to_sleep)
+
+    raise Exception(
+        "'{}' has reached the maximum retry count of {}".format(
+            exception_message_prefix, max_retry_count
+        )
+    )
 
 
 def _domain_for_region(region):

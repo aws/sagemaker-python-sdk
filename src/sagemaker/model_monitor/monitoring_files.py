@@ -20,8 +20,6 @@ import json
 import os
 import uuid
 
-import pandas as pd
-
 from sagemaker.session import Session
 from sagemaker.s3 import S3Downloader
 from sagemaker.s3 import S3Uploader
@@ -57,6 +55,11 @@ class ModelMonitoringFile(object):
         The S3 path can be overridden by providing one. This also overrides the
         default save location for this object.
 
+        Args:
+            new_save_location_s3_uri (str): Optional. The S3 path to save the file to. If not
+                provided, the file is saved in place in S3. If provided, the file's S3 path is
+                permanently updated.
+
         Returns:
             str: The s3 location to which the file was saved.
 
@@ -66,27 +69,6 @@ class ModelMonitoringFile(object):
 
         return S3Uploader.upload_string_as_file_body(
             body=json.dumps(self.body_dict), desired_s3_uri=self.file_s3_uri, kms_key=self.kms_key
-        )
-
-    @staticmethod
-    def _upload_file_string(file_body, desired_s3_full_path, kms_key, sagemaker_session):
-        """Uploads file to s3
-
-        Args:
-            file_body (str): The body of the file to upload.
-            desired_s3_full_path (str): The desired S3 destination uri.
-            kms_key (str): The kms key to be used to encrypt the file in S3.
-            sagemaker_session (sagemaker.session.Session): A SageMaker Session
-                object, used for SageMaker interactions (default: None). If not
-                specified, one is created using the default AWS configuration
-                chain.
-
-        """
-        return S3Uploader.upload_string_as_file_body(
-            body=file_body,
-            desired_s3_uri=desired_s3_full_path,
-            kms_key=kms_key,
-            session=sagemaker_session,
         )
 
 
@@ -116,10 +98,10 @@ class Statistics(ModelMonitoringFile):
 
     @classmethod
     def from_s3_uri(cls, statistics_file_s3_uri, kms_key=None, sagemaker_session=None):
-        """Generates a Constraints object from an s3 uri.
+        """Generates a Statistics object from an s3 uri.
 
         Args:
-            statistics_file_s3_uri (str): The uri of the constraints JSON file.
+            statistics_file_s3_uri (str): The uri of the statistics JSON file.
             kms_key (str): The kms key to be used to decrypt the file in S3.
             sagemaker_session (sagemaker.session.Session): A SageMaker Session
                 object, used for SageMaker interactions (default: None). If not
@@ -127,22 +109,20 @@ class Statistics(ModelMonitoringFile):
                 chain.
 
         Returns:
-            sagemaker.model_monitor.Constraints: The instance of Constraints generated from
+            sagemaker.model_monitor.Statistics: The instance of Statistics generated from
                 the s3 uri.
 
         """
         try:
             body_dict = json.loads(
-                S3Downloader.read_file(
-                    s3_uri=statistics_file_s3_uri, kms_key=kms_key, session=sagemaker_session
-                )
+                S3Downloader.read_file(s3_uri=statistics_file_s3_uri, session=sagemaker_session)
             )
         except ClientError as error:
             print(
                 "\nCould not retrieve statistics file at location '{}'. "
                 "To manually retrieve Statistics object from a given uri, "
                 "use 'my_model_monitor.statistics(my_s3_uri)' or "
-                "'Statistics.from_s3_uri(my_s3_uri)' or ".format(statistics_file_s3_uri)
+                "'Statistics.from_s3_uri(my_s3_uri)'".format(statistics_file_s3_uri)
             )
             raise error
 
@@ -154,7 +134,7 @@ class Statistics(ModelMonitoringFile):
     def from_string(
         cls, statistics_file_string, kms_key=None, file_name=None, sagemaker_session=None
     ):
-        """Generates a Constraints object from an s3 uri.
+        """Generates a Statistics object from an s3 uri.
 
         Args:
             statistics_file_string (str): The uri of the statistics JSON file.
@@ -166,7 +146,7 @@ class Statistics(ModelMonitoringFile):
                 chain.
 
         Returns:
-            sagemaker.model_monitor.Constraints: The instance of Constraints generated from
+            sagemaker.model_monitor.Statistics: The instance of Statistics generated from
                 the s3 uri.
 
         """
@@ -199,6 +179,8 @@ class Statistics(ModelMonitoringFile):
                 chain.
 
         Returns:
+            sagemaker.model_monitor.Statistics: The instance of Statistics generated from
+                the local file path.
 
         """
         file_name = os.path.basename(statistics_file_path)
@@ -212,11 +194,6 @@ class Statistics(ModelMonitoringFile):
             kms_key=kms_key,
             sagemaker_session=sagemaker_session,
         )
-
-    def show(self):
-        """Display the feature statistics."""
-        schema_df = pd.io.json.json_normalize(self.body_dict["features"])
-        schema_df.head()
 
 
 class Constraints(ModelMonitoringFile):
@@ -262,14 +239,14 @@ class Constraints(ModelMonitoringFile):
         """
         try:
             body_dict = json.loads(
-                S3Downloader.read_file(constraints_file_s3_uri, kms_key, sagemaker_session)
+                S3Downloader.read_file(s3_uri=constraints_file_s3_uri, session=sagemaker_session)
             )
         except ClientError as error:
             print(
                 "\nCould not retrieve constraints file at location '{}'. "
                 "To manually retrieve Constraints object from a given uri, "
                 "use 'my_model_monitor.constraints(my_s3_uri)' or "
-                "'Constraints.from_s3_uri(my_s3_uri)' or ".format(constraints_file_s3_uri)
+                "'Constraints.from_s3_uri(my_s3_uri)'".format(constraints_file_s3_uri)
             )
             raise error
 
@@ -326,6 +303,8 @@ class Constraints(ModelMonitoringFile):
                 chain.
 
         Returns:
+            sagemaker.model_monitor.Constraints: The instance of Constraints generated from
+                the local file path.
 
         """
         file_name = os.path.basename(constraints_file_path)
@@ -363,22 +342,19 @@ class Constraints(ModelMonitoringFile):
                         string_constraints["monitoring_config_overrides"] = {}
                     string_constraints["monitoring_config_overrides"]["evaluate_constraints"] = flag
 
-    def show(self):
-        """Display the feature constraints."""
-        schema_df = pd.io.json.json_normalize(self.body_dict["features"])
-        schema_df.head()
-
 
 class ConstraintViolations(ModelMonitoringFile):
-    """Represents the constraints JSON file used in Amazon SageMaker Model Monitoring.
+    """Represents the constraint violations JSON file used in Amazon SageMaker Model Monitoring.
     """
 
-    def __init__(self, body_dict, constraints_file_s3_uri, kms_key=None, sagemaker_session=None):
+    def __init__(
+        self, body_dict, constraint_violations_file_s3_uri, kms_key=None, sagemaker_session=None
+    ):
         """Initializes the ConstraintViolations object used in Amazon SageMaker Model Monitoring.
 
         Args:
             body_dict (str): The body of the constraint violations JSON file.
-            constraints_file_s3_uri (str): The uri of the constraint violations JSON file.
+            constraint_violations_file_s3_uri (str): The uri of the constraint violations JSON file.
             kms_key (str): The kms key to be used to decrypt the file in S3.
             sagemaker_session (sagemaker.session.Session): A SageMaker Session
                 object, used for SageMaker interactions (default: None). If not
@@ -388,7 +364,7 @@ class ConstraintViolations(ModelMonitoringFile):
         """
         super(ConstraintViolations, self).__init__(
             body_dict=body_dict,
-            file_s3_uri=constraints_file_s3_uri,
+            file_s3_uri=constraint_violations_file_s3_uri,
             kms_key=kms_key,
             sagemaker_session=sagemaker_session,
         )
@@ -413,9 +389,7 @@ class ConstraintViolations(ModelMonitoringFile):
         try:
             body_dict = json.loads(
                 S3Downloader.read_file(
-                    s3_uri=constraint_violations_file_s3_uri,
-                    kms_key=kms_key,
-                    session=sagemaker_session,
+                    s3_uri=constraint_violations_file_s3_uri, session=sagemaker_session
                 )
             )
         except ClientError as error:
@@ -423,7 +397,7 @@ class ConstraintViolations(ModelMonitoringFile):
                 "\nCould not retrieve constraints file at location '{}'. "
                 "To manually retrieve ConstraintViolations object from a given uri, "
                 "use 'my_model_monitor.constraints(my_s3_uri)' or "
-                "'ConstraintViolations.from_s3_uri(my_s3_uri)' or ".format(
+                "'ConstraintViolations.from_s3_uri(my_s3_uri)'".format(
                     constraint_violations_file_s3_uri
                 )
             )
@@ -431,7 +405,7 @@ class ConstraintViolations(ModelMonitoringFile):
 
         return cls(
             body_dict=body_dict,
-            constraints_file_s3_uri=constraint_violations_file_s3_uri,
+            constraint_violations_file_s3_uri=constraint_violations_file_s3_uri,
             kms_key=kms_key,
         )
 
@@ -486,6 +460,8 @@ class ConstraintViolations(ModelMonitoringFile):
                 chain.
 
         Returns:
+            sagemaker.model_monitor.ConstraintViolations: The instance of ConstraintViolations
+                generated from the local file path.
 
         """
         file_name = os.path.basename(constraint_violations_file_path)
@@ -499,8 +475,3 @@ class ConstraintViolations(ModelMonitoringFile):
             kms_key=kms_key,
             sagemaker_session=sagemaker_session,
         )
-
-    def show(self):
-        """Display the constraint violations."""
-        schema_df = pd.io.json.json_normalize(self.body_dict["violations"])
-        schema_df.head()

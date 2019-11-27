@@ -24,8 +24,6 @@ from sagemaker.model_monitor import Statistics, Constraints, ConstraintViolation
 from sagemaker.s3 import S3Uploader
 from tests.integ.kms_utils import get_or_create_kms_key
 
-from tests.unit.output_capturer import captured_output
-
 ROLE = "arn:aws:iam::142577830533:role/SageMakerRole"
 
 
@@ -146,18 +144,6 @@ def test_statistics_object_creation_from_s3_uri_without_customizations(sagemaker
     assert statistics.file_s3_uri.endswith("statistics.json")
 
     assert statistics.body_dict["dataset"]["item_count"] == 418
-
-
-def test_statistics_show_prints_output_and_does_not_throw_exception():
-    statistics = Statistics.from_file_path(
-        statistics_file_path=os.path.join(tests.integ.DATA_DIR, "monitor/statistics.json")
-    )
-
-    with captured_output() as (out, err):
-        statistics.show()
-
-    output = out.getvalue().strip()
-    assert output is not None
 
 
 def test_constraints_object_creation_from_file_path_with_customizations(
@@ -302,18 +288,6 @@ def test_constraints_object_creation_from_s3_uri_without_customizations(sagemake
     assert constraints.body_dict["monitoring_config"]["evaluate_constraints"] == "Enabled"
 
 
-def test_constraints_show_prints_output_and_does_not_throw_exception():
-    constraints = Constraints.from_file_path(
-        constraints_file_path=os.path.join(tests.integ.DATA_DIR, "monitor/constraints.json")
-    )
-
-    with captured_output() as (out, err):
-        constraints.show()
-
-    output = out.getvalue().strip()
-    assert output is not None
-
-
 def test_constraint_violations_object_creation_from_file_path_with_customizations(
     sagemaker_session, monitoring_files_kms_key
 ):
@@ -436,17 +410,3 @@ def test_constraint_violations_object_creation_from_s3_uri_without_customization
     assert constraint_violations.file_s3_uri.endswith("constraint_violations.json")
 
     assert constraint_violations.body_dict["violations"][0]["feature_name"] == "store_and_fwd_flag"
-
-
-def test_constraint_violations_show_prints_output_and_does_not_throw_exception():
-    constraint_violations = ConstraintViolations.from_file_path(
-        constraint_violations_file_path=os.path.join(
-            tests.integ.DATA_DIR, "monitor/constraint_violations.json"
-        )
-    )
-
-    with captured_output() as (out, err):
-        constraint_violations.show()
-
-    output = out.getvalue().strip()
-    assert output is not None

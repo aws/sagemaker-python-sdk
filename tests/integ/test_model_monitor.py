@@ -14,7 +14,6 @@ from __future__ import absolute_import
 
 import json
 import os
-import logging
 
 import pytest
 import uuid
@@ -96,7 +95,7 @@ def predictor(sagemaker_session, tf_full_version):
         key_prefix="tensorflow-serving/models",
     )
     with tests.integ.timeout.timeout_and_delete_endpoint_by_name(
-        endpoint_name=endpoint_name, sagemaker_session=sagemaker_session, hours=1
+        endpoint_name=endpoint_name, sagemaker_session=sagemaker_session, hours=2
     ):
         model = Model(
             model_data=model_data,
@@ -283,7 +282,6 @@ def updated_output_kms_key(sagemaker_session):
 def test_default_monitor_suggest_baseline_and_create_monitoring_schedule_with_customizations(
     sagemaker_session, output_kms_key, volume_kms_key, predictor
 ):
-    logging.getLogger().setLevel(logging.DEBUG)  # TODO-reinvent-2019 [knakad]: REMOVE
     pre_processor_script = os.path.join(DATA_DIR, "monitor/preprocessor.py")
     post_processor_script = os.path.join(DATA_DIR, "monitor/postprocessor.py")
     baseline_dataset = os.path.join(DATA_DIR, "monitor/baseline_dataset.csv")
@@ -522,7 +520,6 @@ def test_default_monitor_suggest_baseline_and_create_monitoring_schedule_with_cu
 def test_default_monitor_suggest_baseline_and_create_monitoring_schedule_without_customizations(
     sagemaker_session, predictor
 ):
-    logging.getLogger().setLevel(logging.DEBUG)  # TODO-reinvent-2019 [knakad]: REMOVE
     baseline_dataset = os.path.join(DATA_DIR, "monitor/baseline_dataset.csv")
 
     my_default_monitor = DefaultModelMonitor(role=ROLE, sagemaker_session=sagemaker_session)
@@ -588,12 +585,10 @@ def test_default_monitor_suggest_baseline_and_create_monitoring_schedule_without
 
     constraints.save()
 
-    my_default_monitor.create_monitoring_schedule(endpoint_input=predictor.endpoint)
-    schedule_description = my_default_monitor.describe_schedule()
-    assert (
-        schedule_description["MonitoringScheduleConfig"]["ScheduleConfig"]["ScheduleExpression"]
-        == CronExpressionGenerator.hourly()
+    my_default_monitor.create_monitoring_schedule(
+        endpoint_input=predictor.endpoint, schedule_cron_expression=CronExpressionGenerator.daily()
     )
+    schedule_description = my_default_monitor.describe_schedule()
     assert (
         "sagemaker-tensorflow-serving"
         in schedule_description["MonitoringScheduleConfig"]["MonitoringJobDefinition"][
@@ -704,7 +699,6 @@ def test_default_monitor_suggest_baseline_and_create_monitoring_schedule_without
 def test_default_monitor_create_stop_and_start_monitoring_schedule_with_customizations(
     sagemaker_session, output_kms_key, volume_kms_key, predictor
 ):
-    logging.getLogger().setLevel(logging.DEBUG)  # TODO-reinvent-2019 [knakad]: REMOVE
     pre_processor_script = os.path.join(DATA_DIR, "monitor/preprocessor.py")
     post_processor_script = os.path.join(DATA_DIR, "monitor/postprocessor.py")
 
@@ -888,7 +882,6 @@ def test_default_monitor_create_and_update_schedule_config_with_customizations(
     updated_volume_kms_key,
     updated_output_kms_key,
 ):
-    logging.getLogger().setLevel(logging.DEBUG)  # TODO-reinvent-2019 [knakad]: REMOVE
     pre_processor_script = os.path.join(DATA_DIR, "monitor/preprocessor.py")
     post_processor_script = os.path.join(DATA_DIR, "monitor/postprocessor.py")
 
@@ -1192,23 +1185,20 @@ def test_default_monitor_create_and_update_schedule_config_with_customizations(
         ]["EnableNetworkIsolation"]
         == UPDATED_NETWORK_CONFIG.enable_network_isolation
     )
+    assert len(predictor.list_monitors()) > 0
 
 
 def test_default_monitor_create_and_update_schedule_config_without_customizations(
     sagemaker_session, predictor
 ):
-    logging.getLogger().setLevel(logging.DEBUG)  # TODO-reinvent-2019 [knakad]: REMOVE
-
     my_default_monitor = DefaultModelMonitor(role=ROLE, sagemaker_session=sagemaker_session)
 
-    my_default_monitor.create_monitoring_schedule(endpoint_input=predictor.endpoint)
+    my_default_monitor.create_monitoring_schedule(
+        endpoint_input=predictor.endpoint, schedule_cron_expression=CronExpressionGenerator.daily()
+    )
 
     schedule_description = my_default_monitor.describe_schedule()
 
-    assert (
-        schedule_description["MonitoringScheduleConfig"]["ScheduleConfig"]["ScheduleExpression"]
-        == CronExpressionGenerator.hourly()
-    )
     assert (
         "sagemaker-tensorflow-serving"
         in schedule_description["MonitoringScheduleConfig"]["MonitoringJobDefinition"][
@@ -1321,10 +1311,6 @@ def test_default_monitor_create_and_update_schedule_config_without_customization
     schedule_description = my_default_monitor.describe_schedule()
 
     assert (
-        schedule_description["MonitoringScheduleConfig"]["ScheduleConfig"]["ScheduleExpression"]
-        == CronExpressionGenerator.hourly()
-    )
-    assert (
         "sagemaker-tensorflow-serving"
         in schedule_description["MonitoringScheduleConfig"]["MonitoringJobDefinition"][
             "MonitoringInputs"
@@ -1434,7 +1420,6 @@ def test_default_monitor_attach_followed_by_baseline_and_update_monitoring_sched
     updated_volume_kms_key,
     updated_output_kms_key,
 ):
-    logging.getLogger().setLevel(logging.DEBUG)  # TODO-reinvent-2019 [knakad]: REMOVE
     pre_processor_script = os.path.join(DATA_DIR, "monitor/preprocessor.py")
     post_processor_script = os.path.join(DATA_DIR, "monitor/postprocessor.py")
 
@@ -1599,7 +1584,6 @@ def test_default_monitor_attach_followed_by_baseline_and_update_monitoring_sched
 def test_default_monitor_monitoring_execution_interactions(
     sagemaker_session, default_monitoring_schedule_name
 ):
-    logging.getLogger().setLevel(logging.DEBUG)  # TODO-reinvent-2019 [knakad]: REMOVE
 
     my_attached_monitor = DefaultModelMonitor.attach(
         monitor_schedule_name=default_monitoring_schedule_name, sagemaker_session=sagemaker_session
@@ -1640,7 +1624,6 @@ def test_default_monitor_monitoring_execution_interactions(
 def test_byoc_monitor_suggest_baseline_and_create_monitoring_schedule_with_customizations(
     sagemaker_session, output_kms_key, volume_kms_key, predictor
 ):
-    logging.getLogger().setLevel(logging.DEBUG)  # TODO-reinvent-2019 [knakad]: REMOVE
     pre_processor_script = os.path.join(DATA_DIR, "monitor/preprocessor.py")
     post_processor_script = os.path.join(DATA_DIR, "monitor/postprocessor.py")
     baseline_dataset = os.path.join(DATA_DIR, "monitor/baseline_dataset.csv")
@@ -1884,7 +1867,6 @@ def test_byoc_monitor_suggest_baseline_and_create_monitoring_schedule_with_custo
 def test_byoc_monitor_suggest_baseline_and_create_monitoring_schedule_without_customizations(
     sagemaker_session, predictor
 ):
-    logging.getLogger().setLevel(logging.DEBUG)  # TODO-reinvent-2019 [knakad]: REMOVE
     baseline_dataset = os.path.join(DATA_DIR, "monitor/baseline_dataset.csv")
 
     byoc_env = ENVIRONMENT.copy()
@@ -1974,13 +1956,10 @@ def test_byoc_monitor_suggest_baseline_and_create_monitoring_schedule_without_cu
     my_byoc_monitor.create_monitoring_schedule(
         endpoint_input=predictor.endpoint,
         output=MonitoringOutput(source="/opt/ml/processing/output", destination=output_s3_uri),
+        schedule_cron_expression=CronExpressionGenerator.daily(),
     )
 
     schedule_description = my_byoc_monitor.describe_schedule()
-    assert (
-        schedule_description["MonitoringScheduleConfig"]["ScheduleConfig"]["ScheduleExpression"]
-        == CronExpressionGenerator.hourly()
-    )
     assert (
         "sagemaker-tensorflow-serving"
         in schedule_description["MonitoringScheduleConfig"]["MonitoringJobDefinition"][
@@ -2084,7 +2063,6 @@ def test_byoc_monitor_create_and_update_schedule_config_with_customizations(
     updated_volume_kms_key,
     updated_output_kms_key,
 ):
-    logging.getLogger().setLevel(logging.DEBUG)  # TODO-reinvent-2019 [knakad]: REMOVE
     pre_processor_script = os.path.join(DATA_DIR, "monitor/preprocessor.py")
     post_processor_script = os.path.join(DATA_DIR, "monitor/postprocessor.py")
 
@@ -2251,7 +2229,7 @@ def test_byoc_monitor_create_and_update_schedule_config_with_customizations(
 
     my_byoc_monitor.update_monitoring_schedule(
         endpoint_input=predictor.endpoint,
-        output=MonitoringOutput(source="/output", destination=output_s3_uri),
+        output=MonitoringOutput(source="/opt/ml/processing/output", destination=output_s3_uri),
         statistics=statistics,
         constraints=constraints,
         schedule_cron_expression=CronExpressionGenerator.hourly(),
@@ -2370,6 +2348,7 @@ def test_byoc_monitor_create_and_update_schedule_config_with_customizations(
         ]["EnableNetworkIsolation"]
         == UPDATED_NETWORK_CONFIG.enable_network_isolation
     )
+    assert len(predictor.list_monitors()) > 0
 
 
 def test_byoc_monitor_attach_followed_by_baseline_and_update_monitoring_schedule(
@@ -2621,7 +2600,6 @@ def test_byoc_monitor_attach_followed_by_baseline_and_update_monitoring_schedule
 def test_byoc_monitor_monitoring_execution_interactions(
     sagemaker_session, byoc_monitoring_schedule_name
 ):
-    logging.getLogger().setLevel(logging.DEBUG)  # TODO-reinvent-2019 [knakad]: REMOVE
 
     my_attached_monitor = ModelMonitor.attach(
         monitor_schedule_name=byoc_monitoring_schedule_name, sagemaker_session=sagemaker_session
@@ -2659,22 +2637,6 @@ def test_byoc_monitor_monitoring_execution_interactions(
     assert constraint_violations.body_dict["violations"][0]["feature_name"] == "store_and_fwd_flag"
 
 
-# def test_view_schedules(sagemaker_session):  # TODO-reinvent-2019 [knakad]: Murder this before GA
-#     response = sagemaker_session.list_monitoring_schedules()
-#     print(response)
-#     schedule_list = response["MonitoringScheduleSummaries"]
-#     for schedule in schedule_list:
-#         print(schedule["MonitoringScheduleName"])
-#         executions = sagemaker_session.list_monitoring_executions(
-#             monitoring_schedule_name=schedule["MonitoringScheduleName"]
-#         )
-#         print(executions)
-#         # if "DoNotDelete".upper() not in schedule["MonitoringScheduleName"].upper():
-#         sagemaker_session.delete_monitoring_schedule(
-#             monitoring_schedule_name=schedule["MonitoringScheduleName"]
-#         )
-
-
 def _wait_for_schedule_changes_to_apply(monitor):
     """Waits for the monitor to no longer be in the 'Pending' state. Updates take under a minute
     to apply.
@@ -2686,7 +2648,7 @@ def _wait_for_schedule_changes_to_apply(monitor):
     for _ in retries(
         max_retry_count=100,
         exception_message_prefix="Waiting for schedule to leave 'Pending' status",
-        seconds_to_sleep=2,
+        seconds_to_sleep=5,
     ):
         schedule_desc = monitor.describe_schedule()
         if schedule_desc["MonitoringScheduleStatus"] != "Pending":
@@ -2701,7 +2663,7 @@ def _predict_while_waiting_for_first_monitoring_job_to_complete(predictor, monit
 
     """
     for _ in retries(
-        max_retry_count=100,
+        max_retry_count=200,
         exception_message_prefix="Waiting for the latest execution to be in a terminal status.",
         seconds_to_sleep=50,
     ):

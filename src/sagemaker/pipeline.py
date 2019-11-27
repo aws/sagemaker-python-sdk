@@ -146,9 +146,9 @@ class PipelineModel(object):
         )
         self.endpoint_name = endpoint_name or self.name
 
-        data_capture_config_dict = (
-            data_capture_config.to_request_dict() if data_capture_config else None
-        )
+        data_capture_config_dict = None
+        if data_capture_config is not None:
+            data_capture_config_dict = data_capture_config.to_request_dict()
 
         if update_endpoint:
             endpoint_config_name = self.sagemaker_session.create_endpoint_config(
