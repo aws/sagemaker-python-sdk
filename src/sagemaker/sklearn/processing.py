@@ -30,7 +30,9 @@ class SKLearnProcessor(ScriptProcessor):
         self,
         framework_version,
         role,
+        command,
         instance_type,
+        instance_count=1,
         py_version="py3",
         volume_size_in_gb=30,
         volume_kms_key=None,
@@ -54,6 +56,10 @@ class SKLearnProcessor(ScriptProcessor):
                 needs to access an AWS resource.
             instance_type (str): Type of EC2 instance to use for
                 processing, for example, 'ml.c4.xlarge'.
+            instance_count (int): The number of instances to run
+                the Processing job with. Defaults to 1.
+            command ([str]): The command to run, along with any command-line flags.
+                Example: ["python3", "-v"].
             py_version (str): The python version to use, for example, 'py3'.
             volume_size_in_gb (int): Size in GB of the EBS volume
                 to use for storing data during processing (default: 30).
@@ -85,8 +91,9 @@ class SKLearnProcessor(ScriptProcessor):
         super(SKLearnProcessor, self).__init__(
             role=role,
             image_uri=image_uri,
-            instance_count=1,
+            instance_count=instance_count,
             instance_type=instance_type,
+            command=command,
             volume_size_in_gb=volume_size_in_gb,
             volume_kms_key=volume_kms_key,
             output_kms_key=output_kms_key,
