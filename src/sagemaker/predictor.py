@@ -210,7 +210,7 @@ class RealTimePredictor(object):
 
         data_capture_config_dict = None
         if data_capture_config is not None:
-            data_capture_config_dict = data_capture_config.to_request_dict()
+            data_capture_config_dict = data_capture_config._to_request_dict()
 
         self.sagemaker_session.create_endpoint_config_from_existing(
             existing_config_name=endpoint_desc["EndpointConfigName"],

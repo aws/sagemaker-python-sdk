@@ -314,7 +314,7 @@ class DebuggerHookConfig(object):
         self.hook_parameters = hook_parameters
         self.collection_configs = collection_configs
 
-    def to_request_dict(self):
+    def _to_request_dict(self):
         """Generates a request dictionary using the parameters provided
         when initializing the object.
 
@@ -331,7 +331,8 @@ class DebuggerHookConfig(object):
 
         if self.collection_configs is not None:
             debugger_hook_config_request["CollectionConfigurations"] = [
-                collection_config.to_request_dict() for collection_config in self.collection_configs
+                collection_config._to_request_dict()
+                for collection_config in self.collection_configs
             ]
 
         return debugger_hook_config_request
@@ -353,7 +354,7 @@ class TensorBoardOutputConfig(object):
         self.s3_output_path = s3_output_path
         self.container_local_output_path = container_local_output_path
 
-    def to_request_dict(self):
+    def _to_request_dict(self):
         """Generates a request dictionary using the parameters provided
         when initializing the object.
 
@@ -401,7 +402,7 @@ class CollectionConfig(object):
     def __hash__(self):
         return hash((self.name, tuple(sorted((self.parameters or {}).items()))))
 
-    def to_request_dict(self):
+    def _to_request_dict(self):
         """Generates a request dictionary using the parameters provided
         when initializing the object.
 

@@ -46,7 +46,6 @@ def sagemaker_session():
 def test_sklearn(sagemaker_session):
     sklearn_processor = SKLearnProcessor(
         framework_version="0.20.0",
-        command=["python3"],
         role=ROLE,
         instance_type="ml.m4.xlarge",
         instance_count=1,
@@ -463,3 +462,15 @@ def test_byo_container_with_baked_in_script(sagemaker_session):
         "experiment_config": None,
     }
     sagemaker_session.process.assert_called_with(**expected_args)
+
+
+def test_sklearn_processor_raises_value_error_if_invalid_py_version_passed_in(sagemaker_session):
+    with pytest.raises(ValueError):
+        SKLearnProcessor(
+            framework_version="0.20.0",
+            role=ROLE,
+            py_version="INVALID_PYTHON_VERSION",
+            instance_type="ml.m4.xlarge",
+            instance_count=1,
+            sagemaker_session=sagemaker_session,
+        )

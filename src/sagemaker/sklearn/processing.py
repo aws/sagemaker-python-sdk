@@ -23,6 +23,10 @@ from sagemaker import Session
 from sagemaker.processing import ScriptProcessor
 
 
+_PYTHON_VERSION_TO_COMMAND_MAPPING = {"py2": ["python2"], "py3": ["python3"]}
+_VALID_PYTHON_VERSIONS = ["py2", "py3"]
+
+
 class SKLearnProcessor(ScriptProcessor):
     """Handles Amazon SageMaker processing tasks for jobs using scikit-learn."""
 
@@ -30,9 +34,9 @@ class SKLearnProcessor(ScriptProcessor):
         self,
         framework_version,
         role,
-        command,
         instance_type,
         instance_count,
+        command=None,
         py_version="py3",
         volume_size_in_gb=30,
         volume_kms_key=None,
@@ -59,7 +63,8 @@ class SKLearnProcessor(ScriptProcessor):
             instance_count (int): The number of instances to run
                 the Processing job with. Defaults to 1.
             command ([str]): The command to run, along with any command-line flags.
-                Example: ["python3", "-v"].
+                Example: ["python3", "-v"]. If not provided, ["python3"] or ["python2"]
+                will be chosen based on the py_version parameter.
             py_version (str): The python version to use, for example, 'py3'.
             volume_size_in_gb (int): Size in GB of the EBS volume
                 to use for storing data during processing (default: 30).
@@ -84,6 +89,14 @@ class SKLearnProcessor(ScriptProcessor):
         """
         session = sagemaker_session or Session()
         region = session.boto_region_name
+
+        if py_version not in _VALID_PYTHON_VERSIONS:
+            raise ValueError(
+                "'py_version' must be a valid value. Please provide one of: 'py2', 'py3'"
+            )
+
+        if not command:
+            command = _PYTHON_VERSION_TO_COMMAND_MAPPING[py_version]
 
         image_tag = "{}-{}-{}".format(framework_version, "cpu", py_version)
         image_uri = default_framework_uri("scikit-learn", region, image_tag)
