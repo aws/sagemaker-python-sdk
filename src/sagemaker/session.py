@@ -2738,7 +2738,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
 
         data_capture_config_dict = None
         if data_capture_config is not None:
-            data_capture_config_dict = data_capture_config.to_request_dict()
+            data_capture_config_dict = data_capture_config._to_request_dict()
 
         if not _deployment_entity_exists(
             lambda: self.sagemaker_client.describe_endpoint_config(EndpointConfigName=name)

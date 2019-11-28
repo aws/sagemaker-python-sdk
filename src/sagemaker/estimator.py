@@ -965,12 +965,12 @@ class _TrainingJob(_Job):
 
         if estimator.debugger_hook_config:
             estimator.debugger_hook_config.collection_configs = estimator.collection_configs
-            train_args["debugger_hook_config"] = estimator.debugger_hook_config.to_request_dict()
+            train_args["debugger_hook_config"] = estimator.debugger_hook_config._to_request_dict()
 
         if estimator.tensorboard_output_config:
             train_args[
                 "tensorboard_output_config"
-            ] = estimator.tensorboard_output_config.to_request_dict()
+            ] = estimator.tensorboard_output_config._to_request_dict()
 
         cls._add_spot_checkpoint_args(local_mode, estimator, train_args)
 

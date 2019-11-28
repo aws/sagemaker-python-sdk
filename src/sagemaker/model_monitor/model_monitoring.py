@@ -297,7 +297,7 @@ class ModelMonitor(object):
             constraints_s3_uri = constraints_object.file_s3_uri
 
         monitoring_output_config = {
-            "MonitoringOutputs": [normalized_monitoring_output.to_request_dict()]
+            "MonitoringOutputs": [normalized_monitoring_output._to_request_dict()]
         }
 
         if self.output_kms_key is not None:
@@ -310,14 +310,14 @@ class ModelMonitor(object):
 
         network_config_dict = None
         if self.network_config is not None:
-            network_config_dict = self.network_config.to_request_dict()
+            network_config_dict = self.network_config._to_request_dict()
 
         self.sagemaker_session.create_monitoring_schedule(
             monitoring_schedule_name=self.monitoring_schedule_name,
             schedule_expression=schedule_cron_expression,
             statistics_s3_uri=statistics_s3_uri,
             constraints_s3_uri=constraints_s3_uri,
-            monitoring_inputs=[normalized_endpoint_input.to_request_dict()],
+            monitoring_inputs=[normalized_endpoint_input._to_request_dict()],
             monitoring_output_config=monitoring_output_config,
             instance_count=self.instance_count,
             instance_type=self.instance_type,
@@ -398,14 +398,14 @@ class ModelMonitor(object):
         monitoring_inputs = None
         if endpoint_input is not None:
             monitoring_inputs = [
-                self._normalize_endpoint_input(endpoint_input=endpoint_input).to_request_dict()
+                self._normalize_endpoint_input(endpoint_input=endpoint_input)._to_request_dict()
             ]
 
         monitoring_output_config = None
         if output is not None:
             normalized_monitoring_output = self._normalize_monitoring_output(output=output)
             monitoring_output_config = {
-                "MonitoringOutputs": [normalized_monitoring_output.to_request_dict()]
+                "MonitoringOutputs": [normalized_monitoring_output._to_request_dict()]
             }
 
         statistics_object, constraints_object = self._get_baseline_files(
@@ -459,7 +459,7 @@ class ModelMonitor(object):
 
         network_config_dict = None
         if self.network_config is not None:
-            network_config_dict = self.network_config.to_request_dict()
+            network_config_dict = self.network_config._to_request_dict()
 
         self.sagemaker_session.update_monitoring_schedule(
             monitoring_schedule_name=self.monitoring_schedule_name,
@@ -1263,7 +1263,7 @@ class DefaultModelMonitor(ModelMonitor):
         )
 
         monitoring_output_config = {
-            "MonitoringOutputs": [normalized_monitoring_output.to_request_dict()]
+            "MonitoringOutputs": [normalized_monitoring_output._to_request_dict()]
         }
 
         if self.output_kms_key is not None:
@@ -1271,14 +1271,14 @@ class DefaultModelMonitor(ModelMonitor):
 
         network_config_dict = None
         if self.network_config is not None:
-            network_config_dict = self.network_config.to_request_dict()
+            network_config_dict = self.network_config._to_request_dict()
 
         self.sagemaker_session.create_monitoring_schedule(
             monitoring_schedule_name=self.monitoring_schedule_name,
             schedule_expression=schedule_cron_expression,
             constraints_s3_uri=constraints_s3_uri,
             statistics_s3_uri=statistics_s3_uri,
-            monitoring_inputs=[normalized_endpoint_input.to_request_dict()],
+            monitoring_inputs=[normalized_endpoint_input._to_request_dict()],
             monitoring_output_config=monitoring_output_config,
             instance_count=self.instance_count,
             instance_type=self.instance_type,
@@ -1360,7 +1360,7 @@ class DefaultModelMonitor(ModelMonitor):
         """
         monitoring_inputs = None
         if endpoint_input is not None:
-            monitoring_inputs = [self._normalize_endpoint_input(endpoint_input).to_request_dict()]
+            monitoring_inputs = [self._normalize_endpoint_input(endpoint_input)._to_request_dict()]
 
         record_preprocessor_script_s3_uri = None
         if record_preprocessor_script is not None:
@@ -1381,7 +1381,7 @@ class DefaultModelMonitor(ModelMonitor):
                 output_s3_uri=output_s3_uri
             )
             monitoring_output_config = {
-                "MonitoringOutputs": [normalized_monitoring_output.to_request_dict()]
+                "MonitoringOutputs": [normalized_monitoring_output._to_request_dict()]
             }
             output_path = normalized_monitoring_output.source
 
@@ -1428,7 +1428,7 @@ class DefaultModelMonitor(ModelMonitor):
 
         network_config_dict = None
         if self.network_config is not None:
-            network_config_dict = self.network_config.to_request_dict()
+            network_config_dict = self.network_config._to_request_dict()
 
         if role is not None:
             self.role = role
@@ -2054,7 +2054,7 @@ class EndpointInput(object):
         self.s3_input_mode = s3_input_mode
         self.s3_data_distribution_type = s3_data_distribution_type
 
-    def to_request_dict(self):
+    def _to_request_dict(self):
         """Generates a request dictionary using the parameters provided to the class."""
         endpoint_input_request = {
             "EndpointInput": {
@@ -2088,7 +2088,7 @@ class MonitoringOutput(object):
         self.destination = destination
         self.s3_upload_mode = s3_upload_mode
 
-    def to_request_dict(self):
+    def _to_request_dict(self):
         """Generates a request dictionary using the parameters provided to the class.
 
         Returns:

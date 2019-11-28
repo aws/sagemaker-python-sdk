@@ -165,7 +165,7 @@ from __future__ import absolute_import
 #         mx.fit({"train": train_input, "test": test_input})
 #
 #         job_description = mx.latest_training_job.describe()
-#         assert job_description["DebugHookConfig"] == debugger_hook_config.to_request_dict()
+#         assert job_description["DebugHookConfig"] == debugger_hook_config._to_request_dict()
 #
 #
 # # TODO-reinvent-2019 [akarpur]: uncomment this test once API changes are in Prod
@@ -222,7 +222,7 @@ from __future__ import absolute_import
 #             # assert job_description["DebugRuleEvaluationStatuses"][index][
 #             #     "RuleEvaluationStatus"
 #             # ] not in {"NotStarted", "Error"}
-#         assert job_description["DebugHookConfig"] == debugger_hook_config.to_request_dict()
+#         assert job_description["DebugHookConfig"] == debugger_hook_config._to_request_dict()
 #         assert (
 #             job_description["DebugRuleEvaluationStatuses"]
 #             == mx.latest_training_job.rule_job_summary()
@@ -287,7 +287,7 @@ from __future__ import absolute_import
 #             # assert job_description["DebugRuleEvaluationStatuses"][index][
 #             #     "RuleEvaluationStatus"
 #             # ] not in {"NotStarted", "Error"}
-#         assert job_description["DebugHookConfig"] == debugger_hook_config.to_request_dict()
+#         assert job_description["DebugHookConfig"] == debugger_hook_config._to_request_dict()
 #         assert (
 #             job_description["DebugRuleEvaluationStatuses"]
 #             == mx.latest_training_job.rule_job_summary()
@@ -333,7 +333,7 @@ from __future__ import absolute_import
 #         job_description = mx.latest_training_job.describe()
 #         assert (
 #             job_description["TensorBoardOutputConfig"]
-#             == tensorboard_output_config.to_request_dict()
+#             == tensorboard_output_config._to_request_dict()
 #         )
 #
 #
@@ -409,10 +409,10 @@ from __future__ import absolute_import
 #             # assert job_description["DebugRuleEvaluationStatuses"][index][
 #             #     "RuleEvaluationStatus"
 #             # ] not in {"NotStarted", "Error"}
-#         assert job_description["DebugHookConfig"] == debugger_hook_config.to_request_dict()
+#         assert job_description["DebugHookConfig"] == debugger_hook_config._to_request_dict()
 #         assert (
 #             job_description["TensorBoardOutputConfig"]
-#             == tensorboard_output_config.to_request_dict()
+#             == tensorboard_output_config._to_request_dict()
 #         )
 #         assert (
 #             job_description["DebugRuleEvaluationStatuses"]

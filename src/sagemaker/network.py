@@ -34,7 +34,7 @@ class NetworkConfig(object):
         self.security_group_ids = security_group_ids
         self.subnets = subnets
 
-    def to_request_dict(self):
+    def _to_request_dict(self):
         """Generates a request dictionary using the parameters provided to the class."""
         network_config_request = {"EnableNetworkIsolation": self.enable_network_isolation}
 

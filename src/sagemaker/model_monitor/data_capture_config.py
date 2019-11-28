@@ -71,7 +71,7 @@ class DataCaptureConfig(object):
         self.csv_content_types = csv_content_types or ["text/csv"]
         self.json_content_types = json_content_types or ["application/json"]
 
-    def to_request_dict(self):
+    def _to_request_dict(self):
         """Generates a request dictionary using the parameters provided to the class."""
         request_dict = {
             "EnableCapture": self.enable_capture,

@@ -403,8 +403,8 @@ class ScriptProcessor(Processor):
         """
         if os.path.isdir(code) is None or not os.path.splitext(code)[1]:
             raise ValueError(
-                """code must be a file, not a directory. Please package your code inside of a .whl
-                file and pass that in, instead.
+                """'code' must be a file, not a directory. Please pass a path to a file, not a
+                directory.
                 """
             )
         return os.path.basename(code)
@@ -494,10 +494,10 @@ class ProcessingJob(_Job):
         process_request_args = {}
 
         # Add arguments to the dictionary.
-        process_request_args["inputs"] = [input.to_request_dict() for input in inputs]
+        process_request_args["inputs"] = [input._to_request_dict() for input in inputs]
 
         process_request_args["output_config"] = {
-            "Outputs": [output.to_request_dict() for output in outputs]
+            "Outputs": [output._to_request_dict() for output in outputs]
         }
         if processor.output_kms_key is not None:
             process_request_args["output_config"]["KmsKeyId"] = processor.output_kms_key
@@ -534,7 +534,7 @@ class ProcessingJob(_Job):
         process_request_args["environment"] = processor.env
 
         if processor.network_config is not None:
-            process_request_args["network_config"] = processor.network_config.to_request_dict()
+            process_request_args["network_config"] = processor.network_config._to_request_dict()
         else:
             process_request_args["network_config"] = None
 
@@ -614,7 +614,7 @@ class ProcessingInput(object):
         self.s3_data_distribution_type = s3_data_distribution_type
         self.s3_compression_type = s3_compression_type
 
-    def to_request_dict(self):
+    def _to_request_dict(self):
         """Generates a request dictionary using the parameters provided to the class."""
         # Create the request dictionary.
         s3_input_request = {
@@ -661,7 +661,7 @@ class ProcessingOutput(object):
         self.output_name = output_name
         self.s3_upload_mode = s3_upload_mode
 
-    def to_request_dict(self):
+    def _to_request_dict(self):
         """Generates a request dictionary using the parameters provided to the class."""
         # Create the request dictionary.
         s3_output_request = {
