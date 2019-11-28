@@ -66,6 +66,7 @@ def test_sklearn(sagemaker_session, sklearn_full_version, cpu_instance_type):
         framework_version=sklearn_full_version,
         role=ROLE,
         instance_type=cpu_instance_type,
+        instance_count=1,
         command=["python3"],
         sagemaker_session=sagemaker_session,
         max_runtime_in_seconds=3600,  # TODO-reinvent-2019: REMOVE
@@ -103,6 +104,7 @@ def test_sklearn_with_customizations(
         role=ROLE,
         command=["python3"],
         instance_type=cpu_instance_type,
+        instance_count=1,
         py_version="py3",
         volume_size_in_gb=100,
         volume_kms_key=None,
@@ -178,6 +180,7 @@ def test_sklearn_with_no_inputs_or_outputs(
         role=ROLE,
         command=["python3"],
         instance_type=cpu_instance_type,
+        instance_count=1,
         py_version="py3",
         volume_size_in_gb=100,
         volume_kms_key=None,
