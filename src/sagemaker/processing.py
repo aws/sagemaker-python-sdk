@@ -250,6 +250,7 @@ class Processor(object):
                         self.sagemaker_session.default_bucket(),
                         self._current_job_name,
                         "output",
+                        output.output_name,
                     )
                     output.destination = s3_uri
                 normalized_outputs.append(output)
@@ -402,7 +403,7 @@ class ScriptProcessor(Processor):
         """
         if os.path.isdir(code) is None or not os.path.splitext(code)[1]:
             raise ValueError(
-                """You cannot provide a directory. Please package your code inside of a .whl
+                """code must be a file, not a directory. Please package your code inside of a .whl
                 file and pass that in, instead.
                 """
             )
@@ -593,7 +594,9 @@ class ProcessingInput(object):
         to turn those parameters into a dictionary.
 
         Args:
-            source (str): The source for the input.
+            source (str): The source for the input. If a local path is provided, it will
+                automatically be uploaded to s3 under:
+                "s3://<default-bucket-name>/<job-name>/input/<input-name>".
             destination (str): The destination of the input.
             input_name (str): The user-provided name for the input. If a name
                 is not provided, one will be generated (eg. "input-1").
@@ -647,7 +650,8 @@ class ProcessingOutput(object):
         Args:
             source (str): The source for the output.
             destination (str): The destination of the output. If a destination
-                is not provided, one will be generated (eg. "s3://bucket/job_name/output").
+                is not provided, one will be generated:
+                 "s3://<default-bucket-name>/<job-name>/output/<output-name>".
             output_name (str): The name of the output. If a name
                 is not provided, one will be generated (eg. "output-1").
             s3_upload_mode (str): Valid options are "EndOfJob" or "Continuous".

@@ -32,7 +32,7 @@ class SKLearnProcessor(ScriptProcessor):
         role,
         command,
         instance_type,
-        instance_count=1,
+        instance_count,
         py_version="py3",
         volume_size_in_gb=30,
         volume_kms_key=None,

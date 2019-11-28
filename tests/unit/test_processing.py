@@ -49,6 +49,7 @@ def test_sklearn(sagemaker_session):
         command=["python3"],
         role=ROLE,
         instance_type="ml.m4.xlarge",
+        instance_count=1,
         sagemaker_session=sagemaker_session,
     )
 
@@ -117,6 +118,7 @@ def test_sklearn_with_no_inputs(sagemaker_session):
         role=ROLE,
         command=["python3"],
         instance_type="ml.m4.xlarge",
+        instance_count=1,
         sagemaker_session=sagemaker_session,
     )
 
@@ -169,6 +171,7 @@ def test_sklearn_with_all_customizations(sagemaker_session):
         role=ROLE,
         command=["python3"],
         instance_type="ml.m4.xlarge",
+        instance_count=1,
         py_version="py3",
         volume_size_in_gb=100,
         volume_kms_key=None,
