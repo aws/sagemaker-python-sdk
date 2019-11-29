@@ -192,7 +192,6 @@ def byoc_monitoring_schedule_name(sagemaker_session, output_kms_key, volume_kms_
         ),
         instance_count=INSTANCE_COUNT,
         instance_type=INSTANCE_TYPE,
-        entrypoint=["/opt/program/analyze"],
         volume_size_in_gb=VOLUME_SIZE_IN_GB,
         volume_kms_key=volume_kms_key,
         output_kms_key=output_kms_key,
@@ -1649,7 +1648,6 @@ def test_byoc_monitor_suggest_baseline_and_create_monitoring_schedule_with_custo
         ),
         instance_count=INSTANCE_COUNT,
         instance_type=INSTANCE_TYPE,
-        entrypoint=["/opt/program/analyze"],
         volume_size_in_gb=VOLUME_SIZE_IN_GB,
         volume_kms_key=volume_kms_key,
         output_kms_key=output_kms_key,
@@ -1880,7 +1878,6 @@ def test_byoc_monitor_suggest_baseline_and_create_monitoring_schedule_without_cu
         image_uri=DefaultModelMonitor._get_default_image_uri(
             sagemaker_session.boto_session.region_name
         ),
-        entrypoint=["/opt/program/analyze"],
         sagemaker_session=sagemaker_session,
         env=byoc_env,
     )
@@ -2087,7 +2084,6 @@ def test_byoc_monitor_create_and_update_schedule_config_with_customizations(
         ),
         instance_count=INSTANCE_COUNT,
         instance_type=INSTANCE_TYPE,
-        entrypoint=["/opt/program/analyze"],
         volume_size_in_gb=VOLUME_SIZE_IN_GB,
         volume_kms_key=volume_kms_key,
         output_kms_key=output_kms_key,
@@ -2600,7 +2596,6 @@ def test_byoc_monitor_attach_followed_by_baseline_and_update_monitoring_schedule
 def test_byoc_monitor_monitoring_execution_interactions(
     sagemaker_session, byoc_monitoring_schedule_name
 ):
-
     my_attached_monitor = ModelMonitor.attach(
         monitor_schedule_name=byoc_monitoring_schedule_name, sagemaker_session=sagemaker_session
     )
