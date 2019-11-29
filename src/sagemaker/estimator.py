@@ -27,11 +27,9 @@ from six.moves.urllib.parse import urlparse
 import sagemaker
 from sagemaker import git_utils
 from sagemaker.analytics import TrainingJobAnalytics
-from sagemaker.debugger import (
-    DebuggerHookConfig,
-    TensorBoardOutputConfig,
-    get_rule_container_image_uri,
-)
+from sagemaker.debugger import DebuggerHookConfig
+from sagemaker.debugger import TensorBoardOutputConfig  # noqa: F401 # pylint: disable=unused-import
+from sagemaker.debugger import get_rule_container_image_uri
 from sagemaker.s3 import S3Uploader
 
 from sagemaker.fw_utils import (
@@ -331,6 +329,9 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):
         # Prepare rules and debugger configs for training.
         if self.rules and not self.debugger_hook_config:
             self.debugger_hook_config = DebuggerHookConfig(s3_output_path=self.output_path)
+        # If an object was provided without an S3 URI is not provided, default it for the customer.
+        if self.debugger_hook_config and not self.debugger_hook_config.s3_output_path:
+            self.debugger_hook_config.s3_output_path = self.output_path
         self._prepare_rules()
         self._prepare_collection_configs()
 
@@ -340,7 +341,6 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):
         if self.rules is not None:
             # Iterate through each of the provided rules.
             for rule in self.rules:
-                # Set the instance type and volume size using the Estimator's defaults.
                 # Set the image URI using the default rule evaluator image and the region.
                 if rule.image_uri == "DEFAULT_RULE_EVALUATOR_IMAGE":
                     rule.image_uri = get_rule_container_image_uri(
@@ -348,9 +348,6 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):
                     )
                     rule.instance_type = None
                     rule.volume_size_in_gb = None
-                else:
-                    rule.instance_type = self.train_instance_type
-                    rule.volume_size_in_gb = self.train_volume_size
                 # If source was provided as a rule parameter, upload to S3 and save the S3 uri.
                 if "source_s3_uri" in (rule.rule_parameters or {}):
                     parse_result = urlparse(rule.rule_parameters["source_s3_uri"])
@@ -383,6 +380,42 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):
         # Add the CollectionConfigs from DebuggerHookConfig to the set.
         if self.debugger_hook_config is not None:
             self.collection_configs.update(self.debugger_hook_config.collection_configs or [])
+
+    def get_debugger_artifacts_path(self):
+        """Gets the path to the DebuggerHookConfig output artifacts.
+
+        Returns:
+            str: An S3 path to the output artifacts.
+        """
+        self._ensure_latest_training_job(
+            error_message="""Cannot get the Debugger artifacts path.
+        The Estimator is not associated with a training job."""
+        )
+        if self.debugger_hook_config is not None:
+            return os.path.join(
+                self.debugger_hook_config.s3_output_path,
+                self.latest_training_job.name,
+                "debug-output",
+            )
+        return None
+
+    def get_tensorboard_artifacts_path(self):
+        """Gets the path to the TensorBoardOutputConfig output artifacts.
+
+        Returns:
+            str: An S3 path to the output artifacts.
+        """
+        self._ensure_latest_training_job(
+            error_message="""Cannot get the TensorBoard artifacts path.
+        The Estimator is not associated with a training job."""
+        )
+        if self.debugger_hook_config is not None:
+            return os.path.join(
+                self.tensorboard_output_config.s3_output_path,
+                self.latest_training_job.name,
+                "tensorboard-output",
+            )
+        return None
 
     def fit(self, inputs=None, wait=True, logs="All", job_name=None, experiment_config=None):
         """Train a model using the input training dataset.
@@ -1626,10 +1659,6 @@ class Framework(EstimatorBase):
         # Set defaults for debugging.
         if self.debugger_hook_config is None:
             self.debugger_hook_config = DebuggerHookConfig(s3_output_path=self.output_path)
-        if self.tensorboard_output_config is None:
-            self.tensorboard_output_config = TensorBoardOutputConfig(
-                s3_output_path=self.output_path
-            )
 
     def _stage_user_code_in_s3(self):
         """Upload the user training script to s3 and return the location.

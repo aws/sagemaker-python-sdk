@@ -157,7 +157,6 @@ def _create_train_job(toolkit, toolkit_version, framework):
             "CollectionConfigurations": [],
             "S3OutputPath": "s3://{}/".format(BUCKET_NAME),
         },
-        "tensorboard_output_config": {"S3OutputPath": "s3://{}/".format(BUCKET_NAME)},
     }
 
 
