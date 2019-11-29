@@ -17,7 +17,7 @@ import time
 
 import pytest
 
-from sagemaker.automl.automl import AutoML
+from sagemaker.automl.automl import AutoML, AutoMLInput
 from sagemaker.automl.candidate_estimator import CandidateEstimator
 from sagemaker.exceptions import UnexpectedStatusException
 from sagemaker.utils import unique_name_from_base
@@ -47,7 +47,7 @@ EXPECTED_DEFAULT_INPUT_CONFIG = [
         "DataSource": {
             "S3DataSource": {
                 "S3DataType": "S3Prefix",
-                "S3Uri": "s3://sagemaker-us-west-2-{}/{}/input/iris_training.csv".format(
+                "S3Uri": "s3://sagemaker-us-east-2-{}/{}/input/iris_training.csv".format(
                     DEV_ACCOUNT, PREFIX
                 ),
             }
@@ -60,7 +60,7 @@ EXPECTED_DEFAULT_JOB_CONFIG = {
     "SecurityConfig": {"EnableInterContainerTrafficEncryption": False},
 }
 EXPECTED_DEFAULT_OUTPUT_CONFIG = {
-    "S3OutputPath": "s3://sagemaker-us-west-2-{}/".format(DEV_ACCOUNT)
+    "S3OutputPath": "s3://sagemaker-us-east-2-{}/".format(DEV_ACCOUNT)
 }
 
 
@@ -90,8 +90,21 @@ def test_auto_ml_fit_local_input(sagemaker_session):
         auto_ml.fit(inputs)
 
 
+def test_auto_ml_input_object_fit(sagemaker_session):
+    auto_ml = AutoML(
+        role=ROLE,
+        target_attribute_name=TARGET_ATTRIBUTE_NAME,
+        sagemaker_session=sagemaker_session,
+        max_candidates=1,
+    )
+    s3_input = sagemaker_session.upload_data(path=TRAINING_DATA, key_prefix=PREFIX + "/input")
+    inputs = AutoMLInput(inputs=s3_input, target_attribute_name=TARGET_ATTRIBUTE_NAME)
+    with timeout(minutes=AUTO_ML_DEFAULT_TIMEMOUT_MINUTES):
+        auto_ml.fit(inputs)
+
+
 def test_auto_ml_fit_optional_args(sagemaker_session):
-    output_path = "s3://sagemaker-us-west-2-{}/{}".format(DEV_ACCOUNT, "specified_ouput_path")
+    output_path = "s3://sagemaker-us-east-2-{}/{}".format(DEV_ACCOUNT, "specified_ouput_path")
     problem_type = "MulticlassClassification"
     job_objective = {"MetricName": "Accuracy"}
     auto_ml = AutoML(

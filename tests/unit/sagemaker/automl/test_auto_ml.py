@@ -15,7 +15,7 @@ from __future__ import absolute_import
 import pytest
 from mock import Mock, patch
 
-from sagemaker.automl.automl import AutoML, _AutoMLJob
+from sagemaker.automl.automl import AutoML, AutoMLJob, AutoMLInput
 from sagemaker.automl.candidate_estimator import CandidateEstimator
 
 MODEL_DATA = "s3://bucket/model.tar.gz"
@@ -189,7 +189,7 @@ def test_auto_ml_default_channel_name(sagemaker_session):
         role=ROLE, target_attribute_name=TARGET_ATTRIBUTE_NAME, sagemaker_session=sagemaker_session
     )
     inputs = DEFAULT_S3_INPUT_DATA
-    _AutoMLJob.start_new(auto_ml, inputs)
+    AutoMLJob.start_new(auto_ml, inputs)
     sagemaker_session.auto_ml.assert_called_once()
     _, args = sagemaker_session.auto_ml.call_args
     assert args["input_config"] == [
@@ -210,7 +210,7 @@ def test_auto_ml_invalid_input_data_format(sagemaker_session):
 
     expected_error_msg = "Cannot format input {}. Expecting one of str or list of strings."
     with pytest.raises(ValueError, message=expected_error_msg.format(inputs)):
-        _AutoMLJob.start_new(auto_ml, inputs)
+        AutoMLJob.start_new(auto_ml, inputs)
     sagemaker_session.auto_ml.assert_not_called()
 
 
@@ -328,6 +328,26 @@ def test_auto_ml_local_input(sagemaker_session):
     sagemaker_session.auto_ml.assert_called_once()
     _, args = sagemaker_session.auto_ml.call_args
     assert args["input_config"][0]["DataSource"]["S3DataSource"]["S3Uri"] == DEFAULT_S3_INPUT_DATA
+
+
+def test_auto_ml_input(sagemaker_session):
+    inputs = AutoMLInput(
+        inputs=DEFAULT_S3_INPUT_DATA, target_attribute_name="target", compression="Gzip"
+    )
+    auto_ml = AutoML(
+        role=ROLE, target_attribute_name=TARGET_ATTRIBUTE_NAME, sagemaker_session=sagemaker_session
+    )
+    auto_ml.fit(inputs)
+    _, args = sagemaker_session.auto_ml.call_args
+    assert args["input_config"] == [
+        {
+            "CompressionType": "Gzip",
+            "DataSource": {
+                "S3DataSource": {"S3DataType": "S3Prefix", "S3Uri": DEFAULT_S3_INPUT_DATA}
+            },
+            "TargetAttributeName": TARGET_ATTRIBUTE_NAME,
+        }
+    ]
 
 
 def test_describe_auto_ml_job(sagemaker_session):
