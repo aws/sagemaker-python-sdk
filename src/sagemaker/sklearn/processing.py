@@ -66,8 +66,8 @@ class SKLearnProcessor(ScriptProcessor):
                 Example: ["python3", "-v"]. If not provided, ["python3"] or ["python2"]
                 will be chosen based on the py_version parameter.
             py_version (str): The python version to use, for example, 'py3'.
-            volume_size_in_gb (int): Size in GB of the EBS volume
-                to use for storing data during processing (default: 30).
+            volume_size_in_gb (int): Size in GB of the EBS volume to
+                use for storing data during processing (default: 30).
             volume_kms_key (str): A KMS key for the processing
                 volume.
             output_kms_key (str): The KMS key id for all ProcessingOutputs.

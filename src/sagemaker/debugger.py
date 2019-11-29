@@ -20,7 +20,9 @@ Debugger automatically collects model specific data, monitors for errors,
 and alerts when it detects errors during training.
 """
 from __future__ import absolute_import
-import smdebug_rulesconfig as rule_configs  # noqa: F401 # pylint: disable=unused-import
+
+# TODO-reinvent-2019 [knakad]: Uncomment this once PyPI integration is complete post-re:Invent-2019
+# import smdebug_rulesconfig as rule_configs  # noqa: F401 # pylint: disable=unused-import
 
 
 RULES_ECR_REPO_NAME = "sagemaker-debugger-rules"
@@ -191,11 +193,11 @@ class Rule(object):
         name,
         image_uri,
         instance_type,
+        volume_size_in_gb,
         source=None,
         rule_to_invoke=None,
         container_local_output_path=None,
         s3_output_path=None,
-        volume_size_in_gb=None,
         other_trials_s3_input_paths=None,
         rule_parameters=None,
         collections_to_save=None,
@@ -210,14 +212,15 @@ class Rule(object):
             image_uri (str): The URI of the image to be used by the debugger rule.
             instance_type (str): Type of EC2 instance to use, for example,
                 'ml.c4.xlarge'.
+            volume_size_in_gb (int): Size in GB of the EBS volume
+                to use for storing data.
             source (str): A source file containing a rule to invoke. If provided,
-                you must also provide rule_to_invoke.
+                you must also provide rule_to_invoke. This can either be an S3 uri or
+                a local path.
             rule_to_invoke (str): The name of the rule to invoke within the source.
                 If provided, you must also provide source.
             container_local_output_path (str): The path in the container.
             s3_output_path (str): The location in S3 to store the output.
-            volume_size_in_gb (int): Size in GB of the EBS volume
-                to use for storing data.
             other_trials_s3_input_paths ([str]): S3 input paths for other trials.
             rule_parameters (dict): A dictionary of parameters for the rule.
             collections_to_save ([sagemaker.debugger.CollectionConfig]): A list
@@ -293,7 +296,7 @@ class DebuggerHookConfig(object):
 
     def __init__(
         self,
-        s3_output_path,
+        s3_output_path=None,
         container_local_output_path=None,
         hook_parameters=None,
         collection_configs=None,

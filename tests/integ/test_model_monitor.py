@@ -25,7 +25,7 @@ from sagemaker.s3 import S3Uploader
 from datetime import datetime, timedelta
 
 from tests.integ import DATA_DIR
-from sagemaker.model_monitor.dataset_format import DatasetFormat
+from sagemaker.model_monitor import DatasetFormat
 from sagemaker.model_monitor import NetworkConfig, Statistics, Constraints
 from sagemaker.model_monitor import ModelMonitor
 from sagemaker.model_monitor import DefaultModelMonitor

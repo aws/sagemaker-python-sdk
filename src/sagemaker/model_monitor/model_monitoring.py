@@ -1052,7 +1052,7 @@ class DefaultModelMonitor(ModelMonitor):
                 script. This can be a local path or an S3 uri.
             output_s3_uri (str): Desired S3 destination Destination of the constraint_violations
                 and statistics json files.
-                Default: "s3://" + default_session_bucket + job_name + output
+                Default: "s3://<default_session_bucket>/<job_name>/output"
             wait (bool): Whether the call should wait until the job completes (default: True).
             logs (bool): Whether to show the logs produced by the job.
                 Only meaningful when wait is True (default: True).
@@ -1193,6 +1193,7 @@ class DefaultModelMonitor(ModelMonitor):
                 script. This can be a local path or an S3 uri.
             output_s3_uri (str): Desired S3 destination of the constraint_violations and
                 statistics json files.
+                Default: "s3://<default_session_bucket>/<job_name>/output"
             constraints (sagemaker.model_monitor.Constraints or str): If provided alongside
                 statistics, these will be used for monitoring the endpoint. This can be a
                 sagemaker.model_monitor.Constraints object or an s3_uri pointing to a constraints
