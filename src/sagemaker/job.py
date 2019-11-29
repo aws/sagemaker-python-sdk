@@ -195,13 +195,14 @@ class _Job(object):
             target_attribute_name:
         """
         if isinstance(uri_input, str) and validate_uri and uri_input.startswith("s3://"):
-            return s3_input(
+            s3_input_result = s3_input(
                 uri_input,
                 content_type=content_type,
                 input_mode=input_mode,
                 compression=compression,
                 target_attribute_name=target_attribute_name,
             )
+            return s3_input_result
         if isinstance(uri_input, str) and validate_uri and uri_input.startswith("file://"):
             return file_input(uri_input)
         if isinstance(uri_input, str) and validate_uri:
@@ -210,13 +211,14 @@ class _Job(object):
                 '"file://"'.format(uri_input)
             )
         if isinstance(uri_input, str):
-            return s3_input(
+            s3_input_result = s3_input(
                 uri_input,
                 content_type=content_type,
                 input_mode=input_mode,
                 compression=compression,
                 target_attribute_name=target_attribute_name,
             )
+            return s3_input_result
         if isinstance(uri_input, (s3_input, file_input, FileSystemInput)):
             return uri_input
 

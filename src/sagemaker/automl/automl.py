@@ -74,8 +74,9 @@ class AutoML(object):
         """Create an AutoML Job with the input dataset.
 
         Args:
-            inputs (str or list[str]): Local path or S3 Uri where the training data is stored. If a
-                local path is provided, the dataset will be uploaded to an S3 location.
+            inputs (str or list[str] or AutoMLInput): Local path or S3 Uri where the training data
+                is stored. Or an AutoMLInput object. If a local path is provided, the dataset will
+                be uploaded to an S3 location.
             wait (bool): Whether the call should wait until the job completes (default: True).
             logs (bool): Whether to show the logs produced by the job.
                 Only meaningful when wait is True (default: True).
@@ -95,7 +96,7 @@ class AutoML(object):
                 inputs = self.sagemaker_session.upload_data(inputs, key_prefix="auto-ml-input-data")
         self._prepare_for_auto_ml_job(job_name=job_name)
 
-        self.latest_auto_ml_job = _AutoMLJob.start_new(self, inputs)  # pylint: disable=W0201
+        self.latest_auto_ml_job = AutoMLJob.start_new(self, inputs)  # pylint: disable=W0201
         if wait:
             self.latest_auto_ml_job.wait(logs=logs)
 
@@ -385,8 +386,47 @@ class AutoML(object):
             self.output_path = "s3://{}/".format(self.sagemaker_session.default_bucket())
 
 
-class _AutoMLJob(_Job):
+class AutoMLInput(object):
+    """Accepts parameters that specify an S3 input for an auto ml job and provides
+    a method to turn those parameters into a dictionary."""
+
+    def __init__(self, inputs, target_attribute_name, compression=None):
+        """Convert an S3 Uri or a list of S3 Uri to an AutoMLInput object.
+
+        :param inputs (str, list[str]): a string or a list of string that points to (a)
+            S3 location(s) where input data is stored.
+        :param target_attribute_name (str): the target attribute name for regression
+            or classification.
+        :param compression (str): if training data is compressed, the compression type.
+            The default value is None.
+        """
+        self.inputs = inputs
+        self.target_attribute_name = target_attribute_name
+        self.compression = compression
+
+    def to_request_dict(self):
+        """Generates a request dictionary using the parameters provided to the class."""
+        # Create the request dictionary.
+        auto_ml_input = []
+        if isinstance(self.inputs, string_types):
+            self.inputs = [self.inputs]
+        for entry in self.inputs:
+            input_entry = {
+                "DataSource": {"S3DataSource": {"S3DataType": "S3Prefix", "S3Uri": entry}},
+                "TargetAttributeName": self.target_attribute_name,
+            }
+            if self.compression is not None:
+                input_entry["CompressionType"] = self.compression
+            auto_ml_input.append(input_entry)
+        return auto_ml_input
+
+
+class AutoMLJob(_Job):
     """A class for interacting with CreateAutoMLJob API."""
+
+    def __init__(self, sagemaker_session, job_name, inputs):
+        self.inputs = inputs
+        super(AutoMLJob, self).__init__(sagemaker_session=sagemaker_session, job_name=job_name)
 
     @classmethod
     def start_new(cls, auto_ml, inputs):
@@ -399,7 +439,7 @@ class _AutoMLJob(_Job):
                 :meth:`~sagemaker.automl.AutoML.fit`.
 
         Returns:
-            sagemaker.automl._AutoMLJob: Constructed object that captures
+            sagemaker.automl.AutoMLJob: Constructed object that captures
             all information about the started AutoML job.
         """
         config = cls._load_config(inputs, auto_ml)
@@ -410,7 +450,7 @@ class _AutoMLJob(_Job):
         auto_ml_args["tags"] = auto_ml.tags
 
         auto_ml.sagemaker_session.auto_ml(**auto_ml_args)
-        return cls(auto_ml.sagemaker_session, auto_ml._current_job_name)
+        return cls(auto_ml.sagemaker_session, auto_ml._current_job_name, inputs)
 
     @classmethod
     def _load_config(cls, inputs, auto_ml, expand_role=True, validate_uri=True):
@@ -432,9 +472,12 @@ class _AutoMLJob(_Job):
         # InputDataConfig
         # OutputConfig
 
-        input_config = cls._format_inputs_to_input_config(
-            inputs, validate_uri, auto_ml.compression_type, auto_ml.target_attribute_name
-        )
+        if isinstance(inputs, AutoMLInput):
+            input_config = inputs.to_request_dict()
+        else:
+            input_config = cls._format_inputs_to_input_config(
+                inputs, validate_uri, auto_ml.compression_type, auto_ml.target_attribute_name
+            )
         output_config = _Job._prepare_output_config(auto_ml.output_path, auto_ml.output_kms_key)
 
         role = auto_ml.sagemaker_session.expand_role(auto_ml.role) if expand_role else auto_ml.role
@@ -486,7 +529,9 @@ class _AutoMLJob(_Job):
             return None
 
         channels = []
-        if isinstance(inputs, string_types):
+        if isinstance(inputs, AutoMLInput):
+            channels.append(inputs.to_request_dict())
+        elif isinstance(inputs, string_types):
             channel = _Job._format_string_uri_input(
                 inputs,
                 validate_uri,
@@ -539,6 +584,10 @@ class _AutoMLJob(_Job):
             stopping_condition["MaxAutoMLJobRuntimeInSeconds"] = total_job_runtime_in_seconds
 
         return stopping_condition
+
+    def describe(self):
+        """Prints out a response from the DescribeAutoMLJob API call."""
+        return self.sagemaker_session.describe_auto_ml_job(self.job_name)
 
     def wait(self, logs=True):
         """Wait for the AutoML job to finish.

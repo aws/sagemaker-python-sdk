@@ -56,24 +56,14 @@ class CandidateEstimator(object):
                 )
 
                 inputs = training_job["InputDataConfig"]
-                candidate_step = {
-                    "name": step_name,
-                    "inputs": inputs,
-                    "type": step_type,
-                    "desc": training_job,
-                }
+                candidate_step = CandidateStep(step_name, inputs, step_type, training_job)
                 candidate_steps.append(candidate_step)
             elif step_type == "TransformJob":
                 transform_job = self.sagemaker_session.sagemaker_client.describe_transform_job(
                     TransformJobName=step_name
                 )
                 inputs = transform_job["TransformInput"]
-                candidate_step = {
-                    "name": step_name,
-                    "inputs": inputs,
-                    "type": step_type,
-                    "desc": transform_job,
-                }
+                candidate_step = CandidateStep(step_name, inputs, step_type, transform_job)
                 candidate_steps.append(candidate_step)
         return candidate_steps
 
@@ -313,3 +303,33 @@ class CandidateEstimator(object):
             step_type = step["CandidateStepType"].split("::")[2]
             processed_steps.append({"name": step_name, "type": step_type})
         return processed_steps
+
+
+class CandidateStep(object):
+    """A class that maintains an AutoML Candidate step's name, inputs, type, and description."""
+
+    def __init__(self, name, inputs, step_type, description):
+        self._name = name
+        self._inputs = inputs
+        self._type = step_type
+        self._description = description
+
+    @property
+    def name(self):
+        """Name of the candidate step -> (str)"""
+        return self._name
+
+    @property
+    def inputs(self):
+        """Inputs of the candidate step -> (dict)"""
+        return self._inputs
+
+    @property
+    def type(self):
+        """Type of the candidate step, Training or Transform -> (str)"""
+        return self._type
+
+    @property
+    def description(self):
+        """Description of candidate step job -> (dict)"""
+        return self._description
