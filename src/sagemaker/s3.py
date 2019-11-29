@@ -13,6 +13,8 @@
 """This module contains Enums and helper methods related to S3."""
 from __future__ import print_function, absolute_import
 
+import os
+
 from six.moves.urllib.parse import urlparse
 from sagemaker.session import Session
 
@@ -42,7 +44,7 @@ class S3Uploader(object):
         Args:
             local_path (str): A local path to a file or directory.
             desired_s3_uri (str): The desired S3 uri to upload to.
-            kms_key (str): A KMS key to be provided as an extra argument.
+            kms_key (str): The KMS key to use to encrypt the files.
             session (sagemaker.session.Session): Session object which
                 manages interactions with Amazon SageMaker APIs and any other
                 AWS services needed. If not specified, the estimator creates one
@@ -70,7 +72,7 @@ class S3Uploader(object):
         Args:
             body (str): String representing the body of the file.
             desired_s3_uri (str): The desired S3 uri to upload to.
-            kms_key (str): A KMS key to be provided as an extra argument.
+            kms_key (str): The KMS key to use to encrypt the files.
             session (sagemaker.session.Session): AWS session to use. Automatically
                 generates one if not provided.
 
@@ -98,7 +100,7 @@ class S3Downloader(object):
         Args:
             s3_uri (str): An S3 uri to download from.
             local_path (str): A local path to download the file(s) to.
-            kms_key (str): A KMS key to be provided as an extra argument.
+            kms_key (str): The KMS key to use to decrypt the files.
             session (sagemaker.session.Session): Session object which
                 manages interactions with Amazon SageMaker APIs and any other
                 AWS services needed. If not specified, the estimator creates one
@@ -133,3 +135,22 @@ class S3Downloader(object):
         bucket, key_prefix = parse_s3_url(url=s3_uri)
 
         return sagemaker_session.read_s3_file(bucket=bucket, key_prefix=key_prefix)
+
+    @staticmethod
+    def list(s3_uri, session=None):
+        """Static method that lists the contents of an S3 uri.
+
+        Args:
+            s3_uri (str): The S3 base uri to list objects in.
+            session (sagemaker.session.Session): AWS session to use. Automatically
+                generates one if not provided.
+
+        Returns:
+            [str]: The list of S3 URIs in the given S3 base uri.
+
+        """
+        sagemaker_session = session or Session()
+        bucket, key_prefix = parse_s3_url(url=s3_uri)
+
+        file_keys = sagemaker_session.list_s3_files(bucket=bucket, key_prefix=key_prefix)
+        return [os.path.join("s3://", bucket, file_key) for file_key in file_keys]

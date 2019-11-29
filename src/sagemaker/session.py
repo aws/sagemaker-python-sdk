@@ -203,7 +203,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
                 default bucket of the ``Session`` is used (if default bucket does not exist, the
                 ``Session`` creates it).
             key (str): S3 object key. This is the s3 path to the file.
-            kms_key (str): The KMS key to use for decrypting the file.
+            kms_key (str): The KMS key to use for encrypting the file.
 
         Returns:
             str: The S3 URI of the uploaded file(s). If a file is specified in the path argument,
@@ -291,7 +291,24 @@ class Session(object):  # pylint: disable=too-many-public-methods
         # Explicitly passing a None kms_key to boto3 throws a validation error.
         s3_object = s3.get_object(Bucket=bucket, Key=key_prefix)
 
-        return s3_object["Body"].read()
+        return s3_object["Body"].read().decode("utf-8")
+
+    def list_s3_files(self, bucket, key_prefix):
+        """Lists the S3 files given an S3 bucket and key.
+
+        Args:
+            bucket (str): Name of the S3 Bucket to download from.
+            key_prefix (str): S3 object key name prefix.
+
+        Returns:
+            [str]: The list of files at the S3 path.
+
+        """
+        s3 = self.boto_session.resource("s3")
+
+        s3_bucket = s3.Bucket(name=bucket)
+        s3_objects = s3_bucket.objects.filter(Prefix=key_prefix).all()
+        return [s3_object.key for s3_object in s3_objects]
 
     def default_bucket(self):
         """Return the name of the default bucket to use in relevant Amazon SageMaker interactions.
