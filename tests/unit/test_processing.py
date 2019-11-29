@@ -171,7 +171,6 @@ def test_sklearn_with_all_customizations(sagemaker_session):
         command=["python3"],
         instance_type="ml.m4.xlarge",
         instance_count=1,
-        py_version="py3",
         volume_size_in_gb=100,
         volume_kms_key=None,
         output_kms_key="arn:aws:kms:us-west-2:012345678901:key/kms-key",
@@ -462,15 +461,3 @@ def test_byo_container_with_baked_in_script(sagemaker_session):
         "experiment_config": None,
     }
     sagemaker_session.process.assert_called_with(**expected_args)
-
-
-def test_sklearn_processor_raises_value_error_if_invalid_py_version_passed_in(sagemaker_session):
-    with pytest.raises(ValueError):
-        SKLearnProcessor(
-            framework_version="0.20.0",
-            role=ROLE,
-            py_version="INVALID_PYTHON_VERSION",
-            instance_type="ml.m4.xlarge",
-            instance_count=1,
-            sagemaker_session=sagemaker_session,
-        )
