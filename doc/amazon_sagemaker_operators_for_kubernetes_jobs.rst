@@ -49,7 +49,7 @@ Configure the Helm Chart
 ''''''''''''''''''''''''
 
 Navigate to the
-‘amazon-sagemaker-operator-for-k8s/hack/charts/training-jobs/’ folder
+\ ``amazon-sagemaker-operator-for-k8s/hack/charts/training-jobs/`` folder
 and edit the \ ``values.yaml`` file to replace values
 like \ ``rolearn`` and ``outputpath`` with values that correspond to
 your account. The RoleARN must have permissions so that Amazon SageMaker
@@ -348,7 +348,7 @@ Configure the Helm Chart
 ''''''''''''''''''''''''
 
 Navigate to the
-‘amazon-sagemaker-operator-for-k8s/hack/charts/hyperparameter-tuning-jobs/’
+\ ``amazon-sagemaker-operator-for-k8s/hack/charts/hyperparameter-tuning-jobs/``
 folder.
 
 Edit the \ ``values.yaml`` file to replace the \ ``roleArn`` parameter
