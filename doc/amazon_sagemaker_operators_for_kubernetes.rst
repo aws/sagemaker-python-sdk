@@ -278,25 +278,17 @@ Clone the Helm installer directory using the following command:
 
     git clone https://github.com/aws/amazon-sagemaker-operator-for-k8s.git
 
-Configure the IAM Role
-
-
 Navigate to the
 ``amazon-sagemaker-operator-for-k8s/hack/charts/installer`` folder. Edit
 the \ ``values.yaml`` file, which includes high-level parameters for the
 Chart. Replace the ARN here with the ARN for the OIDC-based role you’ve
 created. 
 
-Install the Chart
-
-
 Install the Helm Chart using the following command:
 
 ::
 
     helm install rolebased/ --generate-name
-
-Verify Chart Installation
 
 
 After a moment, the chart will be installed with a randomly-generated
@@ -353,17 +345,11 @@ Deploy the Operator Using Helm Charts
 Alternatively, we have prepared a Helm Chart that you can use to install
 the operator.
 
-Get the Helm Installer Directory
-''''''''''''''''''''''''''''''''
-
 Clone the Helm installer directory using the following command:
 
 ::
 
     git clone https://github.com/aws/amazon-sagemaker-operator-for-k8s.git
-
-Format the Credentials 
-'''''''''''''''''''''''
 
 Get your AWS account’s  ``AWS Access Key ID`` and ``AWS Secret Access Key``  and convert them into base64 encoding by
 running the following commands:
@@ -373,8 +359,6 @@ running the following commands:
     echo -n <AWS_ACCESS_KEY_ID> | base64
     echo -n <AWS_SECRET_ACCESS_KEY> | base64
 
-Configure Credentials
-'''''''''''''''''''''
 
 Helm provides a \ ``values.yaml`` file, which includes high-level
 parameters for the Chart. 
@@ -382,8 +366,6 @@ parameters for the Chart.
 Edit the \ ``values.yaml`` file to add your base64 credentials from the
 previous step. 
 
-Install the Chart
-'''''''''''''''''
 
 Install the Helm Chart using the following command:
 
@@ -391,8 +373,6 @@ Install the Helm Chart using the following command:
 
     helm install hack/charts/installer/credbased/ --generate-name
 
-Verify Chart Installation
-'''''''''''''''''''''''''
 
 After a moment, the chart will be installed with a randomly-generated
 name. Verify that the installation succeeded by running the following
