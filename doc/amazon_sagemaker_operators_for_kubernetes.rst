@@ -1,5 +1,6 @@
+##############################
 Amazon SageMaker Operators for Kubernetes
-=========================================
+##############################
 
 Amazon SageMaker Operators for Kubernetes are operators that can be used
 to train machine learning models, optimize hyperparameters for a given
@@ -11,8 +12,12 @@ prior knowledge of Kubernetes and standard commands.
 There is no additional charge to use these operators. You incur charges
 for any Amazon SageMaker resources used through these operators. 
 
+.. contents::
+   :depth: 2
+
+*******************************************
 What is an Operator?
---------------------
+*******************************************
 
 Kubernetes is built on top of what is called the controller pattern.
 This pattern allows applications and tools to listen to a central state
@@ -512,8 +517,9 @@ look like the following:
 
     Use "smlogs [command] --help" for more information about a command.
 
+*******************************************
 Using Amazon Sagemaker Jobs
----------------------------
+*******************************************
 
 To run a job using the Amazon Sagemaker Operators, you can either apply
 a YAML file or use the supplied Helm charts. The method you used to
@@ -526,8 +532,9 @@ will need to download the data set into your own S3 bucket. You can find
 the dataset in \ `Download the MNIST
 Dataset. <https://docs.aws.amazon.com/sagemaker/latest/dg/ex1-preprocess-data-pull-data.html>`__
 
+*******************************************
 TrainingJob Operator
-~~~~~~~~~~~~~~~~~~~~
+*******************************************
 
 Training job operators reconcile your specified training job spec to
 Amazon SageMaker by launching it for you in Amazon SageMaker. You can
@@ -813,8 +820,9 @@ job stops or completes. 
 continue to show on the Amazon SageMaker console. The delete command
 takes about 2 minutes to clean up the resources from Amazon SageMaker.
 
+*******************************************
 HyperParameterTuningJobs Operator
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+*******************************************
 
 Hyperparameter tuning job operators reconcile your
 specified hyperparameter tuning job spec to Amazon SageMaker by
@@ -1195,9 +1203,9 @@ Your output should look like the following:  
 **Note**:  The delete command takes about 2 minutes to clean up the
 resources from Amazon SageMaker.
 
+*******************************************
 BatchTransformJobs Operator
-~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
+*******************************************
 Batch transform job operators reconcile your specified batch transform
 job spec to Amazon SageMaker by launching it in Amazon SageMaker. You
 can learn more about Amazon SageMaker batch transform job in the Amazon
@@ -1428,8 +1436,9 @@ Amazon SageMaker.
 **Note**: Amazon SageMaker does not delete batch transform jobs. Stopped
 jobs continue to show on the Amazon SageMaker console. 
 
+*******************************************
 Real-Time Inference
-~~~~~~~~~~~~~~~~~~~
+*******************************************
 
 HostingDeployments support creating and deleting an endpoint, as well as
 updating an existing endpoint. The hosting deployment operator
@@ -1810,8 +1819,9 @@ following command:
 Endpoints that have been deleted do not incur any charges for
 Amazon SageMaker resources.
 
+*******************************************
 Delete Operators from the Cluster 
-----------------------------------
+*******************************************
 
 Operators Installed Using YAML
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -1884,9 +1894,9 @@ following commands: 
     $ helm delete <chart name>
 
 ​
-
+*******************************************
 Troubleshooting
----------------
+*******************************************
 
 Debugging a Failed Job
 ~~~~~~~~~~~~~~~~~~~~~~
@@ -1957,8 +1967,9 @@ using the following steps:
          finalizers:
          - sagemaker-operator-finalizer
 
+*******************************************
 Appendix
---------
+*******************************************
 
 The following table lists the available operator images and SMLogs in
 each region.
