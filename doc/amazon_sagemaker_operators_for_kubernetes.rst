@@ -64,8 +64,7 @@ completed the following prerequisites:
 
 -  Created a Kubernetes cluster to run the operators on. It should be
    Kubernetes version 1.14, 1.13, or 1.12. For automated cluster
-   creation using \ ``eksctl``, see \ `Getting Started
-   with \ ``eksctl`` <https://docs.aws.amazon.com/eks/latest/userguide/getting-started-eksctl.html>`__.
+   creation using \ ``eksctl``, see `Getting Started with eksctl <https://docs.aws.amazon.com/eks/latest/userguide/getting-started-eksctl.html>`__.
    It takes 20 to 30 minutes to provision a cluster.
 
 Permissions Overview
@@ -173,10 +172,7 @@ Create an IAM Role
 ^^^^^^^^^^^^^^^^^^^
 
 Create a file named \ ``trust.json``  and insert the following trust
-relationship code block into it. Be sure to replace all \ ``<OIDC
-            ID>``, \ ``<AWS account number>``, and \ ``<EKS
-            Cluster region>`` placeholders with values corresponding to
-your cluster.
+relationship code block into it. Be sure to replace all \ ``<OIDC ID>``, \ ``<AWS account number>``, and \ ``<EKS Cluster region>`` placeholders with values corresponding to your cluster.
 
 ::
 
@@ -340,7 +336,7 @@ follows:
        echo -n <AWS_SECRET_ACCESS_KEY> | base64
 
 -  Download
-   the \ ```installer.yaml`` <https://raw.githubusercontent.com/aws/amazon-sagemaker-operator-for-k8s/master/release/credsbased/installer.yaml>`__\ file
+   the `installer.yaml <https://raw.githubusercontent.com/aws/amazon-sagemaker-operator-for-k8s/master/release/credsbased/installer.yaml>`__\  file
    and find the line \ ``kind: Secret``. Replace
    the \ ``AWS_ACCESS_KEY_ID`` and ``AWS_SECRET_ACCESS_KEY`` entries in
    the \ ``data:`` section with your base64 encoded values.
@@ -369,8 +365,7 @@ Clone the Helm installer directory using the following command:
 Format the Credentials 
 '''''''''''''''''''''''
 
-Get your AWS account’s  ``AWS Access Key ID`` and ``AWS Secret
-              Access Key``  and convert them into base64 encoding by
+Get your AWS account’s  ``AWS Access Key ID`` and ``AWS Secret Access Key``  and convert them into base64 encoding by
 running the following commands:
 
 ::
@@ -465,7 +460,7 @@ As part of the Amazon SageMaker Operators for Kubernetes, you can use
 the \ ``smlogs`` `plugin <https://kubernetes.io/docs/tasks/extend-kubectl/kubectl-plugins/>`__ for ``kubectl`` .
 This enables Amazon SageMaker CloudWatch logs to be streamed
 with \ ``kubectl``. \ ``kubectl``\ must be installed onto
-your \ ```PATH`` <http://www.linfo.org/path_env_var.html>`__. The
+your `PATH <http://www.linfo.org/path_env_var.html>`__. The
 following commands place the binary in
 the \ ``sagemaker-k8s-bin`` directory in your home directory, and add
 that directory to your \ ``PATH``.
