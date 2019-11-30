@@ -32,9 +32,7 @@ Download the sample YAML file for training using the following command:
 
     wget https://github.com/aws/amazon-sagemaker-operator-for-k8s/blob/master/samples/xgboost-mnist-trainingjob.yaml
 
-Edit the \ ``xgboost-mnist-trainingjob.yaml`` file to replace
- the ``roleArn`` parameter with your \ ``<sagemaker-execution-role>``,
-and \ ``outputPath`` with your S3 bucket that the Amazon SageMaker
+Edit the \ ``xgboost-mnist-trainingjob.yaml`` file to replace the ``roleArn`` parameter with your \ ``<sagemaker-execution-role>``, and \ ``outputPath`` with your S3 bucket that the Amazon SageMaker
 execution role has write access to. Apply the YAML file using the
 following command:
 
@@ -487,7 +485,7 @@ To see detailed information about the \ ``TrainingJob``, run:
 
     kubectl describe trainingjobs <job name>
 
-.
+
 Spawned Training Jobs
 '''''''''''''''''''''
 
@@ -510,7 +508,7 @@ by running the following command.
 
 In addition to information about the tuning job, the Amazon SageMaker
 Operator for Kubernetes also exposes the `best training
-job <https://docs.aws.amazon.com/sagemaker/latest/dg/automatic-model-tuning-monitor.html#automatic-model-tuning-best-training-job>`__\ found
+job <https://docs.aws.amazon.com/sagemaker/latest/dg/automatic-model-tuning-monitor.html#automatic-model-tuning-best-training-job>`__\  found
 by the hyperparameter tuning job in the \ ``describe`` output as
 follows:
 
@@ -1174,8 +1172,7 @@ own.
 To invoke the endpoint using the AWS CLI, run the following command.
 Make sure to replace the Region and endpoint-name with your endpoint’s
 Region and Amazon SageMaker endpoint name. This information can be
-obtained from the output of \ ``kubectl
-            describe``.
+obtained from the output of \ ``kubectl describe``.
 
 ::
 
@@ -1249,7 +1246,7 @@ change the \ ``initialInstanceCount`` field from 1 to 2 as follows:
 
 Save the file, then use \ ``kubectl`` to apply your update as follows.
 You should see the status change
-from \ ``InService`` to ``ReconcilingEndpoint``, and
+from \ ``InService`` to ``ReconcilingEndpoint``,
 then \ ``Updating``.
 
 ::
