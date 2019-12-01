@@ -46,7 +46,7 @@ ROLE = "arn:aws:iam::142577830533:role/SageMakerRole"
 INSTANCE_COUNT = 1
 INSTANCE_TYPE = "ml.m5.xlarge"
 VOLUME_SIZE_IN_GB = 40
-MAX_RUNTIME_IN_SECONDS = 2 * 60 * 60
+MAX_RUNTIME_IN_SECONDS = 45 * 60
 ENV_KEY_1 = "env_key_1"
 ENV_VALUE_1 = "env_key_1"
 ENVIRONMENT = {ENV_KEY_1: ENV_VALUE_1}
@@ -67,7 +67,7 @@ UPDATED_ROLE = "arn:aws:iam::142577830533:role/SageMakerRole"
 UPDATED_INSTANCE_COUNT = 2
 UPDATED_INSTANCE_TYPE = "ml.m5.2xlarge"
 UPDATED_VOLUME_SIZE_IN_GB = 50
-UPDATED_MAX_RUNTIME_IN_SECONDS = 2 * 60 * 60 * 2
+UPDATED_MAX_RUNTIME_IN_SECONDS = 46 * 2
 UPDATED_ENV_KEY_1 = "env_key_2"
 UPDATED_ENV_VALUE_1 = "env_key_2"
 UPDATED_ENVIRONMENT = {UPDATED_ENV_KEY_1: UPDATED_ENV_VALUE_1}
@@ -114,9 +114,6 @@ def predictor(sagemaker_session, tf_full_version):
 
 @pytest.fixture(scope="module")
 def default_monitoring_schedule_name(sagemaker_session, output_kms_key, volume_kms_key, predictor):
-    pre_processor_script = os.path.join(DATA_DIR, "monitor/preprocessor.py")
-    post_processor_script = os.path.join(DATA_DIR, "monitor/postprocessor.py")
-
     my_default_monitor = DefaultModelMonitor(
         role=ROLE,
         instance_count=INSTANCE_COUNT,
@@ -148,8 +145,6 @@ def default_monitoring_schedule_name(sagemaker_session, output_kms_key, volume_k
 
     my_default_monitor.create_monitoring_schedule(
         endpoint_input=predictor.endpoint,
-        record_preprocessor_script=pre_processor_script,
-        post_analytics_processor_script=post_processor_script,
         output_s3_uri=output_s3_uri,
         statistics=statistics,
         constraints=constraints,
@@ -168,20 +163,9 @@ def default_monitoring_schedule_name(sagemaker_session, output_kms_key, volume_k
 
 @pytest.fixture(scope="module")
 def byoc_monitoring_schedule_name(sagemaker_session, output_kms_key, volume_kms_key, predictor):
-    pre_processor_script = os.path.join(DATA_DIR, "monitor/preprocessor.py")
-    post_processor_script = os.path.join(DATA_DIR, "monitor/postprocessor.py")
-
     byoc_env = ENVIRONMENT.copy()
     byoc_env["dataset_format"] = json.dumps(DatasetFormat.csv(header=False))
     byoc_env["dataset_source"] = "/opt/ml/processing/input/baseline_dataset_input"
-    byoc_env["record_preprocessor_script"] = os.path.join(
-        "/opt/ml/processing/input/record_preprocessor_script_input",
-        os.path.basename(pre_processor_script),
-    )
-    byoc_env["post_analytics_processor_script"] = os.path.join(
-        "/opt/ml/processing/input/post_analytics_processor_script_input",
-        os.path.basename(post_processor_script),
-    )
     byoc_env["output_path"] = os.path.join("/opt/ml/processing/output")
     byoc_env["publish_cloudwatch_metrics"] = "Disabled"
 
@@ -281,8 +265,6 @@ def updated_output_kms_key(sagemaker_session):
 def test_default_monitor_suggest_baseline_and_create_monitoring_schedule_with_customizations(
     sagemaker_session, output_kms_key, volume_kms_key, predictor
 ):
-    pre_processor_script = os.path.join(DATA_DIR, "monitor/preprocessor.py")
-    post_processor_script = os.path.join(DATA_DIR, "monitor/postprocessor.py")
     baseline_dataset = os.path.join(DATA_DIR, "monitor/baseline_dataset.csv")
 
     my_default_monitor = DefaultModelMonitor(
@@ -309,8 +291,6 @@ def test_default_monitor_suggest_baseline_and_create_monitoring_schedule_with_cu
     my_default_monitor.suggest_baseline(
         baseline_dataset=baseline_dataset,
         dataset_format=DatasetFormat.csv(header=False),
-        record_preprocessor_script=pre_processor_script,
-        post_analytics_processor_script=post_processor_script,
         output_s3_uri=output_s3_uri,
         wait=True,
         logs=False,
@@ -340,28 +320,12 @@ def test_default_monitor_suggest_baseline_and_create_monitoring_schedule_with_cu
         baselining_job_description["ProcessingInputs"][0]["InputName"] == "baseline_dataset_input"
     )
     assert (
-        baselining_job_description["ProcessingInputs"][1]["InputName"]
-        == "record_preprocessor_script_input"
-    )
-    assert (
-        baselining_job_description["ProcessingInputs"][2]["InputName"]
-        == "post_analytics_processor_script_input"
-    )
-    assert (
         baselining_job_description["ProcessingOutputConfig"]["Outputs"][0]["OutputName"]
         == "monitoring_output"
     )
     assert baselining_job_description["ProcessingOutputConfig"]["KmsKeyId"] == output_kms_key
     assert baselining_job_description["Environment"][ENV_KEY_1] == ENV_VALUE_1
     assert baselining_job_description["Environment"]["output_path"] == "/opt/ml/processing/output"
-    assert (
-        baselining_job_description["Environment"]["record_preprocessor_script"]
-        == "/opt/ml/processing/input/record_preprocessor_script_input/preprocessor.py"
-    )
-    assert (
-        baselining_job_description["Environment"]["post_analytics_processor_script"]
-        == "/opt/ml/processing/input/post_analytics_processor_script_input/postprocessor.py"
-    )
     assert (
         baselining_job_description["Environment"]["dataset_source"]
         == "/opt/ml/processing/input/baseline_dataset_input"
@@ -389,8 +353,6 @@ def test_default_monitor_suggest_baseline_and_create_monitoring_schedule_with_cu
 
     my_default_monitor.create_monitoring_schedule(
         endpoint_input=predictor.endpoint,
-        record_preprocessor_script=pre_processor_script,
-        post_analytics_processor_script=post_processor_script,
         output_s3_uri=output_s3_uri,
         statistics=my_default_monitor.baseline_statistics(),
         constraints=my_default_monitor.suggested_constraints(),
@@ -438,18 +400,6 @@ def test_default_monitor_suggest_baseline_and_create_monitoring_schedule_with_cu
         in schedule_description["MonitoringScheduleConfig"]["MonitoringJobDefinition"][
             "MonitoringAppSpecification"
         ]["ImageUri"]
-    )
-    assert (
-        "preprocessor.py"
-        in schedule_description["MonitoringScheduleConfig"]["MonitoringJobDefinition"][
-            "MonitoringAppSpecification"
-        ]["RecordPreprocessorSourceUri"]
-    )
-    assert (
-        "postprocessor.py"
-        in schedule_description["MonitoringScheduleConfig"]["MonitoringJobDefinition"][
-            "MonitoringAppSpecification"
-        ]["PostAnalyticsProcessorSourceUri"]
     )
     assert (
         ROLE
@@ -698,8 +648,6 @@ def test_default_monitor_suggest_baseline_and_create_monitoring_schedule_without
 def test_default_monitor_create_stop_and_start_monitoring_schedule_with_customizations(
     sagemaker_session, output_kms_key, volume_kms_key, predictor
 ):
-    pre_processor_script = os.path.join(DATA_DIR, "monitor/preprocessor.py")
-    post_processor_script = os.path.join(DATA_DIR, "monitor/postprocessor.py")
 
     my_default_monitor = DefaultModelMonitor(
         role=ROLE,
@@ -732,8 +680,6 @@ def test_default_monitor_create_stop_and_start_monitoring_schedule_with_customiz
 
     my_default_monitor.create_monitoring_schedule(
         endpoint_input=predictor.endpoint,
-        record_preprocessor_script=pre_processor_script,
-        post_analytics_processor_script=post_processor_script,
         output_s3_uri=output_s3_uri,
         statistics=statistics,
         constraints=constraints,
@@ -782,18 +728,6 @@ def test_default_monitor_create_stop_and_start_monitoring_schedule_with_customiz
         in schedule_description["MonitoringScheduleConfig"]["MonitoringJobDefinition"][
             "MonitoringAppSpecification"
         ]["ImageUri"]
-    )
-    assert (
-        "preprocessor.py"
-        in schedule_description["MonitoringScheduleConfig"]["MonitoringJobDefinition"][
-            "MonitoringAppSpecification"
-        ]["RecordPreprocessorSourceUri"]
-    )
-    assert (
-        "postprocessor.py"
-        in schedule_description["MonitoringScheduleConfig"]["MonitoringJobDefinition"][
-            "MonitoringAppSpecification"
-        ]["PostAnalyticsProcessorSourceUri"]
     )
     assert (
         ROLE
@@ -881,9 +815,6 @@ def test_default_monitor_create_and_update_schedule_config_with_customizations(
     updated_volume_kms_key,
     updated_output_kms_key,
 ):
-    pre_processor_script = os.path.join(DATA_DIR, "monitor/preprocessor.py")
-    post_processor_script = os.path.join(DATA_DIR, "monitor/postprocessor.py")
-
     my_default_monitor = DefaultModelMonitor(
         role=ROLE,
         instance_count=INSTANCE_COUNT,
@@ -915,8 +846,6 @@ def test_default_monitor_create_and_update_schedule_config_with_customizations(
 
     my_default_monitor.create_monitoring_schedule(
         endpoint_input=predictor.endpoint,
-        record_preprocessor_script=pre_processor_script,
-        post_analytics_processor_script=post_processor_script,
         output_s3_uri=output_s3_uri,
         statistics=statistics,
         constraints=constraints,
@@ -965,18 +894,6 @@ def test_default_monitor_create_and_update_schedule_config_with_customizations(
         in schedule_description["MonitoringScheduleConfig"]["MonitoringJobDefinition"][
             "MonitoringAppSpecification"
         ]["ImageUri"]
-    )
-    assert (
-        "preprocessor.py"
-        in schedule_description["MonitoringScheduleConfig"]["MonitoringJobDefinition"][
-            "MonitoringAppSpecification"
-        ]["RecordPreprocessorSourceUri"]
-    )
-    assert (
-        "postprocessor.py"
-        in schedule_description["MonitoringScheduleConfig"]["MonitoringJobDefinition"][
-            "MonitoringAppSpecification"
-        ]["PostAnalyticsProcessorSourceUri"]
     )
     assert (
         ROLE
@@ -1050,8 +967,6 @@ def test_default_monitor_create_and_update_schedule_config_with_customizations(
     _wait_for_schedule_changes_to_apply(monitor=my_default_monitor)
 
     my_default_monitor.update_monitoring_schedule(
-        record_preprocessor_script=pre_processor_script,
-        post_analytics_processor_script=post_processor_script,
         output_s3_uri=output_s3_uri,
         statistics=statistics,
         constraints=constraints,
@@ -1111,18 +1026,6 @@ def test_default_monitor_create_and_update_schedule_config_with_customizations(
         in schedule_description["MonitoringScheduleConfig"]["MonitoringJobDefinition"][
             "MonitoringAppSpecification"
         ]["ImageUri"]
-    )
-    assert (
-        "preprocessor.py"
-        in schedule_description["MonitoringScheduleConfig"]["MonitoringJobDefinition"][
-            "MonitoringAppSpecification"
-        ]["RecordPreprocessorSourceUri"]
-    )
-    assert (
-        "postprocessor.py"
-        in schedule_description["MonitoringScheduleConfig"]["MonitoringJobDefinition"][
-            "MonitoringAppSpecification"
-        ]["PostAnalyticsProcessorSourceUri"]
     )
     assert (
         UPDATED_ROLE
@@ -1419,9 +1322,6 @@ def test_default_monitor_attach_followed_by_baseline_and_update_monitoring_sched
     updated_volume_kms_key,
     updated_output_kms_key,
 ):
-    pre_processor_script = os.path.join(DATA_DIR, "monitor/preprocessor.py")
-    post_processor_script = os.path.join(DATA_DIR, "monitor/postprocessor.py")
-
     my_attached_monitor = DefaultModelMonitor.attach(
         monitor_schedule_name=default_monitoring_schedule_name, sagemaker_session=sagemaker_session
     )
@@ -1444,8 +1344,6 @@ def test_default_monitor_attach_followed_by_baseline_and_update_monitoring_sched
     _wait_for_schedule_changes_to_apply(my_attached_monitor)
 
     my_attached_monitor.update_monitoring_schedule(
-        record_preprocessor_script=pre_processor_script,
-        post_analytics_processor_script=post_processor_script,
         output_s3_uri=output_s3_uri,
         statistics=statistics,
         constraints=constraints,
@@ -1505,18 +1403,6 @@ def test_default_monitor_attach_followed_by_baseline_and_update_monitoring_sched
         in schedule_description["MonitoringScheduleConfig"]["MonitoringJobDefinition"][
             "MonitoringAppSpecification"
         ]["ImageUri"]
-    )
-    assert (
-        "preprocessor.py"
-        in schedule_description["MonitoringScheduleConfig"]["MonitoringJobDefinition"][
-            "MonitoringAppSpecification"
-        ]["RecordPreprocessorSourceUri"]
-    )
-    assert (
-        "postprocessor.py"
-        in schedule_description["MonitoringScheduleConfig"]["MonitoringJobDefinition"][
-            "MonitoringAppSpecification"
-        ]["PostAnalyticsProcessorSourceUri"]
     )
     assert (
         UPDATED_ROLE
@@ -1623,21 +1509,11 @@ def test_default_monitor_monitoring_execution_interactions(
 def test_byoc_monitor_suggest_baseline_and_create_monitoring_schedule_with_customizations(
     sagemaker_session, output_kms_key, volume_kms_key, predictor
 ):
-    pre_processor_script = os.path.join(DATA_DIR, "monitor/preprocessor.py")
-    post_processor_script = os.path.join(DATA_DIR, "monitor/postprocessor.py")
     baseline_dataset = os.path.join(DATA_DIR, "monitor/baseline_dataset.csv")
 
     byoc_env = ENVIRONMENT.copy()
     byoc_env["dataset_format"] = json.dumps(DatasetFormat.csv(header=False))
     byoc_env["dataset_source"] = "/opt/ml/processing/input/baseline_dataset_input"
-    byoc_env["record_preprocessor_script"] = os.path.join(
-        "/opt/ml/processing/input/record_preprocessor_script_input",
-        os.path.basename(pre_processor_script),
-    )
-    byoc_env["post_analytics_processor_script"] = os.path.join(
-        "/opt/ml/processing/input/post_analytics_processor_script_input",
-        os.path.basename(post_processor_script),
-    )
     byoc_env["output_path"] = os.path.join("/opt/ml/processing/output")
     byoc_env["publish_cloudwatch_metrics"] = "Disabled"
 
@@ -1670,15 +1546,7 @@ def test_byoc_monitor_suggest_baseline_and_create_monitoring_schedule_with_custo
             ProcessingInput(
                 source=baseline_dataset,
                 destination="/opt/ml/processing/input/baseline_dataset_input",
-            ),
-            ProcessingInput(
-                source=pre_processor_script,
-                destination="/opt/ml/processing/input/record_preprocessor_script_input",
-            ),
-            ProcessingInput(
-                source=post_processor_script,
-                destination="/opt/ml/processing/input/post_analytics_processor_script_input",
-            ),
+            )
         ],
         output=ProcessingOutput(source="/opt/ml/processing/output", destination=output_s3_uri),
         wait=True,
@@ -1706,8 +1574,6 @@ def test_byoc_monitor_suggest_baseline_and_create_monitoring_schedule_with_custo
     assert DEFAULT_IMAGE_SUFFIX in baselining_job_description["AppSpecification"]["ImageUri"]
     assert baselining_job_description["RoleArn"] == ROLE
     assert baselining_job_description["ProcessingInputs"][0]["InputName"] == "input-1"
-    assert baselining_job_description["ProcessingInputs"][1]["InputName"] == "input-2"
-    assert baselining_job_description["ProcessingInputs"][2]["InputName"] == "input-3"
     assert (
         baselining_job_description["ProcessingOutputConfig"]["Outputs"][0]["OutputName"]
         == "output-1"
@@ -1715,14 +1581,6 @@ def test_byoc_monitor_suggest_baseline_and_create_monitoring_schedule_with_custo
     assert baselining_job_description["ProcessingOutputConfig"]["KmsKeyId"] == output_kms_key
     assert baselining_job_description["Environment"][ENV_KEY_1] == ENV_VALUE_1
     assert baselining_job_description["Environment"]["output_path"] == "/opt/ml/processing/output"
-    assert (
-        baselining_job_description["Environment"]["record_preprocessor_script"]
-        == "/opt/ml/processing/input/record_preprocessor_script_input/preprocessor.py"
-    )
-    assert (
-        baselining_job_description["Environment"]["post_analytics_processor_script"]
-        == "/opt/ml/processing/input/post_analytics_processor_script_input/postprocessor.py"
-    )
     assert (
         baselining_job_description["Environment"]["dataset_source"]
         == "/opt/ml/processing/input/baseline_dataset_input"
@@ -2060,20 +1918,9 @@ def test_byoc_monitor_create_and_update_schedule_config_with_customizations(
     updated_volume_kms_key,
     updated_output_kms_key,
 ):
-    pre_processor_script = os.path.join(DATA_DIR, "monitor/preprocessor.py")
-    post_processor_script = os.path.join(DATA_DIR, "monitor/postprocessor.py")
-
     byoc_env = ENVIRONMENT.copy()
     byoc_env["dataset_format"] = json.dumps(DatasetFormat.csv(header=False))
     byoc_env["dataset_source"] = "/opt/ml/processing/input/baseline_dataset_input"
-    byoc_env["record_preprocessor_script"] = os.path.join(
-        "/opt/ml/processing/input/record_preprocessor_script_input",
-        os.path.basename(pre_processor_script),
-    )
-    byoc_env["post_analytics_processor_script"] = os.path.join(
-        "/opt/ml/processing/input/post_analytics_processor_script_input",
-        os.path.basename(post_processor_script),
-    )
     byoc_env["output_path"] = os.path.join("/opt/ml/processing/output")
     byoc_env["publish_cloudwatch_metrics"] = "Disabled"
 
@@ -2356,21 +2203,11 @@ def test_byoc_monitor_attach_followed_by_baseline_and_update_monitoring_schedule
     updated_volume_kms_key,
     updated_output_kms_key,
 ):
-    pre_processor_script = os.path.join(DATA_DIR, "monitor/preprocessor.py")
-    post_processor_script = os.path.join(DATA_DIR, "monitor/postprocessor.py")
     baseline_dataset = os.path.join(DATA_DIR, "monitor/baseline_dataset.csv")
 
     byoc_env = ENVIRONMENT.copy()
     byoc_env["dataset_format"] = json.dumps(DatasetFormat.csv(header=False))
     byoc_env["dataset_source"] = "/opt/ml/processing/input/baseline_dataset_input"
-    byoc_env["record_preprocessor_script"] = os.path.join(
-        "/opt/ml/processing/input/record_preprocessor_script_input",
-        os.path.basename(pre_processor_script),
-    )
-    byoc_env["post_analytics_processor_script"] = os.path.join(
-        "/opt/ml/processing/input/post_analytics_processor_script_input",
-        os.path.basename(post_processor_script),
-    )
     byoc_env["output_path"] = os.path.join("/opt/ml/processing/output")
     byoc_env["publish_cloudwatch_metrics"] = "Disabled"
 
@@ -2390,15 +2227,7 @@ def test_byoc_monitor_attach_followed_by_baseline_and_update_monitoring_schedule
             ProcessingInput(
                 source=baseline_dataset,
                 destination="/opt/ml/processing/input/baseline_dataset_input",
-            ),
-            ProcessingInput(
-                source=pre_processor_script,
-                destination="/opt/ml/processing/input/record_preprocessor_script_input",
-            ),
-            ProcessingInput(
-                source=post_processor_script,
-                destination="/opt/ml/processing/input/post_analytics_processor_script_input",
-            ),
+            )
         ],
         output=ProcessingOutput(source="/opt/ml/processing/output", destination=output_s3_uri),
         wait=True,
@@ -2426,8 +2255,6 @@ def test_byoc_monitor_attach_followed_by_baseline_and_update_monitoring_schedule
     assert DEFAULT_IMAGE_SUFFIX in baselining_job_description["AppSpecification"]["ImageUri"]
     assert baselining_job_description["RoleArn"] == ROLE
     assert baselining_job_description["ProcessingInputs"][0]["InputName"] == "input-1"
-    assert baselining_job_description["ProcessingInputs"][1]["InputName"] == "input-2"
-    assert baselining_job_description["ProcessingInputs"][2]["InputName"] == "input-3"
     assert (
         baselining_job_description["ProcessingOutputConfig"]["Outputs"][0]["OutputName"]
         == "output-1"
@@ -2435,14 +2262,6 @@ def test_byoc_monitor_attach_followed_by_baseline_and_update_monitoring_schedule
     assert baselining_job_description["ProcessingOutputConfig"]["KmsKeyId"] == output_kms_key
     assert baselining_job_description["Environment"][ENV_KEY_1] == ENV_VALUE_1
     assert baselining_job_description["Environment"]["output_path"] == "/opt/ml/processing/output"
-    assert (
-        baselining_job_description["Environment"]["record_preprocessor_script"]
-        == "/opt/ml/processing/input/record_preprocessor_script_input/preprocessor.py"
-    )
-    assert (
-        baselining_job_description["Environment"]["post_analytics_processor_script"]
-        == "/opt/ml/processing/input/post_analytics_processor_script_input/postprocessor.py"
-    )
     assert (
         baselining_job_description["Environment"]["dataset_source"]
         == "/opt/ml/processing/input/baseline_dataset_input"
