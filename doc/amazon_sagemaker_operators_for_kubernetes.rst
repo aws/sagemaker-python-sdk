@@ -43,8 +43,7 @@ completed the following prerequisites:
       one minor version of your Amazon Elastic Kubernetes Service
       (Amazon EKS) cluster control plane. For example, a
       1.13 \ ``kubectl`` client works with Kubernetes 1.13 and 1.14
-      clusters. OpenID Connect (OIDC) is not supported in version 1.13
-      and earlier.
+      clusters. OpenID Connect (OIDC) is not supported in versions earlier than 1.13.
 
    -  `eksctl <https://github.com/weaveworks/eksctl>`__ Version 0.7.0 or
       later
@@ -53,17 +52,15 @@ completed the following prerequisites:
       CLI <https://docs.aws.amazon.com/cli/latest/userguide/install-cliv1.html>`__ Version
       1.16.232 or later
 
-   -  (optional) `helm <https://helm.sh/docs/intro/install/>`__ Version
+   -  (optional) `Helm <https://helm.sh/docs/intro/install/>`__ Version
       3.0 or later
 
    -  `aws-iam-authenticator <https://docs.aws.amazon.com/eks/latest/userguide/install-aws-iam-authenticator.html>`__ 
 
--  Either created existing IAM access keys for the operator to use or
-   have IAM permissions to create users, attach policies to users, and
-   create access keys.
+-  Have IAM permissions to create roles and attach policies to roles.
 
--  Created a Kubernetes cluster to run the operators on. It should be
-   Kubernetes version 1.14, 1.13, or 1.12. For automated cluster
+-  Created a Kubernetes cluster to run the operators on. It should either be
+   Kubernetes version 1.13 or 1.14. For automated cluster
    creation using \ ``eksctl``, see `Getting Started with eksctl <https://docs.aws.amazon.com/eks/latest/userguide/getting-started-eksctl.html>`__.
    It takes 20 to 30 minutes to provision a cluster.
 
@@ -73,21 +70,18 @@ Permissions Overview
 The Amazon SageMaker Operators for Kubernetes allow you to manage jobs
 in Amazon SageMaker from your Kubernetes cluster. Thus the operators
 will access Amazon SageMaker resources on your behalf. Additionally, the
-credentials that the operator uses to interact with AWS resources differ
+IAM role that the operator assumes to interact with AWS resources differs
 from the credentials you use to access the Kubernetes cluster and the
 role that Amazon SageMaker assumes when running your machine learning
 jobs. The following image explains this design and flow.
 
-|image0|
+.. image:: ./amazon_sagemaker_operators_for_kubernetes_authentication.png
 
 Setup and Operator Deployment
 -----------------------------
 
-You can deploy operators onto your cluster using either an IAM Role or
-AWS account credentials.
-
-The following sections describe the options you have when deploying your
-operators.
+The following sections describe the steps to setup and deploy the
+operator.
 
 IAM Role-Based Operator Deployment
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -119,14 +113,13 @@ Cluster. <https://docs.aws.amazon.com/eks/latest/userguide/enable-iam-roles-for-
 
 ::
 
-    eksctl utils associate-iam-oidc-provider --name ${CLUSTER_NAME} \
+    eksctl utils associate-iam-oidc-provider --cluster ${CLUSTER_NAME} \
         --region ${AWS_REGION} --approve
 
 Your output should look like the following:
 
 ::
 
-    Flag --name has been deprecated, use --cluster
     [_]  eksctl version 0.10.1
     [_]  using region us-east-1
     [_]  IAM OpenID Connect provider is associated with cluster "my-cluster" in "us-east-1"
@@ -306,99 +299,12 @@ Your output should look like the following:
     NAME                    NAMESPACE       REVISION        UPDATED                                 STATUS          CHART                           APP VERSION
     rolebased-1234567    default         1               2019-11-20 23:14:59.6777082 +0000 UTC   deployed        sagemaker-k8s-operator-0.1.0
 
-Credentials-Based Operator Deployment
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-Alternatively, you can use your AWS credentials to deploy the operator
-to the cluster.When deploying your operator using credentials, you can
-use either a YAML file or Helm charts.
-
-Deploy the Operator Using YAML Files
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-This is the simplest way to deploy your operators. The process is as
-follows: 
-
--  Get the  \ ``AWS Access Key ID`` and ``AWS Secret Access Key``  and
-   convert them into base64 encoding by running the following commands
-
-   ::
-
-       echo -n <AWS_ACCESS_KEY_ID> | base64
-       echo -n <AWS_SECRET_ACCESS_KEY> | base64
-
--  Download
-   the `installer.yaml <https://raw.githubusercontent.com/aws/amazon-sagemaker-operator-for-k8s/master/release/credsbased/installer.yaml>`__\  file
-   and find the line \ ``kind: Secret``. Replace
-   the \ ``AWS_ACCESS_KEY_ID`` and ``AWS_SECRET_ACCESS_KEY`` entries in
-   the \ ``data:`` section with your base64 encoded values.
-
--  Use the following command to deploy the cluster:  
-
-   ::
-
-       kubectl apply -f installer.yaml
-
-Deploy the Operator Using Helm Charts
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-Alternatively, we have prepared a Helm Chart that you can use to install
-the operator.
-
-Clone the Helm installer directory using the following command:
-
-::
-
-    git clone https://github.com/aws/amazon-sagemaker-operator-for-k8s.git
-
-Get your AWS account’s  ``AWS Access Key ID`` and ``AWS Secret Access Key``  and convert them into base64 encoding by
-running the following commands:
-
-::
-
-    echo -n <AWS_ACCESS_KEY_ID> | base64
-    echo -n <AWS_SECRET_ACCESS_KEY> | base64
-
-
-Helm provides a \ ``values.yaml`` file, which includes high-level
-parameters for the Chart. 
-
-Edit the \ ``values.yaml`` file to add your base64 credentials from the
-previous step. 
-
-
-Install the Helm Chart using the following command:
-
-::
-
-    helm install hack/charts/installer/credbased/ --generate-name
-
-
-After a moment, the chart will be installed with a randomly-generated
-name. Verify that the installation succeeded by running the following
-command:
-
-::
-
-    helm ls
-
-Your output should look like the following:
-
-::
-
-    NAME                    NAMESPACE       REVISION        UPDATED                                 STATUS          CHART                           APP VERSION
-    rolebased-12345678    default         1               2019-11-20 23:14:59.6777082 +0000 UTC   deployed        sagemaker-k8s-operator-0.1.0
-
-With the operator installed on your cluster, you are now ready to create
-Amazon SageMaker jobs.
 
 Verify the Operator Deployment
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-Whether you used role based or credentials based authentication, you
-should be able to see the Amazon SageMaker Custom Resource Definitions
-(CRDs) for each operator deployed to your cluster by running the
-following command: 
+You should be able to see the Amazon SageMaker Custom Resource
+Definitions (CRDs) for each operator deployed to your cluster by running
+the following command: 
 
 ::
 
@@ -658,27 +564,3 @@ each region.
 +-------------+---------------------------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------------+
 | eu-west-1   | ``613661167059.dkr.ecr.eu-west-1.amazonaws.com/amazon-sagemaker-operator-for-k8s:latest``   | https://amazon-sagemaker-operator-for-k8s-eu-west-1.s3.amazonaws.com/kubectl-smlogs-plugin/latest/linux.amd64.tar.gz   |
 +-------------+---------------------------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------------+
-
-The following are basic Helm commands:
-
-::
-
-    # List Helm charts that are installed in your cluster
-    $ helm ls
-    NAME    NAMESPACE       REVISION        UPDATED STATUS  CHART   APP VERSION
-
-    # Install helm chart with a random name.
-    $ helm install <chart-directory> --generate-name
-
-    # Uninstall helm chart.
-    $ helm uninstall <chart-name>
-
-    # To delete installed chart 
-    $ helm delete <installed chart name> 
-
-    # If you want to use the same helm chart to deploy multiple jobs, you can create a multiple values files and use them as follows: 
-    $ helm install training-jobs  kmeans-values.yaml
-    $ helm install training-jobs  xgboost-values.yaml
-
-.. |image0| image:: /blob/BXH9AAoKApo/tWqtVgiJs-uykHQTcDHHwg
-   :name: BXH9CAto3Eq

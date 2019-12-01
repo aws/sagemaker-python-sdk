@@ -73,7 +73,6 @@ Your output should look like the following:
 
 ::
 
-    #Output: 
     NAME: chart-12345678
     LAST DEPLOYED: Wed Nov 20 23:35:49 2019
     NAMESPACE: default
@@ -166,8 +165,8 @@ official \ `API
 documentation <https://docs.aws.amazon.com/sagemaker/latest/dg/API_DescribeTrainingJob.html#SageMaker-DescribeTrainingJob-response-SecondaryStatus>`__.
 They contain more granular information about the status of the job.
 
-Describe a Training Job:
-^^^^^^^^^^^^^^^^^^^^^^^^
+Describe a Training Job
+^^^^^^^^^^^^^^^^^^^^^^^
 
 You can get more details about the training job by using
 the \ ``describe`` kubectl verb. This is typically used for debugging a
@@ -246,7 +245,7 @@ The output for your training job should look like the following:
         Max Runtime In Seconds:  86400
       Training Job Name:         xgboost-mnist-from-for-s3-6d7fa0af0bef11eab94e0example
     Status:
-      Cloud Watch Log URL:           https://<region>.console.aws.amazon.com/cloudwatch/home?region=<region>#logStream:group=/aws/sagemaker/TrainingJobs;prefix=<example>;streamFilter=typeLogStreamPrefix
+      Cloud Watch Log URL:           https://us-east-2.console.aws.amazon.com/cloudwatch/home?region=us-east-2#logStream:group=/aws/sagemaker/TrainingJobs;prefix=<example>;streamFilter=typeLogStreamPrefix
       Last Check Time:               2019-11-20T23:44:29Z
       Sage Maker Training Job Name:  xgboost-mnist-from-for-s3-6d7fa0af0bef11eab94eexample
       Secondary Status:              Downloading
@@ -866,10 +865,10 @@ Your output should look like the following:
         Data Source:
           S 3 Data Source:
             S 3 Data Type:  S3Prefix
-            S 3 Uri:        s3://<s3 bucket>/mnist_kmeans_example/input
+            S 3 Uri:        s3://my-bucket/mnist_kmeans_example/input
       Transform Job Name:   xgboost-mnist-a88fb19809b511eaac440aa8a9SMJOB
       Transform Output:
-        S 3 Output Path:  s3://<s3 bucket>/mnist_kmeans_example/output
+        S 3 Output Path:  s3://my-bucket/mnist_kmeans_example/output
       Transform Resources:
         Instance Count:  1
         Instance Type:   ml.m4.xlarge
