@@ -4,36 +4,35 @@ Amazon SageMaker Operators for Kubernetes
 
 
 
-Amazon SageMaker Operators for Kubernetes are operators that can be used
-to train machine learning models, optimize hyperparameters for a given
+Amazon SageMaker Operators for Kubernetes are operators that you use
+to train machine learning models. You can also use the operators to optimize hyperparameters for a given
 model, run batch transform jobs over existing models, and set up
-inference endpoints. With these operators, users can manage their jobs
-in Amazon SageMaker from their Kubernetes cluster. This document assumes
-prior knowledge of Kubernetes and standard commands.
+inference endpoints. With these operators, you can manage jobs
+in Amazon SageMaker from a Kubernetes cluster. This guide shows you how to set up the operators. The guide also explains how to use the operators to optimize hyperparameters, run batch transform jobs, and setup an inference endpoint.
 
-There is no additional charge to use these operators. You incur charges
-for any Amazon SageMaker resources used through these operators. 
+There is no additional charge to use these operators. You do incur charges
+for any Amazon SageMaker resources that you use through these operators. The procedures and guidelines here assume you are familiar with Kubernetes and standard commands.
 
 
 .. contents::
 
-What is an Operator?
+What is an operator?
 --------------------
 
 Kubernetes is built on top of what is called the controller pattern.
 This pattern allows applications and tools to listen to a central state
-manager (ETCD) and take action when something happens. Examples of such
+manager (ETCD) and act when something happens. Examples of such
 applications
-include \ ``cloud-controller-manager``, \ ``controller-manager``, etc.
-The controller pattern allows us to create decoupled experiences and not
+include \ ``cloud-controller-manager`` and \ ``controller-manager``.
+The controller pattern allows you to create decoupled experiences and not
 have to worry about how other components are integrated. An operator is
-a purpose-built application that will manage a specific type of
-component using this same pattern.
+a purpose-built application that manages a specific type of
+component by using this same pattern.
 
 Prerequisites
 ~~~~~~~~~~~~~
 
-The Amazon SageMaker Operators for Kubernetes guide assumes that you’ve
+This guide assumes that you’ve
 completed the following prerequisites:
 
 -  Installed the following tools:
@@ -64,36 +63,35 @@ completed the following prerequisites:
    creation using \ ``eksctl``, see `Getting Started with eksctl <https://docs.aws.amazon.com/eks/latest/userguide/getting-started-eksctl.html>`__.
    It takes 20 to 30 minutes to provision a cluster.
 
-Permissions Overview
+Permissions overview
 ~~~~~~~~~~~~~~~~~~~~
 
 The Amazon SageMaker Operators for Kubernetes allow you to manage jobs
 in Amazon SageMaker from your Kubernetes cluster. Thus the operators
-will access Amazon SageMaker resources on your behalf. Additionally, the
+will access Amazon SageMaker resources on your behalf. The
 IAM role that the operator assumes to interact with AWS resources differs
-from the credentials you use to access the Kubernetes cluster and the
-role that Amazon SageMaker assumes when running your machine learning
+from the credentials you use to access the Kubernetes cluster. The
+role also differs from the role that Amazon SageMaker assumes when running your machine learning
 jobs. The following image explains this design and flow.
 
 .. image:: ./amazon_sagemaker_operators_for_kubernetes_authentication.png
 
-Setup and Operator Deployment
+Setup and operator deployment
 -----------------------------
 
 The following sections describe the steps to setup and deploy the
 operator.
 
-IAM Role-Based Operator Deployment
+IAM role-based operator deployment
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Before you can deploy your operator using an IAM Role, you need to
-associate an OpenID Connect (OIDC) provider with your IAM role to
+Before you can deploy your operator using an IAM role, associate an OpenID Connect (OIDC) provider with your role to
 authenticate with the IAM service.
 
 Associate an OpenID Connect Provider to Your Instance
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-You need to create an OIDC identity provider for your cluster. If your
+Create an OIDC identity provider for your cluster. If your
 cluster is managed by EKS, then your cluster will already have an OIDC
 attached to it. 
 
@@ -102,7 +100,7 @@ variables as follows:
 
 ::
 
-    # Set the region and cluster
+    # Set the Region and cluster
     export CLUSTER_NAME="<your cluster name>"
     export AWS_REGION="<your region>"
 
@@ -145,8 +143,8 @@ The command will return a URL like the following:
     https://oidc.eks.${AWS_REGION}.amazonaws.com/id/D48675832CA65BD10A532F597OIDCID
 
 In this URL, the value D48675832CA65BD10A532F597OIDCID is the OIDC ID.
-The OIDC ID for your cluster will be different. You’ll need this OIDC ID
-value to create an IAM role.
+The OIDC ID for your cluster will be different. You need this OIDC ID
+value to create a role.
 
 If your output is \ ``None``, it means that your client version is old.
 To work around this, run the following command: 
@@ -188,7 +186,7 @@ relationship code block into it. Be sure to replace all \ ``<OIDC ID>``, \ ``<AW
       ]
     }
 
-Run the following command to create an IAM role with the trust
+Run the following command to create a role with the trust
 relationship defined in \ ``trust.json``. This role enables the
 Amazon EKS cluster to get and refresh credentials from IAM.
 
@@ -206,13 +204,13 @@ Your output should look like the following:
     STRINGEQUALS    sts.amazonaws.com       system:serviceaccount:sagemaker-k8s-operator-system:sagemaker-k8s-operator-default
     PRINCIPAL       arn:aws:iam::123456789012:oidc-provider/oidc.eks.us-east-1.amazonaws.com/id/
 
-Take note of \ ``ROLE ARN``, you need to pass this value to your
+Take note of \ ``ROLE ARN``, you pass this value to your
 operator. 
 
 Attach the AmazonSageMakerFullAccess Policy to the Role
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-To give the IAM role access to Amazon SageMaker, attach
+To give the role access to Amazon SageMaker, attach
 the \ `AmazonSageMakerFullAccess <https://console.aws.amazon.com/iam/home?#/policies/arn:aws:iam::aws:policy/AmazonSageMakerFullAccess>`__ policy.
 If you want to limit permissions to the operator, you can create your
 own custom policy and attach it.
@@ -259,7 +257,7 @@ follows:
 Deploy the Operator Using Helm Charts
 '''''''''''''''''''''''''''''''''''''
 
-Alternatively, we have prepared a Helm Chart that you can use to install
+Use the provided Helm Chart to install
 the operator.
 
 Get the Helm Installer Directory 
@@ -284,7 +282,7 @@ Install the Helm Chart using the following command:
     helm install rolebased/ --generate-name
 
 
-After a moment, the chart will be installed with a randomly-generated
+After a moment, the chart will be installed with a randomly generated
 name. Verify that the installation succeeded by running the following
 command:
 
@@ -300,7 +298,7 @@ Your output should look like the following:
     rolebased-1234567    default         1               2019-11-20 23:14:59.6777082 +0000 UTC   deployed        sagemaker-k8s-operator-0.1.0
 
 
-Verify the Operator Deployment
+Verify the operator deployment
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 You should be able to see the Amazon SageMaker Custom Resource
 Definitions (CRDs) for each operator deployed to your cluster by running
@@ -339,7 +337,7 @@ namespace \ ``sagemaker-k8s-operator-system``  as follows:
 
 ​
 
-Install the Amazon SageMaker Logs \ ``kubectl`` Plugin
+Install the Amazon SageMaker logs \ ``kubectl`` plugin
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 As part of the Amazon SageMaker Operators for Kubernetes, you can use
