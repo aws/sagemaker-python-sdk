@@ -239,11 +239,11 @@ class Session(object):  # pylint: disable=too-many-public-methods
 
         # Initialize the variables used to loop through the contents of the S3 bucket.
         keys = []
-        directories = []
         next_token = ""
         base_parameters = {"Bucket": bucket, "Prefix": key_prefix}
 
-        # Loop through the contents of the bucket, 1,000 objects at a time.
+        # Loop through the contents of the bucket, 1,000 objects at a time. Gathering all keys into
+        # a "keys" list.
         while next_token is not None:
             request_parameters = base_parameters.copy()
             if next_token != "":
@@ -253,26 +253,20 @@ class Session(object):  # pylint: disable=too-many-public-methods
             # For each object, save its key or directory.
             for s3_object in contents:
                 key = s3_object.get("Key")
-                if key[-1] != "/":
-                    keys.append(key)
-                else:
-                    directories.append(key)
+                keys.append(key)
             next_token = response.get("NextContinuationToken")
 
-        # For each directory, create the directory on the local machine.
-        for directory in directories:
-            destination_path = os.path.join(path, directory)
-            if not os.path.exists(os.path.dirname(destination_path)):
-                os.makedirs(os.path.dirname(destination_path))
-
-        # For each object key, create the directory on the local machine,
-        # and then download the file.
+        # For each object key, create the directory on the local machine if needed, and then
+        # download the file.
         for key in keys:
-            destination_path = os.path.join(path, key)
+            tail_s3_uri_path = os.path.basename(key_prefix)
+            if not os.path.splitext(key_prefix)[1]:
+                tail_s3_uri_path = os.path.relpath(key, key_prefix)
+            destination_path = os.path.join(path, tail_s3_uri_path)
             if not os.path.exists(os.path.dirname(destination_path)):
                 os.makedirs(os.path.dirname(destination_path))
             s3.download_file(
-                bucket=bucket, key=key, filename=destination_path, extra_args=extra_args
+                Bucket=bucket, Key=key, Filename=destination_path, ExtraArgs=extra_args
             )
 
     def read_s3_file(self, bucket, key_prefix):
