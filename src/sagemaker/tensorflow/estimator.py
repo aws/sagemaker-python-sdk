@@ -197,13 +197,13 @@ class TensorFlow(Framework):
 
     __framework_name__ = "tensorflow"
 
-    LATEST_VERSION = "1.14"
+    LATEST_VERSION = "1.15"
     """The latest version of TensorFlow included in the SageMaker pre-built Docker images."""
 
     _LOWEST_SCRIPT_MODE_ONLY_VERSION = [1, 13]
-    # 1.14.0 now supports py2
-    # we will need to update this version number if future versions do not support py2 anymore
-    _LOWEST_PYTHON_2_ONLY_VERSION = [1, 14]
+    # 1.15.0 still supports py2
+    # we will need to update this version number if future versions still support py2
+    _HIGHEST_PYTHON_2_VERSION = [1, 15]
 
     def __init__(
         self,
@@ -371,9 +371,7 @@ class TensorFlow(Framework):
 
     def _only_python_3_supported(self):
         """Placeholder docstring"""
-        return [
-            int(s) for s in self.framework_version.split(".")
-        ] >= self._LOWEST_PYTHON_2_ONLY_VERSION
+        return [int(s) for s in self.framework_version.split(".")] >= self._HIGHEST_PYTHON_2_VERSION
 
     def _validate_requirements_file(self, requirements_file):
         """Placeholder docstring"""

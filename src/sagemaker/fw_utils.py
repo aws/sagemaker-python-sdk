@@ -60,6 +60,8 @@ ASIMOV_VALID_ACCOUNTS_BY_REGION = {"us-iso-east-1": "886529160074"}
 OPT_IN_ACCOUNTS_BY_REGION = {"ap-east-1": "057415533634", "me-south-1": "724002660598"}
 ASIMOV_OPT_IN_ACCOUNTS_BY_REGION = {"ap-east-1": "871362719292", "me-south-1": "217643126080"}
 DEFAULT_ACCOUNT = "520713654638"
+ASIMOV_PROD_ACCOUNT = "763104351884"
+ASIMOV_DEFAULT_ACCOUNT = "028651357192"
 
 MERGED_FRAMEWORKS_REPO_MAP = {
     "tensorflow-scriptmode": "tensorflow-training",
@@ -121,16 +123,18 @@ def _using_merged_images(region, framework, py_version, framework_version):
         framework_version:
     """
     is_gov_region = region in VALID_ACCOUNTS_BY_REGION
-    is_py3 = py_version == "py3" or py_version is None
+    not_py2 = py_version == "py3" or py_version is None
     is_merged_versions = _is_merged_versions(framework, framework_version)
 
     return (
         ((not is_gov_region) or region in ASIMOV_VALID_ACCOUNTS_BY_REGION)
         and is_merged_versions
+        # TODO: should be not mxnet-1.14.1-py2 instead?
         and (
-            is_py3
+            not_py2
             or _is_tf_14_or_later(framework, framework_version)
             or _is_pt_12_or_later(framework, framework_version)
+            or _is_mxnet_16_or_later(framework, framework_version)
         )
     )
 
@@ -162,6 +166,19 @@ def _is_pt_12_or_later(framework, framework_version):
     return is_pytorch and version >= asimov_lowest_pt[0 : len(version)]
 
 
+def _is_mxnet_16_or_later(framework, framework_version):
+    """
+    Args:
+        framework: Name of the frameowork
+        framework_version: framework version
+    """
+    # Asimov team now owns MXNet 1.6.0 py2 and py3
+    asimov_lowest_pt = [1, 6, 0]
+    version = [int(s) for s in framework_version.split(".")]
+    is_mxnet = framework in ("mxnet", "mxnet-serving")
+    return is_mxnet and version >= asimov_lowest_pt[0 : len(version)]
+
+
 def _registry_id(region, framework, py_version, account, framework_version):
     """
     Args:
@@ -177,7 +194,10 @@ def _registry_id(region, framework, py_version, account, framework_version):
             return ASIMOV_OPT_IN_ACCOUNTS_BY_REGION.get(region)
         if region in ASIMOV_VALID_ACCOUNTS_BY_REGION:
             return ASIMOV_VALID_ACCOUNTS_BY_REGION.get(region)
-        return "763104351884"
+        # TODO: remove when ASIMOV images availabel in Prod
+        if framework in ("tensorflow-serving-eia", "mxnet-serving-eia"):
+            return ASIMOV_PROD_ACCOUNT
+        return ASIMOV_DEFAULT_ACCOUNT
     if region in OPT_IN_ACCOUNTS_BY_REGION:
         return OPT_IN_ACCOUNTS_BY_REGION.get(region)
     return VALID_ACCOUNTS_BY_REGION.get(region, account)
