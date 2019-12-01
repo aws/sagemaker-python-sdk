@@ -381,7 +381,7 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):
         if self.debugger_hook_config is not None:
             self.collection_configs.update(self.debugger_hook_config.collection_configs or [])
 
-    def get_debugger_artifacts_path(self):
+    def latest_job_debugger_artifacts_path(self):
         """Gets the path to the DebuggerHookConfig output artifacts.
 
         Returns:
@@ -399,7 +399,7 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):
             )
         return None
 
-    def get_tensorboard_artifacts_path(self):
+    def latest_job_tensorboard_artifacts_path(self):
         """Gets the path to the TensorBoardOutputConfig output artifacts.
 
         Returns:
