@@ -219,9 +219,7 @@ class RealTimePredictor(object):
         )
 
         self.sagemaker_session.update_endpoint(
-            endpoint_name=self.endpoint,
-            endpoint_config_name=new_config_name,
-            retain_all_variant_properties=True,
+            endpoint_name=self.endpoint, endpoint_config_name=new_config_name
         )
 
     def list_monitors(self):
