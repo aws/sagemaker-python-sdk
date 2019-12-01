@@ -177,7 +177,7 @@ def test_deploy_best_candidate(sagemaker_session):
         role=ROLE, target_attribute_name=TARGET_ATTRIBUTE_NAME, sagemaker_session=sagemaker_session
     )
     best_candidate = auto_ml.best_candidate(job_name=AUTO_ML_JOB_NAME)
-    endpoint_name = "sagemaker-auto-ml-best-candidate-test"
+    endpoint_name = unique_name_from_base("sagemaker-auto-ml-best-candidate-test")
 
     with timeout(minutes=AUTO_ML_DEFAULT_TIMEMOUT_MINUTES):
         auto_ml.deploy(
