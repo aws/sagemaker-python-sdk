@@ -45,6 +45,16 @@ Create a TrainingJob Using a Helm Chart
 
 You can use Helm Charts to run TrainingJobs. 
 
+Get the Helm Installer Directory
+''''''''''''''''''''''''''''''''
+
+Clone the github repo to get the source using the following command: 
+
+::
+
+    git clone https://github.com/aws/amazon-sagemaker-operator-for-k8s.git
+
+
 Configure the Helm Chart
 ''''''''''''''''''''''''
 
@@ -934,34 +944,7 @@ following command:
 
     wget https://github.com/aws/amazon-sagemaker-operator-for-k8s/blob/master/samples/xgboost-mnist-hostingdeployment.yaml
 
-To configure a ``HostingDeployment``, create a file
-called \ ``hosting.yaml`` and place the following contents in it:
-
-::
-
-    apiVersion: sagemaker.aws.amazon.com/v1
-    kind: HostingDeployment
-    metadata:
-      name: host-xgboost
-    spec:
-        region: us-east-2
-        productionVariants:
-            - variantName: all-traffic
-              modelName: xgboost-model
-              initialInstanceCount: 1
-              instanceType: ml.c5.large
-        models:
-            - name: xgboost-model
-              executionRoleArn: arn:aws:iam::123456789012:role/service-role/AmazonSageMaker-ExecutionRole
-              primaryContainer: xgboost
-              containers:
-                - xgboost
-        containers:
-            - containerHostname: xgboost
-              modelDataUrl: s3://my-bucket/inference/xgboost-mnist/model.tar.gz
-              image: 123456789012.dkr.ecr.us-east-2.amazonaws.com/xgboost:latest
-
-The ``hosting.yaml`` file has the following components:
+The ``xgboost-mnist-hostingdeployment.yaml`` file has the following components that can be edited as required:
 
 -  ProductionVariants. A production variant is a set of instances
    serving a single model. Amazon SageMaker will load-balance between
