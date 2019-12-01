@@ -2341,9 +2341,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
             self.wait_for_endpoint(endpoint_name)
         return endpoint_name
 
-    def update_endpoint(
-        self, endpoint_name, endpoint_config_name, retain_all_variant_properties=False
-    ):
+    def update_endpoint(self, endpoint_name, endpoint_config_name):
         """ Update an Amazon SageMaker ``Endpoint`` according to the endpoint configuration
         specified in the request
 
@@ -2353,8 +2351,6 @@ class Session(object):  # pylint: disable=too-many-public-methods
             endpoint_name (str): Name of the Amazon SageMaker ``Endpoint`` to update.
             endpoint_config_name (str): Name of the Amazon SageMaker endpoint configuration to
                 deploy.
-            retain_all_variant_properties: Retains all variant properties on the active endpoint,
-                in case they have diverged from the original config.
 
         Returns:
             str: Name of the Amazon SageMaker ``Endpoint`` being updated.
@@ -2369,9 +2365,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
             )
 
         self.sagemaker_client.update_endpoint(
-            EndpointName=endpoint_name,
-            EndpointConfigName=endpoint_config_name,
-            RetainAllVariantProperties=retain_all_variant_properties,
+            EndpointName=endpoint_name, EndpointConfigName=endpoint_config_name
         )
         return endpoint_name
 
