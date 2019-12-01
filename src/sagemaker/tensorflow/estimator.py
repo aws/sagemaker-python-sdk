@@ -22,6 +22,7 @@ import tempfile
 import threading
 import time
 
+from sagemaker.debugger import DebuggerHookConfig
 from sagemaker.estimator import Framework
 import sagemaker.fw_utils as fw
 from sagemaker.tensorflow.defaults import TF_VERSION
@@ -695,6 +696,31 @@ class TensorFlow(Framework):
     def _script_mode_enabled(self):
         """Placeholder docstring"""
         return self.py_version == "py3" or self.script_mode
+
+    def _validate_and_set_debugger_configs(self):
+        """
+        Disable Debugger Hook Config for PS and Horovod as they are not
+        supported in smdebug 0.4.13, the current latest version of smdebug
+
+        Else, set default HookConfig
+        """
+        ps_enabled = "parameter_server" in self.distributions and self.distributions[
+            "parameter_server"
+        ].get("enabled", False)
+        mpi_enabled = "mpi" in self.distributions and self.distributions["mpi"].get(
+            "enabled", False
+        )
+        if ps_enabled or mpi_enabled:
+            if self.debugger_hook_config is not None or self.debugger_rule_configs is not None:
+                logger.info(
+                    "Amazon SageMaker Debugger does not currently support "
+                    "Parameter Server and MPI distributions"
+                )
+            self.debugger_hook_config = None
+            self.debugger_rule_configs = None
+        elif self.debugger_hook_config is None:
+            # Set defaults for debugging.
+            self.debugger_hook_config = DebuggerHookConfig(s3_output_path=self.output_path)
 
     def train_image(self):
         """Placeholder docstring"""

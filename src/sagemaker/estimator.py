@@ -1656,7 +1656,12 @@ class Framework(EstimatorBase):
         self._hyperparameters[JOB_NAME_PARAM_NAME] = self._current_job_name
         self._hyperparameters[SAGEMAKER_REGION_PARAM_NAME] = self.sagemaker_session.boto_region_name
 
-        # Set defaults for debugging.
+        self._validate_and_set_debugger_configs()
+
+    def _validate_and_set_debugger_configs(self):
+        """
+        Set defaults for debugging
+        """
         if self.debugger_hook_config is None:
             self.debugger_hook_config = DebuggerHookConfig(s3_output_path=self.output_path)
 
