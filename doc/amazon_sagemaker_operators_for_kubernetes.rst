@@ -11,7 +11,7 @@ inference endpoints. With these operators, you can manage jobs
 in Amazon SageMaker from a Kubernetes cluster. This guide shows you how to set up the operators. The guide also explains how to use the operators to optimize hyperparameters, run batch transform jobs, and setup an inference endpoint.
 
 There is no additional charge to use these operators. You do incur charges
-for any Amazon SageMaker resources that you use through these operators. The procedures and guidelines here assume you are familiar with Kubernetes and standard commands.
+for any Amazon SageMaker resources that you use through these operators. The procedures and guidelines here assume you are familiar with Kubernetes and its basic commands.
 
 
 .. contents::
@@ -35,7 +35,7 @@ Prerequisites
 This guide assumes that you’ve
 completed the following prerequisites:
 
--  Installed the following tools:
+-  Installed the following tools on the client machine used to access your k8s cluster:
 
    -  `kubectl <https://docs.aws.amazon.com/eks/latest/userguide/install-kubectl.html>`__
       Version 1.13 or later. Use a \ ``kubectl`` version that is within
@@ -398,10 +398,10 @@ look like the following:
     Use "smlogs [command] --help" for more information about a command.
 
 
-Delete Operators from the Cluster 
+Delete operators from the cluster 
 ----------------------------------
 
-Operators Installed Using YAML
+Operators installed using YAML
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 To uninstall the operator from your cluster, make sure that all
@@ -456,7 +456,7 @@ You should see output like the following:
     deployment.apps "sagemaker-k8s-operator-controller-manager" deleted
     secrets "sagemaker-k8s-operator-abcde" deleted
 
-Operators Installed Using Helm Charts
+Operators installed using Helm Charts
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 To delete the operator CRDs, first delete all the running jobs. Then
@@ -545,8 +545,8 @@ using the following steps:
          finalizers:
          - sagemaker-operator-finalizer
 
-Appendix
---------
+Images and logs in each Region
+------------------------------
 
 The following table lists the available operator images and SMLogs in
 each region.
