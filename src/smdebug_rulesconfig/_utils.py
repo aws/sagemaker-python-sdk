@@ -7,9 +7,7 @@ from ._constants import RULE_CONFIG_FILE, RULE_GROUPS_CONFIG_FILE, COLLECTION_CO
 
 def _get_rule_config(rule_name):
     rule_config = None
-    print(rule_name)
     config_file_path = os.path.dirname(os.path.abspath(__file__)) + "/" + RULE_CONFIG_FILE
-    print(config_file_path)
 
     if os.path.exists(config_file_path):
         with open(config_file_path) as json_data:
