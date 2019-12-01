@@ -123,9 +123,14 @@ def _hyperparameters(script_mode=False, horovod=False):
 
 
 def _create_train_job(
-    tf_version, script_mode=False, horovod=False, repo_name=IMAGE_REPO_NAME, py_version="py2"
+    tf_version,
+    script_mode=False,
+    horovod=False,
+    ps=False,
+    repo_name=IMAGE_REPO_NAME,
+    py_version="py2",
 ):
-    return {
+    conf = {
         "image": _get_full_cpu_image_uri(tf_version, repo=repo_name, py_version=py_version),
         "input_mode": "File",
         "input_config": [
@@ -153,11 +158,15 @@ def _create_train_job(
         "vpc_config": None,
         "metric_definitions": None,
         "experiment_config": None,
-        "debugger_hook_config": {
+    }
+
+    if not ps and not horovod:
+        conf["debugger_hook_config"] = {
             "CollectionConfigurations": [],
             "S3OutputPath": "s3://{}/".format(BUCKET_NAME),
-        },
-    }
+        }
+
+    return conf
 
 
 def _build_tf(
@@ -1116,7 +1125,7 @@ def test_tf_script_mode_ps(time, strftime, sagemaker_session):
     assert call_names == ["train", "logs_for_job"]
 
     expected_train_args = _create_train_job(
-        "1.11", script_mode=True, repo_name=SM_IMAGE_REPO_NAME, py_version="py3"
+        "1.11", script_mode=True, ps=True, repo_name=SM_IMAGE_REPO_NAME, py_version="py3"
     )
     expected_train_args["input_config"][0]["DataSource"]["S3DataSource"]["S3Uri"] = inputs
     expected_train_args["hyperparameters"][TensorFlow.LAUNCH_PS_ENV_NAME] = json.dumps(True)
