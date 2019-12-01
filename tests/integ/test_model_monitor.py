@@ -445,12 +445,6 @@ def test_default_monitor_suggest_baseline_and_create_monitoring_schedule_with_cu
     )
     assert (
         schedule_description["MonitoringScheduleConfig"]["MonitoringJobDefinition"]["Environment"][
-            "output_path"
-        ]
-        == "/opt/ml/processing/output"
-    )
-    assert (
-        schedule_description["MonitoringScheduleConfig"]["MonitoringJobDefinition"]["Environment"][
             "publish_cloudwatch_metrics"
         ]
         == "Enabled"
@@ -624,12 +618,6 @@ def test_default_monitor_suggest_baseline_and_create_monitoring_schedule_without
     )
     assert (
         schedule_description["MonitoringScheduleConfig"]["MonitoringJobDefinition"]["Environment"][
-            "output_path"
-        ]
-        == "/opt/ml/processing/output"
-    )
-    assert (
-        schedule_description["MonitoringScheduleConfig"]["MonitoringJobDefinition"]["Environment"][
             "publish_cloudwatch_metrics"
         ]
         == "Enabled"
@@ -770,12 +758,6 @@ def test_default_monitor_create_stop_and_start_monitoring_schedule_with_customiz
             ENV_KEY_1
         ]
         == ENV_VALUE_1
-    )
-    assert (
-        schedule_description["MonitoringScheduleConfig"]["MonitoringJobDefinition"]["Environment"][
-            "output_path"
-        ]
-        == "/opt/ml/processing/output"
     )
     assert (
         schedule_description["MonitoringScheduleConfig"]["MonitoringJobDefinition"]["Environment"][
@@ -939,12 +921,6 @@ def test_default_monitor_create_and_update_schedule_config_with_customizations(
     )
     assert (
         schedule_description["MonitoringScheduleConfig"]["MonitoringJobDefinition"]["Environment"][
-            "output_path"
-        ]
-        == "/opt/ml/processing/output"
-    )
-    assert (
-        schedule_description["MonitoringScheduleConfig"]["MonitoringJobDefinition"]["Environment"][
             "publish_cloudwatch_metrics"
         ]
         == "Enabled"
@@ -1071,12 +1047,6 @@ def test_default_monitor_create_and_update_schedule_config_with_customizations(
     )
     assert (
         schedule_description["MonitoringScheduleConfig"]["MonitoringJobDefinition"]["Environment"][
-            "output_path"
-        ]
-        == "/opt/ml/processing/output"
-    )
-    assert (
-        schedule_description["MonitoringScheduleConfig"]["MonitoringJobDefinition"]["Environment"][
             "publish_cloudwatch_metrics"
         ]
         == "Disabled"
@@ -1187,12 +1157,6 @@ def test_default_monitor_create_and_update_schedule_config_without_customization
     )
     assert (
         schedule_description["MonitoringScheduleConfig"]["MonitoringJobDefinition"]["Environment"][
-            "output_path"
-        ]
-        == "/opt/ml/processing/output"
-    )
-    assert (
-        schedule_description["MonitoringScheduleConfig"]["MonitoringJobDefinition"]["Environment"][
             "publish_cloudwatch_metrics"
         ]
         == "Enabled"
@@ -1295,12 +1259,6 @@ def test_default_monitor_create_and_update_schedule_config_without_customization
             "Environment"
         ].get(ENV_KEY_1)
         is None
-    )
-    assert (
-        schedule_description["MonitoringScheduleConfig"]["MonitoringJobDefinition"]["Environment"][
-            "output_path"
-        ]
-        == "/opt/ml/processing/output"
     )
     assert (
         schedule_description["MonitoringScheduleConfig"]["MonitoringJobDefinition"]["Environment"][
@@ -1445,12 +1403,6 @@ def test_default_monitor_attach_followed_by_baseline_and_update_monitoring_sched
             UPDATED_ENV_KEY_1
         ]
         == UPDATED_ENV_VALUE_1
-    )
-    assert (
-        schedule_description["MonitoringScheduleConfig"]["MonitoringJobDefinition"]["Environment"][
-            "output_path"
-        ]
-        == "/opt/ml/processing/output"
     )
     assert (
         schedule_description["MonitoringScheduleConfig"]["MonitoringJobDefinition"]["Environment"][
@@ -1699,12 +1651,6 @@ def test_byoc_monitor_suggest_baseline_and_create_monitoring_schedule_with_custo
     )
     assert (
         schedule_description["MonitoringScheduleConfig"]["MonitoringJobDefinition"]["Environment"][
-            "output_path"
-        ]
-        == "/opt/ml/processing/output"
-    )
-    assert (
-        schedule_description["MonitoringScheduleConfig"]["MonitoringJobDefinition"]["Environment"][
             "publish_cloudwatch_metrics"
         ]
         == "Disabled"
@@ -1889,12 +1835,6 @@ def test_byoc_monitor_suggest_baseline_and_create_monitoring_schedule_without_cu
     )
     assert (
         schedule_description["MonitoringScheduleConfig"]["MonitoringJobDefinition"]["Environment"][
-            "output_path"
-        ]
-        == "/opt/ml/processing/output"
-    )
-    assert (
-        schedule_description["MonitoringScheduleConfig"]["MonitoringJobDefinition"]["Environment"][
             "publish_cloudwatch_metrics"
         ]
         == "Disabled"
@@ -2049,12 +1989,6 @@ def test_byoc_monitor_create_and_update_schedule_config_with_customizations(
     )
     assert (
         schedule_description["MonitoringScheduleConfig"]["MonitoringJobDefinition"]["Environment"][
-            "output_path"
-        ]
-        == "/opt/ml/processing/output"
-    )
-    assert (
-        schedule_description["MonitoringScheduleConfig"]["MonitoringJobDefinition"]["Environment"][
             "publish_cloudwatch_metrics"
         ]
         == "Disabled"
@@ -2172,12 +2106,6 @@ def test_byoc_monitor_create_and_update_schedule_config_with_customizations(
             UPDATED_ENV_KEY_1
         ]
         == UPDATED_ENV_VALUE_1
-    )
-    assert (
-        schedule_description["MonitoringScheduleConfig"]["MonitoringJobDefinition"]["Environment"][
-            "output_path"
-        ]
-        == "/opt/ml/processing/output"
     )
     assert (
         schedule_description["MonitoringScheduleConfig"]["MonitoringJobDefinition"]["Environment"][
@@ -2391,12 +2319,6 @@ def test_byoc_monitor_attach_followed_by_baseline_and_update_monitoring_schedule
             UPDATED_ENV_KEY_1
         ]
         == UPDATED_ENV_VALUE_1
-    )
-    assert (
-        schedule_description["MonitoringScheduleConfig"]["MonitoringJobDefinition"]["Environment"][
-            "output_path"
-        ]
-        == "/opt/ml/processing/output"
     )
     assert (
         schedule_description["MonitoringScheduleConfig"]["MonitoringJobDefinition"]["Environment"][

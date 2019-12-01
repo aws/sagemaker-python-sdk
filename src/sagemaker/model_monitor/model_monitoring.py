@@ -716,11 +716,12 @@ class ModelMonitor(object):
         if vpc_config is not None:
             subnets = vpc_config["Subnets"]
 
-        network_config = NetworkConfig(
-            enable_network_isolation=network_config_dict["EnableNetworkIsolation"],
-            security_group_ids=security_group_ids,
-            subnets=subnets,
-        )
+        if network_config_dict:
+            network_config = NetworkConfig(
+                enable_network_isolation=network_config_dict["EnableNetworkIsolation"],
+                security_group_ids=security_group_ids,
+                subnets=subnets,
+            )
 
         tags = sagemaker_session.list_tags(resource_arn=schedule_desc["MonitoringScheduleArn"])
 
@@ -1258,9 +1259,7 @@ class DefaultModelMonitor(ModelMonitor):
             statistics_s3_uri = statistics_object.file_s3_uri
 
         normalized_env = self._generate_env_map(
-            env=self.env,
-            output_path=normalized_monitoring_output.source,
-            enable_cloudwatch_metrics=enable_cloudwatch_metrics,
+            env=self.env, enable_cloudwatch_metrics=enable_cloudwatch_metrics
         )
 
         monitoring_output_config = {
@@ -1532,11 +1531,12 @@ class DefaultModelMonitor(ModelMonitor):
         if vpc_config is not None:
             subnets = vpc_config["Subnets"]
 
-        network_config = NetworkConfig(
-            enable_network_isolation=network_config_dict["EnableNetworkIsolation"],
-            security_group_ids=security_group_ids,
-            subnets=subnets,
-        )
+        if network_config_dict:
+            network_config = NetworkConfig(
+                enable_network_isolation=network_config_dict["EnableNetworkIsolation"],
+                security_group_ids=security_group_ids,
+                subnets=subnets,
+            )
 
         tags = sagemaker_session.list_tags(resource_arn=schedule_desc["MonitoringScheduleArn"])
 
@@ -1664,7 +1664,7 @@ class DefaultModelMonitor(ModelMonitor):
     @staticmethod
     def _generate_env_map(
         env,
-        output_path,
+        output_path=None,
         enable_cloudwatch_metrics=None,
         record_preprocessor_script_container_path=None,
         post_processor_script_container_path=None,
