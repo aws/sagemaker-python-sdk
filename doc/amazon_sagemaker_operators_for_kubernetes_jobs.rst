@@ -7,14 +7,13 @@ deploy the operator doesn’t impact which one you can select to run your
 jobs. 
 
 All operator sample jobs in the following tutorials use sample data
-taken from a public MNIST dataset. In order to run these samples, you
-will need to download the data set into your own S3 bucket. You can find
+taken from a public MNIST dataset. In order to run these samples, download the dataset into your S3 bucket. You can find
 the dataset in \ `Download the MNIST
 Dataset. <https://docs.aws.amazon.com/sagemaker/latest/dg/ex1-preprocess-data-pull-data.html>`__
 
 .. contents::
 
-TrainingJob Operator
+TrainingJob operator
 ~~~~~~~~~~~~~~~~~~~~
 
 Training job operators reconcile your specified training job spec to
@@ -308,7 +307,7 @@ job stops or completes.
 continue to show on the Amazon SageMaker console. The delete command
 takes about 2 minutes to clean up the resources from Amazon SageMaker.
 
-HyperParameterTuningJobs Operator
+HyperParameterTuningJobs operator
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Hyperparameter tuning job operators reconcile your
@@ -690,7 +689,7 @@ Your output should look like the following:
 **Note**:  The delete command takes about 2 minutes to clean up the
 resources from Amazon SageMaker.
 
-BatchTransformJobs Operator
+BatchTransformJobs operator
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Batch transform job operators reconcile your specified batch transform
@@ -923,7 +922,7 @@ Amazon SageMaker.
 **Note**: Amazon SageMaker does not delete batch transform jobs. Stopped
 jobs continue to show on the Amazon SageMaker console. 
 
-Real-Time Inference
+Real-time inference
 ~~~~~~~~~~~~~~~~~~~
 
 HostingDeployments support creating and deleting an endpoint, as well as
