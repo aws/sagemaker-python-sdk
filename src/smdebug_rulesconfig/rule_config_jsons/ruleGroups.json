@@ -1,0 +1,33 @@
+{
+    "MXNET": {
+        "SIMPLE" : [
+            "VanishingGradient",
+            "LossNotDecreasing",
+            "WeightUpdateRatio"
+        ],
+        "ALL" : []
+    },
+    "TENSORFLOW" : {
+        "SIMPLE" : [
+            "VanishingGradient",
+            "LossNotDecreasing",
+            "WeightUpdateRatio"
+        ],
+        "ALL" : []
+    },
+    "PYTORCH" : {
+        "SIMPLE" : [
+            "VanishingGradient",
+            "LossNotDecreasing",
+            "WeightUpdateRatio"
+        ],
+        "ALL" : []
+    },
+    "XGBOOST" : {
+        "SIMPLE" : [
+            "TreeDepth",
+            "ClassImbalance"
+        ],
+        "ALL" : []
+    }
+}

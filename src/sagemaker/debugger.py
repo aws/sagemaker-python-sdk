@@ -21,8 +21,7 @@ and alerts when it detects errors during training.
 """
 from __future__ import absolute_import
 
-# TODO-reinvent-2019 [knakad]: Uncomment this once PyPI integration is complete post-re:Invent-2019
-# import smdebug_rulesconfig as rule_configs  # noqa: F401 # pylint: disable=unused-import
+import smdebug_rulesconfig as rule_configs  # noqa: F401 # pylint: disable=unused-import
 
 
 RULES_ECR_REPO_NAME = "sagemaker-debugger-rules"
