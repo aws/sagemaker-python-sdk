@@ -608,3 +608,23 @@ class DeferredError(object):
             name:
         """
         raise self.exc
+
+
+def _module_import_error(py_module, feature, extras):
+    """Return error message for module import errors, provide
+    installation details.
+
+    Args:
+        py_module (str): Module that failed to be imported
+        feature (str): Affected SageMaker feature
+        extras (str): Name of the `extras_require` to install the relevant dependencies
+
+    Returns:
+        str: Error message with installation instructions.
+    """
+    error_msg = (
+        "Failed to import {}. {} features will be impaired or broken. "
+        "Please run \"pip install 'sagemaker[{}]'\" "
+        "to install all required dependencies."
+    )
+    return error_msg.format(py_module, feature, extras)

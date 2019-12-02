@@ -1,4 +1,4 @@
-# Copyright 2017-2018 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright 2017-2019 Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -31,7 +31,9 @@ class ColorWrap(object):
     cell).
     """
 
-    _stream_colors = [31, 32, 33, 34, 35, 36]
+    # For what color each number represents, see
+    # https://misc.flogisoft.com/bash/tip_colors_and_formatting#colors
+    _stream_colors = [34, 35, 32, 36, 33]
 
     def __init__(self, force=False):
         """Initialize the class.
