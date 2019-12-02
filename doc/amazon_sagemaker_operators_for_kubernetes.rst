@@ -538,7 +538,7 @@ using the following steps:
          - sagemaker-operator-finalizer
 
 Images and SMlogs in each Region
-------------------------------
+--------------------------------
 
 The following table lists the available operator images and SMLogs in
 each region.
