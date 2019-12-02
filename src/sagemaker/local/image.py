@@ -29,10 +29,9 @@ import sys
 import tarfile
 import tempfile
 
+from distutils.spawn import find_executable
 from threading import Thread
 from six.moves.urllib.parse import urlparse
-
-import yaml
 
 import sagemaker
 import sagemaker.local.data
@@ -75,6 +74,15 @@ class _SageMakerContainer(object):
                 to use when interacting with SageMaker.
         """
         from sagemaker.local.local_session import LocalSession
+
+        # check if docker-compose is installed
+        if find_executable("docker-compose") is None:
+            raise ImportError(
+                "'docker-compose' is not installed. "
+                "Local Mode features will not work without docker-compose. "
+                "For more information on how to install 'docker-compose', please, see "
+                "https://docs.docker.com/compose/install/"
+            )
 
         self.sagemaker_session = sagemaker_session or LocalSession()
         self.instance_type = instance_type
@@ -454,6 +462,13 @@ class _SageMakerContainer(object):
         }
 
         docker_compose_path = os.path.join(self.container_root, DOCKER_COMPOSE_FILENAME)
+
+        try:
+            import yaml
+        except ImportError as e:
+            logging.error(sagemaker.utils._module_import_error("yaml", "Local mode", "local"))
+            raise e
+
         yaml_content = yaml.dump(content, default_flow_style=False)
         logger.info("docker compose file: \n%s", yaml_content)
         with open(docker_compose_path, "w") as f:

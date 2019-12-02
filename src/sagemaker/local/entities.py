@@ -19,12 +19,19 @@ import logging
 import os
 import tempfile
 import time
-import urllib3
 
 import sagemaker.local.data
 from sagemaker.local.image import _SageMakerContainer
 from sagemaker.local.utils import copy_directory_structure, move_to_destination
-from sagemaker.utils import get_config_value
+from sagemaker.utils import DeferredError, get_config_value
+
+try:
+    import urllib3
+except ImportError as e:
+    logging.warning("urllib3 failed to import. Local mode features will be impaired or broken.")
+    # Any subsequent attempt to use urllib3 will raise the ImportError
+    urllib3 = DeferredError(e)
+
 
 logger = logging.getLogger(__name__)
 

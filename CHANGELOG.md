@@ -1,5 +1,47 @@
 # Changelog
 
+## v1.44.3 (2019-11-26)
+
+### Bug fixes and other changes
+
+ * move sagemaker config loading to LocalSession since it is only used for local code support.
+
+### Documentation changes
+
+ * fix docstring wording.
+
+## v1.44.2 (2019-11-25)
+
+### Bug fixes and other changes
+
+ * add pyyaml dependencies to the required list.
+
+### Documentation changes
+
+ * Correct info on code_location parameter
+
+## v1.44.1 (2019-11-21)
+
+### Bug fixes and other changes
+
+ * Remove local mode dependencies from required.
+
+## v1.44.0 (2019-11-21)
+
+### Features
+
+ * separating sagemaker dependencies into more use case specific installable components.
+
+### Bug fixes and other changes
+
+ * remove docker-compose as a required dependency.
+
+## v1.43.5 (2019-11-18)
+
+### Bug fixes and other changes
+
+ * remove red from possible colors when streaming logs
+
 ## v1.43.4.post1 (2019-10-29)
 
 ### Documentation changes
