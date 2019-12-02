@@ -42,18 +42,12 @@ Create a TrainingJob Using a Helm Chart
 
 You can use Helm Charts to run TrainingJobs. 
 
-Get the Helm Installer Directory
-''''''''''''''''''''''''''''''''
-
 Clone the github repo to get the source using the following command: 
 
 ::
 
     git clone https://github.com/aws/amazon-sagemaker-operator-for-k8s.git
 
-
-Configure the Helm Chart
-''''''''''''''''''''''''
 
 Navigate to the
 \ ``amazon-sagemaker-operator-for-k8s/hack/charts/training-jobs/`` folder
@@ -89,8 +83,8 @@ Your output should look like the following:
     NOTES:
     Thanks for installing the sagemaker-k8s-trainingjob.
 
-Verify Your Helm Chart
-''''''''''''''''''''''
+Verify Your Training Helm Chart
+'''''''''''''''''''''''''''''''
 
 To verify that the Helm Chart was created successfully, run:
 
@@ -142,8 +136,8 @@ failed. You can remove a \ ``TrainingJob``  job from the list by
 following the Delete a Training Job steps. Jobs that have completed or
 stopped do not incur any charges for Amazon SageMaker resources. 
 
-Status Values
-'''''''''''''
+Training Job Status Values
+''''''''''''''''''''''''''
 
 The \ ``STATUS`` field can be one of the following values: 
 
@@ -341,17 +335,12 @@ Create a HyperParameterTuningJob using a Helm Chart
 
 You can use Helm Charts to run HyperParameterTuningJobs.
 
-Get the Helm Installer Directory
-''''''''''''''''''''''''''''''''
-
 Clone the github repo to get the source using the following command: 
 
 ::
 
     git clone https://github.com/aws/amazon-sagemaker-operator-for-k8s.git
 
-Configure the Helm Chart
-''''''''''''''''''''''''
 
 Navigate to the
 \ ``amazon-sagemaker-operator-for-k8s/hack/charts/hyperparameter-tuning-jobs/``
@@ -441,8 +430,8 @@ from the list by following the steps in Delete a Hyper Parameter Tuning
 Job. Jobs that have completed or stopped do not incur any charges for
 Amazon SageMaker resources. 
 
-Status Values
-'''''''''''''
+Hyperparameter Tuning Job Status Values
+'''''''''''''''''''''''''''''''''''''''
 
 The \ ``STATUS`` field can be one of the following values: 
 
@@ -812,8 +801,8 @@ from the list by following the Delete a Batch Transform Job steps. Jobs
 that have completed or stopped do not incur any charges for
 Amazon SageMaker resources. 
 
-Status Values
-'''''''''''''
+Batch Transform Status Values
+'''''''''''''''''''''''''''''
 
 The \ ``STATUS`` field can be one of the following values: 
 
@@ -991,8 +980,8 @@ Your output should look like the following:
     NAME           STATUS     SAGEMAKER-ENDPOINT-NAME
     host-xgboost   Creating   host-xgboost-def0e83e0d5f11eaaa450aSMLOGS
 
-Status Values
-'''''''''''''
+HostingDeployment Status Values
+'''''''''''''''''''''''''''''''
 
 The status field can be one of several values:
 
