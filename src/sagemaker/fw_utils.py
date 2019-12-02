@@ -61,7 +61,7 @@ OPT_IN_ACCOUNTS_BY_REGION = {"ap-east-1": "057415533634", "me-south-1": "7240026
 ASIMOV_OPT_IN_ACCOUNTS_BY_REGION = {"ap-east-1": "871362719292", "me-south-1": "217643126080"}
 DEFAULT_ACCOUNT = "520713654638"
 ASIMOV_PROD_ACCOUNT = "763104351884"
-ASIMOV_DEFAULT_ACCOUNT = "028651357192"
+ASIMOV_DEFAULT_ACCOUNT = ASIMOV_PROD_ACCOUNT
 
 MERGED_FRAMEWORKS_REPO_MAP = {
     "tensorflow-scriptmode": "tensorflow-training",
@@ -194,9 +194,6 @@ def _registry_id(region, framework, py_version, account, framework_version):
             return ASIMOV_OPT_IN_ACCOUNTS_BY_REGION.get(region)
         if region in ASIMOV_VALID_ACCOUNTS_BY_REGION:
             return ASIMOV_VALID_ACCOUNTS_BY_REGION.get(region)
-        # TODO: remove when ASIMOV images availabel in Prod
-        if framework in ("tensorflow-serving-eia", "mxnet-serving-eia"):
-            return ASIMOV_PROD_ACCOUNT
         return ASIMOV_DEFAULT_ACCOUNT
     if region in OPT_IN_ACCOUNTS_BY_REGION:
         return OPT_IN_ACCOUNTS_BY_REGION.get(region)
