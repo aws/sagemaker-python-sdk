@@ -21,7 +21,7 @@ manager (ETCD) and act when something happens. Examples of such
 applications
 include \ ``cloud-controller-manager`` and \ ``controller-manager``.
 The controller pattern allows you to create decoupled experiences and not
-have to worry about how other components are integrated. To add new capabilities to Kubernetes, developers can extend the Kubernetes API by creating a custom resource that contains their application-specific or domain-specific logic and components. ‘Operators’ in Kubernetes allow users to natively invoke these custom resources and automate associated workflows.
+have to worry about how other components are integrated. To add new capabilities to Kubernetes, developers can extend the Kubernetes API by creating a custom resource that contains their application-specific or domain-specific logic and components. Operators in Kubernetes allow users to natively invoke these custom resources and automate associated workflows.
 
 Prerequisites
 ~~~~~~~~~~~~~
