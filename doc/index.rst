@@ -150,9 +150,9 @@ Amazon provides implementations of some common machine learning algortithms opti
     pca
     randomcutforest
 
-***************
+*****************************************
 Amazon SageMaker Operators for Kubernetes
-***************
+*****************************************
 Amazon SageMaker Operators for use with Kubernetes.
 
 .. toctree::
