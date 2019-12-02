@@ -16,16 +16,14 @@ import os
 import time
 
 import pytest
+from sagemaker import AutoML, CandidateEstimator, AutoMLInput
 
-from sagemaker.automl.automl import AutoML, AutoMLInput
-from sagemaker.automl.candidate_estimator import CandidateEstimator
 from sagemaker.exceptions import UnexpectedStatusException
 from sagemaker.utils import unique_name_from_base
 from tests.integ import DATA_DIR, AUTO_ML_DEFAULT_TIMEMOUT_MINUTES
 from tests.integ.timeout import timeout
 
 DEV_ACCOUNT = 142577830533
-# ROLE = "arn:aws:iam::142577830533:role/SageMakerRole"
 ROLE = "SageMakerRole"
 PREFIX = "sagemaker/beta-automl-xgboost"
 HOSTING_INSTANCE_TYPE = "ml.c4.xlarge"
