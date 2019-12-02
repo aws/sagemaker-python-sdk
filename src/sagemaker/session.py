@@ -1326,12 +1326,12 @@ class Session(object):  # pylint: disable=too-many-public-methods
         """Wait for an Amazon SageMaker AutoML job to complete.
 
         Args:
-            job (str): Name of the transform job to wait for.
+            job (str): Name of the auto ml job to wait for.
             poll (int): Polling interval in seconds (default: 5).
         Returns:
-            (dict): Return value from the ``DescribeTransformJob`` API.
+            (dict): Return value from the ``DescribeAutoMLJob`` API.
         Raises:
-            exceptions.UnexpectedStatusException: If the transform job fails.
+            exceptions.UnexpectedStatusException: If the auto ml job fails.
         """
         desc = _wait_until(lambda: _auto_ml_job_status(self.sagemaker_client, job), poll)
         self._check_job_status(job, desc, "AutoMLJobStatus")

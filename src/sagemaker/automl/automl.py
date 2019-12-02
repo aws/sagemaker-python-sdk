@@ -63,7 +63,7 @@ class AutoML(object):
         self.generate_candidate_definitions_only = generate_candidate_definitions_only
         self.tags = tags
 
-        self._current_job_name = None
+        self.current_job_name = None
         self._auto_ml_job_desc = None
         self._best_candidate = None
         self.sagemaker_session = sagemaker_session or Session()
@@ -111,7 +111,7 @@ class AutoML(object):
             dict: A dictionary response with the AutoML Job description.
         """
         if job_name is None:
-            job_name = self._current_job_name
+            job_name = self.current_job_name
         self._auto_ml_job_desc = self.sagemaker_session.describe_auto_ml_job(job_name)
         return self._auto_ml_job_desc
 
@@ -128,7 +128,7 @@ class AutoML(object):
             return self._best_candidate
 
         if job_name is None:
-            job_name = self._current_job_name
+            job_name = self.current_job_name
         if self._auto_ml_job_desc is None:
             self._auto_ml_job_desc = self.sagemaker_session.describe_auto_ml_job(job_name)
         elif self._auto_ml_job_desc["AutoMLJobName"] != job_name:
@@ -168,7 +168,7 @@ class AutoML(object):
             list: A list of dictionaries with candidates information
         """
         if job_name is None:
-            job_name = self._current_job_name
+            job_name = self.current_job_name
 
         list_candidates_args = {"job_name": job_name}
 
@@ -249,6 +249,7 @@ class AutoML(object):
             candidate = CandidateEstimator(candidate, sagemaker_session=sagemaker_session)
 
         inference_containers = candidate.containers
+        endpoint_name = endpoint_name or self.current_job_name
 
         return self._deploy_inference_pipeline(
             inference_containers,
@@ -373,14 +374,14 @@ class AutoML(object):
                 created from base_job_name or "sagemaker-auto-ml".
         """
         if job_name is not None:
-            self._current_job_name = job_name
+            self.current_job_name = job_name
         else:
             if self.base_job_name:
                 base_name = self.base_job_name
             else:
                 base_name = "sagemaker-auto-ml"
             # CreateAutoMLJob API validates that member length less than or equal to 32
-            self._current_job_name = name_from_base(base_name, max_length=32)
+            self.current_job_name = name_from_base(base_name, max_length=32)
 
         if self.output_path is None:
             self.output_path = "s3://{}/".format(self.sagemaker_session.default_bucket())
@@ -426,6 +427,7 @@ class AutoMLJob(_Job):
 
     def __init__(self, sagemaker_session, job_name, inputs):
         self.inputs = inputs
+        self.job_name = job_name
         super(AutoMLJob, self).__init__(sagemaker_session=sagemaker_session, job_name=job_name)
 
     @classmethod
@@ -444,13 +446,13 @@ class AutoMLJob(_Job):
         """
         config = cls._load_config(inputs, auto_ml)
         auto_ml_args = config.copy()
-        auto_ml_args["job_name"] = auto_ml._current_job_name
+        auto_ml_args["job_name"] = auto_ml.current_job_name
         auto_ml_args["problem_type"] = auto_ml.problem_type
         auto_ml_args["job_objective"] = auto_ml.job_objective
         auto_ml_args["tags"] = auto_ml.tags
 
         auto_ml.sagemaker_session.auto_ml(**auto_ml_args)
-        return cls(auto_ml.sagemaker_session, auto_ml._current_job_name, inputs)
+        return cls(auto_ml.sagemaker_session, auto_ml.current_job_name, inputs)
 
     @classmethod
     def _load_config(cls, inputs, auto_ml, expand_role=True, validate_uri=True):

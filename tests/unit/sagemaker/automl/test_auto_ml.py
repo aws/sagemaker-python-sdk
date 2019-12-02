@@ -14,9 +14,7 @@ from __future__ import absolute_import
 
 import pytest
 from mock import Mock, patch
-
-from sagemaker.automl.automl import AutoML, AutoMLJob, AutoMLInput
-from sagemaker.automl.candidate_estimator import CandidateEstimator
+from sagemaker import AutoML, AutoMLJob, AutoMLInput, CandidateEstimator
 
 MODEL_DATA = "s3://bucket/model.tar.gz"
 MODEL_IMAGE = "mi"
@@ -363,10 +361,10 @@ def test_list_candidates_default(sagemaker_session):
     auto_ml = AutoML(
         role=ROLE, target_attribute_name=TARGET_ATTRIBUTE_NAME, sagemaker_session=sagemaker_session
     )
-    auto_ml._current_job_name = "current_job_name"
+    auto_ml.current_job_name = "current_job_name"
     auto_ml.list_candidates()
     sagemaker_session.list_candidates.assert_called_once()
-    sagemaker_session.list_candidates.assert_called_with(job_name=auto_ml._current_job_name)
+    sagemaker_session.list_candidates.assert_called_with(job_name=auto_ml.current_job_name)
 
 
 def test_list_candidates_with_optional_args(sagemaker_session):
@@ -409,7 +407,7 @@ def test_best_candidate_default_job_name(sagemaker_session):
     auto_ml = AutoML(
         role=ROLE, target_attribute_name=TARGET_ATTRIBUTE_NAME, sagemaker_session=sagemaker_session
     )
-    auto_ml._current_job_name = JOB_NAME
+    auto_ml.current_job_name = JOB_NAME
     auto_ml._auto_ml_job_desc = AUTO_ML_DESC
     best_candidate = auto_ml.best_candidate()
     sagemaker_session.describe_auto_ml_job.assert_not_called()
@@ -420,7 +418,7 @@ def test_best_candidate_job_no_desc(sagemaker_session):
     auto_ml = AutoML(
         role=ROLE, target_attribute_name=TARGET_ATTRIBUTE_NAME, sagemaker_session=sagemaker_session
     )
-    auto_ml._current_job_name = JOB_NAME
+    auto_ml.current_job_name = JOB_NAME
     best_candidate = auto_ml.best_candidate()
     sagemaker_session.describe_auto_ml_job.assert_called_once()
     sagemaker_session.describe_auto_ml_job.assert_called_with(JOB_NAME)
@@ -441,7 +439,7 @@ def test_best_candidate_job_name_not_match(sagemaker_session):
     auto_ml = AutoML(
         role=ROLE, target_attribute_name=TARGET_ATTRIBUTE_NAME, sagemaker_session=sagemaker_session
     )
-    auto_ml._current_job_name = JOB_NAME
+    auto_ml.current_job_name = JOB_NAME
     auto_ml._auto_ml_job_desc = AUTO_ML_DESC
     best_candidate = auto_ml.best_candidate(job_name=JOB_NAME_2)
     sagemaker_session.describe_auto_ml_job.assert_called_once()
