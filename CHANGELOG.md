@@ -1,5 +1,11 @@
 # Changelog
 
+## v1.44.4 (2019-12-02)
+
+### Bug fixes and other changes
+
+ * Documentation for Amazon Sagemaker Operators
+
 ## v1.44.3 (2019-11-26)
 
 ### Bug fixes and other changes
