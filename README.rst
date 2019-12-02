@@ -61,7 +61,8 @@ Table of Contents
 17. `Secure Training and Inference with VPC <https://sagemaker.readthedocs.io/en/stable/overview.html#secure-training-and-inference-with-vpc>`__
 18. `BYO Model <https://sagemaker.readthedocs.io/en/stable/overview.html#byo-model>`__
 19. `Inference Pipelines <https://sagemaker.readthedocs.io/en/stable/overview.html#inference-pipelines>`__
-20. `SageMaker Workflow <#sagemaker-workflow>`__
+20. `Amazon SageMaker Operators for Kubernetes <#amazon-sagemaker-operators-for-kubernetes>`__
+21. `SageMaker Workflow <#sagemaker-workflow>`__
 
 
 Installing the SageMaker Python SDK
@@ -325,6 +326,15 @@ Latent Dirichlet Allocation (LDA), Neural Topic Model (NTM), Random Cut Forest, 
 For more information, see `AWS SageMaker Estimators and Models`_.
 
 .. _AWS SageMaker Estimators and Models: src/sagemaker/amazon/README.rst
+
+Amazon SageMaker Operators for Kubernetes
+-----------------------------------------
+
+You can use Amazon SageMaker Operators for Kubernetes to optimize hyperparameters for a given model, run batch transform jobs over existing models, and set up inference endpoints.
+
+For more information, see `Amazon SageMaker Operators for Kubernetes`_.
+
+.. _Amazon SageMaker Operators for Kubernetes: https://sagemaker.readthedocs.io/en/stable/amazon_sagemaker_operators_for_kubernetes.html
 
 SageMaker Workflow
 ------------------
