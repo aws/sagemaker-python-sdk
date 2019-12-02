@@ -1,10 +1,8 @@
 Using Amazon Sagemaker Jobs
 ---------------------------
 
-To run a job using the Amazon Sagemaker Operators, you can either apply
-a YAML file or use the supplied Helm charts. The method you used to
-deploy the operator doesn’t impact which one you can select to run your
-jobs. 
+To run a job using the Amazon Sagemaker Operators for Kubernetes, you can either apply
+a YAML file or use the supplied Helm charts.
 
 All operator sample jobs in the following tutorials use sample data
 taken from a public MNIST dataset. In order to run these samples, download the dataset into your S3 bucket. You can find

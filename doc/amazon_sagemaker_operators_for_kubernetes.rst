@@ -4,11 +4,7 @@ Amazon SageMaker Operators for Kubernetes
 
 
 
-Amazon SageMaker Operators for Kubernetes are operators that you use
-to train machine learning models. You can also use the operators to optimize hyperparameters for a given
-model, run batch transform jobs over existing models, and set up
-inference endpoints. With these operators, you can manage jobs
-in Amazon SageMaker from a Kubernetes cluster. This guide shows you how to set up the operators. The guide also explains how to use the operators to optimize hyperparameters, run batch transform jobs, and setup an inference endpoint.
+Amazon SageMaker Operators for Kubernetes make it easier for developers and data scientists using Kubernetes to train, tune, and deploy machine learning (ML) models in Amazon SageMaker. You can install these SageMaker Operators on your Kubernetes cluster in Amazon Elastic Kubernetes Service (EKS) to create SageMaker jobs natively using the Kubernetes API and command-line Kubernetes tools such as ‘kubectl’. This guide shows you how to set up the operators. The guide also explains how to use the operators to run model training, hyperparameter tuning, and inference (real-time and batch).
 
 There is no additional charge to use these operators. You do incur charges
 for any Amazon SageMaker resources that you use through these operators. The procedures and guidelines here assume you are familiar with Kubernetes and its basic commands.
@@ -25,9 +21,7 @@ manager (ETCD) and act when something happens. Examples of such
 applications
 include \ ``cloud-controller-manager`` and \ ``controller-manager``.
 The controller pattern allows you to create decoupled experiences and not
-have to worry about how other components are integrated. An operator is
-a purpose-built application that manages a specific type of
-component by using this same pattern.
+have to worry about how other components are integrated. To add new capabilities to Kubernetes, developers can extend the Kubernetes API by creating a custom resource that contains their application-specific or domain-specific logic and components. Operators in Kubernetes allow users to natively invoke these custom resources and automate associated workflows.
 
 Prerequisites
 ~~~~~~~~~~~~~
@@ -260,8 +254,6 @@ Deploy the Operator Using Helm Charts
 Use the provided Helm Chart to install
 the operator.
 
-Get the Helm Installer Directory 
-
 
 Clone the Helm installer directory using the following command:
 
@@ -407,7 +399,7 @@ Operators installed using YAML
 To uninstall the operator from your cluster, make sure that all
 Amazon SageMaker resources have been deleted from the cluster. Failure
 to do so will cause the operator delete operation to hang. Once you have
-deleted all Amazon SageMaker kubernetes jobs, use \ ``kubectl`` to
+deleted all Amazon SageMaker jobs, use \ ``kubectl`` to
 delete the operator from the cluster. Run the following commands to stop
 all jobs and delete the operator from the cluster:
 
@@ -545,7 +537,7 @@ using the following steps:
          finalizers:
          - sagemaker-operator-finalizer
 
-Images and logs in each Region
+Images and SMlogs in each Region
 ------------------------------
 
 The following table lists the available operator images and SMLogs in
