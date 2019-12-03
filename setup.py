@@ -40,6 +40,7 @@ required_packages = [
     "scipy>=0.19.0",
     "protobuf3-to-dict>=0.1.5",
     "requests>=2.20.0, <2.21",
+    "smdebug-rulesconfig==0.1.2",
 ]
 
 # Specific use case dependencies
