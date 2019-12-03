@@ -14,14 +14,12 @@ from __future__ import absolute_import
 
 import os
 import uuid
-import smdebug_rulesconfig as rule_configs  # TODO-reinvent-2019 [knakad]: Remove this following PyPI integration
 
 from sagemaker.debugger import Rule
 from sagemaker.debugger import DebuggerHookConfig
 from sagemaker.debugger import TensorBoardOutputConfig
 
-# TODO-reinvent-2019 [knakad]: Add this following PyPI integration.
-# from sagemaker.debugger import rule_configs
+from sagemaker.debugger import rule_configs
 from sagemaker.mxnet.estimator import MXNet
 from tests.integ import DATA_DIR, PYTHON_VERSION, TRAINING_DEFAULT_TIMEOUT_MINUTES
 from tests.integ.timeout import timeout
