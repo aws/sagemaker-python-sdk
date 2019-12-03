@@ -1531,6 +1531,7 @@ class DefaultModelMonitor(ModelMonitor):
         if vpc_config is not None:
             subnets = vpc_config["Subnets"]
 
+        network_config = None
         if network_config_dict:
             network_config = NetworkConfig(
                 enable_network_isolation=network_config_dict["EnableNetworkIsolation"],
