@@ -11,10 +11,3 @@
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
 from __future__ import absolute_import
-
-import os
-
-# TODO-reinvent-2019: Remove this line, which loads the internal boto models
-os.system(
-    "aws configure add-model --service-model file://./tests/data/boto_models/sagemaker/2017-07-24/normal.json --service-name sagemaker"  # noqa: E501
-)
