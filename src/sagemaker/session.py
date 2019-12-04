@@ -3155,8 +3155,8 @@ def container_def(image, model_data_url=None, env=None, container_mode=None):
             e.g. SageMaker training job model artifacts (default: None).
         env (dict[str, str]): Environment variables to set inside the container (default: None).
         container_mode (str): The model container mode. Valid modes:
-                * 'MultiModel' - Indicates that the model container can support hosting multiple models
-                * 'SingleModel' - Indicates that the model container can support hosting a single model.
+                * MultiModel: Indicates that model container can support hosting multiple models
+                * SingleModel: Indicates that model container can support hosting a single model
                 This is the default model container mode when container_mode = None
     Returns:
         dict[str, str]: A complete container definition object usable with the CreateModel API if

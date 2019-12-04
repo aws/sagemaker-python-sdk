@@ -28,10 +28,7 @@ from sagemaker.predictor import RealTimePredictor, npy_serializer
 from sagemaker.utils import sagemaker_timestamp, unique_name_from_base
 from tests.integ import DATA_DIR, PYTHON_VERSION, TRAINING_DEFAULT_TIMEOUT_MINUTES
 from tests.integ.retry import retries
-from tests.integ.timeout import (
-    timeout,
-    timeout_and_delete_endpoint_by_name,
-)
+from tests.integ.timeout import timeout, timeout_and_delete_endpoint_by_name
 
 ALGORITHM_NAME = "sagemaker-multimodel-integ-test"
 ROLE = "SageMakerRole"
@@ -50,19 +47,20 @@ def container_image(sagemaker_session):
     )
     account_id = sts_client.get_caller_identity()["Account"]
     ecr_image = "{account}.dkr.ecr.{region}.amazonaws.com/{algorithm_name}:latest".format(
-        account=account_id, region=region, algorithm_name=ALGORITHM_NAME)
+        account=account_id, region=region, algorithm_name=ALGORITHM_NAME
+    )
 
     # Build and tag docker image locally
     docker_client = docker.from_env()
     image, build_log = docker_client.images.build(
-        path=os.path.join(DATA_DIR, "multimodel", "container"),
-        tag=ALGORITHM_NAME, rm=True)
-    image.tag(ecr_image, tag='latest')
+        path=os.path.join(DATA_DIR, "multimodel", "container"), tag=ALGORITHM_NAME, rm=True
+    )
+    image.tag(ecr_image, tag="latest")
 
     # Create AWS ECR and push the local docker image to it
     _create_repository(ecr_client, ALGORITHM_NAME)
     username, password = _ecr_login(ecr_client)
-    docker_client.images.push(ecr_image, auth_config={'username': username, 'password': password})
+    docker_client.images.push(ecr_image, auth_config={"username": username, "password": password})
     yield ecr_image
 
     # Delete repository after the multi model integration tests complete
@@ -90,12 +88,14 @@ def _ecr_login(ecr_client):
     """ Get a login credentials for an ecr client.
     """
     login = ecr_client.get_authorization_token()
-    b64token = login['authorizationData'][0]['authorizationToken'].encode('utf-8')
-    username, password = base64.b64decode(b64token).decode('utf-8').split(':')
+    b64token = login["authorizationData"][0]["authorizationToken"].encode("utf-8")
+    username, password = base64.b64decode(b64token).decode("utf-8").split(":")
     return username, password
 
 
-def test_multi_data_model_deploy_pretrained_models(container_image, sagemaker_session, cpu_instance_type):
+def test_multi_data_model_deploy_pretrained_models(
+    container_image, sagemaker_session, cpu_instance_type
+):
     timestamp = sagemaker_timestamp()
     endpoint_name = "test-multimodel-endpoint-{}".format(timestamp)
     model_name = "test-multimodel-{}".format(timestamp)
@@ -103,17 +103,20 @@ def test_multi_data_model_deploy_pretrained_models(container_image, sagemaker_se
     # Upload pretrained models to an S3 location
     model_data_path_local = os.path.join(DATA_DIR, "multimodel")
     pretrained_model_data_path = sagemaker_session.upload_data(
-        path=os.path.join(model_data_path_local, "dummy_model.tar.gz"),
+        path=os.path.join(model_data_path_local, "dummy_model.tar.gz")
     )
 
     with timeout_and_delete_endpoint_by_name(endpoint_name, sagemaker_session):
         model_data_prefix = os.path.join(
-            "s3://", sagemaker_session.default_bucket(), "multimodel-{}/".format(timestamp))
-        multi_data_model = MultiDataModel(model_name=model_name,
-                                          model_data_prefix=model_data_prefix,
-                                          image=container_image,
-                                          role=ROLE,
-                                          sagemaker_session=sagemaker_session)
+            "s3://", sagemaker_session.default_bucket(), "multimodel-{}/".format(timestamp)
+        )
+        multi_data_model = MultiDataModel(
+            model_name=model_name,
+            model_data_prefix=model_data_prefix,
+            image=container_image,
+            role=ROLE,
+            sagemaker_session=sagemaker_session,
+        )
 
         # Add model before deploy
         multi_data_model.add_model(pretrained_model_data_path, PRETRAINED_MODEL_PATH_1)
@@ -129,9 +132,7 @@ def test_multi_data_model_deploy_pretrained_models(container_image, sagemaker_se
         assert PRETRAINED_MODEL_PATH_2 in endpoint_models
 
         predictor = RealTimePredictor(
-            endpoint=endpoint_name,
-            sagemaker_session=sagemaker_session,
-            serializer=npy_serializer,
+            endpoint=endpoint_name, sagemaker_session=sagemaker_session, serializer=npy_serializer
         )
 
         data = numpy.zeros(shape=(1, 1, 28, 28))
@@ -152,29 +153,37 @@ def test_multi_data_model_deploy_pretrained_models(container_image, sagemaker_se
 
 
 def test_multi_data_model_deploy_trained_model_from_framework_estimator(
-        container_image, sagemaker_session, cpu_instance_type):
+    container_image, sagemaker_session, cpu_instance_type
+):
     timestamp = sagemaker_timestamp()
     endpoint_name = "test-multimodel-endpoint-{}".format(timestamp)
     model_name = "test-multimodel-{}".format(timestamp)
     mxnet_version = "1.4.1"
 
     with timeout_and_delete_endpoint_by_name(endpoint_name, sagemaker_session):
-        mxnet_model_1 = __mxnet_training_job(sagemaker_session, mxnet_version, cpu_instance_type, 0.1)
+        mxnet_model_1 = __mxnet_training_job(
+            sagemaker_session, mxnet_version, cpu_instance_type, 0.1
+        )
 
         model_data_prefix = os.path.join(
-            "s3://", sagemaker_session.default_bucket(), "multimodel-{}/".format(timestamp))
-        multi_data_model = MultiDataModel(model_name=model_name,
-                                          model_data_prefix=model_data_prefix,
-                                          image=container_image,
-                                          role=ROLE,
-                                          model=mxnet_model_1)
+            "s3://", sagemaker_session.default_bucket(), "multimodel-{}/".format(timestamp)
+        )
+        multi_data_model = MultiDataModel(
+            model_name=model_name,
+            model_data_prefix=model_data_prefix,
+            image=container_image,
+            role=ROLE,
+            model=mxnet_model_1,
+        )
 
         # Add model before deploy
         multi_data_model.add_model(mxnet_model_1.model_data, PRETRAINED_MODEL_PATH_1)
         # Deploy model to an endpoint
         multi_data_model.deploy(1, cpu_instance_type, endpoint_name=endpoint_name)
         # Train another model
-        mxnet_model_2 = __mxnet_training_job(sagemaker_session, mxnet_version, cpu_instance_type, 0.01)
+        mxnet_model_2 = __mxnet_training_job(
+            sagemaker_session, mxnet_version, cpu_instance_type, 0.01
+        )
         # Deploy newly trained model
         multi_data_model.add_model(mxnet_model_2.model_data, PRETRAINED_MODEL_PATH_2)
 
@@ -188,9 +197,7 @@ def test_multi_data_model_deploy_trained_model_from_framework_estimator(
         # instead of `json_serializer` in the default predictor returned by `MXNetPredictor`
         # Since we are using a placeholder container image the prediction results are not accurate.
         predictor = RealTimePredictor(
-            endpoint=endpoint_name,
-            sagemaker_session=sagemaker_session,
-            serializer=npy_serializer
+            endpoint=endpoint_name, sagemaker_session=sagemaker_session, serializer=npy_serializer
         )
 
         data = numpy.zeros(shape=(1, 1, 28, 28))
@@ -225,7 +232,7 @@ def __mxnet_training_job(sagemaker_session, mxnet_full_version, cpu_instance_typ
             train_instance_count=1,
             train_instance_type=cpu_instance_type,
             sagemaker_session=sagemaker_session,
-            hyperparameters={'learning-rate': learning_rate}
+            hyperparameters={"learning-rate": learning_rate},
         )
 
         train_input = mx.sagemaker_session.upload_data(
@@ -241,7 +248,8 @@ def __mxnet_training_job(sagemaker_session, mxnet_full_version, cpu_instance_typ
 
 
 def test_multi_data_model_deploy_train_model_from_amazon_first_party_estimator(
-        container_image, sagemaker_session, cpu_instance_type):
+    container_image, sagemaker_session, cpu_instance_type
+):
     timestamp = sagemaker_timestamp()
     endpoint_name = "test-multimodel-endpoint-{}".format(timestamp)
     model_name = "test-multimodel-{}".format(timestamp)
@@ -250,12 +258,15 @@ def test_multi_data_model_deploy_train_model_from_amazon_first_party_estimator(
         rcf_model_v1 = __rcf_training_job(sagemaker_session, cpu_instance_type, 50, 20)
 
         model_data_prefix = os.path.join(
-            "s3://", sagemaker_session.default_bucket(), "multimodel-{}/".format(timestamp))
-        multi_data_model = MultiDataModel(model_name=model_name,
-                                          model_data_prefix=model_data_prefix,
-                                          image=container_image,
-                                          role=ROLE,
-                                          model=rcf_model_v1)
+            "s3://", sagemaker_session.default_bucket(), "multimodel-{}/".format(timestamp)
+        )
+        multi_data_model = MultiDataModel(
+            model_name=model_name,
+            model_data_prefix=model_data_prefix,
+            image=container_image,
+            role=ROLE,
+            model=rcf_model_v1,
+        )
 
         # Add model before deploy
         multi_data_model.add_model(rcf_model_v1.model_data, PRETRAINED_MODEL_PATH_1)
@@ -277,9 +288,7 @@ def test_multi_data_model_deploy_train_model_from_amazon_first_party_estimator(
         # instead of `json_serializer` in the default predictor returned by `MXNetPredictor`
         # Since we are using a placeholder container image the prediction results are not accurate.
         predictor = RealTimePredictor(
-            endpoint=endpoint_name,
-            sagemaker_session=sagemaker_session,
-            serializer=npy_serializer
+            endpoint=endpoint_name, sagemaker_session=sagemaker_session, serializer=npy_serializer
         )
 
         data = numpy.random.rand(1, 14)
@@ -324,7 +333,8 @@ def __rcf_training_job(sagemaker_session, cpu_instance_type, num_trees, num_samp
 
 
 def test_multi_data_model_deploy_pretrained_models_update_endpoint(
-        container_image , sagemaker_session, cpu_instance_type, alternative_cpu_instance_type):
+    container_image, sagemaker_session, cpu_instance_type, alternative_cpu_instance_type
+):
     timestamp = sagemaker_timestamp()
     endpoint_name = "test-multimodel-endpoint-{}".format(timestamp)
     model_name = "test-multimodel-{}".format(timestamp)
@@ -332,17 +342,20 @@ def test_multi_data_model_deploy_pretrained_models_update_endpoint(
     # Upload pretrained models to an S3 location
     model_data_path_local = os.path.join(DATA_DIR, "multimodel")
     pretrained_model_data_path = sagemaker_session.upload_data(
-        path=os.path.join(model_data_path_local, "dummy_model.tar.gz"),
+        path=os.path.join(model_data_path_local, "dummy_model.tar.gz")
     )
 
     with timeout_and_delete_endpoint_by_name(endpoint_name, sagemaker_session):
         model_data_prefix = os.path.join(
-            "s3://", sagemaker_session.default_bucket(), "multimodel-{}/".format(timestamp))
-        multi_data_model = MultiDataModel(model_name=model_name,
-                                          model_data_prefix=model_data_prefix,
-                                          image=container_image,
-                                          role=ROLE,
-                                          sagemaker_session=sagemaker_session)
+            "s3://", sagemaker_session.default_bucket(), "multimodel-{}/".format(timestamp)
+        )
+        multi_data_model = MultiDataModel(
+            model_name=model_name,
+            model_data_prefix=model_data_prefix,
+            image=container_image,
+            role=ROLE,
+            sagemaker_session=sagemaker_session,
+        )
 
         # Add model before deploy
         multi_data_model.add_model(pretrained_model_data_path, PRETRAINED_MODEL_PATH_1)
@@ -359,9 +372,7 @@ def test_multi_data_model_deploy_pretrained_models_update_endpoint(
         assert PRETRAINED_MODEL_PATH_2 in endpoint_models
 
         predictor = RealTimePredictor(
-            endpoint=endpoint_name,
-            sagemaker_session=sagemaker_session,
-            serializer=npy_serializer,
+            endpoint=endpoint_name, sagemaker_session=sagemaker_session, serializer=npy_serializer
         )
 
         data = numpy.zeros(shape=(1, 1, 28, 28))
@@ -378,7 +389,8 @@ def test_multi_data_model_deploy_pretrained_models_update_endpoint(
 
         # Update endpoint
         multi_data_model.deploy(
-            1, alternative_cpu_instance_type, endpoint_name=endpoint_name, update_endpoint=True)
+            1, alternative_cpu_instance_type, endpoint_name=endpoint_name, update_endpoint=True
+        )
 
         # Wait for endpoint to finish updating
         for _ in retries(40, "Waiting for 'InService' endpoint status", seconds_to_sleep=30):
@@ -398,8 +410,12 @@ def test_multi_data_model_deploy_pretrained_models_update_endpoint(
         assert new_config["ProductionVariants"][0]["InitialInstanceCount"] == 1
 
         # Cleanup
-        sagemaker_session.sagemaker_client.delete_endpoint_config(EndpointConfigName=old_config_name)
-        sagemaker_session.sagemaker_client.delete_endpoint_config(EndpointConfigName=new_config_name)
+        sagemaker_session.sagemaker_client.delete_endpoint_config(
+            EndpointConfigName=old_config_name
+        )
+        sagemaker_session.sagemaker_client.delete_endpoint_config(
+            EndpointConfigName=new_config_name
+        )
         multi_data_model.delete_model()
     with pytest.raises(Exception) as exception:
         sagemaker_session.sagemaker_client.describe_model(ModelName=multi_data_model.model_name)

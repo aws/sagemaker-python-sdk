@@ -10,6 +10,7 @@
 # distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
+"""Placeholder docstring"""
 from __future__ import absolute_import
 
 import os
@@ -24,19 +25,21 @@ MULTI_MODEL_CONTAINER_MODE = "MultiModel"
 class MultiDataModel(Model):
     """SageMaker ``MultiDataModel`` used to deploy multiple models to the same ``Endpoint``.
 
-    This class defines methods to create a Model with Multi-Model container, deploy it to an endpoint,
-    add more models to make them available to a deployed endpoint, list available models and
-    run predictions on a Multi-Model endpoint.
+    This class defines methods to create a Model with Multi-Model container, deploy it to an
+    endpoint, add more models to make them available to a deployed endpoint, list available
+    models and run predictions on a Multi-Model endpoint.
     """
 
-    def __init__(self,
-                 model_name,
-                 model_data_prefix,
-                 model=None,
-                 image=None,
-                 role=None,
-                 predictor_cls=None,
-                 **kwargs):
+    def __init__(
+        self,
+        model_name,
+        model_data_prefix,
+        model=None,
+        image=None,
+        role=None,
+        predictor_cls=None,
+        **kwargs
+    ):
         """Initialize a ``MultiDataModel``. In addition to these arguments, it supports all
            arguments supported by ``Model`` constructor
 
@@ -109,7 +112,8 @@ class MultiDataModel(Model):
         # Validate path
         if not (model_data_prefix.startswith("s3://") and model_data_prefix.endswith("/")):
             raise ValueError(
-                'Expecting S3 model prefix beginning with "s3://" and ending in "/". Received: "{}"'.format(model_data_prefix)
+                'Expecting S3 model prefix beginning with "s3://" '
+                'and ending in "/". Received: "{}"'.format(model_data_prefix)
             )
         self._model_data_prefix = model_data_prefix
 
@@ -118,8 +122,7 @@ class MultiDataModel(Model):
         Create the S3 prefix path to ensure model deployment succeeds.
         If this path does not exist, calls to CreateModel API fails
         """
-        url = parse.urlparse(self.model_data_prefix)
-        bucket, model_data_path = url.netloc, url.path.lstrip("/")
+        bucket, model_data_path = self._parse_s3_uri(self.model_data_prefix)
         self.s3_client.put_object(Bucket=bucket, Key=os.path.join(model_data_path, "/"))
 
     def prepare_container_def(self, instance_type, accelerator_type=None):
@@ -141,7 +144,11 @@ class MultiDataModel(Model):
             self.image = self.image or container_definition["Image"]
             self.env.update(container_definition["Environment"])
         return sagemaker.container_def(
-            self.image, env=self.env, model_data_url=self.model_data_prefix, container_mode=self.container_mode)
+            self.image,
+            env=self.env,
+            model_data_url=self.model_data_prefix,
+            container_mode=self.container_mode,
+        )
 
     def add_model(self, s3_url, model_data_path=None):
         """Adds a model to the `MultiDataModel` by copying
@@ -161,32 +168,26 @@ class MultiDataModel(Model):
                 'Expecting S3 model path beginning with "s3://". Received: "{}"'.format(s3_url)
             )
 
-        url = parse.urlparse(s3_url)
-        source_bucket, source_model_data_path = url.netloc, url.path.lstrip("/")
-        copy_source = {
-            "Bucket": source_bucket,
-            "Key": source_model_data_path
-        }
+        source_bucket, source_model_data_path = self._parse_s3_uri(s3_url)
+        copy_source = {"Bucket": source_bucket, "Key": source_model_data_path}
 
         if not model_data_path:
             model_data_path = source_model_data_path
 
         # Construct the destination path
-        dst_url = parse.urlparse(os.path.join(self.model_data_prefix, model_data_path))
-        destination_bucket, destination_model_data_path = dst_url.netloc, dst_url.path.lstrip("/")
+        dst_url = os.path.join(self.model_data_prefix, model_data_path)
+        destination_bucket, destination_model_data_path = self._parse_s3_uri(dst_url)
 
         # Copy the model artifact
         self.s3_client.copy(copy_source, destination_bucket, destination_model_data_path)
 
     def list_models(self):
-        """
-        Generates and returns relative paths to model archives stored at model_data_prefix S3 location
+        """Generates and returns relative paths to model archives stored at model_data_prefix
+        S3 location.
 
         Yields: Relative paths to model archives stored at model_data_prefix.
         """
-
-        url = parse.urlparse(self.model_data_prefix)
-        bucket, url_prefix = url.netloc, url.path.lstrip("/")
+        bucket, url_prefix = self._parse_s3_uri(self.model_data_prefix)
         paginator = self.s3_client.get_paginator("list_objects_v2")
         for page in paginator.paginate(Bucket=bucket, Prefix=url_prefix):
             try:
@@ -194,6 +195,17 @@ class MultiDataModel(Model):
                 s3_objects_metadata = page["Contents"]
                 for s3_object in s3_objects_metadata:
                     # Return the model paths relative to the model_data_prefix
-                    yield s3_object["Key"].replace(url_prefix, "")  # Ex: "a/b/c.tar.gz" -> "b/c.tar.gz" if url_prefix = "a/"
+                    # Ex: "a/b/c.tar.gz" -> "b/c.tar.gz" if url_prefix = "a/"
+                    yield s3_object["Key"].replace(url_prefix, "")
             except KeyError:
                 return
+
+    def _parse_s3_uri(self, s3_url):
+        """Parses an s3 uri and returns the bucket and s3 prefix path.
+
+        Args:
+            s3_url:
+        """
+        url = parse.urlparse(s3_url)
+        bucket, s3_prefix = url.netloc, url.path.lstrip("/")
+        return bucket, s3_prefix

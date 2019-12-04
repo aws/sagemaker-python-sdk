@@ -423,7 +423,7 @@ def test_multi_model_predict_call_with_headers():
         "Body": data,
         "ContentType": DEFAULT_CONTENT_TYPE,
         "EndpointName": ENDPOINT,
-        "TargetModel": "model.tar.gz"
+        "TargetModel": "model.tar.gz",
     }
     call_args, kwargs = sagemaker_session.sagemaker_runtime_client.invoke_endpoint.call_args
     assert kwargs == expected_request_args

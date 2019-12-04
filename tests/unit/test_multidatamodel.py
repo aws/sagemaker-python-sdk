@@ -73,7 +73,7 @@ def multi_data_model(sagemaker_session):
         model_data_prefix=VALID_MULTI_MODEL_DATA_PREFIX,
         image=IMAGE,
         role=ROLE,
-        sagemaker_session=sagemaker_session
+        sagemaker_session=sagemaker_session,
     )
 
 
@@ -95,11 +95,13 @@ def test_multi_data_model_create_with_invalid_model_data_prefix():
             model_name=MODEL_NAME,
             model_data_prefix=invalid_model_data_prefix,
             image=IMAGE,
-            role=ROLE
+            role=ROLE,
         )
-
-    assert 'ValueError: Expecting S3 model prefix beginning with "s3://" ' \
-           'and ending in "/". Received: "{}"'.format(invalid_model_data_prefix) in str(ex)
+    err_msg = (
+        'ValueError: Expecting S3 model prefix beginning with "s3://" and ending in "/". '
+        'Received: "{}"'.format(invalid_model_data_prefix)
+    )
+    assert err_msg in str(ex)
 
 
 def test_multi_data_model_create(sagemaker_session):
@@ -108,7 +110,7 @@ def test_multi_data_model_create(sagemaker_session):
         model_data_prefix=VALID_MULTI_MODEL_DATA_PREFIX,
         image=IMAGE,
         role=ROLE,
-        sagemaker_session=sagemaker_session
+        sagemaker_session=sagemaker_session,
     )
 
     url = parse.urlparse(VALID_MULTI_MODEL_DATA_PREFIX)
@@ -132,7 +134,7 @@ def test_multi_data_model_create_with_model_arg(sagemaker_session, mxnet_model):
         image=IMAGE,
         role=ROLE,
         sagemaker_session=sagemaker_session,
-        model=mxnet_model
+        model=mxnet_model,
     )
 
     url = parse.urlparse(VALID_MULTI_MODEL_DATA_PREFIX)
@@ -152,8 +154,12 @@ def test_multi_data_model_create_with_model_arg(sagemaker_session, mxnet_model):
 @patch("sagemaker.fw_utils.tar_and_upload_dir", MagicMock())
 def test_prepare_container_def_mxnet(sagemaker_session, mxnet_model):
     expected_container_env_keys = [
-        "SAGEMAKER_CONTAINER_LOG_LEVEL", "SAGEMAKER_ENABLE_CLOUDWATCH_METRICS", "SAGEMAKER_PROGRAM",
-        "SAGEMAKER_REGION", "SAGEMAKER_SUBMIT_DIRECTORY", "EXTRA_ENV_MOCK"
+        "SAGEMAKER_CONTAINER_LOG_LEVEL",
+        "SAGEMAKER_ENABLE_CLOUDWATCH_METRICS",
+        "SAGEMAKER_PROGRAM",
+        "SAGEMAKER_REGION",
+        "SAGEMAKER_SUBMIT_DIRECTORY",
+        "EXTRA_ENV_MOCK",
     ]
     model = MultiDataModel(
         model_name=MODEL_NAME,
@@ -162,7 +168,7 @@ def test_prepare_container_def_mxnet(sagemaker_session, mxnet_model):
         role=ROLE,
         sagemaker_session=sagemaker_session,
         model=mxnet_model,
-        env={"EXTRA_ENV_MOCK": "MockValue"}
+        env={"EXTRA_ENV_MOCK": "MockValue"},
     )
 
     container_def = model.prepare_container_def(INSTANCE_TYPE)
@@ -184,12 +190,14 @@ def test_deploy(sagemaker_session, mxnet_model):
         role=ROLE,
         sagemaker_session=sagemaker_session,
         model=mxnet_model,
-        env={"EXTRA_ENV_MOCK": "MockValue"}
+        env={"EXTRA_ENV_MOCK": "MockValue"},
     )
 
-    predictor = model.deploy(initial_instance_count=INSTANCE_COUNT,
-                 instance_type=INSTANCE_TYPE,
-                 endpoint_name=MULTI_MODEL_ENDPOINT_NAME)
+    predictor = model.deploy(
+        initial_instance_count=INSTANCE_COUNT,
+        instance_type=INSTANCE_TYPE,
+        endpoint_name=MULTI_MODEL_ENDPOINT_NAME,
+    )
 
     assert isinstance(predictor, MXNetPredictor)
 
@@ -205,10 +213,12 @@ def test_deploy_update(sagemaker_session, mxnet_model):
         model=mxnet_model,
     )
 
-    model.deploy(initial_instance_count=INSTANCE_COUNT,
-                 instance_type=INSTANCE_TYPE,
-                 endpoint_name=MULTI_MODEL_ENDPOINT_NAME,
-                 update_endpoint=True,)
+    model.deploy(
+        initial_instance_count=INSTANCE_COUNT,
+        instance_type=INSTANCE_TYPE,
+        endpoint_name=MULTI_MODEL_ENDPOINT_NAME,
+        update_endpoint=True,
+    )
 
     sagemaker_session.create_model.assert_called()
     sagemaker_session.create_endpoint_config.assert_called_with(
@@ -237,14 +247,22 @@ def test_add_model_with_invalid_model_uri(multi_data_model):
     with pytest.raises(ValueError) as ex:
         multi_data_model.add_model(INVALID_S3_URL)
 
-    assert 'ValueError: Expecting S3 model path beginning with "s3://". Received: "{}"'.format(INVALID_S3_URL) in str(ex)
+    assert 'ValueError: Expecting S3 model path beginning with "s3://". Received: "{}"'.format(
+        INVALID_S3_URL
+    ) in str(ex)
 
 
 def test_add_model(multi_data_model):
     multi_data_model.add_model(VALID_S3_URL)
 
     multi_data_model.s3_client.copy.assert_called()
-    calls = [call({"Bucket": S3_URL_SOURCE_BUCKET, "Key": S3_URL_SOURCE_PREFIX}, DST_BUCKET, "path/output/model.tar.gz")]
+    calls = [
+        call(
+            {"Bucket": S3_URL_SOURCE_BUCKET, "Key": S3_URL_SOURCE_PREFIX},
+            DST_BUCKET,
+            "path/output/model.tar.gz",
+        )
+    ]
     multi_data_model.s3_client.copy.assert_has_calls(calls)
 
 
@@ -252,7 +270,13 @@ def test_add_model_with_dst_path(multi_data_model):
     multi_data_model.add_model(VALID_S3_URL, "customer-a/model.tar.gz")
 
     multi_data_model.s3_client.copy.assert_called()
-    calls = [call({"Bucket": S3_URL_SOURCE_BUCKET, "Key": S3_URL_SOURCE_PREFIX}, DST_BUCKET, "path/customer-a/model.tar.gz")]
+    calls = [
+        call(
+            {"Bucket": S3_URL_SOURCE_BUCKET, "Key": S3_URL_SOURCE_PREFIX},
+            DST_BUCKET,
+            "path/customer-a/model.tar.gz",
+        )
+    ]
     multi_data_model.s3_client.copy.assert_has_calls(calls)
 
 
@@ -261,6 +285,5 @@ def test_list_models(multi_data_model):
 
     multi_data_model.s3_client.get_paginator.assert_called_with("list_objects_v2")
     assert multi_data_model.s3_client.get_paginator("list_objects_v2").paginate.called_with(
-        Bucket=S3_URL_SOURCE_BUCKET,
-        Prefix="path/"
+        Bucket=S3_URL_SOURCE_BUCKET, Prefix="path/"
     )
