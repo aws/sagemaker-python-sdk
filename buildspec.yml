@@ -3,9 +3,6 @@ version: 0.2
 phases:
   build:
     commands:
-      # TODO-reinvent-2019 [akarpur]: Remove this (adding internal boto models)
-      - aws configure add-model --service-model file://./tests/data/boto_models/sagemaker/2017-07-24/normal.json --service-name sagemaker
-
       - IGNORE_COVERAGE=-
 
       # run integration tests
