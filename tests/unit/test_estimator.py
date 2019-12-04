@@ -1702,7 +1702,7 @@ EXP_TRAIN_CALL.update(
 )
 
 
-def test_fit_deploy_keep_tags(sagemaker_session):
+def test_fit_deploy_tags_in_estimator(sagemaker_session):
     tags = [{"Key": "TagtestKey", "Value": "TagtestValue"}]
     estimator = Estimator(
         IMAGE_NAME,
@@ -1716,6 +1716,50 @@ def test_fit_deploy_keep_tags(sagemaker_session):
     estimator.fit()
 
     estimator.deploy(INSTANCE_COUNT, INSTANCE_TYPE)
+
+    variant = [
+        {
+            "InstanceType": "c4.4xlarge",
+            "VariantName": "AllTraffic",
+            "ModelName": ANY,
+            "InitialVariantWeight": 1,
+            "InitialInstanceCount": 1,
+        }
+    ]
+
+    job_name = estimator._current_job_name
+    sagemaker_session.endpoint_from_production_variants.assert_called_with(
+        name=job_name,
+        production_variants=variant,
+        tags=tags,
+        kms_key=None,
+        wait=True,
+        data_capture_config_dict=None,
+    )
+
+    sagemaker_session.create_model.assert_called_with(
+        ANY,
+        "DummyRole",
+        {"ModelDataUrl": "s3://bucket/model.tar.gz", "Environment": {}, "Image": "fakeimage"},
+        enable_network_isolation=False,
+        vpc_config=None,
+        tags=tags,
+    )
+
+
+def test_fit_deploy_tags(sagemaker_session):
+    estimator = Estimator(
+        IMAGE_NAME,
+        ROLE,
+        INSTANCE_COUNT,
+        INSTANCE_TYPE,
+        sagemaker_session=sagemaker_session,
+    )
+
+    estimator.fit()
+
+    tags = [{"Key": "TagtestKey", "Value": "TagtestValue"}]
+    estimator.deploy(INSTANCE_COUNT, INSTANCE_TYPE, tags=tags)
 
     variant = [
         {
