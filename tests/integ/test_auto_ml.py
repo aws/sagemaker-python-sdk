@@ -23,7 +23,6 @@ from sagemaker.utils import unique_name_from_base
 from tests.integ import DATA_DIR, AUTO_ML_DEFAULT_TIMEMOUT_MINUTES
 from tests.integ.timeout import timeout
 
-DEV_ACCOUNT = 142577830533
 ROLE = "SageMakerRole"
 PREFIX = "sagemaker/beta-automl-xgboost"
 HOSTING_INSTANCE_TYPE = "ml.c4.xlarge"
@@ -40,25 +39,9 @@ JOB_NAME = "auto-ml-{}".format(time.strftime("%y%m%d-%H%M%S"))
 # use a succeeded AutoML job to test describe and list candidates method, otherwise tests will run too long
 AUTO_ML_JOB_NAME = "sagemaker-auto-gamma-ml-test"
 
-EXPECTED_DEFAULT_INPUT_CONFIG = [
-    {
-        "DataSource": {
-            "S3DataSource": {
-                "S3DataType": "S3Prefix",
-                "S3Uri": "s3://sagemaker-us-east-2-{}/{}/input/iris_training.csv".format(
-                    DEV_ACCOUNT, PREFIX
-                ),
-            }
-        },
-        "TargetAttributeName": TARGET_ATTRIBUTE_NAME,
-    }
-]
 EXPECTED_DEFAULT_JOB_CONFIG = {
     "CompletionCriteria": {"MaxCandidates": 3},
     "SecurityConfig": {"EnableInterContainerTrafficEncryption": False},
-}
-EXPECTED_DEFAULT_OUTPUT_CONFIG = {
-    "S3OutputPath": "s3://sagemaker-us-east-2-{}/".format(DEV_ACCOUNT)
 }
 
 
@@ -102,7 +85,7 @@ def test_auto_ml_input_object_fit(sagemaker_session):
 
 
 def test_auto_ml_fit_optional_args(sagemaker_session):
-    output_path = "s3://sagemaker-us-east-2-{}/{}".format(DEV_ACCOUNT, "specified_ouput_path")
+    output_path = "s3://{}/{}".format(sagemaker_session.default_bucket(), "specified_ouput_path")
     problem_type = "MulticlassClassification"
     job_objective = {"MetricName": "Accuracy"}
     auto_ml = AutoML(
@@ -138,6 +121,23 @@ def test_auto_ml_invalid_target_attribute(sagemaker_session):
 
 
 def test_auto_ml_describe_auto_ml_job(sagemaker_session):
+    expected_default_input_config = [
+        {
+            "DataSource": {
+                "S3DataSource": {
+                    "S3DataType": "S3Prefix",
+                    "S3Uri": "s3://{}/{}/input/iris_training.csv".format(
+                        sagemaker_session.default_bucket(), PREFIX
+                    ),
+                }
+            },
+            "TargetAttributeName": TARGET_ATTRIBUTE_NAME,
+        }
+    ]
+    expected_default_output_config = {
+        "S3OutputPath": "s3://{}/".format(sagemaker_session.default_bucket())
+    }
+
     auto_ml = AutoML(
         role=ROLE, target_attribute_name=TARGET_ATTRIBUTE_NAME, sagemaker_session=sagemaker_session
     )
@@ -146,9 +146,9 @@ def test_auto_ml_describe_auto_ml_job(sagemaker_session):
     assert desc["AutoMLJobName"] == AUTO_ML_JOB_NAME
     assert desc["AutoMLJobStatus"] == "Completed"
     assert isinstance(desc["BestCandidate"], dict)
-    assert desc["InputDataConfig"] == EXPECTED_DEFAULT_INPUT_CONFIG
+    assert desc["InputDataConfig"] == expected_default_input_config
     assert desc["AutoMLJobConfig"] == EXPECTED_DEFAULT_JOB_CONFIG
-    assert desc["OutputDataConfig"] == EXPECTED_DEFAULT_OUTPUT_CONFIG
+    assert desc["OutputDataConfig"] == expected_default_output_config
 
 
 def test_list_candidates(sagemaker_session):

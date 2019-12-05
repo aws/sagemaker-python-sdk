@@ -23,7 +23,7 @@ from sagemaker.sklearn.processing import SKLearnProcessor
 from tests.integ import DATA_DIR
 from tests.integ.kms_utils import get_or_create_kms_key
 
-ROLE = "arn:aws:iam::142577830533:role/SageMakerRole"
+ROLE = "SageMakerRole"
 
 
 @pytest.fixture(scope="module")
@@ -57,8 +57,6 @@ def output_kms_key(sagemaker_session):
 
 
 def test_sklearn(sagemaker_session, sklearn_full_version, cpu_instance_type):
-    logging.getLogger().setLevel(logging.DEBUG)  # TODO-reinvent-2019: REMOVE
-
     script_path = os.path.join(DATA_DIR, "dummy_script.py")
     input_file_path = os.path.join(DATA_DIR, "dummy_input.txt")
 

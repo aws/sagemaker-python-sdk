@@ -22,24 +22,17 @@ import os
 import logging
 import uuid
 
-from six.moves.urllib.parse import urlparse
 from six import string_types
-
+from six.moves.urllib.parse import urlparse
 from botocore.exceptions import ClientError
 
-from sagemaker.network import NetworkConfig
-from sagemaker.s3 import S3Uploader
-
-from sagemaker.utils import name_from_base
-from sagemaker.session import Session
-from sagemaker.processing import Processor
-from sagemaker.processing import ProcessingJob
-from sagemaker.processing import ProcessingInput
-from sagemaker.processing import ProcessingOutput
-from sagemaker.model_monitor.monitoring_files import Constraints, ConstraintViolations
-from sagemaker.model_monitor.monitoring_files import Statistics
 from sagemaker.exceptions import UnexpectedStatusException
-from sagemaker.utils import retries
+from sagemaker.model_monitor.monitoring_files import Constraints, ConstraintViolations, Statistics
+from sagemaker.network import NetworkConfig
+from sagemaker.processing import Processor, ProcessingInput, ProcessingJob, ProcessingOutput
+from sagemaker.s3 import S3Uploader
+from sagemaker.session import Session
+from sagemaker.utils import name_from_base, retries
 
 _DEFAULT_MONITOR_IMAGE_URI_WITH_PLACEHOLDERS = (
     "{}.dkr.ecr.{}.amazonaws.com/sagemaker-model-monitor-analyzer"
@@ -390,7 +383,7 @@ class ModelMonitor(object):
             network_config (sagemaker.network.NetworkConfig): A NetworkConfig
                 object that configures network isolation, encryption of
                 inter-container traffic, security group IDs, and subnets.
-            role (str): An AWS IAM role. The Amazon SageMaker jobs use this role.
+            role (str): An AWS IAM role name or ARN. The Amazon SageMaker jobs use this role.
             image_uri (str): The uri of the image to use for the jobs started by
                 the Monitor.
 
@@ -452,7 +445,7 @@ class ModelMonitor(object):
             self.network_config = network_config
 
         if role is not None:
-            self.role = role
+            self.role = self.sagemaker_session.expand_role(role)
 
         if image_uri is not None:
             self.image_uri = image_uri
@@ -988,7 +981,7 @@ class DefaultModelMonitor(ModelMonitor):
         creating Amazon SageMaker Monitoring Schedules to monitor SageMaker endpoints.
 
         Args:
-            role (str): An AWS IAM role. The Amazon SageMaker jobs use this role.
+            role (str): An AWS IAM role name or ARN. The Amazon SageMaker jobs use this role.
             instance_count (int): The number of instances to run the jobs with.
             instance_type (str): Type of EC2 instance to use for the job, for example,
                 'ml.m5.xlarge'.
@@ -1355,7 +1348,7 @@ class DefaultModelMonitor(ModelMonitor):
                 inter-container traffic, security group IDs, and subnets.
             enable_cloudwatch_metrics (bool): Whether to publish cloudwatch metrics as part of
                 the baselining or monitoring jobs.
-            role (str): An AWS IAM role. The Amazon SageMaker jobs use this role.
+            role (str): An AWS IAM role name or ARN. The Amazon SageMaker jobs use this role.
 
         """
         monitoring_inputs = None
@@ -1431,7 +1424,7 @@ class DefaultModelMonitor(ModelMonitor):
             network_config_dict = self.network_config._to_request_dict()
 
         if role is not None:
-            self.role = role
+            self.role = self.sagemaker_session.expand_role(role)
 
         self.sagemaker_session.update_monitoring_schedule(
             monitoring_schedule_name=self.monitoring_schedule_name,

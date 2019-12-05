@@ -42,7 +42,7 @@ from sagemaker.utils import unique_name_from_base
 from tests.integ.kms_utils import get_or_create_kms_key
 from tests.integ.retry import retries
 
-ROLE = "arn:aws:iam::142577830533:role/SageMakerRole"
+ROLE = "SageMakerRole"
 INSTANCE_COUNT = 1
 INSTANCE_TYPE = "ml.m5.xlarge"
 VOLUME_SIZE_IN_GB = 40
@@ -63,7 +63,7 @@ DEFAULT_BASELINING_MAX_RUNTIME_IN_SECONDS = 86400
 DEFAULT_EXECUTION_MAX_RUNTIME_IN_SECONDS = 3600
 DEFAULT_IMAGE_SUFFIX = ".com/sagemaker-model-monitor-analyzer"
 
-UPDATED_ROLE = "arn:aws:iam::142577830533:role/SageMakerRole"
+UPDATED_ROLE = "SageMakerRole"
 UPDATED_INSTANCE_COUNT = 2
 UPDATED_INSTANCE_TYPE = "ml.m5.2xlarge"
 UPDATED_VOLUME_SIZE_IN_GB = 50
@@ -99,7 +99,7 @@ def predictor(sagemaker_session, tf_full_version):
     ):
         model = Model(
             model_data=model_data,
-            role="SageMakerRole",
+            role=ROLE,
             framework_version=tf_full_version,
             sagemaker_session=sagemaker_session,
         )
