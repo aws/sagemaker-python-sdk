@@ -20,7 +20,7 @@ from sagemaker import AutoML, CandidateEstimator, AutoMLInput
 
 from sagemaker.exceptions import UnexpectedStatusException
 from sagemaker.utils import unique_name_from_base
-from tests.integ import DATA_DIR, AUTO_ML_DEFAULT_TIMEMOUT_MINUTES
+from tests.integ import DATA_DIR, AUTO_ML_DEFAULT_TIMEMOUT_MINUTES, auto_ml_utils
 from tests.integ.timeout import timeout
 
 DEV_ACCOUNT = 142577830533
@@ -38,7 +38,7 @@ PROBLEM_TYPE = "MultiClassClassification"
 JOB_NAME = "auto-ml-{}".format(time.strftime("%y%m%d-%H%M%S"))
 
 # use a succeeded AutoML job to test describe and list candidates method, otherwise tests will run too long
-AUTO_ML_JOB_NAME = "sagemaker-auto-gamma-ml-test"
+AUTO_ML_JOB_NAME = "python-sdk-integ-test-base-job"
 
 EXPECTED_DEFAULT_INPUT_CONFIG = [
     {
@@ -60,6 +60,11 @@ EXPECTED_DEFAULT_JOB_CONFIG = {
 EXPECTED_DEFAULT_OUTPUT_CONFIG = {
     "S3OutputPath": "s3://sagemaker-us-east-2-{}/".format(DEV_ACCOUNT)
 }
+
+
+@pytest.fixture(scope="module", autouse=True)
+def create_auto_ml_job_if_not_exist(sagemaker_session):
+    auto_ml_utils.create_auto_ml_job_if_not_exist(sagemaker_session)
 
 
 def test_auto_ml_fit(sagemaker_session):
