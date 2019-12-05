@@ -76,6 +76,7 @@ EI_SUPPORTED_REGIONS = [
 
 NO_LDA_REGIONS = ["eu-west-3", "eu-north-1", "sa-east-1", "ap-east-1", "me-south-1"]
 NO_MARKET_PLACE_REGIONS = ["eu-west-3", "eu-north-1", "sa-east-1", "ap-east-1", "me-south-1"]
+NO_AUTO_ML_REGIONS = ["sa-east-1", "me-south-1", "ap-east-1", "eu-west-3"]
 
 EFS_TEST_ENABLED_REGION = []
 
