@@ -785,6 +785,10 @@ def test_default_monitor_create_stop_and_start_monitoring_schedule_with_customiz
 
     _wait_for_schedule_changes_to_apply(monitor=my_default_monitor)
 
+    my_default_monitor.stop_monitoring_schedule()
+
+    _wait_for_schedule_changes_to_apply(monitor=my_default_monitor)
+
     started_schedule_description = my_default_monitor.describe_schedule()
     assert started_schedule_description["MonitoringScheduleStatus"] == "Scheduled"
 
@@ -1057,6 +1061,11 @@ def test_default_monitor_create_and_update_schedule_config_with_customizations(
         ]["EnableNetworkIsolation"]
         == UPDATED_NETWORK_CONFIG.enable_network_isolation
     )
+
+    my_default_monitor.stop_monitoring_schedule()
+
+    _wait_for_schedule_changes_to_apply(monitor=my_default_monitor)
+
     assert len(predictor.list_monitors()) > 0
 
 
@@ -1273,6 +1282,10 @@ def test_default_monitor_create_and_update_schedule_config_without_customization
         is None
     )
 
+    my_default_monitor.stop_monitoring_schedule()
+
+    _wait_for_schedule_changes_to_apply(monitor=my_default_monitor)
+
 
 def test_default_monitor_attach_followed_by_baseline_and_update_monitoring_schedule(
     sagemaker_session,
@@ -1417,11 +1430,14 @@ def test_default_monitor_attach_followed_by_baseline_and_update_monitoring_sched
         == UPDATED_NETWORK_CONFIG.enable_network_isolation
     )
 
+    my_attached_monitor.stop_monitoring_schedule()
+
+    _wait_for_schedule_changes_to_apply(monitor=my_attached_monitor)
+
 
 def test_default_monitor_monitoring_execution_interactions(
     sagemaker_session, default_monitoring_schedule_name
 ):
-
     my_attached_monitor = DefaultModelMonitor.attach(
         monitor_schedule_name=default_monitoring_schedule_name, sagemaker_session=sagemaker_session
     )
@@ -1662,6 +1678,10 @@ def test_byoc_monitor_suggest_baseline_and_create_monitoring_schedule_with_custo
         == NETWORK_CONFIG.enable_network_isolation
     )
 
+    my_byoc_monitor.stop_monitoring_schedule()
+
+    _wait_for_schedule_changes_to_apply(monitor=my_byoc_monitor)
+
     summary = sagemaker_session.list_monitoring_schedules()
     assert len(summary["MonitoringScheduleSummaries"]) > 0
 
@@ -1845,6 +1865,10 @@ def test_byoc_monitor_suggest_baseline_and_create_monitoring_schedule_without_cu
         )
         is None
     )
+
+    my_byoc_monitor.stop_monitoring_schedule()
+
+    _wait_for_schedule_changes_to_apply(monitor=my_byoc_monitor)
 
     summary = sagemaker_session.list_monitoring_schedules()
     assert len(summary["MonitoringScheduleSummaries"]) > 0
@@ -2119,6 +2143,11 @@ def test_byoc_monitor_create_and_update_schedule_config_with_customizations(
         ]["EnableNetworkIsolation"]
         == UPDATED_NETWORK_CONFIG.enable_network_isolation
     )
+
+    my_byoc_monitor.stop_monitoring_schedule()
+
+    _wait_for_schedule_changes_to_apply(monitor=my_byoc_monitor)
+
     assert len(predictor.list_monitors()) > 0
 
 
@@ -2332,6 +2361,10 @@ def test_byoc_monitor_attach_followed_by_baseline_and_update_monitoring_schedule
         ]["EnableNetworkIsolation"]
         == UPDATED_NETWORK_CONFIG.enable_network_isolation
     )
+
+    my_attached_monitor.stop_monitoring_schedule()
+
+    _wait_for_schedule_changes_to_apply(monitor=my_attached_monitor)
 
 
 def test_byoc_monitor_monitoring_execution_interactions(
