@@ -987,9 +987,6 @@ def test_py2_version_deprecated(sagemaker_session):
     msg = "Python 2 containers are only available until January 1st, 2020. Please use a Python 3 container."
     assert msg in str(e.value)
 
-def test_py2_version_is_not_deprecated(sagemaker_session):
-    estimator = _build_tf(sagemaker_session=sagemaker_session, framework_version="1.15.0", py_version="py2")
-    assert estimator.py_version == "py2"
 
 def test_py2_version_is_not_deprecated(sagemaker_session):
     estimator = _build_tf(
