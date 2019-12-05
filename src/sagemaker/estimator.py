@@ -606,6 +606,7 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):
         model_name=None,
         kms_key=None,
         data_capture_config=None,
+        tags=None,
         **kwargs
     ):
         """Deploy the trained model to an Amazon SageMaker endpoint and return a
@@ -639,18 +640,18 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):
                 model completes (default: True).
             model_name (str): Name to use for creating an Amazon SageMaker
                 model. If not specified, the name of the training job is used.
-            tags(List[dict[str, str]]): Optional. The list of tags to attach to this specific
-                endpoint. Example:
-                >>> tags = [{'Key': 'tagname', 'Value': 'tagvalue'}]
-                For more information about tags, see
-                https://boto3.amazonaws.com/v1/documentation\
-                /api/latest/reference/services/sagemaker.html#SageMaker.Client.add_tags
             kms_key (str): The ARN of the KMS key that is used to encrypt the
                 data on the storage volume attached to the instance hosting the
                 endpoint.
             data_capture_config (sagemaker.model_monitor.DataCaptureConfig): Specifies
                 configuration related to Endpoint data capture for use with
                 Amazon SageMaker Model Monitoring. Default: None.
+            tags(List[dict[str, str]]): Optional. The list of tags to attach to this specific
+                endpoint. Example:
+                >>> tags = [{'Key': 'tagname', 'Value': 'tagvalue'}]
+                For more information about tags, see
+                https://boto3.amazonaws.com/v1/documentation\
+                /api/latest/reference/services/sagemaker.html#SageMaker.Client.add_tags
             **kwargs: Passed to invocation of ``create_model()``.
                 Implementations may customize ``create_model()`` to accept
                 ``**kwargs`` to customize model creation during deploy.
@@ -685,7 +686,7 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):
             accelerator_type=accelerator_type,
             endpoint_name=endpoint_name,
             update_endpoint=update_endpoint,
-            tags=self.tags,
+            tags=tags or self.tags,
             wait=wait,
             kms_key=kms_key,
             data_capture_config=data_capture_config,
