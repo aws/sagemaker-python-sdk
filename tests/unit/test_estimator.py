@@ -1749,11 +1749,7 @@ def test_fit_deploy_tags_in_estimator(sagemaker_session):
 
 def test_fit_deploy_tags(sagemaker_session):
     estimator = Estimator(
-        IMAGE_NAME,
-        ROLE,
-        INSTANCE_COUNT,
-        INSTANCE_TYPE,
-        sagemaker_session=sagemaker_session,
+        IMAGE_NAME, ROLE, INSTANCE_COUNT, INSTANCE_TYPE, sagemaker_session=sagemaker_session
     )
 
     estimator.fit()
