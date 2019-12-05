@@ -205,7 +205,7 @@ def _deploy_and_predict(sagemaker_session, tuner, data_set, cpu_instance_type):
 
         assert len(result["predictions"]) == len(data)
         for prediction in result["predictions"]:
-            assert prediction["predicted_label"] is not None
+            assert prediction is not None
 
 
 def _create_training_inputs(sagemaker_session):
