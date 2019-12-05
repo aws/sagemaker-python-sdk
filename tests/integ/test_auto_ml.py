@@ -16,11 +16,12 @@ import os
 import time
 
 import pytest
+import tests.integ
 from sagemaker import AutoML, CandidateEstimator, AutoMLInput
 
 from sagemaker.exceptions import UnexpectedStatusException
 from sagemaker.utils import unique_name_from_base
-from tests.integ import DATA_DIR, AUTO_ML_DEFAULT_TIMEMOUT_MINUTES
+from tests.integ import DATA_DIR, AUTO_ML_DEFAULT_TIMEMOUT_MINUTES, auto_ml_utils
 from tests.integ.timeout import timeout
 
 ROLE = "SageMakerRole"
@@ -37,7 +38,7 @@ PROBLEM_TYPE = "MultiClassClassification"
 JOB_NAME = "auto-ml-{}".format(time.strftime("%y%m%d-%H%M%S"))
 
 # use a succeeded AutoML job to test describe and list candidates method, otherwise tests will run too long
-AUTO_ML_JOB_NAME = "sagemaker-auto-gamma-ml-test"
+AUTO_ML_JOB_NAME = "python-sdk-integ-test-base-job"
 
 EXPECTED_DEFAULT_JOB_CONFIG = {
     "CompletionCriteria": {"MaxCandidates": 3},
@@ -45,6 +46,10 @@ EXPECTED_DEFAULT_JOB_CONFIG = {
 }
 
 
+@pytest.mark.skipif(
+    tests.integ.test_region() in tests.integ.NO_AUTO_ML_REGIONS,
+    reason="AutoML is not supported in the region yet.",
+)
 def test_auto_ml_fit(sagemaker_session):
     auto_ml = AutoML(
         role=ROLE,
@@ -58,6 +63,10 @@ def test_auto_ml_fit(sagemaker_session):
         auto_ml.fit(inputs)
 
 
+@pytest.mark.skipif(
+    tests.integ.test_region() in tests.integ.NO_AUTO_ML_REGIONS,
+    reason="AutoML is not supported in the region yet.",
+)
 def test_auto_ml_fit_local_input(sagemaker_session):
     auto_ml = AutoML(
         role=ROLE,
@@ -71,6 +80,10 @@ def test_auto_ml_fit_local_input(sagemaker_session):
         auto_ml.fit(inputs)
 
 
+@pytest.mark.skipif(
+    tests.integ.test_region() in tests.integ.NO_AUTO_ML_REGIONS,
+    reason="AutoML is not supported in the region yet.",
+)
 def test_auto_ml_input_object_fit(sagemaker_session):
     auto_ml = AutoML(
         role=ROLE,
@@ -84,6 +97,10 @@ def test_auto_ml_input_object_fit(sagemaker_session):
         auto_ml.fit(inputs)
 
 
+@pytest.mark.skipif(
+    tests.integ.test_region() in tests.integ.NO_AUTO_ML_REGIONS,
+    reason="AutoML is not supported in the region yet.",
+)
 def test_auto_ml_fit_optional_args(sagemaker_session):
     output_path = "s3://{}/{}".format(sagemaker_session.default_bucket(), "specified_ouput_path")
     problem_type = "MulticlassClassification"
@@ -109,6 +126,10 @@ def test_auto_ml_fit_optional_args(sagemaker_session):
     assert auto_ml_desc["OutputDataConfig"]["S3OutputPath"] == output_path
 
 
+@pytest.mark.skipif(
+    tests.integ.test_region() in tests.integ.NO_AUTO_ML_REGIONS,
+    reason="AutoML is not supported in the region yet.",
+)
 def test_auto_ml_invalid_target_attribute(sagemaker_session):
     auto_ml = AutoML(
         role=ROLE, target_attribute_name="y", sagemaker_session=sagemaker_session, max_candidates=1
@@ -120,6 +141,10 @@ def test_auto_ml_invalid_target_attribute(sagemaker_session):
         auto_ml.fit(inputs)
 
 
+@pytest.mark.skipif(
+    tests.integ.test_region() in tests.integ.NO_AUTO_ML_REGIONS,
+    reason="AutoML is not supported in the region yet.",
+)
 def test_auto_ml_describe_auto_ml_job(sagemaker_session):
     expected_default_input_config = [
         {
@@ -138,6 +163,7 @@ def test_auto_ml_describe_auto_ml_job(sagemaker_session):
         "S3OutputPath": "s3://{}/".format(sagemaker_session.default_bucket())
     }
 
+    auto_ml_utils.create_auto_ml_job_if_not_exist(sagemaker_session)
     auto_ml = AutoML(
         role=ROLE, target_attribute_name=TARGET_ATTRIBUTE_NAME, sagemaker_session=sagemaker_session
     )
@@ -151,7 +177,13 @@ def test_auto_ml_describe_auto_ml_job(sagemaker_session):
     assert desc["OutputDataConfig"] == expected_default_output_config
 
 
+@pytest.mark.skipif(
+    tests.integ.test_region() in tests.integ.NO_AUTO_ML_REGIONS,
+    reason="AutoML is not supported in the region yet.",
+)
 def test_list_candidates(sagemaker_session):
+    auto_ml_utils.create_auto_ml_job_if_not_exist(sagemaker_session)
+
     auto_ml = AutoML(
         role=ROLE, target_attribute_name=TARGET_ATTRIBUTE_NAME, sagemaker_session=sagemaker_session
     )
@@ -160,7 +192,13 @@ def test_list_candidates(sagemaker_session):
     assert len(candidates) == 3
 
 
+@pytest.mark.skipif(
+    tests.integ.test_region() in tests.integ.NO_AUTO_ML_REGIONS,
+    reason="AutoML is not supported in the region yet.",
+)
 def test_best_candidate(sagemaker_session):
+    auto_ml_utils.create_auto_ml_job_if_not_exist(sagemaker_session)
+
     auto_ml = AutoML(
         role=ROLE, target_attribute_name=TARGET_ATTRIBUTE_NAME, sagemaker_session=sagemaker_session
     )
@@ -170,7 +208,13 @@ def test_best_candidate(sagemaker_session):
     assert best_candidate["CandidateStatus"] == "Completed"
 
 
+@pytest.mark.skipif(
+    tests.integ.test_region() in tests.integ.NO_AUTO_ML_REGIONS,
+    reason="AutoML is not supported in the region yet.",
+)
 def test_deploy_best_candidate(sagemaker_session):
+    auto_ml_utils.create_auto_ml_job_if_not_exist(sagemaker_session)
+
     auto_ml = AutoML(
         role=ROLE, target_attribute_name=TARGET_ATTRIBUTE_NAME, sagemaker_session=sagemaker_session
     )
@@ -192,7 +236,13 @@ def test_deploy_best_candidate(sagemaker_session):
     sagemaker_session.sagemaker_client.delete_endpoint(EndpointName=endpoint_name)
 
 
+@pytest.mark.skipif(
+    tests.integ.test_region() in tests.integ.NO_AUTO_ML_REGIONS,
+    reason="AutoML is not supported in the region yet.",
+)
 def test_candidate_estimator_default_rerun_and_deploy(sagemaker_session):
+    auto_ml_utils.create_auto_ml_job_if_not_exist(sagemaker_session)
+
     auto_ml = AutoML(
         role=ROLE, target_attribute_name=TARGET_ATTRIBUTE_NAME, sagemaker_session=sagemaker_session
     )
@@ -219,7 +269,13 @@ def test_candidate_estimator_default_rerun_and_deploy(sagemaker_session):
     sagemaker_session.sagemaker_client.delete_endpoint(EndpointName=endpoint_name)
 
 
+@pytest.mark.skipif(
+    tests.integ.test_region() in tests.integ.NO_AUTO_ML_REGIONS,
+    reason="AutoML is not supported in the region yet.",
+)
 def test_candidate_estimator_rerun_with_optional_args(sagemaker_session):
+    auto_ml_utils.create_auto_ml_job_if_not_exist(sagemaker_session)
+
     auto_ml = AutoML(
         role=ROLE, target_attribute_name=TARGET_ATTRIBUTE_NAME, sagemaker_session=sagemaker_session
     )
@@ -246,7 +302,13 @@ def test_candidate_estimator_rerun_with_optional_args(sagemaker_session):
     sagemaker_session.sagemaker_client.delete_endpoint(EndpointName=endpoint_name)
 
 
+@pytest.mark.skipif(
+    tests.integ.test_region() in tests.integ.NO_AUTO_ML_REGIONS,
+    reason="AutoML is not supported in the region yet.",
+)
 def test_candidate_estimator_get_steps(sagemaker_session):
+    auto_ml_utils.create_auto_ml_job_if_not_exist(sagemaker_session)
+
     auto_ml = AutoML(
         role=ROLE, target_attribute_name=TARGET_ATTRIBUTE_NAME, sagemaker_session=sagemaker_session
     )
