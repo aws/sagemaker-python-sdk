@@ -384,6 +384,7 @@ class Model(object):
         tags=None,
         kms_key=None,
         wait=True,
+        data_capture_config=None,
     ):
         """Deploy this ``Model`` to an ``Endpoint`` and optionally return a
         ``Predictor``.
@@ -424,6 +425,9 @@ class Model(object):
                 endpoint.
             wait (bool): Whether the call should wait until the deployment of
                 this model completes (default: True).
+            data_capture_config (sagemaker.model_monitor.DataCaptureConfig): Specifies
+                configuration related to Endpoint data capture for use with
+                Amazon SageMaker Model Monitoring. Default: None.
 
         Returns:
             callable[string, sagemaker.session.Session] or None: Invocation of
@@ -454,6 +458,10 @@ class Model(object):
             if self._is_compiled_model and not self.endpoint_name.endswith(compiled_model_suffix):
                 self.endpoint_name += compiled_model_suffix
 
+        data_capture_config_dict = None
+        if data_capture_config is not None:
+            data_capture_config_dict = data_capture_config._to_request_dict()
+
         if update_endpoint:
             endpoint_config_name = self.sagemaker_session.create_endpoint_config(
                 name=self.name,
@@ -463,11 +471,17 @@ class Model(object):
                 accelerator_type=accelerator_type,
                 tags=tags,
                 kms_key=kms_key,
+                data_capture_config_dict=data_capture_config_dict,
             )
             self.sagemaker_session.update_endpoint(self.endpoint_name, endpoint_config_name)
         else:
             self.sagemaker_session.endpoint_from_production_variants(
-                self.endpoint_name, [production_variant], tags, kms_key, wait
+                name=self.endpoint_name,
+                production_variants=[production_variant],
+                tags=tags,
+                kms_key=kms_key,
+                wait=wait,
+                data_capture_config_dict=data_capture_config_dict,
             )
 
         if self.predictor_cls:

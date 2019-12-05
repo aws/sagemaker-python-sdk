@@ -111,9 +111,12 @@ def test_tuner_name(sagemaker_session):
     assert str(tuner).find("my-tuning-job") != -1
 
 
-def test_tuner_dataframe():
+@pytest.mark.parametrize("has_training_job_definition_name", [True, False])
+def test_tuner_dataframe(has_training_job_definition_name):
+    training_job_definition_name = "training_def_1"
+
     def mock_summary(name="job-name", value=0.9):
-        return {
+        summary = {
             "TrainingJobName": name,
             "TrainingJobStatus": "Completed",
             "FinalHyperParameterTuningJobObjectiveMetric": {"Name": "awesomeness", "Value": value},
@@ -121,6 +124,10 @@ def test_tuner_dataframe():
             "TrainingEndTime": datetime.datetime(2018, 5, 16, 5, 6, 7),
             "TunedHyperParameters": {"learning_rate": 0.1, "layers": 137},
         }
+
+        if has_training_job_definition_name:
+            summary["TrainingJobDefinitionName"] = training_job_definition_name
+        return summary
 
     session = create_sagemaker_session(
         list_training_results={
@@ -133,6 +140,7 @@ def test_tuner_dataframe():
             ]
         }
     )
+
     tuner = HyperparameterTuningJobAnalytics("my-tuning-job", sagemaker_session=session)
     df = tuner.dataframe()
     assert df is not None
@@ -163,6 +171,12 @@ def test_tuner_dataframe():
     assert min(df["TrainingElapsedTimeSeconds"]) > 5
     assert max(df["TrainingElapsedTimeSeconds"]) < 86400
 
+    if has_training_job_definition_name:
+        for index in range(0, 5):
+            assert df["TrainingJobDefinitionName"][index] == training_job_definition_name
+    else:
+        assert "TrainingJobDefinitionName" not in df
+
     # Export to CSV and check that file exists
     tmp_name = "/tmp/unit-test-%s.csv" % uuid.uuid4()
     assert not os.path.isfile(tmp_name)
@@ -186,9 +200,16 @@ def test_description():
                         {"MaxValue": "100", "MinValue": "50", "Name": "iterations"},
                     ],
                 }
-            }
+            },
+            "TrainingJobDefinition": {
+                "AlgorithmSpecification": {
+                    "TrainingImage": "training_image",
+                    "TrainingInputMode": "File",
+                }
+            },
         }
     )
+
     tuner = HyperparameterTuningJobAnalytics("my-tuning-job", sagemaker_session=session)
 
     d = tuner.description()
@@ -206,6 +227,67 @@ def test_description():
     # Check that the ranges work.
     r = tuner.tuning_ranges
     assert len(r) == 4
+
+
+def test_tuning_ranges_multi_training_job_definitions():
+    session = create_sagemaker_session(
+        describe_tuning_result={
+            "HyperParameterTuningJobConfig": {},
+            "TrainingJobDefinitions": [
+                {
+                    "DefinitionName": "estimator_1",
+                    "HyperParameterRanges": {
+                        "CategoricalParameterRanges": [],
+                        "ContinuousParameterRanges": [
+                            {"MaxValue": "1", "MinValue": "0", "Name": "eta"},
+                            {"MaxValue": "10", "MinValue": "0", "Name": "gamma"},
+                        ],
+                        "IntegerParameterRanges": [
+                            {"MaxValue": "30", "MinValue": "5", "Name": "num_layers"},
+                            {"MaxValue": "100", "MinValue": "50", "Name": "iterations"},
+                        ],
+                    },
+                    "AlgorithmSpecification": {
+                        "TrainingImage": "training_image_1",
+                        "TrainingInputMode": "File",
+                    },
+                },
+                {
+                    "DefinitionName": "estimator_2",
+                    "HyperParameterRanges": {
+                        "CategoricalParameterRanges": [
+                            {"Values": ["TF", "MXNet"], "Name": "framework"}
+                        ],
+                        "ContinuousParameterRanges": [
+                            {"MaxValue": "1.0", "MinValue": "0.2", "Name": "gamma"}
+                        ],
+                        "IntegerParameterRanges": [],
+                    },
+                    "AlgorithmSpecification": {
+                        "TrainingImage": "training_image_2",
+                        "TrainingInputMode": "File",
+                    },
+                },
+            ],
+        }
+    )
+
+    expected_result = {
+        "estimator_1": {
+            "eta": {"MaxValue": "1", "MinValue": "0", "Name": "eta"},
+            "gamma": {"MaxValue": "10", "MinValue": "0", "Name": "gamma"},
+            "iterations": {"MaxValue": "100", "MinValue": "50", "Name": "iterations"},
+            "num_layers": {"MaxValue": "30", "MinValue": "5", "Name": "num_layers"},
+        },
+        "estimator_2": {
+            "framework": {"Values": ["TF", "MXNet"], "Name": "framework"},
+            "gamma": {"MaxValue": "1.0", "MinValue": "0.2", "Name": "gamma"},
+        },
+    }
+
+    tuner = HyperparameterTuningJobAnalytics("my-tuning-job", sagemaker_session=session)
+
+    assert expected_result == tuner.tuning_ranges
 
 
 def test_trainer_name():

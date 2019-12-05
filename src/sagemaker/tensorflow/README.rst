@@ -20,7 +20,7 @@ Documentation of the previous Legacy Mode versions: `1.4.1 <https://github.com/a
 | You can find the Legacy Mode README `here <https://github.com/aws/sagemaker-python-sdk/tree/v1.12.0/src/sagemaker/tensorflow#tensorflow-sagemaker-estimators-and-models>`_. |
 +-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
 
-Supported versions of TensorFlow for Elastic Inference: ``1.11``, ``1.12``, ``1.13``.
+Supported versions of TensorFlow for Elastic Inference: ``1.11``, ``1.12``, ``1.13``, ``1.15``.
 
 For information about using TensorFlow with the SageMaker Python SDK, see https://sagemaker.readthedocs.io/en/stable/using_tf.html.
 
@@ -64,7 +64,7 @@ The containers include the following Python packages:
 +--------------------------------+---------------+
 | sklean                         | 0.20.3        |
 +--------------------------------+---------------+
-| tensorflow                     | 1.13.0        |
+| tensorflow                     | 1.15.0        |
 +--------------------------------+---------------+
 
 Script Mode TensorFlow Docker images support both Python 2.7 and Python 3.6. The Docker images extend Ubuntu 16.04.

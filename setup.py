@@ -34,12 +34,13 @@ def read_version():
 
 # Declare minimal set for installation
 required_packages = [
-    "boto3>=1.9.213",
+    "boto3>=1.10.32",
     "numpy>=1.9.0",
     "protobuf>=3.1",
     "scipy>=0.19.0",
     "protobuf3-to-dict>=0.1.5",
     "requests>=2.20.0, <2.21",
+    "smdebug-rulesconfig==0.1.2",
 ]
 
 # Specific use case dependencies
@@ -102,4 +103,5 @@ setup(
     install_requires=required_packages,
     extras_require=extras,
     entry_points={"console_scripts": ["sagemaker=sagemaker.cli.main:main"]},
+    include_package_data=True,  # TODO-reinvent-2019 [knakad]: Remove after rule_configs is in PyPI
 )

@@ -28,13 +28,14 @@ class s3_input(object):
     def __init__(
         self,
         s3_data,
-        distribution="FullyReplicated",
+        distribution=None,
         compression=None,
         content_type=None,
         record_wrapping=None,
         s3_data_type="S3Prefix",
         input_mode=None,
         attribute_names=None,
+        target_attribute_name=None,
         shuffle_config=None,
     ):
         """Create a definition for input data used by an SageMaker training job.
@@ -69,20 +70,22 @@ class s3_input(object):
 
             attribute_names (list[str]): A list of one or more attribute names to use that are
                 found in a specified AugmentedManifestFile.
+            target_attribute_name (str): The name of the attribute will be predicted (classified)
+                in a SageMaker AutoML job. It is required if the input is for SageMaker AutoML job.
             shuffle_config (ShuffleConfig): If specified this configuration enables shuffling on
                 this channel. See the SageMaker API documentation for more info:
                 https://docs.aws.amazon.com/sagemaker/latest/dg/API_ShuffleConfig.html
         """
 
         self.config = {
-            "DataSource": {
-                "S3DataSource": {
-                    "S3DataDistributionType": distribution,
-                    "S3DataType": s3_data_type,
-                    "S3Uri": s3_data,
-                }
-            }
+            "DataSource": {"S3DataSource": {"S3DataType": s3_data_type, "S3Uri": s3_data}}
         }
+
+        if not (target_attribute_name or distribution):
+            distribution = "FullyReplicated"
+
+        if distribution is not None:
+            self.config["DataSource"]["S3DataSource"]["S3DataDistributionType"] = distribution
 
         if compression is not None:
             self.config["CompressionType"] = compression
@@ -94,6 +97,8 @@ class s3_input(object):
             self.config["InputMode"] = input_mode
         if attribute_names is not None:
             self.config["DataSource"]["S3DataSource"]["AttributeNames"] = attribute_names
+        if target_attribute_name is not None:
+            self.config["TargetAttributeName"] = target_attribute_name
         if shuffle_config is not None:
             self.config["ShuffleConfig"] = {"Seed": shuffle_config.seed}
 

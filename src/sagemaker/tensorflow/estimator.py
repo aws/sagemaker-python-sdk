@@ -22,6 +22,7 @@ import tempfile
 import threading
 import time
 
+from sagemaker.debugger import DebuggerHookConfig
 from sagemaker.estimator import Framework
 import sagemaker.fw_utils as fw
 from sagemaker.tensorflow.defaults import TF_VERSION
@@ -196,13 +197,13 @@ class TensorFlow(Framework):
 
     __framework_name__ = "tensorflow"
 
-    LATEST_VERSION = "1.14"
+    LATEST_VERSION = "1.15"
     """The latest version of TensorFlow included in the SageMaker pre-built Docker images."""
 
     _LOWEST_SCRIPT_MODE_ONLY_VERSION = [1, 13]
-    # 1.14.0 now supports py2
-    # we will need to update this version number if future versions do not support py2 anymore
-    _LOWEST_PYTHON_2_ONLY_VERSION = [1, 14]
+    # 1.15.0 still supports py2
+    # we will need to update this version number if future versions still support py2
+    _HIGHEST_PYTHON_2_VERSION = [1, 15]
 
     def __init__(
         self,
@@ -286,6 +287,11 @@ class TensorFlow(Framework):
         if not py_version:
             py_version = "py3" if self._only_python_3_supported() else "py2"
 
+        if "enable_sagemaker_metrics" not in kwargs:
+            # enable sagemaker metrics for TF v1.15 or greater:
+            if fw.is_version_equal_or_higher([1, 15], self.framework_version):
+                kwargs["enable_sagemaker_metrics"] = True
+
         super(TensorFlow, self).__init__(image_name=image_name, **kwargs)
         self.checkpoint_path = checkpoint_path
 
@@ -365,9 +371,7 @@ class TensorFlow(Framework):
 
     def _only_python_3_supported(self):
         """Placeholder docstring"""
-        return [
-            int(s) for s in self.framework_version.split(".")
-        ] >= self._LOWEST_PYTHON_2_ONLY_VERSION
+        return [int(s) for s in self.framework_version.split(".")] >= self._HIGHEST_PYTHON_2_VERSION
 
     def _validate_requirements_file(self, requirements_file):
         """Placeholder docstring"""
@@ -390,7 +394,15 @@ class TensorFlow(Framework):
         if not os.path.exists(os.path.join(self.source_dir, requirements_file)):
             raise ValueError("Requirements file {} does not exist.".format(requirements_file))
 
-    def fit(self, inputs=None, wait=True, logs=True, job_name=None, run_tensorboard_locally=False):
+    def fit(
+        self,
+        inputs=None,
+        wait=True,
+        logs=True,
+        job_name=None,
+        experiment_config=None,
+        run_tensorboard_locally=False,
+    ):
         """Train a model using the input training dataset.
 
         See :func:`~sagemaker.estimator.EstimatorBase.fit` for more details.
@@ -412,6 +424,7 @@ class TensorFlow(Framework):
                 Only meaningful when wait is True (default: True).
             job_name (str): Training job name. If not specified, the estimator generates a default
                 job name, based on the training image name and current timestamp.
+            experiment_config (dict[str, str]): Experiment management configuration.
             run_tensorboard_locally (bool): Whether to execute TensorBoard in a different process
                 with downloaded checkpoint information (default: False). This is an experimental
                 feature, and requires TensorBoard and AWS CLI to be installed. It terminates
@@ -419,7 +432,7 @@ class TensorFlow(Framework):
         """
 
         def fit_super():
-            super(TensorFlow, self).fit(inputs, wait, logs, job_name)
+            super(TensorFlow, self).fit(inputs, wait, logs, job_name, experiment_config)
 
         if run_tensorboard_locally and wait is False:
             raise ValueError("Tensorboard is not supported with async fit")
@@ -681,6 +694,31 @@ class TensorFlow(Framework):
     def _script_mode_enabled(self):
         """Placeholder docstring"""
         return self.py_version == "py3" or self.script_mode
+
+    def _validate_and_set_debugger_configs(self):
+        """
+        Disable Debugger Hook Config for PS and Horovod as they are not
+        supported in smdebug 0.4.13, the current latest version of smdebug
+
+        Else, set default HookConfig
+        """
+        ps_enabled = "parameter_server" in self.distributions and self.distributions[
+            "parameter_server"
+        ].get("enabled", False)
+        mpi_enabled = "mpi" in self.distributions and self.distributions["mpi"].get(
+            "enabled", False
+        )
+        if ps_enabled or mpi_enabled:
+            if self.debugger_hook_config is not None or self.debugger_rule_configs is not None:
+                logger.info(
+                    "Amazon SageMaker Debugger does not currently support "
+                    "Parameter Server and MPI distributions"
+                )
+            self.debugger_hook_config = None
+            self.debugger_rule_configs = None
+        elif self.debugger_hook_config is None:
+            # Set defaults for debugging.
+            self.debugger_hook_config = DebuggerHookConfig(s3_output_path=self.output_path)
 
     def train_image(self):
         """Placeholder docstring"""

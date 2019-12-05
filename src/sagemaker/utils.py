@@ -24,13 +24,20 @@ import tarfile
 import tempfile
 import time
 
+
 from datetime import datetime
 from functools import wraps
-from six.moves.urllib import parse
 
 import six
+from six.moves.urllib import parse
+
 
 ECR_URI_PATTERN = r"^(\d+)(\.)dkr(\.)ecr(\.)(.+)(\.)(amazonaws.com|c2s.ic.gov)(/)(.*:.*)$"
+MAX_BUCKET_PATHS_COUNT = 5
+S3_PREFIX = "s3://"
+HTTP_PREFIX = "http://"
+HTTPS_PREFIX = "https://"
+DEFAULT_SLEEP_TIME_SECONDS = 10
 
 
 # Use the base name of the image as the job name if the user doesn't give us one
@@ -268,6 +275,55 @@ def secondary_training_status_message(job_description, prev_description):
         status_strs.append("{} {} - {}".format(time_str, transition["Status"], message))
 
     return "\n".join(status_strs)
+
+
+def generate_tensorboard_url(domain, bucket_paths):
+    """Generate Tensorboard URL for given list of s3 buckets
+
+    Args:
+        domain: JupyterLab app domain
+        bucket_paths: List of S3 bucket paths in format `bucket/path`
+                      or a single string in the same format
+
+    Returns:
+        str: Tensorboard URL
+
+    Raises:
+        AttributeError if invalid inputs are passed
+    """
+
+    def trim_prefix(s, prefix):
+        if s.startswith(prefix):
+            return s[len(prefix) :]
+        return s
+
+    def encode_s3_url(s3_url):
+        if not s3_url:
+            raise AttributeError("bucket_paths element should not be empty")
+        s3_url = trim_prefix(s3_url, S3_PREFIX)
+        return parse.quote_plus("{}{}".format(S3_PREFIX, s3_url))
+
+    if not isinstance(domain, six.string_types):
+        raise AttributeError("domain parameter should be string")
+
+    if len(domain) == 0:
+        raise AttributeError("domain parameter should not be empty")
+
+    if isinstance(bucket_paths, six.string_types):
+        bucket_paths = [bucket_paths]
+    elif not isinstance(bucket_paths, list):
+        raise AttributeError("bucket paths should be a list or a string")
+
+    if len(bucket_paths) == 0:
+        raise AttributeError("bucket_paths parameter should not be empty list")
+
+    domain = trim_prefix(domain, HTTPS_PREFIX)
+    domain = trim_prefix(domain, HTTP_PREFIX)
+
+    s3_urls = map(encode_s3_url, bucket_paths)
+    query = ",".join(s3_urls)
+
+    return "https://{}/tensorboard/default?s3urls={}".format(domain, query)
 
 
 def download_folder(bucket_name, prefix, target, sagemaker_session):
@@ -563,6 +619,26 @@ def sts_regional_endpoint(region):
     """
     domain = _domain_for_region(region)
     return "https://sts.{}.{}".format(region, domain)
+
+
+def retries(max_retry_count, exception_message_prefix, seconds_to_sleep=DEFAULT_SLEEP_TIME_SECONDS):
+    """Retries until max retry count is reached.
+
+    Args:
+        max_retry_count (int): The retry count.
+        exception_message_prefix (str): The message to include in the exception on failure.
+        seconds_to_sleep (int): The number of seconds to sleep between executions.
+
+    """
+    for i in range(max_retry_count):
+        yield i
+        time.sleep(seconds_to_sleep)
+
+    raise Exception(
+        "'{}' has reached the maximum retry count of {}".format(
+            exception_message_prefix, max_retry_count
+        )
+    )
 
 
 def _domain_for_region(region):

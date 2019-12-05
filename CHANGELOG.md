@@ -1,5 +1,62 @@
 # Changelog
 
+## v1.45.0 (2019-12-04)
+
+### Features
+
+ * add support for TF 1.15.0, PyTorch 1.3.1 and MXNet 1.6rc0.
+ * add S3Downloader.list(s3_uri) functionality
+ * introduce SageMaker AutoML
+ * wrap up Processing feature
+ * add a few minor features to Model Monitoring
+ * add enable_sagemaker_metrics flag
+ * Amazon SageMaker Model Monitoring
+ * add utils.generate_tensorboard_url function
+ * Add jobs list to Estimator
+
+### Bug fixes and other changes
+
+ * remove unnecessary boto model files
+ * update boto version to >=1.10.32
+ * correct Debugger tests
+ * fix bug in monitor.attach() for empty network_config
+ * Import smdebug_rulesconfig from PyPI
+ * bump the version to 1.45.0 (publishes 1.46.0) for re:Invent-2019
+ * correct AutoML imports and expose current_job_name
+ * correct Model Monitor eu-west-3 image name.
+ * use DLC prod images
+ * remove unused env variable for Model Monitoring
+ * aws model update
+ * rename get_debugger_artifacts to latest_job_debugger_artifacts
+ * remove retain flag from update_endpoint
+ * correct S3Downloader behavior
+ * consume smdebug_ruleconfig .whl for ITs
+ * disable DebuggerHook and Rules for TF distributions
+ * incorporate smdebug_ruleconfigs pkg until availability in PyPI
+ * remove pre/post scripts per latest validations
+ * update rules_config .whl
+ * remove py_version from SKLearnProcessor
+ * AutoML improvements
+ * stop overwriting custom rules volume and type
+ * fix tests due to latest server-side validations
+ * Minor processing changes
+ * minor processing changes (instance_count + docs)
+ * update api to latest
+ * Eureka master
+ * Add support for xgboost version 0.90-2
+ * SageMaker Debugger revision
+ * Add support for SageMaker Debugger [WIP]
+ * Fix linear learner crash when num_class is string and predict type is `multiclass_classifier`
+ * Additional Processing Jobs integration tests
+ * Migrate to updated Processing Jobs API
+ * Processing Jobs revision round 2
+ * Processing Jobs revision
+ * remove instance_pools parameter from tuner
+ * Multi-Algorithm Hyperparameter Tuning Support
+ * Import Processors in init files
+ * Remove SparkML Processors and corresponding unit tests
+ * Processing Jobs Python SDK support
+
 ## v1.44.4 (2019-12-02)
 
 ### Bug fixes and other changes

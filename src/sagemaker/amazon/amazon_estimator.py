@@ -27,8 +27,8 @@ from sagemaker.inputs import FileSystemInput
 from sagemaker.model import NEO_IMAGE_ACCOUNT
 from sagemaker.session import s3_input
 from sagemaker.utils import sagemaker_timestamp, get_ecr_image_uri_prefix
+from sagemaker.xgboost.defaults import XGBOOST_VERSION_1, XGBOOST_SUPPORTED_VERSIONS
 from sagemaker.xgboost.estimator import get_xgboost_image_uri
-from sagemaker.xgboost.defaults import XGBOOST_LATEST_VERSION
 
 logger = logging.getLogger(__name__)
 
@@ -178,7 +178,15 @@ class AmazonAlgorithmEstimatorBase(EstimatorBase):
         self.feature_dim = feature_dim
         self.mini_batch_size = mini_batch_size
 
-    def fit(self, records, mini_batch_size=None, wait=True, logs=True, job_name=None):
+    def fit(
+        self,
+        records,
+        mini_batch_size=None,
+        wait=True,
+        logs=True,
+        job_name=None,
+        experiment_config=None,
+    ):
         """Fit this Estimator on serialized Record objects, stored in S3.
 
         ``records`` should be an instance of :class:`~RecordSet`. This
@@ -206,10 +214,16 @@ class AmazonAlgorithmEstimatorBase(EstimatorBase):
             job_name (str): Training job name. If not specified, the estimator
                 generates a default job name, based on the training image name
                 and current timestamp.
+            experiment_config (dict[str, str]): Experiment management configuration.
+                Dictionary contains three optional keys, 'ExperimentName',
+                'TrialName', and 'TrialComponentName'
+                (default: ``None``).
         """
         self._prepare_for_training(records, job_name=job_name, mini_batch_size=mini_batch_size)
 
-        self.latest_training_job = _TrainingJob.start_new(self, records)
+        self.latest_training_job = _TrainingJob.start_new(
+            self, records, experiment_config=experiment_config
+        )
         if wait:
             self.latest_training_job.wait(logs=logs)
 
@@ -559,13 +573,23 @@ def get_image_uri(region_name, repo_name, repo_version=1):
     """
     if repo_name == "xgboost":
         if repo_version in ["0.90", "0.90-1", "0.90-1-cpu-py3"]:
-            return get_xgboost_image_uri(region_name, XGBOOST_LATEST_VERSION)
+            return get_xgboost_image_uri(region_name, XGBOOST_VERSION_1)
+
+        supported_version = [
+            version
+            for version in XGBOOST_SUPPORTED_VERSIONS
+            if repo_version in (version, version + "-cpu-py3")
+        ]
+        if supported_version:
+            return get_xgboost_image_uri(region_name, supported_version[0])
+
         logging.warning(
-            "There is a more up to date SageMaker XGBoost image."
+            "There is a more up to date SageMaker XGBoost image. "
             "To use the newer image, please set 'repo_version'="
-            "'0.90-1. For example:\n"
+            "'%s'. For example:\n"
             "\tget_image_uri(region, 'xgboost', '%s').",
-            XGBOOST_LATEST_VERSION,
+            XGBOOST_VERSION_1,
+            XGBOOST_VERSION_1,
         )
     repo = "{}:{}".format(repo_name, repo_version)
     return "{}/{}".format(registry(region_name, repo_name), repo)

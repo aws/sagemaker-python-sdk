@@ -42,7 +42,7 @@ def pytest_addoption(parser):
     parser.addoption("--boto-config", action="store", default=None)
     parser.addoption("--chainer-full-version", action="store", default=Chainer.LATEST_VERSION)
     parser.addoption("--mxnet-full-version", action="store", default=MXNet.LATEST_VERSION)
-    parser.addoption("--ei-mxnet-full-version", action="store", default=MXNet.LATEST_VERSION)
+    parser.addoption("--ei-mxnet-full-version", action="store", default="1.4.1")
     parser.addoption("--pytorch-full-version", action="store", default=PyTorch.LATEST_VERSION)
     parser.addoption(
         "--rl-coach-mxnet-full-version",
@@ -65,7 +65,6 @@ def pytest_configure(config):
     bc = config.getoption("--boto-config")
     parsed = json.loads(bc) if bc else {}
     region = parsed.get("region_name", boto3.session.Session().region_name)
-
     if region:
         os.environ["TEST_AWS_REGION_NAME"] = region
 
@@ -126,6 +125,8 @@ def chainer_version(request):
     return request.param
 
 
+# TODO: current version fixtures are legacy fixtures that aren't useful
+# and no longer verify whether images are valid
 @pytest.fixture(
     scope="module",
     params=[
