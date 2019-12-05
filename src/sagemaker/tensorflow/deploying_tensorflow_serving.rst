@@ -272,8 +272,7 @@ inference-time behavior of your SavedModels.
 Providing Python scripts for pre/pos-processing
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-You can add your customized Python code to process your input and output data:
-
+You can add your customized Python code to process your input and output data.
 This customized Python code must be named ``inference.py`` and specified through the ``entry_point`` parameter:
 
 .. code::

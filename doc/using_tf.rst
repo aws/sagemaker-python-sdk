@@ -723,8 +723,7 @@ JSON options instead.
 Create Python Scripts for Custom Input and Output Formats
 ---------------------------------------------------------
 
-You can add your customized Python code to process your input and output data:
-
+You can add your customized Python code to process your input and output data.
 This customized Python code must be named ``inference.py`` and specified through the ``entry_point`` parameter:
 
 .. code::
