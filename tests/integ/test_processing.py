@@ -88,7 +88,7 @@ def test_sklearn(sagemaker_session, sklearn_full_version, cpu_instance_type):
         "python3",
         "/opt/ml/processing/input/code/dummy_script.py",
     ]
-    assert job_description["RoleArn"] == ROLE
+    assert ROLE in job_description["RoleArn"]
 
 
 def test_sklearn_with_customizations(
@@ -163,7 +163,7 @@ def test_sklearn_with_customizations(
 
     assert job_description["Environment"] == {"DUMMY_ENVIRONMENT_VARIABLE": "dummy-value"}
 
-    assert job_description["RoleArn"] == ROLE
+    assert ROLE in job_description["RoleArn"]
 
     assert job_description["StoppingCondition"] == {"MaxRuntimeInSeconds": 3600}
 
@@ -211,7 +211,7 @@ def test_sklearn_with_no_inputs_or_outputs(
 
     assert job_description["Environment"] == {"DUMMY_ENVIRONMENT_VARIABLE": "dummy-value"}
 
-    assert job_description["RoleArn"] == ROLE
+    assert ROLE in job_description["RoleArn"]
 
     assert job_description["StoppingCondition"] == {"MaxRuntimeInSeconds": 3600}
 
@@ -286,7 +286,7 @@ def test_script_processor(sagemaker_session, image_uri, cpu_instance_type, outpu
 
     assert job_description["Environment"] == {"DUMMY_ENVIRONMENT_VARIABLE": "dummy-value"}
 
-    assert job_description["RoleArn"] == ROLE
+    assert ROLE in job_description["RoleArn"]
 
     assert job_description["StoppingCondition"] == {"MaxRuntimeInSeconds": 3600}
 
@@ -334,7 +334,7 @@ def test_script_processor_with_no_inputs_or_outputs(
 
     assert job_description["Environment"] == {"DUMMY_ENVIRONMENT_VARIABLE": "dummy-value"}
 
-    assert job_description["RoleArn"] == ROLE
+    assert ROLE in job_description["RoleArn"]
 
     assert job_description["StoppingCondition"] == {"MaxRuntimeInSeconds": 3600}
 
@@ -400,6 +400,6 @@ def test_processor(sagemaker_session, image_uri, cpu_instance_type, output_kms_k
 
     assert job_description["Environment"] == {"DUMMY_ENVIRONMENT_VARIABLE": "dummy-value"}
 
-    assert job_description["RoleArn"] == ROLE
+    assert ROLE in job_description["RoleArn"]
 
     assert job_description["StoppingCondition"] == {"MaxRuntimeInSeconds": 3600}
