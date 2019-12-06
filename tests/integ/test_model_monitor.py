@@ -319,7 +319,7 @@ def test_default_monitor_suggest_baseline_and_create_monitoring_schedule_with_cu
         == volume_kms_key
     )
     assert DEFAULT_IMAGE_SUFFIX in baselining_job_description["AppSpecification"]["ImageUri"]
-    assert baselining_job_description["RoleArn"] == ROLE
+    assert ROLE in baselining_job_description["RoleArn"]
     assert (
         baselining_job_description["ProcessingInputs"][0]["InputName"] == "baseline_dataset_input"
     )
@@ -496,7 +496,7 @@ def test_default_monitor_suggest_baseline_and_create_monitoring_schedule_without
         is None
     )
     assert DEFAULT_IMAGE_SUFFIX in baselining_job_description["AppSpecification"]["ImageUri"]
-    assert baselining_job_description["RoleArn"] == ROLE
+    assert ROLE in baselining_job_description["RoleArn"]
     assert (
         baselining_job_description["ProcessingInputs"][0]["InputName"] == "baseline_dataset_input"
     )
@@ -1528,7 +1528,7 @@ def test_byoc_monitor_suggest_baseline_and_create_monitoring_schedule_with_custo
         == volume_kms_key
     )
     assert DEFAULT_IMAGE_SUFFIX in baselining_job_description["AppSpecification"]["ImageUri"]
-    assert baselining_job_description["RoleArn"] == ROLE
+    assert ROLE in baselining_job_description["RoleArn"]
     assert baselining_job_description["ProcessingInputs"][0]["InputName"] == "input-1"
     assert (
         baselining_job_description["ProcessingOutputConfig"]["Outputs"][0]["OutputName"]
@@ -1727,7 +1727,7 @@ def test_byoc_monitor_suggest_baseline_and_create_monitoring_schedule_without_cu
         is None
     )
     assert DEFAULT_IMAGE_SUFFIX in baselining_job_description["AppSpecification"]["ImageUri"]
-    assert baselining_job_description["RoleArn"] == ROLE
+    assert ROLE in baselining_job_description["RoleArn"]
     assert baselining_job_description["ProcessingInputs"][0]["InputName"] == "input-1"
     assert (
         baselining_job_description["ProcessingOutputConfig"]["Outputs"][0]["OutputName"]
@@ -2185,7 +2185,7 @@ def test_byoc_monitor_attach_followed_by_baseline_and_update_monitoring_schedule
         == volume_kms_key
     )
     assert DEFAULT_IMAGE_SUFFIX in baselining_job_description["AppSpecification"]["ImageUri"]
-    assert baselining_job_description["RoleArn"] == ROLE
+    assert ROLE in baselining_job_description["RoleArn"]
     assert baselining_job_description["ProcessingInputs"][0]["InputName"] == "input-1"
     assert (
         baselining_job_description["ProcessingOutputConfig"]["Outputs"][0]["OutputName"]
