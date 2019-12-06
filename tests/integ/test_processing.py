@@ -35,9 +35,10 @@ def image_uri(sagemaker_session):
 
 @pytest.fixture(scope="module")
 def volume_kms_key(sagemaker_session):
+    role_arn = sagemaker_session.expand_role(ROLE)
     return get_or_create_kms_key(
         sagemaker_session=sagemaker_session,
-        role_arn=ROLE,
+        role_arn=role_arn,
         alias="integ-test-processing-volume-kms-key-{}".format(
             sagemaker_session.boto_session.region_name
         ),
@@ -46,9 +47,10 @@ def volume_kms_key(sagemaker_session):
 
 @pytest.fixture(scope="module")
 def output_kms_key(sagemaker_session):
+    role_arn = sagemaker_session.expand_role(ROLE)
     return get_or_create_kms_key(
         sagemaker_session=sagemaker_session,
-        role_arn=ROLE,
+        role_arn=role_arn,
         alias="integ-test-processing-output-kms-key-{}".format(
             sagemaker_session.boto_session.region_name
         ),
