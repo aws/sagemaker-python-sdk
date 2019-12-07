@@ -1,5 +1,14 @@
 # Changelog
 
+## v1.45.1 (2019-12-06)
+
+### Bug fixes and other changes
+
+ * create auto ml job for tests that based on existing job
+ * fixing py2 support for latest TF version
+ * fix tags in deploy call for generic estimators
+ * make multi algo integration test assertion less specific
+
 ## v1.45.0 (2019-12-04)
 
 ### Features
