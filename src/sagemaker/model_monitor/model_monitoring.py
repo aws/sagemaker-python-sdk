@@ -471,7 +471,7 @@ class ModelMonitor(object):
             max_runtime_in_seconds=max_runtime_in_seconds,
             environment=env,
             network_config=network_config_dict,
-            role_arn=role,
+            role_arn=self.role,
         )
 
         self._wait_for_schedule_changes_to_apply()
@@ -1442,7 +1442,7 @@ class DefaultModelMonitor(ModelMonitor):
             max_runtime_in_seconds=max_runtime_in_seconds,
             environment=normalized_env,
             network_config=network_config_dict,
-            role_arn=role,
+            role_arn=self.role,
         )
 
         self._wait_for_schedule_changes_to_apply()
