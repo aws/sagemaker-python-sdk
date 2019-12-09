@@ -64,7 +64,7 @@ EXPECTED_DEFAULT_OUTPUT_CONFIG = {
 
 
 @pytest.mark.skipif(
-    tests.integ.test_region() in tests.integ.NO_AUTO_ML_REGIONS,
+    tests.integ.test_region() != "us-east-2",
     reason="AutoML is not supported in the region yet.",
 )
 def test_auto_ml_fit(sagemaker_session):
@@ -81,7 +81,7 @@ def test_auto_ml_fit(sagemaker_session):
 
 
 @pytest.mark.skipif(
-    tests.integ.test_region() in tests.integ.NO_AUTO_ML_REGIONS,
+    tests.integ.test_region() != "us-east-2",
     reason="AutoML is not supported in the region yet.",
 )
 def test_auto_ml_fit_local_input(sagemaker_session):
@@ -98,7 +98,7 @@ def test_auto_ml_fit_local_input(sagemaker_session):
 
 
 @pytest.mark.skipif(
-    tests.integ.test_region() in tests.integ.NO_AUTO_ML_REGIONS,
+    tests.integ.test_region() != "us-east-2",
     reason="AutoML is not supported in the region yet.",
 )
 def test_auto_ml_input_object_fit(sagemaker_session):
@@ -115,7 +115,7 @@ def test_auto_ml_input_object_fit(sagemaker_session):
 
 
 @pytest.mark.skipif(
-    tests.integ.test_region() in tests.integ.NO_AUTO_ML_REGIONS,
+    tests.integ.test_region() != "us-east-2",
     reason="AutoML is not supported in the region yet.",
 )
 def test_auto_ml_fit_optional_args(sagemaker_session):
@@ -144,7 +144,7 @@ def test_auto_ml_fit_optional_args(sagemaker_session):
 
 
 @pytest.mark.skipif(
-    tests.integ.test_region() in tests.integ.NO_AUTO_ML_REGIONS,
+    tests.integ.test_region() != "us-east-2",
     reason="AutoML is not supported in the region yet.",
 )
 def test_auto_ml_invalid_target_attribute(sagemaker_session):
@@ -159,7 +159,7 @@ def test_auto_ml_invalid_target_attribute(sagemaker_session):
 
 
 @pytest.mark.skipif(
-    tests.integ.test_region() in tests.integ.NO_AUTO_ML_REGIONS,
+    tests.integ.test_region() != "us-east-2",
     reason="AutoML is not supported in the region yet.",
 )
 def test_auto_ml_describe_auto_ml_job(sagemaker_session):
@@ -179,7 +179,7 @@ def test_auto_ml_describe_auto_ml_job(sagemaker_session):
 
 
 @pytest.mark.skipif(
-    tests.integ.test_region() in tests.integ.NO_AUTO_ML_REGIONS,
+    tests.integ.test_region() != "us-east-2",
     reason="AutoML is not supported in the region yet.",
 )
 def test_list_candidates(sagemaker_session):
@@ -194,7 +194,7 @@ def test_list_candidates(sagemaker_session):
 
 
 @pytest.mark.skipif(
-    tests.integ.test_region() in tests.integ.NO_AUTO_ML_REGIONS,
+    tests.integ.test_region() != "us-east-2",
     reason="AutoML is not supported in the region yet.",
 )
 def test_best_candidate(sagemaker_session):
@@ -210,7 +210,7 @@ def test_best_candidate(sagemaker_session):
 
 
 @pytest.mark.skipif(
-    tests.integ.test_region() in tests.integ.NO_AUTO_ML_REGIONS,
+    tests.integ.test_region() != "us-east-2",
     reason="AutoML is not supported in the region yet.",
 )
 def test_deploy_best_candidate(sagemaker_session):
@@ -238,7 +238,7 @@ def test_deploy_best_candidate(sagemaker_session):
 
 
 @pytest.mark.skipif(
-    tests.integ.test_region() in tests.integ.NO_AUTO_ML_REGIONS,
+    tests.integ.test_region() != "us-east-2",
     reason="AutoML is not supported in the region yet.",
 )
 def test_candidate_estimator_default_rerun_and_deploy(sagemaker_session):
@@ -271,7 +271,7 @@ def test_candidate_estimator_default_rerun_and_deploy(sagemaker_session):
 
 
 @pytest.mark.skipif(
-    tests.integ.test_region() in tests.integ.NO_AUTO_ML_REGIONS,
+    tests.integ.test_region() != "us-east-2",
     reason="AutoML is not supported in the region yet.",
 )
 def test_candidate_estimator_rerun_with_optional_args(sagemaker_session):
@@ -304,7 +304,7 @@ def test_candidate_estimator_rerun_with_optional_args(sagemaker_session):
 
 
 @pytest.mark.skipif(
-    tests.integ.test_region() in tests.integ.NO_AUTO_ML_REGIONS,
+    tests.integ.test_region() != "us-east-2",
     reason="AutoML is not supported in the region yet.",
 )
 def test_candidate_estimator_get_steps(sagemaker_session):
