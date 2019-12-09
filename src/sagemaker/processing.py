@@ -52,7 +52,7 @@ class Processor(object):
         SageMaker processing tasks.
 
         Args:
-            role (str): An AWS IAM role. The Amazon SageMaker training jobs
+            role (str): An AWS IAM role name or ARN. The Amazon SageMaker training jobs
                 and APIs that create Amazon SageMaker endpoints use this role
                 to access training data and model artifacts. After the endpoint
                 is created, the inference code might use the IAM role, if it
@@ -281,7 +281,7 @@ class ScriptProcessor(Processor):
         handles Amazon SageMaker processing tasks for jobs using script mode.
 
         Args:
-            role (str): An AWS IAM role. The Amazon SageMaker training jobs
+            role (str): An AWS IAM role name or ARN. The Amazon SageMaker training jobs
                 and APIs that create Amazon SageMaker endpoints use this role
                 to access training data and model artifacts. After the endpoint
                 is created, the inference code might use the IAM role, if it
@@ -538,7 +538,7 @@ class ProcessingJob(_Job):
         else:
             process_request_args["network_config"] = None
 
-        process_request_args["role_arn"] = processor.role
+        process_request_args["role_arn"] = processor.sagemaker_session.expand_role(processor.role)
 
         process_request_args["tags"] = processor.tags
 

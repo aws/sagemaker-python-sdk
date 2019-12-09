@@ -318,7 +318,7 @@ def test_get_caller_identity_arn_from_a_role_after_describe_notebook_exception(b
     expected_role = "arn:aws:iam::369233609183:role/SageMakerRole"
     sess.boto_session.client("iam").get_role.return_value = {"Role": {"Arn": expected_role}}
 
-    with patch("logging.Logger.warning") as mock_logger:
+    with patch("logging.Logger.debug") as mock_logger:
         actual = sess.get_caller_identity_arn()
         mock_logger.assert_called_once()
 
