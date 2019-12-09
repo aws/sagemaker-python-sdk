@@ -48,7 +48,7 @@ class SKLearnProcessor(ScriptProcessor):
 
         Args:
             framework_version (str): The version of scikit-learn.
-            role (str): An AWS IAM role. The Amazon SageMaker training jobs
+            role (str): An AWS IAM role name or ARN. The Amazon SageMaker training jobs
                 and APIs that create Amazon SageMaker endpoints use this role
                 to access training data and model artifacts. After the endpoint
                 is created, the inference code might use the IAM role, if it
