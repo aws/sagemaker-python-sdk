@@ -42,7 +42,7 @@ from sagemaker.utils import unique_name_from_base
 from tests.integ.kms_utils import get_or_create_kms_key
 from tests.integ.retry import retries
 
-ROLE = "arn:aws:iam::142577830533:role/SageMakerRole"
+ROLE = "SageMakerRole"
 INSTANCE_COUNT = 1
 INSTANCE_TYPE = "ml.m5.xlarge"
 VOLUME_SIZE_IN_GB = 40
@@ -63,7 +63,7 @@ DEFAULT_BASELINING_MAX_RUNTIME_IN_SECONDS = 86400
 DEFAULT_EXECUTION_MAX_RUNTIME_IN_SECONDS = 3600
 DEFAULT_IMAGE_SUFFIX = ".com/sagemaker-model-monitor-analyzer"
 
-UPDATED_ROLE = "arn:aws:iam::142577830533:role/SageMakerRole"
+UPDATED_ROLE = "SageMakerRole"
 UPDATED_INSTANCE_COUNT = 2
 UPDATED_INSTANCE_TYPE = "ml.m5.2xlarge"
 UPDATED_VOLUME_SIZE_IN_GB = 50
@@ -99,7 +99,7 @@ def predictor(sagemaker_session, tf_full_version):
     ):
         model = Model(
             model_data=model_data,
-            role="SageMakerRole",
+            role=ROLE,
             framework_version=tf_full_version,
             sagemaker_session=sagemaker_session,
         )
@@ -220,9 +220,10 @@ def byoc_monitoring_schedule_name(sagemaker_session, output_kms_key, volume_kms_
 
 @pytest.fixture(scope="module")
 def volume_kms_key(sagemaker_session):
+    role_arn = sagemaker_session.expand_role(ROLE)
     return get_or_create_kms_key(
         sagemaker_session=sagemaker_session,
-        role_arn=ROLE,
+        role_arn=role_arn,
         alias="integ-test-processing-volume-kms-key-{}".format(
             sagemaker_session.boto_session.region_name
         ),
@@ -231,9 +232,10 @@ def volume_kms_key(sagemaker_session):
 
 @pytest.fixture(scope="module")
 def output_kms_key(sagemaker_session):
+    role_arn = sagemaker_session.expand_role(ROLE)
     return get_or_create_kms_key(
         sagemaker_session=sagemaker_session,
-        role_arn=ROLE,
+        role_arn=role_arn,
         alias="integ-test-processing-output-kms-key-{}".format(
             sagemaker_session.boto_session.region_name
         ),
@@ -242,9 +244,10 @@ def output_kms_key(sagemaker_session):
 
 @pytest.fixture(scope="module")
 def updated_volume_kms_key(sagemaker_session):
+    role_arn = sagemaker_session.expand_role(ROLE)
     return get_or_create_kms_key(
         sagemaker_session=sagemaker_session,
-        role_arn=ROLE,
+        role_arn=role_arn,
         alias="integ-test-processing-volume-kms-key-updated-{}".format(
             sagemaker_session.boto_session.region_name
         ),
@@ -253,9 +256,10 @@ def updated_volume_kms_key(sagemaker_session):
 
 @pytest.fixture(scope="module")
 def updated_output_kms_key(sagemaker_session):
+    role_arn = sagemaker_session.expand_role(ROLE)
     return get_or_create_kms_key(
         sagemaker_session=sagemaker_session,
-        role_arn=ROLE,
+        role_arn=role_arn,
         alias="integ-test-processing-output-kms-key-updated-{}".format(
             sagemaker_session.boto_session.region_name
         ),
@@ -315,7 +319,7 @@ def test_default_monitor_suggest_baseline_and_create_monitoring_schedule_with_cu
         == volume_kms_key
     )
     assert DEFAULT_IMAGE_SUFFIX in baselining_job_description["AppSpecification"]["ImageUri"]
-    assert baselining_job_description["RoleArn"] == ROLE
+    assert ROLE in baselining_job_description["RoleArn"]
     assert (
         baselining_job_description["ProcessingInputs"][0]["InputName"] == "baseline_dataset_input"
     )
@@ -492,7 +496,7 @@ def test_default_monitor_suggest_baseline_and_create_monitoring_schedule_without
         is None
     )
     assert DEFAULT_IMAGE_SUFFIX in baselining_job_description["AppSpecification"]["ImageUri"]
-    assert baselining_job_description["RoleArn"] == ROLE
+    assert ROLE in baselining_job_description["RoleArn"]
     assert (
         baselining_job_description["ProcessingInputs"][0]["InputName"] == "baseline_dataset_input"
     )
@@ -1524,7 +1528,7 @@ def test_byoc_monitor_suggest_baseline_and_create_monitoring_schedule_with_custo
         == volume_kms_key
     )
     assert DEFAULT_IMAGE_SUFFIX in baselining_job_description["AppSpecification"]["ImageUri"]
-    assert baselining_job_description["RoleArn"] == ROLE
+    assert ROLE in baselining_job_description["RoleArn"]
     assert baselining_job_description["ProcessingInputs"][0]["InputName"] == "input-1"
     assert (
         baselining_job_description["ProcessingOutputConfig"]["Outputs"][0]["OutputName"]
@@ -1723,7 +1727,7 @@ def test_byoc_monitor_suggest_baseline_and_create_monitoring_schedule_without_cu
         is None
     )
     assert DEFAULT_IMAGE_SUFFIX in baselining_job_description["AppSpecification"]["ImageUri"]
-    assert baselining_job_description["RoleArn"] == ROLE
+    assert ROLE in baselining_job_description["RoleArn"]
     assert baselining_job_description["ProcessingInputs"][0]["InputName"] == "input-1"
     assert (
         baselining_job_description["ProcessingOutputConfig"]["Outputs"][0]["OutputName"]
@@ -2181,7 +2185,7 @@ def test_byoc_monitor_attach_followed_by_baseline_and_update_monitoring_schedule
         == volume_kms_key
     )
     assert DEFAULT_IMAGE_SUFFIX in baselining_job_description["AppSpecification"]["ImageUri"]
-    assert baselining_job_description["RoleArn"] == ROLE
+    assert ROLE in baselining_job_description["RoleArn"]
     assert baselining_job_description["ProcessingInputs"][0]["InputName"] == "input-1"
     assert (
         baselining_job_description["ProcessingOutputConfig"]["Outputs"][0]["OutputName"]

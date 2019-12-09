@@ -12,7 +12,6 @@
 # language governing permissions and limitations under the License.
 from __future__ import absolute_import
 
-import logging
 import os
 
 import pytest
@@ -23,7 +22,7 @@ from sagemaker.sklearn.processing import SKLearnProcessor
 from tests.integ import DATA_DIR
 from tests.integ.kms_utils import get_or_create_kms_key
 
-ROLE = "arn:aws:iam::142577830533:role/SageMakerRole"
+ROLE = "SageMakerRole"
 
 
 @pytest.fixture(scope="module")
@@ -36,9 +35,10 @@ def image_uri(sagemaker_session):
 
 @pytest.fixture(scope="module")
 def volume_kms_key(sagemaker_session):
+    role_arn = sagemaker_session.expand_role(ROLE)
     return get_or_create_kms_key(
         sagemaker_session=sagemaker_session,
-        role_arn=ROLE,
+        role_arn=role_arn,
         alias="integ-test-processing-volume-kms-key-{}".format(
             sagemaker_session.boto_session.region_name
         ),
@@ -47,9 +47,10 @@ def volume_kms_key(sagemaker_session):
 
 @pytest.fixture(scope="module")
 def output_kms_key(sagemaker_session):
+    role_arn = sagemaker_session.expand_role(ROLE)
     return get_or_create_kms_key(
         sagemaker_session=sagemaker_session,
-        role_arn=ROLE,
+        role_arn=role_arn,
         alias="integ-test-processing-output-kms-key-{}".format(
             sagemaker_session.boto_session.region_name
         ),
@@ -57,8 +58,6 @@ def output_kms_key(sagemaker_session):
 
 
 def test_sklearn(sagemaker_session, sklearn_full_version, cpu_instance_type):
-    logging.getLogger().setLevel(logging.DEBUG)  # TODO-reinvent-2019: REMOVE
-
     script_path = os.path.join(DATA_DIR, "dummy_script.py")
     input_file_path = os.path.join(DATA_DIR, "dummy_input.txt")
 
@@ -91,7 +90,7 @@ def test_sklearn(sagemaker_session, sklearn_full_version, cpu_instance_type):
         "python3",
         "/opt/ml/processing/input/code/dummy_script.py",
     ]
-    assert job_description["RoleArn"] == ROLE
+    assert ROLE in job_description["RoleArn"]
 
 
 def test_sklearn_with_customizations(
@@ -166,7 +165,7 @@ def test_sklearn_with_customizations(
 
     assert job_description["Environment"] == {"DUMMY_ENVIRONMENT_VARIABLE": "dummy-value"}
 
-    assert job_description["RoleArn"] == ROLE
+    assert ROLE in job_description["RoleArn"]
 
     assert job_description["StoppingCondition"] == {"MaxRuntimeInSeconds": 3600}
 
@@ -214,7 +213,7 @@ def test_sklearn_with_no_inputs_or_outputs(
 
     assert job_description["Environment"] == {"DUMMY_ENVIRONMENT_VARIABLE": "dummy-value"}
 
-    assert job_description["RoleArn"] == ROLE
+    assert ROLE in job_description["RoleArn"]
 
     assert job_description["StoppingCondition"] == {"MaxRuntimeInSeconds": 3600}
 
@@ -289,7 +288,7 @@ def test_script_processor(sagemaker_session, image_uri, cpu_instance_type, outpu
 
     assert job_description["Environment"] == {"DUMMY_ENVIRONMENT_VARIABLE": "dummy-value"}
 
-    assert job_description["RoleArn"] == ROLE
+    assert ROLE in job_description["RoleArn"]
 
     assert job_description["StoppingCondition"] == {"MaxRuntimeInSeconds": 3600}
 
@@ -337,7 +336,7 @@ def test_script_processor_with_no_inputs_or_outputs(
 
     assert job_description["Environment"] == {"DUMMY_ENVIRONMENT_VARIABLE": "dummy-value"}
 
-    assert job_description["RoleArn"] == ROLE
+    assert ROLE in job_description["RoleArn"]
 
     assert job_description["StoppingCondition"] == {"MaxRuntimeInSeconds": 3600}
 
@@ -403,6 +402,6 @@ def test_processor(sagemaker_session, image_uri, cpu_instance_type, output_kms_k
 
     assert job_description["Environment"] == {"DUMMY_ENVIRONMENT_VARIABLE": "dummy-value"}
 
-    assert job_description["RoleArn"] == ROLE
+    assert ROLE in job_description["RoleArn"]
 
     assert job_description["StoppingCondition"] == {"MaxRuntimeInSeconds": 3600}
