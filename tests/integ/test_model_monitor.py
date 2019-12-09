@@ -84,7 +84,7 @@ CUSTOM_JSON_CONTENT_TYPES = ["application/jsontype1", "application/jsontype2"]
 
 INTEG_TEST_MONITORING_OUTPUT_BUCKET = "integ-test-monitoring-output-bucket"
 
-FIVE_MINUTE_CRON_EXPRESSION = "cron(0 5 * ? * *)"
+FIVE_MINUTE_CRON_EXPRESSION = "cron(0/5 * ? * * *)"
 
 
 @pytest.fixture(scope="module")

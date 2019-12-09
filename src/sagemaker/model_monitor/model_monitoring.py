@@ -445,7 +445,7 @@ class ModelMonitor(object):
             self.network_config = network_config
 
         if role is not None:
-            self.role = self.sagemaker_session.expand_role(role)
+            self.role = role
 
         if image_uri is not None:
             self.image_uri = image_uri
@@ -471,7 +471,7 @@ class ModelMonitor(object):
             max_runtime_in_seconds=max_runtime_in_seconds,
             environment=env,
             network_config=network_config_dict,
-            role_arn=self.role,
+            role_arn=self.sagemaker_session.expand_role(self.role),
         )
 
         self._wait_for_schedule_changes_to_apply()
@@ -1424,7 +1424,7 @@ class DefaultModelMonitor(ModelMonitor):
             network_config_dict = self.network_config._to_request_dict()
 
         if role is not None:
-            self.role = self.sagemaker_session.expand_role(role)
+            self.role = role
 
         self.sagemaker_session.update_monitoring_schedule(
             monitoring_schedule_name=self.monitoring_schedule_name,
@@ -1442,7 +1442,7 @@ class DefaultModelMonitor(ModelMonitor):
             max_runtime_in_seconds=max_runtime_in_seconds,
             environment=normalized_env,
             network_config=network_config_dict,
-            role_arn=self.role,
+            role_arn=self.sagemaker_session.expand_role(self.role),
         )
 
         self._wait_for_schedule_changes_to_apply()
