@@ -40,6 +40,7 @@ def sagemaker_session():
         name="upload_data", return_value="mocked_s3_uri_from_upload_data"
     )
     session_mock.download_data = Mock(name="download_data")
+    session_mock.expand_role.return_value = ROLE
     return session_mock
 
 
