@@ -2832,7 +2832,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
                 )
                 return instance_desc["RoleArn"]
             except ClientError:
-                LOGGER.warning(
+                LOGGER.debug(
                     "Couldn't call 'describe_notebook_instance' to get the Role "
                     "ARN of the instance %s.",
                     instance_name,
