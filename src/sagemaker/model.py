@@ -514,6 +514,12 @@ class Model(object):
             volume_kms_key (str): Optional. KMS key ID for encrypting the volume
                 attached to the ML compute instance (default: None).
         """
+        if not self.sagemaker_session:
+            if instance_type in ("local", "local_gpu"):
+                self.sagemaker_session = local.LocalSession()
+            else:
+                self.sagemaker_session = session.Session()
+          
         self._create_sagemaker_model(instance_type, tags=tags)
         if self.enable_network_isolation():
             env = None
