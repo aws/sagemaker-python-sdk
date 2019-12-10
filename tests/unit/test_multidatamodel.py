@@ -13,8 +13,6 @@
 from __future__ import absolute_import
 
 import os
-from six.moves.urllib import parse
-
 import pytest
 from mock import MagicMock, Mock, call, patch
 
@@ -29,7 +27,9 @@ ENTRY_POINT = "mock.py"
 MXNET_MODEL_DATA = "s3://mybucket/mxnet_path/model.tar.gz"
 MXNET_MODEL_NAME = "dummy-mxnet-model"
 MXNET_ROLE = "DummyMXNetRole"
+MXNET_IMAGE = "520713654638.dkr.ecr.us-west-2.amazonaws.com/sagemaker-mxnet:1.2-cpu-py2"
 
+DATA_DIR = os.path.join(os.path.dirname(__file__), "..", "data")
 IMAGE = "123456789012.dkr.ecr.dummyregion.amazonaws.com/dummyimage:latest"
 REGION = "us-west-2"
 ROLE = "DummyRole"
@@ -44,6 +44,15 @@ DST_BUCKET = "mybucket"
 MULTI_MODEL_ENDPOINT_NAME = "multimodel-endpoint"
 INSTANCE_COUNT = 1
 INSTANCE_TYPE = "ml.c4.4xlarge"
+EXPECTED_PROD_VARIANT = [
+    {
+        "InitialVariantWeight": 1,
+        "InitialInstanceCount": INSTANCE_COUNT,
+        "InstanceType": INSTANCE_TYPE,
+        "ModelName": MODEL_NAME,
+        "VariantName": "AllTraffic",
+    }
+]
 
 
 @pytest.fixture()
@@ -58,18 +67,26 @@ def sagemaker_session():
     )
     session.sagemaker_client.describe_endpoint = Mock(return_value=ENDPOINT_DESC)
     session.sagemaker_client.describe_endpoint_config = Mock(return_value=ENDPOINT_CONFIG_DESC)
+    session.list_s3_files(
+        bucket=S3_URL_SOURCE_BUCKET, key_prefix=S3_URL_SOURCE_PREFIX
+    ).return_value = Mock()
+    session.upload_data = Mock(
+        name="upload_data",
+        return_value=os.path.join(VALID_MULTI_MODEL_DATA_PREFIX, "mleap_model.tar.gz"),
+    )
 
     s3_mock = Mock()
     boto_mock.client("s3").return_value = s3_mock
     boto_mock.client("s3").get_paginator("list_objects_v2").paginate.return_value = Mock()
     s3_mock.reset_mock()
+
     return session
 
 
 @pytest.fixture()
 def multi_data_model(sagemaker_session):
     return MultiDataModel(
-        model_name=MODEL_NAME,
+        name=MODEL_NAME,
         model_data_prefix=VALID_MULTI_MODEL_DATA_PREFIX,
         image=IMAGE,
         role=ROLE,
@@ -85,6 +102,7 @@ def mxnet_model(sagemaker_session):
         entry_point=ENTRY_POINT,
         sagemaker_session=sagemaker_session,
         name=MXNET_MODEL_NAME,
+        enable_network_isolation=True,
     )
 
 
@@ -92,63 +110,55 @@ def test_multi_data_model_create_with_invalid_model_data_prefix():
     invalid_model_data_prefix = "https://mybucket/path/"
     with pytest.raises(ValueError) as ex:
         MultiDataModel(
-            model_name=MODEL_NAME,
-            model_data_prefix=invalid_model_data_prefix,
-            image=IMAGE,
-            role=ROLE,
+            name=MODEL_NAME, model_data_prefix=invalid_model_data_prefix, image=IMAGE, role=ROLE
         )
-    err_msg = (
-        'ValueError: Expecting S3 model prefix beginning with "s3://" and ending in "/". '
-        'Received: "{}"'.format(invalid_model_data_prefix)
+    err_msg = 'ValueError: Expecting S3 model prefix beginning with "s3://". Received: "{}"'.format(
+        invalid_model_data_prefix
     )
     assert err_msg in str(ex)
 
 
 def test_multi_data_model_create(sagemaker_session):
     model = MultiDataModel(
-        model_name=MODEL_NAME,
+        name=MODEL_NAME,
         model_data_prefix=VALID_MULTI_MODEL_DATA_PREFIX,
         image=IMAGE,
         role=ROLE,
         sagemaker_session=sagemaker_session,
     )
 
-    url = parse.urlparse(VALID_MULTI_MODEL_DATA_PREFIX)
-    bucket, model_data_path = url.netloc, url.path.lstrip("/")
-    calls = [call(Bucket=bucket, Key=os.path.join(model_data_path, "/"))]
-
-    model.s3_client.put_object.assert_has_calls(calls)
-
     assert model.sagemaker_session == sagemaker_session
-    assert model.model_name == MODEL_NAME
+    assert model.name == MODEL_NAME
     assert model.model_data_prefix == VALID_MULTI_MODEL_DATA_PREFIX
     assert model.role == ROLE
     assert model.image == IMAGE
     assert model.vpc_config is None
 
 
-def test_multi_data_model_create_with_model_arg(sagemaker_session, mxnet_model):
+def test_multi_data_model_create_with_model_arg(mxnet_model):
     model = MultiDataModel(
-        model_name=MODEL_NAME,
+        name=MODEL_NAME,
         model_data_prefix=VALID_MULTI_MODEL_DATA_PREFIX,
+        model=mxnet_model,
         image=IMAGE,
         role=ROLE,
-        sagemaker_session=sagemaker_session,
-        model=mxnet_model,
     )
 
-    url = parse.urlparse(VALID_MULTI_MODEL_DATA_PREFIX)
-    bucket, model_data_path = url.netloc, url.path.lstrip("/")
-    calls = [call(Bucket=bucket, Key=os.path.join(model_data_path, "/"))]
-
-    model.s3_client.put_object.assert_has_calls(calls)
-
-    assert model.sagemaker_session == sagemaker_session
-    assert model.model_name == MODEL_NAME
     assert model.model_data_prefix == VALID_MULTI_MODEL_DATA_PREFIX
-    assert model.role == ROLE
-    assert model.image == IMAGE
-    assert model.vpc_config is None
+    assert model.model == mxnet_model
+    assert hasattr(model, "role") is False
+    assert hasattr(model, "image") is False
+
+
+def test_multi_data_model_create_with_model_arg_only(mxnet_model):
+    model = MultiDataModel(
+        name=MODEL_NAME, model_data_prefix=VALID_MULTI_MODEL_DATA_PREFIX, model=mxnet_model
+    )
+
+    assert model.model_data_prefix == VALID_MULTI_MODEL_DATA_PREFIX
+    assert model.model == mxnet_model
+    assert hasattr(model, "role") is False
+    assert hasattr(model, "image") is False
 
 
 @patch("sagemaker.fw_utils.tar_and_upload_dir", MagicMock())
@@ -159,10 +169,9 @@ def test_prepare_container_def_mxnet(sagemaker_session, mxnet_model):
         "SAGEMAKER_PROGRAM",
         "SAGEMAKER_REGION",
         "SAGEMAKER_SUBMIT_DIRECTORY",
-        "EXTRA_ENV_MOCK",
     ]
     model = MultiDataModel(
-        model_name=MODEL_NAME,
+        name=MODEL_NAME,
         model_data_prefix=VALID_MULTI_MODEL_DATA_PREFIX,
         image=IMAGE,
         role=ROLE,
@@ -173,18 +182,52 @@ def test_prepare_container_def_mxnet(sagemaker_session, mxnet_model):
 
     container_def = model.prepare_container_def(INSTANCE_TYPE)
 
-    assert container_def["Image"] == IMAGE
+    assert container_def["Image"] == MXNET_IMAGE
     assert container_def["ModelDataUrl"] == VALID_MULTI_MODEL_DATA_PREFIX
     assert container_def["Mode"] == MULTI_MODEL_CONTAINER_MODE
-    # Check if the environment variables for both MultiDataModel
-    # and MXNetModel exist as part of the container definition
+    # Check if the environment variables defined only for MXNetModel
+    # are part of the MultiDataModel container definition
     assert set(container_def["Environment"].keys()) == set(expected_container_env_keys)
 
 
 @patch("sagemaker.fw_utils.tar_and_upload_dir", MagicMock())
-def test_deploy(sagemaker_session, mxnet_model):
+def test_deploy_multi_data_model(sagemaker_session):
     model = MultiDataModel(
-        model_name=MODEL_NAME,
+        name=MODEL_NAME,
+        model_data_prefix=VALID_MULTI_MODEL_DATA_PREFIX,
+        image=IMAGE,
+        role=ROLE,
+        sagemaker_session=sagemaker_session,
+        env={"EXTRA_ENV_MOCK": "MockValue"},
+    )
+    model.deploy(
+        initial_instance_count=INSTANCE_COUNT,
+        instance_type=INSTANCE_TYPE,
+        endpoint_name=MULTI_MODEL_ENDPOINT_NAME,
+    )
+
+    sagemaker_session.create_model.assert_called_with(
+        MODEL_NAME,
+        ROLE,
+        model.prepare_container_def(INSTANCE_TYPE),
+        vpc_config=None,
+        enable_network_isolation=False,
+        tags=None,
+    )
+    sagemaker_session.endpoint_from_production_variants.assert_called_with(
+        name=MULTI_MODEL_ENDPOINT_NAME,
+        wait=True,
+        tags=None,
+        kms_key=None,
+        data_capture_config_dict=None,
+        production_variants=EXPECTED_PROD_VARIANT,
+    )
+
+
+@patch("sagemaker.fw_utils.tar_and_upload_dir", MagicMock())
+def test_deploy_multi_data_framework_model(sagemaker_session, mxnet_model):
+    model = MultiDataModel(
+        name=MODEL_NAME,
         model_data_prefix=VALID_MULTI_MODEL_DATA_PREFIX,
         image=IMAGE,
         role=ROLE,
@@ -199,18 +242,35 @@ def test_deploy(sagemaker_session, mxnet_model):
         endpoint_name=MULTI_MODEL_ENDPOINT_NAME,
     )
 
+    # Assert if this is called with mxnet_model parameters
+    sagemaker_session.create_model.assert_called_with(
+        MODEL_NAME,
+        MXNET_ROLE,
+        model.prepare_container_def(INSTANCE_TYPE),
+        vpc_config=None,
+        enable_network_isolation=True,
+        tags=None,
+    )
+    sagemaker_session.endpoint_from_production_variants.assert_called_with(
+        name=MULTI_MODEL_ENDPOINT_NAME,
+        wait=True,
+        tags=None,
+        kms_key=None,
+        data_capture_config_dict=None,
+        production_variants=EXPECTED_PROD_VARIANT,
+    )
+    sagemaker_session.create_endpoint_config.assert_not_called()
     assert isinstance(predictor, MXNetPredictor)
 
 
 @patch("sagemaker.fw_utils.tar_and_upload_dir", MagicMock())
-def test_deploy_update(sagemaker_session, mxnet_model):
+def test_deploy_model_update(sagemaker_session):
     model = MultiDataModel(
-        model_name=MODEL_NAME,
+        name=MODEL_NAME,
         model_data_prefix=VALID_MULTI_MODEL_DATA_PREFIX,
         image=IMAGE,
         role=ROLE,
         sagemaker_session=sagemaker_session,
-        model=mxnet_model,
     )
 
     model.deploy(
@@ -243,18 +303,17 @@ def test_deploy_update(sagemaker_session, mxnet_model):
     sagemaker_session.create_endpoint.assert_not_called()
 
 
-def test_add_model_with_invalid_model_uri(multi_data_model):
-    with pytest.raises(ValueError) as ex:
-        multi_data_model.add_model(INVALID_S3_URL)
+def test_add_model_local_file_path(multi_data_model):
+    valid_local_model_artifact_path = os.path.join(DATA_DIR, "sparkml_model", "mleap_model.tar.gz")
+    uploaded_s3_path = multi_data_model.add_model(valid_local_model_artifact_path)
 
-    assert 'ValueError: Expecting S3 model path beginning with "s3://". Received: "{}"'.format(
-        INVALID_S3_URL
-    ) in str(ex)
+    assert uploaded_s3_path == os.path.join(VALID_MULTI_MODEL_DATA_PREFIX, "mleap_model.tar.gz")
 
 
-def test_add_model(multi_data_model):
-    multi_data_model.add_model(VALID_S3_URL)
+def test_add_model_s3_path(multi_data_model):
+    uploaded_s3_path = multi_data_model.add_model(VALID_S3_URL)
 
+    assert uploaded_s3_path == os.path.join(VALID_MULTI_MODEL_DATA_PREFIX, "output/model.tar.gz")
     multi_data_model.s3_client.copy.assert_called()
     calls = [
         call(
@@ -267,8 +326,11 @@ def test_add_model(multi_data_model):
 
 
 def test_add_model_with_dst_path(multi_data_model):
-    multi_data_model.add_model(VALID_S3_URL, "customer-a/model.tar.gz")
+    uploaded_s3_path = multi_data_model.add_model(VALID_S3_URL, "customer-a/model.tar.gz")
 
+    assert uploaded_s3_path == os.path.join(
+        VALID_MULTI_MODEL_DATA_PREFIX, "customer-a/model.tar.gz"
+    )
     multi_data_model.s3_client.copy.assert_called()
     calls = [
         call(
@@ -280,10 +342,21 @@ def test_add_model_with_dst_path(multi_data_model):
     multi_data_model.s3_client.copy.assert_has_calls(calls)
 
 
+def test_add_model_with_invalid_model_uri(multi_data_model):
+    with pytest.raises(ValueError) as ex:
+        multi_data_model.add_model(INVALID_S3_URL)
+
+    assert 'ValueError: model_source must either be a valid local file path or s3 uri. Received: "{}"'.format(
+        INVALID_S3_URL
+    ) in str(
+        ex
+    )
+
+
 def test_list_models(multi_data_model):
     multi_data_model.list_models()
 
-    multi_data_model.s3_client.get_paginator.assert_called_with("list_objects_v2")
-    assert multi_data_model.s3_client.get_paginator("list_objects_v2").paginate.called_with(
-        Bucket=S3_URL_SOURCE_BUCKET, Prefix="path/"
+    multi_data_model.sagemaker_session.list_s3_files.assert_called()
+    assert multi_data_model.sagemaker_session.list_s3_files.called_with(
+        Bucket=S3_URL_SOURCE_BUCKET, Prefix=S3_URL_SOURCE_PREFIX
     )

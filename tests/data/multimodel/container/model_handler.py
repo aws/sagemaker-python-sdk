@@ -17,7 +17,6 @@ ModelHandler defines a dummy base model handler.
 Returns invoked model name.
 """
 import logging
-import time
 
 
 class ModelHandler(object):
@@ -40,33 +39,6 @@ class ModelHandler(object):
         self._context = context
         self.initialized = True
 
-    def preprocess(self, batch):
-        """
-        Dummy method to transform raw input into model input data.
-
-        :param batch: list of raw requests, should match batch size
-        :return: list of preprocessed model input data
-        """
-        return None
-
-    def inference(self, model_input):
-        """
-        Dummy method for internal inference methods
-
-        :param model_input: transformed model input data
-        :return: list of inference output in NDArray
-        """
-        return None
-
-    def postprocess(self, inference_output):
-        """
-        Dummy method to return predict result.
-
-        :param inference_output: list of inference output
-        :return: list of predict results
-        """
-        return None
-
     def handle(self, data, context):
         """
         Custom service entry point function.
@@ -78,9 +50,6 @@ class ModelHandler(object):
         self.error = None  # reset earlier errors
 
         try:
-            preprocessed_data = self.preprocess(data)
-            inference_result = self.inference(preprocessed_data)
-            postprocessed_data = self.postprocess(inference_result)
             target_model = context.get_request_header(0, "X-Amzn-SageMaker-Target-Model")
             return ["Invoked model: {}".format(target_model)]
         except Exception as e:

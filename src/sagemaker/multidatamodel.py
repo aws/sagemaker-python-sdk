@@ -10,47 +10,47 @@
 # distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
-"""Placeholder docstring"""
+"""This module contains code to create and manage SageMaker ``MultiDataModel``"""
 from __future__ import absolute_import
 
 import os
-from six.moves.urllib import parse
+from six.moves.urllib.parse import urlparse
 
 import sagemaker
+from sagemaker import s3
 from sagemaker.model import Model
+from sagemaker.session import Session
 
 MULTI_MODEL_CONTAINER_MODE = "MultiModel"
 
 
 class MultiDataModel(Model):
-    """SageMaker ``MultiDataModel`` used to deploy multiple models to the same ``Endpoint``.
-
-    This class defines methods to create a Model with Multi-Model container, deploy it to an
-    endpoint, add more models to make them available to a deployed endpoint, list available
-    models and run predictions on a Multi-Model endpoint.
+    """A SageMaker ``MultiDataModel`` that can be used to deploy multiple models to the same
+    SageMaker ``Endpoint``, and also deploy additional models to an existing SageMaker
+    multi-model ``Endpoint``
     """
 
     def __init__(
         self,
-        model_name,
+        name,
         model_data_prefix,
         model=None,
         image=None,
         role=None,
-        predictor_cls=None,
+        sagemaker_session=None,
         **kwargs
     ):
         """Initialize a ``MultiDataModel``. In addition to these arguments, it supports all
            arguments supported by ``Model`` constructor
 
         Args:
-            model_name (str): The model name.
+            name (str): The model name.
             model_data_prefix (str): The S3 prefix where all the models artifacts (.tar.gz)
                 in a Multi-Model endpoint are located
             model (sagemaker.Model): The Model object that would define the
                 SageMaker model attributes like vpc_config, predictors, etc.
-                If this is present, the attributes for MultiDataModel are copied from this model
-                but are replaced the local arguments if present
+                If this is present, the attributes from this model are used when
+                deploying the ``MultiDataModel`` and local attributes are ignored.
             image (str): A Docker image URI. If not provided, `model.image` is used instead.
                 (default: None)
             role (str): An AWS IAM role (either name or full ARN). The Amazon
@@ -61,74 +61,40 @@ class MultiDataModel(Model):
                 It can be null if this is being used to create a Model to pass
                 to a ``PipelineModel`` which has its own Role field. If not provided,
                 `model.image` is used instead. (default: None)
-            predictor_cls (callable[string, sagemaker.session.Session]): A
-                function to call to create a predictor (default: None). If not
-                None, ``deploy`` will return the result of invoking this
-                function on the created endpoint name.
+            sagemaker_session (sagemaker.session.Session): A SageMaker Session
+                object, used for SageMaker interactions (default: None). If not
+                specified, one is created using the default AWS configuration
+                chain.
             **kwargs: Keyword arguments passed to the ``Model`` initializer.
         """
-        self.model_name = model_name
-        self._model_data_prefix = model_data_prefix
+        # Validate path
+        if not model_data_prefix.startswith("s3://"):
+            raise ValueError(
+                'Expecting S3 model prefix beginning with "s3://". Received: "{}"'.format(
+                    model_data_prefix
+                )
+            )
+        self.name = name
         self.model_data_prefix = model_data_prefix
         self.model = model
         self.container_mode = MULTI_MODEL_CONTAINER_MODE
-        self.image = image
-        self.role = role
-        self.predictor_cls = predictor_cls
-
-        # Copy the values from the model if these attributes are not provided in the constructor
-        if self.model:
-            self.image = self.image or self.model.image
-            self.role = self.role or self.model.role
-            self.predictor_cls = self.predictor_cls or self.model.predictor_cls
-
-        super(MultiDataModel, self).__init__(
-            self.model_data_prefix,
-            self.image,
-            self.role,
-            name=self.model_name,
-            predictor_cls=self.predictor_cls,
-            **kwargs
-        )
-
-        if not self.sagemaker_session:
-            self.sagemaker_session = sagemaker.session.Session()
+        self.sagemaker_session = sagemaker_session or Session()
         self.s3_client = self.sagemaker_session.boto_session.client("s3")
 
-        # Create the S3 prefix path to ensure model deployment succeeds
-        self._create_s3_model_data_path()
-
-    @property
-    def model_data_prefix(self):
-        """Placeholder docstring"""
-        return self._model_data_prefix
-
-    @model_data_prefix.setter
-    def model_data_prefix(self, model_data_prefix):
-        """
-        Args:
-            model_data_prefix:
-        """
-        # Validate path
-        if not (model_data_prefix.startswith("s3://") and model_data_prefix.endswith("/")):
-            raise ValueError(
-                'Expecting S3 model prefix beginning with "s3://" '
-                'and ending in "/". Received: "{}"'.format(model_data_prefix)
+        # Set the ``Model`` parameters if the model parameter is not specified
+        if not self.model:
+            super(MultiDataModel, self).__init__(
+                self.model_data_prefix,
+                image,
+                role,
+                name=self.name,
+                sagemaker_session=self.sagemaker_session,
+                **kwargs
             )
-        self._model_data_prefix = model_data_prefix
-
-    def _create_s3_model_data_path(self):
-        """
-        Create the S3 prefix path to ensure model deployment succeeds.
-        If this path does not exist, calls to CreateModel API fails
-        """
-        bucket, model_data_path = self._parse_s3_uri(self.model_data_prefix)
-        self.s3_client.put_object(Bucket=bucket, Key=os.path.join(model_data_path, "/"))
 
     def prepare_container_def(self, instance_type, accelerator_type=None):
-        """Return a container definition set with MultiModel mode and
-        model data and all other parameters from the original model pass
-        to the MultiDataModel constructor
+        """Return a container definition set with MultiModel mode,
+        model data and other parameters from the model (if available).
 
         Subclasses can override this to provide custom container definitions
         for deployment to a specific instance type. Called by ``deploy()``.
@@ -136,76 +102,207 @@ class MultiDataModel(Model):
         Returns:
             dict[str, str]: A complete container definition object usable with the CreateModel API
         """
-        # Copy the trained model's image and environment variables if they exist.
-        # Models trained with FrameworkEstimator set framework specific environment variables
-        # which need to be copied over
+        # Copy the trained model's image and environment variables if they exist. Models trained
+        # with FrameworkEstimator set framework specific environment variables which need to be
+        # copied over
         if self.model:
             container_definition = self.model.prepare_container_def(instance_type, accelerator_type)
-            self.image = self.image or container_definition["Image"]
-            self.env.update(container_definition["Environment"])
+            image = container_definition["Image"]
+            environment = container_definition["Environment"]
+        else:
+            image = self.image
+            environment = self.env
         return sagemaker.container_def(
-            self.image,
-            env=self.env,
+            image,
+            env=environment,
             model_data_url=self.model_data_prefix,
             container_mode=self.container_mode,
         )
 
-    def add_model(self, s3_url, model_data_path=None):
-        """Adds a model to the `MultiDataModel` by copying
-        the s3_url model artifact to the given S3 path relative to model_data_prefix
+    def deploy(
+        self,
+        initial_instance_count,
+        instance_type,
+        accelerator_type=None,
+        endpoint_name=None,
+        update_endpoint=False,
+        tags=None,
+        kms_key=None,
+        wait=True,
+        data_capture_config=None,
+    ):
+        """Deploy this ``Model`` to an ``Endpoint`` and optionally return a ``Predictor``.
+
+        Create a SageMaker ``Model`` and ``EndpointConfig``, and deploy an
+        ``Endpoint`` from this ``Model``. If self.model is not None, then the ``Endpoint``
+        will be deployed with parameters in self.model (like vpc_config,
+        enable_network_isolation, etc).  If self.model is None, then use the parameters
+        in ``MultiDataModel`` constructor will be used. If ``self.predictor_cls`` is not
+        None, this method returns a the result of invoking ``self.predictor_cls`` on
+        the created endpoint name.
+
+        The name of the created model is accessible in the ``name`` field of
+        this ``Model`` after deploy returns
+
+        The name of the created endpoint is accessible in the
+        ``endpoint_name`` field of this ``Model`` after deploy returns.
 
         Args:
-        s3_url: S3 path of the trained model artifact
-        model_data_path: S3 path where the trained model artifact
-                should be uploaded relative to `self.model_data_prefix`.
-                (default: None). If None, then the entire s3_url path
-                (after the source bucketname) will be copied to
-                `model_data_prefix` location
+            initial_instance_count (int): The initial number of instances to run
+                in the ``Endpoint`` created from this ``Model``.
+            instance_type (str): The EC2 instance type to deploy this Model to.
+                For example, 'ml.p2.xlarge', or 'local' for local mode.
+            accelerator_type (str): Type of Elastic Inference accelerator to
+                deploy this model for model loading and inference, for example,
+                'ml.eia1.medium'. If not specified, no Elastic Inference
+                accelerator will be attached to the endpoint. For more
+                information:
+                https://docs.aws.amazon.com/sagemaker/latest/dg/ei.html
+            endpoint_name (str): The name of the endpoint to create (default:
+                None). If not specified, a unique endpoint name will be created.
+            update_endpoint (bool): Flag to update the model in an existing
+                Amazon SageMaker endpoint. If True, this will deploy a new
+                EndpointConfig to an already existing endpoint and delete
+                resources corresponding to the previous EndpointConfig. If
+                False, a new endpoint will be created. Default: False
+            tags (List[dict[str, str]]): The list of tags to attach to this
+                specific endpoint.
+            kms_key (str): The ARN of the KMS key that is used to encrypt the
+                data on the storage volume attached to the instance hosting the
+                endpoint.
+            wait (bool): Whether the call should wait until the deployment of
+                this model completes (default: True).
+            data_capture_config (sagemaker.model_monitor.DataCaptureConfig): Specifies
+                configuration related to Endpoint data capture for use with
+                Amazon SageMaker Model Monitoring. Default: None.
+
+        Returns:
+            callable[string, sagemaker.session.Session] or None: Invocation of
+                ``self.predictor_cls`` on the created endpoint name,
+                if ``self.predictor_cls``
+                is not None. Otherwise, return None.
         """
-        # Validate s3_url
-        if not s3_url.startswith("s3://"):
-            raise ValueError(
-                'Expecting S3 model path beginning with "s3://". Received: "{}"'.format(s3_url)
+        # Set model specific parameters
+        if self.model:
+            enable_network_isolation = self.model.enable_network_isolation()
+            role = self.model.role
+            vpc_config = self.model.vpc_config
+            predictor = self.model.predictor_cls
+        else:
+            enable_network_isolation = self.enable_network_isolation()
+            role = self.role
+            vpc_config = self.vpc_config
+            predictor = self.predictor_cls
+
+        if role is None:
+            raise ValueError("Role can not be null for deploying a model")
+
+        container_def = self.prepare_container_def(instance_type, accelerator_type=accelerator_type)
+        self.sagemaker_session.create_model(
+            self.name,
+            role,
+            container_def,
+            vpc_config=vpc_config,
+            enable_network_isolation=enable_network_isolation,
+            tags=tags,
+        )
+
+        production_variant = sagemaker.production_variant(
+            self.name, instance_type, initial_instance_count, accelerator_type=accelerator_type
+        )
+        if endpoint_name:
+            self.endpoint_name = endpoint_name
+        else:
+            self.endpoint_name = self.name
+
+        data_capture_config_dict = None
+        if data_capture_config is not None:
+            data_capture_config_dict = data_capture_config._to_request_dict()
+
+        if update_endpoint:
+            endpoint_config_name = self.sagemaker_session.create_endpoint_config(
+                name=self.name,
+                model_name=self.name,
+                initial_instance_count=initial_instance_count,
+                instance_type=instance_type,
+                accelerator_type=accelerator_type,
+                tags=tags,
+                kms_key=kms_key,
+                data_capture_config_dict=data_capture_config_dict,
+            )
+            self.sagemaker_session.update_endpoint(self.endpoint_name, endpoint_config_name)
+        else:
+            self.sagemaker_session.endpoint_from_production_variants(
+                name=self.endpoint_name,
+                production_variants=[production_variant],
+                tags=tags,
+                kms_key=kms_key,
+                wait=wait,
+                data_capture_config_dict=data_capture_config_dict,
             )
 
-        source_bucket, source_model_data_path = self._parse_s3_uri(s3_url)
-        copy_source = {"Bucket": source_bucket, "Key": source_model_data_path}
+        if predictor:
+            return predictor(self.endpoint_name, self.sagemaker_session)
+        return None
 
-        if not model_data_path:
-            model_data_path = source_model_data_path
+    def add_model(self, model_data_source, model_data_path=None):
+        """Adds a model to the `MultiDataModel` by uploading or copying the model_data_source
+         artifact to the given S3 path model_data_path relative to model_data_prefix
 
-        # Construct the destination path
-        dst_url = os.path.join(self.model_data_prefix, model_data_path)
-        destination_bucket, destination_model_data_path = self._parse_s3_uri(dst_url)
+        Args:
+        model_source: Valid local file path or S3 path of the trained model artifact
+        model_data_path: S3 path where the trained model artifact
+                should be uploaded relative to `self.model_data_prefix` path. (default: None).
+                If None, then the model artifact is uploaded to a path relative to model_data_prefix
 
-        # Copy the model artifact
-        self.s3_client.copy(copy_source, destination_bucket, destination_model_data_path)
+        Returns:
+            str: S3 uri to uploaded model artifact
+        """
+        parse_result = urlparse(model_data_source)
+
+        # If the model source is an S3 path, copy the model artifact to the destination S3 path
+        if parse_result.scheme == "s3":
+            source_bucket, source_model_data_path = s3.parse_s3_url(model_data_source)
+            copy_source = {"Bucket": source_bucket, "Key": source_model_data_path}
+
+            if not model_data_path:
+                model_data_path = source_model_data_path
+
+            # Construct the destination path
+            dst_url = os.path.join(self.model_data_prefix, model_data_path)
+            destination_bucket, destination_model_data_path = s3.parse_s3_url(dst_url)
+
+            # Copy the model artifact
+            self.s3_client.copy(copy_source, destination_bucket, destination_model_data_path)
+            return os.path.join("s3://", destination_bucket, destination_model_data_path)
+
+        # If the model source is a local path, upload the local model artifact to the destination
+        #  s3 path
+        if os.path.exists(model_data_source):
+            destination_bucket, dst_prefix = s3.parse_s3_url(self.model_data_prefix)
+            if model_data_path:
+                dst_s3_uri = os.path.join(dst_prefix, model_data_path)
+            else:
+                dst_s3_uri = os.path.join(dst_prefix, os.path.basename(model_data_source))
+            self.s3_client.upload_file(model_data_source, destination_bucket, dst_s3_uri)
+            # return upload_path
+            return os.path.join("s3://", destination_bucket, dst_s3_uri)
+
+        # Raise error if the model source is of an unexpected type
+        raise ValueError(
+            "model_source must either be a valid local file path or s3 uri. Received: "
+            '"{}"'.format(model_data_source)
+        )
 
     def list_models(self):
         """Generates and returns relative paths to model archives stored at model_data_prefix
         S3 location.
 
-        Yields: Relative paths to model archives stored at model_data_prefix.
+        Yields: Paths to model archives relative to model_data_prefix path.
         """
-        bucket, url_prefix = self._parse_s3_uri(self.model_data_prefix)
-        paginator = self.s3_client.get_paginator("list_objects_v2")
-        for page in paginator.paginate(Bucket=bucket, Prefix=url_prefix):
-            try:
-                # Get the metadata about each object returned
-                s3_objects_metadata = page["Contents"]
-                for s3_object in s3_objects_metadata:
-                    # Return the model paths relative to the model_data_prefix
-                    # Ex: "a/b/c.tar.gz" -> "b/c.tar.gz" if url_prefix = "a/"
-                    yield s3_object["Key"].replace(url_prefix, "")
-            except KeyError:
-                return
-
-    def _parse_s3_uri(self, s3_url):
-        """Parses an s3 uri and returns the bucket and s3 prefix path.
-
-        Args:
-            s3_url:
-        """
-        url = parse.urlparse(s3_url)
-        bucket, s3_prefix = url.netloc, url.path.lstrip("/")
-        return bucket, s3_prefix
+        bucket, url_prefix = s3.parse_s3_url(self.model_data_prefix)
+        file_keys = self.sagemaker_session.list_s3_files(bucket=bucket, key_prefix=url_prefix)
+        for file_key in file_keys:
+            # Return the model paths relative to the model_data_prefix
+            # Ex: "a/b/c.tar.gz" -> "b/c.tar.gz" where url_prefix = "a/"
+            yield file_key.replace(url_prefix, "")

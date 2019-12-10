@@ -100,18 +100,15 @@ def test_multi_data_model_deploy_pretrained_models(
     endpoint_name = "test-multimodel-endpoint-{}".format(timestamp)
     model_name = "test-multimodel-{}".format(timestamp)
 
-    # Upload pretrained models to an S3 location
-    model_data_path_local = os.path.join(DATA_DIR, "multimodel")
-    pretrained_model_data_path = sagemaker_session.upload_data(
-        path=os.path.join(model_data_path_local, "dummy_model.tar.gz")
-    )
+    # Define pretrained model local path
+    pretrained_model_data_local_path = os.path.join(DATA_DIR, "sparkml_model", "mleap_model.tar.gz")
 
     with timeout_and_delete_endpoint_by_name(endpoint_name, sagemaker_session):
         model_data_prefix = os.path.join(
             "s3://", sagemaker_session.default_bucket(), "multimodel-{}/".format(timestamp)
         )
         multi_data_model = MultiDataModel(
-            model_name=model_name,
+            name=model_name,
             model_data_prefix=model_data_prefix,
             image=container_image,
             role=ROLE,
@@ -119,11 +116,11 @@ def test_multi_data_model_deploy_pretrained_models(
         )
 
         # Add model before deploy
-        multi_data_model.add_model(pretrained_model_data_path, PRETRAINED_MODEL_PATH_1)
+        multi_data_model.add_model(pretrained_model_data_local_path, PRETRAINED_MODEL_PATH_1)
         # Deploy model to an endpoint
         multi_data_model.deploy(1, cpu_instance_type, endpoint_name=endpoint_name)
         # Add models after deploy
-        multi_data_model.add_model(pretrained_model_data_path, PRETRAINED_MODEL_PATH_2)
+        multi_data_model.add_model(pretrained_model_data_local_path, PRETRAINED_MODEL_PATH_2)
 
         endpoint_models = []
         for model_path in multi_data_model.list_models():
@@ -146,7 +143,7 @@ def test_multi_data_model_deploy_pretrained_models(
         sagemaker_session.sagemaker_client.delete_endpoint_config(EndpointConfigName=endpoint_name)
         multi_data_model.delete_model()
     with pytest.raises(Exception) as exception:
-        sagemaker_session.sagemaker_client.describe_model(ModelName=multi_data_model.model_name)
+        sagemaker_session.sagemaker_client.describe_model(ModelName=multi_data_model.name)
         assert "Could not find model" in str(exception.value)
         sagemaker_session.sagemaker_client.describe_endpoint_config(name=endpoint_name)
         assert "Could not find endpoint" in str(exception.value)
@@ -162,14 +159,13 @@ def test_multi_data_model_deploy_trained_model_from_framework_estimator(
 
     with timeout_and_delete_endpoint_by_name(endpoint_name, sagemaker_session):
         mxnet_model_1 = __mxnet_training_job(
-            sagemaker_session, mxnet_version, cpu_instance_type, 0.1
+            sagemaker_session, container_image, mxnet_version, cpu_instance_type, 0.1
         )
-
         model_data_prefix = os.path.join(
             "s3://", sagemaker_session.default_bucket(), "multimodel-{}/".format(timestamp)
         )
         multi_data_model = MultiDataModel(
-            model_name=model_name,
+            name=model_name,
             model_data_prefix=model_data_prefix,
             image=container_image,
             role=ROLE,
@@ -180,9 +176,10 @@ def test_multi_data_model_deploy_trained_model_from_framework_estimator(
         multi_data_model.add_model(mxnet_model_1.model_data, PRETRAINED_MODEL_PATH_1)
         # Deploy model to an endpoint
         multi_data_model.deploy(1, cpu_instance_type, endpoint_name=endpoint_name)
+
         # Train another model
         mxnet_model_2 = __mxnet_training_job(
-            sagemaker_session, mxnet_version, cpu_instance_type, 0.01
+            sagemaker_session, container_image, mxnet_version, cpu_instance_type, 0.01
         )
         # Deploy newly trained model
         multi_data_model.add_model(mxnet_model_2.model_data, PRETRAINED_MODEL_PATH_2)
@@ -213,13 +210,15 @@ def test_multi_data_model_deploy_trained_model_from_framework_estimator(
         sagemaker_session.sagemaker_client.delete_endpoint_config(EndpointConfigName=endpoint_name)
         multi_data_model.delete_model()
     with pytest.raises(Exception) as exception:
-        sagemaker_session.sagemaker_client.describe_model(ModelName=multi_data_model.model_name)
+        sagemaker_session.sagemaker_client.describe_model(ModelName=model_name)
         assert "Could not find model" in str(exception.value)
         sagemaker_session.sagemaker_client.describe_endpoint_config(name=endpoint_name)
         assert "Could not find endpoint" in str(exception.value)
 
 
-def __mxnet_training_job(sagemaker_session, mxnet_full_version, cpu_instance_type, learning_rate):
+def __mxnet_training_job(
+    sagemaker_session, container_image, mxnet_full_version, cpu_instance_type, learning_rate
+):
     with timeout(minutes=TRAINING_DEFAULT_TIMEOUT_MINUTES):
         script_path = os.path.join(DATA_DIR, "mxnet_mnist", "mnist.py")
         data_path = os.path.join(DATA_DIR, "mxnet_mnist")
@@ -244,7 +243,9 @@ def __mxnet_training_job(sagemaker_session, mxnet_full_version, cpu_instance_typ
 
         mx.fit({"train": train_input, "test": test_input})
 
-        return mx.create_model()
+        # Replace the container image value for now since the frameworks do not support
+        # multi-model container image yet.
+        return mx.create_model(image_name=container_image)
 
 
 def test_multi_data_model_deploy_train_model_from_amazon_first_party_estimator(
@@ -255,13 +256,15 @@ def test_multi_data_model_deploy_train_model_from_amazon_first_party_estimator(
     model_name = "test-multimodel-{}".format(timestamp)
 
     with timeout_and_delete_endpoint_by_name(endpoint_name, sagemaker_session):
-        rcf_model_v1 = __rcf_training_job(sagemaker_session, cpu_instance_type, 50, 20)
+        rcf_model_v1 = __rcf_training_job(
+            sagemaker_session, container_image, cpu_instance_type, 50, 20
+        )
 
         model_data_prefix = os.path.join(
             "s3://", sagemaker_session.default_bucket(), "multimodel-{}/".format(timestamp)
         )
         multi_data_model = MultiDataModel(
-            model_name=model_name,
+            name=model_name,
             model_data_prefix=model_data_prefix,
             image=container_image,
             role=ROLE,
@@ -273,7 +276,9 @@ def test_multi_data_model_deploy_train_model_from_amazon_first_party_estimator(
         # Deploy model to an endpoint
         multi_data_model.deploy(1, cpu_instance_type, endpoint_name=endpoint_name)
         # Train another model
-        rcf_model_v2 = __rcf_training_job(sagemaker_session, cpu_instance_type, 70, 20)
+        rcf_model_v2 = __rcf_training_job(
+            sagemaker_session, container_image, cpu_instance_type, 70, 20
+        )
         # Deploy newly trained model
         multi_data_model.add_model(rcf_model_v2.model_data, PRETRAINED_MODEL_PATH_2)
 
@@ -304,13 +309,15 @@ def test_multi_data_model_deploy_train_model_from_amazon_first_party_estimator(
         sagemaker_session.sagemaker_client.delete_endpoint_config(EndpointConfigName=endpoint_name)
         multi_data_model.delete_model()
     with pytest.raises(Exception) as exception:
-        sagemaker_session.sagemaker_client.describe_model(ModelName=multi_data_model.model_name)
+        sagemaker_session.sagemaker_client.describe_model(ModelName=model_name)
         assert "Could not find model" in str(exception.value)
         sagemaker_session.sagemaker_client.describe_endpoint_config(name=endpoint_name)
         assert "Could not find endpoint" in str(exception.value)
 
 
-def __rcf_training_job(sagemaker_session, cpu_instance_type, num_trees, num_samples_per_tree):
+def __rcf_training_job(
+    sagemaker_session, container_image, cpu_instance_type, num_trees, num_samples_per_tree
+):
     job_name = unique_name_from_base("randomcutforest")
     with timeout(minutes=TRAINING_DEFAULT_TIMEOUT_MINUTES):
         # Generate a thousand 14-dimensional datapoints.
@@ -329,7 +336,11 @@ def __rcf_training_job(sagemaker_session, cpu_instance_type, num_trees, num_samp
 
         rcf.fit(records=rcf.record_set(train_input), job_name=job_name)
 
-        return rcf.create_model()
+        # Replace the container image value with a multi-model container image for now since the
+        # frameworks do not support multi-model container image yet.
+        rcf_model = rcf.create_model()
+        rcf_model.image = container_image
+        return rcf_model
 
 
 def test_multi_data_model_deploy_pretrained_models_update_endpoint(
@@ -339,18 +350,15 @@ def test_multi_data_model_deploy_pretrained_models_update_endpoint(
     endpoint_name = "test-multimodel-endpoint-{}".format(timestamp)
     model_name = "test-multimodel-{}".format(timestamp)
 
-    # Upload pretrained models to an S3 location
-    model_data_path_local = os.path.join(DATA_DIR, "multimodel")
-    pretrained_model_data_path = sagemaker_session.upload_data(
-        path=os.path.join(model_data_path_local, "dummy_model.tar.gz")
-    )
+    # Define pretrained model local path
+    pretrained_model_data_local_path = os.path.join(DATA_DIR, "sparkml_model", "mleap_model.tar.gz")
 
     with timeout_and_delete_endpoint_by_name(endpoint_name, sagemaker_session):
         model_data_prefix = os.path.join(
             "s3://", sagemaker_session.default_bucket(), "multimodel-{}/".format(timestamp)
         )
         multi_data_model = MultiDataModel(
-            model_name=model_name,
+            name=model_name,
             model_data_prefix=model_data_prefix,
             image=container_image,
             role=ROLE,
@@ -358,11 +366,11 @@ def test_multi_data_model_deploy_pretrained_models_update_endpoint(
         )
 
         # Add model before deploy
-        multi_data_model.add_model(pretrained_model_data_path, PRETRAINED_MODEL_PATH_1)
+        multi_data_model.add_model(pretrained_model_data_local_path, PRETRAINED_MODEL_PATH_1)
         # Deploy model to an endpoint
         multi_data_model.deploy(1, cpu_instance_type, endpoint_name=endpoint_name)
         # Add model after deploy
-        multi_data_model.add_model(pretrained_model_data_path, PRETRAINED_MODEL_PATH_2)
+        multi_data_model.add_model(pretrained_model_data_local_path, PRETRAINED_MODEL_PATH_2)
 
         # List model assertions
         endpoint_models = []
@@ -418,7 +426,7 @@ def test_multi_data_model_deploy_pretrained_models_update_endpoint(
         )
         multi_data_model.delete_model()
     with pytest.raises(Exception) as exception:
-        sagemaker_session.sagemaker_client.describe_model(ModelName=multi_data_model.model_name)
+        sagemaker_session.sagemaker_client.describe_model(ModelName=model_name)
         assert "Could not find model" in str(exception.value)
         sagemaker_session.sagemaker_client.describe_endpoint_config(name=old_config_name)
         assert "Could not find endpoint" in str(exception.value)
