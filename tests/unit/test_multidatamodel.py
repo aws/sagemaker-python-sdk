@@ -135,6 +135,7 @@ def test_multi_data_model_create(sagemaker_session):
     assert model.vpc_config is None
 
 
+@patch("sagemaker.multidatamodel.Session", MagicMock())
 def test_multi_data_model_create_with_model_arg(mxnet_model):
     model = MultiDataModel(
         name=MODEL_NAME,
@@ -150,6 +151,7 @@ def test_multi_data_model_create_with_model_arg(mxnet_model):
     assert hasattr(model, "image") is False
 
 
+@patch("sagemaker.multidatamodel.Session", MagicMock())
 def test_multi_data_model_create_with_model_arg_only(mxnet_model):
     model = MultiDataModel(
         name=MODEL_NAME, model_data_prefix=VALID_MULTI_MODEL_DATA_PREFIX, model=mxnet_model
