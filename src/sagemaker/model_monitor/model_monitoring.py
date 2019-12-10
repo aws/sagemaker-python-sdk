@@ -1761,7 +1761,7 @@ class DefaultModelMonitor(ModelMonitor):
 class BaseliningJob(ProcessingJob):
     """Provides functionality to retrieve baseline-specific files output from baselining job."""
 
-    def __init__(self, sagemaker_session, job_name, inputs, outputs):
+    def __init__(self, sagemaker_session, job_name, inputs, outputs, output_kms_key):
         """Initializes a Baselining job that tracks a baselining job kicked off by the suggest
         workflow.
 
@@ -1778,7 +1778,11 @@ class BaseliningJob(ProcessingJob):
         self.inputs = inputs
         self.outputs = outputs
         super(BaseliningJob, self).__init__(
-            sagemaker_session=sagemaker_session, job_name=job_name, inputs=inputs, outputs=outputs
+            sagemaker_session=sagemaker_session,
+            job_name=job_name,
+            inputs=inputs,
+            outputs=outputs,
+            output_kms_key=output_kms_key,
         )
 
     @classmethod
@@ -1799,6 +1803,7 @@ class BaseliningJob(ProcessingJob):
             processing_job.job_name,
             processing_job.inputs,
             processing_job.outputs,
+            processing_job.output_kms_key,
         )
 
     def baseline_statistics(self, file_name=STATISTICS_JSON_DEFAULT_FILE_NAME, kms_key=None):
