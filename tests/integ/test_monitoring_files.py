@@ -19,12 +19,9 @@ import pytest
 
 import tests.integ
 import tests.integ.timeout
-
 from sagemaker.model_monitor import Statistics, Constraints, ConstraintViolations
 from sagemaker.s3 import S3Uploader
 from tests.integ.kms_utils import get_or_create_kms_key
-
-ROLE = "arn:aws:iam::142577830533:role/SageMakerRole"
 
 
 @pytest.fixture(scope="module")
@@ -40,7 +37,7 @@ def test_statistics_object_creation_from_file_path_with_customizations(
         kms_key=monitoring_files_kms_key,
         sagemaker_session=sagemaker_session,
     )
-    #
+
     assert statistics.file_s3_uri.startswith("s3://")
     assert statistics.file_s3_uri.endswith("statistics.json")
 

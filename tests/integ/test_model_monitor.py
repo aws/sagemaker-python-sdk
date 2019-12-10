@@ -42,7 +42,7 @@ from sagemaker.utils import unique_name_from_base
 from tests.integ.kms_utils import get_or_create_kms_key
 from tests.integ.retry import retries
 
-ROLE = "arn:aws:iam::142577830533:role/SageMakerRole"
+ROLE = "SageMakerRole"
 INSTANCE_COUNT = 1
 INSTANCE_TYPE = "ml.m5.xlarge"
 VOLUME_SIZE_IN_GB = 40
@@ -63,7 +63,7 @@ DEFAULT_BASELINING_MAX_RUNTIME_IN_SECONDS = 86400
 DEFAULT_EXECUTION_MAX_RUNTIME_IN_SECONDS = 3600
 DEFAULT_IMAGE_SUFFIX = ".com/sagemaker-model-monitor-analyzer"
 
-UPDATED_ROLE = "arn:aws:iam::142577830533:role/SageMakerRole"
+UPDATED_ROLE = "SageMakerRole"
 UPDATED_INSTANCE_COUNT = 2
 UPDATED_INSTANCE_TYPE = "ml.m5.2xlarge"
 UPDATED_VOLUME_SIZE_IN_GB = 50
@@ -99,7 +99,7 @@ def predictor(sagemaker_session, tf_full_version):
     ):
         model = Model(
             model_data=model_data,
-            role="SageMakerRole",
+            role=ROLE,
             framework_version=tf_full_version,
             sagemaker_session=sagemaker_session,
         )
@@ -220,9 +220,10 @@ def byoc_monitoring_schedule_name(sagemaker_session, output_kms_key, volume_kms_
 
 @pytest.fixture(scope="module")
 def volume_kms_key(sagemaker_session):
+    role_arn = sagemaker_session.expand_role(ROLE)
     return get_or_create_kms_key(
         sagemaker_session=sagemaker_session,
-        role_arn=ROLE,
+        role_arn=role_arn,
         alias="integ-test-processing-volume-kms-key-{}".format(
             sagemaker_session.boto_session.region_name
         ),
@@ -231,9 +232,10 @@ def volume_kms_key(sagemaker_session):
 
 @pytest.fixture(scope="module")
 def output_kms_key(sagemaker_session):
+    role_arn = sagemaker_session.expand_role(ROLE)
     return get_or_create_kms_key(
         sagemaker_session=sagemaker_session,
-        role_arn=ROLE,
+        role_arn=role_arn,
         alias="integ-test-processing-output-kms-key-{}".format(
             sagemaker_session.boto_session.region_name
         ),
@@ -242,9 +244,10 @@ def output_kms_key(sagemaker_session):
 
 @pytest.fixture(scope="module")
 def updated_volume_kms_key(sagemaker_session):
+    role_arn = sagemaker_session.expand_role(ROLE)
     return get_or_create_kms_key(
         sagemaker_session=sagemaker_session,
-        role_arn=ROLE,
+        role_arn=role_arn,
         alias="integ-test-processing-volume-kms-key-updated-{}".format(
             sagemaker_session.boto_session.region_name
         ),
@@ -253,15 +256,20 @@ def updated_volume_kms_key(sagemaker_session):
 
 @pytest.fixture(scope="module")
 def updated_output_kms_key(sagemaker_session):
+    role_arn = sagemaker_session.expand_role(ROLE)
     return get_or_create_kms_key(
         sagemaker_session=sagemaker_session,
-        role_arn=ROLE,
+        role_arn=role_arn,
         alias="integ-test-processing-output-kms-key-updated-{}".format(
             sagemaker_session.boto_session.region_name
         ),
     )
 
 
+@pytest.mark.skipif(
+    tests.integ.test_region() in tests.integ.NO_MODEL_MONITORING_REGIONS,
+    reason="ModelMonitoring is not yet supported in this region.",
+)
 def test_default_monitor_suggest_baseline_and_create_monitoring_schedule_with_customizations(
     sagemaker_session, output_kms_key, volume_kms_key, predictor
 ):
@@ -315,7 +323,7 @@ def test_default_monitor_suggest_baseline_and_create_monitoring_schedule_with_cu
         == volume_kms_key
     )
     assert DEFAULT_IMAGE_SUFFIX in baselining_job_description["AppSpecification"]["ImageUri"]
-    assert baselining_job_description["RoleArn"] == ROLE
+    assert ROLE in baselining_job_description["RoleArn"]
     assert (
         baselining_job_description["ProcessingInputs"][0]["InputName"] == "baseline_dataset_input"
     )
@@ -460,6 +468,10 @@ def test_default_monitor_suggest_baseline_and_create_monitoring_schedule_with_cu
     assert len(summary["MonitoringScheduleSummaries"]) > 0
 
 
+@pytest.mark.skipif(
+    tests.integ.test_region() in tests.integ.NO_MODEL_MONITORING_REGIONS,
+    reason="ModelMonitoring is not yet supported in this region.",
+)
 def test_default_monitor_suggest_baseline_and_create_monitoring_schedule_without_customizations(
     sagemaker_session, predictor
 ):
@@ -492,7 +504,7 @@ def test_default_monitor_suggest_baseline_and_create_monitoring_schedule_without
         is None
     )
     assert DEFAULT_IMAGE_SUFFIX in baselining_job_description["AppSpecification"]["ImageUri"]
-    assert baselining_job_description["RoleArn"] == ROLE
+    assert ROLE in baselining_job_description["RoleArn"]
     assert (
         baselining_job_description["ProcessingInputs"][0]["InputName"] == "baseline_dataset_input"
     )
@@ -633,6 +645,10 @@ def test_default_monitor_suggest_baseline_and_create_monitoring_schedule_without
     assert len(summary["MonitoringScheduleSummaries"]) > 0
 
 
+@pytest.mark.skipif(
+    tests.integ.test_region() in tests.integ.NO_MODEL_MONITORING_REGIONS,
+    reason="ModelMonitoring is not yet supported in this region.",
+)
 def test_default_monitor_create_stop_and_start_monitoring_schedule_with_customizations(
     sagemaker_session, output_kms_key, volume_kms_key, predictor
 ):
@@ -788,7 +804,15 @@ def test_default_monitor_create_stop_and_start_monitoring_schedule_with_customiz
     started_schedule_description = my_default_monitor.describe_schedule()
     assert started_schedule_description["MonitoringScheduleStatus"] == "Scheduled"
 
+    my_default_monitor.stop_monitoring_schedule()
 
+    _wait_for_schedule_changes_to_apply(monitor=my_default_monitor)
+
+
+@pytest.mark.skipif(
+    tests.integ.test_region() in tests.integ.NO_MODEL_MONITORING_REGIONS,
+    reason="ModelMonitoring is not yet supported in this region.",
+)
 def test_default_monitor_create_and_update_schedule_config_with_customizations(
     sagemaker_session,
     predictor,
@@ -1057,9 +1081,20 @@ def test_default_monitor_create_and_update_schedule_config_with_customizations(
         ]["EnableNetworkIsolation"]
         == UPDATED_NETWORK_CONFIG.enable_network_isolation
     )
+
+    _wait_for_schedule_changes_to_apply(monitor=my_default_monitor)
+
+    my_default_monitor.stop_monitoring_schedule()
+
+    _wait_for_schedule_changes_to_apply(monitor=my_default_monitor)
+
     assert len(predictor.list_monitors()) > 0
 
 
+@pytest.mark.skipif(
+    tests.integ.test_region() in tests.integ.NO_MODEL_MONITORING_REGIONS,
+    reason="ModelMonitoring is not yet supported in this region.",
+)
 def test_default_monitor_create_and_update_schedule_config_without_customizations(
     sagemaker_session, predictor
 ):
@@ -1273,7 +1308,17 @@ def test_default_monitor_create_and_update_schedule_config_without_customization
         is None
     )
 
+    _wait_for_schedule_changes_to_apply(monitor=my_default_monitor)
 
+    my_default_monitor.stop_monitoring_schedule()
+
+    _wait_for_schedule_changes_to_apply(monitor=my_default_monitor)
+
+
+@pytest.mark.skipif(
+    tests.integ.test_region() in tests.integ.NO_MODEL_MONITORING_REGIONS,
+    reason="ModelMonitoring is not yet supported in this region.",
+)
 def test_default_monitor_attach_followed_by_baseline_and_update_monitoring_schedule(
     sagemaker_session,
     default_monitoring_schedule_name,
@@ -1417,11 +1462,20 @@ def test_default_monitor_attach_followed_by_baseline_and_update_monitoring_sched
         == UPDATED_NETWORK_CONFIG.enable_network_isolation
     )
 
+    _wait_for_schedule_changes_to_apply(monitor=my_attached_monitor)
 
+    my_attached_monitor.stop_monitoring_schedule()
+
+    _wait_for_schedule_changes_to_apply(monitor=my_attached_monitor)
+
+
+@pytest.mark.skipif(
+    tests.integ.test_region() in tests.integ.NO_MODEL_MONITORING_REGIONS,
+    reason="ModelMonitoring is not yet supported in this region.",
+)
 def test_default_monitor_monitoring_execution_interactions(
     sagemaker_session, default_monitoring_schedule_name
 ):
-
     my_attached_monitor = DefaultModelMonitor.attach(
         monitor_schedule_name=default_monitoring_schedule_name, sagemaker_session=sagemaker_session
     )
@@ -1458,6 +1512,10 @@ def test_default_monitor_monitoring_execution_interactions(
     assert constraint_violations.body_dict["violations"][0]["feature_name"] == "store_and_fwd_flag"
 
 
+@pytest.mark.skipif(
+    tests.integ.test_region() in tests.integ.NO_MODEL_MONITORING_REGIONS,
+    reason="ModelMonitoring is not yet supported in this region.",
+)
 def test_byoc_monitor_suggest_baseline_and_create_monitoring_schedule_with_customizations(
     sagemaker_session, output_kms_key, volume_kms_key, predictor
 ):
@@ -1524,7 +1582,7 @@ def test_byoc_monitor_suggest_baseline_and_create_monitoring_schedule_with_custo
         == volume_kms_key
     )
     assert DEFAULT_IMAGE_SUFFIX in baselining_job_description["AppSpecification"]["ImageUri"]
-    assert baselining_job_description["RoleArn"] == ROLE
+    assert ROLE in baselining_job_description["RoleArn"]
     assert baselining_job_description["ProcessingInputs"][0]["InputName"] == "input-1"
     assert (
         baselining_job_description["ProcessingOutputConfig"]["Outputs"][0]["OutputName"]
@@ -1662,10 +1720,20 @@ def test_byoc_monitor_suggest_baseline_and_create_monitoring_schedule_with_custo
         == NETWORK_CONFIG.enable_network_isolation
     )
 
+    _wait_for_schedule_changes_to_apply(monitor=my_byoc_monitor)
+
+    my_byoc_monitor.stop_monitoring_schedule()
+
+    _wait_for_schedule_changes_to_apply(monitor=my_byoc_monitor)
+
     summary = sagemaker_session.list_monitoring_schedules()
     assert len(summary["MonitoringScheduleSummaries"]) > 0
 
 
+@pytest.mark.skipif(
+    tests.integ.test_region() in tests.integ.NO_MODEL_MONITORING_REGIONS,
+    reason="ModelMonitoring is not yet supported in this region.",
+)
 def test_byoc_monitor_suggest_baseline_and_create_monitoring_schedule_without_customizations(
     sagemaker_session, predictor
 ):
@@ -1723,7 +1791,7 @@ def test_byoc_monitor_suggest_baseline_and_create_monitoring_schedule_without_cu
         is None
     )
     assert DEFAULT_IMAGE_SUFFIX in baselining_job_description["AppSpecification"]["ImageUri"]
-    assert baselining_job_description["RoleArn"] == ROLE
+    assert ROLE in baselining_job_description["RoleArn"]
     assert baselining_job_description["ProcessingInputs"][0]["InputName"] == "input-1"
     assert (
         baselining_job_description["ProcessingOutputConfig"]["Outputs"][0]["OutputName"]
@@ -1846,10 +1914,20 @@ def test_byoc_monitor_suggest_baseline_and_create_monitoring_schedule_without_cu
         is None
     )
 
+    _wait_for_schedule_changes_to_apply(monitor=my_byoc_monitor)
+
+    my_byoc_monitor.stop_monitoring_schedule()
+
+    _wait_for_schedule_changes_to_apply(monitor=my_byoc_monitor)
+
     summary = sagemaker_session.list_monitoring_schedules()
     assert len(summary["MonitoringScheduleSummaries"]) > 0
 
 
+@pytest.mark.skipif(
+    tests.integ.test_region() in tests.integ.NO_MODEL_MONITORING_REGIONS,
+    reason="ModelMonitoring is not yet supported in this region.",
+)
 def test_byoc_monitor_create_and_update_schedule_config_with_customizations(
     sagemaker_session,
     predictor,
@@ -2119,9 +2197,20 @@ def test_byoc_monitor_create_and_update_schedule_config_with_customizations(
         ]["EnableNetworkIsolation"]
         == UPDATED_NETWORK_CONFIG.enable_network_isolation
     )
+
+    _wait_for_schedule_changes_to_apply(monitor=my_byoc_monitor)
+
+    my_byoc_monitor.stop_monitoring_schedule()
+
+    _wait_for_schedule_changes_to_apply(monitor=my_byoc_monitor)
+
     assert len(predictor.list_monitors()) > 0
 
 
+@pytest.mark.skipif(
+    tests.integ.test_region() in tests.integ.NO_MODEL_MONITORING_REGIONS,
+    reason="ModelMonitoring is not yet supported in this region.",
+)
 def test_byoc_monitor_attach_followed_by_baseline_and_update_monitoring_schedule(
     sagemaker_session,
     predictor,
@@ -2181,7 +2270,7 @@ def test_byoc_monitor_attach_followed_by_baseline_and_update_monitoring_schedule
         == volume_kms_key
     )
     assert DEFAULT_IMAGE_SUFFIX in baselining_job_description["AppSpecification"]["ImageUri"]
-    assert baselining_job_description["RoleArn"] == ROLE
+    assert ROLE in baselining_job_description["RoleArn"]
     assert baselining_job_description["ProcessingInputs"][0]["InputName"] == "input-1"
     assert (
         baselining_job_description["ProcessingOutputConfig"]["Outputs"][0]["OutputName"]
@@ -2333,7 +2422,17 @@ def test_byoc_monitor_attach_followed_by_baseline_and_update_monitoring_schedule
         == UPDATED_NETWORK_CONFIG.enable_network_isolation
     )
 
+    _wait_for_schedule_changes_to_apply(monitor=my_attached_monitor)
 
+    my_attached_monitor.stop_monitoring_schedule()
+
+    _wait_for_schedule_changes_to_apply(monitor=my_attached_monitor)
+
+
+@pytest.mark.skipif(
+    tests.integ.test_region() in tests.integ.NO_MODEL_MONITORING_REGIONS,
+    reason="ModelMonitoring is not yet supported in this region.",
+)
 def test_byoc_monitor_monitoring_execution_interactions(
     sagemaker_session, byoc_monitoring_schedule_name
 ):

@@ -1,5 +1,27 @@
 # Changelog
 
+## v1.45.2 (2019-12-10)
+
+### Bug fixes and other changes
+
+ * modify schedule cleanup to abide by latest validations
+ * lower log level when getting execution role from a SageMaker Notebook
+ * Fix "ValueError: too many values to unpack (expected 2)" is occurred in windows local mode
+ * allow ModelMonitor and Processor to take IAM role names (in addition to ARNs)
+
+### Documentation changes
+
+ * mention that the entry_point needs to be named inference.py for tfs
+
+## v1.45.1 (2019-12-06)
+
+### Bug fixes and other changes
+
+ * create auto ml job for tests that based on existing job
+ * fixing py2 support for latest TF version
+ * fix tags in deploy call for generic estimators
+ * make multi algo integration test assertion less specific
+
 ## v1.45.0 (2019-12-04)
 
 ### Features

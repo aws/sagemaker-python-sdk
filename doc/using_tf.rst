@@ -723,7 +723,8 @@ JSON options instead.
 Create Python Scripts for Custom Input and Output Formats
 ---------------------------------------------------------
 
-You can add your customized Python code to process your input and output data:
+You can add your customized Python code to process your input and output data.
+This customized Python code must be named ``inference.py`` and specified through the ``entry_point`` parameter:
 
 .. code::
 
@@ -736,8 +737,9 @@ You can add your customized Python code to process your input and output data:
 How to implement the pre- and/or post-processing handler(s)
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Your entry point file should implement either a pair of ``input_handler``
-   and ``output_handler`` functions or a single ``handler`` function.
+Your entry point file must be named ``inference.py`` and should implement
+   either a pair of ``input_handler`` and ``output_handler`` functions or
+   a single ``handler`` function.
    Note that if ``handler`` function is implemented, ``input_handler``
    and ``output_handler`` are ignored.
 
@@ -905,6 +907,7 @@ processing. There are 2 ways to do this:
                   model_data='s3://mybucket/model.tar.gz',
                   role='MySageMakerRole')
 
+For more information, see: https://github.com/aws/sagemaker-tensorflow-serving-container#prepost-processing
 
 *************************************
 sagemaker.tensorflow.TensorFlow Class
