@@ -204,7 +204,9 @@ def test_create_model(sagemaker_session, mxnet_version):
 
 
 @patch("sagemaker.utils.create_tar_file", MagicMock())
-def test_create_model_default_entry_with_mms(sagemaker_session, mxnet_version, skip_if_not_mms_version):
+def test_create_model_default_entry_with_mms(
+    sagemaker_session, mxnet_version, skip_if_not_mms_version
+):
     mx = MXNet(
         entry_point=SCRIPT_PATH,
         role=ROLE,

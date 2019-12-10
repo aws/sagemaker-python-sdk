@@ -35,7 +35,9 @@ def test_distributed_cpu_training(sagemaker_local_session, chainer_full_version)
 
 
 @pytest.mark.local_mode
-def test_training_with_additional_hyperparameters(sagemaker_session, sagemaker_local_session, chainer_full_version):
+def test_training_with_additional_hyperparameters(
+    sagemaker_session, sagemaker_local_session, chainer_full_version
+):
     script_path = os.path.join("chainer_mnist", "mnist.py")
     data_path = os.path.join(DATA_DIR, "chainer_mnist")
 
