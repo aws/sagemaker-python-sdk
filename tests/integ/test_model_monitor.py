@@ -266,6 +266,10 @@ def updated_output_kms_key(sagemaker_session):
     )
 
 
+@pytest.mark.skipif(
+    tests.integ.test_region() in tests.integ.NO_MODEL_MONITORING_REGIONS,
+    reason="ModelMonitoring is not yet supported in this region.",
+)
 def test_default_monitor_suggest_baseline_and_create_monitoring_schedule_with_customizations(
     sagemaker_session, output_kms_key, volume_kms_key, predictor
 ):
@@ -464,6 +468,10 @@ def test_default_monitor_suggest_baseline_and_create_monitoring_schedule_with_cu
     assert len(summary["MonitoringScheduleSummaries"]) > 0
 
 
+@pytest.mark.skipif(
+    tests.integ.test_region() in tests.integ.NO_MODEL_MONITORING_REGIONS,
+    reason="ModelMonitoring is not yet supported in this region.",
+)
 def test_default_monitor_suggest_baseline_and_create_monitoring_schedule_without_customizations(
     sagemaker_session, predictor
 ):
@@ -637,6 +645,10 @@ def test_default_monitor_suggest_baseline_and_create_monitoring_schedule_without
     assert len(summary["MonitoringScheduleSummaries"]) > 0
 
 
+@pytest.mark.skipif(
+    tests.integ.test_region() in tests.integ.NO_MODEL_MONITORING_REGIONS,
+    reason="ModelMonitoring is not yet supported in this region.",
+)
 def test_default_monitor_create_stop_and_start_monitoring_schedule_with_customizations(
     sagemaker_session, output_kms_key, volume_kms_key, predictor
 ):
@@ -797,6 +809,10 @@ def test_default_monitor_create_stop_and_start_monitoring_schedule_with_customiz
     _wait_for_schedule_changes_to_apply(monitor=my_default_monitor)
 
 
+@pytest.mark.skipif(
+    tests.integ.test_region() in tests.integ.NO_MODEL_MONITORING_REGIONS,
+    reason="ModelMonitoring is not yet supported in this region.",
+)
 def test_default_monitor_create_and_update_schedule_config_with_customizations(
     sagemaker_session,
     predictor,
@@ -1075,6 +1091,10 @@ def test_default_monitor_create_and_update_schedule_config_with_customizations(
     assert len(predictor.list_monitors()) > 0
 
 
+@pytest.mark.skipif(
+    tests.integ.test_region() in tests.integ.NO_MODEL_MONITORING_REGIONS,
+    reason="ModelMonitoring is not yet supported in this region.",
+)
 def test_default_monitor_create_and_update_schedule_config_without_customizations(
     sagemaker_session, predictor
 ):
@@ -1295,6 +1315,10 @@ def test_default_monitor_create_and_update_schedule_config_without_customization
     _wait_for_schedule_changes_to_apply(monitor=my_default_monitor)
 
 
+@pytest.mark.skipif(
+    tests.integ.test_region() in tests.integ.NO_MODEL_MONITORING_REGIONS,
+    reason="ModelMonitoring is not yet supported in this region.",
+)
 def test_default_monitor_attach_followed_by_baseline_and_update_monitoring_schedule(
     sagemaker_session,
     default_monitoring_schedule_name,
@@ -1445,6 +1469,10 @@ def test_default_monitor_attach_followed_by_baseline_and_update_monitoring_sched
     _wait_for_schedule_changes_to_apply(monitor=my_attached_monitor)
 
 
+@pytest.mark.skipif(
+    tests.integ.test_region() in tests.integ.NO_MODEL_MONITORING_REGIONS,
+    reason="ModelMonitoring is not yet supported in this region.",
+)
 def test_default_monitor_monitoring_execution_interactions(
     sagemaker_session, default_monitoring_schedule_name
 ):
@@ -1484,6 +1512,10 @@ def test_default_monitor_monitoring_execution_interactions(
     assert constraint_violations.body_dict["violations"][0]["feature_name"] == "store_and_fwd_flag"
 
 
+@pytest.mark.skipif(
+    tests.integ.test_region() in tests.integ.NO_MODEL_MONITORING_REGIONS,
+    reason="ModelMonitoring is not yet supported in this region.",
+)
 def test_byoc_monitor_suggest_baseline_and_create_monitoring_schedule_with_customizations(
     sagemaker_session, output_kms_key, volume_kms_key, predictor
 ):
@@ -1698,6 +1730,10 @@ def test_byoc_monitor_suggest_baseline_and_create_monitoring_schedule_with_custo
     assert len(summary["MonitoringScheduleSummaries"]) > 0
 
 
+@pytest.mark.skipif(
+    tests.integ.test_region() in tests.integ.NO_MODEL_MONITORING_REGIONS,
+    reason="ModelMonitoring is not yet supported in this region.",
+)
 def test_byoc_monitor_suggest_baseline_and_create_monitoring_schedule_without_customizations(
     sagemaker_session, predictor
 ):
@@ -1888,6 +1924,10 @@ def test_byoc_monitor_suggest_baseline_and_create_monitoring_schedule_without_cu
     assert len(summary["MonitoringScheduleSummaries"]) > 0
 
 
+@pytest.mark.skipif(
+    tests.integ.test_region() in tests.integ.NO_MODEL_MONITORING_REGIONS,
+    reason="ModelMonitoring is not yet supported in this region.",
+)
 def test_byoc_monitor_create_and_update_schedule_config_with_customizations(
     sagemaker_session,
     predictor,
@@ -2167,6 +2207,10 @@ def test_byoc_monitor_create_and_update_schedule_config_with_customizations(
     assert len(predictor.list_monitors()) > 0
 
 
+@pytest.mark.skipif(
+    tests.integ.test_region() in tests.integ.NO_MODEL_MONITORING_REGIONS,
+    reason="ModelMonitoring is not yet supported in this region.",
+)
 def test_byoc_monitor_attach_followed_by_baseline_and_update_monitoring_schedule(
     sagemaker_session,
     predictor,
@@ -2385,6 +2429,10 @@ def test_byoc_monitor_attach_followed_by_baseline_and_update_monitoring_schedule
     _wait_for_schedule_changes_to_apply(monitor=my_attached_monitor)
 
 
+@pytest.mark.skipif(
+    tests.integ.test_region() in tests.integ.NO_MODEL_MONITORING_REGIONS,
+    reason="ModelMonitoring is not yet supported in this region.",
+)
 def test_byoc_monitor_monitoring_execution_interactions(
     sagemaker_session, byoc_monitoring_schedule_name
 ):
