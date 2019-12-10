@@ -789,12 +789,12 @@ def test_default_monitor_create_stop_and_start_monitoring_schedule_with_customiz
 
     _wait_for_schedule_changes_to_apply(monitor=my_default_monitor)
 
+    started_schedule_description = my_default_monitor.describe_schedule()
+    assert started_schedule_description["MonitoringScheduleStatus"] == "Scheduled"
+
     my_default_monitor.stop_monitoring_schedule()
 
     _wait_for_schedule_changes_to_apply(monitor=my_default_monitor)
-
-    started_schedule_description = my_default_monitor.describe_schedule()
-    assert started_schedule_description["MonitoringScheduleStatus"] == "Scheduled"
 
 
 def test_default_monitor_create_and_update_schedule_config_with_customizations(
@@ -1066,6 +1066,8 @@ def test_default_monitor_create_and_update_schedule_config_with_customizations(
         == UPDATED_NETWORK_CONFIG.enable_network_isolation
     )
 
+    _wait_for_schedule_changes_to_apply(monitor=my_default_monitor)
+
     my_default_monitor.stop_monitoring_schedule()
 
     _wait_for_schedule_changes_to_apply(monitor=my_default_monitor)
@@ -1286,6 +1288,8 @@ def test_default_monitor_create_and_update_schedule_config_without_customization
         is None
     )
 
+    _wait_for_schedule_changes_to_apply(monitor=my_default_monitor)
+
     my_default_monitor.stop_monitoring_schedule()
 
     _wait_for_schedule_changes_to_apply(monitor=my_default_monitor)
@@ -1433,6 +1437,8 @@ def test_default_monitor_attach_followed_by_baseline_and_update_monitoring_sched
         ]["EnableNetworkIsolation"]
         == UPDATED_NETWORK_CONFIG.enable_network_isolation
     )
+
+    _wait_for_schedule_changes_to_apply(monitor=my_attached_monitor)
 
     my_attached_monitor.stop_monitoring_schedule()
 
@@ -1682,6 +1688,8 @@ def test_byoc_monitor_suggest_baseline_and_create_monitoring_schedule_with_custo
         == NETWORK_CONFIG.enable_network_isolation
     )
 
+    _wait_for_schedule_changes_to_apply(monitor=my_byoc_monitor)
+
     my_byoc_monitor.stop_monitoring_schedule()
 
     _wait_for_schedule_changes_to_apply(monitor=my_byoc_monitor)
@@ -1869,6 +1877,8 @@ def test_byoc_monitor_suggest_baseline_and_create_monitoring_schedule_without_cu
         )
         is None
     )
+
+    _wait_for_schedule_changes_to_apply(monitor=my_byoc_monitor)
 
     my_byoc_monitor.stop_monitoring_schedule()
 
@@ -2148,6 +2158,8 @@ def test_byoc_monitor_create_and_update_schedule_config_with_customizations(
         == UPDATED_NETWORK_CONFIG.enable_network_isolation
     )
 
+    _wait_for_schedule_changes_to_apply(monitor=my_byoc_monitor)
+
     my_byoc_monitor.stop_monitoring_schedule()
 
     _wait_for_schedule_changes_to_apply(monitor=my_byoc_monitor)
@@ -2365,6 +2377,8 @@ def test_byoc_monitor_attach_followed_by_baseline_and_update_monitoring_schedule
         ]["EnableNetworkIsolation"]
         == UPDATED_NETWORK_CONFIG.enable_network_isolation
     )
+
+    _wait_for_schedule_changes_to_apply(monitor=my_attached_monitor)
 
     my_attached_monitor.stop_monitoring_schedule()
 
