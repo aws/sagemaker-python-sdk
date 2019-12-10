@@ -561,11 +561,11 @@ class ProcessingJob(_Job):
         )
 
     @classmethod
-    def from_processing_arn(cls, sagemaker_session, processing_job_arn):
+    def from_processing_name(cls, sagemaker_session, processing_job_name):
         """Initializes a Processing job from a Processing ARN.
 
         Args:
-            processing_job_arn (str): ARN of the processing job.
+            processing_job_name (str): Name of the processing job.
             sagemaker_session (sagemaker.session.Session): Session object which
                 manages interactions with Amazon SageMaker APIs and any other
                 AWS services needed. If not specified, one is created using
@@ -575,9 +575,6 @@ class ProcessingJob(_Job):
             sagemaker.processing.ProcessingJob: The instance of ProcessingJob created
                 using the current job name.
         """
-        processing_job_name = processing_job_arn.split(":")[5][
-            len("processing-job/") :
-        ]  # This is necessary while the API only vends an arn.
         job_desc = sagemaker_session.describe_processing_job(job_name=processing_job_name)
 
         return cls(
@@ -609,6 +606,28 @@ class ProcessingJob(_Job):
                 )
             ],
             output_kms_key=job_desc["ProcessingOutputConfig"].get("KmsKeyId"),
+        )
+
+    @classmethod
+    def from_processing_arn(cls, sagemaker_session, processing_job_arn):
+        """Initializes a Processing job from a Processing ARN.
+
+        Args:
+            processing_job_arn (str): ARN of the processing job.
+            sagemaker_session (sagemaker.session.Session): Session object which
+                manages interactions with Amazon SageMaker APIs and any other
+                AWS services needed. If not specified, one is created using
+                the default AWS configuration chain.
+
+        Returns:
+            sagemaker.processing.ProcessingJob: The instance of ProcessingJob created
+                using the current job name.
+        """
+        processing_job_name = processing_job_arn.split(":")[5][
+            len("processing-job/") :
+        ]  # This is necessary while the API only vends an arn.
+        return cls.from_processing_name(
+            sagemaker_session=sagemaker_session, processing_job_name=processing_job_name
         )
 
     def _is_local_channel(self, input_url):
