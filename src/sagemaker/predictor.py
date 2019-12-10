@@ -21,7 +21,15 @@ from six import StringIO, BytesIO
 import numpy as np
 
 from sagemaker.content_types import CONTENT_TYPE_JSON, CONTENT_TYPE_CSV, CONTENT_TYPE_NPY
+from sagemaker.model_monitor import DataCaptureConfig
 from sagemaker.session import Session
+from sagemaker.utils import name_from_base
+
+from sagemaker.model_monitor.model_monitoring import (
+    _DEFAULT_MONITOR_IMAGE_URI_WITH_PLACEHOLDERS,
+    ModelMonitor,
+    DefaultModelMonitor,
+)
 
 
 class RealTimePredictor(object):
@@ -171,6 +179,92 @@ class RealTimePredictor(object):
                 "One or more models cannot be deleted, please retry. \n"
                 "Failed models: {}".format(", ".join(failed_models))
             )
+
+    def enable_data_capture(self):
+        """Updates the DataCaptureConfig for the Predictor's associated Amazon SageMaker Endpoint
+        to enable data capture. For a more customized experience, refer to
+        update_data_capture_config, instead.
+        """
+        self.update_data_capture_config(data_capture_config=DataCaptureConfig(enable_capture=True))
+
+    def disable_data_capture(self):
+        """Updates the DataCaptureConfig for the Predictor's associated Amazon SageMaker Endpoint
+        to disable data capture. For a more customized experience, refer to
+        update_data_capture_config, instead.
+        """
+        self.update_data_capture_config(data_capture_config=DataCaptureConfig(enable_capture=False))
+
+    def update_data_capture_config(self, data_capture_config):
+        """Updates the DataCaptureConfig for the Predictor's associated Amazon SageMaker Endpoint
+        with the provided DataCaptureConfig.
+
+        Args:
+            data_capture_config (sagemaker.model_monitor.DataCaptureConfig): The
+                DataCaptureConfig to update the predictor's endpoint to use.
+        """
+        endpoint_desc = self.sagemaker_session.sagemaker_client.describe_endpoint(
+            EndpointName=self.endpoint
+        )
+
+        new_config_name = name_from_base(base=self.endpoint)
+
+        data_capture_config_dict = None
+        if data_capture_config is not None:
+            data_capture_config_dict = data_capture_config._to_request_dict()
+
+        self.sagemaker_session.create_endpoint_config_from_existing(
+            existing_config_name=endpoint_desc["EndpointConfigName"],
+            new_config_name=new_config_name,
+            new_data_capture_config_dict=data_capture_config_dict,
+        )
+
+        self.sagemaker_session.update_endpoint(
+            endpoint_name=self.endpoint, endpoint_config_name=new_config_name
+        )
+
+    def list_monitors(self):
+        """Generates ModelMonitor objects (or DefaultModelMonitors) based on the schedule(s)
+        associated with the endpoint that this predictor refers to.
+
+        Returns:
+            [ModelMonitor]: A list of ModelMonitor (or DefaultModelMonitor) objects.
+
+        """
+        monitoring_schedules_dict = self.sagemaker_session.list_monitoring_schedules(
+            endpoint_name=self.endpoint
+        )
+        if len(monitoring_schedules_dict["MonitoringScheduleSummaries"]) == 0:
+            print("No monitors found for endpoint. endpoint: {}".format(self.endpoint))
+            return []
+
+        monitors = []
+        for schedule_dict in monitoring_schedules_dict["MonitoringScheduleSummaries"]:
+            schedule_name = schedule_dict["MonitoringScheduleName"]
+            schedule = self.sagemaker_session.describe_monitoring_schedule(
+                monitoring_schedule_name=schedule_name
+            )
+            image_uri = schedule["MonitoringScheduleConfig"]["MonitoringJobDefinition"][
+                "MonitoringAppSpecification"
+            ]["ImageUri"]
+            index_after_placeholders = _DEFAULT_MONITOR_IMAGE_URI_WITH_PLACEHOLDERS.rfind("{}")
+            if image_uri.endswith(
+                _DEFAULT_MONITOR_IMAGE_URI_WITH_PLACEHOLDERS[index_after_placeholders + len("{}") :]
+            ):
+                monitors.append(
+                    DefaultModelMonitor.attach(
+                        monitor_schedule_name=schedule_name,
+                        sagemaker_session=self.sagemaker_session,
+                    )
+                )
+            else:
+                monitors.append(
+                    ModelMonitor.attach(
+                        monitor_schedule_name=schedule_name,
+                        sagemaker_session=self.sagemaker_session,
+                    )
+                )
+
+        return monitors
 
     def _get_endpoint_config_name(self):
         """Placeholder docstring"""

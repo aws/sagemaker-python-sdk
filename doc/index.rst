@@ -150,6 +150,17 @@ Amazon provides implementations of some common machine learning algortithms opti
     pca
     randomcutforest
 
+*****************************************
+Amazon SageMaker Operators for Kubernetes
+*****************************************
+Amazon SageMaker Operators for use with Kubernetes.
+
+.. toctree::
+    :maxdepth: 2
+
+    amazon_sagemaker_operators_for_kubernetes
+    amazon_sagemaker_operators_for_kubernetes_jobs
+
 *********
 Workflows
 *********
@@ -164,3 +175,5 @@ SageMaker APIs to export configurations for creating and managing Airflow workfl
     :maxdepth: 2
 
     sagemaker.workflow.airflow
+
+

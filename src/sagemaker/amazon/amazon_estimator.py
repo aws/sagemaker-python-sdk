@@ -1,4 +1,4 @@
-# Copyright 2017-2018 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright 2017-2019 Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -23,9 +23,12 @@ from sagemaker.amazon import validation
 from sagemaker.amazon.hyperparameter import Hyperparameter as hp  # noqa
 from sagemaker.amazon.common import write_numpy_to_dense_tensor
 from sagemaker.estimator import EstimatorBase, _TrainingJob
+from sagemaker.inputs import FileSystemInput
 from sagemaker.model import NEO_IMAGE_ACCOUNT
 from sagemaker.session import s3_input
 from sagemaker.utils import sagemaker_timestamp, get_ecr_image_uri_prefix
+from sagemaker.xgboost.defaults import XGBOOST_VERSION_1, XGBOOST_SUPPORTED_VERSIONS
+from sagemaker.xgboost.estimator import get_xgboost_image_uri
 
 logger = logging.getLogger(__name__)
 
@@ -56,6 +59,14 @@ class AmazonAlgorithmEstimatorBase(EstimatorBase):
                 default data location will be used.
             **kwargs:
         """
+
+        if "enable_network_isolation" in kwargs:
+            logger.debug(
+                "removing unused enable_network_isolation argument: %s",
+                str(kwargs["enable_network_isolation"]),
+            )
+            del kwargs["enable_network_isolation"]
+
         super(AmazonAlgorithmEstimatorBase, self).__init__(
             role, train_instance_count, train_instance_type, **kwargs
         )
@@ -124,6 +135,21 @@ class AmazonAlgorithmEstimatorBase(EstimatorBase):
         del init_params["image"]
         return init_params
 
+    def prepare_workflow_for_training(self, records=None, mini_batch_size=None, job_name=None):
+        """Calls _prepare_for_training. Used when setting up a workflow.
+
+        Args:
+            records (:class:`~RecordSet`): The records to train this ``Estimator`` on.
+            mini_batch_size (int or None): The size of each mini-batch to use when
+                training. If ``None``, a default value will be used.
+            job_name (str): Name of the training job to be created. If not
+                specified, one is generated, using the base name given to the
+                constructor if applicable.
+        """
+        self._prepare_for_training(
+            records=records, mini_batch_size=mini_batch_size, job_name=job_name
+        )
+
     def _prepare_for_training(self, records, mini_batch_size=None, job_name=None):
         """Set hyperparameters needed for training.
 
@@ -152,7 +178,15 @@ class AmazonAlgorithmEstimatorBase(EstimatorBase):
         self.feature_dim = feature_dim
         self.mini_batch_size = mini_batch_size
 
-    def fit(self, records, mini_batch_size=None, wait=True, logs=True, job_name=None):
+    def fit(
+        self,
+        records,
+        mini_batch_size=None,
+        wait=True,
+        logs=True,
+        job_name=None,
+        experiment_config=None,
+    ):
         """Fit this Estimator on serialized Record objects, stored in S3.
 
         ``records`` should be an instance of :class:`~RecordSet`. This
@@ -180,10 +214,16 @@ class AmazonAlgorithmEstimatorBase(EstimatorBase):
             job_name (str): Training job name. If not specified, the estimator
                 generates a default job name, based on the training image name
                 and current timestamp.
+            experiment_config (dict[str, str]): Experiment management configuration.
+                Dictionary contains three optional keys, 'ExperimentName',
+                'TrialName', and 'TrialComponentName'
+                (default: ``None``).
         """
         self._prepare_for_training(records, job_name=job_name, mini_batch_size=mini_batch_size)
 
-        self.latest_training_job = _TrainingJob.start_new(self, records)
+        self.latest_training_job = _TrainingJob.start_new(
+            self, records, experiment_config=experiment_config
+        )
         if wait:
             self.latest_training_job.wait(logs=logs)
 
@@ -277,6 +317,55 @@ class RecordSet(object):
     def records_s3_input(self):
         """Return a s3_input to represent the training data"""
         return s3_input(self.s3_data, distribution="ShardedByS3Key", s3_data_type=self.s3_data_type)
+
+
+class FileSystemRecordSet(object):
+    """Amazon SageMaker channel configuration for a file system data source
+    for Amazon algorithms.
+    """
+
+    def __init__(
+        self,
+        file_system_id,
+        file_system_type,
+        directory_path,
+        num_records,
+        feature_dim,
+        file_system_access_mode="ro",
+        channel="train",
+    ):
+        """Initialize a ``FileSystemRecordSet`` object.
+
+        Args:
+            file_system_id (str): An Amazon file system ID starting with 'fs-'.
+            file_system_type (str): The type of file system used for the input.
+                Valid values: 'EFS', 'FSxLustre'.
+            directory_path (str): Absolute or normalized path to the root directory (mount point) in
+                the file system. Reference:
+                https://docs.aws.amazon.com/efs/latest/ug/mounting-fs.html and
+                https://docs.aws.amazon.com/efs/latest/ug/wt1-test.html
+            num_records (int): The number of records in the set.
+            feature_dim (int): The dimensionality of "values" arrays in the Record features,
+                and label (if each Record is labeled).
+            file_system_access_mode (str): Permissions for read and write.
+                Valid values: 'ro' or 'rw'. Defaults to 'ro'.
+            channel (str): The SageMaker Training Job channel this RecordSet should be bound to
+        """
+
+        self.file_system_input = FileSystemInput(
+            file_system_id, file_system_type, directory_path, file_system_access_mode
+        )
+        self.feature_dim = feature_dim
+        self.num_records = num_records
+        self.channel = channel
+
+    def __repr__(self):
+        """Return an unambiguous representation of this RecordSet"""
+        return str((FileSystemRecordSet, self.__dict__))
+
+    def data_channel(self):
+        """Return a dictionary to represent the training data in a channel for use with ``fit()``"""
+        return {self.channel: self.file_system_input}
 
 
 def _build_shards(num_shards, array):
@@ -386,6 +475,11 @@ def registry(region_name, algorithm=None):
             "eu-west-2": "644912444149",
             "us-west-1": "632365934929",
             "us-iso-east-1": "490574956308",
+            "ap-east-1": "286214385809",
+            "eu-north-1": "669576153137",
+            "eu-west-3": "749696950732",
+            "sa-east-1": "855470959533",
+            "me-south-1": "249704162688",
         }[region_name]
     elif algorithm in ["lda"]:
         account_id = {
@@ -422,6 +516,11 @@ def registry(region_name, algorithm=None):
             "eu-west-2": "644912444149",
             "us-west-1": "632365934929",
             "us-iso-east-1": "490574956308",
+            "ap-east-1": "286214385809",
+            "eu-north-1": "669576153137",
+            "eu-west-3": "749696950732",
+            "sa-east-1": "855470959533",
+            "me-south-1": "249704162688",
         }[region_name]
     elif algorithm in [
         "xgboost",
@@ -447,6 +546,11 @@ def registry(region_name, algorithm=None):
             "eu-west-2": "644912444149",
             "us-west-1": "632365934929",
             "us-iso-east-1": "490574956308",
+            "ap-east-1": "286214385809",
+            "eu-north-1": "669576153137",
+            "eu-west-3": "749696950732",
+            "sa-east-1": "855470959533",
+            "me-south-1": "249704162688",
         }[region_name]
     elif algorithm in ["image-classification-neo", "xgboost-neo"]:
         account_id = NEO_IMAGE_ACCOUNT[region_name]
@@ -467,5 +571,25 @@ def get_image_uri(region_name, repo_name, repo_version=1):
         repo_name:
         repo_version:
     """
+    if repo_name == "xgboost":
+        if repo_version in ["0.90", "0.90-1", "0.90-1-cpu-py3"]:
+            return get_xgboost_image_uri(region_name, XGBOOST_VERSION_1)
+
+        supported_version = [
+            version
+            for version in XGBOOST_SUPPORTED_VERSIONS
+            if repo_version in (version, version + "-cpu-py3")
+        ]
+        if supported_version:
+            return get_xgboost_image_uri(region_name, supported_version[0])
+
+        logging.warning(
+            "There is a more up to date SageMaker XGBoost image. "
+            "To use the newer image, please set 'repo_version'="
+            "'%s'. For example:\n"
+            "\tget_image_uri(region, 'xgboost', '%s').",
+            XGBOOST_VERSION_1,
+            XGBOOST_VERSION_1,
+        )
     repo = "{}:{}".format(repo_name, repo_version)
     return "{}/{}".format(registry(region_name, repo_name), repo)

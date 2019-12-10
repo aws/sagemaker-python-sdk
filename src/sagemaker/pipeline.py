@@ -83,7 +83,14 @@ class PipelineModel(object):
         return sagemaker.pipeline_container_def(self.models, instance_type)
 
     def deploy(
-        self, initial_instance_count, instance_type, endpoint_name=None, tags=None, wait=True
+        self,
+        initial_instance_count,
+        instance_type,
+        endpoint_name=None,
+        tags=None,
+        wait=True,
+        update_endpoint=False,
+        data_capture_config=None,
     ):
         """Deploy this ``Model`` to an ``Endpoint`` and optionally return a
         ``Predictor``.
@@ -110,6 +117,14 @@ class PipelineModel(object):
                 specific endpoint.
             wait (bool): Whether the call should wait until the deployment of
                 model completes (default: True).
+            update_endpoint (bool): Flag to update the model in an existing
+                Amazon SageMaker endpoint. If True, this will deploy a new
+                EndpointConfig to an already existing endpoint and delete
+                resources corresponding to the previous EndpointConfig. If
+                False, a new endpoint will be created. Default: False
+            data_capture_config (sagemaker.model_monitor.DataCaptureConfig): Specifies
+                configuration related to Endpoint data capture for use with
+                Amazon SageMaker Model Monitoring. Default: None.
 
         Returns:
             callable[string, sagemaker.session.Session] or None: Invocation of
@@ -130,9 +145,30 @@ class PipelineModel(object):
             self.name, instance_type, initial_instance_count
         )
         self.endpoint_name = endpoint_name or self.name
-        self.sagemaker_session.endpoint_from_production_variants(
-            self.endpoint_name, [production_variant], tags, wait=wait
-        )
+
+        data_capture_config_dict = None
+        if data_capture_config is not None:
+            data_capture_config_dict = data_capture_config._to_request_dict()
+
+        if update_endpoint:
+            endpoint_config_name = self.sagemaker_session.create_endpoint_config(
+                name=self.name,
+                model_name=self.name,
+                initial_instance_count=initial_instance_count,
+                instance_type=instance_type,
+                tags=tags,
+                data_capture_config_dict=data_capture_config_dict,
+            )
+            self.sagemaker_session.update_endpoint(self.endpoint_name, endpoint_config_name)
+        else:
+            self.sagemaker_session.endpoint_from_production_variants(
+                name=self.endpoint_name,
+                production_variants=[production_variant],
+                tags=tags,
+                wait=wait,
+                data_capture_config_dict=data_capture_config_dict,
+            )
+
         if self.predictor_cls:
             return self.predictor_cls(self.endpoint_name, self.sagemaker_session)
         return None
@@ -185,8 +221,9 @@ class PipelineModel(object):
                 not specified, results are stored to a default bucket.
             output_kms_key (str): Optional. KMS key ID for encrypting the
                 transform output (default: None).
-            accept (str): The content type accepted by the endpoint deployed
-                during the transform job.
+            accept (str): The accept header passed by the client to
+                the inference endpoint. If it is supported by the endpoint,
+                it will be the format of the batch transform output.
             env (dict): Environment variables to be set for use during the
                 transform job (default: None).
             max_concurrent_transforms (int): The maximum number of HTTP requests

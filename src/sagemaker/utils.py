@@ -1,4 +1,4 @@
-# Copyright 2017-2018 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright 2017-2019 Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -24,13 +24,20 @@ import tarfile
 import tempfile
 import time
 
+
 from datetime import datetime
 from functools import wraps
-from six.moves.urllib import parse
 
 import six
+from six.moves.urllib import parse
+
 
 ECR_URI_PATTERN = r"^(\d+)(\.)dkr(\.)ecr(\.)(.+)(\.)(amazonaws.com|c2s.ic.gov)(/)(.*:.*)$"
+MAX_BUCKET_PATHS_COUNT = 5
+S3_PREFIX = "s3://"
+HTTP_PREFIX = "http://"
+HTTPS_PREFIX = "https://"
+DEFAULT_SLEEP_TIME_SECONDS = 10
 
 
 # Use the base name of the image as the job name if the user doesn't give us one
@@ -270,6 +277,55 @@ def secondary_training_status_message(job_description, prev_description):
     return "\n".join(status_strs)
 
 
+def generate_tensorboard_url(domain, bucket_paths):
+    """Generate Tensorboard URL for given list of s3 buckets
+
+    Args:
+        domain: JupyterLab app domain
+        bucket_paths: List of S3 bucket paths in format `bucket/path`
+                      or a single string in the same format
+
+    Returns:
+        str: Tensorboard URL
+
+    Raises:
+        AttributeError if invalid inputs are passed
+    """
+
+    def trim_prefix(s, prefix):
+        if s.startswith(prefix):
+            return s[len(prefix) :]
+        return s
+
+    def encode_s3_url(s3_url):
+        if not s3_url:
+            raise AttributeError("bucket_paths element should not be empty")
+        s3_url = trim_prefix(s3_url, S3_PREFIX)
+        return parse.quote_plus("{}{}".format(S3_PREFIX, s3_url))
+
+    if not isinstance(domain, six.string_types):
+        raise AttributeError("domain parameter should be string")
+
+    if len(domain) == 0:
+        raise AttributeError("domain parameter should not be empty")
+
+    if isinstance(bucket_paths, six.string_types):
+        bucket_paths = [bucket_paths]
+    elif not isinstance(bucket_paths, list):
+        raise AttributeError("bucket paths should be a list or a string")
+
+    if len(bucket_paths) == 0:
+        raise AttributeError("bucket_paths parameter should not be empty list")
+
+    domain = trim_prefix(domain, HTTPS_PREFIX)
+    domain = trim_prefix(domain, HTTP_PREFIX)
+
+    s3_urls = map(encode_s3_url, bucket_paths)
+    query = ",".join(s3_urls)
+
+    return "https://{}/tensorboard/default?s3urls={}".format(domain, query)
+
+
 def download_folder(bucket_name, prefix, target, sagemaker_session):
     """Download a folder from S3 to a local path
 
@@ -365,6 +421,7 @@ def repack_model(
     model_uri,
     repacked_model_uri,
     sagemaker_session,
+    kms_key=None,
 ):
     """Unpack model tarball and creates a new model tarball with the provided
     code script.
@@ -400,6 +457,7 @@ def repack_model(
             model will be saved
         sagemaker_session (sagemaker.session.Session): a sagemaker session to
             interact with S3.
+        kms_key (str): KMS key ARN for encrypting the repacked model file
 
     Returns:
         str: path to the new packed model
@@ -417,10 +475,10 @@ def repack_model(
         with tarfile.open(tmp_model_path, mode="w:gz") as t:
             t.add(model_dir, arcname=os.path.sep)
 
-        _save_model(repacked_model_uri, tmp_model_path, sagemaker_session)
+        _save_model(repacked_model_uri, tmp_model_path, sagemaker_session, kms_key=kms_key)
 
 
-def _save_model(repacked_model_uri, tmp_model_path, sagemaker_session):
+def _save_model(repacked_model_uri, tmp_model_path, sagemaker_session, kms_key):
     """
     Args:
         repacked_model_uri:
@@ -432,10 +490,13 @@ def _save_model(repacked_model_uri, tmp_model_path, sagemaker_session):
         bucket, key = url.netloc, url.path.lstrip("/")
         new_key = key.replace(os.path.basename(key), os.path.basename(repacked_model_uri))
 
-        s3 = sagemaker_session.boto_session.resource(
+        if kms_key:
+            extra_args = {"ServerSideEncryption": "aws:kms", "SSEKMSKeyId": kms_key}
+        else:
+            extra_args = None
+        sagemaker_session.boto_session.resource(
             "s3", region_name=sagemaker_session.boto_region_name
-        )
-        s3.Object(bucket, new_key).upload_file(tmp_model_path)
+        ).Object(bucket, new_key).upload_file(tmp_model_path, ExtraArgs=extra_args)
     else:
         shutil.move(tmp_model_path, repacked_model_uri.replace("file://", ""))
 
@@ -469,10 +530,12 @@ def _create_or_update_code_dir(
         shutil.copy2(inference_script, code_dir)
 
     for dependency in dependencies:
+        lib_dir = os.path.join(code_dir, "lib")
         if os.path.isdir(dependency):
-            shutil.copytree(dependency, code_dir)
+            shutil.copytree(dependency, os.path.join(lib_dir, os.path.basename(dependency)))
         else:
-            shutil.copy2(dependency, code_dir)
+            os.mkdir(lib_dir)
+            shutil.copy2(dependency, lib_dir)
 
 
 def _extract_model(model_uri, sagemaker_session, tmp):
@@ -535,8 +598,59 @@ def get_ecr_image_uri_prefix(account, region):
     Returns:
         (str): URI prefix of ECR image
     """
-    domain = "c2s.ic.gov" if region == "us-iso-east-1" else "amazonaws.com"
+    domain = _domain_for_region(region)
     return "{}.dkr.ecr.{}.{}".format(account, region, domain)
+
+
+def sts_regional_endpoint(region):
+    """Get the AWS STS endpoint specific for the given region.
+
+    We need this function because the AWS SDK does not yet honor
+    the ``region_name`` parameter when creating an AWS STS client.
+
+    For the list of regional endpoints, see
+    https://docs.aws.amazon.com/IAM/latest/UserGuide/id_credentials_temp_enable-regions.html#id_credentials_region-endpoints.
+
+    Args:
+        region (str): AWS region name
+
+    Returns:
+        str: AWS STS regional endpoint
+    """
+    domain = _domain_for_region(region)
+    return "https://sts.{}.{}".format(region, domain)
+
+
+def retries(max_retry_count, exception_message_prefix, seconds_to_sleep=DEFAULT_SLEEP_TIME_SECONDS):
+    """Retries until max retry count is reached.
+
+    Args:
+        max_retry_count (int): The retry count.
+        exception_message_prefix (str): The message to include in the exception on failure.
+        seconds_to_sleep (int): The number of seconds to sleep between executions.
+
+    """
+    for i in range(max_retry_count):
+        yield i
+        time.sleep(seconds_to_sleep)
+
+    raise Exception(
+        "'{}' has reached the maximum retry count of {}".format(
+            exception_message_prefix, max_retry_count
+        )
+    )
+
+
+def _domain_for_region(region):
+    """Get the DNS suffix for the given region.
+
+    Args:
+        region (str): AWS region name
+
+    Returns:
+        str: the DNS suffix
+    """
+    return "c2s.ic.gov" if region == "us-iso-east-1" else "amazonaws.com"
 
 
 class DeferredError(object):
@@ -570,3 +684,23 @@ class DeferredError(object):
             name:
         """
         raise self.exc
+
+
+def _module_import_error(py_module, feature, extras):
+    """Return error message for module import errors, provide
+    installation details.
+
+    Args:
+        py_module (str): Module that failed to be imported
+        feature (str): Affected SageMaker feature
+        extras (str): Name of the `extras_require` to install the relevant dependencies
+
+    Returns:
+        str: Error message with installation instructions.
+    """
+    error_msg = (
+        "Failed to import {}. {} features will be impaired or broken. "
+        "Please run \"pip install 'sagemaker[{}]'\" "
+        "to install all required dependencies."
+    )
+    return error_msg.format(py_module, feature, extras)

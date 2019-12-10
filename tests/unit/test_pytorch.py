@@ -17,8 +17,7 @@ import json
 import os
 import pytest
 import sys
-from mock import MagicMock, Mock
-from mock import patch
+from mock import ANY, MagicMock, Mock, patch
 
 from sagemaker.pytorch import defaults
 from sagemaker.pytorch import PyTorch
@@ -49,6 +48,12 @@ ENDPOINT_DESC = {"EndpointConfigName": "test-endpoint"}
 ENDPOINT_CONFIG_DESC = {"ProductionVariants": [{"ModelName": "model-1"}, {"ModelName": "model-2"}]}
 
 LIST_TAGS_RESULT = {"Tags": [{"Key": "TagtestKey", "Value": "TagtestValue"}]}
+
+EXPERIMENT_CONFIG = {
+    "ExperimentName": "exp",
+    "TrialName": "trial",
+    "TrialComponentDisplayName": "tc",
+}
 
 
 @pytest.fixture(name="sagemaker_session")
@@ -141,6 +146,11 @@ def _create_train_job(version):
         "tags": None,
         "vpc_config": None,
         "metric_definitions": None,
+        "experiment_config": None,
+        "debugger_hook_config": {
+            "CollectionConfigurations": [],
+            "S3OutputPath": "s3://{}/".format(BUCKET_NAME),
+        },
     }
 
 
@@ -252,7 +262,7 @@ def test_pytorch(strftime, sagemaker_session, pytorch_version):
 
     inputs = "s3://mybucket/train"
 
-    pytorch.fit(inputs=inputs)
+    pytorch.fit(inputs=inputs, experiment_config=EXPERIMENT_CONFIG)
 
     sagemaker_call_names = [c[0] for c in sagemaker_session.method_calls]
     assert sagemaker_call_names == ["train", "logs_for_job"]
@@ -261,6 +271,7 @@ def test_pytorch(strftime, sagemaker_session, pytorch_version):
 
     expected_train_args = _create_train_job(pytorch_version)
     expected_train_args["input_config"][0]["DataSource"]["S3DataSource"]["S3Uri"] = inputs
+    expected_train_args["experiment_config"] = EXPERIMENT_CONFIG
 
     actual_train_args = sagemaker_session.method_calls[0][2]
     assert actual_train_args == expected_train_args
@@ -294,6 +305,42 @@ def test_model(sagemaker_session):
     )
     predictor = model.deploy(1, GPU)
     assert isinstance(predictor, PyTorchPredictor)
+
+
+@patch("sagemaker.utils.create_tar_file", MagicMock())
+@patch("sagemaker.utils.repack_model")
+def test_mms_model(repack_model, sagemaker_session):
+    PyTorchModel(
+        MODEL_DATA,
+        role=ROLE,
+        entry_point=SCRIPT_PATH,
+        sagemaker_session=sagemaker_session,
+        framework_version="1.2",
+    ).deploy(1, GPU)
+
+    repack_model.assert_called_with(
+        dependencies=[],
+        inference_script=SCRIPT_PATH,
+        kms_key=None,
+        model_uri="s3://some/data.tar.gz",
+        repacked_model_uri=ANY,
+        sagemaker_session=sagemaker_session,
+        source_directory=None,
+    )
+
+
+@patch("sagemaker.utils.create_tar_file", MagicMock())
+@patch("sagemaker.utils.repack_model")
+def test_non_mms_model(repack_model, sagemaker_session):
+    PyTorchModel(
+        MODEL_DATA,
+        role=ROLE,
+        entry_point=SCRIPT_PATH,
+        sagemaker_session=sagemaker_session,
+        framework_version="1.1",
+    ).deploy(1, GPU)
+
+    repack_model.assert_not_called()
 
 
 @patch("sagemaker.fw_utils.tar_and_upload_dir", MagicMock())
@@ -483,3 +530,25 @@ def test_empty_framework_version(warning, sagemaker_session):
 
     assert estimator.framework_version == defaults.PYTORCH_VERSION
     warning.assert_called_with(defaults.PYTORCH_VERSION, defaults.PYTORCH_VERSION)
+
+
+def test_pt_enable_sm_metrics(sagemaker_session):
+    pytorch = _pytorch_estimator(sagemaker_session, enable_sagemaker_metrics=True)
+    assert pytorch.enable_sagemaker_metrics
+
+
+def test_pt_disable_sm_metrics(sagemaker_session):
+    pytorch = _pytorch_estimator(sagemaker_session, enable_sagemaker_metrics=False)
+    assert not pytorch.enable_sagemaker_metrics
+
+
+def test_pt_disable_sm_metrics_if_pt_ver_is_less_than_1_15(sagemaker_session):
+    for fw_version in ["1.1", "1.2"]:
+        pytorch = _pytorch_estimator(sagemaker_session, framework_version=fw_version)
+        assert pytorch.enable_sagemaker_metrics is None
+
+
+def test_pt_enable_sm_metrics_if_fw_ver_is_at_least_1_15(sagemaker_session):
+    for fw_version in ["1.3", "1.4", "2.0", "2.1"]:
+        pytorch = _pytorch_estimator(sagemaker_session, framework_version=fw_version)
+        assert pytorch.enable_sagemaker_metrics

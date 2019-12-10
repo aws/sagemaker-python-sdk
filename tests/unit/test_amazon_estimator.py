@@ -1,4 +1,4 @@
-# Copyright 2017-2018 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright 2017-2019 Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -23,6 +23,7 @@ from sagemaker.amazon.amazon_estimator import (
     _build_shards,
     registry,
     get_image_uri,
+    FileSystemRecordSet,
 )
 
 COMMON_ARGS = {"role": "myrole", "train_instance_count": 1, "train_instance_type": "ml.c4.xlarge"}
@@ -228,6 +229,27 @@ def test_fit_ndarray(time, sagemaker_session):
     assert mock_object.put.call_count == 4
 
 
+def test_fit_pass_experiment_config(sagemaker_session):
+    kwargs = dict(COMMON_ARGS)
+    kwargs["train_instance_count"] = 3
+    pca = PCA(
+        num_components=55,
+        sagemaker_session=sagemaker_session,
+        data_location="s3://{}/key-prefix/".format(BUCKET_NAME),
+        **kwargs
+    )
+    train = [[1.0, 2.0, 3.0], [4.0, 5.0, 6.0], [7.0, 8.0, 8.0], [44.0, 55.0, 66.0]]
+    labels = [99, 85, 87, 2]
+    pca.fit(
+        pca.record_set(np.array(train), np.array(labels)),
+        experiment_config={"ExperimentName": "exp"},
+    )
+
+    called_args = sagemaker_session.train.call_args
+
+    assert called_args[1]["experiment_config"] == {"ExperimentName": "exp"}
+
+
 def test_build_shards():
     array = np.array([1, 2, 3, 4])
     shards = _build_shards(4, array)
@@ -263,3 +285,168 @@ def test_upload_numpy_to_s3_shards():
     mock_put.reset()
     upload_numpy_to_s3_shards(3, mock_s3, BUCKET_NAME, "key-prefix", array, labels, encrypt=True)
     mock_put.assert_has_calls(make_all_put_calls(ServerSideEncryption="AES256"))
+
+
+def test_file_system_record_set_efs_default_parameters():
+    file_system_id = "fs-0a48d2a1"
+    file_system_type = "EFS"
+    directory_path = "ipinsights"
+    num_records = 1
+    feature_dim = 1
+
+    actual = FileSystemRecordSet(
+        file_system_id=file_system_id,
+        file_system_type=file_system_type,
+        directory_path=directory_path,
+        num_records=num_records,
+        feature_dim=feature_dim,
+    )
+
+    expected_input_config = {
+        "DataSource": {
+            "FileSystemDataSource": {
+                "DirectoryPath": "ipinsights",
+                "FileSystemId": "fs-0a48d2a1",
+                "FileSystemType": "EFS",
+                "FileSystemAccessMode": "ro",
+            }
+        }
+    }
+    assert actual.file_system_input.config == expected_input_config
+    assert actual.num_records == num_records
+    assert actual.feature_dim == feature_dim
+    assert actual.channel == "train"
+
+
+def test_file_system_record_set_efs_customized_parameters():
+    file_system_id = "fs-0a48d2a1"
+    file_system_type = "EFS"
+    directory_path = "ipinsights"
+    num_records = 1
+    feature_dim = 1
+
+    actual = FileSystemRecordSet(
+        file_system_id=file_system_id,
+        file_system_type=file_system_type,
+        directory_path=directory_path,
+        num_records=num_records,
+        feature_dim=feature_dim,
+        file_system_access_mode="rw",
+        channel="test",
+    )
+
+    expected_input_config = {
+        "DataSource": {
+            "FileSystemDataSource": {
+                "DirectoryPath": "ipinsights",
+                "FileSystemId": "fs-0a48d2a1",
+                "FileSystemType": "EFS",
+                "FileSystemAccessMode": "rw",
+            }
+        }
+    }
+    assert actual.file_system_input.config == expected_input_config
+    assert actual.num_records == num_records
+    assert actual.feature_dim == feature_dim
+    assert actual.channel == "test"
+
+
+def test_file_system_record_set_fsx_default_parameters():
+    file_system_id = "fs-0a48d2a1"
+    file_system_type = "FSxLustre"
+    directory_path = "ipinsights"
+    num_records = 1
+    feature_dim = 1
+
+    actual = FileSystemRecordSet(
+        file_system_id=file_system_id,
+        file_system_type=file_system_type,
+        directory_path=directory_path,
+        num_records=num_records,
+        feature_dim=feature_dim,
+    )
+    expected_input_config = {
+        "DataSource": {
+            "FileSystemDataSource": {
+                "DirectoryPath": "ipinsights",
+                "FileSystemId": "fs-0a48d2a1",
+                "FileSystemType": "FSxLustre",
+                "FileSystemAccessMode": "ro",
+            }
+        }
+    }
+    assert actual.file_system_input.config == expected_input_config
+    assert actual.num_records == num_records
+    assert actual.feature_dim == feature_dim
+    assert actual.channel == "train"
+
+
+def test_file_system_record_set_fsx_customized_parameters():
+    file_system_id = "fs-0a48d2a1"
+    file_system_type = "FSxLustre"
+    directory_path = "ipinsights"
+    num_records = 1
+    feature_dim = 1
+
+    actual = FileSystemRecordSet(
+        file_system_id=file_system_id,
+        file_system_type=file_system_type,
+        directory_path=directory_path,
+        num_records=num_records,
+        feature_dim=feature_dim,
+        file_system_access_mode="rw",
+        channel="test",
+    )
+
+    expected_input_config = {
+        "DataSource": {
+            "FileSystemDataSource": {
+                "DirectoryPath": "ipinsights",
+                "FileSystemId": "fs-0a48d2a1",
+                "FileSystemType": "FSxLustre",
+                "FileSystemAccessMode": "rw",
+            }
+        }
+    }
+    assert actual.file_system_input.config == expected_input_config
+    assert actual.num_records == num_records
+    assert actual.feature_dim == feature_dim
+    assert actual.channel == "test"
+
+
+def test_file_system_record_set_data_channel():
+    file_system_id = "fs-0a48d2a1"
+    file_system_type = "EFS"
+    directory_path = "ipinsights"
+    num_records = 1
+    feature_dim = 1
+    record_set = FileSystemRecordSet(
+        file_system_id=file_system_id,
+        file_system_type=file_system_type,
+        directory_path=directory_path,
+        num_records=num_records,
+        feature_dim=feature_dim,
+    )
+
+    file_system_input = Mock()
+    record_set.file_system_input = file_system_input
+    actual = record_set.data_channel()
+    expected = {"train": file_system_input}
+    assert actual == expected
+
+
+def test_get_xgboost_image_uri():
+    legacy_xgb_image_uri = get_image_uri(REGION, "xgboost")
+    assert legacy_xgb_image_uri == "433757028032.dkr.ecr.us-west-2.amazonaws.com/xgboost:1"
+
+    updated_xgb_image_uri = get_image_uri(REGION, "xgboost", "0.90-1")
+    assert (
+        updated_xgb_image_uri
+        == "246618743249.dkr.ecr.us-west-2.amazonaws.com/sagemaker-xgboost:0.90-1-cpu-py3"
+    )
+
+    updated_xgb_image_uri_v2 = get_image_uri(REGION, "xgboost", "0.90-2")
+    assert (
+        updated_xgb_image_uri_v2
+        == "246618743249.dkr.ecr.us-west-2.amazonaws.com/sagemaker-xgboost:0.90-2-cpu-py3"
+    )

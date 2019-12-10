@@ -1,4 +1,4 @@
-# Copyright 2017 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright 2017-2019 Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -14,128 +14,27 @@ from __future__ import absolute_import
 
 import copy
 import os
+import re
 
 import pytest
-from mock import Mock
+from mock import Mock, patch
 
 from sagemaker import RealTimePredictor
 from sagemaker.amazon.amazon_estimator import RecordSet
-from sagemaker.amazon.pca import PCA
-from sagemaker.estimator import Estimator
+from sagemaker.estimator import Framework
 from sagemaker.mxnet import MXNet
-from sagemaker.parameter import (
-    CategoricalParameter,
-    ContinuousParameter,
-    IntegerParameter,
-    ParameterRange,
-)
+
+from sagemaker.session import s3_input
+
+from sagemaker.parameter import ParameterRange
 from sagemaker.tuner import (
     _TuningJob,
     create_identical_dataset_and_algorithm_tuner,
     create_transfer_learning_tuner,
     HyperparameterTuner,
-    WarmStartConfig,
-    WarmStartTypes,
 )
-from sagemaker.session import s3_input
 
-DATA_DIR = os.path.join(os.path.dirname(__file__), "..", "data")
-MODEL_DATA = "s3://bucket/model.tar.gz"
-
-JOB_NAME = "tuning_job"
-REGION = "us-west-2"
-BUCKET_NAME = "Some-Bucket"
-ROLE = "myrole"
-IMAGE_NAME = "image"
-
-TRAIN_INSTANCE_COUNT = 1
-TRAIN_INSTANCE_TYPE = "ml.c4.xlarge"
-NUM_COMPONENTS = 5
-
-SCRIPT_NAME = "my_script.py"
-FRAMEWORK_VERSION = "1.0.0"
-
-INPUTS = "s3://mybucket/train"
-OBJECTIVE_METRIC_NAME = "mock_metric"
-HYPERPARAMETER_RANGES = {
-    "validated": ContinuousParameter(0, 5),
-    "elizabeth": IntegerParameter(0, 5),
-    "blank": CategoricalParameter([0, 5]),
-}
-METRIC_DEFINITIONS = "mock_metric_definitions"
-
-TUNING_JOB_DETAILS = {
-    "HyperParameterTuningJobConfig": {
-        "ResourceLimits": {"MaxParallelTrainingJobs": 1, "MaxNumberOfTrainingJobs": 1},
-        "HyperParameterTuningJobObjective": {
-            "MetricName": OBJECTIVE_METRIC_NAME,
-            "Type": "Minimize",
-        },
-        "Strategy": "Bayesian",
-        "ParameterRanges": {
-            "CategoricalParameterRanges": [],
-            "ContinuousParameterRanges": [],
-            "IntegerParameterRanges": [
-                {
-                    "MaxValue": "100",
-                    "Name": "num_components",
-                    "MinValue": "10",
-                    "ScalingType": "Auto",
-                }
-            ],
-        },
-        "TrainingJobEarlyStoppingType": "Off",
-    },
-    "HyperParameterTuningJobName": JOB_NAME,
-    "TrainingJobDefinition": {
-        "RoleArn": ROLE,
-        "StaticHyperParameters": {
-            "num_components": "1",
-            "_tuning_objective_metric": "train:throughput",
-            "feature_dim": "784",
-            "sagemaker_estimator_module": '"sagemaker.amazon.pca"',
-            "sagemaker_estimator_class_name": '"PCA"',
-        },
-        "ResourceConfig": {
-            "VolumeSizeInGB": 30,
-            "InstanceType": "ml.c4.xlarge",
-            "InstanceCount": 1,
-        },
-        "AlgorithmSpecification": {
-            "TrainingImage": IMAGE_NAME,
-            "TrainingInputMode": "File",
-            "MetricDefinitions": METRIC_DEFINITIONS,
-        },
-        "InputDataConfig": [
-            {
-                "ChannelName": "train",
-                "DataSource": {
-                    "S3DataSource": {
-                        "S3DataDistributionType": "ShardedByS3Key",
-                        "S3Uri": INPUTS,
-                        "S3DataType": "ManifestFile",
-                    }
-                },
-            }
-        ],
-        "StoppingCondition": {"MaxRuntimeInSeconds": 86400},
-        "OutputDataConfig": {"S3OutputPath": BUCKET_NAME},
-    },
-    "TrainingJobCounters": {
-        "ClientError": 0,
-        "Completed": 1,
-        "InProgress": 0,
-        "Fault": 0,
-        "Stopped": 0,
-    },
-    "HyperParameterTuningEndTime": 1526605831.0,
-    "CreationTime": 1526605605.0,
-    "HyperParameterTuningJobArn": "arn:tuning_job",
-}
-
-ENDPOINT_DESC = {"EndpointConfigName": "test-endpoint"}
-
-ENDPOINT_CONFIG_DESC = {"ProductionVariants": [{"ModelName": "model-1"}, {"ModelName": "model-2"}]}
+from .tuner_test_utils import *  # noqa: F403
 
 
 @pytest.fixture()
@@ -174,7 +73,7 @@ def tuner(estimator):
 def test_prepare_for_training(tuner):
     static_hyperparameters = {"validated": 1, "another_one": 0}
     tuner.estimator.set_hyperparameters(**static_hyperparameters)
-    tuner._prepare_for_training()
+    tuner._prepare_for_tuning()
 
     assert tuner._current_job_name.startswith(IMAGE_NAME)
 
@@ -182,7 +81,7 @@ def test_prepare_for_training(tuner):
     assert tuner.static_hyperparameters["another_one"] == "0"
 
 
-def test_prepare_for_training_with_amazon_estimator(tuner, sagemaker_session):
+def test_prepare_for_tuning_with_amazon_estimator(tuner, sagemaker_session):
     tuner.estimator = PCA(
         ROLE,
         TRAIN_INSTANCE_COUNT,
@@ -191,22 +90,22 @@ def test_prepare_for_training_with_amazon_estimator(tuner, sagemaker_session):
         sagemaker_session=sagemaker_session,
     )
 
-    tuner._prepare_for_training()
+    tuner._prepare_for_tuning()
     assert "sagemaker_estimator_class_name" not in tuner.static_hyperparameters
     assert "sagemaker_estimator_module" not in tuner.static_hyperparameters
 
 
-def test_prepare_for_training_include_estimator_cls(tuner):
-    tuner._prepare_for_training(include_cls_metadata=True)
+def test_prepare_for_tuning_include_estimator_cls(tuner):
+    tuner._prepare_for_tuning(include_cls_metadata=True)
     assert "sagemaker_estimator_class_name" in tuner.static_hyperparameters
     assert "sagemaker_estimator_module" in tuner.static_hyperparameters
 
 
-def test_prepare_for_training_with_job_name(tuner):
+def test_prepare_for_tuning_with_job_name(tuner):
     static_hyperparameters = {"validated": 1, "another_one": 0}
     tuner.estimator.set_hyperparameters(**static_hyperparameters)
 
-    tuner._prepare_for_training(job_name="some-other-job-name")
+    tuner._prepare_for_tuning(job_name="some-other-job-name")
     assert tuner._current_job_name == "some-other-job-name"
 
 
@@ -275,24 +174,32 @@ def test_fit_pca(sagemaker_session, tuner):
     tags = [{"Name": "some-tag-without-a-value"}]
     tuner.tags = tags
 
-    hyperparameter_ranges = {
-        "num_components": IntegerParameter(2, 4),
-        "algorithm_mode": CategoricalParameter(["regular", "randomized"]),
-    }
-    tuner._hyperparameter_ranges = hyperparameter_ranges
+    tuner._hyperparameter_ranges = HYPERPARAMETER_RANGES_TWO
 
     records = RecordSet(s3_data=INPUTS, num_records=1, feature_dim=1)
     tuner.fit(records, mini_batch_size=9999)
 
-    _, _, tune_kwargs = sagemaker_session.tune.mock_calls[0]
+    _, _, tune_kwargs = sagemaker_session.create_tuning_job.mock_calls[0]
 
-    assert len(tune_kwargs["static_hyperparameters"]) == 4
-    assert tune_kwargs["static_hyperparameters"]["extra_components"] == "5"
-    assert len(tune_kwargs["parameter_ranges"]["IntegerParameterRanges"]) == 1
+    assert tuner.estimator.mini_batch_size == 9999
+
     assert tune_kwargs["job_name"].startswith("pca")
     assert tune_kwargs["tags"] == tags
-    assert tune_kwargs["early_stopping_type"] == "Off"
+
+    assert len(tune_kwargs["tuning_config"]["parameter_ranges"]["IntegerParameterRanges"]) == 1
+    assert tune_kwargs["tuning_config"]["early_stopping_type"] == "Off"
     assert tuner.estimator.mini_batch_size == 9999
+
+    assert "training_config" in tune_kwargs
+    assert "training_config_list" not in tune_kwargs
+
+    assert len(tune_kwargs["training_config"]["static_hyperparameters"]) == 4
+    assert tune_kwargs["training_config"]["static_hyperparameters"]["extra_components"] == "5"
+
+    assert "estimator_name" not in tune_kwargs["training_config"]
+    assert "objective_type" not in tune_kwargs["training_config"]
+    assert "objective_metric_name" not in tune_kwargs["training_config"]
+    assert "parameter_ranges" not in tune_kwargs["training_config"]
 
 
 def test_fit_pca_with_early_stopping(sagemaker_session, tuner):
@@ -311,13 +218,13 @@ def test_fit_pca_with_early_stopping(sagemaker_session, tuner):
     records = RecordSet(s3_data=INPUTS, num_records=1, feature_dim=1)
     tuner.fit(records, mini_batch_size=9999)
 
-    _, _, tune_kwargs = sagemaker_session.tune.mock_calls[0]
+    _, _, tune_kwargs = sagemaker_session.create_tuning_job.mock_calls[0]
 
     assert tune_kwargs["job_name"].startswith("pca")
-    assert tune_kwargs["early_stopping_type"] == "Auto"
+    assert tune_kwargs["tuning_config"]["early_stopping_type"] == "Auto"
 
 
-def test_fit_mxnet_with_vpc_config(sagemaker_session, tuner):
+def test_fit_pca_with_vpc_config(sagemaker_session, tuner):
     subnets = ["foo"]
     security_group_ids = ["bar"]
 
@@ -336,8 +243,12 @@ def test_fit_mxnet_with_vpc_config(sagemaker_session, tuner):
     records = RecordSet(s3_data=INPUTS, num_records=1, feature_dim=1)
     tuner.fit(records, mini_batch_size=9999)
 
-    _, _, tune_kwargs = sagemaker_session.tune.mock_calls[0]
-    assert tune_kwargs["vpc_config"] == {"Subnets": subnets, "SecurityGroupIds": security_group_ids}
+    _, _, tune_kwargs = sagemaker_session.create_tuning_job.mock_calls[0]
+
+    assert tune_kwargs["training_config"]["vpc_config"] == {
+        "Subnets": subnets,
+        "SecurityGroupIds": security_group_ids,
+    }
 
 
 def test_s3_input_mode(sagemaker_session, tuner):
@@ -365,7 +276,7 @@ def test_s3_input_mode(sagemaker_session, tuner):
 
     tuner.fit(inputs=s3_input("s3://mybucket/train_manifest", input_mode=expected_input_mode))
 
-    actual_input_mode = sagemaker_session.method_calls[1][2]["input_mode"]
+    actual_input_mode = sagemaker_session.method_calls[1][2]["training_config"]["input_mode"]
     assert actual_input_mode == expected_input_mode
 
 
@@ -385,10 +296,196 @@ def test_fit_pca_with_inter_container_traffic_encryption_flag(sagemaker_session,
     records = RecordSet(s3_data=INPUTS, num_records=1, feature_dim=1)
     tuner.fit(records, mini_batch_size=9999)
 
-    _, _, tune_kwargs = sagemaker_session.tune.mock_calls[0]
+    _, _, tune_kwargs = sagemaker_session.create_tuning_job.mock_calls[0]
 
     assert tune_kwargs["job_name"].startswith("pca")
-    assert tune_kwargs["encrypt_inter_container_traffic"] is True
+    assert tune_kwargs["training_config"]["encrypt_inter_container_traffic"] is True
+
+
+@pytest.mark.parametrize(
+    "inputs,include_cls_metadata,estimator_kwargs,error_message",
+    [
+        (
+            RecordSet(s3_data=INPUTS, num_records=1, feature_dim=1),
+            {ESTIMATOR_NAME_TWO: True},
+            {},
+            re.compile(
+                "Argument 'inputs' must be a dictionary using \\['estimator_name', 'estimator_name_two'\\] as keys"
+            ),
+        ),
+        (
+            {ESTIMATOR_NAME: RecordSet(s3_data=INPUTS, num_records=1, feature_dim=1)},
+            False,
+            {},
+            re.compile(
+                "Argument 'include_cls_metadata' must be a dictionary using \\['estimator_name', "
+                "'estimator_name_two'\\] as keys"
+            ),
+        ),
+        (
+            {ESTIMATOR_NAME: RecordSet(s3_data=INPUTS, num_records=1, feature_dim=1)},
+            {ESTIMATOR_NAME_TWO: True},
+            False,
+            re.compile(
+                "Argument 'estimator_kwargs' must be a dictionary using \\['estimator_name', "
+                "'estimator_name_two'\\] as keys"
+            ),
+        ),
+        (
+            {
+                ESTIMATOR_NAME: RecordSet(s3_data=INPUTS, num_records=1, feature_dim=1),
+                "Invalid estimator": RecordSet(s3_data=INPUTS, num_records=10, feature_dim=5),
+            },
+            {ESTIMATOR_NAME_TWO: True},
+            None,
+            re.compile(
+                "The keys of argument 'inputs' must be a subset of \\['estimator_name', 'estimator_name_two'\\]"
+            ),
+        ),
+    ],
+)
+def test_fit_multi_estimators_invalid_inputs(
+    sagemaker_session, inputs, include_cls_metadata, estimator_kwargs, error_message
+):
+    (tuner, estimator_one, estimator_two) = _create_multi_estimator_tuner(sagemaker_session)
+
+    with pytest.raises(ValueError, match=error_message):
+        tuner.fit(
+            inputs=inputs,
+            include_cls_metadata=include_cls_metadata,
+            estimator_kwargs=estimator_kwargs,
+        )
+
+
+def test_fit_multi_estimators(sagemaker_session):
+
+    (tuner, estimator_one, estimator_two) = _create_multi_estimator_tuner(sagemaker_session)
+
+    records = {ESTIMATOR_NAME_TWO: RecordSet(s3_data=INPUTS, num_records=1, feature_dim=1)}
+
+    estimator_kwargs = {ESTIMATOR_NAME_TWO: {"mini_batch_size": 4000}}
+
+    tuner.fit(inputs=records, include_cls_metadata={}, estimator_kwargs=estimator_kwargs)
+
+    _, _, tune_kwargs = sagemaker_session.create_tuning_job.mock_calls[0]
+
+    assert tune_kwargs["job_name"].startswith(BASE_JOB_NAME)
+    assert tune_kwargs["tags"] == TAGS
+
+    assert tune_kwargs["tuning_config"]["strategy"] == STRATEGY
+    assert tune_kwargs["tuning_config"]["max_jobs"] == MAX_JOBS
+    assert tune_kwargs["tuning_config"]["max_parallel_jobs"] == MAX_PARALLEL_JOBS
+    assert tune_kwargs["tuning_config"]["early_stopping_type"] == EARLY_STOPPING_TYPE
+
+    assert "tuning_objective" not in tune_kwargs["tuning_config"]
+    assert "parameter_ranges" not in tune_kwargs["tuning_config"]
+
+    assert "training_config" not in tune_kwargs
+    assert "training_config_list" in tune_kwargs
+
+    assert len(tune_kwargs["training_config_list"]) == 2
+
+    training_config_one = tune_kwargs["training_config_list"][0]
+    training_config_two = tune_kwargs["training_config_list"][1]
+
+    assert training_config_one["estimator_name"] == ESTIMATOR_NAME
+    assert training_config_one["objective_type"] == "Minimize"
+    assert training_config_one["objective_metric_name"] == OBJECTIVE_METRIC_NAME
+    assert training_config_one["input_config"] is None
+    assert training_config_one["image"] == estimator_one.train_image()
+    assert training_config_one["metric_definitions"] == METRIC_DEFINITIONS
+    assert (
+        training_config_one["static_hyperparameters"]["sagemaker_estimator_module"]
+        == '"sagemaker.mxnet.estimator"'
+    )
+    _assert_parameter_ranges(
+        HYPERPARAMETER_RANGES,
+        training_config_one["parameter_ranges"],
+        isinstance(estimator_one, Framework),
+    )
+
+    assert training_config_two["estimator_name"] == ESTIMATOR_NAME_TWO
+    assert training_config_two["objective_type"] == "Minimize"
+    assert training_config_two["objective_metric_name"] == OBJECTIVE_METRIC_NAME_TWO
+    assert len(training_config_two["input_config"]) == 1
+    assert training_config_two["input_config"][0]["DataSource"]["S3DataSource"]["S3Uri"] == INPUTS
+    assert training_config_two["image"] == estimator_two.train_image()
+    assert training_config_two["metric_definitions"] is None
+    assert training_config_two["static_hyperparameters"]["mini_batch_size"] == "4000"
+    _assert_parameter_ranges(
+        HYPERPARAMETER_RANGES_TWO,
+        training_config_two["parameter_ranges"],
+        isinstance(estimator_two, Framework),
+    )
+
+
+def _create_multi_estimator_tuner(sagemaker_session):
+    mxnet_script_path = os.path.join(DATA_DIR, "mxnet_mnist", "failure_script.py")
+    mxnet = MXNet(
+        entry_point=mxnet_script_path,
+        role=ROLE,
+        framework_version=FRAMEWORK_VERSION,
+        train_instance_count=TRAIN_INSTANCE_COUNT,
+        train_instance_type=TRAIN_INSTANCE_TYPE,
+        sagemaker_session=sagemaker_session,
+    )
+
+    pca = PCA(
+        ROLE,
+        TRAIN_INSTANCE_COUNT,
+        TRAIN_INSTANCE_TYPE,
+        NUM_COMPONENTS,
+        base_job_name="pca",
+        sagemaker_session=sagemaker_session,
+    )
+    pca.algorithm_mode = "randomized"
+    pca.subtract_mean = True
+    pca.extra_components = 5
+
+    tuner = HyperparameterTuner.create(
+        base_tuning_job_name=BASE_JOB_NAME,
+        estimator_dict={ESTIMATOR_NAME: mxnet, ESTIMATOR_NAME_TWO: pca},
+        objective_metric_name_dict={
+            ESTIMATOR_NAME: OBJECTIVE_METRIC_NAME,
+            ESTIMATOR_NAME_TWO: OBJECTIVE_METRIC_NAME_TWO,
+        },
+        hyperparameter_ranges_dict={
+            ESTIMATOR_NAME: HYPERPARAMETER_RANGES,
+            ESTIMATOR_NAME_TWO: HYPERPARAMETER_RANGES_TWO,
+        },
+        metric_definitions_dict={ESTIMATOR_NAME: METRIC_DEFINITIONS},
+        strategy=STRATEGY,
+        objective_type=OBJECTIVE_TYPE,
+        max_jobs=MAX_JOBS,
+        max_parallel_jobs=MAX_PARALLEL_JOBS,
+        tags=TAGS,
+        warm_start_config=WARM_START_CONFIG,
+        early_stopping_type=EARLY_STOPPING_TYPE,
+    )
+
+    return tuner, mxnet, pca
+
+
+def _assert_parameter_ranges(expected, actual, is_framework_estimator):
+    continuous_ranges = []
+    integer_ranges = []
+    categorical_ranges = []
+    for (name, param_range) in expected.items():
+        if isinstance(param_range, ContinuousParameter):
+            continuous_ranges.append(param_range.as_tuning_range(name))
+        elif isinstance(param_range, IntegerParameter):
+            integer_ranges.append(param_range.as_tuning_range(name))
+        else:
+            categorical_range = (
+                param_range.as_json_range(name)
+                if is_framework_estimator
+                else param_range.as_tuning_range(name)
+            )
+            categorical_ranges.append(categorical_range)
+
+    assert continuous_ranges == actual["ContinuousParameterRanges"]
+    assert integer_ranges == actual["IntegerParameterRanges"]
+    assert categorical_ranges == actual["CategoricalParameterRanges"]
 
 
 def test_attach_tuning_job_with_estimator_from_hyperparameters(sagemaker_session):
@@ -497,6 +594,59 @@ def test_attach_with_warm_start_config(sagemaker_session):
     assert tuner.warm_start_config.parents == warm_start_config.parents
 
 
+def test_attach_tuning_job_with_multi_estimators(sagemaker_session):
+    job_details = copy.deepcopy(MULTI_ALGO_TUNING_JOB_DETAILS)
+    tuner = HyperparameterTuner.attach(
+        JOB_NAME,
+        sagemaker_session=sagemaker_session,
+        estimator_cls={ESTIMATOR_NAME_TWO: "sagemaker.estimator.Estimator"},
+        job_details=job_details,
+    )
+
+    assert tuner.latest_tuning_job.name == JOB_NAME
+    assert tuner.strategy == "Bayesian"
+    assert tuner.objective_type == "Minimize"
+    assert tuner.max_jobs == 4
+    assert tuner.max_parallel_jobs == 2
+    assert tuner.early_stopping_type == "Off"
+    assert tuner.warm_start_config is None
+
+    assert tuner.estimator is None
+    assert tuner.objective_metric_name is None
+    assert tuner._hyperparameter_ranges is None
+    assert tuner.metric_definitions is None
+
+    assert tuner.estimator_dict is not None
+    assert tuner.objective_metric_name_dict is not None
+    assert tuner._hyperparameter_ranges_dict is not None
+    assert tuner.metric_definitions_dict is not None
+
+    assert len(tuner.estimator_dict) == 2
+
+    estimator_names = tuner.estimator_dict.keys()
+    assert tuner.objective_metric_name_dict.keys() == estimator_names
+    assert tuner._hyperparameter_ranges_dict.keys() == estimator_names
+    assert set(tuner.metric_definitions_dict.keys()).issubset(set(estimator_names))
+
+    assert isinstance(tuner.estimator_dict[ESTIMATOR_NAME], PCA)
+    assert isinstance(tuner.estimator_dict[ESTIMATOR_NAME_TWO], Estimator)
+
+    assert tuner.objective_metric_name_dict[ESTIMATOR_NAME] == OBJECTIVE_METRIC_NAME
+    assert tuner.objective_metric_name_dict[ESTIMATOR_NAME_TWO] == OBJECTIVE_METRIC_NAME_TWO
+
+    parameter_ranges_one = tuner._hyperparameter_ranges_dict[ESTIMATOR_NAME]
+    assert len(parameter_ranges_one) == 1
+    assert isinstance(parameter_ranges_one.get("mini_batch_size", None), IntegerParameter)
+
+    parameter_ranges_two = tuner._hyperparameter_ranges_dict[ESTIMATOR_NAME_TWO]
+    assert len(parameter_ranges_two) == 2
+    assert isinstance(parameter_ranges_two.get("kernel", None), CategoricalParameter)
+    assert isinstance(parameter_ranges_two.get("tree_count", None), IntegerParameter)
+
+    assert len(tuner.metric_definitions_dict) == 1
+    assert tuner.metric_definitions_dict[ESTIMATOR_NAME_TWO] == METRIC_DEFINITIONS
+
+
 def test_serialize_parameter_ranges(tuner):
     hyperparameter_ranges = tuner.hyperparameter_ranges()
 
@@ -578,7 +728,7 @@ def test_best_tuning_job_no_latest_job(tuner):
 
 
 def test_best_tuning_job_no_best_job(tuner):
-    tuning_job_description = {"BestTrainingJob": {"Mock": None}}
+    tuning_job_description = {"TuningJobName": "a_job"}
 
     tuner.estimator.sagemaker_session.sagemaker_client.describe_hyper_parameter_tuning_job = Mock(
         name="describe_hyper_parameter_tuning_job", return_value=tuning_job_description
@@ -595,65 +745,149 @@ def test_best_tuning_job_no_best_job(tuner):
     assert "Best training job not available for tuning job:" in str(e)
 
 
+def test_best_estimator(tuner):
+    tuner.sagemaker_session.sagemaker_client.describe_training_job = Mock(
+        name="describe_training_job", return_value=TRAINING_JOB_DESCRIPTION
+    )
+
+    tuner.sagemaker_session.sagemaker_client.describe_hyper_parameter_tuning_job = Mock(
+        name="describe_hyper_parameter_tuning_job",
+        return_value={"BestTrainingJob": {"TrainingJobName": TRAINING_JOB_NAME}},
+    )
+
+    tuner.sagemaker_session.sagemaker_client.list_tags = Mock(
+        name="list_tags", return_value=LIST_TAGS_RESULT
+    )
+
+    tuner.sagemaker_session.log_for_jobs = Mock(name="log_for_jobs")
+    tuner.latest_tuning_job = _TuningJob(tuner.sagemaker_session, JOB_NAME)
+
+    best_estimator = tuner.best_estimator()
+
+    assert best_estimator is not None
+    assert best_estimator.latest_training_job is not None
+    assert best_estimator.latest_training_job.job_name == TRAINING_JOB_NAME
+    assert best_estimator.sagemaker_session == tuner.sagemaker_session
+
+    tuner.estimator.sagemaker_session.sagemaker_client.describe_hyper_parameter_tuning_job.assert_called_once_with(
+        HyperParameterTuningJobName=JOB_NAME
+    )
+    tuner.sagemaker_session.sagemaker_client.describe_training_job.assert_called_once_with(
+        TrainingJobName=TRAINING_JOB_NAME
+    )
+
+
 def test_deploy_default(tuner):
-    returned_training_job_description = {
-        "AlgorithmSpecification": {
-            "TrainingInputMode": "File",
-            "TrainingImage": IMAGE_NAME,
-            "MetricDefinitions": METRIC_DEFINITIONS,
-        },
-        "HyperParameters": {
-            "sagemaker_submit_directory": '"s3://some/sourcedir.tar.gz"',
-            "checkpoint_path": '"s3://other/1508872349"',
-            "sagemaker_program": '"iris-dnn-classifier.py"',
-            "sagemaker_enable_cloudwatch_metrics": "false",
-            "sagemaker_container_log_level": '"logging.INFO"',
-            "sagemaker_job_name": '"neo"',
-            "training_steps": "100",
-            "_tuning_objective_metric": "Validation-accuracy",
-        },
-        "RoleArn": ROLE,
-        "ResourceConfig": {
-            "VolumeSizeInGB": 30,
-            "InstanceCount": 1,
-            "InstanceType": "ml.c4.xlarge",
-        },
-        "StoppingCondition": {"MaxRuntimeInSeconds": 24 * 60 * 60},
-        "TrainingJobName": "neo",
-        "TrainingJobStatus": "Completed",
-        "TrainingJobArn": "arn:aws:sagemaker:us-west-2:336:training-job/neo",
-        "OutputDataConfig": {"KmsKeyId": "", "S3OutputPath": "s3://place/output/neo"},
-        "TrainingJobOutput": {"S3TrainingJobOutput": "s3://here/output.tar.gz"},
-        "ModelArtifacts": {"S3ModelArtifacts": MODEL_DATA},
-    }
-    tuning_job_description = {"BestTrainingJob": {"TrainingJobName": JOB_NAME}}
-    returned_list_tags = {"Tags": [{"Key": "TagtestKey", "Value": "TagtestValue"}]}
+    tuner.sagemaker_session.sagemaker_client.describe_training_job = Mock(
+        name="describe_training_job", return_value=TRAINING_JOB_DESCRIPTION
+    )
 
-    tuner.estimator.sagemaker_session.sagemaker_client.describe_training_job = Mock(
-        name="describe_training_job", return_value=returned_training_job_description
+    tuner.sagemaker_session.sagemaker_client.describe_hyper_parameter_tuning_job = Mock(
+        name="describe_hyper_parameter_tuning_job",
+        return_value={"BestTrainingJob": {"TrainingJobName": JOB_NAME}},
     )
-    tuner.estimator.sagemaker_session.sagemaker_client.list_tags = Mock(
-        name="list_tags", return_value=returned_list_tags
-    )
-    tuner.estimator.sagemaker_session.sagemaker_client.describe_hyper_parameter_tuning_job = Mock(
-        name="describe_hyper_parameter_tuning_job", return_value=tuning_job_description
-    )
-    tuner.estimator.sagemaker_session.log_for_jobs = Mock(name="log_for_jobs")
 
-    tuner.latest_tuning_job = _TuningJob(tuner.estimator.sagemaker_session, JOB_NAME)
+    tuner.sagemaker_session.sagemaker_client.list_tags = Mock(
+        name="list_tags", return_value=LIST_TAGS_RESULT
+    )
+
+    tuner.sagemaker_session.log_for_jobs = Mock(name="log_for_jobs")
+
+    tuner.latest_tuning_job = _TuningJob(tuner.sagemaker_session, JOB_NAME)
     predictor = tuner.deploy(TRAIN_INSTANCE_COUNT, TRAIN_INSTANCE_TYPE)
 
-    tuner.estimator.sagemaker_session.create_model.assert_called_once()
-    args = tuner.estimator.sagemaker_session.create_model.call_args[0]
-
-    assert args[0] == "neo"
+    tuner.sagemaker_session.create_model.assert_called_once()
+    args = tuner.sagemaker_session.create_model.call_args[0]
+    assert args[0] == TRAINING_JOB_NAME
     assert args[1] == ROLE
     assert args[2]["Image"] == IMAGE_NAME
     assert args[2]["ModelDataUrl"] == MODEL_DATA
 
     assert isinstance(predictor, RealTimePredictor)
     assert predictor.endpoint.startswith(JOB_NAME)
-    assert predictor.sagemaker_session == tuner.estimator.sagemaker_session
+    assert predictor.sagemaker_session == tuner.sagemaker_session
+
+
+def test_deploy_estimator_dict(tuner):
+    tuner.estimator_dict = {ESTIMATOR_NAME: tuner.estimator}
+    tuner.estimator = None
+
+    tuner.sagemaker_session.sagemaker_client.describe_training_job = Mock(
+        name="describe_training_job", return_value=TRAINING_JOB_DESCRIPTION
+    )
+
+    tuner.sagemaker_session.sagemaker_client.describe_hyper_parameter_tuning_job = Mock(
+        name="describe_hyper_parameter_tuning_job",
+        return_value={
+            "BestTrainingJob": {
+                "TrainingJobName": JOB_NAME,
+                "TrainingJobDefinitionName": ESTIMATOR_NAME,
+            }
+        },
+    )
+
+    tuner.sagemaker_session.sagemaker_client.list_tags = Mock(
+        name="list_tags", return_value=LIST_TAGS_RESULT
+    )
+
+    tuner.sagemaker_session.log_for_jobs = Mock(name="log_for_jobs")
+
+    tuner.latest_tuning_job = _TuningJob(tuner.sagemaker_session, JOB_NAME)
+    predictor = tuner.deploy(TRAIN_INSTANCE_COUNT, TRAIN_INSTANCE_TYPE)
+
+    tuner.sagemaker_session.create_model.assert_called_once()
+    args = tuner.sagemaker_session.create_model.call_args[0]
+    assert args[0] == TRAINING_JOB_NAME
+    assert args[1] == ROLE
+    assert args[2]["Image"] == IMAGE_NAME
+    assert args[2]["ModelDataUrl"] == MODEL_DATA
+
+    assert isinstance(predictor, RealTimePredictor)
+    assert predictor.endpoint.startswith(JOB_NAME)
+    assert predictor.sagemaker_session == tuner.sagemaker_session
+
+
+@patch("sagemaker.tuner.HyperparameterTuner.best_estimator")
+@patch("sagemaker.tuner.HyperparameterTuner._get_best_training_job")
+def test_deploy_optional_params(_get_best_training_job, best_estimator, tuner):
+    tuner.fit()
+
+    estimator = Mock()
+    best_estimator.return_value = estimator
+
+    training_job = "best-job-ever"
+    _get_best_training_job.return_value = training_job
+
+    accelerator = "ml.eia1.medium"
+    endpoint_name = "foo"
+    model_name = "bar"
+    kms_key = "key"
+    kwargs = {"some_arg": "some_value"}
+
+    tuner.deploy(
+        TRAIN_INSTANCE_COUNT,
+        TRAIN_INSTANCE_TYPE,
+        accelerator_type=accelerator,
+        endpoint_name=endpoint_name,
+        wait=False,
+        model_name=model_name,
+        kms_key=kms_key,
+        **kwargs
+    )
+
+    best_estimator.assert_called_with(training_job)
+
+    estimator.deploy.assert_called_with(
+        initial_instance_count=TRAIN_INSTANCE_COUNT,
+        instance_type=TRAIN_INSTANCE_TYPE,
+        accelerator_type=accelerator,
+        endpoint_name=endpoint_name,
+        wait=False,
+        model_name=model_name,
+        kms_key=kms_key,
+        data_capture_config=None,
+        **kwargs
+    )
 
 
 def test_wait(tuner):
@@ -690,9 +924,9 @@ def test_fit_no_inputs(tuner, sagemaker_session):
 
     tuner.fit()
 
-    _, _, tune_kwargs = sagemaker_session.tune.mock_calls[0]
+    _, _, tune_kwargs = sagemaker_session.create_tuning_job.mock_calls[0]
 
-    assert tune_kwargs["input_config"] is None
+    assert tune_kwargs["training_config"]["input_config"] is None
 
 
 def test_identical_dataset_and_algorithm_tuner(sagemaker_session):
@@ -735,6 +969,141 @@ def test_transfer_learning_tuner(sagemaker_session):
     assert parent_tuner.warm_start_config.type == WarmStartTypes.TRANSFER_LEARNING
     assert parent_tuner.warm_start_config.parents == {tuner.latest_tuning_job.name, "p1", "p2"}
     assert parent_tuner.estimator == tuner.estimator
+
+
+@pytest.mark.parametrize(
+    "estimator_dict,obj_metric_name_dict,param_ranges_dict,metric_def_dict",
+    [
+        (
+            {ESTIMATOR_NAME: ESTIMATOR},
+            {ESTIMATOR_NAME: OBJECTIVE_METRIC_NAME},
+            {ESTIMATOR_NAME: HYPERPARAMETER_RANGES},
+            {ESTIMATOR_NAME: METRIC_DEFINITIONS},
+        ),
+        (
+            {ESTIMATOR_NAME: ESTIMATOR, ESTIMATOR_NAME_TWO: ESTIMATOR_TWO},
+            {ESTIMATOR_NAME: OBJECTIVE_METRIC_NAME, ESTIMATOR_NAME_TWO: OBJECTIVE_METRIC_NAME_TWO},
+            {
+                ESTIMATOR_NAME: HYPERPARAMETER_RANGES,
+                ESTIMATOR_NAME_TWO: {"gamma": ContinuousParameter(0, 1.5)},
+            },
+            {ESTIMATOR_NAME: METRIC_DEFINITIONS},
+        ),
+    ],
+)
+def test_create_tuner(estimator_dict, obj_metric_name_dict, param_ranges_dict, metric_def_dict):
+    tuner = HyperparameterTuner.create(
+        base_tuning_job_name=BASE_JOB_NAME,
+        estimator_dict=estimator_dict,
+        objective_metric_name_dict=obj_metric_name_dict,
+        hyperparameter_ranges_dict=param_ranges_dict,
+        metric_definitions_dict=metric_def_dict,
+        strategy="Bayesian",
+        objective_type="Minimize",
+        max_jobs=MAX_JOBS,
+        max_parallel_jobs=MAX_PARALLEL_JOBS,
+        tags=TAGS,
+        warm_start_config=WARM_START_CONFIG,
+        early_stopping_type="Auto",
+    )
+
+    assert tuner is not None
+
+    assert tuner.estimator_dict == estimator_dict
+    assert tuner.objective_metric_name_dict == obj_metric_name_dict
+    assert tuner._hyperparameter_ranges_dict == param_ranges_dict
+    assert tuner.metric_definitions_dict == metric_def_dict
+
+    assert tuner.base_tuning_job_name == BASE_JOB_NAME
+    assert tuner.strategy == "Bayesian"
+    assert tuner.objective_type == "Minimize"
+    assert tuner.max_jobs == MAX_JOBS
+    assert tuner.max_parallel_jobs == MAX_PARALLEL_JOBS
+    assert tuner.tags == TAGS
+    assert tuner.warm_start_config == WARM_START_CONFIG
+    assert tuner.early_stopping_type == "Auto"
+
+    assert tuner.sagemaker_session == SAGEMAKER_SESSION
+
+
+@pytest.mark.parametrize(
+    "estimator_dict,obj_metric_name_dict,param_ranges_dict,metric_def_dict,error_message",
+    [
+        (
+            {},
+            {ESTIMATOR_NAME: OBJECTIVE_METRIC_NAME},
+            {ESTIMATOR_NAME: HYPERPARAMETER_RANGES},
+            {ESTIMATOR_NAME: METRIC_DEFINITIONS},
+            re.compile("At least one estimator should be provided"),
+        ),
+        (
+            None,
+            {ESTIMATOR_NAME: OBJECTIVE_METRIC_NAME},
+            {ESTIMATOR_NAME: HYPERPARAMETER_RANGES},
+            {ESTIMATOR_NAME: METRIC_DEFINITIONS},
+            re.compile("At least one estimator should be provided"),
+        ),
+        (
+            {None: ESTIMATOR},
+            {ESTIMATOR_NAME: OBJECTIVE_METRIC_NAME},
+            {ESTIMATOR_NAME: HYPERPARAMETER_RANGES},
+            {ESTIMATOR_NAME: METRIC_DEFINITIONS},
+            "Estimator names cannot be None",
+        ),
+        (
+            {ESTIMATOR_NAME: ESTIMATOR},
+            OBJECTIVE_METRIC_NAME,
+            {ESTIMATOR_NAME: HYPERPARAMETER_RANGES},
+            {ESTIMATOR_NAME: METRIC_DEFINITIONS},
+            re.compile(
+                "Argument 'objective_metric_name_dict' must be a dictionary using \\['estimator_name'\\] as keys"
+            ),
+        ),
+        (
+            {ESTIMATOR_NAME: ESTIMATOR},
+            {ESTIMATOR_NAME + "1": OBJECTIVE_METRIC_NAME},
+            {ESTIMATOR_NAME: HYPERPARAMETER_RANGES},
+            {ESTIMATOR_NAME: METRIC_DEFINITIONS},
+            re.compile(
+                "The keys of argument 'objective_metric_name_dict' must be the same as \\['estimator_name'\\]"
+            ),
+        ),
+        (
+            {ESTIMATOR_NAME: ESTIMATOR},
+            {ESTIMATOR_NAME: OBJECTIVE_METRIC_NAME},
+            {ESTIMATOR_NAME + "1": HYPERPARAMETER_RANGES},
+            {ESTIMATOR_NAME: METRIC_DEFINITIONS},
+            re.compile(
+                "The keys of argument 'hyperparameter_ranges_dict' must be the same as \\['estimator_name'\\]"
+            ),
+        ),
+        (
+            {ESTIMATOR_NAME: ESTIMATOR},
+            {ESTIMATOR_NAME: OBJECTIVE_METRIC_NAME},
+            {ESTIMATOR_NAME: HYPERPARAMETER_RANGES},
+            {ESTIMATOR_NAME + "1": METRIC_DEFINITIONS},
+            re.compile(
+                "The keys of argument 'metric_definitions_dict' must be a subset of \\['estimator_name'\\]"
+            ),
+        ),
+    ],
+)
+def test_create_tuner_negative(
+    estimator_dict, obj_metric_name_dict, param_ranges_dict, metric_def_dict, error_message
+):
+    with pytest.raises(ValueError, match=error_message):
+        HyperparameterTuner.create(
+            base_tuning_job_name=BASE_JOB_NAME,
+            estimator_dict=estimator_dict,
+            objective_metric_name_dict=obj_metric_name_dict,
+            hyperparameter_ranges_dict=param_ranges_dict,
+            metric_definitions_dict=metric_def_dict,
+            strategy="Bayesian",
+            objective_type="Minimize",
+            max_jobs=MAX_JOBS,
+            max_parallel_jobs=MAX_PARALLEL_JOBS,
+            tags=TAGS,
+        )
 
 
 #################################################################################
@@ -823,7 +1192,7 @@ def test_start_new(tuner, sagemaker_session):
     started_tuning_job = tuning_job.start_new(tuner, INPUTS)
 
     assert started_tuning_job.sagemaker_session == sagemaker_session
-    sagemaker_session.tune.assert_called_once()
+    sagemaker_session.create_tuning_job.assert_called_once()
 
 
 def test_stop(sagemaker_session):
@@ -973,3 +1342,109 @@ def test_create_transfer_learning_tuner(sagemaker_session, estimator, additional
         assert tuner.warm_start_config.parents == additional_parents
     else:
         assert tuner.warm_start_config.parents == {JOB_NAME}
+
+
+@pytest.mark.parametrize(
+    "warm_start_type",
+    [WarmStartTypes.TRANSFER_LEARNING, WarmStartTypes.IDENTICAL_DATA_AND_ALGORITHM],
+)
+def test_create_warm_start_tuner_with_multi_estimator_dict(
+    sagemaker_session, estimator, warm_start_type
+):
+    job_details = copy.deepcopy(MULTI_ALGO_TUNING_JOB_DETAILS)
+
+    sagemaker_session.sagemaker_client.describe_hyper_parameter_tuning_job = Mock(
+        name="describe_tuning_job", return_value=job_details
+    )
+
+    additional_parents = {"p1", "p2"}
+
+    with pytest.raises(
+        ValueError,
+        match="Warm start is not supported currently for tuners with multiple estimators",
+    ):
+        if warm_start_type == WarmStartTypes.TRANSFER_LEARNING:
+            create_transfer_learning_tuner(
+                parent=JOB_NAME,
+                additional_parents=additional_parents,
+                sagemaker_session=sagemaker_session,
+                estimator=estimator,
+            )
+        else:
+            create_identical_dataset_and_algorithm_tuner(
+                parent=JOB_NAME,
+                additional_parents=additional_parents,
+                sagemaker_session=sagemaker_session,
+            )
+
+
+@pytest.mark.parametrize(
+    "warm_start_type",
+    [WarmStartTypes.TRANSFER_LEARNING, WarmStartTypes.IDENTICAL_DATA_AND_ALGORITHM],
+)
+def test_create_warm_start_tuner_with_single_estimator_dict(
+    sagemaker_session, estimator, warm_start_type
+):
+    job_details = _convert_tuning_job_details(TUNING_JOB_DETAILS, ESTIMATOR_NAME)
+
+    sagemaker_session.sagemaker_client.describe_hyper_parameter_tuning_job = Mock(
+        name="describe_tuning_job", return_value=job_details
+    )
+
+    additional_parents = {"p1", "p2"}
+
+    if warm_start_type == WarmStartTypes.TRANSFER_LEARNING:
+        tuner = create_transfer_learning_tuner(
+            parent=JOB_NAME,
+            additional_parents=additional_parents,
+            sagemaker_session=sagemaker_session,
+            estimator=estimator,
+        )
+    else:
+        tuner = create_identical_dataset_and_algorithm_tuner(
+            parent=JOB_NAME,
+            additional_parents=additional_parents,
+            sagemaker_session=sagemaker_session,
+        )
+
+    assert tuner.warm_start_config.type == warm_start_type
+
+    assert tuner.estimator is None
+    assert tuner.estimator_dict is not None
+
+    assert len(tuner.estimator_dict) == 1
+
+    if warm_start_type == WarmStartTypes.TRANSFER_LEARNING:
+        assert tuner.estimator_dict[ESTIMATOR_NAME] == estimator
+    else:
+        assert isinstance(tuner.estimator_dict[ESTIMATOR_NAME], PCA)
+
+    additional_parents.add(JOB_NAME)
+    assert tuner.warm_start_config.parents == additional_parents
+
+
+def _convert_tuning_job_details(job_details, estimator_name):
+    """Convert a tuning job description using the 'TrainingJobDefinition' field into a new one using a single-item
+       'TrainingJobDefinitions' field (list).
+    """
+    assert "TrainingJobDefinition" in job_details
+
+    job_details_copy = copy.deepcopy(job_details)
+
+    training_details = job_details_copy.pop("TrainingJobDefinition")
+
+    # When the 'TrainingJobDefinitions' field is used, the 'DefinitionName' field is required for each item in it.
+    training_details["DefinitionName"] = estimator_name
+
+    # When the 'TrainingJobDefinitions' field is used, tuning objective and parameter ranges must be set in each item
+    # in it instead of the tuning job config.
+    training_details["TuningObjective"] = job_details_copy["HyperParameterTuningJobConfig"].pop(
+        "HyperParameterTuningJobObjective"
+    )
+    training_details["HyperParameterRanges"] = job_details_copy[
+        "HyperParameterTuningJobConfig"
+    ].pop("ParameterRanges")
+
+    job_details_copy["TrainingJobDefinitions"] = [training_details]
+
+    return job_details_copy

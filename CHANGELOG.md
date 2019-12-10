@@ -1,5 +1,466 @@
 # Changelog
 
+## v1.45.2 (2019-12-10)
+
+### Bug fixes and other changes
+
+ * modify schedule cleanup to abide by latest validations
+ * lower log level when getting execution role from a SageMaker Notebook
+ * Fix "ValueError: too many values to unpack (expected 2)" is occurred in windows local mode
+ * allow ModelMonitor and Processor to take IAM role names (in addition to ARNs)
+
+### Documentation changes
+
+ * mention that the entry_point needs to be named inference.py for tfs
+
+## v1.45.1 (2019-12-06)
+
+### Bug fixes and other changes
+
+ * create auto ml job for tests that based on existing job
+ * fixing py2 support for latest TF version
+ * fix tags in deploy call for generic estimators
+ * make multi algo integration test assertion less specific
+
+## v1.45.0 (2019-12-04)
+
+### Features
+
+ * add support for TF 1.15.0, PyTorch 1.3.1 and MXNet 1.6rc0.
+ * add S3Downloader.list(s3_uri) functionality
+ * introduce SageMaker AutoML
+ * wrap up Processing feature
+ * add a few minor features to Model Monitoring
+ * add enable_sagemaker_metrics flag
+ * Amazon SageMaker Model Monitoring
+ * add utils.generate_tensorboard_url function
+ * Add jobs list to Estimator
+
+### Bug fixes and other changes
+
+ * remove unnecessary boto model files
+ * update boto version to >=1.10.32
+ * correct Debugger tests
+ * fix bug in monitor.attach() for empty network_config
+ * Import smdebug_rulesconfig from PyPI
+ * bump the version to 1.45.0 (publishes 1.46.0) for re:Invent-2019
+ * correct AutoML imports and expose current_job_name
+ * correct Model Monitor eu-west-3 image name.
+ * use DLC prod images
+ * remove unused env variable for Model Monitoring
+ * aws model update
+ * rename get_debugger_artifacts to latest_job_debugger_artifacts
+ * remove retain flag from update_endpoint
+ * correct S3Downloader behavior
+ * consume smdebug_ruleconfig .whl for ITs
+ * disable DebuggerHook and Rules for TF distributions
+ * incorporate smdebug_ruleconfigs pkg until availability in PyPI
+ * remove pre/post scripts per latest validations
+ * update rules_config .whl
+ * remove py_version from SKLearnProcessor
+ * AutoML improvements
+ * stop overwriting custom rules volume and type
+ * fix tests due to latest server-side validations
+ * Minor processing changes
+ * minor processing changes (instance_count + docs)
+ * update api to latest
+ * Eureka master
+ * Add support for xgboost version 0.90-2
+ * SageMaker Debugger revision
+ * Add support for SageMaker Debugger [WIP]
+ * Fix linear learner crash when num_class is string and predict type is `multiclass_classifier`
+ * Additional Processing Jobs integration tests
+ * Migrate to updated Processing Jobs API
+ * Processing Jobs revision round 2
+ * Processing Jobs revision
+ * remove instance_pools parameter from tuner
+ * Multi-Algorithm Hyperparameter Tuning Support
+ * Import Processors in init files
+ * Remove SparkML Processors and corresponding unit tests
+ * Processing Jobs Python SDK support
+
+## v1.44.4 (2019-12-02)
+
+### Bug fixes and other changes
+
+ * Documentation for Amazon Sagemaker Operators
+
+## v1.44.3 (2019-11-26)
+
+### Bug fixes and other changes
+
+ * move sagemaker config loading to LocalSession since it is only used for local code support.
+
+### Documentation changes
+
+ * fix docstring wording.
+
+## v1.44.2 (2019-11-25)
+
+### Bug fixes and other changes
+
+ * add pyyaml dependencies to the required list.
+
+### Documentation changes
+
+ * Correct info on code_location parameter
+
+## v1.44.1 (2019-11-21)
+
+### Bug fixes and other changes
+
+ * Remove local mode dependencies from required.
+
+## v1.44.0 (2019-11-21)
+
+### Features
+
+ * separating sagemaker dependencies into more use case specific installable components.
+
+### Bug fixes and other changes
+
+ * remove docker-compose as a required dependency.
+
+## v1.43.5 (2019-11-18)
+
+### Bug fixes and other changes
+
+ * remove red from possible colors when streaming logs
+
+## v1.43.4.post1 (2019-10-29)
+
+### Documentation changes
+
+ * clarify that source_dir can be an S3 URI
+
+## v1.43.4.post0 (2019-10-28)
+
+### Documentation changes
+
+ * clarify how to use parameter servers with distributed MXNet training
+
+## v1.43.4 (2019-10-24)
+
+### Bug fixes and other changes
+
+ * use regional endpoint for STS in builds and tests
+
+### Documentation changes
+
+ * update link to point to ReadTheDocs
+
+## v1.43.3 (2019-10-23)
+
+### Bug fixes and other changes
+
+ * exclude regions for P2 tests
+
+## v1.43.2 (2019-10-21)
+
+### Bug fixes and other changes
+
+ * add support for me-south-1 region
+
+## v1.43.1 (2019-10-17)
+
+### Bug fixes and other changes
+
+ * validation args now use default framework_version for TensorFlow
+
+## v1.43.0 (2019-10-16)
+
+### Features
+
+ * Add support for PyTorch 1.2.0
+
+## v1.42.9 (2019-10-14)
+
+### Bug fixes and other changes
+
+ * use default bucket for checkpoint_s3_uri integ test
+ * use sts regional endpoint when creating default bucket
+ * use us-west-2 endpoint for sts in buildspec
+ * take checkpoint_s3_uri and checkpoint_local_path in Framework class
+
+## v1.42.8 (2019-10-10)
+
+### Bug fixes and other changes
+
+ * add kwargs to create_model for 1p to work with kms
+
+## v1.42.7 (2019-10-09)
+
+### Bug fixes and other changes
+
+ * paginating describe log streams
+
+## v1.42.6.post0 (2019-10-07)
+
+### Documentation changes
+
+ * model local mode
+
+## v1.42.6 (2019-10-03)
+
+### Bug fixes and other changes
+
+ * update tfs documentation for requirements.txt
+ * support content_type in FileSystemInput
+ * allowing account overrides in special regions
+
+## v1.42.5 (2019-10-02)
+
+### Bug fixes and other changes
+
+ * update using_mxnet.rst
+
+## v1.42.4 (2019-10-01)
+
+### Bug fixes and other changes
+
+ * Revert "fix issue-987 error by adding instance_type in endpoint_name (#1058)"
+ * fix issue-987 error by adding instance_type in endpoint_name
+
+## v1.42.3 (2019-09-26)
+
+### Bug fixes and other changes
+
+ * preserve EnableNetworkIsolation setting in attach
+ * enable kms support for repack_model
+ * support binary by NoneSplitter.
+ * stop CI unit test code checks from running in parallel
+
+## v1.42.2 (2019-09-25)
+
+### Bug fixes and other changes
+
+ * re-enable airflow_config tests
+
+## v1.42.1 (2019-09-24)
+
+### Bug fixes and other changes
+
+ * lazy import of tensorflow module
+ * skip airflow_config tests as they're blocking the release build
+ * skip lda tests in regions that does not support it.
+ * add airflow_config tests to canaries
+ * use correct STS endpoint for us-iso-east-1
+
+## v1.42.0 (2019-09-20)
+
+### Features
+
+ * add estimator preparation to airflow configuration
+
+### Bug fixes and other changes
+
+ * correct airflow workflow for BYO estimators.
+
+## v1.41.0 (2019-09-20)
+
+### Features
+
+ * enable sklearn for network isolation mode
+
+## v1.40.2 (2019-09-19)
+
+### Bug fixes and other changes
+
+ * use new ECR images in us-iso-east-1 for TF and MXNet
+
+## v1.40.1 (2019-09-18)
+
+### Bug fixes and other changes
+
+ * expose kms_key parameter for deploying from training and hyperparameter tuning jobs
+
+### Documentation changes
+
+ * Update sklearn default predict_fn
+
+## v1.40.0 (2019-09-17)
+
+### Features
+
+ * add support to TF 1.14 serving with elastic accelerator.
+
+## v1.39.4 (2019-09-17)
+
+### Bug fixes and other changes
+
+ * pass enable_network_isolation when creating TF and SKLearn models
+
+## v1.39.3 (2019-09-16)
+
+### Bug fixes and other changes
+
+ * expose vpc_config_override in transformer() methods
+ * use Estimator.create_model in Estimator.transformer
+
+## v1.39.2 (2019-09-11)
+
+### Bug fixes and other changes
+
+ * pass enable_network_isolation in Estimator.create_model
+ * use p2 instead of p3 for the Horovod test
+
+## v1.39.1 (2019-09-10)
+
+### Bug fixes and other changes
+
+ * copy dependencies into new folder when repacking model
+ * make get_caller_identity_arn get role from DescribeNotebookInstance
+ * add https to regional STS endpoint
+ * clean up git support integ tests
+
+## v1.39.0 (2019-09-09)
+
+### Features
+
+ * Estimator.fit like logs for transformer
+ * handler for stopping transform job
+
+### Bug fixes and other changes
+
+ * remove hardcoded creds from integ test
+ * remove hardcoded creds from integ test
+ * Fix get_image_uri warning log for default xgboost version.
+ * add enable_network_isolation to generic Estimator class
+ * use regional endpoint when creating AWS STS client
+ * update Sagemaker Neo regions
+ * use cpu_instance_type fixture for stop_transform_job test
+ * hyperparameter tuning with spot instances and checkpoints
+ * skip efs and fsx integ tests in all regions
+
+### Documentation changes
+
+ * clarify some Local Mode limitations
+
+## v1.38.6 (2019-09-04)
+
+### Bug fixes and other changes
+
+ * update: disable efs fsx integ tests in non-pdx regions
+ * fix canary test failure issues
+ * use us-east-1 for PR test runs
+
+### Documentation changes
+
+ * updated description for "accept" parameter in batch transform
+
+## v1.38.5 (2019-09-02)
+
+### Bug fixes and other changes
+
+ * clean up resources created by file system set up when setup fails
+
+## v1.38.4 (2019-08-29)
+
+### Bug fixes and other changes
+
+ * skip EFS tests until they are confirmed fixed.
+
+### Documentation changes
+
+ * add note to CONTRIBUTING to clarify automated formatting
+ * add checkpoint section to using_mxnet topic
+
+## v1.38.3 (2019-08-28)
+
+### Bug fixes and other changes
+
+ * change AMI ids in tests to be dynamic based on regions
+
+## v1.38.2 (2019-08-27)
+
+### Bug fixes and other changes
+
+ * skip efs tests in non us-west-2 regions
+ * refactor tests to use common retry method
+
+## v1.38.1 (2019-08-26)
+
+### Bug fixes and other changes
+
+ * update py2 warning message
+ * add logic to use asimov image for TF 1.14 py2
+
+### Documentation changes
+
+ * changed EFS directory path instructions in documentation and Docstrings
+
+## v1.38.0 (2019-08-23)
+
+### Features
+
+ * support training inputs from EFS and FSx
+
+## v1.37.2 (2019-08-20)
+
+### Bug fixes and other changes
+
+ * Add support for Managed Spot Training and Checkpoint support
+ * Integration Tests now dynamically checks AZs
+
+## v1.37.1 (2019-08-19)
+
+### Bug fixes and other changes
+
+ * eliminate dependency on mnist dataset website
+
+### Documentation changes
+
+ * refactor using_sklearn and fix minor errors in using_pytorch and using_chainer
+
+## v1.37.0 (2019-08-15)
+
+### Features
+
+ * add XGBoost Estimator as new framework
+
+### Bug fixes and other changes
+
+ * fix tests for new regions
+ * add update_endpoint for PipelineModel
+
+### Documentation changes
+
+ * refactor the using Chainer topic
+
+## v1.36.4 (2019-08-13)
+
+### Bug fixes and other changes
+
+ * region build from staging pr
+
+### Documentation changes
+
+ * Refactor Using PyTorch topic for consistency
+
+## v1.36.3 (2019-08-13)
+
+### Bug fixes and other changes
+
+ * fix integration test failures masked by timeout bug
+ * prevent multiple values error in sklearn.transformer()
+ * model.transformer() passes tags to create_model()
+
+## v1.36.2 (2019-08-12)
+
+### Bug fixes and other changes
+
+ * rework CONTRIBUTING.md to include a development workflow
+
+## v1.36.1 (2019-08-08)
+
+### Bug fixes and other changes
+
+ * prevent integration test's timeout functions from hiding failures
+
+### Documentation changes
+
+ * correct typo in using_sklearn.rst
+
 ## v1.36.0 (2019-08-07)
 
 ### Features

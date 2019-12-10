@@ -56,6 +56,12 @@ ENDPOINT_CONFIG_DESC = {"ProductionVariants": [{"ModelName": "model-1"}, {"Model
 
 LIST_TAGS_RESULT = {"Tags": [{"Key": "TagtestKey", "Value": "TagtestValue"}]}
 
+EXPERIMENT_CONFIG = {
+    "ExperimentName": "exp",
+    "TrialName": "trial",
+    "TrialComponentDisplayName": "tc",
+}
+
 
 @pytest.fixture()
 def sagemaker_session():
@@ -137,6 +143,11 @@ def _create_train_job(version):
         "tags": None,
         "vpc_config": None,
         "metric_definitions": None,
+        "experiment_config": None,
+        "debugger_hook_config": {
+            "CollectionConfigurations": [],
+            "S3OutputPath": "s3://{}/".format(BUCKET_NAME),
+        },
     }
 
 
@@ -303,7 +314,7 @@ def test_mxnet(strftime, sagemaker_session, mxnet_version, skip_if_mms_version):
 
     inputs = "s3://mybucket/train"
 
-    mx.fit(inputs=inputs)
+    mx.fit(inputs=inputs, experiment_config=EXPERIMENT_CONFIG)
 
     sagemaker_call_names = [c[0] for c in sagemaker_session.method_calls]
     assert sagemaker_call_names == ["train", "logs_for_job"]
@@ -312,6 +323,7 @@ def test_mxnet(strftime, sagemaker_session, mxnet_version, skip_if_mms_version):
 
     expected_train_args = _create_train_job(mxnet_version)
     expected_train_args["input_config"][0]["DataSource"]["S3DataSource"]["S3Uri"] = inputs
+    expected_train_args["experiment_config"] = EXPERIMENT_CONFIG
 
     actual_train_args = sagemaker_session.method_calls[0][2]
     assert actual_train_args == expected_train_args
@@ -371,6 +383,7 @@ def test_mxnet_mms_version(
     model = mx.create_model()
 
     expected_image_base = _get_full_image_uri(mxnet_version, IMAGE_REPO_SERVING_NAME, "gpu")
+
     environment = {
         "Environment": {
             "SAGEMAKER_SUBMIT_DIRECTORY": "s3://mybucket/sagemaker-mxnet-2017-11-06-14:14:15.672/model.tar.gz",
@@ -449,6 +462,7 @@ def test_model(sagemaker_session):
 
 @patch("sagemaker.utils.repack_model")
 def test_model_mms_version(repack_model, sagemaker_session):
+    model_kms_key = "kms-key"
     model = MXNetModel(
         MODEL_DATA,
         role=ROLE,
@@ -456,6 +470,7 @@ def test_model_mms_version(repack_model, sagemaker_session):
         framework_version=MXNetModel._LOWEST_MMS_VERSION,
         sagemaker_session=sagemaker_session,
         name="test-mxnet-model",
+        model_kms_key=model_kms_key,
     )
     predictor = model.deploy(1, GPU)
 
@@ -466,6 +481,7 @@ def test_model_mms_version(repack_model, sagemaker_session):
         model_uri=MODEL_DATA,
         repacked_model_uri="s3://mybucket/test-mxnet-model/model.tar.gz",
         sagemaker_session=sagemaker_session,
+        kms_key=model_kms_key,
     )
 
     assert model.model_data == MODEL_DATA
@@ -761,3 +777,53 @@ def test_create_model_with_custom_hosting_image(sagemaker_session):
     model = mx.create_model(image_name=custom_hosting_image)
 
     assert model.image == custom_hosting_image
+
+
+def test_mx_enable_sm_metrics(sagemaker_session):
+    mx = MXNet(
+        entry_point=SCRIPT_PATH,
+        role=ROLE,
+        sagemaker_session=sagemaker_session,
+        train_instance_count=INSTANCE_COUNT,
+        train_instance_type=INSTANCE_TYPE,
+        enable_sagemaker_metrics=True,
+    )
+    assert mx.enable_sagemaker_metrics
+
+
+def test_mx_disable_sm_metrics(sagemaker_session):
+    mx = MXNet(
+        entry_point=SCRIPT_PATH,
+        role=ROLE,
+        sagemaker_session=sagemaker_session,
+        train_instance_count=INSTANCE_COUNT,
+        train_instance_type=INSTANCE_TYPE,
+        enable_sagemaker_metrics=False,
+    )
+    assert not mx.enable_sagemaker_metrics
+
+
+def test_mx_disable_sm_metrics_if_pt_ver_is_less_than_1_6(sagemaker_session):
+    for fw_version in ["1.1", "1.2", "1.3", "1.4", "1.5"]:
+        mx = MXNet(
+            entry_point=SCRIPT_PATH,
+            role=ROLE,
+            sagemaker_session=sagemaker_session,
+            train_instance_count=INSTANCE_COUNT,
+            train_instance_type=INSTANCE_TYPE,
+            framework_version=fw_version,
+        )
+        assert mx.enable_sagemaker_metrics is None
+
+
+def test_mx_enable_sm_metrics_if_fw_ver_is_at_least_1_6(sagemaker_session):
+    for fw_version in ["1.6", "1.7", "2.0", "2.1"]:
+        mx = MXNet(
+            entry_point=SCRIPT_PATH,
+            role=ROLE,
+            sagemaker_session=sagemaker_session,
+            train_instance_count=INSTANCE_COUNT,
+            train_instance_type=INSTANCE_TYPE,
+            framework_version=fw_version,
+        )
+        assert mx.enable_sagemaker_metrics

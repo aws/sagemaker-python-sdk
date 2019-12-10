@@ -40,16 +40,32 @@ NEO_ALLOWED_TARGET_INSTANCE_FAMILY = set(
         "rk3288",
         "rk3399",
         "sbe_c",
+        "aisage",
+        "qcs603",
+        "qcs605",
     ]
 )
 NEO_ALLOWED_FRAMEWORKS = set(["mxnet", "tensorflow", "pytorch", "onnx", "xgboost"])
 
 NEO_IMAGE_ACCOUNT = {
+    "us-west-1": "710691900526",
     "us-west-2": "301217895009",
     "us-east-1": "785573368785",
-    "eu-west-1": "802834080501",
     "us-east-2": "007439368137",
+    "eu-west-1": "802834080501",
+    "eu-west-2": "205493899709",
+    "eu-west-3": "254080097072",
+    "eu-central-1": "746233611703",
+    "eu-north-1": "601324751636",
     "ap-northeast-1": "941853720454",
+    "ap-northeast-2": "151534178276",
+    "ap-east-1": "110948597952",
+    "ap-southeast-1": "324986816169",
+    "ap-southeast-2": "355873309152",
+    "ap-south-1": "763008648453",
+    "sa-east-1": "756306329178",
+    "ca-central-1": "464438896020",
+    "me-south-1": "836785723513",
 }
 
 
@@ -67,6 +83,7 @@ class Model(object):
         vpc_config=None,
         sagemaker_session=None,
         enable_network_isolation=False,
+        model_kms_key=None,
     ):
         """Initialize an SageMaker ``Model``.
 
@@ -102,6 +119,8 @@ class Model(object):
                 network isolation in the endpoint, isolating the model
                 container. No inbound or outbound network calls can be made to
                 or from the model container.
+            model_kms_key (str): KMS key ARN used to encrypt the repacked
+                model archive file if the model is repacked
         """
         self.model_data = model_data
         self.image = image
@@ -115,6 +134,7 @@ class Model(object):
         self.endpoint_name = None
         self._is_compiled_model = False
         self._enable_network_isolation = enable_network_isolation
+        self.model_kms_key = model_kms_key
 
     def prepare_container_def(
         self, instance_type, accelerator_type=None
@@ -364,6 +384,7 @@ class Model(object):
         tags=None,
         kms_key=None,
         wait=True,
+        data_capture_config=None,
     ):
         """Deploy this ``Model`` to an ``Endpoint`` and optionally return a
         ``Predictor``.
@@ -383,7 +404,7 @@ class Model(object):
             initial_instance_count (int): The initial number of instances to run
                 in the ``Endpoint`` created from this ``Model``.
             instance_type (str): The EC2 instance type to deploy this Model to.
-                For example, 'ml.p2.xlarge'.
+                For example, 'ml.p2.xlarge', or 'local' for local mode.
             accelerator_type (str): Type of Elastic Inference accelerator to
                 deploy this model for model loading and inference, for example,
                 'ml.eia1.medium'. If not specified, no Elastic Inference
@@ -404,6 +425,9 @@ class Model(object):
                 endpoint.
             wait (bool): Whether the call should wait until the deployment of
                 this model completes (default: True).
+            data_capture_config (sagemaker.model_monitor.DataCaptureConfig): Specifies
+                configuration related to Endpoint data capture for use with
+                Amazon SageMaker Model Monitoring. Default: None.
 
         Returns:
             callable[string, sagemaker.session.Session] or None: Invocation of
@@ -434,6 +458,10 @@ class Model(object):
             if self._is_compiled_model and not self.endpoint_name.endswith(compiled_model_suffix):
                 self.endpoint_name += compiled_model_suffix
 
+        data_capture_config_dict = None
+        if data_capture_config is not None:
+            data_capture_config_dict = data_capture_config._to_request_dict()
+
         if update_endpoint:
             endpoint_config_name = self.sagemaker_session.create_endpoint_config(
                 name=self.name,
@@ -443,11 +471,17 @@ class Model(object):
                 accelerator_type=accelerator_type,
                 tags=tags,
                 kms_key=kms_key,
+                data_capture_config_dict=data_capture_config_dict,
             )
             self.sagemaker_session.update_endpoint(self.endpoint_name, endpoint_config_name)
         else:
             self.sagemaker_session.endpoint_from_production_variants(
-                self.endpoint_name, [production_variant], tags, kms_key, wait
+                name=self.endpoint_name,
+                production_variants=[production_variant],
+                tags=tags,
+                kms_key=kms_key,
+                wait=wait,
+                data_capture_config_dict=data_capture_config_dict,
             )
 
         if self.predictor_cls:
@@ -484,8 +518,9 @@ class Model(object):
                 not specified, results are stored to a default bucket.
             output_kms_key (str): Optional. KMS key ID for encrypting the
                 transform output (default: None).
-            accept (str): The content type accepted by the endpoint deployed
-                during the transform job.
+            accept (str): The accept header passed by the client to
+                the inference endpoint. If it is supported by the endpoint,
+                it will be the format of the batch transform output.
             env (dict): Environment variables to be set for use during the
                 transform job (default: None).
             max_concurrent_transforms (int): The maximum number of HTTP requests
@@ -498,7 +533,7 @@ class Model(object):
             volume_kms_key (str): Optional. KMS key ID for encrypting the volume
                 attached to the ML compute instance (default: None).
         """
-        self._create_sagemaker_model(instance_type)
+        self._create_sagemaker_model(instance_type, tags=tags)
         if self.enable_network_isolation():
             env = None
 
@@ -786,6 +821,7 @@ class FrameworkModel(Model):
                 model_uri=self.model_data,
                 repacked_model_uri=repacked_model_data,
                 sagemaker_session=self.sagemaker_session,
+                kms_key=self.model_kms_key,
             )
 
             self.repacked_model_data = repacked_model_data
@@ -797,7 +833,10 @@ class FrameworkModel(Model):
         """Placeholder docstring"""
         if self.uploaded_code:
             script_name = self.uploaded_code.script_name
-            dir_name = self.uploaded_code.s3_prefix
+            if self.enable_network_isolation():
+                dir_name = "/opt/ml/model/code"
+            else:
+                dir_name = self.uploaded_code.s3_prefix
         else:
             script_name = self.entry_point
             dir_name = "file://" + self.source_dir
@@ -895,11 +934,14 @@ class ModelPackage(Model):
                 return True
         return False
 
-    def _create_sagemaker_model(self, *args):  # pylint: disable=unused-argument
+    def _create_sagemaker_model(self, *args, **kwargs):  # pylint: disable=unused-argument
         """Create a SageMaker Model Entity
 
         Args:
-            *args: Arguments coming from the caller. This class does not require
+            args: Positional arguments coming from the caller. This class does not require
+                any so they are ignored.
+
+            kwargs: Keyword arguments coming from the caller. This class does not require
                 any so they are ignored.
         """
         if self.algorithm_arn:

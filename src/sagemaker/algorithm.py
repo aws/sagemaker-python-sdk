@@ -53,6 +53,7 @@ class AlgorithmEstimator(EstimatorBase):
         model_channel_name="model",
         metric_definitions=None,
         encrypt_inter_container_traffic=False,
+        **kwargs  # pylint: disable=W0613
     ):
         """Initialize an ``AlgorithmEstimator`` instance.
 
@@ -162,6 +163,8 @@ class AlgorithmEstimator(EstimatorBase):
             model_channel_name:
             metric_definitions:
             encrypt_inter_container_traffic:
+            **kwargs: Additional kwargs. This is unused. It's only added for AlgorithmEstimator
+                to ignore the irrelevant arguments.
         """
         self.algorithm_arn = algorithm_arn
         super(AlgorithmEstimator, self).__init__(
@@ -365,8 +368,9 @@ class AlgorithmEstimator(EstimatorBase):
                 not specified, results are stored to a default bucket.
             output_kms_key (str): Optional. KMS key ID for encrypting the
                 transform output (default: None).
-            accept (str): The content type accepted by the endpoint deployed
-                during the transform job.
+            accept (str): The accept header passed by the client to
+                the inference endpoint. If it is supported by the endpoint,
+                it will be the format of the batch transform output.
             env (dict): Environment variables to be set for use during the
                 transform job (default: None).
             max_concurrent_transforms (int): The maximum number of HTTP requests

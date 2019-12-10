@@ -28,7 +28,11 @@ from sagemaker.utils import unique_name_from_base
 @pytest.mark.skipif(
     tests.integ.PYTHON_VERSION != "py2", reason="TensorFlow image supports only python 2."
 )
-def test_keras(sagemaker_session):
+@pytest.mark.skipif(
+    tests.integ.test_region() in tests.integ.HOSTING_NO_P2_REGIONS,
+    reason="no ml.p2 instances in these regions",
+)
+def test_keras(sagemaker_session, cpu_instance_type):
     script_path = os.path.join(tests.integ.DATA_DIR, "cifar_10", "source")
     dataset_path = os.path.join(tests.integ.DATA_DIR, "cifar_10", "data")
 
@@ -43,7 +47,7 @@ def test_keras(sagemaker_session):
             training_steps=50,
             evaluation_steps=5,
             train_instance_count=1,
-            train_instance_type="ml.c4.xlarge",
+            train_instance_type=cpu_instance_type,
             train_max_run=45 * 60,
         )
 
@@ -56,7 +60,7 @@ def test_keras(sagemaker_session):
 
     endpoint_name = estimator.latest_training_job.name
     with timeout_and_delete_endpoint_by_name(endpoint_name, sagemaker_session):
-        predictor = estimator.deploy(initial_instance_count=1, instance_type="ml.c4.xlarge")
+        predictor = estimator.deploy(initial_instance_count=1, instance_type=cpu_instance_type)
 
         data = np.random.randn(32, 32, 3)
         predict_response = predictor.predict(data)

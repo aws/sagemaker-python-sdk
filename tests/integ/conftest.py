@@ -14,8 +14,6 @@ from __future__ import absolute_import
 
 import os
 
-import pytest
-
 
 def create_sagemaker_local_network():
     """
@@ -28,8 +26,3 @@ def create_sagemaker_local_network():
 
 
 create_sagemaker_local_network()
-
-
-@pytest.fixture(scope="session", params=["local", "ml.c4.xlarge"])
-def instance_type(request):
-    return request.param

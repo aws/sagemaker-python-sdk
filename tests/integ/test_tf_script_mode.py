@@ -18,13 +18,14 @@ import time
 
 import pytest
 
-import boto3
 from sagemaker.tensorflow import TensorFlow
-from six.moves.urllib.parse import urlparse
-from sagemaker.utils import unique_name_from_base
+from sagemaker.utils import unique_name_from_base, sagemaker_timestamp
 
 import tests.integ
 from tests.integ import timeout
+from tests.integ import kms_utils
+from tests.integ.retry import retries
+from tests.integ.s3_utils import assert_s3_files_exist
 
 ROLE = "SageMakerRole"
 
@@ -38,12 +39,11 @@ MPI_DISTRIBUTION = {"mpi": {"enabled": True}}
 TAGS = [{"Key": "some-key", "Value": "some-value"}]
 
 
-@pytest.fixture(scope="session", params=["ml.c4.xlarge"])
-def instance_type(request):
-    return request.param
-
-
-def test_mnist(sagemaker_session, instance_type):
+def test_mnist_with_checkpoint_config(sagemaker_session, instance_type):
+    checkpoint_s3_uri = "s3://{}/checkpoints/tf-{}".format(
+        sagemaker_session.default_bucket(), sagemaker_timestamp()
+    )
+    checkpoint_local_path = "/test/checkpoint/path"
     estimator = TensorFlow(
         entry_point=SCRIPT,
         role="SageMakerRole",
@@ -54,32 +54,44 @@ def test_mnist(sagemaker_session, instance_type):
         framework_version=TensorFlow.LATEST_VERSION,
         py_version=tests.integ.PYTHON_VERSION,
         metric_definitions=[{"Name": "train:global_steps", "Regex": r"global_step\/sec:\s(.*)"}],
+        checkpoint_s3_uri=checkpoint_s3_uri,
+        checkpoint_local_path=checkpoint_local_path,
     )
     inputs = estimator.sagemaker_session.upload_data(
         path=os.path.join(MNIST_RESOURCE_PATH, "data"), key_prefix="scriptmode/mnist"
     )
 
+    training_job_name = unique_name_from_base("test-tf-sm-mnist")
     with tests.integ.timeout.timeout(minutes=tests.integ.TRAINING_DEFAULT_TIMEOUT_MINUTES):
-        estimator.fit(inputs=inputs, job_name=unique_name_from_base("test-tf-sm-mnist"))
-    _assert_s3_files_exist(
-        estimator.model_dir, ["graph.pbtxt", "model.ckpt-0.index", "model.ckpt-0.meta"]
+        estimator.fit(inputs=inputs, job_name=training_job_name)
+    assert_s3_files_exist(
+        sagemaker_session,
+        estimator.model_dir,
+        ["graph.pbtxt", "model.ckpt-0.index", "model.ckpt-0.meta"],
     )
     df = estimator.training_job_analytics.dataframe()
     assert df.size > 0
 
+    expected_training_checkpoint_config = {
+        "S3Uri": checkpoint_s3_uri,
+        "LocalPath": checkpoint_local_path,
+    }
+    actual_training_checkpoint_config = sagemaker_session.sagemaker_client.describe_training_job(
+        TrainingJobName=training_job_name
+    )["CheckpointConfig"]
+    assert actual_training_checkpoint_config == expected_training_checkpoint_config
+
 
 def test_server_side_encryption(sagemaker_session):
     boto_session = sagemaker_session.boto_session
-    with tests.integ.kms_utils.bucket_with_encryption(boto_session, ROLE) as (
-        bucket_with_kms,
-        kms_key,
-    ):
+    with kms_utils.bucket_with_encryption(boto_session, ROLE) as (bucket_with_kms, kms_key):
         output_path = os.path.join(
             bucket_with_kms, "test-server-side-encryption", time.strftime("%y%m%d-%H%M")
         )
 
         estimator = TensorFlow(
-            entry_point=SCRIPT,
+            entry_point="training.py",
+            source_dir=TFS_RESOURCE_PATH,
             role=ROLE,
             train_instance_count=1,
             train_instance_type="ml.c5.xlarge",
@@ -102,6 +114,15 @@ def test_server_side_encryption(sagemaker_session):
                 inputs=inputs, job_name=unique_name_from_base("test-server-side-encryption")
             )
 
+        endpoint_name = unique_name_from_base("test-server-side-encryption")
+        with timeout.timeout_and_delete_endpoint_by_name(endpoint_name, sagemaker_session):
+            estimator.deploy(
+                initial_instance_count=1,
+                instance_type="ml.c5.xlarge",
+                endpoint_name=endpoint_name,
+                entry_point=os.path.join(TFS_RESOURCE_PATH, "inference.py"),
+            )
+
 
 @pytest.mark.canary_quick
 def test_mnist_distributed(sagemaker_session, instance_type):
@@ -122,16 +143,14 @@ def test_mnist_distributed(sagemaker_session, instance_type):
 
     with tests.integ.timeout.timeout(minutes=tests.integ.TRAINING_DEFAULT_TIMEOUT_MINUTES):
         estimator.fit(inputs=inputs, job_name=unique_name_from_base("test-tf-sm-distributed"))
-    _assert_s3_files_exist(
-        estimator.model_dir, ["graph.pbtxt", "model.ckpt-0.index", "model.ckpt-0.meta"]
+    assert_s3_files_exist(
+        sagemaker_session,
+        estimator.model_dir,
+        ["graph.pbtxt", "model.ckpt-0.index", "model.ckpt-0.meta"],
     )
 
 
-@pytest.mark.skip(
-    reason="This test has always failed, but the failure was masked by a bug. "
-    "This test should be fixed. Details in https://github.com/aws/sagemaker-python-sdk/pull/968"
-)
-def test_mnist_async(sagemaker_session):
+def test_mnist_async(sagemaker_session, cpu_instance_type):
     estimator = TensorFlow(
         entry_point=SCRIPT,
         role=ROLE,
@@ -160,7 +179,7 @@ def test_mnist_async(sagemaker_session):
         model_name = "model-mnist-async"
         predictor = estimator.deploy(
             initial_instance_count=1,
-            instance_type="ml.c4.xlarge",
+            instance_type=cpu_instance_type,
             endpoint_name=endpoint_name,
             model_name=model_name,
         )
@@ -168,9 +187,7 @@ def test_mnist_async(sagemaker_session):
         result = predictor.predict(np.zeros(784))
         print("predict result: {}".format(result))
         _assert_endpoint_tags_match(sagemaker_session.sagemaker_client, predictor.endpoint, TAGS)
-        _assert_model_tags_match(
-            sagemaker_session.sagemaker_client, estimator.latest_training_job.name, TAGS
-        )
+        _assert_model_tags_match(sagemaker_session.sagemaker_client, model_name, TAGS)
         _assert_model_name_match(sagemaker_session.sagemaker_client, endpoint_name, model_name)
 
 
@@ -207,27 +224,13 @@ def test_deploy_with_input_handlers(sagemaker_session, instance_type):
         assert expected_result == result
 
 
-def _assert_s3_files_exist(s3_url, files):
-    parsed_url = urlparse(s3_url)
-    s3 = boto3.client("s3")
-    contents = s3.list_objects_v2(Bucket=parsed_url.netloc, Prefix=parsed_url.path.lstrip("/"))[
-        "Contents"
-    ]
-    for f in files:
-        found = [x["Key"] for x in contents if x["Key"].endswith(f)]
-        if not found:
-            raise ValueError("File {} is not found under {}".format(f, s3_url))
-
-
-def _assert_tags_match(sagemaker_client, resource_arn, tags, retries=15):
-    actual_tags = None
-    for _ in range(retries):
+def _assert_tags_match(sagemaker_client, resource_arn, tags, retry_count=15):
+    # endpoint and training tags might take minutes to propagate.
+    for _ in retries(retry_count, "Getting endpoint tags", seconds_to_sleep=30):
         actual_tags = sagemaker_client.list_tags(ResourceArn=resource_arn)["Tags"]
         if actual_tags:
             break
-        else:
-            # endpoint and training tags might take minutes to propagate. Sleeping.
-            time.sleep(30)
+
     assert actual_tags == tags
 
 

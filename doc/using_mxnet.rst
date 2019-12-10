@@ -136,7 +136,8 @@ You don't have to use all the arguments, arguments you don't care about can be i
 **Note: Writing a training script that imports correctly:**
 When SageMaker runs your training script, it imports it as a Python module and then invokes ``train`` on the imported module. Consequently, you should not include any statements that won't execute successfully in SageMaker when your module is imported. For example, don't attempt to open any local files in top-level statements in your training script.
 
-If you want to run your training script locally via the Python interpreter, look at using a ``___name__ == '__main__'`` guard, discussed in more detail here: https://stackoverflow.com/questions/419163/what-does-if-name-main-do .
+If you want to run your training script locally by using the Python interpreter,  use a ``___name__ == '__main__'`` guard.
+For more information, see https://stackoverflow.com/questions/419163/what-does-if-name-main-do.
 
 Save the Model
 --------------
@@ -193,6 +194,37 @@ After your ``train`` function completes, SageMaker will invoke ``save`` with the
 **Note: How to save Gluon models with SageMaker**
 
 If your train function returns a Gluon API ``net`` object as its model, you'll need to write your own ``save`` function. You will want to serialize the ``net`` parameters. Saving ``net`` parameters is covered in the `Serialization section <http://gluon.mxnet.io/chapter03_deep-neural-networks/serialization.html>`__ of the collaborative Gluon deep-learning book `"The Straight Dope" <http://gluon.mxnet.io/index.html>`__.
+
+Save a Checkpoint
+-----------------
+
+It is good practice to save the best model after each training epoch,
+so that you can resume a training job if it gets interrupted.
+This is particularly important if you are using Managed Spot training.
+
+To save MXNet model checkpoints, do the following in your training script:
+
+* Set the ``CHECKPOINTS_DIR`` environment variable and enable checkpoints.
+
+   .. code:: python
+
+     CHECKPOINTS_DIR = '/opt/ml/checkpoints'
+     checkpoints_enabled = os.path.exists(CHECKPOINTS_DIR)
+
+* Make sure you are emitting a validation metric to test the model. For information, see `Evaluation Metric API <https://mxnet.incubator.apache.org/api/python/metric/metric.html>`_.
+* After each training epoch, test whether the current model performs the best with respect to the validation metric, and if it does, save that model to ``CHECKPOINTS_DIR``.
+
+   .. code:: python
+
+     if checkpoints_enabled and current_host == hosts[0]:
+            if val_acc > best_accuracy:
+                best_accuracy = val_acc
+                logging.info('Saving the model, params and optimizer state')
+                net.export(CHECKPOINTS_DIR + "/%.4f-cifar10"%(best_accuracy), epoch)
+                trainer.save_states(CHECKPOINTS_DIR + '/%.4f-cifar10-%d.states'%(best_accuracy, epoch))
+
+For a complete example of an MXNet training script that impelements checkpointing, see https://github.com/awslabs/amazon-sagemaker-examples/blob/master/sagemaker-python-sdk/mxnet_gluon_cifar10/cifar10.py.
+
 
 Updating your MXNet training script
 -----------------------------------
@@ -299,7 +331,7 @@ The following code sample shows how you train a custom MXNet script "train.py".
                                              'learning-rate': 0.1})
     mxnet_estimator.fit('s3://my_bucket/my_training_data/')
 
-For more information about the sagemaker.mxnet.MXNet estimator, see `sagemaker.mxnet.MXNet Class`_. 
+For more information about the sagemaker.mxnet.MXNet estimator, see `sagemaker.mxnet.MXNet Class`_.
 
 
 
@@ -338,14 +370,18 @@ fit Optional arguments
 Distributed training
 ====================
 
-When writing a distributed training script, use an MXNet kvstore to store and share model parameters.
+If you want to use parameter servers for distributed training, set the following parameter in your ``MXNet`` constructor:
+
+.. code:: python
+
+    distributions={'parameter_server': {'enabled': True}}
+
+Then, when writing a distributed training script, use an MXNet kvstore to store and share model parameters.
 During training, SageMaker automatically starts an MXNet kvstore server and scheduler processes on hosts in your training job cluster.
 Your script runs as an MXNet worker task, with one server process on each host in your cluster.
 One host is selected arbitrarily to run the scheduler process.
 
 To learn more about writing distributed MXNet programs, please see `Distributed Training <https://mxnet.incubator.apache.org/versions/master/faq/distributed_training.html>`__ in the MXNet docs.
-
-
 
 *******************
 Deploy MXNet models
@@ -535,7 +571,7 @@ If you provide your own implementation of input_fn, you should abide by the ``in
         """An input_fn that loads a pickled numpy array"""
         if request_content_type == 'application/python-pickle':
             array = np.load(StringIO(request_body))
-            array.reshape(model.data_shpaes[0])
+            array.reshape(model.data_shapes[0])
             return mx.io.NDArrayIter(mx.ndarray(array))
         else:
             # Handle other content-types here or raise an Exception
@@ -796,6 +832,7 @@ The following are optional arguments. When you create an ``MXNet`` object, you c
         'enabled': True
       }
     }
+
 
 **************************
 SageMaker MXNet Containers

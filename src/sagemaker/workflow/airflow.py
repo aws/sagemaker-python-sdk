@@ -34,10 +34,14 @@ def prepare_framework(estimator, s3_operations):
     if estimator.code_location is not None:
         bucket, key = fw_utils.parse_s3_url(estimator.code_location)
         key = os.path.join(key, estimator._current_job_name, "source", "sourcedir.tar.gz")
+    elif estimator.uploaded_code is not None:
+        bucket, key = fw_utils.parse_s3_url(estimator.uploaded_code.s3_prefix)
     else:
         bucket = estimator.sagemaker_session._default_bucket
         key = os.path.join(estimator._current_job_name, "source", "sourcedir.tar.gz")
+
     script = os.path.basename(estimator.entry_point)
+
     if estimator.source_dir and estimator.source_dir.lower().startswith("s3://"):
         code_dir = estimator.source_dir
         estimator.uploaded_code = fw_utils.UploadedCode(s3_prefix=code_dir, script_name=script)
@@ -96,7 +100,7 @@ def prepare_amazon_algorithm_estimator(estimator, inputs, mini_batch_size=None):
     estimator.mini_batch_size = mini_batch_size
 
 
-def training_base_config(estimator, inputs=None, job_name=None, mini_batch_size=None):
+def training_base_config(estimator, inputs=None, job_name=None, mini_batch_size=None):  # noqa: C901
     """Export Airflow base training config from an estimator
 
     Args:
@@ -134,6 +138,13 @@ def training_base_config(estimator, inputs=None, job_name=None, mini_batch_size=
         dict: Training config that can be directly used by
         SageMakerTrainingOperator in Airflow.
     """
+    if isinstance(estimator, sagemaker.amazon.amazon_estimator.AmazonAlgorithmEstimatorBase):
+        estimator.prepare_workflow_for_training(
+            records=inputs, mini_batch_size=mini_batch_size, job_name=job_name
+        )
+    else:
+        estimator.prepare_workflow_for_training(job_name=job_name)
+
     default_bucket = estimator.sagemaker_session.default_bucket()
     s3_operations = {}
 
@@ -228,8 +239,8 @@ def training_config(estimator, inputs=None, job_name=None, mini_batch_size=None)
     return train_config
 
 
-def tuning_config(tuner, inputs, job_name=None):
-    """Export Airflow tuning config from an estimator
+def tuning_config(tuner, inputs, job_name=None, include_cls_metadata=False, mini_batch_size=None):
+    """Export Airflow tuning config from a HyperparameterTuner
 
     Args:
         tuner (sagemaker.tuner.HyperparameterTuner): The tuner to export tuning
@@ -255,64 +266,178 @@ def tuning_config(tuner, inputs, job_name=None):
             * (list[sagemaker.amazon.amazon_estimator.RecordSet]) - A list of
                   :class:~`sagemaker.amazon.amazon_estimator.RecordSet` objects,
                   where each instance is a different channel of training data.
+
+            * (dict[str, one the forms above]): Required by only tuners created via
+                  the factory method ``HyperparameterTuner.create()``. The keys should be the
+                  same estimator names as keys for the ``estimator_dict`` argument of the
+                  ``HyperparameterTuner.create()`` method.
         job_name (str): Specify a tuning job name if needed.
+        include_cls_metadata: It can take one of the following two forms.
+
+            * (bool) - Whether or not the hyperparameter tuning job should include information
+                about the estimator class (default: False). This information is passed as a
+                hyperparameter, so if the algorithm you are using cannot handle unknown
+                hyperparameters (e.g. an Amazon SageMaker built-in algorithm that does not
+                have a custom estimator in the Python SDK), then set ``include_cls_metadata``
+                to ``False``.
+            * (dict[str, bool]) - This version should be used for tuners created via the factory
+                method ``HyperparameterTuner.create()``, to specify the flag for individual
+                estimators provided in the ``estimator_dict`` argument of the method. The keys
+                would be the same estimator names as in ``estimator_dict``. If one estimator
+                doesn't need the flag set, then no need to include it in the dictionary. If none
+                of the estimators need the flag set, then an empty dictionary ``{}`` must be used.
+
+        mini_batch_size: It can take one of the following two forms.
+
+            * (int) - Specify this argument only when estimator is a built-in estimator of an
+                Amazon algorithm. For other estimators, batch size should be specified in the
+                estimator.
+            * (dict[str, int]) - This version should be used for tuners created via the factory
+                method ``HyperparameterTuner.create()``, to specify the value for individual
+                estimators provided in the ``estimator_dict`` argument of the method. The keys
+                would be the same estimator names as in ``estimator_dict``. If one estimator
+                doesn't need the value set, then no need to include it in the dictionary. If
+                none of the estimators need the value set, then an empty dictionary ``{}``
+                must be used.
 
     Returns:
         dict: Tuning config that can be directly used by SageMakerTuningOperator in Airflow.
     """
-    train_config = training_base_config(tuner.estimator, inputs)
-    hyperparameters = train_config.pop("HyperParameters", None)
-    s3_operations = train_config.pop("S3Operations", None)
 
-    if hyperparameters and len(hyperparameters) > 0:
-        tuner.static_hyperparameters = {
-            utils.to_str(k): utils.to_str(v) for (k, v) in hyperparameters.items()
-        }
-
-    if job_name is not None:
-        tuner._current_job_name = job_name
-    else:
-        base_name = tuner.base_tuning_job_name or utils.base_name_from_image(
-            tuner.estimator.train_image()
-        )
-        tuner._current_job_name = utils.name_from_base(
-            base_name, tuner.TUNING_JOB_NAME_MAX_LENGTH, True
-        )
-
-    for hyperparameter_name in tuner._hyperparameter_ranges.keys():
-        tuner.static_hyperparameters.pop(hyperparameter_name, None)
-
-    train_config["StaticHyperParameters"] = tuner.static_hyperparameters
+    tuner._prepare_job_name_for_tuning(job_name=job_name)
 
     tune_config = {
         "HyperParameterTuningJobName": tuner._current_job_name,
-        "HyperParameterTuningJobConfig": {
-            "Strategy": tuner.strategy,
-            "HyperParameterTuningJobObjective": {
-                "Type": tuner.objective_type,
-                "MetricName": tuner.objective_metric_name,
-            },
-            "ResourceLimits": {
-                "MaxNumberOfTrainingJobs": tuner.max_jobs,
-                "MaxParallelTrainingJobs": tuner.max_parallel_jobs,
-            },
-            "ParameterRanges": tuner.hyperparameter_ranges(),
-        },
-        "TrainingJobDefinition": train_config,
+        "HyperParameterTuningJobConfig": _extract_tuning_job_config(tuner),
     }
 
-    if tuner.metric_definitions is not None:
-        tune_config["TrainingJobDefinition"]["AlgorithmSpecification"][
-            "MetricDefinitions"
-        ] = tuner.metric_definitions
+    if tuner.estimator:
+        tune_config[
+            "TrainingJobDefinition"
+        ], s3_operations = _extract_training_config_from_estimator(
+            tuner, inputs, include_cls_metadata, mini_batch_size
+        )
+    else:
+        tune_config[
+            "TrainingJobDefinitions"
+        ], s3_operations = _extract_training_config_list_from_estimator_dict(
+            tuner, inputs, include_cls_metadata, mini_batch_size
+        )
 
-    if tuner.tags is not None:
-        tune_config["Tags"] = tuner.tags
-
-    if s3_operations is not None:
+    if s3_operations:
         tune_config["S3Operations"] = s3_operations
 
+    if tuner.tags:
+        tune_config["Tags"] = tuner.tags
+
+    if tuner.warm_start_config:
+        tune_config["WarmStartConfig"] = tuner.warm_start_config.to_input_req()
+
     return tune_config
+
+
+def _extract_tuning_job_config(tuner):
+    """Extract tuning job config from a HyperparameterTuner"""
+    tuning_job_config = {
+        "Strategy": tuner.strategy,
+        "ResourceLimits": {
+            "MaxNumberOfTrainingJobs": tuner.max_jobs,
+            "MaxParallelTrainingJobs": tuner.max_parallel_jobs,
+        },
+        "TrainingJobEarlyStoppingType": tuner.early_stopping_type,
+    }
+
+    if tuner.objective_metric_name:
+        tuning_job_config["HyperParameterTuningJobObjective"] = {
+            "Type": tuner.objective_type,
+            "MetricName": tuner.objective_metric_name,
+        }
+
+    parameter_ranges = tuner.hyperparameter_ranges()
+    if parameter_ranges:
+        tuning_job_config["ParameterRanges"] = parameter_ranges
+
+    return tuning_job_config
+
+
+def _extract_training_config_from_estimator(tuner, inputs, include_cls_metadata, mini_batch_size):
+    """Extract training job config from a HyperparameterTuner that uses the ``estimator`` field"""
+    train_config = training_base_config(tuner.estimator, inputs, mini_batch_size)
+    train_config.pop("HyperParameters", None)
+
+    tuner._prepare_static_hyperparameters_for_tuning(include_cls_metadata=include_cls_metadata)
+    train_config["StaticHyperParameters"] = tuner.static_hyperparameters
+
+    if tuner.metric_definitions:
+        train_config["AlgorithmSpecification"]["MetricDefinitions"] = tuner.metric_definitions
+
+    s3_operations = train_config.pop("S3Operations", None)
+    return train_config, s3_operations
+
+
+def _extract_training_config_list_from_estimator_dict(
+    tuner, inputs, include_cls_metadata, mini_batch_size
+):
+    """
+    Extract a list of training job configs from a HyperparameterTuner that uses the
+    ``estimator_dict`` field
+    """
+    estimator_names = sorted(tuner.estimator_dict.keys())
+    tuner._validate_dict_argument(name="inputs", value=inputs, allowed_keys=estimator_names)
+    tuner._validate_dict_argument(
+        name="include_cls_metadata", value=include_cls_metadata, allowed_keys=estimator_names
+    )
+    tuner._validate_dict_argument(
+        name="mini_batch_size", value=mini_batch_size, allowed_keys=estimator_names
+    )
+
+    train_config_dict = {}
+    for (estimator_name, estimator) in tuner.estimator_dict.items():
+        train_config_dict[estimator_name] = training_base_config(
+            estimator=estimator,
+            inputs=inputs.get(estimator_name) if inputs else None,
+            mini_batch_size=mini_batch_size.get(estimator_name) if mini_batch_size else None,
+        )
+
+    tuner._prepare_static_hyperparameters_for_tuning(include_cls_metadata=include_cls_metadata)
+
+    train_config_list = []
+    s3_operations_list = []
+
+    for estimator_name in sorted(train_config_dict.keys()):
+        train_config = train_config_dict[estimator_name]
+        train_config.pop("HyperParameters", None)
+        train_config["StaticHyperParameters"] = tuner.static_hyperparameters_dict[estimator_name]
+
+        train_config["AlgorithmSpecification"][
+            "MetricDefinitions"
+        ] = tuner.metric_definitions_dict.get(estimator_name)
+
+        train_config["DefinitionName"] = estimator_name
+        train_config["TuningObjective"] = {
+            "Type": tuner.objective_type,
+            "MetricName": tuner.objective_metric_name_dict[estimator_name],
+        }
+        train_config["HyperParameterRanges"] = tuner.hyperparameter_ranges_dict()[estimator_name]
+
+        s3_operations_list.append(train_config.pop("S3Operations", {}))
+
+        train_config_list.append(train_config)
+
+    return train_config_list, _merge_s3_operations(s3_operations_list)
+
+
+def _merge_s3_operations(s3_operations_list):
+    """Merge a list of S3 operation dictionaries into one"""
+    s3_operations_merged = {}
+    for s3_operations in s3_operations_list:
+        for (key, operations) in s3_operations.items():
+            if key not in s3_operations_merged:
+                s3_operations_merged[key] = []
+            for operation in operations:
+                if operation not in s3_operations_merged[key]:
+                    s3_operations_merged[key].append(operation)
+    return s3_operations_merged
 
 
 def update_submit_s3_uri(estimator, job_name):
@@ -528,6 +653,7 @@ def model_config_from_estimator(
             model_server_workers=model_server_workers,
             role=role,
             vpc_config_override=vpc_config_override,
+            entry_point=estimator.entry_point,
         )
     else:
         raise TypeError(
@@ -689,8 +815,9 @@ def transform_config_from_estimator(
             specified, results are stored to a default bucket.
         output_kms_key (str): Optional. KMS key ID for encrypting the transform
             output (default: None).
-        accept (str): The content type accepted by the endpoint deployed during
-            the transform job.
+        accept (str): The accept header passed by the client to
+            the inference endpoint. If it is supported by the endpoint,
+            it will be the format of the batch transform output.
         env (dict): Environment variables to be set for use during the transform
             job (default: None).
         max_concurrent_transforms (int): The maximum number of HTTP requests to

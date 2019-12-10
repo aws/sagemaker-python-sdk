@@ -22,11 +22,13 @@ import tempfile
 import threading
 import time
 
+from sagemaker.debugger import DebuggerHookConfig
 from sagemaker.estimator import Framework
 import sagemaker.fw_utils as fw
 from sagemaker.tensorflow.defaults import TF_VERSION
 from sagemaker.tensorflow.model import TensorFlowModel
 from sagemaker.tensorflow.serving import Model
+from sagemaker.transformer import Transformer
 from sagemaker import utils
 from sagemaker.vpc_utils import VPC_CONFIG_DEFAULT
 
@@ -195,11 +197,13 @@ class TensorFlow(Framework):
 
     __framework_name__ = "tensorflow"
 
-    LATEST_VERSION = "1.14"
+    LATEST_VERSION = "1.15"
     """The latest version of TensorFlow included in the SageMaker pre-built Docker images."""
 
     _LOWEST_SCRIPT_MODE_ONLY_VERSION = [1, 13]
-    _LOWEST_PYTHON_2_ONLY_VERSION = [1, 14]
+    # 1.15.0 still supports py2
+    # we will need to update this version number if future versions still support py2
+    _HIGHEST_PYTHON_2_VERSION = [1, 15, 0]
 
     def __init__(
         self,
@@ -283,6 +287,11 @@ class TensorFlow(Framework):
         if not py_version:
             py_version = "py3" if self._only_python_3_supported() else "py2"
 
+        if "enable_sagemaker_metrics" not in kwargs:
+            # enable sagemaker metrics for TF v1.15 or greater:
+            if fw.is_version_equal_or_higher([1, 15], self.framework_version):
+                kwargs["enable_sagemaker_metrics"] = True
+
         super(TensorFlow, self).__init__(image_name=image_name, **kwargs)
         self.checkpoint_path = checkpoint_path
 
@@ -299,7 +308,7 @@ class TensorFlow(Framework):
         self._validate_args(
             py_version=py_version,
             script_mode=script_mode,
-            framework_version=framework_version,
+            framework_version=self.framework_version,
             training_steps=training_steps,
             evaluation_steps=evaluation_steps,
             requirements_file=requirements_file,
@@ -343,7 +352,7 @@ class TensorFlow(Framework):
 
         if py_version == "py2" and self._only_python_3_supported():
             msg = (
-                "Python 2 containers are only available until TensorFlow version 1.13.1. "
+                "Python 2 containers are only available until January 1st, 2020. "
                 "Please use a Python 3 container."
             )
             raise AttributeError(msg)
@@ -362,9 +371,7 @@ class TensorFlow(Framework):
 
     def _only_python_3_supported(self):
         """Placeholder docstring"""
-        return [
-            int(s) for s in self.framework_version.split(".")
-        ] >= self._LOWEST_PYTHON_2_ONLY_VERSION
+        return [int(s) for s in self.framework_version.split(".")] > self._HIGHEST_PYTHON_2_VERSION
 
     def _validate_requirements_file(self, requirements_file):
         """Placeholder docstring"""
@@ -387,7 +394,15 @@ class TensorFlow(Framework):
         if not os.path.exists(os.path.join(self.source_dir, requirements_file)):
             raise ValueError("Requirements file {} does not exist.".format(requirements_file))
 
-    def fit(self, inputs=None, wait=True, logs=True, job_name=None, run_tensorboard_locally=False):
+    def fit(
+        self,
+        inputs=None,
+        wait=True,
+        logs=True,
+        job_name=None,
+        experiment_config=None,
+        run_tensorboard_locally=False,
+    ):
         """Train a model using the input training dataset.
 
         See :func:`~sagemaker.estimator.EstimatorBase.fit` for more details.
@@ -409,6 +424,7 @@ class TensorFlow(Framework):
                 Only meaningful when wait is True (default: True).
             job_name (str): Training job name. If not specified, the estimator generates a default
                 job name, based on the training image name and current timestamp.
+            experiment_config (dict[str, str]): Experiment management configuration.
             run_tensorboard_locally (bool): Whether to execute TensorBoard in a different process
                 with downloaded checkpoint information (default: False). This is an experimental
                 feature, and requires TensorBoard and AWS CLI to be installed. It terminates
@@ -416,7 +432,7 @@ class TensorFlow(Framework):
         """
 
         def fit_super():
-            super(TensorFlow, self).fit(inputs, wait, logs, job_name)
+            super(TensorFlow, self).fit(inputs, wait, logs, job_name, experiment_config)
 
         if run_tensorboard_locally and wait is False:
             raise ValueError("Tensorboard is not supported with async fit")
@@ -501,6 +517,7 @@ class TensorFlow(Framework):
         entry_point=None,
         source_dir=None,
         dependencies=None,
+        **kwargs
     ):
         """Create a ``Model`` object that can be used for creating SageMaker model entities,
         deploying to a SageMaker endpoint, or starting SageMaker Batch Transform jobs.
@@ -534,6 +551,8 @@ class TensorFlow(Framework):
                 If not specified and ``endpoint_type`` is 'tensorflow-serving', ``dependencies`` is
                 set to ``None``.
                 If ``endpoint_type`` is also ``None``, then the dependencies from training are used.
+            **kwargs: Additional kwargs passed to ``sagemaker.tensorflow.serving.Model`` constructor
+                and ``sagemaker.tensorflow.model.TensorFlowModel`` constructor.
 
         Returns:
             sagemaker.tensorflow.model.TensorFlowModel or sagemaker.tensorflow.serving.Model: A
@@ -549,6 +568,7 @@ class TensorFlow(Framework):
                 entry_point=entry_point,
                 source_dir=source_dir,
                 dependencies=dependencies,
+                **kwargs
             )
 
         return self._create_default_model(
@@ -558,6 +578,7 @@ class TensorFlow(Framework):
             entry_point=entry_point,
             source_dir=source_dir,
             dependencies=dependencies,
+            **kwargs
         )
 
     def _create_tfs_model(
@@ -567,6 +588,7 @@ class TensorFlow(Framework):
         entry_point=None,
         source_dir=None,
         dependencies=None,
+        **kwargs
     ):
         """Placeholder docstring"""
         return Model(
@@ -581,6 +603,8 @@ class TensorFlow(Framework):
             entry_point=entry_point,
             source_dir=source_dir,
             dependencies=dependencies,
+            enable_network_isolation=self.enable_network_isolation(),
+            **kwargs
         )
 
     def _create_default_model(
@@ -591,6 +615,7 @@ class TensorFlow(Framework):
         entry_point=None,
         source_dir=None,
         dependencies=None,
+        **kwargs
     ):
         """Placeholder docstring"""
         return TensorFlowModel(
@@ -610,6 +635,8 @@ class TensorFlow(Framework):
             sagemaker_session=self.sagemaker_session,
             vpc_config=self.get_vpc_config(vpc_config_override),
             dependencies=dependencies or self.dependencies,
+            enable_network_isolation=self.enable_network_isolation(),
+            **kwargs
         )
 
     def hyperparameters(self):
@@ -668,6 +695,31 @@ class TensorFlow(Framework):
         """Placeholder docstring"""
         return self.py_version == "py3" or self.script_mode
 
+    def _validate_and_set_debugger_configs(self):
+        """
+        Disable Debugger Hook Config for PS and Horovod as they are not
+        supported in smdebug 0.4.13, the current latest version of smdebug
+
+        Else, set default HookConfig
+        """
+        ps_enabled = "parameter_server" in self.distributions and self.distributions[
+            "parameter_server"
+        ].get("enabled", False)
+        mpi_enabled = "mpi" in self.distributions and self.distributions["mpi"].get(
+            "enabled", False
+        )
+        if ps_enabled or mpi_enabled:
+            if self.debugger_hook_config is not None or self.debugger_rule_configs is not None:
+                logger.info(
+                    "Amazon SageMaker Debugger does not currently support "
+                    "Parameter Server and MPI distributions"
+                )
+            self.debugger_hook_config = None
+            self.debugger_rule_configs = None
+        elif self.debugger_hook_config is None:
+            # Set defaults for debugging.
+            self.debugger_hook_config = DebuggerHookConfig(s3_output_path=self.output_path)
+
     def train_image(self):
         """Placeholder docstring"""
         if self.image_name:
@@ -702,6 +754,7 @@ class TensorFlow(Framework):
         volume_kms_key=None,
         endpoint_type=None,
         entry_point=None,
+        vpc_config_override=VPC_CONFIG_DEFAULT,
     ):
         """Return a ``Transformer`` that uses a SageMaker Model based on the training job. It
         reuses the SageMaker Session and base job name used by the Estimator.
@@ -717,8 +770,9 @@ class TensorFlow(Framework):
                 results are stored to a default bucket.
             output_kms_key (str): Optional. KMS key ID for encrypting the transform output
                 (default: None).
-            accept (str): The content type accepted by the endpoint deployed during the transform
-                job.
+            accept (str): The accept header passed by the client to
+                the inference endpoint. If it is supported by the endpoint,
+                it will be the format of the batch transform output.
             env (dict): Environment variables to be set for use during the transform job
                 (default: None).
             max_concurrent_transforms (int): The maximum number of HTTP requests to be made to
@@ -743,13 +797,41 @@ class TensorFlow(Framework):
                 should be executed as the entry point to training. If not specified and
                 ``endpoint_type`` is 'tensorflow-serving', no entry point is used. If
                 ``endpoint_type`` is also ``None``, then the training entry point is used.
+            vpc_config_override (dict[str, list[str]]): Optional override for
+                the VpcConfig set on the model.
+                Default: use subnets and security groups from this Estimator.
+                * 'Subnets' (list[str]): List of subnet ids.
+                * 'SecurityGroupIds' (list[str]): List of security group ids.
         """
-
         role = role or self.role
+
+        if self.latest_training_job is None:
+            logging.warning(
+                "No finished training job found associated with this estimator. Please make sure "
+                "this estimator is only used for building workflow config"
+            )
+            return Transformer(
+                self._current_job_name,
+                instance_count,
+                instance_type,
+                strategy=strategy,
+                assemble_with=assemble_with,
+                output_path=output_path,
+                output_kms_key=output_kms_key,
+                accept=accept,
+                max_concurrent_transforms=max_concurrent_transforms,
+                max_payload=max_payload,
+                env=env or {},
+                tags=tags,
+                base_transform_job_name=self.base_job_name,
+                volume_kms_key=volume_kms_key,
+                sagemaker_session=self.sagemaker_session,
+            )
+
         model = self.create_model(
             model_server_workers=model_server_workers,
             role=role,
-            vpc_config_override=VPC_CONFIG_DEFAULT,
+            vpc_config_override=vpc_config_override,
             endpoint_type=endpoint_type,
             entry_point=entry_point,
         )

@@ -366,14 +366,14 @@ class LinearLearner(AmazonAlgorithmEstimatorBase):
         self.balance_multiclass_weights = balance_multiclass_weights
 
         if self.predictor_type == "multiclass_classifier" and (
-            num_classes is None or num_classes < 3
+            num_classes is None or int(num_classes) < 3
         ):
             raise ValueError(
                 "For predictor_type 'multiclass_classifier', 'num_classes' should be set to a "
                 "value greater than 2."
             )
 
-    def create_model(self, vpc_config_override=VPC_CONFIG_DEFAULT):
+    def create_model(self, vpc_config_override=VPC_CONFIG_DEFAULT, **kwargs):
         """Return a :class:`~sagemaker.amazon.LinearLearnerModel` referencing
         the latest s3 model data produced by this Estimator.
 
@@ -382,12 +382,14 @@ class LinearLearner(AmazonAlgorithmEstimatorBase):
                 the model. Default: use subnets and security groups from this Estimator.
                 * 'Subnets' (list[str]): List of subnet ids.
                 * 'SecurityGroupIds' (list[str]): List of security group ids.
+            **kwargs: Additional kwargs passed to the LinearLearnerModel constructor.
         """
         return LinearLearnerModel(
             self.model_data,
             self.role,
             self.sagemaker_session,
             vpc_config=self.get_vpc_config(vpc_config_override),
+            **kwargs
         )
 
     def _prepare_for_training(self, records, mini_batch_size=None, job_name=None):

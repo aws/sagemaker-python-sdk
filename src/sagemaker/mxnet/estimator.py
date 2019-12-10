@@ -21,6 +21,7 @@ from sagemaker.fw_utils import (
     framework_version_from_tag,
     empty_framework_version_warning,
     python_deprecation_warning,
+    is_version_equal_or_higher,
 )
 from sagemaker.mxnet.defaults import MXNET_VERSION
 from sagemaker.mxnet.model import MXNetModel
@@ -35,7 +36,7 @@ class MXNet(Framework):
     __framework_name__ = "mxnet"
     _LOWEST_SCRIPT_MODE_VERSION = ["1", "3"]
 
-    LATEST_VERSION = "1.4.1"
+    LATEST_VERSION = "1.6.0"
     """The latest version of MXNet included in the SageMaker pre-built Docker images."""
 
     def __init__(
@@ -93,15 +94,20 @@ class MXNet(Framework):
                     123.dkr.ecr.us-west-2.amazonaws.com/my-custom-image:1.0
                     custom-image:latest.
 
-                distributions (dict): A dictionary with information on how to run distributed
-                    training (default: None).
-            distributions:
+            distributions (dict): A dictionary with information on how to run distributed
+                training (default: None). To have parameter servers launched for training,
+                set this value to be ``{'parameter_server': {'enabled': True}}``.
             **kwargs: Additional kwargs passed to the
                 :class:`~sagemaker.estimator.Framework` constructor.
         """
         if framework_version is None:
             logger.warning(empty_framework_version_warning(MXNET_VERSION, self.LATEST_VERSION))
         self.framework_version = framework_version or MXNET_VERSION
+
+        if "enable_sagemaker_metrics" not in kwargs:
+            # enable sagemaker metrics for MXNet v1.6 or greater:
+            if is_version_equal_or_higher([1, 6], self.framework_version):
+                kwargs["enable_sagemaker_metrics"] = True
 
         super(MXNet, self).__init__(
             entry_point, source_dir, hyperparameters, image_name=image_name, **kwargs
@@ -141,6 +147,7 @@ class MXNet(Framework):
         source_dir=None,
         dependencies=None,
         image_name=None,
+        **kwargs
     ):
         """Create a SageMaker ``MXNetModel`` object that can be deployed to an
         ``Endpoint``.
@@ -171,6 +178,7 @@ class MXNet(Framework):
                 Examples:
                     123.dkr.ecr.us-west-2.amazonaws.com/my-custom-image:1.0
                     custom-image:latest.
+            **kwargs: Additional kwargs passed to the MXNetModel constructor.
 
         Returns:
             sagemaker.mxnet.model.MXNetModel: A SageMaker ``MXNetModel`` object.

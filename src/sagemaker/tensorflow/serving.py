@@ -131,7 +131,7 @@ class Model(sagemaker.model.FrameworkModel):
         logging.ERROR: "error",
         logging.CRITICAL: "crit",
     }
-    LATEST_EIA_VERSION = [1, 13]
+    LATEST_EIA_VERSION = [1, 14]
 
     def __init__(
         self,
@@ -187,6 +187,7 @@ class Model(sagemaker.model.FrameworkModel):
         tags=None,
         kms_key=None,
         wait=True,
+        data_capture_config=None,
     ):
 
         if accelerator_type and not self._eia_supported():
@@ -194,14 +195,15 @@ class Model(sagemaker.model.FrameworkModel):
 
             raise AttributeError(msg)
         return super(Model, self).deploy(
-            initial_instance_count,
-            instance_type,
-            accelerator_type,
-            endpoint_name,
-            update_endpoint,
-            tags,
-            kms_key,
-            wait,
+            initial_instance_count=initial_instance_count,
+            instance_type=instance_type,
+            accelerator_type=accelerator_type,
+            endpoint_name=endpoint_name,
+            update_endpoint=update_endpoint,
+            tags=tags,
+            kms_key=kms_key,
+            wait=wait,
+            data_capture_config=data_capture_config,
         )
 
     def _eia_supported(self):
@@ -230,6 +232,7 @@ class Model(sagemaker.model.FrameworkModel):
                 self.model_data,
                 model_data,
                 self.sagemaker_session,
+                kms_key=self.model_kms_key,
             )
         else:
             model_data = self.model_data

@@ -1,4 +1,4 @@
-# Copyright 2017-2018 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright 2017-2019 Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -16,8 +16,9 @@ import pytest
 import os
 from mock import Mock
 
-from sagemaker.amazon.amazon_estimator import RecordSet
+from sagemaker.amazon.amazon_estimator import RecordSet, FileSystemRecordSet
 from sagemaker.estimator import Estimator, Framework
+from sagemaker.inputs import FileSystemInput
 from sagemaker.job import _Job
 from sagemaker.model import FrameworkModel
 from sagemaker.session import s3_input
@@ -255,6 +256,26 @@ def test_format_inputs_to_input_config_record_set():
     assert channels[0]["DataSource"]["S3DataSource"]["S3DataType"] == inputs.s3_data_type
 
 
+def test_format_inputs_to_input_config_file_system_record_set():
+    file_system_id = "fs-0a48d2a1"
+    file_system_type = "EFS"
+    directory_path = "ipinsights"
+    num_records = 1
+    feature_dim = 1
+    records = FileSystemRecordSet(
+        file_system_id=file_system_id,
+        file_system_type=file_system_type,
+        directory_path=directory_path,
+        num_records=num_records,
+        feature_dim=feature_dim,
+    )
+    channels = _Job._format_inputs_to_input_config(records)
+    assert channels[0]["DataSource"]["FileSystemDataSource"]["DirectoryPath"] == directory_path
+    assert channels[0]["DataSource"]["FileSystemDataSource"]["FileSystemId"] == file_system_id
+    assert channels[0]["DataSource"]["FileSystemDataSource"]["FileSystemType"] == file_system_type
+    assert channels[0]["DataSource"]["FileSystemDataSource"]["FileSystemAccessMode"] == "ro"
+
+
 def test_format_inputs_to_input_config_list():
     records = RecordSet(s3_data=BUCKET_NAME, num_records=1, feature_dim=1)
     inputs = [records]
@@ -263,6 +284,28 @@ def test_format_inputs_to_input_config_list():
 
     assert channels[0]["DataSource"]["S3DataSource"]["S3Uri"] == records.s3_data
     assert channels[0]["DataSource"]["S3DataSource"]["S3DataType"] == records.s3_data_type
+
+
+def test_format_record_set_list_input():
+    records = FileSystemRecordSet(
+        file_system_id="fs-fd85e556",
+        file_system_type="EFS",
+        directory_path="ipinsights",
+        num_records=100,
+        feature_dim=1,
+    )
+    test_records = FileSystemRecordSet(
+        file_system_id="fs-fd85e556",
+        file_system_type="EFS",
+        directory_path="ipinsights",
+        num_records=20,
+        feature_dim=1,
+        channel="validation",
+    )
+    inputs = [records, test_records]
+    input_dict = _Job._format_record_set_list_input(inputs)
+    assert isinstance(input_dict["train"], FileSystemInput)
+    assert isinstance(input_dict["validation"], FileSystemInput)
 
 
 @pytest.mark.parametrize(
@@ -328,7 +371,7 @@ def test_format_inputs_to_input_config_list_not_all_records():
     with pytest.raises(ValueError) as ex:
         _Job._format_inputs_to_input_config(inputs)
 
-    assert "List compatible only with RecordSets." in str(ex)
+    assert "List compatible only with RecordSets or FileSystemRecordSets." in str(ex)
 
 
 def test_format_inputs_to_input_config_list_duplicate_channel():
@@ -465,6 +508,21 @@ def test_format_string_uri_input_string():
     assert s3_uri_input.config["DataSource"]["S3DataSource"]["S3Uri"] == inputs
 
 
+def test_format_string_uri_file_system_input():
+    file_system_id = "fs-fd85e556"
+    file_system_type = "EFS"
+    directory_path = "ipinsights"
+
+    file_system_input = FileSystemInput(
+        file_system_id=file_system_id,
+        file_system_type=file_system_type,
+        directory_path=directory_path,
+    )
+
+    uri_input = _Job._format_string_uri_input(file_system_input)
+    assert uri_input == file_system_input
+
+
 def test_format_string_uri_input_string_exception():
     inputs = "mybucket/train"
 
@@ -563,10 +621,22 @@ def test_prepare_resource_config_with_volume_kms():
 
 def test_prepare_stop_condition():
     max_run = 1
+    max_wait = 2
 
-    stop_condition = _Job._prepare_stop_condition(max_run)
+    stop_condition = _Job._prepare_stop_condition(max_run, max_wait)
 
     assert stop_condition["MaxRuntimeInSeconds"] == max_run
+    assert stop_condition["MaxWaitTimeInSeconds"] == max_wait
+
+
+def test_prepare_stop_condition_no_wait():
+    max_run = 1
+    max_wait = None
+
+    stop_condition = _Job._prepare_stop_condition(max_run, max_wait)
+
+    assert stop_condition["MaxRuntimeInSeconds"] == max_run
+    assert "MaxWaitTimeInSeconds" not in stop_condition
 
 
 def test_name(sagemaker_session):

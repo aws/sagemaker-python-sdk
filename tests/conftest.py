@@ -17,6 +17,7 @@ import os
 
 import boto3
 import pytest
+import tests.integ
 from botocore.config import Config
 
 from sagemaker import Session
@@ -30,6 +31,10 @@ from sagemaker.tensorflow.estimator import TensorFlow
 
 DEFAULT_REGION = "us-west-2"
 
+NO_M4_REGIONS = ["eu-west-3", "eu-north-1", "ap-east-1", "sa-east-1", "me-south-1"]
+
+NO_T2_REGIONS = ["eu-north-1", "ap-east-1", "me-south-1"]
+
 
 def pytest_addoption(parser):
     parser.addoption("--sagemaker-client-config", action="store", default=None)
@@ -37,7 +42,7 @@ def pytest_addoption(parser):
     parser.addoption("--boto-config", action="store", default=None)
     parser.addoption("--chainer-full-version", action="store", default=Chainer.LATEST_VERSION)
     parser.addoption("--mxnet-full-version", action="store", default=MXNet.LATEST_VERSION)
-    parser.addoption("--ei-mxnet-full-version", action="store", default=MXNet.LATEST_VERSION)
+    parser.addoption("--ei-mxnet-full-version", action="store", default="1.4.1")
     parser.addoption("--pytorch-full-version", action="store", default=PyTorch.LATEST_VERSION)
     parser.addoption(
         "--rl-coach-mxnet-full-version",
@@ -53,13 +58,13 @@ def pytest_addoption(parser):
     parser.addoption("--sklearn-full-version", action="store", default=SKLEARN_VERSION)
     parser.addoption("--tf-full-version", action="store", default=TensorFlow.LATEST_VERSION)
     parser.addoption("--ei-tf-full-version", action="store", default=TensorFlow.LATEST_VERSION)
+    parser.addoption("--xgboost-full-version", action="store", default=SKLEARN_VERSION)
 
 
 def pytest_configure(config):
     bc = config.getoption("--boto-config")
     parsed = json.loads(bc) if bc else {}
     region = parsed.get("region_name", boto3.session.Session().region_name)
-
     if region:
         os.environ["TEST_AWS_REGION_NAME"] = region
 
@@ -120,6 +125,8 @@ def chainer_version(request):
     return request.param
 
 
+# TODO: current version fixtures are legacy fixtures that aren't useful
+# and no longer verify whether images are valid
 @pytest.fixture(
     scope="module",
     params=[
@@ -149,6 +156,11 @@ def pytorch_version(request):
 
 @pytest.fixture(scope="module", params=["0.20.0"])
 def sklearn_version(request):
+    return request.param
+
+
+@pytest.fixture(scope="module", params=["0.90-1"])
+def xgboost_version(request):
     return request.param
 
 
@@ -242,3 +254,53 @@ def tf_full_version(request):
 @pytest.fixture(scope="module")
 def ei_tf_full_version(request):
     return request.config.getoption("--ei-tf-full-version")
+
+
+@pytest.fixture(scope="session")
+def cpu_instance_type(sagemaker_session, request):
+    region = sagemaker_session.boto_session.region_name
+    if region in NO_M4_REGIONS:
+        return "ml.m5.xlarge"
+    else:
+        return "ml.m4.xlarge"
+
+
+@pytest.fixture(scope="session")
+def ec2_instance_type(cpu_instance_type):
+    return cpu_instance_type[3:]
+
+
+@pytest.fixture(scope="session")
+def alternative_cpu_instance_type(sagemaker_session, request):
+    region = sagemaker_session.boto_session.region_name
+    if region in NO_T2_REGIONS:
+        # T3 is not supported by hosting yet
+        return "ml.c5.xlarge"
+    else:
+        return "ml.t2.medium"
+
+
+@pytest.fixture(scope="session")
+def cpu_instance_family(cpu_instance_type):
+    "_".join(cpu_instance_type.split(".")[0:2])
+
+
+def pytest_generate_tests(metafunc):
+    if "instance_type" in metafunc.fixturenames:
+        boto_config = metafunc.config.getoption("--boto-config")
+        parsed_config = json.loads(boto_config) if boto_config else {}
+        region = parsed_config.get("region_name", DEFAULT_REGION)
+        cpu_instance_type = "ml.m5.xlarge" if region in NO_M4_REGIONS else "ml.m4.xlarge"
+
+        params = [cpu_instance_type]
+        if not (
+            region in tests.integ.HOSTING_NO_P2_REGIONS
+            or region in tests.integ.TRAINING_NO_P2_REGIONS
+        ):
+            params.append("ml.p2.xlarge")
+        metafunc.parametrize("instance_type", params, scope="session")
+
+
+@pytest.fixture(scope="module")
+def xgboost_full_version(request):
+    return request.config.getoption("--xgboost-full-version")

@@ -21,6 +21,7 @@ from sagemaker.fw_utils import (
     framework_version_from_tag,
     empty_framework_version_warning,
     python_deprecation_warning,
+    is_version_equal_or_higher,
 )
 from sagemaker.pytorch.defaults import PYTORCH_VERSION, PYTHON_VERSION
 from sagemaker.pytorch.model import PyTorchModel
@@ -34,7 +35,7 @@ class PyTorch(Framework):
 
     __framework_name__ = "pytorch"
 
-    LATEST_VERSION = "1.1"
+    LATEST_VERSION = "1.3.1"
     """The latest version of PyTorch included in the SageMaker pre-built Docker images."""
 
     def __init__(
@@ -98,6 +99,11 @@ class PyTorch(Framework):
             logger.warning(empty_framework_version_warning(PYTORCH_VERSION, PYTORCH_VERSION))
         self.framework_version = framework_version or PYTORCH_VERSION
 
+        if "enable_sagemaker_metrics" not in kwargs:
+            # enable sagemaker metrics for PT v1.3 or greater:
+            if is_version_equal_or_higher([1, 3], self.framework_version):
+                kwargs["enable_sagemaker_metrics"] = True
+
         super(PyTorch, self).__init__(
             entry_point, source_dir, hyperparameters, image_name=image_name, **kwargs
         )
@@ -115,6 +121,7 @@ class PyTorch(Framework):
         entry_point=None,
         source_dir=None,
         dependencies=None,
+        **kwargs
     ):
         """Create a SageMaker ``PyTorchModel`` object that can be deployed to an
         ``Endpoint``.
@@ -139,6 +146,7 @@ class PyTorch(Framework):
             dependencies (list[str]): A list of paths to directories (absolute or relative) with
                 any additional libraries that will be exported to the container.
                 If not specified, the dependencies from training are used.
+            **kwargs: Additional kwargs passed to the PyTorchModel constructor.
 
         Returns:
             sagemaker.pytorch.model.PyTorchModel: A SageMaker ``PyTorchModel``

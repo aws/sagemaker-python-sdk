@@ -117,8 +117,8 @@ def test_deploy(tfo, time, sagemaker_session):
     )
     model.deploy(instance_type=INSTANCE_TYPE, initial_instance_count=1)
     sagemaker_session.endpoint_from_production_variants.assert_called_with(
-        "mi-1-2017-10-10-14-14-15",
-        [
+        name="mi-1-2017-10-10-14-14-15",
+        production_variants=[
             {
                 "InitialVariantWeight": 1,
                 "ModelName": "mi-1-2017-10-10-14-14-15",
@@ -127,8 +127,9 @@ def test_deploy(tfo, time, sagemaker_session):
                 "VariantName": "AllTraffic",
             }
         ],
-        None,
+        tags=None,
         wait=True,
+        data_capture_config_dict=None,
     )
 
 
@@ -144,8 +145,8 @@ def test_deploy_endpoint_name(tfo, time, sagemaker_session):
     )
     model.deploy(instance_type=INSTANCE_TYPE, initial_instance_count=1)
     sagemaker_session.endpoint_from_production_variants.assert_called_with(
-        "mi-1-2017-10-10-14-14-15",
-        [
+        name="mi-1-2017-10-10-14-14-15",
+        production_variants=[
             {
                 "InitialVariantWeight": 1,
                 "ModelName": "mi-1-2017-10-10-14-14-15",
@@ -154,9 +155,46 @@ def test_deploy_endpoint_name(tfo, time, sagemaker_session):
                 "VariantName": "AllTraffic",
             }
         ],
-        None,
+        tags=None,
         wait=True,
+        data_capture_config_dict=None,
     )
+
+
+@patch("tarfile.open")
+@patch("time.strftime", return_value=TIMESTAMP)
+def test_deploy_update_endpoint(tfo, time, sagemaker_session):
+    framework_model = DummyFrameworkModel(sagemaker_session)
+    endpoint_name = "endpoint-name"
+    sparkml_model = SparkMLModel(
+        model_data=MODEL_DATA_2, role=ROLE, sagemaker_session=sagemaker_session
+    )
+    model = PipelineModel(
+        models=[framework_model, sparkml_model], role=ROLE, sagemaker_session=sagemaker_session
+    )
+    model.deploy(
+        instance_type=INSTANCE_TYPE,
+        initial_instance_count=1,
+        endpoint_name=endpoint_name,
+        update_endpoint=True,
+    )
+
+    sagemaker_session.create_endpoint_config.assert_called_with(
+        name=model.name,
+        model_name=model.name,
+        initial_instance_count=INSTANCE_COUNT,
+        instance_type=INSTANCE_TYPE,
+        tags=None,
+        data_capture_config_dict=None,
+    )
+    config_name = sagemaker_session.create_endpoint_config(
+        name=model.name,
+        model_name=model.name,
+        initial_instance_count=INSTANCE_COUNT,
+        instance_type=INSTANCE_TYPE,
+    )
+    sagemaker_session.update_endpoint.assert_called_with(endpoint_name, config_name)
+    sagemaker_session.create_endpoint.assert_not_called()
 
 
 @patch("tarfile.open")
@@ -227,8 +265,8 @@ def test_deploy_tags(tfo, time, sagemaker_session):
     tags = [{"ModelName": "TestModel"}]
     model.deploy(instance_type=INSTANCE_TYPE, initial_instance_count=1, tags=tags)
     sagemaker_session.endpoint_from_production_variants.assert_called_with(
-        "mi-1-2017-10-10-14-14-15",
-        [
+        name="mi-1-2017-10-10-14-14-15",
+        production_variants=[
             {
                 "InitialVariantWeight": 1,
                 "ModelName": "mi-1-2017-10-10-14-14-15",
@@ -237,8 +275,9 @@ def test_deploy_tags(tfo, time, sagemaker_session):
                 "VariantName": "AllTraffic",
             }
         ],
-        tags,
+        tags=tags,
         wait=True,
+        data_capture_config_dict=None,
     )
 
 

@@ -372,7 +372,9 @@ def test_mxnet_training_failure(sagemaker_local_session, mxnet_full_version, tmp
 
 
 @pytest.mark.local_mode
-def test_local_transform_mxnet(sagemaker_local_session, tmpdir, mxnet_full_version):
+def test_local_transform_mxnet(
+    sagemaker_local_session, tmpdir, mxnet_full_version, cpu_instance_type
+):
     data_path = os.path.join(DATA_DIR, "mxnet_mnist")
     script_path = os.path.join(data_path, "mnist.py")
 
@@ -380,7 +382,7 @@ def test_local_transform_mxnet(sagemaker_local_session, tmpdir, mxnet_full_versi
         entry_point=script_path,
         role="SageMakerRole",
         train_instance_count=1,
-        train_instance_type="ml.c4.xlarge",
+        train_instance_type="local",
         framework_version=mxnet_full_version,
         sagemaker_session=sagemaker_local_session,
     )

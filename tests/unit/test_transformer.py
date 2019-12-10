@@ -104,6 +104,11 @@ def test_transform_with_all_params(start_new_job, transformer):
     input_filter = "$.feature"
     output_filter = "$['sagemaker_output', 'id']"
     join_source = "Input"
+    experiment_config = {
+        "ExperimentName": "exp",
+        "TrialName": "t",
+        "TrialComponentDisplayName": "tc",
+    }
 
     transformer.transform(
         DATA,
@@ -115,6 +120,7 @@ def test_transform_with_all_params(start_new_job, transformer):
         input_filter=input_filter,
         output_filter=output_filter,
         join_source=join_source,
+        experiment_config=experiment_config,
     )
 
     assert transformer._current_job_name == JOB_NAME
@@ -129,6 +135,7 @@ def test_transform_with_all_params(start_new_job, transformer):
         input_filter,
         output_filter,
         join_source,
+        experiment_config,
     )
 
 
@@ -326,16 +333,29 @@ def test_prepare_init_params_from_job_description_all_keys(transformer):
 
 
 # _TransformJob tests
-
-
 def test_start_new(transformer, sagemaker_session):
     transformer._current_job_name = JOB_NAME
 
     job = _TransformJob(sagemaker_session, JOB_NAME)
-    started_job = job.start_new(transformer, DATA, S3_DATA_TYPE, None, None, None, None, None, None)
+    started_job = job.start_new(
+        transformer,
+        DATA,
+        S3_DATA_TYPE,
+        None,
+        None,
+        None,
+        None,
+        None,
+        None,
+        {"ExperimentName": "exp"},
+    )
 
     assert started_job.sagemaker_session == sagemaker_session
     sagemaker_session.transform.assert_called_once()
+
+    called_args = sagemaker_session.transform.call_args
+
+    assert called_args[1]["experiment_config"] == {"ExperimentName": "exp"}
 
 
 def test_load_config(transformer):
@@ -449,3 +469,18 @@ def test_restart_output_path(start_new_job, transformer, sagemaker_session):
 
     transformer.transform(DATA, job_name="job-2")
     assert transformer.output_path == "s3://{}/{}".format(S3_BUCKET, "job-2")
+
+
+def test_stop_transform_job(sagemaker_session, transformer):
+    sagemaker_session.stop_transform_job = Mock(name="stop_transform_job")
+    transformer.latest_transform_job = _TransformJob(sagemaker_session, JOB_NAME)
+
+    transformer.stop_transform_job()
+
+    sagemaker_session.stop_transform_job.assert_called_once_with(name=JOB_NAME)
+
+
+def test_stop_transform_job_no_transform_job(transformer):
+    with pytest.raises(ValueError) as e:
+        transformer.stop_transform_job()
+    assert "No transform job available" in str(e)

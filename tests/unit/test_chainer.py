@@ -151,6 +151,11 @@ def _create_train_job(version):
         "tags": None,
         "vpc_config": None,
         "metric_definitions": None,
+        "experiment_config": None,
+        "debugger_hook_config": {
+            "CollectionConfigurations": [],
+            "S3OutputPath": "s3://{}/".format(BUCKET_NAME),
+        },
     }
 
 

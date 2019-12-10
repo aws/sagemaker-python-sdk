@@ -1,4 +1,4 @@
-# Copyright 2017-2018 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright 2017-2019 Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -24,11 +24,12 @@ from sagemaker.mxnet.model import MXNetModel
 from sagemaker.utils import sagemaker_timestamp
 from tests.integ import DATA_DIR, PYTHON_VERSION, TRAINING_DEFAULT_TIMEOUT_MINUTES
 from tests.integ.kms_utils import get_or_create_kms_key
+from tests.integ.retry import retries
 from tests.integ.timeout import timeout, timeout_and_delete_endpoint_by_name
 
 
 @pytest.fixture(scope="module")
-def mxnet_training_job(sagemaker_session, mxnet_full_version):
+def mxnet_training_job(sagemaker_session, mxnet_full_version, cpu_instance_type):
     with timeout(minutes=TRAINING_DEFAULT_TIMEOUT_MINUTES):
         s3_prefix = "integ-test-data/mxnet_mnist"
         data_path = os.path.join(DATA_DIR, "mxnet_mnist")
@@ -44,9 +45,8 @@ def mxnet_training_job(sagemaker_session, mxnet_full_version):
             framework_version=mxnet_full_version,
             py_version=PYTHON_VERSION,
             train_instance_count=1,
-            train_instance_type="local",  # "ml.c4.xlarge",
-            # sagemaker_session=sagemaker_session,
-            image_name="sagemaker-mxnet:1.4.1-cpu-py3",
+            train_instance_type=cpu_instance_type,
+            sagemaker_session=sagemaker_session,
         )
 
         train_input = mx.sagemaker_session.upload_data(
@@ -66,18 +66,18 @@ def test_foo(mxnet_training_job):
 
 @pytest.mark.canary_quick
 @pytest.mark.regional_testing
-def test_attach_deploy(mxnet_training_job, sagemaker_session):
+def test_attach_deploy(mxnet_training_job, sagemaker_session, cpu_instance_type):
     endpoint_name = "test-mxnet-attach-deploy-{}".format(sagemaker_timestamp())
 
     with timeout_and_delete_endpoint_by_name(endpoint_name, sagemaker_session):
         estimator = MXNet.attach(mxnet_training_job, sagemaker_session=sagemaker_session)
-        predictor = estimator.deploy(1, "ml.m4.xlarge", endpoint_name=endpoint_name)
+        predictor = estimator.deploy(1, cpu_instance_type, endpoint_name=endpoint_name)
         data = numpy.zeros(shape=(1, 1, 28, 28))
         result = predictor.predict(data)
         assert result is not None
 
 
-def test_deploy_model(mxnet_training_job, sagemaker_session, mxnet_full_version):
+def test_deploy_model(mxnet_training_job, sagemaker_session, mxnet_full_version, cpu_instance_type):
     endpoint_name = "test-mxnet-deploy-model-{}".format(sagemaker_timestamp())
 
     with timeout_and_delete_endpoint_by_name(endpoint_name, sagemaker_session):
@@ -94,7 +94,7 @@ def test_deploy_model(mxnet_training_job, sagemaker_session, mxnet_full_version)
             sagemaker_session=sagemaker_session,
             framework_version=mxnet_full_version,
         )
-        predictor = model.deploy(1, "ml.m4.xlarge", endpoint_name=endpoint_name)
+        predictor = model.deploy(1, cpu_instance_type, endpoint_name=endpoint_name)
 
         data = numpy.zeros(shape=(1, 1, 28, 28))
         result = predictor.predict(data)
@@ -106,11 +106,9 @@ def test_deploy_model(mxnet_training_job, sagemaker_session, mxnet_full_version)
         assert "Could not find model" in str(exception.value)
 
 
-@pytest.mark.skip(
-    reason="This test has always failed, but the failure was masked by a bug. "
-    "This test should be fixed. Details in https://github.com/aws/sagemaker-python-sdk/pull/968"
-)
-def test_deploy_model_with_tags_and_kms(mxnet_training_job, sagemaker_session, mxnet_full_version):
+def test_deploy_model_with_tags_and_kms(
+    mxnet_training_job, sagemaker_session, mxnet_full_version, cpu_instance_type
+):
     endpoint_name = "test-mxnet-deploy-model-{}".format(sagemaker_timestamp())
 
     with timeout_and_delete_endpoint_by_name(endpoint_name, sagemaker_session):
@@ -131,20 +129,24 @@ def test_deploy_model_with_tags_and_kms(mxnet_training_job, sagemaker_session, m
         tags = [{"Key": "TagtestKey", "Value": "TagtestValue"}]
         kms_key_arn = get_or_create_kms_key(sagemaker_session)
 
-        model.deploy(1, "ml.m4.xlarge", endpoint_name=endpoint_name, tags=tags, kms_key=kms_key_arn)
+        model.deploy(
+            1, cpu_instance_type, endpoint_name=endpoint_name, tags=tags, kms_key=kms_key_arn
+        )
 
-        returned_model = sagemaker_session.describe_model(EndpointName=model.name)
-        returned_model_tags = sagemaker_session.list_tags(ResourceArn=returned_model["ModelArn"])[
-            "Tags"
-        ]
+        returned_model = sagemaker_session.sagemaker_client.describe_model(ModelName=model.name)
+        returned_model_tags = sagemaker_session.sagemaker_client.list_tags(
+            ResourceArn=returned_model["ModelArn"]
+        )["Tags"]
 
-        endpoint = sagemaker_session.describe_endpoint(EndpointName=endpoint_name)
-        endpoint_tags = sagemaker_session.list_tags(ResourceArn=endpoint["EndpointArn"])["Tags"]
+        endpoint = sagemaker_session.sagemaker_client.describe_endpoint(EndpointName=endpoint_name)
+        endpoint_tags = sagemaker_session.sagemaker_client.list_tags(
+            ResourceArn=endpoint["EndpointArn"]
+        )["Tags"]
 
-        endpoint_config = sagemaker_session.describe_endpoint_config(
+        endpoint_config = sagemaker_session.sagemaker_client.describe_endpoint_config(
             EndpointConfigName=endpoint["EndpointConfigName"]
         )
-        endpoint_config_tags = sagemaker_session.list_tags(
+        endpoint_config_tags = sagemaker_session.sagemaker_client.list_tags(
             ResourceArn=endpoint_config["EndpointConfigArn"]
         )["Tags"]
 
@@ -153,17 +155,17 @@ def test_deploy_model_with_tags_and_kms(mxnet_training_job, sagemaker_session, m
         assert returned_model_tags == tags
         assert endpoint_config_tags == tags
         assert endpoint_tags == tags
-        assert production_variants[0]["InstanceType"] == "ml.m4.xlarge"
+        assert production_variants[0]["InstanceType"] == cpu_instance_type
         assert production_variants[0]["InitialInstanceCount"] == 1
         assert endpoint_config["KmsKeyId"] == kms_key_arn
 
 
-@pytest.mark.skip(
-    reason="This test has always failed, but the failure was masked by a bug. "
-    "This test should be fixed. Details in https://github.com/aws/sagemaker-python-sdk/pull/968"
-)
 def test_deploy_model_with_update_endpoint(
-    mxnet_training_job, sagemaker_session, mxnet_full_version
+    mxnet_training_job,
+    sagemaker_session,
+    mxnet_full_version,
+    cpu_instance_type,
+    alternative_cpu_instance_type,
 ):
     endpoint_name = "test-mxnet-deploy-model-{}".format(sagemaker_timestamp())
 
@@ -181,29 +183,39 @@ def test_deploy_model_with_update_endpoint(
             sagemaker_session=sagemaker_session,
             framework_version=mxnet_full_version,
         )
-        model.deploy(1, "ml.t2.medium", endpoint_name=endpoint_name)
-        old_endpoint = sagemaker_session.describe_endpoint(EndpointName=endpoint_name)
+        model.deploy(1, alternative_cpu_instance_type, endpoint_name=endpoint_name)
+        old_endpoint = sagemaker_session.sagemaker_client.describe_endpoint(
+            EndpointName=endpoint_name
+        )
         old_config_name = old_endpoint["EndpointConfigName"]
 
-        model.deploy(1, "ml.m4.xlarge", update_endpoint=True, endpoint_name=endpoint_name)
-        new_endpoint = sagemaker_session.describe_endpoint(EndpointName=endpoint_name)[
-            "ProductionVariants"
-        ]
-        new_production_variants = new_endpoint["ProductionVariants"]
+        model.deploy(1, cpu_instance_type, update_endpoint=True, endpoint_name=endpoint_name)
+
+        # Wait for endpoint to finish updating
+        # Endpoint update takes ~7min. 40 retries * 30s sleeps = 20min timeout
+        for _ in retries(40, "Waiting for 'InService' endpoint status", seconds_to_sleep=30):
+            new_endpoint = sagemaker_session.sagemaker_client.describe_endpoint(
+                EndpointName=endpoint_name
+            )
+            if new_endpoint["EndpointStatus"] == "InService":
+                break
+
         new_config_name = new_endpoint["EndpointConfigName"]
+        new_config = sagemaker_session.sagemaker_client.describe_endpoint_config(
+            EndpointConfigName=new_config_name
+        )
 
         assert old_config_name != new_config_name
-        assert new_production_variants["InstanceType"] == "ml.m4.xlarge"
-        assert new_production_variants["InitialInstanceCount"] == 1
-        assert new_production_variants["AcceleratorType"] is None
+        assert new_config["ProductionVariants"][0]["InstanceType"] == cpu_instance_type
+        assert new_config["ProductionVariants"][0]["InitialInstanceCount"] == 1
 
 
-@pytest.mark.skip(
-    reason="This test has always failed, but the failure was masked by a bug. "
-    "This test should be fixed. Details in https://github.com/aws/sagemaker-python-sdk/pull/968"
-)
 def test_deploy_model_with_update_non_existing_endpoint(
-    mxnet_training_job, sagemaker_session, mxnet_full_version
+    mxnet_training_job,
+    sagemaker_session,
+    mxnet_full_version,
+    cpu_instance_type,
+    alternative_cpu_instance_type,
 ):
     endpoint_name = "test-mxnet-deploy-model-{}".format(sagemaker_timestamp())
     expected_error_message = (
@@ -225,12 +237,12 @@ def test_deploy_model_with_update_non_existing_endpoint(
             sagemaker_session=sagemaker_session,
             framework_version=mxnet_full_version,
         )
-        model.deploy(1, "ml.t2.medium", endpoint_name=endpoint_name)
-        sagemaker_session.describe_endpoint(EndpointName=endpoint_name)
+        model.deploy(1, alternative_cpu_instance_type, endpoint_name=endpoint_name)
+        sagemaker_session.sagemaker_client.describe_endpoint(EndpointName=endpoint_name)
 
         with pytest.raises(ValueError, message=expected_error_message):
             model.deploy(
-                1, "ml.m4.xlarge", update_endpoint=True, endpoint_name="non-existing-endpoint"
+                1, cpu_instance_type, update_endpoint=True, endpoint_name="non-existing-endpoint"
             )
 
 
@@ -241,7 +253,7 @@ def test_deploy_model_with_update_non_existing_endpoint(
     reason="EI isn't supported in that specific region.",
 )
 def test_deploy_model_with_accelerator(
-    mxnet_training_job, sagemaker_session, ei_mxnet_full_version
+    mxnet_training_job, sagemaker_session, ei_mxnet_full_version, cpu_instance_type
 ):
     endpoint_name = "test-mxnet-deploy-model-ei-{}".format(sagemaker_timestamp())
 
@@ -260,7 +272,7 @@ def test_deploy_model_with_accelerator(
             sagemaker_session=sagemaker_session,
         )
         predictor = model.deploy(
-            1, "ml.m4.xlarge", endpoint_name=endpoint_name, accelerator_type="ml.eia1.medium"
+            1, cpu_instance_type, endpoint_name=endpoint_name, accelerator_type="ml.eia1.medium"
         )
 
         data = numpy.zeros(shape=(1, 1, 28, 28))
@@ -268,7 +280,7 @@ def test_deploy_model_with_accelerator(
         assert result is not None
 
 
-def test_async_fit(sagemaker_session, mxnet_full_version):
+def test_async_fit(sagemaker_session, mxnet_full_version, cpu_instance_type):
     endpoint_name = "test-mxnet-attach-deploy-{}".format(sagemaker_timestamp())
 
     with timeout(minutes=5):
@@ -280,7 +292,7 @@ def test_async_fit(sagemaker_session, mxnet_full_version):
             role="SageMakerRole",
             py_version=PYTHON_VERSION,
             train_instance_count=1,
-            train_instance_type="ml.c4.xlarge",
+            train_instance_type=cpu_instance_type,
             sagemaker_session=sagemaker_session,
             framework_version=mxnet_full_version,
             distributions={"parameter_server": {"enabled": True}},
@@ -304,7 +316,7 @@ def test_async_fit(sagemaker_session, mxnet_full_version):
         estimator = MXNet.attach(
             training_job_name=training_job_name, sagemaker_session=sagemaker_session
         )
-        predictor = estimator.deploy(1, "ml.m4.xlarge", endpoint_name=endpoint_name)
+        predictor = estimator.deploy(1, cpu_instance_type, endpoint_name=endpoint_name)
         data = numpy.zeros(shape=(1, 1, 28, 28))
         result = predictor.predict(data)
         assert result is not None

@@ -17,6 +17,8 @@ import json
 
 from botocore import exceptions
 
+from sagemaker import utils
+
 PRINCIPAL_TEMPLATE = (
     '["{account_id}", "{role_arn}", ' '"arn:aws:iam::{account_id}:role/{sagemaker_role}"] '
 )
@@ -108,7 +110,10 @@ def get_or_create_kms_key(
     kms_client = sagemaker_session.boto_session.client("kms")
     kms_key_arn = _get_kms_key_arn(kms_client, alias)
 
-    sts_client = sagemaker_session.boto_session.client("sts")
+    region = sagemaker_session.boto_region_name
+    sts_client = sagemaker_session.boto_session.client(
+        "sts", region_name=region, endpoint_url=utils.sts_regional_endpoint(region)
+    )
     account_id = sts_client.get_caller_identity()["Account"]
 
     if kms_key_arn is None:
@@ -154,8 +159,13 @@ KMS_BUCKET_POLICY = """{
 
 @contextlib.contextmanager
 def bucket_with_encryption(boto_session, sagemaker_role):
-    account = boto_session.client("sts").get_caller_identity()["Account"]
-    role_arn = boto_session.client("sts").get_caller_identity()["Arn"]
+    region = boto_session.region_name
+    sts_client = boto_session.client(
+        "sts", region_name=region, endpoint_url=utils.sts_regional_endpoint(region)
+    )
+
+    account = sts_client.get_caller_identity()["Account"]
+    role_arn = sts_client.get_caller_identity()["Arn"]
 
     kms_client = boto_session.client("kms")
     kms_key_arn = _create_kms_key(kms_client, account, role_arn, sagemaker_role, None)
