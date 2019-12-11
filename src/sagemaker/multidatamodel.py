@@ -50,17 +50,18 @@ class MultiDataModel(Model):
             model (sagemaker.Model): The Model object that would define the
                 SageMaker model attributes like vpc_config, predictors, etc.
                 If this is present, the attributes from this model are used when
-                deploying the ``MultiDataModel`` and local attributes are ignored.
-            image (str): A Docker image URI. If not provided, `model.image` is used instead.
-                (default: None)
+                deploying the ``MultiDataModel``.  Parameters 'image', 'role' and 'kwargs'
+                are not permitted when model parameter is set.
+            image (str): A Docker image URI. It can be null if the 'model' parameter
+                is passed to during ``MultiDataModel`` initialization (default: None)
             role (str): An AWS IAM role (either name or full ARN). The Amazon
                 SageMaker training jobs and APIs that create Amazon SageMaker
                 endpoints use this role to access training data and model
                 artifacts. After the endpoint is created, the inference code
                 might use the IAM role if it needs to access some AWS resources.
                 It can be null if this is being used to create a Model to pass
-                to a ``PipelineModel`` which has its own Role field. If not provided,
-                `model.image` is used instead. (default: None)
+                to a ``PipelineModel`` which has its own Role field or if the 'model' parameter
+                is passed to during ``MultiDataModel`` initialization (default: None)
             sagemaker_session (sagemaker.session.Session): A SageMaker Session
                 object, used for SageMaker interactions (default: None). If not
                 specified, one is created using the default AWS configuration
@@ -74,6 +75,12 @@ class MultiDataModel(Model):
                     model_data_prefix
                 )
             )
+
+        if model and (image or role or kwargs):
+            raise ValueError(
+                "Parameters image, role or kwargs are not permitted when model parameter is passed."
+            )
+
         self.name = name
         self.model_data_prefix = model_data_prefix
         self.model = model

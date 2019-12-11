@@ -24,7 +24,7 @@ from sagemaker import utils
 from sagemaker.amazon.randomcutforest import RandomCutForest
 from sagemaker.multidatamodel import MultiDataModel
 from sagemaker.mxnet import MXNet
-from sagemaker.predictor import RealTimePredictor, npy_serializer
+from sagemaker.predictor import RealTimePredictor, StringDeserializer, npy_serializer
 from sagemaker.utils import sagemaker_timestamp, unique_name_from_base
 from tests.integ import DATA_DIR, PYTHON_VERSION, TRAINING_DEFAULT_TIMEOUT_MINUTES
 from tests.integ.retry import retries
@@ -34,6 +34,7 @@ ALGORITHM_NAME = "sagemaker-multimodel-integ-test"
 ROLE = "SageMakerRole"
 PRETRAINED_MODEL_PATH_1 = "customer_a/dummy_model.tar.gz"
 PRETRAINED_MODEL_PATH_2 = "customer_b/dummy_model.tar.gz"
+string_deserializer = StringDeserializer()
 
 
 @pytest.fixture(scope="module")
@@ -64,7 +65,9 @@ def container_image(sagemaker_session):
     yield ecr_image
 
     # Delete repository after the multi model integration tests complete
-    ecr_client.delete_repository(repositoryName=ALGORITHM_NAME, force=True)
+    repo = ecr_client.describe_repositories(repositoryNames=[ALGORITHM_NAME])
+    if "repositories" in repo:
+        ecr_client.delete_repository(repositoryName=ALGORITHM_NAME, force=True)
 
 
 def _create_repository(ecr_client, repository_name):
@@ -129,7 +132,10 @@ def test_multi_data_model_deploy_pretrained_models(
         assert PRETRAINED_MODEL_PATH_2 in endpoint_models
 
         predictor = RealTimePredictor(
-            endpoint=endpoint_name, sagemaker_session=sagemaker_session, serializer=npy_serializer
+            endpoint=endpoint_name,
+            sagemaker_session=sagemaker_session,
+            serializer=npy_serializer,
+            deserializer=string_deserializer,
         )
 
         data = numpy.zeros(shape=(1, 1, 28, 28))
@@ -167,9 +173,8 @@ def test_multi_data_model_deploy_trained_model_from_framework_estimator(
         multi_data_model = MultiDataModel(
             name=model_name,
             model_data_prefix=model_data_prefix,
-            image=container_image,
-            role=ROLE,
             model=mxnet_model_1,
+            sagemaker_session=sagemaker_session,
         )
 
         # Add model before deploy
@@ -194,7 +199,10 @@ def test_multi_data_model_deploy_trained_model_from_framework_estimator(
         # instead of `json_serializer` in the default predictor returned by `MXNetPredictor`
         # Since we are using a placeholder container image the prediction results are not accurate.
         predictor = RealTimePredictor(
-            endpoint=endpoint_name, sagemaker_session=sagemaker_session, serializer=npy_serializer
+            endpoint=endpoint_name,
+            sagemaker_session=sagemaker_session,
+            serializer=npy_serializer,
+            deserializer=string_deserializer,
         )
 
         data = numpy.zeros(shape=(1, 1, 28, 28))
@@ -266,9 +274,8 @@ def test_multi_data_model_deploy_train_model_from_amazon_first_party_estimator(
         multi_data_model = MultiDataModel(
             name=model_name,
             model_data_prefix=model_data_prefix,
-            image=container_image,
-            role=ROLE,
             model=rcf_model_v1,
+            sagemaker_session=sagemaker_session,
         )
 
         # Add model before deploy
@@ -293,7 +300,10 @@ def test_multi_data_model_deploy_train_model_from_amazon_first_party_estimator(
         # instead of `json_serializer` in the default predictor returned by `MXNetPredictor`
         # Since we are using a placeholder container image the prediction results are not accurate.
         predictor = RealTimePredictor(
-            endpoint=endpoint_name, sagemaker_session=sagemaker_session, serializer=npy_serializer
+            endpoint=endpoint_name,
+            sagemaker_session=sagemaker_session,
+            serializer=npy_serializer,
+            deserializer=string_deserializer,
         )
 
         data = numpy.random.rand(1, 14)
@@ -380,7 +390,10 @@ def test_multi_data_model_deploy_pretrained_models_update_endpoint(
         assert PRETRAINED_MODEL_PATH_2 in endpoint_models
 
         predictor = RealTimePredictor(
-            endpoint=endpoint_name, sagemaker_session=sagemaker_session, serializer=npy_serializer
+            endpoint=endpoint_name,
+            sagemaker_session=sagemaker_session,
+            serializer=npy_serializer,
+            deserializer=string_deserializer,
         )
 
         data = numpy.zeros(shape=(1, 1, 28, 28))

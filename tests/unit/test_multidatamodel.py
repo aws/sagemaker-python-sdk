@@ -118,6 +118,22 @@ def test_multi_data_model_create_with_invalid_model_data_prefix():
     assert err_msg in str(ex)
 
 
+def test_multi_data_model_create_with_invalid_arguments(sagemaker_session, mxnet_model):
+    with pytest.raises(ValueError) as ex:
+        MultiDataModel(
+            name=MODEL_NAME,
+            model_data_prefix=VALID_MULTI_MODEL_DATA_PREFIX,
+            image=IMAGE,
+            role=ROLE,
+            sagemaker_session=sagemaker_session,
+            model=mxnet_model,
+        )
+    assert (
+        "Parameters image, role or kwargs are not permitted when model parameter is passed."
+        in str(ex)
+    )
+
+
 def test_multi_data_model_create(sagemaker_session):
     model = MultiDataModel(
         name=MODEL_NAME,
@@ -133,22 +149,6 @@ def test_multi_data_model_create(sagemaker_session):
     assert model.role == ROLE
     assert model.image == IMAGE
     assert model.vpc_config is None
-
-
-@patch("sagemaker.multidatamodel.Session", MagicMock())
-def test_multi_data_model_create_with_model_arg(mxnet_model):
-    model = MultiDataModel(
-        name=MODEL_NAME,
-        model_data_prefix=VALID_MULTI_MODEL_DATA_PREFIX,
-        model=mxnet_model,
-        image=IMAGE,
-        role=ROLE,
-    )
-
-    assert model.model_data_prefix == VALID_MULTI_MODEL_DATA_PREFIX
-    assert model.model == mxnet_model
-    assert hasattr(model, "role") is False
-    assert hasattr(model, "image") is False
 
 
 @patch("sagemaker.multidatamodel.Session", MagicMock())
@@ -175,11 +175,8 @@ def test_prepare_container_def_mxnet(sagemaker_session, mxnet_model):
     model = MultiDataModel(
         name=MODEL_NAME,
         model_data_prefix=VALID_MULTI_MODEL_DATA_PREFIX,
-        image=IMAGE,
-        role=ROLE,
         sagemaker_session=sagemaker_session,
         model=mxnet_model,
-        env={"EXTRA_ENV_MOCK": "MockValue"},
     )
 
     container_def = model.prepare_container_def(INSTANCE_TYPE)
@@ -231,11 +228,8 @@ def test_deploy_multi_data_framework_model(sagemaker_session, mxnet_model):
     model = MultiDataModel(
         name=MODEL_NAME,
         model_data_prefix=VALID_MULTI_MODEL_DATA_PREFIX,
-        image=IMAGE,
-        role=ROLE,
         sagemaker_session=sagemaker_session,
         model=mxnet_model,
-        env={"EXTRA_ENV_MOCK": "MockValue"},
     )
 
     predictor = model.deploy(
