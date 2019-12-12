@@ -1,5 +1,15 @@
 # Changelog
 
+## v1.46.0 (2019-12-12)
+
+### Features
+
+ * support Multi-Model endpoints
+
+### Bug fixes and other changes
+
+ * update PR template with items about tests, regional endpoints, and API docs
+
 ## v1.45.2 (2019-12-10)
 
 ### Bug fixes and other changes
