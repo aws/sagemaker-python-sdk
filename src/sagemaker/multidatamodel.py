@@ -259,8 +259,8 @@ class MultiDataModel(Model):
         Args:
         model_source: Valid local file path or S3 path of the trained model artifact
         model_data_path: S3 path where the trained model artifact
-                should be uploaded relative to `self.model_data_prefix` path. (default: None).
-                If None, then the model artifact is uploaded to a path relative to model_data_prefix
+            should be uploaded relative to `self.model_data_prefix` path. (default: None).
+            If None, then the model artifact is uploaded to a path relative to model_data_prefix
 
         Returns:
             str: S3 uri to uploaded model artifact

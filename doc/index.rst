@@ -37,6 +37,7 @@ Inference:
     :maxdepth: 1
 
     model
+    multi_data_model
     predictors
     transformer
     pipeline
