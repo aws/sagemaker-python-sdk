@@ -16,19 +16,41 @@ Overview
 
     overview
 
-The SageMaker Python SDK consists of a few primary classes:
+The SageMaker Python SDK consists of a variety classes:
+
+Training:
 
 .. toctree::
-    :maxdepth: 2
+    :maxdepth: 1
 
     estimators
+    algorithm
     tuner
+    parameter
+    automl
+    processing
+    analytics
+
+Inference:
+
+.. toctree::
+    :maxdepth: 1
+
     model
-    pipeline
     predictors
     transformer
+    pipeline
+    model_monitor
+
+Utility:
+
+.. toctree::
+    :maxdepth: 1
+
     session
-    analytics
+    inputs
+    network
+    s3
 
 *****
 MXNet
@@ -175,5 +197,3 @@ SageMaker APIs to export configurations for creating and managing Airflow workfl
     :maxdepth: 2
 
     sagemaker.workflow.airflow
-
-
