@@ -253,14 +253,14 @@ class MultiDataModel(Model):
         return None
 
     def add_model(self, model_data_source, model_data_path=None):
-        """Adds a model to the `MultiDataModel` by uploading or copying the model_data_source
+        """Adds a model to the ``MultiDataModel`` by uploading or copying the model_data_source
          artifact to the given S3 path model_data_path relative to model_data_prefix
 
         Args:
-        model_source: Valid local file path or S3 path of the trained model artifact
-        model_data_path: S3 path where the trained model artifact
-            should be uploaded relative to `self.model_data_prefix` path. (default: None).
-            If None, then the model artifact is uploaded to a path relative to model_data_prefix
+            model_source: Valid local file path or S3 path of the trained model artifact
+            model_data_path: S3 path where the trained model artifact
+                should be uploaded relative to ``self.model_data_prefix`` path. (default: None).
+                If None, then the model artifact is uploaded to a path relative to model_data_prefix
 
         Returns:
             str: S3 uri to uploaded model artifact
