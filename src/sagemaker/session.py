@@ -3146,7 +3146,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
                 print()
 
 
-def container_def(image, model_data_url=None, env=None):
+def container_def(image, model_data_url=None, env=None, container_mode=None):
     """Create a definition for executing a container as part of a SageMaker model.
 
     Args:
@@ -3154,6 +3154,10 @@ def container_def(image, model_data_url=None, env=None):
         model_data_url (str): S3 URI of data required by this container,
             e.g. SageMaker training job model artifacts (default: None).
         env (dict[str, str]): Environment variables to set inside the container (default: None).
+        container_mode (str): The model container mode. Valid modes:
+                * MultiModel: Indicates that model container can support hosting multiple models
+                * SingleModel: Indicates that model container can support hosting a single model
+                This is the default model container mode when container_mode = None
     Returns:
         dict[str, str]: A complete container definition object usable with the CreateModel API if
         passed via `PrimaryContainers` field.
@@ -3163,6 +3167,8 @@ def container_def(image, model_data_url=None, env=None):
     c_def = {"Image": image, "Environment": env}
     if model_data_url:
         c_def["ModelDataUrl"] = model_data_url
+    if container_mode:
+        c_def["Mode"] = container_mode
     return c_def
 
 
