@@ -63,7 +63,7 @@ Table of Contents
 19. `Inference Pipelines <https://sagemaker.readthedocs.io/en/stable/overview.html#inference-pipelines>`__
 20. `Amazon SageMaker Operators for Kubernetes <#amazon-sagemaker-operators-for-kubernetes>`__
 21. `SageMaker Workflow <#sagemaker-workflow>`__
-22. `SageMaker Autopilot <sagemaker-autopilot>`__
+22. `SageMaker Autopilot <#sagemaker-autopilot>`__
 
 
 Installing the SageMaker Python SDK
@@ -349,9 +349,9 @@ For more information, see `SageMaker Workflow in Apache Airflow`_.
 SageMaker Autopilot
 -------------------
 
-Amazon SageMaker Autopilot is an automated machine learning (commonly referred to as AutoML) solution for tabular
+Amazon SageMaker Autopilot is an automated machine learning solution (commonly referred to as "AutoML") for tabular
 datasets. It automatically trains and tunes the best machine learning models for classification or regression based
-on your data, and host a serials of models on an Inference Pipeline.
+on your data, and hosts a series of models on an Inference Pipeline.
 
 For more information about SageMaker Autopilot, see `SageMaker Autopilot`_.
 
