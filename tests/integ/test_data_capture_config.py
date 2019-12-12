@@ -17,23 +17,17 @@ import os
 import sagemaker
 import tests.integ
 import tests.integ.timeout
-
-from tests.integ.retry import retries
-from sagemaker.model_monitor import NetworkConfig
-
-from sagemaker.model_monitor import DataCaptureConfig
+from sagemaker.model_monitor import DataCaptureConfig, NetworkConfig
 from sagemaker.tensorflow.serving import Model
 from sagemaker.utils import unique_name_from_base
+from tests.integ.retry import retries
 
 ROLE = "SageMakerRole"
-REGION = "us-west-2"
 SKLEARN_FRAMEWORK = "scikit-learn"
 
 INSTANCE_COUNT = 1
 INSTANCE_TYPE = "ml.m5.xlarge"
 VOLUME_SIZE_IN_GB = 20
-VOLUME_KMS_KEY = "arn:aws:kms:us-west-2:012345678901:key/volume-kms-key"
-OUTPUT_KMS_KEY = "arn:aws:kms:us-west-2:012345678901:key/output-kms-key"
 MAX_RUNTIME_IN_SECONDS = 2 * 60 * 60
 ENVIRONMENT = {"env_key_1": "env_value_1"}
 TAGS = [{"Key": "tag_key_1", "Value": "tag_value_1"}]
