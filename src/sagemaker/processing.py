@@ -370,7 +370,10 @@ class ScriptProcessor(Processor):
         self._current_job_name = self._generate_current_job_name(job_name=job_name)
 
         user_script_name = self._get_user_script_name(code)
-        user_code_s3_uri = self._upload_code(code)
+        if urlparse(code).scheme == "s3":
+            user_code_s3_uri = code
+        else:
+            user_code_s3_uri = self._upload_code(code)
         inputs_with_code = self._convert_code_and_add_to_inputs(inputs, user_code_s3_uri)
 
         self._set_entrypoint(self.command, user_script_name)
