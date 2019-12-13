@@ -473,5 +473,12 @@ def test_file_input_content_type():
 
 def test_local_session_is_set_to_local_mode():
     boto_session = Mock(region_name="us-west-2")
+    client_mock = Mock()
+    client_mock.get_caller_identity.return_value = {
+        "UserId": "mock_user_id",
+        "Account": "012345678910",
+        "Arn": "arn:aws:iam::012345678910:user/mock-user",
+    }
+    boto_session.client.return_value = client_mock
     local_session = sagemaker.local.local_session.LocalSession(boto_session=boto_session)
     assert local_session.local_mode

@@ -30,6 +30,13 @@ AES_ENCRYPTION_ENABLED = {"ServerSideEncryption": "AES256"}
 @pytest.fixture()
 def sagemaker_session():
     boto_mock = Mock(name="boto_session")
+    client_mock = Mock()
+    client_mock.get_caller_identity.return_value = {
+        "UserId": "mock_user_id",
+        "Account": "012345678910",
+        "Arn": "arn:aws:iam::012345678910:user/mock-user",
+    }
+    boto_mock.client.return_value = client_mock
     ims = sagemaker.Session(boto_session=boto_mock)
     ims.default_bucket = Mock(name="default_bucket", return_value=BUCKET_NAME)
     return ims
