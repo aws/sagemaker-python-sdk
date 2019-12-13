@@ -66,7 +66,13 @@ class MultiDataModel(Model):
                 object, used for SageMaker interactions (default: None). If not
                 specified, one is created using the default AWS configuration
                 chain.
-            **kwargs: Keyword arguments passed to the ``Model`` initializer.
+            **kwargs: Keyword arguments passed to the
+                :class:`~sagemaker.model.Model` initializer.
+
+        .. tip::
+
+            You can find additional parameters for initializing this class at
+            :class:`~sagemaker.model.Model`.
         """
         # Validate path
         if not model_data_prefix.startswith("s3://"):

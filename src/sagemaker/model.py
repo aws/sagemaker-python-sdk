@@ -734,6 +734,11 @@ class FrameworkModel(Model):
                 try to use either CodeCommit credential helper or local
                 credential storage for authentication.
             **kwargs: Keyword arguments passed to the ``Model`` initializer.
+
+        .. tip::
+
+            You can find additional parameters for initializing this class at
+            :class:`~sagemaker.model.Model`.
         """
         super(FrameworkModel, self).__init__(
             model_data,
