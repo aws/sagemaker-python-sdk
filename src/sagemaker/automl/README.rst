@@ -11,7 +11,7 @@ SageMaker AutoML Class
 The SageMaker ``AutoML`` class is similar to a SageMaker ``Estimator`` where you define the attributes of an AutoML
 job and feed input data to start the job.
 
-Here's a simple example of using the AutoML ``object``:
+Here's a simple example of using the ``AutoML`` object:
 
 .. code:: python
 
@@ -45,6 +45,7 @@ job. By calling this method, you can view and compare the candidates.
 #. Deploy the best candidate (or any given candidate): ``deploy()`` by default will deploy the best candidate to an
 inference pipeline. But you can also specify a candidate to deploy through ``candidate`` parameter.
 
+For more information about ``AutoML`` parameters, please refer to: https://sagemaker.readthedocs.io/en/stable/sagemaker.automl.html
 
 SageMaker CandidateEstimator Class
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -62,3 +63,5 @@ The simplest re-run is to feed a new dataset but reuse all other configurations 
 
 If you want to have more control over the step jobs of the candidate, you can call ``get_steps()`` and construct
 training/tuning jobs by yourself.
+
+For more information about ``CandidateEstimator`` parameters, please refer to: https://sagemaker.readthedocs.io/en/stable/sagemaker.candidate_estimator.html
