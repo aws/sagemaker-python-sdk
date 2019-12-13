@@ -43,6 +43,13 @@ REGION = "us-west-2"
 @pytest.fixture()
 def sagemaker_session():
     boto_mock = Mock(name="boto_session", region_name=REGION)
+    client_mock = Mock()
+    client_mock.get_caller_identity.return_value = {
+        "UserId": "mock_user_id",
+        "Account": "012345678910",
+        "Arn": "arn:aws:iam::012345678910:user/mock-user",
+    }
+    boto_mock.client.return_value = client_mock
     ims = sagemaker.Session(sagemaker_client=Mock(name="sagemaker_client"), boto_session=boto_mock)
     ims.sagemaker_client.describe_training_job = Mock(
         name="describe_training_job", return_value=TRAINING_JOB_RESPONSE
