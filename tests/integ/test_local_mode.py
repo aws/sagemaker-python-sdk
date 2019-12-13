@@ -53,6 +53,9 @@ class LocalNoS3Session(LocalSession):
         self.sagemaker_runtime_client = LocalSagemakerRuntimeClient(self.config)
         self.local_mode = True
 
+        self._default_bucket = None
+        self._desired_default_bucket_name = default_bucket
+
 
 @pytest.fixture(scope="module")
 def mxnet_model(sagemaker_local_session, mxnet_full_version):

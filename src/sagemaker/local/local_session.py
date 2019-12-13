@@ -416,9 +416,6 @@ class LocalSession(Session):
         self._default_bucket = None
         self._desired_default_bucket_name = default_bucket
 
-        # Create default bucket on session init to verify that desired name, if specified, is valid
-        self.default_bucket()
-
     def logs_for_job(self, job_name, wait=False, poll=5, log_type="All"):
         """
 
