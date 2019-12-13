@@ -420,7 +420,7 @@ class ScriptProcessor(Processor):
         if code_url.scheme == "s3":
             user_code_s3_uri = code
         elif code_url.scheme == "" or code_url.scheme == "file":
-            # Validate that the file exists locally and it not a directory.
+            # Validate that the file exists locally and is not a directory.
             if not os.path.exists(code):
                 raise ValueError(
                     """code {} wasn't found. Please make sure that the file exists.
