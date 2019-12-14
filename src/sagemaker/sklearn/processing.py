@@ -26,6 +26,8 @@ from sagemaker.processing import ScriptProcessor
 class SKLearnProcessor(ScriptProcessor):
     """Handles Amazon SageMaker processing tasks for jobs using scikit-learn."""
 
+    _valid_framework_versions = ["0.20.0"]
+
     def __init__(
         self,
         framework_version,
@@ -83,6 +85,13 @@ class SKLearnProcessor(ScriptProcessor):
         """
         session = sagemaker_session or Session()
         region = session.boto_region_name
+
+        if framework_version not in self._valid_framework_versions:
+            raise ValueError(
+                "scikit-learn version {} is not supported. Supported versions are {}".format(
+                    framework_version, self._valid_framework_versions
+                )
+            )
 
         if not command:
             command = ["python3"]
