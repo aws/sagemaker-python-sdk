@@ -48,11 +48,6 @@ def boto_session():
     client_mock._client_config.user_agent = (
         "Boto3/1.9.69 Python/3.6.5 Linux/4.14.77-70.82.amzn1.x86_64 Botocore/1.12.69 Resource"
     )
-    client_mock.get_caller_identity.return_value = {
-        "UserId": "mock_user_id",
-        "Account": "012345678910",
-        "Arn": "arn:aws:iam::012345678910:user/mock-user",
-    }
     boto_mock.client.return_value = client_mock
     return boto_mock
 
@@ -1330,13 +1325,6 @@ STREAM_LOG_EVENTS = [
 @pytest.fixture()
 def sagemaker_session_complete():
     boto_mock = Mock(name="boto_session")
-    client_mock = Mock()
-    client_mock.get_caller_identity.return_value = {
-        "UserId": "mock_user_id",
-        "Account": "012345678910",
-        "Arn": "arn:aws:iam::012345678910:user/mock-user",
-    }
-    boto_mock.client.return_value = client_mock
     boto_mock.client("logs").describe_log_streams.return_value = DEFAULT_LOG_STREAMS
     boto_mock.client("logs").get_log_events.side_effect = DEFAULT_LOG_EVENTS
     ims = sagemaker.Session(boto_session=boto_mock, sagemaker_client=Mock())
@@ -1350,13 +1338,6 @@ def sagemaker_session_complete():
 @pytest.fixture()
 def sagemaker_session_stopped():
     boto_mock = Mock(name="boto_session")
-    client_mock = Mock()
-    client_mock.get_caller_identity.return_value = {
-        "UserId": "mock_user_id",
-        "Account": "012345678910",
-        "Arn": "arn:aws:iam::012345678910:user/mock-user",
-    }
-    boto_mock.client.return_value = client_mock
     boto_mock.client("logs").describe_log_streams.return_value = DEFAULT_LOG_STREAMS
     boto_mock.client("logs").get_log_events.side_effect = DEFAULT_LOG_EVENTS
     ims = sagemaker.Session(boto_session=boto_mock, sagemaker_client=Mock())
@@ -1368,13 +1349,6 @@ def sagemaker_session_stopped():
 @pytest.fixture()
 def sagemaker_session_ready_lifecycle():
     boto_mock = Mock(name="boto_session")
-    client_mock = Mock()
-    client_mock.get_caller_identity.return_value = {
-        "UserId": "mock_user_id",
-        "Account": "012345678910",
-        "Arn": "arn:aws:iam::012345678910:user/mock-user",
-    }
-    boto_mock.client.return_value = client_mock
     boto_mock.client("logs").describe_log_streams.return_value = DEFAULT_LOG_STREAMS
     boto_mock.client("logs").get_log_events.side_effect = STREAM_LOG_EVENTS
     ims = sagemaker.Session(boto_session=boto_mock, sagemaker_client=Mock())
@@ -1394,13 +1368,6 @@ def sagemaker_session_ready_lifecycle():
 @pytest.fixture()
 def sagemaker_session_full_lifecycle():
     boto_mock = Mock(name="boto_session")
-    client_mock = Mock()
-    client_mock.get_caller_identity.return_value = {
-        "UserId": "mock_user_id",
-        "Account": "012345678910",
-        "Arn": "arn:aws:iam::012345678910:user/mock-user",
-    }
-    boto_mock.client.return_value = client_mock
     boto_mock.client("logs").describe_log_streams.side_effect = LIFECYCLE_LOG_STREAMS
     boto_mock.client("logs").get_log_events.side_effect = STREAM_LOG_EVENTS
     ims = sagemaker.Session(boto_session=boto_mock, sagemaker_client=Mock())
