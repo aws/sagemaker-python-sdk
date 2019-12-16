@@ -76,7 +76,13 @@ class Session(object):  # pylint: disable=too-many-public-methods
     bucket based on a naming convention which includes the current AWS account ID.
     """
 
-    def __init__(self, boto_session=None, sagemaker_client=None, sagemaker_runtime_client=None):
+    def __init__(
+        self,
+        boto_session=None,
+        sagemaker_client=None,
+        sagemaker_runtime_client=None,
+        default_bucket=None,
+    ):
         """Initialize a SageMaker ``Session``.
 
         Args:
@@ -91,13 +97,25 @@ class Session(object):  # pylint: disable=too-many-public-methods
                 ``InvokeEndpoint`` calls to Amazon SageMaker (default: None). Predictors created
                 using this ``Session`` use this client. If not provided, one will be created using
                 this instance's ``boto_session``.
+            default_bucket (str): The default Amazon S3 bucket to be used by this session.
+                This will be created the next time an Amazon S3 bucket is needed (by calling
+                :func:`default_bucket`).
+                If not provided, a default bucket will be created based on the following format:
+                "sagemaker-{region}-{aws-account-id}".
+                Example: "sagemaker-my-custom-bucket".
+
         """
         self._default_bucket = None
+        self._default_bucket_name_override = default_bucket
 
         # currently is used for local_code in local mode
         self.config = None
 
-        self._initialize(boto_session, sagemaker_client, sagemaker_runtime_client)
+        self._initialize(
+            boto_session=boto_session,
+            sagemaker_client=sagemaker_client,
+            sagemaker_runtime_client=sagemaker_runtime_client,
+        )
 
     def _initialize(self, boto_session, sagemaker_client, sagemaker_runtime_client):
         """Initialize this SageMaker Session.
@@ -315,10 +333,13 @@ class Session(object):  # pylint: disable=too-many-public-methods
             return self._default_bucket
 
         region = self.boto_session.region_name
-        account = self.boto_session.client(
-            "sts", region_name=region, endpoint_url=sts_regional_endpoint(region)
-        ).get_caller_identity()["Account"]
-        default_bucket = "sagemaker-{}-{}".format(region, account)
+
+        default_bucket = self._default_bucket_name_override
+        if not default_bucket:
+            account = self.boto_session.client(
+                "sts", region_name=region, endpoint_url=sts_regional_endpoint(region)
+            ).get_caller_identity()["Account"]
+            default_bucket = "sagemaker-{}-{}".format(region, account)
 
         s3 = self.boto_session.resource("s3")
         try:
