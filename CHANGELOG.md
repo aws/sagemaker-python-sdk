@@ -1,5 +1,36 @@
 # Changelog
 
+## v1.47.1 (2019-12-16)
+
+### Bug fixes and other changes
+
+ * Revert "feature: allow setting the default bucket in Session (#1168)"
+
+### Documentation changes
+
+ * add AutoML README
+ * add missing classes to API docs
+
+## v1.47.0 (2019-12-13)
+
+### Features
+
+ * allow setting the default bucket in Session
+
+### Bug fixes and other changes
+
+ * allow processing users to run code in s3
+
+## v1.46.0 (2019-12-12)
+
+### Features
+
+ * support Multi-Model endpoints
+
+### Bug fixes and other changes
+
+ * update PR template with items about tests, regional endpoints, and API docs
+
 ## v1.45.2 (2019-12-10)
 
 ### Bug fixes and other changes

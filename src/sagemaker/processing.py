@@ -369,8 +369,9 @@ class ScriptProcessor(Processor):
         """
         self._current_job_name = self._generate_current_job_name(job_name=job_name)
 
-        user_script_name = self._get_user_script_name(code)
-        user_code_s3_uri = self._upload_code(code)
+        user_code_s3_uri = self._handle_user_code_url(code)
+        user_script_name = self._get_user_code_name(code)
+
         inputs_with_code = self._convert_code_and_add_to_inputs(inputs, user_code_s3_uri)
 
         self._set_entrypoint(self.command, user_script_name)
@@ -389,25 +390,59 @@ class ScriptProcessor(Processor):
         if wait:
             self.latest_job.wait(logs=logs)
 
-    def _get_user_script_name(self, code):
-        """Finds the user script name using the provided code file,
-        directory, or script name.
+    def _get_user_code_name(self, code):
+        """Gets the basename of the user's code from the URL the customer provided.
 
         Args:
-            code (str): This can be an S3 uri or a local path to either
-                a directory or a file.
+            code (str): A URL to the user's code.
 
         Returns:
-            str: The script name from the S3 uri or from the file found
-                on the user's local machine.
+            str: The basename of the user's code.
+
         """
-        if os.path.isdir(code) is None or not os.path.splitext(code)[1]:
+        code_url = urlparse(code)
+        return os.path.basename(code_url.path)
+
+    def _handle_user_code_url(self, code):
+        """Gets the S3 URL containing the user's code.
+
+           Inspects the scheme the customer passed in ("s3://" for code in S3, "file://" or nothing
+           for absolute or local file paths. Uploads the code to S3 if the code is a local file.
+
+        Args:
+            code (str): A URL to the customer's code.
+
+        Returns:
+            str: The S3 URL to the customer's code.
+
+        """
+        code_url = urlparse(code)
+        if code_url.scheme == "s3":
+            user_code_s3_uri = code
+        elif code_url.scheme == "" or code_url.scheme == "file":
+            # Validate that the file exists locally and is not a directory.
+            if not os.path.exists(code):
+                raise ValueError(
+                    """code {} wasn't found. Please make sure that the file exists.
+                    """.format(
+                        code
+                    )
+                )
+            if not os.path.isfile(code):
+                raise ValueError(
+                    """code {} must be a file, not a directory. Please pass a path to a file.
+                    """.format(
+                        code
+                    )
+                )
+            user_code_s3_uri = self._upload_code(code)
+        else:
             raise ValueError(
-                """'code' must be a file, not a directory. Please pass a path to a file, not a
-                directory.
-                """
+                "code {} url scheme {} is not recognized. Please pass a file path or S3 url".format(
+                    code, code_url.scheme
+                )
             )
-        return os.path.basename(code)
+        return user_code_s3_uri
 
     def _upload_code(self, code):
         """Uploads a code file or directory specified as a string
@@ -728,7 +763,7 @@ class ProcessingOutput(object):
             source (str): The source for the output.
             destination (str): The destination of the output. If a destination
                 is not provided, one will be generated:
-                 "s3://<default-bucket-name>/<job-name>/output/<output-name>".
+                "s3://<default-bucket-name>/<job-name>/output/<output-name>".
             output_name (str): The name of the output. If a name
                 is not provided, one will be generated (eg. "output-1").
             s3_upload_mode (str): Valid options are "EndOfJob" or "Continuous".
