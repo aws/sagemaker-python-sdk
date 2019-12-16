@@ -115,10 +115,9 @@ class Session(object):  # pylint: disable=too-many-public-methods
             boto_session=boto_session,
             sagemaker_client=sagemaker_client,
             sagemaker_runtime_client=sagemaker_runtime_client,
-            default_bucket=default_bucket,
         )
 
-    def _initialize(self, boto_session, sagemaker_client, sagemaker_runtime_client, default_bucket):
+    def _initialize(self, boto_session, sagemaker_client, sagemaker_runtime_client):
         """Initialize this SageMaker Session.
 
         Creates or uses a boto_session, sagemaker_client and sagemaker_runtime_client.
