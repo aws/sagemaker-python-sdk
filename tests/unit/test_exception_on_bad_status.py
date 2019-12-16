@@ -29,13 +29,7 @@ def get_sagemaker_session(returns_status):
     client_mock.describe_model_package = MagicMock(
         return_value={"ModelPackageStatus": returns_status}
     )
-    client_mock.get_caller_identity.return_value = {
-        "UserId": "mock_user_id",
-        "Account": "012345678910",
-        "Arn": "arn:aws:iam::012345678910:user/mock-user",
-    }
     client_mock.describe_endpoint = MagicMock(return_value={"EndpointStatus": returns_status})
-    boto_mock.client.return_value = client_mock
     ims = sagemaker.Session(boto_session=boto_mock, sagemaker_client=client_mock)
     ims.expand_role = Mock(return_value=EXPANDED_ROLE)
     return ims
