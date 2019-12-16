@@ -379,7 +379,7 @@ class LocalSession(Session):
         if platform.system() == "Windows":
             logger.warning("Windows Support for Local Mode is Experimental")
 
-    def _initialize(self, boto_session, sagemaker_client, sagemaker_runtime_client, default_bucket):
+    def _initialize(self, boto_session, sagemaker_client, sagemaker_runtime_client):
         """Initialize this Local SageMaker Session.
 
         Args:
@@ -412,9 +412,6 @@ class LocalSession(Session):
                 raise e
 
             self.config = yaml.load(open(sagemaker_config_file, "r"))
-
-        self._default_bucket = None
-        self._desired_default_bucket_name = default_bucket
 
     def logs_for_job(self, job_name, wait=False, poll=5, log_type="All"):
         """

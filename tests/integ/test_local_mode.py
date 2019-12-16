@@ -43,7 +43,7 @@ class LocalNoS3Session(LocalSession):
     def __init__(self):
         super(LocalSession, self).__init__()
 
-    def _initialize(self, boto_session, sagemaker_client, sagemaker_runtime_client, default_bucket):
+    def _initialize(self, boto_session, sagemaker_client, sagemaker_runtime_client):
         self.boto_session = boto3.Session(region_name=DEFAULT_REGION)
         if self.config is None:
             self.config = {"local": {"local_code": True, "region_name": DEFAULT_REGION}}
@@ -52,9 +52,6 @@ class LocalNoS3Session(LocalSession):
         self.sagemaker_client = LocalSagemakerClient(self)
         self.sagemaker_runtime_client = LocalSagemakerRuntimeClient(self.config)
         self.local_mode = True
-
-        self._default_bucket = None
-        self._desired_default_bucket_name = default_bucket
 
 
 @pytest.fixture(scope="module")

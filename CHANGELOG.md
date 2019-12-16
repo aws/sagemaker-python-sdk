@@ -1,5 +1,15 @@
 # Changelog
 
+## v1.47.0 (2019-12-13)
+
+### Features
+
+ * allow setting the default bucket in Session
+
+### Bug fixes and other changes
+
+ * allow processing users to run code in s3
+
 ## v1.46.0 (2019-12-12)
 
 ### Features
