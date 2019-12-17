@@ -1,4 +1,4 @@
-# Copyright 2018 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright 2018-2019 Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -165,6 +165,12 @@ class Model(sagemaker.model.FrameworkModel):
                 SageMaker ``Session``. If specified, ``deploy()`` returns the
                 result of invoking this function on the created endpoint name.
             **kwargs: Keyword arguments passed to the ``Model`` initializer.
+
+        .. tip::
+
+            You can find additional parameters for initializing this class at
+            :class:`~sagemaker.model.FrameworkModel` and
+            :class:`~sagemaker.model.Model`.
         """
         super(Model, self).__init__(
             model_data=model_data,

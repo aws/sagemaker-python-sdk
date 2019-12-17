@@ -492,8 +492,8 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):
                 'var2':[1,1,28,28]}
             output_path (str): Specifies where to store the compiled model
             framework (str): The framework that is used to train the original
-                model. Allowed values: 'mxnet', 'tensorflow', 'pytorch', 'onnx',
-                'xgboost'
+                model. Allowed values: 'mxnet', 'tensorflow', 'keras', 'pytorch',
+                'onnx', 'xgboost'
             framework_version (str): The version of the framework
             compile_max_run (int): Timeout in seconds for compilation (default:
                 3 * 60). After this amount of time Amazon SageMaker Neo
