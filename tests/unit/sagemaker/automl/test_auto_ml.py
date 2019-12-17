@@ -32,7 +32,7 @@ DEFAULT_S3_INPUT_DATA = "s3://{}/data".format(BUCKET_NAME)
 DEFAULT_OUTPUT_PATH = "s3://{}/".format(BUCKET_NAME)
 LOCAL_DATA_PATH = "file://data"
 DEFAULT_MAX_CANDIDATES = 500
-DEFAULT_JOB_NAME = "sagemake-{}".format(TIMESTAMP)
+DEFAULT_JOB_NAME = "automl-{}".format(TIMESTAMP)
 
 JOB_NAME = "default-job-name"
 JOB_NAME_2 = "banana-auto-ml-job"
@@ -284,7 +284,7 @@ def test_auto_ml_additional_optional_params(sagemaker_session):
 
 
 @patch("time.strftime", return_value=TIMESTAMP)
-def test_auto_ml_default_fit(sagemaker_session):
+def test_auto_ml_default_fit(strftime, sagemaker_session):
     auto_ml = AutoML(
         role=ROLE, target_attribute_name=TARGET_ATTRIBUTE_NAME, sagemaker_session=sagemaker_session
     )
