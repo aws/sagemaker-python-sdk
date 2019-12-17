@@ -60,10 +60,6 @@ def mxnet_training_job(sagemaker_session, mxnet_full_version, cpu_instance_type)
         return mx.latest_training_job.name
 
 
-def test_foo(mxnet_training_job):
-    mxnet_training_job
-
-
 @pytest.mark.canary_quick
 @pytest.mark.regional_testing
 def test_attach_deploy(mxnet_training_job, sagemaker_session, cpu_instance_type):
