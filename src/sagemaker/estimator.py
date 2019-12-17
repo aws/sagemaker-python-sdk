@@ -1336,9 +1336,15 @@ class Estimator(EstimatorBase):
                 Default: use subnets and security groups from this Estimator.
                 * 'Subnets' (list[str]): List of subnet ids.
                 * 'SecurityGroupIds' (list[str]): List of security group ids.
-            **kwargs:
+            **kwargs: Additional parameters passed to :class:`~sagemaker.model.Model`
 
-        Returns: a Model ready for deployment.
+        .. tip::
+
+            You can find additional parameters for using this method at
+            :class:`~sagemaker.model.Model`.
+
+        Returns:
+            (sagemaker.model.Model) a Model ready for deployment.
         """
         if predictor_cls is None:
 
@@ -1566,6 +1572,11 @@ class Framework(EstimatorBase):
                 (default: ``None``).
             **kwargs: Additional kwargs passed to the ``EstimatorBase``
                 constructor.
+
+        .. tip::
+
+            You can find additional parameters for initializing this class at
+            :class:`~sagemaker.estimator.EstimatorBase`.
         """
         super(Framework, self).__init__(**kwargs)
         if entry_point.startswith("s3://"):
