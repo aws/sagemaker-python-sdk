@@ -93,7 +93,7 @@ For example, if you want to use a boolean hyperparameter, specify ``type`` as ``
 
 For a complete example of a TensorFlow training script, see `mnist.py <https://github.com/awslabs/amazon-sagemaker-examples/blob/master/sagemaker-python-sdk/tensorflow_distributed_mnist/mnist.py>`__.
 
-   
+
 Adapting your local TensorFlow script
 -------------------------------------
 
@@ -181,7 +181,7 @@ Required arguments
 
   - ``str``: An S3 URI, for example ``s3://my-bucket/my-training-data``, which indicates the dataset's location.
   - ``dict[str, str]``: A dictionary mapping channel names to S3 locations, for example ``{'train': 's3://my-bucket/my-training-data/train', 'test': 's3://my-bucket/my-training-data/test'}``
-  - ``sagemaker.session.s3_input``: channel configuration for S3 data sources that can provide additional information as well as the path to the training dataset. See `the API docs <https://sagemaker.readthedocs.io/en/stable/session.html#sagemaker.session.s3_input>`_ for full details.
+  - ``sagemaker.session.s3_input``: channel configuration for S3 data sources that can provide additional information as well as the path to the training dataset. See `the API docs <https://sagemaker.readthedocs.io/en/stable/inputs.html#sagemaker.inputs.s3_input>`_ for full details.
 
 Optional arguments
 ------------------
@@ -593,7 +593,7 @@ The following content formats are supported without custom intput and output han
 For detailed information about how TensorFlow Serving formats these data types for input and output, see :ref:`using_tf:TensorFlow Serving Input and Output`.
 
 You can also accept any custom data format by writing input and output functions, and include them in the ``inference.py`` file in your model.
-For information, see :ref:`using_tf:Create Python Scripts for Custom Input and Output Formats`. 
+For information, see :ref:`using_tf:Create Python Scripts for Custom Input and Output Formats`.
 
 
 TensorFlow Serving Input and Output

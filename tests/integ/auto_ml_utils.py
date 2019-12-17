@@ -27,16 +27,16 @@ TARGET_ATTRIBUTE_NAME = "virginica"
 
 def create_auto_ml_job_if_not_exist(sagemaker_session):
     auto_ml_job_name = "python-sdk-integ-test-base-job"
-    auto_ml = AutoML(
-        role=ROLE,
-        target_attribute_name=TARGET_ATTRIBUTE_NAME,
-        sagemaker_session=sagemaker_session,
-        max_candidates=3,
-    )
 
     try:
-        auto_ml.describe_auto_ml_job(job_name=auto_ml_job_name)
+        sagemaker_session.describe_auto_ml_job(job_name=auto_ml_job_name)
     except Exception as e:  # noqa: F841
+        auto_ml = AutoML(
+            role=ROLE,
+            target_attribute_name=TARGET_ATTRIBUTE_NAME,
+            sagemaker_session=sagemaker_session,
+            max_candidates=3,
+        )
         inputs = sagemaker_session.upload_data(path=TRAINING_DATA, key_prefix=PREFIX + "/input")
         with timeout(minutes=AUTO_ML_DEFAULT_TIMEMOUT_MINUTES):
-            auto_ml.fit(inputs, job_name=auto_ml_job_name)
+            auto_ml.fit(inputs, job_name=auto_ml_job_name, wait=True)
