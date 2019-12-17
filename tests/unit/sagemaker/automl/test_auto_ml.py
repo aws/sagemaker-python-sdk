@@ -13,13 +13,14 @@
 from __future__ import absolute_import
 
 import pytest
-from mock import Mock
+from mock import Mock, patch
 from sagemaker import AutoML, AutoMLJob, AutoMLInput, CandidateEstimator
 
 MODEL_DATA = "s3://bucket/model.tar.gz"
 MODEL_IMAGE = "mi"
 ENTRY_POINT = "blah.py"
 
+TIMESTAMP = "2017-11-06-14:14:15.671"
 BUCKET_NAME = "mybucket"
 INSTANCE_COUNT = 1
 INSTANCE_TYPE = "ml.c5.2xlarge"
@@ -31,6 +32,7 @@ DEFAULT_S3_INPUT_DATA = "s3://{}/data".format(BUCKET_NAME)
 DEFAULT_OUTPUT_PATH = "s3://{}/".format(BUCKET_NAME)
 LOCAL_DATA_PATH = "file://data"
 DEFAULT_MAX_CANDIDATES = 500
+DEFAULT_JOB_NAME = "sagemake-{}".format(TIMESTAMP)
 
 JOB_NAME = "default-job-name"
 JOB_NAME_2 = "banana-auto-ml-job"
@@ -281,6 +283,7 @@ def test_auto_ml_additional_optional_params(sagemaker_session):
     }
 
 
+@patch("time.strftime", return_value=TIMESTAMP)
 def test_auto_ml_default_fit(sagemaker_session):
     auto_ml = AutoML(
         role=ROLE, target_attribute_name=TARGET_ATTRIBUTE_NAME, sagemaker_session=sagemaker_session
@@ -289,26 +292,29 @@ def test_auto_ml_default_fit(sagemaker_session):
     auto_ml.fit(inputs)
     sagemaker_session.auto_ml.assert_called_once()
     _, args = sagemaker_session.auto_ml.call_args
-    assert args["input_config"] == [
-        {
-            "DataSource": {
-                "S3DataSource": {"S3DataType": "S3Prefix", "S3Uri": DEFAULT_S3_INPUT_DATA}
+    assert args == {
+        "input_config": [
+            {
+                "DataSource": {
+                    "S3DataSource": {"S3DataType": "S3Prefix", "S3Uri": DEFAULT_S3_INPUT_DATA}
+                },
+                "TargetAttributeName": TARGET_ATTRIBUTE_NAME,
+            }
+        ],
+        "output_config": {"S3OutputPath": DEFAULT_OUTPUT_PATH},
+        "auto_ml_job_config": {
+            "CompletionCriteria": {"MaxCandidates": DEFAULT_MAX_CANDIDATES},
+            "SecurityConfig": {
+                "EnableInterContainerTrafficEncryption": ENCRYPT_INTER_CONTAINER_TRAFFIC
             },
-            "TargetAttributeName": TARGET_ATTRIBUTE_NAME,
-        }
-    ]
-    assert args["output_config"] == {"S3OutputPath": DEFAULT_OUTPUT_PATH}
-    assert args["auto_ml_job_config"] == {
-        "CompletionCriteria": {"MaxCandidates": DEFAULT_MAX_CANDIDATES},
-        "SecurityConfig": {
-            "EnableInterContainerTrafficEncryption": ENCRYPT_INTER_CONTAINER_TRAFFIC
         },
+        "role": ROLE,
+        "job_name": DEFAULT_JOB_NAME,
+        "problem_type": None,
+        "job_objective": None,
+        "generate_candidate_definitions_only": GENERATE_CANDIDATE_DEFINITIONS_ONLY,
+        "tags": None,
     }
-    assert args["role"] == ROLE
-    assert args["problem_type"] is None
-    assert args["job_objective"] is None
-    assert args["generate_candidate_definitions_only"] == GENERATE_CANDIDATE_DEFINITIONS_ONLY
-    assert args["tags"] is None
 
 
 def test_auto_ml_local_input(sagemaker_session):
