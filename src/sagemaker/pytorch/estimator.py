@@ -89,19 +89,11 @@ class PyTorch(Framework):
                 for training and hosting, instead of selecting the appropriate
                 SageMaker official image based on framework_version and
                 py_version. It can be an ECR url or dockerhub image and tag.
-
                 Examples:
-                    * ``123412341234.dkr.ecr.us-west-2.amazonaws.com/my-custom-image:1.0``
-                    * ``custom-image:latest``
-
+                123.dkr.ecr.us-west-2.amazonaws.com/my-custom-image:1.0
+                custom-image:latest.
             **kwargs: Additional kwargs passed to the :class:`~sagemaker.estimator.Framework`
                 constructor.
-
-        .. tip::
-
-            You can find additional parameters for initializing this class at
-            :class:`~sagemaker.estimator.Framework` and
-            :class:`~sagemaker.estimator.EstimatorBase`.
         """
         if framework_version is None:
             logger.warning(empty_framework_version_warning(PYTORCH_VERSION, PYTORCH_VERSION))
@@ -154,8 +146,7 @@ class PyTorch(Framework):
             dependencies (list[str]): A list of paths to directories (absolute or relative) with
                 any additional libraries that will be exported to the container.
                 If not specified, the dependencies from training are used.
-            **kwargs: Additional kwargs passed to the :class:`~sagemaker.pytorch.model.PyTorchModel`
-                constructor.
+            **kwargs: Additional kwargs passed to the PyTorchModel constructor.
 
         Returns:
             sagemaker.pytorch.model.PyTorchModel: A SageMaker ``PyTorchModel``

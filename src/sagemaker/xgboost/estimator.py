@@ -100,12 +100,6 @@ class XGBoost(Framework):
                     custom-image:latest.
             **kwargs: Additional kwargs passed to the
                 :class:`~sagemaker.estimator.Framework` constructor.
-
-        .. tip::
-
-            You can find additional parameters for initializing this class at
-            :class:`~sagemaker.estimator.Framework` and
-            :class:`~sagemaker.estimator.EstimatorBase`.
         """
         super(XGBoost, self).__init__(
             entry_point, source_dir, hyperparameters, image_name=image_name, **kwargs

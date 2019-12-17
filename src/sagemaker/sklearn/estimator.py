@@ -90,12 +90,6 @@ class SKLearn(Framework):
                     custom-image:latest.
             **kwargs: Additional kwargs passed to the
                 :class:`~sagemaker.estimator.Framework` constructor.
-
-        .. tip::
-
-            You can find additional parameters for initializing this class at
-            :class:`~sagemaker.estimator.Framework` and
-            :class:`~sagemaker.estimator.EstimatorBase`.
         """
         # SciKit-Learn does not support distributed training or training on GPU instance types.
         # Fail fast.

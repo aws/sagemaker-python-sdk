@@ -279,12 +279,6 @@ class TensorFlow(Framework):
                     }
 
             **kwargs: Additional kwargs passed to the Framework constructor.
-
-        .. tip::
-
-            You can find additional parameters for initializing this class at
-            :class:`~sagemaker.estimator.Framework` and
-            :class:`~sagemaker.estimator.EstimatorBase`.
         """
         if framework_version is None:
             logger.warning(fw.empty_framework_version_warning(TF_VERSION, self.LATEST_VERSION))
@@ -557,8 +551,8 @@ class TensorFlow(Framework):
                 If not specified and ``endpoint_type`` is 'tensorflow-serving', ``dependencies`` is
                 set to ``None``.
                 If ``endpoint_type`` is also ``None``, then the dependencies from training are used.
-            **kwargs: Additional kwargs passed to :class:`~sagemaker.tensorflow.serving.Model`
-                and :class:`~sagemaker.tensorflow.model.TensorFlowModel` constructors.
+            **kwargs: Additional kwargs passed to ``sagemaker.tensorflow.serving.Model`` constructor
+                and ``sagemaker.tensorflow.model.TensorFlowModel`` constructor.
 
         Returns:
             sagemaker.tensorflow.model.TensorFlowModel or sagemaker.tensorflow.serving.Model: A

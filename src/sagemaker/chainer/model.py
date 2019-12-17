@@ -1,4 +1,4 @@
-# Copyright 2018-2019 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright 2018 Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -93,14 +93,8 @@ class ChainerModel(FrameworkModel):
             model_server_workers (int): Optional. The number of worker processes
                 used by the inference server. If None, server will use one
                 worker per vCPU.
-            **kwargs: Keyword arguments passed to the
-                :class:`~sagemaker.model.FrameworkModel` initializer.
-
-        .. tip::
-
-            You can find additional parameters for initializing this class at
-            :class:`~sagemaker.model.FrameworkModel` and
-            :class:`~sagemaker.model.Model`.
+            **kwargs: Keyword arguments passed to the ``FrameworkModel``
+                initializer.
         """
         super(ChainerModel, self).__init__(
             model_data, image, role, entry_point, predictor_cls=predictor_cls, **kwargs

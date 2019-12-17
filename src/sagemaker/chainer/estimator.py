@@ -111,20 +111,13 @@ class Chainer(Framework):
             image_name (str): If specified, the estimator will use this image
                 for training and hosting, instead of selecting the appropriate
                 SageMaker official image based on framework_version and
-                py_version. It can be an ECR url or dockerhub image and tag.
+                py_version. It can be an ECR url or dockerhub image and tag. ..
+                admonition:: Examples
 
-                Examples
-                    * ``123412341234.dkr.ecr.us-west-2.amazonaws.com/my-custom-image:1.0``
-                    * ``custom-image:latest``
-
+                    123.dkr.ecr.us-west-2.amazonaws.com/my-custom-image:1.0
+                    custom-image:latest.
             **kwargs: Additional kwargs passed to the
                 :class:`~sagemaker.estimator.Framework` constructor.
-
-        .. tip::
-
-            You can find additional parameters for initializing this class at
-            :class:`~sagemaker.estimator.Framework` and
-            :class:`~sagemaker.estimator.EstimatorBase`.
         """
         if framework_version is None:
             logger.warning(empty_framework_version_warning(CHAINER_VERSION, self.LATEST_VERSION))
