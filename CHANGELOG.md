@@ -1,5 +1,16 @@
 # Changelog
 
+## v1.47.1 (2019-12-16)
+
+### Bug fixes and other changes
+
+ * Revert "feature: allow setting the default bucket in Session (#1168)"
+
+### Documentation changes
+
+ * add AutoML README
+ * add missing classes to API docs
+
 ## v1.47.0 (2019-12-13)
 
 ### Features

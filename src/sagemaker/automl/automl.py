@@ -19,7 +19,7 @@ from sagemaker import Model, PipelineModel
 from sagemaker.automl.candidate_estimator import CandidateEstimator
 from sagemaker.job import _Job
 from sagemaker.session import Session
-from sagemaker.utils import name_from_base
+from sagemaker.utils import unique_name_from_base
 
 
 class AutoML(object):
@@ -379,9 +379,9 @@ class AutoML(object):
             if self.base_job_name:
                 base_name = self.base_job_name
             else:
-                base_name = "sagemaker-auto-ml"
+                base_name = "automl"
             # CreateAutoMLJob API validates that member length less than or equal to 32
-            self.current_job_name = name_from_base(base_name, max_length=32)
+            self.current_job_name = unique_name_from_base(base_name, max_length=32)
 
         if self.output_path is None:
             self.output_path = "s3://{}/".format(self.sagemaker_session.default_bucket())
