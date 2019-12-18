@@ -24,6 +24,46 @@ REGION = "us-west-2"
 ROLE = "arn:aws:iam::012345678901:role/SageMakerRole"
 CUSTOM_IMAGE_URI = "012345678901.dkr.ecr.us-west-2.amazonaws.com/my-custom-image-uri"
 
+PROCESSING_JOB_DESCRIPTION = {
+    "ProcessingInputs": [
+        {
+            "InputName": "my_dataset",
+            "S3Input": {
+                "S3Uri": "s3://path/to/my/dataset/census.csv",
+                "LocalPath": "/container/path/",
+                "S3DataType": "S3Prefix",
+                "S3InputMode": "File",
+                "S3DataDistributionType": "FullyReplicated",
+                "S3CompressionType": "None",
+            },
+        },
+        {
+            "InputName": "code",
+            "S3Input": {
+                "S3Uri": "mocked_s3_uri_from_upload_data",
+                "LocalPath": "/opt/ml/processing/input/code",
+                "S3DataType": "S3Prefix",
+                "S3InputMode": "File",
+                "S3DataDistributionType": "FullyReplicated",
+                "S3CompressionType": "None",
+            },
+        },
+    ],
+    "ProcessingOutputConfig": {
+        "Outputs": [
+            {
+                "OutputName": "my_output",
+                "S3Output": {
+                    "S3Uri": "s3://uri/",
+                    "LocalPath": "/container/path/",
+                    "S3UploadMode": "EndOfJob",
+                },
+            }
+        ],
+        "KmsKeyId": "arn:aws:kms:us-west-2:012345678901:key/output-kms-key",
+    },
+}
+
 
 @pytest.fixture()
 def sagemaker_session():
@@ -42,6 +82,9 @@ def sagemaker_session():
     )
     session_mock.download_data = Mock(name="download_data")
     session_mock.expand_role.return_value = ROLE
+    session_mock.sagemaker_client.describe_processing_job = Mock(
+        return_value=PROCESSING_JOB_DESCRIPTION
+    )
     return session_mock
 
 
