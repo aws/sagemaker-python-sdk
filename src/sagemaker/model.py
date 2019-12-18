@@ -20,6 +20,7 @@ import os
 import sagemaker
 from sagemaker import fw_utils, local, session, utils, git_utils
 from sagemaker.fw_utils import UploadedCode
+from sagemaker.session import Session
 from sagemaker.transformer import Transformer
 
 LOGGER = logging.getLogger("sagemaker")
@@ -129,7 +130,7 @@ class Model(object):
         self.env = env or {}
         self.name = name
         self.vpc_config = vpc_config
-        self.sagemaker_session = sagemaker_session
+        self.sagemaker_session = sagemaker_session or Session()
         self._model_name = None
         self.endpoint_name = None
         self._is_compiled_model = False
