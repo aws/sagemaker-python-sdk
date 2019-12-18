@@ -597,7 +597,7 @@ class ProcessingJob(_Job):
 
     @classmethod
     def from_processing_name(cls, sagemaker_session, processing_job_name):
-        """Initializes a Processing job from a Processing ARN.
+        """Initializes a Processing job from a Processing job name.
 
         Args:
             processing_job_name (str): Name of the processing job.
