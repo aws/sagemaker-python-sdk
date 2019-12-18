@@ -58,9 +58,10 @@ def test_auto_ml_fit(sagemaker_session):
         max_candidates=3,
     )
 
+    job_name = unique_name_from_base("auto-ml", max_length=32)
     inputs = sagemaker_session.upload_data(path=TRAINING_DATA, key_prefix=PREFIX + "/input")
     with timeout(minutes=AUTO_ML_DEFAULT_TIMEMOUT_MINUTES):
-        auto_ml.fit(inputs)
+        auto_ml.fit(inputs, job_name=job_name)
 
 
 @pytest.mark.skipif(
@@ -76,8 +77,9 @@ def test_auto_ml_fit_local_input(sagemaker_session):
     )
 
     inputs = TRAINING_DATA
+    job_name = unique_name_from_base("auto-ml", max_length=32)
     with timeout(minutes=AUTO_ML_DEFAULT_TIMEMOUT_MINUTES):
-        auto_ml.fit(inputs)
+        auto_ml.fit(inputs, job_name=job_name)
 
 
 @pytest.mark.skipif(
@@ -91,10 +93,11 @@ def test_auto_ml_input_object_fit(sagemaker_session):
         sagemaker_session=sagemaker_session,
         max_candidates=1,
     )
+    job_name = unique_name_from_base("auto-ml", max_length=32)
     s3_input = sagemaker_session.upload_data(path=TRAINING_DATA, key_prefix=PREFIX + "/input")
     inputs = AutoMLInput(inputs=s3_input, target_attribute_name=TARGET_ATTRIBUTE_NAME)
     with timeout(minutes=AUTO_ML_DEFAULT_TIMEMOUT_MINUTES):
-        auto_ml.fit(inputs)
+        auto_ml.fit(inputs, job_name=job_name)
 
 
 @pytest.mark.skipif(
@@ -134,11 +137,12 @@ def test_auto_ml_invalid_target_attribute(sagemaker_session):
     auto_ml = AutoML(
         role=ROLE, target_attribute_name="y", sagemaker_session=sagemaker_session, max_candidates=1
     )
+    job_name = unique_name_from_base("auto-ml", max_length=32)
     inputs = sagemaker_session.upload_data(path=TRAINING_DATA, key_prefix=PREFIX + "/input")
     with pytest.raises(
         UnexpectedStatusException, match="Could not complete the data builder processing job."
     ):
-        auto_ml.fit(inputs)
+        auto_ml.fit(inputs, job_name=job_name)
 
 
 @pytest.mark.skipif(

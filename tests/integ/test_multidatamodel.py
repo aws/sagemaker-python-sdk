@@ -14,7 +14,9 @@ from __future__ import absolute_import
 
 import base64
 import os
+import requests
 
+import botocore
 import docker
 import numpy
 import pytest
@@ -30,7 +32,6 @@ from tests.integ import DATA_DIR, PYTHON_VERSION, TRAINING_DEFAULT_TIMEOUT_MINUT
 from tests.integ.retry import retries
 from tests.integ.timeout import timeout, timeout_and_delete_endpoint_by_name
 
-ALGORITHM_NAME = "sagemaker-multimodel-integ-test"
 ROLE = "SageMakerRole"
 PRETRAINED_MODEL_PATH_1 = "customer_a/dummy_model.tar.gz"
 PRETRAINED_MODEL_PATH_2 = "customer_b/dummy_model.tar.gz"
@@ -47,27 +48,36 @@ def container_image(sagemaker_session):
         "sts", region_name=region, endpoint_url=utils.sts_regional_endpoint(region)
     )
     account_id = sts_client.get_caller_identity()["Account"]
+    algorithm_name = "sagemaker-multimodel-integ-test-{}".format(sagemaker_timestamp())
     ecr_image = "{account}.dkr.ecr.{region}.amazonaws.com/{algorithm_name}:latest".format(
-        account=account_id, region=region, algorithm_name=ALGORITHM_NAME
+        account=account_id, region=region, algorithm_name=algorithm_name
     )
 
     # Build and tag docker image locally
     docker_client = docker.from_env()
     image, build_log = docker_client.images.build(
-        path=os.path.join(DATA_DIR, "multimodel", "container"), tag=ALGORITHM_NAME, rm=True
+        path=os.path.join(DATA_DIR, "multimodel", "container"), tag=algorithm_name, rm=True
     )
     image.tag(ecr_image, tag="latest")
 
     # Create AWS ECR and push the local docker image to it
-    _create_repository(ecr_client, ALGORITHM_NAME)
+    _create_repository(ecr_client, algorithm_name)
     username, password = _ecr_login(ecr_client)
-    docker_client.images.push(ecr_image, auth_config={"username": username, "password": password})
+    # Retry docker image push
+    for _ in retries(3, "Upload docker image to ECR repo", seconds_to_sleep=10):
+        try:
+            docker_client.images.push(
+                ecr_image, auth_config={"username": username, "password": password}
+            )
+            break
+        except requests.exceptions.ConnectionError:
+            # This can happen when we try to create multiple repositories in parallel, so we retry
+            pass
+
     yield ecr_image
 
     # Delete repository after the multi model integration tests complete
-    repo = ecr_client.describe_repositories(repositoryNames=[ALGORITHM_NAME])
-    if "repositories" in repo:
-        ecr_client.delete_repository(repositoryName=ALGORITHM_NAME, force=True)
+    _delete_repository(ecr_client, algorithm_name)
 
 
 def _create_repository(ecr_client, repository_name):
@@ -85,6 +95,18 @@ def _create_repository(ecr_client, repository_name):
             return response["repositories"][0]["repositoryUri"]
         else:
             raise
+
+
+def _delete_repository(ecr_client, repository_name):
+    """
+    Deletes an ECS Repository (ECR). After the integration test completes
+    we will remove the repository created during setup
+    """
+    try:
+        ecr_client.describe_repositories(repositoryNames=[repository_name])
+        ecr_client.delete_repository(repositoryName=repository_name, force=True)
+    except botocore.errorfactory.ResourceNotFoundException:
+        pass
 
 
 def _ecr_login(ecr_client):
