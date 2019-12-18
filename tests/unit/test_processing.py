@@ -13,9 +13,15 @@
 from __future__ import absolute_import
 
 import pytest
-from mock import Mock, patch
+from mock import Mock, patch, MagicMock
 
-from sagemaker.processing import ProcessingInput, ProcessingOutput, Processor, ScriptProcessor
+from sagemaker.processing import (
+    ProcessingInput,
+    ProcessingOutput,
+    Processor,
+    ScriptProcessor,
+    ProcessingJob,
+)
 from sagemaker.sklearn.processing import SKLearnProcessor
 from sagemaker.network import NetworkConfig
 
@@ -68,7 +74,7 @@ PROCESSING_JOB_DESCRIPTION = {
 @pytest.fixture()
 def sagemaker_session():
     boto_mock = Mock(name="boto_session", region_name=REGION)
-    session_mock = Mock(
+    session_mock = MagicMock(
         name="sagemaker_session",
         boto_session=boto_mock,
         boto_region_name=REGION,
@@ -82,7 +88,7 @@ def sagemaker_session():
     )
     session_mock.download_data = Mock(name="download_data")
     session_mock.expand_role.return_value = ROLE
-    session_mock.sagemaker_client.describe_processing_job = Mock(
+    session_mock.sagemaker_client.describe_processing_job = MagicMock(
         return_value=PROCESSING_JOB_DESCRIPTION
     )
     return session_mock
@@ -429,6 +435,14 @@ def test_processor_with_all_parameters(sagemaker_session):
     expected_args["inputs"] = [expected_args["inputs"][0]]
 
     sagemaker_session.process.assert_called_with(**expected_args)
+
+
+def test_processing_job_from_processing_arn(sagemaker_session):
+    processing_job = ProcessingJob.from_processing_arn(
+        sagemaker_session=sagemaker_session,
+        processing_job_arn="arn:aws:sagemaker:dummy-region:dummy-account-number:processing-job/dummy-job-name",
+    )
+    assert isinstance(processing_job, ProcessingJob)
 
 
 def _get_script_processor(sagemaker_session):
