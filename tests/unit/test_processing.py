@@ -88,8 +88,8 @@ def sagemaker_session():
     )
     session_mock.download_data = Mock(name="download_data")
     session_mock.expand_role.return_value = ROLE
-    session_mock.sagemaker_client.describe_processing_job = MagicMock(
-        return_value=PROCESSING_JOB_DESCRIPTION
+    session_mock.describe_processing_job = MagicMock(
+        name="describe_processing_job", return_value=PROCESSING_JOB_DESCRIPTION
     )
     return session_mock
 
