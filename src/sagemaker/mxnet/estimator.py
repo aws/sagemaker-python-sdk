@@ -90,15 +90,22 @@ class MXNet(Framework):
             image_name (str): If specified, the estimator will use this image for training and
                 hosting, instead of selecting the appropriate SageMaker official image based on
                 framework_version and py_version. It can be an ECR url or dockerhub image and tag.
+
                 Examples:
-                    123.dkr.ecr.us-west-2.amazonaws.com/my-custom-image:1.0
-                    custom-image:latest.
+                    * ``123412341234.dkr.ecr.us-west-2.amazonaws.com/my-custom-image:1.0``
+                    * ``custom-image:latest``
 
             distributions (dict): A dictionary with information on how to run distributed
                 training (default: None). To have parameter servers launched for training,
                 set this value to be ``{'parameter_server': {'enabled': True}}``.
             **kwargs: Additional kwargs passed to the
                 :class:`~sagemaker.estimator.Framework` constructor.
+
+        .. tip::
+
+            You can find additional parameters for initializing this class at
+            :class:`~sagemaker.estimator.Framework` and
+            :class:`~sagemaker.estimator.EstimatorBase`.
         """
         if framework_version is None:
             logger.warning(empty_framework_version_warning(MXNET_VERSION, self.LATEST_VERSION))
@@ -161,8 +168,10 @@ class MXNet(Framework):
                 role from the Estimator will be used.
             vpc_config_override (dict[str, list[str]]): Optional override for VpcConfig set on
                 the model. Default: use subnets and security groups from this Estimator.
+
                 * 'Subnets' (list[str]): List of subnet ids.
                 * 'SecurityGroupIds' (list[str]): List of security group ids.
+
             entry_point (str): Path (absolute or relative) to the local Python source file which
                 should be executed as the entry point to training. If not specified, the training
                 entry point is used.
@@ -175,10 +184,13 @@ class MXNet(Framework):
             image_name (str): If specified, the estimator will use this image for hosting, instead
                 of selecting the appropriate SageMaker official image based on framework_version
                 and py_version. It can be an ECR url or dockerhub image and tag.
+
                 Examples:
-                    123.dkr.ecr.us-west-2.amazonaws.com/my-custom-image:1.0
-                    custom-image:latest.
-            **kwargs: Additional kwargs passed to the MXNetModel constructor.
+                    * ``123412341234.dkr.ecr.us-west-2.amazonaws.com/my-custom-image:1.0``
+                    * ``custom-image:latest``
+
+            **kwargs: Additional kwargs passed to the :class:`~sagemaker.mxnet.model.MXNetModel`
+                constructor.
 
         Returns:
             sagemaker.mxnet.model.MXNetModel: A SageMaker ``MXNetModel`` object.

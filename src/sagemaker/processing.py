@@ -502,9 +502,24 @@ class ScriptProcessor(Processor):
 class ProcessingJob(_Job):
     """Provides functionality to start, describe, and stop processing jobs."""
 
-    def __init__(self, sagemaker_session, job_name, inputs, outputs):
+    def __init__(self, sagemaker_session, job_name, inputs, outputs, output_kms_key=None):
+        """Initializes a Processing job.
+
+        Args:
+            sagemaker_session (sagemaker.session.Session): Session object which
+                manages interactions with Amazon SageMaker APIs and any other
+                AWS services needed. If not specified, one is created using
+                the default AWS configuration chain.
+            job_name (str): Name of the Processing job.
+            inputs ([sagemaker.processing.ProcessingInput]): A list of ProcessingInput objects.
+            outputs ([sagemaker.processing.ProcessingOutput]): A list of ProcessingOutput objects.
+            output_kms_key (str): The output kms key associated with the job. Defaults to None
+                if not provided.
+
+        """
         self.inputs = inputs
         self.outputs = outputs
+        self.output_kms_key = output_kms_key
         super(ProcessingJob, self).__init__(sagemaker_session=sagemaker_session, job_name=job_name)
 
     @classmethod
@@ -586,7 +601,83 @@ class ProcessingJob(_Job):
         # Call sagemaker_session.process using the arguments dictionary.
         processor.sagemaker_session.process(**process_request_args)
 
-        return cls(processor.sagemaker_session, processor._current_job_name, inputs, outputs)
+        return cls(
+            processor.sagemaker_session,
+            processor._current_job_name,
+            inputs,
+            outputs,
+            processor.output_kms_key,
+        )
+
+    @classmethod
+    def from_processing_name(cls, sagemaker_session, processing_job_name):
+        """Initializes a Processing job from a Processing job name.
+
+        Args:
+            processing_job_name (str): Name of the processing job.
+            sagemaker_session (sagemaker.session.Session): Session object which
+                manages interactions with Amazon SageMaker APIs and any other
+                AWS services needed. If not specified, one is created using
+                the default AWS configuration chain.
+
+        Returns:
+            sagemaker.processing.ProcessingJob: The instance of ProcessingJob created
+                using the current job name.
+        """
+        job_desc = sagemaker_session.describe_processing_job(job_name=processing_job_name)
+
+        return cls(
+            sagemaker_session=sagemaker_session,
+            job_name=processing_job_name,
+            inputs=[
+                ProcessingInput(
+                    source=processing_input["S3Input"]["S3Uri"],
+                    destination=processing_input["S3Input"]["LocalPath"],
+                    input_name=processing_input["InputName"],
+                    s3_data_type=processing_input["S3Input"].get("S3DataType"),
+                    s3_input_mode=processing_input["S3Input"].get("S3InputMode"),
+                    s3_data_distribution_type=processing_input["S3Input"].get(
+                        "S3DataDistributionType"
+                    ),
+                    s3_compression_type=processing_input["S3Input"].get("S3CompressionType"),
+                )
+                for processing_input in job_desc["ProcessingInputs"]
+            ],
+            outputs=[
+                ProcessingOutput(
+                    source=job_desc["ProcessingOutputConfig"]["Outputs"][0]["S3Output"][
+                        "LocalPath"
+                    ],
+                    destination=job_desc["ProcessingOutputConfig"]["Outputs"][0]["S3Output"][
+                        "S3Uri"
+                    ],
+                    output_name=job_desc["ProcessingOutputConfig"]["Outputs"][0]["OutputName"],
+                )
+            ],
+            output_kms_key=job_desc["ProcessingOutputConfig"].get("KmsKeyId"),
+        )
+
+    @classmethod
+    def from_processing_arn(cls, sagemaker_session, processing_job_arn):
+        """Initializes a Processing job from a Processing ARN.
+
+        Args:
+            processing_job_arn (str): ARN of the processing job.
+            sagemaker_session (sagemaker.session.Session): Session object which
+                manages interactions with Amazon SageMaker APIs and any other
+                AWS services needed. If not specified, one is created using
+                the default AWS configuration chain.
+
+        Returns:
+            sagemaker.processing.ProcessingJob: The instance of ProcessingJob created
+                using the current job name.
+        """
+        processing_job_name = processing_job_arn.split(":")[5][
+            len("processing-job/") :
+        ]  # This is necessary while the API only vends an arn.
+        return cls.from_processing_name(
+            sagemaker_session=sagemaker_session, processing_job_name=processing_job_name
+        )
 
     def _is_local_channel(self, input_url):
         """Used for Local Mode. Not yet implemented.
