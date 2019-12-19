@@ -443,6 +443,16 @@ def test_processing_job_from_processing_arn(sagemaker_session):
         processing_job_arn="arn:aws:sagemaker:dummy-region:dummy-account-number:processing-job/dummy-job-name",
     )
     assert isinstance(processing_job, ProcessingJob)
+    assert [
+        processing_input._to_request_dict() for processing_input in processing_job.inputs
+    ] == PROCESSING_JOB_DESCRIPTION["ProcessingInputs"]
+    assert [
+        processing_output._to_request_dict() for processing_output in processing_job.outputs
+    ] == PROCESSING_JOB_DESCRIPTION["ProcessingOutputConfig"]["Outputs"]
+    assert (
+        processing_job.output_kms_key
+        == PROCESSING_JOB_DESCRIPTION["ProcessingOutputConfig"]["KmsKeyId"]
+    )
 
 
 def _get_script_processor(sagemaker_session):
