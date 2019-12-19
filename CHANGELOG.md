@@ -1,5 +1,18 @@
 # Changelog
 
+## v1.48.1 (2019-12-18)
+
+### Bug fixes and other changes
+
+ * use name_from_base in auto_ml.py but unique_name_from_base in tests.
+ * make test's custom bucket include region and account name.
+ * add Keras to the list of Neo-supported frameworks
+
+### Documentation changes
+
+ * add link to parent classes to clarify **kwargs
+ * add link to framework-related parent classes to clarify **kwargs
+
 ## v1.48.0 (2019-12-17)
 
 ### Features
