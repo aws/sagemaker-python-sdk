@@ -1773,7 +1773,8 @@ class BaseliningJob(ProcessingJob):
             job_name (str): Name of the Amazon SageMaker Model Monitoring Baselining Job.
             inputs ([sagemaker.processing.ProcessingInput]): A list of ProcessingInput objects.
             outputs ([sagemaker.processing.ProcessingOutput]): A list of ProcessingOutput objects.
-            output_kms_key (str): The output kms key associated with the job.
+            output_kms_key (str): The output kms key associated with the job. Defaults to None
+                if not provided.
 
         """
         self.inputs = inputs
@@ -1887,7 +1888,7 @@ class MonitoringExecution(ProcessingJob):
     executions
     """
 
-    def __init__(self, sagemaker_session, job_name, inputs, output, output_kms_key):
+    def __init__(self, sagemaker_session, job_name, inputs, output, output_kms_key=None):
         """Initializes a MonitoringExecution job that tracks a monitoring execution kicked off by
         an Amazon SageMaker Model Monitoring Schedule.
 
@@ -1899,7 +1900,8 @@ class MonitoringExecution(ProcessingJob):
             job_name (str): The name of the monitoring execution job.
             output (sagemaker.Processing.ProcessingOutput): The output associated with the
                 monitoring execution.
-            output_kms_key (str): The output kms key associated with the job.
+            output_kms_key (str): The output kms key associated with the job. Defaults to None
+                if not provided.
 
         """
         self.output = output

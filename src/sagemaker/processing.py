@@ -502,7 +502,21 @@ class ScriptProcessor(Processor):
 class ProcessingJob(_Job):
     """Provides functionality to start, describe, and stop processing jobs."""
 
-    def __init__(self, sagemaker_session, job_name, inputs, outputs, output_kms_key):
+    def __init__(self, sagemaker_session, job_name, inputs, outputs, output_kms_key=None):
+        """Initializes a Processing job.
+
+        Args:
+            sagemaker_session (sagemaker.session.Session): Session object which
+                manages interactions with Amazon SageMaker APIs and any other
+                AWS services needed. If not specified, one is created using
+                the default AWS configuration chain.
+            job_name (str): Name of the Processing job.
+            inputs ([sagemaker.processing.ProcessingInput]): A list of ProcessingInput objects.
+            outputs ([sagemaker.processing.ProcessingOutput]): A list of ProcessingOutput objects.
+            output_kms_key (str): The output kms key associated with the job. Defaults to None
+                if not provided.
+
+        """
         self.inputs = inputs
         self.outputs = outputs
         self.output_kms_key = output_kms_key
