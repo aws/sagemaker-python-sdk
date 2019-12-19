@@ -1902,9 +1902,12 @@ class MonitoringExecution(ProcessingJob):
 
         """
         self.output = output
-        self.output_kms_key = output_kms_key
         super(MonitoringExecution, self).__init__(
-            sagemaker_session=sagemaker_session, job_name=job_name, inputs=inputs, outputs=[output]
+            sagemaker_session=sagemaker_session,
+            job_name=job_name,
+            inputs=inputs,
+            outputs=[output],
+            output_kms_key=output_kms_key,
         )
 
     @classmethod
