@@ -1761,7 +1761,7 @@ class DefaultModelMonitor(ModelMonitor):
 class BaseliningJob(ProcessingJob):
     """Provides functionality to retrieve baseline-specific files output from baselining job."""
 
-    def __init__(self, sagemaker_session, job_name, inputs, outputs, output_kms_key):
+    def __init__(self, sagemaker_session, job_name, inputs, outputs, output_kms_key=None):
         """Initializes a Baselining job that tracks a baselining job kicked off by the suggest
         workflow.
 
@@ -1773,6 +1773,7 @@ class BaseliningJob(ProcessingJob):
             job_name (str): Name of the Amazon SageMaker Model Monitoring Baselining Job.
             inputs ([sagemaker.processing.ProcessingInput]): A list of ProcessingInput objects.
             outputs ([sagemaker.processing.ProcessingOutput]): A list of ProcessingOutput objects.
+            output_kms_key (str): The output kms key associated with the job.
 
         """
         self.inputs = inputs
