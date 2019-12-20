@@ -234,7 +234,7 @@ class RealTimePredictor(object):
         associated with the endpoint that this predictor refers to.
 
         Returns:
-            [sagemaker.model_monitor.model_monitoring.ModelMonitor]: A list of 
+            [sagemaker.model_monitor.model_monitoring.ModelMonitor]: A list of
                 ModelMonitor (or DefaultModelMonitor) objects.
 
         """
