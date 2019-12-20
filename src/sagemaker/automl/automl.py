@@ -379,7 +379,7 @@ class AutoML(object):
             if self.base_job_name:
                 base_name = self.base_job_name
             else:
-                base_name = "sagemaker-auto-ml"
+                base_name = "automl"
             # CreateAutoMLJob API validates that member length less than or equal to 32
             self.current_job_name = name_from_base(base_name, max_length=32)
 

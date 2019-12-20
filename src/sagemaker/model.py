@@ -45,7 +45,7 @@ NEO_ALLOWED_TARGET_INSTANCE_FAMILY = set(
         "qcs605",
     ]
 )
-NEO_ALLOWED_FRAMEWORKS = set(["mxnet", "tensorflow", "pytorch", "onnx", "xgboost"])
+NEO_ALLOWED_FRAMEWORKS = set(["mxnet", "tensorflow", "keras", "pytorch", "onnx", "xgboost"])
 
 NEO_IMAGE_ACCOUNT = {
     "us-west-1": "710691900526",
@@ -322,8 +322,8 @@ class Model(object):
                 3 * 60). After this amount of time Amazon SageMaker Neo
                 terminates the compilation job regardless of its current status.
             framework (str): The framework that is used to train the original
-                model. Allowed values: 'mxnet', 'tensorflow', 'pytorch', 'onnx',
-                'xgboost'
+                model. Allowed values: 'mxnet', 'tensorflow', 'keras', 'pytorch',
+                'onnx', 'xgboost'
             framework_version (str):
 
         Returns:
@@ -740,6 +740,11 @@ class FrameworkModel(Model):
                 try to use either CodeCommit credential helper or local
                 credential storage for authentication.
             **kwargs: Keyword arguments passed to the ``Model`` initializer.
+
+        .. tip::
+
+            You can find additional parameters for initializing this class at
+            :class:`~sagemaker.model.Model`.
         """
         super(FrameworkModel, self).__init__(
             model_data,

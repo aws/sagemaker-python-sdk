@@ -1,5 +1,74 @@
 # Changelog
 
+## v1.48.1 (2019-12-18)
+
+### Bug fixes and other changes
+
+ * use name_from_base in auto_ml.py but unique_name_from_base in tests.
+ * make test's custom bucket include region and account name.
+ * add Keras to the list of Neo-supported frameworks
+
+### Documentation changes
+
+ * add link to parent classes to clarify **kwargs
+ * add link to framework-related parent classes to clarify **kwargs
+
+## v1.48.0 (2019-12-17)
+
+### Features
+
+ * allow setting the default bucket in Session
+
+### Bug fixes and other changes
+
+ * set integration test parallelization to 512
+ * shorten base job name to avoid collision
+ * multi model integration test to create ECR repo with unique names to allow independent parallel executions
+
+## v1.47.1 (2019-12-16)
+
+### Bug fixes and other changes
+
+ * Revert "feature: allow setting the default bucket in Session (#1168)"
+
+### Documentation changes
+
+ * add AutoML README
+ * add missing classes to API docs
+
+## v1.47.0 (2019-12-13)
+
+### Features
+
+ * allow setting the default bucket in Session
+
+### Bug fixes and other changes
+
+ * allow processing users to run code in s3
+
+## v1.46.0 (2019-12-12)
+
+### Features
+
+ * support Multi-Model endpoints
+
+### Bug fixes and other changes
+
+ * update PR template with items about tests, regional endpoints, and API docs
+
+## v1.45.2 (2019-12-10)
+
+### Bug fixes and other changes
+
+ * modify schedule cleanup to abide by latest validations
+ * lower log level when getting execution role from a SageMaker Notebook
+ * Fix "ValueError: too many values to unpack (expected 2)" is occurred in windows local mode
+ * allow ModelMonitor and Processor to take IAM role names (in addition to ARNs)
+
+### Documentation changes
+
+ * mention that the entry_point needs to be named inference.py for tfs
+
 ## v1.45.1 (2019-12-06)
 
 ### Bug fixes and other changes

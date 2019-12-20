@@ -369,8 +369,9 @@ class ScriptProcessor(Processor):
         """
         self._current_job_name = self._generate_current_job_name(job_name=job_name)
 
-        user_script_name = self._get_user_script_name(code)
-        user_code_s3_uri = self._upload_code(code)
+        user_code_s3_uri = self._handle_user_code_url(code)
+        user_script_name = self._get_user_code_name(code)
+
         inputs_with_code = self._convert_code_and_add_to_inputs(inputs, user_code_s3_uri)
 
         self._set_entrypoint(self.command, user_script_name)
@@ -389,25 +390,59 @@ class ScriptProcessor(Processor):
         if wait:
             self.latest_job.wait(logs=logs)
 
-    def _get_user_script_name(self, code):
-        """Finds the user script name using the provided code file,
-        directory, or script name.
+    def _get_user_code_name(self, code):
+        """Gets the basename of the user's code from the URL the customer provided.
 
         Args:
-            code (str): This can be an S3 uri or a local path to either
-                a directory or a file.
+            code (str): A URL to the user's code.
 
         Returns:
-            str: The script name from the S3 uri or from the file found
-                on the user's local machine.
+            str: The basename of the user's code.
+
         """
-        if os.path.isdir(code) is None or not os.path.splitext(code)[1]:
+        code_url = urlparse(code)
+        return os.path.basename(code_url.path)
+
+    def _handle_user_code_url(self, code):
+        """Gets the S3 URL containing the user's code.
+
+           Inspects the scheme the customer passed in ("s3://" for code in S3, "file://" or nothing
+           for absolute or local file paths. Uploads the code to S3 if the code is a local file.
+
+        Args:
+            code (str): A URL to the customer's code.
+
+        Returns:
+            str: The S3 URL to the customer's code.
+
+        """
+        code_url = urlparse(code)
+        if code_url.scheme == "s3":
+            user_code_s3_uri = code
+        elif code_url.scheme == "" or code_url.scheme == "file":
+            # Validate that the file exists locally and is not a directory.
+            if not os.path.exists(code):
+                raise ValueError(
+                    """code {} wasn't found. Please make sure that the file exists.
+                    """.format(
+                        code
+                    )
+                )
+            if not os.path.isfile(code):
+                raise ValueError(
+                    """code {} must be a file, not a directory. Please pass a path to a file.
+                    """.format(
+                        code
+                    )
+                )
+            user_code_s3_uri = self._upload_code(code)
+        else:
             raise ValueError(
-                """'code' must be a file, not a directory. Please pass a path to a file, not a
-                directory.
-                """
+                "code {} url scheme {} is not recognized. Please pass a file path or S3 url".format(
+                    code, code_url.scheme
+                )
             )
-        return os.path.basename(code)
+        return user_code_s3_uri
 
     def _upload_code(self, code):
         """Uploads a code file or directory specified as a string
@@ -467,9 +502,24 @@ class ScriptProcessor(Processor):
 class ProcessingJob(_Job):
     """Provides functionality to start, describe, and stop processing jobs."""
 
-    def __init__(self, sagemaker_session, job_name, inputs, outputs):
+    def __init__(self, sagemaker_session, job_name, inputs, outputs, output_kms_key=None):
+        """Initializes a Processing job.
+
+        Args:
+            sagemaker_session (sagemaker.session.Session): Session object which
+                manages interactions with Amazon SageMaker APIs and any other
+                AWS services needed. If not specified, one is created using
+                the default AWS configuration chain.
+            job_name (str): Name of the Processing job.
+            inputs ([sagemaker.processing.ProcessingInput]): A list of ProcessingInput objects.
+            outputs ([sagemaker.processing.ProcessingOutput]): A list of ProcessingOutput objects.
+            output_kms_key (str): The output kms key associated with the job. Defaults to None
+                if not provided.
+
+        """
         self.inputs = inputs
         self.outputs = outputs
+        self.output_kms_key = output_kms_key
         super(ProcessingJob, self).__init__(sagemaker_session=sagemaker_session, job_name=job_name)
 
     @classmethod
@@ -551,7 +601,83 @@ class ProcessingJob(_Job):
         # Call sagemaker_session.process using the arguments dictionary.
         processor.sagemaker_session.process(**process_request_args)
 
-        return cls(processor.sagemaker_session, processor._current_job_name, inputs, outputs)
+        return cls(
+            processor.sagemaker_session,
+            processor._current_job_name,
+            inputs,
+            outputs,
+            processor.output_kms_key,
+        )
+
+    @classmethod
+    def from_processing_name(cls, sagemaker_session, processing_job_name):
+        """Initializes a Processing job from a Processing job name.
+
+        Args:
+            processing_job_name (str): Name of the processing job.
+            sagemaker_session (sagemaker.session.Session): Session object which
+                manages interactions with Amazon SageMaker APIs and any other
+                AWS services needed. If not specified, one is created using
+                the default AWS configuration chain.
+
+        Returns:
+            sagemaker.processing.ProcessingJob: The instance of ProcessingJob created
+                using the current job name.
+        """
+        job_desc = sagemaker_session.describe_processing_job(job_name=processing_job_name)
+
+        return cls(
+            sagemaker_session=sagemaker_session,
+            job_name=processing_job_name,
+            inputs=[
+                ProcessingInput(
+                    source=processing_input["S3Input"]["S3Uri"],
+                    destination=processing_input["S3Input"]["LocalPath"],
+                    input_name=processing_input["InputName"],
+                    s3_data_type=processing_input["S3Input"].get("S3DataType"),
+                    s3_input_mode=processing_input["S3Input"].get("S3InputMode"),
+                    s3_data_distribution_type=processing_input["S3Input"].get(
+                        "S3DataDistributionType"
+                    ),
+                    s3_compression_type=processing_input["S3Input"].get("S3CompressionType"),
+                )
+                for processing_input in job_desc["ProcessingInputs"]
+            ],
+            outputs=[
+                ProcessingOutput(
+                    source=job_desc["ProcessingOutputConfig"]["Outputs"][0]["S3Output"][
+                        "LocalPath"
+                    ],
+                    destination=job_desc["ProcessingOutputConfig"]["Outputs"][0]["S3Output"][
+                        "S3Uri"
+                    ],
+                    output_name=job_desc["ProcessingOutputConfig"]["Outputs"][0]["OutputName"],
+                )
+            ],
+            output_kms_key=job_desc["ProcessingOutputConfig"].get("KmsKeyId"),
+        )
+
+    @classmethod
+    def from_processing_arn(cls, sagemaker_session, processing_job_arn):
+        """Initializes a Processing job from a Processing ARN.
+
+        Args:
+            processing_job_arn (str): ARN of the processing job.
+            sagemaker_session (sagemaker.session.Session): Session object which
+                manages interactions with Amazon SageMaker APIs and any other
+                AWS services needed. If not specified, one is created using
+                the default AWS configuration chain.
+
+        Returns:
+            sagemaker.processing.ProcessingJob: The instance of ProcessingJob created
+                using the current job name.
+        """
+        processing_job_name = processing_job_arn.split(":")[5][
+            len("processing-job/") :
+        ]  # This is necessary while the API only vends an arn.
+        return cls.from_processing_name(
+            sagemaker_session=sagemaker_session, processing_job_name=processing_job_name
+        )
 
     def _is_local_channel(self, input_url):
         """Used for Local Mode. Not yet implemented.
@@ -651,7 +777,7 @@ class ProcessingOutput(object):
             source (str): The source for the output.
             destination (str): The destination of the output. If a destination
                 is not provided, one will be generated:
-                 "s3://<default-bucket-name>/<job-name>/output/<output-name>".
+                "s3://<default-bucket-name>/<job-name>/output/<output-name>".
             output_name (str): The name of the output. If a name
                 is not provided, one will be generated (eg. "output-1").
             s3_upload_mode (str): Valid options are "EndOfJob" or "Continuous".
