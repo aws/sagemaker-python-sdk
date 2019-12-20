@@ -149,7 +149,7 @@ This step invokes the endpoint with test sample data for about 2 minutes. Data i
     print("Done!")
 
 View the captured data
----------------------
+----------------------
 
 Now list the data capture files stored in Amazon S3. You should expect to see different files from different time periods, organized based on the hour in which the invocation occurred. The format of the Amazon S3 path is:
 
