@@ -473,7 +473,7 @@ Gather the reports
     latest_monitoring_statistics = my_default_monitor.latest_monitoring_statistics()
 
 Visualize the reports
------------------------
+---------------------
 
 .. code:: python
 
