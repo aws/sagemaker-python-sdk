@@ -590,7 +590,7 @@ def test_tuning_mxnet(sagemaker_session, mxnet_full_version, cpu_instance_type):
 
 
 @pytest.mark.canary_quick
-def test_tuning_tf_script_mode(sagemaker_session, cpu_instance_type):
+def test_tuning_tf_script_mode(sagemaker_session, cpu_instance_type, tf_full_version):
     resource_path = os.path.join(DATA_DIR, "tensorflow_mnist")
     script_path = os.path.join(resource_path, "mnist.py")
 
@@ -602,7 +602,7 @@ def test_tuning_tf_script_mode(sagemaker_session, cpu_instance_type):
         script_mode=True,
         sagemaker_session=sagemaker_session,
         py_version=PYTHON_VERSION,
-        framework_version=TensorFlow.LATEST_VERSION,
+        framework_version=tf_full_version,
     )
 
     hyperparameter_ranges = {"epochs": IntegerParameter(1, 2)}
