@@ -71,12 +71,12 @@ You should quickly verify that the execution role for this notebook has the nece
 
 
 Capture real-time inference data from Amazon SageMaker endpoints
-==================================================================
+================================================================
 
 Create an endpoint to showcase the data capture capability in action.
 
 Upload the pre-trained model to Amazon S3
---------------------------------------------
+-----------------------------------------
 
 This code uploads a pre-trained XGBoost model that is ready for you to deploy. This model was trained using the XGB Churn Prediction Notebook in Amazon SageMaker. You can also use your own pre-trained model in this step. If you already have a pretrained model in Amazon S3, you can add it instead by specifying the s3_key.
 
@@ -87,7 +87,7 @@ This code uploads a pre-trained XGBoost model that is ready for you to deploy. T
     boto3.Session().resource('s3').Bucket(bucket).Object(s3_key).upload_fileobj(model_file)
 
 Deploy the model to Amazon SageMaker
----------------------------------------
+------------------------------------
 
 Start by deploying a pre-trained churn prediction model. You create the model object with the image and model data in the following code.
 
@@ -123,7 +123,7 @@ To enable data capture for monitoring the model data quality, specify the new ca
                     data_capture_config=data_capture_config)
 
 Invoke the deployed model
----------------------------
+-------------------------
 
 You can now send data to this endpoint to get inferences in real time. Because you enabled the data capture in the previous steps, the request and response payload, along with some additional metadata, is saved in the Amazon Simple Storage Service (Amazon S3) location that you have specified in the DataCaptureConfig.
 
@@ -220,7 +220,7 @@ From the training dataset you can ask Amazon SageMaker to suggest a set of basel
     boto3.Session().resource('s3').Bucket(bucket).Object(s3_key).upload_fileobj(training_data_file)
 
 Create a baselining job with training dataset
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Now that you have the training data ready in Amazon S3, start a job to suggest constraints. DefaultModelMonitor.suggest_baseline(..) starts a ProcessingJob using a Model Monitor container provided by Amazon SageMaker to generate the constraints.
 
@@ -245,7 +245,7 @@ Now that you have the training data ready in Amazon S3, start a job to suggest c
     )
 
 Explore the generated constraints and statistics
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. code:: python
 
@@ -269,12 +269,12 @@ Explore the generated constraints and statistics
     constraints_df.head(10)
 
 Analyze the data collected for data quality issues
-------------------------------------------------
+--------------------------------------------------
 
 After you have collected the data above, analyze and monitor the data with Monitoring Schedules
 
 Create a schedule
-~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~
 
 .. code:: python
 
@@ -304,7 +304,7 @@ Create a model monitoring schedule for the endpoint created earlier thata compar
     )
 
 Generate some artificial traffic
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 The following code starts a thread to send some traffic to the endpoint. Note that you need to stop the kernel to terminate this thread. If there is no traffic, the monitoring jobs are marked as Failed since there is no data to process.
 
@@ -337,7 +337,7 @@ The following code starts a thread to send some traffic to the endpoint. Note th
     # Note that you need to stop the kernel to stop the invocations
 
 Describe and inspect the schedule
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Once you have described the schdule, note that the MonitoringScheduleStatus changes to Scheduled.
 
@@ -347,7 +347,7 @@ Once you have described the schdule, note that the MonitoringScheduleStatus chan
     print('Schedule status: {}'.format(desc_schedule_result['MonitoringScheduleStatus']))
 
 List executions
-~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~
 
 The schedule starts jobs at the previously specified intervals. Here, you list the latest five executions. Note that if you are kicking this off after creating the hourly schedule, you might find the executions empty. You might have to wait until you cross the hour boundary (in UTC) to see executions kick off. The code below has the logic for waiting.
 
@@ -364,7 +364,7 @@ Note: Even for an hourly schedule, Amazon SageMaker has a buffer period of 20 mi
         mon_executions = my_default_monitor.list_executions()
 
 Inspect a specific execution (here, the latest execution)
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 In the previous cell, you picked up the latest completed or failed scheduled execution. Here are the possible terminal states and what each of them mean:
 
@@ -392,7 +392,7 @@ In the previous cell, you picked up the latest completed or failed scheduled exe
     print('Report Uri: {}'.format(report_uri))
 
 List the generated reports
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. code:: python
 
@@ -436,7 +436,7 @@ Visualize results
 ===================
 
 Import required libraries and objects
-----------------------------------------
+-------------------------------------
 
 .. code:: python
 
@@ -451,7 +451,7 @@ Import required libraries and objects
     from sagemaker.s3 import S3Downloader
 
 Download the rendering utility
----------------------------------
+------------------------------
 
 The functions for plotting and rendering distribution statistics or constraint violations are implemented in a utils file, so let's grab that.
 
@@ -462,7 +462,7 @@ The functions for plotting and rendering distribution statistics or constraint v
     import utils as mu
 
 Gather the reports
----------------------
+------------------
 
 .. code:: python
 
@@ -487,7 +487,7 @@ Visualize the reports
     mu.show_distributions(features, feature_baselines)
 
 Delete the resources
-======================
+====================
 
 You can keep your endpoint running to continue capturing data. If you do not plan to collect more data or use this endpoint further, you should delete the endpoint to avoid incurring additional charges. Note that deleting your endpoint does not delete the data that was captured during the model invocations. That data persists in Amazon S3 until you delete it yourself.
 
