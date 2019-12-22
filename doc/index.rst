@@ -198,3 +198,13 @@ SageMaker APIs to export configurations for creating and managing Airflow workfl
     :maxdepth: 2
 
     sagemaker.workflow.airflow
+
+*********************************
+Amazon SageMaker Model Monitoring
+*********************************
+You can use Amazon SageMaker Model Monitoring to automatically detect concept drift by monitoring your machine learning models.
+
+.. toctree::
+    :maxdepth: 2
+
+    amazon_sagemaker_model_monitoring
