@@ -982,7 +982,7 @@ def test_script_mode_deprecated_args(sagemaker_session):
 
 def test_py2_version_deprecated(sagemaker_session):
     with pytest.raises(AttributeError) as e:
-        _build_tf(sagemaker_session=sagemaker_session, framework_version="1.15.1", py_version="py2")
+        _build_tf(sagemaker_session=sagemaker_session, framework_version="2.0.1", py_version="py2")
 
     msg = "Python 2 containers are only available until January 1st, 2020. Please use a Python 3 container."
     assert msg in str(e.value)
@@ -991,6 +991,10 @@ def test_py2_version_deprecated(sagemaker_session):
 def test_py2_version_is_not_deprecated(sagemaker_session):
     estimator = _build_tf(
         sagemaker_session=sagemaker_session, framework_version="1.15.0", py_version="py2"
+    )
+    assert estimator.py_version == "py2"
+    estimator = _build_tf(
+        sagemaker_session=sagemaker_session, framework_version="2.0.0", py_version="py2"
     )
     assert estimator.py_version == "py2"
 
