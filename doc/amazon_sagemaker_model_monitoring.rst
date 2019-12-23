@@ -197,6 +197,7 @@ Further documentation
 
 * API documentation: https://sagemaker.readthedocs.io/en/stable/model_monitor.html
 * AWS documentation: https://docs.aws.amazon.com/sagemaker/latest/dg/model-monitor.html
+* ``S3Downloader``: https://sagemaker.readthedocs.io/en/stable/s3.html#sagemaker.s3.S3Downloader
 
 Notebook examples
 -----------------
