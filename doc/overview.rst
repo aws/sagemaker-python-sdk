@@ -1039,6 +1039,15 @@ For more information, see `SageMaker Workflow in Apache Airflow`_.
 
 .. _SageMaker Workflow in Apache Airflow: https://github.com/aws/sagemaker-python-sdk/blob/master/src/sagemaker/workflow/README.rst
 
+**************************
+SageMaker Model Monitoring
+**************************
+You can use Amazon SageMaker Model Monitoring to automatically detect concept drift by monitoring your machine learning models.
+
+For more information, see `SageMaker Model Monitoring`_.
+
+.. _SageMaker Model Monitoring: https://github.com/aws/sagemaker-python-sdk/blob/master/doc/amazon_sagemaker_model_monitoring.rst
+
 ***
 FAQ
 ***

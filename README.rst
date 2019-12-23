@@ -64,6 +64,7 @@ Table of Contents
 20. `Amazon SageMaker Operators for Kubernetes <#amazon-sagemaker-operators-for-kubernetes>`__
 21. `SageMaker Workflow <#sagemaker-workflow>`__
 22. `SageMaker Autopilot <#sagemaker-autopilot>`__
+23. `Model Monitoring <#amazon-sagemaker-model-monitoring>`__
 
 
 Installing the SageMaker Python SDK
@@ -357,3 +358,11 @@ For more information about SageMaker Autopilot, see `SageMaker Autopilot`_.
 
 .. _SageMaker Autopilot: src/sagemaker/automl/README.rst
 
+Amazon SageMaker Model Monitoring
+---------------------------------
+
+You can use Amazon SageMaker Model Monitoring to automatically detect concept drift by monitoring your machine learning models.
+
+For more information, see `Amazon SageMaker Model Monitoring`_.
+
+.. _Amazon SageMaker Model Monitoring: https://sagemaker.readthedocs.io/en/stable/amazon_sagemaker_model_monitoring.html
