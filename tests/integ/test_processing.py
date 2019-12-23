@@ -22,12 +22,13 @@ from sagemaker.fw_registry import default_framework_uri
 
 from sagemaker.processing import ProcessingInput, ProcessingOutput, ScriptProcessor, Processor
 from sagemaker.sklearn.processing import SKLearnProcessor
+from sagemaker.utils import sts_regional_endpoint
 from tests.integ import DATA_DIR
 from tests.integ.kms_utils import get_or_create_kms_key
 
 ROLE = "SageMakerRole"
 DEFAULT_REGION = "us-west-2"
-CUSTOM_BUCKET_PATH = "sagemaker-custom-bucket"
+CUSTOM_BUCKET_PATH_PREFIX = "sagemaker-custom-bucket"
 
 
 @pytest.fixture(scope="module")
@@ -49,11 +50,17 @@ def sagemaker_session_with_custom_bucket(
         else None
     )
 
+    region = boto_session.region_name
+    account = boto_session.client(
+        "sts", region_name=region, endpoint_url=sts_regional_endpoint(region)
+    ).get_caller_identity()["Account"]
+    custom_default_bucket = "{}-{}-{}".format(CUSTOM_BUCKET_PATH_PREFIX, region, account)
+
     return Session(
         boto_session=boto_session,
         sagemaker_client=sagemaker_client,
         sagemaker_runtime_client=runtime_client,
-        default_bucket=CUSTOM_BUCKET_PATH,
+        default_bucket=custom_default_bucket,
     )
 
 
@@ -255,10 +262,10 @@ def test_sklearn_with_custom_default_bucket(
     job_description = sklearn_processor.latest_job.describe()
 
     assert job_description["ProcessingInputs"][0]["InputName"] == "dummy_input"
-    assert CUSTOM_BUCKET_PATH in job_description["ProcessingInputs"][0]["S3Input"]["S3Uri"]
+    assert CUSTOM_BUCKET_PATH_PREFIX in job_description["ProcessingInputs"][0]["S3Input"]["S3Uri"]
 
     assert job_description["ProcessingInputs"][1]["InputName"] == "code"
-    assert CUSTOM_BUCKET_PATH in job_description["ProcessingInputs"][1]["S3Input"]["S3Uri"]
+    assert CUSTOM_BUCKET_PATH_PREFIX in job_description["ProcessingInputs"][1]["S3Input"]["S3Uri"]
 
     assert job_description["ProcessingJobName"].startswith("test-sklearn-with-customizations")
 
@@ -564,7 +571,7 @@ def test_processor_with_custom_bucket(
     job_description = processor.latest_job.describe()
 
     assert job_description["ProcessingInputs"][0]["InputName"] == "code"
-    assert CUSTOM_BUCKET_PATH in job_description["ProcessingInputs"][0]["S3Input"]["S3Uri"]
+    assert CUSTOM_BUCKET_PATH_PREFIX in job_description["ProcessingInputs"][0]["S3Input"]["S3Uri"]
 
     assert job_description["ProcessingJobName"].startswith("test-processor")
 

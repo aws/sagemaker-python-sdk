@@ -64,6 +64,7 @@ Table of Contents
 20. `Amazon SageMaker Operators for Kubernetes <#amazon-sagemaker-operators-for-kubernetes>`__
 21. `SageMaker Workflow <#sagemaker-workflow>`__
 22. `SageMaker Autopilot <#sagemaker-autopilot>`__
+23. `Model Monitoring <#amazon-sagemaker-model-monitoring>`__
 
 
 Installing the SageMaker Python SDK
@@ -192,7 +193,7 @@ TensorFlow SageMaker Estimators
 
 By using TensorFlow SageMaker Estimators, you can train and host TensorFlow models on Amazon SageMaker.
 
-Supported versions of TensorFlow: ``1.4.1``, ``1.5.0``, ``1.6.0``, ``1.7.0``, ``1.8.0``, ``1.9.0``, ``1.10.0``, ``1.11.0``, ``1.12.0``, ``1.13.1``, ``1.14``.
+Supported versions of TensorFlow: ``1.4.1``, ``1.5.0``, ``1.6.0``, ``1.7.0``, ``1.8.0``, ``1.9.0``, ``1.10.0``, ``1.11.0``, ``1.12.0``, ``1.13.1``, ``1.14.``, ``1.15.0``, ``2.0.0``.
 
 Supported versions of TensorFlow for Elastic Inference: ``1.11.0``, ``1.12.0``, ``1.13.1``, ``1.14``.
 
@@ -357,3 +358,11 @@ For more information about SageMaker Autopilot, see `SageMaker Autopilot`_.
 
 .. _SageMaker Autopilot: src/sagemaker/automl/README.rst
 
+Amazon SageMaker Model Monitoring
+---------------------------------
+
+You can use Amazon SageMaker Model Monitoring to automatically detect concept drift by monitoring your machine learning models.
+
+For more information, see `Amazon SageMaker Model Monitoring`_.
+
+.. _Amazon SageMaker Model Monitoring: https://sagemaker.readthedocs.io/en/stable/amazon_sagemaker_model_monitoring.html

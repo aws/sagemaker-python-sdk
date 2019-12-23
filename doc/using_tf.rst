@@ -20,7 +20,7 @@ For general information about using the SageMaker Python SDK, see :ref:`overview
 
 .. contents::
 
-Supported versions of TensorFlow for Elastic Inference: ``1.11.0``, ``1.12.0``.
+Supported versions of TensorFlow for Elastic Inference: ``1.11``, ``1.12``, ``1.13``, ``1.14``.
 
 
 *****************************

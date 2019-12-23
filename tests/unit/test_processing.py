@@ -13,9 +13,15 @@
 from __future__ import absolute_import
 
 import pytest
-from mock import Mock, patch
+from mock import Mock, patch, MagicMock
 
-from sagemaker.processing import ProcessingInput, ProcessingOutput, Processor, ScriptProcessor
+from sagemaker.processing import (
+    ProcessingInput,
+    ProcessingOutput,
+    Processor,
+    ScriptProcessor,
+    ProcessingJob,
+)
 from sagemaker.sklearn.processing import SKLearnProcessor
 from sagemaker.network import NetworkConfig
 
@@ -24,11 +30,51 @@ REGION = "us-west-2"
 ROLE = "arn:aws:iam::012345678901:role/SageMakerRole"
 CUSTOM_IMAGE_URI = "012345678901.dkr.ecr.us-west-2.amazonaws.com/my-custom-image-uri"
 
+PROCESSING_JOB_DESCRIPTION = {
+    "ProcessingInputs": [
+        {
+            "InputName": "my_dataset",
+            "S3Input": {
+                "S3Uri": "s3://path/to/my/dataset/census.csv",
+                "LocalPath": "/container/path/",
+                "S3DataType": "S3Prefix",
+                "S3InputMode": "File",
+                "S3DataDistributionType": "FullyReplicated",
+                "S3CompressionType": "None",
+            },
+        },
+        {
+            "InputName": "code",
+            "S3Input": {
+                "S3Uri": "mocked_s3_uri_from_upload_data",
+                "LocalPath": "/opt/ml/processing/input/code",
+                "S3DataType": "S3Prefix",
+                "S3InputMode": "File",
+                "S3DataDistributionType": "FullyReplicated",
+                "S3CompressionType": "None",
+            },
+        },
+    ],
+    "ProcessingOutputConfig": {
+        "Outputs": [
+            {
+                "OutputName": "my_output",
+                "S3Output": {
+                    "S3Uri": "s3://uri/",
+                    "LocalPath": "/container/path/",
+                    "S3UploadMode": "EndOfJob",
+                },
+            }
+        ],
+        "KmsKeyId": "arn:aws:kms:us-west-2:012345678901:key/output-kms-key",
+    },
+}
+
 
 @pytest.fixture()
 def sagemaker_session():
     boto_mock = Mock(name="boto_session", region_name=REGION)
-    session_mock = Mock(
+    session_mock = MagicMock(
         name="sagemaker_session",
         boto_session=boto_mock,
         boto_region_name=REGION,
@@ -42,6 +88,9 @@ def sagemaker_session():
     )
     session_mock.download_data = Mock(name="download_data")
     session_mock.expand_role.return_value = ROLE
+    session_mock.describe_processing_job = MagicMock(
+        name="describe_processing_job", return_value=PROCESSING_JOB_DESCRIPTION
+    )
     return session_mock
 
 
@@ -386,6 +435,24 @@ def test_processor_with_all_parameters(sagemaker_session):
     expected_args["inputs"] = [expected_args["inputs"][0]]
 
     sagemaker_session.process.assert_called_with(**expected_args)
+
+
+def test_processing_job_from_processing_arn(sagemaker_session):
+    processing_job = ProcessingJob.from_processing_arn(
+        sagemaker_session=sagemaker_session,
+        processing_job_arn="arn:aws:sagemaker:dummy-region:dummy-account-number:processing-job/dummy-job-name",
+    )
+    assert isinstance(processing_job, ProcessingJob)
+    assert [
+        processing_input._to_request_dict() for processing_input in processing_job.inputs
+    ] == PROCESSING_JOB_DESCRIPTION["ProcessingInputs"]
+    assert [
+        processing_output._to_request_dict() for processing_output in processing_job.outputs
+    ] == PROCESSING_JOB_DESCRIPTION["ProcessingOutputConfig"]["Outputs"]
+    assert (
+        processing_job.output_kms_key
+        == PROCESSING_JOB_DESCRIPTION["ProcessingOutputConfig"]["KmsKeyId"]
+    )
 
 
 def _get_script_processor(sagemaker_session):

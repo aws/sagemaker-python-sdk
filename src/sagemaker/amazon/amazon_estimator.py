@@ -49,15 +49,27 @@ class AmazonAlgorithmEstimatorBase(EstimatorBase):
         """Initialize an AmazonAlgorithmEstimatorBase.
 
         Args:
-            role:
-            train_instance_count:
-            train_instance_type:
+            role (str): An AWS IAM role (either name or full ARN). The Amazon
+                SageMaker training jobs and APIs that create Amazon SageMaker
+                endpoints use this role to access training data and model
+                artifacts. After the endpoint is created, the inference code
+                might use the IAM role, if it needs to access an AWS resource.
+            train_instance_count (int): Number of Amazon EC2 instances to use
+                for training.
+            train_instance_type (str): Type of EC2 instance to use for training,
+                for example, 'ml.c4.xlarge'.
             data_location (str or None): The s3 prefix to upload RecordSet
                 objects to, expressed as an S3 url. For example
                 "s3://example-bucket/some-key-prefix/". Objects will be saved in
                 a unique sub-directory of the specified location. If None, a
                 default data location will be used.
-            **kwargs:
+            **kwargs: Additional parameters passed to
+                :class:`~sagemaker.estimator.EstimatorBase`.
+
+        .. tip::
+
+            You can find additional parameters for initializing this class at
+            :class:`~sagemaker.estimator.EstimatorBase`.
         """
 
         if "enable_network_isolation" in kwargs:
