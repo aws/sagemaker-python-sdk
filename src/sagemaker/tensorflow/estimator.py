@@ -197,13 +197,15 @@ class TensorFlow(Framework):
 
     __framework_name__ = "tensorflow"
 
-    LATEST_VERSION = "1.15"
+    LATEST_VERSION = "2.0.0"
     """The latest version of TensorFlow included in the SageMaker pre-built Docker images."""
 
+    _LATEST_1X_VERSION = "1.15.0"
+
     _LOWEST_SCRIPT_MODE_ONLY_VERSION = [1, 13]
-    # 1.15.0 still supports py2
+    # 2.0.0 still supports py2
     # we will need to update this version number if future versions still support py2
-    _HIGHEST_PYTHON_2_VERSION = [1, 15, 0]
+    _HIGHEST_PYTHON_2_VERSION = [2, 0, 0]
 
     def __init__(
         self,

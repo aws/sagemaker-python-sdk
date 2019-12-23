@@ -1,5 +1,21 @@
 # Changelog
 
+## v1.49.0 (2019-12-23)
+
+### Features
+
+ * Add support for TF-2.0.0.
+ * create ProcessingJob from ARN and from name
+
+### Bug fixes and other changes
+
+ * Make tf tests tf-1.15 and tf-2.0 compatible.
+
+### Documentation changes
+
+ * add Model Monitor documentation
+ * add link to Amazon algorithm estimator parent class to clarify **kwargs
+
 ## v1.48.1 (2019-12-18)
 
 ### Bug fixes and other changes
