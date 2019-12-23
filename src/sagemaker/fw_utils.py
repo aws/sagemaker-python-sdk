@@ -138,10 +138,7 @@ def _use_dlc_image(region, framework, py_version, framework_version):
     is_gov_region = region in VALID_ACCOUNTS_BY_REGION
     is_dlc_version = _is_dlc_version(framework, framework_version, py_version)
 
-    return (
-        ((not is_gov_region) or region in ASIMOV_VALID_ACCOUNTS_BY_REGION)
-        and is_dlc_version
-    )
+    return ((not is_gov_region) or region in ASIMOV_VALID_ACCOUNTS_BY_REGION) and is_dlc_version
 
 
 def _registry_id(region, framework, py_version, account, framework_version):
