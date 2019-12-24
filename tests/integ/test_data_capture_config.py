@@ -74,9 +74,9 @@ def test_enabling_data_capture_on_endpoint_shows_correct_data_capture_status(
         predictor.enable_data_capture()
 
         # Wait for endpoint to finish updating
-        # Endpoint update takes ~7min. 40 retries * 30s sleeps = 20min timeout
+        # Endpoint update takes ~7min. 50 retries * 30s sleeps = 25min timeout
         for _ in retries(
-            max_retry_count=40,
+            max_retry_count=50,
             exception_message_prefix="Waiting for 'InService' endpoint status",
             seconds_to_sleep=30,
         ):
@@ -159,9 +159,9 @@ def test_disabling_data_capture_on_endpoint_shows_correct_data_capture_status(
         predictor.disable_data_capture()
 
         # Wait for endpoint to finish updating
-        # Endpoint update takes ~7min. 40 retries * 30s sleeps = 20min timeout
+        # Endpoint update takes ~7min. 50 retries * 30s sleeps = 25min timeout
         for _ in retries(
-            max_retry_count=40,
+            max_retry_count=50,
             exception_message_prefix="Waiting for 'InService' endpoint status",
             seconds_to_sleep=30,
         ):
@@ -228,9 +228,9 @@ def test_updating_data_capture_on_endpoint_shows_correct_data_capture_status(
         )
 
         # Wait for endpoint to finish updating
-        # Endpoint update takes ~7min. 40 retries * 30s sleeps = 20min timeout
+        # Endpoint update takes ~7min. 50 retries * 30s sleeps = 25min timeout
         for _ in retries(
-            max_retry_count=40,
+            max_retry_count=50,
             exception_message_prefix="Waiting for 'InService' endpoint status",
             seconds_to_sleep=30,
         ):
