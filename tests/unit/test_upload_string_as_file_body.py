@@ -44,9 +44,7 @@ def sagemaker_session():
 
 def test_upload_string_file(sagemaker_session):
     result_s3_uri = sagemaker_session.upload_string_as_file_body(
-        body=BODY,
-        bucket=BUCKET_NAME,
-        key=DESTINATION_DATA_TESTS_FILE
+        body=BODY, bucket=BUCKET_NAME, key=DESTINATION_DATA_TESTS_FILE
     )
 
     uploaded_files_with_args = [
@@ -66,7 +64,7 @@ def test_upload_aes_encrypted_string_file(sagemaker_session):
         body=BODY,
         bucket=BUCKET_NAME,
         key=DESTINATION_DATA_TESTS_FILE,
-        kms_key=AES_ENCRYPTION_ENABLED
+        kms_key=AES_ENCRYPTION_ENABLED,
     )
 
     uploaded_files_with_args = [

@@ -234,7 +234,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
             s3_object.put(Body=body, SSEKMSKeyId=kms_key, ServerSideEncryption="aws:kms")
         else:
             s3_object.put(Body=body)
-            
+
         s3_uri = "s3://{}/{}".format(bucket, key)
         return s3_uri
 
