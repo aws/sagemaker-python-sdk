@@ -80,7 +80,7 @@ In addition to collecting the data, Amazon SageMaker provides the capability for
 Constraint suggestion with baseline/training dataset
 ----------------------------------------------------
 
-You can ask Amazon SageMaker to suggest a set of baseline constraints and generate descriptive statistics that characerize the data in a training dataset stored in Amazon S3. ``DefaultModelMonitor.suggest_baseline()`` starts a Processing Job using a Model Monitor container provided by Amazon SageMaker to generate the constraints. You can read more about ``suggest_baseline()`` in the `API documentation <https://sagemaker.readthedocs.io/en/stable/model_monitor.html#sagemaker.model_monitor.model_monitoring.DefaultModelMonitor.suggest_baseline>`__.
+You can ask Amazon SageMaker to suggest a set of baseline constraints and generate descriptive statistics that characterize the data in a training dataset stored in Amazon S3. ``DefaultModelMonitor.suggest_baseline()`` starts a Processing Job using a Model Monitor container provided by Amazon SageMaker to generate the constraints. You can read more about ``suggest_baseline()`` in the `API documentation <https://sagemaker.readthedocs.io/en/stable/model_monitor.html#sagemaker.model_monitor.model_monitoring.DefaultModelMonitor.suggest_baseline>`__.
 
 .. code:: python
 
