@@ -327,7 +327,7 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):
                 self.output_path = "s3://{}/".format(self.sagemaker_session.default_bucket())
 
         # Prepare rules and debugger configs for training.
-        if self.rules and not self.debugger_hook_config:
+        if self.rules and self.debugger_hook_config is None:
             self.debugger_hook_config = DebuggerHookConfig(s3_output_path=self.output_path)
         # If an object was provided without an S3 URI is not provided, default it for the customer.
         if self.debugger_hook_config and not self.debugger_hook_config.s3_output_path:
@@ -378,7 +378,7 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):
             for rule in self.rules:
                 self.collection_configs.update(rule.collection_configs)
         # Add the CollectionConfigs from DebuggerHookConfig to the set.
-        if self.debugger_hook_config is not None:
+        if self.debugger_hook_config:
             self.collection_configs.update(self.debugger_hook_config.collection_configs or [])
 
     def latest_job_debugger_artifacts_path(self):
@@ -1676,6 +1676,8 @@ class Framework(EstimatorBase):
         """
         if self.debugger_hook_config is None:
             self.debugger_hook_config = DebuggerHookConfig(s3_output_path=self.output_path)
+        elif not self.debugger_hook_config:
+            self.debugger_hook_config = None
 
     def _stage_user_code_in_s3(self):
         """Upload the user training script to s3 and return the location.
