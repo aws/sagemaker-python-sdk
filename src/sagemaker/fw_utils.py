@@ -79,7 +79,7 @@ MERGED_FRAMEWORKS_LOWEST_VERSIONS = {
     "tensorflow-serving-eia": [1, 14, 0],
     "mxnet": {"py3": [1, 4, 1], "py2": [1, 6, 0]},
     "mxnet-serving": {"py3": [1, 4, 1], "py2": [1, 6, 0]},
-    "mxnet-serving-eia": [1, 6, 0],
+    "mxnet-serving-eia": [1, 4, 1],
     "pytorch": [1, 2, 0],
     "pytorch-serving": [1, 2, 0],
 }
