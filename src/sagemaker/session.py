@@ -2589,7 +2589,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
                 actual_status=status,
             )
 
-    def wait_for_endpoint(self, endpoint, poll=5):
+    def wait_for_endpoint(self, endpoint, poll=30):
         """Wait for an Amazon SageMaker endpoint deployment to complete.
 
         Args:
