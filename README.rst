@@ -65,6 +65,7 @@ Table of Contents
 21. `SageMaker Workflow <#sagemaker-workflow>`__
 22. `SageMaker Autopilot <#sagemaker-autopilot>`__
 23. `Model Monitoring <#amazon-sagemaker-model-monitoring>`__
+24. `SageMaker Debugger <#amazon-sagemaker-debugger>`__
 
 
 Installing the SageMaker Python SDK
