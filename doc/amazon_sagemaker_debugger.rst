@@ -1,0 +1,356 @@
+.. sectnum::
+
+#########################
+Amazon SageMaker Debugger
+#########################
+
+
+Amazon SageMaker Debugger allows you to detect anomalies while training your machine learning model by emitting relevant data during training, storing the data and thereafter analyzing it.
+
+.. contents::
+
+Background
+==========
+
+Amazon SageMaker provides every developer and data scientist with the ability to build, train, and deploy machine learning models quickly. Amazon SageMaker is a fully-managed service that encompasses the entire machine learning workflow. You can label and prepare your data, choose an algorithm, train a model, and then tune and optimize it for deployment. You can deploy your models to production with Amazon SageMaker to make predictions at lower costs than was previously possible.
+
+SageMaker Debugger provides a way to hook into the training process and emit debug artifacts (*aka* "tensors") that are representative of the state of the training at any given point in the training lifecycle. Debugger then stores the data in real time and provides a way for you to analyze the data through a concept called "rule". Rules encapsulate logic to analyze tensors and react to anomalies therein.
+
+Setup
+=====
+
+To get started, you must satisfy the following prerequisites:
+
+* Specify an AWS Region where you'll train your model.
+* Create an IAM role ARN that is used to give Amazon SageMaker access to your data in Amazon Simple Storage Service (Amazon S3) necessary for training the model. See the `AWS IAM documentation <https://docs.aws.amazon.com/IAM/latest/UserGuide/id_roles.html>`__ for how to fine tune the permissions needed.
+
+Capture real-time debugging data during model training in Amazon SageMaker
+==========================================================================
+
+To enable data emission for debugging model training, Amazon SageMaker will initialize a "hook" which, as the name suggests, would attach itself to the training process and emit the data necessary for debugging. To provide the hook's configuration, specify the new option called ``DebuggerHookConfig`` when training your model. For more about the ``DebuggerHookConfig`` object, see the `API documentation <https://sagemaker.readthedocs.io/en/stable/debugger.html#sagemaker.debugger.DebuggerHookConfig>`__.
+
+The ``DebuggerHookConfig`` accepts one or more objects of type ``CollectionConfig``. ``CollectionConfig`` defines the configuration around a tensor collection you intend to emit and save during model training. Collection object helps group tensors for easier handling.
+    as analysis
+
+.. code:: python
+
+    from sagemaker.debugger import CollectionConfig, DebuggerHookConfig
+
+    collection_config = CollectionConfig(
+        name='collection_name',
+        parameters={
+            "key": "value"
+        }
+    )
+
+    debugger_hook_config = DebuggerHookConfig(
+        s3_output_path='s3://path/for/data/emission',
+        container_local_output_path='/local/path/for/data/emission'
+        hook_parameters={
+            "key": "value"
+        },
+        collection_configs=[
+            collection_config,
+        ]
+    )
+
+    estimator = TensorFlow(
+        role=role
+        train_instance_count=1,
+        train_instance_type=train_instance_type,
+        debugger_hook_config=debugger_hook_config
+    )
+
+When you call ``fit()`` on the ``estimator``, SageMaker creates a training job for you and the debugging hook is initialized using the parameters provided to the ``DebuggerHookConfig`` object. This hook starts emitting the relevant debugging data i.e. the tensor collections in real time and stores the data locally in the local path provided in ``DebuggerHookConfig``. This data is then uploaded to an S3 path derived from the path provided in the hook configuration in near real time:
+
+.. code::
+
+    s3://{destination-bucket-prefix}/debug-output/
+
+To access the above S3 path through the estimator object, you can do:
+
+.. code:: python
+
+    tensors_s3_output_path = estimator.latest_job_debugger_artifacts_path()
+
+
+You can use the ``S3Downloader`` utility to view and download the debugging data emitted during training in Amazon S3 (note that data is stored in a streaming fashion so the data you download locally through ``S3Downloader`` will be a snapshot of the data generated until that time):
+
+.. code:: python
+
+    from sagemaker.s3 import S3Downloader
+
+    # Start the training by calling fit
+    # Setting the wait to `False` would make the fit asynchronous
+    estimator.fit(wait=False)
+
+    # Get a list of S3 URIs
+    S3Downloader.list('s3://path/for/data/emission/debug-output')
+
+    # Read a specific file
+    S3Downloader.read_file('s3://path/for/data/emission/debug-output/events/0000000000/event-filename.tf')
+
+The contents of the single TF-Event file should be all the data emitted for a particular step in the training process.
+
+Specifying individual configuration for each collection
+-------------------------------------------------------
+
+When planning to emit and store a collection, you have the option of specifying ``collection_parameters`` in the ``CollectionConfig`` object. The collection parameters define properties of storage like ``save_interval`` i.e the step frequency at which a particular collection is saved, ``include_regex`` i.e. the regex of the tensors to be stored etc. You can define these values for each of the ``CollectionConfig`` object you intend to store.
+
+Specifying common configuration across all collections
+------------------------------------------------------
+
+If there are properties you want to apply across all collections, those can be supplied in ``hook_parameters`` within the ``DebuggerHookConfig`` object. For example, to apply a value of ``save_interval`` across all collections do:
+
+.. code:: python
+
+    from sagemaker.debugger import CollectionConfig, DebuggerHookConfig
+
+    collection_config_1 = CollectionConfig(
+        name='collection_name_1',
+        parameters={
+            "include_regex": ".*"
+        }
+    )
+    collection_config_2 = CollectionConfig(
+        name='collection_name_2',
+        parameters={
+            "include_regex": ".*"
+        }
+    }
+
+    debugger_hook_config = DebuggerHookConfig(
+        s3_output_path='s3://path/for/data/emission',
+        container_local_output_path='/local/path/for/data/emission'
+        hook_parameters={
+            "save_interval": "10"
+        },
+        collection_configs=[
+            collection_config_1, collection_config_2
+        ]
+    )
+
+In the above sample code, the ``save_interval`` of ``10`` will be applied for storing both collections.
+
+Note that the value set in the ``collection_parameters`` for a parameter will override the corresponding value of the same parameter in the ``hook_parameters``. For example, in the above sample code, if ``collection_config_2`` had the value of ``save_interval`` set something other than ``10``, say, ``20``, then the tensors for that collection would have been saved with step interval ``20`` while those for ``collection_config_1`` would still be saved with ``10``.
+
+Continuous analyses through Rules
+=================================
+
+In addition to collecting the debugging data, Amazon SageMaker Debugger provides the capability for you to analyze it in a streaming fashion through "rules". SageMaker Debugger 'Rules' are pieces of code which encapsulate the logic for analyzing the debugging data.
+
+SageMaker Debugger provides a set of built-in rules curated by data scientists and engineers at Amazon. There is additional support for bringing in custom rule source codes for evaluation. In the following sections, you'll learn how to use either while training your model.
+
+Relationship between debugger hook and rules
+--------------------------------------------
+
+Using SageMaker Debugger is, broadly, a two-pronged approach. One one hand you have production of debugging data, which is done through the Debugger Hook and on the other hand you have the consumers which can be rules (for continuous analyses) or SageMaker Debugger SDK (for interactive analyses).
+
+Usually, production of data is independent of the manner in which it's consumed (and vice-versa.) For example, you can configure the debugging hook to store only the collection "gradients" and configure the rules to operate on some other collection, say, "weights". While this is possible, it's not ideal since you won't get any meaningful insight into the training process through this.
+
+For efficient debugging, you'd want to configure your debugging hook to produce and store data you care about and have the rules operate on that particular data and make sense of it. This way, you ensure that the Debugger is utilized to its maximum potential in detecting anomalies. In this sense, there is a loose binding between the hook and the rules.
+
+Normally, you'd achieve this binding for a training job by providing values for both ``debugger_hook_config`` and ``rules`` in your estimator. However, SageMaker Debugger simplifies this by allowing you to specify the collection configuration within the ``Rule`` object itself. This way, you don't have to specify ``debugger_hook_config`` in your estimator separately.
+
+
+Using built-in Rules
+--------------------
+
+SageMaker Debugger comes with a set of built-in rules which can be used to identify common problems in model training e.g. vanishing gradients, exploding tensors etc. You can choose to evaluate one or more than one of these rules while training your model and get meaningful insight into the training process. To know more about the built in rules see `SageMaker Debugger Built-in Rules <https://docs.aws.amazon.com/sagemaker/latest/dg/debugger-built-in-rules.html>`__. There is also support for bringing in your custom rule sources and have them evaluated against the model training. To learn more about how to write your custom rules and use them see `SageMaker Debugger Custom Rules <https://docs.aws.amazon.com/sagemaker/latest/dg/debugger-custom-rules.html>`__
+
+Pre-defined debugger hook configuration for built-in Rules
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+As mentioned earlier, for efficient analyses, it's important that the debugging data that is emitted by the hook makes sense for the rules to operate on and analyze. For example, if the hook into your model training is configured to emit the collection "weights", you would want to evaluate a rule that operates on this collection and not anything else like, say, gradients.
+
+Guessing which type of rule to evaluate against specific types of debugging data (i.e. collections) emitted from the model training can be tricky. To guide you in this choice, Amazon SageMaker provides you predefined collection configurations best suited for each of the built-in rules. This way, if you want to use the built-in rules, you'll just need to specify the rule name and SageMaker will decide which collection(s) to emit and with what configuration in an optimal fashion for the rule to operate on. To learn more about the mapping of each rule to the appropriate collection configuration, see `Amazon SageMaker Debugger Rules Config <https://github.com/awslabs/sagemaker-debugger-rulesconfig>`__
+
+Sample Usages
+~~~~~~~~~~~~~
+
+**Example 1**: Using a built-in rule without any customization
+
+.. code:: python
+
+    from sagemaker.debugger import Rule
+    from smdebug_rulesconfig import vanishing_gradient
+
+    estimator = TensorFlow(
+            role=role
+            train_instance_count=1,
+            train_instance_type=train_instance_type,
+            rules=[Rule.sagemaker(vanishing_gradient())]
+    )
+
+
+In the example above, SageMaker would pull the collection configuration best suited for the rule Vanishing Gradient from `SageMaker Debugger Rules Config <https://github.com/awslabs/sagemaker-debugger-rulesconfig>`__ and configure the debugging data to be stored in the manner specified in the configuration.
+
+**Example 2**: Using more than one built-in rules without any customization
+
+.. code:: python
+
+    from sagemaker.debugger import Rule
+    from smdebug_rulesconfig import vanishing_gradient, weight_update_ratio
+
+    estimator = TensorFlow(
+            role=role
+            train_instance_count=1,
+            train_instance_type=train_instance_type,
+            rules=[Rule.sagemaker(vanishing_gradient()), Rule.sagemaker(weight_update_ratio())]
+    )
+
+In the example above, SageMaker would pull the hook configurations for Vanishing Gradient and Weight Update Ratio rules from `SageMaker Debugger Rules Config <https://github.com/awslabs/sagemaker-debugger-rulesconfig>`__  and configure the collections to be stored in the manner specified in each configuration.
+
+**Example 3**: Using a built-in rule with no customization and another built-in rule with customization.
+
+Here we modify the ``weight_update_ratio`` rule to store a custom collection rather than "weights" which it would normally do if the behavior is not overridden.
+
+
+.. code:: python
+
+    from sagemaker.debugger import Rule
+    from smdebug_rulesconfig import vanishing_gradient, weight_update_ratio
+
+    wur_with_customization = Rule.sagemaker(
+        base_config=weight_update_ratio(),
+        name="custom_wup_rule_name",
+        container_local_path="/local/path/for/data/emission",
+        s3_output_path="s3://path/for/data/emission",
+        rule_parameters={
+            "key1": "value1",
+            "key2": "value2"
+        },
+        collections_to_save=[
+            CollectionConfiguration(
+                name="custom_collection_name",
+                parameters= {
+                    "key1": "value1",
+                    "key2": "value2"
+                }
+            )
+        ]
+    )
+
+    estimator = TensorFlow(
+            role=role
+            train_instance_count=1,
+            train_instance_type=train_instance_type,
+            rules=[
+                Rule.sagemaker(vanishing_gradient()),
+                wur_with_customization
+            ]
+    )
+
+
+In the example above, SageMaker would pull the collection configuration for Vanishing Gradient from `SageMaker Debugger Rules Config <https://github.com/awslabs/sagemaker-debugger-rulesconfig>`__  and use the user supplied configuration for the Weight Update Ratio rule.
+
+Using custom Rules
+------------------
+
+SageMaker Debugger also allows the users to create custom rules and have those evaluated against the debugging data. To use custom rules there are two prerequisites:
+
+* Custom rule source file and its local or S3 location. You can learn more about how to write custom rules at `How to Write Custom Debugger Rules <https://github.com/awslabs/sagemaker-debugger/blob/master/docs/analysis.md#writing-a-custom-rule>`__
+* Rule evaluator image for the corresponding region available from `Amazon SageMaker Debugger Custom Rule Images <https://docs.aws.amazon.com/sagemaker/latest/dg/debuger-custom-rule-registry-ids.html>`__
+
+
+Sample Usage
+~~~~~~~~~~~~
+
+For this example, we plan to evaluate an altered version of the Vanishing Gradient rule against our model training. Our rule would check the gradients and assert that the gradients are always above a certain threshold. The source code for the rule is available `here <https://github.com/awslabs/amazon-sagemaker-examples/blob/master/sagemaker-debugger/tensorflow_keras_custom_rule/rules/my_custom_rule.py>`__ and is assumed to be in the relative directory path ``rules/custom_gradient_rule.py``. The region where you'll run the training job is assumed to be ``us-east-1``.
+
+To evaluate the custom rule against the training, you would do:
+
+.. code:: python
+
+    from sagemaker.debugger import Rule
+
+    custom_gradient_rule = Rule.custom(
+        name='MyCustomRule',
+        image_uri='864354269164.dkr.ecr.us-east-1.amazonaws.com/sagemaker-debugger-rule-evaluator:latest',
+        instance_type='ml.t3.medium', # instance type to run the rule evaluation on
+        source='rules/custom_gradient_rule.py', # path to the rule source file
+        rule_to_invoke='CustomGradientRule', # name of the class to invoke in the rule source file
+        volume_size_in_gb=30, # EBS volume size required to be attached to the rule evaluation instance
+        collections_to_save=[CollectionConfig("gradients")], # collections to be analyzed by the rule
+        rule_parameters={
+          "threshold": "20.0" # this will be used to initialize 'threshold' param in your rule constructor
+        }
+    )
+
+    estimator = TensorFlow(
+        role=role
+        train_instance_count=1,
+        train_instance_type=train_instance_type,
+        rules=[
+            custom_gradient_rule
+        ]
+    )
+
+While initializing the custom rule through ``Rules.custom()``, for the value of ``source`` you can optionally specify a valid S3 location as well.
+
+
+Capture real-time TensorBoard data from the debugging hook
+==========================================================
+
+In addition to emitting and storing the debugging data useful for analyses, the debugging hook is also capable of emitting `TensorBoard <https://www.tensorflow.org/tensorboard>`__ data for you to point your TensorBoard application at and visualize.
+
+To enable the debugging hook to emit TensorBoard data, you'd need to specify the new option ``TensorBoardOutputConfig`` as:
+
+.. code:: python
+
+    from sagemaker.debugger import TensorBoardOutputConfig
+
+    tensorboard_output_config = TensorBoardOutputConfig(
+        s3_output_path='s3://path/for/tensorboard/data/emission',
+        container_local_output_path='/local/path/for/tensorboard/data/emission'
+    )
+
+    estimator = TensorFlow(
+        role=role
+        train_instance_count=1,
+        train_instance_type=train_instance_type,
+        tensorboard_output_config=tensorboard_output_config
+    )
+
+When you call ``fit()`` on the ``estimator``, the debugging hook will upload the generated TensorBoard data in near real-time to an S3 path derived from the value of ``s3_output_path`` provided in the configuration:
+
+.. code::
+
+    s3://{destination-bucket-prefix}/tensorboard-output/
+
+To access the S3 path where the tensorboard data is stored, you can do:
+
+.. code:: python
+
+    tensorboard_s3_output_path = estimator.latest_job_tensorboard_artifacts_path()
+
+
+Interactive analysis using SageMaker Debugger SDK and visualizations
+====================================================================
+
+`Amazon SageMaker Debugger SDK <https://github.com/awslabs/sagemaker-debugger>`__ also allows you to do interactive analyses on the debugging data produced from the training job run and render visualizations off it. After calling ``fit()`` on the estimator, you can use the Debugger SDK to load the saved data in a SageMaker Debugger ``trial`` and do analyses on the data:
+
+.. code:: python
+
+    from smdebug.trials import create_trial
+
+    s3_output_path = estimator.latest_job_debugger_artifacts_path()
+    trial = create_trial(s3_output_path)
+
+
+For a tutorial on what all you can do after creating the trial and how to visualize the results, see `SageMaker Debugger - Visualizing Debugging Results <https://github.com/awslabs/amazon-sagemaker-examples/blob/master/sagemaker-debugger/mnist_tensor_plot/mnist-tensor-plot.ipynb>`__.
+
+Learn More
+==========
+
+Further documentation
+---------------------
+
+* API documentation: https://sagemaker.readthedocs.io/en/stable/debugger.html
+* AWS documentation: https://docs.aws.amazon.com/sagemaker/latest/dg/train-debugger.html
+* SageMaker Debugger SDK: https://github.com/awslabs/sagemaker-debugger
+* ``S3Downloader``: https://sagemaker.readthedocs.io/en/stable/s3.html#sagemaker.s3.S3Downloader
+
+Notebook examples
+-----------------
+
+Consult our notebook examples for in-depth tutorials: https://github.com/awslabs/amazon-sagemaker-examples/tree/master/sagemaker-debugger
