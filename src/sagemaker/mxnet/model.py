@@ -53,7 +53,7 @@ class MXNetModel(FrameworkModel):
     """An MXNet SageMaker ``Model`` that can be deployed to a SageMaker ``Endpoint``."""
 
     __framework_name__ = "mxnet"
-    _LOWEST_MMS_VERSION = "1.4"
+    _LOWEST_MMS_VERSION = "1.4.0"
 
     def __init__(
         self,
