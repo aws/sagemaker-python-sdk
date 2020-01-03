@@ -224,10 +224,8 @@ class Session(object):  # pylint: disable=too-many-public-methods
             kms_key (str): The KMS key to use for encrypting the file.
 
         Returns:
-            str: The S3 URI of the uploaded file(s). If a file is specified in the path argument,
-                the URI format is: ``s3://{bucket name}/{key_prefix}/{original_file_name}``.
-                If a directory is specified in the path argument, the URI format is
-                ``s3://{bucket name}/{key_prefix}``.
+            str: The S3 URI of the uploaded file.
+                The URI format is: ``s3://{bucket name}/{key}``.
         """
         s3 = self.boto_session.resource("s3")
         s3_object = s3.Object(bucket_name=bucket, key=key)
@@ -236,6 +234,9 @@ class Session(object):  # pylint: disable=too-many-public-methods
             s3_object.put(Body=body, SSEKMSKeyId=kms_key, ServerSideEncryption="aws:kms")
         else:
             s3_object.put(Body=body)
+
+        s3_uri = "s3://{}/{}".format(bucket, key)
+        return s3_uri
 
     def download_data(self, path, bucket, key_prefix="", extra_args=None):
         """Download file or directory from S3.
