@@ -85,8 +85,7 @@ authenticate with the IAM service.
 Create an OpenID Connect Provider for Your Cluster
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Create an OIDC identity provider for your cluster.
-The following command will create and associate an OIDC provider
+The following instruction will create and associate an OIDC provider
 with your EKS cluster.
 
 Set the local ``CLUSTER_NAME`` and \ ``AWS_REGION`` environment
