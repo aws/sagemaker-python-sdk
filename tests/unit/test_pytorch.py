@@ -1,4 +1,4 @@
-# Copyright 2017-2019 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright 2017-2020 Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -529,7 +529,7 @@ def test_empty_framework_version(warning, sagemaker_session):
     )
 
     assert estimator.framework_version == defaults.PYTORCH_VERSION
-    warning.assert_called_with(defaults.PYTORCH_VERSION, defaults.PYTORCH_VERSION)
+    warning.assert_called_with(defaults.PYTORCH_VERSION, estimator.LATEST_VERSION)
 
 
 def test_pt_enable_sm_metrics(sagemaker_session):
