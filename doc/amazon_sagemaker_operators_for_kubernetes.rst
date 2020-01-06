@@ -82,12 +82,12 @@ IAM role-based operator deployment
 Before you can deploy your operator using an IAM role, associate an OpenID Connect (OIDC) provider with your role to
 authenticate with the IAM service.
 
-Associate an OpenID Connect Provider to Your Instance
+Create an OpenID Connect Provider to Your Instance
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 Create an OIDC identity provider for your cluster. If your
 cluster is managed by EKS, then your cluster will already have an OIDC
-attached to it. 
+attached to it and below command will associate it with IAM. 
 
 Set the local ``CLUSTER_NAME`` and \ ``AWS_REGION`` environment
 variables as follows:
