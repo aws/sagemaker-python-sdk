@@ -1,4 +1,4 @@
-# Copyright 2018-2019 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright 2018-2020 Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -104,7 +104,7 @@ class PyTorch(Framework):
             :class:`~sagemaker.estimator.EstimatorBase`.
         """
         if framework_version is None:
-            logger.warning(empty_framework_version_warning(PYTORCH_VERSION, PYTORCH_VERSION))
+            logger.warning(empty_framework_version_warning(PYTORCH_VERSION, self.LATEST_VERSION))
         self.framework_version = framework_version or PYTORCH_VERSION
 
         if "enable_sagemaker_metrics" not in kwargs:
