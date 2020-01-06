@@ -83,7 +83,7 @@ Before you can deploy your operator using an IAM role, associate an OpenID Conne
 authenticate with the IAM service.
 
 Create an OpenID Connect Provider to Your Instance
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 Create an OIDC identity provider for your cluster. If your
 cluster is managed by EKS, then your cluster will already have an OIDC
