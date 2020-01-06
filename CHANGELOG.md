@@ -1,5 +1,26 @@
 # Changelog
 
+## v1.50.0 (2020-01-06)
+
+### Features
+
+ * allow disabling debugger_hook_config
+
+### Bug fixes and other changes
+
+ * relax urllib3 and requests restrictions.
+ * Add uri as return statement for upload_string_as_file_body
+ * refactor logic in fw_utils and fill in docstrings
+ * increase poll from 5 to 30 for DescribeEndpoint lambda.
+ * fix test_auto_ml tests for regions without ml.c4.xlarge hosts.
+ * fix test_processing for regions without m4.xlarge instances.
+ * reduce test's describe frequency to eliminate throttling error.
+ * Increase number of retries when describing an endpoint since tf-2.0 has larger images and takes longer to start.
+
+### Documentation changes
+
+ * generalize Model Monitor documentation from SageMaker Studio tutorial
+
 ## v1.49.0 (2019-12-23)
 
 ### Features
