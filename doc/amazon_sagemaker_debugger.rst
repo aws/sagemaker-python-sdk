@@ -124,7 +124,7 @@ To access the above Amazon S3 path through the estimator object, you can do:
     tensors_s3_output_path = estimator.latest_job_debugger_artifacts_path()
 
 
-You can use the ``S3Downloader`` utility to view and download the debugging data emitted during training in Amazon S3 (note that data is stored in a streaming fashion so the data you download locally through ``S3Downloader`` will be a snapshot of the data generated until that time):
+You can use the ``S3Downloader`` utility to view and download the debugging data emitted during training in Amazon S3 (Note that data is stored in a streaming fashion so the data you download locally through ``S3Downloader`` will be a snapshot of the data generated until that time.):
 
 .. code:: python
 
