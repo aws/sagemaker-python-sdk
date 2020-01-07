@@ -1,5 +1,12 @@
 # Changelog
 
+## v1.50.1 (2020-01-07)
+
+### Bug fixes and other changes
+
+ * fix PyTorchModel deployment crash on Windows
+ * make PyTorch empty framework_version warning include the latest PyTorch version
+
 ## v1.50.0 (2020-01-06)
 
 ### Features
