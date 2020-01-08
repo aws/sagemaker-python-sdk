@@ -22,14 +22,14 @@ Setup
 To get started, you must satisfy the following prerequisites:
 
 * Specify an AWS Region where you'll train your model.
-* To give Amazon SageMaker the access to your data in Amazon Simple Storage Service (Amazon S3) needed to train your model, create an IAM role ARN. See the `AWS IAM documentation <https://docs.aws.amazon.com/IAM/latest/UserGuide/id_roles.html>`__ for how to fine tune the permissions needed.
+* Give Amazon SageMaker the access to your data in Amazon Simple Storage Service (Amazon S3) needed to train your model, create an IAM role ARN. See the `AWS IAM documentation <https://docs.aws.amazon.com/IAM/latest/UserGuide/id_roles.html>`__ for how to fine tune the permissions needed.
 
 Capture real-time debugging data during model training in Amazon SageMaker
 ==========================================================================
 
-To enable data emission for debugging model training, Amazon SageMaker initializes a "hook" which attaches itself to the training process and emits data necessary for debugging i.e. tensors. To provide the hook's configuration, specify the new option called ``DebuggerHookConfig`` when training your model. For more about the ``DebuggerHookConfig`` object, see the `API documentation <https://sagemaker.readthedocs.io/en/stable/debugger.html#sagemaker.debugger.DebuggerHookConfig>`__.
+To enable data emission for debugging model training, Amazon SageMaker initializes a "hook" which attaches itself to the training process and emits data necessary for debugging, i.e. tensors. To provide the hook's configuration, specify the option called ``DebuggerHookConfig`` when training your model. For more about the ``DebuggerHookConfig`` object, see the `API documentation <https://sagemaker.readthedocs.io/en/stable/debugger.html#sagemaker.debugger.DebuggerHookConfig>`__.
 
-The ``DebuggerHookConfig`` accepts one or more objects of type ``CollectionConfig`` which defines the configuration around a tensor collection you intend to emit and save during model training. A "collection" helps group tensors for easier handling.
+The ``DebuggerHookConfig`` accepts one or more objects of type ``CollectionConfig``, which defines the configuration around a tensor collection you intend to emit and save during model training. A "collection" helps group tensors for easier handling.
 
 .. code:: python
 
@@ -62,17 +62,14 @@ The ``DebuggerHookConfig`` accepts one or more objects of type ``CollectionConfi
 
 ``hook_parameters`` in ``DebuggerHookConfig`` and ``parameters`` in ``CollectionConfiguration`` provide a way of fine tuning the configuration of the tensors stored during the training - they control the tensors that are saved and the step frequency at which they're saved.
 
-The possible values of ``hook_parameters`` in ``DebuggerHookConfig`` or ``parameters`` in ``CollectionConfig`` can be viewed at `CollectionParameters <https://docs.aws.amazon.com/sagemaker/latest/dg/API_CollectionConfiguration.html#SageMaker-Type-CollectionConfiguration-CollectionParameters>`__
+The possible values of ``hook_parameters`` in ``DebuggerHookConfig`` or ``parameters`` in ``CollectionConfig`` can be viewed at `CollectionParameters <https://docs.aws.amazon.com/sagemaker/latest/dg/API_CollectionConfiguration.html#SageMaker-Type-CollectionConfiguration-CollectionParameters>`__.
 
-Specifying individual configuration for each collection
--------------------------------------------------------
+Specifying configurations for collections
+-----------------------------------------
 
-``collection_parameters`` in the ``CollectionConfig`` object define what group of tensors are saved and how frequently they will be saved. This setting is specific to this collection.
+``parameters`` in the ``CollectionConfig`` is used to specify configuration for a particular collection. It is a map which defines what group of tensors are saved and how frequently they will be saved.
 
-Specifying common configuration across all collections
-------------------------------------------------------
-
-If there are properties you want to apply across all collections, those can be supplied in ``hook_parameters`` within the ``DebuggerHookConfig`` object. For example, to apply a value of ``10`` for ``save_interval`` across all collections, do:
+If there are properties you want to apply across all collections, those can be supplied in ``hook_parameters`` within the ``DebuggerHookConfig`` object. For example, to apply a value of ``10`` for ``save_interval`` across all collections:
 
 .. code:: python
 
@@ -136,22 +133,6 @@ You can use the ``S3Downloader`` utility to view and download the debugging data
 
     # Get a list of S3 URIs
     S3Downloader.list(estimator.latest_job_debugger_artifacts_path())
-
-On by default behavior and opting out
--------------------------------------
-
-For ``TensorFlow``, ``Keras``, ``MXNet``, ``PyTorch`` and ``XGBoost`` estimators, the ``DebuggerHookConfig`` is always initialized regardless of specification while initializing the estimator. This is done to minimize code changes to get useful debugging information.
-
-To disable the hook initialization, you can do so by specifying ``False`` for value of ``debugger_hook_config`` in your framework estimator's initialization
-
-.. code:: python
-
-    estimator = TensorFlow(
-        role=role,
-        train_instance_count=1,
-        train_instance_type=train_instance_type,
-        debugger_hook_config=False
-    )
 
 Continuous analyses through rules
 =================================
@@ -267,22 +248,23 @@ SageMaker Debugger also allows the users to create custom rules and have those e
 * Custom rule source file and its local or S3 location. You can learn more about how to write custom rules at `How to Write Custom Debugger Rules <https://github.com/awslabs/sagemaker-debugger/blob/master/docs/analysis.md#writing-a-custom-rule>`__
 * Rule evaluator image for the corresponding region available from `Amazon SageMaker Debugger Custom Rule Images <https://docs.aws.amazon.com/sagemaker/latest/dg/debuger-custom-rule-registry-ids.html>`__
 
-To learn more about how to write your custom rules and use them see `SageMaker Debugger Custom Rules <https://docs.aws.amazon.com/sagemaker/latest/dg/debugger-custom-rules.html>`__
+To learn more about how to write your custom rules and use them see `SageMaker Debugger Custom Rules <https://docs.aws.amazon.com/sagemaker/latest/dg/debugger-custom-rules.html>`__.
 
 Sample Usage
 ~~~~~~~~~~~~
 
-For this example, we evaluate an altered version of the Vanishing Gradient rule against our model training. The rule checks the gradients and asserts that the mean value of the gradients at any step is always above a certain threshold. The source code for the rule is available `here <https://github.com/awslabs/amazon-sagemaker-examples/blob/master/sagemaker-debugger/tensorflow_keras_custom_rule/rules/my_custom_rule.py>`__ and is assumed to be in the relative directory path ``rules/custom_gradient_rule.py``. The region where you'll run the training job is assumed to be ``us-east-1``.
+For this example, we evaluate an altered version of the Vanishing Gradient rule against our model training. The rule checks the gradients and asserts that the mean value of the gradients at any step is always above a certain threshold. The source code for the rule is available `here <https://github.com/awslabs/amazon-sagemaker-examples/blob/master/sagemaker-debugger/tensorflow_keras_custom_rule/rules/my_custom_rule.py>`__ and is assumed to be in the relative directory path ``rules/custom_gradient_rule.py``.
 
-To evaluate the custom rule against the training, do:
+To evaluate the custom rule against the training:
 
 .. code:: python
 
     from sagemaker.debugger import Rule
 
+    region = 'us-east-1' # the AWS region of the training job
     custom_gradient_rule = Rule.custom(
         name='MyCustomRule',
-        image_uri='864354269164.dkr.ecr.us-east-1.amazonaws.com/sagemaker-debugger-rule-evaluator:latest',
+        image_uri='864354269164.dkr.ecr.{}.amazonaws.com/sagemaker-debugger-rule-evaluator:latest'.format(region),
         instance_type='ml.t3.medium', # instance type to run the rule evaluation on
         source='rules/custom_gradient_rule.py', # path to the rule source file
         rule_to_invoke='CustomGradientRule', # name of the class to invoke in the rule source file
@@ -359,6 +341,22 @@ Interactive analysis using SageMaker Debugger SDK and visualizations
 To learn more about the programming model for analysis using SageMaker Debugger SDK, see `SageMaker Debugger Analysis <https://github.com/awslabs/sagemaker-debugger/blob/master/docs/analysis.md>`__.
 
 For a tutorial on what you can do after creating the trial and how to visualize the results, see `SageMaker Debugger - Visualizing Debugging Results <https://github.com/awslabs/amazon-sagemaker-examples/blob/master/sagemaker-debugger/mnist_tensor_plot/mnist-tensor-plot.ipynb>`__.
+
+Default behavior and opting out
+===============================
+
+For ``TensorFlow``, ``Keras``, ``MXNet``, ``PyTorch`` and ``XGBoost`` estimators, the ``DebuggerHookConfig`` is always initialized regardless of specification while initializing the estimator. This is done to minimize code changes to get useful debugging information.
+
+To disable the hook initialization, you can do so by specifying ``False`` for value of ``debugger_hook_config`` in your framework estimator's initialization
+
+.. code:: python
+
+    estimator = TensorFlow(
+        role=role,
+        train_instance_count=1,
+        train_instance_type=train_instance_type,
+        debugger_hook_config=False
+    )
 
 Learn More
 ==========
