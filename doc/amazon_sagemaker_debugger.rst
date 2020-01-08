@@ -22,7 +22,7 @@ Setup
 To get started, you must satisfy the following prerequisites:
 
 * Specify an AWS Region where you'll train your model.
-* Give Amazon SageMaker the access to your data in Amazon Simple Storage Service (Amazon S3) needed to train your model, create an IAM role ARN. See the `AWS IAM documentation <https://docs.aws.amazon.com/IAM/latest/UserGuide/id_roles.html>`__ for how to fine tune the permissions needed.
+* Give Amazon SageMaker the access to your data in Amazon Simple Storage Service (Amazon S3) needed to train your model by creating an IAM role ARN. See the `AWS IAM documentation <https://docs.aws.amazon.com/IAM/latest/UserGuide/id_roles.html>`__ for how to fine tune the permissions needed.
 
 Capture real-time debugging data during model training in Amazon SageMaker
 ==========================================================================
