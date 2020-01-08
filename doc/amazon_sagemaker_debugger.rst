@@ -112,14 +112,13 @@ To create a training job that initializes the debugging hook with the value of t
 
     s3://{destination-bucket-prefix}/{training-job-name}/debug-output/
 
-The path is derived from the value of ``s3_output_path`` and not used verbatim to ensure that artifacts from different training jobs are placed in different Amazon S3 paths (it's a good practice to keep the debug artifacts separate for different training jobs for correct analyses later on.)
+The path is derived from the value of ``s3_output_path`` and not used verbatim to ensure that artifacts from different training jobs are placed in different Amazon S3 paths. To enable correct analysis of different training jobs, it is a best and essential practice to keep the debug artifacts from these jobs separate.
 
 To access the above Amazon S3 path through the estimator object, you can do:
 
 .. code:: python
 
     tensors_s3_output_path = estimator.latest_job_debugger_artifacts_path()
-
 
 You can use the ``S3Downloader`` utility to view and download the debugging data emitted during training in Amazon S3 (Note that data is stored in a streaming fashion so the data you download locally through ``S3Downloader`` will be a snapshot of the data generated until that time.):
 
@@ -181,7 +180,7 @@ Sample Usages
     )
 
 
-In the example above, SageMaker pulls the collection configuration best suited for the built-in rule Vanishing Gradient from `SageMaker Debugger Rules Config <https://github.com/awslabs/sagemaker-debugger-rulesconfig>`__ and configures the debugging data to be stored in the manner specified in the configuration.
+In the example above, Amazon SageMaker pulls the collection configuration best suited for the built-in rule Vanishing Gradient from `SageMaker Debugger Rules Config <https://github.com/awslabs/sagemaker-debugger-rulesconfig>`__ and configures the debugging data to be stored in the manner specified in the configuration.
 
 **Example 2**: Using more than one built-in rules without any customization
 
@@ -197,7 +196,7 @@ In the example above, SageMaker pulls the collection configuration best suited f
             rules=[Rule.sagemaker(vanishing_gradient()), Rule.sagemaker(weight_update_ratio())]
     )
 
-In the example above, SageMaker pulls the hook configurations for Vanishing Gradient and Weight Update Ratio rules from `SageMaker Debugger Rules Config <https://github.com/awslabs/sagemaker-debugger-rulesconfig>`__  and configures the collections to be stored in the manner specified in each configuration.
+In the example above, Amazon SageMaker pulls the hook configurations for Vanishing Gradient and Weight Update Ratio rules from `SageMaker Debugger Rules Config <https://github.com/awslabs/sagemaker-debugger-rulesconfig>`__  and configures the collections to be stored in the manner specified in each configuration.
 
 **Example 3**: Using a built-in rule with no customization and another built-in rule with customization.
 
@@ -243,7 +242,7 @@ In the example above, collection configuration for Vanishing Gradient is pulled 
 Using custom rules
 ------------------
 
-SageMaker Debugger also allows the users to create custom rules and have those evaluated against the debugging data. To use custom rules there are two prerequisites:
+SageMaker Debugger also allows the users to create custom rules and have those evaluated against the debugging data. To use custom rules, you must provide two items:
 
 * Custom rule source file and its local or S3 location. You can learn more about how to write custom rules at `How to Write Custom Debugger Rules <https://github.com/awslabs/sagemaker-debugger/blob/master/docs/analysis.md#writing-a-custom-rule>`__
 * Rule evaluator image for the corresponding region available from `Amazon SageMaker Debugger Custom Rule Images <https://docs.aws.amazon.com/sagemaker/latest/dg/debuger-custom-rule-registry-ids.html>`__
