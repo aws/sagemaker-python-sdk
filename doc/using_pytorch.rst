@@ -524,7 +524,7 @@ The PyTorchModel constructor takes the following arguments:
    which should be executed as the entry point to model hosting.
 -  ``source_dir:`` Optional. Path (absolute or relative) to a
    directory with any other training source code dependencies including
-   tne entry point file. Structure within this directory will be
+   the entry point file. Structure within this directory will be
    preserved when training on SageMaker.
 -  ``enable_cloudwatch_metrics:`` Optional. If true, training
    and hosting containers will generate Cloudwatch metrics under the
@@ -655,7 +655,7 @@ The following are optional arguments. When you create a ``PyTorch`` object, you 
    and where to find the source code to build your custom image.
 
 ***********************************
-SageMaker PyTorch Docker Containers 
+SageMaker PyTorch Docker Containers
 ***********************************
 
 For information about SageMaker PyTorch containers, see  `the SageMaker PyTorch containers repository <https://github.com/aws/sagemaker-pytorch-container>`_.
