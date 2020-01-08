@@ -601,3 +601,16 @@ def test_empty_framework_version(warning, sagemaker_session):
 
     assert estimator.framework_version == defaults.CHAINER_VERSION
     warning.assert_called_with(defaults.CHAINER_VERSION, Chainer.LATEST_VERSION)
+
+
+@patch("sagemaker.chainer.model.empty_framework_version_warning")
+def test_model_empty_framework_version(warning, sagemaker_session):
+    model = ChainerModel(
+        MODEL_DATA,
+        role=ROLE,
+        entry_point=SCRIPT_PATH,
+        sagemaker_session=sagemaker_session,
+        framework_version=None,
+    )
+    assert model.framework_version == defaults.CHAINER_VERSION
+    warning.assert_called_with(defaults.CHAINER_VERSION, Chainer.LATEST_VERSION)

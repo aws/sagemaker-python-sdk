@@ -18,7 +18,8 @@ import logging
 from pkg_resources import parse_version
 
 import sagemaker
-from sagemaker.fw_utils import create_image_uri, model_code_key_prefix, python_deprecation_warning
+from sagemaker.fw_utils import create_image_uri, model_code_key_prefix, python_deprecation_warning, \
+    empty_framework_version_warning
 from sagemaker.model import FrameworkModel, MODEL_SERVER_WORKERS_PARAM_NAME
 from sagemaker.mxnet.defaults import MXNET_VERSION
 from sagemaker.predictor import RealTimePredictor, json_serializer, json_deserializer
@@ -55,6 +56,9 @@ class MXNetModel(FrameworkModel):
     __framework_name__ = "mxnet"
     _LOWEST_MMS_VERSION = "1.4.0"
 
+    LATEST_VERSION = "1.6.0"
+    """The latest version of MXNet included in the SageMaker pre-built Docker images."""
+
     def __init__(
         self,
         model_data,
@@ -62,7 +66,7 @@ class MXNetModel(FrameworkModel):
         entry_point,
         image=None,
         py_version="py2",
-        framework_version=MXNET_VERSION,
+        framework_version=None,
         predictor_cls=MXNetPredictor,
         model_server_workers=None,
         **kwargs
@@ -109,9 +113,11 @@ class MXNetModel(FrameworkModel):
 
         if py_version == "py2":
             logger.warning(python_deprecation_warning(self.__framework_name__))
+        if framework_version is None:
+            logger.warning(empty_framework_version_warning(MXNET_VERSION, self.LATEST_VERSION))
 
         self.py_version = py_version
-        self.framework_version = framework_version
+        self.framework_version = framework_version or MXNET_VERSION
         self.model_server_workers = model_server_workers
 
     def prepare_container_def(self, instance_type, accelerator_type=None):

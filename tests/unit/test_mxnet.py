@@ -722,6 +722,19 @@ def test_empty_framework_version(warning, sagemaker_session):
     warning.assert_called_with(defaults.MXNET_VERSION, mx.LATEST_VERSION)
 
 
+@patch("sagemaker.mxnet.model.empty_framework_version_warning")
+def test_model_empty_framework_version(warning, sagemaker_session):
+    model = MXNetModel(
+        MODEL_DATA,
+        role=ROLE,
+        entry_point=SCRIPT_PATH,
+        sagemaker_session=sagemaker_session,
+        framework_version=None,
+    )
+    assert model.framework_version == defaults.MXNET_VERSION
+    warning.assert_called_with(defaults.MXNET_VERSION, model.LATEST_VERSION)
+
+
 def test_create_model_with_custom_hosting_image(sagemaker_session):
     container_log_level = '"logging.INFO"'
     source_dir = "s3://mybucket/source"

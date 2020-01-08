@@ -17,7 +17,8 @@ import logging
 import pkg_resources
 
 import sagemaker
-from sagemaker.fw_utils import create_image_uri, model_code_key_prefix, python_deprecation_warning
+from sagemaker.fw_utils import create_image_uri, model_code_key_prefix, python_deprecation_warning, \
+    empty_framework_version_warning
 from sagemaker.model import FrameworkModel, MODEL_SERVER_WORKERS_PARAM_NAME
 from sagemaker.pytorch.defaults import PYTORCH_VERSION, PYTHON_VERSION
 from sagemaker.predictor import RealTimePredictor, npy_serializer, numpy_deserializer
@@ -56,6 +57,9 @@ class PyTorchModel(FrameworkModel):
     __framework_name__ = "pytorch"
     _LOWEST_MMS_VERSION = "1.2"
 
+    LATEST_VERSION = "1.3.1"
+    """The latest version of PyTorch included in the SageMaker pre-built Docker images."""
+
     def __init__(
         self,
         model_data,
@@ -63,7 +67,7 @@ class PyTorchModel(FrameworkModel):
         entry_point,
         image=None,
         py_version=PYTHON_VERSION,
-        framework_version=PYTORCH_VERSION,
+        framework_version=None,
         predictor_cls=PyTorchPredictor,
         model_server_workers=None,
         **kwargs
@@ -110,9 +114,11 @@ class PyTorchModel(FrameworkModel):
 
         if py_version == "py2":
             logger.warning(python_deprecation_warning(self.__framework_name__))
+        if framework_version is None:
+            logger.warning(empty_framework_version_warning(PYTORCH_VERSION, self.LATEST_VERSION))
 
         self.py_version = py_version
-        self.framework_version = framework_version
+        self.framework_version = framework_version or PYTORCH_VERSION
         self.model_server_workers = model_server_workers
 
     def prepare_container_def(self, instance_type, accelerator_type=None):
