@@ -18,8 +18,12 @@ import logging
 from pkg_resources import parse_version
 
 import sagemaker
-from sagemaker.fw_utils import create_image_uri, model_code_key_prefix, python_deprecation_warning, \
-    empty_framework_version_warning
+from sagemaker.fw_utils import (
+    create_image_uri,
+    model_code_key_prefix,
+    python_deprecation_warning,
+    empty_framework_version_warning,
+)
 from sagemaker.model import FrameworkModel, MODEL_SERVER_WORKERS_PARAM_NAME
 from sagemaker.mxnet.defaults import MXNET_VERSION
 from sagemaker.predictor import RealTimePredictor, json_serializer, json_deserializer

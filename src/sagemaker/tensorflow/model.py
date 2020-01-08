@@ -16,8 +16,12 @@ from __future__ import absolute_import
 import logging
 
 import sagemaker
-from sagemaker.fw_utils import create_image_uri, model_code_key_prefix, python_deprecation_warning, \
-    empty_framework_version_warning
+from sagemaker.fw_utils import (
+    create_image_uri,
+    model_code_key_prefix,
+    python_deprecation_warning,
+    empty_framework_version_warning,
+)
 from sagemaker.model import FrameworkModel, MODEL_SERVER_WORKERS_PARAM_NAME
 from sagemaker.predictor import RealTimePredictor
 from sagemaker.tensorflow.defaults import TF_VERSION
