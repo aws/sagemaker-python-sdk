@@ -141,7 +141,7 @@ def test_multi_estimator_tuning(
 
 def _fit_tuner(sagemaker_session, tuner):
     training_inputs = _create_training_inputs(sagemaker_session)
-    job_name = utils.unique_name_from_base("test-multi-algo-tuning")
+    job_name = utils.unique_name_from_base("test-multi-algo-tuning", max_length=32)
 
     with timeout(minutes=TUNING_DEFAULT_TIMEOUT_MINUTES):
         tuner.fit(
