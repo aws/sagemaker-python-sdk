@@ -24,7 +24,7 @@ from sagemaker.fw_utils import (
 )
 from sagemaker.model import FrameworkModel, MODEL_SERVER_WORKERS_PARAM_NAME
 from sagemaker.predictor import RealTimePredictor
-from sagemaker.tensorflow.defaults import TF_VERSION
+from sagemaker.tensorflow.defaults import TF_VERSION, LATEST_VERSION
 from sagemaker.tensorflow.predictor import tf_json_serializer, tf_json_deserializer
 
 logger = logging.getLogger("sagemaker")
@@ -57,9 +57,6 @@ class TensorFlowModel(FrameworkModel):
     """Placeholder docstring"""
 
     __framework_name__ = "tensorflow"
-
-    LATEST_VERSION = "2.0.0"
-    """The latest version of TensorFlow included in the SageMaker pre-built Docker images."""
 
     def __init__(
         self,
@@ -116,7 +113,7 @@ class TensorFlowModel(FrameworkModel):
         if py_version == "py2":
             logger.warning(python_deprecation_warning(self.__framework_name__))
         if framework_version is None:
-            logger.warning(empty_framework_version_warning(TF_VERSION, self.LATEST_VERSION))
+            logger.warning(empty_framework_version_warning(TF_VERSION, LATEST_VERSION))
 
         self.py_version = py_version
         self.framework_version = framework_version or TF_VERSION

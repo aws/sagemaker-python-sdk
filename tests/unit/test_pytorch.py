@@ -543,7 +543,7 @@ def test_model_empty_framework_version(warning, sagemaker_session):
     )
 
     assert model.framework_version == defaults.PYTORCH_VERSION
-    warning.assert_called_with(defaults.PYTORCH_VERSION, model.LATEST_VERSION)
+    warning.assert_called_with(defaults.PYTORCH_VERSION, defaults.LATEST_VERSION)
 
 
 def test_pt_enable_sm_metrics(sagemaker_session):

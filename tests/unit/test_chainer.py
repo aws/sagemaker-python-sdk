@@ -613,4 +613,4 @@ def test_model_empty_framework_version(warning, sagemaker_session):
         framework_version=None,
     )
     assert model.framework_version == defaults.CHAINER_VERSION
-    warning.assert_called_with(defaults.CHAINER_VERSION, Chainer.LATEST_VERSION)
+    warning.assert_called_with(defaults.CHAINER_VERSION, defaults.LATEST_VERSION)

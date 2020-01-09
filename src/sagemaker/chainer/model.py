@@ -23,7 +23,7 @@ from sagemaker.fw_utils import (
     empty_framework_version_warning,
 )
 from sagemaker.model import FrameworkModel, MODEL_SERVER_WORKERS_PARAM_NAME
-from sagemaker.chainer.defaults import CHAINER_VERSION
+from sagemaker.chainer.defaults import CHAINER_VERSION, LATEST_VERSION
 from sagemaker.predictor import RealTimePredictor, npy_serializer, numpy_deserializer
 
 logger = logging.getLogger("sagemaker")
@@ -58,9 +58,6 @@ class ChainerModel(FrameworkModel):
     """
 
     __framework_name__ = "chainer"
-
-    LATEST_VERSION = "5.0.0"
-    """The latest version of Chainer included in the SageMaker pre-built Docker images."""
 
     def __init__(
         self,
@@ -116,7 +113,7 @@ class ChainerModel(FrameworkModel):
         if py_version == "py2":
             logger.warning(python_deprecation_warning(self.__framework_name__))
         if framework_version is None:
-            logger.warning(empty_framework_version_warning(CHAINER_VERSION, self.LATEST_VERSION))
+            logger.warning(empty_framework_version_warning(CHAINER_VERSION, LATEST_VERSION))
 
         self.py_version = py_version
         self.framework_version = framework_version or CHAINER_VERSION

@@ -947,7 +947,7 @@ def test_empty_framework_version(warning, sagemaker_session):
     )
 
     assert model.framework_version == defaults.TF_VERSION
-    warning.assert_called_with(defaults.TF_VERSION, model.LATEST_VERSION)
+    warning.assert_called_with(defaults.TF_VERSION, defaults.LATEST_VERSION)
 
 
 def _deprecated_args_msg(args):

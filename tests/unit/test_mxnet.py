@@ -732,7 +732,7 @@ def test_model_empty_framework_version(warning, sagemaker_session):
         framework_version=None,
     )
     assert model.framework_version == defaults.MXNET_VERSION
-    warning.assert_called_with(defaults.MXNET_VERSION, model.LATEST_VERSION)
+    warning.assert_called_with(defaults.MXNET_VERSION, defaults.LATEST_VERSION)
 
 
 def test_create_model_with_custom_hosting_image(sagemaker_session):
