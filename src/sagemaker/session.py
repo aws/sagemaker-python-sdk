@@ -2363,8 +2363,8 @@ class Session(object):  # pylint: disable=too-many-public-methods
             self.wait_for_endpoint(endpoint_name)
         return endpoint_name
 
-    def update_endpoint(self, endpoint_name, endpoint_config_name):
-        """ Update an Amazon SageMaker ``Endpoint`` according to the endpoint configuration
+    def update_endpoint(self, endpoint_name, endpoint_config_name, wait=True):
+        """Update an Amazon SageMaker ``Endpoint`` according to the endpoint configuration
         specified in the request
 
         Raise an error if endpoint with endpoint_name does not exist.
@@ -2373,10 +2373,14 @@ class Session(object):  # pylint: disable=too-many-public-methods
             endpoint_name (str): Name of the Amazon SageMaker ``Endpoint`` to update.
             endpoint_config_name (str): Name of the Amazon SageMaker endpoint configuration to
                 deploy.
+            wait (bool): Whether to wait for the endpoint deployment to complete before returning
+                (default: True).
 
         Returns:
             str: Name of the Amazon SageMaker ``Endpoint`` being updated.
 
+        Raises:
+            ValueError: if the endpoint does not already exist
         """
         if not _deployment_entity_exists(
             lambda: self.sagemaker_client.describe_endpoint(EndpointName=endpoint_name)
@@ -2389,6 +2393,9 @@ class Session(object):  # pylint: disable=too-many-public-methods
         self.sagemaker_client.update_endpoint(
             EndpointName=endpoint_name, EndpointConfigName=endpoint_config_name
         )
+
+        if wait:
+            self.wait_for_endpoint(endpoint_name)
         return endpoint_name
 
     def delete_endpoint(self, endpoint_name):
