@@ -60,14 +60,54 @@ The ``DebuggerHookConfig`` accepts one or more objects of type ``CollectionConfi
         debugger_hook_config=debugger_hook_config
     )
 
-``hook_parameters`` in ``DebuggerHookConfig`` and ``parameters`` in ``CollectionConfiguration`` provide a way of fine tuning the configuration of the tensors stored during the training - they control the tensors that are saved and the step frequency at which they're saved.
-
-The possible values of ``hook_parameters`` in ``DebuggerHookConfig`` or ``parameters`` in ``CollectionConfig`` can be viewed at `CollectionParameters <https://docs.aws.amazon.com/sagemaker/latest/dg/API_CollectionConfiguration.html#SageMaker-Type-CollectionConfiguration-CollectionParameters>`__.
-
 Specifying configurations for collections
 -----------------------------------------
 
-``parameters`` in the ``CollectionConfig`` is used to specify configuration for a particular collection. It is a map which defines what group of tensors are saved and how frequently they will be saved.
+Collection Name
+~~~~~~~~~~~~~~~
+
+``name`` in ``CollectionConfig`` is used to specify the name of the tensor collection you wish to emit and store. This name is used by SageMaker Debugger to refer to all the tensors in this collection. You can supply any valid string for the collection name. In addition to this, there are certain "built-in" collections your can emit by specifying particular collection names recognized by the hook. Examples of these collections are "gradients", "weights", "biases" etc. A full list is available at `SageMaker Debugger Built-in Collections <https://github.com/awslabs/sagemaker-debugger/blob/master/docs/api.md#built-in-collections>`__.
+
+To emit and store one of the built-in collections:
+
+.. code:: python
+
+    collection_config_biases = CollectionConfig(name='biases')
+
+Collection Parameters
+~~~~~~~~~~~~~~~~~~~~~
+
+``parameters`` in the ``CollectionConfig`` is used to specify more configuration for a particular collection. It is a map which defines what group of tensors are saved and how frequently they will be saved.
+
+For instance, suppose you want to save a collection of tensors with the following properties:
+
+========================================================= =========
+**Desired Property**                                      **Value**
+--------------------------------------------------------- ---------
+regex of tensors which should be saved                    ``relu``
+step frequencya at which the said tensors should be saved 20
+starting at step                                          5
+ending at step                                            100
+========================================================= =========
+
+You should configure the ``CollectionConfig`` as:
+
+.. code:: python
+
+    collection_config_for_relu = CollectionConfig(
+        name='custom_relu_collection',
+        parameters={
+            'include_regex': 'relu',
+            'save_interval': '20',
+            'start_step': '5',
+            'end_step': '100'
+        }
+    }
+
+The possible values of ``parameters`` in ``CollectionConfig`` can be viewed at `CollectionParameters <https://docs.aws.amazon.com/sagemaker/latest/dg/API_CollectionConfiguration.html#SageMaker-Type-CollectionConfiguration-CollectionParameters>`__.
+
+Hook Parameters
+~~~~~~~~~~~~~~~
 
 If there are properties you want to apply across all collections, those can be supplied in ``hook_parameters`` within the ``DebuggerHookConfig`` object. For example, to apply a value of ``10`` for ``save_interval`` across all collections:
 
@@ -102,6 +142,8 @@ If there are properties you want to apply across all collections, those can be s
 In the above sample code, the ``save_interval`` of ``10`` will be applied for storing both collections.
 
 Note that the value set in the ``collection_parameters`` for a parameter will override the corresponding value of the same parameter in the ``hook_parameters``. For example, in the above sample code, if ``collection_config_2`` had the value of ``save_interval`` set something other than ``10``, say, ``20``, then the tensors for that collection would have been saved with step interval ``20`` while those for ``collection_config_1`` would still be saved with ``10``.
+
+The possible values of ``hook_parameters`` in ``DebuggerHookConfig`` can be viewed at `SageMaker Debugger Hook <https://github.com/awslabs/sagemaker-debugger/blob/master/docs/api.md#creating-a-hook>`__.
 
 Begin model training
 --------------------
@@ -283,6 +325,7 @@ To evaluate the custom rule against the training:
         ]
     )
 
+Note that while defining ``collections_to_save`` we create a ``CollectionConfig`` object as ``CollectionConfig("gradients")``
 While initializing the custom rule through ``Rules.custom()``, you can choose to specify a valid S3 location for value of ``source``.
 
 
