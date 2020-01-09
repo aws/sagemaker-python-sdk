@@ -154,7 +154,7 @@ To create a training job that initializes the debugging hook with the value of t
 
     s3://{destination-bucket-prefix}/{training-job-name}/debug-output/
 
-The path is derived from the value of ``s3_output_path`` and not used verbatim to ensure that artifacts from different training jobs are placed in different Amazon S3 paths. To enable correct analysis of different training jobs, it is a best and essential practice to keep the debug artifacts from these jobs separate.
+The path is derived from the value of ``s3_output_path`` and not used verbatim to ensure that artifacts from different training jobs are placed in different Amazon S3 paths. To enable correct analysis of different training jobs, it is essential practice to keep the debug artifacts from these jobs separate.
 
 To access the above Amazon S3 path through the estimator object, you can do:
 
@@ -178,7 +178,7 @@ You can use the ``S3Downloader`` utility to view and download the debugging data
 Continuous analyses through rules
 =================================
 
-In addition to collecting the debugging data, Amazon SageMaker Debugger provides the capability for you to analyze it in a streaming fashion through "rules". A SageMaker Debugger 'rule' is a piece of code which encapsulates the logic for analyzing debugging data.
+In addition to collecting the debugging data, Amazon SageMaker Debugger provides the capability for you to analyze it in a streaming fashion through "rules". A SageMaker Debugger "rule" is a piece of code which encapsulates the logic for analyzing debugging data.
 
 SageMaker Debugger provides a set of built-in rules curated by data scientists and engineers at Amazon to identify common problems while training machine learning models. There is additional support for bringing in custom rule source codes for evaluation. In the following sections, you'll learn how to use either while training your model.
 
@@ -196,7 +196,7 @@ Normally, you'd achieve this binding for a training job by providing values for 
 Using built-in rules
 --------------------
 
-SageMaker Debugger comes with a set of built-in rules which can be used to identify common problems in model training e.g. vanishing gradients, exploding tensors etc. You can choose to evaluate one or more than one of these rules while training your model and get meaningful insight into the training process. To know more about the built in rules see `SageMaker Debugger Built-in Rules <https://docs.aws.amazon.com/sagemaker/latest/dg/debugger-built-in-rules.html>`__.
+SageMaker Debugger comes with a set of built-in rules which can be used to identify common problems in model training, e.g. vanishing gradients, exploding tensors, etc. You can choose to evaluate one or more than one of these rules while training your model and get meaningful insight into the training process. To know more about the built in rules, see `SageMaker Debugger Built-in Rules <https://docs.aws.amazon.com/sagemaker/latest/dg/debugger-built-in-rules.html>`__.
 
 Pre-defined debugger hook configuration for built-in rules
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
