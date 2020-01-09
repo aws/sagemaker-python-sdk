@@ -25,7 +25,7 @@ import time
 from sagemaker.debugger import DebuggerHookConfig
 from sagemaker.estimator import Framework
 import sagemaker.fw_utils as fw
-from sagemaker.tensorflow.defaults import TF_VERSION, LATEST_VERSION
+from sagemaker.tensorflow.defaults import TF_VERSION, LATEST_VERSION, LATEST_PY2_VERSION
 from sagemaker.tensorflow.model import TensorFlowModel
 from sagemaker.tensorflow.serving import Model
 from sagemaker.transformer import Transformer
@@ -293,6 +293,10 @@ class TensorFlow(Framework):
 
         if not py_version:
             py_version = "py3" if self._only_python_3_supported() else "py2"
+        if py_version == "py2":
+            logger.warning(
+                fw.python_deprecation_warning(self.__framework_name__, LATEST_PY2_VERSION)
+            )
 
         if "enable_sagemaker_metrics" not in kwargs:
             # enable sagemaker metrics for TF v1.15 or greater:
@@ -301,9 +305,6 @@ class TensorFlow(Framework):
 
         super(TensorFlow, self).__init__(image_name=image_name, **kwargs)
         self.checkpoint_path = checkpoint_path
-
-        if py_version == "py2":
-            logger.warning("tensorflow py2 container will be deprecated soon.")
 
         self.py_version = py_version
         self.training_steps = training_steps
@@ -359,7 +360,7 @@ class TensorFlow(Framework):
 
         if py_version == "py2" and self._only_python_3_supported():
             msg = (
-                "Python 2 containers are only available until January 1st, 2020. "
+                "Python 2 containers are only available before January 1st, 2020. "
                 "Please use a Python 3 container."
             )
             raise AttributeError(msg)

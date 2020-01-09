@@ -20,7 +20,6 @@ from sagemaker.fw_registry import default_framework_uri
 from sagemaker.fw_utils import (
     framework_name_from_image,
     framework_version_from_tag,
-    python_deprecation_warning,
     get_unsupported_framework_version_error,
     UploadedCode,
 )
@@ -112,7 +111,7 @@ class XGBoost(Framework):
         )
 
         if py_version == "py2":
-            logger.warning(python_deprecation_warning(self.__framework_name__))
+            raise AttributeError("XGBoost container does not support Python 2, please use Python 3")
         self.py_version = py_version
 
         if framework_version in XGBOOST_SUPPORTED_VERSIONS:

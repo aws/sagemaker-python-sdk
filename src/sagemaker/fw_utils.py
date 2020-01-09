@@ -38,8 +38,8 @@ LATER_FRAMEWORK_VERSION_WARNING = (
     "please add framework_version={latest} to your constructor."
 )
 PYTHON_2_DEPRECATION_WARNING = (
-    "The Python 2 {framework} images will be soon deprecated and may not be "
-    "supported for newer upcoming versions of the {framework} images.\n"
+    "{latest_supported_version} is the latest version of {framework} that supports "
+    "Python 2. Newer versions of {framework} will only be available for Python 3."
     "Please set the argument \"py_version='py3'\" to use the Python 3 {framework} image."
 )
 
@@ -495,9 +495,12 @@ def get_unsupported_framework_version_error(
     )
 
 
-def python_deprecation_warning(framework):
+def python_deprecation_warning(framework, latest_supported_version):
     """
     Args:
         framework:
+        latest_supported_version:
     """
-    return PYTHON_2_DEPRECATION_WARNING.format(framework=framework)
+    return PYTHON_2_DEPRECATION_WARNING.format(
+        framework=framework, latest_supported_version=latest_supported_version
+    )

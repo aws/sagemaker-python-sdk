@@ -16,7 +16,7 @@ from __future__ import absolute_import
 import logging
 
 import sagemaker
-from sagemaker.fw_utils import model_code_key_prefix, python_deprecation_warning
+from sagemaker.fw_utils import model_code_key_prefix
 from sagemaker.fw_registry import default_framework_uri
 from sagemaker.model import FrameworkModel, MODEL_SERVER_WORKERS_PARAM_NAME
 from sagemaker.predictor import RealTimePredictor, npy_serializer, csv_deserializer
@@ -99,7 +99,7 @@ class XGBoostModel(FrameworkModel):
         )
 
         if py_version == "py2":
-            logger.warning(python_deprecation_warning(self.__framework_name__))
+            raise AttributeError("XGBoost container does not support Python 2, please use Python 3")
 
         self.py_version = py_version
         self.framework_version = framework_version

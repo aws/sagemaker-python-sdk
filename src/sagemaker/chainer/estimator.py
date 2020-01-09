@@ -22,7 +22,7 @@ from sagemaker.fw_utils import (
     empty_framework_version_warning,
     python_deprecation_warning,
 )
-from sagemaker.chainer.defaults import CHAINER_VERSION, LATEST_VERSION
+from sagemaker.chainer.defaults import CHAINER_VERSION, LATEST_VERSION, LATEST_PY2_VERSION
 from sagemaker.chainer.model import ChainerModel
 from sagemaker.vpc_utils import VPC_CONFIG_DEFAULT
 
@@ -134,7 +134,7 @@ class Chainer(Framework):
         )
 
         if py_version == "py2":
-            logger.warning(python_deprecation_warning(self.__framework_name__))
+            logger.warning(python_deprecation_warning(self.__framework_name__, LATEST_PY2_VERSION))
 
         self.py_version = py_version
         self.use_mpi = use_mpi

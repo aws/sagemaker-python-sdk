@@ -924,6 +924,31 @@ def test_attach_custom_image(sagemaker_session):
     assert estimator.train_image() == training_image
 
 
+@patch("sagemaker.fw_utils.python_deprecation_warning")
+def test_estimator_py2_deprecation_warning(warning, sagemaker_session):
+    estimator = TensorFlow(
+        entry_point=SCRIPT_PATH,
+        role=ROLE,
+        sagemaker_session=sagemaker_session,
+        train_instance_count=INSTANCE_COUNT,
+        train_instance_type=INSTANCE_TYPE,
+        py_version="py2",
+    )
+
+    assert estimator.py_version == "py2"
+    warning.assert_called_with(estimator.__framework_name__, defaults.LATEST_PY2_VERSION)
+
+    model = TensorFlowModel(
+        MODEL_DATA,
+        role=ROLE,
+        entry_point=SCRIPT_PATH,
+        sagemaker_session=sagemaker_session,
+        py_version="py2",
+    )
+    assert model.py_version == "py2"
+    warning.assert_called_with(model.__framework_name__, defaults.LATEST_PY2_VERSION)
+
+
 @patch("sagemaker.fw_utils.empty_framework_version_warning")
 def test_empty_framework_version(warning, sagemaker_session):
     estimator = TensorFlow(
@@ -995,7 +1020,7 @@ def test_py2_version_deprecated(sagemaker_session):
     with pytest.raises(AttributeError) as e:
         _build_tf(sagemaker_session=sagemaker_session, framework_version="2.0.1", py_version="py2")
 
-    msg = "Python 2 containers are only available until January 1st, 2020. Please use a Python 3 container."
+    msg = "Python 2 containers are only available before January 1st, 2020. Please use a Python 3 container."
     assert msg in str(e.value)
 
 

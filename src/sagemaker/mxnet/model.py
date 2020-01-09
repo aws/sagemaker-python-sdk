@@ -25,7 +25,7 @@ from sagemaker.fw_utils import (
     empty_framework_version_warning,
 )
 from sagemaker.model import FrameworkModel, MODEL_SERVER_WORKERS_PARAM_NAME
-from sagemaker.mxnet.defaults import MXNET_VERSION, LATEST_VERSION
+from sagemaker.mxnet.defaults import MXNET_VERSION, LATEST_VERSION, LATEST_PY2_VERSION
 from sagemaker.predictor import RealTimePredictor, json_serializer, json_deserializer
 
 logger = logging.getLogger("sagemaker")
@@ -113,7 +113,8 @@ class MXNetModel(FrameworkModel):
         )
 
         if py_version == "py2":
-            logger.warning(python_deprecation_warning(self.__framework_name__))
+            logger.warning(python_deprecation_warning(self.__framework_name__, LATEST_PY2_VERSION))
+
         if framework_version is None:
             logger.warning(empty_framework_version_warning(MXNET_VERSION, LATEST_VERSION))
 

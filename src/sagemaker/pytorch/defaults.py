@@ -23,3 +23,5 @@ LATEST_VERSION = "1.3.1"
 """The latest version of PyTorch included in the SageMaker pre-built Docker images."""
 
 PYTHON_VERSION = "py3"
+
+LATEST_PY2_VERSION = "1.3.1"

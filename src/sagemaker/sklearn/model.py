@@ -20,7 +20,7 @@ from sagemaker.fw_utils import model_code_key_prefix, python_deprecation_warning
 from sagemaker.fw_registry import default_framework_uri
 from sagemaker.model import FrameworkModel, MODEL_SERVER_WORKERS_PARAM_NAME
 from sagemaker.predictor import RealTimePredictor, npy_serializer, numpy_deserializer
-from sagemaker.sklearn.defaults import SKLEARN_VERSION, SKLEARN_NAME
+from sagemaker.sklearn.defaults import SKLEARN_VERSION, SKLEARN_NAME, LATEST_PY2_VERSION
 
 logger = logging.getLogger("sagemaker")
 
@@ -108,7 +108,7 @@ class SKLearnModel(FrameworkModel):
         )
 
         if py_version == "py2":
-            logger.warning(python_deprecation_warning(self.__framework_name__))
+            logger.warning(python_deprecation_warning(self.__framework_name__, LATEST_PY2_VERSION))
 
         self.py_version = py_version
         self.framework_version = framework_version

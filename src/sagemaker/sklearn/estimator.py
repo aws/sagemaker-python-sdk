@@ -22,7 +22,7 @@ from sagemaker.fw_utils import (
     empty_framework_version_warning,
     python_deprecation_warning,
 )
-from sagemaker.sklearn.defaults import SKLEARN_VERSION, SKLEARN_NAME
+from sagemaker.sklearn.defaults import SKLEARN_VERSION, SKLEARN_NAME, LATEST_PY2_VERSION
 from sagemaker.sklearn.model import SKLearnModel
 from sagemaker.vpc_utils import VPC_CONFIG_DEFAULT
 
@@ -119,7 +119,7 @@ class SKLearn(Framework):
         )
 
         if py_version == "py2":
-            logger.warning(python_deprecation_warning(self.__framework_name__))
+            logger.warning(python_deprecation_warning(self.__framework_name__, LATEST_PY2_VERSION))
 
         self.py_version = py_version
 

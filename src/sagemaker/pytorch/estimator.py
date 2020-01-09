@@ -23,7 +23,7 @@ from sagemaker.fw_utils import (
     python_deprecation_warning,
     is_version_equal_or_higher,
 )
-from sagemaker.pytorch.defaults import PYTORCH_VERSION, PYTHON_VERSION, LATEST_VERSION
+from sagemaker.pytorch.defaults import PYTORCH_VERSION, PYTHON_VERSION, LATEST_VERSION, LATEST_PY2_VERSION
 from sagemaker.pytorch.model import PyTorchModel
 from sagemaker.vpc_utils import VPC_CONFIG_DEFAULT
 
@@ -116,7 +116,7 @@ class PyTorch(Framework):
         )
 
         if py_version == "py2":
-            logger.warning(python_deprecation_warning(self.__framework_name__))
+            logger.warning(python_deprecation_warning(self.__framework_name__, LATEST_PY2_VERSION))
 
         self.py_version = py_version
 
