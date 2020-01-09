@@ -85,7 +85,7 @@ For instance, suppose you want to save a collection of tensors with the followin
 **Desired Property**                                      **Value**
 --------------------------------------------------------- ---------
 regex of tensors which should be saved                    ``relu``
-step frequencya at which the said tensors should be saved 20
+step frequency at which the said tensors should be saved  20
 starting at step                                          5
 ending at step                                            100
 ========================================================= =========
