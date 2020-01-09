@@ -325,9 +325,7 @@ To evaluate the custom rule against the training:
         ]
     )
 
-Note that while defining ``collections_to_save`` we create a ``CollectionConfig`` object as ``CollectionConfig("gradients")``
 While initializing the custom rule through ``Rules.custom()``, you can choose to specify a valid S3 location for value of ``source``.
-
 
 Capture real-time TensorBoard data from the debugging hook
 ==========================================================
