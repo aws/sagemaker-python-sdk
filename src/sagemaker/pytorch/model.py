@@ -24,7 +24,12 @@ from sagemaker.fw_utils import (
     empty_framework_version_warning,
 )
 from sagemaker.model import FrameworkModel, MODEL_SERVER_WORKERS_PARAM_NAME
-from sagemaker.pytorch.defaults import PYTORCH_VERSION, PYTHON_VERSION, LATEST_VERSION, LATEST_PY2_VERSION
+from sagemaker.pytorch.defaults import (
+    PYTORCH_VERSION,
+    PYTHON_VERSION,
+    LATEST_VERSION,
+    LATEST_PY2_VERSION,
+)
 from sagemaker.predictor import RealTimePredictor, npy_serializer, numpy_deserializer
 
 logger = logging.getLogger("sagemaker")

@@ -23,7 +23,12 @@ from sagemaker.fw_utils import (
     python_deprecation_warning,
     is_version_equal_or_higher,
 )
-from sagemaker.pytorch.defaults import PYTORCH_VERSION, PYTHON_VERSION, LATEST_VERSION, LATEST_PY2_VERSION
+from sagemaker.pytorch.defaults import (
+    PYTORCH_VERSION,
+    PYTHON_VERSION,
+    LATEST_VERSION,
+    LATEST_PY2_VERSION,
+)
 from sagemaker.pytorch.model import PyTorchModel
 from sagemaker.vpc_utils import VPC_CONFIG_DEFAULT
 
