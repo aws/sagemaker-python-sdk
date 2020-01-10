@@ -19,4 +19,7 @@ The latest PyTorch version is 1.1.0, but the default version is no longer update
 break existing workflows.
 """
 
+LATEST_VERSION = "1.3.1"
+"""The latest version of PyTorch included in the SageMaker pre-built Docker images."""
+
 PYTHON_VERSION = "py3"

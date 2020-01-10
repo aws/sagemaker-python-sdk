@@ -16,9 +16,14 @@ from __future__ import absolute_import
 import logging
 
 import sagemaker
-from sagemaker.fw_utils import create_image_uri, model_code_key_prefix, python_deprecation_warning
+from sagemaker.fw_utils import (
+    create_image_uri,
+    model_code_key_prefix,
+    python_deprecation_warning,
+    empty_framework_version_warning,
+)
 from sagemaker.model import FrameworkModel, MODEL_SERVER_WORKERS_PARAM_NAME
-from sagemaker.chainer.defaults import CHAINER_VERSION
+from sagemaker.chainer.defaults import CHAINER_VERSION, LATEST_VERSION
 from sagemaker.predictor import RealTimePredictor, npy_serializer, numpy_deserializer
 
 logger = logging.getLogger("sagemaker")
@@ -61,7 +66,7 @@ class ChainerModel(FrameworkModel):
         entry_point,
         image=None,
         py_version="py3",
-        framework_version=CHAINER_VERSION,
+        framework_version=None,
         predictor_cls=ChainerPredictor,
         model_server_workers=None,
         **kwargs
@@ -107,9 +112,11 @@ class ChainerModel(FrameworkModel):
         )
         if py_version == "py2":
             logger.warning(python_deprecation_warning(self.__framework_name__))
+        if framework_version is None:
+            logger.warning(empty_framework_version_warning(CHAINER_VERSION, LATEST_VERSION))
 
         self.py_version = py_version
-        self.framework_version = framework_version
+        self.framework_version = framework_version or CHAINER_VERSION
         self.model_server_workers = model_server_workers
 
     def prepare_container_def(self, instance_type, accelerator_type=None):
