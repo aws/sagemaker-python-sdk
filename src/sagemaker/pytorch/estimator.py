@@ -1,4 +1,4 @@
-# Copyright 2018-2019 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright 2018-2020 Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -23,7 +23,7 @@ from sagemaker.fw_utils import (
     python_deprecation_warning,
     is_version_equal_or_higher,
 )
-from sagemaker.pytorch.defaults import PYTORCH_VERSION, PYTHON_VERSION
+from sagemaker.pytorch.defaults import PYTORCH_VERSION, PYTHON_VERSION, LATEST_VERSION
 from sagemaker.pytorch.model import PyTorchModel
 from sagemaker.vpc_utils import VPC_CONFIG_DEFAULT
 
@@ -35,8 +35,7 @@ class PyTorch(Framework):
 
     __framework_name__ = "pytorch"
 
-    LATEST_VERSION = "1.3.1"
-    """The latest version of PyTorch included in the SageMaker pre-built Docker images."""
+    LATEST_VERSION = LATEST_VERSION
 
     def __init__(
         self,
@@ -104,7 +103,7 @@ class PyTorch(Framework):
             :class:`~sagemaker.estimator.EstimatorBase`.
         """
         if framework_version is None:
-            logger.warning(empty_framework_version_warning(PYTORCH_VERSION, PYTORCH_VERSION))
+            logger.warning(empty_framework_version_warning(PYTORCH_VERSION, self.LATEST_VERSION))
         self.framework_version = framework_version or PYTORCH_VERSION
 
         if "enable_sagemaker_metrics" not in kwargs:

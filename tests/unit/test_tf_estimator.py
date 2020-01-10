@@ -1,4 +1,4 @@
-# Copyright 2017-2019 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright 2017-2020 Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -937,6 +937,17 @@ def test_empty_framework_version(warning, sagemaker_session):
 
     assert estimator.framework_version == defaults.TF_VERSION
     warning.assert_called_with(defaults.TF_VERSION, estimator.LATEST_VERSION)
+
+    model = TensorFlowModel(
+        MODEL_DATA,
+        role=ROLE,
+        entry_point=SCRIPT_PATH,
+        sagemaker_session=sagemaker_session,
+        framework_version=None,
+    )
+
+    assert model.framework_version == defaults.TF_VERSION
+    warning.assert_called_with(defaults.TF_VERSION, defaults.LATEST_VERSION)
 
 
 def _deprecated_args_msg(args):

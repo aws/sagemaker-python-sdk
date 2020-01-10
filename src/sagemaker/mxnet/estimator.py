@@ -1,4 +1,4 @@
-# Copyright 2017-2019 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright 2017-2020 Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -23,7 +23,7 @@ from sagemaker.fw_utils import (
     python_deprecation_warning,
     is_version_equal_or_higher,
 )
-from sagemaker.mxnet.defaults import MXNET_VERSION
+from sagemaker.mxnet.defaults import MXNET_VERSION, LATEST_VERSION
 from sagemaker.mxnet.model import MXNetModel
 from sagemaker.vpc_utils import VPC_CONFIG_DEFAULT
 
@@ -36,8 +36,7 @@ class MXNet(Framework):
     __framework_name__ = "mxnet"
     _LOWEST_SCRIPT_MODE_VERSION = ["1", "3"]
 
-    LATEST_VERSION = "1.6.0"
-    """The latest version of MXNet included in the SageMaker pre-built Docker images."""
+    LATEST_VERSION = LATEST_VERSION
 
     def __init__(
         self,

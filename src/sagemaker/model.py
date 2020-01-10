@@ -1,4 +1,4 @@
-# Copyright 2017-2019 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright 2017-2020 Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -817,7 +817,7 @@ class FrameworkModel(Model):
 
         if repack:
             bucket = self.bucket or self.sagemaker_session.default_bucket()
-            repacked_model_data = "s3://" + os.path.join(bucket, key_prefix, "model.tar.gz")
+            repacked_model_data = "s3://" + "/".join([bucket, key_prefix, "model.tar.gz"])
 
             utils.repack_model(
                 inference_script=self.entry_point,

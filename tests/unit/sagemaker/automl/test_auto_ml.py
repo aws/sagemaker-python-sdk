@@ -1,4 +1,4 @@
-# Copyright 2019 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright 2019-2020 Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -15,6 +15,7 @@ from __future__ import absolute_import
 import pytest
 from mock import Mock, patch
 from sagemaker import AutoML, AutoMLJob, AutoMLInput, CandidateEstimator
+from sagemaker.predictor import RealTimePredictor
 
 MODEL_DATA = "s3://bucket/model.tar.gz"
 MODEL_IMAGE = "mi"
@@ -472,6 +473,46 @@ def test_deploy(sagemaker_session, candidate_mock):
         vpc_config=None,
         enable_network_isolation=False,
         model_kms_key=None,
+        predictor_cls=None,
+    )
+
+
+def test_deploy_optional_args(sagemaker_session, candidate_mock):
+    auto_ml = AutoML(
+        role=ROLE, target_attribute_name=TARGET_ATTRIBUTE_NAME, sagemaker_session=sagemaker_session
+    )
+    auto_ml.best_candidate = Mock(name="best_candidate", return_value=CANDIDATE_DICT)
+    auto_ml._deploy_inference_pipeline = Mock("_deploy_inference_pipeline", return_value=None)
+
+    auto_ml.deploy(
+        initial_instance_count=INSTANCE_COUNT,
+        instance_type=INSTANCE_TYPE,
+        sagemaker_session=sagemaker_session,
+        name=JOB_NAME,
+        endpoint_name=JOB_NAME,
+        tags=TAGS,
+        wait=False,
+        update_endpoint=True,
+        vpc_config=VPC_CONFIG,
+        enable_network_isolation=True,
+        model_kms_key=OUTPUT_KMS_KEY,
+        predictor_cls=RealTimePredictor,
+    )
+    auto_ml._deploy_inference_pipeline.assert_called_once()
+    auto_ml._deploy_inference_pipeline.assert_called_with(
+        candidate_mock.containers,
+        initial_instance_count=INSTANCE_COUNT,
+        instance_type=INSTANCE_TYPE,
+        name=JOB_NAME,
+        sagemaker_session=sagemaker_session,
+        endpoint_name=JOB_NAME,
+        tags=TAGS,
+        wait=False,
+        update_endpoint=True,
+        vpc_config=VPC_CONFIG,
+        enable_network_isolation=True,
+        model_kms_key=OUTPUT_KMS_KEY,
+        predictor_cls=RealTimePredictor,
     )
 
 

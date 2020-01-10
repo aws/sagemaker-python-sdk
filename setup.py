@@ -1,4 +1,4 @@
-# Copyright 2017-2019 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright 2017-2020 Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -39,7 +39,7 @@ required_packages = [
     "protobuf>=3.1",
     "scipy>=0.19.0",
     "protobuf3-to-dict>=0.1.5",
-    "requests>=2.20.0, <2.21",
+    "requests>=2.20.0, <3",
     "smdebug-rulesconfig==0.1.2",
 ]
 
@@ -47,7 +47,7 @@ required_packages = [
 extras = {
     "analytics": ["pandas"],
     "local": [
-        "urllib3>=1.21, <1.25",
+        "urllib3>=1.21.1,<1.26,!=1.25.0,!=1.25.1",
         "docker-compose>=1.23.0",
         "PyYAML>=3.10, <5",  # PyYAML version has to match docker-compose requirements
     ],

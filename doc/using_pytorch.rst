@@ -125,8 +125,7 @@ Using third-party libraries
 When running your training script on SageMaker, it will have access to some pre-installed third-party libraries including ``torch``, ``torchvisopm``, and ``numpy``.
 For more information on the runtime environment, including specific package versions, see `SageMaker PyTorch Docker containers <#id4>`__.
 
-If there are other packages you want to use with your script, you can include a ``requirements.txt`` file in the same directory as your training script to install other dependencies at runtime.
-A ``requirements.txt`` file is a text file that contains a list of items that are installed by using ``pip install``. You can also specify the version of an item to install.
+If there are other packages you want to use with your script, you can include a ``requirements.txt`` file in the same directory as your training script to install other dependencies at runtime. Both ``requirements.txt`` and your training script should be put in the same folder. You must specify this folder in ``source_dir`` argument when creating a PyTorch estimator. A ``requirements.txt`` file is a text file that contains a list of items that are installed by using ``pip install``. You can also specify the version of an item to install.
 For information about the format of a ``requirements.txt`` file, see `Requirements Files <https://pip.pypa.io/en/stable/user_guide/#requirements-files>`__ in the pip documentation.
 
 
@@ -524,7 +523,7 @@ The PyTorchModel constructor takes the following arguments:
    which should be executed as the entry point to model hosting.
 -  ``source_dir:`` Optional. Path (absolute or relative) to a
    directory with any other training source code dependencies including
-   tne entry point file. Structure within this directory will be
+   the entry point file. Structure within this directory will be
    preserved when training on SageMaker.
 -  ``enable_cloudwatch_metrics:`` Optional. If true, training
    and hosting containers will generate Cloudwatch metrics under the
@@ -655,7 +654,7 @@ The following are optional arguments. When you create a ``PyTorch`` object, you 
    and where to find the source code to build your custom image.
 
 ***********************************
-SageMaker PyTorch Docker Containers 
+SageMaker PyTorch Docker Containers
 ***********************************
 
 For information about SageMaker PyTorch containers, see  `the SageMaker PyTorch containers repository <https://github.com/aws/sagemaker-pytorch-container>`_.

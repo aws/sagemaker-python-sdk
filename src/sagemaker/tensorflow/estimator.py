@@ -1,4 +1,4 @@
-# Copyright 2017-2019 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright 2017-2020 Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -25,7 +25,7 @@ import time
 from sagemaker.debugger import DebuggerHookConfig
 from sagemaker.estimator import Framework
 import sagemaker.fw_utils as fw
-from sagemaker.tensorflow.defaults import TF_VERSION
+from sagemaker.tensorflow.defaults import TF_VERSION, LATEST_VERSION
 from sagemaker.tensorflow.model import TensorFlowModel
 from sagemaker.tensorflow.serving import Model
 from sagemaker.transformer import Transformer
@@ -197,8 +197,7 @@ class TensorFlow(Framework):
 
     __framework_name__ = "tensorflow"
 
-    LATEST_VERSION = "2.0.0"
-    """The latest version of TensorFlow included in the SageMaker pre-built Docker images."""
+    LATEST_VERSION = LATEST_VERSION
 
     _LATEST_1X_VERSION = "1.15.0"
 

@@ -1,4 +1,4 @@
-# Copyright 2018-2019 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright 2018-2020 Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -22,7 +22,7 @@ from sagemaker.fw_utils import (
     empty_framework_version_warning,
     python_deprecation_warning,
 )
-from sagemaker.chainer.defaults import CHAINER_VERSION
+from sagemaker.chainer.defaults import CHAINER_VERSION, LATEST_VERSION
 from sagemaker.chainer.model import ChainerModel
 from sagemaker.vpc_utils import VPC_CONFIG_DEFAULT
 
@@ -40,8 +40,7 @@ class Chainer(Framework):
     _process_slots_per_host = "sagemaker_process_slots_per_host"
     _additional_mpi_options = "sagemaker_additional_mpi_options"
 
-    LATEST_VERSION = "5.0.0"
-    """The latest version of Chainer included in the SageMaker pre-built Docker images."""
+    LATEST_VERSION = LATEST_VERSION
 
     def __init__(
         self,

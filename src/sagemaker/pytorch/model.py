@@ -1,4 +1,4 @@
-# Copyright 2018-2019 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright 2018-2020 Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -17,9 +17,14 @@ import logging
 import pkg_resources
 
 import sagemaker
-from sagemaker.fw_utils import create_image_uri, model_code_key_prefix, python_deprecation_warning
+from sagemaker.fw_utils import (
+    create_image_uri,
+    model_code_key_prefix,
+    python_deprecation_warning,
+    empty_framework_version_warning,
+)
 from sagemaker.model import FrameworkModel, MODEL_SERVER_WORKERS_PARAM_NAME
-from sagemaker.pytorch.defaults import PYTORCH_VERSION, PYTHON_VERSION
+from sagemaker.pytorch.defaults import PYTORCH_VERSION, PYTHON_VERSION, LATEST_VERSION
 from sagemaker.predictor import RealTimePredictor, npy_serializer, numpy_deserializer
 
 logger = logging.getLogger("sagemaker")
@@ -63,7 +68,7 @@ class PyTorchModel(FrameworkModel):
         entry_point,
         image=None,
         py_version=PYTHON_VERSION,
-        framework_version=PYTORCH_VERSION,
+        framework_version=None,
         predictor_cls=PyTorchPredictor,
         model_server_workers=None,
         **kwargs
@@ -110,9 +115,11 @@ class PyTorchModel(FrameworkModel):
 
         if py_version == "py2":
             logger.warning(python_deprecation_warning(self.__framework_name__))
+        if framework_version is None:
+            logger.warning(empty_framework_version_warning(PYTORCH_VERSION, LATEST_VERSION))
 
         self.py_version = py_version
-        self.framework_version = framework_version
+        self.framework_version = framework_version or PYTORCH_VERSION
         self.model_server_workers = model_server_workers
 
     def prepare_container_def(self, instance_type, accelerator_type=None):
