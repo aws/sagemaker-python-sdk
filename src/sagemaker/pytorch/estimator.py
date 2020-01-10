@@ -23,12 +23,7 @@ from sagemaker.fw_utils import (
     python_deprecation_warning,
     is_version_equal_or_higher,
 )
-from sagemaker.pytorch.defaults import (
-    PYTORCH_VERSION,
-    PYTHON_VERSION,
-    LATEST_VERSION,
-    LATEST_PY2_VERSION,
-)
+from sagemaker.pytorch import defaults
 from sagemaker.pytorch.model import PyTorchModel
 from sagemaker.vpc_utils import VPC_CONFIG_DEFAULT
 
@@ -40,14 +35,14 @@ class PyTorch(Framework):
 
     __framework_name__ = "pytorch"
 
-    LATEST_VERSION = LATEST_VERSION
+    LATEST_VERSION = defaults.LATEST_VERSION
 
     def __init__(
         self,
         entry_point,
         source_dir=None,
         hyperparameters=None,
-        py_version=PYTHON_VERSION,
+        py_version=defaults.PYTHON_VERSION,
         framework_version=None,
         image_name=None,
         **kwargs
@@ -108,8 +103,10 @@ class PyTorch(Framework):
             :class:`~sagemaker.estimator.EstimatorBase`.
         """
         if framework_version is None:
-            logger.warning(empty_framework_version_warning(PYTORCH_VERSION, self.LATEST_VERSION))
-        self.framework_version = framework_version or PYTORCH_VERSION
+            logger.warning(
+                empty_framework_version_warning(defaults.PYTORCH_VERSION, self.LATEST_VERSION)
+            )
+        self.framework_version = framework_version or defaults.PYTORCH_VERSION
 
         if "enable_sagemaker_metrics" not in kwargs:
             # enable sagemaker metrics for PT v1.3 or greater:
@@ -121,7 +118,9 @@ class PyTorch(Framework):
         )
 
         if py_version == "py2":
-            logger.warning(python_deprecation_warning(self.__framework_name__, LATEST_PY2_VERSION))
+            logger.warning(
+                python_deprecation_warning(self.__framework_name__, defaults.LATEST_PY2_VERSION)
+            )
 
         self.py_version = py_version
 

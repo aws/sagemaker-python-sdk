@@ -1018,9 +1018,20 @@ def test_script_mode_deprecated_args(sagemaker_session):
 
 def test_py2_version_deprecated(sagemaker_session):
     with pytest.raises(AttributeError) as e:
-        _build_tf(sagemaker_session=sagemaker_session, framework_version="2.0.1", py_version="py2")
+        TensorFlow(
+            entry_point=SCRIPT_PATH,
+            framework_version="2.0.1",
+            role=ROLE,
+            sagemaker_session=sagemaker_session,
+            train_instance_count=INSTANCE_COUNT,
+            train_instance_type=INSTANCE_TYPE,
+            py_version="py2",
+        )
 
-    msg = "Python 2 containers are only available before January 1st, 2020. Please use a Python 3 container."
+    msg = (
+        "Python 2 containers are only available with 2.0.0 and lower versions. "
+        "Please use a Python 3 container."
+    )
     assert msg in str(e.value)
 
 

@@ -31,7 +31,7 @@ from sagemaker.estimator import _TrainingJob
 
 from sagemaker.vpc_utils import VPC_CONFIG_DEFAULT
 
-from sagemaker.xgboost.defaults import XGBOOST_NAME, XGBOOST_SUPPORTED_VERSIONS
+from sagemaker.xgboost import defaults
 from sagemaker.xgboost.model import XGBoostModel
 
 logger = logging.getLogger("sagemaker")
@@ -47,7 +47,7 @@ class XGBoost(Framework):
     """Handle end-to-end training and deployment of XGBoost booster training or training using
     customer provided XGBoost entry point script."""
 
-    __framework_name__ = XGBOOST_NAME
+    __framework_name__ = defaults.XGBOOST_NAME
 
     def __init__(
         self,
@@ -114,12 +114,12 @@ class XGBoost(Framework):
             raise AttributeError("XGBoost container does not support Python 2, please use Python 3")
         self.py_version = py_version
 
-        if framework_version in XGBOOST_SUPPORTED_VERSIONS:
+        if framework_version in defaults.XGBOOST_SUPPORTED_VERSIONS:
             self.framework_version = framework_version
         else:
             raise ValueError(
                 get_unsupported_framework_version_error(
-                    self.__framework_name__, framework_version, XGBOOST_SUPPORTED_VERSIONS
+                    self.__framework_name__, framework_version, defaults.XGBOOST_SUPPORTED_VERSIONS
                 )
             )
 

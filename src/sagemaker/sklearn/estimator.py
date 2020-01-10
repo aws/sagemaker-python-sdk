@@ -22,7 +22,7 @@ from sagemaker.fw_utils import (
     empty_framework_version_warning,
     python_deprecation_warning,
 )
-from sagemaker.sklearn.defaults import SKLEARN_VERSION, SKLEARN_NAME, LATEST_PY2_VERSION
+from sagemaker.sklearn import defaults
 from sagemaker.sklearn.model import SKLearnModel
 from sagemaker.vpc_utils import VPC_CONFIG_DEFAULT
 
@@ -32,12 +32,12 @@ logger = logging.getLogger("sagemaker")
 class SKLearn(Framework):
     """Handle end-to-end training and deployment of custom Scikit-learn code."""
 
-    __framework_name__ = SKLEARN_NAME
+    __framework_name__ = defaults.SKLEARN_NAME
 
     def __init__(
         self,
         entry_point,
-        framework_version=SKLEARN_VERSION,
+        framework_version=defaults.SKLEARN_VERSION,
         source_dir=None,
         hyperparameters=None,
         py_version="py3",
@@ -119,13 +119,17 @@ class SKLearn(Framework):
         )
 
         if py_version == "py2":
-            logger.warning(python_deprecation_warning(self.__framework_name__, LATEST_PY2_VERSION))
+            logger.warning(
+                python_deprecation_warning(self.__framework_name__, defaults.LATEST_PY2_VERSION)
+            )
 
         self.py_version = py_version
 
         if framework_version is None:
-            logger.warning(empty_framework_version_warning(SKLEARN_VERSION, SKLEARN_VERSION))
-        self.framework_version = framework_version or SKLEARN_VERSION
+            logger.warning(
+                empty_framework_version_warning(defaults.SKLEARN_VERSION, defaults.SKLEARN_VERSION)
+            )
+        self.framework_version = framework_version or defaults.SKLEARN_VERSION
 
         if image_name is None:
             image_tag = "{}-{}-{}".format(framework_version, "cpu", py_version)
