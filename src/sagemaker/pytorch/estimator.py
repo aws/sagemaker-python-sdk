@@ -23,7 +23,7 @@ from sagemaker.fw_utils import (
     python_deprecation_warning,
     is_version_equal_or_higher,
 )
-from sagemaker.pytorch.defaults import PYTORCH_VERSION, PYTHON_VERSION
+from sagemaker.pytorch.defaults import PYTORCH_VERSION, PYTHON_VERSION, LATEST_VERSION
 from sagemaker.pytorch.model import PyTorchModel
 from sagemaker.vpc_utils import VPC_CONFIG_DEFAULT
 
@@ -35,8 +35,7 @@ class PyTorch(Framework):
 
     __framework_name__ = "pytorch"
 
-    LATEST_VERSION = "1.3.1"
-    """The latest version of PyTorch included in the SageMaker pre-built Docker images."""
+    LATEST_VERSION = LATEST_VERSION
 
     def __init__(
         self,

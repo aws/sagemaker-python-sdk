@@ -532,6 +532,20 @@ def test_empty_framework_version(warning, sagemaker_session):
     warning.assert_called_with(defaults.PYTORCH_VERSION, estimator.LATEST_VERSION)
 
 
+@patch("sagemaker.pytorch.model.empty_framework_version_warning")
+def test_model_empty_framework_version(warning, sagemaker_session):
+    model = PyTorchModel(
+        MODEL_DATA,
+        role=ROLE,
+        entry_point=SCRIPT_PATH,
+        sagemaker_session=sagemaker_session,
+        framework_version=None,
+    )
+
+    assert model.framework_version == defaults.PYTORCH_VERSION
+    warning.assert_called_with(defaults.PYTORCH_VERSION, defaults.LATEST_VERSION)
+
+
 def test_pt_enable_sm_metrics(sagemaker_session):
     pytorch = _pytorch_estimator(sagemaker_session, enable_sagemaker_metrics=True)
     assert pytorch.enable_sagemaker_metrics
