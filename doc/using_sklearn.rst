@@ -114,10 +114,11 @@ When running your training script on SageMaker, it has access to some pre-instal
 For more information on the runtime environment, including specific package versions, see `SageMaker Scikit-learn Docker Container <https://github.com/aws/sagemaker-scikit-learn-container>`__.
 
 If there are other packages you want to use with your script, you can include a ``requirements.txt`` file in the same directory as your training script to install other dependencies at runtime.
-A ``requirements.txt`` file is a text file that contains a list of items that are installed by using ``pip install``. You can also specify the version of an item to install.
+Both ``requirements.txt`` and your training script should be put in the same folder.
+You must specify this folder in ``source_dir`` argument when creating a Scikit-learn estimator.
+A ``requirements.txt`` file is a text file that contains a list of items that are installed by using ``pip install``.
+You can also specify the version of an item to install.
 For information about the format of a ``requirements.txt`` file, see `Requirements Files <https://pip.pypa.io/en/stable/user_guide/#requirements-files>`__ in the pip documentation.
-
-
 
 Create an Estimator
 ===================

@@ -1048,6 +1048,15 @@ For more information, see `SageMaker Model Monitoring`_.
 
 .. _SageMaker Model Monitoring: https://github.com/aws/sagemaker-python-sdk/blob/master/doc/amazon_sagemaker_model_monitoring.rst
 
+******************
+SageMaker Debugger
+******************
+You can use Amazon SageMaker Debugger to automatically detect anomalies while training your machine learning models.
+
+For more information, see `SageMaker Debugger`_.
+
+.. _SageMaker Debugger: https://github.com/aws/sagemaker-python-sdk/blob/master/doc/amazon_sagemaker_debugger.rst
+
 ***
 FAQ
 ***
