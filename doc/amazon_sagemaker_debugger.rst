@@ -141,7 +141,7 @@ To apply properties across all collections, use ``hook_parameters`` within the `
 
 In the above sample code, the ``save_interval`` of ``10`` will be applied for storing both collections.
 
-Note that the ``save_interval`` value set in the ``collection_parameters`` for a specific parameter will override a value in the ``hook_parameters``. For example, in the above sample code, if ``collection_config_2`` has a ``save_interval`` value set to ``20``, then the tensors for that collection would be saved with step interval ``20`` while those for ``collection_config_1`` would still be saved with a step interval of ``10``.
+Note that the ``save_interval`` value set in the ``collection_parameters`` will override the value for ``save_interval`` in the ``hook_parameters``. For example, in the above sample code, if ``collection_config_2`` had a ``save_interval`` value set to ``20``, then the tensors for that collection would be saved with step interval ``20`` while those for ``collection_config_1`` would still be saved with a step interval of ``10``. This holds true for any parameters common in ``hook_parameters`` and ``parameters`` in ``CollectionConfig``.
 
 The possible values of ``hook_parameters`` in ``DebuggerHookConfig`` can be viewed at `SageMaker Debugger Hook <https://github.com/awslabs/sagemaker-debugger/blob/master/docs/api.md#creating-a-hook>`__.
 
