@@ -65,6 +65,7 @@ Table of Contents
 21. `SageMaker Workflow <#sagemaker-workflow>`__
 22. `SageMaker Autopilot <#sagemaker-autopilot>`__
 23. `Model Monitoring <#amazon-sagemaker-model-monitoring>`__
+24. `SageMaker Debugger <#amazon-sagemaker-debugger>`__
 
 
 Installing the SageMaker Python SDK
@@ -366,3 +367,13 @@ You can use Amazon SageMaker Model Monitoring to automatically detect concept dr
 For more information, see `Amazon SageMaker Model Monitoring`_.
 
 .. _Amazon SageMaker Model Monitoring: https://sagemaker.readthedocs.io/en/stable/amazon_sagemaker_model_monitoring.html
+
+Amazon SageMaker Debugger
+-------------------------
+
+You can use Amazon SageMaker Debugger to automatically detect anomalies while training your machine learning models.
+
+For more information, see `Amazon SageMaker Debugger`_.
+
+.. _Amazon SageMaker Debugger: https://sagemaker.readthedocs.io/en/stable/amazon_sagemaker_debugger.html
+

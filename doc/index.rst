@@ -208,3 +208,13 @@ You can use Amazon SageMaker Model Monitoring to automatically detect concept dr
     :maxdepth: 2
 
     amazon_sagemaker_model_monitoring
+
+*************************
+Amazon SageMaker Debugger
+*************************
+You can use Amazon SageMaker Debugger to automatically detect anomalies while training your machine learning models.
+
+.. toctree::
+    :maxdepth: 2
+
+    amazon_sagemaker_debugger
