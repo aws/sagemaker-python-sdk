@@ -66,7 +66,7 @@ Specifying configurations for collections
 Collection Name
 ~~~~~~~~~~~~~~~
 
-``name`` in ``CollectionConfig`` is used to specify the name of the tensor collection you wish to emit and store. This name is used by SageMaker Debugger to refer to all the tensors in this collection. You can supply any valid string for the collection name. In addition, there are "built-in" collections, whose names are recognized by the hook, that you can emit simply by specifying their name. Examples of these collections are "gradients", "weights", "biases" etc. A full list is available at `SageMaker Debugger Built-in Collections <https://github.com/awslabs/sagemaker-debugger/blob/master/docs/api.md#built-in-collections>`__.
+``name`` in ``CollectionConfig`` is used to specify the name of the tensor collection you wish to emit and store. This name is used by SageMaker Debugger to refer to all the tensors in this collection. You can supply any valid string for the collection name. In addition, there are "built-in" collections, whose names are recognized by the hook, that you can emit simply by specifying their names. Examples of these collections are "gradients", "weights", "biases", etc. A full list is available at `SageMaker Debugger Built-in Collections <https://github.com/awslabs/sagemaker-debugger/blob/master/docs/api.md#built-in-collections>`__.
 
 To emit and store one of the built-in collections:
 
@@ -141,7 +141,7 @@ To apply properties across all collections, use ``hook_parameters`` within the `
 
 In the above sample code, the ``save_interval`` of ``10`` will be applied for storing both collections.
 
-Note that the ``save_interval`` value set in the ``collection_parameters`` for a specific parameter will override a value in the ``hook_parameters``. For example, in the above sample code, if ``collection_config_2`` had a ``save_interval`` value set to ``20``, then the tensors for that collection would be saved with step interval ``20`` while those for ``collection_config_1`` would still be saved with a step interval of ``10``.
+Note that the ``save_interval`` value set in the ``collection_parameters`` for a specific parameter will override a value in the ``hook_parameters``. For example, in the above sample code, if ``collection_config_2`` has a ``save_interval`` value set to ``20``, then the tensors for that collection would be saved with step interval ``20`` while those for ``collection_config_1`` would still be saved with a step interval of ``10``.
 
 The possible values of ``hook_parameters`` in ``DebuggerHookConfig`` can be viewed at `SageMaker Debugger Hook <https://github.com/awslabs/sagemaker-debugger/blob/master/docs/api.md#creating-a-hook>`__.
 
@@ -154,7 +154,7 @@ To create a training job that initializes the debugging hook with the value of t
 
     s3://{destination-bucket-prefix}/{training-job-name}/debug-output/
 
-The path is derived from the value of ``s3_output_path``, and not used verbatim, to ensure that artifacts from different training jobs are placed in different Amazon S3 paths. To enable correct analysis of different training jobs, it is essential to keep the debug artifacts from these jobs separate.
+The path is derived from the value of ``s3_output_path``, and not used verbatim, to ensure that artifacts from different training jobs are placed in different Amazon S3 paths. To enable correct analyses of different training jobs, it is essential to keep the debug artifacts from these jobs separate.
 
 To access the above Amazon S3 path through the estimator object, you can use the following command:
 
@@ -180,14 +180,14 @@ Continuous analyses through rules
 
 In addition to collecting the debugging data, Amazon SageMaker Debugger provides the capability for you to analyze it in a streaming fashion using "rules". A SageMaker Debugger "rule" is a piece of code which encapsulates the logic for analyzing debugging data.
 
-SageMaker Debugger provides a set of built-in rules curated by data scientists and engineers at Amazon to identify common problems while training machine learning models. There is also support provided to use custom rule source codes for evaluation. In the following sections, you'll learn how to use both the built-in and custom rules while training your model.
+SageMaker Debugger provides a set of built-in rules curated by data scientists and engineers at Amazon to identify common problems while training machine learning models. There is also support for using custom rule source codes for evaluation. In the following sections, you'll learn how to use both the built-in and custom rules while training your model.
 
 Relationship between debugger hook and rules
 --------------------------------------------
 
 Using SageMaker Debugger is, broadly, a two-pronged approach. On one hand you have the production of debugging data, which is done through the Debugger Hook, and on the other hand you have the consumption of this data, which can be with rules (for continuous analyses) or by using the SageMaker Debugger SDK (for interactive analyses).
 
-The production and consumption of data are defined independently. For example, you could configure the debugging hook to store only the collection "gradients" and then configure the rules to operate on some other collection, say, "weights". While this is possible, it's quit useless as it gives you no meaningful insight into the training process. This is because the rule will do nothing in this example scenerio since it will wait for the tensors in the collection "gradients" which are never be emitted.
+The production and consumption of data are defined independently. For example, you could configure the debugging hook to store only the collection "gradients" and then configure the rules to operate on some other collection, say, "weights". While this is possible, it's quite useless as it gives you no meaningful insight into the training process. This is because the rule will do nothing in this example scenario since it will wait for the tensors in the collection "gradients" which are never be emitted.
 
 For more useful and efficient debugging, configure your debugging hook to produce and store the debugging data that you care about and employ rules that operate on that particular data. This way, you ensure that the Debugger is utilized to its maximum potential in detecting anomalies. In this sense, there is a loose binding between the hook and the rules.
 
@@ -369,7 +369,7 @@ Note that having the TensorBoard data emitted from the hook in addition to the t
 Interactive analysis using SageMaker Debugger SDK and visualizations
 ====================================================================
 
-`Amazon SageMaker Debugger SDK <https://github.com/awslabs/sagemaker-debugger>`__ also allows you to do interactive analyses on the debugging data produced from a training job run and to render visualizations of it. After calling ``fit()`` on the estimator, you can use the SDK to load the saved data in a SageMaker Debugger ``trial`` and do an analyses on the data:
+`Amazon SageMaker Debugger SDK <https://github.com/awslabs/sagemaker-debugger>`__ also allows you to do interactive analyses on the debugging data produced from a training job run and to render visualizations of it. After calling ``fit()`` on the estimator, you can use the SDK to load the saved data in a SageMaker Debugger ``trial`` and do an analysis on the data:
 
 .. code:: python
 
@@ -387,7 +387,7 @@ Default behavior and opting out
 
 For ``TensorFlow``, ``Keras``, ``MXNet``, ``PyTorch`` and ``XGBoost`` estimators, the ``DebuggerHookConfig`` is always initialized regardless of specification while initializing the estimator. This is done to minimize code changes needed to get useful debugging information.
 
-To disable the hook initialization, you can do so by specifying ``False`` for value of ``debugger_hook_config`` in your framework estimator's initialization.
+To disable the hook initialization, you can do so by specifying ``False`` for value of ``debugger_hook_config`` in your framework estimator's initialization:
 
 .. code:: python
 
