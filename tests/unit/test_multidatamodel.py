@@ -295,7 +295,9 @@ def test_deploy_model_update(sagemaker_session):
         instance_type=INSTANCE_TYPE,
         accelerator_type=None,
     )
-    sagemaker_session.update_endpoint.assert_called_with(MULTI_MODEL_ENDPOINT_NAME, config_name)
+    sagemaker_session.update_endpoint.assert_called_with(
+        MULTI_MODEL_ENDPOINT_NAME, config_name, wait=True
+    )
     sagemaker_session.create_endpoint.assert_not_called()
 
 

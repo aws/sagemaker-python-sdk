@@ -1785,6 +1785,18 @@ def test_update_endpoint_succeed(sagemaker_session):
     assert returned_endpoint_name == endpoint_name
 
 
+def test_update_endpoint_no_wait(sagemaker_session):
+    sagemaker_session.sagemaker_client.describe_endpoint = Mock(
+        return_value={"EndpointStatus": "Updating"}
+    )
+    endpoint_name = "some-endpoint"
+    endpoint_config = "some-endpoint-config"
+    returned_endpoint_name = sagemaker_session.update_endpoint(
+        endpoint_name, endpoint_config, wait=False
+    )
+    assert returned_endpoint_name == endpoint_name
+
+
 def test_update_endpoint_non_existing_endpoint(sagemaker_session):
     error = ClientError(
         {"Error": {"Code": "ValidationException", "Message": "Could not find entity"}}, "foo"

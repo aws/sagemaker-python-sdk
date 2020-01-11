@@ -193,7 +193,7 @@ def test_deploy_update_endpoint(tfo, time, sagemaker_session):
         initial_instance_count=INSTANCE_COUNT,
         instance_type=INSTANCE_TYPE,
     )
-    sagemaker_session.update_endpoint.assert_called_with(endpoint_name, config_name)
+    sagemaker_session.update_endpoint.assert_called_with(endpoint_name, config_name, wait=True)
     sagemaker_session.create_endpoint.assert_not_called()
 
 
