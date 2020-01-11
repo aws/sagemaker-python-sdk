@@ -243,7 +243,9 @@ class MultiDataModel(Model):
                 kms_key=kms_key,
                 data_capture_config_dict=data_capture_config_dict,
             )
-            self.sagemaker_session.update_endpoint(self.endpoint_name, endpoint_config_name)
+            self.sagemaker_session.update_endpoint(
+                self.endpoint_name, endpoint_config_name, wait=wait
+            )
         else:
             self.sagemaker_session.endpoint_from_production_variants(
                 name=self.endpoint_name,
