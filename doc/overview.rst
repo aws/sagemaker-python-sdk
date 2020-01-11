@@ -8,6 +8,8 @@ SageMaker Python SDK provides several high-level abstractions for working with A
 - **Models**: Encapsulate built ML models.
 - **Predictors**: Provide real-time inference and transformation using Python data-types against a SageMaker endpoint.
 - **Session**: Provides a collection of methods for working with SageMaker resources.
+- **Transformers**: Encapsulate batch transform jobs for inference on SageMaker
+- **Processors**: Encapsulate running processing jobs for data processing on SageMaker
 
 ``Estimator`` and ``Model`` implementations for MXNet, TensorFlow, Chainer, PyTorch, scikit-learn, Amazon SageMaker built-in algorithms, Reinforcement Learning,  are included.
 There's also an ``Estimator`` that runs SageMaker compatible custom Docker containers, enabling you to run your own ML algorithms by using the SageMaker Python SDK.
@@ -1056,6 +1058,17 @@ You can use Amazon SageMaker Debugger to automatically detect anomalies while tr
 For more information, see `SageMaker Debugger`_.
 
 .. _SageMaker Debugger: https://github.com/aws/sagemaker-python-sdk/blob/master/doc/amazon_sagemaker_debugger.rst
+
+********************
+SageMaker Processing
+********************
+You can use Amazon SageMaker Processing with "Processors" to perform data processing tasks such as data pre- and post-processing, feature engineering, data validation, and model evaluation
+
+.. toctree::
+    :maxdepth: 2
+
+    amazon_sagemaker_processing
+
 
 ***
 FAQ

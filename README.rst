@@ -66,6 +66,7 @@ Table of Contents
 22. `SageMaker Autopilot <#sagemaker-autopilot>`__
 23. `Model Monitoring <#amazon-sagemaker-model-monitoring>`__
 24. `SageMaker Debugger <#amazon-sagemaker-debugger>`__
+25. `SageMaker Processing <#amazon-sagemaker-processing>`__
 
 
 Installing the SageMaker Python SDK
@@ -377,3 +378,13 @@ For more information, see `Amazon SageMaker Debugger`_.
 
 .. _Amazon SageMaker Debugger: https://sagemaker.readthedocs.io/en/stable/amazon_sagemaker_debugger.html
 
+
+Amazon SageMaker Processing
+---------------------------------
+
+You can use Amazon SageMaker Processing to perform data processing tasks such as data pre- and post-processing, feature engineering, data validation, and model evaluation
+
+
+For more information, see `Amazon SageMaker Processing`_.
+
+.. _Amazon SageMaker Processing: https://sagemaker.readthedocs.io/en/stable/amazon_sagemaker_processing.html
