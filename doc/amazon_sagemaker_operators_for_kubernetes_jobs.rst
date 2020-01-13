@@ -29,8 +29,13 @@ Download the sample YAML file for training using the following command:
 
     wget https://github.com/aws/amazon-sagemaker-operator-for-k8s/blob/master/samples/xgboost-mnist-trainingjob.yaml
 
-Edit the \ ``xgboost-mnist-trainingjob.yaml`` file to replace the ``roleArn`` parameter with your \ ``<sagemaker-execution-role>``, and \ ``outputPath`` with your S3 bucket that the Amazon SageMaker
-execution role has write access to. Apply the YAML file using the
+Edit the ``xgboost-mnist-trainingjob.yaml`` file to replace the ``roleArn`` parameter with your ``<sagemaker-execution-role>``, and ``outputPath`` with your S3 bucket that the Amazon SageMaker
+execution role has write access to. The ``roleArn`` must have permissions so that Amazon SageMaker
+can access Amazon S3, Amazon CloudWatch, and other services on your 
+behalf. For more information on creating an Amazon SageMaker
+ExecutionRole, see `Amazon SageMaker
+Roles <https://docs.aws.amazon.com/sagemaker/latest/dg/sagemaker-roles.html#sagemaker-roles-createtrainingjob-perms>`__.
+Apply the YAML file using the
 following command:
 
 ::
