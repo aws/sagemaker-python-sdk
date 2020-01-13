@@ -3,9 +3,12 @@ from __future__ import absolute_import
 import uuid
 import time
 
+import pytest
+
 from sagemaker.analytics import ExperimentAnalytics
 
 
+@pytest.mark.canary_quick
 def test_experiment_analytics(sagemaker_session):
     sm = sagemaker_session.sagemaker_client
 
