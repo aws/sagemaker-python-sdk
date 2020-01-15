@@ -1,5 +1,15 @@
 # Changelog
 
+## v1.50.3 (2020-01-15)
+
+### Bug fixes and other changes
+
+ * ignore private Automatic Model Tuning hyperparameter when attaching AlgorithmEstimator
+
+### Documentation changes
+
+ * add Debugger API docs
+
 ## v1.50.2 (2020-01-14)
 
 ### Bug fixes and other changes
