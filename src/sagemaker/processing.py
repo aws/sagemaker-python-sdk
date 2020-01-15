@@ -74,7 +74,7 @@ class Processor(object):
             base_job_name (str): Prefix for processing job name. If not specified,
                 the processor generates a default job name, based on the
                 processing image name and current timestamp.
-            sagemaker_session (:class:`~sagemaker.session.Session)`:
+            sagemaker_session (:class:`~sagemaker.session.Session`):
                 Session object which manages interactions with Amazon SageMaker and
                 any other AWS services needed. If not specified, the processor creates
                 one using the default AWS configuration chain.
@@ -315,7 +315,7 @@ class ScriptProcessor(Processor):
             base_job_name (str): Prefix for processing name. If not specified,
                 the processor generates a default job name, based on the
                 processing image name and current timestamp.
-            sagemaker_session (:class:`~sagemaker.session.Session)`:
+            sagemaker_session (:class:`~sagemaker.session.Session`):
                 Session object which manages interactions with Amazon SageMaker and
                 any other AWS services needed. If not specified, the processor creates
                 one using the default AWS configuration chain.
@@ -525,7 +525,7 @@ class ProcessingJob(_Job):
         """Initializes a Processing job.
 
         Args:
-            sagemaker_session (:class:`~sagemaker.session.Session)`:
+            sagemaker_session (:class:`~sagemaker.session.Session`):
                 Session object which manages interactions with Amazon SageMaker and
                 any other AWS services needed. If not specified, the processor creates
                 one using the default AWS configuration chain.
@@ -635,7 +635,7 @@ class ProcessingJob(_Job):
 
         Args:
             processing_job_name (str): Name of the processing job.
-            sagemaker_session (:class:`~sagemaker.session.Session)`:
+            sagemaker_session (:class:`~sagemaker.session.Session`):
                 Session object which manages interactions with Amazon SageMaker and
                 any other AWS services needed. If not specified, the processor creates
                 one using the default AWS configuration chain.
@@ -683,7 +683,7 @@ class ProcessingJob(_Job):
 
         Args:
             processing_job_arn (str): ARN of the processing job.
-            sagemaker_session (:class:`~sagemaker.session.Session)`:
+            sagemaker_session (:class:`~sagemaker.session.Session`):
                 Session object which manages interactions with Amazon SageMaker and
                 any other AWS services needed. If not specified, the processor creates
                 one using the default AWS configuration chain.
