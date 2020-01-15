@@ -20,14 +20,13 @@ A clear and concise description of what you expected to happen.
 If applicable, add screenshots or logs to help explain your problem.
 
 **System information**
-A description of your system.
-- Include the version of SageMaker Inference Toolkit you are using.
-- If you are using a [prebuilt Amazon SageMaker Docker image](https://docs.aws.amazon.com/sagemaker/latest/dg/pre-built-containers-frameworks-deep-learning.html), provide the URL.
-- If you are using a custom Docker image, provide:
-    - framework name (eg. PyTorch)
-    - framework version
-    - Python version
-    - processing unit type (ie. CPU or GPU)
+A description of your system. Please provide:
+- **SageMaker Python SDK version**:
+- **Framework name (eg. PyTorch) or algorithm (eg. KMeans)**:
+- **Framework version**:
+- **Python version**:
+- **CPU or GPU**:
+- **Custom Docker image (Y/N)**:
 
 **Additional context**
 Add any other context about the problem here.
