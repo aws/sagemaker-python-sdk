@@ -1,4 +1,4 @@
-# Copyright 2017-2018 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright 2017-2020 Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -12,5 +12,4 @@
 # language governing permissions and limitations under the License.
 from __future__ import absolute_import
 
-print("This is definitely code which does machine learning stuff")
-print("and not just a random file I threw together for unit testing.")
+print("This is the print output from dummy_script.py.")

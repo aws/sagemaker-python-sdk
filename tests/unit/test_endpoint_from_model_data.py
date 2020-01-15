@@ -1,4 +1,4 @@
-# Copyright 2017-2018 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright 2017-2020 Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -81,6 +81,7 @@ def test_all_defaults_no_existing_entities(name_from_image_mock, sagemaker_sessi
         initial_instance_count=INITIAL_INSTANCE_COUNT,
         instance_type=INSTANCE_TYPE,
         accelerator_type=None,
+        data_capture_config_dict=None,
     )
     sagemaker_session.create_endpoint.assert_called_once_with(
         endpoint_name=NAME_FROM_IMAGE, config_name=NAME_FROM_IMAGE, wait=False
@@ -127,6 +128,7 @@ def test_no_defaults_no_existing_entities(name_from_image_mock, sagemaker_sessio
         initial_instance_count=INITIAL_INSTANCE_COUNT,
         instance_type=INSTANCE_TYPE,
         accelerator_type=ACCELERATOR_TYPE,
+        data_capture_config_dict=None,
     )
     sagemaker_session.create_endpoint.assert_called_once_with(
         endpoint_name=ENDPOINT_NAME, config_name=ENDPOINT_NAME, wait=False

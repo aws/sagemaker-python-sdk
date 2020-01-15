@@ -1,4 +1,4 @@
-# Copyright 2017-2018 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright 2017-2020 Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -400,6 +400,30 @@ def test_predict_call_with_headers():
         "Body": data,
         "ContentType": DEFAULT_CONTENT_TYPE,
         "EndpointName": ENDPOINT,
+    }
+    call_args, kwargs = sagemaker_session.sagemaker_runtime_client.invoke_endpoint.call_args
+    assert kwargs == expected_request_args
+
+    assert result == RETURN_VALUE
+
+
+def test_multi_model_predict_call_with_headers():
+    sagemaker_session = empty_sagemaker_session()
+    predictor = RealTimePredictor(
+        ENDPOINT, sagemaker_session, content_type=DEFAULT_CONTENT_TYPE, accept=DEFAULT_CONTENT_TYPE
+    )
+
+    data = "untouched"
+    result = predictor.predict(data, target_model="model.tar.gz")
+
+    assert sagemaker_session.sagemaker_runtime_client.invoke_endpoint.called
+
+    expected_request_args = {
+        "Accept": DEFAULT_CONTENT_TYPE,
+        "Body": data,
+        "ContentType": DEFAULT_CONTENT_TYPE,
+        "EndpointName": ENDPOINT,
+        "TargetModel": "model.tar.gz",
     }
     call_args, kwargs = sagemaker_session.sagemaker_runtime_client.invoke_endpoint.call_args
     assert kwargs == expected_request_args

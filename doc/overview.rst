@@ -661,6 +661,12 @@ For example, the ``dataframe`` method gets a pandas dataframe summarizing the as
     # Look at summary of associated training jobs
     my_dataframe = my_tuner_analytics.dataframe()
 
+You can install all necessary for this feature dependencies using pip:
+
+::
+
+    pip install 'sagemaker[analytics]' --upgrade
+
 For more detailed examples of running hyperparameter tuning jobs, see:
 
 - `Using the TensorFlow estimator with hyperparameter tuning <https://github.com/awslabs/amazon-sagemaker-examples/blob/master/hyperparameter_tuning/tensorflow_mnist/hpo_tensorflow_mnist.ipynb>`__
@@ -717,6 +723,12 @@ Local Mode
 The SageMaker Python SDK supports local mode, which allows you to create estimators and deploy them to your local environment.
 This is a great way to test your deep learning scripts before running them in SageMaker's managed training or hosting environments.
 Local Mode is supported for frameworks images (TensorFlow, MXNet, Chainer, PyTorch, and Scikit-Learn) and images you supply yourself.
+
+You can install all necessary for this feature dependencies using pip:
+
+::
+
+    pip install 'sagemaker[local]' --upgrade
 
 We can take the example in  `Using Estimators <#using-estimators>`__ , and use either ``local`` or ``local_gpu`` as the instance type.
 
@@ -1026,6 +1038,24 @@ You can use Apache Airflow to author, schedule and monitor SageMaker workflow.
 For more information, see `SageMaker Workflow in Apache Airflow`_.
 
 .. _SageMaker Workflow in Apache Airflow: https://github.com/aws/sagemaker-python-sdk/blob/master/src/sagemaker/workflow/README.rst
+
+**************************
+SageMaker Model Monitoring
+**************************
+You can use Amazon SageMaker Model Monitoring to automatically detect concept drift by monitoring your machine learning models.
+
+For more information, see `SageMaker Model Monitoring`_.
+
+.. _SageMaker Model Monitoring: https://github.com/aws/sagemaker-python-sdk/blob/master/doc/amazon_sagemaker_model_monitoring.rst
+
+******************
+SageMaker Debugger
+******************
+You can use Amazon SageMaker Debugger to automatically detect anomalies while training your machine learning models.
+
+For more information, see `SageMaker Debugger`_.
+
+.. _SageMaker Debugger: https://github.com/aws/sagemaker-python-sdk/blob/master/doc/amazon_sagemaker_debugger.rst
 
 ***
 FAQ

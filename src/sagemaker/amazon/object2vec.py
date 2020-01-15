@@ -1,4 +1,4 @@
-# Copyright 2017-2018 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright 2017-2020 Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -255,6 +255,12 @@ class Object2Vec(AmazonAlgorithmEstimatorBase):
             enc1_freeze_pretrained_embedding (bool): Optional. Freeze pretrained
                 embedding weights
             **kwargs: base class keyword argument values.
+
+        .. tip::
+
+            You can find additional parameters for initializing this class at
+            :class:`~sagemaker.estimator.amazon_estimator.AmazonAlgorithmEstimatorBase` and
+            :class:`~sagemaker.estimator.EstimatorBase`.
         """
 
         super(Object2Vec, self).__init__(role, train_instance_count, train_instance_type, **kwargs)

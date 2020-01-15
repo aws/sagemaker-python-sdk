@@ -1,4 +1,4 @@
-# Copyright 2017-2018 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright 2017-2020 Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -117,8 +117,8 @@ def test_deploy(tfo, time, sagemaker_session):
     )
     model.deploy(instance_type=INSTANCE_TYPE, initial_instance_count=1)
     sagemaker_session.endpoint_from_production_variants.assert_called_with(
-        "mi-1-2017-10-10-14-14-15",
-        [
+        name="mi-1-2017-10-10-14-14-15",
+        production_variants=[
             {
                 "InitialVariantWeight": 1,
                 "ModelName": "mi-1-2017-10-10-14-14-15",
@@ -127,8 +127,9 @@ def test_deploy(tfo, time, sagemaker_session):
                 "VariantName": "AllTraffic",
             }
         ],
-        None,
+        tags=None,
         wait=True,
+        data_capture_config_dict=None,
     )
 
 
@@ -144,8 +145,8 @@ def test_deploy_endpoint_name(tfo, time, sagemaker_session):
     )
     model.deploy(instance_type=INSTANCE_TYPE, initial_instance_count=1)
     sagemaker_session.endpoint_from_production_variants.assert_called_with(
-        "mi-1-2017-10-10-14-14-15",
-        [
+        name="mi-1-2017-10-10-14-14-15",
+        production_variants=[
             {
                 "InitialVariantWeight": 1,
                 "ModelName": "mi-1-2017-10-10-14-14-15",
@@ -154,8 +155,9 @@ def test_deploy_endpoint_name(tfo, time, sagemaker_session):
                 "VariantName": "AllTraffic",
             }
         ],
-        None,
+        tags=None,
         wait=True,
+        data_capture_config_dict=None,
     )
 
 
@@ -183,6 +185,7 @@ def test_deploy_update_endpoint(tfo, time, sagemaker_session):
         initial_instance_count=INSTANCE_COUNT,
         instance_type=INSTANCE_TYPE,
         tags=None,
+        data_capture_config_dict=None,
     )
     config_name = sagemaker_session.create_endpoint_config(
         name=model.name,
@@ -190,7 +193,7 @@ def test_deploy_update_endpoint(tfo, time, sagemaker_session):
         initial_instance_count=INSTANCE_COUNT,
         instance_type=INSTANCE_TYPE,
     )
-    sagemaker_session.update_endpoint.assert_called_with(endpoint_name, config_name)
+    sagemaker_session.update_endpoint.assert_called_with(endpoint_name, config_name, wait=True)
     sagemaker_session.create_endpoint.assert_not_called()
 
 
@@ -262,8 +265,8 @@ def test_deploy_tags(tfo, time, sagemaker_session):
     tags = [{"ModelName": "TestModel"}]
     model.deploy(instance_type=INSTANCE_TYPE, initial_instance_count=1, tags=tags)
     sagemaker_session.endpoint_from_production_variants.assert_called_with(
-        "mi-1-2017-10-10-14-14-15",
-        [
+        name="mi-1-2017-10-10-14-14-15",
+        production_variants=[
             {
                 "InitialVariantWeight": 1,
                 "ModelName": "mi-1-2017-10-10-14-14-15",
@@ -272,8 +275,9 @@ def test_deploy_tags(tfo, time, sagemaker_session):
                 "VariantName": "AllTraffic",
             }
         ],
-        tags,
+        tags=tags,
         wait=True,
+        data_capture_config_dict=None,
     )
 
 

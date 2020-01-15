@@ -1,4 +1,4 @@
-# Copyright 2018-2019 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright 2018-2020 Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -21,8 +21,9 @@ from sagemaker.fw_utils import (
     framework_version_from_tag,
     empty_framework_version_warning,
     python_deprecation_warning,
+    is_version_equal_or_higher,
 )
-from sagemaker.pytorch.defaults import PYTORCH_VERSION, PYTHON_VERSION
+from sagemaker.pytorch.defaults import PYTORCH_VERSION, PYTHON_VERSION, LATEST_VERSION
 from sagemaker.pytorch.model import PyTorchModel
 from sagemaker.vpc_utils import VPC_CONFIG_DEFAULT
 
@@ -34,8 +35,7 @@ class PyTorch(Framework):
 
     __framework_name__ = "pytorch"
 
-    LATEST_VERSION = "1.2.0"
-    """The latest version of PyTorch included in the SageMaker pre-built Docker images."""
+    LATEST_VERSION = LATEST_VERSION
 
     def __init__(
         self,
@@ -88,15 +88,28 @@ class PyTorch(Framework):
                 for training and hosting, instead of selecting the appropriate
                 SageMaker official image based on framework_version and
                 py_version. It can be an ECR url or dockerhub image and tag.
+
                 Examples:
-                123.dkr.ecr.us-west-2.amazonaws.com/my-custom-image:1.0
-                custom-image:latest.
+                    * ``123412341234.dkr.ecr.us-west-2.amazonaws.com/my-custom-image:1.0``
+                    * ``custom-image:latest``
+
             **kwargs: Additional kwargs passed to the :class:`~sagemaker.estimator.Framework`
                 constructor.
+
+        .. tip::
+
+            You can find additional parameters for initializing this class at
+            :class:`~sagemaker.estimator.Framework` and
+            :class:`~sagemaker.estimator.EstimatorBase`.
         """
         if framework_version is None:
-            logger.warning(empty_framework_version_warning(PYTORCH_VERSION, PYTORCH_VERSION))
+            logger.warning(empty_framework_version_warning(PYTORCH_VERSION, self.LATEST_VERSION))
         self.framework_version = framework_version or PYTORCH_VERSION
+
+        if "enable_sagemaker_metrics" not in kwargs:
+            # enable sagemaker metrics for PT v1.3 or greater:
+            if is_version_equal_or_higher([1, 3], self.framework_version):
+                kwargs["enable_sagemaker_metrics"] = True
 
         super(PyTorch, self).__init__(
             entry_point, source_dir, hyperparameters, image_name=image_name, **kwargs
@@ -140,7 +153,8 @@ class PyTorch(Framework):
             dependencies (list[str]): A list of paths to directories (absolute or relative) with
                 any additional libraries that will be exported to the container.
                 If not specified, the dependencies from training are used.
-            **kwargs: Additional kwargs passed to the PyTorchModel constructor.
+            **kwargs: Additional kwargs passed to the :class:`~sagemaker.pytorch.model.PyTorchModel`
+                constructor.
 
         Returns:
             sagemaker.pytorch.model.PyTorchModel: A SageMaker ``PyTorchModel``

@@ -1,4 +1,4 @@
-# Copyright 2018 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright 2018-2020 Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -165,6 +165,12 @@ class Model(sagemaker.model.FrameworkModel):
                 SageMaker ``Session``. If specified, ``deploy()`` returns the
                 result of invoking this function on the created endpoint name.
             **kwargs: Keyword arguments passed to the ``Model`` initializer.
+
+        .. tip::
+
+            You can find additional parameters for initializing this class at
+            :class:`~sagemaker.model.FrameworkModel` and
+            :class:`~sagemaker.model.Model`.
         """
         super(Model, self).__init__(
             model_data=model_data,
@@ -187,6 +193,7 @@ class Model(sagemaker.model.FrameworkModel):
         tags=None,
         kms_key=None,
         wait=True,
+        data_capture_config=None,
     ):
 
         if accelerator_type and not self._eia_supported():
@@ -194,14 +201,15 @@ class Model(sagemaker.model.FrameworkModel):
 
             raise AttributeError(msg)
         return super(Model, self).deploy(
-            initial_instance_count,
-            instance_type,
-            accelerator_type,
-            endpoint_name,
-            update_endpoint,
-            tags,
-            kms_key,
-            wait,
+            initial_instance_count=initial_instance_count,
+            instance_type=instance_type,
+            accelerator_type=accelerator_type,
+            endpoint_name=endpoint_name,
+            update_endpoint=update_endpoint,
+            tags=tags,
+            kms_key=kms_key,
+            wait=wait,
+            data_capture_config=data_capture_config,
         )
 
     def _eia_supported(self):

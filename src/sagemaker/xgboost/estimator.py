@@ -1,4 +1,4 @@
-# Copyright 2018-2019 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright 2018-2020 Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -100,6 +100,12 @@ class XGBoost(Framework):
                     custom-image:latest.
             **kwargs: Additional kwargs passed to the
                 :class:`~sagemaker.estimator.Framework` constructor.
+
+        .. tip::
+
+            You can find additional parameters for initializing this class at
+            :class:`~sagemaker.estimator.Framework` and
+            :class:`~sagemaker.estimator.EstimatorBase`.
         """
         super(XGBoost, self).__init__(
             entry_point, source_dir, hyperparameters, image_name=image_name, **kwargs

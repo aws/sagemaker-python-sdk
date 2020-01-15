@@ -1,4 +1,4 @@
-# Copyright 2017-2018 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright 2017-2020 Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -210,8 +210,8 @@ def test_deploy(sagemaker_session, tmpdir):
     model = DummyFrameworkModel(sagemaker_session, source_dir=str(tmpdir))
     model.deploy(instance_type=INSTANCE_TYPE, initial_instance_count=1)
     sagemaker_session.endpoint_from_production_variants.assert_called_with(
-        MODEL_NAME,
-        [
+        name=MODEL_NAME,
+        production_variants=[
             {
                 "InitialVariantWeight": 1,
                 "ModelName": MODEL_NAME,
@@ -220,9 +220,10 @@ def test_deploy(sagemaker_session, tmpdir):
                 "VariantName": "AllTraffic",
             }
         ],
-        None,
-        None,
-        True,
+        tags=None,
+        kms_key=None,
+        wait=True,
+        data_capture_config_dict=None,
     )
 
 
@@ -232,8 +233,8 @@ def test_deploy_endpoint_name(sagemaker_session, tmpdir):
     model = DummyFrameworkModel(sagemaker_session, source_dir=str(tmpdir))
     model.deploy(endpoint_name="blah", instance_type=INSTANCE_TYPE, initial_instance_count=55)
     sagemaker_session.endpoint_from_production_variants.assert_called_with(
-        "blah",
-        [
+        name="blah",
+        production_variants=[
             {
                 "InitialVariantWeight": 1,
                 "ModelName": MODEL_NAME,
@@ -242,9 +243,10 @@ def test_deploy_endpoint_name(sagemaker_session, tmpdir):
                 "VariantName": "AllTraffic",
             }
         ],
-        None,
-        None,
-        True,
+        tags=None,
+        kms_key=None,
+        wait=True,
+        data_capture_config_dict=None,
     )
 
 
@@ -255,8 +257,8 @@ def test_deploy_tags(sagemaker_session, tmpdir):
     tags = [{"ModelName": "TestModel"}]
     model.deploy(instance_type=INSTANCE_TYPE, initial_instance_count=1, tags=tags)
     sagemaker_session.endpoint_from_production_variants.assert_called_with(
-        MODEL_NAME,
-        [
+        name=MODEL_NAME,
+        production_variants=[
             {
                 "InitialVariantWeight": 1,
                 "ModelName": MODEL_NAME,
@@ -265,9 +267,10 @@ def test_deploy_tags(sagemaker_session, tmpdir):
                 "VariantName": "AllTraffic",
             }
         ],
-        tags,
-        None,
-        True,
+        tags=tags,
+        kms_key=None,
+        wait=True,
+        data_capture_config_dict=None,
     )
 
 
@@ -280,8 +283,8 @@ def test_deploy_accelerator_type(tfo, time, sagemaker_session):
         instance_type=INSTANCE_TYPE, initial_instance_count=1, accelerator_type=ACCELERATOR_TYPE
     )
     sagemaker_session.endpoint_from_production_variants.assert_called_with(
-        MODEL_NAME,
-        [
+        name=MODEL_NAME,
+        production_variants=[
             {
                 "InitialVariantWeight": 1,
                 "ModelName": MODEL_NAME,
@@ -291,9 +294,10 @@ def test_deploy_accelerator_type(tfo, time, sagemaker_session):
                 "AcceleratorType": ACCELERATOR_TYPE,
             }
         ],
-        None,
-        None,
-        True,
+        tags=None,
+        kms_key=None,
+        wait=True,
+        data_capture_config_dict=None,
     )
 
 
@@ -305,8 +309,8 @@ def test_deploy_kms_key(tfo, time, sagemaker_session):
     model = DummyFrameworkModel(sagemaker_session)
     model.deploy(instance_type=INSTANCE_TYPE, initial_instance_count=1, kms_key=key)
     sagemaker_session.endpoint_from_production_variants.assert_called_with(
-        MODEL_NAME,
-        [
+        name=MODEL_NAME,
+        production_variants=[
             {
                 "InitialVariantWeight": 1,
                 "ModelName": MODEL_NAME,
@@ -315,9 +319,10 @@ def test_deploy_kms_key(tfo, time, sagemaker_session):
                 "VariantName": "AllTraffic",
             }
         ],
-        None,
-        key,
-        True,
+        tags=None,
+        kms_key=key,
+        wait=True,
+        data_capture_config_dict=None,
     )
 
 
@@ -341,22 +346,16 @@ def test_deploy_creates_correct_session(local_session, session, tmpdir):
 @patch("sagemaker.fw_utils.tar_and_upload_dir", MagicMock())
 def test_deploy_update_endpoint(sagemaker_session, tmpdir):
     model = DummyFrameworkModel(sagemaker_session, source_dir=tmpdir)
-    endpoint_name = "endpoint-name"
-    model.deploy(
-        instance_type=INSTANCE_TYPE,
-        initial_instance_count=1,
-        endpoint_name=endpoint_name,
-        update_endpoint=True,
-        accelerator_type=ACCELERATOR_TYPE,
-    )
+    model.deploy(instance_type=INSTANCE_TYPE, initial_instance_count=1, update_endpoint=True)
     sagemaker_session.create_endpoint_config.assert_called_with(
         name=model.name,
         model_name=model.name,
         initial_instance_count=INSTANCE_COUNT,
         instance_type=INSTANCE_TYPE,
-        accelerator_type=ACCELERATOR_TYPE,
+        accelerator_type=None,
         tags=None,
         kms_key=None,
+        data_capture_config_dict=None,
     )
     config_name = sagemaker_session.create_endpoint_config(
         name=model.name,
@@ -365,7 +364,48 @@ def test_deploy_update_endpoint(sagemaker_session, tmpdir):
         instance_type=INSTANCE_TYPE,
         accelerator_type=ACCELERATOR_TYPE,
     )
-    sagemaker_session.update_endpoint.assert_called_with(endpoint_name, config_name)
+    sagemaker_session.update_endpoint.assert_called_with(model.name, config_name, wait=True)
+    sagemaker_session.create_endpoint.assert_not_called()
+
+
+@patch("sagemaker.fw_utils.tar_and_upload_dir", MagicMock())
+def test_deploy_update_endpoint_optional_args(sagemaker_session, tmpdir):
+    endpoint_name = "endpoint-name"
+    tags = [{"Key": "Value"}]
+    kms_key = "foo"
+    data_capture_config = MagicMock()
+
+    model = DummyFrameworkModel(sagemaker_session, source_dir=tmpdir)
+    model.deploy(
+        instance_type=INSTANCE_TYPE,
+        initial_instance_count=1,
+        update_endpoint=True,
+        endpoint_name=endpoint_name,
+        accelerator_type=ACCELERATOR_TYPE,
+        tags=tags,
+        kms_key=kms_key,
+        wait=False,
+        data_capture_config=data_capture_config,
+    )
+    sagemaker_session.create_endpoint_config.assert_called_with(
+        name=model.name,
+        model_name=model.name,
+        initial_instance_count=INSTANCE_COUNT,
+        instance_type=INSTANCE_TYPE,
+        accelerator_type=ACCELERATOR_TYPE,
+        tags=tags,
+        kms_key=kms_key,
+        data_capture_config_dict=data_capture_config._to_request_dict(),
+    )
+    config_name = sagemaker_session.create_endpoint_config(
+        name=model.name,
+        model_name=model.name,
+        initial_instance_count=INSTANCE_COUNT,
+        instance_type=INSTANCE_TYPE,
+        accelerator_type=ACCELERATOR_TYPE,
+        wait=False,
+    )
+    sagemaker_session.update_endpoint.assert_called_with(endpoint_name, config_name, wait=False)
     sagemaker_session.create_endpoint.assert_not_called()
 
 

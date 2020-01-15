@@ -1,4 +1,4 @@
-# Copyright 2018-2019 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright 2018-2020 Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -22,7 +22,7 @@ from sagemaker.fw_utils import (
     empty_framework_version_warning,
     python_deprecation_warning,
 )
-from sagemaker.chainer.defaults import CHAINER_VERSION
+from sagemaker.chainer.defaults import CHAINER_VERSION, LATEST_VERSION
 from sagemaker.chainer.model import ChainerModel
 from sagemaker.vpc_utils import VPC_CONFIG_DEFAULT
 
@@ -40,8 +40,7 @@ class Chainer(Framework):
     _process_slots_per_host = "sagemaker_process_slots_per_host"
     _additional_mpi_options = "sagemaker_additional_mpi_options"
 
-    LATEST_VERSION = "5.0.0"
-    """The latest version of Chainer included in the SageMaker pre-built Docker images."""
+    LATEST_VERSION = LATEST_VERSION
 
     def __init__(
         self,
@@ -111,13 +110,20 @@ class Chainer(Framework):
             image_name (str): If specified, the estimator will use this image
                 for training and hosting, instead of selecting the appropriate
                 SageMaker official image based on framework_version and
-                py_version. It can be an ECR url or dockerhub image and tag. ..
-                admonition:: Examples
+                py_version. It can be an ECR url or dockerhub image and tag.
 
-                    123.dkr.ecr.us-west-2.amazonaws.com/my-custom-image:1.0
-                    custom-image:latest.
+                Examples
+                    * ``123412341234.dkr.ecr.us-west-2.amazonaws.com/my-custom-image:1.0``
+                    * ``custom-image:latest``
+
             **kwargs: Additional kwargs passed to the
                 :class:`~sagemaker.estimator.Framework` constructor.
+
+        .. tip::
+
+            You can find additional parameters for initializing this class at
+            :class:`~sagemaker.estimator.Framework` and
+            :class:`~sagemaker.estimator.EstimatorBase`.
         """
         if framework_version is None:
             logger.warning(empty_framework_version_warning(CHAINER_VERSION, self.LATEST_VERSION))

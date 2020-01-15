@@ -1,4 +1,4 @@
-# Copyright 2017-2018 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright 2017-2020 Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -20,6 +20,8 @@ from awslogs.core import AWSLogs
 from botocore.exceptions import ClientError
 import stopit
 
+from sagemaker import RealTimePredictor
+from tests.integ.retry import retries
 
 LOGGER = logging.getLogger("timeout")
 
@@ -66,6 +68,9 @@ def timeout_and_delete_endpoint_by_name(
             while attempts > 0:
                 attempts -= 1
                 try:
+                    _delete_schedules_associated_with_endpoint(
+                        sagemaker_session=sagemaker_session, endpoint_name=endpoint_name
+                    )
                     sagemaker_session.delete_endpoint(endpoint_name)
                     LOGGER.info("deleted endpoint {}".format(endpoint_name))
 
@@ -109,6 +114,44 @@ def timeout_and_delete_model_with_transformer(
                     if ce.response["Error"]["Code"] == "ValidationException":
                         pass
                 sleep(sleep_between_cleanup_attempts)
+
+
+def _delete_schedules_associated_with_endpoint(sagemaker_session, endpoint_name):
+    """Deletes schedules associated with a given endpoint. Per latest validation, ensures the
+    schedule is stopped and no executions are running, before deleting (otherwise latest
+    server-side validations will prevent deletes).
+
+    Args:
+        sagemaker_session (sagemaker.session.Session): A SageMaker Session
+            object, used for SageMaker interactions (default: None). If not
+            specified, one is created using the default AWS configuration
+            chain.
+        endpoint_name (str): The name of the endpoint to delete schedules from.
+
+    """
+    predictor = RealTimePredictor(endpoint=endpoint_name, sagemaker_session=sagemaker_session)
+    monitors = predictor.list_monitors()
+    for monitor in monitors:
+        try:
+            monitor._wait_for_schedule_changes_to_apply()
+            # Stop the schedules to prevent new executions from triggering.
+            monitor.stop_monitoring_schedule()
+            executions = monitor.list_executions()
+            for execution in executions:
+                execution.stop()
+            # Wait for all executions to completely stop.
+            # Schedules can't be deleted with running executions.
+            for execution in executions:
+                for _ in retries(60, "Waiting for executions to stop", seconds_to_sleep=5):
+                    status = execution.describe()["ProcessingJobStatus"]
+                    if status == "Stopped":
+                        break
+            # Delete schedules.
+            monitor.delete_monitoring_schedule()
+        except Exception as e:
+            LOGGER.warning(
+                "Failed to delete monitor {}".format(monitor.monitoring_schedule_name), e
+            )
 
 
 def _show_logs(resource_name, resource_type, sagemaker_session):

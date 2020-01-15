@@ -1,4 +1,4 @@
-# Copyright 2017-2019 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright 2017-2020 Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -35,6 +35,114 @@ MOCK_REGION = "mars-south-3"
 MOCK_ACCELERATOR = "eia1.medium"
 MOCK_HKG_REGION = "ap-east-1"
 MOCK_BAH_REGION = "me-south-1"
+
+
+ORIGINAL_FW_VERSIONS = {
+    "pytorch": ["0.4", "0.4.0", "1.0", "1.0.0"],
+    "mxnet": ["0.12", "0.12.1", "1.0", "1.0.0", "1.1", "1.1.0", "1.2", "1.2.1"],
+    "tensorflow": [
+        "1.4",
+        "1.4.1",
+        "1.5",
+        "1.5.0",
+        "1.6",
+        "1.6.0",
+        "1.7",
+        "1.7.0",
+        "1.8",
+        "1.8.0",
+        "1.9",
+        "1.9.0",
+        "1.10",
+        "1.10.0",
+        "1.11",
+        "1.11.0",
+        "1.12",
+        "1.12.0",
+    ],
+}
+
+
+SERVING_FW_VERSIONS = {
+    "pytorch": ["1.1", "1.1.0"],
+    "mxnet": ["1.3", "1.3.0", "1.4.0"],
+    "tensorflow": ["1.11", "1.11.0", "1.12", "1.12.0"],
+}
+
+
+def get_account(framework, framework_version, py_version="py3"):
+    if (
+        framework_version in ORIGINAL_FW_VERSIONS[framework]
+        or framework_version in SERVING_FW_VERSIONS[framework]
+        or is_mxnet_1_4_py2(
+            framework, framework_version, py_version
+        )  # except for MXNet 1.4.1 (1.4) py2 Asimov teams owns both py2 and py3
+    ):
+        return fw_utils.DEFAULT_ACCOUNT
+    return fw_utils.ASIMOV_DEFAULT_ACCOUNT
+
+
+def get_repo_name(framework, framework_version, is_serving=False, py_version="py3"):
+    if (
+        framework_version in ORIGINAL_FW_VERSIONS[framework]
+        or framework_version in SERVING_FW_VERSIONS[framework]
+        or is_mxnet_1_4_py2(framework, framework_version, py_version)
+    ):  # except for MXNet 1.4.1 (1.4) py2 Asimov teams owns both py2 and py3
+        # TODO: check whether sagemaker-{}-serving images actually exist for ORIGINAL_FW_VERSIONS
+        if is_serving:
+            ecr_repo = "sagemaker-{}-serving"
+        else:
+            ecr_repo = "sagemaker-{}"
+            if framework == "tensorflow" and framework_version in SERVING_FW_VERSIONS[framework]:
+                framework = framework + "-scriptmode"
+    elif is_serving:
+        ecr_repo = "{}-inference"
+    else:
+        ecr_repo = "{}-training"
+    return ecr_repo.format(framework)
+
+
+def is_mxnet_1_4_py2(framework, framework_version, py_version):
+    return framework == "mxnet" and py_version == "py2" and framework_version in ["1.4", "1.4.1"]
+
+
+@pytest.fixture(
+    scope="module", params=["1.11", "1.11.0", "1.12", "1.12.0", "1.14", "1.14.0", "1.15", "1.15.0"]
+)
+def tf_version(request):
+    return request.param
+
+
+@pytest.fixture(
+    scope="module",
+    params=["0.4", "0.4.0", "1.0", "1.0.0", "1.1", "1.1.0", "1.2", "1.2.0", "1.3", "1.3.1"],
+)
+def pytorch_version(request):
+    return request.param
+
+
+@pytest.fixture(
+    scope="module",
+    params=[
+        "0.12",
+        "0.12.1",
+        "1.0",
+        "1.0.0",
+        "1.1",
+        "1.1.0",
+        "1.2",
+        "1.2.1",
+        "1.3",
+        "1.3.0",
+        "1.4",
+        "1.4.0",
+        "1.4.1",
+        "1.6",
+        "1.6.0",
+    ],
+)
+def mxnet_version(request):
+    return request.param
 
 
 @contextmanager
@@ -167,7 +275,9 @@ def test_tf_eia_images():
     )
     assert (
         image_uri
-        == "763104351884.dkr.ecr.us-west-2.amazonaws.com/tensorflow-inference-eia:1.14.0-cpu"
+        == "{}.dkr.ecr.us-west-2.amazonaws.com/tensorflow-inference-eia:1.14.0-cpu".format(
+            fw_utils.ASIMOV_PROD_ACCOUNT
+        )
     )
 
 
@@ -182,7 +292,9 @@ def test_mxnet_eia_images():
     )
     assert (
         image_uri
-        == "763104351884.dkr.ecr.us-east-1.amazonaws.com/mxnet-inference-eia:1.4.1-cpu-py3"
+        == "{}.dkr.ecr.us-east-1.amazonaws.com/mxnet-inference-eia:1.4.1-cpu-py3".format(
+            fw_utils.ASIMOV_PROD_ACCOUNT
+        )
     )
 
 
@@ -212,7 +324,10 @@ def test_create_image_uri_merged():
         "us-west-2", "tensorflow-scriptmode", "ml.p3.2xlarge", "1.14", "py3"
     )
     assert (
-        image_uri == "763104351884.dkr.ecr.us-west-2.amazonaws.com/tensorflow-training:1.14-gpu-py3"
+        image_uri
+        == "{}.dkr.ecr.us-west-2.amazonaws.com/tensorflow-training:1.14-gpu-py3".format(
+            fw_utils.ASIMOV_DEFAULT_ACCOUNT
+        )
     )
 
     image_uri = fw_utils.create_image_uri(
@@ -220,23 +335,29 @@ def test_create_image_uri_merged():
     )
     assert (
         image_uri
-        == "763104351884.dkr.ecr.us-west-2.amazonaws.com/tensorflow-training:1.13.1-gpu-py3"
+        == "{}.dkr.ecr.us-west-2.amazonaws.com/tensorflow-training:1.13.1-gpu-py3".format(
+            fw_utils.ASIMOV_DEFAULT_ACCOUNT
+        )
     )
 
     image_uri = fw_utils.create_image_uri(
         "us-west-2", "tensorflow-serving", "ml.c4.2xlarge", "1.13.1"
     )
-    assert (
-        image_uri == "763104351884.dkr.ecr.us-west-2.amazonaws.com/tensorflow-inference:1.13.1-cpu"
+    assert image_uri == "{}.dkr.ecr.us-west-2.amazonaws.com/tensorflow-inference:1.13.1-cpu".format(
+        fw_utils.ASIMOV_DEFAULT_ACCOUNT
     )
 
     image_uri = fw_utils.create_image_uri("us-west-2", "mxnet", "ml.p3.2xlarge", "1.4.1", "py3")
-    assert image_uri == "763104351884.dkr.ecr.us-west-2.amazonaws.com/mxnet-training:1.4.1-gpu-py3"
+    assert image_uri == "{}.dkr.ecr.us-west-2.amazonaws.com/mxnet-training:1.4.1-gpu-py3".format(
+        fw_utils.ASIMOV_DEFAULT_ACCOUNT
+    )
 
     image_uri = fw_utils.create_image_uri(
         "us-west-2", "mxnet-serving", "ml.c4.2xlarge", "1.4.1", "py3"
     )
-    assert image_uri == "763104351884.dkr.ecr.us-west-2.amazonaws.com/mxnet-inference:1.4.1-cpu-py3"
+    assert image_uri == "{}.dkr.ecr.us-west-2.amazonaws.com/mxnet-inference:1.4.1-cpu-py3".format(
+        fw_utils.ASIMOV_DEFAULT_ACCOUNT
+    )
 
     image_uri = fw_utils.create_image_uri(
         "us-west-2",
@@ -248,7 +369,9 @@ def test_create_image_uri_merged():
     )
     assert (
         image_uri
-        == "763104351884.dkr.ecr.us-west-2.amazonaws.com/mxnet-inference-eia:1.4.1-cpu-py3"
+        == "{}.dkr.ecr.us-west-2.amazonaws.com/mxnet-inference-eia:1.4.1-cpu-py3".format(
+            fw_utils.ASIMOV_PROD_ACCOUNT
+        )
     )
 
 
@@ -265,7 +388,10 @@ def test_create_image_uri_merged_py2():
         "us-west-2", "tensorflow-scriptmode", "ml.p3.2xlarge", "1.14", "py2"
     )
     assert (
-        image_uri == "763104351884.dkr.ecr.us-west-2.amazonaws.com/tensorflow-training:1.14-gpu-py2"
+        image_uri
+        == "{}.dkr.ecr.us-west-2.amazonaws.com/tensorflow-training:1.14-gpu-py2".format(
+            fw_utils.ASIMOV_DEFAULT_ACCOUNT
+        )
     )
 
     image_uri = fw_utils.create_image_uri("us-west-2", "mxnet", "ml.p3.2xlarge", "1.4.1", "py2")
@@ -323,26 +449,66 @@ def test_create_image_uri_merged_gov_regions():
     )
 
 
-def test_create_image_uri_merged_pytorch():
+def test_create_image_uri_pytorch(pytorch_version):
+    image_uri = fw_utils.create_image_uri(
+        "us-west-2", "pytorch", "ml.p3.2xlarge", pytorch_version, "py3"
+    )
+    assert image_uri == "{}.dkr.ecr.us-west-2.amazonaws.com/{}:{}-gpu-py3".format(
+        get_account("pytorch", pytorch_version),
+        get_repo_name("pytorch", pytorch_version),
+        pytorch_version,
+    )
 
-    image_uri = fw_utils.create_image_uri("us-west-2", "pytorch", "ml.p3.2xlarge", "1.2", "py2")
-    assert image_uri == "763104351884.dkr.ecr.us-west-2.amazonaws.com/pytorch-training:1.2-gpu-py2"
+    if pytorch_version not in ORIGINAL_FW_VERSIONS:
+        image_uri = fw_utils.create_image_uri(
+            "us-west-2", "pytorch-serving", "ml.c4.2xlarge", pytorch_version, "py2"
+        )
+        assert image_uri == "{}.dkr.ecr.us-west-2.amazonaws.com/{}:{}-cpu-py2".format(
+            get_account("pytorch", pytorch_version),
+            get_repo_name("pytorch", pytorch_version, True),
+            pytorch_version,
+        )
 
-    image_uri = fw_utils.create_image_uri("us-west-2", "pytorch", "ml.p3.2xlarge", "1.1", "py2")
-    assert image_uri == "520713654638.dkr.ecr.us-west-2.amazonaws.com/sagemaker-pytorch:1.1-gpu-py2"
+
+def test_create_image_uri_mxnet(mxnet_version):
 
     image_uri = fw_utils.create_image_uri(
-        "us-west-2", "pytorch-serving", "ml.c4.2xlarge", "1.2", "py2"
+        "us-west-2", "mxnet", "ml.p3.2xlarge", mxnet_version, "py3"
     )
-    assert image_uri == "763104351884.dkr.ecr.us-west-2.amazonaws.com/pytorch-inference:1.2-cpu-py2"
+    assert image_uri == "{}.dkr.ecr.us-west-2.amazonaws.com/{}:{}-gpu-py3".format(
+        get_account("mxnet", mxnet_version), get_repo_name("mxnet", mxnet_version), mxnet_version
+    )
 
+    if mxnet_version not in ORIGINAL_FW_VERSIONS:
+        py_version = "py2"
+        image_uri = fw_utils.create_image_uri(
+            "us-west-2", "mxnet-serving", "ml.c4.2xlarge", mxnet_version, py_version
+        )
+        assert image_uri == "{}.dkr.ecr.us-west-2.amazonaws.com/{}:{}-cpu-{}".format(
+            get_account("mxnet", mxnet_version, py_version),
+            get_repo_name("mxnet", mxnet_version, True, py_version),
+            mxnet_version,
+            py_version,
+        )
+
+
+def test_create_image_uri_tensorflow(tf_version):
     image_uri = fw_utils.create_image_uri(
-        "us-west-2", "pytorch-serving", "ml.c4.2xlarge", "1.1", "py2"
+        "us-west-2", "tensorflow-scriptmode", "ml.p3.2xlarge", tf_version, "py3"
     )
-    assert (
-        image_uri
-        == "520713654638.dkr.ecr.us-west-2.amazonaws.com/sagemaker-pytorch-serving:1.1-cpu-py2"
+    assert image_uri == "{}.dkr.ecr.us-west-2.amazonaws.com/{}:{}-gpu-py3".format(
+        get_account("tensorflow", tf_version), get_repo_name("tensorflow", tf_version), tf_version
     )
+
+    if tf_version not in ORIGINAL_FW_VERSIONS:
+        image_uri = fw_utils.create_image_uri(
+            "us-west-2", "tensorflow-serving", "ml.c4.2xlarge", tf_version
+        )
+        assert image_uri == "{}.dkr.ecr.us-west-2.amazonaws.com/{}:{}-cpu".format(
+            get_account("tensorflow", tf_version),
+            get_repo_name("tensorflow", tf_version, True),
+            tf_version,
+        )
 
 
 def test_create_image_uri_accelerator_tf():

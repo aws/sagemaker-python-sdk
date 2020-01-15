@@ -16,19 +16,43 @@ Overview
 
     overview
 
-The SageMaker Python SDK consists of a few primary classes:
+The SageMaker Python SDK consists of a variety classes:
+
+Training:
 
 .. toctree::
-    :maxdepth: 2
+    :maxdepth: 1
 
     estimators
+    algorithm
     tuner
+    parameter
+    automl
+    processing
+    analytics
+    debugger
+
+Inference:
+
+.. toctree::
+    :maxdepth: 1
+
     model
-    pipeline
+    multi_data_model
     predictors
     transformer
+    pipeline
+    model_monitor
+
+Utility:
+
+.. toctree::
+    :maxdepth: 1
+
     session
-    analytics
+    inputs
+    network
+    s3
 
 *****
 MXNet
@@ -150,6 +174,17 @@ Amazon provides implementations of some common machine learning algortithms opti
     pca
     randomcutforest
 
+*****************************************
+Amazon SageMaker Operators for Kubernetes
+*****************************************
+Amazon SageMaker Operators for use with Kubernetes.
+
+.. toctree::
+    :maxdepth: 2
+
+    amazon_sagemaker_operators_for_kubernetes
+    amazon_sagemaker_operators_for_kubernetes_jobs
+
 *********
 Workflows
 *********
@@ -164,3 +199,23 @@ SageMaker APIs to export configurations for creating and managing Airflow workfl
     :maxdepth: 2
 
     sagemaker.workflow.airflow
+
+*********************************
+Amazon SageMaker Model Monitoring
+*********************************
+You can use Amazon SageMaker Model Monitoring to automatically detect concept drift by monitoring your machine learning models.
+
+.. toctree::
+    :maxdepth: 2
+
+    amazon_sagemaker_model_monitoring
+
+*************************
+Amazon SageMaker Debugger
+*************************
+You can use Amazon SageMaker Debugger to automatically detect anomalies while training your machine learning models.
+
+.. toctree::
+    :maxdepth: 2
+
+    amazon_sagemaker_debugger

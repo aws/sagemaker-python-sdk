@@ -1,4 +1,4 @@
-# Copyright 2017-2018 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright 2017-2020 Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -50,10 +50,14 @@ from sagemaker.local.local_session import LocalSession  # noqa: F401
 from sagemaker.model import Model, ModelPackage  # noqa: F401
 from sagemaker.pipeline import PipelineModel  # noqa: F401
 from sagemaker.predictor import RealTimePredictor  # noqa: F401
+from sagemaker.processing import Processor, ScriptProcessor  # noqa: F401
 from sagemaker.session import Session  # noqa: F401
 from sagemaker.session import container_def, pipeline_container_def  # noqa: F401
 from sagemaker.session import production_variant  # noqa: F401
 from sagemaker.session import s3_input  # noqa: F401
 from sagemaker.session import get_execution_role  # noqa: F401
+
+from sagemaker.automl.automl import AutoML, AutoMLJob, AutoMLInput  # noqa: F401
+from sagemaker.automl.candidate_estimator import CandidateEstimator, CandidateStep  # noqa: F401
 
 __version__ = pkg_resources.require("sagemaker")[0].version

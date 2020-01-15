@@ -1,4 +1,4 @@
-# Copyright 2018 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright 2018-2020 Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -119,6 +119,7 @@ class Transformer(object):
         input_filter=None,
         output_filter=None,
         join_source=None,
+        experiment_config=None,
         wait=False,
         logs=False,
     ):
@@ -156,6 +157,10 @@ class Transformer(object):
                 will be joined to the inference result. You can use OutputFilter
                 to select the useful portion before uploading to S3. (default:
                 None). Valid values: Input, None.
+            experiment_config (dict[str, str]): Experiment management configuration.
+                Dictionary contains three optional keys,
+                'ExperimentName', 'TrialName', and 'TrialComponentDisplayName'.
+                (default: ``None``).
             wait (bool): Whether the call should wait until the job completes
                 (default: True).
             logs (bool): Whether to show the logs produced by the job.
@@ -191,6 +196,7 @@ class Transformer(object):
             input_filter,
             output_filter,
             join_source,
+            experiment_config,
         )
 
         if wait:
@@ -324,6 +330,7 @@ class _TransformJob(_Job):
         input_filter,
         output_filter,
         join_source,
+        experiment_config,
     ):
         """
         Args:
@@ -336,6 +343,7 @@ class _TransformJob(_Job):
             input_filter:
             output_filter:
             join_source:
+            experiment_config:
         """
         config = _TransformJob._load_config(
             data, data_type, content_type, compression_type, split_type, transformer
@@ -354,6 +362,7 @@ class _TransformJob(_Job):
             input_config=config["input_config"],
             output_config=config["output_config"],
             resource_config=config["resource_config"],
+            experiment_config=experiment_config,
             tags=transformer.tags,
             data_processing=data_processing,
         )

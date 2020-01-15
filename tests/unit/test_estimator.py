@@ -1,4 +1,4 @@
-# Copyright 2017-2019 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright 2017-2020 Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -205,8 +205,9 @@ def test_framework_all_init_args(sagemaker_session):
         encrypt_inter_container_traffic=True,
         checkpoint_s3_uri="s3://bucket/checkpoint",
         checkpoint_local_path="file://local/checkpoint",
+        enable_sagemaker_metrics=True,
     )
-    _TrainingJob.start_new(f, "s3://mydata")
+    _TrainingJob.start_new(f, "s3://mydata", None)
     sagemaker_session.train.assert_called_once()
     _, args = sagemaker_session.train.call_args
     assert args == {
@@ -239,8 +240,10 @@ def test_framework_all_init_args(sagemaker_session):
         },
         "metric_definitions": [{"Name": "validation-rmse", "Regex": "validation-rmse=(\\d+)"}],
         "encrypt_inter_container_traffic": True,
+        "experiment_config": None,
         "checkpoint_s3_uri": "s3://bucket/checkpoint",
         "checkpoint_local_path": "file://local/checkpoint",
+        "enable_sagemaker_metrics": True,
     }
 
 
@@ -268,7 +271,7 @@ def test_framework_with_spot_and_checkpoints(sagemaker_session):
         checkpoint_s3_uri="s3://mybucket/checkpoints/",
         checkpoint_local_path="/tmp/checkpoints",
     )
-    _TrainingJob.start_new(f, "s3://mydata")
+    _TrainingJob.start_new(f, "s3://mydata", None)
     sagemaker_session.train.assert_called_once()
     _, args = sagemaker_session.train.call_args
     assert args == {
@@ -304,6 +307,7 @@ def test_framework_with_spot_and_checkpoints(sagemaker_session):
         "train_use_spot_instances": True,
         "checkpoint_s3_uri": "s3://mybucket/checkpoints/",
         "checkpoint_local_path": "/tmp/checkpoints",
+        "experiment_config": None,
     }
 
 
@@ -369,7 +373,7 @@ def test_sagemaker_model_default_channel_name(sagemaker_session):
         sagemaker_session=sagemaker_session,
         model_uri="s3://model-bucket/prefix/model.tar.gz",
     )
-    _TrainingJob.start_new(f, {})
+    _TrainingJob.start_new(f, {}, None)
     sagemaker_session.train.assert_called_once()
     _, args = sagemaker_session.train.call_args
     assert args["input_config"] == [
@@ -398,7 +402,7 @@ def test_sagemaker_model_custom_channel_name(sagemaker_session):
         model_uri="s3://model-bucket/prefix/model.tar.gz",
         model_channel_name="testModelChannel",
     )
-    _TrainingJob.start_new(f, {})
+    _TrainingJob.start_new(f, {}, None)
     sagemaker_session.train.assert_called_once()
     _, args = sagemaker_session.train.call_args
     assert args["input_config"] == [
@@ -1512,11 +1516,14 @@ def test_start_new(sagemaker_session):
         hyperparameters=hyperparameters,
     )
 
-    started_training_job = training_job.start_new(estimator, inputs)
+    exp_config = {"ExperimentName": "exp", "TrialName": "t", "TrialComponentDisplayName": "tc"}
+
+    started_training_job = training_job.start_new(estimator, inputs, experiment_config=exp_config)
     called_args = sagemaker_session.train.call_args
 
     assert started_training_job.sagemaker_session == sagemaker_session
     assert called_args[1]["hyperparameters"] == hyperparameters
+    assert called_args[1]["experiment_config"] == exp_config
     sagemaker_session.train.assert_called_once()
 
 
@@ -1533,7 +1540,7 @@ def test_start_new_not_local_mode_error(sagemaker_session):
         sagemaker_session=sagemaker_session,
     )
     with pytest.raises(ValueError) as error:
-        training_job.start_new(estimator, inputs)
+        training_job.start_new(estimator, inputs, None)
         assert "File URIs are supported in local mode only. Please use a S3 URI instead." == str(
             error
         )
@@ -1659,6 +1666,7 @@ NO_INPUT_TRAIN_CALL = {
     "tags": None,
     "vpc_config": None,
     "metric_definitions": None,
+    "experiment_config": None,
 }
 
 INPUT_CONFIG = [
@@ -1682,8 +1690,19 @@ STRINGIFIED_HYPERPARAMS = dict([(x, str(y)) for x, y in HYPERPARAMS.items()])
 HP_TRAIN_CALL = dict(BASE_TRAIN_CALL)
 HP_TRAIN_CALL.update({"hyperparameters": STRINGIFIED_HYPERPARAMS})
 
+EXP_TRAIN_CALL = dict(BASE_TRAIN_CALL)
+EXP_TRAIN_CALL.update(
+    {
+        "experiment_config": {
+            "ExperimentName": "exp",
+            "TrialName": "trial",
+            "TrialComponentDisplayName": "tc",
+        }
+    }
+)
 
-def test_fit_deploy_keep_tags(sagemaker_session):
+
+def test_fit_deploy_tags_in_estimator(sagemaker_session):
     tags = [{"Key": "TagtestKey", "Value": "TagtestValue"}]
     estimator = Estimator(
         IMAGE_NAME,
@@ -1710,7 +1729,52 @@ def test_fit_deploy_keep_tags(sagemaker_session):
 
     job_name = estimator._current_job_name
     sagemaker_session.endpoint_from_production_variants.assert_called_with(
-        job_name, variant, tags, None, True
+        name=job_name,
+        production_variants=variant,
+        tags=tags,
+        kms_key=None,
+        wait=True,
+        data_capture_config_dict=None,
+    )
+
+    sagemaker_session.create_model.assert_called_with(
+        ANY,
+        "DummyRole",
+        {"ModelDataUrl": "s3://bucket/model.tar.gz", "Environment": {}, "Image": "fakeimage"},
+        enable_network_isolation=False,
+        vpc_config=None,
+        tags=tags,
+    )
+
+
+def test_fit_deploy_tags(sagemaker_session):
+    estimator = Estimator(
+        IMAGE_NAME, ROLE, INSTANCE_COUNT, INSTANCE_TYPE, sagemaker_session=sagemaker_session
+    )
+
+    estimator.fit()
+
+    tags = [{"Key": "TagtestKey", "Value": "TagtestValue"}]
+    estimator.deploy(INSTANCE_COUNT, INSTANCE_TYPE, tags=tags)
+
+    variant = [
+        {
+            "InstanceType": "c4.4xlarge",
+            "VariantName": "AllTraffic",
+            "ModelName": ANY,
+            "InitialVariantWeight": 1,
+            "InitialInstanceCount": 1,
+        }
+    ]
+
+    job_name = estimator._current_job_name
+    sagemaker_session.endpoint_from_production_variants.assert_called_with(
+        name=job_name,
+        production_variants=variant,
+        tags=tags,
+        kms_key=None,
+        wait=True,
+        data_capture_config_dict=None,
     )
 
     sagemaker_session.create_model.assert_called_with(
@@ -1794,6 +1858,36 @@ def test_generic_to_fit_with_hps(sagemaker_session):
     assert args == HP_TRAIN_CALL
 
 
+def test_generic_to_fit_with_experiment_config(sagemaker_session):
+    e = Estimator(
+        IMAGE_NAME,
+        ROLE,
+        INSTANCE_COUNT,
+        INSTANCE_TYPE,
+        output_path=OUTPUT_PATH,
+        sagemaker_session=sagemaker_session,
+    )
+
+    e.fit(
+        inputs={"train": "s3://bucket/training-prefix"},
+        experiment_config={
+            "ExperimentName": "exp",
+            "TrialName": "trial",
+            "TrialComponentDisplayName": "tc",
+        },
+    )
+
+    sagemaker_session.train.assert_called_once()
+    assert len(sagemaker_session.train.call_args[0]) == 0
+    args = sagemaker_session.train.call_args[1]
+    assert args["job_name"].startswith(IMAGE_NAME)
+
+    args.pop("job_name")
+    args.pop("role")
+
+    assert args == EXP_TRAIN_CALL
+
+
 def test_generic_to_fit_with_encrypt_inter_container_traffic_flag(sagemaker_session):
     e = Estimator(
         IMAGE_NAME,
@@ -1828,6 +1922,59 @@ def test_generic_to_fit_with_network_isolation(sagemaker_session):
     sagemaker_session.train.assert_called_once()
     args = sagemaker_session.train.call_args[1]
     assert args["enable_network_isolation"]
+
+
+def test_generic_to_fit_with_sagemaker_metrics_missing(sagemaker_session):
+    e = Estimator(
+        IMAGE_NAME,
+        ROLE,
+        INSTANCE_COUNT,
+        INSTANCE_TYPE,
+        output_path=OUTPUT_PATH,
+        sagemaker_session=sagemaker_session,
+    )
+
+    e.fit()
+
+    sagemaker_session.train.assert_called_once()
+    args = sagemaker_session.train.call_args[1]
+    assert "enable_sagemaker_metrics" not in args
+
+
+def test_generic_to_fit_with_sagemaker_metrics_enabled(sagemaker_session):
+    e = Estimator(
+        IMAGE_NAME,
+        ROLE,
+        INSTANCE_COUNT,
+        INSTANCE_TYPE,
+        output_path=OUTPUT_PATH,
+        sagemaker_session=sagemaker_session,
+        enable_sagemaker_metrics=True,
+    )
+
+    e.fit()
+
+    sagemaker_session.train.assert_called_once()
+    args = sagemaker_session.train.call_args[1]
+    assert args["enable_sagemaker_metrics"]
+
+
+def test_generic_to_fit_with_sagemaker_metrics_disabled(sagemaker_session):
+    e = Estimator(
+        IMAGE_NAME,
+        ROLE,
+        INSTANCE_COUNT,
+        INSTANCE_TYPE,
+        output_path=OUTPUT_PATH,
+        sagemaker_session=sagemaker_session,
+        enable_sagemaker_metrics=False,
+    )
+
+    e.fit()
+
+    sagemaker_session.train.assert_called_once()
+    args = sagemaker_session.train.call_args[1]
+    assert not args["enable_sagemaker_metrics"]
 
 
 def test_generic_to_deploy(sagemaker_session):
@@ -1916,6 +2063,7 @@ def test_generic_to_deploy_kms(create_model, sagemaker_session):
         tags=None,
         wait=True,
         kms_key=kms_key,
+        data_capture_config=None,
     )
 
 
@@ -2012,11 +2160,12 @@ def test_generic_deploy_accelerator_type(sagemaker_session):
     e.fit({"train": "s3://bucket/training-prefix"})
     e.deploy(INSTANCE_COUNT, INSTANCE_TYPE, ACCELERATOR_TYPE)
 
-    args = e.sagemaker_session.endpoint_from_production_variants.call_args[0]
-    assert args[0].startswith(IMAGE_NAME)
-    assert args[1][0]["AcceleratorType"] == ACCELERATOR_TYPE
-    assert args[1][0]["InitialInstanceCount"] == INSTANCE_COUNT
-    assert args[1][0]["InstanceType"] == INSTANCE_TYPE
+    args = e.sagemaker_session.endpoint_from_production_variants.call_args[1]
+    print(args)
+    assert args["name"].startswith(IMAGE_NAME)
+    assert args["production_variants"][0]["AcceleratorType"] == ACCELERATOR_TYPE
+    assert args["production_variants"][0]["InitialInstanceCount"] == INSTANCE_COUNT
+    assert args["production_variants"][0]["InstanceType"] == INSTANCE_TYPE
 
 
 def test_deploy_with_update_endpoint(sagemaker_session):

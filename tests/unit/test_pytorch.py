@@ -1,4 +1,4 @@
-# Copyright 2017-2019 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright 2017-2020 Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -48,6 +48,12 @@ ENDPOINT_DESC = {"EndpointConfigName": "test-endpoint"}
 ENDPOINT_CONFIG_DESC = {"ProductionVariants": [{"ModelName": "model-1"}, {"ModelName": "model-2"}]}
 
 LIST_TAGS_RESULT = {"Tags": [{"Key": "TagtestKey", "Value": "TagtestValue"}]}
+
+EXPERIMENT_CONFIG = {
+    "ExperimentName": "exp",
+    "TrialName": "trial",
+    "TrialComponentDisplayName": "tc",
+}
 
 
 @pytest.fixture(name="sagemaker_session")
@@ -140,6 +146,11 @@ def _create_train_job(version):
         "tags": None,
         "vpc_config": None,
         "metric_definitions": None,
+        "experiment_config": None,
+        "debugger_hook_config": {
+            "CollectionConfigurations": [],
+            "S3OutputPath": "s3://{}/".format(BUCKET_NAME),
+        },
     }
 
 
@@ -251,7 +262,7 @@ def test_pytorch(strftime, sagemaker_session, pytorch_version):
 
     inputs = "s3://mybucket/train"
 
-    pytorch.fit(inputs=inputs)
+    pytorch.fit(inputs=inputs, experiment_config=EXPERIMENT_CONFIG)
 
     sagemaker_call_names = [c[0] for c in sagemaker_session.method_calls]
     assert sagemaker_call_names == ["train", "logs_for_job"]
@@ -260,6 +271,7 @@ def test_pytorch(strftime, sagemaker_session, pytorch_version):
 
     expected_train_args = _create_train_job(pytorch_version)
     expected_train_args["input_config"][0]["DataSource"]["S3DataSource"]["S3Uri"] = inputs
+    expected_train_args["experiment_config"] = EXPERIMENT_CONFIG
 
     actual_train_args = sagemaker_session.method_calls[0][2]
     assert actual_train_args == expected_train_args
@@ -517,4 +529,40 @@ def test_empty_framework_version(warning, sagemaker_session):
     )
 
     assert estimator.framework_version == defaults.PYTORCH_VERSION
-    warning.assert_called_with(defaults.PYTORCH_VERSION, defaults.PYTORCH_VERSION)
+    warning.assert_called_with(defaults.PYTORCH_VERSION, estimator.LATEST_VERSION)
+
+
+@patch("sagemaker.pytorch.model.empty_framework_version_warning")
+def test_model_empty_framework_version(warning, sagemaker_session):
+    model = PyTorchModel(
+        MODEL_DATA,
+        role=ROLE,
+        entry_point=SCRIPT_PATH,
+        sagemaker_session=sagemaker_session,
+        framework_version=None,
+    )
+
+    assert model.framework_version == defaults.PYTORCH_VERSION
+    warning.assert_called_with(defaults.PYTORCH_VERSION, defaults.LATEST_VERSION)
+
+
+def test_pt_enable_sm_metrics(sagemaker_session):
+    pytorch = _pytorch_estimator(sagemaker_session, enable_sagemaker_metrics=True)
+    assert pytorch.enable_sagemaker_metrics
+
+
+def test_pt_disable_sm_metrics(sagemaker_session):
+    pytorch = _pytorch_estimator(sagemaker_session, enable_sagemaker_metrics=False)
+    assert not pytorch.enable_sagemaker_metrics
+
+
+def test_pt_disable_sm_metrics_if_pt_ver_is_less_than_1_15(sagemaker_session):
+    for fw_version in ["1.1", "1.2"]:
+        pytorch = _pytorch_estimator(sagemaker_session, framework_version=fw_version)
+        assert pytorch.enable_sagemaker_metrics is None
+
+
+def test_pt_enable_sm_metrics_if_fw_ver_is_at_least_1_15(sagemaker_session):
+    for fw_version in ["1.3", "1.4", "2.0", "2.1"]:
+        pytorch = _pytorch_estimator(sagemaker_session, framework_version=fw_version)
+        assert pytorch.enable_sagemaker_metrics

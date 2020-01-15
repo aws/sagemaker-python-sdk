@@ -1,4 +1,4 @@
-# Copyright 2017-2018 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright 2017-2020 Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -22,6 +22,7 @@ DATA_DIR = os.path.join(os.path.dirname(__file__), "..", "data")
 TRAINING_DEFAULT_TIMEOUT_MINUTES = 20
 TUNING_DEFAULT_TIMEOUT_MINUTES = 20
 TRANSFORM_DEFAULT_TIMEOUT_MINUTES = 20
+AUTO_ML_DEFAULT_TIMEMOUT_MINUTES = 60
 PYTHON_VERSION = "py" + str(sys.version_info.major)
 
 # these regions have some p2 and p3 instances, but not enough for continuous testing
@@ -75,6 +76,8 @@ EI_SUPPORTED_REGIONS = [
 
 NO_LDA_REGIONS = ["eu-west-3", "eu-north-1", "sa-east-1", "ap-east-1", "me-south-1"]
 NO_MARKET_PLACE_REGIONS = ["eu-west-3", "eu-north-1", "sa-east-1", "ap-east-1", "me-south-1"]
+NO_AUTO_ML_REGIONS = ["sa-east-1", "me-south-1", "ap-east-1", "eu-west-3"]
+NO_MODEL_MONITORING_REGIONS = ["me-south-1"]
 
 EFS_TEST_ENABLED_REGION = []
 
