@@ -67,7 +67,7 @@ class Processor(object):
                 to use for storing data during processing (default: 30).
             volume_kms_key (str): A KMS key for the processing
                 volume (default: None).
-            output_kms_key (str): The KMS key ID for processing job outputs.
+            output_kms_key (str): The KMS key ID for processing job outputs (default: None).
             max_runtime_in_seconds (int): Timeout in seconds (default: None).
                 After this amount of time, Amazon SageMaker terminates the job,
                 regardless of its current status.
@@ -80,8 +80,8 @@ class Processor(object):
                 one using the default AWS configuration chain.
             env (dict[str, str]): Environment variables to be passed to
                 the processing jobs (default: None).
-            tags (list[dict]): List of tags to be passed to the processing job.
-                For more, see
+            tags (list[dict]): List of tags to be passed to the processing job
+                (default: None). For more, see
                 https://docs.aws.amazon.com/sagemaker/latest/dg/API_Tag.html.
             network_config (:class:`~sagemaker.network.NetworkConfig`):
                 A :class:`~sagemaker.network.NetworkConfig`
@@ -189,7 +189,8 @@ class Processor(object):
 
         Args:
             inputs (list[sagemaker.processing.ProcessingInput]): A list of ``ProcessingInput``
-                objects to be normalized.
+                objects to be normalized (default: None). If not specified,
+                an empty list is returned.
 
         Returns:
             list[sagemaker.processing.ProcessingInput]: The list of normalized
@@ -234,8 +235,9 @@ class Processor(object):
 
         Args:
             outputs (list[sagemaker.processing.ProcessingOutput]): A list
-                of outputs to be normalized. Can be either strings or
-                ``ProcessingOutput`` objects.
+                of outputs to be normalized (default: None). Can be either strings or
+                ``ProcessingOutput`` objects. If not specified,
+                an empty list is returned.
 
         Returns:
             list[sagemaker.processing.ProcessingOutput]: The list of normalized
@@ -308,7 +310,7 @@ class ScriptProcessor(Processor):
                 to use for storing data during processing (default: 30).
             volume_kms_key (str): A KMS key for the processing
                 volume (default: None).
-            output_kms_key (str): The KMS key ID for processing job outputs.
+            output_kms_key (str): The KMS key ID for processing job outputs (default: None).
             max_runtime_in_seconds (int): Timeout in seconds (default: None).
                 After this amount of time, Amazon SageMaker terminates the job,
                 regardless of its current status.
@@ -321,8 +323,8 @@ class ScriptProcessor(Processor):
                 one using the default AWS configuration chain.
             env (dict[str, str]): Environment variables to be passed to
                 the processing jobs (default: None).
-            tags (list[dict]): List of tags to be passed to the processing job.
-                For more, see
+            tags (list[dict]): List of tags to be passed to the processing job
+                (default: None). For more, see
                 https://docs.aws.amazon.com/sagemaker/latest/dg/API_Tag.html.
             network_config (:class:`~sagemaker.network.NetworkConfig`):
                 A :class:`~sagemaker.network.NetworkConfig`
@@ -363,8 +365,8 @@ class ScriptProcessor(Processor):
         """Run a processing job.
 
         Args:
-            code (str): This can be an S3 URI or a local path to either
-                a directory or a file with the framework script to run.
+            code (str): This can be an S3 URI or a local path to
+                a file with the framework script to run.
             inputs (list[:class:`~sagemaker.processing.ProcessingInput`]): Input files for
                 the processing job. These must be provided as
                 :class:`~sagemaker.processing.ProcessingInput` objects (default: None).
