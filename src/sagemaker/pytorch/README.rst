@@ -77,9 +77,9 @@ The PyTorch Docker images have the following dependencies installed:
 
 The Docker images extend Ubuntu 16.04.
 
-If you need to install other dependencies you can put them into ``requirements.txt`` file and put it in the source directory
+With most versions of PyTorch, if you need to install other dependencies, you can put them into ``requirements.txt`` file and put it in the source directory
 (``source_dir``) you provide to the `PyTorch Estimator <#pytorch-estimators>`__.
-For more, see `Using third-party libraries <https://sagemaker.readthedocs.io/en/stable/using_pytorch.html#using-third-party-libraries>`_.
+For more, including directions specific to each version of PyTorch, see `Using third-party libraries <https://sagemaker.readthedocs.io/en/stable/using_pytorch.html#using-third-party-libraries>`_.
 
 You can select version of PyTorch by passing a ``framework_version`` keyword arg to the PyTorch Estimator constructor.
 Currently supported versions are listed in the above table. You can also set ``framework_version`` to only specify major and
