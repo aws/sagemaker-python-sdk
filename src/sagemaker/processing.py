@@ -61,7 +61,8 @@ class Processor(object):
                 a processing job with.
             instance_type (str): The type of EC2 instance to use for
                 processing, for example, 'ml.c4.xlarge'.
-            entrypoint (str): The entrypoint for the processing job (default: None).
+            entrypoint (list[str]): The entrypoint for the processing job (default: None).
+                This is in the form of a list of strings that make a command.
             volume_size_in_gb (int): Size in GB of the EBS volume
                 to use for storing data during processing (default: 30).
             volume_kms_key (str): A KMS key for the processing
