@@ -1,5 +1,21 @@
 # Changelog
 
+## v1.50.4 (2020-01-16)
+
+### Bug fixes and other changes
+
+ * Remove version number from default version comment
+ * remove remaining instances of python-dateutil pin
+ * upgrade boto3 and remove python-dateutil pin
+
+### Documentation changes
+
+ * Add issue templates and configure issue template chooser
+ * Update error type in delete_endpoint docstring
+ * add version requirement for using "requirements.txt" when serving an MXNet model
+ * update container dependency versions for MXNet and PyTorch
+ * Update supported versions of PyTorch
+
 ## v1.50.3 (2020-01-15)
 
 ### Bug fixes and other changes
