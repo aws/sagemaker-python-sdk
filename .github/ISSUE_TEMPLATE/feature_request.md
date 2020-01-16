@@ -1,6 +1,6 @@
 ---
 name: Feature request
-about: Suggest an idea for this library
+about: Suggest an improvement for this library
 title: ''
 labels: 'feature request'
 assignees: ''
