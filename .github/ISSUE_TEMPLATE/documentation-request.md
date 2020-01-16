@@ -8,7 +8,7 @@ assignees: ''
 ---
 
 **What did you find confusing? Please describe.**
-A clear and concise description of what you found confusing. Ex. I'm tried to [...] but I didn't understand how to [...]
+A clear and concise description of what you found confusing. Ex. I tried to [...] but I didn't understand how to [...]
 
 **Describe how documentation can be improved**
 A clear and concise description of where documentation was lacking and how it can be improved.
