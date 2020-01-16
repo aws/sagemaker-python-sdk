@@ -796,7 +796,7 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):
         """Delete an Amazon SageMaker ``Endpoint``.
 
         Raises:
-            ValueError: If the endpoint does not exist.
+            botocore.exceptions.ClientError: If the endpoint does not exist.
         """
         self._ensure_latest_training_job(error_message="Endpoint was not created yet")
         self.sagemaker_session.delete_endpoint(self.latest_training_job.name)
