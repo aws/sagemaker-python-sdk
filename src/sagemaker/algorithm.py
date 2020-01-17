@@ -553,3 +553,28 @@ class AlgorithmEstimator(EstimatorBase):
             current_input_modes = current_input_modes & supported_input_modes
 
         return current_input_modes
+
+    @classmethod
+    def _prepare_init_params_from_job_description(cls, job_details, model_channel_name=None):
+        """Convert the job description to init params that can be handled by the
+        class constructor
+
+        Args:
+            job_details (dict): the returned job details from a DescribeTrainingJob
+                API call.
+            model_channel_name (str): Name of the channel where pre-trained
+                model data will be downloaded.
+
+        Returns:
+            dict: The transformed init_params
+        """
+        init_params = super(AlgorithmEstimator, cls)._prepare_init_params_from_job_description(
+            job_details, model_channel_name
+        )
+
+        # This hyperparameter is added by Amazon SageMaker Automatic Model Tuning.
+        # It cannot be set through instantiating an estimator.
+        if "_tuning_objective_metric" in init_params["hyperparameters"]:
+            del init_params["hyperparameters"]["_tuning_objective_metric"]
+
+        return init_params
