@@ -275,3 +275,17 @@ class Model(sagemaker.model.FrameworkModel):
             self._framework_version,
             accelerator_type=accelerator_type,
         )
+
+    def serving_image_uri(self, region_name, instance_type):  # pylint: disable=unused-argument
+        """Create a URI for the serving image.
+
+        Args:
+            region_name (str): AWS region where the image is uploaded.
+            instance_type (str): SageMaker instance type. Used to determine device type
+                (cpu/gpu/family-specific optimized).
+
+        Returns:
+            str: The appropriate image URI based on the given parameters.
+
+        """
+        return self._get_image_uri(instance_type=instance_type)
