@@ -30,6 +30,7 @@ Training:
     automl
     processing
     analytics
+    debugger
 
 Inference:
 

@@ -1,5 +1,52 @@
 # Changelog
 
+## v1.50.4 (2020-01-16)
+
+### Bug fixes and other changes
+
+ * Remove version number from default version comment
+ * remove remaining instances of python-dateutil pin
+ * upgrade boto3 and remove python-dateutil pin
+
+### Documentation changes
+
+ * Add issue templates and configure issue template chooser
+ * Update error type in delete_endpoint docstring
+ * add version requirement for using "requirements.txt" when serving an MXNet model
+ * update container dependency versions for MXNet and PyTorch
+ * Update supported versions of PyTorch
+
+## v1.50.3 (2020-01-15)
+
+### Bug fixes and other changes
+
+ * ignore private Automatic Model Tuning hyperparameter when attaching AlgorithmEstimator
+
+### Documentation changes
+
+ * add Debugger API docs
+
+## v1.50.2 (2020-01-14)
+
+### Bug fixes and other changes
+
+ * add tests to quick canary
+ * honor 'wait' flag when updating endpoint
+ * add default framework version warning message in Model classes
+ * Adding role arn explanation for sagemaker role
+ * allow predictor to be returned from AutoML.deploy()
+ * add PR checklist item about unique_name_from_base()
+ * use unique_name_from_base for multi-algo tuning test
+ * update copyright year in license header
+
+### Documentation changes
+
+ * add version requirement for using "requirement.txt" when serving a PyTorch model
+ * add SageMaker Debugger overview
+ * clarify requirements.txt usage for Chainer, MXNet, and Scikit-learn
+ * change "associate" to "create" for OpenID connector
+ * fix typo and improve clarity on installing packages via "requirements.txt"
+
 ## v1.50.1 (2020-01-07)
 
 ### Bug fixes and other changes

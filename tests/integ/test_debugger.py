@@ -15,6 +15,8 @@ from __future__ import absolute_import
 import os
 import uuid
 
+import pytest
+
 from sagemaker.debugger import Rule
 from sagemaker.debugger import DebuggerHookConfig
 from sagemaker.debugger import TensorBoardOutputConfig
@@ -365,6 +367,7 @@ def test_mxnet_with_tensorboard_output_config(
         _wait_and_assert_that_no_rule_jobs_errored(training_job=mx.latest_training_job)
 
 
+@pytest.mark.canary_quick
 def test_mxnet_with_all_rules_and_configs(sagemaker_session, mxnet_full_version, cpu_instance_type):
     with timeout(minutes=TRAINING_DEFAULT_TIMEOUT_MINUTES):
         rules = [
