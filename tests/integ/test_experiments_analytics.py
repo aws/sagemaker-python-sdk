@@ -26,11 +26,15 @@ def experiment(sagemaker_session):
             trial_component_name = "tc-" + str(uuid.uuid4())
             trials[trial_name] = trial_component_name
 
-            sm.create_trial_component(TrialComponentName=trial_component_name, DisplayName="Training")
+            sm.create_trial_component(
+                TrialComponentName=trial_component_name, DisplayName="Training"
+            )
             sm.update_trial_component(
                 TrialComponentName=trial_component_name, Parameters={"hp1": {"NumberValue": i}}
             )
-            sm.associate_trial_component(TrialComponentName=trial_component_name, TrialName=trial_name)
+            sm.associate_trial_component(
+                TrialComponentName=trial_component_name, TrialName=trial_name
+            )
 
         time.sleep(15)  # wait for search to get updated
 
@@ -100,7 +104,9 @@ def test_experiment_analytics_search_by_nested_filter_sort_ascending(sagemaker_s
         assert (
             len(analytics.dataframe()) > 5
         )  # TODO [owen-t] Replace with == 10 and put test in retry block
-        assert list(analytics.dataframe()["hp1"].values) == sorted(analytics.dataframe()["hp1"].values)
+        assert list(analytics.dataframe()["hp1"].values) == sorted(
+            analytics.dataframe()["hp1"].values
+        )
 
 
 def test_experiment_analytics_search_by_nested_filter_sort_descending(sagemaker_session):
@@ -113,7 +119,9 @@ def test_experiment_analytics_search_by_nested_filter_sort_descending(sagemaker_
         }
 
         analytics = ExperimentAnalytics(
-            sagemaker_session=sagemaker_session, search_expression=search_exp, sort_by="Parameters.hp1"
+            sagemaker_session=sagemaker_session,
+            search_expression=search_exp,
+            sort_by="Parameters.hp1",
         )
 
         assert list(analytics.dataframe().columns) == ["TrialComponentName", "DisplayName", "hp1"]
