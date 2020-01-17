@@ -69,7 +69,7 @@ SINGLE_INSTANCE_COUNT = 1
 
 @pytest.mark.canary_quick
 def test_byo_airflow_config_uploads_data_source_to_s3_when_inputs_provided(
-    sagemaker_session, cpu_instance_type
+        sagemaker_session, cpu_instance_type
 ):
     with timeout(seconds=AIRFLOW_CONFIG_TIMEOUT_IN_SECONDS):
         training_data_path = os.path.join(DATA_DIR, "dummy_tensor")
@@ -89,7 +89,7 @@ def test_byo_airflow_config_uploads_data_source_to_s3_when_inputs_provided(
             sagemaker_session=sagemaker_session,
         )
 
-        training_config = _build_airflow_workflow(estimator, inputs)
+        training_config = _build_airflow_workflow(estimator=estimator, instance_type=cpu_instance_type, inputs=inputs)
 
         _assert_that_s3_url_contains_data(
             sagemaker_session,
@@ -127,7 +127,7 @@ def test_kmeans_airflow_config_uploads_data_source_to_s3(sagemaker_session, cpu_
 
         records = kmeans.record_set(train_set[0][:100])
 
-        training_config = _build_airflow_workflow(kmeans, records)
+        training_config = _build_airflow_workflow(estimator=kmeans, instance_type=cpu_instance_type, inputs=records)
 
         _assert_that_s3_url_contains_data(
             sagemaker_session,
@@ -159,7 +159,7 @@ def test_fm_airflow_config_uploads_data_source_to_s3(sagemaker_session, cpu_inst
 
         records = fm.record_set(train_set[0][:200], train_set[1][:200].astype("float32"))
 
-        training_config = _build_airflow_workflow(fm, records)
+        training_config = _build_airflow_workflow(estimator=fm, instance_type=cpu_instance_type, inputs=records)
 
         _assert_that_s3_url_contains_data(
             sagemaker_session,
@@ -189,7 +189,7 @@ def test_ipinsights_airflow_config_uploads_data_source_to_s3(sagemaker_session, 
             data_path, ipinsights.data_location, num_records, None, sagemaker_session
         )
 
-        training_config = _build_airflow_workflow(ipinsights, records)
+        training_config = _build_airflow_workflow(estimator=ipinsights, instance_type=cpu_instance_type, inputs=records)
 
         _assert_that_s3_url_contains_data(
             sagemaker_session,
@@ -218,7 +218,7 @@ def test_knn_airflow_config_uploads_data_source_to_s3(sagemaker_session, cpu_ins
 
         records = knn.record_set(train_set[0][:200], train_set[1][:200].astype("float32"))
 
-        training_config = _build_airflow_workflow(knn, records)
+        training_config = _build_airflow_workflow(estimator=knn, instance_type=cpu_instance_type, inputs=records)
 
         _assert_that_s3_url_contains_data(
             sagemaker_session,
@@ -253,7 +253,8 @@ def test_lda_airflow_config_uploads_data_source_to_s3(sagemaker_session, cpu_ins
             data_path, lda.data_location, len(all_records), feature_num, sagemaker_session
         )
 
-        training_config = _build_airflow_workflow(lda, records, 100)
+        training_config = _build_airflow_workflow(estimator=lda, instance_type=cpu_instance_type, inputs=records,
+                                                  mini_batch_size=100)
 
         _assert_that_s3_url_contains_data(
             sagemaker_session,
@@ -263,7 +264,7 @@ def test_lda_airflow_config_uploads_data_source_to_s3(sagemaker_session, cpu_ins
 
 @pytest.mark.canary_quick
 def test_linearlearner_airflow_config_uploads_data_source_to_s3(
-    sagemaker_session, cpu_instance_type
+        sagemaker_session, cpu_instance_type
 ):
     with timeout(seconds=AIRFLOW_CONFIG_TIMEOUT_IN_SECONDS):
         data_path = os.path.join(DATA_DIR, "one_p_mnist", "mnist.pkl.gz")
@@ -322,7 +323,7 @@ def test_linearlearner_airflow_config_uploads_data_source_to_s3(
 
         records = ll.record_set(train_set[0][:200], train_set[1][:200])
 
-        training_config = _build_airflow_workflow(ll, records)
+        training_config = _build_airflow_workflow(estimator=ll, instance_type=cpu_instance_type, inputs=records)
 
         _assert_that_s3_url_contains_data(
             sagemaker_session,
@@ -354,7 +355,7 @@ def test_ntm_airflow_config_uploads_data_source_to_s3(sagemaker_session, cpu_ins
             data_path, ntm.data_location, len(all_records), feature_num, sagemaker_session
         )
 
-        training_config = _build_airflow_workflow(ntm, records)
+        training_config = _build_airflow_workflow(estimator=ntm, instance_type=cpu_instance_type, inputs=records)
 
         _assert_that_s3_url_contains_data(
             sagemaker_session,
@@ -386,7 +387,7 @@ def test_pca_airflow_config_uploads_data_source_to_s3(sagemaker_session, cpu_ins
 
         records = pca.record_set(train_set[0][:100])
 
-        training_config = _build_airflow_workflow(pca, records)
+        training_config = _build_airflow_workflow(estimator=pca, instance_type=cpu_instance_type, inputs=records)
 
         _assert_that_s3_url_contains_data(
             sagemaker_session,
@@ -413,7 +414,7 @@ def test_rcf_airflow_config_uploads_data_source_to_s3(sagemaker_session, cpu_ins
 
         records = rcf.record_set(train_input)
 
-        training_config = _build_airflow_workflow(rcf, records)
+        training_config = _build_airflow_workflow(estimator=rcf, instance_type=cpu_instance_type, inputs=records)
 
         _assert_that_s3_url_contains_data(
             sagemaker_session,
@@ -422,7 +423,7 @@ def test_rcf_airflow_config_uploads_data_source_to_s3(sagemaker_session, cpu_ins
 
 
 @pytest.mark.canary_quick
-def test_chainer_airflow_config_uploads_data_source_to_s3(sagemaker_session, chainer_full_version):
+def test_chainer_airflow_config_uploads_data_source_to_s3(sagemaker_session, cpu_instance_type, chainer_full_version):
     with timeout(seconds=AIRFLOW_CONFIG_TIMEOUT_IN_SECONDS):
         script_path = os.path.join(DATA_DIR, "chainer_mnist", "mnist.py")
         data_path = os.path.join(DATA_DIR, "chainer_mnist")
@@ -446,7 +447,7 @@ def test_chainer_airflow_config_uploads_data_source_to_s3(sagemaker_session, cha
         test_input = "file://" + os.path.join(data_path, "test")
 
         training_config = _build_airflow_workflow(
-            chainer, {"train": train_input, "test": test_input}
+            estimator=chainer, instance_type=cpu_instance_type, inputs={"train": train_input, "test": test_input}
         )
 
         _assert_that_s3_url_contains_data(
@@ -457,7 +458,7 @@ def test_chainer_airflow_config_uploads_data_source_to_s3(sagemaker_session, cha
 
 @pytest.mark.canary_quick
 def test_mxnet_airflow_config_uploads_data_source_to_s3(
-    sagemaker_session, cpu_instance_type, mxnet_full_version
+        sagemaker_session, cpu_instance_type, mxnet_full_version
 ):
     with timeout(seconds=AIRFLOW_CONFIG_TIMEOUT_IN_SECONDS):
         script_path = os.path.join(DATA_DIR, "chainer_mnist", "mnist.py")
@@ -476,7 +477,8 @@ def test_mxnet_airflow_config_uploads_data_source_to_s3(
         train_input = "file://" + os.path.join(data_path, "train")
         test_input = "file://" + os.path.join(data_path, "test")
 
-        training_config = _build_airflow_workflow(mx, {"train": train_input, "test": test_input})
+        training_config = _build_airflow_workflow(estimator=mx, instance_type=cpu_instance_type,
+                                                  inputs={"train": train_input, "test": test_input})
 
         _assert_that_s3_url_contains_data(
             sagemaker_session,
@@ -486,7 +488,7 @@ def test_mxnet_airflow_config_uploads_data_source_to_s3(
 
 @pytest.mark.canary_quick
 def test_sklearn_airflow_config_uploads_data_source_to_s3(
-    sagemaker_session, cpu_instance_type, sklearn_full_version
+        sagemaker_session, cpu_instance_type, sklearn_full_version
 ):
     with timeout(seconds=AIRFLOW_CONFIG_TIMEOUT_IN_SECONDS):
         script_path = os.path.join(DATA_DIR, "sklearn_mnist", "mnist.py")
@@ -510,7 +512,7 @@ def test_sklearn_airflow_config_uploads_data_source_to_s3(
         )
 
         training_config = _build_airflow_workflow(
-            sklearn, {"train": train_input, "test": test_input}
+            estimator=sklearn, instance_type=cpu_instance_type, inputs={"train": train_input, "test": test_input}
         )
 
         _assert_that_s3_url_contains_data(
@@ -542,7 +544,7 @@ def test_tf_airflow_config_uploads_data_source_to_s3(sagemaker_session, cpu_inst
             path=os.path.join(TF_MNIST_RESOURCE_PATH, "data"), key_prefix="scriptmode/mnist"
         )
 
-        training_config = _build_airflow_workflow(tf, inputs)
+        training_config = _build_airflow_workflow_tf(estimator=tf, instance_type=cpu_instance_type, inputs=inputs)
 
         _assert_that_s3_url_contains_data(
             sagemaker_session,
@@ -553,7 +555,6 @@ def test_tf_airflow_config_uploads_data_source_to_s3(sagemaker_session, cpu_inst
 @pytest.mark.canary_quick
 def test_xgboost_airflow_config_uploads_data_source_to_s3(sagemaker_session, cpu_instance_type):
     with timeout(seconds=AIRFLOW_CONFIG_TIMEOUT_IN_SECONDS):
-
         xgboost = XGBoost(
             entry_point=os.path.join(DATA_DIR, "dummy_script.py"),
             framework_version=XGBOOST_LATEST_VERSION,
@@ -565,9 +566,7 @@ def test_xgboost_airflow_config_uploads_data_source_to_s3(sagemaker_session, cpu
             py_version=PYTHON_VERSION,
         )
 
-        # xgboost.fit(inputs="s3://mybucket/train", job_name=job_name)
-
-        training_config = _build_airflow_workflow(xgboost)
+        training_config = _build_airflow_workflow(estimator=xgboost, instance_type=cpu_instance_type)
 
         _assert_that_s3_url_contains_data(
             sagemaker_session,
@@ -577,7 +576,7 @@ def test_xgboost_airflow_config_uploads_data_source_to_s3(sagemaker_session, cpu
 
 @pytest.mark.canary_quick
 def test_pytorch_airflow_config_uploads_data_source_to_s3_when_inputs_not_provided(
-    sagemaker_session, cpu_instance_type
+        sagemaker_session, cpu_instance_type
 ):
     with timeout(seconds=AIRFLOW_CONFIG_TIMEOUT_IN_SECONDS):
         estimator = PyTorch(
@@ -632,10 +631,61 @@ def _assert_that_s3_url_contains_data(sagemaker_session, s3_url):
     assert s3_request["KeyCount"] > 0
 
 
-def _build_airflow_workflow(estimator, inputs=None, mini_batch_size=None):
+def _build_airflow_workflow(estimator, instance_type, inputs=None, mini_batch_size=None):
     training_config = sm_airflow.training_config(
         estimator=estimator, inputs=inputs, mini_batch_size=mini_batch_size
     )
+
+    model = estimator.create_model()
+
+    model_config = sm_airflow.model_config(instance_type, model)
+
+    # Validate model_config
+    print("model_config")
+    print(model_config)
+
+    transform_config = sm_airflow.transform_config_from_estimator(
+        estimator=estimator,
+        task_id="transform_config",
+        task_type="training",
+        instance_count=SINGLE_INSTANCE_COUNT,
+        instance_type=estimator.train_instance_type,
+        data=inputs,
+        content_type="text/csv",
+    )
+
+    default_args = {
+        "owner": "airflow",
+        "start_date": airflow.utils.dates.days_ago(2),
+        "provide_context": True,
+    }
+
+    dag = DAG("tensorflow_example", default_args=default_args, schedule_interval="@once")
+
+    train_op = SageMakerTrainingOperator(
+        task_id="tf_training", config=training_config, wait_for_completion=True, dag=dag
+    )
+
+    transform_op = SageMakerTransformOperator(
+        task_id="transform_operator", config=transform_config, wait_for_completion=True, dag=dag
+    )
+
+    transform_op.set_upstream(train_op)
+
+    return training_config
+
+def _build_airflow_workflow_tf(estimator, instance_type, inputs=None, mini_batch_size=None):
+    training_config = sm_airflow.training_config(
+        estimator=estimator, inputs=inputs, mini_batch_size=mini_batch_size
+    )
+
+    model = estimator.create_model(entry_point=estimator.entry_point)
+
+    model_config = sm_airflow.model_config(instance_type, model)
+
+    # Validate model_config
+    print("model_config")
+    print(model_config)
 
     transform_config = sm_airflow.transform_config_from_estimator(
         estimator=estimator,

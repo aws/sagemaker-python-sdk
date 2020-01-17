@@ -513,7 +513,6 @@ def prepare_framework_container_def(model, instance_type, s3_operations):
     Returns:
         dict: The container information of this framework model.
     """
-    print("Model: ", model.__dict__)
     deploy_image = model.image
     if not deploy_image:
         region_name = model.sagemaker_session.boto_session.region_name
