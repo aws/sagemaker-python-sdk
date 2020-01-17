@@ -48,7 +48,7 @@ class Processor(object):
         tags=None,
         network_config=None,
     ):
-        """Initialize a ``Processor`` instance. The ``Processor`` handles Amazon
+        """Initializes a ``Processor`` instance. The ``Processor`` handles Amazon
         SageMaker Processing tasks.
 
         Args:
@@ -118,7 +118,7 @@ class Processor(object):
         job_name=None,
         experiment_config=None,
     ):
-        """Run a processing job.
+        """Runs a processing job.
 
         Args:
             inputs (list[:class:`~sagemaker.processing.ProcessingInput`]): Input files for
@@ -164,7 +164,7 @@ class Processor(object):
             self.latest_job.wait(logs=logs)
 
     def _generate_current_job_name(self, job_name=None):
-        """Generate the job name before running a processing job.
+        """Generates the job name before running a processing job.
 
         Args:
             job_name (str): Name of the processing job to be created. If not
@@ -185,7 +185,7 @@ class Processor(object):
         return name_from_base(base_name)
 
     def _normalize_inputs(self, inputs=None):
-        """Ensure that all the ``ProcessingInput`` objects have names and S3 URIs.
+        """Ensures that all the ``ProcessingInput`` objects have names and S3 URIs.
 
         Args:
             inputs (list[sagemaker.processing.ProcessingInput]): A list of ``ProcessingInput``
@@ -230,7 +230,7 @@ class Processor(object):
         return normalized_inputs
 
     def _normalize_outputs(self, outputs=None):
-        """Ensure that all the outputs are ``ProcessingOutput`` objects with
+        """Ensures that all the outputs are ``ProcessingOutput`` objects with
         names and S3 URIs.
 
         Args:
@@ -291,7 +291,7 @@ class ScriptProcessor(Processor):
         tags=None,
         network_config=None,
     ):
-        """Initialize a ``ScriptProcessor`` instance. The ``ScriptProcessor``
+        """Initializes a ``ScriptProcessor`` instance. The ``ScriptProcessor``
         handles Amazon SageMaker Processing tasks for jobs using a machine learning framework.
 
         Args:
@@ -362,7 +362,7 @@ class ScriptProcessor(Processor):
         job_name=None,
         experiment_config=None,
     ):
-        """Run a processing job.
+        """Runs a processing job.
 
         Args:
             code (str): This can be an S3 URI or a local path to
@@ -545,7 +545,7 @@ class ProcessingJob(_Job):
 
     @classmethod
     def start_new(cls, processor, inputs, outputs, experiment_config):
-        """Start a new processing job using the provided inputs and outputs.
+        """Starts a new processing job using the provided inputs and outputs.
 
         Args:
             processor (:class:`~sagemaker.processing.Processor`): The ``Processor`` instance
@@ -747,7 +747,7 @@ class ProcessingInput(object):
         s3_data_distribution_type="FullyReplicated",
         s3_compression_type="None",
     ):
-        """Initialize a ``ProcessingInput`` instance. ``ProcessingInput`` accepts parameters
+        """Initializes a ``ProcessingInput`` instance. ``ProcessingInput`` accepts parameters
         that specify an Amazon S3 input for a processing job and provides a method
         to turn those parameters into a dictionary.
 
@@ -801,7 +801,7 @@ class ProcessingOutput(object):
     a method to turn those parameters into a dictionary."""
 
     def __init__(self, source, destination=None, output_name=None, s3_upload_mode="EndOfJob"):
-        """Initialize a ``ProcessingOutput`` instance. ``ProcessingOutput`` accepts parameters that
+        """Initializes a ``ProcessingOutput`` instance. ``ProcessingOutput`` accepts parameters that
         specify an Amazon S3 output for a processing job and provides a method to turn
         those parameters into a dictionary.
 
