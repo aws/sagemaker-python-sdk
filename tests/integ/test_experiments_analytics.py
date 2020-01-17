@@ -140,4 +140,4 @@ def _delete_resources(sagemaker_client, experiment_name, trials):
         sagemaker_client.delete_trial_component(TrialComponentName=tc)
         sagemaker_client.delete_trial(TrialName=trial)
 
-    sagemaker_client.delete_experiment(experiment_name=experiment_name)
+    sagemaker_client.delete_experiment(ExperimentName=experiment_name)
