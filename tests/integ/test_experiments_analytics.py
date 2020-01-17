@@ -135,7 +135,7 @@ def test_experiment_analytics_search_by_nested_filter_sort_descending(sagemaker_
 
 
 def _delete_resources(sagemaker_client, experiment_name, trials):
-    for trial, tc in trials:
+    for trial, tc in trials.items():
         sagemaker_client.disassociate_trial_component(TrialName=trial, TrialComponentName=tc)
         sagemaker_client.delete_trial_component(TrialComponentName=tc)
         sagemaker_client.delete_trial(TrialName=trial)
