@@ -147,7 +147,7 @@ class Transformer(object):
                 pass to the algorithm container for inference. If you omit the
                 field, it gets the value '$', representing the entire input.
                 For CSV data, each row is taken as a JSON array,
-                so only index based JSONPaths can be applied, e.g. $[0], $[1:].
+                so only index-based JSONPaths can be applied, e.g. $[0], $[1:].
                 CSV data should follow the `RFC format <https://tools.ietf.org/html/rfc4180>`_.
                 See `Supported JSONPath Operators
                 <https://docs.aws.amazon.com/sagemaker/latest/dg/batch-transform-data-processing.html#data-processing-operators>`_
