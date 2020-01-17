@@ -136,8 +136,22 @@ def test_experiment_analytics_search_by_nested_filter_sort_descending(sagemaker_
 
 def _delete_resources(sagemaker_client, experiment_name, trials):
     for trial, tc in trials.items():
-        sagemaker_client.disassociate_trial_component(TrialName=trial, TrialComponentName=tc)
-        sagemaker_client.delete_trial_component(TrialComponentName=tc)
-        sagemaker_client.delete_trial(TrialName=trial)
+        with _ignore_resource_not_found(sagemaker_client):
+            sagemaker_client.disassociate_trial_component(TrialName=trial, TrialComponentName=tc)
 
-    sagemaker_client.delete_experiment(ExperimentName=experiment_name)
+        with _ignore_resource_not_found(sagemaker_client):
+            sagemaker_client.delete_trial_component(TrialComponentName=tc)
+
+        with _ignore_resource_not_found(sagemaker_client):
+            sagemaker_client.delete_trial(TrialName=trial)
+
+    with _ignore_resource_not_found(sagemaker_client):
+        sagemaker_client.delete_experiment(ExperimentName=experiment_name)
+
+
+@contextmanager
+def _ignore_resource_not_found(sagemaker_client):
+    try:
+        yield
+    except sagemaker_client.exceptions.ResourceNotFound:
+        pass
