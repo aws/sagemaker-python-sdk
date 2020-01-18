@@ -41,6 +41,8 @@ required_packages = [
     "protobuf3-to-dict>=0.1.5",
     "requests>=2.20.0, <3",
     "smdebug-rulesconfig==0.1.2",
+    "importlib-metadata>=1.4.0",
+    "packaging>=20.0",
 ]
 
 # Specific use case dependencies

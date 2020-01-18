@@ -14,7 +14,7 @@
 from __future__ import absolute_import
 
 import logging
-import pkg_resources
+import packaging.version
 from sagemaker import fw_utils
 
 import sagemaker
@@ -138,8 +138,8 @@ class PyTorchModel(FrameworkModel):
             dict[str, str]: A container definition object usable with the
             CreateModel API.
         """
-        lowest_mms_version = pkg_resources.parse_version(self._LOWEST_MMS_VERSION)
-        framework_version = pkg_resources.parse_version(self.framework_version)
+        lowest_mms_version = packaging.version.Version(self._LOWEST_MMS_VERSION)
+        framework_version = packaging.version.Version(self.framework_version)
         is_mms_version = framework_version >= lowest_mms_version
 
         deploy_image = self.image
