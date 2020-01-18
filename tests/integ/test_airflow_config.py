@@ -620,39 +620,37 @@ def test_pytorch_airflow_config_uploads_data_source_to_s3_when_inputs_not_provid
             hyperparameters={"epochs": 6, "backend": "gloo"},
         )
 
-        train_config = sm_airflow.training_config(estimator=estimator)
-
-        uploaded_s3_data = train_config["HyperParameters"]["sagemaker_submit_directory"].strip('"')
-
-        transform_config = sm_airflow.transform_config_from_estimator(
-            estimator=estimator,
-            task_id="transform_config",
-            task_type="training",
-            instance_count=SINGLE_INSTANCE_COUNT,
-            instance_type=cpu_instance_type,
-            data=uploaded_s3_data,
-            content_type="text/csv",
+        training_config = _build_airflow_workflow(
+            estimator=estimator, instance_type=cpu_instance_type
         )
 
-        default_args = {
-            "owner": "airflow",
-            "start_date": airflow.utils.dates.days_ago(2),
-            "provide_context": True,
-        }
-
-        dag = DAG("tensorflow_example", default_args=default_args, schedule_interval="@once")
-
-        train_op = SageMakerTrainingOperator(
-            task_id="tf_training", config=train_config, wait_for_completion=True, dag=dag
+        _assert_that_s3_url_contains_data(
+            sagemaker_session,
+            training_config["HyperParameters"]["sagemaker_submit_directory"].strip('"'),
         )
 
-        transform_op = SageMakerTransformOperator(
-            task_id="transform_operator", config=transform_config, wait_for_completion=True, dag=dag
+
+def test_pytorch_12_airflow_config_uploads_data_source_to_s3_when_inputs_not_provided(
+    sagemaker_session, cpu_instance_type
+):
+    with timeout(seconds=AIRFLOW_CONFIG_TIMEOUT_IN_SECONDS):
+        estimator = PyTorch(
+            entry_point=PYTORCH_MNIST_SCRIPT,
+            role=ROLE,
+            framework_version="1.2.0",
+            train_instance_count=2,
+            train_instance_type=cpu_instance_type,
+            hyperparameters={"epochs": 6, "backend": "gloo"},
         )
 
-        transform_op.set_upstream(train_op)
+        training_config = _build_airflow_workflow(
+            estimator=estimator, instance_type=cpu_instance_type
+        )
 
-        _assert_that_s3_url_contains_data(sagemaker_session, uploaded_s3_data)
+        _assert_that_s3_url_contains_data(
+            sagemaker_session,
+            training_config["HyperParameters"]["sagemaker_submit_directory"].strip('"'),
+        )
 
 
 def _assert_that_s3_url_contains_data(sagemaker_session, s3_url):
