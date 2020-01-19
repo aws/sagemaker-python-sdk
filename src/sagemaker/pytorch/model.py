@@ -183,7 +183,7 @@ class PyTorchModel(FrameworkModel):
         """
         return fw_utils.create_image_uri(
             region_name,
-            self.__framework_name__,
+            "-".join([self.__framework_name__, "serving"]),
             instance_type,
             self.framework_version,
             self.py_version,

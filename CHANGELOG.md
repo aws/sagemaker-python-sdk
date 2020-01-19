@@ -1,5 +1,11 @@
 # Changelog
 
+## v1.50.6 (2020-01-18)
+
+### Bug fixes and other changes
+
+ * Append serving to model framework name for PyTorch, MXNet, and TensorFlow
+
 ## v1.50.5 (2020-01-17)
 
 ### Bug fixes and other changes
