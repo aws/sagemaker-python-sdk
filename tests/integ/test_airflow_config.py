@@ -572,7 +572,7 @@ def test_tf_airflow_config_uploads_data_source_to_s3(sagemaker_session, cpu_inst
             path=os.path.join(TF_MNIST_RESOURCE_PATH, "data"), key_prefix="scriptmode/mnist"
         )
 
-        training_config = _build_airflow_workflow_tf(
+        training_config = _build_airflow_workflow(
             estimator=tf, instance_type=cpu_instance_type, inputs=inputs
         )
 
@@ -667,48 +667,6 @@ def _build_airflow_workflow(estimator, instance_type, inputs=None, mini_batch_si
     )
 
     model = estimator.create_model()
-    assert model is not None
-
-    model_config = sm_airflow.model_config(instance_type, model)
-    assert model_config is not None
-
-    transform_config = sm_airflow.transform_config_from_estimator(
-        estimator=estimator,
-        task_id="transform_config",
-        task_type="training",
-        instance_count=SINGLE_INSTANCE_COUNT,
-        instance_type=estimator.train_instance_type,
-        data=inputs,
-        content_type="text/csv",
-    )
-
-    default_args = {
-        "owner": "airflow",
-        "start_date": airflow.utils.dates.days_ago(2),
-        "provide_context": True,
-    }
-
-    dag = DAG("tensorflow_example", default_args=default_args, schedule_interval="@once")
-
-    train_op = SageMakerTrainingOperator(
-        task_id="tf_training", config=training_config, wait_for_completion=True, dag=dag
-    )
-
-    transform_op = SageMakerTransformOperator(
-        task_id="transform_operator", config=transform_config, wait_for_completion=True, dag=dag
-    )
-
-    transform_op.set_upstream(train_op)
-
-    return training_config
-
-
-def _build_airflow_workflow_tf(estimator, instance_type, inputs=None, mini_batch_size=None):
-    training_config = sm_airflow.training_config(
-        estimator=estimator, inputs=inputs, mini_batch_size=mini_batch_size
-    )
-
-    model = estimator.create_model(entry_point=estimator.entry_point)
     assert model is not None
 
     model_config = sm_airflow.model_config(instance_type, model)
