@@ -15,7 +15,8 @@ from __future__ import absolute_import
 
 import logging
 
-from pkg_resources import parse_version
+import packaging.version
+
 from sagemaker import fw_utils
 
 import sagemaker
@@ -142,9 +143,9 @@ class MXNetModel(FrameworkModel):
             dict[str, str]: A container definition object usable with the
             CreateModel API.
         """
-        is_mms_version = parse_version(self.framework_version) >= parse_version(
-            self._LOWEST_MMS_VERSION
-        )
+        is_mms_version = packaging.version.Version(
+            self.framework_version
+        ) >= packaging.version.Version(self._LOWEST_MMS_VERSION)
 
         deploy_image = self.image
         if not deploy_image:
