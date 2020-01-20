@@ -1,5 +1,11 @@
 # Changelog
 
+## v1.50.6.post0 (2020-01-20)
+
+### Documentation changes
+
+ * add additional information to Transformer class transform function doc string
+
 ## v1.50.6 (2020-01-18)
 
 ### Bug fixes and other changes
