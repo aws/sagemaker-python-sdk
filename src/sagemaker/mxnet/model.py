@@ -15,7 +15,8 @@ from __future__ import absolute_import
 
 import logging
 
-from pkg_resources import parse_version
+import packaging.version
+
 from sagemaker import fw_utils
 
 import sagemaker
@@ -26,7 +27,7 @@ from sagemaker.fw_utils import (
     empty_framework_version_warning,
 )
 from sagemaker.model import FrameworkModel, MODEL_SERVER_WORKERS_PARAM_NAME
-from sagemaker.mxnet.defaults import MXNET_VERSION, LATEST_VERSION
+from sagemaker.mxnet import defaults
 from sagemaker.predictor import RealTimePredictor, json_serializer, json_deserializer
 
 logger = logging.getLogger("sagemaker")
@@ -114,12 +115,17 @@ class MXNetModel(FrameworkModel):
         )
 
         if py_version == "py2":
-            logger.warning(python_deprecation_warning(self.__framework_name__))
+            logger.warning(
+                python_deprecation_warning(self.__framework_name__, defaults.LATEST_PY2_VERSION)
+            )
+
         if framework_version is None:
-            logger.warning(empty_framework_version_warning(MXNET_VERSION, LATEST_VERSION))
+            logger.warning(
+                empty_framework_version_warning(defaults.MXNET_VERSION, defaults.LATEST_VERSION)
+            )
 
         self.py_version = py_version
-        self.framework_version = framework_version or MXNET_VERSION
+        self.framework_version = framework_version or defaults.MXNET_VERSION
         self.model_server_workers = model_server_workers
 
     def prepare_container_def(self, instance_type, accelerator_type=None):
@@ -137,9 +143,9 @@ class MXNetModel(FrameworkModel):
             dict[str, str]: A container definition object usable with the
             CreateModel API.
         """
-        is_mms_version = parse_version(self.framework_version) >= parse_version(
-            self._LOWEST_MMS_VERSION
-        )
+        is_mms_version = packaging.version.Version(
+            self.framework_version
+        ) >= packaging.version.Version(self._LOWEST_MMS_VERSION)
 
         deploy_image = self.image
         if not deploy_image:

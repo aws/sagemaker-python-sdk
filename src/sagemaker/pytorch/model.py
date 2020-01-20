@@ -14,7 +14,7 @@
 from __future__ import absolute_import
 
 import logging
-import pkg_resources
+import packaging.version
 from sagemaker import fw_utils
 
 import sagemaker
@@ -25,7 +25,7 @@ from sagemaker.fw_utils import (
     empty_framework_version_warning,
 )
 from sagemaker.model import FrameworkModel, MODEL_SERVER_WORKERS_PARAM_NAME
-from sagemaker.pytorch.defaults import PYTORCH_VERSION, PYTHON_VERSION, LATEST_VERSION
+from sagemaker.pytorch import defaults
 from sagemaker.predictor import RealTimePredictor, npy_serializer, numpy_deserializer
 
 logger = logging.getLogger("sagemaker")
@@ -68,7 +68,7 @@ class PyTorchModel(FrameworkModel):
         role,
         entry_point,
         image=None,
-        py_version=PYTHON_VERSION,
+        py_version=defaults.PYTHON_VERSION,
         framework_version=None,
         predictor_cls=PyTorchPredictor,
         model_server_workers=None,
@@ -115,12 +115,17 @@ class PyTorchModel(FrameworkModel):
         )
 
         if py_version == "py2":
-            logger.warning(python_deprecation_warning(self.__framework_name__))
+            logger.warning(
+                python_deprecation_warning(self.__framework_name__, defaults.LATEST_PY2_VERSION)
+            )
+
         if framework_version is None:
-            logger.warning(empty_framework_version_warning(PYTORCH_VERSION, LATEST_VERSION))
+            logger.warning(
+                empty_framework_version_warning(defaults.PYTORCH_VERSION, defaults.LATEST_VERSION)
+            )
 
         self.py_version = py_version
-        self.framework_version = framework_version or PYTORCH_VERSION
+        self.framework_version = framework_version or defaults.PYTORCH_VERSION
         self.model_server_workers = model_server_workers
 
     def prepare_container_def(self, instance_type, accelerator_type=None):
@@ -138,8 +143,8 @@ class PyTorchModel(FrameworkModel):
             dict[str, str]: A container definition object usable with the
             CreateModel API.
         """
-        lowest_mms_version = pkg_resources.parse_version(self._LOWEST_MMS_VERSION)
-        framework_version = pkg_resources.parse_version(self.framework_version)
+        lowest_mms_version = packaging.version.Version(self._LOWEST_MMS_VERSION)
+        framework_version = packaging.version.Version(self.framework_version)
         is_mms_version = framework_version >= lowest_mms_version
 
         deploy_image = self.image

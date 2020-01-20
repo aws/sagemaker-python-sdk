@@ -25,7 +25,7 @@ import time
 from sagemaker.debugger import DebuggerHookConfig
 from sagemaker.estimator import Framework
 import sagemaker.fw_utils as fw
-from sagemaker.tensorflow.defaults import TF_VERSION, LATEST_VERSION
+from sagemaker.tensorflow import defaults
 from sagemaker.tensorflow.model import TensorFlowModel
 from sagemaker.tensorflow.serving import Model
 from sagemaker.transformer import Transformer
@@ -197,7 +197,7 @@ class TensorFlow(Framework):
 
     __framework_name__ = "tensorflow"
 
-    LATEST_VERSION = LATEST_VERSION
+    LATEST_VERSION = defaults.LATEST_VERSION
 
     _LATEST_1X_VERSION = "1.15.0"
 
@@ -288,11 +288,17 @@ class TensorFlow(Framework):
             :class:`~sagemaker.estimator.EstimatorBase`.
         """
         if framework_version is None:
-            logger.warning(fw.empty_framework_version_warning(TF_VERSION, self.LATEST_VERSION))
-        self.framework_version = framework_version or TF_VERSION
+            logger.warning(
+                fw.empty_framework_version_warning(defaults.TF_VERSION, self.LATEST_VERSION)
+            )
+        self.framework_version = framework_version or defaults.TF_VERSION
 
         if not py_version:
             py_version = "py3" if self._only_python_3_supported() else "py2"
+        if py_version == "py2":
+            logger.warning(
+                fw.python_deprecation_warning(self.__framework_name__, defaults.LATEST_PY2_VERSION)
+            )
 
         if "enable_sagemaker_metrics" not in kwargs:
             # enable sagemaker metrics for TF v1.15 or greater:
@@ -301,9 +307,6 @@ class TensorFlow(Framework):
 
         super(TensorFlow, self).__init__(image_name=image_name, **kwargs)
         self.checkpoint_path = checkpoint_path
-
-        if py_version == "py2":
-            logger.warning("tensorflow py2 container will be deprecated soon.")
 
         self.py_version = py_version
         self.training_steps = training_steps
@@ -359,8 +362,8 @@ class TensorFlow(Framework):
 
         if py_version == "py2" and self._only_python_3_supported():
             msg = (
-                "Python 2 containers are only available until January 1st, 2020. "
-                "Please use a Python 3 container."
+                "Python 2 containers are only available with {} and lower versions. "
+                "Please use a Python 3 container.".format(defaults.LATEST_PY2_VERSION)
             )
             raise AttributeError(msg)
 
