@@ -707,6 +707,34 @@ def test_estimator_wrong_version_launch_parameter_server(sagemaker_session):
     assert "The distributions option is valid for only versions 1.3 and higher" in str(e)
 
 
+@patch("sagemaker.mxnet.estimator.python_deprecation_warning")
+def test_estimator_py2_warning(warning, sagemaker_session):
+    estimator = MXNet(
+        entry_point=SCRIPT_PATH,
+        role=ROLE,
+        sagemaker_session=sagemaker_session,
+        train_instance_count=INSTANCE_COUNT,
+        train_instance_type=INSTANCE_TYPE,
+        py_version="py2",
+    )
+
+    assert estimator.py_version == "py2"
+    warning.assert_called_with(estimator.__framework_name__, defaults.LATEST_PY2_VERSION)
+
+
+@patch("sagemaker.mxnet.model.python_deprecation_warning")
+def test_model_py2_warning(warning, sagemaker_session):
+    model = MXNetModel(
+        MODEL_DATA,
+        role=ROLE,
+        entry_point=SCRIPT_PATH,
+        sagemaker_session=sagemaker_session,
+        py_version="py2",
+    )
+    assert model.py_version == "py2"
+    warning.assert_called_with(model.__framework_name__, defaults.LATEST_PY2_VERSION)
+
+
 @patch("sagemaker.mxnet.estimator.empty_framework_version_warning")
 def test_empty_framework_version(warning, sagemaker_session):
     mx = MXNet(

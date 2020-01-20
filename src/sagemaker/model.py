@@ -844,9 +844,12 @@ class FrameworkModel(Model):
                 dir_name = "/opt/ml/model/code"
             else:
                 dir_name = self.uploaded_code.s3_prefix
-        else:
+        elif self.entry_point is not None:
             script_name = self.entry_point
             dir_name = "file://" + self.source_dir
+        else:
+            script_name = None
+            dir_name = None
 
         return {
             SCRIPT_PARAM_NAME.upper(): script_name,

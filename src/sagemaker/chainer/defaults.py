@@ -20,3 +20,5 @@ This is no longer updated so as to not break existing workflows.
 
 LATEST_VERSION = "5.0.0"
 """The latest version of Chainer included in the SageMaker pre-built Docker images."""
+
+LATEST_PY2_VERSION = "5.0.0"
