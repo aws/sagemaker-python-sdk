@@ -1,5 +1,28 @@
 # Changelog
 
+## v1.50.6.post0 (2020-01-20)
+
+### Documentation changes
+
+ * add additional information to Transformer class transform function doc string
+
+## v1.50.6 (2020-01-18)
+
+### Bug fixes and other changes
+
+ * Append serving to model framework name for PyTorch, MXNet, and TensorFlow
+
+## v1.50.5 (2020-01-17)
+
+### Bug fixes and other changes
+
+ * Use serving_image_uri for Airflow
+
+### Documentation changes
+
+ * revise Processing docstrings for formatting and class links
+ * Add processing readthedocs
+
 ## v1.50.4 (2020-01-16)
 
 ### Bug fixes and other changes

@@ -16,6 +16,7 @@ from __future__ import absolute_import
 import logging
 
 from pkg_resources import parse_version
+from sagemaker import fw_utils
 
 import sagemaker
 from sagemaker.fw_utils import (
@@ -166,4 +167,24 @@ class MXNetModel(FrameworkModel):
             deploy_env[MODEL_SERVER_WORKERS_PARAM_NAME.upper()] = str(self.model_server_workers)
         return sagemaker.container_def(
             deploy_image, self.repacked_model_data or self.model_data, deploy_env
+        )
+
+    def serving_image_uri(self, region_name, instance_type):
+        """Create a URI for the serving image.
+
+        Args:
+            region_name (str): AWS region where the image is uploaded.
+            instance_type (str): SageMaker instance type. Used to determine device type
+                (cpu/gpu/family-specific optimized).
+
+        Returns:
+            str: The appropriate image URI based on the given parameters.
+
+        """
+        return fw_utils.create_image_uri(
+            region_name,
+            "-".join([self.__framework_name__, "serving"]),
+            instance_type,
+            self.framework_version,
+            self.py_version,
         )
