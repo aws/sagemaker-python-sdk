@@ -15,12 +15,12 @@ from __future__ import absolute_import
 
 import platform
 import sys
-import pkg_resources
 
 import boto3
 import botocore
+import importlib_metadata
 
-SDK_VERSION = pkg_resources.require("sagemaker")[0].version
+SDK_VERSION = importlib_metadata.version("sagemaker")
 OS_NAME = platform.system() or "UnresolvedOS"
 OS_VERSION = platform.release() or "UnresolvedOSVersion"
 PYTHON_VERSION = "{}.{}.{}".format(
