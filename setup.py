@@ -72,6 +72,7 @@ extras["test"] = (
         "stopit==1.1.2",
         "apache-airflow==1.10.5",
         "fabric>=2.0",
+        "retry==0.9.2",
     ],
 )
 

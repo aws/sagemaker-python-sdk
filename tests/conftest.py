@@ -17,8 +17,11 @@ import os
 
 import boto3
 import pytest
+from retry import retry
+
 import tests.integ
 from botocore.config import Config
+from botocore.exceptions import CredentialRetrievalError
 
 from sagemaker import Session
 from sagemaker.chainer import Chainer
@@ -34,6 +37,10 @@ DEFAULT_REGION = "us-west-2"
 NO_M4_REGIONS = ["eu-west-3", "eu-north-1", "ap-east-1", "sa-east-1", "me-south-1"]
 
 NO_T2_REGIONS = ["eu-north-1", "ap-east-1", "me-south-1"]
+
+ECS_REQUEST_THROTTLE_MAX_RETRIES = 4
+ECS_REQUEST_THROTTLE_DELAY_IN_SECONDS = 2
+ECS_REQUEST_THROTTLE_JITTER_IN_SECONDS = 1
 
 
 def pytest_addoption(parser):
@@ -88,6 +95,12 @@ def boto_config(request):
 
 
 @pytest.fixture(scope="session")
+@retry(
+    exceptions=CredentialRetrievalError,
+    tries=ECS_REQUEST_THROTTLE_MAX_RETRIES,
+    delay=ECS_REQUEST_THROTTLE_DELAY_IN_SECONDS,
+    jitter=ECS_REQUEST_THROTTLE_JITTER_IN_SECONDS,
+)
 def sagemaker_session(sagemaker_client_config, sagemaker_runtime_config, boto_config):
     boto_session = (
         boto3.Session(**boto_config) if boto_config else boto3.Session(region_name=DEFAULT_REGION)
