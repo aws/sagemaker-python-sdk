@@ -24,3 +24,11 @@ Scikit Learn Predictor
     :members:
     :undoc-members:
     :show-inheritance:
+
+Scikit Learn Processor
+----------------------
+
+.. autoclass:: sagemaker.sklearn.processing.SKLearnProcessor
+    :members:
+    :undoc-members:
+    :show-inheritance:

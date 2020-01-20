@@ -516,13 +516,7 @@ def prepare_framework_container_def(model, instance_type, s3_operations):
     deploy_image = model.image
     if not deploy_image:
         region_name = model.sagemaker_session.boto_session.region_name
-        deploy_image = fw_utils.create_image_uri(
-            region_name,
-            model.__framework_name__,
-            instance_type,
-            model.framework_version,
-            model.py_version,
-        )
+        deploy_image = model.serving_image_uri(region_name, instance_type)
 
     base_name = utils.base_name_from_image(deploy_image)
     model.name = model.name or utils.name_from_base(base_name)
