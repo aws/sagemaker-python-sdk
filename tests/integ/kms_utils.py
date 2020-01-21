@@ -15,8 +15,6 @@ from __future__ import absolute_import
 import contextlib
 import json
 
-from botocore import exceptions
-
 from sagemaker import utils
 
 PRINCIPAL_TEMPLATE = (
