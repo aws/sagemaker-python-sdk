@@ -174,19 +174,17 @@ def bucket_with_encryption(boto_session, sagemaker_role):
     bucket_name = "sagemaker-{}-{}-with-kms".format(region, account)
 
     s3 = boto_session.client("s3")
-    try:
-        # 'us-east-1' cannot be specified because it is the default region:
-        # https://github.com/boto/boto3/issues/125
+    bucket = boto_session.resource("s3").Bucket(name=bucket_name)
+    if bucket.creation_date is None:
+        # Create the bucket if it does not exist
         if region == "us-east-1":
+            # 'us-east-1' cannot be specified because it is the default region:
+            # https://github.com/boto/boto3/issues/125
             s3.create_bucket(Bucket=bucket_name)
         else:
             s3.create_bucket(
                 Bucket=bucket_name, CreateBucketConfiguration={"LocationConstraint": region}
             )
-
-    except exceptions.ClientError as e:
-        if e.response["Error"]["Code"] != "BucketAlreadyOwnedByYou":
-            raise
 
     s3.put_bucket_encryption(
         Bucket=bucket_name,
