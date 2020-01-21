@@ -17,6 +17,7 @@ import os
 
 import boto3
 import pytest
+import logging
 from retry import retry
 
 import tests.integ
@@ -38,8 +39,10 @@ NO_M4_REGIONS = ["eu-west-3", "eu-north-1", "ap-east-1", "sa-east-1", "me-south-
 
 NO_T2_REGIONS = ["eu-north-1", "ap-east-1", "me-south-1"]
 
-ECS_REQUEST_THROTTLE_MAX_RETRIES = 10
-ECS_REQUEST_THROTTLE_DELAY_IN_SECONDS = 5
+ECS_REQUEST_THROTTLE_MAX_RETRIES = 50
+ECS_REQUEST_THROTTLE_DELAY_IN_SECONDS = 2
+
+logger = logging.getLogger(__name__)
 
 
 def pytest_addoption(parser):
@@ -100,6 +103,7 @@ def boto_config(request):
     delay=ECS_REQUEST_THROTTLE_DELAY_IN_SECONDS,
 )
 def sagemaker_session(sagemaker_client_config, sagemaker_runtime_config, boto_config):
+    logger.debug("Creating sagemaker_session")
     boto_session = (
         boto3.Session(**boto_config) if boto_config else boto3.Session(region_name=DEFAULT_REGION)
     )
