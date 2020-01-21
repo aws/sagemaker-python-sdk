@@ -262,15 +262,16 @@ Clone the Helm installer directory using the following command:
 
 Navigate to the
 ``amazon-sagemaker-operator-for-k8s/hack/charts/installer`` folder. Edit
-the \ ``values.yaml`` file, which includes high-level parameters for the
-Chart. Replace the ARN here with the ARN for the OIDC-based role you’ve
+the \ ``rolebased/values.yaml`` file, which includes high-level parameters for the
+Chart. Replace the role Arn here with the Arn for the OIDC-based role you’ve
 created. 
 
 Install the Helm Chart using the following command:
 
 ::
 
-    helm install rolebased/ --generate-name
+    kubectl create namespace sagemaker-k8s-operator-system
+    helm install --namespace sagemaker-k8s-operator-system sagemaker-operator rolebased/
 
 
 After a moment, the chart will be installed with a randomly generated
@@ -285,8 +286,8 @@ Your output should look like the following:
 
 ::
 
-    NAME                    NAMESPACE       REVISION        UPDATED                                 STATUS          CHART                           APP VERSION
-    rolebased-1234567    default         1               2019-11-20 23:14:59.6777082 +0000 UTC   deployed        sagemaker-k8s-operator-0.1.0
+    NAME                    NAMESPACE                       REVISION        UPDATED                                 STATUS          CHART                           APP VERSION
+    sagemaker-operator      sagemaker-k8s-operator-system   1               2019-11-20 23:14:59.6777082 +0000 UTC   deployed        sagemaker-k8s-operator-0.1.0
 
 
 Verify the operator deployment
