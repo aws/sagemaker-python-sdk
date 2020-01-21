@@ -38,7 +38,7 @@ NO_M4_REGIONS = ["eu-west-3", "eu-north-1", "ap-east-1", "sa-east-1", "me-south-
 
 NO_T2_REGIONS = ["eu-north-1", "ap-east-1", "me-south-1"]
 
-ECS_REQUEST_THROTTLE_MAX_RETRIES = 20
+ECS_REQUEST_THROTTLE_MAX_RETRIES = 30
 ECS_REQUEST_THROTTLE_DELAY_IN_SECONDS = 2
 
 
