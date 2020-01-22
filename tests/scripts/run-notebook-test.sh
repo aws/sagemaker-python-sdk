@@ -19,4 +19,5 @@ echo "set SAGEMAKER_ROLE_ARN=$SAGEMAKER_ROLE_ARN"
 --region us-west-2 \
 --lifecycle-config-name install-python-sdk \
 --notebook-instance-role-arn $SAGEMAKER_ROLE_ARN \
+./amazon-sagemaker-examples/sagemaker-python-sdk/tensorflow_distributed_mnist/tensorflow_batch_transform_mnist.ipynb \
 ./amazon-sagemaker-examples/sagemaker-python-sdk/tensorflow_distributed_mnist/tensorflow_batch_transform_mnist.ipynb
