@@ -239,7 +239,7 @@ follows:
 
 -  Edit the \ ``installer.yaml`` file to
    replace \ ``eks.amazonaws.com/role-arn``. Replace the ARN here with
-   the ARN for the OIDC-based role you’ve created. 
+   the Amazon Resource Name (ARN) for the OIDC-based role you’ve created. 
 
 -  Use the following command to deploy the cluster:  
 
@@ -263,7 +263,7 @@ Clone the Helm installer directory using the following command:
 Navigate to the
 ``amazon-sagemaker-operator-for-k8s/hack/charts/installer`` folder. Edit
 the \ ``rolebased/values.yaml`` file, which includes high-level parameters for the
-Chart. Replace the role Arn here with the Arn for the OIDC-based role you’ve
+Chart. Replace the role ARN here with the Amazon Resource Name (ARN) for the OIDC-based role you’ve
 created. 
 
 Install the Helm Chart using the following command:
