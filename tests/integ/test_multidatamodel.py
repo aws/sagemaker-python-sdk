@@ -178,9 +178,7 @@ def test_multi_data_model_deploy_pretrained_models(
 
 
 @pytest.mark.local_mode
-def test_multi_data_model_deploy_pretrained_models_local_mode(
-    container_image, sagemaker_session
-):
+def test_multi_data_model_deploy_pretrained_models_local_mode(container_image, sagemaker_session):
     timestamp = sagemaker_timestamp()
     endpoint_name = "test-multimodel-endpoint-{}".format(timestamp)
     model_name = "test-multimodel-{}".format(timestamp)
