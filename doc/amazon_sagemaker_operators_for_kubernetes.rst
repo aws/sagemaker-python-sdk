@@ -274,8 +274,9 @@ Install the Helm Chart using the following command:
     helm install --namespace sagemaker-k8s-operator-system sagemaker-operator rolebased/
 
 
-**Note**: If you decide to install the operator into a namespace other than the one specified above,
-you will need to adjust the namespace defined in the IAM role `trust.json` file to match.
+.. warning::
+    If you decide to install the operator into a namespace other than the one specified above,
+    you will need to adjust the namespace defined in the IAM role ``trust.json`` file to match.
 
 After a moment, the chart will be installed with a randomly generated
 name. Verify that the installation succeeded by running the following
