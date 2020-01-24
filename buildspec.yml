@@ -14,10 +14,6 @@ phases:
       - HAS_MATCHING_CHANGES_OUTPUT=$(has-matching-changes "tests/" "src/*.py" "setup.py" "setup.cfg" "buildspec.yml")
       - HAS_MATCHING_CHANGES_EXIT_CODE=$?
       - |
-        if [ $HAS_MATCHING_CHANGES_EXIT_CODE = 1 ] ; then
-          echo "There was an error checking for matching changes. PR will now fail to prevent false negative (success) tests."
-          exit 1
-        fi
         if [ "$HAS_MATCHING_CHANGES" = "Changes Found" ] ; then
           python3 -u ci-scripts/queue_build.py
         fi
