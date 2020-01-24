@@ -12,7 +12,6 @@ phases:
       # run integration tests
       - start_time=`date +%s`
       - HAS_MATCHING_CHANGES_OUTPUT=$(has-matching-changes "tests/" "src/*.py" "setup.py" "setup.cfg" "buildspec.yml")
-      - HAS_MATCHING_CHANGES_EXIT_CODE=$?
       - |
         if [ "$HAS_MATCHING_CHANGES" = "Changes Found" ] ; then
           python3 -u ci-scripts/queue_build.py

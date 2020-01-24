@@ -12,7 +12,6 @@ phases:
       # local mode tests
       - start_time=`date +%s`
       - HAS_MATCHING_CHANGES_OUTPUT=$(has-matching-changes "tests/" "src/*.py" "setup.py" "setup.cfg" "buildspec.yml")
-      - HAS_MATCHING_CHANGES_EXIT_CODE=$?
       - |
         if [ "$HAS_MATCHING_CHANGES" = "Changes Found" ] ; then
           tox -e py36 -- tests/integ -m local_mode --durations 50
