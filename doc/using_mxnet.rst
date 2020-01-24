@@ -350,7 +350,7 @@ The following code sample shows how you train a custom MXNet script "train.py".
                                              'learning-rate': 0.1})
     mxnet_estimator.fit('s3://my_bucket/my_training_data/')
 
-For more information about the sagemaker.mxnet.MXNet estimator, see `sagemaker.mxnet.MXNet Class`_.
+For more information about the sagemaker.mxnet.MXNet estimator, see `SageMaker MXNet Classes`_.
 
 
 Distributed training
@@ -702,7 +702,7 @@ You can attach an MXNet Estimator to an existing training job using the
 After attaching, if the training job's status is "Complete", it can be ``deploy``\ ed to create an Amazon SageMaker Endpoint and return a ``Predictor``.
 If the training job is in progress, ``attach`` blocks and displays log messages from the training job until the training job completes.
 
-For information about arguments that ``attach`` accepts, see `the API reference <https://sagemaker.readthedocs.io/en/stable/estimators.html#sagemaker.estimator.Framework.attach>`_.
+For information about arguments that ``attach`` accepts, see `the function's API reference <https://sagemaker.readthedocs.io/en/stable/estimators.html#sagemaker.estimator.Framework.attach>`_.
 
 Deploy Endpoints from Model Data
 ================================
@@ -715,7 +715,7 @@ As well as attaching to existing training jobs, you can deploy models directly f
 
     predictor = mxnet_model.deploy(instance_type='ml.c4.xlarge', initial_instance_count=1)
 
-For information about arguments that the ``MXNetModel`` constructor accepts, see `the API reference <https://sagemaker.readthedocs.io/en/stable/sagemaker.mxnet.html#sagemaker.mxnet.model.MXNetModel>`_.
+For information about arguments that the ``MXNetModel`` constructor accepts, see `the class's API reference <https://sagemaker.readthedocs.io/en/stable/sagemaker.mxnet.html#sagemaker.mxnet.model.MXNetModel>`_.
 
 Your model data must be a .tar.gz file in Amazon S3. Amazon SageMaker Training Job model data is saved to .tar.gz files in Amazon S3, however if you have local data you want to deploy, you can prepare the data yourself.
 
