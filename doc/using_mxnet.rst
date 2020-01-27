@@ -720,7 +720,7 @@ The MXNetModel constructor takes the following arguments:
    which should be executed as the entry point to model hosting.
 -  ``source_dir (str):`` Optional. Path (absolute or relative) to a
    directory with any other training source code dependencies including
-   tne entry point file. Structure within this directory will be
+   the entry point file. Structure within this directory will be
    preserved when training on SageMaker.
 -  ``container_log_level (int):`` Log level to use within the container.
    Valid values are defined in the Python logging module.
