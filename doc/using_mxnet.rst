@@ -175,7 +175,7 @@ The default serialization system generates three files:
 -  ``model-symbol.json``: The MXNet ``Module`` ``Symbol`` serialization,
    produced by invoking ``save`` on the ``symbol`` property of the
    ``Module`` being saved.
--  ``modle.params``: The MXNet ``Module`` parameters. Produced by
+-  ``modle.params``: The MXNet ``Module`` parameters, produced by
    invoking ``save_params`` on the ``Module`` being saved.
 
 You can provide your own save function. This is useful if you are not working with the ``Module`` API or you need special processing.
@@ -188,7 +188,7 @@ To provide your own save function, define a ``save`` function in your training s
 
 The function should take two arguments:
 
--  ``model``: This is the object that was returned from your ``train`` function.
+-  ``model``: This is the object that is returned from your ``train`` function.
    You may return an object of any type from ``train``;
    you do not have to return ``Module`` or ``Gluon`` API specific objects.
    If your ``train`` function does not return an object, ``model`` is set to ``None``.
@@ -385,7 +385,7 @@ Once you have a trained MXNet model, you can host it in Amazon SageMaker by crea
 The endpoint runs a SageMaker-provided MXNet model server and hosts the model produced by your training script.
 This model can be one you trained in Amazon SageMaker or a pretrained one from somewhere else.
 
-If you used the ``MXNet`` estimator to train the model, you can call ``deploy`` to create an Amazon SageMaker Endpoint:
+If you use the ``MXNet`` estimator to train the model, you can call ``deploy`` to create an Amazon SageMaker Endpoint:
 
 .. code:: python
 
@@ -438,8 +438,7 @@ The model server loads the model provided and performs inference on the model in
 You can configure two components of the model server: model loading and model serving.
 Model loading is the process of deserializing your saved model back into an MXNet model.
 Serving is the process of translating ``InvokeEndpoint`` requests to inference calls on the loaded model.
-
-You configure the MXNet model server by defining functions in the Python source file you passed to the ``MXNet`` or ``MXNetModel`` constructor.
+These are configured by defining functions in the Python source file you pass to the ``MXNet`` or ``MXNetModel`` constructor.
 
 Load a Model
 ------------
@@ -466,7 +465,7 @@ It loads the model parameters from a ``model.params`` file in the SageMaker mode
 .. code:: python
 
     def model_fn(model_dir):
-        """Load the Gluon model. Called once when hosting service starts.
+        """Load the Gluon model. Called when the hosting service starts.
 
         Args:
             model_dir (str): The directory where model files are stored.
@@ -486,7 +485,7 @@ Based on the example above, the following code-snippet shows an example custom `
 .. code:: python
 
     def model_fn(model_dir):
-        """Load the Gluon model. Called once when hosting service starts.
+        """Load the Gluon model. Called when the hosting service starts.
 
         Args:
             model_dir (str): The directory where model files are stored.
@@ -719,14 +718,14 @@ For information about arguments that the ``MXNetModel`` constructor accepts, see
 
 Your model data must be a .tar.gz file in Amazon S3. Amazon SageMaker Training Job model data is saved to .tar.gz files in Amazon S3, however if you have local data you want to deploy, you can prepare the data yourself.
 
-Assuming you have a local directory containg your model data named "my_model" you can tar and gzip compress the file and upload to Amazon S3 using the following commands:
+Assuming you have a local directory containing your model data named "my_model" you can tar and gzip compress the file and upload to Amazon S3 using the following commands:
 
 ::
 
     tar -czf model.tar.gz my_model
     aws s3 cp model.tar.gz s3://my-bucket/my-path/model.tar.gz
 
-This uploads the contents of my_model to a gzip compressed tar file to Amazon S3 in the bucket "my-bucket", with the key "my-path/model.tar.gz".
+This uploads the contents of my_model to a gzip-compressed tar file to Amazon S3 in the bucket "my-bucket", with the key "my-path/model.tar.gz".
 
 To run this command, you need the AWS CLI tool installed. Please refer to our `FAQ <#FAQ>`__ for more information on installing this.
 
