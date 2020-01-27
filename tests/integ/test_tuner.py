@@ -176,7 +176,7 @@ def test_tuning_kmeans(
     _tune_and_deploy(
         kmeans_estimator,
         kmeans_train_set,
-        sagemaker_session,  # test
+        sagemaker_session,
         cpu_instance_type,
         hyperparameter_ranges=hyperparameter_ranges,
         job_name=job_name,
