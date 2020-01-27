@@ -707,7 +707,7 @@ class TensorFlow(Framework):
 
     def _validate_and_set_debugger_configs(self):
         """
-        Disable Debugger Hook Config for Horovod as it is not
+        Disable Debugger Hook Config for ParameterServer (PS) as it is not
         supported in smdebug.
 
         Else, set default HookConfig
