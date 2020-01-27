@@ -14,7 +14,7 @@ phases:
       - HAS_MATCHING_CHANGES_OUTPUT=$(has-matching-changes "tests/" "src/*.py" "setup.py" "setup.cfg" "buildspec.yml")
       - |
         if [ "$HAS_MATCHING_CHANGES_OUTPUT" != "Changes Found" ] && [ "$HAS_MATCHING_CHANGES_OUTPUT" != "Changes Not Found" ] ; then
-          echo "Script did not return expected output. Failing to avoid false negative tests (successful tests when they shouldn't be)."
+          echo "Script did not return expected output. Failing to avoid false negative tests (successful tests when they shouldn't be). HAS_MATCHING_CHANGES_OUTPUT: " $HAS_MATCHING_CHANGES_OUTPUT
           exit 1
         fi
       - |
