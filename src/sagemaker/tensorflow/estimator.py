@@ -712,9 +712,9 @@ class TensorFlow(Framework):
 
         Else, set default HookConfig
         """
-        ps_enabled = "parameter_server" in self.distributions and self.distributions["parameter_server"].get(
-            "enabled", False
-        )
+        ps_enabled = "parameter_server" in self.distributions and self.distributions[
+            "parameter_server"
+        ].get("enabled", False)
         if ps_enabled:
             if self.debugger_hook_config is not None or self.debugger_rule_configs is not None:
                 logger.info(
