@@ -11,23 +11,11 @@ phases:
 
       # run integration tests
       - start_time=`date +%s`
-      - HAS_MATCHING_CHANGES_OUTPUT=$(has-matching-changes "tests/" "src/*.py" "setup.py" "setup.cfg" "buildspec.yml")
-      - |
-        if [ "$HAS_MATCHING_CHANGES_OUTPUT" != "Changes Found" ] && [ "$HAS_MATCHING_CHANGES_OUTPUT" != "Changes Not Found" ] ; then
-          echo "Script did not return expected output. Failing to avoid false negative tests (successful tests when they shouldn't be). HAS_MATCHING_CHANGES_OUTPUT: " $HAS_MATCHING_CHANGES_OUTPUT
-          exit 1
-        fi
-      - |
-        if [ "$HAS_MATCHING_CHANGES_OUTPUT" = "Changes Found" ] ; then
-          python3 -u ci-scripts/queue_build.py
-        fi
+      - execute-command-if-has-matching-changes "python3 -u ci-scripts/queue_build.py" "tests/" "src/*.py" "setup.py" "setup.cfg" "buildspec.yml"
       - ./ci-scripts/displaytime.sh 'build queue' $start_time
 
       - start_time=`date +%s`
-      - |
-        if [ "$HAS_MATCHING_CHANGES_OUTPUT" = "Changes Found" ] ; then
-          tox -e py36 -- tests/integ -m "not local_mode" -n 512 --reruns 3 --reruns-delay 5 --durations 50 --boto-config '{"region_name": "us-east-2"}'
-        fi
+      - execute-command-if-has-matching-changes "tox -e py36 -- tests/integ -m \"not local_mode\" -n 512 --reruns 3 --reruns-delay 5 --durations 50 --boto-config '{\"region_name\": \"us-east-2\"}'" "tests/" "src/*.py" "setup.py" "setup.cfg" "buildspec.yml"
       - ./ci-scripts/displaytime.sh 'py36 tests/integ' $start_time
 
   post_build:
