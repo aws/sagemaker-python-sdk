@@ -8,7 +8,7 @@ phases:
       - start_time=`date +%s`
       - HAS_MATCHING_CHANGES_OUTPUT=$(has-matching-changes "src/*.py" "setup.py" "setup.cfg" "tests/scripts/run-notebook-test.sh")
       - |
-        if [ "$HAS_MATCHING_CHANGES" = "Changes Found" ] ; then
+        if [ "$HAS_MATCHING_CHANGES_OUTPUT" = "Changes Found" ] ; then
           ./tests/scripts/run-notebook-test.sh
         fi
       - ./ci-scripts/displaytime.sh 'notebook test' $start_time

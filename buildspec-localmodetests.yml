@@ -13,14 +13,14 @@ phases:
       - start_time=`date +%s`
       - HAS_MATCHING_CHANGES_OUTPUT=$(has-matching-changes "tests/" "src/*.py" "setup.py" "setup.cfg" "buildspec.yml")
       - |
-        if [ "$HAS_MATCHING_CHANGES" = "Changes Found" ] ; then
+        if [ "$HAS_MATCHING_CHANGES_OUTPUT" = "Changes Found" ] ; then
           tox -e py36 -- tests/integ -m local_mode --durations 50
         fi
       - ./ci-scripts/displaytime.sh 'py36 local mode' $start_time
 
       - start_time=`date +%s`
       - |
-        if [ "$HAS_MATCHING_CHANGES" = "Changes Found" ] ; then
+        if [ "$HAS_MATCHING_CHANGES_OUTPUT" = "Changes Found" ] ; then
           tox -e py27 -- tests/integ -m local_mode --durations 50
         fi
       - ./ci-scripts/displaytime.sh 'py27 local mode' $start_time
