@@ -69,7 +69,7 @@ class PyTorch(Framework):
                 file which should be executed as the entry point to training.
                 This should be compatible with either Python 2.7 or Python 3.5.
             source_dir (str): Path (absolute or relative) to a directory with
-                any other training source code dependencies aside from tne entry
+                any other training source code dependencies aside from the entry
                 point file (default: None). Structure within this directory are
                 preserved when training on Amazon SageMaker.
             hyperparameters (dict): Hyperparameters that will be used for
