@@ -486,7 +486,7 @@ The sklearn_model constructor takes the following arguments:
    which should be executed as the entry point to model hosting.
 -  ``source_dir (str):`` Optional. Path (absolute or relative) to a
    directory with any other training source code dependencies including
-   tne entry point file. Structure within this directory will be
+   the entry point file. Structure within this directory will be
    preserved when training on SageMaker.
 -  ``enable_cloudwatch_metrics (boolean):`` Optional. If true, training
    and hosting containers will generate Cloudwatch metrics under the
