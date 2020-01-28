@@ -444,6 +444,8 @@ def test_repack_model_without_source_dir(tmp, fake_s3):
             "model-dir/model",
             "dependencies/a",
             "dependencies/some/dir/b",
+            "aa",
+            "bb",
             "source-dir/inference.py",
             "source-dir/this-file-should-not-be-included.py",
         ],
@@ -457,6 +459,8 @@ def test_repack_model_without_source_dir(tmp, fake_s3):
         dependencies=[
             os.path.join(tmp, "dependencies/a"),
             os.path.join(tmp, "dependencies/some/dir"),
+            os.path.join(tmp, "aa"),
+            os.path.join(tmp, "bb"),
         ],
         model_uri="s3://fake/location",
         repacked_model_uri="s3://destination-bucket/model.tar.gz",
@@ -466,6 +470,8 @@ def test_repack_model_without_source_dir(tmp, fake_s3):
     assert list_tar_files(fake_s3.fake_upload_path, tmp) == {
         "/model",
         "/code/lib/a",
+        "/code/lib/aa",
+        "/code/lib/bb",
         "/code/lib/dir/b",
         "/code/inference.py",
     }

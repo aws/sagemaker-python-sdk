@@ -534,7 +534,8 @@ def _create_or_update_code_dir(
         if os.path.isdir(dependency):
             shutil.copytree(dependency, os.path.join(lib_dir, os.path.basename(dependency)))
         else:
-            os.mkdir(lib_dir)
+            if not os.path.exists(lib_dir):
+                os.mkdir(lib_dir)
             shutil.copy2(dependency, lib_dir)
 
 
