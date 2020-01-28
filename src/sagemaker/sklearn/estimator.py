@@ -70,7 +70,7 @@ class SKLearn(Framework):
                 executing your model training code. List of supported versions
                 https://github.com/aws/sagemaker-python-sdk#sklearn-sagemaker-estimators
             source_dir (str): Path (absolute or relative) to a directory with
-                any other training source code dependencies aside from tne entry
+                any other training source code dependencies aside from the entry
                 point file (default: None). Structure within this directory are
                 preserved when training on Amazon SageMaker.
             hyperparameters (dict): Hyperparameters that will be used for

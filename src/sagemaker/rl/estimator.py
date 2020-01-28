@@ -189,7 +189,7 @@ class RLEstimator(Framework):
                 hosting. This should be compatible with Python 3.5 (default:
                 self.entry_point)
             source_dir (str): Path (absolute or relative) to a directory with
-                any other training source code dependencies aside from tne entry
+                any other training source code dependencies aside from the entry
                 point file (default: self.source_dir). Structure within this
                 directory are preserved when hosting on Amazon SageMaker.
             dependencies (list[str]): A list of paths to directories (absolute
