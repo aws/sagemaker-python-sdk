@@ -82,7 +82,7 @@ class XGBoost(Framework):
                 training code.  List of supported versions
                 https://github.com/aws/sagemaker-python-sdk#xgboost-sagemaker-estimators
             source_dir (str): Path (absolute or relative) to a directory with any other training
-                source code dependencies aside from tne entry point file (default: None).
+                source code dependencies aside from the entry point file (default: None).
                 Structure within this directory are preserved when training on Amazon SageMaker.
             hyperparameters (dict): Hyperparameters that will be used for training (default: None).
                 The hyperparameters are made accessible as a dict[str, str] to the training code
