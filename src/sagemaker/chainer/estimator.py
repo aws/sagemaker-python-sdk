@@ -1,4 +1,4 @@
-# Copyright 2018-2019 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright 2018-2020 Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -22,7 +22,7 @@ from sagemaker.fw_utils import (
     empty_framework_version_warning,
     python_deprecation_warning,
 )
-from sagemaker.chainer.defaults import CHAINER_VERSION
+from sagemaker.chainer import defaults
 from sagemaker.chainer.model import ChainerModel
 from sagemaker.vpc_utils import VPC_CONFIG_DEFAULT
 
@@ -40,8 +40,7 @@ class Chainer(Framework):
     _process_slots_per_host = "sagemaker_process_slots_per_host"
     _additional_mpi_options = "sagemaker_additional_mpi_options"
 
-    LATEST_VERSION = "5.0.0"
-    """The latest version of Chainer included in the SageMaker pre-built Docker images."""
+    LATEST_VERSION = defaults.LATEST_VERSION
 
     def __init__(
         self,
@@ -93,7 +92,7 @@ class Chainer(Framework):
                 NCCL_DEBUG=WARN' will pass that option string to the mpirun
                 command.
             source_dir (str): Path (absolute or relative) to a directory with
-                any other training source code dependencies aside from tne entry
+                any other training source code dependencies aside from the entry
                 point file (default: None). Structure within this directory are
                 preserved when training on Amazon SageMaker.
             hyperparameters (dict): Hyperparameters that will be used for
@@ -111,24 +110,35 @@ class Chainer(Framework):
             image_name (str): If specified, the estimator will use this image
                 for training and hosting, instead of selecting the appropriate
                 SageMaker official image based on framework_version and
-                py_version. It can be an ECR url or dockerhub image and tag. ..
-                admonition:: Examples
+                py_version. It can be an ECR url or dockerhub image and tag.
 
-                    123.dkr.ecr.us-west-2.amazonaws.com/my-custom-image:1.0
-                    custom-image:latest.
+                Examples
+                    * ``123412341234.dkr.ecr.us-west-2.amazonaws.com/my-custom-image:1.0``
+                    * ``custom-image:latest``
+
             **kwargs: Additional kwargs passed to the
                 :class:`~sagemaker.estimator.Framework` constructor.
+
+        .. tip::
+
+            You can find additional parameters for initializing this class at
+            :class:`~sagemaker.estimator.Framework` and
+            :class:`~sagemaker.estimator.EstimatorBase`.
         """
         if framework_version is None:
-            logger.warning(empty_framework_version_warning(CHAINER_VERSION, self.LATEST_VERSION))
-        self.framework_version = framework_version or CHAINER_VERSION
+            logger.warning(
+                empty_framework_version_warning(defaults.CHAINER_VERSION, self.LATEST_VERSION)
+            )
+        self.framework_version = framework_version or defaults.CHAINER_VERSION
 
         super(Chainer, self).__init__(
             entry_point, source_dir, hyperparameters, image_name=image_name, **kwargs
         )
 
         if py_version == "py2":
-            logger.warning(python_deprecation_warning(self.__framework_name__))
+            logger.warning(
+                python_deprecation_warning(self.__framework_name__, defaults.LATEST_PY2_VERSION)
+            )
 
         self.py_version = py_version
         self.use_mpi = use_mpi

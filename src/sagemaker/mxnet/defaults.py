@@ -1,4 +1,4 @@
-# Copyright 2017-2018 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright 2017-2020 Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -17,3 +17,8 @@ MXNET_VERSION = "1.2"
 """Default MXNet version for when the framework version is not specified.
 This is no longer updated so as to not break existing workflows.
 """
+
+LATEST_VERSION = "1.6.0"
+"""The latest version of MXNet included in the SageMaker pre-built Docker images."""
+
+LATEST_PY2_VERSION = "1.6.0"

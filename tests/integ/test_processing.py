@@ -1,4 +1,4 @@
-# Copyright 2019 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright 2019-2020 Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -22,12 +22,13 @@ from sagemaker.fw_registry import default_framework_uri
 
 from sagemaker.processing import ProcessingInput, ProcessingOutput, ScriptProcessor, Processor
 from sagemaker.sklearn.processing import SKLearnProcessor
+from sagemaker.utils import sts_regional_endpoint
 from tests.integ import DATA_DIR
 from tests.integ.kms_utils import get_or_create_kms_key
 
 ROLE = "SageMakerRole"
 DEFAULT_REGION = "us-west-2"
-CUSTOM_BUCKET_PATH = "sagemaker-custom-bucket"
+CUSTOM_BUCKET_PATH_PREFIX = "sagemaker-custom-bucket"
 
 
 @pytest.fixture(scope="module")
@@ -49,11 +50,17 @@ def sagemaker_session_with_custom_bucket(
         else None
     )
 
+    region = boto_session.region_name
+    account = boto_session.client(
+        "sts", region_name=region, endpoint_url=sts_regional_endpoint(region)
+    ).get_caller_identity()["Account"]
+    custom_default_bucket = "{}-{}-{}".format(CUSTOM_BUCKET_PATH_PREFIX, region, account)
+
     return Session(
         boto_session=boto_session,
         sagemaker_client=sagemaker_client,
         sagemaker_runtime_client=runtime_client,
-        default_bucket=CUSTOM_BUCKET_PATH,
+        default_bucket=custom_default_bucket,
     )
 
 
@@ -100,7 +107,6 @@ def test_sklearn(sagemaker_session, sklearn_full_version, cpu_instance_type):
         instance_count=1,
         command=["python3"],
         sagemaker_session=sagemaker_session,
-        max_runtime_in_seconds=3600,  # TODO-reinvent-2019: REMOVE
         base_job_name="test-sklearn",
     )
 
@@ -114,10 +120,12 @@ def test_sklearn(sagemaker_session, sklearn_full_version, cpu_instance_type):
     job_description = sklearn_processor.latest_job.describe()
 
     assert len(job_description["ProcessingInputs"]) == 2
-    assert job_description["ProcessingResources"] == {
-        "ClusterConfig": {"InstanceCount": 1, "InstanceType": "ml.m4.xlarge", "VolumeSizeInGB": 30}
-    }
-    assert job_description["StoppingCondition"] == {"MaxRuntimeInSeconds": 3600}
+    assert job_description["ProcessingResources"]["ClusterConfig"]["InstanceCount"] == 1
+    assert (
+        job_description["ProcessingResources"]["ClusterConfig"]["InstanceType"] == cpu_instance_type
+    )
+    assert job_description["ProcessingResources"]["ClusterConfig"]["VolumeSizeInGB"] == 30
+    assert job_description["StoppingCondition"] == {"MaxRuntimeInSeconds": 86400}
     assert job_description["AppSpecification"]["ContainerEntrypoint"] == [
         "python3",
         "/opt/ml/processing/input/code/dummy_script.py",
@@ -125,6 +133,7 @@ def test_sklearn(sagemaker_session, sklearn_full_version, cpu_instance_type):
     assert ROLE in job_description["RoleArn"]
 
 
+@pytest.mark.canary_quick
 def test_sklearn_with_customizations(
     sagemaker_session, image_uri, sklearn_full_version, cpu_instance_type, output_kms_key
 ):
@@ -184,9 +193,11 @@ def test_sklearn_with_customizations(
     assert job_description["ProcessingOutputConfig"]["KmsKeyId"] == output_kms_key
     assert job_description["ProcessingOutputConfig"]["Outputs"][0]["OutputName"] == "dummy_output"
 
-    assert job_description["ProcessingResources"] == {
-        "ClusterConfig": {"InstanceCount": 1, "InstanceType": "ml.m4.xlarge", "VolumeSizeInGB": 100}
-    }
+    assert job_description["ProcessingResources"]["ClusterConfig"]["InstanceCount"] == 1
+    assert (
+        job_description["ProcessingResources"]["ClusterConfig"]["InstanceType"] == cpu_instance_type
+    )
+    assert job_description["ProcessingResources"]["ClusterConfig"]["VolumeSizeInGB"] == 100
 
     assert job_description["AppSpecification"]["ContainerArguments"] == ["-v"]
     assert job_description["AppSpecification"]["ContainerEntrypoint"] == [
@@ -255,10 +266,10 @@ def test_sklearn_with_custom_default_bucket(
     job_description = sklearn_processor.latest_job.describe()
 
     assert job_description["ProcessingInputs"][0]["InputName"] == "dummy_input"
-    assert CUSTOM_BUCKET_PATH in job_description["ProcessingInputs"][0]["S3Input"]["S3Uri"]
+    assert CUSTOM_BUCKET_PATH_PREFIX in job_description["ProcessingInputs"][0]["S3Input"]["S3Uri"]
 
     assert job_description["ProcessingInputs"][1]["InputName"] == "code"
-    assert CUSTOM_BUCKET_PATH in job_description["ProcessingInputs"][1]["S3Input"]["S3Uri"]
+    assert CUSTOM_BUCKET_PATH_PREFIX in job_description["ProcessingInputs"][1]["S3Input"]["S3Uri"]
 
     assert job_description["ProcessingJobName"].startswith("test-sklearn-with-customizations")
 
@@ -267,9 +278,11 @@ def test_sklearn_with_custom_default_bucket(
     assert job_description["ProcessingOutputConfig"]["KmsKeyId"] == output_kms_key
     assert job_description["ProcessingOutputConfig"]["Outputs"][0]["OutputName"] == "dummy_output"
 
-    assert job_description["ProcessingResources"] == {
-        "ClusterConfig": {"InstanceCount": 1, "InstanceType": "ml.m4.xlarge", "VolumeSizeInGB": 100}
-    }
+    assert job_description["ProcessingResources"]["ClusterConfig"]["InstanceCount"] == 1
+    assert (
+        job_description["ProcessingResources"]["ClusterConfig"]["InstanceType"] == cpu_instance_type
+    )
+    assert job_description["ProcessingResources"]["ClusterConfig"]["VolumeSizeInGB"] == 100
 
     assert job_description["AppSpecification"]["ContainerArguments"] == ["-v"]
     assert job_description["AppSpecification"]["ContainerEntrypoint"] == [
@@ -315,9 +328,11 @@ def test_sklearn_with_no_inputs_or_outputs(
 
     assert job_description["ProcessingJobStatus"] == "Completed"
 
-    assert job_description["ProcessingResources"] == {
-        "ClusterConfig": {"InstanceCount": 1, "InstanceType": "ml.m4.xlarge", "VolumeSizeInGB": 100}
-    }
+    assert job_description["ProcessingResources"]["ClusterConfig"]["InstanceCount"] == 1
+    assert (
+        job_description["ProcessingResources"]["ClusterConfig"]["InstanceType"] == cpu_instance_type
+    )
+    assert job_description["ProcessingResources"]["ClusterConfig"]["VolumeSizeInGB"] == 100
 
     assert job_description["AppSpecification"]["ContainerArguments"] == ["-v"]
     assert job_description["AppSpecification"]["ContainerEntrypoint"] == [
@@ -333,6 +348,7 @@ def test_sklearn_with_no_inputs_or_outputs(
     assert job_description["StoppingCondition"] == {"MaxRuntimeInSeconds": 3600}
 
 
+@pytest.mark.canary_quick
 def test_script_processor(sagemaker_session, image_uri, cpu_instance_type, output_kms_key):
     input_file_path = os.path.join(DATA_DIR, "dummy_input.txt")
 
@@ -390,9 +406,11 @@ def test_script_processor(sagemaker_session, image_uri, cpu_instance_type, outpu
     assert job_description["ProcessingOutputConfig"]["KmsKeyId"] == output_kms_key
     assert job_description["ProcessingOutputConfig"]["Outputs"][0]["OutputName"] == "dummy_output"
 
-    assert job_description["ProcessingResources"] == {
-        "ClusterConfig": {"InstanceCount": 1, "InstanceType": "ml.m4.xlarge", "VolumeSizeInGB": 100}
-    }
+    assert job_description["ProcessingResources"]["ClusterConfig"]["InstanceCount"] == 1
+    assert (
+        job_description["ProcessingResources"]["ClusterConfig"]["InstanceType"] == cpu_instance_type
+    )
+    assert job_description["ProcessingResources"]["ClusterConfig"]["VolumeSizeInGB"] == 100
 
     assert job_description["AppSpecification"]["ContainerArguments"] == ["-v"]
     assert job_description["AppSpecification"]["ContainerEntrypoint"] == [
@@ -438,9 +456,11 @@ def test_script_processor_with_no_inputs_or_outputs(
 
     assert job_description["ProcessingJobStatus"] == "Completed"
 
-    assert job_description["ProcessingResources"] == {
-        "ClusterConfig": {"InstanceCount": 1, "InstanceType": "ml.m4.xlarge", "VolumeSizeInGB": 100}
-    }
+    assert job_description["ProcessingResources"]["ClusterConfig"]["InstanceCount"] == 1
+    assert (
+        job_description["ProcessingResources"]["ClusterConfig"]["InstanceType"] == cpu_instance_type
+    )
+    assert job_description["ProcessingResources"]["ClusterConfig"]["VolumeSizeInGB"] == 100
 
     assert job_description["AppSpecification"]["ContainerArguments"] == ["-v"]
     assert job_description["AppSpecification"]["ContainerEntrypoint"] == [
@@ -456,6 +476,7 @@ def test_script_processor_with_no_inputs_or_outputs(
     assert job_description["StoppingCondition"] == {"MaxRuntimeInSeconds": 3600}
 
 
+@pytest.mark.canary_quick
 def test_processor(sagemaker_session, image_uri, cpu_instance_type, output_kms_key):
     script_path = os.path.join(DATA_DIR, "dummy_script.py")
 
@@ -504,9 +525,11 @@ def test_processor(sagemaker_session, image_uri, cpu_instance_type, output_kms_k
     assert job_description["ProcessingOutputConfig"]["KmsKeyId"] == output_kms_key
     assert job_description["ProcessingOutputConfig"]["Outputs"][0]["OutputName"] == "dummy_output"
 
-    assert job_description["ProcessingResources"] == {
-        "ClusterConfig": {"InstanceCount": 1, "InstanceType": "ml.m4.xlarge", "VolumeSizeInGB": 100}
-    }
+    assert job_description["ProcessingResources"]["ClusterConfig"]["InstanceCount"] == 1
+    assert (
+        job_description["ProcessingResources"]["ClusterConfig"]["InstanceType"] == cpu_instance_type
+    )
+    assert job_description["ProcessingResources"]["ClusterConfig"]["VolumeSizeInGB"] == 100
 
     assert job_description["AppSpecification"]["ContainerArguments"] == ["-v"]
     assert job_description["AppSpecification"]["ContainerEntrypoint"] == [
@@ -564,7 +587,7 @@ def test_processor_with_custom_bucket(
     job_description = processor.latest_job.describe()
 
     assert job_description["ProcessingInputs"][0]["InputName"] == "code"
-    assert CUSTOM_BUCKET_PATH in job_description["ProcessingInputs"][0]["S3Input"]["S3Uri"]
+    assert CUSTOM_BUCKET_PATH_PREFIX in job_description["ProcessingInputs"][0]["S3Input"]["S3Uri"]
 
     assert job_description["ProcessingJobName"].startswith("test-processor")
 
@@ -573,9 +596,11 @@ def test_processor_with_custom_bucket(
     assert job_description["ProcessingOutputConfig"]["KmsKeyId"] == output_kms_key
     assert job_description["ProcessingOutputConfig"]["Outputs"][0]["OutputName"] == "dummy_output"
 
-    assert job_description["ProcessingResources"] == {
-        "ClusterConfig": {"InstanceCount": 1, "InstanceType": "ml.m4.xlarge", "VolumeSizeInGB": 100}
-    }
+    assert job_description["ProcessingResources"]["ClusterConfig"]["InstanceCount"] == 1
+    assert (
+        job_description["ProcessingResources"]["ClusterConfig"]["InstanceType"] == cpu_instance_type
+    )
+    assert job_description["ProcessingResources"]["ClusterConfig"]["VolumeSizeInGB"] == 100
 
     assert job_description["AppSpecification"]["ContainerArguments"] == ["-v"]
     assert job_description["AppSpecification"]["ContainerEntrypoint"] == [

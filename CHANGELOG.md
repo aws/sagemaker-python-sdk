@@ -1,5 +1,153 @@
 # Changelog
 
+## v1.50.7 (2020-01-20)
+
+### Bug fixes and other changes
+
+ * do not use script for TFS when entry_point is not provided
+ * remove usage of pkg_resources
+ * update py2 warning message since python 2 is deprecated
+ * cleanup experiments, trials, and trial components in integ tests
+
+## v1.50.6.post0 (2020-01-20)
+
+### Documentation changes
+
+ * add additional information to Transformer class transform function doc string
+
+## v1.50.6 (2020-01-18)
+
+### Bug fixes and other changes
+
+ * Append serving to model framework name for PyTorch, MXNet, and TensorFlow
+
+## v1.50.5 (2020-01-17)
+
+### Bug fixes and other changes
+
+ * Use serving_image_uri for Airflow
+
+### Documentation changes
+
+ * revise Processing docstrings for formatting and class links
+ * Add processing readthedocs
+
+## v1.50.4 (2020-01-16)
+
+### Bug fixes and other changes
+
+ * Remove version number from default version comment
+ * remove remaining instances of python-dateutil pin
+ * upgrade boto3 and remove python-dateutil pin
+
+### Documentation changes
+
+ * Add issue templates and configure issue template chooser
+ * Update error type in delete_endpoint docstring
+ * add version requirement for using "requirements.txt" when serving an MXNet model
+ * update container dependency versions for MXNet and PyTorch
+ * Update supported versions of PyTorch
+
+## v1.50.3 (2020-01-15)
+
+### Bug fixes and other changes
+
+ * ignore private Automatic Model Tuning hyperparameter when attaching AlgorithmEstimator
+
+### Documentation changes
+
+ * add Debugger API docs
+
+## v1.50.2 (2020-01-14)
+
+### Bug fixes and other changes
+
+ * add tests to quick canary
+ * honor 'wait' flag when updating endpoint
+ * add default framework version warning message in Model classes
+ * Adding role arn explanation for sagemaker role
+ * allow predictor to be returned from AutoML.deploy()
+ * add PR checklist item about unique_name_from_base()
+ * use unique_name_from_base for multi-algo tuning test
+ * update copyright year in license header
+
+### Documentation changes
+
+ * add version requirement for using "requirement.txt" when serving a PyTorch model
+ * add SageMaker Debugger overview
+ * clarify requirements.txt usage for Chainer, MXNet, and Scikit-learn
+ * change "associate" to "create" for OpenID connector
+ * fix typo and improve clarity on installing packages via "requirements.txt"
+
+## v1.50.1 (2020-01-07)
+
+### Bug fixes and other changes
+
+ * fix PyTorchModel deployment crash on Windows
+ * make PyTorch empty framework_version warning include the latest PyTorch version
+
+## v1.50.0 (2020-01-06)
+
+### Features
+
+ * allow disabling debugger_hook_config
+
+### Bug fixes and other changes
+
+ * relax urllib3 and requests restrictions.
+ * Add uri as return statement for upload_string_as_file_body
+ * refactor logic in fw_utils and fill in docstrings
+ * increase poll from 5 to 30 for DescribeEndpoint lambda.
+ * fix test_auto_ml tests for regions without ml.c4.xlarge hosts.
+ * fix test_processing for regions without m4.xlarge instances.
+ * reduce test's describe frequency to eliminate throttling error.
+ * Increase number of retries when describing an endpoint since tf-2.0 has larger images and takes longer to start.
+
+### Documentation changes
+
+ * generalize Model Monitor documentation from SageMaker Studio tutorial
+
+## v1.49.0 (2019-12-23)
+
+### Features
+
+ * Add support for TF-2.0.0.
+ * create ProcessingJob from ARN and from name
+
+### Bug fixes and other changes
+
+ * Make tf tests tf-1.15 and tf-2.0 compatible.
+
+### Documentation changes
+
+ * add Model Monitor documentation
+ * add link to Amazon algorithm estimator parent class to clarify **kwargs
+
+## v1.48.1 (2019-12-18)
+
+### Bug fixes and other changes
+
+ * use name_from_base in auto_ml.py but unique_name_from_base in tests.
+ * make test's custom bucket include region and account name.
+ * add Keras to the list of Neo-supported frameworks
+
+### Documentation changes
+
+ * add link to parent classes to clarify **kwargs
+ * add link to framework-related parent classes to clarify **kwargs
+
+## v1.48.0 (2019-12-17)
+
+### Features
+
+ * allow setting the default bucket in Session
+
+### Bug fixes and other changes
+
+ * set integration test parallelization to 512
+ * shorten base job name to avoid collision
+ * multi model integration test to create ECR repo with unique names to allow independent parallel executions
+
 ## v1.47.1 (2019-12-16)
 
 ### Bug fixes and other changes

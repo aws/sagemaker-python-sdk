@@ -1,4 +1,4 @@
-# Copyright 2019 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright 2019-2020 Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -17,7 +17,7 @@ import os
 from six.moves.urllib.parse import urlparse
 
 import sagemaker
-from sagemaker import s3
+from sagemaker import local, s3
 from sagemaker.model import Model
 from sagemaker.session import Session
 
@@ -66,7 +66,13 @@ class MultiDataModel(Model):
                 object, used for SageMaker interactions (default: None). If not
                 specified, one is created using the default AWS configuration
                 chain.
-            **kwargs: Keyword arguments passed to the ``Model`` initializer.
+            **kwargs: Keyword arguments passed to the
+                :class:`~sagemaker.model.Model` initializer.
+
+        .. tip::
+
+            You can find additional parameters for initializing this class at
+            :class:`~sagemaker.model.Model`.
         """
         # Validate path
         if not model_data_prefix.startswith("s3://"):
@@ -204,6 +210,9 @@ class MultiDataModel(Model):
         if role is None:
             raise ValueError("Role can not be null for deploying a model")
 
+        if instance_type == "local" and not isinstance(self.sagemaker_session, local.LocalSession):
+            self.sagemaker_session = local.LocalSession()
+
         container_def = self.prepare_container_def(instance_type, accelerator_type=accelerator_type)
         self.sagemaker_session.create_model(
             self.name,
@@ -237,7 +246,9 @@ class MultiDataModel(Model):
                 kms_key=kms_key,
                 data_capture_config_dict=data_capture_config_dict,
             )
-            self.sagemaker_session.update_endpoint(self.endpoint_name, endpoint_config_name)
+            self.sagemaker_session.update_endpoint(
+                self.endpoint_name, endpoint_config_name, wait=wait
+            )
         else:
             self.sagemaker_session.endpoint_from_production_variants(
                 name=self.endpoint_name,

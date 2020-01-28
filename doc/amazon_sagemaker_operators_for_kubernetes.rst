@@ -82,12 +82,11 @@ IAM role-based operator deployment
 Before you can deploy your operator using an IAM role, associate an OpenID Connect (OIDC) provider with your role to
 authenticate with the IAM service.
 
-Associate an OpenID Connect Provider to Your Instance
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Create an OpenID Connect Provider for Your Cluster
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Create an OIDC identity provider for your cluster. If your
-cluster is managed by EKS, then your cluster will already have an OIDC
-attached to it. 
+The following instruction will create and associate an OIDC provider
+with your EKS cluster.
 
 Set the local ``CLUSTER_NAME`` and \ ``AWS_REGION`` environment
 variables as follows:
@@ -240,7 +239,7 @@ follows:
 
 -  Edit the \ ``installer.yaml`` file to
    replace \ ``eks.amazonaws.com/role-arn``. Replace the ARN here with
-   the ARN for the OIDC-based role you’ve created. 
+   the Amazon Resource Name (ARN) for the OIDC-based role you’ve created. 
 
 -  Use the following command to deploy the cluster:  
 
@@ -263,16 +262,21 @@ Clone the Helm installer directory using the following command:
 
 Navigate to the
 ``amazon-sagemaker-operator-for-k8s/hack/charts/installer`` folder. Edit
-the \ ``values.yaml`` file, which includes high-level parameters for the
-Chart. Replace the ARN here with the ARN for the OIDC-based role you’ve
+the \ ``rolebased/values.yaml`` file, which includes high-level parameters for the
+Chart. Replace the role ARN here with the Amazon Resource Name (ARN) for the OIDC-based role you’ve
 created. 
 
 Install the Helm Chart using the following command:
 
 ::
 
-    helm install rolebased/ --generate-name
+    kubectl create namespace sagemaker-k8s-operator-system
+    helm install --namespace sagemaker-k8s-operator-system sagemaker-operator rolebased/
 
+
+.. warning::
+    If you decide to install the operator into a namespace other than the one specified above,
+    you will need to adjust the namespace defined in the IAM role ``trust.json`` file to match.
 
 After a moment, the chart will be installed with a randomly generated
 name. Verify that the installation succeeded by running the following
@@ -286,8 +290,8 @@ Your output should look like the following:
 
 ::
 
-    NAME                    NAMESPACE       REVISION        UPDATED                                 STATUS          CHART                           APP VERSION
-    rolebased-1234567    default         1               2019-11-20 23:14:59.6777082 +0000 UTC   deployed        sagemaker-k8s-operator-0.1.0
+    NAME                    NAMESPACE                       REVISION        UPDATED                                 STATUS          CHART                           APP VERSION
+    sagemaker-operator      sagemaker-k8s-operator-system   1               2019-11-20 23:14:59.6777082 +0000 UTC   deployed        sagemaker-k8s-operator-0.1.0
 
 
 Verify the operator deployment

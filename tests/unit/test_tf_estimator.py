@@ -1,4 +1,4 @@
-# Copyright 2017-2019 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright 2017-2020 Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -160,7 +160,7 @@ def _create_train_job(
         "experiment_config": None,
     }
 
-    if not ps and not horovod:
+    if not ps:
         conf["debugger_hook_config"] = {
             "CollectionConfigurations": [],
             "S3OutputPath": "s3://{}/".format(BUCKET_NAME),
@@ -924,6 +924,31 @@ def test_attach_custom_image(sagemaker_session):
     assert estimator.train_image() == training_image
 
 
+@patch("sagemaker.fw_utils.python_deprecation_warning")
+def test_estimator_py2_deprecation_warning(warning, sagemaker_session):
+    estimator = TensorFlow(
+        entry_point=SCRIPT_PATH,
+        role=ROLE,
+        sagemaker_session=sagemaker_session,
+        train_instance_count=INSTANCE_COUNT,
+        train_instance_type=INSTANCE_TYPE,
+        py_version="py2",
+    )
+
+    assert estimator.py_version == "py2"
+    warning.assert_called_with(estimator.__framework_name__, defaults.LATEST_PY2_VERSION)
+
+    model = TensorFlowModel(
+        MODEL_DATA,
+        role=ROLE,
+        entry_point=SCRIPT_PATH,
+        sagemaker_session=sagemaker_session,
+        py_version="py2",
+    )
+    assert model.py_version == "py2"
+    warning.assert_called_with(model.__framework_name__, defaults.LATEST_PY2_VERSION)
+
+
 @patch("sagemaker.fw_utils.empty_framework_version_warning")
 def test_empty_framework_version(warning, sagemaker_session):
     estimator = TensorFlow(
@@ -937,6 +962,17 @@ def test_empty_framework_version(warning, sagemaker_session):
 
     assert estimator.framework_version == defaults.TF_VERSION
     warning.assert_called_with(defaults.TF_VERSION, estimator.LATEST_VERSION)
+
+    model = TensorFlowModel(
+        MODEL_DATA,
+        role=ROLE,
+        entry_point=SCRIPT_PATH,
+        sagemaker_session=sagemaker_session,
+        framework_version=None,
+    )
+
+    assert model.framework_version == defaults.TF_VERSION
+    warning.assert_called_with(defaults.TF_VERSION, defaults.LATEST_VERSION)
 
 
 def _deprecated_args_msg(args):
@@ -982,15 +1018,30 @@ def test_script_mode_deprecated_args(sagemaker_session):
 
 def test_py2_version_deprecated(sagemaker_session):
     with pytest.raises(AttributeError) as e:
-        _build_tf(sagemaker_session=sagemaker_session, framework_version="1.15.1", py_version="py2")
+        TensorFlow(
+            entry_point=SCRIPT_PATH,
+            framework_version="2.0.1",
+            role=ROLE,
+            sagemaker_session=sagemaker_session,
+            train_instance_count=INSTANCE_COUNT,
+            train_instance_type=INSTANCE_TYPE,
+            py_version="py2",
+        )
 
-    msg = "Python 2 containers are only available until January 1st, 2020. Please use a Python 3 container."
+    msg = (
+        "Python 2 containers are only available with 2.0.0 and lower versions. "
+        "Please use a Python 3 container."
+    )
     assert msg in str(e.value)
 
 
 def test_py2_version_is_not_deprecated(sagemaker_session):
     estimator = _build_tf(
         sagemaker_session=sagemaker_session, framework_version="1.15.0", py_version="py2"
+    )
+    assert estimator.py_version == "py2"
+    estimator = _build_tf(
+        sagemaker_session=sagemaker_session, framework_version="2.0.0", py_version="py2"
     )
     assert estimator.py_version == "py2"
 

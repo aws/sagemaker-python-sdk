@@ -1,4 +1,4 @@
-# Copyright 2017-2018 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright 2017-2020 Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -193,7 +193,7 @@ def test_deploy_update_endpoint(tfo, time, sagemaker_session):
         initial_instance_count=INSTANCE_COUNT,
         instance_type=INSTANCE_TYPE,
     )
-    sagemaker_session.update_endpoint.assert_called_with(endpoint_name, config_name)
+    sagemaker_session.update_endpoint.assert_called_with(endpoint_name, config_name, wait=True)
     sagemaker_session.create_endpoint.assert_not_called()
 
 

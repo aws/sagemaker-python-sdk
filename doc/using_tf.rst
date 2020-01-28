@@ -20,7 +20,7 @@ For general information about using the SageMaker Python SDK, see :ref:`overview
 
 .. contents::
 
-Supported versions of TensorFlow for Elastic Inference: ``1.11.0``, ``1.12.0``.
+Supported versions of TensorFlow for Elastic Inference: ``1.11``, ``1.12``, ``1.13``, ``1.14``.
 
 
 *****************************
@@ -91,7 +91,7 @@ is good practice.
 Note that SageMaker doesn't support argparse actions.
 For example, if you want to use a boolean hyperparameter, specify ``type`` as ``bool`` in your script and provide an explicit ``True`` or ``False`` value for this hyperparameter when you create the TensorFlow estimator.
 
-For a complete example of a TensorFlow training script, see `mnist.py <https://github.com/awslabs/amazon-sagemaker-examples/blob/master/sagemaker-python-sdk/tensorflow_distributed_mnist/mnist.py>`__.
+For a complete example of a TensorFlow training script, see `mnist.py <https://github.com/awslabs/amazon-sagemaker-examples/blob/master/sagemaker-python-sdk/tensorflow_script_mode_training_and_serving/mnist.py>`__.
 
 
 Adapting your local TensorFlow script
@@ -360,7 +360,7 @@ Training with MKL-DNN disabled
 SageMaker TensorFlow CPU images use TensorFlow built with Intel® MKL-DNN optimization.
 
 In certain cases you might be able to get a better performance by disabling this optimization
-(`for example when using small models <https://github.com/awslabs/amazon-sagemaker-examples/blob/d88d1c19861fb7733941969f5a68821d9da2982e/sagemaker-python-sdk/tensorflow_iris_dnn_classifier_using_estimators/iris_dnn_classifier.py#L7-L9>`_)
+(for example when using small models).
 
 You can disable MKL-DNN optimization for TensorFlow ``1.8.0`` and above by setting two following environment variables:
 

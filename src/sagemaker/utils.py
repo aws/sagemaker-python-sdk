@@ -1,4 +1,4 @@
-# Copyright 2017-2019 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright 2017-2020 Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -534,7 +534,8 @@ def _create_or_update_code_dir(
         if os.path.isdir(dependency):
             shutil.copytree(dependency, os.path.join(lib_dir, os.path.basename(dependency)))
         else:
-            os.mkdir(lib_dir)
+            if not os.path.exists(lib_dir):
+                os.mkdir(lib_dir)
             shutil.copy2(dependency, lib_dir)
 
 

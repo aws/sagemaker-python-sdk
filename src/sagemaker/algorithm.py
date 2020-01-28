@@ -1,4 +1,4 @@
-# Copyright 2018 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright 2018-2020 Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -59,110 +59,72 @@ class AlgorithmEstimator(EstimatorBase):
 
         Args:
             algorithm_arn (str): algorithm arn used for training. Can be just the name if your
-                    account owns the algorithm.
-
-                role (str): An AWS IAM role (either name or full ARN). The Amazon SageMaker
-                    training jobs and APIsthat create Amazon SageMaker endpoints use this role to
-                    access training data and model artifacts. After the endpoint
-                    is created, the inference code might use the IAM role, if it
-                    needs to access an AWS resource.
-
-                train_instance_count (int): Number of Amazon EC2 instances to
+                account owns the algorithm.
+            role (str): An AWS IAM role (either name or full ARN). The Amazon SageMaker
+                training jobs and APIsthat create Amazon SageMaker endpoints use this role to
+                access training data and model artifacts. After the endpoint
+                is created, the inference code might use the IAM role, if it
+                needs to access an AWS resource.
+            train_instance_count (int): Number of Amazon EC2 instances to
                 use for training. train_instance_type (str): Type of EC2
                 instance to use for training, for example, 'ml.c4.xlarge'.
-                train_volume_size (int): Size in GB of the EBS volume to use for
-                storing input data
+            train_volume_size (int): Size in GB of the EBS volume to use for
+                storing input data during training (default: 30). Must be large enough to store
+                training data if File Mode is used (which is the default).
+            train_volume_kms_key (str): Optional. KMS key ID for encrypting EBS volume attached
+                to the training instance (default: None).
+            train_max_run (int): Timeout in seconds for training (default: 24 * 60 * 60).
+                After this amount of time Amazon SageMaker terminates the
+                job regardless of its current status.
+            input_mode (str): The input mode that the algorithm supports
+            (default: 'File'). Valid modes:
 
-                    during training (default: 30). Must be large enough to store
-                    training data if File Mode is used (which is the default).
+                * 'File' - Amazon SageMaker copies the training dataset from
+                  the S3 location to a local directory.
+                * 'Pipe' - Amazon SageMaker streams data directly from S3 to
+                  the container via a Unix-named pipe.
 
-                train_volume_kms_key (str): Optional. KMS key ID for encrypting EBS volume attached
-                    to the training instance (default: None).
+                This argument can be overriden on a per-channel basis using
+                ``sagemaker.session.s3_input.input_mode``.
 
-                train_max_run (int): Timeout in seconds for training (default: 24 * 60 * 60).
-                    After this amount of time Amazon SageMaker terminates the
-                    job regardless of its current status.
-
-                input_mode (str): The input mode that the algorithm supports
-                (default: 'File'). Valid modes:
-
-                    * 'File' - Amazon SageMaker copies the training dataset from
-                      the S3 location to a local directory.
-                    * 'Pipe' - Amazon SageMaker streams data directly from S3 to
-                      the container via a Unix-named pipe.
-
-                    This argument can be overriden on a per-channel basis using
-                    ``sagemaker.session.s3_input.input_mode``.
-
-                output_path (str): S3 location for saving the training result (model artifacts and
-                    output files). If not specified, results are stored to a default bucket. If
-                    the bucket with the specific name does not exist, the
-                    estimator creates the bucket during the
-                    :meth:`~sagemaker.estimator.EstimatorBase.fit` method
-                    execution.
-
-                output_kms_key (str): Optional. KMS key ID for encrypting the
+            output_path (str): S3 location for saving the training result (model artifacts and
+                output files). If not specified, results are stored to a default bucket. If
+                the bucket with the specific name does not exist, the
+                estimator creates the bucket during the
+                :meth:`~sagemaker.estimator.EstimatorBase.fit` method
+                execution.
+            output_kms_key (str): Optional. KMS key ID for encrypting the
                 training output (default: None). base_job_name (str): Prefix for
                 training job name when the
                 :meth:`~sagemaker.estimator.EstimatorBase.fit`
-
-                    method launches. If not specified, the estimator generates a
-                    default job name, based on the training image name and
-                    current timestamp.
-
-                sagemaker_session (sagemaker.session.Session): Session object which manages
-                    interactions with Amazon SageMaker APIs and any other AWS services needed. If
-                    not specified, the estimator creates one using the default
-                    AWS configuration chain.
-
-                tags (list[dict]): List of tags for labeling a training job. For more, see
-                    https://docs.aws.amazon.com/sagemaker/latest/dg/API_Tag.html.
-
-                subnets (list[str]): List of subnet ids. If not specified
+                method launches. If not specified, the estimator generates a
+                default job name, based on the training image name and
+                current timestamp.
+            sagemaker_session (sagemaker.session.Session): Session object which manages
+                interactions with Amazon SageMaker APIs and any other AWS services needed. If
+                not specified, the estimator creates one using the default
+                AWS configuration chain.
+            tags (list[dict]): List of tags for labeling a training job. For more, see
+                https://docs.aws.amazon.com/sagemaker/latest/dg/API_Tag.html.
+            subnets (list[str]): List of subnet ids. If not specified
                 training job will be created without VPC config.
                 security_group_ids (list[str]): List of security group ids. If
-                not specified training job will be created
-
-                    without VPC config.
-
-                model_uri (str): URI where a pre-trained model is stored, either locally or in S3
-                    (default: None). If specified, the estimator will create a channel pointing to
-                    the model so the training job can download it. This model
-                    can be a 'model.tar.gz' from a previous training job, or
-                    other artifacts coming from a different source.
-                    More information:
-                    https://docs.aws.amazon.com/sagemaker/latest/dg/cdf-training.html#td-deserialization
-
-                model_channel_name (str): Name of the channel where 'model_uri'
+                not specified training job will be created without VPC config.
+            model_uri (str): URI where a pre-trained model is stored, either locally or in S3
+                (default: None). If specified, the estimator will create a channel pointing to
+                the model so the training job can download it. This model
+                can be a 'model.tar.gz' from a previous training job, or
+                other artifacts coming from a different source.
+                More information:
+                https://docs.aws.amazon.com/sagemaker/latest/dg/cdf-training.html#td-deserialization
+            model_channel_name (str): Name of the channel where 'model_uri'
                 will be downloaded (default: 'model'). metric_definitions
                 (list[dict]): A list of dictionaries that defines the metric(s)
-                used to evaluate the
-
-                    training jobs. Each dictionary contains two keys: 'Name' for
-                    the name of the metric, and 'Regex' for the regular
-                    expression used to extract the metric from the logs.
-
-                encrypt_inter_container_traffic (bool): Specifies whether traffic between training
-                    containers is encrypted for the training job (default: ``False``).
-            role:
-            train_instance_count:
-            train_instance_type:
-            train_volume_size:
-            train_volume_kms_key:
-            train_max_run:
-            input_mode:
-            output_path:
-            output_kms_key:
-            base_job_name:
-            sagemaker_session:
-            hyperparameters:
-            tags:
-            subnets:
-            security_group_ids:
-            model_uri:
-            model_channel_name:
-            metric_definitions:
-            encrypt_inter_container_traffic:
+                used to evaluate the training jobs. Each dictionary contains two keys: 'Name' for
+                the name of the metric, and 'Regex' for the regular
+                expression used to extract the metric from the logs.
+            encrypt_inter_container_traffic (bool): Specifies whether traffic between training
+                containers is encrypted for the training job (default: ``False``).
             **kwargs: Additional kwargs. This is unused. It's only added for AlgorithmEstimator
                 to ignore the irrelevant arguments.
         """
@@ -309,7 +271,13 @@ class AlgorithmEstimator(EstimatorBase):
                 the model. Default: use subnets and security groups from this Estimator.
                 * 'Subnets' (list[str]): List of subnet ids.
                 * 'SecurityGroupIds' (list[str]): List of security group ids.
-            **kwargs:
+            **kwargs: Additional arguments for creating a :class:`~sagemaker.model.ModelPackage`.
+
+        .. tip::
+
+            You can find additional parameters for using this method at
+            :class:`~sagemaker.model.ModelPackage` and
+            :class:`~sagemaker.model.Model`.
 
         Returns:
             a Model ready for deployment.
@@ -585,3 +553,28 @@ class AlgorithmEstimator(EstimatorBase):
             current_input_modes = current_input_modes & supported_input_modes
 
         return current_input_modes
+
+    @classmethod
+    def _prepare_init_params_from_job_description(cls, job_details, model_channel_name=None):
+        """Convert the job description to init params that can be handled by the
+        class constructor
+
+        Args:
+            job_details (dict): the returned job details from a DescribeTrainingJob
+                API call.
+            model_channel_name (str): Name of the channel where pre-trained
+                model data will be downloaded.
+
+        Returns:
+            dict: The transformed init_params
+        """
+        init_params = super(AlgorithmEstimator, cls)._prepare_init_params_from_job_description(
+            job_details, model_channel_name
+        )
+
+        # This hyperparameter is added by Amazon SageMaker Automatic Model Tuning.
+        # It cannot be set through instantiating an estimator.
+        if "_tuning_objective_metric" in init_params["hyperparameters"]:
+            del init_params["hyperparameters"]["_tuning_objective_metric"]
+
+        return init_params

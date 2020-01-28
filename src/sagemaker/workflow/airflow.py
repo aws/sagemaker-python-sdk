@@ -1,4 +1,4 @@
-# Copyright 2017-2018 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright 2017-2020 Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -516,30 +516,25 @@ def prepare_framework_container_def(model, instance_type, s3_operations):
     deploy_image = model.image
     if not deploy_image:
         region_name = model.sagemaker_session.boto_session.region_name
-        deploy_image = fw_utils.create_image_uri(
-            region_name,
-            model.__framework_name__,
-            instance_type,
-            model.framework_version,
-            model.py_version,
-        )
+        deploy_image = model.serving_image_uri(region_name, instance_type)
 
     base_name = utils.base_name_from_image(deploy_image)
     model.name = model.name or utils.name_from_base(base_name)
 
     bucket = model.bucket or model.sagemaker_session._default_bucket
-    script = os.path.basename(model.entry_point)
-    key = "{}/source/sourcedir.tar.gz".format(model.name)
+    if model.entry_point is not None:
+        script = os.path.basename(model.entry_point)
+        key = "{}/source/sourcedir.tar.gz".format(model.name)
 
-    if model.source_dir and model.source_dir.lower().startswith("s3://"):
-        code_dir = model.source_dir
-        model.uploaded_code = fw_utils.UploadedCode(s3_prefix=code_dir, script_name=script)
-    else:
-        code_dir = "s3://{}/{}".format(bucket, key)
-        model.uploaded_code = fw_utils.UploadedCode(s3_prefix=code_dir, script_name=script)
-        s3_operations["S3Upload"] = [
-            {"Path": model.source_dir or script, "Bucket": bucket, "Key": key, "Tar": True}
-        ]
+        if model.source_dir and model.source_dir.lower().startswith("s3://"):
+            code_dir = model.source_dir
+            model.uploaded_code = fw_utils.UploadedCode(s3_prefix=code_dir, script_name=script)
+        else:
+            code_dir = "s3://{}/{}".format(bucket, key)
+            model.uploaded_code = fw_utils.UploadedCode(s3_prefix=code_dir, script_name=script)
+            s3_operations["S3Upload"] = [
+                {"Path": model.source_dir or script, "Bucket": bucket, "Key": key, "Tar": True}
+            ]
 
     deploy_env = dict(model.env)
     deploy_env.update(model._framework_env_vars())

@@ -1,4 +1,4 @@
-# Copyright 2019 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright 2019-2020 Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -1761,7 +1761,7 @@ class DefaultModelMonitor(ModelMonitor):
 class BaseliningJob(ProcessingJob):
     """Provides functionality to retrieve baseline-specific files output from baselining job."""
 
-    def __init__(self, sagemaker_session, job_name, inputs, outputs):
+    def __init__(self, sagemaker_session, job_name, inputs, outputs, output_kms_key=None):
         """Initializes a Baselining job that tracks a baselining job kicked off by the suggest
         workflow.
 
@@ -1773,12 +1773,18 @@ class BaseliningJob(ProcessingJob):
             job_name (str): Name of the Amazon SageMaker Model Monitoring Baselining Job.
             inputs ([sagemaker.processing.ProcessingInput]): A list of ProcessingInput objects.
             outputs ([sagemaker.processing.ProcessingOutput]): A list of ProcessingOutput objects.
+            output_kms_key (str): The output kms key associated with the job. Defaults to None
+                if not provided.
 
         """
         self.inputs = inputs
         self.outputs = outputs
         super(BaseliningJob, self).__init__(
-            sagemaker_session=sagemaker_session, job_name=job_name, inputs=inputs, outputs=outputs
+            sagemaker_session=sagemaker_session,
+            job_name=job_name,
+            inputs=inputs,
+            outputs=outputs,
+            output_kms_key=output_kms_key,
         )
 
     @classmethod
@@ -1799,6 +1805,7 @@ class BaseliningJob(ProcessingJob):
             processing_job.job_name,
             processing_job.inputs,
             processing_job.outputs,
+            processing_job.output_kms_key,
         )
 
     def baseline_statistics(self, file_name=STATISTICS_JSON_DEFAULT_FILE_NAME, kms_key=None):
@@ -1881,7 +1888,7 @@ class MonitoringExecution(ProcessingJob):
     executions
     """
 
-    def __init__(self, sagemaker_session, job_name, inputs, output, output_kms_key):
+    def __init__(self, sagemaker_session, job_name, inputs, output, output_kms_key=None):
         """Initializes a MonitoringExecution job that tracks a monitoring execution kicked off by
         an Amazon SageMaker Model Monitoring Schedule.
 
@@ -1893,13 +1900,17 @@ class MonitoringExecution(ProcessingJob):
             job_name (str): The name of the monitoring execution job.
             output (sagemaker.Processing.ProcessingOutput): The output associated with the
                 monitoring execution.
-            output_kms_key (str): The output kms key associated with the job.
+            output_kms_key (str): The output kms key associated with the job. Defaults to None
+                if not provided.
 
         """
         self.output = output
-        self.output_kms_key = output_kms_key
         super(MonitoringExecution, self).__init__(
-            sagemaker_session=sagemaker_session, job_name=job_name, inputs=inputs, outputs=[output]
+            sagemaker_session=sagemaker_session,
+            job_name=job_name,
+            inputs=inputs,
+            outputs=[output],
+            output_kms_key=output_kms_key,
         )
 
     @classmethod

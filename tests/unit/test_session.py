@@ -1,4 +1,4 @@
-# Copyright 2017-2019 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright 2017-2020 Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -1782,6 +1782,18 @@ def test_update_endpoint_succeed(sagemaker_session):
     endpoint_name = "some-endpoint"
     endpoint_config = "some-endpoint-config"
     returned_endpoint_name = sagemaker_session.update_endpoint(endpoint_name, endpoint_config)
+    assert returned_endpoint_name == endpoint_name
+
+
+def test_update_endpoint_no_wait(sagemaker_session):
+    sagemaker_session.sagemaker_client.describe_endpoint = Mock(
+        return_value={"EndpointStatus": "Updating"}
+    )
+    endpoint_name = "some-endpoint"
+    endpoint_config = "some-endpoint-config"
+    returned_endpoint_name = sagemaker_session.update_endpoint(
+        endpoint_name, endpoint_config, wait=False
+    )
     assert returned_endpoint_name == endpoint_name
 
 

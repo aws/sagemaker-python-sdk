@@ -1,4 +1,4 @@
-# Copyright 2017-2018 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright 2017-2020 Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -15,11 +15,18 @@ from __future__ import absolute_import
 
 import logging
 
+from sagemaker import fw_utils
+
 import sagemaker
-from sagemaker.fw_utils import create_image_uri, model_code_key_prefix, python_deprecation_warning
+from sagemaker.fw_utils import (
+    create_image_uri,
+    model_code_key_prefix,
+    python_deprecation_warning,
+    empty_framework_version_warning,
+)
 from sagemaker.model import FrameworkModel, MODEL_SERVER_WORKERS_PARAM_NAME
 from sagemaker.predictor import RealTimePredictor
-from sagemaker.tensorflow.defaults import TF_VERSION
+from sagemaker.tensorflow import defaults
 from sagemaker.tensorflow.predictor import tf_json_serializer, tf_json_deserializer
 
 logger = logging.getLogger("sagemaker")
@@ -60,7 +67,7 @@ class TensorFlowModel(FrameworkModel):
         entry_point,
         image=None,
         py_version="py2",
-        framework_version=TF_VERSION,
+        framework_version=None,
         predictor_cls=TensorFlowPredictor,
         model_server_workers=None,
         **kwargs
@@ -94,16 +101,29 @@ class TensorFlowModel(FrameworkModel):
                 worker per vCPU.
             **kwargs: Keyword arguments passed to the ``FrameworkModel``
                 initializer.
+
+        .. tip::
+
+            You can find additional parameters for initializing this class at
+            :class:`~sagemaker.model.FrameworkModel` and
+            :class:`~sagemaker.model.Model`.
         """
         super(TensorFlowModel, self).__init__(
             model_data, image, role, entry_point, predictor_cls=predictor_cls, **kwargs
         )
 
         if py_version == "py2":
-            logger.warning(python_deprecation_warning(self.__framework_name__))
+            logger.warning(
+                python_deprecation_warning(self.__framework_name__, defaults.LATEST_PY2_VERSION)
+            )
+
+        if framework_version is None:
+            logger.warning(
+                empty_framework_version_warning(defaults.TF_VERSION, defaults.LATEST_VERSION)
+            )
 
         self.py_version = py_version
-        self.framework_version = framework_version
+        self.framework_version = framework_version or defaults.TF_VERSION
         self.model_server_workers = model_server_workers
 
     def prepare_container_def(self, instance_type, accelerator_type=None):
@@ -144,3 +164,23 @@ class TensorFlowModel(FrameworkModel):
             deploy_env[MODEL_SERVER_WORKERS_PARAM_NAME.upper()] = str(self.model_server_workers)
 
         return sagemaker.container_def(deploy_image, self.model_data, deploy_env)
+
+    def serving_image_uri(self, region_name, instance_type):
+        """Create a URI for the serving image.
+
+        Args:
+            region_name (str): AWS region where the image is uploaded.
+            instance_type (str): SageMaker instance type. Used to determine device type
+                (cpu/gpu/family-specific optimized).
+
+        Returns:
+            str: The appropriate image URI based on the given parameters.
+
+        """
+        return fw_utils.create_image_uri(
+            region_name,
+            "-".join([self.__framework_name__, "serving"]),
+            instance_type,
+            self.framework_version,
+            self.py_version,
+        )

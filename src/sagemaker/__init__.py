@@ -1,4 +1,4 @@
-# Copyright 2017-2018 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright 2017-2020 Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -13,7 +13,7 @@
 """Placeholder docstring"""
 from __future__ import absolute_import
 
-import pkg_resources
+import importlib_metadata
 
 from sagemaker import estimator, parameter, tuner  # noqa: F401
 from sagemaker.amazon.kmeans import KMeans, KMeansModel, KMeansPredictor  # noqa: F401
@@ -60,4 +60,4 @@ from sagemaker.session import get_execution_role  # noqa: F401
 from sagemaker.automl.automl import AutoML, AutoMLJob, AutoMLInput  # noqa: F401
 from sagemaker.automl.candidate_estimator import CandidateEstimator, CandidateStep  # noqa: F401
 
-__version__ = pkg_resources.require("sagemaker")[0].version
+__version__ = importlib_metadata.version("sagemaker")

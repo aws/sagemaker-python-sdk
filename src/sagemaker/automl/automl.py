@@ -1,4 +1,4 @@
-# Copyright 2019 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright 2019-2020 Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -19,7 +19,7 @@ from sagemaker import Model, PipelineModel
 from sagemaker.automl.candidate_estimator import CandidateEstimator
 from sagemaker.job import _Job
 from sagemaker.session import Session
-from sagemaker.utils import unique_name_from_base
+from sagemaker.utils import name_from_base
 
 
 class AutoML(object):
@@ -201,6 +201,7 @@ class AutoML(object):
         vpc_config=None,
         enable_network_isolation=False,
         model_kms_key=None,
+        predictor_cls=None,
     ):
         """Deploy a candidate to a SageMaker Inference Pipeline and return a Predictor
 
@@ -237,10 +238,15 @@ class AutoML(object):
                 training cluster for distributed training. Default: False
             model_kms_key (str): KMS key ARN used to encrypt the repacked
                 model archive file if the model is repacked
+            predictor_cls (callable[string, sagemaker.session.Session]): A
+                function to call to create a predictor (default: None). If
+                specified, ``deploy()``  returns the result of invoking this
+                function on the created endpoint name.
 
         Returns:
-            callable[string, sagemaker.session.Session]: Invocation of
-            ``self.predictor_cls`` on the created endpoint name.
+            callable[string, sagemaker.session.Session] or ``None``:
+                If ``predictor_cls`` is specified, the invocation of ``self.predictor_cls`` on
+                the created endpoint name. Otherwise, ``None``.
         """
         if candidate is None:
             candidate_dict = self.best_candidate()
@@ -264,6 +270,7 @@ class AutoML(object):
             vpc_config=vpc_config,
             enable_network_isolation=enable_network_isolation,
             model_kms_key=model_kms_key,
+            predictor_cls=predictor_cls,
         )
 
     def _check_problem_type_and_job_objective(self, problem_type, job_objective):
@@ -299,6 +306,7 @@ class AutoML(object):
         vpc_config=None,
         enable_network_isolation=False,
         model_kms_key=None,
+        predictor_cls=None,
     ):
         """Deploy a SageMaker Inference Pipeline.
 
@@ -329,6 +337,10 @@ class AutoML(object):
                 contains "SecurityGroupIds", "Subnets"
             model_kms_key (str): KMS key ARN used to encrypt the repacked
                 model archive file if the model is repacked
+            predictor_cls (callable[string, sagemaker.session.Session]): A
+                function to call to create a predictor (default: None). If
+                specified, ``deploy()``  returns the result of invoking this
+                function on the created endpoint name.
         """
         # construct Model objects
         models = []
@@ -352,6 +364,7 @@ class AutoML(object):
         pipeline = PipelineModel(
             models=models,
             role=self.role,
+            predictor_cls=predictor_cls,
             name=name,
             vpc_config=vpc_config,
             sagemaker_session=sagemaker_session or self.sagemaker_session,
@@ -381,7 +394,7 @@ class AutoML(object):
             else:
                 base_name = "automl"
             # CreateAutoMLJob API validates that member length less than or equal to 32
-            self.current_job_name = unique_name_from_base(base_name, max_length=32)
+            self.current_job_name = name_from_base(base_name, max_length=32)
 
         if self.output_path is None:
             self.output_path = "s3://{}/".format(self.sagemaker_session.default_bucket())

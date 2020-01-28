@@ -1,4 +1,4 @@
-# Copyright 2017-2018 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright 2017-2020 Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -234,7 +234,8 @@ class RealTimePredictor(object):
         associated with the endpoint that this predictor refers to.
 
         Returns:
-            [ModelMonitor]: A list of ModelMonitor (or DefaultModelMonitor) objects.
+            [sagemaker.model_monitor.model_monitoring.ModelMonitor]: A list of
+                ModelMonitor (or DefaultModelMonitor) objects.
 
         """
         monitoring_schedules_dict = self.sagemaker_session.list_monitoring_schedules(

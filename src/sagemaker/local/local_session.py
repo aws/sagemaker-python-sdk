@@ -1,4 +1,4 @@
-# Copyright 2017-2019 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright 2017-2020 Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -341,6 +341,7 @@ class LocalSagemakerRuntimeClient(object):
         ContentType=None,
         Accept=None,
         CustomAttributes=None,
+        TargetModel=None,
     ):
         """
 
@@ -364,6 +365,9 @@ class LocalSagemakerRuntimeClient(object):
 
         if CustomAttributes is not None:
             headers["X-Amzn-SageMaker-Custom-Attributes"] = CustomAttributes
+
+        if TargetModel is not None:
+            headers["X-Amzn-SageMaker-Target-Model"] = TargetModel
 
         r = self.http.request("POST", url, body=Body, preload_content=False, headers=headers)
 

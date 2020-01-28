@@ -1,4 +1,4 @@
-# Copyright 2017-2019 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright 2017-2020 Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -224,10 +224,8 @@ class Session(object):  # pylint: disable=too-many-public-methods
             kms_key (str): The KMS key to use for encrypting the file.
 
         Returns:
-            str: The S3 URI of the uploaded file(s). If a file is specified in the path argument,
-                the URI format is: ``s3://{bucket name}/{key_prefix}/{original_file_name}``.
-                If a directory is specified in the path argument, the URI format is
-                ``s3://{bucket name}/{key_prefix}``.
+            str: The S3 URI of the uploaded file.
+                The URI format is: ``s3://{bucket name}/{key}``.
         """
         s3 = self.boto_session.resource("s3")
         s3_object = s3.Object(bucket_name=bucket, key=key)
@@ -236,6 +234,9 @@ class Session(object):  # pylint: disable=too-many-public-methods
             s3_object.put(Body=body, SSEKMSKeyId=kms_key, ServerSideEncryption="aws:kms")
         else:
             s3_object.put(Body=body)
+
+        s3_uri = "s3://{}/{}".format(bucket, key)
+        return s3_uri
 
     def download_data(self, path, bucket, key_prefix="", extra_args=None):
         """Download file or directory from S3.
@@ -2362,8 +2363,8 @@ class Session(object):  # pylint: disable=too-many-public-methods
             self.wait_for_endpoint(endpoint_name)
         return endpoint_name
 
-    def update_endpoint(self, endpoint_name, endpoint_config_name):
-        """ Update an Amazon SageMaker ``Endpoint`` according to the endpoint configuration
+    def update_endpoint(self, endpoint_name, endpoint_config_name, wait=True):
+        """Update an Amazon SageMaker ``Endpoint`` according to the endpoint configuration
         specified in the request
 
         Raise an error if endpoint with endpoint_name does not exist.
@@ -2372,10 +2373,14 @@ class Session(object):  # pylint: disable=too-many-public-methods
             endpoint_name (str): Name of the Amazon SageMaker ``Endpoint`` to update.
             endpoint_config_name (str): Name of the Amazon SageMaker endpoint configuration to
                 deploy.
+            wait (bool): Whether to wait for the endpoint deployment to complete before returning
+                (default: True).
 
         Returns:
             str: Name of the Amazon SageMaker ``Endpoint`` being updated.
 
+        Raises:
+            ValueError: if the endpoint does not already exist
         """
         if not _deployment_entity_exists(
             lambda: self.sagemaker_client.describe_endpoint(EndpointName=endpoint_name)
@@ -2388,6 +2393,9 @@ class Session(object):  # pylint: disable=too-many-public-methods
         self.sagemaker_client.update_endpoint(
             EndpointName=endpoint_name, EndpointConfigName=endpoint_config_name
         )
+
+        if wait:
+            self.wait_for_endpoint(endpoint_name)
         return endpoint_name
 
     def delete_endpoint(self, endpoint_name):
@@ -2589,7 +2597,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
                 actual_status=status,
             )
 
-    def wait_for_endpoint(self, endpoint, poll=5):
+    def wait_for_endpoint(self, endpoint, poll=30):
         """Wait for an Amazon SageMaker endpoint deployment to complete.
 
         Args:

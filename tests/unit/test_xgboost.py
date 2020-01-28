@@ -1,4 +1,4 @@
-# Copyright 2017-2018 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright 2017-2020 Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -534,3 +534,30 @@ def test_attach_custom_image(sagemaker_session):
     with pytest.raises(TypeError) as error:
         XGBoost.attach(training_job_name="neo", sagemaker_session=sagemaker_session)
     assert "expected string" in str(error)
+
+
+def test_py2_xgboost_attribute_error(sagemaker_session):
+    with pytest.raises(AttributeError) as error1:
+        XGBoost(
+            entry_point=SCRIPT_PATH,
+            role=ROLE,
+            framework_version=XGBOOST_LATEST_VERSION,
+            sagemaker_session=sagemaker_session,
+            train_instance_type=INSTANCE_TYPE,
+            train_instance_count=1,
+            py_version="py2",
+        )
+
+    with pytest.raises(AttributeError) as error2:
+        XGBoostModel(
+            model_data=DATA_DIR,
+            role=ROLE,
+            sagemaker_session=sagemaker_session,
+            entry_point=SCRIPT_PATH,
+            framework_version=XGBOOST_LATEST_VERSION,
+            py_version="py2",
+        )
+
+    error_message = "XGBoost container does not support Python 2, please use Python 3"
+    assert error_message in str(error1)
+    assert error_message in str(error2)

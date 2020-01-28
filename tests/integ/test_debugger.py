@@ -1,4 +1,4 @@
-# Copyright 2019 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright 2019-2020 Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -14,6 +14,8 @@ from __future__ import absolute_import
 
 import os
 import uuid
+
+import pytest
 
 from sagemaker.debugger import Rule
 from sagemaker.debugger import DebuggerHookConfig
@@ -365,6 +367,7 @@ def test_mxnet_with_tensorboard_output_config(
         _wait_and_assert_that_no_rule_jobs_errored(training_job=mx.latest_training_job)
 
 
+@pytest.mark.canary_quick
 def test_mxnet_with_all_rules_and_configs(sagemaker_session, mxnet_full_version, cpu_instance_type):
     with timeout(minutes=TRAINING_DEFAULT_TIMEOUT_MINUTES):
         rules = [
@@ -433,6 +436,38 @@ def test_mxnet_with_all_rules_and_configs(sagemaker_session, mxnet_full_version,
         )
 
         _wait_and_assert_that_no_rule_jobs_errored(training_job=mx.latest_training_job)
+
+
+def test_mxnet_with_debugger_hook_config_disabled(
+    sagemaker_session, mxnet_full_version, cpu_instance_type
+):
+    with timeout(minutes=TRAINING_DEFAULT_TIMEOUT_MINUTES):
+        script_path = os.path.join(DATA_DIR, "mxnet_mnist", "mnist_gluon.py")
+        data_path = os.path.join(DATA_DIR, "mxnet_mnist")
+
+        mx = MXNet(
+            entry_point=script_path,
+            role="SageMakerRole",
+            framework_version=mxnet_full_version,
+            py_version=PYTHON_VERSION,
+            train_instance_count=1,
+            train_instance_type=cpu_instance_type,
+            sagemaker_session=sagemaker_session,
+            debugger_hook_config=False,
+        )
+
+        train_input = mx.sagemaker_session.upload_data(
+            path=os.path.join(data_path, "train"), key_prefix="integ-test-data/mxnet_mnist/train"
+        )
+        test_input = mx.sagemaker_session.upload_data(
+            path=os.path.join(data_path, "test"), key_prefix="integ-test-data/mxnet_mnist/test"
+        )
+
+        mx.fit({"train": train_input, "test": test_input})
+
+        job_description = mx.latest_training_job.describe()
+
+        assert job_description.get("DebugHookConfig") is None
 
 
 def _get_custom_rule(session):

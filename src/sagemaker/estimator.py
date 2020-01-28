@@ -1,4 +1,4 @@
-# Copyright 2017-2019 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright 2017-2020 Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -327,7 +327,7 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):
                 self.output_path = "s3://{}/".format(self.sagemaker_session.default_bucket())
 
         # Prepare rules and debugger configs for training.
-        if self.rules and not self.debugger_hook_config:
+        if self.rules and self.debugger_hook_config is None:
             self.debugger_hook_config = DebuggerHookConfig(s3_output_path=self.output_path)
         # If an object was provided without an S3 URI is not provided, default it for the customer.
         if self.debugger_hook_config and not self.debugger_hook_config.s3_output_path:
@@ -378,7 +378,7 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):
             for rule in self.rules:
                 self.collection_configs.update(rule.collection_configs)
         # Add the CollectionConfigs from DebuggerHookConfig to the set.
-        if self.debugger_hook_config is not None:
+        if self.debugger_hook_config:
             self.collection_configs.update(self.debugger_hook_config.collection_configs or [])
 
     def latest_job_debugger_artifacts_path(self):
@@ -492,8 +492,8 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):
                 'var2':[1,1,28,28]}
             output_path (str): Specifies where to store the compiled model
             framework (str): The framework that is used to train the original
-                model. Allowed values: 'mxnet', 'tensorflow', 'pytorch', 'onnx',
-                'xgboost'
+                model. Allowed values: 'mxnet', 'tensorflow', 'keras', 'pytorch',
+                'onnx', 'xgboost'
             framework_version (str): The version of the framework
             compile_max_run (int): Timeout in seconds for compilation (default:
                 3 * 60). After this amount of time Amazon SageMaker Neo
@@ -796,7 +796,7 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):
         """Delete an Amazon SageMaker ``Endpoint``.
 
         Raises:
-            ValueError: If the endpoint does not exist.
+            botocore.exceptions.ClientError: If the endpoint does not exist.
         """
         self._ensure_latest_training_job(error_message="Endpoint was not created yet")
         self.sagemaker_session.delete_endpoint(self.latest_training_job.name)
@@ -1336,9 +1336,15 @@ class Estimator(EstimatorBase):
                 Default: use subnets and security groups from this Estimator.
                 * 'Subnets' (list[str]): List of subnet ids.
                 * 'SecurityGroupIds' (list[str]): List of security group ids.
-            **kwargs:
+            **kwargs: Additional parameters passed to :class:`~sagemaker.model.Model`
 
-        Returns: a Model ready for deployment.
+        .. tip::
+
+            You can find additional parameters for using this method at
+            :class:`~sagemaker.model.Model`.
+
+        Returns:
+            (sagemaker.model.Model) a Model ready for deployment.
         """
         if predictor_cls is None:
 
@@ -1566,6 +1572,11 @@ class Framework(EstimatorBase):
                 (default: ``None``).
             **kwargs: Additional kwargs passed to the ``EstimatorBase``
                 constructor.
+
+        .. tip::
+
+            You can find additional parameters for initializing this class at
+            :class:`~sagemaker.estimator.EstimatorBase`.
         """
         super(Framework, self).__init__(**kwargs)
         if entry_point.startswith("s3://"):
@@ -1665,6 +1676,8 @@ class Framework(EstimatorBase):
         """
         if self.debugger_hook_config is None:
             self.debugger_hook_config = DebuggerHookConfig(s3_output_path=self.output_path)
+        elif not self.debugger_hook_config:
+            self.debugger_hook_config = None
 
     def _stage_user_code_in_s3(self):
         """Upload the user training script to s3 and return the location.

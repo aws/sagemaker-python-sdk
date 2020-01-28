@@ -1,4 +1,4 @@
-# Copyright 2019 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright 2019-2020 Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -169,6 +169,67 @@ def test_multi_data_model_deploy_pretrained_models(
 
         # Cleanup
         sagemaker_session.sagemaker_client.delete_endpoint_config(EndpointConfigName=endpoint_name)
+        multi_data_model.delete_model()
+    with pytest.raises(Exception) as exception:
+        sagemaker_session.sagemaker_client.describe_model(ModelName=multi_data_model.name)
+        assert "Could not find model" in str(exception.value)
+        sagemaker_session.sagemaker_client.describe_endpoint_config(name=endpoint_name)
+        assert "Could not find endpoint" in str(exception.value)
+
+
+@pytest.mark.local_mode
+def test_multi_data_model_deploy_pretrained_models_local_mode(container_image, sagemaker_session):
+    timestamp = sagemaker_timestamp()
+    endpoint_name = "test-multimodel-endpoint-{}".format(timestamp)
+    model_name = "test-multimodel-{}".format(timestamp)
+
+    # Define pretrained model local path
+    pretrained_model_data_local_path = os.path.join(DATA_DIR, "sparkml_model", "mleap_model.tar.gz")
+
+    with timeout(minutes=30):
+        model_data_prefix = os.path.join(
+            "s3://", sagemaker_session.default_bucket(), "multimodel-{}/".format(timestamp)
+        )
+        multi_data_model = MultiDataModel(
+            name=model_name,
+            model_data_prefix=model_data_prefix,
+            image=container_image,
+            role=ROLE,
+            sagemaker_session=sagemaker_session,
+        )
+
+        # Add model before deploy
+        multi_data_model.add_model(pretrained_model_data_local_path, PRETRAINED_MODEL_PATH_1)
+        # Deploy model to an endpoint
+        multi_data_model.deploy(1, "local", endpoint_name=endpoint_name)
+        # Add models after deploy
+        multi_data_model.add_model(pretrained_model_data_local_path, PRETRAINED_MODEL_PATH_2)
+
+        endpoint_models = []
+        for model_path in multi_data_model.list_models():
+            endpoint_models.append(model_path)
+        assert PRETRAINED_MODEL_PATH_1 in endpoint_models
+        assert PRETRAINED_MODEL_PATH_2 in endpoint_models
+
+        predictor = RealTimePredictor(
+            endpoint=endpoint_name,
+            sagemaker_session=multi_data_model.sagemaker_session,
+            serializer=npy_serializer,
+            deserializer=string_deserializer,
+        )
+
+        data = numpy.zeros(shape=(1, 1, 28, 28))
+        result = predictor.predict(data, target_model=PRETRAINED_MODEL_PATH_1)
+        assert result == "Invoked model: {}".format(PRETRAINED_MODEL_PATH_1)
+
+        result = predictor.predict(data, target_model=PRETRAINED_MODEL_PATH_2)
+        assert result == "Invoked model: {}".format(PRETRAINED_MODEL_PATH_2)
+
+        # Cleanup
+        multi_data_model.sagemaker_session.sagemaker_client.delete_endpoint_config(
+            EndpointConfigName=endpoint_name
+        )
+        multi_data_model.sagemaker_session.delete_endpoint(endpoint_name)
         multi_data_model.delete_model()
     with pytest.raises(Exception) as exception:
         sagemaker_session.sagemaker_client.describe_model(ModelName=multi_data_model.name)

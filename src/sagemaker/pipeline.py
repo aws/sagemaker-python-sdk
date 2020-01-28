@@ -1,4 +1,4 @@
-# Copyright 2017-2018 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright 2017-2020 Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -159,7 +159,9 @@ class PipelineModel(object):
                 tags=tags,
                 data_capture_config_dict=data_capture_config_dict,
             )
-            self.sagemaker_session.update_endpoint(self.endpoint_name, endpoint_config_name)
+            self.sagemaker_session.update_endpoint(
+                self.endpoint_name, endpoint_config_name, wait=wait
+            )
         else:
             self.sagemaker_session.endpoint_from_production_variants(
                 name=self.endpoint_name,

@@ -1,4 +1,4 @@
-# Copyright 2018-2019 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright 2018-2020 Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -131,6 +131,12 @@ class RLEstimator(Framework):
                 don't use an Amazon algorithm.
             **kwargs: Additional kwargs passed to the
                 :class:`~sagemaker.estimator.Framework` constructor.
+
+        .. tip::
+
+            You can find additional parameters for initializing this class at
+            :class:`~sagemaker.estimator.Framework` and
+            :class:`~sagemaker.estimator.EstimatorBase`.
         """
         self._validate_images_args(toolkit, toolkit_version, framework, image_name)
 
@@ -174,14 +180,16 @@ class RLEstimator(Framework):
                 role from the Estimator will be used.
             vpc_config_override (dict[str, list[str]]): Optional override for VpcConfig set on
                 the model. Default: use subnets and security groups from this Estimator.
+
                 * 'Subnets' (list[str]): List of subnet ids.
                 * 'SecurityGroupIds' (list[str]): List of security group ids.
+
             entry_point (str): Path (absolute or relative) to the Python source
                 file which should be executed as the entry point for MXNet
                 hosting. This should be compatible with Python 3.5 (default:
                 self.entry_point)
             source_dir (str): Path (absolute or relative) to a directory with
-                any other training source code dependencies aside from tne entry
+                any other training source code dependencies aside from the entry
                 point file (default: self.source_dir). Structure within this
                 directory are preserved when hosting on Amazon SageMaker.
             dependencies (list[str]): A list of paths to directories (absolute
@@ -190,18 +198,20 @@ class RLEstimator(Framework):
                 folders will be copied to SageMaker in the same folder where the
                 entry_point is copied. If the ```source_dir``` points to S3,
                 code will be uploaded and the S3 location will be used instead.
-            **kwargs: Additional kwargs passed to the FrameworkModel constructor.
+            **kwargs: Additional kwargs passed to the :class:`~sagemaker.model.FrameworkModel`
+                constructor.
 
         Returns:
             sagemaker.model.FrameworkModel: Depending on input parameters returns
                 one of the following:
 
-                * sagemaker.model.FrameworkModel - in case image_name was specified
+                * :class:`~sagemaker.model.FrameworkModel` - if ``image_name`` was specified
                     on the estimator;
-                * sagemaker.mxnet.MXNetModel - if image_name wasn't specified and
-                    MXNet was used as RL backend;
-                * sagemaker.tensorflow.serving.Model - if image_name wasn't specified and
-                    TensorFlow was used as RL backend.
+                * :class:`~sagemaker.mxnet.MXNetModel` - if ``image_name`` wasn't specified and
+                    MXNet was used as the RL backend;
+                * :class:`~sagemaker.tensorflow.serving.Model` - if ``image_name`` wasn't specified
+                    and TensorFlow was used as the RL backend.
+
         Raises:
             ValueError: If image_name was not specified and framework enum is not valid.
         """

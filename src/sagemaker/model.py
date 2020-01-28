@@ -1,4 +1,4 @@
-# Copyright 2017-2019 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright 2017-2020 Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -45,7 +45,7 @@ NEO_ALLOWED_TARGET_INSTANCE_FAMILY = set(
         "qcs605",
     ]
 )
-NEO_ALLOWED_FRAMEWORKS = set(["mxnet", "tensorflow", "pytorch", "onnx", "xgboost"])
+NEO_ALLOWED_FRAMEWORKS = set(["mxnet", "tensorflow", "keras", "pytorch", "onnx", "xgboost"])
 
 NEO_IMAGE_ACCOUNT = {
     "us-west-1": "710691900526",
@@ -322,8 +322,8 @@ class Model(object):
                 3 * 60). After this amount of time Amazon SageMaker Neo
                 terminates the compilation job regardless of its current status.
             framework (str): The framework that is used to train the original
-                model. Allowed values: 'mxnet', 'tensorflow', 'pytorch', 'onnx',
-                'xgboost'
+                model. Allowed values: 'mxnet', 'tensorflow', 'keras', 'pytorch',
+                'onnx', 'xgboost'
             framework_version (str):
 
         Returns:
@@ -473,7 +473,9 @@ class Model(object):
                 kms_key=kms_key,
                 data_capture_config_dict=data_capture_config_dict,
             )
-            self.sagemaker_session.update_endpoint(self.endpoint_name, endpoint_config_name)
+            self.sagemaker_session.update_endpoint(
+                self.endpoint_name, endpoint_config_name, wait=wait
+            )
         else:
             self.sagemaker_session.endpoint_from_production_variants(
                 name=self.endpoint_name,
@@ -734,6 +736,11 @@ class FrameworkModel(Model):
                 try to use either CodeCommit credential helper or local
                 credential storage for authentication.
             **kwargs: Keyword arguments passed to the ``Model`` initializer.
+
+        .. tip::
+
+            You can find additional parameters for initializing this class at
+            :class:`~sagemaker.model.Model`.
         """
         super(FrameworkModel, self).__init__(
             model_data,
@@ -812,7 +819,7 @@ class FrameworkModel(Model):
 
         if repack:
             bucket = self.bucket or self.sagemaker_session.default_bucket()
-            repacked_model_data = "s3://" + os.path.join(bucket, key_prefix, "model.tar.gz")
+            repacked_model_data = "s3://" + "/".join([bucket, key_prefix, "model.tar.gz"])
 
             utils.repack_model(
                 inference_script=self.entry_point,
@@ -837,9 +844,12 @@ class FrameworkModel(Model):
                 dir_name = "/opt/ml/model/code"
             else:
                 dir_name = self.uploaded_code.s3_prefix
-        else:
+        elif self.entry_point is not None:
             script_name = self.entry_point
             dir_name = "file://" + self.source_dir
+        else:
+            script_name = None
+            dir_name = None
 
         return {
             SCRIPT_PARAM_NAME.upper(): script_name,

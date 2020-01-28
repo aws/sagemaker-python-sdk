@@ -1,4 +1,4 @@
-# Copyright 2017-2019 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright 2017-2020 Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -401,14 +401,6 @@ class HyperparameterTuner(object):
                 * (list[sagemaker.amazon.amazon_estimator.FileSystemRecordSet]) - A list of
                     :class:~`sagemaker.amazon.amazon_estimator.FileSystemRecordSet` objects,
                     where each instance is a different channel of training data.
-            include_cls_metadata (bool): Whether or not the hyperparameter tuning job should include
-                information about the estimator class (default: False). This information is passed
-                as a hyperparameter, so if the algorithm you are using cannot handle
-                unknown hyperparameters (e.g. an Amazon SageMaker built-in algorithm that
-                does not have a custom estimator in the Python SDK), then set
-                ``include_cls_metadata`` to ``False``.
-            **kwargs: Other arguments needed for training. Please refer to the ``fit()`` method of
-                the associated estimator to see what other arguments are needed.
 
             job_name (str): Tuning job name. If not specified, the tuner
                 generates a default job name, based on the training image name
@@ -426,6 +418,7 @@ class HyperparameterTuner(object):
                     the estimator_dict argument of the method. The keys would be the same
                     estimator names as in estimator_dict. If one estimator doesn't need the flag
                     set, then no need to include it in the dictionary.
+
             estimator_kwargs (dict[str, dict]): Dictionary for other arguments needed for
                 training. Should be used only for tuners created via the factory method create().
                 The keys are the estimator names for the estimator_dict argument of create()

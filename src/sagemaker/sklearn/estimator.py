@@ -1,4 +1,4 @@
-# Copyright 2018-2019 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright 2018-2020 Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -22,7 +22,7 @@ from sagemaker.fw_utils import (
     empty_framework_version_warning,
     python_deprecation_warning,
 )
-from sagemaker.sklearn.defaults import SKLEARN_VERSION, SKLEARN_NAME
+from sagemaker.sklearn import defaults
 from sagemaker.sklearn.model import SKLearnModel
 from sagemaker.vpc_utils import VPC_CONFIG_DEFAULT
 
@@ -32,12 +32,12 @@ logger = logging.getLogger("sagemaker")
 class SKLearn(Framework):
     """Handle end-to-end training and deployment of custom Scikit-learn code."""
 
-    __framework_name__ = SKLEARN_NAME
+    __framework_name__ = defaults.SKLEARN_NAME
 
     def __init__(
         self,
         entry_point,
-        framework_version=SKLEARN_VERSION,
+        framework_version=defaults.SKLEARN_VERSION,
         source_dir=None,
         hyperparameters=None,
         py_version="py3",
@@ -70,7 +70,7 @@ class SKLearn(Framework):
                 executing your model training code. List of supported versions
                 https://github.com/aws/sagemaker-python-sdk#sklearn-sagemaker-estimators
             source_dir (str): Path (absolute or relative) to a directory with
-                any other training source code dependencies aside from tne entry
+                any other training source code dependencies aside from the entry
                 point file (default: None). Structure within this directory are
                 preserved when training on Amazon SageMaker.
             hyperparameters (dict): Hyperparameters that will be used for
@@ -90,6 +90,12 @@ class SKLearn(Framework):
                     custom-image:latest.
             **kwargs: Additional kwargs passed to the
                 :class:`~sagemaker.estimator.Framework` constructor.
+
+        .. tip::
+
+            You can find additional parameters for initializing this class at
+            :class:`~sagemaker.estimator.Framework` and
+            :class:`~sagemaker.estimator.EstimatorBase`.
         """
         # SciKit-Learn does not support distributed training or training on GPU instance types.
         # Fail fast.
@@ -113,13 +119,17 @@ class SKLearn(Framework):
         )
 
         if py_version == "py2":
-            logger.warning(python_deprecation_warning(self.__framework_name__))
+            logger.warning(
+                python_deprecation_warning(self.__framework_name__, defaults.LATEST_PY2_VERSION)
+            )
 
         self.py_version = py_version
 
         if framework_version is None:
-            logger.warning(empty_framework_version_warning(SKLEARN_VERSION, SKLEARN_VERSION))
-        self.framework_version = framework_version or SKLEARN_VERSION
+            logger.warning(
+                empty_framework_version_warning(defaults.SKLEARN_VERSION, defaults.SKLEARN_VERSION)
+            )
+        self.framework_version = framework_version or defaults.SKLEARN_VERSION
 
         if image_name is None:
             image_tag = "{}-{}-{}".format(framework_version, "cpu", py_version)

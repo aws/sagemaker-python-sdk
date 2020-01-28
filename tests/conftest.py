@@ -1,4 +1,4 @@
-# Copyright 2017-2018 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright 2017-2020 Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -56,7 +56,7 @@ def pytest_addoption(parser):
         "--rl-ray-full-version", action="store", default=RLEstimator.RAY_LATEST_VERSION
     )
     parser.addoption("--sklearn-full-version", action="store", default=SKLEARN_VERSION)
-    parser.addoption("--tf-full-version", action="store", default=TensorFlow.LATEST_VERSION)
+    parser.addoption("--tf-full-version", action="store")
     parser.addoption("--ei-tf-full-version", action="store", default=TensorFlow.LATEST_VERSION)
     parser.addoption("--xgboost-full-version", action="store", default=SKLEARN_VERSION)
 
@@ -246,9 +246,13 @@ def sklearn_full_version(request):
     return request.config.getoption("--sklearn-full-version")
 
 
-@pytest.fixture(scope="module")
+@pytest.fixture(scope="module", params=[TensorFlow._LATEST_1X_VERSION, TensorFlow.LATEST_VERSION])
 def tf_full_version(request):
-    return request.config.getoption("--tf-full-version")
+    tf_version = request.config.getoption("--tf-full-version")
+    if tf_version is None:
+        return request.param
+    else:
+        return tf_version
 
 
 @pytest.fixture(scope="module")

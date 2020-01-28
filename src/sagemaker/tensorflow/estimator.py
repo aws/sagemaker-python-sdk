@@ -1,4 +1,4 @@
-# Copyright 2017-2019 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright 2017-2020 Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -25,7 +25,7 @@ import time
 from sagemaker.debugger import DebuggerHookConfig
 from sagemaker.estimator import Framework
 import sagemaker.fw_utils as fw
-from sagemaker.tensorflow.defaults import TF_VERSION
+from sagemaker.tensorflow import defaults
 from sagemaker.tensorflow.model import TensorFlowModel
 from sagemaker.tensorflow.serving import Model
 from sagemaker.transformer import Transformer
@@ -197,13 +197,14 @@ class TensorFlow(Framework):
 
     __framework_name__ = "tensorflow"
 
-    LATEST_VERSION = "1.15"
-    """The latest version of TensorFlow included in the SageMaker pre-built Docker images."""
+    LATEST_VERSION = defaults.LATEST_VERSION
+
+    _LATEST_1X_VERSION = "1.15.0"
 
     _LOWEST_SCRIPT_MODE_ONLY_VERSION = [1, 13]
-    # 1.15.0 still supports py2
+    # 2.0.0 still supports py2
     # we will need to update this version number if future versions still support py2
-    _HIGHEST_PYTHON_2_VERSION = [1, 15, 0]
+    _HIGHEST_PYTHON_2_VERSION = [2, 0, 0]
 
     def __init__(
         self,
@@ -279,13 +280,25 @@ class TensorFlow(Framework):
                     }
 
             **kwargs: Additional kwargs passed to the Framework constructor.
+
+        .. tip::
+
+            You can find additional parameters for initializing this class at
+            :class:`~sagemaker.estimator.Framework` and
+            :class:`~sagemaker.estimator.EstimatorBase`.
         """
         if framework_version is None:
-            logger.warning(fw.empty_framework_version_warning(TF_VERSION, self.LATEST_VERSION))
-        self.framework_version = framework_version or TF_VERSION
+            logger.warning(
+                fw.empty_framework_version_warning(defaults.TF_VERSION, self.LATEST_VERSION)
+            )
+        self.framework_version = framework_version or defaults.TF_VERSION
 
         if not py_version:
             py_version = "py3" if self._only_python_3_supported() else "py2"
+        if py_version == "py2":
+            logger.warning(
+                fw.python_deprecation_warning(self.__framework_name__, defaults.LATEST_PY2_VERSION)
+            )
 
         if "enable_sagemaker_metrics" not in kwargs:
             # enable sagemaker metrics for TF v1.15 or greater:
@@ -294,9 +307,6 @@ class TensorFlow(Framework):
 
         super(TensorFlow, self).__init__(image_name=image_name, **kwargs)
         self.checkpoint_path = checkpoint_path
-
-        if py_version == "py2":
-            logger.warning("tensorflow py2 container will be deprecated soon.")
 
         self.py_version = py_version
         self.training_steps = training_steps
@@ -352,8 +362,8 @@ class TensorFlow(Framework):
 
         if py_version == "py2" and self._only_python_3_supported():
             msg = (
-                "Python 2 containers are only available until January 1st, 2020. "
-                "Please use a Python 3 container."
+                "Python 2 containers are only available with {} and lower versions. "
+                "Please use a Python 3 container.".format(defaults.LATEST_PY2_VERSION)
             )
             raise AttributeError(msg)
 
@@ -551,8 +561,8 @@ class TensorFlow(Framework):
                 If not specified and ``endpoint_type`` is 'tensorflow-serving', ``dependencies`` is
                 set to ``None``.
                 If ``endpoint_type`` is also ``None``, then the dependencies from training are used.
-            **kwargs: Additional kwargs passed to ``sagemaker.tensorflow.serving.Model`` constructor
-                and ``sagemaker.tensorflow.model.TensorFlowModel`` constructor.
+            **kwargs: Additional kwargs passed to :class:`~sagemaker.tensorflow.serving.Model`
+                and :class:`~sagemaker.tensorflow.model.TensorFlowModel` constructors.
 
         Returns:
             sagemaker.tensorflow.model.TensorFlowModel or sagemaker.tensorflow.serving.Model: A
@@ -697,22 +707,19 @@ class TensorFlow(Framework):
 
     def _validate_and_set_debugger_configs(self):
         """
-        Disable Debugger Hook Config for PS and Horovod as they are not
-        supported in smdebug 0.4.13, the current latest version of smdebug
+        Disable Debugger Hook Config for ParameterServer (PS) as it is not
+        supported in smdebug.
 
         Else, set default HookConfig
         """
         ps_enabled = "parameter_server" in self.distributions and self.distributions[
             "parameter_server"
         ].get("enabled", False)
-        mpi_enabled = "mpi" in self.distributions and self.distributions["mpi"].get(
-            "enabled", False
-        )
-        if ps_enabled or mpi_enabled:
+        if ps_enabled:
             if self.debugger_hook_config is not None or self.debugger_rule_configs is not None:
                 logger.info(
                     "Amazon SageMaker Debugger does not currently support "
-                    "Parameter Server and MPI distributions"
+                    "Parameter Server distribution"
                 )
             self.debugger_hook_config = None
             self.debugger_rule_configs = None

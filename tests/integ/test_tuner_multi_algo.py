@@ -1,4 +1,4 @@
-# Copyright 2019 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright 2019-2020 Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -19,6 +19,7 @@ import pickle
 import sys
 
 import pytest
+from sagemaker import utils
 from sagemaker.amazon.amazon_estimator import get_image_uri
 from sagemaker.analytics import HyperparameterTuningJobAnalytics
 from sagemaker.content_types import CONTENT_TYPE_JSON
@@ -140,11 +141,13 @@ def test_multi_estimator_tuning(
 
 def _fit_tuner(sagemaker_session, tuner):
     training_inputs = _create_training_inputs(sagemaker_session)
+    job_name = utils.unique_name_from_base("test-multi-algo-tuning", max_length=32)
 
     with timeout(minutes=TUNING_DEFAULT_TIMEOUT_MINUTES):
         tuner.fit(
             inputs={ESTIMATOR_FM: training_inputs, ESTIMATOR_KNN: training_inputs},
             include_cls_metadata={},
+            job_name=job_name,
         )
         tuner.wait()
 
