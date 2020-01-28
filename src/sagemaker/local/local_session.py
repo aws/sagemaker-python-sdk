@@ -341,6 +341,7 @@ class LocalSagemakerRuntimeClient(object):
         ContentType=None,
         Accept=None,
         CustomAttributes=None,
+        TargetModel=None,
     ):
         """
 
@@ -364,6 +365,9 @@ class LocalSagemakerRuntimeClient(object):
 
         if CustomAttributes is not None:
             headers["X-Amzn-SageMaker-Custom-Attributes"] = CustomAttributes
+
+        if TargetModel is not None:
+            headers["X-Amzn-SageMaker-Target-Model"] = TargetModel
 
         r = self.http.request("POST", url, body=Body, preload_content=False, headers=headers)
 
