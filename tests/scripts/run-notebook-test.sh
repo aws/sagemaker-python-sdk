@@ -19,4 +19,4 @@ echo "set SAGEMAKER_ROLE_ARN=$SAGEMAKER_ROLE_ARN"
 --region us-west-2 \
 --lifecycle-config-name install-python-sdk \
 --notebook-instance-role-arn $SAGEMAKER_ROLE_ARN \
-./amazon-sagemaker-examples/sagemaker-python-sdk/tensorflow_script_mode_training_and_serving/tensorflow_script_mode_training_and_serving.ipynb
+./amazon-sagemaker-examples/sagemaker-python-sdk/pytorch_cnn_cifar10/pytorch_local_mode_cifar10.ipynb
