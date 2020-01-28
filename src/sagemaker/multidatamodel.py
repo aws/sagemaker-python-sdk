@@ -17,7 +17,7 @@ import os
 from six.moves.urllib.parse import urlparse
 
 import sagemaker
-from sagemaker import s3
+from sagemaker import local, s3
 from sagemaker.model import Model
 from sagemaker.session import Session
 
@@ -209,6 +209,9 @@ class MultiDataModel(Model):
 
         if role is None:
             raise ValueError("Role can not be null for deploying a model")
+
+        if instance_type == "local" and not isinstance(self.sagemaker_session, local.LocalSession):
+            self.sagemaker_session = local.LocalSession()
 
         container_def = self.prepare_container_def(instance_type, accelerator_type=accelerator_type)
         self.sagemaker_session.create_model(
