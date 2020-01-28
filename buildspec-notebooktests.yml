@@ -6,9 +6,5 @@ phases:
       # run notebook test
       - echo "running notebook test"
       - start_time=`date +%s`
-      - HAS_MATCHING_CHANGES_OUTPUT=$(has-matching-changes "src/*.py" "setup.py" "setup.cfg" "tests/scripts/run-notebook-test.sh")
-      - |
-        if [ "$HAS_MATCHING_CHANGES" = "Changes Found" ] ; then
-          ./tests/scripts/run-notebook-test.sh
-        fi
+      - execute-command-if-has-matching-changes "./tests/scripts/run-notebook-test.sh" "src/*.py" "setup.py" "setup.cfg" "tests/scripts/run-notebook-test.sh"
       - ./ci-scripts/displaytime.sh 'notebook test' $start_time
