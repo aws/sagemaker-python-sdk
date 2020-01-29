@@ -54,7 +54,6 @@ UNSUPPORTED_FRAMEWORK_VERSION_ERROR = (
 
 VALID_PY_VERSIONS = ["py2", "py3"]
 VALID_EIA_FRAMEWORKS = ["tensorflow", "tensorflow-serving", "mxnet", "mxnet-serving"]
-DEBUGGER_UNSUPPORTED_REGIONS = ["us-gov-west-1", "us-iso-east-1"]
 VALID_ACCOUNTS_BY_REGION = {"us-gov-west-1": "246785580436", "us-iso-east-1": "744548109606"}
 ASIMOV_VALID_ACCOUNTS_BY_REGION = {"us-iso-east-1": "886529160074"}
 OPT_IN_ACCOUNTS_BY_REGION = {"ap-east-1": "057415533634", "me-south-1": "724002660598"}
@@ -84,6 +83,8 @@ MERGED_FRAMEWORKS_LOWEST_VERSIONS = {
     "pytorch": [1, 2, 0],
     "pytorch-serving": [1, 2, 0],
 }
+
+DEBUGGER_UNSUPPORTED_REGIONS = ["us-gov-west-1", "us-iso-east-1"]
 
 
 def is_version_equal_or_higher(lowest_version, framework_version):
