@@ -147,7 +147,7 @@ class MXNetModel(FrameworkModel):
             deploy_image = self.serving_image_uri(region_name, instance_type)
 
         deploy_key_prefix = model_code_key_prefix(self.key_prefix, self.name, deploy_image)
-        self._upload_code(deploy_key_prefix, self._is_mms_version)
+        self._upload_code(deploy_key_prefix, self._is_mms_version())
         deploy_env = dict(self.env)
         deploy_env.update(self._framework_env_vars())
 
