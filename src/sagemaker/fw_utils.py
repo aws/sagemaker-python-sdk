@@ -55,7 +55,7 @@ UNSUPPORTED_FRAMEWORK_VERSION_ERROR = (
 VALID_PY_VERSIONS = ["py2", "py3"]
 VALID_EIA_FRAMEWORKS = ["tensorflow", "tensorflow-serving", "mxnet", "mxnet-serving"]
 VALID_ACCOUNTS_BY_REGION = {"us-gov-west-1": "246785580436", "us-iso-east-1": "744548109606"}
-DEBUGGER_FEATURE_REGION_BLACKLIST = ["us-gov-west-1", "us-iso-east-1"]
+DEBUGGER_FEATURE_UNSUPPORTED_REGIONS = ["us-gov-west-1", "us-iso-east-1"]
 ASIMOV_VALID_ACCOUNTS_BY_REGION = {"us-iso-east-1": "886529160074"}
 OPT_IN_ACCOUNTS_BY_REGION = {"ap-east-1": "057415533634", "me-south-1": "724002660598"}
 ASIMOV_OPT_IN_ACCOUNTS_BY_REGION = {"ap-east-1": "871362719292", "me-south-1": "217643126080"}
@@ -517,4 +517,4 @@ def _region_supports_debugger_feature(region_name):
         bool: Whether or not the region supports the Amazon SageMaker Debugger feature.
 
     """
-    return region_name.lower() not in DEBUGGER_FEATURE_REGION_BLACKLIST
+    return region_name.lower() not in DEBUGGER_FEATURE_UNSUPPORTED_REGIONS
