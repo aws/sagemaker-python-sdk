@@ -707,22 +707,19 @@ class TensorFlow(Framework):
 
     def _validate_and_set_debugger_configs(self):
         """
-        Disable Debugger Hook Config for PS and Horovod as they are not
-        supported in smdebug 0.4.13, the current latest version of smdebug
+        Disable Debugger Hook Config for ParameterServer (PS) as it is not
+        supported in smdebug.
 
         Else, set default HookConfig
         """
         ps_enabled = "parameter_server" in self.distributions and self.distributions[
             "parameter_server"
         ].get("enabled", False)
-        mpi_enabled = "mpi" in self.distributions and self.distributions["mpi"].get(
-            "enabled", False
-        )
-        if ps_enabled or mpi_enabled:
+        if ps_enabled:
             if self.debugger_hook_config is not None or self.debugger_rule_configs is not None:
                 logger.info(
                     "Amazon SageMaker Debugger does not currently support "
-                    "Parameter Server and MPI distributions"
+                    "Parameter Server distribution"
                 )
             self.debugger_hook_config = None
             self.debugger_rule_configs = None

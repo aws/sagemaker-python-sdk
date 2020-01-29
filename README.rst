@@ -6,14 +6,6 @@
 SageMaker Python SDK
 ====================
 
-.. image:: https://travis-ci.org/aws/sagemaker-python-sdk.svg?branch=master
-   :target: https://travis-ci.org/aws/sagemaker-python-sdk
-   :alt: Build Status
-
-.. image:: https://codecov.io/gh/aws/sagemaker-python-sdk/branch/master/graph/badge.svg
-   :target: https://codecov.io/gh/aws/sagemaker-python-sdk
-   :alt: CodeCov
-
 .. image:: https://img.shields.io/pypi/v/sagemaker.svg
    :target: https://pypi.python.org/pypi/sagemaker
    :alt: Latest Version

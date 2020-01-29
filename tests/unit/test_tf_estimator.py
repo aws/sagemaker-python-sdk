@@ -160,7 +160,7 @@ def _create_train_job(
         "experiment_config": None,
     }
 
-    if not ps and not horovod:
+    if not ps:
         conf["debugger_hook_config"] = {
             "CollectionConfigurations": [],
             "S3OutputPath": "s3://{}/".format(BUCKET_NAME),
