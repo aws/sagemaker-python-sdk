@@ -358,7 +358,8 @@ class Session(object):  # pylint: disable=too-many-public-methods
             region (str): The region in which to create the bucket.
 
         Raises:
-            botocore.exceptions.ClientError: If S3 throws an unexpected exception during bucket creation.
+            botocore.exceptions.ClientError: If S3 throws an unexpected exception during bucket
+                creation.
                 If the exception is due to the bucket already existing or
                 already being created, no exception is raised.
 
