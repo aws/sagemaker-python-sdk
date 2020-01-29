@@ -343,34 +343,35 @@ class Session(object):  # pylint: disable=too-many-public-methods
             default_bucket = "sagemaker-{}-{}".format(region, account)
 
         s3 = self.boto_session.resource("s3")
-        try:
-            # 'us-east-1' cannot be specified because it is the default region:
-            # https://github.com/boto/boto3/issues/125
-            if region == "us-east-1":
-                s3.create_bucket(Bucket=default_bucket)
-            else:
-                s3.create_bucket(
-                    Bucket=default_bucket, CreateBucketConfiguration={"LocationConstraint": region}
-                )
+        bucket = self.boto_session.resource("s3").Bucket(name=default_bucket)
+        if bucket.creation_date is None:
+            try:
+                if region == "us-east-1":
+                    # 'us-east-1' cannot be specified because it is the default region:
+                    # https://github.com/boto/boto3/issues/125
+                    s3.create_bucket(Bucket=default_bucket)
+                else:
+                    s3.create_bucket(
+                        Bucket=default_bucket,
+                        CreateBucketConfiguration={"LocationConstraint": region},
+                    )
 
-            LOGGER.info("Created S3 bucket: %s", default_bucket)
-        except ClientError as e:
-            error_code = e.response["Error"]["Code"]
-            message = e.response["Error"]["Message"]
+                LOGGER.info("Created S3 bucket: %s", default_bucket)
+            except ClientError as e:
+                error_code = e.response["Error"]["Code"]
+                message = e.response["Error"]["Message"]
 
-            if error_code == "BucketAlreadyOwnedByYou":
-                pass
-            elif (
-                error_code == "OperationAborted" and "conflicting conditional operation" in message
-            ):
-                # If this bucket is already being concurrently created, we don't need to create it
-                # again.
-                pass
-            elif error_code == "TooManyBuckets":
-                # Succeed if the default bucket exists
-                s3.meta.client.head_bucket(Bucket=default_bucket)
-            else:
-                raise
+                if error_code == "BucketAlreadyOwnedByYou":
+                    pass
+                elif (
+                    error_code == "OperationAborted"
+                    and "conflicting conditional operation" in message
+                ):
+                    # If this bucket is already being concurrently created, we don't need to create
+                    # it again.
+                    pass
+                else:
+                    raise
 
         self._default_bucket = default_bucket
 
