@@ -173,8 +173,8 @@ def bucket_with_encryption(boto_session, sagemaker_role):
     region = boto_session.region_name
     bucket_name = "sagemaker-{}-{}-with-kms".format(region, account)
 
-    s3 = boto_session.client("s3")
-    bucket = boto_session.resource("s3").Bucket(name=bucket_name)
+    s3 = boto_session.client("s3", region_name=region)
+    bucket = boto_session.resource("s3", region_name=region).Bucket(name=bucket_name)
     if bucket.creation_date is None:
         try:
             if region == "us-east-1":

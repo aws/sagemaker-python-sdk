@@ -342,8 +342,8 @@ class Session(object):  # pylint: disable=too-many-public-methods
             ).get_caller_identity()["Account"]
             default_bucket = "sagemaker-{}-{}".format(region, account)
 
-        s3 = self.boto_session.resource("s3")
-        bucket = self.boto_session.resource("s3").Bucket(name=default_bucket)
+        s3 = self.boto_session.resource("s3", region_name=region)
+        bucket = self.boto_session.resource("s3", region_name=region).Bucket(name=default_bucket)
         if bucket.creation_date is None:
             try:
                 if region == "us-east-1":
