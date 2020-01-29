@@ -172,7 +172,7 @@ def bucket_with_encryption(sagemaker_session, sagemaker_role):
     region = boto_session.region_name
     bucket_name = "sagemaker-{}-{}-with-kms".format(region, account)
 
-    sagemaker_session.create_bucket_if_it_does_not_exist(bucket_name=bucket_name, region=region)
+    sagemaker_session.create_s3_bucket_if_it_does_not_exist(bucket_name=bucket_name, region=region)
 
     s3_client = boto_session.client("s3", region_name=region)
     s3_client.put_bucket_encryption(
