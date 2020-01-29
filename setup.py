@@ -50,8 +50,8 @@ extras = {
     "analytics": ["pandas"],
     "local": [
         "urllib3>=1.21.1,<1.26,!=1.25.0,!=1.25.1",
-        "docker-compose>=1.23.0",
-        "PyYAML>=3.10, <5",  # PyYAML version has to match docker-compose requirements
+        "docker-compose>=1.25.2",
+        "PyYAML>=5.3, <6",  # PyYAML version has to match docker-compose requirements
     ],
     "tensorflow": ["tensorflow>=1.3.0"],
 }
