@@ -38,6 +38,7 @@ from sagemaker.fw_utils import (
     parse_s3_url,
     UploadedCode,
     validate_source_dir,
+    _region_supports_debugger_feature,
 )
 from sagemaker.job import _Job
 from sagemaker.local import LocalSession
@@ -1674,7 +1675,9 @@ class Framework(EstimatorBase):
         """
         Set defaults for debugging
         """
-        if self.debugger_hook_config is None:
+        if self.debugger_hook_config is None and _region_supports_debugger_feature(
+            self.sagemaker_session.boto_region_name
+        ):
             self.debugger_hook_config = DebuggerHookConfig(s3_output_path=self.output_path)
         elif not self.debugger_hook_config:
             self.debugger_hook_config = None

@@ -1035,3 +1035,13 @@ def test_model_code_key_prefix_with_all_none_fail():
     with pytest.raises(TypeError) as error:
         fw_utils.model_code_key_prefix(None, None, None)
     assert "expected string" in str(error)
+
+
+def test_region_supports_debugger_feature_returns_true_for_supported_regions():
+    assert fw_utils._region_supports_debugger_feature("us-west-2") is True
+    assert fw_utils._region_supports_debugger_feature("us-east-2") is True
+
+
+def test_region_supports_debugger_feature_returns_false_for_unsupported_regions():
+    assert fw_utils._region_supports_debugger_feature("us-gov-west-1") is False
+    assert fw_utils._region_supports_debugger_feature("us-iso-east-1") is False
