@@ -358,7 +358,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
             region (str): The region in which to create the bucket.
 
         Raises:
-            ClientError: If boto S3 throws an unexpected exception.
+            ClientError: If S3 throws an unexpected exception.
 
         """
         bucket = self.boto_session.resource("s3", region_name=region).Bucket(name=bucket_name)
