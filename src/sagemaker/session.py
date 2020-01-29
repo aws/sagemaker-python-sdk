@@ -342,26 +342,29 @@ class Session(object):  # pylint: disable=too-many-public-methods
             ).get_caller_identity()["Account"]
             default_bucket = "sagemaker-{}-{}".format(region, account)
 
-        self.create_s3_bucket_if_it_does_not_exist(bucket_name=default_bucket, region=region)
+        self._create_s3_bucket_if_it_does_not_exist(bucket_name=default_bucket, region=region)
 
         self._default_bucket = default_bucket
 
         return self._default_bucket
 
-    def create_s3_bucket_if_it_does_not_exist(self, bucket_name, region):
+    def _create_s3_bucket_if_it_does_not_exist(self, bucket_name, region):
         """Creates an S3 Bucket if it does not exist.
-        Also swallows a few common exceptions that indicate that the bucket already exists, or
+        Also swallows a few common exceptions that indicate that the bucket already exists or
         that it is being created.
 
         Args:
             bucket_name (str): Name of the S3 bucket to be created.
             region (str): The region in which to create the bucket.
 
+        Raises:
+            ClientError: If boto S3 throws an unexpected exception.
+
         """
-        s3 = self.boto_session.resource("s3", region_name=region)
         bucket = self.boto_session.resource("s3", region_name=region).Bucket(name=bucket_name)
         if bucket.creation_date is None:
             try:
+                s3 = self.boto_session.resource("s3", region_name=region)
                 if region == "us-east-1":
                     # 'us-east-1' cannot be specified because it is the default region:
                     # https://github.com/boto/boto3/issues/125
