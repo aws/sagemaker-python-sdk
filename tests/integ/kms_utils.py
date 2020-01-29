@@ -15,8 +15,6 @@ from __future__ import absolute_import
 import contextlib
 import json
 
-from botocore import exceptions
-
 from sagemaker import utils
 
 PRINCIPAL_TEMPLATE = (
@@ -158,7 +156,8 @@ KMS_BUCKET_POLICY = """{
 
 
 @contextlib.contextmanager
-def bucket_with_encryption(boto_session, sagemaker_role):
+def bucket_with_encryption(sagemaker_session, sagemaker_role):
+    boto_session = sagemaker_session.boto_session
     region = boto_session.region_name
     sts_client = boto_session.client(
         "sts", region_name=region, endpoint_url=utils.sts_regional_endpoint(region)
@@ -173,34 +172,10 @@ def bucket_with_encryption(boto_session, sagemaker_role):
     region = boto_session.region_name
     bucket_name = "sagemaker-{}-{}-with-kms".format(region, account)
 
-    s3 = boto_session.client("s3", region_name=region)
-    bucket = boto_session.resource("s3", region_name=region).Bucket(name=bucket_name)
-    if bucket.creation_date is None:
-        try:
-            if region == "us-east-1":
-                # 'us-east-1' cannot be specified because it is the default region:
-                # https://github.com/boto/boto3/issues/125
-                s3.create_bucket(Bucket=bucket_name)
-            else:
-                s3.create_bucket(
-                    Bucket=bucket_name, CreateBucketConfiguration={"LocationConstraint": region}
-                )
-        except exceptions.ClientError as e:
-            error_code = e.response["Error"]["Code"]
-            message = e.response["Error"]["Message"]
+    sagemaker_session.create_bucket_if_it_does_not_exist(bucket_name=bucket_name, region=region)
 
-            if error_code == "BucketAlreadyOwnedByYou":
-                pass
-            elif (
-                error_code == "OperationAborted" and "conflicting conditional operation" in message
-            ):
-                # If this bucket is already being concurrently created, we don't need to create it
-                # again.
-                pass
-            else:
-                raise
-
-    s3.put_bucket_encryption(
+    s3_client = boto_session.client("s3", region_name=region)
+    s3_client.put_bucket_encryption(
         Bucket=bucket_name,
         ServerSideEncryptionConfiguration={
             "Rules": [
@@ -214,7 +189,9 @@ def bucket_with_encryption(boto_session, sagemaker_role):
         },
     )
 
-    s3.put_bucket_policy(Bucket=bucket_name, Policy=KMS_BUCKET_POLICY % (bucket_name, bucket_name))
+    s3_client.put_bucket_policy(
+        Bucket=bucket_name, Policy=KMS_BUCKET_POLICY % (bucket_name, bucket_name)
+    )
 
     yield "s3://" + bucket_name, kms_key_arn
 
