@@ -723,7 +723,9 @@ class TensorFlow(Framework):
                 )
             self.debugger_hook_config = None
             self.debugger_rule_configs = None
-        elif self.debugger_hook_config is None:
+        elif self.debugger_hook_config is None and fw._region_supports_debugger(
+            self.sagemaker_session.boto_session.region_name
+        ):
             # Set defaults for debugging.
             self.debugger_hook_config = DebuggerHookConfig(s3_output_path=self.output_path)
 
