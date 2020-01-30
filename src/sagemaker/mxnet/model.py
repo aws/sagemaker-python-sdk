@@ -17,8 +17,6 @@ import logging
 
 import packaging.version
 
-from sagemaker import fw_utils
-
 import sagemaker
 from sagemaker.fw_utils import (
     create_image_uri,
@@ -143,29 +141,13 @@ class MXNetModel(FrameworkModel):
             dict[str, str]: A container definition object usable with the
             CreateModel API.
         """
-        is_mms_version = packaging.version.Version(
-            self.framework_version
-        ) >= packaging.version.Version(self._LOWEST_MMS_VERSION)
-
         deploy_image = self.image
         if not deploy_image:
             region_name = self.sagemaker_session.boto_session.region_name
-
-            framework_name = self.__framework_name__
-            if is_mms_version:
-                framework_name += "-serving"
-
-            deploy_image = create_image_uri(
-                region_name,
-                framework_name,
-                instance_type,
-                self.framework_version,
-                self.py_version,
-                accelerator_type=accelerator_type,
-            )
+            deploy_image = self.serving_image_uri(region_name, instance_type, accelerator_type)
 
         deploy_key_prefix = model_code_key_prefix(self.key_prefix, self.name, deploy_image)
-        self._upload_code(deploy_key_prefix, is_mms_version)
+        self._upload_code(deploy_key_prefix, self._is_mms_version())
         deploy_env = dict(self.env)
         deploy_env.update(self._framework_env_vars())
 
@@ -175,22 +157,41 @@ class MXNetModel(FrameworkModel):
             deploy_image, self.repacked_model_data or self.model_data, deploy_env
         )
 
-    def serving_image_uri(self, region_name, instance_type):
+    def serving_image_uri(self, region_name, instance_type, accelerator_type=None):
         """Create a URI for the serving image.
 
         Args:
             region_name (str): AWS region where the image is uploaded.
             instance_type (str): SageMaker instance type. Used to determine device type
                 (cpu/gpu/family-specific optimized).
+            accelerator_type (str): The Elastic Inference accelerator type to
+                deploy to the instance for loading and making inferences to the
+                model (default: None). For example, 'ml.eia1.medium'.
 
         Returns:
             str: The appropriate image URI based on the given parameters.
 
         """
-        return fw_utils.create_image_uri(
+        framework_name = self.__framework_name__
+        if self._is_mms_version():
+            framework_name += "-serving"
+
+        return create_image_uri(
             region_name,
-            "-".join([self.__framework_name__, "serving"]),
+            framework_name,
             instance_type,
             self.framework_version,
             self.py_version,
+            accelerator_type=accelerator_type,
         )
+
+    def _is_mms_version(self):
+        """Whether the framework version corresponds to an inference image using
+        the Multi-Model Server (https://github.com/awslabs/multi-model-server).
+
+        Returns:
+            bool: If the framework version corresponds to an image using MMS.
+        """
+        lowest_mms_version = packaging.version.Version(self._LOWEST_MMS_VERSION)
+        framework_version = packaging.version.Version(self.framework_version)
+        return framework_version >= lowest_mms_version
