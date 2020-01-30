@@ -177,7 +177,7 @@ class PyTorchModel(FrameworkModel):
         """
         framework_name = self.__framework_name__
         if self._is_mms_version():
-            framework_name += "-serving"
+            framework_name = "{}-serving".format(framework_name)
 
         return create_image_uri(
             region_name,

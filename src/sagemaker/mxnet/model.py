@@ -144,7 +144,9 @@ class MXNetModel(FrameworkModel):
         deploy_image = self.image
         if not deploy_image:
             region_name = self.sagemaker_session.boto_session.region_name
-            deploy_image = self.serving_image_uri(region_name, instance_type, accelerator_type)
+            deploy_image = self.serving_image_uri(
+                region_name, instance_type, accelerator_type=accelerator_type
+            )
 
         deploy_key_prefix = model_code_key_prefix(self.key_prefix, self.name, deploy_image)
         self._upload_code(deploy_key_prefix, self._is_mms_version())
@@ -174,7 +176,7 @@ class MXNetModel(FrameworkModel):
         """
         framework_name = self.__framework_name__
         if self._is_mms_version():
-            framework_name += "-serving"
+            framework_name = "{}-serving".format(framework_name)
 
         return create_image_uri(
             region_name,
