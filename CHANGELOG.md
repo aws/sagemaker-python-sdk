@@ -1,5 +1,30 @@
 # Changelog
 
+## v1.50.8 (2020-01-30)
+
+### Bug Fixes and Other Changes
+
+ * disable Debugger defaults in unsupported regions
+ * modify session and kms_utils to check for S3 bucket before creation
+ * update docker-compose and PyYAML dependencies
+ * enable smdebug for Horovod (MPI) training setup
+ * create lib dir for dependencies safely (only if it doesn't exist yet).
+ * create the correct session for MultiDataModel
+
+### Documentation Changes
+
+ * update links to the local mode notebooks examples.
+ * Remove outdated badges from README
+ * update links to TF notebook examples to link to script mode examples.
+ * clean up headings, verb tenses, names, etc. in MXNet overview
+ * Update SageMaker operator Helm chart installation guide
+
+### Testing and Release Infrastructure
+
+ * choose faster notebook for notebook PR build
+ * properly fail PR build if has-matching-changes fails
+ * properly fail PR build if has-matching-changes fails
+
 ## v1.50.7 (2020-01-20)
 
 ### Bug fixes and other changes
