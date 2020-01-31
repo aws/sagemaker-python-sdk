@@ -84,6 +84,8 @@ MERGED_FRAMEWORKS_LOWEST_VERSIONS = {
     "pytorch-serving": [1, 2, 0],
 }
 
+DEBUGGER_UNSUPPORTED_REGIONS = ["us-gov-west-1", "us-iso-east-1"]
+
 
 def is_version_equal_or_higher(lowest_version, framework_version):
     """Determine whether the ``framework_version`` is equal to or higher than
@@ -504,3 +506,16 @@ def python_deprecation_warning(framework, latest_supported_version):
     return PYTHON_2_DEPRECATION_WARNING.format(
         framework=framework, latest_supported_version=latest_supported_version
     )
+
+
+def _region_supports_debugger(region_name):
+    """Returns boolean indicating whether the region supports Amazon SageMaker Debugger.
+
+    Args:
+        region_name (str): Name of the region to check against.
+
+    Returns:
+        bool: Whether or not the region supports Amazon SageMaker Debugger.
+
+    """
+    return region_name.lower() not in DEBUGGER_UNSUPPORTED_REGIONS

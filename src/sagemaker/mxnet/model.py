@@ -144,7 +144,9 @@ class MXNetModel(FrameworkModel):
         deploy_image = self.image
         if not deploy_image:
             region_name = self.sagemaker_session.boto_session.region_name
-            deploy_image = self.serving_image_uri(region_name, instance_type)
+            deploy_image = self.serving_image_uri(
+                region_name, instance_type, accelerator_type=accelerator_type
+            )
 
         deploy_key_prefix = model_code_key_prefix(self.key_prefix, self.name, deploy_image)
         self._upload_code(deploy_key_prefix, self._is_mms_version())
@@ -157,13 +159,16 @@ class MXNetModel(FrameworkModel):
             deploy_image, self.repacked_model_data or self.model_data, deploy_env
         )
 
-    def serving_image_uri(self, region_name, instance_type):
+    def serving_image_uri(self, region_name, instance_type, accelerator_type=None):
         """Create a URI for the serving image.
 
         Args:
             region_name (str): AWS region where the image is uploaded.
             instance_type (str): SageMaker instance type. Used to determine device type
                 (cpu/gpu/family-specific optimized).
+            accelerator_type (str): The Elastic Inference accelerator type to
+                deploy to the instance for loading and making inferences to the
+                model (default: None). For example, 'ml.eia1.medium'.
 
         Returns:
             str: The appropriate image URI based on the given parameters.
@@ -171,10 +176,15 @@ class MXNetModel(FrameworkModel):
         """
         framework_name = self.__framework_name__
         if self._is_mms_version():
-            framework_name += "-serving"
+            framework_name = "{}-serving".format(framework_name)
 
         return create_image_uri(
-            region_name, framework_name, instance_type, self.framework_version, self.py_version
+            region_name,
+            framework_name,
+            instance_type,
+            self.framework_version,
+            self.py_version,
+            accelerator_type=accelerator_type,
         )
 
     def _is_mms_version(self):
@@ -184,6 +194,6 @@ class MXNetModel(FrameworkModel):
         Returns:
             bool: If the framework version corresponds to an image using MMS.
         """
-        return packaging.version.Version(self.framework_version) >= packaging.version.Version(
-            self._LOWEST_MMS_VERSION
-        )
+        lowest_mms_version = packaging.version.Version(self._LOWEST_MMS_VERSION)
+        framework_version = packaging.version.Version(self.framework_version)
+        return framework_version >= lowest_mms_version
