@@ -64,4 +64,4 @@ The simplest re-run is to feed a new dataset but reuse all other configurations 
 If you want to have more control over the step jobs of the candidate, you can call ``get_steps()`` and construct
 training/tuning jobs by yourself.
 
-For more information about ``CandidateEstimator`` parameters, please refer to: https://sagemaker.readthedocs.io/en/stable/sagemaker.candidate_estimator.html
+For more information about ``CandidateEstimator`` parameters, please refer to: https://sagemaker.readthedocs.io/en/stable/automl.html#sagemaker.automl.candidate_estimator.CandidateEstimator
