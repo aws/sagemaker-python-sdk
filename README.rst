@@ -155,17 +155,6 @@ You can also run them in parallel:
     tox -- -n auto tests/integ
 
 
-Building Sphinx docs
-~~~~~~~~~~~~~~~~~~~~
-
-``cd`` into the ``doc`` directory and run:
-
-::
-
-    make html
-
-You can edit the templates for any of the pages in the docs by editing the .rst files in the ``doc`` directory and then running ``make html`` again.
-
 MXNet SageMaker Estimators
 --------------------------
 
