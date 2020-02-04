@@ -9,25 +9,25 @@ information to effectively respond to your bug report or contribution.
 
 ## Table of Contents
 
-* [Reporting Bugs/Feature Requests](#reporting-bugsfeature-requests)
-* [Contributing via Pull Requests (PRs)](#contributing-via-pull-requests-prs)
-  * [Setting up Your Development Environment *[Optional, but Recommended]*](#setting-up-your-development-environment-optional-but-recommended)
-  * [Pulling Down the Code](#pulling-down-the-code)
-  * [Running the Unit Tests](#running-the-unit-tests)
-  * [Running the Integration Tests](#running-the-integration-tests)
-  * [Making and Testing Your Change](#making-and-testing-your-change)
-  * [Committing Your Change](#committing-your-change)
-  * [Sending a Pull Request](#sending-a-pull-request)
+* [Report Bugs/Feature Requests](#report-bugsfeature-requests)
+* [Contribute via Pull Requests (PRs)](#contribute-via-pull-requests-prs)
+  * [Set up Your Development Environment *[Optional, but Recommended]*](#set-up-your-development-environment-optional-but-recommended)
+  * [Pull Down the Code](#pull-down-the-code)
+  * [Run the Unit Tests](#run-the-unit-tests)
+  * [Run the Integration Tests](#run-the-integration-tests)
+  * [Make and Test Your Change](#make-and-test-your-change)
+  * [Commit Your Change](#commit-your-change)
+  * [Send a Pull Request](#send-a-pull-request)
 * [Documentation Guidelines](#documentation-guidelines)
   * [Overviews](#overviews)
   * [API References (docstrings)](#api-references-docstrings)
   * [Build and Test Documentation](#build-and-test-documentation)
-* [Finding Contributions to Work On](#finding-contributions-to-work-on)
+* [Find Contributions to Work On](#find-contributions-to-work-on)
 * [Code of Conduct](#code-of-conduct)
 * [Security Issue Notifications](#security-issue-notifications)
 * [Licensing](#licensing)
 
-## Reporting Bugs/Feature Requests
+## Report Bugs/Feature Requests
 
 We welcome you to use the GitHub issue tracker to report bugs or suggest features.
 
@@ -40,7 +40,7 @@ reported the issue. Please try to include as much information as you can. Detail
 * A description of your environment or deployment.
 
 
-## Contributing via Pull Requests (PRs)
+## Contribute via Pull Requests (PRs)
 
 Contributions via pull requests are much appreciated.
 
@@ -51,7 +51,7 @@ Before sending us a pull request, please ensure that:
 * You open an issue to discuss any significant work - we would hate for your time to be wasted.
 
 
-### Setting up Your Development Environment *[Optional, but Recommended]*
+### Set up Your Development Environment *[Optional, but Recommended]*
 
 1. Set up the Cloud9 environment:
    1. Instance type: You'll need at least 4 GB of RAM to avoid running into memory issues. We recommend at least a t3.medium to run the unit tests. A larger host will reduce the chance of encountering resource limits.
@@ -63,7 +63,7 @@ Before sending us a pull request, please ensure that:
    1. Allow EC2 to claim the additional space by stopping and then starting your EC2 host.
 
 
-### Pulling Down the Code
+### Pull Down the Code
 
 1. If you do not already have one, create a GitHub account by following the prompts at [Join Github](https://github.com/join).
 1. Create a fork of this repository on GitHub. You should end up with a fork at `https://github.com/<username>/sagemaker-python-sdk`.
@@ -71,7 +71,7 @@ Before sending us a pull request, please ensure that:
 1. Clone your fork of the repository: `git clone https://github.com/<username>/sagemaker-python-sdk` where `<username>` is your github username.
 
 
-### Running the Unit Tests
+### Run the Unit Tests
 
 1. Install tox using `pip install tox`
 1. Install coverage using `pip install .[test]`
@@ -83,7 +83,7 @@ You can also run a single test with the following command: `tox -e py36 -- -s -v
   * Example: `export IGNORE_COVERAGE=- ; tox -e py36 -- -s -vv tests/unit/test_estimator.py::test_sagemaker_model_s3_uri_invalid ; unset IGNORE_COVERAGE`
 
 
-### Running the Integration Tests
+### Run the Integration Tests
 
 Our CI system runs integration tests (the ones in the `tests/integ` directory), in parallel, for every Pull Request.
 You should only worry about manually running any new integration tests that you write, or integration tests that test an area of code that you've modified.
@@ -97,7 +97,7 @@ If you are writing or modifying a test that creates a SageMaker job (training, t
 [here](https://github.com/aws/sagemaker-python-sdk/blob/3816a5658d3737c9767e01bc8d37fc3ed5551593/tests/integ/test_tuner.py#L616), or by searching for "unique\_name\_from\_base" in our test code.
 
 
-### Making and Testing Your Change
+### Make and Test Your Change
 
 1. Create a new git branch:
      ```shell
@@ -108,12 +108,12 @@ If you are writing or modifying a test that creates a SageMaker job (training, t
       1. Prove that your code works correctly.
       1. Guard against future breaking changes to lower the maintenance cost.
    1. Please focus on the specific change you are contributing. If you also reformat all the code, it will be hard for us to focus on your change.
-1. Run all the unit tests as per [Running the Unit Tests](#running-the-unit-tests), and verify that all checks and tests pass.
+1. Run all the unit tests as per [Run the Unit Tests](#run-the-unit-tests), and verify that all checks and tests pass.
    1. Note that this also runs tools that may be necessary for the automated build to pass (ex: code reformatting by 'black').
 1. If your changes include documentation changes, please see the [Documentation Guidelines](#documentation-guidelines).
 
 
-### Committing Your Change
+### Commit Your Change
 
 We use commit messages to update the project version number and generate changelog entries, so it's important for them to follow the right format. Valid commit messages include a prefix, separated from the rest of the message by a colon and a space. Here are a few examples:
 
@@ -139,12 +139,12 @@ Some of the prefixes allow abbreviation ; `break`, `feat`, `depr`, and `doc` are
 For the rest of the message, use imperative style and keep things concise but informative. See [How to Write a Git Commit Message](https://chris.beams.io/posts/git-commit/) for guidance.
 
 
-### Sending a Pull Request
+### Send a Pull Request
 
 GitHub provides additional document on [Creating a Pull Request](https://help.github.com/articles/creating-a-pull-request/).
 
 Please remember to:
-* Use commit messages (and PR titles) that follow the guidelines under [Committing Your Change](#committing-your-change).
+* Use commit messages (and PR titles) that follow the guidelines under [Commit Your Change](#commit-your-change).
 * Send us a pull request, answering any default questions in the pull request interface.
 * Pay attention to any automated CI failures reported in the pull request, and stay involved in the conversation.
 
@@ -239,7 +239,7 @@ tox -e twine,sphinx
 ```
 
 
-## Finding Contributions to Work On
+## Find Contributions to Work On
 
 Looking at the existing issues is a great way to find something to contribute on. As our projects, by default, use the default GitHub issue labels ((enhancement/bug/duplicate/help wanted/invalid/question/wontfix), looking at any ['help wanted'](https://github.com/aws/sagemaker-python-sdk/labels/help%20wanted) issues is a great place to start.
 
