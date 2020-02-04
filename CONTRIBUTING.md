@@ -9,16 +9,19 @@ information to effectively respond to your bug report or contribution.
 
 ## Table of Contents
 
-* [Table of Contents](#table-of-contents)
 * [Reporting Bugs/Feature Requests](#reporting-bugsfeature-requests)
 * [Contributing via Pull Requests (PRs)](#contributing-via-pull-requests-prs)
-  * [Setting up Your Development Environment *[Optional, but Recommended]*](#setting-up-your-development-environment-optional-but-recommended)  
+  * [Setting up Your Development Environment *[Optional, but Recommended]*](#setting-up-your-development-environment-optional-but-recommended)
   * [Pulling Down the Code](#pulling-down-the-code)
   * [Running the Unit Tests](#running-the-unit-tests)
   * [Running the Integration Tests](#running-the-integration-tests)
   * [Making and Testing Your Change](#making-and-testing-your-change)
   * [Committing Your Change](#committing-your-change)
   * [Sending a Pull Request](#sending-a-pull-request)
+* [Documentation Guidelines](#documentation-guidelines)
+  * [Overviews](#overviews)
+  * [API References (docstrings)](#api-references-docstrings)
+  * [Build and Test Documentation](#build-and-test-documentation)
 * [Finding Contributions to Work On](#finding-contributions-to-work-on)
 * [Code of Conduct](#code-of-conduct)
 * [Security Issue Notifications](#security-issue-notifications)
@@ -54,7 +57,7 @@ Before sending us a pull request, please ensure that:
    1. Instance type: You'll need at least 4 GB of RAM to avoid running into memory issues. We recommend at least a t3.medium to run the unit tests. A larger host will reduce the chance of encountering resource limits.
    1. Follow the instructions at [Creating a Cloud9 EC2 Environment](https://docs.aws.amazon.com/cloud9/latest/user-guide/create-environment.html#create-environment-main) to set up a Cloud9 EC2 environment.
 1. Expand the storage of the EC2 instance from 10GB to 20GB:
-   1. Because you'll need a minimum of 11GB of disk storage on the EC2 instance to run the repository's unit tests, you'll need to expand your EC2 volume size. We recommend at least 20GB. A larger volume will reduce the chance of encountering resource limits. 
+   1. Because you'll need a minimum of 11GB of disk storage on the EC2 instance to run the repository's unit tests, you'll need to expand your EC2 volume size. We recommend at least 20GB. A larger volume will reduce the chance of encountering resource limits.
    1. Follow the instructions at [Modifying an EBS Volume Using Elastic Volumes (Console)](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/requesting-ebs-volume-modifications.html#modify-ebs-volume) to increase the EBS volume size associated with the newly created EC2 instance.
    1. Wait 5-10min for the new EBS volume increase to finalize.
    1. Allow EC2 to claim the additional space by stopping and then starting your EC2 host.
@@ -75,22 +78,22 @@ Before sending us a pull request, please ensure that:
 1. cd into the sagemaker-python-sdk folder: `cd sagemaker-python-sdk` or `cd /environment/sagemaker-python-sdk`
 1. Run the following tox command and verify that all code checks and unit tests pass: `tox tests/unit`
 
-You can also run a single test with the following command: `tox -e py36 -- -s -vv <path_to_file><file_name>::<test_function_name>`  
+You can also run a single test with the following command: `tox -e py36 -- -s -vv <path_to_file><file_name>::<test_function_name>`
   * Note that the coverage test will fail if you only run a single test, so make sure to surround the command with `export IGNORE_COVERAGE=-` and `unset IGNORE_COVERAGE`
   * Example: `export IGNORE_COVERAGE=- ; tox -e py36 -- -s -vv tests/unit/test_estimator.py::test_sagemaker_model_s3_uri_invalid ; unset IGNORE_COVERAGE`
 
 
 ### Running the Integration Tests
 
-Our CI system runs integration tests (the ones in the `tests/integ` directory), in parallel, for every Pull Request.  
-You should only worry about manually running any new integration tests that you write, or integration tests that test an area of code that you've modified.  
+Our CI system runs integration tests (the ones in the `tests/integ` directory), in parallel, for every Pull Request.
+You should only worry about manually running any new integration tests that you write, or integration tests that test an area of code that you've modified.
 
 1. Follow the instructions at [Set Up the AWS Command Line Interface (AWS CLI)](https://docs.aws.amazon.com/polly/latest/dg/setup-aws-cli.html).
 1. To run a test, specify the test file and method you want to run per the following command: `tox -e py36 -- -s -vv <path_to_file><file_name>::<test_function_name>`
    * Note that the coverage test will fail if you only run a single test, so make sure to surround the command with `export IGNORE_COVERAGE=-` and `unset IGNORE_COVERAGE`
    * Example: `export IGNORE_COVERAGE=- ; tox -e py36 -- -s -vv tests/integ/test_tf_script_mode.py::test_mnist ; unset IGNORE_COVERAGE`
 
-If you are writing or modifying a test that creates a SageMaker job (training, tuner, or transform) or endpoint, it's important to assign a concurrency-friendly `job_name` (or `endpoint_name`), or your tests may fail randomly due to name collisions. We have a helper method `sagemaker.utils.unique_name_from_base(base, max_length)` that makes test-friendly names. You can find examples of how to use it [here](https://github.com/aws/sagemaker-python-sdk/blob/3816a5658d3737c9767e01bc8d37fc3ed5551593/tests/integ/test_tfs.py#L37) and 
+If you are writing or modifying a test that creates a SageMaker job (training, tuner, or transform) or endpoint, it's important to assign a concurrency-friendly `job_name` (or `endpoint_name`), or your tests may fail randomly due to name collisions. We have a helper method `sagemaker.utils.unique_name_from_base(base, max_length)` that makes test-friendly names. You can find examples of how to use it [here](https://github.com/aws/sagemaker-python-sdk/blob/3816a5658d3737c9767e01bc8d37fc3ed5551593/tests/integ/test_tfs.py#L37) and
 [here](https://github.com/aws/sagemaker-python-sdk/blob/3816a5658d3737c9767e01bc8d37fc3ed5551593/tests/integ/test_tuner.py#L616), or by searching for "unique\_name\_from\_base" in our test code.
 
 
@@ -106,7 +109,8 @@ If you are writing or modifying a test that creates a SageMaker job (training, t
       1. Guard against future breaking changes to lower the maintenance cost.
    1. Please focus on the specific change you are contributing. If you also reformat all the code, it will be hard for us to focus on your change.
 1. Run all the unit tests as per [Running the Unit Tests](#running-the-unit-tests), and verify that all checks and tests pass.
-   1. Note that this also runs tools that may be necessary for the automated build to pass (ex: code reformatting by 'black').  
+   1. Note that this also runs tools that may be necessary for the automated build to pass (ex: code reformatting by 'black').
+1. If your changes include documentation changes, please see the [Documentation Guidelines](#documentation-guidelines).
 
 
 ### Committing Your Change
@@ -143,6 +147,96 @@ Please remember to:
 * Use commit messages (and PR titles) that follow the guidelines under [Committing Your Change](#committing-your-change).
 * Send us a pull request, answering any default questions in the pull request interface.
 * Pay attention to any automated CI failures reported in the pull request, and stay involved in the conversation.
+
+
+## Documentation Guidelines
+
+We use reStructuredText (RST) for most of our documentation. For a quick primer on the syntax,
+see [the Sphinx documentation](https://www.sphinx-doc.org/en/master/usage/restructuredtext/basics.html).
+
+In this repository, we have two main categories of documentation: overviews and API references.
+"How to" tutorials are housed in the [Amazon SageMaker Examples repository](https://github.com/awslabs/amazon-sagemaker-examples).
+Overviews and API references are discussed in more detail below.
+
+Here are some general guidelines to follow when writing either kind of documentation:
+* Use present tense.
+  * 👍 "The estimator fits a model."
+  * 👎 "The estimator will fit a model."
+* When referring to an AWS product, use its full name in the first invocation.
+  (This applies only to prose; use what makes sense when it comes to writing code, etc.)
+  * 👍 "Amazon S3"
+  * 👎 "s3"
+* Provide links to other ReadTheDocs pages, AWS documentation, etc. when helpful.
+  Try to not duplicate documentation when you can reference it instead.
+  * Use meaningful text in a link.
+    * 👍 You can learn more about [hyperparameter tuning with SageMaker](https://docs.aws.amazon.com/sagemaker/latest/dg/automatic-model-tuning-how-it-works.html) in the SageMaker docs.
+    * 👎 Read more about it [here](#).
+
+
+### Overviews
+
+This section refers to documentation that discusses a specific topic or feature to
+help the reader deepen their understanding, and may include short snippets of how to do specific tasks.
+Examples include "[Amazon SageMaker Debugger](https://sagemaker.readthedocs.io/en/stable/amazon_sagemaker_debugger.html)"
+and "[Use MXNet with the SageMaker Python SDK](https://sagemaker.readthedocs.io/en/stable/using_mxnet.html)."
+
+The goal of these documents is to explain basic usage.
+This includes the general purpose of the topic or feature,
+and common ways to use the SageMaker Python SDK in that context.
+
+This type of documentation should not be a step-by-step tutorial.
+That is better suited for the [example notebooks](https://github.com/awslabs/amazon-sagemaker-examples).
+Instead, keep the content focused on the unique aspects of the feature.
+For example, if one is writing specifically about deploying models,
+there is no need to also include instructions on how to train a model first.
+In this case, consider linking to existing documentation about training models and any other prerequisites.
+
+Lastly, in addition to the general guidelines listed above:
+* Use the imperative mood for headings.
+  * 👍 "Prepare a Training Script"
+  * 👎 "Preparing a Training Script"
+* Don’t refer to features as "new" - they might be at the time of writing, but they won’t always be!
+
+### API References (docstrings)
+
+The API references are generated from docstrings.
+A docstring is the comment in the source code that describes a module, class, function, or variable.
+
+```python
+def foo():
+    """This comment is a docstring for the function foo."""
+```
+
+We use [Google-style docstrings](https://sphinxcontrib-napoleon.readthedocs.io/en/latest/example_google.html).
+There should be a docstring for every public module, class, and function.
+For functions, make sure your docstring covers all of the arguments, exceptions, and any other relevant information.
+When possible, link to classes and functions, e.g. use ":class:~\`sagemaker.session.Session\`" over just "Session."
+
+If a parameter of a function has a default value, please note what the default is.
+If that default value is `None`, it can also be helpful to explain what happens when the parameter is `None`.
+If `**kwargs` is part of the function signature, link to the parent class(es) or method(s) so that the reader knows where to find the available parameters.
+
+For an example file with docstrings, see [the `processing` module](https://github.com/aws/sagemaker-python-sdk/blob/master/src/sagemaker/processing.py).
+
+To have a class's docstrings included in the API reference, it needs to be included in one of the files in the `doc/` folder.
+For example, see the [Processing API reference](https://github.com/aws/sagemaker-python-sdk/blob/master/doc/processing.rst).
+
+
+### Build and Test Documentation
+
+To build the Sphinx docs, run the following command in the `doc/` directory:
+
+```shell
+make html
+```
+
+You can then find the generated HTML files in `doc/_build/html/`.
+
+To check both the README and API documentation for build errors, you can run the following:
+
+```shell
+tox -e twine,sphinx
+```
 
 
 ## Finding Contributions to Work On
