@@ -1,5 +1,16 @@
 # Changelog
 
+## v1.50.9 (2020-02-04)
+
+### Bug Fixes and Other Changes
+
+ * account for EI and version-based ECR repo naming in serving_image_uri()
+
+### Documentation Changes
+
+ * correct broken AutoML API documentation link
+ * fix MXNet version lists
+
 ## v1.50.8 (2020-01-30)
 
 ### Bug Fixes and Other Changes
