@@ -50,8 +50,8 @@ echo "set SAGEMAKER_ROLE_ARN=$SAGEMAKER_ROLE_ARN"
 ./amazon-sagemaker-examples/sagemaker-python-sdk/pytorch_cnn_cifar10/pytorch_local_mode_cifar10.ipynb \
 ./amazon-sagemaker-examples/sagemaker-python-sdk/pytorch_lstm_word_language_model/pytorch_rnn.ipynb \
 ./amazon-sagemaker-examples/sagemaker-python-sdk/pytorch_mnist/pytorch_mnist.ipynb \
-./amazon-sagemaker-examples/sagemaker-python-sdk/scikit_learn_inference_pipeline/Inference Pipeline with Scikit-learn and Linear Learner.ipynb \
-./amazon-sagemaker-examples/sagemaker-python-sdk/scikit_learn_iris/Scikit-learn Estimator Example With Batch Transform.ipynb \
+./amazon-sagemaker-examples/sagemaker-python-sdk/scikit_learn_inference_pipeline/Inference\ Pipeline\ with\ Scikit-learn\ and\ Linear\ Learner.ipynb \
+./amazon-sagemaker-examples/sagemaker-python-sdk/scikit_learn_iris/Scikit-learn\ Estimator\ Example\ With\ Batch\ Transform.ipynb \
 ./amazon-sagemaker-examples/sagemaker-python-sdk/scikit_learn_randomforest/Sklearn_on_SageMaker_end2end.ipynb \
 ./amazon-sagemaker-examples/sagemaker-python-sdk/sparkml_serving_emr_mleap_abalone/sparkml_serving_emr_mleap_abalone.ipynb \
 ./amazon-sagemaker-examples/sagemaker-python-sdk/tensorflow-eager-script-mode/tf-eager-sm-scriptmode.ipynb \
