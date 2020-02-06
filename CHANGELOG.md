@@ -1,5 +1,11 @@
 # Changelog
 
+## v1.50.9.post0 (2020-02-06)
+
+### Documentation Changes
+
+ * remove labels from issue templates
+
 ## v1.50.9 (2020-02-04)
 
 ### Bug Fixes and Other Changes
