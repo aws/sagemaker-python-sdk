@@ -1,4 +1,4 @@
-# Copyright 2017-2018 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright 2017-2020 Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -18,7 +18,6 @@ import json
 import google.protobuf.json_format as json_format
 from google.protobuf.message import DecodeError
 from protobuf_to_dict import protobuf_to_dict
-
 from sagemaker.content_types import CONTENT_TYPE_JSON, CONTENT_TYPE_OCTET_STREAM, CONTENT_TYPE_CSV
 from sagemaker.predictor import json_serializer, csv_serializer
 

@@ -1,4 +1,4 @@
-# Copyright 2017-2018 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright 2017-2020 Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -90,6 +90,7 @@ class PipelineModel(object):
         tags=None,
         wait=True,
         update_endpoint=False,
+        data_capture_config=None,
     ):
         """Deploy this ``Model`` to an ``Endpoint`` and optionally return a
         ``Predictor``.
@@ -121,6 +122,9 @@ class PipelineModel(object):
                 EndpointConfig to an already existing endpoint and delete
                 resources corresponding to the previous EndpointConfig. If
                 False, a new endpoint will be created. Default: False
+            data_capture_config (sagemaker.model_monitor.DataCaptureConfig): Specifies
+                configuration related to Endpoint data capture for use with
+                Amazon SageMaker Model Monitoring. Default: None.
 
         Returns:
             callable[string, sagemaker.session.Session] or None: Invocation of
@@ -142,6 +146,10 @@ class PipelineModel(object):
         )
         self.endpoint_name = endpoint_name or self.name
 
+        data_capture_config_dict = None
+        if data_capture_config is not None:
+            data_capture_config_dict = data_capture_config._to_request_dict()
+
         if update_endpoint:
             endpoint_config_name = self.sagemaker_session.create_endpoint_config(
                 name=self.name,
@@ -149,11 +157,18 @@ class PipelineModel(object):
                 initial_instance_count=initial_instance_count,
                 instance_type=instance_type,
                 tags=tags,
+                data_capture_config_dict=data_capture_config_dict,
             )
-            self.sagemaker_session.update_endpoint(self.endpoint_name, endpoint_config_name)
+            self.sagemaker_session.update_endpoint(
+                self.endpoint_name, endpoint_config_name, wait=wait
+            )
         else:
             self.sagemaker_session.endpoint_from_production_variants(
-                self.endpoint_name, [production_variant], tags, wait=wait
+                name=self.endpoint_name,
+                production_variants=[production_variant],
+                tags=tags,
+                wait=wait,
+                data_capture_config_dict=data_capture_config_dict,
             )
 
         if self.predictor_cls:

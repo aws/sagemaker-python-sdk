@@ -1,4 +1,4 @@
-# Copyright 2018 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright 2018-2020 Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -15,8 +15,10 @@ from __future__ import absolute_import
 
 import logging
 
+from sagemaker import fw_utils
+
 import sagemaker
-from sagemaker.fw_utils import model_code_key_prefix, python_deprecation_warning
+from sagemaker.fw_utils import model_code_key_prefix
 from sagemaker.fw_registry import default_framework_uri
 from sagemaker.model import FrameworkModel, MODEL_SERVER_WORKERS_PARAM_NAME
 from sagemaker.predictor import RealTimePredictor, npy_serializer, csv_deserializer
@@ -87,13 +89,19 @@ class XGBoostModel(FrameworkModel):
             model_server_workers (int): Optional. The number of worker processes used by the
                 inference server. If None, server will use one worker per vCPU.
             **kwargs: Keyword arguments passed to the ``FrameworkModel`` initializer.
+
+        .. tip::
+
+            You can find additional parameters for initializing this class at
+            :class:`~sagemaker.model.FrameworkModel` and
+            :class:`~sagemaker.model.Model`.
         """
         super(XGBoostModel, self).__init__(
             model_data, image, role, entry_point, predictor_cls=predictor_cls, **kwargs
         )
 
         if py_version == "py2":
-            logger.warning(python_deprecation_warning(self.__framework_name__))
+            raise AttributeError("XGBoost container does not support Python 2, please use Python 3")
 
         self.py_version = py_version
         self.framework_version = framework_version
@@ -129,3 +137,23 @@ class XGBoostModel(FrameworkModel):
         if self.model_server_workers:
             deploy_env[MODEL_SERVER_WORKERS_PARAM_NAME.upper()] = str(self.model_server_workers)
         return sagemaker.container_def(deploy_image, self.model_data, deploy_env)
+
+    def serving_image_uri(self, region_name, instance_type):
+        """Create a URI for the serving image.
+
+        Args:
+            region_name (str): AWS region where the image is uploaded.
+            instance_type (str): SageMaker instance type. Used to determine device type
+                (cpu/gpu/family-specific optimized).
+
+        Returns:
+            str: The appropriate image URI based on the given parameters.
+
+        """
+        return fw_utils.create_image_uri(
+            region_name,
+            self.__framework_name__,
+            instance_type,
+            self.framework_version,
+            self.py_version,
+        )

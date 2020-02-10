@@ -1,4 +1,4 @@
-# Copyright 2018 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright 2018-2020 Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -943,3 +943,75 @@ def test_algorithm_no_required_hyperparameters(session):
         train_instance_count=1,
         sagemaker_session=session,
     )
+
+
+def test_algorithm_attach_from_hyperparameter_tuning():
+    session = Mock()
+    job_name = "training-job-that-is-part-of-a-tuning-job"
+    algo_arn = "arn:aws:sagemaker:us-east-2:000000000000:algorithm/scikit-decision-trees"
+    role_arn = "arn:aws:iam::123412341234:role/SageMakerRole"
+    instance_count = 1
+    instance_type = "ml.m4.xlarge"
+    train_volume_size = 30
+    input_mode = "File"
+
+    session.sagemaker_client.list_tags.return_value = {"Tags": []}
+    session.sagemaker_client.describe_algorithm.return_value = DESCRIBE_ALGORITHM_RESPONSE
+    session.sagemaker_client.describe_training_job.return_value = {
+        "TrainingJobName": job_name,
+        "TrainingJobArn": "arn:aws:sagemaker:us-east-2:123412341234:training-job/%s" % job_name,
+        "TuningJobArn": "arn:aws:sagemaker:us-east-2:123412341234:hyper-parameter-tuning-job/%s"
+        % job_name,
+        "ModelArtifacts": {
+            "S3ModelArtifacts": "s3://sagemaker-us-east-2-123412341234/output/model.tar.gz"
+        },
+        "TrainingJobOutput": {
+            "S3TrainingJobOutput": "s3://sagemaker-us-east-2-123412341234/output/output.tar.gz"
+        },
+        "TrainingJobStatus": "Succeeded",
+        "HyperParameters": {
+            "_tuning_objective_metric": "validation:accuracy",
+            "max_leaf_nodes": 1,
+            "free_text_hp1": "foo",
+        },
+        "AlgorithmSpecification": {"AlgorithmName": algo_arn, "TrainingInputMode": input_mode},
+        "MetricDefinitions": [
+            {"Name": "validation:accuracy", "Regex": "validation-accuracy: (\\S+)"}
+        ],
+        "RoleArn": role_arn,
+        "InputDataConfig": [
+            {
+                "ChannelName": "training",
+                "DataSource": {
+                    "S3DataSource": {
+                        "S3DataType": "S3Prefix",
+                        "S3Uri": "s3://sagemaker-us-east-2-123412341234/input/training.csv",
+                        "S3DataDistributionType": "FullyReplicated",
+                    }
+                },
+                "CompressionType": "None",
+                "RecordWrapperType": "None",
+            }
+        ],
+        "OutputDataConfig": {
+            "KmsKeyId": "",
+            "S3OutputPath": "s3://sagemaker-us-east-2-123412341234/output",
+            "RemoveJobNameFromS3OutputPath": False,
+        },
+        "ResourceConfig": {
+            "InstanceType": instance_type,
+            "InstanceCount": instance_count,
+            "VolumeSizeInGB": train_volume_size,
+        },
+        "StoppingCondition": {"MaxRuntimeInSeconds": 86400},
+    }
+
+    estimator = AlgorithmEstimator.attach(job_name, sagemaker_session=session)
+    assert estimator.hyperparameters() == {"max_leaf_nodes": 1, "free_text_hp1": "foo"}
+    assert estimator.algorithm_arn == algo_arn
+    assert estimator.role == role_arn
+    assert estimator.train_instance_count == instance_count
+    assert estimator.train_instance_type == instance_type
+    assert estimator.train_volume_size == train_volume_size
+    assert estimator.input_mode == input_mode
+    assert estimator.sagemaker_session == session

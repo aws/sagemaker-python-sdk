@@ -6,14 +6,6 @@
 SageMaker Python SDK
 ====================
 
-.. image:: https://travis-ci.org/aws/sagemaker-python-sdk.svg?branch=master
-   :target: https://travis-ci.org/aws/sagemaker-python-sdk
-   :alt: Build Status
-
-.. image:: https://codecov.io/gh/aws/sagemaker-python-sdk/branch/master/graph/badge.svg
-   :target: https://codecov.io/gh/aws/sagemaker-python-sdk
-   :alt: CodeCov
-
 .. image:: https://img.shields.io/pypi/v/sagemaker.svg
    :target: https://pypi.python.org/pypi/sagemaker
    :alt: Latest Version
@@ -61,7 +53,12 @@ Table of Contents
 17. `Secure Training and Inference with VPC <https://sagemaker.readthedocs.io/en/stable/overview.html#secure-training-and-inference-with-vpc>`__
 18. `BYO Model <https://sagemaker.readthedocs.io/en/stable/overview.html#byo-model>`__
 19. `Inference Pipelines <https://sagemaker.readthedocs.io/en/stable/overview.html#inference-pipelines>`__
-20. `SageMaker Workflow <#sagemaker-workflow>`__
+20. `Amazon SageMaker Operators for Kubernetes <#amazon-sagemaker-operators-for-kubernetes>`__
+21. `SageMaker Workflow <#sagemaker-workflow>`__
+22. `SageMaker Autopilot <#sagemaker-autopilot>`__
+23. `Model Monitoring <#amazon-sagemaker-model-monitoring>`__
+24. `SageMaker Debugger <#amazon-sagemaker-debugger>`__
+25. `SageMaker Processing <#amazon-sagemaker-processing>`__
 
 
 Installing the SageMaker Python SDK
@@ -200,7 +197,7 @@ MXNet SageMaker Estimators
 
 By using MXNet SageMaker Estimators, you can train and host MXNet models on Amazon SageMaker.
 
-Supported versions of MXNet: ``0.12.1``, ``1.0.0``, ``1.1.0``, ``1.2.1``, ``1.3.0``, ``1.4.0``, ``1.4.1``.
+Supported versions of MXNet: ``0.12.1``, ``1.0.0``, ``1.1.0``, ``1.2.1``, ``1.3.0``, ``1.4.0``, ``1.4.1``, ``1.6.0``.
 
 Supported versions of MXNet for Elastic Inference: ``1.3.0``, ``1.4.0``, ``1.4.1``.
 
@@ -216,9 +213,9 @@ TensorFlow SageMaker Estimators
 
 By using TensorFlow SageMaker Estimators, you can train and host TensorFlow models on Amazon SageMaker.
 
-Supported versions of TensorFlow: ``1.4.1``, ``1.5.0``, ``1.6.0``, ``1.7.0``, ``1.8.0``, ``1.9.0``, ``1.10.0``, ``1.11.0``, ``1.12.0``, ``1.13.1``, ``1.14``.
+Supported versions of TensorFlow: ``1.4.1``, ``1.5.0``, ``1.6.0``, ``1.7.0``, ``1.8.0``, ``1.9.0``, ``1.10.0``, ``1.11.0``, ``1.12.0``, ``1.13.1``, ``1.14.0``, ``1.15.0``, ``2.0.0``.
 
-Supported versions of TensorFlow for Elastic Inference: ``1.11.0``, ``1.12.0``, ``1.13.1``, ``1.14``.
+Supported versions of TensorFlow for Elastic Inference: ``1.11.0``, ``1.12.0``, ``1.13.1``, ``1.14.0``.
 
 We recommend that you use the latest supported version, because that's where we focus most of our development efforts.
 
@@ -248,7 +245,7 @@ PyTorch SageMaker Estimators
 
 With PyTorch SageMaker Estimators, you can train and host PyTorch models on Amazon SageMaker.
 
-Supported versions of PyTorch: ``0.4.0``, ``1.0.0``, ``1.1.0``, ``1.2.0``.
+Supported versions of PyTorch: ``0.4.0``, ``1.0.0``, ``1.1.0``, ``1.2.0``, ``1.3.1``.
 
 We recommend that you use the latest supported version, because that's where we focus most of our development efforts.
 
@@ -352,6 +349,15 @@ For more information, see `AWS SageMaker Estimators and Models`_.
 
 .. _AWS SageMaker Estimators and Models: src/sagemaker/amazon/README.rst
 
+Amazon SageMaker Operators for Kubernetes
+-----------------------------------------
+
+You can use Amazon SageMaker Operators for Kubernetes to optimize hyperparameters for a given model, run batch transform jobs over existing models, and set up inference endpoints.
+
+For more information, see `Amazon SageMaker Operators for Kubernetes`_.
+
+.. _Amazon SageMaker Operators for Kubernetes: https://sagemaker.readthedocs.io/en/stable/amazon_sagemaker_operators_for_kubernetes.html
+
 SageMaker Workflow
 ------------------
 
@@ -360,3 +366,43 @@ You can use Apache Airflow to author, schedule and monitor SageMaker workflow.
 For more information, see `SageMaker Workflow in Apache Airflow`_.
 
 .. _SageMaker Workflow in Apache Airflow: https://sagemaker.readthedocs.io/en/stable/using_workflow.html
+
+SageMaker Autopilot
+-------------------
+
+Amazon SageMaker Autopilot is an automated machine learning solution (commonly referred to as "AutoML") for tabular
+datasets. It automatically trains and tunes the best machine learning models for classification or regression based
+on your data, and hosts a series of models on an Inference Pipeline.
+
+For more information about SageMaker Autopilot, see `SageMaker Autopilot`_.
+
+.. _SageMaker Autopilot: src/sagemaker/automl/README.rst
+
+Amazon SageMaker Model Monitoring
+---------------------------------
+
+You can use Amazon SageMaker Model Monitoring to automatically detect concept drift by monitoring your machine learning models.
+
+For more information, see `Amazon SageMaker Model Monitoring`_.
+
+.. _Amazon SageMaker Model Monitoring: https://sagemaker.readthedocs.io/en/stable/amazon_sagemaker_model_monitoring.html
+
+Amazon SageMaker Debugger
+-------------------------
+
+You can use Amazon SageMaker Debugger to automatically detect anomalies while training your machine learning models.
+
+For more information, see `Amazon SageMaker Debugger`_.
+
+.. _Amazon SageMaker Debugger: https://sagemaker.readthedocs.io/en/stable/amazon_sagemaker_debugger.html
+
+
+Amazon SageMaker Processing
+---------------------------------
+
+You can use Amazon SageMaker Processing to perform data processing tasks such as data pre- and post-processing, feature engineering, data validation, and model evaluation
+
+
+For more information, see `Amazon SageMaker Processing`_.
+
+.. _Amazon SageMaker Processing: https://sagemaker.readthedocs.io/en/stable/amazon_sagemaker_processing.html

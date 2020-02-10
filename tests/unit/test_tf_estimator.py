@@ -1,4 +1,4 @@
-# Copyright 2017-2019 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright 2017-2020 Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -57,6 +57,12 @@ ENDPOINT_DESC = {"EndpointConfigName": "test-endpoint"}
 ENDPOINT_CONFIG_DESC = {"ProductionVariants": [{"ModelName": "model-1"}, {"ModelName": "model-2"}]}
 
 LIST_TAGS_RESULT = {"Tags": [{"Key": "TagtestKey", "Value": "TagtestValue"}]}
+
+EXPERIMENT_CONFIG = {
+    "ExperimentName": "exp",
+    "TrialName": "trial",
+    "TrialComponentDisplayName": "tc",
+}
 
 
 @pytest.fixture()
@@ -117,9 +123,14 @@ def _hyperparameters(script_mode=False, horovod=False):
 
 
 def _create_train_job(
-    tf_version, script_mode=False, horovod=False, repo_name=IMAGE_REPO_NAME, py_version="py2"
+    tf_version,
+    script_mode=False,
+    horovod=False,
+    ps=False,
+    repo_name=IMAGE_REPO_NAME,
+    py_version="py2",
 ):
-    return {
+    conf = {
         "image": _get_full_cpu_image_uri(tf_version, repo=repo_name, py_version=py_version),
         "input_mode": "File",
         "input_config": [
@@ -146,7 +157,16 @@ def _create_train_job(
         "tags": None,
         "vpc_config": None,
         "metric_definitions": None,
+        "experiment_config": None,
     }
+
+    if not ps:
+        conf["debugger_hook_config"] = {
+            "CollectionConfigurations": [],
+            "S3OutputPath": "s3://{}/".format(BUCKET_NAME),
+        }
+
+    return conf
 
 
 def _build_tf(
@@ -438,13 +458,14 @@ def test_tf(sagemaker_session, tf_version):
 
     inputs = "s3://mybucket/train"
 
-    tf.fit(inputs=inputs)
+    tf.fit(inputs=inputs, experiment_config=EXPERIMENT_CONFIG)
 
     call_names = [c[0] for c in sagemaker_session.method_calls]
     assert call_names == ["train", "logs_for_job"]
 
     expected_train_args = _create_train_job(tf_version)
     expected_train_args["input_config"][0]["DataSource"]["S3DataSource"]["S3Uri"] = inputs
+    expected_train_args["experiment_config"] = EXPERIMENT_CONFIG
 
     actual_train_args = sagemaker_session.method_calls[0][2]
     assert actual_train_args == expected_train_args
@@ -903,6 +924,31 @@ def test_attach_custom_image(sagemaker_session):
     assert estimator.train_image() == training_image
 
 
+@patch("sagemaker.fw_utils.python_deprecation_warning")
+def test_estimator_py2_deprecation_warning(warning, sagemaker_session):
+    estimator = TensorFlow(
+        entry_point=SCRIPT_PATH,
+        role=ROLE,
+        sagemaker_session=sagemaker_session,
+        train_instance_count=INSTANCE_COUNT,
+        train_instance_type=INSTANCE_TYPE,
+        py_version="py2",
+    )
+
+    assert estimator.py_version == "py2"
+    warning.assert_called_with(estimator.__framework_name__, defaults.LATEST_PY2_VERSION)
+
+    model = TensorFlowModel(
+        MODEL_DATA,
+        role=ROLE,
+        entry_point=SCRIPT_PATH,
+        sagemaker_session=sagemaker_session,
+        py_version="py2",
+    )
+    assert model.py_version == "py2"
+    warning.assert_called_with(model.__framework_name__, defaults.LATEST_PY2_VERSION)
+
+
 @patch("sagemaker.fw_utils.empty_framework_version_warning")
 def test_empty_framework_version(warning, sagemaker_session):
     estimator = TensorFlow(
@@ -916,6 +962,17 @@ def test_empty_framework_version(warning, sagemaker_session):
 
     assert estimator.framework_version == defaults.TF_VERSION
     warning.assert_called_with(defaults.TF_VERSION, estimator.LATEST_VERSION)
+
+    model = TensorFlowModel(
+        MODEL_DATA,
+        role=ROLE,
+        entry_point=SCRIPT_PATH,
+        sagemaker_session=sagemaker_session,
+        framework_version=None,
+    )
+
+    assert model.framework_version == defaults.TF_VERSION
+    warning.assert_called_with(defaults.TF_VERSION, defaults.LATEST_VERSION)
 
 
 def _deprecated_args_msg(args):
@@ -961,10 +1018,32 @@ def test_script_mode_deprecated_args(sagemaker_session):
 
 def test_py2_version_deprecated(sagemaker_session):
     with pytest.raises(AttributeError) as e:
-        _build_tf(sagemaker_session=sagemaker_session, framework_version="1.14.1", py_version="py2")
+        TensorFlow(
+            entry_point=SCRIPT_PATH,
+            framework_version="2.0.1",
+            role=ROLE,
+            sagemaker_session=sagemaker_session,
+            train_instance_count=INSTANCE_COUNT,
+            train_instance_type=INSTANCE_TYPE,
+            py_version="py2",
+        )
 
-    msg = "Python 2 containers are only available until January 1st, 2020. Please use a Python 3 container."
+    msg = (
+        "Python 2 containers are only available with 2.0.0 and lower versions. "
+        "Please use a Python 3 container."
+    )
     assert msg in str(e.value)
+
+
+def test_py2_version_is_not_deprecated(sagemaker_session):
+    estimator = _build_tf(
+        sagemaker_session=sagemaker_session, framework_version="1.15.0", py_version="py2"
+    )
+    assert estimator.py_version == "py2"
+    estimator = _build_tf(
+        sagemaker_session=sagemaker_session, framework_version="2.0.0", py_version="py2"
+    )
+    assert estimator.py_version == "py2"
 
 
 def test_py3_is_default_version_before_tf1_14(sagemaker_session):
@@ -1104,7 +1183,7 @@ def test_tf_script_mode_ps(time, strftime, sagemaker_session):
     assert call_names == ["train", "logs_for_job"]
 
     expected_train_args = _create_train_job(
-        "1.11", script_mode=True, repo_name=SM_IMAGE_REPO_NAME, py_version="py3"
+        "1.11", script_mode=True, ps=True, repo_name=SM_IMAGE_REPO_NAME, py_version="py3"
     )
     expected_train_args["input_config"][0]["DataSource"]["S3DataSource"]["S3Uri"] = inputs
     expected_train_args["hyperparameters"][TensorFlow.LAUNCH_PS_ENV_NAME] = json.dumps(True)
@@ -1195,3 +1274,29 @@ def test_tf_script_mode_attach(sagemaker_session, tf_version):
     assert estimator.hyperparameters() is not None
     assert estimator.source_dir == "s3://some/sourcedir.tar.gz"
     assert estimator.entry_point == "iris-dnn-classifier.py"
+
+
+@patch("sagemaker.utils.create_tar_file", MagicMock())
+def test_tf_enable_sm_metrics(sagemaker_session):
+    tf = _build_tf(sagemaker_session, enable_sagemaker_metrics=True)
+    assert tf.enable_sagemaker_metrics
+
+
+@patch("sagemaker.utils.create_tar_file", MagicMock())
+def test_tf_disable_sm_metrics(sagemaker_session):
+    tf = _build_tf(sagemaker_session, enable_sagemaker_metrics=False)
+    assert not tf.enable_sagemaker_metrics
+
+
+@patch("sagemaker.utils.create_tar_file", MagicMock())
+def test_tf_disable_sm_metrics_if_fw_ver_is_less_than_1_15(sagemaker_session):
+    for fw_version in ["1.11", "1.12", "1.13", "1.14"]:
+        tf = _build_tf(sagemaker_session, framework_version=fw_version)
+        assert tf.enable_sagemaker_metrics is None
+
+
+@patch("sagemaker.utils.create_tar_file", MagicMock())
+def test_tf_enable_sm_metrics_if_fw_ver_is_at_least_1_15(sagemaker_session):
+    for fw_version in ["1.15", "1.16", "2.0", "2.1"]:
+        tf = _build_tf(sagemaker_session, framework_version=fw_version)
+        assert tf.enable_sagemaker_metrics

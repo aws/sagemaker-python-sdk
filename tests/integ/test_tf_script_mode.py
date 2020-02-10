@@ -1,4 +1,4 @@
-# Copyright 2017-2019 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright 2017-2020 Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -39,7 +39,7 @@ MPI_DISTRIBUTION = {"mpi": {"enabled": True}}
 TAGS = [{"Key": "some-key", "Value": "some-value"}]
 
 
-def test_mnist_with_checkpoint_config(sagemaker_session, instance_type):
+def test_mnist_with_checkpoint_config(sagemaker_session, instance_type, tf_full_version):
     checkpoint_s3_uri = "s3://{}/checkpoints/tf-{}".format(
         sagemaker_session.default_bucket(), sagemaker_timestamp()
     )
@@ -51,7 +51,7 @@ def test_mnist_with_checkpoint_config(sagemaker_session, instance_type):
         train_instance_type=instance_type,
         sagemaker_session=sagemaker_session,
         script_mode=True,
-        framework_version=TensorFlow.LATEST_VERSION,
+        framework_version=tf_full_version,
         py_version=tests.integ.PYTHON_VERSION,
         metric_definitions=[{"Name": "train:global_steps", "Regex": r"global_step\/sec:\s(.*)"}],
         checkpoint_s3_uri=checkpoint_s3_uri,
@@ -82,9 +82,8 @@ def test_mnist_with_checkpoint_config(sagemaker_session, instance_type):
     assert actual_training_checkpoint_config == expected_training_checkpoint_config
 
 
-def test_server_side_encryption(sagemaker_session):
-    boto_session = sagemaker_session.boto_session
-    with kms_utils.bucket_with_encryption(boto_session, ROLE) as (bucket_with_kms, kms_key):
+def test_server_side_encryption(sagemaker_session, tf_full_version):
+    with kms_utils.bucket_with_encryption(sagemaker_session, ROLE) as (bucket_with_kms, kms_key):
         output_path = os.path.join(
             bucket_with_kms, "test-server-side-encryption", time.strftime("%y%m%d-%H%M")
         )
@@ -97,7 +96,7 @@ def test_server_side_encryption(sagemaker_session):
             train_instance_type="ml.c5.xlarge",
             sagemaker_session=sagemaker_session,
             script_mode=True,
-            framework_version=TensorFlow.LATEST_VERSION,
+            framework_version=tf_full_version,
             py_version=tests.integ.PYTHON_VERSION,
             code_location=output_path,
             output_path=output_path,
@@ -125,7 +124,7 @@ def test_server_side_encryption(sagemaker_session):
 
 
 @pytest.mark.canary_quick
-def test_mnist_distributed(sagemaker_session, instance_type):
+def test_mnist_distributed(sagemaker_session, instance_type, tf_full_version):
     estimator = TensorFlow(
         entry_point=SCRIPT,
         role=ROLE,
@@ -134,7 +133,7 @@ def test_mnist_distributed(sagemaker_session, instance_type):
         sagemaker_session=sagemaker_session,
         py_version=tests.integ.PYTHON_VERSION,
         script_mode=True,
-        framework_version=TensorFlow.LATEST_VERSION,
+        framework_version=tf_full_version,
         distributions=PARAMETER_SERVER_DISTRIBUTION,
     )
     inputs = estimator.sagemaker_session.upload_data(
@@ -159,6 +158,7 @@ def test_mnist_async(sagemaker_session, cpu_instance_type):
         py_version=tests.integ.PYTHON_VERSION,
         sagemaker_session=sagemaker_session,
         script_mode=True,
+        # testing py-sdk functionality, no need to run against all TF versions
         framework_version=TensorFlow.LATEST_VERSION,
         tags=TAGS,
     )
@@ -191,7 +191,7 @@ def test_mnist_async(sagemaker_session, cpu_instance_type):
         _assert_model_name_match(sagemaker_session.sagemaker_client, endpoint_name, model_name)
 
 
-def test_deploy_with_input_handlers(sagemaker_session, instance_type):
+def test_deploy_with_input_handlers(sagemaker_session, instance_type, tf_full_version):
     estimator = TensorFlow(
         entry_point="training.py",
         source_dir=TFS_RESOURCE_PATH,
@@ -201,7 +201,7 @@ def test_deploy_with_input_handlers(sagemaker_session, instance_type):
         py_version=tests.integ.PYTHON_VERSION,
         sagemaker_session=sagemaker_session,
         script_mode=True,
-        framework_version=TensorFlow.LATEST_VERSION,
+        framework_version=tf_full_version,
         tags=TAGS,
     )
 

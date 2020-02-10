@@ -1,4 +1,4 @@
-# Copyright 2018 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright 2018-2020 Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -14,5 +14,6 @@
 from __future__ import absolute_import
 
 XGBOOST_NAME = "xgboost"
-XGBOOST_LATEST_VERSION = "0.90-1"
-XGBOOST_SUPPORTED_VERSIONS = [XGBOOST_LATEST_VERSION]
+XGBOOST_VERSION_1 = "0.90-1"
+XGBOOST_LATEST_VERSION = "0.90-2"
+XGBOOST_SUPPORTED_VERSIONS = [XGBOOST_VERSION_1, XGBOOST_LATEST_VERSION]

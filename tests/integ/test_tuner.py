@@ -1,4 +1,4 @@
-# Copyright 2017-2019 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright 2017-2020 Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -590,7 +590,7 @@ def test_tuning_mxnet(sagemaker_session, mxnet_full_version, cpu_instance_type):
 
 
 @pytest.mark.canary_quick
-def test_tuning_tf_script_mode(sagemaker_session, cpu_instance_type):
+def test_tuning_tf_script_mode(sagemaker_session, cpu_instance_type, tf_full_version):
     resource_path = os.path.join(DATA_DIR, "tensorflow_mnist")
     script_path = os.path.join(resource_path, "mnist.py")
 
@@ -602,7 +602,7 @@ def test_tuning_tf_script_mode(sagemaker_session, cpu_instance_type):
         script_mode=True,
         sagemaker_session=sagemaker_session,
         py_version=PYTHON_VERSION,
-        framework_version=TensorFlow.LATEST_VERSION,
+        framework_version=tf_full_version,
     )
 
     hyperparameter_ranges = {"epochs": IntegerParameter(1, 2)}

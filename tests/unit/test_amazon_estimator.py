@@ -1,4 +1,4 @@
-# Copyright 2017-2019 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright 2017-2020 Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -229,6 +229,27 @@ def test_fit_ndarray(time, sagemaker_session):
     assert mock_object.put.call_count == 4
 
 
+def test_fit_pass_experiment_config(sagemaker_session):
+    kwargs = dict(COMMON_ARGS)
+    kwargs["train_instance_count"] = 3
+    pca = PCA(
+        num_components=55,
+        sagemaker_session=sagemaker_session,
+        data_location="s3://{}/key-prefix/".format(BUCKET_NAME),
+        **kwargs
+    )
+    train = [[1.0, 2.0, 3.0], [4.0, 5.0, 6.0], [7.0, 8.0, 8.0], [44.0, 55.0, 66.0]]
+    labels = [99, 85, 87, 2]
+    pca.fit(
+        pca.record_set(np.array(train), np.array(labels)),
+        experiment_config={"ExperimentName": "exp"},
+    )
+
+    called_args = sagemaker_session.train.call_args
+
+    assert called_args[1]["experiment_config"] == {"ExperimentName": "exp"}
+
+
 def test_build_shards():
     array = np.array([1, 2, 3, 4])
     shards = _build_shards(4, array)
@@ -422,4 +443,10 @@ def test_get_xgboost_image_uri():
     assert (
         updated_xgb_image_uri
         == "246618743249.dkr.ecr.us-west-2.amazonaws.com/sagemaker-xgboost:0.90-1-cpu-py3"
+    )
+
+    updated_xgb_image_uri_v2 = get_image_uri(REGION, "xgboost", "0.90-2")
+    assert (
+        updated_xgb_image_uri_v2
+        == "246618743249.dkr.ecr.us-west-2.amazonaws.com/sagemaker-xgboost:0.90-2-cpu-py3"
     )

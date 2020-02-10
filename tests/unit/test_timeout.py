@@ -1,4 +1,4 @@
-# Copyright 2019 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright 2019-2020 Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -79,8 +79,13 @@ def test_timeout_does_not_throw_exception_when_method_ends_gracefully():
 
 @patch("tests.integ.timeout._show_logs", return_value=None, autospec=True)
 @patch("tests.integ.timeout._cleanup_logs", return_value=None, autospec=True)
+@patch(
+    "tests.integ.timeout._delete_schedules_associated_with_endpoint",
+    return_value=None,
+    autospec=True,
+)
 def test_timeout_and_delete_endpoint_by_name_fails_when_method_throws_exception(
-    _show_logs, _cleanup_logs, session
+    _show_logs, _cleanup_logs, _delete_schedules_associated_with_endpoint, session
 ):
     with pytest.raises(ValueError) as exception:
         with timeout_and_delete_endpoint_by_name(
@@ -98,8 +103,13 @@ def test_timeout_and_delete_endpoint_by_name_fails_when_method_throws_exception(
 
 @patch("tests.integ.timeout._show_logs", return_value=None, autospec=True)
 @patch("tests.integ.timeout._cleanup_logs", return_value=None, autospec=True)
+@patch(
+    "tests.integ.timeout._delete_schedules_associated_with_endpoint",
+    return_value=None,
+    autospec=True,
+)
 def test_timeout_and_delete_endpoint_by_name_throws_timeout_exception_when_method_times_out(
-    _show_logs, _cleanup_logs, session
+    _show_logs, _cleanup_logs, _delete_schedules_associated_with_endpoint, session
 ):
     with pytest.raises(stopit.utils.TimeoutException):
         with timeout_and_delete_endpoint_by_name(
@@ -115,8 +125,13 @@ def test_timeout_and_delete_endpoint_by_name_throws_timeout_exception_when_metho
 
 @patch("tests.integ.timeout._show_logs", return_value=None, autospec=True)
 @patch("tests.integ.timeout._cleanup_logs", return_value=None, autospec=True)
+@patch(
+    "tests.integ.timeout._delete_schedules_associated_with_endpoint",
+    return_value=None,
+    autospec=True,
+)
 def test_timeout_and_delete_endpoint_by_name_does_not_throw_exception_when_method_ends_gracefully(
-    _show_logs, _cleanup_logs, session
+    _show_logs, _cleanup_logs, _delete_schedules_associated_with_endpoint, session
 ):
     with timeout_and_delete_endpoint_by_name(
         endpoint_name=ENDPOINT_NAME,
@@ -132,8 +147,13 @@ def test_timeout_and_delete_endpoint_by_name_does_not_throw_exception_when_metho
 
 @patch("tests.integ.timeout._show_logs", return_value=None, autospec=True)
 @patch("tests.integ.timeout._cleanup_logs", return_value=None, autospec=True)
+@patch(
+    "tests.integ.timeout._delete_schedules_associated_with_endpoint",
+    return_value=None,
+    autospec=True,
+)
 def test_timeout_and_delete_endpoint_by_name_retries_resource_deletion_on_failure(
-    _show_logs, _cleanup_logs, session
+    _show_logs, _cleanup_logs, _delete_schedules_associated_with_endpoint, session
 ):
     session.delete_endpoint = Mock(
         side_effect=ClientError(
@@ -156,8 +176,13 @@ def test_timeout_and_delete_endpoint_by_name_retries_resource_deletion_on_failur
 
 @patch("tests.integ.timeout._show_logs", return_value=None, autospec=True)
 @patch("tests.integ.timeout._cleanup_logs", return_value=None, autospec=True)
+@patch(
+    "tests.integ.timeout._delete_schedules_associated_with_endpoint",
+    return_value=None,
+    autospec=True,
+)
 def test_timeout_and_delete_model_with_transformer_fails_when_method_throws_exception(
-    _show_logs, _cleanup_logs, session, transformer
+    _show_logs, _cleanup_logs, _delete_schedules_associated_with_endpoint, session, transformer
 ):
     with pytest.raises(ValueError) as exception:
         with timeout_and_delete_model_with_transformer(
@@ -174,8 +199,13 @@ def test_timeout_and_delete_model_with_transformer_fails_when_method_throws_exce
 
 @patch("tests.integ.timeout._show_logs", return_value=None, autospec=True)
 @patch("tests.integ.timeout._cleanup_logs", return_value=None, autospec=True)
+@patch(
+    "tests.integ.timeout._delete_schedules_associated_with_endpoint",
+    return_value=None,
+    autospec=True,
+)
 def test_timeout_and_delete_model_with_transformer_throws_timeout_exception_when_method_times_out(
-    _show_logs, _cleanup_logs, session, transformer
+    _show_logs, _cleanup_logs, _delete_schedules_associated_with_endpoint, session, transformer
 ):
     with pytest.raises(stopit.utils.TimeoutException):
         with timeout_and_delete_model_with_transformer(
@@ -191,8 +221,13 @@ def test_timeout_and_delete_model_with_transformer_throws_timeout_exception_when
 
 @patch("tests.integ.timeout._show_logs", return_value=None, autospec=True)
 @patch("tests.integ.timeout._cleanup_logs", return_value=None, autospec=True)
+@patch(
+    "tests.integ.timeout._delete_schedules_associated_with_endpoint",
+    return_value=None,
+    autospec=True,
+)
 def test_timeout_and_delete_model_with_transformer_does_not_throw_when_method_ends_gracefully(
-    _show_logs, _cleanup_logs, session, transformer
+    _show_logs, _cleanup_logs, _delete_schedules_associated_with_endpoint, session, transformer
 ):
     with timeout_and_delete_model_with_transformer(
         sagemaker_session=session,
@@ -208,8 +243,13 @@ def test_timeout_and_delete_model_with_transformer_does_not_throw_when_method_en
 
 @patch("tests.integ.timeout._show_logs", return_value=None, autospec=True)
 @patch("tests.integ.timeout._cleanup_logs", return_value=None, autospec=True)
+@patch(
+    "tests.integ.timeout._delete_schedules_associated_with_endpoint",
+    return_value=None,
+    autospec=True,
+)
 def test_timeout_and_delete_model_with_transformer_retries_resource_deletion_on_failure(
-    _show_logs, _cleanup_logs, session, transformer
+    _show_logs, _cleanup_logs, _delete_schedules_associated_with_endpoint, session, transformer
 ):
     transformer.delete_model = Mock(
         side_effect=ClientError(

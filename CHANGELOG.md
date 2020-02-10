@@ -1,5 +1,353 @@
 # Changelog
 
+## v1.50.9.post0 (2020-02-06)
+
+### Documentation Changes
+
+ * remove labels from issue templates
+
+## v1.50.9 (2020-02-04)
+
+### Bug Fixes and Other Changes
+
+ * account for EI and version-based ECR repo naming in serving_image_uri()
+
+### Documentation Changes
+
+ * correct broken AutoML API documentation link
+ * fix MXNet version lists
+
+## v1.50.8 (2020-01-30)
+
+### Bug Fixes and Other Changes
+
+ * disable Debugger defaults in unsupported regions
+ * modify session and kms_utils to check for S3 bucket before creation
+ * update docker-compose and PyYAML dependencies
+ * enable smdebug for Horovod (MPI) training setup
+ * create lib dir for dependencies safely (only if it doesn't exist yet).
+ * create the correct session for MultiDataModel
+
+### Documentation Changes
+
+ * update links to the local mode notebooks examples.
+ * Remove outdated badges from README
+ * update links to TF notebook examples to link to script mode examples.
+ * clean up headings, verb tenses, names, etc. in MXNet overview
+ * Update SageMaker operator Helm chart installation guide
+
+### Testing and Release Infrastructure
+
+ * choose faster notebook for notebook PR build
+ * properly fail PR build if has-matching-changes fails
+ * properly fail PR build if has-matching-changes fails
+
+## v1.50.7 (2020-01-20)
+
+### Bug fixes and other changes
+
+ * do not use script for TFS when entry_point is not provided
+ * remove usage of pkg_resources
+ * update py2 warning message since python 2 is deprecated
+ * cleanup experiments, trials, and trial components in integ tests
+
+## v1.50.6.post0 (2020-01-20)
+
+### Documentation changes
+
+ * add additional information to Transformer class transform function doc string
+
+## v1.50.6 (2020-01-18)
+
+### Bug fixes and other changes
+
+ * Append serving to model framework name for PyTorch, MXNet, and TensorFlow
+
+## v1.50.5 (2020-01-17)
+
+### Bug fixes and other changes
+
+ * Use serving_image_uri for Airflow
+
+### Documentation changes
+
+ * revise Processing docstrings for formatting and class links
+ * Add processing readthedocs
+
+## v1.50.4 (2020-01-16)
+
+### Bug fixes and other changes
+
+ * Remove version number from default version comment
+ * remove remaining instances of python-dateutil pin
+ * upgrade boto3 and remove python-dateutil pin
+
+### Documentation changes
+
+ * Add issue templates and configure issue template chooser
+ * Update error type in delete_endpoint docstring
+ * add version requirement for using "requirements.txt" when serving an MXNet model
+ * update container dependency versions for MXNet and PyTorch
+ * Update supported versions of PyTorch
+
+## v1.50.3 (2020-01-15)
+
+### Bug fixes and other changes
+
+ * ignore private Automatic Model Tuning hyperparameter when attaching AlgorithmEstimator
+
+### Documentation changes
+
+ * add Debugger API docs
+
+## v1.50.2 (2020-01-14)
+
+### Bug fixes and other changes
+
+ * add tests to quick canary
+ * honor 'wait' flag when updating endpoint
+ * add default framework version warning message in Model classes
+ * Adding role arn explanation for sagemaker role
+ * allow predictor to be returned from AutoML.deploy()
+ * add PR checklist item about unique_name_from_base()
+ * use unique_name_from_base for multi-algo tuning test
+ * update copyright year in license header
+
+### Documentation changes
+
+ * add version requirement for using "requirement.txt" when serving a PyTorch model
+ * add SageMaker Debugger overview
+ * clarify requirements.txt usage for Chainer, MXNet, and Scikit-learn
+ * change "associate" to "create" for OpenID connector
+ * fix typo and improve clarity on installing packages via "requirements.txt"
+
+## v1.50.1 (2020-01-07)
+
+### Bug fixes and other changes
+
+ * fix PyTorchModel deployment crash on Windows
+ * make PyTorch empty framework_version warning include the latest PyTorch version
+
+## v1.50.0 (2020-01-06)
+
+### Features
+
+ * allow disabling debugger_hook_config
+
+### Bug fixes and other changes
+
+ * relax urllib3 and requests restrictions.
+ * Add uri as return statement for upload_string_as_file_body
+ * refactor logic in fw_utils and fill in docstrings
+ * increase poll from 5 to 30 for DescribeEndpoint lambda.
+ * fix test_auto_ml tests for regions without ml.c4.xlarge hosts.
+ * fix test_processing for regions without m4.xlarge instances.
+ * reduce test's describe frequency to eliminate throttling error.
+ * Increase number of retries when describing an endpoint since tf-2.0 has larger images and takes longer to start.
+
+### Documentation changes
+
+ * generalize Model Monitor documentation from SageMaker Studio tutorial
+
+## v1.49.0 (2019-12-23)
+
+### Features
+
+ * Add support for TF-2.0.0.
+ * create ProcessingJob from ARN and from name
+
+### Bug fixes and other changes
+
+ * Make tf tests tf-1.15 and tf-2.0 compatible.
+
+### Documentation changes
+
+ * add Model Monitor documentation
+ * add link to Amazon algorithm estimator parent class to clarify **kwargs
+
+## v1.48.1 (2019-12-18)
+
+### Bug fixes and other changes
+
+ * use name_from_base in auto_ml.py but unique_name_from_base in tests.
+ * make test's custom bucket include region and account name.
+ * add Keras to the list of Neo-supported frameworks
+
+### Documentation changes
+
+ * add link to parent classes to clarify **kwargs
+ * add link to framework-related parent classes to clarify **kwargs
+
+## v1.48.0 (2019-12-17)
+
+### Features
+
+ * allow setting the default bucket in Session
+
+### Bug fixes and other changes
+
+ * set integration test parallelization to 512
+ * shorten base job name to avoid collision
+ * multi model integration test to create ECR repo with unique names to allow independent parallel executions
+
+## v1.47.1 (2019-12-16)
+
+### Bug fixes and other changes
+
+ * Revert "feature: allow setting the default bucket in Session (#1168)"
+
+### Documentation changes
+
+ * add AutoML README
+ * add missing classes to API docs
+
+## v1.47.0 (2019-12-13)
+
+### Features
+
+ * allow setting the default bucket in Session
+
+### Bug fixes and other changes
+
+ * allow processing users to run code in s3
+
+## v1.46.0 (2019-12-12)
+
+### Features
+
+ * support Multi-Model endpoints
+
+### Bug fixes and other changes
+
+ * update PR template with items about tests, regional endpoints, and API docs
+
+## v1.45.2 (2019-12-10)
+
+### Bug fixes and other changes
+
+ * modify schedule cleanup to abide by latest validations
+ * lower log level when getting execution role from a SageMaker Notebook
+ * Fix "ValueError: too many values to unpack (expected 2)" is occurred in windows local mode
+ * allow ModelMonitor and Processor to take IAM role names (in addition to ARNs)
+
+### Documentation changes
+
+ * mention that the entry_point needs to be named inference.py for tfs
+
+## v1.45.1 (2019-12-06)
+
+### Bug fixes and other changes
+
+ * create auto ml job for tests that based on existing job
+ * fixing py2 support for latest TF version
+ * fix tags in deploy call for generic estimators
+ * make multi algo integration test assertion less specific
+
+## v1.45.0 (2019-12-04)
+
+### Features
+
+ * add support for TF 1.15.0, PyTorch 1.3.1 and MXNet 1.6rc0.
+ * add S3Downloader.list(s3_uri) functionality
+ * introduce SageMaker AutoML
+ * wrap up Processing feature
+ * add a few minor features to Model Monitoring
+ * add enable_sagemaker_metrics flag
+ * Amazon SageMaker Model Monitoring
+ * add utils.generate_tensorboard_url function
+ * Add jobs list to Estimator
+
+### Bug fixes and other changes
+
+ * remove unnecessary boto model files
+ * update boto version to >=1.10.32
+ * correct Debugger tests
+ * fix bug in monitor.attach() for empty network_config
+ * Import smdebug_rulesconfig from PyPI
+ * bump the version to 1.45.0 (publishes 1.46.0) for re:Invent-2019
+ * correct AutoML imports and expose current_job_name
+ * correct Model Monitor eu-west-3 image name.
+ * use DLC prod images
+ * remove unused env variable for Model Monitoring
+ * aws model update
+ * rename get_debugger_artifacts to latest_job_debugger_artifacts
+ * remove retain flag from update_endpoint
+ * correct S3Downloader behavior
+ * consume smdebug_ruleconfig .whl for ITs
+ * disable DebuggerHook and Rules for TF distributions
+ * incorporate smdebug_ruleconfigs pkg until availability in PyPI
+ * remove pre/post scripts per latest validations
+ * update rules_config .whl
+ * remove py_version from SKLearnProcessor
+ * AutoML improvements
+ * stop overwriting custom rules volume and type
+ * fix tests due to latest server-side validations
+ * Minor processing changes
+ * minor processing changes (instance_count + docs)
+ * update api to latest
+ * Eureka master
+ * Add support for xgboost version 0.90-2
+ * SageMaker Debugger revision
+ * Add support for SageMaker Debugger [WIP]
+ * Fix linear learner crash when num_class is string and predict type is `multiclass_classifier`
+ * Additional Processing Jobs integration tests
+ * Migrate to updated Processing Jobs API
+ * Processing Jobs revision round 2
+ * Processing Jobs revision
+ * remove instance_pools parameter from tuner
+ * Multi-Algorithm Hyperparameter Tuning Support
+ * Import Processors in init files
+ * Remove SparkML Processors and corresponding unit tests
+ * Processing Jobs Python SDK support
+
+## v1.44.4 (2019-12-02)
+
+### Bug fixes and other changes
+
+ * Documentation for Amazon Sagemaker Operators
+
+## v1.44.3 (2019-11-26)
+
+### Bug fixes and other changes
+
+ * move sagemaker config loading to LocalSession since it is only used for local code support.
+
+### Documentation changes
+
+ * fix docstring wording.
+
+## v1.44.2 (2019-11-25)
+
+### Bug fixes and other changes
+
+ * add pyyaml dependencies to the required list.
+
+### Documentation changes
+
+ * Correct info on code_location parameter
+
+## v1.44.1 (2019-11-21)
+
+### Bug fixes and other changes
+
+ * Remove local mode dependencies from required.
+
+## v1.44.0 (2019-11-21)
+
+### Features
+
+ * separating sagemaker dependencies into more use case specific installable components.
+
+### Bug fixes and other changes
+
+ * remove docker-compose as a required dependency.
+
+## v1.43.5 (2019-11-18)
+
+### Bug fixes and other changes
+
+ * remove red from possible colors when streaming logs
+
 ## v1.43.4.post1 (2019-10-29)
 
 ### Documentation changes

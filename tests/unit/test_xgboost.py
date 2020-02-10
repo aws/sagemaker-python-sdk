@@ -1,4 +1,4 @@
-# Copyright 2017-2018 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright 2017-2020 Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -48,6 +48,12 @@ ENDPOINT_DESC = {"EndpointConfigName": "test-endpoint"}
 ENDPOINT_CONFIG_DESC = {"ProductionVariants": [{"ModelName": "model-1"}, {"ModelName": "model-2"}]}
 
 LIST_TAGS_RESULT = {"Tags": [{"Key": "TagtestKey", "Value": "TagtestValue"}]}
+
+EXPERIMENT_CONFIG = {
+    "ExperimentName": "exp",
+    "TrialName": "trial",
+    "TrialComponentDisplayName": "tc",
+}
 
 
 @pytest.fixture()
@@ -134,6 +140,11 @@ def _create_train_job(version, instance_count=1):
         "metric_definitions": None,
         "tags": None,
         "vpc_config": None,
+        "experiment_config": None,
+        "debugger_hook_config": {
+            "CollectionConfigurations": [],
+            "S3OutputPath": "s3://{}/".format(BUCKET_NAME),
+        },
     }
 
 
@@ -170,7 +181,7 @@ def test_create_model(sagemaker_session):
         entry_point=SCRIPT_PATH,
         framework_version=XGBOOST_LATEST_VERSION,
     )
-    default_image_uri = _get_full_cpu_image_uri("0.90-1")
+    default_image_uri = _get_full_cpu_image_uri(XGBOOST_LATEST_VERSION)
     model_values = xgboost_model.prepare_container_def(CPU)
     assert model_values["Image"] == default_image_uri
 
@@ -276,7 +287,7 @@ def test_xgboost(strftime, sagemaker_session, xgboost_version):
 
     inputs = "s3://mybucket/train"
 
-    xgboost.fit(inputs=inputs)
+    xgboost.fit(inputs=inputs, experiment_config=EXPERIMENT_CONFIG)
 
     sagemaker_call_names = [c[0] for c in sagemaker_session.method_calls]
     assert sagemaker_call_names == ["train", "logs_for_job"]
@@ -285,6 +296,7 @@ def test_xgboost(strftime, sagemaker_session, xgboost_version):
 
     expected_train_args = _create_train_job(xgboost_version)
     expected_train_args["input_config"][0]["DataSource"]["S3DataSource"]["S3Uri"] = inputs
+    expected_train_args["experiment_config"] = EXPERIMENT_CONFIG
 
     actual_train_args = sagemaker_session.method_calls[0][2]
     assert actual_train_args == expected_train_args
@@ -522,3 +534,30 @@ def test_attach_custom_image(sagemaker_session):
     with pytest.raises(TypeError) as error:
         XGBoost.attach(training_job_name="neo", sagemaker_session=sagemaker_session)
     assert "expected string" in str(error)
+
+
+def test_py2_xgboost_attribute_error(sagemaker_session):
+    with pytest.raises(AttributeError) as error1:
+        XGBoost(
+            entry_point=SCRIPT_PATH,
+            role=ROLE,
+            framework_version=XGBOOST_LATEST_VERSION,
+            sagemaker_session=sagemaker_session,
+            train_instance_type=INSTANCE_TYPE,
+            train_instance_count=1,
+            py_version="py2",
+        )
+
+    with pytest.raises(AttributeError) as error2:
+        XGBoostModel(
+            model_data=DATA_DIR,
+            role=ROLE,
+            sagemaker_session=sagemaker_session,
+            entry_point=SCRIPT_PATH,
+            framework_version=XGBOOST_LATEST_VERSION,
+            py_version="py2",
+        )
+
+    error_message = "XGBoost container does not support Python 2, please use Python 3"
+    assert error_message in str(error1)
+    assert error_message in str(error2)

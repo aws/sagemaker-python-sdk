@@ -1,4 +1,4 @@
-# Copyright 2018 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright 2018-2020 Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -165,6 +165,12 @@ class Model(sagemaker.model.FrameworkModel):
                 SageMaker ``Session``. If specified, ``deploy()`` returns the
                 result of invoking this function on the created endpoint name.
             **kwargs: Keyword arguments passed to the ``Model`` initializer.
+
+        .. tip::
+
+            You can find additional parameters for initializing this class at
+            :class:`~sagemaker.model.FrameworkModel` and
+            :class:`~sagemaker.model.Model`.
         """
         super(Model, self).__init__(
             model_data=model_data,
@@ -187,6 +193,7 @@ class Model(sagemaker.model.FrameworkModel):
         tags=None,
         kms_key=None,
         wait=True,
+        data_capture_config=None,
     ):
 
         if accelerator_type and not self._eia_supported():
@@ -194,14 +201,15 @@ class Model(sagemaker.model.FrameworkModel):
 
             raise AttributeError(msg)
         return super(Model, self).deploy(
-            initial_instance_count,
-            instance_type,
-            accelerator_type,
-            endpoint_name,
-            update_endpoint,
-            tags,
-            kms_key,
-            wait,
+            initial_instance_count=initial_instance_count,
+            instance_type=instance_type,
+            accelerator_type=accelerator_type,
+            endpoint_name=endpoint_name,
+            update_endpoint=update_endpoint,
+            tags=tags,
+            kms_key=kms_key,
+            wait=wait,
+            data_capture_config=data_capture_config,
         )
 
     def _eia_supported(self):
@@ -267,3 +275,22 @@ class Model(sagemaker.model.FrameworkModel):
             self._framework_version,
             accelerator_type=accelerator_type,
         )
+
+    def serving_image_uri(
+        self, region_name, instance_type, accelerator_type=None
+    ):  # pylint: disable=unused-argument
+        """Create a URI for the serving image.
+
+        Args:
+            region_name (str): AWS region where the image is uploaded.
+            instance_type (str): SageMaker instance type. Used to determine device type
+                (cpu/gpu/family-specific optimized).
+            accelerator_type (str): The Elastic Inference accelerator type to
+                deploy to the instance for loading and making inferences to the
+                model (default: None). For example, 'ml.eia1.medium'.
+
+        Returns:
+            str: The appropriate image URI based on the given parameters.
+
+        """
+        return self._get_image_uri(instance_type=instance_type, accelerator_type=accelerator_type)

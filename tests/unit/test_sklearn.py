@@ -1,4 +1,4 @@
-# Copyright 2017-2019 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright 2017-2020 Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -47,6 +47,12 @@ ENDPOINT_DESC = {"EndpointConfigName": "test-endpoint"}
 ENDPOINT_CONFIG_DESC = {"ProductionVariants": [{"ModelName": "model-1"}, {"ModelName": "model-2"}]}
 
 LIST_TAGS_RESULT = {"Tags": [{"Key": "TagtestKey", "Value": "TagtestValue"}]}
+
+EXPERIMENT_CONFIG = {
+    "ExperimentName": "exp",
+    "TrialName": "trial",
+    "TrialComponentDisplayName": "tc",
+}
 
 
 @pytest.fixture()
@@ -130,6 +136,11 @@ def _create_train_job(version):
         "metric_definitions": None,
         "tags": None,
         "vpc_config": None,
+        "experiment_config": None,
+        "debugger_hook_config": {
+            "CollectionConfigurations": [],
+            "S3OutputPath": "s3://{}/".format(BUCKET_NAME),
+        },
     }
 
 
@@ -285,7 +296,7 @@ def test_sklearn(strftime, sagemaker_session, sklearn_version):
 
     inputs = "s3://mybucket/train"
 
-    sklearn.fit(inputs=inputs)
+    sklearn.fit(inputs=inputs, experiment_config=EXPERIMENT_CONFIG)
 
     sagemaker_call_names = [c[0] for c in sagemaker_session.method_calls]
     assert sagemaker_call_names == ["train", "logs_for_job"]
@@ -294,6 +305,7 @@ def test_sklearn(strftime, sagemaker_session, sklearn_version):
 
     expected_train_args = _create_train_job(sklearn_version)
     expected_train_args["input_config"][0]["DataSource"]["S3DataSource"]["S3Uri"] = inputs
+    expected_train_args["experiment_config"] = EXPERIMENT_CONFIG
 
     actual_train_args = sagemaker_session.method_calls[0][2]
     assert actual_train_args == expected_train_args
@@ -528,3 +540,33 @@ def test_attach_custom_image(sagemaker_session):
     estimator = SKLearn.attach(training_job_name="neo", sagemaker_session=sagemaker_session)
     assert estimator.image_name == training_image
     assert estimator.train_image() == training_image
+
+
+@patch("sagemaker.sklearn.estimator.python_deprecation_warning")
+def test_estimator_py2_warning(warning, sagemaker_session):
+    estimator = SKLearn(
+        entry_point=SCRIPT_PATH,
+        role=ROLE,
+        sagemaker_session=sagemaker_session,
+        train_instance_count=INSTANCE_COUNT,
+        train_instance_type=INSTANCE_TYPE,
+        py_version="py2",
+    )
+
+    assert estimator.py_version == "py2"
+    warning.assert_called_with(estimator.__framework_name__, defaults.LATEST_PY2_VERSION)
+
+
+@patch("sagemaker.sklearn.model.python_deprecation_warning")
+def test_model_py2_warning(warning, sagemaker_session):
+    source_dir = "s3://mybucket/source"
+
+    model = SKLearnModel(
+        model_data=source_dir,
+        role=ROLE,
+        entry_point=SCRIPT_PATH,
+        sagemaker_session=sagemaker_session,
+        py_version="py2",
+    )
+    assert model.py_version == "py2"
+    warning.assert_called_with(model.__framework_name__, defaults.LATEST_PY2_VERSION)

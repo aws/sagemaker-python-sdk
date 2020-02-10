@@ -1,4 +1,4 @@
-# Copyright 2017-2019 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright 2017-2020 Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -58,6 +58,14 @@ class _Job(object):
     @abstractmethod
     def wait(self):
         """Wait for the Amazon SageMaker job to finish."""
+
+    @abstractmethod
+    def describe(self):
+        """Describe the job."""
+
+    @abstractmethod
+    def stop(self):
+        """Stop the job."""
 
     @staticmethod
     def _load_config(inputs, estimator, expand_role=True, validate_uri=True):
@@ -169,16 +177,32 @@ class _Job(object):
         return channel_config
 
     @staticmethod
-    def _format_string_uri_input(uri_input, validate_uri=True, content_type=None, input_mode=None):
+    def _format_string_uri_input(
+        uri_input,
+        validate_uri=True,
+        content_type=None,
+        input_mode=None,
+        compression=None,
+        target_attribute_name=None,
+    ):
         """
         Args:
             uri_input:
             validate_uri:
             content_type:
             input_mode:
+            compression:
+            target_attribute_name:
         """
         if isinstance(uri_input, str) and validate_uri and uri_input.startswith("s3://"):
-            return s3_input(uri_input, content_type=content_type, input_mode=input_mode)
+            s3_input_result = s3_input(
+                uri_input,
+                content_type=content_type,
+                input_mode=input_mode,
+                compression=compression,
+                target_attribute_name=target_attribute_name,
+            )
+            return s3_input_result
         if isinstance(uri_input, str) and validate_uri and uri_input.startswith("file://"):
             return file_input(uri_input)
         if isinstance(uri_input, str) and validate_uri:
@@ -187,7 +211,14 @@ class _Job(object):
                 '"file://"'.format(uri_input)
             )
         if isinstance(uri_input, str):
-            return s3_input(uri_input, content_type=content_type, input_mode=input_mode)
+            s3_input_result = s3_input(
+                uri_input,
+                content_type=content_type,
+                input_mode=input_mode,
+                compression=compression,
+                target_attribute_name=target_attribute_name,
+            )
+            return s3_input_result
         if isinstance(uri_input, (s3_input, file_input, FileSystemInput)):
             return uri_input
 

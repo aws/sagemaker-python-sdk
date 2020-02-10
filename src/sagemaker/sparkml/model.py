@@ -1,4 +1,4 @@
-# Copyright 2017-2018 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright 2017-2020 Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -83,7 +83,13 @@ class SparkMLModel(Model):
                 AWS services needed. If not specified, the estimator creates one
                 using the default AWS configuration chain. For local mode,
                 please do not pass this variable.
-            **kwargs:
+            **kwargs: Additional parameters passed to the
+                :class:`~sagemaker.model.Model` constructor.
+
+        .. tip::
+
+            You can find additional parameters for initializing this class at
+            :class:`~sagemaker.model.Model`.
         """
         # For local mode, sagemaker_session should be passed as None but we need a session to get
         # boto_region_name

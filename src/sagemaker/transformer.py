@@ -1,4 +1,4 @@
-# Copyright 2018 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright 2018-2020 Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -68,8 +68,8 @@ class Transformer(object):
             max_payload (int): Maximum size of the payload in a single HTTP
                 request to the container in MB.
             tags (list[dict]): List of tags for labeling a transform job
-                (default: None). For more, see
-                https://docs.aws.amazon.com/sagemaker/latest/dg/API_Tag.html.
+                (default: None). For more, see the SageMaker API documentation for
+                `Tag <https://docs.aws.amazon.com/sagemaker/latest/dg/API_Tag.html>`_.
             env (dict): Environment variables to be set for use during the
                 transform job (default: None).
             base_transform_job_name (str): Prefix for the transform job when the
@@ -119,6 +119,7 @@ class Transformer(object):
         input_filter=None,
         output_filter=None,
         join_source=None,
+        experiment_config=None,
         wait=False,
         logs=False,
     ):
@@ -145,17 +146,31 @@ class Transformer(object):
             input_filter (str): A JSONPath to select a portion of the input to
                 pass to the algorithm container for inference. If you omit the
                 field, it gets the value '$', representing the entire input.
-                For more information, see https://docs.aws.amazon.com/sagemaker/latest/dg/API_CreateTransformJob.html.
+                For CSV data, each row is taken as a JSON array,
+                so only index-based JSONPaths can be applied, e.g. $[0], $[1:].
+                CSV data should follow the `RFC format <https://tools.ietf.org/html/rfc4180>`_.
+                See `Supported JSONPath Operators
+                <https://docs.aws.amazon.com/sagemaker/latest/dg/batch-transform-data-processing.html#data-processing-operators>`_
+                for a table of supported JSONPath operators.
+                For more information, see the SageMaker API documentation for
+                `CreateTransformJob
+                <https://docs.aws.amazon.com/sagemaker/latest/dg/API_CreateTransformJob.html>`_.
                 Some examples: "$[1:]", "$.features" (default: None).
             output_filter (str): A JSONPath to select a portion of the
                 joined/original output to return as the output.
-                For more information, see https://docs.aws.amazon.com/sagemaker/latest/dg/API_CreateTransformJob.html.
+                For more information, see the SageMaker API documentation for
+                `CreateTransformJob
+                <https://docs.aws.amazon.com/sagemaker/latest/dg/API_CreateTransformJob.html>`_.
                 Some examples: "$[1:]", "$.prediction" (default: None).
             join_source (str): The source of data to be joined to the transform
                 output. It can be set to 'Input' meaning the entire input record
                 will be joined to the inference result. You can use OutputFilter
                 to select the useful portion before uploading to S3. (default:
                 None). Valid values: Input, None.
+            experiment_config (dict[str, str]): Experiment management configuration.
+                Dictionary contains three optional keys,
+                'ExperimentName', 'TrialName', and 'TrialComponentDisplayName'.
+                (default: ``None``).
             wait (bool): Whether the call should wait until the job completes
                 (default: True).
             logs (bool): Whether to show the logs produced by the job.
@@ -191,6 +206,7 @@ class Transformer(object):
             input_filter,
             output_filter,
             join_source,
+            experiment_config,
         )
 
         if wait:
@@ -324,6 +340,7 @@ class _TransformJob(_Job):
         input_filter,
         output_filter,
         join_source,
+        experiment_config,
     ):
         """
         Args:
@@ -336,6 +353,7 @@ class _TransformJob(_Job):
             input_filter:
             output_filter:
             join_source:
+            experiment_config:
         """
         config = _TransformJob._load_config(
             data, data_type, content_type, compression_type, split_type, transformer
@@ -354,6 +372,7 @@ class _TransformJob(_Job):
             input_config=config["input_config"],
             output_config=config["output_config"],
             resource_config=config["resource_config"],
+            experiment_config=experiment_config,
             tags=transformer.tags,
             data_processing=data_processing,
         )

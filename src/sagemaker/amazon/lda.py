@@ -1,4 +1,4 @@
-# Copyright 2017-2018 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright 2017-2020 Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -106,6 +106,12 @@ class LDA(AmazonAlgorithmEstimatorBase):
             tol (float): Optional. Target error tolerance for the ALS phase of
                 the algorithm.
             **kwargs: base class keyword argument values.
+
+        .. tip::
+
+            You can find additional parameters for initializing this class at
+            :class:`~sagemaker.estimator.amazon_estimator.AmazonAlgorithmEstimatorBase` and
+            :class:`~sagemaker.estimator.EstimatorBase`.
         """
         # this algorithm only supports single instance training
         if kwargs.pop("train_instance_count", 1) != 1:

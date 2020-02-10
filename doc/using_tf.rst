@@ -20,7 +20,7 @@ For general information about using the SageMaker Python SDK, see :ref:`overview
 
 .. contents::
 
-Supported versions of TensorFlow for Elastic Inference: ``1.11.0``, ``1.12.0``.
+Supported versions of TensorFlow for Elastic Inference: ``1.11``, ``1.12``, ``1.13``, ``1.14``.
 
 
 *****************************
@@ -91,9 +91,9 @@ is good practice.
 Note that SageMaker doesn't support argparse actions.
 For example, if you want to use a boolean hyperparameter, specify ``type`` as ``bool`` in your script and provide an explicit ``True`` or ``False`` value for this hyperparameter when you create the TensorFlow estimator.
 
-For a complete example of a TensorFlow training script, see `mnist.py <https://github.com/awslabs/amazon-sagemaker-examples/blob/master/sagemaker-python-sdk/tensorflow_distributed_mnist/mnist.py>`__.
+For a complete example of a TensorFlow training script, see `mnist.py <https://github.com/awslabs/amazon-sagemaker-examples/blob/master/sagemaker-python-sdk/tensorflow_script_mode_training_and_serving/mnist.py>`__.
 
-   
+
 Adapting your local TensorFlow script
 -------------------------------------
 
@@ -181,7 +181,7 @@ Required arguments
 
   - ``str``: An S3 URI, for example ``s3://my-bucket/my-training-data``, which indicates the dataset's location.
   - ``dict[str, str]``: A dictionary mapping channel names to S3 locations, for example ``{'train': 's3://my-bucket/my-training-data/train', 'test': 's3://my-bucket/my-training-data/test'}``
-  - ``sagemaker.session.s3_input``: channel configuration for S3 data sources that can provide additional information as well as the path to the training dataset. See `the API docs <https://sagemaker.readthedocs.io/en/stable/session.html#sagemaker.session.s3_input>`_ for full details.
+  - ``sagemaker.session.s3_input``: channel configuration for S3 data sources that can provide additional information as well as the path to the training dataset. See `the API docs <https://sagemaker.readthedocs.io/en/stable/inputs.html#sagemaker.inputs.s3_input>`_ for full details.
 
 Optional arguments
 ------------------
@@ -360,7 +360,7 @@ Training with MKL-DNN disabled
 SageMaker TensorFlow CPU images use TensorFlow built with Intel® MKL-DNN optimization.
 
 In certain cases you might be able to get a better performance by disabling this optimization
-(`for example when using small models <https://github.com/awslabs/amazon-sagemaker-examples/blob/d88d1c19861fb7733941969f5a68821d9da2982e/sagemaker-python-sdk/tensorflow_iris_dnn_classifier_using_estimators/iris_dnn_classifier.py#L7-L9>`_)
+(for example when using small models).
 
 You can disable MKL-DNN optimization for TensorFlow ``1.8.0`` and above by setting two following environment variables:
 
@@ -593,7 +593,7 @@ The following content formats are supported without custom intput and output han
 For detailed information about how TensorFlow Serving formats these data types for input and output, see :ref:`using_tf:TensorFlow Serving Input and Output`.
 
 You can also accept any custom data format by writing input and output functions, and include them in the ``inference.py`` file in your model.
-For information, see :ref:`using_tf:Create Python Scripts for Custom Input and Output Formats`. 
+For information, see :ref:`using_tf:Create Python Scripts for Custom Input and Output Formats`.
 
 
 TensorFlow Serving Input and Output
@@ -723,7 +723,8 @@ JSON options instead.
 Create Python Scripts for Custom Input and Output Formats
 ---------------------------------------------------------
 
-You can add your customized Python code to process your input and output data:
+You can add your customized Python code to process your input and output data.
+This customized Python code must be named ``inference.py`` and specified through the ``entry_point`` parameter:
 
 .. code::
 
@@ -736,8 +737,9 @@ You can add your customized Python code to process your input and output data:
 How to implement the pre- and/or post-processing handler(s)
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Your entry point file should implement either a pair of ``input_handler``
-   and ``output_handler`` functions or a single ``handler`` function.
+Your entry point file must be named ``inference.py`` and should implement
+   either a pair of ``input_handler`` and ``output_handler`` functions or
+   a single ``handler`` function.
    Note that if ``handler`` function is implemented, ``input_handler``
    and ``output_handler`` are ignored.
 
@@ -905,6 +907,7 @@ processing. There are 2 ways to do this:
                   model_data='s3://mybucket/model.tar.gz',
                   role='MySageMakerRole')
 
+For more information, see: https://github.com/aws/sagemaker-tensorflow-serving-container#prepost-processing
 
 *************************************
 sagemaker.tensorflow.TensorFlow Class

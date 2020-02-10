@@ -1,4 +1,4 @@
-# Copyright 2017-2019 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright 2017-2020 Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -14,10 +14,10 @@
 from __future__ import absolute_import
 
 import logging
+import os
 import platform
 
 import boto3
-import urllib3
 from botocore.exceptions import ClientError
 
 from sagemaker.local.image import _SageMakerContainer
@@ -29,7 +29,7 @@ from sagemaker.local.entities import (
     _LocalTransformJob,
 )
 from sagemaker.session import Session
-from sagemaker.utils import get_config_value
+from sagemaker.utils import get_config_value, _module_import_error
 
 logger = logging.getLogger(__name__)
 
@@ -323,6 +323,12 @@ class LocalSagemakerRuntimeClient(object):
             config (dict): Optional configuration for this client. In particular only
                 the local port is read.
         """
+        try:
+            import urllib3
+        except ImportError as e:
+            logging.error(_module_import_error("urllib3", "Local mode", "local"))
+            raise e
+
         self.http = urllib3.PoolManager()
         self.serving_port = 8080
         self.config = config
@@ -335,6 +341,7 @@ class LocalSagemakerRuntimeClient(object):
         ContentType=None,
         Accept=None,
         CustomAttributes=None,
+        TargetModel=None,
     ):
         """
 
@@ -358,6 +365,9 @@ class LocalSagemakerRuntimeClient(object):
 
         if CustomAttributes is not None:
             headers["X-Amzn-SageMaker-Custom-Attributes"] = CustomAttributes
+
+        if TargetModel is not None:
+            headers["X-Amzn-SageMaker-Target-Model"] = TargetModel
 
         r = self.http.request("POST", url, body=Body, preload_content=False, headers=headers)
 
@@ -397,7 +407,17 @@ class LocalSession(Session):
         self.sagemaker_runtime_client = LocalSagemakerRuntimeClient(self.config)
         self.local_mode = True
 
-    def logs_for_job(self, job_name, wait=False, poll=5):
+        sagemaker_config_file = os.path.join(os.path.expanduser("~"), ".sagemaker", "config.yaml")
+        if os.path.exists(sagemaker_config_file):
+            try:
+                import yaml
+            except ImportError as e:
+                logging.error(_module_import_error("yaml", "Local mode", "local"))
+                raise e
+
+            self.config = yaml.load(open(sagemaker_config_file, "r"))
+
+    def logs_for_job(self, job_name, wait=False, poll=5, log_type="All"):
         """
 
         Args:

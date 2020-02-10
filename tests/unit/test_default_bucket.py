@@ -1,4 +1,4 @@
-# Copyright 2017-2018 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright 2017-2020 Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -26,8 +26,9 @@ DEFAULT_BUCKET_NAME = "sagemaker-{}-{}".format(REGION, ACCOUNT_ID)
 def sagemaker_session():
     boto_mock = Mock(name="boto_session", region_name=REGION)
     boto_mock.client("sts").get_caller_identity.return_value = {"Account": ACCOUNT_ID}
-    ims = sagemaker.Session(boto_session=boto_mock)
-    return ims
+    sagemaker_session = sagemaker.Session(boto_session=boto_mock)
+    sagemaker_session.boto_session.resource("s3").Bucket().creation_date = None
+    return sagemaker_session
 
 
 def test_default_bucket_s3_create_call(sagemaker_session):

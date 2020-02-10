@@ -1,4 +1,4 @@
-# Copyright 2017 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright 2017-2020 Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -14,7 +14,7 @@
 from __future__ import print_function, absolute_import
 
 from abc import ABCMeta, abstractmethod
-from collections import defaultdict
+from collections import defaultdict, OrderedDict
 import datetime
 import logging
 
@@ -22,6 +22,7 @@ from six import with_metaclass
 
 from sagemaker.session import Session
 from sagemaker.utils import DeferredError
+
 
 try:
     import pandas as pd
@@ -142,6 +143,8 @@ class HyperparameterTuningJobAnalytics(AnalyticsMetricsBase):
             out["TrainingEndTime"] = end_time
             if start_time and end_time:
                 out["TrainingElapsedTimeSeconds"] = (end_time - start_time).total_seconds()
+            if "TrainingJobDefinitionName" in training_summary:
+                out["TrainingJobDefinitionName"] = training_summary["TrainingJobDefinitionName"]
             return out
 
         # Run that helper over all the summaries.
@@ -152,11 +155,59 @@ class HyperparameterTuningJobAnalytics(AnalyticsMetricsBase):
     def tuning_ranges(self):
         """A dictionary describing the ranges of all tuned hyperparameters. The
         keys are the names of the hyperparameter, and the values are the ranges.
+
+        The output can take one of two forms:
+
+            * If the 'TrainingJobDefinition' field is present in the job description, the output
+                is a dictionary constructed from 'ParameterRanges' in
+                'HyperParameterTuningJobConfig' of the job description. The keys are the
+                parameter names, while the values are the parameter ranges.
+                Example:
+                >>> {
+                >>>     "eta": {"MaxValue": "1", "MinValue": "0", "Name": "eta"},
+                >>>     "gamma": {"MaxValue": "10", "MinValue": "0", "Name": "gamma"},
+                >>>     "iterations": {"MaxValue": "100", "MinValue": "50", "Name": "iterations"},
+                >>>     "num_layers": {"MaxValue": "30", "MinValue": "5", "Name": "num_layers"},
+                >>> }
+            * If the 'TrainingJobDefinitions' field (list) is present in the job description,
+                the output is a dictionary with keys as the 'DefinitionName' values from
+                all items in 'TrainingJobDefinitions', and each value would be a dictionary
+                constructed from 'HyperParameterRanges' in each item in 'TrainingJobDefinitions'
+                in the same format as above
+                Example:
+                >>> {
+                >>>     "estimator_1": {
+                >>>         "eta": {"MaxValue": "1", "MinValue": "0", "Name": "eta"},
+                >>>         "gamma": {"MaxValue": "10", "MinValue": "0", "Name": "gamma"},
+                >>>     },
+                >>>     "estimator_2": {
+                >>>         "framework": {"Values": ["TF", "MXNet"], "Name": "framework"},
+                >>>         "gamma": {"MaxValue": "1.0", "MinValue": "0.2", "Name": "gamma"}
+                >>>     }
+                >>> }
+
+        For more details about the 'TrainingJobDefinition' and 'TrainingJobDefinitions' fields
+        in job description, see
+        https://botocore.readthedocs.io/en/latest/reference/services/sagemaker.html#SageMaker.Client.create_hyper_parameter_tuning_job
         """
+        description = self.description()
+
+        if "TrainingJobDefinition" in description:
+            return self._prepare_parameter_ranges(
+                description["HyperParameterTuningJobConfig"]["ParameterRanges"]
+            )
+
+        return {
+            training_job_definition["DefinitionName"]: self._prepare_parameter_ranges(
+                training_job_definition["HyperParameterRanges"]
+            )
+            for training_job_definition in description["TrainingJobDefinitions"]
+        }
+
+    def _prepare_parameter_ranges(self, parameter_ranges):
+        """Convert parameter ranges a dictionary using the parameter range names as the keys"""
         out = {}
-        for _, ranges in self.description()["HyperParameterTuningJobConfig"][
-            "ParameterRanges"
-        ].items():
+        for _, ranges in parameter_ranges.items():
             for param in ranges:
                 out[param["Name"]] = param
         return out
@@ -363,3 +414,197 @@ class TrainingJobAnalytics(AnalyticsMetricsBase):
         metric_names = [md["Name"] for md in metric_definitions]
 
         return metric_names
+
+
+class ExperimentAnalytics(AnalyticsMetricsBase):
+    """Fetch trial component data and make them accessible for analytics.
+    """
+
+    MAX_TRIAL_COMPONENTS = 10000
+
+    def __init__(
+        self,
+        experiment_name=None,
+        search_expression=None,
+        sort_by=None,
+        sort_order=None,
+        metric_names=None,
+        parameter_names=None,
+        sagemaker_session=None,
+    ):
+        """Initialize a ``ExperimentAnalytics`` instance.
+
+        Args:
+            experiment_name (str, optional): Name of the experiment if you want to constrain the
+                search to only trial components belonging to an experiment.
+            search_expression (dict, optional): The search query to find the set of trial components
+                to use to populate the data frame.
+            sort_by (str, optional): The name of the resource property used to sort
+                the set of trial components.
+            sort_order(str optional): How trial components are ordered, valid values are Ascending
+                and Descending. The default is Descending.
+            metric_names (list, optional): string names of all the metrics to be shown in the
+                data frame. If not specified, all metrics will be shown of all trials.
+            parameter_names (list, optional): string names of the parameters to be shown in the
+                data frame. If not specified, all parameters will be shown of all trials.
+            sagemaker_session (sagemaker.session.Session): Session object which manages interactions
+                with Amazon SageMaker APIs and any other AWS services needed. If not specified,
+                one is created using the default AWS configuration chain.
+        """
+        sagemaker_session = sagemaker_session or Session()
+        self._sage_client = sagemaker_session.sagemaker_client
+
+        if not experiment_name and not search_expression:
+            raise ValueError("Either experiment_name or search_expression must be supplied.")
+
+        self._experiment_name = experiment_name
+        self._search_expression = search_expression
+        self._sort_by = sort_by
+        self._sort_order = sort_order
+        self._metric_names = metric_names
+        self._parameter_names = parameter_names
+        self._trial_components = None
+        super(ExperimentAnalytics, self).__init__()
+        self.clear_cache()
+
+    @property
+    def name(self):
+        """Name of the Experiment being analyzed
+        """
+        return self._experiment_name
+
+    def __repr__(self):
+        return "<sagemaker.ExperimentAnalytics for %s>" % self.name
+
+    def clear_cache(self):
+        """Clear the object of all local caches of API methods.
+        """
+        super(ExperimentAnalytics, self).clear_cache()
+        self._trial_components = None
+
+    def _reshape_parameters(self, parameters):
+        """Reshape trial component parameters to a pandas column
+        Args:
+            parameters: trial component parameters
+        Returns:
+            dict: Key: Parameter name, Value: Parameter value
+        """
+        out = OrderedDict()
+        for name, value in sorted(parameters.items()):
+            if self._parameter_names and name not in self._parameter_names:
+                continue
+            out[name] = value.get("NumberValue", value.get("StringValue"))
+        return out
+
+    def _reshape_metrics(self, metrics):
+        """Reshape trial component metrics to a pandas column
+        Args:
+            metrics: trial component metrics
+        Returns:
+            dict: Key: Metric name, Value: Metric value
+        """
+        statistic_types = ["Min", "Max", "Avg", "StdDev", "Last", "Count"]
+        out = OrderedDict()
+        for metric_summary in metrics:
+            metric_name = metric_summary["MetricName"]
+            if self._metric_names and metric_name not in self._metric_names:
+                continue
+
+            for stat_type in statistic_types:
+                stat_value = metric_summary.get(stat_type)
+                if stat_value is not None:
+                    out["{} - {}".format(metric_name, stat_type)] = stat_value
+        return out
+
+    def _reshape(self, trial_component):
+        """Reshape trial component data to pandas columns
+        Args:
+            trial_component: dict representing a trial component
+        Returns:
+            dict: Key-Value pair representing the data in the pandas dataframe
+        """
+        out = OrderedDict()
+        for attribute in ["TrialComponentName", "DisplayName"]:
+            out[attribute] = trial_component.get(attribute, "")
+
+        source = trial_component.get("Source", "")
+        if source:
+            out["SourceArn"] = source["SourceArn"]
+
+        out.update(self._reshape_parameters(trial_component.get("Parameters", [])))
+        out.update(self._reshape_metrics(trial_component.get("Metrics", [])))
+        return out
+
+    def _fetch_dataframe(self):
+        """Return a pandas dataframe with all the trial_components,
+            along with their parameters and metrics.
+        """
+        df = pd.DataFrame([self._reshape(component) for component in self._get_trial_components()])
+        return df
+
+    def _get_trial_components(self, force_refresh=False):
+        """ Get all trial components matching the given search query expression.
+
+        Args:
+            force_refresh (bool): Set to True to fetch the latest data from SageMaker API.
+
+        Returns:
+            list: List of dicts representing the trial components
+        """
+        if force_refresh:
+            self.clear_cache()
+        if self._trial_components is not None:
+            return self._trial_components
+
+        if not self._search_expression:
+            self._search_expression = {}
+
+        if self._experiment_name:
+            if not self._search_expression.get("Filters"):
+                self._search_expression["Filters"] = []
+
+            self._search_expression["Filters"].append(
+                {
+                    "Name": "Parents.ExperimentName",
+                    "Operator": "Equals",
+                    "Value": self._experiment_name,
+                }
+            )
+
+        return self._search(self._search_expression, self._sort_by, self._sort_order)
+
+    def _search(self, search_expression, sort_by, sort_order):
+        """
+        Perform a search query using SageMaker Search and return the matching trial components
+
+        Args:
+            search_expression: Search expression to filter trial components.
+            sort_by: The name of the resource property used to sort the trial components.
+            sort_order: How trial components are ordered, valid values are Ascending
+                and Descending. The default is Descending.
+        Returns:
+            list: List of dict representing trial components.
+        """
+        trial_components = []
+
+        search_args = {
+            "Resource": "ExperimentTrialComponent",
+            "SearchExpression": search_expression,
+        }
+
+        if sort_by:
+            search_args["SortBy"] = sort_by
+
+        if sort_order:
+            search_args["SortOrder"] = sort_order
+
+        while len(trial_components) < self.MAX_TRIAL_COMPONENTS:
+            search_response = self._sage_client.search(**search_args)
+            components = [result["TrialComponent"] for result in search_response["Results"]]
+            trial_components.extend(components)
+            if "NextToken" in search_response and len(components) > 0:
+                search_args["NextToken"] = search_response["NextToken"]
+            else:
+                break
+
+        return trial_components

@@ -1,4 +1,4 @@
-# Copyright 2018 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright 2018-2020 Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -15,3 +15,4 @@ from __future__ import absolute_import
 
 from sagemaker.sklearn.estimator import SKLearn  # noqa: F401
 from sagemaker.sklearn.model import SKLearnModel, SKLearnPredictor  # noqa: F401
+from sagemaker.sklearn.processing import SKLearnProcessor  # noqa: F401

@@ -8,6 +8,8 @@ SageMaker Python SDK provides several high-level abstractions for working with A
 - **Models**: Encapsulate built ML models.
 - **Predictors**: Provide real-time inference and transformation using Python data-types against a SageMaker endpoint.
 - **Session**: Provides a collection of methods for working with SageMaker resources.
+- **Transformers**: Encapsulate batch transform jobs for inference on SageMaker
+- **Processors**: Encapsulate running processing jobs for data processing on SageMaker
 
 ``Estimator`` and ``Model`` implementations for MXNet, TensorFlow, Chainer, PyTorch, scikit-learn, Amazon SageMaker built-in algorithms, Reinforcement Learning,  are included.
 There's also an ``Estimator`` that runs SageMaker compatible custom Docker containers, enabling you to run your own ML algorithms by using the SageMaker Python SDK.
@@ -661,6 +663,12 @@ For example, the ``dataframe`` method gets a pandas dataframe summarizing the as
     # Look at summary of associated training jobs
     my_dataframe = my_tuner_analytics.dataframe()
 
+You can install all necessary for this feature dependencies using pip:
+
+::
+
+    pip install 'sagemaker[analytics]' --upgrade
+
 For more detailed examples of running hyperparameter tuning jobs, see:
 
 - `Using the TensorFlow estimator with hyperparameter tuning <https://github.com/awslabs/amazon-sagemaker-examples/blob/master/hyperparameter_tuning/tensorflow_mnist/hpo_tensorflow_mnist.ipynb>`__
@@ -717,6 +725,12 @@ Local Mode
 The SageMaker Python SDK supports local mode, which allows you to create estimators and deploy them to your local environment.
 This is a great way to test your deep learning scripts before running them in SageMaker's managed training or hosting environments.
 Local Mode is supported for frameworks images (TensorFlow, MXNet, Chainer, PyTorch, and Scikit-Learn) and images you supply yourself.
+
+You can install all necessary for this feature dependencies using pip:
+
+::
+
+    pip install 'sagemaker[local]' --upgrade
 
 We can take the example in  `Using Estimators <#using-estimators>`__ , and use either ``local`` or ``local_gpu`` as the instance type.
 
@@ -804,8 +818,10 @@ Here is an end-to-end example:
 
 For detailed examples of running Docker in local mode, see:
 
-- `TensorFlow local mode example notebook <https://github.com/awslabs/amazon-sagemaker-examples/blob/master/sagemaker-python-sdk/tensorflow_distributed_mnist/tensorflow_local_mode_mnist.ipynb>`__.
-- `MXNet local mode example notebook <https://github.com/awslabs/amazon-sagemaker-examples/blob/master/sagemaker-python-sdk/mxnet_gluon_mnist/mnist_with_gluon_local_mode.ipynb>`__.
+- `TensorFlow local mode example notebook <https://github.com/awslabs/amazon-sagemaker-examples/blob/master/sagemaker-python-sdk/tensorflow_script_mode_using_shell_commands/tensorflow_script_mode_using_shell_commands.ipynb>`__.
+- `MXNet local mode CPU example notebook <https://github.com/awslabs/amazon-sagemaker-examples/blob/master/sagemaker-python-sdk/mxnet_gluon_mnist/mxnet_mnist_with_gluon_local_mode.ipynb>`__.
+- `MXNet local mode GPU example notebook <https://github.com/awslabs/amazon-sagemaker-examples/blob/master/sagemaker-python-sdk/mxnet_gluon_cifar10/mxnet_cifar10_local_mode.ipynb>`__.
+- `PyTorch local mode example notebook <https://github.com/awslabs/amazon-sagemaker-examples/blob/master/sagemaker-python-sdk/pytorch_cnn_cifar10/pytorch_local_mode_cifar10.ipynb>`__.
 
 You can also find these notebooks in the **SageMaker Python SDK** section of the **SageMaker Examples** section in a notebook instance.
 For information about using sample notebooks in a SageMaker notebook instance, see `Use Example Notebooks <https://docs.aws.amazon.com/sagemaker/latest/dg/howitworks-nbexamples.html>`__
@@ -1026,6 +1042,35 @@ You can use Apache Airflow to author, schedule and monitor SageMaker workflow.
 For more information, see `SageMaker Workflow in Apache Airflow`_.
 
 .. _SageMaker Workflow in Apache Airflow: https://github.com/aws/sagemaker-python-sdk/blob/master/src/sagemaker/workflow/README.rst
+
+**************************
+SageMaker Model Monitoring
+**************************
+You can use Amazon SageMaker Model Monitoring to automatically detect concept drift by monitoring your machine learning models.
+
+For more information, see `SageMaker Model Monitoring`_.
+
+.. _SageMaker Model Monitoring: https://github.com/aws/sagemaker-python-sdk/blob/master/doc/amazon_sagemaker_model_monitoring.rst
+
+******************
+SageMaker Debugger
+******************
+You can use Amazon SageMaker Debugger to automatically detect anomalies while training your machine learning models.
+
+For more information, see `SageMaker Debugger`_.
+
+.. _SageMaker Debugger: https://github.com/aws/sagemaker-python-sdk/blob/master/doc/amazon_sagemaker_debugger.rst
+
+********************
+SageMaker Processing
+********************
+You can use Amazon SageMaker Processing with "Processors" to perform data processing tasks such as data pre- and post-processing, feature engineering, data validation, and model evaluation
+
+.. toctree::
+    :maxdepth: 2
+
+    amazon_sagemaker_processing
+
 
 ***
 FAQ

@@ -1,4 +1,4 @@
-# Copyright 2018 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright 2018-2020 Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -16,3 +16,5 @@ from __future__ import absolute_import
 SKLEARN_NAME = "scikit-learn"
 
 SKLEARN_VERSION = "0.20.0"
+
+LATEST_PY2_VERSION = "0.20.0"
