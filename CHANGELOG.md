@@ -1,5 +1,95 @@
 # Changelog
 
+## v1.50.9.post0 (2020-02-06)
+
+### Documentation Changes
+
+ * remove labels from issue templates
+
+## v1.50.9 (2020-02-04)
+
+### Bug Fixes and Other Changes
+
+ * account for EI and version-based ECR repo naming in serving_image_uri()
+
+### Documentation Changes
+
+ * correct broken AutoML API documentation link
+ * fix MXNet version lists
+
+## v1.50.8 (2020-01-30)
+
+### Bug Fixes and Other Changes
+
+ * disable Debugger defaults in unsupported regions
+ * modify session and kms_utils to check for S3 bucket before creation
+ * update docker-compose and PyYAML dependencies
+ * enable smdebug for Horovod (MPI) training setup
+ * create lib dir for dependencies safely (only if it doesn't exist yet).
+ * create the correct session for MultiDataModel
+
+### Documentation Changes
+
+ * update links to the local mode notebooks examples.
+ * Remove outdated badges from README
+ * update links to TF notebook examples to link to script mode examples.
+ * clean up headings, verb tenses, names, etc. in MXNet overview
+ * Update SageMaker operator Helm chart installation guide
+
+### Testing and Release Infrastructure
+
+ * choose faster notebook for notebook PR build
+ * properly fail PR build if has-matching-changes fails
+ * properly fail PR build if has-matching-changes fails
+
+## v1.50.7 (2020-01-20)
+
+### Bug fixes and other changes
+
+ * do not use script for TFS when entry_point is not provided
+ * remove usage of pkg_resources
+ * update py2 warning message since python 2 is deprecated
+ * cleanup experiments, trials, and trial components in integ tests
+
+## v1.50.6.post0 (2020-01-20)
+
+### Documentation changes
+
+ * add additional information to Transformer class transform function doc string
+
+## v1.50.6 (2020-01-18)
+
+### Bug fixes and other changes
+
+ * Append serving to model framework name for PyTorch, MXNet, and TensorFlow
+
+## v1.50.5 (2020-01-17)
+
+### Bug fixes and other changes
+
+ * Use serving_image_uri for Airflow
+
+### Documentation changes
+
+ * revise Processing docstrings for formatting and class links
+ * Add processing readthedocs
+
+## v1.50.4 (2020-01-16)
+
+### Bug fixes and other changes
+
+ * Remove version number from default version comment
+ * remove remaining instances of python-dateutil pin
+ * upgrade boto3 and remove python-dateutil pin
+
+### Documentation changes
+
+ * Add issue templates and configure issue template chooser
+ * Update error type in delete_endpoint docstring
+ * add version requirement for using "requirements.txt" when serving an MXNet model
+ * update container dependency versions for MXNet and PyTorch
+ * Update supported versions of PyTorch
+
 ## v1.50.3 (2020-01-15)
 
 ### Bug fixes and other changes

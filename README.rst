@@ -6,14 +6,6 @@
 SageMaker Python SDK
 ====================
 
-.. image:: https://travis-ci.org/aws/sagemaker-python-sdk.svg?branch=master
-   :target: https://travis-ci.org/aws/sagemaker-python-sdk
-   :alt: Build Status
-
-.. image:: https://codecov.io/gh/aws/sagemaker-python-sdk/branch/master/graph/badge.svg
-   :target: https://codecov.io/gh/aws/sagemaker-python-sdk
-   :alt: CodeCov
-
 .. image:: https://img.shields.io/pypi/v/sagemaker.svg
    :target: https://pypi.python.org/pypi/sagemaker
    :alt: Latest Version
@@ -66,6 +58,7 @@ Table of Contents
 22. `SageMaker Autopilot <#sagemaker-autopilot>`__
 23. `Model Monitoring <#amazon-sagemaker-model-monitoring>`__
 24. `SageMaker Debugger <#amazon-sagemaker-debugger>`__
+25. `SageMaker Processing <#amazon-sagemaker-processing>`__
 
 
 Installing the SageMaker Python SDK
@@ -178,7 +171,7 @@ MXNet SageMaker Estimators
 
 By using MXNet SageMaker Estimators, you can train and host MXNet models on Amazon SageMaker.
 
-Supported versions of MXNet: ``0.12.1``, ``1.0.0``, ``1.1.0``, ``1.2.1``, ``1.3.0``, ``1.4.0``, ``1.4.1``.
+Supported versions of MXNet: ``0.12.1``, ``1.0.0``, ``1.1.0``, ``1.2.1``, ``1.3.0``, ``1.4.0``, ``1.4.1``, ``1.6.0``.
 
 Supported versions of MXNet for Elastic Inference: ``1.3.0``, ``1.4.0``, ``1.4.1``.
 
@@ -194,9 +187,9 @@ TensorFlow SageMaker Estimators
 
 By using TensorFlow SageMaker Estimators, you can train and host TensorFlow models on Amazon SageMaker.
 
-Supported versions of TensorFlow: ``1.4.1``, ``1.5.0``, ``1.6.0``, ``1.7.0``, ``1.8.0``, ``1.9.0``, ``1.10.0``, ``1.11.0``, ``1.12.0``, ``1.13.1``, ``1.14.``, ``1.15.0``, ``2.0.0``.
+Supported versions of TensorFlow: ``1.4.1``, ``1.5.0``, ``1.6.0``, ``1.7.0``, ``1.8.0``, ``1.9.0``, ``1.10.0``, ``1.11.0``, ``1.12.0``, ``1.13.1``, ``1.14.0``, ``1.15.0``, ``2.0.0``.
 
-Supported versions of TensorFlow for Elastic Inference: ``1.11.0``, ``1.12.0``, ``1.13.1``, ``1.14``.
+Supported versions of TensorFlow for Elastic Inference: ``1.11.0``, ``1.12.0``, ``1.13.1``, ``1.14.0``.
 
 We recommend that you use the latest supported version, because that's where we focus most of our development efforts.
 
@@ -377,3 +370,13 @@ For more information, see `Amazon SageMaker Debugger`_.
 
 .. _Amazon SageMaker Debugger: https://sagemaker.readthedocs.io/en/stable/amazon_sagemaker_debugger.html
 
+
+Amazon SageMaker Processing
+---------------------------------
+
+You can use Amazon SageMaker Processing to perform data processing tasks such as data pre- and post-processing, feature engineering, data validation, and model evaluation
+
+
+For more information, see `Amazon SageMaker Processing`_.
+
+.. _Amazon SageMaker Processing: https://sagemaker.readthedocs.io/en/stable/amazon_sagemaker_processing.html

@@ -24,7 +24,7 @@ from sagemaker.fw_utils import (
 )
 from sagemaker.model import FrameworkModel, MODEL_SERVER_WORKERS_PARAM_NAME
 from sagemaker.predictor import RealTimePredictor
-from sagemaker.tensorflow.defaults import TF_VERSION, LATEST_VERSION
+from sagemaker.tensorflow import defaults
 from sagemaker.tensorflow.predictor import tf_json_serializer, tf_json_deserializer
 
 logger = logging.getLogger("sagemaker")
@@ -111,12 +111,17 @@ class TensorFlowModel(FrameworkModel):
         )
 
         if py_version == "py2":
-            logger.warning(python_deprecation_warning(self.__framework_name__))
+            logger.warning(
+                python_deprecation_warning(self.__framework_name__, defaults.LATEST_PY2_VERSION)
+            )
+
         if framework_version is None:
-            logger.warning(empty_framework_version_warning(TF_VERSION, LATEST_VERSION))
+            logger.warning(
+                empty_framework_version_warning(defaults.TF_VERSION, defaults.LATEST_VERSION)
+            )
 
         self.py_version = py_version
-        self.framework_version = framework_version or TF_VERSION
+        self.framework_version = framework_version or defaults.TF_VERSION
         self.model_server_workers = model_server_workers
 
     def prepare_container_def(self, instance_type, accelerator_type=None):
@@ -139,13 +144,8 @@ class TensorFlowModel(FrameworkModel):
         deploy_image = self.image
         if not deploy_image:
             region_name = self.sagemaker_session.boto_region_name
-            deploy_image = create_image_uri(
-                region_name,
-                self.__framework_name__,
-                instance_type,
-                self.framework_version,
-                self.py_version,
-                accelerator_type=accelerator_type,
+            deploy_image = self.serving_image_uri(
+                region_name, instance_type, accelerator_type=accelerator_type
             )
 
         deploy_key_prefix = model_code_key_prefix(self.key_prefix, self.name, deploy_image)
@@ -157,3 +157,27 @@ class TensorFlowModel(FrameworkModel):
             deploy_env[MODEL_SERVER_WORKERS_PARAM_NAME.upper()] = str(self.model_server_workers)
 
         return sagemaker.container_def(deploy_image, self.model_data, deploy_env)
+
+    def serving_image_uri(self, region_name, instance_type, accelerator_type=None):
+        """Create a URI for the serving image.
+
+        Args:
+            region_name (str): AWS region where the image is uploaded.
+            instance_type (str): SageMaker instance type. Used to determine device type
+                (cpu/gpu/family-specific optimized).
+            accelerator_type (str): The Elastic Inference accelerator type to
+                deploy to the instance for loading and making inferences to the
+                model (default: None). For example, 'ml.eia1.medium'.
+
+        Returns:
+            str: The appropriate image URI based on the given parameters.
+
+        """
+        return create_image_uri(
+            region_name,
+            self.__framework_name__,
+            instance_type,
+            self.framework_version,
+            self.py_version,
+            accelerator_type=accelerator_type,
+        )

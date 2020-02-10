@@ -24,27 +24,6 @@ from sagemaker.transformer import Transformer
 
 LOGGER = logging.getLogger("sagemaker")
 
-NEO_ALLOWED_TARGET_INSTANCE_FAMILY = set(
-    [
-        "ml_c5",
-        "ml_m5",
-        "ml_c4",
-        "ml_m4",
-        "jetson_tx1",
-        "jetson_tx2",
-        "jetson_nano",
-        "ml_p2",
-        "ml_p3",
-        "deeplens",
-        "rasp3b",
-        "rk3288",
-        "rk3399",
-        "sbe_c",
-        "aisage",
-        "qcs603",
-        "qcs605",
-    ]
-)
 NEO_ALLOWED_FRAMEWORKS = set(["mxnet", "tensorflow", "keras", "pytorch", "onnx", "xgboost"])
 
 NEO_IMAGE_ACCOUNT = {
@@ -844,9 +823,12 @@ class FrameworkModel(Model):
                 dir_name = "/opt/ml/model/code"
             else:
                 dir_name = self.uploaded_code.s3_prefix
-        else:
+        elif self.entry_point is not None:
             script_name = self.entry_point
             dir_name = "file://" + self.source_dir
+        else:
+            script_name = None
+            dir_name = None
 
         return {
             SCRIPT_PARAM_NAME.upper(): script_name,

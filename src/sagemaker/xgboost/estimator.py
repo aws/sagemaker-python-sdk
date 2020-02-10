@@ -20,7 +20,6 @@ from sagemaker.fw_registry import default_framework_uri
 from sagemaker.fw_utils import (
     framework_name_from_image,
     framework_version_from_tag,
-    python_deprecation_warning,
     get_unsupported_framework_version_error,
     UploadedCode,
 )
@@ -32,7 +31,7 @@ from sagemaker.estimator import _TrainingJob
 
 from sagemaker.vpc_utils import VPC_CONFIG_DEFAULT
 
-from sagemaker.xgboost.defaults import XGBOOST_NAME, XGBOOST_SUPPORTED_VERSIONS
+from sagemaker.xgboost import defaults
 from sagemaker.xgboost.model import XGBoostModel
 
 logger = logging.getLogger("sagemaker")
@@ -48,7 +47,7 @@ class XGBoost(Framework):
     """Handle end-to-end training and deployment of XGBoost booster training or training using
     customer provided XGBoost entry point script."""
 
-    __framework_name__ = XGBOOST_NAME
+    __framework_name__ = defaults.XGBOOST_NAME
 
     def __init__(
         self,
@@ -83,7 +82,7 @@ class XGBoost(Framework):
                 training code.  List of supported versions
                 https://github.com/aws/sagemaker-python-sdk#xgboost-sagemaker-estimators
             source_dir (str): Path (absolute or relative) to a directory with any other training
-                source code dependencies aside from tne entry point file (default: None).
+                source code dependencies aside from the entry point file (default: None).
                 Structure within this directory are preserved when training on Amazon SageMaker.
             hyperparameters (dict): Hyperparameters that will be used for training (default: None).
                 The hyperparameters are made accessible as a dict[str, str] to the training code
@@ -112,15 +111,15 @@ class XGBoost(Framework):
         )
 
         if py_version == "py2":
-            logger.warning(python_deprecation_warning(self.__framework_name__))
+            raise AttributeError("XGBoost container does not support Python 2, please use Python 3")
         self.py_version = py_version
 
-        if framework_version in XGBOOST_SUPPORTED_VERSIONS:
+        if framework_version in defaults.XGBOOST_SUPPORTED_VERSIONS:
             self.framework_version = framework_version
         else:
             raise ValueError(
                 get_unsupported_framework_version_error(
-                    self.__framework_name__, framework_version, XGBOOST_SUPPORTED_VERSIONS
+                    self.__framework_name__, framework_version, defaults.XGBOOST_SUPPORTED_VERSIONS
                 )
             )
 

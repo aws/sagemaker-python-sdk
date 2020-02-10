@@ -41,6 +41,8 @@ required_packages = [
     "protobuf3-to-dict>=0.1.5",
     "requests>=2.20.0, <3",
     "smdebug-rulesconfig==0.1.2",
+    "importlib-metadata>=1.4.0",
+    "packaging>=20.0",
 ]
 
 # Specific use case dependencies
@@ -48,8 +50,8 @@ extras = {
     "analytics": ["pandas"],
     "local": [
         "urllib3>=1.21.1,<1.26,!=1.25.0,!=1.25.1",
-        "docker-compose>=1.23.0",
-        "PyYAML>=3.10, <5",  # PyYAML version has to match docker-compose requirements
+        "docker-compose>=1.25.2",
+        "PyYAML>=5.3, <6",  # PyYAML version has to match docker-compose requirements
     ],
     "tensorflow": ["tensorflow>=1.3.0"],
 }

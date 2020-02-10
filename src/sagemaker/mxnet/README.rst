@@ -6,7 +6,7 @@ With the SageMaker Python SDK, you can train and host MXNet models on Amazon Sag
 
 Supported versions of MXNet: ``0.12.1``, ``1.0.0``, ``1.1.0``, ``1.2.1``, ``1.3.0``, ``1.4.0``, ``1.4.1``, ``1.6.0``.
 
-Supported versions of MXNet for Elastic Inference: ``1.3.0``, ``1.4.0``, ``1.4.1``, ``1.6.0``.
+Supported versions of MXNet for Elastic Inference: ``1.3.0``, ``1.4.0``, ``1.4.1``.
 
 For information about using MXNet with the SageMaker Python SDK, see https://sagemaker.readthedocs.io/en/stable/using_mxnet.html.
 

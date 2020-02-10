@@ -23,7 +23,7 @@ from sagemaker.fw_utils import (
     python_deprecation_warning,
     is_version_equal_or_higher,
 )
-from sagemaker.mxnet.defaults import MXNET_VERSION, LATEST_VERSION
+from sagemaker.mxnet import defaults
 from sagemaker.mxnet.model import MXNetModel
 from sagemaker.vpc_utils import VPC_CONFIG_DEFAULT
 
@@ -36,7 +36,7 @@ class MXNet(Framework):
     __framework_name__ = "mxnet"
     _LOWEST_SCRIPT_MODE_VERSION = ["1", "3"]
 
-    LATEST_VERSION = LATEST_VERSION
+    LATEST_VERSION = defaults.LATEST_VERSION
 
     def __init__(
         self,
@@ -71,7 +71,7 @@ class MXNet(Framework):
                 file which should be executed as the entry point to training.
                 This should be compatible with either Python 2.7 or Python 3.5.
             source_dir (str): Path (absolute or relative) to a directory with
-                any other training source code dependencies aside from tne entry
+                any other training source code dependencies aside from the entry
                 point file (default: None). Structure within this directory are
                 preserved when training on Amazon SageMaker.
             hyperparameters (dict): Hyperparameters that will be used for
@@ -107,8 +107,10 @@ class MXNet(Framework):
             :class:`~sagemaker.estimator.EstimatorBase`.
         """
         if framework_version is None:
-            logger.warning(empty_framework_version_warning(MXNET_VERSION, self.LATEST_VERSION))
-        self.framework_version = framework_version or MXNET_VERSION
+            logger.warning(
+                empty_framework_version_warning(defaults.MXNET_VERSION, self.LATEST_VERSION)
+            )
+        self.framework_version = framework_version or defaults.MXNET_VERSION
 
         if "enable_sagemaker_metrics" not in kwargs:
             # enable sagemaker metrics for MXNet v1.6 or greater:
@@ -120,7 +122,9 @@ class MXNet(Framework):
         )
 
         if py_version == "py2":
-            logger.warning(python_deprecation_warning(self.__framework_name__))
+            logger.warning(
+                python_deprecation_warning(self.__framework_name__, defaults.LATEST_PY2_VERSION)
+            )
 
         self.py_version = py_version
         self._configure_distribution(distributions)

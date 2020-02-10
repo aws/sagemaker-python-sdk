@@ -38,10 +38,11 @@ from sagemaker.fw_utils import (
     parse_s3_url,
     UploadedCode,
     validate_source_dir,
+    _region_supports_debugger,
 )
 from sagemaker.job import _Job
 from sagemaker.local import LocalSession
-from sagemaker.model import Model, NEO_ALLOWED_TARGET_INSTANCE_FAMILY, NEO_ALLOWED_FRAMEWORKS
+from sagemaker.model import Model, NEO_ALLOWED_FRAMEWORKS
 from sagemaker.model import (
     SCRIPT_PARAM_NAME,
     DIR_PARAM_NAME,
@@ -510,11 +511,6 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):
             sagemaker.model.Model: A SageMaker ``Model`` object. See
             :func:`~sagemaker.model.Model` for full details.
         """
-        if target_instance_family not in NEO_ALLOWED_TARGET_INSTANCE_FAMILY:
-            raise ValueError(
-                "Please use valid target_instance_family,"
-                "allowed values: {}".format(NEO_ALLOWED_TARGET_INSTANCE_FAMILY)
-            )
         if framework and framework not in NEO_ALLOWED_FRAMEWORKS:
             raise ValueError(
                 "Please use valid framework, allowed values: {}".format(NEO_ALLOWED_FRAMEWORKS)
@@ -1674,7 +1670,9 @@ class Framework(EstimatorBase):
         """
         Set defaults for debugging
         """
-        if self.debugger_hook_config is None:
+        if self.debugger_hook_config is None and _region_supports_debugger(
+            self.sagemaker_session.boto_region_name
+        ):
             self.debugger_hook_config = DebuggerHookConfig(s3_output_path=self.output_path)
         elif not self.debugger_hook_config:
             self.debugger_hook_config = None

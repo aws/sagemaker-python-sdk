@@ -219,3 +219,13 @@ You can use Amazon SageMaker Debugger to automatically detect anomalies while tr
     :maxdepth: 2
 
     amazon_sagemaker_debugger
+
+***************************
+Amazon SageMaker Processing
+***************************
+You can use Amazon SageMaker Processing to perform data processing tasks such as data pre- and post-processing, feature engineering, data validation, and model evaluation
+
+.. toctree::
+    :maxdepth: 2
+
+    amazon_sagemaker_processing
