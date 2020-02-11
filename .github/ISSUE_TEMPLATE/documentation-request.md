@@ -2,7 +2,7 @@
 name: Documentation request
 about: Request improved documentation
 title: ''
-labels: 'doc update'
+labels: ''
 assignees: ''
 
 ---
