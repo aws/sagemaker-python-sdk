@@ -1,5 +1,11 @@
 # Changelog
 
+## v1.50.10 (2020-02-11)
+
+### Bug Fixes and Other Changes
+
+ * remove NEO_ALLOWED_TARGET_INSTANCE_FAMILY
+
 ## v1.50.9.post0 (2020-02-06)
 
 ### Documentation Changes
