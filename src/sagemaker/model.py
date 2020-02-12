@@ -225,7 +225,6 @@ class Model(object):
             else json.dumps(input_shape),
             "Framework": framework,
         }
-
         role = self.sagemaker_session.expand_role(role)
         output_model_config = {
             "TargetDevice": target_instance_type,
