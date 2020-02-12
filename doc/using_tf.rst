@@ -58,7 +58,7 @@ The training script is very similar to a training script you might run outside o
 
 For the exhaustive list of available environment variables, see the `SageMaker Containers documentation <https://github.com/aws/sagemaker-containers#list-of-provided-environment-variables-by-sagemaker-containers>`_.
 
-A typical training script loads data from the input channels, configures training with hyperparameters, trains a model, and saves a model to ``SM_CHANNEL_TRAIN`` so that it can be deployed for inference later.
+A typical training script loads data from the input channels, configures training with hyperparameters, trains a model, and saves a model to ``SM_MODEL_DIR`` so that it can be deployed for inference later.
 Hyperparameters are passed to your script as arguments and can be retrieved with an ``argparse.ArgumentParser`` instance.
 For example, a training script might start with the following:
 
@@ -544,7 +544,7 @@ For example:
 
   batch_output = 's3://{}/{}/results'.format(bucket, prefix) # The location to store the results
 
-  tf_transformer = tf_estimator.transformer(instance_count=1, instance_type='ml.m4.xlarge, output_path=batch_output)
+  tf_transformer = tf_estimator.transformer(instance_count=1, instance_type='ml.m4.xlarge', output_path=batch_output)
 
 To use a model trained outside of SageMaker, you can package the model as a SageMaker model, and call the ``transformer`` method of the SageMaker model.
 
@@ -557,7 +557,7 @@ For example:
 
   batch_output = 's3://{}/{}/results'.format(bucket, prefix) # The location to store the results
 
-  tf_transformer = tensorflow_serving_model.transformer(instance_count=1, instance_type='ml.m4.xlarge, output_path=batch_output)
+  tf_transformer = tensorflow_serving_model.transformer(instance_count=1, instance_type='ml.m4.xlarge', output_path=batch_output)
 
 For information about how to package a model as a SageMaker model, see :ref:`overview:BYO Model`.
 When you call the ``tranformer`` method, you specify the type and number of instances to use for the batch transform job, and the location where the results are stored in S3.
