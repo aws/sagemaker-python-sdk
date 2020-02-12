@@ -579,6 +579,8 @@ def test_compile_model_for_cloud(sagemaker_session, tmpdir):
 @patch("sagemaker.session.Session")
 @patch("sagemaker.fw_utils.tar_and_upload_dir", MagicMock())
 def test_compile_creates_session(session):
+    session.return_value.boto_region_name = "us-west-2"
+
     model = DummyFrameworkModel(sagemaker_session=None)
     model.compile(
         target_instance_family="ml_c4",
@@ -586,9 +588,10 @@ def test_compile_creates_session(session):
         output_path="s3://output",
         role="role",
         framework="tensorflow",
+        job_name="compile-model",
     )
 
-    assert model.sagemaker_sesion == session.return_value
+    assert model.sagemaker_session == session.return_value
 
 
 def test_check_neo_region(sagemaker_session, tmpdir):

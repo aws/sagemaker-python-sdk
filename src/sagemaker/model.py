@@ -116,6 +116,10 @@ class Model(object):
         self.model_kms_key = model_kms_key
 
     def _init_sagemaker_session_if_does_not_exist(self, instance_type):
+        """Set ``self.sagemaker_session`` to be a ``LocalSession`` or
+        ``Session`` if it is not already. The type of session object is
+        determined by the instance type.
+        """
         if self.sagemaker_session:
             return
 
