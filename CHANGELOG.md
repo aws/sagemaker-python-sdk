@@ -1,5 +1,12 @@
 # Changelog
 
+## v1.50.10.post0 (2020-02-12)
+
+### Documentation Changes
+
+ * add documentation guidelines to CONTRIBUTING.md
+ * Removed section numbering
+
 ## v1.50.10 (2020-02-11)
 
 ### Bug Fixes and Other Changes
