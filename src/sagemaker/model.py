@@ -120,9 +120,9 @@ class Model(object):
             return
 
         if instance_type in ("local", "local_gpu"):
-            return local.LocalSession()
+            self.sagemaker_session = local.LocalSession()
         else:
-            return session.Session()
+            self.sagemaker_session = session.Session()
 
     def prepare_container_def(
         self, instance_type, accelerator_type=None
@@ -221,7 +221,7 @@ class Model(object):
             else json.dumps(input_shape),
             "Framework": framework,
         }
-        self._init_sagemaker_session_if_does_not_exist(target_instance_type)
+
         role = self.sagemaker_session.expand_role(role)
         output_model_config = {
             "TargetDevice": target_instance_type,
@@ -336,6 +336,7 @@ class Model(object):
         framework = framework.upper()
         framework_version = self._get_framework_version() or framework_version
 
+        self._init_sagemaker_session_if_does_not_exist(target_instance_family)
         config = self._compilation_job_config(
             target_instance_family,
             input_shape,
@@ -346,7 +347,6 @@ class Model(object):
             framework,
             tags,
         )
-        self._init_sagemaker_session_if_does_not_exist(target_instance_family)
         self.sagemaker_session.compile_model(**config)
         job_status = self.sagemaker_session.wait_for_compilation_job(job_name)
         self.model_data = job_status["ModelArtifacts"]["S3ModelArtifacts"]
