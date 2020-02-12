@@ -20,7 +20,6 @@ import os
 import sagemaker
 from sagemaker import fw_utils, local, session, utils, git_utils
 from sagemaker.fw_utils import UploadedCode
-from sagemaker.session import Session
 from sagemaker.transformer import Transformer
 
 LOGGER = logging.getLogger("sagemaker")
@@ -109,12 +108,21 @@ class Model(object):
         self.env = env or {}
         self.name = name
         self.vpc_config = vpc_config
-        self.sagemaker_session = sagemaker_session or Session()
+        self.sagemaker_session = sagemaker_session
         self._model_name = None
         self.endpoint_name = None
         self._is_compiled_model = False
         self._enable_network_isolation = enable_network_isolation
         self.model_kms_key = model_kms_key
+
+    def _init_sagemaker_session_if_does_not_exist(self, instance_type):
+        if self.sagemaker_session:
+            return
+
+        if instance_type in ("local", "local_gpu"):
+            return local.LocalSession()
+        else:
+            return session.Session()
 
     def prepare_container_def(
         self, instance_type, accelerator_type=None
@@ -165,6 +173,8 @@ class Model(object):
         container_def = self.prepare_container_def(instance_type, accelerator_type=accelerator_type)
         self.name = self.name or utils.name_from_image(container_def["Image"])
         enable_network_isolation = self.enable_network_isolation()
+
+        self._init_sagemaker_session_if_does_not_exist(instance_type)
         self.sagemaker_session.create_model(
             self.name,
             self.role,
@@ -211,6 +221,7 @@ class Model(object):
             else json.dumps(input_shape),
             "Framework": framework,
         }
+        self._init_sagemaker_session_if_does_not_exist(target_instance_type)
         role = self.sagemaker_session.expand_role(role)
         output_model_config = {
             "TargetDevice": target_instance_type,
@@ -335,6 +346,7 @@ class Model(object):
             framework,
             tags,
         )
+        self._init_sagemaker_session_if_does_not_exist(target_instance_family)
         self.sagemaker_session.compile_model(**config)
         job_status = self.sagemaker_session.wait_for_compilation_job(job_name)
         self.model_data = job_status["ModelArtifacts"]["S3ModelArtifacts"]
@@ -414,11 +426,7 @@ class Model(object):
                 ``self.predictor_cls`` on the created endpoint name, if ``self.predictor_cls``
                 is not None. Otherwise, return None.
         """
-        if not self.sagemaker_session:
-            if instance_type in ("local", "local_gpu"):
-                self.sagemaker_session = local.LocalSession()
-            else:
-                self.sagemaker_session = session.Session()
+        self._init_sagemaker_session_if_does_not_exist(instance_type)
 
         if self.role is None:
             raise ValueError("Role can not be null for deploying a model")
@@ -515,12 +523,8 @@ class Model(object):
             volume_kms_key (str): Optional. KMS key ID for encrypting the volume
                 attached to the ML compute instance (default: None).
         """
-        if not self.sagemaker_session:
-            if instance_type in ("local", "local_gpu"):
-                self.sagemaker_session = local.LocalSession()
-            else:
-                self.sagemaker_session = session.Session()
-          
+        self._init_sagemaker_session_if_does_not_exist(instance_type)
+
         self._create_sagemaker_model(instance_type, tags=tags)
         if self.enable_network_isolation():
             env = None
