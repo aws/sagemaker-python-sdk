@@ -115,6 +115,19 @@ class Model(object):
         self._enable_network_isolation = enable_network_isolation
         self.model_kms_key = model_kms_key
 
+    def _init_sagemaker_session_if_does_not_exist(self, instance_type):
+        """Set ``self.sagemaker_session`` to be a ``LocalSession`` or
+        ``Session`` if it is not already. The type of session object is
+        determined by the instance type.
+        """
+        if self.sagemaker_session:
+            return
+
+        if instance_type in ("local", "local_gpu"):
+            self.sagemaker_session = local.LocalSession()
+        else:
+            self.sagemaker_session = session.Session()
+
     def prepare_container_def(
         self, instance_type, accelerator_type=None
     ):  # pylint: disable=unused-argument
@@ -164,6 +177,8 @@ class Model(object):
         container_def = self.prepare_container_def(instance_type, accelerator_type=accelerator_type)
         self.name = self.name or utils.name_from_image(container_def["Image"])
         enable_network_isolation = self.enable_network_isolation()
+
+        self._init_sagemaker_session_if_does_not_exist(instance_type)
         self.sagemaker_session.create_model(
             self.name,
             self.role,
@@ -324,6 +339,7 @@ class Model(object):
         framework = framework.upper()
         framework_version = self._get_framework_version() or framework_version
 
+        self._init_sagemaker_session_if_does_not_exist(target_instance_family)
         config = self._compilation_job_config(
             target_instance_family,
             input_shape,
@@ -413,11 +429,7 @@ class Model(object):
                 ``self.predictor_cls`` on the created endpoint name, if ``self.predictor_cls``
                 is not None. Otherwise, return None.
         """
-        if not self.sagemaker_session:
-            if instance_type in ("local", "local_gpu"):
-                self.sagemaker_session = local.LocalSession()
-            else:
-                self.sagemaker_session = session.Session()
+        self._init_sagemaker_session_if_does_not_exist(instance_type)
 
         if self.role is None:
             raise ValueError("Role can not be null for deploying a model")
@@ -514,6 +526,8 @@ class Model(object):
             volume_kms_key (str): Optional. KMS key ID for encrypting the volume
                 attached to the ML compute instance (default: None).
         """
+        self._init_sagemaker_session_if_does_not_exist(instance_type)
+
         self._create_sagemaker_model(instance_type, tags=tags)
         if self.enable_network_isolation():
             env = None
