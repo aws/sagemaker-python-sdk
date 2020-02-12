@@ -299,9 +299,9 @@ class Model(object):
 
         Args:
             target_instance_family (str): Identifies the device that you want to
-                run your model after compilation, for example: ml_c5. Allowed
-                strings are: ml_c5, ml_m5, ml_c4, ml_m4, jetsontx1, jetsontx2,
-                ml_p2, ml_p3, deeplens, rasp3b
+                run your model after compilation, for example: ml_c5. For allowed
+                strings see
+                https://docs.aws.amazon.com/sagemaker/latest/dg/API_OutputConfig.html.
             input_shape (dict): Specifies the name and shape of the expected
                 inputs for your trained model in json dictionary form, for
                 example: {'data':[1,3,1024,1024]}, or {'var1': [1,1,28,28],
