@@ -753,10 +753,10 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):
         has_hps = "HyperParameters" in job_details
         init_params["hyperparameters"] = job_details["HyperParameters"] if has_hps else {}
 
-        if "TrainingImage" in job_details["AlgorithmSpecification"]:
-            init_params["image"] = job_details["AlgorithmSpecification"]["TrainingImage"]
-        elif "AlgorithmName" in job_details["AlgorithmSpecification"]:
+        if "AlgorithmName" in job_details["AlgorithmSpecification"]:
             init_params["algorithm_arn"] = job_details["AlgorithmSpecification"]["AlgorithmName"]
+        elif "TrainingImage" in job_details["AlgorithmSpecification"]:
+            init_params["image"] = job_details["AlgorithmSpecification"]["TrainingImage"]
         else:
             raise RuntimeError(
                 "Invalid AlgorithmSpecification. Either TrainingImage or "
