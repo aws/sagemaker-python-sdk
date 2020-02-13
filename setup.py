@@ -39,7 +39,6 @@ required_packages = [
     "protobuf>=3.1",
     "scipy>=0.19.0",
     "protobuf3-to-dict>=0.1.5",
-    "requests>=2.20.0, <3",
     "smdebug-rulesconfig==0.1.2",
     "importlib-metadata>=1.4.0",
     "packaging>=20.0",
@@ -74,6 +73,7 @@ extras["test"] = (
         "stopit==1.1.2",
         "apache-airflow==1.10.5",
         "fabric>=2.0",
+        "requests>=2.20.0, <3",
     ],
 )
 
