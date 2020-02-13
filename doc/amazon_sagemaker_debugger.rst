@@ -1,4 +1,3 @@
-.. sectnum::
 
 #########################
 Amazon SageMaker Debugger
