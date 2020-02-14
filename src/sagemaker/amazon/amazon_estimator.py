@@ -72,7 +72,7 @@ class AmazonAlgorithmEstimatorBase(EstimatorBase):
             enable_network_isolation (bool): Specifies whether container will
                 run in network isolation mode. Network isolation mode restricts
                 the container access to outside networks (such as the internet).
-                Also known as internet-free mode (default: `False`).
+                Also known as internet-free mode (default: ``False``).
             **kwargs: Additional parameters passed to
                 :class:`~sagemaker.estimator.EstimatorBase`.
 
