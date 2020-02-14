@@ -23,13 +23,12 @@ import sys
 import tarfile
 import tempfile
 import time
-
-
 from datetime import datetime
 from functools import wraps
 
 import six
 from six.moves.urllib import parse
+import botocore
 
 
 ECR_URI_PATTERN = r"^(\d+)(\.)dkr(\.)ecr(\.)(.+)(\.)(amazonaws.com|c2s.ic.gov)(/)(.*:.*)$"
@@ -338,21 +337,25 @@ def download_folder(bucket_name, prefix, target, sagemaker_session):
             interact with S3.
     """
     boto_session = sagemaker_session.boto_session
+    s3 = boto_session.resource("s3", region_name=boto_session.region_name)
 
-    s3 = boto_session.resource("s3")
     bucket = s3.Bucket(bucket_name)
-
     prefix = prefix.lstrip("/")
 
-    # there is a chance that the prefix points to a file and not a 'directory' if that is the case
-    # we should just download it.
-    objects = list(bucket.objects.filter(Prefix=prefix))
-
-    if len(objects) > 0 and objects[0].key == prefix and prefix[-1] != "/":
+    # Try to download the prefix as an object first, in case it is a file and not a 'directory'.
+    # Do this first, in case the object has broader permissions than the bucket.
+    try:
         s3.Object(bucket_name, prefix).download_file(os.path.join(target, os.path.basename(prefix)))
         return
+    except botocore.exceptions.ClientError as e:
+        if e.response["Error"]["Code"] == "404" and e.response["Error"]["Message"] == "Not Found":
+            # S3 also throws this error if the object is a folder,
+            # so assume that is the case here, and then raise for an actual 404 later.
+            pass
+        else:
+            raise
 
-    # the prefix points to an s3 'directory' download the whole thing
+    # Assume the prefix points to an S3 'directory' and download the whole thing
     for obj_sum in bucket.objects.filter(Prefix=prefix):
         # if obj_sum is a folder object skip it.
         if obj_sum.key != "" and obj_sum.key[-1] == "/":
