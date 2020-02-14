@@ -93,6 +93,18 @@ def test_gov_ecr_uri():
 def test_init(sagemaker_session):
     pca = PCA(num_components=55, sagemaker_session=sagemaker_session, **COMMON_ARGS)
     assert pca.num_components == 55
+    assert pca.enable_network_isolation() is False
+
+
+def test_init_enable_network_isolation(sagemaker_session):
+    pca = PCA(
+        num_components=55,
+        sagemaker_session=sagemaker_session,
+        enable_network_isolation=True,
+        **COMMON_ARGS
+    )
+    assert pca.num_components == 55
+    assert pca.enable_network_isolation() is True
 
 
 def test_init_all_pca_hyperparameters(sagemaker_session):
