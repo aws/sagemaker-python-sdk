@@ -74,10 +74,13 @@ class AmazonAlgorithmEstimatorBase(EstimatorBase):
 
         if "enable_network_isolation" in kwargs:
             logger.debug(
-                "removing unused enable_network_isolation argument: %s",
+                "removing unused enable_network_isolation argument in base class: %s",
                 str(kwargs["enable_network_isolation"]),
             )
+            self._enable_network_isolation = kwargs["enable_network_isolation"]
             del kwargs["enable_network_isolation"]
+        else:
+            self._enable_network_isolation = False
 
         super(AmazonAlgorithmEstimatorBase, self).__init__(
             role, train_instance_count, train_instance_type, **kwargs
@@ -97,6 +100,14 @@ class AmazonAlgorithmEstimatorBase(EstimatorBase):
     def hyperparameters(self):
         """Placeholder docstring"""
         return hp.serialize_all(self)
+
+    def enable_network_isolation(self):
+        """If this Estimator can use network isolation when running.
+
+        Returns:
+            bool: Whether this Estimator can use network isolation or not.
+        """
+        return self._enable_network_isolation
 
     @property
     def data_location(self):
