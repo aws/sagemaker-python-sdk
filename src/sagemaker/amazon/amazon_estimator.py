@@ -44,7 +44,13 @@ class AmazonAlgorithmEstimatorBase(EstimatorBase):
     repo_version = None
 
     def __init__(
-        self, role, train_instance_count, train_instance_type, data_location=None, **kwargs
+        self,
+        role,
+        train_instance_count,
+        train_instance_type,
+        data_location=None,
+        enable_network_isolation=False,
+        **kwargs
     ):
         """Initialize an AmazonAlgorithmEstimatorBase.
 
@@ -63,6 +69,10 @@ class AmazonAlgorithmEstimatorBase(EstimatorBase):
                 "s3://example-bucket/some-key-prefix/". Objects will be saved in
                 a unique sub-directory of the specified location. If None, a
                 default data location will be used.
+            enable_network_isolation (bool): Specifies whether container will
+                run in network isolation mode. Network isolation mode restricts
+                the container access to outside networks (such as the internet).
+                Also known as internet-free mode (default: `False`).
             **kwargs: Additional parameters passed to
                 :class:`~sagemaker.estimator.EstimatorBase`.
 
@@ -71,17 +81,6 @@ class AmazonAlgorithmEstimatorBase(EstimatorBase):
             You can find additional parameters for initializing this class at
             :class:`~sagemaker.estimator.EstimatorBase`.
         """
-
-        if "enable_network_isolation" in kwargs:
-            logger.debug(
-                "removing unused enable_network_isolation argument in base class: %s",
-                str(kwargs["enable_network_isolation"]),
-            )
-            self._enable_network_isolation = kwargs["enable_network_isolation"]
-            del kwargs["enable_network_isolation"]
-        else:
-            self._enable_network_isolation = False
-
         super(AmazonAlgorithmEstimatorBase, self).__init__(
             role, train_instance_count, train_instance_type, **kwargs
         )
@@ -90,6 +89,7 @@ class AmazonAlgorithmEstimatorBase(EstimatorBase):
             self.sagemaker_session.default_bucket()
         )
         self._data_location = data_location
+        self._enable_network_isolation = enable_network_isolation
 
     def train_image(self):
         """Placeholder docstring"""
