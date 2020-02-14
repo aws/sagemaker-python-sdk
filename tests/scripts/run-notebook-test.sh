@@ -53,6 +53,5 @@ echo "set SAGEMAKER_ROLE_ARN=$SAGEMAKER_ROLE_ARN"
 ./amazon-sagemaker-examples/sagemaker-python-sdk/tensorflow_serving_container/tensorflow_serving_container.ipynb \
 ./amazon-sagemaker-examples/sagemaker-python-sdk/tensorflow_serving_using_elastic_inference_with_your_own_model/tensorflow_serving_pretrained_model_elastic_inference.ipynb \
 ./amazon-sagemaker-examples/sagemaker-spark/pyspark_mnist/pyspark_mnist_custom_estimator.ipynb \
-./amazon-sagemaker-examples/sagemaker-spark/pyspark_mnist/pyspark_mnist_pca_kmeans.ipynb \
 ./amazon-sagemaker-examples/sagemaker-spark/pyspark_mnist/pyspark_mnist_pca_mllib_kmeans.ipynb \
 ./amazon-sagemaker-examples/sagemaker-spark/pyspark_mnist/pyspark_mnist_xgboost.ipynb
