@@ -40,21 +40,18 @@ The training script is very similar to a training script you might run outside o
 can access useful properties about the training environment through various environment variables.
 For example:
 
+* ``SM_NUM_GPUS``: An integer representing the number of GPUs available to the host.
 * ``SM_MODEL_DIR``: A string representing the path to the directory to write model artifacts to.
   These artifacts are uploaded to S3 for model hosting.
-* ``SM_NUM_GPUS``: An integer representing the number of GPUs available to the host.
 * ``SM_OUTPUT_DATA_DIR``: A string representing the filesystem path to write output artifacts to. Output artifacts may
   include checkpoints, graphs, and other files to save, not including model artifacts. These artifacts are compressed
   and uploaded to S3 to the same S3 prefix as the model artifacts.
-
-Suppose that two input channels, 'train' and 'test', were used in the call to the PyTorch estimator's ``fit`` method,
-the following will be set, following the format "SM_CHANNEL_[channel_name]":
-
-* ``SM_CHANNEL_TRAIN``: A string representing the path to the directory containing data in the 'train' channel
-* ``SM_CHANNEL_TEST``: Same as above, but for the 'test' channel.
+* ``SM_CHANNEL_XXXX``: A string that represents the path to the directory that contains the input data for the specified channel.
+  For example, if you specify two input channels in the PyTorch estimator's ``fit`` call, named 'train' and 'test',
+  the environment variables ``SM_CHANNEL_TRAIN`` and ``SM_CHANNEL_TEST`` are set.
 
 A typical training script loads data from the input channels, configures training with hyperparameters, trains a model,
-and saves a model to `model_dir` so that it can be hosted later. Hyperparameters are passed to your script as arguments
+and saves a model to ``model_dir`` so that it can be hosted later. Hyperparameters are passed to your script as arguments
 and can be retrieved with an argparse.ArgumentParser instance. For example, a training script might start
 with the following:
 
