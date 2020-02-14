@@ -47,7 +47,6 @@ echo "set SAGEMAKER_ROLE_ARN=$SAGEMAKER_ROLE_ARN"
 ./amazon-sagemaker-examples/sagemaker-python-sdk/tensorflow_moving_from_framework_mode_to_script_mode/tensorflow_moving_from_framework_mode_to_script_mode.ipynb \
 ./amazon-sagemaker-examples/sagemaker-python-sdk/tensorflow_pipemode_example/tensorflow_pipemode_example.ipynb \
 ./amazon-sagemaker-examples/sagemaker-python-sdk/tensorflow_resnet_cifar10_with_tensorboard/tensorflow_resnet_cifar10_with_tensorboard.ipynb \
-./amazon-sagemaker-examples/sagemaker-python-sdk/tensorflow_script_mode_horovod/tensorflow_script_mode_horovod.ipynb \
 ./amazon-sagemaker-examples/sagemaker-python-sdk/tensorflow_script_mode_pipe_mode/tensorflow_script_mode_pipe_mode.ipynb \
 ./amazon-sagemaker-examples/sagemaker-python-sdk/tensorflow_script_mode_quickstart/tensorflow_script_mode_quickstart.ipynb \
 ./amazon-sagemaker-examples/sagemaker-python-sdk/tensorflow_script_mode_training_and_serving/tensorflow_script_mode_training_and_serving.ipynb \
