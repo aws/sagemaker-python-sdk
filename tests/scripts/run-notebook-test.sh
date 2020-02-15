@@ -27,7 +27,6 @@ echo "set SAGEMAKER_ROLE_ARN=$SAGEMAKER_ROLE_ARN"
 ./amazon-sagemaker-examples/sagemaker-python-sdk/mxnet_mnist/mxnet_mnist_with_batch_transform.ipynb \
 ./amazon-sagemaker-examples/sagemaker-python-sdk/mxnet_onnx_eia/mxnet_onnx_eia.ipynb \
 ./amazon-sagemaker-examples/sagemaker-python-sdk/mxnet_onnx_export/mxnet_onnx_export.ipynb \
-./amazon-sagemaker-examples/sagemaker-python-sdk/mxnet_onnx_superresolution/mxnet_onnx.ipynb \
 ./amazon-sagemaker-examples/sagemaker-python-sdk/pytorch_cnn_cifar10/pytorch_local_mode_cifar10.ipynb \
 ./amazon-sagemaker-examples/sagemaker-python-sdk/scikit_learn_randomforest/Sklearn_on_SageMaker_end2end.ipynb \
 ./amazon-sagemaker-examples/sagemaker-python-sdk/tensorflow_abalone_age_predictor_using_keras/tensorflow_abalone_age_predictor_using_keras.ipynb \
