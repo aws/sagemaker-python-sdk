@@ -9,7 +9,7 @@ python setup.py sdist
 aws s3 --region us-west-2 cp ./dist/sagemaker-*.tar.gz s3://sagemaker-python-sdk-pr/sagemaker.tar.gz
 aws s3 cp s3://sagemaker-mead-cli/mead-nb-test.tar.gz mead-nb-test.tar.gz
 tar -xzf mead-nb-test.tar.gz
-git clone https://github.com/awslabs/amazon-sagemaker-examples.git
+git clone --depth 1 https://github.com/awslabs/amazon-sagemaker-examples.git
 export JAVA_HOME=$(get-java-home)
 echo "set JAVA_HOME=$JAVA_HOME"
 export SAGEMAKER_ROLE_ARN=$(aws iam list-roles --output text --query "Roles[?RoleName == 'SageMakerRole'].Arn")
