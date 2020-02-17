@@ -1,5 +1,15 @@
 # Changelog
 
+## v1.50.12 (2020-02-17)
+
+### Bug Fixes and Other Changes
+
+ * enable network isolation for amazon estimators
+
+### Documentation Changes
+
+ * clarify channel environment variables in PyTorch documentation
+
 ## v1.50.11 (2020-02-13)
 
 ### Bug Fixes and Other Changes
