@@ -2289,11 +2289,11 @@ def test_prepare_init_params_from_job_description_with_image_training_job():
 
 
 def test_prepare_init_params_from_job_description_with_algorithm_training_job():
-
     algorithm_job_description = RETURNED_JOB_DESCRIPTION.copy()
     algorithm_job_description["AlgorithmSpecification"] = {
         "TrainingInputMode": "File",
         "AlgorithmName": "arn:aws:sagemaker:us-east-2:1234:algorithm/scikit-decision-trees",
+        "TrainingImage": "",
     }
 
     init_params = EstimatorBase._prepare_init_params_from_job_description(

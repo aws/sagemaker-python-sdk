@@ -1,5 +1,58 @@
 # Changelog
 
+## v1.50.12 (2020-02-17)
+
+### Bug Fixes and Other Changes
+
+ * enable network isolation for amazon estimators
+
+### Documentation Changes
+
+ * clarify channel environment variables in PyTorch documentation
+
+## v1.50.11 (2020-02-13)
+
+### Bug Fixes and Other Changes
+
+ * fix HyperparameterTuner.attach for Marketplace algorithms
+ * move requests library from required packages to test dependencies
+ * create Session or LocalSession if not specified in Model
+
+### Documentation Changes
+
+ * remove hardcoded list of target devices in compile()
+ * Fix typo with SM_MODEL_DIR, missing quotes
+
+## v1.50.10.post0 (2020-02-12)
+
+### Documentation Changes
+
+ * add documentation guidelines to CONTRIBUTING.md
+ * Removed section numbering
+
+## v1.50.10 (2020-02-11)
+
+### Bug Fixes and Other Changes
+
+ * remove NEO_ALLOWED_TARGET_INSTANCE_FAMILY
+
+## v1.50.9.post0 (2020-02-06)
+
+### Documentation Changes
+
+ * remove labels from issue templates
+
+## v1.50.9 (2020-02-04)
+
+### Bug Fixes and Other Changes
+
+ * account for EI and version-based ECR repo naming in serving_image_uri()
+
+### Documentation Changes
+
+ * correct broken AutoML API documentation link
+ * fix MXNet version lists
+
 ## v1.50.8 (2020-01-30)
 
 ### Bug Fixes and Other Changes
