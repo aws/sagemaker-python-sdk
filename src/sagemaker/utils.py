@@ -339,7 +339,6 @@ def download_folder(bucket_name, prefix, target, sagemaker_session):
     boto_session = sagemaker_session.boto_session
     s3 = boto_session.resource("s3", region_name=boto_session.region_name)
 
-    bucket = s3.Bucket(bucket_name)
     prefix = prefix.lstrip("/")
 
     # Try to download the prefix as an object first, in case it is a file and not a 'directory'.
@@ -351,11 +350,21 @@ def download_folder(bucket_name, prefix, target, sagemaker_session):
         if e.response["Error"]["Code"] == "404" and e.response["Error"]["Message"] == "Not Found":
             # S3 also throws this error if the object is a folder,
             # so assume that is the case here, and then raise for an actual 404 later.
-            pass
+            _download_files_under_prefix(bucket_name, prefix, target, s3)
         else:
             raise
 
-    # Assume the prefix points to an S3 'directory' and download the whole thing
+
+def _download_files_under_prefix(bucket_name, prefix, target, s3):
+    """Download all S3 files which match the given prefix
+
+    Args:
+        bucket_name (str): S3 bucket name
+        prefix (str): S3 prefix within the bucket that will be downloaded
+        target (str): destination path where the downloaded items will be placed
+        s3 (boto3.resources.base.ServiceResource): S3 resource
+    """
+    bucket = s3.Bucket(bucket_name)
     for obj_sum in bucket.objects.filter(Prefix=prefix):
         # if obj_sum is a folder object skip it.
         if obj_sum.key != "" and obj_sum.key[-1] == "/":
