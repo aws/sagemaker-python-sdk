@@ -310,9 +310,24 @@ def test_generate_tensorboard_url_domain_non_string():
 @patch("os.makedirs")
 def test_download_folder(makedirs):
     boto_mock = Mock(name="boto_session")
-    boto_mock.client("sts").get_caller_identity.return_value = {"Account": "123"}
-
     session = sagemaker.Session(boto_session=boto_mock, sagemaker_client=Mock())
+    s3_mock = boto_mock.resource("s3")
+
+    obj_mock = Mock()
+    s3_mock.Object.return_value = obj_mock
+
+    def obj_mock_download(path):
+        # Mock the S3 object to raise an error when the input to download_file
+        # is a "folder"
+        if path in ("/tmp/", os.path.join("/tmp", "prefix")):
+            raise botocore.exceptions.ClientError(
+                error_response={"Error": {"Code": "404", "Message": "Not Found"}},
+                operation_name="HeadObject",
+            )
+        else:
+            return Mock()
+
+    obj_mock.download_file.side_effect = obj_mock_download
 
     train_data = Mock()
     validation_data = Mock()
@@ -323,23 +338,20 @@ def test_download_folder(makedirs):
     validation_data.key = "prefix/train/validation_data.csv"
 
     s3_files = [train_data, validation_data]
-    boto_mock.resource("s3").Bucket(BUCKET_NAME).objects.filter.return_value = s3_files
-
-    obj_mock = Mock()
-    boto_mock.resource("s3").Object.return_value = obj_mock
+    s3_mock.Bucket(BUCKET_NAME).objects.filter.return_value = s3_files
 
     # all the S3 mocks are set, the test itself begins now.
     sagemaker.utils.download_folder(BUCKET_NAME, "/prefix", "/tmp", session)
 
     obj_mock.download_file.assert_called()
     calls = [
-        call(os.path.join("/tmp", "train/train_data.csv")),
-        call(os.path.join("/tmp", "train/validation_data.csv")),
+        call(os.path.join("/tmp", "train", "train_data.csv")),
+        call(os.path.join("/tmp", "train", "validation_data.csv")),
     ]
     obj_mock.download_file.assert_has_calls(calls)
     obj_mock.reset_mock()
 
-    # Testing with a trailing slash for the prefix.
+    # Test with a trailing slash for the prefix.
     sagemaker.utils.download_folder(BUCKET_NAME, "/prefix/", "/tmp", session)
     obj_mock.download_file.assert_called()
     obj_mock.download_file.assert_has_calls(calls)
@@ -369,7 +381,7 @@ def test_download_folder_points_to_single_file(makedirs):
     obj_mock.download_file.assert_called()
     calls = [call(os.path.join("/tmp", "train_data.csv"))]
     obj_mock.download_file.assert_has_calls(calls)
-    assert boto_mock.resource("s3").Bucket(BUCKET_NAME).objects.filter.call_count == 1
+    boto_mock.resource("s3").Bucket(BUCKET_NAME).objects.filter.assert_not_called()
     obj_mock.reset_mock()
 
 
