@@ -20,10 +20,11 @@ import json
 import os
 import uuid
 
+from botocore.exceptions import ClientError
+
 from sagemaker.session import Session
 from sagemaker.s3 import S3Downloader
 from sagemaker.s3 import S3Uploader
-from botocore.exceptions import ClientError
 
 NO_SUCH_KEY_CODE = "NoSuchKey"
 
