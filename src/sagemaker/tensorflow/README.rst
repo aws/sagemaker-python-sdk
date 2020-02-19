@@ -24,6 +24,76 @@ Supported versions of TensorFlow for Elastic Inference: ``1.11``, ``1.12``, ``1.
 
 For information about using TensorFlow with the SageMaker Python SDK, see https://sagemaker.readthedocs.io/en/stable/using_tf.html.
 
+
+Training with Pipe Mode using PipeModeDataset
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Amazon SageMaker allows users to create training jobs using Pipe input mode.
+With Pipe input mode, your dataset is streamed directly to your training instances instead of being downloaded first.
+This means that your training jobs start sooner, finish quicker, and need less disk space.
+
+SageMaker TensorFlow provides an implementation of ``tf.data.Dataset`` that makes it easy to take advantage of Pipe
+input mode in SageMaker. You can replace your ``tf.data.Dataset`` with a ``sagemaker_tensorflow.PipeModeDataset`` to
+read TFRecords as they are streamed to your training instances.
+
+In your ``entry_point`` script, you can use ``PipeModeDataset`` like a ``Dataset``. In this example, we create a
+``PipeModeDataset`` to read TFRecords from the 'training' channel:
+
+
+.. code:: python
+
+    from sagemaker_tensorflow import PipeModeDataset
+
+    features = {
+        'data': tf.FixedLenFeature([], tf.string),
+        'labels': tf.FixedLenFeature([], tf.int64),
+    }
+
+    def parse(record):
+        parsed = tf.parse_single_example(record, features)
+        return ({
+            'data': tf.decode_raw(parsed['data'], tf.float64)
+        }, parsed['labels'])
+
+    def train_input_fn(training_dir, hyperparameters):
+        ds = PipeModeDataset(channel='training', record_format='TFRecord')
+        ds = ds.repeat(20)
+        ds = ds.prefetch(10)
+        ds = ds.map(parse, num_parallel_calls=10)
+        ds = ds.batch(64)
+        return ds
+
+
+To run training job with Pipe input mode, pass in ``input_mode='Pipe'`` to your TensorFlow Estimator:
+
+
+.. code:: python
+
+    from sagemaker.tensorflow import TensorFlow
+
+    tf_estimator = TensorFlow(entry_point='tf-train-with-pipemodedataset.py', role='SageMakerRole',
+                            training_steps=10000, evaluation_steps=100,
+                            train_instance_count=1, train_instance_type='ml.p2.xlarge',
+                            framework_version='1.15.2', input_mode='Pipe')
+
+    tf_estimator.fit('s3://bucket/path/to/training/data')
+
+
+If your TFRecords are compressed, you can train on Gzipped TF Records by passing in ``compression='Gzip'`` to the call to
+``fit()``, and SageMaker will automatically unzip the records as data is streamed to your training instances:
+
+.. code:: python
+
+    from sagemaker.session import s3_input
+
+    train_s3_input = s3_input('s3://bucket/path/to/training/data', compression='Gzip')
+    tf_estimator.fit(train_s3_input)
+
+
+Supported versions of TensorFlow for ``PipeModeDataset``: ``1.10.0``, ``1.11.0``, ``1.12.0``, ``1.13.0`` ``1.14.0 py3``, ``1.15.0``, ``1.15.2``,  ``2.0.0``, ``2.1.0``
+You can learn more about ``PipeModeDataset`` in the sagemaker-tensorflow-extensions repository: https://github.com/aws/sagemaker-tensorflow-extensions
+
+
 SageMaker TensorFlow Docker containers
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
