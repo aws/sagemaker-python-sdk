@@ -1,5 +1,16 @@
 # Changelog
 
+## v1.50.13 (2020-02-19)
+
+### Bug Fixes and Other Changes
+
+ * allow download_folder to download file even if bucket is more restricted
+
+### Testing and Release Infrastructure
+
+ * configure pylint to recognize boto3 and botocore as third-party imports
+ * add multiple notebooks to notebook PR build
+
 ## v1.50.12 (2020-02-17)
 
 ### Bug Fixes and Other Changes
