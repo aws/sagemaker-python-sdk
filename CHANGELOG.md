@@ -1,5 +1,12 @@
 # Changelog
 
+## v1.50.14 (2020-02-20)
+
+### Bug Fixes and Other Changes
+
+ * don't use os.path.join for S3 path when repacking TFS model
+ * dynamically determine AWS domain based on region
+
 ## v1.50.13 (2020-02-19)
 
 ### Bug Fixes and Other Changes
