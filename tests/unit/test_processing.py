@@ -28,6 +28,7 @@ from sagemaker.network import NetworkConfig
 BUCKET_NAME = "mybucket"
 REGION = "us-west-2"
 ROLE = "arn:aws:iam::012345678901:role/SageMakerRole"
+ECR_PREFIX = "246618743249.dkr.ecr.us-west-2.amazonaws.com"
 CUSTOM_IMAGE_URI = "012345678901.dkr.ecr.us-west-2.amazonaws.com/my-custom-image-uri"
 
 PROCESSING_JOB_DESCRIPTION = {
@@ -94,9 +95,12 @@ def sagemaker_session():
     return session_mock
 
 
+@patch("sagemaker.fw_registry.get_ecr_image_uri_prefix", return_value=ECR_PREFIX)
 @patch("os.path.exists", return_value=True)
 @patch("os.path.isfile", return_value=True)
-def test_sklearn_processor_with_required_parameters(exists_mock, isfile_mock, sagemaker_session):
+def test_sklearn_processor_with_required_parameters(
+    exists_mock, isfile_mock, ecr_prefix, sagemaker_session
+):
     processor = SKLearnProcessor(
         role=ROLE,
         instance_type="ml.m4.xlarge",
@@ -117,9 +121,10 @@ def test_sklearn_processor_with_required_parameters(exists_mock, isfile_mock, sa
     sagemaker_session.process.assert_called_with(**expected_args)
 
 
+@patch("sagemaker.fw_registry.get_ecr_image_uri_prefix", return_value=ECR_PREFIX)
 @patch("os.path.exists", return_value=True)
 @patch("os.path.isfile", return_value=True)
-def test_sklearn_with_all_parameters(exists_mock, isfile_mock, sagemaker_session):
+def test_sklearn_with_all_parameters(exists_mock, isfile_mock, ecr_prefix, sagemaker_session):
     processor = SKLearnProcessor(
         role=ROLE,
         framework_version="0.20.0",

@@ -301,7 +301,10 @@ def test_get_caller_identity_arn_from_describe_notebook_instance(boto_session):
 
 @patch("six.moves.builtins.open", mock_open(read_data='{"ResourceName": "SageMakerInstance"}'))
 @patch("os.path.exists", side_effect=mock_exists(NOTEBOOK_METADATA_FILE, True))
-def test_get_caller_identity_arn_from_a_role_after_describe_notebook_exception(boto_session):
+@patch("sagemaker.session.sts_regional_endpoint", return_value=STS_ENDPOINT)
+def test_get_caller_identity_arn_from_a_role_after_describe_notebook_exception(
+    sts_regional_endpoint, boto_session
+):
     sess = Session(boto_session)
     exception = ClientError(
         {"Error": {"Code": "ValidationException", "Message": "RecordNotFound"}}, "Operation"
@@ -329,7 +332,8 @@ def test_get_caller_identity_arn_from_a_role_after_describe_notebook_exception(b
 
 
 @patch("os.path.exists", side_effect=mock_exists(NOTEBOOK_METADATA_FILE, False))
-def test_get_caller_identity_arn_from_an_user(boto_session):
+@patch("sagemaker.session.sts_regional_endpoint", return_value=STS_ENDPOINT)
+def test_get_caller_identity_arn_from_a_user(sts_regional_endpoint, boto_session):
     sess = Session(boto_session)
     arn = "arn:aws:iam::369233609183:user/mia"
     sess.boto_session.client("sts", endpoint_url=STS_ENDPOINT).get_caller_identity.return_value = {
@@ -342,7 +346,10 @@ def test_get_caller_identity_arn_from_an_user(boto_session):
 
 
 @patch("os.path.exists", side_effect=mock_exists(NOTEBOOK_METADATA_FILE, False))
-def test_get_caller_identity_arn_from_an_user_without_permissions(boto_session):
+@patch("sagemaker.session.sts_regional_endpoint", return_value=STS_ENDPOINT)
+def test_get_caller_identity_arn_from_an_user_without_permissions(
+    sts_regional_endpoint, boto_session
+):
     sess = Session(boto_session)
     arn = "arn:aws:iam::369233609183:user/mia"
     sess.boto_session.client("sts", endpoint_url=STS_ENDPOINT).get_caller_identity.return_value = {
@@ -357,7 +364,8 @@ def test_get_caller_identity_arn_from_an_user_without_permissions(boto_session):
 
 
 @patch("os.path.exists", side_effect=mock_exists(NOTEBOOK_METADATA_FILE, False))
-def test_get_caller_identity_arn_from_a_role(boto_session):
+@patch("sagemaker.session.sts_regional_endpoint", return_value=STS_ENDPOINT)
+def test_get_caller_identity_arn_from_a_role(sts_regional_endpoint, boto_session):
     sess = Session(boto_session)
     arn = (
         "arn:aws:sts::369233609183:assumed-role/SageMakerRole/6d009ef3-5306-49d5-8efc-78db644d8122"
@@ -374,7 +382,8 @@ def test_get_caller_identity_arn_from_a_role(boto_session):
 
 
 @patch("os.path.exists", side_effect=mock_exists(NOTEBOOK_METADATA_FILE, False))
-def test_get_caller_identity_arn_from_a_execution_role(boto_session):
+@patch("sagemaker.session.sts_regional_endpoint", return_value=STS_ENDPOINT)
+def test_get_caller_identity_arn_from_an_execution_role(sts_regional_endpoint, boto_session):
     sess = Session(boto_session)
     arn = "arn:aws:sts::369233609183:assumed-role/AmazonSageMaker-ExecutionRole-20171129T072388/SageMaker"
     sess.boto_session.client("sts", endpoint_url=STS_ENDPOINT).get_caller_identity.return_value = {
@@ -390,7 +399,8 @@ def test_get_caller_identity_arn_from_a_execution_role(boto_session):
 
 
 @patch("os.path.exists", side_effect=mock_exists(NOTEBOOK_METADATA_FILE, False))
-def test_get_caller_identity_arn_from_role_with_path(boto_session):
+@patch("sagemaker.session.sts_regional_endpoint", return_value=STS_ENDPOINT)
+def test_get_caller_identity_arn_from_role_with_path(sts_regional_endpoint, boto_session):
     sess = Session(boto_session)
     arn_prefix = "arn:aws:iam::369233609183:role"
     role_name = "name"

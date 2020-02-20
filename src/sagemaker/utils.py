@@ -26,9 +26,9 @@ import time
 from datetime import datetime
 from functools import wraps
 
+import botocore
 import six
 from six.moves.urllib import parse
-import botocore
 
 
 ECR_URI_PATTERN = r"^(\d+)(\.)dkr(\.)ecr(\.)(.+)(\.)(amazonaws.com|c2s.ic.gov)(/)(.*:.*)$"
@@ -611,8 +611,8 @@ def get_ecr_image_uri_prefix(account, region):
     Returns:
         (str): URI prefix of ECR image
     """
-    domain = _domain_for_region(region)
-    return "{}.dkr.ecr.{}.{}".format(account, region, domain)
+    endpoint_data = _botocore_resolver().construct_endpoint("ecr", region)
+    return "{}.dkr.{}".format(account, endpoint_data["hostname"])
 
 
 def sts_regional_endpoint(region):
@@ -630,8 +630,8 @@ def sts_regional_endpoint(region):
     Returns:
         str: AWS STS regional endpoint
     """
-    domain = _domain_for_region(region)
-    return "https://sts.{}.{}".format(region, domain)
+    endpoint_data = _botocore_resolver().construct_endpoint("sts", region)
+    return "https://{}".format(endpoint_data["hostname"])
 
 
 def retries(max_retry_count, exception_message_prefix, seconds_to_sleep=DEFAULT_SLEEP_TIME_SECONDS):
@@ -654,7 +654,7 @@ def retries(max_retry_count, exception_message_prefix, seconds_to_sleep=DEFAULT_
     )
 
 
-def _domain_for_region(region):
+def _botocore_resolver():
     """Get the DNS suffix for the given region.
 
     Args:
@@ -663,7 +663,8 @@ def _domain_for_region(region):
     Returns:
         str: the DNS suffix
     """
-    return "c2s.ic.gov" if region == "us-iso-east-1" else "amazonaws.com"
+    loader = botocore.loaders.create_loader()
+    return botocore.regions.EndpointResolver(loader.load_data("endpoints"))
 
 
 class DeferredError(object):
