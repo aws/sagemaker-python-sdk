@@ -298,6 +298,23 @@ def test_mxnet_eia_images():
     )
 
 
+def test_pytorch_eia_images():
+    image_uri = fw_utils.create_image_uri(
+        "us-east-1",
+        "pytorch-serving",
+        "ml.c4.2xlarge",
+        "1.3.1",
+        "py3",
+        accelerator_type="ml.eia1.large",
+    )
+    assert (
+        image_uri
+        == "{}.dkr.ecr.us-east-1.amazonaws.com/pytorch-inference-eia:1.3.1-cpu-py3".format(
+            fw_utils.ASIMOV_PROD_ACCOUNT
+        )
+    )
+
+
 def test_create_image_uri_override_account():
     image_uri = fw_utils.create_image_uri(
         "us-west-1", MOCK_FRAMEWORK, "ml.p3.2xlarge", "1.0rc", "py3", account="fake"
