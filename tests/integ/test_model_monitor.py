@@ -107,7 +107,7 @@ def predictor(sagemaker_session, tf_full_version):
             INSTANCE_COUNT,
             INSTANCE_TYPE,
             endpoint_name=endpoint_name,
-            data_capture_config=DataCaptureConfig(True),
+            data_capture_config=DataCaptureConfig(True, sagemaker_session=sagemaker_session),
         )
         yield predictor
 
