@@ -612,7 +612,7 @@ def get_ecr_image_uri_prefix(account, region):
         (str): URI prefix of ECR image
     """
     endpoint_data = _botocore_resolver().construct_endpoint("ecr", region)
-    return "{}.dkr.ecr.{}.{}".format(account, region, endpoint_data["dnsSuffix"])
+    return "{}.dkr.{}".format(account, endpoint_data["hostname"])
 
 
 def sts_regional_endpoint(region):
