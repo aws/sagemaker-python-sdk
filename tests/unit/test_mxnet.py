@@ -160,7 +160,7 @@ def _create_compilation_job(input_shape, output_location):
         "job_name": COMPILATION_JOB_NAME,
         "output_model_config": {"S3OutputLocation": output_location, "TargetDevice": "ml_c4"},
         "role": ROLE,
-        "stop_condition": {"MaxRuntimeInSeconds": 300},
+        "stop_condition": {"MaxRuntimeInSeconds": 900},
         "tags": None,
     }
 
