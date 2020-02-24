@@ -22,9 +22,11 @@ from tests.integ import DATA_DIR, PYTHON_VERSION, TRAINING_DEFAULT_TIMEOUT_MINUT
 from tests.integ.timeout import timeout, timeout_and_delete_endpoint_by_name
 import time
 
+NEO_MXNET_VERSION = "1.4.1"  # Neo doesn't support MXNet 1.6 yet.
+
 
 @pytest.fixture(scope="module")
-def mxnet_training_job(sagemaker_session, mxnet_full_version, cpu_instance_type):
+def mxnet_training_job(sagemaker_session, cpu_instance_type):
     with timeout(minutes=TRAINING_DEFAULT_TIMEOUT_MINUTES):
         script_path = os.path.join(DATA_DIR, "mxnet_mnist", "mnist_neo.py")
         data_path = os.path.join(DATA_DIR, "mxnet_mnist")
@@ -32,7 +34,7 @@ def mxnet_training_job(sagemaker_session, mxnet_full_version, cpu_instance_type)
         mx = MXNet(
             entry_point=script_path,
             role="SageMakerRole",
-            framework_version=mxnet_full_version,
+            framework_version=NEO_MXNET_VERSION,
             py_version=PYTHON_VERSION,
             train_instance_count=1,
             train_instance_type=cpu_instance_type,
@@ -52,9 +54,6 @@ def mxnet_training_job(sagemaker_session, mxnet_full_version, cpu_instance_type)
 
 @pytest.mark.canary_quick
 @pytest.mark.regional_testing
-@pytest.mark.skip(
-    reason="This should be enabled along with the Boto SDK release for Neo API changes"
-)
 def test_attach_deploy(
     mxnet_training_job, sagemaker_session, cpu_instance_type, cpu_instance_family
 ):
@@ -77,9 +76,6 @@ def test_attach_deploy(
         predictor.predict(data)
 
 
-@pytest.mark.skip(
-    reason="This should be enabled along with the Boto SDK release for Neo API changes"
-)
 def test_deploy_model(
     mxnet_training_job, sagemaker_session, cpu_instance_type, cpu_instance_family
 ):
@@ -97,6 +93,7 @@ def test_deploy_model(
             role,
             entry_point=script_path,
             py_version=PYTHON_VERSION,
+            framework_version=NEO_MXNET_VERSION,
             sagemaker_session=sagemaker_session,
         )
 
