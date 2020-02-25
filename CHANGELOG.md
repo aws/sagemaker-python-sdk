@@ -1,5 +1,18 @@
 # Changelog
 
+## v1.50.15 (2020-02-25)
+
+### Bug Fixes and Other Changes
+
+ * enable Neo integ tests
+
+## v1.50.14.post0 (2020-02-24)
+
+### Testing and Release Infrastructure
+
+ * remove TF framework mode notebooks from PR build
+ * don't create docker network for all integ tests
+
 ## v1.50.14 (2020-02-20)
 
 ### Bug Fixes and Other Changes

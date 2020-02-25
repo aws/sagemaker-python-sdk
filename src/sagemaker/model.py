@@ -304,8 +304,8 @@ class Model(object):
                 https://docs.aws.amazon.com/sagemaker/latest/dg/API_OutputConfig.html.
             input_shape (dict): Specifies the name and shape of the expected
                 inputs for your trained model in json dictionary form, for
-                example: {'data':[1,3,1024,1024]}, or {'var1': [1,1,28,28],
-                'var2':[1,1,28,28]}
+                example: {'data': [1,3,1024,1024]}, or {'var1': [1,1,28,28],
+                'var2': [1,1,28,28]}
             output_path (str): Specifies where to store the compiled model
             role (str): Execution role
             tags (list[dict]): List of tags for labeling a compilation job. For
@@ -436,7 +436,8 @@ class Model(object):
 
         compiled_model_suffix = "-".join(instance_type.split(".")[:-1])
         if self._is_compiled_model:
-            self.name += compiled_model_suffix
+            name_prefix = self.name or utils.name_from_image(self.image)
+            self.name = "{}{}".format(name_prefix, compiled_model_suffix)
 
         self._create_sagemaker_model(instance_type, accelerator_type, tags)
         production_variant = sagemaker.production_variant(

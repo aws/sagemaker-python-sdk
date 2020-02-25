@@ -278,7 +278,7 @@ class ModelMonitor(object):
         normalized_monitoring_output = self._normalize_monitoring_output(output=output)
 
         statistics_object, constraints_object = self._get_baseline_files(
-            statistics=statistics, constraints=constraints
+            statistics=statistics, constraints=constraints, sagemaker_session=self.sagemaker_session
         )
 
         statistics_s3_uri = None
@@ -402,7 +402,7 @@ class ModelMonitor(object):
             }
 
         statistics_object, constraints_object = self._get_baseline_files(
-            statistics=statistics, constraints=constraints
+            statistics=statistics, constraints=constraints, sagemaker_session=self.sagemaker_session
         )
 
         statistics_s3_uri = None
@@ -781,7 +781,7 @@ class ModelMonitor(object):
         return name_from_base(base=base_name)
 
     @staticmethod
-    def _get_baseline_files(statistics, constraints):
+    def _get_baseline_files(statistics, constraints, sagemaker_session=None):
         """Populates baseline values if possible.
 
         Args:
@@ -791,6 +791,9 @@ class ModelMonitor(object):
             constraints (sagemaker.model_monitor.Constraints or str): The constraints object or str.
                 If none, this method will attempt to retrieve a previously baselined constraints
                 object.
+            sagemaker_session (sagemaker.session.Session): Session object which manages interactions
+                with Amazon SageMaker APIs and any other AWS services needed. If not specified, one
+                is created using the default AWS configuration chain.
 
         Returns:
             sagemaker.model_monitor.Statistics, sagemaker.model_monitor.Constraints: The Statistics
@@ -799,9 +802,13 @@ class ModelMonitor(object):
 
         """
         if statistics is not None and isinstance(statistics, string_types):
-            statistics = Statistics.from_s3_uri(statistics_file_s3_uri=statistics)
+            statistics = Statistics.from_s3_uri(
+                statistics_file_s3_uri=statistics, sagemaker_session=sagemaker_session
+            )
         if constraints is not None and isinstance(constraints, string_types):
-            constraints = Constraints.from_s3_uri(constraints_file_s3_uri=constraints)
+            constraints = Constraints.from_s3_uri(
+                constraints_file_s3_uri=constraints, sagemaker_session=sagemaker_session
+            )
 
         return statistics, constraints
 
@@ -1240,7 +1247,7 @@ class DefaultModelMonitor(ModelMonitor):
         )
 
         statistics_object, constraints_object = self._get_baseline_files(
-            statistics=statistics, constraints=constraints
+            statistics=statistics, constraints=constraints, sagemaker_session=self.sagemaker_session
         )
 
         constraints_s3_uri = None
@@ -1386,7 +1393,7 @@ class DefaultModelMonitor(ModelMonitor):
         )
 
         statistics_object, constraints_object = self._get_baseline_files(
-            statistics=statistics, constraints=constraints
+            statistics=statistics, constraints=constraints, sagemaker_session=self.sagemaker_session
         )
 
         statistics_s3_uri = None
@@ -1829,6 +1836,7 @@ class BaseliningJob(ProcessingJob):
             return Statistics.from_s3_uri(
                 statistics_file_s3_uri=os.path.join(baselining_job_output_s3_path, file_name),
                 kms_key=kms_key,
+                sagemaker_session=self.sagemaker_session,
             )
         except ClientError as client_error:
             if client_error.response["Error"]["Code"] == "NoSuchKey":
@@ -1866,6 +1874,7 @@ class BaseliningJob(ProcessingJob):
             return Constraints.from_s3_uri(
                 constraints_file_s3_uri=os.path.join(baselining_job_output_s3_path, file_name),
                 kms_key=kms_key,
+                sagemaker_session=self.sagemaker_session,
             )
         except ClientError as client_error:
             if client_error.response["Error"]["Code"] == "NoSuchKey":
@@ -1981,6 +1990,7 @@ class MonitoringExecution(ProcessingJob):
             return Statistics.from_s3_uri(
                 statistics_file_s3_uri=os.path.join(baselining_job_output_s3_path, file_name),
                 kms_key=kms_key,
+                sagemaker_session=self.sagemaker_session,
             )
         except ClientError as client_error:
             if client_error.response["Error"]["Code"] == "NoSuchKey":
@@ -2022,6 +2032,7 @@ class MonitoringExecution(ProcessingJob):
                     baselining_job_output_s3_path, file_name
                 ),
                 kms_key=kms_key,
+                sagemaker_session=self.sagemaker_session,
             )
         except ClientError as client_error:
             if client_error.response["Error"]["Code"] == "NoSuchKey":
