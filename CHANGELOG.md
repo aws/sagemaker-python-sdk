@@ -1,5 +1,11 @@
 # Changelog
 
+## v1.50.15 (2020-02-25)
+
+### Bug Fixes and Other Changes
+
+ * enable Neo integ tests
+
 ## v1.50.14.post0 (2020-02-24)
 
 ### Testing and Release Infrastructure
