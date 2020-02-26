@@ -41,6 +41,7 @@ class DataCaptureConfig(object):
         capture_options=None,
         csv_content_types=None,
         json_content_types=None,
+        sagemaker_session=None,
     ):
         """Initialize a DataCaptureConfig object for capturing data from Amazon SageMaker Endpoints.
 
@@ -56,14 +57,21 @@ class DataCaptureConfig(object):
                 which data to capture between request and response.
             csv_content_types ([str]): Optional. Default=["text/csv"].
             json_content_types([str]): Optional. Default=["application/json"].
-
+            sagemaker_session (sagemaker.session.Session): A SageMaker Session
+                object, used for SageMaker interactions (default: None). If not
+                specified, one is created using the default AWS configuration
+                chain.
         """
         self.enable_capture = enable_capture
         self.sampling_percentage = sampling_percentage
         self.destination_s3_uri = destination_s3_uri
         if self.destination_s3_uri is None:
+            sagemaker_session = sagemaker_session or Session()
             self.destination_s3_uri = os.path.join(
-                "s3://", Session().default_bucket(), _MODEL_MONITOR_S3_PATH, _DATA_CAPTURE_S3_PATH
+                "s3://",
+                sagemaker_session.default_bucket(),
+                _MODEL_MONITOR_S3_PATH,
+                _DATA_CAPTURE_S3_PATH,
             )
 
         self.kms_key_id = kms_key_id

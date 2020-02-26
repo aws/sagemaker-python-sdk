@@ -618,6 +618,7 @@ def test_pytorch_airflow_config_uploads_data_source_to_s3_when_inputs_not_provid
             train_instance_count=2,
             train_instance_type=cpu_instance_type,
             hyperparameters={"epochs": 6, "backend": "gloo"},
+            sagemaker_session=sagemaker_session,
         )
 
         training_config = _build_airflow_workflow(
@@ -641,6 +642,7 @@ def test_pytorch_12_airflow_config_uploads_data_source_to_s3_when_inputs_not_pro
             train_instance_count=2,
             train_instance_type=cpu_instance_type,
             hyperparameters={"epochs": 6, "backend": "gloo"},
+            sagemaker_session=sagemaker_session,
         )
 
         training_config = _build_airflow_workflow(
