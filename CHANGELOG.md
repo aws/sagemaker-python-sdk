@@ -1,5 +1,19 @@
 # Changelog
 
+## v1.50.16 (2020-02-26)
+
+### Bug Fixes and Other Changes
+
+ * use sagemaker_session when initializing Constraints and Statistics
+ * add sagemaker_session parameter to DataCaptureConfig
+ * make AutoML.deploy use self.sagemaker_session by default
+
+### Testing and Release Infrastructure
+
+ * unset region during integ tests
+ * use sagemaker_session fixture in all Airflow tests
+ * remove remaining TF legacy mode integ tests
+
 ## v1.50.15 (2020-02-25)
 
 ### Bug Fixes and Other Changes
