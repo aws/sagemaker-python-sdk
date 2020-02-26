@@ -12,12 +12,14 @@
 # language governing permissions and limitations under the License.
 from __future__ import absolute_import
 
+from mock import Mock
+
 from sagemaker.model_monitor import DataCaptureConfig
 
 DEFAULT_ENABLE_CAPTURE = True
 DEFAULT_SAMPLING_PERCENTAGE = 20
 DEFAULT_BUCKET_NAME = "default-bucket"
-DEFAULT_DESTINATION_S3_URI = "s3://" + DEFAULT_BUCKET_NAME + "/model-monitor/data-capture"
+DEFAULT_DESTINATION_S3_URI = "s3://{}/model-monitor/data-capture".format(DEFAULT_BUCKET_NAME)
 DEFAULT_KMS_KEY_ID = None
 DEFAULT_CAPTURE_MODES = ["REQUEST", "RESPONSE"]
 DEFAULT_CSV_CONTENT_TYPES = ["text/csv"]
@@ -33,7 +35,7 @@ NON_DEFAULT_CSV_CONTENT_TYPES = ["custom/csv-format"]
 NON_DEFAULT_JSON_CONTENT_TYPES = ["custom/json-format"]
 
 
-def test_to_request_dict_returns_correct_params_when_non_defaults_provided():
+def test_init_when_non_defaults_provided():
     data_capture_config = DataCaptureConfig(
         enable_capture=NON_DEFAULT_ENABLE_CAPTURE,
         sampling_percentage=NON_DEFAULT_SAMPLING_PERCENTAGE,
@@ -51,9 +53,12 @@ def test_to_request_dict_returns_correct_params_when_non_defaults_provided():
     assert data_capture_config.json_content_types == NON_DEFAULT_JSON_CONTENT_TYPES
 
 
-def test_to_request_dict_returns_correct_default_params_when_optionals_not_provided():
+def test_init_when_optionals_not_provided():
+    sagemaker_session = Mock()
+    sagemaker_session.default_bucket.return_value = DEFAULT_BUCKET_NAME
+
     data_capture_config = DataCaptureConfig(
-        enable_capture=DEFAULT_ENABLE_CAPTURE, destination_s3_uri=DEFAULT_DESTINATION_S3_URI
+        enable_capture=DEFAULT_ENABLE_CAPTURE, sagemaker_session=sagemaker_session
     )
 
     assert data_capture_config.enable_capture == DEFAULT_ENABLE_CAPTURE
