@@ -18,7 +18,7 @@ TF_VERSION = "1.11"
 This is no longer updated so as to not break existing workflows.
 """
 
-LATEST_VERSION = "2.0.0"
+LATEST_VERSION = "2.1.0"
 """The latest version of TensorFlow included in the SageMaker pre-built Docker images."""
 
-LATEST_PY2_VERSION = "2.0.0"
+LATEST_PY2_VERSION = "2.1.0"

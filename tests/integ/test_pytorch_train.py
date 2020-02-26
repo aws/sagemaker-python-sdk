@@ -38,6 +38,8 @@ def fixture_training_job(sagemaker_session, pytorch_full_version, cpu_instance_t
 
 @pytest.mark.canary_quick
 @pytest.mark.regional_testing
+@pytest.mark.gamma_dlc
+@pytest.mark.skipif(PYTHON_VERSION == "py2", reason="PyTorch Inference not supporting Python2.")
 def test_sync_fit_deploy(pytorch_training_job, sagemaker_session, cpu_instance_type):
     # TODO: add tests against local mode when it's ready to be used
     endpoint_name = "test-pytorch-sync-fit-attach-deploy{}".format(sagemaker_timestamp())
@@ -55,6 +57,7 @@ def test_sync_fit_deploy(pytorch_training_job, sagemaker_session, cpu_instance_t
 
 
 @pytest.mark.local_mode
+@pytest.mark.skipif(PYTHON_VERSION == "py2", reason="PyTorch Inference not supporting Python2.")
 def test_fit_deploy(sagemaker_local_session, pytorch_full_version):
     pytorch = PyTorch(
         entry_point=MNIST_SCRIPT,
@@ -79,6 +82,8 @@ def test_fit_deploy(sagemaker_local_session, pytorch_full_version):
         predictor.delete_endpoint()
 
 
+@pytest.mark.gamma_dlc
+@pytest.mark.skipif(PYTHON_VERSION == "py2", reason="PyTorch Inference not supporting Python2.")
 def test_deploy_model(pytorch_training_job, sagemaker_session, cpu_instance_type):
     endpoint_name = "test-pytorch-deploy-model-{}".format(sagemaker_timestamp())
 
