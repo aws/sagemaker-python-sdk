@@ -1,5 +1,11 @@
 # Changelog
 
+## v1.50.17 (2020-02-27)
+
+### Bug Fixes and Other Changes
+
+ * upgrade framework versions
+
 ## v1.50.16 (2020-02-26)
 
 ### Bug Fixes and Other Changes
