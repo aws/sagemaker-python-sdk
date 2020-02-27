@@ -39,7 +39,6 @@ MPI_DISTRIBUTION = {"mpi": {"enabled": True}}
 TAGS = [{"Key": "some-key", "Value": "some-value"}]
 
 
-@pytest.mark.gamma_dlc
 def test_mnist_with_checkpoint_config(sagemaker_session, instance_type, tf_full_version):
     checkpoint_s3_uri = "s3://{}/checkpoints/tf-{}".format(
         sagemaker_session.default_bucket(), sagemaker_timestamp()
@@ -83,7 +82,6 @@ def test_mnist_with_checkpoint_config(sagemaker_session, instance_type, tf_full_
     assert actual_training_checkpoint_config == expected_training_checkpoint_config
 
 
-@pytest.mark.gamma_dlc
 def test_server_side_encryption(sagemaker_session, tf_full_version):
     with kms_utils.bucket_with_encryption(sagemaker_session, ROLE) as (bucket_with_kms, kms_key):
         output_path = os.path.join(
@@ -126,7 +124,6 @@ def test_server_side_encryption(sagemaker_session, tf_full_version):
 
 
 @pytest.mark.canary_quick
-@pytest.mark.gamma_dlc
 def test_mnist_distributed(sagemaker_session, instance_type, tf_full_version):
     estimator = TensorFlow(
         entry_point=SCRIPT,
@@ -152,7 +149,6 @@ def test_mnist_distributed(sagemaker_session, instance_type, tf_full_version):
     )
 
 
-@pytest.mark.gamma_dlc
 def test_mnist_async(sagemaker_session, cpu_instance_type):
     estimator = TensorFlow(
         entry_point=SCRIPT,
@@ -195,7 +191,6 @@ def test_mnist_async(sagemaker_session, cpu_instance_type):
         _assert_model_name_match(sagemaker_session.sagemaker_client, endpoint_name, model_name)
 
 
-@pytest.mark.gamma_dlc
 def test_deploy_with_input_handlers(sagemaker_session, instance_type, tf_full_version):
     estimator = TensorFlow(
         entry_point="training.py",

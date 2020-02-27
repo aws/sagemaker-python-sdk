@@ -57,7 +57,6 @@ def mxnet_training_job(sagemaker_session, mxnet_full_version, cpu_instance_type)
 
 @pytest.mark.canary_quick
 @pytest.mark.regional_testing
-@pytest.mark.gamma_dlc
 def test_attach_deploy(mxnet_training_job, sagemaker_session, cpu_instance_type):
     endpoint_name = "test-mxnet-attach-deploy-{}".format(sagemaker_timestamp())
 
@@ -69,7 +68,6 @@ def test_attach_deploy(mxnet_training_job, sagemaker_session, cpu_instance_type)
         assert result is not None
 
 
-@pytest.mark.gamma_dlc
 def test_deploy_model(mxnet_training_job, sagemaker_session, mxnet_full_version, cpu_instance_type):
     endpoint_name = "test-mxnet-deploy-model-{}".format(sagemaker_timestamp())
 
@@ -99,7 +97,6 @@ def test_deploy_model(mxnet_training_job, sagemaker_session, mxnet_full_version,
         assert "Could not find model" in str(exception.value)
 
 
-@pytest.mark.gamma_dlc
 def test_deploy_model_with_tags_and_kms(
     mxnet_training_job, sagemaker_session, mxnet_full_version, cpu_instance_type
 ):
@@ -154,7 +151,6 @@ def test_deploy_model_with_tags_and_kms(
         assert endpoint_config["KmsKeyId"] == kms_key_arn
 
 
-@pytest.mark.gamma_dlc
 def test_deploy_model_with_update_endpoint(
     mxnet_training_job,
     sagemaker_session,
@@ -205,7 +201,6 @@ def test_deploy_model_with_update_endpoint(
         assert new_config["ProductionVariants"][0]["InitialInstanceCount"] == 1
 
 
-@pytest.mark.gamma_dlc
 def test_deploy_model_with_update_non_existing_endpoint(
     mxnet_training_job,
     sagemaker_session,
@@ -244,7 +239,6 @@ def test_deploy_model_with_update_non_existing_endpoint(
 
 @pytest.mark.canary_quick
 @pytest.mark.regional_testing
-@pytest.mark.gamma_dlc
 @pytest.mark.skipif(
     tests.integ.test_region() not in tests.integ.EI_SUPPORTED_REGIONS,
     reason="EI isn't supported in that specific region.",
@@ -277,7 +271,6 @@ def test_deploy_model_with_accelerator(
         assert result is not None
 
 
-@pytest.mark.gamma_dlc
 def test_async_fit(sagemaker_session, mxnet_full_version, cpu_instance_type):
     endpoint_name = "test-mxnet-attach-deploy-{}".format(sagemaker_timestamp())
 

@@ -131,7 +131,6 @@ def tfs_predictor_with_accelerator(sagemaker_session, tf_full_version, cpu_insta
 
 
 @pytest.mark.canary_quick
-@pytest.mark.gamma_dlc
 def test_predict(tfs_predictor):  # pylint: disable=W0613
     input_data = {"instances": [1.0, 2.0, 5.0]}
     expected_result = {"predictions": [3.5, 4.0, 5.5]}
@@ -140,7 +139,6 @@ def test_predict(tfs_predictor):  # pylint: disable=W0613
     assert expected_result == result
 
 
-@pytest.mark.gamma_dlc
 @pytest.mark.skipif(
     tests.integ.test_region() not in tests.integ.EI_SUPPORTED_REGIONS,
     reason="EI is not supported in region {}".format(tests.integ.test_region()),
@@ -174,7 +172,6 @@ def test_predict_with_model_and_entry_point_and_dependencies_separated(
     assert expected_result == result
 
 
-@pytest.mark.gamma_dlc
 def test_predict_generic_json(tfs_predictor):
     input_data = [[1.0, 2.0, 5.0], [1.0, 2.0, 5.0]]
     expected_result = {"predictions": [[3.5, 4.0, 5.5], [3.5, 4.0, 5.5]]}
@@ -183,7 +180,6 @@ def test_predict_generic_json(tfs_predictor):
     assert expected_result == result
 
 
-@pytest.mark.gamma_dlc
 def test_predict_jsons_json_content_type(tfs_predictor):
     input_data = "[1.0, 2.0, 5.0]\n[1.0, 2.0, 5.0]"
     expected_result = {"predictions": [[3.5, 4.0, 5.5], [3.5, 4.0, 5.5]]}
@@ -201,7 +197,6 @@ def test_predict_jsons_json_content_type(tfs_predictor):
     assert expected_result == result
 
 
-@pytest.mark.gamma_dlc
 def test_predict_jsons(tfs_predictor):
     input_data = "[1.0, 2.0, 5.0]\n[1.0, 2.0, 5.0]"
     expected_result = {"predictions": [[3.5, 4.0, 5.5], [3.5, 4.0, 5.5]]}
@@ -219,7 +214,6 @@ def test_predict_jsons(tfs_predictor):
     assert expected_result == result
 
 
-@pytest.mark.gamma_dlc
 def test_predict_jsonlines(tfs_predictor):
     input_data = "[1.0, 2.0, 5.0]\n[1.0, 2.0, 5.0]"
     expected_result = {"predictions": [[3.5, 4.0, 5.5], [3.5, 4.0, 5.5]]}
@@ -237,7 +231,6 @@ def test_predict_jsonlines(tfs_predictor):
     assert expected_result == result
 
 
-@pytest.mark.gamma_dlc
 def test_predict_csv(tfs_predictor):
     input_data = "1.0,2.0,5.0\n1.0,2.0,5.0"
     expected_result = {"predictions": [[3.5, 4.0, 5.5], [3.5, 4.0, 5.5]]}
@@ -252,7 +245,6 @@ def test_predict_csv(tfs_predictor):
     assert expected_result == result
 
 
-@pytest.mark.gamma_dlc
 def test_predict_bad_input(tfs_predictor):
     input_data = {"junk": "data"}
     with pytest.raises(botocore.exceptions.ClientError):

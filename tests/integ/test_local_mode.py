@@ -32,7 +32,7 @@ from sagemaker.tensorflow import TensorFlow
 # endpoint tests all use the same port, so we use this lock to prevent concurrent execution
 LOCK_PATH = os.path.join(tempfile.gettempdir(), "sagemaker_test_local_mode_lock")
 DATA_PATH = os.path.join(DATA_DIR, "iris", "data")
-DEFAULT_REGION = "us-east-1" if os.getenv("DLC_GAMMA_TESTING") else "us-west-2"
+DEFAULT_REGION = "us-west-2"
 
 
 class LocalNoS3Session(LocalSession):
@@ -253,7 +253,6 @@ def test_tf_local_data_local_script():
 
 
 @pytest.mark.local_mode
-@pytest.mark.gamma_dlc
 def test_local_mode_serving_from_s3_model(sagemaker_local_session, mxnet_model, mxnet_full_version):
     path = "s3://%s" % sagemaker_local_session.default_bucket()
     s3_model = mxnet_model(path)
@@ -271,7 +270,6 @@ def test_local_mode_serving_from_s3_model(sagemaker_local_session, mxnet_model, 
 
 
 @pytest.mark.local_mode
-@pytest.mark.gamma_dlc
 def test_local_mode_serving_from_local_model(tmpdir, sagemaker_local_session, mxnet_model):
     predictor = None
 
@@ -289,7 +287,6 @@ def test_local_mode_serving_from_local_model(tmpdir, sagemaker_local_session, mx
 
 
 @pytest.mark.local_mode
-@pytest.mark.gamma_dlc
 def test_mxnet_local_mode(sagemaker_local_session, mxnet_full_version):
     script_path = os.path.join(DATA_DIR, "mxnet_mnist", "mnist.py")
     data_path = os.path.join(DATA_DIR, "mxnet_mnist")
@@ -324,7 +321,6 @@ def test_mxnet_local_mode(sagemaker_local_session, mxnet_full_version):
 
 
 @pytest.mark.local_mode
-@pytest.mark.gamma_dlc
 def test_mxnet_local_data_local_script(mxnet_full_version):
     data_path = os.path.join(DATA_DIR, "mxnet_mnist")
     script_path = os.path.join(data_path, "mnist.py")
@@ -354,7 +350,6 @@ def test_mxnet_local_data_local_script(mxnet_full_version):
 
 
 @pytest.mark.local_mode
-@pytest.mark.gamma_dlc
 def test_mxnet_training_failure(sagemaker_local_session, mxnet_full_version, tmpdir):
     script_path = os.path.join(DATA_DIR, "mxnet_mnist", "failure_script.py")
 
@@ -377,7 +372,6 @@ def test_mxnet_training_failure(sagemaker_local_session, mxnet_full_version, tmp
 
 
 @pytest.mark.local_mode
-@pytest.mark.gamma_dlc
 def test_local_transform_mxnet(
     sagemaker_local_session, tmpdir, mxnet_full_version, cpu_instance_type
 ):

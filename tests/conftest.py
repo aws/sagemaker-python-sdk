@@ -29,7 +29,7 @@ from sagemaker.rl import RLEstimator
 from sagemaker.sklearn.defaults import SKLEARN_VERSION
 from sagemaker.tensorflow.estimator import TensorFlow
 
-DEFAULT_REGION = "us-east-1" if os.getenv("DLC_GAMMA_TESTING") else "us-west-2"
+DEFAULT_REGION = "us-west-2"
 
 NO_M4_REGIONS = ["eu-west-3", "eu-north-1", "ap-east-1", "sa-east-1", "me-south-1"]
 
