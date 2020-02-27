@@ -21,6 +21,7 @@ from tests.integ.timeout import timeout, timeout_and_delete_endpoint_by_name
 
 from sagemaker.pytorch.estimator import PyTorch
 from sagemaker.pytorch.model import PyTorchModel
+from sagemaker.pytorch.defaults import LATEST_PY2_VERSION
 from sagemaker.utils import sagemaker_timestamp
 
 MNIST_DIR = os.path.join(DATA_DIR, "pytorch_mnist")
@@ -38,7 +39,10 @@ def fixture_training_job(sagemaker_session, pytorch_full_version, cpu_instance_t
 
 @pytest.mark.canary_quick
 @pytest.mark.regional_testing
-@pytest.mark.skipif(PYTHON_VERSION == "py2", reason="PyTorch Inference not supporting Python2.")
+@pytest.mark.skipif(
+    PYTHON_VERSION == "py2",
+    reason="Python 2 is supported by PyTorch {} and lower versions.".format(LATEST_PY2_VERSION),
+)
 def test_sync_fit_deploy(pytorch_training_job, sagemaker_session, cpu_instance_type):
     # TODO: add tests against local mode when it's ready to be used
     endpoint_name = "test-pytorch-sync-fit-attach-deploy{}".format(sagemaker_timestamp())
@@ -55,7 +59,11 @@ def test_sync_fit_deploy(pytorch_training_job, sagemaker_session, cpu_instance_t
         assert output.shape == (batch_size, 10)
 
 
-@pytest.mark.skipif(PYTHON_VERSION == "py2", reason="PyTorch Inference not supporting Python2.")
+@pytest.mark.local_mode
+@pytest.mark.skipif(
+    PYTHON_VERSION == "py2",
+    reason="Python 2 is supported by PyTorch {} and lower versions.".format(LATEST_PY2_VERSION),
+)
 def test_fit_deploy(sagemaker_local_session, pytorch_full_version):
     pytorch = PyTorch(
         entry_point=MNIST_SCRIPT,
