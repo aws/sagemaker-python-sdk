@@ -98,6 +98,7 @@ class LocalSagemakerClient(object):
         )
         training_job = _LocalTrainingJob(container)
         hyperparameters = kwargs["HyperParameters"] if "HyperParameters" in kwargs else {}
+        logger.info("Starting training job")
         training_job.start(InputDataConfig, OutputDataConfig, hyperparameters, TrainingJobName)
 
         LocalSagemakerClient._training_jobs[TrainingJobName] = training_job
@@ -377,8 +378,8 @@ class LocalSagemakerRuntimeClient(object):
 class LocalSession(Session):
     """Placeholder docstring"""
 
-    def __init__(self, boto_session=None):
-        super(LocalSession, self).__init__(boto_session)
+    def __init__(self, boto_session=None, s3_client=None):
+        super(LocalSession, self).__init__(boto_session, s3_client=s3_client)
 
         if platform.system() == "Windows":
             logger.warning("Windows Support for Local Mode is Experimental")

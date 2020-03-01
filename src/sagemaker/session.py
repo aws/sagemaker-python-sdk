@@ -25,6 +25,7 @@ import boto3
 import botocore.config
 from botocore.exceptions import ClientError
 import six
+import yaml
 
 import sagemaker.logs
 from sagemaker import vpc_utils
@@ -82,6 +83,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
         sagemaker_client=None,
         sagemaker_runtime_client=None,
         default_bucket=None,
+        s3_client=None,
     ):
         """Initialize a SageMaker ``Session``.
 
@@ -107,9 +109,14 @@ class Session(object):  # pylint: disable=too-many-public-methods
         """
         self._default_bucket = None
         self._default_bucket_name_override = default_bucket
+        self.s3_client = s3_client
 
-        # currently is used for local_code in local mode
-        self.config = None
+        sagemaker_config_file = os.path.join(os.path.expanduser("~"), ".sagemaker", "config.yaml")
+        print("Looking for config file: {}".format(sagemaker_config_file))
+        if os.path.exists(sagemaker_config_file):
+            self.config = yaml.load(open(sagemaker_config_file, "r"))
+        else:
+            self.config = None
 
         self._initialize(
             boto_session=boto_session,
@@ -199,7 +206,10 @@ class Session(object):  # pylint: disable=too-many-public-methods
             key_suffix = name
 
         bucket = bucket or self.default_bucket()
-        s3 = self.boto_session.resource("s3")
+        if self.s3_client is None:
+            s3 = self.boto_session.resource("s3")
+        else:
+            s3 = self.s3_client
 
         for local_path, s3_key in files:
             s3.Object(bucket, s3_key).upload_file(local_path, ExtraArgs=extra_args)
@@ -330,6 +340,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
             str: The name of the default bucket, which is of the form:
                 ``sagemaker-{region}-{AWS account ID}``.
         """
+
         if self._default_bucket:
             return self._default_bucket
 
@@ -367,7 +378,11 @@ class Session(object):  # pylint: disable=too-many-public-methods
         bucket = self.boto_session.resource("s3", region_name=region).Bucket(name=bucket_name)
         if bucket.creation_date is None:
             try:
-                s3 = self.boto_session.resource("s3", region_name=region)
+                if self.s3_client is None:
+                    s3 = self.boto_session.resource("s3", region_name=region)
+                else:
+                    s3 = self.s3_client
+
                 if region == "us-east-1":
                     # 'us-east-1' cannot be specified because it is the default region:
                     # https://github.com/boto/boto3/issues/125
