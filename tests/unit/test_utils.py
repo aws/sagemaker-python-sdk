@@ -699,3 +699,11 @@ def test_sts_regional_endpoint():
     endpoint = sagemaker.utils.sts_regional_endpoint("us-iso-east-1")
     assert endpoint == "https://sts.us-iso-east-1.c2s.ic.gov"
     assert botocore.utils.is_valid_endpoint_url(endpoint)
+
+
+def test_partition_by_region():
+    assert sagemaker.utils._aws_partition("us-west-2") == "aws"
+    assert sagemaker.utils._aws_partition("cn-north-1") == "aws-cn"
+    assert sagemaker.utils._aws_partition("us-gov-east-1") == "aws-us-gov"
+    assert sagemaker.utils._aws_partition("us-iso-east-1") == "aws-iso"
+    assert sagemaker.utils._aws_partition("us-isob-east-1") == "aws-iso-b"
