@@ -670,7 +670,7 @@ def _botocore_resolver():
     return botocore.regions.EndpointResolver(loader.load_data("endpoints"))
 
 
-def _partition_by_region(region):
+def _aws_partition(region):
     """
     Given a region name (ex: "cn-north-1"), return the corresponding aws partition ("aws-cn").
     If an error is thrown during calculation, log a warning and return 'aws'.

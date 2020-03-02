@@ -64,7 +64,7 @@ def _create_kms_key(
 ):
     if role_arn:
         principal = PRINCIPAL_TEMPLATE.format(
-            partition=utils._partition_by_region(region),
+            partition=utils._aws_partition(region),
             account_id=account_id,
             role_arn=role_arn,
             sagemaker_role=sagemaker_role,
@@ -95,7 +95,7 @@ def _add_role_to_policy(
 
     if role_arn not in principal or sagemaker_role not in principal:
         principal = PRINCIPAL_TEMPLATE.format(
-            partition=utils._partition_by_region(region),
+            partition=utils._aws_partition(region),
             account_id=account_id,
             role_arn=role_arn,
             sagemaker_role=sagemaker_role,
@@ -188,7 +188,7 @@ def bucket_with_encryption(sagemaker_session, sagemaker_role):
                 {
                     "ApplyServerSideEncryptionByDefault": {
                         "SSEAlgorithm": "{partition}:kms".format(
-                            partition=utils._partition_by_region(region)
+                            partition=utils._aws_partition(region)
                         ),
                         "KMSMasterKeyID": kms_key_arn,
                     }
@@ -200,7 +200,7 @@ def bucket_with_encryption(sagemaker_session, sagemaker_role):
     s3_client.put_bucket_policy(
         Bucket=bucket_name,
         Policy=KMS_BUCKET_POLICY.format(
-            partition=utils._partition_by_region(region), bucket_name=bucket_name
+            partition=utils._aws_partition(region), bucket_name=bucket_name
         ),
     )
 

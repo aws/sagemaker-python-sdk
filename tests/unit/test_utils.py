@@ -702,8 +702,8 @@ def test_sts_regional_endpoint():
 
 
 def test_partition_by_region():
-    assert sagemaker.utils._partition_by_region("us-west-2") == "aws"
-    assert sagemaker.utils._partition_by_region("cn-north-1") == "aws-cn"
-    assert sagemaker.utils._partition_by_region("us-gov-east-1") == "aws-us-gov"
-    assert sagemaker.utils._partition_by_region("us-iso-east-1") == "aws-iso"
-    assert sagemaker.utils._partition_by_region("us-isob-east-1") == "aws-iso-b"
+    assert sagemaker.utils._aws_partition("us-west-2") == "aws"
+    assert sagemaker.utils._aws_partition("cn-north-1") == "aws-cn"
+    assert sagemaker.utils._aws_partition("us-gov-east-1") == "aws-us-gov"
+    assert sagemaker.utils._aws_partition("us-iso-east-1") == "aws-iso"
+    assert sagemaker.utils._aws_partition("us-isob-east-1") == "aws-iso-b"
