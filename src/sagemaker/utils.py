@@ -15,6 +15,7 @@ from __future__ import absolute_import
 
 import contextlib
 import errno
+import logging
 import os
 import random
 import re
@@ -37,6 +38,8 @@ S3_PREFIX = "s3://"
 HTTP_PREFIX = "http://"
 HTTPS_PREFIX = "https://"
 DEFAULT_SLEEP_TIME_SECONDS = 10
+
+logger = logging.getLogger(__name__)
 
 
 # Use the base name of the image as the job name if the user doesn't give us one
@@ -665,6 +668,21 @@ def _botocore_resolver():
     """
     loader = botocore.loaders.create_loader()
     return botocore.regions.EndpointResolver(loader.load_data("endpoints"))
+
+
+def _aws_partition(region):
+    """
+    Given a region name (ex: "cn-north-1"), return the corresponding aws partition ("aws-cn").
+
+    Args:
+        region (str): The region name for which to return the corresponding partition.
+        Ex: "cn-north-1"
+
+    Returns:
+        str: partition corresponding to the region name passed in. Ex: "aws-cn"
+    """
+    endpoint_data = _botocore_resolver().construct_endpoint("sts", region)
+    return endpoint_data["partition"]
 
 
 class DeferredError(object):
