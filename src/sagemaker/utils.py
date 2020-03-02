@@ -673,7 +673,6 @@ def _botocore_resolver():
 def _aws_partition(region):
     """
     Given a region name (ex: "cn-north-1"), return the corresponding aws partition ("aws-cn").
-    If an error is thrown during calculation, log a warning and return 'aws'.
 
     Args:
         region (str): The region name for which to return the corresponding partition.
@@ -682,17 +681,8 @@ def _aws_partition(region):
     Returns:
         str: partition corresponding to the region name passed in. Ex: "aws-cn"
     """
-    try:
-        endpoint_data = _botocore_resolver().construct_endpoint("sts", region)
-        return endpoint_data["partition"]
-    except Exception as e:  # pylint: disable=broad-except
-        logger.warning(
-            "Unable to determine partition from region. Falling back to 'aws'. region: %s. \n"
-            "Swallowed Exception: %s",
-            region,
-            e,
-        )
-        return "aws"
+    endpoint_data = _botocore_resolver().construct_endpoint("sts", region)
+    return endpoint_data["partition"]
 
 
 class DeferredError(object):
