@@ -1020,7 +1020,7 @@ def test_py2_version_deprecated(sagemaker_session):
     with pytest.raises(AttributeError) as e:
         TensorFlow(
             entry_point=SCRIPT_PATH,
-            framework_version="2.0.1",
+            framework_version="2.1.1",
             role=ROLE,
             sagemaker_session=sagemaker_session,
             train_instance_count=INSTANCE_COUNT,
@@ -1029,7 +1029,7 @@ def test_py2_version_deprecated(sagemaker_session):
         )
 
     msg = (
-        "Python 2 containers are only available with 2.0.0 and lower versions. "
+        "Python 2 containers are only available with 2.1.0 and lower versions. "
         "Please use a Python 3 container."
     )
     assert msg in str(e.value)

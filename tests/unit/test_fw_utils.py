@@ -29,7 +29,9 @@ ROLE = "Sagemaker"
 REGION = "us-west-2"
 SCRIPT_PATH = "script.py"
 TIMESTAMP = "2017-10-10-14-14-15"
+ECR_PREFIX_FORMAT = "{}.dkr.ecr.mars-south-3.amazonaws.com"
 
+MOCK_ACCOUNT = "520713654638"
 MOCK_FRAMEWORK = "mlfw"
 MOCK_REGION = "mars-south-3"
 MOCK_ACCELERATOR = "eia1.medium"
@@ -165,7 +167,9 @@ def sagemaker_session():
     return session_mock
 
 
-def test_create_image_uri_cpu():
+@patch("sagemaker.fw_utils.get_ecr_image_uri_prefix")
+def test_create_image_uri_cpu(ecr_prefix):
+    ecr_prefix.return_value = ECR_PREFIX_FORMAT.format("23")
     image_uri = fw_utils.create_image_uri(
         MOCK_REGION, MOCK_FRAMEWORK, "ml.c4.large", "1.0rc", "py2", "23"
     )
@@ -176,6 +180,7 @@ def test_create_image_uri_cpu():
     )
     assert image_uri == "23.dkr.ecr.mars-south-3.amazonaws.com/sagemaker-mlfw:1.0rc-cpu-py2"
 
+    ecr_prefix.return_value = "246785580436.dkr.ecr.us-gov-west-1.amazonaws.com"
     image_uri = fw_utils.create_image_uri(
         "us-gov-west-1", MOCK_FRAMEWORK, "ml.c4.large", "1.0rc", "py2"
     )
@@ -183,13 +188,15 @@ def test_create_image_uri_cpu():
         image_uri == "246785580436.dkr.ecr.us-gov-west-1.amazonaws.com/sagemaker-mlfw:1.0rc-cpu-py2"
     )
 
+    ecr_prefix.return_value = "744548109606.dkr.ecr.us-iso-east-1.c2s.ic.gov"
     image_uri = fw_utils.create_image_uri(
         "us-iso-east-1", MOCK_FRAMEWORK, "ml.c4.large", "1.0rc", "py2"
     )
     assert image_uri == "744548109606.dkr.ecr.us-iso-east-1.c2s.ic.gov/sagemaker-mlfw:1.0rc-cpu-py2"
 
 
-def test_create_image_uri_no_python():
+@patch("sagemaker.fw_utils.get_ecr_image_uri_prefix", return_value=ECR_PREFIX_FORMAT.format("23"))
+def test_create_image_uri_no_python(ecr_prefix):
     image_uri = fw_utils.create_image_uri(
         MOCK_REGION, MOCK_FRAMEWORK, "ml.c4.large", "1.0rc", account="23"
     )
@@ -201,7 +208,8 @@ def test_create_image_uri_bad_python():
         fw_utils.create_image_uri(MOCK_REGION, MOCK_FRAMEWORK, "ml.c4.large", "1.0rc", "py0")
 
 
-def test_create_image_uri_gpu():
+@patch("sagemaker.fw_utils.get_ecr_image_uri_prefix", return_value=ECR_PREFIX_FORMAT.format("23"))
+def test_create_image_uri_gpu(ecr_prefix):
     image_uri = fw_utils.create_image_uri(
         MOCK_REGION, MOCK_FRAMEWORK, "ml.p3.2xlarge", "1.0rc", "py3", "23"
     )
@@ -213,7 +221,8 @@ def test_create_image_uri_gpu():
     assert image_uri == "23.dkr.ecr.mars-south-3.amazonaws.com/sagemaker-mlfw:1.0rc-gpu-py3"
 
 
-def test_create_image_uri_accelerator_tfs():
+@patch("sagemaker.fw_utils.get_ecr_image_uri_prefix", return_value=ECR_PREFIX_FORMAT.format("23"))
+def test_create_image_uri_accelerator_tfs(ecr_prefix):
     image_uri = fw_utils.create_image_uri(
         MOCK_REGION,
         "tensorflow-serving",
@@ -228,7 +237,11 @@ def test_create_image_uri_accelerator_tfs():
     )
 
 
-def test_create_image_uri_default_account():
+@patch(
+    "sagemaker.fw_utils.get_ecr_image_uri_prefix",
+    return_value=ECR_PREFIX_FORMAT.format(MOCK_ACCOUNT),
+)
+def test_create_image_uri_default_account(ecr_prefix):
     image_uri = fw_utils.create_image_uri(
         MOCK_REGION, MOCK_FRAMEWORK, "ml.p3.2xlarge", "1.0rc", "py3"
     )
@@ -511,7 +524,11 @@ def test_create_image_uri_tensorflow(tf_version):
         )
 
 
-def test_create_image_uri_accelerator_tf():
+@patch(
+    "sagemaker.fw_utils.get_ecr_image_uri_prefix",
+    return_value=ECR_PREFIX_FORMAT.format(MOCK_ACCOUNT),
+)
+def test_create_image_uri_accelerator_tf(ecr_prefix):
     image_uri = fw_utils.create_image_uri(
         MOCK_REGION, "tensorflow", "ml.p3.2xlarge", "1.0", "py3", accelerator_type="ml.eia1.medium"
     )
@@ -521,7 +538,11 @@ def test_create_image_uri_accelerator_tf():
     )
 
 
-def test_create_image_uri_accelerator_mxnet_serving():
+@patch(
+    "sagemaker.fw_utils.get_ecr_image_uri_prefix",
+    return_value=ECR_PREFIX_FORMAT.format(MOCK_ACCOUNT),
+)
+def test_create_image_uri_accelerator_mxnet_serving(ecr_prefix):
     image_uri = fw_utils.create_image_uri(
         MOCK_REGION,
         "mxnet-serving",
@@ -536,7 +557,11 @@ def test_create_image_uri_accelerator_mxnet_serving():
     )
 
 
-def test_create_image_uri_local_sagemaker_notebook_accelerator():
+@patch(
+    "sagemaker.fw_utils.get_ecr_image_uri_prefix",
+    return_value=ECR_PREFIX_FORMAT.format(MOCK_ACCOUNT),
+)
+def test_create_image_uri_local_sagemaker_notebook_accelerator(ecr_prefix):
     image_uri = fw_utils.create_image_uri(
         MOCK_REGION,
         "mxnet",
@@ -608,7 +633,11 @@ def test_invalid_instance_type():
         fw_utils.create_image_uri(MOCK_REGION, MOCK_FRAMEWORK, "p3.2xlarge", "1.0.0", "py3")
 
 
-def test_optimized_family():
+@patch(
+    "sagemaker.fw_utils.get_ecr_image_uri_prefix",
+    return_value=ECR_PREFIX_FORMAT.format(MOCK_ACCOUNT),
+)
+def test_optimized_family(ecr_prefix):
     image_uri = fw_utils.create_image_uri(
         MOCK_REGION,
         MOCK_FRAMEWORK,
@@ -622,7 +651,11 @@ def test_optimized_family():
     )
 
 
-def test_unoptimized_cpu_family():
+@patch(
+    "sagemaker.fw_utils.get_ecr_image_uri_prefix",
+    return_value=ECR_PREFIX_FORMAT.format(MOCK_ACCOUNT),
+)
+def test_unoptimized_cpu_family(ecr_prefix):
     image_uri = fw_utils.create_image_uri(
         MOCK_REGION, MOCK_FRAMEWORK, "ml.m4.xlarge", "1.0.0", "py3", optimized_families=["c5", "p3"]
     )
@@ -631,7 +664,11 @@ def test_unoptimized_cpu_family():
     )
 
 
-def test_unoptimized_gpu_family():
+@patch(
+    "sagemaker.fw_utils.get_ecr_image_uri_prefix",
+    return_value=ECR_PREFIX_FORMAT.format(MOCK_ACCOUNT),
+)
+def test_unoptimized_gpu_family(ecr_prefix):
     image_uri = fw_utils.create_image_uri(
         MOCK_REGION, MOCK_FRAMEWORK, "ml.p2.xlarge", "1.0.0", "py3", optimized_families=["c5", "p3"]
     )

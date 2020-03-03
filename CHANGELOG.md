@@ -1,5 +1,93 @@
 # Changelog
 
+## v1.50.17.post0 (2020-03-03)
+
+### Testing and Release Infrastructure
+
+ * fix PR builds to run on changes to their own buildspecs
+ * programmatically determine partition based on region
+
+## v1.50.17 (2020-02-27)
+
+### Bug Fixes and Other Changes
+
+ * upgrade framework versions
+
+## v1.50.16 (2020-02-26)
+
+### Bug Fixes and Other Changes
+
+ * use sagemaker_session when initializing Constraints and Statistics
+ * add sagemaker_session parameter to DataCaptureConfig
+ * make AutoML.deploy use self.sagemaker_session by default
+
+### Testing and Release Infrastructure
+
+ * unset region during integ tests
+ * use sagemaker_session fixture in all Airflow tests
+ * remove remaining TF legacy mode integ tests
+
+## v1.50.15 (2020-02-25)
+
+### Bug Fixes and Other Changes
+
+ * enable Neo integ tests
+
+## v1.50.14.post0 (2020-02-24)
+
+### Testing and Release Infrastructure
+
+ * remove TF framework mode notebooks from PR build
+ * don't create docker network for all integ tests
+
+## v1.50.14 (2020-02-20)
+
+### Bug Fixes and Other Changes
+
+ * don't use os.path.join for S3 path when repacking TFS model
+ * dynamically determine AWS domain based on region
+
+## v1.50.13 (2020-02-19)
+
+### Bug Fixes and Other Changes
+
+ * allow download_folder to download file even if bucket is more restricted
+
+### Testing and Release Infrastructure
+
+ * configure pylint to recognize boto3 and botocore as third-party imports
+ * add multiple notebooks to notebook PR build
+
+## v1.50.12 (2020-02-17)
+
+### Bug Fixes and Other Changes
+
+ * enable network isolation for amazon estimators
+
+### Documentation Changes
+
+ * clarify channel environment variables in PyTorch documentation
+
+## v1.50.11 (2020-02-13)
+
+### Bug Fixes and Other Changes
+
+ * fix HyperparameterTuner.attach for Marketplace algorithms
+ * move requests library from required packages to test dependencies
+ * create Session or LocalSession if not specified in Model
+
+### Documentation Changes
+
+ * remove hardcoded list of target devices in compile()
+ * Fix typo with SM_MODEL_DIR, missing quotes
+
+## v1.50.10.post0 (2020-02-12)
+
+### Documentation Changes
+
+ * add documentation guidelines to CONTRIBUTING.md
+ * Removed section numbering
+
 ## v1.50.10 (2020-02-11)
 
 ### Bug Fixes and Other Changes
