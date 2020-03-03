@@ -44,9 +44,10 @@ def test_statistics_object_creation_from_file_path_with_customizations(
     assert statistics.body_dict["dataset"]["item_count"] == 418
 
 
-def test_statistics_object_creation_from_file_path_without_customizations():
+def test_statistics_object_creation_from_file_path_without_customizations(sagemaker_session):
     statistics = Statistics.from_file_path(
-        statistics_file_path=os.path.join(tests.integ.DATA_DIR, "monitor/statistics.json")
+        statistics_file_path=os.path.join(tests.integ.DATA_DIR, "monitor/statistics.json"),
+        sagemaker_session=sagemaker_session,
     )
 
     assert statistics.file_s3_uri.startswith("s3://")
@@ -74,11 +75,13 @@ def test_statistics_object_creation_from_string_with_customizations(
     assert statistics.body_dict["dataset"]["item_count"] == 418
 
 
-def test_statistics_object_creation_from_string_without_customizations():
+def test_statistics_object_creation_from_string_without_customizations(sagemaker_session):
     with open(os.path.join(tests.integ.DATA_DIR, "monitor/statistics.json"), "r") as f:
         file_body = f.read()
 
-    statistics = Statistics.from_string(statistics_file_string=file_body)
+    statistics = Statistics.from_string(
+        statistics_file_string=file_body, sagemaker_session=sagemaker_session
+    )
 
     assert statistics.file_s3_uri.startswith("s3://")
     assert statistics.file_s3_uri.endswith("statistics.json")
@@ -133,9 +136,13 @@ def test_statistics_object_creation_from_s3_uri_without_customizations(sagemaker
         file_name,
     )
 
-    s3_uri = S3Uploader.upload_string_as_file_body(body=file_body, desired_s3_uri=desired_s3_uri)
+    s3_uri = S3Uploader.upload_string_as_file_body(
+        body=file_body, desired_s3_uri=desired_s3_uri, session=sagemaker_session
+    )
 
-    statistics = Statistics.from_s3_uri(statistics_file_s3_uri=s3_uri)
+    statistics = Statistics.from_s3_uri(
+        statistics_file_s3_uri=s3_uri, sagemaker_session=sagemaker_session
+    )
 
     assert statistics.file_s3_uri.startswith("s3://")
     assert statistics.file_s3_uri.endswith("statistics.json")
@@ -181,14 +188,17 @@ def test_constraints_object_creation_from_file_path_with_customizations(
 
     constraints.save()
 
-    new_constraints = Constraints.from_s3_uri(constraints.file_s3_uri)
+    new_constraints = Constraints.from_s3_uri(
+        constraints.file_s3_uri, sagemaker_session=sagemaker_session
+    )
 
     assert new_constraints.body_dict["monitoring_config"]["evaluate_constraints"] == "Disabled"
 
 
-def test_constraints_object_creation_from_file_path_without_customizations():
+def test_constraints_object_creation_from_file_path_without_customizations(sagemaker_session):
     constraints = Constraints.from_file_path(
-        constraints_file_path=os.path.join(tests.integ.DATA_DIR, "monitor/constraints.json")
+        constraints_file_path=os.path.join(tests.integ.DATA_DIR, "monitor/constraints.json"),
+        sagemaker_session=sagemaker_session,
     )
 
     assert constraints.file_s3_uri.startswith("s3://")
@@ -216,11 +226,13 @@ def test_constraints_object_creation_from_string_with_customizations(
     assert constraints.body_dict["monitoring_config"]["evaluate_constraints"] == "Enabled"
 
 
-def test_constraints_object_creation_from_string_without_customizations():
+def test_constraints_object_creation_from_string_without_customizations(sagemaker_session):
     with open(os.path.join(tests.integ.DATA_DIR, "monitor/constraints.json"), "r") as f:
         file_body = f.read()
 
-    constraints = Constraints.from_string(constraints_file_string=file_body)
+    constraints = Constraints.from_string(
+        constraints_file_string=file_body, sagemaker_session=sagemaker_session
+    )
 
     assert constraints.file_s3_uri.startswith("s3://")
     assert constraints.file_s3_uri.endswith("constraints.json")
@@ -275,9 +287,13 @@ def test_constraints_object_creation_from_s3_uri_without_customizations(sagemake
         file_name,
     )
 
-    s3_uri = S3Uploader.upload_string_as_file_body(body=file_body, desired_s3_uri=desired_s3_uri)
+    s3_uri = S3Uploader.upload_string_as_file_body(
+        body=file_body, desired_s3_uri=desired_s3_uri, session=sagemaker_session
+    )
 
-    constraints = Constraints.from_s3_uri(constraints_file_s3_uri=s3_uri)
+    constraints = Constraints.from_s3_uri(
+        constraints_file_s3_uri=s3_uri, sagemaker_session=sagemaker_session
+    )
 
     assert constraints.file_s3_uri.startswith("s3://")
     assert constraints.file_s3_uri.endswith("constraints.json")
@@ -302,11 +318,14 @@ def test_constraint_violations_object_creation_from_file_path_with_customization
     assert constraint_violations.body_dict["violations"][0]["feature_name"] == "store_and_fwd_flag"
 
 
-def test_constraint_violations_object_creation_from_file_path_without_customizations():
+def test_constraint_violations_object_creation_from_file_path_without_customizations(
+    sagemaker_session
+):
     constraint_violations = ConstraintViolations.from_file_path(
         constraint_violations_file_path=os.path.join(
             tests.integ.DATA_DIR, "monitor/constraint_violations.json"
-        )
+        ),
+        sagemaker_session=sagemaker_session,
     )
 
     assert constraint_violations.file_s3_uri.startswith("s3://")
@@ -334,12 +353,14 @@ def test_constraint_violations_object_creation_from_string_with_customizations(
     assert constraint_violations.body_dict["violations"][0]["feature_name"] == "store_and_fwd_flag"
 
 
-def test_constraint_violations_object_creation_from_string_without_customizations():
+def test_constraint_violations_object_creation_from_string_without_customizations(
+    sagemaker_session
+):
     with open(os.path.join(tests.integ.DATA_DIR, "monitor/constraint_violations.json"), "r") as f:
         file_body = f.read()
 
     constraint_violations = ConstraintViolations.from_string(
-        constraint_violations_file_string=file_body
+        constraint_violations_file_string=file_body, sagemaker_session=sagemaker_session
     )
 
     assert constraint_violations.file_s3_uri.startswith("s3://")
@@ -397,10 +418,12 @@ def test_constraint_violations_object_creation_from_s3_uri_without_customization
         file_name,
     )
 
-    s3_uri = S3Uploader.upload_string_as_file_body(body=file_body, desired_s3_uri=desired_s3_uri)
+    s3_uri = S3Uploader.upload_string_as_file_body(
+        body=file_body, desired_s3_uri=desired_s3_uri, session=sagemaker_session
+    )
 
     constraint_violations = ConstraintViolations.from_s3_uri(
-        constraint_violations_file_s3_uri=s3_uri
+        constraint_violations_file_s3_uri=s3_uri, sagemaker_session=sagemaker_session
     )
 
     assert constraint_violations.file_s3_uri.startswith("s3://")
