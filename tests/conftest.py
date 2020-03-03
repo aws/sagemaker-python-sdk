@@ -286,7 +286,7 @@ def alternative_cpu_instance_type(sagemaker_session, request):
 
 @pytest.fixture(scope="session")
 def cpu_instance_family(cpu_instance_type):
-    "_".join(cpu_instance_type.split(".")[0:2])
+    return "_".join(cpu_instance_type.split(".")[0:2])
 
 
 def pytest_generate_tests(metafunc):

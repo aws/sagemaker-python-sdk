@@ -199,12 +199,12 @@ class TensorFlow(Framework):
 
     LATEST_VERSION = defaults.LATEST_VERSION
 
-    _LATEST_1X_VERSION = "1.15.0"
+    _LATEST_1X_VERSION = "1.15.2"
 
     _LOWEST_SCRIPT_MODE_ONLY_VERSION = [1, 13]
     # 2.0.0 still supports py2
     # we will need to update this version number if future versions still support py2
-    _HIGHEST_PYTHON_2_VERSION = [2, 0, 0]
+    _HIGHEST_PYTHON_2_VERSION = [2, 1, 0]
 
     def __init__(
         self,
