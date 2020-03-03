@@ -476,7 +476,7 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):
         output_path,
         framework=None,
         framework_version=None,
-        compile_max_run=5 * 60,
+        compile_max_run=15 * 60,
         tags=None,
         **kwargs
     ):
