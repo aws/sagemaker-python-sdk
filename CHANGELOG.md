@@ -1,5 +1,12 @@
 # Changelog
 
+## v1.50.17.post0 (2020-03-03)
+
+### Testing and Release Infrastructure
+
+ * fix PR builds to run on changes to their own buildspecs
+ * programmatically determine partition based on region
+
 ## v1.50.17 (2020-02-27)
 
 ### Bug Fixes and Other Changes
