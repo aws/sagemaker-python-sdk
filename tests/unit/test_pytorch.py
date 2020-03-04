@@ -348,7 +348,7 @@ def test_model_image_accelerator(sagemaker_session):
     model = PyTorchModel(
         MODEL_DATA, role=ROLE, entry_point=SCRIPT_PATH, sagemaker_session=sagemaker_session
     )
-    predictor = model.deploy(1, CPU)
+    predictor = model.deploy(1, CPU, accelerator_type=ACCELERATOR_TYPE)
     assert isinstance(predictor, PyTorchPredictor)
 
 
