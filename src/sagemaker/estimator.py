@@ -1470,7 +1470,7 @@ class Framework(EstimatorBase):
                 uploaded (default: None) - don't include a trailing slash since
                 a string prepended with a "/" is appended to ``code_location``. The code
                 file uploaded to S3 is 'code_location/job-name/source/sourcedir.tar.gz'.
-                If not specified, the default ``code location`` is s3://default_bucket/job-name/.
+                If not specified, the default ``code location`` is s3://output_bucket/job-name/.
             image_name (str): An alternate image name to use instead of the
                 official Sagemaker image for the framework. This is useful to
                 run one of the Sagemaker supported frameworks with an image
