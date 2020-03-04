@@ -169,7 +169,7 @@ class PyTorchModel(FrameworkModel):
                 (cpu/gpu/family-specific optimized).
             accelerator_type (str): The Elastic Inference accelerator type to
                 deploy to the instance for loading and making inferences to the
-                model. Currently unsupported with PyTorch.
+                model. Currently supported with PyTorch 1.3.1 Python 3.
 
         Returns:
             str: The appropriate image URI based on the given parameters.
