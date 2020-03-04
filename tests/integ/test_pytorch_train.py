@@ -119,10 +119,7 @@ def test_deploy_model(pytorch_training_job, sagemaker_session, cpu_instance_type
         assert output.shape == (batch_size, 10)
 
 
-@pytest.mark.skipif(
-    PYTHON_VERSION == "py2",
-    reason="PyTorch EIA does not support Python 2.",
-)
+@pytest.mark.skipif(PYTHON_VERSION == "py2", reason="PyTorch EIA does not support Python 2.")
 def test_deploy_model_with_accelerator(sagemaker_session, cpu_instance_type):
     endpoint_name = "test-pytorch-deploy-eia-{}".format(sagemaker_timestamp())
     model_data = sagemaker_session.upload_data(path=EIA_MODEL)
