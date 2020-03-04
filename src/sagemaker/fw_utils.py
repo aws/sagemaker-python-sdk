@@ -53,7 +53,14 @@ UNSUPPORTED_FRAMEWORK_VERSION_ERROR = (
 )
 
 VALID_PY_VERSIONS = ["py2", "py3"]
-VALID_EIA_FRAMEWORKS = ["tensorflow", "tensorflow-serving", "mxnet", "mxnet-serving"]
+VALID_EIA_FRAMEWORKS = [
+    "tensorflow",
+    "tensorflow-serving",
+    "mxnet",
+    "mxnet-serving",
+    "pytorch",
+    "pytorch-serving",
+]
 VALID_ACCOUNTS_BY_REGION = {"us-gov-west-1": "246785580436", "us-iso-east-1": "744548109606"}
 ASIMOV_VALID_ACCOUNTS_BY_REGION = {"us-iso-east-1": "886529160074"}
 OPT_IN_ACCOUNTS_BY_REGION = {"ap-east-1": "057415533634", "me-south-1": "724002660598"}
@@ -71,6 +78,7 @@ MERGED_FRAMEWORKS_REPO_MAP = {
     "mxnet-serving-eia": "mxnet-inference-eia",
     "pytorch": "pytorch-training",
     "pytorch-serving": "pytorch-inference",
+    "pytorch-serving-eia": "pytorch-inference-eia",
 }
 
 MERGED_FRAMEWORKS_LOWEST_VERSIONS = {
@@ -82,6 +90,7 @@ MERGED_FRAMEWORKS_LOWEST_VERSIONS = {
     "mxnet-serving-eia": [1, 4, 1],
     "pytorch": [1, 2, 0],
     "pytorch-serving": [1, 2, 0],
+    "pytorch-serving-eia": {"py3": [1, 3, 1]},
 }
 
 DEBUGGER_UNSUPPORTED_REGIONS = ["us-gov-west-1", "us-iso-east-1"]
@@ -117,6 +126,8 @@ def _is_dlc_version(framework, framework_version, py_version):
     """
     lowest_version_list = MERGED_FRAMEWORKS_LOWEST_VERSIONS.get(framework)
     if isinstance(lowest_version_list, dict):
+        if py_version not in lowest_version_list:
+            raise ValueError("{} is not supported in {}.".format(framework, py_version))
         lowest_version_list = lowest_version_list[py_version]
 
     if lowest_version_list:
