@@ -136,7 +136,7 @@ class PyTorchModel(FrameworkModel):
                 For example, 'ml.p2.xlarge'.
             accelerator_type (str): The Elastic Inference accelerator type to
                 deploy to the instance for loading and making inferences to the
-                model. Currently unsupported with PyTorch.
+                model. Currently supported with PyTorch 1.3.1 Python 3.
 
         Returns:
             dict[str, str]: A container definition object usable with the
