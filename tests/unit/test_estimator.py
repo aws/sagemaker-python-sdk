@@ -1604,7 +1604,7 @@ def test_different_code_location_kms_key(utils, sagemaker_session):
 
 
 @patch("sagemaker.utils")
-def test_default_code_location_uses_output_path(utils, sagemaker_session):
+def test_default_code_location_uses_session_default_bucket(utils, sagemaker_session):
     fw = DummyFramework(
         entry_point=SCRIPT_PATH,
         role="DummyRole",
@@ -1619,7 +1619,9 @@ def test_default_code_location_uses_output_path(utils, sagemaker_session):
 
     obj = sagemaker_session.boto_session.resource("s3").Object
 
-    obj.assert_called_with("output_path", "%s/source/sourcedir.tar.gz" % fw._current_job_name)
+    obj.assert_called_with(
+        sagemaker_session.default_bucket(), "%s/source/sourcedir.tar.gz" % fw._current_job_name
+    )
 
     extra_args = {"ServerSideEncryption": "aws:kms", "SSEKMSKeyId": "kms-key"}
     obj().upload_file.assert_called_with(utils.create_tar_file(), ExtraArgs=extra_args)

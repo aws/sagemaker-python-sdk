@@ -97,6 +97,13 @@ def test_training_with_network_isolation(
         assert sagemaker_session.sagemaker_client.describe_training_job(TrainingJobName=job_name)[
             "EnableNetworkIsolation"
         ]
+
+        code_location = sklearn.latest_training_job.describe()["InputDataConfig"][2]["DataSource"][
+            "S3DataSource"
+        ]["S3Uri"]
+        assert code_location.startswith("s3://{}".format(sagemaker_session.default_bucket()))
+        assert code_location.endswith("source/sourcedir.tar.gz")
+
         return sklearn.latest_training_job.name
 
 
