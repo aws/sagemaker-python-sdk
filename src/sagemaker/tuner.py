@@ -761,7 +761,7 @@ class HyperparameterTuner(object):
         object.
 
         Args:
-            best_training_job (dict): dict: Dictionary containing "TrainingJobName" and
+            best_training_job (dict): Dictionary containing "TrainingJobName" and
                 "TrainingJobDefinitionName".
                 Example:
                 {
