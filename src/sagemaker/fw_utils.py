@@ -281,7 +281,7 @@ def _accelerator_type_valid_for_framework(
     if framework not in VALID_EIA_FRAMEWORKS:
         raise ValueError(
             "{} is not supported with Amazon Elastic Inference. Currently only "
-            "Python-based TensorFlow and MXNet are supported.".format(framework)
+            "Python-based TensorFlow, MXNet, PyTorch are supported.".format(framework)
         )
 
     if optimized_families:
