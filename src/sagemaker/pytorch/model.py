@@ -142,9 +142,6 @@ class PyTorchModel(FrameworkModel):
             dict[str, str]: A container definition object usable with the
             CreateModel API.
         """
-        if accelerator_type and self.py_version == "py2":
-            raise ValueError("PyTorch EIA is not supported in Python 2.")
-
         deploy_image = self.image
         if not deploy_image:
             region_name = self.sagemaker_session.boto_session.region_name

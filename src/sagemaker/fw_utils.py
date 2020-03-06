@@ -60,6 +60,7 @@ VALID_EIA_FRAMEWORKS = [
     "mxnet-serving",
     "pytorch-serving",
 ]
+PY2_RESTRICTED_EIA_FRAMEWORKS = ["pytorch-serving"]
 VALID_ACCOUNTS_BY_REGION = {"us-gov-west-1": "246785580436", "us-iso-east-1": "744548109606"}
 ASIMOV_VALID_ACCOUNTS_BY_REGION = {"us-iso-east-1": "886529160074"}
 OPT_IN_ACCOUNTS_BY_REGION = {"ap-east-1": "057415533634", "me-south-1": "724002660598"}
@@ -215,6 +216,7 @@ def create_image_uri(
 
     if _accelerator_type_valid_for_framework(
         framework=framework,
+        py_version=py_version,
         accelerator_type=accelerator_type,
         optimized_families=optimized_families,
     ):
@@ -267,16 +269,22 @@ def create_image_uri(
 
 
 def _accelerator_type_valid_for_framework(
-    framework, accelerator_type=None, optimized_families=None
+    framework, py_version, accelerator_type=None, optimized_families=None
 ):
     """
     Args:
         framework:
+        py_version:
         accelerator_type:
         optimized_families:
     """
     if accelerator_type is None:
         return False
+
+    if py_version == "py2" and framework in PY2_RESTRICTED_EIA_FRAMEWORKS:
+        raise ValueError(
+            "{} is not supported with Amazon Elastic Inference in Python 2.".format(framework)
+        )
 
     if framework not in VALID_EIA_FRAMEWORKS:
         raise ValueError(

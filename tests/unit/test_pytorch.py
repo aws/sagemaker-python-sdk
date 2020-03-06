@@ -355,7 +355,9 @@ def test_model_image_accelerator(sagemaker_session):
             py_version="py2",
         )
         model.deploy(1, CPU, accelerator_type=ACCELERATOR_TYPE)
-    assert "PyTorch EIA is not supported in Python 2." in str(error)
+    assert "pytorch-serving is not supported with Amazon Elastic Inference in Python 2." in str(
+        error
+    )
 
 
 def test_train_image_default(sagemaker_session):
