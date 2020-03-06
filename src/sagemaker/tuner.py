@@ -766,13 +766,15 @@ class HyperparameterTuner(object):
 
                 Example:
 
-                {
+                .. code:: python
 
-                "TrainingJobName": "my_training_job_name",
+                    {
 
-                "TrainingJobDefinitionName": "my_training_job_definition_name"
+                        "TrainingJobName": "my_training_job_name",
 
-                }
+                        "TrainingJobDefinitionName": "my_training_job_definition_name"
+
+                    }
 
         Returns:
             sagemaker.estimator.EstimatorBase: The estimator that has the best training job
