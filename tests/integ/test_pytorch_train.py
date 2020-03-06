@@ -134,7 +134,7 @@ def test_deploy_model_with_accelerator(sagemaker_session, cpu_instance_type):
         predictor = pytorch.deploy(
             initial_instance_count=1,
             instance_type=cpu_instance_type,
-            accelerator_type="ml.eia1.large",
+            accelerator_type="ml.eia2.medium",
             endpoint_name=endpoint_name,
         )
 
