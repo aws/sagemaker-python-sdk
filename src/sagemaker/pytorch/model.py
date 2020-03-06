@@ -136,12 +136,15 @@ class PyTorchModel(FrameworkModel):
                 For example, 'ml.p2.xlarge'.
             accelerator_type (str): The Elastic Inference accelerator type to
                 deploy to the instance for loading and making inferences to the
-                model. Currently supported with PyTorch 1.3.1 Python 3.
+                model.
 
         Returns:
             dict[str, str]: A container definition object usable with the
             CreateModel API.
         """
+        if accelerator_type and self.py_version == "py2":
+            raise ValueError("PyTorch EIA is not supported in Python 2.")
+
         deploy_image = self.image
         if not deploy_image:
             region_name = self.sagemaker_session.boto_session.region_name
@@ -169,7 +172,7 @@ class PyTorchModel(FrameworkModel):
                 (cpu/gpu/family-specific optimized).
             accelerator_type (str): The Elastic Inference accelerator type to
                 deploy to the instance for loading and making inferences to the
-                model. Currently supported with PyTorch 1.3.1 Python 3.
+                model.
 
         Returns:
             str: The appropriate image URI based on the given parameters.

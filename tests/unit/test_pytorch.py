@@ -352,6 +352,20 @@ def test_model_image_accelerator(sagemaker_session):
     assert isinstance(predictor, PyTorchPredictor)
 
 
+@patch("sagemaker.fw_utils.tar_and_upload_dir", MagicMock())
+def test_model_image_accelerator(sagemaker_session):
+    with pytest.raises(ValueError) as error:
+        model = PyTorchModel(
+            MODEL_DATA,
+            role=ROLE,
+            entry_point=SCRIPT_PATH,
+            sagemaker_session=sagemaker_session,
+            py_version="py2",
+        )
+        model.deploy(1, CPU, accelerator_type=ACCELERATOR_TYPE)
+    assert "PyTorch EIA is not supported in Python 2." in str(error)
+
+
 def test_train_image_default(sagemaker_session):
     pytorch = PyTorch(
         entry_point=SCRIPT_PATH,

@@ -29,7 +29,7 @@ MNIST_SCRIPT = os.path.join(MNIST_DIR, "mnist.py")
 
 EIA_DIR = os.path.join(DATA_DIR, "pytorch_eia")
 EIA_MODEL = os.path.join(EIA_DIR, "model_mnist.tar.gz")
-EIA_SCRIPT = os.path.join(EIA_DIR, "mnist.py")
+EIA_SCRIPT = os.path.join(EIA_DIR, "empty_inference_script.py")
 
 
 @pytest.fixture(scope="module", name="pytorch_training_job")

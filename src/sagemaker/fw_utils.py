@@ -58,7 +58,6 @@ VALID_EIA_FRAMEWORKS = [
     "tensorflow-serving",
     "mxnet",
     "mxnet-serving",
-    "pytorch",
     "pytorch-serving",
 ]
 VALID_ACCOUNTS_BY_REGION = {"us-gov-west-1": "246785580436", "us-iso-east-1": "744548109606"}
@@ -90,7 +89,7 @@ MERGED_FRAMEWORKS_LOWEST_VERSIONS = {
     "mxnet-serving-eia": [1, 4, 1],
     "pytorch": [1, 2, 0],
     "pytorch-serving": [1, 2, 0],
-    "pytorch-serving-eia": {"py3": [1, 3, 1]},
+    "pytorch-serving-eia": [1, 3, 1],
 }
 
 DEBUGGER_UNSUPPORTED_REGIONS = ["us-gov-west-1", "us-iso-east-1"]
@@ -126,8 +125,6 @@ def _is_dlc_version(framework, framework_version, py_version):
     """
     lowest_version_list = MERGED_FRAMEWORKS_LOWEST_VERSIONS.get(framework)
     if isinstance(lowest_version_list, dict):
-        if py_version not in lowest_version_list:
-            raise ValueError("{} is not supported in {}.".format(framework, py_version))
         lowest_version_list = lowest_version_list[py_version]
 
     if lowest_version_list:

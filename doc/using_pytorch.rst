@@ -259,7 +259,7 @@ In order to attach an Elastic Inference accelerator to your endpoint provide the
 
   predictor = pytorch_estimator.deploy(instance_type='ml.m4.xlarge',
                                        initial_instance_count=1,
-                                       accelerator_type='ml.eia1.medium')
+                                       accelerator_type='ml.eia2.medium')
 
 The SageMaker PyTorch Model Server
 ==================================
