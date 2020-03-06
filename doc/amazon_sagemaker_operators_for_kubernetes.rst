@@ -349,7 +349,7 @@ that directory to your \ ``PATH``.
 
     export os="linux"
 
-    wget https://amazon-sagemaker-operator-for-k8s-us-east-1.s3.amazonaws.com/kubectl-smlogs-plugin/latest/${os}.amd64.tar.gz
+    wget https://amazon-sagemaker-operator-for-k8s-us-east-1.s3.amazonaws.com/kubectl-smlogs-plugin/v1/${os}.amd64.tar.gz
     tar xvzf ${os}.amd64.tar.gz
 
     # Move binaries to a directory in your homedir.
@@ -550,11 +550,11 @@ each region.
 +-------------+---------------------------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------------+
 | Region      | Controller Image                                                                            | Linux SMLogs                                                                                                           |
 +=============+=============================================================================================+========================================================================================================================+
-| us-east-1   | ``957583890962.dkr.ecr.us-east-1.amazonaws.com/amazon-sagemaker-operator-for-k8s:latest``   | https://amazon-sagemaker-operator-for-k8s-us-east-1.s3.amazonaws.com/kubectl-smlogs-plugin/latest/linux.amd64.tar.gz   |
+| us-east-1   | ``957583890962.dkr.ecr.us-east-1.amazonaws.com/amazon-sagemaker-operator-for-k8s:v1``       | https://amazon-sagemaker-operator-for-k8s-us-east-1.s3.amazonaws.com/kubectl-smlogs-plugin/v1/linux.amd64.tar.gz       |
 +-------------+---------------------------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------------+
-| us-east-2   | ``922499468684.dkr.ecr.us-east-2.amazonaws.com/amazon-sagemaker-operator-for-k8s:latest``   | https://amazon-sagemaker-operator-for-k8s-us-east-2.s3.amazonaws.com/kubectl-smlogs-plugin/latest/linux.amd64.tar.gz   |
+| us-east-2   | ``922499468684.dkr.ecr.us-east-2.amazonaws.com/amazon-sagemaker-operator-for-k8s:v1``       | https://amazon-sagemaker-operator-for-k8s-us-east-2.s3.amazonaws.com/kubectl-smlogs-plugin/v1/linux.amd64.tar.gz       |
 +-------------+---------------------------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------------+
-| us-west-2   | ``640106867763.dkr.ecr.us-west-2.amazonaws.com/amazon-sagemaker-operator-for-k8s:latest``   | https://amazon-sagemaker-operator-for-k8s-us-west-2.s3.amazonaws.com/kubectl-smlogs-plugin/latest/linux.amd64.tar.gz   |
+| us-west-2   | ``640106867763.dkr.ecr.us-west-2.amazonaws.com/amazon-sagemaker-operator-for-k8s:v1``       | https://amazon-sagemaker-operator-for-k8s-us-west-2.s3.amazonaws.com/kubectl-smlogs-plugin/v1/linux.amd64.tar.gz       |
 +-------------+---------------------------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------------+
-| eu-west-1   | ``613661167059.dkr.ecr.eu-west-1.amazonaws.com/amazon-sagemaker-operator-for-k8s:latest``   | https://amazon-sagemaker-operator-for-k8s-eu-west-1.s3.amazonaws.com/kubectl-smlogs-plugin/latest/linux.amd64.tar.gz   |
+| eu-west-1   | ``613661167059.dkr.ecr.eu-west-1.amazonaws.com/amazon-sagemaker-operator-for-k8s:v1``       | https://amazon-sagemaker-operator-for-k8s-eu-west-1.s3.amazonaws.com/kubectl-smlogs-plugin/v1/linux.amd64.tar.gz       |
 +-------------+---------------------------------------------------------------------------------------------+------------------------------------------------------------------------------------------------------------------------+
