@@ -6,6 +6,8 @@ With PyTorch Estimators and Models, you can train and host PyTorch models on Ama
 
 Supported versions of PyTorch: ``0.4.0``, ``1.0.0``, ``1.1.0``, ``1.2.0``, ``1.3.1``.
 
+Supported versions of PyTorch for Elastic Inference: ``1.3.1``.
+
 We recommend that you use the latest supported version, because that's where we focus most of our development efforts.
 
 You can visit the PyTorch repository at https://github.com/pytorch/pytorch.
@@ -250,6 +252,14 @@ You use the SageMaker PyTorch model server to host your PyTorch model when you c
 Estimator. The model server runs inside a SageMaker Endpoint, which your call to ``deploy`` creates.
 You can access the name of the Endpoint by the ``name`` property on the returned ``Predictor``.
 
+PyTorch on Amazon SageMaker has support for `Elastic Inference <https://docs.aws.amazon.com/sagemaker/latest/dg/ei.html>`_, which allows for inference acceleration to a hosted endpoint for a fraction of the cost of using a full GPU instance.
+In order to attach an Elastic Inference accelerator to your endpoint provide the accelerator type to ``accelerator_type`` to your ``deploy`` call.
+
+.. code:: python
+
+  predictor = pytorch_estimator.deploy(instance_type='ml.m4.xlarge',
+                                       initial_instance_count=1,
+                                       accelerator_type='ml.eia2.medium')
 
 The SageMaker PyTorch Model Server
 ==================================
@@ -290,6 +300,11 @@ It loads the model parameters from a ``model.pth`` file in the SageMaker model d
         with open(os.path.join(model_dir, 'model.pth'), 'rb') as f:
             model.load_state_dict(torch.load(f))
         return model
+
+However, if you are using PyTorch Elastic Inference, you do not have to provide a ``model_fn`` since the PyTorch serving
+container has a default one for you. But please note that if you are utilizing the default ``model_fn``, please save
+yor parameter file as ``model.pt`` instead of ``model.pth``. For more information on inference script, please refer to:
+`SageMaker PyTorch Default Inference Handler <https://github.com/aws/sagemaker-pytorch-serving-container/blob/master/src/sagemaker_pytorch_serving_container/default_inference_handler.py>`_.
 
 Serve a PyTorch Model
 ---------------------
