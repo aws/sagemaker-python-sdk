@@ -769,11 +769,8 @@ class HyperparameterTuner(object):
                 .. code:: python
 
                     {
-
                         "TrainingJobName": "my_training_job_name",
-
                         "TrainingJobDefinitionName": "my_training_job_definition_name"
-
                     }
 
         Returns:
