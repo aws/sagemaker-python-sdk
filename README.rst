@@ -328,7 +328,7 @@ You can use Apache Airflow to author, schedule and monitor SageMaker workflow.
 
 For more information, see `Amazon SageMaker Operators in Apache Airflow`_.
 
-.. _SageMaker Workflow in Apache Airflow: https://sagemaker.readthedocs.io/en/stable/using_workflow.html
+.. _Amazon SageMaker Operators in Apache Airflow: https://sagemaker.readthedocs.io/en/stable/using_workflow.html
 
 SageMaker Autopilot
 -------------------
