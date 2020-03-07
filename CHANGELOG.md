@@ -1,5 +1,17 @@
 # Changelog
 
+## v1.50.18.post0 (2020-03-05)
+
+### Documentation Changes
+
+ * correct Estimator code_location default S3 path
+
+## v1.50.18 (2020-03-04)
+
+### Bug Fixes and Other Changes
+
+ * change default compile model max run to 15 mins
+
 ## v1.50.17.post0 (2020-03-03)
 
 ### Testing and Release Infrastructure

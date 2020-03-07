@@ -27,6 +27,10 @@ from sagemaker.utils import sagemaker_timestamp
 MNIST_DIR = os.path.join(DATA_DIR, "pytorch_mnist")
 MNIST_SCRIPT = os.path.join(MNIST_DIR, "mnist.py")
 
+EIA_DIR = os.path.join(DATA_DIR, "pytorch_eia")
+EIA_MODEL = os.path.join(EIA_DIR, "model_mnist.tar.gz")
+EIA_SCRIPT = os.path.join(EIA_DIR, "empty_inference_script.py")
+
 
 @pytest.fixture(scope="module", name="pytorch_training_job")
 def fixture_training_job(sagemaker_session, pytorch_full_version, cpu_instance_type):
@@ -107,6 +111,32 @@ def test_deploy_model(pytorch_training_job, sagemaker_session, cpu_instance_type
             sagemaker_session=sagemaker_session,
         )
         predictor = model.deploy(1, cpu_instance_type, endpoint_name=endpoint_name)
+
+        batch_size = 100
+        data = numpy.random.rand(batch_size, 1, 28, 28).astype(numpy.float32)
+        output = predictor.predict(data)
+
+        assert output.shape == (batch_size, 10)
+
+
+@pytest.mark.skipif(PYTHON_VERSION == "py2", reason="PyTorch EIA does not support Python 2.")
+def test_deploy_model_with_accelerator(sagemaker_session, cpu_instance_type):
+    endpoint_name = "test-pytorch-deploy-eia-{}".format(sagemaker_timestamp())
+    model_data = sagemaker_session.upload_data(path=EIA_MODEL)
+    pytorch = PyTorchModel(
+        model_data,
+        "SageMakerRole",
+        framework_version="1.3.1",
+        entry_point=EIA_SCRIPT,
+        sagemaker_session=sagemaker_session,
+    )
+    with timeout_and_delete_endpoint_by_name(endpoint_name, sagemaker_session):
+        predictor = pytorch.deploy(
+            initial_instance_count=1,
+            instance_type=cpu_instance_type,
+            accelerator_type="ml.eia2.medium",
+            endpoint_name=endpoint_name,
+        )
 
         batch_size = 100
         data = numpy.random.rand(batch_size, 1, 28, 28).astype(numpy.float32)
