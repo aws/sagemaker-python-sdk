@@ -1,5 +1,16 @@
 # Changelog
 
+## v1.51.0 (2020-03-09)
+
+### Features
+
+ * pytorch 1.3.1 eia support
+
+### Documentation Changes
+
+ * Update Kubernetes Operator default tag
+ * improve docstring for tuner.best_estimator()
+
 ## v1.50.18.post0 (2020-03-05)
 
 ### Documentation Changes
