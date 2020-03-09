@@ -12,17 +12,22 @@
 # language governing permissions and limitations under the License.
 from __future__ import absolute_import
 
-import os
-
 import numpy
+import os
 import pytest
-from tests.integ import DATA_DIR, PYTHON_VERSION, TRAINING_DEFAULT_TIMEOUT_MINUTES
-from tests.integ.timeout import timeout, timeout_and_delete_endpoint_by_name
-
+from sagemaker.pytorch.defaults import LATEST_PY2_VERSION
 from sagemaker.pytorch.estimator import PyTorch
 from sagemaker.pytorch.model import PyTorchModel
-from sagemaker.pytorch.defaults import LATEST_PY2_VERSION
 from sagemaker.utils import sagemaker_timestamp
+
+from tests.integ import (
+    test_region,
+    DATA_DIR,
+    PYTHON_VERSION,
+    TRAINING_DEFAULT_TIMEOUT_MINUTES,
+    EI_SUPPORTED_REGIONS,
+)
+from tests.integ.timeout import timeout, timeout_and_delete_endpoint_by_name
 
 MNIST_DIR = os.path.join(DATA_DIR, "pytorch_mnist")
 MNIST_SCRIPT = os.path.join(MNIST_DIR, "mnist.py")
@@ -121,8 +126,7 @@ def test_deploy_model(pytorch_training_job, sagemaker_session, cpu_instance_type
 
 @pytest.mark.skipif(PYTHON_VERSION == "py2", reason="PyTorch EIA does not support Python 2.")
 @pytest.mark.skipif(
-    tests.integ.test_region() not in tests.integ.EI_SUPPORTED_REGIONS,
-    reason="EI isn't supported in that specific region.",
+    test_region() not in EI_SUPPORTED_REGIONS, reason="EI isn't supported in that specific region."
 )
 def test_deploy_model_with_accelerator(sagemaker_session, cpu_instance_type):
     endpoint_name = "test-pytorch-deploy-eia-{}".format(sagemaker_timestamp())
