@@ -802,8 +802,8 @@ def transform_config_from_estimator(
         model_name (str): model name (default: None). If not specified, one will
             be generated.
         strategy (str): The strategy used to decide how to batch records in a
-            single request (default: None). Valid values: 'MULTI_RECORD' and
-            'SINGLE_RECORD'.
+            single request (default: None). Valid values: 'MultiRecord' and
+            'SingleRecord'.
         assemble_with (str): How the output is assembled (default: None). Valid
             values: 'Line' or 'None'.
         output_path (str): S3 location for saving the transform result. If not
