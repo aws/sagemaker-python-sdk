@@ -53,7 +53,14 @@ UNSUPPORTED_FRAMEWORK_VERSION_ERROR = (
 )
 
 VALID_PY_VERSIONS = ["py2", "py3"]
-VALID_EIA_FRAMEWORKS = ["tensorflow", "tensorflow-serving", "mxnet", "mxnet-serving"]
+VALID_EIA_FRAMEWORKS = [
+    "tensorflow",
+    "tensorflow-serving",
+    "mxnet",
+    "mxnet-serving",
+    "pytorch-serving",
+]
+PY2_RESTRICTED_EIA_FRAMEWORKS = ["pytorch-serving"]
 VALID_ACCOUNTS_BY_REGION = {"us-gov-west-1": "246785580436", "us-iso-east-1": "744548109606"}
 ASIMOV_VALID_ACCOUNTS_BY_REGION = {"us-gov-west-1": "442386744353", "us-iso-east-1": "886529160074"}
 OPT_IN_ACCOUNTS_BY_REGION = {"ap-east-1": "057415533634", "me-south-1": "724002660598"}
@@ -71,6 +78,7 @@ MERGED_FRAMEWORKS_REPO_MAP = {
     "mxnet-serving-eia": "mxnet-inference-eia",
     "pytorch": "pytorch-training",
     "pytorch-serving": "pytorch-inference",
+    "pytorch-serving-eia": "pytorch-inference-eia",
 }
 
 MERGED_FRAMEWORKS_LOWEST_VERSIONS = {
@@ -82,6 +90,7 @@ MERGED_FRAMEWORKS_LOWEST_VERSIONS = {
     "mxnet-serving-eia": [1, 4, 1],
     "pytorch": [1, 2, 0],
     "pytorch-serving": [1, 2, 0],
+    "pytorch-serving-eia": [1, 3, 1],
 }
 
 DEBUGGER_UNSUPPORTED_REGIONS = ["us-gov-west-1", "us-iso-east-1"]
@@ -188,6 +197,7 @@ def create_image_uri(
 
     if _accelerator_type_valid_for_framework(
         framework=framework,
+        py_version=py_version,
         accelerator_type=accelerator_type,
         optimized_families=optimized_families,
     ):
@@ -240,21 +250,27 @@ def create_image_uri(
 
 
 def _accelerator_type_valid_for_framework(
-    framework, accelerator_type=None, optimized_families=None
+    framework, py_version, accelerator_type=None, optimized_families=None
 ):
     """
     Args:
         framework:
+        py_version:
         accelerator_type:
         optimized_families:
     """
     if accelerator_type is None:
         return False
 
+    if py_version == "py2" and framework in PY2_RESTRICTED_EIA_FRAMEWORKS:
+        raise ValueError(
+            "{} is not supported with Amazon Elastic Inference in Python 2.".format(framework)
+        )
+
     if framework not in VALID_EIA_FRAMEWORKS:
         raise ValueError(
             "{} is not supported with Amazon Elastic Inference. Currently only "
-            "Python-based TensorFlow and MXNet are supported.".format(framework)
+            "Python-based TensorFlow, MXNet, PyTorch are supported.".format(framework)
         )
 
     if optimized_families:
