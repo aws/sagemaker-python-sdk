@@ -483,27 +483,37 @@ def test_create_dlc_image_uri_gov_west_1():
         "us-gov-west-1", "tensorflow-serving", "ml.m4.xlarge", "1.13.0"
     )
     assert (
-        image_uri == "442386744353.dkr.ecr.us-gov-west-1.amazonaws.com/tensorflow-inference:1.13.0-cpu"
+        image_uri
+        == "442386744353.dkr.ecr.us-gov-west-1.amazonaws.com/tensorflow-inference:1.13.0-cpu"
     )
 
     image_uri = fw_utils.create_image_uri("us-gov-west-1", "mxnet", "ml.p3.2xlarge", "1.4.1", "py3")
-    assert image_uri == "442386744353.dkr.ecr.us-gov-west-1.amazonaws.com/mxnet-training:1.4.1-gpu-py3"
+    assert (
+        image_uri == "442386744353.dkr.ecr.us-gov-west-1.amazonaws.com/mxnet-training:1.4.1-gpu-py3"
+    )
 
     image_uri = fw_utils.create_image_uri(
         "us-gov-west-1", "mxnet-serving", "ml.c4.2xlarge", "1.4.1", "py3"
     )
     assert (
-        image_uri == "442386744353.dkr.ecr.us-gov-west-1.amazonaws.com/mxnet-inference:1.4.1-cpu-py3"
+        image_uri
+        == "442386744353.dkr.ecr.us-gov-west-1.amazonaws.com/mxnet-inference:1.4.1-cpu-py3"
     )
 
-    image_uri = fw_utils.create_image_uri("us-gov-west-1", "pytorch", "ml.p3.2xlarge", "1.2.0", "py3")
-    assert image_uri == "442386744353.dkr.ecr.us-gov-west-1.amazonaws.com/pytorch-training:1.2.0-gpu-py3"
+    image_uri = fw_utils.create_image_uri(
+        "us-gov-west-1", "pytorch", "ml.p3.2xlarge", "1.2.0", "py3"
+    )
+    assert (
+        image_uri
+        == "442386744353.dkr.ecr.us-gov-west-1.amazonaws.com/pytorch-training:1.2.0-gpu-py3"
+    )
 
     image_uri = fw_utils.create_image_uri(
         "us-gov-west-1", "pytorch-serving", "ml.c4.2xlarge", "1.2.0", "py3"
     )
     assert (
-        image_uri == "442386744353.dkr.ecr.us-gov-west-1.amazonaws.com/pytorch-inference:1.2.0-cpu-py3"
+        image_uri
+        == "442386744353.dkr.ecr.us-gov-west-1.amazonaws.com/pytorch-inference:1.2.0-cpu-py3"
     )
 
 
