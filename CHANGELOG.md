@@ -1,5 +1,15 @@
 # Changelog
 
+## v1.51.1 (2020-03-10)
+
+### Bug Fixes and Other Changes
+
+ * skip pytorch ei test in unsupported regions
+
+### Documentation Changes
+
+ * correct MultiString/MULTI_STRING docstring
+
 ## v1.51.0 (2020-03-09)
 
 ### Features
