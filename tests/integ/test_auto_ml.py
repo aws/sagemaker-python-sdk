@@ -115,15 +115,14 @@ def test_auto_ml_fit_optional_args(sagemaker_session):
         output_path=output_path,
         problem_type=problem_type,
         job_objective=job_objective,
-        base_job_name=BASE_JOB_NAME,
     )
     inputs = TRAINING_DATA
     with timeout(minutes=AUTO_ML_DEFAULT_TIMEMOUT_MINUTES):
-        auto_ml.fit(inputs)
+        auto_ml.fit(inputs, job_name=unique_name_from_base(BASE_JOB_NAME))
 
     auto_ml_desc = auto_ml.describe_auto_ml_job(job_name=auto_ml.latest_auto_ml_job.job_name)
     assert auto_ml_desc["AutoMLJobStatus"] == "Completed"
-    assert BASE_JOB_NAME in auto_ml_desc["AutoMLJobName"]
+    assert auto_ml_desc["AutoMLJobName"] == auto_ml.latest_auto_ml_job.job_name
     assert auto_ml_desc["AutoMLJobObjective"] == job_objective
     assert auto_ml_desc["ProblemType"] == problem_type
     assert auto_ml_desc["OutputDataConfig"]["S3OutputPath"] == output_path
