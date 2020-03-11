@@ -1968,7 +1968,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
             job_name (str): Name of the transform job being created.
             model_name (str): Name of the SageMaker model being used for the transform job.
             strategy (str): The strategy used to decide how to batch records in a single request.
-                Possible values are 'MULTI_RECORD' and 'SINGLE_RECORD'.
+                Possible values are 'MultiRecord' and 'SingleRecord'.
             max_concurrent_transforms (int): The maximum number of HTTP requests to be made to
                 each individual transform container at one time.
             max_payload (int): Maximum size of the payload in a single HTTP request to the

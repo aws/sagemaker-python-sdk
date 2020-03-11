@@ -345,11 +345,19 @@ def test_non_mms_model(repack_model, sagemaker_session):
 
 @patch("sagemaker.fw_utils.tar_and_upload_dir", MagicMock())
 def test_model_image_accelerator(sagemaker_session):
-    model = PyTorchModel(
-        MODEL_DATA, role=ROLE, entry_point=SCRIPT_PATH, sagemaker_session=sagemaker_session
+    with pytest.raises(ValueError) as error:
+        model = PyTorchModel(
+            MODEL_DATA,
+            role=ROLE,
+            entry_point=SCRIPT_PATH,
+            sagemaker_session=sagemaker_session,
+            framework_version="1.3.1",
+            py_version="py2",
+        )
+        model.deploy(1, CPU, accelerator_type=ACCELERATOR_TYPE)
+    assert "pytorch-serving is not supported with Amazon Elastic Inference in Python 2." in str(
+        error
     )
-    with pytest.raises(ValueError):
-        model.prepare_container_def(INSTANCE_TYPE, accelerator_type=ACCELERATOR_TYPE)
 
 
 def test_train_image_default(sagemaker_session):
