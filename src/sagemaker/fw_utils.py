@@ -62,7 +62,7 @@ VALID_EIA_FRAMEWORKS = [
 ]
 PY2_RESTRICTED_EIA_FRAMEWORKS = ["pytorch-serving"]
 VALID_ACCOUNTS_BY_REGION = {"us-gov-west-1": "246785580436", "us-iso-east-1": "744548109606"}
-ASIMOV_VALID_ACCOUNTS_BY_REGION = {"us-iso-east-1": "886529160074"}
+ASIMOV_VALID_ACCOUNTS_BY_REGION = {"us-gov-west-1": "442386744353", "us-iso-east-1": "886529160074"}
 OPT_IN_ACCOUNTS_BY_REGION = {"ap-east-1": "057415533634", "me-south-1": "724002660598"}
 ASIMOV_OPT_IN_ACCOUNTS_BY_REGION = {"ap-east-1": "871362719292", "me-south-1": "217643126080"}
 DEFAULT_ACCOUNT = "520713654638"
@@ -133,25 +133,6 @@ def _is_dlc_version(framework, framework_version, py_version):
     return False
 
 
-def _use_dlc_image(region, framework, py_version, framework_version):
-    """Return if the DLC image should be used for the given framework,
-    framework version, Python version, and region.
-
-    Args:
-        region (str): The AWS region.
-        framework (str): The framework name, e.g. "tensorflow-scriptmode".
-        py_version (str): The Python version, e.g. "py3".
-        framework_version (str): The framework version.
-
-    Returns:
-        bool: Whether or not to use the corresponding DLC image.
-    """
-    is_gov_region = region in VALID_ACCOUNTS_BY_REGION
-    is_dlc_version = _is_dlc_version(framework, framework_version, py_version)
-
-    return ((not is_gov_region) or region in ASIMOV_VALID_ACCOUNTS_BY_REGION) and is_dlc_version
-
-
 def _registry_id(region, framework, py_version, account, framework_version):
     """Return the Amazon ECR registry number (or AWS account ID) for
     the given framework, framework version, Python version, and region.
@@ -168,7 +149,7 @@ def _registry_id(region, framework, py_version, account, framework_version):
             specific one for the framework, framework version, Python version,
             and region, then ``account`` is returned.
     """
-    if _use_dlc_image(region, framework, py_version, framework_version):
+    if _is_dlc_version(framework, framework_version, py_version):
         if region in ASIMOV_OPT_IN_ACCOUNTS_BY_REGION:
             return ASIMOV_OPT_IN_ACCOUNTS_BY_REGION.get(region)
         if region in ASIMOV_VALID_ACCOUNTS_BY_REGION:
@@ -253,7 +234,7 @@ def create_image_uri(
         else:
             device_type = "cpu"
 
-    use_dlc_image = _use_dlc_image(region, framework, py_version, framework_version)
+    use_dlc_image = _is_dlc_version(framework, framework_version, py_version)
 
     if not py_version or (use_dlc_image and framework == "tensorflow-serving-eia"):
         tag = "{}-{}".format(framework_version, device_type)
