@@ -122,6 +122,7 @@ class XGBoostModel(FrameworkModel):
         Returns:
             dict[str, str]: A container definition object usable with the CreateModel API.
         """
+        
         deploy_image = self.image
         if not deploy_image:
             image_tag = "{}-{}-{}".format(self.framework_version, "cpu", self.py_version)
