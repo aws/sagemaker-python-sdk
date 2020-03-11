@@ -1,5 +1,16 @@
 # Changelog
 
+## v1.51.2 (2020-03-11)
+
+### Bug Fixes and Other Changes
+
+ * handle empty inputs/outputs in ProcessingJob.from_processing_name()
+ * use DLC images for GovCloud
+
+### Testing and Release Infrastructure
+
+ * generate test job name at test start instead of module start
+
 ## v1.51.1 (2020-03-10)
 
 ### Bug Fixes and Other Changes
