@@ -614,6 +614,35 @@ def test_repack_model_from_file_to_folder(tmp):
     }
 
 
+def test_repack_model_with_inference_code_and_requirements(tmp, fake_s3):
+    create_file_tree(
+        tmp,
+        [
+            "new-inference.py",
+            "model-dir/model",
+            "model-dir/code/old-inference.py",
+            "model-dir/code/requirements.txt",
+        ],
+    )
+
+    fake_s3.tar_and_upload("model-dir", "s3://fake/location")
+
+    sagemaker.utils.repack_model(
+        os.path.join(tmp, "new-inference.py"),
+        None,
+        None,
+        "s3://fake/location",
+        "s3://destination-bucket/repacked-model",
+        fake_s3.sagemaker_session,
+    )
+
+    assert list_tar_files(fake_s3.fake_upload_path, tmp) == {
+        "/code/requirements.txt",
+        "/code/new-inference.py",
+        "/model",
+    }
+
+
 class FakeS3(object):
     def __init__(self, tmp):
         self.tmp = tmp
