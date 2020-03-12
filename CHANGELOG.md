@@ -1,5 +1,11 @@
 # Changelog
 
+## v1.51.3 (2020-03-12)
+
+### Bug Fixes and Other Changes
+
+ * make repack_model only removes py file when new entry_point provided
+
 ## v1.51.2 (2020-03-11)
 
 ### Bug Fixes and Other Changes
