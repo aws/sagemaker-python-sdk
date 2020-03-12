@@ -328,8 +328,8 @@ class AlgorithmEstimator(EstimatorBase):
             instance_type (str): Type of EC2 instance to use, for example,
                 'ml.c4.xlarge'.
             strategy (str): The strategy used to decide how to batch records in
-                a single request (default: None). Valid values: 'MULTI_RECORD'
-                and 'SINGLE_RECORD'.
+                a single request (default: None). Valid values: 'MultiRecord'
+                and 'SingleRecord'.
             assemble_with (str): How the output is assembled (default: None).
                 Valid values: 'Line' or 'None'.
             output_path (str): S3 location for saving the transform result. If
