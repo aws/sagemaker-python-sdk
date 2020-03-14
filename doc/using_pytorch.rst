@@ -315,7 +315,7 @@ It loads the model parameters from a ``model.pth`` file in the SageMaker model d
 However, if you are using PyTorch Elastic Inference, you do not have to provide a ``model_fn`` since the PyTorch serving
 container has a default one for you. But please note that if you are utilizing the default ``model_fn``, please save
 your ScriptModule as ``model.pt``. If you are implementing your own ``model_fn``, please use TorchScript and ``torch.jit.save``
- to save your ScriptModule. For more information on inference script, please refer to:
+to save your ScriptModule. For more information on inference script, please refer to:
 `SageMaker PyTorch Default Inference Handler <https://github.com/aws/sagemaker-pytorch-serving-container/blob/master/src/sagemaker_pytorch_serving_container/default_inference_handler.py>`_.
 
 Serve a PyTorch Model
