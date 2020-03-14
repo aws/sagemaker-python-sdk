@@ -105,6 +105,8 @@ class Session(object):  # pylint: disable=too-many-public-methods
                 If not provided, a default bucket will be created based on the following format:
                 "sagemaker-{region}-{aws-account-id}".
                 Example: "sagemaker-my-custom-bucket".
+            s3_client (boto3.client('s3')): Optional. Pre-instantiated Boto3 Client for S3 connections,
+                can be used to set e.g. the endpoint URL (default: None).
 
         """
         self._default_bucket = None
