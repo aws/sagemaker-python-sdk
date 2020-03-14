@@ -700,6 +700,6 @@ The following are optional arguments. When you create a ``PyTorch`` object, you 
 SageMaker PyTorch Docker Containers
 ***********************************
 
-For information about SageMaker PyTorch containers, see  `the SageMaker PyTorch container repository <https://github.com/aws/sagemaker-pytorch-container>`_ and `SageMaker PyTorch Serving container repository<https://github.com/aws/sagemaker-pytorch-serving-container>`__.
+For information about SageMaker PyTorch containers, see  `the SageMaker PyTorch container repository <https://github.com/aws/sagemaker-pytorch-container>`_ and `SageMaker PyTorch Serving container repository <https://github.com/aws/sagemaker-pytorch-serving-container>`__.
 
 For information about SageMaker PyTorch container dependencies, see `SageMaker PyTorch Containers <https://github.com/aws/sagemaker-python-sdk/tree/master/src/sagemaker/pytorch#sagemaker-pytorch-docker-containers>`_.
