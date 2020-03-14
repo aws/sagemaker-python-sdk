@@ -1567,8 +1567,8 @@ class Framework(EstimatorBase):
                 Series. For more information see:
                 https://docs.aws.amazon.com/sagemaker/latest/dg/API_AlgorithmSpecification.html#SageMaker-Type-AlgorithmSpecification-EnableSageMakerMetricsTimeSeries
                 (default: ``None``).
-            s3_client (boto3.client('s3')): Optional. Pre-instantiated Boto3 Client for S3 connections,
-                can be used to set e.g. the endpoint URL. (default: None).                
+            s3_client (boto3.client('s3')): Optional. Pre-instantiated Boto3 Client for
+                S3 connections, can be used to set e.g. the endpoint URL. (default: None).
             **kwargs: Additional kwargs passed to the ``EstimatorBase``
                 constructor.
 
