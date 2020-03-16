@@ -1,6 +1,6 @@
-###########################################
-Using XGBoost with the SageMaker Python SDK
-###########################################
+#########################################
+Use XGBoost with the SageMaker Python SDK
+#########################################
 
 .. contents::
 
@@ -14,10 +14,10 @@ Amazon SageMaker supports two ways to use the XGBoost algorithm:
 
 The XGBoost open source algorithm provides the following benefits over the built-in algorithm:
 
-* Latest version - The open source XGBoost algorithm supports XGBoost verson 1.0 that has better performance scaling on multi-core instances and
+* Latest version - The open source XGBoost algorithm supports XGBoost version 1.0, which has better performance scaling on multi-core instances and
   improved stability for distributed training.
-* Flexibility - Because you write a custom training script, the open source XGBoost algorithm, you can add custom pre- and post-processing logic,
-  run additional code after training, and take advantage of the full range of XGBoost functions. For example, cross-validation support.
+* Flexibility - Take advantage of the full range of XGBoost functionality, such as cross-validation support. 
+  You can add custom pre- and post-processing logic and run additional code after training.
 * Scalability - The XGBoost open source algorithm has a more efficient implementation of distributed training,
   which enables it to scale out to more instances and reduce out-of-memory errors.
 * Exensibility - Because the open source XGBoost container is open source,
@@ -65,9 +65,23 @@ Prepare a Training Script
 
 A typical training script loads data from the input channels, configures training with hyperparameters, trains a model,
 and saves a model to model_dir so that it can be hosted later.
-Hyperparameters are passed to your script as arguments and can be retrieved with an argparse.ArgumentParser instance.
+Hyperparameters are passed to your script as arguments and can be retrieved with an ``argparse.ArgumentParser`` instance.
+For information about ``argparse.ArgumentParser``, see `argparse <https://docs.python.org/3/library/argparse.html>`__ in the Python documentation.
+
 
 For a complete example of an XGBoost training script, see https://github.com/awslabs/amazon-sagemaker-examples/blob/master/introduction_to_amazon_algorithms/xgboost_abalone/abalone.py.
+
+The training script is very similar to a training script you might run outside of Amazon SageMaker,
+but you can access useful properties about the training environment through various environment variables, including the following:
+
+* ``SM_MODEL_DIR``: A string that represents the path where the training job writes the model artifacts to.
+  After training, artifacts in this directory are uploaded to Amazon S3 for model hosting.
+* ``SM_NUM_GPUS``: An integer representing the number of GPUs available to the host.
+* ``SM_CHANNEL_XXXX``: A string that represents the path to the directory that contains the input data for the specified channel.
+  For example, if you specify two input channels in the MXNet estimator's ``fit`` call, named 'train' and 'test', the environment variables ``SM_CHANNEL_TRAIN`` and ``SM_CHANNEL_TEST`` are set.
+* ``SM_HPS``: A JSON dump of the hyperparameters preserving JSON types (boolean, integer, etc.)
+
+For the exhaustive list of available environment variables, see the `SageMaker Containers documentation <https://github.com/aws/sagemaker-containers#list-of-provided-environment-variables-by-sagemaker-containers>`__.
 
 Let's look at the main elements of the script. Starting with the ``__main__`` guard,
 use a parser to read the hyperparameters passed to the estimator when creating the training job.
@@ -86,7 +100,7 @@ such as the location of input data and location where we want to save the model.
     parser.add_argument('--eta', type=float, default=0.2)
     parser.add_argument('--objective', type=str, default='reg:squarederror')
     
-    # Sagemaker specific arguments. Defaults are set in the environment variables.
+    # SageMaker specific arguments. Defaults are set in the environment variables.
     parser.add_argument('--train', type=str, default=os.environ['SM_CHANNEL_TRAIN'])
     parser.add_argument('--validation', type=str, default=os.environ['SM_CHANNEL_VALIDATION'])
     
@@ -123,13 +137,6 @@ such as the location of input data and location where we want to save the model.
     pkl.dump(bst, open(model_location, 'wb'))
     logging.info("Stored trained model at {}".format(model_location))
 
-In the training script, you can customize the inference behavior by implementing the follwing functions:
-* ``input_fn`` - how input data is handled.
-* ``predict_fn`` - how the model is invokedfunction, and how the response is returned ).
-* ``output_fn`` - How the response data is handled
-
-These functions are optional. If you want to use the default implementations, do not implement them in your training script.
-
 Create an Estimator
 -------------------
 After you create your training script, create an instance of the :class:`sagemaker.xgboost.XGBoost` estimator.
@@ -145,16 +152,10 @@ and a dictionary of the hyperparameters to pass to the training script.
     xgb_script_mode_estimator = XGBoost(
         entry_point="abalone.py",
         hyperparameters=hyperparameters,
-        image_name=container,
         role=role, 
         train_instance_count=1,
         train_instance_type="ml.m5.2xlarge",
         framework_version="0.90-1",
-        output_path="s3://{}/{}/{}/output".format(bucket, prefix, "xgboost-script-mode"),
-        train_use_spot_instances=train_use_spot_instances,
-        train_max_run=train_max_run,
-        train_max_wait=train_max_wait,
-        checkpoint_s3_uri=checkpoint_s3_uri
     )
 
 
@@ -179,6 +180,17 @@ After the training job finishes, call the ``deploy`` method of the estimator to 
     predictor = xgb_script_mode_estimator.deploy(initial_instance_count=1, instance_type="ml.m5.xlarge")
     test_data = xgboost.DMatrix('/path/to/data')
     predictor.predict(test_data)
+
+Customize inference
+-------------------
+
+In the script that you provide, you can customize the inference behavior by implementing the follwing functions:
+* ``input_fn`` - how input data is handled.
+* ``predict_fn`` - how the model is invokedfunction, and how the response is returned ).
+* ``output_fn`` - How the response data is handled
+
+These functions are optional. If you want to use the default implementations, do not implement them in your training script.
+
 
 *************************
 SageMaker XGBoost Classes
