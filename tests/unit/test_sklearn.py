@@ -570,3 +570,11 @@ def test_model_py2_warning(warning, sagemaker_session):
     )
     assert model.py_version == "py2"
     warning.assert_called_with(model.__framework_name__, defaults.LATEST_PY2_VERSION)
+
+
+def test_custom_image_estimator_deploy(sagemaker_session):
+    custom_image = "mycustomimage:latest"
+    sklearn = _sklearn_estimator(sagemaker_session)
+    sklearn.fit(inputs="s3://mybucket/train", job_name="new_name")
+    model = sklearn.create_model(image=custom_image)
+    assert model.image == custom_image

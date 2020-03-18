@@ -600,11 +600,18 @@ class TensorFlow(Framework):
         dependencies=None,
         **kwargs
     ):
+        # remove image kwarg
+        if "image" in kwargs:
+            image = kwargs["image"]
+            kwargs = {k: v for k, v in kwargs.items() if k != "image"}
+        else:
+            image = None
+
         """Placeholder docstring"""
         return Model(
             model_data=self.model_data,
             role=role,
-            image=self.image_name,
+            image=(image or self.image_name),
             name=self._current_job_name,
             container_log_level=self.container_log_level,
             framework_version=utils.get_short_version(self.framework_version),
@@ -627,6 +634,13 @@ class TensorFlow(Framework):
         dependencies=None,
         **kwargs
     ):
+        # remove image kwarg
+        if "image" in kwargs:
+            image = kwargs["image"]
+            kwargs = {k: v for k, v in kwargs.items() if k != "image"}
+        else:
+            image = None
+
         """Placeholder docstring"""
         return TensorFlowModel(
             self.model_data,
@@ -635,7 +649,7 @@ class TensorFlow(Framework):
             source_dir=source_dir or self._model_source_dir(),
             enable_cloudwatch_metrics=self.enable_cloudwatch_metrics,
             env={"SAGEMAKER_REQUIREMENTS": self.requirements_file},
-            image=self.image_name,
+            image=(image or self.image_name),
             name=self._current_job_name,
             container_log_level=self.container_log_level,
             code_location=self.code_location,

@@ -642,3 +642,11 @@ def test_model_empty_framework_version(warning, sagemaker_session):
     )
     assert model.framework_version == defaults.CHAINER_VERSION
     warning.assert_called_with(defaults.CHAINER_VERSION, defaults.LATEST_VERSION)
+
+
+def test_custom_image_estimator_deploy(sagemaker_session):
+    custom_image = "mycustomimage:latest"
+    chainer = _chainer_estimator(sagemaker_session)
+    chainer.fit(inputs="s3://mybucket/train", job_name="new_name")
+    model = chainer.create_model(image=custom_image)
+    assert model.image == custom_image
