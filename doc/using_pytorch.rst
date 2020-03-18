@@ -474,8 +474,8 @@ If you implement your own prediction function, you should take care to ensure th
    first argument to ``output_fn``. If you use the default
    ``output_fn``, this should be a torch.Tensor.
 
-The default Elastic Inference ``predict_fn`` is similar but using TorchScript and ``torch.jit.optimized_execution``
-to load the output. If you are implementing your own ``predict_fn``, please also use the ``torch.jit.optimized_execution``
+The default Elastic Inference ``predict_fn`` is similar but runs the TorchScript model using ``torch.jit.optimized_execution``.
+If you are implementing your own ``predict_fn``, please also use the ``torch.jit.optimized_execution``
 block, for example:
 
 .. code:: python
