@@ -600,6 +600,7 @@ class TensorFlow(Framework):
         dependencies=None,
         **kwargs
     ):
+        """Placeholder docstring"""
         # remove image kwarg
         if "image" in kwargs:
             image = kwargs["image"]
@@ -607,7 +608,6 @@ class TensorFlow(Framework):
         else:
             image = None
 
-        """Placeholder docstring"""
         return Model(
             model_data=self.model_data,
             role=role,
@@ -634,6 +634,7 @@ class TensorFlow(Framework):
         dependencies=None,
         **kwargs
     ):
+        """Placeholder docstring"""
         # remove image kwarg
         if "image" in kwargs:
             image = kwargs["image"]
@@ -641,7 +642,6 @@ class TensorFlow(Framework):
         else:
             image = None
 
-        """Placeholder docstring"""
         return TensorFlowModel(
             self.model_data,
             role,
