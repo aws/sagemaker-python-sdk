@@ -30,6 +30,7 @@ from sagemaker.predictor import RealTimePredictor
 from sagemaker.session import s3_input, ShuffleConfig
 from sagemaker.transformer import Transformer
 from botocore.exceptions import ClientError
+import sagemaker.local
 
 MODEL_DATA = "s3://bucket/model.tar.gz"
 MODEL_IMAGE = "mi"
@@ -2259,7 +2260,7 @@ def test_distributed_gpu_local_mode(LocalSession):
 
 @patch("sagemaker.estimator.LocalSession")
 def test_local_mode_file_output_path(local_session_class):
-    local_session = Mock()
+    local_session = Mock(spec=sagemaker.local.LocalSession)
     local_session.local_mode = True
     local_session_class.return_value = local_session
 
