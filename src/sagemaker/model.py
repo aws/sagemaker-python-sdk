@@ -45,6 +45,8 @@ NEO_IMAGE_ACCOUNT = {
     "sa-east-1": "756306329178",
     "ca-central-1": "464438896020",
     "me-south-1": "836785723513",
+    "cn-north-1": "472730292857",
+    "cn-northwest-1": "474822919863",
 }
 
 
