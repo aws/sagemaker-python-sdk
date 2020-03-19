@@ -220,7 +220,8 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):
             self.sagemaker_session = sagemaker_session or LocalSession()
             if not isinstance(self.sagemaker_session, LocalSession):
                 raise RuntimeError(
-                    "instance_type local or local_gpu is only supported with an instance of LocalSession"
+                    "instance_type local or local_gpu is only supported with an"
+                    "instance of LocalSession"
                 )
         else:
             self.sagemaker_session = sagemaker_session or Session()

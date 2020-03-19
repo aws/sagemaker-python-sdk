@@ -2392,3 +2392,30 @@ def test_encryption_flag_in_non_vpc_mode_invalid(sagemaker_session):
         '"EnableInterContainerTrafficEncryption" and "VpcConfig" must be provided together'
         in str(error)
     )
+
+
+def test_estimator_local_mode(sagemaker_session):
+    # When using instance local with a session which is not LocalSession we should error out
+    with pytest.raises(RuntimeError) as error:
+        estimator = Estimator(
+            image_name="some-image",
+            role="some_image",
+            train_instance_count=1,
+            train_instance_type="local",
+            sagemaker_session=sagemaker_session,
+            base_job_name="base_job_name",
+        )
+
+def test_estimator_local_mode(sagemaker_local_session):
+    # When using instance local with a session which is not LocalSession we should error out
+    estimator = Estimator(
+        image_name="some-image",
+        role="some_image",
+        train_instance_count=1,
+        train_instance_type="local",
+        sagemaker_session=sagemaker_local_session,
+        base_job_name="base_job_name",
+    )
+
+
+
