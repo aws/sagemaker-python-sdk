@@ -443,7 +443,7 @@ def test_rcf_airflow_config_uploads_data_source_to_s3(sagemaker_session, cpu_ins
 
 @pytest.mark.canary_quick
 def test_chainer_airflow_config_uploads_data_source_to_s3(
-    sagemaker_session, cpu_instance_type, chainer_full_version
+    sagemaker_local_session, cpu_instance_type, chainer_full_version
 ):
     with timeout(seconds=AIRFLOW_CONFIG_TIMEOUT_IN_SECONDS):
         script_path = os.path.join(DATA_DIR, "chainer_mnist", "mnist.py")
