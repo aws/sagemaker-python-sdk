@@ -2394,10 +2394,10 @@ def test_encryption_flag_in_non_vpc_mode_invalid(sagemaker_session):
     )
 
 
-def test_estimator_local_mode(sagemaker_session):
+def test_estimator_local_mode_error(sagemaker_session):
     # When using instance local with a session which is not LocalSession we should error out
-    with pytest.raises(RuntimeError) as error:
-        estimator = Estimator(
+    with pytest.raises(RuntimeError):
+        Estimator(
             image_name="some-image",
             role="some_image",
             train_instance_count=1,
@@ -2407,9 +2407,9 @@ def test_estimator_local_mode(sagemaker_session):
         )
 
 
-def test_estimator_local_mode(sagemaker_local_session):
+def test_estimator_local_mode_ok(sagemaker_local_session):
     # When using instance local with a session which is not LocalSession we should error out
-    estimator = Estimator(
+    Estimator(
         image_name="some-image",
         role="some_image",
         train_instance_count=1,
