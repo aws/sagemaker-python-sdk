@@ -2406,6 +2406,7 @@ def test_estimator_local_mode(sagemaker_session):
             base_job_name="base_job_name",
         )
 
+
 def test_estimator_local_mode(sagemaker_local_session):
     # When using instance local with a session which is not LocalSession we should error out
     estimator = Estimator(
@@ -2416,6 +2417,3 @@ def test_estimator_local_mode(sagemaker_local_session):
         sagemaker_session=sagemaker_local_session,
         base_job_name="base_job_name",
     )
-
-
-
