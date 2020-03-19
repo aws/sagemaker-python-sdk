@@ -448,6 +448,55 @@ def test_serve_endpoint_with_incorrect_accelerator(request, *args):
         )
 
 
+@patch("urllib3.PoolManager.request")
+def test_invoke_endpoint(request):
+    data = Mock()
+    data.encode.return_value = b"data"
+
+    local_runtime_client = sagemaker.local.local_session.LocalSagemakerRuntimeClient()
+    response = local_runtime_client.invoke_endpoint(data, "unused-endpoint-name")
+
+    assert response == {"Body": request.return_value, "ContentType": None}
+    data.encode.assert_called_with("utf-8")
+    request.assert_called_with(
+        "POST", "http://localhost:8080/invocations", body=b"data", preload_content=False, headers={}
+    )
+
+
+@patch("urllib3.PoolManager.request")
+def test_invoke_endpoint_with_optional_args(request):
+    data = Mock()
+    data.encode.return_value = b"data"
+    content_type = "text/plain"
+    accept = "text/plain"
+    custom_attr = "foo"
+    target_model = "bar"
+
+    local_runtime_client = sagemaker.local.local_session.LocalSagemakerRuntimeClient()
+    response = local_runtime_client.invoke_endpoint(
+        data,
+        "unused-endpoint-name",
+        ContentType=content_type,
+        Accept=accept,
+        CustomAttributes=custom_attr,
+        TargetModel=target_model,
+    )
+
+    assert response == {"Body": request.return_value, "ContentType": content_type}
+    request.assert_called_with(
+        "POST",
+        "http://localhost:8080/invocations",
+        body=b"data",
+        preload_content=False,
+        headers={
+            "Content-type": content_type,
+            "Accept": accept,
+            "X-Amzn-SageMaker-Custom-Attributes": custom_attr,
+            "X-Amzn-SageMaker-Target-Model": target_model,
+        },
+    )
+
+
 def test_file_input_all_defaults():
     prefix = "pre"
     actual = sagemaker.local.local_session.file_input(fileUri=prefix)

@@ -369,7 +369,9 @@ class LocalSagemakerRuntimeClient(object):
         if TargetModel is not None:
             headers["X-Amzn-SageMaker-Target-Model"] = TargetModel
 
-        r = self.http.request("POST", url, body=Body, preload_content=False, headers=headers)
+        r = self.http.request(
+            "POST", url, body=Body.encode("utf-8"), preload_content=False, headers=headers
+        )
 
         return {"Body": r, "ContentType": Accept}
 
