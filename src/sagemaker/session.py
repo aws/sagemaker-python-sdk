@@ -2338,22 +2338,9 @@ class Session(object):  # pylint: disable=too-many-public-methods
             "ProductionVariants": existing_endpoint_config_desc["ProductionVariants"],
         }
 
-        request_tags = new_tags
-        if request_tags is None:
-            existing_tags = self.sagemaker_client.list_tags(
-                ResourceArn=existing_endpoint_config_desc["EndpointConfigArn"]
-            )["Tags"]
-
-            # the "aws:" prefix is reserved by AWS and cannot be supplied in tag keys
-            # https://github.com/aws/sagemaker-python-sdk/issues/1301
-            for tag in existing_tags:
-                # there should be only one element in the dictionary,
-                # but dict.keys() doesn't support indexing.
-                for tag_key in tag.keys():
-                    if tag_key.startswith("aws:"):
-                        existing_tags.remove(tag)
-            request_tags = existing_tags
-
+        request_tags = new_tags or self.list_tags(
+            existing_endpoint_config_desc["EndpointConfigArn"]
+        )
         if request_tags:
             request["Tags"] = request_tags
 

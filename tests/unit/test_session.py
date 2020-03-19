@@ -1822,7 +1822,7 @@ def test_update_endpoint_non_existing_endpoint(sagemaker_session):
 
 def test_create_endpoint_config_from_existing(sagemaker_session):
     pvs = [sagemaker.production_variant("A", "ml.m4.xlarge")]
-    tags = [{"aws:cloudformation:stackname": "this-tag-should-be-ignored"}]
+    tags = [{"Key": "aws:cloudformation:stackname", "Value": "this-tag-should-be-ignored"}]
     existing_endpoint_arn = "arn:aws:sagemaker:us-west-2:123412341234:endpoint-config/foo"
     kms_key = "kms"
     sagemaker_session.sagemaker_client.describe_endpoint_config.return_value = {
@@ -1843,7 +1843,7 @@ def test_create_endpoint_config_from_existing(sagemaker_session):
         EndpointConfigName=existing_endpoint_name
     )
     sagemaker_session.sagemaker_client.list_tags.assert_called_with(
-        ResourceArn=existing_endpoint_arn
+        ResourceArn=existing_endpoint_arn, MaxResults=50
     )
     sagemaker_session.sagemaker_client.create_endpoint_config.assert_called_with(
         EndpointConfigName=new_endpoint_name, ProductionVariants=pvs, KmsKeyId=kms_key
