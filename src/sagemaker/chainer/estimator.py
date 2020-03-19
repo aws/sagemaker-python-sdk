@@ -215,7 +215,7 @@ class Chainer(Framework):
             py_version=self.py_version,
             framework_version=self.framework_version,
             model_server_workers=model_server_workers,
-            image=self.image_name,
+            image=kwargs["image"] if "image" in kwargs else self.image_name,
             sagemaker_session=self.sagemaker_session,
             vpc_config=self.get_vpc_config(vpc_config_override),
             dependencies=(dependencies or self.dependencies),

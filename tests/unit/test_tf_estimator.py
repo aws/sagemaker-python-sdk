@@ -1300,3 +1300,11 @@ def test_tf_enable_sm_metrics_if_fw_ver_is_at_least_1_15(sagemaker_session):
     for fw_version in ["1.15", "1.16", "2.0", "2.1"]:
         tf = _build_tf(sagemaker_session, framework_version=fw_version)
         assert tf.enable_sagemaker_metrics
+
+
+def test_custom_image_estimator_deploy(sagemaker_session):
+    custom_image = "mycustomimage:latest"
+    tf = _build_tf(sagemaker_session)
+    tf.fit(inputs="s3://mybucket/train", job_name="new_name")
+    model = tf.create_model(image=custom_image)
+    assert model.image == custom_image
