@@ -304,6 +304,134 @@ job stops or completes.
 continue to show on the Amazon SageMaker console. The delete command
 takes about 2 minutes to clean up the resources from Amazon SageMaker.
 
+Sagemaker Debugger Jobs
+^^^^^^^^^^^^^^^^^^^^^^^
+
+Create training job has an option to run asynchronous debugger job.
+It gives you full visibility into a training job by using a hook to capture
+tensors that define the state of the training process at each instance in
+its lifecycle. It also provides the capability of defining 'rules' to
+analyze the captured tensors. See \ `Sagemaker Debugger Introduction <https://docs.aws.amazon.com/sagemaker/latest/dg/train-debugger.html>`__ and \ `How Debugger Works <https://docs.aws.amazon.com/sagemaker/latest/dg/debugger-how-it-works.html>`__ for details.
+
+You can get more details on debug job by using ``describe`` kubectl verb.
+Training job describe output will have ``Debug Rule Evaluation Statuses:``
+
+::
+
+    kubectl describe trainingjobs xgboost-mnist-debugger
+
+    Name:         xgboost-mnist-debugger
+    Namespace:    default
+    Labels:       <none>
+    Annotations:  kubectl.kubernetes.io/last-applied-configuration:
+                    {"apiVersion":"sagemaker.aws.amazon.com/v1","kind":"TrainingJob","metadata":{"annotations":{},"name":"xgboost-mnist-debugger","namespace":...
+    API Version:  sagemaker.aws.amazon.com/v1
+    Kind:         TrainingJob
+    Metadata:
+      Creation Timestamp:  2020-03-18T05:58:59Z
+      Finalizers:
+        sagemaker-operator-finalizer
+      Generation:        2
+      Resource Version:  2939388
+      Self Link:         /apis/sagemaker.aws.amazon.com/v1/namespaces/default/trainingjobs/xgboost-mnist-debugger
+      UID:               8fe3799e-68dd-11ea-8423-1260529a8dc9
+    Spec:
+      Algorithm Specification:
+        Training Image:       246618743249.dkr.ecr.us-west-2.amazonaws.com/sagemaker-xgboost:0.90-2-cpu-py3
+        Training Input Mode:  File
+      Debug Hook Config:
+        Collection Configurations:
+          Collection Name:  feature_importance
+          Collection Parameters:
+            Name:           save_interval
+            Value:          5
+          Collection Name:  losses
+          Collection Parameters:
+            Name:           save_interval"
+            Value:          500
+          Collection Name:  average_shap
+          Collection Parameters:
+            Name:           save_interval
+            Value:          5
+          Collection Name:  metrics
+          Collection Parameters:
+            Name:      save_interval
+            Value:     5
+        s3OutputPath:  s3://my-bucket/sagemaker/xgboost-mnist/xgboost-debugger/
+      Debug Rule Configurations:
+        Rule Configuration Name:  LossNotDecreasing
+        Rule Evaluator Image:     895741380848.dkr.ecr.us-west-2.amazonaws.com/sagemaker-debugger-rules:latest
+        Rule Parameters:
+          Name:   collection_names
+          Value:  metrics
+          Name:   num_steps
+          Value:  10
+          Name:   rule_to_invoke
+          Value:  LossNotDecreasing
+      Hyper Parameters:
+        Name:   max_depth
+        Value:  5
+        Name:   eta
+        Value:  0.2
+        Name:   gamma
+        Value:  4
+        Name:   min_child_weight
+        Value:  6
+        Name:   silent
+        Value:  0
+        Name:   objective
+        Value:  reg:squarederror
+        Name:   subsample
+        Value:  0.7
+        Name:   num_round
+        Value:  51
+      Input Data Config:
+        Channel Name:      train
+        Compression Type:  None
+        Content Type:      libsvm
+        Data Source:
+          s3DataSource:
+            s3DataDistributionType:  FullyReplicated
+            s3DataType:              S3Prefix
+            s3Uri:                   s3://my-bucket/sagemaker/xgboost-mnist/xgboost-debugger/train
+        Channel Name:                validation
+        Compression Type:            None
+        Content Type:                libsvm
+        Data Source:
+          s3DataSource:
+            s3DataDistributionType:  FullyReplicated
+            s3DataType:              S3Prefix
+            s3Uri:                   s3://my-bucket/sagemaker/xgboost-mnist/xgboost-debugger/validation
+      Output Data Config:
+        s3OutputPath:  s3://my-bucket/sagemaker/xgboost-mnist/xgboost-debugger/
+      Region:          us-west-2
+      Resource Config:
+        Instance Count:     1
+        Instance Type:      ml.m4.xlarge
+        Volume Size In GB:  5
+      Role Arn:             arn:aws:iam::1234567890:role/service-role/AmazonSageMaker-ExecutionRole
+      Stopping Condition:
+        Max Runtime In Seconds:  86400
+      Tags:
+        Key:              tagKey
+        Value:            tagValue
+      Training Job Name:  xgboost-mnist-debugger-8fe3799e68dd11ea84231260529a8dc9
+    Status:
+      Cloud Watch Log URL:  https://us-west-2.console.aws.amazon.com/cloudwatch/home?region=us-west-2#logStream:group=/aws/sagemaker/TrainingJobs;prefix=xgboost-mnist-debugger-8fe3799e68dd11ea84231260529a8dc9;streamFilter=typeLogStreamPrefix
+      Debug Rule Evaluation Statuses:
+        Last Modified Time:          2020-03-18T06:03:48Z
+        Rule Configuration Name:     LossNotDecreasing
+        Rule Evaluation Job Arn:     arn:aws:sagemaker:us-west-2:1234567890:processing-job/xgboost-mnist-debugger-8fe-lossnotdecreasing-a7d0eaf2
+        Rule Evaluation Status:      NoIssuesFound
+      Model Path:                    s3://sagemaker-us-west-2-1234567890/xgboost-mnist-debugger-8fe3799e68dd11ea84231260529a8dc9/output/model.tar.gz
+      Sage Maker Training Job Name:  xgboost-mnist-debugger-8fe3799e68dd11ea84231260529a8dc9
+      Secondary Status:              Completed
+      Training Job Status:           Completed
+    Events:                          <none>
+
+
+
+
 HyperParameterTuningJobs operator
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
