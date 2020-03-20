@@ -83,7 +83,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
         sagemaker_client=None,
         sagemaker_runtime_client=None,
         default_bucket=None,
-        s3_client=None,
+        s3_resource=None,
     ):
         """Initialize a SageMaker ``Session``.
 
@@ -105,13 +105,13 @@ class Session(object):  # pylint: disable=too-many-public-methods
                 If not provided, a default bucket will be created based on the following format:
                 "sagemaker-{region}-{aws-account-id}".
                 Example: "sagemaker-my-custom-bucket".
-            s3_client (boto3.client('s3')): Optional. Pre-instantiated Boto3 Client for S3
+            s3_resource (boto3.resource('s3')): Optional. Pre-instantiated Boto3 Resource for S3
                 connections, can be used to set e.g. the endpoint URL (default: None).
 
         """
         self._default_bucket = None
         self._default_bucket_name_override = default_bucket
-        self.s3_client = s3_client
+        self.s3_resource = s3_resource
 
         sagemaker_config_file = os.path.join(os.path.expanduser("~"), ".sagemaker", "config.yaml")
         print("Looking for config file: {}".format(sagemaker_config_file))
@@ -208,10 +208,10 @@ class Session(object):  # pylint: disable=too-many-public-methods
             key_suffix = name
 
         bucket = bucket or self.default_bucket()
-        if self.s3_client is None:
+        if self.s3_resource is None:
             s3 = self.boto_session.resource("s3")
         else:
-            s3 = self.s3_client
+            s3 = self.s3_resource
 
         for local_path, s3_key in files:
             s3.Object(bucket, s3_key).upload_file(local_path, ExtraArgs=extra_args)
@@ -239,7 +239,11 @@ class Session(object):  # pylint: disable=too-many-public-methods
             str: The S3 URI of the uploaded file.
                 The URI format is: ``s3://{bucket name}/{key}``.
         """
-        s3 = self.boto_session.resource("s3")
+        if self.s3_resource is None:
+            s3 = self.boto_session.resource("s3")
+        else:
+            s3 = self.s3_resource
+            
         s3_object = s3.Object(bucket_name=bucket, key=key)
 
         if kms_key is not None:
@@ -329,7 +333,10 @@ class Session(object):  # pylint: disable=too-many-public-methods
             [str]: The list of files at the S3 path.
 
         """
-        s3 = self.boto_session.resource("s3")
+        if self.s3_resource is None:
+            s3 = self.boto_session.resource("s3")
+        else:
+            s3 = self.s3_resource
 
         s3_bucket = s3.Bucket(name=bucket)
         s3_objects = s3_bucket.objects.filter(Prefix=key_prefix).all()
@@ -377,14 +384,14 @@ class Session(object):  # pylint: disable=too-many-public-methods
                 already being created, no exception is raised.
 
         """
-        bucket = self.boto_session.resource("s3", region_name=region).Bucket(name=bucket_name)
+        if self.s3_resource is None:
+            s3 = self.boto_session.resource("s3")
+        else:
+            s3 = self.s3_resource
+
+        bucket = s3.Bucket(name=bucket_name)
         if bucket.creation_date is None:
             try:
-                if self.s3_client is None:
-                    s3 = self.boto_session.resource("s3", region_name=region)
-                else:
-                    s3 = self.s3_client
-
                 if region == "us-east-1":
                     # 'us-east-1' cannot be specified because it is the default region:
                     # https://github.com/boto/boto3/issues/125

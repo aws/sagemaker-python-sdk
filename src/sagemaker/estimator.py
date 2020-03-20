@@ -1416,7 +1416,6 @@ class Framework(EstimatorBase):
         checkpoint_s3_uri=None,
         checkpoint_local_path=None,
         enable_sagemaker_metrics=None,
-        s3_client=None,
         **kwargs
     ):
         """Base class initializer. Subclasses which override ``__init__`` should
@@ -1567,8 +1566,6 @@ class Framework(EstimatorBase):
                 Series. For more information see:
                 https://docs.aws.amazon.com/sagemaker/latest/dg/API_AlgorithmSpecification.html#SageMaker-Type-AlgorithmSpecification-EnableSageMakerMetricsTimeSeries
                 (default: ``None``).
-            s3_client (boto3.client('s3')): Optional. Pre-instantiated Boto3 Client for
-                S3 connections, can be used to set e.g. the endpoint URL. (default: None).
             **kwargs: Additional kwargs passed to the ``EstimatorBase``
                 constructor.
 
@@ -1584,7 +1581,6 @@ class Framework(EstimatorBase):
                     entry_point
                 )
             )
-        self.sagemaker_session.s3_client = s3_client
         self.entry_point = entry_point
         self.git_config = git_config
         self.source_dir = source_dir
@@ -1712,7 +1708,7 @@ class Framework(EstimatorBase):
             directory=self.source_dir,
             dependencies=self.dependencies,
             kms_key=kms_key,
-            s3_client=self.sagemaker_session.s3_client,
+            s3_resource=self.sagemaker_session.s3_resource,
         )
 
     def _model_source_dir(self):

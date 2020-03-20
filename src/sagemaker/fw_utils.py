@@ -314,7 +314,7 @@ def tar_and_upload_dir(
     directory=None,
     dependencies=None,
     kms_key=None,
-    s3_client=None,
+    s3_resource=None,
 ):
     """Package source files and upload a compress tar file to S3. The S3
     location will be ``s3://<bucket>/s3_key_prefix/sourcedir.tar.gz``.
@@ -338,7 +338,7 @@ def tar_and_upload_dir(
             copied into /opt/ml/lib
         kms_key (str): Optional. KMS key ID used to upload objects to the bucket
             (default: None).
-        s3_client (boto3.client('s3')): Optional. Pre-instantiated Boto3 Client for S3 connections,
+        s3_resource (boto3.resource('s3')): Optional. Pre-instantiated Boto3 Resource for S3 connections,
             can be used to set e.g. the endpoint URL (default: None).
     Returns:
         sagemaker.fw_utils.UserCode: An object with the S3 bucket and key (S3 prefix) and
@@ -363,12 +363,12 @@ def tar_and_upload_dir(
         else:
             extra_args = None
 
-        if s3_client is None:
-            s3_client = session.resource("s3")
+        if s3_resource is None:
+            s3_resource = session.resource("s3")
         else:
-            print("Using provided s3_client")
+            print("Using provided s3_resource")
 
-        s3_client.Object(bucket, key).upload_file(tar_file, ExtraArgs=extra_args)
+        s3_resource.Object(bucket, key).upload_file(tar_file, ExtraArgs=extra_args)
     finally:
         shutil.rmtree(tmp)
 

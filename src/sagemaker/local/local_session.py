@@ -378,8 +378,8 @@ class LocalSagemakerRuntimeClient(object):
 class LocalSession(Session):
     """Placeholder docstring"""
 
-    def __init__(self, boto_session=None, s3_client=None):
-        super(LocalSession, self).__init__(boto_session, s3_client=s3_client)
+    def __init__(self, boto_session=None, s3_resource=None):
+        super(LocalSession, self).__init__(boto_session, s3_resource=s3_resource)
 
         if platform.system() == "Windows":
             logger.warning("Windows Support for Local Mode is Experimental")
