@@ -450,7 +450,7 @@ def test_serve_endpoint_with_incorrect_accelerator(request, *args):
 
 @patch("urllib3.PoolManager.request")
 def test_invoke_endpoint(request):
-    data = Mock()
+    data = Mock(spec=str)
     data.encode.return_value = b"data"
 
     local_runtime_client = sagemaker.local.local_session.LocalSagemakerRuntimeClient()
@@ -464,8 +464,23 @@ def test_invoke_endpoint(request):
 
 
 @patch("urllib3.PoolManager.request")
-def test_invoke_endpoint_with_optional_args(request):
+def test_invoke_endpoint_with_byte_data(request):
     data = Mock()
+    data.__class__ = bytes
+
+    local_runtime_client = sagemaker.local.local_session.LocalSagemakerRuntimeClient()
+    response = local_runtime_client.invoke_endpoint(data, "unused-endpoint-name")
+
+    assert response == {"Body": request.return_value, "ContentType": None}
+    data.encode.assert_not_called()
+    request.assert_called_with(
+        "POST", "http://localhost:8080/invocations", body=data, preload_content=False, headers={}
+    )
+
+
+@patch("urllib3.PoolManager.request")
+def test_invoke_endpoint_with_optional_args(request):
+    data = Mock(spec=str)
     data.encode.return_value = b"data"
     content_type = "text/plain"
     accept = "text/plain"
