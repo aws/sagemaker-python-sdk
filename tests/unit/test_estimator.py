@@ -2233,7 +2233,7 @@ def test_deploy_with_no_model_name(sagemaker_session):
 @patch("sagemaker.estimator.LocalSession")
 @patch("sagemaker.estimator.Session")
 def test_local_mode(session_class, local_session_class):
-    local_session = Mock()
+    local_session = Mock(spec=sagemaker.local.LocalSession)
     local_session.local_mode = True
 
     session = Mock()
