@@ -430,7 +430,7 @@ The output of describing a training job will now have a new field ``Debug Rule E
       Training Job Status:           Completed
     Events:                          <none>
 
-See \  `Sagemaker Debugger Examples <https://github.com/awslabs/amazon-sagemaker-examples/tree/master/sagemaker-debugger>`__ for details.
+See \  `Sagemaker Debugger Examples <https://github.com/awslabs/amazon-sagemaker-examples/tree/master/sagemaker-debugger>`__ for more exampls of debugger jobs.
 
 
 HyperParameterTuningJobs operator
