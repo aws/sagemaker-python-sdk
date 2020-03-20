@@ -561,7 +561,7 @@ def test_local_code_location():
         boto_region_name=REGION,
         config=config,
         local_mode=True,
-        spec=sagemaker.local.LocalSession
+        spec=sagemaker.local.LocalSession,
     )
     t = DummyFramework(
         entry_point=SCRIPT_PATH,
