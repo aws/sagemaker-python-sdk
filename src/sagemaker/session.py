@@ -2312,11 +2312,16 @@ class Session(object):  # pylint: disable=too-many-public-methods
             existing_config_name (str): Name of the existing Amazon SageMaker endpoint
                 configuration.
             new_tags(List[dict[str, str]]): Optional. The list of tags to add to the endpoint
-                config.
+                config. If not specified, the tags of the existing endpoint configuration are used.
+                If any of the existing tags are reserved AWS ones (i.e. begin with "aws"),
+                they are not carried over to the new endpoint configuration.
             new_kms_key (str): The KMS key that is used to encrypt the data on the storage volume
-                attached to the instance hosting the endpoint.
+                attached to the instance hosting the endpoint (default: None). If not specified,
+                the KMS key of the existing endpoint configuration is used.
             new_data_capture_config_dict (dict): Specifies configuration related to Endpoint data
-                capture for use with Amazon SageMaker Model Monitoring. Default: None.
+                capture for use with Amazon SageMaker Model Monitoring (default: None).
+                If not specified, the data capture configuration of the existing
+                endpoint configuration is used.
 
         Returns:
             str: Name of the endpoint point configuration created.
@@ -2328,17 +2333,14 @@ class Session(object):  # pylint: disable=too-many-public-methods
             EndpointConfigName=existing_config_name
         )
 
-        existing_tags = self.sagemaker_client.list_tags(
-            ResourceArn=existing_endpoint_config_desc["EndpointConfigArn"]
-        )
-
-        request_tags = new_tags or existing_tags["Tags"]
-
         request = {
             "EndpointConfigName": new_config_name,
             "ProductionVariants": existing_endpoint_config_desc["ProductionVariants"],
         }
 
+        request_tags = new_tags or self.list_tags(
+            existing_endpoint_config_desc["EndpointConfigArn"]
+        )
         if request_tags:
             request["Tags"] = request_tags
 

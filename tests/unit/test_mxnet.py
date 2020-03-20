@@ -834,3 +834,17 @@ def test_mx_enable_sm_metrics_if_fw_ver_is_at_least_1_6(sagemaker_session):
             framework_version=fw_version,
         )
         assert mx.enable_sagemaker_metrics
+
+
+def test_custom_image_estimator_deploy(sagemaker_session):
+    custom_image = "mycustomimage:latest"
+    mx = MXNet(
+        entry_point=SCRIPT_PATH,
+        role=ROLE,
+        sagemaker_session=sagemaker_session,
+        train_instance_count=INSTANCE_COUNT,
+        train_instance_type=INSTANCE_TYPE,
+    )
+    mx.fit(inputs="s3://mybucket/train", job_name="new_name")
+    model = mx.create_model(image=custom_image)
+    assert model.image == custom_image
