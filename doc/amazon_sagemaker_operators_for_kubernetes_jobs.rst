@@ -304,17 +304,18 @@ job stops or completes.
 continue to show on the Amazon SageMaker console. The delete command
 takes about 2 minutes to clean up the resources from Amazon SageMaker.
 
-Sagemaker Debugger Jobs
+SageMaker Debugger Jobs
 ^^^^^^^^^^^^^^^^^^^^^^^
 
-Create training job has an option to run asynchronous debugger job.
-It gives you full visibility into a training job by using a hook to capture
-tensors that define the state of the training process at each instance in
-its lifecycle. It also provides the capability of defining 'rules' to
+When creating a SageMaker training job, you have an option to run 
+asynchronous debugger jobs for your model. It gives you full visibility 
+into a training job by using a hook to capturetensors that define 
+the state of the training process at each instance in its lifecycle. 
+It also provides the capability of defining 'rules' to
 analyze the captured tensors. See \ `Sagemaker Debugger Introduction <https://docs.aws.amazon.com/sagemaker/latest/dg/train-debugger.html>`__ and \ `How Debugger Works <https://docs.aws.amazon.com/sagemaker/latest/dg/debugger-how-it-works.html>`__ for details.
 
 You can get more details on debug job by using ``describe`` kubectl verb.
-Training job describe output will have ``Debug Rule Evaluation Statuses:``
+The output of describing a training job will now have a new field ``Debug Rule Evaluation Statuses:``
 
 ::
 
@@ -423,13 +424,13 @@ Training job describe output will have ``Debug Rule Evaluation Statuses:``
         Rule Configuration Name:     LossNotDecreasing
         Rule Evaluation Job Arn:     arn:aws:sagemaker:us-west-2:1234567890:processing-job/xgboost-mnist-debugger-8fe-lossnotdecreasing-a7d0eaf2
         Rule Evaluation Status:      NoIssuesFound
-      Model Path:                    s3://sagemaker-us-west-2-1234567890/xgboost-mnist-debugger-8fe3799e68dd11ea84231260529a8dc9/output/model.tar.gz
+      Model Path:                    s3://my-bucket/sagemaker/xgboost-mnist-debugger-8fe3799e68dd11ea84231260529a8dc9/output/model.tar.gz
       Sage Maker Training Job Name:  xgboost-mnist-debugger-8fe3799e68dd11ea84231260529a8dc9
       Secondary Status:              Completed
       Training Job Status:           Completed
     Events:                          <none>
 
-
+See \  `Sagemaker Debugger Examples <https://github.com/awslabs/amazon-sagemaker-examples/tree/master/sagemaker-debugger>`__ for details.
 
 
 HyperParameterTuningJobs operator
