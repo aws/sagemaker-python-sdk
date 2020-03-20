@@ -20,10 +20,11 @@ import json
 import os
 import uuid
 
+from botocore.exceptions import ClientError
+
 from sagemaker.session import Session
 from sagemaker.s3 import S3Downloader
 from sagemaker.s3 import S3Uploader
-from botocore.exceptions import ClientError
 
 NO_SUCH_KEY_CODE = "NoSuchKey"
 
@@ -68,7 +69,10 @@ class ModelMonitoringFile(object):
             self.file_s3_uri = new_save_location_s3_uri
 
         return S3Uploader.upload_string_as_file_body(
-            body=json.dumps(self.body_dict), desired_s3_uri=self.file_s3_uri, kms_key=self.kms_key
+            body=json.dumps(self.body_dict),
+            desired_s3_uri=self.file_s3_uri,
+            kms_key=self.kms_key,
+            session=self.session,
         )
 
 
@@ -251,7 +255,10 @@ class Constraints(ModelMonitoringFile):
             raise error
 
         return cls(
-            body_dict=body_dict, constraints_file_s3_uri=constraints_file_s3_uri, kms_key=kms_key
+            body_dict=body_dict,
+            constraints_file_s3_uri=constraints_file_s3_uri,
+            kms_key=kms_key,
+            sagemaker_session=sagemaker_session,
         )
 
     @classmethod

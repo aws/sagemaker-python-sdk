@@ -12,19 +12,29 @@
 # language governing permissions and limitations under the License.
 from __future__ import absolute_import
 
-import os
-
 import numpy
+import os
 import pytest
-from tests.integ import DATA_DIR, PYTHON_VERSION, TRAINING_DEFAULT_TIMEOUT_MINUTES
-from tests.integ.timeout import timeout, timeout_and_delete_endpoint_by_name
-
+from sagemaker.pytorch.defaults import LATEST_PY2_VERSION
 from sagemaker.pytorch.estimator import PyTorch
 from sagemaker.pytorch.model import PyTorchModel
 from sagemaker.utils import sagemaker_timestamp
 
+from tests.integ import (
+    test_region,
+    DATA_DIR,
+    PYTHON_VERSION,
+    TRAINING_DEFAULT_TIMEOUT_MINUTES,
+    EI_SUPPORTED_REGIONS,
+)
+from tests.integ.timeout import timeout, timeout_and_delete_endpoint_by_name
+
 MNIST_DIR = os.path.join(DATA_DIR, "pytorch_mnist")
 MNIST_SCRIPT = os.path.join(MNIST_DIR, "mnist.py")
+
+EIA_DIR = os.path.join(DATA_DIR, "pytorch_eia")
+EIA_MODEL = os.path.join(EIA_DIR, "model_mnist.tar.gz")
+EIA_SCRIPT = os.path.join(EIA_DIR, "empty_inference_script.py")
 
 
 @pytest.fixture(scope="module", name="pytorch_training_job")
@@ -38,6 +48,10 @@ def fixture_training_job(sagemaker_session, pytorch_full_version, cpu_instance_t
 
 @pytest.mark.canary_quick
 @pytest.mark.regional_testing
+@pytest.mark.skipif(
+    PYTHON_VERSION == "py2",
+    reason="Python 2 is supported by PyTorch {} and lower versions.".format(LATEST_PY2_VERSION),
+)
 def test_sync_fit_deploy(pytorch_training_job, sagemaker_session, cpu_instance_type):
     # TODO: add tests against local mode when it's ready to be used
     endpoint_name = "test-pytorch-sync-fit-attach-deploy{}".format(sagemaker_timestamp())
@@ -55,6 +69,10 @@ def test_sync_fit_deploy(pytorch_training_job, sagemaker_session, cpu_instance_t
 
 
 @pytest.mark.local_mode
+@pytest.mark.skipif(
+    PYTHON_VERSION == "py2",
+    reason="Python 2 is supported by PyTorch {} and lower versions.".format(LATEST_PY2_VERSION),
+)
 def test_fit_deploy(sagemaker_local_session, pytorch_full_version):
     pytorch = PyTorch(
         entry_point=MNIST_SCRIPT,
@@ -79,6 +97,10 @@ def test_fit_deploy(sagemaker_local_session, pytorch_full_version):
         predictor.delete_endpoint()
 
 
+@pytest.mark.skipif(
+    PYTHON_VERSION == "py2",
+    reason="Python 2 is supported by PyTorch {} and lower versions.".format(LATEST_PY2_VERSION),
+)
 def test_deploy_model(pytorch_training_job, sagemaker_session, cpu_instance_type):
     endpoint_name = "test-pytorch-deploy-model-{}".format(sagemaker_timestamp())
 
@@ -94,6 +116,35 @@ def test_deploy_model(pytorch_training_job, sagemaker_session, cpu_instance_type
             sagemaker_session=sagemaker_session,
         )
         predictor = model.deploy(1, cpu_instance_type, endpoint_name=endpoint_name)
+
+        batch_size = 100
+        data = numpy.random.rand(batch_size, 1, 28, 28).astype(numpy.float32)
+        output = predictor.predict(data)
+
+        assert output.shape == (batch_size, 10)
+
+
+@pytest.mark.skipif(PYTHON_VERSION == "py2", reason="PyTorch EIA does not support Python 2.")
+@pytest.mark.skipif(
+    test_region() not in EI_SUPPORTED_REGIONS, reason="EI isn't supported in that specific region."
+)
+def test_deploy_model_with_accelerator(sagemaker_session, cpu_instance_type):
+    endpoint_name = "test-pytorch-deploy-eia-{}".format(sagemaker_timestamp())
+    model_data = sagemaker_session.upload_data(path=EIA_MODEL)
+    pytorch = PyTorchModel(
+        model_data,
+        "SageMakerRole",
+        framework_version="1.3.1",
+        entry_point=EIA_SCRIPT,
+        sagemaker_session=sagemaker_session,
+    )
+    with timeout_and_delete_endpoint_by_name(endpoint_name, sagemaker_session):
+        predictor = pytorch.deploy(
+            initial_instance_count=1,
+            instance_type=cpu_instance_type,
+            accelerator_type="ml.eia1.medium",
+            endpoint_name=endpoint_name,
+        )
 
         batch_size = 100
         data = numpy.random.rand(batch_size, 1, 28, 28).astype(numpy.float32)

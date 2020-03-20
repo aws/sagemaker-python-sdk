@@ -1020,7 +1020,7 @@ def test_py2_version_deprecated(sagemaker_session):
     with pytest.raises(AttributeError) as e:
         TensorFlow(
             entry_point=SCRIPT_PATH,
-            framework_version="2.0.1",
+            framework_version="2.1.1",
             role=ROLE,
             sagemaker_session=sagemaker_session,
             train_instance_count=INSTANCE_COUNT,
@@ -1029,7 +1029,7 @@ def test_py2_version_deprecated(sagemaker_session):
         )
 
     msg = (
-        "Python 2 containers are only available with 2.0.0 and lower versions. "
+        "Python 2 containers are only available with 2.1.0 and lower versions. "
         "Please use a Python 3 container."
     )
     assert msg in str(e.value)
@@ -1300,3 +1300,11 @@ def test_tf_enable_sm_metrics_if_fw_ver_is_at_least_1_15(sagemaker_session):
     for fw_version in ["1.15", "1.16", "2.0", "2.1"]:
         tf = _build_tf(sagemaker_session, framework_version=fw_version)
         assert tf.enable_sagemaker_metrics
+
+
+def test_custom_image_estimator_deploy(sagemaker_session):
+    custom_image = "mycustomimage:latest"
+    tf = _build_tf(sagemaker_session)
+    tf.fit(inputs="s3://mybucket/train", job_name="new_name")
+    model = tf.create_model(image=custom_image)
+    assert model.image == custom_image

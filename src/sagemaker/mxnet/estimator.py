@@ -210,7 +210,7 @@ class MXNet(Framework):
             code_location=self.code_location,
             py_version=self.py_version,
             framework_version=self.framework_version,
-            image=(image_name or self.image_name),
+            image=kwargs["image"] if "image" in kwargs else (image_name or self.image_name),
             model_server_workers=model_server_workers,
             sagemaker_session=self.sagemaker_session,
             vpc_config=self.get_vpc_config(vpc_config_override),

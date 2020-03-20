@@ -476,7 +476,7 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):
         output_path,
         framework=None,
         framework_version=None,
-        compile_max_run=5 * 60,
+        compile_max_run=15 * 60,
         tags=None,
         **kwargs
     ):
@@ -484,9 +484,9 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):
 
         Args:
             target_instance_family (str): Identifies the device that you want to
-                run your model after compilation, for example: ml_c5. Allowed
-                strings are: ml_c5, ml_m5, ml_c4, ml_m4, jetsontx1, jetsontx2,
-                ml_p2, ml_p3, deeplens, rasp3b
+                run your model after compilation, for example: ml_c5. For allowed
+                strings see
+                https://docs.aws.amazon.com/sagemaker/latest/dg/API_OutputConfig.html.
             input_shape (dict): Specifies the name and shape of the expected
                 inputs for your trained model in json dictionary form, for
                 example: {'data':[1,3,1024,1024]}, or {'var1': [1,1,28,28],
@@ -753,10 +753,10 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):
         has_hps = "HyperParameters" in job_details
         init_params["hyperparameters"] = job_details["HyperParameters"] if has_hps else {}
 
-        if "TrainingImage" in job_details["AlgorithmSpecification"]:
-            init_params["image"] = job_details["AlgorithmSpecification"]["TrainingImage"]
-        elif "AlgorithmName" in job_details["AlgorithmSpecification"]:
+        if "AlgorithmName" in job_details["AlgorithmSpecification"]:
             init_params["algorithm_arn"] = job_details["AlgorithmSpecification"]["AlgorithmName"]
+        elif "TrainingImage" in job_details["AlgorithmSpecification"]:
+            init_params["image"] = job_details["AlgorithmSpecification"]["TrainingImage"]
         else:
             raise RuntimeError(
                 "Invalid AlgorithmSpecification. Either TrainingImage or "
@@ -823,8 +823,8 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):
             instance_type (str): Type of EC2 instance to use, for example,
                 'ml.c4.xlarge'.
             strategy (str): The strategy used to decide how to batch records in
-                a single request (default: None). Valid values: 'MULTI_RECORD'
-                and 'SINGLE_RECORD'.
+                a single request (default: None). Valid values: 'MultiRecord'
+                and 'SingleRecord'.
             assemble_with (str): How the output is assembled (default: None).
                 Valid values: 'Line' or 'None'.
             output_path (str): S3 location for saving the transform result. If
@@ -1470,7 +1470,7 @@ class Framework(EstimatorBase):
                 uploaded (default: None) - don't include a trailing slash since
                 a string prepended with a "/" is appended to ``code_location``. The code
                 file uploaded to S3 is 'code_location/job-name/source/sourcedir.tar.gz'.
-                If not specified, the default ``code location`` is s3://default_bucket/job-name/.
+                If not specified, the default ``code location`` is s3://output_bucket/job-name/.
             image_name (str): An alternate image name to use instead of the
                 official Sagemaker image for the framework. This is useful to
                 run one of the Sagemaker supported frameworks with an image
@@ -1895,8 +1895,8 @@ class Framework(EstimatorBase):
             instance_type (str): Type of EC2 instance to use, for example,
                 'ml.c4.xlarge'.
             strategy (str): The strategy used to decide how to batch records in
-                a single request (default: None). Valid values: 'MULTI_RECORD'
-                and 'SINGLE_RECORD'.
+                a single request (default: None). Valid values: 'MultiRecord'
+                and 'SingleRecord'.
             assemble_with (str): How the output is assembled (default: None).
                 Valid values: 'Line' or 'None'.
             output_path (str): S3 location for saving the transform result. If

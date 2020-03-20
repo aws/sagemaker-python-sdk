@@ -345,11 +345,19 @@ def test_non_mms_model(repack_model, sagemaker_session):
 
 @patch("sagemaker.fw_utils.tar_and_upload_dir", MagicMock())
 def test_model_image_accelerator(sagemaker_session):
-    model = PyTorchModel(
-        MODEL_DATA, role=ROLE, entry_point=SCRIPT_PATH, sagemaker_session=sagemaker_session
+    with pytest.raises(ValueError) as error:
+        model = PyTorchModel(
+            MODEL_DATA,
+            role=ROLE,
+            entry_point=SCRIPT_PATH,
+            sagemaker_session=sagemaker_session,
+            framework_version="1.3.1",
+            py_version="py2",
+        )
+        model.deploy(1, CPU, accelerator_type=ACCELERATOR_TYPE)
+    assert "pytorch-serving is not supported with Amazon Elastic Inference in Python 2." in str(
+        error
     )
-    with pytest.raises(ValueError):
-        model.prepare_container_def(INSTANCE_TYPE, accelerator_type=ACCELERATOR_TYPE)
 
 
 def test_train_image_default(sagemaker_session):
@@ -594,3 +602,11 @@ def test_pt_enable_sm_metrics_if_fw_ver_is_at_least_1_15(sagemaker_session):
     for fw_version in ["1.3", "1.4", "2.0", "2.1"]:
         pytorch = _pytorch_estimator(sagemaker_session, framework_version=fw_version)
         assert pytorch.enable_sagemaker_metrics
+
+
+def test_custom_image_estimator_deploy(sagemaker_session):
+    custom_image = "mycustomimage:latest"
+    pytorch = _pytorch_estimator(sagemaker_session)
+    pytorch.fit(inputs="s3://mybucket/train", job_name="new_name")
+    model = pytorch.create_model(image=custom_image)
+    assert model.image == custom_image

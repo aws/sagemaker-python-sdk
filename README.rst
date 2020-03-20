@@ -155,17 +155,6 @@ You can also run them in parallel:
     tox -- -n auto tests/integ
 
 
-Building Sphinx docs
-~~~~~~~~~~~~~~~~~~~~
-
-``cd`` into the ``doc`` directory and run:
-
-::
-
-    make html
-
-You can edit the templates for any of the pages in the docs by editing the .rst files in the ``doc`` directory and then running ``make html`` again.
-
 MXNet SageMaker Estimators
 --------------------------
 
@@ -187,7 +176,7 @@ TensorFlow SageMaker Estimators
 
 By using TensorFlow SageMaker Estimators, you can train and host TensorFlow models on Amazon SageMaker.
 
-Supported versions of TensorFlow: ``1.4.1``, ``1.5.0``, ``1.6.0``, ``1.7.0``, ``1.8.0``, ``1.9.0``, ``1.10.0``, ``1.11.0``, ``1.12.0``, ``1.13.1``, ``1.14.0``, ``1.15.0``, ``2.0.0``.
+Supported versions of TensorFlow: ``1.4.1``, ``1.5.0``, ``1.6.0``, ``1.7.0``, ``1.8.0``, ``1.9.0``, ``1.10.0``, ``1.11.0``, ``1.12.0``, ``1.13.1``, ``1.14.0``, ``1.15.0``, ``1.15.2``, ``2.0.0``, ``2.0.1``, ``2.1.0``.
 
 Supported versions of TensorFlow for Elastic Inference: ``1.11.0``, ``1.12.0``, ``1.13.1``, ``1.14.0``.
 
@@ -219,7 +208,9 @@ PyTorch SageMaker Estimators
 
 With PyTorch SageMaker Estimators, you can train and host PyTorch models on Amazon SageMaker.
 
-Supported versions of PyTorch: ``0.4.0``, ``1.0.0``, ``1.1.0``, ``1.2.0``, ``1.3.1``.
+Supported versions of PyTorch: ``0.4.0``, ``1.0.0``, ``1.1.0``, ``1.2.0``, ``1.3.1``, ``1.4.0``.
+
+Supported versions of PyTorch for Elastic Inference: ``1.3.1``.
 
 We recommend that you use the latest supported version, because that's where we focus most of our development efforts.
 

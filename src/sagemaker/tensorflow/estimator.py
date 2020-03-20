@@ -199,12 +199,12 @@ class TensorFlow(Framework):
 
     LATEST_VERSION = defaults.LATEST_VERSION
 
-    _LATEST_1X_VERSION = "1.15.0"
+    _LATEST_1X_VERSION = "1.15.2"
 
     _LOWEST_SCRIPT_MODE_ONLY_VERSION = [1, 13]
     # 2.0.0 still supports py2
     # we will need to update this version number if future versions still support py2
-    _HIGHEST_PYTHON_2_VERSION = [2, 0, 0]
+    _HIGHEST_PYTHON_2_VERSION = [2, 1, 0]
 
     def __init__(
         self,
@@ -238,9 +238,16 @@ class TensorFlow(Framework):
                 https://github.com/aws/sagemaker-python-sdk#tensorflow-sagemaker-estimators.
                 If not specified, this will default to 1.11.
             model_dir (str): S3 location where the checkpoint data and models can be exported to
-                during training (default: None). If not specified a default S3 URI will be
-                generated. It will be passed in the training script as one of the command line
-                arguments.
+                during training (default: None). It will be passed in the training script as one of
+                the command line arguments. If not specified, one is provided based on
+                your training configuration:
+
+                * *distributed training with MPI* - ``/opt/ml/model``
+                * *single-machine training or distributed training without MPI* - \
+                    ``s3://{output_path}/model``
+                * *Local Mode with local sources (file:// instead of s3://)* - \
+                    ``/opt/ml/shared/model``
+
             requirements_file (str): Path to a ``requirements.txt`` file (default: ''). The path
                 should be within and relative to ``source_dir``. Details on the format can be
                 found in the Pip User Guide:
@@ -601,10 +608,17 @@ class TensorFlow(Framework):
         **kwargs
     ):
         """Placeholder docstring"""
+        # remove image kwarg
+        if "image" in kwargs:
+            image = kwargs["image"]
+            kwargs = {k: v for k, v in kwargs.items() if k != "image"}
+        else:
+            image = None
+
         return Model(
             model_data=self.model_data,
             role=role,
-            image=self.image_name,
+            image=(image or self.image_name),
             name=self._current_job_name,
             container_log_level=self.container_log_level,
             framework_version=utils.get_short_version(self.framework_version),
@@ -628,6 +642,13 @@ class TensorFlow(Framework):
         **kwargs
     ):
         """Placeholder docstring"""
+        # remove image kwarg
+        if "image" in kwargs:
+            image = kwargs["image"]
+            kwargs = {k: v for k, v in kwargs.items() if k != "image"}
+        else:
+            image = None
+
         return TensorFlowModel(
             self.model_data,
             role,
@@ -635,7 +656,7 @@ class TensorFlow(Framework):
             source_dir=source_dir or self._model_source_dir(),
             enable_cloudwatch_metrics=self.enable_cloudwatch_metrics,
             env={"SAGEMAKER_REQUIREMENTS": self.requirements_file},
-            image=self.image_name,
+            image=(image or self.image_name),
             name=self._current_job_name,
             container_log_level=self.container_log_level,
             code_location=self.code_location,
@@ -772,7 +793,7 @@ class TensorFlow(Framework):
             instance_count (int): Number of EC2 instances to use.
             instance_type (str): Type of EC2 instance to use, for example, 'ml.c4.xlarge'.
             strategy (str): The strategy used to decide how to batch records in a single request
-                (default: None). Valid values: 'MULTI_RECORD' and 'SINGLE_RECORD'.
+                (default: None). Valid values: 'MultiRecord' and 'SingleRecord'.
             assemble_with (str): How the output is assembled (default: None). Valid values: 'Line'
                 or 'None'.
             output_path (str): S3 location for saving the transform result. If not specified,
