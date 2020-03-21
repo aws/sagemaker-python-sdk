@@ -158,7 +158,9 @@ def cd(path):
 @pytest.fixture()
 def sagemaker_session():
     boto_mock = Mock(name="boto_session", region_name=REGION)
-    session_mock = Mock(name="sagemaker_session", boto_session=boto_mock)
+    session_mock = Mock(
+        name="sagemaker_session", boto_session=boto_mock, s3_client=None, s3_resource=None
+    )
     session_mock.default_bucket = Mock(name="default_bucket", return_value=BUCKET_NAME)
     session_mock.expand_role = Mock(name="expand_role", return_value=ROLE)
     session_mock.sagemaker_client.describe_training_job = Mock(

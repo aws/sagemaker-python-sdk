@@ -83,7 +83,6 @@ class Session(object):  # pylint: disable=too-many-public-methods
         sagemaker_client=None,
         sagemaker_runtime_client=None,
         default_bucket=None,
-        s3_resource=None,
     ):
         """Initialize a SageMaker ``Session``.
 
@@ -105,13 +104,12 @@ class Session(object):  # pylint: disable=too-many-public-methods
                 If not provided, a default bucket will be created based on the following format:
                 "sagemaker-{region}-{aws-account-id}".
                 Example: "sagemaker-my-custom-bucket".
-            s3_resource (boto3.resource('s3')): Optional. Pre-instantiated Boto3 Resource for S3
-                connections, can be used to set e.g. the endpoint URL (default: None).
 
         """
         self._default_bucket = None
         self._default_bucket_name_override = default_bucket
-        self.s3_resource = s3_resource
+        self.s3_resource = None
+        self.s3_client = None
 
         sagemaker_config_file = os.path.join(os.path.expanduser("~"), ".sagemaker", "config.yaml")
         print("Looking for config file: {}".format(sagemaker_config_file))
@@ -243,7 +241,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
             s3 = self.boto_session.resource("s3")
         else:
             s3 = self.s3_resource
-            
+
         s3_object = s3.Object(bucket_name=bucket, key=key)
 
         if kms_key is not None:
@@ -270,7 +268,10 @@ class Session(object):  # pylint: disable=too-many-public-methods
 
         """
         # Initialize the S3 client.
-        s3 = self.boto_session.client("s3")
+        if self.s3_client is None:
+            s3 = self.boto_session.client("s3")
+        else:
+            s3 = self.s3_client
 
         # Initialize the variables used to loop through the contents of the S3 bucket.
         keys = []
@@ -315,7 +316,10 @@ class Session(object):  # pylint: disable=too-many-public-methods
             str: The body of the s3 file as a string.
 
         """
-        s3 = self.boto_session.client("s3")
+        if self.s3_client is None:
+            s3 = self.boto_session.client("s3")
+        else:
+            s3 = self.s3_client
 
         # Explicitly passing a None kms_key to boto3 throws a validation error.
         s3_object = s3.get_object(Bucket=bucket, Key=key_prefix)

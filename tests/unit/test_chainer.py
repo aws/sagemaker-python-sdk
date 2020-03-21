@@ -62,6 +62,8 @@ def sagemaker_session():
         boto_region_name=REGION,
         config=None,
         local_mode=False,
+        s3_resource=None,
+        s3_client=None,
     )
 
     describe = {"ModelArtifacts": {"S3ModelArtifacts": "s3://m/m.tar.gz"}}
