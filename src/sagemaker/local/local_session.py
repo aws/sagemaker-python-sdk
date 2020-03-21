@@ -380,6 +380,7 @@ class LocalSession(Session):
 
     def __init__(self, boto_session=None, s3_endpoint_url=None):
         self.s3_endpoint_url = s3_endpoint_url
+
         super(LocalSession, self).__init__(boto_session)
 
         if platform.system() == "Windows":

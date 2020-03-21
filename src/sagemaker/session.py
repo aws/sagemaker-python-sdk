@@ -25,7 +25,6 @@ import boto3
 import botocore.config
 from botocore.exceptions import ClientError
 import six
-import yaml
 
 import sagemaker.logs
 from sagemaker import vpc_utils
@@ -110,13 +109,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
         self._default_bucket_name_override = default_bucket
         self.s3_resource = None
         self.s3_client = None
-
-        sagemaker_config_file = os.path.join(os.path.expanduser("~"), ".sagemaker", "config.yaml")
-        print("Looking for config file: {}".format(sagemaker_config_file))
-        if os.path.exists(sagemaker_config_file):
-            self.config = yaml.load(open(sagemaker_config_file, "r"))
-        else:
-            self.config = None
+        self.config = None
 
         self._initialize(
             boto_session=boto_session,
@@ -389,7 +382,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
 
         """
         if self.s3_resource is None:
-            s3 = self.boto_session.resource("s3")
+            s3 = self.boto_session.resource("s3", region_name=region)
         else:
             s3 = self.s3_resource
 
