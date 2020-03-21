@@ -478,12 +478,18 @@ def test_local_session_is_set_to_local_mode():
 
 
 def test_custom_s3_endpoint_url():
-    import boto3
+    ENDPOINT_URL = "http://127.0.0.1:9000"
+    boto_session = Mock("boto_session")
+    resource_mock = Mock("resource")
+    client_mock = Mock("client")
+    boto_attrs = {"region_name": "us-east-1", "resource": resource_mock, "client": client_mock}
+    boto_session.configure_mock(**boto_attrs)
 
-    boto_session = boto3.session.Session(region_name="us-east-1")
     local_session = sagemaker.local.local_session.LocalSession(
-        boto_session=boto_session, s3_endpoint_url="http://127.0.0.1:9000"
+        boto_session=boto_session, s3_endpoint_url=ENDPOINT_URL
     )
+    boto_session.client.assert_called_with("s3", endpoint_url=ENDPOINT_URL)
+    boto_session.resource.assert_called_with("s3", endpoint_url=ENDPOINT_URL)
+
     assert local_session.s3_client is not None
     assert local_session.s3_resource is not None
-    assert local_session.s3_resource.meta.client._endpoint.host == "http://127.0.0.1:9000"
