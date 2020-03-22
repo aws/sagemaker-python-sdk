@@ -25,6 +25,7 @@ SINGLE_FILE_NAME = "file1.py"
 UPLOAD_DATA_TESTS_SINGLE_FILE = os.path.join(UPLOAD_DATA_TESTS_FILES_DIR, SINGLE_FILE_NAME)
 BUCKET_NAME = "mybucket"
 AES_ENCRYPTION_ENABLED = {"ServerSideEncryption": "AES256"}
+ENDPOINT_URL = "http://127.0.0.1:9000"
 
 
 @pytest.fixture()
@@ -33,6 +34,25 @@ def sagemaker_session():
     ims = sagemaker.Session(boto_session=boto_mock)
     ims.default_bucket = Mock(name="default_bucket", return_value=BUCKET_NAME)
     return ims
+
+
+@pytest.fixture()
+def sagemaker_session_custom_endpoint():
+
+    boto_session = Mock("boto_session")
+    resource_mock = Mock("resource")
+    client_mock = Mock("client")
+    boto_attrs = {"region_name": "us-east-1"}
+    boto_session.configure_mock(**boto_attrs)
+    boto_session.resource = Mock(name="resource", return_value=resource_mock)
+    boto_session.client = Mock(name="client", return_value=client_mock)
+
+    local_session = sagemaker.local.local_session.LocalSession(
+        boto_session=boto_session, s3_endpoint_url=ENDPOINT_URL
+    )
+
+    local_session.default_bucket = Mock(name="default_bucket", return_value=BUCKET_NAME)
+    return local_session
 
 
 def test_upload_data_absolute_dir(sagemaker_session):
@@ -51,6 +71,9 @@ def test_upload_data_absolute_dir(sagemaker_session):
 
 
 def test_upload_data_absolute_dir_custom_endpoint(sagemaker_session_custom_endpoint):
+
+    sagemaker_session_custom_endpoint.s3_resource.Object = Mock()
+
     result_s3_uri = sagemaker_session_custom_endpoint.upload_data(UPLOAD_DATA_TESTS_FILES_DIR)
 
     uploaded_files_with_args = [
