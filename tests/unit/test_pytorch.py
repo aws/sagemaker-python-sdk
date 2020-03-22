@@ -604,3 +604,11 @@ def test_pt_enable_sm_metrics_if_fw_ver_is_at_least_1_15(sagemaker_session):
     for fw_version in ["1.3", "1.4", "2.0", "2.1"]:
         pytorch = _pytorch_estimator(sagemaker_session, framework_version=fw_version)
         assert pytorch.enable_sagemaker_metrics
+
+
+def test_custom_image_estimator_deploy(sagemaker_session):
+    custom_image = "mycustomimage:latest"
+    pytorch = _pytorch_estimator(sagemaker_session)
+    pytorch.fit(inputs="s3://mybucket/train", job_name="new_name")
+    model = pytorch.create_model(image=custom_image)
+    assert model.image == custom_image
