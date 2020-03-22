@@ -14,9 +14,10 @@ from __future__ import absolute_import
 
 import pytest
 import urllib3
-
+import os
 from botocore.exceptions import ClientError
 from mock import Mock, patch
+from tests.unit import DATA_DIR
 
 import sagemaker
 
@@ -477,19 +478,56 @@ def test_local_session_is_set_to_local_mode():
     assert local_session.local_mode
 
 
-def test_custom_s3_endpoint_url():
-    ENDPOINT_URL = "http://127.0.0.1:9000"
+ENDPOINT_URL = "http://127.0.0.1:9000"
+BUCKET_NAME = "mybucket"
+LS_FILES = {"Contents": [{"Key": "/data/test.csv"}]}
+
+
+@pytest.fixture()
+def sagemaker_session_custom_endpoint():
+
     boto_session = Mock("boto_session")
     resource_mock = Mock("resource")
     client_mock = Mock("client")
-    boto_attrs = {"region_name": "us-east-1", "resource": resource_mock, "client": client_mock}
+    boto_attrs = {"region_name": "us-east-1"}
     boto_session.configure_mock(**boto_attrs)
+    boto_session.resource = Mock(name="resource", return_value=resource_mock)
+    boto_session.client = Mock(name="client", return_value=client_mock)
 
     local_session = sagemaker.local.local_session.LocalSession(
         boto_session=boto_session, s3_endpoint_url=ENDPOINT_URL
     )
+
+    local_session.default_bucket = Mock(name="default_bucket", return_value=BUCKET_NAME)
+    return local_session
+
+
+def test_local_session_with_custom_s3_endpoint_url(sagemaker_session_custom_endpoint):
+
+    boto_session = sagemaker_session_custom_endpoint.boto_session
+
     boto_session.client.assert_called_with("s3", endpoint_url=ENDPOINT_URL)
     boto_session.resource.assert_called_with("s3", endpoint_url=ENDPOINT_URL)
 
-    assert local_session.s3_client is not None
-    assert local_session.s3_resource is not None
+    assert sagemaker_session_custom_endpoint.s3_client is not None
+    assert sagemaker_session_custom_endpoint.s3_resource is not None
+
+
+def test_local_session_download_with_custom_s3_endpoint_url(sagemaker_session_custom_endpoint):
+
+    DOWNLOAD_DATA_TESTS_FILES_DIR = os.path.join(DATA_DIR, "download_data_tests")
+    sagemaker_session_custom_endpoint.s3_client.list_objects_v2 = Mock(
+        name="list_objects_v2", return_value=LS_FILES
+    )
+    sagemaker_session_custom_endpoint.s3_client.download_file = Mock(name="download_file")
+
+    sagemaker_session_custom_endpoint.download_data(
+        DOWNLOAD_DATA_TESTS_FILES_DIR, BUCKET_NAME, key_prefix="/data/test.csv"
+    )
+
+    sagemaker_session_custom_endpoint.s3_client.download_file.assert_called_with(
+        Bucket=BUCKET_NAME,
+        Key="/data/test.csv",
+        Filename="{}/{}".format(DOWNLOAD_DATA_TESTS_FILES_DIR, "test.csv"),
+        ExtraArgs=None,
+    )

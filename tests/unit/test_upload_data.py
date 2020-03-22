@@ -50,6 +50,21 @@ def test_upload_data_absolute_dir(sagemaker_session):
         assert kwargs["ExtraArgs"] is None
 
 
+def test_upload_data_absolute_dir_custom_endpoint(sagemaker_session_custom_endpoint):
+    result_s3_uri = sagemaker_session_custom_endpoint.upload_data(UPLOAD_DATA_TESTS_FILES_DIR)
+
+    uploaded_files_with_args = [
+        (args[0], kwargs)
+        for name, args, kwargs in sagemaker_session_custom_endpoint.s3_resource.mock_calls
+        if name == "Object().upload_file"
+    ]
+    assert result_s3_uri == "s3://{}/data".format(BUCKET_NAME)
+    assert len(uploaded_files_with_args) == 4
+    for file, kwargs in uploaded_files_with_args:
+        assert os.path.exists(file)
+        assert kwargs["ExtraArgs"] is None
+
+
 def test_upload_data_absolute_file(sagemaker_session):
     result_s3_uri = sagemaker_session.upload_data(UPLOAD_DATA_TESTS_SINGLE_FILE)
 
