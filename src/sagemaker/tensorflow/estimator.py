@@ -238,9 +238,16 @@ class TensorFlow(Framework):
                 https://github.com/aws/sagemaker-python-sdk#tensorflow-sagemaker-estimators.
                 If not specified, this will default to 1.11.
             model_dir (str): S3 location where the checkpoint data and models can be exported to
-                during training (default: None). If not specified a default S3 URI will be
-                generated. It will be passed in the training script as one of the command line
-                arguments.
+                during training (default: None). It will be passed in the training script as one of
+                the command line arguments. If not specified, one is provided based on
+                your training configuration:
+
+                * *distributed training with MPI* - ``/opt/ml/model``
+                * *single-machine training or distributed training without MPI* - \
+                    ``s3://{output_path}/model``
+                * *Local Mode with local sources (file:// instead of s3://)* - \
+                    ``/opt/ml/shared/model``
+
             requirements_file (str): Path to a ``requirements.txt`` file (default: ''). The path
                 should be within and relative to ``source_dir``. Details on the format can be
                 found in the Pip User Guide:
