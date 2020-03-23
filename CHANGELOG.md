@@ -1,5 +1,19 @@
 # Changelog
 
+## v1.51.4 (2020-03-23)
+
+### Bug Fixes and Other Changes
+
+ * Check that session is a LocalSession when using local mode
+ * add tflite to Neo-supported frameworks
+ * ignore tags with 'aws:' prefix when creating an EndpointConfig based on an existing one
+ * allow custom image when calling deploy or create_model with various frameworks
+
+### Documentation Changes
+
+ * fix description of default model_dir for TF
+ * add more details about PyTorch eia
+
 ## v1.51.3 (2020-03-12)
 
 ### Bug Fixes and Other Changes
