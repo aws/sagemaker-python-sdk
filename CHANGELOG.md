@@ -1,5 +1,11 @@
 # Changelog
 
+## v1.52.0 (2020-03-24)
+
+### Features
+
+ * add us-gov-west-1 to neo supported regions
+
 ## v1.51.4 (2020-03-23)
 
 ### Bug Fixes and Other Changes
