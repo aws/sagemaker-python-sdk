@@ -364,7 +364,7 @@ def tar_and_upload_dir(
             extra_args = None
 
         if s3_resource is None:
-            s3_resource = session.resource("s3")
+            s3_resource = session.resource("s3", region_name=session.region_name)
         else:
             print("Using provided s3_resource")
 

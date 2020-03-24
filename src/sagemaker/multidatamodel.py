@@ -94,7 +94,9 @@ class MultiDataModel(Model):
         self.sagemaker_session = sagemaker_session or Session()
 
         if self.sagemaker_session.s3_client is None:
-            self.s3_client = self.sagemaker_session.boto_session.client("s3")
+            self.s3_client = self.sagemaker_session.boto_session.client(
+                "s3", self.sagemaker_session.boto_session.region_name
+            )
         else:
             self.s3_client = self.sagemaker_session.s3_client
 
