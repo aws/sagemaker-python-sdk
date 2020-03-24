@@ -312,9 +312,9 @@ asynchronous debugger jobs for your model. It gives you full visibility
 into a training job by using a hook to capture tensors that define 
 the state of the training process at each instance in its lifecycle. 
 It also provides the capability of defining 'rules' to
-analyze the captured tensors. See \ `SageMaker Debugger Introduction <https://docs.aws.amazon.com/sagemaker/latest/dg/train-debugger.html>`__ and \ `How Debugger Works <https://docs.aws.amazon.com/sagemaker/latest/dg/debugger-how-it-works.html>`__ for details.
+analyze the captured tensors. See `SageMaker Debugger Introduction <https://docs.aws.amazon.com/sagemaker/latest/dg/train-debugger.html>`__ and `How Debugger Works <https://docs.aws.amazon.com/sagemaker/latest/dg/debugger-how-it-works.html>`__ for details.
 
-You can get more details on debug job by using ``describe`` kubectl verb.
+You can get more details on debug job by using the ``describe`` kubectl verb.
 The output of describing a training job will now have a new field ``Debug Rule Evaluation Statuses:``
 
 ::
@@ -430,7 +430,7 @@ The output of describing a training job will now have a new field ``Debug Rule E
       Training Job Status:           Completed
     Events:                          <none>
 
-See \  `SageMaker Debugger Examples <https://github.com/aws/amazon-sagemaker-operator-for-k8s/tree/master/samples>`__ for more examples of debugger jobs.
+See `SageMaker Debugger Examples <https://github.com/aws/amazon-sagemaker-operator-for-k8s/tree/master/samples>`__ for more examples of debugger jobs.
 
 
 HyperParameterTuningJobs operator
