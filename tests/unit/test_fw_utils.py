@@ -719,6 +719,62 @@ def test_invalid_instance_type():
         fw_utils.create_image_uri(MOCK_REGION, MOCK_FRAMEWORK, "p3.2xlarge", "1.0.0", "py3")
 
 
+def test_valid_inferentia_image():
+    image_uri = fw_utils.create_image_uri(
+        REGION,
+        "neo-tensorflow",
+        "ml.inf1.2xlarge",
+        "1.15.0",
+        py_version="py3",
+        account=MOCK_ACCOUNT,
+    )
+    assert (
+        image_uri
+        == "{}.dkr.ecr.{}.amazonaws.com/sagemaker-neo-tensorflow:1.15.0-inf-py3".format(
+            MOCK_ACCOUNT, REGION
+        )
+    )
+
+
+def test_invalid_inferentia_region():
+    with pytest.raises(ValueError) as e:
+        fw_utils.create_image_uri(
+            "ap-south-1",
+            "neo-tensorflow",
+            "ml.inf1.2xlarge",
+            "1.15.0",
+            py_version="py3",
+            account=MOCK_ACCOUNT,
+        )
+    assert "Inferentia is not supported in region ap-south-1." in str(e)
+
+
+def test_inferentia_invalid_framework():
+    with pytest.raises(ValueError) as e:
+        fw_utils.create_image_uri(
+            REGION,
+            "neo-pytorch",
+            "ml.inf1.2xlarge",
+            "1.4.0",
+            py_version="py3",
+            account=MOCK_ACCOUNT,
+        )
+    assert "Inferentia does not support pytorch." in str(e)
+
+
+def test_invalid_inferentia_framework_version():
+    with pytest.raises(ValueError) as e:
+        fw_utils.create_image_uri(
+            REGION,
+            "neo-tensorflow",
+            "ml.inf1.2xlarge",
+            "1.15.2",
+            py_version="py3",
+            account=MOCK_ACCOUNT,
+        )
+    assert "Inferentia is not supported with tensorflow version 1.15.2." in str(e)
+
+
 @patch(
     "sagemaker.fw_utils.get_ecr_image_uri_prefix",
     return_value=ECR_PREFIX_FORMAT.format(MOCK_ACCOUNT),
