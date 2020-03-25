@@ -489,11 +489,8 @@ class _SageMakerContainer(object):
             os.path.join(self.container_root, DOCKER_COMPOSE_FILENAME),
             "up",
             "--build",
-            "--abort-on-container-exit",
+            "--abort-on-container-exit" if not detached else "--detach",  # mutually exclusive
         ]
-
-        if detached:
-            command.append("-d")
 
         logger.info("docker command: %s", " ".join(command))
         return command
