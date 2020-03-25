@@ -24,7 +24,9 @@ from sagemaker.transformer import Transformer
 
 LOGGER = logging.getLogger("sagemaker")
 
-NEO_ALLOWED_FRAMEWORKS = set(["mxnet", "tensorflow", "keras", "pytorch", "onnx", "xgboost"])
+NEO_ALLOWED_FRAMEWORKS = set(
+    ["mxnet", "tensorflow", "keras", "pytorch", "onnx", "xgboost", "tflite"]
+)
 
 NEO_IMAGE_ACCOUNT = {
     "us-west-1": "710691900526",
@@ -45,6 +47,7 @@ NEO_IMAGE_ACCOUNT = {
     "sa-east-1": "756306329178",
     "ca-central-1": "464438896020",
     "me-south-1": "836785723513",
+    "us-gov-west-1": "263933020539",
 }
 
 
