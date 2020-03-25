@@ -464,6 +464,11 @@ class Model(object):
         if self.role is None:
             raise ValueError("Role can not be null for deploying a model")
 
+        if instance_type.startswith("ml.inf") and not self._is_compiled_model:
+            LOGGER.warning(
+                "Your model is not compiled, please compile your model before using Inferentia."
+            )
+
         compiled_model_suffix = "-".join(instance_type.split(".")[:-1])
         if self._is_compiled_model:
             name_prefix = self.name or utils.name_from_image(self.image)

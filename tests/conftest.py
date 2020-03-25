@@ -270,6 +270,11 @@ def cpu_instance_type(sagemaker_session, request):
 
 
 @pytest.fixture(scope="session")
+def inf_instance_type(sagemaker_session, request):
+    return "ml.inf1.xlarge"
+
+
+@pytest.fixture(scope="session")
 def ec2_instance_type(cpu_instance_type):
     return cpu_instance_type[3:]
 
@@ -287,6 +292,11 @@ def alternative_cpu_instance_type(sagemaker_session, request):
 @pytest.fixture(scope="session")
 def cpu_instance_family(cpu_instance_type):
     return "_".join(cpu_instance_type.split(".")[0:2])
+
+
+@pytest.fixture(scope="session")
+def inf_instance_family(inf_instance_type):
+    return "_".join(inf_instance_type.split(".")[0:2])
 
 
 def pytest_generate_tests(metafunc):
