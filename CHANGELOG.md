@@ -1,5 +1,11 @@
 # Changelog
 
+## v1.52.0.post0 (2020-03-25)
+
+### Documentation Changes
+
+ * Add docs for debugger job support in operator
+
 ## v1.52.0 (2020-03-24)
 
 ### Features
