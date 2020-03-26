@@ -150,8 +150,6 @@ class _SageMakerContainer(object):
         )
         compose_command = self._compose()
 
-        logger.info("Trying to launch image: %s", str(self.image))
-
         if _ecr_login_if_needed(self.sagemaker_session.boto_session, self.image):
             _pull_image(self.image)
 
@@ -214,7 +212,7 @@ class _SageMakerContainer(object):
             "serve", additional_env_vars=environment, additional_volumes=volumes
         )
         compose_command = self._compose()
-        logger.info("Compose command: %s", compose_command)
+
         self.container = _HostingContainer(compose_command)
         self.container.start()
 
@@ -552,7 +550,6 @@ class _SageMakerContainer(object):
         )
         if root_dir:
             root_dir = os.path.abspath(root_dir)
-        logger.info("Using %s for container temp files.", root_dir)
 
         working_dir = tempfile.mkdtemp(dir=root_dir)
 

@@ -34,6 +34,10 @@ PRODUCTION_VARIANTS = [{"InstanceType": "ml.c4.99xlarge", "InitialInstanceCount"
 MODEL_NAME = "test-model"
 PRIMARY_CONTAINER = {"ModelDataUrl": "/some/model/path", "Environment": {"env1": 1, "env2": "b"}}
 
+ENDPOINT_URL = "http://127.0.0.1:9000"
+BUCKET_NAME = "mybucket"
+LS_FILES = {"Contents": [{"Key": "/data/test.csv"}]}
+
 
 @patch("sagemaker.local.image._SageMakerContainer.train", return_value="/some/path/to/model")
 @patch("sagemaker.local.local_session.LocalSession")
@@ -476,11 +480,6 @@ def test_local_session_is_set_to_local_mode():
     boto_session = Mock(region_name="us-west-2")
     local_session = sagemaker.local.local_session.LocalSession(boto_session=boto_session)
     assert local_session.local_mode
-
-
-ENDPOINT_URL = "http://127.0.0.1:9000"
-BUCKET_NAME = "mybucket"
-LS_FILES = {"Contents": [{"Key": "/data/test.csv"}]}
 
 
 @pytest.fixture()
