@@ -206,6 +206,9 @@ class MXNet(Framework):
             sagemaker.mxnet.model.MXNetModel: A SageMaker ``MXNetModel`` object.
             See :func:`~sagemaker.mxnet.model.MXNetModel` for full details.
         """
+        if "image" not in kwargs:
+            kwargs["image"] = image_name or self.image_name
+
         return MXNetModel(
             self.model_data,
             role or self.role,
@@ -217,11 +220,11 @@ class MXNet(Framework):
             code_location=self.code_location,
             py_version=self.py_version,
             framework_version=self.framework_version,
-            image=kwargs["image"] if "image" in kwargs else (image_name or self.image_name),
             model_server_workers=model_server_workers,
             sagemaker_session=self.sagemaker_session,
             vpc_config=self.get_vpc_config(vpc_config_override),
             dependencies=(dependencies or self.dependencies),
+            **kwargs
         )
 
     @classmethod
