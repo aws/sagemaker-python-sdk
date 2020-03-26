@@ -13,6 +13,7 @@
 """Utility methods used by framework classes"""
 from __future__ import absolute_import
 
+import logging
 import os
 import re
 import shutil
@@ -22,6 +23,8 @@ from collections import namedtuple
 import sagemaker.utils
 from sagemaker import s3
 from sagemaker.utils import get_ecr_image_uri_prefix, ECR_URI_PATTERN
+
+logger = logging.getLogger("sagemaker")
 
 _TAR_SOURCE_FILENAME = "source.tar.gz"
 
@@ -41,6 +44,12 @@ PYTHON_2_DEPRECATION_WARNING = (
     "{latest_supported_version} is the latest version of {framework} that supports "
     "Python 2. Newer versions of {framework} will only be available for Python 3."
     "Please set the argument \"py_version='py3'\" to use the Python 3 {framework} image."
+)
+PARAMETER_SERVER_MULTI_GPU_WARNING = (
+    "You have selected a multi-GPU training instance type."
+    "You have also enabled parameter server for distributed training."
+    "Distributed training with parameter server and multi-GPU instances is not supported."
+    "Training will not fully leverage all the GPU cores."
 )
 
 
@@ -473,6 +482,33 @@ def empty_framework_version_warning(default_version, latest_version):
     if default_version != latest_version:
         msgs.append(LATER_FRAMEWORK_VERSION_WARNING.format(latest=latest_version))
     return " ".join(msgs)
+
+
+def warn_if_parameter_server_with_multi_gpu(training_instance_type, distributions):
+    """Distributed training with parameter server and multi-GPU instances is not
+    supported. Warn the user that training will not fully leverage all the GPU
+    cores if parameter server is enabled and a multi-GPU instance is selected.
+
+    Args:
+        training_instance_type (str): A string representing the type of training instance selected.
+        distributions (dict): A dictionary with information to enable distributed training.
+                              (Defaults to None if distributed training is not enabled.)
+
+    """
+    multi_gpu_instance_types = {
+        "ml.p2.8xlarge",
+        "ml.p2.16xlarge",
+        "ml.p3.8xlarge",
+        "ml.p3.16xlarge",
+        "ml.p3dn.24xlarge",
+    }
+
+    ps_enabled = "parameter_server" in distributions and distributions["parameter_server"].get(
+        "enabled", False
+    )
+
+    if ps_enabled and (training_instance_type in multi_gpu_instance_types):
+        logger.warning(PARAMETER_SERVER_MULTI_GPU_WARNING)
 
 
 def get_unsupported_framework_version_error(

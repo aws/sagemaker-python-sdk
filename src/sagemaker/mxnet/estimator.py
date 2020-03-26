@@ -22,6 +22,7 @@ from sagemaker.fw_utils import (
     empty_framework_version_warning,
     python_deprecation_warning,
     is_version_equal_or_higher,
+    warn_if_parameter_server_with_multi_gpu,
 )
 from sagemaker.mxnet import defaults
 from sagemaker.mxnet.model import MXNetModel
@@ -124,6 +125,12 @@ class MXNet(Framework):
         if py_version == "py2":
             logger.warning(
                 python_deprecation_warning(self.__framework_name__, defaults.LATEST_PY2_VERSION)
+            )
+
+        if distributions is not None:
+            train_instance_type = kwargs.get("train_instance_type")
+            warn_if_parameter_server_with_multi_gpu(
+                training_instance_type=train_instance_type, distributions=distributions
             )
 
         self.py_version = py_version

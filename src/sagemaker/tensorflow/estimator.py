@@ -307,6 +307,12 @@ class TensorFlow(Framework):
                 fw.python_deprecation_warning(self.__framework_name__, defaults.LATEST_PY2_VERSION)
             )
 
+        if distributions is not None:
+            train_instance_type = kwargs.get("train_instance_type")
+            fw.warn_if_parameter_server_with_multi_gpu(
+                training_instance_type=train_instance_type, distributions=distributions
+            )
+
         if "enable_sagemaker_metrics" not in kwargs:
             # enable sagemaker metrics for TF v1.15 or greater:
             if fw.is_version_equal_or_higher([1, 15], self.framework_version):
