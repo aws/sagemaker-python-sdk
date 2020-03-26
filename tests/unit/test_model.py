@@ -676,6 +676,7 @@ def test_check_neo_region(sagemaker_session, tmpdir):
         "sa-east-1",
         "ca-central-1",
         "me-south-1",
+        "us-gov-west-1",
     ]
     for region_name in ec2_region_list:
         if region_name in neo_support_region:
