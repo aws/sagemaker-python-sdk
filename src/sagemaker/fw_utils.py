@@ -48,8 +48,8 @@ PYTHON_2_DEPRECATION_WARNING = (
 PARAMETER_SERVER_MULTI_GPU_WARNING = (
     "You have selected a multi-GPU training instance type. "
     "You have also enabled parameter server for distributed training. "
-    "Distributed training with parameter server and multi-GPU instances is not supported. "
-    "Training will not fully leverage all the GPU cores."
+    "Distributed training with the default parameter server configuration will not fully leverage all GPU cores; "
+    "the parameter server will be configured to run only one worker per host regardless of the number of GPUs."
 )
 
 
@@ -77,6 +77,7 @@ ASIMOV_OPT_IN_ACCOUNTS_BY_REGION = {"ap-east-1": "871362719292", "me-south-1": "
 DEFAULT_ACCOUNT = "520713654638"
 ASIMOV_PROD_ACCOUNT = "763104351884"
 ASIMOV_DEFAULT_ACCOUNT = ASIMOV_PROD_ACCOUNT
+SINGLE_GPU_INSTANCE_TYPES = ("ml.p2.xlarge", "ml.p3.2xlarge")
 
 MERGED_FRAMEWORKS_REPO_MAP = {
     "tensorflow-scriptmode": "tensorflow-training",
@@ -485,21 +486,30 @@ def empty_framework_version_warning(default_version, latest_version):
 
 
 def warn_if_parameter_server_with_multi_gpu(training_instance_type, distributions):
-    """Distributed training with parameter server and multi-GPU instances is not
-    supported. Warn the user that training will not fully leverage all the GPU
+    """Warn the user that training will not fully leverage all the GPU
     cores if parameter server is enabled and a multi-GPU instance is selected.
+    Distributed training with the default parameter server setup doesn't
+    support multi-GPU instances.
 
     Args:
         training_instance_type (str): A string representing the type of training instance selected.
         distributions (dict): A dictionary with information to enable distributed training.
-                              (Defaults to None if distributed training is not enabled.)
+            (Defaults to None if distributed training is not enabled.) For example:
+
+            .. code:: python
+
+                {
+                    'parameter_server':
+                    {
+                        'enabled': True
+                    }
+                }
+
 
     """
-    single_gpu_instance_types = ("ml.p2.xlarge", "ml.p3.2xlarge")
-
     is_multi_gpu_instance = (
         training_instance_type.split(".")[1].startswith("p")
-        and training_instance_type not in single_gpu_instance_types
+        and training_instance_type not in SINGLE_GPU_INSTANCE_TYPES
     )
 
     ps_enabled = "parameter_server" in distributions and distributions["parameter_server"].get(
