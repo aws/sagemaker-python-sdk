@@ -495,19 +495,18 @@ def warn_if_parameter_server_with_multi_gpu(training_instance_type, distribution
                               (Defaults to None if distributed training is not enabled.)
 
     """
-    multi_gpu_instance_types = {
-        "ml.p2.8xlarge",
-        "ml.p2.16xlarge",
-        "ml.p3.8xlarge",
-        "ml.p3.16xlarge",
-        "ml.p3dn.24xlarge",
-    }
+    single_gpu_instance_types = ("ml.p2.xlarge", "ml.p3.2xlarge")
+
+    is_multi_gpu_instance = (
+        training_instance_type.split(".")[1].startswith("p")
+        and training_instance_type not in single_gpu_instance_types
+    )
 
     ps_enabled = "parameter_server" in distributions and distributions["parameter_server"].get(
         "enabled", False
     )
 
-    if ps_enabled and (training_instance_type in multi_gpu_instance_types):
+    if is_multi_gpu_instance and ps_enabled:
         logger.warning(PARAMETER_SERVER_MULTI_GPU_WARNING)
 
 
