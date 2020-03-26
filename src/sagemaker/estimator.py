@@ -1713,6 +1713,7 @@ class Framework(EstimatorBase):
             directory=self.source_dir,
             dependencies=self.dependencies,
             kms_key=kms_key,
+            s3_resource=self.sagemaker_session.s3_resource,
         )
 
     def _model_source_dir(self):

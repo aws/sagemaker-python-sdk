@@ -73,7 +73,9 @@ def estimator(sagemaker_session):
 @pytest.fixture()
 def sagemaker_session():
     boto_mock = Mock(name="boto_session")
-    mock_session = Mock(name="sagemaker_session", boto_session=boto_mock)
+    mock_session = Mock(
+        name="sagemaker_session", boto_session=boto_mock, s3_client=None, s3_resource=None
+    )
     mock_session.expand_role = Mock(name="expand_role", return_value=ROLE)
 
     return mock_session
