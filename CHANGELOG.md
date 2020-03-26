@@ -1,5 +1,11 @@
 # Changelog
 
+## v1.52.1 (2020-03-26)
+
+### Bug Fixes and Other Changes
+
+ * Fix local _SageMakerContainer detached mode (aws#1374)
+
 ## v1.52.0.post0 (2020-03-25)
 
 ### Documentation Changes
