@@ -48,8 +48,9 @@ PYTHON_2_DEPRECATION_WARNING = (
 PARAMETER_SERVER_MULTI_GPU_WARNING = (
     "You have selected a multi-GPU training instance type. "
     "You have also enabled parameter server for distributed training. "
-    "Distributed training with the default parameter server configuration will not fully leverage all GPU cores; "
-    "the parameter server will be configured to run only one worker per host regardless of the number of GPUs."
+    "Distributed training with the default parameter server configuration will not "
+    "fully leverage all GPU cores; the parameter server will be configured to run "
+    "only one worker per host regardless of the number of GPUs."
 )
 
 
