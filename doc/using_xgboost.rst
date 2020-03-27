@@ -14,15 +14,16 @@ Amazon SageMaker supports two ways to use the XGBoost algorithm:
 
 The XGBoost open source algorithm provides the following benefits over the built-in algorithm:
 
-* Latest version - The open source XGBoost algorithm supports XGBoost version 1.0, which has better performance scaling on multi-core instances and
-  improved stability for distributed training.
+* Latest version - The open source XGBoost algorithm typically supports a more recent version of XGBoost.
+  To see the XGBoost version that is currently supported,
+  see `XGBoost SageMaker Estimators and Models <https://github.com/aws/sagemaker-python-sdk/tree/master/src/sagemaker/xgboost#xgboost-sagemaker-estimators-and-models>`__.
 * Flexibility - Take advantage of the full range of XGBoost functionality, such as cross-validation support. 
   You can add custom pre- and post-processing logic and run additional code after training.
 * Scalability - The XGBoost open source algorithm has a more efficient implementation of distributed training,
   which enables it to scale out to more instances and reduce out-of-memory errors.
-* Exensibility - Because the open source XGBoost container is open source,
+* Extensibility - Because the open source XGBoost container is open source,
   you can extend the container to install additional libraries and change the version of XGBoost that the container uses.
-  For more information, see `SageMaker XGBoost Container <https://github.com/aws/sagemaker-xgboost-container>`__.
+  For an example notebook that shows how to extend SageMaker containers, see `Extending our PyTorch containers <https://github.com/awslabs/amazon-sagemaker-examples/blob/master/advanced_functionality/pytorch_extending_our_containers/pytorch_extending_our_containers.ipynb>`__.
 
 
 ***********************************
@@ -64,7 +65,7 @@ Prepare a Training Script
 -------------------------
 
 A typical training script loads data from the input channels, configures training with hyperparameters, trains a model,
-and saves a model to model_dir so that it can be hosted later.
+and saves a model to ``model_dir`` so that it can be hosted later.
 Hyperparameters are passed to your script as arguments and can be retrieved with an ``argparse.ArgumentParser`` instance.
 For information about ``argparse.ArgumentParser``, see `argparse <https://docs.python.org/3/library/argparse.html>`__ in the Python documentation.
 
@@ -94,62 +95,63 @@ such as the location of input data and location where we want to save the model.
     if __name__ == '__main__':
         parser = argparse.ArgumentParser()
 
-    # Hyperparameters are described here
-    parser.add_argument('--num_round', type=int)
-    parser.add_argument('--max_depth', type=int, default=5)
-    parser.add_argument('--eta', type=float, default=0.2)
-    parser.add_argument('--objective', type=str, default='reg:squarederror')
+        # Hyperparameters are described here
+        parser.add_argument('--num_round', type=int)
+        parser.add_argument('--max_depth', type=int, default=5)
+        parser.add_argument('--eta', type=float, default=0.2)
+        parser.add_argument('--objective', type=str, default='reg:squarederror')
     
-    # SageMaker specific arguments. Defaults are set in the environment variables.
-    parser.add_argument('--train', type=str, default=os.environ['SM_CHANNEL_TRAIN'])
-    parser.add_argument('--validation', type=str, default=os.environ['SM_CHANNEL_VALIDATION'])
+        # SageMaker specific arguments. Defaults are set in the environment variables.
+        parser.add_argument('--model_dir', type=str, default=os.environ.get('SM_MODEL_DIR'))
+        parser.add_argument('--train', type=str, default=os.environ['SM_CHANNEL_TRAIN'])
+        parser.add_argument('--validation', type=str, default=os.environ['SM_CHANNEL_VALIDATION'])
     
-    args = parser.parse_args()
+        args = parser.parse_args()
     
-    train_hp = {
-        'max_depth': args.max_depth,
-        'eta': args.eta,
-        'gamma': args.gamma,
-        'min_child_weight': args.min_child_weight,
-        'subsample': args.subsample,
-        'silent': args.silent,
-        'objective': args.objective
-    }
+        train_hp = {
+            'max_depth': args.max_depth,
+            'eta': args.eta,
+            'gamma': args.gamma,
+            'min_child_weight': args.min_child_weight,
+            'subsample': args.subsample,
+            'silent': args.silent,
+            'objective': args.objective
+        }
     
-    dtrain = xgb.DMatrix(args.train)
-    dval = xgb.DMatrix(args.validation)
-    watchlist = [(dtrain, 'train'), (dval, 'validation')] if dval is not None else [(dtrain, 'train')]
+        dtrain = xgb.DMatrix(args.train)
+        dval = xgb.DMatrix(args.validation)
+        watchlist = [(dtrain, 'train'), (dval, 'validation')] if dval is not None else [(dtrain, 'train')]
 
-    callbacks = []
-    prev_checkpoint, n_iterations_prev_run = add_checkpointing(callbacks)
-    # If checkpoint is found then we reduce num_boost_round by previously run number of iterations
+        callbacks = []
+        prev_checkpoint, n_iterations_prev_run = add_checkpointing(callbacks)
+        # If checkpoint is found then we reduce num_boost_round by previously run number of iterations
     
-    bst = xgb.train(
-        params=train_hp,
-        dtrain=dtrain,
-        evals=watchlist,
-        num_boost_round=(args.num_round - n_iterations_prev_run),
-        xgb_model=prev_checkpoint,
-        callbacks=callbacks
-    )
+        bst = xgb.train(
+            params=train_hp,
+            dtrain=dtrain,
+            evals=watchlist,
+            num_boost_round=(args.num_round - n_iterations_prev_run),
+            xgb_model=prev_checkpoint,
+            callbacks=callbacks
+        )
     
-    model_location = args.model_dir + '/xgboost-model'
-    pkl.dump(bst, open(model_location, 'wb'))
-    logging.info("Stored trained model at {}".format(model_location))
+        # Save the model to the location specified by ``model_dir``
+        model_location = args.model_dir + '/xgboost-model'
+        pkl.dump(bst, open(model_location, 'wb'))
+        logging.info("Stored trained model at {}".format(model_location))
 
 Create an Estimator
 -------------------
-After you create your training script, create an instance of the :class:`sagemaker.xgboost.XGBoost` estimator.
+After you create your training script, create an instance of the :class:`sagemaker.xgboost.estimator.XGBoost` estimator.
 Pass an IAM role that has the permissions necessary to run an Amazon SageMaker training job,
 the type and number of instances to use for the training job,
 and a dictionary of the hyperparameters to pass to the training script.
 
 .. code::
 
-    from sagemaker.session import s3_input
     from sagemaker.xgboost.estimator import XGBoost
 
-    xgb_script_mode_estimator = XGBoost(
+    xgb_estimator = XGBoost(
         entry_point="abalone.py",
         hyperparameters=hyperparameters,
         role=role, 
@@ -184,9 +186,10 @@ After the training job finishes, call the ``deploy`` method of the estimator to 
 Customize inference
 -------------------
 
-In the script that you provide, you can customize the inference behavior by implementing the follwing functions:
-* ``input_fn`` - how input data is handled.
-* ``predict_fn`` - how the model is invokedfunction, and how the response is returned ).
+In your inference script, which can be either in the same file as your training script or in a separate file,
+you can customize the inference behavior by implementing the following functions:
+* ``input_fn`` - how input data is handled
+* ``predict_fn`` - how the model is invoked
 * ``output_fn`` - How the response data is handled
 
 These functions are optional. If you want to use the default implementations, do not implement them in your training script.
