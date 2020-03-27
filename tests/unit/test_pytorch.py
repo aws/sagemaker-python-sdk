@@ -28,6 +28,7 @@ DATA_DIR = os.path.join(os.path.dirname(__file__), "..", "data")
 SCRIPT_PATH = os.path.join(DATA_DIR, "dummy_script.py")
 SERVING_SCRIPT_FILE = "another_dummy_script.py"
 MODEL_DATA = "s3://some/data.tar.gz"
+ENV = {"DUMMY_ENV_VAR": "dummy_value"}
 TIMESTAMP = "2017-11-06-14:14:15.672"
 TIME = 1507167947
 BUCKET_NAME = "mybucket"
@@ -212,12 +213,14 @@ def test_create_model_with_optional_params(sagemaker_session):
         model_server_workers=model_server_workers,
         vpc_config_override=vpc_config,
         entry_point=SERVING_SCRIPT_FILE,
+        env=ENV,
     )
 
     assert model.role == new_role
     assert model.model_server_workers == model_server_workers
     assert model.vpc_config == vpc_config
     assert model.entry_point == SERVING_SCRIPT_FILE
+    assert model.env == ENV
 
 
 def test_create_model_with_custom_image(sagemaker_session):
