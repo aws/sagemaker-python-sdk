@@ -167,6 +167,13 @@ class SKLearn(Framework):
             logger.debug("removing unused entry_point argument: %s", str(kwargs["entry_point"]))
             kwargs = {k: v for k, v in kwargs.items() if k != "entry_point"}
 
+        # remove image kwarg
+        if "image" in kwargs:
+            image = kwargs["image"]
+            kwargs = {k: v for k, v in kwargs.items() if k != "image"}
+        else:
+            image = None
+
         return SKLearnModel(
             self.model_data,
             role,
@@ -179,7 +186,7 @@ class SKLearn(Framework):
             py_version=self.py_version,
             framework_version=self.framework_version,
             model_server_workers=model_server_workers,
-            image=self.image_name,
+            image=image or self.image_name,
             sagemaker_session=self.sagemaker_session,
             vpc_config=self.get_vpc_config(vpc_config_override),
             enable_network_isolation=self.enable_network_isolation(),
