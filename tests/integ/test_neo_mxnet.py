@@ -24,7 +24,7 @@ from tests.integ import DATA_DIR, PYTHON_VERSION, TRAINING_DEFAULT_TIMEOUT_MINUT
 from tests.integ.timeout import timeout, timeout_and_delete_endpoint_by_name
 
 NEO_MXNET_VERSION = "1.4.1"  # Neo doesn't support MXNet 1.6 yet.
-INF_MXNET_VERSION = "1.5.0"
+INF_MXNET_VERSION = "1.5.1"
 
 
 @pytest.fixture(scope="module")
@@ -130,7 +130,7 @@ def test_inferentia_deploy_model(
             model_data,
             role,
             entry_point=script_path,
-            framework_version=NEO_MXNET_VERSION,
+            framework_version=INF_MXNET_VERSION,
             sagemaker_session=sagemaker_session,
         )
 
