@@ -203,6 +203,9 @@ class Chainer(Framework):
             sagemaker.chainer.model.ChainerModel: A SageMaker ``ChainerModel``
             object. See :func:`~sagemaker.chainer.model.ChainerModel` for full details.
         """
+        if "image" not in kwargs:
+            kwargs["image"] = self.image_name
+
         return ChainerModel(
             self.model_data,
             role or self.role,
@@ -215,10 +218,10 @@ class Chainer(Framework):
             py_version=self.py_version,
             framework_version=self.framework_version,
             model_server_workers=model_server_workers,
-            image=kwargs["image"] if "image" in kwargs else self.image_name,
             sagemaker_session=self.sagemaker_session,
             vpc_config=self.get_vpc_config(vpc_config_override),
             dependencies=(dependencies or self.dependencies),
+            **kwargs
         )
 
     @classmethod

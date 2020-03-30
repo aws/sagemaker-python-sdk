@@ -158,7 +158,9 @@ def cd(path):
 @pytest.fixture()
 def sagemaker_session():
     boto_mock = Mock(name="boto_session", region_name=REGION)
-    session_mock = Mock(name="sagemaker_session", boto_session=boto_mock)
+    session_mock = Mock(
+        name="sagemaker_session", boto_session=boto_mock, s3_client=None, s3_resource=None
+    )
     session_mock.default_bucket = Mock(name="default_bucket", return_value=BUCKET_NAME)
     session_mock.expand_role = Mock(name="expand_role", return_value=ROLE)
     session_mock.sagemaker_client.describe_training_job = Mock(
@@ -1224,3 +1226,13 @@ def test_region_supports_debugger_feature_returns_true_for_supported_regions():
 def test_region_supports_debugger_feature_returns_false_for_unsupported_regions():
     assert fw_utils._region_supports_debugger("us-gov-west-1") is False
     assert fw_utils._region_supports_debugger("us-iso-east-1") is False
+
+
+def test_warn_if_parameter_server_with_multi_gpu(caplog):
+    train_instance_type = "ml.p2.8xlarge"
+    distributions = {"parameter_server": {"enabled": True}}
+
+    fw_utils.warn_if_parameter_server_with_multi_gpu(
+        training_instance_type=train_instance_type, distributions=distributions
+    )
+    assert fw_utils.PARAMETER_SERVER_MULTI_GPU_WARNING in caplog.text

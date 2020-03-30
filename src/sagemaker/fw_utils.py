@@ -13,6 +13,7 @@
 """Utility methods used by framework classes"""
 from __future__ import absolute_import
 
+import logging
 import os
 import re
 import shutil
@@ -22,6 +23,8 @@ from collections import namedtuple
 import sagemaker.utils
 from sagemaker import s3
 from sagemaker.utils import get_ecr_image_uri_prefix, ECR_URI_PATTERN
+
+logger = logging.getLogger("sagemaker")
 
 _TAR_SOURCE_FILENAME = "source.tar.gz"
 
@@ -41,6 +44,13 @@ PYTHON_2_DEPRECATION_WARNING = (
     "{latest_supported_version} is the latest version of {framework} that supports "
     "Python 2. Newer versions of {framework} will only be available for Python 3."
     "Please set the argument \"py_version='py3'\" to use the Python 3 {framework} image."
+)
+PARAMETER_SERVER_MULTI_GPU_WARNING = (
+    "You have selected a multi-GPU training instance type. "
+    "You have also enabled parameter server for distributed training. "
+    "Distributed training with the default parameter server configuration will not "
+    "fully leverage all GPU cores; the parameter server will be configured to run "
+    "only one worker per host regardless of the number of GPUs."
 )
 
 
@@ -68,6 +78,7 @@ ASIMOV_OPT_IN_ACCOUNTS_BY_REGION = {"ap-east-1": "871362719292", "me-south-1": "
 DEFAULT_ACCOUNT = "520713654638"
 ASIMOV_PROD_ACCOUNT = "763104351884"
 ASIMOV_DEFAULT_ACCOUNT = ASIMOV_PROD_ACCOUNT
+SINGLE_GPU_INSTANCE_TYPES = ("ml.p2.xlarge", "ml.p3.2xlarge")
 
 MERGED_FRAMEWORKS_REPO_MAP = {
     "tensorflow-scriptmode": "tensorflow-training",
@@ -371,7 +382,14 @@ def validate_source_dir(script, directory):
 
 
 def tar_and_upload_dir(
-    session, bucket, s3_key_prefix, script, directory=None, dependencies=None, kms_key=None
+    session,
+    bucket,
+    s3_key_prefix,
+    script,
+    directory=None,
+    dependencies=None,
+    kms_key=None,
+    s3_resource=None,
 ):
     """Package source files and upload a compress tar file to S3. The S3
     location will be ``s3://<bucket>/s3_key_prefix/sourcedir.tar.gz``.
@@ -395,6 +413,9 @@ def tar_and_upload_dir(
             copied into /opt/ml/lib
         kms_key (str): Optional. KMS key ID used to upload objects to the bucket
             (default: None).
+        s3_resource (boto3.resource("s3")): Optional. Pre-instantiated Boto3 Resource
+            for S3 connections, can be used to customize the configuration,
+            e.g. set the endpoint URL (default: None).
     Returns:
         sagemaker.fw_utils.UserCode: An object with the S3 bucket and key (S3 prefix) and
             script name.
@@ -418,7 +439,12 @@ def tar_and_upload_dir(
         else:
             extra_args = None
 
-        session.resource("s3").Object(bucket, key).upload_file(tar_file, ExtraArgs=extra_args)
+        if s3_resource is None:
+            s3_resource = session.resource("s3", region_name=session.region_name)
+        else:
+            print("Using provided s3_resource")
+
+        s3_resource.Object(bucket, key).upload_file(tar_file, ExtraArgs=extra_args)
     finally:
         shutil.rmtree(tmp)
 
@@ -537,6 +563,44 @@ def empty_framework_version_warning(default_version, latest_version):
     if default_version != latest_version:
         msgs.append(LATER_FRAMEWORK_VERSION_WARNING.format(latest=latest_version))
     return " ".join(msgs)
+
+
+def warn_if_parameter_server_with_multi_gpu(training_instance_type, distributions):
+    """Warn the user that training will not fully leverage all the GPU
+    cores if parameter server is enabled and a multi-GPU instance is selected.
+    Distributed training with the default parameter server setup doesn't
+    support multi-GPU instances.
+
+    Args:
+        training_instance_type (str): A string representing the type of training instance selected.
+        distributions (dict): A dictionary with information to enable distributed training.
+            (Defaults to None if distributed training is not enabled.) For example:
+
+            .. code:: python
+
+                {
+                    'parameter_server':
+                    {
+                        'enabled': True
+                    }
+                }
+
+
+    """
+    if training_instance_type == "local" or distributions is None:
+        return
+
+    is_multi_gpu_instance = (
+        training_instance_type.split(".")[1].startswith("p")
+        and training_instance_type not in SINGLE_GPU_INSTANCE_TYPES
+    )
+
+    ps_enabled = "parameter_server" in distributions and distributions["parameter_server"].get(
+        "enabled", False
+    )
+
+    if is_multi_gpu_instance and ps_enabled:
+        logger.warning(PARAMETER_SERVER_MULTI_GPU_WARNING)
 
 
 def get_unsupported_framework_version_error(
