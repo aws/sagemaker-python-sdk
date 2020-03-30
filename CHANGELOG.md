@@ -1,5 +1,16 @@
 # Changelog
 
+## v1.53.0 (2020-03-30)
+
+### Features
+
+ * Allow setting S3 endpoint URL for Local Session
+
+### Bug Fixes and Other Changes
+
+ * Pass kwargs from create_model to Model constructors
+ * Warn if parameter server is used with multi-GPU instance
+
 ## v1.52.1 (2020-03-26)
 
 ### Bug Fixes and Other Changes
