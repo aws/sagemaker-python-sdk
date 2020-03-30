@@ -466,7 +466,7 @@ class Model(object):
 
         if instance_type.startswith("ml.inf") and not self._is_compiled_model:
             LOGGER.warning(
-                "Your model is not compiled, please compile your model before using Inferentia."
+                "Your model is not compiled. Please compile your model before using Inferentia."
             )
 
         compiled_model_suffix = "-".join(instance_type.split(".")[:-1])

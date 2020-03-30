@@ -279,9 +279,18 @@ def create_image_uri(
 
     if device_type == "inf":
         if region not in INFERENTIA_SUPPORTED_REGIONS:
-            raise ValueError("Inferentia is not supported in region {}.".format(region))
+            raise ValueError(
+                "Inferentia is not supported in region {}. Supported regions are {}".format(
+                    region, ", ".join(INFERENTIA_SUPPORTED_REGIONS)
+                )
+            )
         if framework not in INFERENTIA_VERSION_RANGES:
-            raise ValueError("Inferentia does not support {}.".format(framework.split("-")[-1]))
+            raise ValueError(
+                "Inferentia does not support {}. Currently it supports "
+                "MXNet and TensorFlow with more frameworks coming soon.".format(
+                    framework.split("-")[-1]
+                )
+            )
         if not _is_inferentia_supported(framework, framework_version):
             raise ValueError(
                 "Inferentia is not supported with {} version {}.".format(
