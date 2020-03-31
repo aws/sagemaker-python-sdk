@@ -24,9 +24,13 @@ CUSTOM_BUCKET_NAME = "this-bucket-should-not-exist"
 def test_sagemaker_session_does_not_create_bucket_on_init(
     sagemaker_client_config, sagemaker_runtime_config, boto_config
 ):
-    boto_session = (
-        boto3.Session(**boto_config) if boto_config else boto3.Session(region_name=DEFAULT_REGION)
-    )
+    if boto_config:
+        boto_session = boto3.Session(**boto_config)
+        s3 = boto3.resource("s3", region_name=boto_config["region_name"])
+    else:
+        boto_session = boto3.Session(region_name=DEFAULT_REGION)
+        s3 = boto3.resource("s3", region_name=DEFAULT_REGION)
+
     sagemaker_client_config.setdefault("config", Config(retries=dict(max_attempts=10)))
     sagemaker_client = (
         boto_session.client("sagemaker", **sagemaker_client_config)
@@ -45,6 +49,4 @@ def test_sagemaker_session_does_not_create_bucket_on_init(
         sagemaker_runtime_client=runtime_client,
         default_bucket=CUSTOM_BUCKET_NAME,
     )
-
-    s3 = boto3.resource("s3", region_name=DEFAULT_REGION)
     assert s3.Bucket(CUSTOM_BUCKET_NAME).creation_date is None
