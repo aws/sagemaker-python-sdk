@@ -62,6 +62,8 @@ def fixture_sagemaker_session():
         boto_region_name=REGION,
         config=None,
         local_mode=False,
+        s3_resource=None,
+        s3_client=None,
     )
 
     describe = {"ModelArtifacts": {"S3ModelArtifacts": "s3://m/m.tar.gz"}}
@@ -618,3 +620,11 @@ def test_wrong_type_parameters(sagemaker_session):
             train_instance_type=INSTANCE_TYPE,
         )
     assert "combination is not supported." in str(e.value)
+
+
+def test_custom_image_estimator_deploy(sagemaker_session):
+    custom_image = "mycustomimage:latest"
+    rl = _rl_estimator(sagemaker_session)
+    rl.fit(inputs="s3://mybucket/train", job_name="new_name")
+    model = rl.create_model(image=custom_image)
+    assert model.image == custom_image

@@ -218,6 +218,11 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):
             if self.train_instance_type == "local_gpu" and self.train_instance_count > 1:
                 raise RuntimeError("Distributed Training in Local GPU is not supported")
             self.sagemaker_session = sagemaker_session or LocalSession()
+            if not isinstance(self.sagemaker_session, sagemaker.local.LocalSession):
+                raise RuntimeError(
+                    "instance_type local or local_gpu is only supported with an"
+                    "instance of LocalSession"
+                )
         else:
             self.sagemaker_session = sagemaker_session or Session()
 
@@ -1708,6 +1713,7 @@ class Framework(EstimatorBase):
             directory=self.source_dir,
             dependencies=self.dependencies,
             kms_key=kms_key,
+            s3_resource=self.sagemaker_session.s3_resource,
         )
 
     def _model_source_dir(self):

@@ -530,7 +530,9 @@ def _create_or_update_code_dir(
     """
     code_dir = os.path.join(model_dir, "code")
     if os.path.exists(code_dir):
-        shutil.rmtree(code_dir, ignore_errors=True)
+        for filename in os.listdir(code_dir):
+            if filename.endswith(".py"):
+                os.remove(os.path.join(code_dir, filename))
     if source_directory and source_directory.lower().startswith("s3://"):
         local_code_path = os.path.join(tmp, "local_code.tar.gz")
         download_file_from_url(source_directory, local_code_path, sagemaker_session)
@@ -539,9 +541,12 @@ def _create_or_update_code_dir(
             t.extractall(path=code_dir)
 
     elif source_directory:
+        if os.path.exists(code_dir):
+            shutil.rmtree(code_dir)
         shutil.copytree(source_directory, code_dir)
     else:
-        os.mkdir(code_dir)
+        if not os.path.exists(code_dir):
+            os.mkdir(code_dir)
         shutil.copy2(inference_script, code_dir)
 
     for dependency in dependencies:

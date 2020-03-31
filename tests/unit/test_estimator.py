@@ -30,6 +30,7 @@ from sagemaker.predictor import RealTimePredictor
 from sagemaker.session import s3_input, ShuffleConfig
 from sagemaker.transformer import Transformer
 from botocore.exceptions import ClientError
+import sagemaker.local
 
 MODEL_DATA = "s3://bucket/model.tar.gz"
 MODEL_IMAGE = "mi"
@@ -173,6 +174,8 @@ def sagemaker_session():
         boto_region_name=REGION,
         config=None,
         local_mode=False,
+        s3_client=None,
+        s3_resource=None,
     )
     sms.default_bucket = Mock(name="default_bucket", return_value=BUCKET_NAME)
     sms.sagemaker_client.describe_training_job = Mock(
@@ -560,6 +563,7 @@ def test_local_code_location():
         boto_region_name=REGION,
         config=config,
         local_mode=True,
+        spec=sagemaker.local.LocalSession,
     )
     t = DummyFramework(
         entry_point=SCRIPT_PATH,
@@ -2231,7 +2235,7 @@ def test_deploy_with_no_model_name(sagemaker_session):
 @patch("sagemaker.estimator.LocalSession")
 @patch("sagemaker.estimator.Session")
 def test_local_mode(session_class, local_session_class):
-    local_session = Mock()
+    local_session = Mock(spec=sagemaker.local.LocalSession)
     local_session.local_mode = True
 
     session = Mock()
@@ -2259,7 +2263,7 @@ def test_distributed_gpu_local_mode(LocalSession):
 
 @patch("sagemaker.estimator.LocalSession")
 def test_local_mode_file_output_path(local_session_class):
-    local_session = Mock()
+    local_session = Mock(spec=sagemaker.local.LocalSession)
     local_session.local_mode = True
     local_session_class.return_value = local_session
 
@@ -2391,4 +2395,29 @@ def test_encryption_flag_in_non_vpc_mode_invalid(sagemaker_session):
     assert (
         '"EnableInterContainerTrafficEncryption" and "VpcConfig" must be provided together'
         in str(error)
+    )
+
+
+def test_estimator_local_mode_error(sagemaker_session):
+    # When using instance local with a session which is not LocalSession we should error out
+    with pytest.raises(RuntimeError):
+        Estimator(
+            image_name="some-image",
+            role="some_image",
+            train_instance_count=1,
+            train_instance_type="local",
+            sagemaker_session=sagemaker_session,
+            base_job_name="base_job_name",
+        )
+
+
+def test_estimator_local_mode_ok(sagemaker_local_session):
+    # When using instance local with a session which is not LocalSession we should error out
+    Estimator(
+        image_name="some-image",
+        role="some_image",
+        train_instance_count=1,
+        train_instance_type="local",
+        sagemaker_session=sagemaker_local_session,
+        base_job_name="base_job_name",
     )
