@@ -1,5 +1,11 @@
 # Changelog
 
+## v1.54.0 (2020-03-31)
+
+### Features
+
+ * inferentia support
+
 ## v1.53.0 (2020-03-30)
 
 ### Features
