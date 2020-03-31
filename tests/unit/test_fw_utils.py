@@ -279,6 +279,24 @@ def test_create_image_uri_bah():
     }
 
 
+def test_create_image_uri_cn_north_1():
+    image_uri = fw_utils.create_image_uri(
+        "cn-north-1", MOCK_FRAMEWORK, "ml.p3.2xlarge", "1.0rc", "py3"
+    )
+    assert {
+        image_uri == "727897471807.dkr.ecr.me-south-1.amazonaws.com/sagemaker-mlfw:1.0rc-gpu-py3"
+    }
+
+
+def test_create_image_uri_cn_northwest_1():
+    image_uri = fw_utils.create_image_uri(
+        "cn-northwest-1", MOCK_FRAMEWORK, "ml.p3.2xlarge", "1.0rc", "py3"
+    )
+    assert {
+        image_uri == "727897471807.dkr.ecr.me-south-1.amazonaws.com/sagemaker-mlfw:1.0rc-gpu-py3"
+    }
+
+
 def test_tf_eia_images():
     image_uri = fw_utils.create_image_uri(
         "us-west-2",
