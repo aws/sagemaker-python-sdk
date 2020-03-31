@@ -53,6 +53,8 @@ CUSTOM_RULE_CONTAINERS_ACCOUNTS_MAP = {
     "us-east-2": "840043622174",
     "us-west-1": "952348334681",
     "us-west-2": "759209512951",
+    "cn-north-1": "617202126805",
+    "cn-northwest-1": "658559488188",
 }
 
 # TODO-reinvent-2019: test get_debugger_artifacts_path and get_tensorboard_artifacts_path

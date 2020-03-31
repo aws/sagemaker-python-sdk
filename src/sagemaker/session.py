@@ -199,7 +199,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
             key_suffix = name
 
         bucket = bucket or self.default_bucket()
-        s3 = self.boto_session.resource("s3")
+        s3 = self.boto_session.resource("s3", region_name=self.boto_region_name)
 
         for local_path, s3_key in files:
             s3.Object(bucket, s3_key).upload_file(local_path, ExtraArgs=extra_args)
@@ -227,7 +227,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
             str: The S3 URI of the uploaded file.
                 The URI format is: ``s3://{bucket name}/{key}``.
         """
-        s3 = self.boto_session.resource("s3")
+        s3 = self.boto_session.resource("s3", region_name=self.boto_region_name)
         s3_object = s3.Object(bucket_name=bucket, key=key)
 
         if kms_key is not None:
@@ -317,7 +317,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
             [str]: The list of files at the S3 path.
 
         """
-        s3 = self.boto_session.resource("s3")
+        s3 = self.boto_session.resource("s3", region_name=self.boto_region_name)
 
         s3_bucket = s3.Bucket(name=bucket)
         s3_objects = s3_bucket.objects.filter(Prefix=key_prefix).all()

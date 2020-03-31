@@ -61,8 +61,18 @@ VALID_EIA_FRAMEWORKS = [
     "pytorch-serving",
 ]
 PY2_RESTRICTED_EIA_FRAMEWORKS = ["pytorch-serving"]
-VALID_ACCOUNTS_BY_REGION = {"us-gov-west-1": "246785580436", "us-iso-east-1": "744548109606"}
-ASIMOV_VALID_ACCOUNTS_BY_REGION = {"us-gov-west-1": "442386744353", "us-iso-east-1": "886529160074"}
+VALID_ACCOUNTS_BY_REGION = {
+    "us-gov-west-1": "246785580436",
+    "us-iso-east-1": "744548109606",
+    "cn-north-1": "422961961927",
+    "cn-northwest-1": "423003514399",
+}
+ASIMOV_VALID_ACCOUNTS_BY_REGION = {
+    "us-gov-west-1": "442386744353",
+    "us-iso-east-1": "886529160074",
+    "cn-north-1": "727897471807",
+    "cn-northwest-1": "727897471807",
+}
 OPT_IN_ACCOUNTS_BY_REGION = {"ap-east-1": "057415533634", "me-south-1": "724002660598"}
 ASIMOV_OPT_IN_ACCOUNTS_BY_REGION = {"ap-east-1": "871362719292", "me-south-1": "217643126080"}
 DEFAULT_ACCOUNT = "520713654638"
@@ -354,7 +364,9 @@ def tar_and_upload_dir(
         else:
             extra_args = None
 
-        session.resource("s3").Object(bucket, key).upload_file(tar_file, ExtraArgs=extra_args)
+        session.resource("s3", region_name=session.region_name).Object(bucket, key).upload_file(
+            tar_file, ExtraArgs=extra_args
+        )
     finally:
         shutil.rmtree(tmp)
 
