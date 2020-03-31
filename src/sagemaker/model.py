@@ -50,6 +50,8 @@ NEO_IMAGE_ACCOUNT = {
     "us-gov-west-1": "263933020539",
 }
 
+INFERENTIA_INSTANCE_PREFIX = "ml_inf"
+
 
 class Model(object):
     """A SageMaker ``Model`` that can be deployed to an ``Endpoint``."""
@@ -286,6 +288,23 @@ class Model(object):
             account=self._neo_image_account(region),
         )
 
+    def _inferentia_image(self, region, target_instance_type, framework, framework_version):
+        """
+                Args:
+                    region:
+                    target_instance_type:
+                    framework:
+                    framework_version:
+                """
+        return fw_utils.create_image_uri(
+            region,
+            "neo-" + framework.lower(),
+            target_instance_type.replace("_", "."),
+            framework_version,
+            py_version="py3",
+            account=self._neo_image_account(region),
+        )
+
     def compile(
         self,
         target_instance_family,
@@ -364,6 +383,14 @@ class Model(object):
                 framework_version,
             )
             self._is_compiled_model = True
+        elif target_instance_family.startswith(INFERENTIA_INSTANCE_PREFIX):
+            self.image = self._inferentia_image(
+                self.sagemaker_session.boto_region_name,
+                target_instance_family,
+                framework,
+                framework_version,
+            )
+            self._is_compiled_model = True
         else:
             LOGGER.warning(
                 "The instance type %s is not supported to deploy via SageMaker,"
@@ -436,6 +463,11 @@ class Model(object):
 
         if self.role is None:
             raise ValueError("Role can not be null for deploying a model")
+
+        if instance_type.startswith("ml.inf") and not self._is_compiled_model:
+            LOGGER.warning(
+                "Your model is not compiled. Please compile your model before using Inferentia."
+            )
 
         compiled_model_suffix = "-".join(instance_type.split(".")[:-1])
         if self._is_compiled_model:
