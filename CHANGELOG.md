@@ -1,5 +1,11 @@
 # Changelog
 
+## v1.55.0 (2020-03-31)
+
+### Features
+
+ * support cn-north-1 and cn-northwest-1
+
 ## v1.54.0 (2020-03-31)
 
 ### Features
