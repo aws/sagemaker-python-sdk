@@ -238,9 +238,16 @@ class TensorFlow(Framework):
                 https://github.com/aws/sagemaker-python-sdk#tensorflow-sagemaker-estimators.
                 If not specified, this will default to 1.11.
             model_dir (str): S3 location where the checkpoint data and models can be exported to
-                during training (default: None). If not specified a default S3 URI will be
-                generated. It will be passed in the training script as one of the command line
-                arguments.
+                during training (default: None). It will be passed in the training script as one of
+                the command line arguments. If not specified, one is provided based on
+                your training configuration:
+
+                * *distributed training with MPI* - ``/opt/ml/model``
+                * *single-machine training or distributed training without MPI* - \
+                    ``s3://{output_path}/model``
+                * *Local Mode with local sources (file:// instead of s3://)* - \
+                    ``/opt/ml/shared/model``
+
             requirements_file (str): Path to a ``requirements.txt`` file (default: ''). The path
                 should be within and relative to ``source_dir``. Details on the format can be
                 found in the Pip User Guide:
@@ -298,6 +305,12 @@ class TensorFlow(Framework):
         if py_version == "py2":
             logger.warning(
                 fw.python_deprecation_warning(self.__framework_name__, defaults.LATEST_PY2_VERSION)
+            )
+
+        if distributions is not None:
+            train_instance_type = kwargs.get("train_instance_type")
+            fw.warn_if_parameter_server_with_multi_gpu(
+                training_instance_type=train_instance_type, distributions=distributions
             )
 
         if "enable_sagemaker_metrics" not in kwargs:
@@ -601,10 +614,17 @@ class TensorFlow(Framework):
         **kwargs
     ):
         """Placeholder docstring"""
+        # remove image kwarg
+        if "image" in kwargs:
+            image = kwargs["image"]
+            kwargs = {k: v for k, v in kwargs.items() if k != "image"}
+        else:
+            image = None
+
         return Model(
             model_data=self.model_data,
             role=role,
-            image=self.image_name,
+            image=(image or self.image_name),
             name=self._current_job_name,
             container_log_level=self.container_log_level,
             framework_version=utils.get_short_version(self.framework_version),
@@ -628,6 +648,13 @@ class TensorFlow(Framework):
         **kwargs
     ):
         """Placeholder docstring"""
+        # remove image kwarg
+        if "image" in kwargs:
+            image = kwargs["image"]
+            kwargs = {k: v for k, v in kwargs.items() if k != "image"}
+        else:
+            image = None
+
         return TensorFlowModel(
             self.model_data,
             role,
@@ -635,7 +662,7 @@ class TensorFlow(Framework):
             source_dir=source_dir or self._model_source_dir(),
             enable_cloudwatch_metrics=self.enable_cloudwatch_metrics,
             env={"SAGEMAKER_REQUIREMENTS": self.requirements_file},
-            image=self.image_name,
+            image=(image or self.image_name),
             name=self._current_job_name,
             container_log_level=self.container_log_level,
             code_location=self.code_location,

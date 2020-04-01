@@ -509,9 +509,9 @@ def _save_model(repacked_model_uri, tmp_model_path, sagemaker_session, kms_key):
             extra_args = {"ServerSideEncryption": "aws:kms", "SSEKMSKeyId": kms_key}
         else:
             extra_args = None
-        sagemaker_session.boto_session.resource("s3").Object(bucket, new_key).upload_file(
-            tmp_model_path, ExtraArgs=extra_args
-        )
+        sagemaker_session.boto_session.resource(
+            "s3", region_name=sagemaker_session.boto_region_name
+        ).Object(bucket, new_key).upload_file(tmp_model_path, ExtraArgs=extra_args)
     else:
         shutil.move(tmp_model_path, repacked_model_uri.replace("file://", ""))
 
@@ -604,7 +604,7 @@ def download_file(bucket_name, path, target, sagemaker_session):
     path = path.lstrip("/")
     boto_session = sagemaker_session.boto_session
 
-    s3 = boto_session.resource("s3")
+    s3 = boto_session.resource("s3", region_name=sagemaker_session.boto_region_name)
     bucket = s3.Bucket(bucket_name)
     bucket.download_file(path, target)
 
