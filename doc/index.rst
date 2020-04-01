@@ -183,7 +183,6 @@ Amazon SageMaker Operators for use with Kubernetes.
     :maxdepth: 2
 
     amazon_sagemaker_operators_for_kubernetes
-    amazon_sagemaker_operators_for_kubernetes_jobs
 
 *********
 Workflows
