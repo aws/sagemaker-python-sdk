@@ -311,6 +311,37 @@ def test_mxnet_eia_images():
     )
 
 
+def test_pytorch_eia_images():
+    image_uri = fw_utils.create_image_uri(
+        "us-east-1",
+        "pytorch-serving",
+        "ml.c4.2xlarge",
+        "1.3.1",
+        "py3",
+        accelerator_type="ml.eia1.large",
+    )
+    assert (
+        image_uri
+        == "{}.dkr.ecr.us-east-1.amazonaws.com/pytorch-inference-eia:1.3.1-cpu-py3".format(
+            fw_utils.ASIMOV_PROD_ACCOUNT
+        )
+    )
+
+
+def test_pytorch_eia_py2_error():
+    error_message = "pytorch-serving is not supported with Amazon Elastic Inference in Python 2."
+    with pytest.raises(ValueError) as error:
+        fw_utils.create_image_uri(
+            "us-east-1",
+            "pytorch-serving",
+            "ml.c4.2xlarge",
+            "1.3.1",
+            "py2",
+            accelerator_type="ml.eia1.large",
+        )
+    assert error_message in str(error)
+
+
 def test_create_image_uri_override_account():
     image_uri = fw_utils.create_image_uri(
         "us-west-1", MOCK_FRAMEWORK, "ml.p3.2xlarge", "1.0rc", "py3", account="fake"
@@ -332,7 +363,7 @@ def test_create_image_uri_hkg_override_account():
     assert {image_uri == "fake.dkr.ecr.ap-east-1.amazonaws.com/sagemaker-mlfw:1.0rc-gpu-py3"}
 
 
-def test_create_image_uri_merged():
+def test_create_dlc_image_uri():
     image_uri = fw_utils.create_image_uri(
         "us-west-2", "tensorflow-scriptmode", "ml.p3.2xlarge", "1.14", "py3"
     )
@@ -388,7 +419,7 @@ def test_create_image_uri_merged():
     )
 
 
-def test_create_image_uri_merged_py2():
+def test_create_dlc_image_uri_py2():
     image_uri = fw_utils.create_image_uri(
         "us-west-2", "tensorflow-scriptmode", "ml.p3.2xlarge", "1.13.1", "py2"
     )
@@ -419,7 +450,7 @@ def test_create_image_uri_merged_py2():
     )
 
 
-def test_create_image_uri_merged_gov_regions():
+def test_create_dlc_image_uri_iso_east_1():
     image_uri = fw_utils.create_image_uri(
         "us-iso-east-1", "tensorflow-scriptmode", "ml.m4.xlarge", "1.13.1", "py3"
     )
@@ -459,6 +490,61 @@ def test_create_image_uri_merged_gov_regions():
     assert (
         image_uri
         == "744548109606.dkr.ecr.us-iso-east-1.c2s.ic.gov/sagemaker-mxnet-serving:1.3.1-cpu-py3"
+    )
+
+
+def test_create_dlc_image_uri_gov_west_1():
+    image_uri = fw_utils.create_image_uri(
+        "us-gov-west-1", "tensorflow-scriptmode", "ml.m4.xlarge", "1.13.1", "py3"
+    )
+    assert (
+        image_uri
+        == "442386744353.dkr.ecr.us-gov-west-1.amazonaws.com/tensorflow-training:1.13.1-cpu-py3"
+    )
+
+    image_uri = fw_utils.create_image_uri(
+        "us-gov-west-1", "tensorflow-scriptmode", "ml.p3.2xlarge", "1.14", "py2"
+    )
+    assert (
+        image_uri
+        == "442386744353.dkr.ecr.us-gov-west-1.amazonaws.com/tensorflow-training:1.14-gpu-py2"
+    )
+
+    image_uri = fw_utils.create_image_uri(
+        "us-gov-west-1", "tensorflow-serving", "ml.m4.xlarge", "1.13.0"
+    )
+    assert (
+        image_uri
+        == "442386744353.dkr.ecr.us-gov-west-1.amazonaws.com/tensorflow-inference:1.13.0-cpu"
+    )
+
+    image_uri = fw_utils.create_image_uri("us-gov-west-1", "mxnet", "ml.p3.2xlarge", "1.4.1", "py3")
+    assert (
+        image_uri == "442386744353.dkr.ecr.us-gov-west-1.amazonaws.com/mxnet-training:1.4.1-gpu-py3"
+    )
+
+    image_uri = fw_utils.create_image_uri(
+        "us-gov-west-1", "mxnet-serving", "ml.c4.2xlarge", "1.4.1", "py3"
+    )
+    assert (
+        image_uri
+        == "442386744353.dkr.ecr.us-gov-west-1.amazonaws.com/mxnet-inference:1.4.1-cpu-py3"
+    )
+
+    image_uri = fw_utils.create_image_uri(
+        "us-gov-west-1", "pytorch", "ml.p3.2xlarge", "1.2.0", "py3"
+    )
+    assert (
+        image_uri
+        == "442386744353.dkr.ecr.us-gov-west-1.amazonaws.com/pytorch-training:1.2.0-gpu-py3"
+    )
+
+    image_uri = fw_utils.create_image_uri(
+        "us-gov-west-1", "pytorch-serving", "ml.c4.2xlarge", "1.2.0", "py3"
+    )
+    assert (
+        image_uri
+        == "442386744353.dkr.ecr.us-gov-west-1.amazonaws.com/pytorch-inference:1.2.0-cpu-py3"
     )
 
 

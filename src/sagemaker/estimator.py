@@ -823,8 +823,8 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):
             instance_type (str): Type of EC2 instance to use, for example,
                 'ml.c4.xlarge'.
             strategy (str): The strategy used to decide how to batch records in
-                a single request (default: None). Valid values: 'MULTI_RECORD'
-                and 'SINGLE_RECORD'.
+                a single request (default: None). Valid values: 'MultiRecord'
+                and 'SingleRecord'.
             assemble_with (str): How the output is assembled (default: None).
                 Valid values: 'Line' or 'None'.
             output_path (str): S3 location for saving the transform result. If
@@ -1470,7 +1470,7 @@ class Framework(EstimatorBase):
                 uploaded (default: None) - don't include a trailing slash since
                 a string prepended with a "/" is appended to ``code_location``. The code
                 file uploaded to S3 is 'code_location/job-name/source/sourcedir.tar.gz'.
-                If not specified, the default ``code location`` is s3://default_bucket/job-name/.
+                If not specified, the default ``code location`` is s3://output_bucket/job-name/.
             image_name (str): An alternate image name to use instead of the
                 official Sagemaker image for the framework. This is useful to
                 run one of the Sagemaker supported frameworks with an image
@@ -1895,8 +1895,8 @@ class Framework(EstimatorBase):
             instance_type (str): Type of EC2 instance to use, for example,
                 'ml.c4.xlarge'.
             strategy (str): The strategy used to decide how to batch records in
-                a single request (default: None). Valid values: 'MULTI_RECORD'
-                and 'SINGLE_RECORD'.
+                a single request (default: None). Valid values: 'MultiRecord'
+                and 'SingleRecord'.
             assemble_with (str): How the output is assembled (default: None).
                 Valid values: 'Line' or 'None'.
             output_path (str): S3 location for saving the transform result. If

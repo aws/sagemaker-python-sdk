@@ -1,5 +1,49 @@
 # Changelog
 
+## v1.51.2 (2020-03-11)
+
+### Bug Fixes and Other Changes
+
+ * handle empty inputs/outputs in ProcessingJob.from_processing_name()
+ * use DLC images for GovCloud
+
+### Testing and Release Infrastructure
+
+ * generate test job name at test start instead of module start
+
+## v1.51.1 (2020-03-10)
+
+### Bug Fixes and Other Changes
+
+ * skip pytorch ei test in unsupported regions
+
+### Documentation Changes
+
+ * correct MultiString/MULTI_STRING docstring
+
+## v1.51.0 (2020-03-09)
+
+### Features
+
+ * pytorch 1.3.1 eia support
+
+### Documentation Changes
+
+ * Update Kubernetes Operator default tag
+ * improve docstring for tuner.best_estimator()
+
+## v1.50.18.post0 (2020-03-05)
+
+### Documentation Changes
+
+ * correct Estimator code_location default S3 path
+
+## v1.50.18 (2020-03-04)
+
+### Bug Fixes and Other Changes
+
+ * change default compile model max run to 15 mins
+
 ## v1.50.17.post0 (2020-03-03)
 
 ### Testing and Release Infrastructure
