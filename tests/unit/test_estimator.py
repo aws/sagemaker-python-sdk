@@ -209,6 +209,7 @@ def test_framework_all_init_args(sagemaker_session):
         checkpoint_s3_uri="s3://bucket/checkpoint",
         checkpoint_local_path="file://local/checkpoint",
         enable_sagemaker_metrics=True,
+        enable_network_isolation=True,
     )
     _TrainingJob.start_new(f, "s3://mydata", None)
     sagemaker_session.train.assert_called_once()
@@ -247,6 +248,7 @@ def test_framework_all_init_args(sagemaker_session):
         "checkpoint_s3_uri": "s3://bucket/checkpoint",
         "checkpoint_local_path": "file://local/checkpoint",
         "enable_sagemaker_metrics": True,
+        "enable_network_isolation": True,
     }
 
 
