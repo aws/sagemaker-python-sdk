@@ -336,7 +336,7 @@ def test_create_model_with_optional_params(sagemaker_session):
 
 
 @patch("sagemaker.tensorflow.estimator.TensorFlow.create_model")
-def test_transformer_creation_with_endpoint_type(create_model, sagemaker_session):
+def test_transformer_creation_with_optional_args(create_model, sagemaker_session):
     model = Mock()
     create_model.return_value = model
 
@@ -348,38 +348,67 @@ def test_transformer_creation_with_endpoint_type(create_model, sagemaker_session
         train_instance_type=INSTANCE_TYPE,
     )
     tf.latest_training_job = _TrainingJob(sagemaker_session, "some-job-name")
+
+    strategy = "SingleRecord"
+    assemble_with = "Line"
+    output_path = "s3://{}/batch-output".format(BUCKET_NAME)
+    kms_key = "kms"
+    accept_type = "text/bytes"
+    env = {"foo": "bar"}
+    max_concurrent_transforms = 3
+    max_payload = 100
+    tags = {"Key": "foo", "Value": "bar"}
+    new_role = "role"
+    model_server_workers = 2
+    vpc_config = {"Subnets": ["1234"], "SecurityGroupIds": ["5678"]}
+
     tf.transformer(
         INSTANCE_COUNT,
         INSTANCE_TYPE,
+        strategy=strategy,
+        assemble_with=assemble_with,
+        output_path=output_path,
+        output_kms_key=kms_key,
+        accept=accept_type,
+        env=env,
+        max_concurrent_transforms=max_concurrent_transforms,
+        max_payload=max_payload,
+        tags=tags,
+        role=new_role,
+        model_server_workers=model_server_workers,
+        volume_kms_key=kms_key,
         endpoint_type="tensorflow-serving",
         entry_point=SERVING_SCRIPT_FILE,
+        vpc_config_override=vpc_config,
+        enable_network_isolation=True,
     )
 
     create_model.assert_called_with(
+        model_server_workers=model_server_workers,
+        role=new_role,
+        vpc_config_override=vpc_config,
         endpoint_type="tensorflow-serving",
-        model_server_workers=None,
-        role=ROLE,
-        vpc_config_override="VPC_CONFIG_DEFAULT",
         entry_point=SERVING_SCRIPT_FILE,
+        enable_network_isolation=True,
     )
     model.transformer.assert_called_with(
         INSTANCE_COUNT,
         INSTANCE_TYPE,
-        accept=None,
-        assemble_with=None,
-        env=None,
-        max_concurrent_transforms=None,
-        max_payload=None,
-        output_kms_key=None,
-        output_path=None,
-        strategy=None,
-        tags=None,
-        volume_kms_key=None,
+        accept=accept_type,
+        assemble_with=assemble_with,
+        env=env,
+        max_concurrent_transforms=max_concurrent_transforms,
+        max_payload=max_payload,
+        output_kms_key=kms_key,
+        output_path=output_path,
+        strategy=strategy,
+        tags=tags,
+        volume_kms_key=kms_key,
     )
 
 
 @patch("sagemaker.tensorflow.estimator.TensorFlow.create_model")
-def test_transformer_creation_without_endpoint_type(create_model, sagemaker_session):
+def test_transformer_creation_without_optional_args(create_model, sagemaker_session):
     model = Mock()
     create_model.return_value = model
 
@@ -399,6 +428,7 @@ def test_transformer_creation_without_endpoint_type(create_model, sagemaker_sess
         role=ROLE,
         vpc_config_override="VPC_CONFIG_DEFAULT",
         entry_point=None,
+        enable_network_isolation=False,
     )
     model.transformer.assert_called_with(
         INSTANCE_COUNT,
