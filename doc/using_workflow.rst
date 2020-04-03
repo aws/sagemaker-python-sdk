@@ -1,6 +1,6 @@
-====================================
-SageMaker Workflow in Apache Airflow
-====================================
+============================================
+Amazon SageMaker Operators in Apache Airflow
+============================================
 
 Apache Airflow
 ~~~~~~~~~~~~~~

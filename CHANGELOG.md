@@ -1,5 +1,60 @@
 # Changelog
 
+## v1.55.0 (2020-03-31)
+
+### Features
+
+ * support cn-north-1 and cn-northwest-1
+
+## v1.54.0 (2020-03-31)
+
+### Features
+
+ * inferentia support
+
+## v1.53.0 (2020-03-30)
+
+### Features
+
+ * Allow setting S3 endpoint URL for Local Session
+
+### Bug Fixes and Other Changes
+
+ * Pass kwargs from create_model to Model constructors
+ * Warn if parameter server is used with multi-GPU instance
+
+## v1.52.1 (2020-03-26)
+
+### Bug Fixes and Other Changes
+
+ * Fix local _SageMakerContainer detached mode (aws#1374)
+
+## v1.52.0.post0 (2020-03-25)
+
+### Documentation Changes
+
+ * Add docs for debugger job support in operator
+
+## v1.52.0 (2020-03-24)
+
+### Features
+
+ * add us-gov-west-1 to neo supported regions
+
+## v1.51.4 (2020-03-23)
+
+### Bug Fixes and Other Changes
+
+ * Check that session is a LocalSession when using local mode
+ * add tflite to Neo-supported frameworks
+ * ignore tags with 'aws:' prefix when creating an EndpointConfig based on an existing one
+ * allow custom image when calling deploy or create_model with various frameworks
+
+### Documentation Changes
+
+ * fix description of default model_dir for TF
+ * add more details about PyTorch eia
+
 ## v1.51.3 (2020-03-12)
 
 ### Bug Fixes and Other Changes

@@ -46,6 +46,7 @@ DOCKER_COMPOSE_HTTP_TIMEOUT = "120"
 # Environment variables to be set during training
 REGION_ENV_NAME = "AWS_REGION"
 TRAINING_JOB_NAME_ENV_NAME = "TRAINING_JOB_NAME"
+S3_ENDPOINT_URL_ENV_NAME = "S3_ENDPOINT_URL"
 
 logger = logging.getLogger(__name__)
 
@@ -139,6 +140,11 @@ class _SageMakerContainer(object):
             REGION_ENV_NAME: self.sagemaker_session.boto_region_name,
             TRAINING_JOB_NAME_ENV_NAME: job_name,
         }
+        if self.sagemaker_session.s3_resource is not None:
+            training_env_vars[
+                S3_ENDPOINT_URL_ENV_NAME
+            ] = self.sagemaker_session.s3_resource.meta.client._endpoint.host
+
         compose_data = self._generate_compose_file(
             "train", additional_volumes=volumes, additional_env_vars=training_env_vars
         )
@@ -206,6 +212,7 @@ class _SageMakerContainer(object):
             "serve", additional_env_vars=environment, additional_volumes=volumes
         )
         compose_command = self._compose()
+
         self.container = _HostingContainer(compose_command)
         self.container.start()
 
@@ -489,11 +496,8 @@ class _SageMakerContainer(object):
             os.path.join(self.container_root, DOCKER_COMPOSE_FILENAME),
             "up",
             "--build",
-            "--abort-on-container-exit",
+            "--abort-on-container-exit" if not detached else "--detach",  # mutually exclusive
         ]
-
-        if detached:
-            command.append("-d")
 
         logger.info("docker command: %s", " ".join(command))
         return command

@@ -32,11 +32,9 @@ from sagemaker.network import NetworkConfig
 from sagemaker.processing import Processor, ProcessingInput, ProcessingJob, ProcessingOutput
 from sagemaker.s3 import S3Uploader
 from sagemaker.session import Session
-from sagemaker.utils import name_from_base, retries
+from sagemaker.utils import name_from_base, retries, get_ecr_image_uri_prefix
 
-_DEFAULT_MONITOR_IMAGE_URI_WITH_PLACEHOLDERS = (
-    "{}.dkr.ecr.{}.amazonaws.com/sagemaker-model-monitor-analyzer"
-)
+_DEFAULT_MONITOR_IMAGE_URI_WITH_PLACEHOLDERS = "{}/sagemaker-model-monitor-analyzer"
 
 _DEFAULT_MONITOR_IMAGE_REGION_ACCOUNT_MAPPING = {
     "eu-north-1": "895015795356",
@@ -57,6 +55,8 @@ _DEFAULT_MONITOR_IMAGE_REGION_ACCOUNT_MAPPING = {
     "ap-southeast-1": "245545462676",
     "ap-southeast-2": "563025443158",
     "ca-central-1": "536280801234",
+    "cn-north-1": "453000072557",
+    "cn-northwest-1": "453252182341",
 }
 
 STATISTICS_JSON_DEFAULT_FILE_NAME = "statistics.json"
@@ -1761,7 +1761,7 @@ class DefaultModelMonitor(ModelMonitor):
             str: The Default Model Monitoring image uri based on the region.
         """
         return _DEFAULT_MONITOR_IMAGE_URI_WITH_PLACEHOLDERS.format(
-            _DEFAULT_MONITOR_IMAGE_REGION_ACCOUNT_MAPPING[region], region
+            get_ecr_image_uri_prefix(_DEFAULT_MONITOR_IMAGE_REGION_ACCOUNT_MAPPING[region], region)
         )
 
 

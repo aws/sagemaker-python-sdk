@@ -67,8 +67,8 @@ class XGBoost(Framework):
         Training is started by calling :meth:`~sagemaker.amazon.estimator.Framework.fit` on this
         Estimator. After training is complete, calling
         :meth:`~sagemaker.amazon.estimator.Framework.deploy` creates a hosted SageMaker endpoint
-         and returns an :class:`~sagemaker.amazon.xgboost.model.XGBoostPredictor` instance that
-         can be used to perform inference against the hosted model.
+        and returns an :class:`~sagemaker.amazon.xgboost.model.XGBoostPredictor` instance that
+        can be used to perform inference against the hosted model.
 
         Technical documentation on preparing XGBoost scripts for SageMaker training and using the
         XGBoost Estimator is available on the project home-page:

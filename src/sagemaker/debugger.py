@@ -23,6 +23,7 @@ from __future__ import absolute_import
 
 import smdebug_rulesconfig as rule_configs  # noqa: F401 # pylint: disable=unused-import
 
+from sagemaker.utils import get_ecr_image_uri_prefix
 
 RULES_ECR_REPO_NAME = "sagemaker-debugger-rules"
 
@@ -45,6 +46,8 @@ SAGEMAKER_RULE_CONTAINERS_ACCOUNTS_MAP = {
     "ap-southeast-1": {RULES_ECR_REPO_NAME: "972752614525"},
     "ap-southeast-2": {RULES_ECR_REPO_NAME: "184798709955"},
     "ca-central-1": {RULES_ECR_REPO_NAME: "519511493484"},
+    "cn-north-1": {RULES_ECR_REPO_NAME: "618459771430"},
+    "cn-northwest-1": {RULES_ECR_REPO_NAME: "658757709296"},
 }
 
 
@@ -59,7 +62,8 @@ def get_rule_container_image_uri(region):
         str: Formatted image uri for the given region and the rule container type
     """
     registry_id = SAGEMAKER_RULE_CONTAINERS_ACCOUNTS_MAP.get(region).get(RULES_ECR_REPO_NAME)
-    return "{}.dkr.ecr.{}.amazonaws.com/{}:latest".format(registry_id, region, RULES_ECR_REPO_NAME)
+    image_uri_prefix = get_ecr_image_uri_prefix(registry_id, region)
+    return "{}/{}:latest".format(image_uri_prefix, RULES_ECR_REPO_NAME)
 
 
 class Rule(object):

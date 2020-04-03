@@ -158,7 +158,9 @@ def cd(path):
 @pytest.fixture()
 def sagemaker_session():
     boto_mock = Mock(name="boto_session", region_name=REGION)
-    session_mock = Mock(name="sagemaker_session", boto_session=boto_mock)
+    session_mock = Mock(
+        name="sagemaker_session", boto_session=boto_mock, s3_client=None, s3_resource=None
+    )
     session_mock.default_bucket = Mock(name="default_bucket", return_value=BUCKET_NAME)
     session_mock.expand_role = Mock(name="expand_role", return_value=ROLE)
     session_mock.sagemaker_client.describe_training_job = Mock(
@@ -274,6 +276,24 @@ def test_create_image_uri_bah():
     )
     assert {
         image_uri == "217643126080.dkr.ecr.me-south-1.amazonaws.com/sagemaker-mlfw:1.0rc-gpu-py3"
+    }
+
+
+def test_create_image_uri_cn_north_1():
+    image_uri = fw_utils.create_image_uri(
+        "cn-north-1", MOCK_FRAMEWORK, "ml.p3.2xlarge", "1.0rc", "py3"
+    )
+    assert {
+        image_uri == "727897471807.dkr.ecr.me-south-1.amazonaws.com/sagemaker-mlfw:1.0rc-gpu-py3"
+    }
+
+
+def test_create_image_uri_cn_northwest_1():
+    image_uri = fw_utils.create_image_uri(
+        "cn-northwest-1", MOCK_FRAMEWORK, "ml.p3.2xlarge", "1.0rc", "py3"
+    )
+    assert {
+        image_uri == "727897471807.dkr.ecr.me-south-1.amazonaws.com/sagemaker-mlfw:1.0rc-gpu-py3"
     }
 
 
@@ -717,6 +737,62 @@ def test_invalid_instance_type():
     # instance type is missing 'ml.' prefix
     with pytest.raises(ValueError):
         fw_utils.create_image_uri(MOCK_REGION, MOCK_FRAMEWORK, "p3.2xlarge", "1.0.0", "py3")
+
+
+def test_valid_inferentia_image():
+    image_uri = fw_utils.create_image_uri(
+        REGION,
+        "neo-tensorflow",
+        "ml.inf1.2xlarge",
+        "1.15.0",
+        py_version="py3",
+        account=MOCK_ACCOUNT,
+    )
+    assert (
+        image_uri
+        == "{}.dkr.ecr.{}.amazonaws.com/sagemaker-neo-tensorflow:1.15.0-inf-py3".format(
+            MOCK_ACCOUNT, REGION
+        )
+    )
+
+
+def test_invalid_inferentia_region():
+    with pytest.raises(ValueError) as e:
+        fw_utils.create_image_uri(
+            "ap-south-1",
+            "neo-tensorflow",
+            "ml.inf1.2xlarge",
+            "1.15.0",
+            py_version="py3",
+            account=MOCK_ACCOUNT,
+        )
+    assert "Inferentia is not supported in region ap-south-1." in str(e)
+
+
+def test_inferentia_invalid_framework():
+    with pytest.raises(ValueError) as e:
+        fw_utils.create_image_uri(
+            REGION,
+            "neo-pytorch",
+            "ml.inf1.2xlarge",
+            "1.4.0",
+            py_version="py3",
+            account=MOCK_ACCOUNT,
+        )
+    assert "Inferentia does not support pytorch." in str(e)
+
+
+def test_invalid_inferentia_framework_version():
+    with pytest.raises(ValueError) as e:
+        fw_utils.create_image_uri(
+            REGION,
+            "neo-tensorflow",
+            "ml.inf1.2xlarge",
+            "1.15.2",
+            py_version="py3",
+            account=MOCK_ACCOUNT,
+        )
+    assert "Inferentia is not supported with tensorflow version 1.15.2." in str(e)
 
 
 @patch(
@@ -1168,3 +1244,13 @@ def test_region_supports_debugger_feature_returns_true_for_supported_regions():
 def test_region_supports_debugger_feature_returns_false_for_unsupported_regions():
     assert fw_utils._region_supports_debugger("us-gov-west-1") is False
     assert fw_utils._region_supports_debugger("us-iso-east-1") is False
+
+
+def test_warn_if_parameter_server_with_multi_gpu(caplog):
+    train_instance_type = "ml.p2.8xlarge"
+    distributions = {"parameter_server": {"enabled": True}}
+
+    fw_utils.warn_if_parameter_server_with_multi_gpu(
+        training_instance_type=train_instance_type, distributions=distributions
+    )
+    assert fw_utils.PARAMETER_SERVER_MULTI_GPU_WARNING in caplog.text

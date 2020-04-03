@@ -27,7 +27,7 @@ from sagemaker.amazon.randomcutforest import RandomCutForest
 from sagemaker.multidatamodel import MultiDataModel
 from sagemaker.mxnet import MXNet
 from sagemaker.predictor import RealTimePredictor, StringDeserializer, npy_serializer
-from sagemaker.utils import sagemaker_timestamp, unique_name_from_base
+from sagemaker.utils import sagemaker_timestamp, unique_name_from_base, get_ecr_image_uri_prefix
 from tests.integ import DATA_DIR, PYTHON_VERSION, TRAINING_DEFAULT_TIMEOUT_MINUTES
 from tests.integ.retry import retries
 from tests.integ.timeout import timeout, timeout_and_delete_endpoint_by_name
@@ -49,8 +49,9 @@ def container_image(sagemaker_session):
     )
     account_id = sts_client.get_caller_identity()["Account"]
     algorithm_name = "sagemaker-multimodel-integ-test-{}".format(sagemaker_timestamp())
-    ecr_image = "{account}.dkr.ecr.{region}.amazonaws.com/{algorithm_name}:latest".format(
-        account=account_id, region=region, algorithm_name=algorithm_name
+    ecr_image_uri_prefix = get_ecr_image_uri_prefix(account=account_id, region=region)
+    ecr_image = "{prefix}/{algorithm_name}:latest".format(
+        prefix=ecr_image_uri_prefix, algorithm_name=algorithm_name
     )
 
     # Build and tag docker image locally
