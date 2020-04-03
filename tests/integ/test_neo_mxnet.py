@@ -24,6 +24,7 @@ from tests.integ import DATA_DIR, PYTHON_VERSION, TRAINING_DEFAULT_TIMEOUT_MINUT
 from tests.integ.timeout import timeout, timeout_and_delete_endpoint_by_name
 
 NEO_MXNET_VERSION = "1.4.1"  # Neo doesn't support MXNet 1.6 yet.
+INF_MXNET_VERSION = "1.5.1"
 
 
 @pytest.fixture(scope="module")
@@ -106,6 +107,41 @@ def test_deploy_model(
             output_path="/".join(model_data.split("/")[:-1]),
         )
         predictor = model.deploy(1, cpu_instance_type, endpoint_name=endpoint_name)
+
+        predictor.content_type = "application/vnd+python.numpy+binary"
+        data = numpy.zeros(shape=(1, 1, 28, 28))
+        predictor.predict(data)
+
+
+@pytest.mark.skip(reason="Inferentia is not supported yet.")
+def test_inferentia_deploy_model(
+    mxnet_training_job, sagemaker_session, inf_instance_type, inf_instance_family
+):
+    endpoint_name = unique_name_from_base("test-neo-deploy-model")
+
+    with timeout_and_delete_endpoint_by_name(endpoint_name, sagemaker_session):
+        desc = sagemaker_session.sagemaker_client.describe_training_job(
+            TrainingJobName=mxnet_training_job
+        )
+        model_data = desc["ModelArtifacts"]["S3ModelArtifacts"]
+        script_path = os.path.join(DATA_DIR, "mxnet_mnist", "mnist_neo.py")
+        role = "SageMakerRole"
+        model = MXNetModel(
+            model_data,
+            role,
+            entry_point=script_path,
+            framework_version=INF_MXNET_VERSION,
+            sagemaker_session=sagemaker_session,
+        )
+
+        model.compile(
+            target_instance_family=inf_instance_family,
+            input_shape={"data": [1, 1, 28, 28]},
+            role=role,
+            job_name=unique_name_from_base("test-deploy-model-compilation-job"),
+            output_path="/".join(model_data.split("/")[:-1]),
+        )
+        predictor = model.deploy(1, inf_instance_type, endpoint_name=endpoint_name)
 
         predictor.content_type = "application/vnd+python.numpy+binary"
         data = numpy.zeros(shape=(1, 1, 28, 28))

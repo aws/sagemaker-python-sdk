@@ -71,8 +71,18 @@ VALID_EIA_FRAMEWORKS = [
     "pytorch-serving",
 ]
 PY2_RESTRICTED_EIA_FRAMEWORKS = ["pytorch-serving"]
-VALID_ACCOUNTS_BY_REGION = {"us-gov-west-1": "246785580436", "us-iso-east-1": "744548109606"}
-ASIMOV_VALID_ACCOUNTS_BY_REGION = {"us-gov-west-1": "442386744353", "us-iso-east-1": "886529160074"}
+VALID_ACCOUNTS_BY_REGION = {
+    "us-gov-west-1": "246785580436",
+    "us-iso-east-1": "744548109606",
+    "cn-north-1": "422961961927",
+    "cn-northwest-1": "423003514399",
+}
+ASIMOV_VALID_ACCOUNTS_BY_REGION = {
+    "us-gov-west-1": "442386744353",
+    "us-iso-east-1": "886529160074",
+    "cn-north-1": "727897471807",
+    "cn-northwest-1": "727897471807",
+}
 OPT_IN_ACCOUNTS_BY_REGION = {"ap-east-1": "057415533634", "me-south-1": "724002660598"}
 ASIMOV_OPT_IN_ACCOUNTS_BY_REGION = {"ap-east-1": "871362719292", "me-south-1": "217643126080"}
 DEFAULT_ACCOUNT = "520713654638"
@@ -104,6 +114,13 @@ MERGED_FRAMEWORKS_LOWEST_VERSIONS = {
     "pytorch-serving-eia": [1, 3, 1],
 }
 
+INFERENTIA_VERSION_RANGES = {
+    "neo-mxnet": [[1, 5, 1], [1, 5, 1]],
+    "neo-tensorflow": [[1, 15, 0], [1, 15, 0]],
+}
+
+INFERENTIA_SUPPORTED_REGIONS = ["us-east-1", "us-west-2"]
+
 DEBUGGER_UNSUPPORTED_REGIONS = ["us-gov-west-1", "us-iso-east-1"]
 
 
@@ -124,6 +141,23 @@ def is_version_equal_or_higher(lowest_version, framework_version):
     return version_list >= lowest_version[0 : len(version_list)]
 
 
+def is_version_equal_or_lower(highest_version, framework_version):
+    """Determine whether the ``framework_version`` is equal to or lower than
+    ``highest_version``
+
+    Args:
+        highest_version (List[int]): highest version represented in an integer
+            list
+        framework_version (str): framework version string
+
+    Returns:
+        bool: Whether or not ``framework_version`` is equal to or lower than
+            ``highest_version``
+    """
+    version_list = [int(s) for s in framework_version.split(".")]
+    return version_list <= highest_version[0 : len(version_list)]
+
+
 def _is_dlc_version(framework, framework_version, py_version):
     """Return if the framework's version uses the corresponding DLC image.
 
@@ -142,6 +176,23 @@ def _is_dlc_version(framework, framework_version, py_version):
     if lowest_version_list:
         return is_version_equal_or_higher(lowest_version_list, framework_version)
     return False
+
+
+def _is_inferentia_supported(framework, framework_version):
+    """Return if Inferentia supports the framework and its version.
+
+    Args:
+        framework (str): The framework name, e.g. "tensorflow"
+        framework_version (str): The framework version
+
+    Returns:
+        bool: Whether or not Inferentia supports the framework and its version.
+    """
+    lowest_version_list = INFERENTIA_VERSION_RANGES.get(framework)[0]
+    highest_version_list = INFERENTIA_VERSION_RANGES.get(framework)[1]
+    return is_version_equal_or_higher(
+        lowest_version_list, framework_version
+    ) and is_version_equal_or_lower(highest_version_list, framework_version)
 
 
 def _registry_id(region, framework, py_version, account, framework_version):
@@ -240,10 +291,33 @@ def create_image_uri(
         # 'cpu' or 'gpu'.
         if family in optimized_families:
             device_type = family
+        elif family.startswith("inf"):
+            device_type = "inf"
         elif family[0] in ["g", "p"]:
             device_type = "gpu"
         else:
             device_type = "cpu"
+
+    if device_type == "inf":
+        if region not in INFERENTIA_SUPPORTED_REGIONS:
+            raise ValueError(
+                "Inferentia is not supported in region {}. Supported regions are {}".format(
+                    region, ", ".join(INFERENTIA_SUPPORTED_REGIONS)
+                )
+            )
+        if framework not in INFERENTIA_VERSION_RANGES:
+            raise ValueError(
+                "Inferentia does not support {}. Currently it supports "
+                "MXNet and TensorFlow with more frameworks coming soon.".format(
+                    framework.split("-")[-1]
+                )
+            )
+        if not _is_inferentia_supported(framework, framework_version):
+            raise ValueError(
+                "Inferentia is not supported with {} version {}.".format(
+                    framework.split("-")[-1], framework_version
+                )
+            )
 
     use_dlc_image = _is_dlc_version(framework, framework_version, py_version)
 
