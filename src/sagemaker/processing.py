@@ -213,11 +213,9 @@ class Processor(object):
                 # and save the S3 uri in the ProcessingInput source.
                 parse_result = urlparse(file_input.source)
                 if parse_result.scheme != "s3":
-                    desired_s3_uri = os.path.join(
-                        "s3://",
+                    desired_s3_uri = "s3://{}/{}/input/{}".format(
                         self.sagemaker_session.default_bucket(),
                         self._current_job_name,
-                        "input",
                         file_input.input_name,
                     )
                     s3_uri = S3Uploader.upload(
@@ -475,11 +473,9 @@ class ScriptProcessor(Processor):
             str: The S3 URI of the uploaded file or directory.
 
         """
-        desired_s3_uri = os.path.join(
-            "s3://",
+        desired_s3_uri = "s3://{}/{}/input/{}".format(
             self.sagemaker_session.default_bucket(),
             self._current_job_name,
-            "input",
             self._CODE_CONTAINER_INPUT_NAME,
         )
         return S3Uploader.upload(
