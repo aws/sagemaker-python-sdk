@@ -1,5 +1,25 @@
 # Changelog
 
+## v1.55.1 (2020-04-06)
+
+### Bug Fixes and Other Changes
+
+ * correct local mode behavior for CN regions
+
+## v1.55.0.post0 (2020-04-06)
+
+### Documentation Changes
+
+ * fix documentation to provide working example.
+ * add documentation for XGBoost
+ * Correct comment in SKLearn Estimator about default Python version
+ * document inferentia supported version
+ * Merge Amazon Sagemaker Operators for Kubernetes and Kubernetes Jobs pages
+
+### Testing and Release Infrastructure
+
+ * turn on warnings as errors for docs builds
+
 ## v1.55.0 (2020-03-31)
 
 ### Features
