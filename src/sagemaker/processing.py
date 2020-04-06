@@ -257,11 +257,9 @@ class Processor(object):
                 # If the output's destination is not an s3_uri, create one.
                 parse_result = urlparse(output.destination)
                 if parse_result.scheme != "s3":
-                    s3_uri = os.path.join(
-                        "s3://",
+                    s3_uri = "s3://{}/{}/output/{}".format(
                         self.sagemaker_session.default_bucket(),
                         self._current_job_name,
-                        "output",
                         output.output_name,
                     )
                     output.destination = s3_uri
