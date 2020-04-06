@@ -1,5 +1,11 @@
 # Changelog
 
+## v1.55.1 (2020-04-06)
+
+### Bug Fixes and Other Changes
+
+ * correct local mode behavior for CN regions
+
 ## v1.55.0.post0 (2020-04-06)
 
 ### Documentation Changes
