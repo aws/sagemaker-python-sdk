@@ -121,13 +121,17 @@ class DummyFramework(Framework):
         model_server_workers=None,
         entry_point=None,
         vpc_config_override=vpc_utils.VPC_CONFIG_DEFAULT,
+        enable_network_isolation=None,
         **kwargs
     ):
+        if enable_network_isolation is None:
+            enable_network_isolation = self.enable_network_isolation()
+
         return DummyFrameworkModel(
             self.sagemaker_session,
             vpc_config=self.get_vpc_config(vpc_config_override),
             entry_point=entry_point,
-            enable_network_isolation=self.enable_network_isolation(),
+            enable_network_isolation=enable_network_isolation,
             role=role,
             **kwargs
         )
@@ -1357,7 +1361,7 @@ def test_framework_transformer_creation_with_optional_params(name_from_image, sa
         base_job_name=base_name,
         subnets=vpc_config["Subnets"],
         security_group_ids=vpc_config["SecurityGroupIds"],
-        enable_network_isolation=True,
+        enable_network_isolation=False,
     )
     fw.latest_training_job = _TrainingJob(sagemaker_session, JOB_NAME)
 
@@ -1387,6 +1391,7 @@ def test_framework_transformer_creation_with_optional_params(name_from_image, sa
         role=new_role,
         model_server_workers=1,
         vpc_config_override=new_vpc_config,
+        enable_network_isolation=True,
     )
 
     sagemaker_session.create_model.assert_called_with(
@@ -1437,8 +1442,8 @@ def test_ensure_latest_training_job_failure(sagemaker_session):
     assert "Estimator is not associated with a training job" in str(e)
 
 
-@patch("sagemaker.estimator.Estimator.create_model", return_value=Mock())
-def test_estimator_transformer_creation(sagemaker_session):
+@patch("sagemaker.estimator.Estimator.create_model")
+def test_estimator_transformer_creation(create_model, sagemaker_session):
     estimator = Estimator(
         image_name=IMAGE_NAME,
         role=ROLE,
@@ -1450,6 +1455,12 @@ def test_estimator_transformer_creation(sagemaker_session):
 
     transformer = estimator.transformer(INSTANCE_COUNT, INSTANCE_TYPE)
 
+    create_model.assert_called_with(
+        vpc_config_override=vpc_utils.VPC_CONFIG_DEFAULT,
+        model_kms_key=estimator.output_kms_key,
+        enable_network_isolation=False,
+    )
+
     assert isinstance(transformer, Transformer)
     assert transformer.sagemaker_session == sagemaker_session
     assert transformer.instance_count == INSTANCE_COUNT
@@ -1458,9 +1469,11 @@ def test_estimator_transformer_creation(sagemaker_session):
     assert transformer.tags is None
 
 
-@patch("sagemaker.estimator.Estimator.create_model", return_value=Mock())
-def test_estimator_transformer_creation_with_optional_params(sagemaker_session):
+@patch("sagemaker.estimator.Estimator.create_model")
+def test_estimator_transformer_creation_with_optional_params(create_model, sagemaker_session):
     base_name = "foo"
+    kms_key = "key"
+
     estimator = Estimator(
         image_name=IMAGE_NAME,
         role=ROLE,
@@ -1468,16 +1481,17 @@ def test_estimator_transformer_creation_with_optional_params(sagemaker_session):
         train_instance_type=INSTANCE_TYPE,
         sagemaker_session=sagemaker_session,
         base_job_name=base_name,
+        output_kms_key=kms_key,
     )
     estimator.latest_training_job = _TrainingJob(sagemaker_session, JOB_NAME)
 
     strategy = "MultiRecord"
     assemble_with = "Line"
-    kms_key = "key"
     accept = "text/csv"
     max_concurrent_transforms = 1
     max_payload = 6
     env = {"FOO": "BAR"}
+    new_vpc_config = {"Subnets": ["x"], "SecurityGroupIds": ["y"]}
 
     transformer = estimator.transformer(
         INSTANCE_COUNT,
@@ -1492,6 +1506,12 @@ def test_estimator_transformer_creation_with_optional_params(sagemaker_session):
         max_payload=max_payload,
         env=env,
         role=ROLE,
+        vpc_config_override=new_vpc_config,
+        enable_network_isolation=True,
+    )
+
+    create_model.assert_called_with(
+        vpc_config_override=new_vpc_config, model_kms_key=kms_key, enable_network_isolation=True
     )
 
     assert transformer.strategy == strategy

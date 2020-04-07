@@ -825,6 +825,7 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):
         role=None,
         volume_kms_key=None,
         vpc_config_override=vpc_utils.VPC_CONFIG_DEFAULT,
+        enable_network_isolation=None,
     ):
         """Return a ``Transformer`` that uses a SageMaker Model based on the
         training job. It reuses the SageMaker Session and base job name used by
@@ -863,8 +864,18 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):
             vpc_config_override (dict[str, list[str]]): Optional override for the
                 VpcConfig set on the model.
                 Default: use subnets and security groups from this Estimator.
+
                 * 'Subnets' (list[str]): List of subnet ids.
                 * 'SecurityGroupIds' (list[str]): List of security group ids.
+
+            enable_network_isolation (bool): Specifies whether container will
+                run in network isolation mode. Network isolation mode restricts
+                the container access to outside networks (such as the internet).
+                The container does not make any inbound or outbound network
+                calls. If True, a channel named "code" will be created for any
+                user entry script for inference. Also known as Internet-free mode.
+                If not specified, this setting is taken from the estimator's
+                current configuration.
         """
         tags = tags or self.tags
 
@@ -876,8 +887,13 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):
             model_name = self._current_job_name
         else:
             model_name = self.latest_training_job.name
+            if enable_network_isolation is None:
+                enable_network_isolation = self.enable_network_isolation()
+
             model = self.create_model(
-                vpc_config_override=vpc_config_override, model_kms_key=self.output_kms_key
+                vpc_config_override=vpc_config_override,
+                model_kms_key=self.output_kms_key,
+                enable_network_isolation=enable_network_isolation,
             )
 
             # not all create_model() implementations have the same kwargs
@@ -1354,6 +1370,9 @@ class Estimator(EstimatorBase):
 
         role = role or self.role
 
+        if "enable_network_isolation" not in kwargs:
+            kwargs["enable_network_isolation"] = self.enable_network_isolation()
+
         return Model(
             self.model_data,
             image or self.train_image(),
@@ -1361,7 +1380,6 @@ class Estimator(EstimatorBase):
             vpc_config=self.get_vpc_config(vpc_config_override),
             sagemaker_session=self.sagemaker_session,
             predictor_cls=predictor_cls,
-            enable_network_isolation=self.enable_network_isolation(),
             **kwargs
         )
 
@@ -1878,6 +1896,7 @@ class Framework(EstimatorBase):
         volume_kms_key=None,
         entry_point=None,
         vpc_config_override=vpc_utils.VPC_CONFIG_DEFAULT,
+        enable_network_isolation=None,
     ):
         """Return a ``Transformer`` that uses a SageMaker Model based on the
         training job. It reuses the SageMaker Session and base job name used by
@@ -1922,8 +1941,18 @@ class Framework(EstimatorBase):
             vpc_config_override (dict[str, list[str]]): Optional override for
                 the VpcConfig set on the model.
                 Default: use subnets and security groups from this Estimator.
+
                 * 'Subnets' (list[str]): List of subnet ids.
                 * 'SecurityGroupIds' (list[str]): List of security group ids.
+
+            enable_network_isolation (bool): Specifies whether container will
+                run in network isolation mode. Network isolation mode restricts
+                the container access to outside networks (such as the internet).
+                The container does not make any inbound or outbound network
+                calls. If True, a channel named "code" will be created for any
+                user entry script for inference. Also known as Internet-free mode.
+                If not specified, this setting is taken from the estimator's
+                current configuration.
 
         Returns:
             sagemaker.transformer.Transformer: a ``Transformer`` object that can be used to start a
@@ -1933,12 +1962,16 @@ class Framework(EstimatorBase):
         tags = tags or self.tags
 
         if self.latest_training_job is not None:
+            if enable_network_isolation is None:
+                enable_network_isolation = self.enable_network_isolation()
+
             model = self.create_model(
                 role=role,
                 model_server_workers=model_server_workers,
                 entry_point=entry_point,
                 vpc_config_override=vpc_config_override,
                 model_kms_key=self.output_kms_key,
+                enable_network_isolation=enable_network_isolation,
             )
             model._create_sagemaker_model(instance_type, tags=tags)
 
