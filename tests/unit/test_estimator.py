@@ -1374,6 +1374,7 @@ def test_framework_transformer_creation_with_optional_params(name_from_image, sa
     env = {"FOO": "BAR"}
     new_role = "dummy-model-role"
     new_vpc_config = {"Subnets": ["x"], "SecurityGroupIds": ["y"]}
+    model_name = "model-name"
 
     transformer = fw.transformer(
         INSTANCE_COUNT,
@@ -1392,10 +1393,11 @@ def test_framework_transformer_creation_with_optional_params(name_from_image, sa
         model_server_workers=1,
         vpc_config_override=new_vpc_config,
         enable_network_isolation=True,
+        model_name=model_name,
     )
 
     sagemaker_session.create_model.assert_called_with(
-        MODEL_IMAGE,
+        model_name,
         new_role,
         MODEL_CONTAINER_DEF,
         vpc_config=new_vpc_config,
@@ -1413,6 +1415,7 @@ def test_framework_transformer_creation_with_optional_params(name_from_image, sa
     assert transformer.base_transform_job_name == base_name
     assert transformer.tags == TAGS
     assert transformer.volume_kms_key == kms_key
+    assert transformer.model_name == model_name
 
 
 def test_ensure_latest_training_job(sagemaker_session):
@@ -1492,6 +1495,7 @@ def test_estimator_transformer_creation_with_optional_params(create_model, sagem
     max_payload = 6
     env = {"FOO": "BAR"}
     new_vpc_config = {"Subnets": ["x"], "SecurityGroupIds": ["y"]}
+    model_name = "model-name"
 
     transformer = estimator.transformer(
         INSTANCE_COUNT,
@@ -1508,6 +1512,7 @@ def test_estimator_transformer_creation_with_optional_params(create_model, sagem
         role=ROLE,
         vpc_config_override=new_vpc_config,
         enable_network_isolation=True,
+        model_name=model_name,
     )
 
     create_model.assert_called_with(
@@ -1524,6 +1529,7 @@ def test_estimator_transformer_creation_with_optional_params(create_model, sagem
     assert transformer.env == env
     assert transformer.base_transform_job_name == base_name
     assert transformer.tags == TAGS
+    assert transformer.model_name == model_name
 
 
 # _TrainingJob 'utils'

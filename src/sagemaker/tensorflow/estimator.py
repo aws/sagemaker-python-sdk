@@ -780,6 +780,7 @@ class TensorFlow(Framework):
         entry_point=None,
         vpc_config_override=VPC_CONFIG_DEFAULT,
         enable_network_isolation=None,
+        model_name=None,
     ):
         """Return a ``Transformer`` that uses a SageMaker Model based on the training job. It
         reuses the SageMaker Session and base job name used by the Estimator.
@@ -837,6 +838,8 @@ class TensorFlow(Framework):
                 user entry script for inference. Also known as Internet-free mode.
                 If not specified, this setting is taken from the estimator's
                 current configuration.
+            model_name (str): Name to use for creating an Amazon SageMaker
+                model. If not specified, the name of the training job is used.
         """
         role = role or self.role
 
@@ -846,7 +849,7 @@ class TensorFlow(Framework):
                 "this estimator is only used for building workflow config"
             )
             return Transformer(
-                self._current_job_name,
+                model_name or self._current_job_name,
                 instance_count,
                 instance_type,
                 strategy=strategy,
@@ -873,6 +876,7 @@ class TensorFlow(Framework):
             endpoint_type=endpoint_type,
             entry_point=entry_point,
             enable_network_isolation=enable_network_isolation,
+            name=model_name,
         )
 
         return model.transformer(

@@ -826,6 +826,7 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):
         volume_kms_key=None,
         vpc_config_override=vpc_utils.VPC_CONFIG_DEFAULT,
         enable_network_isolation=None,
+        model_name=None,
     ):
         """Return a ``Transformer`` that uses a SageMaker Model based on the
         training job. It reuses the SageMaker Session and base job name used by
@@ -876,6 +877,8 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):
                 user entry script for inference. Also known as Internet-free mode.
                 If not specified, this setting is taken from the estimator's
                 current configuration.
+            model_name (str): Name to use for creating an Amazon SageMaker
+                model. If not specified, the name of the training job is used.
         """
         tags = tags or self.tags
 
@@ -884,9 +887,9 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):
                 "No finished training job found associated with this estimator. Please make sure "
                 "this estimator is only used for building workflow config"
             )
-            model_name = self._current_job_name
+            model_name = model_name or self._current_job_name
         else:
-            model_name = self.latest_training_job.name
+            model_name = model_name or self.latest_training_job.name
             if enable_network_isolation is None:
                 enable_network_isolation = self.enable_network_isolation()
 
@@ -1897,6 +1900,7 @@ class Framework(EstimatorBase):
         entry_point=None,
         vpc_config_override=vpc_utils.VPC_CONFIG_DEFAULT,
         enable_network_isolation=None,
+        model_name=None,
     ):
         """Return a ``Transformer`` that uses a SageMaker Model based on the
         training job. It reuses the SageMaker Session and base job name used by
@@ -1953,6 +1957,8 @@ class Framework(EstimatorBase):
                 user entry script for inference. Also known as Internet-free mode.
                 If not specified, this setting is taken from the estimator's
                 current configuration.
+            model_name (str): Name to use for creating an Amazon SageMaker
+                model. If not specified, the name of the training job is used.
 
         Returns:
             sagemaker.transformer.Transformer: a ``Transformer`` object that can be used to start a
@@ -1972,6 +1978,7 @@ class Framework(EstimatorBase):
                 vpc_config_override=vpc_config_override,
                 model_kms_key=self.output_kms_key,
                 enable_network_isolation=enable_network_isolation,
+                name=model_name,
             )
             model._create_sagemaker_model(instance_type, tags=tags)
 
@@ -1984,7 +1991,7 @@ class Framework(EstimatorBase):
                 "No finished training job found associated with this estimator. Please make sure "
                 "this estimator is only used for building workflow config"
             )
-            model_name = self._current_job_name
+            model_name = model_name or self._current_job_name
             transform_env = env or {}
 
         return Transformer(
