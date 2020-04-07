@@ -1,5 +1,15 @@
 # Changelog
 
+## v1.55.2 (2020-04-07)
+
+### Bug Fixes and Other Changes
+
+ * use .format instead of os.path.join for Processing S3 paths.
+
+### Testing and Release Infrastructure
+
+ * use m5.xlarge instances for "ap-northeast-1" region integ tests.
+
 ## v1.55.1 (2020-04-06)
 
 ### Bug Fixes and Other Changes
