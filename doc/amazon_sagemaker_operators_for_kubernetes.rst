@@ -70,14 +70,14 @@ jobs. The following image explains this design and flow.
 
 .. image:: ./amazon_sagemaker_operators_for_kubernetes_authentication.png
 
-Setup and operator deployment
------------------------------
+IAM role-based setup and operator deployment
+--------------------------------------------
 
 The following sections describe the steps to setup and deploy the
 operator.
 
-IAM role-based operator deployment
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Cluster-scoped deployment
+~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Before you can deploy your operator using an IAM role, associate an OpenID Connect (OIDC) provider with your role to
 authenticate with the IAM service.
@@ -295,7 +295,282 @@ Your output should look like the following:
 
 
 Verify the operator deployment
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+You should be able to see the Amazon SageMaker Custom Resource
+Definitions (CRDs) for each operator deployed to your cluster by running
+the following command: 
+
+::
+
+    kubectl get crd | grep sagemaker
+
+Your output should look like the following:
+
+::
+
+    batchtransformjobs.sagemaker.aws.amazon.com         2019-11-20T17:12:34Z
+    endpointconfigs.sagemaker.aws.amazon.com            2019-11-20T17:12:34Z
+    hostingdeployments.sagemaker.aws.amazon.com         2019-11-20T17:12:34Z
+    hyperparametertuningjobs.sagemaker.aws.amazon.com   2019-11-20T17:12:34Z
+    models.sagemaker.aws.amazon.com                     2019-11-20T17:12:34Z
+    trainingjobs.sagemaker.aws.amazon.com               2019-11-20T17:12:34Z
+
+Ensure that the operator pod is running successfully. Use the following
+command to list all pods:
+
+::
+
+    kubectl -n sagemaker-k8s-operator-system get pods
+
+You should see a pod
+named \ ``sagemaker-k8s-operator-controller-manager-*****`` in the
+namespace \ ``sagemaker-k8s-operator-system``  as follows:
+
+::
+
+    NAME                                                         READY   STATUS    RESTARTS   AGE
+    sagemaker-k8s-operator-controller-manager-12345678-r8abc   2/2     Running   0          23s
+
+​
+
+Namespace-scoped deployment
+~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+You have the option to install your operator within the scope of an individual Kubernetes namespace. In this mode, the controller will only monitor and reconcile resources with Amazon SageMaker if the resources are created within that namespace. This allows for finer grained control over which controller is managing which resources. This is useful for deploying to multiple AWS accounts or controlling which users have access to particular jobs.
+
+This guide outlines how to install an operator into a particular, predefined namespace. To deploy a controller into a second namespace, follow the guide from beginning to end and change out the namespace in each step.
+
+Create an OpenID Connect Provider for Your Cluster
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+The following instruction will create and associate an OIDC provider
+with your EKS cluster.
+
+Set the local ``CLUSTER_NAME`` and \ ``AWS_REGION`` environment
+variables as follows:
+
+::
+
+    # Set the Region and cluster
+    export CLUSTER_NAME="<your cluster name>"
+    export AWS_REGION="<your region>"
+
+Use the following command to associate the OIDC provider with your
+cluster. For more information, see \ `Enabling IAM Roles for Service
+Accounts on your
+Cluster. <https://docs.aws.amazon.com/eks/latest/userguide/enable-iam-roles-for-service-accounts.html>`__
+
+::
+
+    eksctl utils associate-iam-oidc-provider --cluster ${CLUSTER_NAME} \
+        --region ${AWS_REGION} --approve
+
+Your output should look like the following:
+
+::
+
+    [_]  eksctl version 0.10.1
+    [_]  using region us-east-1
+    [_]  IAM OpenID Connect provider is associated with cluster "my-cluster" in "us-east-1"
+
+Now that the cluster has an OIDC identity provider, you can create a
+role and give a Kubernetes ServiceAccount permission to assume the role.
+
+Get the OIDC ID
+^^^^^^^^^^^^^^^
+
+To set up the ServiceAccount, first obtain the OpenID Connect issuer URL
+using the following command:
+
+::
+
+    aws eks describe-cluster --name ${CLUSTER_NAME} --region ${AWS_REGION} \
+        --query cluster.identity.oidc.issuer --output text
+
+The command will return a URL like the following:
+
+::
+
+    https://oidc.eks.${AWS_REGION}.amazonaws.com/id/D48675832CA65BD10A532F597OIDCID
+
+In this URL, the value D48675832CA65BD10A532F597OIDCID is the OIDC ID.
+The OIDC ID for your cluster will be different. You need this OIDC ID
+value to create a role.
+
+If your output is \ ``None``, it means that your client version is old.
+To work around this, run the following command: 
+
+::
+
+    aws eks describe-cluster --query cluster --name ${CLUSTER_NAME} --output text | grep OIDC
+
+The OIDC URL will be returned as follows:
+
+::
+
+    OIDC https://oidc.eks.us-east-1.amazonaws.com/id/D48675832CA65BD10A532F597OIDCID
+
+Create an IAM Role 
+^^^^^^^^^^^^^^^^^^^
+
+Create a file named \ ``trust.json``  and insert the following trust
+relationship code block into it. Be sure to replace all \ ``<OIDC ID>``, \ ``<AWS account number>``, and \ ``<EKS Cluster region>`` placeholders with values corresponding to your cluster.
+
+::
+
+    {
+      "Version": "2012-10-17",
+      "Statement": [
+        {
+          "Effect": "Allow",
+          "Principal": {             "Federated": "arn:aws:iam::<AWS account number>:oidc-provider/oidc.eks.<EKS Cluster region>.amazonaws.com/id/<OIDC ID>"
+          },
+          "Action": "sts:AssumeRoleWithWebIdentity",
+          "Condition": {
+            "StringEquals": {
+              "oidc.eks.<EKS Cluster region>.amazonaws.com/id/<OIDC ID>:aud": "sts.amazonaws.com",               "oidc.eks.<EKS Cluster region>.amazonaws.com/id/<OIDC ID>:sub": "system:serviceaccount:<Namespace>:sagemaker-k8s-operator-default"
+            }
+          }
+        }
+      ]
+    }
+
+Run the following command to create a role with the trust
+relationship defined in \ ``trust.json``. This role enables the
+Amazon EKS cluster to get and refresh credentials from IAM.
+
+::
+
+    aws iam create-role --role-name <role name> --assume-role-policy-document file://trust.json --output=text
+
+Your output should look like the following:
+
+::
+
+    ROLE    arn:aws:iam::123456789012:role/my-role 2019-11-22T21:46:10Z    /       ABCDEFSFODNN7EXAMPLE   my-role
+    ASSUMEROLEPOLICYDOCUMENT        2012-10-17
+    STATEMENT       sts:AssumeRoleWithWebIdentity   Allow
+    STRINGEQUALS    sts.amazonaws.com       system:serviceaccount:my-namespace:sagemaker-k8s-operator-default
+    PRINCIPAL       arn:aws:iam::123456789012:oidc-provider/oidc.eks.us-east-1.amazonaws.com/id/
+
+Take note of \ ``ROLE ARN``, you pass this value to your
+operator. 
+
+Attach the AmazonSageMakerFullAccess Policy to the Role
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+To give the role access to Amazon SageMaker, attach
+the \ `AmazonSageMakerFullAccess <https://console.aws.amazon.com/iam/home?#/policies/arn:aws:iam::aws:policy/AmazonSageMakerFullAccess>`__ policy.
+If you want to limit permissions to the operator, you can create your
+own custom policy and attach it.
+
+To attach AmazonSageMakerFullAccess, run the following command:
+
+::
+
+    aws iam attach-role-policy --role-name <role name>  --policy-arn arn:aws:iam::aws:policy/AmazonSageMakerFullAccess
+
+The Kubernetes
+ServiceAccount \ ``sagemaker-k8s-operator-default`` should
+have \ ``AmazonSageMakerFullAccess`` permissions. Confirm this when you
+install the operator.
+
+Deploy the Operator
+^^^^^^^^^^^^^^^^^^^
+
+When deploying your operator, you can use either a YAML file or Helm
+charts. 
+
+Deploy the Operator Using YAML
+''''''''''''''''''''''''''''''
+
+There are two parts to deploying an operator within the scope of a namespace. The first is the set of CRDs that are installed at a cluster level. These resource definitions only need to be installed once per Kubernetes cluster. The second part is the operator permissions and deployment itself.
+
+If you have not already installed the CRDs into the cluster, apply the CRD installer YAML using the following command:
+
+::
+
+    kubectl apply -f https://raw.githubusercontent.com/aws/amazon-sagemaker-operator-for-k8s/master/release/rolebased/namespaced/crd.yaml
+    
+To install the operator onto the cluster:
+
+-  Download the operator installer YAML using the following command:
+
+   ::
+
+       wget https://raw.githubusercontent.com/aws/amazon-sagemaker-operator-for-k8s/master/release/rolebased/namespaced/operator.yaml
+
+- Update the installer YAML to place the resources into your specified namespace using the following command:
+
+   ::
+   
+       sed -i -e 's/PLACEHOLDER-NAMESPACE/<YOUR NAMESPACE>/g' operator.yaml
+
+-  Edit the \ ``installer.yaml`` file to
+   place resources into your \ ``eks.amazonaws.com/role-arn``. Replace the ARN here with
+   the Amazon Resource Name (ARN) for the OIDC-based role you’ve created. 
+
+-  Use the following command to deploy the cluster:  
+
+   ::
+
+       kubectl apply -f installer.yaml
+
+Deploy the Operator Using Helm Charts
+'''''''''''''''''''''''''''''''''''''
+
+There are two parts needed to deploy an operator within the scope of a namespace. The first is the set of CRDs that are installed at a cluster level. These resource definitions only need to be installed once per Kubernetes cluster. The second part is the operator permissions and deployment itself. When using helm charts you will have to first create the namespace using kubectl.
+
+
+Clone the Helm installer directory using the following command:
+
+::
+
+    git clone https://github.com/aws/amazon-sagemaker-operator-for-k8s.git
+
+Navigate to the
+``amazon-sagemaker-operator-for-k8s/hack/charts/installer/namespaced`` folder. Edit
+the \ ``rolebased/values.yaml`` file, which includes high-level parameters for the
+Chart. Replace the role ARN here with the Amazon Resource Name (ARN) for the OIDC-based role you’ve
+created. 
+
+Install the Helm Chart using the following command:
+
+::
+
+    helm install crds crd_chart/
+
+
+Create the required namespace and install the operator using the following command:
+
+::
+
+    kubectl create namespace <namespace>
+    helm install --n <namespace> op operator_chart/
+
+
+.. warning::
+    If you decide to install the operator into a namespace other than the one specified above,
+    you will need to adjust the namespace defined in the IAM role ``trust.json`` file to match.
+
+After a moment, the chart will be installed with a randomly generated
+name. Verify that the installation succeeded by running the following
+command:
+
+::
+
+    helm ls
+
+Your output should look like the following:
+
+::
+
+    NAME                    NAMESPACE                       REVISION        UPDATED                                 STATUS          CHART                           APP VERSION
+    sagemaker-operator      sagemaker-k8s-operator-system   1               2019-11-20 23:14:59.6777082 +0000 UTC   deployed        sagemaker-k8s-operator-0.1.0
+
+
+Verify the operator deployment
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 You should be able to see the Amazon SageMaker Custom Resource
 Definitions (CRDs) for each operator deployed to your cluster by running
 the following command: 
