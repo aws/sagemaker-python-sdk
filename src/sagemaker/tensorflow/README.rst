@@ -22,6 +22,8 @@ Documentation of the previous Legacy Mode versions: `1.4.1 <https://github.com/a
 
 Supported versions of TensorFlow for Elastic Inference: ``1.11``, ``1.12``, ``1.13``, ``1.14``.
 
+Supported versions of TensorFlow for Inferentia: ``1.15.0``.
+
 For information about using TensorFlow with the SageMaker Python SDK, see https://sagemaker.readthedocs.io/en/stable/using_tf.html.
 
 SageMaker TensorFlow Docker containers

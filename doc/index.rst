@@ -84,6 +84,22 @@ A managed environment for TensorFlow training and hosting on Amazon SageMaker
 
     sagemaker.tensorflow
 
+*******
+XGBoost
+*******
+A managed environment for XGBoost training and hosting on Amazon SageMaker
+
+.. toctree::
+    :maxdepth: 1
+
+    using_xgboost
+
+.. toctree::
+    :maxdepth: 2
+
+    xgboost
+
+
 ************
 Scikit-Learn
 ************
