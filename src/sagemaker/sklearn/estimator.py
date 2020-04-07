@@ -174,6 +174,9 @@ class SKLearn(Framework):
         else:
             image = None
 
+        if "enable_network_isolation" not in kwargs:
+            kwargs["enable_network_isolation"] = self.enable_network_isolation()
+
         return SKLearnModel(
             self.model_data,
             role,
@@ -189,7 +192,6 @@ class SKLearn(Framework):
             image=image or self.image_name,
             sagemaker_session=self.sagemaker_session,
             vpc_config=self.get_vpc_config(vpc_config_override),
-            enable_network_isolation=self.enable_network_isolation(),
             **kwargs
         )
 
