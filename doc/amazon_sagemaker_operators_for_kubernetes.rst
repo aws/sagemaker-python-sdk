@@ -340,8 +340,11 @@ You have the option to install your operator within the scope of an individual K
 
 This guide outlines how to install an operator into a particular, predefined namespace. To deploy a controller into a second namespace, follow the guide from beginning to end and change out the namespace in each step.
 
-Create an OpenID Connect Provider for Your Cluster
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+
+
+Create an OpenID Connect Provider for Your EKS Cluster
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 The following instruction will create and associate an OIDC provider
 with your EKS cluster.
@@ -376,8 +379,8 @@ Your output should look like the following:
 Now that the cluster has an OIDC identity provider, you can create a
 role and give a Kubernetes ServiceAccount permission to assume the role.
 
-Get the OIDC ID
-^^^^^^^^^^^^^^^
+Get your OIDC ID
+^^^^^^^^^^^^^^^^
 
 To set up the ServiceAccount, first obtain the OpenID Connect issuer URL
 using the following command:
@@ -410,8 +413,8 @@ The OIDC URL will be returned as follows:
 
     OIDC https://oidc.eks.us-east-1.amazonaws.com/id/D48675832CA65BD10A532F597OIDCID
 
-Create an IAM Role 
-^^^^^^^^^^^^^^^^^^^
+Create your IAM Role 
+^^^^^^^^^^^^^^^^^^^^
 
 Create a file named \ ``trust.json``  and insert the following trust
 relationship code block into it. Be sure to replace all \ ``<OIDC ID>``, \ ``<AWS account number>``, and \ ``<EKS Cluster region>`` placeholders with values corresponding to your cluster.
@@ -456,8 +459,8 @@ Your output should look like the following:
 Take note of \ ``ROLE ARN``, you pass this value to your
 operator. 
 
-Attach the AmazonSageMakerFullAccess Policy to the Role
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Attach the AmazonSageMakerFullAccess Policy to your Role
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 To give the role access to Amazon SageMaker, attach
 the \ `AmazonSageMakerFullAccess <https://console.aws.amazon.com/iam/home?#/policies/arn:aws:iam::aws:policy/AmazonSageMakerFullAccess>`__ policy.
@@ -475,14 +478,14 @@ ServiceAccount \ ``sagemaker-k8s-operator-default`` should
 have \ ``AmazonSageMakerFullAccess`` permissions. Confirm this when you
 install the operator.
 
-Deploy the Operator
-^^^^^^^^^^^^^^^^^^^
+Deploy the Operator to Your Namespace
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 When deploying your operator, you can use either a YAML file or Helm
 charts. 
 
-Deploy the Operator Using YAML
-''''''''''''''''''''''''''''''
+Deploy the Operator to Your Namespace Using YAML
+''''''''''''''''''''''''''''''''''''''''''''''''
 
 There are two parts to deploying an operator within the scope of a namespace. The first is the set of CRDs that are installed at a cluster level. These resource definitions only need to be installed once per Kubernetes cluster. The second part is the operator permissions and deployment itself.
 
@@ -516,8 +519,8 @@ To install the operator onto the cluster:
 
        kubectl apply -f installer.yaml
 
-Deploy the Operator Using Helm Charts
-'''''''''''''''''''''''''''''''''''''
+Deploy the Operator to Your Namespace Using Helm Charts
+'''''''''''''''''''''''''''''''''''''''''''''''''''''''
 
 There are two parts needed to deploy an operator within the scope of a namespace. The first is the set of CRDs that are installed at a cluster level. These resource definitions only need to be installed once per Kubernetes cluster. The second part is the operator permissions and deployment itself. When using helm charts you will have to first create the namespace using kubectl.
 
@@ -569,8 +572,8 @@ Your output should look like the following:
     sagemaker-operator      sagemaker-k8s-operator-system   1               2019-11-20 23:14:59.6777082 +0000 UTC   deployed        sagemaker-k8s-operator-0.1.0
 
 
-Verify the operator deployment
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Verify the operator deployment to your namespace
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 You should be able to see the Amazon SageMaker Custom Resource
 Definitions (CRDs) for each operator deployed to your cluster by running
 the following command: 
