@@ -1,5 +1,13 @@
 # Changelog
 
+## v1.55.3 (2020-04-08)
+
+### Bug Fixes and Other Changes
+
+ * remove .strip() from batch transform
+ * allow model with network isolation when creating a Transformer from an Estimator
+ * add enable_network_isolation to EstimatorBase
+
 ## v1.55.2 (2020-04-07)
 
 ### Bug Fixes and Other Changes
