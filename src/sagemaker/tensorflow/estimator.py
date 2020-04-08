@@ -791,6 +791,7 @@ class TensorFlow(Framework):
         endpoint_type=None,
         entry_point=None,
         vpc_config_override=VPC_CONFIG_DEFAULT,
+        enable_network_isolation=None,
     ):
         """Return a ``Transformer`` that uses a SageMaker Model based on the training job. It
         reuses the SageMaker Session and base job name used by the Estimator.
@@ -836,8 +837,18 @@ class TensorFlow(Framework):
             vpc_config_override (dict[str, list[str]]): Optional override for
                 the VpcConfig set on the model.
                 Default: use subnets and security groups from this Estimator.
+
                 * 'Subnets' (list[str]): List of subnet ids.
                 * 'SecurityGroupIds' (list[str]): List of security group ids.
+
+            enable_network_isolation (bool): Specifies whether container will
+                run in network isolation mode. Network isolation mode restricts
+                the container access to outside networks (such as the internet).
+                The container does not make any inbound or outbound network
+                calls. If True, a channel named "code" will be created for any
+                user entry script for inference. Also known as Internet-free mode.
+                If not specified, this setting is taken from the estimator's
+                current configuration.
         """
         role = role or self.role
 
@@ -864,13 +875,18 @@ class TensorFlow(Framework):
                 sagemaker_session=self.sagemaker_session,
             )
 
+        if enable_network_isolation is None:
+            enable_network_isolation = self.enable_network_isolation()
+
         model = self.create_model(
             model_server_workers=model_server_workers,
             role=role,
             vpc_config_override=vpc_config_override,
             endpoint_type=endpoint_type,
             entry_point=entry_point,
+            enable_network_isolation=enable_network_isolation,
         )
+
         return model.transformer(
             instance_count,
             instance_type,

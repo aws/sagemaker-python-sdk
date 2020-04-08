@@ -32,7 +32,7 @@ import six
 from six.moves.urllib import parse
 
 
-ECR_URI_PATTERN = r"^(\d+)(\.)dkr(\.)ecr(\.)(.+)(\.)(amazonaws.com|c2s.ic.gov)(/)(.*:.*)$"
+ECR_URI_PATTERN = r"^(\d+)(\.)dkr(\.)ecr(\.)(.+)(\.)(.*)(/)(.*:.*)$"
 MAX_BUCKET_PATHS_COUNT = 5
 S3_PREFIX = "s3://"
 HTTP_PREFIX = "http://"

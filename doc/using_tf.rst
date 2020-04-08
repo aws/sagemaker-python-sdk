@@ -267,19 +267,19 @@ Training with ``MPI`` is configured by specifying following fields in ``distribu
   command executed by SageMaker to launch distributed horovod training.
 
 
-In the below example we create an estimator to launch Horovod distributed training with 2 processes on one host:
+In the below example we create an estimator to launch Horovod distributed training with 4 processes on one host:
 
 .. code:: python
 
     from sagemaker.tensorflow import TensorFlow
 
     tf_estimator = TensorFlow(entry_point='tf-train.py', role='SageMakerRole',
-                              train_instance_count=1, train_instance_type='ml.p2.xlarge',
-                              framework_version='1.12', py_version='py3',
+                              train_instance_count=1, train_instance_type='ml.p3.8xlarge',
+                              framework_version='2.1.0', py_version='py3',
                               distributions={
                                   'mpi': {
                                       'enabled': True,
-                                      'processes_per_host': 2,
+                                      'processes_per_host': 4,
                                       'custom_mpi_options': '--NCCL_DEBUG INFO'
                                   }
                               })

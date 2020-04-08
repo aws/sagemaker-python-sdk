@@ -80,7 +80,7 @@ class SKLearn(Framework):
                 and values, but ``str()`` will be called to convert them before
                 training.
             py_version (str): Python version you want to use for executing your
-                model training code (default: 'py2'). One of 'py2' or 'py3'.
+                model training code (default: 'py3'). One of 'py2' or 'py3'.
             image_name (str): If specified, the estimator will use this image
                 for training and hosting, instead of selecting the appropriate
                 SageMaker official image based on framework_version and
@@ -174,6 +174,9 @@ class SKLearn(Framework):
         else:
             image = None
 
+        if "enable_network_isolation" not in kwargs:
+            kwargs["enable_network_isolation"] = self.enable_network_isolation()
+
         return SKLearnModel(
             self.model_data,
             role,
@@ -189,7 +192,6 @@ class SKLearn(Framework):
             image=image or self.image_name,
             sagemaker_session=self.sagemaker_session,
             vpc_config=self.get_vpc_config(vpc_config_override),
-            enable_network_isolation=self.enable_network_isolation(),
             **kwargs
         )
 

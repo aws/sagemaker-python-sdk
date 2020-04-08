@@ -54,7 +54,7 @@ Table of Contents
 18. `BYO Model <https://sagemaker.readthedocs.io/en/stable/overview.html#byo-model>`__
 19. `Inference Pipelines <https://sagemaker.readthedocs.io/en/stable/overview.html#inference-pipelines>`__
 20. `Amazon SageMaker Operators for Kubernetes <#amazon-sagemaker-operators-for-kubernetes>`__
-21. `SageMaker Workflow <#sagemaker-workflow>`__
+21. `Amazon SageMaker Operators in Apache Airflow <#sagemaker-workflow>`__
 22. `SageMaker Autopilot <#sagemaker-autopilot>`__
 23. `Model Monitoring <#amazon-sagemaker-model-monitoring>`__
 24. `SageMaker Debugger <#amazon-sagemaker-debugger>`__
@@ -323,14 +323,14 @@ For more information, see `Amazon SageMaker Operators for Kubernetes`_.
 
 .. _Amazon SageMaker Operators for Kubernetes: https://sagemaker.readthedocs.io/en/stable/amazon_sagemaker_operators_for_kubernetes.html
 
-SageMaker Workflow
-------------------
+Amazon SageMaker Operators in Apache Airflow
+--------------------------------------------
 
 You can use Apache Airflow to author, schedule and monitor SageMaker workflow.
 
-For more information, see `SageMaker Workflow in Apache Airflow`_.
+For more information, see `Amazon SageMaker Operators in Apache Airflow`_.
 
-.. _SageMaker Workflow in Apache Airflow: https://sagemaker.readthedocs.io/en/stable/using_workflow.html
+.. _Amazon SageMaker Operators in Apache Airflow: https://sagemaker.readthedocs.io/en/stable/using_workflow.html
 
 SageMaker Autopilot
 -------------------

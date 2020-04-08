@@ -1,5 +1,35 @@
 # Changelog
 
+## v1.55.2 (2020-04-07)
+
+### Bug Fixes and Other Changes
+
+ * use .format instead of os.path.join for Processing S3 paths.
+
+### Testing and Release Infrastructure
+
+ * use m5.xlarge instances for "ap-northeast-1" region integ tests.
+
+## v1.55.1 (2020-04-06)
+
+### Bug Fixes and Other Changes
+
+ * correct local mode behavior for CN regions
+
+## v1.55.0.post0 (2020-04-06)
+
+### Documentation Changes
+
+ * fix documentation to provide working example.
+ * add documentation for XGBoost
+ * Correct comment in SKLearn Estimator about default Python version
+ * document inferentia supported version
+ * Merge Amazon Sagemaker Operators for Kubernetes and Kubernetes Jobs pages
+
+### Testing and Release Infrastructure
+
+ * turn on warnings as errors for docs builds
+
 ## v1.55.0 (2020-03-31)
 
 ### Features
