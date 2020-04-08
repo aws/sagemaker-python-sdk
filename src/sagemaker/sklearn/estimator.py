@@ -165,17 +165,20 @@ class SKLearn(Framework):
         # remove unwanted entry_point kwarg
         if "entry_point" in kwargs:
             logger.debug("removing unused entry_point argument: %s", str(kwargs["entry_point"]))
-            kwargs = {k: v for k, v in kwargs.items() if k != "entry_point"}
+            del kwargs["entry_point"]
 
         # remove image kwarg
         if "image" in kwargs:
             image = kwargs["image"]
-            kwargs = {k: v for k, v in kwargs.items() if k != "image"}
+            del kwargs["image"]
         else:
             image = None
 
         if "enable_network_isolation" not in kwargs:
             kwargs["enable_network_isolation"] = self.enable_network_isolation()
+
+        if "name" not in kwargs:
+            kwargs["name"] = self._current_job_name
 
         return SKLearnModel(
             self.model_data,
@@ -183,7 +186,6 @@ class SKLearn(Framework):
             self.entry_point,
             source_dir=self._model_source_dir(),
             enable_cloudwatch_metrics=self.enable_cloudwatch_metrics,
-            name=self._current_job_name,
             container_log_level=self.container_log_level,
             code_location=self.code_location,
             py_version=self.py_version,

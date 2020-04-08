@@ -322,17 +322,20 @@ def test_create_model_with_optional_params(sagemaker_session):
     new_role = "role"
     model_server_workers = 2
     vpc_config = {"Subnets": ["foo"], "SecurityGroupIds": ["bar"]}
+    model_name = "model-name"
     model = tf.create_model(
         role=new_role,
         model_server_workers=model_server_workers,
         vpc_config_override=vpc_config,
         entry_point=SERVING_SCRIPT_FILE,
+        name=model_name,
     )
 
     assert model.role == new_role
     assert model.model_server_workers == model_server_workers
     assert model.vpc_config == vpc_config
     assert model.entry_point == SERVING_SCRIPT_FILE
+    assert model.name == model_name
 
 
 @patch("sagemaker.tensorflow.estimator.TensorFlow.create_model")

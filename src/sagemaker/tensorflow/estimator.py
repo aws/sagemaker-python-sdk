@@ -584,6 +584,12 @@ class TensorFlow(Framework):
         """
         role = role or self.role
 
+        if "image" not in kwargs:
+            kwargs["image"] = self.image_name
+
+        if "name" not in kwargs:
+            kwargs["name"] = self._current_job_name
+
         if endpoint_type == "tensorflow-serving" or self._script_mode_enabled():
             return self._create_tfs_model(
                 role=role,
@@ -614,18 +620,9 @@ class TensorFlow(Framework):
         **kwargs
     ):
         """Placeholder docstring"""
-        # remove image kwarg
-        if "image" in kwargs:
-            image = kwargs["image"]
-            kwargs = {k: v for k, v in kwargs.items() if k != "image"}
-        else:
-            image = None
-
         return Model(
             model_data=self.model_data,
             role=role,
-            image=(image or self.image_name),
-            name=self._current_job_name,
             container_log_level=self.container_log_level,
             framework_version=utils.get_short_version(self.framework_version),
             sagemaker_session=self.sagemaker_session,
@@ -648,13 +645,6 @@ class TensorFlow(Framework):
         **kwargs
     ):
         """Placeholder docstring"""
-        # remove image kwarg
-        if "image" in kwargs:
-            image = kwargs["image"]
-            kwargs = {k: v for k, v in kwargs.items() if k != "image"}
-        else:
-            image = None
-
         return TensorFlowModel(
             self.model_data,
             role,
@@ -662,8 +652,6 @@ class TensorFlow(Framework):
             source_dir=source_dir or self._model_source_dir(),
             enable_cloudwatch_metrics=self.enable_cloudwatch_metrics,
             env={"SAGEMAKER_REQUIREMENTS": self.requirements_file},
-            image=(image or self.image_name),
-            name=self._current_job_name,
             container_log_level=self.container_log_level,
             code_location=self.code_location,
             py_version=self.py_version,
