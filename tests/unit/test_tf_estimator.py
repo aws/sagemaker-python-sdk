@@ -364,6 +364,7 @@ def test_transformer_creation_with_optional_args(create_model, sagemaker_session
     new_role = "role"
     model_server_workers = 2
     vpc_config = {"Subnets": ["1234"], "SecurityGroupIds": ["5678"]}
+    model_name = "model-name"
 
     tf.transformer(
         INSTANCE_COUNT,
@@ -384,6 +385,7 @@ def test_transformer_creation_with_optional_args(create_model, sagemaker_session
         entry_point=SERVING_SCRIPT_FILE,
         vpc_config_override=vpc_config,
         enable_network_isolation=True,
+        model_name=model_name,
     )
 
     create_model.assert_called_with(
@@ -393,6 +395,7 @@ def test_transformer_creation_with_optional_args(create_model, sagemaker_session
         endpoint_type="tensorflow-serving",
         entry_point=SERVING_SCRIPT_FILE,
         enable_network_isolation=True,
+        name=model_name,
     )
     model.transformer.assert_called_with(
         INSTANCE_COUNT,
@@ -432,6 +435,7 @@ def test_transformer_creation_without_optional_args(create_model, sagemaker_sess
         vpc_config_override="VPC_CONFIG_DEFAULT",
         entry_point=None,
         enable_network_isolation=False,
+        name=None,
     )
     model.transformer.assert_called_with(
         INSTANCE_COUNT,
