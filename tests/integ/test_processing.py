@@ -28,22 +28,16 @@ from sagemaker.processing import (
     ProcessingJob,
 )
 from sagemaker.sklearn.processing import SKLearnProcessor
-from sagemaker.utils import sts_regional_endpoint
 from tests.integ import DATA_DIR
 from tests.integ.kms_utils import get_or_create_kms_key
 
 ROLE = "SageMakerRole"
-DEFAULT_REGION = "us-west-2"
-CUSTOM_BUCKET_PATH_PREFIX = "sagemaker-custom-bucket"
 
 
 @pytest.fixture(scope="module")
 def sagemaker_session_with_custom_bucket(
-    boto_config, sagemaker_client_config, sagemaker_runtime_config
+    boto_session, sagemaker_client_config, sagemaker_runtime_config, custom_bucket_name,
 ):
-    boto_session = (
-        boto3.Session(**boto_config) if boto_config else boto3.Session(region_name=DEFAULT_REGION)
-    )
     sagemaker_client_config.setdefault("config", Config(retries=dict(max_attempts=10)))
     sagemaker_client = (
         boto_session.client("sagemaker", **sagemaker_client_config)
@@ -56,17 +50,11 @@ def sagemaker_session_with_custom_bucket(
         else None
     )
 
-    region = boto_session.region_name
-    account = boto_session.client(
-        "sts", region_name=region, endpoint_url=sts_regional_endpoint(region)
-    ).get_caller_identity()["Account"]
-    custom_default_bucket = "{}-{}-{}".format(CUSTOM_BUCKET_PATH_PREFIX, region, account)
-
     return Session(
         boto_session=boto_session,
         sagemaker_client=sagemaker_client,
         sagemaker_runtime_client=runtime_client,
-        default_bucket=custom_default_bucket,
+        default_bucket=custom_bucket_name,
     )
 
 

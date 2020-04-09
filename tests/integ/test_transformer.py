@@ -20,13 +20,15 @@ import time
 
 import pytest
 
-from sagemaker import KMeans
+from sagemaker import KMeans, s3
 from sagemaker.mxnet import MXNet
+from sagemaker.pytorch import PyTorchModel
 from sagemaker.transformer import Transformer
 from sagemaker.estimator import Estimator
 from sagemaker.utils import unique_name_from_base
 from tests.integ import (
     DATA_DIR,
+    PYTHON_VERSION,
     TRAINING_DEFAULT_TIMEOUT_MINUTES,
     TRANSFORM_DEFAULT_TIMEOUT_MINUTES,
 )
@@ -144,48 +146,43 @@ def test_attach_transform_kmeans(sagemaker_session, cpu_instance_type):
         attached_transformer.wait()
 
 
-def test_transform_mxnet_vpc(sagemaker_session, mxnet_full_version, cpu_instance_type):
-    data_path = os.path.join(DATA_DIR, "mxnet_mnist")
-    script_path = os.path.join(data_path, "mnist.py")
+def test_transform_pytorch_vpc_custom_model_bucket(
+    sagemaker_session, pytorch_full_version, cpu_instance_type, custom_bucket_name
+):
+    data_dir = os.path.join(DATA_DIR, "pytorch_mnist")
 
     ec2_client = sagemaker_session.boto_session.client("ec2")
     subnet_ids, security_group_id = get_or_create_vpc_resources(ec2_client)
 
-    mx = MXNet(
-        entry_point=script_path,
+    model_data = sagemaker_session.upload_data(
+        path=os.path.join(data_dir, "model.tar.gz"),
+        bucket=custom_bucket_name,
+        key_prefix="integ-test-data/pytorch_mnist/model",
+    )
+
+    model = PyTorchModel(
+        model_data=model_data,
+        entry_point=os.path.join(data_dir, "mnist.py"),
         role="SageMakerRole",
-        train_instance_count=1,
-        train_instance_type=cpu_instance_type,
+        framework_version=pytorch_full_version,
+        py_version=PYTHON_VERSION,
         sagemaker_session=sagemaker_session,
-        framework_version=mxnet_full_version,
-        subnets=subnet_ids,
-        security_group_ids=[security_group_id],
+        vpc_config={"Subnets": subnet_ids, "SecurityGroupIds": [security_group_id]},
+        code_location="s3://{}".format(custom_bucket_name),
     )
 
-    train_input = mx.sagemaker_session.upload_data(
-        path=os.path.join(data_path, "train"), key_prefix="integ-test-data/mxnet_mnist/train"
-    )
-    test_input = mx.sagemaker_session.upload_data(
-        path=os.path.join(data_path, "test"), key_prefix="integ-test-data/mxnet_mnist/test"
-    )
-    job_name = unique_name_from_base("test-mxnet-vpc")
-
-    with timeout(minutes=TRAINING_DEFAULT_TIMEOUT_MINUTES):
-        mx.fit({"train": train_input, "test": test_input}, job_name=job_name)
-
-    job_desc = sagemaker_session.sagemaker_client.describe_training_job(
-        TrainingJobName=mx.latest_training_job.name
-    )
-    assert set(subnet_ids) == set(job_desc["VpcConfig"]["Subnets"])
-    assert [security_group_id] == job_desc["VpcConfig"]["SecurityGroupIds"]
-
-    transform_input_path = os.path.join(data_path, "transform", "data.csv")
-    transform_input_key_prefix = "integ-test-data/mxnet_mnist/transform"
-    transform_input = mx.sagemaker_session.upload_data(
-        path=transform_input_path, key_prefix=transform_input_key_prefix
+    transform_input = sagemaker_session.upload_data(
+        path=os.path.join(data_dir, "transform", "data.npy"),
+        key_prefix="integ-test-data/pytorch_mnist/transform",
     )
 
-    transformer = _create_transformer_and_transform_job(mx, transform_input, cpu_instance_type)
+    transformer = model.transformer(1, cpu_instance_type)
+    transformer.transform(
+        transform_input,
+        content_type="application/x-npy",
+        job_name=unique_name_from_base("test-transform-vpc")
+    )
+
     with timeout_and_delete_model_with_transformer(
         transformer, sagemaker_session, minutes=TRANSFORM_DEFAULT_TIMEOUT_MINUTES
     ):
@@ -195,6 +192,9 @@ def test_transform_mxnet_vpc(sagemaker_session, mxnet_full_version, cpu_instance
         )
         assert set(subnet_ids) == set(model_desc["VpcConfig"]["Subnets"])
         assert [security_group_id] == model_desc["VpcConfig"]["SecurityGroupIds"]
+
+        model_bucket, _ = s3.parse_s3_url(model_desc["PrimaryContainer"]["ModelDataUrl"])
+        assert custom_bucket_name == model_bucket
 
 
 def test_transform_mxnet_tags(sagemaker_session, mxnet_full_version, cpu_instance_type):
