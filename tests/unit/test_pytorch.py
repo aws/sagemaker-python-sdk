@@ -208,12 +208,14 @@ def test_create_model_with_optional_params(sagemaker_session):
     new_role = "role"
     model_server_workers = 2
     vpc_config = {"Subnets": ["foo"], "SecurityGroupIds": ["bar"]}
+    model_name = "model-name"
     model = pytorch.create_model(
         role=new_role,
         model_server_workers=model_server_workers,
         vpc_config_override=vpc_config,
         entry_point=SERVING_SCRIPT_FILE,
         env=ENV,
+        name=model_name,
     )
 
     assert model.role == new_role
@@ -221,6 +223,7 @@ def test_create_model_with_optional_params(sagemaker_session):
     assert model.vpc_config == vpc_config
     assert model.entry_point == SERVING_SCRIPT_FILE
     assert model.env == ENV
+    assert model.name == model_name
 
 
 def test_create_model_with_custom_image(sagemaker_session):

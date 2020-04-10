@@ -584,6 +584,12 @@ class TensorFlow(Framework):
         """
         role = role or self.role
 
+        if "image" not in kwargs:
+            kwargs["image"] = self.image_name
+
+        if "name" not in kwargs:
+            kwargs["name"] = self._current_job_name
+
         if endpoint_type == "tensorflow-serving" or self._script_mode_enabled():
             return self._create_tfs_model(
                 role=role,
@@ -614,18 +620,9 @@ class TensorFlow(Framework):
         **kwargs
     ):
         """Placeholder docstring"""
-        # remove image kwarg
-        if "image" in kwargs:
-            image = kwargs["image"]
-            kwargs = {k: v for k, v in kwargs.items() if k != "image"}
-        else:
-            image = None
-
         return Model(
             model_data=self.model_data,
             role=role,
-            image=(image or self.image_name),
-            name=self._current_job_name,
             container_log_level=self.container_log_level,
             framework_version=utils.get_short_version(self.framework_version),
             sagemaker_session=self.sagemaker_session,
@@ -648,13 +645,6 @@ class TensorFlow(Framework):
         **kwargs
     ):
         """Placeholder docstring"""
-        # remove image kwarg
-        if "image" in kwargs:
-            image = kwargs["image"]
-            kwargs = {k: v for k, v in kwargs.items() if k != "image"}
-        else:
-            image = None
-
         return TensorFlowModel(
             self.model_data,
             role,
@@ -662,8 +652,6 @@ class TensorFlow(Framework):
             source_dir=source_dir or self._model_source_dir(),
             enable_cloudwatch_metrics=self.enable_cloudwatch_metrics,
             env={"SAGEMAKER_REQUIREMENTS": self.requirements_file},
-            image=(image or self.image_name),
-            name=self._current_job_name,
             container_log_level=self.container_log_level,
             code_location=self.code_location,
             py_version=self.py_version,
@@ -791,6 +779,8 @@ class TensorFlow(Framework):
         endpoint_type=None,
         entry_point=None,
         vpc_config_override=VPC_CONFIG_DEFAULT,
+        enable_network_isolation=None,
+        model_name=None,
     ):
         """Return a ``Transformer`` that uses a SageMaker Model based on the training job. It
         reuses the SageMaker Session and base job name used by the Estimator.
@@ -836,8 +826,20 @@ class TensorFlow(Framework):
             vpc_config_override (dict[str, list[str]]): Optional override for
                 the VpcConfig set on the model.
                 Default: use subnets and security groups from this Estimator.
+
                 * 'Subnets' (list[str]): List of subnet ids.
                 * 'SecurityGroupIds' (list[str]): List of security group ids.
+
+            enable_network_isolation (bool): Specifies whether container will
+                run in network isolation mode. Network isolation mode restricts
+                the container access to outside networks (such as the internet).
+                The container does not make any inbound or outbound network
+                calls. If True, a channel named "code" will be created for any
+                user entry script for inference. Also known as Internet-free mode.
+                If not specified, this setting is taken from the estimator's
+                current configuration.
+            model_name (str): Name to use for creating an Amazon SageMaker
+                model. If not specified, the name of the training job is used.
         """
         role = role or self.role
 
@@ -847,7 +849,7 @@ class TensorFlow(Framework):
                 "this estimator is only used for building workflow config"
             )
             return Transformer(
-                self._current_job_name,
+                model_name or self._current_job_name,
                 instance_count,
                 instance_type,
                 strategy=strategy,
@@ -864,13 +866,19 @@ class TensorFlow(Framework):
                 sagemaker_session=self.sagemaker_session,
             )
 
+        if enable_network_isolation is None:
+            enable_network_isolation = self.enable_network_isolation()
+
         model = self.create_model(
             model_server_workers=model_server_workers,
             role=role,
             vpc_config_override=vpc_config_override,
             endpoint_type=endpoint_type,
             entry_point=entry_point,
+            enable_network_isolation=enable_network_isolation,
+            name=model_name,
         )
+
         return model.transformer(
             instance_count,
             instance_type,

@@ -172,7 +172,7 @@ class Transformer(object):
                 'ExperimentName', 'TrialName', and 'TrialComponentDisplayName'.
                 (default: ``None``).
             wait (bool): Whether the call should wait until the job completes
-                (default: True).
+                (default: False).
             logs (bool): Whether to show the logs produced by the job.
                 Only meaningful when wait is True (default: False).
         """

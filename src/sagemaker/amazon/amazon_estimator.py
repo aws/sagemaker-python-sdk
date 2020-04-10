@@ -82,14 +82,17 @@ class AmazonAlgorithmEstimatorBase(EstimatorBase):
             :class:`~sagemaker.estimator.EstimatorBase`.
         """
         super(AmazonAlgorithmEstimatorBase, self).__init__(
-            role, train_instance_count, train_instance_type, **kwargs
+            role,
+            train_instance_count,
+            train_instance_type,
+            enable_network_isolation=enable_network_isolation,
+            **kwargs
         )
 
         data_location = data_location or "s3://{}/sagemaker-record-sets/".format(
             self.sagemaker_session.default_bucket()
         )
         self._data_location = data_location
-        self._enable_network_isolation = enable_network_isolation
 
     def train_image(self):
         """Placeholder docstring"""
@@ -100,14 +103,6 @@ class AmazonAlgorithmEstimatorBase(EstimatorBase):
     def hyperparameters(self):
         """Placeholder docstring"""
         return hp.serialize_all(self)
-
-    def enable_network_isolation(self):
-        """If this Estimator can use network isolation when running.
-
-        Returns:
-            bool: Whether this Estimator can use network isolation or not.
-        """
-        return self._enable_network_isolation
 
     @property
     def data_location(self):
