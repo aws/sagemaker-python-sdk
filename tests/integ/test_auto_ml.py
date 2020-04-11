@@ -13,7 +13,6 @@
 from __future__ import absolute_import
 
 import os
-import time
 
 import pytest
 import tests.integ
@@ -34,7 +33,7 @@ DATA_DIR = os.path.join(DATA_DIR, "automl", "data")
 TRAINING_DATA = os.path.join(DATA_DIR, "iris_training.csv")
 TEST_DATA = os.path.join(DATA_DIR, "iris_test.csv")
 PROBLEM_TYPE = "MultiClassClassification"
-JOB_NAME = "auto-ml-{}".format(time.strftime("%y%m%d-%H%M%S"))
+BASE_JOB_NAME = "auto-ml"
 
 # use a succeeded AutoML job to test describe and list candidates method, otherwise tests will run too long
 AUTO_ML_JOB_NAME = "python-sdk-integ-test-base-job"
@@ -119,11 +118,11 @@ def test_auto_ml_fit_optional_args(sagemaker_session):
     )
     inputs = TRAINING_DATA
     with timeout(minutes=AUTO_ML_DEFAULT_TIMEMOUT_MINUTES):
-        auto_ml.fit(inputs, job_name=JOB_NAME)
+        auto_ml.fit(inputs, job_name=unique_name_from_base(BASE_JOB_NAME))
 
-    auto_ml_desc = auto_ml.describe_auto_ml_job(job_name=JOB_NAME)
+    auto_ml_desc = auto_ml.describe_auto_ml_job(job_name=auto_ml.latest_auto_ml_job.job_name)
     assert auto_ml_desc["AutoMLJobStatus"] == "Completed"
-    assert auto_ml_desc["AutoMLJobName"] == JOB_NAME
+    assert auto_ml_desc["AutoMLJobName"] == auto_ml.latest_auto_ml_job.job_name
     assert auto_ml_desc["AutoMLJobObjective"] == job_objective
     assert auto_ml_desc["ProblemType"] == problem_type
     assert auto_ml_desc["OutputDataConfig"]["S3OutputPath"] == output_path

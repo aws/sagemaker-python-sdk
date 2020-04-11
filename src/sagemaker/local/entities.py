@@ -356,7 +356,7 @@ class _LocalTransformJob(object):
                     )
 
                     response_body = response["Body"]
-                    data = response_body.read().strip()
+                    data = response_body.read()
                     response_body.close()
                     f.write(data)
                     if "AssembleWith" in output_data and output_data["AssembleWith"] == "Line":

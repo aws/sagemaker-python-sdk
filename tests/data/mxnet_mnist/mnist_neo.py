@@ -20,8 +20,6 @@ import struct
 import mxnet as mx
 import numpy as np
 
-from sagemaker_mxnet_container.training_utils import scheduler_host
-
 
 def load_data(path):
     with gzip.open(find_file(path, "labels.gz")) as flbl:
@@ -112,11 +110,10 @@ def neo_preprocess(payload, content_type):
     if content_type != "application/vnd+python.numpy+binary":
         raise RuntimeError("Content type must be application/vnd+python.numpy+binary")
 
-    f = io.BytesIO(payload)
-    return np.load(f)
+    return np.asarray(json.loads(payload.decode("utf-8")))
 
 
-### NOTE: this function cannot use MXNet
+# NOTE: this function cannot use MXNet
 def neo_postprocess(result):
     logging.info("Invoking user-defined post-processing function")
 
@@ -131,19 +128,10 @@ def neo_postprocess(result):
     return response_body, content_type
 
 
-def save(model_dir, model):
-    model.symbol.save(os.path.join(model_dir, "model-symbol.json"))
-    model.save_params(os.path.join(model_dir, "model-0000.params"))
-
-    signature = [
-        {"name": data_desc.name, "shape": [dim for dim in data_desc.shape]}
-        for data_desc in model.data_shapes
-    ]
-    with open(os.path.join(model_dir, "model-shapes.json"), "w") as f:
-        json.dump(signature, f)
-
-
 if __name__ == "__main__":
+    # Import here to prevent import during serving
+    from sagemaker_mxnet_container.training_utils import scheduler_host, save
+
     parser = argparse.ArgumentParser()
 
     parser.add_argument("--batch-size", type=int, default=100)

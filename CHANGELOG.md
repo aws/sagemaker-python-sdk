@@ -1,5 +1,236 @@
 # Changelog
 
+## v1.55.3 (2020-04-08)
+
+### Bug Fixes and Other Changes
+
+ * remove .strip() from batch transform
+ * allow model with network isolation when creating a Transformer from an Estimator
+ * add enable_network_isolation to EstimatorBase
+
+## v1.55.2 (2020-04-07)
+
+### Bug Fixes and Other Changes
+
+ * use .format instead of os.path.join for Processing S3 paths.
+
+### Testing and Release Infrastructure
+
+ * use m5.xlarge instances for "ap-northeast-1" region integ tests.
+
+## v1.55.1 (2020-04-06)
+
+### Bug Fixes and Other Changes
+
+ * correct local mode behavior for CN regions
+
+## v1.55.0.post0 (2020-04-06)
+
+### Documentation Changes
+
+ * fix documentation to provide working example.
+ * add documentation for XGBoost
+ * Correct comment in SKLearn Estimator about default Python version
+ * document inferentia supported version
+ * Merge Amazon Sagemaker Operators for Kubernetes and Kubernetes Jobs pages
+
+### Testing and Release Infrastructure
+
+ * turn on warnings as errors for docs builds
+
+## v1.55.0 (2020-03-31)
+
+### Features
+
+ * support cn-north-1 and cn-northwest-1
+
+## v1.54.0 (2020-03-31)
+
+### Features
+
+ * inferentia support
+
+## v1.53.0 (2020-03-30)
+
+### Features
+
+ * Allow setting S3 endpoint URL for Local Session
+
+### Bug Fixes and Other Changes
+
+ * Pass kwargs from create_model to Model constructors
+ * Warn if parameter server is used with multi-GPU instance
+
+## v1.52.1 (2020-03-26)
+
+### Bug Fixes and Other Changes
+
+ * Fix local _SageMakerContainer detached mode (aws#1374)
+
+## v1.52.0.post0 (2020-03-25)
+
+### Documentation Changes
+
+ * Add docs for debugger job support in operator
+
+## v1.52.0 (2020-03-24)
+
+### Features
+
+ * add us-gov-west-1 to neo supported regions
+
+## v1.51.4 (2020-03-23)
+
+### Bug Fixes and Other Changes
+
+ * Check that session is a LocalSession when using local mode
+ * add tflite to Neo-supported frameworks
+ * ignore tags with 'aws:' prefix when creating an EndpointConfig based on an existing one
+ * allow custom image when calling deploy or create_model with various frameworks
+
+### Documentation Changes
+
+ * fix description of default model_dir for TF
+ * add more details about PyTorch eia
+
+## v1.51.3 (2020-03-12)
+
+### Bug Fixes and Other Changes
+
+ * make repack_model only removes py file when new entry_point provided
+
+## v1.51.2 (2020-03-11)
+
+### Bug Fixes and Other Changes
+
+ * handle empty inputs/outputs in ProcessingJob.from_processing_name()
+ * use DLC images for GovCloud
+
+### Testing and Release Infrastructure
+
+ * generate test job name at test start instead of module start
+
+## v1.51.1 (2020-03-10)
+
+### Bug Fixes and Other Changes
+
+ * skip pytorch ei test in unsupported regions
+
+### Documentation Changes
+
+ * correct MultiString/MULTI_STRING docstring
+
+## v1.51.0 (2020-03-09)
+
+### Features
+
+ * pytorch 1.3.1 eia support
+
+### Documentation Changes
+
+ * Update Kubernetes Operator default tag
+ * improve docstring for tuner.best_estimator()
+
+## v1.50.18.post0 (2020-03-05)
+
+### Documentation Changes
+
+ * correct Estimator code_location default S3 path
+
+## v1.50.18 (2020-03-04)
+
+### Bug Fixes and Other Changes
+
+ * change default compile model max run to 15 mins
+
+## v1.50.17.post0 (2020-03-03)
+
+### Testing and Release Infrastructure
+
+ * fix PR builds to run on changes to their own buildspecs
+ * programmatically determine partition based on region
+
+## v1.50.17 (2020-02-27)
+
+### Bug Fixes and Other Changes
+
+ * upgrade framework versions
+
+## v1.50.16 (2020-02-26)
+
+### Bug Fixes and Other Changes
+
+ * use sagemaker_session when initializing Constraints and Statistics
+ * add sagemaker_session parameter to DataCaptureConfig
+ * make AutoML.deploy use self.sagemaker_session by default
+
+### Testing and Release Infrastructure
+
+ * unset region during integ tests
+ * use sagemaker_session fixture in all Airflow tests
+ * remove remaining TF legacy mode integ tests
+
+## v1.50.15 (2020-02-25)
+
+### Bug Fixes and Other Changes
+
+ * enable Neo integ tests
+
+## v1.50.14.post0 (2020-02-24)
+
+### Testing and Release Infrastructure
+
+ * remove TF framework mode notebooks from PR build
+ * don't create docker network for all integ tests
+
+## v1.50.14 (2020-02-20)
+
+### Bug Fixes and Other Changes
+
+ * don't use os.path.join for S3 path when repacking TFS model
+ * dynamically determine AWS domain based on region
+
+## v1.50.13 (2020-02-19)
+
+### Bug Fixes and Other Changes
+
+ * allow download_folder to download file even if bucket is more restricted
+
+### Testing and Release Infrastructure
+
+ * configure pylint to recognize boto3 and botocore as third-party imports
+ * add multiple notebooks to notebook PR build
+
+## v1.50.12 (2020-02-17)
+
+### Bug Fixes and Other Changes
+
+ * enable network isolation for amazon estimators
+
+### Documentation Changes
+
+ * clarify channel environment variables in PyTorch documentation
+
+## v1.50.11 (2020-02-13)
+
+### Bug Fixes and Other Changes
+
+ * fix HyperparameterTuner.attach for Marketplace algorithms
+ * move requests library from required packages to test dependencies
+ * create Session or LocalSession if not specified in Model
+
+### Documentation Changes
+
+ * remove hardcoded list of target devices in compile()
+ * Fix typo with SM_MODEL_DIR, missing quotes
+
+## v1.50.10.post0 (2020-02-12)
+
+### Documentation Changes
+
+ * add documentation guidelines to CONTRIBUTING.md
+ * Removed section numbering
+
 ## v1.50.10 (2020-02-11)
 
 ### Bug Fixes and Other Changes

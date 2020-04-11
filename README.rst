@@ -54,7 +54,7 @@ Table of Contents
 18. `BYO Model <https://sagemaker.readthedocs.io/en/stable/overview.html#byo-model>`__
 19. `Inference Pipelines <https://sagemaker.readthedocs.io/en/stable/overview.html#inference-pipelines>`__
 20. `Amazon SageMaker Operators for Kubernetes <#amazon-sagemaker-operators-for-kubernetes>`__
-21. `SageMaker Workflow <#sagemaker-workflow>`__
+21. `Amazon SageMaker Operators in Apache Airflow <#sagemaker-workflow>`__
 22. `SageMaker Autopilot <#sagemaker-autopilot>`__
 23. `Model Monitoring <#amazon-sagemaker-model-monitoring>`__
 24. `SageMaker Debugger <#amazon-sagemaker-debugger>`__
@@ -162,9 +162,9 @@ Setup a Python environment with ``sphinx`` and ``sagemaker``:
 
 ::
 
-    conda create -n sagemaker python=3
+    conda create -n sagemaker python=3.7
     conda activate sagemaker
-    conda install sphinx
+    conda install sphinx==2.2.2
     pip install sagemaker --user
 
 Install the Read The Docs theme:
@@ -213,7 +213,7 @@ TensorFlow SageMaker Estimators
 
 By using TensorFlow SageMaker Estimators, you can train and host TensorFlow models on Amazon SageMaker.
 
-Supported versions of TensorFlow: ``1.4.1``, ``1.5.0``, ``1.6.0``, ``1.7.0``, ``1.8.0``, ``1.9.0``, ``1.10.0``, ``1.11.0``, ``1.12.0``, ``1.13.1``, ``1.14.0``, ``1.15.0``, ``2.0.0``.
+Supported versions of TensorFlow: ``1.4.1``, ``1.5.0``, ``1.6.0``, ``1.7.0``, ``1.8.0``, ``1.9.0``, ``1.10.0``, ``1.11.0``, ``1.12.0``, ``1.13.1``, ``1.14.0``, ``1.15.0``, ``1.15.2``, ``2.0.0``, ``2.0.1``, ``2.1.0``.
 
 Supported versions of TensorFlow for Elastic Inference: ``1.11.0``, ``1.12.0``, ``1.13.1``, ``1.14.0``.
 
@@ -245,7 +245,9 @@ PyTorch SageMaker Estimators
 
 With PyTorch SageMaker Estimators, you can train and host PyTorch models on Amazon SageMaker.
 
-Supported versions of PyTorch: ``0.4.0``, ``1.0.0``, ``1.1.0``, ``1.2.0``, ``1.3.1``.
+Supported versions of PyTorch: ``0.4.0``, ``1.0.0``, ``1.1.0``, ``1.2.0``, ``1.3.1``, ``1.4.0``.
+
+Supported versions of PyTorch for Elastic Inference: ``1.3.1``.
 
 We recommend that you use the latest supported version, because that's where we focus most of our development efforts.
 
@@ -358,14 +360,14 @@ For more information, see `Amazon SageMaker Operators for Kubernetes`_.
 
 .. _Amazon SageMaker Operators for Kubernetes: https://sagemaker.readthedocs.io/en/stable/amazon_sagemaker_operators_for_kubernetes.html
 
-SageMaker Workflow
-------------------
+Amazon SageMaker Operators in Apache Airflow
+--------------------------------------------
 
 You can use Apache Airflow to author, schedule and monitor SageMaker workflow.
 
-For more information, see `SageMaker Workflow in Apache Airflow`_.
+For more information, see `Amazon SageMaker Operators in Apache Airflow`_.
 
-.. _SageMaker Workflow in Apache Airflow: https://sagemaker.readthedocs.io/en/stable/using_workflow.html
+.. _Amazon SageMaker Operators in Apache Airflow: https://sagemaker.readthedocs.io/en/stable/using_workflow.html
 
 SageMaker Autopilot
 -------------------

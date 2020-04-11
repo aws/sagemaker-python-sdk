@@ -477,16 +477,19 @@ def test_deploy(sagemaker_session, candidate_mock):
     )
 
 
-def test_deploy_optional_args(sagemaker_session, candidate_mock):
+@patch("sagemaker.automl.automl.CandidateEstimator")
+def test_deploy_optional_args(candidate_estimator, sagemaker_session, candidate_mock):
+    candidate_estimator.return_value = candidate_mock
+
     auto_ml = AutoML(
         role=ROLE, target_attribute_name=TARGET_ATTRIBUTE_NAME, sagemaker_session=sagemaker_session
     )
-    auto_ml.best_candidate = Mock(name="best_candidate", return_value=CANDIDATE_DICT)
     auto_ml._deploy_inference_pipeline = Mock("_deploy_inference_pipeline", return_value=None)
 
     auto_ml.deploy(
         initial_instance_count=INSTANCE_COUNT,
         instance_type=INSTANCE_TYPE,
+        candidate=CANDIDATE_DICT,
         sagemaker_session=sagemaker_session,
         name=JOB_NAME,
         endpoint_name=JOB_NAME,
@@ -514,6 +517,8 @@ def test_deploy_optional_args(sagemaker_session, candidate_mock):
         model_kms_key=OUTPUT_KMS_KEY,
         predictor_cls=RealTimePredictor,
     )
+
+    candidate_estimator.assert_called_with(CANDIDATE_DICT, sagemaker_session=sagemaker_session)
 
 
 def test_candidate_estimator_get_steps(sagemaker_session):

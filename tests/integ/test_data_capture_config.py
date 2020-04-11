@@ -126,6 +126,7 @@ def test_disabling_data_capture_on_endpoint_shows_correct_data_capture_status(
                 capture_options=CUSTOM_CAPTURE_OPTIONS,
                 csv_content_types=CUSTOM_CSV_CONTENT_TYPES,
                 json_content_types=CUSTOM_JSON_CONTENT_TYPES,
+                sagemaker_session=sagemaker_session,
             ),
         )
 
@@ -224,6 +225,7 @@ def test_updating_data_capture_on_endpoint_shows_correct_data_capture_status(
                 capture_options=CUSTOM_CAPTURE_OPTIONS,
                 csv_content_types=CUSTOM_CSV_CONTENT_TYPES,
                 json_content_types=CUSTOM_JSON_CONTENT_TYPES,
+                sagemaker_session=sagemaker_session,
             )
         )
 

@@ -18,7 +18,7 @@ PYTORCH_VERSION = "0.4"
 The default version is no longer updated so as to not break existing workflows.
 """
 
-LATEST_VERSION = "1.3.1"
+LATEST_VERSION = "1.4.0"
 """The latest version of PyTorch included in the SageMaker pre-built Docker images."""
 
 PYTHON_VERSION = "py3"

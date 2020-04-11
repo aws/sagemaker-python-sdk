@@ -760,6 +760,23 @@ class HyperparameterTuner(object):
         be deployed to an Amazon SageMaker endpoint and return a ``sagemaker.RealTimePredictor``
         object.
 
+        Args:
+            best_training_job (dict): Dictionary containing "TrainingJobName" and
+                "TrainingJobDefinitionName".
+
+                Example:
+
+                .. code:: python
+
+                    {
+                        "TrainingJobName": "my_training_job_name",
+                        "TrainingJobDefinitionName": "my_training_job_definition_name"
+                    }
+
+        Returns:
+            sagemaker.estimator.EstimatorBase: The estimator that has the best training job
+                attached.
+
         Raises:
             Exception: If there is no best training job available for the hyperparameter tuning job.
         """

@@ -15,6 +15,7 @@ from __future__ import absolute_import
 
 import contextlib
 import errno
+import logging
 import os
 import random
 import re
@@ -23,21 +24,22 @@ import sys
 import tarfile
 import tempfile
 import time
-
-
 from datetime import datetime
 from functools import wraps
 
+import botocore
 import six
 from six.moves.urllib import parse
 
 
-ECR_URI_PATTERN = r"^(\d+)(\.)dkr(\.)ecr(\.)(.+)(\.)(amazonaws.com|c2s.ic.gov)(/)(.*:.*)$"
+ECR_URI_PATTERN = r"^(\d+)(\.)dkr(\.)ecr(\.)(.+)(\.)(.*)(/)(.*:.*)$"
 MAX_BUCKET_PATHS_COUNT = 5
 S3_PREFIX = "s3://"
 HTTP_PREFIX = "http://"
 HTTPS_PREFIX = "https://"
 DEFAULT_SLEEP_TIME_SECONDS = 10
+
+logger = logging.getLogger(__name__)
 
 
 # Use the base name of the image as the job name if the user doesn't give us one
@@ -338,21 +340,34 @@ def download_folder(bucket_name, prefix, target, sagemaker_session):
             interact with S3.
     """
     boto_session = sagemaker_session.boto_session
-
-    s3 = boto_session.resource("s3")
-    bucket = s3.Bucket(bucket_name)
+    s3 = boto_session.resource("s3", region_name=boto_session.region_name)
 
     prefix = prefix.lstrip("/")
 
-    # there is a chance that the prefix points to a file and not a 'directory' if that is the case
-    # we should just download it.
-    objects = list(bucket.objects.filter(Prefix=prefix))
-
-    if len(objects) > 0 and objects[0].key == prefix and prefix[-1] != "/":
+    # Try to download the prefix as an object first, in case it is a file and not a 'directory'.
+    # Do this first, in case the object has broader permissions than the bucket.
+    try:
         s3.Object(bucket_name, prefix).download_file(os.path.join(target, os.path.basename(prefix)))
         return
+    except botocore.exceptions.ClientError as e:
+        if e.response["Error"]["Code"] == "404" and e.response["Error"]["Message"] == "Not Found":
+            # S3 also throws this error if the object is a folder,
+            # so assume that is the case here, and then raise for an actual 404 later.
+            _download_files_under_prefix(bucket_name, prefix, target, s3)
+        else:
+            raise
 
-    # the prefix points to an s3 'directory' download the whole thing
+
+def _download_files_under_prefix(bucket_name, prefix, target, s3):
+    """Download all S3 files which match the given prefix
+
+    Args:
+        bucket_name (str): S3 bucket name
+        prefix (str): S3 prefix within the bucket that will be downloaded
+        target (str): destination path where the downloaded items will be placed
+        s3 (boto3.resources.base.ServiceResource): S3 resource
+    """
+    bucket = s3.Bucket(bucket_name)
     for obj_sum in bucket.objects.filter(Prefix=prefix):
         # if obj_sum is a folder object skip it.
         if obj_sum.key != "" and obj_sum.key[-1] == "/":
@@ -494,9 +509,9 @@ def _save_model(repacked_model_uri, tmp_model_path, sagemaker_session, kms_key):
             extra_args = {"ServerSideEncryption": "aws:kms", "SSEKMSKeyId": kms_key}
         else:
             extra_args = None
-        sagemaker_session.boto_session.resource("s3").Object(bucket, new_key).upload_file(
-            tmp_model_path, ExtraArgs=extra_args
-        )
+        sagemaker_session.boto_session.resource(
+            "s3", region_name=sagemaker_session.boto_region_name
+        ).Object(bucket, new_key).upload_file(tmp_model_path, ExtraArgs=extra_args)
     else:
         shutil.move(tmp_model_path, repacked_model_uri.replace("file://", ""))
 
@@ -515,7 +530,9 @@ def _create_or_update_code_dir(
     """
     code_dir = os.path.join(model_dir, "code")
     if os.path.exists(code_dir):
-        shutil.rmtree(code_dir, ignore_errors=True)
+        for filename in os.listdir(code_dir):
+            if filename.endswith(".py"):
+                os.remove(os.path.join(code_dir, filename))
     if source_directory and source_directory.lower().startswith("s3://"):
         local_code_path = os.path.join(tmp, "local_code.tar.gz")
         download_file_from_url(source_directory, local_code_path, sagemaker_session)
@@ -524,9 +541,12 @@ def _create_or_update_code_dir(
             t.extractall(path=code_dir)
 
     elif source_directory:
+        if os.path.exists(code_dir):
+            shutil.rmtree(code_dir)
         shutil.copytree(source_directory, code_dir)
     else:
-        os.mkdir(code_dir)
+        if not os.path.exists(code_dir):
+            os.mkdir(code_dir)
         shutil.copy2(inference_script, code_dir)
 
     for dependency in dependencies:
@@ -584,7 +604,7 @@ def download_file(bucket_name, path, target, sagemaker_session):
     path = path.lstrip("/")
     boto_session = sagemaker_session.boto_session
 
-    s3 = boto_session.resource("s3")
+    s3 = boto_session.resource("s3", region_name=sagemaker_session.boto_region_name)
     bucket = s3.Bucket(bucket_name)
     bucket.download_file(path, target)
 
@@ -599,8 +619,8 @@ def get_ecr_image_uri_prefix(account, region):
     Returns:
         (str): URI prefix of ECR image
     """
-    domain = _domain_for_region(region)
-    return "{}.dkr.ecr.{}.{}".format(account, region, domain)
+    endpoint_data = _botocore_resolver().construct_endpoint("ecr", region)
+    return "{}.dkr.{}".format(account, endpoint_data["hostname"])
 
 
 def sts_regional_endpoint(region):
@@ -618,8 +638,8 @@ def sts_regional_endpoint(region):
     Returns:
         str: AWS STS regional endpoint
     """
-    domain = _domain_for_region(region)
-    return "https://sts.{}.{}".format(region, domain)
+    endpoint_data = _botocore_resolver().construct_endpoint("sts", region)
+    return "https://{}".format(endpoint_data["hostname"])
 
 
 def retries(max_retry_count, exception_message_prefix, seconds_to_sleep=DEFAULT_SLEEP_TIME_SECONDS):
@@ -642,7 +662,7 @@ def retries(max_retry_count, exception_message_prefix, seconds_to_sleep=DEFAULT_
     )
 
 
-def _domain_for_region(region):
+def _botocore_resolver():
     """Get the DNS suffix for the given region.
 
     Args:
@@ -651,7 +671,23 @@ def _domain_for_region(region):
     Returns:
         str: the DNS suffix
     """
-    return "c2s.ic.gov" if region == "us-iso-east-1" else "amazonaws.com"
+    loader = botocore.loaders.create_loader()
+    return botocore.regions.EndpointResolver(loader.load_data("endpoints"))
+
+
+def _aws_partition(region):
+    """
+    Given a region name (ex: "cn-north-1"), return the corresponding aws partition ("aws-cn").
+
+    Args:
+        region (str): The region name for which to return the corresponding partition.
+        Ex: "cn-north-1"
+
+    Returns:
+        str: partition corresponding to the region name passed in. Ex: "aws-cn"
+    """
+    endpoint_data = _botocore_resolver().construct_endpoint("sts", region)
+    return endpoint_data["partition"]
 
 
 class DeferredError(object):

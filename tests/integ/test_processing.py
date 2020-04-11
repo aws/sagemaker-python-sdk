@@ -20,7 +20,13 @@ from botocore.config import Config
 from sagemaker import Session
 from sagemaker.fw_registry import default_framework_uri
 
-from sagemaker.processing import ProcessingInput, ProcessingOutput, ScriptProcessor, Processor
+from sagemaker.processing import (
+    ProcessingInput,
+    ProcessingOutput,
+    ScriptProcessor,
+    Processor,
+    ProcessingJob,
+)
 from sagemaker.sklearn.processing import SKLearnProcessor
 from sagemaker.utils import sts_regional_endpoint
 from tests.integ import DATA_DIR
@@ -449,6 +455,37 @@ def test_script_processor_with_no_inputs_or_outputs(
     )
 
     job_description = script_processor.latest_job.describe()
+
+    assert job_description["ProcessingInputs"][0]["InputName"] == "code"
+
+    assert job_description["ProcessingJobName"].startswith("test-script-processor-with-no-inputs")
+
+    assert job_description["ProcessingJobStatus"] == "Completed"
+
+    assert job_description["ProcessingResources"]["ClusterConfig"]["InstanceCount"] == 1
+    assert (
+        job_description["ProcessingResources"]["ClusterConfig"]["InstanceType"] == cpu_instance_type
+    )
+    assert job_description["ProcessingResources"]["ClusterConfig"]["VolumeSizeInGB"] == 100
+
+    assert job_description["AppSpecification"]["ContainerArguments"] == ["-v"]
+    assert job_description["AppSpecification"]["ContainerEntrypoint"] == [
+        "python3",
+        "/opt/ml/processing/input/code/dummy_script.py",
+    ]
+    assert job_description["AppSpecification"]["ImageUri"] == image_uri
+
+    assert job_description["Environment"] == {"DUMMY_ENVIRONMENT_VARIABLE": "dummy-value"}
+
+    assert ROLE in job_description["RoleArn"]
+
+    assert job_description["StoppingCondition"] == {"MaxRuntimeInSeconds": 3600}
+
+    job_from_name = ProcessingJob.from_processing_name(
+        sagemaker_session=sagemaker_session,
+        processing_job_name=job_description["ProcessingJobName"],
+    )
+    job_description = job_from_name.describe()
 
     assert job_description["ProcessingInputs"][0]["InputName"] == "code"
 

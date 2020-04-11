@@ -61,7 +61,7 @@ DEFAULT_INSTANCE_COUNT = 1
 DEFAULT_VOLUME_SIZE_IN_GB = 30
 DEFAULT_BASELINING_MAX_RUNTIME_IN_SECONDS = 86400
 DEFAULT_EXECUTION_MAX_RUNTIME_IN_SECONDS = 3600
-DEFAULT_IMAGE_SUFFIX = ".com/sagemaker-model-monitor-analyzer"
+DEFAULT_IMAGE_SUFFIX = "/sagemaker-model-monitor-analyzer"
 
 UPDATED_ROLE = "SageMakerRole"
 UPDATED_INSTANCE_COUNT = 2
@@ -107,7 +107,7 @@ def predictor(sagemaker_session, tf_full_version):
             INSTANCE_COUNT,
             INSTANCE_TYPE,
             endpoint_name=endpoint_name,
-            data_capture_config=DataCaptureConfig(True),
+            data_capture_config=DataCaptureConfig(True, sagemaker_session=sagemaker_session),
         )
         yield predictor
 
@@ -136,11 +136,13 @@ def default_monitoring_schedule_name(sagemaker_session, output_kms_key, volume_k
     )
 
     statistics = Statistics.from_file_path(
-        statistics_file_path=os.path.join(tests.integ.DATA_DIR, "monitor/statistics.json")
+        statistics_file_path=os.path.join(tests.integ.DATA_DIR, "monitor/statistics.json"),
+        sagemaker_session=sagemaker_session,
     )
 
     constraints = Constraints.from_file_path(
-        constraints_file_path=os.path.join(tests.integ.DATA_DIR, "monitor/constraints.json")
+        constraints_file_path=os.path.join(tests.integ.DATA_DIR, "monitor/constraints.json"),
+        sagemaker_session=sagemaker_session,
     )
 
     my_default_monitor.create_monitoring_schedule(
@@ -194,11 +196,13 @@ def byoc_monitoring_schedule_name(sagemaker_session, output_kms_key, volume_kms_
     )
 
     statistics = Statistics.from_file_path(
-        statistics_file_path=os.path.join(tests.integ.DATA_DIR, "monitor/statistics.json")
+        statistics_file_path=os.path.join(tests.integ.DATA_DIR, "monitor/statistics.json"),
+        sagemaker_session=sagemaker_session,
     )
 
     constraints = Constraints.from_file_path(
-        constraints_file_path=os.path.join(tests.integ.DATA_DIR, "monitor/constraints.json")
+        constraints_file_path=os.path.join(tests.integ.DATA_DIR, "monitor/constraints.json"),
+        sagemaker_session=sagemaker_session,
     )
 
     my_byoc_monitor.create_monitoring_schedule(
@@ -676,11 +680,13 @@ def test_default_monitor_create_stop_and_start_monitoring_schedule_with_customiz
     )
 
     statistics = Statistics.from_file_path(
-        statistics_file_path=os.path.join(tests.integ.DATA_DIR, "monitor/statistics.json")
+        statistics_file_path=os.path.join(tests.integ.DATA_DIR, "monitor/statistics.json"),
+        sagemaker_session=sagemaker_session,
     )
 
     constraints = Constraints.from_file_path(
-        constraints_file_path=os.path.join(tests.integ.DATA_DIR, "monitor/constraints.json")
+        constraints_file_path=os.path.join(tests.integ.DATA_DIR, "monitor/constraints.json"),
+        sagemaker_session=sagemaker_session,
     )
 
     my_default_monitor.create_monitoring_schedule(
@@ -844,11 +850,13 @@ def test_default_monitor_create_and_update_schedule_config_with_customizations(
     )
 
     statistics = Statistics.from_file_path(
-        statistics_file_path=os.path.join(tests.integ.DATA_DIR, "monitor/statistics.json")
+        statistics_file_path=os.path.join(tests.integ.DATA_DIR, "monitor/statistics.json"),
+        sagemaker_session=sagemaker_session,
     )
 
     constraints = Constraints.from_file_path(
-        constraints_file_path=os.path.join(tests.integ.DATA_DIR, "monitor/constraints.json")
+        constraints_file_path=os.path.join(tests.integ.DATA_DIR, "monitor/constraints.json"),
+        sagemaker_session=sagemaker_session,
     )
 
     my_default_monitor.create_monitoring_schedule(
@@ -958,11 +966,13 @@ def test_default_monitor_create_and_update_schedule_config_with_customizations(
     )
 
     statistics = Statistics.from_file_path(
-        statistics_file_path=os.path.join(tests.integ.DATA_DIR, "monitor/statistics.json")
+        statistics_file_path=os.path.join(tests.integ.DATA_DIR, "monitor/statistics.json"),
+        sagemaker_session=sagemaker_session,
     )
 
     constraints = Constraints.from_file_path(
-        constraints_file_path=os.path.join(tests.integ.DATA_DIR, "monitor/constraints.json")
+        constraints_file_path=os.path.join(tests.integ.DATA_DIR, "monitor/constraints.json"),
+        sagemaker_session=sagemaker_session,
     )
 
     _wait_for_schedule_changes_to_apply(monitor=my_default_monitor)
@@ -1338,11 +1348,13 @@ def test_default_monitor_attach_followed_by_baseline_and_update_monitoring_sched
     )
 
     statistics = Statistics.from_file_path(
-        statistics_file_path=os.path.join(tests.integ.DATA_DIR, "monitor/statistics.json")
+        statistics_file_path=os.path.join(tests.integ.DATA_DIR, "monitor/statistics.json"),
+        sagemaker_session=sagemaker_session,
     )
 
     constraints = Constraints.from_file_path(
-        constraints_file_path=os.path.join(tests.integ.DATA_DIR, "monitor/constraints.json")
+        constraints_file_path=os.path.join(tests.integ.DATA_DIR, "monitor/constraints.json"),
+        sagemaker_session=sagemaker_session,
     )
 
     _wait_for_schedule_changes_to_apply(my_attached_monitor)
@@ -1968,11 +1980,13 @@ def test_byoc_monitor_create_and_update_schedule_config_with_customizations(
     )
 
     statistics = Statistics.from_file_path(
-        statistics_file_path=os.path.join(tests.integ.DATA_DIR, "monitor/statistics.json")
+        statistics_file_path=os.path.join(tests.integ.DATA_DIR, "monitor/statistics.json"),
+        sagemaker_session=sagemaker_session,
     )
 
     constraints = Constraints.from_file_path(
-        constraints_file_path=os.path.join(tests.integ.DATA_DIR, "monitor/constraints.json")
+        constraints_file_path=os.path.join(tests.integ.DATA_DIR, "monitor/constraints.json"),
+        sagemaker_session=sagemaker_session,
     )
 
     my_byoc_monitor.create_monitoring_schedule(

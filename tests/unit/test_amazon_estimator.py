@@ -93,6 +93,18 @@ def test_gov_ecr_uri():
 def test_init(sagemaker_session):
     pca = PCA(num_components=55, sagemaker_session=sagemaker_session, **COMMON_ARGS)
     assert pca.num_components == 55
+    assert pca.enable_network_isolation() is False
+
+
+def test_init_enable_network_isolation(sagemaker_session):
+    pca = PCA(
+        num_components=55,
+        sagemaker_session=sagemaker_session,
+        enable_network_isolation=True,
+        **COMMON_ARGS
+    )
+    assert pca.num_components == 55
+    assert pca.enable_network_isolation() is True
 
 
 def test_init_all_pca_hyperparameters(sagemaker_session):
@@ -450,3 +462,15 @@ def test_get_xgboost_image_uri():
         updated_xgb_image_uri_v2
         == "246618743249.dkr.ecr.us-west-2.amazonaws.com/sagemaker-xgboost:0.90-2-cpu-py3"
     )
+
+
+def test_regitry_throws_error_if_mapping_does_not_exist_for_lda():
+    with pytest.raises(ValueError) as error:
+        registry("cn-north-1", "lda")
+    assert "Algorithm (lda) is unsupported for region (cn-north-1)." in str(error)
+
+
+def test_regitry_throws_error_if_mapping_does_not_exist_for_default_algorithm():
+    with pytest.raises(ValueError) as error:
+        registry("broken_region_name")
+    assert "Algorithm (None) is unsupported for region (broken_region_name)." in str(error)

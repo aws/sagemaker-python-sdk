@@ -6,5 +6,5 @@ phases:
       # run notebook test
       - echo "running notebook test"
       - start_time=`date +%s`
-      - execute-command-if-has-matching-changes "./tests/scripts/run-notebook-test.sh" "src/*.py" "setup.py" "setup.cfg" "tests/scripts/run-notebook-test.sh"
+      - execute-command-if-has-matching-changes "./tests/scripts/run-notebook-test.sh" "src/*.py" "setup.py" "setup.cfg" "tests/scripts/run-notebook-test.sh" "buildspec-notebooktests.yml"
       - ./ci-scripts/displaytime.sh 'notebook test' $start_time

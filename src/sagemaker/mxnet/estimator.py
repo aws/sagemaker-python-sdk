@@ -22,6 +22,7 @@ from sagemaker.fw_utils import (
     empty_framework_version_warning,
     python_deprecation_warning,
     is_version_equal_or_higher,
+    warn_if_parameter_server_with_multi_gpu,
 )
 from sagemaker.mxnet import defaults
 from sagemaker.mxnet.model import MXNetModel
@@ -126,6 +127,12 @@ class MXNet(Framework):
                 python_deprecation_warning(self.__framework_name__, defaults.LATEST_PY2_VERSION)
             )
 
+        if distributions is not None:
+            train_instance_type = kwargs.get("train_instance_type")
+            warn_if_parameter_server_with_multi_gpu(
+                training_instance_type=train_instance_type, distributions=distributions
+            )
+
         self.py_version = py_version
         self._configure_distribution(distributions)
 
@@ -199,22 +206,27 @@ class MXNet(Framework):
             sagemaker.mxnet.model.MXNetModel: A SageMaker ``MXNetModel`` object.
             See :func:`~sagemaker.mxnet.model.MXNetModel` for full details.
         """
+        if "image" not in kwargs:
+            kwargs["image"] = image_name or self.image_name
+
+        if "name" not in kwargs:
+            kwargs["name"] = self._current_job_name
+
         return MXNetModel(
             self.model_data,
             role or self.role,
             entry_point or self.entry_point,
             source_dir=(source_dir or self._model_source_dir()),
             enable_cloudwatch_metrics=self.enable_cloudwatch_metrics,
-            name=self._current_job_name,
             container_log_level=self.container_log_level,
             code_location=self.code_location,
             py_version=self.py_version,
             framework_version=self.framework_version,
-            image=(image_name or self.image_name),
             model_server_workers=model_server_workers,
             sagemaker_session=self.sagemaker_session,
             vpc_config=self.get_vpc_config(vpc_config_override),
             dependencies=(dependencies or self.dependencies),
+            **kwargs
         )
 
     @classmethod

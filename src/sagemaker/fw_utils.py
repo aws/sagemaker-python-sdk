@@ -13,6 +13,7 @@
 """Utility methods used by framework classes"""
 from __future__ import absolute_import
 
+import logging
 import os
 import re
 import shutil
@@ -22,6 +23,8 @@ from collections import namedtuple
 import sagemaker.utils
 from sagemaker import s3
 from sagemaker.utils import get_ecr_image_uri_prefix, ECR_URI_PATTERN
+
+logger = logging.getLogger("sagemaker")
 
 _TAR_SOURCE_FILENAME = "source.tar.gz"
 
@@ -42,6 +45,13 @@ PYTHON_2_DEPRECATION_WARNING = (
     "Python 2. Newer versions of {framework} will only be available for Python 3."
     "Please set the argument \"py_version='py3'\" to use the Python 3 {framework} image."
 )
+PARAMETER_SERVER_MULTI_GPU_WARNING = (
+    "You have selected a multi-GPU training instance type. "
+    "You have also enabled parameter server for distributed training. "
+    "Distributed training with the default parameter server configuration will not "
+    "fully leverage all GPU cores; the parameter server will be configured to run "
+    "only one worker per host regardless of the number of GPUs."
+)
 
 
 EMPTY_FRAMEWORK_VERSION_ERROR = (
@@ -53,14 +63,32 @@ UNSUPPORTED_FRAMEWORK_VERSION_ERROR = (
 )
 
 VALID_PY_VERSIONS = ["py2", "py3"]
-VALID_EIA_FRAMEWORKS = ["tensorflow", "tensorflow-serving", "mxnet", "mxnet-serving"]
-VALID_ACCOUNTS_BY_REGION = {"us-gov-west-1": "246785580436", "us-iso-east-1": "744548109606"}
-ASIMOV_VALID_ACCOUNTS_BY_REGION = {"us-iso-east-1": "886529160074"}
+VALID_EIA_FRAMEWORKS = [
+    "tensorflow",
+    "tensorflow-serving",
+    "mxnet",
+    "mxnet-serving",
+    "pytorch-serving",
+]
+PY2_RESTRICTED_EIA_FRAMEWORKS = ["pytorch-serving"]
+VALID_ACCOUNTS_BY_REGION = {
+    "us-gov-west-1": "246785580436",
+    "us-iso-east-1": "744548109606",
+    "cn-north-1": "422961961927",
+    "cn-northwest-1": "423003514399",
+}
+ASIMOV_VALID_ACCOUNTS_BY_REGION = {
+    "us-gov-west-1": "442386744353",
+    "us-iso-east-1": "886529160074",
+    "cn-north-1": "727897471807",
+    "cn-northwest-1": "727897471807",
+}
 OPT_IN_ACCOUNTS_BY_REGION = {"ap-east-1": "057415533634", "me-south-1": "724002660598"}
 ASIMOV_OPT_IN_ACCOUNTS_BY_REGION = {"ap-east-1": "871362719292", "me-south-1": "217643126080"}
 DEFAULT_ACCOUNT = "520713654638"
 ASIMOV_PROD_ACCOUNT = "763104351884"
 ASIMOV_DEFAULT_ACCOUNT = ASIMOV_PROD_ACCOUNT
+SINGLE_GPU_INSTANCE_TYPES = ("ml.p2.xlarge", "ml.p3.2xlarge")
 
 MERGED_FRAMEWORKS_REPO_MAP = {
     "tensorflow-scriptmode": "tensorflow-training",
@@ -71,6 +99,7 @@ MERGED_FRAMEWORKS_REPO_MAP = {
     "mxnet-serving-eia": "mxnet-inference-eia",
     "pytorch": "pytorch-training",
     "pytorch-serving": "pytorch-inference",
+    "pytorch-serving-eia": "pytorch-inference-eia",
 }
 
 MERGED_FRAMEWORKS_LOWEST_VERSIONS = {
@@ -82,7 +111,15 @@ MERGED_FRAMEWORKS_LOWEST_VERSIONS = {
     "mxnet-serving-eia": [1, 4, 1],
     "pytorch": [1, 2, 0],
     "pytorch-serving": [1, 2, 0],
+    "pytorch-serving-eia": [1, 3, 1],
 }
+
+INFERENTIA_VERSION_RANGES = {
+    "neo-mxnet": [[1, 5, 1], [1, 5, 1]],
+    "neo-tensorflow": [[1, 15, 0], [1, 15, 0]],
+}
+
+INFERENTIA_SUPPORTED_REGIONS = ["us-east-1", "us-west-2"]
 
 DEBUGGER_UNSUPPORTED_REGIONS = ["us-gov-west-1", "us-iso-east-1"]
 
@@ -102,6 +139,23 @@ def is_version_equal_or_higher(lowest_version, framework_version):
     """
     version_list = [int(s) for s in framework_version.split(".")]
     return version_list >= lowest_version[0 : len(version_list)]
+
+
+def is_version_equal_or_lower(highest_version, framework_version):
+    """Determine whether the ``framework_version`` is equal to or lower than
+    ``highest_version``
+
+    Args:
+        highest_version (List[int]): highest version represented in an integer
+            list
+        framework_version (str): framework version string
+
+    Returns:
+        bool: Whether or not ``framework_version`` is equal to or lower than
+            ``highest_version``
+    """
+    version_list = [int(s) for s in framework_version.split(".")]
+    return version_list <= highest_version[0 : len(version_list)]
 
 
 def _is_dlc_version(framework, framework_version, py_version):
@@ -124,23 +178,21 @@ def _is_dlc_version(framework, framework_version, py_version):
     return False
 
 
-def _use_dlc_image(region, framework, py_version, framework_version):
-    """Return if the DLC image should be used for the given framework,
-    framework version, Python version, and region.
+def _is_inferentia_supported(framework, framework_version):
+    """Return if Inferentia supports the framework and its version.
 
     Args:
-        region (str): The AWS region.
-        framework (str): The framework name, e.g. "tensorflow-scriptmode".
-        py_version (str): The Python version, e.g. "py3".
-        framework_version (str): The framework version.
+        framework (str): The framework name, e.g. "tensorflow"
+        framework_version (str): The framework version
 
     Returns:
-        bool: Whether or not to use the corresponding DLC image.
+        bool: Whether or not Inferentia supports the framework and its version.
     """
-    is_gov_region = region in VALID_ACCOUNTS_BY_REGION
-    is_dlc_version = _is_dlc_version(framework, framework_version, py_version)
-
-    return ((not is_gov_region) or region in ASIMOV_VALID_ACCOUNTS_BY_REGION) and is_dlc_version
+    lowest_version_list = INFERENTIA_VERSION_RANGES.get(framework)[0]
+    highest_version_list = INFERENTIA_VERSION_RANGES.get(framework)[1]
+    return is_version_equal_or_higher(
+        lowest_version_list, framework_version
+    ) and is_version_equal_or_lower(highest_version_list, framework_version)
 
 
 def _registry_id(region, framework, py_version, account, framework_version):
@@ -159,7 +211,7 @@ def _registry_id(region, framework, py_version, account, framework_version):
             specific one for the framework, framework version, Python version,
             and region, then ``account`` is returned.
     """
-    if _use_dlc_image(region, framework, py_version, framework_version):
+    if _is_dlc_version(framework, framework_version, py_version):
         if region in ASIMOV_OPT_IN_ACCOUNTS_BY_REGION:
             return ASIMOV_OPT_IN_ACCOUNTS_BY_REGION.get(region)
         if region in ASIMOV_VALID_ACCOUNTS_BY_REGION:
@@ -207,6 +259,7 @@ def create_image_uri(
 
     if _accelerator_type_valid_for_framework(
         framework=framework,
+        py_version=py_version,
         accelerator_type=accelerator_type,
         optimized_families=optimized_families,
     ):
@@ -238,12 +291,35 @@ def create_image_uri(
         # 'cpu' or 'gpu'.
         if family in optimized_families:
             device_type = family
+        elif family.startswith("inf"):
+            device_type = "inf"
         elif family[0] in ["g", "p"]:
             device_type = "gpu"
         else:
             device_type = "cpu"
 
-    use_dlc_image = _use_dlc_image(region, framework, py_version, framework_version)
+    if device_type == "inf":
+        if region not in INFERENTIA_SUPPORTED_REGIONS:
+            raise ValueError(
+                "Inferentia is not supported in region {}. Supported regions are {}".format(
+                    region, ", ".join(INFERENTIA_SUPPORTED_REGIONS)
+                )
+            )
+        if framework not in INFERENTIA_VERSION_RANGES:
+            raise ValueError(
+                "Inferentia does not support {}. Currently it supports "
+                "MXNet and TensorFlow with more frameworks coming soon.".format(
+                    framework.split("-")[-1]
+                )
+            )
+        if not _is_inferentia_supported(framework, framework_version):
+            raise ValueError(
+                "Inferentia is not supported with {} version {}.".format(
+                    framework.split("-")[-1], framework_version
+                )
+            )
+
+    use_dlc_image = _is_dlc_version(framework, framework_version, py_version)
 
     if not py_version or (use_dlc_image and framework == "tensorflow-serving-eia"):
         tag = "{}-{}".format(framework_version, device_type)
@@ -259,21 +335,27 @@ def create_image_uri(
 
 
 def _accelerator_type_valid_for_framework(
-    framework, accelerator_type=None, optimized_families=None
+    framework, py_version, accelerator_type=None, optimized_families=None
 ):
     """
     Args:
         framework:
+        py_version:
         accelerator_type:
         optimized_families:
     """
     if accelerator_type is None:
         return False
 
+    if py_version == "py2" and framework in PY2_RESTRICTED_EIA_FRAMEWORKS:
+        raise ValueError(
+            "{} is not supported with Amazon Elastic Inference in Python 2.".format(framework)
+        )
+
     if framework not in VALID_EIA_FRAMEWORKS:
         raise ValueError(
             "{} is not supported with Amazon Elastic Inference. Currently only "
-            "Python-based TensorFlow and MXNet are supported.".format(framework)
+            "Python-based TensorFlow, MXNet, PyTorch are supported.".format(framework)
         )
 
     if optimized_families:
@@ -310,7 +392,14 @@ def validate_source_dir(script, directory):
 
 
 def tar_and_upload_dir(
-    session, bucket, s3_key_prefix, script, directory=None, dependencies=None, kms_key=None
+    session,
+    bucket,
+    s3_key_prefix,
+    script,
+    directory=None,
+    dependencies=None,
+    kms_key=None,
+    s3_resource=None,
 ):
     """Package source files and upload a compress tar file to S3. The S3
     location will be ``s3://<bucket>/s3_key_prefix/sourcedir.tar.gz``.
@@ -334,6 +423,9 @@ def tar_and_upload_dir(
             copied into /opt/ml/lib
         kms_key (str): Optional. KMS key ID used to upload objects to the bucket
             (default: None).
+        s3_resource (boto3.resource("s3")): Optional. Pre-instantiated Boto3 Resource
+            for S3 connections, can be used to customize the configuration,
+            e.g. set the endpoint URL (default: None).
     Returns:
         sagemaker.fw_utils.UserCode: An object with the S3 bucket and key (S3 prefix) and
             script name.
@@ -357,7 +449,12 @@ def tar_and_upload_dir(
         else:
             extra_args = None
 
-        session.resource("s3").Object(bucket, key).upload_file(tar_file, ExtraArgs=extra_args)
+        if s3_resource is None:
+            s3_resource = session.resource("s3", region_name=session.region_name)
+        else:
+            print("Using provided s3_resource")
+
+        s3_resource.Object(bucket, key).upload_file(tar_file, ExtraArgs=extra_args)
     finally:
         shutil.rmtree(tmp)
 
@@ -476,6 +573,44 @@ def empty_framework_version_warning(default_version, latest_version):
     if default_version != latest_version:
         msgs.append(LATER_FRAMEWORK_VERSION_WARNING.format(latest=latest_version))
     return " ".join(msgs)
+
+
+def warn_if_parameter_server_with_multi_gpu(training_instance_type, distributions):
+    """Warn the user that training will not fully leverage all the GPU
+    cores if parameter server is enabled and a multi-GPU instance is selected.
+    Distributed training with the default parameter server setup doesn't
+    support multi-GPU instances.
+
+    Args:
+        training_instance_type (str): A string representing the type of training instance selected.
+        distributions (dict): A dictionary with information to enable distributed training.
+            (Defaults to None if distributed training is not enabled.) For example:
+
+            .. code:: python
+
+                {
+                    'parameter_server':
+                    {
+                        'enabled': True
+                    }
+                }
+
+
+    """
+    if training_instance_type == "local" or distributions is None:
+        return
+
+    is_multi_gpu_instance = (
+        training_instance_type.split(".")[1].startswith("p")
+        and training_instance_type not in SINGLE_GPU_INSTANCE_TYPES
+    )
+
+    ps_enabled = "parameter_server" in distributions and distributions["parameter_server"].get(
+        "enabled", False
+    )
+
+    if is_multi_gpu_instance and ps_enabled:
+        logger.warning(PARAMETER_SERVER_MULTI_GPU_WARNING)
 
 
 def get_unsupported_framework_version_error(

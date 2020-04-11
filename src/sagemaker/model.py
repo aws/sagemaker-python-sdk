@@ -24,7 +24,9 @@ from sagemaker.transformer import Transformer
 
 LOGGER = logging.getLogger("sagemaker")
 
-NEO_ALLOWED_FRAMEWORKS = set(["mxnet", "tensorflow", "keras", "pytorch", "onnx", "xgboost"])
+NEO_ALLOWED_FRAMEWORKS = set(
+    ["mxnet", "tensorflow", "keras", "pytorch", "onnx", "xgboost", "tflite"]
+)
 
 NEO_IMAGE_ACCOUNT = {
     "us-west-1": "710691900526",
@@ -45,7 +47,12 @@ NEO_IMAGE_ACCOUNT = {
     "sa-east-1": "756306329178",
     "ca-central-1": "464438896020",
     "me-south-1": "836785723513",
+    "cn-north-1": "472730292857",
+    "cn-northwest-1": "474822919863",
+    "us-gov-west-1": "263933020539",
 }
+
+INFERENTIA_INSTANCE_PREFIX = "ml_inf"
 
 
 class Model(object):
@@ -115,6 +122,19 @@ class Model(object):
         self._enable_network_isolation = enable_network_isolation
         self.model_kms_key = model_kms_key
 
+    def _init_sagemaker_session_if_does_not_exist(self, instance_type):
+        """Set ``self.sagemaker_session`` to be a ``LocalSession`` or
+        ``Session`` if it is not already. The type of session object is
+        determined by the instance type.
+        """
+        if self.sagemaker_session:
+            return
+
+        if instance_type in ("local", "local_gpu"):
+            self.sagemaker_session = local.LocalSession()
+        else:
+            self.sagemaker_session = session.Session()
+
     def prepare_container_def(
         self, instance_type, accelerator_type=None
     ):  # pylint: disable=unused-argument
@@ -164,6 +184,8 @@ class Model(object):
         container_def = self.prepare_container_def(instance_type, accelerator_type=accelerator_type)
         self.name = self.name or utils.name_from_image(container_def["Image"])
         enable_network_isolation = self.enable_network_isolation()
+
+        self._init_sagemaker_session_if_does_not_exist(instance_type)
         self.sagemaker_session.create_model(
             self.name,
             self.role,
@@ -268,6 +290,23 @@ class Model(object):
             account=self._neo_image_account(region),
         )
 
+    def _inferentia_image(self, region, target_instance_type, framework, framework_version):
+        """
+                Args:
+                    region:
+                    target_instance_type:
+                    framework:
+                    framework_version:
+                """
+        return fw_utils.create_image_uri(
+            region,
+            "neo-" + framework.lower(),
+            target_instance_type.replace("_", "."),
+            framework_version,
+            py_version="py3",
+            account=self._neo_image_account(region),
+        )
+
     def compile(
         self,
         target_instance_family,
@@ -284,13 +323,13 @@ class Model(object):
 
         Args:
             target_instance_family (str): Identifies the device that you want to
-                run your model after compilation, for example: ml_c5. Allowed
-                strings are: ml_c5, ml_m5, ml_c4, ml_m4, jetsontx1, jetsontx2,
-                ml_p2, ml_p3, deeplens, rasp3b
+                run your model after compilation, for example: ml_c5. For allowed
+                strings see
+                https://docs.aws.amazon.com/sagemaker/latest/dg/API_OutputConfig.html.
             input_shape (dict): Specifies the name and shape of the expected
                 inputs for your trained model in json dictionary form, for
-                example: {'data':[1,3,1024,1024]}, or {'var1': [1,1,28,28],
-                'var2':[1,1,28,28]}
+                example: {'data': [1,3,1024,1024]}, or {'var1': [1,1,28,28],
+                'var2': [1,1,28,28]}
             output_path (str): Specifies where to store the compiled model
             role (str): Execution role
             tags (list[dict]): List of tags for labeling a compilation job. For
@@ -324,6 +363,7 @@ class Model(object):
         framework = framework.upper()
         framework_version = self._get_framework_version() or framework_version
 
+        self._init_sagemaker_session_if_does_not_exist(target_instance_family)
         config = self._compilation_job_config(
             target_instance_family,
             input_shape,
@@ -339,6 +379,14 @@ class Model(object):
         self.model_data = job_status["ModelArtifacts"]["S3ModelArtifacts"]
         if target_instance_family.startswith("ml_"):
             self.image = self._neo_image(
+                self.sagemaker_session.boto_region_name,
+                target_instance_family,
+                framework,
+                framework_version,
+            )
+            self._is_compiled_model = True
+        elif target_instance_family.startswith(INFERENTIA_INSTANCE_PREFIX):
+            self.image = self._inferentia_image(
                 self.sagemaker_session.boto_region_name,
                 target_instance_family,
                 framework,
@@ -413,18 +461,20 @@ class Model(object):
                 ``self.predictor_cls`` on the created endpoint name, if ``self.predictor_cls``
                 is not None. Otherwise, return None.
         """
-        if not self.sagemaker_session:
-            if instance_type in ("local", "local_gpu"):
-                self.sagemaker_session = local.LocalSession()
-            else:
-                self.sagemaker_session = session.Session()
+        self._init_sagemaker_session_if_does_not_exist(instance_type)
 
         if self.role is None:
             raise ValueError("Role can not be null for deploying a model")
 
+        if instance_type.startswith("ml.inf") and not self._is_compiled_model:
+            LOGGER.warning(
+                "Your model is not compiled. Please compile your model before using Inferentia."
+            )
+
         compiled_model_suffix = "-".join(instance_type.split(".")[:-1])
         if self._is_compiled_model:
-            self.name += compiled_model_suffix
+            name_prefix = self.name or utils.name_from_image(self.image)
+            self.name = "{}{}".format(name_prefix, compiled_model_suffix)
 
         self._create_sagemaker_model(instance_type, accelerator_type, tags)
         production_variant = sagemaker.production_variant(
@@ -491,8 +541,8 @@ class Model(object):
             instance_type (str): Type of EC2 instance to use, for example,
                 'ml.c4.xlarge'.
             strategy (str): The strategy used to decide how to batch records in
-                a single request (default: None). Valid values: 'MULTI_RECORD'
-                and 'SINGLE_RECORD'.
+                a single request (default: None). Valid values: 'MultiRecord'
+                and 'SingleRecord'.
             assemble_with (str): How the output is assembled (default: None).
                 Valid values: 'Line' or 'None'.
             output_path (str): S3 location for saving the transform result. If
@@ -514,6 +564,8 @@ class Model(object):
             volume_kms_key (str): Optional. KMS key ID for encrypting the volume
                 attached to the ML compute instance (default: None).
         """
+        self._init_sagemaker_session_if_does_not_exist(instance_type)
+
         self._create_sagemaker_model(instance_type, tags=tags)
         if self.enable_network_isolation():
             env = None

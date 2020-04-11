@@ -216,8 +216,7 @@ class AutoML(object):
                 created from it.
             sagemaker_session (sagemaker.session.Session): A SageMaker Session
                 object, used for SageMaker interactions (default: None). If not
-                specified, one is created using the default AWS configuration
-                chain.
+                specified, the one originally associated with the ``AutoML`` instance is used.
             name (str): The pipeline model name. If None, a default model name will
                 be selected on each ``deploy``.
             endpoint_name (str): The name of the endpoint to create (default:
@@ -248,6 +247,8 @@ class AutoML(object):
                 If ``predictor_cls`` is specified, the invocation of ``self.predictor_cls`` on
                 the created endpoint name. Otherwise, ``None``.
         """
+        sagemaker_session = sagemaker_session or self.sagemaker_session
+
         if candidate is None:
             candidate_dict = self.best_candidate()
             candidate = CandidateEstimator(candidate_dict, sagemaker_session=sagemaker_session)

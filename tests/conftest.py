@@ -31,7 +31,14 @@ from sagemaker.tensorflow.estimator import TensorFlow
 
 DEFAULT_REGION = "us-west-2"
 
-NO_M4_REGIONS = ["eu-west-3", "eu-north-1", "ap-east-1", "sa-east-1", "me-south-1"]
+NO_M4_REGIONS = [
+    "eu-west-3",
+    "eu-north-1",
+    "ap-east-1",
+    "ap-northeast-1",  # it has m4.xl, but not enough in all AZs
+    "sa-east-1",
+    "me-south-1",
+]
 
 NO_T2_REGIONS = ["eu-north-1", "ap-east-1", "me-south-1"]
 
@@ -270,6 +277,11 @@ def cpu_instance_type(sagemaker_session, request):
 
 
 @pytest.fixture(scope="session")
+def inf_instance_type(sagemaker_session, request):
+    return "ml.inf1.xlarge"
+
+
+@pytest.fixture(scope="session")
 def ec2_instance_type(cpu_instance_type):
     return cpu_instance_type[3:]
 
@@ -286,7 +298,12 @@ def alternative_cpu_instance_type(sagemaker_session, request):
 
 @pytest.fixture(scope="session")
 def cpu_instance_family(cpu_instance_type):
-    "_".join(cpu_instance_type.split(".")[0:2])
+    return "_".join(cpu_instance_type.split(".")[0:2])
+
+
+@pytest.fixture(scope="session")
+def inf_instance_family(inf_instance_type):
+    return "_".join(inf_instance_type.split(".")[0:2])
 
 
 def pytest_generate_tests(metafunc):

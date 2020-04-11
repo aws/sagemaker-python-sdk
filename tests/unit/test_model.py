@@ -39,6 +39,7 @@ INSTANCE_TYPE = "c4.4xlarge"
 ACCELERATOR_TYPE = "ml.eia.medium"
 IMAGE_NAME = "fakeimage"
 REGION = "us-west-2"
+NEO_REGION_ACCOUNT = "301217895009"
 MODEL_NAME = "{}-{}".format(MODEL_IMAGE, TIMESTAMP)
 GIT_REPO = "https://github.com/aws/sagemaker-python-sdk.git"
 BRANCH = "test-branch-git-config"
@@ -130,6 +131,8 @@ def sagemaker_session():
         boto_region_name=REGION,
         config=None,
         local_mode=False,
+        s3_client=None,
+        s3_resource=None,
     )
     sms.default_bucket = Mock(name="default_bucket", return_value=BUCKET_NAME)
     return sms
@@ -435,6 +438,21 @@ def test_model_create_transformer(sagemaker_session):
     sagemaker.model.Model._create_sagemaker_model.assert_called_with(instance_type, tags=tags)
 
 
+@patch("sagemaker.session.Session")
+@patch("sagemaker.local.LocalSession")
+@patch("sagemaker.fw_utils.tar_and_upload_dir", MagicMock())
+def test_transformer_creates_correct_session(local_session, session):
+    model = DummyFrameworkModel(sagemaker_session=None)
+    transformer = model.transformer(instance_count=1, instance_type="local")
+    assert model.sagemaker_session == local_session.return_value
+    assert transformer.sagemaker_session == local_session.return_value
+
+    model = DummyFrameworkModel(sagemaker_session=None)
+    transformer = model.transformer(instance_count=1, instance_type="ml.m5.xlarge")
+    assert model.sagemaker_session == session.return_value
+    assert transformer.sagemaker_session == session.return_value
+
+
 def test_model_package_enable_network_isolation_with_no_product_id(sagemaker_session):
     sagemaker_session.sagemaker_client.describe_model_package = Mock(
         return_value=DESCRIBE_MODEL_PACKAGE_RESPONSE
@@ -529,6 +547,29 @@ def test_delete_non_deployed_model(sagemaker_session):
         model.delete_model()
 
 
+def test_compile_model_for_inferentia(sagemaker_session, tmpdir):
+    sagemaker_session.wait_for_compilation_job = Mock(
+        return_value=DESCRIBE_COMPILATION_JOB_RESPONSE
+    )
+    model = DummyFrameworkModel(sagemaker_session, source_dir=str(tmpdir))
+    model.compile(
+        target_instance_family="ml_inf",
+        input_shape={"data": [1, 3, 1024, 1024]},
+        output_path="s3://output",
+        role="role",
+        framework="tensorflow",
+        framework_version="1.15.0",
+        job_name="compile-model",
+    )
+    assert (
+        "{}.dkr.ecr.{}.amazonaws.com/sagemaker-neo-tensorflow:1.15.0-inf-py3".format(
+            NEO_REGION_ACCOUNT, REGION
+        )
+        == model.image
+    )
+    assert model._is_compiled_model is True
+
+
 def test_compile_model_for_edge_device(sagemaker_session, tmpdir):
     sagemaker_session.wait_for_compilation_job = Mock(
         return_value=DESCRIBE_COMPILATION_JOB_RESPONSE
@@ -541,6 +582,22 @@ def test_compile_model_for_edge_device(sagemaker_session, tmpdir):
         role="role",
         framework="tensorflow",
         job_name="compile-model",
+    )
+    assert model._is_compiled_model is False
+
+
+def test_compile_model_for_edge_device_tflite(sagemaker_session, tmpdir):
+    sagemaker_session.wait_for_compilation_job = Mock(
+        return_value=DESCRIBE_COMPILATION_JOB_RESPONSE
+    )
+    model = DummyFrameworkModel(sagemaker_session, source_dir=str(tmpdir))
+    model.compile(
+        target_instance_family="deeplens",
+        input_shape={"data": [1, 3, 1024, 1024]},
+        output_path="s3://output",
+        role="role",
+        framework="tflite",
+        job_name="tflite-compile-model",
     )
     assert model._is_compiled_model is False
 
@@ -559,6 +616,40 @@ def test_compile_model_for_cloud(sagemaker_session, tmpdir):
         job_name="compile-model",
     )
     assert model._is_compiled_model is True
+
+
+def test_compile_model_for_cloud_tflite(sagemaker_session, tmpdir):
+    sagemaker_session.wait_for_compilation_job = Mock(
+        return_value=DESCRIBE_COMPILATION_JOB_RESPONSE
+    )
+    model = DummyFrameworkModel(sagemaker_session, source_dir=str(tmpdir))
+    model.compile(
+        target_instance_family="ml_c4",
+        input_shape={"data": [1, 3, 1024, 1024]},
+        output_path="s3://output",
+        role="role",
+        framework="tflite",
+        job_name="tflite-compile-model",
+    )
+    assert model._is_compiled_model is True
+
+
+@patch("sagemaker.session.Session")
+@patch("sagemaker.fw_utils.tar_and_upload_dir", MagicMock())
+def test_compile_creates_session(session):
+    session.return_value.boto_region_name = "us-west-2"
+
+    model = DummyFrameworkModel(sagemaker_session=None)
+    model.compile(
+        target_instance_family="ml_c4",
+        input_shape={"data": [1, 3, 1024, 1024]},
+        output_path="s3://output",
+        role="role",
+        framework="tensorflow",
+        job_name="compile-model",
+    )
+
+    assert model.sagemaker_session == session.return_value
 
 
 def test_check_neo_region(sagemaker_session, tmpdir):
@@ -609,6 +700,9 @@ def test_check_neo_region(sagemaker_session, tmpdir):
         "sa-east-1",
         "ca-central-1",
         "me-south-1",
+        "cn-north-1",
+        "cn-northwest-1",
+        "us-gov-west-1",
     ]
     for region_name in ec2_region_list:
         if region_name in neo_support_region:

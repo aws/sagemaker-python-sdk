@@ -98,6 +98,7 @@ class LocalSagemakerClient(object):
         )
         training_job = _LocalTrainingJob(container)
         hyperparameters = kwargs["HyperParameters"] if "HyperParameters" in kwargs else {}
+        logger.info("Starting training job")
         training_job.start(InputDataConfig, OutputDataConfig, hyperparameters, TrainingJobName)
 
         LocalSagemakerClient._training_jobs[TrainingJobName] = training_job
@@ -377,7 +378,9 @@ class LocalSagemakerRuntimeClient(object):
 class LocalSession(Session):
     """Placeholder docstring"""
 
-    def __init__(self, boto_session=None):
+    def __init__(self, boto_session=None, s3_endpoint_url=None):
+        self.s3_endpoint_url = s3_endpoint_url
+
         super(LocalSession, self).__init__(boto_session)
 
         if platform.system() == "Windows":
@@ -406,6 +409,10 @@ class LocalSession(Session):
         self.sagemaker_client = LocalSagemakerClient(self)
         self.sagemaker_runtime_client = LocalSagemakerRuntimeClient(self.config)
         self.local_mode = True
+
+        if self.s3_endpoint_url is not None:
+            self.s3_resource = boto_session.resource("s3", endpoint_url=self.s3_endpoint_url)
+            self.s3_client = boto_session.client("s3", endpoint_url=self.s3_endpoint_url)
 
         sagemaker_config_file = os.path.join(os.path.expanduser("~"), ".sagemaker", "config.yaml")
         if os.path.exists(sagemaker_config_file):

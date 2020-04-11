@@ -48,7 +48,7 @@ The training script is very similar to a training script you might run outside o
 
 * ``SM_MODEL_DIR``: A string that represents the local path where the training job writes the model artifacts to.
   After training, artifacts in this directory are uploaded to S3 for model hosting. This is different than the ``model_dir``
-  argument passed in your training script, which is an S3 location. ``SM_MODEL_DIR`` is always set to ``/opt/ml/model``.
+  argument passed in your training script, which can be an S3 location. ``SM_MODEL_DIR`` is always set to ``/opt/ml/model``.
 * ``SM_NUM_GPUS``: An integer representing the number of GPUs available to the host.
 * ``SM_OUTPUT_DATA_DIR``: A string that represents the path to the directory to write output artifacts to.
   Output artifacts might include checkpoints, graphs, and other files to save, but do not include model artifacts.
@@ -58,7 +58,7 @@ The training script is very similar to a training script you might run outside o
 
 For the exhaustive list of available environment variables, see the `SageMaker Containers documentation <https://github.com/aws/sagemaker-containers#list-of-provided-environment-variables-by-sagemaker-containers>`_.
 
-A typical training script loads data from the input channels, configures training with hyperparameters, trains a model, and saves a model to ``SM_CHANNEL_TRAIN`` so that it can be deployed for inference later.
+A typical training script loads data from the input channels, configures training with hyperparameters, trains a model, and saves a model to ``SM_MODEL_DIR`` so that it can be deployed for inference later.
 Hyperparameters are passed to your script as arguments and can be retrieved with an ``argparse.ArgumentParser`` instance.
 For example, a training script might start with the following:
 
@@ -166,7 +166,7 @@ The following args are not permitted when using Script Mode:
 Where the S3 url is a path to your training data within Amazon S3.
 The constructor keyword arguments define how SageMaker runs your training script.
 
-For more information about the sagemaker.tensorflow.TensorFlow estimator, see `sagemaker.tensorflow.TensorFlow Class`_.
+For more information about the sagemaker.tensorflow.TensorFlow estimator, see `SageMaker TensorFlow Classes`_.
 
 Call the fit Method
 ===================
@@ -267,19 +267,19 @@ Training with ``MPI`` is configured by specifying following fields in ``distribu
   command executed by SageMaker to launch distributed horovod training.
 
 
-In the below example we create an estimator to launch Horovod distributed training with 2 processes on one host:
+In the below example we create an estimator to launch Horovod distributed training with 4 processes on one host:
 
 .. code:: python
 
     from sagemaker.tensorflow import TensorFlow
 
     tf_estimator = TensorFlow(entry_point='tf-train.py', role='SageMakerRole',
-                              train_instance_count=1, train_instance_type='ml.p2.xlarge',
-                              framework_version='1.12', py_version='py3',
+                              train_instance_count=1, train_instance_type='ml.p3.8xlarge',
+                              framework_version='2.1.0', py_version='py3',
                               distributions={
                                   'mpi': {
                                       'enabled': True,
-                                      'processes_per_host': 2,
+                                      'processes_per_host': 4,
                                       'custom_mpi_options': '--NCCL_DEBUG INFO'
                                   }
                               })
@@ -544,7 +544,7 @@ For example:
 
   batch_output = 's3://{}/{}/results'.format(bucket, prefix) # The location to store the results
 
-  tf_transformer = tf_estimator.transformer(instance_count=1, instance_type='ml.m4.xlarge, output_path=batch_output)
+  tf_transformer = tf_estimator.transformer(instance_count=1, instance_type='ml.m4.xlarge', output_path=batch_output)
 
 To use a model trained outside of SageMaker, you can package the model as a SageMaker model, and call the ``transformer`` method of the SageMaker model.
 
@@ -557,7 +557,7 @@ For example:
 
   batch_output = 's3://{}/{}/results'.format(bucket, prefix) # The location to store the results
 
-  tf_transformer = tensorflow_serving_model.transformer(instance_count=1, instance_type='ml.m4.xlarge, output_path=batch_output)
+  tf_transformer = tensorflow_serving_model.transformer(instance_count=1, instance_type='ml.m4.xlarge', output_path=batch_output)
 
 For information about how to package a model as a SageMaker model, see :ref:`overview:BYO Model`.
 When you call the ``tranformer`` method, you specify the type and number of instances to use for the batch transform job, and the location where the results are stored in S3.
@@ -909,77 +909,11 @@ processing. There are 2 ways to do this:
 
 For more information, see: https://github.com/aws/sagemaker-tensorflow-serving-container#prepost-processing
 
-*************************************
-sagemaker.tensorflow.TensorFlow Class
-*************************************
+****************************
+SageMaker TensorFlow Classes
+****************************
 
-The following are the most commonly used ``TensorFlow`` constructor arguments.
-
-Required:
-
-- ``entry_point (str)`` Path (absolute or relative) to the Python file which
-  should be executed as the entry point to training.
-- ``role (str)`` An AWS IAM role (either name or full ARN). The Amazon
-  SageMaker training jobs and APIs that create Amazon SageMaker
-  endpoints use this role to access training data and model artifacts.
-  After the endpoint is created, the inference code might use the IAM
-  role, if accessing AWS resource.
-- ``train_instance_count (int)`` Number of Amazon EC2 instances to use for
-  training.
-- ``train_instance_type (str)`` Type of EC2 instance to use for training, for
-  example, 'ml.c4.xlarge'.
-
-Optional:
-
-- ``source_dir (str)`` Path (absolute or relative) to a directory with any
-  other training source code dependencies including the entry point
-  file. Structure within this directory will be preserved when training
-  on SageMaker.
-- ``dependencies (list[str])`` A list of paths to directories (absolute or relative) with
-  any additional libraries that will be exported to the container (default: ``[]``).
-  The library folders will be copied to SageMaker in the same folder where the entrypoint is copied.
-  If the ``source_dir`` points to S3, code will be uploaded and the S3 location will be used
-  instead. Example:
-
-  The following call
-
-  >>> TensorFlow(entry_point='train.py', dependencies=['my/libs/common', 'virtual-env'])
-
-  results in the following inside the container:
-
-  >>> opt/ml/code
-  >>>     ├── train.py
-  >>>     ├── common
-  >>>     └── virtual-env
-
-- ``hyperparameters (dict[str, ANY])`` Hyperparameters that will be used for training.
-  Will be made accessible as command line arguments.
-- ``train_volume_size (int)`` Size in GB of the EBS volume to use for storing
-  input data during training. Must be large enough to the store training
-  data.
-- ``train_max_run (int)`` Timeout in seconds for training, after which Amazon
-  SageMaker terminates the job regardless of its current status.
-- ``output_path (str)`` S3 location where you want the training result (model
-  artifacts and optional output files) saved. If not specified, results
-  are stored to a default bucket. If the bucket with the specific name
-  does not exist, the estimator creates the bucket during the ``fit``
-  method execution.
-- ``output_kms_key`` Optional KMS key ID to optionally encrypt training
-  output with.
-- ``base_job_name`` Name to assign for the training job that the ``fit``
-  method launches. If not specified, the estimator generates a default
-  job name, based on the training image name and current timestamp.
-- ``image_name`` An alternative docker image to use for training and
-  serving.  If specified, the estimator will use this image for training and
-  hosting, instead of selecting the appropriate SageMaker official image based on
-  ``framework_version`` and ``py_version``. Refer to: `SageMaker TensorFlow Docker containers <https://github.com/aws/sagemaker-python-sdk/tree/master/src/sagemaker/tensorflow#sagemaker-tensorflow-docker-containers>`_ for details on what the official images support
-  and where to find the source code to build your custom image.
-- ``script_mode (bool)`` Whether to use Script Mode or not. Script mode is the only available training mode in Python 3,
-  setting ``py_version`` to ``py3`` automatically sets ``script_mode`` to True.
-- ``model_dir (str)`` Location where model data, checkpoint data, and TensorBoard checkpoints should be saved during training.
-  If not specified a S3 location will be generated under the training job's default bucket. And ``model_dir`` will be
-  passed in your training script as one of the command line arguments.
-- ``distributions (dict)`` Configure your distribution strategy with this argument.
+For information about the different TensorFlow-related classes in the SageMaker Python SDK, see https://sagemaker.readthedocs.io/en/stable/sagemaker.tensorflow.html.
 
 **************************************
 SageMaker TensorFlow Docker containers

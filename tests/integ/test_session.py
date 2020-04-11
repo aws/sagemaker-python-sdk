@@ -46,5 +46,5 @@ def test_sagemaker_session_does_not_create_bucket_on_init(
         default_bucket=CUSTOM_BUCKET_NAME,
     )
 
-    s3 = boto3.resource("s3")
+    s3 = boto3.resource("s3", region_name=DEFAULT_REGION)
     assert s3.Bucket(CUSTOM_BUCKET_NAME).creation_date is None

@@ -80,7 +80,7 @@ class SKLearn(Framework):
                 and values, but ``str()`` will be called to convert them before
                 training.
             py_version (str): Python version you want to use for executing your
-                model training code (default: 'py2'). One of 'py2' or 'py3'.
+                model training code (default: 'py3'). One of 'py2' or 'py3'.
             image_name (str): If specified, the estimator will use this image
                 for training and hosting, instead of selecting the appropriate
                 SageMaker official image based on framework_version and
@@ -165,7 +165,20 @@ class SKLearn(Framework):
         # remove unwanted entry_point kwarg
         if "entry_point" in kwargs:
             logger.debug("removing unused entry_point argument: %s", str(kwargs["entry_point"]))
-            kwargs = {k: v for k, v in kwargs.items() if k != "entry_point"}
+            del kwargs["entry_point"]
+
+        # remove image kwarg
+        if "image" in kwargs:
+            image = kwargs["image"]
+            del kwargs["image"]
+        else:
+            image = None
+
+        if "enable_network_isolation" not in kwargs:
+            kwargs["enable_network_isolation"] = self.enable_network_isolation()
+
+        if "name" not in kwargs:
+            kwargs["name"] = self._current_job_name
 
         return SKLearnModel(
             self.model_data,
@@ -173,16 +186,14 @@ class SKLearn(Framework):
             self.entry_point,
             source_dir=self._model_source_dir(),
             enable_cloudwatch_metrics=self.enable_cloudwatch_metrics,
-            name=self._current_job_name,
             container_log_level=self.container_log_level,
             code_location=self.code_location,
             py_version=self.py_version,
             framework_version=self.framework_version,
             model_server_workers=model_server_workers,
-            image=self.image_name,
+            image=image or self.image_name,
             sagemaker_session=self.sagemaker_session,
             vpc_config=self.get_vpc_config(vpc_config_override),
-            enable_network_isolation=self.enable_network_isolation(),
             **kwargs
         )
 

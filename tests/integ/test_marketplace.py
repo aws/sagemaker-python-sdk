@@ -24,6 +24,7 @@ import tests.integ
 from sagemaker import AlgorithmEstimator, ModelPackage
 from sagemaker.tuner import IntegerParameter, HyperparameterTuner
 from sagemaker.utils import sagemaker_timestamp
+from sagemaker.utils import _aws_partition
 from tests.integ import DATA_DIR
 from tests.integ.timeout import timeout, timeout_and_delete_endpoint_by_name
 from tests.integ.marketplace_utils import REGION_ACCOUNT_MAP
@@ -39,12 +40,12 @@ from tests.integ.marketplace_utils import REGION_ACCOUNT_MAP
 # Both are written by Amazon and are free to subscribe.
 
 ALGORITHM_ARN = (
-    "arn:aws:sagemaker:%s:%s:algorithm/scikit-decision-trees-"
+    "arn:{partition}:sagemaker:{region}:{account}:algorithm/scikit-decision-trees-"
     "15423055-57b73412d2e93e9239e4e16f83298b8f"
 )
 
 MODEL_PACKAGE_ARN = (
-    "arn:aws:sagemaker:%s:%s:model-package/scikit-iris-detector-"
+    "arn:{partition}:sagemaker:{region}:{account}:model-package/scikit-iris-detector-"
     "154230595-8f00905c1f927a512b73ea29dd09ae30"
 )
 
@@ -63,7 +64,9 @@ def test_marketplace_estimator(sagemaker_session, cpu_instance_type):
         data_path = os.path.join(DATA_DIR, "marketplace", "training")
         region = sagemaker_session.boto_region_name
         account = REGION_ACCOUNT_MAP[region]
-        algorithm_arn = ALGORITHM_ARN % (region, account)
+        algorithm_arn = ALGORITHM_ARN.format(
+            partition=_aws_partition(region), region=region, account=account
+        )
 
         algo = AlgorithmEstimator(
             algorithm_arn=algorithm_arn,
@@ -103,7 +106,9 @@ def test_marketplace_attach(sagemaker_session, cpu_instance_type):
         data_path = os.path.join(DATA_DIR, "marketplace", "training")
         region = sagemaker_session.boto_region_name
         account = REGION_ACCOUNT_MAP[region]
-        algorithm_arn = ALGORITHM_ARN % (region, account)
+        algorithm_arn = ALGORITHM_ARN.format(
+            partition=_aws_partition(region), region=region, account=account
+        )
 
         mktplace = AlgorithmEstimator(
             algorithm_arn=algorithm_arn,
@@ -155,7 +160,9 @@ def test_marketplace_attach(sagemaker_session, cpu_instance_type):
 def test_marketplace_model(sagemaker_session, cpu_instance_type):
     region = sagemaker_session.boto_region_name
     account = REGION_ACCOUNT_MAP[region]
-    model_package_arn = MODEL_PACKAGE_ARN % (region, account)
+    model_package_arn = MODEL_PACKAGE_ARN.format(
+        partition=_aws_partition(region), region=region, account=account
+    )
 
     def predict_wrapper(endpoint, session):
         return sagemaker.RealTimePredictor(
@@ -192,7 +199,9 @@ def test_marketplace_tuning_job(sagemaker_session, cpu_instance_type):
     data_path = os.path.join(DATA_DIR, "marketplace", "training")
     region = sagemaker_session.boto_region_name
     account = REGION_ACCOUNT_MAP[region]
-    algorithm_arn = ALGORITHM_ARN % (region, account)
+    algorithm_arn = ALGORITHM_ARN.format(
+        partition=_aws_partition(region), region=region, account=account
+    )
 
     mktplace = AlgorithmEstimator(
         algorithm_arn=algorithm_arn,
@@ -233,7 +242,9 @@ def test_marketplace_transform_job(sagemaker_session, cpu_instance_type):
     data_path = os.path.join(DATA_DIR, "marketplace", "training")
     region = sagemaker_session.boto_region_name
     account = REGION_ACCOUNT_MAP[region]
-    algorithm_arn = ALGORITHM_ARN % (region, account)
+    algorithm_arn = ALGORITHM_ARN.format(
+        partition=_aws_partition(region), region=region, account=account
+    )
 
     algo = AlgorithmEstimator(
         algorithm_arn=algorithm_arn,
@@ -279,7 +290,9 @@ def test_marketplace_transform_job_from_model_package(sagemaker_session, cpu_ins
 
     region = sagemaker_session.boto_region_name
     account = REGION_ACCOUNT_MAP[region]
-    model_package_arn = MODEL_PACKAGE_ARN % (region, account)
+    model_package_arn = MODEL_PACKAGE_ARN.format(
+        partition=_aws_partition(region), region=region, account=account
+    )
 
     model = ModelPackage(
         role="SageMakerRole",
