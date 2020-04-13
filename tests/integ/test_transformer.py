@@ -180,7 +180,7 @@ def test_transform_pytorch_vpc_custom_model_bucket(
     transformer.transform(
         transform_input,
         content_type="application/x-npy",
-        job_name=unique_name_from_base("test-transform-vpc")
+        job_name=unique_name_from_base("test-transform-vpc"),
     )
 
     with timeout_and_delete_model_with_transformer(
