@@ -155,6 +155,43 @@ You can also run them in parallel:
     tox -- -n auto tests/integ
 
 
+Building Sphinx docs
+~~~~~~~~~~~~~~~~~~~~
+
+Setup a Python environment with ``sphinx`` and ``sagemaker``:
+
+::
+
+    conda create -n sagemaker python=3.7
+    conda activate sagemaker
+    conda install sphinx==2.2.2
+    pip install sagemaker --user
+
+Install the Read The Docs theme:
+
+::
+
+    pip install sphinx_rtd_theme --user
+
+
+Clone/fork the repo, ``cd`` into the ``sagemaker-python-sdk/doc`` directory and run:
+
+::
+
+    make html
+
+You can edit the templates for any of the pages in the docs by editing the .rst files in the ``doc`` directory and then running ``make html`` again.
+
+Preview the site with a Python web server:
+
+::
+
+    cd _build/html
+    python -m http.server 8000
+
+View the website by visiting http://localhost:8000
+
+
 MXNet SageMaker Estimators
 --------------------------
 
