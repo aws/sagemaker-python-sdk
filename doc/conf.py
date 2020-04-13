@@ -13,7 +13,6 @@
 """Placeholder docstring"""
 from __future__ import absolute_import
 
-import os
 import pkg_resources
 import sys
 from datetime import datetime
@@ -83,10 +82,8 @@ autoclass_content = "both"
 autodoc_default_flags = ["show-inheritance", "members", "undoc-members"]
 autodoc_member_order = "bysource"
 
-if "READTHEDOCS" in os.environ:
-    html_theme = "default"
-else:
-    html_theme = "haiku"
+html_theme = "sphinx_rtd_theme"
+
 html_static_path = []
 htmlhelp_basename = "%sdoc" % project
 
