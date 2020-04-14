@@ -84,8 +84,11 @@ autodoc_member_order = "bysource"
 
 html_theme = "sphinx_rtd_theme"
 
-html_static_path = []
+html_static_path = ["_static"]
+
 htmlhelp_basename = "%sdoc" % project
+
+html_js_files = ["https://a0.awsstatic.com/s_code/js/1.0/awshome_s_code.js", "js/analytics.js"]
 
 # Example configuration for intersphinx: refer to the Python standard library.
 intersphinx_mapping = {"http://docs.python.org/": None}
