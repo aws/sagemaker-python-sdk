@@ -13,6 +13,7 @@
 from __future__ import absolute_import
 
 import gzip
+import json
 import os
 import pickle
 import sys
@@ -23,6 +24,7 @@ import pytest
 from sagemaker import KMeans, s3
 from sagemaker.mxnet import MXNet
 from sagemaker.pytorch import PyTorchModel
+from sagemaker.tensorflow import TensorFlow
 from sagemaker.transformer import Transformer
 from sagemaker.estimator import Estimator
 from sagemaker.utils import unique_name_from_base
@@ -32,7 +34,7 @@ from tests.integ import (
     TRAINING_DEFAULT_TIMEOUT_MINUTES,
     TRANSFORM_DEFAULT_TIMEOUT_MINUTES,
 )
-from tests.integ.kms_utils import get_or_create_kms_key
+from tests.integ.kms_utils import bucket_with_encryption, get_or_create_kms_key
 from tests.integ.timeout import timeout, timeout_and_delete_model_with_transformer
 from tests.integ.vpc_test_utils import get_or_create_vpc_resources
 
@@ -339,6 +341,75 @@ def test_transform_mxnet_logs(
         transformer, sagemaker_session, minutes=TRANSFORM_DEFAULT_TIMEOUT_MINUTES
     ):
         transformer.wait()
+
+
+def test_transform_tf_kms_network_isolation(sagemaker_session, cpu_instance_type, tmpdir):
+    data_path = os.path.join(DATA_DIR, "tensorflow_mnist")
+
+    tf = TensorFlow(
+        entry_point=os.path.join(data_path, "mnist.py"),
+        role="SageMakerRole",
+        train_instance_count=1,
+        train_instance_type=cpu_instance_type,
+        framework_version=TensorFlow.LATEST_VERSION,
+        script_mode=True,
+        py_version=PYTHON_VERSION,
+        sagemaker_session=sagemaker_session,
+    )
+
+    s3_prefix = "integ-test-data/tf-scriptmode/mnist"
+    training_input = sagemaker_session.upload_data(
+        path=os.path.join(data_path, "data"), key_prefix="{}/training".format(s3_prefix)
+    )
+
+    job_name = unique_name_from_base("test-tf-transform")
+    tf.fit(inputs=training_input, job_name=job_name)
+
+    transform_input = sagemaker_session.upload_data(
+        path=os.path.join(data_path, "transform"), key_prefix="{}/transform".format(s3_prefix)
+    )
+
+    with bucket_with_encryption(sagemaker_session, "SageMakerRole") as (bucket_with_kms, kms_key):
+        output_path = "{}/{}/output".format(bucket_with_kms, job_name)
+
+        transformer = tf.transformer(
+            instance_count=1,
+            instance_type=cpu_instance_type,
+            output_path=output_path,
+            output_kms_key=kms_key,
+            volume_kms_key=kms_key,
+            enable_network_isolation=True,
+        )
+
+        with timeout_and_delete_model_with_transformer(
+            transformer, sagemaker_session, minutes=TRANSFORM_DEFAULT_TIMEOUT_MINUTES
+        ):
+            transformer.transform(
+                transform_input, job_name=job_name, content_type="text/csv", wait=True
+            )
+
+            model_desc = sagemaker_session.sagemaker_client.describe_model(
+                ModelName=transformer.model_name
+            )
+            assert model_desc["EnableNetworkIsolation"]
+
+        job_desc = sagemaker_session.sagemaker_client.describe_transform_job(
+            TransformJobName=job_name
+        )
+        assert job_desc["TransformOutput"]["S3OutputPath"] == output_path
+        assert job_desc["TransformOutput"]["KmsKeyId"] == kms_key
+        assert job_desc["TransformResources"]["VolumeKmsKeyId"] == kms_key
+
+        s3.S3Downloader.download(
+            s3_uri=output_path,
+            local_path=os.path.join(tmpdir, "tf-batch-output"),
+            session=sagemaker_session,
+        )
+
+        with open(os.path.join(tmpdir, "tf-batch-output", "data.csv.out")) as f:
+            result = json.load(f)
+            assert len(result["predictions"][0]["probabilities"]) == 10
+            assert result["predictions"][0]["classes"] == 1
 
 
 def _create_transformer_and_transform_job(
