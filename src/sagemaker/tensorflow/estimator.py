@@ -590,6 +590,9 @@ class TensorFlow(Framework):
         if "name" not in kwargs:
             kwargs["name"] = self._current_job_name
 
+        if "enable_network_isolation" not in kwargs:
+            kwargs["enable_network_isolation"] = self.enable_network_isolation()
+
         if endpoint_type == "tensorflow-serving" or self._script_mode_enabled():
             return self._create_tfs_model(
                 role=role,
@@ -630,7 +633,6 @@ class TensorFlow(Framework):
             entry_point=entry_point,
             source_dir=source_dir,
             dependencies=dependencies,
-            enable_network_isolation=self.enable_network_isolation(),
             **kwargs
         )
 
@@ -660,7 +662,6 @@ class TensorFlow(Framework):
             sagemaker_session=self.sagemaker_session,
             vpc_config=self.get_vpc_config(vpc_config_override),
             dependencies=dependencies or self.dependencies,
-            enable_network_isolation=self.enable_network_isolation(),
             **kwargs
         )
 

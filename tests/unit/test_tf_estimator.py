@@ -329,6 +329,7 @@ def test_create_model_with_optional_params(sagemaker_session):
         vpc_config_override=vpc_config,
         entry_point=SERVING_SCRIPT_FILE,
         name=model_name,
+        enable_network_isolation=True,
     )
 
     assert model.role == new_role
@@ -336,6 +337,7 @@ def test_create_model_with_optional_params(sagemaker_session):
     assert model.vpc_config == vpc_config
     assert model.entry_point == SERVING_SCRIPT_FILE
     assert model.name == model_name
+    assert model.enable_network_isolation()
 
 
 @patch("sagemaker.tensorflow.estimator.TensorFlow.create_model")
