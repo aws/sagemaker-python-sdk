@@ -14,6 +14,7 @@ from __future__ import absolute_import
 
 import copy
 
+import pytest
 from mock import Mock, patch
 
 import sagemaker
@@ -50,6 +51,11 @@ DESCRIBE_MODEL_PACKAGE_RESPONSE = {
     "ModelPackageName": "mp-scikit-decision-trees-1542410022-2018-11-20-22-13-56-502",
     "CertifyForMarketplace": False,
 }
+
+
+@pytest.fixture
+def sagemaker_session():
+    return Mock()
 
 
 def test_model_package_enable_network_isolation_with_no_product_id(sagemaker_session):
