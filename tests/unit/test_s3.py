@@ -91,5 +91,5 @@ def test_download_with_kms_key(sagemaker_session):
         path="/path/for/download/",
         bucket=BUCKET_NAME,
         key_prefix=os.path.join(CURRENT_JOB_NAME, SOURCE_NAME),
-        extra_args={"SSEKMSKeyId": KMS_KEY},
+        extra_args={"SSECustomerKey": KMS_KEY},
     )

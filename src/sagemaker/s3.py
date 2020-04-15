@@ -110,7 +110,7 @@ class S3Downloader(object):
         sagemaker_session = session or Session()
         bucket, key_prefix = parse_s3_url(url=s3_uri)
         if kms_key is not None:
-            extra_args = {"SSEKMSKeyId": kms_key}
+            extra_args = {"SSECustomerKey": kms_key}
         else:
             extra_args = None
 
