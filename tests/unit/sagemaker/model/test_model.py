@@ -12,6 +12,7 @@
 # language governing permissions and limitations under the License.
 from __future__ import absolute_import
 
+import pytest
 from mock import Mock, patch
 
 import sagemaker
@@ -19,6 +20,11 @@ from sagemaker.model import Model
 
 MODEL_DATA = "s3://bucket/model.tar.gz"
 MODEL_IMAGE = "mi"
+
+
+@pytest.fixture
+def sagemaker_session():
+    return Mock()
 
 
 @patch("sagemaker.model.Model._create_sagemaker_model")
