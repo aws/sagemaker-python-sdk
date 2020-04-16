@@ -53,6 +53,14 @@ def test_prepare_container_def():
     assert expected == container_def
 
 
+def test_model_enable_network_isolation():
+    model = Model(MODEL_DATA, MODEL_IMAGE)
+    assert model.enable_network_isolation() is False
+
+    model = Model(MODEL_DATA, MODEL_IMAGE, enable_network_isolation=True)
+    assert model.enable_network_isolation()
+
+
 @patch("sagemaker.model.Model.prepare_container_def")
 @patch("sagemaker.utils.name_from_image")
 def test_create_sagemaker_model(name_from_image, prepare_container_def, sagemaker_session):
@@ -468,3 +476,20 @@ def test_transformer_creates_correct_session(local_session, session):
     transformer = model.transformer(instance_count=1, instance_type="ml.m5.xlarge")
     assert model.sagemaker_session == session.return_value
     assert transformer.sagemaker_session == session.return_value
+
+
+def test_delete_model(sagemaker_session):
+    model = Model(MODEL_DATA, MODEL_IMAGE, name=MODEL_NAME, sagemaker_session=sagemaker_session)
+
+    model.delete_model()
+    sagemaker_session.delete_model.assert_called_with(model.name)
+
+
+def test_delete_model_no_name(sagemaker_session):
+    model = Model(MODEL_DATA, MODEL_IMAGE, sagemaker_session=sagemaker_session)
+
+    with pytest.raises(
+        ValueError, match="The SageMaker model must be created first before attempting to delete."
+    ):
+        model.delete_model()
+    sagemaker_session.delete_model.assert_not_called()

@@ -237,29 +237,6 @@ def test_deploy_update_endpoint_optional_args(sagemaker_session, tmpdir):
     sagemaker_session.create_endpoint.assert_not_called()
 
 
-def test_model_enable_network_isolation(sagemaker_session):
-    model = DummyFrameworkModel(sagemaker_session=sagemaker_session)
-    assert model.enable_network_isolation() is False
-
-
-@patch("sagemaker.fw_utils.tar_and_upload_dir", MagicMock())
-@patch("time.strftime", MagicMock(return_value=TIMESTAMP))
-def test_model_delete_model(sagemaker_session, tmpdir):
-    model = DummyFrameworkModel(sagemaker_session, source_dir=str(tmpdir))
-    model.deploy(instance_type=INSTANCE_TYPE, initial_instance_count=1)
-    model.delete_model()
-
-    sagemaker_session.delete_model.assert_called_with(model.name)
-
-
-def test_delete_non_deployed_model(sagemaker_session):
-    model = DummyFrameworkModel(sagemaker_session)
-    with pytest.raises(
-        ValueError, match="The SageMaker model must be created first before attempting to delete."
-    ):
-        model.delete_model()
-
-
 def test_compile_model_for_inferentia(sagemaker_session, tmpdir):
     sagemaker_session.wait_for_compilation_job = Mock(
         return_value=DESCRIBE_COMPILATION_JOB_RESPONSE
