@@ -33,8 +33,6 @@ TIMESTAMP = "2017-10-10-14-14-15"
 BUCKET_NAME = "mybucket"
 INSTANCE_COUNT = 1
 INSTANCE_TYPE = "c4.4xlarge"
-ACCELERATOR_TYPE = "ml.eia.medium"
-IMAGE_NAME = "fakeimage"
 REGION = "us-west-2"
 MODEL_NAME = "{}-{}".format(MODEL_IMAGE, TIMESTAMP)
 GIT_REPO = "https://github.com/aws/sagemaker-python-sdk.git"
@@ -163,72 +161,6 @@ def test_prepare_container_def_no_model_defaults(sagemaker_session, tmpdir):
         "Image": MODEL_IMAGE,
         "ModelDataUrl": MODEL_DATA,
     }
-
-
-@patch("sagemaker.fw_utils.tar_and_upload_dir", MagicMock())
-def test_deploy_update_endpoint(sagemaker_session, tmpdir):
-    model = DummyFrameworkModel(sagemaker_session, source_dir=tmpdir)
-    model.deploy(instance_type=INSTANCE_TYPE, initial_instance_count=1, update_endpoint=True)
-    sagemaker_session.create_endpoint_config.assert_called_with(
-        name=model.name,
-        model_name=model.name,
-        initial_instance_count=INSTANCE_COUNT,
-        instance_type=INSTANCE_TYPE,
-        accelerator_type=None,
-        tags=None,
-        kms_key=None,
-        data_capture_config_dict=None,
-    )
-    config_name = sagemaker_session.create_endpoint_config(
-        name=model.name,
-        model_name=model.name,
-        initial_instance_count=INSTANCE_COUNT,
-        instance_type=INSTANCE_TYPE,
-        accelerator_type=ACCELERATOR_TYPE,
-    )
-    sagemaker_session.update_endpoint.assert_called_with(model.name, config_name, wait=True)
-    sagemaker_session.create_endpoint.assert_not_called()
-
-
-@patch("sagemaker.fw_utils.tar_and_upload_dir", MagicMock())
-def test_deploy_update_endpoint_optional_args(sagemaker_session, tmpdir):
-    endpoint_name = "endpoint-name"
-    tags = [{"Key": "Value"}]
-    kms_key = "foo"
-    data_capture_config = MagicMock()
-
-    model = DummyFrameworkModel(sagemaker_session, source_dir=tmpdir)
-    model.deploy(
-        instance_type=INSTANCE_TYPE,
-        initial_instance_count=1,
-        update_endpoint=True,
-        endpoint_name=endpoint_name,
-        accelerator_type=ACCELERATOR_TYPE,
-        tags=tags,
-        kms_key=kms_key,
-        wait=False,
-        data_capture_config=data_capture_config,
-    )
-    sagemaker_session.create_endpoint_config.assert_called_with(
-        name=model.name,
-        model_name=model.name,
-        initial_instance_count=INSTANCE_COUNT,
-        instance_type=INSTANCE_TYPE,
-        accelerator_type=ACCELERATOR_TYPE,
-        tags=tags,
-        kms_key=kms_key,
-        data_capture_config_dict=data_capture_config._to_request_dict(),
-    )
-    config_name = sagemaker_session.create_endpoint_config(
-        name=model.name,
-        model_name=model.name,
-        initial_instance_count=INSTANCE_COUNT,
-        instance_type=INSTANCE_TYPE,
-        accelerator_type=ACCELERATOR_TYPE,
-        wait=False,
-    )
-    sagemaker_session.update_endpoint.assert_called_with(endpoint_name, config_name, wait=False)
-    sagemaker_session.create_endpoint.assert_not_called()
 
 
 @patch("sagemaker.git_utils.git_clone_repo")
