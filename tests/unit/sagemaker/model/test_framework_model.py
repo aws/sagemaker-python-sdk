@@ -24,7 +24,6 @@ from mock import MagicMock, Mock, patch
 MODEL_DATA = "s3://bucket/model.tar.gz"
 MODEL_IMAGE = "mi"
 ENTRY_POINT = "blah.py"
-INSTANCE_TYPE = "p2.xlarge"
 ROLE = "some-role"
 
 DATA_DIR = os.path.join(os.path.dirname(__file__), "..", "data")
@@ -141,7 +140,7 @@ def test_prepare_container_def_with_network_isolation(time, sagemaker_session):
 @patch("os.path.isdir", MagicMock(return_value=True))
 @patch("os.listdir", MagicMock(return_value=["blah.py"]))
 @patch("time.strftime", MagicMock(return_value=TIMESTAMP))
-def test_create_no_defaults(sagemaker_session, tmpdir):
+def test_prepare_container_def_no_model_defaults(sagemaker_session, tmpdir):
     model = DummyFrameworkModel(
         sagemaker_session,
         source_dir="sd",
@@ -164,145 +163,6 @@ def test_create_no_defaults(sagemaker_session, tmpdir):
         "Image": MODEL_IMAGE,
         "ModelDataUrl": MODEL_DATA,
     }
-
-
-@patch("sagemaker.fw_utils.tar_and_upload_dir", MagicMock())
-@patch("time.strftime", MagicMock(return_value=TIMESTAMP))
-def test_deploy(sagemaker_session, tmpdir):
-    model = DummyFrameworkModel(sagemaker_session, source_dir=str(tmpdir))
-    model.deploy(instance_type=INSTANCE_TYPE, initial_instance_count=1)
-    sagemaker_session.endpoint_from_production_variants.assert_called_with(
-        name=MODEL_NAME,
-        production_variants=[
-            {
-                "InitialVariantWeight": 1,
-                "ModelName": MODEL_NAME,
-                "InstanceType": INSTANCE_TYPE,
-                "InitialInstanceCount": 1,
-                "VariantName": "AllTraffic",
-            }
-        ],
-        tags=None,
-        kms_key=None,
-        wait=True,
-        data_capture_config_dict=None,
-    )
-
-
-@patch("sagemaker.fw_utils.tar_and_upload_dir", MagicMock())
-@patch("time.strftime", MagicMock(return_value=TIMESTAMP))
-def test_deploy_endpoint_name(sagemaker_session, tmpdir):
-    model = DummyFrameworkModel(sagemaker_session, source_dir=str(tmpdir))
-    model.deploy(endpoint_name="blah", instance_type=INSTANCE_TYPE, initial_instance_count=55)
-    sagemaker_session.endpoint_from_production_variants.assert_called_with(
-        name="blah",
-        production_variants=[
-            {
-                "InitialVariantWeight": 1,
-                "ModelName": MODEL_NAME,
-                "InstanceType": INSTANCE_TYPE,
-                "InitialInstanceCount": 55,
-                "VariantName": "AllTraffic",
-            }
-        ],
-        tags=None,
-        kms_key=None,
-        wait=True,
-        data_capture_config_dict=None,
-    )
-
-
-@patch("sagemaker.fw_utils.tar_and_upload_dir", MagicMock())
-@patch("time.strftime", MagicMock(return_value=TIMESTAMP))
-def test_deploy_tags(sagemaker_session, tmpdir):
-    model = DummyFrameworkModel(sagemaker_session, source_dir=str(tmpdir))
-    tags = [{"ModelName": "TestModel"}]
-    model.deploy(instance_type=INSTANCE_TYPE, initial_instance_count=1, tags=tags)
-    sagemaker_session.endpoint_from_production_variants.assert_called_with(
-        name=MODEL_NAME,
-        production_variants=[
-            {
-                "InitialVariantWeight": 1,
-                "ModelName": MODEL_NAME,
-                "InstanceType": INSTANCE_TYPE,
-                "InitialInstanceCount": 1,
-                "VariantName": "AllTraffic",
-            }
-        ],
-        tags=tags,
-        kms_key=None,
-        wait=True,
-        data_capture_config_dict=None,
-    )
-
-
-@patch("sagemaker.fw_utils.tar_and_upload_dir", MagicMock())
-@patch("tarfile.open")
-@patch("time.strftime", return_value=TIMESTAMP)
-def test_deploy_accelerator_type(tfo, time, sagemaker_session):
-    model = DummyFrameworkModel(sagemaker_session)
-    model.deploy(
-        instance_type=INSTANCE_TYPE, initial_instance_count=1, accelerator_type=ACCELERATOR_TYPE
-    )
-    sagemaker_session.endpoint_from_production_variants.assert_called_with(
-        name=MODEL_NAME,
-        production_variants=[
-            {
-                "InitialVariantWeight": 1,
-                "ModelName": MODEL_NAME,
-                "InstanceType": INSTANCE_TYPE,
-                "InitialInstanceCount": 1,
-                "VariantName": "AllTraffic",
-                "AcceleratorType": ACCELERATOR_TYPE,
-            }
-        ],
-        tags=None,
-        kms_key=None,
-        wait=True,
-        data_capture_config_dict=None,
-    )
-
-
-@patch("sagemaker.fw_utils.tar_and_upload_dir", MagicMock())
-@patch("tarfile.open")
-@patch("time.strftime", return_value=TIMESTAMP)
-def test_deploy_kms_key(tfo, time, sagemaker_session):
-    key = "some-key-arn"
-    model = DummyFrameworkModel(sagemaker_session)
-    model.deploy(instance_type=INSTANCE_TYPE, initial_instance_count=1, kms_key=key)
-    sagemaker_session.endpoint_from_production_variants.assert_called_with(
-        name=MODEL_NAME,
-        production_variants=[
-            {
-                "InitialVariantWeight": 1,
-                "ModelName": MODEL_NAME,
-                "InstanceType": INSTANCE_TYPE,
-                "InitialInstanceCount": 1,
-                "VariantName": "AllTraffic",
-            }
-        ],
-        tags=None,
-        kms_key=key,
-        wait=True,
-        data_capture_config_dict=None,
-    )
-
-
-@patch("sagemaker.session.Session")
-@patch("sagemaker.local.LocalSession")
-@patch("sagemaker.fw_utils.tar_and_upload_dir", MagicMock())
-def test_deploy_creates_correct_session(local_session, session, tmpdir):
-    # We expect a LocalSession when deploying to instance_type = 'local'
-    model = DummyFrameworkModel(sagemaker_session=None, source_dir=str(tmpdir))
-    model.deploy(endpoint_name="blah", instance_type="local", initial_instance_count=1)
-    assert model.sagemaker_session == local_session.return_value
-
-    # We expect a real Session when deploying to instance_type != local/local_gpu
-    model = DummyFrameworkModel(sagemaker_session=None, source_dir=str(tmpdir))
-    model.deploy(
-        endpoint_name="remote_endpoint", instance_type="ml.m4.4xlarge", initial_instance_count=2
-    )
-    assert model.sagemaker_session == session.return_value
 
 
 @patch("sagemaker.fw_utils.tar_and_upload_dir", MagicMock())
@@ -369,29 +229,6 @@ def test_deploy_update_endpoint_optional_args(sagemaker_session, tmpdir):
     )
     sagemaker_session.update_endpoint.assert_called_with(endpoint_name, config_name, wait=False)
     sagemaker_session.create_endpoint.assert_not_called()
-
-
-def test_model_enable_network_isolation(sagemaker_session):
-    model = DummyFrameworkModel(sagemaker_session=sagemaker_session)
-    assert model.enable_network_isolation() is False
-
-
-@patch("sagemaker.fw_utils.tar_and_upload_dir", MagicMock())
-@patch("time.strftime", MagicMock(return_value=TIMESTAMP))
-def test_model_delete_model(sagemaker_session, tmpdir):
-    model = DummyFrameworkModel(sagemaker_session, source_dir=str(tmpdir))
-    model.deploy(instance_type=INSTANCE_TYPE, initial_instance_count=1)
-    model.delete_model()
-
-    sagemaker_session.delete_model.assert_called_with(model.name)
-
-
-def test_delete_non_deployed_model(sagemaker_session):
-    model = DummyFrameworkModel(sagemaker_session)
-    with pytest.raises(
-        ValueError, match="The SageMaker model must be created first before attempting to delete."
-    ):
-        model.delete_model()
 
 
 @patch("sagemaker.git_utils.git_clone_repo")
