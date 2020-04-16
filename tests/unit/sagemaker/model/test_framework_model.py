@@ -37,7 +37,6 @@ INSTANCE_TYPE = "c4.4xlarge"
 ACCELERATOR_TYPE = "ml.eia.medium"
 IMAGE_NAME = "fakeimage"
 REGION = "us-west-2"
-NEO_REGION_ACCOUNT = "301217895009"
 MODEL_NAME = "{}-{}".format(MODEL_IMAGE, TIMESTAMP)
 GIT_REPO = "https://github.com/aws/sagemaker-python-sdk.git"
 BRANCH = "test-branch-git-config"
@@ -50,11 +49,6 @@ CODECOMMIT_REPO = "https://git-codecommit.us-west-2.amazonaws.com/v1/repos/test-
 CODECOMMIT_REPO_SSH = "ssh://git-codecommit.us-west-2.amazonaws.com/v1/repos/test-repo/"
 CODECOMMIT_BRANCH = "master"
 REPO_DIR = "/tmp/repo_dir"
-
-DESCRIBE_COMPILATION_JOB_RESPONSE = {
-    "CompilationJobStatus": "Completed",
-    "ModelArtifacts": {"S3ModelArtifacts": "s3://output-path/model.tar.gz"},
-}
 
 
 class DummyFrameworkModel(FrameworkModel):
@@ -398,170 +392,6 @@ def test_delete_non_deployed_model(sagemaker_session):
         ValueError, match="The SageMaker model must be created first before attempting to delete."
     ):
         model.delete_model()
-
-
-def test_compile_model_for_inferentia(sagemaker_session, tmpdir):
-    sagemaker_session.wait_for_compilation_job = Mock(
-        return_value=DESCRIBE_COMPILATION_JOB_RESPONSE
-    )
-    model = DummyFrameworkModel(sagemaker_session, source_dir=str(tmpdir))
-    model.compile(
-        target_instance_family="ml_inf",
-        input_shape={"data": [1, 3, 1024, 1024]},
-        output_path="s3://output",
-        role="role",
-        framework="tensorflow",
-        framework_version="1.15.0",
-        job_name="compile-model",
-    )
-    assert (
-        "{}.dkr.ecr.{}.amazonaws.com/sagemaker-neo-tensorflow:1.15.0-inf-py3".format(
-            NEO_REGION_ACCOUNT, REGION
-        )
-        == model.image
-    )
-    assert model._is_compiled_model is True
-
-
-def test_compile_model_for_edge_device(sagemaker_session, tmpdir):
-    sagemaker_session.wait_for_compilation_job = Mock(
-        return_value=DESCRIBE_COMPILATION_JOB_RESPONSE
-    )
-    model = DummyFrameworkModel(sagemaker_session, source_dir=str(tmpdir))
-    model.compile(
-        target_instance_family="deeplens",
-        input_shape={"data": [1, 3, 1024, 1024]},
-        output_path="s3://output",
-        role="role",
-        framework="tensorflow",
-        job_name="compile-model",
-    )
-    assert model._is_compiled_model is False
-
-
-def test_compile_model_for_edge_device_tflite(sagemaker_session, tmpdir):
-    sagemaker_session.wait_for_compilation_job = Mock(
-        return_value=DESCRIBE_COMPILATION_JOB_RESPONSE
-    )
-    model = DummyFrameworkModel(sagemaker_session, source_dir=str(tmpdir))
-    model.compile(
-        target_instance_family="deeplens",
-        input_shape={"data": [1, 3, 1024, 1024]},
-        output_path="s3://output",
-        role="role",
-        framework="tflite",
-        job_name="tflite-compile-model",
-    )
-    assert model._is_compiled_model is False
-
-
-def test_compile_model_for_cloud(sagemaker_session, tmpdir):
-    sagemaker_session.wait_for_compilation_job = Mock(
-        return_value=DESCRIBE_COMPILATION_JOB_RESPONSE
-    )
-    model = DummyFrameworkModel(sagemaker_session, source_dir=str(tmpdir))
-    model.compile(
-        target_instance_family="ml_c4",
-        input_shape={"data": [1, 3, 1024, 1024]},
-        output_path="s3://output",
-        role="role",
-        framework="tensorflow",
-        job_name="compile-model",
-    )
-    assert model._is_compiled_model is True
-
-
-def test_compile_model_for_cloud_tflite(sagemaker_session, tmpdir):
-    sagemaker_session.wait_for_compilation_job = Mock(
-        return_value=DESCRIBE_COMPILATION_JOB_RESPONSE
-    )
-    model = DummyFrameworkModel(sagemaker_session, source_dir=str(tmpdir))
-    model.compile(
-        target_instance_family="ml_c4",
-        input_shape={"data": [1, 3, 1024, 1024]},
-        output_path="s3://output",
-        role="role",
-        framework="tflite",
-        job_name="tflite-compile-model",
-    )
-    assert model._is_compiled_model is True
-
-
-@patch("sagemaker.session.Session")
-@patch("sagemaker.fw_utils.tar_and_upload_dir", MagicMock())
-def test_compile_creates_session(session):
-    session.return_value.boto_region_name = "us-west-2"
-
-    model = DummyFrameworkModel(sagemaker_session=None)
-    model.compile(
-        target_instance_family="ml_c4",
-        input_shape={"data": [1, 3, 1024, 1024]},
-        output_path="s3://output",
-        role="role",
-        framework="tensorflow",
-        job_name="compile-model",
-    )
-
-    assert model.sagemaker_session == session.return_value
-
-
-def test_check_neo_region(sagemaker_session, tmpdir):
-    sagemaker_session.wait_for_compilation_job = Mock(
-        return_value=DESCRIBE_COMPILATION_JOB_RESPONSE
-    )
-    model = DummyFrameworkModel(sagemaker_session, source_dir=str(tmpdir))
-    ec2_region_list = [
-        "us-east-2",
-        "us-east-1",
-        "us-west-1",
-        "us-west-2",
-        "ap-east-1",
-        "ap-south-1",
-        "ap-northeast-3",
-        "ap-northeast-2",
-        "ap-southeast-1",
-        "ap-southeast-2",
-        "ap-northeast-1",
-        "ca-central-1",
-        "cn-north-1",
-        "cn-northwest-1",
-        "eu-central-1",
-        "eu-west-1",
-        "eu-west-2",
-        "eu-west-3",
-        "eu-north-1",
-        "sa-east-1",
-        "us-gov-east-1",
-        "us-gov-west-1",
-    ]
-    neo_support_region = [
-        "us-west-1",
-        "us-west-2",
-        "us-east-1",
-        "us-east-2",
-        "eu-west-1",
-        "eu-west-2",
-        "eu-west-3",
-        "eu-central-1",
-        "eu-north-1",
-        "ap-northeast-1",
-        "ap-northeast-2",
-        "ap-east-1",
-        "ap-south-1",
-        "ap-southeast-1",
-        "ap-southeast-2",
-        "sa-east-1",
-        "ca-central-1",
-        "me-south-1",
-        "cn-north-1",
-        "cn-northwest-1",
-        "us-gov-west-1",
-    ]
-    for region_name in ec2_region_list:
-        if region_name in neo_support_region:
-            assert model.check_neo_region(region_name) is True
-        else:
-            assert model.check_neo_region(region_name) is False
 
 
 @patch("sagemaker.git_utils.git_clone_repo")
