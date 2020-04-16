@@ -12,10 +12,12 @@
 # language governing permissions and limitations under the License.
 from __future__ import absolute_import
 
+import boto3
 import pytest
 from mock import Mock, patch
 
 from sagemaker.model import Model
+from tests.unit import NEO_REGION_LIST
 
 MODEL_DATA = "s3://bucket/model.tar.gz"
 MODEL_IMAGE = "mi"
@@ -27,55 +29,6 @@ DESCRIBE_COMPILATION_JOB_RESPONSE = {
     "CompilationJobStatus": "Completed",
     "ModelArtifacts": {"S3ModelArtifacts": "s3://output-path/model.tar.gz"},
 }
-
-EC2_REGION_LIST = [
-    "us-east-2",
-    "us-east-1",
-    "us-west-1",
-    "us-west-2",
-    "ap-east-1",
-    "ap-south-1",
-    "ap-northeast-3",
-    "ap-northeast-2",
-    "ap-southeast-1",
-    "ap-southeast-2",
-    "ap-northeast-1",
-    "ca-central-1",
-    "cn-north-1",
-    "cn-northwest-1",
-    "eu-central-1",
-    "eu-west-1",
-    "eu-west-2",
-    "eu-west-3",
-    "eu-north-1",
-    "sa-east-1",
-    "us-gov-east-1",
-    "us-gov-west-1",
-]
-
-NEO_REGION_LIST = [
-    "us-west-1",
-    "us-west-2",
-    "us-east-1",
-    "us-east-2",
-    "eu-west-1",
-    "eu-west-2",
-    "eu-west-3",
-    "eu-central-1",
-    "eu-north-1",
-    "ap-northeast-1",
-    "ap-northeast-2",
-    "ap-east-1",
-    "ap-south-1",
-    "ap-southeast-1",
-    "ap-southeast-2",
-    "sa-east-1",
-    "ca-central-1",
-    "me-south-1",
-    "cn-north-1",
-    "cn-northwest-1",
-    "us-gov-west-1",
-]
 
 
 @pytest.fixture
@@ -196,8 +149,8 @@ def test_check_neo_region(sagemaker_session):
         return_value=DESCRIBE_COMPILATION_JOB_RESPONSE
     )
     model = _create_model(sagemaker_session)
-    for region_name in EC2_REGION_LIST:
-        if region_name in NEO_REGION_LIST:
-            assert model.check_neo_region(region_name) is True
-        else:
-            assert model.check_neo_region(region_name) is False
+
+    boto_session = boto3.Session()
+    for partition in boto_session.get_available_partitions():
+        for region_name in boto_session.get_available_regions("ec2", partition_name=partition):
+            assert (region_name in NEO_REGION_LIST) is model.check_neo_region(region_name)
