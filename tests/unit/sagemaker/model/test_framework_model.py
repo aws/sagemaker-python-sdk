@@ -146,7 +146,7 @@ def test_prepare_container_def_with_network_isolation(time, sagemaker_session):
 @patch("os.path.isdir", MagicMock(return_value=True))
 @patch("os.listdir", MagicMock(return_value=["blah.py"]))
 @patch("time.strftime", MagicMock(return_value=TIMESTAMP))
-def test_create_no_defaults(sagemaker_session, tmpdir):
+def test_prepare_container_def_no_model_defaults(sagemaker_session, tmpdir):
     model = DummyFrameworkModel(
         sagemaker_session,
         source_dir="sd",
