@@ -1,5 +1,39 @@
 # Changelog
 
+## v1.55.4 (2020-04-17)
+
+### Bug Fixes and Other Changes
+
+ * use valid encryption key arg for S3 downloads
+ * update sagemaker pytorch containers to external link
+ * allow specifying model name when creating a Transformer from an Estimator
+ * allow specifying model name in create_model() for TensorFlow, SKLearn, and XGBoost
+ * allow specifying model name in create_model() for Chainer, MXNet, PyTorch, and RL
+
+### Documentation Changes
+
+ * fix wget endpoints
+ * add Adobe Analytics; upgrade Sphinx and docs environment
+ * Explain why default model_fn loads PyTorch-EI models to CPU by default
+ * Set theme in conf.py
+ * correct transform()'s wait default value to "False"
+
+### Testing and Release Infrastructure
+
+ * move unit tests for updating an endpoint to test_deploy.py
+ * move Neo unit tests to a new file and directly use the Model class
+ * move Model.deploy unit tests to separate file
+ * add Model unit tests for delete_model and enable_network_isolation
+ * skip integ tests in PR build if only unit tests are modified
+ * add Model unit tests for prepare_container_def and _create_sagemaker_model
+ * use Model class for model deployment unit tests
+ * split model unit tests by Model, FrameworkModel, and ModelPackage
+ * add Model unit tests for all transformer() params
+ * add TF batch transform integ test with KMS and network isolation
+ * use pytest fixtures in batch transform integ tests to train and upload to S3 only once
+ * improve unit tests for creating Transformers and transform jobs
+ * add PyTorch + custom model bucket batch transform integ test
+
 ## v1.55.3 (2020-04-08)
 
 ### Bug Fixes and Other Changes
