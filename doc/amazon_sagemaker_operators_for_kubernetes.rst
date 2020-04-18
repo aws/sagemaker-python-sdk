@@ -417,7 +417,7 @@ Create your IAM Role
 ^^^^^^^^^^^^^^^^^^^^
 
 Create a file named \ ``trust.json``  and insert the following trust
-relationship code block into it. Be sure to replace all \ ``<OIDC ID>``, \ ``<AWS account number>``, and \ ``<EKS Cluster region>`` placeholders with values corresponding to your cluster.
+relationship code block into it. Be sure to replace all \ ``<OIDC ID>``, \ ``<AWS account number>``, \ ``<EKS Cluster region>``, and \ ``<Namespace>`` placeholders with values corresponding to your cluster.
 
 ::
 
@@ -426,12 +426,14 @@ relationship code block into it. Be sure to replace all \ ``<OIDC ID>``, \ ``<AW
       "Statement": [
         {
           "Effect": "Allow",
-          "Principal": {             "Federated": "arn:aws:iam::<AWS account number>:oidc-provider/oidc.eks.<EKS Cluster region>.amazonaws.com/id/<OIDC ID>"
+          "Principal": {             
+            "Federated": "arn:aws:iam::<AWS account number>:oidc-provider/oidc.eks.<EKS Cluster region>.amazonaws.com/id/<OIDC ID>"
           },
           "Action": "sts:AssumeRoleWithWebIdentity",
           "Condition": {
             "StringEquals": {
-              "oidc.eks.<EKS Cluster region>.amazonaws.com/id/<OIDC ID>:aud": "sts.amazonaws.com",               "oidc.eks.<EKS Cluster region>.amazonaws.com/id/<OIDC ID>:sub": "system:serviceaccount:<Namespace>:sagemaker-k8s-operator-default"
+              "oidc.eks.<EKS Cluster region>.amazonaws.com/id/<OIDC ID>:aud": "sts.amazonaws.com",
+              "oidc.eks.<EKS Cluster region>.amazonaws.com/id/<OIDC ID>:sub": "system:serviceaccount:<Namespace>:sagemaker-k8s-operator-default"
             }
           }
         }
@@ -509,7 +511,7 @@ To install the operator onto the cluster:
    
        sed -i -e 's/PLACEHOLDER-NAMESPACE/<YOUR NAMESPACE>/g' operator.yaml
 
--  Edit the \ ``installer.yaml`` file to
+-  Edit the \ ``operator.yaml`` file to
    place resources into your \ ``eks.amazonaws.com/role-arn``. Replace the ARN here with
    the Amazon Resource Name (ARN) for the OIDC-based role you’ve created. 
 
@@ -517,7 +519,7 @@ To install the operator onto the cluster:
 
    ::
 
-       kubectl apply -f installer.yaml
+       kubectl apply -f operator.yaml
 
 Deploy the Operator to Your Namespace Using Helm Charts
 '''''''''''''''''''''''''''''''''''''''''''''''''''''''
@@ -551,10 +553,6 @@ Create the required namespace and install the operator using the following comma
     kubectl create namespace <namespace>
     helm install --n <namespace> op operator_chart/
 
-
-.. warning::
-    If you decide to install the operator into a namespace other than the one specified above,
-    you will need to adjust the namespace defined in the IAM role ``trust.json`` file to match.
 
 After a moment, the chart will be installed with a randomly generated
 name. Verify that the installation succeeded by running the following
