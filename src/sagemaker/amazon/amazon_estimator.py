@@ -16,6 +16,7 @@ from __future__ import absolute_import
 import json
 import logging
 import tempfile
+import re
 
 from six.moves.urllib.parse import urlparse
 
@@ -27,7 +28,7 @@ from sagemaker.inputs import FileSystemInput
 from sagemaker.model import NEO_IMAGE_ACCOUNT
 from sagemaker.session import s3_input
 from sagemaker.utils import sagemaker_timestamp, get_ecr_image_uri_prefix
-from sagemaker.xgboost.defaults import XGBOOST_VERSION_1, XGBOOST_SUPPORTED_VERSIONS
+from sagemaker.xgboost.defaults import XGBOOST_LATEST_VERSION,XGBOOST_SUPPORTED_VERSIONS, XGBOOST_VERSION_1
 from sagemaker.xgboost.estimator import get_xgboost_image_uri
 
 logger = logging.getLogger(__name__)
@@ -611,6 +612,16 @@ def get_image_uri(region_name, repo_name, repo_version=1):
         repo_version:
     """
     if repo_name == "xgboost":
+        if _xgboost_version_compare(repo_version):
+            logging.warning(
+                "There is a more up to date SageMaker XGBoost image. "
+                "To use the newer image, please set 'repo_version'="
+                "'%s'. For example:\n"
+                "\tget_image_uri(region, 'xgboost', '%s').",
+                XGBOOST_LATEST_VERSION,
+                XGBOOST_LATEST_VERSION,
+            )
+
         if repo_version in ["0.90", "0.90-1", "0.90-1-cpu-py3"]:
             return get_xgboost_image_uri(region_name, XGBOOST_VERSION_1)
 
@@ -622,13 +633,25 @@ def get_image_uri(region_name, repo_name, repo_version=1):
         if supported_version:
             return get_xgboost_image_uri(region_name, supported_version[0])
 
-        logging.warning(
-            "There is a more up to date SageMaker XGBoost image. "
-            "To use the newer image, please set 'repo_version'="
-            "'%s'. For example:\n"
-            "\tget_image_uri(region, 'xgboost', '%s').",
-            XGBOOST_VERSION_1,
-            XGBOOST_VERSION_1,
-        )
     repo = "{}:{}".format(repo_name, repo_version)
     return "{}/{}".format(registry(region_name, repo_name), repo)
+
+
+def _xgboost_version_compare(repo_version):
+    """Compare xgboost image version with latest version
+
+    Args:
+        repo_version:
+    """
+    if repo_version == 1:
+        return True
+    return _split(XGBOOST_LATEST_VERSION) > _split(repo_version)
+
+
+def _split(version):
+    """Split str into tuple
+
+    Args:
+        version:
+    """
+    return re.split(r"[^a-zA-Z0-9\s]", version)
