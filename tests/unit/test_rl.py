@@ -248,13 +248,15 @@ def test_create_model_with_optional_params(sagemaker_session, rl_coach_mxnet_ver
     new_role = "role"
     new_entry_point = "deploy_script.py"
     vpc_config = {"Subnets": ["foo"], "SecurityGroupIds": ["bar"]}
+    model_name = "model-name"
     model = rl.create_model(
-        role=new_role, entry_point=new_entry_point, vpc_config_override=vpc_config
+        role=new_role, entry_point=new_entry_point, vpc_config_override=vpc_config, name=model_name
     )
 
     assert model.role == new_role
     assert model.vpc_config == vpc_config
     assert model.entry_point == new_entry_point
+    assert model.name == model_name
 
 
 def test_create_model_with_custom_image(sagemaker_session):

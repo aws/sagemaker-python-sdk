@@ -865,7 +865,7 @@ Download the sample YAML file for training using the following command:
 
 ::
 
-    wget https://github.com/aws/amazon-sagemaker-operator-for-k8s/blob/master/samples/xgboost-mnist-trainingjob.yaml
+    wget https://raw.githubusercontent.com/aws/amazon-sagemaker-operator-for-k8s/master/samples/xgboost-mnist-trainingjob.yaml
 
 Edit the ``xgboost-mnist-trainingjob.yaml`` file to replace the ``roleArn`` parameter with your ``<sagemaker-execution-role>``, and ``outputPath`` with your S3 bucket that the Amazon SageMaker
 execution role has write access to. The ``roleArn`` must have permissions so that Amazon SageMaker
@@ -1160,7 +1160,7 @@ the following command:
 
 ::
 
-    wget https://github.com/aws/amazon-sagemaker-operator-for-k8s/blob/master/samples/xgboost-mnist-hpo.yaml
+    wget https://raw.githubusercontent.com/aws/amazon-sagemaker-operator-for-k8s/master/samples/xgboost-mnist-hpo.yaml
 
 Edit the \ ``xgboost-mnist-hpo.yaml`` file to replace
 the \ ``roleArn`` parameter with your <sagemaker-execution-role>. For
@@ -1536,7 +1536,7 @@ following command:
 
 ::
 
-    wget https://github.com/aws/amazon-sagemaker-operator-for-k8s/blob/master/samples/xgboost-mnist-batchtransform.yaml
+    wget https://raw.githubusercontent.com/aws/amazon-sagemaker-operator-for-k8s/master/samples/xgboost-mnist-batchtransform.yaml
 
 Edit the file \ ``xgboost-mnist-batchtransform.yaml`` to change
 necessary parameters to replace the \ ``inputdataconfig``  with your
@@ -1771,7 +1771,7 @@ following command:
 
 ::
 
-    wget https://github.com/aws/amazon-sagemaker-operator-for-k8s/blob/master/samples/xgboost-mnist-hostingdeployment.yaml
+    wget https://raw.githubusercontent.com/aws/amazon-sagemaker-operator-for-k8s/master/samples/xgboost-mnist-hostingdeployment.yaml
 
 The ``xgboost-mnist-hostingdeployment.yaml`` file has the following components that can be edited as required:
 

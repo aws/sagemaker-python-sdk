@@ -584,6 +584,15 @@ class TensorFlow(Framework):
         """
         role = role or self.role
 
+        if "image" not in kwargs:
+            kwargs["image"] = self.image_name
+
+        if "name" not in kwargs:
+            kwargs["name"] = self._current_job_name
+
+        if "enable_network_isolation" not in kwargs:
+            kwargs["enable_network_isolation"] = self.enable_network_isolation()
+
         if endpoint_type == "tensorflow-serving" or self._script_mode_enabled():
             return self._create_tfs_model(
                 role=role,
@@ -614,18 +623,9 @@ class TensorFlow(Framework):
         **kwargs
     ):
         """Placeholder docstring"""
-        # remove image kwarg
-        if "image" in kwargs:
-            image = kwargs["image"]
-            kwargs = {k: v for k, v in kwargs.items() if k != "image"}
-        else:
-            image = None
-
         return Model(
             model_data=self.model_data,
             role=role,
-            image=(image or self.image_name),
-            name=self._current_job_name,
             container_log_level=self.container_log_level,
             framework_version=utils.get_short_version(self.framework_version),
             sagemaker_session=self.sagemaker_session,
@@ -633,7 +633,6 @@ class TensorFlow(Framework):
             entry_point=entry_point,
             source_dir=source_dir,
             dependencies=dependencies,
-            enable_network_isolation=self.enable_network_isolation(),
             **kwargs
         )
 
@@ -648,13 +647,6 @@ class TensorFlow(Framework):
         **kwargs
     ):
         """Placeholder docstring"""
-        # remove image kwarg
-        if "image" in kwargs:
-            image = kwargs["image"]
-            kwargs = {k: v for k, v in kwargs.items() if k != "image"}
-        else:
-            image = None
-
         return TensorFlowModel(
             self.model_data,
             role,
@@ -662,8 +654,6 @@ class TensorFlow(Framework):
             source_dir=source_dir or self._model_source_dir(),
             enable_cloudwatch_metrics=self.enable_cloudwatch_metrics,
             env={"SAGEMAKER_REQUIREMENTS": self.requirements_file},
-            image=(image or self.image_name),
-            name=self._current_job_name,
             container_log_level=self.container_log_level,
             code_location=self.code_location,
             py_version=self.py_version,
@@ -672,7 +662,6 @@ class TensorFlow(Framework):
             sagemaker_session=self.sagemaker_session,
             vpc_config=self.get_vpc_config(vpc_config_override),
             dependencies=dependencies or self.dependencies,
-            enable_network_isolation=self.enable_network_isolation(),
             **kwargs
         )
 
@@ -792,6 +781,7 @@ class TensorFlow(Framework):
         entry_point=None,
         vpc_config_override=VPC_CONFIG_DEFAULT,
         enable_network_isolation=None,
+        model_name=None,
     ):
         """Return a ``Transformer`` that uses a SageMaker Model based on the training job. It
         reuses the SageMaker Session and base job name used by the Estimator.
@@ -849,6 +839,8 @@ class TensorFlow(Framework):
                 user entry script for inference. Also known as Internet-free mode.
                 If not specified, this setting is taken from the estimator's
                 current configuration.
+            model_name (str): Name to use for creating an Amazon SageMaker
+                model. If not specified, the name of the training job is used.
         """
         role = role or self.role
 
@@ -858,7 +850,7 @@ class TensorFlow(Framework):
                 "this estimator is only used for building workflow config"
             )
             return Transformer(
-                self._current_job_name,
+                model_name or self._current_job_name,
                 instance_count,
                 instance_type,
                 strategy=strategy,
@@ -885,6 +877,7 @@ class TensorFlow(Framework):
             endpoint_type=endpoint_type,
             entry_point=entry_point,
             enable_network_isolation=enable_network_isolation,
+            name=model_name,
         )
 
         return model.transformer(

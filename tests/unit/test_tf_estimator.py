@@ -322,17 +322,22 @@ def test_create_model_with_optional_params(sagemaker_session):
     new_role = "role"
     model_server_workers = 2
     vpc_config = {"Subnets": ["foo"], "SecurityGroupIds": ["bar"]}
+    model_name = "model-name"
     model = tf.create_model(
         role=new_role,
         model_server_workers=model_server_workers,
         vpc_config_override=vpc_config,
         entry_point=SERVING_SCRIPT_FILE,
+        name=model_name,
+        enable_network_isolation=True,
     )
 
     assert model.role == new_role
     assert model.model_server_workers == model_server_workers
     assert model.vpc_config == vpc_config
     assert model.entry_point == SERVING_SCRIPT_FILE
+    assert model.name == model_name
+    assert model.enable_network_isolation()
 
 
 @patch("sagemaker.tensorflow.estimator.TensorFlow.create_model")
@@ -361,6 +366,7 @@ def test_transformer_creation_with_optional_args(create_model, sagemaker_session
     new_role = "role"
     model_server_workers = 2
     vpc_config = {"Subnets": ["1234"], "SecurityGroupIds": ["5678"]}
+    model_name = "model-name"
 
     tf.transformer(
         INSTANCE_COUNT,
@@ -381,6 +387,7 @@ def test_transformer_creation_with_optional_args(create_model, sagemaker_session
         entry_point=SERVING_SCRIPT_FILE,
         vpc_config_override=vpc_config,
         enable_network_isolation=True,
+        model_name=model_name,
     )
 
     create_model.assert_called_with(
@@ -390,6 +397,7 @@ def test_transformer_creation_with_optional_args(create_model, sagemaker_session
         endpoint_type="tensorflow-serving",
         entry_point=SERVING_SCRIPT_FILE,
         enable_network_isolation=True,
+        name=model_name,
     )
     model.transformer.assert_called_with(
         INSTANCE_COUNT,
@@ -429,6 +437,7 @@ def test_transformer_creation_without_optional_args(create_model, sagemaker_sess
         vpc_config_override="VPC_CONFIG_DEFAULT",
         entry_point=None,
         enable_network_isolation=False,
+        name=None,
     )
     model.transformer.assert_called_with(
         INSTANCE_COUNT,
