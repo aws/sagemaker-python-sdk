@@ -65,7 +65,7 @@ def pytest_addoption(parser):
     )
     parser.addoption("--sklearn-full-version", action="store", default=SKLEARN_VERSION)
     parser.addoption("--tf-full-version", action="store")
-    parser.addoption("--ei-tf-full-version", action="store", default=TensorFlow.LATEST_VERSION)
+    parser.addoption("--ei-tf-full-version", action="store")
     parser.addoption("--xgboost-full-version", action="store", default=SKLEARN_VERSION)
 
 
