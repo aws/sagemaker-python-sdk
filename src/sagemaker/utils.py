@@ -529,10 +529,6 @@ def _create_or_update_code_dir(
         tmp:
     """
     code_dir = os.path.join(model_dir, "code")
-    if os.path.exists(code_dir):
-        for filename in os.listdir(code_dir):
-            if filename.endswith(".py"):
-                os.remove(os.path.join(code_dir, filename))
     if source_directory and source_directory.lower().startswith("s3://"):
         local_code_path = os.path.join(tmp, "local_code.tar.gz")
         download_file_from_url(source_directory, local_code_path, sagemaker_session)
