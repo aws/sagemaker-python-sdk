@@ -501,7 +501,7 @@ To install the operator onto the cluster:
 - Update the installer YAML to place the resources into your specified namespace using the following command:
 
    ::
-   
+
        sed -i -e 's/PLACEHOLDER-NAMESPACE/<YOUR NAMESPACE>/g' operator.yaml
 
 -  Edit the \ ``operator.yaml`` file to
