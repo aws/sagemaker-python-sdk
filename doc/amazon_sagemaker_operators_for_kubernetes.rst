@@ -330,6 +330,7 @@ namespace ``sagemaker-k8s-operator-system``  as follows:
 
     NAME                                                         READY   STATUS    RESTARTS   AGE
     sagemaker-k8s-operator-controller-manager-12345678-r8abc     2/2     Running   0          23s
+    
 ​
 
 Namespace-scoped deployment
