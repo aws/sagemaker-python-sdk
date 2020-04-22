@@ -4,9 +4,9 @@ Using PyTorch with the SageMaker Python SDK
 
 With PyTorch Estimators and Models, you can train and host PyTorch models on Amazon SageMaker.
 
-Supported versions of PyTorch: ``0.4.0``, ``1.0.0``, ``1.1.0``, ``1.2.0``, ``1.3.1``.
+* Supported versions of PyTorch: ``0.4.0``, ``1.0.0``, ``1.1.0``, ``1.2.0``, ``1.3.1``.
 
-Supported versions of PyTorch for Elastic Inference: ``1.3.1``.
+* Supported versions of PyTorch for Elastic Inference: ``1.3.1``.
 
 We recommend that you use the latest supported version, because that's where we focus most of our development efforts.
 
@@ -90,7 +90,7 @@ Note that SageMaker doesn't support argparse actions. If you want to use, for ex
 you need to specify `type` as `bool` in your script and provide an explicit `True` or `False` value for this hyperparameter
 when instantiating PyTorch Estimator.
 
-For more on training environment variables, please visit `SageMaker Containers <https://github.com/aws/sagemaker-containers>`_.
+For more on training environment variables, see `SageMaker Containers <https://github.com/aws/sagemaker-containers>`_.
 
 Save the Model
 --------------
@@ -115,7 +115,7 @@ to a certain filesystem path called ``model_dir``. This value is accessible thro
         with open(os.path.join(args.model_dir, 'model.pth'), 'wb') as f:
             torch.save(model.state_dict(), f)
 
-After your training job is complete, SageMaker will compress and upload the serialized model to S3, and your model data
+After your training job is complete, SageMaker compresses and uploads the serialized model to S3, and your model data
 will be available in the S3 ``output_path`` you specified when you created the PyTorch Estimator.
 
 If you are using Elastic Inference, you must convert your models to the TorchScript format and use ``torch.jit.save`` to save the model.
@@ -514,11 +514,91 @@ The function should return a byte array of data serialized to content_type.
 The default implementation expects ``prediction`` to be a torch.Tensor and can serialize the result to JSON, CSV, or NPY.
 It accepts response content types of "application/json", "text/csv", and "application/x-npy".
 
-Working with Existing Model Data and Training Jobs
-==================================================
 
-Attach to existing training jobs
---------------------------------
+Bring your own model
+====================
+
+You can deploy a PyTorch model that you trained outside of SageMaker by using the ``PyTorchModel`` class.
+Typically, you save a PyTorch model as a file with extension ``.pt`` or ``.pth``.
+To do this, you need to:
+
+* Write an inference script.
+* Package the model artifacts into a tar.gz file.
+* Upload the tar.gz file to an S3 bucket.
+* Create the ``PyTorchModel`` object.
+
+Write an inference script
+-------------------------
+
+You must create an inference script that implements (at least) the ``predict_fn`` function that calls the loaded model to get a prediction.
+Optionally, you can also implement ``input_fn`` and ``output_fn`` to process input and output. 
+For information about how to write an inference script, see `Serve a PyTorch Model <#serve-a-pytorch-model>`_.
+Save the inference script as ``inference.py`` in the same folder where you saved your PyTorch model. 
+
+Package model artifacts into a tar.gz file
+------------------------------------------
+
+The directory structure where you saved your PyTorch model should look something like the following:
+
+|   my_model
+|           |--model.pth
+|        
+|           code
+|               |--inference.py
+|               |--requirements.txt
+
+Where ``requirments.txt`` is an optional file that specifies dependencies on third-party libraries.
+
+With this file structure, run the following command to package your model as a ``tar.gz`` file:
+
+``tar -czf model.tar.gz my_model code``
+
+Upload model.tar.gz to S3
+-------------------------
+
+After you package your model into a ``tar.gz`` file, upload it to an S3 bucket by running the following python code:
+
+.. code:: python
+
+    import boto3
+    import sagemaker
+    s3 = boto3.client('s3')
+
+    from sagemaker import get_execution_role
+    role = get_execution_role()
+
+    response = s3.upload_file('model.tar.gz', 'my-bucket', '%s/%s' %('my-path', 'model.tar.gz'))
+
+Where ``my-bucket`` is the name of your S3 bucket, and ``my-path`` is the folder where you want to store the model.
+
+
+ You can also upload to S3 by using the AWS CLI:
+
+ .. code:: bash
+
+     aws s3 cp model.tar.gz s3://my-bucket/my-path/model.tar.gz
+
+
+To run this command, you'll need to have the AWS CLI tool installed. For information about installing the AWS CLI,
+see `Installing the AWS CLI <https://docs.aws.amazon.com/cli/latest/userguide/cli-chap-install.html>`_.
+
+Create a PyTorchModel object
+----------------------------
+
+Now call the :class:`sagemaker.pytorch.model.PyTorchModel` constructor to create a model object, and then call its ``deploy()`` method to deploy your model for inference.
+
+.. code:: python
+
+    pytorch_model = PyTorchModel(model_data='s3://my-bucket/my-path/model.tar.gz', role=role,
+                                 entry_point='inference.py')
+
+    predictor = pytorch_model.deploy(instance_type='ml.c4.xlarge', initial_instance_count=1)
+
+
+Now you can call the ``predict()`` method to get predictions from your deployed model.
+
+Attach an estimator to an existing training job
+===============================================
 
 You can attach a PyTorch Estimator to an existing training job using the
 ``attach`` method.
@@ -539,69 +619,6 @@ The ``attach`` method accepts the following arguments:
    to.
 -  ``sagemaker_session:`` The Session used
    to interact with SageMaker
-
-Deploy Endpoints from model data
---------------------------------
-
-In addition to attaching to existing training jobs, you can deploy models directly from model data in S3.
-The following code sample shows how to do this, using the ``PyTorchModel`` class.
-
-.. code:: python
-
-    pytorch_model = PyTorchModel(model_data='s3://bucket/model.tar.gz', role='SageMakerRole',
-                                 entry_point='transform_script.py')
-
-    predictor = pytorch_model.deploy(instance_type='ml.c4.xlarge', initial_instance_count=1)
-
-The PyTorchModel constructor takes the following arguments:
-
--  ``model_dat:`` An S3 location of a SageMaker model data
-   .tar.gz file
--  ``image:`` A Docker image URI
--  ``role:`` An IAM role name or Arn for SageMaker to access AWS
-   resources on your behalf.
--  ``predictor_cls:`` A function to
-   call to create a predictor. If not None, ``deploy`` will return the
-   result of invoking this function on the created endpoint name
--  ``env:`` Environment variables to run with
-   ``image`` when hosted in SageMaker.
--  ``name:`` The model name. If None, a default model name will be
-   selected on each ``deploy.``
--  ``entry_point:`` Path (absolute or relative) to the Python file
-   which should be executed as the entry point to model hosting.
--  ``source_dir:`` Optional. Path (absolute or relative) to a
-   directory with any other training source code dependencies including
-   the entry point file. Structure within this directory will be
-   preserved when training on SageMaker.
--  ``enable_cloudwatch_metrics:`` Optional. If true, training
-   and hosting containers will generate Cloudwatch metrics under the
-   AWS/SageMakerContainer namespace.
--  ``container_log_level:`` Log level to use within the container.
-   Valid values are defined in the Python logging module.
--  ``code_location:`` Optional. Name of the S3 bucket where your
-   custom code will be uploaded to. If not specified, will use the
-   SageMaker default bucket created by sagemaker.Session.
--  ``sagemaker_session:`` The SageMaker Session
-   object, used for SageMaker interaction
-
-Your model data must be a .tar.gz file in S3. SageMaker Training Job model data is saved to .tar.gz files in S3,
-however if you have local data you want to deploy, you can prepare the data yourself.
-
-Assuming you have a local directory containg your model data named "my_model" you can tar and gzip compress the file and
-upload to S3 using the following commands:
-
-::
-
-    tar -czf model.tar.gz my_model
-    aws s3 cp model.tar.gz s3://my-bucket/my-path/model.tar.gz
-
-This uploads the contents of my_model to a gzip compressed tar file to S3 in the bucket "my-bucket", with the key
-"my-path/model.tar.gz".
-
-To run this command, you'll need the AWS CLI tool installed. Please refer to our `FAQ`_ for more information on
-installing this.
-
-.. _FAQ: ../../../README.rst#faq
 
 *************************
 PyTorch Training Examples
