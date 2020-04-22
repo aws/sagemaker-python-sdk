@@ -336,10 +336,6 @@ Namespace-scoped deployment
 You have the option to install your operator within the scope of an individual Kubernetes namespace. In this mode, the controller will only monitor and reconcile resources with Amazon SageMaker if the resources are created within that namespace. This allows for finer grained control over which controller is managing which resources. This is useful for deploying to multiple AWS accounts or controlling which users have access to particular jobs.
 
 This guide outlines how to install an operator into a particular, predefined namespace. To deploy a controller into a second namespace, follow the guide from beginning to end and change out the namespace in each step.
-
-
-
-
 Create an OpenID Connect Provider for Your EKS Cluster
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
