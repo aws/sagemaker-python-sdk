@@ -506,8 +506,7 @@ To install the operator onto the cluster:
        wget https://raw.githubusercontent.com/aws/amazon-sagemaker-operator-for-k8s/master/release/rolebased/namespaced/operator.yaml
 
 - Update the installer YAML to place the resources into your specified namespace using the following command:
-
-   ::
+    ::
    
        sed -i -e 's/PLACEHOLDER-NAMESPACE/<YOUR NAMESPACE>/g' operator.yaml
 
