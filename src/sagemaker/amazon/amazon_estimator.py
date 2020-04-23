@@ -28,7 +28,11 @@ from sagemaker.inputs import FileSystemInput
 from sagemaker.model import NEO_IMAGE_ACCOUNT
 from sagemaker.session import s3_input
 from sagemaker.utils import sagemaker_timestamp, get_ecr_image_uri_prefix
-from sagemaker.xgboost.defaults import XGBOOST_LATEST_VERSION,XGBOOST_SUPPORTED_VERSIONS, XGBOOST_VERSION_1
+from sagemaker.xgboost.defaults import (
+    XGBOOST_LATEST_VERSION,
+    XGBOOST_SUPPORTED_VERSIONS,
+    XGBOOST_VERSION_1,
+)
 from sagemaker.xgboost.estimator import get_xgboost_image_uri
 
 logger = logging.getLogger(__name__)
@@ -612,7 +616,7 @@ def get_image_uri(region_name, repo_name, repo_version=1):
         repo_version:
     """
     if repo_name == "xgboost":
-        if _xgboost_version_compare(repo_version):
+        if not _is_latest_xgboost_version(repo_version):
             logging.warning(
                 "There is a more up to date SageMaker XGBoost image. "
                 "To use the newer image, please set 'repo_version'="
@@ -637,15 +641,15 @@ def get_image_uri(region_name, repo_name, repo_version=1):
     return "{}/{}".format(registry(region_name, repo_name), repo)
 
 
-def _xgboost_version_compare(repo_version):
+def _is_latest_xgboost_version(repo_version):
     """Compare xgboost image version with latest version
 
     Args:
         repo_version:
     """
-    if repo_version == 1:
+    if repo_version == 1 or repo_version == 'latest':
         return True
-    return _split(XGBOOST_LATEST_VERSION) > _split(repo_version)
+    return _split(XGBOOST_LATEST_VERSION) <= _split(repo_version)
 
 
 def _split(version):
