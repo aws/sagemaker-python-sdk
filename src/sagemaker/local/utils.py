@@ -62,7 +62,7 @@ def move_to_destination(source, destination, job_name, sagemaker_session):
         final_uri = destination
     elif parsed_uri.scheme == "s3":
         bucket = parsed_uri.netloc
-        path = "%s%s" % (parsed_uri.path.lstrip("/"), job_name)
+        path = _create_s3_path(parsed_uri.path, job_name)
         final_uri = "s3://%s/%s" % (bucket, path)
         sagemaker_session.upload_data(source, bucket, path)
     else:
@@ -70,6 +70,11 @@ def move_to_destination(source, destination, job_name, sagemaker_session):
 
     shutil.rmtree(source)
     return final_uri
+
+
+def _create_s3_path(prefix, job_name):
+    prefix = prefix.strip("/")
+    return job_name if prefix == "" else "/".join((prefix, job_name))
 
 
 def recursive_copy(source, destination):
