@@ -111,7 +111,7 @@ def tfs_predictor_with_model_and_entry_point_and_dependencies(
 
 
 @pytest.fixture(scope="module")
-def tfs_predictor_with_accelerator(sagemaker_session, tf_full_version, cpu_instance_type):
+def tfs_predictor_with_accelerator(sagemaker_session, ei_tf_full_version, cpu_instance_type):
     endpoint_name = sagemaker.utils.unique_name_from_base("sagemaker-tensorflow-serving")
     model_data = sagemaker_session.upload_data(
         path=os.path.join(tests.integ.DATA_DIR, "tensorflow-serving-test-model.tar.gz"),
@@ -121,7 +121,7 @@ def tfs_predictor_with_accelerator(sagemaker_session, tf_full_version, cpu_insta
         model = Model(
             model_data=model_data,
             role="SageMakerRole",
-            framework_version="1.14",
+            framework_version=ei_tf_full_version,
             sagemaker_session=sagemaker_session,
         )
         predictor = model.deploy(
