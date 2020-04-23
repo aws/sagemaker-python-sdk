@@ -65,7 +65,7 @@ def pytest_addoption(parser):
     )
     parser.addoption("--sklearn-full-version", action="store", default=SKLEARN_VERSION)
     parser.addoption("--tf-full-version", action="store")
-    parser.addoption("--ei-tf-full-version", action="store", default=TensorFlow.LATEST_VERSION)
+    parser.addoption("--ei-tf-full-version", action="store")
     parser.addoption("--xgboost-full-version", action="store", default=SKLEARN_VERSION)
 
 
@@ -268,9 +268,13 @@ def tf_full_version(request):
         return tf_version
 
 
-@pytest.fixture(scope="module")
+@pytest.fixture(scope="module", params=["1.15.0", "2.0.0"])
 def ei_tf_full_version(request):
-    return request.config.getoption("--ei-tf-full-version")
+    tf_ei_version = request.config.getoption("--ei-tf-full-version")
+    if tf_ei_version is None:
+        return request.param
+    else:
+        tf_ei_version
 
 
 @pytest.fixture(scope="session")
