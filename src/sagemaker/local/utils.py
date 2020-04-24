@@ -62,7 +62,7 @@ def move_to_destination(source, destination, job_name, sagemaker_session):
         final_uri = destination
     elif parsed_uri.scheme == "s3":
         bucket = parsed_uri.netloc
-        path = _create_s3_path(parsed_uri.path, job_name)
+        path = _create_s3_prefix(parsed_uri.path, job_name)
         final_uri = "s3://%s/%s" % (bucket, path)
         sagemaker_session.upload_data(source, bucket, path)
     else:
@@ -72,9 +72,20 @@ def move_to_destination(source, destination, job_name, sagemaker_session):
     return final_uri
 
 
-def _create_s3_path(prefix, job_name):
-    prefix = prefix.strip("/")
-    return job_name if prefix == "" else "/".join((prefix, job_name))
+def _create_s3_prefix(path, job_name):
+    """Constructs a path out of the given path and job name to be
+    used as an S3 prefix.
+
+    Args:
+        path (str): the original path. If the path is only ``"/"``,
+            then it is ignored.
+        job_name (str): the job name to be appended to the path.
+
+    Returns:
+        str: an S3 prefix of the form ``"path/job_name"``
+    """
+    path = path.strip("/")
+    return job_name if path == "" else "/".join((path, job_name))
 
 
 def recursive_copy(source, destination):
