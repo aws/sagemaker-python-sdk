@@ -16,7 +16,6 @@ from __future__ import absolute_import
 import json
 import logging
 import tempfile
-import re
 
 from six.moves.urllib.parse import urlparse
 
@@ -32,6 +31,7 @@ from sagemaker.xgboost.defaults import (
     XGBOOST_LATEST_VERSION,
     XGBOOST_SUPPORTED_VERSIONS,
     XGBOOST_VERSION_1,
+    XGBOOST_LATEST_VERSION_EQUIVALENTS,
 )
 from sagemaker.xgboost.estimator import get_xgboost_image_uri
 
@@ -647,15 +647,6 @@ def _is_latest_xgboost_version(repo_version):
     Args:
         repo_version:
     """
-    if repo_version == 1 or repo_version == 'latest':
-        return True
-    return _split(XGBOOST_LATEST_VERSION) <= _split(repo_version)
-
-
-def _split(version):
-    """Split str into tuple
-
-    Args:
-        version:
-    """
-    return re.split(r"[^a-zA-Z0-9\s]", version)
+    if repo_version in (1, "latest"):
+        return False
+    return repo_version in XGBOOST_LATEST_VERSION_EQUIVALENTS
