@@ -19,7 +19,7 @@ Kubernetes is built on top of what is called the controller pattern.
 This pattern allows applications and tools to listen to a central state
 manager (ETCD) and act when something happens. Examples of such
 applications
-include \ ``cloud-controller-manager`` and \ ``controller-manager``.
+include ``cloud-controller-manager`` and ``controller-manager``.
 The controller pattern allows you to create decoupled experiences and not
 have to worry about how other components are integrated. To add new capabilities to Kubernetes, developers can extend the Kubernetes API by creating a custom resource that contains their application-specific or domain-specific logic and components. Operators in Kubernetes allow users to natively invoke these custom resources and automate associated workflows.
 
@@ -32,10 +32,10 @@ completed the following prerequisites:
 -  Installed the following tools on the client machine used to access your k8s cluster:
 
    -  `kubectl <https://docs.aws.amazon.com/eks/latest/userguide/install-kubectl.html>`__
-      Version 1.13 or later. Use a \ ``kubectl`` version that is within
+      Version 1.13 or later. Use a ``kubectl`` version that is within
       one minor version of your Amazon Elastic Kubernetes Service
       (Amazon EKS) cluster control plane. For example, a
-      1.13 \ ``kubectl`` client works with Kubernetes 1.13 and 1.14
+      1.13 ``kubectl`` client works with Kubernetes 1.13 and 1.14
       clusters. OpenID Connect (OIDC) is not supported in versions earlier than 1.13.
 
    -  `eksctl <https://github.com/weaveworks/eksctl>`__ Version 0.7.0 or
@@ -54,7 +54,7 @@ completed the following prerequisites:
 
 -  Created a Kubernetes cluster to run the operators on. It should either be
    Kubernetes version 1.13 or 1.14. For automated cluster
-   creation using \ ``eksctl``, see `Getting Started with eksctl <https://docs.aws.amazon.com/eks/latest/userguide/getting-started-eksctl.html>`__.
+   creation using ``eksctl``, see `Getting Started with eksctl <https://docs.aws.amazon.com/eks/latest/userguide/getting-started-eksctl.html>`__.
    It takes 20 to 30 minutes to provision a cluster.
 
 Permissions overview
@@ -70,14 +70,14 @@ jobs. The following image explains this design and flow.
 
 .. image:: ./amazon_sagemaker_operators_for_kubernetes_authentication.png
 
-Setup and operator deployment
------------------------------
+IAM role-based setup and operator deployment
+--------------------------------------------
 
 The following sections describe the steps to setup and deploy the
 operator.
 
-IAM role-based operator deployment
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Cluster-scoped deployment
+~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Before you can deploy your operator using an IAM role, associate an OpenID Connect (OIDC) provider with your role to
 authenticate with the IAM service.
@@ -88,7 +88,7 @@ Create an OpenID Connect Provider for Your Cluster
 The following instruction will create and associate an OIDC provider
 with your EKS cluster.
 
-Set the local ``CLUSTER_NAME`` and \ ``AWS_REGION`` environment
+Set the local ``CLUSTER_NAME`` and ``AWS_REGION`` environment
 variables as follows:
 
 ::
@@ -98,7 +98,7 @@ variables as follows:
     export AWS_REGION="<your region>"
 
 Use the following command to associate the OIDC provider with your
-cluster. For more information, see \ `Enabling IAM Roles for Service
+cluster. For more information, see `Enabling IAM Roles for Service
 Accounts on your
 Cluster. <https://docs.aws.amazon.com/eks/latest/userguide/enable-iam-roles-for-service-accounts.html>`__
 
@@ -139,7 +139,7 @@ In this URL, the value D48675832CA65BD10A532F597OIDCID is the OIDC ID.
 The OIDC ID for your cluster will be different. You need this OIDC ID
 value to create a role.
 
-If your output is \ ``None``, it means that your client version is old.
+If your output is ``None``, it means that your client version is old.
 To work around this, run the following command: 
 
 ::
@@ -155,8 +155,8 @@ The OIDC URL will be returned as follows:
 Create an IAM Role 
 ^^^^^^^^^^^^^^^^^^^
 
-Create a file named \ ``trust.json``  and insert the following trust
-relationship code block into it. Be sure to replace all \ ``<OIDC ID>``, \ ``<AWS account number>``, and \ ``<EKS Cluster region>`` placeholders with values corresponding to your cluster.
+Create a file named ``trust.json``  and insert the following trust
+relationship code block into it. Be sure to replace all ``<OIDC ID>``, ``<AWS account number>``, and ``<EKS Cluster region>`` placeholders with values corresponding to your cluster.
 
 ::
 
@@ -180,7 +180,7 @@ relationship code block into it. Be sure to replace all \ ``<OIDC ID>``, \ ``<AW
     }
 
 Run the following command to create a role with the trust
-relationship defined in \ ``trust.json``. This role enables the
+relationship defined in ``trust.json``. This role enables the
 Amazon EKS cluster to get and refresh credentials from IAM.
 
 ::
@@ -197,14 +197,14 @@ Your output should look like the following:
     STRINGEQUALS    sts.amazonaws.com       system:serviceaccount:sagemaker-k8s-operator-system:sagemaker-k8s-operator-default
     PRINCIPAL       arn:aws:iam::123456789012:oidc-provider/oidc.eks.us-east-1.amazonaws.com/id/
 
-Take note of \ ``ROLE ARN``, you pass this value to your
+Take note of ``ROLE ARN``, you pass this value to your
 operator. 
 
 Attach the AmazonSageMakerFullAccess Policy to the Role
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 To give the role access to Amazon SageMaker, attach
-the \ `AmazonSageMakerFullAccess <https://console.aws.amazon.com/iam/home?#/policies/arn:aws:iam::aws:policy/AmazonSageMakerFullAccess>`__ policy.
+the `AmazonSageMakerFullAccess <https://console.aws.amazon.com/iam/home?#/policies/arn:aws:iam::aws:policy/AmazonSageMakerFullAccess>`__ policy.
 If you want to limit permissions to the operator, you can create your
 own custom policy and attach it.
 
@@ -215,8 +215,8 @@ To attach AmazonSageMakerFullAccess, run the following command:
     aws iam attach-role-policy --role-name <role name>  --policy-arn arn:aws:iam::aws:policy/AmazonSageMakerFullAccess
 
 The Kubernetes
-ServiceAccount \ ``sagemaker-k8s-operator-default`` should
-have \ ``AmazonSageMakerFullAccess`` permissions. Confirm this when you
+ServiceAccount ``sagemaker-k8s-operator-default`` should
+have ``AmazonSageMakerFullAccess`` permissions. Confirm this when you
 install the operator.
 
 Deploy the Operator
@@ -237,8 +237,8 @@ follows:
 
        wget https://raw.githubusercontent.com/aws/amazon-sagemaker-operator-for-k8s/master/release/rolebased/installer.yaml
 
--  Edit the \ ``installer.yaml`` file to
-   replace \ ``eks.amazonaws.com/role-arn``. Replace the ARN here with
+-  Edit the ``installer.yaml`` file to
+   replace ``eks.amazonaws.com/role-arn``. Replace the ARN here with
    the Amazon Resource Name (ARN) for the OIDC-based role you’ve created. 
 
 -  Use the following command to deploy the cluster:  
@@ -262,7 +262,7 @@ Clone the Helm installer directory using the following command:
 
 Navigate to the
 ``amazon-sagemaker-operator-for-k8s/hack/charts/installer`` folder. Edit
-the \ ``rolebased/values.yaml`` file, which includes high-level parameters for the
+the ``rolebased/values.yaml`` file, which includes high-level parameters for the
 Chart. Replace the role ARN here with the Amazon Resource Name (ARN) for the OIDC-based role you’ve
 created. 
 
@@ -295,7 +295,7 @@ Your output should look like the following:
 
 
 Verify the operator deployment
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 You should be able to see the Amazon SageMaker Custom Resource
 Definitions (CRDs) for each operator deployed to your cluster by running
 the following command: 
@@ -323,13 +323,288 @@ command to list all pods:
     kubectl -n sagemaker-k8s-operator-system get pods
 
 You should see a pod
-named \ ``sagemaker-k8s-operator-controller-manager-*****`` in the
-namespace \ ``sagemaker-k8s-operator-system``  as follows:
+named ``sagemaker-k8s-operator-controller-manager-*****`` in the
+namespace ``sagemaker-k8s-operator-system``  as follows:
 
 ::
 
     NAME                                                         READY   STATUS    RESTARTS   AGE
-    sagemaker-k8s-operator-controller-manager-12345678-r8abc   2/2     Running   0          23s
+    sagemaker-k8s-operator-controller-manager-12345678-r8abc     2/2     Running   0          23s
+    
+​
+
+Namespace-scoped deployment
+~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+You have the option to install your operator within the scope of an individual Kubernetes namespace. In this mode, the controller will only monitor and reconcile resources with Amazon SageMaker if the resources are created within that namespace. This allows for finer grained control over which controller is managing which resources. This is useful for deploying to multiple AWS accounts or controlling which users have access to particular jobs.
+
+This guide outlines how to install an operator into a particular, predefined namespace. To deploy a controller into a second namespace, follow the guide from beginning to end and change out the namespace in each step.
+
+
+
+
+Create an OpenID Connect Provider for Your EKS Cluster
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+The following instruction will create and associate an OIDC provider
+with your EKS cluster.
+
+Set the local ``CLUSTER_NAME`` and ``AWS_REGION`` environment
+variables as follows:
+
+.. code:: shell
+
+    # Set the region and cluster
+    export CLUSTER_NAME="<your cluster name>"
+    export AWS_REGION="<your region>"
+
+Use the following command to associate the OIDC provider with your
+cluster. For more information, see \ `Enabling IAM Roles for Service
+Accounts on your
+Cluster. <https://docs.aws.amazon.com/eks/latest/userguide/enable-iam-roles-for-service-accounts.html>`__
+
+::
+
+    eksctl utils associate-iam-oidc-provider --cluster ${CLUSTER_NAME} \
+        --region ${AWS_REGION} --approve
+
+Your output should look like the following:
+
+::
+
+    [_]  eksctl version 0.10.1
+    [_]  using region us-east-1
+    [_]  IAM OpenID Connect provider is associated with cluster "my-cluster" in "us-east-1"
+
+Now that the cluster has an OIDC identity provider, you can create a
+role and give a Kubernetes ServiceAccount permission to assume the role.
+
+Get your OIDC ID
+^^^^^^^^^^^^^^^^
+
+To set up the ServiceAccount, first obtain the OpenID Connect issuer URL
+using the following command:
+
+::
+
+    aws eks describe-cluster --name ${CLUSTER_NAME} --region ${AWS_REGION} \
+        --query cluster.identity.oidc.issuer --output text
+
+The command will return a URL like the following:
+
+::
+
+    https://oidc.eks.${AWS_REGION}.amazonaws.com/id/D48675832CA65BD10A532F597OIDCID
+
+In this URL, the value D48675832CA65BD10A532F597OIDCID is the OIDC ID.
+The OIDC ID for your cluster will be different. You need this OIDC ID
+value to create a role.
+
+If your output is ``None``, it means that your client version is old.
+To work around this, run the following command: 
+
+::
+
+    aws eks describe-cluster --query cluster --name ${CLUSTER_NAME} --output text | grep OIDC
+
+The OIDC URL will be returned as follows:
+
+::
+
+    OIDC https://oidc.eks.us-east-1.amazonaws.com/id/D48675832CA65BD10A532F597OIDCID
+
+Create your IAM Role 
+^^^^^^^^^^^^^^^^^^^^
+
+Create a file named ``trust.json``  and insert the following trust
+relationship code block into it. Be sure to replace all ``<OIDC ID>``, ``<AWS account number>``, ``<EKS Cluster region>``, and ``<Namespace>`` placeholders with values corresponding to your cluster. For the purposes of this guide, ``my-namespace`` is used for the ``<Namespace>`` value.
+
+::
+
+    {
+      "Version": "2012-10-17",
+      "Statement": [
+        {
+          "Effect": "Allow",
+          "Principal": {             
+            "Federated": "arn:aws:iam::<AWS account number>:oidc-provider/oidc.eks.<EKS Cluster region>.amazonaws.com/id/<OIDC ID>"
+          },
+          "Action": "sts:AssumeRoleWithWebIdentity",
+          "Condition": {
+            "StringEquals": {
+              "oidc.eks.<EKS Cluster region>.amazonaws.com/id/<OIDC ID>:aud": "sts.amazonaws.com",
+              "oidc.eks.<EKS Cluster region>.amazonaws.com/id/<OIDC ID>:sub": "system:serviceaccount:<Namespace>:sagemaker-k8s-operator-default"
+            }
+          }
+        }
+      ]
+    }
+
+Run the following command to create a role with the trust
+relationship defined in ``trust.json``. This role enables the
+Amazon EKS cluster to get and refresh credentials from IAM.
+
+::
+
+    aws iam create-role --role-name <role name> --assume-role-policy-document file://trust.json --output=text
+
+Your output should look like the following:
+
+::
+
+    ROLE    arn:aws:iam::123456789012:role/my-role 2019-11-22T21:46:10Z    /       ABCDEFSFODNN7EXAMPLE   my-role
+    ASSUMEROLEPOLICYDOCUMENT        2012-10-17
+    STATEMENT       sts:AssumeRoleWithWebIdentity   Allow
+    STRINGEQUALS    sts.amazonaws.com       system:serviceaccount:my-namespace:sagemaker-k8s-operator-default
+    PRINCIPAL       arn:aws:iam::123456789012:oidc-provider/oidc.eks.us-east-1.amazonaws.com/id/
+
+Take note of ``ROLE ARN``, you pass this value to your
+operator. 
+
+Attach the AmazonSageMakerFullAccess Policy to your Role
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+To give the role access to Amazon SageMaker, attach
+the \ `AmazonSageMakerFullAccess <https://console.aws.amazon.com/iam/home?#/policies/arn:aws:iam::aws:policy/AmazonSageMakerFullAccess>`__ policy.
+If you want to limit permissions to the operator, you can create your
+own custom policy and attach it.
+
+To attach AmazonSageMakerFullAccess, run the following command:
+
+::
+
+    aws iam attach-role-policy --role-name <role name>  --policy-arn arn:aws:iam::aws:policy/AmazonSageMakerFullAccess
+
+The Kubernetes
+ServiceAccount ``sagemaker-k8s-operator-default`` should
+have ``AmazonSageMakerFullAccess`` permissions. Confirm this when you
+install the operator.
+
+Deploy the Operator to Your Namespace
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+When deploying your operator, you can use either a YAML file or Helm
+charts. 
+
+Deploy the Operator to Your Namespace Using YAML
+''''''''''''''''''''''''''''''''''''''''''''''''
+
+There are two parts to deploying an operator within the scope of a namespace. The first is the set of CRDs that are installed at a cluster level. These resource definitions only need to be installed once per Kubernetes cluster. The second part is the operator permissions and deployment itself.
+
+If you have not already installed the CRDs into the cluster, apply the CRD installer YAML using the following command:
+
+::
+
+    kubectl apply -f https://raw.githubusercontent.com/aws/amazon-sagemaker-operator-for-k8s/master/release/rolebased/namespaced/crd.yaml
+    
+To install the operator onto the cluster:
+
+-  Download the operator installer YAML using the following command:
+
+   ::
+
+       wget https://raw.githubusercontent.com/aws/amazon-sagemaker-operator-for-k8s/master/release/rolebased/namespaced/operator.yaml
+
+- Update the installer YAML to place the resources into your specified namespace using the following command:
+    ::
+   
+       sed -i -e 's/PLACEHOLDER-NAMESPACE/<YOUR NAMESPACE>/g' operator.yaml
+
+-  Edit the ``operator.yaml`` file to
+   place resources into your ``eks.amazonaws.com/role-arn``. Replace the ARN here with
+   the Amazon Resource Name (ARN) for the OIDC-based role you’ve created. 
+
+-  Use the following command to deploy the cluster:  
+
+   ::
+
+       kubectl apply -f operator.yaml
+
+Deploy the Operator to Your Namespace Using Helm Charts
+'''''''''''''''''''''''''''''''''''''''''''''''''''''''
+
+There are two parts needed to deploy an operator within the scope of a namespace. The first is the set of CRDs that are installed at a cluster level. These resource definitions only need to be installed once per Kubernetes cluster. The second part is the operator permissions and deployment itself. When using helm charts you will have to first create the namespace using kubectl.
+
+
+Clone the Helm installer directory using the following command:
+
+::
+
+    git clone https://github.com/aws/amazon-sagemaker-operator-for-k8s.git
+
+Navigate to the
+``amazon-sagemaker-operator-for-k8s/hack/charts/installer/namespaced`` folder. Edit
+the ``rolebased/values.yaml`` file, which includes high-level parameters for the
+Chart. Replace the role ARN here with the Amazon Resource Name (ARN) for the OIDC-based role you’ve
+created. 
+
+Install the Helm Chart using the following command:
+
+::
+
+    helm install crds crd_chart/
+
+
+Create the required namespace and install the operator using the following command:
+
+::
+
+    kubectl create namespace <namespace>
+    helm install --n <namespace> op operator_chart/
+
+
+After a moment, the chart will be installed with the
+name ``sagemaker-operator``. Verify that the installation succeeded by running the following
+command:
+
+::
+
+    helm ls
+
+Your output should look like the following:
+
+::
+
+    NAME                    NAMESPACE                       REVISION        UPDATED                                 STATUS          CHART                           APP VERSION
+    sagemaker-operator      my-namespace                    1               2019-11-20 23:14:59.6777082 +0000 UTC   deployed        sagemaker-k8s-operator-0.1.0
+
+
+Verify the operator deployment to your namespace
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+You should be able to see the Amazon SageMaker Custom Resource
+Definitions (CRDs) for each operator deployed to your cluster by running
+the following command: 
+
+::
+
+    kubectl get crd | grep sagemaker
+
+Your output should look like the following:
+
+::
+
+    batchtransformjobs.sagemaker.aws.amazon.com         2019-11-20T17:12:34Z
+    endpointconfigs.sagemaker.aws.amazon.com            2019-11-20T17:12:34Z
+    hostingdeployments.sagemaker.aws.amazon.com         2019-11-20T17:12:34Z
+    hyperparametertuningjobs.sagemaker.aws.amazon.com   2019-11-20T17:12:34Z
+    models.sagemaker.aws.amazon.com                     2019-11-20T17:12:34Z
+    trainingjobs.sagemaker.aws.amazon.com               2019-11-20T17:12:34Z
+
+Ensure that the operator pod is running successfully. Use the following
+command to list all pods:
+
+::
+
+    kubectl -n my-namespace get pods
+
+You should see a pod
+named ``sagemaker-k8s-operator-controller-manager-*****`` in the
+namespace ``my-namespace``  as follows:
+
+::
+
+    NAME                                                         READY   STATUS    RESTARTS   AGE
+    sagemaker-k8s-operator-controller-manager-12345678-r8abc     2/2     Running   0          23s
 
 ​
 
@@ -337,13 +612,13 @@ Install the Amazon SageMaker logs \ ``kubectl`` plugin
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 As part of the Amazon SageMaker Operators for Kubernetes, you can use
-the \ ``smlogs`` `plugin <https://kubernetes.io/docs/tasks/extend-kubectl/kubectl-plugins/>`__ for ``kubectl`` .
+the ``smlogs`` `plugin <https://kubernetes.io/docs/tasks/extend-kubectl/kubectl-plugins/>`__ for ``kubectl`` .
 This enables Amazon SageMaker CloudWatch logs to be streamed
-with \ ``kubectl``. \ ``kubectl``\ must be installed onto
+with ``kubectl``. ``kubectl`` must be installed onto
 your `PATH <http://www.linfo.org/path_env_var.html>`__. The
 following commands place the binary in
-the \ ``sagemaker-k8s-bin`` directory in your home directory, and add
-that directory to your \ ``PATH``.
+the ``sagemaker-k8s-bin`` directory in your home directory, and add
+that directory to your ``PATH``.
 
 ::
 
@@ -363,14 +638,14 @@ that directory to your \ ``PATH``.
     # Source your .bashrc to update environment variables:
     source ~/.bashrc
 
-Use the following command to verify that the \ ``kubectl`` plugin is
+Use the following command to verify that the ``kubectl`` plugin is
 installed correctly:
 
 ::
 
     kubectl smlogs
 
-If the \ ``kubectl`` plugin is installed correctly, your output should
+If the ``kubectl`` plugin is installed correctly, your output should
 look like the following:
 
 ::
@@ -394,16 +669,19 @@ look like the following:
     Use "smlogs [command] --help" for more information about a command.
 
 
-Delete operators from the cluster 
-----------------------------------
+Delete operators
+----------------
+
+Delete cluster-based operators
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Operators installed using YAML
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 To uninstall the operator from your cluster, make sure that all
 Amazon SageMaker resources have been deleted from the cluster. Failure
 to do so will cause the operator delete operation to hang. Once you have
-deleted all Amazon SageMaker jobs, use \ ``kubectl`` to
+deleted all Amazon SageMaker jobs, use ``kubectl`` to
 delete the operator from the cluster. Run the following commands to stop
 all jobs and delete the operator from the cluster:
 
@@ -453,7 +731,7 @@ You should see output like the following:
     secrets "sagemaker-k8s-operator-abcde" deleted
 
 Operators installed using Helm Charts
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 To delete the operator CRDs, first delete all the running jobs. Then
 delete the helm chart that was used to deploy the operators using the
@@ -469,6 +747,60 @@ following commands:
 
 ​
 
+Delete namespace-based operators
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+
+Operators installed with YAML
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+To uninstall the operator from your cluster, make sure that all
+Amazon SageMaker resources have been deleted from the cluster. Failure
+to do so will cause the operator delete operation to hang. Once you have
+deleted all Amazon SageMaker jobs, use ``kubectl`` to first delete the operator from the namespace and then the CRDs from the cluster. Run the following commands to stop
+all jobs and delete the operator from the cluster:
+
+::
+
+    # Delete all Amazon SageMaker jobs from Kubernetes
+    kubectl delete --all --all-namespaces hyperparametertuningjob.sagemaker.aws.amazon.com
+    kubectl delete --all --all-namespaces trainingjobs.sagemaker.aws.amazon.com
+    kubectl delete --all --all-namespaces batchtransformjob.sagemaker.aws.amazon.com
+    kubectl delete --all --all-namespaces hostingdeployment.sagemaker.aws.amazon.com
+
+
+::
+
+    # Delete the operator using the same yaml file that was used to install the operator 
+    kubectl delete -f operator.yaml
+
+    # Now delete the CRDs using the CRD installer yaml
+    kubectl delete -f https://raw.githubusercontent.com/aws/amazon-sagemaker-operator-for-k8s/master/release/rolebased/namespaced/crd.yaml
+
+    # Now you can delete the namespace if you want
+    kubectl delete namespace <namespace>
+
+Operators installed with Helm Charts
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+To delete the operator CRDs, first delete all the running jobs. Then
+delete the helm chart that was used to deploy the operators using the
+following commands: 
+
+::
+
+    # Delete the operator
+    $ helm delete -n <namespace> op
+
+    # delete the crds
+    $ helm delete crds
+
+    # optionally delete the namespace
+    $ kubectl delete namespace <namespace>
+
+​
+
+
 Troubleshooting
 ---------------
 
@@ -482,22 +814,22 @@ Check the job status by running:
     kubectl get <CRD Type> <job name>
 
 If the job was created in Amazon SageMaker, you can use the following
-command to see the \ ``STATUS`` and the ``SageMaker Job Name``: 
+command to see the ``STATUS`` and the ``SageMaker Job Name``: 
 
 ::
 
     kubectl get <crd type> <job name>
 
--  You can use \ ``smlogs`` to find the cause of the issue using the
+-  You can use ``smlogs`` to find the cause of the issue using the
    following command: 
 
    ::
 
        kubectl smlogs <crd type> <job name>
 
--  You can also use the \ ``describe`` command to get more details about
+-  You can also use the ``describe`` command to get more details about
    the job using the following command.The output will have
-   an \ ``additional`` field that will have more information about the
+   an ``additional`` field that will have more information about the
    status of the job.
 
    ::
@@ -568,7 +900,7 @@ a YAML file or use the supplied Helm charts.
 
 All operator sample jobs in the following tutorials use sample data
 taken from a public MNIST dataset. In order to run these samples, download the dataset into your S3 bucket. You can find
-the dataset in \ `Download the MNIST
+the dataset in `Download the MNIST
 Dataset. <https://docs.aws.amazon.com/sagemaker/latest/dg/ex1-preprocess-data-pull-data.html>`__
 
 .. contents::
@@ -579,7 +911,7 @@ TrainingJob operator
 Training job operators reconcile your specified training job spec to
 Amazon SageMaker by launching it for you in Amazon SageMaker. You can
 learn more about Amazon SageMaker training jobs in the Amazon
-SageMaker \ `CreateTrainingJob API
+SageMaker `CreateTrainingJob API
 documentation <https://docs.aws.amazon.com/sagemaker/latest/dg/API_CreateTrainingJob.html>`__.
 
 Create a TrainingJob Using a Simple YAML File
@@ -616,21 +948,20 @@ Clone the github repo to get the source using the following command:
     git clone https://github.com/aws/amazon-sagemaker-operator-for-k8s.git
 
 
-Navigate to the
-\ ``amazon-sagemaker-operator-for-k8s/hack/charts/training-jobs/`` folder
-and edit the \ ``values.yaml`` file to replace values
-like \ ``rolearn`` and ``outputpath`` with values that correspond to
+Navigate to the ``amazon-sagemaker-operator-for-k8s/hack/charts/training-jobs/`` folder
+and edit the ``values.yaml`` file to replace values
+like ``rolearn`` and ``outputpath`` with values that correspond to
 your account. The RoleARN must have permissions so that Amazon SageMaker
 can access Amazon S3, Amazon CloudWatch, and other services on your
 behalf. For more information on creating an Amazon SageMaker
-ExecutionRole, see \ `Amazon SageMaker
+ExecutionRole, see `Amazon SageMaker
 Roles <https://docs.aws.amazon.com/sagemaker/latest/dg/sagemaker-roles.html#sagemaker-roles-createtrainingjob-perms>`__.
 
 Create the Training Job 
 ''''''''''''''''''''''''
 
 With the roles and S3 buckets replaced with appropriate values
-in \ ``values.yaml``, you can create a training job using the following
+in ``values.yaml``, you can create a training job using the following
 command:
 
 ::
@@ -667,9 +998,9 @@ Your output should look like the following:
     chart-12345678        default         1               2019-11-20 23:35:49.9136092 +0000 UTC   deployed        sagemaker-k8s-trainingjob-0.1.0
     rolebased-12345678    default         1               2019-11-20 23:14:59.6777082 +0000 UTC   deployed        sagemaker-k8s-operator-0.1.0
 
-``helm install`` creates a \ ``TrainingJob`` k8s resource. The operator
+``helm install`` creates a ``TrainingJob`` k8s resource. The operator
 launches the actual training job in Amazon SageMaker and updates
-the \ ``TrainingJob`` k8s resource to reflect the status of the job in
+the ``TrainingJob`` k8s resource to reflect the status of the job in
 Amazon SageMaker. You incur charges for Amazon SageMaker resources used
 during the duration of your job. You do not incur any charges once your
 job completes or stops.
@@ -678,7 +1009,7 @@ job completes or stops.
 training job. You cannot edit any parameter and re-apply the
 file/config. Either change the metadata name or delete the existing job
 and create a new one. Similar to existing training job operators like
-TFJob in Kubeflow, \ ``update`` is not supported.
+TFJob in Kubeflow, ``update`` is not supported.
 
 List Training Jobs
 ^^^^^^^^^^^^^^^^^^
@@ -699,14 +1030,14 @@ The output listing all jobs should look like the following:
     xgboost-mnist-from-for-s3   InProgress   Starting           2019-11-20T23:42:35Z   xgboost-mnist-from-for-s3-examplef11eab94e0ed4671d5a8f
 
 A training job continues to be listed after the job has completed or
-failed. You can remove a \ ``TrainingJob``  job from the list by
+failed. You can remove a ``TrainingJob``  job from the list by
 following the Delete a Training Job steps. Jobs that have completed or
 stopped do not incur any charges for Amazon SageMaker resources. 
 
 Training Job Status Values
 ''''''''''''''''''''''''''
 
-The \ ``STATUS`` field can be one of the following values: 
+The ``STATUS`` field can be one of the following values: 
 
 -  ``Completed``
 
@@ -718,18 +1049,18 @@ The \ ``STATUS`` field can be one of the following values:
 
 -  ``Stopping``
 
-These statuses come directly from the Amazon SageMaker official \ `API
+These statuses come directly from the Amazon SageMaker official `API
 documentation <https://docs.aws.amazon.com/sagemaker/latest/dg/API_DescribeTrainingJob.html#SageMaker-DescribeTrainingJob-response-TrainingJobStatus>`__.
 
 In addition to the official Amazon SageMaker status, it is possible
-for \ ``STATUS`` to be \ ``SynchronizingK8sJobWithSageMaker``. This
+for ``STATUS`` to be ``SynchronizingK8sJobWithSageMaker``. This
 means that the operator has not yet processed the job.
 
 Secondary Status Values
 '''''''''''''''''''''''
 
 The secondary statuses come directly from the Amazon SageMaker
-official \ `API
+official `API
 documentation <https://docs.aws.amazon.com/sagemaker/latest/dg/API_DescribeTrainingJob.html#SageMaker-DescribeTrainingJob-response-SecondaryStatus>`__.
 They contain more granular information about the status of the job.
 
@@ -737,7 +1068,7 @@ Describe a Training Job
 ^^^^^^^^^^^^^^^^^^^^^^^
 
 You can get more details about the training job by using
-the \ ``describe`` kubectl verb. This is typically used for debugging a
+the ``describe`` kubectl verb. This is typically used for debugging a
 problem or checking the parameters of a training job. To get information
 about your training job, use the following command:
 
@@ -823,7 +1154,7 @@ The output for your training job should look like the following:
 View Logs from Training Jobs
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Use the following command to see the logs from the \ ``kmeans-mnist`` 
+Use the following command to see the logs from the ``kmeans-mnist`` 
 training job:
 
 ::
@@ -873,7 +1204,7 @@ Hyperparameter tuning job operators reconcile your
 specified hyperparameter tuning job spec to Amazon SageMaker by
 launching it in Amazon SageMaker. You can learn more about Amazon
 SageMaker hyperparameter tuning jobs in the Amazon
-SageMaker \ `CreateHyperParameterTuningJob API
+SageMaker `CreateHyperParameterTuningJob API
 documentation <https://docs.aws.amazon.com/sagemaker/latest/dg/API_CreateHyperParameterTuningJob.html>`__.
 
 Create a HyperParameterTuningJob Using a Simple YAML File
@@ -886,10 +1217,10 @@ the following command:
 
     wget https://raw.githubusercontent.com/aws/amazon-sagemaker-operator-for-k8s/master/samples/xgboost-mnist-hpo.yaml
 
-Edit the \ ``xgboost-mnist-hpo.yaml`` file to replace
-the \ ``roleArn`` parameter with your <sagemaker-execution-role>. For
+Edit the ``xgboost-mnist-hpo.yaml`` file to replace
+the ``roleArn`` parameter with your <sagemaker-execution-role>. For
 HyperparameterTuningJob to succeed, you must also change
-the \ ``s3InputPath``  and \ ``s3OutputPath`` to values that correspond
+the ``s3InputPath``  and ``s3OutputPath`` to values that correspond
 to your account. Apply the updates YAML file using the following
 command:
 
@@ -909,20 +1240,19 @@ Clone the github repo to get the source using the following command:
     git clone https://github.com/aws/amazon-sagemaker-operator-for-k8s.git
 
 
-Navigate to the
-\ ``amazon-sagemaker-operator-for-k8s/hack/charts/hyperparameter-tuning-jobs/``
+Navigate to the ``amazon-sagemaker-operator-for-k8s/hack/charts/hyperparameter-tuning-jobs/``
 folder.
 
-Edit the \ ``values.yaml`` file to replace the \ ``roleArn`` parameter
+Edit the ``values.yaml`` file to replace the ``roleArn`` parameter
 with your <sagemaker-execution-role>. For HyperparameterTuningJob to
-succeed, you must also change the \ ``s3InputPath`` 
-and \ ``s3OutputPath`` to values that correspond to your account. 
+succeed, you must also change the ``s3InputPath`` 
+and ``s3OutputPath`` to values that correspond to your account. 
 
 Create the HPO Job
 ''''''''''''''''''
 
 With the roles and Amazon S3 paths replaced with appropriate values
-in \ ``values.yaml``, you can create a hyperparameter tuning job using
+in ``values.yaml``, you can create a hyperparameter tuning job using
 the following command:
 
 ::
@@ -961,9 +1291,9 @@ Your output should look like the following:
     chart-1574292948        default         1               2019-11-20 23:35:49.9136092 +0000 UTC   deployed        sagemaker-k8s-trainingjob-0.1.0
     rolebased-1574291698    default         1               2019-11-20 23:14:59.6777082 +0000 UTC   deployed        sagemaker-k8s-operator-0.1.0
 
-``helm install`` creates a \ ``HyperParameterTuningJob`` k8s resource.
+``helm install`` creates a ``HyperParameterTuningJob`` k8s resource.
 The operator launches the actual hyperparameter optimization job in
-Amazon SageMaker and updates the \ ``HyperParameterTuningJob`` k8s
+Amazon SageMaker and updates the ``HyperParameterTuningJob`` k8s
 resource to reflect the status of the job in Amazon SageMaker. You incur
 charges for Amazon SageMaker resources used during the duration of your
 job. You do not incur any charges once your job completes or stops.
@@ -972,7 +1302,7 @@ job. You do not incur any charges once your job completes or stops.
 hyperparameter tuning job. You cannot edit any parameter and re-apply
 the file/config. You must either change the metadata name or delete the
 existing job and create a new one. Similar to existing training job
-operators like TFJob in Kubeflow, \ ``update`` is not supported.
+operators like TFJob in Kubeflow, ``update`` is not supported.
 
 List Hyperparameter Tuning Jobs
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -992,7 +1322,7 @@ Your output will look like the following:
     xgboost-mnist-hpo   Completed   2019-10-17T01:15:52Z   10          0            0        0         xgboostha92f5e3cf07b11e9bf6c06d6-009-4c7a123   xgboostha92f5e3cf07b11e9bf6c123
 
 A hyper parameter tuning job will continue to be listed after the job
-has completed or failed. You can remove a \ ``hyperparametertuningjob`` 
+has completed or failed. You can remove a ``hyperparametertuningjob`` 
 from the list by following the steps in Delete a Hyper Parameter Tuning
 Job. Jobs that have completed or stopped do not incur any charges for
 Amazon SageMaker resources. 
@@ -1000,7 +1330,7 @@ Amazon SageMaker resources.
 Hyperparameter Tuning Job Status Values
 '''''''''''''''''''''''''''''''''''''''
 
-The \ ``STATUS`` field can be one of the following values: 
+The ``STATUS`` field can be one of the following values: 
 
 -  ``Completed``
 
@@ -1016,23 +1346,23 @@ These statuses come directly from the Amazon SageMaker official `API
 documentation <https://docs.aws.amazon.com/sagemaker/latest/dg/API_DescribeHyperParameterTuningJob.html#SageMaker-DescribeHyperParameterTuningJob-response-HyperParameterTuningJobStatus>`__.
 
 In addition to the official Amazon SageMaker status, it is possible
-for \ ``STATUS`` to be \ ``SynchronizingK8sJobWithSageMaker``. This
+for ``STATUS`` to be ``SynchronizingK8sJobWithSageMaker``. This
 means that the operator has not yet processed the job.
 
 Status Counters
 '''''''''''''''
 
 The output has several counters,
-like \ ``COMPLETED`` and ``INPROGRESS``. These represent how many
+like ``COMPLETED`` and ``INPROGRESS``. These represent how many
 training jobs have completed and are in progress, respectively. For more
 information about how these are determined,
-see \ `TrainingJobStatusCounters <https://docs.aws.amazon.com/sagemaker/latest/dg/API_TrainingJobStatusCounters.html>`__ in
+see `TrainingJobStatusCounters <https://docs.aws.amazon.com/sagemaker/latest/dg/API_TrainingJobStatusCounters.html>`__ in
 the Amazon SageMaker API documentation. 
 
 Best Training Job
 '''''''''''''''''
 
-This column contains the name of the \ ``TrainingJob`` that best
+This column contains the name of the ``TrainingJob`` that best
 optimized the selected metric.
 
 To see a summary of the tuned hyperparameters, run:
@@ -1041,7 +1371,7 @@ To see a summary of the tuned hyperparameters, run:
 
     kubectl describe hyperparametertuningjob xgboost-mnist-hpo
 
-To see detailed information about the \ ``TrainingJob``, run:
+To see detailed information about the ``TrainingJob``, run:
 
 ::
 
@@ -1061,7 +1391,7 @@ You can also track all 10 training jobs in k8s launched by
 Describe a Hyperparameter Tuning Job
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-You can obtain debugging details using the \ ``describe`` kubectl verb
+You can obtain debugging details using the ``describe`` kubectl verb
 by running the following command. 
 
 ::
@@ -1071,7 +1401,7 @@ by running the following command.
 In addition to information about the tuning job, the Amazon SageMaker
 Operator for Kubernetes also exposes the `best training
 job <https://docs.aws.amazon.com/sagemaker/latest/dg/automatic-model-tuning-monitor.html#automatic-model-tuning-best-training-job>`__\  found
-by the hyperparameter tuning job in the \ ``describe`` output as
+by the hyperparameter tuning job in the ``describe`` output as
 follows:
 
 ::
@@ -1249,7 +1579,7 @@ BatchTransformJobs operator
 Batch transform job operators reconcile your specified batch transform
 job spec to Amazon SageMaker by launching it in Amazon SageMaker. You
 can learn more about Amazon SageMaker batch transform job in the Amazon
-SageMaker \ `CreateTransformJob API
+SageMaker `CreateTransformJob API
 documentation <https://docs.aws.amazon.com/sagemaker/latest/dg/API_CreateTransformJob.html>`__.
 
 Create a BatchTransformJob Using a Simple YAML File
@@ -1262,9 +1592,9 @@ following command:
 
     wget https://raw.githubusercontent.com/aws/amazon-sagemaker-operator-for-k8s/master/samples/xgboost-mnist-batchtransform.yaml
 
-Edit the file \ ``xgboost-mnist-batchtransform.yaml`` to change
-necessary parameters to replace the \ ``inputdataconfig``  with your
-input data and \ ``s3OutputPath`` with your S3 buckets that the Amazon
+Edit the file ``xgboost-mnist-batchtransform.yaml`` to change
+necessary parameters to replace the ``inputdataconfig``  with your
+input data and ``s3OutputPath`` with your S3 buckets that the Amazon
 SageMaker execution role has write access to.  
 
 Apply the YAML file using the following command:
@@ -1294,7 +1624,7 @@ Navigate to the
 ``amazon-sagemaker-operator-for-k8s/hack/charts/batch-transform-jobs/``
 folder. 
 
-Edit the \ ``values.yaml`` file to replace the \ ``inputdataconfig`` 
+Edit the ``values.yaml`` file to replace the ``inputdataconfig`` 
 with your input data and outputPath with your S3 buckets that the Amazon
 SageMaker execution role has write access to. 
 
@@ -1332,9 +1662,9 @@ following command:
     chart-1574292948        default         1               2019-11-20 23:35:49.9136092 +0000 UTC   deployed        sagemaker-k8s-trainingjob-0.1.0
     rolebased-1574291698    default         1               2019-11-20 23:14:59.6777082 +0000 UTC   deployed        sagemaker-k8s-operator-0.1.0
 
-The previous command creates a \ ``BatchTransformJob`` k8s resource. The
+The previous command creates a ``BatchTransformJob`` k8s resource. The
 operator launches the actual transform job in Amazon SageMaker and
-updates the \ ``BatchTransformJob`` k8s resource to reflect the status
+updates the ``BatchTransformJob`` k8s resource to reflect the status
 of the job in Amazon SageMaker. You incur charges for Amazon SageMaker
 resources used during the duration of your job. You do not incur any
 charges once your job completes or stops.
@@ -1343,7 +1673,7 @@ charges once your job completes or stops.
 transform job. You cannot edit any parameter and re-apply the
 file/config. You must either change the metadata name or delete the
 existing job and create a new one. Similar to existing training job
-operators like TFJob in Kubeflow, \ ``update`` is not supported.
+operators like TFJob in Kubeflow, ``update`` is not supported.
 
 List Batch Transform Jobs
 ^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -1363,7 +1693,7 @@ Your output should look like the following:
     xgboost-mnist-batch-transform       Completed   2019-11-18T03:44:00Z   xgboost-mnist-a88fb19809b511eaac440aa8axgboost
 
 A batch transform job will continue to be listed after the job has
-completed or failed. You can remove a \ ``hyperparametertuningjob`` 
+completed or failed. You can remove a ``hyperparametertuningjob`` 
 from the list by following the Delete a Batch Transform Job steps. Jobs
 that have completed or stopped do not incur any charges for
 Amazon SageMaker resources. 
@@ -1371,7 +1701,7 @@ Amazon SageMaker resources.
 Batch Transform Status Values
 '''''''''''''''''''''''''''''
 
-The \ ``STATUS`` field can be one of the following values: 
+The ``STATUS`` field can be one of the following values: 
 
 -  ``Completed``
 
@@ -1387,14 +1717,14 @@ These statuses come directly from the Amazon SageMaker official `API
 documentation <https://docs.aws.amazon.com/sagemaker/latest/dg/API_DescribeHyperParameterTuningJob.html#SageMaker-DescribeHyperParameterTuningJob-response-HyperParameterTuningJobStatus>`__.
 
 In addition to the official Amazon SageMaker status, it is possible
-for \ ``STATUS`` to be \ ``SynchronizingK8sJobWithSageMaker``. This
+for ``STATUS`` to be ``SynchronizingK8sJobWithSageMaker``. This
 means that the operator has not yet processed the job and will get to it
 soon.
 
 Describe a Batch Transform Job
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-You can obtain debugging details using the \ ``describe`` kubectl verb
+You can obtain debugging details using the ``describe`` kubectl verb
 by running the following command. 
 
 ::
@@ -1444,7 +1774,7 @@ Your output should look like the following:
 View Logs from Batch Transform Jobs
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Use the following command to see the logs from the \ ``xgboost-mnist`` 
+Use the following command to see the logs from the ``xgboost-mnist`` 
 batch transform job:
 
 ::
@@ -1484,7 +1814,7 @@ updating an existing endpoint. The hosting deployment operator
 reconciles your specified hosting deployment job spec to Amazon
 SageMaker by creating models, endpoint-configs and endpoints in Amazon
 SageMaker. You can learn more about Amazon SageMaker inference in the
-Amazon SageMaker \ `CreateEndpoint API
+Amazon SageMaker `CreateEndpoint API
 documentaiton <https://docs.aws.amazon.com/sagemaker/latest/dg/API_CreateEndpoint.html>`__.
 
 Configure a HostingDeployment Resource
@@ -1516,8 +1846,8 @@ The ``xgboost-mnist-hostingdeployment.yaml`` file has the following components t
 Create a HostingDeployment
 ^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-To create a HostingDeployment, use \ ``kubectl`` to apply the
-file \ ``hosting.yaml`` with the following command:
+To create a HostingDeployment, use ``kubectl`` to apply the
+file ``hosting.yaml`` with the following command:
 
 ::
 
@@ -1557,7 +1887,7 @@ The status field can be one of several values:
 
 -  ``ReconcilingEndpoint``: The operator is creating, updating, or
    deleting endpoint resources. If the HostingDeployment remains in this
-   state, use \ ``kubectl describe`` to see the reason in the
+   state, use ``kubectl describe`` to see the reason in the
    ``Additional`` field.
 
 -  ``OutOfService``: Endpoint is not available to take incoming
@@ -1605,7 +1935,7 @@ The status field can be one of several values:
 Describe a Hostingdeployment
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-You can obtain debugging details using the \ ``describe`` kubectl verb
+You can obtain debugging details using the ``describe`` kubectl verb
 by running the following command. 
 
 ::
@@ -1680,7 +2010,7 @@ The status field provides more information using the following fields:
 -  ``Endpoint Status``: The Status of the endpoint.
 
 -  ``Endpoint URL``: The HTTPS URL that can be used to access the
-   endpoint. For more information, see \ `Deploy a Model on Amazon
+   endpoint. For more information, see `Deploy a Model on Amazon
    SageMaker Hosting
    Services <https://docs.aws.amazon.com/sagemaker/latest/dg/how-it-works-hosting.html>`__.
 
@@ -1698,7 +2028,7 @@ The status field provides more information using the following fields:
 Invoking the Endpoint
 ^^^^^^^^^^^^^^^^^^^^^
 
-Once the endpoint status is \ ``InService``, you can invoke the endpoint
+Once the endpoint status is ``InService``, you can invoke the endpoint
 in two ways: using the AWS CLI, which does authentication and URL
 request signing, or using an HTTP client like curl. If you use your own
 client, you will need to do AWSv4 URL signing and authentication on your
@@ -1707,7 +2037,7 @@ own.
 To invoke the endpoint using the AWS CLI, run the following command.
 Make sure to replace the Region and endpoint-name with your endpoint’s
 Region and Amazon SageMaker endpoint name. This information can be
-obtained from the output of \ ``kubectl describe``.
+obtained from the output of ``kubectl describe``.
 
 ::
 
@@ -1719,8 +2049,8 @@ obtained from the output of \ ``kubectl describe``.
       >(cat) \
       --content-type text/csv > /dev/null
 
-For example, if your Region were \ ``us-east-2`` and your endpoint
-config name were \ ``host-xgboost-f56b6b280d7511ea824b129926example``,
+For example, if your Region were ``us-east-2`` and your endpoint
+config name were ``host-xgboost-f56b6b280d7511ea824b129926example``,
 then the following command would invoke the endpoint:
 
 ::
@@ -1733,15 +2063,15 @@ then the following command would invoke the endpoint:
       --content-type text/csv > /dev/null
     4.95847082138
 
-Here, \ ``4.95847082138`` is the prediction from the model for the mock
+Here, ``4.95847082138`` is the prediction from the model for the mock
 data.
 
 Update HostingDeployment
 ^^^^^^^^^^^^^^^^^^^^^^^^
 
-Once a HostingDeployment has a status of \ ``InService``, it can be
+Once a HostingDeployment has a status of ``InService``, it can be
 updated. It might take about 10 minutes for HostingDeployment to be in
-service. To verify that the status is \ ``InService``, use the following
+service. To verify that the status is ``InService``, use the following
 command: 
 
 ::
@@ -1749,11 +2079,11 @@ command:
     kubectl get hostingdeployments
 
 The HostingDeployment can be updated before the status
-is \ ``InService``. The operator will wait until the Amazon SageMaker
-endpoint is \ ``InService`` before applying the update.
+is ``InService``. The operator will wait until the Amazon SageMaker
+endpoint is ``InService`` before applying the update.
 
-To apply an update, modify the \ ``hosting.yaml`` file. For example,
-change the \ ``initialInstanceCount`` field from 1 to 2 as follows:
+To apply an update, modify the ``hosting.yaml`` file. For example,
+change the ``initialInstanceCount`` field from 1 to 2 as follows:
 
 ::
 
@@ -1779,10 +2109,10 @@ change the \ ``initialInstanceCount`` field from 1 to 2 as follows:
               modelDataUrl: s3://my-bucket/inference/xgboost-mnist/model.tar.gz
               image: 123456789012.dkr.ecr.us-east-2.amazonaws.com/xgboost:latest
 
-Save the file, then use \ ``kubectl`` to apply your update as follows.
+Save the file, then use ``kubectl`` to apply your update as follows.
 You should see the status change
-from \ ``InService`` to ``ReconcilingEndpoint``,
-then \ ``Updating``.
+from ``InService`` to ``ReconcilingEndpoint``,
+then ``Updating``.
 
 ::
 
@@ -1799,14 +2129,14 @@ then \ ``Updating``.
 
 Amazon SageMaker deploys a new set of instances with your models,
 switches traffic to use the new instances, and drains the old instances.
-As soon as this process begins, the status becomes \ ``Updating``. After
-the update is complete, your endpoint becomes \ ``InService``. This
+As soon as this process begins, the status becomes ``Updating``. After
+the update is complete, your endpoint becomes ``InService``. This
 process takes approximately 10 minutes.
 
 Delete the HostingDeployment
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Use \ ``kubectl`` to delete a HostingDeployment with the following
+Use ``kubectl`` to delete a HostingDeployment with the following
 command: 
 
 ::

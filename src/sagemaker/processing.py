@@ -495,7 +495,7 @@ class ScriptProcessor(Processor):
         """
         code_file_input = ProcessingInput(
             source=s3_uri,
-            destination=os.path.join(
+            destination="{}{}".format(
                 self._CODE_CONTAINER_BASE_PATH, self._CODE_CONTAINER_INPUT_NAME
             ),
             input_name=self._CODE_CONTAINER_INPUT_NAME,
@@ -508,7 +508,7 @@ class ScriptProcessor(Processor):
         Args:
             user_script_name (str): A filename with an extension.
         """
-        user_script_location = os.path.join(
+        user_script_location = "{}{}/{}".format(
             self._CODE_CONTAINER_BASE_PATH, self._CODE_CONTAINER_INPUT_NAME, user_script_name
         )
         self.entrypoint = command + [user_script_location]

@@ -133,6 +133,8 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):
                 stored to a default bucket. If the bucket with the specific name
                 does not exist, the estimator creates the bucket during the
                 :meth:`~sagemaker.estimator.EstimatorBase.fit` method execution.
+                file:// urls are used for local mode. For example: 'file://model/'
+                will save to the model folder in the current directory.
             output_kms_key (str): Optional. KMS key ID for encrypting the
                 training output (default: None).
             base_job_name (str): Prefix for training job name when the
@@ -446,7 +448,8 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):
             inputs (str or dict or sagemaker.session.s3_input): Information
                 about the training data. This can be one of three types:
 
-                * (str) the S3 location where training data is saved.
+                * (str) the S3 location where training data is saved, or a file:// path in
+                    local mode.
                 * (dict[str, str] or dict[str, sagemaker.session.s3_input]) If using multiple
                     channels for training data, you can specify a dict mapping channel names to
                     strings or :func:`~sagemaker.session.s3_input` objects.

@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-# Copyright 2018 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright 2018-2020 Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -349,12 +349,16 @@ def test_download_folder(makedirs):
         call(os.path.join("/tmp", "train", "validation_data.csv")),
     ]
     obj_mock.download_file.assert_has_calls(calls)
+    assert s3_mock.Object.call_count == 3
+
+    s3_mock.reset_mock()
     obj_mock.reset_mock()
 
     # Test with a trailing slash for the prefix.
     sagemaker.utils.download_folder(BUCKET_NAME, "/prefix/", "/tmp", session)
     obj_mock.download_file.assert_called()
     obj_mock.download_file.assert_has_calls(calls)
+    assert s3_mock.Object.call_count == 2
 
 
 @patch("os.makedirs")
